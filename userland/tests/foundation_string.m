@@ -787,11 +787,13 @@ NULL
 		};
 		static const char *instanceSelectors[] = {
 			"initWithLocaleIdentifier:", "localeIdentifier", "objectForKey:",
+			"displayNameForKey:value:",
 			"isEqual:", "hash", "description", "copy", NULL
 		};
 		static const char *excluded[] = {
-			/* Needs the locale's name tables. */
-			"displayNameForKey:value:",
+			/* -displayNameForKey:value: USED TO BE LISTED HERE as needing "the locale's name
+			 * tables". It is DEMANDED above now: the tables are ICU's and this library already
+			 * links them (§18). */
 			/* Deprecated in Cocoa in favour of -objectForKey: with a key. */
 			"languageCode", "countryCode", NULL
 		};
@@ -1014,6 +1016,33 @@ NULL
 		      [ctrl characterIsMember:(unichar)0x200B] &&	/* zero-width space, Cf */
 		      ![ctrl characterIsMember:(unichar)' '],
 		      "P* (including the em dash and the curly quote) and Cc+Cf (including the Cf joiners)");
+	}
+
+	{
+		/* THE DISPLAY NAMES (D7's kind (D), landed §18). Apple's OWN examples are the assertions:
+		 * on en_GB, naming fr_FR is "French (France)" and en_US is "English (United States)"; on
+		 * fr_FR the same value comes back in French. The nil cases are Apple's too - its page
+		 * allows them ("not all locale property keys have values with display name values") - and
+		 * a NON-STRING value is nil rather than a guess. */
+		NSLocale *british = [NSLocale localeWithLocaleIdentifier:@"en_GB"];
+		NSLocale *french = [NSLocale localeWithLocaleIdentifier:@"fr_FR"];
+
+		check("locale-display-names",
+		      british != nil && french != nil &&
+		      [[british displayNameForKey:NSLocaleIdentifier value:@"fr_FR"] isEqualToString:@"French (France)"] &&
+		      [[british displayNameForKey:NSLocaleIdentifier value:@"en_US"] isEqualToString:@"English (United States)"] &&
+		      [[french displayNameForKey:NSLocaleIdentifier value:@"fr_FR"] isEqualToString:@"français (France)"] &&
+		      [[british displayNameForKey:NSLocaleLanguageCode value:@"fr"] isEqualToString:@"French"] &&
+		      [[british displayNameForKey:NSLocaleCountryCode value:@"GB"] isEqualToString:@"United Kingdom"] &&
+		      [[british displayNameForKey:NSLocaleScriptCode value:@"Latn"] isEqualToString:@"Latin"] &&
+		      [british displayNameForKey:@"NSLocaleCurrencyCode" value:@"EUR"] == nil &&
+		      [british displayNameForKey:NSLocaleLanguageCode value:[NSNumber numberWithInt:7]] == nil,
+		      [[NSString stringWithFormat:@"en_GB/fr_FR=%@ en_US=%@ fr=%@ GB=%@ Latn=%@",
+			[british displayNameForKey:NSLocaleIdentifier value:@"fr_FR"],
+			[british displayNameForKey:NSLocaleIdentifier value:@"en_US"],
+			[british displayNameForKey:NSLocaleLanguageCode value:@"fr"],
+			[british displayNameForKey:NSLocaleCountryCode value:@"GB"],
+			[british displayNameForKey:NSLocaleScriptCode value:@"Latn"]] UTF8String]);
 	}
 
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);

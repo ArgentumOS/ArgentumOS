@@ -12,6 +12,9 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
+/* ICU ANSWERS THE DISPLAY NAMES (see -displayNameForKey:value: below). This library already links
+ * icuuc, and NSLocale.m joins the per-file ICU include table in the build for it. */
+#include <unicode/uloc.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -256,6 +259,60 @@ static NSString *fn_region(NSArray *parts)
 - (NSString *)localeIdentifier
 {
 	return _identifier;
+}
+
+/*
+ * THE DISPLAY NAMES (D7's kind (D), landed §18 — the last item on that list). FOUR PUBLISHED KEYS,
+ * and the two roles are the whole design: the RECEIVER's identifier is the DISPLAY locale (the
+ * language the answer is written in) and `value` is the locale or subtag being named. ICU's
+ * uloc_getDisplay* take UTF-8 locale ids and answer UTF-16, so no conversion of the input is needed.
+ *
+ * A KEY WITH NO DISPLAY NAME ANSWERS nil, which Apple's own page allows for in as many words ("not
+ * all locale property keys have values with display name values") — and so does a value that is not
+ * a string, which is what Cocoa's own contract implies for these keys rather than a guess:
+ * NSLocaleIdentifier, NSLocaleLanguageCode, NSLocaleCountryCode and NSLocaleScriptCode all carry
+ * strings.
+ */
+#define FN_DISPLAY_NAME_MAX 256
+
+- (nullable NSString *)displayNameForKey:(id)key value:(id)value
+{
+	UChar out[FN_DISPLAY_NAME_MAX];
+	UErrorCode status = U_ZERO_ERROR;
+	const char *here;
+	const char *there;
+	int32_t n;
+
+	if (![value isKindOfClass:[NSString class]] || ![key isKindOfClass:[NSString class]]) {
+		return nil;
+	}
+	here = [_identifier UTF8String];
+	there = [(NSString *)value UTF8String];
+	if (here == NULL || there == NULL) {
+		return nil;
+	}
+	if ([(NSString *)key isEqualToString:NSLocaleIdentifier]) {
+		n = uloc_getDisplayName(there, here, out, FN_DISPLAY_NAME_MAX, &status);
+	} else if ([(NSString *)key isEqualToString:NSLocaleLanguageCode]) {
+		n = uloc_getDisplayLanguage(there, here, out, FN_DISPLAY_NAME_MAX, &status);
+	} else if ([(NSString *)key isEqualToString:NSLocaleCountryCode]) {
+		/* A BARE SUBTAG IS NOT A LOCALE ID. ICU takes the country out of the id it is handed, and
+		 * "GB" parses as a LANGUAGE, so the lookup answered nothing at all (measured: nil, on the
+		 * host, before this line existed). The country subtag goes in the REGION slot of an
+		 * undetermined-language id, which is what "und_GB" spells. */
+		there = [[@"und_" stringByAppendingString:(NSString *)value] UTF8String];
+		n = uloc_getDisplayCountry(there, here, out, FN_DISPLAY_NAME_MAX, &status);
+	} else if ([(NSString *)key isEqualToString:NSLocaleScriptCode]) {
+		/* The same shape one slot over: "und_Latn" is a language with a SCRIPT. */
+		there = [[@"und_" stringByAppendingString:(NSString *)value] UTF8String];
+		n = uloc_getDisplayScript(there, here, out, FN_DISPLAY_NAME_MAX, &status);
+	} else {
+		return nil;		/* a key this class has no name table for */
+	}
+	if (U_FAILURE(status) || n <= 0) {
+		return nil;
+	}
+	return [NSString stringWithCharacters:out length:(NSUInteger)n];
 }
 
 - (id)objectForKey:(NSString *)key

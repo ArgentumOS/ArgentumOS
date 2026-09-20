@@ -4553,3 +4553,36 @@ case operations are specified in terms of. THE ONE FAILURE IS `host_fshlint`: a 
 `make fshlint` that exceeded its 420-second budget, failing identically BEFORE this change and
 unrelated to it (recorded rather than attributed, and not fixed here).
 
+## 18. `-displayNameForKey:value:` — THE LAST ITEM ON D7'S KIND-(D) LIST (2026-09-20)
+
+**WHAT SHIPPED.** `NSLocale -displayNameForKey:value:`, the last kind-(D) item §11.6.1 named — and the
+one the register's own correction pointed at ("`-displayNameForKey:value:` is ICU display-name lookup").
+THE TWO ROLES ARE THE DESIGN: the RECEIVER is the language the answer comes back IN, and `value` is the
+locale or subtag being named. Four published keys are answered — `NSLocaleIdentifier`,
+`NSLocaleLanguageCode`, `NSLocaleCountryCode`, `NSLocaleScriptCode` — through ICU's
+`uloc_getDisplayName`/`Language`/`Country`/`Script`, and both nil cases are Apple's own contract: a key
+with no name table here, and a value that is not a string ("not all locale property keys have values
+with display name values", from the page itself).
+
+**THE THIRD REFUSAL TO BE RECLASSIFIED IN THIS STRETCH**, after the four sets (§15.5) and their ten
+siblings (§17): the probe's `excluded` array now DEMANDS the selector and says what its old reason was.
+
+**AND THE MEASUREMENT CAUGHT A REAL BUG IN THE IMPLEMENTATION BEFORE THE GUEST COULD.** Apple's own
+examples are the assertions — on `en_GB` naming `fr_FR` is "French (France)"; on `fr_FR` it is
+"français (France)" — and the first host run had two of them answering nil:
+
+```
+  en_GB    NSLocaleCountryCode     GB         -> (nil)      <- a BARE SUBTAG IS NOT A LOCALE ID
+  en_GB    NSLocaleScriptCode      Latn       -> (nil)
+```
+
+ICU takes the country or script OUT OF THE LOCALE ID it is handed, and `"GB"` parses as a LANGUAGE with
+no region. The subtag belongs in the region/script slot of an undetermined-language id, so the lookup
+now uses `und_GB` and `und_Latn` — after which all six are Apple's strings, and both nil cases hold.
+The guest would have caught it too; a six-line host program caught it in a minute AND named the bug
+rather than the symptom, which is the difference that matters.
+
+**VERIFIED.** `foundation_string` is `ok=39 fail=0` on the guest (the new check plus the inventory that
+now demands the selector), and the full fast tier is 33/34 cases, 208/213 checks — the one failure
+being the recorded `host_fshlint` timeout.
+

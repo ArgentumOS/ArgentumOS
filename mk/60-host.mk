@@ -88,7 +88,7 @@ HOST_LDFLAGS     = -L$(HOST_LIBDIR) -L$(HOST_OBJCPFX)/lib -lobjc
 # and one is a root class. (The guest block's MRC list is NOT repeated - the whole library is MRC.)
 FN_HOST_SRCS     = $(notdir $(wildcard $(FOUNDATION_SRC)/*.m))
 FN_HOST_ICU      = NSCalendar.m NSDateFormatter.m NSNumberFormatter.m NSPredicate.m NSTimeZone.m \
-                   NSCharacterSet.m
+                   NSCharacterSet.m NSLocale.m
 FN_HOST_X11      = NSDataCodec.m
 FN_HOST_ROOT     = NSProxy.m
 FN_HOST_OBJS     = $(addprefix $(HOST_OBJDIR)/,$(FN_HOST_SRCS:.m=.o)) $(HOST_OBJDIR)/plist.o \

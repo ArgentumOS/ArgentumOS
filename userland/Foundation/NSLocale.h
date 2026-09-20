@@ -81,6 +81,15 @@ extern NSString *const NSLocaleCountryCode;
 - (NSString *)localeIdentifier;
 - (nullable id)objectForKey:(NSString *)key;	/* nil for a key that needs the database */
 
+/*
+ * THE DISPLAY NAME FOR A LOCALE COMPONENT, LOCALIZED INTO THIS LOCALE (D7's kind (D), landed §18):
+ * the RECEIVER names the language the answer comes back IN, and `value` is the locale (for
+ * NSLocaleIdentifier) or the subtag being named. Apple's page allows nil — "not all locale property
+ * keys have values with display name values" — which is what this answers for a key it has no name
+ * for, and for a value that is not a string.
+ */
+- (nullable NSString *)displayNameForKey:(id)key value:(id)value;
+
 /* The direction a locale's script runs in (2026-09-20). The RIGHT-TO-LEFT answers
  * here are about the SCRIPT's own direction and need no database, which is why this
  * type ships while the locale's data-driven half does not. Names from Apple's
