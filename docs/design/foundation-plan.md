@@ -6182,9 +6182,16 @@ kernel says:
     Bus error
     FOUNDATION-TASK-STATUS=135
 
-`fault_unmappable()` reported it and sent the SIGBUS (135), and the address is **eight bytes below the
-`[stack]` VMA's low edge** in the same dump (0x7ffff580b000), so the fault IS a stack growth that the kernel
-declined — not a bad pointer and not a heap allocation.
+`fault_unmappable()` reported it and sent the SIGBUS (135).
+
+**AND A LATER RUN CORRECTED WHAT THAT ADDRESS MEANS, WHICH IS WORTH THE PARAGRAPH IT COSTS.** The first
+reading here was *"eight bytes below the `[stack]` VMA's low edge, so the fault is a stack growth the kernel
+declined"* — and it was WRONG, because the trace now prints `rsp`: **`trace 1: entered main rsp=0x7ffffffffe18`**,
+i.e. the stack begins at the very TOP of the user half, and the fault address is **2.1 GB below it**, not 8
+bytes. Nothing grows a stack by two gigabytes with 1520-byte frames. So the fault is a **WILD POINTER
+ACCESS** — the kernel's heuristic (`cr2 >= rsp - 32`) correctly refused it, and the `[stack]` region it
+printed spans that whole window of address space, which is what made the wrong reading available. The
+lesson is the plan's own, again: the trace had to print the register before the address could be read.
 
 **THREE THINGS ARE MEASURED, AND ONE OF THEM DISPROVES THE OBVIOUS EXPLANATION.** (1) The guest is NOT out
 of memory: `foundation_defaults` answers **36/36 in the same image, the same guest configuration, minutes
@@ -6195,16 +6202,36 @@ the fault. (3) The process dies BEFORE any `NSTask` exists — no `fork(2)`, no 
 this unit's own machinery is implicated: anything that blamed the reaper thread or the child setup would be
 blaming code that has not run yet.
 
+**TWO MORE MEASUREMENTS FROM THE SAME SESSION, ONE OF WHICH RULES OUT THE OBVIOUS SUSPECT.** (4) **A FRESH
+PROCESS OF THIS SAME BINARY USES FOUNDATION FINE**: the case now runs `foundation_task --child-foundation`
+first, and that child creates an `NSString` from a UTF-8 literal, makes an `NSMutableArray`, adds to it and
+prints — `child-mode-uses-foundation` PASSES, so the binary, the library and Foundation in this process are
+all sound when the work is reached through the child branch. (5) **argc/argv is NOT the variable**:
+`foundation_task --noop-argument` walks the same code path with `argc == 2` instead of 1, and it dies at the
+same trace. (The run was added for the experiment and removed once it answered — a check that asserts a
+hypothesis is not a check, it is a note.)
+
+**AND THE KERNEL'S OWN LOG CARRIES A SECOND FAULT THAT POINTS SOMEWHERE:** besides the #PF that became the
+SIGBUS there is **`!!! KERNEL EXCEPTION vector 0x0d`** — a #GP — with a `rip` in no mapped region. A #GP
+inside SSE code is the signature of a **misaligned stack**, and `rsp = 0x7ffffffffe18` is **8 mod 16**,
+which the SysV ABI forbids at process entry. THAT IS A HYPOTHESIS AND IT IS LABELLED ONE: it would explain
+both the #GP and why the failure depends on the CALL CHAIN rather than on any single call (a differently
+shaped frame can accidentally realign the stack), and it would make this a KERNEL exec-path bug rather than
+a Foundation one — but it has not been measured, and the next step measures it rather than assuming it.
+
 **WHAT THE NEXT DIAGNOSTIC IS, NAMED SO IT DOES NOT HAVE TO BE RE-DERIVED.** The fault is a refused stack
 growth on the FIRST deep call chain of that process, while the same call in another Foundation probe is
-fine, so the difference is in the PROCESS's VMA layout rather than in the call. The next three measurements,
-in order: (a) print `rsp` and the address of a local at each trace, so the stack's position at the fault is
-known rather than inferred; (b) compare the VMA COUNT and the `[stack]` region's bounds between this probe
-and `foundation_filehandle` in the same guest — the dump here lists **68 regions** (`[0]`..`[67]`), and the
-kernel's own syscall-buffer growth path consults `vma->prev->end` before extending the stack, so a table
-pressed against its neighbour is a candidate; (c) test the same binary with a `--child…` argument, which
-takes the OTHER branch of `main` before any object exists — that separates "this process cannot call
-Foundation at all" from "it cannot call Foundation after this particular statement".
+fine, so the difference is in the PROCESS's VMA layout rather than in the call. **(a) IS DONE** (the `rsp` traces are in the probe and they produced the correction above); **(c) IS DONE**
+(`--child-foundation` passes and `--noop-argument` fails, so the child branch works and argc/argv is out).
+What is left is the alignment hypothesis, and it has two cheap tests: **(i)** rebuild the probe with
+`-mstackrealign` and see whether the crash moves or disappears — that is one build and one gate and it
+settles the whole question either way; **(ii)** find where the kernel builds the initial user stack for
+`exec` and read the alignment it leaves `rsp` at (the ABI wants `rsp % 16 == 0` at the entry point, and the
+trace's `0x…e18` is 8 mod 16 — but at that point `main`'s own prologue has already run, so the ENTRY value
+still has to be read from the kernel rather than inferred from a local's address). **(iii)** the `[stack]`
+VMA's span is worth knowing too: the dump prints it as one window from `0xf580a000` upward, i.e. **about
+two gigabytes of address space reserved for one process's stack**, which is a second reason a fault address
+inside that window can look like stack growth when it is not.
 
 **THE HONEST SUMMARY.** §44's lesson was that a probe is what finds the truth; this is its other use — a
 probe whose FIRST job was to prove a class works, ending up proving something about the process instead.

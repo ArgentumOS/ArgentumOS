@@ -70,6 +70,26 @@ class Case(BaseCase):
         if not ready:
             return
 
+        # THE TWO CHILD-MODE RUNS COME FIRST, and they are free: a child is a FRESH PROCESS of the same
+        # binary, so `--child-foundation` answers whether this binary can call Foundation at all, while
+        # the un-argumented run below is the one that dies. That difference is the whole diagnostic.
+        mark = len(session.log_text())
+        session.run("%s --child-exit 7; echo CHILD-EXIT-STATUS=$?" % PROBE)
+        child_out = session.output_since(mark)
+        self.check("child-mode-exits",
+                   "CHILD-EXIT-STATUS=7" in child_out,
+                   "the child-mode run answered %s"
+                   % (child_out.strip().splitlines()[-1] if child_out.strip() else "nothing"))
+
+        mark = len(session.log_text())
+        session.run("%s --child-foundation; echo CHILD-FOUNDATION-STATUS=$?" % PROBE)
+        found_out = session.output_since(mark)
+        self.check("child-mode-uses-foundation",
+                   "FOUNDATION-TASK child-foundation ok=1" in found_out and
+                   "CHILD-FOUNDATION-STATUS=0" in found_out,
+                   "a fresh process of this binary using Foundation answered: "
+                   + found_out.strip()[-200:])
+
         mark = len(session.log_text())
         session.run("%s; echo FOUNDATION-TASK-STATUS=$?" % PROBE)
         out = session.output_since(mark)
