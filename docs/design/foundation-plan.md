@@ -8225,3 +8225,59 @@ visible at all.
 FILES THIS ROUND: `userland/tests/kernel_pipe_dup2.c` (`p` mode — a pipe reader's EOF, and the timing fix
 that made it test the real path); `tests/cases/kernel_pipe_dup2.py` (its check).
 
+---
+
+## §45-U — AND THE CLOSE PATH IS `sys_close`'S REFERENCE COUNT: `count_before=3` FOR A DESCRIPTOR HELD BY ONE PROCESS
+
+**THE INSTRUMENT THAT NAMED IT WAS `sys_close` ITSELF, and the mechanism is visible in the first five lines
+of the function:**
+
+```c
+	fd = current->fd[ufd];
+	release_user_fd(ufd);
+	if(--fd_table[fd].count) {
+		return 0;                        /* WITHOUT running i->fsop->close */
+	}
+	i = fd_table[fd].inode;
+	i->fsop->close(i, &fd_table[fd]);        /* only the LAST closer gets here */
+```
+
+Per-process fd numbers index a **global** `fd_table[]`, so a descriptor is released exactly once — by
+whichever close drives `count` to zero. That design is fine; **what is broken is the count.**
+
+**MEASURED, during the real hang (instrument since reverted):**
+
+    SYSCLOSE pid=8 ufd=6 idx=6 count_before=3 flags=1     <- the parent, closing the stdin WRITE end
+    SYSCLOSE idx=6 EARLY count=2 (the release op is NOT called)
+    SYSCLOSE pid=8 ufd=4 idx=4 count_before=3 flags=1
+    SYSCLOSE idx=4 EARLY count=2 (the release op is NOT called)
+    ...
+    SYSCLOSE pid=13 ufd=6 idx=6 count_before=2 flags=1    <- the forked child, closing its copy
+    SYSCLOSE idx=6 EARLY count=1 (the release op is NOT called)
+
+`count_before = 3` for a descriptor held by **one** process. The count should be 1 at the parent's close, or
+2 at most if the fork's sharing is counted. The parent's close takes it 3 → 2 and the child's 2 → 1, so
+**NEITHER reaches `pipefs_close`**, `i_writers` stays 1 for ever, and the child blocked in `read(2)` can
+never be told the pipe has no writers. That is the hang, exactly, and it matches §45-T's kernel-side
+observation (no `PIPECLOSE` for that pipe at all) from the other end of the same bug.
+
+**AND IT IS NOT ONE SITE'S OFF-BY-ONE.** In the same run the child's teardown printed `SYSCLOSE pid=13
+ufd=0 idx=1 count_before=15` — fifteen references to one `fd_table` entry. Whatever increments this count
+does it more than once per real holder, so the next instrument has to watch the INCREMENTS, not the closes:
+`fork()`'s inheritance of `current->fd[]`, `dup2`/`dup`, `pipe()`, and `sys_open`.
+
+**WHY THIS SHAPE WAS SO HARD TO SEE, AND THE LESSON WORTH KEEPING:** every userland check looked correct —
+`fcntl(fd, F_GETFD)` reported the descriptor closed after `closeAndReturnError:`, the child listed and closed
+every fd ≥ 3, the parent listed every open descriptor up to 63, and no marker written to any writable
+descriptor came back on the pipe. **A descriptor can leave the process's table while the object behind it is
+never released, and nothing userland can see distinguishes that from "the other side is still holding one."**
+The kernel's own counters settled it in one run; three userland instruments did not.
+
+**AND THE TWO FIXES THIS ROUND ALREADY LANDED REMAIN SOUND** — §45-S's `wakeup(&sys_wait4)` is verified by
+`foundation_task` advancing past `task-waits-and-reports` and by mode 3's two-direction A/B, and §45-T's
+corrected `p` mode (close AFTER the reader blocks) proves the pipe WAKE path is fine. This bug is the CLOSE
+path, one layer down, and it is the third distinct kernel defect this investigation has produced.
+
+FILES THIS ROUND: none in the tree from this section — the `sys_close` printks were an instrument and are
+reverted, as is the `pipefs` one from §45-T.
+
