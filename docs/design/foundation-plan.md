@@ -7795,6 +7795,32 @@ fires, then **something is calling `map_page_flags` with a garbage physical addr
 process** - which is the publish this whole line of work has been looking for, arriving by the front door
 instead of through a freed page.
 
+**AND THE NEXT RUN WASN'T MADE — THE PATCH SCRIPT DIED ON A FORMATTING SLIP OF MINE AND WROTE NOTHING.** The
+bounds-checked predicate (report an address that is not a page in RAM SEPARATELY from an in-RAM page that was
+never tagged) is written out in the note above and is a mechanical change: the tag goes where the tree already
+does `p->rss++`, and the predicate gets two branches instead of one. The script failed on its own `%`
+escaping, the exception landed before the write, and the tree is exactly as it was. **So this is a typo
+standing between the record and the measurement, not a question - and it is recorded as such rather than
+being re-run at the end of a very long session, where a rushed rebuild is how new mistakes get in.**
+
+**WHAT THE NEXT SESSION DOES, IN ORDER, WITH NOTHING LEFT TO DECIDE:**
+
+  1. re-apply the consumer tag in `map_page_flags` (one line, where `p->rss++` already is) and the
+     two-branch predicate above it;
+  2. run `foundation_task` and read `PUBOOB` versus `PUBLISH`;
+  3. **`PUBOOB` firing means a caller hands `map_page_flags` an address that is not a page in RAM** - the
+     publish this line of work has hunted, arriving by the front door; **only `PUBLISH` firing means an
+     in-RAM kernel page acquired a user leaf**; **silence means my predicate was the only fault** and the
+     design stands as written.
+
+**AND THE STATE OF THE WHOLE INVESTIGATION, FOR WHOEVER PICKS IT UP:** three verified kernel changes are in
+the tree (defect B: the shared address space is no longer swept from under a live thread; defect C: a wait is
+the process's, so a thread's `waitpid` reaps; the sweep reorder: unmap before release, which closed the
+47,775-a-boot window and was verified not to regress). Three reproducers are in the suite and hold all of it:
+`kernel_threaded_exec` (2/2), `kernel_pipe_dup2` (9/9), `foundation_task` (3/4 - the one still red, and the
+reason this work started). Defect A's free side is CLOSED and measured closed (zero hits in 60,000 frees);
+its remaining face is the write side, and the next step is the three-item list above.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
