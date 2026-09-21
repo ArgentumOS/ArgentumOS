@@ -36,7 +36,7 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  118   open  569   struck   48
+#   func       shipped  125   open  562   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped    9   open   47   struck    1
 #   case       shipped   65   open  365   struck   14
@@ -653,16 +653,16 @@ func	struck	CGConfigureDisplayMode	-	Services / Configuring Displays	deprecated	
 func	open	CGConfigureDisplayOrigin	-	Services / Configuring Displays	-	objc
 func	open	CGConfigureDisplayStereoOperation	-	Services / Configuring Displays	-	objc
 func	open	CGConfigureDisplayWithDisplayMode	-	Services / Configuring Displays	-	objc
-func	open	CGContextAddArc	-	Opaque Types / Constructing a Current Graphics Path	-	objc
+func	shipped	CGContextAddArc	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextAddArcToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	open	CGContextAddCurveToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	open	CGContextAddEllipseInRect	-	Opaque Types / Constructing a Current Graphics Path	-	objc
+func	shipped	CGContextAddCurveToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
+func	shipped	CGContextAddEllipseInRect	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	shipped	CGContextAddLineToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	open	CGContextAddLines	-	Opaque Types / Constructing a Current Graphics Path	-	objc
+func	shipped	CGContextAddLines	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	shipped	CGContextAddPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	open	CGContextAddQuadCurveToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
+func	shipped	CGContextAddQuadCurveToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	shipped	CGContextAddRect	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	open	CGContextAddRects	-	Opaque Types / Constructing a Current Graphics Path	-	objc
+func	shipped	CGContextAddRects	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextBeginPage	-	Opaque Types / Managing a Page-Based Graphics Context	-	objc
 func	shipped	CGContextBeginPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextBeginTransparencyLayer	-	Opaque Types / Working with Transparency Layers	-	objc
@@ -708,7 +708,7 @@ func	open	CGContextGetContentToneMappingInfo	-	Functions	-	objc
 func	open	CGContextGetEDRTargetHeadroom	-	Reference / Functions	-	objc
 func	open	CGContextGetInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	shipped	CGContextGetPathBoundingBox	-	Opaque Types / Examining the Current Graphics Path	-	objc
-func	open	CGContextGetPathCurrentPoint	-	Opaque Types / Examining the Current Graphics Path	-	objc
+func	shipped	CGContextGetPathCurrentPoint	-	Opaque Types / Examining the Current Graphics Path	-	objc
 func	open	CGContextGetTextMatrix	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextGetTextPosition	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc

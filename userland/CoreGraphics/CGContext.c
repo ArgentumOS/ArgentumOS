@@ -712,6 +712,94 @@ static void cg_copy_element(void *info, const CGPathElement *element)
 	}
 }
 
+/* ------------------------------------------------------------------------- */
+/* the context's own constructors, which are the path's                      */
+/* ------------------------------------------------------------------------- */
+
+/* EVERY FUNCTION BELOW IS A PASSTHROUGH, and that is the point: the geometry lives in
+ * CGPath.c and the context owns a path, so a constructor here is a call and nothing else.
+ * What it buys is the spelling a caller uses — `CGContextAddArc` instead of building a
+ * CGPath, adding it and releasing it — and the risk it carries is a passthrough wired to the
+ * WRONG path function, which no type checker can see and which the arc probe therefore
+ * checks through the pixels. */
+
+void CGContextAddLines(CGContextRef c, const CGPoint *points, size_t count)
+{
+	size_t i;
+
+	if (c == NULL || points == NULL || count < 2) {
+		return;
+	}
+	/* A POLYLINE: one subpath through every point. `count` is the number of POINTS, which is
+	 * Apple's reading of the parameter and the one that stops a caller handing over twice as
+	 * many as their array holds. */
+	CGContextMoveToPoint(c, points[0].x, points[0].y);
+	for (i = 1; i < count; i++) {
+		CGContextAddLineToPoint(c, points[i].x, points[i].y);
+	}
+}
+
+void CGContextAddRects(CGContextRef c, const CGRect *rects, size_t count)
+{
+	size_t i;
+
+	if (c == NULL || rects == NULL) {
+		return;
+	}
+	/* EACH RECTANGLE IS ITS OWN CLOSED SUBPATH — `CGPathAddRect` closes — so a fill of
+	 * several of them fills each one, and a NON-ZERO fill of two overlapping ones is still
+	 * their union only if they wind the same way, which they do. */
+	for (i = 0; i < count; i++) {
+		CGContextAddRect(c, rects[i]);
+	}
+}
+
+void CGContextAddQuadCurveToPoint(CGContextRef c, CGFloat cpx, CGFloat cpy, CGFloat x, CGFloat y)
+{
+	if (c != NULL) {
+		CGPathAddQuadCurveToPoint((CGMutablePathRef)c->path, NULL, cpx, cpy, x, y);
+	}
+}
+
+void CGContextAddCurveToPoint(CGContextRef c, CGFloat cp1x, CGFloat cp1y, CGFloat cp2x,
+			      CGFloat cp2y, CGFloat x, CGFloat y)
+{
+	if (c != NULL) {
+		CGPathAddCurveToPoint((CGMutablePathRef)c->path, NULL, cp1x, cp1y, cp2x, cp2y, x, y);
+	}
+}
+
+void CGContextAddArc(CGContextRef c, CGFloat x, CGFloat y, CGFloat radius, CGFloat startAngle,
+		     CGFloat endAngle, bool clockwise)
+{
+	if (c != NULL) {
+		CGPathAddArc((CGMutablePathRef)c->path, NULL, x, y, radius, startAngle, endAngle,
+			     clockwise);
+	}
+}
+
+void CGContextAddEllipseInRect(CGContextRef c, CGRect rect)
+{
+	if (c != NULL) {
+		CGPathAddEllipseInRect((CGMutablePathRef)c->path, NULL, rect);
+	}
+}
+
+void CGContextAddRoundedRect(CGContextRef c, CGRect rect, CGFloat cornerWidth, CGFloat cornerHeight)
+{
+	if (c != NULL) {
+		CGPathAddRoundedRect((CGMutablePathRef)c->path, NULL, rect, cornerWidth, cornerHeight);
+	}
+}
+
+CGPoint CGContextGetPathCurrentPoint(CGContextRef c)
+{
+	if (c == NULL) {
+		return CGPointZero;
+	}
+	return CGPathGetCurrentPoint((CGPathRef)c->path);
+}
+
 void CGContextAddPath(CGContextRef c, CGPathRef path)
 {
 	cg_copy_ctx cc;

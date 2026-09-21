@@ -172,6 +172,33 @@ int CGContextIsPathEmpty(CGContextRef context);
 /* USER SPACE, which is the space the path is in — see the header note above. */
 CGRect CGContextGetPathBoundingBox(CGContextRef context);
 
+/* THE CONTEXT'S OWN CONSTRUCTORS. EACH IS A ONE-LINE PASSTHROUGH TO THE PATH FUNCTION OF
+ * THE SAME NAME — `CGContextAddArc` calls `CGPathAddArc` on the context's path — and they
+ * are here because this is the spelling a caller reaches for: without them, drawing a
+ * circle means allocating a path, adding it, and releasing it. There is no state and no
+ * second geometry; the passthrough IS the implementation, which is why the arc probe checks
+ * one of them through the pixels rather than trusting that the wiring is right.
+ *
+ * `CGContextAddLines` IS A POLYLINE (one subpath through every point) while
+ * `CGContextAddRects` adds each rectangle as a CLOSED SUBPATH of its own; in both, `count`
+ * is the number of POINTS or RECTANGLES and not of coordinates, which is Apple's reading and
+ * the one that keeps a caller from reading past the end of their array. */
+void CGContextAddLines(CGContextRef context, const CGPoint *points, size_t count);
+void CGContextAddRects(CGContextRef context, const CGRect *rects, size_t count);
+void CGContextAddQuadCurveToPoint(CGContextRef context, CGFloat cpx, CGFloat cpy, CGFloat x,
+				  CGFloat y);
+void CGContextAddCurveToPoint(CGContextRef context, CGFloat cp1x, CGFloat cp1y, CGFloat cp2x,
+			      CGFloat cp2y, CGFloat x, CGFloat y);
+void CGContextAddArc(CGContextRef context, CGFloat x, CGFloat y, CGFloat radius,
+		     CGFloat startAngle, CGFloat endAngle, bool clockwise);
+void CGContextAddEllipseInRect(CGContextRef context, CGRect rect);
+void CGContextAddRoundedRect(CGContextRef context, CGRect rect, CGFloat cornerWidth,
+			     CGFloat cornerHeight);
+
+/* The current point OF THE PATH, in user space: the pen position the last move or add left
+ * behind. */
+CGPoint CGContextGetPathCurrentPoint(CGContextRef context);
+
 /* Painting. `FillPath` uses the non-zero winding rule and `EOFillPath` the even-odd
  * one; both consume the current path (Apple: "the current path is cleared").
  * `FillRect` does NOT touch the current path, which the probe asserts. */
@@ -204,9 +231,14 @@ void CGContextSetRGBStrokeColor(CGContextRef context, CGFloat red, CGFloat green
 void CGContextStrokePath(CGContextRef context);
 void CGContextStrokeRect(CGContextRef context, CGRect rect);
 void CGContextStrokeRectWithWidth(CGContextRef context, CGRect rect, CGFloat width);
-/* `points` is an array of `count` COORDINATES — x0, y0, x1, y1, … — so count/2 segments:
- * (x0,y0)-(x1,y1), (x2,y2)-(x3,y3), … An odd count leaves one coordinate with no partner,
- * which is not a segment and is ignored rather than guessed at. */
+/* `points` is an array of `count` POINTS — x0,y0 x1,y1 x2,y2 … — treated as PAIRS, so
+ * (x0,y0)-(x1,y1), (x2,y2)-(x3,y3) and so on: count/2 segments. COUNT IS THE NUMBER OF
+ * POINTS AND NOT OF COORDINATES, which is Apple's reading and there is a safety reason to
+ * say so twice — a caller who read the first version of this comment and passed twice as
+ * many would have sent the function past the end of their array. An odd count leaves one
+ * point with no partner, which is not a segment and is dropped rather than paired with
+ * something invented. THE SAME READING APPLIES TO `CGContextAddLines`, whose count is the
+ * number of points on its polyline. */
 void CGContextStrokeLineSegments(CGContextRef context, const CGPoint *points, size_t count);
 
 /* `DrawPath` is the general entry. THE TWO COMBINED MODES FILL FIRST AND STROKE SECOND,

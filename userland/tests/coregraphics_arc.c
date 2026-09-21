@@ -224,6 +224,73 @@ int main(void)
 		CGPathRelease(scaled);
 	}
 
+	/* --- the context's own constructors are the path's, through a passthrough --- */
+	{
+		/* THE PATH'S TURN FIRST, ON ITS OWN SURFACE, AND *THEN* THE CONTEXT IS CREATED. The
+		 * first version created the context first, called a helper that wipes the shared
+		 * surface and fills it, and then filled the SAME surface again through the context —
+		 * so the antialiased edge pixels were blended TWICE and the context's ellipse
+		 * measured 30158 against the path's 28814. The excess is exactly the perimeter's
+		 * partial pixels (5.27 px²), because a count taken on a surface that ALREADY HOLDS
+		 * one of the two answers is not a comparison. It is the same trap the stroke probe
+		 * records, and it caught me again in a new file. */
+		CGPathRef p = CGPathCreateWithEllipseInRect(CGRectMake(2.0, 2.0, 12.0, 12.0), NULL);
+		int via_path = fill_area(p);
+		CGContextRef ctx;
+		int via_context;
+
+		CGPathRelease(p);
+		ctx = fresh();
+		CGContextSetRGBFillColor(ctx, 1.0, 1.0, 1.0, 1.0);
+		CGContextAddEllipseInRect(ctx, CGRectMake(2.0, 2.0, 12.0, 12.0));
+		CGContextFillPath(ctx);
+		via_context = coverage(ctx);
+		CGContextRelease(ctx);
+		check_num("CGContextAddEllipseInRect draws what the path function draws",
+			  (double)via_context, (double)via_path, 0.0);
+	}
+	/* AND THE ARC, WHERE A PASSTHROUGH WIRED TO THE WRONG PATH FUNCTION WOULD BE INVISIBLE
+	 * to any type checker: a quarter pie through the context must be the quarter pie. */
+	{
+		CGContextRef ctx = fresh();
+
+		CGContextSetRGBFillColor(ctx, 1.0, 1.0, 1.0, 1.0);
+		CGContextAddArc(ctx, 8.0, 8.0, 6.0, 0.0, 3.14159265358979 / 2.0, 0);
+		CGContextAddLineToPoint(ctx, 8.0, 8.0);
+		CGContextClosePath(ctx);
+		CGContextFillPath(ctx);
+		check_num("CGContextAddArc is the path arc, through the context",
+			  (double)coverage(ctx), 9.0 * 3.14159265358979 * PX, 700.0);
+		CGContextRelease(ctx);
+	}
+	/* `AddLines` IS A POLYLINE — one subpath through every point — which the box shows. */
+	{
+		CGContextRef ctx = fresh();
+		CGPoint pts[3];
+		CGRect lbox;
+
+		pts[0] = CGPointMake(2.0, 2.0);
+		pts[1] = CGPointMake(8.0, 2.0);
+		pts[2] = CGPointMake(8.0, 8.0);
+		CGContextAddLines(ctx, pts, 3);
+		lbox = CGContextGetPathBoundingBox(ctx);
+		check("CGContextAddLines is a polyline through its points",
+		      lbox.origin.x == 2.0 && lbox.origin.y == 2.0 && lbox.size.width == 6.0 &&
+		      lbox.size.height == 6.0);
+		CGContextRelease(ctx);
+	}
+	/* AND THE ONE ACCESSOR HERE: the pen. */
+	{
+		CGContextRef ctx = fresh();
+		CGPoint cur;
+
+		CGContextMoveToPoint(ctx, 3.0, 4.0);
+		CGContextAddLineToPoint(ctx, 9.0, 10.0);
+		cur = CGContextGetPathCurrentPoint(ctx);
+		check("CGContextGetPathCurrentPoint is the pen", cur.x == 9.0 && cur.y == 10.0);
+		CGContextRelease(ctx);
+	}
+
 	printf("CG-ARC: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }
