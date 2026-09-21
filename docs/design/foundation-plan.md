@@ -8682,7 +8682,17 @@ and refuses a header that opens no balanced `NS_ASSUME_NONNULL` region):
   4. **`NSUserUnixTask`** - the row's leftover, and INDEPENDENT of the streams: process work (`fork`/`exec` +
      pipes) with `NSTask` as the pattern. `NSUserUnixTaskCompletionHandler` comes with it.
 
-**AND TWO DECISIONS THE UNIT OPENS, RECORDED RATHER THAN TAKEN SILENTLY:**
+**AND TWO DECISIONS THE UNIT OPENED, RECORDED RATHER THAN TAKEN SILENTLY — AND BOTH ARE NOW TAKEN (user,
+2026-09-21).** They replace the two paragraphs below in effect; the reasoning is kept because it is why the
+questions existed:
+
+  * **`NSUserUnixTask` DERIVES FROM `NSObject`, AND THE DEVIATION IS STATED IN THE HEADER.** (Was: Apple's
+    class inherits `NSUserScriptTask`, which §39 struck.) `-initWithScriptURL:error:` is DECLARED there rather
+    than inherited, and the header records both the shape and the reason.
+  * **THE NETWORK-SERVICE CONSTANTS LAND AS A PROPERTY BAG, DOCUMENTED AS CARRYING NO BEHAVIOUR.** The
+    `SocketSecurityLevel*`, `SOCKSProxy*` and `NetworkServiceType*` keys are declared so a stream may carry
+    them and their ledger rows close; the header states that only the local file and memory streams have
+    behaviour behind them.
 
   * **`NSUserUnixTask`'S SUPERCLASS.** Apple's class inherits `NSUserScriptTask`, and §39 STRUCK the three
     script-running siblings - keeping this one on the ground that it "runs an ordinary Unix script, which is
