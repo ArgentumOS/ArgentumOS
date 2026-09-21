@@ -74,3 +74,14 @@ class Case(BaseCase):
         out = session.output_since(mark)
         self.check("main-thread-reaps", "PIPEDBG DONE=50 stuck=0" in out,
                    "the MAIN thread reaps: " + out.strip()[-300:])
+
+        # THE SHAPE EVERY MODE ABOVE WALKS AROUND: a pipe READER's EOF. Every child above dups the pipe onto
+        # stdin and exits WITHOUT READING, so nothing here has ever tested that the LAST WRITER's close wakes
+        # a blocked read(2) with 0. NSTask's --child-cat child does exactly that, and it never saw EOF.
+        mark = len(session.log_text())
+        session.run("%s 1 p; echo PIPEEOF-STATUS=$?" % PROBE)
+        session.wait_for(r"PIPEEOF parent|PIPEEOF pipefail", 60)
+        out = session.output_since(mark)
+        self.check("pipe-reader-sees-eof",
+                   "total=6 last=0" in out and "PIPEEOF parent reaped" in out,
+                   "a pipe reader's EOF after the last writer closed: " + out.strip()[-300:])

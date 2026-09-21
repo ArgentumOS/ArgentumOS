@@ -8152,3 +8152,53 @@ survives a missing wakeup by asking again.
 FILES THIS ROUND: `kernel/syscalls/exit.c` (the parent notification — `wakeup_proc(p)` → `wakeup(&sys_wait4)`);
 `userland/tests/kernel_threaded_exec.c` (mode 3); `tests/cases/kernel_threaded_exec.py` (its check).
 
+---
+
+## §45-T — THE NEXT STOP IS THE STDIN PIPE, AND ITS FIRST MEASUREMENT EXONERATES THE KERNEL
+
+**MEASURED, with a trace in the probe's `run_capturing` AND in the `--child-cat` child (both since
+reverted; the child's trace goes to stderr, because its stdout IS the pipe under test):**
+
+    TRACE rc: launched pid=13 input=1
+    TRACE rc: wrote; closing the child's stdin
+    TRACE rc: child's stdin closed
+    TRACE rc: closing OUR write end of out
+    TRACE cat: entered            <-- the child is IN read(2)
+      <-- and nothing: no `TRACE cat: eof`, no `TRACE rc: read N bytes to EOF`
+
+So the parent wrote and closed, the child entered `read(2)` and **never saw EOF**, the child therefore never
+exited, and the parent's read-to-end-of-file waited on it. **The trace also shows the A/B inside one run:**
+the SAME helper completed the very next time, with `input=0` (`read 11 bytes to EOF … waited, status=0`) — so
+what is new is exactly the stdin pipe.
+
+**AND THE KERNEL IS EXONERATED, BY A PURE-C DISCRIMINATOR.** `kernel_pipe_dup2.c` gained a `p` mode: a
+parent forks a child that is a READER ONLY, writes six bytes, closes the LAST WRITE END, and waits under a
+bounded loop; the child reports `total=` and `last=` (0 IS EOF). It passes:
+
+    PIPEEOF child total=6 last=0
+    PIPEEOF parent reaped waited=1          (10/10 checks on the case)
+
+**A blocked `read(2)` on a pipe DOES see EOF when the last writer closes.** So "the kernel never wakes a pipe
+reader" is FALSE, and the remaining candidate is the **write end that stayed open on the NSTask side**. Two
+shapes fit, and the first pipe test already discriminates between them:
+
+  * the **parent's** close (`[[[task standardInput] fileHandleForWriting] closeAndReturnError:]`) is a no-op
+    — but that same call on the OUT pipe produced EOF in the `input=0` run (the read returned 0 bytes and
+    the wait completed), so the parent's close is not obviously the fault;
+  * the **child's** copy — `fn_standard_far_fd(_standardInput, YES)` feeds `if (inFar >= 0 && inFar != inFd)
+    close(inFar)` in the fork path, so if `[[pipe fileHandleForWriting] fileDescriptor]` answers -1, or
+    answers the READ end's number, that close is SKIPPED and the child holds the write end of the pipe it is
+    itself reading. **A reader holding a writer deadlocks itself, which is precisely what was measured.**
+
+**THE NEXT EXPERIMENT IS ONE LINE AND ALREADY SPECIFIED:** have the child close every descriptor ≥ 3 before
+it reads (`for (fd = 3; fd < 64; fd++) close(fd);`). If the child then sees EOF, the child was holding a
+write end and the bug is in the fork path's far-end close; if it still does not, the parent's close is the
+one that is not closing. Either way it is measured, not reasoned.
+
+**AND THE COVERAGE GAP THIS ROUND FOUND IS WORTH STATING, BECAUSE IT IS THE SAME SHAPE AS §45-S'S:** every
+child in `kernel_pipe_dup2.c` dups the pipe onto stdin and exits **without ever reading**, so the case that
+exists to prove the pipe path works had never once exercised a pipe READER. That gap now has a check.
+
+FILES THIS ROUND: `userland/tests/kernel_pipe_dup2.c` (`p` mode — a pipe reader's EOF);
+`tests/cases/kernel_pipe_dup2.py` (its check).
+

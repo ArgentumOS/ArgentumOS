@@ -61,6 +61,63 @@ int main(int argc, char **argv)
 
 	printf("PIPEDBG start n=%d thread=%d\n", n, use_thread);
 	fflush(stdout);
+
+	/* 'p': A PIPE READER'S EOF - THE SHAPE EVERY MODE HERE WALKS AROUND. Every child below dups the pipe
+	 * onto stdin and exits WITHOUT READING, so nothing in this file has ever tested the thing NSTask's
+	 * --child-cat child does: block in read(2) and expect EOF when the LAST WRITER closes.
+	 *
+	 * MEASURED (foundation-plan.md): the child entered read() and NEVER saw EOF after its parent closed the
+	 * write end, so the parent's read-to-end-of-file waited forever. THAT leaves two candidates - the kernel
+	 * never wakes a pipe reader on the last close, or the closer never closed - and this mode separates them
+	 * with pure POSIX and no Foundation anywhere.
+	 *
+	 * BOUNDED, with markers, so it ANSWERS instead of hanging: the child reports `total=` and `last=` (0 is
+	 * EOF, -1 an error) and the parent reports whether it reaped the child or found it STUCK. */
+	if (argc > 2 && strchr(argv[2], 'p') != NULL) {
+		int fds[2], st = 0, i;
+		pid_t pid;
+
+		if (pipe(fds) != 0) {
+			printf("PIPEEOF pipefail\n");
+			return 1;
+		}
+		pid = fork();
+		if (pid == 0) {
+			char buf[64];
+			ssize_t got;
+			long total = 0;
+
+			close(fds[1]);		/* the child is a READER ONLY: it must hold NO write end */
+			while ((got = read(fds[0], buf, sizeof(buf))) > 0) {
+				total += (long)got;
+			}
+			/* got == 0 is EOF (the loop ended the way it should); got < 0 is an error. */
+			printf("PIPEEOF child total=%ld last=%ld\n", total, (long)got);
+			fflush(stdout);
+			_exit(0);
+		}
+		if (pid < 0) {
+			printf("PIPEEOF forkfail\n");
+			return 1;
+		}
+		close(fds[0]);
+		if (write(fds[1], "hello\n", 6) != 6) {
+			printf("PIPEEOF shortwrite\n");
+		}
+		/* THE LAST WRITER CLOSES: this is the event that must wake the blocked reader with EOF. */
+		close(fds[1]);
+		for (i = 0; i < 1500; i++) {		/* 3s at 2ms - a bounded wait, never a hang */
+			if (waitpid(pid, &st, WNOHANG) == pid) {
+				break;
+			}
+			usleep(2000);
+		}
+		printf("PIPEEOF parent %s waited=%d\n", i < 1500 ? "reaped" : "STUCK", i);
+		fflush(stdout);
+		stop_flag = 1;
+		return 0;
+	}
+
 	if (use_reap) {
 		if (pthread_create(&thr, NULL, reaper, NULL) != 0) {
 			printf("PIPEDBG no-thread\n");
