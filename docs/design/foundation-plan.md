@@ -6288,7 +6288,29 @@ the stack vma's low edge, the fault is `rsp - 8` (one `push`), and `page_not_pre
 `cr2 >= (sc->rsp - 32) && cr2 < USER_STACK_TOP` **PASSES** — that is why the vma walk found a vma at all and
 why the code reached the zero-page branch instead of the "not a vma, kill it" path.
 
-**AND THE REPRODUCER IS BLOCKED ON A BUILD DETAIL, WHICH IS THE NEXT CONCRETE STEP.** A non-Foundation
+**TWO REPRODUCER HYPOTHESES, BOTH DISPROVED — AND THE REPRODUCER HARNESS NOW WORKS.** The staging problem
+was solved the way the tree solves it (a TEMPORARY rule inside the `userland64` target, removed again
+together with the source), and a plain-C program with NO Foundation in it was run in the guest:
+
+  * **300 `fork`+`exec`s from a parent with a LIVE THREAD: CLEAN.** `THREADED-EXEC-DONE=300-forkfail=0-
+    execfail=0-badstatus=0`, and no allocation failure in the log. So "a live thread in the parent" is NOT
+    sufficient to trigger it — which kills the tidiest explanation there was.
+  * **THE NSTask SHAPE WITHOUT FOUNDATION — a worker thread that REAPS with `waitpid`, a PIPE on the child's
+    stdin, and the child being THE FOUNDATION PROBE ITSELF (`--child-cat`) — produced NO FAULT OF ANY KIND**
+    in about seventy seconds of iterations (no `map_page() returned 0`, no `Page Fault`, no `Bus error`).
+    **INCOMPLETE EVIDENCE, and it is labelled one:** the loop did not finish inside the case's window,
+    because each iteration re-execs a large dynamically-linked binary, so this is *not reproduced in the
+    time available* and NOT *ruled out*.
+
+**SO THE MECHANISM IS LOCATED TO THE LINE AND THE TRIGGER IS NOT YET REPRODUCED.** The next experiment is
+the same one with two corrections that are now known: a marker the case waits for PROPERLY (the guest shell
+ECHOES the command line, so marker text lifted from the command matches BEFORE the program has run — the
+same trap this project has hit more than once), and enough wall-clock for the loop to actually finish. Until
+that runs, the honest statement is that the kernel call site is exact (`mm/fault.c:258` → `mm/memory.c:313`,
+one of its two failures) and the trigger is a rare event (1 in 118 collected guest logs) whose shape is not
+yet reproduced by a program that has no Foundation in it.
+
+**AND THE REPRODUCER WAS BLOCKED ON A BUILD DETAIL, WHICH IS NOW SOLVED.** A non-Foundation
 program (in `/tmp`, since scratch does not belong in the tree) was written and compiled — a THREADED parent
 doing `fork`+`exec` of `/System/Tools/true` in a loop, the minimum shape of "fork with a live thread", with
 no Foundation in it at all. It could not be RUN: `make rootagfs` **rebuilds `.build/rootfs64` from the mk
