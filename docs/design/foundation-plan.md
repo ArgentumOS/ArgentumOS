@@ -3521,7 +3521,7 @@ vanishing.
 | **Low-Level Utilities / Run Loop Scheduling** | all classes shipped | — |
 | **Low-Level Utilities / Scripts and External Tasks** | 1 open; 3 STRUCK: `NSUserAppleScriptTask`, `NSUserAutomatorTask`, `NSUserScriptTask` | `NSUserUnixTask` |
 | **Low-Level Utilities / Sockets** | 1 STRUCK: `NSHost` | — |
-| **Low-Level Utilities / Streams** | 4 open | `NSInputStream`, `NSOutputStream`, `NSStream`, `NSStreamDelegate` |
+| **Low-Level Utilities / Streams** | 2 open | `NSInputStream`, `NSOutputStream` |
 | **Low-Level Utilities / Tasks and Pipes** | all classes shipped | — |
 | **Low-Level Utilities / Threads and Locking** | 2 open | `NSConditionLock`, `NSDistributedLock` |
 | **Low-Level Utilities / Value Wrappers and Transformations** | all classes shipped | — |
@@ -8705,3 +8705,25 @@ questions existed:
     XPC). Either they land as declared constants a stream may merely CARRY (honest: a property bag with no
     behaviour), or the ledger question goes to the user. **It is a ledger question before it is a unit**, as
     W20's row already put it once.
+
+**AND SUB-STEP 1 HAS LANDED AND IS VERIFIED (2026-09-21): THE `NSStream` HEAD.** `userland/Foundation/NSStream.h`
+and `.m` declare and implement it - `NSStreamEvent` and `NSStreamStatus` with their 14 cases, the
+`NSStreamDelegate` protocol, the 5 typealiases, the 25 property keys (2 that this library acts on, 23 that are
+carried and never acted on per the decision above), and the abstract class: the status machine, the property
+bag, and the run-loop seam. Two things the head is judged on were asserted rather than described, by a probe
+that BUILDS A SUBSTREAM over a real `pipe(2)`:
+
+    foundation_stream   6/6 case checks, 12/12 probe checks
+    ... no-event-without-readiness ok     (an empty pipe must NOT fire the delegate)
+    ... source-fires-delegate ok          (a byte in it MUST, through the run loop's own fd source)
+
+**AND TWO THINGS ABOUT WRITING HERE ARE WORTH CARRYING FORWARD, because both cost a round:** the library is
+**MRC** (a `__weak` ivar is a compile error, so a not-retained delegate is a plain assign ivar and every
+stored object is retained/released by hand), while the PROBES are ARC; and landing a public declaration makes
+`make userland64` FAIL until the ledger is refreshed, with the sweep saying so by name -
+`tools/foundation-sweep.py --refresh` (the only network mode; 54 rows moved here, no unrelated churn) plus
+`--families --write` for the plan's generated table.
+
+**NEXT: SUB-STEP 2, `NSInputStream`** - from a path/`NSURL` and from `NSData`, registering its descriptor as a
+run-loop source ON DEMAND through the same seam this step proved, so `-stream:handleEvent:` fires
+`NSStreamEventHasBytesAvailable` instead of a read blocking a thread.

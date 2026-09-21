@@ -28,14 +28,14 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  122   open   74   struck   77
-#   protocol   shipped   13   open   18   struck   14
+#   class      shipped  123   open   73   struck   77
+#   protocol   shipped   14   open   17   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped   79   open   64   struck   17
-#   case       shipped  430   open  704   struck  168
+#   enum       shipped   81   open   62   struck   17
+#   case       shipped  444   open  690   struck  168
 #   func       shipped   71   open   64   struck   54
-#   var        shipped   110   open  451   struck  353
-#   typealias  shipped   24   open   45   struck    7
+#   var        shipped  135   open  426   struck  353
+#   typealias  shipped   29   open   40   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -856,20 +856,20 @@ case	open	NSShiftJISStringEncoding	NSString	Fundamentals / Strings / Working wit
 case	struck	NSSolarisOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	open	NSSortConcurrent		Fundamentals / Iteration / Constants	-	objc
 case	open	NSSortStable		Fundamentals / Iteration / Constants	-	objc
-case	open	NSStreamEventEndEncountered	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
-case	open	NSStreamEventErrorOccurred	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
-case	open	NSStreamEventHasBytesAvailable	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
-case	open	NSStreamEventHasSpaceAvailable	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
-case	open	NSStreamEventNone	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
-case	open	NSStreamEventOpenCompleted	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
-case	open	NSStreamStatusAtEnd	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
-case	open	NSStreamStatusClosed	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
-case	open	NSStreamStatusError	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
-case	open	NSStreamStatusNotOpen	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
-case	open	NSStreamStatusOpen	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
-case	open	NSStreamStatusOpening	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
-case	open	NSStreamStatusReading	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
-case	open	NSStreamStatusWriting	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
+case	shipped	NSStreamEventEndEncountered	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
+case	shipped	NSStreamEventErrorOccurred	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
+case	shipped	NSStreamEventHasBytesAvailable	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
+case	shipped	NSStreamEventHasSpaceAvailable	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
+case	shipped	NSStreamEventNone	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
+case	shipped	NSStreamEventOpenCompleted	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
+case	shipped	NSStreamStatusAtEnd	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
+case	shipped	NSStreamStatusClosed	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
+case	shipped	NSStreamStatusError	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
+case	shipped	NSStreamStatusNotOpen	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
+case	shipped	NSStreamStatusOpen	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
+case	shipped	NSStreamStatusOpening	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
+case	shipped	NSStreamStatusReading	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
+case	shipped	NSStreamStatusWriting	NSStream	Low-Level Utilities / Streams / Constants / Enumeration Cases	-	objc
 case	shipped	NSStringEncodingConversionAllowLossy	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	shipped	NSStringEncodingConversionExternalRepresentation	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	shipped	NSStringEnumerationByCaretPositions	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Enumeration Cases	-	objc
@@ -1526,7 +1526,7 @@ class	struck	NSSocketPortNameServer		Low-Level Utilities / Legacy / Legacy	depre
 class	shipped	NSSortDescriptor		Fundamentals / Sorting	-	objc
 class	struck	NSSpecifierTest		App Support / Object Matching Tests	declined	objc
 class	open	NSSpellServer		Fundamentals / Spelling and Grammar	-	objc
-class	open	NSStream		Low-Level Utilities / Streams	-	objc
+class	shipped	NSStream		Low-Level Utilities / Streams	-	objc
 class	shipped	NSString		Fundamentals / Strings	-	objc
 class	shipped	NSTask		Low-Level Utilities / Scripts and External Tasks	-	objc
 class	open	NSTermOfAddress		Fundamentals / Automatic grammar agreement	-	objc
@@ -1729,8 +1729,8 @@ enum	struck	NSSaveOptions	NSCloseCommand	App Support / Script Commands / Constan
 enum	shipped	NSSearchPathDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 enum	shipped	NSSearchPathDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 enum	open	NSSortOptions		Fundamentals / Iteration	-	objc
-enum	open	NSStreamEvent	NSStream	Low-Level Utilities / Streams / Constants	-	objc
-enum	open	NSStreamStatus	NSStream	Low-Level Utilities / Streams / Constants	-	objc
+enum	shipped	NSStreamEvent	NSStream	Low-Level Utilities / Streams / Constants	-	objc
+enum	shipped	NSStreamStatus	NSStream	Low-Level Utilities / Streams / Constants	-	objc
 enum	shipped	NSStringCompareOptions	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 enum	shipped	NSStringEncodingConversionOptions	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 enum	shipped	NSStringEnumerationOptions	NSString	Fundamentals / Strings / Performing Linguistic Analysis	-	objc
@@ -2240,7 +2240,7 @@ protocol	open	NSPredicateValidating		Protocols	-	objc
 protocol	shipped	NSProgressReporting		App Support / Progress	-	objc
 protocol	shipped	NSSecureCoding		Files and Data Persistence / Adopting Codability	-	objc
 protocol	open	NSSpellServerDelegate		Fundamentals / Spelling and Grammar	-	objc
-protocol	open	NSStreamDelegate		Low-Level Utilities / Streams	-	objc
+protocol	shipped	NSStreamDelegate		Low-Level Utilities / Streams	-	objc
 protocol	struck	NSURLAuthenticationChallengeSender		Networking / Legacy / URL Authentication Challenge Sender	deprecated	objc
 protocol	struck	NSURLConnectionDataDelegate		Networking / Legacy / URL Connection	deprecated	objc
 protocol	struck	NSURLConnectionDelegate		Networking / Legacy / URL Connection	deprecated	objc
@@ -2317,11 +2317,11 @@ typealias	shipped	NSSize		Fundamentals / Geometry	-	objc
 typealias	shipped	NSSizeArray		Fundamentals / Geometry / Related Types	-	objc
 typealias	shipped	NSSizePointer		Fundamentals / Geometry / Related Types	-	objc
 typealias	shipped	NSSocketNativeHandle	NSPort	Low-Level Utilities / Sockets / Data Types	-	objc
-typealias	open	NSStreamNetworkServiceTypeValue	NSStream	Low-Level Utilities / Streams / Constants	-	objc
-typealias	open	NSStreamPropertyKey	NSStream	Low-Level Utilities / Streams / Constants	-	objc
-typealias	open	NSStreamSOCKSProxyConfiguration	NSStream	Low-Level Utilities / Streams / Constants	-	objc
-typealias	open	NSStreamSOCKSProxyVersion	NSStream	Low-Level Utilities / Streams / Constants	-	objc
-typealias	open	NSStreamSocketSecurityLevel	NSStream	Low-Level Utilities / Streams / Constants	-	objc
+typealias	shipped	NSStreamNetworkServiceTypeValue	NSStream	Low-Level Utilities / Streams / Constants	-	objc
+typealias	shipped	NSStreamPropertyKey	NSStream	Low-Level Utilities / Streams / Constants	-	objc
+typealias	shipped	NSStreamSOCKSProxyConfiguration	NSStream	Low-Level Utilities / Streams / Constants	-	objc
+typealias	shipped	NSStreamSOCKSProxyVersion	NSStream	Low-Level Utilities / Streams / Constants	-	objc
+typealias	shipped	NSStreamSocketSecurityLevel	NSStream	Low-Level Utilities / Streams / Constants	-	objc
 typealias	shipped	NSStringEncoding	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 typealias	open	NSStringEncodingDetectionOptionsKey	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 typealias	open	NSStringTransform	NSString	Fundamentals / Strings / Transforming Strings	-	objc
@@ -2943,32 +2943,32 @@ var	struck	NSShortDateFormatString	NSUserDefaults	Files and Data Persistence / A
 var	struck	NSShortMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSShortTimeDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSShortWeekDayNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSStreamDataWrittenToMemoryStreamKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamFileCurrentOffsetKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamNetworkServiceType	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamNetworkServiceTypeBackground	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamNetworkServiceTypeCallSignaling	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamNetworkServiceTypeVideo	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamDataWrittenToMemoryStreamKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamFileCurrentOffsetKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamNetworkServiceType	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamNetworkServiceTypeBackground	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamNetworkServiceTypeCallSignaling	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamNetworkServiceTypeVideo	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
 var	struck	NSStreamNetworkServiceTypeVoIP	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	deprecated	objc
-var	open	NSStreamNetworkServiceTypeVoice	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamSOCKSErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
-var	open	NSStreamSOCKSErrorDomain	NSStream	Low-Level Utilities / Streams / Constants	-	objc
-var	open	NSStreamSOCKSProxyConfigurationKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamSOCKSProxyHostKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamSOCKSProxyPasswordKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamSOCKSProxyPortKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamSOCKSProxyUserKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamSOCKSProxyVersion4	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamSOCKSProxyVersion5	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamSOCKSProxyVersionKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamSocketSSLErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
-var	open	NSStreamSocketSSLErrorDomain	NSStream	Low-Level Utilities / Streams / Constants	-	objc
-var	open	NSStreamSocketSecurityLevelKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamSocketSecurityLevelNegotiatedSSL	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamSocketSecurityLevelNone	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamSocketSecurityLevelSSLv2	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamSocketSecurityLevelSSLv3	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamSocketSecurityLevelTLSv1	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamNetworkServiceTypeVoice	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamSOCKSErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
+var	shipped	NSStreamSOCKSErrorDomain	NSStream	Low-Level Utilities / Streams / Constants	-	objc
+var	shipped	NSStreamSOCKSProxyConfigurationKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamSOCKSProxyHostKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamSOCKSProxyPasswordKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamSOCKSProxyPortKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamSOCKSProxyUserKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamSOCKSProxyVersion4	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamSOCKSProxyVersion5	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamSOCKSProxyVersionKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamSocketSSLErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
+var	shipped	NSStreamSocketSSLErrorDomain	NSStream	Low-Level Utilities / Streams / Constants	-	objc
+var	shipped	NSStreamSocketSecurityLevelKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamSocketSecurityLevelNegotiatedSSL	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamSocketSecurityLevelNone	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamSocketSecurityLevelSSLv2	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamSocketSecurityLevelSSLv3	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
+var	shipped	NSStreamSocketSecurityLevelTLSv1	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
 var	open	NSStringEncodingDetectionAllowLossyKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
 var	open	NSStringEncodingDetectionDisallowedEncodingsKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
 var	open	NSStringEncodingDetectionFromWindowsKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc

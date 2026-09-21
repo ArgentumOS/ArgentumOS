@@ -834,6 +834,15 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_task.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_task"
+	# foundation_stream: W6's streams half, the NSStream HEAD's acceptance. ONE unit, and it builds a
+	# SUBSTREAM - the head's value contract (ours, under D2) and its run-loop seam are what a substream
+	# inherits, so both are asserted through a real descriptor and a real delegate.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_stream.m -o .build/probe-foundation_stream.o
+	$(MUSL64_OBJC) .build/probe-foundation_stream.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_stream"
 	# kernel_threaded_exec: THE KERNEL BUG'S REPRODUCER (§45 of the Foundation plan), not a Foundation
 	# probe - it is plain C with NO Foundation in it, because the point is that the library is absent from
 	# the failing program. Mode 1's children are /System/Tools/true; mode 2's are the Foundation probe.
