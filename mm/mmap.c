@@ -426,12 +426,28 @@ void free_vma_pages(struct vma *vma, addr_t start, __size_t length)
 void release_binary(void)
 {
 	struct vma *vma, *tmp;
+	int shared = 0;
+
+	/* FNX: an address space can be SHARED - a CLONE_VM thread keeps USING it after its creator
+	 * exits. The guard that protects the pml4's ALLOCATION (pml4_has_other_user(), called from
+	 * remove_zombie) does not protect its CONTENTS: sweeping the pages here clears leaves, and
+	 * frees pages, under a surviving thread whose next fetch then faults on a page it legitimately
+	 * maps. Skip the PAGE SWEEP for a shared address space; the bookkeeping below still runs, so
+	 * nothing is left stale. A page kept too long is a leak; a page freed under a live mapping is
+	 * corruption. */
+	if(current->cr3_64) {
+		extern int pml4_has_other_user(unsigned long);
+
+		shared = pml4_has_other_user(current->cr3_64);
+	}
 
 	vma = current->vma_table;
 
 	while(vma) {
 		tmp = vma->next;
-		free_vma_pages(vma, vma->start, vma->end - vma->start);
+		if(!shared) {
+			free_vma_pages(vma, vma->start, vma->end - vma->start);
+		}
 		free_vma_region(vma, vma->start, vma->end - vma->start);
 		vma = tmp;
 	}

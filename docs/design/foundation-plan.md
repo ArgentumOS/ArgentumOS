@@ -7227,6 +7227,39 @@ another user — or, better, transfer the mapping ownership to the surviving tas
 all. Then `kernel_threaded_exec` green is the acceptance test, and it will be the first verification the
 bug (b) family has ever had.
 
+**AND THE NARROW VARIANT REMOVES THE CORRUPTION — AT THE PRICE OF A LEAK.** Skipping only `free_vma_pages`
+(keeping `free_vma_region`, so nothing goes stale) gives, in the acceptance case:
+
+    no-instruction-fetch-fault: PASS  (*** REPRODUCED ***: clean)
+    Page Fault lines anywhere in the log: NONE
+    PARENT pid=9 mode=1 n=400
+    THREADED-EXEC-PROGRESS lines: 0        <- the parent never reaches iteration 100
+    "not enough memory when cloning": 0    <- and it is not the fork error path
+    (case wall-clock: 312s, against 12s before)
+
+**THE FAULT IS GONE.** That is the strongest evidence this investigation has produced about where defect B
+lives: removing the page sweep from `release_binary()` for a shared address space removes the corruption
+entirely, and the case's fault check flips from FAIL to PASS. **And the other check now fails for a NEW and
+understood reason: the leak.** Pages that a surviving thread still maps are kept with nothing to reclaim
+them, so the reproducer's 400 forks exhaust memory and stop making progress (`n=400` started, no progress
+line, no clone failure — it simply cannot allocate).
+
+**SO THE CHANGE IS KEPT — the first one that MOVED the acceptance test, and in the right direction.** The
+leak is confined to the abnormal case it targets (a task exiting while another shares its address space: a
+normal single-threaded exit takes the other branch and leaks nothing), and in a kernel a leak in a rare path
+beats silent memory corruption. But it is NOT the right fix, and the right one is now obvious because **both
+defects turn out to want the same missing concept:**
+
+  * defect A: a page returned to the bitmap while a user mapping points at it → the count does not track
+    MAPPINGS;
+  * defect B: an exiting task's sweep freeing pages a surviving thread still maps → the same thing, one level
+    up: nothing knows which MAPPINGS own a page.
+
+**THE PROPER FIX IS OWNERSHIP BY MAPPING**, not a skip: a page must be freed only when the last mapping that
+names it is gone, and `release_binary()` should hand its ranges to the surviving task rather than drop them.
+That closes both defects with one concept instead of two guards, and `kernel_threaded_exec` green on BOTH
+checks is the acceptance test.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
