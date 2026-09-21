@@ -93,7 +93,7 @@ class Case(BaseCase):
         # THE SMALLEST PROGRAM THAT STILL DIES (if it does): main's first three steps and exit.
         mark = len(session.log_text())
         session.run("%s --probe-root-only; echo PROBE-ROOT-ONLY-STATUS=$?" % PROBE)
-        self.wait_for(r"probe-root-only: manager=|Bus error", 60)
+        session.wait_for(r"probe-root-only: manager=|Bus error", 60)
         out = session.output_since(mark)
         self.check("probe-root-only-survives",
                    "probe-root-only: manager=ok" in out and "PROBE-ROOT-ONLY-STATUS=0" in out,

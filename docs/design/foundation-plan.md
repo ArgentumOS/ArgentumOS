@@ -7979,3 +7979,92 @@ SAYS THE UNIT IS OWED because that is what the ledger is for.
 FILES: `userland/Foundation/NSTask.{h,m}`, `Foundation.h` (one import), `userland/tests/foundation_task.m`,
 `tests/cases/foundation_task.py`, `mk/20-userland.mk`.
 
+---
+
+## §45-R — THE PROBE'S FAULT WAS THE PROBE: `probe_root()` CALLED ITSELF (measured, fixed)
+
+**THE FAULT THIS SECTION SPENT ITS LENGTH CHASING IS A TWO-LINE TYPO IN THE PROBE, AND IT WAS THERE FROM
+THE PROBE'S FIRST COMMIT.** Both path helpers at the top of `userland/tests/foundation_task.m` returned
+themselves:
+
+```c
+static NSString *probe_self(void) { return probe_self(); }   /* from 8001e63b, "its probe is RED" */
+static NSString *probe_root(void) { return probe_root(); }
+```
+
+`git blame` puts both lines in `8001e63b` — the commit that introduced the probe. The comment above them
+says what they were FOR ("THE TWO PATHS AS OBJECTS, through helpers, because `+stringWithUTF8String:` is
+declared NULLABLE and every use below feeds a non-null parameter"); the bodies say nothing about a path at
+all. **The fix is the tree's own documented spelling** — the `(NSString *)` cast that `NSException.h:87`
+already states is "not cosmetic" for exactly this reason:
+
+```c
+return (NSString *)[NSString stringWithUTF8String:PROBE_ROOT];
+```
+
+**AND IT ACCOUNTS FOR EVERY INVARIANT §45 COLLECTED, WITH NOTHING LEFT OVER.** The probe's `main` prints
+`trace 1a`, then calls `probe_root()`, then prints `trace 1b` — and the probe has died "between trace 1a and
+1b" in every recorded run:
+
+| Recorded invariant | What it was |
+|---|---|
+| "the fault is a **PUSH** at the bottom of some task's stack" (`098b7a04`) | the `call` in the recursion pushing a return address |
+| "always **eight bytes below a stack VMA's low edge**" (three addresses, `0x7ffff5805ff8` / `…aff8` / `…57ff8`) | the push lands at `low_edge − 8`; the stack VMA is randomised, the offset is not |
+| "single-threaded, deterministic, every register zero" | a fresh process recursing at its entry path |
+| "not the free side, not the publish side, not the thread/address-space family" | correct — it is not a kernel defect |
+
+**SO DEFECT A'S LINE OF WORK WAS CHASING A TYPO, AND THAT IS THE CORRECTION THAT MATTERS MOST HERE.** The
+convergence recorded earlier ("the probe's fault IS defect A reaching its kernel stack") was already refuted
+by measurement (both faces clean); what this closes is the possibility that it reached the kernel by ANY
+route. The three kernel fixes stay — they are backed by their own reproducers (`kernel_threaded_exec` 2/2,
+`kernel_pipe_dup2` 9/9) and by isolated A/B measurement, not by this probe — but `foundation_task`'s red was
+never evidence for any of them. The kernel was rebuilt this round with those three fixes in the tree
+(`make buildfnx && ./tools/mkesp.sh`); the two kernel reproducers were NOT re-run this round, and the kernel
+sources are unchanged from `da55356e`, so their earlier verification is unaffected.
+
+**MEASURED, AFTER THE FIX: THE FAULT IS GONE.** The probe now runs `trace 1a → 1b → 1c → 1d → 1e → trace 2`
+and reports its first real check green:
+
+    FOUNDATION-TASK trace 1b: root rsp=0x7ffffffffdf0
+    FOUNDATION-TASK trace 1c: self-url rsp=0x7ffffffffde8
+    FOUNDATION-TASK trace 2: scratch ready
+    FOUNDATION-TASK task-runs-and-exits ok
+
+**AND TWO MORE REAL DEFECTS FELL OUT THE MOMENT THE RUN COULD ACTUALLY GET THAT FAR — BOTH IN THE FIXTURE,
+NOT THE LIBRARY:**
+
+  * **THE RUNNER WAS NEVER QUIET; IT REFUSED.** The recorded "silence" was `tests/harness/paths.py`'s
+    freshness gate: `mm/memory.c` had an mtime NEWER than `.build/esp.img` (the reverted kernel instruments
+    of the previous session rewrote kernel sources after the ESP was last staged), so every invocation
+    printed `cannot run: missing harness inputs: the KERNEL is older than its sources … -> make buildfnx &&
+    ./tools/mkesp.sh` and **exited 2 with no PASS/FAIL line**. The answer was in the message, and the gate is
+    right to refuse: a stale ESP is a stale measurement. `make buildfnx && ./tools/mkesp.sh` clears it.
+  * **THE CASE COULD NOT HAVE RUN AT ALL: `self.wait_for(…)` on line 96 raised `AttributeError`.** `wait_for`
+    lives on the **Session**, not the Case — every other case in the tree spells it `session.wait_for(…)`.
+    That is from the same commit that re-added the mode, so the "staged but unrun" run would have raised even
+    if the gate had let it through.
+  * **AND `--probe-root-only` WAS UNREACHABLE DEAD CODE.** `main` dispatched `fn_child()` on
+    `strncmp(argv[1], "--child", 7) == 0` alone, and the mode's own flag is `--probe…`, not `--child…`. The
+    invocation therefore ran the WHOLE probe and never printed the `probe-root-only:` line the check asserts
+    — which is exactly what the earlier run's detail showed (output that belonged to the full run). The
+    dispatcher now accepts both prefixes, and the check is green with real output:
+
+        FOUNDATION-TASK probe-root-only: manager=ok root=/System/Temporary Files/nstask-probe len=36
+
+**WHAT REMAINS IS REAL W6D WORK, AND IT IS ONE `waitpid`.** The probe stops immediately after
+`task-runs-and-exits ok` — at its FIRST `[task waitUntilExit]`. `-waitUntilExit` blocks on `_condition` until
+`_exited`, which only the reaper sets, and the reaper's `waitpid(task->_pid, &status, 0)` is called **from a
+thread**. `-launchAndReturnError:` forks/execs FIRST and creates the reaper after (`pthread_create` at
+`NSTask.m:444`), so the reaper is a thread of the process waiting for the process's own child. That is the
+family defect C was about ("a wait is the PROCESS's wait"), whose fix IS in this build and was verified by
+`kernel_threaded_exec` — so this is not that, and it is not established to be a kernel bug at all. The next
+step is the project's own doctrine, **measure at the writer**: instrument the kernel's `wait4` matching for a
+non-forking thread and the task's own handshake, and read which one never completes.
+
+**STATE: `foundation_task` is 4/5 checks (was 3/4 in the older numbering), and the fault that opened this
+investigation is FIXED AND GONE BY MEASUREMENT.** Green: `shell-ready`, `child-mode-exits`,
+`child-mode-uses-foundation`, `probe-root-only-survives`. Red: `probe-ran` (the `waitUntilExit` above).
+
+FILES THIS ROUND: `userland/tests/foundation_task.m` (the two recursive bodies; the `--probe…` dispatch),
+`tests/cases/foundation_task.py` (`session.wait_for` — one word).
+

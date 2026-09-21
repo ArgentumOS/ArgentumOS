@@ -55,12 +55,12 @@
  * -Werror=nullable-to-nonnull-conversion. */
 static NSString *probe_self(void)
 {
-	return probe_self();
+	return (NSString *)[NSString stringWithUTF8String:PROBE_SELF];
 }
 
 static NSString *probe_root(void)
 {
-	return probe_root();
+	return (NSString *)[NSString stringWithUTF8String:PROBE_ROOT];
 }
 
 /* ---- THE CHILD MODES ---------------------------------------------------- */
@@ -122,8 +122,11 @@ static int fn_child(int argc, char *argv[])
 		_exit(0);
 	}
 	if (strcmp(mode, "--probe-root-only") == 0) {
-		/* THE SMALLEST PROGRAM THAT STILL DIES (if it does): main's first three steps and exit. The probe
-		 * dies between trace 1a and 1b, i.e. around probe_root(), so this is those steps and nothing else. */
+		/* THE SMALLEST PROGRAM: main's first three steps and exit - `+[NSFileManager defaultManager]`,
+		 * then probe_root(). It was written when the probe died between trace 1a and 1b, which turned
+		 * out to be `probe_root()` calling ITSELF (see the helper above): the fault was never in
+		 * Foundation, in the kernel, or in the address. Kept, because it is still the cheapest
+		 * statement that this binary can make a manager and a path at all. */
 		NSFileManager *m = [NSFileManager defaultManager];
 		NSString *t = probe_root();
 
@@ -249,8 +252,13 @@ int main(int argc, char *argv[])
 	NSURL *self;
 
 	/* THE CHILD BRANCH IS FIRST, BEFORE ANY OBJECT EXISTS: the child is a tiny program, and its whole
-	 * contract is the few lines of fn_child(). */
-	if (argc > 1 && strncmp(argv[1], "--child", 7) == 0) {
+	 * contract is the few lines of fn_child(). THE DIAGNOSTIC MODE IS DISPATCHED HERE TOO, and that is
+	 * not tidiness: its flag is `--probe…`, NOT `--child…`, so gating this branch on `--child` alone
+	 * made the `--probe-root-only` arm below UNREACHABLE DEAD CODE - the invocation silently ran the
+	 * whole probe instead (measured: no `probe-root-only:` line at all, and the check failed on output
+	 * that belonged to the full run). */
+	if (argc > 1 && (strncmp(argv[1], "--child", 7) == 0 ||
+			 strncmp(argv[1], "--probe", 7) == 0)) {
 		return fn_child(argc, argv);
 	}
 
