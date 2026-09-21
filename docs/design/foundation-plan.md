@@ -6904,6 +6904,36 @@ grant side printed only two clean samples, so its own scan count never showed wh
 all.** One page, no filter, no cap, complete timeline — the same discipline that has produced every real step
 in this investigation, applied to the page the evidence keeps returning to.
 
+**AND THE TIMELINE OF THAT PAGE SAYS THE PAGE IS THE WRONG THING TO WATCH.** All four event sites were
+filtered to `phys == 0x61c000` — grant, free, map, unmap — with no window and no cap. The whole run gave three
+lines:
+
+    TLG phys=0x61c000 GRANT pid=1 caller=ffff80000d99d4e9 usermaps=-1
+    TLF phys=0x61c000 FREE  pid=5 count_after=0 caller=ffff80000d99c160 usermaps=-1
+    TLG phys=0x61c000 GRANT pid=7 caller=ffff80000d99d4e9 usermaps=-1
+
+  * **`usermaps=-1` at every grant and every free** — a THIRD independent confirmation that the grant and free
+    ends are clean: the page is not user-mapped when it changes hands, in either direction.
+  * **No `TLM` at all for this page**, while the previous run's `MAPDBG` showed pid 7 mapping exactly this
+    physical page. Same test, same build shape, different victim.
+
+**SO THE CORRUPTION IS A RACE, AND THE VICTIM PAGE CHANGES BETWEEN RUNS.** That is worth stating plainly
+because it invalidates the shape of the instrument, not just its luck: **a page-filtered timeline bets on a
+page, and the bet lost.** It also fits everything else measured — why the failure looked intermittent before
+the reproducer pinned it down, why the alias, the repeated frees and the vma-table contents were found on
+`0x612000`/`0x61c000` in different runs, and why every end I instrument ends up clean: whichever page loses
+the race is the one that shows the damage, and it is a different page next time.
+
+**AND THAT TURNS THE NEXT INSTRUMENT FROM A FILTER INTO AN INVARIANT.** What is needed is a CHECK AT EVERY
+EVENT against a property that must hold, not a watch on one page:
+
+  * at every USER-mapping creation, ask whether the page being published BELONGS to the caller — the sharpest
+    form of that is the cached-file path, where the page must be a FILE page (an inode), so a mapping created
+    there from a page with `inode == 0` is the corruption announcing itself;
+  * and, if that is too indirect, TAG the heap's pages (a `PAGE_*` flag set where `kmalloc` grants and cleared
+    on release) so the invariant becomes checkable directly — a small, permanent, and independently useful
+    piece of kernel hygiene rather than another temporary printk.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
