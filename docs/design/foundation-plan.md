@@ -6386,6 +6386,28 @@ from that one page**, so if `sc` (or the page it lives on) belongs to the WRONG 
 register file of ZEROS with one stray code pointer is exactly what a page that was never a syscall frame
 would look like.
 
+**AND THE NEXT MEASUREMENT IS WRITTEN, RUN — AND BLOCKED BY A BUILD TRAP THAT IS ITS OWN FINDING.** The
+`printk` was added to that path (`fork.c`, dumping `sc`, `sc->rip`, `sc->rsp`, `child->tss.esp0`, `stack`,
+`stack->rip` and the child's pid for the first few forks) and produced NOTHING in the guest log. The cause is
+MEASURED, not guessed:
+
+  * `grep -c FORKDBG .build/64/fnx.efi` → **1** — the instrumented kernel built correctly;
+  * `grep -c FORKDBG .build/esp.img` → **0** — and `.build/esp.img` is what `tests/harness/qemu.py` boots
+    (`-drive file=.build/esp.img,format=raw,if=ide,index=0`).
+
+**SO THE GUEST HAS BEEN RUNNING A STALE KERNEL, and `make rootagfs` is why:** it is defined as
+`rootagfs: userland64 m0clang` (`mk/30-images.mk:22`) — it rebuilds userland and packs the AGFS root, and it
+**never refreshes `.build/esp.img`**, so a kernel change never reaches the guest through the path this
+project's own notes treat as "the way to build and stage". `make buildfnx` does rebuild the kernel
+(`mk/40-kernel.mk:85` → `.build/64/fnx.efi`, which DID contain the instrument), but the ESP is refreshed by
+some other step (`tools/mkesp.sh` exists; `.build/esp.img` was rewritten at 02:35:15, i.e. AFTER the kernel
+at 02:34:13, and still without the change). **That step is what the next session must find and run before
+re-running this instrument** — and until it is run, every kernel-side experiment in this investigation would
+have been measuring the OLD kernel, which is worth knowing before trusting any of them.
+
+The instrument was then REVERTED (`kernel/syscalls/fork.c` is clean), because an unreachable printk in the
+fork path is not something to leave in the kernel.
+
 **THE NEXT MEASUREMENT IS THEREFORE EXACT AND CHEAP:** print, in that path, `sc`, `sc->rip`, `sc->rsp`,
 `child->tss.esp0` and the child's pid — for the children the case knows run correctly and for the one that
 dies. `sc`'s provenance (which thread's stack it points into, and whether it is per-thread at that moment) is
