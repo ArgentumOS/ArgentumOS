@@ -7037,6 +7037,29 @@ ADDITIONAL mapping** (the second address, or the second process — the sharing 
 releasing in `free_vma_pages`** so no dangling PTE survives even for an instant. The failure mode to watch is
 asymmetric, as everywhere in this class: a missing take keeps this corruption, a missing drop leaks.
 
+**AND THE FIX WAS WRITTEN, BUILT, RUN — AND DID NOT MOVE THE TEST, SO IT WAS REVERTED.** The change was
+exactly the one the evidence pointed at: in `free_vma_pages`, unmap the address FIRST, then free only if no
+process still maps the page (`fnx_page_still_mapped`), leaving a page with a surviving mapping for the sweep
+that removes the last one. It built clean, it booted, it ran the case — and the failure is BYTE-IDENTICAL:
+
+    Page Fault at 0x7f0000080849 (reading) with error code 0x14
+
+Same address, same instruction fetch. **So the sweep's per-address over-release — real, measured at 1484
+occurrences a boot — is NOT the publisher this failure depends on.** Either the page that matters is
+published by another path, or the invariant test I wrote is itself incomplete.
+
+**AND THE INCOMPLETE-TEST HYPOTHESIS HAS A CONCRETE, KNOWN GAP:** `fnx_page_still_mapped` compares a 2MB entry
+only against its own base (`AM(l2[i2]) == phys`), so **a 4KB page inside a USER 2MB mapping would not be
+found** — and this tree does map user regions with huge pages. That gap is cheap to close and it decides
+between "the sweep was right and something else publishes" and "the sweep was never cleared at all".
+
+**THE CHANGE WAS REVERTED, DELIBERATELY.** A kernel change that does not move its acceptance test is not a
+fix: it would add an O(scan) cost to every swept page and a leak risk, in exchange for nothing proven. The
+tree returns to the state where the defect is measured and unfixed, which is honest — and the next move is a
+measurement, not a patch: close the 2MB gap in the invariant and re-run, then instrument the other candidate
+publishers (a `mremap`'s PTE copy, and the VMA merge path — `can_be_merged`, which this tree has already fixed
+once for a different symptom of the same shape).
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
