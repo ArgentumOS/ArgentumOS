@@ -7718,6 +7718,34 @@ the process's), the sweep's free-before-unmap window closed and verified not to 
 the suite, and one defect - A - whose publisher is named for one route (the sweep's window, now closed) and
 whose remaining route reaches a single-threaded process's saved frame and blanks it deterministically.
 
+**AND THE CHECK AT THE ONE CHOKE POINT RETURNS ZERO — WHICH REFUTES THE CONVERGENCE I WROTE TWO ROUNDS AGO.**
+Every free path in the kernel passes through `release_page` (the sweep's `kfree`, both page-cache callers, and
+`kfree` itself), so the invariant was put there: is the page about to go back to the bitmap still US-mapped by
+ANY process? Sixty thousand frees later:
+
+    RFREE scans=20000 pid=11 (no hit)
+    RFREE scans=40000 pid=11 (no hit)
+    RFREE scans=60000 pid=11 (no hit)
+    0 hits
+
+**Not one page. So "a page freed while a userspace mapping names it" is CLOSED** - the reorder did that - and
+`free_vma_pages`'s 47,775 windows were all of it. **Which falsifies the convergence: `foundation_task`'s fault
+is NOT defect A reaching its kernel stack.** It was a good inference, it was measured, and it is wrong; it is
+corrected here rather than left to mislead.
+
+**AND THE CORRECTION POINTS SOMEWHERE ELSE, WITH THE SESSION'S OWN EVIDENCE FOR IT.** Defect A's *other*
+measured facet was never a free at all: **the vma table held `"FNX3-DONE"` - USER BYTES, written into kernel
+memory.** The alias (`SAME=1`) proved the user buffer and the kernel structure shared a page; what was never
+established was the DIRECTION of the first bad event, and this round removes the free side from the running.
+**What is left is the write side: something writes user data into kernel memory** - and a kernel *stack* page
+taken that way blanks a task's saved frame, which is precisely the probe's fault.
+
+**SO THE NEXT INSTRUMENT IS THE WRITE, NOT THE FREE:** tag the pages the kernel hands to `kmalloc` (a `PAGE_*`
+flag set where `get_free_page` grants and cleared where it is released - the small, permanent piece of hygiene
+proposed much earlier in this section) and fail loudly if a USER write ever lands in one. That is a check on
+the direction the evidence still supports, and it needs no window, no cap and no page filter - the same shape
+as every instrument that has actually moved this investigation.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
