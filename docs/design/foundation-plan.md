@@ -7555,6 +7555,32 @@ does not move its acceptance test is not a fix, and the tree returns to the stat
 measured and unfixed. The proposed change and its reasoning are recorded here instead, so whoever comes next
 starts from the measurement.
 
+**AND THE W6d PROBE'S REMAINING FAULT IS THE SESSION'S OLDEST SIGNATURE — A DIFFERENT DEFECT FROM THE TWO
+JUST FIXED.** With defects B and C fixed, `kernel_threaded_exec` is green on both checks and
+`kernel_pipe_dup2` is 9/9 — but `foundation_task` is still 3 of 4, and its log says why:
+
+    FOUNDATION-TASK trace 1:  entered main rsp=0x7ffffffffe18
+    FOUNDATION-TASK trace 1a: manager    rsp=0x7ffffffffe18
+    Page Fault at 0x7ffff57f2ff8 (writing) with error code 0x06
+    Process '/System/Shared/tests/foundation_task' with pid 11.   FOUNDATION-TASK-STATUS=135
+
+**That is the stack-edge fault this investigation OPENED with** — a WRITE to an address 2GB BELOW `rsp`, which
+is the stack vma's low edge, while `rsp` (trace 1a) is near the very top of the user half. The growth
+heuristic (`cr2 >= rsp - 32`) refuses it, and the process dies of SIGBUS (135) at `probe_root()` — between
+trace 1a and the 1b that never prints. It is the one signature that has survived every fix, and it is *not*
+the one defect B or C introduced or removed: **`kernel_threaded_exec` no longer faults at all, and this probe
+still does.**
+
+**THE BLOCKER, STATED PLAINLY:** the W6d probe dies at `probe_root()` with a write 2GB below its stack
+pointer — a wild write, seen from the very first run of this session — and that is the thing standing between
+W6d and its acceptance. Everything else about the probe works (three of its four case checks pass, including
+the child modes and a fresh process using Foundation).
+
+**AND THE NEXT MOVE IS A COMPARISON, NOT A HYPOTHESIS:** `kernel_threaded_exec` — built to replace exactly
+this probe — now runs 400 forks and completes, while `foundation_task` dies at a string constructor. The two
+are different programs, so the difference is now findable directly rather than by instrumenting the kernel
+again: what `foundation_task` does before trace 1b that `kernel_threaded_exec` never does.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
