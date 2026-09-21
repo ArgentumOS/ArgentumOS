@@ -22,7 +22,6 @@
 #include <poll.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 /* THE TWO QUESTIONS A DESCRIPTOR ANSWERS ABOUT READINESS, and they are different questions: `poll` says a
@@ -271,17 +270,11 @@ static NSError *fn_stream_error(int err)
 	if (_fd < 0) {
 		return NO;
 	}
-	/* APPLE'S SENTENCE IS "a read would not block". FOR A REGULAR FILE THAT IS ALWAYS TRUE, and this
-	 * kernel's poll(2) will not say so, so the file case is answered from fstat(2) and everything else from
-	 * poll - and at end of stream a read does not block either, so YES is right there too: the read that
-	 * follows answers 0, and the delegate has already been told the stream ended. */
-	{
-		struct stat st;
-
-		if (fstat(_fd, &st) == 0 && S_ISREG(st.st_mode)) {
-			return YES;
-		}
-	}
+	/* APPLE'S SENTENCE IS "a read would not block", and poll(2) is the question that answers it - for a
+	 * regular file as well, now that the kernel's do_check() reports one ready (it did not, and the fstat(2)
+	 * workaround this replaces lived here for exactly one commit). At end of stream a read does not block
+	 * either, so YES is right there too: the read that follows answers 0, and the delegate has already been
+	 * told the stream ended. */
 	return fn_descriptor_ready(_fd) ? YES : NO;
 }
 

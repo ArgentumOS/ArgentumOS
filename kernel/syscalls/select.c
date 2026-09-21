@@ -7,6 +7,7 @@
 
 #include <fnx/types.h>
 #include <fnx/fs.h>
+#include <fnx/stat.h>	/* S_ISREG */
 #include <fnx/process.h>
 #include <fnx/timer.h>
 #include <fnx/sched.h>
@@ -60,6 +61,19 @@ int do_check(struct inode *i, struct fd *f, int flag)
 		if(i->fsop->select(i, f, flag)) {
 			return 1;
 		}
+	}
+
+	/* FNX: A REGULAR FILE IS ALWAYS READY FOR READ AND WRITE, and that is the RULE rather than a
+	 * shortcut. POSIX has select(2) report a regular file ready because an I/O on one never blocks, and a
+	 * FILE SYSTEM has no select method to say so - the fsop->select above is the PIPE's, because a pipe is
+	 * the object that blocks. Absent this, select(2), poll(2) and epoll_wait(2) all answered "not ready"
+	 * for every regular file, so a stream over one was READABLE and never DELIVERED: the run loop's wait IS
+	 * select(2) (foundation-plan.md §45-Y measured it as select-does-not-report-a-regular-file).
+	 *
+	 * EXCEPT STAYS UNREADY, deliberately: select(2)'s exceptfds reports OUT-OF-BAND data, not a write that
+	 * is going to fail, and a regular file has no such condition. */
+	if(flag != SEL_E && S_ISREG(i->i_mode)) {
+		return 1;
 	}
 
 	return 0;

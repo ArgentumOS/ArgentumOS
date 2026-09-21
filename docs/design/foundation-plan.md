@@ -8751,3 +8751,60 @@ it is wanted, is in the KERNEL's select, not here: POSIX has select report a reg
 
 **NEXT: SUB-STEP 3, `NSOutputStream`** - to a path and to memory (the `NSStreamDataWrittenToMemoryStreamKey`
 form), whose descriptor half inherits the same substrate limit for a regular file.
+
+---
+
+## §45-Z — THE KERNEL'S `do_check` REPORTED A REGULAR FILE AS NOT READY, AND THE FIX IS ONE RULE (2026-09-21)
+
+**THE SUBSTRATE LIMIT §45-Y MEASURED IS FIXED, AND IT WAS ONE FUNCTION.** `kernel/syscalls/select.c`'s
+`do_check()` - the readiness chokepoint shared by `select(2)`, `poll(2)` AND `epoll_wait(2)` - asked
+`i->fsop->select` and nothing else:
+
+```c
+int do_check(struct inode *i, struct fd *f, int flag)
+{
+	if(i->fsop && i->fsop->select) {
+		if(i->fsop->select(i, f, flag)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+```
+
+`fsop->select` is the PIPE's method, and a pipe is the object that blocks; a FILE SYSTEM has none, so every
+regular file was reported not-ready by all three syscalls. POSIX has `select(2)` report a regular file ready
+because an I/O on one cannot block, and the fix is that rule and no more:
+
+```c
+	if(flag != SEL_E && S_ISREG(i->i_mode)) {
+		return 1;
+	}
+```
+
+**EXCEPT STAYS UNREADY, DELIBERATELY:** `select(2)`'s `exceptfds` reports OUT-OF-BAND data, not a write that
+is going to fail, and a regular file has no such condition.
+
+**MEASURED IN THE PROBE THAT FOUND IT - THE TWO CHECKS FLIPPED, AND BOTH NOW PASS:**
+
+    select-reports-a-regular-file-as-ready    ok   (it answered 0 before the fix)
+    input-stream-fires-has-bytes              ok   (0 events before the fix)
+    foundation_stream                         27/27 probe checks, 6/6 case checks
+
+**AND `NSInputStream`'s `fstat(2)` WORKAROUND IS REMOVED**, because the question it answered by hand - "would
+a read block" - is the question `poll(2)` now answers correctly. A workaround kept past its bug is a second
+bug in waiting.
+
+**REGRESSIONS: NONE, AND THE BREADTH IS THE POINT** - `select(2)` is on every shell, Xfb and harness path:
+fast tier **44/44 cases, 276/276 checks (exit 0)**, `kernel_pipe_dup2` **10/10** and `kernel_threaded_exec`
+**3/3** (mode 3, §45-S's blocking-`waitpid` A/B, still green).
+
+**AND ONE THING IS STILL OWED, NAMED RATHER THAN IMPLIED:** the two checks above are the fix's regression
+tests, and `select-reports-a-regular-file-as-ready` calls `select(2)` DIRECTLY - no Foundation is involved in
+the assertion - but it lives in a Foundation probe. This project's rule for a kernel fix is a reproducer with
+the library ABSENT, so that check wants a Foundation-free home (`kernel_pipe_dup2`'s file is pipe-shaped;
+a small `select`-on-a-file mode is the shape it wants).
+
+FILES THIS ROUND: `kernel/syscalls/select.c` (the rule), `userland/Foundation/NSInputStream.m` (the workaround
+removed), `userland/tests/foundation_stream.m` and `tests/cases/foundation_stream.py` (the two checks are now
+the fix's regression tests).

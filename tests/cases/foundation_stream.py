@@ -45,8 +45,8 @@ CHECKS = (
     "input-stream-from-file-reads",
     "input-stream-getbuffer-refuses-a-file",
     "input-stream-closes",
-    "select-does-not-report-a-regular-file",
-    "input-stream-over-a-file-answers-the-read-would-not-block",
+    "select-reports-a-regular-file-as-ready",
+    "input-stream-fires-has-bytes",
 )
 
 

@@ -317,10 +317,9 @@ int main(void)
 		NSRunLoop *loop = [NSRunLoop currentRunLoop];
 		uint8_t buf[4];
 
-		/* THE MEASUREMENT THAT SETTLES WHY: a file-backed stream is readable, but is it DELIVERED? That
-		 * depends on this kernel's select(2) reporting a REGULAR FILE as ready, which is a fact about the
-		 * substrate rather than about NSStream - so it is measured here, beside the check that depends on
-		 * it, instead of being assumed. */
+		/* AND THIS IS THE KERNEL FIX'S REGRESSION TEST: select(2) reports a REGULAR FILE ready, because an
+		 * I/O on one cannot block. It answered 0 until the kernel's do_check() learned the rule, which is
+		 * why a file-backed stream was readable and never DELIVERED - the run loop's wait IS select(2). */
 		{
 			int fd = open("/System/Shared/tests/foundation_stream", O_RDONLY);
 
@@ -334,13 +333,9 @@ int main(void)
 				tv.tv_sec = 0;
 				tv.tv_usec = 0;
 				ready = select(fd + 1, &set, NULL, NULL, &tv);
-				/* THE MEASURED LIMIT, PINNED RATHER THAN HIDDEN: this kernel does NOT report a
-				 * regular file as ready. Everything downstream of it follows from that. */
-				check("select-does-not-report-a-regular-file",
-				      ready == 0,
-				      [NSString stringWithFormat:@"select(2) on a regular file answered %d (0 = not ready)",
-					ready]);
-				(void)FD_ISSET(fd, &set);
+				check("select-reports-a-regular-file-as-ready",
+				      ready > 0 && FD_ISSET(fd, &set),
+				      [NSString stringWithFormat:@"select(2) on a regular file answered %d", ready]);
 				(void)close(fd);
 			}
 		}
@@ -349,14 +344,13 @@ int main(void)
 		[in open];
 		(void)[loop runMode:NSDefaultRunLoopMode
 			 beforeDate:[NSDate dateWithTimeIntervalSinceNow:1.0]];
-		/* AND THE CONSEQUENCE, STATED: because the run loop's wait IS select(2), a file-backed stream is
-		 * readable but never DELIVERED as an event in this tree. What the stream still answers correctly is
-		 * whether a read would block - which is -hasBytesAvailable's own contract, and the reason that
-		 * method asks fstat(2) about a regular file instead of poll(2). */
-		check("input-stream-over-a-file-answers-the-read-would-not-block",
-		      [in hasBytesAvailable] && [delegate events] == 0,
-		      [NSString stringWithFormat:@"hasBytes=%d events=%d", (int)[in hasBytesAvailable],
-			[delegate events]]);
+		/* AND THE CONSEQUENCE OF THE FIX, which is the whole point of the seam: with select(2) reporting a
+		 * regular file ready, a scheduled FILE-backed stream IS delivered - no read, no thread blocked. */
+		check("input-stream-fires-has-bytes",
+		      [delegate events] > 0 &&
+		      ([delegate last] & NSStreamEventHasBytesAvailable) != 0,
+		      [NSString stringWithFormat:@"%d event(s), last=%lu",
+			[delegate events], (unsigned long)[delegate last]]);
 		(void)[in read:buf maxLength:sizeof(buf)];
 		[in removeFromRunLoop:loop forMode:NSDefaultRunLoopMode];
 		[in close];
