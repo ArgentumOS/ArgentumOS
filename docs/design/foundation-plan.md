@@ -7339,6 +7339,30 @@ sweep for every process), and the slowness is recorded as an OPEN regression wit
 solved cost. The fault — defect B's visible failure — remains gone: `no-instruction-fetch-fault` PASSES with
 no Page Fault line in the log.
 
+**AND THE NEXT STEP IS TO MEASURE THE 312s, NOT TO GUESS IT AGAIN.** Four hypotheses about that cost have now
+been formed and refuted — by the retained-pages argument, the hand-over, the no-scan variant, and the
+narrow variant (which kept `invalidate_tlb()` and everything else and was still slow). Every one of those was
+a *reasoning* step, and every one died on contact with a variant. **The record now says plainly: stop
+reasoning about this and instrument it.**
+
+**THE MEASUREMENT TO RUN, WRITTEN OUT SO IT CANNOT BE REINVENTED:**
+
+  1. **Counters in the exit path**, printed at the end of a run (or per N calls): how many times
+     `release_binary` took the sweep branch, how many times it took the skip branch, and how many pages each
+     branch swept or left. If the run is 26x slower with the same number of exits, the difference is in
+     per-page work, not in the branch counts — and the counters will say which.
+  2. **A page-allocation counter around the reproducer's window**: `kstat.free_pages` (or the bitmap's high
+     water mark) before and after the 400 forks. If the skip leaks, free pages fall off a cliff; if it does
+     not, the leak story is dead for good and the cost is elsewhere.
+  3. **A timestamp or tick count** at the start and end of `release_binary` when it skips, summed. If the
+     skip path itself is expensive (rather than what it fails to do), this localises it immediately.
+
+**AND THE REASON THIS IS THE RIGHT NEXT MOVE RATHER THAN ANOTHER PATCH:** the fix's *correctness* half is
+done — the fault is gone, the guard is right, and the tree is better than it was. The remaining half is a
+performance regression in a rare path, and a regression is exactly the kind of thing that a measurement
+settles in one run and reasoning about settles never. **Three numbers, one boot, and the next session knows
+which half of the exit path to look at.**
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
