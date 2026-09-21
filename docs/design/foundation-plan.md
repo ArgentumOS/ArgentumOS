@@ -6740,6 +6740,41 @@ it. **`kernel_threaded_exec` stays red until the repair lands, and it is the reg
 is worth more than the Foundation probe that found it: a case that says "no page is ever granted while a
 process still maps it" is a statement this kernel can be held to.
 
+**AND THE FREE HAS EXACTLY THREE CALL SITES, ONE OF WHICH READS LIKE THE BUG ITSELF.** `rg` over the whole
+tree finds `release_page(` in only three places — `mm/page.c:379`, `mm/page.c:402` and `mm/alloc.c:66`
+(`kfree`) — and the first of them is
+
+    void invalidate_inode_pages(struct inode *i)
+    {
+        for(offset = 0; offset < i->i_size; offset += PAGE_SIZE) {
+            if((pg = search_page_hash(i, offset))) {
+                page_lock(pg);
+                release_page(pg);          /* every cached page of the inode */
+                page_unlock(pg);
+                remove_from_hash(pg);
+            }
+        }
+    }
+
+**That releases EVERY cached page of an inode with no check for live mappings** — and a shared library mapped
+by several processes is precisely a set of cached pages that are mapped. The second site is
+`update_page_cache`, whose `release_page` looks like the balanced counterpart of a reference `search_page_hash`
+takes (so it is probably NOT at fault), and the third is `kfree`. **The earlier caller addresses
+(`0xffff80000d99c160`, `…c79d`, `…bf29`) are three distinct sites within a few hundred bytes, which matches
+these three call sites one-for-one** — with symbols stripped, that is as far as the addresses can be resolved
+host-side, and it is enough to name the next measurement rather than guess it.
+
+**AND THE FIX IS NOT LANDED HERE, DELIBERATELY.** A page-lifecycle reference touches every mapping path in the
+kernel — `map_page_flags`, the cached-file path, the ELF loader, `clone_pages`/CoW for the take side, and every
+unmap/teardown path for the drop side — and the failure modes are asymmetric: a missing take gives back this
+corruption, a missing drop gives a leak. Landing that at the end of a session, without the full sweep (boot,
+Xfb, the test tier) that a change of this class needs, would be trading a measured bug for an unmeasured one.
+**What is owed is therefore: (1) tag the three call sites and confirm which one fires for the still-mapped
+frees; (2) take the reference on the paths that map an ALREADY-OWNED page (the cache's, or another process's)
+— never on the path that maps a page the process itself just allocated, or teardown's single release would
+leave it stranded; (3) drop it on the unmap side, in every path that removes a mapping; (4) then
+`kernel_threaded_exec` green is the acceptance test.**
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
