@@ -14,8 +14,10 @@
  */
 #include <CoreGraphics/CGColorSpace.h>
 #include <CoreGraphics/CGColorSpace_internal.h>
+#include <CoreGraphics/CGDataProvider_internal.h>
 
 #include <lcms2.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 struct CGColorSpace {
@@ -106,6 +108,93 @@ CGColorSpaceRef CGColorSpaceCreateLab(const CGFloat *whitePoint, const CGFloat *
 		free(space);
 		return NULL;
 	}
+	return space;
+}
+
+/* THE PROFILE'S OWN COLOUR SPACE, MAPPED TO THIS LIBRARY'S MODEL — and where there is no model
+ * the answer is a REFUSAL, not a guess. The engine's signatures are the ICC standard's
+ * four-byte codes (`cmsSigRgbData` and friends), which is why this is a switch over them
+ * rather than a comparison of names. */
+static int cg_model_from_profile(cmsHPROFILE p, CGColorSpaceModel *model, size_t *components)
+{
+	switch (cmsGetColorSpace(p)) {
+	case cmsSigGrayData:
+		*model = kCGColorSpaceModelMonochrome;
+		*components = 1;
+		return 1;
+	case cmsSigRgbData:
+		*model = kCGColorSpaceModelRGB;
+		*components = 3;
+		return 1;
+	case cmsSigCmykData:
+		*model = kCGColorSpaceModelCMYK;
+		*components = 4;
+		return 1;
+	case cmsSigLabData:
+		*model = kCGColorSpaceModelLab;
+		*components = 3;
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+CGColorSpaceRef CGColorSpaceCreateICCBased(size_t nComponents, const CGFloat *range,
+					   CGDataProviderRef profile, CGColorSpaceRef alternate)
+{
+	CGColorSpaceRef space;
+	CGColorSpaceModel model;
+	const void *bytes;
+	size_t size;
+	size_t components;
+	cmsHPROFILE p;
+
+	/* THE RANGE IS ACCEPTED AND HAS NO EFFECT, which is worth stating rather than hiding: it
+	 * describes the SAMPLE range of a profile's numbers, and this library's components are
+	 * already 0..1 doubles, so there is nothing here for it to change. */
+	(void)range;
+	if (profile == NULL) {
+		fprintf(stderr, "CG-REFUSE: CGColorSpaceCreateICCBased needs a profile\n");
+		return NULL;
+	}
+	if (alternate != NULL) {
+		fprintf(stderr, "CG-REFUSE: CGColorSpaceCreateICCBased has no use for an alternate "
+				"space yet, and dropping one would change what was asked for\n");
+		return NULL;
+	}
+	bytes = cg_dataprovider_bytes(profile, &size);
+	if (bytes == NULL || size == 0) {
+		fprintf(stderr, "CG-REFUSE: this data provider holds no profile bytes\n");
+		return NULL;
+	}
+	p = cmsOpenProfileFromMem(bytes, (cmsUInt32Number)size);
+	if (p == NULL) {
+		fprintf(stderr, "CG-REFUSE: these bytes are not an ICC profile the engine can read\n");
+		return NULL;
+	}
+	if (!cg_model_from_profile(p, &model, &components)) {
+		fprintf(stderr, "CG-REFUSE: this profile's color space has no model in this library "
+				"(RGB, grayscale, CMYK and Lab are the four)\n");
+		cmsCloseProfile(p);
+		return NULL;
+	}
+	if (nComponents != 0 && nComponents != components) {
+		fprintf(stderr, "CG-REFUSE: CGColorSpaceCreateICCBased was given %d components and "
+				"the profile has %lu\n", (int)nComponents, (unsigned long)components);
+		cmsCloseProfile(p);
+		return NULL;
+	}
+	space = calloc(1, sizeof(struct CGColorSpace));
+	if (space == NULL) {
+		cmsCloseProfile(p);
+		return NULL;
+	}
+	space->refcount = 1;
+	space->model = model;
+	space->components = components;
+	/* THE SPACE KEEPS THE PARSED PROFILE AND NOT THE CALLER'S BYTES, so the provider can be
+	 * released the moment this returns — which is what the probe checks. */
+	space->profile = p;
 	return space;
 }
 

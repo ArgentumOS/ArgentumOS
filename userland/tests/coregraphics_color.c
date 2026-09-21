@@ -14,6 +14,13 @@
 #include <CoreGraphics/CGBitmapContext.h>
 #include <CoreGraphics/CGContext.h>
 
+/* THE PROBE BUILDS ITS OWN ICC PROFILE WITH THE ENGINE, which is why it includes lcms2
+ * directly: a real ICC file is data with a licence of its own, and shipping one would make this
+ * probe about the fixture rather than about the library. THE LIBRARY UNDER TEST NEVER SEES THIS
+ * HEADER — it reaches lcms2 through its own translation unit, and the seam between them is a
+ * `void *` on purpose. */
+#include <lcms2.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,6 +30,18 @@
 
 static int failures;
 static unsigned char p[4];
+
+/* THE ADOPTING PROVIDER'S CALLBACK CONTRACT — the thing a CALLER has to get right: the provider
+ * calls this exactly once, when its last release happens, with the `info` it was given. The
+ * probe hands over the address of its own counter as that `info`, so the check can assert both
+ * that the callback RAN and that it ran WITH WHAT WAS HANDED IN. */
+static int released_calls;
+static int released_info_ok;
+static void probe_release(void *info, const void *data, size_t size)
+{
+	released_calls++;
+	released_info_ok = (info == (void *)&released_calls) && data != NULL && size == 8;
+}
 
 static void check(const char *name, int ok)
 {
@@ -407,6 +426,107 @@ int main(void)
 		CGColorRelease(cl);
 		CGColorSpaceRelease(lab);
 		CGColorSpaceRelease(rgbspace);
+	}
+
+	/* --- AN ICC PROFILE, THROUGH THE DOOR THAT HAS NO COREFOUNDATION IN IT ----- */
+	/* THE PROFILE IS BUILT HERE, BY THE ENGINE, AND THAT IS DELIBERATE. A real ICC file is
+	 * DATA with a licence of its own, and shipping one so that the library can be tested would
+	 * make the test about the fixture instead of about the library. What is being checked is
+	 * what this library does with profile BYTES: that it reads the colour space out of them,
+	 * gives a colour the model the profile declares, and converts THROUGH the profile. */
+	{
+		CGDataProviderRef provider;
+		CGColorSpaceRef space;
+		CGColorSpaceRef rgbspace2 = CGColorSpaceCreateDeviceRGB();
+		CGColorRef c1;
+		CGColorRef c2;
+		cmsHPROFILE srgb;
+		CGFloat v[4];
+		const char *path = "/tmp/cg-probe-srgb.icc";
+
+		/* THE ADOPTING FORM FIRST, because its contract is the one a CALLER has to keep: the
+		 * bytes stay valid until the provider is released, and then the caller's callback runs
+		 * with the same `info` that was handed in. A provider that kept the bytes but never
+		 * called back would free nothing, and one that called back twice would free twice. */
+		{
+			static const unsigned char payload[8] = { 1, 2, 3, 4, 5, 6, 7, 8 };
+			CGDataProviderRef adopted = CGDataProviderCreateWithData(
+				&released_calls, payload, sizeof(payload), probe_release);
+
+			check("CGDataProviderCreateWithData adopts the bytes", adopted != NULL);
+			CGDataProviderRelease(adopted);
+			check("...and its release callback runs ONCE, with the caller's info",
+			      released_calls == 1 && released_info_ok);
+			check("a provider with no data is refused",
+			      CGDataProviderCreateWithData(NULL, NULL, 4, NULL) == NULL);
+		}
+
+		srgb = cmsCreate_sRGBProfile();
+		check("the engine can build the probe a profile to read",
+		      srgb != NULL && cmsSaveProfileToFile(srgb, path) != 0);
+		if (srgb != NULL) {
+			cmsCloseProfile(srgb);
+		}
+
+		provider = CGDataProviderCreateWithFilename(path);
+		check("CGDataProviderCreateWithFilename reads it back", provider != NULL);
+		check("...and a missing file gives NULL rather than an empty provider",
+		      CGDataProviderCreateWithFilename("/tmp/cg-probe-nothing-here.icc") == NULL);
+
+		space = CGColorSpaceCreateICCBased(0, NULL, provider, NULL);
+		check("CGColorSpaceCreateICCBased gives a space", space != NULL);
+		check("...whose model is the PROFILE's (sRGB is RGB)",
+		      space != NULL && CGColorSpaceGetModel(space) == kCGColorSpaceModelRGB);
+		check_num("...with the profile's own component count",
+			  (double)CGColorSpaceGetNumberOfComponents(space), 3.0, 0);
+		check("a component count the profile contradicts is refused",
+		      CGColorSpaceCreateICCBased(4, NULL, provider, NULL) == NULL);
+		check("a non-NULL alternate space is refused rather than dropped",
+		      CGColorSpaceCreateICCBased(0, NULL, provider, rgbspace2) == NULL);
+		{
+			static const unsigned char garbage[64] = { 1, 2, 3, 4 };
+			CGDataProviderRef bad = CGDataProviderCreateWithData(NULL, garbage,
+									     sizeof(garbage), NULL);
+
+			check("bytes that are not a profile are refused",
+			      CGColorSpaceCreateICCBased(0, NULL, bad, NULL) == NULL);
+			CGDataProviderRelease(bad);
+		}
+
+		/* AND THE CONVERSION GOES THROUGH THE PROFILE: sRGB into DEVICE RGB, which this library
+		 * treats as sRGB, must land very close to the identity — CLOSE AND NOT EXACT, because
+		 * these are two different profiles describing the same space and the transform between
+		 * them is a matrix product. That is the same lesson the Lab check above already paid
+		 * for, and the bound is tighter here because the two spaces really are the same one. */
+		v[0] = 0.2;
+		v[1] = 0.5;
+		v[2] = 0.8;
+		v[3] = 1.0;
+		c1 = CGColorCreate(space, v);
+		check("a colour in the PROFILE's space can be created", c1 != NULL);
+		c2 = CGColorCreateCopyByMatchingToColorSpace(c1, kCGRenderingIntentRelativeColorimetric,
+							     rgbspace2, NULL);
+		check("...and it converts into device RGB", c2 != NULL);
+		if (c2 != NULL) {
+			const CGFloat *r = CGColorGetComponents(c2);
+
+			check_num("...near the identity, since both describe sRGB: r", (double)r[0], 0.2,
+				  0.01);
+			check_num("...g", (double)r[1], 0.5, 0.01);
+			check_num("...b", (double)r[2], 0.8, 0.01);
+			CGColorRelease(c2);
+		}
+		/* AND THE SPACE KEEPS THE PROFILE IT PARSED RATHER THAN THE PROVIDER'S BYTES, so
+		 * releasing the provider first must leave the space working. */
+		CGDataProviderRelease(provider);
+		c2 = CGColorCreateCopyByMatchingToColorSpace(c1, kCGRenderingIntentDefault, rgbspace2,
+							     NULL);
+		check("the space outlives the provider it was made from", c2 != NULL);
+		CGColorRelease(c2);
+		CGColorRelease(c1);
+		CGColorSpaceRelease(space);
+		CGColorSpaceRelease(rgbspace2);
+		remove(path);
 	}
 
 	printf("CG-COLOR: %s\n", failures == 0 ? "all checks passed" : "FAILURES");

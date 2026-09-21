@@ -36,12 +36,12 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  144   open  543   struck   48
+#   func       shipped  149   open  538   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped   10   open   46   struck    1
 #   case       shipped   70   open  360   struck   14
 #   var        shipped    6   open  120   struck    9
-#   typealias  shipped    5   open   93   struck    2
+#   typealias  shipped    6   open   92   struck    2
 #   struct     shipped    6   open   14   struck    0
 case	struck	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	struck	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
@@ -619,7 +619,7 @@ func	shipped	CGColorSpaceCreateDeviceGray	-	Opaque Types / Creating Color Spaces
 func	shipped	CGColorSpaceCreateDeviceRGB	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateExtended	-	Reference / Functions	-	objc
 func	open	CGColorSpaceCreateExtendedLinearized	-	Reference / Functions	-	objc
-func	open	CGColorSpaceCreateICCBased	-	Opaque Types / Creating Color Spaces	-	objc
+func	shipped	CGColorSpaceCreateICCBased	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateIndexed	-	Opaque Types / Creating Color Spaces	-	objc
 func	shipped	CGColorSpaceCreateLab	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateLinearized	-	Reference / Functions	-	objc
@@ -795,13 +795,13 @@ func	open	CGDataProviderCopyData	-	Opaque Types / Getting Data from a Data Provi
 func	open	CGDataProviderCreateDirect	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 func	open	CGDataProviderCreateSequential	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
 func	open	CGDataProviderCreateWithCFData	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
-func	open	CGDataProviderCreateWithData	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
-func	open	CGDataProviderCreateWithFilename	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
+func	shipped	CGDataProviderCreateWithData	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
+func	shipped	CGDataProviderCreateWithFilename	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 func	open	CGDataProviderCreateWithURL	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 func	open	CGDataProviderGetInfo	-	Reference / Functions	-	objc
 func	open	CGDataProviderGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
-func	open	CGDataProviderRelease	-	Opaque Types / Retaining and Releasing Data Providers	-	objc
-func	open	CGDataProviderRetain	-	Opaque Types / Retaining and Releasing Data Providers	-	objc
+func	shipped	CGDataProviderRelease	-	Opaque Types / Retaining and Releasing Data Providers	-	objc
+func	shipped	CGDataProviderRetain	-	Opaque Types / Retaining and Releasing Data Providers	-	objc
 func	open	CGDirectDisplayCopyCurrentMetalDevice	-	Reference / Functions	-	objc
 func	struck	CGDisplayAvailableModes	-	Services / Creating and Managing Display Modes	deprecated	objc
 func	struck	CGDisplayBestModeForParameters	-	Services / Creating and Managing Display Modes	deprecated	objc
@@ -1419,7 +1419,7 @@ typealias	open	CGDataConsumerReleaseInfoCallback	-	Opaque Types / Creating Data 
 typealias	open	CGDataProviderGetBytePointerCallback	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 typealias	open	CGDataProviderGetBytesAtPositionCallback	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 typealias	open	CGDataProviderGetBytesCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
-typealias	open	CGDataProviderRef	-	Opaque Types	-	objc
+typealias	shipped	CGDataProviderRef	-	Opaque Types	-	objc
 typealias	open	CGDataProviderReleaseBytePointerCallback	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 typealias	open	CGDataProviderReleaseDataCallback	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 typealias	open	CGDataProviderReleaseInfoCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc

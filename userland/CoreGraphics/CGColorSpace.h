@@ -32,6 +32,11 @@
 #define CORE_GRAPHICS_CGCOLORSPACE_H
 
 #include <CoreGraphics/CGBase.h>
+/* A DATA PROVIDER IS WHERE AN ICC PROFILE'S BYTES ARRIVE, and this header names the type, so it
+ * includes the header that declares it — the same include direction as CGContext.h taking
+ * CGColor.h: the higher-level object knows the lower one, never the reverse. That is what keeps
+ * CGDataProvider.h free of any knowledge of colour. */
+#include <CoreGraphics/CGDataProvider.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -78,6 +83,23 @@ CGColorSpaceRef CGColorSpaceCreateDeviceCMYK(void);
  * documented behaviour for a Lab space as well. */
 CGColorSpaceRef CGColorSpaceCreateLab(const CGFloat *whitePoint, const CGFloat *blackPoint,
 				      const CGFloat *range);
+
+/* A SPACE FROM AN ICC PROFILE'S OWN BYTES — and the profile arrives through a CGDataProvider,
+ * which is a CORE GRAPHICS type rather than a Core Foundation one. That is what makes this
+ * function reachable without resolving the Foundation question plan §6 leaves open, where
+ * `CGColorSpaceCreateICCBased`'s CF-typed cousins (`CreateWithName`, `CreateWithICCData`) wait.
+ *
+ * WHAT IS READ FROM THE PROFILE IS ITS COLOUR SPACE, and nothing else: the components are the
+ * profile's own, so the model reported here is the profile's model. A profile whose colour
+ * space has no CG model in this library is REFUSED rather than given a plausible one — the
+ * numbers would draw something, and something wrong.
+ *
+ * `nComponents` may be 0 (take the profile's own count) or the profile's count exactly. The
+ * `range` is accepted and has no effect, and a non-NULL `alternate` is REFUSED: both are
+ * documented, and the second is refused rather than ignored because a fallback space that is
+ * silently dropped changes what a caller thinks they asked for. */
+CGColorSpaceRef CGColorSpaceCreateICCBased(size_t nComponents, const CGFloat *range,
+					   CGDataProviderRef profile, CGColorSpaceRef alternate);
 
 CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space);
 void CGColorSpaceRelease(CGColorSpaceRef space);
