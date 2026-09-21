@@ -7202,6 +7202,31 @@ still needs every one of those mappings, including the library code it is execut
 much better-targeted change than either of the two attempts so far, and it is where the next session should
 start (confirm with the instrument that the sweep is the clearer, then land it).
 
+**AND THE THIRD ATTEMPT MOVED THE FAILURE — WHICH CONFIRMS THE PATH AND OVER-REACHED THE FIX.** The sweep's
+only caller is `release_binary()` (`mm/mmap.c:427`), and ITS only caller is the exit path:
+
+    kernel/syscalls/exit.c:80:  release_binary();
+
+so an exiting task with a SHARED address space sweeps its ranges out from under whoever else is using them —
+defect B's mechanism, confirmed at the call site. The fix (return early from `release_binary` when
+`pml4_has_other_user(current->cr3_64)`) was applied and RUN, and **the failure CHANGED**:
+
+    before:  Page Fault at 0x7f0000080849 (reading) with error code 0x14   <- absent library leaf
+    after:   Page Fault at 0x406000 (writing) with error code 0x07         <- write to a read-only page
+
+`0x406000` is inside the program's own image and `0x07` is *present + write + user* — a PROTECTION violation,
+not a missing mapping. **So `release_binary()` is on this path with no doubt left** — and the change was too
+BROAD: the early return also skipped `free_vma_region()`, the VMA bookkeeping, leaving a stale VMA state
+behind for whatever ran next, which is what produced the new fault. A partial fix that trades one failure for
+another is not a fix, so it was reverted by the same rule as the other two — but this one is different: it did
+not merely fail, it **moved the fault**, and that is the strongest evidence yet about where defect B lives.
+
+**AND IT LEAVES A NARROW, WELL-DEFINED JOB FOR THE NEXT SESSION:** keep the VMA bookkeeping (`free_vma_region`,
+and the `vma_table` bookkeeping the caller does) while skipping only the PAGE SWEEP when the address space has
+another user — or, better, transfer the mapping ownership to the surviving task so nothing is left dangling at
+all. Then `kernel_threaded_exec` green is the acceptance test, and it will be the first verification the
+bug (b) family has ever had.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
