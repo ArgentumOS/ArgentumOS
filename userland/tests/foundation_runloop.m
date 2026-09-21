@@ -19,11 +19,18 @@
  *                                    order recorded is the measurement;
  *   runloop-is-per-thread            a new thread's run loop is a different object from the main
  *                                    thread's, which is what makes +currentRunLoop per-thread at all.
+ *
+ * W6a ADDS THE SOURCES, which F13.18 shipped WITHOUT (the unit's own named gap): a source is a FILE
+ * DESCRIPTOR the loop watches, and the five checks below establish that it is a WAIT and not a poll —
+ * a byte waiting fires it, an empty pipe does not, the loop stays alive for it the way it does for a
+ * timer, it WAKES ON THE DESCRIPTOR rather than on the deadline, and a source whose target has been
+ * deallocated is SKIPPED rather than called.
  */
 
 #import <Foundation/Foundation.h>
 
 #include <stdio.h>
+#include <unistd.h>		/* pipe(2), write(2): the SOURCE's descriptor */
 
 /* THE TARGET: what each check's timers tell, and in what order. */
 @interface LoopProbe : NSObject
@@ -107,6 +114,78 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+
+/*
+ * THE SOURCE'S TARGET. The seam's contract is why this class's method takes NO ARGUMENTS: a source exists
+ * to say "ready now", and a caller that wants the descriptor already has it.
+ */
+@interface SourceProbe : NSObject
+{
+	NSUInteger _ready;
+	double _firstFiredAt;
+	int _fd;
+	BOOL _drain;
+}
+- (void)noteReady;
+- (NSUInteger)ready;
+- (double)firstFiredAt;
+- (void)readFrom:(int)fd drain:(BOOL)drain;
+- (void)writeLater:(NSArray *)pair;
+@end
+
+@implementation SourceProbe
+
+/* WHEN IT FIRST FIRED, which is the only way to show that the loop woke ON THE DESCRIPTOR: the return
+ * time of `-runUntilDate:` is its DEADLINE whether or not anything happened, so the moment of the fire is
+ * the measurement. */
+- (void)noteReady
+{
+	if (_ready == 0) {
+		_firstFiredAt = [[NSDate date] timeIntervalSince1970];
+	}
+	if (_drain) {
+		char byte;
+
+		(void)read(_fd, &byte, 1);	/* consume it: a level-triggered source that is not drained
+						 * fires again, correctly, and forever */
+	}
+	_ready++;
+}
+
+- (NSUInteger)ready
+{
+	return _ready;
+}
+
+- (double)firstFiredAt
+{
+	return _firstFiredAt;
+}
+
+- (void)readFrom:(int)fd drain:(BOOL)drain
+{
+	_fd = fd;
+	_drain = drain;
+}
+
+/* THE OTHER END OF A PIPE, WRITTEN FROM ITS OWN THREAD AFTER A DELAY. This is what makes
+ * `source-waits-for-readiness` a measurement of the WAIT rather than of a poll: the loop has nothing to
+ * do until the byte arrives, so when it returns early it is the descriptor that woke it. */
+- (void)writeLater:(NSArray *)pair
+{
+	char byte = 'x';
+	int fd = [(NSNumber *)[pair objectAtIndex:0] intValue];
+	NSDate *until = [NSDate dateWithTimeIntervalSinceNow:
+				[(NSNumber *)[pair objectAtIndex:1] doubleValue]];
+
+	while ([until timeIntervalSinceNow] > 0) {
+		;
+	}
+	(void)write(fd, &byte, 1);
+}
+
+@end
 
 int main(void)
 {
@@ -260,6 +339,157 @@ int main(void)
 		check("runmode-one-pass",
 		      [probe fires] == 1,
 		      [NSString stringWithFormat:@"fires=%lu", (unsigned long)[probe fires]]);
+	}
+
+	/* ---- THE SOURCES (W6a): a file descriptor the loop WATCHES ------------ */
+
+	/* WHAT THE FOUR CHECKS BELOW ESTABLISH TOGETHER is that a source is a WAIT and not a POLL: idle
+	 * means silence, ready means a fire, the loop stays alive for a source the way it does for a timer,
+	 * and a pass with an empty pipe returns at once rather than sleeping. */
+	{
+		int fds[2];
+		char byte = 'x';
+		SourceProbe *probe = [[SourceProbe alloc] init];
+		NSRunLoop *loop = [NSRunLoop currentRunLoop];
+
+		if (pipe(fds) != 0) {
+			check("source-fires-when-ready", 0, @"pipe(2) failed");
+		} else {
+			[loop addSourceForFileDescriptor:fds[0]
+						    mode:NSDefaultRunLoopMode
+						readable:YES
+						  target:probe
+						selector:@selector(noteReady)];
+			(void)write(fds[1], &byte, 1);
+			[loop runMode:NSDefaultRunLoopMode
+			   beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
+			check("source-fires-when-ready", [probe ready] == 1,
+			      [NSString stringWithFormat:@"ready=%lu with a byte waiting",
+				(unsigned long)[probe ready]]);
+			[loop removeSourceForTarget:probe];
+			close(fds[0]);
+			close(fds[1]);
+		}
+	}
+
+	{
+		int fds[2];
+		SourceProbe *probe = [[SourceProbe alloc] init];
+		NSRunLoop *loop = [NSRunLoop currentRunLoop];
+
+		if (pipe(fds) != 0) {
+			check("source-idle-does-not-fire", 0, @"pipe(2) failed");
+		} else {
+			[loop addSourceForFileDescriptor:fds[0]
+						    mode:NSDefaultRunLoopMode
+						readable:YES
+						  target:probe
+						selector:@selector(noteReady)];
+			/* NOTHING IS WRITTEN, so there is nothing to read and nothing to say. */
+			[loop runMode:NSDefaultRunLoopMode
+			   beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+			check("source-idle-does-not-fire", [probe ready] == 0,
+			      [NSString stringWithFormat:@"ready=%lu with an empty pipe",
+				(unsigned long)[probe ready]]);
+			[loop removeSourceForTarget:probe];
+			close(fds[0]);
+			close(fds[1]);
+		}
+	}
+
+	{
+		int fds[2];
+		SourceProbe *probe = [[SourceProbe alloc] init];
+		NSRunLoop *loop = [NSRunLoop currentRunLoop];
+		BOOL aliveWithSource, aliveAfterRemoval;
+
+		if (pipe(fds) != 0) {
+			check("source-keeps-loop-alive", 0, @"pipe(2) failed");
+		} else {
+			[loop addSourceForFileDescriptor:fds[0]
+						    mode:NSDefaultRunLoopMode
+						readable:YES
+						  target:probe
+						selector:@selector(noteReady)];
+			aliveWithSource = [loop runMode:NSDefaultRunLoopMode
+					     beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+			[loop removeSourceForTarget:probe];
+			aliveAfterRemoval = [loop runMode:NSDefaultRunLoopMode
+						beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+			/* A PAIR, because "nothing is live" is only meaningful against "something was": with the
+			 * source registered the pass has work and says so; with it gone there is nothing left. */
+			check("source-keeps-loop-alive", aliveWithSource && !aliveAfterRemoval,
+			      [NSString stringWithFormat:@"with-source=%d after-removal=%d",
+				(int)aliveWithSource, (int)aliveAfterRemoval]);
+			close(fds[0]);
+			close(fds[1]);
+		}
+	}
+
+	{
+		int fds[2];
+		SourceProbe *probe = [[SourceProbe alloc] init];
+		NSRunLoop *loop = [NSRunLoop currentRunLoop];
+		NSDate *start = [NSDate date];
+		double fired;
+
+		if (pipe(fds) != 0) {
+			check("source-waits-for-readiness", 0, @"pipe(2) failed");
+		} else {
+			[loop addSourceForFileDescriptor:fds[0]
+						    mode:NSDefaultRunLoopMode
+						readable:YES
+						  target:probe
+						  selector:@selector(noteReady)];
+			[probe readFrom:fds[0] drain:YES];
+			[probe writeLater:[NSArray arrayWithObjects:
+						[NSNumber numberWithInt:fds[1]],
+						[NSNumber numberWithDouble:0.06], nil]];
+			[loop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:2.0]];
+			/* IT WOKE ON THE DESCRIPTOR: the byte is written at 0.06s and the deadline is 2s, so the
+			 * FIRST FIRE has to fall between them — a fire before 0.06s could only be a poll that lied,
+			 * and the deadline itself is not a wake. */
+			fired = [probe firstFiredAt] - [start timeIntervalSince1970];
+			check("source-waits-for-readiness",
+			      [probe ready] == 1 && fired >= 0.04 && fired < 1.0,
+			      [NSString stringWithFormat:@"ready=%lu, first fire %.3fs after the loop started "
+				@"(byte at 0.06s, deadline 2s; ready-count 1 says it also DRAINED rather than "
+				@"re-firing)", (unsigned long)[probe ready], fired]);
+			[loop removeSourceForTarget:probe];
+			close(fds[0]);
+			close(fds[1]);
+		}
+	}
+
+	{
+		int fds[2];
+		char byte = 'x';
+		NSRunLoop *loop = [NSRunLoop currentRunLoop];
+
+		if (pipe(fds) != 0) {
+			check("source-dead-target-is-skipped", 0, @"pipe(2) failed");
+		} else {
+			{
+				SourceProbe *dying = [[SourceProbe alloc] init];
+
+				[loop addSourceForFileDescriptor:fds[0]
+							    mode:NSDefaultRunLoopMode
+							readable:YES
+							  target:dying
+							selector:@selector(noteReady)];
+			}
+			/* `dying` IS RELEASED HERE, and the seam holds it as a ZEROING WEAK reference (the runtime's
+			 * own functions — this library is MRC). The loop must neither call it nor count it as work:
+			 * a run loop outlives its sources' targets routinely, and a dangling call is the failure this
+			 * design exists to prevent. */
+			(void)write(fds[1], &byte, 1);
+			check("source-dead-target-is-skipped",
+			      ![loop runMode:NSDefaultRunLoopMode
+				    beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]],
+			      @"the loop counted a dead target's source as live work");
+			close(fds[0]);
+			close(fds[1]);
+		}
 	}
 
 	printf("FOUNDATION-RUNLOOP RESULT ok=%d fail=%d\n", okc, failc);

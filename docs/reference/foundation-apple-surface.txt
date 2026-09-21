@@ -35,7 +35,7 @@
 #   case       shipped  428   open  706   struck  168
 #   func       shipped   71   open   64   struck   54
 #   var        shipped   97   open  464   struck  353
-#   typealias  shipped   22   open   47   struck    7
+#   typealias  shipped   23   open   46   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -2312,7 +2312,7 @@ typealias	shipped	NSRangePointer		Fundamentals / Ranges / Related types	-	objc
 typealias	shipped	NSRect		Fundamentals / Geometry	-	objc
 typealias	shipped	NSRectArray		Fundamentals / Geometry / Related Types	-	objc
 typealias	shipped	NSRectPointer		Fundamentals / Geometry / Related Types	-	objc
-typealias	open	NSRunLoopMode	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes	-	objc
+typealias	shipped	NSRunLoopMode	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes	-	objc
 typealias	shipped	NSSize		Fundamentals / Geometry	-	objc
 typealias	shipped	NSSizeArray		Fundamentals / Geometry / Related Types	-	objc
 typealias	shipped	NSSizePointer		Fundamentals / Geometry / Related Types	-	objc

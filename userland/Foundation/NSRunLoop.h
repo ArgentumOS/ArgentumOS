@@ -39,6 +39,10 @@ NS_ASSUME_NONNULL_BEGIN
 extern NSString *const NSDefaultRunLoopMode;
 extern NSString *const NSRunLoopCommonModes;
 
+/* Apple's modern spelling for a mode, DECLARED because this class's own source door takes one (the older
+ * methods below say `NSString *` and mean the same type). */
+typedef NSString * NSRunLoopMode;
+
 /* FORWARD-DECLARED: the ivars only need the names, and the implementation imports NSArray.h. */
 @class NSMutableArray;
 
@@ -48,6 +52,7 @@ extern NSString *const NSRunLoopCommonModes;
 	NSMutableArray *_modes;		/* the mode each timer in _timers was added for */
 	NSString *_currentMode;
 	BOOL _running;
+	NSMutableArray *_sources;	/* FNRunLoopSource, created on first use */
 }
 
 + (NSRunLoop *)currentRunLoop;
@@ -62,6 +67,34 @@ extern NSString *const NSRunLoopCommonModes;
 - (BOOL)runMode:(NSString *)mode beforeDate:(nullable NSDate *)limit;
 - (void)runUntilDate:(nullable NSDate *)limit;
 - (void)run;
+
+/*
+ * THE SOURCE DOOR, AND IT IS OURS. A run loop wakes for two kinds of thing: a TIMER, which names a date,
+ * and a SOURCE, which names a FILE DESCRIPTOR and says "tell me when it is ready". This class shipped
+ * with timers only (§12.3's W6 named the gap), and the door is here rather than private because Apple's
+ * own source door is NSPort-shaped — `-addPort:forMode:` — while `NSPort`'s message half went with
+ * `NSPortMessage` and `NSPortDelegate`, both APPLE-DEPRECATED and struck by §11.5. A port scheduled here
+ * is therefore a descriptor with an object wrapped round it, and the seam is the smaller honest thing.
+ *
+ * THE CONTRACT, FOUR PARTS:
+ *   * `selector` must take NO ARGUMENTS. A source exists to say "ready now"; a caller that wants the
+ *     descriptor already has it.
+ *   * `target` is held WEAKLY. A run loop lives as long as its thread, so a retained target would be a
+ *     leak with no owner to fix it, and a target that has gone away is DROPPED, not called (the rule
+ *     NSNotificationCenter already follows).
+ *   * `readable` picks which readiness is watched: YES for "there is something to read", NO for "there is
+ *     room to write".
+ *   * A source OUTLIVES the pass that notices it: the consumer removes it, which is what makes a
+ *     one-shot read one.
+ */
+- (void)addSourceForFileDescriptor:(int)fd
+			      mode:(NSRunLoopMode)mode
+			  readable:(BOOL)readable
+			    target:(id)target
+			  selector:(SEL)selector;
+
+/* Every source this target registered, in every mode. */
+- (void)removeSourceForTarget:(id)target;
 
 @end
 

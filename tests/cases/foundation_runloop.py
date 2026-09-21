@@ -21,13 +21,24 @@ The probe is `/System/Shared/tests/foundation_runloop`, ONE unit, importing only
                                      fires it once;
   * `runloop-is-per-thread`         — `+currentRunLoop` answers one object per thread (checked on the
                                      main thread here) and `+mainRunLoop` is the first loop made;
-  * `runmode-one-pass`              — `-runMode:beforeDate:` fires what is due in ONE pass.
+  * `runmode-one-pass`              — `-runMode:beforeDate:` fires what is due in ONE pass;
+  * `source-fires-when-ready`       — W6a: a byte waiting on a watched descriptor fires the source;
+  * `source-idle-does-not-fire`     — and an EMPTY pipe says nothing, which is what makes the check
+                                     above a measurement rather than a tautology;
+  * `source-keeps-loop-alive`       — a live source is live WORK: the pass answers YES with it
+                                     registered and NO once it is removed (a PAIR, both required);
+  * `source-waits-for-readiness`    — a byte written at 0.06s wakes a loop whose deadline is 2s, and the
+                                     elapsed time is BETWEEN the two — it waited, and it did not spin;
+  * `source-dead-target-is-skipped` — a source whose target has been deallocated is skipped, not called
+                                     (the seam holds its target as a zeroing weak reference).
 
 EVERY RUN IN THE PROBE IS BOUNDED BY A DEADLINE: `-run` never returns while a repeating timer is
 live, so a probe that called it would hang rather than fail.
 
-NAMED ABSENT: run-loop sources (file descriptors, ports), observers, `-performSelector:` performers,
-and `NSRunLoopCommonModes` as a real mode SET rather than the single name it is treated as.
+NAMED ABSENT: observers, `-performSelector:` performers, and `NSRunLoopCommonModes` as a real mode
+SET rather than the single name it is treated as. RUN-LOOP SOURCES USED TO BE ON THIS LIST and came
+off it in W6a; what is still absent is PORT-based scheduling (`NSPort` schedules a descriptor, and
+its message half is Apple-deprecated and struck — §11.5).
 """
 
 import re
@@ -37,7 +48,9 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_runloop"
 CHECKS = ("timer-fires-once", "timer-repeats-until-invalidated", "timer-order-follows-dates",
           "timer-userinfo-and-interval", "timer-unscheduled-is-inert", "runloop-is-per-thread",
-          "runmode-one-pass")
+          "runmode-one-pass",
+          "source-fires-when-ready", "source-idle-does-not-fire", "source-keeps-loop-alive",
+          "source-waits-for-readiness", "source-dead-target-is-skipped")
 
 
 class Case(BaseCase):

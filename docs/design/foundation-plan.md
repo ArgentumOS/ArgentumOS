@@ -5922,3 +5922,86 @@ of them was in the thing that was supposed to be checking.
 FILES: `userland/Foundation/NSUserDefaults.{h,m}`, `Foundation.h` (one import), `userland/tests/foundation_defaults.m`,
 `tests/cases/foundation_defaults.py`, `mk/20-userland.mk` (one probe rule), and the ledger.
 
+## 42. W6a: THE RUN LOOP'S SOURCE SEAM — AND THE LIBRARY IS MRC, MEASURED THE HARD WAY (2026-09-20)
+
+**WHAT LANDED.** NSRunLoop gains the SOURCE half it shipped without: a file descriptor the loop WATCHES,
+which is the prerequisite §12.3 named for W6 ("this unit must ADD run-loop SOURCES, because the shipped run
+loop has timers and no sources"). `NSRunLoopMode` is declared, and the run-loop probe goes **7 checks → 12**
+with five source checks that all pass on the guest: `source-fires-when-ready`, `source-idle-does-not-fire`,
+`source-keeps-loop-alive`, `source-waits-for-readiness`, `source-dead-target-is-skipped`. The case's own
+docstring listed *"run-loop sources (file descriptors, ports)"* under **NAMED ABSENT**; the first half of
+that line came off the list here and the second half is now the next slice.
+
+**THE SEAM IS PUBLIC AND IT IS OURS (user's decision, 2026-09-20).** Apple's only public door for a source
+is `-addPort:forMode:` — NSPort-shaped — and NSPort's message half went with `NSPortMessage`,
+`NSPortDelegate`, `NSConnection`, `NSMachPort`, `NSMessagePort` and `NSSocketPortNameServer`, ALL of which
+Apple deprecated and §11.5 struck. So the shape Apple would have given this is unavailable, and rather than
+wrap a hollow port the loop exposes the descriptor directly:
+
+    - (void)addSourceForFileDescriptor:(int)fd mode:(NSRunLoopMode)mode readable:(BOOL)readable
+                                target:(id)target selector:(SEL)selector;
+    - (void)removeSourceForTarget:(id)target;
+
+Four parts of the contract are in the header: the selector takes NO ARGUMENTS; the target is a **ZEROING
+WEAK** reference (a run loop lives as long as its thread, so a retained target is a leak nobody can fix,
+and a target that has gone away is SKIPPED rather than called); `readable` picks which readiness is
+watched; and a source OUTLIVES the pass that notices it, which is what makes a one-shot read one. It is a
+named deviation, in the company of `-byteAtIndex:` and `NSOwnedString` — and `NSFileHandle` and `NSStream`
+are ordinary consumers of it rather than the reason it is public.
+
+**THREE FINDINGS CHANGED THE UNIT'S SHAPE BEFORE A LINE OF IT WAS WRITTEN, AND EACH IS A MEASUREMENT.**
+
+1. **`NSFileHandle`'s CLASSIC API IS APPLE-DEPRECATED** in the macOS 14 vintage, so §11.5 strikes it:
+   `readDataToEndOfFile`, `readDataOfLength:`, `writeData:`, `offsetInFile`, `seekToEndOfFile`,
+   `seekToFileOffset:`, `closeFile`, `synchronizeFile`, `truncateFileAtOffset:`,
+   `NSFileHandleNotificationMonitorModes`. The live surface is the **error-returning** forms
+   (`-readDataToEndOfFileAndReturnError:` and friends), the four standard handles, `nullDevice`, the four
+   notification names and the two handlers. The plan's W6 row says "NSFileHandle" and that is still true —
+   it is just a DIFFERENT, smaller class than the one the row was written against.
+2. **`NSPort`/`NSSocketPort` are the live source type** (the deprecated Mach/message ports around them are
+   struck), so the user's decision is to **pull both into W6 and decide them there**: `NSSocketPort` is a
+   real BSD socket with a native handle and the scheduling half of `NSPort`; the MESSAGE half
+   (`-sendBeforeDate:components:from:reserved:`, the delegate pair, `-addConnection:toRunLoop:forMode:`) is
+   excluded BY NAME, because every type it needs is struck. That is the next slice, and this paragraph is
+   the decision.
+3. **THE FOUNDATION LIBRARY IS MRC, AND THAT COST A COMPILE TO LEARN.** `__weak` does not compile in it
+   ("cannot create __weak reference in file using manual reference counting"), because ARC is a PER-FILE
+   choice that the wrapper never adds and no file in `userland/Foundation` takes — the three-entry
+   `FN_FOUNDATION_NOARC` list is redundant, which the mk already says. A non-owning reference is therefore
+   spelled with the runtime's own functions (`objc_storeWeak`/`objc_loadWeak`), exactly as
+   `NSNotificationCenter.m` does it, and the source's target uses that pair.
+
+**AND FINDING 3 EXPOSED A DEFECT IN W5's FILE THAT THIS SLICE FIXES (commit separate, before this one).**
+`NSUserDefaults.m` was written with ARC idioms against an MRC library: **`_argument` aliased an
+AUTORELEASED dictionary**, so the ivar dangled once the pool drained (a use-after-free, latent because the
+probe never drained a pool at that moment); `-objectForKey:` returned a `copy` without releasing it, so
+**every read leaked**; so did `-volatileDomainNames`; two `alloc`-init temporaries handed to collections
+leaked their own reference; and there was no `-dealloc` to give the ivars back. All five are fixed, the
+probe is green at 36/36 afterwards, and the LESSON is the one worth keeping: **"it compiled and passed" is
+not evidence about ownership in a library whose reference counting is manual** — W5's 36 checks could not
+see any of it, and only writing the next file with `__weak` brought it to light.
+
+**THE FIRST GUEST RUN FAILED ONE CHECK, AND IT WAS A REAL DEFECT — NOT THE PROBE'S, WHICH IS THE OPPOSITE
+OF W5's FOUR.** `source-waits-for-readiness` reported **ready=29862 after 2.064s**. The loop was waiting
+AND dispatching: `-runUntilDate:` selected on the descriptors and then called `-runMode:beforeDate:`, which
+selected again and dispatched, so a LEVEL-TRIGGERED source fired twice per iteration, forever, because
+nothing consumed the byte. **A WAIT IS NOT A DISPATCH** — the waiting doors now poll without telling anyone
+and the pass that follows does the telling, which is one fire per pass. The probe's measurement was wrong
+in a subtler way too: **elapsed-time-to-return cannot show that the loop woke on the DESCRIPTOR**, because
+`-runUntilDate:` correctly returns at its DEADLINE whether or not anything fired. So the target records
+WHEN IT FIRST FIRED, and the check asserts that moment falls between the writer's own delay (0.06s) and the
+deadline (2s) — a fire before 0.06s could only be a poll that lied.
+
+**ACCOUNTING.** One ledger row flips (`NSRunLoopMode`, declared): `shipped` **947 → 948**, `open`
+**1447 → 1446**, `foundation_runloop` 12/12 and `foundation_defaults` 36/36 on the guest.
+
+**WHAT REMAINS IN W6, IN THE ORDER THE DEPENDENCIES FORCE:** (1) **`NSPort` + `NSSocketPort`** — decided
+above, riding this seam; (2) **`NSFileHandle` + `NSPipe`** — the error-returning surface plus the seven
+constants, with the background reads as the seam's first real consumer; (3) **`NSTask`** (+
+`NSTaskTerminationReason`, `NSTaskDidTerminateNotification`) — fork/exec/pipe/waitpid; (4) **the `NSStream`
+family** — 44 rows, `NSInputStream`/`NSOutputStream`/`NSStreamDelegate`, whose `-scheduleInRunLoop:forMode:`
+is this seam again; (5) **`NSUserUnixTask`**, which §40 placed here and which rides `NSTask`.
+
+FILES: `userland/Foundation/NSRunLoop.{h,m}`, `userland/tests/foundation_runloop.m`,
+`tests/cases/foundation_runloop.py`, and the ledger.
+
