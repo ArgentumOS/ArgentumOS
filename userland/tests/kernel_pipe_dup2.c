@@ -122,11 +122,15 @@ int main(int argc, char **argv)
 		/* THE A/B: identical program, identical children, identical timing - the ONLY difference is
 		 * which thread calls waitpid. 'r' = a reaper thread; 'm' = the MAIN thread, here. */
 		for (t = 0; t < 500; t++) {		/* bounded: never a hang, always an answer */
-			int st2;
+			if (use_mainreap) {
+				int st2;
 
-			while (waitpid(-1, &st2, WNOHANG) > 0) {
-				reaped++;
+				while (waitpid(-1, &st2, WNOHANG) > 0) {
+					reaped++;
+				}
 			}
+			/* In 'r' mode the main thread READS the count and touches nothing else. If the reaper
+			 * thread's waitpid reaps, reaped climbs; if it does not, it stays 0. No third party. */
 			if (reaped >= n) break;
 			usleep(10000);
 		}

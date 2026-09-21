@@ -7511,6 +7511,28 @@ thread. **The next change is one line, and it is the one that makes the test a t
 from the main thread at all — read `reaped` and nothing else.** Then a zero count means the thread's `waitpid`
 does not reap, and a 50 means it does, with no third party in the loop.
 
+**AND WITH THE DRAIN REMOVED, THE A/B IS DEFINITIVE — DEFECT C IS PROVEN IN ONE VARIABLE.**
+
+    PIPEDBG REAP-STUCK reaped=0 of 50      <- 'r': the THREAD reaps (the main thread only reads the count)
+    PIPEDBG DONE=0 stuck=1
+    PIPEDBG DONE=50 stuck=0                <- 'm': the MAIN thread reaps - SAME program, SAME children
+
+**`waitpid` FROM A THREAD THAT DID NOT FORK REAPS NOTHING; THE IDENTICAL LOOP IN THE MAIN THREAD REAPS ALL 50.**
+That is defect C, isolated: one program, one variable, fifty children, no third party in the loop - and the
+case now asserts both arms, so it is a red/green A/B inside the suite rather than an argument.
+
+**AND IT IS THE SECOND TIME THIS SESSION THAT REMOVING A THIRD PARTY TURNED A PASS INTO A FAILURE** — the
+first was the corrected guard that stopped counting the caller itself. Two defects, both hidden by exactly
+the same mistake: **something else was doing the work, so the thing being tested looked healthy.** Worth
+remembering as a habit: when a test passes, ask who else could have made it pass.
+
+**WHAT IT MEANS FOR THE WORK THAT FOUND IT:** `NSTask`'s reaper IS that thread. Its `-terminationHandler`,
+its `NSTaskDidTerminateNotification`, and its `-terminationStatus` all rest on a thread calling `waitpid` -
+so the W6d probe could never have passed, with or without defect B fixed, and the `NSTask` design has to
+either reap elsewhere or the kernel has to honour a thread's `waitpid`. **That is now a decision with a
+measurement behind it rather than a mystery**, and `kernel_pipe_dup2` is the case that keeps it honest: the
+`reaping-thread-completes` check fails today, and `main-thread-reaps` passes beside it.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
