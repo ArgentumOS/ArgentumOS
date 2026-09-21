@@ -8574,3 +8574,51 @@ restore that.
 
 FILES THIS ROUND: `kernel/syscalls/wait4.c` — the `WUNTRACED` check in the stopped-child branch.
 
+
+---
+
+## §45-X — A PLIST `<date>` HAD SECOND GRANULARITY, SO A DATE COULD NOT ROUND-TRIP — AND THE FAST TIER IS NOW 43/43
+
+**THE LAST RED CASE, AND IT WAS ONE LINE OF TEXT.** `foundation_value/date-nscoding-round-trip` failed with
+`archive=440 back=1 equal=0`: the date `1234567890.5` unarchived to something non-nil and UNEQUAL. The
+instrumented probe printed both the archive and the values:
+
+    DATE-DBG out=1234567890.5 back=1234567890 backptr=1
+
+and the archive said why - the root date is inlined as a plist DATE node, and its text had no fraction:
+
+    <key>$top</key>
+    <dict>
+            <key>root</key>
+            <date>2009-02-13T23:31:30Z</date>      <!-- 1234567890: the .5 is gone -->
+    </dict>
+
+**THE CAUSE WAS THE PLIST DATE TEXT, NOT THE CODER.** `userland/plist.c`'s writer did
+`long long whole = (long long)floor(seconds)` and emitted `...T%02u:%02u:%02uZ`; the parser read
+`sscanf(..., "%lld-%u-%uT%u:%u:%u", ...)`. Whole seconds on the way out, whole seconds on the way in. Two
+false starts were eliminated by measurement first: NSNumber's `-objCType` DOES answer `"d"` for a
+`numberWithDouble:` (so NSPropertyListSerialization's real/`plist_new_real` branch is taken), and the
+formatter `plist_format_real` IS round-trip-exact. The archive's own text settled it.
+
+**THE FIX KEEPS A FRACTION THE VALUE ACTUALLY HAS:** the writer appends the FEWEST of 1..9 fractional digits
+that read back as the same value, and appends NOTHING for a whole second - so every date with no fraction
+keeps the exact bytes it has always had, and all shipped `.conf` dates are untouched. The parser reads the
+optional fraction with `%lf`, which accepts both `30.5Z` and `30Z`.
+
+**AND A BUG OF MINE ON THE WAY, WORTH THE LINE BECAUSE THE SYMPTOM WAS IDENTICAL:** the first version did
+`frac_text[0] = frac_text[1]` to drop the leading `0`, which turns `"0.5"` into `"..5"`, not `".5"` - so the
+archive grew 440 -> 443 bytes (the fraction WAS being written) and the check STILL failed, because `%lf` then
+read `30.` and stopped. The one-character shift has to MOVE the tail:
+`memmove(frac_text, frac_text + 1, strlen(frac_text))`.
+
+**AND AN OBSERVATION, NOT CHANGED:** because the archiver inlines an `NSDate` as a plist `<date>`, the check
+named `date-nscoding-round-trip` never actually reached `NSDate`'s `-encodeWithCoder:` - the archive has no
+`$objects` entry and no `NS.time` key. The round trip is correct now, but the archive's SHAPE is not Apple's
+and the coder is not what it purports to exercise. Recorded rather than reworked.
+
+**VERIFIED:**
+
+    foundation_value            6/6 checks - date-nscoding-round-trip ok
+    fast tier                   43/43 cases, 270/270 checks (was 42/43, 266/270; EXIT 0)
+
+FILES THIS ROUND: `userland/plist.c` — the date writer's fraction and the date parser's `%lf`.

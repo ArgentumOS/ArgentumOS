@@ -966,8 +966,10 @@ static plist_value_t *plist_parse_value(plist_parser_t *parser)
 	if (strcmp(tag, "date") == 0) {
 		char *text = plist_read_text(parser);
 		long long year = 0;
-		unsigned month = 0, day = 0, hour = 0, minute = 0, second = 0;
-		int fields = sscanf(text, "%lld-%u-%uT%u:%u:%u", &year, &month, &day,
+		unsigned month = 0, day = 0, hour = 0, minute = 0;
+		double second = 0.0;
+		/* %lf, so "30.5Z" and "30Z" BOTH parse - the fraction is optional in the text. */
+		int fields = sscanf(text, "%lld-%u-%uT%u:%u:%lf", &year, &month, &day,
 				    &hour, &minute, &second);
 		plist_value_t *value = NULL;
 
@@ -977,7 +979,7 @@ static plist_value_t *plist_parse_value(plist_parser_t *parser)
 			return NULL;
 		}
 		value = plist_new_date((double)plist_days_from_civil(year, month, day) * 86400.0
-				       + (double)(hour * 3600 + minute * 60 + second)
+				       + (double)(hour * 3600 + minute * 60) + second
 				       - PLIST_EPOCH_SHIFT);
 		if (value == NULL || plist_expect_close(parser, "date") != 0) {
 			plist_free(value);
@@ -1154,9 +1156,33 @@ static void plist_serialize_value(char **buffer, size_t *length, size_t *capacit
 			minute = (unsigned)((whole - days * 86400) % 3600 / 60);
 			second = (unsigned)((whole - days * 86400) % 60);
 			plist_civil_from_days(days, &year, &month, &day);
-			snprintf(text, sizeof(text),
-				 "<date>%04lld-%02u-%02uT%02u:%02u:%02uZ</date>\n",
-				 year, month, day, hour, minute, second);
+			/* THE FRACTION IS PART OF THE VALUE AND IS WRITTEN (§45-X). A date here is a double,
+			 * and rounding it to whole seconds on the way out made an NSDate that went through a
+			 * plist come back UNEQUAL: measured, 1234567890.5 was written as ...T23:31:30Z and read
+			 * back as 1234567890. Few of 1..9 fractional digits are written - the fewest that reads
+			 * back as the same value - and NONE are written for a whole second, so every date that
+			 * has no fraction keeps the exact bytes it has always had. */
+			{
+				double frac = seconds - (double)whole;
+				char frac_text[24];
+
+				frac_text[0] = '\0';
+				if (frac > 0.0) {
+					int digits;
+
+					for (digits = 1; digits <= 9; digits++) {
+						snprintf(frac_text, sizeof(frac_text), "%.*f", digits, frac);
+						if (strtod(frac_text, NULL) == frac) {
+							break;
+						}
+					}
+					/* drop the leading "0" and keep the dot: "0.5" -> ".5" */
+					memmove(frac_text, frac_text + 1, strlen(frac_text));
+				}
+				snprintf(text, sizeof(text),
+					 "<date>%04lld-%02u-%02uT%02u:%02u:%02u%sZ</date>\n",
+					 year, month, day, hour, minute, second, frac_text);
+			}
 			plist_buffer_append(buffer, length, capacity, text, strlen(text));
 		}
 		break;
