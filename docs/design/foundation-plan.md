@@ -7143,6 +7143,38 @@ live thread sharing it was freed anyway — so the guard's own answer needs prin
 iterated, what it saw). That is the next instrument, and it is where the fix belongs: the guard must count a
 THREAD using the pml4, not just the processes in `proc_table` when it happens to look.
 
+**AND THE SECOND FIX ATTEMPT ALSO FAILED TO MOVE THE TEST — BUT IT FOUND A REAL WRONG PATH WHILE DOING IT.**
+The guard `remove_zombie` uses is exactly:
+
+    unsigned long cr3 = p->cr3_64;
+
+    /* zero the field first, so the scan cannot see this process */
+    p->cr3_64 = 0;
+    if(cr3 && cr3 != paging64_pml4_phys() && !pml4_has_other_user(cr3)) { ...free_pml4_64(cr3); }
+
+and `free_page_tables()` — whose ONLY caller is the `fork` error path — has none of it: it frees
+`p->cr3_64` outright. **For a `CLONE_VM` clone, `child->cr3_64` IS the parent's pml4**, so a failed
+`clone_pages()` (the "not enough memory when cloning pages" branch, reachable exactly under the memory
+pressure this reproducer creates) frees the CREATOR's address space while its thread keeps running. That is
+a real defect on its own terms — it contradicts the tree's own stated invariant — so it was fixed (mirroring
+the guard exactly) and RUN: **the failure is byte-identical, so it is not the path this test depends on.**
+
+**AND THAT NEGATIVE POINTS AT THE GUARD ITSELF, WHICH IS THE NEXT THING TO CHECK.** The tree has the guard in
+one place and not the other, and the pml4 here was still freed with a live thread on it — so the candidate is
+that **`pml4_has_other_user()` cannot see a THREAD**: it scans `FOR_EACH_PROCESS` over `proc_table_head`, and
+a thread may not be in that list (or may not carry the cr3 at the moment it looks). **If the guard cannot see
+the very user it exists for, then both call sites are wrong, not one** — which fits: the fix that "landed"
+for bug (b) put the guard in, and the bug still happens.
+
+**NEXT, ONE INSTRUMENT, ON THE GUARD'S OWN VIEW:** print inside `pml4_has_other_user()` the cr3 it was asked
+about, how many processes it iterated, and every `cr3_64` it saw — at the moment a pml4 with a live thread is
+about to be freed. That settles whether the guard is blind (the thread is not in the list it walks) or the
+free came from somewhere else entirely.
+
+**AND THE SECOND FIX WAS REVERTED, BY THE RULE THIS INVESTIGATION ADOPTED:** a kernel change that does not
+move its acceptance test is not a fix. Both attempts are recorded with their reasoning so the next session
+starts from the measurements, not from the patches.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
