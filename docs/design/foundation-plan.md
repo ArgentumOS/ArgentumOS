@@ -8502,3 +8502,75 @@ what it then does with that wake is the question, along with whether `wait4` ret
 FILES THIS ROUND: `include/fnx/process.h`, `kernel/process.c`, `kernel/syscalls/fork.c`,
 `kernel/syscalls/exit.c` — the shared-descriptor-table fix, corrected.
 
+---
+
+## §45-W — `wait4` REPORTED A STOPPED CHILD TO A PLAIN `waitpid(pid, 0)`, AND THAT WAS THE LAST RED CHECK
+
+**WITH THE FD TABLE FIXED THE PROBE REACHED ITS END MARKER FOR THE FIRST TIME — 17 of 18 — AND THE ONE IT
+FAILED WAS ONE IT HAD NEVER BEEN ABLE TO REACH:**
+
+    FOUNDATION-TASK task-suspend-and-resume FAIL suspend=1 resume=0 status=0
+
+`-suspend` answered YES, `-resume` answered **NO**, and the status was 0. `-resume` returns NO only when
+`_launched` is NO or `_exited` is YES, and `_exited` is set by the reaper — so **the reaper's
+`waitpid(_pid, &status, 0)` had already returned, ~20ms into a child that was meant to be STOPPED, not
+finished.**
+
+**AND `sys_wait4` SAID SO ITSELF (instrumented, since reverted):**
+
+    XWAIT pid=28 arg=27 child=27 RETURN-STOPPED status=137f
+    FOUNDATION-TASK task-suspend-and-resume FAIL suspend=1 resume=0 status=0
+
+The reaper is pid 28; it called `waitpid(27, …, 0)` **with no options**, and the stopped-child branch
+answered:
+
+```c
+			if(flag) {
+				if(p->state == PROC_STOPPED) {
+					if(!p->exit_code) { p = p->next; continue; }
+					if(status) {
+						*status = (p->exit_code << 8) | 0x7F;   /* 0x137F - a SIGSTOP */
+					}
+					p->exit_code = 0;
+					return p->pid;                            /* <-- NO WUNTRACED CHECK */
+				}
+```
+
+**POSIX: a stopped child is reported ONLY to a caller that asked for it with `WUNTRACED` — and this tree
+already knows that, because the flag is defined with exactly that comment in `fnx/signal.h`: "report status of
+stopped children".** The flag existed; the check did not. Reporting a stop to a plain `waitpid(pid, 0)` tells
+the caller the child has FINISHED, which is precisely what the reaper concluded.
+
+**THE `status=0` IN THE PROBE IS A SECOND, HARMLESS FACE OF THE SAME THING:** `0x137F`'s low byte is `0x7F`,
+so `WIFEXITED` is false **and** `WIFSIGNALED` is false (BSD-style macros test for a low byte of exactly
+`0x7F`), and `-terminationStatus` falls through to `return 0`. So the value the reaper recorded was neither an
+exit nor a signal - a stop, described to nobody.
+
+**THE FIX IS FOUR LINES:** without `WUNTRACED`, keep scanning; if nothing else matches, keep waiting, because
+the child's real exit still wakes the call.
+
+```c
+				if(p->state == PROC_STOPPED) {
+					if(!(options & WUNTRACED)) {
+						p = p->next;
+						continue;
+					}
+					...
+```
+
+**AND THE WHOLE CASE IS GREEN:**
+
+    PASS foundation_task/every-check-passed: all 18 checks reported ok
+    PASS foundation_task/result-line: the probe's own tally: FOUNDATION-TASK RESULT ok=18 fail=0
+    TESTS-OK 1/1 case(s), 9/9 check(s) in 15s
+
+**`foundation_task` PASSES 9/9 AND 18/18** — from 0 checks reached when this session opened, through the
+probe's self-recursion, the `do_exit` wake, the descriptor-table sharing, to here.
+
+**WHY THIS IS A KERNEL FIX AND NOT A PROBE FIX:** a stopped child reported as exited is a POSIX violation
+that any program doing job control inherits. A shell's `wait` (which passes 0) would believe a stopped job had
+finished; `WUNTRACED`/`WCONTINUED` callers are the only ones entitled to hear about stops. The four lines
+restore that.
+
+FILES THIS ROUND: `kernel/syscalls/wait4.c` — the `WUNTRACED` check in the stopped-child branch.
+

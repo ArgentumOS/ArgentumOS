@@ -74,6 +74,18 @@ int sys_wait4(__pid_t pid, int *status, int options, struct rusage *ru)
 			}
 			if(flag) {
 				if(p->state == PROC_STOPPED) {
+					/* POSIX: a STOPPED child is reported ONLY to a caller that ASKED for it with
+					 * WUNTRACED - which is what that flag's own comment in fnx/signal.h says it is
+					 * for. Reporting a stopped child to a plain waitpid(pid, 0) tells the caller it
+					 * has FINISHED, and that is exactly what it did to NSTask's reaper: on SUSPEND
+					 * it marked the task exited, so -resume then refused and -terminationStatus
+					 * answered 0 (a 0x7F low byte is neither an exit nor a signal). Keep scanning -
+					 * and if nothing else matches, keep waiting, because the child's real exit still
+					 * wakes this call. */
+					if(!(options & WUNTRACED)) {
+						p = p->next;
+						continue;
+					}
 					if(!p->exit_code) {
 						p = p->next;
 						continue;
