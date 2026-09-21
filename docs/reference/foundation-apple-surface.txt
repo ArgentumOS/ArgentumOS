@@ -28,14 +28,14 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  117   open   79   struck   77
+#   class      shipped  119   open   77   struck   77
 #   protocol   shipped   13   open   18   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   78   open   65   struck   17
 #   case       shipped  428   open  706   struck  168
 #   func       shipped   71   open   64   struck   54
-#   var        shipped   97   open  464   struck  353
-#   typealias  shipped   23   open   46   struck    7
+#   var        shipped   98   open  463   struck  353
+#   typealias  shipped   24   open   45   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -1486,7 +1486,7 @@ class	shipped	NSPersonNameComponents		Fundamentals / Names	-	objc
 class	open	NSPipe		Low-Level Utilities / Tasks and Pipes	-	objc
 class	shipped	NSPointerArray		Fundamentals / Pointer Collections	-	objc
 class	shipped	NSPointerFunctions		Fundamentals / Pointer Collections / Getting the Pointer Functions	-	objc
-class	open	NSPort		Low-Level Utilities / Sockets	-	objc
+class	shipped	NSPort		Low-Level Utilities / Sockets	-	objc
 class	struck	NSPortCoder		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSPortMessage		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
@@ -1521,7 +1521,7 @@ class	shipped	NSSecureUnarchiveFromDataTransformer		Files and Data Persistence /
 class	shipped	NSSet		Fundamentals / Basic Collections	-	objc
 class	struck	NSSetCommand		App Support / Script Commands	declined	objc
 class	open	NSSimpleCString		Reference / Classes	-	objc
-class	open	NSSocketPort		Low-Level Utilities / Sockets	-	objc
+class	shipped	NSSocketPort		Low-Level Utilities / Sockets	-	objc
 class	struck	NSSocketPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSSortDescriptor		Fundamentals / Sorting	-	objc
 class	struck	NSSpecifierTest		App Support / Object Matching Tests	declined	objc
@@ -2316,7 +2316,7 @@ typealias	shipped	NSRunLoopMode	NSRunLoop	Low-Level Utilities / Run Loop Schedul
 typealias	shipped	NSSize		Fundamentals / Geometry	-	objc
 typealias	shipped	NSSizeArray		Fundamentals / Geometry / Related Types	-	objc
 typealias	shipped	NSSizePointer		Fundamentals / Geometry / Related Types	-	objc
-typealias	open	NSSocketNativeHandle	NSPort	Low-Level Utilities / Sockets / Data Types	-	objc
+typealias	shipped	NSSocketNativeHandle	NSPort	Low-Level Utilities / Sockets / Data Types	-	objc
 typealias	open	NSStreamNetworkServiceTypeValue	NSStream	Low-Level Utilities / Streams / Constants	-	objc
 typealias	open	NSStreamPropertyKey	NSStream	Low-Level Utilities / Streams / Constants	-	objc
 typealias	open	NSStreamSOCKSProxyConfiguration	NSStream	Low-Level Utilities / Streams / Constants	-	objc
@@ -2906,7 +2906,7 @@ var	open	NSParseErrorException	NSException	App Support / Exceptions / Related Ty
 var	open	NSParseErrorException	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 var	struck	NSPersianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	struck	NSPointerToStructHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSPortDidBecomeInvalidNotification	NSPort	Low-Level Utilities / Sockets / Working with notifications	-	objc
+var	shipped	NSPortDidBecomeInvalidNotification	NSPort	Low-Level Utilities / Sockets / Working with notifications	-	objc
 var	open	NSPortReceiveException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	open	NSPortSendException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	open	NSPortTimeoutException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc

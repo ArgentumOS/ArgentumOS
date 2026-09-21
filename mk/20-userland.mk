@@ -808,6 +808,15 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_defaults.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_defaults"
+	# foundation_port: W6b acceptance. ONE unit, only <Foundation/Foundation.h> plus the socket headers -
+	# a port IS a socket and the probe asks the KERNEL what it bound (getsockname/accept/fcntl), so this
+	# one needs <sys/socket.h> and friends where the other Foundation probes need <unistd.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_port.m -o .build/probe-foundation_port.o
+	$(MUSL64_OBJC) .build/probe-foundation_port.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_port"
 	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
 	# collection_view, tab_view, split_view, grid_view, kvc_basic,
 	# notification_basic, cell_basic, viewcontroller_basic, window_draw,

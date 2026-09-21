@@ -3520,7 +3520,7 @@ vanishing.
 | **Low-Level Utilities / Remote Objects** | all classes shipped | — |
 | **Low-Level Utilities / Run Loop Scheduling** | all classes shipped | — |
 | **Low-Level Utilities / Scripts and External Tasks** | 2 open; 3 STRUCK: `NSUserAppleScriptTask`, `NSUserAutomatorTask`, `NSUserScriptTask` | `NSTask`, `NSUserUnixTask` |
-| **Low-Level Utilities / Sockets** | 2 open; 1 STRUCK: `NSHost` | `NSPort`, `NSSocketPort` |
+| **Low-Level Utilities / Sockets** | 1 STRUCK: `NSHost` | — |
 | **Low-Level Utilities / Streams** | 4 open | `NSInputStream`, `NSOutputStream`, `NSStream`, `NSStreamDelegate` |
 | **Low-Level Utilities / Tasks and Pipes** | 1 open | `NSPipe` |
 | **Low-Level Utilities / Threads and Locking** | 2 open | `NSConditionLock`, `NSDistributedLock` |
@@ -6004,4 +6004,63 @@ is this seam again; (5) **`NSUserUnixTask`**, which §40 placed here and which r
 
 FILES: `userland/Foundation/NSRunLoop.{h,m}`, `userland/tests/foundation_runloop.m`,
 `tests/cases/foundation_runloop.py`, and the ledger.
+
+## 43. W6b: `NSPort` + `NSSocketPort`, AND TWO KERNEL FACTS THE FIRST RUN MEASURED (2026-09-20)
+
+**WHAT LANDED.** `NSPort`, `NSSocketPort`, `NSSocketNativeHandle` and `NSPortDidBecomeInvalidNotification`
+— **4 ledger rows to `shipped`** — with an 11-check probe and its case, all green:
+`foundation_port` **11/11**, `foundation-sweep --check` consistent.
+
+**THE CLASS IS MOSTLY STRUCK, AND WHAT IS LEFT IS THE PART THE RUN LOOP NEEDS.** Apple gives NSPort a
+message type, a delegate protocol, three concrete subclasses and a connection class, and every one of them
+was deprecated and removed by §11.5 — so `-sendBeforeDate:components:from:reserved:` has no component type,
+`-setDelegate:` no protocol, `-addConnection:toRunLoop:forMode:` no connection. Those names are **excluded
+by name** in the probe's inventory and NOT declared, which is this tree's rule. What survives is a
+descriptor with an object around it — **a thing you schedule in a run loop** — and `NSSocketPort` is the
+only live concrete subclass, so `+port` answers one (Apple's answers an NSMachPort; a consequence of the
+strike, stated rather than hidden). **The delegate's stand-in is `-portDidBecomeReadable`, which is OURS**,
+and the base implementation does nothing: a port nobody listens to stays a well-formed source instead of
+one that has to be removed to be quiet.
+
+**FOUR DECISIONS THE CLASS STATES OUT LOUD**, each pinned by a check: a descriptor the port **created** is
+closed by `-invalidate` and one the **caller** made is not (NSFileHandle's rule, on a socket);
+`-invalidate` **unregisters from the run loop BEFORE closing**, because the loop may be inside `select(2)`
+on that descriptor; `-dealloc` **does not notify**, because a notification whose object is a deallocating
+pointer is a use-after-free waiting for the one observer that retains it; and a port remembers **one
+(run loop, mode) pair**, so a second `-scheduleInRunLoop:` replaces the first (documented as a limitation,
+not Apple's contract).
+
+**AND THE FIRST RUN FAILED 10 OF 11 CHECKS, WHICH IS THE MOST USEFUL PART — four distinct causes, and only
+one was the probe's.**
+
+| cause | the measurement | what changed |
+|---|---|---|
+| **`fnCloseSocket` cleared `_socket` even for a descriptor it does NOT own** — a real bug the probe caught | `socketport-wraps-a-descriptor` FAILed while every printed part looked true: after `-invalidate` the port answered `-1` for a descriptor the CALLER still held open | `_socket` is forgotten exactly when a descriptor is closed |
+| **THIS KERNEL CANNOT LISTEN ON AN EPHEMERAL BIND** | `FOUNDATION-PORT-DIAG socket=3 bind-port-0=0 errno=0 listen=-1` — `bind(2)` to port 0 SUCCEEDS and leaves the port unresolved, and the `listen(2)` that follows FAILS | `-init` chooses its own port: the IANA ephemeral range, entered at a pid-dependent place, walked upward for ≤256 tries. A RULE, not a table — a table of ports collides by definition |
+| **`getpeername(2)` ANSWERS THE LOCAL ADDRESS** | the client's `-address` reported port **49153** — its OWN ephemeral port — while its peer was 45678 | `-address` for a remote port stores the address the initializer **connected to**; and a stale post-loop assignment (which had been overwriting the fix) is gone |
+| **`select(2)` DOES NOT REPORT A LISTENING DESCRIPTOR AS READABLE** | `listen-descriptor-is-readable FAIL ephemeral=49161 client=1 select-says-readable=0` — with `accept(2)` returning the connection in the very same run | the probe's three scheduling checks moved to a **connected socketpair**, where readiness is a fact about data rather than about the kernel's accept path |
+
+**AND ONE PROBE BUG OF MY OWN, RECORDED BECAUSE IT IS THE PLAN'S OWN DEVIATION.** Two of those checks
+sampled readiness with `-runMode:beforeDate:` — which is **one pass** — where the door that WAITS is
+`-runUntilDate:`; `runmode-one-pass` pins exactly that and I wrote the check without applying it. The
+socketpair rewrite made both unnecessary, so nothing was "fixed" there, but the mistake is named.
+
+**THE METHOD NOTE, AND IT IS THE PLAN'S OWN LESSON PAYING OFF.** Three checks were failing together with
+no way to tell why. Splitting one of them into two NAMED steps — `listen-descriptor-is-readable` and
+`port-schedule-fires-on-readiness` — turned "the port is not being told" into "the KERNEL says this
+descriptor is never readable", in one run, with the numbers printed. That split is then not kept,
+because it asserts a kernel behaviour this library does not control; the fact lives here and in the
+class's header instead.
+
+**ACCOUNTING.** 4 rows: `shipped` **948 → 952**, `open` **1446 → 1442**, so 952 of the 2,394 non-struck
+rows reads **39.8%**.
+
+**WHAT REMAINS IN W6, IN ORDER.** (1) ~~NSPort + NSSocketPort~~ DONE here; (2) **`NSFileHandle` +
+`NSPipe`** — the error-returning surface plus the seven constants, whose background reads are the seam's
+first real consumer; (3) **`NSTask`** (+ `NSTaskTerminationReason`, `NSTaskDidTerminateNotification`);
+(4) **the `NSStream` family** — 44 rows, whose `-scheduleInRunLoop:forMode:` is `NSPort`'s door one class
+over; (5) **`NSUserUnixTask`**.
+
+FILES: `userland/Foundation/NSPort.{h,m}`, `NSSocketPort.{h,m}`, `Foundation.h` (two imports),
+`userland/tests/foundation_port.m`, `tests/cases/foundation_port.py`, `mk/20-userland.mk`, and the ledger.
 

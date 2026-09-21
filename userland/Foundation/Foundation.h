@@ -151,5 +151,7 @@
 #import <Foundation/NSOperationQueue.h>
 #import <Foundation/NSProgress.h>
 #import <Foundation/NSUserDefaults.h>
+#import <Foundation/NSPort.h>
+#import <Foundation/NSSocketPort.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */
