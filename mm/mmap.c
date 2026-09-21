@@ -437,8 +437,22 @@ void release_binary(void)
 	 * corruption. */
 	if(current->cr3_64) {
 		extern int pml4_has_other_user(unsigned long);
+		unsigned long cr3 = current->cr3_64;
 
-		shared = pml4_has_other_user(current->cr3_64);
+		/* Zero the field while asking, exactly as remove_zombie() does - otherwise the scan
+		 * counts THIS process and every process looks shared, which leaks every page it owns
+		 * (measured: the sweep ran for nobody, and the case took 312s instead of 12s). */
+		current->cr3_64 = 0;
+		shared = pml4_has_other_user(cr3);
+		current->cr3_64 = cr3;
+
+		if(shared) {
+			/* THE HANDOVER: a surviving task still uses this address space, so leave the
+			 * mappings AND the VMA bookkeeping for it. The survivor's own exit then sweeps
+			 * whatever nobody else uses, so nothing leaks permanently - and nothing is
+			 * unmapped under a live user. */
+			return;
+		}
 	}
 
 	vma = current->vma_table;

@@ -7313,6 +7313,32 @@ exiting task must leave both the mappings and the VMA bookkeeping for the surviv
 exit sweeps what nobody else uses, and the leak the guard currently causes closes itself. That is a smaller
 and better-understood change than any of the five attempts so far, and it is where the next session starts.
 
+**AND THE HANDOVER, ON TOP OF A CORRECTED GUARD, CHANGES NOTHING — WHICH REFUTES MY OWN LEAK THEORY.** Two
+things came out of this round, and the second one matters more than the fix.
+
+**FIRST: MY COMMITTED GUARD WAS COUNTING THE CALLER ITSELF.** Applying the hand-over broke the SHELL (`sh`,
+pid 8 and 9, both single-threaded) with `Page Fault at 0x421000 (writing)` — error `0x07`, a protection
+violation — alongside the probe. A single-threaded process cannot be "shared", so `pml4_has_other_user()` was
+returning true for ordinary processes: **it counts the process asking.** `remove_zombie` knows this — its
+comment says "zero the field first, so the scan cannot see this process" — and my call site did not. So the
+committed guard was skipping the sweep for EVERY process: no corruption (nothing was ever swept), and a leak
+of every page every process owned. **That is the 312s, and it also explains the sh faults.** The guard now
+zeroes the field while asking, exactly as `remove_zombie` does.
+
+**SECOND: WITH THE GUARD CORRECT, THE HANDOVER STILL MAKES NO DIFFERENCE — the case is 312s either way, and
+the fault check still passes.** So the cost is NOT the pages the sweep would have reclaimed (the handover
+leaves them *and* their bookkeeping for the survivor, and nothing improves), and it is NOT the guard's scan
+either (the very first variant skipped with no scan at all and was equally slow). **Both of the explanations I
+gave for the 312s are now refuted by measurement, and what is left is the shape of the SKIP itself** — some
+consequence of not sweeping a shared address space that is neither the retained pages nor the scan, and which
+no variant so far has isolated. That is the next question, and it is a good one because it is now
+well-constrained: two candidate causes eliminated, one behaviour measured, several variants to compare.
+
+**THE CORRECTED GUARD AND THE HANDOVER ARE KEPT** (strictly better than the committed state, which skipped the
+sweep for every process), and the slowness is recorded as an OPEN regression with its eliminations, not as a
+solved cost. The fault — defect B's visible failure — remains gone: `no-instruction-fetch-fault` PASSES with
+no Page Fault line in the log.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
