@@ -110,6 +110,10 @@ static int fn_child(int argc, char *argv[])
 		_exit(0);
 	}
 	if (strcmp(mode, "--child-foundation") == 0) {
+		/* THE COMPARISON: main calls +[NSFileManager defaultManager] BEFORE its first string
+		 * constructor (trace 1a) and the next call dies at a wild address; this mode did the string
+		 * first and passed. So mirror main's ORDER here - the only difference left. */
+		[NSFileManager defaultManager];
 		NSString *text = [NSString stringWithUTF8String:"foundation in a child"];
 		NSMutableArray *list = [[NSMutableArray alloc] init];
 

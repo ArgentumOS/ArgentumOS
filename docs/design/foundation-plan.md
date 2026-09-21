@@ -7581,6 +7581,29 @@ this probe — now runs 400 forks and completes, while `foundation_task` dies at
 are different programs, so the difference is now findable directly rather than by instrumenting the kernel
 again: what `foundation_task` does before trace 1b that `kernel_threaded_exec` never does.
 
+**AND THE COMPARISON RULED OUT THE ORDER — WHICH LEAVES AN INVARIANT WORTH MORE THAN EITHER HYPOTHESIS.** The
+probe's child mode was changed to mirror `main` exactly: `+[NSFileManager defaultManager]` FIRST, then the
+string constructor. In a child process of the same binary that sequence still passes:
+
+    FOUNDATION-TASK child-foundation ok=1
+    CHILD-FOUNDATION-STATUS=0
+
+So it is not the calls and not their order. But the two fault addresses, read together, are:
+
+    earlier run:  Page Fault at 0x7ffff57f2ff8 (writing)
+    this run:     Page Fault at 0x7ffff5857ff8 (writing)
+
+**DIFFERENT ADDRESSES, THE SAME RELATIONSHIP: eight bytes below a STACK VMA's low edge, every time** — the
+stack vma is randomised, so the address moves and the invariant does not. **That is not a wild pointer; that
+is a PUSH, by a task whose `rsp` is at the BOTTOM of its 2GB stack window** — and the `rsp` the traces print
+(`0x7ffffffffe18`) is near the TOP. **Two tasks, then: the one that prints is fine, and another one is pushing
+at the bottom of its stack.** The probe creates threads; a thread's stack is mmap'd by musl *far below* the
+top, so a thread whose stack was set up at the bottom of that mapping would do exactly this.
+
+**AND THAT IS THE NEXT MEASUREMENT, AND IT IS SMALL:** at the fault, print the faulting TASK's identity and
+stack — the tid, `rsp`, and the vma that covers the fault address — so the task doing the pushing is named
+instead of assumed. Everything needed for it has been written in this section already, twice.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
