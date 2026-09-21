@@ -7175,6 +7175,33 @@ free came from somewhere else entirely.
 move its acceptance test is not a fix. Both attempts are recorded with their reasoning so the next session
 starts from the measurements, not from the patches.
 
+**AND THE GUARD'S OWN VIEW EXONERATES THE GUARD AND NAMES THE REAL MECHANISM.** Printing what
+`pml4_has_other_user()` iterates and sees, at the moment a pml4 is about to be freed:
+
+    GUARDVIEW asked=0x61b000 saw pid=1 cr3=0x2b3000
+    GUARDVIEW asked=0x61b000 saw pid=4 cr3=0x5f5000 ... pid=7 cr3=0x2b8000
+    GUARDVIEW asked=0x61b000 saw pid=9 cr3=0x0
+    GUARDVIEW asked=0x61b000 iterated=13 matches=1
+
+  * **`matches=1`** — exactly one task carries `0x61b000`, and that is the THREAD (pid 10). **The guard is
+    NOT blind: it sees the thread**, so `remove_zombie` would not free that pml4. The zombie path is cleared;
+  * **`pid=9 cr3=0x0`** — the CREATOR's field is already zero: its address space was *released*, not freed;
+  * and yet the leaf for the library address is ABSENT in the pml4 the thread is using, **a pml4 pid 9 had
+    mapped that page into.**
+
+**SO THE pml4 WAS NEVER FREED — ITS CONTENTS WERE SWEPT.** The creator's VMA teardown (`free_vma_pages`,
+walking the exiting process's ranges and calling `unmap_user_page64_in`) cleared leaves in an address space
+**shared with a surviving thread** — because the guard the tree has protects the pml4's *allocation*, and
+nothing protects its *contents*. The thread's mappings vanish, its next instruction fetch finds the leaf
+gone, and the fault looks like an unmapped library page. **Defect B is the same class as everything else this
+investigation has found: a shared address space, torn down for one user while another still uses it.**
+
+**AND THE FIX IS THEREFORE IN THE TEARDOWN, NOT IN THE GUARD:** when the exiting task's address space is
+SHARED (`pml4_has_other_user()` says so), the exit path must not sweep its VMA ranges — the surviving thread
+still needs every one of those mappings, including the library code it is executing. That is a smaller and
+much better-targeted change than either of the two attempts so far, and it is where the next session should
+start (confirm with the instrument that the sweep is the clearer, then land it).
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
