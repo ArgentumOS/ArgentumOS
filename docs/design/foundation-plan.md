@@ -8354,5 +8354,45 @@ implementation*; the implementation is what departs from POSIX.
 `task-feeds-standard-input` both exercise threads-plus-fds. Whatever fixes this must leave mode 3's
 `BLOCKING-WAIT-DONE` green (§45-S) and must make the probe's stdin pipe reach EOF.
 
+### §45-V.1 — THE FIX DESIGN, AND WHY IT IS NOT A ONE-LINER
+
+**THE CORRECT FIX IS TO SHARE THE DESCRIPTOR TABLE, NOT TO ADJUST THE COUNT.** POSIX draws the line at the
+PROCESS: threads share the file descriptor table, so a descriptor closed in any thread is closed for the
+process. The count is consistent with what this implementation does; the implementation is what departs.
+
+**IT IS SMALLER THAN IT SOUNDS, BECAUSE `p->fd[n]` COMPILES THE SAME FOR A POINTER AS FOR AN ARRAY.** Of the
+96 `current->fd[` sites in the tree, **none has to change**: the work is in the representation and in four
+lifetime sites.
+
+  1. `include/fnx/process.h` — `unsigned short int fd[OPEN_MAX]` / `unsigned char fd_flags[OPEN_MAX]` become
+     pointers (`OPEN_MAX` is 256, so 768 bytes per task today, inline);
+  2. `kernel/process.c` `proc_init()` — the pool is `memset_b(proc_table, 0, proc_table_size)` and slots are
+     carved from a free list, so a slot's arrays must be allocated when it is first taken;
+  3. `kernel/init.c` — **INIT and IDLE do NOT come from the free list** (`init = &proc_table[INIT]`,
+     `init->ppid = &proc_table[IDLE]`), so they need their arrays allocated by hand. **This is the
+     boot-critical part: a failure here is not a failed test, it is no boot at all.**
+  4. `kernel/syscalls/fork.c` `do_fork_like()` — `memcpy_b(child, current, sizeof(struct proc))` already
+     copies the POINTERS, so **a CLONE_VM task shares the parent's table for free, and the fd-count loop must
+     simply be skipped for it.** A non-thread fork (COW, including the vfork-style `posix_spawn` path) must
+     allocate its own arrays, copy them, and keep the existing per-fd count bump;
+  5. `kernel/syscalls/exit.c` — the `for(n…) sys_close(n)` loop and the free must run for the process, not
+     for a thread, and the arrays may be freed **only for the LAST user** — the tree's own established rule
+     (bug (b): "free only for the last user"), here as a scan of the proc table for a task sharing the same
+     `fd` pointer.
+
+**AND THERE IS A SMALLER ALTERNATIVE THAT SHOULD BE REJECTED, WHICH IS WHY IT IS WRITTEN DOWN.** Keep the
+per-task copy but give a CLONE_VM task NO references (skip the bump, skip the close loop on exit). That does
+close the measured deadlock with a tiny diff — and it introduces a worse bug than the hang: a thread's copy
+is then a SNAPSHOT, so once the leader closes fd N and the next `open` reuses slot N, **the thread's fd N
+still names the old `fd_table` index, which may have been released and handed to another process — a silent
+wrong-file operation.** Worse, a `close` issued IN a thread would decrement a count that task never
+incremented, releasing a live object out from under the leader. The current phantom references are what mask
+that staleness today; removing them without sharing the table trades a hang for corruption.
+
+**UNVERIFIED AS OF THIS RECORD, AND DELIBERATELY NOT STARTED:** the change is 5 sites, 3 of them
+boot-critical, and it needs its own A/B (`kernel_threaded_exec` mode 3 green, the probe's stdin pipe
+reaching EOF, and a plain boot). Recorded rather than rushed into the end of a long session, which is the
+mistake this project has already paid for more than once.
+
 FILES THIS ROUND: none — the `get_new_fd`/`release_fd`/`fork` printks were an instrument and are reverted.
 
