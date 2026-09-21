@@ -55,3 +55,22 @@ class Case(BaseCase):
                    "child execs, with a live thread: " + out.strip()[-300:])
         self.check("exec-child-no-stuck", "CHILD-STUCK" not in out,
                    "child execs, with a live thread: a child never exited: " + out.strip()[-300:])
+
+        # THE LAST UNTESTED DIFFERENCE: a THREAD reaps while the main thread forks (the real shape).
+        mark = len(session.log_text())
+        session.run("%s 50 er; echo PIPEDBG-R-STATUS=$?" % PROBE)
+        session.wait_for(r"PIPEDBG DONE=|CHILD-STUCK|REAP-STUCK", 300)
+        out = session.output_since(mark)
+        self.check("reaping-thread-completes", "PIPEDBG DONE=50 stuck=0" in out,
+                   "thread reaps + child execs: " + out.strip()[-300:])
+        self.check("reaping-thread-no-stuck",
+                   "REAP-STUCK" not in out and "CHILD-STUCK" not in out,
+                   "thread reaps + child execs: " + out.strip()[-300:])
+
+        # THE A/B: identical program and children; the MAIN thread reaps instead of the reaper thread.
+        mark = len(session.log_text())
+        session.run("%s 50 em; echo PIPEDBG-M-STATUS=$?" % PROBE)
+        session.wait_for(r"PIPEDBG DONE=|MAINREAP-STUCK|CHILD-STUCK", 300)
+        out = session.output_since(mark)
+        self.check("main-thread-reaps", "PIPEDBG DONE=50 stuck=0" in out,
+                   "the MAIN thread reaps: " + out.strip()[-300:])

@@ -56,6 +56,7 @@ int main(int argc, char **argv)
 
 	pthread_t thr;
 	int use_reap = (argc > 2 && strchr(argv[2], 'r') != NULL);
+	int use_mainreap = (argc > 2 && strchr(argv[2], 'm') != NULL);
 	int use_thread = (argc > 2 && strchr(argv[2], 't') != NULL);
 
 	printf("PIPEDBG start n=%d thread=%d\n", n, use_thread);
@@ -97,7 +98,7 @@ int main(int argc, char **argv)
 		if (i < 3) { printf("PIPEDBG parent i=%d wrote\n", i); fflush(stdout); }
 		close(fds[1]);
 
-		if (use_reap) {
+		if (use_reap || use_mainreap) {
 			/* the THREAD reaps; the parent does not wait at all - exactly the real reproducer's
 			 * shape. done is counted at the end from what the reaper saw. */
 			continue;
@@ -117,14 +118,22 @@ int main(int argc, char **argv)
 		if ((i + 1) % 10 == 0) { printf("PIPEDBG progress i=%d\n", i + 1); fflush(stdout); }
 	}
 
-	if (use_reap) {
+	if (use_reap || use_mainreap) {
+		/* THE A/B: identical program, identical children, identical timing - the ONLY difference is
+		 * which thread calls waitpid. 'r' = a reaper thread; 'm' = the MAIN thread, here. */
 		for (t = 0; t < 500; t++) {		/* bounded: never a hang, always an answer */
+			int st2;
+
+			while (waitpid(-1, &st2, WNOHANG) > 0) {
+				reaped++;
+			}
 			if (reaped >= n) break;
 			usleep(10000);
 		}
 		done = reaped;
 		if (reaped < n) {
-			printf("PIPEDBG REAP-STUCK reaped=%d of %d\n", reaped, n);
+			printf("PIPEDBG %s reaped=%d of %d\n",
+				use_mainreap ? "MAINREAP-STUCK" : "REAP-STUCK", reaped, n);
 			fflush(stdout);
 			stuck++;
 		}

@@ -7492,6 +7492,25 @@ into instrumenting the kernel, the pipes, the console and the primitives, lookin
 datum that names the defect was in my own output and I never read it.** Everything the loop needed to say was
 said at iteration 400, four rounds before I looked. **Read your own instrument's output first.**
 
+**AND THE A/B PASSED BOTH WAYS — BECAUSE MY TEST DRAINED `waitpid` IN THE MAIN THREAD IN BOTH MODES.**
+
+    PASS reaping-thread-completes    (DONE=50 stuck=0)
+    PASS main-thread-reaps           (DONE=50 stuck=0)
+
+Both modes report every child reaped, which would say the thread's `waitpid` is fine — except that the wait
+loop I wrote for the comparison calls `waitpid(-1, &st2, WNOHANG)` **from the main thread** while it waits for
+the count. So in the "reaper thread" run the MAIN thread was reaping too, and the reaper was never on its own.
+**A comparison that changes the variable and then quietly drains it in both arms is not a comparison** — and
+this is the fifth test instrument of mine this session to need a correction, which the record keeps because
+the pattern is worth more than any one of them: the kernel is not the only thing that needs measuring.
+
+**THE REAL DIFFERENCE IS UNTOUCHED, AND IT IS PRECISE:** `kernel_threaded_exec` reaps **only** from its reaper
+thread — its parent never calls `waitpid` at all, it just reads the count — and that count stays **0** across
+400 children. The minimal probe has never had that shape, because every version of it waits in the main
+thread. **The next change is one line, and it is the one that makes the test a test: in `r` mode, do not drain
+from the main thread at all — read `reaped` and nothing else.** Then a zero count means the thread's `waitpid`
+does not reap, and a 50 means it does, with no third party in the loop.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
