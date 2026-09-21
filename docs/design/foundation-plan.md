@@ -6675,6 +6675,39 @@ a page still mapped in another process — correlated across those two prints, i
 mapped-elsewhere check at the free site is then the fix, and this tree already has the vocabulary for it
 (`pml4_has_other_user()`, "free it only for the LAST one").
 
+**AND THE FREE SIDE NAMES THE STRUCTURAL BUG — A REFCOUNT THAT DOES NOT COUNT USER MAPPINGS.** Instrumenting
+`release_page` (the one place a page goes back to the bitmap) for two things — an over-free (`count` already
+<= 0 before the decrement) and any free inside the window where the pml4 and vma tables live:
+
+    PGFREE pid=7 phys=0x61c000 flags=0x0
+    PGFREE pid=9 phys=0x61c000 flags=0x200
+    PGFREE pid=9 phys=0x61b000 flags=0x200
+    PGFREE pid=9 phys=0x61c000 flags=0x0
+    PGFREE pid=7 phys=0x61c000 flags=0x0        (and NOT ONE PGOVER line)
+
+**`0x61c000` IS FREED OVER AND OVER — by pid 7 AND by pid 9 — and that is the very page the kernel gave a vma
+table in the run before** (`ffff80000061c000`). And because `PGOVER` never fires, these are not over-frees:
+each is a *legitimate* release whose count genuinely reached zero. **So the page returns to the bitmap while a
+process is still mapping it, and the bitmap then grants it to the kernel heap.**
+
+**THE REASON IS IN `release_page`'s OWN COMMENT, AND IT IS STRUCTURAL:**
+
+    /* FNX (pivot): return the page to the bitmap. The refcount is
+     * the pml4/allocator usage; at zero the phys goes back to the pool. */
+
+**The refcount counts the ALLOCATOR's usage, not the mappings.** A page mapped into a user process therefore
+does not hold a reference, so when the allocator side releases it — a CoW drop, a process's teardown, an
+mmap's removal — the count reaches zero and the physical page is re-granted **while the process still has a
+live page-table entry for it**. Userland then writes into it (a `printf` buffer), and it silently overwrites
+whatever the kernel put there — in this case the vma table, hence `PROT_NONE`, the silent SIGSEGV, and the
+dead thread. Everything measured this session is a consequence of that one missing reference.
+
+**THE FIX SHAPE:** take a reference when a page is mapped into a process (and drop it on unmap/teardown), so
+that a page with a live mapping can never reach zero and be re-granted. The alternative — checking "does any
+process still map this physical page?" before granting it — is a reverse-map walk on every allocation, so the
+reference is the right repair. **The next measurement is `stack_backtrace()` at a free of a page in that
+window**, which names the releasing caller and therefore the mapping site that failed to take its reference.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
