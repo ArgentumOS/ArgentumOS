@@ -24,13 +24,16 @@
  * DESCRIPTOR the loop watches, and the five checks below establish that it is a WAIT and not a poll —
  * a byte waiting fires it, an empty pipe does not, the loop stays alive for it the way it does for a
  * timer, it WAKES ON THE DESCRIPTOR rather than on the deadline, and a source whose target has been
- * deallocated is SKIPPED rather than called.
+ * deallocated is SKIPPED rather than called. W6b THEN ADDS APPLE'S PORT DOOR over the same seam
+ * (`-addPort:forMode:` and `-removePort:forMode:`, both CURRENT API and both unimplementable until a
+ * port class existed).
  */
 
 #import <Foundation/Foundation.h>
 
 #include <stdio.h>
 #include <unistd.h>		/* pipe(2), write(2): the SOURCE's descriptor */
+#include <sys/socket.h>	/* socketpair(2): the PORT's descriptor */
 
 /* THE TARGET: what each check's timers tell, and in what order. */
 @interface LoopProbe : NSObject
@@ -183,6 +186,34 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		;
 	}
 	(void)write(fd, &byte, 1);
+}
+
+@end
+
+
+/*
+ * A PORT THE RUN LOOP IS TOLD TO WATCH — through NSRunLoop's OWN door (`-addPort:forMode:`), which is
+ * Apple's current API and was unimplementable until a port class existed (§43). `-portDidBecomeReadable`
+ * is ours: the delegate that would have carried the readiness is Apple-deprecated and struck.
+ */
+@interface FnLoopPort : NSSocketPort
+{
+	NSUInteger _ready;
+}
+- (NSUInteger)ready;
+- (void)portDidBecomeReadable;
+@end
+
+@implementation FnLoopPort
+
+- (NSUInteger)ready
+{
+	return _ready;
+}
+
+- (void)portDidBecomeReadable
+{
+	_ready++;
 }
 
 @end
@@ -489,6 +520,52 @@ int main(void)
 			      @"the loop counted a dead target's source as live work");
 			close(fds[0]);
 			close(fds[1]);
+		}
+	}
+
+	/* ---- APPLE'S PORT DOOR (W6b): `-addPort:forMode:` and `-removePort:forMode:` --------- */
+
+	/* A PAIR, LIKE THE SOURCE CHECKS ABOVE: a port handed to the loop through Apple's door is WATCHED, and
+	 * one taken back is not. The door itself is a forward — the port is told to schedule itself — so what
+	 * these two establish is that the forward reaches the seam and that removal reaches it too. */
+	{
+		NSRunLoop *loop = [NSRunLoop currentRunLoop];
+		int pair[2];
+		int pairMade = socketpair(AF_UNIX, SOCK_STREAM, 0, pair);
+		FnLoopPort *port = (pairMade == 0)
+			? [[FnLoopPort alloc] initWithProtocolFamily:AF_UNIX
+							  socketType:SOCK_STREAM
+							    protocol:0
+							      socket:pair[0]]
+			: nil;
+		char byte = 'p';
+		BOOL quietBefore;
+
+		[loop addPort:port forMode:NSDefaultRunLoopMode];
+		[loop runMode:NSDefaultRunLoopMode
+		   beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+		quietBefore = [port ready] == 0;
+
+		(void)write(pair[1], &byte, 1);
+		[loop runMode:NSDefaultRunLoopMode
+		   beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
+		check("runloop-addport-schedules",
+		      pairMade == 0 && quietBefore && [port ready] == 1,
+		      [NSString stringWithFormat:@"socketpair=%d quiet-before=%d ready=%lu",
+			pairMade, (int)quietBefore, (unsigned long)[port ready]]);
+
+		[loop removePort:port forMode:NSDefaultRunLoopMode];
+		(void)write(pair[1], &byte, 1);
+		[loop runMode:NSDefaultRunLoopMode
+		   beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+		check("runloop-removeport-unschedules",
+		      [port ready] == 1,
+		      [NSString stringWithFormat:@"ready=%lu after -removePort: (was 1)",
+			(unsigned long)[port ready]]);
+
+		[port invalidate];
+		if (pairMade == 0) {
+			close(pair[1]);
 		}
 	}
 

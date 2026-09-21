@@ -6064,3 +6064,29 @@ over; (5) **`NSUserUnixTask`**.
 FILES: `userland/Foundation/NSPort.{h,m}`, `NSSocketPort.{h,m}`, `Foundation.h` (two imports),
 `userland/tests/foundation_port.m`, `tests/cases/foundation_port.py`, `mk/20-userland.mk`, and the ledger.
 
+**AND ONE ITEM THIS SECTION LEFT STRANDED WAS CLOSED THE SAME DAY: APPLE'S PORT DOOR.** The ledger sweep
+that chose W6b's boundary turned up something the boundary itself had made invisible — **`-addPort:forMode:`
+and `-removePort:forMode:` are CURRENT Apple API, not deprecated ones.** The `NSRunLoop` class overview
+names *port objects* as run-loop input sources beside mouse and keyboard events, and neither method carries
+a deprecation, so §11.5 does not reach them and the hard rule does: a shipped class's public API is
+supposed to be complete. They were **unimplementable while no port class existed** — a door that takes a
+port has nothing to take — and §43 is what unblocked them.
+
+**THE IMPLEMENTATION IS THE FORWARD AND NOTHING ELSE**, which is the point worth recording: `NSPort`
+already declares `-scheduleInRunLoop:forMode:` and `NSSocketPort` implements it by registering its
+descriptor with the loop's W6a source seam, so both methods are one message each
+(`[aPort scheduleInRunLoop:self forMode:mode]`). A run loop that kept its own port list would be a second
+registry to keep in step with the first. The pair is pinned by two new checks —
+`runloop-addport-schedules` and `runloop-removeport-unschedules`, a PAIR in the style the source checks
+established — so `foundation_runloop` is now **14 checks, all green**.
+
+**AND THE SWEEP THAT FOUND THEM NAMED ITS NEIGHBOURS, WHICH ARE ALSO CURRENT API AND STILL ABSENT:** the
+other two one-pass doors (`-limitDateForMode:`, `-acceptInputForMode:beforeDate:`), the
+`-performSelector:target:argument:order:modes:` family with its two cancel forms, and `-getCFRunLoop`
+(there is no CF in this tree). They are now recorded in the run-loop case's own NAMED-ABSENT paragraph
+rather than only in prose — the list that has now given up two entries: run-loop sources in W6a, and
+Apple's port door here.
+
+FILES: `userland/Foundation/NSRunLoop.{h,m}`, `userland/tests/foundation_runloop.m`,
+`tests/cases/foundation_runloop.py`.
+

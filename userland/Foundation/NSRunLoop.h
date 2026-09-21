@@ -43,8 +43,11 @@ extern NSString *const NSRunLoopCommonModes;
  * methods below say `NSString *` and mean the same type). */
 typedef NSString * NSRunLoopMode;
 
-/* FORWARD-DECLARED: the ivars only need the names, and the implementation imports NSArray.h. */
+/* FORWARD-DECLARED: the ivars only need the names, and the implementation imports NSArray.h. A port is
+ * forward-declared for the same reason AND because the dependency runs the other way: NSPort.h imports
+ * THIS header, so importing it back would be a cycle. */
 @class NSMutableArray;
+@class NSPort;
 
 @interface NSRunLoop : NSObject
 {
@@ -61,6 +64,19 @@ typedef NSString * NSRunLoopMode;
 - (NSString *)currentMode;
 
 - (void)addTimer:(NSTimer *)timer forMode:(NSString *)mode;
+
+/*
+ * APPLE'S PORT DOOR, AND IT IS CURRENT API RATHER THAN A DEPRECATED ONE: the class overview names port
+ * objects as run-loop input sources beside mouse and keyboard events, and neither of these two methods
+ * carries a deprecation. THEY WERE UNIMPLEMENTABLE UNTIL §43 — a door that takes a port has nothing to
+ * take while no port class exists — and now they are the forward they were always meant to be: the port
+ * is told to schedule ITSELF, and a concrete port is what decides how.
+ *
+ * The descriptor door above (`-addSourceForFileDescriptor:…`, W6a) is still what a caller without a
+ * port wants, and it is OURS; these two are Apple's shape over the same loop.
+ */
+- (void)addPort:(NSPort *)aPort forMode:(NSRunLoopMode)mode;
+- (void)removePort:(NSPort *)aPort forMode:(NSRunLoopMode)mode;
 
 /* ONE PASS: fire what is due, then answer whether the loop should keep going. The limit is NULLABLE
  * because a caller may want the pass without a deadline, which is exactly what -run does. */

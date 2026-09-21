@@ -18,6 +18,7 @@
 
 #import <Foundation/NSRunLoop.h>
 #import <Foundation/NSTimer.h>
+#import <Foundation/NSPort.h>
 #import <Foundation/NSDate.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSString.h>
@@ -438,6 +439,21 @@ static BOOL fn_mode_fires(NSString *timerMode, NSString *runningMode)
 - (BOOL)fnHasLiveWorkForMode:(NSString *)mode
 {
 	return [self fnHasLiveTimersForMode:mode] || [self fnHasLiveSourcesForMode:mode];
+}
+
+/* APPLE'S PORT DOOR: IT IS THE FORWARD AND NOTHING ELSE. A port already knows how to be watched —
+ * NSPort declares `-scheduleInRunLoop:forMode:`, and NSSocketPort implements it by registering its
+ * descriptor with THIS loop's source seam (§43) — so the run loop's job is to say "watch yourself
+ * here" and let the concrete port decide what that means. A loop that kept its own port list would be
+ * a second registry to keep in step with the first. */
+- (void)addPort:(NSPort *)aPort forMode:(NSRunLoopMode)mode
+{
+	[aPort scheduleInRunLoop:self forMode:mode];
+}
+
+- (void)removePort:(NSPort *)aPort forMode:(NSRunLoopMode)mode
+{
+	[aPort removeFromRunLoop:self forMode:mode];
 }
 
 /* CREATED ON FIRST USE rather than in an initializer, because a run loop is made by three different doors

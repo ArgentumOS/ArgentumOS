@@ -30,15 +30,22 @@ The probe is `/System/Shared/tests/foundation_runloop`, ONE unit, importing only
   * `source-waits-for-readiness`    — a byte written at 0.06s wakes a loop whose deadline is 2s, and the
                                      elapsed time is BETWEEN the two — it waited, and it did not spin;
   * `source-dead-target-is-skipped` — a source whose target has been deallocated is skipped, not called
-                                     (the seam holds its target as a zeroing weak reference).
+                                     (the seam holds its target as a zeroing weak reference);
+  * `runloop-addport-schedules`     — W6b: APPLE'S OWN DOOR. `-addPort:forMode:` makes a port a watched
+                                     source (it is a forward — the port schedules itself — and the check
+                                     is that the forward reaches the seam), and
+  * `runloop-removeport-unschedules`  `-removePort:forMode:` takes it back. Both are CURRENT API, not
+                                     deprecated, and both were unimplementable until `NSPort` landed.
 
 EVERY RUN IN THE PROBE IS BOUNDED BY A DEADLINE: `-run` never returns while a repeating timer is
 live, so a probe that called it would hang rather than fail.
 
-NAMED ABSENT: observers, `-performSelector:` performers, and `NSRunLoopCommonModes` as a real mode
-SET rather than the single name it is treated as. RUN-LOOP SOURCES USED TO BE ON THIS LIST and came
-off it in W6a; what is still absent is PORT-based scheduling (`NSPort` schedules a descriptor, and
-its message half is Apple-deprecated and struck — §11.5).
+NAMED ABSENT, AND EACH ONE IS CURRENT APPLE API RATHER THAN A DEPRECATED SURFACE: `-limitDateForMode:`
+and `-acceptInputForMode:beforeDate:` (the other two one-pass doors), the
+`-performSelector:target:argument:order:modes:` family with its two cancel forms (a scheduled-perform
+queue, which no caller here needs yet), `-getCFRunLoop` (there is no CF in this tree), and
+`NSRunLoopCommonModes` as a real mode SET rather than the single name it is treated as. THE TWO THAT
+CAME OFF THIS LIST ARE RUN-LOOP SOURCES (W6a) and APPLE'S PORT DOOR (W6b).
 """
 
 import re
@@ -50,7 +57,8 @@ CHECKS = ("timer-fires-once", "timer-repeats-until-invalidated", "timer-order-fo
           "timer-userinfo-and-interval", "timer-unscheduled-is-inert", "runloop-is-per-thread",
           "runmode-one-pass",
           "source-fires-when-ready", "source-idle-does-not-fire", "source-keeps-loop-alive",
-          "source-waits-for-readiness", "source-dead-target-is-skipped")
+          "source-waits-for-readiness", "source-dead-target-is-skipped",
+          "runloop-addport-schedules", "runloop-removeport-unschedules")
 
 
 class Case(BaseCase):
