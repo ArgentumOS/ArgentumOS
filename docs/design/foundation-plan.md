@@ -7533,6 +7533,28 @@ either reap elsewhere or the kernel has to honour a thread's `waitpid`. **That i
 measurement behind it rather than a mystery**, and `kernel_pipe_dup2` is the case that keeps it honest: the
 `reaping-thread-completes` check fails today, and `main-thread-reaps` passes beside it.
 
+**AND THE KERNEL-SIDE FIX FOR DEFECT C WAS ATTEMPTED, RUN, AND DOES NOT MOVE IT — WHICH PLACES IT ONE LEVEL
+EARLIER.** The change was the POSIX rule at the one choke point (`get_next_zombie`, used by the wait path):
+match children by THREAD GROUP rather than by the parent pointer, so a wait issued from a thread finds the
+process's children. It built, it booted — and the count is unchanged:
+
+    PIPEDBG REAP-STUCK reaped=0 of 50      <- the thread still reaps nothing
+    PIPEDBG DONE=50 stuck=0                <- the main thread still reaps all 50
+
+**So the thread's `waitpid` is blocked BEFORE the parent match** — and the source says where to look next:
+
+    kernel/syscalls/fork.c:148:  child->tgid = current->tgid;   <- a clone inherits its creator's group
+    kernel/syscalls/fork.c:150:  child->tgid = pid;             <- or gets its own pid
+
+If a `CLONE_THREAD` clone takes the second branch, its `tgid` is its own pid, its thread group is not its
+process's, and **every group-based match fails** — including the one I just wrote. That is a one-grep
+question, not a patch, and it is the next thing to answer rather than assume.
+
+**AND THE CHANGE WAS REVERTED, BY THE RULE THIS INVESTIGATION HAS APPLIED CONSISTENTLY:** a kernel change that
+does not move its acceptance test is not a fix, and the tree returns to the state where the defect is
+measured and unfixed. The proposed change and its reasoning are recorded here instead, so whoever comes next
+starts from the measurement.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
