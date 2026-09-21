@@ -86,11 +86,15 @@ int main(int argc, char **argv)
 		if (pipe(fds)) { pipefail++; continue; }
 		pid = fork();
 		if (pid == 0) {
-			printf("CHILD pid=%d\n", (int)getpid());
-			fflush(stdout);
+			if ((i % 10) == 0) {		/* console traffic matters: every child printing is heavy */
+				printf("CHILD pid=%d i=%d\n", (int)getpid(), i);
+				fflush(stdout);
+			}
+			if (i < 3) { printf("TRACE child i=%d dup2\n", i); fflush(stdout); }
 			dup2(fds[0], 0);
 			if (nullfd >= 0)
 				dup2(nullfd, 1);	/* keep the serial console out of the loop */
+			if (i < 3) { printf("TRACE child i=%d exec\n", i); fflush(stdout); }
 			close(fds[0]);
 			close(fds[1]);
 			if (mode == 2)
@@ -100,12 +104,18 @@ int main(int argc, char **argv)
 			_exit(127);
 		}
 		if (pid < 0) { close(fds[0]); close(fds[1]); forkfail++; continue; }
+		if (i < 3) { printf("TRACE i=%d forked=%d\n", i, (int)pid); fflush(stdout); }
 		close(fds[0]);
 		if (write(fds[1], "hello\n", 6) < 0) { /* ignore */ }
+		if (i < 3) { printf("TRACE i=%d wrote\n", i); fflush(stdout); }
 		close(fds[1]);
+		if (i < 3) { printf("TRACE i=%d closed\n", i); fflush(stdout); }
 
-		if ((i + 1) % 100 == 0)
-			printf("THREADED-EXEC-PROGRESS mode=%d i=%d signaled=%d\n", mode, i + 1, signaled);
+		if ((i + 1) % 10 == 0) {
+			printf("THREADED-EXEC-PROGRESS mode=%d i=%d reaped=%d signaled=%d\n",
+				mode, i + 1, reaped, signaled);
+			fflush(stdout);
+		}
 	}
 
 	/* wait for the reaper to finish the outstanding children, with a generous ceiling */

@@ -7420,6 +7420,31 @@ there.**
 counts) says in one boot whether a child is stuck, the reaper is, or the join is. **That is where this goes
 next, and it is the first step in a long while that is about the test rather than the kernel.**
 
+**AND THE PROBE'S OWN HANG IS LOCALIZED — AND IT IS NOT THE PROBE'S LOGIC.** The reproducer was instrumented
+with progress every ten iterations, a per-child line every tenth child, and per-call traces for the first
+three iterations. The whole run says:
+
+    PARENT pid=9 mode=1 n=400
+    TRACE i=0 forked=11
+    TRACE i=0 wrote
+    TRACE i=0 closed
+    TRACE child i=0 dup2          <- the child reaches dup2 ...
+    TRACE child i=1 dup2          <- ... and a second child reaches its own
+    TRACE i=1 forked=12
+    (nothing further: no "TRACE child i=0 exec", no "TRACE i=1 wrote", no progress line)
+
+**The CHILD never gets from `dup2` to `exec`, and the PARENT never gets past the pipe's `close`/`write`.**
+Both sides wedge in plain POSIX: `pipe()`, `fork()`, `dup2()`, a six-byte `write` into a fresh pipe whose read
+end is open. Nothing in the probe's own logic can block on those — a six-byte write into an empty pipe does
+not fill anything — so **this is another kernel defect, seen from userspace, and it is in the fd/pipe area
+this tree has recorded history in** (the AF_UNIX one-ring bug, the devpts codegen bug, the two-open limit).
+
+**AND IT IS THE CLEANEST KIND OF REPRODUCER TO HAVE:** the failing shape is twenty lines of ordinary POSIX —
+`pipe(fds); pid = fork(); if(pid == 0) { dup2(fds[0], 0); execl(...); } else { write(fds[1], ...); close(...); }`
+— with no Foundation, no threads, and no signals. **The next step is to write exactly that as a separate probe
+and run it**, because if it hangs, the defect is isolated in a file nobody can argue with, and if it does not,
+the difference between the two programs names the trigger.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
