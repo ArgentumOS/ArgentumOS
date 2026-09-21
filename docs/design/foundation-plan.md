@@ -7604,6 +7604,34 @@ top, so a thread whose stack was set up at the bottom of that mapping would do e
 stack — the tid, `rsp`, and the vma that covers the fault address — so the task doing the pushing is named
 instead of assumed. Everything needed for it has been written in this section already, twice.
 
+**AND THE FULL REGISTER DUMP ENDS THE GUESSING — THE PROBE'S FAULT IS THE SESSION'S OPENING SIGNATURE.**
+
+    Page Fault at 0x7ffff5857ff8 (writing) with error code 0x06
+     cs: 0x004b  rip: 0x0000000000404f34  rsp: 0x00007ffff5858000
+    rax: 0  rbx: 0  rcx: 0  rdx: 0  rsi: 0  rdi: 0  rbp: 0  r8..r15: 0
+    [67] 0xf5857000-... [stack]
+
+Read it exactly:
+
+  * `cr2 = rsp - 8`, and `rsp` is at the STACK VMA's low edge - so it IS a push, inside the stack's own
+    range, onto a page that was never mapped. (The growth path then tried to map it and failed - the
+    "legitimate stack push whose map_page() failed" this investigation described in its first hours.);
+  * **EVERY GENERAL REGISTER IS ZERO** except `rip` (in the probe's own image) and `rsp` - the same
+    all-zero register file as the fault that OPENED this session;
+  * and the traces printed `rsp = 0x7ffffffffe18` - near the TOP - at `main`'s entry, **for the same
+    pid**. Between entry and the fault the register file was blanked and the stack pointer moved 2GB.
+
+**NOTHING A PROGRAM DOES LOOKS LIKE THAT.** A task with a zeroed register file, executing at an image
+address, pushing at the bottom of its own stack, is a task whose STATE WAS REPLACED - which is the family
+defect B belonged to (a task on tables/state that were not its own) and the family this tree's notes return
+to repeatedly. **So the W6d probe's remaining fault is in that family, and it is a different instance from
+the one defect B's fix removed** (that one no longer reproduces: `kernel_threaded_exec` is green).
+
+**AND THE NEXT MEASUREMENT IS NOW SMALL AND EXACT:** at the fault, print the faulting task's identity as the
+kernel sees it - `current->pid` versus `current->tgid`, whether `PF_THREAD` is set, and whether any other
+task shares its `cr3_64` - so "a task whose state was replaced" becomes "which task, replaced by what".
+Three fields, all already used elsewhere in this section.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
