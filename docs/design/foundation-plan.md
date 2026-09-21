@@ -6548,6 +6548,48 @@ is already cached, followed by a read that fails, is the shape to test.**
 fails (and when `search_page_hash` misses for a page that should be cached), print `vma->inode`'s number,
 `file_offset`, the return value and the pid. Everything upstream of that is now measured and accounted for.
 
+**AND THE INSTRUMENT AT THAT SITE FIRES NEVER — WHICH RETRACTS THE "LOCATED" ABOVE, AND REPLACES IT WITH
+SOMETHING BETTER.** `PGFAIL` (printed in the exact `if(bread_page(...))` branch) does not appear in the guest
+log AT ALL, and neither does the other branch's `Oops, map_page() returned 0!`; the only `WARNING` lines in
+the whole log are boot-time (an ELF section-header note and block-device probes). So **the fault is handled on
+a path that fails SILENTLY** — and in `page_not_present` the silent failure is exactly one line:
+
+    /* if still a non-valid vma is found then kill the process! */
+    if(!vma || vma->prot == PROT_NONE) {
+        send_sigsegv(sc);
+        return 0;
+    }
+
+**A vma DOES exist at that address — the walk printed one — so `vma->prot == PROT_NONE` is what is choosing
+this signal,** and that single fact explains the whole paradox: a `PROT_NONE` region has no leaves (so
+`pte = 0` is correct, not "dropped"), the region is present (so the vma is found), and nothing is printed
+because this branch does not print. It also explains why the page "worked 0x44 bytes earlier" — that reading
+came from the frame the kernel INSTALLED (`st_rip`), not from a fetch that is known to have succeeded.
+
+**AND THERE IS A MECHANISM IN THIS SAME FUNCTION THAT PRODUCES A MANGLED vma EXACTLY HERE — THE STACK-GROWTH
+BRANCH.** `page_not_present` grows the stack by taking the vma at the TOP OF THE ADDRESS SPACE and moving its
+start down to the fault:
+
+    if(cr2 >= (sc->rsp - 32) && cr2 < USER_STACK_TOP) {
+        if((vma = find_vma_region(USER_STACK_TOP - 1))) {
+            vma->start = cr2 & PAGE_MASK;
+        }
+
+**That is correct only for a process whose stack lives at `USER_STACK_TOP` — and a `CLONE_VM` THREAD's stack
+does not: musl allocates it with `mmap`, which is why the faulting thread's `rsp` is `0x…400000022a68`, a
+region far below the top.** A fault on such a stack can therefore satisfy the heuristic while
+`find_vma_region(USER_STACK_TOP - 1)` returns a COMPLETELY DIFFERENT vma — a shared library's, say — and the
+kernel then **moves that vma's start to the thread's stack address**, silently corrupting the range of a
+mapping the process is executing from. Everything observed follows: the corrupted vma no longer describes the
+library pages (so the covering vma can be a `PROT_NONE` guard or the wrong region), the leaf is absent, and
+the kill is silent. **This is a LEADING HYPOTHESIS, labelled one, and it unifies both signatures** — the other
+one (a legitimate stack push whose `map_page()` failed) is a fault on a stack vma too.
+
+**SO THE NEXT INSTRUMENT PRINTS THE vma ITSELF, NOT ITS POINTER:** at the fault, print the covering vma's
+`start`, `end`, `prot`, `flags`, and whether it has an inode — plus, in the growth branch, which vma it just
+took and what its start was before and after. That settles in one run whether the failing vma is a guard, the
+library, or the thread stack, and whether this function moved it.
+
 **THE ORIGINAL TABLE-WALK PLAN, FOR THE RECORD:** At the fault, walk the four levels for `cr2` and
 print each entry as it is found (`pml4[..]`, `pdpt[..]`, `pd[..]`, `pte[..]`) alongside whether the vma still
 covers the address. That distinguishes the two remaining shapes in one print: a leaf that is simply ABSENT
