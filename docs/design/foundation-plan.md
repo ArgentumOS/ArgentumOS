@@ -7632,6 +7632,39 @@ kernel sees it - `current->pid` versus `current->tgid`, whether `PF_THREAD` is s
 task shares its `cr3_64` - so "a task whose state was replaced" becomes "which task, replaced by what".
 Three fields, all already used elsewhere in this section.
 
+**AND THE THREE FIELDS END IT — THE PROBE'S FAULT IS DEFECT A, AND THE SESSION'S OPENING MYSTERY WAS DEFECT A ALL
+ALONG.**
+
+    Page Fault at 0x7ffff580aff8 (writing) with error code 0x06
+    Process '/System/Shared/tests/foundation_task' with pid 11.
+    TASKDBG pid=11 tgid=11 flags=0x12 cr3=0x236c000 is_thread=0
+    TASKDBG cr3 shared with pid=11 tgid=11
+    TASKDBG cr3_sharers=1
+
+**The faulting task is the thread-group LEADER - `pid == tgid`, `is_thread=0` - and its address space is
+shared with NOBODY (`cr3_sharers=1`).** So it is not a thread, not a shared address space, and not the family
+defects B or C lived in. It is a plain single-threaded process that ran (it printed traces 1 and 1a) and then
+faulted with **every general register zero**, `rsp` at the bottom of its stack, and `rip` in its own image.
+
+**A SINGLE-THREADED PROCESS CANNOT BLANK ITS OWN REGISTER FILE.** The only thing that can is the memory those
+registers were saved in - the task's kernel-side user frame - being **overwritten by something else.** And this
+investigation has already measured exactly that happening: a page returned to the bitmap while a userspace
+mapping pointed at it, re-granted to `kmalloc`, and written from userland (defect A: `"FNX3-DONE"` inside a
+vma table, `SAME=1`, 1484 sweeps a boot). **A kernel stack page taken the same way would zero a task's saved
+frame and produce precisely this fault** - the address changing with the stack vma's randomisation, the
+registers all zero, the push at the frame the corrupted `rsp` names.
+
+**SO THE SESSION'S TWO LOOSE ENDS ARE THE SAME LOOSE END.** The fault this investigation opened with - the
+all-zero register file, "a wild write", "a task on recycled state" - and the still-open defect A are one
+thing, and `foundation_task` is its reproducer, exactly as `kernel_threaded_exec` was defect B's. **W6d's
+acceptance is therefore blocked on defect A**, not on anything in foundation's own code.
+
+**AND THE NEXT WORK IS THEREFORE STRAIGHTFORWARDLY DEFINED, FOR THE FIRST TIME IN MANY ROUNDS:** defect A's
+publisher - the free that returns a page to the bitmap while a user mapping still names it - with three
+existing reproducers to hold it to (`kernel_threaded_exec`, `kernel_pipe_dup2`, `foundation_task`) and the
+instrument that cannot lie already written (the pre-`kfree` invariant in `free_vma_pages`, which fires 1484
+times a boot and returns to the one-page timeline when a specific page matters).
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
