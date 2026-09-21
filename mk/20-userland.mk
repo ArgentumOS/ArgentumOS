@@ -839,6 +839,10 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# the failing program. Mode 1's children are /System/Tools/true; mode 2's are the Foundation probe.
 	$(MUSL64_CC) -O2 userland/tests/kernel_threaded_exec.c \
 		-o "$(ROOTFS64)/System/Shared/tests/kernel_threaded_exec"
+	# kernel_pipe_dup2: the MINIMAL reproducer for the pipe/fork/dup2 wedge (§45) - plain POSIX, so a hang
+	# here is a kernel defect in a file nobody can argue with.
+	$(MUSL64_CC) -O2 userland/tests/kernel_pipe_dup2.c \
+		-o "$(ROOTFS64)/System/Shared/tests/kernel_pipe_dup2"
 	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
 	# collection_view, tab_view, split_view, grid_view, kvc_basic,
 	# notification_basic, cell_basic, viewcontroller_basic, window_draw,

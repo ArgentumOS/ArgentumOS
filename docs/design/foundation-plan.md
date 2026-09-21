@@ -7445,6 +7445,31 @@ this tree has recorded history in** (the AF_UNIX one-ring bug, the devpts codege
 and run it**, because if it hangs, the defect is isolated in a file nobody can argue with, and if it does not,
 the difference between the two programs names the trigger.
 
+**AND THE MINIMAL PROBE PASSES EVERY VARIANT — SO MY "THIRD DEFECT IN THE FD/PIPE AREA" WAS WRONG.** The
+twenty-line POSIX probe was written and extended one variable at a time, and the case now asserts all four
+shapes:
+
+    pipe + fork + dup2 + 6-byte write + bounded waitpid              50 cycles: DONE=50 stuck=0   PASS
+    ... with a LIVE THREAD while forking                             50 cycles: DONE=50 stuck=0   PASS
+    ... with the child EXEC'ing /System/Tools/true, pipe on stdin    50 cycles: DONE=50 stuck=0   PASS
+
+**Every primitive is clean**, so the wedge is not in `pipe`, `fork`, `dup2`, the write, a live thread, or the
+exec. Five successive isolations have now failed to reproduce it, and the record has to say so plainly: the
+earlier claim that this is "a third kernel defect in the fd/pipe area" was premature, and it is corrected
+here.
+
+**WHICH LEAVES ONE UNTESTED DIFFERENCE FROM THE REAL REPRODUCER, AND IT IS THE INTERESTING ONE: THE REAPING
+THREAD CALLS `waitpid`.** My `thread` mode's thread only SLEEPS — the real reproducer's reaper LOOPS ON
+`waitpid(-1, &st, WNOHANG)` while the main thread forks children. A thread reaping while the main thread
+forks is precisely the shape this tree's own notes are full of (the bug (b) family: a `CLONE_VM` thread and
+`remove_zombie`; "threads auto-reap"), and it is the one thing the minimal probe has never done. **The next
+variant is one line: make `idle()` reap instead of sleep, and have the parent not wait.**
+
+**AND THE METHOD NOTE THAT IS WORTH MORE THAN THE RESULT:** five variants, each one variable, each one
+MEASURED — and the effect was to turn "another kernel defect" into "one untested difference", which is a much
+better place to be. That is what a minimal reproducer buys, and it is why writing one was the right next step
+even though it did not immediately reproduce anything.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
