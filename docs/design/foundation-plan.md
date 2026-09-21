@@ -6244,7 +6244,47 @@ makes DYNAMIC LINKING / RELOCATION the candidate rather than anything in the pro
 
 **WHAT THE NEXT DIAGNOSTIC IS, NAMED SO IT DOES NOT HAVE TO BE RE-DERIVED.** The fault is a refused stack
 growth on the FIRST deep call chain of that process, while the same call in another Foundation probe is
-fine, so the difference is in the PROCESS's VMA layout rather than in the call. **ALL FOUR ARE NOW DONE, AND THE CHECKLIST IS CLOSED RATHER THAN ABANDONED.** (a) the `rsp` traces are in the
+fine, so the difference is in the PROCESS's VMA layout rather than in the call. **AND THEN THE LOG WAS READ PROPERLY, WHICH ENDS THE FOUNDATION QUESTION AND MOVES THE BUG SOMEWHERE ELSE.**
+The fault has a full register dump above it, and the dump is unambiguous:
+
+    page_not_present(): Oops, map_page() returned 0!
+    Page Fault at 0x7ffff5857ff8 (writing) with error code 0x06
+    Process '/System/Shared/tests/foundation_task' with pid 11.
+     cs: 0x004b  rip: 0x0000000000404f14  rsp: 0x00007ffff5858000
+    rax: 0 rbx: 0 rcx: 0 rdx: 0 rsi: 0 rdi: 0 rbp: 0 r8..r15: 0
+
+Three things, and together they are decisive:
+
+  1. **`rsp` IS THE STACK VMA'S LOW EDGE** (0x7ffff5858000, with the VMA's own `[stack]` entry printing a
+     base of `0xf5857000`), and the fault is a WRITE **8 bytes below it** — a `PUSH` at the very bottom of
+     the stack, not a wild read. The fault address tracks that edge across runs (an earlier run faulted at
+     0x7ffff580aff8, this one at 0x7ffff5857ff8) because the stack VMA is PLACED DIFFERENTLY each time, so
+     the invariant is "8 bytes below wherever the stack begins", not any fixed address.
+  2. **EVERY REGISTER IS ZERO** except the segment registers and `rip`/`rsp` — a process that has not run a
+     single instruction of its own body, or has been reset to that state.
+  3. **`map_page() returned 0` IMMEDIATELY BEFORE.** The kernel could not map a page and then **let the
+     process run anyway**, with a stack pointer at the bottom of a region it had failed to populate.
+
+So this is a **KERNEL-SIDE exec / page-allocation failure** in a process that `NSTask` launched, and **the
+Foundation probe is incidental**: it is simply a program that spawns children, and spawning children is what
+fails. `rip` (0x404f14) is inside `fn_child`, in the `--child-cat` branch's `read@plt` loop — a child, not
+the parent, and not at trace 1b. The traces stopping at 1a in the parent and this fault are two facts about
+one run, not one fact about one statement.
+
+**AND IT RETRACTS THE ENTRY-FETCH READING TOO, HONESTLY:** the vector-14 line I decoded belongs to a
+DIFFERENT fault (error 0x14 does mean instruction fetch) — the dumps in this log are not all from the same
+process, which is how a log that says "writing, error 0x06, 8 bytes below the stack's bottom" produced a
+conclusion about an instruction fetch. **Whatever else is true, reading a kernel log means reading its
+PROCESS AND REGISTER LINES, not one number out of it.**
+
+**THE NEXT STEP IS THEREFORE A KERNEL ONE, AND IT IS CHEAP:** reproduce with a child-spawning program that
+has nothing to do with Foundation — a loop of `/bin/true` (or the shell's own `for i in $(seq 40); do
+/bin/true; done`) in the same guest. If that fails the same way, `foundation_task` is EXONERATED and what is
+owed is an investigation of the kernel's exec path (`page_not_present` / `map_page` returning 0 and the call
+site that ignores it) — plausibly resource-exhaustion across many process creations in one boot, which is
+exactly what this case's four probe runs plus their children do, and exactly what would make it intermittent.
+
+**ALL FOUR ARE DONE, AND THE CHECKLIST IS CLOSED RATHER THAN ABANDONED.** (a) the `rsp` traces are in the
 probe and they produced the first correction; (c) `--child-foundation` passes and `--noop-argument` fails,
 so the child branch works and argc/argv is out; (the alignment test) `-mstackrealign` changes nothing and
 is DISPROVED; (the load address) `readelf` says 0x400000 for both probes, which retracts the hole. **What
