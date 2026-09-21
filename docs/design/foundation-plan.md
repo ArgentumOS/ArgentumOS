@@ -6509,7 +6509,46 @@ shares its creator's page tables, so any teardown path that frees a clone's tabl
 paradox (the tables look right in every field the software has, because the fields are not what was
 destroyed).
 
-**SO THE NEXT MEASUREMENT IS A TABLE WALK, NOT A FIELD.** At the fault, walk the four levels for `cr2` and
+**THE WALK RAN, AND IT NAMES THE FAILING OPERATION.**
+
+    WALKDBG va=0x7f0000080849 pml4=0x61b000 pml4e=0x2363027 pdpte=0x2364027 pde=0x2365027 pte=0x0 absent_at=0 vma=ffff80000061c000
+
+Read it level by level: the pml4 entry, the pdpt entry and the pd entry are **all present, USER and pointing at
+real table pages** (0x2363027 / 0x2364027 / 0x2365027), the **le is `0x0`**, and **a vma still covers the
+address**. So the table pages themselves are healthy — this is NOT recycled tables — and the address space is
+not missing the region. What is gone is the LEAF, in a process that was executing from that very page 0x44
+bytes earlier. **The only code in this kernel that creates a leaf and then removes it again is
+`page_not_present`'s file-fill path** (mm/fault.c:238-241):
+
+    pg = &page_table[V2P(addr) >> PAGE_SHIFT];
+    if(bread_page(pg, vma->inode, file_offset, vma->prot, vma->flags)) {
+        unmap_page(cr2);
+        return 1;
+    }
+
+**SO THE BUG IS A FAILED FILE READ OF A DEMAND-PAGED LIBRARY PAGE, AND THE DEATH IS THE CONSEQUENCE.** The
+handler mapped a page, asked `bread_page` to fill it from the shared library, the fill failed, and the handler
+undid its own mapping and killed the task - leaving precisely `pte = 0` with a live vma. That single path
+accounts for every observation, including the ones that looked contradictory:
+
+  * the same page executing 0x44 bytes earlier — it was mapped then (a fault that SUCCEEDED prints nothing);
+  * a later fetch faulting on it — a re-fault after a TLB invalidate (this tree calls `invalidate_tlb()` from
+    its mapping paths) takes the same file-fill route, and this time the fill fails;
+  * only ONE fault in the log — successful faults and failures that print nothing are invisible, and only the
+    fatal one is reported.
+
+**AND IT LANDS IN A CLASS THIS TREE HAS RECORDED BEFORE, WHICH IS THE REASON TO BELIEVE IT:** the page cache is
+keyed by inode+offset (`search_page_hash`) and read-only file mappings consult it before reading — so a
+re-fault on an ALREADY-CACHED page should never need `bread_page` at all. The library is mapped by many
+processes at once in this reproducer (400 execs plus the shell), and this tree's notes already record an mmap
+defect where "the THIRD concurrent mmap of one file reads wrong". **The page-cache lookup missing a page that
+is already cached, followed by a read that fails, is the shape to test.**
+
+**SO THE NEXT INSTRUMENT IS ONE LINE WHERE THE FAILURE HAPPENS:** in `page_not_present`, when `bread_page`
+fails (and when `search_page_hash` misses for a page that should be cached), print `vma->inode`'s number,
+`file_offset`, the return value and the pid. Everything upstream of that is now measured and accounted for.
+
+**THE ORIGINAL TABLE-WALK PLAN, FOR THE RECORD:** At the fault, walk the four levels for `cr2` and
 print each entry as it is found (`pml4[..]`, `pdpt[..]`, `pd[..]`, `pte[..]`) alongside whether the vma still
 covers the address. That distinguishes the two remaining shapes in one print: a leaf that is simply ABSENT
 (a mapping was dropped) versus a level entry that is GARBAGE (the table pages themselves were recycled —
