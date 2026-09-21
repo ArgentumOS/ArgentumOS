@@ -219,10 +219,8 @@ int main(void)
 			[array addPointer:(__bridge void *)@"two"];
 			{
 				NSData *bytes = [NSKeyedArchiver archivedDataWithRootObject:array];
-				printf("P3 archived %lu\n", (unsigned long)[bytes length]);
 				@try {
 					pointees = [NSKeyedUnarchiver unarchiveObjectWithData:bytes];
-					printf("P4 unarchived %p\n", (__bridge void *)pointees);
 				} @catch (NSException *e) {
 				}
 			}
@@ -249,6 +247,228 @@ int main(void)
 						? (NSString *)[pointees pointerAtIndex:0] : @"(nil)",
 					(int)refused]);
 			}
+		}
+
+		/* ---- NSHashTable: membership, and the personality that decides what "already there" means ---- */
+		{
+			NSHashTable *byEquality = [NSHashTable hashTableWithOptions:
+							NSPointerFunctionsObjectPersonality];
+			NSHashTable *byIdentity = [NSHashTable hashTableWithOptions:
+							NSPointerFunctionsObjectPointerPersonality];
+			NSString *a = [NSString stringWithFormat:@"member-%d", 5];
+			NSString *b = [NSString stringWithFormat:@"member-%d", 5];
+			BOOL distinct = a != b && [a isEqual:b];
+
+			[byEquality addObject:a];
+			[byEquality addObject:b];	/* EQUAL TO THE FIRST: not a second member */
+			[byIdentity addObject:a];
+			[byIdentity addObject:b];	/* A DIFFERENT POINTER: a second member */
+			{
+				NSUInteger equalityCount = [byEquality count];
+				NSUInteger identityCount = [byIdentity count];
+				BOOL duplicateRefused = equalityCount == 1;
+				BOOL memberAnswers = [[byEquality member:b] isEqual:a];
+
+				[byEquality addObject:@"extra"];
+				[byEquality removeObject:a];	/* by EQUALITY, so the stored member goes */
+				{
+					BOOL removed = [byEquality count] == 1 && ![byEquality containsObject:a] &&
+						       [byEquality containsObject:@"extra"];
+					BOOL anyIsMember = [[byEquality anyObject] isEqual:@"extra"];
+					BOOL all = [[byEquality allObjects] count] == 1;
+					BOOL representation = [[byEquality setRepresentation] count] == 1;
+
+					[byEquality removeAllObjects];
+					check("hash-table-membership",
+					      distinct && duplicateRefused && identityCount == 2 &&
+					      memberAnswers && removed && anyIsMember && all && representation &&
+					      [byEquality count] == 0,
+					      [NSString stringWithFormat:
+						@"eq=%lu id=%lu removed=%d all=%d rep=%d",
+						(unsigned long)equalityCount, (unsigned long)identityCount,
+						(int)removed, (int)all, (int)representation]);
+				}
+			}
+		}
+
+		/* ---- the rehash, which only a table full of entries can exercise ---- */
+		{
+			NSHashTable *table = [[NSHashTable alloc] initWithOptions:
+						NSPointerFunctionsObjectPersonality capacity:2];
+			NSUInteger i;
+			BOOL allFound = YES;
+			NSUInteger found = 0;
+
+			/* MANY MORE INSERTS THAN ANY INITIAL CAPACITY, so the table grows repeatedly. */
+			for (i = 0; i < 200; i++) {
+				[table addObject:[NSString stringWithFormat:@"item-%lu", (unsigned long)i]];
+			}
+			/* AND A CHURN OF REMOVALS AND RE-ADDS, which is what fills the table with TOMBSTONES — the
+			 * case a removal that merely emptied its slot would break. */
+			for (i = 0; i < 200; i += 2) {
+				[table removeObject:[NSString stringWithFormat:@"item-%lu", (unsigned long)i]];
+			}
+			for (i = 0; i < 200; i += 2) {
+				[table addObject:[NSString stringWithFormat:@"item-%lu", (unsigned long)i]];
+			}
+			for (i = 0; i < 200; i++) {
+				NSString *probe = [NSString stringWithFormat:@"item-%lu", (unsigned long)i];
+
+				if ([table containsObject:probe]) {
+					found++;
+				} else {
+					allFound = NO;
+				}
+			}
+			check("hash-table-growth",
+			      allFound && found == 200 && [table count] == 200,
+			      [NSString stringWithFormat:@"found=%lu count=%lu",
+				(unsigned long)found, (unsigned long)[table count]]);
+		}
+
+		/* ---- the set operations ---- */
+		{
+			NSHashTable *left = [NSHashTable hashTableWithOptions:NSPointerFunctionsObjectPersonality];
+			NSHashTable *right = [NSHashTable hashTableWithOptions:NSPointerFunctionsObjectPersonality];
+			NSHashTable *unionOf = [NSHashTable hashTableWithOptions:NSPointerFunctionsObjectPersonality];
+			NSHashTable *intersection = [NSHashTable hashTableWithOptions:NSPointerFunctionsObjectPersonality];
+			NSHashTable *difference = [NSHashTable hashTableWithOptions:NSPointerFunctionsObjectPersonality];
+
+			[left addObject:@"one"];
+			[left addObject:@"two"];
+			[right addObject:@"two"];
+			[right addObject:@"three"];
+			[unionOf unionHashTable:left];
+			[unionOf unionHashTable:right];
+			[intersection unionHashTable:left];
+			[intersection intersectHashTable:right];
+			[difference unionHashTable:left];
+			[difference minusHashTable:right];
+
+			check("hash-table-set-operations",
+			      [unionOf count] == 3 && [intersection count] == 1 &&
+			      [intersection containsObject:@"two"] &&
+			      [difference count] == 1 && [difference containsObject:@"one"] &&
+			      [left intersectsHashTable:right] &&
+			      [difference isSubsetOfHashTable:left] &&
+			      [left isEqualToHashTable:unionOf] == NO,
+			      [NSString stringWithFormat:@"union=%lu intersection=%lu minus=%lu",
+				(unsigned long)[unionOf count], (unsigned long)[intersection count],
+				(unsigned long)[difference count]]);
+		}
+
+		/* ---- NSMapTable: the pairs ---- */
+		{
+			NSMapTable *map = [NSMapTable strongToStrongObjectsMapTable];
+			NSDictionary *representation;
+
+			[map setObject:@"value-one" forKey:@"key-one"];
+			[map setObject:@"value-two" forKey:@"key-two"];
+			/* RE-SETTING A KEY REPLACES its value rather than adding a second entry. */
+			[map setObject:@"value-two-b" forKey:@"key-two"];
+			representation = [map dictionaryRepresentation];
+			{
+				BOOL replaced = [[map objectForKey:@"key-two"] isEqual:@"value-two-b"];
+				BOOL absent = [map objectForKey:@"nowhere"] == nil;
+				BOOL counted = [map count] == 2;
+
+				[map removeObjectForKey:@"key-one"];
+				check("map-table-pairs",
+				      counted && replaced && absent &&
+				      [[representation objectForKey:@"key-two"] isEqual:@"value-two-b"] &&
+				      [map count] == 1 && [map objectForKey:@"key-one"] == nil,
+				      [NSString stringWithFormat:@"count=%lu two=%@ rep=%lu",
+					(unsigned long)[map count], [map objectForKey:@"key-two"],
+					(unsigned long)[representation count]]);
+			}
+		}
+
+		/* ---- the two sides are configured INDEPENDENTLY ---- */
+		{
+			/*
+			 * STRONG KEYS, WEAK VALUES: the entry outlives its value, which is a pairing an NSDictionary
+			 * cannot express at all. THE CHECK IS DELIBERATELY MADE WITHOUT ENUMERATING OR DEREFERENCING
+			 * THE VALUE, and that is a finding rather than a convenience: BOTH `-objectEnumerator` and
+			 * ARC's fast enumeration RETAIN each element they hand out, so walking a table whose weak
+			 * value has already died sends a message to freed memory and the probe SEGFAULTS. The
+			 * lifetime question and the enumeration question are therefore asked about DIFFERENT tables.
+			 */
+			NSMapTable *weakValues = [NSMapTable strongToWeakObjectsMapTable];
+			NSMapTable *aliveValues = [NSMapTable strongToStrongObjectsMapTable];
+
+			w13m_deaths = 0;
+			@autoreleasepool {
+				W13Mortal *mortal = [[W13Mortal alloc] initWithName:@"fill"];
+
+				[weakValues setObject:mortal forKey:@"the-key"];
+			}
+			/* THE VALUE DIED, THE ENTRY REMAINS, and the lookup answers the dangling pointer rather than
+			 * dropping the entry — "not zeroed", exactly as the weak pointer array behaves. Comparing it
+			 * to nil is safe; touching it would not be. */
+			[aliveValues setObject:@"one" forKey:@"k1"];
+			[aliveValues setObject:@"two" forKey:@"k2"];
+			{
+				BOOL valueDied = w13m_deaths == 1;
+				/*
+				 * `count` AND NOT `objectForKey:`, and the reason is a measured hazard rather than taste:
+				 * THIS PROBE IS ARC, and an ARC CALL SITE RETAINS THE `+0` RETURN VALUE. Looking up the
+				 * dead weak value therefore sends `-retain` to freed memory and the probe SEGFAULTS —
+				 * the lookup itself, before the caller does anything with the answer. The entry's
+				 * EXISTENCE is the claim this check can safely make; reading the pointer inside it is not.
+				 */
+				BOOL entryRemains = [weakValues count] == 1;
+				NSEnumerator *keys = [aliveValues keyEnumerator];
+				NSEnumerator *values = [aliveValues objectEnumerator];
+				NSUInteger keyCount = 0;
+				NSUInteger valueCount = 0;
+				id each;
+				NSUInteger fastCount = 0;
+
+				while ([keys nextObject] != nil) {
+					keyCount++;
+				}
+				while ((each = [values nextObject]) != nil) {
+					(void)each;
+					valueCount++;
+				}
+				for (id v in aliveValues) {	/* FAST ENUMERATION YIELDS THE VALUES */
+					(void)v;
+					fastCount++;
+				}
+				check("map-table-sides-and-enumeration",
+				      valueDied && entryRemains &&
+				      keyCount == 2 && valueCount == 2 && fastCount == 2,
+				      [NSString stringWithFormat:
+					@"deaths=%d remains=%d keys=%lu values=%lu fast=%lu",
+					w13m_deaths, (int)entryRemains, (unsigned long)keyCount,
+					(unsigned long)valueCount, (unsigned long)fastCount]);
+			}
+		}
+
+		/* ---- NSHashTable's fast enumeration, on a table whose members are all alive ---- */
+		{
+			NSHashTable *table = [NSHashTable hashTableWithOptions:NSPointerFunctionsObjectPersonality];
+			NSUInteger fast = 0;
+			NSUInteger viaSnapshot = 0;
+
+			[table addObject:@"a"];
+			[table addObject:@"b"];
+			[table addObject:@"c"];
+			for (id member in table) {
+				(void)member;
+				fast++;
+			}
+			/* ENUMERATING TWICE MUST NOT DOUBLE-COUNT: the snapshot is rebuilt only when the table has
+			 * changed, and the state machine has to restart for each new walk. */
+			for (id member in table) {
+				(void)member;
+				viaSnapshot++;
+			}
+			check("hash-table-enumeration",
+			      fast == 3 && viaSnapshot == 3 && [table count] == 3,
+			      [NSString stringWithFormat:@"fast=%lu second=%lu count=%lu",
+				(unsigned long)fast, (unsigned long)viaSnapshot,
+				(unsigned long)[table count]]);
 		}
 
 		printf("FOUNDATION-POINTERS RESULT ok=%d fail=%d\n", okc, failc);

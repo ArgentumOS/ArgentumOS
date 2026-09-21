@@ -244,7 +244,7 @@ FN_FOUNDATION_ICU   = NSCalendar.m NSDateFormatter.m NSNumberFormatter.m NSPredi
                       NSISO8601DateFormatter.m NSDateIntervalFormatter.m NSByteCountFormatter.m \
                       NSRelativeDateTimeFormatter.m NSDateComponentsFormatter.m NSMeasurementFormatter.m \
                       NSSecureUnarchiveFromDataTransformer.m NSPointerFunctions.m \
-                      NSPointerArray.m
+                      NSPointerArray.m FNPointerTable.m NSHashTable.m NSMapTable.m
 FN_FOUNDATION_X11   = NSDataCodec.m
 FN_FOUNDATION_ROOT  = NSProxy.m
 FN_FOUNDATION_OBJS  = $(addprefix .build/foundation-,$(FN_FOUNDATION_SRCS:.m=.o)) .build/foundation-ninvoke-asm.o

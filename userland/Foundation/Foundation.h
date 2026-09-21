@@ -121,6 +121,8 @@
 #import <Foundation/NSSecureUnarchiveFromDataTransformer.h>
 #import <Foundation/NSPointerFunctions.h>
 #import <Foundation/NSPointerArray.h>
+#import <Foundation/NSHashTable.h>
+#import <Foundation/NSMapTable.h>
 #import <Foundation/NSSet.h>
 #import <Foundation/NSCountedSet.h>
 #import <Foundation/NSOrderedSet.h>

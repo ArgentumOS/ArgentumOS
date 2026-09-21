@@ -28,14 +28,14 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  112   open  130   struck   31
+#   class      shipped  114   open  128   struck   31
 #   protocol   shipped   11   open   25   struck    9
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   78   open   74   struck    8
 #   case       shipped  428   open  781   struck   93
 #   func       shipped   71   open   64   struck   54
 #   var        shipped   92   open  675   struck  147
-#   typealias  shipped   20   open   53   struck    3
+#   typealias  shipped   22   open   51   struck    3
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -1413,7 +1413,7 @@ class	open	NSGetCommand		App Support / Script Commands	-	objc
 class	open	NSHTTPCookie		Networking / Essentials / Creating a session / Setting cookie policies	-	objc
 class	open	NSHTTPCookieStorage		Networking / Cookies	-	objc
 class	open	NSHTTPURLResponse		Networking / Requests and responses	-	objc
-class	open	NSHashTable		Fundamentals / Pointer Collections	-	objc
+class	shipped	NSHashTable		Fundamentals / Pointer Collections	-	objc
 class	struck	NSHost		Low-Level Utilities / Sockets	deprecated	objc
 class	shipped	NSISO8601DateFormatter		Fundamentals / Date Formatting	-	objc
 class	shipped	NSIndexPath		Fundamentals / Indexes	-	objc
@@ -1439,7 +1439,7 @@ class	shipped	NSLock		Low-Level Utilities / Threads and Locking	-	objc
 class	open	NSLogicalTest		App Support / Object Matching Tests	-	objc
 class	struck	NSMachBootstrapServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSMachPort		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-class	open	NSMapTable		Fundamentals / Pointer Collections	-	objc
+class	shipped	NSMapTable		Fundamentals / Pointer Collections	-	objc
 class	struck	NSMassFormatter		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSMeasurement		Fundamentals / Essentials	-	objc
 class	shipped	NSMeasurementFormatter		Fundamentals / Measurements	-	objc
@@ -2288,7 +2288,7 @@ typealias	open	NSFileProtectionType	NSFileManager	Files and Data Persistence / F
 typealias	open	NSFileProviderServiceName	NSFileManager	Files and Data Persistence / File system operations / Accessing file provider services	-	objc
 typealias	open	NSHTTPCookiePropertyKey	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs	-	objc
 typealias	open	NSHTTPCookieStringPolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Securing cookies	-	objc
-typealias	open	NSHashTableOptions	NSHashTable	Fundamentals / Pointer Collections / Constants	-	objc
+typealias	shipped	NSHashTableOptions	NSHashTable	Fundamentals / Pointer Collections / Constants	-	objc
 typealias	open	NSItemProviderCompletionHandler	NSItemProvider	App Support / Attachments / Constants	-	objc
 typealias	open	NSItemProviderLoadHandler	NSItemProvider	App Support / Attachments / Constants	-	objc
 typealias	shipped	NSKeyValueChangeKey		Reference / Type Aliases	-	objc
@@ -2296,7 +2296,7 @@ typealias	shipped	NSKeyValueOperator		Reference / Type Aliases	-	objc
 typealias	struck	NSLinguisticTag	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
 typealias	struck	NSLinguisticTagScheme	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
 typealias	open	NSLocaleKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key	-	objc
-typealias	open	NSMapTableOptions	NSMapTable	Fundamentals / Pointer Collections / Creating and Initializing a Map Table	-	objc
+typealias	shipped	NSMapTableOptions	NSMapTable	Fundamentals / Pointer Collections / Creating and Initializing a Map Table	-	objc
 typealias	open	NSNotificationName	NSNotification	App Support / Notifications / Creating Notifications	-	swift-page
 typealias	shipped	NSPoint		Fundamentals / Geometry	-	objc
 typealias	shipped	NSPointArray		Fundamentals / Geometry / Related Types	-	objc

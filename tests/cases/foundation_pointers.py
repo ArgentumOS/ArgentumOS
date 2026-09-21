@@ -42,7 +42,10 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_pointers"
 CHECKS = ("pointer-functions-personalities", "pointer-array-slots", "pointer-array-ownership",
-          "pointer-array-copy-in", "pointer-array-archive")
+          "pointer-array-copy-in", "pointer-array-archive",
+          # W13b: the two collections built on the same callouts
+          "hash-table-membership", "hash-table-growth", "hash-table-set-operations",
+          "hash-table-enumeration", "map-table-pairs", "map-table-sides-and-enumeration")
 
 
 class Case(BaseCase):

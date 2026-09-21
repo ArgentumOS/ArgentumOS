@@ -3501,7 +3501,7 @@ vanishing.
 | **Fundamentals / Numbers** | all classes shipped | — |
 | **Fundamentals / Pattern Matching** | 2 open | `NSDataDetector`, `NSScanner` |
 | **Fundamentals / Physical Dimension** | all classes shipped | — |
-| **Fundamentals / Pointer Collections** | 2 open | `NSHashTable`, `NSMapTable` |
+| **Fundamentals / Pointer Collections** | all classes shipped | — |
 | **Fundamentals / Purgeable Collections** | 4 open | `NSCache`, `NSCacheDelegate`, `NSDiscardableContent`, `NSPurgeableData` |
 | **Fundamentals / Sorting** | all classes shipped | — |
 | **Fundamentals / Special Semantic Values** | all classes shipped | — |
@@ -5584,3 +5584,49 @@ then `make test TESTS='foundation_pointers,foundation_coder'` → **TESTS-OK 2/2
 archiver and its eleven checks are what prove the fix did not break the archive. `foundation-sweep --check`:
 consistent, with all fourteen W13a rows flipped to shipped. `foundation-gate`: **OK — 253 files, 99 of 103
 public headers** open a nullability region.
+
+## 37. W13b: `NSHashTable` + `NSMapTable`, AND THE ARC CALL-SITE HAZARD (2026-09-20)
+
+**WHAT SHIPPED.** `NSHashTable` and `NSMapTable` with their `NSHashTableOptions`/`NSMapTableOptions` type
+aliases — four ledger rows — plus ONE INTERNAL UNIT, `FNPointerTable`, which is not Apple's API and is not in
+`Foundation.h`: it exists so the two classes share a single implementation of probing, growth and tombstone
+reuse rather than carrying two that could drift. W13 now owes only `NSCache`/`NSCacheDelegate`,
+`NSDiscardableContent`/`NSPurgeableData` and the `NSOrderedCollectionDifference` trio.
+
+**THE TABLE IS OPEN-ADDRESSED WITH LINEAR PROBING AND TOMBSTONES, and the tombstone is load-bearing rather
+than a detail:** a removal that merely emptied its slot would break the probe chain of everything that
+collided past it, so a removed slot is marked instead of cleared. `hash-table-growth` is the check that
+proves it — 200 inserts (repeated grows), then a churn of removals and re-adds that leaves the table full of
+tombstones, then a lookup of every key.
+
+**THE MAP'S TWO SIDES ARE CONFIGURED INDEPENDENTLY**, which is the whole reason the class exists next to
+`NSDictionary`: `+weakToStrongObjectsMapTable` is the observer registry, `+strongToWeakObjectsMapTable` is a
+cache whose keys outlive their values. `maps`'s check pairs a strong key with a weak value and asserts the
+ENTRY SURVIVES ITS VALUE.
+
+**A NULL POINTER CANNOT BE A KEY OR A MEMBER**, documented in both headers: the empty slots are spelled with
+NULL, so a pointer of zero has no separate representation — and an INTEGER personality therefore cannot store
+the value 0. That is a real consequence of the representation, stated where it bites.
+
+**TWO MEASURED HAZARDS, AND THE FIRST IS THE MOST USEFUL THING THIS UNIT TAUGHT.** Both come from the same
+root: **the "weak" memory policy here does NOT zero a slot** (NSPointerFunctions' header says so), so a dead
+weak value leaves a dangling pointer, and then:
+
+* **AN ARC CALL SITE RETAINS A `+0` RETURN VALUE, SO LOOKING A DEAD WEAK VALUE UP CRASHES.** The probe
+  segfaulted INSIDE `[map objectForKey:...]` — before anything was done with the answer — and the check now
+  asks only what is safe to ask (`count`), with the reason written at the check. This is a boundary between
+  the MRC library and its ARC callers, not a bug in either;
+* **`-objectEnumerator` AND ARC'S FAST ENUMERATION RETAIN EVERY ELEMENT THEY HAND OUT**, so walking a table
+  whose weak value has died is fatal too. The lifetime question and the enumeration question are therefore
+  asked about DIFFERENT tables: one with a weak value that dies, one whose values are all alive.
+
+**AND ONE FIDELITY DETAIL THAT WOULD HAVE BROKEN EVERY ARC CONSUMER: AN `id *` IVAR IN A PUBLIC HEADER IS AN
+ERROR UNDER ARC** ("pointer to non-const type 'id' with no explicit ownership"). The enumeration snapshots are
+`void **` — which is the honest type for a pointer collection's buffer anyway, and the same fix W9 would have
+needed had it exposed a buffer.
+
+**VERIFIED.** Host: `make host-foundation-run` — **27 probes, 415/415 checks, 0 fail**. Guest: `make testimg`
+then `make test TESTS='foundation_pointers,foundation_coder'` → **TESTS-OK 2/2 case(s), 12/12 check(s) in
+13s**, the pointer probe's own tally `ok=11 fail=0`. `foundation-sweep --check`: consistent, with the four
+W13b rows flipped to shipped. `foundation-gate`: **OK — 259 files, 102 of 106 public headers** open a
+nullability region.
