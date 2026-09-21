@@ -28,13 +28,13 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  119   open   77   struck   77
+#   class      shipped  121   open   75   struck   77
 #   protocol   shipped   13   open   18   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   78   open   65   struck   17
 #   case       shipped  428   open  706   struck  168
 #   func       shipped   71   open   64   struck   54
-#   var        shipped   98   open  463   struck  353
+#   var        shipped   109   open  452   struck  353
 #   typealias  shipped   24   open   45   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1401,7 +1401,7 @@ class	open	NSExtensionContext		App Support / Extension Support	-	objc
 class	open	NSExtensionItem		App Support / Attachments	-	objc
 class	open	NSFileAccessIntent		Files and Data Persistence / Coordinated file access	-	objc
 class	open	NSFileCoordinator		Files and Data Persistence / Coordinated file access	-	objc
-class	open	NSFileHandle		Files and Data Persistence / Managed file access	-	objc
+class	shipped	NSFileHandle		Files and Data Persistence / Managed file access	-	objc
 class	shipped	NSFileManager		Files and Data Persistence / File system operations	-	objc
 class	open	NSFileProviderService		Files and Data Persistence / File system operations / Accessing file provider services	-	objc
 class	open	NSFileSecurity		Files and Data Persistence / Managed file access	-	objc
@@ -1483,7 +1483,7 @@ class	shipped	NSOrderedSet		Fundamentals / Specialized Sets	-	objc
 class	open	NSOrthography		Fundamentals / Localization	-	objc
 class	open	NSOutputStream		Low-Level Utilities / Streams	-	objc
 class	shipped	NSPersonNameComponents		Fundamentals / Names	-	objc
-class	open	NSPipe		Low-Level Utilities / Tasks and Pipes	-	objc
+class	shipped	NSPipe		Low-Level Utilities / Tasks and Pipes	-	objc
 class	shipped	NSPointerArray		Fundamentals / Pointer Collections	-	objc
 class	shipped	NSPointerFunctions		Fundamentals / Pointer Collections / Getting the Pointer Functions	-	objc
 class	shipped	NSPort		Low-Level Utilities / Sockets	-	objc
@@ -2461,18 +2461,18 @@ var	shipped	NSFileGroupOwnerAccountID	NSFileManager	Files and Data Persistence /
 var	open	NSFileGroupOwnerAccountName	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	open	NSFileHFSCreatorCode	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	open	NSFileHFSTypeCode	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
-var	open	NSFileHandleConnectionAcceptedNotification	NSFileHandle	Files and Data Persistence / Managed file access / Working with notifications	-	swift-page
-var	open	NSFileHandleConnectionAcceptedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSFileHandleDataAvailableNotification	NSFileHandle	Files and Data Persistence / Managed file access / Working with notifications	-	swift-page
-var	open	NSFileHandleDataAvailableNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSFileHandleNotificationDataItem	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	-	objc
-var	open	NSFileHandleNotificationFileHandleItem	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	-	objc
+var	shipped	NSFileHandleConnectionAcceptedNotification	NSFileHandle	Files and Data Persistence / Managed file access / Working with notifications	-	swift-page
+var	shipped	NSFileHandleConnectionAcceptedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSFileHandleDataAvailableNotification	NSFileHandle	Files and Data Persistence / Managed file access / Working with notifications	-	swift-page
+var	shipped	NSFileHandleDataAvailableNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSFileHandleNotificationDataItem	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	-	objc
+var	shipped	NSFileHandleNotificationFileHandleItem	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	-	objc
 var	struck	NSFileHandleNotificationMonitorModes	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	deprecated	objc
-var	open	NSFileHandleOperationException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSFileHandleOperationException	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	-	objc
-var	open	NSFileHandleReadCompletionNotification	NSFileHandle	Files and Data Persistence / Managed file access / Working with notifications	-	objc
-var	open	NSFileHandleReadToEndOfFileCompletionNotification	NSFileHandle	Files and Data Persistence / Managed file access / Working with notifications	-	swift-page
-var	open	NSFileHandleReadToEndOfFileCompletionNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSFileHandleOperationException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSFileHandleOperationException	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	-	objc
+var	shipped	NSFileHandleReadCompletionNotification	NSFileHandle	Files and Data Persistence / Managed file access / Working with notifications	-	objc
+var	shipped	NSFileHandleReadToEndOfFileCompletionNotification	NSFileHandle	Files and Data Persistence / Managed file access / Working with notifications	-	swift-page
+var	shipped	NSFileHandleReadToEndOfFileCompletionNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	open	NSFileImmutable	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	open	NSFileManagerUnmountDissentingProcessIdentifierErrorKey	NSFileManager	Files and Data Persistence / File system operations / Unmounting volumes	-	objc
 var	shipped	NSFileModificationDate	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc

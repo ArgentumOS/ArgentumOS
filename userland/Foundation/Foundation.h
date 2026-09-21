@@ -153,5 +153,7 @@
 #import <Foundation/NSUserDefaults.h>
 #import <Foundation/NSPort.h>
 #import <Foundation/NSSocketPort.h>
+#import <Foundation/NSFileHandle.h>
+#import <Foundation/NSPipe.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

@@ -3466,7 +3466,7 @@ vanishing.
 | **Files and Data Persistence / Items** | ALL STRUCK: `NSMetadataItem` | — |
 | **Files and Data Persistence / JSON** | all classes shipped | — |
 | **Files and Data Persistence / Keyed Archivers** | all classes shipped | — |
-| **Files and Data Persistence / Managed file access** | 3 open | `NSFileHandle`, `NSFileSecurity`, `NSFileWrapper` |
+| **Files and Data Persistence / Managed file access** | 2 open | `NSFileSecurity`, `NSFileWrapper` |
 | **Files and Data Persistence / Property Lists** | all classes shipped | — |
 | **Files and Data Persistence / Queries** | ALL STRUCK: `NSMetadataQuery`, `NSMetadataQueryAttributeValueTuple`, `NSMetadataQueryDelegate`, `NSMetadataQueryResultGroup` | — |
 | **Files and Data Persistence / XML** | 7 open | `NSXMLDTD`, `NSXMLDTDNode`, `NSXMLDocument`, `NSXMLElement`, `NSXMLNode`, `NSXMLParser`, `NSXMLParserDelegate` |
@@ -3522,7 +3522,7 @@ vanishing.
 | **Low-Level Utilities / Scripts and External Tasks** | 2 open; 3 STRUCK: `NSUserAppleScriptTask`, `NSUserAutomatorTask`, `NSUserScriptTask` | `NSTask`, `NSUserUnixTask` |
 | **Low-Level Utilities / Sockets** | 1 STRUCK: `NSHost` | — |
 | **Low-Level Utilities / Streams** | 4 open | `NSInputStream`, `NSOutputStream`, `NSStream`, `NSStreamDelegate` |
-| **Low-Level Utilities / Tasks and Pipes** | 1 open | `NSPipe` |
+| **Low-Level Utilities / Tasks and Pipes** | all classes shipped | — |
 | **Low-Level Utilities / Threads and Locking** | 2 open | `NSConditionLock`, `NSDistributedLock` |
 | **Low-Level Utilities / Value Wrappers and Transformations** | all classes shipped | — |
 | **Low-Level Utilities / XPC Client** | ALL STRUCK: `NSXPCCoder`, `NSXPCConnection`, `NSXPCInterface`, `NSXPCProxyCreating` | — |
@@ -6089,4 +6089,55 @@ Apple's port door here.
 
 FILES: `userland/Foundation/NSRunLoop.{h,m}`, `userland/tests/foundation_runloop.m`,
 `tests/cases/foundation_runloop.py`.
+
+## 44. W6c: `NSFileHandle` + `NSPipe` — THE SEAM'S FIRST REAL CONSUMER, AND THREE MORE MEASUREMENTS (2026-09-20)
+
+**WHAT LANDED.** `NSFileHandle` and `NSPipe` with the seven file-handle constants — **13 ledger rows to
+`shipped`** — and a **22-check** probe whose asynchronous half is the first real consumer of W6a's source
+seam. `foundation_filehandle` **22/22** on the guest; `foundation-sweep --check` consistent.
+
+**THE FAMOUS HALF OF THIS CLASS IS THE DEPRECATED ONE, and that is the whole shape of the slice.** In the
+macOS 14 vintage Apple deprecated `-readDataToEndOfFile`, `-readDataOfLength:`, `-writeData:`,
+`-offsetInFile`, `-seekToEndOfFile`, `-seekToFileOffset:`, `-closeFile`, `-synchronizeFile`,
+`-truncateFileAtOffset:` and `NSFileHandleNotificationMonitorModes`, so §11.5 strikes them and **what
+replaced them is the same operations with an error out-parameter** — which is the synchronous surface that
+shipped. The ASYNCHRONOUS half is current API, and it is why this class needed W6a and W6b first: four
+background operations and two handler doors, every one of them a descriptor registered with a run loop.
+
+**THE ONE STRUCTURAL DECISION, and it is not indirection for its own sake: ONE SMALL OBJECT PER SCHEDULED
+OPERATION.** The seam removes a source BY TARGET, so four operations registered with the file handle as
+their target could not be cancelled one at a time — ending a `-readabilityHandler` would silently end a
+background read that happened to be waiting. Each operation is its own target, the handle owns it in
+`_operations` (which is also what keeps it alive, since the seam holds targets WEAKLY), and it carries its
+own `(loop, modes)` pair so registering in three modes and removing the operation clears all three. Two
+orders follow from it and are load-bearing: **UNSCHEDULE BEFORE DOING THE WORK** (a one-shot read that posted
+first would re-fire on the next pass, because reading is what drains the descriptor), and the two HANDLERS
+are deliberately NOT removed — Apple's contract is that a handler runs again whenever the descriptor is
+ready. Also named in the header: the offset out-parameters are NULLABLE, `-acceptConnectionInBackgroundAndNotify`
+cannot fire here, and archiving REFUSES in both directions because Apple publishes no wire format for a
+coded file handle (NSPort's refusal, one class over).
+
+**AND THE FIRST RUN WAS 19 OF 22, WHICH IS AGAIN THE USEFUL PART — three kernel facts and one bug of my own.**
+
+| what | the measurement | what changed |
+|---|---|---|
+| **`/dev/null` DOES NOT OPEN** | `diag-null /dev/null open=0 errno=2` while `/System/Devices/null` and `/System/Devices/Memory/null` both open — the devfs symlink's target is the RELATIVE `Memory/null` (fs/devfs/super.c:132), which does not resolve from `/` | `+nullDevice` opens **`/System/Devices/null`**, the `@null` expansion `fs/namei.c:194` documents (and the spelling the user confirmed) |
+| **`select(2)` DOES NOT REPORT A REGULAR FILE** | `diag-select regular-file r=0 readable=0` — an open file with data waiting at offset 0 is "not readable" | the background operations and both handlers FIRE ONLY ON PIPES AND SOCKETS: `background-read-to-end` moved to a pipe, where a CLOSED WRITER supplies the end of file it needs, and the header says a file is synchronously usable and not a source |
+| **neither source fires on a file at all** | `diag-filesource fd=6 readToEnd=0 available=0 -> 0`, which is what pointed at select rather than at read-to-end | the same change — and the diagnostic is what turned "read-to-end is broken" into "the kernel's select does not cover files" in ONE run |
+| **AN fd NUMBER IS NOT AN IDENTITY** (my probe, not the class) | `file-handle-owns-what-it-opened` FAILed with nothing wrong in the class: the probe opened the ADOPTED descriptor IN BETWEEN, the kernel handed it the number the closed handle had just given back, and the check read a LIVE descriptor and called it a leak | the two measurements are separated in time, and the check now says why: an fd number is an identity only while nothing else can take it |
+
+**ACCOUNTING.** 13 rows, and the count is worth a sentence: **`class` +2 and `var` +11, because four of the
+seven constants are listed TWICE in the ledger** — once under `NSFileHandle` and once under `NSNotification` —
+so 9 symbols closed 13 rows. `shipped` **952 → 965**, `open` **1442 → 1429**, and 965 of the 2,394 non-struck
+rows reads **40.3%**.
+
+**WHAT REMAINS IN W6, IN ORDER.** (3) **`NSTask`** (+ `NSTaskTerminationReason`,
+`NSTaskDidTerminateNotification`) — fork/exec/pipe/waitpid, which now has `NSPipe` and `NSFileHandle` to
+hand a child its standard descriptors; (4) **the `NSStream` family** — 44 rows, whose
+`-scheduleInRunLoop:forMode:` is `NSPort`'s door one class over; (5) **`NSUserUnixTask`**, which §40 placed
+here and which rides `NSTask`.
+
+FILES: `userland/Foundation/NSFileHandle.{h,m}`, `NSPipe.{h,m}`, `Foundation.h` (two imports),
+`userland/tests/foundation_filehandle.m`, `tests/cases/foundation_filehandle.py`, `mk/20-userland.mk`, and
+the ledger.
 
