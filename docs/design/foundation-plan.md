@@ -3519,7 +3519,7 @@ vanishing.
 | **Low-Level Utilities / Object Basics** | all classes shipped | — |
 | **Low-Level Utilities / Remote Objects** | all classes shipped | — |
 | **Low-Level Utilities / Run Loop Scheduling** | all classes shipped | — |
-| **Low-Level Utilities / Scripts and External Tasks** | 2 open; 3 STRUCK: `NSUserAppleScriptTask`, `NSUserAutomatorTask`, `NSUserScriptTask` | `NSTask`, `NSUserUnixTask` |
+| **Low-Level Utilities / Scripts and External Tasks** | 1 open; 3 STRUCK: `NSUserAppleScriptTask`, `NSUserAutomatorTask`, `NSUserScriptTask` | `NSUserUnixTask` |
 | **Low-Level Utilities / Sockets** | 1 STRUCK: `NSHost` | — |
 | **Low-Level Utilities / Streams** | 4 open | `NSInputStream`, `NSOutputStream`, `NSStream`, `NSStreamDelegate` |
 | **Low-Level Utilities / Tasks and Pipes** | all classes shipped | — |
@@ -6140,4 +6140,77 @@ here and which rides `NSTask`.
 FILES: `userland/Foundation/NSFileHandle.{h,m}`, `NSPipe.{h,m}`, `Foundation.h` (two imports),
 `userland/tests/foundation_filehandle.m`, `tests/cases/foundation_filehandle.py`, `mk/20-userland.mk`, and
 the ledger.
+
+## 45. W6d: `NSTask` LANDS UNVERIFIED — AND THE PROBE'S OWN CRASH IS THE RECORD (2026-09-20)
+
+**STATE, STATED FIRST BECAUSE IT IS THE POINT: THE ROWS FLIPPED AND THE UNIT IS NOT DONE.** The five rows
+are `shipped`, because that word in this ledger means exactly one thing — *our public headers DECLARE it*
+(§11.2) — and they do. §12.1's rule 3 is that a unit is done on THREE signals, and the third one, **the
+probe running on the guest, IS RED**: `foundation_task` dies before its first check, and `tests/cases/
+foundation_task.py` says so on every run. So the ledger is honest about what the tree CONTAINS and this
+section is honest about what has been PROVEN, and the difference between those two is the whole of what
+follows. (Writing it the other way — rows at `open` while the headers declare them — is refused by
+`foundation-sweep --check`, which reported `PRESENT BUT LISTED OPEN` the moment it was tried. The ledger
+has three values and none of them is "implemented but unverified"; the plan is where that state lives.)
+
+**WHAT IS IMPLEMENTED, AND IT BUILDS.** `NSTask` with the LIVE Apple surface only — the deprecated four
+(`+launchedTaskWithLaunchPath:arguments:`, `-launch`, `-launchPath`/`-setLaunchPath:`,
+`-currentDirectoryPath`/`-setCurrentDirectoryPath:`) are struck by §11.5 and excluded by name, and the
+static launcher's ObjC selector was read out of Apple's own metadata
+(`c:objc(cs)NSTask(cm)launchedTaskWithExecutableURL:arguments:error:terminationHandler:`) rather than
+recalled. Three structural decisions, all recorded in the header: EVERY allocation happens BEFORE `fork(2)`
+so the child does only async-signal-safe calls; the CHILD closes the far end of each pipe while the
+CALLER's copies are left alone (so a child reading its stdin can see end of file); and a REAPER THREAD owns
+the status — the only caller of `waitpid(2)`, so `-terminationHandler` and `NSTaskDidTerminateNotification`
+fire with nobody calling `-waitUntilExit`, and `-terminationStatus` survives being asked twice. Two facts
+are OURS and say so: `-terminationStatus` answers `WEXITSTATUS` when the task exited and the SIGNAL NUMBER
+when it did not, and `-interrupt`/`-terminate` signal the child's process GROUP (so "and all of its
+subtasks" is honoured), with a fallback to the process itself.
+
+**THE PROBE RE-EXECS ITSELF AS THE CHILD**, which is the design worth keeping: `main` looks for a
+`--child…` mode in argv before it makes a single object, so the child's exit code, output, working
+directory and death signal are all the probe's own choices — a test that ran `/bin/sh` would be a test of
+dash. Eighteen checks are written, including the reaper's two side effects with NOBODY waiting.
+
+**AND IT DIES ON THE GUEST, AT ITS SECOND FOUNDATION CALL, WITH THE KERNEL'S OWN WORDS.** The trace it
+carries prints `trace 1: entered main`, then `trace 1a: manager`, and stops: the next statement is
+`root = probe_root()`, i.e. `[NSString stringWithUTF8String:@"/System/Temporary Files/nstask-probe"]`. The
+kernel says:
+
+    do_page_fault(): cannot map the page of process '/System/Shared/tests/foundation_task' (pid 9)
+                     at 0x7ffff580aff8 - out of memory?
+    Bus error
+    FOUNDATION-TASK-STATUS=135
+
+`fault_unmappable()` reported it and sent the SIGBUS (135), and the address is **eight bytes below the
+`[stack]` VMA's low edge** in the same dump (0x7ffff580b000), so the fault IS a stack growth that the kernel
+declined — not a bad pointer and not a heap allocation.
+
+**THREE THINGS ARE MEASURED, AND ONE OF THEM DISPROVES THE OBVIOUS EXPLANATION.** (1) The guest is NOT out
+of memory: `foundation_defaults` answers **36/36 in the same image, the same guest configuration, minutes
+later**. (2) **THE FRAME IS NOT TOO BIG — MEASURED HOST-SIDE AND DISPROVED:** `main`'s prologue reserves
+**0x5f0 = 1520 bytes** here against **0x8b0 = 2224 bytes** in `foundation_filehandle`, which passes; a
+bigger frame than this one is already fine on this system, so a large frame is not sufficient to explain
+the fault. (3) The process dies BEFORE any `NSTask` exists — no `fork(2)`, no thread, no pipe — so none of
+this unit's own machinery is implicated: anything that blamed the reaper thread or the child setup would be
+blaming code that has not run yet.
+
+**WHAT THE NEXT DIAGNOSTIC IS, NAMED SO IT DOES NOT HAVE TO BE RE-DERIVED.** The fault is a refused stack
+growth on the FIRST deep call chain of that process, while the same call in another Foundation probe is
+fine, so the difference is in the PROCESS's VMA layout rather than in the call. The next three measurements,
+in order: (a) print `rsp` and the address of a local at each trace, so the stack's position at the fault is
+known rather than inferred; (b) compare the VMA COUNT and the `[stack]` region's bounds between this probe
+and `foundation_filehandle` in the same guest — the dump here lists **68 regions** (`[0]`..`[67]`), and the
+kernel's own syscall-buffer growth path consults `vma->prev->end` before extending the stack, so a table
+pressed against its neighbour is a candidate; (c) test the same binary with a `--child…` argument, which
+takes the OTHER branch of `main` before any object exists — that separates "this process cannot call
+Foundation at all" from "it cannot call Foundation after this particular statement".
+
+**THE HONEST SUMMARY.** §44's lesson was that a probe is what finds the truth; this is its other use — a
+probe whose FIRST job was to prove a class works, ending up proving something about the process instead.
+The code is committed because it builds and because the next session should not re-write it; the LEDGER
+SAYS THE UNIT IS OWED because that is what the ledger is for.
+
+FILES: `userland/Foundation/NSTask.{h,m}`, `Foundation.h` (one import), `userland/tests/foundation_task.m`,
+`tests/cases/foundation_task.py`, `mk/20-userland.mk`.
 

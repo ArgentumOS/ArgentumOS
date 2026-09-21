@@ -28,13 +28,13 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  121   open   75   struck   77
+#   class      shipped  122   open   74   struck   77
 #   protocol   shipped   13   open   18   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped   78   open   65   struck   17
-#   case       shipped  428   open  706   struck  168
+#   enum       shipped   79   open   64   struck   17
+#   case       shipped  430   open  704   struck  168
 #   func       shipped   71   open   64   struck   54
-#   var        shipped   109   open  452   struck  353
+#   var        shipped   110   open  451   struck  353
 #   typealias  shipped   24   open   45   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -886,8 +886,8 @@ case	shipped	NSSubqueryExpressionType	NSExpression	Fundamentals / Filltering / G
 case	struck	NSSunOSOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	open	NSSymbolStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSSystemDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
-case	open	NSTaskTerminationReasonExit	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	swift-page
-case	open	NSTaskTerminationReasonUncaughtSignal	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	swift-page
+case	shipped	NSTaskTerminationReasonExit	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	swift-page
+case	shipped	NSTaskTerminationReasonUncaughtSignal	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	swift-page
 case	open	NSTextCheckingAllCustomTypes	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 case	open	NSTextCheckingAllSystemTypes	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 case	open	NSTextCheckingAllTypes	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
@@ -1528,7 +1528,7 @@ class	struck	NSSpecifierTest		App Support / Object Matching Tests	declined	objc
 class	open	NSSpellServer		Fundamentals / Spelling and Grammar	-	objc
 class	open	NSStream		Low-Level Utilities / Streams	-	objc
 class	shipped	NSString		Fundamentals / Strings	-	objc
-class	open	NSTask		Low-Level Utilities / Scripts and External Tasks	-	objc
+class	shipped	NSTask		Low-Level Utilities / Scripts and External Tasks	-	objc
 class	open	NSTermOfAddress		Fundamentals / Automatic grammar agreement	-	objc
 class	shipped	NSTextCheckingResult		Fundamentals / Pattern Matching	-	objc
 class	shipped	NSThread		Low-Level Utilities / Threads and Locking	-	objc
@@ -1734,7 +1734,7 @@ enum	open	NSStreamStatus	NSStream	Low-Level Utilities / Streams / Constants	-	ob
 enum	shipped	NSStringCompareOptions	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 enum	shipped	NSStringEncodingConversionOptions	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 enum	shipped	NSStringEnumerationOptions	NSString	Fundamentals / Strings / Performing Linguistic Analysis	-	objc
-enum	open	NSTaskTerminationReason	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants	-	swift-page
+enum	shipped	NSTaskTerminationReason	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants	-	swift-page
 enum	struck	NSTestComparisonOperation	NSSpecifierTest	App Support / Object Matching Tests / Constants	declined	objc
 enum	open	NSTextCheckingType	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants	-	objc
 enum	shipped	NSTimeZoneNameStyle	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
@@ -3013,7 +3013,7 @@ var	open	NSSystemClockDidChangeNotification	NSDate	Fundamentals / Date Represent
 var	open	NSSystemClockDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	open	NSSystemTimeZoneDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	open	NSSystemTimeZoneDidChangeNotification	NSTimeZone	Fundamentals / Calendrical Calculations / Recognizing Notifications	-	swift-page
-var	open	NSTaskDidTerminateNotification	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with notifications	-	objc
+var	shipped	NSTaskDidTerminateNotification	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with notifications	-	objc
 var	open	NSTextCheckingAirlineKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 var	open	NSTextCheckingCityKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 var	open	NSTextCheckingCountryKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
