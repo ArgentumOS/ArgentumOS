@@ -7838,6 +7838,33 @@ mistake, not a kernel question.
 `1UL << (32 - PAGE_SHIFT)`-style arithmetic, or the `kstat` free-page count - the exact spelling is the
 implementer's to pick, and the check itself is the point). Then read `PUBOOB` versus `PUBLISH` as recorded.
 
+**AND THE BOUNDS-CHECKED RUN ANSWERS IT — BOTH FACES OF DEFECT A ARE CLEAN ON THE CURRENT KERNEL.**
+
+    PUBOOB:  2025 hits, all `addr=0x80000000 index=0x80000`, all pid=4, one caller (ffff80000d9de09a)
+    PUBLISH: 0 hits
+
+  * **`PUBOOB` is a DEVICE MAPPING, and the tree already knows the shape**: `addr = 0x80000000` is exactly
+    2GB, `index = 0x80000` is the last index of such a range, and `free_vma_pages` has a case for precisely
+    this - "OS-managed / device pages (e.g. the framebuffer mapped by `fb_mmap` with `PAGE_NOALLOC`): the
+    physical page belongs to a device ... its phys is outside RAM". The tree marks it on the **PTE**; a
+    `struct page` predicate cannot see a PTE flag, so my instrument reports 2025 legitimate device mappings.
+    **That is a false positive of the predicate, not a bug - and the correction is one line (skip the check
+    when the caller is a device mapping), recorded rather than re-run.**
+  * **`PUBLISH` never fires: no in-RAM kernel page ever acquires a user leaf.** The two hits the previous
+    run reported were my own out-of-bounds read, now correctly classified as `PUBOOB`.
+
+**AND THAT CLOSES DEFECT A'S SECOND FACE TOO.** Free side: zero in 60,000 frees. Publish side: zero in a full
+boot. **Both faces of "a page shared between the kernel heap and userspace" are clean on the current
+kernel** - and defect A WAS measured, twice, on the kernel as it stood before defects B, C and the sweep
+reorder landed (the vma table holding `"FNX3-DONE"`; the `SAME=1` alias). **The simplest reading of that is
+that one of the three landed fixes closed it**, which is testable the same way everything else here has been:
+the alias instrument is written and would say so in one boot.
+
+**AND `foundation_task`'S REMAINING FAULT IS THEREFORE A THIRD, DISTINCT THING.** Deterministic, in a
+single-threaded process, with every register zero and `rsp` at the stack's bottom. It is not the free side,
+not the publish side, and not - as measured - the thread/address-space family. It is where this investigation
+now points, and it is one probe, one fault, one log away from the same treatment everything else here got.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
