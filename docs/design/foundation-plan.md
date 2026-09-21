@@ -6220,24 +6220,38 @@ IDENTICAL** (same two traces, same SIGBUS, same shape; only the addresses shifte
 changed code). **DISPROVED, AND THE FLAG IS OUT OF THE BUILD** — a workaround that works is a workaround and
 would say so in the mk; a flag that changes nothing would be a false claim standing in a build rule.
 
-**AND ONE DATUM THE DISPROOF UNCOVERED, which is where the next step goes.** The fault's `rip` (0x3ff460)
-and the RETURN ADDRESSES printed on the stack (0x404da9, and 0x40530d after the rebuild) are all in a
-window the same dump shows as **UNMAPPED** — the probe's own image is listed lower, and the shared libraries
-higher, so the process is running and returning in the HOLE between them, about 0xba0 below the probe's
-text. That is a wild jump of under 4 KB rather than a corrupted stack, which fits the fault address being a
-wild READ. **THE FIRST THING THE NEXT SESSION SHOULD DO IS CONFIRM WHERE THAT BINARY IS ACTUALLY LOADED**
-(procfs, if it exposes a maps file; otherwise the kernel's exec log), because every conclusion about that
-hole depends on it — the dump's region list and the running `rip` disagree about the load address, and one
-of the two readings is wrong the same way the earlier "stack growth" reading was.
+**AND THAT STEP PAID OFF IN ONE COMMAND — WHICH BOTH RETRACTS THE PARAGRAPH ABOVE AND NAMES THE MECHANISM.**
+`readelf` settles the load address host-side, with no gate: **BOTH probes are `EXEC`, linked at 0x400000,
+entry point 0x4021a0/0x402140.** So the return addresses 0x404da9 and 0x40530d are INSIDE the probe's own
+text, the dump's low `[text] 0x15000-0x81000` entry belongs to some OTHER file, and **there is no hole and
+no wild jump of 4 KB** — that reading is retracted here, as its predecessor was, and for the same reason:
+an address was read off a dump whose regions were not the ones being described.
+
+**AND THE KERNEL HAD ALREADY SAID WHAT THE FAULT WAS, in a line nobody had decoded — the vector-14
+register dump:**
+
+    000000000000000e : 0000000000000014 : 00007f0000080850 : 00007ffffffffea0 : 00007f0000080850 : 0000000000227000
+         vector 0x0e       error 0x14            rip                 rsp                cr2
+
+**`error = 0x14` carries the INSTRUCTION-FETCH bit (0x10), and `rip == cr2 == 0x00007f0000080850`:** the
+process jumped to an address and tried to EXECUTE it, in a page that cannot be mapped. That is a
+**CORRUPTED CODE POINTER** — not a data read, not stack growth, not alignment, not the load address — and
+its SHAPE is the informative part: `0x7f00_0000080850` is a `0x7f00_0000_0000`-style high half OR-ed with
+an offset that looks like this tree's own text range. **Nothing in `fnx.ld`, `mk/*.mk` or `tools/*` names
+0x7f00 or 0x400000** (measured: no matches at all), so that prefix is not a build-time constant this tree
+writes down, which makes "what computes a code address with a 0x7f00-based high half" the question, and
+makes DYNAMIC LINKING / RELOCATION the candidate rather than anything in the probe's own source.
 
 **WHAT THE NEXT DIAGNOSTIC IS, NAMED SO IT DOES NOT HAVE TO BE RE-DERIVED.** The fault is a refused stack
 growth on the FIRST deep call chain of that process, while the same call in another Foundation probe is
-fine, so the difference is in the PROCESS's VMA layout rather than in the call. **(a) IS DONE** (the `rsp` traces produced the wild-access correction); **(c) IS DONE** (`--child-foundation`
-passes, `--noop-argument` fails: the child branch works and argc/argv is out); **(the alignment test) IS DONE
-AND NEGATIVE** (`-mstackrealign` changes nothing). What is left is the load-address question above, and one
-kernel-side reading that the earlier hunt did not finish: where the kernel sets up the initial user stack
-for `exec` and what it leaves there. `kernel/syscalls/execve.c` has no stack-building code and nothing about
-alignment; `kernel/process.c` is where `argv`/`envp` are named and is the next file to read. **(iii)** the
+fine, so the difference is in the PROCESS's VMA layout rather than in the call. **ALL FOUR ARE NOW DONE, AND THE CHECKLIST IS CLOSED RATHER THAN ABANDONED.** (a) the `rsp` traces are in the
+probe and they produced the first correction; (c) `--child-foundation` passes and `--noop-argument` fails,
+so the child branch works and argc/argv is out; (the alignment test) `-mstackrealign` changes nothing and
+is DISPROVED; (the load address) `readelf` says 0x400000 for both probes, which retracts the hole. **What
+is left is a different question than the one this list started with** — not "why does this process fault"
+but "what builds a code pointer with a 0x7f00 high half" — and its cheapest discriminator is to compare
+THIS probe's dynamic relocations with a passing one's (`readelf -r`), since everything else about the crash
+is now accounted for. **(iii)** the
 `[stack]` VMA's span is worth knowing too: the dump prints it as one window from `0xf580a000` upward, i.e.
 **about two gigabytes of address space reserved for one process's stack**, which is a second reason a fault
 address inside that window can look like stack growth when it is not.
