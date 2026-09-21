@@ -20,10 +20,19 @@ cites when it explains why the drawing layer does not chase Apple's spelling) �
 plus the catalogue's coverage discipline, and every clause whose content is about
 SEMANTICS rather than language.
 
-**WHAT IS OPEN: the language of the Application Kit** — Objective-C
-(NS-prefixed, matching this tree's Foundation) or C++ (unprefixed, as this plan
-assumes). It is the one decision the layer sequence waits on, and it is named in
-`docs/design/coregraphics-plan.md` §11.
+**WHAT WAS OPEN IS NOW SETTLED: THE APPLICATION KIT IS PURE OBJECTIVE-C** (user,
+2026-09-21: *"AppKit will be pure Objective-C."*). Apple's `NS`-prefixed class
+names, Apple's semantics, built on this tree's Foundation — which is already
+Objective-C, and which the language decision makes the AppKit's substrate rather
+than a neighbour. `docs/design/coregraphics-plan.md` §1 records it as the sixth
+decision.
+
+**AND SO THIS PLAN'S FOURTH CLAUSE IS RETIRED, WITH ITS NAMING RULE.** The
+inventory, the coverage discipline and every clause about SEMANTICS still stand —
+that is most of what follows — but the unprefixed spellings used throughout this
+document (`View`, `Button`, `TableView`) are C++ names for C++ classes that were
+parked, and the AppKit's own will be `NSView`, `NSButton`, `NSTableView`. READ
+THEM AS SEMANTICS, NOT AS SPELLING, everywhere below.
 
 **AND THE PARKED CODE IS NOT LOST WORK.** `argentum-uikit-plan.md` is the
 DEFERRED record — the parked inventory, the recovery commands, and §0a's

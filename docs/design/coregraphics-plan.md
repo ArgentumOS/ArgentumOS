@@ -8,7 +8,7 @@ compiles here unmodified. Supersedes the drawing half of
 
 ## 1. The decisions, and who made them
 
-Five, all user-stated during 2026-09, recorded here because until now they
+**SIX**, all user-stated during 2026-09, recorded here because until now they
 existed only in conversation while the tree said the opposite:
 
 1. **Duplicate Apple's drawing API as used in macOS** (user, 2026-09):
@@ -21,6 +21,15 @@ existed only in conversation while the tree said the opposite:
    implement or expose deprecated APIs as policy."*
 5. **The deprecation vintage is the macOS 14 SDK** (user, 2026-09:
    *"deprecated as of the macOS 14 SDK sounds reasonable to me"*).
+6. **AppKit IS PURE OBJECTIVE-C** (user, 2026-09-21: *"AppKit will be pure
+   Objective-C."*) — Apple's `NS`-prefixed class names and Apple's semantics,
+   built on this tree's Foundation, which is already Objective-C. This settles
+   the language that `cocoa-parity-plan.md` carried as OPEN and that §11's last
+   paragraph waited on, and it RETIRES that plan's fourth clause: its unprefixed
+   names (`View`, `Button`, `TableView`) and its C++ are not the direction. **The
+   parked C++ UIKit (tag `park/argentum-uikit-u6a`) is therefore a RECORD of the
+   widget behaviour worked out in it, not a base to continue from** — the same
+   relationship this plan already has with the retracted CoreFoundation plan.
 
 ## 2. The contract, stated so it can be checked
 
@@ -441,26 +450,30 @@ later reader is told not to "fix" it.
   the forbidden-spelling list because those spellings were *ours*. Once CG
   is an Apple-API duplication, the exemption's **reason** must be
   restated, not deleted.
-- **`cocoa-parity-plan.md`** — two things: the naming boundary in §3 (CG and
-  Core Text keep Apple's spelling; AppKit-spelled *classes* remain that plan's
-  decision), and its STATUS, which now says its premise moved — the plan
-  describes the C++ UIKit, that UIKit was parked on 2026-09-17 (`16692d55`), and
-  §1's "there is no Objective-C runtime" is no longer true of this tree. The
-  AppKit's language is marked there as OPEN, which is the one decision §11 waits
-  on.
+- **`cocoa-parity-plan.md`** — three things now: the naming boundary in §3 (CG and
+  Core Text keep Apple's spelling; AppKit-spelled *classes* are that plan's
+  subject), its STATUS, which says its premise moved — the plan describes the C++
+  UIKit, that UIKit was parked on 2026-09-17 (`16692d55`), and §1's "there is no
+  Objective-C runtime" is no longer true of this tree — **AND ITS LANGUAGE, WHICH
+  IS NO LONGER OPEN: the AppKit is pure Objective-C (user, 2026-09-21; §1's sixth
+  decision)**, so that plan's unprefixed names are C++ names for parked C++ classes
+  and its fourth clause is retired rather than amended.
 
 ## 11. How the three layers sequence (user's question, 2026-09)
 
 The question was: *"the plan goes, finish Foundation, then build our
 CoreGraphics-shaped API whatever it's called by us, then build our Application Kit
-on top of both?"* Yes — with two corrections to the shape, both measured, and one
-thing to settle first.
+on top of both?"* Yes — with two corrections to the shape, both measured. **AND
+THE ONE THING THAT WAS TO BE SETTLED FIRST IS NOW SETTLED**: the Application Kit
+is PURE OBJECTIVE-C — Apple's `NS`-prefixed classes on this tree's Foundation,
+drawing through this library — so the parked C++ toolkit is its record and not its
+base (§1's sixth decision, 2026-09-21).
 
 | Layer | State, measured 2026-09 |
 |---|---|
 | **Foundation** | **~70 classes shipped**, and every class THIS layer needs is among them (`NSString`, `NSArray`, `NSDictionary`, `NSData`, `NSNumber`, `NSURL`, `NSError`, `NSSet` and their mutable forms) |
 | **CoreGraphics** | **C1, C2 AND C3 COMPLETE; C4'S COLOUR HALF SHIPPED (2026-09-20)**: `libcoregraphics.so.1` — the geometry and affine arithmetic (C1); the drawing context: state, CTM, clip, path, fill, and the clipper (C2); and stroking as a path operation that produces a fill, a path that KEEPS ITS CURVES with a public adaptive flattener, and the ARC FAMILY — ellipses, arcs and rounded rectangles, all of it built on those cubics (C3). Host-verified end to end — 70 checks for C1, 60 for C2, 23 for the stroker, 23 for the stroke API, 14 for curves, 24 for the arcs, **315 in all** (the six probes above, plus **101 for CGColor — C4 so far, INCLUDING THE NAMED SYSTEM SPACES: `CGColorSpaceCreateWithName` plus six `kCGColorSpace*` constants, which are the FIRST FOUNDATION OBJECTS in this library — `NSString *`, spelled with an opaque forward declaration so a C caller passes them without seeing inside, and compared by ONE Objective-C translation unit (CGColorSpaceNames.m). That file is also why `libcoregraphics.so.1` now depends on libfoundation. The six names are the ones this library can back with an EXACT profile (sRGB, linear sRGB, Adobe RGB 1998, ProPhoto, generic Lab, generic gray 2.2), and IsWideGamutRGB confirms each selects the right one** — and the six space predicates, of which two are COMPUTED rather than declared: `SupportsOutput` answers from the same fact the context's setters refuse from, and `IsWideGamutRGB` compares the space's primaries against sRGB's triangle** — so device RGB, being sRGB here, is NOT wide gamut while Adobe RGB's primaries are; the other four are statements that no extended-range or HDR space exists in this library yet: the colour as a VALUE that retains its colour space, the two convenience constructors, copies and `createCopyWithAlpha`, the component getters whose count INCLUDES ALPHA, equality by value, the two context setters that take a colour, DEVICE CMYK — which exists so that the refusal could be exercised with a COLOUR rather than with a NULL — **Lab, the first space the ENGINE can convert**, **ICC PROFILES THROUGH `CGDataProvider`** (a Core Graphics type rather than a Core Foundation one, which is what makes profile bytes reachable without resolving the Foundation question §6 leaves open), and **the CALIBRATED spaces, where Apple's matrix is recovered as the engine's primaries** — its columns ARE the primaries — with a NULL matrix meaning this library's own device RGB and a NULL white point meaning D65: lcms2 2.19.1 is vendored and linked, `CGColorCreateCopyByMatchingToColorSpace` converts a colour into any space that has a profile, and the context SETTERS CONVERT instead of refusing, so a Lab fill is drawn as the neutral gray it means. THE REFUSAL IS NOW EXACTLY ONE CASE — a device CMYK colour, for which no profile exists — and the probe shows both sides of that line) — with NO QEMU run; the guest library links the vendored pixman. **IT IS IN THE GUEST IMAGE NOW**, which it was not before: `make host-coregraphics-run` builds the library once and runs the five probes as a real gate (it FAILS on a failing probe, demonstrated with a stub that exits 7), and `make userland64` stages `libcoregraphics.so.1` (86168 bytes) into `/System/Libraries` beside libfoundation, with the nine headers in `System/Shared/Headers/CoreGraphics` — the directory the `<CoreGraphics/...>` import spelling names — and the library is a PREREQUISITE of `userland64` beside `$(FOUNDATION_LIB)`, because a staging rule that copies a file nothing builds works only on a machine where the file happens to be there. The ledger credits the whole arc family, THE CONTEXT'S OWN CONSTRUCTORS — `CGContextAddArc`, `AddEllipseInRect`, `AddCurveToPoint`, `AddLines`, `AddRects`, `GetPathCurrentPoint` and the rest, each a one-line passthrough to the path function of the same name — and DASHING (`CGPathCreateCopyByDashingPath`, three cases Apple's page leaves open: an ODD COUNT IS DOUBLED, a TOTAL OF ZERO IS A SOLID LINE, and A NEGATIVE LENGTH IS ITS MAGNITUDE), and `--strict` is clean with **NO policy findings**. THE PATH HEADER HAS NOTHING LEFT IN ITS "STILL ABSENT" LIST: `CGPathAddArcToPoint`, the corner-rounding form, closed it, so the rule it followed — NOTHING IS DECLARED UNTIL IT WORKS — has no outstanding entries. FOUR OUTCOMES THAT CAME FROM THE LEDGER RATHER THAN FROM TASTE: `CGPointEqualToPoint`/`CGSizeEqualToSize` ship as the **macro** (the live "Comparing Values" row); the BYTE ORDER ships as `kCGImageByteOrder32Little` because Apple deprecates the whole `kCGBitmapByteOrder*` family; the stroker's enums live in CGPath.h because the ledger files `CGLineCap`, `CGLineJoin` and `CGPathDrawingMode` under "Opaque Types" — the path's family — which is also what breaks the header cycle; and the CGMutablePath family is absent FROM THE SOURCE (Apple's index has no such node, measured) so this tree's names there cannot be credited. TWO C2 FAILURES FIXED, BOTH FOUND BY MEASUREMENT: a fill that ENCLOSES the surface painted nothing (per-edge clipping keeps no edges of a polygon that contains the surface; `cg_close_subpath` now clips the OUTLINE, Sutherland–Hodgman), and `CGContextAddPath` SILENTLY DROPPED CURVES — the worst kind, and latent until curves existed, since the C2 path model had no curve element to lose. THREE MORE FIXED, ALL BY MEASUREMENT, AND THE THIRD IS THE INSTRUCTIVE ONE: the fill used to REFUSE a self-intersecting path, because a crossing inside a band broke the sweep's x-order assumption — the sweep now ENDS ITS BANDS AT EVERY EDGE-EDGE CROSSING as well as at every vertex, and sorts at the band's MIDDLE (the top is a tie exactly where a crossing is), so the refusal is gone entirely and a bowtie fills; that fix made STROKING A CURVE work (a stroked polyline is overlapping quadrilaterals BY DESIGN, and on a curve neighbouring pieces genuinely cross — measured before: coverage 0 with three refusal lines), so the check that pinned that zero now measures the arc's area; AND IT EXPOSED A WRONG MITER PIECE THAT HAD NOTHING TO DO WITH CURVES. The join was the triangle (a1, m, a2), which is a sliver BESIDE a notch rather than the bevel plus a tip, so a miter covered LESS than a bevel — measured 5929 against 6056 coverage units, because the bevel triangle (a1, v, a2) is 0.707·√2/2 ≈ 0.5 px² while the tip triangle is 0.293: complementary, not nested. The piece is now the quadrilateral (a1, m, a2, v): miter 6120, bevel 6056, +64, and `miterLimit = 1` still EXACTLY the bevel. ONE DEVIATION, RECORDED AND PINNED: the path `CGPathCreateCopyByStrokingPath` returns is a set of overlapping ORIENTED pieces, so it must be filled NON-ZERO — an even-odd fill of it is not the stroke, demonstrated on a stroke that doubles back, where the even-odd rule paints nothing at all |
-| **Application Kit** | does NOT exist. `NSObject` is the only shipped class; the previous toolkit is **PARKED**, not abandoned (tag `park/argentum-uikit-u6a`) |
+| **Application Kit** | does NOT exist — **AND ITS LANGUAGE IS SETTLED: PURE OBJECTIVE-C** (user, 2026-09-21; §1's sixth decision). Apple's `NS`-prefixed class names, on this tree's Foundation, drawing through this library. The C++ toolkit is **PARKED** as the RECORD of the widget behaviour worked out in it (tag `park/argentum-uikit-u6a`), not as a base to continue from |
 
 **CORRECTION 1 — "finish Foundation" IS NOT A GATE.** Every class this layer needs
 is already shipped and CG needs nothing else from Foundation, while Foundation's
