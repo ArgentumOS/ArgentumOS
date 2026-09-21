@@ -7260,6 +7260,32 @@ names it is gone, and `release_binary()` should hand its ranges to the surviving
 That closes both defects with one concept instead of two guards, and `kernel_threaded_exec` green on BOTH
 checks is the acceptance test.
 
+**AND THE FINER-GRAINED VARIANT GIVES THE SAME ANSWER — WHICH IS ITSELF THE MEASUREMENT.** The refinement
+(release the exiting task's ranges, but leave any page another task still maps, page and leaf alike, decided
+per page by a reverse-map scan) reproduces the earlier result exactly: the fault check PASSES with no Page
+Fault line, and the case still takes 312s against 12s.
+
+**THAT COMPARISON SETTLES WHAT THE COST IS.** The first variant skipped the sweep with NO SCAN AT ALL and was
+equally slow — so the 312s is **not** the instrumentation's scanning; it is the retained pages themselves.
+Both variants keep the survivor's pages with nothing to reclaim them: a leak, and the reproducer's 400 forks
+exhaust memory either way. **The cost is the leak, not the guard — which means the guard is the wrong shape
+for the problem.**
+
+**SO THE UNIFIED FIX IS NOW FULLY SPECIFIED, AND IT IS THE ONE BOTH DEFECTS HAVE BEEN ASKING FOR: A REFERENCE
+PER MAPPING.** Not a scan, not a skip:
+
+  * when a page acquires a mapping, take a reference; when a mapping goes away, drop one;
+  * then `release_binary()` needs no guard at all: the exiting task's release drops ITS references, the
+    survivor's references keep the page, and the last mapping to go frees it. **Nothing leaks, nothing is
+    freed early, and no page-table walking happens on a free path** — which is the only shape that can be
+    both correct and fast;
+  * defect A is the same counter seen from the other side (a free that did not know a mapping existed).
+
+**THE FINER VARIANT WAS REVERTED** (the working tree is back to the kept, committed fix), because it added a
+per-page reverse-map scan to every page of a shared release and changed nothing measurable. The kept fix stays
+as the documented interim: corruption removed, leak confined to the abnormal case, and the reference counter
+named as the real repair.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
