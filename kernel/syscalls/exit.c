@@ -9,6 +9,7 @@
 #include <fnx/kernel.h>
 #include <fnx/syscalls.h>
 #include <fnx/process.h>
+#include <fnx/mm.h>
 #include <fnx/sched.h>
 #include <fnx/mman.h>
 #include <fnx/sleep.h>
@@ -48,11 +49,12 @@ void do_exit(int exit_code)
 			}
 			wakeup(current->set_child_tid);
 		}
-		for(n = 0; n < OPEN_MAX; n++) {
-			if(current->fd[n]) {
-				sys_close(n);
-			}
-		}
+		/* A THREAD CLOSES NOTHING HERE (§45-V). The descriptor table belongs to the PROCESS and a thread
+		 * SHARES the lead task's pointer, so the loop that used to stand here - which closed the THREAD's
+		 * own copy of every open descriptor - closed the PROCESS's descriptors instead. MEASURED: a thread
+		 * exiting took the leader's stdout with it, so the leader's own last printf went to a CLOSED fd
+		 * and its output vanished while the process still exited 0. The cleartid wakeup above is the part
+		 * of this block a thread needs; the fds are not. */
 		/* FNX: the LAST user of a shared address space frees it. A thread
 		 * that outlives its creator is the one that has to, or the tables
 		 * are never released (see pml4_has_other_user). */
@@ -115,6 +117,26 @@ void do_exit(int exit_code)
 	for(n = 0; n < OPEN_MAX; n++) {
 		if(current->fd[n]) {
 			sys_close(n);
+		}
+	}
+	/* AND THE TABLE IS FREED ONLY FOR ITS LAST USER (§45-V), because a live thread may still be sharing
+	 * it - the same rule the pml4 teardown above states for the address space. */
+	{
+		struct proc *q = proc_table_head;
+		int last = 1;
+
+		while(q) {
+			if(q != current && q->fd == current->fd) {
+				last = 0;
+				break;
+			}
+			q = q->next;
+		}
+		if(last) {
+			kfree((addr_t)current->fd);
+			kfree((addr_t)current->fd_flags);
+			current->fd = NULL;
+			current->fd_flags = NULL;
 		}
 	}
 

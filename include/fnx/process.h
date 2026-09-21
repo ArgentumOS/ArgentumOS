@@ -144,8 +144,11 @@ struct proc {
 	__u32 sgid;			/* saved group ID */
 	__u32 fsuid;			/* filesystem user ID (check_permission) */
 	__u32 fsgid;			/* filesystem group ID */
-	unsigned short int fd[OPEN_MAX];
-	unsigned char fd_flags[OPEN_MAX];
+	/* FNX (§45-V): the descriptor table BELONGS TO THE PROCESS. A CLONE_VM thread shares the
+	 * lead task's pointers, because POSIX has threads share the fd table - so a descriptor closed
+	 * in any thread is closed for the process, and one close can still release the object. */
+	unsigned short int *fd;
+	unsigned char *fd_flags;
 	struct inode *root;
 	struct inode *pwd;		/* process working directory */
 	unsigned int entry_address;	/* 32-bit ELF entry point (compat mode) */

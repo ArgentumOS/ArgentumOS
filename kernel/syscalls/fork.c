@@ -95,6 +95,8 @@ int do_fork_like(struct sigcontext *sc, unsigned int clone_flags, addr_t child_s
 	struct proc *child, *p;
 	struct vma *vma, *child_vma;
 	__pid_t pid;
+	unsigned short int *own_fd;
+	unsigned char *own_fd_flags;
 	int is_thread = (clone_flags & CLONE_VM) ? 1 : 0;
 
 #ifdef __DEBUG__
@@ -125,7 +127,25 @@ int do_fork_like(struct sigcontext *sc, unsigned int clone_flags, addr_t child_s
 	 * This memcpy() will overwrite the prev and next pointers, so that's
 	 * the reason why proc_slot_init() is separated from get_proc_free().
 	 */
+	/* FNX (§45-V): the slot arrives with its OWN descriptor table (get_proc_free()) and this memcpy
+	 * gives it the PARENT's pointers. WHICH ONE IT KEEPS IS THE FIX. A PROCESS keeps its own and copies
+	 * the parent's contents in; a CLONE_VM THREAD hands its own back and SHARES the lead task's, because
+	 * POSIX has threads share the descriptor table. A thread with private fd references could never let a
+	 * close reach zero, which is what deadlocked the reader in §45-V. */
+	own_fd = child->fd;
+	own_fd_flags = child->fd_flags;
+
 	memcpy_b(child, current, sizeof(struct proc));
+
+	if(is_thread) {
+		kfree((addr_t)own_fd);
+		kfree((addr_t)own_fd_flags);
+	} else {
+		child->fd = own_fd;
+		child->fd_flags = own_fd_flags;
+		memcpy_b(child->fd, current->fd, OPEN_MAX * sizeof(unsigned short int));
+		memcpy_b(child->fd_flags, current->fd_flags, OPEN_MAX);
+	}
 
 	proc_slot_init(child);
 	/* proc_slot_init() wipes groups[] to the empty (-1) state; restore the
@@ -161,6 +181,8 @@ int do_fork_like(struct sigcontext *sc, unsigned int clone_flags, addr_t child_s
 		pages = 0;
 	} else {
 		if(!(child_pgdir = (void *)kmalloc(PAGE_SIZE))) {
+			kfree((addr_t)child->fd);
+			kfree((addr_t)child->fd_flags);
 			release_proc(child);
 			return -ENOMEM;
 		}
@@ -177,6 +199,8 @@ int do_fork_like(struct sigcontext *sc, unsigned int clone_flags, addr_t child_s
 			extern unsigned long create_pml4_64(unsigned long);
 			if(!(child->cr3_64 = create_pml4_64(current->cr3_64))) {
 				kfree((addr_t)child_pgdir);
+				kfree((addr_t)child->fd);
+				kfree((addr_t)child->fd_flags);
 				release_proc(child);
 				return -ENOMEM;
 			}
@@ -299,10 +323,14 @@ int do_fork_like(struct sigcontext *sc, unsigned int clone_flags, addr_t child_s
 		child->set_child_tid = (void *)ctid;
 	}
 
-	/* increase file descriptors usage */
-	for(n = 0; n < OPEN_MAX; n++) {
-		if(current->fd[n]) {
-			fd_table[current->fd[n]].count++;
+	/* increase file descriptors usage - FOR A PROCESS ONLY. A CLONE_VM thread SHARES the parent's
+	 * descriptor table (§45-V) and adds no reference of its own; counting one for it is exactly what
+	 * held a closed pipe's write end at i_writers=1 for ever and deadlocked the reader. */
+	if(!is_thread) {
+		for(n = 0; n < OPEN_MAX; n++) {
+			if(current->fd[n]) {
+				fd_table[current->fd[n]].count++;
+			}
 		}
 	}
 	if(current->root) {

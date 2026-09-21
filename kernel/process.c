@@ -250,6 +250,26 @@ struct proc *get_proc_free(void)
 	}
 
 	unlock_resource(&slot_resource);
+
+	/* EVERY TASK'S SLOT ARRIVES WITH ITS OWN DESCRIPTOR TABLE (§45-V), allocated here because this is the
+	 * ONE door every task is created through. WHICH TASK KEEPS IT is decided in do_fork_like(): a PROCESS
+	 * keeps it and copies the parent's contents in; a CLONE_VM THREAD hands it back and shares the lead
+	 * task's, because threads share the descriptor table (POSIX) and a thread holding private fd
+	 * references could never let a close reach zero - the deadlock in §45-V. */
+	if(p != NULL) {
+		p->fd = (unsigned short int *)kmalloc(OPEN_MAX * sizeof(unsigned short int));
+		p->fd_flags = (unsigned char *)kmalloc(OPEN_MAX);
+		if(!p->fd || !p->fd_flags) {
+			kfree((addr_t)p->fd);
+			kfree((addr_t)p->fd_flags);
+			p->fd = NULL;
+			p->fd_flags = NULL;
+			release_proc(p);
+			return NULL;
+		}
+		memset_b(p->fd, 0, OPEN_MAX * sizeof(unsigned short int));
+		memset_b(p->fd_flags, 0, OPEN_MAX);
+	}
 	return p;
 }
 

@@ -8445,3 +8445,60 @@ kernel's CLONE_CHILD_CLEARTID clear and wake in `do_exit`) and find out how the 
 returning from `main` — then re-apply §45-V.1's change, which is already written out and is not itself in
 question.
 
+### §45-V.3 — THE REGRESSION'S CAUSE WAS A SECOND FD CLOSE LOOP, AND WITH IT FIXED THE HANG IS GONE
+
+**THE CAUSE TOOK ONE `grep` AFTER THE FACT, AND IT WAS A LOOP I HAD NOT SEEN.** `do_exit` has TWO fd close
+loops. §45-V.1's first implementation wrapped the one in the non-thread path and never looked at the other:
+
+```c
+	if(current->flags & PF_THREAD) {
+		if(current->set_child_tid) { ...clear tid + wakeup... }
+		for(n = 0; n < OPEN_MAX; n++) {
+			if(current->fd[n]) {
+				sys_close(n);        /* <-- A THREAD'S OWN COPY, before the table was shared */
+			}
+		}
+		...pml4 last-user free...
+		not_runnable(current, PROC_ZOMBIE);
+		release_proc(current);
+		do_sched();
+		return;		/* never reached - SO THE PF_THREAD PATH NEVER REACHES MY PRINTK EITHER */
+	}
+```
+
+`memcpy_b(child, current, sizeof(struct proc))` used to give a thread its own `fd[]`, so that loop closed the
+THREAD's copy and was harmless. **With the table shared, the same loop closes the PROCESS's descriptors.** That
+is the whole regression: a thread exiting took the leader's **stdout** with it, so the leader's last
+`printf("PIPEDBG DONE=…")` wrote to a CLOSED fd and its output vanished — while the process still exited 0 and
+the mode's own count had already reached `reaped >= n`. It also retracts a statement in §45-V.2: the reaper
+thread did NOT fail to exit; it exits at the TOP of `do_exit`, above where the instrument's printk sat, which is
+why no exit record appeared.
+
+**AND THE FIX IS THE SAME CHANGE, ONE LOOP REMOVED — NOT A DESIGN CHANGE.** The corrected version deletes the
+thread's fd close loop (with the reasoning recorded in the code), keeps the cleartid wakeup, and leaves the
+non-thread path alone apart from the last-user free. The PF_THREAD block RETURNS, so the later loop was already
+the non-thread path and needs no guard — leaner than the first attempt, not bigger.
+
+**MEASURED, ALL THREE CASES TOGETHER:**
+
+    kernel_pipe_dup2        10/10  (was 7/10 with the first attempt, 10/10 before any fix)
+    kernel_threaded_exec     3/3  (§45-S's mode 3 still green)
+    foundation_task         probe RAN TO ITS END MARKER for the first time: 17 of 18 probe checks
+
+**THE STDIN-PIPE HANG IS GONE.** §45-U's `count_before=3`, §45-T's stuck `i_writers` and §45-V's second
+`fork`-that-was-a-thread are all cured by the one change: no thread holds a private descriptor reference, so
+the parent's close and the child's close DO drive the count to zero, `pipefs_close` runs, `i_writers` falls, and
+the blocked reader gets its EOF.
+
+**AND IT SURFACED ONE NEW FAILURE, WHICH IS A DIFFERENT BUG AND IS ONLY NOW REACHABLE:**
+`task-suspend-and-resume FAIL suspend=1 resume=0 status=0`. `-suspend` answered YES, `-resume` answered **NO
+because the task was already marked exited ~20ms in**, though the child is `--child-delay` (a 300ms sleep) and
+should be STOPPED, not finished. Nothing could have caught this before, because the probe died at the stdin
+pipe long before reaching it. **Next: the stop/resume path** — `signal.c`'s SIGSTOP case already sends SIGCHLD
+to the parent and wakes `&sys_wait4` "for job control", so the reaper's `waitpid` is woken by a STOPPED child;
+what it then does with that wake is the question, along with whether `wait4` returns for a stop without
+`WUNTRACED`.
+
+FILES THIS ROUND: `include/fnx/process.h`, `kernel/process.c`, `kernel/syscalls/fork.c`,
+`kernel/syscalls/exit.c` — the shared-descriptor-table fix, corrected.
+
