@@ -7087,6 +7087,32 @@ owner maps it, in a task sharing that owner's tables, is the thing to measure ne
 both the mapper (who, which VA, which pml4) and the faulting task's walk, so the two can be compared directly
 instead of across runs.
 
+**AND THE ORDER OF THE LOG RESOLVES THE CONTRADICTION INTO A HYPOTHESIS THIS TREE HAS MET BEFORE.** Reading
+the mapper and the fault in one run, in sequence:
+
+    262:  TRACKMAP64 pid=9 va=0x7f0000080850 phys=0x2ad000     <- pid 9 mapped the page
+    270:  Page Fault at 0x7f0000080849 (reading) ... pid 10     <- the fault comes AFTER
+
+pid 9 mapped that page **before** the fault, and pid 10 is a **`CLONE_VM|CLONE_THREAD` child of pid 9**
+(measured at creation: `caller=9 new=10 flags=0x7d0f00 same=1`), so it shares pid 9's pml4. The page is
+therefore mapped in the very tables the faulting task should be using — and yet the walk at the fault found
+the leaf ABSENT, with EVERY REGISTER ZERO.
+
+**THAT COMBINATION HAS ONE SHAPE: THE TASK IS RUNNING ON TABLES THAT ARE NOT ITS CREATOR'S.** Its `cr3_64`
+points somewhere without the mapping, and its register file is not a register file at all — which is this
+project's own recorded bug (b) signature: *"a CLONE_VM thread outliving its creator, whose shared pml4
+`remove_zombie` freed — so the survivor runs on recycled tables where the kernel's .text/IDT read
+not-present"*. **And this tree's notes say bug (b)'s fix LANDED BUT WAS NEVER VERIFIED** — because at that
+time the test image booted the desktop instead of a shell and no Foundation case could run.
+
+**SO THE NEXT INSTRUMENT IS SMALL AND EXACT, AND THE PREVIOUS ONE ASKED THE WRONG PROCESS.** My earlier
+fault-time check compared the faulting task's `cr3_64` with its **`ppid`** — which for this thread is pid 1
+(init!), so `shared=0` compared it against the wrong process and proved nothing. What must be printed at the
+fault is the faulting task's `cr3_64` **and the `cr3_64` of the task that created it** — the thread group's
+leader — together with the mapper pid from the TRACKMAP line. If they differ, defect B is not a mapping
+problem at all: **it is a thread whose address space stopped being its creator's, in a tree that already has
+one unverified fix for exactly that class.**
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
