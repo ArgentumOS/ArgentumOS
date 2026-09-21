@@ -6349,6 +6349,24 @@ by `fork` is wrong.** And only ONE such death appears per run — the FIRST chil
 with the worker thread that was created immediately before the first `fork(2)` rather than at something
 wrong with every child.
 
+**AND THE PID EVIDENCE ACTUALLY SAYS THE VICTIM IS THE THREAD, NOT A FORK CHILD — A CORRECTION.** The
+paragraph above read "a fork child that never announced itself" off the fact that pid 10 printed no
+`CHILD pid=`. But `pthread_create` runs BEFORE the loop and is itself a `clone(2)` — the FIRST `do_fork_like`
+of the program — so the tid allocated immediately after the parent's pid 9 is the REAPER THREAD's, and a
+thread would print no `CHILD pid=` line whether it ran or not. **pid 10 is the pthread, and the victim is a
+THREAD WHOSE START FRAME IS GARBAGE**, which fits `do_fork_like` exactly: `sc` is the calling thread's own
+syscall frame (`sys_fork(..., struct sigcontext *sc)`, fork.c:33), the child's frame is a whole-page
+`memcpy_b` of the kernel-stack page that holds it, and for a clone the branch that runs afterwards is
+
+    if(clone_flags) {
+        stack->rsp = child_stack;
+        stack->r9 = fn;
+    }
+
+i.e. a thread's whole start state is `sc`'s page plus those two fields, and musl's `__clone` asm
+(`pop %rdi; call *%r9`) depends on them being exactly right. A thread resuming with ZEROS in every register
+and one stray code pointer is what that path looks like when the frame it copied is not the caller's.
+
 **THE EXPERIMENT THAT WOULD SETTLE THE RACE IS WRITTEN AND BLOCKED, AND THE BLOCKER IS NOT THIS WORK.**
 Putting a settle delay (`usleep(200000)`) between `pthread_create` and the first `fork` is a two-line test of
 "is it the thread's own startup that races the fork". It could not be built: `make rootagfs` now fails in
