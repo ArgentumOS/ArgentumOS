@@ -7692,6 +7692,32 @@ changed nothing, but that attempt was confounded: it ran on top of a guard that 
 every process and a test whose arms both drained the variable. **Both of those are fixed now, the guard is
 correct, and three reproducers are in place to hold the reordered sweep to account.**
 
+**AND THE REORDER WAS APPLIED, RUN AGAINST ALL THREE REPRODUCERS, AND KEPT — WITH ONE SURPRISE.** `free_vma_pages`
+now unmaps the address BEFORE it releases the page, so no page is ever in the bitmap while a leaf still names
+it. Measured:
+
+    kernel_pipe_dup2       9/9 checks   PASS   (unchanged)
+    kernel_threaded_exec   2/2 checks   PASS   (unchanged)
+    foundation_task        3/4          FAIL   (unchanged - same output tail, same register dump)
+
+**So it closes the 47,775-a-boot window the instrument named, and it breaks nothing** - which is why it is
+kept despite not moving `foundation_task`. The rule this investigation has used ("a change that does not move
+its test is not a fix") is for HYPOTHESES; this one is backed by a measured window and verified not to
+regress, and the invariant it enforces - a page is never in the bitmap while a leaf names it - is true
+regardless of which program notices.
+
+**AND THE SURPRISE IS USEFUL: `foundation_task` FAILS WITH THE SAME OUTPUT TAIL AS BEFORE, `x0000000000404f39`,
+i.e. DETERMINISTICALLY - which is evidence AGAINST the preemptible-window reading of its fault.** A race
+should move when a window is closed; this did not move at all. So the probe's fault reaches the same
+destination by another route, and **the instrument that found the sweep's window only covered
+`free_vma_pages`** - the other free paths (`release_page`'s two page-cache callers and `kfree`) were covered
+by an earlier instrument, not by this one.
+
+**THE STATE, IN ONE BREATH:** two defects fixed and verified (B: the shared address space swept; C: a wait is
+the process's), the sweep's free-before-unmap window closed and verified not to regress, three reproducers in
+the suite, and one defect - A - whose publisher is named for one route (the sweep's window, now closed) and
+whose remaining route reaches a single-threaded process's saved frame and blanks it deterministically.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than

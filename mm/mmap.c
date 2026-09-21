@@ -325,6 +325,15 @@ void free_vma_pages(struct vma *vma, addr_t start, __size_t length)
 			continue;
 		}
 
+		/* FNX: REMOVE THE MAPPING FIRST. The page used to be released - count to zero, phys back to the
+		 * bitmap - while this leaf still named it, and the leaf was cleared a few instructions later.
+		 * That window is preemptible: a context switch or any allocation between the two statements
+		 * takes the page and then writes to memory a live userspace mapping still names (defect A:
+		 * "FNX3-DONE" inside a vma table, 47,775 such windows a boot). Unmapping first costs nothing -
+		 * the page's CONTENTS are untouched, so the MAP_SHARED write-back below still reads what it
+		 * wrote - and it closes the window completely. */
+		unmap_user_page64_in(pml4, addr);
+
 		if(vma->prot & PROT_WRITE && vma->flags & MAP_SHARED) {
 			offset = start - vma->start + vma->offset + n * PAGE_SIZE;
 			write_page(pg, vma->inode, offset, PAGE_SIZE);
@@ -343,7 +352,6 @@ void free_vma_pages(struct vma *vma, addr_t start, __size_t length)
 			shm_rss--;
 		}
 #endif /* CONFIG_SYSVIPC */
-		unmap_user_page64_in(pml4, addr);
 	}
 #else
 	unsigned int n, offset;
