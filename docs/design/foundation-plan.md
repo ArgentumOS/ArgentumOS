@@ -7821,6 +7821,23 @@ the process's, so a thread's `waitpid` reaps; the sweep reorder: unmap before re
 reason this work started). Defect A's free side is CLOSED and measured closed (zero hits in 60,000 frees);
 its remaining face is the write side, and the next step is the three-item list above.
 
+**AND THE RE-RUN DIDN'T HAPPEN EITHER — THE PATCH FAILED TO COMPILE, AND `mkesp.sh` STAGED THE OLD KERNEL ANYWAY.**
+`make buildfnx` stopped with `Error 1` on `.build/64real/mm/memory.o`, and `tools/mkesp.sh` then reported "ESP
+image ready" because it copies whatever `.build/64/fnx.efi` exists — so the run that followed executed the
+PREVIOUS kernel and printed the PREVIOUS instrument's two lines. **Those numbers are stale, and the trap is
+worth writing down because it is the third time this session that a stale artifact produced a confident
+reading** (the ESP trap, the `.output_since` window, and now this): **a build that fails must stop the
+measurement, and the tool that stages an image does not check.**
+
+**AND THE CAUSE IS NAMED AND SMALL:** the patch used `NR_PAGES` in `mm/memory.c`, which is where `mm/page.c`
+uses it but likely not visible to this file - the same class of slip as the last one: my patch script's
+mistake, not a kernel question.
+
+**AND THE HANDOVER IS UNCHANGED EXCEPT FOR ITS FIRST STEP BEING MORE PRECISE:** apply the consumer tag where
+`p->rss++` is, and the two-branch predicate with whatever bound THIS file can see (the macro, or
+`1UL << (32 - PAGE_SHIFT)`-style arithmetic, or the `kstat` free-page count - the exact spelling is the
+implementer's to pick, and the check itself is the point). Then read `PUBOOB` versus `PUBLISH` as recorded.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
