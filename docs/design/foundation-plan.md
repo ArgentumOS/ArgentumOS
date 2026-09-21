@@ -3465,7 +3465,7 @@ vanishing.
 | **Files and Data Persistence / File system operations** | 4 open | `NSDirectoryEnumerator`, `NSFileManagerDelegate`, `NSFileProviderService`, `NSFileVersion` |
 | **Files and Data Persistence / Items** | 1 open | `NSMetadataItem` |
 | **Files and Data Persistence / JSON** | all classes shipped | — |
-| **Files and Data Persistence / Keyed Archivers** | 3 open | `NSKeyedArchiverDelegate`, `NSKeyedUnarchiverDelegate`, `NSSecureUnarchiveFromDataTransformer` |
+| **Files and Data Persistence / Keyed Archivers** | all classes shipped | — |
 | **Files and Data Persistence / Managed file access** | 3 open | `NSFileHandle`, `NSFileSecurity`, `NSFileWrapper` |
 | **Files and Data Persistence / Property Lists** | all classes shipped | — |
 | **Files and Data Persistence / Queries** | 4 open | `NSMetadataQuery`, `NSMetadataQueryAttributeValueTuple`, `NSMetadataQueryDelegate`, `NSMetadataQueryResultGroup` |
@@ -5466,3 +5466,69 @@ binding" estimate died on measurement** (the first was NSDateComponentsFormatter
 turned out to be the specified part while the ICU API under them turned out to be C++-only). The pattern worth
 keeping: **"ICU is already bound" says nothing about whether a family has a C SURFACE**, and the number of
 `U_CAPI` declarations in the relevant header is one command to check.
+
+## 35. W9: THE CODERS' SECOND HALF, AND THE UNIT THAT TURNED OUT TO BE A FLOW (2026-09-20)
+
+**WHAT SHIPPED.** `NSKeyedArchiverDelegate` and `NSKeyedUnarchiverDelegate` (five optional doors each),
+`NSSecureUnarchiveFromDataTransformer` with `+allowedTopLevelClasses`, and the
+`NSSecureUnarchiveFromDataTransformerName` constant — four ledger rows. `NSSecureCoding` itself had already
+shipped with W11, which is why this unit was smaller than §12.3 predicted.
+
+**THE UNIT'S REAL SUBSTANCE WAS NOT THE PROTOCOLS BUT COCOA'S INSTANCE FLOW, and that was MEASURED rather
+than assumed.** Wiring the doors produced declarations no caller could reach:
+
+```
+INSTANCE-FLOW: RAISED NSKeyedArchiver: -encodeObject:forKey: is only meaningful inside -encodeWithCoder:
+INSTANCE-FLOW: mutable bytes = 0
+CLASS-METHOD: data = 843 bytes
+```
+
+and **not one of the four doors printed**. The cause is a pair of gaps that hid each other:
+
+* `+archivedDataWithRootObject:` built its root through the internal `-fnIndexOfObject:` and never called
+  `-finishEncoding`, so a delegate — which belongs to an INSTANCE — had nothing to attach to;
+* and `initForWritingWithMutableData:` accepted its buffer and left it EMPTY. That was a **registered
+  deviation** in the archiver's own comment (`"accepted and ignored"`), and §11 tolerates a deviation only
+  when it is NECESSARY. This one was not: the archive format is ours. So the flow is implemented rather than
+  registered, and it is what makes the doors live.
+
+**THE READER NEEDED THE SAME HALF, WHICH THE FIRST FIX'S ABSENCE PROVED:** `-decodeObjectForKey:` also raised
+outside `-initWithCoder:`, so an unarchiver's delegate was unreachable in exactly the same way. Both halves
+are now Cocoa's flow: keys encoded — or asked for — OUTSIDE `-encodeWithCoder:`/`-initWithCoder:` are the
+archive's TOP-LEVEL ones, and `+archivedDataWithRootObject:` names its root `"root"` through that same path.
+
+**THE FLOW EXPOSED A LATENT WRITER/READER MISMATCH, WHICH IS WHAT THIS UNIT WAS FOR.** The old class method
+always put its root IN THE TABLE, so `-fnDecodeRoot` could require a reference. Through the flow a root that
+is a VALUE type is written **where it stands**, and that requirement would have raised on exactly the archives
+the writer produces. `-fnDecodeRoot` now accepts either shape; the probe's value-type round trips (already
+covered by the seven pre-existing checks) are what would have caught it.
+
+**THE SECURE TRANSFORMER'S REFUSAL IS THE CHECK.** Forward is DECODING and reverse is ENCODING, so
+`+allowsReverseTransformation` is YES; the forward door unarchives and then refuses any ROOT outside
+`+allowedTopLevelClasses` — the whole reason the class exists, since a keyed archive names its classes as
+strings and unarchiving data somebody else supplied is the classic object-injection door. The default list is
+OURS (Apple publishes that the property exists and not what is in it) and is registered as such: this
+library's value and collection types. The NAME resolves with **no registration**, because the constant spells
+the class and `-valueTransformerForName:` already falls back to treating a name that is a class as that class.
+
+**TWO PROBE DEFECTS WORTH KEEPING, both found by the aborted run:**
+
+* **`abort()` does not flush stdio**, so the crash showed as `EXIT 134` with NOTHING printed and looked like
+  an early death; `stdbuf -o0` is what made it readable, and per-step markers then localised it to the check
+  call rather than the formatter.
+* **`%@` with a Class argument crashed this probe** — in the `check(...)` DETAIL string — while the same
+  formatting done directly in a standalone probe worked. The detail now names booleans and counts instead of
+  passing a Class through a variadic format. The trap is recorded rather than diagnosed further: the check
+  that matters is the CONDITION, and a detail string must never be the thing that fails.
+
+**AND ONE CROSS-CUTTING GAP IS REGISTERED RATHER THAN PAPERED OVER: THE CONTAINERS ARE NOT
+LIGHTWEIGHT-GENERIC-PARAMETERIZED.** Apple declares two of this unit's signatures as `NSArray<NSString *> *`
+and `NSArray<Class> *`, and neither spelling compiles here — direct evidence that a caller writing modern ObjC
+(`NSArray<NSString *> *x`) cannot compile against this library. Both are declared `NSArray *` with the reason
+at the declaration, and annotating the containers is its own unit rather than a footnote to this one.
+
+**VERIFIED.** Host: `make host-foundation-run` — **26 probes, 404/404 checks, 0 fail** (the coder probe went
+7 → 11). Guest: `make testimg` then `make test TESTS='foundation_coder'` → **TESTS-OK 1/1 case(s), 6/6
+check(s) in 12s**, the probe's own tally `ok=11 fail=0` and exit 0. `foundation-sweep --check`: consistent,
+all four rows flipped to shipped. `foundation-gate`: **OK — 248 files, 97 of 101 public headers** open a
+nullability region.

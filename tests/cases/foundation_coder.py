@@ -33,7 +33,10 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_coder"
 CHECKS = ("coder-round-trip-scalars", "coder-round-trip-collections", "coder-shared-objects",
-          "coder-cycle", "coder-null-and-nil", "coder-archive-shape", "coder-base-raises")
+          "coder-cycle", "coder-null-and-nil", "coder-archive-shape", "coder-base-raises",
+          # W9: the two delegates (through Cocoa's instance flow) and the secure transformer
+          "coder-archiver-delegate", "coder-instance-flow", "coder-unarchiver-delegate",
+          "value-transformer-secure-unarchive")
 
 
 class Case(BaseCase):

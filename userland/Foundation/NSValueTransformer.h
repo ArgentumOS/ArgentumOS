@@ -46,5 +46,15 @@ typedef NSString *NSValueTransformerName;
 
 @end
 
+/* THE NAMES THIS LIBRARY REGISTERS. Only one so far, and it arrived with W9: the secure unarchiver, whose
+ * NAME is what `-valueTransformerForName:` is asked for. Apple declares these beside the transformer class,
+ * which is why this constant lives in this header rather than in NSSecureUnarchiveFromDataTransformer.h —
+ * a caller that wants the transformer by name should not have to import the class to spell the name that
+ * is used in an Interface Builder-style property list.
+ *
+ * (`NSKeyedUnarchiveFromDataTransformerName`, the deprecated spelling of the same thing, is NOT declared:
+ * it is struck on the surface ledger, and this library ships no deprecated API.) */
+extern NSValueTransformerName const NSSecureUnarchiveFromDataTransformerName;
+
 NS_ASSUME_NONNULL_END
 #endif /* FOUNDATION_NSVALUETRANSFORMER_H */

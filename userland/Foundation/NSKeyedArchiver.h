@@ -28,16 +28,22 @@
  * dates, data, NSNull) are written inline instead, so their identity is not part of the archive —
  * which is the same promise Cocoa makes about them.
  *
- * WHAT IS ABSENT, named: `NSSecureCoding`, class-name substitution
- * (`-setClassName:forClass:`/`-classNameForClass:`), delegates, and the non-keyed doors. An
- * archive written here is readable here; it is NOT byte-compatible with Cocoa's, because of the
- * reference spelling above.
+ * WHAT IS ABSENT, named: class-name substitution (`-setClassName:forClass:`/`-classNameForClass:`) and the
+ * non-keyed doors. An archive written here is readable here; it is NOT byte-compatible with Cocoa's, because
+ * of the reference spelling above.
+ *
+ * DELEGATES ARRIVED IN W9, and two things about them are worth knowing here: they are asked before they are
+ * assumed (every call is guarded by `-respondsToSelector:`, because every member is optional), and they are
+ * NOT RETAINED — the archiver holds its delegate weakly, as `assign`, so a delegate that owns the archiver
+ * does not keep it alive and an archiver does not resurrect a delegate that has gone away.
  */
 
 #ifndef FOUNDATION_NSKEYEDARCHIVER_H
 #define FOUNDATION_NSKEYEDARCHIVER_H
 
 #import <Foundation/NSCoder.h>
+#import <Foundation/NSKeyedArchiverDelegate.h>
+#import <Foundation/NSKeyedUnarchiverDelegate.h>
 
 @class NSData;
 @class NSArray;
@@ -52,11 +58,24 @@ NS_ASSUME_NONNULL_BEGIN
 	NSMutableArray *_objects;	/* the $objects table */
 	NSMutableArray *_memo;		/* FNMemo pairs: which object has which index */
 	NSMutableArray *_stack;		/* the entries being filled, innermost last */
+	id <NSKeyedArchiverDelegate> _delegate;	/* NOT retained: see the note above */
+	NSMutableData *_data;		/* the caller's buffer, which -finishEncoding fills */
+	NSMutableDictionary *_top;	/* the $top keys: what was encoded OUTSIDE -encodeWithCoder: */
 }
 
 + (nullable NSData *)archivedDataWithRootObject:(id)rootObject;
 + (BOOL)archiveRootObject:(id)rootObject toFile:(NSString *)path;
+
+/* COCOA'S INSTANCE FLOW, IMPLEMENTED: the archive is written into `data` by `-finishEncoding`. The keys
+ * encoded OUTSIDE `-encodeWithCoder:` — which is to say, between this initialiser and the finish — are the
+ * archive's TOP-LEVEL ones, and `+archivedDataWithRootObject:` names its root `"root"` the same way. Before
+ * this existed the initialiser accepted its buffer and ignored it, which was a registered deviation; it is
+ * implemented rather than registered because nothing about the format made it necessary. */
 - (instancetype)initForWritingWithMutableData:(NSMutableData *)data;
+
+/* The delegate, held weakly. */
+- (nullable id <NSKeyedArchiverDelegate>)delegate;
+- (void)setDelegate:(nullable id <NSKeyedArchiverDelegate>)delegate;
 
 - (void)encodeObject:(nullable id)object forKey:(NSString *)key;
 - (void)encodeBool:(BOOL)value forKey:(NSString *)key;
@@ -77,11 +96,17 @@ NS_ASSUME_NONNULL_BEGIN
 	NSMutableArray *_memo;		/* index -> the object built for it (NSNull = not yet built) */
 	NSMutableArray *_stack;		/* the entries being read, innermost last */
 	id _root;			/* the decoded top-level object, once asked for */
+	id <NSKeyedUnarchiverDelegate> _delegate;	/* NOT retained: see the note above */
 }
 
 + (nullable id)unarchiveObjectWithData:(NSData *)data;
 + (nullable id)unarchiveObjectWithFile:(NSString *)path;
 - (instancetype)initForReadingWithData:(NSData *)data;
+
+/* The delegate, held weakly. The class methods above have no delegate to offer, so a caller who needs one
+ * builds the unarchiver and asks it directly. */
+- (nullable id <NSKeyedUnarchiverDelegate>)delegate;
+- (void)setDelegate:(nullable id <NSKeyedUnarchiverDelegate>)delegate;
 
 - (nullable id)decodeObjectForKey:(NSString *)key;
 - (BOOL)decodeBoolForKey:(NSString *)key;

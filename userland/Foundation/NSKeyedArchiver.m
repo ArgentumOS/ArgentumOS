@@ -96,11 +96,15 @@ static BOOL fn_is_value_type(id object)
 
 + (nullable NSData *)archivedDataWithRootObject:(id)rootObject
 {
-	NSKeyedArchiver *archiver = [[self alloc] initForWritingWithMutableData:
-					[[NSMutableData alloc] init]];
-	NSUInteger rootIndex = [archiver fnIndexOfObject:rootObject];
+	/* THE CLASS METHOD *IS* THE INSTANCE FLOW, with the root under Cocoa's own key. That is what makes a
+	 * delegate reachable at all: a delegate belongs to an INSTANCE, and before this the class method built
+	 * its root through an internal path that no delegate could observe. */
+	NSMutableData *data = [[NSMutableData alloc] init];
+	NSKeyedArchiver *archiver = [[self alloc] initForWritingWithMutableData:data];
 
-	return [archiver fnArchivedDataWithRootIndex:rootIndex];
+	[archiver encodeObject:rootObject forKey:@"root"];
+	[archiver finishEncoding];
+	return [data autorelease];
 }
 
 + (BOOL)archiveRootObject:(id)rootObject toFile:(NSString *)path
@@ -112,8 +116,6 @@ static BOOL fn_is_value_type(id object)
 
 - (instancetype)initForWritingWithMutableData:(NSMutableData *)data
 {
-	(void)data;	/* see the class comment: the archive is produced by the class method, and the
-			 * mutable-data flow Cocoa offers is accepted and ignored */
 	self = [super init];
 	if (self == nil) {
 		return nil;
@@ -121,9 +123,21 @@ static BOOL fn_is_value_type(id object)
 	_objects = [[NSMutableArray alloc] init];
 	_memo = [[NSMutableArray alloc] init];
 	_stack = [[NSMutableArray alloc] init];
+	_top = [[NSMutableDictionary alloc] init];
+	_data = [data retain];	/* THE CALLER'S BUFFER, which -finishEncoding fills */
 	/* INDEX 0 IS `$null`, so a nil and an NSNull are the same reference and need no type. */
 	[_objects addObject:@"$null"];
 	return self;
+}
+
+- (void)dealloc
+{
+	[_objects release];
+	[_memo release];
+	[_stack release];
+	[_top release];
+	[_data release];
+	[super dealloc];
 }
 
 - (NSUInteger)fnClassIndexOf:(Class)cls
@@ -230,6 +244,29 @@ static BOOL fn_is_value_type(id object)
 
 - (id)fnSlotFor:(id)object
 {
+	id slot;
+	id encoded;
+
+	/* THE DELEGATE'S SUBSTITUTING DOOR, AND IT IS ASKED BEFORE ANY WORK: `-archiver:willEncodeObject:`
+	 * answers THE OBJECT TO ENCODE, so whatever it returns is what the rest of this method writes. It is
+	 * asked for a reference only — the nil and NSNull cases below keep their own meaning, and a delegate
+	 * that answered nil for everything would otherwise silently empty an archive. */
+	encoded = object;
+	if (encoded != nil && _delegate != nil &&
+	    [(id)_delegate respondsToSelector:@selector(archiver:willEncodeObject:)]) {
+		encoded = [(id)_delegate archiver:self willEncodeObject:encoded];
+	}
+	slot = [self fnSlotForEncoded:encoded];
+	if (_delegate != nil &&
+	    [(id)_delegate respondsToSelector:@selector(archiver:didEncodeObject:)]) {
+		[(id)_delegate archiver:self didEncodeObject:encoded];
+	}
+	return slot;
+}
+
+/* The work fnSlotFor: used to do inline, with the delegate's substitution already applied. */
+- (id)fnSlotForEncoded:(id)object
+{
 	if (object == nil) {
 		return fn_reference(0);	/* $null */
 	}
@@ -248,10 +285,16 @@ static BOOL fn_is_value_type(id object)
 {
 	NSMutableDictionary *entry = [_stack lastObject];
 
-	if (entry == nil || key == nil) {
+	if (key == nil) {
 		[NSException raise:NSInvalidArgumentException
-			    format:@"NSKeyedArchiver: -encodeObject:forKey: is only meaningful inside "
-				   "-encodeWithCoder:"];
+			    format:@"NSKeyedArchiver: -encodeObject:forKey: needs a key"];
+	}
+	/* OUTSIDE -encodeWithCoder: THE KEYS ARE THE ARCHIVE'S TOP-LEVEL ONES. That is Cocoa's instance flow:
+	 * an archiver built over a mutable buffer is handed its root (and anything else top-level) directly, and
+	 * those entries live in `$top`, where a reader's `-decodeObjectForKey:` finds them. */
+	if (entry == nil) {
+		[_top setObject:[self fnSlotFor:object] forKey:key];
+		return;
 	}
 	[entry setObject:[self fnSlotFor:object] forKey:key];
 }
@@ -290,17 +333,46 @@ static BOOL fn_is_value_type(id object)
 
 - (void)finishEncoding
 {
-	/* NOTHING TO FLUSH: every write went straight into the table, and the plist is produced by
-	 * -fnArchivedDataWithRootIndex:. It exists because Cocoa's flow calls it. */
+	/* THE TWO HALVES OF THE END: the delegate is told BEFORE the archive is closed — which is the window in
+	 * which it may still add an entry — and again after. */
+	if (_delegate != nil &&
+	    [(id)_delegate respondsToSelector:@selector(archiverWillFinish:)]) {
+		[(id)_delegate archiverWillFinish:self];
+	}
+	/* THE ARCHIVE IS PRODUCED HERE, and that is what makes the caller's buffer THE archive. Writing it
+	 * between the two finish doors is deliberate: `willFinish` is the window in which a delegate may still
+	 * add an entry, so the bytes must not be cut before it, and `didFinish` reports a finished archive. */
+	if (_data != nil && [_top count] > 0) {
+		NSData *bytes = [self fnArchiveBytes];
+
+		if (bytes != nil) {
+			[_data setData:bytes];
+		}
+	}
+	if (_delegate != nil &&
+	    [(id)_delegate respondsToSelector:@selector(archiverDidFinish:)]) {
+		[(id)_delegate archiverDidFinish:self];
+	}
 }
 
-- (nullable NSData *)fnArchivedDataWithRootIndex:(NSUInteger)rootIndex
+- (nullable id <NSKeyedArchiverDelegate>)delegate
+{
+	return _delegate;
+}
+
+- (void)setDelegate:(nullable id <NSKeyedArchiverDelegate>)delegate
+{
+	_delegate = delegate;	/* NOT retained: see the header */
+}
+
+/* THE ARCHIVE'S BYTES, from the table and the top-level keys as they now stand. */
+- (nullable NSData *)fnArchiveBytes
 {
 	NSDictionary *archive = @{
 		@"$version" : @1,
 		@"$archiver" : @"NSKeyedArchiver",
 		@"$objects" : _objects,
-		@"$top" : @{ @"root" : fn_reference(rootIndex) }
+		@"$top" : _top
 	};
 
 	return [NSPropertyListSerialization dataWithPropertyList:archive
@@ -445,6 +517,17 @@ static BOOL fn_is_value_type(id object)
 	}
 	cls = objc_getClass([className UTF8String]);
 	if (cls == Nil) {
+		/* THE DELEGATE'S CLASS DOOR, AND THIS IS THE POINT OF HAVING IT: an archive NAMES its classes as
+		 * strings, so a reader may be handed a name it does not have. The delegate's answer is the class
+		 * to decode INSTEAD — and nil is the refusal, which the exception below then reports. */
+		if (_delegate != nil && [(id)_delegate respondsToSelector:
+				@selector(unarchiver:cannotDecodeObjectOfClassName:originalClasses:)]) {
+			cls = [(id)_delegate unarchiver:self
+				  cannotDecodeObjectOfClassName:className
+				       originalClasses:[self fnClassNamesAt:classIndex fallback:className]];
+		}
+	}
+	if (cls == Nil) {
 		[NSException raise:NSInvalidArgumentException
 			    format:@"NSKeyedUnarchiver: the archive names a class this process does not "
 				   "have (%@)", className];
@@ -459,7 +542,34 @@ static BOOL fn_is_value_type(id object)
 	object = [object initWithCoder:self];
 	[_stack removeLastObject];
 	[_memo replaceObjectAtIndex:index withObject:object];
+	/* THE DELEGATE'S SUBSTITUTING DOOR: it receives each object as it is built and may answer a
+	 * replacement, which the memo learns as well — so a SECOND reference to this index gets the
+	 * substitute rather than a fresh decode of the original. A NIL ANSWER MEANS "NO SUBSTITUTE" rather
+	 * than "replace it with nothing": an optional door that could empty an object graph would be a trap,
+	 * and that is also the only reading under which the answer is genuinely optional. */
+	if (_delegate != nil &&
+	    [(id)_delegate respondsToSelector:@selector(unarchiver:didDecodeObject:)]) {
+		id replacement = [(id)_delegate unarchiver:self didDecodeObject:object];
+
+		if (replacement != nil && replacement != object) {
+			object = replacement;
+			[_memo replaceObjectAtIndex:index withObject:object];
+		}
+	}
 	return object;
+}
+
+/* THE NAMES THE ARCHIVE GAVE FOR A CLASS — the `originalClasses` the delegate's class door reports. The
+ * archive carries a `$classes` chain for a class it had to describe; an archive that carries none is
+ * described by the name the object itself used, which keeps the argument from ever being empty. */
+- (NSArray *)fnClassNamesAt:(NSUInteger)classIndex fallback:(NSString *)className
+{
+	id chain = [(NSDictionary *)[_table objectAtIndex:classIndex] objectForKey:kClasses];
+
+	if ([chain isKindOfClass:[NSArray class]] && [(NSArray *)chain count] > 0) {
+		return chain;
+	}
+	return [NSArray arrayWithObject:className];
 }
 
 - (id)fnCurrentEntry
@@ -476,22 +586,47 @@ static BOOL fn_is_value_type(id object)
 
 - (id)fnDecodeRoot
 {
+	id slot = [(NSDictionary *)_top objectForKey:@"root"];
 	NSUInteger rootIndex = 0;
 
 	if (_root != nil) {
 		return _root;
 	}
-	if (!fn_slot_is_reference([(NSDictionary *)_top objectForKey:@"root"], &rootIndex)) {
+	if (slot == nil) {
 		[NSException raise:NSInvalidArgumentException
 			    format:@"NSKeyedUnarchiver: the archive's $top names no root"];
 	}
-	_root = [self fnObjectAtIndex:rootIndex];
+	/* THE ROOT MAY BE INLINE: a VALUE type (a string, a number, a date, bytes) is written where it stands
+	 * rather than into the table, so a root of one of those is its own answer. Requiring a reference here
+	 * would fail for exactly the archives the WRITER produces for such a root. */
+	_root = fn_slot_is_reference(slot, &rootIndex)
+	      ? [self fnObjectAtIndex:rootIndex] : [self fnDecodeSlot:slot];
 	return _root;
 }
 
 - (nullable id)decodeObjectForKey:(NSString *)key
 {
-	id entry = [self fnCurrentEntry];
+	id entry;
+
+	if (key == nil) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSKeyedUnarchiver: -decodeObjectForKey: needs a key"];
+	}
+	/* OUTSIDE -initWithCoder: THE KEYS ARE THE ARCHIVE'S TOP-LEVEL ONES — the reader's half of Cocoa's
+	 * instance flow, and the ONLY way a caller who built an unarchiver can read its root. Without it an
+	 * unarchiver's delegate (and its whole class door) is unreachable, exactly as an archiver's is
+	 * without the writer's half. */
+	if ([_stack count] == 0) {
+		id slot = [(NSDictionary *)_top objectForKey:key];
+
+		if (slot == nil) {
+			[NSException raise:NSInvalidArgumentException
+				    format:@"NSKeyedUnarchiver: the archive's $top names nothing for "
+					   "the key \"%@\"", key];
+		}
+		return [self fnDecodeSlot:slot];
+	}
+	entry = [self fnCurrentEntry];
 
 	if (key == nil || [(NSDictionary *)entry objectForKey:key] == nil) {
 		[NSException raise:NSInvalidArgumentException
@@ -553,7 +688,27 @@ static BOOL fn_is_value_type(id object)
 
 - (void)finishDecoding
 {
+	/* THE TWO HALVES OF THE END, split so that a delegate has a window while the graph is still open (to
+	 * ask for one more object) and another after it is closed. */
+	if (_delegate != nil &&
+	    [(id)_delegate respondsToSelector:@selector(unarchiverWillFinish:)]) {
+		[(id)_delegate unarchiverWillFinish:self];
+	}
 	/* NOTHING TO RELEASE: the table is the archive's, and nothing here holds a stream. */
+	if (_delegate != nil &&
+	    [(id)_delegate respondsToSelector:@selector(unarchiverDidFinish:)]) {
+		[(id)_delegate unarchiverDidFinish:self];
+	}
+}
+
+- (nullable id <NSKeyedUnarchiverDelegate>)delegate
+{
+	return _delegate;
+}
+
+- (void)setDelegate:(nullable id <NSKeyedUnarchiverDelegate>)delegate
+{
+	_delegate = delegate;	/* NOT retained: see the header */
 }
 
 @end

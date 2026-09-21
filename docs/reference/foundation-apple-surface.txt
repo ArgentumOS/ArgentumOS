@@ -28,13 +28,13 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  109   open  133   struck   31
-#   protocol   shipped    9   open   27   struck    9
+#   class      shipped  110   open  132   struck   31
+#   protocol   shipped   11   open   25   struck    9
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   77   open   75   struck    8
 #   case       shipped  416   open  793   struck   93
 #   func       shipped   71   open   64   struck   54
-#   var        shipped   91   open  676   struck  147
+#   var        shipped   92   open  675   struck  147
 #   typealias  shipped   20   open   53   struck    3
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1517,7 +1517,7 @@ class	open	NSScriptExecutionContext		App Support / NSObject Script Support	-	obj
 class	open	NSScriptObjectSpecifier		App Support / Object Specifiers	-	objc
 class	open	NSScriptSuiteRegistry		App Support / Script Dictionary Description	-	objc
 class	open	NSScriptWhoseTest		App Support / Object Matching Tests	-	objc
-class	open	NSSecureUnarchiveFromDataTransformer		Files and Data Persistence / Keyed Archivers	-	objc
+class	shipped	NSSecureUnarchiveFromDataTransformer		Files and Data Persistence / Keyed Archivers	-	objc
 class	shipped	NSSet		Fundamentals / Basic Collections	-	objc
 class	open	NSSetCommand		App Support / Script Commands	-	objc
 class	open	NSSimpleCString		Reference / Classes	-	objc
@@ -2226,8 +2226,8 @@ protocol	open	NSFileManagerDelegate		Files and Data Persistence / File system op
 protocol	open	NSFilePresenter		Files and Data Persistence / Coordinated file access	-	objc
 protocol	open	NSItemProviderReading		App Support / Attachments / Constants	-	objc
 protocol	open	NSItemProviderWriting		App Support / Attachments / Constants	-	objc
-protocol	open	NSKeyedArchiverDelegate		Files and Data Persistence / Keyed Archivers	-	objc
-protocol	open	NSKeyedUnarchiverDelegate		Files and Data Persistence / Keyed Archivers	-	objc
+protocol	shipped	NSKeyedArchiverDelegate		Files and Data Persistence / Keyed Archivers	-	objc
+protocol	shipped	NSKeyedUnarchiverDelegate		Files and Data Persistence / Keyed Archivers	-	objc
 protocol	shipped	NSLocking		Low-Level Utilities / Threads and Locking	-	objc
 protocol	struck	NSMachPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 protocol	open	NSMetadataQueryDelegate		Files and Data Persistence / Queries	-	objc
@@ -2938,7 +2938,7 @@ var	open	NSRegistrationDomain	NSUserDefaults	Files and Data Persistence / App-sp
 var	open	NSReplacementIndexAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting text attribute keys	-	objc
 var	struck	NSRepublicOfChinaCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSRunLoopCommonModes	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes / System Run Loop Modes	-	objc
-var	open	NSSecureUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
+var	shipped	NSSecureUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
 var	struck	NSShortDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSShortMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSShortTimeDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc

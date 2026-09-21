@@ -104,6 +104,117 @@
 
 @end
 
+/* ---- W9's two delegates, which are what the archiver's and unarchiver's doors exist FOR ---- */
+
+/* AN ARCHIVER OBSERVER THAT ALSO SUBSTITUTES: it counts both observation doors, notes whether the two finish
+ * doors arrive in order, and REWRITES one value — so the check can prove the substitution REACHED the archive
+ * rather than merely that the method was called. */
+@interface W9ArchiverDelegate : NSObject <NSKeyedArchiverDelegate>
+{
+@public
+	int willCount;
+	int didCount;
+	BOOL sawWillFinish;
+	BOOL didFinishAfterWill;
+}
+@end
+
+@implementation W9ArchiverDelegate
+
+- (nullable id)archiver:(NSKeyedArchiver *)archiver willEncodeObject:(id)object
+{
+	willCount++;
+	if ([object isEqual:@"redact-me"]) {
+		return @"redacted";	/* THE SUBSTITUTION: what gets encoded is the ANSWER */
+	}
+	return object;
+}
+
+- (nullable id)archiver:(NSKeyedArchiver *)archiver didEncodeObject:(nullable id)object
+{
+	didCount++;
+	return object;
+}
+
+- (void)archiverWillFinish:(NSKeyedArchiver *)archiver { sawWillFinish = YES; }
+- (void)archiverDidFinish:(NSKeyedArchiver *)archiver { didFinishAfterWill = sawWillFinish; }
+
+@end
+
+/* AN UNARCHIVER OBSERVER THAT RESCUES A CLASS: the archive names `W9VanishedClass`, this process has no such
+ * class, and the delegate answers the class to decode INSTEAD. That is the door's purpose — and it is also
+ * the door an attacker would push a class the reader DOES have through, which is why the refusal is a
+ * first-class answer. */
+@interface W9UnarchiverDelegate : NSObject <NSKeyedUnarchiverDelegate>
+{
+@public
+	int cannotCount;
+	int didCount;
+	BOOL sawWillFinish;
+	BOOL didFinishAfterWill;
+}
+@end
+
+@implementation W9UnarchiverDelegate
+
+- (nullable Class)unarchiver:(NSKeyedUnarchiver *)unarchiver
+   cannotDecodeObjectOfClassName:(NSString *)name
+	      originalClasses:(NSArray *)classNames
+{
+	cannotCount++;
+	(void)classNames;
+	if ([name isEqualToString:@"W9VanishedClass"]) {
+		return [CoderNode class];
+	}
+	return Nil;	/* the refusal */
+}
+
+- (nullable id)unarchiver:(NSKeyedUnarchiver *)unarchiver didDecodeObject:(nullable id)object
+{
+	didCount++;
+	return object;
+}
+
+- (void)unarchiverWillFinish:(NSKeyedUnarchiver *)unarchiver { sawWillFinish = YES; }
+- (void)unarchiverDidFinish:(NSKeyedUnarchiver *)unarchiver { didFinishAfterWill = sawWillFinish; }
+
+@end
+
+/* THE CLASS THE TRANSFORMER MUST REFUSE: an NSCoding class that is NOT among the allowed top-level classes,
+ * which makes the malicious-root case the natural one rather than a contrived one. */
+@interface W9ForeignRoot : NSObject <NSCoding>
+{
+	NSString *_payload;
+}
+- (instancetype)initWithPayload:(NSString *)payload;
+- (NSString *)payload;
+@end
+
+@implementation W9ForeignRoot
+
+- (instancetype)initWithPayload:(NSString *)payload
+{
+	self = [super init];
+	if (self != nil) {
+		_payload = payload;
+	}
+	return self;
+}
+
+- (NSString *)payload { return _payload; }
+
+- (void)encodeWithCoder:(NSCoder *)coder { [coder encodeObject:_payload forKey:@"payload"]; }
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+	self = [super init];
+	if (self != nil) {
+		_payload = [coder decodeObjectForKey:@"payload"];
+	}
+	return self;
+}
+
+@end
+
 static int okc, failc;
 
 static void check(const char *name, int ok, NSString * _Nullable detail)
@@ -272,6 +383,123 @@ int main(void)
 		check("coder-base-raises",
 		      abstract != nil && raised,
 		      raised ? @"raised" : @"the abstract NSCoder accepted a write");
+	}
+
+	/* ---- W9: the delegates, Cocoa's instance flow, and the secure transformer ---- */
+	{
+		/*
+		 * THE ARCHIVER'S DOORS, through the INSTANCE FLOW — the only way a delegate can be reached, and
+		 * the reason this unit implemented that flow: a delegate belongs to an instance.
+		 *
+		 * The substitution is asserted THROUGH THE ARCHIVE rather than by the call count, because a door
+		 * that is called and ignored looks exactly like one that works.
+		 */
+		NSMutableData *buffer = [[NSMutableData alloc] init];
+		NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:buffer];
+		W9ArchiverDelegate *archiverDelegate = [[W9ArchiverDelegate alloc] init];
+		NSArray *payload = @[@"keep-me", @"redact-me"];
+		NSArray *decoded;
+
+		[archiver setDelegate:archiverDelegate];
+		[archiver encodeObject:payload forKey:@"root"];
+		[archiver finishEncoding];
+		decoded = [NSKeyedUnarchiver unarchiveObjectWithData:buffer];
+
+		check("coder-archiver-delegate",
+		      archiverDelegate->willCount > 0 &&
+		      archiverDelegate->didCount >= archiverDelegate->willCount &&
+		      archiverDelegate->didFinishAfterWill &&
+		      [decoded count] == 2 &&
+		      [[decoded objectAtIndex:0] isEqual:@"keep-me"] &&
+		      /* THE SUBSTITUTION IS IN THE ARCHIVE: "redact-me" was never written, "redacted" was. */
+		      [[decoded objectAtIndex:1] isEqual:@"redacted"],
+		      [NSString stringWithFormat:@"will=%d did=%d finishOrder=%d back=%@",
+			 archiverDelegate->willCount, archiverDelegate->didCount,
+			 archiverDelegate->didFinishAfterWill, decoded]);
+
+		/* THE INSTANCE FLOW ITSELF: the archive is IN THE CALLER'S BUFFER, and a real object graph
+		 * survives it. Before W9 the buffer was accepted and left EMPTY (measured: 0 bytes). */
+		{
+			NSMutableData *second = [[NSMutableData alloc] init];
+			NSKeyedArchiver *writer = [[NSKeyedArchiver alloc] initForWritingWithMutableData:second];
+			CoderNode *node = [CoderNode nodeWithName:@"through-the-flow" count:7];
+			CoderNode *back;
+
+			[writer encodeObject:node forKey:@"root"];
+			[writer finishEncoding];
+			back = [NSKeyedUnarchiver unarchiveObjectWithData:second];
+			check("coder-instance-flow",
+			      [second length] > 0 && [back isKindOfClass:[CoderNode class]] &&
+			      [[back name] isEqualToString:@"through-the-flow"] && [back count] == 7,
+			      [NSString stringWithFormat:@"bytes=%lu name=%@",
+				(unsigned long)[second length],
+				[back isKindOfClass:[CoderNode class]] ? [back name] : @"(wrong class)"]);
+		}
+
+		/*
+		 * THE UNARCHIVER'S CLASS DOOR: an archive that NAMES A CLASS THIS PROCESS DOES NOT HAVE. The name is
+		 * broken in the archive's own bytes, so the reader really is handed one it cannot resolve — and the
+		 * delegate answers the class to use instead.
+		 */
+		{
+			NSData *good = [NSKeyedArchiver archivedDataWithRootObject:
+					[CoderNode nodeWithName:@"rescued" count:3]];
+			NSString *xml = [[NSString alloc] initWithData:good encoding:NSUTF8StringEncoding];
+			NSString *broken = [xml stringByReplacingOccurrencesOfString:@"CoderNode"
+									withString:@"W9VanishedClass"];
+			NSData *brokenData = [broken dataUsingEncoding:NSUTF8StringEncoding];
+			NSKeyedUnarchiver *reader = [[NSKeyedUnarchiver alloc] initForReadingWithData:brokenData];
+			W9UnarchiverDelegate *unarchiverDelegate = [[W9UnarchiverDelegate alloc] init];
+			id rescued;
+
+			[reader setDelegate:unarchiverDelegate];
+			rescued = [reader decodeObjectForKey:@"root"];
+			[reader finishDecoding];
+			check("coder-unarchiver-delegate",
+			      unarchiverDelegate->cannotCount > 0 &&
+			      unarchiverDelegate->didFinishAfterWill &&
+			      [rescued isKindOfClass:[CoderNode class]] &&
+			      [[rescued name] isEqualToString:@"rescued"] && [rescued count] == 3,
+			      [NSString stringWithFormat:@"cannot=%d finishOrder=%d rescued=%@",
+				unarchiverDelegate->cannotCount, unarchiverDelegate->didFinishAfterWill,
+				[rescued isKindOfClass:[CoderNode class]] ? [rescued name] : @"(not rescued)"]);
+		}
+	}
+
+	{
+		/*
+		 * THE SECURE TRANSFORMER, WHERE THE REFUSAL IS THE CHECK: an allowed root round-trips both ways, and
+		 * an archive whose ROOT IS NOT ALLOWED answers nil. The second half is why the class exists —
+		 * `W9ForeignRoot` is a real NSCoding class, so without the check this transformer would instantiate
+		 * whatever an archive named.
+		 *
+		 * The NAME is asserted to resolve with no registration, because that is how a property list refers
+		 * to it: the constant spells the class.
+		 */
+		NSSecureUnarchiveFromDataTransformer *transformer =
+			[[NSSecureUnarchiveFromDataTransformer alloc] init];
+		NSData *allowedData = [NSKeyedArchiver archivedDataWithRootObject:@[@"one", @"two"]];
+		NSData *foreignData = [NSKeyedArchiver archivedDataWithRootObject:
+					[[W9ForeignRoot alloc] initWithPayload:@"do-not-instantiate"]];
+		id allowedBack = [transformer transformedValue:allowedData];
+		id foreignBack = [transformer transformedValue:foreignData];
+		NSData *reArchived = [transformer reverseTransformedValue:@[@"one", @"two"]];
+		NSValueTransformer *byName = [NSValueTransformer valueTransformerForName:
+						NSSecureUnarchiveFromDataTransformerName];
+
+		check("value-transformer-secure-unarchive",
+		      [[transformer class] allowsReverseTransformation] &&
+		      [allowedBack isKindOfClass:[NSArray class]] && [allowedBack count] == 2 &&
+		      /* THE REFUSAL: a root outside +allowedTopLevelClasses answers nil. */
+		      foreignBack == nil &&
+		      reArchived != nil && [reArchived length] > 0 &&
+		      /* AND THE NAME RESOLVES WITHOUT REGISTRATION, because the constant IS the class name. */
+		      [byName isKindOfClass:[NSSecureUnarchiveFromDataTransformer class]] &&
+		      [[[transformer class] allowedTopLevelClasses] count] > 0,
+		      [NSString stringWithFormat:@"allowedCount=%lu foreignIsNil=%d nameOk=%d",
+			(unsigned long)[[[transformer class] allowedTopLevelClasses] count],
+			(int)(foreignBack == nil),
+			(int)([byName isKindOfClass:[NSSecureUnarchiveFromDataTransformer class]])]);
 	}
 
 	printf("FOUNDATION-CODER RESULT ok=%d fail=%d\n", okc, failc);
