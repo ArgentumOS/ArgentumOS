@@ -22,20 +22,20 @@
 # and its members keep their ObjC names; this file's first version excluded them
 # on the path marker, which hid real ObjC constants from the ledger.
 #
-# why the struck rows are struck: 32-bit-only 13, deprecated 341, os-version-constant 110, swift-only 22
+# why the struck rows are struck: 32-bit-only 13, declined 300, deprecated 341, os-version-constant 110, swift-only 22
 #
 # THE NAMED EXCEPTION TO §11.5 (user, 2026-09-18): 
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  116   open  126   struck   31
-#   protocol   shipped   13   open   23   struck    9
+#   class      shipped  116   open   94   struck   63
+#   protocol   shipped   13   open   18   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped   78   open   74   struck    8
-#   case       shipped  428   open  781   struck   93
+#   enum       shipped   78   open   69   struck   13
+#   case       shipped  428   open  733   struck  141
 #   func       shipped   71   open   64   struck   54
-#   var        shipped   92   open  675   struck  147
-#   typealias  shipped   22   open   51   struck    3
+#   var        shipped   92   open  469   struck  353
+#   typealias  shipped   22   open   47   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -81,22 +81,22 @@ case	open	NSAnchoredSearch	NSString	Fundamentals / Strings / Identifying and Com
 case	shipped	NSAndPredicateType	NSCompoundPredicate	Fundamentals / Filltering / Getting Information About a Compound Predicate / Constants	-	objc
 case	shipped	NSAnyKeyExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	shipped	NSAnyPredicateModifier	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	open	NSAppleEventSendAlwaysInteract	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	-	objc
-case	open	NSAppleEventSendCanInteract	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	-	objc
-case	open	NSAppleEventSendCanSwitchLayer	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	-	objc
-case	open	NSAppleEventSendDefaultOptions	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	-	objc
-case	open	NSAppleEventSendDontAnnotate	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	-	objc
-case	open	NSAppleEventSendDontExecute	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	-	objc
-case	open	NSAppleEventSendDontRecord	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	-	objc
-case	open	NSAppleEventSendNeverInteract	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	-	objc
-case	open	NSAppleEventSendNoReply	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	-	objc
-case	open	NSAppleEventSendQueueReply	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	-	objc
-case	open	NSAppleEventSendWaitForReply	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	-	objc
+case	struck	NSAppleEventSendAlwaysInteract	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	declined	objc
+case	struck	NSAppleEventSendCanInteract	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	declined	objc
+case	struck	NSAppleEventSendCanSwitchLayer	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	declined	objc
+case	struck	NSAppleEventSendDefaultOptions	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	declined	objc
+case	struck	NSAppleEventSendDontAnnotate	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	declined	objc
+case	struck	NSAppleEventSendDontExecute	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	declined	objc
+case	struck	NSAppleEventSendDontRecord	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	declined	objc
+case	struck	NSAppleEventSendNeverInteract	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	declined	objc
+case	struck	NSAppleEventSendNoReply	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	declined	objc
+case	struck	NSAppleEventSendQueueReply	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	declined	objc
+case	struck	NSAppleEventSendWaitForReply	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	declined	objc
 case	shipped	NSApplicationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSApplicationScriptsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSApplicationSupportDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSArgumentEvaluationScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
-case	open	NSArgumentsWrongScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
+case	struck	NSArgumentEvaluationScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
+case	struck	NSArgumentsWrongScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSAtomicWrite	NSData	Fundamentals / Binary Data / Writing Data to a File / Legacy Constants	deprecated	objc
 case	open	NSAttributedStringEnumerationLongestEffectiveRangeNotRequired	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text / Getting the enumeration options	-	objc
 case	open	NSAttributedStringEnumerationReverse	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text / Getting the enumeration options	-	objc
@@ -207,7 +207,7 @@ case	shipped	NSCalendarUnitYear	NSDateComponents	Fundamentals / Calendrical Calc
 case	shipped	NSCalendarUnitYearForWeekOfYear	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Years and Months	-	objc
 case	shipped	NSCalendarUnitYearForWeekOfYear	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Years and Months	-	objc
 case	open	NSCalendarWrapComponents	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
-case	open	NSCannotCreateScriptCommandError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
+case	struck	NSCannotCreateScriptCommandError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	shipped	NSCaseInsensitivePredicateOption	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	swift-page
 case	shipped	NSCaseInsensitiveSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	open	NSCloudSharingConflictError		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
@@ -535,7 +535,7 @@ case	open	NSInlinePresentationIntentSoftBreak	NSAttributedString	Fundamentals / 
 case	open	NSInlinePresentationIntentStrikethrough	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
 case	open	NSInlinePresentationIntentStronglyEmphasized	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
 case	shipped	NSInputMethodsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSInternalScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
+case	struck	NSInternalScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	open	NSInternalSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
 case	shipped	NSIntersectSetExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	open	NSInvalidIndexSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
@@ -561,7 +561,7 @@ case	shipped	NSJSONWritingSortedKeys	NSJSONSerialization	Files and Data Persiste
 case	open	NSJSONWritingWithoutEscapingSlashes	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data / Formatting JSON	-	objc
 case	open	NSJapaneseEUCStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSKeyPathExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
-case	open	NSKeySpecifierEvaluationScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
+case	struck	NSKeySpecifierEvaluationScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	shipped	NSKeyValueChangeInsertion		Reference / Enumerations / Constants	-	objc
 case	shipped	NSKeyValueChangeRemoval		Reference / Enumerations / Constants	-	objc
 case	shipped	NSKeyValueChangeReplacement		Reference / Enumerations / Constants	-	objc
@@ -643,19 +643,19 @@ case	struck	NSMonthCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calc
 case	shipped	NSMoviesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSMusicDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	open	NSNEXTSTEPStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSNetServiceListenForConnections	NSNetService	Networking / Local Network Services / Constants / Constants	-	objc
-case	open	NSNetServiceNoAutoRename	NSNetService	Networking / Local Network Services / Constants / Constants	-	objc
-case	open	NSNetServicesActivityInProgress	NSNetService	Networking / Local Network Services / Constants / Constants	-	swift-page
-case	open	NSNetServicesBadArgumentError	NSNetService	Networking / Local Network Services / Constants / Constants	-	swift-page
-case	open	NSNetServicesCancelledError	NSNetService	Networking / Local Network Services / Constants / Constants	-	swift-page
-case	open	NSNetServicesCollisionError	NSNetService	Networking / Local Network Services / Constants / Constants	-	swift-page
-case	open	NSNetServicesInvalidError	NSNetService	Networking / Local Network Services / Constants / Constants	-	swift-page
-case	open	NSNetServicesMissingRequiredConfigurationError	NSNetService	Networking / Local Network Services / Constants / Enumeration Cases	-	swift-page
-case	open	NSNetServicesNotFoundError	NSNetService	Networking / Local Network Services / Constants / Constants	-	swift-page
-case	open	NSNetServicesTimeoutError	NSNetService	Networking / Local Network Services / Constants / Constants	-	swift-page
-case	open	NSNetServicesUnknownError	NSNetService	Networking / Local Network Services / Constants / Constants	-	swift-page
+case	struck	NSNetServiceListenForConnections	NSNetService	Networking / Local Network Services / Constants / Constants	declined	objc
+case	struck	NSNetServiceNoAutoRename	NSNetService	Networking / Local Network Services / Constants / Constants	declined	objc
+case	struck	NSNetServicesActivityInProgress	NSNetService	Networking / Local Network Services / Constants / Constants	declined	swift-page
+case	struck	NSNetServicesBadArgumentError	NSNetService	Networking / Local Network Services / Constants / Constants	declined	swift-page
+case	struck	NSNetServicesCancelledError	NSNetService	Networking / Local Network Services / Constants / Constants	declined	swift-page
+case	struck	NSNetServicesCollisionError	NSNetService	Networking / Local Network Services / Constants / Constants	declined	swift-page
+case	struck	NSNetServicesInvalidError	NSNetService	Networking / Local Network Services / Constants / Constants	declined	swift-page
+case	struck	NSNetServicesMissingRequiredConfigurationError	NSNetService	Networking / Local Network Services / Constants / Enumeration Cases	declined	swift-page
+case	struck	NSNetServicesNotFoundError	NSNetService	Networking / Local Network Services / Constants / Constants	declined	swift-page
+case	struck	NSNetServicesTimeoutError	NSNetService	Networking / Local Network Services / Constants / Constants	declined	swift-page
+case	struck	NSNetServicesUnknownError	NSNetService	Networking / Local Network Services / Constants / Constants	declined	swift-page
 case	shipped	NSNetworkDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
-case	open	NSNoScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
+case	struck	NSNoScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	open	NSNoSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
 case	open	NSNoSubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
 case	open	NSNoTopLevelContainersSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
@@ -697,7 +697,7 @@ case	shipped	NSNumberFormatterSpellOutStyle	NSNumberFormatter	Fundamentals / Num
 case	open	NSNumericSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	struck	NSOSF1OperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	open	NSOpenStepUnicodeReservedBase	NSCharacterSet	Fundamentals / Characters / Creating a Custom Character Set / Constants	-	objc
-case	open	NSOperationNotSupportedForKeyScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
+case	struck	NSOperationNotSupportedForKeyScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	open	NSOperationNotSupportedForKeySpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
 case	shipped	NSOperationQueuePriorityHigh	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
 case	shipped	NSOperationQueuePriorityLow	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
@@ -814,8 +814,8 @@ case	shipped	NSQualityOfServiceUtility	NSThread	Low-Level Utilities / Threads an
 case	struck	NSQuarterCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSQuarterCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	open	NSRandomSubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
-case	open	NSReceiverEvaluationScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
-case	open	NSReceiversCantHandleCommandScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
+case	struck	NSReceiverEvaluationScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
+case	struck	NSReceiversCantHandleCommandScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	shipped	NSRectEdgeMaxX		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
 case	shipped	NSRectEdgeMaxY		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
 case	shipped	NSRectEdgeMinX		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
@@ -836,7 +836,7 @@ case	shipped	NSRelativeDateTimeFormatterUnitsStyleAbbreviated	NSRelativeDateTime
 case	shipped	NSRelativeDateTimeFormatterUnitsStyleFull	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Date and Time Units	-	swift-page
 case	shipped	NSRelativeDateTimeFormatterUnitsStyleShort	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Date and Time Units	-	swift-page
 case	shipped	NSRelativeDateTimeFormatterUnitsStyleSpellOut	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options / Formatting Date and Time Units	-	swift-page
-case	open	NSRequiredArgumentsMissingScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
+case	struck	NSRequiredArgumentsMissingScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	shipped	NSRoundBankers		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
 case	shipped	NSRoundBankers	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
 case	shipped	NSRoundDown		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
@@ -845,9 +845,9 @@ case	shipped	NSRoundPlain		Fundamentals / Numbers / Performing arithmetic using 
 case	shipped	NSRoundPlain	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
 case	shipped	NSRoundUp		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
 case	shipped	NSRoundUp	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
-case	open	NSSaveOptionsAsk	NSCloseCommand	App Support / Script Commands / Constants / Constants	-	objc
-case	open	NSSaveOptionsNo	NSCloseCommand	App Support / Script Commands / Constants / Constants	-	objc
-case	open	NSSaveOptionsYes	NSCloseCommand	App Support / Script Commands / Constants / Constants	-	objc
+case	struck	NSSaveOptionsAsk	NSCloseCommand	App Support / Script Commands / Constants / Constants	declined	objc
+case	struck	NSSaveOptionsNo	NSCloseCommand	App Support / Script Commands / Constants / Constants	declined	objc
+case	struck	NSSaveOptionsYes	NSCloseCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSScannedOption		Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
 case	struck	NSSecondCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSSecondCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
@@ -1107,7 +1107,7 @@ case	struck	NSUncachedRead	NSData	Fundamentals / Binary Data / Reading Data from
 case	struck	NSUndefinedDateComponent	NSDateComponents	Fundamentals / Calendrical Calculations / Validating a Date / Constants	deprecated	objc
 case	shipped	NSUnicodeStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSUnionSetExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
-case	open	NSUnknownKeyScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	-	objc
+case	struck	NSUnknownKeyScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	open	NSUnknownKeySpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
 case	open	NSUserActivityConnectionUnavailableError	NSError	App Support / User-Relevant Errors / Error Codes / User Activity Errors	-	objc
 case	open	NSUserActivityConnectionUnavailableError	NSUserActivity	App Support / Activity Sharing / Reporting errors	-	objc
@@ -1320,18 +1320,18 @@ case	open	NSXMLParserXMLDeclNotFinishedError	NSXMLParser	Files and Data Persiste
 case	open	NSXMLParserXMLDeclNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
 case	open	NSXMLProcessingInstructionKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
 case	open	NSXMLTextKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
-case	open	NSXPCConnectionCodeSigningRequirementFailure	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	-	objc
-case	open	NSXPCConnectionErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / XPC Errors	-	objc
-case	open	NSXPCConnectionErrorMaximum	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	-	objc
-case	open	NSXPCConnectionErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / XPC Errors	-	objc
-case	open	NSXPCConnectionErrorMinimum	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	-	objc
-case	open	NSXPCConnectionInterrupted	NSError	App Support / User-Relevant Errors / Error Codes / XPC Errors	-	objc
-case	open	NSXPCConnectionInterrupted	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	-	objc
-case	open	NSXPCConnectionInvalid	NSError	App Support / User-Relevant Errors / Error Codes / XPC Errors	-	objc
-case	open	NSXPCConnectionInvalid	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	-	objc
-case	open	NSXPCConnectionPrivileged	NSXPCConnection	Low-Level Utilities / XPC Client / Creating a connection / Constants	-	objc
-case	open	NSXPCConnectionReplyInvalid	NSError	App Support / User-Relevant Errors / Error Codes / XPC Errors	-	objc
-case	open	NSXPCConnectionReplyInvalid	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	-	objc
+case	struck	NSXPCConnectionCodeSigningRequirementFailure	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	declined	objc
+case	struck	NSXPCConnectionErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / XPC Errors	declined	objc
+case	struck	NSXPCConnectionErrorMaximum	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	declined	objc
+case	struck	NSXPCConnectionErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / XPC Errors	declined	objc
+case	struck	NSXPCConnectionErrorMinimum	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	declined	objc
+case	struck	NSXPCConnectionInterrupted	NSError	App Support / User-Relevant Errors / Error Codes / XPC Errors	declined	objc
+case	struck	NSXPCConnectionInterrupted	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	declined	objc
+case	struck	NSXPCConnectionInvalid	NSError	App Support / User-Relevant Errors / Error Codes / XPC Errors	declined	objc
+case	struck	NSXPCConnectionInvalid	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	declined	objc
+case	struck	NSXPCConnectionPrivileged	NSXPCConnection	Low-Level Utilities / XPC Client / Creating a connection / Constants	declined	objc
+case	struck	NSXPCConnectionReplyInvalid	NSError	App Support / User-Relevant Errors / Error Codes / XPC Errors	declined	objc
+case	struck	NSXPCConnectionReplyInvalid	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	declined	objc
 case	struck	NSYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSYearCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	struck	NSYearForWeekOfYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
@@ -1340,9 +1340,9 @@ case	shipped	NS_BigEndian		Low-Level Utilities / Byte Ordering / Constants / Con
 case	shipped	NS_LittleEndian		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
 case	shipped	NS_UnknownByteOrder		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
 class	shipped	NSAffineTransform		Fundamentals / Geometry	-	objc
-class	open	NSAppleEventDescriptor		App Support / Apple Event Handling	-	objc
-class	open	NSAppleEventManager		App Support / Apple Event Handling	-	objc
-class	open	NSAppleScript		App Support / Script Execution	-	objc
+class	struck	NSAppleEventDescriptor		App Support / Apple Event Handling	declined	objc
+class	struck	NSAppleEventManager		App Support / Apple Event Handling	declined	objc
+class	struck	NSAppleScript		App Support / Script Execution	declined	objc
 class	struck	NSArchiver		Files and Data Persistence / Deprecated	deprecated	objc
 class	shipped	NSArray		Fundamentals / Basic Collections	-	objc
 class	shipped	NSAssertionHandler		App Support / Assertions	-	objc
@@ -1360,9 +1360,9 @@ class	open	NSCachedURLResponse		Networking / Cache behavior	-	objc
 class	shipped	NSCalendar		Fundamentals / Calendrical Calculations	-	objc
 class	struck	NSCalendarDate		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSCharacterSet		Fundamentals / Characters	-	objc
-class	open	NSClassDescription		App Support / Script Dictionary Description	-	objc
-class	open	NSCloneCommand		App Support / Script Commands	-	objc
-class	open	NSCloseCommand		App Support / Script Commands	-	objc
+class	struck	NSClassDescription		App Support / Script Dictionary Description	declined	objc
+class	struck	NSCloneCommand		App Support / Script Commands	declined	objc
+class	struck	NSCloseCommand		App Support / Script Commands	declined	objc
 class	shipped	NSCoder		Files and Data Persistence / Keyed Archivers	-	objc
 class	shipped	NSComparisonPredicate		Fundamentals / Filltering	-	objc
 class	shipped	NSCompoundPredicate		Fundamentals / Filltering	-	objc
@@ -1370,9 +1370,9 @@ class	shipped	NSCondition		Low-Level Utilities / Threads and Locking	-	objc
 class	open	NSConditionLock		Low-Level Utilities / Threads and Locking	-	objc
 class	struck	NSConnection		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSConstantString		Reference / Classes	-	objc
-class	open	NSCountCommand		App Support / Script Commands	-	objc
+class	struck	NSCountCommand		App Support / Script Commands	declined	objc
 class	shipped	NSCountedSet		Fundamentals / Specialized Sets	-	objc
-class	open	NSCreateCommand		App Support / Script Commands	-	objc
+class	struck	NSCreateCommand		App Support / Script Commands	declined	objc
 class	shipped	NSData		Fundamentals / Binary Data	-	objc
 class	open	NSDataDetector		Fundamentals / Pattern Matching	-	objc
 class	shipped	NSDate		Fundamentals / Date Representations	-	objc
@@ -1383,7 +1383,7 @@ class	shipped	NSDateInterval		Fundamentals / Date Representations	-	objc
 class	shipped	NSDateIntervalFormatter		Fundamentals / Date Formatting	-	objc
 class	shipped	NSDecimalNumber		Fundamentals / Numbers / Using reference types	-	objc
 class	shipped	NSDecimalNumberHandler		Fundamentals / Numbers / Using reference types / Managing Behavior	-	objc
-class	open	NSDeleteCommand		App Support / Script Commands	-	objc
+class	struck	NSDeleteCommand		App Support / Script Commands	declined	objc
 class	shipped	NSDictionary		Fundamentals / Basic Collections	-	objc
 class	shipped	NSDimension		Fundamentals / Essentials	-	objc
 class	open	NSDirectoryEnumerator		Files and Data Persistence / File system operations / Discovering directory contents	-	objc
@@ -1395,7 +1395,7 @@ class	struck	NSEnergyFormatter		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSEnumerator		Fundamentals / Iteration	-	objc
 class	shipped	NSError		App Support / User-Relevant Errors	-	objc
 class	shipped	NSException		App Support / Exceptions	-	objc
-class	open	NSExistsCommand		App Support / Script Commands	-	objc
+class	struck	NSExistsCommand		App Support / Script Commands	declined	objc
 class	shipped	NSExpression		Fundamentals / Filltering	-	objc
 class	open	NSExtensionContext		App Support / Extension Support	-	objc
 class	open	NSExtensionItem		App Support / Attachments	-	objc
@@ -1409,7 +1409,7 @@ class	open	NSFileVersion		Files and Data Persistence / File system operations / 
 class	open	NSFileWrapper		Files and Data Persistence / Managed file access	-	objc
 class	shipped	NSFormatter		Fundamentals / Custom formatters	-	objc
 class	struck	NSGarbageCollector		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-class	open	NSGetCommand		App Support / Script Commands	-	objc
+class	struck	NSGetCommand		App Support / Script Commands	declined	objc
 class	open	NSHTTPCookie		Networking / Essentials / Creating a session / Setting cookie policies	-	objc
 class	open	NSHTTPCookieStorage		Networking / Cookies	-	objc
 class	open	NSHTTPURLResponse		Networking / Requests and responses	-	objc
@@ -1445,16 +1445,16 @@ class	shipped	NSMeasurement		Fundamentals / Essentials	-	objc
 class	shipped	NSMeasurementFormatter		Fundamentals / Measurements	-	objc
 class	struck	NSMessagePort		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSMessagePortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-class	open	NSMetadataItem		Files and Data Persistence / Items	-	objc
-class	open	NSMetadataQuery		Files and Data Persistence / Queries	-	objc
-class	open	NSMetadataQueryAttributeValueTuple		Files and Data Persistence / Queries / Getting query results	-	objc
-class	open	NSMetadataQueryResultGroup		Files and Data Persistence / Queries / Getting query results	-	objc
+class	struck	NSMetadataItem		Files and Data Persistence / Items	declined	objc
+class	struck	NSMetadataQuery		Files and Data Persistence / Queries	declined	objc
+class	struck	NSMetadataQueryAttributeValueTuple		Files and Data Persistence / Queries / Getting query results	declined	objc
+class	struck	NSMetadataQueryResultGroup		Files and Data Persistence / Queries / Getting query results	declined	objc
 class	shipped	NSMethodSignature		Low-Level Utilities / Invocations	-	objc
 class	open	NSMiddleSpecifier		App Support / Object Specifiers	-	objc
 class	open	NSMorphology		Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule	-	objc
 class	struck	NSMorphologyCustomPronoun		Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features	deprecated	objc
 class	open	NSMorphologyPronoun		Fundamentals / Automatic grammar agreement	-	objc
-class	open	NSMoveCommand		App Support / Script Commands	-	objc
+class	struck	NSMoveCommand		App Support / Script Commands	declined	objc
 class	shipped	NSMutableArray		Fundamentals / Basic Collections	-	objc
 class	open	NSMutableAttributedString		Fundamentals / Strings with Metadata	-	objc
 class	shipped	NSMutableCharacterSet		Fundamentals / Characters	-	objc
@@ -1500,7 +1500,7 @@ class	open	NSPropertySpecifier		App Support / Object Specifiers	-	objc
 class	struck	NSProtocolChecker		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSProxy		Low-Level Utilities / Remote Objects	-	objc
 class	shipped	NSPurgeableData		Fundamentals / Purgeable Collections	-	objc
-class	open	NSQuitCommand		App Support / Script Commands	-	objc
+class	struck	NSQuitCommand		App Support / Script Commands	declined	objc
 class	open	NSRandomSpecifier		App Support / Object Specifiers	-	objc
 class	open	NSRangeSpecifier		App Support / Object Specifiers	-	objc
 class	shipped	NSRecursiveLock		Low-Level Utilities / Threads and Locking	-	objc
@@ -1509,17 +1509,17 @@ class	shipped	NSRelativeDateTimeFormatter		Fundamentals / Dates and times	-	objc
 class	open	NSRelativeSpecifier		App Support / Object Specifiers	-	objc
 class	shipped	NSRunLoop		Low-Level Utilities / Run Loop Scheduling	-	objc
 class	open	NSScanner		Fundamentals / Pattern Matching	-	objc
-class	open	NSScriptClassDescription		App Support / Script Dictionary Description	-	objc
-class	open	NSScriptCoercionHandler		App Support / NSObject Script Support	-	objc
-class	open	NSScriptCommand		App Support / Script Commands	-	objc
-class	open	NSScriptCommandDescription		App Support / Script Dictionary Description	-	objc
-class	open	NSScriptExecutionContext		App Support / NSObject Script Support	-	objc
+class	struck	NSScriptClassDescription		App Support / Script Dictionary Description	declined	objc
+class	struck	NSScriptCoercionHandler		App Support / NSObject Script Support	declined	objc
+class	struck	NSScriptCommand		App Support / Script Commands	declined	objc
+class	struck	NSScriptCommandDescription		App Support / Script Dictionary Description	declined	objc
+class	struck	NSScriptExecutionContext		App Support / NSObject Script Support	declined	objc
 class	open	NSScriptObjectSpecifier		App Support / Object Specifiers	-	objc
-class	open	NSScriptSuiteRegistry		App Support / Script Dictionary Description	-	objc
+class	struck	NSScriptSuiteRegistry		App Support / Script Dictionary Description	declined	objc
 class	open	NSScriptWhoseTest		App Support / Object Matching Tests	-	objc
 class	shipped	NSSecureUnarchiveFromDataTransformer		Files and Data Persistence / Keyed Archivers	-	objc
 class	shipped	NSSet		Fundamentals / Basic Collections	-	objc
-class	open	NSSetCommand		App Support / Script Commands	-	objc
+class	struck	NSSetCommand		App Support / Script Commands	declined	objc
 class	open	NSSimpleCString		Reference / Classes	-	objc
 class	open	NSSocketPort		Low-Level Utilities / Sockets	-	objc
 class	struck	NSSocketPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
@@ -1590,13 +1590,13 @@ class	shipped	NSUnitSpeed		Fundamentals / Time and Motion	-	objc
 class	shipped	NSUnitTemperature		Fundamentals / Energy, Heat, and Light	-	objc
 class	shipped	NSUnitVolume		Fundamentals / Physical Dimension	-	objc
 class	open	NSUserActivity		App Support / Activity Sharing	-	objc
-class	open	NSUserAppleScriptTask		Low-Level Utilities / Scripts and External Tasks	-	objc
-class	open	NSUserAutomatorTask		Low-Level Utilities / Scripts and External Tasks	-	objc
+class	struck	NSUserAppleScriptTask		Low-Level Utilities / Scripts and External Tasks	declined	objc
+class	struck	NSUserAutomatorTask		Low-Level Utilities / Scripts and External Tasks	declined	objc
 class	open	NSUserDefaults		Files and Data Persistence / App-specific settings	-	objc
 class	struck	NSUserNotification		App Support / User Notifications	deprecated	objc
 class	struck	NSUserNotificationAction		App Support / User Notifications	deprecated	objc
 class	struck	NSUserNotificationCenter		App Support / User Notifications	deprecated	objc
-class	open	NSUserScriptTask		Low-Level Utilities / Scripts and External Tasks	-	objc
+class	struck	NSUserScriptTask		Low-Level Utilities / Scripts and External Tasks	declined	objc
 class	open	NSUserUnixTask		Low-Level Utilities / Scripts and External Tasks	-	objc
 class	shipped	NSValue		Low-Level Utilities / Value Wrappers and Transformations	-	objc
 class	shipped	NSValueTransformer		Low-Level Utilities / Value Wrappers and Transformations	-	objc
@@ -1607,14 +1607,14 @@ class	open	NSXMLDocument		Files and Data Persistence / XML / Tree-Based Processi
 class	open	NSXMLElement		Files and Data Persistence / XML / Tree-Based Processing	-	objc
 class	open	NSXMLNode		Files and Data Persistence / XML / Tree-Based Processing	-	objc
 class	open	NSXMLParser		Files and Data Persistence / XML / Event-Based Processing	-	objc
-class	open	NSXPCCoder		Low-Level Utilities / XPC Client	-	objc
-class	open	NSXPCConnection		Low-Level Utilities / XPC Client	-	objc
-class	open	NSXPCInterface		Low-Level Utilities / XPC Client	-	objc
-class	open	NSXPCListener		Low-Level Utilities / XPC Services	-	objc
-class	open	NSXPCListenerEndpoint		Low-Level Utilities / XPC Services	-	objc
+class	struck	NSXPCCoder		Low-Level Utilities / XPC Client	declined	objc
+class	struck	NSXPCConnection		Low-Level Utilities / XPC Client	declined	objc
+class	struck	NSXPCInterface		Low-Level Utilities / XPC Client	declined	objc
+class	struck	NSXPCListener		Low-Level Utilities / XPC Services	declined	objc
+class	struck	NSXPCListenerEndpoint		Low-Level Utilities / XPC Services	declined	objc
 enum	shipped	NSActivityOptions	NSProcessInfo	App Support / System Interaction / Managing activities	-	objc
 enum	shipped	NSAlignmentOptions		Fundamentals / Geometry / Related Types	-	objc
-enum	open	NSAppleEventSendOptions	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types	-	objc
+enum	struck	NSAppleEventSendOptions	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types	declined	objc
 enum	open	NSAttributedStringEnumerationOptions	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
 enum	open	NSAttributedStringFormattingOptions	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 enum	open	NSAttributedStringMarkdownInterpretedSyntax	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
@@ -1694,8 +1694,8 @@ enum	struck	NSMassFormatterUnit	NSMassFormatter	Fundamentals / Deprecated / Cons
 enum	shipped	NSMatchingFlags	NSRegularExpression	Fundamentals / Pattern Matching / Constants	-	objc
 enum	shipped	NSMatchingOptions	NSRegularExpression	Fundamentals / Pattern Matching / Constants	-	objc
 enum	shipped	NSMeasurementFormatterUnitOptions	NSMeasurementFormatter	Fundamentals / Measurements / Specifying the Format	-	swift-page
-enum	open	NSNetServiceOptions	NSNetService	Networking / Local Network Services / Constants	-	objc
-enum	open	NSNetServicesError	NSNetService	Networking / Local Network Services / Constants	-	swift-page
+enum	struck	NSNetServiceOptions	NSNetService	Networking / Local Network Services / Constants	declined	objc
+enum	struck	NSNetServicesError	NSNetService	Networking / Local Network Services / Constants	declined	swift-page
 enum	open	NSNotificationCoalescing	NSNotificationQueue	App Support / Notifications / Constants	-	objc
 enum	open	NSNotificationSuspensionBehavior	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants	-	objc
 enum	shipped	NSNumberFormatterBehavior	NSNumberFormatter	Fundamentals / Numbers / Constants	-	objc
@@ -1725,7 +1725,7 @@ enum	shipped	NSRelativeDateTimeFormatterUnitsStyle	NSRelativeDateTimeFormatter	F
 enum	open	NSRelativePosition	NSRelativeSpecifier	App Support / Object Specifiers / Constants	-	swift-page
 enum	shipped	NSRoundingMode		Fundamentals / Numbers / Performing arithmetic using references	-	objc
 enum	shipped	NSRoundingMode	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants	-	objc
-enum	open	NSSaveOptions	NSCloseCommand	App Support / Script Commands / Constants	-	objc
+enum	struck	NSSaveOptions	NSCloseCommand	App Support / Script Commands / Constants	declined	objc
 enum	shipped	NSSearchPathDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 enum	shipped	NSSearchPathDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 enum	open	NSSortOptions		Fundamentals / Iteration	-	objc
@@ -1771,7 +1771,7 @@ enum	open	NSXMLNodeKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based 
 enum	open	NSXMLNodeOptions	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	objc
 enum	open	NSXMLParserError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	objc
 enum	open	NSXMLParserExternalEntityResolvingPolicy	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	swift-page
-enum	open	NSXPCConnectionOptions	NSXPCConnection	Low-Level Utilities / XPC Client / Creating a connection	-	objc
+enum	struck	NSXPCConnectionOptions	NSXPCConnection	Low-Level Utilities / XPC Client / Creating a connection	declined	objc
 func	open	CFBridgingRelease		Low-Level Utilities / Memory Management / Core Foundation ARC Integration	-	objc
 func	open	CFBridgingRetain		Low-Level Utilities / Memory Management / Core Foundation ARC Integration	-	objc
 func	struck	NSAllHashTableObjects	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
@@ -2230,10 +2230,10 @@ protocol	shipped	NSKeyedArchiverDelegate		Files and Data Persistence / Keyed Arc
 protocol	shipped	NSKeyedUnarchiverDelegate		Files and Data Persistence / Keyed Archivers	-	objc
 protocol	shipped	NSLocking		Low-Level Utilities / Threads and Locking	-	objc
 protocol	struck	NSMachPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-protocol	open	NSMetadataQueryDelegate		Files and Data Persistence / Queries	-	objc
+protocol	struck	NSMetadataQueryDelegate		Files and Data Persistence / Queries	declined	objc
 protocol	shipped	NSMutableCopying		Low-Level Utilities / Copying	-	objc
-protocol	open	NSNetServiceBrowserDelegate		Networking / Service Discovery	-	objc
-protocol	open	NSNetServiceDelegate		Networking / Local Network Services	-	objc
+protocol	struck	NSNetServiceBrowserDelegate		Networking / Service Discovery	declined	objc
+protocol	struck	NSNetServiceDelegate		Networking / Local Network Services	declined	objc
 protocol	shipped	NSObject		Low-Level Utilities / Object Basics	-	objc
 protocol	struck	NSPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 protocol	open	NSPredicateValidating		Protocols	-	objc
@@ -2257,8 +2257,8 @@ protocol	open	NSURLSessionWebSocketDelegate		Networking / Essentials / Adding We
 protocol	open	NSUserActivityDelegate		App Support / Activity Sharing / Monitoring activity-related behaviors	-	objc
 protocol	open	NSUserNotificationCenterDelegate		App Support / User Notifications	-	objc
 protocol	open	NSXMLParserDelegate		Files and Data Persistence / XML / Event-Based Processing	-	objc
-protocol	open	NSXPCListenerDelegate		Low-Level Utilities / XPC Services	-	objc
-protocol	open	NSXPCProxyCreating		Low-Level Utilities / XPC Client	-	objc
+protocol	struck	NSXPCListenerDelegate		Low-Level Utilities / XPC Services	declined	objc
+protocol	struck	NSXPCProxyCreating		Low-Level Utilities / XPC Client	declined	objc
 struct	shipped	NSAffineTransformStruct	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix	-	objc
 struct	shipped	NSDecimal		Fundamentals / Numbers	-	objc
 struct	shipped	NSEdgeInsets		Fundamentals / Geometry	-	objc
@@ -2272,7 +2272,7 @@ struct	shipped	NSOperatingSystemVersion	NSProcessInfo	App Support / System Inter
 struct	shipped	NSRange		Fundamentals / Ranges	-	objc
 struct	shipped	NSSwappedDouble		Low-Level Utilities / Byte Ordering / Constants	-	objc
 struct	shipped	NSSwappedFloat		Low-Level Utilities / Byte Ordering / Constants	-	objc
-typealias	open	NSAppleEventManagerSuspensionID	NSAppleEventManager	App Support / Apple Event Handling / Suspending and resuming Apple events	-	objc
+typealias	struck	NSAppleEventManagerSuspensionID	NSAppleEventManager	App Support / Apple Event Handling / Suspending and resuming Apple events	declined	objc
 typealias	open	NSAttributedStringFormattingContextKey		Reference / Type Aliases	-	objc
 typealias	open	NSAttributedStringKey	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes	-	objc
 typealias	open	NSBackgroundActivityCompletionHandler	NSBackgroundActivityScheduler	App Support / System Interaction / Scheduling Activity	-	objc
@@ -2340,9 +2340,9 @@ typealias	open	NSURLUbiquitousSharedItemRole	NSURL	Fundamentals / URLs / Accessi
 typealias	open	NSUncaughtExceptionHandler	NSException	App Support / Exceptions / Related Types	-	objc
 typealias	open	NSUndoManagerUserInfoKey	NSUndoManager	App Support / Undo / Working with user info	-	objc
 typealias	open	NSUserActivityPersistentIdentifier	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
-typealias	open	NSUserAppleScriptTaskCompletionHandler	NSUserAppleScriptTask	Low-Level Utilities / Scripts and External Tasks / Constants	-	objc
-typealias	open	NSUserAutomatorTaskCompletionHandler	NSUserAutomatorTask	Low-Level Utilities / Scripts and External Tasks / Constants	-	objc
-typealias	open	NSUserScriptTaskCompletionHandler	NSUserScriptTask	Low-Level Utilities / Scripts and External Tasks / Constants	-	objc
+typealias	struck	NSUserAppleScriptTaskCompletionHandler	NSUserAppleScriptTask	Low-Level Utilities / Scripts and External Tasks / Constants	declined	objc
+typealias	struck	NSUserAutomatorTaskCompletionHandler	NSUserAutomatorTask	Low-Level Utilities / Scripts and External Tasks / Constants	declined	objc
+typealias	struck	NSUserScriptTaskCompletionHandler	NSUserScriptTask	Low-Level Utilities / Scripts and External Tasks / Constants	declined	objc
 typealias	open	NSUserUnixTaskCompletionHandler	NSUserUnixTask	Low-Level Utilities / Scripts and External Tasks / Constants	-	objc
 typealias	shipped	NSValueTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry	-	objc
 typealias	struck	NSZone		Low-Level Utilities / Legacy	32-bit-only	objc
@@ -2351,13 +2351,13 @@ typealias	shipped	unichar	NSString	Fundamentals / Strings / Creating and Initial
 var	struck	NSAMPMDesignation	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	open	NSAlternateDescriptionAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	open	NSAppleEventManagerWillProcessFirstEventNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSAppleEventTimeOutDefault	NSAppleEventManager	App Support / Apple Event Handling / Constants / Constants	-	objc
-var	open	NSAppleEventTimeOutNone	NSAppleEventManager	App Support / Apple Event Handling / Constants / Constants	-	objc
-var	open	NSAppleScriptErrorAppName	NSAppleScript	App Support / Script Execution / Constants / Constants	-	objc
-var	open	NSAppleScriptErrorBriefMessage	NSAppleScript	App Support / Script Execution / Constants / Constants	-	objc
-var	open	NSAppleScriptErrorMessage	NSAppleScript	App Support / Script Execution / Constants / Constants	-	objc
-var	open	NSAppleScriptErrorNumber	NSAppleScript	App Support / Script Execution / Constants / Constants	-	objc
-var	open	NSAppleScriptErrorRange	NSAppleScript	App Support / Script Execution / Constants / Constants	-	objc
+var	struck	NSAppleEventTimeOutDefault	NSAppleEventManager	App Support / Apple Event Handling / Constants / Constants	declined	objc
+var	struck	NSAppleEventTimeOutNone	NSAppleEventManager	App Support / Apple Event Handling / Constants / Constants	declined	objc
+var	struck	NSAppleScriptErrorAppName	NSAppleScript	App Support / Script Execution / Constants / Constants	declined	objc
+var	struck	NSAppleScriptErrorBriefMessage	NSAppleScript	App Support / Script Execution / Constants / Constants	declined	objc
+var	struck	NSAppleScriptErrorMessage	NSAppleScript	App Support / Script Execution / Constants / Constants	declined	objc
+var	struck	NSAppleScriptErrorNumber	NSAppleScript	App Support / Script Execution / Constants / Constants	declined	objc
+var	struck	NSAppleScriptErrorRange	NSAppleScript	App Support / Script Execution / Constants / Constants	declined	objc
 var	open	NSArgumentDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
 var	shipped	NSAssertionHandlerKey	NSThread	Low-Level Utilities / Threads and Locking / Working with Thread Properties	-	objc
 var	shipped	NSAverageKeyValueOperator		Reference / Constants	-	objc
@@ -2398,7 +2398,7 @@ var	open	NSCalendarIdentifierVikram	NSCalendar	Fundamentals / Calendrical Calcul
 var	open	NSCharacterConversionException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	open	NSCharacterConversionException	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 var	struck	NSChineseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
-var	open	NSClassDescriptionNeededForClassNotification	NSClassDescription	App Support / Script Dictionary Description / Notifications	-	swift-page
+var	struck	NSClassDescriptionNeededForClassNotification	NSClassDescription	App Support / Script Dictionary Description / Notifications	declined	swift-page
 var	open	NSClassDescriptionNeededForClassNotification	NSNotification	App Support / Notifications / Creating Notifications / AppKit	-	swift-page
 var	open	NSCocoaErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	struck	NSConnectionDidDieNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
@@ -2667,215 +2667,215 @@ var	open	NSMapTableWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collecti
 var	struck	NSMapTableZeroingWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	deprecated	objc
 var	open	NSMarkdownSourcePositionAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	shipped	NSMaximumKeyValueOperator		Reference / Constants	-	objc
-var	open	NSMetadataItemAcquisitionMakeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAcquisitionModelKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAlbumKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAltitudeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemApertureKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAppleLoopDescriptorsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAppleLoopsKeyFilterTypeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAppleLoopsLoopModeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAppleLoopsRootKeyKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemApplicationCategoriesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAttributeChangeDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAudiencesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAudioBitRateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAudioChannelCountKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAudioEncodingApplicationKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAudioSampleRateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAudioTrackNumberKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAuthorAddressesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAuthorEmailAddressesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemAuthorsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemBitsPerSampleKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemCFBundleIdentifierKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemCameraOwnerKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemCityKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemCodecsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemColorSpaceKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemCommentKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemComposerKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemContactKeywordsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemContentCreationDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemContentModificationDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemContentTypeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemContentTypeTreeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemContributorsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemCopyrightKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemCountryKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemCoverageKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemCreatorKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemDateAddedKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemDeliveryTypeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemDescriptionKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemDirectorKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemDisplayNameKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemDownloadedDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemDueDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemDurationSecondsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemEXIFGPSVersionKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemEXIFVersionKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemEditorsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemEmailAddressesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemEncodingApplicationsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemExecutableArchitecturesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemExecutablePlatformKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemExposureModeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemExposureProgramKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemExposureTimeSecondsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemExposureTimeStringKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemFNumberKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemFSContentChangeDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemFSCreationDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemFSNameKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemFSSizeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemFinderCommentKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemFlashOnOffKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemFocalLength35mmKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemFocalLengthKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemFontsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemGPSAreaInformationKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemGPSDOPKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemGPSDateStampKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemGPSDestBearingKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemGPSDestDistanceKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemGPSDestLatitudeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemGPSDestLongitudeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemGPSDifferentalKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemGPSMapDatumKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemGPSMeasureModeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemGPSProcessingMethodKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemGPSStatusKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemGPSTrackKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemGenreKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemHasAlphaChannelKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemHeadlineKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemISOSpeedKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemIdentifierKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemImageDirectionKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemInformationKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemInstantMessageAddressesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemInstructionsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemIsApplicationManagedKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemIsGeneralMIDISequenceKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemIsLikelyJunkKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemIsUbiquitousKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataItemKeySignatureKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemKeywordsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemKindKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemLanguagesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemLastUsedDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemLatitudeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemLayerNamesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemLensModelKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemLongitudeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemLyricistKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemMaxApertureKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemMediaTypesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemMeteringModeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemMusicalGenreKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemMusicalInstrumentCategoryKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemMusicalInstrumentNameKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemNamedLocationKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemNumberOfPagesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemOrganizationsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemOrientationKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemOriginalFormatKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemOriginalSourceKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemPageHeightKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemPageWidthKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemParticipantsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemPathKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemPerformersKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemPhoneNumbersKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemPixelCountKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemPixelHeightKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemPixelWidthKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemProducerKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemProfileNameKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemProjectsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemPublishersKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemRecipientAddressesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemRecipientEmailAddressesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemRecipientsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemRecordingDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemRecordingYearKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemRedEyeOnOffKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemResolutionHeightDPIKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemResolutionWidthDPIKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemRightsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemSecurityMethodKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemSpeedKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemStarRatingKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemStateOrProvinceKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemStreamableKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemSubjectKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemTempoKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemTextContentKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemThemeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemTimeSignatureKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemTimestampKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemTitleKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemTotalBitRateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemURLKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemVersionKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemVideoBitRateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemWhereFromsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataItemWhiteBalanceKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	-	objc
-var	open	NSMetadataQueryAccessibleUbiquitousExternalDocumentsScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	-	objc
-var	open	NSMetadataQueryDidFinishGatheringNotification	NSMetadataQuery	Files and Data Persistence / Queries / Working with notifications	-	swift-page
+var	struck	NSMetadataItemAcquisitionMakeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAcquisitionModelKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAlbumKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAltitudeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemApertureKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAppleLoopDescriptorsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAppleLoopsKeyFilterTypeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAppleLoopsLoopModeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAppleLoopsRootKeyKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemApplicationCategoriesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAttributeChangeDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAudiencesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAudioBitRateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAudioChannelCountKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAudioEncodingApplicationKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAudioSampleRateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAudioTrackNumberKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAuthorAddressesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAuthorEmailAddressesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemAuthorsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemBitsPerSampleKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemCFBundleIdentifierKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemCameraOwnerKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemCityKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemCodecsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemColorSpaceKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemCommentKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemComposerKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemContactKeywordsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemContentCreationDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemContentModificationDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemContentTypeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemContentTypeTreeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemContributorsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemCopyrightKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemCountryKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemCoverageKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemCreatorKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemDateAddedKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemDeliveryTypeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemDescriptionKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemDirectorKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemDisplayNameKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemDownloadedDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemDueDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemDurationSecondsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemEXIFGPSVersionKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemEXIFVersionKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemEditorsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemEmailAddressesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemEncodingApplicationsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemExecutableArchitecturesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemExecutablePlatformKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemExposureModeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemExposureProgramKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemExposureTimeSecondsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemExposureTimeStringKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemFNumberKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemFSContentChangeDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemFSCreationDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemFSNameKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemFSSizeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemFinderCommentKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemFlashOnOffKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemFocalLength35mmKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemFocalLengthKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemFontsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemGPSAreaInformationKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemGPSDOPKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemGPSDateStampKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemGPSDestBearingKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemGPSDestDistanceKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemGPSDestLatitudeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemGPSDestLongitudeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemGPSDifferentalKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemGPSMapDatumKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemGPSMeasureModeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemGPSProcessingMethodKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemGPSStatusKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemGPSTrackKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemGenreKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemHasAlphaChannelKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemHeadlineKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemISOSpeedKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemIdentifierKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemImageDirectionKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemInformationKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemInstantMessageAddressesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemInstructionsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemIsApplicationManagedKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemIsGeneralMIDISequenceKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemIsLikelyJunkKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemIsUbiquitousKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataItemKeySignatureKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemKeywordsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemKindKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemLanguagesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemLastUsedDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemLatitudeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemLayerNamesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemLensModelKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemLongitudeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemLyricistKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemMaxApertureKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemMediaTypesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemMeteringModeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemMusicalGenreKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemMusicalInstrumentCategoryKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemMusicalInstrumentNameKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemNamedLocationKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemNumberOfPagesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemOrganizationsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemOrientationKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemOriginalFormatKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemOriginalSourceKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemPageHeightKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemPageWidthKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemParticipantsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemPathKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemPerformersKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemPhoneNumbersKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemPixelCountKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemPixelHeightKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemPixelWidthKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemProducerKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemProfileNameKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemProjectsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemPublishersKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemRecipientAddressesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemRecipientEmailAddressesKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemRecipientsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemRecordingDateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemRecordingYearKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemRedEyeOnOffKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemResolutionHeightDPIKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemResolutionWidthDPIKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemRightsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemSecurityMethodKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemSpeedKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemStarRatingKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemStateOrProvinceKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemStreamableKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemSubjectKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemTempoKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemTextContentKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemThemeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemTimeSignatureKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemTimestampKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemTitleKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemTotalBitRateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemURLKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemVersionKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemVideoBitRateKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemWhereFromsKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataItemWhiteBalanceKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
+var	struck	NSMetadataQueryAccessibleUbiquitousExternalDocumentsScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
+var	struck	NSMetadataQueryDidFinishGatheringNotification	NSMetadataQuery	Files and Data Persistence / Queries / Working with notifications	declined	swift-page
 var	open	NSMetadataQueryDidFinishGatheringNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSMetadataQueryDidStartGatheringNotification	NSMetadataQuery	Files and Data Persistence / Queries / Working with notifications	-	swift-page
+var	struck	NSMetadataQueryDidStartGatheringNotification	NSMetadataQuery	Files and Data Persistence / Queries / Working with notifications	declined	swift-page
 var	open	NSMetadataQueryDidStartGatheringNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSMetadataQueryDidUpdateNotification	NSMetadataQuery	Files and Data Persistence / Queries / Working with notifications	-	swift-page
+var	struck	NSMetadataQueryDidUpdateNotification	NSMetadataQuery	Files and Data Persistence / Queries / Working with notifications	declined	swift-page
 var	open	NSMetadataQueryDidUpdateNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSMetadataQueryGatheringProgressNotification	NSMetadataQuery	Files and Data Persistence / Queries / Working with notifications	-	swift-page
+var	struck	NSMetadataQueryGatheringProgressNotification	NSMetadataQuery	Files and Data Persistence / Queries / Working with notifications	declined	swift-page
 var	open	NSMetadataQueryGatheringProgressNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSMetadataQueryIndexedLocalComputerScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	-	objc
-var	open	NSMetadataQueryIndexedNetworkScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	-	objc
-var	open	NSMetadataQueryLocalComputerScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	-	objc
-var	open	NSMetadataQueryNetworkScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	-	objc
-var	open	NSMetadataQueryResultContentRelevanceAttribute	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	-	objc
-var	open	NSMetadataQueryUbiquitousDataScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	-	objc
-var	open	NSMetadataQueryUbiquitousDocumentsScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	-	objc
-var	open	NSMetadataQueryUpdateAddedItemsKey	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	-	objc
-var	open	NSMetadataQueryUpdateChangedItemsKey	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	-	objc
-var	open	NSMetadataQueryUpdateRemovedItemsKey	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	-	objc
-var	open	NSMetadataQueryUserHomeScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	-	objc
-var	open	NSMetadataUbiquitousItemContainerDisplayNameKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousItemDownloadRequestedKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousItemDownloadingErrorKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousItemDownloadingStatusCurrent	NSMetadataItem	Files and Data Persistence / Items / iCloud Download Status Values	-	objc
-var	open	NSMetadataUbiquitousItemDownloadingStatusDownloaded	NSMetadataItem	Files and Data Persistence / Items / iCloud Download Status Values	-	objc
-var	open	NSMetadataUbiquitousItemDownloadingStatusKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousItemDownloadingStatusNotDownloaded	NSMetadataItem	Files and Data Persistence / Items / iCloud Download Status Values	-	objc
-var	open	NSMetadataUbiquitousItemHasUnresolvedConflictsKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
+var	struck	NSMetadataQueryIndexedLocalComputerScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
+var	struck	NSMetadataQueryIndexedNetworkScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
+var	struck	NSMetadataQueryLocalComputerScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
+var	struck	NSMetadataQueryNetworkScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
+var	struck	NSMetadataQueryResultContentRelevanceAttribute	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
+var	struck	NSMetadataQueryUbiquitousDataScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
+var	struck	NSMetadataQueryUbiquitousDocumentsScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
+var	struck	NSMetadataQueryUpdateAddedItemsKey	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
+var	struck	NSMetadataQueryUpdateChangedItemsKey	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
+var	struck	NSMetadataQueryUpdateRemovedItemsKey	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
+var	struck	NSMetadataQueryUserHomeScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
+var	struck	NSMetadataUbiquitousItemContainerDisplayNameKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousItemDownloadRequestedKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousItemDownloadingErrorKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousItemDownloadingStatusCurrent	NSMetadataItem	Files and Data Persistence / Items / iCloud Download Status Values	declined	objc
+var	struck	NSMetadataUbiquitousItemDownloadingStatusDownloaded	NSMetadataItem	Files and Data Persistence / Items / iCloud Download Status Values	declined	objc
+var	struck	NSMetadataUbiquitousItemDownloadingStatusKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousItemDownloadingStatusNotDownloaded	NSMetadataItem	Files and Data Persistence / Items / iCloud Download Status Values	declined	objc
+var	struck	NSMetadataUbiquitousItemHasUnresolvedConflictsKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
 var	struck	NSMetadataUbiquitousItemIsDownloadedKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	deprecated	objc
-var	open	NSMetadataUbiquitousItemIsDownloadingKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousItemIsExternalDocumentKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousItemIsSharedKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousItemIsUploadedKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousItemIsUploadingKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousItemPercentDownloadedKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousItemPercentUploadedKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousItemURLInLocalContainerKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousItemUploadingErrorKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousSharedItemCurrentUserPermissionsKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousSharedItemCurrentUserRoleKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousSharedItemMostRecentEditorNameComponentsKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousSharedItemOwnerNameComponentsKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	-	objc
-var	open	NSMetadataUbiquitousSharedItemPermissionsReadOnly	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Permissions Values	-	objc
-var	open	NSMetadataUbiquitousSharedItemPermissionsReadWrite	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Permissions Values	-	objc
-var	open	NSMetadataUbiquitousSharedItemRoleOwner	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Role Values	-	objc
-var	open	NSMetadataUbiquitousSharedItemRoleParticipant	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Role Values	-	objc
+var	struck	NSMetadataUbiquitousItemIsDownloadingKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousItemIsExternalDocumentKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousItemIsSharedKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousItemIsUploadedKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousItemIsUploadingKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousItemPercentDownloadedKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousItemPercentUploadedKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousItemURLInLocalContainerKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousItemUploadingErrorKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousSharedItemCurrentUserPermissionsKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousSharedItemCurrentUserRoleKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousSharedItemMostRecentEditorNameComponentsKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousSharedItemOwnerNameComponentsKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
+var	struck	NSMetadataUbiquitousSharedItemPermissionsReadOnly	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Permissions Values	declined	objc
+var	struck	NSMetadataUbiquitousSharedItemPermissionsReadWrite	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Permissions Values	declined	objc
+var	struck	NSMetadataUbiquitousSharedItemRoleOwner	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Role Values	declined	objc
+var	struck	NSMetadataUbiquitousSharedItemRoleParticipant	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Role Values	declined	objc
 var	shipped	NSMinimumKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	open	NSMorphologyAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	open	NSMultipleUnderlyingErrorsKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	open	NSNegateBooleanTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
 var	struck	NSNegativeCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
-var	open	NSNetServicesErrorCode	NSNetService	Networking / Local Network Services / Constants / Constants	-	swift-page
-var	open	NSNetServicesErrorDomain	NSNetService	Networking / Local Network Services / Constants / Constants	-	objc
+var	struck	NSNetServicesErrorCode	NSNetService	Networking / Local Network Services / Constants / Constants	declined	swift-page
+var	struck	NSNetServicesErrorDomain	NSNetService	Networking / Local Network Services / Constants / Constants	declined	objc
 var	struck	NSNextDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSNextNextDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSNonOwnedPointerHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc

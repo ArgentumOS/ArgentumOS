@@ -17,11 +17,14 @@ THE STATUS COLUMN IS THE LEDGER, AND IT HAS THREE VALUES:
            row being flipped — which is the bug class §11.2's source 1 hid for
            months (a probe asserting an ABSENCE asserts a fact about the tree,
            and landing the code does not update it).
-  struck   Apple deprecates it (or it exists ONLY to support Swift), so by §11.5
-           it is REMOVED: we neither ship it nor owe it. The `why` column says
-           which, and `--check` REPORTS any struck name that appears in our
-           headers (`--strict` is what fails on those: what to do about one is a
-           decision, and a decision is a ledger row).
+  struck   OUT by §11.5, so we neither ship it nor owe it. FIVE grounds, and the
+           `why` column says which: Apple DEPRECATES it, it exists ONLY to support
+           Swift, it exists only for 32-BIT compatibility, it is a per-release
+           OS VERSION constant, or it is DECLINED BY PROJECT DECISION (the user's
+           2026-09-20 scope decisions — AppleScript, XPC, Spotlight metadata,
+           Bonjour). `--check` REPORTS any struck name that appears in our headers
+           and `--strict` FAILS on it: what to do about one is a decision, and a
+           decision is a ledger row.
 
 AND A FOURTH EXCLUSION (user, 2026-09-18, amending an earlier exception): API that
 exists only for 32-BIT COMPATIBILITY. Zones are the case — the 64-bit runtime
@@ -257,11 +260,82 @@ def struck_reason(row):
 REQUIRED_BY_LIVE_API = {}
 
 
+# §11.5's SEVENTH EXCLUSION (user, 2026-09-20): SCOPE DECLINED BY THE PROJECT.
+#
+# The user's words, and they are the ground: "We will not be supporting AppleScript at all, so no
+# scripting related classes need be implemented. We will not be supporting XPC either. Nor will we
+# support Spotlight, we will use a separate library for live queries. Bonjour is removed."
+#
+# THESE ROWS ARE NOT DEPRECATED AND ARE NOT SWIFT-ONLY. They are documented, live, and deliberately
+# OUT — a fourth kind of reason the ledger did not have, recorded rather than hidden because §11's
+# fidelity bar is a promise about what this library DOES, and a refusal is a fact about it. Two
+# clarifications came with the decision and are encoded here: `NSSpellServer` (the other half of the
+# plan unit Spotlight metadata shares) is KEPT, and `NSUserUnixTask` is kept among its three
+# declined siblings.
+#
+# THE ROOTS ARE NAMED, NOT INFERRED, AND THAT IS LOAD-BEARING — the four families are not
+# separable by a pattern, in three MEASURED ways:
+#
+#   * `NSTask` and `NSPipe` share the family label "Low-Level Utilities / Scripts and External
+#     Tasks" with the script runners, but they are W6's process and I/O. A family signal would have
+#     struck two classes this library still owes.
+#   * `Fundamentals / Strings with Metadata` is W10's ATTRIBUTED-STRING family, not Spotlight. A
+#     signal keyed on the word "Metadata" would have struck `NSAttributedString`.
+#   * `NSHostByteOrder` is the one row of these families this library already SHIPS — a generic
+#     byte-order helper Apple files under Net Services rather than the Bonjour service API — so it
+#     is KEPT, and striking it would have meant DELETING working code instead of flipping a row.
+#
+# Striking a root strikes its MEMBERS too (its constants, methods and notification names): a
+# constant that exists only to configure a class this library refuses is not independently owed.
+DECLINED_ROOTS = frozenset((
+    # AppleScript and the Apple-event layer, with the scripting support the model layer carries.
+    "NSAppleEventDescriptor", "NSAppleEventManager", "NSAppleScript", "NSClassDescription",
+    "NSCloneCommand", "NSCloseCommand", "NSCountCommand", "NSCreateCommand", "NSDeleteCommand",
+    "NSExistsCommand", "NSGetCommand", "NSMoveCommand", "NSQuitCommand", "NSScriptClassDescription",
+    "NSScriptCoercionHandler", "NSScriptCommand", "NSScriptCommandDescription",
+    "NSScriptExecutionContext", "NSScriptSuiteRegistry", "NSSetCommand",
+    # The three Apple-scripting task runners. `NSUserUnixTask` is NOT here: it runs an ordinary Unix
+    # script, which is process execution rather than AppleScript, and the user kept it.
+    "NSUserScriptTask", "NSUserAppleScriptTask", "NSUserAutomatorTask",
+    # XPC.
+    "NSXPCConnection", "NSXPCInterface", "NSXPCListener", "NSXPCListenerEndpoint", "NSXPCCoder",
+    "NSXPCListenerDelegate", "NSXPCProxyCreating",
+    # Spotlight metadata. `NSSpellServer` is the other half of the same plan unit and is KEPT.
+    "NSMetadataItem", "NSMetadataQuery", "NSMetadataQueryDelegate",
+    "NSMetadataQueryResultGroup", "NSMetadataQueryAttributeValueTuple",
+    # Bonjour. Its two CLASSES are already struck as deprecated; this reaches their SERVANTS, which
+    # are not deprecated and were left open — the shape §12.5 called a ledger question before a unit.
+    "NSNetService", "NSNetServiceBrowser", "NSNetServiceDelegate", "NSNetServiceBrowserDelegate",
+))
+
+# Free-standing rows that belong to a declined family without being owned by one of its roots.
+DECLINED_SYMBOLS = frozenset((
+    "NSNetServiceOptions", "NSNetServicesErrorDomain", "NSNetServicesErrorCode",
+))
+
+
+def is_declined(row):
+    """Is this row out by the project's SCOPE DECISION rather than by an Apple fact?
+
+    ASKED ONLY AFTER THE APPLE GROUNDS, so a declined family's deprecated class keeps the specific
+    reason Apple gives for it rather than being relabelled."""
+    name = row["name"]
+    owner = row.get("owner") or ""
+    if name in DECLINED_SYMBOLS or owner in DECLINED_SYMBOLS:
+        return True
+    if name in DECLINED_ROOTS or owner in DECLINED_ROOTS:
+        return True
+    # THE XPC ERROR CODES live under "User-Relevant Errors" rather than in the XPC family.
+    if "XPC" in (row.get("family") or ""):
+        return True
+    return False
+
+
 def why_of(row):
     """The `why` column: the reason this row is not simply shipped or open."""
     if row["name"] in REQUIRED_BY_LIVE_API:      # empty today; see above
         return "required-by-live-api"
-    return struck_reason(row) or "-"
+    return struck_reason(row) or ("declined" if is_declined(row) else "-")
 
 
 # EVERY strike reason, in one place. The first version of the fourth exclusion
@@ -269,7 +343,7 @@ def why_of(row):
 # fell from 52 to 42 while `func open` rose by the same 10, because ten zone
 # functions were carrying a reason the status test did not recognise. A reason
 # that does not strike is a row that lies about where it stands.
-STRIKE_REASONS = ("32-bit-only", "swift-only", "deprecated", "os-version-constant")
+STRIKE_REASONS = ("32-bit-only", "swift-only", "deprecated", "os-version-constant", "declined")
 
 
 def status_of(kind, name, why, text):
@@ -558,8 +632,9 @@ def check(strict=False):
     print("              (the tree-level figure — symbols documented ONLY in Apple's Swift view,")
     print("               never read by this tool — is recorded in the surface file's header by --refresh)")
     if policy:
-        print("\n%d POLICY FINDING(S) — API Apple deprecates that we declare (§11.5 says we do not ship it;" % len(policy))
-        print("each needs a ledger row, and --strict is what fails on them):\n")
+        print("\n%d POLICY FINDING(S) — API this ledger STRIKES that we still declare (a struck row is one" % len(policy))
+        print("§11.5 removes: deprecated, swift-only, 32-bit-only, an OS-version constant, or DECLINED BY")
+        print("PROJECT DECISION. each needs a ledger row, and --strict is what fails on them):\n")
         for line in policy:
             print("  " + line)
     if bad:
