@@ -7665,6 +7665,33 @@ existing reproducers to hold it to (`kernel_threaded_exec`, `kernel_pipe_dup2`, 
 instrument that cannot lie already written (the pre-`kfree` invariant in `free_vma_pages`, which fires 1484
 times a boot and returns to the one-page timeline when a specific page matters).
 
+**AND THE NO-WINDOW, NO-CAP INSTRUMENT NAMES DEFECT A'S PUBLISHER: THE SWEEP'S OWN ORDER.** Every page the
+sweep is about to free was checked against EVERY process's user mappings, with no window, no cap and no page
+filter. The result is 47,775 hits a boot, and they are all one call site:
+
+    AFREE pid=1 phys=0x4a9000  STILL_US_MAPPED_BY=1 vma=0x400000012000..0x400000014000 scans=1    caller=ffff80000d99f19b
+    AFREE pid=7 phys=0x234a000 STILL_US_MAPPED_BY=7 vma=0x400000000000..0x400000002000 scans=2376 caller=ffff80000d99f19b
+
+**The freeing process is still mapping the page ITSELF** (`STILL_US_MAPPED_BY=1` where the freer is pid 1;
+`BY=7` where it is pid 7) — because `free_vma_pages` calls `kfree(P2V(leaf))` BEFORE
+`unmap_user_page64_in(pml4, addr)`. The order was noted early in this investigation and passed over; it is
+the publisher:
+
+  * the page goes back to the bitmap (count reached zero, legitimately) while the leaf that names it is still
+    in the process's tables;
+  * the leaf is removed a few instructions later - **so most hits are a transient window, and that is why this
+    has been so hard to catch: it is not a wrong free, it is a right free in the wrong ORDER**;
+  * **and the window is preemptible.** Any context switch, any interrupt that schedules, any other task
+    allocating between those two statements gets the page - and then writes to memory a live userspace
+    mapping still names. That is defect A: it is spatial in the table (the vma table held "FNX3-DONE") and
+    temporal in origin (free, then unmap).
+
+**AND THE NEXT CHANGE IS THE ONE THIS NAMES, AND IT IS ONE LINE'S WORTH OF ORDER:** unmap first, then free -
+so no page is ever in the bitmap while a leaf still names it. It was tried once before and apparently
+changed nothing, but that attempt was confounded: it ran on top of a guard that was skipping the sweep for
+every process and a test whose arms both drained the variable. **Both of those are fixed now, the guard is
+correct, and three reproducers are in place to hold the reordered sweep to account.**
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
