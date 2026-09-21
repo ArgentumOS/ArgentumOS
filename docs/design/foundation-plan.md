@@ -6431,6 +6431,39 @@ fork path is not something to leave in the kernel.
 dies. `sc`'s provenance (which thread's stack it points into, and whether it is per-thread at that moment) is
 the whole question, and it is one `printk`.
 
+**AND THE INSTRUMENT REACHED THE GUEST — AFTER THE ESP WAS REBUILT — AND IT INVERTS THE READING.** The
+build trap's answer is one command: `tools/mkesp.sh` (called by `mk/00-base.mk`'s `run-qemu`), which copies
+`.build/64/fnx.efi` into the ESP; run it after `make buildfnx` and the guest boots the new kernel
+(verified: `grep -c FORKDBG .build/esp.img` went 0 → 1). With that, the fork path's own numbers arrive:
+
+    FORKDBG caller=9 new=10 flags=0x7d0f00 sc=ffff80000236be7c sc_rip=7f0000080805 sc_rsp=7ffffffffc08
+           esp0=ffff8000023a1ffc st=ffff8000023a1e7c st_rip=7f0000080805 st_rsp=400000022af8 st_r9=7f0000072d00
+
+Three things, and the third one changes the diagnosis:
+
+  1. **`caller=9 new=10 flags=0x7d0f00` is `CLONE_VM|CLONE_THREAD|…`** — pid 10 IS the reaper THREAD, exactly
+     as the pid correction above argued, and now measured.
+  2. **THE FRAME THE KERNEL INSTALLS IS NOT GARBAGE.** `st_rip = sc_rip = 0x7f0000080805` (the parent's
+     post-syscall return into the shared library, where musl's `__clone` asm lives) and
+     `st_rsp = child_stack = 0x400000022af8` (musl's `mmap`'d thread stack — which is what an address in
+     this kernel's mmap range looks like). Both are plausible, and both are what a thread needs.
+  3. **AND THE FAULT IS THAT SAME FRAME, A FEW INSTRUCTIONS IN:** the dead task fetched from
+     `0x7f0000080849` — the same page as the start RIP, 0x44 bytes further — with `rsp = 0x400000022a38`,
+     which is `0xc0` BELOW the start RSP, i.e. **the thread ran and pushed as a thread should**.
+
+**SO THE BUG IS NOT IN THE FRAME; IT IS IN THE ADDRESS SPACE.** A `CLONE_VM` thread shares its creator's
+paging (this tree says so itself — `tss.cr3`, and `pml4_has_other_user()` exists to keep a shared pml4 alive
+for the non-last user), so the library page the PARENT is executing from must be there for the thread too.
+It is not: the thread fetches its very next instruction and dies on a page that is not mapped in its
+address space. That moves this from "fork installs a bad frame" to **"a CLONE_VM thread's address space is
+missing a page the parent has"** — which is the same neighbourhood as this tree's own recorded history with
+shared pml4s, and it is a much sharper place to look.
+
+**THE NEXT MEASUREMENT IS TWO LINES IN THE FAULT PATH:** print the faulting task's `cr3_64` and its
+parent's, and the vma that covers `0x7f0000080849` if any — i.e. answer "was the thread really sharing the
+parent's tables AT FAULT TIME, and does the parent's vma list know about that address?" Everything else about
+this crash is now accounted for.
+
 **THE REMAINING QUESTION, AND IT IS NOW A NARROW ONE:** what installs that first user-mode frame, and where
 does `0x7f00_0000080849` come from? The next step is the project's own doctrine — **measure at the writer**:
 instrument the kernel's exec / return-to-user path to print the frame it installs (initial `rip`, `rsp` and
