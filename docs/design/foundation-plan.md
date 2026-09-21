@@ -6775,6 +6775,36 @@ frees; (2) take the reference on the paths that map an ALREADY-OWNED page (the c
 leave it stranded; (3) drop it on the unmap side, in every path that removes a mapping; (4) then
 `kernel_threaded_exec` green is the acceptance test.**
 
+**AND THE TAGGING RUN KILLS THAT SUSPECT — THE FREE IS `kfree`, THE KERNEL HEAP, NOT THE PAGE CACHE.** Each of
+the three call sites got a window-filtered marker, and the log contains exactly one kind:
+
+    PGFREE pid=4 phys=0x61c000 flags=0x0 caller=ffff80000d99bf29
+    PGFREE-MAPPED page 0x61c000 is STILL MAPPED by pid 4 (of 4)
+    RELSITE 3 kfree pid=4 phys=0x61c000
+
+**`RELSITE 3 kfree` and never `RELSITE 1` or `RELSITE 2`** — so `invalidate_inode_pages` and
+`update_page_cache` are both exonerated by measurement, and the page goes back to the bitmap through the
+KERNEL HEAP's free path. That also re-reads the earlier evidence correctly: the page was serving as a kernel
+heap object (a vma table) and as a user mapping at the same time, and **the heap is the party that returns it
+to the pool** — the same aliasing seen from the other side, with several distinct `kfree` callers in a hot
+region of the heap.
+
+**THE FIX IS THEREFORE THE MAPPING REFERENCE AND NOTHING NARROWER**, which is what the site evidence now
+says from both ends: whichever side frees first, a page with a live page-table entry must not go back to the
+bitmap. The staged plan stands, with step (1) now answered:
+
+  (1) ✅ the free site is `kfree`; `invalidate_inode_pages`/`update_page_cache` are cleared;
+  (2) take the reference where an ALREADY-OWNED page is mapped (the cache's, or another process's) — never
+      where a process maps a page it just allocated, or teardown's single release would strand it;
+  (3) drop it in every path that removes a mapping;
+  (4) `kernel_threaded_exec` green is the acceptance test, and it is the regression test for the class.
+
+**ONE MEASUREMENT STILL OWED, AND IT IS THE ORDER, NOT THE SITE:** the log is ordered, so the FIRST
+`PGFREE-MAPPED` in a run is the origin and everything after it is damage — a counter in the instrument (print
+only the first N, with a run serial) would pin whether the corruption always begins at a process EXIT (the
+heap releasing a dead process's objects) or can begin mid-run. That distinguishes "the fix is about teardown"
+from "the fix is about any free", which decides how wide step (2) has to be.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
