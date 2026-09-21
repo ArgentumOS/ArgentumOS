@@ -7060,6 +7060,33 @@ measurement, not a patch: close the 2MB gap in the invariant and re-run, then in
 publishers (a `mremap`'s PTE copy, and the VMA merge path — `can_be_merged`, which this tree has already fixed
 once for a different symptom of the same shape).
 
+**AND TRACKING THE FAULT'S OWN ADDRESS RULES THE "CORRUPTED PAGE" READING OUT OF THE FAULT ITSELF.** The
+tracker remembers the physical page handed to the address this test always faults on (`0x7f0000080000+`), and
+reports when that page is freed. What came back:
+
+    TRACKMAP64 pid=1  va=0x7f0000080850 phys=0x2ad000
+    TRACKMAP64 pid=4  va=0x7f0000080850 phys=0x2ad000
+    TRACKMAP64 pid=7  va=0x7f0000080850 phys=0x2ad000
+    TRACKMAP64 pid=8 / pid=9 / pid=11 / pid=12   ... same phys
+    (and NOT ONE TRACKFREE line)
+
+  * the failing VA is mapped to **the same physical page (`0x2ad000`) in EVERY process** — an ordinary shared
+    library page, exactly as it should be;
+  * **and that page is NEVER FREED during the run.** So the fault is NOT on a re-granted page: the "heap took a
+    page userspace maps" story explains the VMA-TABLE corruption (which is separately and solidly measured),
+    but it does NOT explain this fault.
+
+**SO THE QUESTION SHIFTS, AND IT IS NOW SHARP: the faulting task fetched from a page that IS mapped in its own
+process (pid 9, whose tables it shares — measured `same=1`), yet the leaf was ABSENT at that moment** (the
+table walk two rounds earlier printed `pte = 0x0`). Something withholds or removes that leaf for that task,
+while other tasks and later runs have it. The candidates are now narrow, and one of them is named in this
+kernel's own code: `map_page_flags`'s comment says the U/S bit must be propagated up every level or "a user
+fetch/write then faults P+U+ID (0x15) even though the leaf is U/S" — and the observed error is `0x14`
+(not-present, instruction fetch), which says *absent*, not *supervisor*. **A leaf that is absent while its
+owner maps it, in a task sharing that owner's tables, is the thing to measure next** — in ONE run that prints
+both the mapper (who, which VA, which pml4) and the faulting task's walk, so the two can be compared directly
+instead of across runs.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
