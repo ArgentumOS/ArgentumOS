@@ -21,7 +21,22 @@
 int sys_wait4(__pid_t pid, int *status, int options, struct rusage *ru)
 {
 	struct proc *p;
+	struct proc *owner;
 	int flag, signum, errno;
+
+	/* FNX: a wait is a PROCESS's wait, not a thread's. Children are created and counted per PROCESS, so
+	 * a wait issued from a thread (a different struct proc) saw current->children == 0 and returned
+	 * immediately - and even with a count it matched children by the forking TASK's pointer. POSIX: any
+	 * thread may reap the process's children. Work on the THREAD GROUP LEADER, whose tgid is the group. */
+	{
+		extern struct proc *get_proc_by_pid(__pid_t);
+
+		owner = (current->tgid && current->tgid != current->pid) ?
+			get_proc_by_pid(current->tgid) : current;
+		if(!owner) {
+			owner = current;
+		}
+	}
 
 #ifdef __DEBUG__
 	printk("(pid %d) sys_wait4(%d, status, %d)\n", current->pid, pid, options);
@@ -32,10 +47,10 @@ int sys_wait4(__pid_t pid, int *status, int options, struct rusage *ru)
 			return errno;
 		}
 	}
-	while(current->children) {
+	while(owner->children) {
 		flag = 0;
 		FOR_EACH_PROCESS(p) {
-			if(p->ppid != current) {
+			if(!p->ppid || p->ppid->tgid != owner->tgid) {
 				p = p->next;
 				continue;
 			}
