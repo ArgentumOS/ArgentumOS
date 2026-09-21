@@ -6805,6 +6805,28 @@ only the first N, with a run serial) would pin whether the corruption always beg
 heap releasing a dead process's objects) or can begin mid-run. That distinguishes "the fix is about teardown"
 from "the fix is about any free", which decides how wide step (2) has to be.
 
+**AND THE CORRECTED SCAN CONFIRMS IT — AFTER THE FIRST SCAN WAS CAUGHT FOOLING ITSELF.** The first version
+counted pids 1, 2, 3 and 4 as mapping a low page, which is impossible: this tree keeps a KERNEL IDENTITY MAP
+in every process's pml4, and my window (`0x600000`-`0x640000`) sits inside it. Requiring `P|RW|US` at EVERY
+level of the walk — which is exactly what `map_page_flags` propagates for a user mapping, and what a
+supervisor identity entry does not have — collapses 37 hits to **4 real ones**:
+
+    PGFREE-USERMAPPED page 0x60e000 is STILL MAPPED BY USERSPACE in pid 7 (of 7)
+    PGFREE-USERMAPPED page 0x60f000 is STILL MAPPED BY USERSPACE in pid 7 (of 7)
+    PGFREE-USERMAPPED page 0x610000 is STILL MAPPED BY USERSPACE in pid 7 (of 7)
+    PGFREE-USERMAPPED page 0x613000 is STILL MAPPED BY USERSPACE in pid 7 (of 7)
+
+**Four pages, freed by `kfree`, still mapped AS USERSPACE by a LIVE process (pid 7 — the shell, mid-run).**
+And note the range: `0x60e000`-`0x613000` is where the independent alias test found the collision —
+`0x400000000040` in pid 7 resolved to physical `0x612000`, the page the kernel had given a vma table. Two
+different instruments, two different questions, the same pages.
+
+**AND IT ANSWERS THE WIDTH QUESTION THE LAST SECTION LEFT OPEN.** The still-mapped frees happen while the
+mapping process is RUNNING the test, not during its exit — so the repair cannot be a teardown-only guard:
+**any** free path that returns a page to the bitmap has to be prevented from doing so while a user mapping
+lives. That is the mapping reference, taken where an already-owned page is mapped and dropped wherever a
+mapping is removed, exactly as staged — and `kernel_threaded_exec` green is the acceptance test.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
