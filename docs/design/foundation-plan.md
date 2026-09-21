@@ -3521,7 +3521,7 @@ vanishing.
 | **Low-Level Utilities / Run Loop Scheduling** | all classes shipped | — |
 | **Low-Level Utilities / Scripts and External Tasks** | 1 open; 3 STRUCK: `NSUserAppleScriptTask`, `NSUserAutomatorTask`, `NSUserScriptTask` | `NSUserUnixTask` |
 | **Low-Level Utilities / Sockets** | 1 STRUCK: `NSHost` | — |
-| **Low-Level Utilities / Streams** | 1 open | `NSOutputStream` |
+| **Low-Level Utilities / Streams** | all classes shipped | — |
 | **Low-Level Utilities / Tasks and Pipes** | all classes shipped | — |
 | **Low-Level Utilities / Threads and Locking** | 2 open | `NSConditionLock`, `NSDistributedLock` |
 | **Low-Level Utilities / Value Wrappers and Transformations** | all classes shipped | — |
@@ -8816,3 +8816,18 @@ without the fix rather than assumed to.
 FILES THIS ROUND: `kernel/syscalls/select.c` (the rule), `userland/Foundation/NSInputStream.m` (the workaround
 removed), `userland/tests/foundation_stream.m` and `tests/cases/foundation_stream.py` (the two checks are now
 the fix's regression tests).
+
+**AND SUB-STEP 3 HAS LANDED AND IS VERIFIED (2026-09-21): `NSOutputStream`.** `userland/Foundation/
+NSOutputStream.{h,m}` - three destinations on one contract: memory (which GROWS), a caller's buffer (whose
+CAPACITY is the caller's, so `-write:maxLength:` answers what it took and 0 when full rather than an error),
+and a file (the descriptor case, `O_APPEND` or `O_TRUNC` chosen at `-open`). `NSStreamDataWrittenToMemoryStreamKey`
+answers the bytes for the first two - the key the head declared as one this library acts on - and the offset
+key reports and seeks for the third. Measured: **`foundation_stream` 6/6 case checks and 37/37 probe checks**
+(`RESULT ok=37 fail=0`), including the ROUND TRIP (a file written by an output stream and read back by an
+input stream, which is the pair the unit exists to make possible) and `output-stream-fires-has-space` - the
+WRITABLE half of the seam, which §45-Z's kernel rule is what makes deliverable.
+
+**NEXT: SUB-STEP 4, `NSUserUnixTask`** - the W6 row's leftover, INDEPENDENT of the streams: process work
+(`fork`/`exec` + pipes), with `NSTask` as the pattern, deriving from `NSObject` with the deviation stated
+(Apple's inherits `NSUserScriptTask`, which §39 struck) and `-initWithScriptURL:error:` declared rather than
+inherited. `NSUserUnixTaskCompletionHandler` comes with it.

@@ -47,6 +47,16 @@ CHECKS = (
     "input-stream-closes",
     "select-reports-a-regular-file-as-ready",
     "input-stream-fires-has-bytes",
+    "output-stream-refuses-a-write-before-open",
+    "output-stream-to-memory-writes",
+    "output-stream-memory-key-reads-back",
+    "output-stream-to-buffer-honours-capacity",
+    "output-stream-buffer-key-reads-back",
+    "output-stream-to-file-writes",
+    "output-stream-offset-key-reads",
+    "output-stream-then-input-stream-round-trips",
+    "output-stream-appends",
+    "output-stream-fires-has-space",
 )
 
 

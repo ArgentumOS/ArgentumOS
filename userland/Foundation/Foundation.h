@@ -156,6 +156,7 @@
 #import <Foundation/NSFileHandle.h>
 #import <Foundation/NSPipe.h>
 #import <Foundation/NSInputStream.h>
+#import <Foundation/NSOutputStream.h>
 #import <Foundation/NSStream.h>
 #import <Foundation/NSTask.h>
 

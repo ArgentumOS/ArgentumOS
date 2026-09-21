@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  124   open   72   struck   77
+#   class      shipped  125   open   71   struck   77
 #   protocol   shipped   14   open   17   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   81   open   62   struck   17
@@ -1481,7 +1481,7 @@ class	open	NSOrderedCollectionChange		Fundamentals / Basic Collections / Compari
 class	open	NSOrderedCollectionDifference		Fundamentals / Basic Collections / Comparing with Another Array	-	objc
 class	shipped	NSOrderedSet		Fundamentals / Specialized Sets	-	objc
 class	open	NSOrthography		Fundamentals / Localization	-	objc
-class	open	NSOutputStream		Low-Level Utilities / Streams	-	objc
+class	shipped	NSOutputStream		Low-Level Utilities / Streams	-	objc
 class	shipped	NSPersonNameComponents		Fundamentals / Names	-	objc
 class	shipped	NSPipe		Low-Level Utilities / Tasks and Pipes	-	objc
 class	shipped	NSPointerArray		Fundamentals / Pointer Collections	-	objc

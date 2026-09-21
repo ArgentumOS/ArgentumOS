@@ -356,6 +356,132 @@ int main(void)
 		[in close];
 	}
 
+
+	/* ---- 9. NSOutputStream: THE THREE DESTINATIONS ---- */
+	{
+		/* A STREAM OF ITS OWN: this one is left in Error on purpose. */
+		NSOutputStream *never = [NSOutputStream outputStreamToMemory];
+
+		check("output-stream-refuses-a-write-before-open",
+		      [never write:(const uint8_t *)"x" maxLength:1] == -1 &&
+		      [never streamStatus] == NSStreamStatusError,
+		      @"a stream that was never opened accepted a write");
+	}
+
+	{
+		/* MEMORY GROWS TO FIT, and the bytes are read back through the key the head declares. */
+		NSOutputStream *out = [NSOutputStream outputStreamToMemory];
+		NSData *written;
+
+		[out open];
+		check("output-stream-to-memory-writes",
+		      [out write:(const uint8_t *)"hello" maxLength:5] == 5 &&
+		      [out hasSpaceAvailable],
+		      @"a memory stream did not take five bytes");
+		written = [out propertyForKey:NSStreamDataWrittenToMemoryStreamKey];
+		check("output-stream-memory-key-reads-back",
+		      written != nil && [written length] == 5 &&
+		      memcmp([written bytes], "hello", 5) == 0,
+		      [NSString stringWithFormat:@"the key answered %lu bytes",
+			(unsigned long)(written != nil ? [written length] : 0)]);
+	}
+
+	{
+		/* THE CALLER'S BUFFER IS THE LIMIT, and a full one answers 0 rather than an error. */
+		uint8_t storage[4];
+		NSOutputStream *out = [NSOutputStream outputStreamToBuffer:storage capacity:4];
+		NSData *written;
+
+		[out open];
+		check("output-stream-to-buffer-honours-capacity",
+		      [out write:(const uint8_t *)"hello" maxLength:5] == 4 &&
+		      ![out hasSpaceAvailable] &&
+		      [out write:(const uint8_t *)"!" maxLength:1] == 0,
+		      @"a four-byte buffer did not stop at four bytes");
+		written = [out propertyForKey:NSStreamDataWrittenToMemoryStreamKey];
+		check("output-stream-buffer-key-reads-back",
+		      written != nil && [written length] == 4 && memcmp([written bytes], "hell", 4) == 0,
+		      @"the buffer's bytes did not come back");
+	}
+
+	{
+		/* A FILE, AND THE ROUND TRIP THROUGH THE OTHER CLASS: written by an output stream, read back by
+		 * an input stream, which is the pair the unit exists to make possible. */
+		const char *path = "/System/Temporary Files/foundation-stream-probe";
+		NSOutputStream *out = [NSOutputStream outputStreamToFileAtPath:
+					(NSString *)[NSString stringWithUTF8String:path] append:NO];
+
+		[out open];
+		check("output-stream-to-file-writes",
+		      [out streamStatus] == NSStreamStatusOpen &&
+		      [out write:(const uint8_t *)"hello world" maxLength:11] == 11,
+		      [NSString stringWithFormat:@"writing eleven bytes answered %d, status %d",
+			(int)[out write:(const uint8_t *)"" maxLength:0], (int)[out streamStatus]]);
+		check("output-stream-offset-key-reads",
+		      [[out propertyForKey:NSStreamFileCurrentOffsetKey] longLongValue] == 11,
+		      @"the offset key did not report eleven bytes written");
+		[out close];
+
+		{
+			NSInputStream *back = [NSInputStream inputStreamWithFileAtPath:
+						(NSString *)[NSString stringWithUTF8String:path]];
+			uint8_t buf[32];
+			NSInteger got;
+
+			[back open];
+			got = [back read:buf maxLength:sizeof(buf)];
+			check("output-stream-then-input-stream-round-trips",
+			      got == 11 && memcmp(buf, "hello world", 11) == 0,
+			      [NSString stringWithFormat:@"reading back answered %d", (int)got]);
+			[back close];
+		}
+
+		{
+			/* APPEND IS AN OPEN FLAG, and the file grows by exactly what was written. */
+			NSOutputStream *more = [NSOutputStream outputStreamToFileAtPath:
+						(NSString *)[NSString stringWithUTF8String:path] append:YES];
+			NSInputStream *back;
+			uint8_t buf[32];
+			NSInteger got;
+
+			[more open];
+			(void)[more write:(const uint8_t *)"!" maxLength:1];
+			[more close];
+			back = [NSInputStream inputStreamWithFileAtPath:
+				(NSString *)[NSString stringWithUTF8String:path]];
+			[back open];
+			got = [back read:buf maxLength:sizeof(buf)];
+			check("output-stream-appends",
+			      got == 12 && memcmp(buf, "hello world!", 12) == 0,
+			      [NSString stringWithFormat:@"the appended file read back as %d bytes", (int)got]);
+			[back close];
+		}
+
+		{
+			/* THE WRITABLE HALF OF THE SEAM, which the kernel's file-readiness rule is what makes
+			 * deliverable: a scheduled FILE-backed output stream reports space through the delegate -
+			 * no write, no thread blocked. */
+			NSOutputStream *scheduled = [NSOutputStream outputStreamToFileAtPath:
+							(NSString *)[NSString stringWithUTF8String:path] append:YES];
+			FnStreamDelegate *delegate = [[FnStreamDelegate alloc] init];
+			NSRunLoop *loop = [NSRunLoop currentRunLoop];
+
+			[scheduled setDelegate:delegate];
+			[scheduled scheduleInRunLoop:loop forMode:NSDefaultRunLoopMode];
+			[scheduled open];
+			(void)[loop runMode:NSDefaultRunLoopMode
+				 beforeDate:[NSDate dateWithTimeIntervalSinceNow:1.0]];
+			check("output-stream-fires-has-space",
+			      [delegate events] > 0 &&
+			      ([delegate last] & NSStreamEventHasSpaceAvailable) != 0,
+			      [NSString stringWithFormat:@"%d event(s), last=%lu",
+				[delegate events], (unsigned long)[delegate last]]);
+			[scheduled removeFromRunLoop:loop forMode:NSDefaultRunLoopMode];
+			[scheduled close];
+		}
+		(void)unlink(path);
+	}
+
 	printf("FOUNDATION-STREAM RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-STREAM-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-STREAM DONE\n");
