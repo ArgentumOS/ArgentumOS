@@ -58,6 +58,22 @@ the plan's G3 gate and SH-0..SH-5.
   pin 4.3.2): ISC core, musl+clang, built via **CMake only** — its
   autotools layer is never invoked (host or guest). No new
   build-time tools: CMake is already in §C.
+- **lcms2 (Little CMS 2)** — **MIT**; the colour engine CoreGraphics' C4
+  binds (docs/design/coregraphics-plan.md), pinned at tag **lcms2.19.1**
+  under third_party/ (a submodule, like everything else here) and built
+  by **tools/lcms2-build.sh** — autotools, run **twice**: once for the
+  guest with tools/musl-clang64.sh, once for the host with the compiler
+  the host library itself uses. Two builds rather than one because
+  libcoregraphics exists in both forms and a musl object cannot be linked
+  into a host binary, and the host copy is not a convenience either:
+  there is **no lcms2 development header on the build host** (measured:
+  liblcms2.so.2 is there, lcms2.h and lcms2.pc are not). 2.19.1 ships a
+  pre-generated `configure`, so no autoreconf is needed; it is also the
+  release that fixed soname generation under autotools, which is the
+  mechanism this tree stages libraries by. **No new build-time
+  requirement**: autotools is already §D's, and the engine ships no data
+  files — the profiles a caller gets are *generated*
+  (`cmsCreate_sRGBProfile` and friends), not installed from anywhere.
 
 ### C. Build drivers
 

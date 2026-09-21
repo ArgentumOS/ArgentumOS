@@ -834,6 +834,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_task.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_task"
+	# SCRATCH (TEMPORARY - removed with userland/tests/zz_scratch_threaded_exec.c): the kernel bug that
+	# made foundation_task red is an exec/stack-page failure, so the reproducer must have no Foundation in
+	# it while the CHILD is still the Foundation probe.
+	$(MUSL64_CC) -O2 userland/tests/zz_scratch_threaded_exec.c \
+		-o "$(ROOTFS64)/System/Shared/tests/threaded_exec"
 	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
 	# collection_view, tab_view, split_view, grid_view, kvc_basic,
 	# notification_basic, cell_basic, viewcontroller_basic, window_draw,
@@ -1104,6 +1109,20 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		libharfbuzz.so; do \
 		cp -a $(X11PREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
 	done
+	# --- lcms2 (third_party/lcms2, tag lcms2.19.1, MIT): the colour engine libcoregraphics
+	# binds for C4. Same staging rule as the X stack above — the glob carries the soname and
+	# the real file, and the bare `liblcms2.so` dev link is link-time only, so it is skipped —
+	# and the same GATE: a missing prefix is reported as "run this", rather than being left to
+	# surface much later as a link failure in whatever consumes it.
+	@if [ ! -d "$(LCMS2_PREFIX)/lib" ]; then \
+		echo "lcms2 prefix missing - run tools/lcms2-build.sh first"; \
+		exit 1; \
+	fi
+	@cp -a $(LCMS2_PREFIX)/lib/liblcms2.so.* "$(ROOTFS64)/System/Libraries/"
+	# ITS HEADER, for the reason the Foundation headers are staged: an on-guest rebuild of
+	# anything that includes <lcms2.h> has to be able to find it.
+	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/lcms2"
+	@cp $(LCMS2_PREFIX)/include/*.h "$(ROOTFS64)/System/Shared/Headers/lcms2/"
 	# hello_dl: the dynamic-linker smoke test. Staged under
 	# System/Shared/tests - System/Tools is dynamic too since M1, but the
 	# linter carve-out keeps this one out of the zero-allow scope.
