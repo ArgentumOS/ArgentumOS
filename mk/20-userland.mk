@@ -243,7 +243,8 @@ FN_FOUNDATION_ICU   = NSCalendar.m NSDateFormatter.m NSNumberFormatter.m NSPredi
                       NSCharacterSet.m NSLocale.m NSDecimalNumber.m NSListFormatter.m \
                       NSISO8601DateFormatter.m NSDateIntervalFormatter.m NSByteCountFormatter.m \
                       NSRelativeDateTimeFormatter.m NSDateComponentsFormatter.m NSMeasurementFormatter.m \
-                      NSSecureUnarchiveFromDataTransformer.m
+                      NSSecureUnarchiveFromDataTransformer.m NSPointerFunctions.m \
+                      NSPointerArray.m
 FN_FOUNDATION_X11   = NSDataCodec.m
 FN_FOUNDATION_ROOT  = NSProxy.m
 FN_FOUNDATION_OBJS  = $(addprefix .build/foundation-,$(FN_FOUNDATION_SRCS:.m=.o)) .build/foundation-ninvoke-asm.o
@@ -698,6 +699,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_coder.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_coder"
+	# foundation_pointers: W13a acceptance. ONE unit, only <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_pointers.m -o .build/probe-foundation_pointers.o
+	$(MUSL64_OBJC) .build/probe-foundation_pointers.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_pointers"
 	# foundation_processinfo: F13.13 acceptance. ONE unit, only <Foundation/Foundation.h> plus
 	# <unistd.h> for the getpid cross-check.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \

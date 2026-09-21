@@ -3501,7 +3501,7 @@ vanishing.
 | **Fundamentals / Numbers** | all classes shipped | — |
 | **Fundamentals / Pattern Matching** | 2 open | `NSDataDetector`, `NSScanner` |
 | **Fundamentals / Physical Dimension** | all classes shipped | — |
-| **Fundamentals / Pointer Collections** | 4 open | `NSHashTable`, `NSMapTable`, `NSPointerArray`, `NSPointerFunctions` |
+| **Fundamentals / Pointer Collections** | 2 open | `NSHashTable`, `NSMapTable` |
 | **Fundamentals / Purgeable Collections** | 4 open | `NSCache`, `NSCacheDelegate`, `NSDiscardableContent`, `NSPurgeableData` |
 | **Fundamentals / Sorting** | all classes shipped | — |
 | **Fundamentals / Special Semantic Values** | all classes shipped | — |
@@ -5532,3 +5532,55 @@ at the declaration, and annotating the containers is its own unit rather than a 
 check(s) in 12s**, the probe's own tally `ok=11 fail=0` and exit 0. `foundation-sweep --check`: consistent,
 all four rows flipped to shipped. `foundation-gate`: **OK — 248 files, 97 of 101 public headers** open a
 nullability region.
+
+## 36. W13a: `NSPointerFunctions` + `NSPointerArray`, AND THE TWO BUGS THEY FOUND (2026-09-20)
+
+**WHAT SHIPPED.** `NSPointerFunctions` (with `NSPointerFunctionsOptions` and its eleven constants) and
+`NSPointerArray` — the plan's own first step for W13, "because it is the other three's core". W13 is a LARGE
+row (ten classes), so it is being taken in slices; what remains is `NSHashTable`, `NSMapTable`,
+`NSCache`/`NSCacheDelegate`, `NSDiscardableContent`/`NSPurgeableData`, and the `NSOrderedCollectionDifference`
+trio.
+
+**THE POINT OF `NSPointerFunctions` IS THAT A RAW POINTER HAS NO DECISIONS**, and that is what its header leads
+with: no `-hash`, no `-isEqual:`, no ownership, no `-description`. Every choice a collection normally gets from
+the object itself has to arrive from outside, so this object is that supply — an options word selects a
+PERSONALITY (what the pointer means) and a MEMORY POLICY (who owns it), and seven callouts are the result.
+`NSPointerArray` is the first client, and every insert and removal goes through `fnAcquire:`/`fnRelinquish:`
+so that no collection re-decides anything.
+
+**TWO REAL BUGS WERE FOUND BY THE NEW CHECKS, AND BOTH WERE IN SHIPPED CODE RATHER THAN IN THE NEW CODE.**
+
+**(1) The archiver could not read back its own mutable collections.** The writer records the class it was
+HANDED, so an `NSMutableArray` inside an archive is written as `NSMutableArray` — and the READER only knew
+`NSArray`/`NSDictionary`, so it fell through to instantiating the class and raised
+`NSMutableArray does not implement -initWithCoder:`: **an archive containing a mutable array was unreadable.**
+The seven pre-existing coder checks all used IMMUTABLE literals and could not reach it; a pointer array's
+`-allObjects` is a mutable one, which is why W13a found it on the first run. The reader now treats the mutable
+and immutable spellings as one case, since it builds a decoded collection mutable either way.
+
+**(2) "Strong memory" was applied to pointers that are not objects.** An integer-personality array with strong
+memory sent `-retain` to the address 42 and CRASHED — measured, then written down. "Strong" means "retain the
+pointer AS AN OBJECT", so it is only meaningful for the object personalities; the memory policy and the
+personality are now read TOGETHER, and for every other personality the collection keeps the pointer without
+owning it, which is the only meaning ownership could have there.
+
+**THE ARC TRAP, WHICH COST REAL TIME AND BELONGS IN THE RECORD: THE LIBRARY IS MRC AND THE PROBES ARE
+COMPILED `-fobjc-arc`.** So a probe may not call `-release` on purpose, may not implement `-dealloc` with
+`[super dealloc]`, and may not call `-retainCount` — and every object→`void *` cast needs `__bridge`, while a
+`char[]` and an integer need a PLAIN cast, because `__bridge` is for object pointers only. The ownership policy
+therefore had to be measured the way it actually shows: **by WHO DIES** — an object created inside an
+`@autoreleasepool` survives the pool when a strong array holds it and does not when a weak one does, with a
+death counter in the probe class as the instrument. That is a sharper check than a retain count anyway.
+
+**TWO DOCUMENTED DEVIATIONS, each with its ground.** `NSPointerFunctionsMachVirtualMemory` is DECLARED — a
+caller's bit pattern must be spellable — and TREATED AS `NSPointerFunctionsMallocMemory`, because this system
+has no Mach to allocate from. And the OPTION VALUES are this library's, under §11's D2 rule: Apple publishes
+the option names and the fact that they are a mask, not the numbers, so the layout is ours (memory in the low
+byte, personality in the next, `CopyIn` above both).
+
+**VERIFIED.** Host: `make host-foundation-run` — **27 probes, 409/409 checks, 0 fail**. Guest: `make testimg`
+then `make test TESTS='foundation_pointers,foundation_coder'` → **TESTS-OK 2/2 case(s), 12/12 check(s) in
+13s**, both probes exiting 0 — and the coder case is in that run ON PURPOSE, because bug (1) was fixed in the
+archiver and its eleven checks are what prove the fix did not break the archive. `foundation-sweep --check`:
+consistent, with all fourteen W13a rows flipped to shipped. `foundation-gate`: **OK — 253 files, 99 of 103
+public headers** open a nullability region.

@@ -486,34 +486,46 @@ static BOOL fn_is_value_type(id object)
 		[_memo replaceObjectAtIndex:index withObject:[NSNull null]];
 		return [NSNull null];
 	}
-	if ([className isEqualToString:@"NSArray"] || [className isEqualToString:@"NSDictionary"]) {
-		id collection = [className isEqualToString:@"NSArray"]
-			      ? (id)[NSMutableArray array] : (id)[NSMutableDictionary dictionary];
-		NSArray *slots;
+	/* THE COLLECTION CLASSES, AND **BOTH SPELLINGS OF EACH**: the writer records the class it was handed, so
+	 * an NSMutableArray is written as `NSMutableArray` — a spelling this reader did not know, which made an
+	 * archive holding one UNREADABLE ("NSMutableArray does not implement -initWithCoder:"). The mutable and
+	 * immutable names are one case here because a decoded collection is built MUTABLE either way, which is
+	 * what lets an archive be filled in as it is read. */
+	{
+		BOOL isArray = [className isEqualToString:@"NSArray"] ||
+			       [className isEqualToString:@"NSMutableArray"];
+		BOOL isDictionary = [className isEqualToString:@"NSDictionary"] ||
+				    [className isEqualToString:@"NSMutableDictionary"];
 
-		/* REGISTERED BEFORE ITS MEMBERS ARE DECODED, so a collection that contains itself — or
-		 * that two parents share — is built once. */
-		[_memo replaceObjectAtIndex:index withObject:collection];
-		if ([className isEqualToString:@"NSArray"]) {
-			slots = [(NSDictionary *)entry objectForKey:kObjects];
-			for (NSUInteger i = 0; slots != nil && i < [slots count]; i++) {
-				[collection addObject:[self fnDecodeSlot:[slots objectAtIndex:i]]];
-			}
-		} else {
-			NSArray *keys = [(NSDictionary *)entry objectForKey:kKeys];
+		if (isArray || isDictionary) {
+			id collection = isArray
+				      ? (id)[NSMutableArray array] : (id)[NSMutableDictionary dictionary];
+			NSArray *slots;
 
-			slots = [(NSDictionary *)entry objectForKey:kObjects];
-			for (NSUInteger i = 0; keys != nil && i < [keys count]; i++) {
-				id key = [self fnDecodeSlot:[keys objectAtIndex:i]];
-				id value = slots != nil && i < [slots count]
-					 ? [self fnDecodeSlot:[slots objectAtIndex:i]] : [NSNull null];
+			/* REGISTERED BEFORE ITS MEMBERS ARE DECODED, so a collection that contains itself — or
+			 * that two parents share — is built once. */
+			[_memo replaceObjectAtIndex:index withObject:collection];
+			if (isArray) {
+				slots = [(NSDictionary *)entry objectForKey:kObjects];
+				for (NSUInteger i = 0; slots != nil && i < [slots count]; i++) {
+					[collection addObject:[self fnDecodeSlot:[slots objectAtIndex:i]]];
+				}
+			} else {
+				NSArray *keys = [(NSDictionary *)entry objectForKey:kKeys];
 
-				if (key != nil && ![key isKindOfClass:[NSNull class]]) {
-					[collection setObject:value forKey:key];
+				slots = [(NSDictionary *)entry objectForKey:kObjects];
+				for (NSUInteger i = 0; keys != nil && i < [keys count]; i++) {
+					id key = [self fnDecodeSlot:[keys objectAtIndex:i]];
+					id value = slots != nil && i < [slots count]
+						 ? [self fnDecodeSlot:[slots objectAtIndex:i]] : [NSNull null];
+
+					if (key != nil && ![key isKindOfClass:[NSNull class]]) {
+						[collection setObject:value forKey:key];
+					}
 				}
 			}
+			return collection;
 		}
-		return collection;
 	}
 	cls = objc_getClass([className UTF8String]);
 	if (cls == Nil) {

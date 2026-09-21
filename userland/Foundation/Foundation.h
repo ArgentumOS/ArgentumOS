@@ -119,6 +119,8 @@
 #import <Foundation/NSKeyedArchiverDelegate.h>
 #import <Foundation/NSKeyedUnarchiverDelegate.h>
 #import <Foundation/NSSecureUnarchiveFromDataTransformer.h>
+#import <Foundation/NSPointerFunctions.h>
+#import <Foundation/NSPointerArray.h>
 #import <Foundation/NSSet.h>
 #import <Foundation/NSCountedSet.h>
 #import <Foundation/NSOrderedSet.h>

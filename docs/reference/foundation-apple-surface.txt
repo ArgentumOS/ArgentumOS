@@ -28,11 +28,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  110   open  132   struck   31
+#   class      shipped  112   open  130   struck   31
 #   protocol   shipped   11   open   25   struck    9
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped   77   open   75   struck    8
-#   case       shipped  416   open  793   struck   93
+#   enum       shipped   78   open   74   struck    8
+#   case       shipped  428   open  781   struck   93
 #   func       shipped   71   open   64   struck   54
 #   var        shipped   92   open  675   struck  147
 #   typealias  shipped   20   open   53   struck    3
@@ -715,18 +715,18 @@ case	shipped	NSOrderedCollectionDifferenceCalculationOmitRemovedObjects	NSOrdere
 case	shipped	NSOrderedDescending		Fundamentals / Sorting / Constants	-	objc
 case	shipped	NSOrderedSame		Fundamentals / Sorting / Constants	-	objc
 case	shipped	NSPicturesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSPointerFunctionsCStringPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
-case	open	NSPointerFunctionsCopyIn	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Copy Option	-	objc
-case	open	NSPointerFunctionsIntegerPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
-case	open	NSPointerFunctionsMachVirtualMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
-case	open	NSPointerFunctionsMallocMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
-case	open	NSPointerFunctionsObjectPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
-case	open	NSPointerFunctionsObjectPointerPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
-case	open	NSPointerFunctionsOpaqueMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
-case	open	NSPointerFunctionsOpaquePersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
-case	open	NSPointerFunctionsStrongMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
-case	open	NSPointerFunctionsStructPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
-case	open	NSPointerFunctionsWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
+case	shipped	NSPointerFunctionsCStringPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
+case	shipped	NSPointerFunctionsCopyIn	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Copy Option	-	objc
+case	shipped	NSPointerFunctionsIntegerPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
+case	shipped	NSPointerFunctionsMachVirtualMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
+case	shipped	NSPointerFunctionsMallocMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
+case	shipped	NSPointerFunctionsObjectPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
+case	shipped	NSPointerFunctionsObjectPointerPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
+case	shipped	NSPointerFunctionsOpaqueMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
+case	shipped	NSPointerFunctionsOpaquePersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
+case	shipped	NSPointerFunctionsStrongMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
+case	shipped	NSPointerFunctionsStructPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
+case	shipped	NSPointerFunctionsWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
 case	struck	NSPointerFunctionsZeroingWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	deprecated	objc
 case	open	NSPositionAfter	NSPositionalSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
 case	open	NSPositionBefore	NSPositionalSpecifier	App Support / Object Specifiers / Constants / Constants	-	objc
@@ -1484,8 +1484,8 @@ class	open	NSOrthography		Fundamentals / Localization	-	objc
 class	open	NSOutputStream		Low-Level Utilities / Streams	-	objc
 class	shipped	NSPersonNameComponents		Fundamentals / Names	-	objc
 class	open	NSPipe		Low-Level Utilities / Tasks and Pipes	-	objc
-class	open	NSPointerArray		Fundamentals / Pointer Collections	-	objc
-class	open	NSPointerFunctions		Fundamentals / Pointer Collections / Getting the Pointer Functions	-	objc
+class	shipped	NSPointerArray		Fundamentals / Pointer Collections	-	objc
+class	shipped	NSPointerFunctions		Fundamentals / Pointer Collections / Getting the Pointer Functions	-	objc
 class	open	NSPort		Low-Level Utilities / Sockets	-	objc
 class	struck	NSPortCoder		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSPortMessage		Low-Level Utilities / Legacy / Legacy	deprecated	objc
@@ -1705,7 +1705,7 @@ enum	shipped	NSNumberFormatterStyle	NSNumberFormatter	Fundamentals / Numbers / C
 enum	shipped	NSOperationQueuePriority	NSOperation	App Support / Operations / Constants	-	swift-page
 enum	shipped	NSOrderedCollectionDifferenceCalculationOptions	NSArray	Fundamentals / Basic Collections / Comparing with Another Array	-	objc
 enum	shipped	NSOrderedCollectionDifferenceCalculationOptions	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set	-	objc
-enum	open	NSPointerFunctionsOptions	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants	-	objc
+enum	shipped	NSPointerFunctionsOptions	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants	-	objc
 enum	open	NSPostingStyle	NSNotificationQueue	App Support / Notifications / Constants	-	objc
 enum	shipped	NSPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	objc
 enum	open	NSPresentationIntentKind		Reference / Enumerations	-	objc
