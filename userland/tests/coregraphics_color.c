@@ -231,6 +231,46 @@ int main(void)
 	check_num("...and the fill still covered the surface", (double)painted(ctx), 256.0, 0);
 	CGContextRelease(ctx);
 
+	/* --- a CMYK space: the colour EXISTS, and the context will not draw it --------- */
+	/* THE REFUSAL PATH WITH A REAL COLOUR IN IT. Until this space existed the only way to
+	 * reach the context's refusal was to hand it NULL, which proves the guard fires but says
+	 * nothing about whether a colour that CAN be built but cannot be interpreted is handled
+	 * the same way. A CMYK colour can be built: its four components and its alpha are just
+	 * numbers, and the space's model says what they mean. What cannot be done is to TURN THEM
+	 * INTO LIGHT, and that is the line this checks. */
+	{
+		CGColorSpaceRef cmyk = CGColorSpaceCreateDeviceCMYK();
+		CGFloat ink[5];
+		CGColorRef k;
+
+		check_num("a device CMYK space has four components",
+			  (double)CGColorSpaceGetNumberOfComponents(cmyk), 4.0, 0);
+		check("...and its model says CMYK",
+		      CGColorSpaceGetModel(cmyk) == kCGColorSpaceModelCMYK);
+		ink[0] = 0.1;
+		ink[1] = 0.2;
+		ink[2] = 0.3;
+		ink[3] = 0.4;
+		ink[4] = 0.5;
+		k = CGColorCreate(cmyk, ink);
+		check("CGColorCreate takes a CMYK colour — the numbers are numbers", k != NULL);
+		check_num("...and its count is the space's four PLUS the alpha",
+			  (double)CGColorGetNumberOfComponents(k), 5.0, 0);
+		check_num("...with the alpha last", (double)CGColorGetAlpha(k), 0.5, 0);
+
+		ctx = fresh();
+		CGContextSetRGBFillColor(ctx, 0.0, 1.0, 0.0, 1.0);
+		CGContextSetFillColorWithColor(ctx, k);
+		CGContextFillRect(ctx, CGRectMake(0.0, 0.0, 16.0, 16.0));
+		pixel(ctx, 8, 8, p);
+		check("a CMYK fill colour is REFUSED, leaving the green in place",
+		      p[1] == 255 && p[0] == 0 && p[2] == 0);
+		check_num("...and the fill still covered the surface", (double)painted(ctx), 256.0, 0);
+		CGContextRelease(ctx);
+		CGColorSpaceRelease(cmyk);
+		CGColorRelease(k);
+	}
+
 	printf("CG-COLOR: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

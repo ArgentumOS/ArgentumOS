@@ -48,11 +48,18 @@ typedef enum {
 	kCGColorSpaceModelXYZ = 7
 } CGColorSpaceModel;
 
-/* The two spaces C2 draws in. Each is a shared singleton: the device spaces have no
- * parameters, so two callers asking for device RGB get the same object and the
- * refcount is what keeps it alive. */
+/* THE DEVICE SPACES. Each is a shared singleton: a device space has no parameters, so two
+ * callers asking for device RGB get the same object and the refcount is what keeps it alive.
+ *
+ * CMYK IS HERE FOR THE COLOUR IT MAKES POSSIBLE RATHER THAN FOR A DRAWING PATH. This library
+ * has no conversion engine yet (C4.2), so a CMYK COLOUR can be created and inspected — its
+ * four components and its alpha are just numbers — while the CONTEXT REFUSES to draw with it,
+ * because four inks are not three lights. That refusal is a design claim of CGColor's, and
+ * without a CMYK space there was no way to exercise it with a colour that exists: the only
+ * refusal a probe could reach was a NULL. */
 CGColorSpaceRef CGColorSpaceCreateDeviceRGB(void);
 CGColorSpaceRef CGColorSpaceCreateDeviceGray(void);
+CGColorSpaceRef CGColorSpaceCreateDeviceCMYK(void);
 
 CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space);
 void CGColorSpaceRelease(CGColorSpaceRef space);

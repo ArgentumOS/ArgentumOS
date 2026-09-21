@@ -24,6 +24,9 @@ struct CGColorSpace {
 
 static struct CGColorSpace cg_device_rgb = { 0, kCGColorSpaceModelRGB, 3 };
 static struct CGColorSpace cg_device_gray = { 0, kCGColorSpaceModelMonochrome, 1 };
+/* FOUR COMPONENTS, ALPHA NOT COUNTED, like the other two: the count belongs to the SPACE, and
+ * a colour adds its alpha on top of it. */
+static struct CGColorSpace cg_device_cmyk = { 0, kCGColorSpaceModelCMYK, 4 };
 
 CGColorSpaceRef CGColorSpaceCreateDeviceRGB(void)
 {
@@ -35,6 +38,12 @@ CGColorSpaceRef CGColorSpaceCreateDeviceGray(void)
 {
 	cg_device_gray.refcount++;
 	return &cg_device_gray;
+}
+
+CGColorSpaceRef CGColorSpaceCreateDeviceCMYK(void)
+{
+	cg_device_cmyk.refcount++;
+	return &cg_device_cmyk;
 }
 
 CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space)
