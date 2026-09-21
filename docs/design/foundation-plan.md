@@ -7470,6 +7470,28 @@ MEASURED — and the effect was to turn "another kernel defect" into "one untest
 better place to be. That is what a minimal reproducer buys, and it is why writing one was the right next step
 even though it did not immediately reproduce anything.
 
+**AND THE ANSWER WAS PRINTED BY MY OWN INSTRUMENT ALL ALONG, AND I HAD NOT READ IT.**
+
+    THREADED-EXEC-PROGRESS mode=1 i=400 reaped=0 signaled=0
+
+  * **the loop COMPLETES — `i=400`, every child forked.** There was never a hang in the fork/exec loop at
+    all; my "stuck before iteration 100" reading came from an older build and I carried it for rounds;
+  * **`reaped=0` — the reaper THREAD has reaped nothing after 400 children.** So the program blocks in its
+    final wait and in `pthread_join`, never prints DONE, and the case times out.
+
+**SO THE REMAINING DEFECT IS SPECIFIC AND TESTABLE: `waitpid` CALLED FROM A THREAD THAT DID NOT FORK REAPS
+NOTHING.** The children belong to the process, the reaper is a thread of it, and by POSIX any thread may reap
+them — but here the count stays zero while 400 children come and go. That is not a hang and not a wedge: it
+is a thread/process waitpid question, and it is the sort of thing this tree's notes already circle (threads
+and reaping, `remove_zombie`, "threads auto-reap"). **And it is why the W6d probe could not have passed even
+with defect B fixed: `NSTask`'s reaper is exactly this thread.**
+
+**AND THE LESSON IS ABOUT MY OWN INSTRUMENTS, WHICH IS THE ONE THAT STINGS:** the probe printed
+`reaped=%d` in every progress line from the very first version, and the number never moved. Six rounds went
+into instrumenting the kernel, the pipes, the console and the primitives, looking for a "hang", **when the
+datum that names the defect was in my own output and I never read it.** Everything the loop needed to say was
+said at iteration 400, four rounds before I looked. **Read your own instrument's output first.**
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than

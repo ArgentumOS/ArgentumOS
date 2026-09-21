@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <signal.h>
 #include <sys/wait.h>
 
 #define PROBE "/System/Shared/tests/foundation_task"
@@ -54,6 +55,10 @@ static void *reaper(void *arg)
 
 int main(int argc, char **argv)
 {
+	/* Writing into a pipe whose reader has exited raises SIGPIPE, and the DEFAULT action is death.
+	 * The exit status is 128+13 and the program simply stops - which looks exactly like a hang. */
+	signal(SIGPIPE, SIG_IGN);
+
 	pthread_t t;
 	int mode = (argc > 1) ? atoi(argv[1]) : 1;
 	int n = (argc > 2) ? atoi(argv[2]) : 300;
