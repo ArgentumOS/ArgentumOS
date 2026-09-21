@@ -6211,27 +6211,36 @@ all sound when the work is reached through the child branch. (5) **argc/argv is 
 same trace. (The run was added for the experiment and removed once it answered — a check that asserts a
 hypothesis is not a check, it is a note.)
 
-**AND THE KERNEL'S OWN LOG CARRIES A SECOND FAULT THAT POINTS SOMEWHERE:** besides the #PF that became the
-SIGBUS there is **`!!! KERNEL EXCEPTION vector 0x0d`** — a #GP — with a `rip` in no mapped region. A #GP
-inside SSE code is the signature of a **misaligned stack**, and `rsp = 0x7ffffffffe18` is **8 mod 16**,
-which the SysV ABI forbids at process entry. THAT IS A HYPOTHESIS AND IT IS LABELLED ONE: it would explain
-both the #GP and why the failure depends on the CALL CHAIN rather than on any single call (a differently
-shaped frame can accidentally realign the stack), and it would make this a KERNEL exec-path bug rather than
-a Foundation one — but it has not been measured, and the next step measures it rather than assuming it.
+**AND THE KERNEL'S OWN LOG CARRIES A SECOND FAULT THAT POINTED SOMEWHERE — AND THE EXPERIMENT THAT TESTED IT
+DISPROVED IT.** Besides the #PF that became the SIGBUS there is **`!!! KERNEL EXCEPTION vector 0x0d`** — a
+#GP — with a `rip` in no mapped region. A #GP inside SSE code is the signature of a **misaligned stack**,
+and `rsp = 0x7ffffffffe18` is **8 mod 16**, which the SysV ABI forbids at process entry — so the alignment
+hypothesis was written down, and then TESTED: **the probe was rebuilt with `-mstackrealign` and the crash is
+IDENTICAL** (same two traces, same SIGBUS, same shape; only the addresses shifted by the length of the
+changed code). **DISPROVED, AND THE FLAG IS OUT OF THE BUILD** — a workaround that works is a workaround and
+would say so in the mk; a flag that changes nothing would be a false claim standing in a build rule.
+
+**AND ONE DATUM THE DISPROOF UNCOVERED, which is where the next step goes.** The fault's `rip` (0x3ff460)
+and the RETURN ADDRESSES printed on the stack (0x404da9, and 0x40530d after the rebuild) are all in a
+window the same dump shows as **UNMAPPED** — the probe's own image is listed lower, and the shared libraries
+higher, so the process is running and returning in the HOLE between them, about 0xba0 below the probe's
+text. That is a wild jump of under 4 KB rather than a corrupted stack, which fits the fault address being a
+wild READ. **THE FIRST THING THE NEXT SESSION SHOULD DO IS CONFIRM WHERE THAT BINARY IS ACTUALLY LOADED**
+(procfs, if it exposes a maps file; otherwise the kernel's exec log), because every conclusion about that
+hole depends on it — the dump's region list and the running `rip` disagree about the load address, and one
+of the two readings is wrong the same way the earlier "stack growth" reading was.
 
 **WHAT THE NEXT DIAGNOSTIC IS, NAMED SO IT DOES NOT HAVE TO BE RE-DERIVED.** The fault is a refused stack
 growth on the FIRST deep call chain of that process, while the same call in another Foundation probe is
-fine, so the difference is in the PROCESS's VMA layout rather than in the call. **(a) IS DONE** (the `rsp` traces are in the probe and they produced the correction above); **(c) IS DONE**
-(`--child-foundation` passes and `--noop-argument` fails, so the child branch works and argc/argv is out).
-What is left is the alignment hypothesis, and it has two cheap tests: **(i)** rebuild the probe with
-`-mstackrealign` and see whether the crash moves or disappears — that is one build and one gate and it
-settles the whole question either way; **(ii)** find where the kernel builds the initial user stack for
-`exec` and read the alignment it leaves `rsp` at (the ABI wants `rsp % 16 == 0` at the entry point, and the
-trace's `0x…e18` is 8 mod 16 — but at that point `main`'s own prologue has already run, so the ENTRY value
-still has to be read from the kernel rather than inferred from a local's address). **(iii)** the `[stack]`
-VMA's span is worth knowing too: the dump prints it as one window from `0xf580a000` upward, i.e. **about
-two gigabytes of address space reserved for one process's stack**, which is a second reason a fault address
-inside that window can look like stack growth when it is not.
+fine, so the difference is in the PROCESS's VMA layout rather than in the call. **(a) IS DONE** (the `rsp` traces produced the wild-access correction); **(c) IS DONE** (`--child-foundation`
+passes, `--noop-argument` fails: the child branch works and argc/argv is out); **(the alignment test) IS DONE
+AND NEGATIVE** (`-mstackrealign` changes nothing). What is left is the load-address question above, and one
+kernel-side reading that the earlier hunt did not finish: where the kernel sets up the initial user stack
+for `exec` and what it leaves there. `kernel/syscalls/execve.c` has no stack-building code and nothing about
+alignment; `kernel/process.c` is where `argv`/`envp` are named and is the next file to read. **(iii)** the
+`[stack]` VMA's span is worth knowing too: the dump prints it as one window from `0xf580a000` upward, i.e.
+**about two gigabytes of address space reserved for one process's stack**, which is a second reason a fault
+address inside that window can look like stack growth when it is not.
 
 **THE HONEST SUMMARY.** §44's lesson was that a probe is what finds the truth; this is its other use — a
 probe whose FIRST job was to prove a class works, ending up proving something about the process instead.
