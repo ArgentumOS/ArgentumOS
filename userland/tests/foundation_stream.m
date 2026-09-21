@@ -41,6 +41,45 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 	}
 }
 
+/* FORK + EXECVE WITH THE ERRNO BROUGHT BACK THROUGH A PIPE: 0 when the exec worked, else the errno.
+ * interp NULL means "exec the file itself", which is the shebang path. */
+static int probe_exec_errno(const char *path, const char *interp)
+{
+	int fds[2];
+	pid_t pid;
+
+	if (pipe(fds) != 0) {
+		return -1;
+	}
+	pid = fork();
+	if (pid == 0) {
+		int err;
+
+		(void)close(fds[0]);
+		if (interp != NULL) {
+			(void)execve(interp, (char *const []) { (char *)interp, (char *)path, NULL },
+				     (char *const []) { NULL });
+		} else {
+			(void)execve(path, (char *const []) { (char *)path, NULL },
+				     (char *const []) { NULL });
+		}
+		err = errno;
+		(void)write(fds[1], &err, sizeof(err));
+		_exit(1);
+	}
+	if (pid > 0) {
+		int err = 0;
+		ssize_t got;
+
+		(void)close(fds[1]);
+		got = read(fds[0], &err, sizeof(err));
+		(void)waitpid(pid, NULL, 0);
+		(void)close(fds[0]);
+		return got == (ssize_t)sizeof(err) ? err : 0;
+	}
+	return -1;
+}
+
 /* ---- a substream, the way an NSInputStream will be one ---- */
 
 @interface FnTestStream : NSStream
@@ -525,7 +564,7 @@ int main(void)
 		 * redirection are all asserted in one pass. /bin/sh is this tree's dash. */
 		const char *script = "/System/Temporary Files/foundation-unix-task.sh";
 		const char *captured = "/System/Temporary Files/foundation-unix-task.out";
-		const char *body = "#!/bin/sh\necho hello-from-script \"$1\"\nexit 0\n";
+		const char *body = "#!/System/Tools/sh\necho hello-from-script \"$1\"\nexit 0\n";
 		NSString *scriptPath = (NSString *)[NSString stringWithUTF8String:script];
 		NSString *outPath = (NSString *)[NSString stringWithUTF8String:captured];
 		NSString *failPath = (NSString *)[NSString stringWithUTF8String:
@@ -578,64 +617,26 @@ int main(void)
 				(unsigned char)head[0], (unsigned char)head[1]]);
 		}
 
+		check("unix-task-script-exec-is-blocked-by-the-kernel",
+		      probe_exec_errno(script, NULL) == ENOEXEC,
+		      @"execve of the shebang script did not answer ENOEXEC");
 		{
-			/* AND THE ERRNO THE EXEC ITSELF GIVES, because NSTask's child answers 127 and not the
-			 * reason: a fork + execve here, with the errno coming back through a pipe. */
-			int fds[2];
+			int interp_err = probe_exec_errno(script, "/System/Tools/sh");
 
-			if (pipe(fds) == 0) {
-				pid_t pid = fork();
+			check("unix-task-interpreter-execs-directly", interp_err == 0,
+			      [NSString stringWithFormat:@"the interpreter answered errno=%d", interp_err]);
+		}
 
-				if (pid == 0) {
-					int err;
+		/* WHICH HALF IS STALE, PRINTED RATHER THAN ASSERTED: a fresh file's blocks may not be ON THE
+		 * DEVICE yet - in which case sync(2) makes the same exec work, and the fault is in the WRITE
+		 * path - or the block NUMBER the exec reads may be wrong, in which case a sync changes nothing
+		 * and the fault is in the mapping. One of those decides where the fix goes. */
+		{
+			int before = probe_exec_errno(script, NULL);
 
-					(void)close(fds[0]);
-					(void)execve(script, (char *const []) { (char *)script, NULL },
-						     (char *const []) { NULL });
-					err = errno;
-					(void)write(fds[1], &err, sizeof(err));
-					_exit(1);
-				}
-				if (pid > 0) {
-					int err = 0;
-					ssize_t got;
-
-					(void)close(fds[1]);
-					got = read(fds[0], &err, sizeof(err));
-					(void)waitpid(pid, NULL, 0);
-					(void)close(fds[0]);
-					/* THE MEASURED LIMIT, PINNED RATHER THAN HIDDEN: execve of a FILE THAT
-					 * STARTS WITH A SHEBANG answers ENOEXEC in this tree, so the kernel's script
-					 * path refuses a script whose bytes are demonstrably right - the probe's own
-					 * stat and read above prove the file is there and starts with "#!". The
-					 * interpreter itself runs (the next check), so the fault is between the two. */
-					check("unix-task-script-exec-is-blocked-by-the-kernel",
-					      got == (ssize_t)sizeof(err) && err == ENOEXEC,
-					      [NSString stringWithFormat:@"execve of a shebang script answered errno=%d",
-						err]);
-					/* AND THE INTERPRETER ITSELF, because the shebang path ends by exec-ing it:
-					 * if /bin/sh runs, the failure is in the #! handling, and if it does not, the
-					 * interpreter is the thing to look at. */
-					pid = fork();
-					if (pid == 0) {
-						(void)execve("/bin/sh",
-							     (char *const []) { (char *)"/bin/sh",
-										(char *)script, NULL },
-							     (char *const []) { NULL });
-						err = errno;
-						(void)write(fds[1], &err, sizeof(err));
-						_exit(1);
-					}
-					if (pid > 0) {
-						err = 0;
-						got = read(fds[0], &err, sizeof(err));
-						(void)waitpid(pid, NULL, 0);
-						check("unix-task-interpreter-execs-directly",
-						      got != (ssize_t)sizeof(err),
-						      [NSString stringWithFormat:@"/bin/sh failed, errno=%d", err]);
-					}
-				}
-			}
+			(void)sync();
+			printf("STREAM-EXEC-PROBE before=%d after-sync=%d\n", before,
+			       probe_exec_errno(script, NULL));
 		}
 
 		/* THE CAPTURE FILE MUST EXIST BEFORE A WRITE HANDLE CAN NAME IT. */

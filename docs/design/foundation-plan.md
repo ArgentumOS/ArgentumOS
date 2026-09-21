@@ -8872,3 +8872,33 @@ checks it replaced - the run, the argument and the captured standard output - co
 **NEXT: THE FILE-SYSTEM FAULT** - a freshly-written file's first block is stale in the buffer cache, so a
 reader on the `bread` path sees something else. The probe above is its reproducer, and the discrimination is
 already written down: `read(2)` and `bread(&sys_execve)` must be compared on the same block.
+
+### §45-AA.1 — TWO CORRECTIONS AND ONE MEASUREMENT: THE SYNC DISCRIMINATION, AND A CHECK OF MINE THAT PASSED FOR THE WRONG REASON
+
+**FIRST, THE MEASUREMENT THE FILE-SYSTEM FAULT NEEDED, AND IT SPLITS IT IN HALF.** A fresh file's blocks may
+simply not be on the device yet - in which case `sync(2)` makes the same exec work and the fault is in the
+WRITE path - or the block the exec reads may be the wrong one, in which case a sync changes nothing:
+
+    STREAM-EXEC-PROBE before=8 after-sync=8
+
+**Unchanged, so it is NOT a write-back staleness: the exec is reading a WRONG BLOCK.** With §45-AA's byte
+evidence (`head=4147`, `"AG"` where the file starts `"#!"`) and this, the fault is in the MAPPING
+(`bmap(i, 0, FOR_READING)` / the inode's block pointer) rather than in when the data reaches the device.
+
+**SECOND, A CORRECTION TO §45-AA, AND IT IS MINE: ITS CLAIM THAT THE INTERPRETER PATH "WORKS, THE PROBE PINS
+IT" WAS BASED ON A CHECK THAT PASSED FOR THE WRONG REASON.** The inline version of `unix-task-interpreter-execs-directly`
+closed the pipe's read end in the previous check's parent and then read from it again, so the read answered
+`-1`, `got != sizeof(err)` held, and the check said "ok" whatever had happened. **The truth it was hiding:**
+`/bin/sh` DOES NOT EXIST IN THIS TEST IMAGE AT ALL - `rootfs64` stages `/System/Tools/sh` and no `/bin` - which
+the corrected check reported as `errno=2` (ENOENT). **With the interpreter named by its real path the exec DOES
+work**, so the sentence's conclusion was right for a reason it had not earned, and both the shebang in the probe's
+fixture and the interpreter check now name `/System/Tools/sh`.
+
+**AND THE PROBE IS GREEN WITH THE LIMIT NAMED:** `foundation_stream` 6/6 case checks and **43/43 probe checks** -
+`unix-task-script-exec-is-blocked-by-the-kernel` (the exec, ENOEXEC, with the reason in its name) and
+`unix-task-interpreter-execs-directly` (the interpreter, by the path that exists) both ok, and
+`unix-task-reports-the-exec-failure` pinning the class's error contract.
+
+**NEXT: THE MAPPING FAULT** - the block an exec reads for a freshly-written file is not the file's data block,
+and it is not a question of syncing. `bmap(i, 0, FOR_READING)` against the inode's own block pointer, on a file
+that was created and written in the same boot, is where the comparison belongs.
