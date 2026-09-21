@@ -469,7 +469,7 @@ static void fn_make_standard_defaults(void)
 	fn_validate_key(defaultName);
 	[_lock lock];
 	@try {
-		value = [[self fn_rawObjectForKey:defaultName] copy];
+		value = [[[self fn_rawObjectForKey:defaultName] copy] autorelease];
 	} @finally {
 		[_lock unlock];
 	}
@@ -702,7 +702,7 @@ static void fn_make_standard_defaults(void)
 
 	[_lock lock];
 	@try {
-		names = [_volatileNames copy];
+		names = [[_volatileNames copy] autorelease];
 	} @finally {
 		[_lock unlock];
 	}
@@ -753,7 +753,7 @@ static void fn_make_standard_defaults(void)
 					   key];
 		}
 	}
-	replacement = [[NSMutableDictionary alloc] initWithDictionary:domain];
+	replacement = [[[NSMutableDictionary alloc] initWithDictionary:domain] autorelease];
 	[_lock lock];
 	@try {
 		[_userFiles setObject:replacement forKey:domainName];
@@ -806,7 +806,7 @@ static void fn_make_standard_defaults(void)
 	NSMutableDictionary *replacement;
 
 	fn_validate_domain(domainName);
-	replacement = [[NSMutableDictionary alloc] initWithDictionary:domain];
+	replacement = [[[NSMutableDictionary alloc] initWithDictionary:domain] autorelease];
 	[_lock lock];
 	@try {
 		/* NSArgumentDomain and NSRegistrationDomain are volatile domains like any other once they are
@@ -816,8 +816,12 @@ static void fn_make_standard_defaults(void)
 			[_volatileNames addObject:domainName];
 		}
 		if ([domainName isEqualToString:NSArgumentDomain]) {
+			[replacement retain];
+			[_argument release];
 			_argument = replacement;
 		} else if ([domainName isEqualToString:NSRegistrationDomain]) {
+			[replacement retain];
+			[_registration release];
 			_registration = replacement;
 		}
 	} @finally {
@@ -856,6 +860,26 @@ static void fn_make_standard_defaults(void)
 - (BOOL)objectIsForcedForKey:(NSString *)key
 {
 	return [self objectIsForcedForKey:key inDomain:_appDomain];
+}
+
+/* THE LIBRARY IS MRC, SO OWNERSHIP IS SPELLED OUT. Every ivar below is +1 in -initWithSuiteName: (the two
+ * volatile dictionaries it also aliases in _volatileDomains are retained there as well), and this is where
+ * they are given back. A defaults object is created and destroyed routinely — the probe makes a dozen —
+ * so this is not a formality. */
+- (void)dealloc
+{
+	if (_appDomain != NSGlobalDomain) {	/* the default IS the constant, which must not be released */
+		[_appDomain release];
+	}
+	[_persistent release];
+	[_userFiles release];
+	[_volatileDomains release];
+	[_volatileNames release];
+	[_registration release];
+	[_argument release];
+	[_suites release];
+	[_lock release];
+	[super dealloc];
 }
 
 @end
