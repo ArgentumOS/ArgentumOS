@@ -6590,6 +6590,41 @@ one (a legitimate stack push whose `map_page()` failed) is a fault on a stack vm
 took and what its start was before and after. That settles in one run whether the failing vma is a guard, the
 library, or the thread stack, and whether this function moved it.
 
+**AND THE NEXT RUN ENDS THE HUNT: THE vma TABLE HAS BEEN OVERWRITTEN BY USER DATA.** The vma dump prints the
+faulting process's list head, and there is only ONE entry in it — the corrupted one — and its `next` pointer
+decodes as ASCII:
+
+    VMADBG  va=0x7f0000080849 start=0x4211a8 end=0x3e00000000002 prot=0x0 flags=0x0 off=0x0 type=0 inode=0
+    VMALIST[0] self=ffff80000061c000 start=0x4211a8 end=0x3e00000000002 prot=0x0 flags=0x0 off=0x0 type=0 inode=0 next=4e4f442d33584e46
+
+`0x4e4f442d33584e46` little-endian is `46 4e 58 33 2d 44 4f 4e` — **`"FNX3-DONE"`, the very string the test
+harness had the shell print.** So this is not a paging bug at all, and it never was:
+
+  * **THE PROCESS'S vma LIST WAS DESTROYED BY A STRAY KERNEL WRITE OF USER BYTES.** The list head is the only
+    entry, its fields are zero or garbage (`prot = 0` = PROT_NONE, `end` garbage-huge, so it matches every
+    address above it), and the word after it is a string from a console write.
+  * The vma table sits at `ffff80000061c000` — **`P2V(0x61c000)`, i.e. the page IMMEDIATELY ABOVE this
+    process's pml4 at `0x61b000`** — so the stray write landed next to a page-table page, in this kernel's most
+    sensitive neighbourhood.
+  * Everything downstream follows from the corruption and nothing has to be explained separately: the covering
+    vma answers `PROT_NONE`, `page_not_present` takes its silent `send_sigsegv` branch, the leaf is absent
+    because nothing ever mapped it, the task dies without a message — and the OTHER signature (a legitimate
+    stack push whose `map_page()` failed) is the same class of loss with a different symptom.
+  * The stack-growth branch is EXONERATED by measurement: the only `GROWDBG` lines in the run are pid 8's, and
+    they show the heuristic working correctly on a vma whose range really is the process stack
+    (`before_start=0x7fffffffe000 end=0x800000000000` → `after_start=0x7fffffffd000`).
+
+**SO THE BUG IS A KERNEL WRITE THAT PUTS USER BYTES AT A KERNEL ADDRESS, AND THE PRIME SUSPECT IS THE
+CONSOLE/TTY WRITE PATH** — because the bytes ARE a string the shell printed, i.e. the same write that carried
+them to the console also deposited them in kernel memory (a stale or recycled destination pointer in the
+write path is the shape). **Next: instrument the console/tty write path** — the destination buffer address, the
+length, and the pid, at the moment a write happens — and watch for one whose destination is not a user buffer.
+
+**AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
+library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
+entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
+another field of the structure being blamed.
+
 **THE ORIGINAL TABLE-WALK PLAN, FOR THE RECORD:** At the fault, walk the four levels for `cr2` and
 print each entry as it is found (`pml4[..]`, `pdpt[..]`, `pd[..]`, `pte[..]`) alongside whether the vma still
 covers the address. That distinguishes the two remaining shapes in one print: a leaf that is simply ABSENT
