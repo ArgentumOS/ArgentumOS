@@ -7363,6 +7363,34 @@ performance regression in a rare path, and a regression is exactly the kind of t
 settles in one run and reasoning about settles never. **Three numbers, one boot, and the next session knows
 which half of the exit path to look at.**
 
+**AND THE FIRST OF THE THREE NUMBERS ELIMINATES BOTH STORIES — AND POINTS AT MY OWN GUARD'S CALL.** The
+skip branch was instrumented to report every time it runs, how many pages it leaves, and whether any VMA
+range is absurd. In a whole run:
+
+    SKIPSTAT skip#1 pid=9 pages_left=231
+    (no SKIPHUGE)
+
+**ONE skip, 231 pages (~900KB), no absurd ranges.** So neither of the two explanations I have been carrying
+for the 312s can survive it: it is not the frequency of skipping (once), and it is not the size of what is
+left (under a megabyte — nowhere near enough to matter to a 400-fork loop). Two more hypotheses die on
+contact with a number, and the pattern of this whole section is now unmistakable: **my reasoning about this
+cost has been wrong every single time, and only instruments have moved it.**
+
+**AND THE OTHER THING THIS RUN TURNED UP IS WORTH KNOWING BEFORE ANYONE TOUCHES THIS AGAIN:** the concurrent
+agent working in this checkout has committed
+
+    0845d104 kernel: pml4_has_other_user() never advanced its cursor - an infinite loop in the reaper
+
+**a fix to the very function my guard calls**, and it predates my changes (so it is in every image I have
+measured). Whatever the 312s is, it is not that — but anyone reading this guard later has to know that the
+function has a history of loop bugs, and that its cursor discipline is load-bearing in two different places
+(the reaper path and now mine).
+
+**SO THE NEXT NUMBER IS THE GUARD'S OWN CALL: count it, and time it.** A counter of how many times the guard
+runs `pml4_has_other_user()` in a run (it runs once per exiting process — hundreds of times here) plus a tick
+count around that call, summed and printed at the end. Every reason I have given for this regression was a
+guess; the number that has not been taken is the cost of the call I added, and it is one `printk` away.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
