@@ -7113,6 +7113,36 @@ leader — together with the mapper pid from the TRACKMAP line. If they differ, 
 problem at all: **it is a thread whose address space stopped being its creator's, in a tree that already has
 one unverified fix for exactly that class.**
 
+**AND THE MEASUREMENT IS DECISIVE — DEFECT B IS BUG (b), WITH ITS OWN FIX MISSING IT.** One run, printing the
+task's `cr3_64`, whether that pml4 holds the leaf for `cr2`, every pid sharing the cr3, and the mapper:
+
+    TRACKMAP64 pid=9 cr3=0x61b000 va=0x7f0000080850 phys=0x2ad000      <- the creator mapped it
+    Page Fault at 0x7f0000080849 (reading) ... pid 10
+    FAULTCR3 pid=10 cr3=0x61b000 leaf_for_cr2=0x0 track_phys=0x2ad000 mapped_by_pid=12
+    FAULTCR3 shared_with pid=10
+    FAULTCR3 sharers=1
+
+Read exactly:
+
+  * **the thread IS on the pml4 its creator used** (`0x61b000`) — so it is not on foreign tables, and the
+    "not its creator's tables" reading is only half right;
+  * **`leaf_for_cr2 = 0x0`** — the pml4 that the creator mapped the page into **no longer holds that leaf**;
+  * **`sharers=1`: pid 9 is NOT on that cr3 any more** — the creator is gone from its own address space,
+    while the thread that shares it is still running.
+
+**THAT IS BUG (b), MEASURED END TO END:** a `CLONE_VM` thread outliving its creator, whose pml4 was freed when
+the creator went away — so the survivor runs on tables that have been torn down, its next instruction fetch
+finds the leaf gone, and the fault looks like an unmapped library page. It is precisely what this tree's notes
+describe ("the survivor runs on recycled tables"), and **the fix for it LANDED BUT WAS NEVER VERIFIED** — the
+notes say so in as many words, because the test image then booted a desktop and no Foundation case could run.
+**`kernel_threaded_exec` is that missing verification, and it fails.**
+
+**WHY THE GUARD MISSED IT IS NOW THE QUESTION, AND IT IS A SMALL ONE:** `remove_zombie`/the teardown path calls
+`pml4_has_other_user()` to decide whether an address space still has a user, and here an address space with a
+live thread sharing it was freed anyway — so the guard's own answer needs printing at the free site (who it
+iterated, what it saw). That is the next instrument, and it is where the fix belongs: the guard must count a
+THREAD using the pml4, not just the processes in `proc_table` when it happens to look.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
