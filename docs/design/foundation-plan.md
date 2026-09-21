@@ -6708,6 +6708,38 @@ process still map this physical page?" before granting it — is a reverse-map w
 reference is the right repair. **The next measurement is `stack_backtrace()` at a free of a page in that
 window**, which names the releasing caller and therefore the mapping site that failed to take its reference.
 
+**AND THE PROOF ARRIVES AT THE FREE SITE ITSELF: A PAGE GOES BACK TO THE BITMAP WHILE A PROCESS STILL MAPS
+IT.** The instrument scans EVERY process's page tables for the physical page about to be freed, and it fires
+every time:
+
+    PGFREE pid=9 phys=0x620000 flags=0x200 count_after=0
+    PGFREE-MAPPED page 0x620000 is STILL MAPPED by pid 9 (of 9)
+    PGFREE pid=9 phys=0x61f000 flags=0x200 count_after=0
+    PGFREE-MAPPED page 0x61f000 is STILL MAPPED by pid 9 (of 9)
+    PGFREE pid=7 phys=0x620000 flags=0x0 count_after=0
+    PGFREE-MAPPED page 0x620000 is STILL MAPPED by pid 7 (of 7)
+
+**That is the whole bug, measured rather than inferred:** `release_page` returns the physical page to the
+bitmap when the count reaches zero, **and a live page-table entry still points at it**, so the bitmap
+re-grants it — to `kmalloc`, for a vma table, in this case — and userland then writes into it with an
+ordinary `printf` buffer, silently overwriting kernel structures. Gone is every intermediate step that had to
+be argued: the refcount does not count user mappings (the code's own comment says the count "is the
+pml4/allocator usage"), so a mapped page reaching zero is not an anomaly — it is the designed behaviour of an
+incomplete counter.
+
+**THE FIX IS THEREFORE A REference, TAKEN WHERE PAGES ARE MAPPED — and it has to be DESIGNED, not just
+applied,** because that same counter is also the page CACHE's (`search_page_hash`/`remove_from_hash` are
+called around it) and the allocator's. The candidate mapping sites that currently take no reference:
+
+  * `mm/memory.c` `map_page_flags` — a fresh page does `p->rss++` but nothing on `pg->count`;
+  * the cached file page path (`pg = search_page_hash(...); map_page(current, cr2, V2P(pg->data), vma->prot)`);
+  * the ELF loader's segment mappings, and `clone_pages`/CoW where a page is shared between processes.
+
+Every one of those is a place where a page becomes reachable by userland and the counter does not learn about
+it. **`kernel_threaded_exec` stays red until the repair lands, and it is the regression test for it** — which
+is worth more than the Foundation probe that found it: a case that says "no page is ever granted while a
+process still maps it" is a statement this kernel can be held to.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
