@@ -6277,12 +6277,20 @@ process, which is how a log that says "writing, error 0x06, 8 bytes below the st
 conclusion about an instruction fetch. **Whatever else is true, reading a kernel log means reading its
 PROCESS AND REGISTER LINES, not one number out of it.**
 
-**THE NEXT STEP IS THEREFORE A KERNEL ONE, AND IT IS CHEAP:** reproduce with a child-spawning program that
-has nothing to do with Foundation — a loop of `/bin/true` (or the shell's own `for i in $(seq 40); do
-/bin/true; done`) in the same guest. If that fails the same way, `foundation_task` is EXONERATED and what is
-owed is an investigation of the kernel's exec path (`page_not_present` / `map_page` returning 0 and the call
-site that ignores it) — plausibly resource-exhaustion across many process creations in one boot, which is
-exactly what this case's four probe runs plus their children do, and exactly what would make it intermittent.
+**THE NEXT STEP WAS A KERNEL ONE, AND IT RAN — AND IT SPLITS THE FIELD IN TWO.** A scratch case (run and
+then DELETED, because an experiment is not a test) executed **200 external execs from the same guest's
+single-threaded shell**: every one succeeded (`SCRATCH-EXEC-LOOP-DONE=200-failed=0`) and the guest log
+carried NO `map_page() returned 0` at all. So it is not exec(2) as such, not resource exhaustion across many
+process creations in one boot, and not the image or the toolchain.
+
+**IT IS THE PARENT.** Across the **118 collected guest logs** the kernel's allocation failure appears in
+exactly ONE (`foundation_task`'s — measured by counting, not by impression), and that one failure is a child
+of the only parent in this tree that forks **with a thread running**: `NSTask`'s reaper thread. Every
+shell-launched exec in every log is clean. `fork` + `exec` **from a multithreaded parent** is the classic
+trigger for precisely this signature, and this tree has a documented history with that class of bug (a
+`CLONE_VM` thread whose shared pml4 was freed underneath a survivor). **That is the narrowest statement the
+evidence supports, and it is where the kernel investigation starts** — not "NSTask is broken", which is not
+established, and not "Foundation is broken", which is now the least likely of the three.
 
 **ALL FOUR ARE DONE, AND THE CHECKLIST IS CLOSED RATHER THAN ABANDONED.** (a) the `rsp` traces are in the
 probe and they produced the first correction; (c) `--child-foundation` passes and `--noop-argument` fails,
