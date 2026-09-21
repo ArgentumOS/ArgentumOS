@@ -123,6 +123,10 @@
 #import <Foundation/NSPointerArray.h>
 #import <Foundation/NSHashTable.h>
 #import <Foundation/NSMapTable.h>
+#import <Foundation/NSDiscardableContent.h>
+#import <Foundation/NSPurgeableData.h>
+#import <Foundation/NSCache.h>
+#import <Foundation/NSCacheDelegate.h>
 #import <Foundation/NSSet.h>
 #import <Foundation/NSCountedSet.h>
 #import <Foundation/NSOrderedSet.h>

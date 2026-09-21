@@ -28,8 +28,8 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  114   open  128   struck   31
-#   protocol   shipped   11   open   25   struck    9
+#   class      shipped  116   open  126   struck   31
+#   protocol   shipped   13   open   23   struck    9
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   78   open   74   struck    8
 #   case       shipped  428   open  781   struck   93
@@ -1355,7 +1355,7 @@ class	open	NSBlockOperation		App Support / Operations	-	objc
 class	open	NSBundle		App Support / Bundle Resources	-	objc
 class	struck	NSBundleResourceRequest		App Support / On-Demand Resources	deprecated	objc
 class	shipped	NSByteCountFormatter		Fundamentals / Data sizes	-	objc
-class	open	NSCache		Fundamentals / Purgeable Collections	-	objc
+class	shipped	NSCache		Fundamentals / Purgeable Collections	-	objc
 class	open	NSCachedURLResponse		Networking / Cache behavior	-	objc
 class	shipped	NSCalendar		Fundamentals / Calendrical Calculations	-	objc
 class	struck	NSCalendarDate		Fundamentals / Deprecated	deprecated	objc
@@ -1499,7 +1499,7 @@ class	shipped	NSPropertyListSerialization		Files and Data Persistence / Property
 class	open	NSPropertySpecifier		App Support / Object Specifiers	-	objc
 class	struck	NSProtocolChecker		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSProxy		Low-Level Utilities / Remote Objects	-	objc
-class	open	NSPurgeableData		Fundamentals / Purgeable Collections	-	objc
+class	shipped	NSPurgeableData		Fundamentals / Purgeable Collections	-	objc
 class	open	NSQuitCommand		App Support / Script Commands	-	objc
 class	open	NSRandomSpecifier		App Support / Object Specifiers	-	objc
 class	open	NSRangeSpecifier		App Support / Object Specifiers	-	objc
@@ -2214,12 +2214,12 @@ macro	shipped	NS_VALID_UNTIL_END_OF_SCOPE		Reference / Macros	-	objc
 macro	shipped	NS_VALUERETURN	NSException	App Support / Exceptions / Legacy Macros	-	objc
 macro	shipped	NS_VOIDRETURN	NSException	App Support / Exceptions / Legacy Macros	-	objc
 macro	shipped	NS_WARN_UNUSED_RESULT		Reference / Macros	-	objc
-protocol	open	NSCacheDelegate		Fundamentals / Purgeable Collections / Managing the Delegate	-	objc
+protocol	shipped	NSCacheDelegate		Fundamentals / Purgeable Collections / Managing the Delegate	-	objc
 protocol	shipped	NSCoding		Files and Data Persistence / Adopting Codability	-	objc
 protocol	struck	NSConnectionDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 protocol	shipped	NSCopying		Low-Level Utilities / Copying	-	objc
 protocol	shipped	NSDecimalNumberBehaviors		Fundamentals / Numbers / Using reference types / Managing Behavior	-	objc
-protocol	open	NSDiscardableContent		Fundamentals / Purgeable Collections / Managing Discardable Content	-	objc
+protocol	shipped	NSDiscardableContent		Fundamentals / Purgeable Collections / Managing Discardable Content	-	objc
 protocol	open	NSExtensionRequestHandling		App Support / Extension Support	-	objc
 protocol	shipped	NSFastEnumeration		Fundamentals / Iteration	-	objc
 protocol	open	NSFileManagerDelegate		Files and Data Persistence / File system operations	-	objc

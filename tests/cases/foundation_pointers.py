@@ -45,7 +45,9 @@ CHECKS = ("pointer-functions-personalities", "pointer-array-slots", "pointer-arr
           "pointer-array-copy-in", "pointer-array-archive",
           # W13b: the two collections built on the same callouts
           "hash-table-membership", "hash-table-growth", "hash-table-set-operations",
-          "hash-table-enumeration", "map-table-pairs", "map-table-sides-and-enumeration")
+          "hash-table-enumeration", "map-table-pairs", "map-table-sides-and-enumeration",
+          # W13c: the purgeable pair and the cache that holds discardable entries
+          "purgeable-content-handshake", "cache-limits-and-eviction", "cache-discardable-content")
 
 
 class Case(BaseCase):

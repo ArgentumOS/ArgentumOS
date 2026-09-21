@@ -26,6 +26,26 @@
 #include <stdio.h>
 #import <Foundation/Foundation.h>
 
+/* THE CACHE'S ONE DOOR, COUNTING WHAT LEAVES: an eviction is the cache deciding and a removal is the caller
+ * deciding, and this is where the two are told apart. */
+@interface W13CacheDelegate : NSObject <NSCacheDelegate>
+{
+@public
+	int evictions;
+	id lastEvicted;
+}
+@end
+
+@implementation W13CacheDelegate
+
+- (void)cache:(NSCache *)cache willEvictObject:(id)obj
+{
+	evictions++;
+	lastEvicted = obj;
+}
+
+@end
+
 static int okc, failc;
 
 static void check(const char *name, int ok, NSString * _Nullable detail)
@@ -469,6 +489,125 @@ int main(void)
 			      [NSString stringWithFormat:@"fast=%lu second=%lu count=%lu",
 				(unsigned long)fast, (unsigned long)viaSnapshot,
 				(unsigned long)[table count]]);
+		}
+
+		/* ---- NSPurgeableData: the access handshake, which is the whole protocol ---- */
+		{
+			NSPurgeableData *data = [[NSPurgeableData alloc] initWithCapacity:8];
+
+			[data appendBytes:"hello" length:5];
+			/* AN OUTSTANDING ACCESS REFUSES THE DISCARD — the reason the count exists. */
+			{
+				BOOL accessed = [data beginContentAccess];
+
+				[data discardContentIfPossible];
+				{
+					BOOL refusedWhileAccessed = accessed && ![data isContentDiscarded] &&
+								    [data length] == 5;
+
+					[data endContentAccess];
+					[data discardContentIfPossible];
+					{
+						/* NOW IT GOES, and the access door says so rather than pretending. */
+						BOOL discarded = [data isContentDiscarded] && [data length] == 0;
+						BOOL accessRefused = ![data beginContentAccess];
+						/* A WRITE IS THE RECREATION, and it clears the state: the protocol needs no
+						 * separate "rebuild" call. */
+						[data appendBytes:"again" length:5];
+						BOOL rebuilt = ![data isContentDiscarded] && [data length] == 5 &&
+							       [data beginContentAccess];
+
+						check("purgeable-content-handshake",
+						      refusedWhileAccessed && discarded && accessRefused && rebuilt,
+						      [NSString stringWithFormat:
+							@"refused=%d discarded=%d accessRefused=%d rebuilt=%d len=%lu",
+							(int)refusedWhileAccessed, (int)discarded,
+							(int)accessRefused, (int)rebuilt,
+							(unsigned long)[data length]]);
+					}
+				}
+			}
+		}
+
+		/* ---- NSCache: the limits, and who is told ---- */
+		{
+			NSCache *cache = [[NSCache alloc] init];
+			W13CacheDelegate *delegate = [[W13CacheDelegate alloc] init];
+
+			[cache setDelegate:delegate];
+			[cache setCountLimit:2];
+			[cache setObject:@"one" forKey:@"k1"];
+			[cache setObject:@"two" forKey:@"k2"];
+			[cache setObject:@"three" forKey:@"k3"];	/* THE OLDEST INSERTED GOES */
+			{
+				BOOL evictedOldest = [cache objectForKey:@"k1"] == nil &&
+						     [[cache objectForKey:@"k2"] isEqual:@"two"] &&
+						     [[cache objectForKey:@"k3"] isEqual:@"three"];
+				BOOL told = delegate->evictions == 1 && [delegate->lastEvicted isEqual:@"one"];
+
+				/* RE-SETTING A KEY MAKES IT THE MOST RECENT, so the NEXT eviction takes the other one. */
+				[cache setObject:@"two-again" forKey:@"k2"];
+				[cache setObject:@"four" forKey:@"k4"];
+				{
+					BOOL refreshed = [cache objectForKey:@"k3"] == nil &&
+							 [[cache objectForKey:@"k2"] isEqual:@"two-again"];
+					/* A REMOVAL TELLS THE DELEGATE TOO, which is Apple's wording and this check. */
+					[cache removeObjectForKey:@"k2"];
+					check("cache-limits-and-eviction",
+					      evictedOldest && told && refreshed &&
+					      /* THE DELEGATE RECEIVES THE OBJECT, NOT THE KEY: the entry removed by
+					       * `-removeObjectForKey:` was the value that key held. */
+					      [delegate->lastEvicted isEqual:@"two-again"] &&
+					      delegate->evictions == 3,
+					      [NSString stringWithFormat:
+						@"oldest=%d told=%d refreshed=%d evictions=%d",
+						(int)evictedOldest, (int)told, (int)refreshed,
+						delegate->evictions]);
+				}
+			}
+		}
+
+		/* ---- NSCache + discardable content: the handshake between them ---- */
+		{
+			NSCache *cache = [[NSCache alloc] init];
+			W13CacheDelegate *delegate = [[W13CacheDelegate alloc] init];
+			NSPurgeableData *live = [[NSPurgeableData alloc] initWithCapacity:8];
+			NSPurgeableData *dead = [[NSPurgeableData alloc] initWithCapacity:8];
+
+			[cache setDelegate:delegate];
+			[live appendBytes:"cached" length:6];
+			[cache setObject:live forKey:@"live"];
+			/* THE CACHE IS HOLDING AN ACCESS, so the owner CANNOT purge it while it is cached. */
+			[live discardContentIfPossible];
+			{
+				BOOL heldByCache = ![live isContentDiscarded];
+
+				/* AN ENTRY WHOSE CONTENT WAS ALREADY GONE IS NOT HANDED OUT: an access could not be taken,
+				 * so the lookup evicts it and answers nil — the delegate is what proves the eviction. */
+				[dead discardContentIfPossible];
+				[cache setObject:dead forKey:@"dead"];
+				{
+					int beforeLookup = delegate->evictions;
+					id found = [cache objectForKey:@"dead"];
+					BOOL evictedOnLookup = found == nil && delegate->evictions == beforeLookup + 1 &&
+							       delegate->lastEvicted == dead;
+
+					/* AND THE FLAG TURNS THAT OFF: with it unset the entry stays and is handed back,
+					 * content or no content. */
+					[cache setEvictsObjectsWithDiscardedContent:NO];
+					[cache setObject:dead forKey:@"dead-again"];
+					{
+						id kept = [cache objectForKey:@"dead-again"];
+
+						check("cache-discardable-content",
+						      heldByCache && evictedOnLookup && kept == dead,
+						      [NSString stringWithFormat:
+							@"held=%d evictedOnLookup=%d kept=%d evictions=%d",
+							(int)heldByCache, (int)evictedOnLookup,
+							(int)(kept == dead), delegate->evictions]);
+					}
+				}
+			}
 		}
 
 		printf("FOUNDATION-POINTERS RESULT ok=%d fail=%d\n", okc, failc);

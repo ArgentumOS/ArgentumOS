@@ -3502,7 +3502,7 @@ vanishing.
 | **Fundamentals / Pattern Matching** | 2 open | `NSDataDetector`, `NSScanner` |
 | **Fundamentals / Physical Dimension** | all classes shipped | — |
 | **Fundamentals / Pointer Collections** | all classes shipped | — |
-| **Fundamentals / Purgeable Collections** | 4 open | `NSCache`, `NSCacheDelegate`, `NSDiscardableContent`, `NSPurgeableData` |
+| **Fundamentals / Purgeable Collections** | all classes shipped | — |
 | **Fundamentals / Sorting** | all classes shipped | — |
 | **Fundamentals / Special Semantic Values** | all classes shipped | — |
 | **Fundamentals / Specialized Sets** | all classes shipped | — |
@@ -5630,3 +5630,44 @@ then `make test TESTS='foundation_pointers,foundation_coder'` → **TESTS-OK 2/2
 13s**, the pointer probe's own tally `ok=11 fail=0`. `foundation-sweep --check`: consistent, with the four
 W13b rows flipped to shipped. `foundation-gate`: **OK — 259 files, 102 of 106 public headers** open a
 nullability region.
+
+## 38. W13c: `NSDiscardableContent` / `NSPurgeableData` / `NSCache`, AND A CHOICE ABOUT THE DELEGATE (2026-09-20)
+
+**WHAT SHIPPED.** `NSDiscardableContent` (the protocol), `NSPurgeableData` (an `NSMutableData` subclass that
+adopts it), `NSCache` and `NSCacheDelegate` — four ledger rows. W13 is now ONE row from done: the
+`NSOrderedCollectionDifference` trio, which needs the diff algorithm §12.6 catalogues.
+
+**THE PROTOCOL IS A HANDSHAKE, NOT FOUR INDEPENDENT CALLS**, and the access count is the interesting half:
+`-beginContentAccess` both RESERVES and REPORTS (a false answer means "the content was discarded; build it
+again", not "the call failed"), `-endContentAccess` releases that reservation, and
+`-discardContentIfPossible` must do NOTHING while an access is outstanding — which is the only reason the
+count exists. A class that answers the discard without honouring the access has implemented neither half.
+
+**`NSPurgeableData` MAKES RECREATION A WRITE**, which is what lets the protocol need no "rebuild" call:
+discarding becomes "be empty", a write clears the discarded state, and `-beginContentAccess` says NO until
+that write happens. The discard goes through the SUPERCLASS's `-setLength:` rather than this class's override,
+because the override is the write path and a discard is the opposite of a write.
+
+**THE CACHE'S RULE IS THE ORDER IT WAS WRITTEN IN, NOT A CLOCK.** Both limits are enforced on insertion by
+removing the oldest inserted entry, and setting a key again moves it to the end — so this is
+least-recently-INSERTED, which is what can be honoured without a timer, and the header says so rather than
+claiming an LRU. The discardable integration is the reason the two units arrived together: **caching a
+discardable value TAKES AN ACCESS on it** (so its owner cannot purge content the cache is holding), eviction
+and removal GIVE THAT ACCESS BACK, and an entry whose content was already gone when it was cached is NOT
+handed out — the lookup evicts it and answers nil, unless `-evictsObjectsWithDiscardedContent` is off.
+Thread safety is claimed, as Apple's is, so every door takes a lock — and the delegate is called WITH THE LOCK
+HELD, which is named in the file because a re-entrant delegate would deadlock.
+
+**ONE SEMANTICS CHOICE WAS MADE DELIBERATELY AFTER THE PROBE DISAGREED, and it is the useful part of this
+unit.** The first implementation replaced a value by removing the old one and inserting the new, which fired
+`-cache:willEvictObject:` — so a probe that expected three delegate calls saw FOUR. The question is real and
+Apple does not answer it, so it is now decided and documented: **a REPLACEMENT IS NEITHER AN EVICTION NOR A
+REMOVAL**, a delegate counting departures must not see a phantom for every write to a key it already held, and
+the private door is `-fnReleaseKey:notify:`. The probe also had its own bug in that check — it compared the
+delegate's OBJECT against the KEY — which is worth recording because the expectation was wrong in two places
+at once and the failure message named neither.
+
+**VERIFIED.** Host: `make host-foundation-run` — **27 probes, 418/418 checks, 0 fail**. Guest: `make testimg`
+then `make test TESTS='foundation_pointers'` → **TESTS-OK 1/1 case(s), 6/6 check(s) in 12s**, the probe's own
+tally `ok=14 fail=0`. `foundation-sweep --check`: consistent, with the four W13c rows flipped to shipped.
+`foundation-gate`: **OK — 265 files, 106 of 110 public headers** open a nullability region.
