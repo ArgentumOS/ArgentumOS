@@ -8934,3 +8934,37 @@ same empty mapping.
 `unix-task-script-exec-is-blocked-by-the-kernel` asserts the `ENOEXEC`, and when the write path is fixed that
 check flips to the exec and the three checks it replaced (the run, the argument, the captured output) come back
 with it.
+
+### §45-AC — THE ROOT CAUSE IS AN **INLINE** FILE, AND IT CORRECTS §45-AB: THE LOADER'S BLOCK VIEW IS THE BUG
+
+**MEASURED, ON BOTH SIDES OF `agfs_bmap` (instrument since reverted):**
+
+    XAGFS bmap-unmapped ino=104019 ip=1bde000 size=54 d0=0/0/0 d1=0/0/0     (and NO run-recorded line at all)
+
+The exec's inode has the right SIZE and **no runs**, and **the writer never entered the `FOR_WRITING` path** -
+so nothing failed to be recorded. Nothing was ever supposed to be: **`fs/agfs/file.c` says what a small file
+is.** Its own header states the split - *"write (with block allocation via bmap FOR_WRITING) and llseek. Reads
+use the generic page-cache file_read"* - and its inline path stores a file up to `AGFS_INLINE_MAX` **INSIDE THE
+INODE**, converting to a stream only when a write would outgrow the tail (*"the write would outgrow the tail:
+become a stream"*).
+
+**A 54-BYTE FILE IS AN INLINE FILE. IT HAS NO DATA BLOCKS, SO `bmap` ANSWERING 0 IS CORRECT, and `read(2)`
+reads it through the page cache, which is what AGFS documents as its read path.** `sync(2)` changed nothing
+because there was nothing to sync (§45-AA.1), and the bytes `script_load()` was handed were `"AG"` because
+block 0 is the superblock's (§45-AA).
+
+**SO THE BUG IS NOT IN THE FILE SYSTEM AND NOT IN THE WRITE PATH. IT IS THE LOADER'S READING CONVENTION:
+`execve`'s block view (`bmap` + `bread`) CANNOT SEE AN INLINE FILE AT ALL** - and neither can any other
+reader that maps a file a block at a time. That is a whole class: **any file small enough to be inline is
+invisible to `bread`.**
+
+**AND THIS CORRECTS §45-AB, WHICH REJECTED THE RIGHT FIX.** §45-AB argued the fix must be in the write path
+because "the block view is how the kernel's own loader works" - **the measurement refutes it**: the block view
+is not the loader's only option, the file system ITSELF documents reads as the page-cache path, and the write
+path did nothing wrong. **The fix is the one §45-AB rejected: the loader must read the file through the file
+system's read path** (the generic page-cache `file_read`), so that a file - inline or streamed - is read the
+way its own file system says it is read. A second correction in a row, recorded because a wrong conclusion
+left standing is how the next session loses a day.
+
+**REPRODUCER:** the probe's own script, already in the suite. **NEXT: the loader's read path** - `fs/elf.c`
+and `execve`'s header/segment fetch - moved off `bread` and onto the inode's read method.
