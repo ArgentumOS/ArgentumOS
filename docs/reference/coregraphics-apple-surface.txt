@@ -36,7 +36,7 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  149   open  538   struck   48
+#   func       shipped  151   open  536   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped   10   open   46   struck    1
 #   case       shipped   70   open  360   struck   14
@@ -611,8 +611,8 @@ func	open	CGColorSpaceCopyICCData	-	Opaque Types / Examining a Color Space	-	obj
 func	struck	CGColorSpaceCopyICCProfile	-	Opaque Types / Examining a Color Space	deprecated	objc
 func	open	CGColorSpaceCopyName	-	Opaque Types / Examining a Color Space	-	objc
 func	open	CGColorSpaceCopyPropertyList	-	Opaque Types / Examining a Color Space	-	objc
-func	open	CGColorSpaceCreateCalibratedGray	-	Opaque Types / Creating Color Spaces	-	objc
-func	open	CGColorSpaceCreateCalibratedRGB	-	Opaque Types / Creating Color Spaces	-	objc
+func	shipped	CGColorSpaceCreateCalibratedGray	-	Opaque Types / Creating Color Spaces	-	objc
+func	shipped	CGColorSpaceCreateCalibratedRGB	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateCopyWithStandardRange	-	Reference / Functions	-	objc
 func	shipped	CGColorSpaceCreateDeviceCMYK	-	Opaque Types / Creating Color Spaces	-	objc
 func	shipped	CGColorSpaceCreateDeviceGray	-	Opaque Types / Creating Color Spaces	-	objc

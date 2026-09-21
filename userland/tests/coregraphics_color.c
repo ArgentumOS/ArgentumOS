@@ -529,6 +529,167 @@ int main(void)
 		remove(path);
 	}
 
+	/* --- CALIBRATED SPACES: Apple's matrix, the engine's primaries -------------- */
+	/* THE ROUND TRIP IS THE CHECK THAT MATTERS HERE, because the whole question is whether the
+	 * MATRIX really was read as PRIMARIES. sRGB's own matrix, with D65, describes the space this
+	 * library's device RGB already is — so a colour put in must come back out, and if the
+	 * column-to-primary reading were wrong in any way, that is where it would show. */
+	{
+		static const CGFloat srgb_matrix[9] = {
+			0.4124564, 0.3575761, 0.1804375,
+			0.2126729, 0.7151522, 0.0721750,
+			0.0193339, 0.1191920, 0.9503041
+		};
+		static const CGFloat d65[3] = { 0.95047, 1.0, 1.08883 };
+		/* THE COLUMNS ARE THE PRIMARIES, AND THIS IS HOW THAT IS CHECKED WITHOUT QUOTING A
+		 * NUMBER: SWAP THE COLUMNS AND SWAP THE COMPONENTS BY THE SAME PERMUTATION, and the
+		 * device colour has to come out the same. A reading that took the matrix by ROWS, or
+		 * transposed it, or read a column bottom-to-top, would put a different primary under
+		 * each channel and break the identity — which is what an earlier version of this block
+		 * got wrong in the other direction, by asking sRGB's matrix with PURE GAMMAS to convert
+		 * as the identity. sRGB's transfer function is piecewise (a linear toe and a 2.4 power)
+		 * and a calibrated space takes one power per channel, so those two are different spaces
+		 * BY CONSTRUCTION: measured then, 0.186201 where 0.2 went in. */
+		static const CGFloat srgb_rotated[9] = {
+			0.3575761, 0.1804375, 0.4124564,
+			0.7151522, 0.0721750, 0.2126729,
+			0.1191920, 0.9503041, 0.0193339
+		};
+		CGFloat g3[3] = { 2.2, 2.2, 2.2 };
+		CGFloat v[4];
+		CGColorSpaceRef rgb3 = CGColorSpaceCreateDeviceRGB();
+		CGColorSpaceRef calrgb = CGColorSpaceCreateCalibratedRGB(d65, NULL, g3, srgb_matrix);
+		CGColorSpaceRef calrot;
+		CGColorRef c;
+		CGColorRef r;
+		CGColorRef c2;
+		CGColorRef r2;
+
+		check("CGColorSpaceCreateCalibratedRGB gives a space",
+		      calrgb != NULL && CGColorSpaceGetModel(calrgb) == kCGColorSpaceModelRGB);
+		check_num("...with three components",
+			  (double)CGColorSpaceGetNumberOfComponents(calrgb), 3.0, 0);
+		/* THE SAME COLOUR IN TWO SPELLINGS: (0.2, 0.5, 0.8) against the R,G,B columns, and
+		 * (0.5, 0.8, 0.2) against the same columns rotated left. The components move with their
+		 * primaries, so the device colour must not move at all. */
+		v[0] = 0.2;
+		v[1] = 0.5;
+		v[2] = 0.8;
+		v[3] = 1.0;
+		c = CGColorCreate(calrgb, v);
+		r = CGColorCreateCopyByMatchingToColorSpace(c, kCGRenderingIntentRelativeColorimetric,
+							    rgb3, NULL);
+		check("...a colour in it converts to device RGB", r != NULL);
+		calrot = CGColorSpaceCreateCalibratedRGB(d65, NULL, g3, srgb_rotated);
+		v[0] = 0.5;
+		v[1] = 0.8;
+		v[2] = 0.2;
+		c2 = CGColorCreate(calrot, v);
+		r2 = CGColorCreateCopyByMatchingToColorSpace(c2, kCGRenderingIntentRelativeColorimetric,
+							     rgb3, NULL);
+		check("...and the rotated spelling converts too", r2 != NULL);
+		if (r != NULL && r2 != NULL) {
+			const CGFloat *q = CGColorGetComponents(r);
+			const CGFloat *q2 = CGColorGetComponents(r2);
+
+			check_num("the matrix's columns ARE the primaries, in order: r", (double)q[0],
+				  (double)q2[0], 0.002);
+			check_num("...g", (double)q[1], (double)q2[1], 0.002);
+			check_num("...b", (double)q[2], (double)q2[2], 0.002);
+			/* AND THE CONVERSION IS NOT A COPY, which is what would make the three checks
+			 * above pass for a space that did nothing at all. */
+			check("...and the result is not just the input", q[0] != 0.2 || q[1] != 0.5);
+		}
+		/* A NEUTRAL COLOUR STAYS NEUTRAL: equal components point at the white point — D65 here,
+		 * the same one this library's device RGB uses — so a gray must not pick up a tint. A
+		 * matrix read wrongly would give it one. */
+		v[0] = 0.5;
+		v[1] = 0.5;
+		v[2] = 0.5;
+		v[3] = 1.0;
+		{
+			CGColorRef cn = CGColorCreate(calrgb, v);
+			CGColorRef rn = CGColorCreateCopyByMatchingToColorSpace(
+				cn, kCGRenderingIntentRelativeColorimetric, rgb3, NULL);
+
+			if (rn != NULL) {
+				const CGFloat *qn = CGColorGetComponents(rn);
+
+				check_num("a neutral colour stays neutral: r - g",
+					  (double)(qn[0] - qn[1]), 0.0, 0.01);
+				check_num("...and g - b", (double)(qn[1] - qn[2]), 0.0, 0.01);
+			} else {
+				check("a neutral colour converts", 0);
+			}
+			CGColorRelease(rn);
+			CGColorRelease(cn);
+		}
+		CGColorRelease(r2);
+		CGColorRelease(c2);
+		CGColorRelease(r);
+		CGColorRelease(c);
+		CGColorSpaceRelease(calrot);
+		/* AND A MATRIX WITH A CHANNEL THAT HAS NO PRIMARY AT ALL IS REFUSED. */
+		{
+			CGFloat broken[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+			check("a matrix with no primaries is refused",
+			      CGColorSpaceCreateCalibratedRGB(d65, NULL, g3, broken) == NULL);
+			check("a NULL gamma array is refused",
+			      CGColorSpaceCreateCalibratedRGB(d65, NULL, NULL, srgb_matrix) == NULL);
+		}
+		CGColorSpaceRelease(calrgb);
+		CGColorSpaceRelease(rgb3);
+	}
+
+	/* AND GAMMA IS THE WHOLE OF A CALIBRATED GRAY SPACE: the same white point and the same gray
+	 * under gamma 1 and under gamma 2.2 must convert to DIFFERENT device values, AND IN A KNOWN
+	 * DIRECTION — a linear gray is lighter than a 2.2 one once it is encoded into sRGB, which is
+	 * a statement about the transfer functions rather than about the engine. */
+	{
+		static const CGFloat d50[3] = { 0.96422, 1.0, 0.82521 };
+		CGColorSpaceRef lin = CGColorSpaceCreateCalibratedGray(d50, NULL, 1.0);
+		CGColorSpaceRef gam = CGColorSpaceCreateCalibratedGray(d50, NULL, 2.2);
+		CGColorSpaceRef rgb4 = CGColorSpaceCreateDeviceRGB();
+		CGColorRef c1;
+		CGColorRef c2;
+		CGColorRef r1;
+		CGColorRef r2;
+		CGFloat g[2];
+
+		check("CGColorSpaceCreateCalibratedGray gives a space",
+		      lin != NULL && gam != NULL &&
+		      CGColorSpaceGetModel(lin) == kCGColorSpaceModelMonochrome);
+		g[0] = 0.5;
+		g[1] = 1.0;
+		c1 = CGColorCreate(lin, g);
+		c2 = CGColorCreate(gam, g);
+		r1 = CGColorCreateCopyByMatchingToColorSpace(c1, kCGRenderingIntentRelativeColorimetric,
+							     rgb4, NULL);
+		r2 = CGColorCreateCopyByMatchingToColorSpace(c2, kCGRenderingIntentRelativeColorimetric,
+							     rgb4, NULL);
+		check("both convert", r1 != NULL && r2 != NULL);
+		if (r1 != NULL && r2 != NULL) {
+			double light = CGColorGetComponents(r1)[0];
+			double dark = CGColorGetComponents(r2)[0];
+
+			check("linear gray 0.5 is LIGHTER than gamma-2.2 gray 0.5 in sRGB", light > dark);
+			check("...and the 2.2 one lands near the 0.5 that was asked for",
+			      dark > 0.4 && dark < 0.6);
+		}
+		CGColorRelease(r1);
+		CGColorRelease(r2);
+		CGColorRelease(c1);
+		CGColorRelease(c2);
+		CGColorSpaceRelease(lin);
+		CGColorSpaceRelease(gam);
+		CGColorSpaceRelease(rgb4);
+		check("a white point of nothing is refused",
+		      CGColorSpaceCreateCalibratedGray(NULL, NULL, 2.2) == NULL);
+		check("a gamma of zero is refused",
+		      CGColorSpaceCreateCalibratedGray(d50, NULL, 0.0) == NULL);
+	}
+
 	printf("CG-COLOR: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

@@ -101,6 +101,26 @@ CGColorSpaceRef CGColorSpaceCreateLab(const CGFloat *whitePoint, const CGFloat *
 CGColorSpaceRef CGColorSpaceCreateICCBased(size_t nComponents, const CGFloat *range,
 					   CGDataProviderRef profile, CGColorSpaceRef alternate);
 
+/* THE CALIBRATED SPACES, AND THE ONE PLACE APPLE'S PARAMETERS DO NOT TRANSFER DIRECTLY. Apple
+ * gives a MATRIX taking RGB to XYZ; the engine wants three PRIMARIES in xy. Those are the same
+ * fact in two spellings — a column of an RGB-to-XYZ matrix IS that primary's XYZ — so the step
+ * between them is arithmetic rather than an approximation, and sRGB's own matrix builds this
+ * library's device RGB described the long way round.
+ *
+ * A NULL `matrix` MEANS THIS LIBRARY'S DEVICE RGB, which is sRGB and is what the conversion path
+ * already states: "the default RGB colour space" has to mean something specific, and device RGB
+ * has a definition here. A NULL `whitePoint` means D65, for the same reason — a matrix without
+ * its white point is half a space.
+ *
+ * THE BLACK POINT IS ACCEPTED AND HAS NO EFFECT. That is as much Apple's description of it as
+ * this library's limitation: Apple documents it as mattering only under the ABSOLUTE
+ * COLORIMETRIC intent, and an ICC matrix/TRC profile has no field for one. */
+CGColorSpaceRef CGColorSpaceCreateCalibratedGray(const CGFloat *whitePoint,
+						 const CGFloat *blackPoint, CGFloat gamma);
+CGColorSpaceRef CGColorSpaceCreateCalibratedRGB(const CGFloat *whitePoint,
+						const CGFloat *blackPoint,
+						const CGFloat gamma[3], const CGFloat matrix[9]);
+
 CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space);
 void CGColorSpaceRelease(CGColorSpaceRef space);
 
