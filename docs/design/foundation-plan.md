@@ -6849,6 +6849,42 @@ check whether the page being handed out is mapped by any process, with the U/S t
 proved is necessary** — the same cheap, decisive instrument that has worked every time this session, applied
 to the other end of the same alias.
 
+**AND THE GRANT-SIDE INSTRUMENT COMES BACK CLEAN, WHICH KILLS THAT READING TOO — AND FORCES THE LAST ONE
+STANDING.** `get_free_page()` was instrumented to scan every process (with the U/S test) for the page it is
+about to hand out, over the window where the alias was measured:
+
+    GRANTDBG phys=0x600000 granted clean
+    GRANTDBG phys=0x60e000 granted clean
+    GRANTDBG phys=0x60f000 granted clean
+    (faults in the run: 1 — it still reproduces)
+
+**No page is granted to the heap while userspace maps it.** So the heap does not receive a mapped page, the
+free side is a plain `kfree` of a page the heap owns, and both of the ends I have instrumented are CLEAN. What
+is left is the third possibility, and it is the one every reading so far has been avoiding:
+
+> **A USER MAPPING IS CREATED ONTO A PAGE THE PROCESS DOES NOT OWN.** The corruption does not travel into the
+> heap; it is PUBLISHED into the process's page tables — a leaf is written pointing at a physical page
+> something else owns, and from then on the process writes into kernel/foreign memory through its own
+> perfectly valid-looking address.
+
+**AND THERE IS A CONCRETE CANDIDATE FOR THAT PUBLISH, IN THE PATH THIS INVESTIGATION HAS ALREADY VISITED
+TWICE.** The cached-file path maps by taking the address out of a `struct page`:
+`map_page(current, cr2, (addr_t)V2P(pg->data), vma->prot)` — and `get_free_page()` **RESETS** that struct when
+a page is granted (`pg->page = phys >> PAGE_SHIFT; pg->data = …; pg->count = 1;`). A `struct page *` held
+across a file read whose buffer cache re-grants the same slot would therefore map the WRONG physical page —
+and the tree has already fixed one version of this exact hazard ("a stale hash entry makes
+`search_page_hash()`/`bread_page()` write file content into the page after the bitmap re-granted it"). **That
+is a hypothesis, labelled one** — and it is testable the same cheap way as the others.
+
+**SO THE NEXT INSTRUMENT IS ON THE PUBLISH SIDE:** print every USER mapping of a page in that window (pid,
+physical page, and the caller), and correlate with the grants and frees. Whichever mapping publishes a page
+that is not the caller's own is the bug — and unlike the last four instruments, this one cannot come back
+clean, because the alias is a MEASURED fact and something must have created it.
+
+**AND ONE EVIDENCE GAP TO CLOSE WITH IT:** the grant-side run printed a hit only for mapped cases and capped
+its scans at 4000 without reporting the count for clean ones, so "every window grant was examined" is not
+proven — the window filter and the cap are assumptions, and the next instrument should print both.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
