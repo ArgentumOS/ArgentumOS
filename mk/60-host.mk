@@ -230,7 +230,7 @@ HOST_CG_OBJDIR  := $(HOST_OBJDIR)/coregraphics
 HOST_CG_MOBJS    = $(patsubst userland/CoreGraphics/%.m,$(HOST_CG_OBJDIR)/coregraphics-%.o,$(HOST_CG_MSRCS))
 # PIXMAN'S INCLUDE PATH NEEDS THE `pixman-1` SUBDIRECTORY NAMED: `pixman.h` includes
 # `pixman-version.h` from its own directory and is NOT self-contained.
-HOST_CG_PROBES  ?= coregraphics_context coregraphics_stroke coregraphics_stroke_context coregraphics_curve coregraphics_arc coregraphics_color
+HOST_CG_PROBES  ?= coregraphics_context coregraphics_stroke coregraphics_stroke_context coregraphics_curve coregraphics_arc coregraphics_color coregraphics_color_foundation
 
 $(HOST_CG_OBJDIR)/coregraphics-%.o: userland/CoreGraphics/%.m
 	@mkdir -p $(HOST_CG_OBJDIR)
@@ -252,9 +252,15 @@ $(HOST_CG_LIB): $(HOST_CG_SRCS) $(HOST_CG_MOBJS)
 	$(HOST_CC) $(HOST_CG_CFLAGS) -shared -o $@ $(HOST_CG_SRCS) $(HOST_CG_MOBJS) $(HOST_CG_LDFLAGS)
 
 define CG_HOST_PROBE_rule
-$(HOST_BINDIR)/$(1): $(HOST_CG_LIB) userland/tests/$(1).c
+$(HOST_BINDIR)/$(1): $(HOST_CG_LIB) $(wildcard userland/tests/$(1).c) $(wildcard userland/tests/$(1).m)
 	@mkdir -p $(HOST_BINDIR)
-	$$(HOST_CC) $$(HOST_RPATH) $$(HOST_CG_CFLAGS) userland/tests/$(1).c \
+# WHICH LANGUAGE IS DECIDED AT PARSE TIME, ON THE SOURCE, exactly as the Foundation probes decide
+# whether they have a `_support` half: a probe whose file is `.m` is Objective-C, and it is built
+# MRC (`-fno-objc-arc`) for the reason the tree's ARC rule gives — ARC is for everything that USES
+# Foundation, and a check that has to RELEASE an object a C-style function returned with +1 cannot
+# be written under ARC at all, because `-release` is forbidden there.
+	$$(HOST_CC) $$(HOST_RPATH) $$(HOST_CG_CFLAGS) $(if $(wildcard userland/tests/$(1).m),$$(HOST_OBJCFLAGS) -I$(CURDIR)/$(HOST_OBJCPFX)/include -fno-objc-arc) \
+		$(if $(wildcard userland/tests/$(1).m),userland/tests/$(1).m,userland/tests/$(1).c) \
 		-L$(HOST_LIBDIR) -lcoregraphics $$(HOST_CG_LDFLAGS) -o $$@
 endef
 $(foreach p,$(HOST_CG_PROBES),$(eval $(call CG_HOST_PROBE_rule,$(p))))

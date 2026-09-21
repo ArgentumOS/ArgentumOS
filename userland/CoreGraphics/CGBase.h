@@ -54,6 +54,32 @@
 #include <stdint.h>
 
 /*
+ * AND THE FOUNDATION OBJECT TYPES THE SIGNATURES NAME, FOR THE SAME REASON `bool` IS HERE: more
+ * than one header takes one. The binding is decided — CoreGraphics here declares its signatures
+ * with FOUNDATION types rather than inventing a CF layer (the retracted CoreFoundation plan) — so
+ * `CGColorSpaceCreateWithName` takes an `NSString *` and the `…WithCFData`/`…ICCData` forms take
+ * an `NSData *`.
+ *
+ * A C COMPILER CANNOT SEE `@interface NSString`, so under `__OBJC__` these are forward
+ * declarations of the classes and otherwise the opaque structs a class is at the ABI level. A C
+ * caller passes and receives those pointers and never looks inside them; the Objective-C
+ * translation units that do look import Foundation. THE SPELLING WAS MEASURED BEFORE IT WAS
+ * WRITTEN — both directions compile, link and run, and the linker agreeing is what "the same
+ * type" means across two languages — and stating it ONCE here is what keeps a third header from
+ * rediscovering it.
+ *
+ * APPLE'S HEADERS SOLVE THE SAME PROBLEM UNDER ANOTHER NAME: their `CFStringRef` is a bridged
+ * declaration in a C header. There is no CF here, so the spelling is the Foundation class itself.
+ */
+#ifdef __OBJC__
+@class NSData;
+@class NSString;
+#else
+typedef struct objc_object NSData;
+typedef struct objc_object NSString;
+#endif
+
+/*
  * CGFloat IS DOUBLE ON 64-BIT, which is what Apple's is under __LP64__, and this tree is
  * 64-bit only (no 32-bit compatibility exists here at all).
  */

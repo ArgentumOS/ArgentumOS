@@ -142,6 +142,13 @@ extern NSString *const kCGColorSpaceGenericGrayGamma2_2;
  * the day to add it. */
 CGColorSpaceRef CGColorSpaceCreateWithName(NSString *name);
 
+/* THE ICC PROFILE AS FOUNDATION DATA: `NSData *` where Apple's name says `CFData`, and the
+ * counterpart of `CGDataProviderCreateWithCFData`. It is a BRIDGE — the data becomes a provider
+ * and goes to `CGColorSpaceCreateICCBased`, which is where parsing, validation and taking the
+ * model out of the profile all live — so this form and the file form cannot reach different
+ * conclusions about what a profile means. The data may be released as soon as this returns. */
+CGColorSpaceRef CGColorSpaceCreateWithICCData(NSData *data);
+
 /* THE CALIBRATED SPACES, AND THE ONE PLACE APPLE'S PARAMETERS DO NOT TRANSFER DIRECTLY. Apple
  * gives a MATRIX taking RGB to XYZ; the engine wants three PRIMARIES in xy. Those are the same
  * fact in two spellings — a column of an RGB-to-XYZ matrix IS that primary's XYZ — so the step

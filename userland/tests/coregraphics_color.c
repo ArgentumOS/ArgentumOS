@@ -777,6 +777,15 @@ int main(void)
 		check("and the gray name gives one component",
 		      named_gray != NULL && CGColorSpaceGetNumberOfComponents(named_gray) == 1);
 		check("a NULL name is refused", CGColorSpaceCreateWithName(NULL) == NULL);
+		/* AND THE FOUNDATION-DATA FORMS REFUSE NOTHING LESS THAN A NULL OBJECT. The probe cannot
+		 * make an NSData or look inside one — that is what the opaque spelling is for — but it can
+		 * pass nothing, which is the refusal both new forms owe a caller. Their POSITIVE path
+		 * needs an object this file cannot own, so it is checked in an Objective-C probe beside
+		 * this one (`coregraphics_color_foundation.m`), which is the same split the tree already
+		 * uses for a probe's MRC half. */
+		check("the Foundation-data forms refuse a NULL object",
+		      CGDataProviderCreateWithCFData(NULL) == NULL &&
+		      CGColorSpaceCreateWithICCData(NULL) == NULL);
 
 		CGColorSpaceRelease(named_gray);
 		CGColorSpaceRelease(named_lab);

@@ -36,7 +36,7 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  158   open  529   struck   48
+#   func       shipped  161   open  526   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped   10   open   46   struck    1
 #   case       shipped   70   open  360   struck   14
@@ -625,7 +625,7 @@ func	shipped	CGColorSpaceCreateLab	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateLinearized	-	Reference / Functions	-	objc
 func	open	CGColorSpaceCreatePattern	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateWithColorSyncProfile	-	Reference / Functions	-	objc
-func	open	CGColorSpaceCreateWithICCData	-	Opaque Types / Creating Color Spaces	-	objc
+func	shipped	CGColorSpaceCreateWithICCData	-	Opaque Types / Creating Color Spaces	-	objc
 func	struck	CGColorSpaceCreateWithICCProfile	-	Opaque Types / Creating Color Spaces	deprecated	objc
 func	shipped	CGColorSpaceCreateWithName	-	Opaque Types / Creating Color Spaces	-	objc
 func	struck	CGColorSpaceCreateWithPlatformColorSpace	-	Opaque Types / Creating Color Spaces	deprecated	objc
@@ -791,10 +791,10 @@ func	open	CGDataConsumerCreateWithURL	-	Opaque Types / Creating Data Consumers	-
 func	open	CGDataConsumerGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	open	CGDataConsumerRelease	-	Opaque Types / Retaining and Releasing Data Consumers	-	objc
 func	open	CGDataConsumerRetain	-	Opaque Types / Retaining and Releasing Data Consumers	-	objc
-func	open	CGDataProviderCopyData	-	Opaque Types / Getting Data from a Data Provider	-	objc
+func	shipped	CGDataProviderCopyData	-	Opaque Types / Getting Data from a Data Provider	-	objc
 func	open	CGDataProviderCreateDirect	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 func	open	CGDataProviderCreateSequential	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
-func	open	CGDataProviderCreateWithCFData	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
+func	shipped	CGDataProviderCreateWithCFData	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 func	shipped	CGDataProviderCreateWithData	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 func	shipped	CGDataProviderCreateWithFilename	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 func	open	CGDataProviderCreateWithURL	-	Opaque Types / Creating Direct-Access Data Providers	-	objc

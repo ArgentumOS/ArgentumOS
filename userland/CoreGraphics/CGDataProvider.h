@@ -52,6 +52,21 @@ CGDataProviderRef CGDataProviderCreateWithFilename(const char *filename);
 CGDataProviderRef CGDataProviderRetain(CGDataProviderRef provider);
 void CGDataProviderRelease(CGDataProviderRef provider);
 
+/* THE FOUNDATION-OBJECT FORM: `NSData *` WHERE APPLE'S NAME SAYS `CFData`. The name is Apple's
+ * and stays — this layer duplicates the API, corners included — and the argument is a Foundation
+ * object, which is the binding §1 records.
+ *
+ * THE BYTES ARE NOT COPIED. The provider takes a reference to the NSData and lets go of it when
+ * the provider is released, so the object's lifetime is the provider's; that is Apple's contract
+ * for this form and the reason the C half can keep treating "a buffer plus a callback" as the one
+ * shape a provider has. */
+CGDataProviderRef CGDataProviderCreateWithCFData(NSData *data);
+
+/* THE BYTES AS A FOUNDATION OBJECT — the read side of the same door, and A COPY: the caller owns
+ * the result, so a provider may be released the moment its caller is done. Handing back a view of
+ * the provider's memory would tie the two lifetimes together for no reason a caller asked for. */
+NSData *CGDataProviderCopyData(CGDataProviderRef provider);
+
 #ifdef __cplusplus
 }
 #endif
