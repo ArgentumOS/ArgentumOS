@@ -166,6 +166,18 @@ NSString *CGColorSpaceCopyName(CGColorSpaceRef space) CG_RETURNS_RETAINED;
  * conclusions about what a profile means. The data may be released as soon as this returns. */
 CGColorSpaceRef CGColorSpaceCreateWithICCData(NSData *data);
 
+/* THE PROFILE'S BYTES BACK OUT, AS FOUNDATION DATA — and WHAT COMES OUT IS A RE-SERIALISATION
+ * RATHER THAN THE BYTES THAT WENT IN. A space keeps the PARSED profile: that is what lets drawing
+ * through it be fast and the provider be released the moment the space exists, so these are the
+ * bytes the engine WRITES. They describe the same space, which is the property that matters and
+ * the one the probe checks, by converting through a space rebuilt from them.
+ *
+ * A SPACE WITH NO STORED PROFILE ANSWERS NIL, which is Apple's own contract for a space without ICC
+ * data and is the case for every DEVICE space here. Apple's device spaces do carry profiles; this
+ * library's do not, and its conversion path synthesises the one it needs when it needs it rather
+ * than keeping it. */
+NSData *CGColorSpaceCopyICCData(CGColorSpaceRef space) CG_RETURNS_RETAINED;
+
 /* THE CALIBRATED SPACES, AND THE ONE PLACE APPLE'S PARAMETERS DO NOT TRANSFER DIRECTLY. Apple
  * gives a MATRIX taking RGB to XYZ; the engine wants three PRIMARIES in xy. Those are the same
  * fact in two spellings — a column of an RGB-to-XYZ matrix IS that primary's XYZ — so the step
