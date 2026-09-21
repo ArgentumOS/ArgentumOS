@@ -7774,6 +7774,27 @@ the instant the corruption is created rather than after something has already wr
 point, and the three reproducers plus the same 60,000-free volume that produced a clean zero last round will
 say in one boot whether a kernel page is ever published into userspace.
 
+**AND THE WRITE-SIDE PREDICATE FIRED TWICE — WITH IMPOSSIBLE VALUES, WHICH IS ITSELF THE FINDING.** The consumer
+tag went in where a user page is allocated, the predicate at the choke point ("a page mapped into a process
+must be tagged or file-backed"), and the run produced:
+
+    PUBLISH pid=4 va=0x400000982000 phys=0x80646000 flags=0x9b848c4 inode=0 caller=ffff80000d9de05a
+    PUBLISH pid=4 va=0x4000009c1000 phys=0x80685000 flags=0x2b848  inode=0 caller=ffff80000d9de05a
+
+**A `struct page` flags field holds small masks** (`PAGE_LOCKED 0x1`, `PAGE_BUDDYLOW 0x10`, `PAGE_RESERVED 0x100`,
+`PAGE_COW 0x200`). `0x9b848c4` and `0x2b848` are not that, and `phys = 0x80646000` is **about 2GB — past the end
+of this machine's RAM.** So `phys >> PAGE_SHIFT` runs off `page_table[]`, and my predicate read whatever memory
+follows it. **The two hits are therefore either my own out-of-bounds read, or a caller handing
+`map_page_flags` a physical address that is not a page in RAM** - and those two possibilities are wildly
+different in importance, which is exactly what one bounds check settles.
+
+**AND THE SHAPE OF THIS RESULT IS THE MOST USEFUL THING ABOUT IT.** Both readings point at the same next line:
+CHECK `phys` IS A PAGE IN RAM BEFORE READING ITS `struct page` - and report if it is not. If the check stays
+silent, my predicate was the only fault and the tag/tag-check design still stands as written above. If it
+fires, then **something is calling `map_page_flags` with a garbage physical address and mapping it into a
+process** - which is the publish this whole line of work has been looking for, arriving by the front door
+instead of through a freed page.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
