@@ -6967,6 +6967,44 @@ That is cheap (a flag test, no scans), permanent, assumption-free, and it is ker
 whether or not it finds this bug. And it is the first instrument in this investigation whose blast radius is
 a single flag rather than a window.
 
+**AND A FAILED PATCH LANDED THE ANSWER: THE FREE SIDE IS THE VMA SWEEP.** The instrument I tried to place inside
+`free_vma_pages` asserted out — there is no `release_page` call in it — and the reason is the line the sweep
+actually uses:
+
+    kfree(P2V(leaf));                    /* frees the page            */
+    unmap_user_page64_in(pml4, addr);    /* and only THEN removes the PTE */
+
+**`kfree`** — which is exactly the call site my `RELSITE 3` marker named two rounds ago, and `mm/page.c`'s own
+comment already says so: "`free_vma_pages()` kfree()s the page when it hits zero". So the free side has been
+the **VMA teardown sweep** all along, and nothing needed to be hypothesised about the heap.
+
+**AND TWO PROPERTIES OF THAT SWEEP ARE THE MECHANISM:**
+
+  1. It frees the page **before** removing the PTE — so at the instant of the free, the mapping this sweep is
+     responsible for is still present, and any OTHER mapping of that page (a second VMA in the same process,
+     or another process sharing it) is not affected at all;
+  2. it frees **whatever page the pml4 has at each address in its range**, with a count that reaches zero
+     legitimately — so every count-based check I have run comes back clean **because it is clean**: the
+     accounting says one owner, while two mappings exist.
+
+**THAT FITS EVERY MEASUREMENT AT ONCE.** The count reaching zero is not a lie about the swept mapping; the
+error is that a page with a SECOND mapping never had a second reference — which is precisely the tree's
+recorded class (a `CLONE_VM` thread / CoW share, "free it only for the LAST one"). It explains the clean
+grant side, the clean free side, the clean cached path, the moving victim page (whichever page happens to be
+double-mapped), the alias (`SAME=1`), and why the survivor's PTE looks perfectly valid while pointing into a
+re-granted page.
+
+**AND THE NEXT INSTRUMENT IS NOW PLACED EXACTLY:** in `free_vma_pages`, immediately before `kfree(P2V(leaf))`
+in the sweep, test whether the page is STILL US-mapped by ANY process (`fnx_user_maps(leaf) >= 0`) and print
+it with the vma's range. That is assumption-free — no window, no cap, no page filter — and it cannot come back
+clean, because if a second mapping exists it is still mapped at that instant BY CONSTRUCTION (the sweep has
+not yet unmapped anything for the other owner).
+
+**AND THE FIX IS SHARP ENOUGH TO NAME:** take the reference on the SHARING path — fork/CoW/`clone_pages`,
+where a page becomes reachable by a second mapping — rather than anywhere in the free paths, which are
+arithmetically correct given a correct count. The sweep's free-before-unmap order is a secondary risk worth
+tidying in the same change.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
