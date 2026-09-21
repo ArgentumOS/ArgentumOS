@@ -6482,7 +6482,40 @@ the software field's value. This tree reads the FIELD everywhere in its own pagi
 resume after a context switch onto the wrong tables would let the thread run, then fault on the next fetch
 of a page that is mapped in the field but not in the register — which is exactly what is observed.
 
-**SO THE NEXT MEASUREMENT IS ONE LINE, AND IT IS THE WHOLE QUESTION:** print the LOADED cr3 (`GET_CR3`, next
+**AND THAT ONE LINE ALSO COMES BACK NEGATIVE — WHICH LEAVES ONLY ONE EXPLANATION STANDING.**
+
+    CR3DBG pid=10 field_cr3=0x61b000 loaded_cr3=0x61b000 same=1
+
+**The CPU is on the process's own page tables.** So the address-space-switch idea is out too, and now the
+three measurements must be read together, because together they CONTRADICT the idea that anything is simply
+missing:
+
+  1. the thread shares its creator's pml4 (`same=1` at creation, `cr3_64` unchanged at the fault);
+  2. the loaded CR3 equals the field at the fault — the CPU walks exactly those tables;
+  3. **the thread's start RIP `0x7f0000080805` and the faulting address `0x7f0000080849` are the SAME 4 KB
+     PAGE** (`0x7f0000080000`), and the page executed fine 0x44 bytes earlier — in the same task, in the same
+     address space, on the same tables.
+
+**A page cannot be mapped for one instruction and absent for the next instruction of the same task unless it
+was UNMAPPED IN BETWEEN.** That is the only reading left, and it reframes the bug one final time: something
+REMOVES a mapping the task is actively executing from, and the fault is merely where the task notices.
+
+**AND THE TREE HAS ALREADY NAMED THIS CLASS OF SUSPECT, IN THIS EXACT NEIGHBOURHOOD.** A `CLONE_VM` child
+shares its creator's page tables, so any teardown path that frees a clone's tables frees the CREATOR's — and
+`do_fork_like` contains precisely such a path (`if(!(pages = clone_pages(child))) { … free_page_tables(child);
+… }`), while `remove_zombie` carries a comment about freeing an address space "only for the LAST one" via
+`pml4_has_other_user()`. **That is the leading hypothesis, and it is labelled one** — it explains the rarity
+(the error/teardown path is rare), the victim (a task of the very process whose tables are freed), and the
+paradox (the tables look right in every field the software has, because the fields are not what was
+destroyed).
+
+**SO THE NEXT MEASUREMENT IS A TABLE WALK, NOT A FIELD.** At the fault, walk the four levels for `cr2` and
+print each entry as it is found (`pml4[..]`, `pdpt[..]`, `pd[..]`, `pte[..]`) alongside whether the vma still
+covers the address. That distinguishes the two remaining shapes in one print: a leaf that is simply ABSENT
+(a mapping was dropped) versus a level entry that is GARBAGE (the table pages themselves were recycled —
+which is this tree's recorded bug-(b) signature, "a live page table page being recycled").
+
+**THE ORIGINAL ONE-LINE INSTRUMENT, FOR THE RECORD:** print the LOADED cr3 (`GET_CR3`, next
 to the `GET_CR2` the fault path already uses) beside `current->cr3_64` in `dump_registers`. If they differ,
 the bug is a context-switch/address-space switch that does not load the tables it records, and the place to
 look is the switch path — not the fork frame, and not the sharing.
