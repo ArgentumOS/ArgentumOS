@@ -426,7 +426,13 @@ int main(void)
 	      p[3] == 0 || p[3] == 255);
 	CGContextRelease(c);
 
-	/* --- the self-intersection refusal -------------------------------------- */
+	/* --- a self-intersecting fill, WHICH USED TO BE REFUSED ------------------ */
+	/* THE CROSSING SPLIT IS WHY THIS CHECK READS THE WAY IT DOES NOW: the sweep's bands end
+	 * at every edge-edge CROSSING as well as at every vertex, so the x-order of the active
+	 * edges holds inside each band and an outline that crosses itself computes like any
+	 * other. While that was missing this check asserted that NOTHING was painted, because
+	 * the fill refused such a path — and it failed the day the split landed, which is what
+	 * it was for. A bowtie paints its lobes. */
 	c = fresh();
 	CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
 	CGContextBeginPath(c);
@@ -436,7 +442,7 @@ int main(void)
 	CGContextAddLineToPoint(c, 0.0, 4.0);
 	CGContextClosePath(c);
 	CGContextFillPath(c);
-	check_num("a self-intersecting fill draws nothing", (double)count_nonzero(c), 0.0, 0);
+	check("a self-intersecting fill paints its lobes", count_nonzero(c) > 0);
 	CGContextRelease(c);
 
 	/* --- the constructor's refusals ----------------------------------------- */

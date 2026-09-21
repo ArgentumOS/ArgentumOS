@@ -234,24 +234,18 @@ int main(void)
 	CGContextBeginPath(c);
 	CGContextAddPath(c, curve);
 	CGContextStrokePath(c);
-	/* STROKING A CURVE IS REFUSED TODAY, AND THIS CHECK PINS THE CAUSE RATHER THAN THE
-	 * SYMPTOM. The outline is right (68 lines, 0 curves, correct box — the checks just
-	 * above) and the stroker is right (17 checks in coregraphics_stroke.c). What refuses is
-	 * the FILL's SELF-INTERSECTION test, and the reason is structural: a stroked polyline
-	 * IS A SET OF OVERLAPPING QUADRILATERALS BY DESIGN — that overlap is exactly how the
-	 * union falls out of the non-zero rule — and on a CURVE every pair of neighbouring
-	 * quadrilaterals meets at a slight angle, so their edges genuinely CROSS. Straight test
-	 * paths — the line, the L, the square that coregraphics_stroke_context.c uses — only
-	 * ever TOUCH at a shared vertex, which is why this went unnoticed until an arc was
-	 * stroked through the context.
+	/* THE CASE THAT WAS A KNOWN LIMITATION, NOW THE CHECK THAT PINS THE FIX: stroking a
+	 * CURVE paints the arc. It painted NOTHING while the fill refused the stroke's
+	 * overlapping quadrilaterals — a stroked polyline IS such a set by design, and on a curve
+	 * neighbouring pieces genuinely cross — and the fix was to END THE SWEEP'S BANDS AT EVERY
+	 * CROSSING as well as at every vertex. This check asserted the zero on purpose, so that
+	 * the day that landed it would fail; it measures the arc now.
 	 *
-	 * MEASURED: coverage 0, with `CG-REFUSE: self-intersecting path fill` three times on
-	 * stderr. THE FIX IS THE ONE C3 ALREADY OWED: split the sweep's bands at every
-	 * edge-edge CROSSING's y as well as at every vertex's, which makes the sweep correct
-	 * for crossing edges and lets the refusal go entirely — and on the day that lands, this
-	 * check becomes the arc's area and fails, which is what it is for. */
-	check_num("stroking a curve paints NOTHING today (KNOWN: the fill refuses the "
-		  "overlapping pieces)", (double)coverage(c), 0.0, 0.0);
+	 * THE ARC IS πr/2 ≈ 12.57 UNITS LONG AND THE STROKE IS 2 WIDE, so about 25 px² — 6409 in
+	 * coverage units. The tolerance is generous because the flattened polyline is very
+	 * slightly shorter than the arc and its two ends are butt caps. */
+	check_num("stroking a quarter circle gives an arc's AREA", (double)coverage(c),
+		  12.566370614359172 * 2.0 * 255.0, 900.0);
 	pixel(c, 12, 12, p);
 	check("...and the stroke is empty at the centre of the arc's circle", p[3] == 0);
 	CGContextRelease(c);

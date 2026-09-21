@@ -1001,6 +1001,45 @@ static double cg_edge_x_at(const cg_edge *e, double y)
 	return e->x0 + t * (e->x1 - e->x0);
 }
 
+/* WHERE TWO EDGES CROSS, IN y. `cg_proper_cross` answers "do they"; this answers "where",
+ * which is the question a sweep needs: a band across which the active edges change their
+ * x-ORDER has to end at the y where that happens, or the pairing the winding walk makes is
+ * the pairing of a different band. The linear form is f(t) = f(0) + t·(f(1) − f(0)) with the
+ * SAME two cross products `cg_proper_cross` computes, so the root is f(0)/(f(0) − f(1)) and
+ * there is no second intersection test that could disagree with the first. */
+static int cg_cross_y(const cg_edge *a, const cg_edge *b, double *y)
+{
+	double f0 = (b->x1 - b->x0) * (a->y0 - b->y0) - (b->y1 - b->y0) * (a->x0 - b->x0);
+	double f1 = (b->x1 - b->x0) * (a->y1 - b->y0) - (b->y1 - b->y0) * (a->x1 - b->x0);
+	double den = f0 - f1;
+
+	if (den == 0.0) {
+		return 0;
+	}
+	*y = a->y0 + (f0 / den) * (a->y1 - a->y0);
+	return 1;
+}
+
+/* THE BAND BOUNDARY LIST GROWS, because crossings are O(n²) in the edges while the vertex
+ * list is only O(n). A stroked ARC's outline is 68 edges and its pieces cross in dozens of
+ * places; a fixed array sized from the vertices would either overflow or refuse a shape
+ * that is perfectly legitimate — and it is the shape a curve is. */
+static int cg_ys_add(double **ys, int *nys, int *cap, double y)
+{
+	if (*nys == *cap) {
+		int want = *cap ? *cap * 2 : 16;
+		double *grown = realloc(*ys, (size_t)want * sizeof(double));
+
+		if (grown == NULL) {
+			return 0;
+		}
+		*ys = grown;
+		*cap = want;
+	}
+	(*ys)[(*nys)++] = y;
+	return 1;
+}
+
 typedef struct {
 	pixman_trapezoid_t *traps;
 	int count;
@@ -1057,10 +1096,42 @@ static void cg_sweep(cg_flatten *fl, cg_traps *tr, int even_odd)
 			ys[nys++] = y1;
 		}
 	}
-	/* SORTED BY INSERTION, and that is a decision: a path here is a handful of
-	 * edges, and C2 is measured on the arithmetic rather than on a large path. The
-	 * structure an active-edge table would need is the same one a crossing split
-	 * needs, so both belong to the C3 that adds curves. */
+	/* AND EVERY CROSSING, NOT ONLY EVERY VERTEX. A band has to END where two active edges
+	 * change their x-order, because that is the one place the sweep's assumption — that the
+	 * order holds across the band — stops being true. THIS IS WHAT MAKES A SELF-INTERSECTING
+	 * FILL, AND A STROKE, COMPUTABLE AT ALL: a stroked polyline is a set of overlapping
+	 * quadrilaterals BY DESIGN, and on a CURVE neighbouring pieces genuinely cross, while on
+	 * a straight one they only ever touch at a shared vertex. MEASURED: stroking a quarter
+	 * circle painted NOTHING — coverage 0 with three refusal lines on stderr — because those
+	 * crossings reached the fill's refusal instead of reaching this loop.
+	 *
+	 * THE CAPACITY IS WHATEVER THE VERTEX PASS FILLED: it adds at most two entries per edge,
+	 * which is exactly what was allocated for it, so the crossings are the first entries that
+	 * can need more room and `cg_ys_add` grows the array when they do. Crossings are O(n²) in
+	 * the edges; a fixed size taken from the vertices would overflow or refuse a shape that
+	 * is perfectly legitimate — and a curve is one. */
+	{
+		int ys_cap = fl->count * 2;
+
+		for (i = 0; i < fl->count; i++) {
+			for (j = i + 1; j < fl->count; j++) {
+				double cy;
+
+				if (cg_proper_cross(&fl->edges[i], &fl->edges[j]) &&
+				    cg_cross_y(&fl->edges[i], &fl->edges[j], &cy) && cy > 0.0 &&
+				    cy < fl->height) {
+					if (!cg_ys_add(&ys, &nys, &ys_cap, cy)) {
+						free(ys);
+						return;
+					}
+				}
+			}
+		}
+	}
+	/* SORTED BY INSERTION, and that is a decision: a path here is a handful of edges and
+	 * this milestone is measured on the arithmetic rather than on a large path. An
+	 * active-edge table is what a pathological path would want; it is not what this tree has
+	 * been asked for, and the crossing split above is what the structure was owed. */
 	for (i = 1; i < nys; i++) {
 		double y = ys[i];
 
@@ -1098,7 +1169,13 @@ static void cg_sweep(cg_flatten *fl, cg_traps *tr, int even_odd)
 			if (lo > yt || hi < yb || hi == lo) {
 				continue;
 			}
-			xs[n] = cg_edge_x_at(e, yt);
+			/* SORTED AT THE BAND'S MIDDLE, NOT ITS TOP — the second half of the crossing
+			 * fix. When a band's top IS a crossing, the two edges that meet there are TIED,
+			 * and a tie resolved at the top can come out either way, which would pair the
+			 * wrong edges for the whole band. The middle is unambiguous wherever the top is
+			 * not. This changes the ORDER only: the trapezoid's own x values are still taken
+			 * at the top and the bottom. */
+			xs[n] = cg_edge_x_at(e, (yt + yb) / 2.0);
 			idx[n] = j;
 			n++;
 		}
@@ -1184,7 +1261,6 @@ static int cg_fill_path(CGContextRef c, CGPathRef path, int even_odd, pixman_op_
 	cg_traps tr;
 	pixman_image_t *src;
 	uint32_t pixel;
-	int i, j;
 
 	memset(&fl, 0, sizeof(fl));
 	memset(&tr, 0, sizeof(tr));
@@ -1217,21 +1293,12 @@ static int cg_fill_path(CGContextRef c, CGPathRef path, int even_odd, pixman_op_
 	}
 	cg_close_subpath(&fl);
 
-	/* THE ONE REFUSAL: a crossing inside a band would break the sweep's assumption
-	 * that the active edges keep their x-order, and the fill would be wrong in a way
-	 * that looks deliberate. C3 splits the bands at these crossings (it needs the same
-	 * pairwise test) — refusing loudly is the C2 answer. */
-	for (i = 0; i < fl.count; i++) {
-		for (j = i + 1; j < fl.count; j++) {
-			if (cg_proper_cross(&fl.edges[i], &fl.edges[j])) {
-				fprintf(stderr, "CG-REFUSE: self-intersecting path fill (the edges "
-						"cross; C2's sweep cannot pair them)\n");
-				free(fl.edges);
-				return 0;
-			}
-		}
-	}
-
+	/* NO REFUSAL STANDS HERE ANY MORE, AND THE REASON IS ONE FUNCTION BELOW: `cg_sweep`
+	 * now ends its bands at every edge-edge CROSSING as well as at every vertex, so the
+	 * x-order of the active edges holds inside each band and a path that crosses itself —
+	 * or a stroke, whose overlaps ARE the design — computes like any other. The refusal was
+	 * honest for its day ("the fill would be wrong in a way that looks deliberate") and the
+	 * checks that asserted it now assert the fills it was refusing. */
 	cg_sweep(&fl, &tr, even_odd);
 	free(fl.edges);
 

@@ -230,20 +230,35 @@ static void cg_join(cg_stroke *st, double px, double py, double vx, double vy, d
 			 * rather than grown into a spike, and a path of many small turns otherwise
 			 * grows spikes a screen long. */
 			if (sqrt((mx - vx) * (mx - vx) + (my - vy) * (my - vy)) <= st->miter_limit) {
-				p[0] = a1x;
-				p[1] = a1y;
-				p[2] = mx;
-				p[3] = my;
-				p[4] = a2x;
-				p[5] = a2y;
-				cg_piece(st->out, p, 3);
+				/* THE MITER PIECE IS THE QUADRILATERAL (a1, m, a2, v). THE TRIPLE
+				 * (a1, m, a2) IS NOT THE BEVEL PLUS A TIP — it is a sliver BESIDE a notch,
+				 * and the union of the two triangles is the miter. MEASURED, and the
+				 * measurement is what found it: with the triple, a miter join covered LESS
+				 * than a bevel — 5929 against 6056 coverage units — because the bevel
+				 * triangle (a1, v, a2) is 0.707·√2/2 ≈ 0.5 px² while the tip triangle is
+				 * 0.293 px². The comment below used to say the bevel triangle was "strictly
+				 * contained in the miter", which is exactly backwards. THIS SURFACED ONLY
+				 * WHEN THE CROSSING SPLIT MADE THE SWEEP ACCURATE ENOUGH TO SEE IT — the
+				 * unsplit sweep had been hiding the error behind its own. */
+				double q[8];
+
+				q[0] = a1x;
+				q[1] = a1y;
+				q[2] = mx;
+				q[3] = my;
+				q[4] = a2x;
+				q[5] = a2y;
+				q[6] = vx;
+				q[7] = vy;
+				cg_piece(st->out, q, 4);
 				return;
 			}
 		}
 	}
-	/* BEVEL, and the miter's fallback: the triangle the two corners and the vertex make.
-	 * It is strictly contained in the miter, so the two cases cannot disagree about
-	 * anything except the tip. */
+	/* BEVEL, and the miter's fallback: the triangle the two corners and the VERTEX, which
+	 * fills the notch between the two quadrilaterals. It is NOT contained in the miter's
+	 * tip triangle — they are complementary, and the miter is their union — which is the
+	 * distinction the measurement above is about. */
 	p[0] = a1x;
 	p[1] = a1y;
 	p[2] = a2x;
