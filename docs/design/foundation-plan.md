@@ -6654,6 +6654,27 @@ pid 7 wrote from (`0x400000000040`, looked up in that process's tables) and comp
 `0x61c000`. Equal ⇒ alias (b), and a page-allocator lifecycle bug. Different ⇒ a stray copy (a), and the hunt
 moves into the console output path.
 
+**AND THE ONE LINE DECIDES IT: AN ALIAS. NO COPY ANYWHERE.**
+
+    ALIASDBG p7=ffff80000c1ddf58 p7_cr3=0x2ae000 uva=0x400000000040 u_phys=0x612000
+             vmatab=0xffff800000612000 vma_phys=0x612000 SAME=1
+
+**SAME=1.** The physical page holding pid 7's user buffer (`0x612000`) IS the page the kernel handed to THIS
+process for its vma table (`P2V(0x612000)`). **The kernel's allocator gave a page to the vma table while that
+page was still mapped in a user process** — so when userland writes into it (a `printf` buffer holding
+"FNX3-DONE\n"), it overwrites kernel data structures, and the whole chain follows with nothing left to
+explain: the vma list becomes garbage, the covering vma answers `PROT_NONE`, the fault path takes its silent
+`send_sigsegv` branch, the task dies without a message. **The root cause is a PAGE-LIFECYCLE bug — a page
+still mapped in a user process being reused by the kernel — and it is exactly the class this tree has recorded
+before** ("free only for the LAST one"; "a live page-table page being recycled").
+
+**THE NEXT INSTRUMENT IS THE OTHER END OF THAT ALIAS: WHO FREED IT, AND WHEN.** The vma table is allocated per
+process (exec/fork), so print (a) in the vma-table allocation: the pid and the physical page it got; and (b) in
+the page-free path: the physical page freed and the pid freeing it. The over-eager free is the one that freed
+a page still mapped in another process — correlated across those two prints, it names itself. A refcount or a
+mapped-elsewhere check at the free site is then the fix, and this tree already has the vocabulary for it
+(`pml4_has_other_user()`, "free it only for the LAST one").
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
