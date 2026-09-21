@@ -6459,7 +6459,35 @@ address space. That moves this from "fork installs a bad frame" to **"a CLONE_VM
 missing a page the parent has"** — which is the same neighbourhood as this tree's own recorded history with
 shared pml4s, and it is a much sharper place to look.
 
-**THE NEXT MEASUREMENT IS TWO LINES IN THE FAULT PATH:** print the faulting task's `cr3_64` and its
+**THAT MEASUREMENT RAN, AND IT PRODUCES A PARADOX THAT IS THE REAL FINDING.** Two instructions, both in
+the same boot:
+
+    CR3DBG   caller=9 caller_cr3=0x611000 new=10 new_cr3=0x611000 same=1 flags=0x7d0f00
+    Page Fault at 0x7f0000080849 (reading) with error code 0x14
+    Process '/System/Shared/tests/kernel_threaded_exec' with pid 10.
+    FAULTDBG pid=10 cr3_64=0x611000 ppid=1 ppid_cr3=0x2a9000 shared=0
+
+Read together: **the thread IS on its creator's page tables** (`same=1` at creation) and **still is at fault
+time** (`cr3_64 = 0x611000`, unchanged). So the CLONE_VM sharing is NOT broken — the tidy answer is dead.
+(And the `shared=0` field means nothing: `current->ppid` for this thread is pid **1**, so it compares against
+init. That field was the wrong comparison and is recorded as such.)
+
+**SO THE PARADOX: the parent is executing at 0x7f0000080805 — the SAME PAGE the fault hits, 0x44 bytes
+away — and its syscalls work; the thread is on the SAME pml4; therefore the page IS mapped in the tables the
+software believes the thread is using. And yet the thread's next instruction fetch faults on it.** The
+explanation that fits every part of that, including the thread having run its first instructions before
+dying: **the fault is being taken on tables other than `current->cr3_64`** — the hardware's loaded CR3 is not
+the software field's value. This tree reads the FIELD everywhere in its own paging code
+(`p = p->cr3_64 ? p->cr3_64 : paging64_pml4()`, `mm/memory.c:328`), while the CPU walks the register; a
+resume after a context switch onto the wrong tables would let the thread run, then fault on the next fetch
+of a page that is mapped in the field but not in the register — which is exactly what is observed.
+
+**SO THE NEXT MEASUREMENT IS ONE LINE, AND IT IS THE WHOLE QUESTION:** print the LOADED cr3 (`GET_CR3`, next
+to the `GET_CR2` the fault path already uses) beside `current->cr3_64` in `dump_registers`. If they differ,
+the bug is a context-switch/address-space switch that does not load the tables it records, and the place to
+look is the switch path — not the fork frame, and not the sharing.
+
+**THE ORIGINAL TWO-LINE INSTRUMENT (kept for the record):** print the faulting task's `cr3_64` and its
 parent's, and the vma that covers `0x7f0000080849` if any — i.e. answer "was the thread really sharing the
 parent's tables AT FAULT TIME, and does the parent's vma list know about that address?" Everything else about
 this crash is now accounted for.
