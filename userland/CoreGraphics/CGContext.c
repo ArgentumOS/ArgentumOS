@@ -1753,3 +1753,75 @@ void CGContextSetRGBStrokeColor(CGContextRef c, CGFloat red, CGFloat green, CGFl
 	c->state.stroke_rgba[2] = blue;
 	c->state.stroke_rgba[3] = alpha;
 }
+
+/* ---------------------------------------------------------------------------------------
+ * THE COLOUR-TAKING FORMS, which is where a CGColor becomes the four numbers the rasterizer
+ * actually blends with.
+ *
+ * THIS IS THE ONE PLACE THAT DECODES A COLOUR'S COMPONENTS, and it is a REFUSAL rather than a
+ * best guess wherever the numbers would have to be interpreted rather than copied. A DEVICE
+ * space is a statement that the numbers are already the ones to blend, so a grayscale colour
+ * copies its single value into all three channels and an RGB one copies three; a CMYK colour
+ * does not, because turning four ink values into three light values is a conversion with a
+ * profile behind it, and that is the colour engine's job (lcms2, C4.2). Drawing the raw
+ * numbers instead would paint something confident and wrong.
+ *
+ * IT RETURNS 0 AND SAYS WHY ON stderr, so the caller leaves the context exactly as it was: a
+ * refused colour must not silently become black, and it must not silently become the PREVIOUS
+ * colour either - the first is a lie and the second is a bug hunt.
+ * ------------------------------------------------------------------------------------- */
+static int cg_color_to_rgba(CGColorRef color, CGFloat rgba[4])
+{
+	CGColorSpaceRef space;
+	const CGFloat *comp;
+
+	if (color == NULL) {
+		return 0;   /* NULL is the clearing form's opposite: nothing asked, nothing done */
+	}
+	space = CGColorGetColorSpace(color);
+	comp = CGColorGetComponents(color);
+	switch (CGColorSpaceGetModel(space)) {
+	case kCGColorSpaceModelMonochrome:
+		rgba[0] = comp[0];
+		rgba[1] = comp[0];
+		rgba[2] = comp[0];
+		rgba[3] = comp[1];
+		return 1;
+	case kCGColorSpaceModelRGB:
+		rgba[0] = comp[0];
+		rgba[1] = comp[1];
+		rgba[2] = comp[2];
+		rgba[3] = comp[3];
+		return 1;
+	default:
+		fprintf(stderr, "CG-REFUSE: a colour in this color space cannot be drawn without a "
+				"color conversion, which this library does not have yet (lcms2, C4.2)\n");
+		return 0;
+	}
+}
+
+void CGContextSetFillColorWithColor(CGContextRef c, CGColorRef color)
+{
+	CGFloat rgba[4];
+
+	if (c == NULL || !cg_color_to_rgba(color, rgba)) {
+		return;
+	}
+	c->state.rgba[0] = rgba[0];
+	c->state.rgba[1] = rgba[1];
+	c->state.rgba[2] = rgba[2];
+	c->state.rgba[3] = rgba[3];
+}
+
+void CGContextSetStrokeColorWithColor(CGContextRef c, CGColorRef color)
+{
+	CGFloat rgba[4];
+
+	if (c == NULL || !cg_color_to_rgba(color, rgba)) {
+		return;
+	}
+	c->state.stroke_rgba[0] = rgba[0];
+	c->state.stroke_rgba[1] = rgba[1];
+	c->state.stroke_rgba[2] = rgba[2];
+	c->state.stroke_rgba[3] = rgba[3];
+}

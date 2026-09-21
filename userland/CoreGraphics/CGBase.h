@@ -41,7 +41,15 @@
  * every other header to rediscover it — which is exactly what happened when C2's first
  * build failed on `unknown type name 'size_t'` in two headers at once, and then again on
  * `uint32_t` in `CGBitmapContextCreate`'s `bitmapInfo`. Both are stated here.
+ *
+ * AND `<stdbool.h>` FOR `bool`, ADDED WHEN THE THIRD HEADER NEEDED IT RATHER THAN THE FIRST.
+ * `bool` is what a comparison returns — `CGPathIsEmpty`, `CGColorEqualToColor` — so CGPath.h
+ * included it, and then CGContext.h did too, and then CGColor.h did not: the third instance
+ * of a lesson the paragraph above already records twice. The base states it now, so a fourth
+ * header cannot repeat it; the two that include it for themselves keep doing so, because a
+ * header that may be read alone should say what it uses.
  */
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 

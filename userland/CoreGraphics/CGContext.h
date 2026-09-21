@@ -11,13 +11,17 @@
  * DEVICE space through the CTM, turn it into trapezoids, and hand those to pixman.
  * Everything below the context is pixman's job, and everything above it is a caller's.
  *
- * WHAT IS DELIBERATELY ABSENT FROM C2, and why it is absent rather than stubbed:
+ * WHAT IS DELIBERATELY ABSENT, AND WHY IT IS ABSENT RATHER THAN STUBBED: text, images,
+ * gradients, and the context's own path clip (`CGContextClip`, `CGContextEOClip`) — each
+ * needs machinery that would otherwise be half-present, and half of it draws the wrong
+ * thing convincingly.
+ *
+ * THE STROKE HALF OF THIS LIST IS GONE, and the colour half has moved: C3 landed the
  * stroking (`CGContextStrokePath`, `SetLineWidth`, `SetLineCap`, `SetLineJoin`,
- * `SetLineDash`, the path-offsetting machinery) — a stroke is a path operation that
- * produces a fill, and half of it would draw the wrong shape convincingly; the
- * context's own path clip (`CGContextClip`, `CGContextEOClip`); text; images;
- * gradients; and the text/pattern/colour state setters. They arrive in C3–C6 with the
- * machinery that makes them mean something.
+ * `SetLineDash` and the rest of the line state), and `CGColor` landed the colour state
+ * setters. What is left of the colour story is the part that needs a CONVERSION — a colour
+ * in an sRGB or ICC or CMYK space — and that is refused rather than guessed at until the
+ * colour engine (C4.2) can say what its numbers mean.
  *
  * THE DEFAULT COORDINATE SYSTEM IS APPLE'S FOR A BITMAP CONTEXT: user space has its
  * ORIGIN AT THE LOWER-LEFT and y increasing UPWARD, so the default CTM is
@@ -35,6 +39,7 @@
 #define CORE_GRAPHICS_CGCONTEXT_H
 
 #include <CoreGraphics/CGAffineTransform.h>
+#include <CoreGraphics/CGColor.h>
 #include <CoreGraphics/CGColorSpace.h>
 #include <CoreGraphics/CGGeometry.h>
 #include <CoreGraphics/CGPath.h>
@@ -223,6 +228,15 @@ void CGContextSetLineJoin(CGContextRef context, CGLineJoin join);
 void CGContextSetMiterLimit(CGContextRef context, CGFloat limit);
 void CGContextSetGrayStrokeColor(CGContextRef context, CGFloat gray, CGFloat alpha);
 void CGContextSetRGBStrokeColor(CGContextRef context, CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha);
+
+/* THE COLOUR-TAKING FORMS, declared here because a context is what they set and this header
+ * includes CGColor.h for the type. A colour this library cannot INTERPRET — anything that is
+ * not a device RGB or device grayscale space — is REFUSED and the context keeps the colour it
+ * had: conversion between colour spaces is the colour engine's job (C4.2), and drawing a
+ * profile's raw numbers as if they were device values paints something confident and wrong.
+ * A NULL colour is the same refusal, not a reset to black. */
+void CGContextSetFillColorWithColor(CGContextRef context, CGColorRef color);
+void CGContextSetStrokeColorWithColor(CGContextRef context, CGColorRef color);
 
 /* `StrokePath` CONSUMES the current path, like the fills do. `StrokeRect`,
  * `StrokeRectWithWidth` and `StrokeLineSegments` build their own path and leave the

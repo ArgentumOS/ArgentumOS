@@ -36,12 +36,12 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  127   open  560   struck   48
+#   func       shipped  141   open  546   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped    9   open   47   struck    1
 #   case       shipped   65   open  365   struck   14
 #   var        shipped    6   open  120   struck    9
-#   typealias  shipped    4   open   94   struck    2
+#   typealias  shipped    5   open   93   struck    2
 #   struct     shipped    6   open   14   struck    0
 case	struck	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	struck	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
@@ -584,28 +584,28 @@ func	open	CGColorConversionInfoCreateFromList	-	Opaque Types / Creating a Color 
 func	open	CGColorConversionInfoCreateFromListWithArguments	-	Reference / Functions	-	objc
 func	open	CGColorConversionInfoCreateWithOptions	-	Opaque Types / Creating a Color Conversion	-	objc
 func	open	CGColorConversionInfoGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
-func	open	CGColorCreate	-	Opaque Types / Creating Colors	-	objc
-func	open	CGColorCreateCopy	-	Opaque Types / Creating Colors	-	objc
+func	shipped	CGColorCreate	-	Opaque Types / Creating Colors	-	objc
+func	shipped	CGColorCreateCopy	-	Opaque Types / Creating Colors	-	objc
 func	open	CGColorCreateCopyByMatchingToColorSpace	-	Opaque Types / Converting Between Color Spaces	-	objc
-func	open	CGColorCreateCopyWithAlpha	-	Opaque Types / Creating Colors	-	objc
+func	shipped	CGColorCreateCopyWithAlpha	-	Opaque Types / Creating Colors	-	objc
 func	open	CGColorCreateGenericCMYK	-	Opaque Types / Creating Colors	-	objc
-func	open	CGColorCreateGenericGray	-	Opaque Types / Creating Colors	-	objc
+func	shipped	CGColorCreateGenericGray	-	Opaque Types / Creating Colors	-	objc
 func	open	CGColorCreateGenericGrayGamma2_2	-	Opaque Types / Creating Colors	-	objc
-func	open	CGColorCreateGenericRGB	-	Opaque Types / Creating Colors	-	objc
+func	shipped	CGColorCreateGenericRGB	-	Opaque Types / Creating Colors	-	objc
 func	open	CGColorCreateSRGB	-	Opaque Types / Creating Colors	-	objc
 func	open	CGColorCreateWithContentHeadroom	-	Functions	-	objc
 func	open	CGColorCreateWithPattern	-	Opaque Types / Creating Colors	-	objc
-func	open	CGColorEqualToColor	-	Opaque Types / Examining a Color	-	objc
-func	open	CGColorGetAlpha	-	Opaque Types / Examining a Color	-	objc
-func	open	CGColorGetColorSpace	-	Opaque Types / Examining a Color	-	objc
-func	open	CGColorGetComponents	-	Opaque Types / Examining a Color	-	objc
+func	shipped	CGColorEqualToColor	-	Opaque Types / Examining a Color	-	objc
+func	shipped	CGColorGetAlpha	-	Opaque Types / Examining a Color	-	objc
+func	shipped	CGColorGetColorSpace	-	Opaque Types / Examining a Color	-	objc
+func	shipped	CGColorGetComponents	-	Opaque Types / Examining a Color	-	objc
 func	open	CGColorGetConstantColor	-	Opaque Types / Creating Colors	-	objc
 func	open	CGColorGetContentHeadroom	-	Functions	-	objc
-func	open	CGColorGetNumberOfComponents	-	Opaque Types / Examining a Color	-	objc
+func	shipped	CGColorGetNumberOfComponents	-	Opaque Types / Examining a Color	-	objc
 func	open	CGColorGetPattern	-	Opaque Types / Examining a Color	-	objc
 func	open	CGColorGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
-func	open	CGColorRelease	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
-func	open	CGColorRetain	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
+func	shipped	CGColorRelease	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
+func	shipped	CGColorRetain	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
 func	open	CGColorSpaceCopyBaseColorSpace	-	Reference / Functions	-	objc
 func	open	CGColorSpaceCopyICCData	-	Opaque Types / Examining a Color Space	-	objc
 func	struck	CGColorSpaceCopyICCProfile	-	Opaque Types / Examining a Color Space	deprecated	objc
@@ -738,7 +738,7 @@ func	open	CGContextSetContentToneMappingInfo	-	Functions	-	objc
 func	open	CGContextSetEDRTargetHeadroom	-	Reference / Functions	-	objc
 func	open	CGContextSetFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetFillColorSpace	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
-func	open	CGContextSetFillColorWithColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
+func	shipped	CGContextSetFillColorWithColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetFillPattern	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	open	CGContextSetFlatness	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	open	CGContextSetFont	-	Opaque Types / Drawing Text	-	objc
@@ -763,7 +763,7 @@ func	open	CGContextSetShouldSubpixelPositionFonts	-	Opaque Types / Drawing Text	
 func	open	CGContextSetShouldSubpixelQuantizeFonts	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetStrokeColorSpace	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
-func	open	CGContextSetStrokeColorWithColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
+func	shipped	CGContextSetStrokeColorWithColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetStrokePattern	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetTextDrawingMode	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetTextMatrix	-	Opaque Types / Drawing Text	-	objc
@@ -1410,7 +1410,7 @@ typealias	open	CGBitmapContextReleaseDataCallback	-	Opaque Types / Creating Bitm
 typealias	open	CGButtonCount	-	Services / Data Types	-	objc
 typealias	open	CGCharCode	-	Services / Data Types	-	objc
 typealias	open	CGColorConversionInfoRef	-	Opaque Types	-	objc
-typealias	open	CGColorRef	-	Opaque Types	-	objc
+typealias	shipped	CGColorRef	-	Opaque Types	-	objc
 typealias	shipped	CGColorSpaceRef	-	Opaque Types	-	objc
 typealias	shipped	CGContextRef	-	Opaque Types	-	objc
 typealias	open	CGDataConsumerPutBytesCallback	-	Opaque Types / Creating Data Consumers	-	objc

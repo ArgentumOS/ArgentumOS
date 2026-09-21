@@ -207,7 +207,7 @@ HOST_CG_LIB     ?= $(HOST_LIBDIR)/libcoregraphics.so
 HOST_CG_OBJDIR  := $(HOST_OBJDIR)/coregraphics
 # PIXMAN'S INCLUDE PATH NEEDS THE `pixman-1` SUBDIRECTORY NAMED: `pixman.h` includes
 # `pixman-version.h` from its own directory and is NOT self-contained.
-HOST_CG_PROBES  ?= coregraphics_context coregraphics_stroke coregraphics_stroke_context coregraphics_curve coregraphics_arc
+HOST_CG_PROBES  ?= coregraphics_context coregraphics_stroke coregraphics_stroke_context coregraphics_curve coregraphics_arc coregraphics_color
 
 # THE LIBRARY IS BUILT ONCE AND LINKED FIVE TIMES, the same shape as Foundation's: compiling
 # the eight sources into each probe would also work and would take five times as long.
