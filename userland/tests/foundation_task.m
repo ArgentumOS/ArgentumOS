@@ -121,6 +121,16 @@ static int fn_child(int argc, char *argv[])
 		printf("FOUNDATION-TASK child-foundation ok=%lu\n", (unsigned long)[list count]);
 		_exit(0);
 	}
+	if (strcmp(mode, "--probe-root-only") == 0) {
+		/* THE SMALLEST PROGRAM THAT STILL DIES (if it does): main's first three steps and exit. The probe
+		 * dies between trace 1a and 1b, i.e. around probe_root(), so this is those steps and nothing else. */
+		NSFileManager *m = [NSFileManager defaultManager];
+		NSString *t = probe_root();
+
+		printf("FOUNDATION-TASK probe-root-only: manager=%s root=%s len=%d\n",
+			m ? "ok" : "nil", [t UTF8String], (int)[t length]);
+		_exit(0);
+	}
 	if (strcmp(mode, "--child-delay") == 0) {
 		usleep(300000);			/* long enough for a SIGSTOP/SIGCONT round trip */
 		_exit(5);

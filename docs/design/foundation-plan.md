@@ -7884,6 +7884,24 @@ the build, kill stray guests first), defect A's two faces are measured clean, th
 in the tree, and the probe's fault is a third, distinct, deterministic thing with a written-out first
 experiment. **That is a complete handover, and it is the right place to stop for this session.**
 
+**AND THE SMALLEST-PROGRAM MODE IS NOW RE-ADDED, BUILT AND STAGED — WITH THE RUN STILL NOT COMPLETING, AND THE
+OBSTACLE MOVED TO THE HARNESS.** `--probe-root-only` is in the probe (four lines: `+[NSFileManager
+defaultManager]`, `probe_root()`, print, exit), the case asserts it, `make rootagfs` reported
+`.build/rootagfs.img ready`, and `make qemu-kill` reported no guests running. **And `tests/run.py --only
+foundation_task` then produced no PASS/FAIL output twice in a row** - not a crash, not a timeout, just
+silence - so the next thing to look at is the harness invocation itself, not the probe and not the kernel.
+That is a fresh-session job: diagnosing a quiet test runner at the end of a session this long is how new
+mistakes get in, and the previous two rounds already showed what that costs.
+
+**SO THE CHANGE IS KEPT, UNLIKE LAST ROUND.** It builds, it is additive (the mode only runs with its flag),
+and reverting a second time would only make the next session redo it. It is recorded as STAGED BUT UNRUN, with
+the reason: the runner went quiet, and that is the first thing to explain.
+
+**AND THE PROBE'S FAULT IS UNCHANGED BY ANY OF THIS**, and its invariant now has three confirmations:
+`0x7ffff5805ff8`, `0x7ffff580aff8`, `0x7ffff5857ff8` - three different addresses, always eight bytes below a
+stack VMA's low edge, in a single-threaded process with every register zero. **The smallest-program mode is
+four lines of work away from saying whether that needs Foundation at all.**
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
