@@ -109,6 +109,14 @@ static int fn_child(int argc, char *argv[])
 		(void)raise(SIGSEGV);		/* the default action is death BY SIGNAL, no handler */
 		_exit(0);
 	}
+	if (strcmp(mode, "--child-foundation") == 0) {
+		NSString *text = [NSString stringWithUTF8String:"foundation in a child"];
+		NSMutableArray *list = [[NSMutableArray alloc] init];
+
+		[list addObject:text];
+		printf("FOUNDATION-TASK child-foundation ok=%lu\n", (unsigned long)[list count]);
+		_exit(0);
+	}
 	if (strcmp(mode, "--child-delay") == 0) {
 		usleep(300000);			/* long enough for a SIGSTOP/SIGCONT round trip */
 		_exit(5);
@@ -232,18 +240,18 @@ int main(int argc, char *argv[])
 		return fn_child(argc, argv);
 	}
 
-	printf("FOUNDATION-TASK trace 1: entered main\n");
+	printf("FOUNDATION-TASK trace 1: entered main rsp=%p\n", (void *)&manager);
 	manager = [NSFileManager defaultManager];
-	printf("FOUNDATION-TASK trace 1a: manager\n");
+	printf("FOUNDATION-TASK trace 1a: manager rsp=%p\n", (void *)&manager);
 	root = probe_root();
-	printf("FOUNDATION-TASK trace 1b: root\n");
+	printf("FOUNDATION-TASK trace 1b: root rsp=%p\n", (void *)&root);
 	self = [NSURL fileURLWithPath:probe_self()];
-	printf("FOUNDATION-TASK trace 1c: self url\n");
+	printf("FOUNDATION-TASK trace 1c: self-url rsp=%p\n", (void *)&self);
 
 	[manager removeItemAtPath:root error:NULL];
-	printf("FOUNDATION-TASK trace 1d: remove\n");
+	printf("FOUNDATION-TASK trace 1d: remove rsp=%p\n", (void *)&root);
 	[manager createDirectoryAtPath:root withIntermediateDirectories:YES attributes:nil error:NULL];
-	printf("FOUNDATION-TASK trace 1e: create\n");
+	printf("FOUNDATION-TASK trace 1e: create rsp=%p\n", (void *)&root);
 
 	printf("FOUNDATION-TASK trace 2: scratch ready\n");
 
