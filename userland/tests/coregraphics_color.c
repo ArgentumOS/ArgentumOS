@@ -872,6 +872,62 @@ int main(void)
 		CGColorSpaceRelease(a);
 	}
 
+	/* --- TWO MORE NAMES, AND ONE OF THEM IS THE CINEMA SPACE ------------------------------ */
+	/* THE CHECK THAT SEPARATES DCIP3 FROM DisplayP3 IS A COMPARISON RATHER THAN A NUMBER. The two
+	 * share DCI-P3's primaries, so what distinguishes them is THE WHITE POINT AND THE GAMMA — the
+	 * theatre's own white and gamma 2.6, against D65 and the sRGB curve — and a neutral grey
+	 * therefore converts to different device values in each. That difference is the whole reason
+	 * both names exist, so it is the thing worth asserting. */
+	{
+		CGColorSpaceRef dci = CGColorSpaceCreateWithName(kCGColorSpaceDCIP3);
+		CGColorSpaceRef dp3 = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
+		CGColorSpaceRef lingray = CGColorSpaceCreateWithName(kCGColorSpaceLinearGray);
+		CGColorSpaceRef dev = CGColorSpaceCreateDeviceRGB();
+		CGFloat grey[4];
+		CGColorRef cd;
+		CGColorRef cp;
+		CGColorRef rd;
+		CGColorRef rp;
+
+		check("kCGColorSpaceDCIP3 gives a WIDE space, like the primaries it shares",
+		      dci != NULL && CGColorSpaceIsWideGamutRGB(dci));
+		check("...and it is a DIFFERENT space from DisplayP3", dci != NULL && dci != dp3);
+		check("kCGColorSpaceLinearGray has one component",
+		      lingray != NULL && CGColorSpaceGetNumberOfComponents(lingray) == 1);
+
+		grey[0] = 0.5;
+		grey[1] = 0.5;
+		grey[2] = 0.5;
+		grey[3] = 1.0;
+		cd = CGColorCreate(dci, grey);
+		cp = CGColorCreate(dp3, grey);
+		rd = CGColorCreateCopyByMatchingToColorSpace(cd, kCGRenderingIntentRelativeColorimetric,
+							     dev, NULL);
+		rp = CGColorCreateCopyByMatchingToColorSpace(cp, kCGRenderingIntentRelativeColorimetric,
+							     dev, NULL);
+		if (rd != NULL && rp != NULL) {
+			double d = CGColorGetComponents(rd)[0] - CGColorGetComponents(rp)[0];
+
+			if (d < 0) {
+				d = -d;
+			}
+			/* A SIZEABLE DIFFERENCE, because a 2.6 gamma is not a 2.4-with-a-toe and the white
+			 * points are not the same point. */
+			check("the same grey converts DIFFERENTLY in the cinema space and in DisplayP3",
+			      d > 0.02);
+		} else {
+			check("both the cinema and the display space convert", 0);
+		}
+		CGColorRelease(rp);
+		CGColorRelease(rd);
+		CGColorRelease(cp);
+		CGColorRelease(cd);
+		CGColorSpaceRelease(dev);
+		CGColorSpaceRelease(lingray);
+		CGColorSpaceRelease(dp3);
+		CGColorSpaceRelease(dci);
+	}
+
 	printf("CG-COLOR: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

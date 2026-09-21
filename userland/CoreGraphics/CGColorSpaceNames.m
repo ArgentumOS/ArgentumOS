@@ -61,6 +61,8 @@ NSString *const kCGColorSpaceGenericLab = @"kCGColorSpaceGenericLab";
 NSString *const kCGColorSpaceGenericGrayGamma2_2 = @"kCGColorSpaceGenericGrayGamma2_2";
 NSString *const kCGColorSpaceDisplayP3 = @"kCGColorSpaceDisplayP3";
 NSString *const kCGColorSpaceLinearDisplayP3 = @"kCGColorSpaceLinearDisplayP3";
+NSString *const kCGColorSpaceDCIP3 = @"kCGColorSpaceDCIP3";
+NSString *const kCGColorSpaceLinearGray = @"kCGColorSpaceLinearGray";
 
 /* An xy pair with Y = 1, which is the spelling the engine's primaries use. */
 static cmsCIExyY cg_xy(double x, double y)
@@ -198,6 +200,30 @@ static cmsHPROFILE cg_profile_for_name(NSString *name, CGColorSpaceModel *model,
 		*components = 3;
 		return cg_rgb_profile(CG_D65_X, CG_D65_Y, 0.6800, 0.3200, 0.2650, 0.6900, 0.1500, 0.0600,
 				      1.0);
+	}
+	if ([name isEqual:kCGColorSpaceDCIP3]) {
+		*model = kCGColorSpaceModelRGB;
+		*components = 3;
+		/* THE CINEMA SPACE, AND THE REASON IT IS NOT `DisplayP3`: DCI-P3 is the THEATRE projection
+		 * space — its own white point (x 0.314, y 0.351, greener than D65) and gamma 2.6 — while
+		 * Display P3 is the same primaries with D65 and the sRGB curve. THAT DIFFERENCE IS WHY BOTH
+		 * NAMES EXIST, so building one out of the other would erase the only thing separating them. */
+		return cg_rgb_profile(0.3140, 0.3510, 0.6800, 0.3200, 0.2650, 0.6900, 0.1500, 0.0600,
+				      2.6);
+	}
+	if ([name isEqual:kCGColorSpaceLinearGray]) {
+		*model = kCGColorSpaceModelMonochrome;
+		*components = 1;
+		/* D65 WITH GAMMA 1: the linear counterpart of the gray this library already names, with
+		 * the same white point and no transfer function at all. */
+		wp = cg_xy(CG_D65_X, CG_D65_Y);
+		g = cmsBuildGamma(NULL, 1.0);
+		if (g == NULL) {
+			return NULL;
+		}
+		p = cmsCreateGrayProfile(&wp, g);
+		cmsFreeToneCurve(g);
+		return p;
 	}
 	if ([name isEqual:kCGColorSpaceAdobeRGB1998]) {
 		*model = kCGColorSpaceModelRGB;

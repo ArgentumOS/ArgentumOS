@@ -136,6 +136,8 @@ extern NSString *const kCGColorSpaceAdobeRGB1998;
 extern NSString *const kCGColorSpaceROMMRGB;
 extern NSString *const kCGColorSpaceGenericLab;
 extern NSString *const kCGColorSpaceGenericGrayGamma2_2;
+extern NSString *const kCGColorSpaceDCIP3;
+extern NSString *const kCGColorSpaceLinearGray;
 
 /* A space by name, or NULL with a reason on stderr. THE NAMED SPACES ARE NOT CACHED, WHICH IS A
  * DEVIATION: Apple returns the same object for the same name, and this builds a fresh one per
