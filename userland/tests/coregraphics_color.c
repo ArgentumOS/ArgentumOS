@@ -271,6 +271,144 @@ int main(void)
 		CGColorRelease(k);
 	}
 
+	/* --- A SPACE WITH A PROFILE IS CONVERTED, NOT REFUSED -------------------- */
+	/* BOTH SIDES OF THE LINE THE DESIGN DRAWS, IN ONE PLACE: a Lab colour is DRAWN, by
+	 * conversion; a device CMYK colour is REFUSED, because there is no profile to convert it
+	 * through. Lab is what makes the first half testable at all, which is why it arrived with
+	 * the engine.
+	 *
+	 * THE CHECKS ARE PROPERTIES, NOT MAGIC NUMBERS, AND DELIBERATELY. Lab(50, 0, 0) is a mid
+	 * gray with a value nobody remembers; a literal here would be a number the engine's next
+	 * version could legitimately change. That a neutral Lab colour stays neutral in RGB, and
+	 * that lightness ORDERS, are statements about Lab itself — and each of them fails if the
+	 * conversion is wrong in a way that matters. */
+	{
+		CGColorSpaceRef lab = CGColorSpaceCreateLab(NULL, NULL, NULL);
+		CGColorSpaceRef rgbspace = CGColorSpaceCreateDeviceRGB();
+		CGFloat v[4];
+		CGColorRef cm;
+		CGColorRef cd;
+		CGColorRef cl;
+
+		check("CGColorSpaceCreateLab gives a space",
+		      lab != NULL && CGColorSpaceGetModel(lab) == kCGColorSpaceModelLab);
+		check_num("...with three components",
+			  (double)CGColorSpaceGetNumberOfComponents(lab), 3.0, 0);
+
+		v[0] = 50.0;
+		v[1] = 0.0;
+		v[2] = 0.0;
+		v[3] = 1.0;
+		cm = CGColorCreate(lab, v);
+		v[0] = 20.0;
+		cd = CGColorCreate(lab, v);
+		v[0] = 80.0;
+		cl = CGColorCreate(lab, v);
+		check("Lab colours can be created (three components plus alpha)", cm != NULL);
+		check_num("...and the count includes the alpha",
+			  (double)CGColorGetNumberOfComponents(cm), 4.0, 0);
+
+		{
+			CGColorRef rm = CGColorCreateCopyByMatchingToColorSpace(
+				cm, kCGRenderingIntentDefault, rgbspace, NULL);
+			CGColorRef rd = CGColorCreateCopyByMatchingToColorSpace(
+				cd, kCGRenderingIntentDefault, rgbspace, NULL);
+			CGColorRef rl = CGColorCreateCopyByMatchingToColorSpace(
+				cl, kCGRenderingIntentDefault, rgbspace, NULL);
+
+			check("a Lab colour CONVERTS into device RGB",
+			      rm != NULL && rd != NULL && rl != NULL);
+			if (rm != NULL && rd != NULL && rl != NULL) {
+				const CGFloat *crm = CGColorGetComponents(rm);
+				const CGFloat *crd = CGColorGetComponents(rd);
+				const CGFloat *crl = CGColorGetComponents(rl);
+
+				/* NEUTRAL IN, NEUTRAL OUT — AS A TOLERANCE, AND THE TOLERANCE IS THE FINDING.
+				 * The first version of this check demanded EXACT equality and failed: the
+				 * conversion carries Lab under D50 to sRGB under D65, and a chromatic
+				 * adaptation between two white points is a matrix product, so agreement holds
+				 * to within rounding rather than to the last bit. Exact equality was a check
+				 * that could only ever pass by luck. Note what the DEVICE check further down
+				 * does with the same conversion: in EIGHT BITS it lands exactly on r == g == b,
+				 * because the rounding is absorbed on the way out. Two percent is still far
+				 * tighter than a wrong conversion, which shows up as a cast of tens. */
+				check_num("a neutral Lab colour stays neutral: r - g",
+					  (double)(crm[0] - crm[1]), 0.0, 0.02);
+				check_num("...and g - b", (double)(crm[1] - crm[2]), 0.0, 0.02);
+				check("...and lands in the middle, not at an end",
+				      crm[0] > 0.05 && crm[0] < 0.95);
+				/* THE ORDER OF THREE LIGHTNESSES MUST SURVIVE THE CONVERSION. */
+				check("L* 20 < 50 < 80 after conversion",
+				      crd[0] < crm[0] && crm[0] < crl[0]);
+				/* THE TARGET IS NOT HARD-WIRED: device gray converts too. */
+				{
+					CGColorSpaceRef gray = CGColorSpaceCreateDeviceGray();
+					CGColorRef g2 = CGColorCreateCopyByMatchingToColorSpace(
+						cm, kCGRenderingIntentDefault, gray, NULL);
+
+					check("...and a device GRAY target works as well", g2 != NULL);
+					CGColorRelease(g2);
+					CGColorSpaceRelease(gray);
+				}
+				/* THE REFUSAL IS STILL THERE FOR THE SPACE WITH NO PROFILE. */
+				{
+					CGColorSpaceRef cmyk = CGColorSpaceCreateDeviceCMYK();
+					CGFloat ink[5] = { 0.1, 0.2, 0.3, 0.4, 1.0 };
+					CGColorRef k = CGColorCreate(cmyk, ink);
+
+					check("a device CMYK colour still has NO conversion",
+					      CGColorCreateCopyByMatchingToColorSpace(
+						      k, kCGRenderingIntentDefault, rgbspace, NULL) == NULL);
+					CGColorRelease(k);
+					CGColorSpaceRelease(cmyk);
+				}
+				/* AND AN OPTION THIS LIBRARY DOES NOT HAVE IS REFUSED, NOT IGNORED. */
+				check("a non-NULL options is refused rather than dropped",
+				      CGColorCreateCopyByMatchingToColorSpace(
+					      cm, kCGRenderingIntentDefault, rgbspace, v) == NULL);
+			}
+			CGColorRelease(rm);
+			CGColorRelease(rd);
+			CGColorRelease(rl);
+		}
+
+		/* AND THE CONTEXT DRAWS ONE: the setter converts through the same function, so a Lab
+		 * fill lands as the gray it means. This is the check that would have caught C4.1's
+		 * model-based guard, which would have copied Lab's three numbers into r, g and b. */
+		ctx = fresh();
+		{
+			CGFloat lv[4];
+			CGColorRef lab_colour;
+
+			lv[0] = 50.0;
+			lv[1] = 0.0;
+			lv[2] = 0.0;
+			lv[3] = 1.0;
+			lab_colour = CGColorCreate(lab, lv);
+			CGContextSetFillColorWithColor(ctx, lab_colour);
+			CGContextFillRect(ctx, CGRectMake(0.0, 0.0, 16.0, 16.0));
+			pixel(ctx, 8, 8, p);
+			check("the context DRAWS a Lab colour by converting it", p[3] == 255);
+			/* A ONE-UNIT TOLERANCE, WHICH IS NOT A CONTRADICTION OF THE CHECK ABOVE: on THIS
+			 * engine the doubles came out a hair apart and the eight-bit write rounds them to
+			 * the same byte, so demanding exactness would pass here and could break on a
+			 * different rounding for a reason that is not a bug. One unit says the same thing
+			 * about neutrality without betting on which way a half rounds. */
+			check("...as a neutral gray, to within one unit",
+			      (p[0] > p[1] ? p[0] - p[1] : p[1] - p[0]) <= 1 &&
+			      (p[1] > p[2] ? p[1] - p[2] : p[2] - p[1]) <= 1);
+			check("...and a middle one, not black or white", p[0] > 12 && p[0] < 243);
+			CGColorRelease(lab_colour);
+		}
+		CGContextRelease(ctx);
+
+		CGColorRelease(cm);
+		CGColorRelease(cd);
+		CGColorRelease(cl);
+		CGColorSpaceRelease(lab);
+		CGColorSpaceRelease(rgbspace);
+	}
+
 	printf("CG-COLOR: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

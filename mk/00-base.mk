@@ -285,11 +285,16 @@ CG_SRC  = userland/CoreGraphics
 CG_LIB  = $(FNXLIB)/libcoregraphics.so.1
 CG_SRCS = $(notdir $(wildcard $(CG_SRC)/*.c))
 CG_OBJS = $(addprefix $(FNXLIB)/coregraphics-,$(CG_SRCS:.c=.o))
-# TWO DIRECTORIES, BECAUSE PIXMAN'S HEADER IS NOT SELF-CONTAINED: `pixman.h` includes
-# `<pixman-version.h>`, which sits beside it rather than on a bare include path. These
-# are the same two flags `pkg-config --cflags pixman-1` emits.
-CG_CFLAGS = -I$(X11PREFIX)/include -I$(X11PREFIX)/include/pixman-1
-CG_LDFLAGS = -L$(X11PREFIX)/lib -lpixman-1
+# THREE DIRECTORIES NOW. PIXMAN'S HEADER IS NOT SELF-CONTAINED — `pixman.h` includes
+# `<pixman-version.h>`, which sits beside it rather than on a bare include path — and the
+# colour engine arrives with the ICC half of C4: lcms2's header is in a prefix of its own,
+# built by tools/lcms2-build.sh, and listed FIRST because the version is newer than anything a
+# system include path might offer.
+CG_CFLAGS = -I$(LCMS2_PREFIX)/include -I$(X11PREFIX)/include -I$(X11PREFIX)/include/pixman-1
+# NO RPATH FOR THE GUEST, deliberately: the loader resolves `liblcms2.so.2` out of
+# /System/Libraries, where mk/20-userland.mk stages it (musl's syslibdir is that directory), so
+# a build-tree path in the binary would be wrong on the guest rather than merely unnecessary.
+CG_LDFLAGS = -L$(X11PREFIX)/lib -lpixman-1 -L$(LCMS2_PREFIX)/lib -llcms2
 
 define CG_rule
 $(FNXLIB)/coregraphics-$(1:.c=.o): $(CG_SRC)/$(1)

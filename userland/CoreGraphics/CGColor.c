@@ -5,7 +5,9 @@
  * SPDX-License-Identifier: MIT
  */
 #include <CoreGraphics/CGColor.h>
+#include <CoreGraphics/CGColorSpace_internal.h>
 
+#include <lcms2.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,10 +41,12 @@ static int cg_color_space_components(CGColorSpaceRef space)
 		return 3;
 	case kCGColorSpaceModelCMYK:
 		return 4;
+	case kCGColorSpaceModelLab:
+		return 3;   /* L*, a*, b* */
 	default:
-		/* A SPACE WHOSE NUMBERS THIS TREE CANNOT INTERPRET IS NOT GUESSED AT. An ICC
-		 * profile's components are its own; reading them as a device model would draw
-		 * something, and something wrong. */
+		/* A SPACE WHOSE NUMBERS THIS TREE CANNOT INTERPRET IS NOT GUESSED AT. A space this
+		 * code has no model for would have its components read as if they were a device
+		 * model, which draws something, and something wrong. */
 		return -1;
 	}
 }
@@ -195,4 +199,161 @@ bool CGColorEqualToColor(CGColorRef color1, CGColorRef color2)
 		}
 	}
 	return true;
+}
+
+/* ---------------------------------------------------------------------------------------
+ * THE CONVERSION. Every line below is the engine's (lcms2), and everything above it in this
+ * file treats a colour as numbers in a named space; this is the one place where the numbers
+ * are interpreted.
+ * ------------------------------------------------------------------------------------- */
+
+/* THE INTENTS DO NOT LINE UP, WHICH IS WHY THIS FUNCTION EXISTS. Apple documents Default,
+ * AbsoluteColorimetric, RelativeColorimetric, Perceptual, Saturation. The engine numbers
+ * Perceptual 0, RelativeColorimetric 1, Saturation 2, AbsoluteColorimetric 3 - so passing an
+ * intent through as it stands would ask for a different one, silently, and only in the output.
+ * Default is PERCEPTUAL, which is what Apple's documentation calls the usual default. */
+static int cg_engine_intent(CGColorRenderingIntent intent)
+{
+	switch (intent) {
+	case kCGRenderingIntentAbsoluteColorimetric:
+		return INTENT_ABSOLUTE_COLORIMETRIC;
+	case kCGRenderingIntentRelativeColorimetric:
+		return INTENT_RELATIVE_COLORIMETRIC;
+	case kCGRenderingIntentPerceptual:
+		return INTENT_PERCEPTUAL;
+	case kCGRenderingIntentSaturation:
+		return INTENT_SATURATION;
+	default:
+		return INTENT_PERCEPTUAL;
+	}
+}
+
+/* THE ENGINE'S TYPE CODE DESCRIBES THE MEMORY LAYOUT, NOT THE SPACE: three doubles for RGB,
+ * one for gray, three for Lab in the ICC convention (L* 0..100, a* and b* around 0), which is
+ * also what a Lab colour's components mean here. A model with no code cannot be converted, and
+ * that refusal is the honest answer rather than a guess at a layout. */
+static int cg_engine_format(CGColorSpaceModel model, int *ncomp)
+{
+	switch (model) {
+	case kCGColorSpaceModelMonochrome:
+		*ncomp = 1;
+		return TYPE_GRAY_DBL;
+	case kCGColorSpaceModelRGB:
+		*ncomp = 3;
+		return TYPE_RGB_DBL;
+	case kCGColorSpaceModelLab:
+		*ncomp = 3;
+		return TYPE_Lab_DBL;
+	default:
+		*ncomp = 0;
+		return 0;
+	}
+}
+
+/* THE PROFILE TO CONVERT WITH — and for a DEVICE space there is none to ask for, because being
+ * a device space is precisely not having one. Converting INTO one therefore has to NAME what
+ * Apple's device spaces mean: device RGB is treated as sRGB, and device gray as gamma-2.2 gray
+ * against D50, which is what Apple's own colour management does with them and the assumption
+ * this library has drawn under since C2. `*own` says whether the caller has to close the
+ * result, because these two are built here and do not belong to the space. */
+static cmsHPROFILE cg_engine_profile_for(CGColorSpaceRef space, int *own)
+{
+	cmsHPROFILE p = (cmsHPROFILE)cg_colorspace_engine_profile(space);
+	cmsToneCurve *gamma;
+
+	*own = 0;
+	if (p != NULL) {
+		return p;
+	}
+	switch (CGColorSpaceGetModel(space)) {
+	case kCGColorSpaceModelRGB:
+		*own = 1;
+		return cmsCreate_sRGBProfile();
+	case kCGColorSpaceModelMonochrome:
+		*own = 1;
+		gamma = cmsBuildGamma(NULL, 2.2);
+		if (gamma == NULL) {
+			return NULL;
+		}
+		/* `cmsD50_xyY` IS A FUNCTION AND NOT AN OBJECT, which is the one detail of the engine's
+		 * API a compiler had to point out: the identifier alone names the function, so passing
+		 * it without the call puts a pointer-to-function where a white point belongs. */
+		p = cmsCreateGrayProfile(cmsD50_xyY(), gamma);
+		cmsFreeToneCurve(gamma);
+		return p;
+	default:
+		/* DEVICE CMYK, TODAY. There is no profile to invent either: what a set of ink values
+		 * means depends on the press, so a made-up conversion would be a made-up press. */
+		return NULL;
+	}
+}
+
+CGColorRef CGColorCreateCopyByMatchingToColorSpace(CGColorRef color, CGColorRenderingIntent intent,
+						   CGColorSpaceRef space, void *options)
+{
+	cmsHPROFILE src;
+	cmsHPROFILE dst;
+	cmsHTRANSFORM tr;
+	CGFloat in[CG_COLOR_MAX_COMPONENTS];
+	CGFloat out[CG_COLOR_MAX_COMPONENTS];
+	CGColorRef result;
+	const CGFloat *comp;
+	int src_own;
+	int dst_own;
+	int src_ncomp;
+	int dst_ncomp;
+	int src_fmt;
+	int dst_fmt;
+	int i;
+
+	if (color == NULL) {
+		return NULL;
+	}
+	if (options != NULL) {
+		fprintf(stderr, "CG-REFUSE: CGColorCreateCopyByMatchingToColorSpace has no options "
+				"yet, and dropping one a caller asked for would change the output\n");
+		return NULL;
+	}
+	src_fmt = cg_engine_format(CGColorSpaceGetModel(color->space), &src_ncomp);
+	dst_fmt = cg_engine_format(CGColorSpaceGetModel(space), &dst_ncomp);
+	if (src_fmt == 0 || dst_fmt == 0) {
+		fprintf(stderr, "CG-REFUSE: no conversion from or to this color space's model\n");
+		return NULL;
+	}
+	src = cg_engine_profile_for(color->space, &src_own);
+	dst = cg_engine_profile_for(space, &dst_own);
+	if (src == NULL || dst == NULL) {
+		if (src_own && src != NULL) {
+			cmsCloseProfile(src);
+		}
+		if (dst_own && dst != NULL) {
+			cmsCloseProfile(dst);
+		}
+		fprintf(stderr, "CG-REFUSE: this color space has no profile to convert through — a "
+				"device CMYK colour is the case that exists today\n");
+		return NULL;
+	}
+	tr = cmsCreateTransform(src, (cmsUInt32Number)src_fmt, dst, (cmsUInt32Number)dst_fmt,
+				cg_engine_intent(intent), 0);
+	if (src_own) {
+		cmsCloseProfile(src);
+	}
+	if (dst_own) {
+		cmsCloseProfile(dst);
+	}
+	if (tr == NULL) {
+		fprintf(stderr, "CG-REFUSE: the color engine could not build this conversion\n");
+		return NULL;
+	}
+	comp = CGColorGetComponents(color);
+	for (i = 0; i < src_ncomp; i++) {
+		in[i] = comp[i];
+	}
+	cmsDoTransform(tr, in, out, 1);
+	cmsDeleteTransform(tr);
+	/* THE ALPHA IS NOT CONVERTED — it is not a colour, and the engine has no opinion about
+	 * it — so it is carried across and placed last, where the component array keeps it. */
+	out[dst_ncomp] = comp[src_ncomp];
+	result = CGColorCreate(space, out);
+	return result;
 }

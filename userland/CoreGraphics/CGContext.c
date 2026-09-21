@@ -1772,15 +1772,43 @@ void CGContextSetRGBStrokeColor(CGContextRef c, CGFloat red, CGFloat green, CGFl
  * ------------------------------------------------------------------------------------- */
 static int cg_color_to_rgba(CGColorRef color, CGFloat rgba[4])
 {
-	CGColorSpaceRef space;
+	CGColorSpaceRef dev;
+	CGColorRef converted;
 	const CGFloat *comp;
+	int model;
 
 	if (color == NULL) {
 		return 0;   /* NULL is the clearing form's opposite: nothing asked, nothing done */
 	}
-	space = CGColorGetColorSpace(color);
+	model = CGColorSpaceGetModel(CGColorGetColorSpace(color));
+	if (model != kCGColorSpaceModelMonochrome && model != kCGColorSpaceModelRGB) {
+		/* A SPACE WHOSE NUMBERS HAVE TO BE INTERPRETED IS CONVERTED RATHER THAN REFUSED, and
+		 * the conversion used is the LIBRARY'S OWN — `CGColorCreateCopyByMatchingToColorSpace`
+		 * — rather than a private path: if the engine cannot express the conversion, that
+		 * function refuses and says why, and this one inherits both. ONE RULE, IN ONE PLACE.
+		 *
+		 * THE TARGET IS DEVICE RGB because that is what the rasterizer blends: the state holds
+		 * four numbers and the context's surface is a 32-bit RGB bitmap. THE DEVICE SPACE IS
+		 * NOT ADDED TO THE CONTEXT for this — the colour takes its own reference to it and
+		 * gives it back here, so nothing outlives the conversion, and a context's colour space
+		 * stays what the caller set. */
+		dev = CGColorSpaceCreateDeviceRGB();
+		converted = CGColorCreateCopyByMatchingToColorSpace(color, kCGRenderingIntentDefault,
+								    dev, NULL);
+		CGColorSpaceRelease(dev);
+		if (converted == NULL) {
+			return 0;   /* the conversion has already said why */
+		}
+		comp = CGColorGetComponents(converted);
+		rgba[0] = comp[0];
+		rgba[1] = comp[1];
+		rgba[2] = comp[2];
+		rgba[3] = comp[3];
+		CGColorRelease(converted);
+		return 1;
+	}
 	comp = CGColorGetComponents(color);
-	switch (CGColorSpaceGetModel(space)) {
+	switch (model) {
 	case kCGColorSpaceModelMonochrome:
 		rgba[0] = comp[0];
 		rgba[1] = comp[0];
@@ -1794,8 +1822,10 @@ static int cg_color_to_rgba(CGColorRef color, CGFloat rgba[4])
 		rgba[3] = comp[3];
 		return 1;
 	default:
-		fprintf(stderr, "CG-REFUSE: a colour in this color space cannot be drawn without a "
-				"color conversion, which this library does not have yet (lcms2, C4.2)\n");
+		/* UNREACHABLE: the test above sends every other model to the conversion, which is
+		 * where the refusals now live. Kept so that a model added later without a home here
+		 * fails visibly in this function rather than silently somewhere else. */
+		fprintf(stderr, "CG-REFUSE: a colour in this color space has no conversion\n");
 		return 0;
 	}
 }

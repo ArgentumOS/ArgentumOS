@@ -5,7 +5,7 @@
 #
 # sources: https://developer.apple.com/tutorials/data/index/coregraphics
 #          (plus .../index/corefoundation, CG-named rows only — see below)
-# measured: 2026-09-20
+# measured: 2026-09-21
 #
 # kind	status	name	owner	family	why	src
 #
@@ -36,10 +36,10 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  142   open  545   struck   48
+#   func       shipped  144   open  543   struck   48
 #   macro      shipped    7   open   98   struck    2
-#   enum       shipped    9   open   47   struck    1
-#   case       shipped   65   open  365   struck   14
+#   enum       shipped   10   open   46   struck    1
+#   case       shipped   70   open  360   struck   14
 #   var        shipped    6   open  120   struck    9
 #   typealias  shipped    5   open   93   struck    2
 #   struct     shipped    6   open   14   struck    0
@@ -393,11 +393,11 @@ case	open	kCGPatternTilingConstantSpacing	-	Opaque Types / Constants / Constants
 case	open	kCGPatternTilingConstantSpacingMinimalDistortion	-	Opaque Types / Constants / Constants	-	objc
 case	open	kCGPatternTilingNoDistortion	-	Opaque Types / Constants / Constants	-	objc
 case	open	kCGPopUpMenuWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGRenderingIntentAbsoluteColorimetric	-	Opaque Types / Data Types / Constants	-	objc
-case	open	kCGRenderingIntentDefault	-	Opaque Types / Data Types / Constants	-	objc
-case	open	kCGRenderingIntentPerceptual	-	Opaque Types / Data Types / Constants	-	objc
-case	open	kCGRenderingIntentRelativeColorimetric	-	Opaque Types / Data Types / Constants	-	objc
-case	open	kCGRenderingIntentSaturation	-	Opaque Types / Data Types / Constants	-	objc
+case	shipped	kCGRenderingIntentAbsoluteColorimetric	-	Opaque Types / Data Types / Constants	-	objc
+case	shipped	kCGRenderingIntentDefault	-	Opaque Types / Data Types / Constants	-	objc
+case	shipped	kCGRenderingIntentPerceptual	-	Opaque Types / Data Types / Constants	-	objc
+case	shipped	kCGRenderingIntentRelativeColorimetric	-	Opaque Types / Data Types / Constants	-	objc
+case	shipped	kCGRenderingIntentSaturation	-	Opaque Types / Data Types / Constants	-	objc
 case	open	kCGScreenSaverWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGScreenUpdateOperationMove	-	Services / Constants / Constants	-	objc
 case	open	kCGScreenUpdateOperationReducedDirtyRectangleCount	-	Services / Constants / Constants	-	objc
@@ -493,7 +493,7 @@ enum	shipped	CGBlendMode	-	Opaque Types / Managing a Graphics Context	-	objc
 enum	open	CGCaptureOptions	-	Services / Constants	-	objc
 enum	open	CGColorConversionInfoTransformType	-	Opaque Types / Creating a Color Conversion	-	objc
 enum	open	CGColorModel	-	Enumerations	-	objc
-enum	open	CGColorRenderingIntent	-	Opaque Types / Data Types	-	objc
+enum	shipped	CGColorRenderingIntent	-	Opaque Types / Data Types	-	objc
 enum	shipped	CGColorSpaceModel	-	Opaque Types / Examining a Color Space	-	objc
 enum	open	CGComponent	-	Enumerations	-	objc
 enum	open	CGConfigureOption	-	Services / Constants	-	objc
@@ -586,7 +586,7 @@ func	open	CGColorConversionInfoCreateWithOptions	-	Opaque Types / Creating a Col
 func	open	CGColorConversionInfoGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGColorCreate	-	Opaque Types / Creating Colors	-	objc
 func	shipped	CGColorCreateCopy	-	Opaque Types / Creating Colors	-	objc
-func	open	CGColorCreateCopyByMatchingToColorSpace	-	Opaque Types / Converting Between Color Spaces	-	objc
+func	shipped	CGColorCreateCopyByMatchingToColorSpace	-	Opaque Types / Converting Between Color Spaces	-	objc
 func	shipped	CGColorCreateCopyWithAlpha	-	Opaque Types / Creating Colors	-	objc
 func	open	CGColorCreateGenericCMYK	-	Opaque Types / Creating Colors	-	objc
 func	shipped	CGColorCreateGenericGray	-	Opaque Types / Creating Colors	-	objc
@@ -621,7 +621,7 @@ func	open	CGColorSpaceCreateExtended	-	Reference / Functions	-	objc
 func	open	CGColorSpaceCreateExtendedLinearized	-	Reference / Functions	-	objc
 func	open	CGColorSpaceCreateICCBased	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateIndexed	-	Opaque Types / Creating Color Spaces	-	objc
-func	open	CGColorSpaceCreateLab	-	Opaque Types / Creating Color Spaces	-	objc
+func	shipped	CGColorSpaceCreateLab	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateLinearized	-	Reference / Functions	-	objc
 func	open	CGColorSpaceCreatePattern	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateWithColorSyncProfile	-	Reference / Functions	-	objc

@@ -200,8 +200,14 @@ host-foundation-run: host-foundation
 # - those carry the Objective-C runtime options and `-lobjc`, and a C probe handed an unused
 # `-fobjc-*` flag warns under -Wextra while linking a runtime it does not call. The flags
 # below are the ones the probe runs were verified with (0 warnings, 144 checks).
-HOST_CG_CFLAGS  ?= -std=gnu11 -fPIC -g -Wall -Wextra -Iuserland -I/usr/include/pixman-1
-HOST_CG_LDFLAGS ?= -lpixman-1 -lm
+HOST_LCMS2_PREFIX ?= .build/lcms2-host-prefix
+HOST_CG_CFLAGS  ?= -std=gnu11 -fPIC -g -Wall -Wextra -Iuserland -I/usr/include/pixman-1 \
+		   -I$(CURDIR)/$(HOST_LCMS2_PREFIX)/include
+# THE HOST DOES NEED THE RPATH — the opposite of the guest, and for the same reason: there is
+# no system lcms2 to fall back on here (measured: the runtime .so exists, the header does not),
+# so the only copy the probe can load is the one the build script installed.
+HOST_CG_LDFLAGS ?= -lpixman-1 -lm -L$(CURDIR)/$(HOST_LCMS2_PREFIX)/lib -llcms2 \
+		   -Wl,-rpath,$(CURDIR)/$(HOST_LCMS2_PREFIX)/lib
 HOST_CG_SRCS    := $(wildcard userland/CoreGraphics/*.c)
 HOST_CG_LIB     ?= $(HOST_LIBDIR)/libcoregraphics.so
 HOST_CG_OBJDIR  := $(HOST_OBJDIR)/coregraphics

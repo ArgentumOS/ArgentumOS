@@ -13,20 +13,33 @@
  * is Apple's documented behaviour for these (they are process-wide).
  */
 #include <CoreGraphics/CGColorSpace.h>
+#include <CoreGraphics/CGColorSpace_internal.h>
 
+#include <lcms2.h>
 #include <stdlib.h>
 
 struct CGColorSpace {
 	int refcount;
 	CGColorSpaceModel model;
 	size_t components;
+	/* THE ENGINE'S HANDLE, AND IT IS ALSO THE KIND. A device RGB space and a calibrated or
+	 * ICC RGB space share `kCGColorSpaceModelRGB`; what separates them is whether the numbers
+	 * can be blended as they stand (a device space, no profile) or have to be interpreted
+	 * through a profile first. C4.1's guard dispatched on the MODEL alone, which was safe only
+	 * because device RGB was the only RGB space that existed — the gap recorded against it.
+	 * ONE FIELD FIXES IT: a profile means "convert", no profile means "the numbers are the
+	 * numbers". It doubles as the cache, because parsing a profile is expensive and a space is
+	 * exactly the right lifetime to hold one. */
+	cmsHPROFILE profile;
 };
 
-static struct CGColorSpace cg_device_rgb = { 0, kCGColorSpaceModelRGB, 3 };
-static struct CGColorSpace cg_device_gray = { 0, kCGColorSpaceModelMonochrome, 1 };
+static struct CGColorSpace cg_device_rgb = { 0, kCGColorSpaceModelRGB, 3, NULL };
+static struct CGColorSpace cg_device_gray = { 0, kCGColorSpaceModelMonochrome, 1, NULL };
 /* FOUR COMPONENTS, ALPHA NOT COUNTED, like the other two: the count belongs to the SPACE, and
- * a colour adds its alpha on top of it. */
-static struct CGColorSpace cg_device_cmyk = { 0, kCGColorSpaceModelCMYK, 4 };
+ * a colour adds its alpha on top of it. NO PROFILE, because there is no device-CMYK profile to
+ * give it — which is what keeps a CMYK colour un-drawable while a Lab one becomes drawable
+ * below. */
+static struct CGColorSpace cg_device_cmyk = { 0, kCGColorSpaceModelCMYK, 4, NULL };
 
 CGColorSpaceRef CGColorSpaceCreateDeviceRGB(void)
 {
@@ -46,6 +59,56 @@ CGColorSpaceRef CGColorSpaceCreateDeviceCMYK(void)
 	return &cg_device_cmyk;
 }
 
+/* APPLE'S Lab WHITE POINT IS AN XYZ TRIPLE AND lcms2's IS AN xyY TRIPLE, so this is the one
+ * piece of arithmetic between the two APIs. A NULL white point means D50 — which is both
+ * Apple's documented default and exactly what `cmsCreateLab4Profile(NULL)` builds, so the
+ * arithmetic is skipped rather than approximated. */
+static int cg_xyz_to_xyy(const CGFloat *xyz, cmsCIExyY *out)
+{
+	double sum = (double)xyz[0] + (double)xyz[1] + (double)xyz[2];
+
+	if (sum <= 0.0) {
+		return 0;
+	}
+	out->x = (double)xyz[0] / sum;
+	out->y = (double)xyz[1] / sum;
+	out->Y = (double)xyz[1];
+	return 1;
+}
+
+CGColorSpaceRef CGColorSpaceCreateLab(const CGFloat *whitePoint, const CGFloat *blackPoint,
+				      const CGFloat *range)
+{
+	CGColorSpaceRef space;
+	cmsCIExyY white;
+
+	/* THE BLACK POINT AND THE RANGE HAVE NO COUNTERPART IN AN ICC Lab PROFILE. Lab4 is defined
+	 * by its white point alone, and its a/b range is fixed at ±128. Keeping the parameters in
+	 * the signature without inventing an effect for them is the honest choice: Apple's own
+	 * documentation says the black point is ignored for a Lab space and the range is honored
+	 * only by the colours drawn in it. */
+	(void)blackPoint;
+	(void)range;
+
+	space = calloc(1, sizeof(struct CGColorSpace));
+	if (space == NULL) {
+		return NULL;
+	}
+	space->refcount = 1;
+	space->model = kCGColorSpaceModelLab;
+	space->components = 3;
+	if (whitePoint == NULL) {
+		space->profile = cmsCreateLab4Profile(NULL);   /* D50 */
+	} else if (cg_xyz_to_xyy(whitePoint, &white)) {
+		space->profile = cmsCreateLab4Profile(&white);
+	}
+	if (space->profile == NULL) {
+		free(space);
+		return NULL;
+	}
+	return space;
+}
+
 CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space)
 {
 	if (space != NULL) {
@@ -56,13 +119,35 @@ CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space)
 
 void CGColorSpaceRelease(CGColorSpaceRef space)
 {
-	if (space != NULL && space->refcount > 0) {
+	if (space == NULL) {
+		return;
+	}
+	if (space->refcount > 0) {
 		space->refcount--;
+	}
+	if (space->refcount > 0) {
+		return;
+	}
+	/* A SPACE WITH A PROFILE IS NOT A SINGLETON, so this one IS destroyed — the device spaces
+	 * are the ones that are not, and the difference is the profile: `CGColorSpaceCreateDeviceRGB()`
+	 * may be called again at any time and must get the same object back, while a Lab space was
+	 * asked for by parameters and owns an engine handle that has to be closed. */
+	if (space->profile != NULL) {
+		cmsCloseProfile(space->profile);
+		free(space);
 	}
 	/* NOT FREED, EVEN AT ZERO: these are the process-wide device spaces, and
 	 * `CGColorSpaceCreateDeviceRGB()` may be called again at any time. A caller that
 	 * balanced its retain/release has done what the contract asks; the object simply
 	 * is not destroyed, which is what "no parameters, one answer" costs. */
+}
+
+void *cg_colorspace_engine_profile(CGColorSpaceRef space)
+{
+	if (space == NULL) {
+		return NULL;
+	}
+	return space->profile;
 }
 
 CGColorSpaceModel CGColorSpaceGetModel(CGColorSpaceRef space)

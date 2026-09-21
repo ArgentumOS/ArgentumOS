@@ -55,6 +55,30 @@ CGColorRef CGColorCreateCopy(CGColorRef color);
  * not a matter of setting one: every component has to be copied and the last one replaced. */
 CGColorRef CGColorCreateCopyWithAlpha(CGColorRef color, CGFloat alpha);
 
+/* HOW a conversion is asked for. THE CASE ORDER IS APPLE'S DOCUMENTED ORDER AND NOT lcms2's:
+ * the engine numbers perceptual first and absolute colorimetric last, so every intent crosses
+ * a translation here rather than being handed to the engine as it stands. That translation is
+ * the entire reason this enum is a type of its own. */
+typedef enum {
+	kCGRenderingIntentDefault = 0,
+	kCGRenderingIntentAbsoluteColorimetric,
+	kCGRenderingIntentRelativeColorimetric,
+	kCGRenderingIntentPerceptual,
+	kCGRenderingIntentSaturation
+} CGColorRenderingIntent;
+
+/* THE SAME COLOUR, EXPRESSED IN ANOTHER SPACE. Components are converted through the engine
+ * (lcms2); a colour whose components CANNOT be interpreted in its own space cannot be converted
+ * either, so this returns NULL and says why rather than handing back the numbers unchanged —
+ * a device CMYK colour is the case that exists today, because there is no device-CMYK profile.
+ *
+ * `options` IS `void *` HERE AND A `CFDictionaryRef` IN APPLE'S SIGNATURE, which is this
+ * tree's CoreFoundation decision rather than an oversight: there are no conversion options yet,
+ * and A NON-NULL ONE IS REFUSED rather than ignored, because silently dropping an option a
+ * caller asked for is the kind of thing that only shows up in the output. */
+CGColorRef CGColorCreateCopyByMatchingToColorSpace(CGColorRef color, CGColorRenderingIntent intent,
+						   CGColorSpaceRef space, void *options);
+
 CGColorRef CGColorRetain(CGColorRef color);
 void CGColorRelease(CGColorRef color);
 
