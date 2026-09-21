@@ -187,6 +187,12 @@ NSErrorDomain const NSStreamSOCKSErrorDomain = @"NSStreamSOCKSErrorDomain";
 		[_streamError release];
 		_streamError = error;
 	}
+	/* AND OPENING IS WHEN A SOURCE BECOMES REGISTRABLE, because Apple requires scheduling BEFORE -open and a
+	 * descriptor-backed stream has no descriptor until it opens. So the base tries again here rather than
+	 * making every substream remember to. */
+	if (status == NSStreamStatusOpen) {
+		[self fnRegisterSource];
+	}
 }
 
 /* TO THE DELEGATE, IF IT WANTS ONE: -stream:handleEvent: is @optional, and a delegate that only wants to be
@@ -228,17 +234,24 @@ NSErrorDomain const NSStreamSOCKSErrorDomain = @"NSStreamSOCKSErrorDomain";
 	_sourceRegistered = NO;
 }
 
-/* THE LOOP SAYS "READY", THE STREAM SAYS WHAT THAT MEANS. Which event a ready descriptor is worth is the
- * substream's business (input: bytes or end; output: space), so this maps the half it watches and hands the
- * decision-worthy event on; a substream that needs to distinguish end-of-file re-registers with its own
- * selector. */
+/* THE LOOP SAYS "READY", THE SUBSTREAM SAYS WHAT THAT MEANS - which is not a formality: a descriptor that
+ * is ready and EMPTY means END OF STREAM, and only the substream can tell that from bytes arriving. */
+- (NSStreamEvent)fnStreamEventForReadiness
+{
+	return _readsForSource ? NSStreamEventHasBytesAvailable : NSStreamEventHasSpaceAvailable;
+}
+
 - (void)fnSourceReady
 {
+	NSStreamEvent event;
+
 	if ([self fnStreamDescriptor] < 0) {
 		return;
 	}
-	[self fnStreamDispatch:_readsForSource ? NSStreamEventHasBytesAvailable
-					      : NSStreamEventHasSpaceAvailable];
+	event = [self fnStreamEventForReadiness];
+	if (event != NSStreamEventNone) {
+		[self fnStreamDispatch:event];
+	}
 }
 
 @end

@@ -3521,7 +3521,7 @@ vanishing.
 | **Low-Level Utilities / Run Loop Scheduling** | all classes shipped | — |
 | **Low-Level Utilities / Scripts and External Tasks** | 1 open; 3 STRUCK: `NSUserAppleScriptTask`, `NSUserAutomatorTask`, `NSUserScriptTask` | `NSUserUnixTask` |
 | **Low-Level Utilities / Sockets** | 1 STRUCK: `NSHost` | — |
-| **Low-Level Utilities / Streams** | 2 open | `NSInputStream`, `NSOutputStream` |
+| **Low-Level Utilities / Streams** | 1 open | `NSOutputStream` |
 | **Low-Level Utilities / Tasks and Pipes** | all classes shipped | — |
 | **Low-Level Utilities / Threads and Locking** | 2 open | `NSConditionLock`, `NSDistributedLock` |
 | **Low-Level Utilities / Value Wrappers and Transformations** | all classes shipped | — |
@@ -8727,3 +8727,27 @@ stored object is retained/released by hand), while the PROBES are ARC; and landi
 **NEXT: SUB-STEP 2, `NSInputStream`** - from a path/`NSURL` and from `NSData`, registering its descriptor as a
 run-loop source ON DEMAND through the same seam this step proved, so `-stream:handleEvent:` fires
 `NSStreamEventHasBytesAvailable` instead of a read blocking a thread.
+
+**AND SUB-STEP 2 HAS LANDED AND IS VERIFIED (2026-09-21): `NSInputStream`.** `userland/Foundation/NSInputStream.h`
+and `.m` - the memory source (`-initWithData:`) and the descriptor source (`-initWithFileAtPath:`/
+`-initWithURL:`, opened at `-open` per Apple), with `-read:maxLength:` (0 is END, -1 is an error, and the
+difference is why the return is signed), `-getBuffer:length:`, `-hasBytesAvailable`, the status machine, and
+the two property keys this library ACTS on (`NSStreamFileCurrentOffsetKey` reports the offset and setting it
+SEEKS). Measured: **`foundation_stream` 6/6 case checks and 27/27 probe checks** (`RESULT ok=27 fail=0`).
+
+**AND IT MEASURED A SUBSTRATE LIMIT WORTH NAMING RATHER THAN WORKING AROUND: THIS KERNEL'S `select(2)` DOES
+NOT REPORT A REGULAR FILE AS READY** - the probe pins it as `select-does-not-report-a-regular-file`, which
+answers 0. The run loop's wait IS `select(2)`, so a file-backed stream is READABLE (reads, offsets and
+`-close` all work) but is never DELIVERED as an event: `input-stream-over-a-file-answers-the-read-would-not-block`
+asserts exactly that pair, and the PIPE path IS delivered (sub-step 1's probe proves it through a real pipe).
+What the stream answers correctly either way is whether a read would block, which is why `-hasBytesAvailable`
+asks `fstat(2)` about a regular file instead of `poll(2)` - the same gap, answered honestly. **The fix, when
+it is wanted, is in the KERNEL's select, not here: POSIX has select report a regular file ready.**
+
+**AND ONE GAP THE WORK FOUND IN PASSING, RECORDED BECAUSE IT ABORTS RATHER THAN FAILING QUIETLY:**
+`-[NSString fileSystemRepresentation]` is DECLARED and NOT IMPLEMENTED in this tree (calling it prints
+"Foundation: -[NSConstantString fileSystemRepresentation] is not implemented" and aborts the process, exit
+134). `NSInputStream` uses `-UTF8String`, which is what `NSTask` already execs through, and the header says so.
+
+**NEXT: SUB-STEP 3, `NSOutputStream`** - to a path and to memory (the `NSStreamDataWrittenToMemoryStreamKey`
+form), whose descriptor half inherits the same substrate limit for a regular file.

@@ -177,10 +177,15 @@ extern NSErrorDomain const NSStreamSOCKSErrorDomain;
  *   -fnStreamWatchesReadable   which half of that descriptor is this stream's business.
  *   -fnStreamSetStatus:error:  the SUBSTREAM moves the status, because only it knows whether its resource
  *                              opened; the base's own -open/-close stay inert (see above).
+ *   -fnStreamEventForReadiness what a READY descriptor means to this stream. The base answers the event for
+ *                              the half it watches (bytes for an input, space for an output); an INPUT stream
+ *                              overrides it because a descriptor that is ready and EMPTY is the END of the
+ *                              stream rather than bytes, and only the substream can tell those apart.
  *   -fnStreamDispatch:         hand an event to the delegate, if it wants one. */
 @interface NSStream (FNSubstream)
 - (int)fnStreamDescriptor;
 - (BOOL)fnStreamWatchesReadable;
+- (NSStreamEvent)fnStreamEventForReadiness;
 - (void)fnStreamSetStatus:(NSStreamStatus)status error:(nullable NSError *)error;
 - (void)fnStreamDispatch:(NSStreamEvent)eventCode;
 @end

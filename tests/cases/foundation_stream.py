@@ -32,6 +32,21 @@ CHECKS = (
     "substream-moves-the-status",
     "no-event-without-readiness",
     "source-fires-delegate",
+    "input-stream-refuses-a-read-before-open",
+    "input-stream-from-data-opens",
+    "input-stream-from-data-reads",
+    "input-stream-getbuffer",
+    "input-stream-reads-the-rest",
+    "input-stream-ends-at-eof",
+    "input-stream-offset-key-reads",
+    "input-stream-offset-key-seeks",
+    "input-stream-from-file-constructs",
+    "input-stream-from-file-opens",
+    "input-stream-from-file-reads",
+    "input-stream-getbuffer-refuses-a-file",
+    "input-stream-closes",
+    "select-does-not-report-a-regular-file",
+    "input-stream-over-a-file-answers-the-read-would-not-block",
 )
 
 

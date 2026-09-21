@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  123   open   73   struck   77
+#   class      shipped  124   open   72   struck   77
 #   protocol   shipped   14   open   17   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   81   open   62   struck   17
@@ -1421,7 +1421,7 @@ class	shipped	NSIndexSet		Fundamentals / Indexes	-	objc
 class	struck	NSIndexSpecifier		App Support / Object Specifiers	declined	objc
 class	open	NSInflectionRule		Fundamentals / Automatic grammar agreement	-	objc
 class	open	NSInflectionRuleExplicit		Fundamentals / Automatic grammar agreement	-	objc
-class	open	NSInputStream		Low-Level Utilities / Streams	-	objc
+class	shipped	NSInputStream		Low-Level Utilities / Streams	-	objc
 class	shipped	NSInvocation		Low-Level Utilities / Invocations	-	objc
 class	open	NSInvocationOperation		App Support / Operations	-	objc
 class	open	NSItemProvider		App Support / Attachments	-	objc

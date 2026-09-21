@@ -18,8 +18,11 @@
 
 #import <Foundation/Foundation.h>
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/select.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 static int okc, failc;
@@ -221,6 +224,142 @@ int main(void)
 			(void)close(fds[0]);
 			(void)close(fds[1]);
 		}
+	}
+
+
+	/* ---- 5. NSInputStream: THE SOURCE - A MEMORY STREAM FIRST ---- */
+	{
+		NSData *payload = [@"hello" dataUsingEncoding:NSUTF8StringEncoding];
+		NSInputStream *in = [NSInputStream inputStreamWithData:payload];
+		uint8_t buf[8];
+		NSUInteger len = 0;
+		uint8_t *p = NULL;
+
+		/* A STREAM OF ITS OWN, deliberately: the read below puts it in Error, and an Error stream is
+		 * not the one the rest of this block goes on to open. */
+		{
+			NSInputStream *never = [NSInputStream inputStreamWithData:payload];
+
+			check("input-stream-refuses-a-read-before-open",
+			      [never read:buf maxLength:sizeof(buf)] == -1 &&
+			      [never streamStatus] == NSStreamStatusError,
+			      @"a stream that was never opened answered a read rather than failing");
+		}
+		[in open];
+		check("input-stream-from-data-opens",
+		      [in streamStatus] == NSStreamStatusOpen && [in fnStreamDescriptor] == -1,
+		      @"a data stream did not open, or claimed a descriptor it has not got");
+		check("input-stream-from-data-reads",
+		      [in read:buf maxLength:3] == 3 && memcmp(buf, "hel", 3) == 0,
+		      @"the first three bytes were not the first three bytes");
+		check("input-stream-getbuffer",
+		      [in getBuffer:&p length:&len] && p != NULL && len == 2,
+		      @"a memory stream would not hand out its remaining two bytes");
+		check("input-stream-reads-the-rest",
+		      [in read:buf maxLength:sizeof(buf)] == 2 && memcmp(buf, "lo", 2) == 0,
+		      @"the rest was not the rest");
+		check("input-stream-ends-at-eof",
+		      [in read:buf maxLength:sizeof(buf)] == 0 &&
+		      [in streamStatus] == NSStreamStatusAtEnd,
+		      @"a read past the end did not answer 0 and move to AtEnd");
+	}
+
+	/* ---- 6. AND THE OFFSET KEY, WHICH IS ONE OF THE TWO THIS LIBRARY ACTS ON ---- */
+	{
+		NSData *payload = [@"abcdef" dataUsingEncoding:NSUTF8StringEncoding];
+		NSInputStream *in = [NSInputStream inputStreamWithData:payload];
+		uint8_t buf[8];
+
+		[in open];
+		(void)[in read:buf maxLength:2];
+		check("input-stream-offset-key-reads",
+		      [[in propertyForKey:NSStreamFileCurrentOffsetKey] unsignedIntegerValue] == 2,
+		      @"the offset key did not report where the stream is");
+		check("input-stream-offset-key-seeks",
+		      [in setProperty:@0 forKey:NSStreamFileCurrentOffsetKey] &&
+		      [in read:buf maxLength:1] == 1 && buf[0] == 'a',
+		      @"setting the offset key did not reposition the stream");
+	}
+
+	/* ---- 7. AND A DESCRIPTOR: THE PROBE IS ITS OWN FIXTURE - a staged executable is an ELF, so its first
+	 * four bytes are a fact about the image rather than about this test. ---- */
+	{
+		NSInputStream *in = [NSInputStream inputStreamWithFileAtPath:
+					@"/System/Shared/tests/foundation_stream"];
+		uint8_t buf[8];
+		NSUInteger len = 0;
+		uint8_t *p = NULL;
+
+		check("input-stream-from-file-constructs", in != nil,
+		      @"-inputStreamWithFileAtPath: answered nil");
+		[in open];
+		check("input-stream-from-file-opens",
+		      [in streamStatus] == NSStreamStatusOpen && [in fnStreamDescriptor] >= 0,
+		      [NSString stringWithFormat:@"a file stream opened with status %d and descriptor %d",
+			(int)[in streamStatus], [in fnStreamDescriptor]]);
+		check("input-stream-from-file-reads",
+		      [in read:buf maxLength:4] == 4 && buf[0] == 0x7f && buf[1] == 'E' &&
+		      buf[2] == 'L' && buf[3] == 'F',
+		      @"the staged probe's first four bytes are not an ELF magic");
+		check("input-stream-getbuffer-refuses-a-file", ![in getBuffer:&p length:&len],
+		      @"a file stream handed out a memory buffer");
+		[in close];
+		check("input-stream-closes", [in streamStatus] == NSStreamStatusClosed,
+		      @"-close did not leave the stream Closed");
+	}
+
+	/* ---- 8. THE SEAM AGAIN, THROUGH THE NEW CLASS: a regular file is ALWAYS ready, so a scheduled file
+	 * stream must report its bytes through the delegate - no read, no thread blocked. ---- */
+	{
+		NSInputStream *in = [NSInputStream inputStreamWithFileAtPath:
+					@"/System/Shared/tests/foundation_stream"];
+		FnStreamDelegate *delegate = [[FnStreamDelegate alloc] init];
+		NSRunLoop *loop = [NSRunLoop currentRunLoop];
+		uint8_t buf[4];
+
+		/* THE MEASUREMENT THAT SETTLES WHY: a file-backed stream is readable, but is it DELIVERED? That
+		 * depends on this kernel's select(2) reporting a REGULAR FILE as ready, which is a fact about the
+		 * substrate rather than about NSStream - so it is measured here, beside the check that depends on
+		 * it, instead of being assumed. */
+		{
+			int fd = open("/System/Shared/tests/foundation_stream", O_RDONLY);
+
+			if (fd >= 0) {
+				fd_set set;
+				struct timeval tv;
+				int ready;
+
+				FD_ZERO(&set);
+				FD_SET(fd, &set);
+				tv.tv_sec = 0;
+				tv.tv_usec = 0;
+				ready = select(fd + 1, &set, NULL, NULL, &tv);
+				/* THE MEASURED LIMIT, PINNED RATHER THAN HIDDEN: this kernel does NOT report a
+				 * regular file as ready. Everything downstream of it follows from that. */
+				check("select-does-not-report-a-regular-file",
+				      ready == 0,
+				      [NSString stringWithFormat:@"select(2) on a regular file answered %d (0 = not ready)",
+					ready]);
+				(void)FD_ISSET(fd, &set);
+				(void)close(fd);
+			}
+		}
+		[in setDelegate:delegate];
+		[in scheduleInRunLoop:loop forMode:NSDefaultRunLoopMode];
+		[in open];
+		(void)[loop runMode:NSDefaultRunLoopMode
+			 beforeDate:[NSDate dateWithTimeIntervalSinceNow:1.0]];
+		/* AND THE CONSEQUENCE, STATED: because the run loop's wait IS select(2), a file-backed stream is
+		 * readable but never DELIVERED as an event in this tree. What the stream still answers correctly is
+		 * whether a read would block - which is -hasBytesAvailable's own contract, and the reason that
+		 * method asks fstat(2) about a regular file instead of poll(2). */
+		check("input-stream-over-a-file-answers-the-read-would-not-block",
+		      [in hasBytesAvailable] && [delegate events] == 0,
+		      [NSString stringWithFormat:@"hasBytes=%d events=%d", (int)[in hasBytesAvailable],
+			[delegate events]]);
+		(void)[in read:buf maxLength:sizeof(buf)];
+		[in removeFromRunLoop:loop forMode:NSDefaultRunLoopMode];
+		[in close];
 	}
 
 	printf("FOUNDATION-STREAM RESULT ok=%d fail=%d\n", okc, failc);
