@@ -3459,7 +3459,7 @@ vanishing.
 | **App Support / User Notifications** | 1 open; 3 STRUCK: `NSUserNotification`, `NSUserNotificationAction`, `NSUserNotificationCenter` | `NSUserNotificationCenterDelegate` |
 | **App Support / User-Relevant Errors** | all classes shipped | — |
 | **Files and Data Persistence / Adopting Codability** | all classes shipped | — |
-| **Files and Data Persistence / App-specific settings** | 1 open | `NSUserDefaults` |
+| **Files and Data Persistence / App-specific settings** | all classes shipped | — |
 | **Files and Data Persistence / Coordinated file access** | 3 open | `NSFileAccessIntent`, `NSFileCoordinator`, `NSFilePresenter` |
 | **Files and Data Persistence / Deprecated** | ALL STRUCK: `NSArchiver`, `NSUnarchiver` | — |
 | **Files and Data Persistence / File system operations** | 4 open | `NSDirectoryEnumerator`, `NSFileManagerDelegate`, `NSFileProviderService`, `NSFileVersion` |
@@ -3696,7 +3696,7 @@ tools/foundation-sweep.py --refresh      # re-read Apple's index and rewrite the
 The rows are not equal in cost, and two of them gate many others:
 
 1. **The sweep (§11.2) — DONE, KEPT AS A GATE, and it is §11.3.1**: the whole documented surface, 3,225
-   symbols in one committed file, **1,453 open and 831 struck** (the counts are read off the surface
+   symbols in one committed file, **947 shipped, 1,447 open and 831 struck** (the counts are read off the surface
    file's own header, which `--refresh` rewrites), with `make foundation-sweep` failing when
    it drifts from this tree. What it changes about the order is in the middle of the list: **the
    Swift-overlay families Apple added in the last few years (units and measurement, the grammar-agreement
@@ -5826,4 +5826,99 @@ So the rule this section adds to §12.1 is not another number to keep current, i
 is OWED must name the unit that owes it, so that a strike flips exactly one row and the reader can find it.**
 §12.3's rows do that now. §12.2's graph and §12.5's table did, and are where the drift was worst, because both
 restate the same facts in a second place.
+
+## 41. W5: `NSUserDefaults`, THE SETTINGS STORE — AND THE TWO DECISIONS THAT MOVED IT (2026-09-20)
+
+**WHAT LANDED.** The class, its five constants, a 36-check probe and its case: `NSUserDefaults`, plus
+`NSArgumentDomain`, `NSGlobalDomain`, `NSRegistrationDomain`, `NSUserDefaultsDidChangeNotification` and
+`NSUserDefaultsSizeLimitExceededNotification` — **6 ledger rows to `shipped`**, `foundation-sweep --check`
+green, `foundation_defaults` **36/36 on the guest**. This is the FIRST unit to land after §39's denominator
+change, so its coverage movement is delivery rather than arithmetic: `shipped` **941 → 947**, `open`
+**1453 → 1447**, and 947 of the 2,394 non-struck rows reads **39.6%** where §39 left it at 39.3%.
+
+**TWO DECISIONS IN THIS UNIT WERE THE USER'S, AND BOTH MOVED THE UNIT RATHER THAN ONLY ITS SCOPE.**
+
+1. **THE STORE PATH.** One property list per domain name in the FSH's `Configuration/` scopes —
+   `Users/<user>/Configuration/<domain>.plist` — the same directories and the same scope precedence libconfig
+   already uses, chosen over Apple's `~/Library/Preferences` analogue and over a single global
+   `system.global.conf`.
+2. **"defaults will replace libconfig entirely"** (the user's words), clarified when asked what it scopes to
+   as: **libconfig is retired AS A MECHANISM — the OS's own domains move too, and THAT MIGRATION IS A
+   SEPARATE PLAN.** It is recorded in the config policy (docs/design/config-design.md §0) and NOT started
+   here.
+
+**AND A MEASUREMENT THAT MAKES DECISION 2 SMALLER THAN IT READS: THE ON-DISK LANGUAGE WAS ALREADY A PROPERTY
+LIST.** Every shipped `.conf` under `userland/configuration/` is an XML plist today — the plist conversion
+(P3a–P3f) made libconfig, the kernel's `kconf.c` and libc plist-only. So the FORMAT does not change: what
+retires is the libconfig API (the domain resolver and the `config` tool), and the `.plist` extension is what
+marks the app-settings half while the OS's own domains keep `.conf` during the transition. **Measured while
+writing this:** `head -1 userland/configuration/system.mounts.conf` is `<?xml version="1.0" …`, which also
+means §0's parenthetical — *"no format zoo (no XML/ini/JSON/TOML …)"* — has been stale since the plist
+conversion. The amendment SAYS SO rather than repeating the stale line.
+
+**THE STORE, AND THE ONE IDEA THE REST FALLS OUT OF.** A domain NAME resolves across up to three files, merged
+with **`SYSTEM > USER > SHARED`** precedence — the order config-design.md already gives this OS, where the
+system's value is authoritative and the user's overrides the shipped default. That single sentence is what
+**`-objectIsForcedForKey:inDomain:`** means here: Apple models one file per domain and answers "did an
+administrator provide this?" from a managed-device flag, and in this store the answer is **YES exactly when
+the SYSTEM file supplies the key** — no extra mechanism, and true by construction. Writes go to the USER scope;
+the suite doors are how a caller READS another domain, which is Apple's contract — a suite write lands in the
+app domain, and `defaults-suite-is-not-write-target` reads the suite's own file to prove it did not.
+
+**THE SEARCH LIST** is: `NSArgumentDomain` (the `-NAME VALUE` pairs THIS process was launched with) → the
+caller's volatile domains in the order set → **the APP DOMAIN** → each suite in the order added →
+`NSRegistrationDomain`. It is DOCUMENTED in the header rather than assumed, and **the app domain is
+`NSGlobalDomain` FOR NOW** — a named consequence of W18 (`NSBundle`) being unbuilt: with no bundle identifier
+this class cannot yet tell one app's settings from every app's, so `-initWithSuiteName:` and
+`-addSuiteNamed:` are how a caller separates them today.
+
+**THE VALUE MODEL IS THE PROPERTY LIST, EXACTLY** — no encoding layer and no lossy conversion, because the
+store IS a property list and `NSPropertyListSerialization` (shipped, and a skin over this tree's own C plist
+core rather than libconfig) is the only serialiser. Four deviations are named in the header rather than
+discovered later:
+
+* **`-synchronize` is DEPRECATED by Apple** (§11.5) and is ABSENT — and here it would be a lie as well as
+  struck: every write reaches the disk before it returns, and the periodic flush Apple's version waits for
+  does not exist. `-persistentDomainNames`, `-initWithUser:` and `+resetStandardUserDefaults` are absent for
+  the same reason, and the three iCloud notifications are struck with their family.
+* **`-URLForKey:` reads and `-setURL:forKey:` writes the STRING form.** Apple also archives a URL as `NSData`
+  and decodes that on read; that path needs the keyed unarchiver's class allowlist, which is not decided, so a
+  data-encoded URL answers nil rather than being half-decoded.
+* **THE SIZE LIMIT IS OURS.** Apple documents that `NSUserDefaultsSizeLimitExceededNotification` is posted when
+  the database passes "the allowed maximum" and publishes no number, so ours is 1 MiB per domain — and
+  crossing it **NOTIFIES WITHOUT DISCARDING**: the value is saved and the warning is the notification, because
+  silently dropping a caller's setting is the one failure this class must not have.
+* **A FILE THAT EXISTS AND WILL NOT PARSE RAISES.** This is the least obvious behaviour in the class and the
+  most important one: reading a corrupt domain as "empty" is the friendly choice and the dangerous one,
+  because the next write would then write the domain back out with every key the caller did not happen to set
+  MISSING. `defaults-corrupt-file-refused` is the check that pins it.
+
+**AND THEN THE FIRST GUEST RUN FAILED FOUR CHECKS, THREE OF WHICH WERE THE PROBE'S — WHICH IS THE USEFUL PART,
+BECAUSE THE INSTINCT AFTER A RED GATE IS TO READ THE CODE UNDER TEST FIRST.**
+
+| check | what was actually wrong |
+|---|---|
+| `defaults-scope-user-next` | **the probe planted USER files at `Users/Configuration` — without the ACCOUNT NAME** — so the class never looked there and the check read the SHARED value. Same cause: `defaults-corrupt-file-refused` "passed" a corrupted file to nobody, and `defaults-suite-is-not-write-target` was **VACUOUS**, since the path it asserted about could never exist. **THE PATH IS PART OF THE CLAIM.** |
+| `defaults-string-array-strict` | the array planted to hold a non-string held two STRINGS, so the class was right to answer and the expectation was wrong. |
+| `defaults-size-limit` | it counted *"1026 chunks of 1024 characters"* and built **1001376 bytes — 48 KiB SHORT** of the 1 MiB maximum, so the limit was never crossed and the check asserted nothing. It failed HONESTLY (the notification did not fire) instead of passing vacuously, which is the whole difference between a probe and a decoration. |
+| the other 32 | green on the first run and green on the second. |
+
+**The class needed NO behavioural change from that run** — all four were the probe's data and one probe path —
+which is worth recording as a measurement rather than as a boast: the gate found three defects, and every one
+of them was in the thing that was supposed to be checking.
+
+**WHAT IS DELIBERATELY NOT DONE HERE, NAMED SO IT IS NOT READ AS FINISHED.**
+
+1. **No per-app domain until W18.** The app domain is `NSGlobalDomain`, so two apps share one settings file
+   today; the header says when that changes, and `-initWithSuiteName:` is the workaround in the meantime.
+2. **The libconfig retirement has NO PLAN.** Decision 2 above is larger than the unit that occasioned it — it
+   reaches the kernel's `kconf.c`, musl's identity reads, init's mount table and the `config` tool — and it is
+   the next thing in this area that needs a DOCUMENT rather than a commit. Until it exists, libconfig keeps
+   serving exactly what it serves today, and the two mechanisms cannot collide: they write different
+   extensions in the same directories, which is what keeps that true.
+3. **W5's family row now reads "all classes shipped"**, so the unit is closed in the ledger, and the five
+   constants landed with the class rather than as a follow-on.
+
+FILES: `userland/Foundation/NSUserDefaults.{h,m}`, `Foundation.h` (one import), `userland/tests/foundation_defaults.m`,
+`tests/cases/foundation_defaults.py`, `mk/20-userland.mk` (one probe rule), and the ledger.
 

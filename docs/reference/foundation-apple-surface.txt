@@ -28,13 +28,13 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  116   open   80   struck   77
+#   class      shipped  117   open   79   struck   77
 #   protocol   shipped   13   open   18   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   78   open   65   struck   17
 #   case       shipped  428   open  706   struck  168
 #   func       shipped   71   open   64   struck   54
-#   var        shipped   92   open  469   struck  353
+#   var        shipped   97   open  464   struck  353
 #   typealias  shipped   22   open   47   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1592,7 +1592,7 @@ class	shipped	NSUnitVolume		Fundamentals / Physical Dimension	-	objc
 class	open	NSUserActivity		App Support / Activity Sharing	-	objc
 class	struck	NSUserAppleScriptTask		Low-Level Utilities / Scripts and External Tasks	declined	objc
 class	struck	NSUserAutomatorTask		Low-Level Utilities / Scripts and External Tasks	declined	objc
-class	open	NSUserDefaults		Files and Data Persistence / App-specific settings	-	objc
+class	shipped	NSUserDefaults		Files and Data Persistence / App-specific settings	-	objc
 class	struck	NSUserNotification		App Support / User Notifications	deprecated	objc
 class	struck	NSUserNotificationAction		App Support / User Notifications	deprecated	objc
 class	struck	NSUserNotificationCenter		App Support / User Notifications	deprecated	objc
@@ -2358,7 +2358,7 @@ var	struck	NSAppleScriptErrorBriefMessage	NSAppleScript	App Support / Script Exe
 var	struck	NSAppleScriptErrorMessage	NSAppleScript	App Support / Script Execution / Constants / Constants	declined	objc
 var	struck	NSAppleScriptErrorNumber	NSAppleScript	App Support / Script Execution / Constants / Constants	declined	objc
 var	struck	NSAppleScriptErrorRange	NSAppleScript	App Support / Script Execution / Constants / Constants	declined	objc
-var	open	NSArgumentDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
+var	shipped	NSArgumentDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
 var	shipped	NSAssertionHandlerKey	NSThread	Low-Level Utilities / Threads and Locking / Working with Thread Properties	-	objc
 var	shipped	NSAverageKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSBuddhistCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
@@ -2504,7 +2504,7 @@ var	shipped	NSFileTypeSymbolicLink	NSFileManager	Files and Data Persistence / Fi
 var	shipped	NSFileTypeUnknown	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Type Attributes	-	objc
 var	shipped	NSFoundationVersionNumber		Low-Level Utilities / Versions and API Availability / Current Version	-	objc
 var	shipped	NSGenericException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSGlobalDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
+var	shipped	NSGlobalDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
 var	open	NSGrammarCorrections	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
 var	open	NSGrammarRange	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
 var	open	NSGrammarUserDescription	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
@@ -2934,7 +2934,7 @@ var	open	NSProgressKindFile	NSProgress	App Support / Progress / Inspecting Progr
 var	open	NSProgressThroughputKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using General Keys	-	objc
 var	shipped	NSRangeException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	open	NSRecoveryAttempterErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
-var	open	NSRegistrationDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
+var	shipped	NSRegistrationDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
 var	open	NSReplacementIndexAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting text attribute keys	-	objc
 var	struck	NSRepublicOfChinaCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSRunLoopCommonModes	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes / System Run Loop Modes	-	objc
@@ -3250,8 +3250,8 @@ var	shipped	NSUnionOfArraysKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSUnionOfObjectsKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSUnionOfSetsKeyValueOperator		Reference / Constants	-	objc
 var	open	NSUserActivityTypeBrowsingWeb	NSUserActivity	App Support / Activity Sharing / Browsing the web	-	objc
-var	open	NSUserDefaultsDidChangeNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Monitoring settings changes and issues	-	objc
-var	open	NSUserDefaultsSizeLimitExceededNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Monitoring settings changes and issues	-	objc
+var	shipped	NSUserDefaultsDidChangeNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Monitoring settings changes and issues	-	objc
+var	shipped	NSUserDefaultsSizeLimitExceededNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Monitoring settings changes and issues	-	objc
 var	struck	NSUserNotificationDefaultSoundName	NSUserNotification	App Support / User Notifications / Constants	deprecated	objc
 var	struck	NSWeekDayNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSWillBecomeMultiThreadedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page

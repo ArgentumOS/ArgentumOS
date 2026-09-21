@@ -52,6 +52,26 @@ adopted port).
   precedence machinery is shared; only the payload kind differs
   (settings records vs script/behaviour files).
 
+**AMENDMENT (user, 2026-09-20): LIBCONFIG IS BEING RETIRED AS A MECHANISM, AND `NSUserDefaults` REPLACES IT.**
+The store this OS converges on is the Foundation defaults database: one property list per domain name under
+the `Configuration/` scopes — `Users/<user>/Configuration/<domain>.plist` — with **the scope precedence as its
+precedence axis** (SYSTEM, then USER, then SHARED, unchanged) and the property list as its value model.
+**THE FORMAT DOES NOT CHANGE**, and that is measured rather than assumed: every shipped `.conf` under
+`userland/configuration/` is ALREADY an XML plist (the plist conversion, P3a–P3f), so the parenthetical in §0
+above that forbids XML config, ini, JSON and TOML has been stale since that conversion — a property list is
+what this OS writes, and it writes it under two extensions for now: `.conf` for the OS's own domains, `.plist`
+for the app-settings half the defaults database owns. **What changes is the MECHANISM and the API**: `libconfig`
+(the C domain resolver, the scope walker and the `config` tool) stops being what software links for its
+settings.
+
+**THE OS'S OWN DOMAINS MOVE TOO, AND THAT MIGRATION IS A SEPARATE PLAN THAT DOES NOT EXIST YET.** It reaches
+`system.mounts` and `system.display` (init), `system.passwd`/`system.group`/`system.hosts` (musl's identity
+reads), the ESP's `system.kernel` (the kernel's `kconf.c`), `userland/configuration/*.conf` and the `config`
+tool — larger than the Foundation unit that occasioned it, and it must NOT be improvised alongside that unit.
+**Until it lands, libconfig keeps serving exactly what it serves today**, and the two mechanisms cannot collide
+because they write the same format under different extensions in the same directories. The decision, its
+reasoning and its scope are recorded in **docs/design/foundation-plan.md §41**.
+
 ---
 
 ---

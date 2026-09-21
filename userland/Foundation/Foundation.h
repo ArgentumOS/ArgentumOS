@@ -150,5 +150,6 @@
 #import <Foundation/NSOperation.h>
 #import <Foundation/NSOperationQueue.h>
 #import <Foundation/NSProgress.h>
+#import <Foundation/NSUserDefaults.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

@@ -797,6 +797,17 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_numberformatter.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_numberformatter"
+	# foundation_defaults: W5 acceptance. ONE unit, only <Foundation/Foundation.h> plus
+	# <pwd.h>/<unistd.h>/<stdlib.h> for the scratch root and the user name. IT IS LAUNCHED WITH
+	# `-ProbeArgument from-argv` by its case (tests/cases/foundation_defaults.py): the argument domain is
+	# the one part of the search list that is a fact about the LAUNCHING process, so a check that could not
+	# see the launcher's arguments would be asserting nothing.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_defaults.m -o .build/probe-foundation_defaults.o
+	$(MUSL64_OBJC) .build/probe-foundation_defaults.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_defaults"
 	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
 	# collection_view, tab_view, split_view, grid_view, kvc_basic,
 	# notification_basic, cell_basic, viewcontroller_basic, window_draw,
