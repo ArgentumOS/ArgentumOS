@@ -15,10 +15,11 @@
  * a caller keeps their flatness choice, and the two bounding boxes below can honestly
  * differ. The arcs came the same way, built ON those cubics.
  *
- * WHAT IS STILL ABSENT: `CGPathAddArcToPoint`, the "round off this corner between two
- * segments" form. It is a different construction — tangent lines to a circle that fits
- * between them — rather than a design question, and it is not declared until it works,
- * which is this header's rule.
+ * AND THE CORNER CAME TOO: `CGPathAddArcToPoint`, the "round off this corner between two
+ * segments" form — a circle tangent to both legs, drawn between its two tangency points — so
+ * this header no longer has a list of shapes it is waiting for. The rule it followed still
+ * stands, and is worth stating once: NOTHING IS DECLARED UNTIL IT WORKS, which is why every
+ * entry in this file arrived together with the check that shows it does.
  *
  * A NOTE ON THIS HEADER'S PROVENANCE, because it is unusual for this tree: the C0
  * ledger (docs/reference/coregraphics-apple-surface.txt) DOES NOT CONTAIN the
@@ -106,6 +107,15 @@ void CGPathAddRoundedRect(CGMutablePathRef path, const CGAffineTransform *m, CGR
 			  CGFloat cornerWidth, CGFloat cornerHeight);
 CGPathRef CGPathCreateWithRoundedRect(CGRect rect, CGFloat cornerWidth, CGFloat cornerHeight,
 				      const CGAffineTransform *m);
+
+/* ROUND OFF THE CORNER AT (x1,y1) BETWEEN THE CURRENT POINT AND (x2,y2): a straight line to
+ * the tangency point, then the arc to the second tangency point, WHICH IS WHERE THE PATH
+ * CONTINUES. A ZERO RADIUS is a line to the corner (Apple's own statement). A radius too
+ * large for the legs is REDUCED rather than clamped at the tangent point — this tree's
+ * statement, and the same answer Cairo reaches — because a clamped tangent point leaves an
+ * arc that touches neither leg. */
+void CGPathAddArcToPoint(CGMutablePathRef path, const CGAffineTransform *m, CGFloat x1, CGFloat y1,
+			 CGFloat x2, CGFloat y2, CGFloat radius);
 
 /*
  * FLATTENING: THE CURVES AS LINES, AND THE ONE PLACE THAT DECISION IS MADE.

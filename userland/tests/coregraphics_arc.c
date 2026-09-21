@@ -291,6 +291,90 @@ int main(void)
 		CGContextRelease(ctx);
 	}
 
+	/* --- ArcToPoint: the corner between two segments -------------------------- */
+	{
+		CGMutablePathRef el = CGPathCreateMutable();
+		CGPoint end;
+
+		/* A CORNER AT (0,10): a leg up from (0,0), a leg right to (10,10), radius 3. The
+		 * circle is tangent to the first leg at (0,7) and to the second at (3,10), so the
+		 * path's CURRENT POINT after the call must BE (3,10) — the check that pins the whole
+		 * construction, because a wrong tangency, a wrong bisector or a wrong sweep all move
+		 * that point. The arc's own box then runs from (0,7) out to (3,10). */
+		CGPathMoveToPoint(el, NULL, 0.0, 0.0);
+		CGPathAddLineToPoint(el, NULL, 0.0, 7.0);
+		CGPathAddArcToPoint(el, NULL, 0.0, 10.0, 10.0, 10.0, 3.0);
+		end = CGPathGetCurrentPoint((CGPathRef)el);
+		check("ArcToPoint ends at the SECOND tangency point",
+		      fabs(end.x - 3.0) < 1e-6 && fabs(end.y - 10.0) < 1e-6);
+		box = CGPathGetPathBoundingBox((CGPathRef)el);
+		check("...and the arc bulges toward the corner it rounds",
+		      fabs(box.size.width - 3.0) < 0.01 && fabs(box.size.height - 10.0) < 0.01);
+		CGPathRelease((CGPathRef)el);
+	}
+	/* AND THE SHAPE IT MAKES, AS AN AREA: an 8×8 square with its top-right corner rounded by
+	 * 3 — 64 minus the one corner it gives up, (1 − π/4)·9 = 1.93, so 62.07 px². */
+	{
+		CGMutablePathRef rr = CGPathCreateMutable();
+
+		CGPathMoveToPoint(rr, NULL, 2.0, 2.0);
+		CGPathAddLineToPoint(rr, NULL, 10.0, 2.0);
+		CGPathAddLineToPoint(rr, NULL, 10.0, 7.0);
+		CGPathAddArcToPoint(rr, NULL, 10.0, 10.0, 2.0, 10.0, 3.0);
+		CGPathAddLineToPoint(rr, NULL, 2.0, 10.0);
+		CGPathCloseSubpath(rr);
+		check_num("a corner rounded by ArcToPoint gives up exactly its corner",
+			  (double)fill_area((CGPathRef)rr),
+			  (64.0 - (1.0 - 3.14159265358979 / 4.0) * 9.0) * PX, 500.0);
+		/* AND THE SHARP CORNER IS GONE: user (10,10) — device (10,6) — is outside the shape
+		 * once a radius of 3 has cut it off. */
+		c = fresh();
+		CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+		CGContextBeginPath(c);
+		CGContextAddPath(c, (CGPathRef)rr);
+		CGContextFillPath(c);
+		pixel(c, 10, 6, p);
+		check("...and the sharp corner is rounded away", p[3] < 100);
+		CGContextRelease(c);
+		CGPathRelease((CGPathRef)rr);
+	}
+	/* A RADIUS TOO LARGE FOR THE LEGS IS REDUCED, NOT CLAMPED: the same corner with radius
+	 * 100 is the SAME SHAPE as radius 3, because 100/tan(45°) does not fit in 3 and the
+	 * reduction lands exactly back on 3. */
+	{
+		CGMutablePathRef a = CGPathCreateMutable();
+		CGMutablePathRef b = CGPathCreateMutable();
+		int i;
+
+		for (i = 0; i < 2; i++) {
+			CGMutablePathRef pth = i == 0 ? a : b;
+			double r = i == 0 ? 3.0 : 100.0;
+
+			CGPathMoveToPoint(pth, NULL, 2.0, 2.0);
+			CGPathAddLineToPoint(pth, NULL, 10.0, 2.0);
+			CGPathAddLineToPoint(pth, NULL, 10.0, 7.0);
+			CGPathAddArcToPoint(pth, NULL, 10.0, 10.0, 2.0, 10.0, r);
+			CGPathAddLineToPoint(pth, NULL, 2.0, 10.0);
+			CGPathCloseSubpath(pth);
+		}
+		check_num("an over-large radius is reduced to what fits",
+			  (double)fill_area((CGPathRef)b), (double)fill_area((CGPathRef)a), 0.0);
+		CGPathRelease((CGPathRef)a);
+		CGPathRelease((CGPathRef)b);
+	}
+	/* A ZERO RADIUS IS A LINE TO THE CORNER, which is Apple's own statement. */
+	{
+		CGMutablePathRef z = CGPathCreateMutable();
+		CGPoint end;
+
+		CGPathMoveToPoint(z, NULL, 0.0, 0.0);
+		CGPathAddLineToPoint(z, NULL, 0.0, 10.0);
+		CGPathAddArcToPoint(z, NULL, 0.0, 10.0, 10.0, 10.0, 0.0);
+		end = CGPathGetCurrentPoint((CGPathRef)z);
+		check("a zero radius is a line to the corner", end.x == 0.0 && end.y == 10.0);
+		CGPathRelease((CGPathRef)z);
+	}
+
 	printf("CG-ARC: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }
