@@ -6934,6 +6934,39 @@ EVENT against a property that must hold, not a watch on one page:
     on release) so the invariant becomes checkable directly — a small, permanent, and independently useful
     piece of kernel hygiene rather than another temporary printk.
 
+**AND THE CORRECTED GRANT CHECK COMES BACK CLEAN TOO — WHICH PROVES LESS THAN IT LOOKS, AND THAT IS THE
+POINT.** `search_page_hash` had shown the flaw in my own test: it takes a reference on a hit
+(`pg->count++`), and the earlier scan required `P|RW|US`, so it could not see a READ-ONLY user mapping — and a
+library or text page is exactly `P|US` (0x5). Re-run with `P|US` required at every level, over the window:
+
+    (no GRANT-US line at all; scans performed, zero hits)
+
+**So within the window the grant side is clean under both tests. But the window is the flaw** — the victim
+page moves between runs, so a window-filtered check can only ever clear the pages it happens to be watching,
+and the last run's victim was not one of them. **That is the second time an assumption in the instrument (a
+window, a cap) has produced a clean answer that means less than it says**, and it is now recorded as a
+standing requirement rather than a note: NO window, NO cap, NO page filter.
+
+**AND `search_page_hash` EXPLAINS WHY THE CACHED-FILE PATH IS PROTECTED — AND EXPOSES A REAL LEAK.** A hit
+matches on `pg->inode == inode->inode && pg->offset == offset && pg->dev == inode->dev` and then takes a
+reference (`pg->count++`), so a page handed to a fault handler cannot be released underneath it — the mapping
+cannot publish a recycled page. That closes the cached path as a suspect (and explains why every check of it
+came back clean). **But the fault path never drops that reference** (`page_not_present` maps the page and
+never calls `release_page`), so every cached-file page mapped into a process leaks one count — a real,
+separate defect, in the safe direction, and worth its own fix.
+
+**SO THE NEXT INSTRUMENT MUST NOT FILTER ANYTHING — IT MUST CHECK A PROPERTY.** The only shape that cannot
+be fooled by where the victim lands is an invariant over EVERY mapping:
+
+  * **TAG THE HEAP'S PAGES**: set a `PAGE_*` flag where `kmalloc` grants (`get_free_page`'s `pg->flags = 0`
+    becomes a flag) and clear it on release;
+  * **CHECK IT AT EVERY USER MAPPING**, at the lowest level — `map_user_page64_in`, or `map_page_flags` just
+    above it — and print when a page carrying the heap tag is mapped into a process.
+
+That is cheap (a flag test, no scans), permanent, assumption-free, and it is kernel hygiene worth keeping
+whether or not it finds this bug. And it is the first instrument in this investigation whose blast radius is
+a single flag rather than a window.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
