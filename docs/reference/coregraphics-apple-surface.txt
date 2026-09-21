@@ -36,7 +36,7 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  126   open  561   struck   48
+#   func       shipped  127   open  560   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped    9   open   47   struck    1
 #   case       shipped   65   open  365   struck   14
@@ -747,7 +747,7 @@ func	shipped	CGContextSetGrayFillColor	-	Opaque Types / Setting Fill, Stroke, an
 func	shipped	CGContextSetGrayStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	shipped	CGContextSetLineCap	-	Opaque Types / Setting Path Drawing Options	-	objc
-func	open	CGContextSetLineDash	-	Opaque Types / Setting Path Drawing Options	-	objc
+func	shipped	CGContextSetLineDash	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	shipped	CGContextSetLineJoin	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	shipped	CGContextSetLineWidth	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	shipped	CGContextSetMiterLimit	-	Opaque Types / Setting Path Drawing Options	-	objc

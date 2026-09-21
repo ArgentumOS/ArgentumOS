@@ -260,6 +260,84 @@ int main(void)
 	check("an odd coordinate count is ignored rather than guessed at", painted(c) > 0);
 	CGContextRelease(c);
 
+	/* --- SetLineDash: the dash pattern in the graphics state ------------------ */
+	{
+		double lens[2];
+		int solid;
+		int dashed;
+
+		lens[0] = 3.0;
+		lens[1] = 2.0;
+		c = fresh();
+		set_stroke_blue(c);
+		CGContextSetLineWidth(c, 1.0);
+		CGContextBeginPath(c);
+		CGContextMoveToPoint(c, 1.0, 6.5);
+		CGContextAddLineToPoint(c, 11.0, 6.5);
+		CGContextStrokePath(c);
+		solid = painted(c);
+		CGContextRelease(c);
+
+		c = fresh();
+		set_stroke_blue(c);
+		CGContextSetLineWidth(c, 1.0);
+		CGContextSetLineDash(c, 0.0, lens, 2);
+		CGContextBeginPath(c);
+		CGContextMoveToPoint(c, 1.0, 6.5);
+		CGContextAddLineToPoint(c, 11.0, 6.5);
+		CGContextStrokePath(c);
+		dashed = painted(c);
+		CGContextRelease(c);
+
+		/* THE SAME TEN-UNIT LINE, ONE WITH THE PATTERN SET ON THE CONTEXT AND ONE WITHOUT:
+		 * six units of dash against ten, which is exactly what the path function gives when
+		 * it is called directly — the check that the context is wired to it. */
+		check_num("SetLineDash dashes the next stroke", (double)dashed, 6.0, 0.0);
+		check_num("...and the stroke before it was the whole line", (double)solid, 10.0, 0.0);
+	}
+	/* AND SAVE/RESTORE CARRIES IT, like every other piece of the line state — which is the
+	 * reason the pattern is an ARRAY in the state and not a pointer. */
+	{
+		double lens[2];
+		int n;
+
+		lens[0] = 1.0;
+		lens[1] = 1.0;
+		c = fresh();
+		set_stroke_blue(c);
+		CGContextSetLineWidth(c, 1.0);
+		CGContextSaveGState(c);
+		CGContextSetLineDash(c, 0.0, lens, 2);
+		CGContextRestoreGState(c);
+		CGContextBeginPath(c);
+		CGContextMoveToPoint(c, 1.0, 6.5);
+		CGContextAddLineToPoint(c, 11.0, 6.5);
+		CGContextStrokePath(c);
+		n = painted(c);
+		check_num("restore brings back the SOLID line", (double)n, 10.0, 0.0);
+		CGContextRelease(c);
+	}
+	/* AND A NULL PATTERN CLEARS IT: a caller goes back to solid without a save and restore. */
+	{
+		double lens[2];
+		int n;
+
+		lens[0] = 3.0;
+		lens[1] = 2.0;
+		c = fresh();
+		set_stroke_blue(c);
+		CGContextSetLineWidth(c, 1.0);
+		CGContextSetLineDash(c, 0.0, lens, 2);
+		CGContextSetLineDash(c, 0.0, NULL, 0);
+		CGContextBeginPath(c);
+		CGContextMoveToPoint(c, 1.0, 6.5);
+		CGContextAddLineToPoint(c, 11.0, 6.5);
+		CGContextStrokePath(c);
+		n = painted(c);
+		check_num("a NULL pattern clears the dash", (double)n, 10.0, 0.0);
+		CGContextRelease(c);
+	}
+
 	printf("CG-STROKE-CTX: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

@@ -47,6 +47,13 @@
 /* the graphics state                                                        */
 /* ------------------------------------------------------------------------- */
 
+/* The most dash entries the graphics state will hold. A pattern is a handful of numbers in
+ * every real caller, and a BOUNDED ARRAY in the state is what makes save and restore honest:
+ * the state is COPIED, so a pointer would be shared between a saved state and its successor
+ * and freed by whoever let go of it first. A pattern longer than this is REFUSED rather than
+ * truncated, so a caller never gets dashes they did not ask for. */
+#define CG_DASH_STATE_MAX 16
+
 typedef struct cg_state {
 	CGAffineTransform ctm;
 	pixman_region32_t clip;   /* DEVICE space */
@@ -63,6 +70,12 @@ typedef struct cg_state {
 	CGLineCap line_cap;
 	CGLineJoin line_join;
 	CGFloat miter_limit;
+	/* AND SO DOES THE DASH PATTERN, as an array for the reason above. THE CONTEXT IS
+	 * calloc'd, which is what makes a zero `dash_count` mean SOLID: there is no initializer
+	 * to keep in step with this struct, and a state that was never set cannot be garbage. */
+	CGFloat dash[CG_DASH_STATE_MAX];
+	int dash_count;
+	CGFloat dash_phase;
 } cg_state;
 
 struct CGContext {
@@ -1498,23 +1511,68 @@ void CGContextClearRect(CGContextRef c, CGRect rect)
 /* stroking                                                                  */
 /* ------------------------------------------------------------------------- */
 
+/* DEFINED HERE, BESIDE THE CODE THAT READS IT, because the pattern is a field of the private
+ * graphics state; its DECLARATION is in the header with the rest of the line state, which is
+ * what a caller needs.
+ *
+ * A NULL ARRAY OR A ZERO COUNT IS THE CLEARING FORM rather than an error: that is how a caller
+ * goes back to a solid line without a save and restore. */
+void CGContextSetLineDash(CGContextRef c, CGFloat phase, const CGFloat *lengths, size_t count)
+{
+	size_t i;
+
+	if (c == NULL) {
+		return;
+	}
+	if (lengths == NULL || count == 0) {
+		c->state.dash_count = 0;
+		c->state.dash_phase = 0.0;
+		return;
+	}
+	/* A PATTERN TOO LONG FOR THE STATE IS REFUSED AND THE STATE IS LEFT AS IT WAS: truncating
+	 * it would draw dashes the caller did not ask for, which is worse than not changing them. */
+	if (count > CG_DASH_STATE_MAX) {
+		fprintf(stderr, "CG-REFUSE: a dash pattern of %d entries does not fit the graphics "
+				"state's %d\n", (int)count, CG_DASH_STATE_MAX);
+		return;
+	}
+	for (i = 0; i < count; i++) {
+		c->state.dash[i] = lengths[i];
+	}
+	c->state.dash_count = (int)count;
+	c->state.dash_phase = phase;
+}
+
 /* THE WHOLE OF THE CONTEXT'S STROKE IS THIS FUNCTION. The geometry comes from
  * `CGPathCreateCopyByStrokingPath` (CGPathStroke.c); what is left is to fill the outline
  * with the STROKE colour under the NON-ZERO rule. The rule is not a preference — the
  * stroked path is a set of overlapping oriented pieces, and an even-odd fill of it is not
  * the stroke (the plan's §9 records that deviation, and coregraphics_stroke.c asserts it).
+ *
+ * AND THE DASH GOES ON BEFORE THE STROKE, WHICH IS THE ORDER THE WHOLE DESIGN RESTS ON: the
+ * dashes are PIECES OF THE PATH, so each one gets its own caps and joins. Dashing the stroked
+ * OUTLINE instead would give one shape with gaps cut in it and the wrong ends.
  */
 static void cg_stroke_path_with_width(CGContextRef c, CGPathRef path, CGFloat width)
 {
+	CGPathRef dashed = NULL;
 	CGPathRef outline;
 	CGFloat a;
 
 	if (c == NULL || path == NULL) {
 		return;
 	}
+	if (c->state.dash_count > 0) {
+		dashed = CGPathCreateCopyByDashingPath(path, NULL, c->state.dash_phase,
+						       c->state.dash, (size_t)c->state.dash_count);
+		if (dashed != NULL) {
+			path = dashed;
+		}
+	}
 	outline = CGPathCreateCopyByStrokingPath(path, NULL, width, c->state.line_cap,
 						 c->state.line_join, c->state.miter_limit);
 	if (outline == NULL) {
+		CGPathRelease(dashed);
 		return;
 	}
 	/* THE CONTEXT'S ALPHA MULTIPLIES THE STROKE COLOUR'S, exactly as it does for a fill. */
@@ -1522,6 +1580,7 @@ static void cg_stroke_path_with_width(CGContextRef c, CGPathRef path, CGFloat wi
 	cg_fill_path(c, outline, 0, cg_op(c->state.blend), c->state.stroke_rgba[0],
 		     c->state.stroke_rgba[1], c->state.stroke_rgba[2], a);
 	CGPathRelease(outline);
+	CGPathRelease(dashed);
 }
 
 static void cg_stroke_current_path(CGContextRef c)

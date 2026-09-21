@@ -245,6 +245,14 @@ void CGContextStrokeLineSegments(CGContextRef context, const CGPoint *points, si
  * with the fill colour and then the stroke colour, FROM THE SAME PATH — which is why the
  * path is consumed at the end rather than by the first of the two. */
 void CGContextDrawPath(CGContextRef context, CGPathDrawingMode mode);
+
+/* THE DASH PATTERN IS PART OF THE LINE STATE, so it is saved and restored, and it applies to
+ * EVERY stroke the context draws — but to the PATH rather than to the pixels: the dashes are
+ * pieces of the path, and each is stroked with its own caps and joins. A NULL `lengths` or a
+ * `count` of zero is how a caller goes back to a SOLID line. The pattern is held in a bounded
+ * array in the graphics state, so one longer than the state can hold is REFUSED rather than
+ * truncated — a caller never gets dashes they did not ask for. */
+void CGContextSetLineDash(CGContextRef context, CGFloat phase, const CGFloat *lengths, size_t count);
 /* Replaces the current path with ITS OWN STROKE OUTLINE, in the context's user space and
  * with the current line state, so that a later fill of the path draws the stroke. That is
  * Apple's contract for it and the reason it exists: it is the stroke as geometry, before
