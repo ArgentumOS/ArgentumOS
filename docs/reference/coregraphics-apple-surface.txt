@@ -36,7 +36,7 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  103   open  584   struck   48
+#   func       shipped  115   open  572   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped    9   open   47   struck    1
 #   case       shipped   65   open  365   struck   14
@@ -689,7 +689,7 @@ func	open	CGContextDrawLayerInRect	-	Opaque Types / Drawing Core Graphics Layers
 func	open	CGContextDrawLinearGradient	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 func	struck	CGContextDrawPDFDocument	-	Reference / Functions	deprecated	objc
 func	open	CGContextDrawPDFPage	-	Opaque Types / Drawing Images and PDF Content	-	objc
-func	open	CGContextDrawPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
+func	shipped	CGContextDrawPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 func	open	CGContextDrawRadialGradient	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 func	open	CGContextDrawShading	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 func	open	CGContextDrawTiledImage	-	Opaque Types / Drawing Images and PDF Content	-	objc
@@ -717,7 +717,7 @@ func	shipped	CGContextIsPathEmpty	-	Opaque Types / Examining the Current Graphic
 func	shipped	CGContextMoveToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextPathContainsPoint	-	Opaque Types / Examining the Current Graphics Path	-	objc
 func	shipped	CGContextRelease	-	Opaque Types / Retaining and Releasing Graphics Contexts	-	objc
-func	open	CGContextReplacePathWithStrokedPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
+func	shipped	CGContextReplacePathWithStrokedPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	shipped	CGContextResetClip	-	Reference / Functions	-	objc
 func	shipped	CGContextRestoreGState	-	Opaque Types / Saving and Restoring Graphics State	-	objc
 func	shipped	CGContextRetain	-	Opaque Types / Retaining and Releasing Graphics Contexts	-	objc
@@ -744,16 +744,16 @@ func	open	CGContextSetFlatness	-	Opaque Types / Setting Path Drawing Options	-	o
 func	open	CGContextSetFont	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetFontSize	-	Opaque Types / Drawing Text	-	objc
 func	shipped	CGContextSetGrayFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
-func	open	CGContextSetGrayStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
+func	shipped	CGContextSetGrayStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
-func	open	CGContextSetLineCap	-	Opaque Types / Setting Path Drawing Options	-	objc
+func	shipped	CGContextSetLineCap	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	open	CGContextSetLineDash	-	Opaque Types / Setting Path Drawing Options	-	objc
-func	open	CGContextSetLineJoin	-	Opaque Types / Setting Path Drawing Options	-	objc
-func	open	CGContextSetLineWidth	-	Opaque Types / Setting Path Drawing Options	-	objc
-func	open	CGContextSetMiterLimit	-	Opaque Types / Setting Path Drawing Options	-	objc
+func	shipped	CGContextSetLineJoin	-	Opaque Types / Setting Path Drawing Options	-	objc
+func	shipped	CGContextSetLineWidth	-	Opaque Types / Setting Path Drawing Options	-	objc
+func	shipped	CGContextSetMiterLimit	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	open	CGContextSetPatternPhase	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	shipped	CGContextSetRGBFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
-func	open	CGContextSetRGBStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
+func	shipped	CGContextSetRGBStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetRenderingIntent	-	Opaque Types / Managing a Graphics Context	-	objc
 func	open	CGContextSetShadow	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetShadowWithColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
@@ -775,10 +775,10 @@ func	struck	CGContextShowGlyphsWithAdvances	-	Opaque Types / Drawing Text	deprec
 func	struck	CGContextShowText	-	Opaque Types / Drawing Text	deprecated	objc
 func	struck	CGContextShowTextAtPoint	-	Opaque Types / Drawing Text	deprecated	objc
 func	open	CGContextStrokeEllipseInRect	-	Opaque Types / Drawing Shapes	-	objc
-func	open	CGContextStrokeLineSegments	-	Opaque Types / Drawing Shapes	-	objc
-func	open	CGContextStrokePath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
-func	open	CGContextStrokeRect	-	Opaque Types / Drawing Shapes	-	objc
-func	open	CGContextStrokeRectWithWidth	-	Opaque Types / Drawing Shapes	-	objc
+func	shipped	CGContextStrokeLineSegments	-	Opaque Types / Drawing Shapes	-	objc
+func	shipped	CGContextStrokePath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
+func	shipped	CGContextStrokeRect	-	Opaque Types / Drawing Shapes	-	objc
+func	shipped	CGContextStrokeRectWithWidth	-	Opaque Types / Drawing Shapes	-	objc
 func	shipped	CGContextSynchronize	-	Opaque Types / Managing a Graphics Context	-	objc
 func	open	CGContextSynchronizeAttributes	-	Functions	-	objc
 func	shipped	CGContextTranslateCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc

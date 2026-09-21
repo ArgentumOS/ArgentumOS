@@ -184,6 +184,41 @@ void CGContextFillRect(CGContextRef context, CGRect rect);
  * the clear. */
 void CGContextClearRect(CGContextRef context, CGRect rect);
 
+/* The line state, and stroking. A STROKE IS A PATH WHOSE NON-ZERO FILL IS THE STROKE
+ * (`CGPathCreateCopyByStrokingPath`, CGPath.h), so everything here is plumbing around
+ * that one fact: the width, the cap, the join and the miter limit go INTO the stroked
+ * path, and the outline is filled with the STROKE colour.
+ *
+ * THE DEFAULTS ARE APPLE'S: width 1, butt caps, miter joins, miter limit 10. */
+void CGContextSetLineWidth(CGContextRef context, CGFloat width);
+void CGContextSetLineCap(CGContextRef context, CGLineCap cap);
+void CGContextSetLineJoin(CGContextRef context, CGLineJoin join);
+void CGContextSetMiterLimit(CGContextRef context, CGFloat limit);
+void CGContextSetGrayStrokeColor(CGContextRef context, CGFloat gray, CGFloat alpha);
+void CGContextSetRGBStrokeColor(CGContextRef context, CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha);
+
+/* `StrokePath` CONSUMES the current path, like the fills do. `StrokeRect`,
+ * `StrokeRectWithWidth` and `StrokeLineSegments` build their own path and leave the
+ * current one alone, and `StrokeRectWithWidth` uses the width it was given WITHOUT
+ * changing the context's line width. */
+void CGContextStrokePath(CGContextRef context);
+void CGContextStrokeRect(CGContextRef context, CGRect rect);
+void CGContextStrokeRectWithWidth(CGContextRef context, CGRect rect, CGFloat width);
+/* `points` is an array of `count` COORDINATES — x0, y0, x1, y1, … — so count/2 segments:
+ * (x0,y0)-(x1,y1), (x2,y2)-(x3,y3), … An odd count leaves one coordinate with no partner,
+ * which is not a segment and is ignored rather than guessed at. */
+void CGContextStrokeLineSegments(CGContextRef context, const CGPoint *points, size_t count);
+
+/* `DrawPath` is the general entry. THE TWO COMBINED MODES FILL FIRST AND STROKE SECOND,
+ * with the fill colour and then the stroke colour, FROM THE SAME PATH — which is why the
+ * path is consumed at the end rather than by the first of the two. */
+void CGContextDrawPath(CGContextRef context, CGPathDrawingMode mode);
+/* Replaces the current path with ITS OWN STROKE OUTLINE, in the context's user space and
+ * with the current line state, so that a later fill of the path draws the stroke. That is
+ * Apple's contract for it and the reason it exists: it is the stroke as geometry, before
+ * any colour is involved. */
+void CGContextReplacePathWithStrokedPath(CGContextRef context);
+
 #ifdef __cplusplus
 }
 #endif

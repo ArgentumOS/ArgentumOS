@@ -54,6 +54,15 @@ typedef struct cg_state {
 	CGFloat alpha;
 	CGBlendMode blend;
 	int antialias;
+	/* THE LINE STATE LIVES IN THE GRAPHICS STATE, which is why `CGContextSaveGState` and
+	 * `CGContextRestoreGState` needed NO change to carry it: they copy this struct, so
+	 * the width, the caps, the joins and the stroke colour are saved and restored with
+	 * everything else — and the probe checks exactly that rather than assuming it. */
+	CGFloat stroke_rgba[4];   /* not premultiplied */
+	CGFloat line_width;
+	CGLineCap line_cap;
+	CGLineJoin line_join;
+	CGFloat miter_limit;
 } cg_state;
 
 struct CGContext {
@@ -177,6 +186,18 @@ static void cg_state_init_full(cg_state *st, int width, int height)
 	st->alpha = 1.0;
 	st->blend = kCGBlendModeNormal;
 	st->antialias = 1;
+	/* APPLE'S DOCUMENTED DEFAULTS for the line state: width 1, butt caps, miter joins,
+	 * miter limit 10. A zero default for the width would be a stroke that draws nothing
+	 * — the failure a caller who sets everything explicitly never sees and everyone else
+	 * does — and the stroke colour defaults to black, like the fill. */
+	st->stroke_rgba[0] = 0.0;
+	st->stroke_rgba[1] = 0.0;
+	st->stroke_rgba[2] = 0.0;
+	st->stroke_rgba[3] = 1.0;
+	st->line_width = 1.0;
+	st->line_cap = kCGLineCapButt;
+	st->line_join = kCGLineJoinMiter;
+	st->miter_limit = 10.0;
 }
 
 CGContextRef CGBitmapContextCreate(void *data, size_t width, size_t height,
@@ -1276,4 +1297,205 @@ void CGContextClearRect(CGContextRef c, CGRect rect)
 	 * makes it a clear rather than a blend onto what was there. */
 	cg_fill_path(c, (CGPathRef)scratch, 0, PIXMAN_OP_SRC, 0.0, 0.0, 0.0, 0.0);
 	CGPathRelease((CGPathRef)scratch);
+}
+
+/* ------------------------------------------------------------------------- */
+/* stroking                                                                  */
+/* ------------------------------------------------------------------------- */
+
+/* THE WHOLE OF THE CONTEXT'S STROKE IS THIS FUNCTION. The geometry comes from
+ * `CGPathCreateCopyByStrokingPath` (CGPathStroke.c); what is left is to fill the outline
+ * with the STROKE colour under the NON-ZERO rule. The rule is not a preference — the
+ * stroked path is a set of overlapping oriented pieces, and an even-odd fill of it is not
+ * the stroke (the plan's §9 records that deviation, and coregraphics_stroke.c asserts it).
+ */
+static void cg_stroke_path_with_width(CGContextRef c, CGPathRef path, CGFloat width)
+{
+	CGPathRef outline;
+	CGFloat a;
+
+	if (c == NULL || path == NULL) {
+		return;
+	}
+	outline = CGPathCreateCopyByStrokingPath(path, NULL, width, c->state.line_cap,
+						 c->state.line_join, c->state.miter_limit);
+	if (outline == NULL) {
+		return;
+	}
+	/* THE CONTEXT'S ALPHA MULTIPLIES THE STROKE COLOUR'S, exactly as it does for a fill. */
+	a = c->state.stroke_rgba[3] * c->state.alpha;
+	cg_fill_path(c, outline, 0, cg_op(c->state.blend), c->state.stroke_rgba[0],
+		     c->state.stroke_rgba[1], c->state.stroke_rgba[2], a);
+	CGPathRelease(outline);
+}
+
+static void cg_stroke_current_path(CGContextRef c)
+{
+	if (c == NULL) {
+		return;
+	}
+	cg_stroke_path_with_width(c, (CGPathRef)c->path, c->state.line_width);
+	/* A STROKE CONSUMES THE PATH, exactly as a fill does. */
+	CGContextBeginPath(c);
+}
+
+void CGContextStrokePath(CGContextRef c)
+{
+	cg_stroke_current_path(c);
+}
+
+static void cg_stroke_rect_with(CGContextRef c, CGRect rect, CGFloat width)
+{
+	CGMutablePathRef scratch;
+
+	if (c == NULL) {
+		return;
+	}
+	scratch = CGPathCreateMutable();
+	if (scratch == NULL) {
+		return;
+	}
+	CGPathAddRect(scratch, NULL, rect);
+	cg_stroke_path_with_width(c, (CGPathRef)scratch, width);
+	CGPathRelease((CGPathRef)scratch);
+}
+
+void CGContextStrokeRect(CGContextRef c, CGRect rect)
+{
+	if (c != NULL) {
+		cg_stroke_rect_with(c, rect, c->state.line_width);
+	}
+}
+
+void CGContextStrokeRectWithWidth(CGContextRef c, CGRect rect, CGFloat width)
+{
+	/* THE WIDTH IS A PARAMETER, NOT A SETTING: the context's line width is untouched, so a
+	 * caller can draw one thick frame without the next stroke inheriting it. */
+	cg_stroke_rect_with(c, rect, width);
+}
+
+void CGContextStrokeLineSegments(CGContextRef c, const CGPoint *points, size_t count)
+{
+	CGMutablePathRef scratch;
+	size_t i;
+
+	if (c == NULL || points == NULL || count < 2) {
+		return;
+	}
+	scratch = CGPathCreateMutable();
+	if (scratch == NULL) {
+		return;
+	}
+	/* PAIRS, AND AN ODD COORDINATE IS NOT A SEGMENT: it is dropped rather than paired with
+	 * something invented, which would draw a line to the origin no caller asked for. */
+	for (i = 0; i + 1 < count; i += 2) {
+		CGPathMoveToPoint(scratch, NULL, points[i].x, points[i].y);
+		CGPathAddLineToPoint(scratch, NULL, points[i + 1].x, points[i + 1].y);
+	}
+	cg_stroke_path_with_width(c, (CGPathRef)scratch, c->state.line_width);
+	CGPathRelease((CGPathRef)scratch);
+}
+
+void CGContextDrawPath(CGContextRef c, CGPathDrawingMode mode)
+{
+	if (c == NULL) {
+		return;
+	}
+	switch (mode) {
+	case kCGPathFill:
+	case kCGPathEOFill:
+		cg_fill_current_path(c, mode == kCGPathEOFill);
+		return;
+	case kCGPathStroke:
+		cg_stroke_current_path(c);
+		return;
+	case kCGPathFillStroke:
+	case kCGPathEOFillStroke:
+		/* FILL FIRST, STROKE SECOND, FROM THE SAME PATH — and the path is consumed at the
+		 * END rather than by the first of the two, which is exactly why this cannot simply
+		 * call the two public functions in a row: `FillPath` would clear the path the
+		 * stroke still needs. Both colours are in play, the fill's for the interior and the
+		 * stroke's for the outline. */
+		cg_fill_path(c, (CGPathRef)c->path, mode == kCGPathEOFillStroke,
+			     cg_op(c->state.blend), c->state.rgba[0], c->state.rgba[1],
+			     c->state.rgba[2], c->state.rgba[3] * c->state.alpha);
+		cg_stroke_path_with_width(c, (CGPathRef)c->path, c->state.line_width);
+		CGContextBeginPath(c);
+		return;
+	default:
+		return;
+	}
+}
+
+void CGContextReplacePathWithStrokedPath(CGContextRef c)
+{
+	CGPathRef outline;
+
+	if (c == NULL) {
+		return;
+	}
+	/* IN USER SPACE, WITH THE CURRENT LINE STATE, and no transform parameter: the stroke
+	 * is built where the path is, so a later fill puts it wherever the CTM puts the
+	 * geometry — which is what makes this the same stroke `StrokePath` would have drawn,
+	 * only as a path instead of as pixels. */
+	outline = CGPathCreateCopyByStrokingPath((CGPathRef)c->path, NULL, c->state.line_width,
+						 c->state.line_cap, c->state.line_join,
+						 c->state.miter_limit);
+	if (outline == NULL) {
+		return;
+	}
+	CGPathRelease((CGPathRef)c->path);
+	c->path = (struct CGPath *)outline;
+}
+
+/* --- the line state and the stroke colour --------------------------------- */
+
+void CGContextSetLineWidth(CGContextRef c, CGFloat width)
+{
+	if (c != NULL) {
+		c->state.line_width = width;
+	}
+}
+
+void CGContextSetLineCap(CGContextRef c, CGLineCap cap)
+{
+	if (c != NULL) {
+		c->state.line_cap = cap;
+	}
+}
+
+void CGContextSetLineJoin(CGContextRef c, CGLineJoin join)
+{
+	if (c != NULL) {
+		c->state.line_join = join;
+	}
+}
+
+void CGContextSetMiterLimit(CGContextRef c, CGFloat limit)
+{
+	if (c != NULL) {
+		c->state.miter_limit = limit;
+	}
+}
+
+void CGContextSetGrayStrokeColor(CGContextRef c, CGFloat gray, CGFloat alpha)
+{
+	if (c == NULL) {
+		return;
+	}
+	c->state.stroke_rgba[0] = gray;
+	c->state.stroke_rgba[1] = gray;
+	c->state.stroke_rgba[2] = gray;
+	c->state.stroke_rgba[3] = alpha;
+}
+
+void CGContextSetRGBStrokeColor(CGContextRef c, CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha)
+{
+	if (c == NULL) {
+		return;
+	}
+	c->state.stroke_rgba[0] = red;
+	c->state.stroke_rgba[1] = green;
+	c->state.stroke_rgba[2] = blue;
+	c->state.stroke_rgba[3] = alpha;
 }
