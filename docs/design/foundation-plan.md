@@ -7746,6 +7746,34 @@ proposed much earlier in this section) and fail loudly if a USER write ever land
 the direction the evidence still supports, and it needs no window, no cap and no page filter - the same shape
 as every instrument that has actually moved this investigation.
 
+**AND THE WRITE-SIDE INSTRUMENT HAS A DESIGN OBSTACLE THAT HAS TO BE SOLVED FIRST — AND IT CAN BE.** The
+obvious form ("tag what `get_free_page` grants, check the tag at mapping time") does not work, and §45 already
+says why, recorded much earlier and worth restating where it now bites: **a user page and a kernel object page
+come from the SAME `get_free_page`** — `map_page_flags` allocates a fresh user page with `kmalloc(PAGE_SIZE)`,
+exactly as the vma table is allocated — so a tag set at grant would be on every user page and the check would
+fire on every ordinary mapping.
+
+**THE DISCRIMINATOR THAT SURVIVES IT:** tag at the CONSUMER, not at the grant.
+
+  * `map_page_flags` is the ONLY place that allocates a page for a userspace mapping: set a `PAGE_USER` flag
+    on the fresh page there, where the tree already does `p->rss++`;
+  * every legitimate non-`PAGE_USER` page that can be mapped into a process is FILE-BACKED, and carries
+    `pg->inode != 0` (the page cache path does exactly that);
+  * therefore **the invariant is: a page mapped into a process must be `PAGE_USER` or have an inode** — a
+    kernel object page (no flag set at the consumer, no inode) being mapped into userspace is the
+    corruption announcing itself, at the moment it becomes reachable;
+  * check it at the mapping choke point (`map_page_flags`), which is where every user leaf is written. One
+    flag set, one predicate, no window, no cap, no page filter.
+
+**AND WHAT IT WOULD CATCH IS EXACTLY THE PUBLISH, NOT A SYMPTOM.** Defect A's remaining face is user bytes
+landing in kernel memory; the moment that becomes possible is the moment a kernel-owned page acquires a user
+leaf. The vma table holding `"FNX3-DONE"` could only happen after such a leaf existed - so this check fires
+the instant the corruption is created rather than after something has already written through it.
+
+**AND THE RUN IS THE NEXT STEP, NOT A GUESS:** the flag goes in at the consumer, the predicate at the choke
+point, and the three reproducers plus the same 60,000-free volume that produced a clean zero last round will
+say in one boot whether a kernel page is ever published into userspace.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
