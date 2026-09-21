@@ -6885,6 +6885,25 @@ clean, because the alias is a MEASURED fact and something must have created it.
 its scans at 4000 without reporting the count for clean ones, so "every window grant was examined" is not
 proven — the window filter and the cap are assumptions, and the next instrument should print both.
 
+**AND THE PUBLISH-SIDE RUN PINS ONE PHYSICAL PAGE FROM THREE DIRECTIONS AT ONCE.**
+
+    MAPDBG pid=7 va=0x400000001000 phys=0x61c000 caller=ffff80000d99ddc3 had_leaf=0
+    MAPDBG pid=7 va=0x400000001000 phys=0x645000 caller=ffff80000d99ddc3 had_leaf=0
+
+The shell maps its mmap-region address `0x400000001000` onto **physical `0x61c000`** — and that is the very
+page that (a) held the kernel's vma table in the earlier run (`ffff80000061c000`), (b) was freed again and
+again by `kfree` in another, and (c) now appears as a live USER mapping. **Three independent instruments, one
+physical page**, and the second mapping of the same VA (to `0x645000`) shows the remap cycle working normally
+around it — which is what makes the first one not a curiosity.
+
+**SO THE NEXT INSTRUMENT IS A TIMELINE OF THAT ONE PAGE, AND IT NEEDS NO WINDOW AND NO CAP.** Filter the three
+existing instruments (grant, map, free) to `phys == 0x61c000` and print every event with the pid and the
+caller, so the page's whole life is in the log in order: who received it, who mapped it, who freed it, and in
+what order. **A window and a print cap are both assumptions, and the previous run shows how they bite: the
+grant side printed only two clean samples, so its own scan count never showed whether the page was examined at
+all.** One page, no filter, no cap, complete timeline — the same discipline that has produced every real step
+in this investigation, applied to the page the evidence keeps returning to.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
