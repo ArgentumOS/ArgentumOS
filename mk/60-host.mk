@@ -206,14 +206,36 @@ HOST_CG_CFLAGS  ?= -std=gnu11 -fPIC -g -Wall -Wextra -Iuserland -I/usr/include/p
 # THE HOST DOES NEED THE RPATH — the opposite of the guest, and for the same reason: there is
 # no system lcms2 to fall back on here (measured: the runtime .so exists, the header does not),
 # so the only copy the probe can load is the one the build script installed.
+#
+# AND libfoundation IS ON THIS LINE because ONE file of the library is Objective-C: the
+# system-defined colour spaces are named, and comparing a name is a message send. The probes
+# themselves stay C and inherit it through `-lcoregraphics`, which they resolve because
+# HOST_RPATH already names $(HOST_LIBDIR).
 HOST_CG_LDFLAGS ?= -lpixman-1 -lm -L$(CURDIR)/$(HOST_LCMS2_PREFIX)/lib -llcms2 \
+		   -L$(HOST_LIBDIR) -lfoundation -L$(CURDIR)/$(HOST_OBJCPFX)/lib -lobjc $(HOST_ICU_LIBS) \
 		   -Wl,-rpath,$(CURDIR)/$(HOST_LCMS2_PREFIX)/lib
 HOST_CG_SRCS    := $(wildcard userland/CoreGraphics/*.c)
+# THE OBJECTIVE-C HALF. IT CANNOT BE ADDED TO THE C SOURCES' ONE-COMMAND LINK: a single clang
+# invocation over two sources does NOT apply per-file options, which this tree already knows from
+# the Foundation probes — so the `.m` is compiled by a rule of its own and only the OBJECT joins
+# the link. The probes need none of this: they pass the names through as opaque pointers, which is
+# what the C-side spelling in CGColorSpace.h is for.
+HOST_CG_MSRCS   := $(wildcard userland/CoreGraphics/*.m)
 HOST_CG_LIB     ?= $(HOST_LIBDIR)/libcoregraphics.so
 HOST_CG_OBJDIR  := $(HOST_OBJDIR)/coregraphics
+# `=` AND NOT `:=`, WHICH IS NOT A STYLE CHOICE: the object list needs $(HOST_CG_OBJDIR), and an
+# immediately-expanded assignment made BEFORE that variable is set expands to nothing — which
+# builds an object path with a leading slash and make answers "No rule to make target
+# /coregraphics-….o". Deferred expansion is what keeps the order from mattering.
+HOST_CG_MOBJS    = $(patsubst userland/CoreGraphics/%.m,$(HOST_CG_OBJDIR)/coregraphics-%.o,$(HOST_CG_MSRCS))
 # PIXMAN'S INCLUDE PATH NEEDS THE `pixman-1` SUBDIRECTORY NAMED: `pixman.h` includes
 # `pixman-version.h` from its own directory and is NOT self-contained.
 HOST_CG_PROBES  ?= coregraphics_context coregraphics_stroke coregraphics_stroke_context coregraphics_curve coregraphics_arc coregraphics_color
+
+$(HOST_CG_OBJDIR)/coregraphics-%.o: userland/CoreGraphics/%.m
+	@mkdir -p $(HOST_CG_OBJDIR)
+	$(HOST_CC) $(HOST_CG_CFLAGS) $(HOST_OBJCFLAGS) -I$(CURDIR)/$(HOST_OBJCPFX)/include \
+		-c $< -o $@
 
 # THE LIBRARY IS BUILT ONCE AND LINKED FIVE TIMES, the same shape as Foundation's: compiling
 # the eight sources into each probe would also work and would take five times as long.
@@ -225,9 +247,9 @@ HOST_CG_PROBES  ?= coregraphics_context coregraphics_stroke coregraphics_stroke_
 # right — the double dollar is what survives the `eval` and becomes a make expansion - so the
 # two spellings differ because the two rules are reached differently, and copying one into the
 # other fails at the shell rather than at make.
-$(HOST_CG_LIB): $(HOST_CG_SRCS)
+$(HOST_CG_LIB): $(HOST_CG_SRCS) $(HOST_CG_MOBJS)
 	@mkdir -p $(HOST_LIBDIR) $(HOST_CG_OBJDIR)
-	$(HOST_CC) $(HOST_CG_CFLAGS) -shared -o $@ $^ $(HOST_CG_LDFLAGS)
+	$(HOST_CC) $(HOST_CG_CFLAGS) -shared -o $@ $(HOST_CG_SRCS) $(HOST_CG_MOBJS) $(HOST_CG_LDFLAGS)
 
 define CG_HOST_PROBE_rule
 $(HOST_BINDIR)/$(1): $(HOST_CG_LIB) userland/tests/$(1).c

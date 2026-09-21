@@ -101,6 +101,47 @@ CGColorSpaceRef CGColorSpaceCreateLab(const CGFloat *whitePoint, const CGFloat *
 CGColorSpaceRef CGColorSpaceCreateICCBased(size_t nComponents, const CGFloat *range,
 					   CGDataProviderRef profile, CGColorSpaceRef alternate);
 
+/* ---------------------------------------------------------------------------------------
+ * THE SYSTEM-DEFINED SPACES, BY NAME — AND THE FIRST FOUNDATION OBJECTS IN THIS HEADER.
+ *
+ * Apple names them with `CFStringRef` constants; this tree names them `NSString *`, because the
+ * retracted CoreFoundation plan settled that CoreGraphics here declares its signatures with
+ * FOUNDATION types rather than inventing a CF layer. That leaves one mechanical question, and IT
+ * WAS MEASURED BEFORE IT WAS WRITTEN: a C compiler cannot see `@interface NSString`, so under
+ * `__OBJC__` this header forward-declares the class, and under a C compiler it declares the
+ * opaque struct a class is at the ABI level. A C caller passes and receives that pointer and
+ * never looks inside it; the one translation unit that does is Objective-C, imports Foundation,
+ * and is compiled by the tree's Objective-C wrapper.
+ *
+ * THE COST IS REAL AND IS PAID WHERE IT IS STATED: `libcoregraphics.so.1` now DEPENDS ON
+ * libfoundation, because comparing a name is a message send. There is no honest route around
+ * it — the names ARE the API — and the alternative would be inventing C-string-keyed functions
+ * Apple does not have.
+ * ------------------------------------------------------------------------------------- */
+#ifdef __OBJC__
+@class NSString;
+#else
+typedef struct objc_object NSString;
+#endif
+
+/* The names this library answers with an EXACT profile — exact in the sense that matters: each
+ * space's white point, primaries and transfer function are given to the engine rather than
+ * substituted for something this library cannot express. What is absent is absent for that same
+ * reason, name by name in CGColorSpaceNames.m, and stays `open` in the ledger. */
+extern NSString *const kCGColorSpaceSRGB;
+extern NSString *const kCGColorSpaceLinearSRGB;
+extern NSString *const kCGColorSpaceAdobeRGB1998;
+extern NSString *const kCGColorSpaceROMMRGB;
+extern NSString *const kCGColorSpaceGenericLab;
+extern NSString *const kCGColorSpaceGenericGrayGamma2_2;
+
+/* A space by name, or NULL with a reason on stderr. THE NAMED SPACES ARE NOT CACHED, WHICH IS A
+ * DEVIATION: Apple returns the same object for the same name, and this builds a fresh one per
+ * call — observable with `==`, and stated rather than hidden. The DEVICE spaces remain shared
+ * singletons; caching a named space matters once something depends on the identity, and that is
+ * the day to add it. */
+CGColorSpaceRef CGColorSpaceCreateWithName(NSString *name);
+
 /* THE CALIBRATED SPACES, AND THE ONE PLACE APPLE'S PARAMETERS DO NOT TRANSFER DIRECTLY. Apple
  * gives a MATRIX taking RGB to XYZ; the engine wants three PRIMARIES in xy. Those are the same
  * fact in two spellings — a column of an RGB-to-XYZ matrix IS that primary's XYZ — so the step

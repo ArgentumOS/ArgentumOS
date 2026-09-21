@@ -392,6 +392,29 @@ void *cg_colorspace_engine_profile(CGColorSpaceRef space)
 	return space->profile;
 }
 
+CGColorSpaceRef cg_colorspace_from_profile(void *profile, CGColorSpaceModel model,
+					   size_t components)
+{
+	CGColorSpaceRef space;
+
+	if (profile == NULL) {
+		return NULL;
+	}
+	space = calloc(1, sizeof(struct CGColorSpace));
+	if (space == NULL) {
+		return NULL;
+	}
+	space->refcount = 1;
+	space->model = model;
+	space->components = components;
+	space->profile = (cmsHPROFILE)profile;
+	/* NOTHING IS CLOSED HERE, AND THAT IS THE SEAM'S CONTRACT: on success this space owns the
+	 * profile and its release closes it, and on failure the CALLER still owns it. Both sides of
+	 * the seam state the same rule, because getting it wrong is a leak (a profile closed twice)
+	 * or a crash (a profile closed never). */
+	return space;
+}
+
 CGColorSpaceModel CGColorSpaceGetModel(CGColorSpaceRef space)
 {
 	if (space == NULL) {
@@ -425,31 +448,78 @@ static double cg_edge_sign(double ax, double ay, double bx, double by, double px
 	return (bx - ax) * (py - ay) - (by - ay) * (px - ax);
 }
 
-/* INSIDE THE TRIANGLE OR ON ITS EDGE. All three signs agree — or one is zero and the other two
- * agree — and the only other possibility is a MIXED set, which is a point outside. ZERO COUNTS
- * AS INSIDE, and that is the whole distinction this predicate turns on: a space that IS sRGB has
- * its primaries ON sRGB's triangle, and "wide gamut" has to come out FALSE for it. */
+/* INSIDE THE TRIANGLE OR ON ITS EDGE, WITH A TOLERANCE AT THE EDGE — AND THE TOLERANCE IS THE
+ * WHOLE POINT OF THIS FUNCTION, because "on the edge" is not something a profile can express
+ * exactly. An ICC profile keeps its colourants in 16.16 FIXED POINT, so a space whose primaries
+ * ARE sRGB's comes back about 1.5e-5 away from them, and the sign of a cross product that shares
+ * an edge then flips by a few units of an area. Asking this question with no tolerance answered
+ * WIDE GAMUT for sRGB ITSELF — measured, twice, against two different profile-backed sRGB spaces
+ * — which is a wrong answer about a space this library defines.
+ *
+ * SO A SIGN BELOW THE ROUNDING'S OWN SCALE COUNTS AS ZERO, and the scale is small enough to be
+ * harmless: Adobe RGB's green sits 0.08 outside sRGB's triangle, which is four thousand times
+ * this. Below it, a point is on the edge; at or above it, the sign means what it says. */
 static int cg_inside_or_on(double px, double py, const double *tri)
 {
+	const double epsilon = 1e-5;
 	double s0 = cg_edge_sign(tri[0], tri[1], tri[2], tri[3], px, py);
 	double s1 = cg_edge_sign(tri[2], tri[3], tri[4], tri[5], px, py);
 	double s2 = cg_edge_sign(tri[4], tri[5], tri[0], tri[1], px, py);
-	int negative = (s0 < 0.0) + (s1 < 0.0) + (s2 < 0.0);
+	int negative = (s0 < -epsilon) + (s1 < -epsilon) + (s2 < -epsilon);
 
 	return negative == 0 || negative == 3;
 }
 
-/* A SPACE'S PRIMARIES IN xy, OR 0 IF THEY CANNOT BE READ. Device RGB HAS a definition here —
- * it is sRGB, which the conversion path states — and an RGB space built from a profile has
- * colourants the engine can read back. A profile that is NOT a matrix shaper answers 0, and that
- * refusal is the point of the function: a gamut nobody can read is a gamut nobody can compare,
- * and answering "not wide" for a profile nobody looked at would be a guess dressed as a fact. */
+/* THE PRIMARIES OF THIS LIBRARY'S sRGB, READ BACK FROM A PROFILE — AND THAT IS THE ONLY HONEST
+ * REFERENCE, FOR A REASON THAT WAS MEASURED RATHER THAN REASONED. An ICC profile keeps its
+ * colourants in the PCS, which is D50, so `cmsCreate_sRGBProfile()`'s own primaries read back as
+ * (0.64844, 0.33086) instead of sRGB's published (0.6400, 0.3300): the numbers are D50-ADAPTED.
+ * Comparing those against the published D65 values asked a boundary question in two white points
+ * at once, and answered WIDE GAMUT for sRGB ITSELF. Reading BOTH SIDES the same way removes the
+ * question instead of shrinking it — an earlier version of this code put a tolerance here, and
+ * the measurement showed the real difference is five hundred times any rounding. */
+static int cg_srgb_reference(double ref[6])
+{
+	static const cmsTagSignature tags[3] = {
+		cmsSigRedColorantTag, cmsSigGreenColorantTag, cmsSigBlueColorantTag
+	};
+	cmsHPROFILE p = cmsCreate_sRGBProfile();
+	cmsCIEXYZ *xyz;
+	double sum;
+	int i;
+
+	if (p == NULL) {
+		return 0;
+	}
+	for (i = 0; i < 3; i++) {
+		xyz = (cmsCIEXYZ *)cmsReadTag(p, tags[i]);
+		if (xyz == NULL) {
+			cmsCloseProfile(p);
+			return 0;
+		}
+		sum = xyz->X + xyz->Y + xyz->Z;
+		if (sum <= 0.0) {
+			cmsCloseProfile(p);
+			return 0;
+		}
+		ref[i * 2] = xyz->X / sum;
+		ref[i * 2 + 1] = xyz->Y / sum;
+	}
+	cmsCloseProfile(p);
+	return 1;
+}
+
+/* A SPACE'S PRIMARIES IN xy, OR 0 IF THEY CANNOT BE READ. Device RGB goes THROUGH THE ENGINE
+ * rather than reporting sRGB's published values, so that a device space and a profile-backed one
+ * answer in the SAME white point — the property the comparison in `IsWideGamutRGB` depends on.
+ * A profile that is NOT a matrix shaper answers 0, and that refusal is the point of the
+ * function: a gamut nobody can read is a gamut nobody can compare, and answering "not wide" for
+ * a profile nobody looked at would be a guess dressed as a fact. */
 static int cg_space_primaries(CGColorSpaceRef space, double prim[6])
 {
 	static const cmsTagSignature tags[3] = {
 		cmsSigRedColorantTag, cmsSigGreenColorantTag, cmsSigBlueColorantTag
 	};
-	static const double srgb[6] = { 0.6400, 0.3300, 0.3000, 0.6000, 0.1500, 0.0600 };
 	cmsHPROFILE p;
 	cmsCIEXYZ *xyz;
 	double sum;
@@ -460,10 +530,7 @@ static int cg_space_primaries(CGColorSpaceRef space, double prim[6])
 	}
 	p = (cmsHPROFILE)cg_colorspace_engine_profile(space);
 	if (p == NULL) {
-		for (i = 0; i < 6; i++) {
-			prim[i] = srgb[i];
-		}
-		return 1;
+		return cg_srgb_reference(prim);
 	}
 	for (i = 0; i < 3; i++) {
 		xyz = (cmsCIEXYZ *)cmsReadTag(p, tags[i]);
@@ -500,11 +567,15 @@ bool CGColorSpaceSupportsOutput(CGColorSpaceRef space)
 
 bool CGColorSpaceIsWideGamutRGB(CGColorSpaceRef space)
 {
-	static const double srgb[6] = { 0.6400, 0.3300, 0.3000, 0.6000, 0.1500, 0.0600 };
+	double srgb[6];
 	double prim[6];
 	int i;
 
-	if (!cg_space_primaries(space, prim)) {
+	/* THE REFERENCE IS READ THE SAME WAY THE SPACE IS — through a profile, and therefore in the
+	 * PCS — which is what makes this a comparison in ONE white point instead of a boundary
+	 * question asked in two. And if the reference cannot be read at all, the answer is NO: a
+	 * comparison with no reference is not a smaller answer, it is no answer. */
+	if (!cg_srgb_reference(srgb) || !cg_space_primaries(space, prim)) {
 		return 0;
 	}
 	for (i = 0; i < 3; i++) {

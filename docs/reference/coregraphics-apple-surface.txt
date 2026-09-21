@@ -36,11 +36,11 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  157   open  530   struck   48
+#   func       shipped  158   open  529   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped   10   open   46   struck    1
 #   case       shipped   70   open  360   struck   14
-#   var        shipped    6   open  120   struck    9
+#   var        shipped   12   open  114   struck    9
 #   typealias  shipped    6   open   92   struck    2
 #   struct     shipped    6   open   14   struck    0
 case	struck	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
@@ -627,7 +627,7 @@ func	open	CGColorSpaceCreatePattern	-	Opaque Types / Creating Color Spaces	-	obj
 func	open	CGColorSpaceCreateWithColorSyncProfile	-	Reference / Functions	-	objc
 func	open	CGColorSpaceCreateWithICCData	-	Opaque Types / Creating Color Spaces	-	objc
 func	struck	CGColorSpaceCreateWithICCProfile	-	Opaque Types / Creating Color Spaces	deprecated	objc
-func	open	CGColorSpaceCreateWithName	-	Opaque Types / Creating Color Spaces	-	objc
+func	shipped	CGColorSpaceCreateWithName	-	Opaque Types / Creating Color Spaces	-	objc
 func	struck	CGColorSpaceCreateWithPlatformColorSpace	-	Opaque Types / Creating Color Spaces	deprecated	objc
 func	open	CGColorSpaceCreateWithPropertyList	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceGetBaseColorSpace	-	Opaque Types / Examining a Color Space	-	objc
@@ -1520,7 +1520,7 @@ var	open	kCGColorClear	-	Opaque Types / Getting System Colors	-	objc
 var	open	kCGColorConversionBlackPointCompensation	-	Opaque Types / Type Properties	-	objc
 var	open	kCGColorConversionTRCSize	-	Opaque Types / Converting Between Color Spaces	-	objc
 var	open	kCGColorSpaceACESCGLinear	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceAdobeRGB1998	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
+var	shipped	kCGColorSpaceAdobeRGB1998	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceCoreMedia709	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceDCIP3	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceDisplayP3	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
@@ -1538,8 +1538,8 @@ var	open	kCGColorSpaceExtendedRange	-	Reference / Constants	-	objc
 var	open	kCGColorSpaceExtendedSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceGenericCMYK	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	struck	kCGColorSpaceGenericGray	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
-var	open	kCGColorSpaceGenericGrayGamma2_2	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceGenericLab	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
+var	shipped	kCGColorSpaceGenericGrayGamma2_2	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
+var	shipped	kCGColorSpaceGenericLab	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	struck	kCGColorSpaceGenericRGB	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
 var	open	kCGColorSpaceGenericRGBLinear	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceGenericXYZ	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
@@ -1556,9 +1556,9 @@ var	open	kCGColorSpaceITUR_709_PQ	-	Opaque Types / Accessing System-Defined Colo
 var	open	kCGColorSpaceLinearDisplayP3	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceLinearGray	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceLinearITUR_2020	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceLinearSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceROMMRGB	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
+var	shipped	kCGColorSpaceLinearSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
+var	shipped	kCGColorSpaceROMMRGB	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
+var	shipped	kCGColorSpaceSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorWhite	-	Opaque Types / Getting System Colors	-	objc
 var	open	kCGContentAverageLightLevel	-	Variables	-	objc
 var	open	kCGContentAverageLightLevelNits	-	Variables	-	objc

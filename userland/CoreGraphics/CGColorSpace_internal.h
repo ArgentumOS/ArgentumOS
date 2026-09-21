@@ -27,4 +27,13 @@
  * grayscale) or refuse. */
 void *cg_colorspace_engine_profile(CGColorSpaceRef space);
 
+/* A SPACE FROM AN ENGINE PROFILE THAT IS ALREADY OPEN, WHICH IS THE HALF OF THE CONSTRUCTION
+ * THAT LIVES WITH THE STRUCT. The named spaces are built from an Objective-C translation unit —
+ * the only place a name can be compared — but a `CGColorSpace` is private to CGColorSpace.c, so
+ * the profile comes here to be wrapped. ON SUCCESS THE SPACE OWNS THE PROFILE and closes it when
+ * it is released; on failure the caller still owns it and must close it, which is why the two
+ * sides of this seam both mention the same rule. */
+CGColorSpaceRef cg_colorspace_from_profile(void *profile, CGColorSpaceModel model,
+					   size_t components);
+
 #endif /* CORE_GRAPHICS_CGCOLORSPACE_INTERNAL_H */

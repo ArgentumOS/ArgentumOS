@@ -739,6 +739,53 @@ int main(void)
 		CGColorSpaceRelease(rgb);
 	}
 
+	/* --- THE NAMED SPACES: the first Foundation objects reaching a C caller --------------- */
+	/* THIS PROBE IS C, AND IT PASSES `NSString *` VALUES AROUND WITHOUT EVER SEEING INSIDE ONE —
+	 * that is the whole point of the opaque spelling in CGColorSpace.h, and the reason a C caller
+	 * can use Apple's named-space API at all.
+	 *
+	 * THE CHECK THAT MATTERS IS NOT THAT A SPACE CAME BACK, it is that the NAME SELECTED THE
+	 * RIGHT PROFILE: Adobe RGB's primaries are outside sRGB's triangle and sRGB's are on it, and
+	 * both answers come from this library's own predicate rather than from the probe. If the
+	 * comparison in the Objective-C file matched the wrong branch — or the primaries were read
+	 * from the wrong space — this is where it shows. */
+	{
+		CGColorSpaceRef named_srgb = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+		CGColorSpaceRef named_adobe = CGColorSpaceCreateWithName(kCGColorSpaceAdobeRGB1998);
+		CGColorSpaceRef named_romm = CGColorSpaceCreateWithName(kCGColorSpaceROMMRGB);
+		CGColorSpaceRef named_linear = CGColorSpaceCreateWithName(kCGColorSpaceLinearSRGB);
+		CGColorSpaceRef named_lab = CGColorSpaceCreateWithName(kCGColorSpaceGenericLab);
+		CGColorSpaceRef named_gray =
+			CGColorSpaceCreateWithName(kCGColorSpaceGenericGrayGamma2_2);
+
+		check("a named space can be created from a constant this C probe cannot see inside",
+		      named_srgb != NULL);
+		check("...and it is an RGB space with three components",
+		      CGColorSpaceGetModel(named_srgb) == kCGColorSpaceModelRGB &&
+		      CGColorSpaceGetNumberOfComponents(named_srgb) == 3);
+		check("...and NOT wide gamut, because that name IS sRGB",
+		      !CGColorSpaceIsWideGamutRGB(named_srgb));
+		check("the ADOBE name selects Adobe's primaries, which ARE wide gamut",
+		      named_adobe != NULL && CGColorSpaceIsWideGamutRGB(named_adobe));
+		check("the ProPhoto name selects ProPhoto's, which are wide too",
+		      named_romm != NULL && CGColorSpaceIsWideGamutRGB(named_romm));
+		check("...while the LINEAR sRGB name keeps sRGB's primaries and is not wide",
+		      named_linear != NULL && !CGColorSpaceIsWideGamutRGB(named_linear));
+		check("the Lab name gives a Lab space, which the context can therefore be asked to draw",
+		      named_lab != NULL && CGColorSpaceGetModel(named_lab) == kCGColorSpaceModelLab &&
+		      CGColorSpaceSupportsOutput(named_lab));
+		check("and the gray name gives one component",
+		      named_gray != NULL && CGColorSpaceGetNumberOfComponents(named_gray) == 1);
+		check("a NULL name is refused", CGColorSpaceCreateWithName(NULL) == NULL);
+
+		CGColorSpaceRelease(named_gray);
+		CGColorSpaceRelease(named_lab);
+		CGColorSpaceRelease(named_linear);
+		CGColorSpaceRelease(named_romm);
+		CGColorSpaceRelease(named_adobe);
+		CGColorSpaceRelease(named_srgb);
+	}
+
 	printf("CG-COLOR: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

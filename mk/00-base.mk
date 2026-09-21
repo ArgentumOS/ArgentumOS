@@ -284,7 +284,11 @@ FOUNDATION_LIB = $(FNXLIB)/libfoundation.so.1
 CG_SRC  = userland/CoreGraphics
 CG_LIB  = $(FNXLIB)/libcoregraphics.so.1
 CG_SRCS = $(notdir $(wildcard $(CG_SRC)/*.c))
-CG_OBJS = $(addprefix $(FNXLIB)/coregraphics-,$(CG_SRCS:.c=.o))
+# THE OBJECTIVE-C HALF: one file, and it exists because the system-defined spaces are NAMED and a
+# name is an NSString. Everything else in this library is C, and the C half does not know this
+# file exists beyond the two functions it calls through CGColorSpace_internal.h.
+CG_MSRCS = $(notdir $(wildcard $(CG_SRC)/*.m))
+CG_OBJS = $(addprefix $(FNXLIB)/coregraphics-,$(CG_SRCS:.c=.o) $(CG_MSRCS:.m=.o))
 # THREE DIRECTORIES NOW. PIXMAN'S HEADER IS NOT SELF-CONTAINED — `pixman.h` includes
 # `<pixman-version.h>`, which sits beside it rather than on a bare include path — and the
 # colour engine arrives with the ICC half of C4: lcms2's header is in a prefix of its own,
@@ -294,7 +298,11 @@ CG_CFLAGS = -I$(LCMS2_PREFIX)/include -I$(X11PREFIX)/include -I$(X11PREFIX)/incl
 # NO RPATH FOR THE GUEST, deliberately: the loader resolves `liblcms2.so.2` out of
 # /System/Libraries, where mk/20-userland.mk stages it (musl's syslibdir is that directory), so
 # a build-tree path in the binary would be wrong on the guest rather than merely unnecessary.
-CG_LDFLAGS = -L$(X11PREFIX)/lib -lpixman-1 -L$(LCMS2_PREFIX)/lib -llcms2
+# AND libfoundation, BECAUSE OF ONE FILE: the system-defined colour spaces are NAMED, comparing a
+# name is a message send, and that file is Objective-C. `libfoundation.so.1` is staged beside this
+# library in /System/Libraries, and musl's syslibdir IS that directory, so the guest loader finds
+# it with no rpath — the same rule the lcms2 line above follows.
+CG_LDFLAGS = -L$(X11PREFIX)/lib -lpixman-1 -L$(LCMS2_PREFIX)/lib -llcms2 -L$(FNXLIB) -lfoundation
 
 define CG_rule
 $(FNXLIB)/coregraphics-$(1:.c=.o): $(CG_SRC)/$(1)
@@ -302,6 +310,18 @@ $(FNXLIB)/coregraphics-$(1:.c=.o): $(CG_SRC)/$(1)
 	$$(MUSL64_CC) -fPIC -Iinclude -Iuserland $$(CG_CFLAGS) -c $$< -o $$@
 endef
 $(foreach f,$(CG_SRCS),$(eval $(call CG_rule,$(f))))
+
+# THE OBJECTIVE-C RULE, WHICH DIFFERS FROM THE C ONE IN EXACTLY TWO WAYS: the compiler is the
+# tree's Objective-C wrapper (00-base already defines it, because Foundation uses it for its whole
+# library), and the ICU include path is on it because <Foundation/Foundation.h> leads there.
+# NO -fobjc-arc, matching the library's ARC policy (mk/20-userland.mk states it): the library is
+# manual, the probes are ARC, and this file owns nothing under either.
+define CG_objc_rule
+$(FNXLIB)/coregraphics-$(1:.m=.o): $(CG_SRC)/$(1)
+	@mkdir -p $(FNXLIB)
+	$$(MUSL64_OBJC) -fPIC -Iinclude -Iuserland -I$$(ICUPREFIX)/include $$(CG_CFLAGS) -c $$< -o $$@
+endef
+$(foreach f,$(CG_MSRCS),$(eval $(call CG_objc_rule,$(f))))
 
 # No -lm: musl folds the math functions into libc, and a shared object is linked
 # with unresolved symbols allowed anyway. The HOST probe needs -lm and the host's
