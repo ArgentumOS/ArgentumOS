@@ -85,3 +85,18 @@ class Case(BaseCase):
         self.check("pipe-reader-sees-eof",
                    "total=6 last=0" in out and "PIPEEOF parent reaped" in out,
                    "a pipe reader's EOF after the last writer closed: " + out.strip()[-300:])
+
+        # THE KERNEL FIX'S FOUNDATION-FREE REPRODUCER (plan §45-Z): a REGULAR FILE must be reported ready -
+        # an I/O on one cannot block - and an EMPTY PIPE must NOT be. THE PIPE IS THE CONTROL: a select(2)
+        # that answered "ready" for everything would pass the file half alone, which is the mistake do_check()
+        # made when the only rule it knew was the pipe's. No Foundation is involved in either call.
+        mark = len(session.log_text())
+        session.run("%s 1 s; echo SELECT-FILE-STATUS=$?" % PROBE)
+        # The marker is not in the echoed command line (the echo carries SELECT-FILE-STATUS), so this
+        # cannot match before the probe has run - the trap this project has hit more than once.
+        session.wait_for(r"SELECT-FILE DONE", 60)
+        out = session.output_since(mark)
+        self.check("a-regular-file-is-ready-an-empty-pipe-is-not",
+                   "regular-file-select=1 regular-file-poll=1" in out and
+                   "empty-pipe-select=0 empty-pipe-poll=0" in out,
+                   "select/poll on a regular file against an empty pipe: " + out.strip()[-300:])

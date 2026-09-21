@@ -9,6 +9,10 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <sys/select.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <string.h>
@@ -121,6 +125,63 @@ int main(int argc, char **argv)
 		printf("PIPEEOF parent %s waited=%d\n", i < 1500 ? "reaped" : "STUCK", i);
 		fflush(stdout);
 		stop_flag = 1;
+		return 0;
+	}
+
+	/* 's': SELECT/POLL ON A REGULAR FILE - THE KERNEL FIX'S FOUNDATION-FREE REPRODUCER (plan §45-Z).
+	 *
+	 * A REGULAR FILE IS ALWAYS READY, because an I/O on one cannot block. AN EMPTY PIPE IS NOT, until it has
+	 * bytes - and the pipe is here as the CONTROL: a select(2) that answered "ready" for everything would
+	 * pass the file half on its own, and that is exactly the mistake do_check() made, because it knew one
+	 * rule (the pipe's fsop->select) and applied it to every descriptor. No Foundation is involved. */
+	if (argc > 2 && strchr(argv[2], 's') != NULL) {
+		int fd = open("/System/Shared/tests/kernel_pipe_dup2", O_RDONLY);
+		int fds[2];
+		int file_select = -1, file_poll = -1, pipe_select = -1, pipe_poll = -1;
+
+		if (fd >= 0) {
+			fd_set set;
+			struct timeval tv;
+			struct pollfd pfd;
+
+			FD_ZERO(&set);
+			FD_SET(fd, &set);
+			tv.tv_sec = 0;
+			tv.tv_usec = 0;
+			file_select = select(fd + 1, &set, NULL, NULL, &tv);
+
+			pfd.fd = fd;
+			pfd.events = POLLIN;
+			pfd.revents = 0;
+			file_poll = (poll(&pfd, 1, 0) > 0 && (pfd.revents & POLLIN)) ? 1 : 0;
+			close(fd);
+		}
+		if (pipe(fds) == 0) {
+			fd_set set;
+			struct timeval tv;
+			struct pollfd pfd;
+
+			FD_ZERO(&set);
+			FD_SET(fds[0], &set);
+			tv.tv_sec = 0;
+			tv.tv_usec = 0;
+			pipe_select = select(fds[0] + 1, &set, NULL, NULL, &tv);
+
+			pfd.fd = fds[0];
+			pfd.events = POLLIN;
+			pfd.revents = 0;
+			pipe_poll = (poll(&pfd, 1, 0) > 0 && (pfd.revents & POLLIN)) ? 1 : 0;
+			close(fds[0]);
+			close(fds[1]);
+		}
+		printf("SELECT-FILE regular-file-select=%d regular-file-poll=%d\n", file_select, file_poll);
+		printf("SELECT-FILE empty-pipe-select=%d empty-pipe-poll=%d\n", pipe_select, pipe_poll);
+		/* NO TOKEN HERE, and no need of one: this marker cannot be matched off the guest's echo of the
+		 * command line, which carries the STATUS spelling rather than this one. */
+		printf("SELECT-FILE DONE regular-file-select=%d regular-file-poll=%d "
+		       "empty-pipe-select=%d empty-pipe-poll=%d\n",
+		       file_select, file_poll, pipe_select, pipe_poll);
+		fflush(stdout);
 		return 0;
 	}
 

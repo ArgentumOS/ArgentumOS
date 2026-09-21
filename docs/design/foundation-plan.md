@@ -8799,11 +8799,19 @@ bug in waiting.
 fast tier **44/44 cases, 276/276 checks (exit 0)**, `kernel_pipe_dup2` **10/10** and `kernel_threaded_exec`
 **3/3** (mode 3, §45-S's blocking-`waitpid` A/B, still green).
 
-**AND ONE THING IS STILL OWED, NAMED RATHER THAN IMPLIED:** the two checks above are the fix's regression
-tests, and `select-reports-a-regular-file-as-ready` calls `select(2)` DIRECTLY - no Foundation is involved in
-the assertion - but it lives in a Foundation probe. This project's rule for a kernel fix is a reproducer with
-the library ABSENT, so that check wants a Foundation-free home (`kernel_pipe_dup2`'s file is pipe-shaped;
-a small `select`-on-a-file mode is the shape it wants).
+**AND THE FOUNDATION-FREE REPRODUCER THIS FIX OWED IS NOW LANDED (mode `s` in `kernel_pipe_dup2.c`).** The
+rule is that a kernel fix needs a reproducer with the library ABSENT, and `kernel_pipe_dup2` is the file for
+minimal POSIX ones - so mode `s` asks `select(2)` and `poll(2)` about a REGULAR FILE and about an EMPTY PIPE,
+with **the pipe as the CONTROL**: a select(2) that answered "ready" for everything would pass the file half
+alone, which is exactly the mistake `do_check()` made when the only rule it knew was the pipe's. Measured:
+
+    SELECT-FILE regular-file-select=1 regular-file-poll=1
+    SELECT-FILE empty-pipe-select=0 empty-pipe-poll=0
+    kernel_pipe_dup2 11/11 case checks
+
+The pre-fix direction is measured too - `select(2)` answered `0` for a regular file, which is what
+`select-reports-a-regular-file-as-ready` reported before the rule landed - so the reproducer is known to fail
+without the fix rather than assumed to.
 
 FILES THIS ROUND: `kernel/syscalls/select.c` (the rule), `userland/Foundation/NSInputStream.m` (the workaround
 removed), `userland/tests/foundation_stream.m` and `tests/cases/foundation_stream.py` (the two checks are now
