@@ -6143,6 +6143,17 @@ the ledger.
 
 ## 45. W6d: `NSTask` LANDS UNVERIFIED — AND THE PROBE'S OWN CRASH IS THE RECORD (2026-09-20)
 
+**AND THIS SECTION'S VERDICT IS NOW CLOSED: THE PROBE IS GREEN (§45-R .. §45-X, 2026-09-21).** Everything
+below is the investigation's record exactly as it stood, and the two facts it ended on are both retired:
+`foundation_task` is **9/9 case checks and 18/18 probe checks** (`FOUNDATION-TASK RESULT ok=18 fail=0`), and
+the fast tier is **43/43 cases, 270/270 checks**. The path was four defects, each fixed and recorded in place:
+the probe's OWN self-recursion (§45-R — the fault was never in the kernel at all), `do_exit` waking only the
+task that forked (§45-S), the descriptor table belonging to the TASK rather than the PROCESS (§45-V and
+§45-V.3 — the deadlock that a thread's private fd reference created), and `wait4` reporting a stopped child to
+a plain `waitpid(…, 0)` without `WUNTRACED` (§45-W). §45-T, §45-U and §45-V are the measurements that named
+them, and §45-X closes the last red check. **The heading above is deliberately unchanged: it is what this
+section said on the day it was written.**
+
 **STATE, STATED FIRST BECAUSE IT IS THE POINT: THE ROWS FLIPPED AND THE UNIT IS NOT DONE.** The five rows
 are `shipped`, because that word in this ledger means exactly one thing — *our public headers DECLARE it*
 (§11.2) — and they do. §12.1's rule 3 is that a unit is done on THREE signals, and the third one, **the
@@ -7975,6 +7986,13 @@ address inside that window can look like stack growth when it is not.
 probe whose FIRST job was to prove a class works, ending up proving something about the process instead.
 The code is committed because it builds and because the next session should not re-write it; the LEDGER
 SAYS THE UNIT IS OWED because that is what the ledger is for.
+
+**AND THAT OWED UNIT IS PAID (2026-09-21): `foundation_task` is 9/9 case checks and 18/18 probe checks, and
+the fast tier is 43/43 cases and 270/270 checks.** The ledger no longer owes it. The four defects this
+investigation exposed are fixed — §45-R (the probe called itself), §45-S (`do_exit` woke only the forking
+task), §45-V/§45-V.3 (the descriptor table is the process's, not the task's), §45-W (`wait4`'s stopped-child
+report) — and §45-X closes the last red check. This is the record's own correction rather than a rewrite: what
+it says the ledger is FOR is exactly what happened to it.
 
 FILES: `userland/Foundation/NSTask.{h,m}`, `Foundation.h` (one import), `userland/tests/foundation_task.m`,
 `tests/cases/foundation_task.py`, `mk/20-userland.mk`.
