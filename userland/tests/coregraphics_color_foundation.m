@@ -114,6 +114,35 @@ int main(void)
 	CGColorSpaceRelease(space);
 	check("the space outlived the provider made from the same object", 1);
 
+	/* --- A NAMED SPACE CAN SAY ITS NAME, WHICH IS THE LOOP CLOSING ------------------------- */
+	/* A NAME THAT COMES OUT OF `CGColorSpaceCopyName` IS ONE THAT CAN GO STRAIGHT BACK IN, and
+	 * that round trip is the check: it holds only because the named spaces are one object per
+	 * name. A DEVICE SPACE HAS NO NAME — Apple's index has no device-space name constant at all —
+	 * and nil is what its own documentation allows for that case. */
+	{
+		CGColorSpaceRef named = CGColorSpaceCreateWithName(kCGColorSpaceAdobeRGB1998);
+		CGColorSpaceRef device = CGColorSpaceCreateDeviceRGB();
+		NSString *name;
+		CGColorSpaceRef again;
+
+		name = CGColorSpaceCopyName(named);
+		check("a named space reports the name it was made with",
+		      name != nil && [name isEqual:kCGColorSpaceAdobeRGB1998]);
+		again = CGColorSpaceCreateWithName(name);
+		check("...and that name goes straight back in, giving the SAME space",
+		      again != NULL && again == named);
+		CGColorSpaceRelease(again);
+		/* THE CALLER OWNS THE COPY, and under MRC that means releasing it — which is also the
+		 * check that this function's ownership is what its name promises. */
+		[name release];
+
+		check("a device space has NO name to report", CGColorSpaceCopyName(device) == nil);
+		check("...and a NULL space is answered rather than crashed on",
+		      CGColorSpaceCopyName(NULL) == nil);
+		CGColorSpaceRelease(device);
+		CGColorSpaceRelease(named);
+	}
+
 	printf("CG-COLORF: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

@@ -855,6 +855,23 @@ int main(void)
 		CGColorSpaceRelease(p3);
 	}
 
+	/* --- THE NAMED SPACES ARE CACHED: one object per name -------------------------------- */
+	/* A DEVIATION REMOVED, SO THE CHECK IS THE DEVIATION'S OPPOSITE: asking for the same name
+	 * twice has to give THE SAME OBJECT. It is also the precondition `CGColorSpaceCopyName`
+	 * needs — and a C probe can assert the identity, because a pointer comparison needs no
+	 * message, while the NAME itself is read back in the Objective-C probe beside this one. */
+	{
+		CGColorSpaceRef a = CGColorSpaceCreateWithName(kCGColorSpaceAdobeRGB1998);
+		CGColorSpaceRef b = CGColorSpaceCreateWithName(kCGColorSpaceAdobeRGB1998);
+		CGColorSpaceRef c = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+
+		check("the same name twice gives the same OBJECT", a != NULL && a == b);
+		check("...and a different name gives a different one", c != NULL && c != a);
+		CGColorSpaceRelease(c);
+		CGColorSpaceRelease(b);
+		CGColorSpaceRelease(a);
+	}
+
 	printf("CG-COLOR: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

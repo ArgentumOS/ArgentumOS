@@ -80,6 +80,21 @@ typedef struct objc_object NSString;
 #endif
 
 /*
+ * AND THE `ns_returns_retained` ATTRIBUTE, WHICH IS THE OTHER THING A C COMPILER CANNOT USE. A
+ * `Copy`-named function returns +1, and an Objective-C caller under ARC has to be told so or it
+ * will treat the result as +0 and leak. To a C compiler these functions return a `struct
+ * objc_object *`, so the attribute is ignored there — and clang says as much under `-Wextra`,
+ * which is how this macro came to exist: the attribute must be ON for an Objective-C translation
+ * unit and ABSENT for a C one, and a macro is the only way to say that once. Apple's headers spell
+ * the same problem `CF_RETURNS_RETAINED`; there is no CF here, so this is it.
+ */
+#ifdef __OBJC__
+#define CG_RETURNS_RETAINED __attribute__((ns_returns_retained))
+#else
+#define CG_RETURNS_RETAINED
+#endif
+
+/*
  * CGFloat IS DOUBLE ON 64-BIT, which is what Apple's is under __LP64__, and this tree is
  * 64-bit only (no 32-bit compatibility exists here at all).
  */

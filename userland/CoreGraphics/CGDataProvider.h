@@ -64,8 +64,10 @@ CGDataProviderRef CGDataProviderCreateWithCFData(NSData *data);
 
 /* THE BYTES AS A FOUNDATION OBJECT — the read side of the same door, and A COPY: the caller owns
  * the result, so a provider may be released the moment its caller is done. Handing back a view of
- * the provider's memory would tie the two lifetimes together for no reason a caller asked for. */
-NSData *CGDataProviderCopyData(CGDataProviderRef provider);
+ * the provider's memory would tie the two lifetimes together for no reason a caller asked for.
+ * `CG_RETURNS_RETAINED` SAYS THAT OWNERSHIP OUT LOUD, which is what an ARC caller needs to hear:
+ * without it, ARC would take the +1 return for +0 and leak the copy. */
+NSData *CGDataProviderCopyData(CGDataProviderRef provider) CG_RETURNS_RETAINED;
 
 #ifdef __cplusplus
 }

@@ -231,16 +231,67 @@ static cmsHPROFILE cg_profile_for_name(NSString *name, CGColorSpaceModel *model,
 	return NULL;
 }
 
+/* ---------------------------------------------------------------------------------------
+ * THE CACHE, WHICH IS A DEVIATION REMOVED RATHER THAN ONE RECORDED.
+ *
+ * Apple returns the same object for the same name; this file used to build a fresh one per call,
+ * which CGColorSpace.h stated as observable with `==`. IT BECAME NECESSARY RATHER THAN NICE WHEN
+ * `CGColorSpaceCopyName` ARRIVED: a space that can say which name it was made with has to know it,
+ * and the honest way to know is for there to be ONE OBJECT PER NAME rather than a side table keyed
+ * by anything else.
+ *
+ * AN ENTRY HOLDS A REFERENCE OF ITS OWN, so a caller's release cannot drop it to zero and leave the
+ * cache pointing at freed memory — the same reason the C half's device singletons count their
+ * references and are never freed.
+ * ------------------------------------------------------------------------------------- */
+#define CG_NAMED_MAX 8
+static struct {
+	NSString *name;              /* the CONSTANT, which is never released */
+	CGColorSpaceRef space;       /* the cache's own reference */
+} cg_named[CG_NAMED_MAX];
+static int cg_named_count;
+
+/* THE NAME A SPACE WAS MADE WITH, OR NIL — and nil is the honest answer for every other space
+ * here. A DEVICE space has no name to give: Apple's index has no `kCGColorSpaceDevice…` row at all
+ * (measured), and Apple's own documentation for this function allows exactly that case — "or NULL
+ * if the colour space has no name". A space built from a profile's bytes or from parameters was not
+ * asked for by name either, and inventing one would invent a name nobody could pass back to
+ * `CGColorSpaceCreateWithName`. */
+NSString *CGColorSpaceCopyName(CGColorSpaceRef space)
+{
+	int i;
+
+	if (space == NULL) {
+		return nil;
+	}
+	for (i = 0; i < cg_named_count; i++) {
+		if (cg_named[i].space == space) {
+			/* `-copy` ON AN IMMUTABLE STRING IS THE SAME OBJECT RETAINED, which is what a
+			 * `Copy`-named function owes its caller: something they own. */
+			return [cg_named[i].name copy];
+		}
+	}
+	return nil;
+}
+
 CGColorSpaceRef CGColorSpaceCreateWithName(NSString *name)
 {
 	CGColorSpaceModel model = kCGColorSpaceModelUnknown;
 	size_t components = 0;
 	CGColorSpaceRef space;
 	cmsHPROFILE p;
+	int i;
 
 	if (name == nil) {
 		fprintf(stderr, "CG-REFUSE: CGColorSpaceCreateWithName needs a name\n");
 		return NULL;
+	}
+	/* ONE OBJECT PER NAME: a hit returns the cached space, RETAINED, so that the caller's release
+	 * is balanced exactly as it would be for a fresh one — the cache's own reference is separate. */
+	for (i = 0; i < cg_named_count; i++) {
+		if ([cg_named[i].name isEqual:name]) {
+			return CGColorSpaceRetain(cg_named[i].space);
+		}
 	}
 	p = cg_profile_for_name(name, &model, &components);
 	if (p == NULL) {
@@ -255,6 +306,12 @@ CGColorSpaceRef CGColorSpaceCreateWithName(NSString *name)
 	space = cg_colorspace_from_profile(p, model, components);
 	if (space == NULL) {
 		cmsCloseProfile(p);
+		return NULL;
+	}
+	if (cg_named_count < CG_NAMED_MAX) {
+		cg_named[cg_named_count].name = name;
+		cg_named[cg_named_count].space = CGColorSpaceRetain(space);
+		cg_named_count++;
 	}
 	return space;
 }

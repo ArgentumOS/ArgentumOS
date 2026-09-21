@@ -139,10 +139,25 @@ extern NSString *const kCGColorSpaceGenericGrayGamma2_2;
 
 /* A space by name, or NULL with a reason on stderr. THE NAMED SPACES ARE NOT CACHED, WHICH IS A
  * DEVIATION: Apple returns the same object for the same name, and this builds a fresh one per
- * call — observable with `==`, and stated rather than hidden. The DEVICE spaces remain shared
- * singletons; caching a named space matters once something depends on the identity, and that is
- * the day to add it. */
+ * call. THE DEVICE SPACES REMAIN SHARED SINGLETONS, and THE NAMED SPACES ARE CACHED NOW TOO —
+ * one object per name — because that day arrived with `CGColorSpaceCopyName` below: a space that
+ * can say which name it was made with has to know it. */
 CGColorSpaceRef CGColorSpaceCreateWithName(NSString *name);
+
+/* THE NAME THIS SPACE WAS MADE WITH, OR NIL. It is a COPY — the caller owns it — and it closes the
+ * loop with the function above: a name that comes out of this one can go straight back in, because
+ * the named spaces are one object per name.
+ *
+ * NIL IS THE HONEST ANSWER FOR EVERY OTHER SPACE. A DEVICE space has no name to give — Apple's
+ * index has no `kCGColorSpaceDevice…` row at all, measured — and a space built from profile bytes
+ * or from parameters was never asked for by name. Apple's documentation for this function allows
+ * exactly that case: "or NULL if the colour space has no name".
+ *
+ * THE `CG_RETURNS_RETAINED` ATTRIBUTE IS PART OF THE SIGNATURE AND NOT DECORATION: a `Copy`-named
+ * function returns +1, and an Objective-C caller under ARC would otherwise treat it as +0 and leak.
+ * It EXPANDS AWAY under a C compiler, where it means nothing and clang would warn that it is
+ * ignored — which is what CGBase.h's macro is for. */
+NSString *CGColorSpaceCopyName(CGColorSpaceRef space) CG_RETURNS_RETAINED;
 
 /* THE ICC PROFILE AS FOUNDATION DATA: `NSData *` where Apple's name says `CFData`, and the
  * counterpart of `CGDataProviderCreateWithCFData`. It is a BRIDGE — the data becomes a provider

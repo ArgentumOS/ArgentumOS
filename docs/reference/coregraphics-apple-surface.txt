@@ -36,7 +36,7 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  161   open  526   struck   48
+#   func       shipped  160   open  527   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped   10   open   46   struck    1
 #   case       shipped   70   open  360   struck   14
@@ -791,7 +791,7 @@ func	open	CGDataConsumerCreateWithURL	-	Opaque Types / Creating Data Consumers	-
 func	open	CGDataConsumerGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	open	CGDataConsumerRelease	-	Opaque Types / Retaining and Releasing Data Consumers	-	objc
 func	open	CGDataConsumerRetain	-	Opaque Types / Retaining and Releasing Data Consumers	-	objc
-func	shipped	CGDataProviderCopyData	-	Opaque Types / Getting Data from a Data Provider	-	objc
+func	open	CGDataProviderCopyData	-	Opaque Types / Getting Data from a Data Provider	-	objc
 func	open	CGDataProviderCreateDirect	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 func	open	CGDataProviderCreateSequential	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
 func	shipped	CGDataProviderCreateWithCFData	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
