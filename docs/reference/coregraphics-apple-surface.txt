@@ -36,7 +36,7 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  125   open  562   struck   48
+#   func       shipped  126   open  561   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped    9   open   47   struck    1
 #   case       shipped   65   open  365   struck   14
@@ -1161,7 +1161,7 @@ func	shipped	CGPathApply	-	Opaque Types / Applying a Function to the Elements of
 func	open	CGPathApplyWithBlock	-	Reference / Functions	-	objc
 func	open	CGPathContainsPoint	-	Opaque Types / Examining a Graphics Path	-	objc
 func	open	CGPathCreateCopy	-	Opaque Types / Copying a Graphics Path	-	objc
-func	open	CGPathCreateCopyByDashingPath	-	Opaque Types / Copying a Graphics Path	-	objc
+func	shipped	CGPathCreateCopyByDashingPath	-	Opaque Types / Copying a Graphics Path	-	objc
 func	shipped	CGPathCreateCopyByFlattening	-	Reference / Functions	-	objc
 func	open	CGPathCreateCopyByIntersectingPath	-	Reference / Functions	-	objc
 func	open	CGPathCreateCopyByNormalizing	-	Reference / Functions	-	objc

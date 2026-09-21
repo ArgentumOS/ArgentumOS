@@ -118,6 +118,25 @@ void CGPathAddArcToPoint(CGMutablePathRef path, const CGAffineTransform *m, CGFl
 			 CGFloat x2, CGFloat y2, CGFloat radius);
 
 /*
+ * DASHING: THE PATH CUT INTO THE PIECES A DASHED LINE DRAWS (CGPathDash.c).
+ *
+ * `lengths` is a cycle of lengths that alternate ON and OFF from `phase` onward, and the
+ * result is a set of separate subpaths — one per dash — because the pens really do go up and
+ * down. THE OUTPUT IS LINES: a dash boundary falls between points on a curve, so the path is
+ * flattened first, through the one flattener in the tree.
+ *
+ * `transform` IS APPLIED TO THE PATH, NOT TO THE RESULT, so the lengths are in the
+ * transformed space — the convention the stroker set — and a NULL `lengths` or a `count` of
+ * zero means NO DASHING, which is a copy rather than an empty path: that is how a caller says
+ * "solid". Three further cases this tree decides because Apple's page does not: AN ODD COUNT
+ * IS DOUBLED (a cyclic pattern with an odd element count would fall out of step with its own
+ * alternation), A TOTAL LENGTH OF ZERO IS A SOLID LINE, and A NEGATIVE LENGTH IS READ AS ITS
+ * MAGNITUDE.
+ */
+CGPathRef CGPathCreateCopyByDashingPath(CGPathRef path, const CGAffineTransform *transform,
+					CGFloat phase, const CGFloat *lengths, size_t count);
+
+/*
  * FLATTENING: THE CURVES AS LINES, AND THE ONE PLACE THAT DECISION IS MADE.
  *
  * `flatness` is the greatest distance a line is allowed to stray from the curve it

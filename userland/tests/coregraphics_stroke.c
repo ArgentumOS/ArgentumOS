@@ -343,6 +343,151 @@ int main(void)
 		CGPathRelease(z);
 	}
 
+	/* --- dashing: the path cut into the pieces a dashed line draws ----------- */
+	{
+		CGMutablePathRef ln = CGPathCreateMutable();
+		double lens[2];
+		double odd[3];
+		double odd2[6];
+		CGPathRef dashed;
+		CGContextRef dc;
+		int n_dashed;
+
+		CGPathMoveToPoint(ln, NULL, 1.0, 6.5);
+		CGPathAddLineToPoint(ln, NULL, 11.0, 6.5);   /* ten units along one device row */
+		/* A 3-ON / 2-OFF PATTERN OVER TEN UNITS IS TWO PERIODS: 3 + 3 = SIX UNITS of dash,
+		 * with every boundary on a whole coordinate, so the pixel count is EXACT. */
+		lens[0] = 3.0;
+		lens[1] = 2.0;
+
+		dashed = CGPathCreateCopyByDashingPath((CGPathRef)ln, NULL, 0.0, lens, 2);
+		dc = fresh();
+		CGContextSetRGBFillColor(dc, 1.0, 1.0, 1.0, 1.0);
+		CGContextSetLineWidth(dc, 1.0);
+		CGContextBeginPath(dc);
+		CGContextAddPath(dc, dashed);
+		CGContextStrokePath(dc);
+		n_dashed = painted(dc);
+		pixel(dc, 1, 5, p);
+		check_num("a 3-on/2-off dash over ten units paints six", (double)n_dashed, 6.0, 0);
+		check("...and the first unit is one of them", p[3] == 255);
+		CGContextRelease(dc);
+		CGPathRelease(dashed);
+
+		/* THE PHASE MOVES THE BOUNDARY, NOT WHETHER A DASH IS PAINTED AT ALL: a phase of 1
+		 * starts the pattern one unit in, so the first dash still begins at x = 1 and is TWO
+		 * units long instead of three. The unit that changes is x = 3, ON at phase 0 and OFF
+		 * at phase 1. MY FIRST VERSION READ x = 1, WHICH IS PAINTED UNDER BOTH PHASES — and
+		 * the count cannot tell them apart either (2 + 3 + 1 also comes to six), which is
+		 * exactly why this check is a pixel and not a count. */
+		dashed = CGPathCreateCopyByDashingPath((CGPathRef)ln, NULL, 1.0, lens, 2);
+		dc = fresh();
+		CGContextSetRGBFillColor(dc, 1.0, 1.0, 1.0, 1.0);
+		CGContextSetLineWidth(dc, 1.0);
+		CGContextBeginPath(dc);
+		CGContextAddPath(dc, dashed);
+		CGContextStrokePath(dc);
+		pixel(dc, 3, 5, p);
+		check("a phase of 1 moves the dash boundary at x = 3", p[3] == 0);
+		CGContextRelease(dc);
+		CGPathRelease(dashed);
+
+		/* NO PATTERN IS NO DASHING: the whole line, all ten units. */
+		dashed = CGPathCreateCopyByDashingPath((CGPathRef)ln, NULL, 0.0, NULL, 0);
+		dc = fresh();
+		CGContextSetRGBFillColor(dc, 1.0, 1.0, 1.0, 1.0);
+		CGContextSetLineWidth(dc, 1.0);
+		CGContextBeginPath(dc);
+		CGContextAddPath(dc, dashed);
+		CGContextStrokePath(dc);
+		check_num("a NULL pattern paints the whole line", (double)painted(dc), 10.0, 0);
+		CGContextRelease(dc);
+		CGPathRelease(dashed);
+
+		/* AN ODD COUNT IS DOUBLED, so a three-entry pattern and its explicit six-entry repeat
+		 * are the same dashes — which is the whole content of that rule. */
+		odd[0] = 3.0;
+		odd[1] = 1.0;
+		odd[2] = 1.0;
+		odd2[0] = 3.0;
+		odd2[1] = 1.0;
+		odd2[2] = 1.0;
+		odd2[3] = 3.0;
+		odd2[4] = 1.0;
+		odd2[5] = 1.0;
+		{
+			CGPathRef a = CGPathCreateCopyByDashingPath((CGPathRef)ln, NULL, 0.0, odd, 3);
+			CGPathRef b = CGPathCreateCopyByDashingPath((CGPathRef)ln, NULL, 0.0, odd2, 6);
+			int na;
+			int nb;
+
+			dc = fresh();
+			CGContextSetRGBFillColor(dc, 1.0, 1.0, 1.0, 1.0);
+			CGContextSetLineWidth(dc, 1.0);
+			CGContextBeginPath(dc);
+			CGContextAddPath(dc, a);
+			CGContextStrokePath(dc);
+			na = painted(dc);
+			CGContextRelease(dc);
+
+			dc = fresh();
+			CGContextSetRGBFillColor(dc, 1.0, 1.0, 1.0, 1.0);
+			CGContextSetLineWidth(dc, 1.0);
+			CGContextBeginPath(dc);
+			CGContextAddPath(dc, b);
+			CGContextStrokePath(dc);
+			nb = painted(dc);
+			CGContextRelease(dc);
+
+			check_num("an odd count is doubled", (double)na, (double)nb, 0.0);
+			CGPathRelease(a);
+			CGPathRelease(b);
+		}
+		CGPathRelease((CGPathRef)ln);
+	}
+
+	/* --- and a CURVE can be dashed, because it is flattened first ------------- */
+	{
+		CGPathRef circle = CGPathCreateWithEllipseInRect(CGRectMake(1.0, 1.0, 10.0, 10.0), NULL);
+		double ones[2];
+		CGPathRef dashed;
+		int solid_cov;
+		int dash_cov;
+		CGContextRef dc;
+
+		ones[0] = 1.0;
+		ones[1] = 1.0;
+		dc = fresh();
+		CGContextSetRGBFillColor(dc, 1.0, 1.0, 1.0, 1.0);
+		CGContextSetLineWidth(dc, 1.0);
+		CGContextBeginPath(dc);
+		CGContextAddPath(dc, circle);
+		CGContextStrokePath(dc);
+		solid_cov = coverage(dc);
+		CGContextRelease(dc);
+
+		dashed = CGPathCreateCopyByDashingPath(circle, NULL, 0.0, ones, 2);
+		dc = fresh();
+		CGContextSetRGBFillColor(dc, 1.0, 1.0, 1.0, 1.0);
+		CGContextSetLineWidth(dc, 1.0);
+		CGContextBeginPath(dc);
+		CGContextAddPath(dc, dashed);
+		CGContextStrokePath(dc);
+		dash_cov = coverage(dc);
+		CGContextRelease(dc);
+
+		/* A 1-ON/1-OFF PATTERN IS HALF THE LINE, so the dashed circle covers about half the
+		 * AREA the solid one does — AND AREA IS THE MEASURE, NOT THE PIXEL COUNT: a dash of
+		 * any length still touches the pixel it lands in, so the first version of this check
+		 * compared 61 touched pixels against 70 and called it a failure, when what was
+		 * actually happening was that the dashed circle had almost exactly half the ink and
+		 * every touched pixel counted the same. */
+		check_num("a dashed circle covers about half the solid one's area",
+			  (double)dash_cov, (double)solid_cov * 0.5, (double)solid_cov * 0.2);
+		CGPathRelease(dashed);
+		CGPathRelease(circle);
+	}
+
 	CGPathRelease(stroked);
 	CGPathRelease(src);
 	printf("CG-STROKE: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
