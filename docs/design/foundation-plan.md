@@ -6827,6 +6827,28 @@ mapping process is RUNNING the test, not during its exit — so the repair canno
 lives. That is the mapping reference, taken where an already-owned page is mapped and dropped wherever a
 mapping is removed, exactly as staged — and `kernel_threaded_exec` green is the acceptance test.
 
+**AND THE TAKE/DROP INVENTORY SAYS THE NEXT INSTRUMENT IS ONE STEP EARLIER THAN WHERE I HAVE BEEN LOOKING.**
+Reading both sides before changing anything:
+
+  * **DROP SIDE:** `free_vma_pages()` (`mm/mmap.c:287`, called from munmap at 273/684, from exec's teardown at
+    434, and from a process's exit) and `unmap_page()` (`mm/memory.c:408`) — and `kernel/boot64/mm64.c` carries
+    an explicit warning that such a walk "must distinguish OS-managed/device pages", i.e. ANY `struct page`
+    count change has to exclude device pages or it corrupts their state.
+  * **TAKE SIDE:** in `map_page_flags` the leaf fast path and the caller-supplied-page branch (the cached-file
+    path) increment nothing. But the victim page here is ANONYMOUS — pid 7's `printf` buffer — and an
+    anonymous page is owned by the process that allocated it (count 1) and released at unmap, which is
+    correct. So a reference added on the cached-file path would not explain it, and adding one blind would
+    trade a measured corruption for an unmeasured leak.
+
+**AND HERE IS THE PART THAT MOVES THE QUESTION:** the `RELSITE` marker says the free that returns the page to
+the bitmap is `kfree` — the KERNEL HEAP — and a page the heap owns is one the PAGE ALLOCATOR gave it. So the
+first bad event is not a release at all: **it is a page being GRANTED to the heap while userspace still maps
+it.** Everything downstream (the vma table holding "FNX3-DONE", `PROT_NONE`, the silent SIGSEGV) follows from
+that one grant. **The instrument that names it is the GRANT side: in `get_free_page()` (`mm/page.c:168`),
+check whether the page being handed out is mapped by any process, with the U/S test that the last measurement
+proved is necessary** — the same cheap, decisive instrument that has worked every time this session, applied
+to the other end of the same alias.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
