@@ -65,6 +65,13 @@ int main(int argc, char **argv)
 		rev[i] = token[strlen(token) - 1 - i];
 	rev[strlen(token) < sizeof(rev) - 1 ? strlen(token) : sizeof(rev) - 1] = 0;
 
+	/* THE WHO-DIED INSTRUMENT: a fork child carries the SAME executable name as its parent, so the
+	 * kernel's "Process '/System/Shared/tests/kernel_threaded_exec'" line names both. The parent prints
+	 * its pid first and every child prints once before exec()ing, so the log says which of the two
+	 * faulted - and whether the faulting process ever ran a single instruction of its own. */
+	printf("PARENT pid=%d mode=%d n=%d\n", (int)getpid(), mode, n);
+	fflush(stdout);
+
 	nullfd = open("/System/Devices/null", O_WRONLY);
 
 	if (pthread_create(&t, NULL, reaper, NULL) != 0) {
@@ -79,6 +86,8 @@ int main(int argc, char **argv)
 		if (pipe(fds)) { pipefail++; continue; }
 		pid = fork();
 		if (pid == 0) {
+			printf("CHILD pid=%d\n", (int)getpid());
+			fflush(stdout);
 			dup2(fds[0], 0);
 			if (nullfd >= 0)
 				dup2(nullfd, 1);	/* keep the serial console out of the loop */

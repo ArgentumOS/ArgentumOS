@@ -6331,6 +6331,31 @@ size (1520 B here vs 2224 B in a passing probe), `argc`/`argv`, and the load add
 `EXEC` at 0x400000). Also unsupported: the faulting `rsp` is not `PAGE_OFFSET`-based (`include/fnx/
 linker.h` gives `PAGE_OFFSET = 0xFFFF800000000000` on x86-64), and nothing in the tree names 0x7f00.
 
+**AND THE FIRST MEASUREMENT NAILS WHO DIES — THE CHILD, BEFORE IT RUNS A SINGLE INSTRUCTION.** A fork child
+carries the SAME executable name as its parent, so the kernel's `Process '…/kernel_threaded_exec'` line names
+either. The reproducer now prints its own pid and every child prints once before `exec`: in two runs the log
+reads
+
+    PARENT pid=9 mode=1 n=400
+    CHILD pid=11
+    CHILD pid=12
+    Page Fault at 0x7f0000080849 (reading) with error code 0x14
+    Process '/System/Shared/tests/kernel_threaded_exec' with pid 10.
+
+and the process that faults is **pid 10 — a fork child that NEVER ANNOUNCED ITSELF**, while 11, 12 and later
+17..20 all did. So the child dies **before executing one instruction of its own body**, which is exactly what
+an all-zero register file with a garbage `rip` said already: **the user-mode frame installed for that child
+by `fork` is wrong.** And only ONE such death appears per run — the FIRST child — which points at a RACE
+with the worker thread that was created immediately before the first `fork(2)` rather than at something
+wrong with every child.
+
+**THE EXPERIMENT THAT WOULD SETTLE THE RACE IS WRITTEN AND BLOCKED, AND THE BLOCKER IS NOT THIS WORK.**
+Putting a settle delay (`usleep(200000)`) between `pthread_create` and the first `fork` is a two-line test of
+"is it the thread's own startup that races the fork". It could not be built: `make rootagfs` now fails in
+`.build/fnxlib/coregraphics-CGColorSpace.o`, i.e. in `userland/CoreGraphics/` — **a CONCURRENT AGENT's
+in-flight edit in this same checkout, not this work's.** Their files are theirs to land; the test resumes as
+soon as the tree compiles again (or by staging the probe another way, e.g. an extra drive).
+
 **THE REMAINING QUESTION, AND IT IS NOW A NARROW ONE:** what installs that first user-mode frame, and where
 does `0x7f00_0000080849` come from? The next step is the project's own doctrine — **measure at the writer**:
 instrument the kernel's exec / return-to-user path to print the frame it installs (initial `rip`, `rsp` and
