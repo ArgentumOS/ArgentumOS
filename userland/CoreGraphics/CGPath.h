@@ -5,19 +5,20 @@
 /*
  * CGPath.h — the path: subpaths of lines and CURVES, the walker, and the flattener.
  *
- * WHAT IS HERE NOW: move, line, RECTANGLE, quadratic and cubic curves, and close — plus
- * `CGPathCreateCopyByFlattening`, which is how a curve becomes the lines everything else
- * in this tree draws. THE CURVE CONSTRUCTORS USED TO BE ABSENT ON PURPOSE and the
- * paragraph that said so is gone, because they are here: the reason for waiting was that a
- * path that silently flattened a curve wrongly is worse than one that cannot be built, and
- * the answer was to keep the CONTROL POINTS in the path — so a caller keeps their flatness
- * choice, and the two bounding boxes below can honestly differ.
+ * WHAT IS HERE NOW: move, line, RECTANGLE, quadratic and cubic curves, close, the ARC
+ * family (`CGPathAddArc`, `CGPathAddEllipseInRect`, `CGPathAddRoundedRect` and the two
+ * `CGPathCreateWith…` forms) — plus `CGPathCreateCopyByFlattening`, which is how a curve
+ * becomes the lines everything else in this tree draws. THE CURVE CONSTRUCTORS USED TO BE
+ * ABSENT ON PURPOSE and the paragraph that said so is gone, because they are here: the
+ * reason for waiting was that a path that silently flattened a curve wrongly is worse than
+ * one that cannot be built, and the answer was to keep the CONTROL POINTS in the path — so
+ * a caller keeps their flatness choice, and the two bounding boxes below can honestly
+ * differ. The arcs came the same way, built ON those cubics.
  *
- * WHAT IS STILL ABSENT, AND WHY IT IS A DIFFERENT KIND OF ABSENT: `CGPathAddArc`,
- * `CGPathAddArcToPoint`, `CGPathAddEllipseInRect`, `CGPathAddRoundedRect` and
- * `CGPathCreateWithEllipseInRect` are not written yet. They are not held back — they are
- * built ON cubics, which is what this header now has, so they are the next thing rather
- * than a design question, and none of them is declared until it works.
+ * WHAT IS STILL ABSENT: `CGPathAddArcToPoint`, the "round off this corner between two
+ * segments" form. It is a different construction — tangent lines to a circle that fits
+ * between them — rather than a design question, and it is not declared until it works,
+ * which is this header's rule.
  *
  * A NOTE ON THIS HEADER'S PROVENANCE, because it is unusual for this tree: the C0
  * ledger (docs/reference/coregraphics-apple-surface.txt) DOES NOT CONTAIN the
@@ -42,10 +43,18 @@
  * unit (CGPathStroke.c) included CGPath.h alone and the compiler answered `unknown type
  * name 'CGAffineTransform'` in nine places at once. A header that names a type includes
  * the header that defines it.
+ *
+ * AND IT HAPPENED AGAIN, WITH `bool`: `CGPathAddArc`'s `clockwise` is a `bool`, and this
+ * header named the type without `<stdbool.h>` — so the arc constructor's own header failed
+ * to compile in every translation unit that had not happened to include it first. The
+ * lesson is the same one, which is the point of writing it down twice: a header that names
+ * a type includes the header that defines it, and the SECOND time is what proves it was a
+ * lesson rather than an accident.
  */
 #include <CoreGraphics/CGBase.h>
 #include <CoreGraphics/CGAffineTransform.h>
 #include <CoreGraphics/CGGeometry.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -77,6 +86,26 @@ void CGPathAddCurveToPoint(CGMutablePathRef path, const CGAffineTransform *m, CG
 			   CGFloat cp1y, CGFloat cp2x, CGFloat cp2y, CGFloat x, CGFloat y);
 void CGPathAddRect(CGMutablePathRef path, const CGAffineTransform *m, CGRect rect);
 void CGPathCloseSubpath(CGMutablePathRef path);
+
+/* THE ARC FAMILY, ALL OF IT BUILT ON CUBICS (CGPathArc.c). `clockwise` IS IN THE PATH'S OWN
+ * SPACE — a positive sweep is counter-clockwise there — and EQUAL ANGLES ADD NOTHING, which
+ * is this tree's statement about a case Apple's page does not define. An arc CONTINUES the
+ * open subpath (with a line from the current point when there is one), while an ellipse or
+ * a rounded rectangle STARTS A SUBPATH of its own; a caller who wants either behaviour the
+ * other way moves first.
+ *
+ * `CGPathAddRoundedRect` CLAMPS its two radii to half the rectangle, also this tree's
+ * statement: an unclamped radius means arcs that overlap each other and corners turned
+ * inside out, and half is exactly where the four corners meet. A zero radius is the plain
+ * rectangle. */
+void CGPathAddArc(CGMutablePathRef path, const CGAffineTransform *m, CGFloat x, CGFloat y,
+		  CGFloat radius, CGFloat startAngle, CGFloat endAngle, bool clockwise);
+void CGPathAddEllipseInRect(CGMutablePathRef path, const CGAffineTransform *m, CGRect rect);
+CGPathRef CGPathCreateWithEllipseInRect(CGRect rect, const CGAffineTransform *m);
+void CGPathAddRoundedRect(CGMutablePathRef path, const CGAffineTransform *m, CGRect rect,
+			  CGFloat cornerWidth, CGFloat cornerHeight);
+CGPathRef CGPathCreateWithRoundedRect(CGRect rect, CGFloat cornerWidth, CGFloat cornerHeight,
+				      const CGAffineTransform *m);
 
 /*
  * FLATTENING: THE CURVES AS LINES, AND THE ONE PLACE THAT DECISION IS MADE.

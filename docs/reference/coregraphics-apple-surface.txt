@@ -36,7 +36,7 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  116   open  571   struck   48
+#   func       shipped  118   open  569   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped    9   open   47   struck    1
 #   case       shipped   65   open  365   struck   14
@@ -1175,9 +1175,9 @@ func	open	CGPathCreateCopyOfLineBySubtractingPath	-	Reference / Functions	-	objc
 func	open	CGPathCreateMutableCopy	-	Opaque Types / Copying a Graphics Path	-	objc
 func	open	CGPathCreateMutableCopyByTransformingPath	-	Opaque Types / Copying a Graphics Path	-	objc
 func	open	CGPathCreateSeparateComponents	-	Reference / Functions	-	objc
-func	open	CGPathCreateWithEllipseInRect	-	Opaque Types / Creating Graphics Paths	-	objc
+func	shipped	CGPathCreateWithEllipseInRect	-	Opaque Types / Creating Graphics Paths	-	objc
 func	shipped	CGPathCreateWithRect	-	Opaque Types / Creating Graphics Paths	-	objc
-func	open	CGPathCreateWithRoundedRect	-	Opaque Types / Creating Graphics Paths	-	objc
+func	shipped	CGPathCreateWithRoundedRect	-	Opaque Types / Creating Graphics Paths	-	objc
 func	open	CGPathEqualToPath	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathGetBoundingBox	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathGetCurrentPoint	-	Opaque Types / Examining a Graphics Path	-	objc
