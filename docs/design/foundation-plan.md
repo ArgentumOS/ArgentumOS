@@ -5442,3 +5442,27 @@ then `make test TESTS='foundation_formatters'` → **TESTS-OK 1/1 case(s), 6/6 c
 tally `ok=85 fail=0` and exit 0 — **and that run validates the CLDR mapping against the GUEST'S ICU 76.1 as
 well as the host's system ICU, which are different builds.** `foundation-gate`: **94 of 98 public headers**
 open a nullability region. `foundation-sweep --check`: consistent.
+
+## 34. THE PLAN'S W14 ESTIMATE IS WRONG, MEASURED (2026-09-20)
+
+**§12.3 CALLS W14 "the same binding as W11, so it is cheap wherever it lands". IT IS NOT A BINDING AT ALL,
+AND THE MEASUREMENT TOOK ONE COMMAND.** In the pinned ICU 76.1:
+
+* `unicode/ugrammar.h`, `unicode/umorphology.h` and `unicode/uinflection.h` **DO NOT EXIST** — no spelling of
+  them is in the include tree;
+* `unicode/msgfmt.h`, which is where ICU's grammatical agreement lives, has **0 `U_CAPI` declarations** — it is
+  a C++ class like `measfmt.h`, which §29.1 measured for the duration formatters;
+* and there are **no `UGrammatical*` enums** anywhere, so not even the grammatical FEATURES are published at C
+  level.
+
+So the agreement half of W14 (`NSInflectionRule`, `NSInflectionRuleExplicit`) has **no engine this library can
+reach**, and the value-type half (`NSMorphology`, `NSMorphologyPronoun`, `NSTermOfAddress`) is ours to write
+like `NSPersonNameComponents` — with the actual inflection either implemented as OUR RULE for the locales we can
+define, or registered as a gap. `NSMorphologyCustomPronoun` is STRUCK on the ledger (deprecated), so it is not
+in the unit either way.
+
+**§12.3's row is corrected here rather than deleted, and this is the SECOND TIME this session that a "cheap
+binding" estimate died on measurement** (the first was NSDateComponentsFormatter in §29, whose eleven options
+turned out to be the specified part while the ICU API under them turned out to be C++-only). The pattern worth
+keeping: **"ICU is already bound" says nothing about whether a family has a C SURFACE**, and the number of
+`U_CAPI` declarations in the relevant header is one command to check.
