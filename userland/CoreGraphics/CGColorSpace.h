@@ -130,6 +130,8 @@ typedef struct objc_object NSString;
  * reason, name by name in CGColorSpaceNames.m, and stays `open` in the ledger. */
 extern NSString *const kCGColorSpaceSRGB;
 extern NSString *const kCGColorSpaceLinearSRGB;
+extern NSString *const kCGColorSpaceDisplayP3;
+extern NSString *const kCGColorSpaceLinearDisplayP3;
 extern NSString *const kCGColorSpaceAdobeRGB1998;
 extern NSString *const kCGColorSpaceROMMRGB;
 extern NSString *const kCGColorSpaceGenericLab;

@@ -795,6 +795,66 @@ int main(void)
 		CGColorSpaceRelease(named_srgb);
 	}
 
+	/* --- DISPLAY P3: the piecewise curve, proved by its TOE -------------------------------- */
+	/* P3 IS THE FIRST SPACE HERE WHOSE TRANSFER FUNCTION IS NOT A POWER, so the interesting
+	 * question is not whether a space came back but whether the RIGHT CURVE is inside it. THE
+	 * LINEAR TOE IS THE DISCRIMINATOR: the sRGB curve maps 0.02 to 0.02/12.92, while a power curve
+	 * maps it two orders of magnitude away. And because P3's grey and device RGB's grey go through
+	 * the SAME curve, the neutral axis is an identity — which is what makes a small number here a
+	 * strong statement rather than a tolerance problem. */
+	{
+		CGColorSpaceRef p3 = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
+		CGColorSpaceRef lin_p3 = CGColorSpaceCreateWithName(kCGColorSpaceLinearDisplayP3);
+		CGColorSpaceRef rgb6 = CGColorSpaceCreateDeviceRGB();
+		CGFloat toe[4];
+		CGFloat v6[4];
+		CGColorRef c;
+		CGColorRef r;
+
+		check("kCGColorSpaceDisplayP3 gives a space",
+		      p3 != NULL && CGColorSpaceGetModel(p3) == kCGColorSpaceModelRGB);
+		check("...that IS wide gamut, which is what P3 means",
+		      p3 != NULL && CGColorSpaceIsWideGamutRGB(p3));
+		check("...while the LINEAR P3 name has the same primaries and is wide too",
+		      lin_p3 != NULL && CGColorSpaceIsWideGamutRGB(lin_p3));
+
+		toe[0] = 0.02;
+		toe[1] = 0.02;
+		toe[2] = 0.02;
+		toe[3] = 1.0;
+		c = CGColorCreate(p3, toe);
+		r = CGColorCreateCopyByMatchingToColorSpace(c, kCGRenderingIntentRelativeColorimetric,
+							    rgb6, NULL);
+		if (r != NULL) {
+			/* INSIDE THE TOE THE CURVE IS LINEAR, so P3 and device RGB agree almost exactly. A
+			 * power curve would put this near 0.0068 (gamma 2.4) or 0.165 (gamma 2.2). */
+			check_num("P3's 0.02, inside the linear toe, round-trips to 0.02",
+				  (double)CGColorGetComponents(r)[0], 0.02, 0.003);
+			CGColorRelease(r);
+		} else {
+			check("the P3 colour converts", 0);
+		}
+		CGColorRelease(c);
+
+		/* AND ABOVE THE TOE THE SAME VALUE IN THE LINEAR SPACE GOES SOMEWHERE ELSE, which is what
+		 * shows the two names are two spaces rather than one. */
+		v6[0] = 0.5;
+		v6[1] = 0.5;
+		v6[2] = 0.5;
+		v6[3] = 1.0;
+		c = CGColorCreate(lin_p3, v6);
+		r = CGColorCreateCopyByMatchingToColorSpace(c, kCGRenderingIntentRelativeColorimetric,
+							    rgb6, NULL);
+		check("a LINEAR P3 grey converts to a much LIGHTER device grey",
+		      r != NULL && CGColorGetComponents(r)[0] > 0.6);
+		CGColorRelease(r);
+		CGColorRelease(c);
+
+		CGColorSpaceRelease(rgb6);
+		CGColorSpaceRelease(lin_p3);
+		CGColorSpaceRelease(p3);
+	}
+
 	printf("CG-COLOR: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

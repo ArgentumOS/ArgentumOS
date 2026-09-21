@@ -36,11 +36,14 @@
  *
  * WHAT IS NOT HERE, AND EVERY ONE OF THEM FOR THE SAME KIND OF REASON: `kCGColorSpaceDisplayP3` is
  * sRGB's PIECEWISE CURVE on P3's primaries, and this library's space constructors take one power
- * per channel, so a P3 built here would be a different space — it arrives with the piecewise
- * curve. The `Extended…` family and `kCGColorSpaceACESCGLinear` are outside 0..1 or built on HDR
- * curves; `kCGColorSpaceGenericCMYK` has no profile that can be invented (what ink values mean
- * depends on the press); `kCGColorSpaceGenericXYZ` needs an XYZ model this library does not read.
- * Every one of them stays `open` in the ledger, which is where an unimplemented name belongs.
+ * per channel, AND THE PIECEWISE CURVE HAS SINCE ARRIVED — so Display P3 and its linear form are
+ * here too: `cg_srgb_curve` builds the sRGB transfer function as the engine's parametric type 4,
+ * with the parameters read out of lcms2's own source rather than remembered. That closes the item
+ * this paragraph used to leave open. STILL ABSENT, each for its own reason: the `Extended…` family
+ * and `kCGColorSpaceACESCGLinear` are outside 0..1 or built on HDR curves;
+ * `kCGColorSpaceGenericCMYK` has no profile that can be invented (what ink values mean depends on
+ * the press); `kCGColorSpaceGenericXYZ` needs an XYZ model this library does not read. Every one of
+ * them stays `open` in the ledger, which is where an unimplemented name belongs.
  */
 #import <Foundation/Foundation.h>
 
@@ -56,6 +59,8 @@ NSString *const kCGColorSpaceAdobeRGB1998 = @"kCGColorSpaceAdobeRGB1998";
 NSString *const kCGColorSpaceROMMRGB = @"kCGColorSpaceROMMRGB";
 NSString *const kCGColorSpaceGenericLab = @"kCGColorSpaceGenericLab";
 NSString *const kCGColorSpaceGenericGrayGamma2_2 = @"kCGColorSpaceGenericGrayGamma2_2";
+NSString *const kCGColorSpaceDisplayP3 = @"kCGColorSpaceDisplayP3";
+NSString *const kCGColorSpaceLinearDisplayP3 = @"kCGColorSpaceLinearDisplayP3";
 
 /* An xy pair with Y = 1, which is the spelling the engine's primaries use. */
 static cmsCIExyY cg_xy(double x, double y)
@@ -108,12 +113,66 @@ static cmsHPROFILE cg_rgb_profile(double wx, double wy, double rx, double ry, do
 	return p;
 }
 
+/* THE sRGB TRANSFER FUNCTION AS THE ENGINE'S PARAMETRIC TYPE 4, AND THE PARAMETERS CAME FROM
+ * lcms2's OWN SOURCE RATHER THAN FROM MEMORY: `cmsgamma.c` evaluates type 4 as
+ *     Y = (aR + b)^g   for R >= d,      Y = cR   otherwise
+ * which is the sRGB curve with {g, a, b, c, d} = {2.4, 1/1.055, 0.055/1.055, 1/12.92, 0.04045}.
+ * THE LINEAR TOE IS THE WHOLE POINT OF IT: without the toe the same numbers describe a different
+ * space, and the difference is not subtle at the bottom — 0.02 decodes to 0.0015 with the toe and
+ * to 0.0068 without it. That is the discriminator the probe uses to prove THIS curve is the one
+ * that got in, rather than a power that happens to look close. */
+static cmsToneCurve *cg_srgb_curve(void)
+{
+	cmsFloat64Number params[5];
+
+	params[0] = 2.4;
+	params[1] = 1.0 / 1.055;
+	params[2] = 0.055 / 1.055;
+	params[3] = 1.0 / 12.92;
+	params[4] = 0.04045;
+	return cmsBuildParametricToneCurve(NULL, 4, params);
+}
+
+/* THE SAME RGB PROFILE WITH THE sRGB CURVE INSTEAD OF A POWER. The structure repeats
+ * `cg_rgb_profile` because C has no closure to hand it — the gamma form builds three identical
+ * curves from one number, and this asks for the piecewise curve three times — and WHAT DIFFERS IS
+ * THE WHOLE REASON IT EXISTS: a space defined with a piecewise transfer function cannot be written
+ * as a power at all, and Display P3 is such a space. */
+static cmsHPROFILE cg_rgb_profile_srgb_curve(double wx, double wy, double rx, double ry, double gx,
+					     double gy, double bx, double by)
+{
+	cmsCIExyYTRIPLE prim;
+	cmsToneCurve *curve[3];
+	cmsCIExyY wp = cg_xy(wx, wy);
+	cmsHPROFILE p;
+	int i;
+
+	prim.Red = cg_xy(rx, ry);
+	prim.Green = cg_xy(gx, gy);
+	prim.Blue = cg_xy(bx, by);
+	for (i = 0; i < 3; i++) {
+		curve[i] = cg_srgb_curve();
+		if (curve[i] == NULL) {
+			for (i = 0; i < 3; i++) {
+				if (curve[i] != NULL) {
+					cmsFreeToneCurve(curve[i]);
+				}
+			}
+			return NULL;
+		}
+	}
+	p = cmsCreateRGBProfile(&wp, &prim, curve);
+	for (i = 0; i < 3; i++) {
+		cmsFreeToneCurve(curve[i]);
+	}
+	return p;
+}
+
 static cmsHPROFILE cg_profile_for_name(NSString *name, CGColorSpaceModel *model, size_t *components)
 {
 	cmsToneCurve *g;
 	cmsCIExyY wp;
 	cmsHPROFILE p;
-
 	if ([name isEqual:kCGColorSpaceSRGB]) {
 		*model = kCGColorSpaceModelRGB;
 		*components = 3;
@@ -124,6 +183,20 @@ static cmsHPROFILE cg_profile_for_name(NSString *name, CGColorSpaceModel *model,
 		*components = 3;
 		/* GAMMA 1 IS "NO TRANSFER FUNCTION", which is what a linear space means. */
 		return cg_rgb_profile(CG_D65_X, CG_D65_Y, 0.6400, 0.3300, 0.3000, 0.6000, 0.1500, 0.0600,
+				      1.0);
+	}
+	if ([name isEqual:kCGColorSpaceDisplayP3]) {
+		*model = kCGColorSpaceModelRGB;
+		*components = 3;
+		/* DISPLAY P3 IS DCI-P3'S PRIMARIES WITH THE sRGB TRANSFER FUNCTION — and D65, not the
+		 * cinema white point, which is why a NEUTRAL grey in it converts to the same grey. */
+		return cg_rgb_profile_srgb_curve(CG_D65_X, CG_D65_Y, 0.6800, 0.3200, 0.2650, 0.6900,
+						 0.1500, 0.0600);
+	}
+	if ([name isEqual:kCGColorSpaceLinearDisplayP3]) {
+		*model = kCGColorSpaceModelRGB;
+		*components = 3;
+		return cg_rgb_profile(CG_D65_X, CG_D65_Y, 0.6800, 0.3200, 0.2650, 0.6900, 0.1500, 0.0600,
 				      1.0);
 	}
 	if ([name isEqual:kCGColorSpaceAdobeRGB1998]) {
