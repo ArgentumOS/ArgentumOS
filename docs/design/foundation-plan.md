@@ -7005,6 +7005,38 @@ where a page becomes reachable by a second mapping — rather than anywhere in t
 arithmetically correct given a correct count. The sweep's free-before-unmap order is a secondary risk worth
 tidying in the same change.
 
+**AND THE INSTRUMENT THAT CANNOT COME BACK CLEAN FIRES 1484 TIMES — THE MECHANISM IS NOW OBSERVED, NOT
+INFERRED.** Placed immediately before the sweep's `kfree`, because at that instant the sweep has unmapped
+nothing yet:
+
+    SWEEPFREE pid=1 leaf=0x4ae000 STILL_US_MAPPED_BY=1 vma=0x400000012000..0x400000014000 prot=0x3 flags=0x80000022
+    SWEEPFREE pid=1 leaf=0x4ae000 STILL_US_MAPPED_BY=1   (the SAME leaf, four times in one sweep)
+    SWEEPFREE pid=1 leaf=0x4bb000 STILL_US_MAPPED_BY=1   (and again, four times)
+
+Read it exactly:
+
+  * the sweeper and the survivor are THE SAME PROCESS (`pid=1` on both sides): it frees a page it still maps;
+  * **the same physical page is released FOUR TIMES in a single sweep**, because a VMA covering two pages can
+    have the SAME page mapped at more than one address and the loop calls `kfree` once per address;
+  * **1484 occurrences in one boot**, at pid 1, before any of the test's processes exist — so this is not
+    rare and not the probe's doing. The reproducer only makes the damage VISIBLE; the over-release is
+    ordinary kernel behaviour on this kernel.
+
+**AND THE ARITHMETIC IS NOW COMPLETE AND CONSISTENT WITH EVERY CLEAN CHECK THIS INVESTIGATION PRODUCED.** A
+page mapped at N addresses has one count. The first release takes it to zero — legitimately, from a counter
+that was never wrong about the OWNER — and the page goes back to the bitmap. The remaining releases and any
+other mapping's PTE are then pointing into a page the allocator is free to re-grant, which it does: to
+`kmalloc`, for a vma table. Userland writes into its still-valid address, and the kernel's structure changes
+under it. **That is why the grant side was clean, the free side was clean, the cached path was clean, and the
+victim page moved**: the count never lied, the free was never wrong, and a page with a second mapping simply
+never had a second reference.
+
+**THE FIX, NOW EXACT:** the count must mirror the number of mappings, so a page is released once per mapping
+and only the last release returns it to the bitmap. Concretely: **take the reference where a page acquires an
+ADDITIONAL mapping** (the second address, or the second process — the sharing path), and **unmap before
+releasing in `free_vma_pages`** so no dangling PTE survives even for an instant. The failure mode to watch is
+asymmetric, as everywhere in this class: a missing take keeps this corruption, a missing drop leaks.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
