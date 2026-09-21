@@ -439,12 +439,18 @@ void release_binary(void)
 		extern int pml4_has_other_user(unsigned long);
 		unsigned long cr3 = current->cr3_64;
 
-		/* Zero the field while asking, exactly as remove_zombie() does - otherwise the scan
-		 * counts THIS process and every process looks shared, which leaks every page it owns
-		 * (measured: the sweep ran for nobody, and the case took 312s instead of 12s). */
+		/* Ask with THIS process's field cleared, exactly as remove_zombie() does - otherwise the
+		 * scan counts the caller and every process looks shared, which leaks every page it owns.
+		 * The window is closed with interrupts off, because the field is read by the scheduler
+		 * and by the paging code: leaving a zero visible there hangs the machine. */
+		unsigned int flags;
+
+		SAVE_FLAGS(flags);
+		CLI();
 		current->cr3_64 = 0;
 		shared = pml4_has_other_user(cr3);
 		current->cr3_64 = cr3;
+		RESTORE_FLAGS(flags);
 
 		if(shared) {
 			/* THE HANDOVER: a surviving task still uses this address space, so leave the

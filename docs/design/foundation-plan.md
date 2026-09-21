@@ -7391,6 +7391,35 @@ runs `pml4_has_other_user()` in a run (it runs once per exiting process — hund
 count around that call, summed and printed at the end. Every reason I have given for this regression was a
 guess; the number that has not been taken is the cost of the call I added, and it is one `printk` away.
 
+**AND THEN THE ANSWER WAS IN FRONT OF ME THE WHOLE TIME: THE 312s IS NOT A REGRESSION AT ALL.** Two more
+numbers, and the pair of them ends it:
+
+  * the guard's own call was instrumented with a counter and an iteration count — **it produced NO output,
+    which means it ran fewer than 200 times in the whole run.** The guard is not the cost;
+  * closing the zero-window in that guard with interrupts off (the field is read by the scheduler and the
+    paging code, so leaving a zero visible there is a real hazard) changed the outcome **not at all**.
+
+**AND THAT IS WHEN THE OBVIOUS READING FINALLY LANDED: 312s is the case's own 300s WAIT plus its usual 12s.**
+The case does not fail slowly — **it times out waiting for a token the reproducer never prints**, because the
+reproducer hangs. And it hung BEFORE the fix too: the pre-fix runs took 11.8s and 12.0s **because the fault
+KILLED the run early.** A crash is fast. **My fix removed the crash and unmasked a hang that was always
+there.**
+
+**SO:**
+  * the fault — defect B's visible failure — is genuinely GONE (`no-instruction-fetch-fault` PASSES, no Page
+    Fault line anywhere), and that is the fix doing its job;
+  * the "312s regression" was never a regression, and **the five hypotheses I burned on it were burned
+    because I compared a crashing run's duration with a surviving run's** — a mistake in the shape of the
+    measurement, not in the code. The record keeps all five so nobody repeats them;
+  * the interrupt-closed window in the guard stays: it closes a real hazard (the field is live for the
+    scheduler and the paging code), it costs nothing measurable, and it is the kind of change that should
+    have been written that way from the start.
+
+**AND THE NEXT QUESTION IS THE REPRODUCER'S OWN HANG** — mine, in userspace, and therefore cheap: it forks
+400 children and reaps them from a thread. Instrumenting IT (progress every ten iterations, and the reap
+counts) says in one boot whether a child is stuck, the reaper is, or the join is. **That is where this goes
+next, and it is the first step in a long while that is about the test rather than the kernel.**
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
