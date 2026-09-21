@@ -8281,3 +8281,78 @@ path, one layer down, and it is the third distinct kernel defect this investigat
 FILES THIS ROUND: none in the tree from this section — the `sys_close` printks were an instrument and are
 reverted, as is the `pipefs` one from §45-T.
 
+---
+
+## §45-V — WHY THE COUNT IS INFLATED: `do_fork_like` BUMPS EVERY FD FOR A **THREAD** — THE NSTask REAPER'S OWN `clone`
+
+**MEASURED, WITH THE ALLOCATION/RELEASE/FORK PATHS INSTRUMENTED (since reverted). The extra reference is a
+SECOND FORK BY THE SAME PROCESS, and its fd layout is identical to the first:**
+
+    GETFD pid=8 idx=3 ino=2          <- the OUT pipe's read end
+    GETFD pid=8 idx=4 ino=2          <- the OUT pipe's write end
+    GETFD pid=8 idx=5 ino=3          <- the STDIN pipe's read end
+    GETFD pid=8 idx=6 ino=3          <- the STDIN pipe's write end
+    FORKFD pid=8 n=0..6  cnt_before=1,1,1,1   <- fork #1: every pipe end 1 -> 2
+    FORKFD pid=8 n=0..6  cnt_before=2,2,2,2   <- fork #2: every pipe end 2 -> 3
+    GETFD pid=13 idx=7 ino=1109              <- and the child that runs is the SECOND one
+
+`run_capturing` calls `-launchAndReturnError:` **once**, and `NSTask` forks **once**. The second one is the
+reaper thread: `pthread_create` → `clone(CLONE_VM)`.
+
+**AND THE KERNEL CONFIRMS IT BY INSPECTION — ONE FUNCTION SERVES BOTH SYSCALLS:**
+
+```c
+int sys_fork(...)  { return do_fork_like(sc, 0, 0, 0, 0, 0, 0); }
+int sys_clone(...) { return do_fork_like(sc, flags, child_stack, fn, ptid, ctid, tls); }
+
+int do_fork_like(...)
+{
+	int is_thread = (clone_flags & CLONE_VM) ? 1 : 0;
+	...
+	/* increase file descriptors usage */
+	for(n = 0; n < OPEN_MAX; n++) {
+		if(current->fd[n]) {
+			fd_table[current->fd[n]].count++;   /* RUNS FOR A THREAD TOO */
+		}
+	}
+```
+
+`is_thread` is computed and used for the address space, **but the fd loop does not check it.** So creating a
+thread adds one reference to every open descriptor — including the standard three, which is why the console's
+entry reached `count_before=15` in §45-U's trace (each thread adds three).
+
+**THE WHOLE CHAIN, END TO END, EACH LINK MEASURED:**
+
+  1. the process holds the pipe's WRITE end in `fd_table[6]`, count 1;
+  2. `fork` (the child) → 2; **`clone` (NSTask's reaper thread) → 3** ← §45-V;
+  3. the parent's `close` → 2 and the forked child's `close` → 1, so **neither drives it to zero** and
+     `sys_close` early-returns without running `fsop->close` ← §45-U;
+  4. `pipefs_close` never runs, so `i_writers` stays 1 ← §45-T;
+  5. the reader blocked in `read(2)` is never told the pipe has no writers, so it never sees EOF **and never
+     exits** — and because it never exits, the reaper thread's `waitpid` never returns, so **the thread stays
+     alive holding its references and the cycle closes.** Task 1 escaped it only because its child
+     (`--child-write`) exits immediately, the reaper finishes, and its references are released in time.
+
+**SO THE DEFECT IS THE THREAD'S OWN COPY OF THE FD TABLE, NOT THE COUNT ARITHMETIC.** POSIX says threads
+share the file descriptor table: closing a write end in ANY thread closes it for the process. Here each
+`clone(CLONE_VM)` task gets its own `current->fd[]` and its own references, so **a pipe whose write end every
+thread and process has closed still reads as open while any thread lives.** The count is *consistent with the
+implementation*; the implementation is what departs from POSIX.
+
+**TWO CANDIDATE FIXES, IN THE ORDER THEY SHOULD BE TRIED:**
+
+  * **share the table:** for `is_thread`, point the new task's fd array at the parent's (or skip the copy and
+    the counter bump entirely) so a thread has no private references. The blast radius is every close path in
+    every threaded program, which is why this wants its own round and its own A/B;
+  * **or release a thread's references on its exit**, which only narrows the window — the deadlock above
+    depends on the thread being ALIVE, and a thread blocked in `waitpid` for a child that is blocked in
+    `read(2)` on a pipe that is blocked on the thread is exactly the deadlock. That is a shape worth writing
+    down: **a thread's fd references can deadlock a pipe against the very thread waiting for the process that
+    would have closed it.**
+
+**THE A/B ALREADY EXISTS AND IS FREE:** `kernel_threaded_exec` mode 3 and the probe's own
+`task-feeds-standard-input` both exercise threads-plus-fds. Whatever fixes this must leave mode 3's
+`BLOCKING-WAIT-DONE` green (§45-S) and must make the probe's stdin pipe reach EOF.
+
+FILES THIS ROUND: none — the `get_new_fd`/`release_fd`/`fork` printks were an instrument and are reverted.
+
