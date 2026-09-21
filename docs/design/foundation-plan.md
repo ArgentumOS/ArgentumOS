@@ -6620,6 +6620,40 @@ them to the console also deposited them in kernel memory (a stale or recycled de
 write path is the shape). **Next: instrument the console/tty write path** — the destination buffer address, the
 length, and the pid, at the moment a write happens — and watch for one whose destination is not a user buffer.
 
+**THE TTY PATH IS EXONERATED BY MEASUREMENT — AND THE SAME RUN POINTS AT SOMETHING BETTER.** With the write
+path instrumented at both ends (`tty_write` entry and `unregister_tty` before `kfree`):
+
+    TTYWRITE pid=7 tty=ffff800000124000 buffer=400000000040 count=10 writeq_count=0    <- "FNX3-DONE\n"
+    TTYWRITE pid=9 tty=ffff800000124000 buffer=7f00000b9bf8 count=25 writeq_count=0
+    TTYWRITE pid=11 tty=ffff800000124000 buffer=7f00000b9bf8 count=12 writeq_count=0
+    (and NOT ONE TTYFREE line anywhere)
+
+Every write goes to the ONE console tty, the output queue is never backed up (`writeq_count=0`), the user
+buffers are all in sensible ranges, and **the tty is never freed at all** — so "a freed tty's pending output"
+is dead, and with it the whole use-after-free reading.
+
+**BUT LOOK AT WHAT pid 7 WRITES:** `count=10` from `buffer=0x400000000040` — that IS `"FNX3-DONE\n"`, the ten
+bytes found in the vma table. So the bytes are accounted for, and there are exactly TWO ways they could reach a
+kernel page:
+
+  * **(a) a stray COPY** somewhere between the user buffer and the console device (the write path copies into
+    its queue byte by byte, so a copy into a bad destination is still possible downstream of what was
+    instrumented), or
+  * **(b) an ALIAS — NO COPY AT ALL.** The page that holds the user's buffer and the page `kmalloc` handed out
+    for the vma table are THE SAME PHYSICAL PAGE, mapped in both places at once.
+
+**(b) is the better fit and it is the shape this tree keeps meeting.** The vma table sits at `P2V(0x61c000)` —
+one page above the process's pml4 — i.e. in the allocator's page-table neighbourhood, and this project's own
+notes already record the same class twice ("the surviving explanation is a live page-table page being
+recycled"; "`pd_page` is SHARED between the identity map and the direct map"). A page still mapped in a user
+process being handed to the kernel is a page-lifecycle/refcount bug of exactly that family, and it would
+explain the rarity, the neighbourhood, and the user bytes appearing in kernel memory with no copy anywhere.
+
+**AND IT IS ONE LINE TO DECIDE BETWEEN THEM:** at the fault, print the PHYSICAL page backing the user buffer
+pid 7 wrote from (`0x400000000040`, looked up in that process's tables) and compare it with the vma table's
+`0x61c000`. Equal ⇒ alias (b), and a page-allocator lifecycle bug. Different ⇒ a stray copy (a), and the hunt
+moves into the console output path.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
