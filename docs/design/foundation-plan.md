@@ -6277,6 +6277,26 @@ process, which is how a log that says "writing, error 0x06, 8 bytes below the st
 conclusion about an instruction fetch. **Whatever else is true, reading a kernel log means reading its
 PROCESS AND REGISTER LINES, not one number out of it.**
 
+**THE KERNEL SIDE, READ RATHER THAN GUESSED, AND IT IS NARROWER THAN "A PAGE FAULT".** `page_not_present()`
+is `mm/fault.c:189` and the message comes from its LAST branch (`vma->flags & ZERO_PAGE`, line 256-264):
+the faulting address IS inside the stack vma, the vma has no inode, and the call that failed is
+`map_page(current, cr2, 0, vma->prot)`. On x86-64 that is `mm/memory.c:313`, which returns 0 in exactly two
+ways: `kmalloc(PAGE_SIZE)` failed, or `map_page64_in()` failed — so the kernel's own "out of memory?" guess
+in `fault_unmappable` is only one of the two causes. **AND THE FAULT IS A LEGITIMATE STACK GROWTH, which is
+worth stating because it was called a wild access for several rounds:** the saved `rsp` (0x7ffff5858000) is
+the stack vma's low edge, the fault is `rsp - 8` (one `push`), and `page_not_present`'s growth test
+`cr2 >= (sc->rsp - 32) && cr2 < USER_STACK_TOP` **PASSES** — that is why the vma walk found a vma at all and
+why the code reached the zero-page branch instead of the "not a vma, kill it" path.
+
+**AND THE REPRODUCER IS BLOCKED ON A BUILD DETAIL, WHICH IS THE NEXT CONCRETE STEP.** A non-Foundation
+program (in `/tmp`, since scratch does not belong in the tree) was written and compiled — a THREADED parent
+doing `fork`+`exec` of `/System/Tools/true` in a loop, the minimum shape of "fork with a live thread", with
+no Foundation in it at all. It could not be RUN: `make rootagfs` **rebuilds `.build/rootfs64` from the mk
+rules**, so the manually copied binary was wiped and the guest answered `not found` (measured: the name does
+not appear in the image at all). Getting it in front of the guest needs a TEMPORARY mk rule staging it (and
+the rule removed afterwards), or a `QEMU`-visible extra drive — that is the next step, and it is a build
+step, not a theory step.
+
 **THE NEXT STEP WAS A KERNEL ONE, AND IT RAN — AND IT SPLITS THE FIELD IN TWO.** A scratch case (run and
 then DELETED, because an experiment is not a test) executed **200 external execs from the same guest's
 single-threaded shell**: every one succeeded (`SCRATCH-EXEC-LOOP-DONE=200-failed=0`) and the guest log
