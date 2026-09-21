@@ -403,7 +403,32 @@ CGPathRef CGPathCreateCopyByStrokingPath(CGPathRef path, const CGAffineTransform
 		st.ctm = *transform;
 		st.have_ctm = 1;
 	}
-	CGPathApply(path, &st, cg_stroke_element);
+	/* A CURVE IS FLATTENED BEFORE THE WALKER SEES IT, so `cg_stroke_element` handles only
+	 * moves, lines and closes: ONE subdivision in the tree (CGPath.c), and the stroker's
+	 * joins and caps then get line segments exactly as they do for a hand-built polyline.
+	 *
+	 * THE TOLERANCE IS DIVIDED BY THE TRANSFORM'S SCALE, because the transform is applied
+	 * to the flattened points: subdividing in the path's units and then scaling the result
+	 * by ten would draw a curve ten times coarser than the caller asked for. The scale is
+	 * the same upper bound the fill uses — four numbers added, no square root. */
+	{
+		double a = st.ctm.a, b = st.ctm.b, cc = st.ctm.c, d = st.ctm.d;
+		double scale = 1.0;
+		CGPathRef flat;
+
+		if (st.have_ctm) {
+			scale = (a < 0 ? -a : a) + (b < 0 ? -b : b) + (cc < 0 ? -cc : cc) +
+				(d < 0 ? -d : d);
+			if (scale < 1e-6) {
+				scale = 1.0;
+			}
+		}
+		flat = CGPathCreateCopyByFlattening(path, 0.1 / scale);
+		if (flat != NULL) {
+			CGPathApply(flat, &st, cg_stroke_element);
+			CGPathRelease(flat);
+		}
+	}
 	cg_stroke_subpath(&st);
 	free(st.pts);
 	return (CGPathRef)out;

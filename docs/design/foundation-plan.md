@@ -3445,8 +3445,8 @@ vanishing.
 | **App Support / Extension Support** | 2 open | `NSExtensionContext`, `NSExtensionRequestHandling` |
 | **App Support / NSObject Script Support** | ALL STRUCK: `NSScriptCoercionHandler`, `NSScriptExecutionContext` | — |
 | **App Support / Notifications** | 1 open | `NSNotificationQueue` |
-| **App Support / Object Matching Tests** | 3 open | `NSLogicalTest`, `NSScriptWhoseTest`, `NSSpecifierTest` |
-| **App Support / Object Specifiers** | 11 open | `NSIndexSpecifier`, `NSMiddleSpecifier`, `NSNameSpecifier`, `NSPositionalSpecifier`, `NSPropertySpecifier`, `NSRandomSpecifier`, `NSRangeSpecifier`, `NSRelativeSpecifier`, `NSScriptObjectSpecifier`, `NSUniqueIDSpecifier`, `NSWhoseSpecifier` |
+| **App Support / Object Matching Tests** | ALL STRUCK: `NSLogicalTest`, `NSScriptWhoseTest`, `NSSpecifierTest` | — |
+| **App Support / Object Specifiers** | ALL STRUCK: `NSIndexSpecifier`, `NSMiddleSpecifier`, `NSNameSpecifier`, `NSPositionalSpecifier`, `NSPropertySpecifier`, `NSRandomSpecifier`, `NSRangeSpecifier`, `NSRelativeSpecifier`, `NSScriptObjectSpecifier`, `NSUniqueIDSpecifier`, `NSWhoseSpecifier` | — |
 | **App Support / On-Demand Resources** | ALL STRUCK: `NSBundleResourceRequest` | — |
 | **App Support / Operations** | 2 open | `NSBlockOperation`, `NSInvocationOperation` |
 | **App Support / Progress** | all classes shipped | — |
@@ -5687,12 +5687,12 @@ are documented, live, and deliberately OUT: **DECLINED BY PROJECT DECISION**. §
 about what this library DOES, and a refusal is a fact about it, so it is recorded in the ledger's `why`
 column and enforced by the gate rather than left as a plan paragraph.
 
-**303 ROWS CARRY THE NEW GROUND, MEASURED — 300 moved from `open`, and 3 keep a STRONGER Apple ground**
+**348 ROWS CARRY THE NEW GROUND, MEASURED — 345 moved from `open`, and 3 keep a STRONGER Apple ground**
 (which they keep: `NSNetService` stays `deprecated` while its servants become `declined`).
 
 | decision | rows | the roots |
 |---|---|---|
-| no AppleScript | 62 | `NSAppleEventDescriptor`/`Manager`, `NSAppleScript`, the twelve command classes, `NSScript*` (5), `NSClassDescription`, the three `NSUser*Task` |
+| no AppleScript | 107 | `NSAppleEventDescriptor`/`Manager`, `NSAppleScript`, the twelve command classes, `NSScript*` (5), `NSClassDescription`, the three `NSUser*Task`, **the eleven object SPECIFIERS and the three `whose`-clause TESTS** |
 | no XPC | 20 | the five `NSXPC*` classes, `NSXPCListenerDelegate`, `NSXPCProxyCreating`, and the 5 XPC error codes (which live under "User-Relevant Errors" rather than in the XPC family) |
 | no Spotlight | 202 | `NSMetadataItem`/`Query`/`QueryDelegate`/`ResultGroup`/`AttributeValueTuple` and their ~196 constants |
 | Bonjour removed | 19 | the struck classes' SERVANTS: `NSNetServiceOptions`, the 11 `NSNetServices*Error` cases, both delegate protocols, the option cases |
@@ -5712,6 +5712,17 @@ rule was written:**
 So the roots are **NAMED, NOT INFERRED** — the same discipline §11.5 used for the version constants — with the
 members reached through their owners.
 
+**AND THE FIRST VERSION OF THE RULE WAS INCOMPLETE, WHICH IS WORTH RECORDING AS A METHOD FAILURE RATHER THAN
+AN OVERSIGHT.** It declined the families the DECISION NAMED and the classes those families' names suggested
+— and left `App Support / Object Specifiers` (11 classes, `NSScriptObjectSpecifier` and its ten subclasses)
+and `App Support / Object Matching Tests` (3, the `whose`-clause predicates) reading `open`, i.e. still OWED.
+They are as much AppleScript as `NSAppleScript` is; they simply do not have "Script" in their names. **The
+gap was found by RE-MEASURING the open list after the change, not by reading the list I had written** — so
+the rule's roots were derived from the LEDGER's families rather than from memory of them, which is the only
+way this class of mistake is catchable. The two families are added as 14 named roots (verified UNMIXED:
+every row in them is owned by one of those classes and none of them ships), and the decline went from 303
+rows to 348.
+
 **THE MECHANISM IS THE TOOL, NOT THE LEDGER FILE, AND THAT IS WHAT MAKES IT DURABLE.** The ledger's status is
 DERIVED: `status_of()` returns `struck` iff `why ∈ STRIKE_REASONS`, and `why_of()` supplies it. A hand-flip
 would be undone by the next `--refresh`, so the decision lives in `tools/foundation-sweep.py` as
@@ -5721,8 +5732,8 @@ then failed, once the strict mode was invoked properly — the doc's promise tha
 those" was TRUE and the first test read the wrong exit code).
 
 **AND THE HONEST ACCOUNTING EFFECT, WHICH IS NOT PROGRESS.** Nothing was implemented, and the headline
-coverage still moves: `open` **1798 → 1498**, `struck` **486 → 786**, so 941 shipped of the 2,439 non-struck
-rows reads as **38.6%** where it read 34.4% yesterday. That is a DENOMINATOR change — the work list got
+coverage still moves: `open` **1798 → 1453**, `struck` **486 → 831**, so 941 shipped of the 2,394 non-struck
+rows reads as **39.3%** where it read 34.4% yesterday. That is a DENOMINATOR change — the work list got
 shorter by decision, not by delivery — and this paragraph exists so the number is never read the other way.
 What IS real progress from this: W21 is now a single class and its delegate, W6 keeps the classes a family
 rule would have taken from it, and the four declined families can no longer return by accident.

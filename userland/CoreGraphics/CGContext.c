@@ -687,6 +687,23 @@ static void cg_copy_element(void *info, const CGPathElement *element)
 		CGPathAddLineToPoint((CGMutablePathRef)cc->into, NULL,
 				     element->points[0].x, element->points[0].y);
 		break;
+	/* THE CURVE CASES ARE NOT DECORATION: WITHOUT THEM `CGContextAddPath` SILENTLY DROPS
+	 * CURVES, and a caller's curve path becomes whatever lines survived — here, a lone
+	 * move, which fills nothing at all. That is the failure this tree calls the worst kind,
+	 * and it was LATENT until curves existed: the C2 path model had no curve element to
+	 * lose, so `default: break` was correct and invisible. The curve probe found it by
+	 * filling a quarter circle and reading ZERO of the 12818 coverage units its area is. */
+	case kCGPathElementAddQuadCurveToPoint:
+		CGPathAddQuadCurveToPoint((CGMutablePathRef)cc->into, NULL,
+					  element->points[0].x, element->points[0].y,
+					  element->points[1].x, element->points[1].y);
+		break;
+	case kCGPathElementAddCurveToPoint:
+		CGPathAddCurveToPoint((CGMutablePathRef)cc->into, NULL,
+				      element->points[0].x, element->points[0].y,
+				      element->points[1].x, element->points[1].y,
+				      element->points[2].x, element->points[2].y);
+		break;
 	case kCGPathElementCloseSubpath:
 		CGPathCloseSubpath((CGMutablePathRef)cc->into);
 		break;
@@ -1174,7 +1191,30 @@ static int cg_fill_path(CGContextRef c, CGPathRef path, int even_odd, pixman_op_
 	fl.ctm = c->state.ctm;
 	fl.width = (double)c->width;
 	fl.height = (double)c->height;
-	CGPathApply(path, &fl, cg_flatten_element);
+	/* THE FILL DRAWS WHAT THE FLATTENER SAYS: a curve becomes lines HERE, once, for every
+	 * fill — rather than in cg_flatten_element just below, which would then need its own
+	 * subdivision and would be a second answer to where the curve is.
+	 *
+	 * THE TOLERANCE IS IN DEVICE SPACE, because that is the space the pixels are in: a
+	 * user-space tolerance would draw a zoomed curve visibly faceted. The scale below is an
+	 * UPPER BOUND on the CTM's — four numbers added instead of a square root, which is why
+	 * `math.h` is not in this file — and an upper bound is the SAFE direction: it
+	 * subdivides more finely than the device grid can show, never less. */
+	{
+		double a = c->state.ctm.a, b = c->state.ctm.b, cc = c->state.ctm.c, d = c->state.ctm.d;
+		double scale = (a < 0 ? -a : a) + (b < 0 ? -b : b) + (cc < 0 ? -cc : cc) +
+			       (d < 0 ? -d : d);
+		CGPathRef flat;
+
+		if (scale < 1e-6) {
+			scale = 1.0;
+		}
+		flat = CGPathCreateCopyByFlattening(path, 0.1 / scale);
+		if (flat != NULL) {
+			CGPathApply(flat, &fl, cg_flatten_element);
+			CGPathRelease(flat);
+		}
+	}
 	cg_close_subpath(&fl);
 
 	/* THE ONE REFUSAL: a crossing inside a band would break the sweep's assumption

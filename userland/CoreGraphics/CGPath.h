@@ -3,21 +3,28 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * CGPath.h — the path: a sequence of subpaths of LINES, and the walker.
+ * CGPath.h — the path: subpaths of lines and CURVES, the walker, and the flattener.
  *
- * WHAT C2 HAS AND WHAT IT DOES NOT. Lines only: move, line, rectangle, close. The
- * curve constructors (`CGPathAddCurveToPoint`, `CGPathAddQuadCurveToPoint`,
- * `CGPathAddArc`, `CGPathAddRoundedRect`, …) are deliberately ABSENT rather than
- * declared-and-ignored, because a path that silently flattened a curve wrongly is
- * worse than a symbol a caller cannot call: the drawing would be plausible and the
- * geometry would be a guess. They arrive in C3 with the flattener that makes them
- * real.
+ * WHAT IS HERE NOW: move, line, RECTANGLE, quadratic and cubic curves, and close — plus
+ * `CGPathCreateCopyByFlattening`, which is how a curve becomes the lines everything else
+ * in this tree draws. THE CURVE CONSTRUCTORS USED TO BE ABSENT ON PURPOSE and the
+ * paragraph that said so is gone, because they are here: the reason for waiting was that a
+ * path that silently flattened a curve wrongly is worse than one that cannot be built, and
+ * the answer was to keep the CONTROL POINTS in the path — so a caller keeps their flatness
+ * choice, and the two bounding boxes below can honestly differ.
+ *
+ * WHAT IS STILL ABSENT, AND WHY IT IS A DIFFERENT KIND OF ABSENT: `CGPathAddArc`,
+ * `CGPathAddArcToPoint`, `CGPathAddEllipseInRect`, `CGPathAddRoundedRect` and
+ * `CGPathCreateWithEllipseInRect` are not written yet. They are not held back — they are
+ * built ON cubics, which is what this header now has, so they are the next thing rather
+ * than a design question, and none of them is declared until it works.
  *
  * A NOTE ON THIS HEADER'S PROVENANCE, because it is unusual for this tree: the C0
  * ledger (docs/reference/coregraphics-apple-surface.txt) DOES NOT CONTAIN the
  * CGMutablePath family. `CGPathCreateMutable`, `CGPathMoveToPoint`,
  * `CGPathAddLineToPoint`, `CGPathCloseSubpath` and `CGMutablePathRef` have no rows in
- * it at all, while the COPYING family (`CGPathCreateMutableCopy`, …) does. MEASURED
+ * it at all, while the COPYING family (`CGPathCreateMutableCopy`, …) does. Likewise
+ * `CGPathAddCurveToPoint` and `CGPathAddQuadCurveToPoint` have no rows. MEASURED
  * 2026-09-20 against Apple's own index: the CoreGraphics index JSON contains no node
  * titled `CGPathCreateMutable` — and no `method`-typed node either — so the gap is in
  * the source this ledger is built from, not in the sweep's kind filter. The names in
@@ -57,14 +64,46 @@ CGPathRef CGPathCreateWithRect(CGRect rect, const CGAffineTransform *m);
 CGPathRef CGPathRetain(CGPathRef path);
 void CGPathRelease(CGPathRef path);
 
-/* Building. `m` is applied to the point (or to the rectangle's four corners) BEFORE
- * it is added; a NULL `m` adds it unchanged. */
+/* Building. `m` is applied to the point (or to the rectangle's four corners) BEFORE it is
+ * added; a NULL `m` adds it unchanged. A LINE OR A CURVE WITH NO PRECEDING MOVE starts at
+ * the origin, which is `CGPathGetCurrentPoint`'s statement about an empty path. */
 void CGPathMoveToPoint(CGMutablePathRef path, const CGAffineTransform *m, CGFloat x, CGFloat y);
 void CGPathAddLineToPoint(CGMutablePathRef path, const CGAffineTransform *m, CGFloat x, CGFloat y);
+/* The control point of a quadratic, then its endpoint. */
+void CGPathAddQuadCurveToPoint(CGMutablePathRef path, const CGAffineTransform *m, CGFloat cpx,
+			       CGFloat cpy, CGFloat x, CGFloat y);
+/* Two control points, then the endpoint, in drawing order. */
+void CGPathAddCurveToPoint(CGMutablePathRef path, const CGAffineTransform *m, CGFloat cp1x,
+			   CGFloat cp1y, CGFloat cp2x, CGFloat cp2y, CGFloat x, CGFloat y);
 void CGPathAddRect(CGMutablePathRef path, const CGAffineTransform *m, CGRect rect);
 void CGPathCloseSubpath(CGMutablePathRef path);
 
-/* Asking. */
+/*
+ * FLATTENING: THE CURVES AS LINES, AND THE ONE PLACE THAT DECISION IS MADE.
+ *
+ * `flatness` is the greatest distance a line is allowed to stray from the curve it
+ * replaces, in the path's own units. A value of zero or less — or the number a caller who
+ * does not want to think about it passes — means `0.1`, which is this tree's answer because
+ * Apple's page does not define the non-positive case.
+ *
+ * IT IS PUBLIC BECAUSE BOTH BOXES AND BOTH CONSUMERS USE IT: `CGPathGetPathBoundingBox` is
+ * this path's box, the fill in CGContext.c and the stroker in CGPathStroke.c flatten through
+ * it too. ONE SUBDIVISION, IN ONE PLACE — a second one would be a second answer to "where
+ * is this curve", and a bounding box that disagreed with the pixels is exactly the kind of
+ * bug that survives every review.
+ *
+ * THE SUBDIVERSION IS ADAPTIVE (de Casteljau at the midpoint, recursing until the control
+ * points are within the tolerance of the chord, to a depth limit that catches degenerate
+ * chords). A fixed number of segments would be wrong for a small curve and wrong for a
+ * large one, in opposite directions.
+ */
+CGPathRef CGPathCreateCopyByFlattening(CGPathRef path, CGFloat flatness);
+
+/* Asking. `CGPathGetBoundingBox` INCLUDES THE CONTROL POINTS, so for a curve it is bigger
+ * than the path; `CGPathGetPathBoundingBox` is the tight box of the curve itself, taken
+ * from the flattened path so that it agrees with what will be drawn. For a line-only path
+ * they are the same rectangle — which is what the C2 probe asserted — and for a cubic the
+ * difference is one of the checks in the curve probe. */
 int CGPathIsEmpty(CGPathRef path);
 CGPoint CGPathGetCurrentPoint(CGPathRef path);
 CGRect CGPathGetBoundingBox(CGPathRef path);
@@ -125,11 +164,9 @@ CGPathRef CGPathCreateCopyByStrokingPath(CGPathRef path, const CGAffineTransform
 					CGFloat lineWidth, CGLineCap lineCap, CGLineJoin lineJoin,
 					CGFloat miterLimit);
 
-/* Walking. THE TWO BOXES DIFFER FOR CURVES ONLY — `CGPathGetBoundingBox` includes a
- * curve's control points and `CGPathGetPathBoundingBox` is the tight box of the path
- * itself — so for the line-only paths C2 can build they are the same rectangle. Both
- * are implemented here because the difference is a promise this header makes to the
- * C3 that adds curves, not a detail it can defer. */
+/* Walking. `points` is an array owned by the caller of the applier and valid only for the
+ * duration of the call: 1 point for a move, 1 for a line, 2 for a quadratic, 3 for a cubic,
+ * 0 for a close — AND ALL FIVE ARRIVE, because the path keeps its curves. */
 typedef enum {
 	kCGPathElementMoveToPoint,
 	kCGPathElementAddLineToPoint,
@@ -138,9 +175,6 @@ typedef enum {
 	kCGPathElementCloseSubpath
 } CGPathElementType;
 
-/* `points` is an array owned by the caller of the applier and valid only for the
- * duration of the call: 1 point for a move, 1 for a line, 2 for a quad curve, 3 for a
- * cubic, 0 for a close. C2 only ever produces the first three of those cases. */
 typedef struct CGPathElement {
 	CGPathElementType type;
 	CGPoint *points;

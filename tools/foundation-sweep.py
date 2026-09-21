@@ -294,6 +294,15 @@ DECLINED_ROOTS = frozenset((
     "NSExistsCommand", "NSGetCommand", "NSMoveCommand", "NSQuitCommand", "NSScriptClassDescription",
     "NSScriptCoercionHandler", "NSScriptCommand", "NSScriptCommandDescription",
     "NSScriptExecutionContext", "NSScriptSuiteRegistry", "NSSetCommand",
+    # THE OBJECT-PATH MACHINERY: a specifier names a position in another application's object graph,
+    # which exists only to serve an Apple event. TWO FAMILIES, both UNMIXED (measured: every row in
+    # each is owned by one of these classes and none of them ships), which is why they are listed as
+    # NAMES rather than matched by family label — a label rule is unsafe elsewhere (see NSTask).
+    "NSScriptObjectSpecifier", "NSIndexSpecifier", "NSMiddleSpecifier", "NSNameSpecifier",
+    "NSPositionalSpecifier", "NSPropertySpecifier", "NSRandomSpecifier", "NSRangeSpecifier",
+    "NSRelativeSpecifier", "NSUniqueIDSpecifier", "NSWhoseSpecifier",
+    # THE `whose`-CLAUSE PREDICATES, the other half of the same machinery.
+    "NSScriptWhoseTest", "NSSpecifierTest", "NSLogicalTest",
     # The three Apple-scripting task runners. `NSUserUnixTask` is NOT here: it runs an ordinary Unix
     # script, which is process execution rather than AppleScript, and the user kept it.
     "NSUserScriptTask", "NSUserAppleScriptTask", "NSUserAutomatorTask",
