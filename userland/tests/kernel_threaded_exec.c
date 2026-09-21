@@ -32,6 +32,45 @@
 static volatile int stop_flag = 0;
 static volatile int reaped = 0, signaled = 0, nonzero = 0, lastsig = 0, lastcode = 0;
 
+/* ---- MODE 3: THE SHAPE THAT WAS MISSING ------------------------------------------------
+ *
+ * A WORKER THREAD BLOCKS in waitpid(SPECIFIC pid, ..., 0) for a child the MAIN thread forked. Every other
+ * mode here POLLS with waitpid(-1, ..., WNOHANG), and a poll survives a MISSING WAKEUP by asking again -
+ * which is exactly why the bug hid: this file was the reproducer that proved "a thread's waitpid reaps",
+ * and it never once BLOCKED on a specific pid.
+ *
+ * THE BUG (fixed 603a22e2): do_exit notified `current->ppid` ALONE - wakeup_proc(parent), plus a SIGCHLD
+ * whose sigpending was set on that one proc - so a waiter that is a DIFFERENT task of the same process
+ * (POSIX: any thread may reap the process's children, and sys_wait4 already matches by TGID) slept
+ * FOREVER. NSTask's reaper thread is that waiter, and it hung the whole process.
+ *
+ * THE CHILD MUST STILL BE RUNNING when the thread starts waiting: had it already exited, the blocking
+ * waitpid would find the zombie on its FIRST scan and return without needing a wakeup at all, and a
+ * missing wakeup would not show. Hence the child's usleep.
+ *
+ * A BOUNDED WAIT, because a regression must REPORT rather than hang: the case waits for BLOCKING-WAIT-HUNG
+ * as well as for the DONE line, so a regression fails in seconds with a marker. */
+static pid_t bw_target = -1;
+static volatile int bw_done = 0;
+static int bw_got = -1, bw_status = -1;
+
+static void *bw_waiter(void *arg)
+{
+	int st = 0;
+	pid_t p;
+
+	(void)arg;
+	printf("TRACE bw: thread BLOCKING in waitpid(%d, status, 0)\n", (int)bw_target);
+	fflush(stdout);
+	p = waitpid(bw_target, &st, 0);	/* BLOCKING + SPECIFIC PID: the whole point of this mode */
+	bw_got = (int)p;
+	bw_status = st;
+	bw_done = 1;
+	printf("TRACE bw: waitpid returned %d status=%d\n", (int)p, st);
+	fflush(stdout);
+	return NULL;
+}
+
 static void *reaper(void *arg)
 {
 	(void)arg;
@@ -78,6 +117,49 @@ int main(int argc, char **argv)
 	fflush(stdout);
 
 	nullfd = open("/System/Devices/null", O_WRONLY);
+
+	/* MODE 3 runs BEFORE the polling reaper exists, so the fork below is from a single-threaded process
+	 * and the thread is created AFTER it - the same order -launchAndReturnError: uses. */
+	if (mode == 3) {
+		pthread_t bw;
+		pid_t child;
+		int i;
+
+		child = fork();
+		if (child == 0) {
+			usleep(300000);		/* still RUNNING when the thread blocks - see the note above */
+			_exit(4);
+		}
+		if (child < 0) {
+			printf("BLOCKING-WAIT-FORKFAILED\n");
+			return 1;
+		}
+		bw_target = child;
+		printf("TRACE bw: main forked=%d, starting the waiter thread\n", (int)child);
+		fflush(stdout);
+		if (pthread_create(&bw, NULL, bw_waiter, NULL) != 0) {
+			printf("BLOCKING-WAIT-NOTHREAD\n");
+			return 1;
+		}
+		for (i = 0; i < 3000 && !bw_done; i++) {
+			usleep(2000);		/* a 6s ceiling: a hang must report, not stall the case */
+		}
+		if (!bw_done) {
+			printf("BLOCKING-WAIT-HUNG child=%d\n", (int)child);
+			fflush(stdout);
+			return 1;
+		}
+		if (bw_got == (int)child && WIFEXITED(bw_status) && WEXITSTATUS(bw_status) == 4) {
+			printf("BLOCKING-WAIT-DONE child=%d reaped=%d code=4 token=%s\n",
+			       (int)child, bw_got, rev);
+			fflush(stdout);
+			return 0;
+		}
+		printf("BLOCKING-WAIT-BAD child=%d reaped=%d status=%d\n",
+		       (int)child, bw_got, bw_status);
+		fflush(stdout);
+		return 1;
+	}
 
 	if (pthread_create(&t, NULL, reaper, NULL) != 0) {
 		printf("THREADED-EXEC-ERROR=no-thread\n");

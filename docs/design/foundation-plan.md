@@ -8134,10 +8134,21 @@ reads its stdout to end-of-file. That is not the `do_exit` wake: it is the pipe/
 `kernel_pipe_dup2` case at 9/9, which does not use a THREAD). So the shape to measure next is a threaded
 parent feeding a child's standard input through a pipe.
 
-**REPRODUCER GAP, STATED RATHER THAN LEFT IMPLICIT:** the fix is proven by `foundation_task`'s own advance
-and by the before/after instrument, but there is **no Foundation-free case** for "a thread blocks in
-`waitpid(pid, …)`". `kernel_threaded_exec.c` should grow a mode for it (blocking, SPECIFIC pid, from a
-thread) — that is the one shape whose absence hid this bug for a whole session.
+**AND THE REPRODUCER GAP IS NOW CLOSED, WITH THE A/B THAT PROVES IT IS NOT VACUOUS.**
+`kernel_threaded_exec.c` grew **mode 3**: a WORKER THREAD **blocks** in `waitpid(SPECIFIC pid, …, 0)` for a
+child the MAIN thread forked, with the child still RUNNING when the thread starts waiting (a child that had
+already exited would be found on the first scan and return without needing a wakeup at all, and a missing
+wakeup would not show). Mode 3 reports `BLOCKING-WAIT-DONE child=… token=…` on success and
+`BLOCKING-WAIT-HUNG` on its own 6-second ceiling, so a regression FAILS IN SECONDS instead of stalling the
+case. Nothing in it is Foundation.
 
-FILES THIS ROUND: `kernel/syscalls/exit.c` (the parent notification — `wakeup_proc(p)` → `wakeup(&sys_wait4)`).
+    fix ABSENT   FAIL a-thread-blocks-in-waitpid   BLOCKING-WAIT-HUNG child=408          2/3
+    fix PRESENT  PASS a-thread-blocks-in-waitpid   BLOCKING-WAIT-DONE child=408 reaped=408 code=4   3/3
+
+That is the pair this tree requires (the pass RAN **and** the property HELD), and it is the check that was
+missing for the whole session: every earlier mode here **polls** with `waitpid(-1, WNOHANG)`, and a poll
+survives a missing wakeup by asking again.
+
+FILES THIS ROUND: `kernel/syscalls/exit.c` (the parent notification — `wakeup_proc(p)` → `wakeup(&sys_wait4)`);
+`userland/tests/kernel_threaded_exec.c` (mode 3); `tests/cases/kernel_threaded_exec.py` (its check).
 

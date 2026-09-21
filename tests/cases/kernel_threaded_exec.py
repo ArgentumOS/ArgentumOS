@@ -47,3 +47,16 @@ class Case(BaseCase):
         self.check("no-instruction-fetch-fault",
                    not fault,
                    "*** REPRODUCED ***: " + (fault[-1].strip() if fault else "clean"))
+
+        # MODE 3: a WORKER THREAD BLOCKS in waitpid(SPECIFIC pid) for a child the MAIN thread forked. Every
+        # other mode here POLLS with waitpid(-1, WNOHANG), and a poll survives a MISSING WAKEUP by asking
+        # again - which is how the do_exit bug (fixed 603a22e2) hid until NSTask's reaper, which does block,
+        # hung the whole process. The child sleeps, so it is still RUNNING when the thread blocks; the
+        # program reports BLOCKING-WAIT-HUNG on its own ceiling, so a regression fails in seconds.
+        mark = len(session.log_text())
+        session.run("%s 3 0 bwmode3" % PROBE)
+        session.wait_for(r"token=3edomwb|BLOCKING-WAIT-HUNG", 60)
+        out = session.output_since(mark)
+        self.check("a-thread-blocks-in-waitpid",
+                   "BLOCKING-WAIT-DONE" in out and "token=3edomwb" in out,
+                   "a thread's BLOCKING waitpid(specific pid) reaped the child: " + out.strip()[-300:])
