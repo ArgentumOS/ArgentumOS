@@ -3911,7 +3911,7 @@ it — not this section.**
 | **W3** | **`NSDecimal` → the `NSDecimalNumber` family** — the decimal C functions (`NSDecimalAdd`/`Subtract`/`Multiply`/`Divide`/`Round`/`Compact`/`Copy`/`MultiplyByPowerOf10` and the accessors), the `NSDecimal` struct, `NSCalculationError`, then `NSDecimalNumber`, `NSDecimalNumberHandler`, `NSDecimalNumberBehaviors` | 3 classes + the decimal funcs + 2 structs/enums + **two rows currently in `foundation_value`'s `excluded` list** (`decimalValue`, `numberWithDecimal:`) | nothing | self-contained arithmetic, and it is the cheapest way to close a SEEDED ledger row and two probe exclusions at once |
 | **W4** | **notifications** — `NSNotification` (+28 constants), `NSNotificationCenter`, `NSNotificationQueue` | 3 classes + the notification-name constants | `NSRunLoop` ✓ (shipped) | small, and it is the substrate W7 and W19 reuse (it was also W22's, which §39 DECLINED) |
 | **W5** | **`NSUserDefaults`** | 1 class | the plist/libconfig core ✓ and the `system.*.conf` domains ✓ (M7 shipped) | the one unit whose STORAGE already exists in this tree, which makes it cheap here and valuable everywhere (every app's settings) |
-| **W6** | **process and I/O** — `NSFileHandle` (a descriptor wrapper, so it lives here rather than with the file-system unit), `NSPipe`, `NSTask`, `NSStream`, `NSInputStream`, `NSOutputStream`, `NSStreamDelegate` (+`NSStream`'s 44 member constants) | **6 classes, PLUS `NSUserUnixTask`** — which §39 KEPT out of the three script-running `NSUser*Task` siblings it struck, on the ground that it *"runs an ordinary Unix script, which is process execution rather than AppleScript"*. **Its placement here is THIS AMENDMENT'S inference, not a decision the user made** (§39 kept the class without naming a unit), and the reason it goes here is that the row's own exclusion already pointed at process work | file descriptors ✓, fork/exec ✓, `NSRunLoop` ✓ — **and this unit must ADD run-loop SOURCES**, because the shipped run loop has timers and no sources | it is where that gap is paid, and W7 stands on it |
+| **W6** | **process and I/O** — `NSFileHandle` (a descriptor wrapper, so it lives here rather than with the file-system unit), `NSPipe`, `NSTask`, `NSStream`, `NSInputStream`, `NSOutputStream`, `NSStreamDelegate` (+`NSStream`'s 44 member constants) | **6 classes, PLUS `NSUserUnixTask`** — which §39 KEPT out of the three script-running `NSUser*Task` siblings it struck, on the ground that it *"runs an ordinary Unix script, which is process execution rather than AppleScript"*. **Its placement here is THIS AMENDMENT'S inference, not a decision the user made** (§39 kept the class without naming a unit), and the reason it goes here is that the row's own exclusion already pointed at process work | file descriptors ✓, fork/exec ✓, `NSRunLoop` ✓ — **and the run-loop SOURCES this cell used to ask for ALREADY EXIST** (checked 2026-09-21, when W6's streams half was picked up): `NSRunLoop` carries `FNRunLoopSource` (`userland/Foundation/NSRunLoop.m:43`), a first-party `-addSourceForFileDescriptor:mode:readable:target:selector:` (`NSRunLoop.h:106`), a wait built on `select(2)` that ENDS EARLY when a watched descriptor is ready (`NSRunLoop.m:537`, with F13.17's nanosleep measurement behind it), and `-addPort:forMode:` delegating to the port. **So this unit is a CLASS job, not a substrate job.** The cell is corrected rather than rewritten: the claim was true when it was written | it is where that gap is paid, and W7 stands on it |
 | **W7** | **the URL loading system** — `NSURLRequest`/`Mutable`/`Response`/`HTTPURLResponse`, `NSHTTPCookie`/`Storage`, `NSCachedURLResponse`/`URLCache`, `NSURLProtocol`/`Client`, `NSURLSession` + its task subclasses/delegates/config/metrics, `NSURLAuthenticationChallenge`/`Credential`/`CredentialStorage`/`ProtectionSpace` (+ `NSURL`'s 161 and `NSError`'s 146 constant rows) | **24 classes** (the measured count of open `Networking` classes, and every one of them is URL loading) **+ two constant masses** | W6, a transport (HTTP over the shipped socket layer), and a credential store whose decision is the Keychain question (`keychain-plan.md`) | the largest family in the ledger, and the one the run loop was landed early for (§10, F13.18) |
 | **W8** | **the file system deepened** — `NSDirectoryEnumerator`, `NSFileWrapper`, `NSFileSecurity`, `NSFileManagerDelegate` (+ `NSFileManager`'s 111 constants), then the coordinator family `NSFileCoordinator`/`NSFilePresenter`/`NSFileAccessIntent`/`NSFileVersion`/`NSFileProviderService` | **9 classes + 111 member rows** | `NSFileManager` ✓ (F13.14); the coordinator half needs a presenter registry, which is INSIDE the unit | the cheap half rides a shipped class; the coordinator half is self-contained and is what makes the file APIs safe under concurrency |
 | **W9** | **the coders' second half** — `NSSecureCoding`, class-name substitution, `NSKeyedArchiverDelegate`, `NSKeyedUnarchiverDelegate`, `NSSecureUnarchiveFromDataTransformer` | 6 rows (+2 seeded) | the shipped coder family (F13.12) | small, and it closes two seeded ledger rows |
@@ -8640,3 +8640,58 @@ and the coder is not what it purports to exercise. Recorded rather than reworked
     fast tier                   43/43 cases, 270/270 checks (was 42/43, 266/270; EXIT 0)
 
 FILES THIS ROUND: `userland/plist.c` — the date writer's fraction and the date parser's `%lf`.
+
+
+---
+
+## §45-Y — W6'S STREAMS HALF: THE UNIT'S SHAPE, ITS SPEC, AND THE TWO DECISIONS IT OPENS (2026-09-21)
+
+**CHOSEN (user, 2026-09-21): the streams half of W6**, after W6d (`NSTask`) went green — 9/9 case checks,
+18/18 probe checks, fast tier 43/43 cases and 270/270 checks. **W7's URL loading system stands on this unit.**
+
+**THE SPEC IS THE LEDGER, NOT AN INVENTED SURFACE.** `docs/reference/foundation-apple-surface.txt` holds the
+rows, and this lists them:
+
+    awk -F'\t' '$3 ~ /^NS(Stream|InputStream|OutputStream|StreamDelegate|UserUnixTask)/ {print $2"\t"$1"\t"$3}' \
+        docs/reference/foundation-apple-surface.txt | sort
+
+That is **4 classes** (`NSStream`, `NSInputStream`, `NSOutputStream`, `NSUserUnixTask`), the `NSStreamDelegate`
+protocol, `NSStreamEvent` and `NSStreamStatus` with **9 cases** (`NSStreamEventNone` … `NSStreamEventErrorOccurred`,
+`NSStreamStatusNotOpen` … `NSStreamStatusAtEnd`), **6 typealiases**, and ~23 constants/vars - most of the last
+group being NSStream's NETWORK half (the `NSStreamSocketSecurityLevel*`, `NSStreamSOCKSProxy*` and
+`NSStreamNetworkServiceType*` keys and the two `…ErrorDomain`s).
+
+**AND THE SUBSTRATE IS ALREADY THERE, WHICH IS THE FINDING THE W6 ROW'S OWN CELL GOT WRONG.** The cell asked
+this unit to "ADD run-loop SOURCES, because the shipped run loop has timers and no sources". `NSRunLoop` has
+had them: `FNRunLoopSource` with a descriptor and readable/writable, `-addSourceForFileDescriptor:…`, and a
+`select(2)` wait that ends early on a ready descriptor - which is exactly what a stream needs to become
+pollable rather than a blocking fd wrapper. The cell is corrected in place.
+
+**THE SPLIT, IN THE ORDER IT SHOULD LAND** (each with its own probe and case, and with every public header
+nullability-annotated WHILE it is written, because `tools/foundation-gate.py` is a `userland64` prerequisite
+and refuses a header that opens no balanced `NS_ASSUME_NONNULL` region):
+
+  1. **`NSStream`, the head** - `NSStreamEvent`, `NSStreamStatus` and their 9 cases, `NSStreamDelegate`, and
+     the abstract class: `-open`/`-close`, `-scheduleInRunLoop:forMode:`/`-removeFromRunLoop:forMode:`,
+     `-streamStatus`/`-streamError`, and the property keys this tree can honour. It is the unit's real cost:
+     a stream's status machine is the part every later class obeys.
+  2. **`NSInputStream`** - from a path/`NSURL` and from `NSData`, registering the descriptor as a run-loop
+     source ON DEMAND (the seam is `-addSourceForFileDescriptor:`), so `-stream:handleEvent:` fires with
+     `NSStreamEventHasBytesAvailable` rather than a read blocking a thread.
+  3. **`NSOutputStream`** - to a path and to memory (the `NSStreamDataWrittenToMemoryStreamKey` form).
+  4. **`NSUserUnixTask`** - the row's leftover, and INDEPENDENT of the streams: process work (`fork`/`exec` +
+     pipes) with `NSTask` as the pattern. `NSUserUnixTaskCompletionHandler` comes with it.
+
+**AND TWO DECISIONS THE UNIT OPENS, RECORDED RATHER THAN TAKEN SILENTLY:**
+
+  * **`NSUserUnixTask`'S SUPERCLASS.** Apple's class inherits `NSUserScriptTask`, and §39 STRUCK the three
+    script-running siblings - keeping this one on the ground that it "runs an ordinary Unix script, which is
+    process execution rather than AppleScript". So ours cannot inherit what we refused to ship: it must stand
+    alone (derive from `NSObject`) and SAY so, under this plan's rule that a deviation is acceptable only as
+    far as function needs it and must be documented. `-initWithScriptURL:error:` therefore has to be declared
+    here rather than inherited.
+  * **THE NETWORK HALF OF `NSStream`'S CONSTANTS.** The `SocketSecurityLevel*`, `SOCKSProxy*` and
+    `NetworkServiceType*` keys sit `open` in the ledger, and §39 declined the families they serve (Bonjour,
+    XPC). Either they land as declared constants a stream may merely CARRY (honest: a property bag with no
+    behaviour), or the ledger question goes to the user. **It is a ledger question before it is a unit**, as
+    W20's row already put it once.
