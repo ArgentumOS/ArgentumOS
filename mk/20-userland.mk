@@ -834,11 +834,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_task.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_task"
-	# SCRATCH (TEMPORARY - removed with userland/tests/zz_scratch_threaded_exec.c): the kernel bug that
-	# made foundation_task red is an exec/stack-page failure, so the reproducer must have no Foundation in
-	# it while the CHILD is still the Foundation probe.
-	$(MUSL64_CC) -O2 userland/tests/zz_scratch_threaded_exec.c \
-		-o "$(ROOTFS64)/System/Shared/tests/threaded_exec"
+	# kernel_threaded_exec: THE KERNEL BUG'S REPRODUCER (§45 of the Foundation plan), not a Foundation
+	# probe - it is plain C with NO Foundation in it, because the point is that the library is absent from
+	# the failing program. Mode 1's children are /System/Tools/true; mode 2's are the Foundation probe.
+	$(MUSL64_CC) -O2 userland/tests/kernel_threaded_exec.c \
+		-o "$(ROOTFS64)/System/Shared/tests/kernel_threaded_exec"
 	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
 	# collection_view, tab_view, split_view, grid_view, kvc_basic,
 	# notification_basic, cell_basic, viewcontroller_basic, window_draw,

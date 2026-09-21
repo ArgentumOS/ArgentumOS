@@ -6302,7 +6302,40 @@ together with the source), and a plain-C program with NO Foundation in it was ru
     because each iteration re-execs a large dynamically-linked binary, so this is *not reproduced in the
     time available* and NOT *ruled out*.
 
-**SO THE MECHANISM IS LOCATED TO THE LINE AND THE TRIGGER IS NOT YET REPRODUCED.** The next experiment is
+**AND THEN IT REPRODUCED — IN 11.8 SECONDS, AT THE IDENTICAL ADDRESS, WITH NO FOUNDATION ANYWHERE.** The
+corrected reproducer (a marker the guest shell cannot echo back, because the probe prints its token
+REVERSED, plus the child's stdout redirected off the serial console) turned into a real red case:
+`userland/tests/kernel_threaded_exec.c` + `tests/cases/kernel_threaded_exec.py`. Its mode 1 has **no
+Foundation in it at all** — the children are `/System/Tools/true` — and it fails like this:
+
+    Page Fault at 0x7f0000080849 (reading) with error code 0x14
+    Process '/System/Shared/tests/kernel_threaded_exec' with pid 10.
+     cs: 0x004b  rip: 0x00007f0000080849  rfl: 0x0000000000010246  ss: 0x0023  rsp: 0x0000400000022a38
+    rax: 0 rbx: 0 rcx: 0 rdx: 0 rsi: 0 rdi: 0 rbp: 0 r8..r15: 0
+
+**THE SAME ADDRESS EVERY RUN (0x7f0000080849), seven bytes from the NSTask probe's 0x7f0000080850, in two
+different programs** — so it is a COMPUTED value, not a random walk, and Foundation is not merely innocent,
+it is ABSENT from the failing program. And the fault is a **bare instruction fetch with no `map_page()`
+message anywhere before it**: `error 0x14` carries the instruction-fetch bit, `rip == cr2`, EVERY general
+register is zero, and the process has printed NOTHING — it never completed its first user-mode
+instructions. **That is a different signature from the one `foundation_task` showed** (a legitimate stack
+push whose `map_page()` then failed, `mm/fault.c:258`), and it means the process's **very first user-mode
+frame is wrong**.
+
+**WHAT SETS THE REPRODUCER APART FROM THE CLEAN RUNS (all measured):** (a) the worker thread **REAPS with
+`waitpid`** — the clean run's thread merely slept; (b) every child gets a **pipe** on stdin; (c) the loop is
+long enough for a rare event to land. Ruled out by measurement, across the whole session: Foundation
+(absent from the failing program), exec volume from a single-threaded parent (200 clean), a
+live-but-sleeping parent thread (300 clean), stack alignment (`-mstackrealign` changes nothing), the frame
+size (1520 B here vs 2224 B in a passing probe), `argc`/`argv`, and the load address (`readelf`: both
+`EXEC` at 0x400000). Also unsupported: the faulting `rsp` is not `PAGE_OFFSET`-based (`include/fnx/
+linker.h` gives `PAGE_OFFSET = 0xFFFF800000000000` on x86-64), and nothing in the tree names 0x7f00.
+
+**THE REMAINING QUESTION, AND IT IS NOW A NARROW ONE:** what installs that first user-mode frame, and where
+does `0x7f00_0000080849` come from? The next step is the project's own doctrine — **measure at the writer**:
+instrument the kernel's exec / return-to-user path to print the frame it installs (initial `rip`, `rsp` and
+the saved registers), because an address that is CONSTANT across runs and across two unrelated programs is
+being computed on purpose, and the instruction that computes it will name its own inputs. The next experiment is
 the same one with two corrections that are now known: a marker the case waits for PROPERLY (the guest shell
 ECHOES the command line, so marker text lifted from the command matches BEFORE the program has run — the
 same trap this project has hit more than once), and enough wall-clock for the loop to actually finish. Until
