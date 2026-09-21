@@ -6356,6 +6356,41 @@ Putting a settle delay (`usleep(200000)`) between `pthread_create` and the first
 in-flight edit in this same checkout, not this work's.** Their files are theirs to land; the test resumes as
 soon as the tree compiles again (or by staging the probe another way, e.g. an extra drive).
 
+**AND THE SETTLE EXPERIMENT IS ALSO NEGATIVE, WHICH MOVES THE SUSPECT FROM THE THREAD'S STARTUP TO THE
+FORK ITSELF.** A `usleep(200000)` between `pthread_create` and the first `fork` — so the thread is fully
+settled before any child exists — reproduces the fault UNCHANGED, at the same address, once per run. So it
+is not the new thread's startup racing the fork. What is left is the obvious companion: the reaper thread is
+**inside `waitpid(2)` constantly**, so a `fork(2)` is always racing *another thread's syscall*.
+
+**THE WRITER IS LOCATED, AND ITS SHAPE MATTERS** (`kernel/syscalls/fork.c:271-275`, quoted in full because
+the mechanism has to start here):
+
+    child->tss.esp0 += PAGE_SIZE - 4;
+    child->rss++;
+    child->tss.ss0 = KERNEL_DS;
+
+    memcpy_b((unsigned int *)(child->tss.esp0 & PAGE_MASK), (void *)((addr_t)(sc) & PAGE_MASK), PAGE_SIZE);
+    stack = (struct sigcontext *)((child->tss.esp0 & PAGE_MASK) + ((addr_t)(sc) & ~PAGE_MASK));
+
+    extern void return_from_syscall64(void);
+    child->tss.eip = (addr_t)return_from_syscall64;
+    child->flags |= PF_ELF64;
+    child->tss.esp = (addr_t)stack;
+    stack->rax = 0;    /* child returns 0 */
+
+The child's frame is a **WHOLE-PAGE `memcpy_b` of the kernel stack page that contains `sc`** — the parent's
+saved syscall context — and `return_from_syscall64` (`kernel/boot64/switch64.S:242`) then `iretq`s into user
+mode at `sc->rip`/`sc->rsp`, restoring `r15..rcx` from that copy. **Everything the child resumes with comes
+from that one page**, so if `sc` (or the page it lives on) belongs to the WRONG THREAD — the reaper sitting in
+`waitpid` rather than the main thread in `fork` — the child resumes with that thread's register file. A
+register file of ZEROS with one stray code pointer is exactly what a page that was never a syscall frame
+would look like.
+
+**THE NEXT MEASUREMENT IS THEREFORE EXACT AND CHEAP:** print, in that path, `sc`, `sc->rip`, `sc->rsp`,
+`child->tss.esp0` and the child's pid — for the children the case knows run correctly and for the one that
+dies. `sc`'s provenance (which thread's stack it points into, and whether it is per-thread at that moment) is
+the whole question, and it is one `printk`.
+
 **THE REMAINING QUESTION, AND IT IS NOW A NARROW ONE:** what installs that first user-mode frame, and where
 does `0x7f00_0000080849` come from? The next step is the project's own doctrine — **measure at the writer**:
 instrument the kernel's exec / return-to-user path to print the frame it installs (initial `rip`, `rsp` and
