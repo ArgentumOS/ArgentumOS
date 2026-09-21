@@ -358,7 +358,7 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP) $(FN_FOUN
 		$(FN_FOUNDATION_OBJS) \
 		.build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata -o $@
 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
-userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
+userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(CG_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)
 	@mkdir -p $(ROOTFS64)
 	# third-party X11 + toolchain tests live under System/Shared
@@ -1050,6 +1050,16 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# told our own headers do not exist (user's cleanup, 2026-09-20).
 	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/Foundation"
 	@cp $(FOUNDATION_SRC)/*.h "$(ROOTFS64)/System/Shared/Headers/Foundation/"
+
+	# --- CoreGraphics (docs/design/coregraphics-plan.md C1-C3): the drawing library, staged
+	# by the SAME rule as Foundation - the versioned file, whose SONAME
+	# ("libcoregraphics.so.1") is what the guest loader resolves - AND ITS PUBLIC HEADERS
+	# under the directory the import spelling names, so that a guest build saying
+	# <CoreGraphics/CGPath.h> finds OUR headers. THIS IS THE HALF THAT WAS MISSING UNTIL NOW:
+	# the library built and was in no image, so nothing on the guest could link it.
+	@cp $(CG_LIB) "$(ROOTFS64)/System/Libraries/libcoregraphics.so.1"
+	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/CoreGraphics"
+	@cp userland/CoreGraphics/*.h "$(ROOTFS64)/System/Shared/Headers/CoreGraphics/"
 
 	# --- shared C++ stack (dynamic-C++): the versioned libc++/libc++abi/
 	# libunwind .so files from the llvm-cxx prefix (built shared since the
