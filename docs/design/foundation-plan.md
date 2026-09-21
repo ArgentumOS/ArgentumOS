@@ -8396,3 +8396,52 @@ mistake this project has already paid for more than once.
 
 FILES THIS ROUND: none — the `get_new_fd`/`release_fd`/`fork` printks were an instrument and are reverted.
 
+### §45-V.2 — THE FIX WAS IMPLEMENTED, MEASURED, AND REVERTED: IT BREAKS EVERY REAPER-THREAD MODE
+
+**THE §45-V.1 DESIGN WAS BUILT AND ITS FORK/EXIT IDENTITY IS CORRECT — AND IT REGRESSED THE THREADED CASES,
+SO IT WAS REVERTED RATHER THAN LANDED.** A regressed kernel is worse than a known bug; the tree is back at
+`125710f5` with the ESP rebuilt from the reverted source.
+
+**WHAT WAS BUILT (the whole of §45-V.1):** `fd`/`fd_flags` became pointers; `get_proc_free()` allocates a
+slot's table; `do_fork_like()` keeps it and copies the parent's contents in for a PROCESS and hands it back to
+share the lead task's for a CLONE_VM task, with the fd-count loop skipped for the latter; `do_exit()` closes
+and frees only for a process, and frees only for the LAST user (a scan for a task sharing the same `fd`
+pointer, mirroring the existing `pml4_has_other_user()` rule two lines above it). It built clean.
+
+**AND THE IDENTITY IT PRODUCES IS EXACTLY WHAT §45-V.1 PREDICTED** (measured with fork/exit printks, since
+reverted):
+
+    XFORK parent=56 child=57 is_thread=1 tgid=56     <- the thread: SHARES the process's table
+    XFORK parent=56 child=58 is_thread=0 tgid=58     <- a fork child: its OWN table
+    XEXIT pid=58 tgid=58 flags=12 code=0 ppid=56     <- and it closes/frees its own
+So the representation, the sharing rule and the ownership rule all do what they were meant to.
+
+**BUT `kernel_pipe_dup2` GOES FROM 8/10 TO 7/10, AND THE FAILURES ARE EXACTLY THE MODES WITH A REAPER
+THREAD** — `threaded-completes`, `exec-child-completes`, `reaping-thread-completes` — while every mode without
+one (`completes-all-50`, `main-thread-reaps`, `pipe-reader-sees-eof`) stays green.
+
+**THE FAILURE IS NOT A HANG, AND IT IS NOT WHERE I LOOKED.** The loop COMPLETES (`PIPEDBG i=49 shortwrite` is
+the last of 50), and then:
+
+    XEXIT pid=56 tgid=56 flags=12 code=0 ppid=4      <- the PROCESS exits 0, cleanly
+    PIPEDBG-T-STATUS=0                               <- the shell sees 0
+
+and `PIPEDBG DONE=50 stuck=0` — the program's LAST line — **never appears**, and the reaper thread **never
+exits** (no exit record for pid 57). `reaping-thread-no-stuck` passes, so the mode's own count loop did reach
+`reaped >= n`; the death is at or around the `pthread_join(thr, NULL)` that follows. A process that exits 0
+with its final `printf` missing and its thread still alive is not `main` returning — `exit()` flushes — so
+something in the shared-table path is poisoning the join. **That is the open question and the next
+measurement**, not a conclusion.
+
+**AND A FIXTURE QUIRK THIS EXPOSED, WHICH IS WORTH KNOWING BECAUSE THE CHECK NAMES MISLEAD:** the modes are
+selected with `strchr(argv[2], 'r')` / `'m'` / `'t'`, and **the case passes the literal string `"thread"`,
+which contains an `r`** — so `use_reap` is TRUE for every "threaded" mode. `kernel_pipe_dup2` therefore has
+**no "live thread that does not reap" mode at all**: its `threaded-*` checks are REAPER-THREAD checks, and
+the only thread-free control is `main-thread-reaps`. That mislabeling is why the first reading of this
+regression ("only modes with a live thread fail") pointed at the wrong thing.
+
+**SO THE NEXT ATTEMPT STARTS HERE:** instrument the join path (musl's `pthread_join` futex on `tid`, the
+kernel's CLONE_CHILD_CLEARTID clear and wake in `do_exit`) and find out how the leader leaves without
+returning from `main` — then re-apply §45-V.1's change, which is already written out and is not itself in
+question.
+
