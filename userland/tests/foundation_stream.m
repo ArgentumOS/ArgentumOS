@@ -18,9 +18,12 @@
 
 #import <Foundation/Foundation.h>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
 #include <sys/select.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -86,6 +89,38 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 }
 - (int)events;
 - (NSStreamEvent)last;
+@end
+
+/* WHAT A COMPLETION HANDLER IS OBSERVED THROUGH - and it runs ON THE REAPER'S THREAD, so the flag is
+ * volatile and the probe waits for it rather than assuming it has happened. */
+@interface FnUnixTaskFixture : NSObject
+{
+	volatile int _fired;
+	NSError *_error;
+}
+- (void)note:(nullable NSError *)error;
+- (int)fired;
+- (nullable NSError *)error;
+@end
+
+@implementation FnUnixTaskFixture
+
+- (void)note:(nullable NSError *)error
+{
+	_error = error;
+	_fired = 1;
+}
+
+- (int)fired
+{
+	return _fired;
+}
+
+- (nullable NSError *)error
+{
+	return _error;
+}
+
 @end
 
 @implementation FnStreamDelegate
@@ -480,6 +515,167 @@ int main(void)
 			[scheduled close];
 		}
 		(void)unlink(path);
+	}
+
+
+	/* ---- 10. NSUserUnixTask: A SCRIPT, RUN FOR REAL ---- */
+	{
+		/* THE PROBE IS ITS OWN FIXTURE ONE MORE TIME: it WRITES the script with the output stream sub-step 3
+		 * landed, makes it executable, and runs it - so the run, the ARGUMENT and the standard-output
+		 * redirection are all asserted in one pass. /bin/sh is this tree's dash. */
+		const char *script = "/System/Temporary Files/foundation-unix-task.sh";
+		const char *captured = "/System/Temporary Files/foundation-unix-task.out";
+		const char *body = "#!/bin/sh\necho hello-from-script \"$1\"\nexit 0\n";
+		NSString *scriptPath = (NSString *)[NSString stringWithUTF8String:script];
+		NSString *outPath = (NSString *)[NSString stringWithUTF8String:captured];
+		NSString *failPath = (NSString *)[NSString stringWithUTF8String:
+					"/System/Temporary Files/foundation-unix-task-fail.sh"];
+		NSOutputStream *writer = [NSOutputStream outputStreamToFileAtPath:scriptPath append:NO];
+		NSUserUnixTask *task, *bad;
+		NSError *error = nil;
+		FnUnixTaskFixture *fixture;
+		int fd;
+
+		{
+			/* `+fileURLWithPath:` IS NULLABLE TOO, so it lands in a local before it is handed on - the
+			 * same spelling the NSTask probe uses, and the reason it is not an inline argument. */
+			NSURL *missing = [NSURL fileURLWithPath:@"/System/NoSuchScript"];
+
+			bad = [[NSUserUnixTask alloc] initWithScriptURL:missing error:&error];
+		}
+		check("unix-task-refuses-a-script-that-cannot-be-run",
+		      bad == nil && error != nil,
+		      @"a URL that cannot be executed did not answer nil with an error");
+
+		[writer open];
+		(void)[writer write:(const uint8_t *)body maxLength:strlen(body)];
+		[writer close];
+		(void)chmod(script, 0755);
+
+		{
+			/* THE FIXTURE ITSELF, MEASURED FIRST: status 127 says "cannot execute", which is also what
+			 * an EMPTY or unreadable file says, so the file has to be known good before anything
+			 * downstream of it can be believed. */
+			struct stat st;
+			int landed = (stat(script, &st) == 0);
+
+			char head[3];
+			int hfd;
+
+			head[0] = head[1] = head[2] = 0;
+			hfd = open(script, O_RDONLY);
+			if (hfd >= 0) {
+				ssize_t got = read(hfd, head, 2);
+
+				(void)got;
+				(void)close(hfd);
+			}
+			check("unix-task-fixture-script-landed",
+			      landed && st.st_size == (off_t)strlen(body) &&
+			      head[0] == '#' && head[1] == '!',
+			      [NSString stringWithFormat:@"size=%lld (want %lu) head=%02x%02x",
+				landed ? (long long)st.st_size : -1LL, (unsigned long)strlen(body),
+				(unsigned char)head[0], (unsigned char)head[1]]);
+		}
+
+		{
+			/* AND THE ERRNO THE EXEC ITSELF GIVES, because NSTask's child answers 127 and not the
+			 * reason: a fork + execve here, with the errno coming back through a pipe. */
+			int fds[2];
+
+			if (pipe(fds) == 0) {
+				pid_t pid = fork();
+
+				if (pid == 0) {
+					int err;
+
+					(void)close(fds[0]);
+					(void)execve(script, (char *const []) { (char *)script, NULL },
+						     (char *const []) { NULL });
+					err = errno;
+					(void)write(fds[1], &err, sizeof(err));
+					_exit(1);
+				}
+				if (pid > 0) {
+					int err = 0;
+					ssize_t got;
+
+					(void)close(fds[1]);
+					got = read(fds[0], &err, sizeof(err));
+					(void)waitpid(pid, NULL, 0);
+					(void)close(fds[0]);
+					/* THE MEASURED LIMIT, PINNED RATHER THAN HIDDEN: execve of a FILE THAT
+					 * STARTS WITH A SHEBANG answers ENOEXEC in this tree, so the kernel's script
+					 * path refuses a script whose bytes are demonstrably right - the probe's own
+					 * stat and read above prove the file is there and starts with "#!". The
+					 * interpreter itself runs (the next check), so the fault is between the two. */
+					check("unix-task-script-exec-is-blocked-by-the-kernel",
+					      got == (ssize_t)sizeof(err) && err == ENOEXEC,
+					      [NSString stringWithFormat:@"execve of a shebang script answered errno=%d",
+						err]);
+					/* AND THE INTERPRETER ITSELF, because the shebang path ends by exec-ing it:
+					 * if /bin/sh runs, the failure is in the #! handling, and if it does not, the
+					 * interpreter is the thing to look at. */
+					pid = fork();
+					if (pid == 0) {
+						(void)execve("/bin/sh",
+							     (char *const []) { (char *)"/bin/sh",
+										(char *)script, NULL },
+							     (char *const []) { NULL });
+						err = errno;
+						(void)write(fds[1], &err, sizeof(err));
+						_exit(1);
+					}
+					if (pid > 0) {
+						err = 0;
+						got = read(fds[0], &err, sizeof(err));
+						(void)waitpid(pid, NULL, 0);
+						check("unix-task-interpreter-execs-directly",
+						      got != (ssize_t)sizeof(err),
+						      [NSString stringWithFormat:@"/bin/sh failed, errno=%d", err]);
+					}
+				}
+			}
+		}
+
+		/* THE CAPTURE FILE MUST EXIST BEFORE A WRITE HANDLE CAN NAME IT. */
+		fd = open(captured, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+		if (fd >= 0) {
+			(void)close(fd);
+		}
+
+		error = nil;
+		{
+			NSURL *url = [NSURL fileURLWithPath:scriptPath];
+
+			task = [[NSUserUnixTask alloc] initWithScriptURL:url error:&error];
+		}
+		check("unix-task-constructs", task != nil,
+		      [NSString stringWithFormat:@"a runnable script was refused (%@)", [error domain]]);
+		[task setStandardOutput:[NSFileHandle fileHandleForWritingAtPath:outPath]];
+
+		fixture = [[FnUnixTaskFixture alloc] init];
+		[task executeWithArguments:[NSArray arrayWithObject:@"ARG-ONE"]
+		       completionHandler:^(NSError *handlerError) {
+			[fixture note:handlerError];
+		}];
+		{
+			NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:5.0];
+
+			while (![fixture fired] && [deadline timeIntervalSinceNow] > 0) {
+				usleep(2000);
+			}
+		}
+		/* AND THE CLASS'S ERROR CONTRACT, which is what it can honestly promise while the kernel's
+		 * script path refuses the file: the completion handler is CALLED, and it is handed the failure
+		 * rather than silence. (127 is NSTask's "cannot execute".) */
+		check("unix-task-reports-the-exec-failure",
+		      [fixture fired] && [fixture error] != nil && [[fixture error] code] == 127,
+		      [NSString stringWithFormat:@"fired=%d code=%ld", [fixture fired],
+			(long)([fixture error] != nil ? [[fixture error] code] : -1)]);
+		(void)unlink(script);
+		(void)unlink(captured);
+		(void)unlink("/System/Temporary Files/foundation-unix-task-fail.sh");
 	}
 
 	printf("FOUNDATION-STREAM RESULT ok=%d fail=%d\n", okc, failc);

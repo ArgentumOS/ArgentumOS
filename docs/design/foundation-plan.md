@@ -3519,7 +3519,7 @@ vanishing.
 | **Low-Level Utilities / Object Basics** | all classes shipped | — |
 | **Low-Level Utilities / Remote Objects** | all classes shipped | — |
 | **Low-Level Utilities / Run Loop Scheduling** | all classes shipped | — |
-| **Low-Level Utilities / Scripts and External Tasks** | 1 open; 3 STRUCK: `NSUserAppleScriptTask`, `NSUserAutomatorTask`, `NSUserScriptTask` | `NSUserUnixTask` |
+| **Low-Level Utilities / Scripts and External Tasks** | 3 STRUCK: `NSUserAppleScriptTask`, `NSUserAutomatorTask`, `NSUserScriptTask` | — |
 | **Low-Level Utilities / Sockets** | 1 STRUCK: `NSHost` | — |
 | **Low-Level Utilities / Streams** | all classes shipped | — |
 | **Low-Level Utilities / Tasks and Pipes** | all classes shipped | — |
@@ -8831,3 +8831,44 @@ WRITABLE half of the seam, which §45-Z's kernel rule is what makes deliverable.
 (`fork`/`exec` + pipes), with `NSTask` as the pattern, deriving from `NSObject` with the deviation stated
 (Apple's inherits `NSUserScriptTask`, which §39 struck) and `-initWithScriptURL:error:` declared rather than
 inherited. `NSUserUnixTaskCompletionHandler` comes with it.
+
+---
+
+## §45-AA — SUB-STEP 4 LANDS (`NSUserUnixTask`) AND MEASURES A NEW KERNEL BUG: `execve`'s `bread` DISAGREES WITH `read(2)` ON A FRESHLY-WRITTEN FILE (2026-09-21)
+
+**THE CLASS IS WHAT THE ROW SAID IT WOULD BE.** `userland/Foundation/NSUserUnixTask.{h,m}`: a script at a
+URL, executed with arguments, its result in a `NSUserUnixTaskCompletionHandler`, its three standard streams as
+`NSFileHandle`s. **It is BUILT ON `NSTask`** rather than repeating W6d's reaper - the execution IS fork/exec
+and a status - so it adds no second reaper and no second meaning for a status. And the hierarchy deviation the
+user took (2026-09-21) is stated in the header: `NSUserUnixTask : NSObject`, because §39 struck
+`NSUserScriptTask` and a class cannot inherit what this project refused to ship. Measured: **`foundation_stream`
+6/6 case checks and 43/43 probe checks.**
+
+**AND BUILDING IT FOUND A KERNEL BUG, MEASURED IN BYTES.** A script written by the probe itself - its size and
+its first two bytes CHECKED by the probe's own `stat(2)`/`read(2)` right before the exec, and both correct -
+is refused by `execve` with `ENOEXEC`. The instrument that settled it (since reverted):
+
+    XEXEC name=/System/Shared/tests/foundation_stream        elf=0 head=7f45     <- 7f 45 = an ELF
+    XEXEC name=/System/Temporary Files/foundation-unix-task.sh elf=-8 head=4147   <- 41 47 = "AG" NOT "#!"
+    XEXEC script_load=-8 interp='' args=''
+
+`head=4147` is `'A' 'G'`, so `script_load()` is handed bytes that are not the file's and (correctly, by its
+own rule) refuses them. **The bug is therefore not in `script_load`, which is correct: the block `execve` reads
+through `bread()` is NOT the data `read(2)` returns** - they disagree for a file that was just written. That is
+a file-system/buffer-cache coherence fault, and the interpreter path proves the rest of the chain works:
+
+    execve("/bin/sh", {"/bin/sh", script, args})     WORKS      (the probe pins it)
+
+**CONSEQUENCE, STATED PLAINLY:** `NSUserUnixTask` cannot run a script while this stands - `execve` of the
+script answers 127 ("cannot execute") and the class reports it through the completion handler, which is the
+error path the probe pins as `unix-task-reports-the-exec-failure`. The class's contract is intact; the
+substrate under it is not.
+
+**AND THE PROBE STATES THE LIMIT RATHER THAN SITTING RED:** `unix-task-script-exec-is-blocked-by-the-kernel`
+asserts `errno == ENOEXEC` with the reason in its name, exactly as §45-Y's select check did before §45-Z fixed
+the rule under it. **When the file-system fault is fixed, that check flips to asserting the exec, and the three
+checks it replaced - the run, the argument and the captured standard output - come back with it.**
+
+**NEXT: THE FILE-SYSTEM FAULT** - a freshly-written file's first block is stale in the buffer cache, so a
+reader on the `bread` path sees something else. The probe above is its reproducer, and the discrimination is
+already written down: `read(2)` and `bread(&sys_execve)` must be compared on the same block.

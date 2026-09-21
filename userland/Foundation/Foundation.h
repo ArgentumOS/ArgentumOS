@@ -157,6 +157,7 @@
 #import <Foundation/NSPipe.h>
 #import <Foundation/NSInputStream.h>
 #import <Foundation/NSOutputStream.h>
+#import <Foundation/NSUserUnixTask.h>
 #import <Foundation/NSStream.h>
 #import <Foundation/NSTask.h>
 

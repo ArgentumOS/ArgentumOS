@@ -57,6 +57,12 @@ CHECKS = (
     "output-stream-then-input-stream-round-trips",
     "output-stream-appends",
     "output-stream-fires-has-space",
+    "unix-task-refuses-a-script-that-cannot-be-run",
+    "unix-task-constructs",
+    "unix-task-fixture-script-landed",
+    "unix-task-script-exec-is-blocked-by-the-kernel",
+    "unix-task-interpreter-execs-directly",
+    "unix-task-reports-the-exec-failure",
 )
 
 
