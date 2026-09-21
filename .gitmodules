@@ -44,3 +44,6 @@
 [submodule "third_party/x11/libXcomposite"]
 	path = third_party/x11/libXcomposite
 	url = https://gitlab.freedesktop.org/xorg/lib/libXcomposite.git
+[submodule "third_party/lcms2"]
+	path = third_party/lcms2
+	url = https://github.com/mm2/Little-CMS
