@@ -36,7 +36,7 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  151   open  536   struck   48
+#   func       shipped  157   open  530   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped   10   open   46   struck    1
 #   case       shipped   70   open  360   struck   14
@@ -637,14 +637,14 @@ func	shipped	CGColorSpaceGetModel	-	Opaque Types / Examining a Color Space	-	obj
 func	open	CGColorSpaceGetName	-	Reference / Functions	-	objc
 func	shipped	CGColorSpaceGetNumberOfComponents	-	Opaque Types / Examining a Color Space	-	objc
 func	open	CGColorSpaceGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
-func	open	CGColorSpaceIsHDR	-	Reference / Functions	-	objc
-func	open	CGColorSpaceIsHLGBased	-	Reference / Functions	-	objc
-func	open	CGColorSpaceIsPQBased	-	Reference / Functions	-	objc
-func	open	CGColorSpaceIsWideGamutRGB	-	Opaque Types / Examining a Color Space	-	objc
+func	shipped	CGColorSpaceIsHDR	-	Reference / Functions	-	objc
+func	shipped	CGColorSpaceIsHLGBased	-	Reference / Functions	-	objc
+func	shipped	CGColorSpaceIsPQBased	-	Reference / Functions	-	objc
+func	shipped	CGColorSpaceIsWideGamutRGB	-	Opaque Types / Examining a Color Space	-	objc
 func	shipped	CGColorSpaceRelease	-	Opaque Types / Retaining and Releasing Color Spaces	-	objc
 func	shipped	CGColorSpaceRetain	-	Opaque Types / Retaining and Releasing Color Spaces	-	objc
-func	open	CGColorSpaceSupportsOutput	-	Opaque Types / Examining a Color Space	-	objc
-func	open	CGColorSpaceUsesExtendedRange	-	Reference / Functions	-	objc
+func	shipped	CGColorSpaceSupportsOutput	-	Opaque Types / Examining a Color Space	-	objc
+func	shipped	CGColorSpaceUsesExtendedRange	-	Reference / Functions	-	objc
 func	open	CGColorSpaceUsesITUR_2100TF	-	Reference / Functions	-	objc
 func	open	CGCompleteDisplayConfiguration	-	Services / Configuring Displays	-	objc
 func	open	CGConfigureDisplayFadeEffect	-	Services / Display Fade Effects	-	objc

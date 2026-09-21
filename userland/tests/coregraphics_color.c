@@ -690,6 +690,55 @@ int main(void)
 		      CGColorSpaceCreateCalibratedGray(d50, NULL, 0.0) == NULL);
 	}
 
+	/* --- THE PREDICATES: answers computed from the same facts the library acts on ---------- */
+	/* TWO OF THESE ARE COMPUTED AND FOUR ARE STATEMENTS ABOUT WHICH SPACES EXIST HERE. The
+	 * interesting one is `IsWideGamutRGB`, because it has a real answer to get right: device RGB
+	 * IS sRGB by this library's definition and must come out NOT wide, while Adobe RGB — whose
+	 * green primary, (0.21, 0.71), sits well outside sRGB's triangle — must come out wide. THAT
+	 * SECOND CASE IS BUILT FROM ITS PRIMARIES AS A MATRIX, so the check exercises the same
+	 * matrix-to-primaries reading the calibrated block above proves, from the other direction. */
+	{
+		static const CGFloat adobe_rgb_matrix[9] = {
+			0.5767309, 0.1855540, 0.1881852,
+			0.2973769, 0.6273491, 0.0752741,
+			0.0270343, 0.0706872, 0.9911085
+		};
+		static const CGFloat d65[3] = { 0.95047, 1.0, 1.08883 };
+		CGFloat g3[3] = { 2.2, 2.2, 2.2 };
+		CGColorSpaceRef rgb = CGColorSpaceCreateDeviceRGB();
+		CGColorSpaceRef gray = CGColorSpaceCreateDeviceGray();
+		CGColorSpaceRef cmyk = CGColorSpaceCreateDeviceCMYK();
+		CGColorSpaceRef lab = CGColorSpaceCreateLab(NULL, NULL, NULL);
+		CGColorSpaceRef wide_rgb = CGColorSpaceCreateCalibratedRGB(d65, NULL, g3,
+									  adobe_rgb_matrix);
+
+		check("device RGB and device gray SUPPORT output",
+		      CGColorSpaceSupportsOutput(rgb) && CGColorSpaceSupportsOutput(gray));
+		check("...and so does a space that has to be CONVERTED (Lab)",
+		      CGColorSpaceSupportsOutput(lab));
+		check("device CMYK does NOT — there is no profile to draw it through",
+		      !CGColorSpaceSupportsOutput(cmyk));
+		check("device RGB is NOT wide gamut: it IS sRGB, by this library's definition",
+		      !CGColorSpaceIsWideGamutRGB(rgb));
+		check("...but ADOBE RGB's primaries are, its green being (0.21, 0.71)",
+		      CGColorSpaceIsWideGamutRGB(wide_rgb));
+		check("a grayscale space is not wide-gamut RGB", !CGColorSpaceIsWideGamutRGB(gray));
+		check("a NULL space is not wide-gamut RGB", !CGColorSpaceIsWideGamutRGB(NULL));
+		check("nothing here uses an extended range",
+		      !CGColorSpaceUsesExtendedRange(rgb) && !CGColorSpaceUsesExtendedRange(wide_rgb));
+		check("nothing here is HDR, PQ-based or HLG-based",
+		      !CGColorSpaceIsHDR(lab) && !CGColorSpaceIsPQBased(lab) &&
+		      !CGColorSpaceIsHLGBased(wide_rgb));
+		check("and an extended-range question about NULL is still answered, not crashed on",
+		      !CGColorSpaceUsesExtendedRange(NULL) && !CGColorSpaceSupportsOutput(NULL));
+
+		CGColorSpaceRelease(wide_rgb);
+		CGColorSpaceRelease(lab);
+		CGColorSpaceRelease(cmyk);
+		CGColorSpaceRelease(gray);
+		CGColorSpaceRelease(rgb);
+	}
+
 	printf("CG-COLOR: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

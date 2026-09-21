@@ -407,3 +407,147 @@ size_t CGColorSpaceGetNumberOfComponents(CGColorSpaceRef space)
 	}
 	return space->components;
 }
+
+/* ---------------------------------------------------------------------------------------
+ * THE PREDICATES, AND HOW THEY ARE ANSWERED.
+ *
+ * TWO OF THEM ARE COMPUTED FROM FACTS THIS LIBRARY ALREADY ACTS ON — whether a space can be
+ * drawn, and whether its gamut reaches beyond sRGB's — and four are facts about which spaces
+ * exist here. None of them is a stand-in for an answer: the four say NO because no such space
+ * can be built yet, and each says so where a reader will find it.
+ * ------------------------------------------------------------------------------------- */
+
+/* TWICE A TRIANGLE'S SIGNED AREA FOR ONE EDGE, which is all it takes to say where a point sits.
+ * `sRGB's primaries are given as a flat x0,y0,x1,y1,x2,y2 and the winding is the one the
+ * standard values have. */
+static double cg_edge_sign(double ax, double ay, double bx, double by, double px, double py)
+{
+	return (bx - ax) * (py - ay) - (by - ay) * (px - ax);
+}
+
+/* INSIDE THE TRIANGLE OR ON ITS EDGE. All three signs agree — or one is zero and the other two
+ * agree — and the only other possibility is a MIXED set, which is a point outside. ZERO COUNTS
+ * AS INSIDE, and that is the whole distinction this predicate turns on: a space that IS sRGB has
+ * its primaries ON sRGB's triangle, and "wide gamut" has to come out FALSE for it. */
+static int cg_inside_or_on(double px, double py, const double *tri)
+{
+	double s0 = cg_edge_sign(tri[0], tri[1], tri[2], tri[3], px, py);
+	double s1 = cg_edge_sign(tri[2], tri[3], tri[4], tri[5], px, py);
+	double s2 = cg_edge_sign(tri[4], tri[5], tri[0], tri[1], px, py);
+	int negative = (s0 < 0.0) + (s1 < 0.0) + (s2 < 0.0);
+
+	return negative == 0 || negative == 3;
+}
+
+/* A SPACE'S PRIMARIES IN xy, OR 0 IF THEY CANNOT BE READ. Device RGB HAS a definition here —
+ * it is sRGB, which the conversion path states — and an RGB space built from a profile has
+ * colourants the engine can read back. A profile that is NOT a matrix shaper answers 0, and that
+ * refusal is the point of the function: a gamut nobody can read is a gamut nobody can compare,
+ * and answering "not wide" for a profile nobody looked at would be a guess dressed as a fact. */
+static int cg_space_primaries(CGColorSpaceRef space, double prim[6])
+{
+	static const cmsTagSignature tags[3] = {
+		cmsSigRedColorantTag, cmsSigGreenColorantTag, cmsSigBlueColorantTag
+	};
+	static const double srgb[6] = { 0.6400, 0.3300, 0.3000, 0.6000, 0.1500, 0.0600 };
+	cmsHPROFILE p;
+	cmsCIEXYZ *xyz;
+	double sum;
+	int i;
+
+	if (space == NULL || CGColorSpaceGetModel(space) != kCGColorSpaceModelRGB) {
+		return 0;
+	}
+	p = (cmsHPROFILE)cg_colorspace_engine_profile(space);
+	if (p == NULL) {
+		for (i = 0; i < 6; i++) {
+			prim[i] = srgb[i];
+		}
+		return 1;
+	}
+	for (i = 0; i < 3; i++) {
+		xyz = (cmsCIEXYZ *)cmsReadTag(p, tags[i]);
+		if (xyz == NULL) {
+			return 0;
+		}
+		sum = xyz->X + xyz->Y + xyz->Z;
+		if (sum <= 0.0) {
+			return 0;
+		}
+		prim[i * 2] = xyz->X / sum;
+		prim[i * 2 + 1] = xyz->Y / sum;
+	}
+	return 1;
+}
+
+bool CGColorSpaceSupportsOutput(CGColorSpaceRef space)
+{
+	CGColorSpaceModel model;
+
+	if (space == NULL) {
+		return 0;
+	}
+	model = CGColorSpaceGetModel(space);
+	if (model == kCGColorSpaceModelRGB || model == kCGColorSpaceModelMonochrome) {
+		return 1;   /* a device space: the rasterizer blends its numbers as they stand */
+	}
+	/* ANYTHING ELSE HAS TO HAVE A PROFILE, because drawing it means CONVERTING it and converting
+	 * it means the engine having something to convert through. Device CMYK is the case that
+	 * exists today and answers NO — the same answer, from the same fact, that the context's
+	 * colour setters give it. */
+	return cg_colorspace_engine_profile(space) != NULL;
+}
+
+bool CGColorSpaceIsWideGamutRGB(CGColorSpaceRef space)
+{
+	static const double srgb[6] = { 0.6400, 0.3300, 0.3000, 0.6000, 0.1500, 0.0600 };
+	double prim[6];
+	int i;
+
+	if (!cg_space_primaries(space, prim)) {
+		return 0;
+	}
+	for (i = 0; i < 3; i++) {
+		if (!cg_inside_or_on(prim[i * 2], prim[i * 2 + 1], srgb)) {
+			/* ONE PRIMARY OUTSIDE sRGB'S TRIANGLE IS ENOUGH: "wide gamut" means the space
+			 * includes colours sRGB does not, and a primary is such a colour. */
+			return 1;
+		}
+	}
+	return 0;
+}
+
+bool CGColorSpaceUsesExtendedRange(CGColorSpaceRef space)
+{
+	(void)space;
+	/* NO, FOR EVERY SPACE THIS LIBRARY CAN BUILD — and that is a fact rather than a placeholder.
+	 * An extended-range space is one whose components may go OUTSIDE 0..1: an HDR or
+	 * scene-referred profile, built on a transfer curve that is not bounded. Every space here is
+	 * bounded and 0..1, so the answer is NO for all of them; the day one can be built, this is
+	 * where it is answered. */
+	return 0;
+}
+
+bool CGColorSpaceIsPQBased(CGColorSpaceRef space)
+{
+	(void)space;
+	/* THE SAME ANSWER AND THE SAME REASON: a PQ-based space is one whose transfer curve is the
+	 * perceptual quantizer, which is an HDR curve and therefore outside what this library builds
+	 * today. See `CGColorSpaceUsesExtendedRange` above. */
+	return 0;
+}
+
+bool CGColorSpaceIsHLGBased(CGColorSpaceRef space)
+{
+	(void)space;
+	/* THE HYBRID LOG-GAMMA CURVE, the other HDR one, and again: no space here is built on it. */
+	return 0;
+}
+
+bool CGColorSpaceIsHDR(CGColorSpaceRef space)
+{
+	(void)space;
+	/* HDR IS THE UNION OF THE TWO: a space is HDR when it is PQ- or HLG-based, and this library
+	 * builds neither, so it is NO for every space here. */
+	return 0;
+}

@@ -127,6 +127,30 @@ void CGColorSpaceRelease(CGColorSpaceRef space);
 CGColorSpaceModel CGColorSpaceGetModel(CGColorSpaceRef space);
 size_t CGColorSpaceGetNumberOfComponents(CGColorSpaceRef space);
 
+/* THE PREDICATES, AND WHICH OF THEM ARE COMPUTED.
+ *
+ * `SupportsOutput` asks whether this library can DRAW a colour in the space, and it is answered
+ * from the SAME fact the context's setters refuse from: a space with a profile can be converted
+ * and therefore drawn, while device CMYK has neither and answers NO.
+ *
+ * `IsWideGamutRGB` compares the space's PRIMARIES against sRGB's triangle, because wide gamut
+ * means the space includes colours sRGB does not and a primary is such a colour. A space that IS
+ * sRGB — which device RGB is, by this library's own definition — has its primaries ON that
+ * triangle and answers NO, and a profile whose primaries cannot be read (anything that is not a
+ * matrix shaper) answers NO as well, since a gamut nobody can read is a gamut nobody can compare.
+ *
+ * THE OTHER FOUR ANSWER NO BECAUSE NO SUCH SPACE EXISTS HERE YET, not because they are stubs:
+ * an extended-range space has components outside 0..1, and an HDR, PQ or HLG space is built on
+ * one of those unbounded transfer curves. Everything this library builds is bounded and 0..1, so
+ * each of the four is a statement about the library — and the day one of them changes, it is the
+ * function's own comment that changes with it. */
+bool CGColorSpaceSupportsOutput(CGColorSpaceRef space);
+bool CGColorSpaceIsWideGamutRGB(CGColorSpaceRef space);
+bool CGColorSpaceUsesExtendedRange(CGColorSpaceRef space);
+bool CGColorSpaceIsHDR(CGColorSpaceRef space);
+bool CGColorSpaceIsHLGBased(CGColorSpaceRef space);
+bool CGColorSpaceIsPQBased(CGColorSpaceRef space);
+
 #ifdef __cplusplus
 }
 #endif
