@@ -65,6 +65,8 @@ CHECKS = (
     "unit-speed", "unit-acceleration", "unit-frequency", "unit-energy", "unit-power",
     "unit-electric", "unit-single-unit-families", "unit-fuel-efficiency",
     "unit-volume", "unit-pressure", "unit-concentration",
+    # NSMeasurementFormatter (W12's last class)
+    "unit-measurement-formatter", "unit-measurement-formatter-options",
 )
 
 

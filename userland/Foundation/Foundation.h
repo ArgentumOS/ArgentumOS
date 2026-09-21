@@ -115,6 +115,7 @@
 #import <Foundation/NSUnitVolume.h>
 #import <Foundation/NSUnitPressure.h>
 #import <Foundation/NSUnitConcentrationMass.h>
+#import <Foundation/NSMeasurementFormatter.h>
 #import <Foundation/NSSet.h>
 #import <Foundation/NSCountedSet.h>
 #import <Foundation/NSOrderedSet.h>

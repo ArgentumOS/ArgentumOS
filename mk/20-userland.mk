@@ -242,7 +242,7 @@ FN_FOUNDATION_NOARC = NSObject.m NSTinyString.m NSDateInterval.m
 FN_FOUNDATION_ICU   = NSCalendar.m NSDateFormatter.m NSNumberFormatter.m NSPredicate.m NSTimeZone.m \
                       NSCharacterSet.m NSLocale.m NSDecimalNumber.m NSListFormatter.m \
                       NSISO8601DateFormatter.m NSDateIntervalFormatter.m NSByteCountFormatter.m \
-                      NSRelativeDateTimeFormatter.m NSDateComponentsFormatter.m
+                      NSRelativeDateTimeFormatter.m NSDateComponentsFormatter.m NSMeasurementFormatter.m
 FN_FOUNDATION_X11   = NSDataCodec.m
 FN_FOUNDATION_ROOT  = NSProxy.m
 FN_FOUNDATION_OBJS  = $(addprefix .build/foundation-,$(FN_FOUNDATION_SRCS:.m=.o)) .build/foundation-ninvoke-asm.o

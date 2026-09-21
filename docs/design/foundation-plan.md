@@ -3496,7 +3496,7 @@ vanishing.
 | **Fundamentals / Lists** | all classes shipped | — |
 | **Fundamentals / Localization** | 1 open | `NSOrthography` |
 | **Fundamentals / Mass, Weight, and Force** | all classes shipped | — |
-| **Fundamentals / Measurements** | 1 open | `NSMeasurementFormatter` |
+| **Fundamentals / Measurements** | all classes shipped | — |
 | **Fundamentals / Names** | all classes shipped | — |
 | **Fundamentals / Numbers** | all classes shipped | — |
 | **Fundamentals / Pattern Matching** | 2 open | `NSDataDetector`, `NSScanner` |
@@ -5405,3 +5405,40 @@ batches were host-verified and the guest run was held to the end (QEMU gates run
 the two doors, and the three `NSMeasurementFormatterUnitOptions` cases. It is not a table but a MAPPING: every
 unit this tree ships needs its CLDR unit identifier (`length-meter`, `digital-kilobyte`, …) before ICU can
 name it, and that mapping plus the three options is its own unit rather than a tail of this one.
+
+## 33. W12 CLOSES: `NSMeasurementFormatter`, THE MAPPING (2026-09-20)
+
+**WHAT SHIPPED.** `NSMeasurementFormatter` — the four properties, the two doors, and the three
+`NSMeasurementFormatterUnitOptions` cases. **W12 IS NOW COMPLETE**: the machinery (§31), the twenty-one
+families (§32) and this class.
+
+**THE CLASS IS A TRANSLATION, WHICH IS WHY IT CLOSED THE UNIT.** ICU names a unit only by its **CLDR
+identifier** (`length-meter`, `digital-kilobyte`, `temperature-celsius`) and this tree's units are objects with
+symbols, so the work is a mapping from (family, symbol) to that identifier — sixteen families' tables,
+answered by a chain of `isKindOfClass:` because a static C table cannot hold a class object — and then one
+`unumf` call with a `measure-unit/…` skeleton, which §29.1 measured as the C surface that exists.
+
+**A UNIT THIS TREE CANNOT NAME ANSWERS nil, WHICH IS A DECISION AND NOT A GAP.** Where a CLDR identifier could
+not be verified, the mapping omits it and the door answers nil. Guessing an identifier would produce a WRONG
+NAME, and an absent name is a better answer than a wrong one: nil says "this formatter cannot name that",
+while a wrong name says nothing at all. The probe pins the mapped units, so a missing entry shows up as a
+failing check rather than as a surprise in a caller.
+
+**THE THREE OPTIONS, FROM THEIR NAMES, BECAUSE APPLE PUBLISHES NOTHING ELSE (MEASURED: all three of its case
+pages are EMPTY).** `ProvidedUnit` is the default; `TemperatureWithoutUnit` uses ICU's own
+`temperature-generic`, which renders "20°" rather than "20 °C" — that one is DATA rather than arithmetic; and
+**`NaturalScale` IS REGISTERED AS NOT IMPLEMENTED**, asserted by name in the probe. Auto-scaling 1500 m to
+1.5 km needs a per-family THRESHOLD that Apple publishes nowhere and ICU does not have, so it is the §11.2
+pattern — a marked absence rather than a silent no-op replacing a real option.
+
+**AND THE CHECK ITS FIRST RUN TAUGHT IS A PROBE LESSON WORTH KEEPING: A LOCALE CHECK MUST USE A WIDTH WHERE
+THE LOCALE ACTUALLY SHOWS.** The German assertion failed while the formatter was RIGHT, because it compared at
+the short width — where the unit is a SYMBOL ("2 m"), and a symbol is locale-invariant. The same metre reads
+"2 m" in every locale; it only reads differently in the SPELLED-OUT form ("2 meters" / "2 Meter"). So the
+check now asserts the locale at the LONG width.
+
+**VERIFIED.** Host: `make host-foundation-run` — **26 probes, 400/400 checks, 0 fail**. Guest: `make testimg`
+then `make test TESTS='foundation_formatters'` → **TESTS-OK 1/1 case(s), 6/6 check(s) in 13s**, the probe's own
+tally `ok=85 fail=0` and exit 0 — **and that run validates the CLDR mapping against the GUEST'S ICU 76.1 as
+well as the host's system ICU, which are different builds.** `foundation-gate`: **94 of 98 public headers**
+open a nullability region. `foundation-sweep --check`: consistent.

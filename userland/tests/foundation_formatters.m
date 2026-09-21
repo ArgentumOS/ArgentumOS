@@ -2026,6 +2026,86 @@ int main(void)
 			 [glucoseConverter coefficient], [saltConverter coefficient], [glucose isEqual:salt]]);
 	}
 
+	/* ---- NSMeasurementFormatter: W12's last class, and it is a MAPPING rather than a table ---- */
+	{
+		/*
+		 * THE TWO DOORS AND THE UNIT STYLE'S THREE WIDTHS. The names come from ICU through the CLDR
+		 * identifier the mapping supplies ("length-meter"), so this check is what proves the mapping works —
+		 * a wrong identifier opens no formatter, and the door answers nil.
+		 */
+		NSMeasurement *twoMeters = [[NSMeasurement alloc] initWithDoubleValue:2.0
+									      unit:[NSUnitLength meters]];
+		NSMeasurementFormatter *mf = [[NSMeasurementFormatter alloc] init];
+		NSString *medium;
+		NSString *longForm;
+		NSString *shortForm;
+		NSString *nameOnly;
+		NSString *german;
+
+		[mf setLocale:[NSLocale localeWithLocaleIdentifier:@"en_US"]];
+		medium = [mf stringFromMeasurement:twoMeters];
+		[mf setUnitStyle:NSFormattingUnitStyleLong];
+		longForm = [mf stringFromMeasurement:twoMeters];
+		[mf setUnitStyle:NSFormattingUnitStyleShort];
+		shortForm = [mf stringFromMeasurement:twoMeters];
+		[mf setUnitStyle:NSFormattingUnitStyleMedium];
+		nameOnly = [mf stringFromUnit:[NSUnitLength meters]];
+		/* THE LOCALE CHECK USES THE **LONG** STYLE, AND THAT IS A LESSON THIS CHECK'S FIRST RUN TAUGHT:
+		 * at the short width the unit is a SYMBOL ("2 m"), and a symbol is locale-invariant — so German and
+		 * English agreed and the check failed while the formatter was right. A locale only shows in the
+		 * SPELLED-OUT form, so that is the width the locale is asserted at. */
+		[mf setUnitStyle:NSFormattingUnitStyleLong];
+		[mf setLocale:[NSLocale localeWithLocaleIdentifier:@"de_DE"]];
+		german = [mf stringFromMeasurement:twoMeters];
+
+		check("unit-measurement-formatter",
+		      medium != nil && [medium rangeOfString:@"2"].location != NSNotFound &&
+		      longForm != nil && [longForm rangeOfString:@"meter"].location != NSNotFound &&
+		      /* THE THREE STYLES GIVE THREE DIFFERENT WIDTHS — the point of having three. */
+		      shortForm != nil && ![shortForm isEqualToString:longForm] &&
+		      /* -stringFromUnit: ANSWERS THE NAME ALONE: ICU has no name-only mode, so the quantity is
+		       * stripped and this asserts there is no leading "1". */
+		      nameOnly != nil && [nameOnly rangeOfString:@"1"].location == NSNotFound &&
+		      [nameOnly rangeOfString:@"m"].location != NSNotFound &&
+		      /* THE LOCALE IS DATA: German names the metre differently. */
+		      german != nil && ![german isEqualToString:medium],
+		      [NSString stringWithFormat:@"medium=[%@] long=[%@] short=[%@] nameOnly=[%@] de=[%@]",
+			 medium == nil ? @"(nil)" : medium, longForm == nil ? @"(nil)" : longForm,
+			 shortForm == nil ? @"(nil)" : shortForm, nameOnly == nil ? @"(nil)" : nameOnly,
+			 german == nil ? @"(nil)" : german]);
+	}
+
+	{
+		/*
+		 * THE THREE UNIT OPTIONS: Apple publishes their NAMES and NO ABSTRACTS (measured — all three of its
+		 * case pages are empty), so the readings are ours. ProvidedUnit is the default;
+		 * TemperatureWithoutUnit uses ICU's own `temperature-generic`; and **NaturalScale IS REGISTERED AS
+		 * NOT IMPLEMENTED**, the §11.2 pattern — a marked absence rather than a silent no-op, because
+		 * auto-scaling 1500 m to 1.5 km needs a per-family THRESHOLD Apple publishes nowhere.
+		 */
+		NSMeasurement *twentyC = [[NSMeasurement alloc] initWithDoubleValue:20.0
+									     unit:[NSUnitTemperature celsius]];
+		NSMeasurementFormatter *mf = [[NSMeasurementFormatter alloc] init];
+		NSString *withUnit;
+		NSString *withoutUnit;
+		BOOL naturalScaleImplemented = NO;	/* the registered absence */
+
+		[mf setLocale:[NSLocale localeWithLocaleIdentifier:@"en_US"]];
+		withUnit = [mf stringFromMeasurement:twentyC];
+		[mf setUnitOptions:NSMeasurementFormatterUnitOptionsTemperatureWithoutUnit];
+		withoutUnit = [mf stringFromMeasurement:twentyC];
+
+		check("unit-measurement-formatter-options",
+		      withUnit != nil && [withUnit rangeOfString:@"20"].location != NSNotFound &&
+		      withoutUnit != nil && [withoutUnit rangeOfString:@"20"].location != NSNotFound &&
+		      /* THE UNIT LETTER IS GONE, so the string is plainly shorter: "20°" against "20 °C". */
+		      [withoutUnit length] < [withUnit length] &&
+		      !naturalScaleImplemented,
+		      [NSString stringWithFormat:@"with=[%@] without=[%@] naturalScaleImplemented=%d",
+			 withUnit == nil ? @"(nil)" : withUnit,
+			 withoutUnit == nil ? @"(nil)" : withoutUnit, naturalScaleImplemented]);
+	}
+
 	printf("FOUNDATION-FORMATTERS RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-FORMATTERS-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-FORMATTERS DONE\n");
