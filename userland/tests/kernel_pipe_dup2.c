@@ -104,7 +104,13 @@ int main(int argc, char **argv)
 		if (write(fds[1], "hello\n", 6) != 6) {
 			printf("PIPEEOF shortwrite\n");
 		}
-		/* THE LAST WRITER CLOSES: this is the event that must wake the blocked reader with EOF. */
+		/* LET THE READER BLOCK FIRST, AND THIS IS THE WHOLE POINT. Closing before the child ever reaches
+		 * read(2) leaves it a pipe that has data and no writers, so its FIRST read returns the data and
+		 * the NEXT returns 0 - EOF WITHOUT EVER BLOCKING, a DIFFERENT code path from the one that
+		 * matters. NSTask's --child-cat child has already read its payload and IS blocked when the last
+		 * writer closes, and THAT close is the event which must wake it with EOF. Sleeping here is what
+		 * makes this mode test that event instead of the easy one. */
+		usleep(300000);
 		close(fds[1]);
 		for (i = 0; i < 1500; i++) {		/* 3s at 2ms - a bounded wait, never a hang */
 			if (waitpid(pid, &st, WNOHANG) == pid) {

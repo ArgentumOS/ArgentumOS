@@ -8171,34 +8171,57 @@ exited, and the parent's read-to-end-of-file waited on it. **The trace also show
 the SAME helper completed the very next time, with `input=0` (`read 11 bytes to EOF … waited, status=0`) — so
 what is new is exactly the stdin pipe.
 
-**AND THE KERNEL IS EXONERATED, BY A PURE-C DISCRIMINATOR.** `kernel_pipe_dup2.c` gained a `p` mode: a
-parent forks a child that is a READER ONLY, writes six bytes, closes the LAST WRITE END, and waits under a
-bounded loop; the child reports `total=` and `last=` (0 IS EOF). It passes:
+**AND THE FIRST EXONERATION WAS TOO STRONG — THE `p` MODE PASSED FOR A REASON THAT HAD NOTHING TO DO WITH THE
+BUG, AND IT WAS CAUGHT BY THE NEXT EXPERIMENT.** As first written, `p` closed the last write end IMMEDIATELY
+after the write — almost certainly before the child ever reached `read(2)`. The child then found data, then
+EOF, on consecutive reads **without ever blocking**: a different code path from the one that matters. Fixed
+by sleeping 300ms before the close, so the reader is definitively blocked first. **The corrected mode STILL
+passes:**
 
     PIPEEOF child total=6 last=0
     PIPEEOF parent reaped waited=1          (10/10 checks on the case)
 
-**A blocked `read(2)` on a pipe DOES see EOF when the last writer closes.** So "the kernel never wakes a pipe
-reader" is FALSE, and the remaining candidate is the **write end that stayed open on the NSTask side**. Two
-shapes fit, and the first pipe test already discriminates between them:
+So the kernel DOES wake a genuinely-blocked reader on the last writer's close. That part stands, verified
+properly this time. What does NOT stand is the conclusion drawn from it.
 
-  * the **parent's** close (`[[[task standardInput] fileHandleForWriting] closeAndReturnError:]`) is a no-op
-    — but that same call on the OUT pipe produced EOF in the `input=0` run (the read returned 0 bytes and
-    the wait completed), so the parent's close is not obviously the fault;
-  * the **child's** copy — `fn_standard_far_fd(_standardInput, YES)` feeds `if (inFar >= 0 && inFar != inFd)
-    close(inFar)` in the fork path, so if `[[pipe fileHandleForWriting] fileDescriptor]` answers -1, or
-    answers the READ end's number, that close is SKIPPED and the child holds the write end of the pipe it is
-    itself reading. **A reader holding a writer deadlocks itself, which is precisely what was measured.**
+**AND THE WRITER COULD NOT BE FOUND, BY EITHER SIDE, WHICH IS WHY THE COUNTERS WERE READ NEXT.** In the probe
+(both since reverted): the child listed its descriptors (`fd 0 accmode=0`, `fd 1 accmode=1`, `fd 2
+accmode=2`, plus `fd 4`/`fd 5`) and closed every fd ≥ 3 — still no EOF; the parent listed every open
+descriptor up to 63 (`fd 3`, `fd 5`) and its closes were PROVEN to work (`open-AFTER-close=0` for the stdin
+write end AND for the control). A marker written to every writable descriptor never came back on the pipe.
+No writer was visible anywhere, and the child stayed blocked.
 
-**THE NEXT EXPERIMENT IS ONE LINE AND ALREADY SPECIFIED:** have the child close every descriptor ≥ 3 before
-it reads (`for (fd = 3; fd < 64; fd++) close(fd);`). If the child then sees EOF, the child was holding a
-write end and the bug is in the fork path's far-end close; if it still does not, the parent's close is the
-one that is not closing. Either way it is measured, not reasoned.
+**SO THE KERNEL'S OWN COUNTERS WERE PRINTED — AND THEY NAME IT.** `pipefs_close`/`pipefs_read` instrumented
+(since reverted) while the real hang happened:
 
-**AND THE COVERAGE GAP THIS ROUND FOUND IS WORTH STATING, BECAUSE IT IS THE SAME SHAPE AS §45-S'S:** every
-child in `kernel_pipe_dup2.c` dups the pipe onto stdin and exits **without ever reading**, so the case that
-exists to prove the pipe path works had never once exercised a pipe READER. That gap now has a check.
+    [task 1 - PASSES]
+    PIPEREAD about-to-sleep pid=8  readers=1 writers=1 size=0
+    PIPECLOSE accmode=1 readers=1 writers=1        <- the write end's close RUNS
+    PIPECLOSE done readers=1 writers=0
+    PIPEREAD eof pid=8 readers=1 writers=0 size=0  <- EOF delivered
 
-FILES THIS ROUND: `userland/tests/kernel_pipe_dup2.c` (`p` mode — a pipe reader's EOF);
-`tests/cases/kernel_pipe_dup2.py` (its check).
+    [task 2 - HANGS]
+    PIPEREAD about-to-sleep pid=8  readers=1 writers=1 size=0
+    PIPEREAD about-to-sleep pid=13 readers=1 writers=1 size=0   <- the --child-cat child, on stdin
+    PIPEREAD about-to-sleep pid=8  readers=1 writers=1 size=0
+    <-- and NOT ONE PIPECLOSE for that stdin pipe's write end, ever
+
+**`pipefs_close` IS NEVER CALLED FOR THAT DESCRIPTOR.** The child sleeps on the stdin pipe with `writers=1`
+and it stays 1 forever, so EOF can never arrive — while userland's `fcntl` reports the very same descriptor
+closed (`open-AFTER-close=0`). The fd disappears from the process's table without the pipe's write end being
+released.
+
+**THAT IS THE BUG, AND IT IS IN THE CLOSE PATH, NOT THE WAKE PATH.** Task 1 is the control that proves the
+mechanism: the same kernel, one task earlier, ran `PIPECLOSE accmode=1` → `writers=0` → delivered EOF. Task 2
+never ran it. So the next thing to measure is `sys_close`: which descriptors reach the inode's release op and
+which are dropped from the table without it — in particular a descriptor whose number was `dup2`d over, or
+one closed while another table entry names the same `struct fd`.
+
+**AND THE COVERAGE GAP THAT LET THIS HIDE IS STILL WORTH THE LINE:** every child in `kernel_pipe_dup2.c` dups
+the pipe onto stdin and exits **without ever reading**, so the case that exists to prove the pipe path works
+had never once exercised a pipe READER. That gap now has a check — and it is the check that made this
+visible at all.
+
+FILES THIS ROUND: `userland/tests/kernel_pipe_dup2.c` (`p` mode — a pipe reader's EOF, and the timing fix
+that made it test the real path); `tests/cases/kernel_pipe_dup2.py` (its check).
 
