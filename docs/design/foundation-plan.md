@@ -7286,6 +7286,33 @@ per-page reverse-map scan to every page of a shared release and changed nothing 
 as the documented interim: corruption removed, leak confined to the abnormal case, and the reference counter
 named as the real repair.
 
+**AND THE REFERENCE-PER-MAPPING FIX DOES NOT ADDRESS DEFECT B — WHICH CORRECTS MY OWN SYNTHESIS.** The take
+was added exactly where a mapping acquires an already-owned page (`map_page_flags`, the caller-supplied
+branch: `own->count++`), and the interim guard was reverted on the theory that references would make it
+unnecessary. The result:
+
+    Page Fault at 0x7f0000080849 (reading) with error code 0x14     <- identical, fault back
+
+**So a reference count is the wrong instrument for defect B, and the reason is now clear: defect B is not a
+page being FREED, it is a LEAF being UNMAPPED.** `free_vma_pages` calls `unmap_user_page64_in` for each
+address it sweeps, unconditionally — and no count can stop an unmap. **The `TRACKFREE` experiment had said
+this already** ("that page is NEVER freed during the run") and it should have been read as exactly that: the
+page survived and the MAPPING did not.
+
+**SO THE TWO DEFECTS ARE GENUINELY DIFFERENT, AND MY "BOTH WANT ONE CONCEPT" READING WAS WRONG:**
+
+  * **defect A** — a page returned to the bitmap while a user mapping points at it: the count does not track
+    MAPPINGS. A reference per mapping is the right repair there;
+  * **defect B** — an exiting task's sweep UNMAPPING pages a surviving thread still uses: the address space is
+    shared, and the sweep must not touch it. The guard is the right repair there, and it is the fix that made
+    the fault check PASS.
+
+**AND BOTH CHANGES ARE NOW REVERTED, leaving the tree with the guard (the interim fix, committed) and nothing
+else.** What remains for defect B is not a counter but a HANDOVER: when an address space is shared, the
+exiting task must leave both the mappings and the VMA bookkeeping for the survivor — so the survivor's own
+exit sweeps what nobody else uses, and the leak the guard currently causes closes itself. That is a smaller
+and better-understood change than any of the five attempts so far, and it is where the next session starts.
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
