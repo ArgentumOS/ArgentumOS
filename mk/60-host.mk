@@ -191,6 +191,62 @@ host-foundation-run: host-foundation
 		TZ=UTC $(HOST_BINDIR)/$$p || echo "   ($$p exited $$?)"; \
 	done
 
+# ---------------------------------------------------------------------------
+# CoreGraphics: a C library over a bitmap, and the five probes that hold it up
+# ---------------------------------------------------------------------------
+# THESE ARE C AND NOT OBJECTIVE-C, and they never touch Foundation: CoreGraphics here is a C
+# library drawing into a pixman bitmap. So this block is BESIDE the Foundation probes and not
+# inside them, and it uses ITS OWN COMPILE AND LINK FLAGS rather than HOST_CFLAGS/HOST_LDFLAGS
+# - those carry the Objective-C runtime options and `-lobjc`, and a C probe handed an unused
+# `-fobjc-*` flag warns under -Wextra while linking a runtime it does not call. The flags
+# below are the ones the probe runs were verified with (0 warnings, 144 checks).
+HOST_CG_CFLAGS  ?= -std=gnu11 -fPIC -g -Wall -Wextra -Iuserland -I/usr/include/pixman-1
+HOST_CG_LDFLAGS ?= -lpixman-1 -lm
+HOST_CG_SRCS    := $(wildcard userland/CoreGraphics/*.c)
+HOST_CG_LIB     ?= $(HOST_LIBDIR)/libcoregraphics.so
+HOST_CG_OBJDIR  := $(HOST_OBJDIR)/coregraphics
+# PIXMAN'S INCLUDE PATH NEEDS THE `pixman-1` SUBDIRECTORY NAMED: `pixman.h` includes
+# `pixman-version.h` from its own directory and is NOT self-contained.
+HOST_CG_PROBES  ?= coregraphics_context coregraphics_stroke coregraphics_stroke_context coregraphics_curve coregraphics_arc
+
+# THE LIBRARY IS BUILT ONCE AND LINKED FIVE TIMES, the same shape as Foundation's: compiling
+# the eight sources into each probe would also work and would take five times as long.
+#
+# `$` AND NOT `$$` IN THIS RECIPE, WHICH IS NOT A STYLE CHOICE. A directly-written recipe is
+# expanded by make, so `$(HOST_CC)` is the compiler; `$$(HOST_CC)` would survive as a literal
+# `$(HOST_CC)` for the SHELL, which reads it as a command substitution and answers
+# "HOST_CC: not found". The probe rule below is inside `define` + `eval`, where `$$` is exactly
+# right — the double dollar is what survives the `eval` and becomes a make expansion - so the
+# two spellings differ because the two rules are reached differently, and copying one into the
+# other fails at the shell rather than at make.
+$(HOST_CG_LIB): $(HOST_CG_SRCS)
+	@mkdir -p $(HOST_LIBDIR) $(HOST_CG_OBJDIR)
+	$(HOST_CC) $(HOST_CG_CFLAGS) -shared -o $@ $^ $(HOST_CG_LDFLAGS)
+
+define CG_HOST_PROBE_rule
+$(HOST_BINDIR)/$(1): $(HOST_CG_LIB) userland/tests/$(1).c
+	@mkdir -p $(HOST_BINDIR)
+	$$(HOST_CC) $$(HOST_RPATH) $$(HOST_CG_CFLAGS) userland/tests/$(1).c \
+		-L$(HOST_LIBDIR) -lcoregraphics $$(HOST_CG_LDFLAGS) -o $$@
+endef
+$(foreach p,$(HOST_CG_PROBES),$(eval $(call CG_HOST_PROBE_rule,$(p))))
+
+.PHONY: host-coregraphics host-coregraphics-run
+host-coregraphics: $(HOST_CG_LIB) $(addprefix $(HOST_BINDIR)/,$(HOST_CG_PROBES))
+	@echo "host-coregraphics: $(words $(HOST_CG_SRCS)) library source(s), $(words $(HOST_CG_PROBES)) probe(s) in $(HOST_BINDIR)"
+
+# A PROBE THAT EXITS NON-ZERO IS A FAILURE AND THIS TARGET MUST NOT SAY OTHERWISE. The
+# Foundation runner above reports and carries on; this one keeps the status and fails at the
+# end, so it can be used as a GATE rather than read as a report - which is the difference
+# between a run that found something and a run that claimed nothing was there.
+host-coregraphics-run: host-coregraphics
+	@rc=0; for p in $(HOST_CG_PROBES); do \
+		echo "== $$p =="; \
+		$(HOST_BINDIR)/$$p || { echo "   ($$p exited $$?)"; rc=1; }; \
+	done; \
+	if [ $$rc -ne 0 ]; then echo "host-coregraphics-run: FAILED"; exit 1; fi; \
+	echo "host-coregraphics-run: all $(words $(HOST_CG_PROBES)) probes passed"
+
 # THE HOST RUNTIME ITSELF, and why this target exists. The prefix that was here had been configured
 # WITHOUT -DGNUSTEP and WITH OLDABI_COMPAT=ON, while the guest runtime is built with BOTH THE OTHER
 # WAY. Those are BEHAVIOURAL switches inside libobjc2, and the host run diverged on exactly the checks
