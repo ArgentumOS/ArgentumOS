@@ -8068,3 +8068,76 @@ investigation is FIXED AND GONE BY MEASUREMENT.** Green: `shell-ready`, `child-m
 FILES THIS ROUND: `userland/tests/foundation_task.m` (the two recursive bodies; the `--probe…` dispatch),
 `tests/cases/foundation_task.py` (`session.wait_for` — one word).
 
+---
+
+## §45-S — THE `waitUntilExit` HANG WAS A KERNEL BUG: `do_exit` WOKE ONLY THE TASK THAT FORKED
+
+**MEASURED FIRST, WITH A THREE-POINT INSTRUMENT IN `NSTask.m` (since reverted): the reaper thread's
+BLOCKING `waitpid(2)` NEVER RETURNED.**
+
+    NSTASK-LAUNCH pid=9 reaperStarted=1
+    FOUNDATION-TASK task-runs-and-exits ok
+    NSTASK-WAIT enter pid=9 reaperStarted=1 exited=0
+    NSTASK-REAPER enter tid=8 pid=9
+      <-- and nothing, ever
+
+`reaperStarted=1`, so the fallback path is not involved: a real reaper thread (tid 8) entered and sat in
+`waitpid(9, &status, 0)`, so `_exited` was never set and the main thread waited on its condition forever.
+
+**AND THE REPRODUCER'S COVERAGE GAP IS WHY NO TEST SAW IT.** `kernel_threaded_exec.c` reaps from its thread
+with `waitpid(-1, &st, WNOHANG)` plus `usleep(200)` — it only ever POLLS. NSTask uses the **blocking,
+specific-pid** form, and that is the shape nothing in the suite exercises. "A thread's `waitpid` reaps" was
+verified only for WNOHANG.
+
+**THE BUG IS IN `do_exit`'s PARENT NOTIFICATION, AND IT IS THE WAKE SIDE OF DEFECT C.** `sys_wait4` already
+matches children by **TGID** (defect C's fix: `owner = tgid leader`), so the *match* is process-wide — but
+the *wake* was left per-task:
+
+```c
+	p = current->ppid;                 /* the task that CALLED fork(2) */
+	send_sig(p, SIGCHLD);
+	if(p->sleep_address == (void *)SLEEP_ADDR(&sys_wait4)) {
+		wakeup_proc(p);            /* addressed to p ALONE */
+	}
+```
+
+The reaper is a **different struct proc**. `wakeup_proc(p)` never reaches it, and `send_sig(p, SIGCHLD)`
+sets `sigpending` on `p` alone, so `issig()` inside the reaper's `sleep()` never fires either. In this
+measurement the parent did not even satisfy the guard — it was asleep on a FUTEX (`[_condition wait]`), not
+on `&sys_wait4` — so **nothing was woken at all** and the reaper slept forever.
+
+**THE FIX IS ONE LINE, AND IT MIRRORS EXISTING PRECEDENT:** `wakeup()` is ADDRESS-WIDE (it walks the sleep
+hash bucket and wakes every proc whose `sleep_address` matches), which is exactly what the job-control path
+in `signal.c` already does for SIGSTOP/SIGCONT. A woken waiter returns `sleep() == 0`, re-scans the child
+list, finds the zombie and reaps it.
+
+```c
+	p = current->ppid;
+	send_sig(p, SIGCHLD);
+	wakeup(&sys_wait4);
+```
+
+**MEASURED AFTER THE FIX — the hang is gone and the probe runs four checks where it ran one:**
+
+    FOUNDATION-TASK task-runs-and-exits ok
+    FOUNDATION-TASK task-waits-and-reports ok          <- requires waitUntilExit to RETURN, status 7, via the reaper
+    FOUNDATION-TASK trace 3: plain run done
+    FOUNDATION-TASK task-captures-standard-output ok   <- with an NSPipe, closed write end, read to EOF
+
+`task-waits-and-reports` asserts `terminationStatus == 7` — a value only the reaper can record — so the
+reaper's blocking `waitpid` provably returned. The harness still reports 4/5 because its `probe-ran` check
+requires the probe's END marker; the probe's own count went from 1 to 4.
+
+**THE NEXT STOPPING POINT IS A DIFFERENT THING, AND IT IS THE STDIN PIPE.** The probe now blocks in the next
+block — `task-feeds-standard-input`, which gives a child an `NSPipe` on standard INPUT (`--child-cat`) and
+reads its stdout to end-of-file. That is not the `do_exit` wake: it is the pipe/dup2 path (the tree has a
+`kernel_pipe_dup2` case at 9/9, which does not use a THREAD). So the shape to measure next is a threaded
+parent feeding a child's standard input through a pipe.
+
+**REPRODUCER GAP, STATED RATHER THAN LEFT IMPLICIT:** the fix is proven by `foundation_task`'s own advance
+and by the before/after instrument, but there is **no Foundation-free case** for "a thread blocks in
+`waitpid(pid, …)`". `kernel_threaded_exec.c` should grow a mode for it (blocking, SPECIFIC pid, from a
+thread) — that is the one shape whose absence hid this bug for a whole session.
+
+FILES THIS ROUND: `kernel/syscalls/exit.c` (the parent notification — `wakeup_proc(p)` → `wakeup(&sys_wait4)`).
+

@@ -149,12 +149,21 @@ void do_exit(int exit_code)
 		current->sigaction[n].sa_handler = SIG_IGN;
 	}
 
-	/* notify the parent about the child's death */
+	/* NOTIFY EVERY WAITER, NOT ONLY THE TASK THAT FORKED. `current->ppid` is the task that CALLED
+	 * fork(2); a wait may legally be issued by ANOTHER thread of the same process (POSIX: any thread may
+	 * reap the process's children - sys_wait4 already matches by TGID), and that thread is a different
+	 * struct proc. wakeup_proc(p) reaches p ALONE, and send_sig(p, SIGCHLD) sets sigpending on p alone,
+	 * so a threaded waiter sat in sleep(&sys_wait4, PROC_INTERRUPTIBLE) FOREVER. MEASURED: NSTask's
+	 * reaper thread never returned from waitpid(2) while the main thread waited on its condition, and the
+	 * whole process hung; the parent, being asleep on a futex, did not even satisfy
+	 * `p->sleep_address == SLEEP_ADDR(&sys_wait4)`, so nothing was woken at all.
+	 *
+	 * wakeup() is ADDRESS-WIDE - it wakes every proc whose sleep_address matches - which is exactly what
+	 * the job-control path in signal.c already does for SIGSTOP/SIGCONT. A woken waiter re-scans the
+	 * child list, finds the zombie, and reaps it. */
 	p = current->ppid;
 	send_sig(p, SIGCHLD);
-	if(p->sleep_address == (void *)SLEEP_ADDR(&sys_wait4)) {
-		wakeup_proc(p);
-	}
+	wakeup(&sys_wait4);
 
 	do_sched();
 }
