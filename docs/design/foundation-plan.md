@@ -8902,3 +8902,35 @@ fixture and the interpreter check now name `/System/Tools/sh`.
 **NEXT: THE MAPPING FAULT** - the block an exec reads for a freshly-written file is not the file's data block,
 and it is not a question of syncing. `bmap(i, 0, FOR_READING)` against the inode's own block pointer, on a file
 that was created and written in the same boot, is where the comparison belongs.
+
+### §45-AB — THE MAPPING FAULT'S ROOT CAUSE, MEASURED: `bmap` ANSWERS 0 FOR A FILE WHOSE SIZE AND BYTES ARE BOTH RIGHT
+
+**THE COMPARISON §45-AA.1 ASKED FOR, AT THE PLACE IT ASKED FOR IT.** `execve`'s block computation instrumented
+(since reverted) beside three files that work and the one that does not:
+
+    XEXEC bmap ino=2199   dev=2048 ip=53e000  size=126216 block=102733 mode=100755   <- /System/Tools/sh
+    XEXEC bmap ino=2009   dev=2048 ip=619000  size=60952  block=100782 mode=100755   <- a test binary
+    XEXEC bmap ino=104019 dev=2048 ip=1be3000 size=54     block=0      mode=100755   <- THE SCRIPT
+
+**THE SCRIPT'S INODE KNOWS ITS SIZE - 54, EXACTLY THE FIXTURE'S — AND `bmap(i, 0, FOR_READING)` ANSWERS 0.**
+Block 0 is the superblock's own block, which is why the bytes `script_load()` was handed read `"AG"` (§45-AA):
+the mapping is empty, not stale. **And that is also why `sync(2)` changed nothing (§45-AA.1) - nothing IS stale.
+The inode simply has no block pointer for a file that was created and written in this same boot**, while a
+file baked into the image (`/System/Tools/sh`) carries one and execs everywhere.
+
+**SO THERE ARE TWO REPRESENTATIONS OF THE SAME FILE, AND `read(2)` USES THE OTHER ONE.** The probe's own
+`stat(2)` and `read(2)` both see the right size and the right bytes - they are the same file - and they are NOT
+going through `bmap` + `bread`. That is the fault in one sentence: **the WRITE path (and the read path that
+agrees with it) and the EXEC's block view are not the same view of a freshly-written file.**
+
+**AND THE FIX BELONGS IN THE WRITE PATH, NOT IN `execve`.** The block view is how the kernel's own loader
+works - it maps the file a block at a time and needs the inode's block pointers - so the write path must leave
+behind what `bmap` is going to answer. The alternative (routing `execve` through the file system's own read
+method) is recorded here only to be rejected: it would put a second reading convention inside the loader and
+leave every other `bread` caller - the config loader, the inode reader, anything that maps a file - with the
+same empty mapping.
+
+**REPRODUCER:** the probe's own script, already in the suite -
+`unix-task-script-exec-is-blocked-by-the-kernel` asserts the `ENOEXEC`, and when the write path is fixed that
+check flips to the exec and the three checks it replaced (the run, the argument, the captured output) come back
+with it.
