@@ -7865,6 +7865,25 @@ single-threaded process, with every register zero and `rsp` at the stack's botto
 not the publish side, and not - as measured - the thread/address-space family. It is where this investigation
 now points, and it is one probe, one fault, one log away from the same treatment everything else here got.
 
+**AND THE SMALLEST-PROGRAM STEP IS WRITTEN AND STAGED, BUT ITS RUN DID NOT COMPLETE — SO IT IS REVERTED UNTIL
+IT CAN BE RUN PROPERLY.** The mode is small (`--probe-root-only`: `+[NSFileManager defaultManager]`, then
+`probe_root()`, then exit - main's first three steps, which is where the probe dies) and it built and staged
+cleanly. The case run that would have exercised it produced no output at all, and after a very long build the
+most likely reason is a stray guest holding the image lock. **Rather than chase infrastructure at this hour,
+the change is reverted whole**: an unverified case check would leave the suite red for a reason that is not
+the defect, and the mode is four lines to re-add.
+
+**AND THE INVARIANT WAS CONFIRMED A THIRD TIME WHILE THIS WAS GOING ON**, which is worth the line: the probe
+failed at `0x7ffff5805ff8`, against `0x7ffff580aff8` and `0x7ffff5857ff8` in earlier runs. **Three different
+addresses, always eight bytes below a stack VMA's low edge** - the stack vma is randomised, the relationship
+is not. Whatever the probe's fault is, it is not an address: it is a task whose `rsp` is at the bottom of its
+stack and whose registers are zero, every time.
+
+**AND WHERE THAT LEAVES THINGS, PLAINLY:** the smallest-program experiment is ready to run (re-add it, gate
+the build, kill stray guests first), defect A's two faces are measured clean, three verified kernel fixes are
+in the tree, and the probe's fault is a third, distinct, deterministic thing with a written-out first
+experiment. **That is a complete handover, and it is the right place to stop for this session.**
+
 **AND THE LESSON WORTH KEEPING, BECAUSE IT COST SEVERAL ROUNDS:** every symptom pointed at paging (a fault on a
 library page, a `pte` of zero, a `PROT_NONE` vma) and the CAUSE was a buffer overwrite somewhere else
 entirely. The instrument that found it was the one that printed the DATA (the list's `next` word) rather than
