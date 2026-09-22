@@ -541,7 +541,16 @@ int unix_recvfrom(struct socket *s, struct fd *f, char *buffer, __size_t count, 
 	p->offset += size;
 	/* capture before the packet is freed (p->socket is read below) */
 	up = &p->socket->u.unix_info;
-	if(!(flags & MSG_PEEK)) {
+	/*
+	 * FNX: REMOVED ONLY WHEN FULLY READ — the same defect net/ipv4.c had, and for the same reason.
+	 * `p->offset` was advanced above, but the packet was then dequeued and freed REGARDLESS, so a
+	 * reader whose buffer was smaller than the queued packet had the REMAINDER DESTROYED. Every AF_UNIX
+	 * consumer is exposed to it (the X11/Xfb path among them) and the symptom is a stream that simply
+	 * stops mid-message. A partially-read packet now stays at the head with its offset advanced, and a
+	 * fully-read one is removed in the same call so the next read cannot see a zero-length remainder and
+	 * mistake it for EOF.
+	 */
+	if(!(flags & MSG_PEEK) && p->offset >= p->len) {
 		p = remove_packet_from_queue(&u->packet_queue);
 		kfree((addr_t)p->data);
 		kfree((addr_t)p);

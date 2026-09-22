@@ -519,7 +519,24 @@ int ipv4_recvfrom(struct socket *s, struct fd *f, char *buffer, __size_t count, 
 	size = MIN(p->len - p->offset, count);
 	memcpy_b(buffer, p->data + p->offset, size);
 	p->offset += size;
-	if(!(flags & MSG_PEEK)) {
+	/*
+	 * FNX: THE PACKET IS ONLY REMOVED ONCE IT HAS BEEN READ TO ITS END. `p->offset` above is the
+	 * partial-read bookkeeping — it was already being advanced — but the packet was then dequeued and
+	 * freed REGARDLESS, so a caller whose buffer was smaller than the queued packet had the remainder
+	 * of that packet DESTROYED. `read(5)` on a 307-byte write returned 5 bytes and threw away 302.
+	 *
+	 * THAT IS A STREAM-SOCKET BUG WITH A LONG REACH, and it is what stalled L1's TLS handshake: TLS
+	 * reads its 5-byte record header first, so the ClientHello arrived as 5 bytes and the rest was
+	 * gone — the peer waited for bytes that no longer existed and the client waited for a reply that
+	 * was never coming. Measured by userland/tests/libressl_tls_pair.c, whose byte-flow log shows it
+	 * exactly (`client: WRITE took 307`, `peer: READ got 5`, `peer: READ wants 302` … and nothing).
+	 *
+	 * A partially-read packet now STAYS at the head of the queue with its offset advanced, so the next
+	 * read continues where this one stopped — which is what a stream socket owes its reader. A packet
+	 * read to its end is removed here, in the same call, so the next read never sees a zero-length
+	 * remainder and mistakes it for EOF.
+	 */
+	if(!(flags & MSG_PEEK) && p->offset >= p->len) {
 		p = remove_packet_from_queue(&ip4->packet_queue);
 		kfree((addr_t)p->data);
 		kfree((addr_t)p);

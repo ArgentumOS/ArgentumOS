@@ -61,6 +61,7 @@
 
 static int okc, failc;
 static pid_t g_peer = -1;
+static FILE *g_clog;
 
 /*
  * EVERY CHECK IS ACCOUNTED FOR, EVEN WHEN THE PROBE RETURNS EARLY. The first version printed only the
@@ -88,11 +89,32 @@ static void note(const char *what)
 	}
 }
 
+static void dump_one(const char *path)
+{
+	FILE *fh = fopen(path, "r");
+	char line[256];
+
+	if (fh == NULL) {
+		printf("LIBRESSL-PAIR-DIAG %s: (no file)\n", path);
+		return;
+	}
+	while (fgets(line, sizeof(line), fh) != NULL) {
+		size_t n = strlen(line);
+
+		while (n > 0 && (line[n - 1] == '\n' || line[n - 1] == '\r')) {
+			line[--n] = '\0';
+		}
+		printf("LIBRESSL-PAIR-DIAG %s| %s\n", path, line);
+	}
+	fclose(fh);
+}
+
 static void dump_progress(void)
 {
 	FILE *fh = fopen(PROGRESS, "r");
 	char line[256];
 
+	dump_one("client.progress");
 	if (fh == NULL) {
 		printf("LIBRESSL-PAIR-DIAG %s: (no file - the peer never started)\n", PROGRESS);
 		return;
@@ -223,6 +245,57 @@ static int set_nonblocking(int fd)
 	return flags < 0 ? -1 : fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 
+/*
+ * THE INSTRUMENT: libtls's OWN BIO SEAM. `tls_connect_cbs`/`tls_accept_cbs` take the read and write
+ * functions the TLS layer uses, so the transport becomes OURS — blocking, on the socket — and EVERY
+ * read and write the handshake performs is logged WITH ITS SIZE AND ITS RESULT.
+ *
+ * WHY THIS IS THE RIGHT PLACE TO LOOK. The probe established that both sides end up waiting to READ
+ * while neither writes, so the ClientHello reaches the peer only in part. A byte-flow log says which of
+ * three things is true, and nothing else can: the writer never offered all its bytes; the write was
+ * accepted but SHORT; or the reader got fewer bytes than were written and never asked again.
+ */
+struct tbio {
+	int fd;
+	FILE *log;
+	const char *who;
+};
+
+static ssize_t cb_read(struct tls *ctx, void *buf, size_t len, void *arg)
+{
+	struct tbio *b = arg;
+	ssize_t r;
+
+	(void)ctx;
+	progress(b->log, "%s: READ  wants %d", b->who, (int)len);
+	r = read(b->fd, buf, len);
+	progress(b->log, "%s: READ  got   %d (errno %d)", b->who, (int)r, r < 0 ? errno : 0);
+	return r;
+}
+
+static ssize_t cb_write(struct tls *ctx, const void *buf, size_t len, void *arg)
+{
+	struct tbio *b = arg;
+	ssize_t w;
+
+	(void)ctx;
+	progress(b->log, "%s: WRITE offers %d", b->who, (int)len);
+	w = write(b->fd, buf, len);
+	progress(b->log, "%s: WRITE took   %d (errno %d)", b->who, (int)w, w < 0 ? errno : 0);
+	return w;
+}
+
+/* BLOCKING IS REQUIRED NOW: the callbacks are mine, and a non-blocking fd would make read/write answer
+ * EAGAIN, which libtls would read as an error rather than as "call me again". */
+static void set_blocking(int fd)
+{
+	int flags = fcntl(fd, F_GETFL, 0);
+
+	if (flags >= 0) {
+		fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
+	}
+}
+
 /* THE PEER: accept one TCP connection, handshake as the SERVER, read the request, answer it. */
 static void peer(const char *cert, const char *key, int ls)
 {
@@ -230,6 +303,7 @@ static void peer(const char *cert, const char *key, int ls)
 	struct tls_config *cfg = NULL;
 	struct sockaddr_in from;
 	socklen_t fromlen = sizeof(from);
+	struct tbio pr;
 	char buf[256];
 	int c, r, n;
 
@@ -261,9 +335,12 @@ static void peer(const char *cert, const char *key, int ls)
 		_exit(PEER_ACCEPT);
 	}
 	note("peer: accepted the connection");
-	set_nonblocking(c);
-	if (tls_accept_socket(ctx, &cctx, c) == -1) {
-		note("peer: tls_accept_socket failed");
+	set_blocking(c);
+	pr.fd = c;
+	pr.log = g_progress;
+	pr.who = "peer";
+	if (tls_accept_cbs(ctx, &cctx, cb_read, cb_write, &pr) == -1) {
+		note("peer: tls_accept_cbs failed");
 		_exit(PEER_SOCKET);
 	}
 	note("peer: entering the handshake loop");
@@ -299,6 +376,7 @@ int main(int argc, char **argv)
 	struct tls *ctx = NULL;
 	struct tls_config *cfg = NULL;
 	int ls = -1, c = -1, on = 1, status = -1, n;
+	struct tbio cl;
 	pid_t pid;
 	char buf[256];
 
@@ -310,6 +388,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	g_clog = fopen("client.progress", "w");
 	signal(SIGALRM, on_alarm);
 	alarm(WATCHDOG_S);
 
@@ -356,12 +435,15 @@ int main(int argc, char **argv)
 	}
 	check("client-connect", 1, "");
 
-	if (tls_connect_socket(ctx, c, SERVERNAME) == -1) {
+	set_blocking(c);
+	cl.fd = c;
+	cl.log = g_clog;
+	cl.who = "client";
+	if (tls_connect_cbs(ctx, cb_read, cb_write, &cl, SERVERNAME) == -1) {
 		check("tls-handshake-completed", 0,
-		      tls_error(ctx) != NULL ? tls_error(ctx) : "tls_connect_socket failed");
+		      tls_error(ctx) != NULL ? tls_error(ctx) : "tls_connect_cbs failed");
 		goto done;
 	}
-	set_nonblocking(c);
 	diag("client", "entering the handshake loop");
 	if (handshake_loop(ctx, c, stdout, "client") != 0) {
 		check("tls-handshake-completed", 0,
@@ -373,7 +455,6 @@ int main(int argc, char **argv)
 	diag("negotiated cipher", tls_conn_cipher(ctx) != NULL ? tls_conn_cipher(ctx) : "(null)");
 
 	/* AND THE BYTES THROUGH THE TUNNEL: a request out, a reply back. */
-	set_nonblocking(c);
 	if (tls_write(ctx, REQUEST, strlen(REQUEST)) != (int)strlen(REQUEST)) {
 		check("application-data-flowed", 0, "tls_write failed");
 	} else {

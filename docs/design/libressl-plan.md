@@ -227,7 +227,41 @@ external network needed.
        tested, not concluded: the hypothesis is that a reader gets a SHORT read while the writer believes
        its bytes were all written. **The next instrument is libtls's own `tls_config_set_bio` callback**,
        which logs every TLS read and write WITH ITS SIZE; the byte flow across the two
-       `loopback_deliver()` hops is the thing left to see. One more measured detail that belongs with it: a
+       `loopback_deliver()` hops is the thing left to see.
+
+     **AND THAT INSTRUMENT FOUND IT, AND L1 IS MET (2026-09-21): A TLSv1.3 HANDSHAKE COMPLETES ON FNX,
+     AND APPLICATION DATA FLOWS THROUGH IT.** The BIO seam logged the byte flow and the answer was
+     immediate:
+
+         client: WRITE took   307      <- the whole ClientHello, in ONE write
+         peer:   READ  got    5        <- the peer read the record header
+         peer:   READ  wants 302       <- and the other 302 bytes were GONE
+
+     **`net/ipv4.c` (AND `net/unix.c`) DESTROYED THE UNREAD REMAINDER OF A PARTIALLY-READ PACKET.** Both
+     read `MIN(p->len - p->offset, count)` bytes, advancing `p->offset` — the partial-read bookkeeping
+     was already there — and then dequeued and FREED the packet REGARDLESS. A stream socket owes its
+     reader the rest, so the fix is to remove a packet only once `p->offset >= p->len`; a partially-read
+     one stays at the head with its offset advanced. With that in place the log reads
+     `READ wants 122 got 122`, `wants 710 got 710`, … and:
+
+         client: HANDSHAKE COMPLETE after 0 round(s)
+         negotiated version: TLSv1.3
+         negotiated cipher: TLS_CHACHA20_POLY1305_SHA256
+         reply read: HTTP/1.0 200 ok / libtls-pair-reply
+
+     `libressl_tls_pair` is **8/8 probe checks and 5/5 case checks**. **AND `kernel_loopback_tcp` HAD
+     MISSED THE BUG because its read asked for at least as much as the peer wrote** — a partial read was
+     the one case it did not cover, and it is now covered here.
+
+     **THE AF_UNIX HALF OF THAT IS THE QUIETER, LARGER FINDING**: the same nine lines in `net/unix.c`
+     meant every AF_UNIX consumer — the X11/Xfb path among them — could lose the tail of a message
+     whenever its read was smaller than what was queued, with the symptom being a stream that simply
+     stops mid-message. It was fixed in the same commit, and the fast tier is the regression check.
+
+     **AND THE MILESTONE'S OWN HOLDER FIRED**: the three checks were asserted as BLOCKED rather than
+     xfailed, and that check failed with "THE HANDSHAKE COMPLETES NOW - remove BLOCKED …" on the first run
+     against the fixed kernel — the second time in this plan that a limit assertion has announced its own
+     obsolescence. One more measured detail that belongs with it: a
      NON-BLOCKING write issued immediately after `connect(2)` returns gets `EAGAIN`, so the connection is
      not instantly writable either — a blocking write waits for it and a polling one is never told.
 * **ONE CHECK WAS PASSING FOR THE WRONG REASON, AND IS FIXED.** `server-completed-a-handshake` grepped

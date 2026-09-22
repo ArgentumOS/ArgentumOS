@@ -99,7 +99,11 @@ sed -n '1,6p' srv.log
 # s_client's session block goes to STDOUT, which is block-buffered into a file and therefore LOST when
 # the process is killed, while `-state` writes each handshake step to STDERR as it happens. Keeping them
 # apart is what makes a stall diagnosable instead of invisible.
-( printf 'GET / HTTP/1.0\r\n\r\n' | openssl s_client -state -connect "127.0.0.1:$PORT" \
+# `-ign_eof`, AND IT IS WHY THIS CHECK FAILED FOR A WHILE: without it, EOF on the piped request makes
+# s_client send close_notify and QUIT as soon as the handshake finishes, so the reply it never waited for
+# was never in cli.log. The handshake had been completing (the -state trace ends at "write finished A"),
+# so the missing HTTP 200 was an argument error in THIS script and not a TLS one.
+( printf 'GET / HTTP/1.0\r\n\r\n' | openssl s_client -state -ign_eof -connect "127.0.0.1:$PORT" \
 	-CAfile cert.pem -verify_return_error > cli.log 2> cli.err ) &
 CLI_PID=$!
 i=0

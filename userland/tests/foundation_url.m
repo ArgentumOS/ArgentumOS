@@ -96,14 +96,32 @@ int main(void)
 		 * runtime directly is the claim about the RUNTIME, and it does not depend on a
 		 * Foundation function being right.
 		 */
-		check("url-absent",
+		/*
+		 * WHAT IS STILL ABSENT, AND WHAT ARRIVED — because the FIRST version of this check was a
+		 * conjunction that W7 made half-false, and an absence assertion has to be kept as carefully as
+		 * any other claim. It asserted that `NSURLRequest` too was NULL, and W7 slice 1
+		 * (docs/design/foundation-plan.md §46) is exactly what shipped it. THE LESSON IS THE ONE THIS
+		 * FILE'S COMMENT ABOVE ALREADY NAMED: an absence assertion is a fact about the TREE, and a
+		 * landing that changes the tree has to revisit it. So the two halves are separate now.
+		 */
+		check("url-loading-system-absent",
 		      objc_getClass("NSURLSession") == NULL &&
-		      objc_getClass("NSURLRequest") == NULL &&
 		      objc_getClass("NSURLConnection") == NULL &&
+		      objc_getClass("NSURLProtocol") == NULL &&
 		      ![NSURL respondsToSelector:sel_registerName(
 			  "URLByResolvingBookmarkData:options:relativeToURL:"
 			  "bookmarkDataIsStale:error:")],
-		      "the URL LOADING system is absent: no session, request or connection class");
+		      "the URL LOADING system is still absent: no session, connection or protocol class");
+
+		/* AND THE REQUEST/RESPONSE VALUES, WHICH W7 SLICE 1 SHIPPED AND THE CHECK ABOVE USED TO DENY. */
+		check("url-request-values-shipped",
+		      objc_getClass("NSURLRequest") != NULL &&
+		      objc_getClass("NSMutableURLRequest") != NULL &&
+		      objc_getClass("NSURLResponse") != NULL &&
+		      objc_getClass("NSHTTPURLResponse") != NULL,
+		      "the request/response VALUE classes ship (W7 slice 1, §46) - a request DESCRIBES an "
+		      "exchange and a response is its answer's metadata; the class that PERFORMS one belongs to "
+		      "the loading system above, and that is still absent");
 
 		check("url-shipped",
 		      objc_getClass("NSURLComponents") != NULL &&
