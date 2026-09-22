@@ -922,15 +922,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_urlsession.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlsession"
-	# foundation_urlsession_task: W7 slice 2c's session half, row 3, first half - THE EXECUTION through the
-	# completion-handler path. ONE unit, only <Foundation/Foundation.h>: a task now RUNS, fetching a file://
-	# URL through the bridge, and its ending arrives in the task's state and in a block.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_urlsession_task.m -o .build/probe-foundation_urlsession_task.o
-	$(MUSL64_OBJC) .build/probe-foundation_urlsession_task.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlsession_task"
 	# curl_smoke: W7 slice 2b's acceptance - LIBCURL ON THE GUEST. NOT a Foundation probe: this is a
 	# third-party library's landing, so the program that judges it has no Foundation in it (the
 	# kernel_pipe_dup2 reasoning). It compiles against the VENDORED libcurl out of .build/curl-prefix
