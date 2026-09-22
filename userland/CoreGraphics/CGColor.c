@@ -43,6 +43,8 @@ static int cg_color_space_components(CGColorSpaceRef space)
 		return 4;
 	case kCGColorSpaceModelLab:
 		return 3;   /* L*, a*, b* */
+	case kCGColorSpaceModelXYZ:
+		return 3;   /* X, Y, Z -- a colour CAN be in an XYZ space, and the engine converts it */
 	default:
 		/* A SPACE WHOSE NUMBERS THIS TREE CANNOT INTERPRET IS NOT GUESSED AT. A space this
 		 * code has no model for would have its components read as if they were a device
@@ -244,6 +246,12 @@ static int cg_engine_format(CGColorSpaceModel model, int *ncomp)
 	case kCGColorSpaceModelLab:
 		*ncomp = 3;
 		return TYPE_Lab_DBL;
+	case kCGColorSpaceModelXYZ:
+		/* THE ENGINE HAS A DOUBLE FORMAT FOR XYZ, which is why this is one arm rather than a
+		 * conversion of its own — and why the first run of the probe's XYZ check failed: this
+		 * table had no XYZ row, so the conversion refused and the check dereferenced NULL. */
+		*ncomp = 3;
+		return TYPE_XYZ_DBL;
 	default:
 		*ncomp = 0;
 		return 0;

@@ -138,12 +138,12 @@ extern NSString *const kCGColorSpaceGenericLab;
 extern NSString *const kCGColorSpaceGenericGrayGamma2_2;
 extern NSString *const kCGColorSpaceDCIP3;
 extern NSString *const kCGColorSpaceLinearGray;
+extern NSString *const kCGColorSpaceGenericXYZ;
 
-/* A space by name, or NULL with a reason on stderr. THE NAMED SPACES ARE NOT CACHED, WHICH IS A
- * DEVIATION: Apple returns the same object for the same name, and this builds a fresh one per
- * call. THE DEVICE SPACES REMAIN SHARED SINGLETONS, and THE NAMED SPACES ARE CACHED NOW TOO —
- * one object per name — because that day arrived with `CGColorSpaceCopyName` below: a space that
- * can say which name it was made with has to know it. */
+/* A space by name, or NULL with a reason on stderr. THE DEVICE SPACES ARE SHARED SINGLETONS AND
+ * THE NAMED SPACES ARE CACHED TOO — one object per name — because `CGColorSpaceCopyName` below
+ * needs a space to know which name it was made with. SUPERSEDED: an earlier version of this
+ * paragraph said the named spaces were NOT cached and called that a deviation. */
 CGColorSpaceRef CGColorSpaceCreateWithName(NSString *name);
 
 /* THE NAME THIS SPACE WAS MADE WITH, OR NIL. It is a COPY — the caller owns it — and it closes the

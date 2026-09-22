@@ -287,6 +287,13 @@ static int cg_model_from_profile(cmsHPROFILE p, CGColorSpaceModel *model, size_t
 		*model = kCGColorSpaceModelLab;
 		*components = 3;
 		return 1;
+	case cmsSigXYZData:
+		/* AN XYZ PROFILE IS A COLOUR SPACE LIKE ANY OTHER HERE, and it is worth stating why the
+		 * MODEL matters: `CGColorSpaceIsWideGamutRGB` asks about PRIMARIES, and an XYZ space has
+		 * none — it answers NO for that reason, not because something failed to read it. */
+		*model = kCGColorSpaceModelXYZ;
+		*components = 3;
+		return 1;
 	default:
 		return 0;
 	}

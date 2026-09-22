@@ -872,6 +872,63 @@ int main(void)
 		CGColorSpaceRelease(a);
 	}
 
+	/* --- AND AN XYZ SPACE, WHERE THE MODEL IS THE WHOLE STORY ------------------------------ */
+	/* XYZ IS THE ONE SPACE HERE WHOSE COMPONENTS ARE NOT A COLOUR IN THE USUAL SENSE: X, Y and Z
+	 * are the eye's own response, and the space that holds them HAS NO PRIMARIES. That is why
+	 * `IsWideGamutRGB` answers NO for it — correctly, and for that reason rather than because
+	 * something failed to read it — so the answer is checked here: a predicate that said "wide"
+	 * for a space with no primaries would be reading something that is not there.
+	 *
+	 * THE CONVERSION IS THE CHECK THAT MATTERS: the ICC PCS white point (0.9642, 1.0, 0.8249, D50)
+	 * IS WHITE, so a colour carrying it must land near (1, 1, 1) in device RGB. That is a relation
+	 * rather than a quoted triple, and it fails if the white point or the adaptation is wrong. */
+	{
+		CGColorSpaceRef xyz = CGColorSpaceCreateWithName(kCGColorSpaceGenericXYZ);
+		CGColorSpaceRef dev = CGColorSpaceCreateDeviceRGB();
+		CGFloat white[4];
+		CGColorRef c;
+		CGColorRef r;
+
+		check("kCGColorSpaceGenericXYZ gives a space",
+		      xyz != NULL && CGColorSpaceGetModel(xyz) == kCGColorSpaceModelXYZ);
+		check_num("...with three components",
+			  (double)CGColorSpaceGetNumberOfComponents(xyz), 3.0, 0);
+		check("...that CAN be drawn, because it has a profile",
+		      CGColorSpaceSupportsOutput(xyz));
+		check("...and that is NOT wide-gamut RGB, having no primaries to compare",
+		      !CGColorSpaceIsWideGamutRGB(xyz));
+
+		white[0] = 0.9642;
+		white[1] = 1.0;
+		white[2] = 0.8249;
+		white[3] = 1.0;
+		c = CGColorCreate(xyz, white);
+		r = CGColorCreateCopyByMatchingToColorSpace(c, kCGRenderingIntentRelativeColorimetric,
+							    dev, NULL);
+		/* THE MEASUREMENTS ARE THE CHECK, AND THEY PRINT: three numbers against 1.0, so the actual
+		 * conversion lands in the output instead of behind a boolean. A relative colorimetric
+		 * conversion maps the media white to white, so each should come back as 1.0.
+		 *
+		 * AND THE GUARD IS NOT DECORATION. The first version of this block read
+		 * `CGColorGetComponents(r)[0]` without asking whether `r` was NULL — and when the
+		 * conversion failed, because this library's FORMAT table had no XYZ arm, the probe
+		 * SEGFAULTED AND PRINTED NOTHING AT ALL. A crash is a worse diagnostic than a failed
+		 * check, and the buffered output made it look as though the probe had run and said
+		 * nothing. */
+		if (r != NULL) {
+			check_num("the PCS white point lands WHITE: r",
+				  (double)CGColorGetComponents(r)[0], 1.0, 0.02);
+			check_num("...g", (double)CGColorGetComponents(r)[1], 1.0, 0.02);
+			check_num("...b", (double)CGColorGetComponents(r)[2], 1.0, 0.02);
+		} else {
+			check("the PCS white point converts at all", 0);
+		}
+		CGColorRelease(r);
+		CGColorRelease(c);
+		CGColorSpaceRelease(dev);
+		CGColorSpaceRelease(xyz);
+	}
+
 	/* --- TWO MORE NAMES, AND ONE OF THEM IS THE CINEMA SPACE ------------------------------ */
 	/* THE CHECK THAT SEPARATES DCIP3 FROM DisplayP3 IS A COMPARISON RATHER THAN A NUMBER. The two
 	 * share DCI-P3's primaries, so what distinguishes them is THE WHITE POINT AND THE GAMMA — the

@@ -63,6 +63,7 @@ NSString *const kCGColorSpaceDisplayP3 = @"kCGColorSpaceDisplayP3";
 NSString *const kCGColorSpaceLinearDisplayP3 = @"kCGColorSpaceLinearDisplayP3";
 NSString *const kCGColorSpaceDCIP3 = @"kCGColorSpaceDCIP3";
 NSString *const kCGColorSpaceLinearGray = @"kCGColorSpaceLinearGray";
+NSString *const kCGColorSpaceGenericXYZ = @"kCGColorSpaceGenericXYZ";
 
 /* An xy pair with Y = 1, which is the spelling the engine's primaries use. */
 static cmsCIExyY cg_xy(double x, double y)
@@ -241,6 +242,14 @@ static cmsHPROFILE cg_profile_for_name(NSString *name, CGColorSpaceModel *model,
 		*model = kCGColorSpaceModelLab;
 		*components = 3;
 		return cmsCreateLab4Profile(NULL);   /* NULL is D50, the ICC's default */
+	}
+	if ([name isEqual:kCGColorSpaceGenericXYZ]) {
+		*model = kCGColorSpaceModelXYZ;
+		*components = 3;
+		/* THE ENGINE'S XYZ PROFILE IS THE ICC PCS ITSELF, which is D50 — the same white point
+		 * Apple's generic XYZ names — so there is no white point to choose here and none is
+		 * invented. */
+		return cmsCreateXYZProfile();
 	}
 	if ([name isEqual:kCGColorSpaceGenericGrayGamma2_2]) {
 		*model = kCGColorSpaceModelMonochrome;
