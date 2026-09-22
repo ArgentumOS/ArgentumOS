@@ -213,6 +213,34 @@ check asserts the SPECIFIC fact that changes, so the flip is visible in the diff
    3. **the execution**: a task run through `FNCURLURLProtocol` and reported to its delegate and its
       completion handler — the half that makes the model do something.
 
+   **ROW 2 LANDED (2026-09-22), `foundation_urlsession` 12/12 probe checks and 6/6 case checks:**
+   `NSURLSessionTask`/`NSURLSessionDataTask` (plus `NSURLSessionTaskState`) and `NSURLSession` with its own
+   `NSURLSessionDelegate` — the session and the task model, with NOTHING TRANSFERRING. Four ledger rows
+   moved to `shipped`. **The task/data delegate protocols are deferred to row 3 on purpose:** they are
+   about REPORTING a transfer, so they land where there is something to report.
+
+   **IT CAUGHT A REAL BUG IN ITSELF, WHICH IS THE ARGUMENT FOR THE CHECK THAT FOUND IT:** the first run was
+   11/12, and the failure was `shared-session-is-a-singleton` — `+sharedSession` was built with plain
+   `-init`, which this class does not define, so the shared session answered a **nil configuration**. The
+   check that caught it is the one asserting the shared session's DEFAULTS, not merely its identity; an
+   identity-only check would have passed. `+sharedSession` now goes through the same initializer as every
+   other door.
+
+   **THE DECISIONS THIS ROW PINS:**
+   * **a session SNAPSHOTS its configuration** — a caller still editing the configuration it handed over
+     cannot reach a running session (the same discipline the request headers and the cached response keep,
+     and the one behaviour here that is observed rather than declared);
+   * **a new task is SUSPENDED** and `-resume` is an explicit act; a COMPLETED task is never resumed;
+   * **`-cancel` goes straight to Completed carrying `NSURLErrorCancelled` (-999)** — a simplification
+     stated where it happens, because with no transfer running there is no Canceling period to pass
+     through, and `task-cancel-completes-and-records-the-error` is the check that will HAVE to change when
+     execution lands;
+   * **an invalidated session refuses a new task with nil** rather than handing back one that could never
+     run (Apple documents only that a session must not be used after invalidating; nil is our answer);
+   * **refused by name, asserted absent**: the completion-handler and download/upload/stream/websocket
+     factories (execution and their own ledger rows), the challenge member (`NSURLAuthenticationChallenge`
+     is its own family) and the coder doors.
+
 
 ## 5. Risks to settle during 2b, named rather than discovered later
 

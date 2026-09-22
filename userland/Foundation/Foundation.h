@@ -166,6 +166,8 @@
 #import <Foundation/NSURLProtocol.h>
 #import <Foundation/FNCURLURLProtocol.h>
 #import <Foundation/NSURLSessionConfiguration.h>
+#import <Foundation/NSURLSessionTask.h>
+#import <Foundation/NSURLSession.h>
 #import <Foundation/NSHTTPURLResponse.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

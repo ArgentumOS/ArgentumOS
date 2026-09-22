@@ -28,11 +28,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  133   open   63   struck   77
-#   protocol   shipped   15   open   16   struck   14
+#   class      shipped  136   open   60   struck   77
+#   protocol   shipped   16   open   15   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped   89   open   54   struck   17
-#   case       shipped  484   open  650   struck  168
+#   enum       shipped   90   open   53   struck   17
+#   case       shipped  488   open  646   struck  168
 #   func       shipped   71   open   64   struck   54
 #   var        shipped  135   open  426   struck  353
 #   typealias  shipped   29   open   40   struck    7
@@ -1063,10 +1063,10 @@ case	open	NSURLSessionTaskMetricsResourceFetchTypeLocalCache	NSURLSessionTaskTra
 case	open	NSURLSessionTaskMetricsResourceFetchTypeNetworkLoad	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
 case	struck	NSURLSessionTaskMetricsResourceFetchTypeServerPush	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	deprecated	objc
 case	open	NSURLSessionTaskMetricsResourceFetchTypeUnknown	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
-case	open	NSURLSessionTaskStateCanceling	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
-case	open	NSURLSessionTaskStateCompleted	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
-case	open	NSURLSessionTaskStateRunning	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
-case	open	NSURLSessionTaskStateSuspended	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
+case	shipped	NSURLSessionTaskStateCanceling	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
+case	shipped	NSURLSessionTaskStateCompleted	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
+case	shipped	NSURLSessionTaskStateRunning	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
+case	shipped	NSURLSessionTaskStateSuspended	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
 case	open	NSURLSessionWebSocketCloseCodeAbnormalClosure	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
 case	open	NSURLSessionWebSocketCloseCodeGoingAway	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
 case	open	NSURLSessionWebSocketCloseCodeInternalServerError	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
@@ -1548,12 +1548,12 @@ class	shipped	NSURLProtocol		Networking / Essentials / Creating a session / Supp
 class	shipped	NSURLQueryItem		Fundamentals / URLs	-	objc
 class	shipped	NSURLRequest		Networking / Requests and responses	-	objc
 class	shipped	NSURLResponse		Networking / Requests and responses	-	objc
-class	open	NSURLSession		Networking / Essentials	-	objc
+class	shipped	NSURLSession		Networking / Essentials	-	objc
 class	shipped	NSURLSessionConfiguration		Networking / Essentials / Creating a session	-	objc
-class	open	NSURLSessionDataTask		Networking / Essentials / Adding data tasks to a session	-	objc
+class	shipped	NSURLSessionDataTask		Networking / Essentials / Adding data tasks to a session	-	objc
 class	open	NSURLSessionDownloadTask		Networking / Essentials / Adding download tasks to a session	-	objc
 class	open	NSURLSessionStreamTask		Networking / Essentials / Adding stream tasks to a session	-	objc
-class	open	NSURLSessionTask		Networking / Essentials	-	objc
+class	shipped	NSURLSessionTask		Networking / Essentials	-	objc
 class	open	NSURLSessionTaskMetrics		Networking / Essentials / Working with a delegate / Collecting task metrics	-	objc
 class	open	NSURLSessionTaskTransactionMetrics		Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics	-	objc
 class	open	NSURLSessionUploadTask		Networking / Essentials / Adding upload tasks to a session	-	objc
@@ -1759,7 +1759,7 @@ enum	open	NSURLSessionMultipathServiceType	NSURLSessionConfiguration	Networking 
 enum	open	NSURLSessionResponseDisposition	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes	-	objc
 enum	open	NSURLSessionTaskMetricsDomainResolutionProtocol	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
 enum	open	NSURLSessionTaskMetricsResourceFetchType	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-enum	open	NSURLSessionTaskState	NSURLSessionTask	Networking / Essentials / Controlling the task state	-	swift-page
+enum	shipped	NSURLSessionTaskState	NSURLSessionTask	Networking / Essentials / Controlling the task state	-	swift-page
 enum	open	NSURLSessionWebSocketCloseCode	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection	-	swift-page
 enum	open	NSURLSessionWebSocketMessageType	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 enum	struck	NSUserNotificationActivationType	NSUserNotification	App Support / User Notifications / Constants	deprecated	swift-page
@@ -2249,7 +2249,7 @@ protocol	struck	NSURLDownloadDelegate		Networking / Legacy / URL Download	deprec
 protocol	struck	NSURLHandleClient		Networking / Legacy / URL Handle	deprecated	objc
 protocol	shipped	NSURLProtocolClient		Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes	-	objc
 protocol	open	NSURLSessionDataDelegate		Networking / Essentials / Adding data tasks to a session	-	objc
-protocol	open	NSURLSessionDelegate		Networking / Essentials / Working with a delegate	-	objc
+protocol	shipped	NSURLSessionDelegate		Networking / Essentials / Working with a delegate	-	objc
 protocol	open	NSURLSessionDownloadDelegate		Networking / Essentials / Adding download tasks to a session	-	objc
 protocol	open	NSURLSessionStreamDelegate		Networking / Essentials / Adding stream tasks to a session	-	objc
 protocol	open	NSURLSessionTaskDelegate		Networking / Essentials / Working with a delegate	-	objc
