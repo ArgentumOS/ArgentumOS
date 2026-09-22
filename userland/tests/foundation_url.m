@@ -102,16 +102,35 @@ int main(void)
 		 * any other claim. It asserted that `NSURLRequest` too was NULL, and W7 slice 1
 		 * (docs/design/foundation-plan.md §46) is exactly what shipped it. THE LESSON IS THE ONE THIS
 		 * FILE'S COMMENT ABOVE ALREADY NAMED: an absence assertion is a fact about the TREE, and a
-		 * landing that changes the tree has to revisit it. So the two halves are separate now.
+		 * landing that changes the tree has to revisit it. So the halves are separate now — and it has
+		 * HAPPENED A SECOND TIME: `NSURLProtocol` was in this conjunction too, and W7 slice 2a shipped
+		 * it. What remains absent is the thing that PERFORMS an exchange on its own, which is the
+		 * distinction the request/response values already rest on.
 		 */
 		check("url-loading-system-absent",
 		      objc_getClass("NSURLSession") == NULL &&
 		      objc_getClass("NSURLConnection") == NULL &&
-		      objc_getClass("NSURLProtocol") == NULL &&
 		      ![NSURL respondsToSelector:sel_registerName(
 			  "URLByResolvingBookmarkData:options:relativeToURL:"
 			  "bookmarkDataIsStale:error:")],
-		      "the URL LOADING system is still absent: no session, connection or protocol class");
+		      "the URL LOADING system is still absent: no session and no connection class");
+
+		/* AND THE SEAM ARRIVED, WHICH IS SLICE 2a: an NSURLProtocol subclass is how ANY protocol plugs
+		 * in, so the plug-in point comes before the transport that will be its first implementation.
+		 *
+		 * THE CLIENT PROTOCOL IS NOT ASSERTED HERE, AND THAT IS A MEASUREMENT RATHER THAN AN OMISSION.
+		 * objc_getProtocol("NSURLProtocolClient") answers NULL IN THIS BINARY — measured, with the other
+		 * three conjuncts answering 1 — because this probe never ADOPTS the protocol, so its metadata is
+		 * never registered for a lookup by name. Asserting it here would therefore be asserting the
+		 * LINKER's behaviour rather than the library's: the protocol is asserted where a class actually
+		 * conforms to it (foundation_urlprotocol's urlprotocol-client-protocol-shape), which is the only
+		 * place the question can be asked honestly. */
+		check("urlprotocol-seam-shipped",
+		      objc_getClass("NSURLProtocol") != NULL &&
+		      objc_getClass("NSCachedURLResponse") != NULL &&
+		      [NSURLProtocol respondsToSelector:sel_registerName("registerClass:")],
+		      "the transport SEAM ships (W7 slice 2a): NSURLProtocol and the cached-response value - "
+		      "the point a transport ATTACHES to, not one that performs a fetch");
 
 		/* AND THE REQUEST/RESPONSE VALUES, WHICH W7 SLICE 1 SHIPPED AND THE CHECK ABOVE USED TO DENY. */
 		check("url-request-values-shipped",
