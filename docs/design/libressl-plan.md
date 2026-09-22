@@ -155,16 +155,35 @@ external network needed.
   the *host-side* install try to create `/System/Configuration/ssl` ("Maybe need administrative
   privileges", measured) — the install now goes through a `DESTDIR` stage. Both live in
   tools/libressl-build.sh.
-* **AND THE HANDSHAKE DOES NOT COMPLETE YET — A DIFFERENT FINDING, AND NOT A TLS ONE ON THE EVIDENCE.**
-  The two processes DO reach each other: `s_client` prints `CONNECTED(fd)` and `s_server` logs `ACCEPT`,
-  so the TCP **connect and accept on loopback work**. But **no handshake bytes move**: with `-state` on
-  the client and stdout/stderr split, the client's state trace is **EMPTY** — it never reaches its first
-  state transition — and the server never gets past the accept. What that says is that the place to look
-  is the **plain TCP data path**, and it says something worth stating plainly: **a request/response
-  payload over loopback has never actually been demonstrated on this system.** A *refused* connect gives
-  `ECONNREFUSED` (so routing and the listener work), but a payload has not been carried. **So the next
-  diagnostic is not a TLS one: it is a two-process plain-TCP echo over `127.0.0.1`, and it belongs with
-  the kernel's network layer.**
+* **AND THE HANDSHAKE'S STALL IS NOW EXPLAINED — BY A KERNEL `poll(2)` GAP, NOT BY TLS AND NOT BY THE
+  DATA PATH. `userland/tests/kernel_loopback_tcp.c` is the reproducer (`kernel_loopback_tcp` 9/9 probe
+  checks), and it took TWO of its own corrections to get there — recorded because the first reading was
+  mine and was wrong.** The runs, in order:
+
+  1. A NON-BLOCKING version concluded "the write never becomes possible" (the client's `write()` got
+     `EAGAIN` and `poll(POLLOUT)` timed out). That reading has an innocent explanation it could not
+     exclude: `poll(2)` may simply not report a connected loopback socket, while **blocking** I/O — which
+     is what TLS uses — would work.
+  2. The BLOCKING version **refuted it: the payload crosses fine** (`client sent 27 of 27 bytes`, `client
+     read 25 bytes: 'loopback-reply-9876543210'`, the peer exits 0). So there is no loopback data-path
+     defect, and the earlier note here — *"a request/response payload over loopback has never actually
+     been demonstrated"* — **was wrong and is corrected.**
+  3. Measuring the readiness the two versions disagreed about gives the real finding, and it is an
+     **ASYMMETRY IN THE SAME CALL**:
+
+         poll(POLLOUT) on a connected loopback socket  ->  NEVER reported  (0, revents=0x0)
+         poll(POLLIN)  on a connected loopback socket  ->  reported        (1, revents=0x1)
+         ...while a BLOCKING write to that same socket succeeds immediately
+
+     **So the socket IS writable and the kernel does not say so.** That stalls every program that
+     multiplexes and waits for writability before sending — *which is precisely what `s_client` and
+     `s_server` do*, and why their handshake died with no bytes moved and an empty `-state` trace. The
+     probe asserts this as the limit it currently is (`poll-reports-readiness-but-never-writability`,
+     §45-Y's pattern), so the check **flips the day the kernel reports writability** — and that fix is in
+     the kernel's `poll`/`select` path, the same neighbourhood as `select(2)`'s regular-file rule (§45-Z)
+     and its listening-descriptor gap (W6b). One more measured detail that belongs with it: a
+     NON-BLOCKING write issued immediately after `connect(2)` returns gets `EAGAIN`, so the connection is
+     not instantly writable either — a blocking write waits for it and a polling one is never told.
 * **ONE CHECK WAS PASSING FOR THE WRONG REASON, AND IS FIXED.** `server-completed-a-handshake` grepped
   `ACCEPT` — which `s_server` logs on the TCP **accept** — so it passed on a run where the client hung
   mid-handshake. It is now `server-accepted-the-connection`, named for what that evidence supports.
@@ -173,6 +192,8 @@ external network needed.
   the work directory instead); and the guest's toybox has **no `tr`**. Both are corrected in
   `userland/tests/libressl_l1.sh`, which also runs its client under a **bounded wait** so a stalled
   handshake reports instead of hanging the case.
+
+### L2 — Trust store + first consumer (**TRIGGERED 2026-09-21**)
 Ship the §4 trust store and wire the defaults. The first *real*
 consumer is the trigger, not the milestone date — and **the trigger has
 arrived: libcurl, the Foundation's HTTP transport (W7), whose `https://`

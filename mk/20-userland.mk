@@ -876,6 +876,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# here is a kernel defect in a file nobody can argue with.
 	$(MUSL64_CC) -O2 userland/tests/kernel_pipe_dup2.c \
 		-o "$(ROOTFS64)/System/Shared/tests/kernel_pipe_dup2"
+	# kernel_loopback_tcp: CAN THIS KERNEL'S LOOPBACK CARRY A PAYLOAD? - plain C with NO Foundation,
+	# NO SSL and no third-party library, because the question came from a stalled TLS handshake and
+	# the answer must not be able to be about the TLS library (docs/design/libressl-plan.md L1).
+	$(MUSL64_CC) -O2 userland/tests/kernel_loopback_tcp.c \
+		-o "$(ROOTFS64)/System/Shared/tests/kernel_loopback_tcp"
 	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
 	# collection_view, tab_view, split_view, grid_view, kvc_basic,
 	# notification_basic, cell_basic, viewcontroller_basic, window_draw,
