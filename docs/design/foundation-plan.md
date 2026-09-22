@@ -3528,9 +3528,9 @@ vanishing.
 | **Low-Level Utilities / XPC Client** | ALL STRUCK: `NSXPCCoder`, `NSXPCConnection`, `NSXPCInterface`, `NSXPCProxyCreating` | — |
 | **Low-Level Utilities / XPC Services** | ALL STRUCK: `NSXPCListener`, `NSXPCListenerDelegate`, `NSXPCListenerEndpoint` | — |
 | **Networking / Authentication and credentials** | 4 open | `NSURLAuthenticationChallenge`, `NSURLCredential`, `NSURLCredentialStorage`, `NSURLProtectionSpace` |
-| **Networking / Cache behavior** | 2 open | `NSCachedURLResponse`, `NSURLCache` |
+| **Networking / Cache behavior** | 1 open | `NSURLCache` |
 | **Networking / Cookies** | 1 open | `NSHTTPCookieStorage` |
-| **Networking / Essentials** | 20 open | `NSHTTPCookie`, `NSURLProtocol`, `NSURLProtocolClient`, `NSURLSession`, `NSURLSessionConfiguration`, `NSURLSessionDataDelegate`, `NSURLSessionDataTask`, `NSURLSessionDelegate`, `NSURLSessionDownloadDelegate`, `NSURLSessionDownloadTask`, `NSURLSessionStreamDelegate`, `NSURLSessionStreamTask`, `NSURLSessionTask`, `NSURLSessionTaskDelegate`, `NSURLSessionTaskMetrics`, `NSURLSessionTaskTransactionMetrics`, `NSURLSessionUploadTask`, `NSURLSessionWebSocketDelegate`, `NSURLSessionWebSocketMessage`, `NSURLSessionWebSocketTask` |
+| **Networking / Essentials** | 18 open | `NSHTTPCookie`, `NSURLSession`, `NSURLSessionConfiguration`, `NSURLSessionDataDelegate`, `NSURLSessionDataTask`, `NSURLSessionDelegate`, `NSURLSessionDownloadDelegate`, `NSURLSessionDownloadTask`, `NSURLSessionStreamDelegate`, `NSURLSessionStreamTask`, `NSURLSessionTask`, `NSURLSessionTaskDelegate`, `NSURLSessionTaskMetrics`, `NSURLSessionTaskTransactionMetrics`, `NSURLSessionUploadTask`, `NSURLSessionWebSocketDelegate`, `NSURLSessionWebSocketMessage`, `NSURLSessionWebSocketTask` |
 | **Networking / Legacy** | ALL STRUCK: `NSURLAuthenticationChallengeSender`, `NSURLConnection`, `NSURLConnectionDataDelegate`, `NSURLConnectionDelegate`, `NSURLConnectionDownloadDelegate`, `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` | — |
 | **Networking / Local Network Services** | ALL STRUCK: `NSNetService`, `NSNetServiceDelegate` | — |
 | **Networking / Requests and responses** | all classes shipped | — |

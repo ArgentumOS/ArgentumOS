@@ -162,6 +162,8 @@
 #import <Foundation/NSTask.h>
 #import <Foundation/NSURLRequest.h>
 #import <Foundation/NSURLResponse.h>
+#import <Foundation/NSCachedURLResponse.h>
+#import <Foundation/NSURLProtocol.h>
 #import <Foundation/NSHTTPURLResponse.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

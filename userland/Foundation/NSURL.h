@@ -25,11 +25,15 @@
  * round trip is a RULE and the probe asserts it, spaces included.
  *
  * REFUSED BY NAME, each needing something this library does not ship:
- *   - the LOADING system: NSURLSession, NSURLConnection, NSURLProtocol,
+ *   - the LOADING system: NSURLSession, NSURLConnection,
  *     -startAccessingSecurityScopedResource, +URLByResolvingBookmarkData:... —
  *     a URL here is a VALUE, not a door to I/O. NSURLRequest/NSURLResponse/NSHTTPURLResponse WERE on
  *     this line and are not any more (W7 slice 1, §46): they arrive as VALUES — a description of an
- *     exchange and its answer's metadata — while the class that PERFORMS the exchange stays refused;
+ *     exchange and its answer's metadata — while the class that PERFORMS the exchange stays refused.
+ *     NSURLProtocol WERE on this line too and is not any more either (W7 slice 2a): it is the SEAM a
+ *     transport ATTACHES to, not a transport, and shipping it is what lets slice 2c's libcurl bridge be
+ *     an ordinary subclass of it. What stays refused is the thing that performs an exchange on its own:
+ *     NSURLSession, NSURLConnection and -loadRequest:;
  *   - NSURLComponents / NSURLQueryItem — the STRUCTURED form is its own family
  *     and a later slice;
  *   - NSFileManager and every filesystem QUERY

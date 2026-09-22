@@ -83,6 +83,44 @@ check asserts the SPECIFIC fact that changes, so the flip is visible in the diff
    Apple's API **regardless of who owns the transport**: a `NSURLProtocol` subclass is how
    *any* protocol plugs in, and the curl bridge in 2c will itself be one. It is therefore
    first, and it is the only slice here with no build dependency.
+
+   **LANDED AND VERIFIED (2026-09-22): `foundation_urlprotocol` 19/19 probe checks and 6/6 case checks.**
+   `userland/Foundation/NSURLProtocol.{h,m}` (the base plus `NSURLProtocolClient`) and
+   `NSCachedURLResponse.{h,m}` (the value plus `NSURLCacheStoragePolicy`), the probe and its case, the
+   `mk/20-userland.mk` + `Foundation.h` wiring, and the ledger's eleven rows moved to `shipped`. No
+   transport, no session, no socket: it is the plug-in point and a value.
+
+   **THE DECISIONS IT STATES OUT LOUD, each pinned by a check:**
+   * **The base is abstract, and its defaults ARE its behaviour:** `+canInitWithRequest:` answers NO,
+     `+canonicalRequestForRequest:` returns the request unchanged, `+requestIsCacheEquivalent:toRequest:`
+     is value equality, and `-startLoading`/`-stopLoading` do nothing — asserted as "the client was told
+     nothing", which is stronger than "it did not crash".
+   * **The request-property table is keyed by IDENTITY and RETAINS its key.** A request is an immutable
+     value, so identity is the only handle a caller can name twice; the retention is load-bearing, because
+     without it a freed request's address could be recycled into a new one that would then answer the DEAD
+     request's properties — a wrong answer rather than a crash, which is the worse kind. The rule a caller
+     can depend on: **per instance, and a copy starts empty.**
+   * **Registration order is a definite rule, stated rather than implied:** most-recently-registered first,
+     only a subclass may register (the base refuses itself, or a class whose every override point is the
+     default would shadow every real protocol behind it), and unregistration COMPACTS rather than
+     tombstoning.
+   * **`-URLProtocolDidFinishLoading:` carries no `protocol:` argument** — Apple's own inconsistency, kept
+     and asserted rather than "fixed", since fixing it would produce a selector no existing implementation
+     implements.
+   * **`+fnProtocolClassForRequest:` is a first-party door, and it is what makes the slice testable:**
+     Apple dispatches a request inside its loader and does not publish that step, but 2c's loader must do
+     exactly this, and a registry whose ORDER cannot be observed cannot be pinned by a check.
+   * **Refused by name, and asserted ABSENT by `urlprotocol-api-inventory`:** the two authentication
+     callbacks (they need `NSURLAuthenticationChallenge`, its own family and its own slice) and the coder
+     doors (a keyed archive format whose keys Apple does not publish).
+
+   **AND THE GATE CAUGHT A REAL MISTAKE WHILE THIS LANDED, which is worth keeping:** `NSURLProtocol.m`
+   imported `<Foundation/NSMutableDictionary.h>`, a header that does not exist in this tree —
+   `NSMutableDictionary` is declared in `NSDictionary.h`. The clean-room gate refused the build and named
+   the line, which is the check doing what it was written for rather than a formality. The ledger's own
+   count block and the plan's family table are GENERATED, so the four `shipped` rows had to be followed by
+   `tools/foundation-sweep.py --refresh` and `--families --write`; the build is what tells you.
+
 2. **2b — vendor and build libcurl** (the pin above, plain HTTP), staged, with a smoke
    probe that proves the library **loads and runs on the guest**. **LANDED AND VERIFIED
    (2026-09-21): `curl_smoke` 6/6 probe checks and 6/6 case checks** — the library loads, it moves

@@ -151,6 +151,8 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSProgress.m \
 	$(FOUNDATION_SRC)/NSURLRequest.m \
 	$(FOUNDATION_SRC)/NSURLResponse.m \
+	$(FOUNDATION_SRC)/NSCachedURLResponse.m \
+	$(FOUNDATION_SRC)/NSURLProtocol.m \
 	$(FOUNDATION_SRC)/NSHTTPURLResponse.m
 FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h \
 	$(FOUNDATION_SRC)/NSByteOrder.h \
@@ -207,6 +209,8 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSPredicate.h \
 	$(FOUNDATION_SRC)/NSURLRequest.h \
 	$(FOUNDATION_SRC)/NSURLResponse.h \
+	$(FOUNDATION_SRC)/NSCachedURLResponse.h \
+	$(FOUNDATION_SRC)/NSURLProtocol.h \
 	$(FOUNDATION_SRC)/NSHTTPURLResponse.h \
 	$(FOUNDATION_SRC)/Foundation.h
 # -Iinclude: the plist CORE (include/plist.h) is shared with libconfig, which
@@ -859,6 +863,17 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_urlrequest.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlrequest"
+	# foundation_urlprotocol: W7 slice 2a's acceptance - THE SEAM AND THE CACHED VALUE. ONE unit, only
+	# <Foundation/Foundation.h>, and NO transport anywhere: what is asserted is the plug-in point (the
+	# base's documented defaults, the registration order, the request-property table's identity rule) and
+	# the cached answer's value contract. The probe DEFINES its own NSURLProtocol subclass, which is the
+	# only way to exercise override points that exist to be overridden.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_urlprotocol.m -o .build/probe-foundation_urlprotocol.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlprotocol.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlprotocol"
 	# curl_smoke: W7 slice 2b's acceptance - LIBCURL ON THE GUEST. NOT a Foundation probe: this is a
 	# third-party library's landing, so the program that judges it has no Foundation in it (the
 	# kernel_pipe_dup2 reasoning). It compiles against the VENDORED libcurl out of .build/curl-prefix

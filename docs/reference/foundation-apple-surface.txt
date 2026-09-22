@@ -28,11 +28,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  130   open   66   struck   77
-#   protocol   shipped   14   open   17   struck   14
+#   class      shipped  132   open   64   struck   77
+#   protocol   shipped   15   open   16   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped   87   open   56   struck   17
-#   case       shipped  478   open  656   struck  168
+#   enum       shipped   89   open   54   struck   17
+#   case       shipped  484   open  650   struck  168
 #   func       shipped   71   open   64   struck   54
 #   var        shipped  135   open  426   struck  353
 #   typealias  shipped   29   open   40   struck    7
@@ -923,12 +923,12 @@ case	shipped	NSURLBookmarkResolutionWithSecurityScope	NSURL	Fundamentals / URLs 
 case	shipped	NSURLBookmarkResolutionWithoutImplicitStartAccessing	NSURL	Fundamentals / URLs / Working with Bookmark Data / Constants	-	objc
 case	shipped	NSURLBookmarkResolutionWithoutMounting	NSURL	Fundamentals / URLs / Working with Bookmark Data / Constants	-	objc
 case	shipped	NSURLBookmarkResolutionWithoutUI	NSURL	Fundamentals / URLs / Working with Bookmark Data / Constants	-	objc
-case	open	NSURLCacheStorageAllowed	NSCachedURLResponse	Networking / Cache behavior / Setting cache storage policies / Policies	-	objc
-case	open	NSURLCacheStorageAllowed	NSURLCache	Networking / Cache behavior / Cache storage policies / Policies	-	objc
-case	open	NSURLCacheStorageAllowedInMemoryOnly	NSCachedURLResponse	Networking / Cache behavior / Setting cache storage policies / Policies	-	objc
-case	open	NSURLCacheStorageAllowedInMemoryOnly	NSURLCache	Networking / Cache behavior / Cache storage policies / Policies	-	objc
-case	open	NSURLCacheStorageNotAllowed	NSCachedURLResponse	Networking / Cache behavior / Setting cache storage policies / Policies	-	objc
-case	open	NSURLCacheStorageNotAllowed	NSURLCache	Networking / Cache behavior / Cache storage policies / Policies	-	objc
+case	shipped	NSURLCacheStorageAllowed	NSCachedURLResponse	Networking / Cache behavior / Setting cache storage policies / Policies	-	objc
+case	shipped	NSURLCacheStorageAllowed	NSURLCache	Networking / Cache behavior / Cache storage policies / Policies	-	objc
+case	shipped	NSURLCacheStorageAllowedInMemoryOnly	NSCachedURLResponse	Networking / Cache behavior / Setting cache storage policies / Policies	-	objc
+case	shipped	NSURLCacheStorageAllowedInMemoryOnly	NSURLCache	Networking / Cache behavior / Cache storage policies / Policies	-	objc
+case	shipped	NSURLCacheStorageNotAllowed	NSCachedURLResponse	Networking / Cache behavior / Setting cache storage policies / Policies	-	objc
+case	shipped	NSURLCacheStorageNotAllowed	NSURLCache	Networking / Cache behavior / Cache storage policies / Policies	-	objc
 case	open	NSURLCredentialPersistenceForSession	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
 case	open	NSURLCredentialPersistenceNone	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
 case	open	NSURLCredentialPersistencePermanent	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
@@ -1356,7 +1356,7 @@ class	open	NSBundle		App Support / Bundle Resources	-	objc
 class	struck	NSBundleResourceRequest		App Support / On-Demand Resources	deprecated	objc
 class	shipped	NSByteCountFormatter		Fundamentals / Data sizes	-	objc
 class	shipped	NSCache		Fundamentals / Purgeable Collections	-	objc
-class	open	NSCachedURLResponse		Networking / Cache behavior	-	objc
+class	shipped	NSCachedURLResponse		Networking / Cache behavior	-	objc
 class	shipped	NSCalendar		Fundamentals / Calendrical Calculations	-	objc
 class	struck	NSCalendarDate		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSCharacterSet		Fundamentals / Characters	-	objc
@@ -1544,7 +1544,7 @@ class	open	NSURLCredentialStorage		Networking / Authentication and credentials	-
 class	struck	NSURLDownload		Networking / Legacy / URL Download	deprecated	objc
 class	struck	NSURLHandle		Networking / Legacy / URL Handle	deprecated	objc
 class	open	NSURLProtectionSpace		Networking / Authentication and credentials	-	objc
-class	open	NSURLProtocol		Networking / Essentials / Creating a session / Supporting custom protocols	-	objc
+class	shipped	NSURLProtocol		Networking / Essentials / Creating a session / Supporting custom protocols	-	objc
 class	shipped	NSURLQueryItem		Fundamentals / URLs	-	objc
 class	shipped	NSURLRequest		Networking / Requests and responses	-	objc
 class	shipped	NSURLResponse		Networking / Requests and responses	-	objc
@@ -1740,8 +1740,8 @@ enum	open	NSTextCheckingType	NSTextCheckingResult	Fundamentals / Pattern Matchin
 enum	shipped	NSTimeZoneNameStyle	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
 enum	shipped	NSURLBookmarkCreationOptions	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
 enum	shipped	NSURLBookmarkResolutionOptions	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
-enum	open	NSURLCacheStoragePolicy	NSCachedURLResponse	Networking / Cache behavior / Setting cache storage policies	-	objc
-enum	open	NSURLCacheStoragePolicy	NSURLCache	Networking / Cache behavior / Cache storage policies	-	objc
+enum	shipped	NSURLCacheStoragePolicy	NSCachedURLResponse	Networking / Cache behavior / Setting cache storage policies	-	objc
+enum	shipped	NSURLCacheStoragePolicy	NSURLCache	Networking / Cache behavior / Cache storage policies	-	objc
 enum	open	NSURLCredentialPersistence	NSURLCredential	Networking / Authentication and credentials / Creating a credential	-	swift-page
 enum	open	NSURLErrorNetworkUnavailableReason		Networking / Errors / Keys	-	objc
 enum	struck	NSURLHandleStatus	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	swift-page
@@ -2247,7 +2247,7 @@ protocol	struck	NSURLConnectionDelegate		Networking / Legacy / URL Connection	de
 protocol	struck	NSURLConnectionDownloadDelegate		Networking / Legacy / URL Connection	deprecated	objc
 protocol	struck	NSURLDownloadDelegate		Networking / Legacy / URL Download	deprecated	objc
 protocol	struck	NSURLHandleClient		Networking / Legacy / URL Handle	deprecated	objc
-protocol	open	NSURLProtocolClient		Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes	-	objc
+protocol	shipped	NSURLProtocolClient		Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes	-	objc
 protocol	open	NSURLSessionDataDelegate		Networking / Essentials / Adding data tasks to a session	-	objc
 protocol	open	NSURLSessionDelegate		Networking / Essentials / Working with a delegate	-	objc
 protocol	open	NSURLSessionDownloadDelegate		Networking / Essentials / Adding download tasks to a session	-	objc
