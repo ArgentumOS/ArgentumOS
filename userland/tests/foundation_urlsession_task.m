@@ -82,6 +82,8 @@ static int fn_write_fixture(void)
 	id _lastSession;
 	id _lastTask;
 	id _callbackQueue;
+	NSInteger _disposition;
+	int _responseAsks;
 }
 - (NSData *)dataBytes;
 - (int)dataCalls;
@@ -90,6 +92,8 @@ static int fn_write_fixture(void)
 - (id)lastSession;
 - (id)lastTask;
 - (id)callbackQueue;
+- (void)setDisposition:(NSInteger)disposition;
+- (int)responseAsks;
 @end
 
 @implementation FnSessionDelegate
@@ -101,6 +105,18 @@ static int fn_write_fixture(void)
 		_dataBytes = [[NSMutableData alloc] init];
 	}
 	return self;
+}
+
+/* THE DECISION DOOR: answers with what the probe configured - Allow (zero) unless told otherwise, so every
+ * other check in this file keeps flowing. */
+- (void)URLSession:(NSURLSession *)session
+	 dataTask:(NSURLSessionDataTask *)dataTask
+didReceiveResponse:(NSURLResponse *)response
+ completionHandler:(void (^)(NSURLSessionResponseDisposition))completionHandler
+{
+	_responseAsks++;
+	completionHandler((NSURLSessionResponseDisposition)_disposition);
+	(void)response;
 }
 
 - (void)URLSession:(NSURLSession *)session
@@ -132,6 +148,8 @@ didCompleteWithError:(NSError *)error
 - (id)lastSession { return _lastSession; }
 - (id)lastTask { return _lastTask; }
 - (id)callbackQueue { return _callbackQueue; }
+- (void)setDisposition:(NSInteger)disposition { _disposition = disposition; }
+- (int)responseAsks { return _responseAsks; }
 
 @end
 
@@ -381,6 +399,49 @@ int main(void)
 			      memcmp([written bytes], fixture_bytes, strlen(fixture_bytes)) == 0,
 			      @"the location holds the body the transfer carried");
 		}
+	}
+
+	{
+		FnSessionDelegate *delegate = [[FnSessionDelegate alloc] init];
+		NSURLSession *session = [NSURLSession sessionWithConfiguration:
+						[NSURLSessionConfiguration defaultSessionConfiguration]
+								      delegate:delegate
+								 delegateQueue:nil];
+		NSURLSessionDataTask *task;
+		int waited = 0;
+
+		[delegate setDisposition:NSURLSessionResponseCancel];
+		[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+		task = [session dataTaskWithRequest:[NSURLRequest requestWithURL:fn_file_url(@FIXTURE_PATH)]];
+		[task resume];
+		while ([delegate endings] == 0 && waited < 100) { usleep(100000); waited++; }
+
+		/* THE ASSERTION THAT MATTERS IS dataCalls == 0: a cancelled response must deliver NO body, and a
+		 * session that asked and then let the bytes through anyway would still report an ending - so
+		 * counting endings alone would pass either way. */
+		check("disposition-cancel-withholds-the-body",
+		      [delegate responseAsks] == 1 && [delegate endings] == 1 && [delegate dataCalls] == 0,
+		      @"a CANCELLED response delivers no body at all - the wait is what holds it");
+	}
+	{
+		FnSessionDelegate *delegate = [[FnSessionDelegate alloc] init];
+		NSURLSession *session = [NSURLSession sessionWithConfiguration:
+						[NSURLSessionConfiguration defaultSessionConfiguration]
+								      delegate:delegate
+								 delegateQueue:nil];
+		NSURLSessionDataTask *task;
+		int waited = 0;
+
+		[delegate setDisposition:NSURLSessionResponseAllow];
+		[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+		task = [session dataTaskWithRequest:[NSURLRequest requestWithURL:fn_file_url(@FIXTURE_PATH)]];
+		[task resume];
+		while ([delegate endings] == 0 && waited < 100) { usleep(100000); waited++; }
+
+		check("disposition-allow-lets-the-body-through",
+		      [delegate responseAsks] == 1 && [delegate dataCalls] >= 1 &&
+		      [[delegate dataBytes] length] == strlen(fixture_bytes),
+		      @"an ALLOWED response delivers the body and then the ending");
 	}
 
 	printf("FOUNDATION-URLSESSION-TASK RESULT ok=%d fail=%d\n", okc, failc);

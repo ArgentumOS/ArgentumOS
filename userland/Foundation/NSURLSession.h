@@ -86,9 +86,9 @@ NS_ASSUME_NONNULL_BEGIN
  * REFUSED BY NAME, each because the TYPE or the ROW behind it is not shipped:
  *   * the AUTHENTICATION members (-URLSession:didReceiveChallenge:completionHandler: and its task/data
  *     forms) - NSURLAuthenticationChallenge is its own family and its own ledger rows;
- *   * the RESPONSE DECISION (-URLSession:dataTask:didReceiveResponse:completionHandler:) - it takes an
- *     NSURLSessionResponseDisposition, whose BecomeDownload/BecomeStream cases belong to the download and
- *     stream rows, so shipping it here would ship half an enum;
+ *     (THE RESPONSE DECISION WAS ON THIS LIST AND IS NOT ANY MORE - its enum was never blocked, an enum
+ *     case being a value rather than a class reference, and the door below holds the body until the delegate
+ *     answers. THAT WAS THE SIXTH TIME THIS SESSION that a refusal expired instead of being deleted.)
  *   * the UPLOAD/DOWNLOAD/STREAM members, whose classes are their own ledger rows.
  *
  * WHERE THESE ARRIVE: on the session's DELEGATE QUEUE when it has one, and on the TRANSFER'S OWN THREAD
@@ -135,6 +135,22 @@ didCompleteWithError:(nullable NSError *)error;
 - (void)URLSession:(NSURLSession *)session
 	 dataTask:(NSURLSessionDataTask *)dataTask
    didReceiveData:(NSData *)data;
+
+/* THE DECISION DOOR, AND IT IS WHERE THE BODY WAITS FOR THE ANSWER. The session holds the transfer at the
+ * head of the answer until the handler is called - Apple's contract, and the seam makes it literal, because
+ * the transfer's callbacks run SYNCHRONOUSLY on the bridge's own thread. So:
+ *
+ *   * A DELEGATE THAT DOES NOT IMPLEMENT THIS DOOR IS NOT ASKED AND IS NOT WAITED FOR: the body flows, and
+ *     Allow is the default because it is also zero;
+ *   * THE HANDLER MUST BE CALLED EXACTLY ONCE, which is Apple's rule and the reason the wait can be a wait;
+ *   * Cancel STOPS THE TRANSFER through the task's own -cancel;
+ *   * BecomeDownload AND BecomeStream ARE HONOURED AS Allow AND ARE NOT CONVERSIONS YET: turning a running
+ *     data task into one of the sibling kinds is work that belongs with the sibling receiving it, and the
+ *     header says so rather than pretending. */
+- (void)URLSession:(NSURLSession *)session
+	 dataTask:(NSURLSessionDataTask *)dataTask
+didReceiveResponse:(NSURLResponse *)response
+ completionHandler:(void (^)(NSURLSessionResponseDisposition disposition))completionHandler;
 
 @end
 

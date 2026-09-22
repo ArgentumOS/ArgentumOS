@@ -17,6 +17,7 @@
 #import <Foundation/NSString.h>
 #include <stdio.h>
 #import <Foundation/NSOperationQueue.h>
+#import <Foundation/NSLock.h>	/* NSCondition lives HERE, not in a header of its own */
 
 /* THE PER-TRANSFER CLIENT, AND IT IS WHY THE SESSION DOES NOT HAVE TO MAP A PROTOCOL BACK TO ITS TASK.
  * A protocol reports through its CLIENT, and the thing that knows which task a transfer belongs to is this
@@ -36,6 +37,7 @@
 {
 	NSURLSessionTask *_task;
 	NSURLSession *_session;
+	NSCondition *_decision;	/* the response decision's wait, owned by the transfer so it outlives a call */
 }
 - (instancetype)initWithTask:(NSURLSessionTask *)task session:(NSURLSession *)session;
 @end
@@ -65,8 +67,66 @@
     didReceiveResponse:(NSURLResponse *)response
      cacheStoragePolicy:(NSURLCacheStoragePolicy)policy
 {
+	id <NSURLSessionDataDelegate> delegate;
+	__block NSInteger disposition = -1;
+
 	(void)policy;
 	[_task fnProtocolDidReceiveResponse:response];
+
+	/* NO DOOR MEANS ALLOW, AND NO WAIT: a delegate that does not implement the decision must not make the
+	 * transfer wait for an answer nobody will send. */
+	delegate = (id <NSURLSessionDataDelegate>)[_session delegate];
+	if (![delegate respondsToSelector:
+			@selector(URLSession:dataTask:didReceiveResponse:completionHandler:)]) {
+		return;
+	}
+
+	/* THE BODY WAITS HERE. This method is called SYNCHRONOUSLY from the bridge's own thread, so blocking in
+	 * it is what holds the transfer at the head of the answer - and the decision arrives on the delegate
+	 * queue, which is a DIFFERENT thread always, because the transfer is never run on that queue. The
+	 * condition belongs to the transfer rather than to this call so that a handler called after the wait has
+	 * been released touches something that is still alive. */
+	if (_decision == nil) {
+		_decision = [[NSCondition alloc] init];
+	}
+	/* THE DELEGATE IS ASKED OUTSIDE THE LOCK, AND THAT IS NOT A STYLE CHOICE: with no delegate queue the
+	 * handler is called SYNCHRONOUSLY, on this very thread, and NSCondition's lock is NOT RECURSIVE - so
+	 * holding it across the call deadlocks the transfer against its own handler. Measured: six checks failed
+	 * and the probe took its full wait, before this was moved. The lock now guards only the WRITE and the
+	 * WAIT, never the call between them. */
+	[self retain];	/* the handler may outlive this call; in MRC a block does not retain what it captures */
+	[delegate URLSession:_session
+		    dataTask:(NSURLSessionDataTask *)_task
+	   didReceiveResponse:response
+	    completionHandler:^(NSURLSessionResponseDisposition chosen) {
+		[_decision lock];
+		disposition = (NSInteger)chosen;
+		[_decision broadcast];
+		[_decision unlock];
+		[self release];
+	}];
+	[_decision lock];
+	while (disposition < 0) {
+		[_decision wait];
+	}
+	[_decision unlock];
+
+	if (disposition == NSURLSessionResponseCancel) {
+		/* CANCELLING THE TASK IS ONLY HALF OF IT, AND THE PROBE SAID SO: the task's own -cancel sets its
+		 * state, and the PROTOCOL keeps delivering the body unless it is stopped too - so a cancelled
+		 * response arrived with its bytes. -stopLoading is the seam's door for exactly this, and the bridge
+		 * honours it at the next chunk.
+		 *
+		 * AND THE DELEGATE IS TOLD THE ENDING HERE, because the protocol will now report NOTHING (a stopped
+		 * transfer has no finish and no failure to report): the task is already Completed, so
+		 * -fnProtocolDidFinishWithError: would return early and the delegate would never hear that its task
+		 * ended. */
+		[_task cancel];
+		[protocol stopLoading];
+		[self fnTellTheTaskDelegate];
+	}
+	/* BecomeDownload and BecomeStream are HONOURED AS Allow: the conversion belongs with the sibling that
+	 * would receive it, and the header says so. */
 }
 
 - (void)URLProtocol:(NSURLProtocol *)protocol didLoadData:(NSData *)data
@@ -177,6 +237,7 @@
 - (void)dealloc
 {
 	[_task release];
+	[_decision release];
 	[super dealloc];
 }
 
