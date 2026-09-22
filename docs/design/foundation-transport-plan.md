@@ -285,10 +285,16 @@ plan:**
    performs (a `file://` fetch lands the bytes), so its new surface is the DESTINATION (a temporary file
    the delegate is handed a URL for) rather than a new transport.
 2. **THE RESPONSE-DISPOSITION DOOR** — `-URLSession:dataTask:didReceiveResponse:completionHandler:` —
-   **and it is BLOCKED ON (1) RATHER THAN ON WORK**: it takes an `NSURLSessionResponseDisposition`, whose
-   `BecomeDownload` and `BecomeStream` cases name the sibling kinds, so shipping it now would ship half an
-   enum with cases pointing at classes that do not exist. That is the whole reason it is refused in
-   `NSURLSession.h`, and it is why (1) comes first.
+   **AND THE SURVEY'S FIRST VERSION OF THIS PARAGRAPH WAS WRONG, corrected here rather than left standing:**
+   it claimed the door was blocked because `NSURLSessionResponseDisposition` names `BecomeDownload` and
+   `BecomeStream`. **AN ENUM CASE IS A VALUE, NOT A CLASS REFERENCE** — `NSURLSessionResponseBecomeStream = 3`
+   mentions no class and needs none — so the enum and the door can ship as they are, and the sibling kinds
+   are not a prerequisite for writing them.
+   **WHAT IS ACTUALLY MISSING IS THE BEHAVIOUR** behind the two `Become*` values: converting a running data
+   task into a download or a stream task is work, and it is the kind of work that belongs with the sibling
+   that receives the conversion. So the door's shape is: ship it, honour `Allow` and `Cancel` (which are the
+   two the session can act on today), and say plainly in the header that the two converting values are
+   DECLARED AND NOT YET HONOURED — the same treatment every other boundary in this unit got.
 3. **THE CREDENTIAL FAMILY** — `NSURLAuthenticationChallenge`, `NSURLCredential`, `NSURLCredentialStorage`,
    `NSURLProtectionSpace` — plus the authentication members of every delegate protocol, all refused by name
    today because they share one dependency: **the credential store's decision is the Keychain question**
