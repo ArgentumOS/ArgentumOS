@@ -211,6 +211,7 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSURLResponse.h \
 	$(FOUNDATION_SRC)/NSCachedURLResponse.h \
 	$(FOUNDATION_SRC)/NSURLProtocol.h \
+	$(FOUNDATION_SRC)/FNCURLURLProtocol.h \
 	$(FOUNDATION_SRC)/NSHTTPURLResponse.h \
 	$(FOUNDATION_SRC)/Foundation.h
 # -Iinclude: the plist CORE (include/plist.h) is shared with libconfig, which
@@ -243,6 +244,10 @@ FOUNDATION_CFLAGS = -fPIC -Iinclude -Wno-objc-missing-super-calls -Wno-incomplet
 # ("$(FOUNDATION_CFLAGS) already selects ARC") was simply wrong.
 FN_FOUNDATION_SRCS  = $(notdir $(wildcard $(FOUNDATION_SRC)/*.m))
 FN_FOUNDATION_NOARC = NSObject.m NSTinyString.m NSDateInterval.m
+# W7 slice 2c: the libcurl BRIDGE is the one file that includes <curl/curl.h>, so curl's prefix is on
+# ITS include path - the same per-file rule the ICU and X11 lists follow. The LINK needs the new
+# libraries, because the bridge lives IN the library (below).
+FN_FOUNDATION_CURL   = FNCURLURLProtocol.m
 # NSCharacterSet.m JOINED THIS TABLE IN §15.5: its four ICU-backed rule sets read the general
 # category and the decomposition type, so <unicode/uchar.h> is on its include path. The link needed
 # nothing new - libfoundation has needed libicui18n/libicuuc/libicudata since F13.6.
@@ -267,6 +272,7 @@ define FN_FOUNDATION_rule
 		$(if $(filter $(1),$(FN_FOUNDATION_NOARC)),-fno-objc-arc) \
 		$(if $(filter $(1),$(FN_FOUNDATION_ICU)),-I$(ICUPREFIX)/include) \
 		$(if $(filter $(1),$(FN_FOUNDATION_X11)),-I$(X11PREFIX)/include) \
+		$(if $(filter $(1),$(FN_FOUNDATION_CURL)),-I$(CURL_PREFIX)/include) \
 		-Iuserland $$< -o $$@
 endef
 $(foreach f,$(FN_FOUNDATION_SRCS),$(eval $(call FN_FOUNDATION_rule,$(f))))
@@ -364,9 +370,18 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP) $(FN_FOUN
 	# thread family — NSThread for the workers, NSCondition for the drain.
 	# F13.20: the progress tree. It includes <pthread.h> for its per-thread current stack, and
 	# nothing else new.
+	# W7 slice 2c: THE BRIDGE MAKES THE LIBRARY DEPEND ON LIBCURL, and libcurl on LibreSSL.
+	# The order is the dependency order (-lcurl -lssl -lcrypto), as curl_smoke records, and no RPATH
+	# is needed: the guest loader resolves libcurl.so.4 out of /System/Libraries, where slice 2b stages
+	# it. Precedent rather than a new kind of dependency: the library already needs libz (one codec)
+	# and ICU (F13.6). And the comment sits ABOVE the command, not inside it, because a line inside a
+	# backslash-continued recipe is part of that command: a '#' there does not comment out a makefile
+	# line, it comments out the rest of the SHELL command — measured here as a link that silently lost
+	# every flag after it.
 	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 \
 		$(FN_FOUNDATION_OBJS) \
-		.build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata -o $@
+		.build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata \
+		-L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto -o $@
 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
 userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(CG_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)
@@ -488,7 +503,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-I.build/sterlingc/guest -I.build/sterlingc/guest/include -Iuserland \
 		.build/sterlingc/guest/MyClass.m -o .build/sterlingc-k1-myclass.o
 	$(MUSL64_OBJC) .build/sterlingc-k1-main.o .build/sterlingc-k1-myclass.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/sterlingc_k1"
 	# foundation_core: F0 acceptance (docs/design/foundation-plan.md). Two units
 	# AND two ownership regimes: the subclass and the MRR lifetime exercises in
@@ -507,7 +522,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_core.m -o .build/probe-foundation_core.o
 	$(MUSL64_OBJC) .build/foundation-core-support.o .build/probe-foundation_core.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_core"
 	# foundation_string: F1 acceptance (docs/design/foundation-plan.md). Two
 	# units again, and the support unit is where the OTHER constant-string
@@ -520,7 +535,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_string.m -o .build/probe-foundation_string.o
 	$(MUSL64_OBJC) .build/foundation-string-support.o .build/probe-foundation_string.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_string"
 	# foundation_value: F2 acceptance. The support unit imports ONLY the
 	# umbrella header, so a complete <Foundation/Foundation.h> is part of the
@@ -532,7 +547,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_value.m -o .build/probe-foundation_value.o
 	$(MUSL64_OBJC) .build/foundation-value-support.o .build/probe-foundation_value.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_value"
 	# foundation_collection: F3 acceptance. The support unit builds a NESTED
 	# collection, which is the cheapest check that collections are ordinary
@@ -544,7 +559,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_collection.m -o .build/probe-foundation_collection.o
 	$(MUSL64_OBJC) .build/foundation-collection-support.o .build/probe-foundation_collection.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_collection"
 	# foundation_error: F4 acceptance. The support unit builds values from
 	# another unit; the main unit exercises @try/@catch, so the runtime's throw
@@ -556,7 +571,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_error.m -o .build/probe-foundation_error.o
 	$(MUSL64_OBJC) .build/foundation-error-support.o .build/probe-foundation_error.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_error"
 	# foundation_calendar: F7 acceptance. The same two-unit shape, and the support
 	# unit imports ONLY the umbrella — which is how the three new headers are
@@ -568,7 +583,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_calendar.m -o .build/probe-foundation_calendar.o
 	$(MUSL64_OBJC) .build/foundation-calendar-support.o .build/probe-foundation_calendar.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendar"
 	# foundation_url: F8 acceptance. Two units again, and the support unit imports
 	# ONLY the umbrella — so this is also the proof that NSURL reached
@@ -580,7 +595,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_url.m -o .build/probe-foundation_url.o
 	$(MUSL64_OBJC) .build/foundation-url-support.o .build/probe-foundation_url.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_url"
 	# foundation_kvc: F9 acceptance. Two units again — and here the split is the
 	# CLAIM under test: the support unit defines the OBJECTS and imports only the
@@ -593,7 +608,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_kvc.m -o .build/probe-foundation_kvc.o
 	$(MUSL64_OBJC) .build/foundation-kvc-support.o .build/probe-foundation_kvc.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_kvc"
 	# foundation_sort: F10 acceptance. Two units, and the split carries the claim again:
 	# the support unit builds the OBJECTS and a descriptor from its own side, so a sort
@@ -605,7 +620,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_sort.m -o .build/probe-foundation_sort.o
 	$(MUSL64_OBJC) .build/foundation-sort-support.o .build/probe-foundation_sort.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_sort"
 	# foundation_predicate: F11a acceptance. Two units again: the support unit builds a
 	# predicate (and counts a block's calls from its own side), so a predicate that crossed a
@@ -617,7 +632,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_predicate.m -o .build/probe-foundation_predicate.o
 	$(MUSL64_OBJC) .build/foundation-predicate-support.o .build/probe-foundation_predicate.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_predicate"
 	# foundation_codecs: F12 acceptance. Two units, and the SUPPORT unit builds the BYTES — so the
 	# codec is exercised on data it did not create.
@@ -628,7 +643,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_codecs.m -o .build/probe-foundation_codecs.o
 	$(MUSL64_OBJC) .build/foundation-codecs-support.o .build/probe-foundation_codecs.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_codecs"
 	# icu_smoke: F13's acceptance for the ICU bring-up (docs/design/foundation-plan.md §10). The
 	# SOURCE is C, because ICU is a C library and this exercises the DATA path rather than the
@@ -652,7 +667,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_dateformatter.m -o .build/probe-foundation_dateformatter.o
 	$(MUSL64_OBJC) .build/probe-foundation_dateformatter.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_dateformatter"
 	# foundation_set: F13.8 acceptance - the first family the boundary never justified. ONE unit (the
 	# claim is VALUE SEMANTICS, not a cross-TU boundary), only <Foundation/Foundation.h>, linking the
@@ -661,7 +676,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_set.m -o .build/probe-foundation_set.o
 	$(MUSL64_OBJC) .build/probe-foundation_set.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_set"
 	# foundation_nsvalue: F13.8c acceptance. ONE unit, only <Foundation/Foundation.h>. Named nsvalue
 	# and NOT value, because foundation_value is F2/F8's probe for NSNumber/NSData/NSDate.
@@ -669,7 +684,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_nsvalue.m -o .build/probe-foundation_nsvalue.o
 	$(MUSL64_OBJC) .build/probe-foundation_nsvalue.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_nsvalue"
 	# foundation_orderedset: F13.8e acceptance. ONE unit, only <Foundation/Foundation.h>. A separate
 	# probe from foundation_set because NSOrderedSet is NOT an NSSet subclass: order is its value.
@@ -677,7 +692,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_orderedset.m -o .build/probe-foundation_orderedset.o
 	$(MUSL64_OBJC) .build/probe-foundation_orderedset.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_orderedset"
 	# foundation_formatters: W11 acceptance. ONE unit, only <Foundation/Foundation.h> (which also
 	# proves the umbrella exports all six new formatter headers). The claim is DATA coming back
@@ -687,35 +702,35 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_formatters.m -o .build/probe-foundation_formatters.o
 	$(MUSL64_OBJC) .build/probe-foundation_formatters.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_formatters"
 	# foundation_kvo: F13.9 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_kvo.m -o .build/probe-foundation_kvo.o
 	$(MUSL64_OBJC) .build/probe-foundation_kvo.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_kvo"
 	# foundation_expression: F13.10 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_expression.m -o .build/probe-foundation_expression.o
 	$(MUSL64_OBJC) .build/probe-foundation_expression.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_expression"
 	# foundation_coder: F13.12 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_coder.m -o .build/probe-foundation_coder.o
 	$(MUSL64_OBJC) .build/probe-foundation_coder.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_coder"
 	# foundation_pointers: W13a acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_pointers.m -o .build/probe-foundation_pointers.o
 	$(MUSL64_OBJC) .build/probe-foundation_pointers.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_pointers"
 	# foundation_processinfo: F13.13 acceptance. ONE unit, only <Foundation/Foundation.h> plus
 	# <unistd.h> for the getpid cross-check.
@@ -723,7 +738,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_processinfo.m -o .build/probe-foundation_processinfo.o
 	$(MUSL64_OBJC) .build/probe-foundation_processinfo.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_processinfo"
 	# foundation_filemanager: F13.14 acceptance. ONE unit, only <Foundation/Foundation.h> plus
 	# <unistd.h> for the symlink(2) its link check makes.
@@ -731,28 +746,28 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_filemanager.m -o .build/probe-foundation_filemanager.o
 	$(MUSL64_OBJC) .build/probe-foundation_filemanager.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filemanager"
 	# foundation_urlcomponents: F13.15 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_urlcomponents.m -o .build/probe-foundation_urlcomponents.o
 	$(MUSL64_OBJC) .build/probe-foundation_urlcomponents.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlcomponents"
 	# foundation_decimalnumber: W3b acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_decimalnumber.m -o .build/probe-foundation_decimalnumber.o
 	$(MUSL64_OBJC) .build/probe-foundation_decimalnumber.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_decimalnumber"
 	# foundation_decimal: W3 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_decimal.m -o .build/probe-foundation_decimal.o
 	$(MUSL64_OBJC) .build/probe-foundation_decimal.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_decimal"
 	# foundation_notification: W4 acceptance. ONE unit, only <Foundation/Foundation.h> - which makes
 	# it the check that the umbrella carries the family too.
@@ -760,14 +775,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_notification.m -o .build/probe-foundation_notification.o
 	$(MUSL64_OBJC) .build/probe-foundation_notification.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_notification"
 	# foundation_regex: F13.16 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_regex.m -o .build/probe-foundation_regex.o
 	$(MUSL64_OBJC) .build/probe-foundation_regex.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_regex"
 	# foundation_thread: F13.17 acceptance. ONE unit, only <Foundation/Foundation.h> plus
 	# <sys/time.h> for the elapsed-time measurements.
@@ -775,28 +790,28 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_thread.m -o .build/probe-foundation_thread.o
 	$(MUSL64_OBJC) .build/probe-foundation_thread.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_thread"
 	# foundation_runloop: F13.18 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_runloop.m -o .build/probe-foundation_runloop.o
 	$(MUSL64_OBJC) .build/probe-foundation_runloop.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_runloop"
 	# foundation_operation: F13.19 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_operation.m -o .build/probe-foundation_operation.o
 	$(MUSL64_OBJC) .build/probe-foundation_operation.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_operation"
 	# foundation_progress: F13.20 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_progress.m -o .build/probe-foundation_progress.o
 	$(MUSL64_OBJC) .build/probe-foundation_progress.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_progress"
 	# foundation_numberformatter: F13.7c acceptance - the second un-refused DATA family, and the
 	# same shape as the date one: ONE unit (the claim is data), only <Foundation/Foundation.h>, and
@@ -805,7 +820,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_numberformatter.m -o .build/probe-foundation_numberformatter.o
 	$(MUSL64_OBJC) .build/probe-foundation_numberformatter.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_numberformatter"
 	# foundation_defaults: W5 acceptance. ONE unit, only <Foundation/Foundation.h> plus
 	# <pwd.h>/<unistd.h>/<stdlib.h> for the scratch root and the user name. IT IS LAUNCHED WITH
@@ -816,7 +831,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_defaults.m -o .build/probe-foundation_defaults.o
 	$(MUSL64_OBJC) .build/probe-foundation_defaults.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_defaults"
 	# foundation_port: W6b acceptance. ONE unit, only <Foundation/Foundation.h> plus the socket headers -
 	# a port IS a socket and the probe asks the KERNEL what it bound (getsockname/accept/fcntl), so this
@@ -825,7 +840,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_port.m -o .build/probe-foundation_port.o
 	$(MUSL64_OBJC) .build/probe-foundation_port.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_port"
 	# foundation_filehandle: W6c acceptance. ONE unit, only <Foundation/Foundation.h> plus the POSIX
 	# headers - a file handle wraps a DESCRIPTOR and the probe asks the kernel what became of it (fcntl(2)
@@ -834,7 +849,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_filehandle.m -o .build/probe-foundation_filehandle.o
 	$(MUSL64_OBJC) .build/probe-foundation_filehandle.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filehandle"
 	# foundation_task: W6d acceptance. ONE unit - and the child it launches is ITSELF (argv[0] is the
 	# staged path), so the child's exit code, output and death signal are the probe's own choices.
@@ -842,7 +857,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_task.m -o .build/probe-foundation_task.o
 	$(MUSL64_OBJC) .build/probe-foundation_task.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_task"
 	# foundation_stream: W6's streams half, the NSStream HEAD's acceptance. ONE unit, and it builds a
 	# SUBSTREAM - the head's value contract (ours, under D2) and its run-loop seam are what a substream
@@ -851,7 +866,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_stream.m -o .build/probe-foundation_stream.o
 	$(MUSL64_OBJC) .build/probe-foundation_stream.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_stream"
 	# foundation_urlrequest: W7 slice 1's acceptance - the REQUEST/RESPONSE VALUE TYPES. ONE unit, only
 	# <Foundation/Foundation.h>, and no socket anywhere: a request is a DESCRIPTION of an exchange and a
@@ -861,7 +876,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_urlrequest.m -o .build/probe-foundation_urlrequest.o
 	$(MUSL64_OBJC) .build/probe-foundation_urlrequest.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlrequest"
 	# foundation_urlprotocol: W7 slice 2a's acceptance - THE SEAM AND THE CACHED VALUE. ONE unit, only
 	# <Foundation/Foundation.h>, and NO transport anywhere: what is asserted is the plug-in point (the
@@ -872,8 +887,20 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_urlprotocol.m -o .build/probe-foundation_urlprotocol.o
 	$(MUSL64_OBJC) .build/probe-foundation_urlprotocol.o \
-		-L$(FNXLIB) -lfoundation \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlprotocol"
+	# foundation_urlprotocol_curl: W7 slice 2c's FIRST HALF - THE BRIDGE. ONE unit, only
+	# <Foundation/Foundation.h>, and no session anywhere: FNCURLURLProtocol is an ordinary
+	# NSURLProtocol subclass, so it can be started by hand with a client and watched, which is why
+	# the bridge is testable BEFORE the session that will normally drive it. It fetches a file:// URL
+	# (deterministic, needs no server) and a missing one (the failure path), and the library it links
+	# now carries libcurl itself.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_urlprotocol_curl.m -o .build/probe-foundation_urlprotocol_curl.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlprotocol_curl.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlprotocol_curl"
 	# curl_smoke: W7 slice 2b's acceptance - LIBCURL ON THE GUEST. NOT a Foundation probe: this is a
 	# third-party library's landing, so the program that judges it has no Foundation in it (the
 	# kernel_pipe_dup2 reasoning). It compiles against the VENDORED libcurl out of .build/curl-prefix

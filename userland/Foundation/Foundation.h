@@ -164,6 +164,7 @@
 #import <Foundation/NSURLResponse.h>
 #import <Foundation/NSCachedURLResponse.h>
 #import <Foundation/NSURLProtocol.h>
+#import <Foundation/FNCURLURLProtocol.h>
 #import <Foundation/NSHTTPURLResponse.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

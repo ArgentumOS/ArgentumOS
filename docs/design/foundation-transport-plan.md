@@ -149,6 +149,49 @@ check asserts the SPECIFIC fact that changes, so the flip is visible in the diff
    + configuration/delegates — the surface a caller actually uses, and the last thing W7's
    ledger rows need.
 
+   **ITS FIRST HALF HAS LANDED: THE BRIDGE (2026-09-22), `foundation_urlprotocol_curl` 6/6 probe checks
+   and 6/6 case checks.** `userland/Foundation/FNCURLURLProtocol.{h,m}`, the probe and its case, and the
+   build change below. NO SESSION IS INVOLVED, which is the point of splitting here: the bridge is an
+   ordinary `NSURLProtocol` subclass, so a probe can start one by hand with a client and watch it — and
+   the plan's own sentence already ordered it that way ("`FNCURLURLProtocol` … then `NSURLSession`").
+
+   **THE DECISIONS IT STATES OUT LOUD:**
+   * **It claims exactly the schemes curl speaks here** — `file`, `http`, `https`; `ftp` is NOT claimed,
+     so the seam answers "no protocol handles this" instead of a protocol failing halfway.
+   * **curl owns the transfer and the bridge reports it:** `didReceiveResponse:` once, `didLoadData:`
+     per chunk (streamed, not accumulated), then EXACTLY ONE of finished/failed. The probe asserts the
+     ORDER, because a probe that only checked "the bytes arrived" would pass for a bridge that reported
+     them wrongly.
+   * **A redirect is REPORTED, not followed** (`CURLOPT_FOLLOWLOCATION=0`): the seam has
+     `wasRedirectedToRequest:redirectResponse:` for precisely this, and whether to follow is the
+     caller's/loader's decision — which is where 2c's session will put "follow by default".
+   * **The transfer runs on its own thread** (`curl_easy_perform` blocks, and the seam's contract is that
+     `-startLoading` returns), so the callbacks arrive from that thread. **`-stopLoading` stops at the
+     next chunk** rather than interrupting a blocked read — the honest v1, since a cross-thread
+     `curl_easy` call is undefined behaviour — and the header says so instead of implying otherwise.
+   * **The cache advice is `NSURLCacheStorageNotAllowed`**, a decision rather than a default: there is no
+     cache in this library yet (`NSURLCache` is its own slice), so "allowed" would promise what nothing
+     keeps.
+
+   **AND IT MADE THE LIBRARY DEPEND ON LIBCURL, which is the build half of this slice and is stated as
+   a cost:** `libfoundation.so` now links `-lcurl -lssl -lcrypto` **in that order** (curl NEEDs LibreSSL's
+   entry points, the same fact `curl_smoke` records), with no RPATH — the guest loader resolves
+   `libcurl.so.4` out of `/System/Libraries`, where 2b stages it. Precedent rather than a new kind of
+   dependency: the library already needs `libz` and ICU. The transitive chain then has to be findable at
+   LINK time for every executable, which surfaced as `libssl.so.60, needed by libfoundation.so, not found
+   (try using -rpath or -rpath-link)` on all 41 probe links; the fix is the precise one the warning names
+   — `-Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib` beside each
+   `-L$(FNXLIB) -lfoundation`, rather than every executable growing three `-l` flags it never calls.
+
+   **TWO BUILD-LEVEL TRAPS WORTH CARRYING, both hit and both fixed here:**
+   * **A comment inside a backslash-continued recipe is not a makefile comment** — it becomes part of the
+     SHELL command, so the `#` commented out every flag after it and the link silently failed with
+     `Error 127`. Recipe comments go ABOVE the command.
+   * **`-lcurl` alone is not enough at link time** when the executable pulls libcurl: its undefined
+     `SSL_*`/`X509_*` references need `-lssl -lcrypto` AFTER it. The dependency order was already written
+     in this very plan's comment when it was hit; quoting it is not the same as applying it.
+
+
 ## 5. Risks to settle during 2b, named rather than discovered later
 
 - **curl's CMake build must configure with musl-clang without invoking autotools and
