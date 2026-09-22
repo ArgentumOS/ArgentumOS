@@ -28,10 +28,10 @@
 # Output: LIBRESSL-L2 <check> ok|FAIL <detail>, then RESULT/STATUS/DONE.
 
 DIR="/System/Temporary Files/libressl-l2"
-# THE FULL PATH, because curl is a CARVE-OUT binary (System/Shared/Tools) rather than a System/Tools
-# one — see its staging rule for why: a vendored upstream binary carries Linux path strings of its own,
-# and the FSH lint gates System/Tools and only reports carve-out trees.
-CURL="/System/Shared/Tools/curl"
+# THE FULL PATH, because System/Tools is not on a bare PATH here. curl IS a System/Tools binary: its
+# Linux paths were PATCHED to ours (third_party/curl-fsh.patch) rather than excused, so it passes the FSH
+# lint gate on its merits.
+CURL="/System/Tools/curl"
 STORE="/System/Configuration/SSL"
 PORT=46466
 okc=0

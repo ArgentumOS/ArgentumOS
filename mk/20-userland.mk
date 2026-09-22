@@ -1185,16 +1185,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# THE CLI TOO (BUILD_CURL_EXE=ON): the L2 trust-store acceptance is a shell script driving an
 	# https fetch, and a shell cannot call a library.
 	#
-	# AND IT GOES IN Shared/Tools, NOT System/Tools, WHICH IS THE FSH LINT'S OWN RULE RATHER THAN A
-	# PREFERENCE. tools/fshlint.py gates System/Tools for legacy Linux paths and REPORTS carve-out trees
-	# (System/Shared among them) as info instead — "so third-party carve-outs stay visible". A vendored
-	# upstream binary carries its OWN strings (`/dev/null`, `/etc/hosts`), which are not this tree's
-	# references and cannot be removed by porting: staging curl in the gated tree fails the gate with
-	# them (measured: 3 errors from System/Tools/curl), and staging it in a carve-out tree is what the
-	# doctrine says to do with third-party code. openssl(1) stays in System/Tools because LibreSSL's
-	# carries no such tokens.
-	@mkdir -p "$(ROOTFS64)/System/Shared/Tools"
-	@cp $(CURL_PREFIX)/bin/curl "$(ROOTFS64)/System/Shared/Tools/curl"
+	# AND IT GOES IN System/Tools, THE TREE THE FSH LINT GATES — because IT IS PATCHED TO THE FSH rather
+	# than excused from it (third_party/curl-fsh.patch, applied by tools/curl-build.sh the way
+	# musl-fsh.patch is applied to musl). curl's own null device said `/dev/null` and its help text named
+	# `/dev/null` and `/etc/hosts`; this system has neither, so the paths are patched to ours and the tool
+	# passes the gate on its merits (measured: 3 gate errors before the patch, 0 after).
+	@mkdir -p "$(ROOTFS64)/System/Tools"
+	@cp $(CURL_PREFIX)/bin/curl "$(ROOTFS64)/System/Tools/curl"
 	# --- LibreSSL (docs/design/libressl-plan.md, pin 4.3.2 via tools/fetch-libressl.sh): THE one
 	# system SSL library, and what libcurl binds for https at L2. Same staging rule as lcms2 and
 	# libcurl above — the glob carries the soname AND the real file, the bare dev link is skipped —

@@ -1,0 +1,55 @@
+diff --git a/docs/cmdline-opts/out-null.md b/docs/cmdline-opts/out-null.md
+index cca193e..9a74ffc 100644
+--- a/docs/cmdline-opts/out-null.md
++++ b/docs/cmdline-opts/out-null.md
+@@ -20,7 +20,7 @@ Example:
+ Discard all response output of a transfer silently. This is the more
+ efficient and portable version of
+ 
+-    curl https://host.example -o /dev/null
++    curl https://host.example -o /System/Devices/null
+ 
+ The transfer is done in full, all data is received and checked, but
+ the bytes are not written anywhere.
+diff --git a/docs/cmdline-opts/output.md b/docs/cmdline-opts/output.md
+index b2d196d..8e0654f 100644
+--- a/docs/cmdline-opts/output.md
++++ b/docs/cmdline-opts/output.md
+@@ -50,9 +50,9 @@ See also the --create-dirs option to create the local directories
+ dynamically. Specifying the output as '-' (a single dash) passes the output to
+ stdout.
+ 
+-To suppress response bodies, you can redirect output to /dev/null:
++To suppress response bodies, you can redirect output to /System/Devices/null:
+ 
+-    curl example.com -o /dev/null
++    curl example.com -o /System/Devices/null
+ 
+ Or for Windows:
+ 
+diff --git a/docs/cmdline-opts/resolve.md b/docs/cmdline-opts/resolve.md
+index 18733df..799d9c0 100644
+--- a/docs/cmdline-opts/resolve.md
++++ b/docs/cmdline-opts/resolve.md
+@@ -20,7 +20,7 @@ Example:
+ Provide a custom address for a specific host and port pair. Using this, you
+ can make the curl requests(s) use a specified address and prevent the
+ otherwise normally resolved address to be used. Consider it a sort of
+-/etc/hosts alternative provided on the command line. The port number should be
++hosts-file alternative provided on the command line. The port number should be
+ the number used for the specific protocol the host is used for. It means you
+ need several entries if you want to provide addresses for the same host but
+ different ports.
+diff --git a/src/tool_main.c b/src/tool_main.c
+index d3eff9c..be437b6 100644
+--- a/src/tool_main.c
++++ b/src/tool_main.c
+@@ -86,7 +86,7 @@ int _CRT_glob = 0;
+ static int main_checkfds(void)
+ {
+ #if defined(HAVE_FCNTL) && defined(HAVE_PIPE)
+-  const char * const devnull = "/dev/null";
++  const char * const devnull = "/System/Devices/null";
+   int fd;
+   while((fcntl(STDIN_FILENO, F_GETFD) == -1)) {
+     fd = curlx_open(devnull, O_RDONLY);

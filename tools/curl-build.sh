@@ -69,6 +69,18 @@ if [ ! -d "$R/.build/libressl-prefix/lib" ]; then
 	exit 1
 fi
 
+# THE PIN'S ONE LOCAL CHANGE, applied here rather than shipped in a forked tree — the house pattern
+# (musl-fsh.patch, toybox-m4.patch, libressl-fnx.patch). CURL CARRIES LINUX PATHS OF ITS OWN: its null
+# device is `/dev/null` (src/tool_main.c) and its embedded help text names `/dev/null` and `/etc/hosts`.
+# THIS SYSTEM HAS NO /dev AND NO /etc, so those are not cosmetic — the null device would not open — and
+# the answer is the one this tree uses for every ported upstream: PATCH THE SOURCE so the paths are the
+# FSH's. The null device becomes /System/Devices/null; the help text stops naming a Linux hosts file.
+# Being FSH-clean is also what lets `curl` live in System/Tools, the tree the FSH lint GATES, instead of
+# hiding in a reported carve-out.
+if ! grep -q '/System/Devices/null' "$SRC/src/tool_main.c"; then
+	patch -p1 -d "$SRC" < "$R/third_party/curl-fsh.patch"
+fi
+
 # The pin, ASSERTED rather than assumed: the tag is what makes the build reproducible, and a
 # checkout that has drifted is worth failing on (cmake would happily build whatever is there).
 want="curl-8_22_0"
