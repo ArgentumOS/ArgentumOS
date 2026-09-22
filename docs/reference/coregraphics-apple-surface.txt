@@ -36,12 +36,12 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  160   open  527   struck   48
+#   func       shipped  175   open  512   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped   10   open   46   struck    1
 #   case       shipped   70   open  360   struck   14
 #   var        shipped   18   open  108   struck    9
-#   typealias  shipped    6   open   92   struck    2
+#   typealias  shipped    7   open   91   struck    2
 #   struct     shipped    6   open   14   struck    0
 case	struck	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	struck	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
@@ -682,7 +682,7 @@ func	shipped	CGContextConvertSizeToDeviceSpace	-	Opaque Types / Converting Betwe
 func	shipped	CGContextConvertSizeToUserSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
 func	open	CGContextCopyPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextDrawConicGradient	-	Reference / Functions	-	objc
-func	open	CGContextDrawImage	-	Opaque Types / Drawing Images and PDF Content	-	objc
+func	shipped	CGContextDrawImage	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	open	CGContextDrawImageApplyingToneMapping	-	Reference / Functions	-	objc
 func	open	CGContextDrawLayerAtPoint	-	Opaque Types / Drawing Core Graphics Layers	-	objc
 func	open	CGContextDrawLayerInRect	-	Opaque Types / Drawing Core Graphics Layers	-	objc
@@ -984,7 +984,7 @@ func	open	CGGradientRetain	-	Opaque Types / Retaining and Releasing a Gradient	-
 func	open	CGImageCalculateContentAverageLightLevel	-	Opaque Types / Adopting high dynamic range (HDR)	-	objc
 func	open	CGImageCalculateContentHeadroom	-	Opaque Types / Adopting high dynamic range (HDR)	-	objc
 func	open	CGImageContainsImageSpecificToneMappingMetadata	-	Reference / Functions	-	objc
-func	open	CGImageCreate	-	Opaque Types / Creating images	-	objc
+func	shipped	CGImageCreate	-	Opaque Types / Creating images	-	objc
 func	open	CGImageCreateCopy	-	Opaque Types / Copying an image	-	objc
 func	open	CGImageCreateCopyWithCalculatedHDRStats	-	Opaque Types / Adopting high dynamic range (HDR)	-	objc
 func	open	CGImageCreateCopyWithColorSpace	-	Opaque Types / Copying an image	-	objc
@@ -996,28 +996,28 @@ func	open	CGImageCreateWithJPEGDataProvider	-	Opaque Types / Creating images	-	o
 func	open	CGImageCreateWithMask	-	Opaque Types / Creating images by modifying an image	-	objc
 func	open	CGImageCreateWithMaskingColors	-	Opaque Types / Creating image masks	-	objc
 func	open	CGImageCreateWithPNGDataProvider	-	Opaque Types / Creating images	-	objc
-func	open	CGImageGetAlphaInfo	-	Opaque Types / Examining an image	-	objc
-func	open	CGImageGetBitmapInfo	-	Opaque Types / Examining an image	-	objc
-func	open	CGImageGetBitsPerComponent	-	Opaque Types / Examining an image	-	objc
-func	open	CGImageGetBitsPerPixel	-	Opaque Types / Examining an image	-	objc
+func	shipped	CGImageGetAlphaInfo	-	Opaque Types / Examining an image	-	objc
+func	shipped	CGImageGetBitmapInfo	-	Opaque Types / Examining an image	-	objc
+func	shipped	CGImageGetBitsPerComponent	-	Opaque Types / Examining an image	-	objc
+func	shipped	CGImageGetBitsPerPixel	-	Opaque Types / Examining an image	-	objc
 func	open	CGImageGetByteOrderInfo	-	Reference / Functions	-	objc
-func	open	CGImageGetBytesPerRow	-	Opaque Types / Examining an image	-	objc
-func	open	CGImageGetColorSpace	-	Opaque Types / Examining an image	-	objc
+func	shipped	CGImageGetBytesPerRow	-	Opaque Types / Examining an image	-	objc
+func	shipped	CGImageGetColorSpace	-	Opaque Types / Examining an image	-	objc
 func	open	CGImageGetContentAverageLightLevel	-	Opaque Types / Adopting high dynamic range (HDR)	-	objc
 func	open	CGImageGetContentHeadroom	-	Opaque Types / Adopting high dynamic range (HDR)	-	objc
-func	open	CGImageGetDataProvider	-	Opaque Types / Examining an image	-	objc
+func	shipped	CGImageGetDataProvider	-	Opaque Types / Examining an image	-	objc
 func	open	CGImageGetDecode	-	Opaque Types / Examining an image	-	objc
-func	open	CGImageGetHeight	-	Opaque Types / Examining an image	-	objc
+func	shipped	CGImageGetHeight	-	Opaque Types / Examining an image	-	objc
 func	open	CGImageGetPixelFormatInfo	-	Reference / Functions	-	objc
-func	open	CGImageGetRenderingIntent	-	Opaque Types / Examining an image	-	objc
-func	open	CGImageGetShouldInterpolate	-	Opaque Types / Examining an image	-	objc
+func	shipped	CGImageGetRenderingIntent	-	Opaque Types / Examining an image	-	objc
+func	shipped	CGImageGetShouldInterpolate	-	Opaque Types / Examining an image	-	objc
 func	open	CGImageGetTypeID	-	Opaque Types / Working with Core Foundation types	-	objc
 func	open	CGImageGetUTType	-	Opaque Types / Examining an image	-	objc
-func	open	CGImageGetWidth	-	Opaque Types / Examining an image	-	objc
+func	shipped	CGImageGetWidth	-	Opaque Types / Examining an image	-	objc
 func	open	CGImageIsMask	-	Opaque Types / Examining an image	-	objc
 func	open	CGImageMaskCreate	-	Opaque Types / Creating image masks	-	objc
-func	open	CGImageRelease	-	Opaque Types / Retaining and releasing images	-	objc
-func	open	CGImageRetain	-	Opaque Types / Retaining and releasing images	-	objc
+func	shipped	CGImageRelease	-	Opaque Types / Retaining and releasing images	-	objc
+func	shipped	CGImageRetain	-	Opaque Types / Retaining and releasing images	-	objc
 func	open	CGImageShouldToneMap	-	Reference / Functions	-	objc
 func	struck	CGInhibitLocalEvents	-	Services / Deprecated Functions	deprecated	objc
 func	open	CGLayerCreateWithContext	-	Opaque Types / Creating Layer Objects	-	objc
@@ -1457,7 +1457,7 @@ typealias	open	CGFunctionReleaseInfoCallback	-	Opaque Types / Callbacks	-	objc
 typealias	open	CGGammaValue	-	Services / Data Types	-	objc
 typealias	open	CGGlyph	-	Opaque Types / Working with Glyphs	-	objc
 typealias	open	CGGradientRef	-	Opaque Types	-	objc
-typealias	open	CGImageRef	-	Opaque Types	-	objc
+typealias	shipped	CGImageRef	-	Opaque Types	-	objc
 typealias	open	CGKeyCode	-	Services / Data Types	-	objc
 typealias	open	CGLayerRef	-	Opaque Types	-	objc
 typealias	open	CGOpenGLDisplayMask	-	Services / Data Types	-	objc

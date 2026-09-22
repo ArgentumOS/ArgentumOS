@@ -42,6 +42,10 @@
 #include <CoreGraphics/CGColor.h>
 #include <CoreGraphics/CGColorSpace.h>
 #include <CoreGraphics/CGGeometry.h>
+/* AND CGImage.h, FOR THE IMAGE TYPE AND FOR `CGContextDrawImage`: Apple declares that function in
+ * the context's header, and a caller who includes only CGContext.h has to reach it — which is
+ * exactly why this include is here rather than the declaration being read somewhere else. */
+#include <CoreGraphics/CGImage.h>
 #include <CoreGraphics/CGPath.h>
 
 #ifdef __cplusplus
@@ -199,6 +203,11 @@ void CGContextAddArc(CGContextRef context, CGFloat x, CGFloat y, CGFloat radius,
 void CGContextAddEllipseInRect(CGContextRef context, CGRect rect);
 void CGContextAddRoundedRect(CGContextRef context, CGRect rect, CGFloat cornerWidth,
 			     CGFloat cornerHeight);
+
+/* THE IMAGE'S DRAWN FORM, DECLARED WHERE A CONTEXT'S OPERATIONS LIVE — and `CGContext.h` includes
+ * `CGImage.h` for the type, so a caller who includes this header alone has everything. The IMAGE
+ * itself is that header's; what is here is the verb. */
+void CGContextDrawImage(CGContextRef context, CGRect rect, CGImageRef image);
 
 /* The current point OF THE PATH, in user space: the pen position the last move or add left
  * behind. */

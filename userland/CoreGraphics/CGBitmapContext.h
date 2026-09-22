@@ -40,35 +40,11 @@
 extern "C" {
 #endif
 
-/* The alpha/byte-order half of `CGBitmapContextCreate`'s `bitmapInfo`. The four values
- * that matter to a 32-bit context are here; the rest of Apple's set (`…SkippedLast`,
- * the 16- and 64-bit orders, the float components) is not, and a caller who needs one
- * gets a compile error rather than a context that silently reinterprets the bytes. */
-typedef enum {
-	kCGImageAlphaNoneSkipFirst = 4,
-	kCGImageAlphaNoneSkipLast = 5,
-	kCGImageAlphaPremultipliedFirst = 2,
-	kCGImageAlphaPremultipliedLast = 1
-} CGImageAlphaInfo;
-
-/* THE BYTE ORDER LIVES IN THE `CGImageByteOrderInfo` FAMILY, NOT THE
- * `kCGBitmapByteOrder*` ONE, AND THAT IS THE LEDGER'S DOING: Apple's index carries all
- * four `kCGBitmapByteOrder*` value cases as DEPRECATED, and this tree's standing policy
- * is that a deprecated name is neither shipped nor owed — the sweep flags it as a policy
- * finding and `--strict` fails on it. The live spelling is the same bits under the
- * modern name (`kCGImageByteOrder32Little` is 2 << 12, exactly as
- * `kCGBitmapByteOrder32Little` was), so nothing about the pixels changed; what changed
- * is which namespace this tree declares. The two masks are here because the
- * `bitmapInfo` word is a packed pair and masking it with a named constant beats masking
- * it with a literal. */
-typedef enum {
-	kCGImageByteOrderDefault = 0,
-	kCGImageByteOrder32Little = 2 << 12,
-	kCGImageByteOrder32Big = 4 << 12
-} CGImageByteOrderInfo;
-
-#define kCGBitmapAlphaInfoMask 0x1Fu
-#define kCGBitmapByteOrderInfoMask 0xF000u
+/* THE ALPHA AND BYTE-ORDER VOCABULARY MOVED TO `CGImage.h`, WHERE APPLE HAS IT: it is one
+ * vocabulary for images and contexts alike, and keeping it here made these two headers CIRCULAR,
+ * because this one needs `CGContext.h` and that one needs `CGImage.h` for the type it draws. The
+ * reasoning behind the byte-order spelling travelled with the types. */
+#include <CoreGraphics/CGImage.h>
 
 CGContextRef CGBitmapContextCreate(void *data, size_t width, size_t height,
 				   size_t bitsPerComponent, size_t bytesPerRow,

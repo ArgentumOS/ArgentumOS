@@ -1855,3 +1855,152 @@ void CGContextSetStrokeColorWithColor(CGContextRef c, CGColorRef color)
 	c->state.stroke_rgba[2] = rgba[2];
 	c->state.stroke_rgba[3] = rgba[3];
 }
+
+/* THE TWO SEAMS AN IMAGE DRAWN INTO A CONTEXT NEEDS, INCLUDED HERE RATHER THAN AT THE TOP OF THE
+ * FILE because the function below is their only user: the drawability question, asked where it was
+ * ANSWERED (`CGImageCreate` refuses a chart this library cannot draw, so asking it again here would
+ * be a second spelling of one rule), and the provider's bytes. */
+#include <CoreGraphics/CGDataProvider_internal.h>
+#include <CoreGraphics/CGImage_internal.h>
+
+/* ---------------------------------------------------------------------------------------
+ * DRAWING AN IMAGE, AND THE TWO THINGS ABOUT IT THAT ARE SEMANTICS RATHER THAN CODE.
+ *
+ * THE IMAGE'S FIRST ROW LANDS AT THE TOP OF THE RECT. Apple's contract puts the image's origin at
+ * the rect's origin — and because an image's row 0 is its TOP row while this library's user space
+ * has y increasing upward, that is a flip relative to user coordinates. It is what callers expect,
+ * and the probe pins it with an image whose top and bottom rows differ.
+ *
+ * AND IT IS COMPOSITED SOURCE-OVER, PREMULTIPLIED, WITH THE CONTEXT'S ALPHA. That is what the
+ * pinned format IS, so nothing is unpremultiplied anywhere. A NON-NORMAL BLEND MODE IS REFUSED
+ * rather than ignored — the rule this library follows everywhere, since drawing an image with the
+ * blend mode quietly dropped is a wrong answer that looks like a right one.
+ *
+ * SCALING IS NEAREST-NEIGHBOUR: the pinned format carries no filter state, and `shouldInterpolate`
+ * is RECORDED on the image rather than honoured, which is why the getter for it exists and why
+ * this comment says which of the two it is.
+ * ------------------------------------------------------------------------------------- */
+void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
+{
+	CGAffineTransform inverse;
+	const unsigned char *src;
+	CGPoint corner[4];
+	size_t size = 0;
+	size_t row_bytes;
+	size_t img_w, img_h;
+	double minx, maxx, miny, maxy;
+	double alpha;
+	int left, right, top, bottom;
+	int x, y, i;
+
+	if (c == NULL || image == NULL || c->data == NULL) {
+		return;
+	}
+	if (!cg_image_is_drawable(image)) {
+		fprintf(stderr, "CG-REFUSE: this image was not built in the format these contexts draw\n");
+		return;
+	}
+	if (c->state.blend != kCGBlendModeNormal) {
+		fprintf(stderr, "CG-REFUSE: CGContextDrawImage composites source-over and does not "
+				"apply a blend mode yet\n");
+		return;
+	}
+	if (rect.size.width <= 0.0 || rect.size.height <= 0.0) {
+		return;
+	}
+	src = (const unsigned char *)cg_dataprovider_bytes(CGImageGetDataProvider(image), &size);
+	if (src == NULL) {
+		return;
+	}
+	img_w = CGImageGetWidth(image);
+	img_h = CGImageGetHeight(image);
+	row_bytes = CGImageGetBytesPerRow(image);
+	/* THE RECT IS IN USER SPACE AND THE SURFACE IS IN DEVICE SPACE, so the device bounding box is
+	 * where its four corners land — the same transformation the fills make through the CTM, and
+	 * the same way: by hand, because both numbers are wanted rather than a helper's result. */
+	corner[0] = CGPointMake(rect.origin.x, rect.origin.y);
+	corner[1] = CGPointMake(rect.origin.x + rect.size.width, rect.origin.y);
+	corner[2] = CGPointMake(rect.origin.x, rect.origin.y + rect.size.height);
+	corner[3] = CGPointMake(rect.origin.x + rect.size.width, rect.origin.y + rect.size.height);
+	for (i = 0; i < 4; i++) {
+		corner[i] = CGPointApplyAffineTransform(corner[i], c->state.ctm);
+	}
+	minx = maxx = corner[0].x;
+	miny = maxy = corner[0].y;
+	for (i = 1; i < 4; i++) {
+		if (corner[i].x < minx) {
+			minx = corner[i].x;
+		}
+		if (corner[i].x > maxx) {
+			maxx = corner[i].x;
+		}
+		if (corner[i].y < miny) {
+			miny = corner[i].y;
+		}
+		if (corner[i].y > maxy) {
+			maxy = corner[i].y;
+		}
+	}
+	left = (int)minx;
+	top = (int)miny;
+	right = (int)maxx;
+	bottom = (int)maxy;
+	if (left < 0) {
+		left = 0;
+	}
+	if (top < 0) {
+		top = 0;
+	}
+	if (right > c->width) {
+		right = c->width;
+	}
+	if (bottom > c->height) {
+		bottom = c->height;
+	}
+	/* THE INVERSE CTM TAKES A DEVICE PIXEL BACK TO USER SPACE, which is the direction a sampler
+	 * needs: the image is a function of user coordinates, and each device pixel asks what colour
+	 * belongs there. Computed once rather than per pixel. */
+	inverse = CGAffineTransformInvert(c->state.ctm);
+	alpha = c->state.alpha;
+	for (y = top; y < bottom; y++) {
+		for (x = left; x < right; x++) {
+			CGPoint p;
+			unsigned char *d;
+			const unsigned char *s;
+			double u, v;
+			double sa;
+			int sx, sy;
+
+			if (!pixman_region32_contains_point(&c->state.clip, x, y, NULL)) {
+				continue;
+			}
+			p = CGPointMake((double)x + 0.5, (double)y + 0.5);
+			p = CGPointApplyAffineTransform(p, inverse);
+			u = (p.x - rect.origin.x) / rect.size.width;
+			v = (p.y - rect.origin.y) / rect.size.height;
+			if (u < 0.0 || u >= 1.0 || v < 0.0 || v >= 1.0) {
+				continue;
+			}
+			/* THE FLIP LIVES IN THIS ONE LINE: v = 1 is the TOP of the rect, and row 0 of the
+			 * image is its top row. */
+			sx = (int)(u * (double)img_w);
+			sy = (int)((1.0 - v) * (double)img_h);
+			if (sx >= (int)img_w) {
+				sx = (int)img_w - 1;
+			}
+			if (sy >= (int)img_h) {
+				sy = (int)img_h - 1;
+			}
+			s = src + (size_t)sy * row_bytes + (size_t)sx * 4u;
+			d = c->data + (size_t)y * (size_t)c->stride + (size_t)x * 4u;
+			/* PREMULTIPLIED SOURCE-OVER: the format is premultiplied, so this is the simple
+			 * form of the blend — no division, and the destination alpha is updated by the same
+			 * rule as the channels. */
+			sa = ((double)s[3] / 255.0) * alpha;
+			d[0] = (unsigned char)((double)s[0] * sa + (double)d[0] * (1.0 - sa));
+			d[1] = (unsigned char)((double)s[1] * sa + (double)d[1] * (1.0 - sa));
+			d[2] = (unsigned char)((double)s[2] * sa + (double)d[2] * (1.0 - sa));
+			d[3] = (unsigned char)((double)d[3] * (1.0 - sa) + 255.0 * sa);
+		}
+	}
+}

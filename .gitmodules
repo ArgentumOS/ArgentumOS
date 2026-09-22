@@ -47,3 +47,6 @@
 [submodule "third_party/lcms2"]
 	path = third_party/lcms2
 	url = https://github.com/mm2/Little-CMS
+[submodule "third_party/curl"]
+	path = third_party/curl
+	url = https://github.com/curl/curl
