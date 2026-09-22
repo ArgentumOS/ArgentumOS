@@ -617,9 +617,16 @@ int main(void)
 				(unsigned char)head[0], (unsigned char)head[1]]);
 		}
 
-		check("unix-task-script-exec-is-blocked-by-the-kernel",
-		      probe_exec_errno(script, NULL) == ENOEXEC,
-		      @"execve of the shebang script did not answer ENOEXEC");
+		/* THE EXEC OF A SHEBANG SCRIPT, which the loader could not do while it read through the block
+		 * view: an INLINE file has no blocks, so bmap() answered 0. This check asserted ENOEXEC for
+		 * exactly one commit - the length of time it took to fix the loader. */
+		{
+			int direct_err = probe_exec_errno(script, NULL);
+
+			check("unix-task-script-execs-directly", direct_err == 0,
+			      [NSString stringWithFormat:@"execve of the shebang script answered errno=%d",
+				direct_err]);
+		}
 		{
 			int interp_err = probe_exec_errno(script, "/System/Tools/sh");
 
@@ -670,8 +677,8 @@ int main(void)
 		/* AND THE CLASS'S ERROR CONTRACT, which is what it can honestly promise while the kernel's
 		 * script path refuses the file: the completion handler is CALLED, and it is handed the failure
 		 * rather than silence. (127 is NSTask's "cannot execute".) */
-		check("unix-task-reports-the-exec-failure",
-		      [fixture fired] && [fixture error] != nil && [[fixture error] code] == 127,
+		check("unix-task-calls-the-handler",
+		      [fixture fired] && [fixture error] == nil,
 		      [NSString stringWithFormat:@"fired=%d code=%ld", [fixture fired],
 			(long)([fixture error] != nil ? [[fixture error] code] : -1)]);
 		(void)unlink(script);

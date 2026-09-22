@@ -351,26 +351,37 @@ loop:
 		return -EACCES;
 	}
 
-	if((block = bmap(i, 0, FOR_READING)) < 0) {
-		iput(i);
-		free_barg_pages(&barg);
-		kfree((addr_t)data);
-		return block;
-	}
-	if(!(buf = bread(i->dev, block, i->sb->s_blocksize))) {
-		iput(i);
-		free_barg_pages(&barg);
-		kfree((addr_t)data);
-		return -EIO;
-	}
-
 	/*
-	 * The contents of the buffer is copied and then freed immediately to
-	 * make sure that it won't conflict while zeroing the BSS fractional
-	 * page, in case that the same block is requested during the page fault.
+	 * FNX: THE FILE SYSTEM'S OWN READ, NOT THE BLOCK VIEW (§45-AC). An INLINE file - one small enough to
+	 * live inside its inode - has NO BLOCKS, so bmap() answers 0 and this read used to hand the loader the
+	 * superblock's bytes, which is why exec of a freshly-written short file answered ENOEXEC. read(2) was
+	 * always right because it comes through this same method; the loader now does too. (The block copy and
+	 * the immediate brelse() that stood here are gone with the block view: there is no block buffer to
+	 * keep out of the BSS fractional page's way.)
 	 */
-	memcpy_b(data, buf->data, i->sb->s_blocksize);
-	brelse(buf);
+	{
+		struct fd f;
+		int n;
+
+		if(!i->fsop || !i->fsop->read) {
+			iput(i);
+			free_barg_pages(&barg);
+			kfree((addr_t)data);
+			return -EIO;
+		}
+		memset_b(data, 0, PAGE_SIZE);
+		memset_b(&f, 0, sizeof(struct fd));
+		f.inode = i;
+		f.flags = O_RDONLY;
+		f.offset = 0;
+		n = i->fsop->read(i, &f, data, i->sb->s_blocksize);
+		if(n < 0) {
+			iput(i);
+			free_barg_pages(&barg);
+			kfree((addr_t)data);
+			return n;
+		}
+	}
 
 	errno = elf_load(i, &barg, sc, data);
 	if(errno == -ENOEXEC) {

@@ -60,9 +60,9 @@ CHECKS = (
     "unix-task-refuses-a-script-that-cannot-be-run",
     "unix-task-constructs",
     "unix-task-fixture-script-landed",
-    "unix-task-script-exec-is-blocked-by-the-kernel",
+    "unix-task-script-execs-directly",
     "unix-task-interpreter-execs-directly",
-    "unix-task-reports-the-exec-failure",
+    "unix-task-calls-the-handler",
 )
 
 

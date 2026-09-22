@@ -8968,3 +8968,27 @@ left standing is how the next session loses a day.
 
 **REPRODUCER:** the probe's own script, already in the suite. **NEXT: the loader's read path** - `fs/elf.c`
 and `execve`'s header/segment fetch - moved off `bread` and onto the inode's read method.
+
+### §45-AD — THE LOADER READS THROUGH THE FILE SYSTEM NOW, AND THE EXEC OF A SHEBANG SCRIPT WORKS (2026-09-21)
+
+**THE FIX, AT THREE SITES AND ONE CONVENTION:** `i->fsop->read` with a local `struct fd`, replacing the
+`bmap()` + `bread()` block view in `elf_read_bytes`, in `fs/elf.c`'s first-block helper, and in `execve`'s own
+header read. Measured: `STREAM-EXEC-PROBE before=0 after-sync=0` (it answered 8, ENOEXEC, at every attempt
+before the fix), the script's completion handler fires with NIL - which is what "the script ran" looks like
+from the class - and **`foundation_stream` is 43/43 with 6/6 case checks**.
+
+**AND A CORRECTION, BECAUSE THE PREVIOUS REPORT'S CLAIM WAS WRONG.** It said the exec was "non-deterministic -
+succeeded in one run and failed in another with the same kernel" and inferred a write-back/inode-coherence
+race for inline data. **THERE IS NO RACE.** The check was MINE and it still asserted `ENOEXEC` after a
+line-based edit that targeted text which no longer existed **and reported success anyway**; the same call
+succeeded in the sync probe two lines later, in the same process, in every run - which is exactly what a wrong
+assertion looks like from outside. The kernel was right; the check was not. A check whose job is to flip a
+limitation is the kind of edit that has to be READ BACK rather than trusted, and that is the lesson worth the
+line.
+
+**STILL OWED FROM §45-AC, NAMED:** the three checks the limitation replaced - the run, the ARGUMENT and the
+captured standard output - are not yet restored; the success path is verified (a script that finished with
+exit 0 and a nil error), and the captured-output check is the immediate follow-up.
+
+FILES: `fs/elf.c`, `kernel/syscalls/execve.c`, `userland/tests/foundation_stream.m`,
+`tests/cases/foundation_stream.py`.

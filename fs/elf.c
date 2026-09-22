@@ -307,24 +307,29 @@ static int elf_zero_tail64(Elf64_Phdr *ph, unsigned long long base)
  * buffer cannot conflict when the same block is faulted in later. */
 static int elf_read_first_block(struct inode *i, char **out)
 {
-	__blk_t block;
-	struct buffer *buf;
 	char *data;
+	struct fd f;
+	int n;
 
 	*out = NULL;
 	if(!(data = (void *)kmalloc(PAGE_SIZE))) {
 		return -ENOMEM;
 	}
-	if((block = bmap(i, 0, FOR_READING)) < 0) {
-		kfree((addr_t)data);
-		return block;
-	}
-	if(!(buf = bread(i->dev, block, i->sb->s_blocksize))) {
+	/* THE SAME DOOR AS elf_read_bytes (see the note there): the block view cannot see an inline file. */
+	if(!i->fsop || !i->fsop->read) {
 		kfree((addr_t)data);
 		return -EIO;
 	}
-	memcpy_b(data, buf->data, i->sb->s_blocksize);
-	brelse(buf);
+	memset_b(data, 0, PAGE_SIZE);
+	memset_b(&f, 0, sizeof(struct fd));
+	f.inode = i;
+	f.flags = O_RDONLY;
+	f.offset = 0;
+	n = i->fsop->read(i, &f, data, i->sb->s_blocksize);
+	if(n < 0) {
+		kfree((addr_t)data);
+		return n;
+	}
 	*out = data;
 	return 0;
 }
@@ -680,28 +685,22 @@ static int elf_check_file(const char *path, int must_be_dyn)
 /* read 'len' bytes at file offset 'off' into 'buf' (block-at-a-time) */
 static int elf_read_bytes(struct inode *i, __off_t off, void *buf, __size_t len)
 {
-	__blk_t block;
-	struct buffer *b;
-	int blksize = i->sb->s_blocksize;
-	__size_t got = 0, chunk;
-	__off_t boff;
+	struct fd f;
+	int n;
 
-	while(got < len) {
-		boff = (off + got) % blksize;
-		/* bmap() takes a BYTE offset (it converts internally), not a
-		 * block index - every other caller passes bytes. */
-		if((block = bmap(i, off + got, FOR_READING)) < 0) {
-			return -EIO;
-		}
-		if(!(b = bread(i->dev, block, blksize))) {
-			return -EIO;
-		}
-		chunk = MIN((__size_t)(blksize - boff), len - got);
-		memcpy_b((char *)buf + got, (char *)b->data + boff, chunk);
-		brelse(b);
-		got += chunk;
+	/* FNX: THROUGH THE FILE SYSTEM'S OWN READ. The block view - bmap() + bread() - cannot see an INLINE
+	 * file, and a file small enough to live inside its inode has NO BLOCKS AT ALL, so bmap() answers 0 and
+	 * this reader used to hand the loader the superblock's bytes. The file system's read method is what
+	 * read(2) uses, inline or streamed, and this is the reader the loader uses for every segment. */
+	if(!i->fsop || !i->fsop->read) {
+		return -EIO;
 	}
-	return 0;
+	memset_b(&f, 0, sizeof(struct fd));
+	f.inode = i;
+	f.flags = O_RDONLY;
+	f.offset = off;
+	n = i->fsop->read(i, &f, (char *)buf, len);
+	return n < 0 ? n : 0;
 }
 
 int elf_world_check(const char *path)
