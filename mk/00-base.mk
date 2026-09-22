@@ -302,7 +302,7 @@ CG_OBJS = $(addprefix $(FNXLIB)/coregraphics-,$(CG_SRCS:.c=.o) $(CG_MSRCS:.m=.o)
 # colour engine arrives with the ICC half of C4: lcms2's header is in a prefix of its own,
 # built by tools/lcms2-build.sh, and listed FIRST because the version is newer than anything a
 # system include path might offer.
-CG_CFLAGS = -I$(LCMS2_PREFIX)/include -I$(X11PREFIX)/include -I$(X11PREFIX)/include/pixman-1
+CG_CFLAGS = -I$(LCMS2_PREFIX)/include -I$(LIBJPEG_PREFIX)/include -I$(X11PREFIX)/include -I$(X11PREFIX)/include/pixman-1
 # NO RPATH FOR THE GUEST, deliberately: the loader resolves `liblcms2.so.2` out of
 # /System/Libraries, where mk/20-userland.mk stages it (musl's syslibdir is that directory), so
 # a build-tree path in the binary would be wrong on the guest rather than merely unnecessary.
@@ -315,7 +315,12 @@ CG_CFLAGS = -I$(LCMS2_PREFIX)/include -I$(X11PREFIX)/include -I$(X11PREFIX)/incl
 # `libpng16.so.16` is already staged into the guest for the X stack. So `CGImageCreateWithPNGDataProvider`
 # added a LINK FLAG and no new dependency, which is a measured finding rather than an assumption: the
 # library and its header were found in $(X11PREFIX) before the seam was written.
-CG_LDFLAGS = -L$(X11PREFIX)/lib -lpixman-1 -lpng16 -L$(LCMS2_PREFIX)/lib -llcms2 -L$(FNXLIB) -lfoundation
+# LIBJPEG IS A DIFFERENT CASE FROM LIBPNG ABOVE, and the difference is why both lines carry their own
+# comment: libpng rode the X stack, while libjpeg-turbo is VENDORED FOR THIS LIBRARY and built by
+# tools/libjpeg-build.sh into a prefix of its own — so it needs an include path (on the line above) and
+# this link line, and mk/20-userland.mk stages its SONAME into /System/Libraries for the guest.
+LIBJPEG_PREFIX = .build/libjpeg-prefix
+CG_LDFLAGS = -L$(X11PREFIX)/lib -lpixman-1 -lpng16 -L$(LCMS2_PREFIX)/lib -llcms2 -L$(LIBJPEG_PREFIX)/lib -ljpeg -L$(FNXLIB) -lfoundation
 
 define CG_rule
 $(FNXLIB)/coregraphics-$(1:.c=.o): $(CG_SRC)/$(1)

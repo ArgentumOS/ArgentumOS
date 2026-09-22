@@ -36,7 +36,7 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  176   open  511   struck   48
+#   func       shipped  177   open  510   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped   10   open   46   struck    1
 #   case       shipped   70   open  360   struck   14
@@ -992,7 +992,7 @@ func	open	CGImageCreateCopyWithContentAverageLightLevel	-	Opaque Types / Adoptin
 func	open	CGImageCreateCopyWithContentHeadroom	-	Reference / Functions	-	objc
 func	open	CGImageCreateWithContentHeadroom	-	Opaque Types / Creating images	-	objc
 func	open	CGImageCreateWithImageInRect	-	Opaque Types / Creating images by modifying an image	-	objc
-func	open	CGImageCreateWithJPEGDataProvider	-	Opaque Types / Creating images	-	objc
+func	shipped	CGImageCreateWithJPEGDataProvider	-	Opaque Types / Creating images	-	objc
 func	open	CGImageCreateWithMask	-	Opaque Types / Creating images by modifying an image	-	objc
 func	open	CGImageCreateWithMaskingColors	-	Opaque Types / Creating image masks	-	objc
 func	shipped	CGImageCreateWithPNGDataProvider	-	Opaque Types / Creating images	-	objc

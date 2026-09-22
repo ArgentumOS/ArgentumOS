@@ -103,6 +103,22 @@ CGImageRef CGImageCreateWithPNGDataProvider(CGDataProviderRef provider, const CG
 					    bool shouldInterpolate,
 					    CGColorRenderingIntent intent);
 
+/* A JPEG'S BYTES BECOME AN IMAGE. THE DECODER IS LIBJPEG-TURBO, WHICH THIS TREE VENDORS FOR EXACTLY
+ * THIS (`third_party/libjpeg-turbo`, tag 3.2.0, IJG + Modified BSD-3, built by tools/libjpeg-build.sh)
+ * — so unlike PNG, which rode the X stack, this one really is a new dependency and carries its own §B
+ * entry in the self-hosting manifest.
+ *
+ * WHAT COMES BACK is the same chart the PNG path produces: 8/32-bit premultiplied-first little-endian
+ * in device RGB, with EVERY PIXEL OPAQUE, because a JPEG has no alpha channel.
+ *
+ * A `decode` array is refused as it is everywhere, and A CORRUPT OR TRUNCATED FILE IS REFUSED RATHER
+ * THAN FATAL: libjpeg's own default error handler calls exit(3), which this seam replaces with its own
+ * and an escape through setjmp, so a caller of this library gets NULL like they would from any other
+ * refusal. The seam is CGImageJPEG.c. */
+CGImageRef CGImageCreateWithJPEGDataProvider(CGDataProviderRef provider, const CGFloat *decode,
+					     bool shouldInterpolate,
+					     CGColorRenderingIntent intent);
+
 CGImageRef CGImageRetain(CGImageRef image);
 void CGImageRelease(CGImageRef image);
 

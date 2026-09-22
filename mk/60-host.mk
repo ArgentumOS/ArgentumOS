@@ -215,7 +215,11 @@ HOST_CG_CFLAGS  ?= -std=gnu11 -fPIC -g -Wall -Wextra -Iuserland -I/usr/include/p
 # well past the 1.6.36 boundary where the current licence begins — reached by the SYSTEM path with no
 # `-L`, which is how these rules already take pixman. Its `png.h` lives at /usr/include/png.h, so no
 # include flag is needed either.
-HOST_CG_LDFLAGS ?= -lpixman-1 -lpng16 -lm -L$(CURDIR)/$(HOST_LCMS2_PREFIX)/lib -llcms2 \
+# LIBJPEG IS THE SAME ARRANGEMENT: the host has /usr/include/jpeglib.h and libjpeg.so.62, and the IJG
+# header's API is stable across implementations of it, so the host probes use the system library while
+# the GUEST library links the vendored 3.2.0 that tools/libjpeg-build.sh installs. Two builds would
+# be waste here — the reason lcms2 needed two was that this host had no lcms2 DEVELOPMENT HEADER.
+HOST_CG_LDFLAGS ?= -lpixman-1 -lpng16 -ljpeg -lm -L$(CURDIR)/$(HOST_LCMS2_PREFIX)/lib -llcms2 \
 		   -L$(HOST_LIBDIR) -lfoundation -L$(CURDIR)/$(HOST_OBJCPFX)/lib -lobjc $(HOST_ICU_LIBS) \
 		   -Wl,-rpath,$(CURDIR)/$(HOST_LCMS2_PREFIX)/lib
 HOST_CG_SRCS    := $(wildcard userland/CoreGraphics/*.c)
@@ -234,7 +238,7 @@ HOST_CG_OBJDIR  := $(HOST_OBJDIR)/coregraphics
 HOST_CG_MOBJS    = $(patsubst userland/CoreGraphics/%.m,$(HOST_CG_OBJDIR)/coregraphics-%.o,$(HOST_CG_MSRCS))
 # PIXMAN'S INCLUDE PATH NEEDS THE `pixman-1` SUBDIRECTORY NAMED: `pixman.h` includes
 # `pixman-version.h` from its own directory and is NOT self-contained.
-HOST_CG_PROBES  ?= coregraphics_context coregraphics_stroke coregraphics_stroke_context coregraphics_curve coregraphics_arc coregraphics_color coregraphics_color_foundation coregraphics_image coregraphics_image_png
+HOST_CG_PROBES  ?= coregraphics_context coregraphics_stroke coregraphics_stroke_context coregraphics_curve coregraphics_arc coregraphics_color coregraphics_color_foundation coregraphics_image coregraphics_image_png coregraphics_image_jpeg
 
 $(HOST_CG_OBJDIR)/coregraphics-%.o: userland/CoreGraphics/%.m
 	@mkdir -p $(HOST_CG_OBJDIR)
