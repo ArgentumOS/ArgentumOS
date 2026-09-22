@@ -283,7 +283,30 @@ plan:**
    `NSURLSessionStreamTask`, `NSURLSessionWebSocketTask`. Each is its own ledger row and none is started.
    **`DownloadTask` is the one to take first**: it is the only one whose transfer the bridge already
    performs (a `file://` fetch lands the bytes), so its new surface is the DESTINATION (a temporary file
-   the delegate is handed a URL for) rather than a new transport.
+   the delegate is handed a URL for) rather than a new transport.   (`DownloadTask` DID go first, and it is landed: `foundation_urlsession_task` 15/15.)
+
+   **AND `UploadTask` IS NEXT, WITH ITS TRANSPORT ALREADY PERFORMED - AND WITH A CONFIRMED DEFECT WAITING IN
+   IT.** The bridge sends a request body already, so an upload's new surface is the class and the
+   `fromData:` factory rather than a transport. BUT THE BRIDGE DROPS NON-UTF-8 BODIES IN SILENCE, measured
+   by reading it rather than by a test:
+
+       if ([request HTTPBody] != nil) {
+               body = [[NSString alloc] initWithData:[request HTTPBody]
+                                            encoding:NSUTF8StringEncoding];
+               if (body != nil) {                       <- A BINARY BODY MAKES THIS nil
+                       curl_easy_setopt(curl, CURLOPT_POSTFIELDS, [body UTF8String]);
+                       ...
+
+   A body that is not valid UTF-8 makes that initializer answer nil, and the body is then not corrupted but
+   OMITTED: no error, no bytes, and a server that can only report a request with nothing in it. **A body is
+   bytes, and only a caller that knows better should call it text.** The fix is two lines - pass
+   `[[request HTTPBody] bytes]` and its length - and curl does NOT copy `CURLOPT_POSTFIELDS`, so the NSData
+   must outlive the transfer, which it does because the request holds it.
+
+   **IT WAS NOT LANDED BECAUSE ITS VERIFICATION NEEDS A RECEIVER, and that is the same reason `UploadTask`
+   itself needs one:** a POST's body is only observable at a server, and the only local server this tree can
+   already run is `libressl_l2`'s `s_server`. So the pair lands together - the byte fix and the upload task -
+   with an acceptance that posts a binary body and reads it back at the far end.
 2. **THE RESPONSE-DISPOSITION DOOR** — `-URLSession:dataTask:didReceiveResponse:completionHandler:` —
    **AND THE SURVEY'S FIRST VERSION OF THIS PARAGRAPH WAS WRONG, corrected here rather than left standing:**
    it claimed the door was blocked because `NSURLSessionResponseDisposition` names `BecomeDownload` and
