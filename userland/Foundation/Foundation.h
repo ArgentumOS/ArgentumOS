@@ -160,5 +160,8 @@
 #import <Foundation/NSUserUnixTask.h>
 #import <Foundation/NSStream.h>
 #import <Foundation/NSTask.h>
+#import <Foundation/NSURLRequest.h>
+#import <Foundation/NSURLResponse.h>
+#import <Foundation/NSHTTPURLResponse.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

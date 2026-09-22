@@ -148,7 +148,10 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSRunLoop.m \
 	$(FOUNDATION_SRC)/NSOperation.m \
 	$(FOUNDATION_SRC)/NSGeometry.m \
-	$(FOUNDATION_SRC)/NSProgress.m
+	$(FOUNDATION_SRC)/NSProgress.m \
+	$(FOUNDATION_SRC)/NSURLRequest.m \
+	$(FOUNDATION_SRC)/NSURLResponse.m \
+	$(FOUNDATION_SRC)/NSHTTPURLResponse.m
 FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h \
 	$(FOUNDATION_SRC)/NSByteOrder.h \
 	$(FOUNDATION_SRC)/NSUUID.h \
@@ -202,6 +205,9 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSKeyValueCoding.h \
 	$(FOUNDATION_SRC)/NSSortDescriptor.h \
 	$(FOUNDATION_SRC)/NSPredicate.h \
+	$(FOUNDATION_SRC)/NSURLRequest.h \
+	$(FOUNDATION_SRC)/NSURLResponse.h \
+	$(FOUNDATION_SRC)/NSHTTPURLResponse.h \
 	$(FOUNDATION_SRC)/Foundation.h
 # -Iinclude: the plist CORE (include/plist.h) is shared with libconfig, which
 # consumes it from C — see the one-core-two-skins decision in the plan.
@@ -843,6 +849,16 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_stream.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_stream"
+	# foundation_urlrequest: W7 slice 1's acceptance - the REQUEST/RESPONSE VALUE TYPES. ONE unit, only
+	# <Foundation/Foundation.h>, and no socket anywhere: a request is a DESCRIPTION of an exchange and a
+	# response is its answer's metadata, so the probe is a value probe (an inventory, the mutability
+	# boundary, and RFC 9110's own status phrases).
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_urlrequest.m -o .build/probe-foundation_urlrequest.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlrequest.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlrequest"
 	# kernel_threaded_exec: THE KERNEL BUG'S REPRODUCER (§45 of the Foundation plan), not a Foundation
 	# probe - it is plain C with NO Foundation in it, because the point is that the library is absent from
 	# the failing program. Mode 1's children are /System/Tools/true; mode 2's are the Foundation probe.

@@ -3533,7 +3533,7 @@ vanishing.
 | **Networking / Essentials** | 20 open | `NSHTTPCookie`, `NSURLProtocol`, `NSURLProtocolClient`, `NSURLSession`, `NSURLSessionConfiguration`, `NSURLSessionDataDelegate`, `NSURLSessionDataTask`, `NSURLSessionDelegate`, `NSURLSessionDownloadDelegate`, `NSURLSessionDownloadTask`, `NSURLSessionStreamDelegate`, `NSURLSessionStreamTask`, `NSURLSessionTask`, `NSURLSessionTaskDelegate`, `NSURLSessionTaskMetrics`, `NSURLSessionTaskTransactionMetrics`, `NSURLSessionUploadTask`, `NSURLSessionWebSocketDelegate`, `NSURLSessionWebSocketMessage`, `NSURLSessionWebSocketTask` |
 | **Networking / Legacy** | ALL STRUCK: `NSURLAuthenticationChallengeSender`, `NSURLConnection`, `NSURLConnectionDataDelegate`, `NSURLConnectionDelegate`, `NSURLConnectionDownloadDelegate`, `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` | — |
 | **Networking / Local Network Services** | ALL STRUCK: `NSNetService`, `NSNetServiceDelegate` | — |
-| **Networking / Requests and responses** | 4 open | `NSHTTPURLResponse`, `NSMutableURLRequest`, `NSURLRequest`, `NSURLResponse` |
+| **Networking / Requests and responses** | all classes shipped | — |
 | **Networking / Service Discovery** | ALL STRUCK: `NSNetServiceBrowser`, `NSNetServiceBrowserDelegate` | — |
 | **Protocols** | 1 open | `NSPredicateValidating` |
 | **Reference / Classes** | 4 open | `NSKeyValueSharedObservers`, `NSKeyValueSharedObserversSnapshot`, `NSLocalizedNumberFormatRule`, `NSSimpleCString` |
@@ -9000,3 +9000,98 @@ itself wrote. So **`foundation_stream` is 45/45 probe checks and 6/6 case checks
 verified end to end: construct, exec, run, argue, capture. **The limitation check that stood in for them is
 gone, and nothing about §45-AC's prohibition had to be revisited: the loader was fixed, so no workaround was
 needed in the class or in the probe.**
+
+---
+
+## §46 — W7 PICKS UP, AND ITS FIRST SLICE IS THE HALF THAT NEEDS NO TRANSPORT (2026-09-21)
+
+**CHOSEN (user, 2026-09-21): W7, the URL loading system**, after W6 closed — its last item, `NSUserUnixTask`,
+verified end to end (45/45 probe checks, 6/6 case checks, §45-AD).
+
+**W7 IS THE LARGEST UNIT IN THE LEDGER, AND ITS OWN ROW NAMES THREE PREREQUISITES:** W6 (done), **a
+transport** (HTTP over the shipped socket layer), and **a credential store**, whose decision is the Keychain
+question (`keychain-plan.md`). So W7 is not one job, and the first slice is deliberately the part that needs
+NONE of those: **the request and the response as VALUES.** It is the same shape W6 took — the seam before its
+consumers — and it is bounded: no socket, no session, no loader, and therefore a probe that asserts a value
+contract rather than a conversation.
+
+**THE SURFACE IS MEASURED FROM THE LEDGER RATHER THAN INVENTED** (this unit's rule), and it is small:
+
+* **4 classes** — `NSURLRequest`, `NSMutableURLRequest`, `NSURLResponse`, `NSHTTPURLResponse`;
+* **3 enums** — `NSURLRequestCachePolicy`, `NSURLRequestNetworkServiceType`, `NSURLRequestAttribution` —
+  with **17 open cases** and one STRUCK case, `NSURLNetworkServiceTypeVoIP`;
+* `NSURLResponseUnknownLength`, which already shipped in `NSObjCRuntime.h` (F13.5), and is the value a
+  response answers when its length is not known.
+
+**WHAT LANDED.** `userland/Foundation/NSURLRequest.{h,m}` (the immutable value and its mutable subclass in
+one header, as Apple files them), `NSURLResponse.{h,m}`, `NSHTTPURLResponse.{h,m}`, the probe
+`userland/tests/foundation_urlrequest.m` and its case `tests/cases/foundation_urlrequest.py`. **Measured:
+`foundation_urlrequest` 19/19 probe checks and 6/6 case checks, fast tier unaffected.**
+
+**AND `NSURL.h`'S REFUSAL LIST HAD TO BE CORRECTED, WHICH IS THE POINT OF KEEPING ONE.** Its header refused
+"the LOADING system: NSURLSession, NSURLConnection, **NSURLRequest**, …" — and that was right when it was
+written and wrong the moment this slice landed. The line now refuses `NSURLProtocol` and says why the three
+value classes left it: **a request DESCRIBES an exchange and a response is its answer's metadata; the class
+that PERFORMS one is still refused.** A refusal list that is not revisited is a comment, not a boundary.
+
+**THE DECISIONS THE SLICE STATES OUT LOUD**, each pinned by a check rather than described:
+
+1. **THE ENUM VALUES ARE OURS (§11.6.1 D2), because Apple publishes the CASE NAMES and the case names
+   only.** `url-request-enum-values` pins every number, and two of them carry a reason:
+   `NSURLRequestReloadIgnoringCacheData` is the **ALIAS** Apple documents it as, so it shares a value with
+   `…LocalCacheData` instead of being a seventh case; and **value 1 is VACANT** because
+   `NSURLNetworkServiceTypeVoIP` sat there and is STRUCK (§11.5) — a struck name stays visible as a hole
+   rather than the cases around it being silently renumbered.
+2. **THE TWO CONVENIENCE DOORS ANSWER THE DEFAULTS, and the 60-second timeout is ours under D2** (Apple
+   documents "the default" and not the number). The HTTP defaults — GET, cookies handled, pipelining off,
+   cellular allowed, `Default` service type, `Developer` attribution — are pinned in one check.
+3. **THE TWO HEADER DOORS DIFFER, AND BOTH ARE ASSERTED.** `-setValue:forHTTPHeaderField:` REPLACES;
+   `-addValue:forHTTPHeaderField:` APPENDS with `", "`, which is RFC 9110 §5.2's list rule. Field names are
+   CASE-INSENSITIVE (§5.1) and the spelling the caller used is the spelling STORED.
+4. **A SNAPSHOT HANDED OUT CANNOT CHANGE UNDER ITS READER.** `_allHTTPHeaderFields` is ALWAYS an immutable
+   copy, never a live mutable dictionary, so the mutable class's mutations work on a temporary and store the
+   result back — `header-snapshot-is-stable` is that property, not a comment about it.
+5. **THE MUTABILITY BOUNDARY IS ONE CHECK AND ONE RULE:** a mutable request's `-copy` is an **immutable**
+   `NSURLRequest` (Cocoa's rule, and the reason a request handed to a transport cannot be changed under it),
+   while `-mutableCopy` is independent from the moment it is made.
+6. **`NSHTTPURLResponse` DOES ONE PIECE OF ARITHMETIC**, and it is the reason the class exists rather than
+   just its headers: the **inherited** MIME type, text-encoding name and expected length are DERIVED from
+   `Content-Type` (its media type, and its `charset` parameter — quoted values included) and
+   `Content-Length`. A response whose headers SAY reports; one that says nothing answers the unknown
+   sentinel, and `response-unknown-length` pins that it is the sentinel and **not zero**.
+7. **`+localizedStringForStatusCode:` IS RFC 9110 §15's OWN PHRASE REGISTRY** (with §15.5.17's 418, from RFC
+   2324). That is what makes it a table this project may keep: the phrases are published by the IETF, exactly
+   as RFC 3986 was for the component-wise resolution, and the probe pins **the document's rows**. A code
+   outside the registry answers **nil** — stated plainly rather than papered over with a generic string. The
+   name says "localized" and the text is the registry's ASCII: there is no translation table in this tree,
+   and the header says so instead of implying one.
+
+**REFUSED BY NAME, each because it needs something this library does not ship or is a different unit:** the
+transport (`NSURLSession`, `NSURLConnection`, `NSURLProtocol`, `-resume`, `-loadRequest:`) — the next slices;
+the **coder** doors (`-initWithCoder:`/`-encodeWithCoder:`), because a request's archived form is Apple's own
+keyed structure with unpublished keys, so implementing it would invent a new format wearing Apple's name; and
+the **deprecated certificate doors** `+allowsAnyHTTPSCertificateForHost:` /
+`+setAllowsAnyHTTPSCertificate:forHost:`, which §11.5 strikes. `url-request-api-inventory` asserts every owed
+selector EXISTS **and** every refused one is ABSENT, so the inventory cannot drift from the code.
+
+**AND THE LEDGER CAUGHT A REAL ERROR IN THIS SLICE, WHICH IS THE MECHANISM DOING ITS JOB.** The first build
+**failed** on the sweep with 28 `PRESENT BUT LISTED OPEN` rows — 9 of them because the network-service cases
+were declared `NSURLRequestNetworkServiceType…` where Apple spells them **`NSURLNetworkServiceType…`** (the
+type is `NSURLRequestNetworkServiceType`, the cases are not). The header was renamed, the build passed, and
+the episode is the argument for the check: **a name I wrote from memory was wrong, and the only reason it was
+caught before commit is that the ledger's rows are not mine.**
+
+**ACCOUNTING.** `tools/foundation-sweep.py --refresh` (the one network mode) moved **44 rows to `shipped`** –
+`case` 444 → 478, `class` 126 → 130, `enum` 81 → 87 – and `--check` is consistent; `--families --write`
+regenerated the plan's table (one row changed: *Networking / Requests and responses* is now "all classes
+shipped"). Fast tier: `foundation_urlrequest` 6/6 case checks, the library and every probe rebuilt clean
+against the new headers with no new warnings.
+
+**NEXT: W7 SLICE 2, AND IT OPENS ITS FIRST REAL DECISION.** The value half is done, so the next slice must
+choose between the **transport core** (`NSURLProtocol` + `NSURLProtocolClient`, then the `NSURLSession`/task
+stack over the shipped socket layer — the unit's stated prerequisite) and the **value-shaped remnants**
+(`NSHTTPCookie`, `NSURLCredential`/`NSURLProtectionSpace`). The transport is the unit's heart and the larger
+job; the credential store it implies is the **Keychain question**, which `keychain-plan.md` owns and which
+this plan has not answered. **So slice 2 is a decision before it is a unit, as W20's row once put it** — and
+the shape of the answer is which of the three prerequisites W7 takes next.
+

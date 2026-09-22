@@ -28,11 +28,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  126   open   70   struck   77
+#   class      shipped  130   open   66   struck   77
 #   protocol   shipped   14   open   17   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped   81   open   62   struck   17
-#   case       shipped  444   open  690   struck  168
+#   enum       shipped   87   open   56   struck   17
+#   case       shipped  478   open  656   struck  168
 #   func       shipped   71   open   64   struck   54
 #   var        shipped  135   open  426   struck  353
 #   typealias  shipped   29   open   40   struck    7
@@ -996,45 +996,45 @@ case	struck	NSURLHandleLoadFailed	NSURLHandle	Networking / Legacy / URL Handle /
 case	struck	NSURLHandleLoadInProgress	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
 case	struck	NSURLHandleLoadSucceeded	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
 case	struck	NSURLHandleNotLoaded	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
-case	open	NSURLNetworkServiceTypeAVStreaming	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLNetworkServiceTypeAVStreaming	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLNetworkServiceTypeBackground	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLNetworkServiceTypeBackground	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLNetworkServiceTypeCallSignaling	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLNetworkServiceTypeCallSignaling	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLNetworkServiceTypeDefault	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLNetworkServiceTypeDefault	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLNetworkServiceTypeResponsiveAV	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLNetworkServiceTypeResponsiveAV	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLNetworkServiceTypeResponsiveData	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLNetworkServiceTypeResponsiveData	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLNetworkServiceTypeVideo	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLNetworkServiceTypeVideo	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeAVStreaming	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeAVStreaming	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeBackground	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeBackground	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeCallSignaling	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeCallSignaling	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeDefault	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeDefault	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeResponsiveAV	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeResponsiveAV	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeResponsiveData	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeResponsiveData	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeVideo	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeVideo	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
 case	struck	NSURLNetworkServiceTypeVoIP	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	deprecated	swift-page
 case	struck	NSURLNetworkServiceTypeVoIP	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	deprecated	swift-page
-case	open	NSURLNetworkServiceTypeVoice	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLNetworkServiceTypeVoice	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeVoice	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
+case	shipped	NSURLNetworkServiceTypeVoice	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
 case	shipped	NSURLRelationshipContains	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items / URL Relationships	-	objc
 case	shipped	NSURLRelationshipOther	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items / URL Relationships	-	objc
 case	shipped	NSURLRelationshipSame	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items / URL Relationships	-	objc
-case	open	NSURLRequestAttributionDeveloper	NSMutableURLRequest	Networking / Requests and responses / Indicating the source of the request / Request sources	-	swift-page
-case	open	NSURLRequestAttributionDeveloper	NSURLRequest	Networking / Requests and responses / Indicating the source of the request / Request sources	-	swift-page
-case	open	NSURLRequestAttributionUser	NSMutableURLRequest	Networking / Requests and responses / Indicating the source of the request / Request sources	-	swift-page
-case	open	NSURLRequestAttributionUser	NSURLRequest	Networking / Requests and responses / Indicating the source of the request / Request sources	-	swift-page
-case	open	NSURLRequestReloadIgnoringCacheData	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
-case	open	NSURLRequestReloadIgnoringCacheData	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
-case	open	NSURLRequestReloadIgnoringLocalAndRemoteCacheData	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
-case	open	NSURLRequestReloadIgnoringLocalAndRemoteCacheData	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
-case	open	NSURLRequestReloadIgnoringLocalCacheData	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
-case	open	NSURLRequestReloadIgnoringLocalCacheData	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
-case	open	NSURLRequestReloadRevalidatingCacheData	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
-case	open	NSURLRequestReloadRevalidatingCacheData	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
-case	open	NSURLRequestReturnCacheDataDontLoad	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
-case	open	NSURLRequestReturnCacheDataDontLoad	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
-case	open	NSURLRequestReturnCacheDataElseLoad	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
-case	open	NSURLRequestReturnCacheDataElseLoad	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
-case	open	NSURLRequestUseProtocolCachePolicy	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
-case	open	NSURLRequestUseProtocolCachePolicy	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
+case	shipped	NSURLRequestAttributionDeveloper	NSMutableURLRequest	Networking / Requests and responses / Indicating the source of the request / Request sources	-	swift-page
+case	shipped	NSURLRequestAttributionDeveloper	NSURLRequest	Networking / Requests and responses / Indicating the source of the request / Request sources	-	swift-page
+case	shipped	NSURLRequestAttributionUser	NSMutableURLRequest	Networking / Requests and responses / Indicating the source of the request / Request sources	-	swift-page
+case	shipped	NSURLRequestAttributionUser	NSURLRequest	Networking / Requests and responses / Indicating the source of the request / Request sources	-	swift-page
+case	shipped	NSURLRequestReloadIgnoringCacheData	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
+case	shipped	NSURLRequestReloadIgnoringCacheData	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
+case	shipped	NSURLRequestReloadIgnoringLocalAndRemoteCacheData	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
+case	shipped	NSURLRequestReloadIgnoringLocalAndRemoteCacheData	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
+case	shipped	NSURLRequestReloadIgnoringLocalCacheData	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
+case	shipped	NSURLRequestReloadIgnoringLocalCacheData	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
+case	shipped	NSURLRequestReloadRevalidatingCacheData	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
+case	shipped	NSURLRequestReloadRevalidatingCacheData	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
+case	shipped	NSURLRequestReturnCacheDataDontLoad	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
+case	shipped	NSURLRequestReturnCacheDataDontLoad	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
+case	shipped	NSURLRequestReturnCacheDataElseLoad	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
+case	shipped	NSURLRequestReturnCacheDataElseLoad	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
+case	shipped	NSURLRequestUseProtocolCachePolicy	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
+case	shipped	NSURLRequestUseProtocolCachePolicy	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
 case	open	NSURLSessionAuthChallengeCancelAuthenticationChallenge	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
 case	open	NSURLSessionAuthChallengeCancelAuthenticationChallenge	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
 case	open	NSURLSessionAuthChallengePerformDefaultHandling	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
@@ -1412,7 +1412,7 @@ class	struck	NSGarbageCollector		Low-Level Utilities / Legacy / Legacy	deprecate
 class	struck	NSGetCommand		App Support / Script Commands	declined	objc
 class	open	NSHTTPCookie		Networking / Essentials / Creating a session / Setting cookie policies	-	objc
 class	open	NSHTTPCookieStorage		Networking / Cookies	-	objc
-class	open	NSHTTPURLResponse		Networking / Requests and responses	-	objc
+class	shipped	NSHTTPURLResponse		Networking / Requests and responses	-	objc
 class	shipped	NSHashTable		Fundamentals / Pointer Collections	-	objc
 class	struck	NSHost		Low-Level Utilities / Sockets	deprecated	objc
 class	shipped	NSISO8601DateFormatter		Fundamentals / Date Formatting	-	objc
@@ -1464,7 +1464,7 @@ class	shipped	NSMutableIndexSet		Fundamentals / Indexes	-	objc
 class	shipped	NSMutableOrderedSet		Fundamentals / Specialized Sets	-	objc
 class	shipped	NSMutableSet		Fundamentals / Basic Collections	-	objc
 class	shipped	NSMutableString		Fundamentals / Strings	-	objc
-class	open	NSMutableURLRequest		Networking / Requests and responses	-	objc
+class	shipped	NSMutableURLRequest		Networking / Requests and responses	-	objc
 class	struck	NSNameSpecifier		App Support / Object Specifiers	declined	objc
 class	struck	NSNetService		Networking / Local Network Services	deprecated	objc
 class	struck	NSNetServiceBrowser		Networking / Service Discovery	deprecated	objc
@@ -1546,8 +1546,8 @@ class	struck	NSURLHandle		Networking / Legacy / URL Handle	deprecated	objc
 class	open	NSURLProtectionSpace		Networking / Authentication and credentials	-	objc
 class	open	NSURLProtocol		Networking / Essentials / Creating a session / Supporting custom protocols	-	objc
 class	shipped	NSURLQueryItem		Fundamentals / URLs	-	objc
-class	open	NSURLRequest		Networking / Requests and responses	-	objc
-class	open	NSURLResponse		Networking / Requests and responses	-	objc
+class	shipped	NSURLRequest		Networking / Requests and responses	-	objc
+class	shipped	NSURLResponse		Networking / Requests and responses	-	objc
 class	open	NSURLSession		Networking / Essentials	-	objc
 class	open	NSURLSessionConfiguration		Networking / Essentials / Creating a session	-	objc
 class	open	NSURLSessionDataTask		Networking / Essentials / Adding data tasks to a session	-	objc
@@ -1746,12 +1746,12 @@ enum	open	NSURLCredentialPersistence	NSURLCredential	Networking / Authentication
 enum	open	NSURLErrorNetworkUnavailableReason		Networking / Errors / Keys	-	objc
 enum	struck	NSURLHandleStatus	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	swift-page
 enum	shipped	NSURLRelationship	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items	-	objc
-enum	open	NSURLRequestAttribution	NSMutableURLRequest	Networking / Requests and responses / Indicating the source of the request	-	swift-page
-enum	open	NSURLRequestAttribution	NSURLRequest	Networking / Requests and responses / Indicating the source of the request	-	swift-page
-enum	open	NSURLRequestCachePolicy	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy	-	swift-page
-enum	open	NSURLRequestCachePolicy	NSURLRequest	Networking / Requests and responses / Working with a cache policy	-	swift-page
-enum	open	NSURLRequestNetworkServiceType	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type	-	swift-page
-enum	open	NSURLRequestNetworkServiceType	NSURLRequest	Networking / Requests and responses / Accessing the service type	-	swift-page
+enum	shipped	NSURLRequestAttribution	NSMutableURLRequest	Networking / Requests and responses / Indicating the source of the request	-	swift-page
+enum	shipped	NSURLRequestAttribution	NSURLRequest	Networking / Requests and responses / Indicating the source of the request	-	swift-page
+enum	shipped	NSURLRequestCachePolicy	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy	-	swift-page
+enum	shipped	NSURLRequestCachePolicy	NSURLRequest	Networking / Requests and responses / Working with a cache policy	-	swift-page
+enum	shipped	NSURLRequestNetworkServiceType	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type	-	swift-page
+enum	shipped	NSURLRequestNetworkServiceType	NSURLRequest	Networking / Requests and responses / Accessing the service type	-	swift-page
 enum	open	NSURLSessionAuthChallengeDisposition	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges	-	objc
 enum	open	NSURLSessionAuthChallengeDisposition	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges	-	objc
 enum	open	NSURLSessionDelayedRequestDisposition	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks	-	objc
