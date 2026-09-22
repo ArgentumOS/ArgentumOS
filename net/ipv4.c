@@ -694,7 +694,52 @@ int ipv4_setsockopt(struct socket *s, int level, int optname, const void *optval
 
 int ipv4_getsockopt(struct socket *s, int level, int optname, void *optval, socklen_t *optlen)
 {
-	return -EOPNOTSUPP;
+	int errno, val = 0, size = sizeof(int);
+
+	switch(level) {
+		case SOL_SOCKET:
+			switch(optname) {
+				case SO_ERROR:
+					/* NO PENDING ASYNC ERROR, and returning that is the whole point of
+					 * implementing this. Every error this stack produces is returned
+					 * SYNCHRONOUSLY by the call that caused it (a refused connect() hands back
+					 * ECONNREFUSED and does not queue anything), so there is never a deferred
+					 * error for SO_ERROR to report — 0 here is the truth, not a placeholder.
+					 *
+					 * AND IT IS NOT AN OBSCURE OPTION: it is how curl decides whether a
+					 * non-blocking connect() SUCCEEDED. lib/cf-socket.c:921 does
+					 *     if(getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &sockerr, &errSize))
+					 *             sockerr = SOCKERRNO;
+					 * and then treats anything that is not 0/EISCONN as "This was not a
+					 * successful connect" — so the -EOPNOTSUPP this function used to return for
+					 * EVERY option became sockerr = 95, a connect curl believed had failed, and
+					 * an https fetch that retried until it timed out. Measured: an https fetch
+					 * against a local s_server never connected, while `openssl s_client` against
+					 * the same server connected, handshook and verified the certificate — the
+					 * only thing curl asked for that s_client does not is this.
+					 * (unix_getsockopt() has answered SO_ERROR all along; the IPv4 one was the
+					 * stub, and AF_INET is the socket a TLS fetch uses.) */
+					val = 0;
+					break;
+				case SO_TYPE:
+					val = s->type;
+					break;
+				default:
+					return -EOPNOTSUPP;
+			}
+			break;
+		default:
+			return -EOPNOTSUPP;
+	}
+	if((errno = check_user_area(VERIFY_READ, optlen, sizeof(int)))) {
+		return errno;
+	}
+	if((errno = check_user_area(VERIFY_WRITE, optval, size))) {
+		return errno;
+	}
+	memcpy_b(optval, &val, size);
+	memcpy_b(optlen, &size, sizeof(int));
+	return 0;
 }
 
 int ipv4_init(void)
