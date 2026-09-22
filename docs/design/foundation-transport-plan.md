@@ -303,6 +303,22 @@ plan:**
    `[[request HTTPBody] bytes]` and its length - and curl does NOT copy `CURLOPT_POSTFIELDS`, so the NSData
    must outlive the transfer, which it does because the request holds it.
 
+   **AND THE TREE ALREADY HAS THE RECEIVER, which turns the whole family from blocked into mechanical:**
+   the guest's toybox carries `nc`, `netcat`, `httpd` AND `wget` (measured: `ls
+   .build/rootfs64/System/Tools/` lists all four among 230 tools). **The recipe is `netcat`, not `httpd`,
+   because a raw capture is what a body check wants:**
+
+       /System/Tools/netcat -l -p <port> > '/System/Temporary Files/<capture>' &
+       ... the client POSTs ...
+       read the capture: THE REQUEST'S BYTES ARE IN IT, headers and body together
+
+   `httpd` serves a directory rather than reporting what it was sent, and `host_fshlint`'s rule that guest
+   programs take their full FSH path applies to the command line just as it does to a script. So the first
+   check in the family is: build a body of bytes that are NOT valid UTF-8 (`0xff 0xfe 0x00 0x01`), POST it,
+   and find those bytes in the capture - byte-for-byte at the far end, with the pre-fix bridge having sent
+   nothing at all. That single check covers the upload task's transport AND the body defect, and every later
+   request-body question can be asked the same way.
+
    **IT WAS NOT LANDED BECAUSE ITS VERIFICATION NEEDS A RECEIVER, and that is the same reason `UploadTask`
    itself needs one:** a POST's body is only observable at a server, and the only local server this tree can
    already run is `libressl_l2`'s `s_server`. So the pair lands together - the byte fix and the upload task -
