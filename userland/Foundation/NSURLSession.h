@@ -37,8 +37,10 @@
 #import <Foundation/NSObject.h>
 #import <Foundation/NSURLSessionTask.h>
 #import <Foundation/NSURLSessionConfiguration.h>
+#import <Foundation/NSURLProtocol.h>
 
 @class NSArray;
+@class NSData;
 @class NSMutableArray;
 @class NSError;
 @class NSOperationQueue;
@@ -74,6 +76,8 @@ NS_ASSUME_NONNULL_BEGIN
 	NSString *_sessionDescription;
 	NSUInteger _nextTaskIdentifier;
 	NSMutableArray *_tasks;
+	NSMutableArray *_protocols;	/* the transfers in flight, kept alive and released at
+						 * their ending, which is what breaks the client cycle */
 	BOOL _invalid;
 }
 
@@ -91,10 +95,24 @@ NS_ASSUME_NONNULL_BEGIN
 /* A caller's own label, readwrite and never interpreted here. */
 @property (nullable, copy) NSString *sessionDescription;
 
-/* THE DATA FACTORIES. The completion-handler forms are refused with the other execution doors: they
- * promise a transfer this row does not perform. */
+/* THE DATA FACTORIES, and the COMPLETION-HANDLER FORMS SHIP NOW: they were refused while nothing could
+ * run a task, and this row is what runs one. A completion-handler task is the same task; the block is
+ * simply a second place its ending is reported. */
 - (NSURLSessionDataTask *)dataTaskWithRequest:(NSURLRequest *)request;
 - (NSURLSessionDataTask *)dataTaskWithURL:(NSURL *)url;
+- (NSURLSessionDataTask *)dataTaskWithRequest:(NSURLRequest *)request
+			    completionHandler:(void (^)(NSData *data,
+							NSURLResponse *response,
+							NSError *error))completionHandler;
+- (NSURLSessionDataTask *)dataTaskWithURL:(NSURL *)url
+			completionHandler:(void (^)(NSData *data,
+						    NSURLResponse *response,
+						    NSError *error))completionHandler;
+
+/* FNX: THE DOOR A TASK USES TO ASK ITS SESSION TO RUN IT. -resume on a task with a session arrives here
+ * (see NSURLSessionTask.h's group of doors); a task WITHOUT one only changes state, which is what the
+ * model's own probe exercises. */
+- (void)fnTaskDidResume:(NSURLSessionTask *)task;
 
 /* THE TASKS THIS SESSION HAS MADE, grouped the way Apple groups them. The upload and download arrays are
  * ALWAYS EMPTY here, because those classes are not shipped — see the header above. */

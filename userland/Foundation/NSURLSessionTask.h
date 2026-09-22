@@ -35,7 +35,9 @@
 
 #import <Foundation/NSObject.h>
 
+@class NSData;
 @class NSError;
+@class NSMutableData;
 @class NSString;
 @class NSURLRequest;
 @class NSURLResponse;
@@ -62,12 +64,37 @@ typedef NS_ENUM(NSInteger, NSURLSessionTaskState) {
 	NSURLSessionTaskState _state;
 	int64_t _countOfBytesReceived;
 	int64_t _countOfBytesExpectedToReceive;
+	NSMutableData *_receivedData;
+	void (^_completionHandler)(NSData *, NSURLResponse *, NSError *);
+	id _session;		/* UNRETAINED: the session retains ITS TASKS, so retaining it here would
+					 * make a cycle out of an ownership that already runs one way. */
 }
 
 /* FNX: THE SESSION'S OWN DOOR, and the reason -init is not public here: a task is created BY a session.
  * This library's convention for a first-party door on a public class is the `fn` prefix (see
  * +[NSURLProtocol fnProtocolClassForRequest:]). */
 - (instancetype)fnInitWithRequest:(NSURLRequest *)request identifier:(NSUInteger)identifier;
+
+/* AND THE COMPLETION-HANDLER FORM, which is what makes a task do something without a delegate: the block
+ * is COPIED, because a task outlives the call that made it. */
+- (instancetype)fnInitWithRequest:(NSURLRequest *)request
+		       identifier:(NSUInteger)identifier
+		completionHandler:(nullable void (^)(NSData *data,
+						     NSURLResponse *response,
+						     NSError *error))completionHandler;
+
+/* FNX: THE SESSION'S SIDE OF A TASK, in one group, because they are one conversation and splitting them
+ * across files without a header to hold them would be worse than naming them here.
+ *
+ * -fnSetSession: LINKS the two without owning: a task asks its session to run it (that is what -resume
+ * does when a session is present), and the session reports back through the four doors below. APPLE HAS
+ * NO PUBLIC COUNTERPART for any of these — its loader owns the whole conversation — and this library's
+ * convention for a first-party door on a public class is the `fn` prefix (see
+ * +[NSURLProtocol fnProtocolClassForRequest:]). */
+- (void)fnSetSession:(nullable id)session;
+- (void)fnProtocolDidReceiveResponse:(NSURLResponse *)response;
+- (void)fnProtocolDidLoadData:(NSData *)data;
+- (void)fnProtocolDidFinishWithError:(nullable NSError *)error;
 
 /* UNIQUE WITHIN THE SESSION THAT MADE IT, and assigned in creation order — which is what makes it usable
  * as a key, the only thing Apple promises about it. */

@@ -103,12 +103,15 @@ int main(void)
 
 	/* --- THE TASK STATE MACHINE ------------------------------------------------------------------ */
 	{
-		NSURLSession *session =
-			[NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
+		/* THE MODEL'S OWN CASE: tasks with NO SESSION, so that -resume changes state and nothing else. A
+		 * session-linked task now RUNS (that is the execution row), and this probe is about the machine —
+		 * which is why these two are made through the session's own door for making a task. */
 		NSURLSessionDataTask *task =
-			[session dataTaskWithRequest:[NSURLRequest requestWithURL:fn_url(@"https://example.com/a")]];
+			[[NSURLSessionDataTask alloc] fnInitWithRequest:[NSURLRequest requestWithURL:fn_url(@"https://example.com/a")]
+				identifier:1];
 		NSURLSessionDataTask *other =
-			[session dataTaskWithRequest:[NSURLRequest requestWithURL:fn_url(@"https://example.com/b")]];
+			[[NSURLSessionDataTask alloc] fnInitWithRequest:[NSURLRequest requestWithURL:fn_url(@"https://example.com/b")]
+				identifier:2];
 
 		/* A NEW TASK IS SUSPENDED, which is what makes -resume an explicit act. */
 		{
@@ -230,11 +233,15 @@ int main(void)
 			"countOfBytesReceived", "countOfBytesExpectedToReceive",
 			"resume", "suspend", "cancel", NULL
 		};
-		/* REFUSED, EACH BECAUSE THE CLASS OR THE ROW BEHIND IT IS NOT SHIPPED: the completion-handler and
-		 * download/upload/stream/websocket doors (execution and their own ledger rows), the challenge
-		 * member and factories (NSURLAuthenticationChallenge is its own family) and the coder doors. */
+		/* REFUSED, EACH BECAUSE THE CLASS OR THE ROW BEHIND IT IS NOT SHIPPED: the download/upload/
+		 * stream/websocket doors (their own ledger rows), the challenge member and factories
+		 * (NSURLAuthenticationChallenge is its own family) and the coder doors.
+		 *
+		 * AND THE TWO COMPLETION-HANDLER FACTORIES LEFT THIS LIST WHEN THE EXECUTION ROW LANDED: they were
+		 * refused while NOTHING COULD RUN A TASK, and a refusal list is a fact about the tree that a
+		 * landing has to revisit - the third time this one check has been revisited, after the two
+		 * classes W7 shipped before it. */
 		static const char *excluded[] = {
-			"dataTaskWithRequest:completionHandler:", "dataTaskWithURL:completionHandler:",
 			"downloadTaskWithRequest:", "uploadTaskWithRequest:fromData:",
 			"streamTaskWithHostName:port:", "webSocketTaskWithURL:",
 			"URLSession:didReceiveChallenge:completionHandler:",

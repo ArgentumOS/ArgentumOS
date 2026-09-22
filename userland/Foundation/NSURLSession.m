@@ -10,8 +10,108 @@
 #import <Foundation/NSURLSessionConfiguration.h>
 #import <Foundation/NSURLRequest.h>
 #import <Foundation/NSURL.h>
+#import <Foundation/NSURLProtocol.h>
+#import <Foundation/NSData.h>
+#import <Foundation/NSError.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSString.h>
+#include <stdio.h>
+#import <Foundation/NSOperationQueue.h>
+
+/* THE PER-TRANSFER CLIENT, AND IT IS WHY THE SESSION DOES NOT HAVE TO MAP A PROTOCOL BACK TO ITS TASK.
+ * A protocol reports through its CLIENT, and the thing that knows which task a transfer belongs to is this
+ * object: it holds the task (retained, for the flight) and, UNRETAINED, the session it reports its ending
+ * to. Declared here rather than in a header because nothing outside this file makes one.
+ *
+ * THE TWO REFERENCES GO IN OPPOSITE DIRECTIONS ON PURPOSE: the session keeps its transfers alive (so a
+ * protocol is not deallocated mid-flight) and the transfer reaches back without owning, which is what
+ * keeps the pair from being a cycle. */
+/* THE SESSION'S OWN ENDING DOOR, declared here because the transfer (below) calls it and nothing outside
+ * this file can: a session does not publish "a transfer of mine has ended" to the world. */
+@interface NSURLSession (FNSessionTransferControl)
+- (void)fnTransferDidEnd:(NSURLProtocol *)protocol;
+@end
+
+@interface FNSessionTransfer : NSObject <NSURLProtocolClient>
+{
+	NSURLSessionTask *_task;
+	NSURLSession *_session;
+}
+- (instancetype)initWithTask:(NSURLSessionTask *)task session:(NSURLSession *)session;
+@end
+
+@implementation FNSessionTransfer
+
+- (instancetype)initWithTask:(NSURLSessionTask *)task session:(NSURLSession *)session
+{
+	self = [super init];
+	if (self != nil) {
+		_task = [task retain];
+		_session = session;	/* unretained */
+	}
+	return self;
+}
+
+/* EVERY CALLBACK IS A TRANSLATION INTO THE TASK'S OWN STATE, and nothing more: the protocol streams, the
+ * task accumulates, and the ending is what reports. */
+- (void)URLProtocol:(NSURLProtocol *)protocol
+    didReceiveResponse:(NSURLResponse *)response
+     cacheStoragePolicy:(NSURLCacheStoragePolicy)policy
+{
+	(void)policy;
+	[_task fnProtocolDidReceiveResponse:response];
+}
+
+- (void)URLProtocol:(NSURLProtocol *)protocol didLoadData:(NSData *)data
+{
+	[_task fnProtocolDidLoadData:data];
+}
+
+- (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol
+{
+	[_task fnProtocolDidFinishWithError:nil];
+	[_session fnTransferDidEnd:protocol];
+}
+
+- (void)URLProtocol:(NSURLProtocol *)protocol didFailWithError:(NSError *)error
+{
+	[_task fnProtocolDidFinishWithError:error];
+	[_session fnTransferDidEnd:protocol];
+}
+
+/* A REDIRECT IS NOT FOLLOWED IN THIS ROW, AND THE FAILURE SAYS SO rather than leaving a task that never
+ * ends. The bridge reports the redirect (CURLOPT_FOLLOWLOCATION=0) precisely so the DECISION is here, and
+ * "follow it" is the next row's job: until then the honest answer is an error in this library's own
+ * domain, which a caller can tell apart from a transport failure. */
+- (void)URLProtocol:(NSURLProtocol *)protocol
+    wasRedirectedToRequest:(NSURLRequest *)request
+	 redirectResponse:(NSURLResponse *)redirectResponse
+{
+	NSError *error = [[NSError alloc] initWithDomain:@"FNCURLURLProtocolErrorDomain"
+						    code:1
+						userInfo:nil];
+
+	(void)request;
+	(void)redirectResponse;
+	[_task fnProtocolDidFinishWithError:error];
+	[error release];
+	[_session fnTransferDidEnd:protocol];
+}
+
+- (void)URLProtocol:(NSURLProtocol *)protocol cachedResponseIsValid:(NSCachedURLResponse *)cachedResponse
+{
+	/* NO CACHE EXISTS IN THIS LIBRARY YET, so there is never a cached answer to validate. */
+	(void)protocol;
+	(void)cachedResponse;
+}
+
+- (void)dealloc
+{
+	[_task release];
+	[super dealloc];
+}
+
+@end
 
 @implementation NSURLSession
 
@@ -67,6 +167,7 @@
 	_delegateQueue = [queue retain];
 	_nextTaskIdentifier = 1;
 	_tasks = [[NSMutableArray alloc] init];
+	_protocols = [[NSMutableArray alloc] init];
 	return self;
 }
 
@@ -101,6 +202,90 @@
 - (NSURLSessionDataTask *)dataTaskWithURL:(NSURL *)url
 {
 	return [self dataTaskWithRequest:[NSURLRequest requestWithURL:url]];
+}
+
+/* THE COMPLETION-HANDLER FORMS: the same task, told where its ending goes. The block is copied by the
+ * task, and the task is linked to this session either way — a task that could not reach a session could
+ * not run. */
+- (NSURLSessionDataTask *)dataTaskWithRequest:(NSURLRequest *)request
+			    completionHandler:(void (^)(NSData *, NSURLResponse *, NSError *))completionHandler
+{
+	NSURLSessionDataTask *task;
+
+	if (_invalid) {
+		return nil;
+	}
+	task = [[NSURLSessionDataTask alloc] fnInitWithRequest:request
+						   identifier:_nextTaskIdentifier++
+					    completionHandler:completionHandler];
+	printf("FNSESSION-DIAG factory: task made, before fnSetSession\n");
+	[task fnSetSession:self];
+	printf("FNSESSION-DIAG factory: before addObject\n");
+	[_tasks addObject:task];
+	printf("FNSESSION-DIAG factory: after addObject\n");
+	return [task autorelease];
+}
+
+- (NSURLSessionDataTask *)dataTaskWithURL:(NSURL *)url
+			completionHandler:(void (^)(NSData *, NSURLResponse *, NSError *))completionHandler
+{
+	return [self dataTaskWithRequest:[NSURLRequest requestWithURL:url]
+		       completionHandler:completionHandler];
+}
+
+/* THE EXECUTION ITSELF, and every step of it is a decision this row makes:
+ *
+ *   1. THE CONFIGURATION'S protocolClasses COME FIRST — a caller's explicit list — and slice 2a's registry
+ *      second, both through the seam's own door;
+ *   2. NO CLASS AT ALL IS AN ERROR, not a hang: a task whose request nothing claims ends with
+ *      NSURLErrorUnsupportedURL (-1002) and its completion handler is called;
+ *   3. THE PROTOCOL IS KEPT ALIVE BY THE SESSION for the flight (a protocol deallocated mid-transfer
+ *      would report into freed memory), and the per-transfer client is what knows the task. */
+- (void)fnTaskDidResume:(NSURLSessionTask *)task
+{
+	NSURLRequest *request = [task currentRequest];
+	NSArray *classes = [_configuration protocolClasses];
+	NSURLProtocol *protocol = nil;
+	Class protocolClass = nil;
+	NSUInteger i;
+
+	for (i = 0; classes != nil && i < [classes count] && protocolClass == nil; i++) {
+		Class candidate = [classes objectAtIndex:i];
+
+		if ([candidate canInitWithRequest:request]) {
+			protocolClass = candidate;
+		}
+	}
+	if (protocolClass == nil) {
+		protocolClass = [NSURLProtocol fnProtocolClassForRequest:request];
+	}
+	if (protocolClass == nil) {
+		NSError *unsupported = [[NSError alloc] initWithDomain:@"NSURLErrorDomain"
+								 code:-1002
+							     userInfo:nil];
+
+		[task fnProtocolDidFinishWithError:unsupported];
+		[unsupported release];
+		return;
+	}
+	{
+		FNSessionTransfer *client = [[FNSessionTransfer alloc] initWithTask:task session:self];
+
+		protocol = [[protocolClass alloc] initWithRequest:request
+						   cachedResponse:nil
+							   client:client];
+		[client release];	/* the protocol retains its client */
+	}
+	[_protocols addObject:protocol];	/* the session keeps the flight alive */
+	[protocol startLoading];
+	[protocol release];			/* the array holds it now */
+}
+
+/* THE ENDING'S OTHER HALF: the transfer is dropped, which releases the protocol, which releases the
+ * client, which releases the task — and that is the cycle broken at exactly the moment it should be. */
+- (void)fnTransferDidEnd:(NSURLProtocol *)protocol
+{
+	[_protocols removeObjectIdenticalTo:protocol];
 }
 
 - (void)getTasksWithCompletionHandler:(void (^)(NSArray *, NSArray *, NSArray *))completionHandler
@@ -141,6 +326,7 @@
 	[_delegateQueue release];
 	[_sessionDescription release];
 	[_tasks release];
+	[_protocols release];
 	[super dealloc];
 }
 
