@@ -68,6 +68,57 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+/* HOW A SESSION'S OWNER IS TOLD ABOUT ONE TASK. EVERY MEMBER IS OPTIONAL, as Apple declares them, so a
+ * delegate answers what it cares about and the session asks -respondsToSelector: before each door.
+ *
+ * AND THE DATA DELEGATE IS A TASK DELEGATE, which is Apple's hierarchy rather than a convenience: a data
+ * delegate can be handed the task's ending too, so `NSURLSessionDataDelegate` inherits from
+ * `NSURLSessionTaskDelegate` and a class that implements only the data door still receives it.
+ *
+ * THE TWO CALLBACKS THAT ARE HERE, and the ones that are NOT:
+ *   -URLSession:task:didCompleteWithError:  THE ENDING, and there is exactly one per task - an error is
+ *       nil on success, and it is called for both outcomes, which is why a completion handler and a
+ *       delegate can both be told the same thing without either being special;
+ *   -URLSession:dataTask:didReceiveData:    THE BODY, in as many calls as the transport hands over - the
+ *       same rule the seam's own client keeps, because accumulating here would be a second buffer
+ *       alongside the task's.
+ *
+ * REFUSED BY NAME, each because the TYPE or the ROW behind it is not shipped:
+ *   * the AUTHENTICATION members (-URLSession:didReceiveChallenge:completionHandler: and its task/data
+ *     forms) - NSURLAuthenticationChallenge is its own family and its own ledger rows;
+ *   * the RESPONSE DECISION (-URLSession:dataTask:didReceiveResponse:completionHandler:) - it takes an
+ *     NSURLSessionResponseDisposition, whose BecomeDownload/BecomeStream cases belong to the download and
+ *     stream rows, so shipping it here would ship half an enum;
+ *   * the UPLOAD/DOWNLOAD/STREAM members, whose classes are their own ledger rows.
+ *
+ * AND v1 DELIVERS THESE ON THE TRANSFER'S OWN THREAD. Apple's contract is the session's delegateQueue,
+ * and this row carries the queue without using it yet: a delegate must therefore not assume the main
+ * thread. Stated here because a caller reading only the signatures would assume otherwise. */
+/* AND IT INHERITS THE SESSION'S PROTOCOL, which is Apple's chain rather than a convenience:
+ * NSURLSessionDataDelegate < NSURLSessionTaskDelegate < NSURLSessionDelegate. Stopping at the first link
+ * left a data delegate NON-CONFORMANT to `id <NSURLSessionDelegate>`, the type the session's three-argument
+ * factory takes - and it compiled anyway, because a class pointer passed to a protocol-qualified parameter
+ * is a warning here rather than an error. */
+@protocol NSURLSessionTaskDelegate <NSURLSessionDelegate>
+
+@optional
+
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
+didCompleteWithError:(nullable NSError *)error;
+
+@end
+
+@protocol NSURLSessionDataDelegate <NSURLSessionTaskDelegate>
+
+@optional
+
+- (void)URLSession:(NSURLSession *)session
+	 dataTask:(NSURLSessionDataTask *)dataTask
+   didReceiveData:(NSData *)data;
+
+@end
+
 @interface NSURLSession : NSObject
 {
 	NSURLSessionConfiguration *_configuration;

@@ -40,6 +40,13 @@
 - (instancetype)initWithTask:(NSURLSessionTask *)task session:(NSURLSession *)session;
 @end
 
+/* THE PRIVATE DECLARATIONS THE TRANSFER NEEDS IN ITS OWN HEADER-LESS WAY: the class above is
+ * declared, and this category is the ending helper its implementations call. */
+@interface FNSessionTransfer (FNSessionTransferEnding)
+- (void)fnTellTheTaskDelegate;
+@end
+
+
 @implementation FNSessionTransfer
 
 - (instancetype)initWithTask:(NSURLSessionTask *)task session:(NSURLSession *)session
@@ -64,18 +71,42 @@
 
 - (void)URLProtocol:(NSURLProtocol *)protocol didLoadData:(NSData *)data
 {
+	id <NSURLSessionDataDelegate> delegate;
+
 	[_task fnProtocolDidLoadData:data];
+	/* AND THE DELEGATE IS TOLD, IF IT ASKED TO BE: the same bytes the task accumulates, one call per
+	 * chunk - asked with -respondsToSelector: because every member of these protocols is optional. */
+	delegate = (id <NSURLSessionDataDelegate>)[_session delegate];
+	if ([delegate respondsToSelector:@selector(URLSession:dataTask:didReceiveData:)]) {
+		[delegate URLSession:_session
+			    dataTask:(NSURLSessionDataTask *)_task
+		      didReceiveData:data];
+	}
 }
 
 - (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol
 {
 	[_task fnProtocolDidFinishWithError:nil];
+	[self fnTellTheTaskDelegate];
 	[_session fnTransferDidEnd:protocol];
+}
+
+/* THE ENDING IS REPORTED TO THE TASK DELEGATE FOR BOTH OUTCOMES, and the error is the TASK'S rather than a
+ * parameter of this method: that is what makes one door serve success and failure alike, which is how Apple
+ * declares it and why a caller cannot forget the failure case. */
+- (void)fnTellTheTaskDelegate
+{
+	id <NSURLSessionTaskDelegate> delegate = (id <NSURLSessionTaskDelegate>)[_session delegate];
+
+	if ([delegate respondsToSelector:@selector(URLSession:task:didCompleteWithError:)]) {
+		[delegate URLSession:_session task:_task didCompleteWithError:[_task error]];
+	}
 }
 
 - (void)URLProtocol:(NSURLProtocol *)protocol didFailWithError:(NSError *)error
 {
 	[_task fnProtocolDidFinishWithError:error];
+	[self fnTellTheTaskDelegate];
 	[_session fnTransferDidEnd:protocol];
 }
 
@@ -193,6 +224,11 @@
 	}
 	task = [[NSURLSessionDataTask alloc] fnInitWithRequest:request
 						  identifier:_nextTaskIdentifier++];
+	/* AND IT IS LINKED TO ITS SESSION, WHICH THIS DOOR DID NOT DO. The completion-handler factory did,
+	 * so row 3's checks passed while this one handed back a task with no session: -resume flipped the
+	 * state to running, asked NIL to do the work, and nothing ever moved. The DELEGATE half of the row
+	 * found it, because that is the half that drives this door. */
+	[task fnSetSession:self];
 	[_tasks addObject:task];	/* the session KEEPS its tasks, which is what makes the enumeration below
 					 * mean anything */
 	return [task autorelease];

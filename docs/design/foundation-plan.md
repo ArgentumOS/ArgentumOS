@@ -3530,7 +3530,7 @@ vanishing.
 | **Networking / Authentication and credentials** | 4 open | `NSURLAuthenticationChallenge`, `NSURLCredential`, `NSURLCredentialStorage`, `NSURLProtectionSpace` |
 | **Networking / Cache behavior** | 1 open | `NSURLCache` |
 | **Networking / Cookies** | 1 open | `NSHTTPCookieStorage` |
-| **Networking / Essentials** | 13 open | `NSHTTPCookie`, `NSURLSessionDataDelegate`, `NSURLSessionDownloadDelegate`, `NSURLSessionDownloadTask`, `NSURLSessionStreamDelegate`, `NSURLSessionStreamTask`, `NSURLSessionTaskDelegate`, `NSURLSessionTaskMetrics`, `NSURLSessionTaskTransactionMetrics`, `NSURLSessionUploadTask`, `NSURLSessionWebSocketDelegate`, `NSURLSessionWebSocketMessage`, `NSURLSessionWebSocketTask` |
+| **Networking / Essentials** | 11 open | `NSHTTPCookie`, `NSURLSessionDownloadDelegate`, `NSURLSessionDownloadTask`, `NSURLSessionStreamDelegate`, `NSURLSessionStreamTask`, `NSURLSessionTaskMetrics`, `NSURLSessionTaskTransactionMetrics`, `NSURLSessionUploadTask`, `NSURLSessionWebSocketDelegate`, `NSURLSessionWebSocketMessage`, `NSURLSessionWebSocketTask` |
 | **Networking / Legacy** | ALL STRUCK: `NSURLAuthenticationChallengeSender`, `NSURLConnection`, `NSURLConnectionDataDelegate`, `NSURLConnectionDelegate`, `NSURLConnectionDownloadDelegate`, `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` | — |
 | **Networking / Local Network Services** | ALL STRUCK: `NSNetService`, `NSNetServiceDelegate` | — |
 | **Networking / Requests and responses** | all classes shipped | — |

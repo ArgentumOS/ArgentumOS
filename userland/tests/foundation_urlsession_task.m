@@ -69,6 +69,67 @@ static int fn_write_fixture(void)
 	return 1;
 }
 
+
+/* THE DELEGATE, and it records what it was told rather than asserting inside the callbacks: the callbacks
+ * arrive on the transfer's thread, so the probe reads the record after the ending - which is also what
+ * makes "exactly one ending" a thing that can be counted. */
+@interface FnSessionDelegate : NSObject <NSURLSessionDataDelegate>
+{
+	NSMutableData *_dataBytes;
+	int _dataCalls;
+	int _endings;
+	NSError *_lastError;
+	id _lastSession;
+	id _lastTask;
+}
+- (NSData *)dataBytes;
+- (int)dataCalls;
+- (int)endings;
+- (NSError *)lastError;
+- (id)lastSession;
+- (id)lastTask;
+@end
+
+@implementation FnSessionDelegate
+
+- (id)init
+{
+	self = [super init];
+	if (self != nil) {
+		_dataBytes = [[NSMutableData alloc] init];
+	}
+	return self;
+}
+
+- (void)URLSession:(NSURLSession *)session
+	 dataTask:(NSURLSessionDataTask *)dataTask
+   didReceiveData:(NSData *)data
+{
+	_dataCalls++;
+	[_dataBytes appendData:data];
+	_lastSession = session;
+	_lastTask = dataTask;
+}
+
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
+didCompleteWithError:(NSError *)error
+{
+	_endings++;
+	_lastError = error;
+	_lastSession = session;
+	_lastTask = task;
+}
+
+- (NSData *)dataBytes { return _dataBytes; }
+- (int)dataCalls { return _dataCalls; }
+- (int)endings { return _endings; }
+- (NSError *)lastError { return _lastError; }
+- (id)lastSession { return _lastSession; }
+- (id)lastTask { return _lastTask; }
+
+@end
+
 int main(void)
 {
 	/* UNBUFFERED, AND IT IS NOT A PREFERENCE: a probe that CRASHES loses everything printf put in a
@@ -226,6 +287,39 @@ int main(void)
 		      [[task error] code] == -999 &&
 		      called == NO,
 		      @"a task cancelled while suspended ends, and the transfer it never started does not run");
+	}
+
+	/* --- THE DELEGATE IS TOLD THE SAME THINGS THE TASK IS ---------------------------------------- */
+	{
+		FnSessionDelegate *delegate = [[FnSessionDelegate alloc] init];
+		NSURLSession *watched = [NSURLSession sessionWithConfiguration:
+						[NSURLSessionConfiguration defaultSessionConfiguration]
+								      delegate:delegate
+								 delegateQueue:nil];
+		NSURLSessionDataTask *task;
+		int waited = 0;
+
+		[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+		task = [watched dataTaskWithRequest:[NSURLRequest requestWithURL:fn_file_url(@FIXTURE_PATH)]];
+		[task resume];
+		while ([delegate endings] == 0 && waited < 100) {
+			usleep(100000);
+			waited++;
+		}
+
+		check("delegate-receives-the-body",
+		      [delegate dataCalls] >= 1 &&
+		      [[delegate dataBytes] length] == strlen(fixture_bytes) &&
+		      memcmp([[delegate dataBytes] bytes], fixture_bytes, strlen(fixture_bytes)) == 0,
+		      @"-URLSession:dataTask:didReceiveData: is called with the body the task accumulates");
+
+		check("delegate-receives-the-ending",
+		      [delegate endings] == 1 && [delegate lastError] == nil,
+		      @"-URLSession:task:didCompleteWithError: is called EXACTLY once, with a nil error on success");
+
+		check("delegate-echoes-the-session-and-its-task",
+		      [delegate lastSession] == watched && [delegate lastTask] == (id)task,
+		      @"the callbacks hand back the session and the very task that was resumed");
 	}
 
 	printf("FOUNDATION-URLSESSION-TASK RESULT ok=%d fail=%d\n", okc, failc);

@@ -29,7 +29,7 @@
 #
 # counts by kind:
 #   class      shipped  136   open   60   struck   77
-#   protocol   shipped   16   open   15   struck   14
+#   protocol   shipped   18   open   13   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   90   open   53   struck   17
 #   case       shipped  488   open  646   struck  168
@@ -2248,11 +2248,11 @@ protocol	struck	NSURLConnectionDownloadDelegate		Networking / Legacy / URL Conne
 protocol	struck	NSURLDownloadDelegate		Networking / Legacy / URL Download	deprecated	objc
 protocol	struck	NSURLHandleClient		Networking / Legacy / URL Handle	deprecated	objc
 protocol	shipped	NSURLProtocolClient		Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes	-	objc
-protocol	open	NSURLSessionDataDelegate		Networking / Essentials / Adding data tasks to a session	-	objc
+protocol	shipped	NSURLSessionDataDelegate		Networking / Essentials / Adding data tasks to a session	-	objc
 protocol	shipped	NSURLSessionDelegate		Networking / Essentials / Working with a delegate	-	objc
 protocol	open	NSURLSessionDownloadDelegate		Networking / Essentials / Adding download tasks to a session	-	objc
 protocol	open	NSURLSessionStreamDelegate		Networking / Essentials / Adding stream tasks to a session	-	objc
-protocol	open	NSURLSessionTaskDelegate		Networking / Essentials / Working with a delegate	-	objc
+protocol	shipped	NSURLSessionTaskDelegate		Networking / Essentials / Working with a delegate	-	objc
 protocol	open	NSURLSessionWebSocketDelegate		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 protocol	open	NSUserActivityDelegate		App Support / Activity Sharing / Monitoring activity-related behaviors	-	objc
 protocol	open	NSUserNotificationCenterDelegate		App Support / User Notifications	-	objc

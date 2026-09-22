@@ -36,7 +36,9 @@ CHECKS = ("completion-handler-factory-answers-a-task", "task-resume-runs-the-tra
           "completion-handler-receives-response-and-data",
           "task-state-becomes-completed-and-counts-bytes", "data-task-url-form-runs",
           "task-with-no-protocol-class-fails-rather-than-hanging",
-          "cancel-before-resume-never-starts")
+          "cancel-before-resume-never-starts",
+          "delegate-receives-the-body", "delegate-receives-the-ending",
+          "delegate-echoes-the-session-and-its-task")
 
 
 class Case(BaseCase):
