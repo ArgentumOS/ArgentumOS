@@ -1,0 +1,40 @@
+# FNX's LibreSSL configuration — the config the LibreSSL apps load at startup.
+# docs/design/libressl-plan.md §4; staged to /System/Configuration/ssl/openssl.cnf,
+# which is where this build's compiled-in OPENSSLDIR points.
+#
+# Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+# SPDX-License-Identifier: MIT
+#
+# WHY THIS FILE EXISTS AT ALL, MEASURED RATHER THAN ASSUMED. LibreSSL's apps read a config at
+# startup and `openssl req` REFUSES TO RUN WITHOUT ONE:
+#
+#     $ openssl req -x509 -newkey rsa:2048 ...
+#     WARNING: can't open config file: etc/ssl/openssl.cnf
+#     Unable to load config info from etc/ssl/openssl.cnf      <- exit 1, no certificate
+#
+# and that was with the OPENSSLDIR the build had chosen BY DEFAULT, `etc/ssl` — a Linux path that
+# cannot exist here, because this system has no /etc. So the landing could not make a certificate,
+# which is exactly what L1's handshake needs. Two things fix it, and both are needed: the build now
+# compiles OPENSSLDIR to the FSH (`-DOPENSSLDIR=/System/Configuration/ssl`), and this file is what
+# lives there. The plan's §4 requirement — "nothing consults Linux paths" — is what the first half
+# delivers, and it delivers it for the CA defaults too: OPENSSLDIR is also where LibreSSL looks for
+# `cert.pem` and `certs/`, which is precisely where L2's trust store belongs.
+#
+# IT IS AN INI FILE, NOT A .conf PLIST, AND THAT IS NOT AN OVERSIGHT: this is LibreSSL's own config
+# FORMAT, read by LibreSSL's own parser. The house rule is that OUR software configures itself
+# through libconfig domains; a third-party tool's config file is the third party's format, and
+# converting it would mean LibreSSL could no longer read it.
+#
+# KEPT MINIMAL ON PURPOSE. The apps that need a section need exactly one here: `req`, whose
+# `distinguished_name` names the section prompts come from (this tree always passes `-subj`, so the
+# prompts are never used — but the section must exist for the config to load). Nothing else is
+# invented, because a config key nobody reads is a claim nobody checks.
+
+[ req ]
+default_bits		= 2048
+default_md		= sha256
+distinguished_name	= req_distinguished_name
+
+[ req_distinguished_name ]
+commonName		= Common Name (eg, fully qualified host name)
+commonName_max		= 64

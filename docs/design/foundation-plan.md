@@ -3963,7 +3963,7 @@ should find the change rather than a silence.
 | a **markdown parser** | W10 | `NSAttributedString`'s markdown initialisers are Apple API with a grammar behind them |
 | an **XML parser** (expat is MIT-viable) | W16 | §11's rule/table line: a table we do not have is a dependency to add |
 | a **diff algorithm** | W13 (`NSOrderedCollectionDifference`) | Apple's `differenceFromArray:` has a published contract and no table |
-| an **HTTP transport** | W7 | the socket layer ships; the protocol layer is ours to write |
+| an **HTTP transport** | W7 | the socket layer ships; **DECIDED 2026-09-21: libcurl is vendored and owns the transport** (docs/design/foundation-transport-plan.md), which supersedes this row's "the protocol layer is ours to write" |
 | a **credential store** decision (`keychain-plan.md`) | W7 | the store is where the Keychain decision lands |
 | **run-loop SOURCES** | W6 | the shipped run loop has timers only, and streams and tasks both need sources |
 | **stored blocks** (copy/own semantics under manual ownership) | W17 | `-completionBlock` holds a block past the call that made it |

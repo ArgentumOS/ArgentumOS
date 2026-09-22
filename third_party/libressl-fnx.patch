@@ -1,0 +1,15 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -86,7 +86,11 @@
+ 	endforeach()
+ endforeach()
+ 
+-set(BUILD_NC true)
++# FNX: the bundled nc(1) is NOT built. apps/nc/socks.c calls b64_ntop(), which this
++# release does not ship (there is no b64_ntop.c under apps/nc), so the app cannot
++# compile with a modern clang. nc is not part of L0's deliverable (the plan names
++# openssl(1)), so it is DECLINED rather than patched into working.
++set(BUILD_NC false)
+ 
+ if(CMAKE_SYSTEM_NAME MATCHES "OpenBSD")
+ 	add_definitions(-DHAVE_ATTRIBUTE__BOUNDED__)

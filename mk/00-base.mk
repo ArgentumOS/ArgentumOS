@@ -230,6 +230,14 @@ X11PREFIX     = .build/x11-prefix
 # lcms2 third-party prefix (built by tools/lcms2-build.sh, which builds it TWICE: this guest
 # copy, and a host copy that the host CoreGraphics library and its probes link).
 LCMS2_PREFIX  = .build/lcms2-prefix
+# libcurl third-party prefix (built by tools/curl-build.sh, GUEST ONLY - the Foundation's HTTP
+# transport: docs/design/foundation-transport-plan.md, W7 slice 2b). One build rather than lcms2's
+# two because libcurl has no host consumer; see the script's header for why.
+CURL_PREFIX   = .build/curl-prefix
+# LibreSSL third-party prefix (fetched by tools/fetch-libressl.sh, built by tools/libressl-build.sh,
+# GUEST ONLY): the ONE system SSL library - docs/design/libressl-plan.md, pin 4.3.2. L0 built it; L1
+# stages it; L2 binds libcurl to it for https.
+LIBRESSL_PREFIX = .build/libressl-prefix
 # ICU4C third-party prefix (built by tools/icu-build.sh) - the DATA backend for
 # the Foundation's data-driven families (docs/design/foundation-plan.md §10,
 # slice F13). Same shape as X11PREFIX: a prefix on the build side, staged into

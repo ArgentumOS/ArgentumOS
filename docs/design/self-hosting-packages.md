@@ -74,6 +74,16 @@ the plan's G3 gate and SH-0..SH-5.
   requirement**: autotools is already §D's, and the engine ships no data
   files — the profiles a caller gets are *generated*
   (`cmsCreate_sRGBProfile` and friends), not installed from anywhere.
+- **libcurl** — **curl's own MIT/X-derivative licence** (SPDX id `curl`; permissive, no
+  copyleft, **not verbatim MIT** — recorded because the house code is MIT and a vendored
+  dep is not); the Foundation's HTTP transport
+  (docs/design/foundation-transport-plan.md; docs/design/foundation-plan.md, W7 slice 2),
+  pinned at **curl 8.22.0** under third_party/ (a submodule) and built by
+  **tools/curl-build.sh** — **CMake only**, its autotools layer never invoked (host or
+  guest), the same rule the LibreSSL row above states; the guest build uses
+  tools/musl-clang64.sh. The **first landing is plain HTTP**: TLS is LibreSSL/`libtls`'
+  job (docs/design/libressl-plan.md) and curl binds it when that lands, so **no second TLS
+  library enters the tree**. **No new build-time requirement**: CMake is already §C's.
 
 ### C. Build drivers
 

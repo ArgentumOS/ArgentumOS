@@ -859,6 +859,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_urlrequest.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlrequest"
+	# curl_smoke: W7 slice 2b's acceptance - LIBCURL ON THE GUEST. NOT a Foundation probe: this is a
+	# third-party library's landing, so the program that judges it has no Foundation in it (the
+	# kernel_pipe_dup2 reasoning). It compiles against the VENDORED libcurl out of .build/curl-prefix
+	# and needs NO RPATH: the guest loader resolves libcurl.so.4 out of /System/Libraries, which is
+	# where the staging block above puts it.
+	$(MUSL64_CC) -I$(CURL_PREFIX)/include userland/tests/curl_smoke.c \
+		-L$(CURL_PREFIX)/lib -lcurl \
+		-o "$(ROOTFS64)/System/Shared/tests/curl_smoke"
 	# kernel_threaded_exec: THE KERNEL BUG'S REPRODUCER (§45 of the Foundation plan), not a Foundation
 	# probe - it is plain C with NO Foundation in it, because the point is that the library is absent from
 	# the failing program. Mode 1's children are /System/Tools/true; mode 2's are the Foundation probe.
@@ -1152,6 +1160,51 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# anything that includes <lcms2.h> has to be able to find it.
 	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/lcms2"
 	@cp $(LCMS2_PREFIX)/include/*.h "$(ROOTFS64)/System/Shared/Headers/lcms2/"
+	# --- libcurl (third_party/curl, tag curl-8_22_0, curl's own MIT/X-derivative licence): the
+	# Foundation's HTTP transport (docs/design/foundation-transport-plan.md, W7 slice 2b). Same
+	# staging rule as lcms2 above — the glob carries the soname AND the real file, and the bare
+	# `libcurl.so` dev link is link-time only so it is skipped — and the same GATE: a missing
+	# prefix names its own fix instead of surfacing later as a link or load failure.
+	@if [ ! -d "$(CURL_PREFIX)/lib" ]; then \
+		echo "libcurl prefix missing - run tools/curl-build.sh first"; \
+		exit 1; \
+	fi
+	@cp -a $(CURL_PREFIX)/lib/libcurl.so.* "$(ROOTFS64)/System/Libraries/"
+	# ITS HEADERS, for the reason the Foundation headers are staged: an on-guest rebuild of anything
+	# that includes <curl/curl.h> has to be able to find it.
+	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/curl"
+	@cp $(CURL_PREFIX)/include/curl/*.h "$(ROOTFS64)/System/Shared/Headers/curl/"
+	# --- LibreSSL (docs/design/libressl-plan.md, pin 4.3.2 via tools/fetch-libressl.sh): THE one
+	# system SSL library, and what libcurl binds for https at L2. Same staging rule as lcms2 and
+	# libcurl above — the glob carries the soname AND the real file, the bare dev link is skipped —
+	# and the same GATE, naming its own fix. THREE libraries, because libtls is the first-party
+	# simple API the plan names alongside the OpenSSL-compatible pair, not a second project.
+	@if [ ! -d "$(LIBRESSL_PREFIX)/lib" ]; then \
+		echo "libressl prefix missing - run tools/fetch-libressl.sh then tools/libressl-build.sh"; \
+		exit 1; \
+	fi
+	@cp -a $(LIBRESSL_PREFIX)/lib/libcrypto.so.* $(LIBRESSL_PREFIX)/lib/libssl.so.* \
+		$(LIBRESSL_PREFIX)/lib/libtls.so.* "$(ROOTFS64)/System/Libraries/"
+	# THE TOOL, because it is the plan's OWN deliverable and L1's acceptance runs it. /System/Tools
+	# is where this tree's binaries live; ocspcheck ships beside openssl(1) as in the pin.
+	@mkdir -p "$(ROOTFS64)/System/Tools"
+	@cp $(LIBRESSL_PREFIX)/bin/openssl $(LIBRESSL_PREFIX)/bin/ocspcheck "$(ROOTFS64)/System/Tools/"
+	# ITS HEADERS, for the reason the Foundation headers are staged: an on-guest rebuild of anything
+	# that includes <openssl/ssl.h> or <tls.h> has to be able to find it.
+	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/openssl"
+	@cp -a $(LIBRESSL_PREFIX)/include/openssl/*.h "$(ROOTFS64)/System/Shared/Headers/openssl/"
+	@cp $(LIBRESSL_PREFIX)/include/tls.h "$(ROOTFS64)/System/Shared/Headers/"
+	# THE CONFIG, at the path this build compiles in as OPENSSLDIR
+	# (`-DOPENSSLDIR=/System/Configuration/ssl`, tools/libressl-build.sh). It is not optional: without
+	# it `openssl req` exits 1 with "Unable to load config info" and NO certificate can be made — which
+	# is measured in the file's own header, and which is what L1's handshake needs. An INI file, because
+	# it is LibreSSL's format read by LibreSSL's parser, not one of our libconfig domains.
+	@mkdir -p "$(ROOTFS64)/System/Configuration/ssl"
+	@cp userland/configuration/openssl.cnf "$(ROOTFS64)/System/Configuration/ssl/openssl.cnf"
+	# libressl_l1: L1's acceptance — a real TLS handshake between two guest processes (s_server and
+	# s_client), loopback only. A SHELL SCRIPT rather than a C probe: what L1 owes is two processes
+	# talking, not a library call.
+	@cp userland/tests/libressl_l1.sh "$(ROOTFS64)/System/Shared/tests/libressl_l1.sh"
 	# hello_dl: the dynamic-linker smoke test. Staged under
 	# System/Shared/tests - System/Tools is dynamic too since M1, but the
 	# linter carve-out keeps this one out of the zero-allow scope.
