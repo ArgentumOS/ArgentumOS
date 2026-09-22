@@ -108,12 +108,22 @@ int main(void)
 		 * distinction the request/response values already rest on.
 		 */
 		check("url-loading-system-absent",
-		      objc_getClass("NSURLSession") == NULL &&
 		      objc_getClass("NSURLConnection") == NULL &&
 		      ![NSURL respondsToSelector:sel_registerName(
 			  "URLByResolvingBookmarkData:options:relativeToURL:"
 			  "bookmarkDataIsStale:error:")],
-		      "the URL LOADING system is still absent: no session and no connection class");
+		      "the URL LOADING system is still absent: no connection class");
+
+		/* AND THE SESSION ARRIVED, which is W7 slice 2c - THE THIRD TIME THIS ONE CHECK HAS BEEN MADE
+		 * HALF-FALSE, after NSURLRequest (slice 1) and NSURLProtocol (slice 2a). The rule has not
+		 * changed: an absence assertion is a fact about the TREE, and a landing that changes the tree
+		 * revisits it - so the arrival is asserted beside the absence rather than only subtracted from
+		 * it. */
+		check("url-session-shipped",
+		      objc_getClass("NSURLSession") != NULL &&
+		      objc_getClass("NSURLSessionConfiguration") != NULL &&
+		      objc_getClass("NSURLSessionTask") != NULL,
+		      "the session family ships (W7 slice 2c): the session, its configuration and a task");
 
 		/* AND THE SEAM ARRIVED, WHICH IS SLICE 2a: an NSURLProtocol subclass is how ANY protocol plugs
 		 * in, so the plug-in point comes before the transport that will be its first implementation.
