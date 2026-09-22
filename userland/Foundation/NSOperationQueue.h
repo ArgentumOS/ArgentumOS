@@ -69,6 +69,13 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable NSString *)name;
 - (void)setName:(nullable NSString *)name;
 
+
+/* THE BLOCK DOOR: the same act as -addOperation:, for a caller holding a block rather than an operation.
+ * THE BLOCK IS COPIED WITH Block_copy() AND RELEASED WITH Block_release() - a block is not an ordinary
+ * object to own, because -copy is a MESSAGE SEND and the runtime reads the block's isa to find its class.
+ *
+ * THE QUEUE IS EXPECTED TO BE SERIAL WHEN THE ORDER OF WHAT IT RUNS MATTERS. */
+- (void)addOperationWithBlock:(void (^)(void))block;
 @end
 
 NS_ASSUME_NONNULL_END

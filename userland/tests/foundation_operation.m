@@ -263,6 +263,17 @@ int main(void)
 			[queue name]]);
 	}
 
+	{
+		NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+		__block int ran = 0;
+
+		[queue setMaxConcurrentOperationCount:1];
+		[queue addOperationWithBlock:^{ ran = 1; }];
+		[queue waitUntilAllOperationsAreFinished];
+		check("add-operation-with-block-runs-the-block", ran == 1,
+		      @"-addOperationWithBlock: runs its block, and the queue's own wait sees it");
+	}
+
 	printf("FOUNDATION-OPERATION RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

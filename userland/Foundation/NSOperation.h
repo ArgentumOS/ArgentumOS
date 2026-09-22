@@ -15,10 +15,15 @@
  * forgot to override it would otherwise "succeed" at doing nothing at all, which is the failure a
  * caller cannot see.
  *
- * WHAT IS NOT HERE, named: `-completionBlock` and `-addOperationWithBlock:` (this library has no
- * blocks in its public headers), `-queuePriority`/`-qualityOfService`, `-asynchronous` operations that
- * manage their own completion, and `NSOperation`'s KVO announcements for its own state — the state is
- * readable, but changing it does not notify (F13.9's registry exists; wiring it here is its own step).
+ * WHAT IS NOT HERE, named: `-completionBlock`, `-queuePriority`/`-qualityOfService`, `-asynchronous`
+ * operations that manage their own completion, and `NSOperation`'s KVO announcements for its own state —
+ * the state is readable, but changing it does not notify (F13.9's registry exists; wiring it here is its
+ * own step).
+ *
+ * AND ONE NAME HAS LEFT THAT LIST RATHER THAN BEEN DELETED FROM IT: `-addOperationWithBlock:` USED TO BE
+ * HERE because "this library has no blocks in its public headers". That was true when F13.9 wrote it and
+ * is NOT TRUE ANY MORE (the URL session's completion-handler factories, NSURLSessionTask's block ivar),
+ * so the absence was a fact about the TREE and the sentence justifying it is what expired.
  */
 
 #ifndef FOUNDATION_NSOPERATION_H

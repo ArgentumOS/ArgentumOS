@@ -22,6 +22,7 @@
 #import <Foundation/NSOperation.h>
 #import <Foundation/NSOperationQueue.h>
 #import <Foundation/NSArray.h>
+#include <Block.h>	/* Block_copy/Block_release: a block is not owned with a message */
 #import <Foundation/NSString.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSLock.h>
@@ -172,6 +173,44 @@ static void fn_set_current_queue(NSOperationQueue *queue)
 				  _executing ? @" executing" : @"",
 				  _finished ? @" finished" : @"",
 				  _cancelled ? @" cancelled" : @""];
+}
+
+@end
+
+/* THE BLOCK DOOR'S OPERATION, PRIVATE TO THIS FILE. THE BLOCK IS Block_copy'd AND Block_release'd, NOT
+ * SENT -copy/-release: -copy is a message send, the runtime reads the block's isa, and that is where the URL
+ * session's crash lived. tools/foundation-gate.py refuses the message form for a block-typed name. */
+@interface FNBlockOperation : NSOperation
+{
+	void (^_block)(void);
+}
+- (instancetype)initWithBlock:(void (^)(void))block;
+@end
+
+@implementation FNBlockOperation
+
+- (instancetype)initWithBlock:(void (^)(void))block
+{
+	self = [super init];
+	if (self != nil) {
+		_block = Block_copy(block);
+	}
+	return self;
+}
+
+- (void)main
+{
+	if (_block != NULL) {
+		_block();
+	}
+}
+
+- (void)dealloc
+{
+	if (_block != NULL) {
+		Block_release(_block);
+	}
+	[super dealloc];
 }
 
 @end
@@ -368,6 +407,19 @@ static void fn_set_current_queue(NSOperationQueue *queue)
 - (void)setName:(nullable NSString *)name
 {
 	_name = name;
+}
+
+
+- (void)addOperationWithBlock:(void (^)(void))block
+{
+	FNBlockOperation *operation;
+
+	if (block == NULL) {
+		return;
+	}
+	operation = [[FNBlockOperation alloc] initWithBlock:block];
+	[self addOperation:operation];
+	[operation release];
 }
 
 @end
