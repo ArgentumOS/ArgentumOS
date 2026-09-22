@@ -225,7 +225,7 @@ int main(void)
 			"configuration", "delegate", "delegateQueue", "sessionDescription",
 			"setSessionDescription:", "dataTaskWithRequest:", "dataTaskWithURL:",
 			"getTasksWithCompletionHandler:", "invalidateAndCancel",
-			"finishTasksAndInvalidate", NULL
+			"finishTasksAndInvalidate", "downloadTaskWithRequest:", NULL
 		};
 		static const char *taskSelectors[] = {
 			"taskIdentifier", "originalRequest", "currentRequest", "response", "error",
@@ -241,8 +241,11 @@ int main(void)
 		 * refused while NOTHING COULD RUN A TASK, and a refusal list is a fact about the tree that a
 		 * landing has to revisit - the third time this one check has been revisited, after the two
 		 * classes W7 shipped before it. */
+		/* THE DOWNLOAD DOORS HAVE LEFT THIS LIST, WHICH IS THE FIFTH TIME THIS SESSION: a refusal is a fact
+		 * about the TREE, and NSURLSessionDownloadTask is what made it stale. The arrival is asserted in the
+		 * positive half below rather than only subtracted from here. */
 		static const char *excluded[] = {
-			"downloadTaskWithRequest:", "uploadTaskWithRequest:fromData:",
+			"uploadTaskWithRequest:fromData:",
 			"streamTaskWithHostName:port:", "webSocketTaskWithURL:",
 			"URLSession:didReceiveChallenge:completionHandler:",
 			"URLSession:task:didReceiveChallenge:completionHandler:",
