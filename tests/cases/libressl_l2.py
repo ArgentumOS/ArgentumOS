@@ -44,30 +44,8 @@ CHECKS = ("ca-generated", "server-certificate-signed-by-the-ca", "openssldir-is-
           "an-untrusted-ca-is-refused")
 
 
-# THE HALT, AS THE HARNESS'S OWN xfail REASON. The guest dies with a #GP during the UNTRUSTED fetch
-# (the one expected to fail verification), at rip = img + 0x73533 with a user address in CR2 — recorded
-# in docs/design/libressl-plan.md with the lead worth following first (this plan's own kernel notes
-# recorded "the kernel executing an unmapped page ffff80000d9fe131" as exposed by the #DF-IST fix and
-# left open; this rip is in the same neighbourhood). The checks below flip to unexpected-pass the moment
-# it is fixed, which is what the harness reports as a failure — the flip signal, on purpose.
-HALT = ("the guest HALTS after this fetch: a kernel #GP (rip=img+0x73533, cr2 a user address) — "
-        "docs/design/libressl-plan.md L2")
-
-
 class Case(BaseCase):
     title = "libressl L2: the FSH trust store decides, and it decides both ways"
-
-    # EVERY CHECK THIS CASE REPORTS IS UNREACHABLE WHILE THE HALT STANDS: the guest dies mid-script, so
-    # whatever the script's own checks would have said after that point cannot be observed. Applied here
-    # rather than inline at five call sites, so the reason lives in one place — and so that when the halt
-    # is fixed these flip to UNEXPECTED PASS, which the harness reports as a failure on purpose.
-    HALT_AFFECTED = ("probe-ran", "every-check-passed", "no-fail-lines",
-                     "tally-accounts-for-every-check", "exit-status")
-
-    def check(self, name, ok, detail="", xfail=None):
-        if xfail is None and name in self.HALT_AFFECTED:
-            xfail = HALT
-        return super().check(name, ok, detail, xfail)
     tier = "fast"
     # Self-contained: its own CA, its own server, its own store writes (restored at the end). Every wait
     # in the script is bounded.

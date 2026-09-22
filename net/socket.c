@@ -73,6 +73,12 @@ struct socket *get_socket_from_queue(struct socket *ss)
 	if((sc = ss->queue_head)) {
 		ss->queue_head = sc->next_queue;
 		ss->queue_len--;
+		/* FNX: WHAT LEAVES THE QUEUE FORGETS IT — BOTH LINKS. `next_queue` is cleared because a
+		 * popped socket still points at the socket behind it while it begins a life of its own;
+		 * `pending_in` because it is no longer in anybody's backlog. The first version cleared
+		 * neither, and that is the other half of the dangling-pointer bug. */
+		sc->next_queue = NULL;
+		sc->pending_in = NULL;
 	}
 	RESTORE_FLAGS(flags);
 
@@ -99,10 +105,49 @@ int insert_socket_to_queue(struct socket *ss, struct socket *sc)
 	} else {
 		ss->queue_head = sc;
 	}
+	sc->next_queue = NULL;
+	sc->pending_in = ss;	/* FNX: so CLOSE can find the chain it must leave (see remove_socket_from_queue) */
 	RESTORE_FLAGS(flags);
 
 	ss->queue_len++;
 	return 0;
+}
+
+/*
+ * FNX: UNLINK `sc` FROM `ss`'S BACKLOG — the counterpart of insert_socket_to_queue, and the thing the
+ * close path never had.
+ *
+ * WHY IT EXISTS: `ipv4_free`/`unix_free` unhooked the peer and drained their OWN packet queues and
+ * nothing else, so a socket still sitting in a listener's backlog when it closed left a pointer into
+ * its FREED INODE in that chain — a socket's storage is its sockfs inode — and the next connect()'s
+ * tail walk dereferenced it: a #GP inside insert_socket_to_queue, measured, with
+ * tests/cases/libressl_l2.py as the reproducer. `pending_in` is what makes this O(backlog) instead of a
+ * search of every socket in the domain.
+ *
+ * IT IS IDEMPOTENT AND TOLERATES A SOCKET THAT IS NOT THERE, because both callers are close paths and
+ * neither can be sure it was ever accepted.
+ */
+void remove_socket_from_queue(struct socket *ss, struct socket *sc)
+{
+	unsigned int flags;
+	struct socket *s, *prev;
+
+	SAVE_FLAGS(flags); CLI();
+	for(prev = NULL, s = ss->queue_head; s; prev = s, s = s->next_queue) {
+		if(s != sc) {
+			continue;
+		}
+		if(prev) {
+			prev->next_queue = s->next_queue;
+		} else {
+			ss->queue_head = s->next_queue;
+		}
+		if(ss->queue_len > 0) {
+			ss->queue_len--;
+		}
+		break;
+	}
+	RESTORE_FLAGS(flags);
 }
 
 int sock_alloc(struct socket **s)

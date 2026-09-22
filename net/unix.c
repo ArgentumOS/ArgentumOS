@@ -149,9 +149,28 @@ int unix_create(struct socket *s, int domain, int type, int protocol)
 void unix_free(struct socket *s)
 {
 	struct unix_info *u;
+	struct socket *sc;
 
 	u = &s->u.unix_info;
+
+	/* FNX: the same two directions as ipv4_free, and see there for the full reasoning — a socket's
+	 * storage is its sockfs inode, so a stale queue pointer is a pointer into freed memory. The SELF
+	 * unlink comes first and is unconditional: it is idempotent, and the listener it names is alive.
+	 * The DRAIN of this socket's own backlog happens only when the endpoint TRULY goes away, which is
+	 * what the count below decides — a listener that is merely losing a reference still owns its
+	 * queue. */
+	if(s->pending_in) {
+		remove_socket_from_queue(s->pending_in, s);
+		s->pending_in = NULL;
+	}
+
 	if(!(--u->count)) {
+		while((sc = get_socket_from_queue(s))) {
+			sc->pending_in = NULL;
+			sc->state = SS_DISCONNECTING;
+			wakeup(sc);
+		}
+		wakeup(&do_select);
 		if(u->data) {
 			kfree((addr_t)u->data);
 		}

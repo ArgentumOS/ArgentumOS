@@ -45,6 +45,13 @@ struct socket {
 	int queue_limit;		/* max. number of pending connections */
 	struct socket *queue_head;	/* first connection in queue */
 	struct socket *next_queue;	/* next connection in queue */
+	/* FNX: THE LISTENER WHOSE BACKLOG HOLDS THIS SOCKET, or NULL. It exists so that CLOSE can find
+	 * the chain it has to leave. Without it a socket's first-order neighbours knew about it and it
+	 * knew about none of them, so nothing on the close path could unlink it — and because a socket's
+	 * storage is its SOCKFS INODE, a client that connected and closed before the server accepted left
+	 * a pointer to freed memory in the listener's chain for the next connect() to walk into. That was
+	 * a #GP inside insert_socket_to_queue, measured (tests/cases/libressl_l2.py). */
+	struct socket *pending_in;
 	union {
 		struct unix_info unix_info;
 		struct ipv4_info ipv4_info;
@@ -85,6 +92,9 @@ int assign_proto(struct socket *, int);
 
 struct socket *get_socket_from_queue(struct socket *);
 int insert_socket_to_queue(struct socket *, struct socket *);
+/* FNX: and the way OUT of a backlog, which close needs — see remove_socket_from_queue() in
+ * net/socket.c for why a socket that dies before it is accepted has to leave the chain it joined. */
+void remove_socket_from_queue(struct socket *, struct socket *);
 int sock_alloc(struct socket **);
 void sock_free(struct socket *);
 int socket(int, int, int);

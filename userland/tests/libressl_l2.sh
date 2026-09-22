@@ -76,11 +76,11 @@ fi
 
 openssl req -newkey rsa:2048 -keyout srv.key -out srv.csr -nodes \
 	-subj /CN=localhost > csr.log 2>&1
-# A SAN IS REQUIRED, not decoration: modern verification matches the NAME against the
-# subjectAltName extension, and a certificate whose only name is a CN would be refused for the right
-# reason but the wrong test. The assertion below greps for "subject alternative name" WITH SPACES,
-# because that is how LibreSSL RENDERS it in `-text` — the first version of this script grepped for the
-# extension's own spelling and reported a failure with "Signature ok" in its detail.
+# A SAN IS REQUIRED, not decoration: modern verification matches the NAME against the subjectAltName
+# extension, and a certificate whose only name is a CN would be refused for the right reason but the
+# wrong test. The assertion below greps for "subject alternative name" WITH SPACES, because that is how
+# LibreSSL RENDERS it in `-text` — the first version grepped for the extension's own spelling and
+# reported a failure whose detail said "Signature ok".
 printf 'subjectAltName=DNS:localhost,IP:127.0.0.1\n' > san.cnf
 openssl x509 -req -in srv.csr -CA ca.pem -CAkey ca.key -CAcreateserial -out srv.pem -days 1 \
 	-extfile san.cnf > sign.log 2>&1
@@ -110,39 +110,55 @@ case "$SUBJ" in
 		check ca-installed-in-the-fsh-store 0 "the store's subject is: $SUBJ" ;;
 esac
 
-# --- 3. THE SERVER, AND THE FETCH THAT MUST SUCCEED --------------------------------------------
+# --- 3. THE SERVER ------------------------------------------------------------------------------
 openssl s_server -accept "$PORT" -cert srv.pem -key srv.key -www > srv.log 2>&1 &
 SRV=$!
-sleep 2
-# ITS OWN LOG, DUMPED: the first run of this script found the server NOT LISTENING and had no way to say
-# why, because the only place s_server would have explained itself was a file nobody read.
+sleep 3
+# ITS OWN LOG, DUMPED: an earlier run of this script found the server NOT LISTENING and had no way to
+# say why, because the only place s_server would have explained itself was a file nobody read.
 echo "LIBRESSL-L2-DIAG s_server pid=$SRV log:"
 sed -n '1,10p' srv.log
 
-# THE SERVER TAKES A WHILE TO LISTEN, AND A SLEEP CANNOT KNOW HOW LONG. Its own log says why: `Using
-# auto DH parameters` — LibreSSL generates them at startup, which on this guest outlasts any fixed sleep
-# (the first run measured curl refused at 50 ms and the same server answering later). So the wait is a
-# BOUNDED RETRY on the real fetch, and `--max-time` bounds every transfer, so nothing here can hang.
-fetch() {	# url outfile -> FETCH_RC / FETCH_OUT
+# ONE BOUNDED FETCH, NO RETRY: `--max-time` means a stalled transfer reports instead of hanging.
+fetch() {	# url outfile -> FETCH_RC / FETCH_OUT ; curl's own narration goes to verbose.txt
+	FETCH_OUT="$("$CURL" -sS -v --max-time 8 -o "$2" \
+		-w 'code=%{http_code} verify=%{ssl_verify_result}' "$1" 2> verbose.txt)"
+	FETCH_RC=$?
+}
+
+# AND THE TRUSTED FETCH RETRIES ONLY WHILE THE SERVER IS NOT SERVING YET — refused (7) or timed out (28)
+# — because s_server needs a moment after it starts.
+#
+# IT MUST BE THE FETCH THAT WAITS, AND NOT A PROBE. The first version of this waited by sending a PLAIN
+# HTTP request at the listener, which SABOTAGES A SINGLE-THREADED TLS SERVER: s_server accepts it, waits
+# for a ClientHello that is never coming, and never accepts again — so the real fetch then timed out and
+# the untrusted half passed for a reason that had nothing to do with certificates. A readiness probe has
+# to be the same protocol as the thing it is standing in for.
+fetch_ready() {	# url outfile
 	tries=0
-	while [ "$tries" -lt 20 ]; do
-		FETCH_OUT="$("$CURL" -sS --max-time 10 -o "$2" \
-			-w 'code=%{http_code} verify=%{ssl_verify_result}' "$1" 2>&1)"
-		FETCH_RC=$?
-		if [ "$FETCH_RC" = "7" ]; then		# CURLE_COULDNT_CONNECT: not listening YET
-			sleep 1
-			tries=$((tries + 1))
-			continue
-		fi
+	while [ "$tries" -lt 3 ]; do
+		fetch "$1" "$2"
+		case "$FETCH_RC" in
+			7|28)
+				sleep 1
+				tries=$((tries + 1))
+				continue ;;
+		esac
 		break
 	done
 }
 
 # NO --cacert, ON PURPOSE: the whole point is that the DEFAULTS resolve to the FSH store, which is what
 # this build wired at compile time. A test that named the file would prove nothing about the wiring.
-fetch "https://127.0.0.1:$PORT/" body.txt
+fetch_ready "https://127.0.0.1:$PORT/" body.txt
 TRUSTED="$FETCH_OUT"
 TRUSTED_RC="$FETCH_RC"
+
+# CURL'S OWN NARRATION, because it is the only thing that can say WHERE a stalled handshake stopped.
+echo "LIBRESSL-L2-DIAG curl -v (first 25 lines):"
+sed -n '1,25p' verbose.txt
+echo "LIBRESSL-L2-DIAG curl -v (last 8 lines):"
+tail -8 verbose.txt
 
 case "$TRUSTED" in
 	*code=200*verify=0*)
@@ -152,6 +168,8 @@ case "$TRUSTED" in
 esac
 
 # --- 4. THE SAME FETCH, WITH A CA THE STORE DOES NOT HOLD, AND IT MUST BE REFUSED ---------------
+# NO RETRY HERE, and that is the point: the server is up by now, so the ONLY acceptable outcome is the
+# certificate refusal. A retry would blur a timeout into a success.
 echo "LIBRESSL-L2-DIAG starting the untrusted half"
 openssl req -x509 -newkey rsa:2048 -keyout other.key -out other.pem -days 1 -nodes \
 	-subj /CN=Some-Other-CA > other.log 2>&1
@@ -164,10 +182,14 @@ fetch "https://127.0.0.1:$PORT/" untrusted-body.txt
 UNTRUSTED="$FETCH_OUT"
 UNTRUSTED_RC="$FETCH_RC"
 
-if [ "$UNTRUSTED_RC" != "0" ]; then
+# CURLE_PEER_FAILED_VERIFICATION IS 60, AND NOTHING ELSE WILL DO. An earlier version accepted ANY
+# non-zero exit, which a TIMEOUT (28) satisfies — a check that passes because the test was too slow is
+# not a check. The refusal asserted here is the certificate one.
+if [ "$UNTRUSTED_RC" = "60" ]; then
 	check an-untrusted-ca-is-refused 1 ""
 else
-	check an-untrusted-ca-is-refused 0 "curl ACCEPTED a certificate the store does not hold: $UNTRUSTED"
+	check an-untrusted-ca-is-refused 0 \
+		"curl exit $UNTRUSTED_RC is NOT the verification refusal (60): $UNTRUSTED"
 fi
 
 echo "LIBRESSL-L2-DIAG stopping the server"

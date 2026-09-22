@@ -194,8 +194,36 @@ void ipv4_free(struct socket *s)
 {
 	struct ipv4_info *ip4, *peer4;
 	struct packet *p;
+	struct socket *sc;
 
 	ip4 = &s->u.ipv4_info;
+
+	/* FNX: LEAVE EVERY QUEUE YOU ARE IN, AND EMPTY THE ONE YOU OWN. A socket's storage IS its sockfs
+	 * inode, so a stale queue pointer is a pointer into FREED MEMORY — and BOTH directions of that
+	 * were missing here:
+	 *
+	 *   * a client that CONNECTS and CLOSES BEFORE THE SERVER ACCEPTS stayed in the listener's
+	 *     `queue_head` chain, and the next `connect()`'s walk of that chain dereferenced the freed
+	 *     inode: a #GP inside insert_socket_to_queue. Measured, and the reproducer is
+	 *     tests/cases/libressl_l2.py — curl aborts the untrusted-cert fetch and s_server never gets to
+	 *     accept the connection it opened.
+	 *   * a LISTENER that closed left its queued sockets holding `pending_in` back at it, with their
+	 *     `connect()` parked in ipv4_wait_connected() waiting for an accept that could not happen.
+	 *
+	 * The drain DISCONNECTS what it releases and wakes it: a connector parked in
+	 * ipv4_wait_connected() re-checks `s->state` when it wakes, so it now answers ENOTCONN instead of
+	 * waiting for a listener that is gone. (ipv4_accept() wakes its client the same way.) */
+	if(s->pending_in) {
+		remove_socket_from_queue(s->pending_in, s);
+		s->pending_in = NULL;
+	}
+	while((sc = get_socket_from_queue(s))) {
+		sc->pending_in = NULL;
+		sc->state = SS_DISCONNECTING;
+		wakeup(sc);
+	}
+	wakeup(&do_select);
+
 	if(ip4->type == SOCK_STREAM && ip4->peer) {
 		peer4 = &ip4->peer->u.ipv4_info;
 		peer4->peer = NULL;
