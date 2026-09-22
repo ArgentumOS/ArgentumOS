@@ -532,6 +532,16 @@ int ipv4_recvfrom(struct socket *s, struct fd *f, char *buffer, __size_t count, 
 
 	lock_resource(&packet_resource);
 	while(!(p = peek_packet(ip4->packet_queue))) {
+		/* EOF IS NOT AN ABSENCE OF DATA, IT IS A CONDITION, AND THIS LOOP HAD ONLY THE FORMER.
+		 * A peer that closes stamps this socket SS_DISCONNECTING and wakes it, and the wake-up
+		 * lands HERE — where the sole question was whether a packet had arrived, so a read after
+		 * the peer's close slept for ever instead of returning 0. A FIN that is never observed is
+		 * indistinguishable from a slow server, which is how it stayed hidden. Checked BEFORE the
+		 * O_NONBLOCK branch, because EOF is not EAGAIN: a non-blocking reader must see it too. */
+		if(s->state == SS_DISCONNECTING) {
+			unlock_resource(&packet_resource);
+			return 0;
+		}
 		unlock_resource(&packet_resource);
 		if(!(f->flags & O_NONBLOCK)) {
 			if(sleep(ip4, PROC_INTERRUPTIBLE)) {
@@ -640,6 +650,15 @@ int ipv4_select(struct socket *s, int flag)
 	if(flag == SEL_R) {
 		if(ip4->packet_queue) {
 			return 1;	/* loopback data waiting */
+		}
+		/* AN EOF IS A READABLE CONDITION, and leaving it out is the SAME DEFECT as leaving out
+		 * writability below: a program that multiplexes before it reads waits for ever. A peer's
+		 * close stamps its partner SS_DISCONNECTING and wakes it (ipv4_free), and the woken poll
+		 * asked only whether a packet had arrived — so it went back to sleep. MEASURED: an https
+		 * fetch read the response, then hung until it was killed, because `HTTP/1.0` told it to
+		 * expect a close and the close was never reported (libressl_l2). */
+		if(s->state == SS_DISCONNECTING) {
+			return 1;
 		}
 		if(s->fd_ext != -1 && ip4->local_addr != INADDR_LOOPBACK) {
 			/* external socket: the data comes from the NIC's receive

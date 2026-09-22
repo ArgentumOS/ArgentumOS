@@ -371,6 +371,75 @@ int main(void)
 		}
 	}
 
+	/* --- PHASE 4: DOES THE PEER'S CLOSE REACH THE CLIENT AS EOF? ------------------------------------
+	 * WHY THIS EXISTS, and it is the third time this one file has found a kernel defect: an https
+	 * fetch read its response and then HUNG, because `HTTP/1.0` tells a client to read until the
+	 * connection closes and the close was never delivered. curl's own trace, one line before it
+	 * stopped, was `{ [3930 bytes data]` - the body arriving, and then nothing.
+	 *
+	 * A CLOSE IS NOT AN ABSENCE OF DATA, IT IS A CONDITION, and the receive path only had the
+	 * former. Both halves are asserted here because they fail independently: poll() must REPORT the
+	 * closed connection as readable, and read() must RETURN 0 for it.
+	 */
+	{
+		int s4, rc4, w4;
+		ssize_t n4;
+		pid_t p4 = fork();
+
+		if (p4 == 0) {
+			struct sockaddr_in from;
+			socklen_t fromlen = sizeof(from);
+			int cc = accept(ls, (struct sockaddr *)&from, &fromlen);
+
+			close(cc);		/* accept, then CLOSE: this peer never sends a byte */
+			_exit(cc < 0 ? PEER_ACCEPT_FAILED : PEER_OK);
+		}
+		s4 = socket(AF_INET, SOCK_STREAM, 0);
+		rc4 = connect(s4, (struct sockaddr *)&addr, sizeof(addr));
+		printf("KERNEL-LOOPBACK-DIAG phase 4 connect() = %d\n", rc4);
+		usleep(300000);		/* let the peer accept and close */
+		w4 = poll_report("POLLIN after the peer closed", s4, POLLIN, 3000);
+		if (w4 > 0) {
+			errno = 0;
+			n4 = read(s4, buf, sizeof(buf));
+			printf("KERNEL-LOOPBACK-DIAG read() after the peer closed = %d errno=%d (%s)\n",
+			       (int)n4, n4 < 0 ? errno : 0, n4 < 0 ? strerror(errno) : "0 is EOF");
+		} else {
+			n4 = -2;
+			printf("KERNEL-LOOPBACK-DIAG the peer's close was never reported readable\n");
+		}
+		check("peer-close-reported-readable", w4 > 0,
+		      w4 > 0 ? "" : "poll did not report the closed connection as readable");
+		check("peer-close-is-observed-as-eof", n4 == 0,
+		      n4 == 0 ? "" : n4 == -2 ? "no readability, so the read was not attempted"
+			      : n4 < 0 ? "the read failed instead of reporting EOF"
+			      : "the read returned data a closed peer never sent");
+		close(s4);
+		{
+			int ticks = 0, st4 = -1, reaped4 = 0;
+
+			while (ticks < 50) {
+				pid_t r = waitpid(p4, &st4, WNOHANG);
+
+				if (r == p4) {
+					reaped4 = 1;
+					break;
+				}
+				if (r < 0) {
+					break;
+				}
+				usleep(100000);
+				ticks++;
+			}
+			if (!reaped4) {
+				kill(p4, SIGKILL);
+				waitpid(p4, &st4, 0);
+			}
+			printf("KERNEL-LOOPBACK-DIAG phase 4 peer exit code = %d\n",
+			       reaped4 && WIFEXITED(st4) ? WEXITSTATUS(st4) : -1);
+		}
+	}
+
 	/* THE PEER'S OWN ACCOUNT, read out of its exit code — the console stays single-writer.
 	 *
 	 * AND IT IS REAPED UNDER A DEADLINE, which the first version of this probe did NOT do: a peer

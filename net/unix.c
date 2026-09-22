@@ -543,6 +543,16 @@ int unix_recvfrom(struct socket *s, struct fd *f, char *buffer, __size_t count, 
 
 	lock_resource(&packet_resource);
 	while(!(p = peek_packet(u->packet_queue))) {
+		/* FNX: AN EOF IS A CONDITION, NOT AN ABSENCE OF DATA — and for AF_UNIX the structure was
+		 * already half right, which is what gave it away: unix_select() answers "read EOF" as soon as
+		 * the socket is not SS_CONNECTED, and unix_free() stamps a peer's socket SS_DISCONNECTING.
+		 * The receive loop below asked only whether a packet had arrived, so a reader that got the
+		 * right answer from select and then read was slept for ever. Same defect, same fix, same
+		 * condition as ipv4_recvfrom(). */
+		if(s->state == SS_DISCONNECTING) {
+			unlock_resource(&packet_resource);
+			return 0;
+		}
 		unlock_resource(&packet_resource);
 		if(!(f->flags & O_NONBLOCK)) {
 			if(sleep(u, PROC_INTERRUPTIBLE)) {
