@@ -864,8 +864,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# kernel_pipe_dup2 reasoning). It compiles against the VENDORED libcurl out of .build/curl-prefix
 	# and needs NO RPATH: the guest loader resolves libcurl.so.4 out of /System/Libraries, which is
 	# where the staging block above puts it.
+	# -lcurl -lssl -lcrypto IN THAT ORDER: libcurl NEEDs LibreSSL's entry points now that it is bound to
+	# it (L2), so leaving them out fails the link with "undefined reference to X509_check_issued" — the
+	# same shape as the libtls link line below.
 	$(MUSL64_CC) -I$(CURL_PREFIX)/include userland/tests/curl_smoke.c \
-		-L$(CURL_PREFIX)/lib -lcurl \
+		-L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/curl_smoke"
 	# kernel_threaded_exec: THE KERNEL BUG'S REPRODUCER (§45 of the Foundation plan), not a Foundation
 	# probe - it is plain C with NO Foundation in it, because the point is that the library is absent from
@@ -1179,6 +1182,19 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# that includes <curl/curl.h> has to be able to find it.
 	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/curl"
 	@cp $(CURL_PREFIX)/include/curl/*.h "$(ROOTFS64)/System/Shared/Headers/curl/"
+	# THE CLI TOO (BUILD_CURL_EXE=ON): the L2 trust-store acceptance is a shell script driving an
+	# https fetch, and a shell cannot call a library.
+	#
+	# AND IT GOES IN Shared/Tools, NOT System/Tools, WHICH IS THE FSH LINT'S OWN RULE RATHER THAN A
+	# PREFERENCE. tools/fshlint.py gates System/Tools for legacy Linux paths and REPORTS carve-out trees
+	# (System/Shared among them) as info instead — "so third-party carve-outs stay visible". A vendored
+	# upstream binary carries its OWN strings (`/dev/null`, `/etc/hosts`), which are not this tree's
+	# references and cannot be removed by porting: staging curl in the gated tree fails the gate with
+	# them (measured: 3 errors from System/Tools/curl), and staging it in a carve-out tree is what the
+	# doctrine says to do with third-party code. openssl(1) stays in System/Tools because LibreSSL's
+	# carries no such tokens.
+	@mkdir -p "$(ROOTFS64)/System/Shared/Tools"
+	@cp $(CURL_PREFIX)/bin/curl "$(ROOTFS64)/System/Shared/Tools/curl"
 	# --- LibreSSL (docs/design/libressl-plan.md, pin 4.3.2 via tools/fetch-libressl.sh): THE one
 	# system SSL library, and what libcurl binds for https at L2. Same staging rule as lcms2 and
 	# libcurl above — the glob carries the soname AND the real file, the bare dev link is skipped —
@@ -1200,12 +1216,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	@cp -a $(LIBRESSL_PREFIX)/include/openssl/*.h "$(ROOTFS64)/System/Shared/Headers/openssl/"
 	@cp $(LIBRESSL_PREFIX)/include/tls.h "$(ROOTFS64)/System/Shared/Headers/"
 	# THE CONFIG, at the path this build compiles in as OPENSSLDIR
-	# (`-DOPENSSLDIR=/System/Configuration/ssl`, tools/libressl-build.sh). It is not optional: without
+	# (`-DOPENSSLDIR=/System/Configuration/SSL`, tools/libressl-build.sh). It is not optional: without
 	# it `openssl req` exits 1 with "Unable to load config info" and NO certificate can be made — which
 	# is measured in the file's own header, and which is what L1's handshake needs. An INI file, because
 	# it is LibreSSL's format read by LibreSSL's parser, not one of our libconfig domains.
-	@mkdir -p "$(ROOTFS64)/System/Configuration/ssl"
-	@cp userland/configuration/openssl.cnf "$(ROOTFS64)/System/Configuration/ssl/openssl.cnf"
+	@mkdir -p "$(ROOTFS64)/System/Configuration/SSL"
+	@cp userland/configuration/openssl.cnf "$(ROOTFS64)/System/Configuration/SSL/openssl.cnf"
 	# libressl_l1: L1's acceptance — a real TLS handshake between two guest processes (s_server and
 	# s_client), loopback only. A SHELL SCRIPT rather than a C probe: what L1 owes is two processes
 	# talking, not a library call.
@@ -1222,6 +1238,11 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(LIBRESSL_PREFIX)/lib -ltls -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/libressl_tls_pair"
 	@cp userland/tests/libressl_tls_pair.sh "$(ROOTFS64)/System/Shared/tests/libressl_tls_pair.sh"
+	# libressl_l2: L2's acceptance — the FSH TRUST STORE deciding both ways. It generates a CA and a
+	# server certificate on the guest, installs the CA at /System/Configuration/SSL/cert.pem (the file
+	# OPENSSLDIR points at and the file this curl was given as CURL_CA_BUNDLE), fetches over https with
+	# NO --cacert, and then swaps the store's CA to prove the refusal half.
+	@cp userland/tests/libressl_l2.sh "$(ROOTFS64)/System/Shared/tests/libressl_l2.sh"
 	# hello_dl: the dynamic-linker smoke test. Staged under
 	# System/Shared/tests - System/Tools is dynamic too since M1, but the
 	# linter carve-out keeps this one out of the zero-allow scope.

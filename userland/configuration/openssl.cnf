@@ -1,5 +1,5 @@
 # FNX's LibreSSL configuration — the config the LibreSSL apps load at startup.
-# docs/design/libressl-plan.md §4; staged to /System/Configuration/ssl/openssl.cnf,
+# docs/design/libressl-plan.md §4; staged to /System/Configuration/SSL/openssl.cnf,
 # which is where this build's compiled-in OPENSSLDIR points.
 #
 # Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
@@ -15,7 +15,7 @@
 # and that was with the OPENSSLDIR the build had chosen BY DEFAULT, `etc/ssl` — a Linux path that
 # cannot exist here, because this system has no /etc. So the landing could not make a certificate,
 # which is exactly what L1's handshake needs. Two things fix it, and both are needed: the build now
-# compiles OPENSSLDIR to the FSH (`-DOPENSSLDIR=/System/Configuration/ssl`), and this file is what
+# compiles OPENSSLDIR to the FSH (`-DOPENSSLDIR=/System/Configuration/SSL`), and this file is what
 # lives there. The plan's §4 requirement — "nothing consults Linux paths" — is what the first half
 # delivers, and it delivers it for the CA defaults too: OPENSSLDIR is also where LibreSSL looks for
 # `cert.pem` and `certs/`, which is precisely where L2's trust store belongs.

@@ -14,8 +14,8 @@
 # ONE THING IT DOES NOT PROVE, STATED SO IT IS NOT MISTAKEN FOR COVERAGE: the trust store. This uses
 # `-CAfile cert.pem` — the certificate the script itself just made — so it proves the HANDSHAKE and not
 # the verification POLICY. The store itself is L2's; what L1 owes it is the ground it stands on, and
-# that is now in place: the build compiles OPENSSLDIR to `/System/Configuration/ssl`, so LibreSSL's
-# default CA file is `/System/Configuration/ssl/cert.pem` — no Linux path anywhere.
+# that is now in place: the build compiles OPENSSLDIR to `/System/Configuration/SSL`, so LibreSSL's
+# default CA file is `/System/Configuration/SSL/cert.pem` — no Linux path anywhere.
 #
 # EVERY STEP IS BOUNDED, because the first run of this script HUNG here (71s, killed by the harness) and
 # a probe that can hang is a probe that cannot report. The client is run in the background under a

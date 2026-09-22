@@ -5,10 +5,19 @@
 # SPDX-License-Identifier: MIT
 #
 # THE RECIPE IS docs/design/foundation-transport-plan.md's, and the decisions are recorded there:
-# curl **8.22.0**, **CMake ONLY** (curl's autotools layer is never invoked — the same rule
-# libressl-plan.md states for its own library), and **no TLS backend** in this landing, because
-# libressl-plan.md makes LibreSSL/libtls the ONE system SSL library and a second one must not enter
-# the tree. What this produces is `http://` and `file://` only, which is what W7 slice 2b is.
+# curl **8.22.0** and **CMake ONLY** (curl's autotools layer is never invoked — the same rule
+# libressl-plan.md states for its own library).
+#
+# AND IT NOW BUILDS **WITH** TLS, BOUND TO LIBRESSL — which is L2, and the reason the TLS-less landing
+# existed: libressl-plan.md makes LibreSSL/libtls the ONE system SSL library, so the backend is
+# `CURL_USE_OPENSSL=ON` pointed at the LibreSSL prefix (curl has no separate LibreSSL backend; LibreSSL
+# IS the OpenSSL API) and every other backend stays OFF. THE ASSERTION BELOW IS WHAT PROVES IT picked
+# LibreSSL and not the BUILD HOST's OpenSSL: `Enabled SSL backends:` must name LibreSSL, and a host
+# OpenSSL would link a musl binary against glibc's libraries.
+#
+# THE CA DEFAULTS ARE WIRED TO THE FSH STORE at COMPILE time (`CURL_CA_BUNDLE`/`CURL_CA_PATH` →
+# `/System/Configuration/SSL/cert.pem` and `.../certs`), which is where LibreSSL's own OPENSSLDIR
+# already points — so `https://` consults the FSH store and nothing consults a Linux path.
 #
 # ONE BUILD, NOT TWO — and the difference from tools/lcms2-build.sh is the point. lcms2 is built
 # twice because libcoregraphics exists in BOTH forms (the guest's and the host's) and a musl object
@@ -29,8 +38,13 @@
 #   * EVERY TLS BACKEND IS OFF, and curl 8.22 has DROPPED the BearSSL/SecureTransport options
 #     outright: naming one is silently ignored. The missing-TLS case announces itself in the
 #     configure output as `Enabled SSL backends:` with nothing after it, which is the line to read.
-#   * THE PROTOCOL SET IS `http` + `file`. FILE is deliberate and load-bearing for the smoke test:
-#     a guest with no network can still prove the library loads and moves bytes.
+#   * THE CLI IS BUILT (`BUILD_CURL_EXE=ON`) as well as the library, and for a concrete reason: a shell
+#     test cannot drive a library, and the L2 trust-store acceptance IS a shell script driving an https
+#     fetch. `curl` joins `openssl(1)` in /System/Tools. The library-only landing did not need it, which
+#     is why this flipped with L2 - the first run of that test said `curl: not found`.
+#   * THE PROTOCOL SET IS `http`, `https` + `file`. FILE is deliberate and load-bearing for the smoke
+#     test: a guest with no network can still prove the library loads and moves bytes. `https` arrived
+#     with the LibreSSL binding (L2), which is what the TLS-less landing was waiting for.
 #   * zlib/brotli/zstd and HTTP/2+3 are OFF. No compression library is vendored here yet, and the
 #     transport W7 needs is HTTP/1.1. Turning any of them on is a dependency decision, not a flag.
 #
@@ -45,6 +59,13 @@ LOG="$R/.build/curl-build.log"
 
 if [ ! -f "$SRC/CMakeLists.txt" ]; then
 	echo "third_party/curl is empty - run: git submodule update --init third_party/curl"
+	exit 1
+fi
+
+# CURL'S TLS BACKEND IS LIBRESSL, so this build DEPENDS on that prefix existing - the plan's order
+# (L0/L1 before the transport) made real. Gated, so a missing prefix names its own fix.
+if [ ! -d "$R/.build/libressl-prefix/lib" ]; then
+	echo "the LibreSSL prefix is missing - run: tools/fetch-libressl.sh && tools/libressl-build.sh"
 	exit 1
 fi
 
@@ -76,7 +97,7 @@ cmake -G "Unix Makefiles" -S "$SRC" -B "$BUILD" \
 	-DCMAKE_INSTALL_LIBDIR=lib \
 	-DCMAKE_IGNORE_PATH="/usr/lib;/usr/local/lib;/usr/include" \
 	-DBUILD_SHARED_LIBS=ON \
-	-DBUILD_CURL_EXE=OFF \
+	-DBUILD_CURL_EXE=ON \
 	-DBUILD_EXAMPLES=OFF \
 	-DBUILD_TESTING=OFF \
 	-DENABLE_THREADED_RESOLVER=OFF \
@@ -85,7 +106,13 @@ cmake -G "Unix Makefiles" -S "$SRC" -B "$BUILD" \
 	-DCURL_USE_PKGCONFIG=OFF \
 	-DCURL_USE_CMAKECONFIG=OFF \
 	-DUSE_LIBIDN2=OFF \
-	-DCURL_USE_OPENSSL=OFF \
+	-DCURL_USE_OPENSSL=ON \
+	-DOPENSSL_ROOT_DIR="$R/.build/libressl-prefix" \
+	-DOPENSSL_INCLUDE_DIR="$R/.build/libressl-prefix/include" \
+	-DOPENSSL_SSL_LIBRARY="$R/.build/libressl-prefix/lib/libssl.so" \
+	-DOPENSSL_CRYPTO_LIBRARY="$R/.build/libressl-prefix/lib/libcrypto.so" \
+	-DCURL_CA_BUNDLE=/System/Configuration/SSL/cert.pem \
+	-DCURL_CA_PATH=/System/Configuration/SSL/certs \
 	-DCURL_USE_GNUTLS=OFF \
 	-DCURL_USE_MBEDTLS=OFF \
 	-DCURL_USE_WOLFSSL=OFF \
@@ -122,12 +149,13 @@ cmake -G "Unix Makefiles" -S "$SRC" -B "$BUILD" \
 # build has an EMPTY backend list, and the protocol set must be exactly http + file. Both are
 # asserted, because a silent re-enable is the failure mode this script exists to prevent.
 grep -E '^-- (Protocols|Features|Enabled SSL backends):' "$LOG" || true
-if ! grep -q '^-- Protocols: file http$' "$LOG"; then
-	echo "curl-build: the protocol set is not 'file http' - see $LOG"
+if ! grep -q '^-- Protocols: file http https$' "$LOG"; then
+	echo "curl-build: the protocol set is not 'file http https' - see $LOG"
 	exit 1
 fi
-if ! grep -q '^-- Enabled SSL backends: $' "$LOG"; then
-	echo "curl-build: a TLS backend is enabled - this landing must be TLS-less (see the header)"
+if ! grep -q '^-- Enabled SSL backends:.*LibreSSL' "$LOG"; then
+	echo "curl-build: the SSL backend is not LibreSSL - see $LOG"
+	grep -E '^-- (Enabled SSL backends|SSL)' "$LOG" || true
 	exit 1
 fi
 

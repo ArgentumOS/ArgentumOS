@@ -94,17 +94,17 @@ cmake -G "Unix Makefiles" -S "$SRC" -B "$BUILD" \
 	-DENABLE_EXTRATESTS=OFF \
 	-DLIBRESSL_APPS=ON \
 	-DENABLE_ASM=OFF \
-	-DOPENSSLDIR=/System/Configuration/ssl \
+	-DOPENSSLDIR=/System/Configuration/SSL \
 	> "$LOG" 2>&1
 
 cmake --build "$BUILD" -j"$(nproc)" >> "$LOG" 2>&1
 
 # INSTALL THROUGH A DESTDIR STAGE, and this is not ceremony — it is the only way the install works
 # once OPENSSLDIR is an FSH path. CMake installs the config to `CONF_DIR`, which IS OPENSSLDIR, so an
-# absolute OPENSSLDIR makes the install try to create /System/Configuration/ssl ON THE BUILD HOST:
+# absolute OPENSSLDIR makes the install try to create /System/Configuration/SSL ON THE BUILD HOST:
 #
 #     CMake Error at cmake_install.cmake:95 (file):
-#       file cannot create directory: /System/Configuration/ssl.  Maybe need administrative privileges.
+#       file cannot create directory: /System/Configuration/SSL.  Maybe need administrative privileges.
 #
 # (measured). DESTDIR prefixes every ABSOLUTE install path, so the whole tree — libraries, tools,
 # headers AND that config — lands under $STAGE; the real prefix is then assembled from it. The staged

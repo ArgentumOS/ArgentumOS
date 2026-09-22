@@ -148,11 +148,11 @@ external network needed.
   because the compiled-in default `OPENSSLDIR` was the Linux `etc/ssl` — and **this system has no
   `/etc`**. So §4's requirement ("nothing consults Linux paths") was not decoration: it was the thing
   standing between the tool and running. It is fixed — the build passes
-  **`-DOPENSSLDIR=/System/Configuration/ssl`**, so the config, the default CA file and the CA directory
-  all resolve under the FSH (verified in the artifact: `/System/Configuration/ssl/cert.pem`, `.../certs`,
+  **`-DOPENSSLDIR=/System/Configuration/SSL`**, so the config, the default CA file and the CA directory
+  all resolve under the FSH (verified in the artifact: `/System/Configuration/SSL/cert.pem`, `.../certs`,
   `.../openssl.cnf`), and L2 gets its canonical location for free. **THAT FLAG ALSO FORCED A SECOND
   FIX**: CMake installs the config to `CONF_DIR`, which IS `OPENSSLDIR`, so an absolute `OPENSSLDIR` made
-  the *host-side* install try to create `/System/Configuration/ssl` ("Maybe need administrative
+  the *host-side* install try to create `/System/Configuration/SSL` ("Maybe need administrative
   privileges", measured) — the install now goes through a `DESTDIR` stage. Both live in
   tools/libressl-build.sh.
 * **AND THE HANDSHAKE'S STALL IS NOW EXPLAINED — BY A KERNEL `poll(2)` GAP, NOT BY TLS AND NOT BY THE
@@ -285,6 +285,36 @@ the library; L2's acceptance is: **a real TLS fetch
 (https) verifies a real certificate against the FNX store and
 succeeds/fails on trust exactly as configured.**
 
+
+**AND THE L2 ACCEPTANCE IS BUILT AND RUNNING, AND IT HAS FOUND A KERNEL HALT (2026-09-21).**
+`userland/tests/libressl_l2.sh` + `tests/cases/libressl_l2.py` do the plan's acceptance LOCALLY and
+deterministically: a CA and a server certificate are generated ON THE GUEST, the CA is installed at the
+FSH store (`/System/Configuration/SSL/cert.pem` — the file `OPENSSLDIR` names and the file this build of
+curl was given as `CURL_CA_BUNDLE`), `openssl s_server` runs on loopback, and `curl` — with **no
+`--cacert`**, because the DEFAULT has to be the store — must SUCCEED; then the store's CA is swapped for
+one the server's certificate was not signed by and the same fetch must be REFUSED. The refusal half is
+what makes it a test of POLICY rather than of a handshake.
+
+**FOUR OF THE SIX CHECKS PASS** (ca-generated, server-certificate-signed-by-the-ca,
+openssldir-is-the-fsh-store, ca-installed-in-the-fsh-store) — and then the guest HALTS:
+
+    !!! KERNEL EXCEPTION vector 0x0d error=0x0  rip=0xffff80000d9f6533
+        img=0x000000000d983000 cr2=0x00007f0000043a40   <- rip is img + 0x73533; cr2 is a USER address
+
+It happens after the store is swapped, i.e. on the UNTRUSTED fetch — the one that is EXPECTED to fail
+verification. **#GP (vector 0x0d), in the kernel, with a user address in CR2.** That is the reported
+state; nothing here says it is caused by this plan's work, and the lead worth following first is
+DIFFERENT WORK ALREADY ON THE RECORD: this plan's own kernel notes recorded *"the kernel executing an
+unmapped page ffff80000d9fe131"* as a bug that the #DF-IST fix EXPOSED and left open — the same
+`0xffff80000d9f….` neighbourhood as this rip. Bisecting that (does the halt reproduce without this
+session's two socket fixes? with a plain untrusted-cert client that is not curl?) is the next step, and it
+is a KERNEL question rather than an L2 one.
+
+The case carries the halt as its xfail reason, so the tier stays honest while it stands, and the checks
+flip the moment it is fixed. The two socket fixes this session made (ipv4_select's `SEL_W`, and the
+partial-read packet loss in `net/ipv4.c`/`net/unix.c`) are the first things a bisect should separate,
+because they are the only kernel changes here — and the partial-read fix is the one that leaves a packet
+QUEUED where the old code always dequeued it.
 ### L3 — On-FNX self-rebuild
 Rebuild LibreSSL **on-FNX** from the pinned source (CMake in-guest,
 per the self-hosting roster: bmake/cmake/pkgconf present), then

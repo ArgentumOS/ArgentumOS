@@ -11,19 +11,24 @@ reasoning `kernel_pipe_dup2` follows for the kernel. It is `/System/Shared/tests
 
   * `curl-global-init`        — the library initialises;
   * `curl-version-is-8-22`    — the PIN is the version that actually loaded;
-  * `curl-has-no-tls-backend` — TLS-less, asserted from the version feature bits and the version
-                                STRING (a silently-enabled backend is the failure mode);
+  * `curl-has-the-libressl-backend` — the backend is LIBRESSL and nothing else, asserted from the
+                                version feature bits and the version STRING: the failure it guards
+                                against is a build that bound the BUILD HOST's OpenSSL. It said the
+                                opposite while the landing was TLS-less and flipped with L2;
   * `curl-file-fetch`         — bytes MOVE, over `file://` with a PERCENT-ENCODED space, compared
                                 against what the probe itself wrote;
   * `curl-http-reaches-connect` — HTTP is SUPPORTED, proven by the error it gives when the connection
                                 cannot be made (`CURLE_COULDNT_CONNECT`) rather than by
                                 `CURLE_UNSUPPORTED_PROTOCOL`;
-  * `curl-https-refused`      — `https://` fails CLEARLY with `CURLE_UNSUPPORTED_PROTOCOL`: it does
-                                not silently degrade.
+  * `curl-https-reaches-connect` — `https://` reaches the NETWORK and fails at connect, exactly as the
+                                `http://` check proves for its scheme. It used to assert
+                                `CURLE_UNSUPPORTED_PROTOCOL`, the honest way to hold a TLS-less landing;
+                                with LibreSSL bound that protocol exists, so it flipped. VERIFICATION
+                                POLICY is libressl_l2's business, not this probe's.
 
-THE LAST TWO ARE THE POINT, and they are a PAIR: one asserts that plain HTTP gets as far as the
-network layer, the other that HTTPS is refused by name. A build that answered the same error to both
-would pass neither honestly.
+THE LAST TWO ARE THE POINT, and they are a PAIR: one asserts that plain HTTP gets as far as the network
+layer, the other that HTTPS does too. A build that answered the same error to both would pass neither
+honestly.
 """
 
 import re
@@ -31,12 +36,12 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/curl_smoke"
-CHECKS = ("curl-global-init", "curl-version-is-8-22", "curl-has-no-tls-backend",
-          "curl-file-fetch", "curl-http-reaches-connect", "curl-https-refused")
+CHECKS = ("curl-global-init", "curl-version-is-8-22", "curl-has-the-libressl-backend",
+          "curl-file-fetch", "curl-http-reaches-connect", "curl-https-reaches-connect")
 
 
 class Case(BaseCase):
-    title = "libcurl on the guest: it loads, it moves bytes, and it has no TLS (W7 slice 2b)"
+    title = "libcurl on the guest: it loads, it moves bytes, and it is bound to LibreSSL"
     tier = "fast"
     # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
     shared_session = True

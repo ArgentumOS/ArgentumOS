@@ -11,8 +11,11 @@
  * kernel. What it asserts is exactly what the landing claims:
  *
  *   curl-version-is-8-22      the PIN is the version that actually loaded;
- *   curl-has-no-tls-backend   this landing is TLS-LESS (libressl-plan.md owns TLS), asserted from the
- *                             version feature bits AND the version string rather than assumed;
+ *   curl-has-the-libressl-backend  THE BACKEND IS LIBRESSL and no other: asserted from the version
+ *                             feature bits AND the version string, because the failure this guards
+ *                             against is a build that quietly bound the BUILD HOST's OpenSSL (which would
+ *                             link a musl binary against glibc's libraries). This check said the
+ *                             OPPOSITE while the landing was TLS-less, and flipped with L2;
  *   curl-file-fetch           BYTES MOVE: the probe writes a file, fetches it back over `file://`
  *                             with a PERCENT-ENCODED space, and compares — so the URL decode path is
  *                             exercised too, and no network is needed;
@@ -20,8 +23,10 @@
  *                             attempt gives (CURLE_COULDNT_CONNECT) rather than by
  *                             CURLE_UNSUPPORTED_PROTOCOL. No server is needed for that, and a loopback
  *                             server would be testing the server, not the transport;
- *   curl-https-refused        and `https://` FAILS CLEARLY (CURLE_UNSUPPORTED_PROTOCOL) rather than
- *                             silently degrading — the check the transport plan asked for by name.
+ *   curl-https-reaches-connect and `https://` reaches the NETWORK, exactly as the `http://` check
+ *                             above shows for its scheme. It used to assert CURLE_UNSUPPORTED_PROTOCOL,
+ *                             which was the honest way to hold the TLS-less landing; with LibreSSL bound
+ *                             that protocol exists, so the assertion flips to the connect error.
  *
  * THE `-DIAG` LINES ARE NOT CHECKS AND ARE NOT DECORATION. The first run of this probe answered
  * `CURLE_OUT_OF_MEMORY` for all three fetches with NO kernel out-of-memory report anywhere, which is a
@@ -163,16 +168,19 @@ int main(void)
 	      vi != NULL && strncmp(vi->version, "8.22", 4) == 0,
 	      vi != NULL ? vi->version : "(no version info)");
 
-	check("curl-has-no-tls-backend",
+	/* THE BACKEND, ASSERTED TO BE LIBRESSL AND NOTHING ELSE. The failure this guards against is a build
+	 * that bound the build host's OpenSSL instead of our LibreSSL, which links a musl binary against
+	 * glibc's libraries — so the check names LibreSSL positively rather than merely rejecting others. */
+	check("curl-has-the-libressl-backend",
 	      vi != NULL &&
-	      (vi->features & CURL_VERSION_SSL) == 0 &&
-	      vi->ssl_version == NULL &&
+	      (vi->features & CURL_VERSION_SSL) != 0 &&
+	      vi->ssl_version != NULL &&
+	      strstr(vi->ssl_version, "LibreSSL") != NULL &&
 	      strstr(vi->version, "OpenSSL") == NULL &&
-	      strstr(vi->version, "LibreSSL") == NULL &&
 	      strstr(vi->version, "GnuTLS") == NULL &&
 	      strstr(vi->version, "mbedTLS") == NULL &&
 	      strstr(vi->version, "rustls") == NULL,
-	      vi != NULL ? vi->version : "(no version info)");
+	      vi != NULL && vi->ssl_version != NULL ? vi->ssl_version : "(no ssl version reported)");
 
 	/* --- DIAGNOSTICS, before any fetch ------------------------------------------------------- */
 	if (vi != NULL) {
@@ -340,11 +348,15 @@ int main(void)
 	      rc == CURLE_COULDNT_CONNECT,
 	      curl_easy_strerror(rc));
 
-	/* AND HTTPS IS NOT: refused by name, not degraded. */
-	rc = perform("https://example.com/");
-	check("curl-https-refused",
-	      rc == CURLE_UNSUPPORTED_PROTOCOL,
-	      curl_easy_strerror(rc));
+	/* AND HTTPS REACHES THE NETWORK TOO: the attempt gets as far as connect() and fails THERE, which
+	 * is how the http:// check above proves its scheme is supported. THE VERIFICATION POLICY is a
+	 * separate question and is NOT this probe's: it is libressl_l2, which proves the FSH trust store
+	 * accepts a certificate it holds and refuses one it does not. */
+	rc = perform("https://127.0.0.1:9/");
+	check("curl-https-reaches-connect",
+	      rc == CURLE_COULDNT_CONNECT,
+	      rc == CURLE_UNSUPPORTED_PROTOCOL ? "https is NOT a supported protocol (the TLS-less landing)"
+					       : curl_easy_strerror(rc));
 
 	/* THE NARRATION, last, so the checks above have already been answered without it. */
 	perform_verbose(url);
