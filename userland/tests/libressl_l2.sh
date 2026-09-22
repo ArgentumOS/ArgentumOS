@@ -111,9 +111,15 @@ case "$SUBJ" in
 esac
 
 # --- 3. THE SERVER ------------------------------------------------------------------------------
-openssl s_server -accept "$PORT" -cert srv.pem -key srv.key -www > srv.log 2>&1 &
+# `-no_dhe`, AND IT IS THE DIFFERENCE BETWEEN A TEST THAT RUNS AND ONE THAT HANGS. s_server defaults to
+# "auto DH parameters" (s_server.c:1284), which LibreSSL GENERATES ON DEMAND AT THE FIRST HANDSHAKE —
+# minutes of arithmetic, on the single thread that would otherwise be accepting. So the first connection
+# was accepted and then sat in a handshake nobody could finish, the client timed out, and every later
+# attempt stayed unaccepted in the backlog (POLLOUT is correctly not reported for a socket nobody has
+# accepted). `-no_dhe` drops the DHE path — nothing here needs it, and TLS 1.3 does not use it at all.
+openssl s_server -accept "$PORT" -cert srv.pem -key srv.key -www -no_dhe > srv.log 2>&1 &
 SRV=$!
-sleep 3
+wait_accept || echo "LIBRESSL-L2-DIAG the server never printed ACCEPT"
 # ITS OWN LOG, DUMPED: an earlier run of this script found the server NOT LISTENING and had no way to
 # say why, because the only place s_server would have explained itself was a file nobody read.
 echo "LIBRESSL-L2-DIAG s_server pid=$SRV log:"
@@ -121,33 +127,51 @@ sed -n '1,10p' srv.log
 
 # ONE BOUNDED FETCH, NO RETRY: `--max-time` means a stalled transfer reports instead of hanging.
 fetch() {	# url outfile -> FETCH_RC / FETCH_OUT ; curl's own narration goes to verbose.txt
-	FETCH_OUT="$("$CURL" -sS -v --max-time 8 -o "$2" \
+	FETCH_OUT="$("$CURL" -sS -v --max-time 20 -o "$2" \
 		-w 'code=%{http_code} verify=%{ssl_verify_result}' "$1" 2> verbose.txt)"
 	FETCH_RC=$?
 }
 
-# AND THE TRUSTED FETCH RETRIES ONLY WHILE THE SERVER IS NOT SERVING YET — refused (7) or timed out (28)
-# — because s_server needs a moment after it starts.
-#
-# IT MUST BE THE FETCH THAT WAITS, AND NOT A PROBE. The first version of this waited by sending a PLAIN
-# HTTP request at the listener, which SABOTAGES A SINGLE-THREADED TLS SERVER: s_server accepts it, waits
-# for a ClientHello that is never coming, and never accepts again — so the real fetch then timed out and
-# the untrusted half passed for a reason that had nothing to do with certificates. A readiness probe has
-# to be the same protocol as the thing it is standing in for.
+# A RETRY ON **REFUSAL ONLY**, and that distinction is the lesson of this script: `wait_accept` fires
+# before the listener exists (ACCEPT is printed ahead of do_server()), so a fetch can arrive a moment too
+# early and be refused — retrying that is free. A TIMEOUT is never retried, because a timeout means a
+# connection WAS made, and re-poking a single-threaded server is how the earlier version wedged it.
 fetch_ready() {	# url outfile
 	tries=0
-	while [ "$tries" -lt 3 ]; do
+	while [ "$tries" -lt 20 ]; do
 		fetch "$1" "$2"
-		case "$FETCH_RC" in
-			7|28)
-				sleep 1
-				tries=$((tries + 1))
-				continue ;;
-		esac
-		break
+		if [ "$FETCH_RC" != "7" ]; then
+			break
+		fi
+		sleep 1
+		tries=$((tries + 1))
 	done
 }
 
+# WAIT FOR THE SERVER TO BE READY WITHOUT TOUCHING IT. s_server prints `ACCEPT` ONCE, right before it
+# enters its accept loop (apps/openssl/s_server.c:1404, with a BIO_flush behind it), so its log is the
+# readiness signal — and reading a log costs the server nothing.
+#
+# THE FIRST VERSIONS OF THIS SCRIPT BOTH POKED IT, IN TWO DIFFERENT WAYS, AND BOTH WERE WRONG:
+#   * a PLAIN HTTP request at the listener: s_server accepts it, waits for a ClientHello that never
+#     comes, and never accepts again — the readiness probe sabotaged the thing it was waiting for;
+#   * RETRYING THE TLS FETCH: every attempt that timed out had already been accepted, so the
+#     single-threaded server was left wedged in that half-handshake while the next attempt sat
+#     unaccepted in the backlog (and POLLOUT is correctly NOT reported for a socket nobody has
+#     accepted yet, so curl waits for a connect that has already happened).
+wait_accept() {
+	tries=0
+	while [ "$tries" -lt 60 ]; do
+		if grep -q ACCEPT srv.log; then
+			return 0
+		fi
+		sleep 1
+		tries=$((tries + 1))
+	done
+	return 1
+}
+
+# AND THEN ONE FETCH PER PHASE, WITH NO RETRY, so nothing can wedge the server between attempts.
 # NO --cacert, ON PURPOSE: the whole point is that the DEFAULTS resolve to the FSH store, which is what
 # this build wired at compile time. A test that named the file would prove nothing about the wiring.
 fetch_ready "https://127.0.0.1:$PORT/" body.txt
@@ -191,6 +215,9 @@ else
 	check an-untrusted-ca-is-refused 0 \
 		"curl exit $UNTRUSTED_RC is NOT the verification refusal (60): $UNTRUSTED"
 fi
+
+echo "LIBRESSL-L2-DIAG s_server log, after the fetches (did it accept?):"
+sed -n '1,20p' srv.log
 
 echo "LIBRESSL-L2-DIAG stopping the server"
 kill "$SRV" 2>&1 || true
