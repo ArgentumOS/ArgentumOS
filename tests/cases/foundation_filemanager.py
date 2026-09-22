@@ -35,7 +35,8 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_filemanager"
 CHECKS = ("fs-default-manager", "fs-create-and-list", "fs-write-and-size", "fs-move-and-copy",
-          "fs-error-channel", "fs-link-and-cwd", "fs-cleanup")
+          "fs-error-channel", "fs-link-and-cwd", "fs-cleanup",
+          "temporary-directory-is-the-fsh-path", "temporary-directory-exists")
 
 
 class Case(BaseCase):

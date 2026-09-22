@@ -381,6 +381,26 @@ int main(void)
 		       (int)[manager fileExistsAtPath:syscallDir]);
 	}
 
+	/* --- AND WHERE A TEMPORARY FILE GOES, WHICH THE FSH ANSWERS RATHER THAN A CLASS ------------------ */
+	{
+		NSString *temporary = NSTemporaryDirectory();
+		BOOL isDirectory = NO;
+		BOOL exists = [[NSFileManager defaultManager] fileExistsAtPath:temporary
+							  isDirectory:&isDirectory];
+
+		/* THE PATH AND THE TRAILING SEPARATOR ARE BOTH ASSERTED: Apple's spelling ends in a separator, and
+		 * a caller that appends a name without one must not be given `...Filesname`. */
+		check("temporary-directory-is-the-fsh-path",
+		      [temporary isEqualToString:@"/System/Temporary Files/"],
+		      @"NSTemporaryDirectory() answers the FSH's own temporary directory");
+
+		/* AND THE DIRECTION THAT MATTERS: THE PATH IT ANSWERS IS REAL. A constant that named a directory
+		 * nothing creates would pass the check above and be useless. */
+		check("temporary-directory-exists",
+		      exists && isDirectory,
+		      @"the directory NSTemporaryDirectory() names exists and is a directory");
+	}
+
 	printf("FOUNDATION-FILEMANAGER RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

@@ -33,7 +33,7 @@
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   90   open   53   struck   17
 #   case       shipped  488   open  646   struck  168
-#   func       shipped   71   open   64   struck   54
+#   func       shipped   72   open   63   struck   54
 #   var        shipped  135   open  426   struck  353
 #   typealias  shipped   29   open   40   struck    7
 #   struct     shipped    8   open    0   struck    5
@@ -1949,7 +1949,7 @@ func	open	NSSwapLittleShortToHost		Low-Level Utilities / Byte Ordering / Functio
 func	open	NSSwapLong		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	open	NSSwapLongLong		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	open	NSSwapShort		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSTemporaryDirectory	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
+func	shipped	NSTemporaryDirectory	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	shipped	NSUnionRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSUnionRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSUserName	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc

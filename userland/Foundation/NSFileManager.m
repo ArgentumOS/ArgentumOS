@@ -508,3 +508,12 @@ static BOOL fn_copy_tree(const char *from, const char *to, int *outErrno)
 }
 
 @end
+
+/* THE FSH'S OWN ANSWER, WITH APPLE'S TRAILING SEPARATOR. It is a CONSTANT rather than a lookup because the
+ * path is fixed by the filesystem hierarchy rather than discovered: the directory is part of the FSH
+ * skeleton, and init recreates it at mount if it is missing, so answering the path here cannot race the
+ * thing that makes it real. */
+NSString *NSTemporaryDirectory(void)
+{
+	return @"/System/Temporary Files/";
+}

@@ -206,6 +206,17 @@ typedef enum {
 	NSURLRelationshipOther = 2
 } NSURLRelationship;
 
+/* WHERE TEMPORARY FILES GO, as a FUNCTION rather than a method because that is how Apple declares it (the
+ * ledger files it under NSFileManager's "Accessing user directories"). The trailing separator is Apple's
+ * spelling, and the path is the FSH's own: `/System/Temporary Files`, the directory init recreates at mount
+ * if a kill-replay left it anything but a directory. A class that wants somewhere to put a file asks HERE
+ * rather than naming a policy of its own - which is the whole reason this ships before the download task.
+ *
+ * NSHomeDirectory() AND NSHomeDirectoryForUser() ARE STILL ABSENT, named: both need the account database,
+ * which this tree reads through the passwd domain, and mapping a uid to a home directory is its own row
+ * rather than a path constant. Only the temporary directory is answered here. */
+NSString *NSTemporaryDirectory(void);
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSFILEMANAGER_H */
