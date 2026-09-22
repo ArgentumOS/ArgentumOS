@@ -213,6 +213,30 @@ check asserts the SPECIFIC fact that changes, so the flip is visible in the diff
    3. **the execution**: a task run through `FNCURLURLProtocol` and reported to its delegate and its
       completion handler — the half that makes the model do something.
 
+   **ROW 3, FIRST HALF LANDED (2026-09-22): `foundation_urlsession_task` 7/7 probe checks and 6/6 case
+   checks, plus `fn_block_mrc` 3/3.** A resumed session task now RUNS: the session picks a protocol class
+   (the configuration's `protocolClasses` first, then slice 2a's registry), starts it, and reports the
+   ending into the task's state, its response, its byte count and its completion handler. The DELEGATE
+   callbacks are the other half of this row and land with the task/data delegate protocols.
+
+   **TWO THINGS IT COST, AND BOTH ARE WORTH MORE THAN THE ROW:**
+
+   * **`[block copy]` IS A MESSAGE SEND, AND THAT WAS A CRASH.** Storing a caller's completion handler with
+     `[completionHandler copy]` made the runtime read the BLOCK'S ISA to find its class, and that read
+     faulted with a null page — reproducibly, from an ARC caller and an MRC twin alike, while a NIL
+     handler survived (a send to nil is a no-op on this runtime). `Block_copy()`/`Block_release()` — the
+     runtime entry points — perform the same stack-to-heap copy with NO message send and cannot depend on
+     the isa. The library now uses them. **The measurement that found it was a TWIN that called the same
+     method twice, once with nil and once with a block**: that turned a large diff into a single argument.
+     `fn_block_mrc` is kept as the regression guard for it.
+   * **A SESSION DOES NOT KNOW A TRANSPORT EXISTS UNLESS THE PROCESS SAYS SO.** The first green-attempt
+     run reported a completion handler that fired with **zero bytes and an error**: the session had
+     consulted an empty `protocolClasses` and an empty registry, and answered
+     `NSURLErrorUnsupportedURL` — which is exactly what the probe's own no-protocol-class check pins.
+     Registering `FNCURLURLProtocol` (as any real client must) is what makes a fetch a fetch. **A default
+     registration is a design question for the session's second half, not an omission here**, and the
+     probe's header says so.
+
    **ROW 2 LANDED (2026-09-22), `foundation_urlsession` 12/12 probe checks and 6/6 case checks:**
    `NSURLSessionTask`/`NSURLSessionDataTask` (plus `NSURLSessionTaskState`) and `NSURLSession` with its own
    `NSURLSessionDelegate` — the session and the task model, with NOTHING TRANSFERRING. Four ledger rows
