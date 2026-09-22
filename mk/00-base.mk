@@ -310,7 +310,12 @@ CG_CFLAGS = -I$(LCMS2_PREFIX)/include -I$(X11PREFIX)/include -I$(X11PREFIX)/incl
 # name is a message send, and that file is Objective-C. `libfoundation.so.1` is staged beside this
 # library in /System/Libraries, and musl's syslibdir IS that directory, so the guest loader finds
 # it with no rpath — the same rule the lcms2 line above follows.
-CG_LDFLAGS = -L$(X11PREFIX)/lib -lpixman-1 -L$(LCMS2_PREFIX)/lib -llcms2 -L$(FNXLIB) -lfoundation
+# A PNG DECODER NEEDS LIBPNG, AND THE TREE ALREADY HAS IT: `third_party/x11/libpng` is vendored and
+# built into the SAME prefix as pixman — FreeType reads sbix colour glyphs with it — and
+# `libpng16.so.16` is already staged into the guest for the X stack. So `CGImageCreateWithPNGDataProvider`
+# added a LINK FLAG and no new dependency, which is a measured finding rather than an assumption: the
+# library and its header were found in $(X11PREFIX) before the seam was written.
+CG_LDFLAGS = -L$(X11PREFIX)/lib -lpixman-1 -lpng16 -L$(LCMS2_PREFIX)/lib -llcms2 -L$(FNXLIB) -lfoundation
 
 define CG_rule
 $(FNXLIB)/coregraphics-$(1:.c=.o): $(CG_SRC)/$(1)

@@ -88,6 +88,21 @@ CGImageRef CGImageCreate(size_t width, size_t height, size_t bitsPerComponent, s
 			 CGDataProviderRef provider, const CGFloat *decode, bool shouldInterpolate,
 			 CGColorRenderingIntent intent);
 
+/* A PNG'S BYTES BECOME AN IMAGE, and what comes back is worth stating here: 8 bits per component,
+ * 32 bits per pixel, this library's own premultiplied-first little-endian format, with the samples
+ * PREMULTIPLIED — because a PNG's are straight and this library's format promises otherwise — and
+ * DEVICE RGB as the colour space whatever the PNG's own colour information says.
+ *
+ * A 16-BIT PNG IS REFUSED rather than downshifted to 8, and a `decode` array is refused rather than
+ * ignored: the same rule `CGImageCreate` follows, for the same reason.
+ *
+ * THE DECODER IS LIBPNG, WHICH IS ALREADY IN THIS TREE for the X stack (FreeType reads sbix colour
+ * glyphs with it) and already staged into the guest, so supporting PNG added a LINK FLAG and no new
+ * dependency. The seam is CGImagePNG.c. */
+CGImageRef CGImageCreateWithPNGDataProvider(CGDataProviderRef provider, const CGFloat *decode,
+					    bool shouldInterpolate,
+					    CGColorRenderingIntent intent);
+
 CGImageRef CGImageRetain(CGImageRef image);
 void CGImageRelease(CGImageRef image);
 

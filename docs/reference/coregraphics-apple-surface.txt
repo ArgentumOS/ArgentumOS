@@ -5,7 +5,7 @@
 #
 # sources: https://developer.apple.com/tutorials/data/index/coregraphics
 #          (plus .../index/corefoundation, CG-named rows only — see below)
-# measured: 2026-09-21
+# measured: 2026-09-22
 #
 # kind	status	name	owner	family	why	src
 #
@@ -36,7 +36,7 @@
 # why the struck rows are struck: deprecated 76
 #
 # counts by kind:
-#   func       shipped  175   open  512   struck   48
+#   func       shipped  176   open  511   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped   10   open   46   struck    1
 #   case       shipped   70   open  360   struck   14
@@ -995,7 +995,7 @@ func	open	CGImageCreateWithImageInRect	-	Opaque Types / Creating images by modif
 func	open	CGImageCreateWithJPEGDataProvider	-	Opaque Types / Creating images	-	objc
 func	open	CGImageCreateWithMask	-	Opaque Types / Creating images by modifying an image	-	objc
 func	open	CGImageCreateWithMaskingColors	-	Opaque Types / Creating image masks	-	objc
-func	open	CGImageCreateWithPNGDataProvider	-	Opaque Types / Creating images	-	objc
+func	shipped	CGImageCreateWithPNGDataProvider	-	Opaque Types / Creating images	-	objc
 func	shipped	CGImageGetAlphaInfo	-	Opaque Types / Examining an image	-	objc
 func	shipped	CGImageGetBitmapInfo	-	Opaque Types / Examining an image	-	objc
 func	shipped	CGImageGetBitsPerComponent	-	Opaque Types / Examining an image	-	objc
