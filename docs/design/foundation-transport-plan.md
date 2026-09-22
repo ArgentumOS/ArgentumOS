@@ -191,6 +191,28 @@ check asserts the SPECIFIC fact that changes, so the flip is visible in the diff
      `SSL_*`/`X509_*` references need `-lssl -lcrypto` AFTER it. The dependency order was already written
      in this very plan's comment when it was hit; quoting it is not the same as applying it.
 
+   **AND THE SESSION HALF IS ITSELF SPLIT, BECAUSE ITS FAMILY IS THE LARGEST IN THE LEDGER:** measured, it
+   is **11 classes + 6 protocols + 46 cases + 10 enums**, so "the session" is not one landing. The order
+   follows the one that worked twice already — a value, then the model, then the behaviour:
+
+   1. **the configuration** (LANDED 2026-09-22, `foundation_urlsession_config` 7/7 probe checks and 6/6
+      case checks): `NSURLSessionConfiguration`, the class a session cannot be created without. Its
+      documented defaults live in ONE place, `-copy` is a REAL copy (every property is readwrite, so the
+      `-retain` the immutable classes answer with would hand back something a caller could not
+      distinguish from the original), and `protocolClasses` is carried — the one property that reaches
+      slice 2a's registry.
+      **AND THE HONEST HALF IS THE EPHEMERAL DOOR:** Apple documents it as keeping no persistent caches,
+      cookies or credentials, and THIS LIBRARY SHIPS NONE OF THOSE CLASSES YET — so in this tree the two
+      built-in doors differ only by identity, which the header states and the probe PINS rather than
+      letting the door imply behaviour it cannot have. `URLCache`, `HTTPCookieStorage`,
+      `URLCredentialStorage` and the cookie family's enum are refused BY NAME for the same reason: each
+      is its own ledger row.
+   2. **the session and the task model**: `NSURLSession`, `NSURLSessionTask`/`NSURLSessionDataTask` and
+      the three delegate protocols a session references — creation, identity, the task factories and the
+      state machine, with NO EXECUTION (next).
+   3. **the execution**: a task run through `FNCURLURLProtocol` and reported to its delegate and its
+      completion handler — the half that makes the model do something.
+
 
 ## 5. Risks to settle during 2b, named rather than discovered later
 
