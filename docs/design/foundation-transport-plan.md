@@ -48,10 +48,13 @@ read off curl's own option list at the 8.22 pin, is that there was no cheaper ro
 | BearSSL, SecureTransport | **REMOVED from curl in 8.22** — a `-D` naming one is silently unused |
 
 So LibreSSL is not merely this plan's preference; with the project's own rules applied it is the
-**only** backend left standing. Until L2 lands, `tools/curl-build.sh` asserts the negative
-(`Enabled SSL backends:` empty, `NEEDED` = `libc.so` only) and the smoke probe pins that
-`https://` answers `CURLE_UNSUPPORTED_PROTOCOL` — a check that **flips to a real handshake** when
-the TLS binding arrives, exactly as the plan's §45-Y select check flipped when its rule landed.
+**only** backend left standing. **THE FLIP HAS HAPPENED (2026-09-22, with LibreSSL-plan §5/L2):**
+`tools/curl-build.sh` now asserts the POSITIVE (`Enabled SSL backends: LibreSSL`, `Protocols: file http
+https`, `NEEDED` = `libcrypto.so.57` + `libssl.so.60`), and the smoke probe's checks are
+`curl-has-the-libressl-backend` and `curl-https-reaches-connect` — the same two checks that used to pin
+the negative (`Enabled SSL backends:` empty, `https://` answering `CURLE_UNSUPPORTED_PROTOCOL`). That
+is the second time a check has been flipped rather than deleted; the rule that makes it work is that the
+check asserts the SPECIFIC fact that changes, so the flip is visible in the diff.
 
 ## 3. The pin and the recipe
 

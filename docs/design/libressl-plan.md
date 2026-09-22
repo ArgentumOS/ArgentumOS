@@ -1,9 +1,12 @@
 # LibreSSL as the system SSL library
 
-Status: **SCHEDULED (2026-09-21) — L0–L2 in flight.** The trigger §5's L2 was waiting for has
+Status: **L0–L2 DONE (2026-09-22) — L2 MET.** The trigger §5's L2 was waiting for has
 arrived: the Foundation's HTTP transport (W7) is **libcurl**
 (docs/design/foundation-transport-plan.md), and a **`https://` fetch is its first real consumer** —
 which is what turns this plan from "decided in direction" into scheduled work.
+**L2's acceptance is green: an `https` fetch verifies against the FSH trust store and an untrusted CA is
+refused with exactly 60 (`ok=6 fail=0`); it cost four kernel socket fixes, three of them ours, all
+recorded in §5/L2.** L3 (on-FNX self-rebuild) is what remains.
 LibreSSL (the OpenBSD fork of OpenSSL) becomes **the** system SSL
 library: `libssl` + `libcrypto` + the first-party `libtls` simple
 API, plus the `openssl(1)` command. One SSL library, period (house
@@ -286,35 +289,55 @@ the library; L2's acceptance is: **a real TLS fetch
 succeeds/fails on trust exactly as configured.**
 
 
-**AND THE L2 ACCEPTANCE IS BUILT AND RUNNING, AND IT HAS FOUND A KERNEL HALT (2026-09-21).**
-`userland/tests/libressl_l2.sh` + `tests/cases/libressl_l2.py` do the plan's acceptance LOCALLY and
-deterministically: a CA and a server certificate are generated ON THE GUEST, the CA is installed at the
-FSH store (`/System/Configuration/SSL/cert.pem` — the file `OPENSSLDIR` names and the file this build of
-curl was given as `CURL_CA_BUNDLE`), `openssl s_server` runs on loopback, and `curl` — with **no
-`--cacert`**, because the DEFAULT has to be the store — must SUCCEED; then the store's CA is swapped for
-one the server's certificate was not signed by and the same fetch must be REFUSED. The refusal half is
-what makes it a test of POLICY rather than of a handshake.
+**L2 IS MET (2026-09-22).** The acceptance above is built, green and fast:
 
-**FOUR OF THE SIX CHECKS PASS** (ca-generated, server-certificate-signed-by-the-ca,
-openssldir-is-the-fsh-store, ca-installed-in-the-fsh-store) — and then the guest HALTS:
+    LIBRESSL-L2 RESULT ok=6 fail=0            and  TESTS-OK 1/1 case(s), 6/6 check(s) in 27s
+    https-verifies-against-the-store ok       <- the trusted fetch verifies against the FSH store
+    an-untrusted-ca-is-refused ok             <- refused with EXACTLY 60, CURLE_PEER_FAILED_VERIFICATION
 
-    !!! KERNEL EXCEPTION vector 0x0d error=0x0  rip=0xffff80000d9f6533
-        img=0x000000000d983000 cr2=0x00007f0000043a40   <- rip is img + 0x73533; cr2 is a USER address
+**THE HALT WAS MINE TO FIND, AND IT WAS THE FIRST OF FOUR KERNEL DEFECTS — three of them ours, each
+found by this case and each a CONDITION the socket code did not have:**
 
-It happens after the store is swapped, i.e. on the UNTRUSTED fetch — the one that is EXPECTED to fail
-verification. **#GP (vector 0x0d), in the kernel, with a user address in CR2.** That is the reported
-state; nothing here says it is caused by this plan's work, and the lead worth following first is
-DIFFERENT WORK ALREADY ON THE RECORD: this plan's own kernel notes recorded *"the kernel executing an
-unmapped page ffff80000d9fe131"* as a bug that the #DF-IST fix EXPOSED and left open — the same
-`0xffff80000d9f….` neighbourhood as this rip. Bisecting that (does the halt reproduce without this
-session's two socket fixes? with a plain untrusted-cert client that is not curl?) is the next step, and it
-is a KERNEL question rather than an L2 one.
+1. **A listener-backlog dangling pointer → `#GP` (`insert_socket_to_queue`).** The rip above, resolved
+   with DWARF (`rip - img`), is that function. Only `accept()` ever unlinked a socket from a listener's
+   queue, and a socket's storage IS its sockfs inode — so a client that CONNECTS and CLOSES BEFORE THE
+   SERVER ACCEPTS left a pointer into freed memory for the next `connect()` to walk into. `struct socket`
+   gained `pending_in`, close now leaves every queue it is in, and the drain wakes what it releases.
+2. **`ipv4_getsockopt(SO_ERROR)` was a stub returning `-EOPNOTSUPP` for every option.** This is how
+   curl decides whether a non-blocking `connect()` succeeded (`lib/cf-socket.c:921`): the failure became
+   `sockerr = 95`, so curl concluded *"this was not a successful connect"* and retried until it timed
+   out. `unix_getsockopt()` had answered it all along; AF_INET was the gap.
+3. **The close was never delivered: an EOF is a CONDITION, not an absence of data.** `ipv4_recvfrom`'s
+   wait loop asked only whether a packet had arrived, and `ipv4_select(SEL_R)` whether data was queued —
+   while a peer's close stamps `SS_DISCONNECTING` and WAKES its partner, landing that wake-up in a loop
+   that could not act on it. curl's trace stopped at `{ [3930 bytes data]`, one line after
+   `HTTP 1.0, assume close after body` — the client reads until the close and the close never came.
+   Fixed in both halves (an EOF must be reported by `select` AND returned by `recvfrom`, checked BEFORE
+   the `O_NONBLOCK` branch because an EOF is not an `EAGAIN`), and in `unix_recvfrom` too, where AF_UNIX
+   made the class visible by HALF having it: its `select` already answered read-EOF.
+4. **`poll()`'s timeout — the hypothesis that explained the hang and was WRONG.** Measured, and now
+   guarded: a `poll()` on a connected, IDLE socket returns its timeout. A negative result worth its
+   probe, because every poll in the reproducer had data already waiting, which is exactly why a
+   never-expiring timeout would have been invisible.
 
-The case carries the halt as its xfail reason, so the tier stays honest while it stands, and the checks
-flip the moment it is fixed. The two socket fixes this session made (ipv4_select's `SEL_W`, and the
-partial-read packet loss in `net/ipv4.c`/`net/unix.c`) are the first things a bisect should separate,
-because they are the only kernel changes here — and the partial-read fix is the one that leaves a packet
-QUEUED where the old code always dequeued it.
+**THE INSTRUMENTS THAT FOUND THEM, all kept:** `userland/tests/kernel_loopback_tcp.c` — an SSL-free
+reproducer (13 checks) that now covers the blocking exchange, the non-blocking-connect shape curl uses,
+the poll timeout, and the peer-close→EOF pair; and `openssl s_client` as a DISCRIMINATOR against the same
+server, which is what said *"the server is fine, curl is not"* and turned a guessing game into a bisect.
+
+**AND FOUR TRAPS, ALL OF THEM OURS, ALL OF THEM RECORDED IN THE SCRIPT:**
+* `openssl s_server` needs **`-no_dhe`**: it defaults to "auto DH parameters" (`s_server.c:1284`), which
+  LibreSSL GENERATES ON DEMAND AT THE FIRST HANDSHAKE — minutes of arithmetic on the thread that should
+  be accepting, so the first connection sat in a handshake nobody could finish.
+* **NEVER POKE A SINGLE-THREADED TLS SERVER TO ASK IF IT IS READY.** A plaintext readiness probe is
+  accepted and then waits for a ClientHello that never comes; retrying a fetch after a TIMEOUT leaves the
+  server wedged in the abandoned attempt; and killing a client mid-handshake does the same. The retry is
+  on REFUSAL (7) only, and readiness is read from the server's LOG.
+* **curl must be bounded at the SHELL level** (`--max-time` was not enough): a stuck curl ate the whole
+  ~70s harness window and reported NOTHING — no check line, no trace.
+* **A trace dump must include the TAIL.** `sed -n '1,25p'` ended at the certificate dates, i.e. exactly
+  where curl stopped, so the answer was lost while the evidence was being printed.
+
 ### L3 — On-FNX self-rebuild
 Rebuild LibreSSL **on-FNX** from the pinned source (CMake in-guest,
 per the self-hosting roster: bmake/cmake/pkgconf present), then
