@@ -266,6 +266,43 @@ check asserts the SPECIFIC fact that changes, so the flip is visible in the diff
      is its own family) and the coder doors.
 
 
+## 4b. WHERE W7 STANDS, AND WHAT IS LEFT (measured 2026-09-22)
+
+**SLICE 2c IS COMPLETE, AND ITS EVIDENCE IS THE TIER:** `foundation_urlsession_config` 7/7,
+`foundation_urlsession` 12/12, `foundation_urlsession_task` 11/11, `fn_block_mrc` 3/3, whole fast tier
+56/56 cases and 343/343 checks. A session is made from a configuration it snapshots, hands out tasks
+that carry unique identifiers and a state machine, makes them RUN through `FNCURLURLProtocol`, reports the
+ending into the task, its response, its byte count and its completion handler, and reports to its task and
+data delegates ON THE SESSION'S OWN QUEUE — with a completion-handler task and a delegate-driven task both
+driven in one file. There is no deviation left in the header to apologise for.
+
+**WHAT REMAINS, IN THE ORDER THE DEPENDENCIES FORCE, and this list is the unit's own survey rather than a
+plan:**
+
+1. **THE FOUR SIBLING TASK KINDS** — `NSURLSessionUploadTask`, `NSURLSessionDownloadTask`,
+   `NSURLSessionStreamTask`, `NSURLSessionWebSocketTask`. Each is its own ledger row and none is started.
+   **`DownloadTask` is the one to take first**: it is the only one whose transfer the bridge already
+   performs (a `file://` fetch lands the bytes), so its new surface is the DESTINATION (a temporary file
+   the delegate is handed a URL for) rather than a new transport.
+2. **THE RESPONSE-DISPOSITION DOOR** — `-URLSession:dataTask:didReceiveResponse:completionHandler:` —
+   **and it is BLOCKED ON (1) RATHER THAN ON WORK**: it takes an `NSURLSessionResponseDisposition`, whose
+   `BecomeDownload` and `BecomeStream` cases name the sibling kinds, so shipping it now would ship half an
+   enum with cases pointing at classes that do not exist. That is the whole reason it is refused in
+   `NSURLSession.h`, and it is why (1) comes first.
+3. **THE CREDENTIAL FAMILY** — `NSURLAuthenticationChallenge`, `NSURLCredential`, `NSURLCredentialStorage`,
+   `NSURLProtectionSpace` — plus the authentication members of every delegate protocol, all refused by name
+   today because they share one dependency: **the credential store's decision is the Keychain question**
+   (`keychain-plan.md`, which is a plan and not a started unit).
+4. **THE COOKIE FAMILY** — `NSHTTPCookie`, `NSHTTPCookieStorage` and `NSHTTPCookieAcceptPolicy`, refused by
+   name in `NSURLSessionConfiguration` because a property typed with a class nothing can create is a
+   signature with no implementation behind it.
+5. **`NSURLCache`, THE STORE ITSELF** — `NSCachedURLResponse` and `NSURLCacheStoragePolicy` shipped with
+   2a, so this is the thing that would hold one. Its absence is why the bridge advises
+   `NSURLCacheStorageNotAllowed`: there is no store to be honest with yet.
+6. **THE CONSTANT MASSES** — `NSURLError*` (146 rows, the largest single family in W7) and the
+   `NSURLSessionAuthChallenge*` / `NSURLRequest*` cases. They are cheap individually and belong with the
+   classes they describe rather than in a batch of their own.
+
 ## 5. Risks to settle during 2b, named rather than discovered later
 
 - **curl's CMake build must configure with musl-clang without invoking autotools and
