@@ -343,14 +343,16 @@ int main(void)
 	 * does not SAY so — which stalls every program that multiplexes and waits for writability before
 	 * sending, LibreSSL's s_client and s_server among them. That is where this trail began.
 	 *
-	 * ASSERTED AS THE LIMIT IT CURRENTLY IS, with the reason in the name (§45-Y's pattern for
-	 * select(2) on a regular file): the check FLIPS the day poll reports writability, and the DIAG
-	 * lines above are the raw measurement it rests on. */
+	 * AND THE LIMIT IS GONE: ipv4_select() now answers SEL_W, so POLLOUT is reported and this check
+	 * is a REGRESSION GUARD rather than a description of a defect. It was written the other way round
+	 * on purpose — asserting the limit with the reason in the name (§45-Y's pattern) — and it FLIPPED
+	 * the moment the kernel was fixed, saying so in its own failure text
+	 * ("POLLOUT WAS REPORTED - promote this and delete the limit"). This is that promotion. */
 	if (w_ready >= 0 && r_ready >= 0) {
-		check("poll-reports-readiness-but-never-writability",
-		      r_ready == 1 && w_ready == 0,
+		check("poll-reports-readiness-and-writability",
+		      r_ready == 1 && w_ready == 1,
 		      r_ready != 1 ? "poll(2) did not report a readable socket that had data"
-		      : w_ready != 0 ? "POLLOUT WAS REPORTED - promote this and delete the limit"
+		      : w_ready != 1 ? "poll(2) did not report a WRITABLE socket - the fix regressed"
 		      : "unexpected");
 	}
 

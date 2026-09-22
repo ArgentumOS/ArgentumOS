@@ -181,7 +181,28 @@ external network needed.
      probe asserts this as the limit it currently is (`poll-reports-readiness-but-never-writability`,
      §45-Y's pattern), so the check **flips the day the kernel reports writability** — and that fix is in
      the kernel's `poll`/`select` path, the same neighbourhood as `select(2)`'s regular-file rule (§45-Z)
-     and its listening-descriptor gap (W6b). One more measured detail that belongs with it: a
+     and its listening-descriptor gap (W6b).
+
+     **AND IT IS FIXED (2026-09-21): `ipv4_select()` ANSWERED `SEL_R` AND NOTHING ELSE.** `net/ipv4.c`
+     now handles `SEL_W`, using the WRITE PATH'S OWN TEST (`ipv4_wait_connected`: the peer is linked and
+     the state is `SS_CONNECTED`) so select keeps the contract that readiness means "would not block",
+     and mirroring the read branch's `ext_poll(fd, SEL_W)` for a NIC-backed socket. The probe's limit
+     check **FLIPPED on the first run against the new kernel** — announcing it in its own failure text
+     ("POLLOUT WAS REPORTED - promote this and delete the limit") — and is now
+     `poll-reports-readiness-and-writability`, a regression guard rather than a description of a defect.
+
+     **IT ADVANCED L1 WITHOUT FINISHING IT, AND THE REMAINING QUESTION IS NOW NARROW.** The client's
+     `-state` trace, previously EMPTY, now reaches
+
+         SSL_connect:SSLv3 write client hello A
+
+     so the handshake BEGINS and stalls inside the ClientHello exchange. So the next question is whether
+     `s_client`'s OWN readiness loop is waiting on something this kernel still does not report — it
+     multiplexes the socket AND stdin — or whether the next gap is in the stream path itself. **The
+     cheap way to separate those two is to run the handshake through the first-party `libtls` API with
+     BLOCKING sockets**, which §2 ships and which this plan's own words ("the first-party libtls simple
+     API") make the more natural L1 client anyway: if a libtls pair completes a handshake, the OS's TLS
+     state machine is PROVEN and what remains is `s_client`'s multiplexing, not the kernel. One more measured detail that belongs with it: a
      NON-BLOCKING write issued immediately after `connect(2)` returns gets `EAGAIN`, so the connection is
      not instantly writable either — a blocking write waits for it and a polling one is never told.
 * **ONE CHECK WAS PASSING FOR THE WRONG REASON, AND IS FIXED.** `server-completed-a-handshake` grepped

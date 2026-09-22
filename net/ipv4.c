@@ -604,6 +604,34 @@ int ipv4_select(struct socket *s, int flag)
 		}
 		return 0;
 	}
+	/*
+	 * WRITABILITY, WHICH THIS FUNCTION NEVER REPORTED — and its absence was a real defect with a
+	 * long reach, not an omission in a corner.
+	 *
+	 * select(2)/poll(2) answered "not writable" for EVERY IPv4 socket, forever, so any program that
+	 * multiplexes and waits for writability before sending waited for ever. That is exactly what
+	 * LibreSSL's s_client and s_server do: their TLS handshake stalled with an empty -state trace
+	 * and no bytes moved, while the same exchange over BLOCKING sockets worked. Measured, with a
+	 * reproducer that has no SSL in it at all: userland/tests/kernel_loopback_tcp.c.
+	 *
+	 * THE CONDITION IS THE WRITE PATH'S OWN TEST, which is the contract select must keep: a write is
+	 * possible exactly when it would not block. For a loopback stream socket that is what
+	 * ipv4_wait_connected() already decides — the peer is linked and the connection is up. There is
+	 * NO send buffer to fill (loopback_deliver() appends to the peer's queue synchronously), so those
+	 * two facts are the whole condition.
+	 *
+	 * AND WHILE THE CLIENT IS STILL SS_CONNECTING IT IS CORRECTLY NOT WRITABLE: loopback connect()
+	 * returns once the connection is queued in the listener's backlog and the peer is linked only
+	 * when the listener ACCEPTS — which is why a non-blocking write there answers EAGAIN. ipv4_accept
+	 * sets SS_CONNECTED and wakes the waiters, so select is told the moment that becomes false.
+	 */
+	if(flag == SEL_W) {
+		if(s->fd_ext != -1 && ip4->local_addr != INADDR_LOOPBACK) {
+			extern int ext_poll(int, int);
+			return ext_poll(s->fd_ext, SEL_W);
+		}
+		return (ip4->peer != NULL && s->state == SS_CONNECTED) ? 1 : 0;
+	}
 	return 0;
 }
 

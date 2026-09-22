@@ -20,15 +20,15 @@ The probe is `/System/Shared/tests/kernel_loopback_tcp`, plain C:
   * `payload-arrived-at-the-peer`      — the peer's own account, read out of its EXIT CODE;
   * `response-arrived-at-the-client`   — and the client read the reply bytes;
   * `peer-exited-cleanly`              — it got as far as running;
-  * `poll-reports-readiness-but-never-writability`
-                                       — THE FINDING, asserted as the limit it currently is: a payload
-                                         crosses with BLOCKING I/O (the checks above prove it), AND the
-                                         same `poll(2)` call answers asymmetrically about the very same
-                                         socket — POLLIN is reported, POLLOUT NEVER is, although a
-                                         blocking write succeeds. That is what stalls anything that
-                                         multiplexes and waits for writability before sending, LibreSSL's
-                                         s_client/s_server included. It flips when poll reports
-                                         writability, the way §45-Y's select check flipped.
+  * `poll-reports-readiness-and-writability`
+                                       — THE FINDING, now FIXED and promoted to a regression guard.
+                                         `ipv4_select()` answered only SEL_R, so `select(2)`/`poll(2)`
+                                         reported "not writable" for every IPv4 socket forever — which
+                                         stalled anything that multiplexes and waits for writability
+                                         before sending, LibreSSL's s_client/s_server included (that is
+                                         how it was found). The check was first written as the LIMIT
+                                         (§45-Y's pattern) and FLIPPED the moment the kernel was fixed,
+                                         saying so in its own failure text; this is the promotion.
 
 EVERY READ AND WRITE IS BOUNDED by a `poll(2)` deadline, because a probe whose purpose is to test a
 path that may be wedged must not be able to hang. A stall therefore reports as a `-DIAG` line and a
@@ -47,7 +47,7 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/kernel_loopback_tcp"
 CHECKS = ("loopback-socket-created", "bind-to-127-0-0-1", "listen", "fork-the-peer",
           "client-connect", "payload-arrived-at-the-peer", "response-arrived-at-the-client",
-          "peer-exited-cleanly", "poll-reports-readiness-but-never-writability")
+          "peer-exited-cleanly", "poll-reports-readiness-and-writability")
 
 
 class Case(BaseCase):
