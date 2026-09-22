@@ -681,6 +681,30 @@ int main(void)
 		      [fixture fired] && [fixture error] == nil,
 		      [NSString stringWithFormat:@"fired=%d code=%ld", [fixture fired],
 			(long)([fixture error] != nil ? [[fixture error] code] : -1)]);
+
+		/* AND THE SCRIPT REALLY RAN: the run, the ARGUMENT and the standard-output redirection are all in
+		 * the bytes the child wrote - the three assertions §45-AC owed, which the limitation's one check
+		 * stood in for until the loader could exec an inline file (§45-AD). */
+		{
+			char cap[128];
+			ssize_t got;
+			int rfd = open(captured, O_RDONLY);
+
+			cap[0] = '\0';
+			if (rfd >= 0) {
+				got = read(rfd, cap, sizeof(cap) - 1);
+				if (got > 0) {
+					cap[got] = '\0';
+				}
+				(void)close(rfd);
+			}
+			check("unix-task-ran-the-script",
+			      strstr(cap, "hello-from-script") != NULL,
+			      [NSString stringWithFormat:@"the captured output was: %s", cap]);
+			check("unix-task-passes-arguments",
+			      strstr(cap, "ARG-ONE") != NULL,
+			      [NSString stringWithFormat:@"the argument did not arrive: %s", cap]);
+		}
 		(void)unlink(script);
 		(void)unlink(captured);
 		(void)unlink("/System/Temporary Files/foundation-unix-task-fail.sh");

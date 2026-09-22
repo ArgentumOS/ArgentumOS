@@ -63,6 +63,8 @@ CHECKS = (
     "unix-task-script-execs-directly",
     "unix-task-interpreter-execs-directly",
     "unix-task-calls-the-handler",
+    "unix-task-ran-the-script",
+    "unix-task-passes-arguments",
 )
 
 

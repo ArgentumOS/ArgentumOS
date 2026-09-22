@@ -8992,3 +8992,11 @@ exit 0 and a nil error), and the captured-output check is the immediate follow-u
 
 FILES: `fs/elf.c`, `kernel/syscalls/execve.c`, `userland/tests/foundation_stream.m`,
 `tests/cases/foundation_stream.py`.
+
+**AND THE THREE ASSERTIONS §45-AD OWED ARE RESTORED AND PASSING (2026-09-21).** `unix-task-ran-the-script` and
+`unix-task-passes-arguments` read the file the child's standard output was redirected into and find
+`hello-from-script ARG-ONE` in it - the RUN, the ARGUMENT and the REDIRECTION all in the bytes the script
+itself wrote. So **`foundation_stream` is 45/45 probe checks and 6/6 case checks**, and W6's sub-step 4 is
+verified end to end: construct, exec, run, argue, capture. **The limitation check that stood in for them is
+gone, and nothing about §45-AC's prohibition had to be revisited: the loader was fixed, so no workaround was
+needed in the class or in the probe.**
