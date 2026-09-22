@@ -25,6 +25,11 @@
 # check that the store path is the compiled one is a measurement of the artifact, not of this script's
 # intentions.
 #
+# ORDER MATTERS IN HERE, AND IT IS THE ORDER OF A SENTENCE: make the keys, install the CA, start the
+# server, fetch (trusted), fetch (refused), and only THEN show that another client can reach it. The
+# discriminator at the top is what this script used to do, and it poisoned the fetches it was meant to
+# explain — see its own comment.
+#
 # Output: LIBRESSL-L2 <check> ok|FAIL <detail>, then RESULT/STATUS/DONE.
 
 DIR="/System/Temporary Files/libressl-l2"
@@ -71,7 +76,7 @@ openssl req -x509 -newkey rsa:2048 -keyout ca.key -out ca.pem -days 1 -nodes \
 if [ -s ca.pem ] && [ -s ca.key ]; then
 	check ca-generated 1 ""
 else
-	check ca-generated 0 "$(tail -3 ca.log)"
+	check ca-generated 0 "$(sed -n '1,3p' ca.log)"
 fi
 
 openssl req -newkey rsa:2048 -keyout srv.key -out srv.csr -nodes \
@@ -88,7 +93,7 @@ openssl x509 -in srv.pem -noout -text > srv.txt 2>&1
 if [ -s srv.pem ] && grep -qi 'subject alternative name' srv.txt; then
 	check server-certificate-signed-by-the-ca 1 ""
 else
-	check server-certificate-signed-by-the-ca 0 "$(tail -3 sign.log)"
+	check server-certificate-signed-by-the-ca 0 "$(sed -n '1,3p' sign.log)"
 fi
 
 # --- 2. THE STORE, AND THE PATH THE ARTIFACT WAS COMPILED WITH ---------------------------------
@@ -111,70 +116,74 @@ case "$SUBJ" in
 esac
 
 # --- 3. THE SERVER ------------------------------------------------------------------------------
-# `-no_dhe`, AND IT IS THE DIFFERENCE BETWEEN A TEST THAT RUNS AND ONE THAT HANGS. s_server defaults to
-# "auto DH parameters" (s_server.c:1284), which LibreSSL GENERATES ON DEMAND AT THE FIRST HANDSHAKE —
-# minutes of arithmetic, on the single thread that would otherwise be accepting. So the first connection
-# was accepted and then sat in a handshake nobody could finish, the client timed out, and every later
-# attempt stayed unaccepted in the backlog (POLLOUT is correctly not reported for a socket nobody has
-# accepted). `-no_dhe` drops the DHE path — nothing here needs it, and TLS 1.3 does not use it at all.
+# `-no_dhe` IS NOT DECORATION: s_server defaults to "auto DH parameters" (s_server.c:1284), which
+# LibreSSL GENERATES ON DEMAND AT THE FIRST HANDSHAKE — minutes of arithmetic on the single thread that
+# would otherwise be accepting. So the first connection was accepted and then sat in a handshake nobody
+# could finish, the client timed out, and every later attempt stayed unaccepted in the backlog.
+# `-no_dhe` drops the DHE path; nothing here needs it and TLS 1.3 does not use it at all.
 openssl s_server -accept "$PORT" -cert srv.pem -key srv.key -www -no_dhe > srv.log 2>&1 &
 SRV=$!
-wait_accept || echo "LIBRESSL-L2-DIAG the server never printed ACCEPT"
-sleep 2
-# ITS OWN LOG, DUMPED: an earlier run of this script found the server NOT LISTENING and had no way to
-# say why, because the only place s_server would have explained itself was a file nobody read.
+
+# A SHORT READINESS WAIT THAT TOUCHES NOTHING. s_server prints `ACCEPT` once, AHEAD of do_server()
+# (s_server.c:1404, with a BIO_flush behind it), so it means "about to listen" rather than "listening" —
+# which is fine, because the refusal retry below covers the gap and costs the server nothing.
+#
+# THREE WAYS THIS SCRIPT USED TO POKE THE SERVER, ALL WRONG, ALL FIXED HERE:
+#   * a PLAIN HTTP request at the listener: s_server accepts it, waits for a ClientHello that never
+#     comes, and never accepts again — the readiness probe sabotaged the thing it was waiting for;
+#   * RETRYING THE FETCH ON A TIMEOUT: that attempt had already been accepted, so the single-threaded
+#     server was left wedged while the next attempt sat unaccepted in the backlog (POLLOUT is correctly
+#     not reported for a socket nobody has accepted). The retry is on REFUSAL (7) ONLY, where nothing
+#     was ever connected;
+#   * a 60-try version of this wait ate an entire ~70s harness window, so the fetch the case exists for
+#     never ran at all.
+wait_ready() {
+	tries=0
+	while [ "$tries" -lt 5 ]; do
+		if grep -q ACCEPT srv.log; then
+			return 0
+		fi
+		sleep 1
+		tries=$((tries + 1))
+	done
+	return 1
+}
+wait_ready || echo "LIBRESSL-L2-DIAG the server has not printed ACCEPT yet (the fetch will retry on refusal)"
 echo "LIBRESSL-L2-DIAG s_server pid=$SRV log:"
 sed -n '1,10p' srv.log
 
-echo "LIBRESSL-L2-DIAG s_server log, after the fetches (did it accept?):"
-sed -n '1,20p' srv.log
-
-# --- 6. THE DISCRIMINATOR, AND IT RUNS LAST FOR A MEASURED REASON, AND IT RUNS LAST SO IT CANNOT PERTURB A CHECK -----------------------
-# s_server prints ACCEPT and never calls accept(), while curl times out in its connect phase. Those
-# two facts fit TWO different worlds, and one question separates them: CAN A DIFFERENT CLIENT REACH
-# THE SAME SERVER? s_client is a proper TLS client (not a plaintext poke), so it either completes a
-# handshake — and the problem is curl's connect path — or it stalls too, and the problem is the
-# server's accept loop (which this kernel has a form of on the record already: W6b, "select(2) does
-# not report a LISTENING descriptor as readable").
-# IT RAN FIRST IN THE PREVIOUS VERSION AND THAT WAS A MISTAKE: s_client is killed after its bounded
-# wait, which leaves the single-threaded server wedged mid-handshake - so the fetch that followed failed
-# because of the probe, and the probe blamed curl. s_client's answer is already recorded (the server is
-# fine: it connects and verifies against our test CA), so this now runs where it cannot poison a check.
-echo "LIBRESSL-L2-DIAG DISCRIMINATOR: can s_client reach the same server?"
-( printf 'GET / HTTP/1.0\r\n\r\n' | openssl s_client -connect "127.0.0.1:$PORT" -CAfile srv.pem \
-	-ign_eof > scli.log 2>&1 ) &
-SCLI=$!
-i=0
-while [ "$i" -lt 15 ]; do
-	if ! kill -0 "$SCLI" > killcheck.log 2>&1; then
-		break
+# ONE FETCH, WITH A SHELL-LEVEL BOUND AROUND CURL ITSELF.
+#
+# `--max-time` IS NOT ENOUGH, AND THAT IS MEASURED: a curl stuck somewhere its own timeout cannot reach
+# eats the whole harness window and reports NOTHING — no check line, no trace, just a killed VM. So curl
+# runs in the background, the wait is bounded here, and whatever it was doing gets dumped either way.
+# A check that cannot report is not a check.
+fetch() {	# url outfile -> FETCH_RC / FETCH_OUT
+	"$CURL" -sS -v --max-time 8 -o "$2" \
+		-w 'code=%{http_code} verify=%{ssl_verify_result}' "$1" \
+		> fetch.out 2> verbose.txt &
+	CURLPID=$!
+	i=0
+	while [ "$i" -lt 12 ]; do
+		if ! kill -0 "$CURLPID" > killcheck.log 2>&1; then
+			break
+		fi
+		sleep 1
+		i=$((i + 1))
+	done
+	if kill -0 "$CURLPID" > killcheck.log 2>&1; then
+		echo "LIBRESSL-L2-DIAG curl was STILL RUNNING after ${i}s although --max-time is 8 - killing it"
+		kill "$CURLPID" > kill.log 2>&1
+		wait "$CURLPID" > kill.log 2>&1
+		FETCH_RC=124
+	else
+		wait "$CURLPID"
+		FETCH_RC=$?
 	fi
-	sleep 1
-	i=$((i + 1))
-done
-if kill -0 "$SCLI" > killcheck.log 2>&1; then
-	echo "LIBRESSL-L2-DIAG s_client STILL RUNNING after ${i}s - killing it"
-	kill "$SCLI" > kill.log 2>&1 || true
-	SCLI_RC=124
-else
-	wait "$SCLI"
-	SCLI_RC=$?
-fi
-echo "LIBRESSL-L2-DIAG s_client exit=$SCLI_RC after ${i}s"
-sed -n '1,20p' scli.log
-
-
-# ONE BOUNDED FETCH, NO RETRY: `--max-time` means a stalled transfer reports instead of hanging.
-fetch() {	# url outfile -> FETCH_RC / FETCH_OUT ; curl's own narration goes to verbose.txt
-	FETCH_OUT="$("$CURL" -sS -v --max-time 8 -o "$2" \
-		-w 'code=%{http_code} verify=%{ssl_verify_result}' "$1" 2> verbose.txt)"
-	FETCH_RC=$?
+	FETCH_OUT="$(sed -n '1,3p' fetch.out)"
 }
 
-# A RETRY ON **REFUSAL ONLY**, and that distinction is the lesson of this script: `wait_accept` fires
-# before the listener exists (ACCEPT is printed ahead of do_server()), so a fetch can arrive a moment too
-# early and be refused — retrying that is free. A TIMEOUT is never retried, because a timeout means a
-# connection WAS made, and re-poking a single-threaded server is how the earlier version wedged it.
+# A RETRY ON REFUSAL ONLY, because a refusal is the one failure that PROVES nothing was connected.
 fetch_ready() {	# url outfile
 	tries=0
 	while [ "$tries" -lt 20 ]; do
@@ -187,41 +196,15 @@ fetch_ready() {	# url outfile
 	done
 }
 
-# WAIT FOR THE SERVER TO BE READY WITHOUT TOUCHING IT. s_server prints `ACCEPT` ONCE, right before it
-# enters its accept loop (apps/openssl/s_server.c:1404, with a BIO_flush behind it), so its log is the
-# readiness signal — and reading a log costs the server nothing.
-#
-# THE FIRST VERSIONS OF THIS SCRIPT BOTH POKED IT, IN TWO DIFFERENT WAYS, AND BOTH WERE WRONG:
-#   * a PLAIN HTTP request at the listener: s_server accepts it, waits for a ClientHello that never
-#     comes, and never accepts again — the readiness probe sabotaged the thing it was waiting for;
-#   * RETRYING THE TLS FETCH: every attempt that timed out had already been accepted, so the
-#     single-threaded server was left wedged in that half-handshake while the next attempt sat
-#     unaccepted in the backlog (and POLLOUT is correctly NOT reported for a socket nobody has
-#     accepted yet, so curl waits for a connect that has already happened).
-wait_accept() {
-	tries=0
-	while [ "$tries" -lt 60 ]; do
-		if grep -q ACCEPT srv.log; then
-			return 0
-		fi
-		sleep 1
-		tries=$((tries + 1))
-	done
-	return 1
-}
-
-# AND THEN ONE FETCH PER PHASE, WITH NO RETRY, so nothing can wedge the server between attempts.
 # NO --cacert, ON PURPOSE: the whole point is that the DEFAULTS resolve to the FSH store, which is what
 # this build wired at compile time. A test that named the file would prove nothing about the wiring.
 fetch_ready "https://127.0.0.1:$PORT/" body.txt
 TRUSTED="$FETCH_OUT"
 TRUSTED_RC="$FETCH_RC"
 
-# CURL'S OWN NARRATION, because it is the only thing that can say WHERE a stalled handshake stopped.
+# CURL'S OWN NARRATION, because it is the only thing that can say WHERE a stalled transfer stopped.
 echo "LIBRESSL-L2-DIAG curl -v (first 25 lines):"
 sed -n '1,25p' verbose.txt
-echo "LIBRESSL-L2-DIAG curl -v (last 8 lines):"
-tail -8 verbose.txt
 
 case "$TRUSTED" in
 	*code=200*verify=0*)
@@ -255,11 +238,47 @@ else
 		"curl exit $UNTRUSTED_RC is NOT the verification refusal (60): $UNTRUSTED"
 fi
 
+echo "LIBRESSL-L2-DIAG s_server log, after the fetches (did it accept?):"
+sed -n '1,20p' srv.log
+
+# --- 5. THE DISCRIMINATOR, LAST SO IT CANNOT PERTURB A CHECK ------------------------------------
+# THE QUESTION THAT NAMED THE BUG: can a DIFFERENT client reach the SAME server? Its answer is on the
+# record — the server is fine; s_client connects, handshakes and verifies against our test CA — and it
+# runs HERE, after every fetch, because it ENDS BY BEING KILLED, and killing a client mid-handshake is
+# exactly what wedges a single-threaded server. Run first, it failed the fetches and then blamed curl.
+#
+# AND s_client IS THE BACKGROUND JOB ITSELF (no subshell): killing a subshell leaves s_client running
+# and the server holding a connection nobody will ever finish — the same wedge by another route.
+echo "LIBRESSL-L2-DIAG DISCRIMINATOR: can s_client reach the same server?"
+printf 'GET / HTTP/1.0\r\n\r\n' > req.txt
+openssl s_client -connect "127.0.0.1:$PORT" -CAfile srv.pem -ign_eof \
+	< req.txt > scli.log 2>&1 &
+SCLI=$!
+i=0
+while [ "$i" -lt 8 ]; do
+	if ! kill -0 "$SCLI" > killcheck.log 2>&1; then
+		break
+	fi
+	sleep 1
+	i=$((i + 1))
+done
+if kill -0 "$SCLI" > killcheck.log 2>&1; then
+	echo "LIBRESSL-L2-DIAG s_client still running after ${i}s (it waits for the server to close) - killing it"
+	kill "$SCLI" > kill.log 2>&1
+	wait "$SCLI" > kill.log 2>&1
+	SCLI_RC=124
+else
+	wait "$SCLI"
+	SCLI_RC=$?
+fi
+echo "LIBRESSL-L2-DIAG s_client exit=$SCLI_RC after ${i}s"
+grep -E 'CONNECTED|verify return|Certificate chain|^ [0-9] s:|^   i:|error' scli.log | head -6
+
 echo "LIBRESSL-L2-DIAG stopping the server"
 kill "$SRV" 2>&1 || true
 echo "LIBRESSL-L2-DIAG server stopped"
 
-# --- 5. PUT THE STORE BACK, AND SAY WHAT HAPPENED ----------------------------------------------
+# --- 6. PUT THE STORE BACK, AND SAY WHAT HAPPENED ----------------------------------------------
 if [ "$RESTORE" = "1" ]; then
 	cp saved-cert.pem "$STORE/cert.pem"
 else
