@@ -81,6 +81,7 @@ static int fn_write_fixture(void)
 	NSError *_lastError;
 	id _lastSession;
 	id _lastTask;
+	id _callbackQueue;
 }
 - (NSData *)dataBytes;
 - (int)dataCalls;
@@ -88,6 +89,7 @@ static int fn_write_fixture(void)
 - (NSError *)lastError;
 - (id)lastSession;
 - (id)lastTask;
+- (id)callbackQueue;
 @end
 
 @implementation FnSessionDelegate
@@ -109,6 +111,7 @@ static int fn_write_fixture(void)
 	[_dataBytes appendData:data];
 	_lastSession = session;
 	_lastTask = dataTask;
+	_callbackQueue = [NSOperationQueue currentQueue];
 }
 
 - (void)URLSession:(NSURLSession *)session
@@ -119,6 +122,7 @@ didCompleteWithError:(NSError *)error
 	_lastError = error;
 	_lastSession = session;
 	_lastTask = task;
+	_callbackQueue = [NSOperationQueue currentQueue];
 }
 
 - (NSData *)dataBytes { return _dataBytes; }
@@ -127,6 +131,7 @@ didCompleteWithError:(NSError *)error
 - (NSError *)lastError { return _lastError; }
 - (id)lastSession { return _lastSession; }
 - (id)lastTask { return _lastTask; }
+- (id)callbackQueue { return _callbackQueue; }
 
 @end
 
@@ -292,10 +297,15 @@ int main(void)
 	/* --- THE DELEGATE IS TOLD THE SAME THINGS THE TASK IS ---------------------------------------- */
 	{
 		FnSessionDelegate *delegate = [[FnSessionDelegate alloc] init];
-		NSURLSession *watched = [NSURLSession sessionWithConfiguration:
-						[NSURLSessionConfiguration defaultSessionConfiguration]
-								      delegate:delegate
-								 delegateQueue:nil];
+		NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+		NSURLSession *watched;
+
+		/* SERIAL, BECAUSE THE ORDER OF THE CALLBACKS DEPENDS ON IT - the contract the header states. */
+		[queue setMaxConcurrentOperationCount:1];
+		watched = [NSURLSession sessionWithConfiguration:
+					[NSURLSessionConfiguration defaultSessionConfiguration]
+						      delegate:delegate
+						 delegateQueue:queue];
 		NSURLSessionDataTask *task;
 		int waited = 0;
 
@@ -316,6 +326,10 @@ int main(void)
 		check("delegate-receives-the-ending",
 		      [delegate endings] == 1 && [delegate lastError] == nil,
 		      @"-URLSession:task:didCompleteWithError: is called EXACTLY once, with a nil error on success");
+
+		check("delegate-callbacks-arrive-on-the-delegate-queue",
+		      [delegate callbackQueue] == queue,
+		      @"with a delegate queue, every callback is delivered ON it - which is the hop the row owed");
 
 		check("delegate-echoes-the-session-and-its-task",
 		      [delegate lastSession] == watched && [delegate lastTask] == (id)task,

@@ -72,16 +72,36 @@
 - (void)URLProtocol:(NSURLProtocol *)protocol didLoadData:(NSData *)data
 {
 	id <NSURLSessionDataDelegate> delegate;
+	NSOperationQueue *queue;
 
 	[_task fnProtocolDidLoadData:data];
 	/* AND THE DELEGATE IS TOLD, IF IT ASKED TO BE: the same bytes the task accumulates, one call per
 	 * chunk - asked with -respondsToSelector: because every member of these protocols is optional. */
 	delegate = (id <NSURLSessionDataDelegate>)[_session delegate];
-	if ([delegate respondsToSelector:@selector(URLSession:dataTask:didReceiveData:)]) {
-		[delegate URLSession:_session
-			    dataTask:(NSURLSessionDataTask *)_task
-		      didReceiveData:data];
+	if (![delegate respondsToSelector:@selector(URLSession:dataTask:didReceiveData:)]) {
+		return;
 	}
+	queue = [_session delegateQueue];
+	if (queue == nil) {
+		[delegate URLSession:_session dataTask:(NSURLSessionDataTask *)_task didReceiveData:data];
+		return;
+	}
+	/* THE HOP TO THE SESSION'S OWN QUEUE, AND THE RETAINS AROUND IT ARE THE POINT. THIS LIBRARY IS MRC, SO
+	 * A BLOCK DOES NOT RETAIN WHAT IT CAPTURES: everything the queued work touches - the transfer itself,
+	 * the delegate and the bytes - is retained HERE and released once the block has run. Skipping that is a
+	 * use-after-free, which is the failure mode this whole row was about.
+	 *
+	 * AND THE QUEUE IS EXPECTED TO BE SERIAL (the header says so, as Apple does): a CONCURRENT one may run
+	 * these blocks in any order, so a delegate that appends data could see the ending first. */
+	[self retain];
+	[delegate retain];
+	[data retain];
+	[queue addOperationWithBlock:^{
+		[delegate URLSession:_session dataTask:(NSURLSessionDataTask *)_task didReceiveData:data];
+		[data release];
+		[delegate release];
+		[self release];
+	}];
 }
 
 - (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol
@@ -97,10 +117,28 @@
 - (void)fnTellTheTaskDelegate
 {
 	id <NSURLSessionTaskDelegate> delegate = (id <NSURLSessionTaskDelegate>)[_session delegate];
+	NSOperationQueue *queue;
+	NSError *error;
 
-	if ([delegate respondsToSelector:@selector(URLSession:task:didCompleteWithError:)]) {
-		[delegate URLSession:_session task:_task didCompleteWithError:[_task error]];
+	if (![delegate respondsToSelector:@selector(URLSession:task:didCompleteWithError:)]) {
+		return;
 	}
+	error = [_task error];
+	queue = [_session delegateQueue];
+	if (queue == nil) {
+		[delegate URLSession:_session task:_task didCompleteWithError:error];
+		return;
+	}
+	/* THE SAME HOP, WITH THE SAME RETAINS: see the note in -URLProtocol:didLoadData:. */
+	[self retain];
+	[delegate retain];
+	[error retain];
+	[queue addOperationWithBlock:^{
+		[delegate URLSession:_session task:_task didCompleteWithError:error];
+		[error release];
+		[delegate release];
+		[self release];
+	}];
 }
 
 - (void)URLProtocol:(NSURLProtocol *)protocol didFailWithError:(NSError *)error

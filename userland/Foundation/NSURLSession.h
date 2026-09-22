@@ -91,9 +91,10 @@ NS_ASSUME_NONNULL_BEGIN
  *     stream rows, so shipping it here would ship half an enum;
  *   * the UPLOAD/DOWNLOAD/STREAM members, whose classes are their own ledger rows.
  *
- * AND v1 DELIVERS THESE ON THE TRANSFER'S OWN THREAD. Apple's contract is the session's delegateQueue,
- * and this row carries the queue without using it yet: a delegate must therefore not assume the main
- * thread. Stated here because a caller reading only the signatures would assume otherwise. */
+ * WHERE THESE ARRIVE: on the session's DELEGATE QUEUE when it has one, and on the TRANSFER'S OWN THREAD
+ * when it does not - so a delegate must not assume the main thread either way. AND THE QUEUE IS EXPECTED
+ * TO BE SERIAL, exactly as Apple requires: a CONCURRENT delegate queue may run the callbacks in any order,
+ * which would let a delegate see the ending before the body it was supposed to follow. */
 /* AND IT INHERITS THE SESSION'S PROTOCOL, which is Apple's chain rather than a convenience:
  * NSURLSessionDataDelegate < NSURLSessionTaskDelegate < NSURLSessionDelegate. Stopping at the first link
  * left a data delegate NON-CONFORMANT to `id <NSURLSessionDelegate>`, the type the session's three-argument
