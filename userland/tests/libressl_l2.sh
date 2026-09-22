@@ -120,14 +120,46 @@ esac
 openssl s_server -accept "$PORT" -cert srv.pem -key srv.key -www -no_dhe > srv.log 2>&1 &
 SRV=$!
 wait_accept || echo "LIBRESSL-L2-DIAG the server never printed ACCEPT"
+sleep 2
 # ITS OWN LOG, DUMPED: an earlier run of this script found the server NOT LISTENING and had no way to
 # say why, because the only place s_server would have explained itself was a file nobody read.
 echo "LIBRESSL-L2-DIAG s_server pid=$SRV log:"
 sed -n '1,10p' srv.log
 
+# --- 3b. THE DISCRIMINATOR (FIRST, so it gets a whole window), AND IT RUNS LAST SO IT CANNOT PERTURB A CHECK -----------------------
+# s_server prints ACCEPT and never calls accept(), while curl times out in its connect phase. Those
+# two facts fit TWO different worlds, and one question separates them: CAN A DIFFERENT CLIENT REACH
+# THE SAME SERVER? s_client is a proper TLS client (not a plaintext poke), so it either completes a
+# handshake — and the problem is curl's connect path — or it stalls too, and the problem is the
+# server's accept loop (which this kernel has a form of on the record already: W6b, "select(2) does
+# not report a LISTENING descriptor as readable").
+echo "LIBRESSL-L2-DIAG DISCRIMINATOR: can s_client reach the same server?"
+( printf 'GET / HTTP/1.0\r\n\r\n' | openssl s_client -connect "127.0.0.1:$PORT" -CAfile srv.pem \
+	-ign_eof > scli.log 2>&1 ) &
+SCLI=$!
+i=0
+while [ "$i" -lt 15 ]; do
+	if ! kill -0 "$SCLI" > killcheck.log 2>&1; then
+		break
+	fi
+	sleep 1
+	i=$((i + 1))
+done
+if kill -0 "$SCLI" > killcheck.log 2>&1; then
+	echo "LIBRESSL-L2-DIAG s_client STILL RUNNING after ${i}s - killing it"
+	kill "$SCLI" > kill.log 2>&1 || true
+	SCLI_RC=124
+else
+	wait "$SCLI"
+	SCLI_RC=$?
+fi
+echo "LIBRESSL-L2-DIAG s_client exit=$SCLI_RC after ${i}s"
+sed -n '1,20p' scli.log
+
+
 # ONE BOUNDED FETCH, NO RETRY: `--max-time` means a stalled transfer reports instead of hanging.
 fetch() {	# url outfile -> FETCH_RC / FETCH_OUT ; curl's own narration goes to verbose.txt
-	FETCH_OUT="$("$CURL" -sS -v --max-time 20 -o "$2" \
+	FETCH_OUT="$("$CURL" -sS -v --max-time 8 -o "$2" \
 		-w 'code=%{http_code} verify=%{ssl_verify_result}' "$1" 2> verbose.txt)"
 	FETCH_RC=$?
 }
