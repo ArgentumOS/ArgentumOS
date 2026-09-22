@@ -336,6 +336,53 @@ int main(void)
 		      @"the callbacks hand back the session and the very task that was resumed");
 	}
 
+	/* --- A DOWNLOAD TASK HANDS BACK A LOCATION RATHER THAN BYTES -------------------------------- */
+	{
+		NSURLSession *downloading = [NSURLSession sessionWithConfiguration:
+							[NSURLSessionConfiguration defaultSessionConfiguration]];
+		NSURLSessionDownloadTask *task;
+		__block NSURL *location = nil;
+		__block NSError *downloadError = nil;
+		__block BOOL downloadCalled = NO;
+
+		[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+		task = [downloading downloadTaskWithRequest:[NSURLRequest requestWithURL:fn_file_url(@FIXTURE_PATH)]
+					  completionHandler:^(NSURL *theLocation, NSURLResponse *response, NSError *error) {
+			(void)response;
+			location = theLocation;
+			downloadError = error;
+			downloadCalled = YES;
+		}];
+		[task resume];
+		{
+			int waited = 0;
+
+			while (!downloadCalled && waited < 100) {
+				usleep(100000);
+				waited++;
+			}
+		}
+
+		check("download-handler-receives-a-location",
+		      downloadCalled && location != nil && downloadError == nil &&
+		      [location isKindOfClass:[NSURL class]],
+		      @"-downloadTaskWithRequest:completionHandler: hands back a LOCATION, not the bytes");
+
+		/* AND THE FILE IS REAL, WHICH IS THE ASSERTION THAT MATTERS: a location naming a file nothing wrote
+		 * would pass the check above and be worse than useless. */
+		{
+			NSData *written = location != nil
+				? [NSData dataWithContentsOfFile:[location path]]
+				: nil;
+
+			check("download-writes-the-body-where-it-says",
+			      written != nil &&
+			      [written length] == strlen(fixture_bytes) &&
+			      memcmp([written bytes], fixture_bytes, strlen(fixture_bytes)) == 0,
+			      @"the location holds the body the transfer carried");
+		}
+	}
+
 	printf("FOUNDATION-URLSESSION-TASK RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-URLSESSION-TASK-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-URLSESSION-TASK DONE\n");

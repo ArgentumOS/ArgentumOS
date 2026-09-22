@@ -39,7 +39,8 @@ CHECKS = ("completion-handler-factory-answers-a-task", "task-resume-runs-the-tra
           "cancel-before-resume-never-starts",
           "delegate-receives-the-body", "delegate-receives-the-ending",
           "delegate-echoes-the-session-and-its-task",
-          "delegate-callbacks-arrive-on-the-delegate-queue")
+          "delegate-callbacks-arrive-on-the-delegate-queue",
+          "download-handler-receives-a-location", "download-writes-the-body-where-it-says")
 
 
 class Case(BaseCase):

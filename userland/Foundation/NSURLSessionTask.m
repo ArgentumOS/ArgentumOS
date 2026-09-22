@@ -11,6 +11,8 @@
 #import <Foundation/NSURLRequest.h>
 #import <Foundation/NSURLResponse.h>
 #import <Foundation/NSData.h>
+#import <Foundation/NSURL.h>
+#import <Foundation/NSFileManager.h>
 #import <Foundation/NSError.h>
 #import <Foundation/NSString.h>
 
@@ -158,6 +160,78 @@
 	[_receivedData release];
 	if (_completionHandler != NULL) {
 		Block_release(_completionHandler);
+	}
+	[super dealloc];
+}
+
+@end
+
+/* THE DOWNLOAD TASK WRITES THE BODY ON ITS WAY OUT, and it does that by OVERRIDING THE ENDING rather than
+ * by being special-cased by the session: -fnProtocolDidFinishWithError: is the single door every ending goes
+ * through, so a task that must transform its result before reporting it overrides that door and calls
+ * -super once the result exists. The session needs to know nothing about it. */
+@implementation NSURLSessionDownloadTask
+
+- (instancetype)fnInitWithRequest:(NSURLRequest *)request
+		       identifier:(NSUInteger)identifier
+		  downloadHandler:(void (^)(NSURL *, NSURLResponse *, NSError *))handler
+{
+	self = [self fnInitWithRequest:request identifier:identifier];
+	if (self != nil) {
+		[self fnSetDownloadHandler:handler];
+	}
+	return self;
+}
+
+- (void)fnSetDownloadHandler:(void (^)(NSURL *, NSURLResponse *, NSError *))handler
+{
+	/* A BLOCK-LOCAL NAME THAT COULD NOT BE ANYTHING ELSE, and that is deliberate: this file already holds
+	 * `NSString *old` in -setTaskDescription:, and the gate's rule is NAME-based, so a local called `old`
+	 * that happens to hold a BLOCK made that ordinary `[old release]` read as a block release. The names are
+	 * scoped per file, so the fix is the name - and it is worth stating because a name-based rule is only as
+	 * good as the names in the file it reads. */
+	void (^previousHandler)(NSURL *, NSURLResponse *, NSError *) = _downloadHandler;
+
+	/* Block_copy/Block_release, never -copy/-release: tools/foundation-gate.py refuses the message form for
+	 * a block-typed name, and a block is not an ordinary object to own. */
+	_downloadHandler = Block_copy(handler);
+	if (previousHandler != NULL) {
+		Block_release(previousHandler);
+	}
+}
+
+- (NSURL *)location { return _location; }
+
+- (void)fnProtocolDidFinishWithError:(NSError *)error
+{
+	/* THE BODY BECOMES A FILE ONLY ON SUCCESS: a failed transfer has nothing to write, and a handler told
+	 * about a location holding a partial body would be worse than one told nothing. */
+	if (error == nil && _receivedData != nil) {
+		NSString *path = [NSString stringWithFormat:@"%@fn-download-%lu",
+				  NSTemporaryDirectory(), (unsigned long)_taskIdentifier];
+
+		if ([_receivedData writeToFile:path atomically:YES]) {
+			_location = [[NSURL fileURLWithPath:path] copy];
+		} else {
+			NSError *writeError = [[NSError alloc] initWithDomain:@"NSURLErrorDomain"
+									code:-3000	/* NSURLErrorCannotCreateFile */
+								    userInfo:nil];
+
+			error = writeError;	/* released below, after it has been reported */
+			[writeError autorelease];
+		}
+	}
+	[super fnProtocolDidFinishWithError:error];
+	if (_downloadHandler != NULL) {
+		_downloadHandler(_location, _response, error);
+	}
+}
+
+- (void)dealloc
+{
+	[_location release];
+	if (_downloadHandler != NULL) {
+		Block_release(_downloadHandler);
 	}
 	[super dealloc];
 }

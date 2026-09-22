@@ -39,6 +39,7 @@
 @class NSError;
 @class NSMutableData;
 @class NSString;
+@class NSURL;
 @class NSURLRequest;
 @class NSURLResponse;
 
@@ -120,6 +121,35 @@ typedef NS_ENUM(NSInteger, NSURLSessionTaskState) {
 
 /* THE DATA TASK IS THE ONE THAT CARRIES A REQUEST, which is the only thing it adds here. */
 @interface NSURLSessionDataTask : NSURLSessionTask
+
+@end
+
+/* THE DOWNLOAD TASK'S ONE NEW SURFACE IS THE DESTINATION: the transfer is the same one every task runs, and
+ * what differs is that the body is WRITTEN SOMEWHERE and the caller is handed that location rather than the
+ * bytes. The file goes in NSTemporaryDirectory() - the FSH's answer, asked for rather than named here - and
+ * a caller is expected to MOVE it, exactly as Apple's contract says, because the directory is temporary.
+ *
+ * ITS HANDLER TAKES A LOCATION WHERE THE DATA TASK'S TAKES DATA, which is why it is the task's own ivar
+ * rather than the base's: one ivar cannot be two signatures, and a subclass that silently reused the base's
+ * would hand a caller an NSURL where it expected an NSData. */
+@interface NSURLSessionDownloadTask : NSURLSessionTask
+{
+	NSURL *_location;
+	void (^_downloadHandler)(NSURL *, NSURLResponse *, NSError *);
+}
+
+/* FNX: the session's own doors, in the group NSURLSessionTask documents. */
+- (instancetype)fnInitWithRequest:(NSURLRequest *)request
+		       identifier:(NSUInteger)identifier
+		  downloadHandler:(nullable void (^)(NSURL *location,
+						     NSURLResponse *response,
+						     NSError *error))handler;
+- (void)fnSetDownloadHandler:(nullable void (^)(NSURL *location,
+						NSURLResponse *response,
+						NSError *error))handler;
+
+/* non-nil once the body has been written; the caller moves the file. */
+@property (nullable, readonly, copy) NSURL *location;
 
 @end
 

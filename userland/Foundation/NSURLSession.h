@@ -166,6 +166,16 @@ didCompleteWithError:(nullable NSError *)error;
  * model's own probe exercises. */
 - (void)fnTaskDidResume:(NSURLSessionTask *)task;
 
+/* THE DOWNLOAD DOORS. The completion-handler form takes a LOCATION rather than bytes - that is the whole
+ * difference from the data task, and it is why a download handler and a data handler cannot share a
+ * signature. As with the data task, the plain form links the task to its session and the handler form is
+ * the same task with a handler attached. */
+- (NSURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request;
+- (NSURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request
+				    completionHandler:(void (^)(NSURL *location,
+								NSURLResponse *response,
+								NSError *error))completionHandler;
+
 /* THE TASKS THIS SESSION HAS MADE, grouped the way Apple groups them. The upload and download arrays are
  * ALWAYS EMPTY here, because those classes are not shipped — see the header above. */
 - (void)getTasksWithCompletionHandler:(void (^)(NSArray *dataTasks,

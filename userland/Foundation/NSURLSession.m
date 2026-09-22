@@ -307,6 +307,38 @@
 		       completionHandler:completionHandler];
 }
 
+/* THE DOWNLOAD FACTORIES MIRROR THE DATA ONES, because the model is the same: the session assigns the
+ * identifier, keeps the task and links it. What differs is the class and the shape of the handler. */
+- (NSURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request
+{
+	NSURLSessionDownloadTask *task;
+
+	if (_invalid) {
+		return nil;
+	}
+	task = [[NSURLSessionDownloadTask alloc] fnInitWithRequest:request
+							identifier:_nextTaskIdentifier++];
+	[task fnSetSession:self];
+	[_tasks addObject:task];
+	return [task autorelease];
+}
+
+- (NSURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request
+				    completionHandler:(void (^)(NSURL *, NSURLResponse *, NSError *))completionHandler
+{
+	NSURLSessionDownloadTask *task;
+
+	if (_invalid) {
+		return nil;
+	}
+	task = [[NSURLSessionDownloadTask alloc] fnInitWithRequest:request
+							identifier:_nextTaskIdentifier++
+						   downloadHandler:completionHandler];
+	[task fnSetSession:self];
+	[_tasks addObject:task];
+	return [task autorelease];
+}
+
 /* THE EXECUTION ITSELF, and every step of it is a decision this row makes:
  *
  *   1. THE CONFIGURATION'S protocolClasses COME FIRST — a caller's explicit list — and slice 2a's registry
