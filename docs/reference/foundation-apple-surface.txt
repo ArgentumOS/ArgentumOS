@@ -31,8 +31,8 @@
 #   class      shipped  137   open   59   struck   77
 #   protocol   shipped   18   open   13   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped   90   open   53   struck   17
-#   case       shipped  488   open  646   struck  168
+#   enum       shipped   91   open   52   struck   17
+#   case       shipped  492   open  642   struck  168
 #   func       shipped   72   open   63   struck   54
 #   var        shipped  135   open  426   struck  353
 #   typealias  shipped   29   open   40   struck    7
@@ -1050,10 +1050,10 @@ case	open	NSURLSessionMultipathServiceTypeAggregate	NSURLSessionConfiguration	Ne
 case	open	NSURLSessionMultipathServiceTypeHandover	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP / Service types	-	swift-page
 case	open	NSURLSessionMultipathServiceTypeInteractive	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP / Service types	-	swift-page
 case	open	NSURLSessionMultipathServiceTypeNone	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP / Service types	-	swift-page
-case	open	NSURLSessionResponseAllow	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
-case	open	NSURLSessionResponseBecomeDownload	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
-case	open	NSURLSessionResponseBecomeStream	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
-case	open	NSURLSessionResponseCancel	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
+case	shipped	NSURLSessionResponseAllow	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
+case	shipped	NSURLSessionResponseBecomeDownload	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
+case	shipped	NSURLSessionResponseBecomeStream	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
+case	shipped	NSURLSessionResponseCancel	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
 case	open	NSURLSessionTaskMetricsDomainResolutionProtocolHTTPS	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
 case	open	NSURLSessionTaskMetricsDomainResolutionProtocolTCP	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
 case	open	NSURLSessionTaskMetricsDomainResolutionProtocolTLS	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
@@ -1756,7 +1756,7 @@ enum	open	NSURLSessionAuthChallengeDisposition	NSURLSessionDelegate	Networking /
 enum	open	NSURLSessionAuthChallengeDisposition	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges	-	objc
 enum	open	NSURLSessionDelayedRequestDisposition	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks	-	objc
 enum	open	NSURLSessionMultipathServiceType	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP	-	swift-page
-enum	open	NSURLSessionResponseDisposition	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes	-	objc
+enum	shipped	NSURLSessionResponseDisposition	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes	-	objc
 enum	open	NSURLSessionTaskMetricsDomainResolutionProtocol	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
 enum	open	NSURLSessionTaskMetricsResourceFetchType	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
 enum	shipped	NSURLSessionTaskState	NSURLSessionTask	Networking / Essentials / Controlling the task state	-	swift-page

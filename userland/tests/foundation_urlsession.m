@@ -290,6 +290,20 @@ int main(void)
 		      @"the audited inventory: every owed selector exists, and nothing listed as excluded does");
 	}
 
+	/* --- THE RESPONSE DISPOSITION'S VALUES, WHICH ARE OURS (D2) -------------------------------- */
+	{
+		/* EVERY NUMBER IS PINNED, NOT MERELY THE ENUM'S EXISTENCE: Apple publishes the case names and no
+		 * values, so what is asserted here is this tree's choice - and ALLOW BEING ZERO IS THE PART THAT
+		 * MATTERS, because it is what a caller gets from zeroed memory and it is the permissive default
+		 * rather than the silent one. */
+		check("response-disposition-values",
+		      NSURLSessionResponseAllow == 0 &&
+		      NSURLSessionResponseCancel == 1 &&
+		      NSURLSessionResponseBecomeDownload == 2 &&
+		      NSURLSessionResponseBecomeStream == 3,
+		      @"the disposition's four values, which are ours under D2");
+	}
+
 	printf("FOUNDATION-URLSESSION RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-URLSESSION-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-URLSESSION DONE\n");

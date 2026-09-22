@@ -295,6 +295,15 @@ plan:**
    that receives the conversion. So the door's shape is: ship it, honour `Allow` and `Cancel` (which are the
    two the session can act on today), and say plainly in the header that the two converting values are
    DECLARED AND NOT YET HONOURED — the same treatment every other boundary in this unit got.
+   **AND ITS FIRST HALF HAS LANDED (2026-09-22): THE VALUE.** `NSURLSessionResponseDisposition` and its four
+   cases ship — `response-disposition-values` pins every number, `Allow` being 0 deliberately — with
+   `BecomeDownload` and `BecomeStream` DECLARED AND NOT YET HONOURED, said in the header. That is the order
+   this unit has taken three times now (the request and response values before any transport, the cached
+   value before the store, and now the disposition before the door): **THE SHAPE OF A DECISION CAN BE PINNED
+   WITHOUT THE MACHINERY THAT ACTS ON IT.** What remains of the door is the door, and its one real design
+   question is now visible: the seam's callback chain is SYNCHRONOUS while a disposition arrives through a
+   BLOCK that may run on the delegate queue, so "when does the body start flowing relative to the decision"
+   is the thing to settle before the handler is written.
 3. **THE CREDENTIAL FAMILY** — `NSURLAuthenticationChallenge`, `NSURLCredential`, `NSURLCredentialStorage`,
    `NSURLProtectionSpace` — plus the authentication members of every delegate protocol, all refused by name
    today because they share one dependency: **the credential store's decision is the Keychain question**

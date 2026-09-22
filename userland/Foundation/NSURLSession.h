@@ -100,6 +100,24 @@ NS_ASSUME_NONNULL_BEGIN
  * left a data delegate NON-CONFORMANT to `id <NSURLSessionDelegate>`, the type the session's three-argument
  * factory takes - and it compiled anyway, because a class pointer passed to a protocol-qualified parameter
  * is a warning here rather than an error. */
+/* WHAT A DELEGATE DECIDES WHEN THE HEAD OF AN ANSWER ARRIVES, and it is a VALUE TYPE SHIPPED BEFORE THE DOOR
+ * THAT TAKES IT - the same order this unit took for the request and the response, and for the same reason:
+ * the shape of the decision can be pinned without the machinery that acts on it.
+ *
+ * THE VALUES ARE OURS UNDER §11.6.1 D2, as every enum's in this library are: Apple publishes the CASE NAMES
+ * and the case names only, and `response-disposition-values` pins the numbers.
+ *
+ * TWO OF THE FOUR ARE DECLARED AND NOT YET HONOURED, and the header says so rather than implying otherwise:
+ * `BecomeDownload` and `BecomeStream` name conversions - turning a running data task into one of the
+ * sibling task kinds - and the conversion is work that belongs with the sibling receiving it. `Allow` and
+ * `Cancel` are the two the session can act on today. */
+typedef NS_ENUM(NSInteger, NSURLSessionResponseDisposition) {
+	NSURLSessionResponseAllow = 0,
+	NSURLSessionResponseCancel = 1,
+	NSURLSessionResponseBecomeDownload = 2,
+	NSURLSessionResponseBecomeStream = 3,
+};
+
 @protocol NSURLSessionTaskDelegate <NSURLSessionDelegate>
 
 @optional

@@ -42,7 +42,8 @@ CHECKS = ("shared-session-is-a-singleton", "session-snapshots-its-configuration"
           "task-cancel-completes-and-records-the-error", "a-completed-task-does-not-resume",
           "task-identifiers-are-unique-and-in-order", "task-carries-its-request-and-description",
           "task-description-round-trips", "session-reports-its-tasks",
-          "invalidate-and-cancel-cancels-the-tasks", "session-api-inventory")
+          "invalidate-and-cancel-cancels-the-tasks", "session-api-inventory",
+          "response-disposition-values")
 
 
 class Case(BaseCase):
