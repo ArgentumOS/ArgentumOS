@@ -43,6 +43,23 @@ the plan's G3 gate and SH-0..SH-5.
   glyphs) + **expat** (fontconfig's XML) - all vendored under
   third_party/x11/ and built shared into .build/x11-prefix by
   tools/x11-shared-build.sh (text-stack milestone).
+- **Image codecs (CoreGraphics, 2026-09)**: **libjpeg-turbo**
+  (submodule `third_party/libjpeg-turbo`, pinned **3.2.0**) — the
+  JPEG decoder behind `CGImageCreateWithJPEGDataProvider`. Two
+  BSD-style licences (IJG for the libjpeg API, Modified BSD-3 for
+  what is not built: TurboJPEG is OFF, so only the IJG terms ship,
+  with the required attribution "This software is based in part on
+  the work of the Independent JPEG Group"). Built for the GUEST by
+  **tools/libjpeg-build.sh** into `.build/libjpeg-prefix` with
+  **CMake** (already §C's driver; no ninja on this host, so the
+  Unix Makefiles generator) and **`-DWITH_SIMD=0`** — **THIS IS THE
+  ONE NEW BUILD-TIME REQUIREMENT OF THE PACKAGE: libjpeg-turbo's
+  SIMD kernels are NASM assembly and there is no `nasm` here**, so
+  the portable C paths are what build. The host needs no second
+  build: it has its own `jpeglib.h` + `libjpeg.so`, exactly as it
+  has its own libpng. The other admitted codecs (libtiff, giflib,
+  libwebp) are NOT yet in the tree; PNG needs no entry of its own
+  because it rides the x11 stack above.
 - **Font content**: userland/fonts/DejaVuSans.ttf (Bitstream Vera
   license - permissive) staged to /System/Shared/Fonts; the FNX
   fontconfig config is userland/configuration/fonts.conf staged to
