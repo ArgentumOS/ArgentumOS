@@ -524,7 +524,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) -c -Wno-objc-root-class -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_core.m -o .build/probe-foundation_core.o
-	$(MUSL64_OBJC) .build/foundation-core-support.o .build/probe-foundation_core.o \
+	$(MUSL64_OBJC) .build/probe-foundation_core_support.o .build/probe-foundation_core.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_core"
 	# foundation_string: F1 acceptance (docs/design/foundation-plan.md). Two
@@ -537,7 +537,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_string.m -o .build/probe-foundation_string.o
-	$(MUSL64_OBJC) .build/foundation-string-support.o .build/probe-foundation_string.o \
+	$(MUSL64_OBJC) .build/probe-foundation_string_support.o .build/probe-foundation_string.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_string"
 	# foundation_value: F2 acceptance. The support unit imports ONLY the
@@ -549,7 +549,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_value.m -o .build/probe-foundation_value.o
-	$(MUSL64_OBJC) .build/foundation-value-support.o .build/probe-foundation_value.o \
+	$(MUSL64_OBJC) .build/probe-foundation_value_support.o .build/probe-foundation_value.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_value"
 	# foundation_collection: F3 acceptance. The support unit builds a NESTED
@@ -561,7 +561,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_collection.m -o .build/probe-foundation_collection.o
-	$(MUSL64_OBJC) .build/foundation-collection-support.o .build/probe-foundation_collection.o \
+	$(MUSL64_OBJC) .build/probe-foundation_collection_support.o .build/probe-foundation_collection.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_collection"
 	# foundation_error: F4 acceptance. The support unit builds values from
@@ -573,7 +573,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_error.m -o .build/probe-foundation_error.o
-	$(MUSL64_OBJC) .build/foundation-error-support.o .build/probe-foundation_error.o \
+	$(MUSL64_OBJC) .build/probe-foundation_error_support.o .build/probe-foundation_error.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_error"
 	# foundation_calendar: F7 acceptance. The same two-unit shape, and the support
@@ -585,7 +585,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_calendar.m -o .build/probe-foundation_calendar.o
-	$(MUSL64_OBJC) .build/foundation-calendar-support.o .build/probe-foundation_calendar.o \
+	$(MUSL64_OBJC) .build/probe-foundation_calendar_support.o .build/probe-foundation_calendar.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendar"
 	# foundation_url: F8 acceptance. Two units again, and the support unit imports
@@ -597,7 +597,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_url.m -o .build/probe-foundation_url.o
-	$(MUSL64_OBJC) .build/foundation-url-support.o .build/probe-foundation_url.o \
+	$(MUSL64_OBJC) .build/probe-foundation_url_support.o .build/probe-foundation_url.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_url"
 	# foundation_kvc: F9 acceptance. Two units again — and here the split is the
@@ -610,7 +610,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_kvc.m -o .build/probe-foundation_kvc.o
-	$(MUSL64_OBJC) .build/foundation-kvc-support.o .build/probe-foundation_kvc.o \
+	$(MUSL64_OBJC) .build/probe-foundation_kvc_support.o .build/probe-foundation_kvc.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_kvc"
 	# foundation_sort: F10 acceptance. Two units, and the split carries the claim again:
@@ -622,7 +622,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_sort.m -o .build/probe-foundation_sort.o
-	$(MUSL64_OBJC) .build/foundation-sort-support.o .build/probe-foundation_sort.o \
+	$(MUSL64_OBJC) .build/probe-foundation_sort_support.o .build/probe-foundation_sort.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_sort"
 	# foundation_predicate: F11a acceptance. Two units again: the support unit builds a
@@ -634,7 +634,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_predicate.m -o .build/probe-foundation_predicate.o
-	$(MUSL64_OBJC) .build/foundation-predicate-support.o .build/probe-foundation_predicate.o \
+	$(MUSL64_OBJC) .build/probe-foundation_predicate_support.o .build/probe-foundation_predicate.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_predicate"
 	# foundation_codecs: F12 acceptance. Two units, and the SUPPORT unit builds the BYTES — so the
@@ -645,7 +645,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
 		userland/tests/foundation_codecs.m -o .build/probe-foundation_codecs.o
-	$(MUSL64_OBJC) .build/foundation-codecs-support.o .build/probe-foundation_codecs.o \
+	$(MUSL64_OBJC) .build/probe-foundation_codecs_support.o .build/probe-foundation_codecs.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_codecs"
 	# icu_smoke: F13's acceptance for the ICU bring-up (docs/design/foundation-plan.md §10). The
@@ -922,6 +922,15 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_urlsession.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlsession"
+	# foundation_urlsession_task: W7 slice 2c's session half, row 3, first half - THE EXECUTION through the
+	# completion-handler path. ONE unit, only <Foundation/Foundation.h>: a task now RUNS, fetching a file://
+	# URL through the bridge, and its ending arrives in the task's state and in a block.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_urlsession_task.m -o .build/probe-foundation_urlsession_task.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlsession_task.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlsession_task"
 	# curl_smoke: W7 slice 2b's acceptance - LIBCURL ON THE GUEST. NOT a Foundation probe: this is a
 	# third-party library's landing, so the program that judges it has no Foundation in it (the
 	# kernel_pipe_dup2 reasoning). It compiles against the VENDORED libcurl out of .build/curl-prefix
