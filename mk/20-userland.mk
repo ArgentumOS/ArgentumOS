@@ -1210,6 +1210,18 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# s_client), loopback only. A SHELL SCRIPT rather than a C probe: what L1 owes is two processes
 	# talking, not a library call.
 	@cp userland/tests/libressl_l1.sh "$(ROOTFS64)/System/Shared/tests/libressl_l1.sh"
+	# libressl_tls_pair: L1's SUBSTANCE, separated from one variable. The script above drives
+	# `openssl s_server`/`s_client`, which MULTIPLEX (they select on the socket AND stdin), so their
+	# stall has two readings. This pair takes the handshake through the FIRST-PARTY libtls API over
+	# BLOCKING sockets with no select anywhere in it — the surface a first-party consumer would use.
+	# It links the vendored libreSSL, and needs NO RPATH: the loader resolves libtls.so.33 (and its
+	# libssl/libcrypto NEEDED entries) out of /System/Libraries.
+	# -ltls -lssl -lcrypto IN THAT ORDER: libtls NEEDs libssl's SSL_* entry points, so leaving libssl
+	# out fails the link with "undefined reference to SSL_connect" (measured).
+	$(MUSL64_CC) -I$(LIBRESSL_PREFIX)/include userland/tests/libressl_tls_pair.c \
+		-L$(LIBRESSL_PREFIX)/lib -ltls -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/libressl_tls_pair"
+	@cp userland/tests/libressl_tls_pair.sh "$(ROOTFS64)/System/Shared/tests/libressl_tls_pair.sh"
 	# hello_dl: the dynamic-linker smoke test. Staged under
 	# System/Shared/tests - System/Tools is dynamic too since M1, but the
 	# linter carve-out keeps this one out of the zero-allow scope.

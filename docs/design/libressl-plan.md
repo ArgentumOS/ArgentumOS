@@ -202,7 +202,32 @@ external network needed.
      cheap way to separate those two is to run the handshake through the first-party `libtls` API with
      BLOCKING sockets**, which §2 ships and which this plan's own words ("the first-party libtls simple
      API") make the more natural L1 client anyway: if a libtls pair completes a handshake, the OS's TLS
-     state machine is PROVEN and what remains is `s_client`'s multiplexing, not the kernel. One more measured detail that belongs with it: a
+     state machine is PROVEN and what remains is `s_client`'s multiplexing, not the kernel.
+
+     **AND IT RAN, AND IT NARROWED THE QUESTION AGAIN (2026-09-21).** `libressl_tls_pair.c` — the pair
+     described just above, with a NON-BLOCKING socket and `TLS_WANT_POLLIN`/`TLS_WANT_POLLOUT` handled by
+     a bounded `poll(2)` loop, driven the way libtls documents — comes out as `libressl_tls_pair`, 5/5
+     case checks with the three blocked ones ASSERTED AS BLOCKED rather than xfailed away. Two things it
+     settles:
+
+     * **`s_client`'s MULTIPLEXING IS EXONERATED.** This program has no `select` of its own, and it
+       stalls at the same place, so the cause is not `s_client`'s readiness loop. (Two of its own
+       readings had to be corrected on the way, both recorded in the source: it first called
+       `tls_handshake` ONCE on a blocking socket — where libtls's contract is a caller-driven
+       WANT_POLLIN/WANT_POLLOUT loop — and it then reported a tally of seven for eight checks because an
+       early exit skipped one. A check that is never reported must not be able to read as a pass.)
+     * **AND BOTH SIDES END UP WAITING TO READ, NEITHER WRITING:**
+
+           client: round 0 wants POLLIN      -> POLLIN NEVER ARRIVED (5s)
+           peer:   round 0 wants POLLIN, round 1 wants POLLIN
+
+       So the ClientHello reaches the peer only IN PART and the ServerHello never comes back. That is
+       neither the plain stream path (`kernel_loopback_tcp` moves 27 bytes each way with BLOCKING I/O)
+       nor a readiness question, and it is now a NEW question about the loopback STREAM read path —
+       tested, not concluded: the hypothesis is that a reader gets a SHORT read while the writer believes
+       its bytes were all written. **The next instrument is libtls's own `tls_config_set_bio` callback**,
+       which logs every TLS read and write WITH ITS SIZE; the byte flow across the two
+       `loopback_deliver()` hops is the thing left to see. One more measured detail that belongs with it: a
      NON-BLOCKING write issued immediately after `connect(2)` returns gets `EAGAIN`, so the connection is
      not instantly writable either — a blocking write waits for it and a polling one is never told.
 * **ONE CHECK WAS PASSING FOR THE WRONG REASON, AND IS FIXED.** `server-completed-a-handshake` grepped
