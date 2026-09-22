@@ -205,6 +205,11 @@ TRUSTED_RC="$FETCH_RC"
 # CURL'S OWN NARRATION, because it is the only thing that can say WHERE a stalled transfer stopped.
 echo "LIBRESSL-L2-DIAG curl -v (first 25 lines):"
 sed -n '1,25p' verbose.txt
+# AND THE LINES AFTER THEM, WHICH IS THE WHOLE POINT: the first 25 end at the certificate dates, so a
+# dump that stops there cuts the trace exactly where curl stops - which is how an earlier round managed
+# to lose the answer while printing the evidence.
+echo "LIBRESSL-L2-DIAG curl -v (lines 26-60 - where it actually stopped):"
+sed -n '26,60p' verbose.txt
 
 case "$TRUSTED" in
 	*code=200*verify=0*)

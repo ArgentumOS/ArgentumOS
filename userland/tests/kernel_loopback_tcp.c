@@ -300,7 +300,7 @@ int main(void)
 	{
 		int s2, fl, gr, soerr = -1;
 		socklen_t solen = sizeof(soerr);
-		int rc2, w2;
+		int rc2, w2, w3;
 		pid_t p2 = fork();
 
 		if (p2 == 0) {
@@ -319,6 +319,22 @@ int main(void)
 		gr = getsockopt(s2, SOL_SOCKET, SO_ERROR, &soerr, &solen);
 		printf("KERNEL-LOOPBACK-DIAG getsockopt(SO_ERROR) = %d errno=%d soerr=%d\n",
 		       gr, gr ? errno : 0, soerr);
+		/* DOES A poll() TIMEOUT EXPIRE? And this is the question that every hang on this trail
+		 * has been asking. It is posed HERE, deliberately: the peer is connected and IDLE (it is
+		 * sitting in read(), nothing has crossed in either direction), so the ONLY correct answer
+		 * is a timeout. Every poll in this probe until now had data already waiting, which means a
+		 * timeout that never expires would have been INVISIBLE — and it would explain a curl that
+		 * ignores --max-time, an s_client killed at 124, and harness windows with no check line at
+		 * all. */
+		/* The shape's FIRST fact, and now asserted rather than only narrated: a non-blocking connect() on
+		 * loopback either completes at once or reports EINPROGRESS. Either is correct; SILENCE is not. */
+		check("nonblocking-connect-returns", rc2 == 0 || errno == EINPROGRESS,
+			strerror(rc2 ? errno : 0));
+
+		w3 = poll_report("POLLIN with a timeout, peer connected and idle", s2, POLLIN, 1500);
+		check("poll-timeout-expires", w3 == 0,
+			w3 != 0 ? "poll reported readiness although neither side had sent anything" : "");
+
 		fcntl(s2, F_SETFL, fl);		/* blocking again: the exchange is bounded by the alarm */
 		if (w2 > 0) {
 			n = write_all(s2, PAYLOAD, strlen(PAYLOAD));

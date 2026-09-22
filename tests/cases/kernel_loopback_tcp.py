@@ -47,7 +47,8 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/kernel_loopback_tcp"
 CHECKS = ("loopback-socket-created", "bind-to-127-0-0-1", "listen", "fork-the-peer",
           "client-connect", "payload-arrived-at-the-peer", "response-arrived-at-the-client",
-          "peer-exited-cleanly", "poll-reports-readiness-and-writability")
+          "peer-exited-cleanly", "poll-reports-readiness-and-writability",
+          "poll-timeout-expires", "nonblocking-connect-returns")
 
 
 class Case(BaseCase):
