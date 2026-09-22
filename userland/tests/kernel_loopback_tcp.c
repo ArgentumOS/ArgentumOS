@@ -37,7 +37,6 @@
 #include <netinet/in.h>
 #include <poll.h>
 #include <signal.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -284,6 +283,76 @@ int main(void)
 		      n == -2 ? "the socket reported EAGAIN although it is blocking"
 			      : n < 0 ? "the read failed" : "short or wrong reply");
 		close(c);
+	}
+
+	/* --- PHASE 2: THE SHAPE CURL USES — A NON-BLOCKING connect() PLUS A WAIT FOR WRITABILITY --------
+	 * WHY THIS EXISTS: libressl_l2's https fetch does not connect while `openssl s_client` against
+	 * the very same server does — and the difference between those two clients is exactly this:
+	 * curl connects NON-BLOCKING and then waits for the socket to become WRITABLE, while s_client
+	 * just blocks in connect(). ipv4_select() answers SEL_W only for a socket whose peer is linked
+	 * and whose state is SS_CONNECTED, so a socket still SS_CONNECTING is (correctly) not writable
+	 * — and the question is whether accept()'s link-and-wake ever reaches this waiter.
+	 *
+	 * MEASUREMENT ONLY on this run: the three DIAG lines below are the instrument, and the
+	 * assertions are added once the numbers are known (a limit asserted before it is measured is a
+	 * guess dressed as a test).
+	 */
+	{
+		int s2, fl, gr, soerr = -1;
+		socklen_t solen = sizeof(soerr);
+		int rc2, w2;
+		pid_t p2 = fork();
+
+		if (p2 == 0) {
+			peer(ls);		/* the same peer, on a SECOND connection */
+			_exit(PEER_OK);
+		}
+		s2 = socket(AF_INET, SOCK_STREAM, 0);
+		fl = fcntl(s2, F_GETFL, 0);
+		fcntl(s2, F_SETFL, fl | O_NONBLOCK);
+		errno = 0;
+		rc2 = connect(s2, (struct sockaddr *)&addr, sizeof(addr));
+		printf("KERNEL-LOOPBACK-DIAG nonblocking connect() = %d errno=%d (%s)\n",
+		       rc2, rc2 ? errno : 0, strerror(rc2 ? errno : 0));
+		w2 = poll_report("POLLOUT after a nonblocking connect()", s2, POLLOUT, 5000);
+		errno = 0;
+		gr = getsockopt(s2, SOL_SOCKET, SO_ERROR, &soerr, &solen);
+		printf("KERNEL-LOOPBACK-DIAG getsockopt(SO_ERROR) = %d errno=%d soerr=%d\n",
+		       gr, gr ? errno : 0, soerr);
+		fcntl(s2, F_SETFL, fl);		/* blocking again: the exchange is bounded by the alarm */
+		if (w2 > 0) {
+			n = write_all(s2, PAYLOAD, strlen(PAYLOAD));
+			n = read_exactly(s2, buf, strlen(REPLY));
+			buf[n > 0 ? n : 0] = '\0';
+			printf("KERNEL-LOOPBACK-DIAG the nonblocking connection carried '%s'\n", buf);
+		} else {
+			printf("KERNEL-LOOPBACK-DIAG no writability was ever reported, so no exchange was "
+			       "attempted on it\n");
+		}
+		close(s2);
+		{
+			int ticks = 0, st2 = -1, reaped2 = 0;
+
+			while (ticks < 50) {
+				pid_t r = waitpid(p2, &st2, WNOHANG);
+
+				if (r == p2) {
+					reaped2 = 1;
+					break;
+				}
+				if (r < 0) {
+					break;
+				}
+				usleep(100000);
+				ticks++;
+			}
+			if (!reaped2) {
+				kill(p2, SIGKILL);
+				waitpid(p2, &st2, 0);
+			}
+			printf("KERNEL-LOOPBACK-DIAG second peer exit code = %d\n",
+			       reaped2 && WIFEXITED(st2) ? WEXITSTATUS(st2) : -1);
+		}
 	}
 
 	/* THE PEER'S OWN ACCOUNT, read out of its exit code — the console stays single-writer.

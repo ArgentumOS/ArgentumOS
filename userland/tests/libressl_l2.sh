@@ -126,13 +126,20 @@ sleep 2
 echo "LIBRESSL-L2-DIAG s_server pid=$SRV log:"
 sed -n '1,10p' srv.log
 
-# --- 3b. THE DISCRIMINATOR (FIRST, so it gets a whole window), AND IT RUNS LAST SO IT CANNOT PERTURB A CHECK -----------------------
+echo "LIBRESSL-L2-DIAG s_server log, after the fetches (did it accept?):"
+sed -n '1,20p' srv.log
+
+# --- 6. THE DISCRIMINATOR, AND IT RUNS LAST FOR A MEASURED REASON, AND IT RUNS LAST SO IT CANNOT PERTURB A CHECK -----------------------
 # s_server prints ACCEPT and never calls accept(), while curl times out in its connect phase. Those
 # two facts fit TWO different worlds, and one question separates them: CAN A DIFFERENT CLIENT REACH
 # THE SAME SERVER? s_client is a proper TLS client (not a plaintext poke), so it either completes a
 # handshake — and the problem is curl's connect path — or it stalls too, and the problem is the
 # server's accept loop (which this kernel has a form of on the record already: W6b, "select(2) does
 # not report a LISTENING descriptor as readable").
+# IT RAN FIRST IN THE PREVIOUS VERSION AND THAT WAS A MISTAKE: s_client is killed after its bounded
+# wait, which leaves the single-threaded server wedged mid-handshake - so the fetch that followed failed
+# because of the probe, and the probe blamed curl. s_client's answer is already recorded (the server is
+# fine: it connects and verifies against our test CA), so this now runs where it cannot poison a check.
 echo "LIBRESSL-L2-DIAG DISCRIMINATOR: can s_client reach the same server?"
 ( printf 'GET / HTTP/1.0\r\n\r\n' | openssl s_client -connect "127.0.0.1:$PORT" -CAfile srv.pem \
 	-ign_eof > scli.log 2>&1 ) &
@@ -247,9 +254,6 @@ else
 	check an-untrusted-ca-is-refused 0 \
 		"curl exit $UNTRUSTED_RC is NOT the verification refusal (60): $UNTRUSTED"
 fi
-
-echo "LIBRESSL-L2-DIAG s_server log, after the fetches (did it accept?):"
-sed -n '1,20p' srv.log
 
 echo "LIBRESSL-L2-DIAG stopping the server"
 kill "$SRV" 2>&1 || true
