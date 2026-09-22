@@ -985,6 +985,69 @@ int main(void)
 		CGColorSpaceRelease(dci);
 	}
 
+	/* --- AND REC.2020, THE SECOND SPACE WITH A PIECEWISE CURVE ---------------------------- */
+	/* IT IS HERE FOR THE SAME REASON Display P3 IS AND THE OTHERS ARE NOT: its transfer function
+	 * cannot be written as a power. WHAT THE CHECK ESTABLISHES IS THE ONE THING A NAME CAN GET
+	 * WRONG QUIETLY — that the RIGHT CURVE went in — and it uses the same discriminator the P3
+	 * block uses: INSIDE the linear segment the round trip is an identity, and a power curve would
+	 * put the value somewhere else entirely. */
+	{
+		CGColorSpaceRef rec = CGColorSpaceCreateWithName(kCGColorSpaceITUR_2020);
+		/* THE TARGET IS A LINEAR SPACE, AND THAT IS THE WHOLE TRICK. The value BT.2020's curve
+		 * DECODES to is not observable in device RGB: sRGB's encode sits between the two numbers,
+		 * and its -0.055 OFFSET means even the RATIO of two encoded values is not the ratio of
+		 * their inputs — which is why two earlier versions of this check predicted 1.33 and 1.59
+		 * and measured 1.59 and 1.67. A linear target has no curve at all, so what comes out is
+		 * the decoded value itself. */
+		CGColorSpaceRef lin = CGColorSpaceCreateWithName(kCGColorSpaceLinearSRGB);
+		CGFloat low[4];
+		CGFloat high[4];
+		CGColorRef c1;
+		CGColorRef c2;
+		CGColorRef r1;
+		CGColorRef r2;
+
+		check("kCGColorSpaceITUR_2020 gives a WIDE space",
+		      rec != NULL && CGColorSpaceIsWideGamutRGB(rec));
+		check_num("...with three components",
+			  (double)CGColorSpaceGetNumberOfComponents(rec), 3.0, 0);
+		/* 0.02 AND 0.04 BOTH LIE INSIDE BT.2020'S LINEAR SEGMENT, which ends at 4.5*beta =
+		 * 0.0812 — so the curve is a straight line for both of them, with slope 1/4.5. */
+		low[0] = 0.02;
+		low[1] = 0.02;
+		low[2] = 0.02;
+		low[3] = 1.0;
+		high[0] = 0.04;
+		high[1] = 0.04;
+		high[2] = 0.04;
+		high[3] = 1.0;
+		c1 = CGColorCreate(rec, low);
+		c2 = CGColorCreate(rec, high);
+		r1 = CGColorCreateCopyByMatchingToColorSpace(c1, kCGRenderingIntentRelativeColorimetric,
+							     lin, NULL);
+		r2 = CGColorCreateCopyByMatchingToColorSpace(c2, kCGRenderingIntentRelativeColorimetric,
+							     lin, NULL);
+		if (r1 != NULL && r2 != NULL) {
+			/* TWO EXACT CONSEQUENCES OF THAT SEGMENT, both relations rather than quoted numbers:
+			 * the decoded value is the input over 4.5, and the ratio of two inputs is their ratio.
+			 * A POWER curve fails both — 0.02 under a 2.2 gamma decodes to 0.165, thirty-seven
+			 * times what the specification says. */
+			check_num("BT.2020 decodes 0.02 to 0.02/4.5, as its linear segment says",
+				  (double)CGColorGetComponents(r1)[0], 0.0044444, 0.0002);
+			check_num("...and two inputs inside that segment keep a ratio of exactly 2",
+				  (double)(CGColorGetComponents(r2)[0] / CGColorGetComponents(r1)[0]), 2.0,
+				  0.01);
+		} else {
+			check("the Rec.2020 colours convert", 0);
+		}
+		CGColorRelease(r2);
+		CGColorRelease(r1);
+		CGColorRelease(c2);
+		CGColorRelease(c1);
+		CGColorSpaceRelease(lin);
+		CGColorSpaceRelease(rec);
+	}
+
 	printf("CG-COLOR: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

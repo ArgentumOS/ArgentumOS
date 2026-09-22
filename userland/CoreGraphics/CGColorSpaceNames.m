@@ -64,6 +64,7 @@ NSString *const kCGColorSpaceLinearDisplayP3 = @"kCGColorSpaceLinearDisplayP3";
 NSString *const kCGColorSpaceDCIP3 = @"kCGColorSpaceDCIP3";
 NSString *const kCGColorSpaceLinearGray = @"kCGColorSpaceLinearGray";
 NSString *const kCGColorSpaceGenericXYZ = @"kCGColorSpaceGenericXYZ";
+NSString *const kCGColorSpaceITUR_2020 = @"kCGColorSpaceITUR_2020";
 
 /* An xy pair with Y = 1, which is the spelling the engine's primaries use. */
 static cmsCIExyY cg_xy(double x, double y)
@@ -116,24 +117,78 @@ static cmsHPROFILE cg_rgb_profile(double wx, double wy, double rx, double ry, do
 	return p;
 }
 
-/* THE sRGB TRANSFER FUNCTION AS THE ENGINE'S PARAMETRIC TYPE 4, AND THE PARAMETERS CAME FROM
- * lcms2's OWN SOURCE RATHER THAN FROM MEMORY: `cmsgamma.c` evaluates type 4 as
- *     Y = (aR + b)^g   for R >= d,      Y = cR   otherwise
- * which is the sRGB curve with {g, a, b, c, d} = {2.4, 1/1.055, 0.055/1.055, 1/12.92, 0.04045}.
- * THE LINEAR TOE IS THE WHOLE POINT OF IT: without the toe the same numbers describe a different
- * space, and the difference is not subtle at the bottom — 0.02 decodes to 0.0015 with the toe and
- * to 0.0068 without it. That is the discriminator the probe uses to prove THIS curve is the one
- * that got in, rather than a power that happens to look close. */
+/* A PIECEWISE TRANSFER FUNCTION AS THE ENGINE'S PARAMETRIC TYPE 4, WITH THE PARAMETERS TAKEN FROM
+ * THE SPECIFICATIONS RATHER THAN FROM MEMORY: `cmsgamma.c` evaluates type 4 as
+ *     Y = (aX + b)^g   for X >= d,      Y = cX   otherwise
+ * so a specification that reads "a power above a breakpoint, a straight line below it" IS a
+ * five-number array of {g, a, b, c, d}.
+ *
+ * sRGB'S IS THE ONE THE PROBE DISCRIMINATES BY ITS TOE: without the toe the same numbers describe
+ * a different space — 0.02 decodes to 0.0015 with it and to 0.0068 without — which is why the toe
+ * is the quantity the Display P3 check measures. */
+static const double cg_srgb_params[5] = { 2.4, 1.0 / 1.055, 0.055 / 1.055, 1.0 / 12.92,
+					  0.04045 };
+
+/* BT.2020'S OETF INVERTED, WHICH IS THE DIRECTION A MATRIX/TRC PROFILE STORES. The specification
+ * writes the ENCODE direction as `V = 4.5L` below beta and `V = alpha*L^0.45 - (alpha - 1)` above
+ * it, with alpha = 1.09929682680944 and beta = 0.018053968510807 — and a profile's curve runs the
+ * other way, from the encoded value to light. Inverting it gives the same shape with
+ * {g, a, b, c, d} = {1/0.45, 1/alpha, (alpha-1)/alpha, 1/4.5, 4.5*beta}: NO NEW MACHINERY, five
+ * different numbers, which is the whole reason the parametric path exists. */
+static const double cg_bt2020_params[5] = {
+	1.0 / 0.45, 1.0 / 1.09929682680944, 0.09929682680944 / 1.09929682680944, 1.0 / 4.5,
+	4.5 * 0.018053968510807
+};
+
+static cmsToneCurve *cg_param_curve(const double params[5])
+{
+	cmsFloat64Number p[5];
+	int i;
+
+	for (i = 0; i < 5; i++) {
+		p[i] = params[i];
+	}
+	return cmsBuildParametricToneCurve(NULL, 4, p);
+}
+
 static cmsToneCurve *cg_srgb_curve(void)
 {
-	cmsFloat64Number params[5];
+	return cg_param_curve(cg_srgb_params);
+}
 
-	params[0] = 2.4;
-	params[1] = 1.0 / 1.055;
-	params[2] = 0.055 / 1.055;
-	params[3] = 1.0 / 12.92;
-	params[4] = 0.04045;
-	return cmsBuildParametricToneCurve(NULL, 4, params);
+/* THE SAME RGB PROFILE WITH A PIECEWISE CURVE INSTEAD OF A POWER, WHICH IS THE GENERAL FORM: the
+ * gamma builder in `cg_rgb_profile` above makes three identical curves from one number, and this
+ * asks for a parametric curve three times. The structure repeats because C has no closure to hand
+ * it — and a space defined with a piecewise transfer function cannot be written as a power at all,
+ * which is why Display P3 and ITU-R BT.2020 are here and the others are not. */
+static cmsHPROFILE cg_rgb_profile_pc(double wx, double wy, double rx, double ry, double gx,
+				     double gy, double bx, double by, const double *params)
+{
+	cmsCIExyYTRIPLE prim;
+	cmsToneCurve *curve[3];
+	cmsCIExyY wp = cg_xy(wx, wy);
+	cmsHPROFILE p;
+	int i;
+
+	prim.Red = cg_xy(rx, ry);
+	prim.Green = cg_xy(gx, gy);
+	prim.Blue = cg_xy(bx, by);
+	for (i = 0; i < 3; i++) {
+		curve[i] = cg_param_curve(params);
+		if (curve[i] == NULL) {
+			for (i = 0; i < 3; i++) {
+				if (curve[i] != NULL) {
+					cmsFreeToneCurve(curve[i]);
+				}
+			}
+			return NULL;
+		}
+	}
+	p = cmsCreateRGBProfile(&wp, &prim, curve);
+	for (i = 0; i < 3; i++) {
+		cmsFreeToneCurve(curve[i]);
+	}
+	return p;
 }
 
 /* THE SAME RGB PROFILE WITH THE sRGB CURVE INSTEAD OF A POWER. The structure repeats
@@ -250,6 +305,16 @@ static cmsHPROFILE cg_profile_for_name(NSString *name, CGColorSpaceModel *model,
 		 * Apple's generic XYZ names — so there is no white point to choose here and none is
 		 * invented. */
 		return cmsCreateXYZProfile();
+	}
+	if ([name isEqual:kCGColorSpaceITUR_2020]) {
+		*model = kCGColorSpaceModelRGB;
+		*components = 3;
+		/* REC.2020'S PRIMARIES WITH ITS OWN PIECEWISE CURVE, WHICH IS WHY THIS IS THE SECOND SPACE
+		 * HERE THAT CANNOT BE A POWER: BT.2020's transfer function has a breakpoint (beta) and a
+		 * straight line below it, exactly as sRGB's has, with different constants — and both bands
+		 * are the specification's, inverted into the direction a profile stores. */
+		return cg_rgb_profile_pc(CG_D65_X, CG_D65_Y, 0.7080, 0.2920, 0.1700, 0.7970, 0.1310,
+					 0.0460, cg_bt2020_params);
 	}
 	if ([name isEqual:kCGColorSpaceGenericGrayGamma2_2]) {
 		*model = kCGColorSpaceModelMonochrome;

@@ -40,7 +40,7 @@
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped   10   open   46   struck    1
 #   case       shipped   70   open  360   struck   14
-#   var        shipped   17   open  109   struck    9
+#   var        shipped   18   open  108   struck    9
 #   typealias  shipped    6   open   92   struck    2
 #   struct     shipped    6   open   14   struck    0
 case	struck	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
@@ -1543,7 +1543,7 @@ var	shipped	kCGColorSpaceGenericLab	-	Opaque Types / Accessing System-Defined Co
 var	struck	kCGColorSpaceGenericRGB	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
 var	open	kCGColorSpaceGenericRGBLinear	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	shipped	kCGColorSpaceGenericXYZ	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceITUR_2020	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
+var	shipped	kCGColorSpaceITUR_2020	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	struck	kCGColorSpaceITUR_2020_HLG	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
 var	struck	kCGColorSpaceITUR_2020_PQ	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
 var	struck	kCGColorSpaceITUR_2020_PQ_EOTF	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc

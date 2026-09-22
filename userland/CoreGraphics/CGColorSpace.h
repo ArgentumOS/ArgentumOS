@@ -139,6 +139,7 @@ extern NSString *const kCGColorSpaceGenericGrayGamma2_2;
 extern NSString *const kCGColorSpaceDCIP3;
 extern NSString *const kCGColorSpaceLinearGray;
 extern NSString *const kCGColorSpaceGenericXYZ;
+extern NSString *const kCGColorSpaceITUR_2020;
 
 /* A space by name, or NULL with a reason on stderr. THE DEVICE SPACES ARE SHARED SINGLETONS AND
  * THE NAMED SPACES ARE CACHED TOO — one object per name — because `CGColorSpaceCopyName` below
