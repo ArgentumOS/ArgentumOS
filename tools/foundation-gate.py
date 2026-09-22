@@ -49,6 +49,70 @@ SCAN_PREFIXES = [("userland/tests", "foundation_")]
 
 IMPORT_RE = re.compile(r'^\s*#\s*(?:import|include)\s*[<"]([^>"]+)[>"]')
 
+# THE BLOCK-OWNERSHIP RULE, and it exists because one class of bug cost this tree a long
+# investigation: A BLOCK IS NOT AN ORDINARY OBJECT TO OWN. `-copy` is a MESSAGE SEND, so the runtime
+# reads the BLOCK'S ISA to find its class — and when that read faults, the failure is a null page and a
+# garbage instruction pointer, which presents as "the library crashes for no reason" rather than as a
+# bad line of code. Measured: `[completionHandler copy]` in NSURLSessionTask.m, with a nil handler
+# surviving and a real block faulting (the discriminator is userland/tests/fn_block_mrc.m).
+#
+# Block_copy()/Block_release() are the runtime ENTRY POINTS: they perform the same stack-to-heap copy
+# with no message send and cannot depend on the isa. So a name declared as a block — `(^name)` covers
+# ivars, parameters and locals alike — must never be the receiver of copy/retain/release/autorelease.
+# BOTH spellings, and the second is the one that BIT: an ivar reads `(^_name)`, but a PARAMETER reads
+# `(void (^)(args))name` - the name OUTSIDE the parentheses - so a rule matching only the first form
+# would have passed the very line that crashed. (It did, until the self-test below was pointed at the
+# pre-fix source: a gate that cannot fail is not a gate.)
+BLOCK_NAME_RE = re.compile(
+    r'\(\s*\^\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)'
+    r'|\(\s*\^\s*\)\s*\([^()]*\)\s*\)\s*([A-Za-z_][A-Za-z0-9_]*)')
+BLOCK_OWNERSHIP_MESSAGES = ("copy", "retain", "release", "autorelease")
+
+
+def block_ownership_offences(files):
+    """[(rel, lineno, name, message)] for every message sent to a block-typed name.
+
+    THE NAMES ARE SCOPED, NOT GLOBAL, and the first version was global: `body` and `handler` are block
+    PARAMETERS somewhere in this tree and ordinary objects elsewhere, so a global set flagged their
+    ordinary uses - two false positives on a green tree, which is a gate that fails the build for nothing.
+    A file's own block declarations plus the HEADERS' (a block ivar is declared in a header and messaged
+    in its implementation, which is the cross-file case this rule exists for) is the useful scope.
+    """
+    def names_in(text):
+        out = set()
+        for groups in BLOCK_NAME_RE.findall(text):
+            out.update(g for g in groups if g)
+        return out
+
+    def read(path):
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            return fh.read()
+
+    # THE MATCHING HEADER, NOT EVERY HEADER. A block ivar is declared in a header and messaged in its
+    # implementation, so the header has to count - but counting ALL headers reintroduced a false positive
+    # (`handler` is an ordinary NSAssertionHandler in NSException.m and a block parameter in some other
+    # header). Same stem is the precise scope: Foo.m sees Foo.h's block names.
+    header_names = {}
+    for path in files:
+        if path.endswith(".h"):
+            header_names[os.path.splitext(path)[0]] = names_in(read(path))
+
+    out = []
+    for path in files:
+        text = read(path)
+        names = header_names.get(os.path.splitext(path)[0], set()) | names_in(text)
+        if not names:
+            continue
+        sends = re.compile(r"\[\s*(%s)\s+(%s)\s*\]"
+                           % ("|".join(sorted(re.escape(n) for n in names)),
+                              "|".join(BLOCK_OWNERSHIP_MESSAGES)))
+        rel = os.path.relpath(path, ROOT)
+        for lineno, line in enumerate(text.split("\n"), 1):
+            for match in sends.finditer(line):
+                out.append((rel, lineno, match.group(1), match.group(2)))
+    return out
+
+
 FORBIDDEN_EXACT = {
     "objc/Object.h",
 }
@@ -186,6 +250,18 @@ def main():
                 print("  %s: %s" % (rel, why))
             print("A class is annotated WHILE it is written. Exempt files: %s."
                   % ", ".join(sorted(NULLABILITY_EXEMPT)))
+        return 1
+
+    block_bad = block_ownership_offences(files)
+    if block_bad:
+        print("FOUNDATION-GATE: FAIL - a block is OWNED with a message send, which is not how a block "
+              "is owned:")
+        for rel, lineno, name, message in block_bad:
+            print("  %s:%d sends -%s to the block %s" % (rel, lineno, message, name))
+        print("A block is copied with Block_copy() and released with Block_release(). -copy is a "
+              "MESSAGE SEND, so the runtime reads the block's ISA to find its class - and a fault there "
+              "is a null page with a garbage instruction pointer, not a bad line you can read. "
+              "Measured: userland/tests/fn_block_mrc.m is the discriminator that found it.")
         return 1
 
     exempt = sum(1 for p in headers
