@@ -934,6 +934,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-fn_block_mrc.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/fn_block_mrc"
+	# fn_receiver_probe: the receiver ALONE - three rounds could not tell 'never starts' from
+	# 'something before the check blocks', and a probe that does one thing can.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/fn_receiver_probe.m -o .build/probe-fn_receiver_probe.o
+	$(MUSL64_OBJC) .build/probe-fn_receiver_probe.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/fn_receiver_probe"
 	# curl_smoke: W7 slice 2b's acceptance - LIBCURL ON THE GUEST. NOT a Foundation probe: this is a
 	# third-party library's landing, so the program that judges it has no Foundation in it (the
 	# kernel_pipe_dup2 reasoning). It compiles against the VENDORED libcurl out of .build/curl-prefix

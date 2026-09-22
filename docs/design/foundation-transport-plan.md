@@ -312,6 +312,18 @@ plan:**
        ... the client POSTs ...
        read the capture: THE REQUEST'S BYTES ARE IN IT, headers and body together
 
+   **AND IT MUST BE STARTED WITH fork()+execv(), NOT system() - MEASURED, after three rounds of hangs that
+   were attributed to everything but this.** A probe that does nothing but start the receiver and print shows
+   it plainly: `about to system()` prints, and the print OF ITS RETURN VALUE never does. `system()` spawns
+   `/bin/sh -c`, the shell backgrounds the job, and the call never comes back - and each run ended with a
+   KERNEL fault dump in its tail, which is the same signature in all three. The receiver's own options are
+   NOT the problem: toybox's netcat source is in this tree and `-l` is documented as "listen for one incoming
+   connection, then exit", `-p` takes the port, and `-q` covers the stdin-EOF case.
+   **So the recipe is: fork(), execv("/System/Tools/netcat", argv, envp) with the stdin and stdout
+   redirected before the exec - no shell, nothing to wait on - and the child reaped by the probe.** The
+   isolation probe is kept (`fn_receiver_probe`) because it is what turned a three-round guess into one
+   measurement, and it is the shape every future "does this external tool run here" question should take.
+
    `httpd` serves a directory rather than reporting what it was sent, and `host_fshlint`'s rule that guest
    programs take their full FSH path applies to the command line just as it does to a script. So the first
    check in the family is: build a body of bytes that are NOT valid UTF-8 (`0xff 0xfe 0x00 0x01`), POST it,
