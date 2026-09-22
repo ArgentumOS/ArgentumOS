@@ -304,6 +304,22 @@ plan:**
    question is now visible: the seam's callback chain is SYNCHRONOUS while a disposition arrives through a
    BLOCK that may run on the delegate queue, so "when does the body start flowing relative to the decision"
    is the thing to settle before the handler is written.
+
+   **AND THAT QUESTION IS NOW SETTLED RATHER THAN OPEN, which is what makes the next round an implementation
+   instead of a design session:**
+
+   * **THE BODY FLOWS ONLY AFTER THE DECISION.** The seam makes Apple's contract implementable: the transfer's
+     callback chain is SYNCHRONOUS and runs on the BRIDGE'S OWN THREAD, so
+     `-URLProtocol:didReceiveResponse:` can ask the delegate and then WAIT on a per-transfer `NSCondition`
+     that the completion handler sets — the bridge delivers nothing until it is released.
+   * **AND IT CANNOT DEADLOCK, which is the part to check before writing it:** the wait is on the bridge's
+     thread and the decision is made on the delegate queue, ALWAYS two different threads — the transfer is
+     never run ON the delegate queue, because the bridge spawns its own.
+   * **NO DOOR MEANS ALLOW, WITHOUT A WAIT.** A delegate that does not implement the response door must not
+     make the transfer wait for a decision nobody will send — asked with `-respondsToSelector:` as every other
+     optional member is — and `NSURLSessionResponseAllow` is the default because it is also zero.
+   * **`Cancel` STOPS THE TRANSFER** through the task's existing `-cancel` path, and `BecomeDownload` /
+     `BecomeStream` are DECLARED AND NOT HONOURED, honoured as `Allow` with the header saying so.
 3. **THE CREDENTIAL FAMILY** — `NSURLAuthenticationChallenge`, `NSURLCredential`, `NSURLCredentialStorage`,
    `NSURLProtectionSpace` — plus the authentication members of every delegate protocol, all refused by name
    today because they share one dependency: **the credential store's decision is the Keychain question**
