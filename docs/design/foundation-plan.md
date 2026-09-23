@@ -9675,3 +9675,39 @@ and a probe.
 the records CAN be filled faithfully - but WHICH of Apple's temporal markers have no curl counterpart is
 something to measure rather than assume, because a marker filled with a plausible-looking number is worse than
 one left nil and documented.
+
+### §50.1 — THE METRICS SURFACE, AND WHICH OF IT CURL CAN ACTUALLY FILL (2026-09-21)
+
+**THE TWO RECORDS, COMPLETE.** `NSURLSessionTaskMetrics` is `transactionMetrics`, `taskInterval`,
+`redirectCount` and an initialiser. `NSURLSessionTaskTransactionMetrics` is `request`, `response`, **twelve
+temporal markers** (`fetchStartDate`, `domainLookupStartDate`/`EndDate`, `connectStartDate`,
+`secureConnectionStartDate`/`EndDate`, `connectEndDate`, `requestStartDate`/`EndDate`,
+`responseStartDate`/`EndDate`), **six byte counts** (request body before encoding and sent, request header
+bytes, response body received and after decoding, response header bytes), **ten transaction characteristics**
+(`networkProtocolName`, `remoteAddress`, `localAddress`, the five booleans, `isReusedConnection`,
+`resourceFetchType`, `domainResolutionProtocol`), and TWO ENUMS of their own (`ResourceFetchType`,
+`DomainResolutionProtocol`).
+
+**AND §50 SAID THE MARKERS MUST BE MEASURED RATHER THAN ASSUMED, SO HERE IS THE MEASUREMENT - what libcurl
+reports, and what it does not:**
+
+  * **FILLED FAITHFULLY**: the timings are `CURLINFO_NAMELOOKUP_TIME`, `CONNECT_TIME`, `APPCONNECT_TIME` (this
+    is the secure connection's END), `STARTTRANSFER_TIME` and `TOTAL_TIME`; the remote side is
+    `CURLINFO_PRIMARY_IP`; the protocol is `CURLINFO_HTTP_VERSION`; a reused connection is
+    `CURLINFO_NUM_CONNECTS == 0`; and the byte counts are `CURLINFO_HEADER_SIZE` (headers received),
+    `SIZE_UPLOAD_T`/`SIZE_DOWNLOAD_T` (bodies) with `REQUEST_SIZE_T` for what was sent.
+    **CURL REPORTS DURATIONS, NOT ABSOLUTE INSTANTS**, so a marker is the transaction's start time PLUS the
+    elapsed value - which is exactly how Apple's dates are meant to be read, and it is stated here because
+    the alternative (filling a date with a duration) would look plausible and be wrong.
+  * **LEFT NIL, AND DOCUMENTED RATHER THAN GUESSED**: `secureConnectionStartDate` (curl reports the handshake's
+    END and not its start), `localAddress`, `domainResolutionProtocol`, and the request body "before encoding"
+    count - the transport encodes nothing separately, so the two body counts are the same number or one of
+    them is absent, and saying so beats inventing a distinction.
+  * **ANSWERED FROM THE PLATFORM RATHER THAN FROM CURL, because they are not transport questions**:
+    `isCellular`, `isExpensive`, `isConstrained` and `isMultipath` describe the NETWORK a machine is on, and
+    on this system they are NO - which is true, checkable, and better than a plausible yes.
+
+**AND ONE DOOR COMPLETES THE PAIR**, on the protocol Apple puts it on: `-URLSession:task:didFinishCollectingMetrics:`
+on `NSURLSessionTaskDelegate`, which this library does not declare yet because the type it delivers did not
+exist until now. **A session that collects nothing and answers nil is worse than no metrics at all**, so the
+door and the records ship together or neither does.
