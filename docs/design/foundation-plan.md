@@ -9285,3 +9285,64 @@ not enumerate (it is symbol-level), so this slice opens with the same documented
 values are decided the same way §47.2 decided the cookie keys'. **The seam is the only thing in this slice
 that must not be guessed: where a keychain-backed store would be substituted, and what it would have to
 answer.**
+
+### §48.1 — THE CREDENTIAL SURFACE, OBTAINED (2026-09-21), AND WHAT THIS SLICE WILL REFUSE
+
+**THE SAME DOOR AS §47.1, aimed seven times, and it answered six of the seven.** Paths again were not
+predictable (`NSURLAuthenticationChallenge` is `/documentation/foundation/urlauthenticationchallenge`), and
+the pages became Objective-C only when their `interfaceLanguage: occ` patch was applied.
+
+**`NSURLAuthenticationChallenge` — 8 rows.** `-initWithAuthenticationChallenge:sender:`,
+`-initWithProtectionSpace:proposedCredential:previousFailureCount:failureResponse:error:sender:`, and the
+properties `protectionSpace`, `failureResponse`, `previousFailureCount`, `proposedCredential`, `error`,
+`sender`. THE `sender` ROW IS FILED UNDER "Legacy" BY APPLE ITSELF, so it is refused by name rather than
+shipped quietly - it is the pre-session form of "who asked", and this library's answer to that is the task.
+
+**`NSURLCredential` — 14 rows.** `+credentialWithUser:password:persistence:`,
+`+credentialWithIdentity:certificates:persistence:`, `+credentialForTrust:`,
+`-initWithUser:password:persistence:`, `-initWithIdentity:certificates:persistence:`, `-initWithTrust:`, and
+the properties `user`, `password`, `hasPassword`, `persistence`, `identity`, `certificates`.
+**`hasPassword` IS THE ONE THAT MATTERS MOST HERE**, because it is the property that lets a caller ask
+whether a credential can answer at all without touching the secret.
+
+**`NSURLCredentialStorage` — 15 rows.** `+sharedCredentialStorage`; the default-credential pair
+(`-setDefaultCredential:forProtectionSpace:`, `-defaultCredentialForProtectionSpace:`) and their task-scoped
+forms; `-setCredential:forProtectionSpace:` (and its task form), `-removeCredential:forProtectionSpace:`,
+`-removeCredential:forProtectionSpace:options:` (and its task form), `-credentialsForProtectionSpace:`,
+`-allCredentials`, the task-scoped getter, and `NSURLCredentialStorageChangedNotification`. **The task-scoped
+doors answer through the task's request, exactly as the cookie store's do** - which is the same decision
+§47.3 recorded, and it keeps ONE index.
+
+**`NSURLProtectionSpace` — 15 rows.** The two initialisers (host and proxy), and `host`, `port`, `protocol`,
+`proxyType`, `realm`, `authenticationMethod`, `receivesCredentialSecurely`, `isProxy`, `serverTrust`,
+`distinguishedNames`, plus three named constant groups (protocol types, proxy types, authentication
+methods).
+
+**`NSURLSessionAuthChallengeDisposition` — 4 cases** (UseCredential, PerformDefaultHandling,
+CancelAuthenticationChallenge, RejectProtectionSpace) and **`NSURLCredentialPersistence` — 4 cases** (None,
+ForSession, Permanent, Synchronizable): both are case NAMES only, so their values are ours under the same
+rule as every enum (D2).
+
+**AND ONE NAME THE INDEX DOES NOT CARRY, NAMED RATHER THAN GUESSED:** `NSURLAuthenticationMethod` - the
+namespace holding the `NSURLAuthenticationMethod*` constants - is not a page in the Foundation index (the
+lookup answered `None`). It is a CONSTANTS NAMESPACE rather than a class, so it is filed with its members
+wherever Apple keeps them, and that is the next lookup. Writing those constants from memory would be
+inventing an API.
+
+**WHAT THIS SLICE WILL REFUSE, AND WHY EACH REFUSAL IS THE POINT RATHER THAN AN OMISSION:**
+
+  * **EVERY TRUST AND IDENTITY DOOR**: `-initWithTrust:`, `+credentialForTrust:`, `serverTrust`, `identity`,
+    `certificates`, `-initWithIdentity:certificates:persistence:`,
+    `+credentialWithIdentity:certificates:persistence:`, and `distinguishedNames`. Each names a
+    `SecTrustRef`/`SecIdentityRef` - the SECURITY framework's types - and this system has no trust or
+    certificate stack to hand one a meaning. **The seam is the keychain plan's own consumers list**: LibreSSL
+    client credentials are its first named consumer, so the identity half arrives when that work does, and
+    refusing it now is what keeps the name honest.
+  * **`sender`** - legacy by Apple's own filing (above).
+  * **`Synchronizable` persistence and the removal-options dictionary**, because both exist for iCloud
+    synchronisation, which this system does not have and this plan has never proposed.
+
+**THE SHAPE OF THE SLICE, THEN, IS THE COOKIE SLICE'S ONE SIZE LARGER, AND IT IS WORTH SAYING WHY THAT IS
+NOT A COINCIDENCE:** a value type, a second value type that describes a realm, a piece of mechanics that
+carries both, and a store keyed by the second - in-memory, process-wide, with the KEYCHAIN NAMED AS THE ONE
+SEAM WHERE PERSISTENCE WOULD SUBSTITUTE (§48). Everything else in this slice is a refusal with a reason.
