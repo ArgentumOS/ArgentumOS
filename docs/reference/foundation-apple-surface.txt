@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  142   open   54   struck   77
+#   class      shipped  143   open   53   struck   77
 #   protocol   shipped   18   open   13   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   94   open   49   struck   17
@@ -1535,7 +1535,7 @@ class	shipped	NSThread		Low-Level Utilities / Threads and Locking	-	objc
 class	shipped	NSTimeZone		Fundamentals / Calendrical Calculations	-	objc
 class	shipped	NSTimer		App Support / Scheduling	-	objc
 class	shipped	NSURL		Fundamentals / URLs	-	objc
-class	open	NSURLAuthenticationChallenge		Networking / Authentication and credentials	-	objc
+class	shipped	NSURLAuthenticationChallenge		Networking / Authentication and credentials	-	objc
 class	open	NSURLCache		Networking / Cache behavior	-	objc
 class	shipped	NSURLComponents		Fundamentals / URLs	-	objc
 class	struck	NSURLConnection		Networking / Legacy / URL Connection	deprecated	objc
