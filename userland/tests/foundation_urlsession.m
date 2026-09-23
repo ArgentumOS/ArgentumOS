@@ -235,8 +235,13 @@ int main(void)
 			"resume", "suspend", "cancel", NULL
 		};
 		/* REFUSED, EACH BECAUSE THE CLASS OR THE ROW BEHIND IT IS NOT SHIPPED: the download/upload/
-		 * stream/websocket doors (their own ledger rows), the challenge member and factories
-		 * (NSURLAuthenticationChallenge is its own family) and the coder doors.
+		 * stream/websocket doors (their own ledger rows) and the coder doors.
+		 *
+		 * AND THE TWO AUTHENTICATION DELEGATE DOORS HAVE LEFT THIS LIST TOO (§53): they were refused while
+		 * NSURLAuthenticationChallenge was "its own family", and that reason expired when §48 shipped the
+		 * family - the doors are declared on NSURLSessionDelegate and NSURLSessionTaskDelegate now, and
+		 * foundation_challengedoor is what asserts the DECLARATIONS. A selector listed here is one this
+		 * library promises NOT to answer, so removing it strengthens this check rather than weakening it.
 		 *
 		 * AND THE TWO COMPLETION-HANDLER FACTORIES LEFT THIS LIST WHEN THE EXECUTION ROW LANDED: they were
 		 * refused while NOTHING COULD RUN A TASK, and a refusal list is a fact about the tree that a
@@ -249,8 +254,6 @@ int main(void)
 		 * list below, so removing a refusal strengthens the check rather than weakening it. */
 		static const char *excluded[] = {
 			"streamTaskWithHostName:port:", "webSocketTaskWithURL:",
-			"URLSession:didReceiveChallenge:completionHandler:",
-			"URLSession:task:didReceiveChallenge:completionHandler:",
 			"initWithCoder:", "encodeWithCoder:", NULL
 		};
 		NSURLSession *session = [NSURLSession sharedSession];

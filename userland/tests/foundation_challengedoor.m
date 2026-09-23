@@ -9,6 +9,10 @@
  * the interesting properties are WHICH door is asked and WHAT HAPPENS WHEN NONE IS.
  */
 #import <Foundation/Foundation.h>
+/* SO A DECLARATION CAN BE ASSERTED WHERE DECLARATIONS LIVE (§53, the §50.3 pattern): a protocol's own method
+ * list is only readable from the runtime, and these two doors were DECLARED NOWHERE while the loop that uses
+ * them passed every behavioural check. */
+#import <objc/runtime.h>
 #include <stdio.h>
 
 static int okc = 0, failc = 0;
@@ -146,6 +150,26 @@ int main(void)
 		      NSURLSessionAuthChallengeUseCredential == 0 &&
 		      NSURLSessionAuthChallengeRejectProtectionSpace == 3,
 		      @"UseCredential is 0 so a zeroed decision is not the opposite of intent");
+
+		/* AND THE TWO DOORS ARE DECLARED, WHICH IS THE WHOLE OF §53: every check above passed while BOTH
+		 * selectors existed in NO HEADER AT ALL - the session dispatches through an `(id)` cast, which
+		 * compiles whether or not a declaration exists - so the assertion has to read the PROTOCOL. A
+		 * -respondsToSelector: on a class cannot see the difference, because a class that implements the
+		 * method answers YES either way, and that is exactly how this defect survived its own tests. */
+		{
+			struct objc_method_description sessionDoor =
+				protocol_getMethodDescription(@protocol(NSURLSessionDelegate),
+					@selector(URLSession:didReceiveChallenge:completionHandler:),
+					NO /* optional */, YES /* instance */);
+			struct objc_method_description taskDoor =
+				protocol_getMethodDescription(@protocol(NSURLSessionTaskDelegate),
+					@selector(URLSession:task:didReceiveChallenge:completionHandler:),
+					NO, YES);
+
+			check("both-doors-are-declared-by-the-protocols",
+			      sessionDoor.name != NULL && taskDoor.name != NULL,
+			      @"the session's door and the task's door are DECLARED, which is what a caller can read");
+		}
 	}
 
 	printf("FOUNDATION-CHALLENGEDOOR RESULT ok=%d fail=%d\n", okc, failc);

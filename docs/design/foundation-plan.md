@@ -9924,3 +9924,55 @@ diagnosis. They are gone.
 `NSURLSession.m` emits `-Wobjc-method-access` TWICE, for the two authentication delegate doors the session
 messages through an `(id)` cast. That is the same defect class §50.3 was, stated by the toolchain, and it is
 the first thing §53 should make disappear.
+
+## §53 — §52.1'S DEFECT IS PAID: THE TWO DELEGATE DOORS ARE DECLARED (2026-09-22)
+
+**LANDED.** `-URLSession:didReceiveChallenge:completionHandler:` is declared on `NSURLSessionDelegate`, and its
+task form on `NSURLSessionTaskDelegate` - both `@optional` like every other member of those protocols, and both
+spelled with the same block type the session's internal door already uses. The stale REFUSED-BY-NAME bullet in
+`NSURLSession.h`, which refused them *"because `NSURLAuthenticationChallenge` is its own family"* - a reason
+that expired the moment §48 shipped that family - is gone, and the session's two `(id)`-cast dispatch sites now
+call DECLARED members.
+
+**THE ACCEPTANCE CRITERION IS THE COMPILER'S, AND THAT IS THE POINT OF THE SECTION:** §52.1's evidence was two
+`-Wobjc-method-access` warnings emitted on every build of `NSURLSession.m`. They are gone.
+
+**AND THE CHECK IS THE ONE §50.3 ESTABLISHED, APPLIED TO A DELEGATE PROTOCOL.** The BEHAVIOUR was never in
+doubt - the loop has passed its checks since §48 - so what is asserted is the DECLARATION, read from the
+protocols' own method lists: `-respondsToSelector:` on some class cannot tell a declared member from an
+undeclared one the class happens to implement, and that is precisely how this defect survived. The session
+probe's `excluded[]` also loses both selectors, because it was refusing doors that ship: removing a refusal
+strengthens the check rather than weakening it.
+
+### §53.1 — ONE ITEM STAYS OPEN, WITH ITS COST MEASURED RATHER THAN ESTIMATED
+
+¶51 flagged it and this section is that door's next touch, so it is recorded here in full: **Apple marks the
+handler's `credential` NULLABLE** (its Swift view is `URLCredential?` - a `Cancel` or `RejectProtectionSpace`
+disposition carries none), while this library spells it nonnull in **four** signed places - the two delegate
+doors, the client door in `NSURLProtocol.h`, and the session's internal `fnAskForCredentialForTask:` - and
+**three call sites pass `nil` through it** (the bridge's no-door path, the session's no-door path, and the
+challenge-door probe's). The correction is mechanical but reaches all four declarations plus the probe
+implementations that copy the block type, so it is recorded as its own task rather than smuggled into a
+declaration fix. **What §53 does is keep the new declarations consistent with the tree's existing spelling, so
+nothing new disagrees with anything; what remains is ONE tree-wide spelling change.**
+
+### §53.2 — §53 LANDS, AND THE ACCEPTANCE WAS THE COMPILER'S (2026-09-22)
+
+**LANDED, AND VERIFIED BY THE THING THAT FOUND IT.** The library recompiles with NO `-Wobjc-method-access`
+warning anywhere - the two that §52.1 recorded, one per door, are gone - and the neighbours are green:
+`foundation_challengedoor` 7/7 (its new check included), `foundation_urlsession` 6/6 with the reduced
+`excluded[]`, `foundation_authloop`, `foundation_metricsdelivery` and `foundation_taskmetrics` all pass.
+
+**THE NEW CHECK IS `both-doors-are-declared-by-the-protocols`, and it reads each protocol's own method list
+after asking the same question in the way that CANNOT answer it:** the probe's three delegate classes already
+implement these doors, so a `-respondsToSelector:` on one of them says YES whether or not any header declares
+the selector - which is exactly how a declared-nowhere door survived a unit that drives it. The check is
+therefore aimed at `@protocol(NSURLSessionDelegate)` and `@protocol(NSURLSessionTaskDelegate)`, and it would
+fail on the state §52.1 found.
+
+**AND THE SESSION PROBE'S `excluded[]` SHRANK RATHER THAN GREW**: two selectors left it, because a selector in
+that array is one this library promises NOT to answer - so the array is now exactly the download/upload/stream/
+websocket doors and the coder doors, each with a ground that survives. That is the eighth time this session
+that a refusal has been removed rather than added, and the pattern is worth stating once: **the refusal lists
+are the machine-readable distance to zero, and every landing that shortens one strengthens the check that
+holds it.**

@@ -74,6 +74,18 @@ NS_ASSUME_NONNULL_BEGIN
 /* THE SESSION IS DONE and cannot be used again. */
 - (void)URLSession:(NSURLSession *)session didBecomeInvalidWithError:(nullable NSError *)error;
 
+/* THE SERVER ASKED FOR CREDENTIALS, and the SESSION-level door is the fallback: the task-level door below
+ * is the more specific one and is asked first (§48's resolution order, which the loop's own probe pins).
+ *
+ * DECLARED HERE BY §53, AND UNTIL THEN IT WAS DECLARED NOWHERE - the same defect §50.3 found on the client
+ * side, one protocol over: the session has dispatched to this selector through an `(id)` cast since §48, and
+ * Objective-C permits that whether or not a header declares it, so the loop passed its checks while a caller
+ * could not read the contract and the compiler could not check a call to it. */
+- (void)URLSession:(NSURLSession *)session
+didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
+ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
+			     NSURLCredential *credential))completionHandler;
+
 /* A background session finished handing over its events. Carried: this library has no background
  * machinery yet, so nothing calls it — stated rather than implied. */
 - (void)URLSessionDidFinishEventsForBackgroundURLSession:(NSURLSession *)session;
@@ -96,12 +108,18 @@ NS_ASSUME_NONNULL_BEGIN
  *       alongside the task's.
  *
  * REFUSED BY NAME, each because the TYPE or the ROW behind it is not shipped:
- *   * the AUTHENTICATION members (-URLSession:didReceiveChallenge:completionHandler: and its task/data
- *     forms) - NSURLAuthenticationChallenge is its own family and its own ledger rows;
- *     (THE RESPONSE DECISION WAS ON THIS LIST AND IS NOT ANY MORE - its enum was never blocked, an enum
- *     case being a value rather than a class reference, and the door below holds the body until the delegate
- *     answers. THAT WAS THE SIXTH TIME THIS SESSION that a refusal expired instead of being deleted.)
  *   * the UPLOAD/DOWNLOAD/STREAM members, whose classes are their own ledger rows.
+ *
+ * AND TWO THINGS HAVE LEFT THIS LIST, EACH RECORDED WHERE IT WAS REMOVED because a refusal is a fact about the
+ * TREE and a landing has to revisit it:
+ *   * THE RESPONSE DECISION - its enum was never blocked, an enum case being a value rather than a class
+ *     reference, and the door below holds the body until the delegate answers (the sixth time this session a
+ *     refusal expired instead of being deleted);
+ *   * THE TWO AUTHENTICATION CHALLENGE DOORS (§53) - they were refused "because NSURLAuthenticationChallenge
+ *     is its own family", a reason that expired when §48 shipped that family, and the session had been
+ *     disPATCHING to both selectors through an `(id)` cast ever since: declared nowhere, called anyway, with
+ *     two `-Wobjc-method-access` warnings on every build as the only sign. They are declared on the two
+ *     delegate protocols now, and `foundation_challengedoor` asserts the DECLARATIONS.
  *
  * WHERE THESE ARRIVE: on the session's DELEGATE QUEUE when it has one, and on the TRANSFER'S OWN THREAD
  * when it does not - so a delegate must not assume the main thread either way. AND THE QUEUE IS EXPECTED
@@ -142,6 +160,19 @@ typedef NS_ENUM(NSInteger, NSURLSessionResponseDisposition) {
 - (void)URLSession:(NSURLSession *)session
 	      task:(NSURLSessionTask *)task
 didCompleteWithError:(nullable NSError *)error;
+
+/* THE SERVER ASKED FOR CREDENTIALS, AND THIS IS THE DOOR THE SESSION ASKS FIRST (§48's resolution order: the
+ * task-level delegate is the more specific one and the session's own door is the fallback).
+ *
+ * DECLARED HERE BY §53, AND UNTIL THEN IT WAS DECLARED NOWHERE: the session has dispatched to this selector
+ * through an `(id)` cast since §48, which compiles whether or not a header declares it - so the loop passed
+ * its checks while a caller could not read the contract and the compiler could not check a call to it. The
+ * build's two `-Wobjc-method-access` warnings were exactly that, in the toolchain's own words. */
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
+didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
+ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
+			     NSURLCredential *credential))completionHandler;
 
 /* WHAT THE TASK COST, AND IT ARRIVES BEFORE THE ENDING ABOVE - Apple's order, and the reason the delivery is
  * a separate call rather than a parameter of it: a delegate that wants the numbers has them before it

@@ -12,6 +12,7 @@ CHECKS = (
     "the-session-door-is-the-fallback",
     "no-door-means-default-without-waiting",
     "the-disposition-values-are-ours-and-ordered",
+    "both-doors-are-declared-by-the-protocols",
 )
 
 
