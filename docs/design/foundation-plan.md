@@ -9126,3 +9126,50 @@ place, and that place is an FSH domain rather than a file under a home directory
 reasoning that put the configuration domains where they are, and the reason `NSTemporaryDirectory()` answers
 `/System/Temporary Files/`). Whether the v1 store persists AT ALL is a decision to be made explicitly when
 the class is written, and it belongs in this section rather than in a commit message.
+
+### §47.1 — THE DOCUMENTED SURFACE, OBTAINED (2026-09-21), AND THE ONE DECISION IT LEAVES OPEN
+
+**THE LOOKUP WENT THROUGH THE RECORDED DOOR, and the door is worth restating because a first attempt
+guessed it wrong:** the page path comes from the index's `interfaceLanguages.occ` tree and is NOT
+predictable — `NSHTTPCookie` is `/documentation/foundation/httpcookie`, so the prefix goes from INSIDE the
+name as well as from the front; the page is Swift-spelled and becomes Objective-C only when its
+`variantOverrides` entry for `interfaceLanguage: occ` is APPLIED (65 `replace` operations on this class,
+58 on the storage). The applied page's section titles then carry the real selectors. Nothing here reads an
+Apple header, which is the point of §2.
+
+**`NSHTTPCookie` — 21 rows.** Class: `+cookieWithProperties:`, `+cookiesWithResponseHeaderFields:forURL:`,
+`+requestHeaderFieldsWithCookies:`. Instance: `-initWithProperties:`. Properties: `name`, `value`,
+`domain`, `path`, `portList`, `version`, `expiresDate`, `sessionOnly`, `secure`, `HTTPOnly`,
+`sameSitePolicy`, `comment`, `commentURL`, `properties`. Types: `NSHTTPCookiePropertyKey`,
+`NSHTTPCookieStringPolicy`, `NSHTTPCookieAcceptPolicy`.
+
+**`NSHTTPCookieStorage` — 15 rows.** `+sharedHTTPCookieStorage`,
+`+sharedCookieStorageForGroupContainerIdentifier:`, `cookieAcceptPolicy`, `-setCookie:`,
+`-setCookies:forURL:mainDocumentURL:`, `-deleteCookie:`, `-removeCookiesSinceDate:`, `cookies`,
+`-cookiesForURL:`, `-sortedCookiesUsingDescriptors:`, `-storeCookies:forTask:`,
+`-getCookiesForTask:completionHandler:`, and the two
+`NSHTTPCookieManager{Cookies,AcceptPolicy}ChangedNotification` names.
+
+**NOTHING IN THIS SLICE IS BLOCKED, WHICH IS WHY IT WENT FIRST.** Every dependency already ships:
+`NSSortDescriptor` (F10) for `-sortedCookiesUsingDescriptors:`, `NSNotification`/`NSNotificationCenter` (W4)
+for the two change notifications, `NSURLSessionTask` for the two task-scoped doors, and `NSURL` for the URL
+arguments. The two task-scoped doors are therefore owed rather than refused.
+
+**TWO REFUSALS, NAMED WITH THEIR REASONS, TO BE ASSERTED ABSENT:** `+sharedCookieStorageForGroupContainerIdentifier:`
+(a GROUP CONTAINER is an app-group concept this OS has no notion of), and — pending a decision below —
+whatever persistence door the store would need.
+
+**THE ONE DECISION, STATED AND TAKEN AS A REVERSIBLE DEFAULT:** `+sharedHTTPCookieStorage` is a
+process-wide store whose lifetime Apple ties to the application. **v1 IS IN-MEMORY: it lives as long as the
+process, and it persists NOTHING.** That is a choice and not a limitation dressed up as one — it is
+reversible, it needs no FSH domain and no format, and it means the class can be completed and probed
+without inventing a file layout ahead of the code that reads it. WHEN persistence is wanted, the store
+names an FSH domain the way the configuration domains and `/System/Temporary Files/` do; that is a later
+section, not this one.
+
+**AND ONE FOLLOW-UP THE LOOKUP EXPOSED, NAMED RATHER THAN ASSUMED:** `NSHTTPCookiePropertyKey` and
+`NSHTTPCookieStringPolicy` are VALUES, not names — a property key IS the string a program types, which is
+the same situation §14.4 recorded for the KVC operator constants and the same conclusion follows: their
+values are syntax, so they come from the documentation rather than from §11.6.1's D2 (which covers values
+Apple publishes by case name only). The constants' own pages carry those strings, and that is the next
+lookup, not a guess.
