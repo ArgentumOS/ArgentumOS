@@ -3528,7 +3528,7 @@ vanishing.
 | **Low-Level Utilities / XPC Client** | ALL STRUCK: `NSXPCCoder`, `NSXPCConnection`, `NSXPCInterface`, `NSXPCProxyCreating` | — |
 | **Low-Level Utilities / XPC Services** | ALL STRUCK: `NSXPCListener`, `NSXPCListenerDelegate`, `NSXPCListenerEndpoint` | — |
 | **Networking / Authentication and credentials** | all classes shipped | — |
-| **Networking / Cache behavior** | 1 open | `NSURLCache` |
+| **Networking / Cache behavior** | all classes shipped | — |
 | **Networking / Cookies** | all classes shipped | — |
 | **Networking / Essentials** | 8 open | `NSURLSessionDownloadDelegate`, `NSURLSessionStreamDelegate`, `NSURLSessionStreamTask`, `NSURLSessionTaskMetrics`, `NSURLSessionTaskTransactionMetrics`, `NSURLSessionWebSocketDelegate`, `NSURLSessionWebSocketMessage`, `NSURLSessionWebSocketTask` |
 | **Networking / Legacy** | ALL STRUCK: `NSURLAuthenticationChallengeSender`, `NSURLConnection`, `NSURLConnectionDataDelegate`, `NSURLConnectionDelegate`, `NSURLConnectionDownloadDelegate`, `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` | — |
