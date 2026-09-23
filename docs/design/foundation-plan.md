@@ -9579,3 +9579,37 @@ with this library's own `-copy` spelling rather than Cocoa's zone-taking form.
 audit is recorded rather than mentioned because a clean audit is evidence about the tree: it means the seven
 rows were complete when the class landed, which is what "shipped" is supposed to mean here - the ledger's
 status says DECLARED, and this is the check that makes the stronger claim true for one more class.
+
+### §49.2 — THE CACHE HOOKS' DESIGN, INCLUDING WHICH LAYER OWNS WHICH HALF (2026-09-21)
+
+**THE CLASS IS DONE AND VERIFIED (§49.1 + 16 checks); THE HOOKS ARE THE PART THAT TOUCHES THE TRANSPORT, and
+this section records the design so the next session implements rather than re-derives it.** The split matters
+because "use the cache" sounds like one job and is two:
+
+  * **THE BRIDGE CHECKS, AND A HIT NEVER REACHES THE NETWORK.** `-startLoading`'s path asks
+    `+[NSURLCache sharedURLCache]` for the request BEFORE the transfer runs, and on a hit it reports the
+    stored response, its data and the finish WITHOUT CALLING CURL AT ALL. That is the whole point of a cache,
+    and it is also the easiest half to get wrong by accident - a hit that still dials the server is a cache
+    that costs a connection instead of saving one.
+  * **THE SESSION'S CLIENT STORES, BECAUSE THE BODY LIVES THERE.** The bridge streams the body onward and
+    keeps none of it (which is deliberate: accumulating in the bridge would be a second buffer alongside the
+    task's), while `FNSessionTransfer` already holds the task and therefore the bytes. So the storing half
+    belongs to the client's ending, and it is Apple's own division as well - a protocol reports and the
+    loading system puts things away.
+
+**AND THE POLICY IS DERIVED RATHER THAN ASSUMED**, which the class's own rule makes load-bearing: a response
+is `NSURLCacheStorageNotAllowed` when the response says `Cache-Control: no-store`, and `Allowed` otherwise.
+**v1 reads the RESPONSE's signal only, and says so**: `NSURLRequest`'s own cache policy is a second input
+Apple honours and this slice does not read yet, which is a narrowing to record rather than to hide.
+
+**THE CHECK THAT WILL PROVE IT, AND IT IS THE ONE WORTH BUILDING FOR:** the probe is its own server, as the
+upload unit and the auth loop established. **First request: the server is contacted ONCE and the response is
+cached. Second request, same URL: the response is served and THE SERVER'S ACCEPT COUNT DOES NOT MOVE.** A
+count is the proof - "it came back fast" proves nothing, and a cache whose hit still dials out is exactly the
+bug this check exists to catch. A second URL answering `Cache-Control: no-store` must leave the accept count
+moving on every request.
+
+**AND ONE THING THE HOOKS MUST NOT DO:** a cache hit must not change WHAT THE DELEGATE IS TOLD. The client
+still receives a response, still receives the body, still receives the ending - which is why
+`-URLProtocol:cachedResponseIsValid:` is a door of its own rather than a flag on a response, and why a
+delegate cannot tell a hit from a miss except by the order it sees them in.
