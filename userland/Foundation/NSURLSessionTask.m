@@ -243,3 +243,10 @@
 @implementation NSURLSessionDataTask
 
 @end
+
+/* THE UPLOAD TASK IS AN EMPTY IMPLEMENTATION, LIKE THE DATA TASK'S, AND IT IS NOT OPTIONAL: a class with an
+ * @interface and no @implementation has NO CLASS OBJECT, so a reference to it links as an undefined symbol -
+ * which is how this was found, as a link error rather than a runtime one. */
+@implementation NSURLSessionUploadTask
+
+@end

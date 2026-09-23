@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  137   open   59   struck   77
+#   class      shipped  138   open   58   struck   77
 #   protocol   shipped   18   open   13   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   91   open   52   struck   17
@@ -1556,7 +1556,7 @@ class	open	NSURLSessionStreamTask		Networking / Essentials / Adding stream tasks
 class	shipped	NSURLSessionTask		Networking / Essentials	-	objc
 class	open	NSURLSessionTaskMetrics		Networking / Essentials / Working with a delegate / Collecting task metrics	-	objc
 class	open	NSURLSessionTaskTransactionMetrics		Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics	-	objc
-class	open	NSURLSessionUploadTask		Networking / Essentials / Adding upload tasks to a session	-	objc
+class	shipped	NSURLSessionUploadTask		Networking / Essentials / Adding upload tasks to a session	-	objc
 class	open	NSURLSessionWebSocketMessage		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 class	open	NSURLSessionWebSocketTask		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 class	shipped	NSUUID		Fundamentals / Unique Identifiers	-	objc

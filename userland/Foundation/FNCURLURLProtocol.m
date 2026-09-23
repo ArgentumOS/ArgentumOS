@@ -191,7 +191,6 @@ static size_t fn_curl_header_discard(char *ptr, size_t size, size_t nmemb, void 
 	NSURLRequest *request = [self request];
 	NSString *urlString = [[request URL] absoluteString];
 	struct curl_slist *headerList = NULL;
-	NSString *body = nil;
 	int failed = 0;
 
 	memset(&transfer, 0, sizeof(transfer));
@@ -215,6 +214,14 @@ static size_t fn_curl_header_discard(char *ptr, size_t size, size_t nmemb, void 
 	curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, fn_curl_header);
 	curl_easy_setopt(curl, CURLOPT_HEADERDATA, &transfer);
 	/* THE REDIRECT DECISION (decision 2): curl must NOT chase it, because reporting it is this seam's. */
+	/* THE REQUEST'S OWN TIMEOUT IS APPLIED, AND IT WAS NOT: NSURLRequest carries a timeoutInterval (60
+	 * seconds by default) and curl was given no timeout at all, so a transfer to a server that never answers
+	 * waited FOREVER - found by a probe that posts to a receiver which accepts and says nothing. A
+	 * non-positive interval is left alone, because for curl that means no timeout. */
+	if ([[self request] timeoutInterval] > 0.0) {
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS,
+				 (long)([[self request] timeoutInterval] * 1000.0));
+	}
 	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
 	/* No SIGALRM-based timeouts: this is a library thread inside a process that may have its own. */
 	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
@@ -243,13 +250,14 @@ static size_t fn_curl_header_discard(char *ptr, size_t size, size_t nmemb, void 
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerList);
 		}
 		if ([request HTTPBody] != nil) {
-			body = [[NSString alloc] initWithData:[request HTTPBody]
-						     encoding:NSUTF8StringEncoding];
-			if (body != nil) {
-				curl_easy_setopt(curl, CURLOPT_POSTFIELDS, [body UTF8String]);
-				curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE,
-						 (long)[[request HTTPBody] length]);
-			}
+			/* THE BYTES ARE HANDED OVER AS BYTES, AND THE FIRST VERSION DID NOT: it round-tripped the body
+			 * through -initWithData:encoding:NSUTF8StringEncoding and sent the STRING's bytes, so a body
+			 * that is not valid UTF-8 made that initializer answer nil and THE BODY WAS DROPPED - not
+			 * corrupted, OMITTED, with no error and a server that could only report a request with nothing
+			 * in it. A body is bytes; only a caller that knows better should call it text. */
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, [[request HTTPBody] bytes]);
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE,
+					 (long)[[request HTTPBody] length]);
 		}
 	}
 
@@ -274,9 +282,6 @@ static size_t fn_curl_header_discard(char *ptr, size_t size, size_t nmemb, void 
 	}
 	(void)failed;
 
-	if (body != nil) {
-		[body release];
-	}
 	if (headerList != NULL) {
 		curl_slist_free_all(headerList);
 	}

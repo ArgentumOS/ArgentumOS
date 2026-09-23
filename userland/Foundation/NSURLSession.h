@@ -198,6 +198,17 @@ didReceiveResponse:(NSURLResponse *)response
 /* FNX: THE DOOR A TASK USES TO ASK ITS SESSION TO RUN IT. -resume on a task with a session arrives here
  * (see NSURLSessionTask.h's group of doors); a task WITHOUT one only changes state, which is what the
  * model's own probe exercises. */
+/* THE UPLOAD DOORS. `fromData:` SUPPLIES THE BODY AND THE FACTORY PUTS IT ON THE REQUEST: NSURLRequest is
+ * immutable, so the factory takes a mutable copy and sets the body on that - Apple's behaviour, and the
+ * reason a caller does not set the body itself. THE REQUEST'S METHOD IS THE CALLER'S (a body with GET is odd
+ * but legal), so nothing here decides POST for them. */
+- (NSURLSessionUploadTask *)uploadTaskWithRequest:(NSURLRequest *)request fromData:(NSData *)bodyData;
+- (NSURLSessionUploadTask *)uploadTaskWithRequest:(NSURLRequest *)request
+					 fromData:(NSData *)bodyData
+				completionHandler:(void (^)(NSData *data,
+							    NSURLResponse *response,
+							    NSError *error))completionHandler;
+
 - (void)fnTaskDidResume:(NSURLSessionTask *)task;
 
 /* THE DOWNLOAD DOORS. The completion-handler form takes a LOCATION rather than bytes - that is the whole

@@ -26,6 +26,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <sys/wait.h>
+#include <signal.h>
 
 static int okc, failc;
 
@@ -152,6 +158,7 @@ didCompleteWithError:(NSError *)error
 - (int)responseAsks { return _responseAsks; }
 
 @end
+
 
 int main(void)
 {
@@ -442,6 +449,93 @@ int main(void)
 		      [delegate responseAsks] == 1 && [delegate dataCalls] >= 1 &&
 		      [[delegate dataBytes] length] == strlen(fixture_bytes),
 		      @"an ALLOWED response delivers the body and then the ending");
+	}
+
+	/* --- AN UPLOAD, AND ITS BODY AT THE FAR END -----------------------------------------------------
+	 * THE PROBE IS ITS OWN RECEIVER, AND THAT IS THE POINT: a receiver TOOL cannot listen in this guest
+	 * (netcat's socket() fails and toybox hands the -1 straight to setsockopt), but curl's sockets work
+	 * perfectly - so the listener is made HERE, in the same process. No tool, no fork, no shell anywhere in
+	 * the path. The transfer runs on a detached thread, so listen-then-resume-then-accept suffices.
+	 */
+	{
+		unsigned char rawBytes[8] = { 0xff, 0xfe, 0x00, 0x01, 0x80, 0x7f, 0xc3, 0x28 };
+		NSData *sent = [NSData dataWithBytes:rawBytes length:8];
+		NSURLSession *session = [NSURLSession sessionWithConfiguration:
+						[NSURLSessionConfiguration defaultSessionConfiguration]];
+		NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:fn_url(@"http://127.0.0.1:46467/")];
+		NSURLSessionUploadTask *task;
+		__block BOOL called = NO;
+		struct sockaddr_in addr;
+		unsigned char buf[4096];
+		size_t total = 0;
+		int listener, conn, one = 1, tries = 0;
+		BOOL found = NO;
+
+		[request setHTTPMethod:@"POST"];
+		/* A SHORT TIMEOUT, BECAUSE THE PROBE ANSWERS NOTHING: the transfer must END, and the bridge
+		 * applies the request's own interval - which is the other half of what this unit found. */
+		[request setTimeoutInterval:3.0];
+
+		listener = socket(AF_INET, SOCK_STREAM, 0);
+		memset(&addr, 0, sizeof(addr));
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(46467);
+		addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+		check("receiver-binds", bind(listener, (struct sockaddr *)&addr, sizeof(addr)) == 0,
+		      @"the probe binds its own listening socket");
+		check("receiver-listens", listen(listener, 1) == 0,
+		      @"the probe listens on its own socket");
+
+		[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+		task = [session uploadTaskWithRequest:request
+					     fromData:sent
+				    completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+			(void)data;
+			(void)response;
+			(void)error;
+			called = YES;
+		}];
+		[task resume];
+
+		conn = accept(listener, NULL, NULL);
+		check("receiver-accepts-a-connection", conn >= 0,
+		      @"the task's transfer connected to the probe's own listener");
+		if (conn >= 0) {
+			/* UP TO A SECOND OF COLLECTING: curl may write its headers and body as separate segments. */
+			fcntl(conn, F_SETFL, O_NONBLOCK);
+			while (tries < 100 && total < sizeof(buf)) {
+				ssize_t n = read(conn, buf + total, sizeof(buf) - total);
+
+				if (n > 0) {
+					total += (size_t)n;
+				} else {
+					usleep(10000);
+					tries++;
+				}
+			}
+			close(conn);
+		}
+		close(listener);
+		while (!called) {
+			usleep(10000);
+		}
+		check("upload-run-ends", called, @"an upload task runs to an ending through the bridge");
+
+		{
+			size_t i;
+
+			for (i = 0; i + [sent length] <= total; i++) {
+				if (memcmp(buf + i, [sent bytes], [sent length]) == 0) {
+					found = YES;
+					break;
+				}
+			}
+			printf("FOUNDATION-URLSESSION-TASK-DIAG upload: received %d bytes, body %s\n",
+			       (int)total, found ? "PRESENT" : "ABSENT");
+			check("upload-body-arrives-byte-for-byte", found,
+			      @"a body of NON-UTF-8 bytes reaches the far end - the pre-fix bridge sent nothing");
+		}
 	}
 
 	printf("FOUNDATION-URLSESSION-TASK RESULT ok=%d fail=%d\n", okc, failc);

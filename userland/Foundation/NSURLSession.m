@@ -29,6 +29,12 @@
  * keeps the pair from being a cycle. */
 /* THE SESSION'S OWN ENDING DOOR, declared here because the transfer (below) calls it and nothing outside
  * this file can: a session does not publish "a transfer of mine has ended" to the world. */
+/* THE UPLOAD FACTORIES' SHARED HALF, declared here because the two public doors are one implementation. */
+@interface NSURLSession (FNSessionUpload)
+- (NSURLSessionUploadTask *)fnUploadTaskWithRequest:(NSURLRequest *)request
+					    handler:(void (^)(NSData *, NSURLResponse *, NSError *))handler;
+@end
+
 @interface NSURLSession (FNSessionTransferControl)
 - (void)fnTransferDidEnd:(NSURLProtocol *)protocol;
 @end
@@ -398,6 +404,49 @@
 	[task fnSetSession:self];
 	[_tasks addObject:task];
 	return [task autorelease];
+}
+
+/* THE UPLOAD FACTORIES PUT THE BODY ON THE REQUEST, because NSURLRequest is immutable and a caller holding
+ * one cannot add a body to it. Everything else is the data task's own model. */
+- (NSURLSessionUploadTask *)fnUploadTaskWithRequest:(NSURLRequest *)request
+					    handler:(void (^)(NSData *, NSURLResponse *, NSError *))handler
+{
+	NSURLSessionUploadTask *task;
+
+	if (_invalid) {
+		return nil;
+	}
+	task = [[NSURLSessionUploadTask alloc] fnInitWithRequest:request
+						      identifier:_nextTaskIdentifier++
+					       completionHandler:handler];
+	[task fnSetSession:self];
+	[_tasks addObject:task];
+	return [task autorelease];
+}
+
+- (NSURLSessionUploadTask *)uploadTaskWithRequest:(NSURLRequest *)request fromData:(NSData *)bodyData
+{
+	NSMutableURLRequest *withBody = [request mutableCopy];
+	NSURLSessionUploadTask *task;
+
+	/* THE BODY GOES ON A COPY, so the caller's request is untouched. */
+	[withBody setHTTPBody:bodyData];
+	task = [self fnUploadTaskWithRequest:withBody handler:nil];
+	[withBody release];
+	return task;
+}
+
+- (NSURLSessionUploadTask *)uploadTaskWithRequest:(NSURLRequest *)request
+					 fromData:(NSData *)bodyData
+				completionHandler:(void (^)(NSData *, NSURLResponse *, NSError *))completionHandler
+{
+	NSMutableURLRequest *withBody = [request mutableCopy];
+	NSURLSessionUploadTask *task;
+
+	[withBody setHTTPBody:bodyData];
+	task = [self fnUploadTaskWithRequest:withBody handler:completionHandler];
+	[withBody release];
+	return task;
 }
 
 /* THE EXECUTION ITSELF, and every step of it is a decision this row makes:

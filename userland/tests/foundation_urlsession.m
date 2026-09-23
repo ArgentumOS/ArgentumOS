@@ -225,7 +225,8 @@ int main(void)
 			"configuration", "delegate", "delegateQueue", "sessionDescription",
 			"setSessionDescription:", "dataTaskWithRequest:", "dataTaskWithURL:",
 			"getTasksWithCompletionHandler:", "invalidateAndCancel",
-			"finishTasksAndInvalidate", "downloadTaskWithRequest:", NULL
+			"finishTasksAndInvalidate", "downloadTaskWithRequest:",
+			"uploadTaskWithRequest:fromData:", NULL
 		};
 		static const char *taskSelectors[] = {
 			"taskIdentifier", "originalRequest", "currentRequest", "response", "error",
@@ -244,8 +245,9 @@ int main(void)
 		/* THE DOWNLOAD DOORS HAVE LEFT THIS LIST, WHICH IS THE FIFTH TIME THIS SESSION: a refusal is a fact
 		 * about the TREE, and NSURLSessionDownloadTask is what made it stale. The arrival is asserted in the
 		 * positive half below rather than only subtracted from here. */
+		/* THE UPLOAD DOORS HAVE LEFT THIS LIST TOO - the seventh time - and the arrival joins the owed
+		 * list below, so removing a refusal strengthens the check rather than weakening it. */
 		static const char *excluded[] = {
-			"uploadTaskWithRequest:fromData:",
 			"streamTaskWithHostName:port:", "webSocketTaskWithURL:",
 			"URLSession:didReceiveChallenge:completionHandler:",
 			"URLSession:task:didReceiveChallenge:completionHandler:",

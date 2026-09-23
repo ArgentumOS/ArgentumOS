@@ -124,6 +124,14 @@ typedef NS_ENUM(NSInteger, NSURLSessionTaskState) {
 
 @end
 
+/* THE UPLOAD TASK ADDS NOTHING TO THE DATA TASK BUT ITS MEANING - Apple's hierarchy rather than this tree's
+ * convenience: NSURLSessionUploadTask IS an NSURLSessionDataTask, its completion handler has the data task's
+ * own signature, and the answer arrives the same way. What differs is only how the REQUEST was made, which
+ * is why the class is one line and the factories do the work. */
+@interface NSURLSessionUploadTask : NSURLSessionDataTask
+
+@end
+
 /* THE DOWNLOAD TASK'S ONE NEW SURFACE IS THE DESTINATION: the transfer is the same one every task runs, and
  * what differs is that the body is WRITTEN SOMEWHERE and the caller is handed that location rather than the
  * bytes. The file goes in NSTemporaryDirectory() - the FSH's answer, asked for rather than named here - and

@@ -1,0 +1,14 @@
+prefix=/home/kyle/Development/Fiwix/.build/x11-prefix
+exec_prefix=/home/kyle/Development/Fiwix/.build/x11-prefix
+libdir=/home/kyle/Development/Fiwix/.build/x11-prefix/lib
+includedir=/home/kyle/Development/Fiwix/.build/x11-prefix/include
+
+Name: FreeType 2
+URL: https://freetype.org
+Description: A free, high-quality, and portable font engine.
+Version: 26.2.20
+Requires: 
+Requires.private: zlib, libpng, harfbuzz >= 2.0.0
+Libs: -L/home/kyle/Development/Fiwix/.build/x11-prefix/lib -lfreetype
+Libs.private: 
+Cflags: -I${includedir}/freetype2
