@@ -11,12 +11,20 @@
 #include <fnx/config.h>
 #include <fnx/types.h>
 
+/*
+ * A NEGATIVE DESCRIPTOR IS TESTED FIRST, AND IT USED TO BE TESTED NOWHERE: `-1 > OPEN_MAX-1` is false, so
+ * control reached `current->fd[-1]` - AN OUT-OF-BOUNDS READ PAST THE ARRAY - and returned whatever the
+ * neighbouring kernel memory held. A printk showed a garbage "slot" of 60725 PASSING the check, after which
+ * get_socket() read a wild inode and !S_ISSOCK answered ENOTSOCK. Linux answers EBADF without touching
+ * memory, and what a caller saw here was NONDETERMINISTIC - "Bad file descriptor" in one run and
+ * "Not a socket" in the next - which is exactly what an out-of-bounds read looks like from the outside.
+ */
 #define CHECK_UFD(ufd)							\
 {									\
-	if((ufd) > (OPEN_MAX - 1) || current->fd[(ufd)] == 0) {		\
+	if((ufd) < 0 || (ufd) > (OPEN_MAX - 1) || current->fd[(ufd)] == 0) {	\
 		return -EBADF;						\
 	}								\
-}									\
+}
 
 extern unsigned int fd_table_size;	/* size in bytes */
 extern struct fd *fd_table;
