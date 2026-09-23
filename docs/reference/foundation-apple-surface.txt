@@ -28,13 +28,13 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  140   open   56   struck   77
+#   class      shipped  141   open   55   struck   77
 #   protocol   shipped   18   open   13   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   93   open   50   struck   17
 #   case       shipped  498   open  636   struck  168
 #   func       shipped   72   open   63   struck   54
-#   var        shipped  154   open  407   struck  353
+#   var        shipped  167   open  394   struck  353
 #   typealias  shipped   31   open   38   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1543,7 +1543,7 @@ class	open	NSURLCredential		Networking / Authentication and credentials	-	objc
 class	open	NSURLCredentialStorage		Networking / Authentication and credentials	-	objc
 class	struck	NSURLDownload		Networking / Legacy / URL Download	deprecated	objc
 class	struck	NSURLHandle		Networking / Legacy / URL Handle	deprecated	objc
-class	open	NSURLProtectionSpace		Networking / Authentication and credentials	-	objc
+class	shipped	NSURLProtectionSpace		Networking / Authentication and credentials	-	objc
 class	shipped	NSURLProtocol		Networking / Essentials / Creating a session / Supporting custom protocols	-	objc
 class	shipped	NSURLQueryItem		Fundamentals / URLs	-	objc
 class	shipped	NSURLRequest		Networking / Requests and responses	-	objc
@@ -3035,14 +3035,14 @@ var	struck	NSTimeFormatString	NSUserDefaults	Files and Data Persistence / App-sp
 var	open	NSURLAddedToDirectoryDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	open	NSURLApplicationIsScriptableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Application keys	-	objc
 var	open	NSURLAttributeModificationDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLAuthenticationMethodClientCertificate	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Session-wide authentication challenges	-	objc
-var	open	NSURLAuthenticationMethodDefault	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Task-specific authentication challenges	-	objc
-var	open	NSURLAuthenticationMethodHTMLForm	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Task-specific authentication challenges	-	objc
-var	open	NSURLAuthenticationMethodHTTPBasic	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Task-specific authentication challenges	-	objc
-var	open	NSURLAuthenticationMethodHTTPDigest	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Task-specific authentication challenges	-	objc
-var	open	NSURLAuthenticationMethodNTLM	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Session-wide authentication challenges	-	objc
-var	open	NSURLAuthenticationMethodNegotiate	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Session-wide authentication challenges	-	objc
-var	open	NSURLAuthenticationMethodServerTrust	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Session-wide authentication challenges	-	objc
+var	shipped	NSURLAuthenticationMethodClientCertificate	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Session-wide authentication challenges	-	objc
+var	shipped	NSURLAuthenticationMethodDefault	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Task-specific authentication challenges	-	objc
+var	shipped	NSURLAuthenticationMethodHTMLForm	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Task-specific authentication challenges	-	objc
+var	shipped	NSURLAuthenticationMethodHTTPBasic	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Task-specific authentication challenges	-	objc
+var	shipped	NSURLAuthenticationMethodHTTPDigest	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Task-specific authentication challenges	-	objc
+var	shipped	NSURLAuthenticationMethodNTLM	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Session-wide authentication challenges	-	objc
+var	shipped	NSURLAuthenticationMethodNegotiate	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Session-wide authentication challenges	-	objc
+var	shipped	NSURLAuthenticationMethodServerTrust	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Session-wide authentication challenges	-	objc
 var	open	NSURLCanonicalPathKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	open	NSURLContentAccessDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	open	NSURLContentModificationDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
@@ -3125,11 +3125,11 @@ var	open	NSURLPathKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ot
 var	open	NSURLPreferredIOBlockSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	struck	NSURLProtectionSpaceFTP	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Protocol types	deprecated	objc
 var	struck	NSURLProtectionSpaceFTPProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	deprecated	objc
-var	open	NSURLProtectionSpaceHTTP	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Protocol types	-	objc
-var	open	NSURLProtectionSpaceHTTPProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	-	objc
-var	open	NSURLProtectionSpaceHTTPS	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Protocol types	-	objc
-var	open	NSURLProtectionSpaceHTTPSProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	-	objc
-var	open	NSURLProtectionSpaceSOCKSProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	-	objc
+var	shipped	NSURLProtectionSpaceHTTP	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Protocol types	-	objc
+var	shipped	NSURLProtectionSpaceHTTPProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	-	objc
+var	shipped	NSURLProtectionSpaceHTTPS	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Protocol types	-	objc
+var	shipped	NSURLProtectionSpaceHTTPSProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	-	objc
+var	shipped	NSURLProtectionSpaceSOCKSProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	-	objc
 var	open	NSURLQuarantinePropertiesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	open	NSURLSessionDownloadTaskResumeData	NSURLSession	Networking / Essentials / Handling errors / User info dictionary keys	-	objc
 var	open	NSURLSessionTaskPriorityDefault	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc
