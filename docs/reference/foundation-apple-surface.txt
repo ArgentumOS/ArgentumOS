@@ -28,11 +28,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  141   open   55   struck   77
+#   class      shipped  142   open   54   struck   77
 #   protocol   shipped   18   open   13   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped   93   open   50   struck   17
-#   case       shipped  498   open  636   struck  168
+#   enum       shipped   94   open   49   struck   17
+#   case       shipped  501   open  633   struck  168
 #   func       shipped   72   open   63   struck   54
 #   var        shipped  167   open  394   struck  353
 #   typealias  shipped   31   open   38   struck    7
@@ -929,9 +929,9 @@ case	shipped	NSURLCacheStorageAllowedInMemoryOnly	NSCachedURLResponse	Networking
 case	shipped	NSURLCacheStorageAllowedInMemoryOnly	NSURLCache	Networking / Cache behavior / Cache storage policies / Policies	-	objc
 case	shipped	NSURLCacheStorageNotAllowed	NSCachedURLResponse	Networking / Cache behavior / Setting cache storage policies / Policies	-	objc
 case	shipped	NSURLCacheStorageNotAllowed	NSURLCache	Networking / Cache behavior / Cache storage policies / Policies	-	objc
-case	open	NSURLCredentialPersistenceForSession	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
-case	open	NSURLCredentialPersistenceNone	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
-case	open	NSURLCredentialPersistencePermanent	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
+case	shipped	NSURLCredentialPersistenceForSession	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
+case	shipped	NSURLCredentialPersistenceNone	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
+case	shipped	NSURLCredentialPersistencePermanent	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
 case	open	NSURLCredentialPersistenceSynchronizable	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
 case	open	NSURLErrorAppTransportSecurityRequiresSecureConnection	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
 case	open	NSURLErrorBackgroundSessionInUseByAnotherProcess	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
@@ -1539,7 +1539,7 @@ class	open	NSURLAuthenticationChallenge		Networking / Authentication and credent
 class	open	NSURLCache		Networking / Cache behavior	-	objc
 class	shipped	NSURLComponents		Fundamentals / URLs	-	objc
 class	struck	NSURLConnection		Networking / Legacy / URL Connection	deprecated	objc
-class	open	NSURLCredential		Networking / Authentication and credentials	-	objc
+class	shipped	NSURLCredential		Networking / Authentication and credentials	-	objc
 class	open	NSURLCredentialStorage		Networking / Authentication and credentials	-	objc
 class	struck	NSURLDownload		Networking / Legacy / URL Download	deprecated	objc
 class	struck	NSURLHandle		Networking / Legacy / URL Handle	deprecated	objc
@@ -1742,7 +1742,7 @@ enum	shipped	NSURLBookmarkCreationOptions	NSURL	Fundamentals / URLs / Working wi
 enum	shipped	NSURLBookmarkResolutionOptions	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
 enum	shipped	NSURLCacheStoragePolicy	NSCachedURLResponse	Networking / Cache behavior / Setting cache storage policies	-	objc
 enum	shipped	NSURLCacheStoragePolicy	NSURLCache	Networking / Cache behavior / Cache storage policies	-	objc
-enum	open	NSURLCredentialPersistence	NSURLCredential	Networking / Authentication and credentials / Creating a credential	-	swift-page
+enum	shipped	NSURLCredentialPersistence	NSURLCredential	Networking / Authentication and credentials / Creating a credential	-	swift-page
 enum	open	NSURLErrorNetworkUnavailableReason		Networking / Errors / Keys	-	objc
 enum	struck	NSURLHandleStatus	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	swift-page
 enum	shipped	NSURLRelationship	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items	-	objc
