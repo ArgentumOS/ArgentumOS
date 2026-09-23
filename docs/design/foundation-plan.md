@@ -10435,11 +10435,20 @@ CHANNEL and clears `sleep_address`, which is exactly the flag the other two read
 consumed rather than lost, a spurious wake just sends the loop around, and no entry can be unlinked twice.
 
 **WHAT IS STILL OWED, AND IT IS TWO THINGS - NAMED RATHER THAN IMPLIED:**
- * **THE SAME SHAPE ELSEWHERE, AND TWO OF THE FOUR ARE NOW DONE.** `sys_poll`, `do_select` (the wait this tree's own
-   RUN LOOPS use, which is what makes it the most load-bearing of the lot) and `epoll_wait` all arm before they
-   scan now. WHAT REMAINS IS THE BLOCKING READERS - `ipv4_recvfrom`, `unix_recvfrom`, the tty and the pipe - whose
-   loops are `while(!(p = peek_packet(...))) { sleep(...) }` with the same window between the peek and the sleep.
-   Same three-call cure, one loop at a time, each with its own error handling to preserve.
+ * **THE SAME SHAPE ELSEWHERE - AND THE SOCKET SIDE IS NOW COMPLETE.** `sys_poll`, `do_select` (the wait this
+   tree's own RUN LOOPS use, which is what makes it the most load-bearing of the lot), `epoll_wait` and BOTH SOCKET
+   READERS (`ipv4_recvfrom`, `unix_recvfrom` - the loops a BLOCKING read parks in, where there is no timeout to
+   rescue a lost wakeup) all arm before they look. WHAT REMAINS IS THE TTY AND THE PIPE readers.
+   **AND APPLYING THE CURE TO THE READERS EXPOSED TWO HOLES IN ITS FIRST VERSION** - both found by working through
+   the lock and the waker rather than by a test, and both fixed before anything was built on them:
+     * `sleep_commit()` MUST NOT RE-ARM AND SLEEP when a wake has cleared the registration. That wake's STATE
+       CHANGE may have landed BEHIND the caller's look - the look and the waker run concurrently, so a look that
+       had already passed the descriptor which became ready misses it - and re-arming there would park the caller
+       with the work already waiting. It now returns 0 WITHOUT SLEEPING, sending the caller around its loop.
+     * `wakeup()` MUST ONLY MAKE A SLEEPING PROCESS RUNNABLE. Arm-before-look means a wake can now match a process
+       that is still RUNNING, and `runnable()` inserts into the run queue - calling it there would list that
+       process twice. Cleared and sent around is all a running process needs, and for every pre-existing caller
+       the state is `PROC_SLEEPING`, so nothing else changes.
  * **A GATE.** A window between two instructions is not something one run can be relied on to hit, so the gate must
    REPEAT: a peer writing with NO delay (not the 300ms the existing leg uses), polled with no deadline, over many
    iterations, with the watchdog naming the iteration that parks. And by this session's own rule it must be

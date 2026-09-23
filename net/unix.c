@@ -547,27 +547,33 @@ int unix_recvfrom(struct socket *s, struct fd *f, char *buffer, __size_t count, 
 	u = &s->u.unix_info;
 
 	lock_resource(&packet_resource);
-	while(!(p = peek_packet(u->packet_queue))) {
-		/* FNX: AN EOF IS A CONDITION, NOT AN ABSENCE OF DATA — and for AF_UNIX the structure was
-		 * already half right, which is what gave it away: unix_select() answers "read EOF" as soon as
-		 * the socket is not SS_CONNECTED, and unix_free() stamps a peer's socket SS_DISCONNECTING.
-		 * The receive loop below asked only whether a packet had arrived, so a reader that got the
-		 * right answer from select and then read was slept for ever. Same defect, same fix, same
-		 * condition as ipv4_recvfrom(). */
+	for(;;) {
+		/* ARM BEFORE THE LOOK - the same cure and the same reason as ipv4_recvfrom() above and kernel/sleep.c.
+		 * AND AN EOF IS A CONDITION, NOT AN ABSENCE OF DATA: unix_select() answers "read EOF" as soon as the
+		 * socket is not SS_CONNECTED, and unix_free() stamps a peer's socket SS_DISCONNECTING - so a reader that
+		 * got the right answer from select and then read was slept for ever, which is how this loop's structure
+		 * gave the ipv4 one away. */
+		sleep_arm(u);
+		if((p = peek_packet(u->packet_queue))) {
+			sleep_disarm();
+			break;
+		}
 		if(s->state == SS_DISCONNECTING) {
+			sleep_disarm();
 			unlock_resource(&packet_resource);
 			return 0;
 		}
-		unlock_resource(&packet_resource);
-		if(!(f->flags & O_NONBLOCK)) {
-			if(sleep(u, PROC_INTERRUPTIBLE)) {
-				return -EINTR;
-			}
-			lock_resource(&packet_resource);
-		} else {
+		if(f->flags & O_NONBLOCK) {
+			sleep_disarm();
 			unlock_resource(&packet_resource);
 			return -EAGAIN;
 		}
+		unlock_resource(&packet_resource);
+		if(sleep_commit(u, PROC_INTERRUPTIBLE)) {
+			sleep_disarm();
+			return -EINTR;
+		}
+		lock_resource(&packet_resource);
 	}
 
 	size = MIN(p->len - p->offset, count);

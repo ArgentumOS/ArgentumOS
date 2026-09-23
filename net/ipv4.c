@@ -546,27 +546,36 @@ int ipv4_recvfrom(struct socket *s, struct fd *f, char *buffer, __size_t count, 
 	}
 
 	lock_resource(&packet_resource);
-	while(!(p = peek_packet(ip4->packet_queue))) {
-		/* EOF IS NOT AN ABSENCE OF DATA, IT IS A CONDITION, AND THIS LOOP HAD ONLY THE FORMER.
-		 * A peer that closes stamps this socket SS_DISCONNECTING and wakes it, and the wake-up
-		 * lands HERE — where the sole question was whether a packet had arrived, so a read after
-		 * the peer's close slept for ever instead of returning 0. A FIN that is never observed is
-		 * indistinguishable from a slow server, which is how it stayed hidden. Checked BEFORE the
-		 * O_NONBLOCK branch, because EOF is not EAGAIN: a non-blocking reader must see it too. */
+	for(;;) {
+		/* ARM BEFORE THE LOOK, for the reason sys_poll/do_select do (kernel/sleep.c carries the argument): the
+		 * peek and sleep()'s own registration are not atomic together, so a wake landing between them is lost
+		 * - and a BLOCKING read has no timeout to rescue it, so it would park for ever. Arming first cannot miss
+		 * one, because the packet is QUEUED BEFORE THE WAKE (loopback_deliver appends, then wakes) - and the
+		 * queue's own lock makes that ordering airtight, since the queuer needs the lock held here. */
+		sleep_arm(ip4);
+		if((p = peek_packet(ip4->packet_queue))) {
+			sleep_disarm();
+			break;
+		}
 		if(s->state == SS_DISCONNECTING) {
+			sleep_disarm();
 			unlock_resource(&packet_resource);
 			return 0;
 		}
-		unlock_resource(&packet_resource);
-		if(!(f->flags & O_NONBLOCK)) {
-			if(sleep(ip4, PROC_INTERRUPTIBLE)) {
-				return -EINTR;
-			}
-			lock_resource(&packet_resource);
-		} else {
+		if(f->flags & O_NONBLOCK) {
+			sleep_disarm();
 			unlock_resource(&packet_resource);
 			return -EAGAIN;
 		}
+		/* THE LOCK GOES BEFORE THE SLEEP: the queuer takes it, so holding it would keep the packet out - and
+		 * sleep_commit() will NOT sleep if a wake cleared the registration meanwhile, sending us around for
+		 * another look (its own comment has the reason). */
+		unlock_resource(&packet_resource);
+		if(sleep_commit(ip4, PROC_INTERRUPTIBLE)) {
+			sleep_disarm();
+			return -EINTR;
+		}
+		lock_resource(&packet_resource);
 	}
 
 	size = MIN(p->len - p->offset, count);

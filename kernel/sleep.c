@@ -215,10 +215,20 @@ int sleep_commit(void *address, int state)
 	unsigned int flags;
 	int signum;
 
-	/* RE-ARM IF THE CHECK DISARMED US - that is a wake this process has already consumed. */
-	sleep_arm(address);
-
+	/* IF A WAKE CLEARED OUR REGISTRATION, DO NOT SLEEP AT ALL - GO AROUND THE CALLER'S LOOP INSTEAD.
+	 *
+	 * AND THIS IS THE ONE PLACE THE WINDOW COULD STILL HAVE BEEN LEFT OPEN, which is why it is spelled out. A
+	 * wake is cleared by the waker (`wakeup()` nulls sleep_address), so "already cleared" here means A WAKE HAS
+	 * ARRIVED SINCE WE ARM'D - and that wake's STATE CHANGE may have landed BEHIND the caller's look: the look
+	 * and the waker run concurrently, so a look that had already passed the descriptor which became ready misses
+	 * it. Re-arming and sleeping there would park the caller with the work already waiting. Returning 0 without
+	 * sleeping sends it around for another - cheap - look, and whether it slept or not is invisible to it. */
 	SAVE_FLAGS(flags); CLI();
+	if(current->sleep_address == NULL) {
+		RESTORE_FLAGS(flags);
+		return 0;
+	}
+
 	if(state == PROC_INTERRUPTIBLE && (signum = issig())) {
 		RESTORE_FLAGS(flags);
 		return signum;
@@ -256,10 +266,20 @@ void wakeup(void *address)
 
 	while(*h) {
 		if((*h)->sleep_address == (void *)SLEEP_ADDR(address)) {
+			/* ONLY A SLEEPING PROCESS IS MADE RUNNABLE. THE ARM/LOOK/COMMIT CURE MAKES THIS REACHABLE:
+			 * sleep_arm() registers a process that is STILL RUNNING (it arms before it looks), so a wake can
+			 * now match a process that never slept - and runnable() inserts into the run queue, so calling it
+			 * there would list that process twice. Clearing the registration and sending it around its loop is
+			 * all a running process needs; for every other caller of wakeup() the state is PROC_SLEEPING and
+			 * nothing changes. */
+			int asleep = ((*h)->state == PROC_SLEEPING);
+
 			(*h)->sleep_address = NULL;
 			(*h)->flags &= ~PF_NOTINTERRUPT;
 			(*h)->cpu_count = (*h)->priority;
-			runnable(*h);
+			if(asleep) {
+				runnable(*h);
+			}
 			found = 1;
 			if((*h)->next_sleep) {
 				(*h)->next_sleep->prev_sleep = (*h)->prev_sleep;
