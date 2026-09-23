@@ -9742,3 +9742,29 @@ and nothing else in W7 waits on it.
 (this section), then **a decision** between `NSURLSessionStreamTask` (a socket-backed task on this system's own
 socket layer, because curl exposes no raw socket) and `NSURLSessionWebSocketTask` + `Message` (an RFC 6455
 client) - **both transport work, and neither finishable by writing a value type and a probe.**
+
+### §50.3 — A DECLARATION THE BRIDGE HAS BEEN RELYING ON WITHOUT (2026-09-21)
+
+**FOUND WHILE STARTING §50.2'S DELIVERY, AND IT CORRECTS A RECORD FROM §48:** the authentication **client** door
+is **NOT DECLARED IN `NSURLProtocolClient`**. `NSURLProtocol.h` mentions
+`-URLProtocol:didReceiveAuthenticationChallenge:` in ONE place - a REFUSED-BY-NAME comment - and nowhere else,
+and `grep` for the selector across the public headers finds no declaration at all.
+
+**AND THE AUTHENTICATION LOOP STILL WORKS (10 checks), WHICH IS WHY THIS WENT UNNOTICED.** The bridge messages
+`[_client URLProtocol:...didReceiveAuthenticationChallenge:...]` where `_client` is typed
+`id <NSURLProtocolClient>`; Objective-C permits a selector a protocol does not declare on an `id`-typed
+receiver, so the call compiles, and `FNSessionTransfer` implements the method - so the behaviour is right and
+the CONTRACT is missing. **That is the worst of the three possible states**: a caller cannot learn the door
+exists, a compiler cannot check a call to it, and nothing fails to draw attention to either.
+
+**THE FIX, AND WHY IT IS NOT A ONE-LINE EDIT:** declaring the door in `NSURLProtocolClient` makes its
+completion handler name `NSURLSessionAuthChallengeDisposition`, which is declared in `NSURLSession.h` - and
+`NSURLSession.h` **imports `NSURLProtocol.h`**, so putting the enum where the door is creates a cycle, while
+importing the session header into the protocol header puts the enum's declaration on the wrong side of a
+guard. **The honest fix is therefore a small MOVE: the enum goes to `NSURLProtocol.h` beside the first door
+that takes it, and `NSURLSession.h` keeps using it through the import it already has.** An attempt at that
+move exposed a SECOND fact worth recording: **`NSURLProtocol.h` imports nothing at all** - it has always relied
+on being included after the headers that define `NSURLRequest`, `NSURLResponse` and `NSData`, which works for
+this tree and fails for a consumer that includes it alone (the Sterling-compiler staging copy is one). **The
+work is therefore two lines and one import list, and it is left to a session that can give it a clear read
+rather than a fifth patch from memory.**
