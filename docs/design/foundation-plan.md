@@ -9095,3 +9095,34 @@ job; the credential store it implies is the **Keychain question**, which `keycha
 this plan has not answered. **So slice 2 is a decision before it is a unit, as W20's row once put it** — and
 the shape of the answer is which of the three prerequisites W7 takes next.
 
+
+## §47 — W7'S SLICE 3 IS THE COOKIE FAMILY, AND THE KEYCHAIN STAYS PARKED (2026-09-21)
+
+**CHOSEN (user, 2026-09-21):** with slice 2 complete (value half, transport core, and the execution half —
+session, protocol, configuration, cache value, file manager, operation queue, download, disposition, upload),
+the next slice of W7 is **the cookie family** — `NSHTTPCookie` and `NSHTTPCookieStorage`. **AND THE
+CREDENTIAL FAMILY STAYS PARKED**: `NSURLAuthenticationChallenge`, `NSURLCredential`,
+`NSURLCredentialStorage` and `NSURLProtectionSpace` wait on the keychain decision, and the user's direction
+is that **the keychain questions get worked WHEN that slice comes up** — so they are not answered now and the
+family is not started.
+
+**THE MEASURED REMAINDER OF W7, EXACTLY (12 open class rows, from the ledger):** cookies (2),
+credentials (4), the cache (1: `NSURLCache`), and the stream/WebSocket/metrics group (5:
+`NSURLSessionStreamTask`, `NSURLSessionWebSocketTask`, `NSURLSessionWebSocketMessage`,
+`NSURLSessionTaskMetrics`, `NSURLSessionTaskTransactionMetrics`). THE GROUPS DIFFER IN KIND, which is why the
+cookie family goes first: it needs **no prerequisite and no pending decision**, while the credentials need the
+keychain, the cache needs a store plus the protocol's hooks, and the last group spans a shared-socket door, a
+protocol of its own, and a pair of value-shaped records.
+
+**AND THIS SLICE OPENS A DOCUMENTATION LOOKUP RATHER THAN A COMPILE, because the ledger CANNOT say what
+`NSHTTPCookie` owes.** `docs/reference/foundation-apple-surface.txt` is symbol-level: it carries the `class`
+row and nothing beneath it — methods and properties are COUNTED as excluded rather than listed (the same
+limitation W2h hit for the `NSObject` protocol). So the first step is the published API, not a first line of
+code: **writing a member list from memory would be inventing an API**, which is this plan's oldest rule.
+
+**THE ONE DESIGN QUESTION THE SLICE OWNS, NAMED BEFORE ANY CODE:** `-sharedHTTPCookieStorage` is a
+PROCESS-WIDE store whose lifetime Apple ties to the application; on this OS a persistent one has to name a
+place, and that place is an FSH domain rather than a file under a home directory invented here (the same
+reasoning that put the configuration domains where they are, and the reason `NSTemporaryDirectory()` answers
+`/System/Temporary Files/`). Whether the v1 store persists AT ALL is a decision to be made explicitly when
+the class is written, and it belongs in this section rather than in a commit message.
