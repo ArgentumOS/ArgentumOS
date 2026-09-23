@@ -9381,3 +9381,37 @@ prefix in the index. **So the rule this unit adopted is the one to keep: look it
 back empty, try the other door before concluding anything about the API.** §47.1's path surprise and this
 section's empty group are the same lesson twice; guessing either would have produced a member list that
 looked authoritative and was wrong.
+
+### §48.3 — THE LAST THREE LOOKUPS ARE DONE, AND THE CONSTANT SET CROSS-CHECKS (2026-09-21)
+
+**FIFTEEN CONSTANTS, THREE GROUPS, AND THE TWO DOORS THAT MAKE A CHALLENGE EVER ARRIVE.** The protocol and
+proxy type groups are `article` pages (§48.2), and reading them finished the surface:
+
+    protocol types (3)   NSURLProtectionSpaceHTTP, …HTTPS, …FTP
+    proxy types (4)      NSURLProtectionSpaceHTTPProxy, …HTTPSProxy, …FTPProxy, …SOCKSProxy
+    auth methods (8)     NSURLAuthenticationMethod{Default, HTTPBasic, HTTPDigest, HTMLForm, NTLM,
+                                          Negotiate, ClientCertificate, ServerTrust}
+
+**AND THE AUTH-METHOD ARTICLE CROSS-CHECKS §48.2 RATHER THAN REPEATING IT:** that article's own references
+name the same eight constants the index prefix search produced, so the one lookup route that could have
+silently returned a partial list returned the full one - the two doors agree. **That is the value of having
+two routes to the same fact, and the reason §48.2 recorded which door failed.**
+
+**THE FIND THAT MATTERS MORE THAN THE CONSTANTS: THE ARTICLE'S REFERENCES NAME THE DELEGATE DOORS.**
+`URLSessionDelegate` and `URLSessionTaskDelegate` appear in it because the authentication challenge is
+DELIVERED through them - `-URLSession:didReceiveChallenge:completionHandler:` at the session level and
+`-URLSession:task:didReceiveChallenge:completionHandler:` at the task level. **Those two methods are the
+entire reason a challenge exists in a session's world**, and they are NOT in this library yet, because the
+challenge class they deliver was not here either. So the slice owes them as well, and they are the one part
+of this unit that touches a class which already ships (`NSURLSession`'s delegate half, W7 slice 2c) - which
+makes them the seam to be careful with rather than the place to start.
+
+**THE LOOKUP PHASE OF THIS SLICE IS THEREFORE COMPLETE, AND EVERYTHING BELOW IS CODE:**
+
+  4 classes · 2 status enums (4 + 4 cases) · 15 constants · 2 delegate doors · 1 notification name.
+
+Every name came from Apple's published documentation through one of the three doors this unit has now
+exercised (a class page with `topicSections`, an `article`, and the index's prefix walk); every value is
+ours and decided where it can be seen; every refusal has a reason and will be ASSERTED ABSENT. **What
+remains is the four classes in dependency order - NSURLProtectionSpace, NSURLCredential,
+NSURLAuthenticationChallenge, NSURLCredentialStorage - with the keychain left as the one named seam (§48).**
