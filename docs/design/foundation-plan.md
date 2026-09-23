@@ -9637,3 +9637,41 @@ a second ROAD INTO the same client, and every door the live road passes through 
 the cached one - including the ones that exist to STOP it. The cache's own probe could not find this, because
 its delegate does not cancel; the session's probe found it because it does, and the two probes together cover
 far more than either.
+
+## §50 — W7'S LAST FIVE ROWS SPLIT INTO THREE KINDS OF JOB, AND ONLY ONE IS VALUE WORK (2026-09-21)
+
+**THE SURFACE, READ THROUGH THE SAME DOOR (§47.1), AND IT SAYS AS MUCH ABOUT THE SHAPE OF THE WORK AS ABOUT
+THE API:**
+
+  * **`NSURLSessionTaskMetrics` (6 rows)** - `transactionMetrics`, `taskInterval`, `redirectCount` and an
+    initialiser. **`NSURLSessionTaskTransactionMetrics`** - `request`, `response`, and a LONG list of temporal
+    markers (`fetchStartDate`, `domainLookupStartDate`/`EndDate`, `connectStartDate`, ...). **THIS IS
+    VALUE-SHAPED DATA**: records a session fills in, with no transport of their own. The one thing that
+    completes it is the delegate door that hands them over (`-URLSession:task:didFinishCollectingMetrics:` on
+    `NSURLSessionTaskDelegate`, which this library does not declare yet because the type it delivers did not
+    exist).
+  * **`NSURLSessionStreamTask` (9 rows)** - `-readDataOfMinLength:maxLength:timeout:completionHandler:`,
+    `-writeData:timeout:completionHandler:`, `-captureStreams`, `-closeRead`, `-closeWrite`,
+    `-startSecureConnection`, `-stopSecureConnection`. **THIS IS A SOCKET DOOR**: a duplex stream a caller
+    reads and writes directly, with timeouts. It is not value work and it is not transport-agnostic - and this
+    library's transport is libcurl, WHICH DOES NOT EXPOSE A RAW SOCKET, so a faithful StreamTask cannot be
+    built on it at all. It COULD be built on this system's own socket layer, which is a real job and a real
+    design decision rather than an increment.
+  * **`NSURLSessionWebSocketTask` (8 rows) + `NSURLSessionWebSocketMessage` (5 rows)** - `-sendMessage:`,
+    `-receiveMessageWithCompletionHandler:`, `-sendPingWithPongReceiveHandler:`, `-cancelWithCloseCode:reason:`,
+    `closeCode`, `closeReason`, the message's `data`/`string`/`type` and its two initialisers, plus
+    `NSURLSessionWebSocketCloseCode`. **THIS IS A PROTOCOL OF ITS OWN (RFC 6455)**: an upgrade handshake, frame
+    framing with masking, fragmentation, control frames and close codes. It is the largest remaining piece of
+    W7 by a wide margin.
+
+**SO W7'S LAST GROUP IS NOT ONE SLICE, AND THE HONEST ORDER IS THE ONE THE WORK'S OWN SHAPE IMPLIES:** the
+**metrics pair first** - value records plus the one delegate door that delivers them, which is the same shape
+as every other class this unit has landed - and **then a decision about the other two**, because each needs
+TRANSPORT work (a socket-backed task, or an RFC's client) and neither can be finished by writing a value type
+and a probe.
+
+**AND THE METRICS PAIR HAS A REAL QUESTION OF ITS OWN, NAMED BEFORE IT IS BUILT:** libcurl reports TIMINGS
+(a name lookup's start and end, connect, the first byte, the total) through its own `CURLINFO_*` values, so
+the records CAN be filled faithfully - but WHICH of Apple's temporal markers have no curl counterpart is
+something to measure rather than assume, because a marker filled with a plausible-looking number is worse than
+one left nil and documented.
