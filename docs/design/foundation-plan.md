@@ -9482,3 +9482,42 @@ TOGETHER** - which is precisely why this section stops at the design instead of 
 doors are declarations, the loop is behaviour, and the difference between them is where the regression risk
 lives. §48.4's warning stands and is now grounded: the claim was verified, the risk was not reduced by
 verifying it.
+
+### §48.6 — THE AUTHENTICATION LOOP LANDS (2026-09-21), AND THE PROBE FOUND A BUG NO MOCK WOULD HAVE
+
+**THE SLICE IS COMPLETE: four classes, two delegate doors, and the loop that connects them - 70 checks.**
+The transport now decides a 401 for real: the bridge sees the status with its `WWW-Authenticate` header,
+builds a protection space from what the header actually says (scheme, realm), asks the client through the
+new door, and re-issues ONCE with the credential the client handed back. The attempt count is the guard, and
+it is structural rather than a counter check: the flag can only be set while `attempt == 0`, so a server that
+always answers 401 gets exactly one re-issue and then its own answer.
+
+**THE ONE DEVIATION IN THE SLICE, AND IT IS THE USER'S DECISION (2026-09-21), RECORDED WHERE IT IS MADE:**
+Apple's client door is asynchronous and the client answers by messaging the
+`NSURLAuthenticationChallengeSender` carried on the challenge. **THIS LIBRARY REFUSES `-sender`** - Apple
+files it as Legacy, and this library's answer to "who asked" is the task - so rather than ship a Legacy API
+for the sole purpose of answering with it, **`-URLProtocol:didReceiveAuthenticationChallenge:completionHandler:`
+takes a completion handler**, the shape this library uses everywhere it must wait. It is synchronous by
+contract, exactly like the response-disposition door, which is what makes a challenge answerable here at all.
+
+**AND THE PROBE FOUND A REAL BUG THAT A MOCK COULD NOT HAVE - the strongest argument this session has made
+for testing against the real thing.** The loop worked on the first run: the 401 arrived, the door was asked,
+the delegate answered, the transfer re-issued, the task ended 200. **AND THE CREDENTIAL NEVER REACHED THE
+WIRE.** The reason is a single wrong constant: `CURLAUTH_ANY` makes curl WAIT FOR A 401 before it will put
+credentials on a connection, and the re-issued request was a FRESH one that the probe's server answered 200
+without ever challenging - so the header went out bare and every layer looked correct. `CURLAUTH_BASIC` sends
+it pre-emptively, which is right because the CHALLENGE ALREADY NAMED THE SCHEME (that is what
+`WWW-Authenticate` is for) and because a user and a password is exactly what Basic carries. **A stub server
+that merely counted requests would have passed; a server that asserts WHAT ARRIVED did not.**
+
+**AND A CHECK OF OURS WAS WRONG IN THE SAME BREATH, for the third time this unit:** the assertion looked for
+the credential in PLAINTEXT on the wire. Basic authentication base64-encodes it, so the header could not
+contain the plaintext even with every layer correct - and the comment three lines above the assertion had the
+encoded string in it. The check now asserts the encoded form AND that the plaintext is absent, which is the
+pair that would catch an encode-decode mistake as well.
+
+**WHAT STILL IS NOT HERE, NAMED RATHER THAN IMPLIED:** only BASIC challenges are answered (a Digest or NTLM
+challenge needs a stateful exchange this bridge does not perform, and the disposition rule leaves the
+server's own answer as the outcome); the credential store is not consulted before asking the delegate; and
+the `NSURLError*` constant mass is still open, so the cancelled-challenge failure carries curl's own code
+rather than a name this library has not declared.

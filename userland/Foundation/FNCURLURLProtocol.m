@@ -7,6 +7,10 @@
  * FNCURLURLProtocol.h.
  */
 #import <Foundation/FNCURLURLProtocol.h>
+#import <Foundation/NSURLProtectionSpace.h>
+#import <Foundation/NSURLCredential.h>
+#import <Foundation/NSURLAuthenticationChallenge.h>
+#import <Foundation/NSURLSession.h>
 #import <Foundation/NSData.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
@@ -31,6 +35,10 @@ typedef struct FNCurlTransfer {
 	NSMutableData *headerBytes;	/* accumulated until the blank line that ends the header block */
 	int responded;			/* didReceiveResponse has been reported */
 	int redirected;			/* a redirect was reported: the transfer ends here, by design */
+	int retry;			/* a 401 was answered with a credential: re-issue ONCE */
+	int attempt;			/* how many times a challenge has been decided: the guard */
+	int cancelledChallenge;		/* the client cancelled the challenge */
+	NSURLCredential *credential;	/* the credential the client handed back, or nil */
 	volatile int stopped;		/* -stopLoading was called from another thread */
 } FNCurlTransfer;
 
@@ -38,6 +46,11 @@ typedef struct FNCurlTransfer {
  * only has as a `void *`, and the reporting has to happen at the moment the callback sees the fact. */
 @interface FNCURLURLProtocol (FNCurlReporting)
 - (void)fnReportResponseWithStatus:(long)status headers:(NSDictionary *)headers;
+/* THE CLIENT IS ASKED ABOUT A CHALLENGE THROUGH THIS, because the C header callback cannot message it. The
+ * door is the client protocol's, and the client answers through the handler - synchronously, by contract. */
+- (void)fnAskClientForCredential:(NSURLAuthenticationChallenge *)challenge
+	       completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
+					   NSURLCredential *credential))completionHandler;
 - (void)fnReportRedirectToURL:(NSString *)location status:(long)status headers:(NSDictionary *)headers;
 - (void)fnReportFailure:(NSError *)error;
 @end
@@ -105,6 +118,47 @@ static size_t fn_curl_write(char *ptr, size_t size, size_t nmemb, void *userdata
 }
 
 /* THE HEADER BLOCK ARRIVES HERE, LINE BY LINE, AND THE BLANK LINE IS THE MOMENT THE RESPONSE EXISTS. */
+/* A PROTECTION SPACE OUT OF A WWW-Authenticate HEADER, which is where the realm and the method actually are:
+ * `Basic realm="Restricted"` is the whole of what a server tells a client it will accept. An UNKNOWN scheme
+ * becomes NSURLAuthenticationMethodDefault rather than a refusal, because a server asking with a scheme this
+ * library does not know is still a server asking. */
+static NSURLProtectionSpace *fn_protection_space_from_challenge(NSString *header, NSURL *url)
+{
+	NSString *scheme = header;
+	NSString *realm = nil;
+	NSString *method = NSURLAuthenticationMethodDefault;
+	NSRange space = [header rangeOfString:@" "];
+	NSRange realmRange;
+
+	if (space.location != NSNotFound) {
+		scheme = [header substringToIndex:space.location];
+	}
+	realmRange = [header rangeOfString:@"realm=\""];
+	if (realmRange.location != NSNotFound) {
+		NSUInteger from = realmRange.location + realmRange.length;
+		NSRange closing = [header rangeOfString:@"\"" options:0
+					   range:NSMakeRange(from, [header length] - from)];
+
+		if (closing.location != NSNotFound) {
+			realm = [header substringWithRange:NSMakeRange(from, closing.location - from)];
+		}
+	}
+	if ([scheme caseInsensitiveCompare:@"Basic"] == NSOrderedSame) {
+		method = NSURLAuthenticationMethodHTTPBasic;
+	} else if ([scheme caseInsensitiveCompare:@"Digest"] == NSOrderedSame) {
+		method = NSURLAuthenticationMethodHTTPDigest;
+	} else if ([scheme caseInsensitiveCompare:@"NTLM"] == NSOrderedSame) {
+		method = NSURLAuthenticationMethodNTLM;
+	} else if ([scheme caseInsensitiveCompare:@"Negotiate"] == NSOrderedSame) {
+		method = NSURLAuthenticationMethodNegotiate;
+	}
+	return [[[NSURLProtectionSpace alloc] initWithHost:[url host]
+						     port:[[url port] integerValue]
+						 protocol:[url scheme]
+						    realm:realm
+					   authenticationMethod:method] autorelease];
+}
+
 static size_t fn_curl_header(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
 	FNCurlTransfer *transfer = (FNCurlTransfer *)userdata;
@@ -134,6 +188,51 @@ static size_t fn_curl_header(char *ptr, size_t size, size_t nmemb, void *userdat
 			transfer->redirected = 1;
 			[transfer->protocol fnReportRedirectToURL:location status:status headers:fields];
 			return 0;	/* abort: the caller decides what happens next */
+		}
+		/* A 401 IS A RESPONSE TOO, and it is where authentication is decided. The client is asked THROUGH
+		 * THE DOOR, synchronously - the same wait the response disposition takes - and if it hands back a
+		 * credential the transfer is ABORTED here and RE-ISSUED once by the caller, which is the redirect
+		 * pattern exactly. The attempt count IS the guard: a server that always answers 401 must not spin,
+		 * and the loop below runs twice at most. */
+		if (status == 401 && transfer->retry == 0 && transfer->attempt == 0 &&
+		    [fields objectForKey:@"WWW-Authenticate"] != nil &&
+		    [[fields objectForKey:@"WWW-Authenticate"] rangeOfString:@"Basic"
+				   options:NSCaseInsensitiveSearch].location != NSNotFound) {
+			__block NSInteger disposition = -1;
+			__block NSURLCredential *credential = nil;
+			NSURLProtectionSpace *space = fn_protection_space_from_challenge(
+				[fields objectForKey:@"WWW-Authenticate"], [[transfer->protocol request] URL]);
+
+			transfer->attempt = 1;
+			if (space != nil) {
+				NSURLAuthenticationChallenge *challenge = [[NSURLAuthenticationChallenge alloc]
+					initWithProtectionSpace:space
+					     proposedCredential:nil
+					   previousFailureCount:0
+						failureResponse:nil
+						      error:nil
+						     sender:nil];
+
+				[transfer->protocol fnAskClientForCredential:challenge
+					completionHandler:^(NSURLSessionAuthChallengeDisposition chosen,
+							    NSURLCredential *given) {
+					disposition = (NSInteger)chosen;
+					credential = [given retain];
+				}];
+				[challenge release];
+			}
+			if (disposition == NSURLSessionAuthChallengeUseCredential && credential != nil) {
+				transfer->credential = credential;	/* kept for the re-issue */
+				transfer->retry = 1;
+				return 0;	/* abort: the caller re-issues with the credential */
+			}
+			[credential release];
+			if (disposition == NSURLSessionAuthChallengeCancelAuthenticationChallenge) {
+				transfer->cancelledChallenge = 1;
+				return 0;
+			}
+			/* Every other answer leaves the 401 AS THE RESPONSE, which is the honest outcome: the server
+			 * asked, the client declined to answer, and what it gets is what the server said. */
 		}
 		[transfer->protocol fnReportResponseWithStatus:status headers:fields];
 	}
@@ -263,11 +362,42 @@ static size_t fn_curl_header_discard(char *ptr, size_t size, size_t nmemb, void 
 
 	/* PUBLISHED BEFORE THE TRANSFER RUNS, so -stopLoading can reach it (and cleared after, so a stop
 	 * that arrives after the transfer has ended does nothing rather than touching a dead struct). */
+	/* THE RE-ISSUE POINT, and the whole loop is two lines plus a guard: a 401 answered with a credential
+	 * sets the flag from inside the header callback (which aborts the transfer), and control comes back
+	 * here. THE ATTEMPT COUNT IS THE GUARD - the flag is only ever set when transfer->attempt was 0, so the
+	 * second pass cannot set it again, and a server that always answers 401 does not spin. */
+retry_transfer:
+	if (transfer.credential != nil) {
+		curl_easy_setopt(curl, CURLOPT_USERNAME, [[transfer.credential user] UTF8String]);
+		curl_easy_setopt(curl, CURLOPT_PASSWORD, [[transfer.credential password] UTF8String]);
+		/* CURLAUTH_BASIC AND NOT CURLAUTH_ANY, AND THAT IS THE WHOLE OF THIS BUG: with ANY, curl WAITS FOR A
+		 * 401 before it will put credentials on the wire - so the re-issued request went out bare, the probe's
+		 * server answered 200 without ever asking again, and the credential never travelled. The challenge
+		 * TOLD this bridge the scheme (that is what WWW-Authenticate is for), the transport has already
+		 * decided, and the credential a caller hands over is a user and a password - which is exactly what
+		 * BASIC carries and nothing else here does. So it goes out pre-emptively, once, by name. */
+		curl_easy_setopt(curl, CURLOPT_HTTPAUTH, (long)CURLAUTH_BASIC);
+	}
 	_transfer = &transfer;
 	result = curl_easy_perform(curl);
 	_transfer = NULL;
+	if (transfer.retry && transfer.credential != nil) {
+		transfer.retry = 0;
+		transfer.responded = 0;
+		goto retry_transfer;
+	}
 
-	if (transfer.stopped) {
+	if (transfer.cancelledChallenge) {
+		/* THE CLIENT CANCELLED THE CHALLENGE: that is a failure of the task, not a response to hand back. */
+		/* THE CODE IS THE TRANSPORT'S OWN, because the NSURLError* constant mass is NOT SHIPPED YET (it is
+		 * its own ledger row and its own slice): naming a constant this library does not declare would
+		 * either invent a value or fail to build, and CURLE_ABORTED_BY_CALLBACK is exactly what happened -
+		 * the transfer was aborted because the client said no. */
+		[_client URLProtocol:self didFailWithError:
+			[NSError errorWithDomain:@"FNCURLURLProtocol"
+					    code:(NSInteger)CURLE_ABORTED_BY_CALLBACK
+					userInfo:nil]];
+	} else if (transfer.stopped) {
 		/* THE CALLER STOPPED IT: no finish and no failure, because neither happened. */
 	} else if (transfer.redirected) {
 		/* ALREADY REPORTED, and the transfer ended there on purpose. */
@@ -291,6 +421,22 @@ static size_t fn_curl_header_discard(char *ptr, size_t size, size_t nmemb, void 
 }
 
 /* --- THE PRIVATE REPORTING DOORS ----------------------------------------------------------------- */
+
+- (void)fnAskClientForCredential:(NSURLAuthenticationChallenge *)challenge
+	       completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition,
+					   NSURLCredential *))completionHandler
+{
+	if (_client == nil ||
+	    ![_client respondsToSelector:
+		@selector(URLProtocol:didReceiveAuthenticationChallenge:completionHandler:)]) {
+		/* NO DOOR MEANS NO OPINION, WITHOUT WAITING - the rule every door in this library keeps. */
+		completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
+		return;
+	}
+	[_client URLProtocol:self
+	    didReceiveAuthenticationChallenge:challenge
+		    completionHandler:completionHandler];
+}
 
 - (void)fnReportResponseWithStatus:(long)status headers:(NSDictionary *)headers
 {

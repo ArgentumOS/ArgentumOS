@@ -69,6 +69,18 @@
 
 /* EVERY CALLBACK IS A TRANSLATION INTO THE TASK'S OWN STATE, and nothing more: the protocol streams, the
  * task accumulates, and the ending is what reports. */
+/* THE CLIENT'S ANSWER TO A CHALLENGE, and it is a HOP INTO THE SESSION'S OWN DOOR rather than a second
+ * implementation: the delegate resolution (task door first, session door as the fallback, and
+ * PerformDefaultHandling when there is no delegate at all) lives there and is asked once. */
+- (void)URLProtocol:(NSURLProtocol *)protocol
+    didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
+		    completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition,
+						NSURLCredential *))completionHandler
+{
+	(void)protocol;
+	[_session fnAskForCredentialForTask:_task challenge:challenge completionHandler:completionHandler];
+}
+
 - (void)URLProtocol:(NSURLProtocol *)protocol
     didReceiveResponse:(NSURLResponse *)response
      cacheStoragePolicy:(NSURLCacheStoragePolicy)policy
