@@ -27,16 +27,26 @@ something overrides it.
   * `urlprotocol-instance-carries-its-request`  — kept as a value, a mutable one copied in;
   * `urlprotocol-instance-carries-its-client`   — both nullable, as Apple declares them;
   * `urlprotocol-base-loading-is-a-no-op`       — asserted as "the client was told nothing";
-  * `urlprotocol-client-protocol-shape`         — all six callbacks, and conformance;
+  * `urlprotocol-client-protocol-shape`         — all seven callbacks, and conformance;
+  * `urlprotocol-client-declares-the-authentication-door` — THE CHECK §50.3 WAS FOR: the protocol's own
+                                                  method list carries the door the bridge messages (an
+                                                  id-typed call compiles undeclared, so a
+                                                  `-respondsToSelector:` on the client cannot see it);
+  * `the-cancel-notification-is-absent-and-recorded` — Apple's cancel notification stays undeclared, with
+                                                  the ground in the header rather than in a comment here;
   * `finish-loading-carries-no-protocol-argument` — the one callback without a `protocol:` prefix;
   * `urlprotocol-api-inventory`                 — the audited inventory: owed selectors exist, and the
-                                                  two authentication callbacks plus the coder doors are
-                                                  ABSENT (each because the type or format behind it is
-                                                  not shipped).
+                                                  cancel notification plus the coder doors are ABSENT (each
+                                                  with its ground stated).
 
 THE TWO THAT EARN THEIR PLACE: `request-properties-are-per-instance` pins the identity-and-retention rule
 that keeps a freed request's address from answering another request's properties, and
 `urlprotocol-api-inventory` makes coverage a property of the code rather than of a comment.
+
+AND THE PAIR FROM §50.3 EARNS ITS PLACE THE SAME WAY: the authentication door's ABSENCE was invisible to
+every check this unit had — the loop passed ten of them — because an undeclared selector on an id-typed
+receiver compiles. `urlprotocol-client-declares-the-authentication-door` reads the DECLARATION, and its
+sibling pins the one member that is still deliberately out.
 """
 
 import re
@@ -61,6 +71,8 @@ CHECKS = ("cache-storage-policy-values",
           "urlprotocol-instance-carries-its-client",
           "urlprotocol-base-loading-is-a-no-op",
           "urlprotocol-client-protocol-shape",
+          "urlprotocol-client-declares-the-authentication-door",
+          "the-cancel-notification-is-absent-and-recorded",
           "finish-loading-carries-no-protocol-argument",
           "urlprotocol-api-inventory")
 

@@ -9768,3 +9768,46 @@ on being included after the headers that define `NSURLRequest`, `NSURLResponse` 
 this tree and fails for a consumer that includes it alone (the Sterling-compiler staging copy is one). **The
 work is therefore two lines and one import list, and it is left to a session that can give it a clear read
 rather than a fifth patch from memory.**
+
+### §51 — §50.3 LANDS: THE FIX IS THE DECLARATION, AND THE CHECK GOES AT THE DECLARATION (2026-09-22)
+
+**LANDED.** `NSURLProtocolClient` now declares
+`-URLProtocol:didReceiveAuthenticationChallenge:completionHandler:`; `NSURLSessionAuthChallengeDisposition`
+MOVED from `NSURLSession.h` to `NSURLProtocol.h`, beside the first door that takes it (which is what breaks
+the cycle rather than commenting on it), and `NSURLSession.h` keeps using it through the import it already
+had; and `NSURLProtocol.h`'s import list is now the three headers it uses IN ITS OWN DECLARATIONS -
+`NSData.h`, `NSURLRequest.h`, `NSURLResponse.h` - instead of relying on Foundation.h's include order. The
+door's shape is unchanged: the completion-handler form is §48.6's registered deviation, and the bridge's
+call site did not move.
+
+**THE CHECK IS THE PART WORTH KEEPING, BECAUSE IT IS AIMED AT THE DECLARATION RATHER THAN AT THE BEHAVIOUR.**
+The probe reads the PROTOCOL'S OWN METHOD LIST (`protocol_getMethodDescription`) and NOT the client, and the
+reason is the whole of §50.3: `-respondsToSelector:` answers YES either way, because the client implements
+the method whether or not any header declares it - which is exactly how a missing contract passed ten
+checks. `urlprotocol-client-declares-the-authentication-door` is that check, and its sibling
+(`the-cancel-notification-is-absent-and-recorded`) pins the one member that is still deliberately out. Two
+checks, and one of them asserts an ABSENCE, which is this unit's usual treatment of a documented refusal.
+
+**THE CANCEL NOTIFICATION IS THE ONE REFUSAL THIS SECTION DID NOT PAY, AND ITS RECORDED GROUND HAD EXPIRED.**
+The reason recorded for it was "`NSURLAuthenticationChallenge` is not shipped", which stopped being true in
+slice 4. So it is now a WORK ITEM with a ground that survives (§11.3), not a boundary: Apple declares
+`-URLProtocol:didCancelAuthenticationChallenge:`, and NOTHING IN THIS TREE RAISES IT, because the round trip
+it completes is the one §48.6's registered deviation refuses - a client that cancels answers through the
+authentication door's `CancelAuthenticationChallenge` disposition and no notification comes back. Its exact
+signature is to be taken from Apple's published documentation rather than recalled: §11.3's rule is that
+inventing an API is worse than refusing one, and a refusal with a stated ground is honest where a
+half-remembered declaration is not.
+
+**AND ONE OBSERVATION IS RECORDED RATHER THAN ACTED ON, because acting on it reaches three call sites.**
+Apple's published completion handler takes the CREDENTIAL as NULLABLE - the Swift view is
+`URLCredential?`, which is what a `Cancel` or `RejectProtectionSpace` disposition would carry - while this
+library declares it nonnull in both the client door and `NSURLSession`'s internal one, and the bridge's
+no-door path passes `nil` through that nonnull parameter. It is not a behaviour difference today (no caller
+reads the argument of a Cancel), and it is the same fork the F6 nullability work took class by class, so it
+waits for the next touch of this door rather than being decided inside a declaration fix.
+
+**WHAT §50.3 CHANGES ABOUT THE REMAINING W7 WORK: nothing, and that is worth saying.** §50.2's delivery is
+still the next piece of behaviour - and its direction is now CHOSEN (user, 2026-09-22): **A CLIENT DOOR on
+`NSURLProtocolClient`**, the option that matches this seam's own precedent (the protocol reporting what it
+measured, as the challenge door already does), rather than the bridge writing the record onto the task or the
+session pulling after the fact. That decision is a door beside this one, so it lands as §52.

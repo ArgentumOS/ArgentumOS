@@ -113,6 +113,22 @@ static const char *const fixture_bytes = "the bridge carried these bytes\n";
 	[_body appendData:data];
 }
 
+/* THE AUTHENTICATION DOOR IS IMPLEMENTED BECAUSE THE PROTOCOL REQUIRES IT (§50.3 declared it): this client
+ * is handed to the bridge, and a challenge arrives through it the moment a fixture answers 401. No fixture
+ * here does, so the answer only has to be a legal one - and it is the DEFAULT handling rather than a
+ * credential this probe has no opinion about. */
+- (void)URLProtocol:(NSURLProtocol *)protocol
+    didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
+		  completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
+					      NSURLCredential *credential))completionHandler
+{
+	[_events addObject:@"challenge"];
+	completionHandler(NSURLSessionAuthChallengePerformDefaultHandling,
+			  [[NSURLCredential alloc] initWithUser:nil
+						       password:nil
+						    persistence:NSURLCredentialPersistenceNone]);
+}
+
 - (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol
 {
 	[_events addObject:@"finish"];

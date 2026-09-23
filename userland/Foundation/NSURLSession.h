@@ -57,19 +57,15 @@ NS_ASSUME_NONNULL_BEGIN
 /* HOW A SESSION'S OWNER IS TOLD THINGS ABOUT THE SESSION rather than about one task. EVERY MEMBER IS
  * OPTIONAL, as Apple declares them, so an implementation answers what it cares about and a session asks
  * `-respondsToSelector:` before each door (the same rule the keyed-archiver delegates keep). */
-/* WHAT A DELEGATE DECIDES WHEN A SERVER ASKS FOR CREDENTIALS. The one thing NOT here is a case meaning
- * "give me the credential": the delegate hands one over THROUGH the completion handler, which is Apple's
- * shape and this class's.
+/* WHAT A DELEGATE DECIDES WHEN A SERVER ASKS FOR CREDENTIALS, AND IT IS NOT DECLARED HERE ANY MORE (§50.3):
+ * the enum lives in NSURLProtocol.h now, beside the client door that is its first user. It moved because
+ * THIS header imports that one — declaring the door with the type here would have been a cycle, and
+ * importing this header into that one would have put the enum's declaration on the wrong side of a guard.
+ * The type is still reachable from here through the import this header already had, so nothing that
+ * includes NSURLSession.h has to change.
  *
- * THE VALUES ARE OURS UNDER §11.6.1 D2, as every enum's in this library are - Apple publishes the case names
- * and the case names only. UseCredential is 0 because it is the case a handler reaches for first, and a
- * zeroed decision must not mean the opposite of what its author intended. */
-typedef NS_ENUM(NSInteger, NSURLSessionAuthChallengeDisposition) {
-	NSURLSessionAuthChallengeUseCredential = 0,
-	NSURLSessionAuthChallengePerformDefaultHandling = 1,
-	NSURLSessionAuthChallengeCancelAuthenticationChallenge = 2,
-	NSURLSessionAuthChallengeRejectProtectionSpace = 3
-};
+ * The one thing NOT in the enum is a case meaning "give me the credential": the delegate hands one over
+ * THROUGH the completion handler, which is Apple's shape and this class's. */
 
 @protocol NSURLSessionDelegate <NSObject>
 

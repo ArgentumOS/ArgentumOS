@@ -7,26 +7,37 @@
  * NSCachedURLResponse and NSURLCacheStoragePolicy. docs/design/foundation-plan.md §46 and
  * docs/design/foundation-transport-plan.md §4.
  *
- * ONE unit, importing only <Foundation/Foundation.h>, and NO TRANSPORT ANYWHERE. What this slice ships is
- * the SEAM (the point a transport attaches) and the cached answer's value contract, so the probe asserts
- * a plug-in point and a value rather than a conversation: no socket, no session, no loader.
+ * ONE unit, importing <Foundation/Foundation.h> and <objc/runtime.h>, and NO TRANSPORT ANYWHERE. What this
+ * slice ships is the SEAM (the point a transport attaches) and the cached answer's value contract, so the
+ * probe asserts a plug-in point and a value rather than a conversation: no socket, no session, no loader.
+ * THE RUNTIME HEADER IS HERE FOR ONE REASON (§50.3): a DECLARATION is asserted where declarations live, and
+ * a protocol's own method list is only readable from the runtime.
  *
  * IT DEFINES ITS OWN SUBCLASSES, WHICH IS NOT A CONVENIENCE BUT THE ONLY WAY TO TEST THE THING: an
  * override point is invisible until something overrides it, so `FnClaimA` and `FnClaimB` both claim one
- * scheme — which is also what makes the REGISTRATION ORDER observable — and `FnClient` implements the six
+ * scheme — which is also what makes the REGISTRATION ORDER observable — and `FnClient` implements the seven
  * client callbacks so that "the protocol conforms" is a fact about a class rather than about a header.
  *
- * TWO CHECKS EARN THEIR PLACE THE WAY SLICE 1'S DID:
+ * THREE CHECKS EARN THEIR PLACE THE WAY SLICE 1'S DID:
  *   request-properties-are-per-instance  the property table is keyed by IDENTITY and RETAINS its key, so
  *                                        this pins the identity rule, the per-instance rule, the "a copy
  *                                        starts empty" rule, and that a nil value removes;
  *   urlprotocol-api-inventory            the audited inventory: every selector this unit owes EXISTS on
  *                                        the class it belongs to, and every refused one is ABSENT — the
- *                                        two authentication callbacks and the coder doors, each refused
- *                                        because the type or the format behind it is not shipped.
+ *                                        cancel notification and the coder doors, each with its ground
+ *                                        stated rather than assumed;
+ *   urlprotocol-client-declares-the-authentication-door  the check §50.3 was FOR: the bridge messaged a
+ *                                        selector no header declared, which compiles on an id-typed
+ *                                        receiver, so the behaviour passed while the CONTRACT was absent.
+ *                                        This one reads the protocol's own method list, and the sibling
+ *                                        check pins the one member that is still deliberately absent.
  */
 
 #import <Foundation/Foundation.h>
+
+/* SO A DECLARATION CAN BE ASSERTED WHERE DECLARATIONS LIVE (§50.3): a protocol's own method list is only
+ * readable from the runtime, and the door that was missing was a DECLARATION, not a behaviour. */
+#import <objc/runtime.h>
 
 #include <stdio.h>
 
@@ -85,6 +96,23 @@ static NSURL *fn_url(NSString *string)
     didReceiveResponse:(NSURLResponse *)response
      cacheStoragePolicy:(NSURLCacheStoragePolicy)policy { _calls++; }
 - (void)URLProtocol:(NSURLProtocol *)protocol didLoadData:(NSData *)data { _calls++; }
+/* THE AUTHENTICATION DOOR IS ANSWERED IN THE PROBE, AND ANSWERING IT IS THE POINT (§50.3): this class is
+ * the client half of the seam, and until the door was DECLARED the bridge's call to it compiled only
+ * because `_client` is id-typed. An answer here is a legal answer, never a state the probe depends on —
+ * nothing in this unit raises a challenge — and it is counted like the other callbacks. */
+- (void)URLProtocol:(NSURLProtocol *)protocol
+    didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
+		  completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
+					      NSURLCredential *credential))completionHandler
+{
+	NSURLCredential *credential =
+		[[NSURLCredential alloc] initWithUser:@"probe"
+					     password:@"probe"
+					  persistence:NSURLCredentialPersistenceNone];
+
+	_calls++;
+	completionHandler(NSURLSessionAuthChallengeUseCredential, credential);
+}
 - (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol { _calls++; }
 - (void)URLProtocol:(NSURLProtocol *)protocol didFailWithError:(NSError *)error { _calls++; }
 @end
@@ -269,14 +297,44 @@ int main(void)
 			    [client respondsToSelector:@selector(URLProtocol:cachedResponseIsValid:)] &&
 			    [client respondsToSelector:@selector(URLProtocol:didReceiveResponse:cacheStoragePolicy:)] &&
 			    [client respondsToSelector:@selector(URLProtocol:didLoadData:)] &&
+			    [client respondsToSelector:@selector(URLProtocol:didReceiveAuthenticationChallenge:completionHandler:)] &&
 			    [client respondsToSelector:@selector(URLProtocolDidFinishLoading:)] &&
 			    [client respondsToSelector:@selector(URLProtocol:didFailWithError:)];
 
 		check("urlprotocol-client-protocol-shape",
 		      shape && [client conformsToProtocol:@protocol(NSURLProtocolClient)],
-		      @"all six callbacks, and the class conforms to the protocol");
+		      @"all seven callbacks, and the class conforms to the protocol");
 
-		/* THE ODD ONE IS ODD ON PURPOSE: five callbacks carry the protocol and this one does not, which
+		/* THE DECLARATION IS ASSERTED WHERE DECLARATIONS LIVE, which is the whole of §50.3: the bridge
+		 * messaged -URLProtocol:didReceiveAuthenticationChallenge:completionHandler: through an id-typed
+		 * receiver, and THAT COMPILES WHETHER OR NOT ANY HEADER DECLARES IT — so the authentication loop
+		 * passed ten checks while a caller could not read the contract and no compiler could check a call
+		 * to it. A `-respondsToSelector:` on the client cannot see the difference, because the class
+		 * implements the method either way. THE PROTOCOL'S OWN METHOD LIST CAN, so that is what is read
+		 * here; the same call pins the one member that is still deliberately absent. */
+		struct objc_method_description declared =
+			protocol_getMethodDescription(@protocol(NSURLProtocolClient),
+				@selector(URLProtocol:didReceiveAuthenticationChallenge:completionHandler:),
+				YES /* required */, YES /* instance */);
+		struct objc_method_description absent =
+			protocol_getMethodDescription(@protocol(NSURLProtocolClient),
+				@selector(URLProtocol:didCancelAuthenticationChallenge:),
+				YES, YES);
+
+		check("urlprotocol-client-declares-the-authentication-door",
+		      declared.name != NULL &&
+		      [client respondsToSelector:@selector(URLProtocol:didReceiveAuthenticationChallenge:completionHandler:)],
+		      @"the protocol declares the authentication door the bridge messages, and a client answers it");
+
+		/* AND THE ABSENCE IS PINNED, so a deliberate refusal cannot quietly become either a declaration
+		 * nobody noticed or a gap nobody recorded. Its ground is in the header: it completes the
+		 * NSURLAuthenticationChallengeSender round trip §48.6 refuses, and a client that cancels answers
+		 * through the authentication door's CancelAuthenticationChallenge disposition instead. */
+		check("the-cancel-notification-is-absent-and-recorded",
+		      absent.name == NULL,
+		      @"-URLProtocol:didCancelAuthenticationChallenge: stays undeclared, and the header says why");
+
+		/* THE ODD ONE IS ODD ON PURPOSE: six callbacks carry the protocol and this one does not, which
 		 * is Apple's own declaration — so the SELECTOR is asserted, not "fixed". */
 		check("finish-loading-carries-no-protocol-argument",
 		      [client respondsToSelector:@selector(URLProtocolDidFinishLoading:)] &&
@@ -300,11 +358,14 @@ int main(void)
 		static const char *cachedResponseSelectors[] = {
 			"response", "data", "userInfo", "storagePolicy", NULL
 		};
-		/* REFUSED, EACH BECAUSE SOMETHING BEHIND IT IS NOT SHIPPED: the two authentication callbacks
-		 * need NSURLAuthenticationChallenge (its own family, a later slice) and the coder doors need a
-		 * keyed archive format whose keys Apple does not publish. */
+		/* REFUSED, EACH WITH ITS GROUND STATED — and the RECEIVE door is not here any more (§50.3): it was
+		 * refused for a reason that had EXPIRED (its argument type, NSURLAuthenticationChallenge, has been
+		 * shipped since slice 4), and the bridge had been messaging it all along through an id-typed
+		 * receiver, so the refusal was a comment no compiler or caller enforced. What stays is the CANCEL
+		 * NOTIFICATION — Apple declares it and nothing here raises it, because a client that cancels
+		 * answers through the door's CancelAuthenticationChallenge disposition instead — and the coder
+		 * doors, which need a keyed archiving format whose keys Apple does not publish. */
 		static const char *excluded[] = {
-			"URLProtocol:didReceiveAuthenticationChallenge:",
 			"URLProtocol:didCancelAuthenticationChallenge:",
 			"initWithCoder:", "encodeWithCoder:", NULL
 		};

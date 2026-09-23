@@ -35,12 +35,40 @@
  * what Apple does, and only a subclass may be registered — `+registerClass:` answers NO for the base
  * itself, which is what makes a registry of override points meaningful.
  *
- * REFUSED BY NAME: the two AUTHENTICATION members of the client protocol
- * (-URLProtocol:didReceiveAuthenticationChallenge: and -URLProtocol:didCancelAuthenticationChallenge:),
- * because `NSURLAuthenticationChallenge` is not shipped — it is its own family (protection spaces,
- * credentials, a credential store) and its own slice, and a callback whose argument type does not exist
- * cannot be declared honestly. `urlprotocol-api-inventory` asserts every owed selector EXISTS and those
- * two are ABSENT.
+ * THE AUTHENTICATION DOOR IS DECLARED HERE, AND UNTIL §50.3 IT WAS DECLARED NOWHERE. The bridge has been
+ * messaging -URLProtocol:didReceiveAuthenticationChallenge:completionHandler: since slice 4, and the
+ * selector existed in no header at all: `_client` is typed `id <NSURLProtocolClient>` and Objective-C
+ * permits an undeclared selector on an id-typed receiver, so the call compiled, the bridge's own
+ * implementation answered, and the authentication loop passed ten checks — WITH NO CONTRACT A CALLER COULD
+ * READ AND NO COMPILER THAT COULD CHECK IT. That is the worst of the three possible states (the behaviour
+ * right, the declaration missing, and nothing failing to draw attention to either), and a declaration is
+ * the whole fix. The completion-handler form is §48.6's REGISTERED DEVIATION: Apple's client door answers
+ * by messaging the challenge's NSURLAuthenticationChallengeSender, this library refuses `-sender` as
+ * Legacy, and a completion handler is the shape used everywhere else this seam must wait.
+ *
+ * AND THE ENUM LIVES BESIDE THE FIRST DOOR THAT TAKES IT, which is the other half of that fix rather than
+ * tidiness: `NSURLSessionAuthChallengeDisposition` was declared in NSURLSession.h, and NSURLSession.h
+ * IMPORTS THIS HEADER — so declaring the door with the type where the type already was would have been a
+ * cycle, and importing the session header into this one would have put the enum's declaration on the wrong
+ * side of a guard. Moving the enum here is the move with no cycle in it, and NSURLSession.h keeps using it
+ * through the import it already had.
+ *
+ * THE IMPORT LIST IS NOW COMPLETE, which is the third fact that fix exposed: this header used to import
+ * only NSObject.h and NSCachedURLResponse.h and RELY on being included after the headers that define
+ * NSURLRequest, NSURLResponse and NSData. That holds inside Foundation.h, whose order supplies them, and
+ * fails for a consumer that includes this header alone — the Sterling-compiler staging copy is one. A
+ * header that compiles in one include position only is a header with an undeclared dependency.
+ *
+ * REFUSED BY NAME, each with its ground stated:
+ *   * -URLProtocol:didCancelAuthenticationChallenge: — Apple declares it and NOTHING IN THIS TREE RAISES
+ *     IT, because the round trip it completes is the one §48.6 refuses: a client that cancels answers
+ *     through the authentication door's `CancelAuthenticationChallenge` disposition instead, and no
+ *     notification comes back. Recorded as a WORK ITEM rather than a boundary (§11.3), and its exact
+ *     signature is to be taken from Apple's published documentation rather than recalled — inventing an
+ *     API is worse than refusing one;
+ *   * the coder doors, which need a keyed archiving format whose keys Apple does not publish.
+ * `urlprotocol-api-inventory` asserts every owed selector EXISTS and every listed refusal is ABSENT, and
+ * `urlprotocol-client-declares-the-authentication-door` is the check that fails on the state §50.3 was.
  */
 
 #ifndef FOUNDATION_NSURLPROTOCOL_H
@@ -48,21 +76,42 @@
 
 #import <Foundation/NSObject.h>
 #import <Foundation/NSCachedURLResponse.h>
+/* THE THREE THIS HEADER USES IN ITS OWN DECLARATIONS, imported rather than assumed (§50.3): a consumer
+ * that includes this header first must not depend on the order Foundation.h happens to supply them in. */
+#import <Foundation/NSData.h>
+#import <Foundation/NSURLRequest.h>
+#import <Foundation/NSURLResponse.h>
 
-@class NSData;
 @class NSError;
 @class NSMutableURLRequest;
-@class NSURLRequest;
-@class NSURLResponse;
 @class NSURLProtocol;
+/* The challenge and the credential the authentication door's handler carries are FORWARD declared: this
+ * header is included BY NSURLSession.h, and NSURLCredential.h comes after it in Foundation.h, so a
+ * declaration that needed the full type here would be exactly the cycle §50.3 set out to remove. */
+@class NSURLAuthenticationChallenge;
+@class NSURLCredential;
 
 NS_ASSUME_NONNULL_BEGIN
 
-/* HOW A PROTOCOL REPORTS BACK — the six calls an implementation makes, and the caller's side of the
+/* WHAT A CLIENT DECIDES WHEN A SERVER ASKS FOR CREDENTIALS — declared beside the first door that takes it
+ * (§50.3: it lived in NSURLSession.h until that header's import of this one made the door's type and the
+ * door's declaration a cycle).
+ *
+ * THE VALUES ARE OURS UNDER §11.6.1 D2, as every enum's in this library are — Apple publishes the case
+ * names and the case names only. UseCredential is 0 because it is the case a handler reaches for first,
+ * and a zeroed decision must not mean the opposite of what its author intended. */
+typedef NS_ENUM(NSInteger, NSURLSessionAuthChallengeDisposition) {
+	NSURLSessionAuthChallengeUseCredential = 0,
+	NSURLSessionAuthChallengePerformDefaultHandling = 1,
+	NSURLSessionAuthChallengeCancelAuthenticationChallenge = 2,
+	NSURLSessionAuthChallengeRejectProtectionSpace = 3
+};
+
+/* HOW A PROTOCOL REPORTS BACK — the seven calls an implementation makes, and the caller's side of the
  * seam. EVERY MEMBER IS REQUIRED in Apple's declaration, so there is no -respondsToSelector: dance here.
  *
  * `-URLProtocolDidFinishLoading:` HAS NO `protocol:` PARAMETER, AND THAT IS APPLE'S OWN INCONSISTENCY
- * rather than a transcription slip: the other five carry the protocol and this one does not. It is kept,
+ * rather than a transcription slip: the other six carry the protocol and this one does not. It is kept,
  * asserted, and commented — "fixing" it would produce a selector no existing implementation implements.
  */
 @protocol NSURLProtocolClient <NSObject>
@@ -83,6 +132,20 @@ NS_ASSUME_NONNULL_BEGIN
 
 /* THE BODY, in as many calls as the protocol likes; the order is the protocol's to decide. */
 - (void)URLProtocol:(NSURLProtocol *)protocol didLoadData:(NSData *)data;
+
+/* THE SERVER ASKED FOR CREDENTIALS, AND THE CLIENT ANSWERS THROUGH THE HANDLER — SYNCHRONOUSLY by contract,
+ * the way this seam answers at the head of a response: the transport is holding the transfer while it
+ * waits, and the handler is what releases it. `disposition` is what to do with the challenge and
+ * `credential` is what to send with the retry. THE HANDLER IS CALLED EXACTLY ONCE.
+ *
+ * THIS IS §48.6's REGISTERED DEVIATION FROM APPLE (see the header above): Apple's door is asynchronous and
+ * its client answers by messaging the challenge's NSURLAuthenticationChallengeSender, which this library
+ * refuses as Legacy. §50.3 is why the deviation is now VISIBLE HERE rather than only in the bridge — the
+ * selector existed in no header at all, and an undeclared selector on an id-typed receiver compiles. */
+- (void)URLProtocol:(NSURLProtocol *)protocol
+    didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
+		  completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
+					      NSURLCredential *credential))completionHandler;
 
 /* AND THE END — one of these two, and this one carries no protocol, as Apple declares it. */
 - (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol;
