@@ -1030,11 +1030,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_wshandshake"
 	# foundation_websockettask: THE TASK ITSELF (§59 slice 3b) - the layers meeting the substrate over a real
-	# connection to a RAW peer, which speaks the upgrade in plain HTTP and RFC 6455 through the same codec.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+	# connection to a RAW peer, which speaks the upgrade in plain HTTP and RFC 6455 through the same codec. ITS
+	# wss: LEG ADDS A TLS PEER, so this probe needs libtls's header path AND its library, exactly as
+	# foundation_streamtask does - the same substrate for the same reason.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests -I$(LIBRESSL_PREFIX)/include \
 		userland/tests/foundation_websockettask.m -o .build/probe-foundation_websockettask.o
 	$(MUSL64_OBJC) .build/probe-foundation_websockettask.o \
 		-L$(FNXLIB) -lfoundation \
+		-L$(LIBRESSL_PREFIX)/lib -ltls -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_websockettask"
 	# foundation_challengedoor: the two delegate doors, driven (W7 slice 4)
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \

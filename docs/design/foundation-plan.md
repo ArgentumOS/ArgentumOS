@@ -10667,3 +10667,27 @@ wait: `-startSecureConnection` is QUEUED on the stream, and the stream serves it
 upgrade request queued after it cannot go out before the TLS session is up. What that means for the slice is that
 **it is an implementation row before it is a test row**, and until it lands `wss:` is unimplemented rather than
 merely unverified.
+
+**SLICE 4 LANDS - THE `wss:` LEG - AND W7 IS COMPLETE (2026-09-22): 14/14 probe checks, 3/3 case checks.** The
+implementation row above is now PROVEN rather than asserted: the leg's peer is a TLS SERVER AND NOTHING ELSE, so an
+upgrade that arrives at all means the task secured the stream with its own `-startSecureConnection` before writing
+the request. The leg then repeats the three exchanges that matter over the tunnel - a message echoed by the peer, a
+ping, and the peer's own close - through a libtls peer built the way §58.1 built its own (a certificate from
+`openssl req`, a blocking descriptor, `tls_accept_socket` and `tls_handshake`).
+
+**AND THE LEG FOUND TWO MORE REAL BUGS, BOTH OF THE SHAPE THIS SESSION KEEPS MEETING - A PATH NOBODY EXERCISED:**
+ * **`-cancelWithCloseCode:reason:nil` WAS REFUSED.** The guard asked the layer about `[reason bytes]` with a
+   hardcoded length of 2, so the ORDINARY way to close - no reason at all - failed the task instead of closing
+   gracefully. The plaintext leg could not have seen it: its close always passes a reason. The fix asks about the
+   code's own two bytes, which is what was meant and what the reserved-code rule is about.
+ * **A MISSING `mkdir`**, whose failure is three steps from its cause and worth writing down: `openssl req` cannot
+   write into a directory that is not there, so the certificate is never made, the TLS peer's `tls_configure`
+   fails, it never binds, and the client gets `NSURLErrorCannotConnectToHost`. The stream-task probe makes that
+   same directory, which is why the name is shared and only this leg's own `mkdir` was missing.
+
+**W7 IS COMPLETE.** Every row of the URL loading system this plan set out is landed and green: the sessions and
+their configuration and cache, the tasks (data, upload, download, stream, WebSocket), the metrics pair and the one
+door that delivers it, the authentication doors and the credential store, the redirect door, the URL protocol
+doors, the error names and their codes, and now both ends of the WebSocket family - **and each of the five
+WebSocket slices is a layer that was tested before the layer above it was written**, which is why the last two
+slices were about ORDER rather than about protocol.

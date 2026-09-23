@@ -28,6 +28,7 @@
 #import <Foundation/Foundation.h>
 #import <Foundation/FNWebSocketFraming.h>
 #import <Foundation/FNWebSocketHandshake.h>	/* the peer computes the accept with the SAME layer the client checks it with */
+#include <tls.h>	/* the wss: leg's peer: the same substrate §58.1 used, over a blocking descriptor */
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -39,6 +40,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/wait.h>
+#include <sys/stat.h>	/* mkdir, for the directory the certificate is made in */
 
 #define FN_WS_TEST_PORT	46911
 
@@ -231,6 +233,253 @@ static void fnPeer(int listener)
 	_exit(0);
 }
 
+/* --- THE wss: LEG'S PEER: THE SAME RAW PEER, OVER TLS ----------------------------------------------- */
+
+/* THE CERTIFICATE, made on the guest by `openssl req` - the same fixture §58.1's probe uses, for the same
+ * reason (the tool is the pin's own generator and the entropy question is the plan's, not a probe's). */
+static int fn_makeCertificate(const char *dir, const char *certPath, const char *keyPath)
+{
+	pid_t child;
+	int status = -1;
+	char logPath[512];
+
+	snprintf(logPath, sizeof(logPath), "%s/req.log", dir);
+	child = fork();
+	if(child == 0) {
+		int log = open(logPath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+		if(log >= 0) {
+			dup2(log, 1);
+			dup2(log, 2);
+		}
+		execl("/System/Tools/openssl", "openssl", "req", "-x509", "-newkey", "rsa:2048",
+		      "-keyout", keyPath, "-out", certPath, "-days", "1", "-nodes",
+		      "-subj", "/CN=localhost", (char *)NULL);
+		_exit(127);
+	}
+	if(child < 0) {
+		return -1;
+	}
+	if(waitpid(child, &status, 0) < 0) {
+		return -1;
+	}
+	return status;
+}
+
+/* A BLOCKING-WITH-PAUSES TLS READ, because libtls asks again rather than waiting when it wants more bytes. */
+static ssize_t fnTlsRead(struct tls *connection, char *buffer, size_t room)
+{
+	ssize_t got;
+
+	for(;;) {
+		got = tls_read(connection, buffer, room);
+		if(got != TLS_WANT_POLLIN && got != TLS_WANT_POLLOUT) {
+			return got;
+		}
+		fnPause(5);
+	}
+}
+
+static int fnTlsWriteAll(struct tls *connection, const char *bytes, size_t length)
+{
+	size_t sent = 0;
+
+	while(sent < length) {
+		ssize_t put = tls_write(connection, bytes + sent, length - sent);
+
+		if(put == TLS_WANT_POLLIN || put == TLS_WANT_POLLOUT) {
+			fnPause(5);
+			continue;
+		}
+		if(put <= 0) {
+			return -1;
+		}
+		sent += (size_t)put;
+	}
+	return 0;
+}
+
+/* THE PEER, OVER TLS: WHAT THE PLAINTEXT ONE DOES, THROUGH A TUNNEL - because the point of this leg is that the
+ * TASK is what puts the TLS there, and the peer must be a TLS server for that to mean anything. It speaks the
+ * upgrade in HTTP and RFC 6455 through the same codec, and answers ONE message and the close. */
+@interface FNTlsWsPeer : NSObject
+{
+	@public
+	BOOL bound;
+	int port;
+	char cert[512];
+	char key[512];
+}
+- (void)run;
+@end
+
+@implementation FNTlsWsPeer
+
+- (void)run
+{
+	struct tls_config *config = tls_config_new();
+	struct tls *ctx = tls_server();
+	struct tls *connection = NULL;
+	struct sockaddr_in addr;
+	int listener;
+	int fd;
+	int one = 1;
+	char buffer[4096];
+	int n = 0;
+	NSMutableData *arrived = [NSMutableData data];
+	NSString *expectedAccept = nil;
+
+	if(config == NULL || ctx == NULL) {
+		return;
+	}
+	if(tls_config_set_cert_file(config, cert) == -1 || tls_config_set_key_file(config, key) == -1 ||
+	   tls_configure(ctx, config) == -1) {
+		return;
+	}
+	listener = socket(AF_INET, SOCK_STREAM, 0);
+	if(listener < 0) {
+		return;
+	}
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons((uint16_t)port);
+	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+	if(bind(listener, (struct sockaddr *)&addr, sizeof(addr)) != 0 || listen(listener, 4) != 0) {
+		return;
+	}
+	bound = YES;
+	fd = accept(listener, NULL, NULL);
+	if(fd < 0) {
+		return;
+	}
+	{
+		int flags = fcntl(fd, F_GETFL, 0);
+
+		if(flags >= 0) {
+			fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);	/* libtls's default BIO is a blocking one */
+		}
+	}
+	for(;;) {
+		int rv = tls_accept_socket(ctx, &connection, fd);
+
+		if(rv == 0) {
+			break;
+		}
+		if(rv != TLS_WANT_POLLIN && rv != TLS_WANT_POLLOUT) {
+			return;
+		}
+	}
+	for(;;) {
+		int rv = tls_handshake(connection);
+
+		if(rv == 0) {
+			break;
+		}
+		if(rv != TLS_WANT_POLLIN && rv != TLS_WANT_POLLOUT) {
+			return;
+		}
+	}
+
+	/* THE UPGRADE, through the tunnel: the request until its blank line, then the digest, then the 101. */
+	for(;;) {
+		ssize_t got = fnTlsRead(connection, buffer + n, sizeof(buffer) - 1 - n);
+
+		if(got <= 0) {
+			return;
+		}
+		n += (int)got;
+		buffer[n] = '\0';
+		if(strstr(buffer, "\r\n\r\n") != NULL) {
+			break;
+		}
+		if(n > (int)sizeof(buffer) - 2) {
+			return;
+		}
+	}
+	{
+		char *keyLine = strstr(buffer, "Sec-WebSocket-Key: ");
+
+		if(keyLine == NULL) {
+			return;
+		}
+		{
+			char *end = strstr(keyLine, "\r\n");
+			char value[128];
+			size_t length = (size_t)(end - (keyLine + 19));
+
+			if(end == NULL || length >= sizeof(value)) {
+				return;
+			}
+			memcpy(value, keyLine + 19, length);
+			value[length] = '\0';
+			expectedAccept = FNWebSocketAcceptForKey([NSString stringWithUTF8String:value]);
+		}
+		{
+			char reply[512];
+			int written = snprintf(reply, sizeof(reply),
+					       "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
+					       "Connection: Upgrade\r\nSec-WebSocket-Accept: %s\r\n"
+					       "Sec-WebSocket-Protocol: chat\r\n\r\n",
+					       [expectedAccept UTF8String]);
+
+			if(fnTlsWriteAll(connection, reply, (size_t)written) != 0) {
+				return;
+			}
+		}
+	}
+
+	/* ONE MESSAGE, ECHOED - unmasked, because that is what a server's frames are - and then the close. */
+	for(;;) {
+		FNWebSocketFrame frame;
+		NSInteger consumed;
+		ssize_t got = fnTlsRead(connection, buffer, sizeof(buffer));
+
+		if(got <= 0) {
+			return;
+		}
+		[arrived appendBytes:buffer length:(NSUInteger)got];
+		consumed = FNWebSocketParseFrame([arrived bytes], [arrived length], YES, &frame);
+		if(consumed == 0) {
+			continue;
+		}
+		if(consumed < 0) {
+			return;
+		}
+		if(frame.opcode == FNWebSocketOpcodeText || frame.opcode == FNWebSocketOpcodeBinary) {
+			NSMutableData *plain = [NSMutableData dataWithBytes:frame.payload
+								     length:(NSUInteger)frame.payloadLength];
+			NSData *out;
+
+			if(frame.masked) {
+				FNWebSocketApplyMask((uint8_t *)[plain mutableBytes], [plain length], frame.maskKey);
+			}
+			out = FNWebSocketCreateFrame(YES, frame.opcode, [plain bytes], (size_t)[plain length], NULL);
+			if(fnTlsWriteAll(connection, [out bytes], [out length]) != 0) {
+				return;
+			}
+		} else if(frame.opcode == FNWebSocketOpcodeClose) {
+			uint8_t payload[16] = { 0x03, 0xE9 };	/* 1001, going away */
+			NSData *out;
+
+			memcpy(payload + 2, "peer says bye", 13);
+			out = FNWebSocketCreateFrame(YES, FNWebSocketOpcodeClose, payload, 15, NULL);
+			fnTlsWriteAll(connection, [out bytes], [out length]);
+			break;
+		}
+		[arrived replaceBytesInRange:NSMakeRange(0, (NSUInteger)consumed)
+				   withBytes:(const void *)"" length:0];
+	}
+	tls_close(connection);
+	tls_free(connection);
+	tls_free(ctx);
+	tls_config_free(config);
+	close(fd);
+	close(listener);
+}
+
+@end
+
 /* --- THE DELEGATE: WHAT ONLY IT CAN SEE ------------------------------------------------------------ */
 
 @interface FNTaskWatcher : NSObject <NSURLSessionWebSocketDelegate>
@@ -412,6 +661,80 @@ int main(void)
 		      watcher->completions >= 2 &&
 		      [plain closeCode] != NSURLSessionWebSocketCloseCodeNoStatusReceived,
 		      @"§7.4.1: 1005 may be REPORTED and never sent, so the door refuses rather than putting it on the wire");
+	}
+
+	/* --- THE wss: LEG: THE SAME UPGRADE, THROUGH A TUNNEL THE TASK ITSELF MUST BUILD ---------------------
+	 *
+	 * WHAT MAKES THIS A TEST OF THE TASK RATHER THAN OF TLS: the peer is a TLS SERVER and nothing else. If
+	 * -fnStartHandshake wrote the upgrade in the clear - which is what it did until the row above landed - this
+	 * peer would read a WebSocket request where a ClientHello belongs and answer nothing, and every check below
+	 * would fail. The task has to secure the stream first, and the substrate's serial queue is what orders the
+	 * two without a wait. */
+	{
+		FNTlsWsPeer *tlsPeer = [[FNTlsWsPeer alloc] init];
+		FNTaskWatcher *tlsWatcher = [[FNTaskWatcher alloc] init];
+		NSOperationQueue *tlsQueue = [[NSOperationQueue alloc] init];
+		NSURLSession *tlsSession;
+		NSURLSessionWebSocketTask *tlsTask;
+		NSURL *tlsURL;
+		NSString *dir = @"/System/Temporary Files/streamtask-tls";
+		NSString *certPath = [dir stringByAppendingPathComponent:@"cert.pem"];
+		NSString *keyPath = [dir stringByAppendingPathComponent:@"key.pem"];
+		int reqStatus;
+		pid_t tlsPid;
+		__block int tlsMessage = 0;
+		__block NSString *tlsEcho = nil;
+
+		/* THE DIRECTORY FIRST, WHICH THE FIRST VERSION DID NOT MAKE - and the failure it causes is worth naming:
+		 * `openssl req` cannot write into a directory that is not there, so the certificate is never made, the
+		 * TLS peer's tls_configure fails, it never binds, and the leg's client gets
+		 * NSURLErrorCannotConnectToHost - three steps from a missing mkdir. (The stream-task probe makes this same
+		 * directory, which is why the name is shared and only this leg's own mkdir was missing.) */
+		mkdir([dir UTF8String], 0755);
+		reqStatus = fn_makeCertificate([dir UTF8String], [certPath UTF8String], [keyPath UTF8String]);
+		snprintf(tlsPeer->cert, sizeof(tlsPeer->cert), "%s", [certPath UTF8String]);
+		snprintf(tlsPeer->key, sizeof(tlsPeer->key), "%s", [keyPath UTF8String]);
+		tlsPeer->port = FN_WS_TEST_PORT + 1;
+		[NSThread detachNewThreadSelector:@selector(run) toTarget:tlsPeer withObject:nil];
+		for(tick = 0; tick < 300 && !tlsPeer->bound; tick++) {
+			fnPause(10);
+		}
+		check("the-tls-fixture-is-up", reqStatus == 0 && tlsPeer->bound,
+		      @"`openssl req` made a certificate and a libtls peer is listening with it");
+
+		tlsSession = [NSURLSession sessionWithConfiguration:configuration delegate:tlsWatcher delegateQueue:tlsQueue];
+		tlsURL = [NSURL URLWithString:[NSString stringWithFormat:@"wss://127.0.0.1:%d/chat", tlsPeer->port]];
+		tlsTask = [tlsSession webSocketTaskWithURL:tlsURL protocols:@[ @"chat" ]];
+		[tlsTask resume];
+		for(tick = 0; tick < 600 && tlsWatcher->opened == 0; tick++) {
+			fnPause(10);
+		}
+		check("a-wss-url-gets-its-upgrade-through-a-tunnel", tlsWatcher->opened == 1,
+		      @"the peer speaks TLS and NOTHING else, so an upgrade that arrived at all proves the task secured the stream first");
+
+		[tlsTask sendMessage:[[NSURLSessionWebSocketMessage alloc] initWithString:@"through-the-tunnel"]
+		    completionHandler:^(NSError *error) {
+			(void)error;
+		}];
+		[tlsTask receiveMessageWithCompletionHandler:^(NSURLSessionWebSocketMessage *message, NSError *error) {
+			(void)error;
+			tlsMessage = 1;
+			tlsEcho = [[message string] copy];
+		}];
+		for(tick = 0; tick < 600 && !tlsMessage; tick++) {
+			fnPause(10);
+		}
+		check("and-a-message-travels-over-it",
+		      tlsMessage && [tlsEcho isEqualToString:@"through-the-tunnel"],
+		      [NSString stringWithFormat:@"the TLS peer echoed what it read: '%@'", tlsEcho]);
+
+		[tlsTask cancelWithCloseCode:NSURLSessionWebSocketCloseCodeNormalClosure reason:nil];
+		for(tick = 0; tick < 600 && tlsWatcher->closed == 0; tick++) {
+			fnPause(10);
+		}
+		check("and-the-close-ends-it-over-tls", tlsWatcher->closed == 1 && tlsWatcher->closedCode == 1001,
+		      [NSString stringWithFormat:@"the same close handshake, through the tunnel: %ld", (long)tlsWatcher->closedCode]);
+		(void)tlsPid;
 	}
 
 	/* --- AND THE PEER'S OWN ACCOUNT, WHICH IS ITS EXIT CODE: it has a distinct code for every way it can fail,

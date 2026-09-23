@@ -534,15 +534,20 @@ enum {
 {
 	uint8_t payload[127];
 
-	if(!FNWebSocketClosePayloadIsSendable([reason bytes], 2)) {
+	/* THE CODE GOES IN FIRST, AND THE LAYER IS ASKED ABOUT THE BYTES THAT WILL ACTUALLY BE SENT. The first
+	 * version asked it about `[reason bytes]` with a hardcoded length of 2 - so a caller with NO REASON (whose
+	 * `[reason bytes]` is NULL, and which is the ordinary way to close) had its close REFUSED, and the door meant
+	 * for a graceful shutdown became a failure path. FOUND BY THE wss: LEG, whose close passes no reason: the
+	 * task failed instead of sending, and the TLS peer waited for a frame that never came. */
+	payload[0] = (uint8_t)(((uint16_t)closeCode >> 8) & 0xFF);
+	payload[1] = (uint8_t)((uint16_t)closeCode & 0xFF);
+	if(!FNWebSocketClosePayloadIsSendable(payload, 2)) {
 		/* A RESERVED CODE IS REFUSED RATHER THAN SENT (§7.4.1). The layer decides what is sendable; this door's
 		 * job is to ask it rather than to know. */
 		[self fnFail:@"that close code may be reported and never sent"
 		   closeCode:NSURLSessionWebSocketCloseCodeInvalid];
 		return;
 	}
-	payload[0] = (uint8_t)(((uint16_t)closeCode >> 8) & 0xFF);
-	payload[1] = (uint8_t)((uint16_t)closeCode & 0xFF);
 	_closeCode = (NSInteger)closeCode;
 	if(reason != nil) {
 		NSUInteger length = [reason length];

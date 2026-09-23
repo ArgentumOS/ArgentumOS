@@ -43,6 +43,10 @@ CHECKS = (
     "and-the-task-ends-exactly-once",
     "only-ws-and-wss-urls-make-a-task",
     "and-a-reserved-close-code-is-refused-rather-than-sent",
+    "the-tls-fixture-is-up",
+    "a-wss-url-gets-its-upgrade-through-a-tunnel",
+    "and-a-message-travels-over-it",
+    "and-the-close-ends-it-over-tls",
     "the-peer-walked-the-whole-script",
 )
 
