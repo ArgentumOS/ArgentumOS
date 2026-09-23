@@ -10652,6 +10652,18 @@ own probe, because that probe DID test `NULL` twice (with length 0, legal, and l
 and the dangerous pairing was the one combination nobody tried. A fix with no check is a fix waiting to be
 rediscovered, and this is what it took to notice: another probe, one layer up, crashing.
 
-**WHAT REMAINS FOR W7 IS ONE ITEM: THE `wss:` LEG (§59 slice 4), which costs nothing new** - the stream's TLS
-upgrade is already verified, so the leg is a TLS peer for the WebSocket probe (the pattern §58.1 already built: a
-certificate from `openssl req`, a libtls peer, one connection) and a `wss://` URL in place of `ws://`.
+**WHAT REMAINS FOR W7 IS ONE ITEM: THE `wss:` LEG (§59 slice 4) - AND PREPARING FOR IT CORRECTED THIS PLAN'S OWN
+CLAIM, so the correction is here rather than in a later reader's surprise.**
+
+The claim was "it costs nothing new", and the *verification* costs nothing new: the stream's TLS upgrade is
+verified (§58.1), so the leg is a TLS peer for the WebSocket probe (the pattern §58.1 built - a certificate from
+`openssl req`, a libtls peer, one connection) and a `wss://` URL in place of `ws://`.
+
+**BUT THE TASK ITSELF OWES A LINE, AND IT IS NOT A TEST DETAIL: `-fnStartHandshake` never calls the stream's
+`-startSecureConnection`.** As written, a `wss://` URL creates a stream task and writes the upgrade IN THE CLEAR -
+which on port 443 is not a prototype of TLS, it is a client sending a WebSocket handshake in plaintext to the
+wrong port and reading nothing. The fix is three lines and the SUBSTRATE'S OWN ORDER makes it correct without a
+wait: `-startSecureConnection` is QUEUED on the stream, and the stream serves its operations serially, so the
+upgrade request queued after it cannot go out before the TLS session is up. What that means for the slice is that
+**it is an implementation row before it is a test row**, and until it lands `wss:` is unimplemented rather than
+merely unverified.
