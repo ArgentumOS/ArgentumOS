@@ -671,7 +671,32 @@ retry_transfer:
 	if (target == nil) {
 		return;
 	}
-	next = [NSMutableURLRequest requestWithURL:target];
+	/* WHAT THE NEXT REQUEST IS (§54), AND IT IS A PROPOSAL RATHER THAN A COPY: RFC 9110's method rules decide
+	 * the method and the body - 303 MUST become a GET, and 301/302 are treated the same because that is what
+	 * every browser does - while 307 and 308 exist precisely to keep BOTH, so they do.
+	 *
+	 * AND THE CALLER'S HEADERS TRAVEL, minus the two the transport computes for itself: a redirect that
+	 * silently drops what the caller set (Accept, an API key, a language) changes the request more than the
+	 * server asked for. */
+	if (status == 307 || status == 308) {
+		next = [[[self request] mutableCopy] autorelease];
+		[next setURL:target];
+	} else {
+		NSDictionary *fields = [[self request] allHTTPHeaderFields];
+		NSArray *names = [fields allKeys];
+		NSUInteger i;
+
+		next = [NSMutableURLRequest requestWithURL:target];
+		for (i = 0; i < [names count]; i++) {
+			NSString *name = [names objectAtIndex:i];
+
+			if ([name caseInsensitiveCompare:@"Host"] == NSOrderedSame ||
+			    [name caseInsensitiveCompare:@"Content-Length"] == NSOrderedSame) {
+				continue;
+			}
+			[next setValue:[fields objectForKey:name] forHTTPHeaderField:name];
+		}
+	}
 	response = [[NSHTTPURLResponse alloc] initWithURL:[[self request] URL]
 					       statusCode:status
 					      HTTPVersion:nil

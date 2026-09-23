@@ -10018,3 +10018,78 @@ appears in an INNER position (`NSData.h`'s `NSError * _Nullable * _Nullable` is 
 **So the rule this library actually follows is positional**: `nullable T *` for a whole parameter, `T *
 _Nullable` inside a block's or a pointer-to-pointer's type - and a session that has to write one of these has
 no reason to rediscover it from the error message.
+
+## §54 — FOLLOWING A REDIRECT: THE THIRD DECLARED-NOWHERE DOOR, AND THE ROW THE CODE NAMED (2026-09-22)
+
+**THE ROW WAS ALREADY NAMED, TWICE, BY THE THINGS THAT SHIPPED BEFORE IT:** `NSURLSession.m`'s redirect method
+says *"follow it" is the next row's job*, `foundation-transport-plan.md` §4 says the seam reports a redirect
+*"and whether to follow is the [session's] decision"*, and §52 was FORCED to record that `redirectCount` can
+only ever be zero while the row is unbuilt. This is that row.
+
+**AND IT IS A THIRD MEMBER OF §53'S CLASS: APPLE'S DOOR EXISTS AND WAS DECLARED NOWHERE.**
+`-URLSession:task:willPerformHTTPRedirection:newRequest:completionHandler:` appears in **no header** in this
+tree and is dispatched from nowhere - a redirect that arrives today ends the task with an error in the
+bridge's own domain. So the slice is three things: DECLARE the door, make the session DECIDE through it, and
+FOLLOW when the answer is a request.
+
+**THE RULES, EACH MADE EXPLICIT BECAUSE APPLE LEAVES SOME OF THEM OPEN:**
+
+  * **THE DEFAULT IS TO FOLLOW**, and a delegate that implements no door is not asked - the rule every
+    optional delegate member keeps in this library;
+  * **WHAT THE NEXT REQUEST IS** is a PROPOSAL the protocol hands the delegate, and it follows RFC 9110's
+    method rules rather than "the same request with a new host": **301, 302 and 303 propose GET with no
+    body** (303 MUST, and it is what browsers do for 301/302), while **307 and 308 keep the method AND the
+    body** - which is the entire reason those two status codes exist;
+
+### §54.1 — THE RACE THE PROBE FOUND, WHICH NO AMOUNT OF READING WOULD HAVE (2026-09-22)
+
+**THE FIRST RUN OF THE PROBE FAILED TWO OF ITS FOURTEEN CHECKS, AND THEY WERE THE TWO THAT READ THE RECORD:**
+the declined leg's record came back with **zero** transactions and a twenty-hop chain's with **twenty** - one
+short, in both cases, of the attempt that had just been decided. The behaviour was right everywhere else (the
+final body arrived, the method rules held, the refusal did not fail the task), which is exactly why the
+numbers had to be checked rather than assumed.
+
+**THE MEASUREMENT, TAKEN AT THE WRITER** (three temporary printfs: the bridge's report, the client's collect,
+and the delivered record's two numbers):
+
+```
+task 1 (follow):  collect after=1 → report → collect after=2 → report → tx=2 rc=1     ← correct
+task 4 (decline): tx=0 rc=0  →  collect after=1 → report                              ← the record CAME FIRST
+task 5 (loop):    … tx=20 rc=20 → collect after=21 → report                           ← the last one came late
+```
+
+**THE CAUSE, AND IT IS STRUCTURAL RATHER THAN A COUNTING SLIP:** the bridge reports a redirect from INSIDE
+curl's header callback - that is where the redirect is known - so the client's decision ran, and ended the
+task (or started the next hop), **before the attempt's own transaction had been reported at all**. The report
+happens after `curl_easy_perform` returns, which is necessarily LATER than the callback that aborted it. So the
+delivery was correct in form and short by exactly the transaction being decided about - and for the FOLLOW
+case the same window made the record's ORDER a race between the old attempt's report and the new attempt's.
+
+**THE FIX IS A DEFERRAL, AND ITS INVARIANT IS THE TRANSPORT'S:** `-wasRedirectedToRequest:` now REMEMBERS the
+decision (`_pendingAction`, plus the request or the response it was about) and returns; the decision is TAKEN
+in `-fnDidCollectMetrics:`, which is the first moment the record is complete and in order. What makes the
+deferral safe is a property the transport already has: **it reports a record for every attempt that ran,
+including the one it aborted on a redirect** - so a pending decision is always released, by the very record it
+was waiting for. Both numbers are now right for all five legs (2/1, 2/1, 2/1, 1/0, 21/20), and the probe
+asserts them.
+
+**AND THE LESSON IS THE ONE THIS UNIT KEEPS RE-LEARNING:** the two checks that failed were the two written
+against the RECORD rather than against the transfer's visible behaviour, and they failed for a reason that no
+reading of the code had surfaced - a callback-driven abort is *earlier* than the report of the attempt it
+aborts. A probe that had only asserted the final body would have shipped the race.
+
+  * **THE HEADERS TRAVEL**, minus `Host` and `Content-Length`: a redirect that drops what the caller set
+    changes the request more than the server asked for;
+  * **THE HOP BOUND IS OURS, AND IS DOCUMENTED AS OURS**: Apple publishes no limit, so a number here is
+    permitted variation rather than a difference (§11.6 gate 1) - but a chain that never ends must still END,
+    which is why the bound is a check rather than a hope;
+  * **A DECLINED REDIRECT IS NOT A FAILURE**, which is Apple's contract and the sharpest change from today:
+    the task FINISHES with the 3xx it received (with no body, because the transfer was stopped at the head -
+    said rather than hidden), and **`redirectCount` counts redirects PERFORMED**, so a declined one is not
+    counted at all.
+
+**WHAT THE TASK AND THE RECORD LOOK LIKE AFTER A FOLLOW, which is what makes this checkable:** the SAME task
+runs the second transfer - `currentRequest` becomes the target while `originalRequest` stays the first -
+`redirectCount` is the number of hops, and the metrics record carries ONE TRANSACTION PER ATTEMPT, IN ORDER.
+That is exactly what §52's array was built for and what `foundation_metricsdelivery` could not exercise with a
+straight fetch: **the metrics unit proves the record exists; this one proves it can hold a chain.**

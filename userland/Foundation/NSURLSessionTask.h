@@ -96,6 +96,10 @@ typedef NS_ENUM(NSInteger, NSURLSessionTaskState) {
 - (void)fnProtocolDidReceiveResponse:(NSURLResponse *)response;
 - (void)fnProtocolDidLoadData:(NSData *)data;
 - (void)fnProtocolDidFinishWithError:(nullable NSError *)error;
+/* AND THE FIFTH, WHICH EXISTS BECAUSE A REDIRECT CHANGES WHAT THE TASK IS ABOUT (§54): `currentRequest` is
+ * the request the task is RUNNING, so a followed redirect has to move it - while `originalRequest` stays
+ * what it was called with. Nothing else about the task moves: same identifier, same state, same handler. */
+- (void)fnProtocolDidRedirectToRequest:(NSURLRequest *)request;
 
 /* UNIQUE WITHIN THE SESSION THAT MADE IT, and assigned in creation order — which is what makes it usable
  * as a key, the only thing Apple promises about it. */

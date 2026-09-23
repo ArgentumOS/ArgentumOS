@@ -44,6 +44,18 @@
 	_countOfBytesReceived = (int64_t)[_receivedData length];
 }
 
+/* A FOLLOWED REDIRECT MOVES WHAT THE TASK IS ABOUT, and nothing else (§54): the identifier, the state, the
+ * handler and the accumulated bytes all stay, because it is the SAME task - Apple's contract, and the reason
+ * this is a door on the task rather than a new task in the session. `originalRequest` is deliberately
+ * untouched: it is what the task was made from, and a caller reads it to find that out. */
+- (void)fnProtocolDidRedirectToRequest:(NSURLRequest *)request
+{
+	NSURLRequest *old = _currentRequest;
+
+	_currentRequest = [request copy];
+	[old release];
+}
+
 - (void)fnProtocolDidFinishWithError:(NSError *)error
 {
 	if (_state == NSURLSessionTaskStateCompleted) {

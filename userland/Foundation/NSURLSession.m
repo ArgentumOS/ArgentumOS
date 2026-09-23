@@ -40,8 +40,22 @@
 					    handler:(void (^)(NSData *, NSURLResponse *, NSError *))handler;
 @end
 
+/* THE TRANSFER IS DECLARED AFTER THIS CATEGORY IN THE FILE, so its name is forward declared here: the
+ * category's two new doors take it, and a declaration may not wait for a later one to be read. */
+@class FNSessionTransfer;
+
 @interface NSURLSession (FNSessionTransferControl)
 - (void)fnTransferDidEnd:(NSURLProtocol *)protocol;
+/* §54: THE START, IN ONE PLACE, and the redirect decision that needs it. A followed redirect runs the next
+ * request on the SAME task with the SAME client, so "start a transfer" cannot stay inside -fnTaskDidResume:
+ * alone: a second client would leave the metrics and the hop count behind, which is precisely what §52's
+ * record is made of. */
+- (void)fnStartTransferForTask:(NSURLSessionTask *)task
+		       request:(NSURLRequest *)request
+			client:(FNSessionTransfer *)client;
+- (NSURLRequest * _Nullable)fnAskAboutRedirectForTask:(NSURLSessionTask *)task
+					    response:(NSHTTPURLResponse *)response
+					    proposed:(NSURLRequest *)request;
 @end
 
 @interface FNSessionTransfer : NSObject <NSURLProtocolClient>
@@ -61,6 +75,16 @@
 	NSMutableArray *_transactions;
 	NSDate *_started;
 	NSInteger _redirects;
+	/* THE REDIRECT DECISION'S CONSEQUENCE, HELD UNTIL THE ATTEMPT'S RECORD ARRIVES (§54). The bridge reports a
+	 * redirect from INSIDE curl's header callback, so acting on the decision there would end the task (or
+	 * start the next hop) with a record that does not yet hold the very transaction that caused it - MEASURED,
+	 * not theorised: the declined leg's record came out EMPTY and a twenty-hop chain's came out one short.
+	 * So the decision is REMEMBERED here and taken in -fnDidCollectMetrics:, which is the first moment the
+	 * record is complete and IN ORDER. The invariant that makes this safe is the transport's: it reports a
+	 * record for every attempt that ran, including the one it aborted on a redirect. */
+	NSURLRequest *_pendingFollow;
+	NSURLResponse *_pendingResponse;
+	int _pendingAction;		/* 0 none, 1 go there, 2 stay, 3 too many hops */
 }
 - (instancetype)initWithTask:(NSURLSessionTask *)task session:(NSURLSession *)session;
 @end
@@ -125,14 +149,47 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 
 /* WHAT THE PROTOCOL MEASURED, KEPT UNTIL THE TASK ENDS (§52): the report is per TRANSACTION, so this is an
  * APPEND and never a store - a transfer that was challenged and re-issued reports twice, and Apple's record
- * carries one entry per transaction, in order. THE ASSEMBLY IS NOT HERE: the task's span and its redirect
+ * carries one entry per transaction, IN ORDER. THE ASSEMBLY IS NOT HERE: the task's span and its redirect
  * count belong to the ending, where its start and its outcome are both known - and a task that never ran a
  * transfer reports an EMPTY list rather than nothing, because the door's contract is its place in the
- * sequence. */
+ * sequence.
+ *
+ * AND §54'S DECISION IS TAKEN HERE, because this is the first moment the record is complete: the redirect was
+ * decided inside the transport's header callback (see -wasRedirectedToRequest:), where this attempt's
+ * transaction had not been reported yet. */
 - (void)URLProtocol:(NSURLProtocol *)protocol fnDidCollectMetrics:(NSURLSessionTaskTransactionMetrics *)metrics
 {
-	(void)protocol;
 	[_transactions addObject:metrics];
+	if (_pendingAction == 0) {
+		return;
+	}
+	/* WHAT EACH DECISION DOES, and why the follow does its two steps in THIS order: the task is moved to the
+	 * target and the next transfer is STARTED BEFORE the old flight is dropped, because the new protocol
+	 * retains this client - so releasing the old protocol (which was holding it) cannot free the object still
+	 * on the stack. All three end the flight, which is what lets the session release the protocol. */
+	if (_pendingAction == 1) {
+		_redirects++;
+		[_task fnProtocolDidRedirectToRequest:_pendingFollow];
+		[_session fnStartTransferForTask:_task request:_pendingFollow client:self];
+	} else if (_pendingAction == 2) {
+		[_task fnProtocolDidReceiveResponse:_pendingResponse];
+		[_task fnProtocolDidFinishWithError:nil];
+		[self fnTellTheTaskDelegate];
+	} else {
+		NSError *tooMany = [[NSError alloc] initWithDomain:@"FNCURLURLProtocolErrorDomain"
+							      code:2
+							  userInfo:nil];
+
+		[_task fnProtocolDidFinishWithError:tooMany];
+		[self fnTellTheTaskDelegate];
+		[tooMany release];
+	}
+	_pendingAction = 0;
+	[_pendingFollow release];
+	_pendingFollow = nil;
+	[_pendingResponse release];
+	_pendingResponse = nil;
+	[_session fnTransferDidEnd:protocol];
 }
 
 - (void)URLProtocol:(NSURLProtocol *)protocol
@@ -349,28 +406,45 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 	[_session fnTransferDidEnd:protocol];
 }
 
-/* A REDIRECT IS NOT FOLLOWED IN THIS ROW, AND THE FAILURE SAYS SO rather than leaving a task that never
- * ends. The bridge reports the redirect (CURLOPT_FOLLOWLOCATION=0) precisely so the DECISION is here, and
- * "follow it" is the next row's job: until then the honest answer is an error in this library's own
- * domain, which a caller can tell apart from a transport failure. */
+/* THE REDIRECT IS DECIDED HERE, AND ACTED ON WHERE THE RECORD IS COMPLETE (§54). CURLOPT_FOLLOWLOCATION=0
+ * is what makes "who decides" structural rather than polite, so this is the ONE place the question is asked -
+ * and the bridge asks it from INSIDE curl's header callback, which is why the ANSWER is only REMEMBERED here
+ * (see the ivars): the attempt's own transaction has not been reported at this moment, and acting now would
+ * deliver a record missing it.
+ *
+ * THE DECISION HAS THREE SHAPES, and only one of them is a follow:
+ *   * GO THERE - the SAME client (this object) will run the next request on the SAME task, which is what keeps
+ *     the metrics (§52) and the hop count together, and what makes the task's `currentRequest` the target
+ *     while `originalRequest` stays what the caller made;
+ *   * STAY - a DECLINED redirect is not a failure: the task finishes with the 3xx it received, and the hop is
+ *     not counted, because `redirectCount` counts what was PERFORMED;
+ *   * TOO MANY - the hop limit, which is OURS and says so: Apple publishes no number, so a limit here is
+ *     permitted variation rather than a difference - but a chain that never ends must still END. TWENTY, which
+ *     is what the browsers a user of this system has met use. The failure is this library's own domain,
+ *     because the NSURLError* constant mass is not shipped yet (§50's last row), so naming
+ *     NSURLErrorHTTPTooManyRedirects here would mean inventing a value this library does not declare. */
 - (void)URLProtocol:(NSURLProtocol *)protocol
     wasRedirectedToRequest:(NSURLRequest *)request
 	 redirectResponse:(NSURLResponse *)redirectResponse
 {
-	NSError *error = [[NSError alloc] initWithDomain:@"FNCURLURLProtocolErrorDomain"
-						    code:1
-						userInfo:nil];
+	NSURLRequest *follow = [_session fnAskAboutRedirectForTask:_task
+							  response:(NSHTTPURLResponse *)redirectResponse
+							  proposed:request];
 
-	(void)request;
-	/* THE REDIRECT COUNT IS THE TASK'S AND NOT A TRANSACTION'S (§52), so it is kept where the redirect is
-	 * DECIDED - here. This row still FAILS the task on a redirect rather than following it, so the number can
-	 * only be zero today; it is filled from what this loading system actually SAW, which is what makes it
-	 * right on the day redirects are followed instead. */
-	_redirects++;
-	(void)redirectResponse;
-	[_task fnProtocolDidFinishWithError:error];
-	[error release];
-	[_session fnTransferDidEnd:protocol];
+	(void)protocol;
+	if (follow == nil) {
+		/* WHAT WE HAVE IS THE ANSWER, and no body comes with it because the transfer was stopped at the head
+		 * of the answer. */
+		_pendingAction = 2;
+		_pendingResponse = [redirectResponse retain];
+		return;
+	}
+	if (_redirects >= 20) {
+		_pendingAction = 3;
+		return;
+	}
+	_pendingAction = 1;
+	_pendingFollow = [follow retain];
 }
 
 - (void)URLProtocol:(NSURLProtocol *)protocol cachedResponseIsValid:(NSCachedURLResponse *)cachedResponse
@@ -389,6 +463,11 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 	 * them - and once the task has ended there is nothing left that reads either. */
 	[_transactions release];
 	[_started release];
+	/* AND A DECISION THAT WAS NEVER TAKEN (§54): the pending consequence holds the request or the response it
+	 * was decided about, so it is released here - a task cancelled between the redirect's report and its
+	 * record would otherwise leak both. */
+	[_pendingFollow release];
+	[_pendingResponse release];
 	[super dealloc];
 }
 
@@ -599,6 +678,40 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
  *      NSURLErrorUnsupportedURL (-1002) and its completion handler is called;
  *   3. THE PROTOCOL IS KEPT ALIVE BY THE SESSION for the flight (a protocol deallocated mid-transfer
  *      would report into freed memory), and the per-transfer client is what knows the task. */
+/* THE REDIRECT DECISION (§54), ASKED ONCE AND ANSWERED SYNCHRONOUSLY - the same deviation the challenge door
+ * carries (§48.6) and for the same reason: the transport is WAITING at the head of an answer, so an
+ * asynchronous answer would be unwaitable. The handler is therefore called before this method returns, which
+ * is its contract HERE rather than Apple's.
+ *
+ * NO DOOR MEANS FOLLOW, WITHOUT WAITING: a delegate that does not implement this must not stop a redirect
+ * Apple's own loading system would have followed - and the proposal the loading system made is already the
+ * right request, because the transport applied RFC 9110's method rules to it before proposing it.
+ *
+ * THE ANSWER IS RETAINED AND AUTORELEASED because it travels back through the bridge and out to whoever
+ * asked: in MRC a value that outlives the call that produced it has to say so. */
+- (NSURLRequest *)fnAskAboutRedirectForTask:(NSURLSessionTask *)task
+				  response:(NSHTTPURLResponse *)response
+				  proposed:(NSURLRequest *)request
+{
+	id delegate = _delegate;
+	__block NSURLRequest *answer = nil;
+
+	if (delegate != nil &&
+	    [delegate respondsToSelector:
+		@selector(URLSession:task:willPerformHTTPRedirection:newRequest:completionHandler:)]) {
+		[(id)delegate URLSession:self
+				    task:task
+	    willPerformHTTPRedirection:response
+			      newRequest:request
+		       completionHandler:^(NSURLRequest *chosen) {
+			answer = [chosen retain];
+		}];
+	} else {
+		answer = [request retain];
+	}
+	return [answer autorelease];
+}
+
 /* THE CHALLENGE DOOR, AND THE ORDER IS APPLE'S: the task-level delegate is more specific, so it is asked
  * first and the session's door is the fallback. IT IS SYNCHRONOUS - unlike the data and completion callbacks,
  * which hop to the delegate queue - because the transport WAITS for the answer, exactly as it waits at the
@@ -637,7 +750,28 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 
 - (void)fnTaskDidResume:(NSURLSessionTask *)task
 {
-	NSURLRequest *request = [task currentRequest];
+	FNSessionTransfer *client = [[FNSessionTransfer alloc] initWithTask:task session:self];
+
+	/* AND THE START IS NOT WRITTEN HERE ANY MORE (§54): a followed redirect starts the next request on the
+	 * SAME task through the SAME door, so the one place a transfer begins is the one place that knows how
+	 * (see -fnStartTransferForTask:request:client:). */
+	[self fnStartTransferForTask:task request:[task currentRequest] client:client];
+	[client release];
+}
+
+/* WHERE A TRANSFER BEGINS, ONCE (§54), and every step of it is a decision this row has made all along:
+ *
+ *   1. THE CONFIGURATION'S protocolClasses COME FIRST - a caller's explicit list - and the registry second,
+ *      both through the seam's own door;
+ *   2. NO CLASS AT ALL IS AN ERROR, not a hang: a task whose request nothing claims ends with
+ *      NSURLErrorUnsupportedURL (-1002) and its completion handler is called;
+ *   3. THE PROTOCOL IS KEPT ALIVE BY THE SESSION for the flight (a protocol deallocated mid-transfer would
+ *      report into freed memory), and the per-transfer client is what knows the task - including the one a
+ *      redirect REUSES. */
+- (void)fnStartTransferForTask:(NSURLSessionTask *)task
+		       request:(NSURLRequest *)request
+			client:(FNSessionTransfer *)client
+{
 	NSArray *classes = [_configuration protocolClasses];
 	NSURLProtocol *protocol = nil;
 	Class protocolClass = nil;
@@ -662,14 +796,9 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 		[unsupported release];
 		return;
 	}
-	{
-		FNSessionTransfer *client = [[FNSessionTransfer alloc] initWithTask:task session:self];
-
-		protocol = [[protocolClass alloc] initWithRequest:request
-						   cachedResponse:nil
-							   client:client];
-		[client release];	/* the protocol retains its client */
-	}
+	protocol = [[protocolClass alloc] initWithRequest:request
+					   cachedResponse:nil
+						   client:client];
 	[_protocols addObject:protocol];	/* the session keeps the flight alive */
 	[protocol startLoading];
 	[protocol release];			/* the array holds it now */

@@ -152,6 +152,9 @@ typedef NS_ENUM(NSInteger, NSURLSessionResponseDisposition) {
  * HERE because the protocol only passes a pointer: a delegate that reads the record includes Foundation.h,
  * where the metrics header sits. */
 @class NSURLSessionTaskMetrics;
+/* And the redirect door's response parameter (§54): the protocol hands the delegate the 3xx AS an HTTP
+ * response, so that type is named here and declared in its own header. */
+@class NSHTTPURLResponse;
 
 @protocol NSURLSessionTaskDelegate <NSURLSessionDelegate>
 
@@ -186,6 +189,24 @@ didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
 - (void)URLSession:(NSURLSession *)session
 	      task:(NSURLSessionTask *)task
 didFinishCollectingMetrics:(NSURLSessionTaskMetrics *)metrics;
+
+/* THE ANSWER NAMED SOMEWHERE ELSE, AND WHETHER TO GO THERE (§54). `request` is the NEXT request the loading
+ * system PROPOSES - a proposal, not a decision: RFC 9110's method rules are already applied to it (301, 302
+ * and 303 become GET with no body; 307 and 308 keep both), and the caller's headers travel with it.
+ *
+ * THE ANSWER IS A REQUEST OR NOTHING, and that difference is Apple's contract rather than this library's:
+ *   * A REQUEST is what the task will run next - the SAME task, with `currentRequest` moved and
+ *     `originalRequest` left alone;
+ *   * NIL MEANS DO NOT FOLLOW, AND IT IS NOT A FAILURE: the task finishes with the 3xx it received. No body
+ *     arrives with it, because the transfer was stopped at the head of the answer - stated rather than left
+ *     to be discovered;
+ *   * A DELEGATE THAT IMPLEMENTS NO DOOR IS NOT ASKED, and the redirect IS followed - bounded by a hop limit
+ *     this library documents as its own, because Apple publishes none. */
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
+willPerformHTTPRedirection:(NSHTTPURLResponse *)response
+	newRequest:(NSURLRequest *)request
+ completionHandler:(void (^)(NSURLRequest * _Nullable))completionHandler;
 
 @end
 
