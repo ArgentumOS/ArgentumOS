@@ -10132,3 +10132,77 @@ against, so a wrong number is a silently wrong comparison rather than a build er
 
 **AND THE MEASUREMENT IS THIS SECTION'S REAL RESULT whichever way the decision goes:** no later session has to
 re-derive that Apple's pages stop at the name.
+
+## §56 — THE MASS LANDS, WITH ITS PROVENANCE STATED RATHER THAN ASSUMED (2026-09-22)
+
+**CHOSEN (user, 2026-09-22): option 1 - the names with the values Apple's SDK carries, provenance recorded.**
+`NSURLError.h` and `NSURLError.m` ship the 49 error codes, the five userInfo keys and the two reason
+enumerations; the four literals the library had been reporting became constants; and the LEDGER IS REFRESHED -
+59 `case` rows plus the keys and the enum flip `open -> shipped`, with `foundation-sweep --check` green.
+
+**THE PROVENANCE IS IN THE HEADER, IN THESE WORDS:** the codes are TRANSCRIBED FROM THE PUBLISHED
+ERROR-CONDITION BLOCKS (`-1`, the `-999`/`-1000…-1022` run, `-1100…-1104`, `-1200…-1206`, `-2000`,
+`-3000…-3007`, and the three `-995…-997` background-session ones); the doc pages are NOT the source, because
+§55 measured that they stop at the name; and every value is refutable the day one is shown wrong. The userInfo
+keys' string values and the two reason enums are OURS (D2) - legitimately, because a program compares against
+the constant and a reason value never leaves the process. `NSURLErrorDomain` is the exception: its value
+crosses systems, so it is Apple's, which is what this tree had already been spelling.
+
+**WHAT THE BUILD TAUGHT, TWICE, AND BOTH TIMES THE HARD WAY:**
+
+  * **THE SIX OBJECTS NEED STORAGE.** The first build of the probe failed with `undefined reference to
+    'NSURLErrorDomain'`: an enum constant needs no storage at all, while an `extern` string in a header is a
+    PROMISE, and `NSURLError.m` is where this library keeps it;
+  * **AND A HEADER ARRIVING CAN EXPOSE AN OLD CALL** rather than cause one: `NSURLSessionTask.m` had been
+    messaging the session's `-fnTaskDidResume:` with the session's header out of view - a WARNING and not an
+    error, because the receiver is an `id` and Objective-C permits an undeclared selector on one.
+
+**THE PROBE CHECKS THE SHAPE RATHER THAN FIFTY NUMBERS** (12 checks), because §55's finding makes a mistyped
+digit the failure mode an inventory cannot see: the four values the library depends on, the domain string
+against the places the library spells it, DISTINCTNESS over all 49 codes, each block against the range its name
+claims, and the two D2 enums - with TWO of the twelve END TO END (a cancelled task's error and an unclaimable
+request's error, both read off a real task). **And the redirect unit gained its fifteenth check:** the hop
+limit's failure is now `NSURLErrorDomain` / `NSURLErrorHTTPTooManyRedirects`, the code §54 asked for and could
+not have.
+
+## §57 — THE LAST DECISION, MEASURED: STREAMTASK FIRST (2026-09-22)
+
+**WHAT THE LEDGER SAYS.** `NSURLSessionStreamTask` is ONE class (nine rows) plus ONE protocol (four doors) and
+no enums of its own. The WebSocket half is TWO classes (`NSURLSessionWebSocketTask`'s eight rows and
+`NSURLSessionWebSocketMessage`'s five) plus a protocol plus TWO enums whose fifteen cases this ledger already
+counts (the close codes arrive on a `swift.` page, and those are counted by the same rule as everything else).
+
+**AND NEITHER SHAPE IS THE SEAM'S, WHICH IS THE MEASUREMENT THAT DECIDES THE ORDER RATHER THAN THE TASTE.** The
+session's execution path is a REQUEST and a RESPONSE through `NSURLProtocol`, and a duplex stream is nobody's
+request - so WHICHEVER LANDS FIRST MUST BUILD THE SAME PREREQUISITE: a CONNECTED SOCKET INSIDE A TASK, with
+non-blocking reads and writes, timeouts, cancellation and one ending. What makes that a slice rather than a
+project is how much of it already exists:
+
+  * **`NSSocketPort` (W6) ALREADY CALLS `socket()`, `bind()` AND `connect()`** in this library, so `connect(2)`
+    is not new ground;
+  * the run loop's descriptor source and its fd-based wait ship (W6a), and so do `NSStream`, `NSInputStream`
+    and `NSOutputStream` - which is exactly what `-captureStreams` hands a caller;
+  * **libssl AND libcrypto ARE ALREADY ON THE LIBRARY'S LINK LINE** (because curl is), so a raw TLS client adds
+    NO dependency, and the upgrade is verifiable ON ITS OWN: this tree can run `openssl s_server`
+    (`.build/libressl-prefix/bin/openssl`, the TLS server the transport plan already named);
+  * the session, the task state machine, the delegate-queue hop, the metrics record and the probe-as-its-own-
+    server pattern all ship as of §52-§56.
+
+**WHAT EACH ADDS ON TOP OF THAT SHARED PREREQUISITE:**
+
+  * **StreamTask IS THE PRIMITIVE:** read and write with a minimum length, a maximum length and a timeout,
+    `-closeRead` / `-closeWrite` (a half-close, the asymmetry `NSStream` already models), `-captureStreams`,
+    and the two TLS doors. NO WIRE PROTOCOL - the behaviour is the socket's - and its delegate reports four
+    states: read closed, write closed, a better route, became-streams.
+  * **WebSocket IS A PROTOCOL ON TOP:** the RFC 6455 upgrade (one SHA-1 and one base64 away, and both are
+    already available - `libcrypto` for the digest, `NSData`'s base64 for the encoding), masking,
+    fragmentation, control frames, close codes, messages as data or as text, and four doors with real states
+    to get wrong.
+
+**CHOSEN (user, 2026-09-22): STREAMTASK FIRST.** The substrate is built once, by the class whose public surface
+IS the substrate; the WebSocket task then becomes a protocol layer rather than a second socket implementation;
+and the riskiest piece - a TLS upgrade on a raw descriptor - is verified before anything is built on it. **The
+counter-argument is recorded because it is real and is the whole of the other option: a StreamTask is a
+PRIMITIVE, so nothing a user of this system does changes when it lands, while a WebSocket client is a
+CAPABILITY.** The ordering above is the answer to a different question - where does the FAMILY go next - and it
+does not pretend the primitive is a feature.
