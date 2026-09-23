@@ -280,6 +280,10 @@ static size_t fn_curl_header_discard(char *ptr, size_t size, size_t nmemb, void 
 	if (_transfer != NULL) {
 		((FNCurlTransfer *)_transfer)->stopped = 1;
 	}
+	/* AND A CACHE HIT HAS NO TRANSFER TO REACH, which is how a cancelled response still delivered its body:
+	 * the disposition door cancels the task, -stopLoading is called, and the hit path below carried on
+	 * because the flag it would have read did not exist yet. This one does. */
+	_hitStopped = 1;
 }
 
 - (void)fnPerformTransfer
@@ -305,9 +309,22 @@ static size_t fn_curl_header_discard(char *ptr, size_t size, size_t nmemb, void 
 		NSCachedURLResponse *cached = [[NSURLCache sharedURLCache] cachedResponseForRequest:request];
 
 		if(cached != nil) {
+			/* THE RESPONSE GOES THROUGH THE SAME DOOR A LIVE ONE DOES, which is where a delegate gets to
+			 * CANCEL it - and THEN THE HIT MUST STOP, exactly as the live path stops when its write callback
+			 * sees the flag. Without this the cancel was honoured by the task and ignored by the protocol, so
+			 * a cancelled response delivered its body anyway. */
 			[_client URLProtocol:self
 			    didReceiveResponse:[cached response]
 			     cacheStoragePolicy:[cached storagePolicy]];
+			/* THE IVAR, NOT A FIELD OF THIS STRUCT: -stopLoading runs on ANOTHER thread with no transfer in
+			 * hand, so the flag it can write is the object's - and reading a struct field nothing writes is
+			 * exactly the mistake that made the first version of this fix do nothing (and the same shape as
+			 * the cache's own setter, for the third time in this session). */
+			if(_hitStopped) {
+				[transfer.headerBytes release];
+				[pool release];
+				return;
+			}
 			[_client URLProtocol:self didLoadData:[cached data]];
 			[_client URLProtocolDidFinishLoading:self];
 			[transfer.headerBytes release];

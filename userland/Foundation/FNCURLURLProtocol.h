@@ -52,6 +52,10 @@ NS_ASSUME_NONNULL_BEGIN
 	 * able to reach a transfer it did not create, so the pointer lives here and the struct itself is
 	 * the thread's. It is `void *` because the struct is this library's own business. */
 	void *_transfer;
+	/* SET BY -stopLoading EVEN WHEN THERE IS NO TRANSFER, because a CACHE HIT is delivered without one and
+	 * still has to be cancellable: the response goes through the disposition door, a delegate may cancel it,
+	 * and without this flag the hit carried on and delivered the body anyway (§49.3). */
+	unsigned int _hitStopped:1;
 }
 
 @end

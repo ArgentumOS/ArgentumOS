@@ -9613,3 +9613,27 @@ moving on every request.
 still receives a response, still receives the body, still receives the ending - which is why
 `-URLProtocol:cachedResponseIsValid:` is a door of its own rather than a flag on a response, and why a
 delegate cannot tell a hit from a miss except by the order it sees them in.
+
+### §49.3 — A CACHE HIT MUST STOP WHEN THE CLIENT CANCELS IT (2026-09-21)
+
+**THE HOOKS BROKE A PASSING CASE, AND THE PROBE THAT CAUGHT IT WAS NOT THE ONE WRITTEN FOR THEM.** The tier
+went 66/66 → 66/67 the moment the hooks landed: `foundation_urlsession_task`'s
+`disposition-cancel-withholds-the-body` came back FAIL, because **a cancelled response still delivered its
+body.** The reason is structural rather than subtle: the LIVE path is held at the head of the response by the
+disposition door and then stopped by a flag its write callback reads, but **a cache hit has no transfer for
+`-stopLoading` to reach** - so the delegate cancelled the response, the task was cancelled, and the hit path
+carried on and delivered the data anyway. The response door is the same door; the STOP was not.
+
+**THE FIX IS ONE FLAG IN THE OBJECT RATHER THAN IN THE TRANSFER, and the first attempt at it did nothing at
+all** - which is the part worth recording: `-stopLoading` wrote an IVAR while the hit path read a FIELD OF THE
+LOCAL STRUCT, so the flag that was set and the flag that was read were two different variables, and the case
+stayed red. **THAT IS THE THIRD TIME IN THIS SESSION the same mistake has produced a door that does nothing**
+(the cache's own shared-instance setter and one other); each time it looked correct in review and each time
+the fix was to have ONE slot that both sides read. The struct field is gone, the ivar is the only flag, and
+the comment says why.
+
+**THE LESSON FOR THE SLICE, WHICH IS LARGER THAN THE BUG:** a cache is not a layer BESIDE the transport, it is
+a second ROAD INTO the same client, and every door the live road passes through has to be passed through by
+the cached one - including the ones that exist to STOP it. The cache's own probe could not find this, because
+its delegate does not cancel; the session's probe found it because it does, and the two probes together cover
+far more than either.
