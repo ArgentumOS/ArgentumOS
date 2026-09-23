@@ -28,14 +28,14 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  138   open   58   struck   77
+#   class      shipped  139   open   57   struck   77
 #   protocol   shipped   18   open   13   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped   91   open   52   struck   17
-#   case       shipped  492   open  642   struck  168
+#   enum       shipped   93   open   50   struck   17
+#   case       shipped  498   open  636   struck  168
 #   func       shipped   72   open   63   struck   54
-#   var        shipped  135   open  426   struck  353
-#   typealias  shipped   29   open   40   struck    7
+#   var        shipped  152   open  409   struck  353
+#   typealias  shipped   31   open   38   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -499,12 +499,12 @@ case	struck	NSGreaterThanOrEqualToComparison	NSSpecifierTest	App Support / Objec
 case	shipped	NSGreaterThanOrEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSGreaterThanPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	struck	NSHPUXOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
-case	open	NSHTTPCookieAcceptPolicyAlways	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies / Policies	-	objc
-case	open	NSHTTPCookieAcceptPolicyAlways	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy / Policies	-	objc
-case	open	NSHTTPCookieAcceptPolicyNever	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies / Policies	-	objc
-case	open	NSHTTPCookieAcceptPolicyNever	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy / Policies	-	objc
-case	open	NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies / Policies	-	objc
-case	open	NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy / Policies	-	objc
+case	shipped	NSHTTPCookieAcceptPolicyAlways	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies / Policies	-	objc
+case	shipped	NSHTTPCookieAcceptPolicyAlways	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy / Policies	-	objc
+case	shipped	NSHTTPCookieAcceptPolicyNever	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies / Policies	-	objc
+case	shipped	NSHTTPCookieAcceptPolicyNever	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy / Policies	-	objc
+case	shipped	NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies / Policies	-	objc
+case	shipped	NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy / Policies	-	objc
 case	struck	NSHourCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSHourCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	open	NSISO2022JPStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1410,7 +1410,7 @@ class	open	NSFileWrapper		Files and Data Persistence / Managed file access	-	obj
 class	shipped	NSFormatter		Fundamentals / Custom formatters	-	objc
 class	struck	NSGarbageCollector		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSGetCommand		App Support / Script Commands	declined	objc
-class	open	NSHTTPCookie		Networking / Essentials / Creating a session / Setting cookie policies	-	objc
+class	shipped	NSHTTPCookie		Networking / Essentials / Creating a session / Setting cookie policies	-	objc
 class	open	NSHTTPCookieStorage		Networking / Cookies	-	objc
 class	shipped	NSHTTPURLResponse		Networking / Requests and responses	-	objc
 class	shipped	NSHashTable		Fundamentals / Pointer Collections	-	objc
@@ -1672,8 +1672,8 @@ enum	open	NSGrammaticalNumber	NSMorphology	Fundamentals / Automatic grammar agre
 enum	open	NSGrammaticalPartOfSpeech	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
 enum	open	NSGrammaticalPerson		Reference / Enumerations	-	objc
 enum	open	NSGrammaticalPronounType		Reference / Enumerations	-	objc
-enum	open	NSHTTPCookieAcceptPolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies	-	objc
-enum	open	NSHTTPCookieAcceptPolicy	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy	-	objc
+enum	shipped	NSHTTPCookieAcceptPolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies	-	objc
+enum	shipped	NSHTTPCookieAcceptPolicy	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy	-	objc
 enum	shipped	NSISO8601DateFormatOptions	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants	-	objc
 enum	open	NSInlinePresentationIntent	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 enum	struck	NSInsertionPosition	NSPositionalSpecifier	App Support / Object Specifiers / Constants	declined	objc
@@ -2286,8 +2286,8 @@ typealias	open	NSFileAttributeKey	NSFileManager	Files and Data Persistence / Fil
 typealias	open	NSFileAttributeType	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 typealias	open	NSFileProtectionType	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 typealias	open	NSFileProviderServiceName	NSFileManager	Files and Data Persistence / File system operations / Accessing file provider services	-	objc
-typealias	open	NSHTTPCookiePropertyKey	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs	-	objc
-typealias	open	NSHTTPCookieStringPolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Securing cookies	-	objc
+typealias	shipped	NSHTTPCookiePropertyKey	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs	-	objc
+typealias	shipped	NSHTTPCookieStringPolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Securing cookies	-	objc
 typealias	shipped	NSHashTableOptions	NSHashTable	Fundamentals / Pointer Collections / Constants	-	objc
 typealias	open	NSItemProviderCompletionHandler	NSItemProvider	App Support / Attachments / Constants	-	objc
 typealias	open	NSItemProviderLoadHandler	NSItemProvider	App Support / Attachments / Constants	-	objc
@@ -2509,27 +2509,27 @@ var	open	NSGrammarCorrections	NSSpellServer	Fundamentals / Spelling and Grammar 
 var	open	NSGrammarRange	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
 var	open	NSGrammarUserDescription	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
 var	struck	NSGregorianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
-var	open	NSHTTPCookieComment	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	open	NSHTTPCookieCommentURL	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	open	NSHTTPCookieDiscard	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	open	NSHTTPCookieDomain	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	open	NSHTTPCookieExpires	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
+var	shipped	NSHTTPCookieComment	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
+var	shipped	NSHTTPCookieCommentURL	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
+var	shipped	NSHTTPCookieDiscard	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
+var	shipped	NSHTTPCookieDomain	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
+var	shipped	NSHTTPCookieExpires	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
 var	struck	NSHTTPCookieManagerAcceptPolicyChangedNotification	NSHTTPCookieStorage	Networking / Cookies / Tracking cookie storage changes	deprecated	swift-page
 var	struck	NSHTTPCookieManagerAcceptPolicyChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
 var	open	NSHTTPCookieManagerCookiesChangedNotification	NSHTTPCookieStorage	Networking / Cookies / Tracking cookie storage changes	-	swift-page
 var	open	NSHTTPCookieManagerCookiesChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSHTTPCookieMaximumAge	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	open	NSHTTPCookieName	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	open	NSHTTPCookieOriginURL	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	open	NSHTTPCookiePath	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	open	NSHTTPCookiePort	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	open	NSHTTPCookieSameSiteLax	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Securing cookies / Policies	-	objc
-var	open	NSHTTPCookieSameSitePolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	open	NSHTTPCookieSameSiteStrict	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Securing cookies / Policies	-	objc
-var	open	NSHTTPCookieSecure	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	open	NSHTTPCookieSetByJavaScript	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Type Properties	-	objc
-var	open	NSHTTPCookieValue	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	open	NSHTTPCookieVersion	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
+var	shipped	NSHTTPCookieMaximumAge	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
+var	shipped	NSHTTPCookieName	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
+var	shipped	NSHTTPCookieOriginURL	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
+var	shipped	NSHTTPCookiePath	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
+var	shipped	NSHTTPCookiePort	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
+var	shipped	NSHTTPCookieSameSiteLax	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Securing cookies / Policies	-	objc
+var	shipped	NSHTTPCookieSameSitePolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
+var	shipped	NSHTTPCookieSameSiteStrict	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Securing cookies / Policies	-	objc
+var	shipped	NSHTTPCookieSecure	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
+var	shipped	NSHTTPCookieSetByJavaScript	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Type Properties	-	objc
+var	shipped	NSHTTPCookieValue	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
+var	shipped	NSHTTPCookieVersion	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
 var	struck	NSHTTPPropertyErrorPageDataKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
 var	struck	NSHTTPPropertyHTTPProxy	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
 var	struck	NSHTTPPropertyRedirectionHeadersKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc

@@ -169,5 +169,6 @@
 #import <Foundation/NSURLSessionTask.h>
 #import <Foundation/NSURLSession.h>
 #import <Foundation/NSHTTPURLResponse.h>
+#import <Foundation/NSHTTPCookie.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */
