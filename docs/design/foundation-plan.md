@@ -9445,3 +9445,40 @@ task-level sibling. That is a reading of the doc's cross-references, NOT yet exe
 regression risk - they reach into a class landed in W7 slice 2c - so the next step is to CONFIRM THE CLAIM
 AGAINST THE CLASS before writing against it, which is the same "read it, do not recall it" rule that has
 now corrected five things in this unit's neighbourhood.
+
+### §48.5 — THE DELEGATE CLAIM IS VERIFIED, AND IT EXPOSED THE REAL QUESTION (2026-09-21)
+
+**§48.4 SAID THE CLAIM ABOUT THE TWO DELEGATE DOORS WAS A READING OF THE DOCUMENTATION'S CROSS-REFERENCES
+RATHER THAN A FACT ABOUT THIS TREE. IT IS NOW A FACT:** read against the shipped `NSURLSession.h`,
+`NSURLSessionDelegate` declares exactly two methods (`-URLSession:didBecomeInvalidWithError:` and
+`-URLSessionDidFinishEventsForBackgroundURLSession:`) and `NSURLSessionTaskDelegate` carries one of its own -
+**neither declares a challenge door.** The hierarchy is Apple's
+(`NSURLSessionDelegate` → `NSURLSessionTaskDelegate` → `NSURLSessionDataDelegate`), so the two doors to add
+are `-URLSession:didReceiveChallenge:completionHandler:` on the session protocol and
+`-URLSession:task:didReceiveChallenge:completionHandler:` on the task protocol, and nothing about the shape
+was a guess.
+
+**AND THE VERIFICATION EXPOSED THE QUESTION THAT MATTERS MORE THAN THE DOORS: WHERE DOES A CHALLENGE COME
+FROM IN THIS LIBRARY?** A door is a declaration plus a dispatch, and a dispatch needs a caller. The obvious
+answer - "the transport raises it" - is NOT available as stated, because **libcurl answers HTTP
+authentication ITSELF**: handed a password it retries internally, and it has no hook that asks the embedding
+application whether to continue. So there is no curl callback that surfaces a challenge, and a door nothing
+can raise would be a declaration pretending to be a feature.
+
+**THE FAITHFUL DESIGN IS AVAILABLE, AND IT IS SMALLER THAN IT LOOKS - recorded here so the next session
+starts from it rather than rediscovering it.** A 401 IS A RESPONSE, and curl returns it as one when no
+credential was supplied and failure-on-error is off. So the bridge can
+
+  1. see a 401 with a `WWW-Authenticate` header,
+  2. build an `NSURLProtectionSpace` from the header (realm and method are right there) and a challenge
+     around it, with `previousFailureCount` and the proposed credential it can actually know,
+  3. ask the delegate through the door - which is exactly why the door exists,
+  4. act on the disposition: `UseCredential` re-issues ONCE with the credential, `Cancel` fails the task,
+     and the others do what their names say,
+  5. and never loop: the attempt count is the guard, because a server that always 401s must not spin.
+
+**THAT IS THE SLICE'S REMAINING WORK, AND IT IS THE PART THAT TOUCHES `NSURLSession` AND THE BRIDGE
+TOGETHER** - which is precisely why this section stops at the design instead of starting to write it: the
+doors are declarations, the loop is behaviour, and the difference between them is where the regression risk
+lives. §48.4's warning stands and is now grounded: the claim was verified, the risk was not reduced by
+verifying it.
