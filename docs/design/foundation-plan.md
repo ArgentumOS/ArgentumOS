@@ -10206,3 +10206,75 @@ counter-argument is recorded because it is real and is the whole of the other op
 PRIMITIVE, so nothing a user of this system does changes when it lands, while a WebSocket client is a
 CAPABILITY.** The ordering above is the answer to a different question - where does the FAMILY go next - and it
 does not pretend the primitive is a feature.
+
+## §58 — THE STREAMTASK SLICE, DESIGNED BEFORE IT IS BUILT (2026-09-22)
+
+**THE SURFACE IS ELEVEN NAMES AND ONE REFUSAL**, measured from the two documentation pages rather than recalled
+(names and abstracts are what those pages publish - §55):
+
+  * **`NSURLSessionStreamTask`, a SUBCLASS OF `NSURLSessionTask`** - so the identifier, the state machine, the
+    ending, the error and the metrics record all arrive for free - with SEVEN doors:
+    `-readDataOfMinLength:maxLength:timeout:completionHandler:`, `-writeData:timeout:completionHandler:`,
+    `-captureStreams`, `-closeRead`, `-closeWrite`, `-startSecureConnection`, `-stopSecureConnection`;
+  * **`NSURLSessionStreamDelegate`, a SUBCLASS OF `NSURLSessionTaskDelegate`**, with FOUR doors:
+    `-URLSession:readClosedForStreamTask:`, `-URLSession:writeClosedForStreamTask:`,
+    `-URLSession:betterRouteDiscoveredForStreamTask:`, `-URLSession:streamTask:didBecomeInputStream:outputStream:`;
+  * **TWO SESSION FACTORIES**, `-streamTaskWithHostName:port:` and `-streamTaskWithNetService:`. **THE SECOND IS
+    REFUSED BY NAME**, because its argument type is `NSNetService` - a Bonjour service rather than a socket, and
+    not a class this library ships.
+
+**THE PUBLISHED SEMANTICS, QUOTED, BECAUSE EACH ONE IS A RULE THIS SLICE HAS TO KEEP:**
+
+  * `minBytes` is "the minimum number of bytes to read", `maxBytes` "the maximum", and **the timeout is a
+    CANCEL**: "if the read is not completed within the specified interval, the read is canceled and the
+    [completion handler] is called with an error. Pass 0 to prevent a read from timing out";
+  * the write's promise is deliberately WEAK and worth repeating where it will be read: **"there is no
+    guarantee that the remote side of the stream has received all of the written bytes at the time that [the
+    handler] is called, only that all of the data has been written to the kernel"** - which is precisely what
+    `-closeWrite` exists for, and why the probe's evidence for it is the FAR END's EOF;
+  * **BOTH HANDLERS RUN ON THE DELEGATE QUEUE**;
+  * and EVERY other door is a QUEUED OPERATION: "completes any enqueued reads and writes, and then" - closes the
+    read side, closes the write side, captures the streams, or starts/stops TLS. **THE QUEUE IS THE MODEL rather
+    than an implementation detail:** it is what makes `-closeWrite` mean "after what I already asked for", and
+    it is the first thing `-captureStreams` has to honour.
+
+**THE PREREQUISITE, DESIGNED: A CONNECTED SOCKET INSIDE A TASK, WITH AN ORDERED QUEUE IN FRONT OF IT.**
+
+  * **A WORKER THREAD PER RUNNING STREAM TASK** - the shape the curl bridge uses for a transfer, because this
+    library has no event loop of its own to lend a task. It resolves the host (`getaddrinfo`, which musl
+    already gives the library), connects, and then serves the queue;
+  * **`poll(2)` WITH THE NEAREST DEADLINE AS ITS TIMEOUT**: readability completes a read, writability a write,
+    and a deadline expires the operation that set it - AS A CANCEL, which is what the parameter says;
+  * **THE QUEUE IS SERIAL AND ORDERED**, and a queue-ordered door is an operation like any other; that is the
+    whole reason `-closeWrite` cannot mean "now";
+  * **COMPLETION HANDLERS HOP TO THE DELEGATE QUEUE** through the helper every other door in this session
+    already uses, and run inline when there is no queue (§52's rule);
+  * **CANCELLATION IS THE TASK'S OWN**: `-cancel` closes the descriptor, fails what is queued, and ends the
+    task with `NSURLErrorCancelled` - one of the reasons §56's mass landed first.
+
+**AND THE TWO TLS DOORS ARE A REAL `-startSecureConnection`, NOT A PROMISE.** libssl is already on the
+library's link line (§57), so the operation wraps the descriptor in an `SSL_CTX`/`SSL` pair, performs the
+handshake, and every queued read and write afterwards goes through `SSL_read`/`SSL_write`. **IT IS VERIFIABLE IN
+THIS TREE, which is why this slice comes before the WebSocket half:** `openssl s_server` is built beside the
+library (`.build/libressl-prefix/bin/openssl`), so the probe can serve TLS on a loopback port with a
+certificate the probe itself mints.
+
+**THE PROBE IS ITS OWN SERVER ONCE MORE, AND IT IS WHERE THE SEMANTICS ARE PINNED (the acceptance):**
+
+  1. **A PLAIN LEG**: connect to a listener the probe owns, `-writeData:timeout:`, then
+     `-readDataOfMinLength:maxLength:timeout:` and assert the exact bytes the server answered with;
+  2. **`minBytes` IS A MINIMUM**: ask for more than has arrived, and assert NOTHING is delivered until it does
+     (the server sends the rest after a pause) - a read that returned early would still pass check 1;
+  3. **`maxBytes` IS A CAP**: ask for 4 with 16 available and assert exactly 4;
+  4. **THE TIMEOUT IS A CANCEL**: ask a silent server for 8 bytes with a timeout, assert the handler gets an
+     error - and that a `0` timeout does NOT fire;
+  5. **`-closeWrite` REACHES THE FAR END**: the server reads EOF, which is the only evidence a half-close
+     happened, because the write promise stops at the kernel;
+  6. **THE DELEGATE DOORS THAT CAN FIRE DO**: `-URLSession:readClosedForStreamTask:` after `-closeRead`, and
+     `-URLSession:streamTask:didBecomeInputStream:outputStream:` after `-captureStreams` (the one door that
+     HANDS THE TRANSPORT OVER, after the queue drains);
+  7. **A TLS LEG**: `-startSecureConnection` against the probe's `s_server`, then a read and a write THROUGH the
+     session, then `-stopSecureConnection`;
+  8. **AND THE REFUSALS ARE ASSERTED ABSENT**: `-streamTaskWithNetService:` (no `NSNetService`), and the two
+     delegate doors nothing here can raise - `-betterRouteDiscoveredForStreamTask:` needs a multipath route this
+     system does not have - each declared with its ground rather than left looking functional.
