@@ -9246,3 +9246,42 @@ Streams/WebSocket/metrics (5: `NSURLSessionStreamTask`, `NSURLSessionWebSocketTa
 `NSURLSessionWebSocketMessage`, and the two `…TaskMetrics` records). Of those three groups, the cache and
 the metrics pair need NO decision and NO prerequisite - which is the same test the cookie family passed
 before it went first.
+
+## §48 — W7 SLICE 4 IS THE CREDENTIAL FAMILY, AND ITS PERSISTENCE SEAM IS NAMED (2026-09-21)
+
+**CHOSEN (user, 2026-09-21): the credential family — starting with the keychain questions, and the questions
+turned out to be ONE narrow one.** W7's four remaining credential rows are `NSURLAuthenticationChallenge`,
+`NSURLCredential`, `NSURLCredentialStorage` and `NSURLProtectionSpace`, and reading `keychain-plan.md` to
+answer them split the family cleanly in two:
+
+  * **THREE ARE DECISION-FREE.** A challenge is mechanics (a realm, a method, a proposed credential); a
+    credential is a value (a user, a password, a persistence kind); a protection space is a value that
+    DESCRIBES where credentials apply. None of the three has anything to do with where bytes are stored.
+  * **ONE IS KEYCHAIN-BOUND, AND ONLY FOR PERSISTENCE.** `NSURLCredentialStorage` is a store keyed by
+    protection space, and Apple's keeps password credentials in the keychain — which is exactly the
+    connection `keychain-plan.md` §5 already foresaw, since LibreSSL client credentials are its first named
+    consumer.
+
+**SO THE DECISION TAKEN IS THE COOKIE STORE'S ONE LEVEL UP, AND FOR THE SAME REASON: `NSURLCredentialStorage`
+IS IN-MEMORY IN V1 AND THE KEYCHAIN IS THE NAMED PERSISTENCE SEAM.** The store holds credentials for the
+process life; nothing is persisted; the seam is a single place where a keychain-backed store can later be
+substituted. The alternative — doing the keychain first — was rejected as a SCOPE error rather than a wrong
+idea: `keychain-plan.md` is a whole unit (K0 through K4: store format, a daemon, a CLI, an account-password
+unlock, per-item ACLs, a first-access prompt, and identity strength that leans on bundle signing), it has
+nothing implemented, and letting W7 swallow it would make one unit's completion depend on another unit's
+existence. **The keychain stays its own unit with its own milestones, and this slice leaves it a door rather
+than an imitation.**
+
+**AND THE THREAT MODEL IS NOT WEAKENED BY THAT CHOICE, WHICH IS WHY IT IS SAFE TO MAKE.** `keychain-plan.md`
+§4 is explicit that the keychain does not defend against a malicious process running as the same user after
+unlock — the ACL prompt is a human decision, and there is no process isolation yet. An in-memory store is
+therefore not a weaker promise than the keychain's for the ONE thing this slice does, and pretending
+otherwise would be the kind of fidelity theatre the plan has avoided all along.
+
+**WHAT THE SLICE OWES, FOR THE RECORD:** the four classes above, their two status enums
+(`NSURLSessionAuthChallengeDisposition` and `NSURLCredentialPersistence`), the four credential-storage
+notification names and `NSURLAuthenticationMethod*` constants — every one of which is a NAME the ledger does
+not enumerate (it is symbol-level), so this slice opens with the same documented lookup §47.1 used, and the
+values are decided the same way §47.2 decided the cookie keys'. **The seam is the only thing in this slice
+that must not be guessed: where a keychain-backed store would be substituted, and what it would have to
+answer.**
