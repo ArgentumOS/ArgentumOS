@@ -185,8 +185,13 @@ int do_select(int nfds, fd_set *rfds, fd_set *wfds, fd_set *efds, fd_set *res_rf
 	int n, count;
 	struct inode *i;
 
-	count = 0;
 	for(;;) {
+		/* ARM BEFORE THE SCAN: the window between the scan and sleep()'s own registration is where a wake is
+		 * lost - kernel/sleep.c carries the argument - and the STATE CHANGE always precedes the wake, so a
+		 * registration made first cannot miss one. THE RUN LOOPS IN THIS TREE WAIT HERE, which is what makes
+		 * this the most load-bearing of the lot. */
+		sleep_arm(&do_select);
+		count = 0;
 		for(n = 0; n < nfds; n++) {
 			if(!current->fd[n]) {
 				continue;
@@ -213,9 +218,11 @@ int do_select(int nfds, fd_set *rfds, fd_set *wfds, fd_set *efds, fd_set *res_rf
 		}
 
 		if(count || !current->timeout || current->sigpending & ~current->sigblocked) {
+			sleep_disarm();
 			break;
 		}
-		if(sleep(&do_select, PROC_INTERRUPTIBLE)) {
+		if(sleep_commit(&do_select, PROC_INTERRUPTIBLE)) {
+			sleep_disarm();
 			return -EINTR;
 		}
 	}

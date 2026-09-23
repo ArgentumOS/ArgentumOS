@@ -311,6 +311,10 @@ static int epoll_do_wait(int epfd, struct epoll_event *events, int maxevents,
 	}
 
 	for(;;) {
+		/* ARM BEFORE THE SCAN: the window between the scan and sleep()'s own registration is where a wake is
+		 * lost - kernel/sleep.c carries the argument. THIS LOOP HAD A SECOND REASON TO BE CAREFUL: it takes no
+		 * `res_*` sets from the caller, so a wake consumed here costs nothing but a pass. */
+		sleep_arm(&do_select);
 		count = 0;
 		for(item = ep->items; item; item = item->next) {
 			if(count >= maxevents) {
@@ -355,9 +359,11 @@ static int epoll_do_wait(int epfd, struct epoll_event *events, int maxevents,
 		}
 
 		if(count || !current->timeout || current->sigpending & ~current->sigblocked) {
+			sleep_disarm();
 			break;
 		}
-		if(sleep(&do_select, PROC_INTERRUPTIBLE)) {
+		if(sleep_commit(&do_select, PROC_INTERRUPTIBLE)) {
+			sleep_disarm();
 			current->timeout = 0;
 			return -EINTR;
 		}

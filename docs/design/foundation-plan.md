@@ -10435,11 +10435,15 @@ CHANNEL and clears `sleep_address`, which is exactly the flag the other two read
 consumed rather than lost, a spurious wake just sends the loop around, and no entry can be unlinked twice.
 
 **WHAT IS STILL OWED, AND IT IS TWO THINGS - NAMED RATHER THAN IMPLIED:**
- * **THE SAME SHAPE ELSEWHERE.** `do_select` (the next loop down in the same file, and the wait this tree's own run
-   loops use), `epoll_wait`, and the BLOCKING READERS (`ipv4_recvfrom`, `unix_recvfrom`, the tty and the pipe) all
-   still check-then-sleep. Same window, same three-call cure.
+ * **THE SAME SHAPE ELSEWHERE, AND TWO OF THE FOUR ARE NOW DONE.** `sys_poll`, `do_select` (the wait this tree's own
+   RUN LOOPS use, which is what makes it the most load-bearing of the lot) and `epoll_wait` all arm before they
+   scan now. WHAT REMAINS IS THE BLOCKING READERS - `ipv4_recvfrom`, `unix_recvfrom`, the tty and the pipe - whose
+   loops are `while(!(p = peek_packet(...))) { sleep(...) }` with the same window between the peek and the sleep.
+   Same three-call cure, one loop at a time, each with its own error handling to preserve.
  * **A GATE.** A window between two instructions is not something one run can be relied on to hit, so the gate must
    REPEAT: a peer writing with NO delay (not the 300ms the existing leg uses), polled with no deadline, over many
    iterations, with the watchdog naming the iteration that parks. And by this session's own rule it must be
    MEASURED against the unfixed kernel before it may be called a gate - a leg that passes either way is a behaviour
-   test, which is exactly what the last one turned out to be.
+   test, which is exactly what the last one turned out to be. (A widening that makes the window easier to hit:
+   poll a LONG descriptor list with the socket FIRST, so the scan is still running when the peer writes - the wake
+   then lands after the socket has been looked at and before the registration, which is the window itself.)
