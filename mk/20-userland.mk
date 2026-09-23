@@ -1332,6 +1332,26 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# that includes <curl/curl.h> has to be able to find it.
 	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/curl"
 	@cp $(CURL_PREFIX)/include/curl/*.h "$(ROOTFS64)/System/Shared/Headers/curl/"
+	# --- libjpeg-turbo (third_party/libjpeg-turbo, tag 3.2.0, IJG + Modified BSD-3): the JPEG
+	# decoder behind CGImageCreateWithJPEGDataProvider (C5.3). Same staging rule as lcms2 and curl
+	# above — the glob carries the SONAME and the real file, and the bare `libjpeg.so` dev link is
+	# link-time only so it is skipped — and the same GATE: a missing prefix names its own fix rather
+	# than surfacing later as a link or load failure.
+	#
+	# AND THIS ONE IS NOT OPTIONAL THE WAY AN UNUSED LIBRARY WOULD BE. libcoregraphics.so.1 lists
+	# `libjpeg.so.62` among its NEEDED entries, so without these bytes EVERY guest program that links
+	# the graphics library fails AT LOAD — before its first instruction — rather than at some later
+	# JPEG call. That is why the rule exists even though nothing has asked for a JPEG yet.
+	@if [ ! -d "$(LIBJPEG_PREFIX)/lib" ]; then \
+		echo "libjpeg prefix missing - run tools/libjpeg-build.sh first"; \
+		exit 1; \
+	fi
+	@cp -a $(LIBJPEG_PREFIX)/lib/libjpeg.so.* "$(ROOTFS64)/System/Libraries/"
+	# ITS HEADERS, for the reason the others are staged: an on-guest rebuild of anything that
+	# includes <jpeglib.h> has to be able to find it — and jpeglib.h is not self-contained, so its
+	# three companions (jconfig.h, jmorecfg.h, jerror.h) travel with it, which is what the glob takes.
+	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/jpeg"
+	@cp $(LIBJPEG_PREFIX)/include/*.h "$(ROOTFS64)/System/Shared/Headers/jpeg/"
 	# THE CLI TOO (BUILD_CURL_EXE=ON): the L2 trust-store acceptance is a shell script driving an
 	# https fetch, and a shell cannot call a library.
 	#
