@@ -32,15 +32,34 @@ static void check(const char *name, BOOL held, NSString *why)
 }
 
 /* THE DELEGATE THAT ANSWERS, and it answers ONLY the first time: the attempt guard is the server's business
- * to test, so this hands over a credential whenever asked and the server refuses to ask twice anyway. */
+ * to test, so this hands over a credential whenever asked and the server refuses to ask twice anyway.
+ *
+ * AND IT COUNTS THE TRANSACTIONS (§52), which is the one property of the metrics that needs a CHALLENGED
+ * transfer to observe: one record per ATTEMPT, so this loop must report TWO. */
 @interface FNAnswerer : NSObject <NSURLSessionTaskDelegate>
 {
 	@public
 	int asked;
+	int metricsCalls;
+	long transactions;
 }
 @end
 
 @implementation FNAnswerer
+
+/* THE METRICS DOOR, IMPLEMENTED FOR THIS PROBE'S OWN REASON (§52): one record per ATTEMPT means this
+ * challenged-and-re-issued transfer must report TWO transactions, and this is where that is observed - the
+ * count is read from the record the DELEGATE was handed, not from a counter inside the bridge. */
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
+didFinishCollectingMetrics:(NSURLSessionTaskMetrics *)metrics
+{
+	(void)session;
+	(void)task;
+	metricsCalls++;
+	transactions = (long)[[metrics transactionMetrics] count];
+}
+
 - (void)URLSession:(NSURLSession *)session
 	      task:(NSURLSessionTask *)task
 didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
@@ -177,6 +196,12 @@ int main(void)
 	check("the-loop-terminates", done, @"a server that always asks must not spin the client");
 	check("the-attempt-guard-held", answerer->asked == 1,
 	      @"asked exactly once, so the second 401 would have ended it rather than looping");
+	/* AND THE METRICS SAW TWO TRANSACTIONS, which is the boundary the record's array exists for: the 401 and
+	 * the re-issue are two ATTEMPTS of one task - ONE delivery, TWO entries. The count is read from the
+	 * record the DELEGATE was handed, so this cannot pass on a bridge that merely counted to itself. */
+	check("the-reissue-is-two-transactions",
+	      answerer->metricsCalls == 1 && answerer->transactions == 2,
+	      @"one record per attempt: a challenged transfer reports two transactions of one task");
 	close(listener);
 
 	printf("FOUNDATION-AUTHLOOP RESULT ok=%d fail=%d\n", okc, failc);

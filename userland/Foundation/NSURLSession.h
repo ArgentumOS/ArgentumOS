@@ -130,6 +130,11 @@ typedef NS_ENUM(NSInteger, NSURLSessionResponseDisposition) {
 	NSURLSessionResponseBecomeStream = 3,
 };
 
+/* THE TASK'S OWN RECORD OF WHAT IT COST, and the door Apple declares for it. THE TYPE IS FORWARD DECLARED
+ * HERE because the protocol only passes a pointer: a delegate that reads the record includes Foundation.h,
+ * where the metrics header sits. */
+@class NSURLSessionTaskMetrics;
+
 @protocol NSURLSessionTaskDelegate <NSURLSessionDelegate>
 
 @optional
@@ -137,6 +142,19 @@ typedef NS_ENUM(NSInteger, NSURLSessionResponseDisposition) {
 - (void)URLSession:(NSURLSession *)session
 	      task:(NSURLSessionTask *)task
 didCompleteWithError:(nullable NSError *)error;
+
+/* WHAT THE TASK COST, AND IT ARRIVES BEFORE THE ENDING ABOVE - Apple's order, and the reason the delivery is
+ * a separate call rather than a parameter of it: a delegate that wants the numbers has them before it
+ * decides what the outcome meant.
+ *
+ * THE RECORD IS THE LOADING SYSTEM'S (§52): the PROTOCOL measured its transaction and handed it up through
+ * its own first-party door, and the SESSION assembled the task's record around it - its span, its redirect
+ * count, and its transactions in order. A task with no transaction to report still gets this call with an
+ * EMPTY LIST rather than no call at all: the door's contract is its PLACE in the sequence, not a promise that
+ * something was measured. */
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
+didFinishCollectingMetrics:(NSURLSessionTaskMetrics *)metrics;
 
 @end
 

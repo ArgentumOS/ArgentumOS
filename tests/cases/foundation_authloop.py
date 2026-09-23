@@ -15,6 +15,7 @@ CHECKS = (
     "and-not-in-plaintext",
     "the-loop-terminates",
     "the-attempt-guard-held",
+    "the-reissue-is-two-transactions",
 )
 
 

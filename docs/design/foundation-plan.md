@@ -9811,3 +9811,116 @@ still the next piece of behaviour - and its direction is now CHOSEN (user, 2026-
 `NSURLProtocolClient`**, the option that matches this seam's own precedent (the protocol reporting what it
 measured, as the challenge door already does), rather than the bridge writing the record onto the task or the
 session pulling after the fact. That decision is a door beside this one, so it lands as §52.
+
+## §52 — THE METRICS DELIVERY IS A CLIENT DOOR, AND THE MAPPING IS MADE EXACT (2026-09-22)
+
+**THE DOOR IS FIRST-PARTY AND OPTIONAL, AND THAT FOLLOWS FROM WHO WROTE IT.** Apple's URL loading system
+PRODUCES the metrics itself and publishes no door for a protocol to hand them over, so this one carries the
+`fn` prefix this library gives an extension (`-URLProtocol:fnDidCollectMetrics:`) and sits in an `@optional`
+section of `NSURLProtocolClient`: a protocol implementation written against Apple's protocol must keep
+working without it, and the bridge asks with `-respondsToSelector:` before reporting - the rule every other
+first-party door here keeps. **THE PAYLOAD IS THE PUBLIC RECORD** (`NSURLSessionTaskTransactionMetrics`), a
+transport-neutral Foundation value, so the seam learns nothing about curl.
+
+**WHAT THIS CHANGES ABOUT "THE SESSION IS THE ONLY WRITER", SAID RATHER THAN LEFT STANDING:** the writer
+surface stays the internal `fn` category, so A CALLER STILL CANNOT FABRICATE A MEASUREMENT - but the writer is
+now THE URL LOADING SYSTEM: the protocol fills the transaction record it measured, and the SESSION assembles
+the task's record around it. Any other reading would have made the bridge fabricate dates it never saw.
+
+**THE MAPPING, EXACT, BECAUSE §50.1 MEASURED THE SOURCES AND THIS IS WHERE THEY BECOME FIELDS.** libcurl
+reports DURATIONS and no absolute instants, so the transaction's start - the bridge's own capture, taken
+immediately before `curl_easy_perform` for each attempt - is added to every elapsed value:
+
+| curl reports | the field it fills | the rule |
+| --- | --- | --- |
+| (the bridge's capture) | `fetchStartDate` | when the transfer began; the base every other date is added to |
+| `NAMELOOKUP_TIME` | `domainLookupStartDate` / `domainLookupEndDate` | the start is the base and the end is base+value - **BOTH NIL when the value is 0**, because a phase with no duration did not happen (the record's own rule that nil is not zero) |
+| `CONNECT_TIME` | `connectStartDate` / `connectEndDate` | the start is the lookup's end when there was one and the base otherwise; both nil when 0 |
+| `APPCONNECT_TIME` | `secureConnectionEndDate` | nil when 0. **`secureConnectionStartDate` STAYS NIL**: curl reports the handshake's end and not its start (§50.1, and the records probe already pins it) |
+| `PRETRANSFER_TIME` | `requestStartDate` | nil when 0 |
+| `STARTTRANSFER_TIME` | `requestEndDate` **and** `responseStartDate` | the instant the first byte arrived is both the request finishing and the answer beginning: ONE MEASUREMENT IN TWO FIELDS, said rather than invented twice |
+| `TOTAL_TIME` | `responseEndDate` | |
+| `HEADER_SIZE` | `countOfResponseHeaderBytesReceived` | |
+| `SIZE_DOWNLOAD_T` | `countOfResponseBodyBytesReceived` and `…AfterDecoding` | the bridge decodes nothing separately, so the two are the same number - §50.1's own rule for the request's pair |
+| `SIZE_UPLOAD_T` | `countOfRequestBodyBytesSent` and `…BeforeEncoding` | likewise |
+| (nothing) | `countOfRequestHeaderBytesSent` | **0, AND DOCUMENTED**: the transport does not break the request's bytes out by header, and a count has no nil to say "not reported" with |
+| `PRIMARY_IP` | `remoteAddress` | `localAddress` stays NIL |
+| `HTTP_VERSION` | `networkProtocolName` | the transport's own lowercase spelling (`http/1.1` on this guest); `domainResolutionProtocol` stays Unknown (§50.1) |
+| `NUM_CONNECTS == 0` | `isReusedConnection` | a transfer that dialled nothing reused its connection |
+| (the platform) | `isCellular` / `isExpensive` / `isConstrained` / `isMultipath` | NO: they describe the network a machine is on, which is a fact about THIS system rather than about the transfer |
+| (the outcome) | `resourceFetchType` | NetworkLoad for a transfer that ran |
+
+**WHERE A TRANSACTION BOUNDARY IS, AND IT IS NOT THE TASK'S:** one record per `curl_easy_perform`, so a
+challenge-answered re-issue is TWO transactions of one task - which is what Apple's array is for. The TASK's
+record is the session's: `taskInterval` from the transfer's creation to its ending, `redirectCount` from the
+redirects the session was told about, and `transactionMetrics` the protocol's reports in order.
+
+**ORDER AND THREAD.** `-URLSession:task:didFinishCollectingMetrics:` is delivered BEFORE
+`-didCompleteWithError:` (Apple's order) through the SAME delegate-queue hop, so a serial queue keeps it
+(the two blocks are enqueued in order); with no delegate queue both calls are synchronous and in order. A
+delegate that implements neither is not asked, and the collection happens either way.
+
+**TWO NARROWINGS RECORDED RATHER THAN HIDDEN.** (1) `LocalCache` is UNREACHABLE from here: a cache hit is
+served by the session without a transfer (§49's hooks), so there is no transaction to report - Apple would
+report one carrying `LocalCache`, and filling it belongs with the cache hooks rather than with this door.
+(2) `redirectCount` can only be 0 today, because this row FAILS the task on a redirect (`-wasRedirectedToRequest:`
+still ends it with the library's own error); the field is filled from what the session actually saw, so the
+day redirects are followed the number is already right.
+
+### §52.1 — A DEFECT OF §50.3'S CLASS, FOUND IN THE PROTOCOL NEXT DOOR (RECORDED, NOT FIXED HERE)
+
+**THE AUTHENTICATION DELEGATE DOORS ARE NOT DECLARED EITHER.** `grep didReceiveChallenge userland/Foundation/*.h`
+finds exactly ONE line - the REFUSED-BY-NAME comment in `NSURLSession.h` - and no declaration of
+`-URLSession:didReceiveChallenge:completionHandler:` or `-URLSession:task:didReceiveChallenge:completionHandler:`
+anywhere. **AND THE SESSION DISPATCHES TO THEM ANYWAY**, through an `(id)` cast
+(`NSURLSession.m:535` and `:543`), which is the same hole §50.3 was: a caller cannot learn the doors exist, a
+compiler cannot check a call to them, and nothing fails to draw attention to either. The probes implement
+selectors no header declares (`foundation_challengedoor.m`, `foundation_authloop.m`), and
+`foundation_urlsession.m`'s `excluded[]` still lists both as refused - **for a reason that expired in §48**,
+when `NSURLAuthenticationChallenge` and its family shipped.
+
+**SO IT IS THE SIXTH-SEVENTH TIME THIS UNIT HAS FOUND A REFUSAL THAT OUTLIVED ITS GROUND**, and the shape of
+the fix is the one §50.3 established: declare the two doors on the protocols Apple declares them on
+(`NSURLSessionDelegate` and `NSURLSessionTaskDelegate`), correct the stale comment, move both selectors out of
+the session probe's `excluded[]`, and check the DECLARATION rather than the behaviour (the loop already passes
+its ten checks). It is a slice of its own - §53 - and it is NOT folded into §52 because the metrics door's
+`@optional` first-party section and these two Apple-declared members are different kinds of change.
+
+### §52.2 — §52 LANDS, AND THE PROBE IS WHAT MAKES THE MAPPING REAL (2026-09-22)
+
+**LANDED.** The door is declared, the bridge fills a record per attempt from `CURLINFO_*` before
+`curl_easy_cleanup`, the session assembles the task's record and delivers it before the ending, and a NEW UNIT
+- `foundation_metricsdelivery`, fourteen checks plus the case's three - runs one real transfer through a probe
+that is its own HTTP server and reads the PUBLIC record back out of the delegate. Green on the first guest run.
+
+**WHAT THE FOURTEEN CHECKS ESTABLISH, so this is not a summary of itself:**
+
+  * the door is carried and delivered ONCE, and BEFORE `-didCompleteWithError:` - asserted from a single
+    ordered log of both ending calls, which is the only way "before" can be a fact rather than a reading of
+    the code;
+  * one transfer reports ONE transaction, and it names the exchange (`/measure`, 200);
+  * the transport facts are the ones the transfer used: `127.0.0.1`, `http/1.1`, `NetworkLoad`;
+  * the instants go FORWARDS (`fetchStart < responseEnd`, `responseStart <= responseEnd`), which is what
+    distinguishes real dates from a duration wearing a date's clothes;
+  * the byte counts are the fixture's own length for the body, non-zero for the headers received, and ZERO for
+    the request header count - the "no source" field pinned as absent rather than left to a comment;
+  * the task's span COVERS its transaction (`interval.start <= fetchStart`, `interval.end >= responseEnd`),
+    with a redirect count of 0;
+  * and the documented absences hold AT THE DELIVERY LEVEL rather than only in the records probe:
+    `secureConnectionStartDate`, `localAddress`, `domainResolutionProtocol` and the four network booleans.
+
+**AND THE PER-ATTEMPT BOUNDARY IS VERIFIED WHERE IT CAN BE OBSERVED, WHICH IS A CHALLENGED TRANSFER.** §52
+claims one record per `curl_easy_perform`, so a 401 that is answered and re-issued is TWO transactions of one
+task - and no probe of a straight fetch can see that. So the authentication loop's own unit now counts them:
+`foundation_authloop` gained a metrics door and the check `the-reissue-is-two-transactions` (ONE delivery, TWO
+entries), read from the record the DELEGATE was handed rather than from a counter inside the bridge - which is
+a check a bridge counting to itself could not pass.
+
+**ONE PIECE OF SCRATCH WAS REMOVED ON THE WAY THROUGH, and it was not mine:** `NSURLSession.m` carried three
+`FNSESSION-DIAG` `printf`s in the task factory - on the path EVERY task takes - left by an earlier session's
+diagnosis. They are gone.
+
+**AND THE BUILD PRODUCED §52.1's EVIDENCE FROM THE COMPILER RATHER THAN FROM A GREP:** compiling
+`NSURLSession.m` emits `-Wobjc-method-access` TWICE, for the two authentication delegate doors the session
+messages through an `(id)` cast. That is the same defect class §50.3 was, stated by the toolchain, and it is
+the first thing §53 should make disappear.

@@ -90,6 +90,9 @@
  * declaration that needed the full type here would be exactly the cycle §50.3 set out to remove. */
 @class NSURLAuthenticationChallenge;
 @class NSURLCredential;
+/* And the metrics record the first-party door below carries (§52): forward declared for the same reason -
+ * only a POINTER is passed, and the header of the type is for whoever reads the record. */
+@class NSURLSessionTaskTransactionMetrics;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -107,8 +110,9 @@ typedef NS_ENUM(NSInteger, NSURLSessionAuthChallengeDisposition) {
 	NSURLSessionAuthChallengeRejectProtectionSpace = 3
 };
 
-/* HOW A PROTOCOL REPORTS BACK — the seven calls an implementation makes, and the caller's side of the
- * seam. EVERY MEMBER IS REQUIRED in Apple's declaration, so there is no -respondsToSelector: dance here.
+/* HOW A PROTOCOL REPORTS BACK — the seven calls APPLE DECLARES, and the caller's side of the seam. EVERY
+ * ONE OF THOSE IS REQUIRED in Apple's declaration, so there is no -respondsToSelector: dance for them; the
+ * one door at the end that Apple does NOT declare is first-party and optional, and says so itself (§52).
  *
  * `-URLProtocolDidFinishLoading:` HAS NO `protocol:` PARAMETER, AND THAT IS APPLE'S OWN INCONSISTENCY
  * rather than a transcription slip: the other six carry the protocol and this one does not. It is kept,
@@ -150,6 +154,24 @@ typedef NS_ENUM(NSInteger, NSURLSessionAuthChallengeDisposition) {
 /* AND THE END — one of these two, and this one carries no protocol, as Apple declares it. */
 - (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol;
 - (void)URLProtocol:(NSURLProtocol *)protocol didFailWithError:(NSError *)error;
+
+/* --- AND ONE DOOR APPLE DOES NOT DECLARE, which is why it is @optional AND why it carries this library's
+ * `fn` prefix (§52). Apple's URL loading system PRODUCES the metrics itself and publishes no way for a
+ * protocol to hand them over; here the transport IS a protocol, so what it measured has to travel through
+ * the seam — and a first-party door named as ours is the honest shape for that:
+ *
+ *   * IT IS OPTIONAL, because a protocol implementation written against APPLE's protocol must keep working
+ *     without it. The bridge asks -respondsToSelector: before reporting — the rule every first-party door
+ *     in this library keeps — and no client is required to answer;
+ *   * THE PAYLOAD IS THE PUBLIC RECORD, so the seam still learns nothing about curl: WHAT was measured
+ *     travels, HOW it was measured stays in the transport;
+ *   * WHEN IT ARRIVES: ONCE PER TRANSACTION and before the ending above — a transfer that was challenged
+ *     and re-issued reports two, which is what Apple's array of transactions is for — and the SESSION is
+ *     what turns those reports into the task's own record and delivers it to the delegate. */
+@optional
+
+- (void)URLProtocol:(NSURLProtocol *)protocol
+    fnDidCollectMetrics:(NSURLSessionTaskTransactionMetrics *)metrics;
 
 @end
 

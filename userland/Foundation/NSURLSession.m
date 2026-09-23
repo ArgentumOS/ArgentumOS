@@ -8,6 +8,9 @@
 #import <Foundation/NSURLSession.h>
 #import <Foundation/NSHTTPURLResponse.h>
 #import <Foundation/NSURLCache.h>
+/* WHAT THE ENDING DELIVERS FIRST (§52): the session is what assembles the task's record, so it needs the
+ * public getters AND the internal `fn` writer category. */
+#import <Foundation/NSURLSessionTaskMetrics.h>
 #import <Foundation/NSURLSessionTask.h>
 #import <Foundation/NSURLSessionConfiguration.h>
 #import <Foundation/NSURLRequest.h>
@@ -51,6 +54,13 @@
 	NSURLSessionTask *_task;
 	NSURLSession *_session;
 	NSCondition *_decision;	/* the response decision's wait, owned by the transfer so it outlives a call */
+	/* THE TASK'S RECORD, ACCUMULATED AS THE PROTOCOL REPORTS IT (§52): ONE ENTRY PER TRANSACTION (a
+	 * challenge-answered re-issue is a second one), the instant the transfer began — which is what the
+	 * task's own span is measured from — and how many redirects this loading system was told about. The
+	 * transactions are the PROTOCOL's measurements; the assembly around them is this class's. */
+	NSMutableArray *_transactions;
+	NSDate *_started;
+	NSInteger _redirects;
 }
 - (instancetype)initWithTask:(NSURLSessionTask *)task session:(NSURLSession *)session;
 @end
@@ -59,6 +69,10 @@
  * declared, and this category is the ending helper its implementations call. */
 @interface FNSessionTransfer (FNSessionTransferEnding)
 - (void)fnTellTheTaskDelegate;
+/* AND THE DELIVERY THAT COMES FIRST AT THE ENDING, which is why it is its own method rather than a block
+ * inside the other one: the ORDER is the contract (§52), and a separate call is something a reader of the
+ * ending can see. */
+- (void)fnTellMetrics;
 @end
 
 
@@ -86,6 +100,11 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 	if (self != nil) {
 		_task = [task retain];
 		_session = session;	/* unretained */
+		/* THE RECORD'S CLOCK STARTS HERE (§52): this object is made immediately before -startLoading, so
+		 * this instant IS when the task began to run - which is what the task's span is measured from -
+		 * and the array is where the protocol's per-transaction reports land. */
+		_started = [[NSDate date] retain];
+		_transactions = [[NSMutableArray alloc] init];
 	}
 	return self;
 }
@@ -102,6 +121,18 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 {
 	(void)protocol;
 	[_session fnAskForCredentialForTask:_task challenge:challenge completionHandler:completionHandler];
+}
+
+/* WHAT THE PROTOCOL MEASURED, KEPT UNTIL THE TASK ENDS (§52): the report is per TRANSACTION, so this is an
+ * APPEND and never a store - a transfer that was challenged and re-issued reports twice, and Apple's record
+ * carries one entry per transaction, in order. THE ASSEMBLY IS NOT HERE: the task's span and its redirect
+ * count belong to the ending, where its start and its outcome are both known - and a task that never ran a
+ * transfer reports an EMPTY list rather than nothing, because the door's contract is its place in the
+ * sequence. */
+- (void)URLProtocol:(NSURLProtocol *)protocol fnDidCollectMetrics:(NSURLSessionTaskTransactionMetrics *)metrics
+{
+	(void)protocol;
+	[_transactions addObject:metrics];
 }
 
 - (void)URLProtocol:(NSURLProtocol *)protocol
@@ -234,6 +265,49 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 	[_session fnTransferDidEnd:protocol];
 }
 
+/* THE METRICS GO FIRST, AND THE ORDER IS THE CONTRACT (§52): Apple delivers
+ * -URLSession:task:didFinishCollectingMetrics: BEFORE -URLSession:task:didCompleteWithError:, so a delegate
+ * that wants the numbers has them when it decides what the outcome meant. ON A DELEGATE QUEUE the order is
+ * kept by enqueueing this one first - the queue is expected to be SERIAL, as the header says - and with no
+ * queue both calls are synchronous and already in order.
+ *
+ * THE RECORD IS THE LOADING SYSTEM'S, ASSEMBLED ACROSS THE TWO THINGS THAT KNOW IT: the transactions are the
+ * PROTOCOL's (each one measured at the handle), and the span and the redirect count are this object's - the
+ * span from its own creation, which is when the task began to run, to this instant. */
+- (void)fnTellMetrics
+{
+	id <NSURLSessionTaskDelegate> delegate = (id <NSURLSessionTaskDelegate>)[_session delegate];
+	NSURLSessionTaskMetrics *metrics;
+	NSOperationQueue *queue;
+
+	if (![delegate respondsToSelector:@selector(URLSession:task:didFinishCollectingMetrics:)]) {
+		return;	/* no door means nothing is delivered - and nothing was measured FOR, either */
+	}
+	metrics = [[NSURLSessionTaskMetrics alloc] init];
+	[metrics fnSetTransactionMetrics:(_transactions != nil ? _transactions : [NSArray array])];
+	/* THE TASK'S SPAN IS ITS OWN AND NOT THE SUM OF ITS TRANSACTIONS: it runs from the start of the whole
+	 * task to its ending, and the gaps between transactions are part of what it took. */
+	[metrics fnSetTaskInterval:[[[NSDateInterval alloc] initWithStartDate:_started
+								     endDate:[NSDate date]] autorelease]];
+	[metrics fnSetRedirectCount:_redirects];
+
+	queue = [_session delegateQueue];
+	if (queue == nil) {
+		[delegate URLSession:_session task:_task didFinishCollectingMetrics:metrics];
+		[metrics release];
+		return;
+	}
+	/* THE SAME HOP, WITH THE SAME RETAINS: see the note in -URLProtocol:didLoadData:. */
+	[self retain];
+	[delegate retain];
+	[queue addOperationWithBlock:^{
+		[delegate URLSession:_session task:_task didFinishCollectingMetrics:metrics];
+		[metrics release];
+		[delegate release];
+		[self release];
+	}];
+}
+
 /* THE ENDING IS REPORTED TO THE TASK DELEGATE FOR BOTH OUTCOMES, and the error is the TASK'S rather than a
  * parameter of this method: that is what makes one door serve success and failure alike, which is how Apple
  * declares it and why a caller cannot forget the failure case. */
@@ -243,6 +317,10 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 	NSOperationQueue *queue;
 	NSError *error;
 
+	/* AND THE METRICS GO FIRST EVEN WHEN THE COMPLETION DOOR IS NOT IMPLEMENTED, which is why this call sits
+	 * ABOVE the guard rather than inside it: Apple declares the two as separate notifications, and a
+	 * delegate may implement either one. */
+	[self fnTellMetrics];
 	if (![delegate respondsToSelector:@selector(URLSession:task:didCompleteWithError:)]) {
 		return;
 	}
@@ -284,6 +362,11 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 						userInfo:nil];
 
 	(void)request;
+	/* THE REDIRECT COUNT IS THE TASK'S AND NOT A TRANSACTION'S (§52), so it is kept where the redirect is
+	 * DECIDED - here. This row still FAILS the task on a redirect rather than following it, so the number can
+	 * only be zero today; it is filled from what this loading system actually SAW, which is what makes it
+	 * right on the day redirects are followed instead. */
+	_redirects++;
 	(void)redirectResponse;
 	[_task fnProtocolDidFinishWithError:error];
 	[error release];
@@ -301,6 +384,11 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 {
 	[_task release];
 	[_decision release];
+	/* THE RECORD'S OWN STORAGE IS THIS OBJECT'S (§52), so it goes with it: the array of transactions and the
+	 * instant the task began. The records themselves are retained by the array, so releasing it releases
+	 * them - and once the task has ended there is nothing left that reads either. */
+	[_transactions release];
+	[_started release];
 	[super dealloc];
 }
 
@@ -416,11 +504,8 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 	task = [[NSURLSessionDataTask alloc] fnInitWithRequest:request
 						   identifier:_nextTaskIdentifier++
 					    completionHandler:completionHandler];
-	printf("FNSESSION-DIAG factory: task made, before fnSetSession\n");
 	[task fnSetSession:self];
-	printf("FNSESSION-DIAG factory: before addObject\n");
 	[_tasks addObject:task];
-	printf("FNSESSION-DIAG factory: after addObject\n");
 	return [task autorelease];
 }
 

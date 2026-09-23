@@ -6,10 +6,15 @@
  *
  * What a transfer cost: the instants it passed through, the bytes it moved, and what it moved them over.
  *
- * THESE ARE RECORDS A SESSION FILLS IN AND EVERYONE ELSE READS, which is Apple's shape: the properties are
- * readonly to a caller and the SESSION is the only writer. The writers are declared below as an internal
- * category with this library's `fn` prefix rather than by making the properties settable, because "a caller
- * cannot fabricate a measurement" is the whole point of the type.
+ * THESE ARE RECORDS THE URL LOADING SYSTEM FILLS IN AND EVERYONE ELSE READS, which is Apple's shape: the
+ * properties are readonly to a caller, and the writer surface is the internal category below - carrying this
+ * library's `fn` prefix rather than being settable properties, because "a caller cannot fabricate a
+ * measurement" is the whole point of the type.
+ *
+ * THE WRITER IS THE LOADING SYSTEM AND NOT THE SESSION ALONE (amended by §52): the PROTOCOL fills the
+ * transaction record it measured - it is the only thing that saw the transfer - and the SESSION assembles the
+ * task's record around it. The distinction matters, because the alternative - a session filling in numbers
+ * only the transport ever knew - is fabricating them.
  *
  * AND SOME FIELDS ARE NIL ON THIS SYSTEM RATHER THAN GUESSED (§50.1): the transport is libcurl, which reports
  * DURATIONS and not absolute instants, so a date is the transaction's start plus the elapsed value; and a
@@ -108,6 +113,9 @@ typedef NS_ENUM(NSInteger, NSURLSessionTaskMetricsDomainResolutionProtocol) {
 
 @property (readonly) NSInteger countOfRequestBodyBytesBeforeEncoding;
 @property (readonly) NSInteger countOfRequestBodyBytesSent;
+/* 0 MEANS "NOT REPORTED" FOR A COUNT, WHICH HAS NO NIL TO SAY IT WITH: the transport does not break the
+ * request's bytes out by header, so this one is 0 on this system and the header says so rather than inventing
+ * a number (§52). Every other count here has a real source. */
 @property (readonly) NSInteger countOfRequestHeaderBytesSent;
 @property (readonly) NSInteger countOfResponseBodyBytesAfterDecoding;
 @property (readonly) NSInteger countOfResponseBodyBytesReceived;
