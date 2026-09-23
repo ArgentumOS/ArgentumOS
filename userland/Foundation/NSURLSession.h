@@ -148,6 +148,18 @@ typedef NS_ENUM(NSInteger, NSURLSessionResponseDisposition) {
 	NSURLSessionResponseBecomeStream = 3,
 };
 
+/* WHICH KIND OF WEBSOCKET MESSAGE A MESSAGE IS (§59 slice 1), AND THIS ENUM IS HERE BECAUSE APPLE PUBLISHES IT
+ * ON NSURLSESSION'S PAGE. The other enum of that family, NSURLSessionWebSocketCloseCode, lives on
+ * NSURLSessionWebSocketTask's page and therefore in that header - the fidelity rule §59 records.
+ *
+ * THE VALUES ARE OURS (D2). Apple publishes the two case names and not their numbers, and this library's
+ * standing rule is that an enum whose values nobody publishes gets values WE choose and write down rather than
+ * values inferred from a third party's bindings. Declaration order is the choice: Data, then String. */
+typedef NS_ENUM(NSInteger, NSURLSessionWebSocketMessageType) {
+	NSURLSessionWebSocketMessageTypeData = 0,
+	NSURLSessionWebSocketMessageTypeString = 1,
+};
+
 /* THE TASK'S OWN RECORD OF WHAT IT COST, and the door Apple declares for it. THE TYPE IS FORWARD DECLARED
  * HERE because the protocol only passes a pointer: a delegate that reads the record includes Foundation.h,
  * where the metrics header sits. */

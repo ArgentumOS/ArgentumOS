@@ -3530,7 +3530,7 @@ vanishing.
 | **Networking / Authentication and credentials** | all classes shipped | — |
 | **Networking / Cache behavior** | all classes shipped | — |
 | **Networking / Cookies** | all classes shipped | — |
-| **Networking / Essentials** | 4 open | `NSURLSessionDownloadDelegate`, `NSURLSessionWebSocketDelegate`, `NSURLSessionWebSocketMessage`, `NSURLSessionWebSocketTask` |
+| **Networking / Essentials** | 3 open | `NSURLSessionDownloadDelegate`, `NSURLSessionWebSocketDelegate`, `NSURLSessionWebSocketTask` |
 | **Networking / Legacy** | ALL STRUCK: `NSURLAuthenticationChallengeSender`, `NSURLConnection`, `NSURLConnectionDataDelegate`, `NSURLConnectionDelegate`, `NSURLConnectionDownloadDelegate`, `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` | — |
 | **Networking / Local Network Services** | ALL STRUCK: `NSNetService`, `NSNetServiceDelegate` | — |
 | **Networking / Requests and responses** | all classes shipped | — |
@@ -10515,3 +10515,24 @@ green or not landing:
 **WHAT IS DELIBERATELY NOT DECIDED HERE:** whether slice 3's `-receiveMessageWithCompletionHandler:` must
 tolerate interleaved control frames arriving mid-message (RFC 6455 ALLOWS them, so a parser that refuses them is
 wrong for a compliant server) - that is a measurement against the raw peer in slice 2, not a preference.
+
+**SLICE 1 LANDED (2026-09-22), GREEN: 7/7 probe checks, 3/3 case checks.** `NSURLSessionWebSocketMessage` (two
+initialisers, three read-only properties, the exclusivity rule enforced by construction rather than by care), the
+two enums (15 cases), the umbrella wiring, and `foundation_websocket` - a probe with no transport in it at all.
+
+**WHAT IT PINS, INCLUDING THE TWO THINGS IT SAYS ARE OURS:**
+ * the exclusivity rule in BOTH DIRECTIONS, because the plausible WRONG implementation - a text message handing
+   back its UTF-8 bytes as `data` - passes one check and fails the other;
+ * the payload **COPY** (Apple does not say what happens to the object handed in, so copying is our choice, and it
+   is asserted because a choice nobody asserts is a choice nobody has);
+ * the message-type **VALUES** (ours, D2 - Apple publishes the names and not the numbers);
+ * the thirteen close codes, twelve of which are **RFC 6455 §7.4.1's** and one of which (`...Invalid`) is not in
+   the RFC at all and is therefore ours.
+
+**AND TWO THINGS THE SLICE LEARNED BY BEING BUILT, BOTH WORTH KEEPING:**
+ * the LEDGER refused to let three new names be declared while listed `open` ("PRESENT BUT LISTED OPEN ... flip
+   the row") - its own guard, doing exactly what it exists for, and the flip went through `--refresh` +
+   `--families --write`, with `--check` consistent afterwards;
+ * THE FIRST PROBE DID NOT COMPILE: it carried the LIBRARY's ownership into an ARC file - "ARC forbids explicit
+   message send of 'release'". The library is MRC and the probes are ARC, and writing one in the other's idiom is
+   a compile error rather than a style slip. A better teacher than a comment.

@@ -174,6 +174,8 @@
 #import <Foundation/NSURLSessionStreamTask.h>
 #import <Foundation/NSURLSessionTaskMetrics.h>
 #import <Foundation/NSURLSession.h>
+#import <Foundation/NSURLSessionWebSocketTask.h>
+#import <Foundation/NSURLSessionWebSocketMessage.h>
 #import <Foundation/NSHTTPURLResponse.h>
 #import <Foundation/NSHTTPCookie.h>
 #import <Foundation/NSURLProtectionSpace.h>

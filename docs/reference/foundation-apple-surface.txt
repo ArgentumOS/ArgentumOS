@@ -28,11 +28,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  148   open   48   struck   77
+#   class      shipped  149   open   47   struck   77
 #   protocol   shipped   19   open   12   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped   99   open   44   struck   17
-#   case       shipped  576   open  558   struck  168
+#   enum       shipped  101   open   42   struck   17
+#   case       shipped  591   open  543   struck  168
 #   func       shipped   72   open   63   struck   54
 #   var        shipped  174   open  387   struck  353
 #   typealias  shipped   31   open   38   struck    7
@@ -1067,21 +1067,21 @@ case	shipped	NSURLSessionTaskStateCanceling	NSURLSessionTask	Networking / Essent
 case	shipped	NSURLSessionTaskStateCompleted	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
 case	shipped	NSURLSessionTaskStateRunning	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
 case	shipped	NSURLSessionTaskStateSuspended	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
-case	open	NSURLSessionWebSocketCloseCodeAbnormalClosure	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	open	NSURLSessionWebSocketCloseCodeGoingAway	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	open	NSURLSessionWebSocketCloseCodeInternalServerError	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	open	NSURLSessionWebSocketCloseCodeInvalid	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	open	NSURLSessionWebSocketCloseCodeInvalidFramePayloadData	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	open	NSURLSessionWebSocketCloseCodeMandatoryExtensionMissing	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	open	NSURLSessionWebSocketCloseCodeMessageTooBig	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	open	NSURLSessionWebSocketCloseCodeNoStatusReceived	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	open	NSURLSessionWebSocketCloseCodeNormalClosure	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	open	NSURLSessionWebSocketCloseCodePolicyViolation	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	open	NSURLSessionWebSocketCloseCodeProtocolError	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	open	NSURLSessionWebSocketCloseCodeTLSHandshakeFailure	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	open	NSURLSessionWebSocketCloseCodeUnsupportedData	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	open	NSURLSessionWebSocketMessageTypeData	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session / Enumeration Cases	-	objc
-case	open	NSURLSessionWebSocketMessageTypeString	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session / Enumeration Cases	-	objc
+case	shipped	NSURLSessionWebSocketCloseCodeAbnormalClosure	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
+case	shipped	NSURLSessionWebSocketCloseCodeGoingAway	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
+case	shipped	NSURLSessionWebSocketCloseCodeInternalServerError	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
+case	shipped	NSURLSessionWebSocketCloseCodeInvalid	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
+case	shipped	NSURLSessionWebSocketCloseCodeInvalidFramePayloadData	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
+case	shipped	NSURLSessionWebSocketCloseCodeMandatoryExtensionMissing	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
+case	shipped	NSURLSessionWebSocketCloseCodeMessageTooBig	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
+case	shipped	NSURLSessionWebSocketCloseCodeNoStatusReceived	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
+case	shipped	NSURLSessionWebSocketCloseCodeNormalClosure	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
+case	shipped	NSURLSessionWebSocketCloseCodePolicyViolation	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
+case	shipped	NSURLSessionWebSocketCloseCodeProtocolError	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
+case	shipped	NSURLSessionWebSocketCloseCodeTLSHandshakeFailure	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
+case	shipped	NSURLSessionWebSocketCloseCodeUnsupportedData	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
+case	shipped	NSURLSessionWebSocketMessageTypeData	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session / Enumeration Cases	-	objc
+case	shipped	NSURLSessionWebSocketMessageTypeString	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session / Enumeration Cases	-	objc
 case	open	NSUTF16BigEndianStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	open	NSUTF16LittleEndianStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	open	NSUTF16StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1557,7 +1557,7 @@ class	shipped	NSURLSessionTask		Networking / Essentials	-	objc
 class	shipped	NSURLSessionTaskMetrics		Networking / Essentials / Working with a delegate / Collecting task metrics	-	objc
 class	shipped	NSURLSessionTaskTransactionMetrics		Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics	-	objc
 class	shipped	NSURLSessionUploadTask		Networking / Essentials / Adding upload tasks to a session	-	objc
-class	open	NSURLSessionWebSocketMessage		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
+class	shipped	NSURLSessionWebSocketMessage		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 class	open	NSURLSessionWebSocketTask		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 class	shipped	NSUUID		Fundamentals / Unique Identifiers	-	objc
 class	open	NSUbiquitousKeyValueStore		Files and Data Persistence / iCloud key and value storage	-	objc
@@ -1760,8 +1760,8 @@ enum	shipped	NSURLSessionResponseDisposition	NSURLSessionDataDelegate	Networking
 enum	shipped	NSURLSessionTaskMetricsDomainResolutionProtocol	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
 enum	shipped	NSURLSessionTaskMetricsResourceFetchType	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
 enum	shipped	NSURLSessionTaskState	NSURLSessionTask	Networking / Essentials / Controlling the task state	-	swift-page
-enum	open	NSURLSessionWebSocketCloseCode	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection	-	swift-page
-enum	open	NSURLSessionWebSocketMessageType	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
+enum	shipped	NSURLSessionWebSocketCloseCode	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection	-	swift-page
+enum	shipped	NSURLSessionWebSocketMessageType	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 enum	struck	NSUserNotificationActivationType	NSUserNotification	App Support / User Notifications / Constants	deprecated	swift-page
 enum	shipped	NSVolumeEnumerationOptions	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 enum	struck	NSWhoseSubelementIdentifier	NSWhoseSpecifier	App Support / Object Specifiers / Constants	declined	objc
