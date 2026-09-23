@@ -51,7 +51,8 @@ CHECKS = ("loopback-socket-created", "bind-to-127-0-0-1", "listen", "fork-the-pe
           "poll-timeout-expires", "nonblocking-connect-returns",
           "peer-close-reported-readable", "peer-close-is-observed-as-eof",
           "poll-without-a-deadline-is-woken-by-data",
-          "and-the-woken-poll-had-the-payload-to-read")
+          "and-the-woken-poll-had-the-payload-to-read",
+          "a-deadline-free-poll-survives-the-window-a-hundred-times")
 
 
 class Case(BaseCase):

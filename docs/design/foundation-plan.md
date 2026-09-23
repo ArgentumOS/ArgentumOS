@@ -10449,13 +10449,29 @@ consumed rather than lost, a spurious wake just sends the loop around, and no en
        that is still RUNNING, and `runnable()` inserts into the run queue - calling it there would list that
        process twice. Cleared and sent around is all a running process needs, and for every pre-existing caller
        the state is `PROC_SLEEPING`, so nothing else changes.
- * **A GATE.** A window between two instructions is not something one run can be relied on to hit, so the gate must
-   REPEAT: a peer writing with NO delay (not the 300ms the existing leg uses), polled with no deadline, over many
-   iterations, with the watchdog naming the iteration that parks. And by this session's own rule it must be
-   MEASURED against the unfixed kernel before it may be called a gate - a leg that passes either way is a behaviour
-   test, which is exactly what the last one turned out to be. (A widening that makes the window easier to hit:
-   poll a LONG descriptor list with the socket FIRST, so the scan is still running when the peer writes - the wake
-   then lands after the socket has been looked at and before the registration, which is the window itself.)
+ * **A GATE - BUILT, MEASURED, AND IT IS NOT ONE (2026-09-22).** The recipe above was followed exactly: a peer
+   writing with NO delay, polled with no deadline, the socket FIRST in a 65-descriptor list (64 never-ready pipes
+   behind it, to stretch the scan), a hundred iterations, and the watchdog naming the iteration it parks at.
+   **THEN IT WAS MEASURED AGAINST THE UNFIXED KERNEL, WHICH IS THE ONLY THING THAT DECIDES THIS: with sys_poll's
+   arm/look/commit reverted, ALL HUNDRED PASS.** So it is a behaviour test, not a gate, and the arithmetic says why:
+     * the window is the time from the SOCKET'S OWN CHECK to the registration - the scan of the 64 descriptors
+       behind it, TENS OF MICROSECONDS;
+     * the peer's write arrives on a MILLISECOND timescale (a process scheduled, a connect completed, a byte across
+       loopback);
+     * so ONE iteration lands in the window a fraction of a percent of the time, and a hundred of them is a
+       coin-toss weighted AGAINST the bug. **A test that passes on the bug most of the time is worse than no test:
+       it reads as proof.** (Which is why the count was NOT simply raised until a failure appeared - a flaky gate in
+       the committed suite is a defect of its own.)
+   **WHAT WOULD SETTLE IT, RECORDED RATHER THAN FAKED:** a test that CONTROLS the timing - the kernel's own parts
+   driven with a wake forced into the gap - because no userspace probe can. The construction argument stands until
+   then: `sleep()` registers under its own CLI, and a wake is always SECOND to the state change that caused it, so
+   a waiter that registers first cannot lose one.
+   **AND THE REVERT TAUGHT THE PRIMITIVE'S CONTRACT THE HARD WAY, WHICH BELONGS BESIDE IT: `sleep_commit()`
+   WITHOUT A PRECEDING `sleep_arm()` DOES NOT BLOCK - IT RETURNS IMMEDIATELY.** Commenting out only the arm (and
+   leaving the commit) made `sys_poll` BUSY-SPIN, and the symptom was the whole probe hanging with even its
+   FINITE-timeout polls never returning, because nothing was ever asleep for the timer to wake. A caller that
+   forgets to arm does not stall - it burns the CPU. (And the general lesson, the same shape as this project's
+   build traps: "revert the fix" must mean reverting the WHOLE fix, or the measurement is of a different bug.)
 
 ## §59 — THE WEBSOCKET SLICE, DESIGNED BEFORE IT IS BUILT (2026-09-22)
 

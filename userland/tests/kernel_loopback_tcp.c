@@ -83,6 +83,10 @@ static void check(const char *name, int ok, const char *detail)
 
 static volatile sig_atomic_t timed_out = 0;
 static pid_t peer_pid = -1;
+/* THE WINDOW GATE'S ITERATION, A GLOBAL SO THE WATCHDOG CAN NAME WHERE IT PARKED: "the poll was not woken" is a
+ * finding only if it says WHICH of the hundred it was, because the window is a matter of timing and the answer is
+ * a number, not a verdict. -1 means no gate iteration was in flight. */
+static volatile sig_atomic_t gate_iteration = -1;
 
 static void on_alarm(int sig)
 {
@@ -93,7 +97,13 @@ static void on_alarm(int sig)
 	}
 	printf("KERNEL-LOOPBACK blocked-in-blocking-io FAIL the exchange did not complete within %ds\n",
 	       WATCHDOG_S);
-	printf("KERNEL-LOOPBACK RESULT ok=5 fail=1\n");
+	if (gate_iteration >= 0) {
+		printf("KERNEL-LOOPBACK-DIAG the window gate was PARKED at iteration %d\n", (int)gate_iteration);
+	}
+	/* THE TALLY IS THE PROBE'S OWN, NOT A NUMBER TYPED HERE ONCE AND LEFT: this handler used to print a hardcoded
+	 * "ok=5 fail=1", which the case compares against its check list - so a run that the watchdog ended reported a
+	 * tally from some earlier version of the probe instead of what had actually happened. */
+	printf("KERNEL-LOOPBACK RESULT ok=%d fail=%d\n", okc, failc);
 	printf("KERNEL-LOOPBACK-STATUS=1\n");
 	printf("KERNEL-LOOPBACK DONE\n");
 	_exit(1);
@@ -519,6 +529,115 @@ int main(void)
 			}
 			printf("KERNEL-LOOPBACK-DIAG phase 5 peer exit code = %d\n",
 			       reaped5 && WIFEXITED(st5) ? WEXITSTATUS(st5) : -1);
+		}
+	}
+
+	/*
+	 * THE WINDOW GATE: A poll WITH NO DEADLINE, A PEER THAT WRITES WITH NO DELAY, A SCAN WIDE ENOUGH TO STILL BE
+	 * RUNNING WHEN THE WRITE LANDS - AND A HUNDRED ITERATIONS SO THAT HITTING THE WINDOW IS A MATTER OF WHEN.
+	 *
+	 * WHY THE LEG ABOVE CANNOT DO THIS: its peer PAUSES 300ms, which GUARANTEES the waiter is registered before the
+	 * write, so it can only ever prove that a registered waiter is woken. The bug sys_poll's check-then-sleep
+	 * window causes lives in the gap BETWEEN the check and the registration, and nothing that waits first can
+	 * reach it.
+	 *
+	 * THE WIDENING IS THE MECHANISM, and it is the reason the socket is polled FIRST with 64 never-ready
+	 * descriptors behind it: the scan is then still walking them when the peer's bytes arrive, so the wake lands
+	 * after the socket was looked at and before the registration - which IS the window. (A pipe's read end with
+	 * nothing written to it is a descriptor that is valid, pollable and never ready: exactly what the list needs.)
+	 *
+	 * AND IT IS NOT A GATE, WHICH WAS MEASURED RATHER THAN HOPED: with sys_poll's arm/look/commit REVERTED, this leg
+	 * PASSES - all hundred, on the first run. THE ARITHMETIC SAYS WHY, and it is the whole reason no userspace probe
+	 * can do this job:
+	 *
+	 *   * the window is the time from the SOCKET'S OWN CHECK to the registration - the scan of the descriptors that
+	 *     FOLLOW it, which 64 pipes make TENS OF MICROSECONDS;
+	 *   * the peer's write arrives on a MILLISECOND timescale, because that is a process being scheduled, a connect
+	 *     completing and a byte crossing loopback;
+	 *   * so the chance one iteration lands in the window is a fraction of a percent, and a hundred iterations is a
+	 *     coin-toss weighted AGAINST the bug - WHICH IS THE WORST KIND OF GATE: one that passes on the bug most of
+	 *     the time reads as proof and is not.
+	 *
+	 * WHAT IT IS INSTEAD, AND WHY IT IS KEPT: a test of the BEHAVIOUR at a scale the leg above cannot reach (a
+	 * hundred deadline-free, WIDE polls all woken by a peer that never pauses) - plus an honest negative result on
+	 * the record. What would settle the window is a test that can CONTROL the timing, and no userspace probe can;
+	 * the construction argument stands in the meantime (sleep() registers under its own CLI, and a wake is always
+	 * SECOND to the state change that caused it, so a waiter that registers first cannot lose one).
+	 */
+	{
+		int wide = 64;
+		int idle[64];
+		int iterations = 0, parked = 0, i, k;
+		pid_t pg = fork();
+
+		for (k = 0; k < wide; k++) {
+			int pair[2];
+
+			idle[k] = (pipe(pair) == 0) ? pair[0] : -1;
+		}
+		if (pg == 0) {
+			/* ONE CHILD SERVES EVERY ITERATION AND NEVER PAUSES: it writes the moment it has a connection, which
+			 * is what makes the write land in whatever the parent happens to be doing. */
+			for (i = 0; i < 100; i++) {
+				struct sockaddr_in from;
+				socklen_t fromlen = sizeof(from);
+				int cc = accept(ls, (struct sockaddr *)&from, &fromlen);
+
+				if (cc < 0) {
+					break;
+				}
+				write_all(cc, "wake", 4);
+				close(cc);
+			}
+			_exit(PEER_OK);
+		}
+		for (i = 0; i < 100 && !parked; i++) {
+			struct pollfd fds[65];
+			int s, r;
+
+			s = socket(AF_INET, SOCK_STREAM, 0);
+			if (s < 0 || connect(s, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
+				if (s >= 0) {
+					close(s);
+				}
+				break;
+			}
+			fds[0].fd = s;
+			fds[0].events = POLLIN;
+			fds[0].revents = 0;
+			for (k = 0; k < wide; k++) {
+				fds[k + 1].fd = idle[k];
+				fds[k + 1].events = POLLIN;
+				fds[k + 1].revents = 0;
+			}
+			gate_iteration = i;
+			r = poll(fds, (nfds_t)(wide + 1), -1);	/* NO DEADLINE: a wake is the only way out */
+			gate_iteration = -1;
+			if (r <= 0 || (fds[0].revents & POLLIN) == 0) {
+				printf("KERNEL-LOOPBACK-DIAG the wide poll was not woken at iteration %d (r=%d revents=0x%x)\n",
+				       i, r, (unsigned)fds[0].revents);
+				parked++;
+			} else {
+				char sink[16];
+
+				read(s, sink, sizeof(sink));
+				iterations++;
+			}
+			close(s);
+		}
+		for (k = 0; k < wide; k++) {
+			if (idle[k] >= 0) {
+				close(idle[k]);
+			}
+		}
+		check("a-deadline-free-poll-survives-the-window-a-hundred-times",
+		      parked == 0 && iterations == 100,
+		      parked ? "the check-then-sleep window was hit (the DIAG line above names the iteration)"
+			     : "every one of 100 wide, deadline-free polls was woken by a peer that never paused");
+		{
+			int stg = -1;
+
+			waitpid(pg, &stg, 0);
 		}
 	}
 
