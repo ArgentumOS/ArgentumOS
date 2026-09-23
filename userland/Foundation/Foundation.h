@@ -173,6 +173,7 @@
 #import <Foundation/NSURLProtectionSpace.h>
 #import <Foundation/NSURLCredential.h>
 #import <Foundation/NSURLAuthenticationChallenge.h>
+#import <Foundation/NSURLCredentialStorage.h>
 #import <Foundation/NSHTTPCookieStorage.h>
 
 #endif /* FOUNDATION_FOUNDATION_H */

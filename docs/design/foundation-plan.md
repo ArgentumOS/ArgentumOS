@@ -3527,7 +3527,7 @@ vanishing.
 | **Low-Level Utilities / Value Wrappers and Transformations** | all classes shipped | — |
 | **Low-Level Utilities / XPC Client** | ALL STRUCK: `NSXPCCoder`, `NSXPCConnection`, `NSXPCInterface`, `NSXPCProxyCreating` | — |
 | **Low-Level Utilities / XPC Services** | ALL STRUCK: `NSXPCListener`, `NSXPCListenerDelegate`, `NSXPCListenerEndpoint` | — |
-| **Networking / Authentication and credentials** | 1 open | `NSURLCredentialStorage` |
+| **Networking / Authentication and credentials** | all classes shipped | — |
 | **Networking / Cache behavior** | 1 open | `NSURLCache` |
 | **Networking / Cookies** | all classes shipped | — |
 | **Networking / Essentials** | 8 open | `NSURLSessionDownloadDelegate`, `NSURLSessionStreamDelegate`, `NSURLSessionStreamTask`, `NSURLSessionTaskMetrics`, `NSURLSessionTaskTransactionMetrics`, `NSURLSessionWebSocketDelegate`, `NSURLSessionWebSocketMessage`, `NSURLSessionWebSocketTask` |
@@ -9415,3 +9415,33 @@ exercised (a class page with `topicSections`, an `article`, and the index's pref
 ours and decided where it can be seen; every refusal has a reason and will be ASSERTED ABSENT. **What
 remains is the four classes in dependency order - NSURLProtectionSpace, NSURLCredential,
 NSURLAuthenticationChallenge, NSURLCredentialStorage - with the keychain left as the one named seam (§48).**
+
+### §48.4 — THE CREDENTIAL FAMILY'S FOUR CLASSES LAND (2026-09-21)
+
+**FOUR CLASSES, 54 CHECKS, ONE SEAM, AND ONE UNVERIFIED READING LEFT.** `NSURLProtectionSpace` (15),
+`NSURLCredential` (13), `NSURLAuthenticationChallenge` (11) and `NSURLCredentialStorage` (15) are in, with
+the fast tier green. What each one settled:
+
+  * **THE REALM AS A VALUE**, with two derived rules - port `-1` means UNKNOWN rather than zero, and a space
+    that never named a method still answers with the least specific one. IT IS ALSO A DICTIONARY KEY, and
+    the probe is what made that concrete: filing one into an NSMutableDictionary ABORTED the probe, because
+    a collection copies its keys and the class had no copy implementation. Equality and hash followed from
+    the same fact. The fix used THIS LIBRARY'S copy spelling (`-copy`, per NSObject.h's documented zone
+    deviation), not Cocoa's, and the class it was needed for is the next class's key.
+  * **THE CREDENTIAL AS A SECRET**, where two of the checks are about NOT leaking it: `-description` prints
+    the user and never the password, and `-hasPassword` answers whether a secret exists without producing
+    it. The enum has THREE cases rather than four, because `Synchronizable` belongs to iCloud.
+  * **THE CHALLENGE'S MECHANICS**, including the one deliberate deviation: the initialisers KEEP their
+    documented `sender:` argument - source compatibility is the acceptance test for this duplication - while
+    the `-sender` ACCESSOR is NOT shipped, because Apple files it as Legacy. Both halves are asserted,
+    since either alone would be wrong.
+  * **THE STORE**, keyed by a protection space (which is why the three methods above exist), with the
+    change-notification rule applied FROM THE START rather than found by a probe later.
+
+**AND THE ONE THING STILL UNVERIFIED, NAMED BEFORE IT IS BUILT:** §48.3 read from the documentation's
+references that a challenge is DELIVERED through `-URLSession:didReceiveChallenge:completionHandler:` and its
+task-level sibling. That is a reading of the doc's cross-references, NOT yet exercised against the
+`NSURLSession` this tree already ships. Those two doors are the slice's remaining work and its only
+regression risk - they reach into a class landed in W7 slice 2c - so the next step is to CONFIRM THE CLAIM
+AGAINST THE CLASS before writing against it, which is the same "read it, do not recall it" rule that has
+now corrected five things in this unit's neighbourhood.
