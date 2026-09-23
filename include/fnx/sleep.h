@@ -34,6 +34,11 @@ struct resource {
 void runnable(struct proc *);
 void not_runnable(struct proc *, int);
 int sleep(void *, int);
+/* THE WAIT THAT CANNOT LOSE A WAKEUP: arm(), look, then commit() - because the plain check-then-sleep() shape
+ * drops a wake landing between the two. kernel/sleep.c carries the full argument. */
+void sleep_arm(void *);
+void sleep_disarm(void);
+int sleep_commit(void *, int);
 void wakeup(void *);
 void wakeup_proc(struct proc *);
 

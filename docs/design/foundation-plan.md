@@ -10417,3 +10417,29 @@ infinite wait could ever hang.**
 which GUARANTEES the waiter is asleep before the write - so it cannot exercise a window between check and sleep.
 A race needs repetition: a peer that writes with NO delay, polled with no deadline, run many times, with the
 watchdog naming the iteration that parks. That is the next unit, and it is a probe rather than a hypothesis.
+
+**AND THE WINDOW IS NOW CLOSED IN `sys_poll`, WITH THE PRIMITIVE THAT CLOSES IT (same day).** `sleep()` registers
+under its own `CLI`, so a wake arriving between "is anything ready?" and that registration finds no entry in the
+sleep table and is dropped - and the waiter then sleeps for ever. What makes such a wake *reachable* is that a
+wake is never the only event: **the STATE CHANGE comes first and the wake second** (`loopback_deliver` queues the
+packet and THEN wakes), so the cure is to register BEFORE looking:
+
+	sleep_arm(&do_select);				/* any later wake will find us ... */
+	... the fd scan ...				/* ... and any EARLIER one is visible right here */
+	if(count || !current->timeout || sigpending) { sleep_disarm(); break; }
+	if(sleep_commit(&do_select, PROC_INTERRUPTIBLE)) { sleep_disarm(); return -EINTR; }
+
+`kernel/sleep.c` gained `sleep_arm()`/`sleep_disarm()`/`sleep_commit()` (the plain `sleep()` is untouched, so no
+existing waiter changes behaviour), and the three are safe together by construction: `wakeup()` matches on the
+CHANNEL and clears `sleep_address`, which is exactly the flag the other two read - so a wake during the check is
+consumed rather than lost, a spurious wake just sends the loop around, and no entry can be unlinked twice.
+
+**WHAT IS STILL OWED, AND IT IS TWO THINGS - NAMED RATHER THAN IMPLIED:**
+ * **THE SAME SHAPE ELSEWHERE.** `do_select` (the next loop down in the same file, and the wait this tree's own run
+   loops use), `epoll_wait`, and the BLOCKING READERS (`ipv4_recvfrom`, `unix_recvfrom`, the tty and the pipe) all
+   still check-then-sleep. Same window, same three-call cure.
+ * **A GATE.** A window between two instructions is not something one run can be relied on to hit, so the gate must
+   REPEAT: a peer writing with NO delay (not the 300ms the existing leg uses), polled with no deadline, over many
+   iterations, with the watchdog naming the iteration that parks. And by this session's own rule it must be
+   MEASURED against the unfixed kernel before it may be called a gate - a leg that passes either way is a behaviour
+   test, which is exactly what the last one turned out to be.

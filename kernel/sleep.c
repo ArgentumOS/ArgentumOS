@@ -116,6 +116,129 @@ int sleep(void *address, int state)
 	return signum;
 }
 
+/*
+ * ARM / DISARM / COMMIT - THE WAIT THAT CANNOT LOSE A WAKEUP.
+ *
+ * WHY THEY EXIST, AND IT IS A WINDOW RATHER THAN A RACE ANYONE CAN SCHEDULE AROUND. The shape every
+ * multiplexing waiter in this kernel uses is
+ *
+ *	for(;;) { if(ready()) break; sleep(&channel, PROC_INTERRUPTIBLE); }
+ *
+ * and the two halves of that are NOT atomic together. `sleep()` takes interrupts off for its OWN registration,
+ * so a wake that arrives BEFORE that point finds no entry in the sleep table, is dropped, and the waiter then
+ * sleeps for ever. What makes such a wake reachable is that it is never the only event: the STATE CHANGE comes
+ * FIRST and the wake second - `loopback_deliver` queues the packet and THEN wakes - so a waiter that registers
+ * BEFORE it looks cannot miss one:
+ *
+ *	sleep_arm(&channel);				// registered: any later wake will find us
+ *	if(ready()) { sleep_disarm(); break; }		// ... and any EARLIER one is visible right here
+ *	sleep_commit(&channel, PROC_INTERRUPTIBLE);	// blocks, with the registration already in place
+ *
+ * AND BEING WOKEN WHILE NOT SLEEPING IS HARMLESS BY CONSTRUCTION: wakeup() matches on the channel and does not
+ * consult the state, so a wake during the check marks this process runnable and clears `sleep_address` - which
+ * is exactly the flag sleep_disarm() and sleep_commit() read, so neither can unlink one entry twice, and a
+ * spurious wake simply sends the loop around.
+ *
+ * FOUND IN §58.1: an infinite poll that never returned with the far end's data already on the wire, while the
+ * same poll with a FINITE timeout was correct - because that wait ended anyway and its re-check saw the data.
+ * That asymmetry IS the window, and it is also why "poll's timeout is exact" has always been true here.
+ * foundation-plan.md §58.1 records it.
+ */
+void sleep_arm(void *address)
+{
+	unsigned int flags;
+	struct proc **h;
+	int i;
+
+	SAVE_FLAGS(flags); CLI();
+	/* IDEMPOTENT, AND IT HAS TO BE: the loop calls this on every pass, and a spurious return from the commit
+	 * leaves us registered. Registering one process twice would corrupt the table. */
+	if(current->sleep_address != NULL) {
+		RESTORE_FLAGS(flags);
+		return;
+	}
+	if(current->state == PROC_SLEEPING) {
+		printk("WARNING: %s(): process with pid '%d' is already sleeping!\n", __FUNCTION__, current->pid);
+		RESTORE_FLAGS(flags);
+		return;
+	}
+	i = SLEEP_HASH(SLEEP_ADDR(address));
+	h = &sleep_hash_table[i];
+
+	/* insert process in the head */
+	if(!*h) {
+		*h = current;
+		(*h)->prev_sleep = (*h)->next_sleep = NULL;
+	} else {
+		current->prev_sleep = NULL;
+		current->next_sleep = *h;
+		(*h)->prev_sleep = current;
+		*h = current;
+	}
+	current->sleep_address = (void *)SLEEP_ADDR(address);
+	RESTORE_FLAGS(flags);
+}
+
+void sleep_disarm(void)
+{
+	unsigned int flags;
+	struct proc **h;
+	int i;
+
+	SAVE_FLAGS(flags); CLI();
+	/* A WAKE CLEARS sleep_address, AND THAT IS THE ONLY PROOF AN ENTRY IS ALREADY GONE - so this cannot unlink
+	 * one that the waker has already unlinked. */
+	if(current->sleep_address != NULL) {
+		i = SLEEP_HASH((addr_t)current->sleep_address);
+		h = &sleep_hash_table[i];
+		while(*h) {
+			if(*h == current) {
+				if(current->next_sleep) {
+					current->next_sleep->prev_sleep = current->prev_sleep;
+				}
+				if(current->prev_sleep) {
+					current->prev_sleep->next_sleep = current->next_sleep;
+				}
+				*h = current->next_sleep;
+				break;
+			}
+			h = &(*h)->next_sleep;
+		}
+		current->sleep_address = NULL;
+		current->prev_sleep = current->next_sleep = NULL;
+	}
+	RESTORE_FLAGS(flags);
+}
+
+int sleep_commit(void *address, int state)
+{
+	unsigned int flags;
+	int signum;
+
+	/* RE-ARM IF THE CHECK DISARMED US - that is a wake this process has already consumed. */
+	sleep_arm(address);
+
+	SAVE_FLAGS(flags); CLI();
+	if(state == PROC_INTERRUPTIBLE && (signum = issig())) {
+		RESTORE_FLAGS(flags);
+		return signum;
+	}
+	if(state == PROC_UNINTERRUPTIBLE) {
+		current->flags |= PF_NOTINTERRUPT;
+	}
+	not_runnable(current, PROC_SLEEPING);
+
+	do_sched();
+
+	signum = 0;
+	if(state == PROC_INTERRUPTIBLE) {
+		signum = issig();
+	}
+
+	RESTORE_FLAGS(flags);
+	return signum;
+}
+
 void wakeup(void *address)
 {
 	unsigned int flags;

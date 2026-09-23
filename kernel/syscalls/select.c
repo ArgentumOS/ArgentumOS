@@ -114,10 +114,17 @@ int sys_poll(struct pollfd_abi *fds, unsigned long nfds, int timeout)
 
 	count = 0;
 	for(;;) {
+		/* ARM BEFORE THE CHECK, WHICH IS THE WHOLE POINT (kernel/sleep.c carries the argument). The old order -
+		 * scan, then sleep() - had a window between the two, and a wake landing in it is DROPPED: sleep()
+		 * registers under its own CLI, so the waker had already run and found no entry. With the registration in
+		 * place first, a wake either finds this process or has already happened - and since a wake is always
+		 * SECOND to the state change that caused it, the scan below sees anything that beat us to it. */
+		sleep_arm(&do_select);
 		count = 0;
 		for(n = 0; n < (int)nfds; n++) {
 			int err;
 			if((err = check_user_area(VERIFY_WRITE, &fds[n], sizeof(struct pollfd_abi)))) {
+				sleep_disarm();
 				return err;
 			}
 			memcpy_b(&pfd, &fds[n], sizeof(struct pollfd_abi));
@@ -160,9 +167,11 @@ int sys_poll(struct pollfd_abi *fds, unsigned long nfds, int timeout)
 		}
 
 		if(count || !current->timeout || current->sigpending & ~current->sigblocked) {
+			sleep_disarm();
 			break;
 		}
-		if(sleep(&do_select, PROC_INTERRUPTIBLE)) {
+		if(sleep_commit(&do_select, PROC_INTERRUPTIBLE)) {
+			sleep_disarm();
 			return -EINTR;
 		}
 	}
