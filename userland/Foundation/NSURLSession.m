@@ -617,6 +617,25 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 	return [task autorelease];
 }
 
+/* THE STREAM TASK'S FACTORY (§58), and it is the same three steps every other factory here takes: the session
+ * assigns the identifier, KEEPS the task, and LINKS it - which is what lets the task reach the delegate and
+ * the delegate queue it reports through. What differs is only what the task is made of: no request, a host
+ * and a port, and a class that owns a socket. */
+- (NSURLSessionStreamTask *)streamTaskWithHostName:(NSString *)hostname port:(NSInteger)port
+{
+	NSURLSessionStreamTask *task;
+
+	if (_invalid) {
+		return nil;
+	}
+	task = [[NSURLSessionStreamTask alloc] fnInitWithHostName:hostname
+							    port:port
+						      identifier:_nextTaskIdentifier++];
+	[task fnSetSession:self];
+	[_tasks addObject:task];
+	return [task autorelease];
+}
+
 - (NSURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request
 				    completionHandler:(void (^)(NSURL *, NSURLResponse *, NSError *))completionHandler
 {

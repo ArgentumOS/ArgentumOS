@@ -155,6 +155,12 @@ typedef NS_ENUM(NSInteger, NSURLSessionResponseDisposition) {
 /* And the redirect door's response parameter (§54): the protocol hands the delegate the 3xx AS an HTTP
  * response, so that type is named here and declared in its own header. */
 @class NSHTTPURLResponse;
+/* AND THE FOUR THE STREAM HALF NAMES (§58): the task class its factory returns, and the two stream types its
+ * delegate's capture door hands over. A `@class` belongs HERE rather than inside the interface below - which
+ * is where the first version of this wiring put one, and what the compiler said about it. */
+@class NSURLSessionStreamTask;
+@class NSInputStream;
+@class NSOutputStream;
 
 @protocol NSURLSessionTaskDelegate <NSURLSessionDelegate>
 
@@ -292,6 +298,16 @@ didReceiveResponse:(NSURLResponse *)response
 							    NSError *error))completionHandler;
 
 - (void)fnTaskDidResume:(NSURLSessionTask *)task;
+
+/* THE STREAM TASK'S ONE FACTORY (§58). It takes a HOST AND A PORT rather than a request, because a stream task
+ * has no request: it IS a connection, and the class it hands back owns a socket, an ordered queue of reads and
+ * writes, half-closes and TLS - see NSURLSessionStreamTask.h for the semantics and the boundaries.
+ *
+ * AND THE SIBLING APPLE DECLARES BESIDE IT IS REFUSED BY NAME: `-streamTaskWithNetService:` takes an
+ * `NSNetService`, which is a Bonjour service rather than a socket - a class this library does not ship and a
+ * discovery mechanism this plan has never proposed. A caller who needs it gets a compile error naming the
+ * absence rather than a task that cannot be built. */
+- (NSURLSessionStreamTask *)streamTaskWithHostName:(NSString *)hostname port:(NSInteger)port;
 
 /* THE INTERNAL CHALLENGE DOOR, for the transport to call when a server asks: it resolves the delegate (task
  * door first, then session) and answers SYNCHRONOUSLY, because the transport waits for the credential the

@@ -252,6 +252,11 @@ FN_FOUNDATION_NOARC = NSObject.m NSTinyString.m NSDateInterval.m
 # ITS include path - the same per-file rule the ICU and X11 lists follow. The LINK needs the new
 # libraries, because the bridge lives IN the library (below).
 FN_FOUNDATION_CURL   = FNCURLURLProtocol.m
+# W7 §58: the STREAM TASK is the SECOND file with a third-party header on its include path, because
+# -startSecureConnection wraps its descriptor in a TLS session: <openssl/ssl.h>, from the libressl the
+# library ALREADY links. (curl is the reason libssl is on the link line, and the reason this file needs
+# no new library either - it needs the HEADERS, which is what a per-file include list is for.)
+FN_FOUNDATION_SSL    = NSURLSessionStreamTask.m
 # NSCharacterSet.m JOINED THIS TABLE IN §15.5: its four ICU-backed rule sets read the general
 # category and the decomposition type, so <unicode/uchar.h> is on its include path. The link needed
 # nothing new - libfoundation has needed libicui18n/libicuuc/libicudata since F13.6.
@@ -277,6 +282,7 @@ define FN_FOUNDATION_rule
 		$(if $(filter $(1),$(FN_FOUNDATION_ICU)),-I$(ICUPREFIX)/include) \
 		$(if $(filter $(1),$(FN_FOUNDATION_X11)),-I$(X11PREFIX)/include) \
 		$(if $(filter $(1),$(FN_FOUNDATION_CURL)),-I$(CURL_PREFIX)/include) \
+		$(if $(filter $(1),$(FN_FOUNDATION_SSL)),-I$(LIBRESSL_PREFIX)/include) \
 		-Iuserland $$< -o $$@
 endef
 $(foreach f,$(FN_FOUNDATION_SRCS),$(eval $(call FN_FOUNDATION_rule,$(f))))
@@ -971,6 +977,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_metricsdelivery"
+	# foundation_streamtask: the duplex connection as a task (§58) - the minimum, the cap, the
+	# timeout-as-a-cancel, the half-close and the refused door. Its own server again, and NO TLS: the two TLS
+	# doors are implemented and their leg is §58.1, which needs a guest TLS server (the libressl units' pattern).
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_streamtask.m -o .build/probe-foundation_streamtask.o
+	$(MUSL64_OBJC) .build/probe-foundation_streamtask.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_streamtask"
 	# foundation_urlerror: the URL error names, their values, and the shape of the family (§56). No transport
 	# and no server: two of its checks read a REAL task's error and the rest are the codes themselves.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \

@@ -3530,7 +3530,7 @@ vanishing.
 | **Networking / Authentication and credentials** | all classes shipped | — |
 | **Networking / Cache behavior** | all classes shipped | — |
 | **Networking / Cookies** | all classes shipped | — |
-| **Networking / Essentials** | 6 open | `NSURLSessionDownloadDelegate`, `NSURLSessionStreamDelegate`, `NSURLSessionStreamTask`, `NSURLSessionWebSocketDelegate`, `NSURLSessionWebSocketMessage`, `NSURLSessionWebSocketTask` |
+| **Networking / Essentials** | 4 open | `NSURLSessionDownloadDelegate`, `NSURLSessionWebSocketDelegate`, `NSURLSessionWebSocketMessage`, `NSURLSessionWebSocketTask` |
 | **Networking / Legacy** | ALL STRUCK: `NSURLAuthenticationChallengeSender`, `NSURLConnection`, `NSURLConnectionDataDelegate`, `NSURLConnectionDelegate`, `NSURLConnectionDownloadDelegate`, `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` | — |
 | **Networking / Local Network Services** | ALL STRUCK: `NSNetService`, `NSNetServiceDelegate` | — |
 | **Networking / Requests and responses** | all classes shipped | — |
@@ -10278,3 +10278,42 @@ certificate the probe itself mints.
   8. **AND THE REFUSALS ARE ASSERTED ABSENT**: `-streamTaskWithNetService:` (no `NSNetService`), and the two
      delegate doors nothing here can raise - `-betterRouteDiscoveredForStreamTask:` needs a multipath route this
      system does not have - each declared with its ground rather than left looking functional.
+
+### §58.2 — §58 LANDS, AND THE PROBE FOUND A KERNEL FACT RATHER THAN A CLASS BUG (2026-09-22)
+
+**LANDED.** `NSURLSessionStreamTask`, `NSURLSessionStreamDelegate` and the session's
+`-streamTaskWithHostName:port:` - the worker/queue/poll/TLS design §58 set out, exactly - and its unit is green:
+**14/14 probe checks and 3/3 case checks, in 14 seconds.**
+
+**WHAT THE CHECKS ESTABLISH** (each is a rule §58 quoted from Apple's pages, or a boundary this row declares):
+the write completes AND the far end reads the bytes (the handler's promise stops at the kernel, so the server's
+own record is the evidence); a read delivers what the server said; **`minLength` is a minimum** (the server
+sends four bytes, pauses, sends four more - a read that returned early would be four); **`maxLength` is a cap**
+(eight available, four asked, four delivered); **the timeout is a cancel** (the handler gets
+`NSURLErrorTimedOut` and zero bytes, and `0` does NOT fire); `-closeWrite` and `-closeRead` both reach the
+delegate; the task ENDS when both halves are closed, with metrics delivered first (§52's order); `-captureStreams`
+is refused with its ground; and the far end sees the connection end.
+
+**TWO PROBE BUGS, EACH WORTH MORE THAN THE CHECK IT BROKE.** **ONE CONNECTION PER LEG**: the first version
+served every leg over one connection with a timed script, and the timeout leg failed because a previous leg's
+reply was still in the socket buffer - **a server whose reply is waiting in a buffer is not a server that said
+nothing**. And **`usleep` IS A `poll` HERE** (`fn_pause`): this guest's `usleep` costs several times what it is
+asked for, which is how a probe that should take a second took seventy, and why a leg waiting for a late answer
+never saw it. The kernel's `poll` timeout, by contrast, is exact - it is what the class's read deadlines use.
+
+**AND THE FINDING THAT OUTRANKS BOTH: `shutdown(fd, SHUT_WR)` RETURNS 0 ON THIS KERNEL AND THE PEER NEVER SEES
+AN END OF FILE.** Measured at the far end, through the class's own call: the server's read trail shows EAGAIN
+before the data, the client's three bytes, and then EAGAIN **for ever** after a shutdown that returned success.
+So **a half-close does not reach the wire here** - §57 predicted the probe's evidence would be the far end's end
+of file, and the far end does not get one - and the class's far-end visibility comes from the DESCRIPTOR CLOSING
+when the stream is over. **That forced a correction in the class, found by the probe:** the first version ended
+the TASK and left the socket open, holding a descriptor per stream with the worker waiting for operations nobody
+would send; `-fnMaybeEnd` now stops the worker and releases the descriptor, which is both the leak fix and what
+makes the peer's end of file arrive. The kernel work item is named rather than papered over:
+**`shutdown(2)` must send a FIN on the write side, so Apple's half-close semantics are deliverable**, and the
+probe's check is `and-the-far-end-sees-the-connection-end` rather than "reaches the far end" - a claim this kernel
+can actually keep.
+
+**AND THE TWO TLS DOORS REMAIN IMPLEMENTED BUT UNVERIFIED** (§58.1, unchanged): `-startSecureConnection` and
+`-stopSecureConnection` are a real `SSL_CTX`/`SSL` wrap whose leg needs a guest TLS server, and until that runs
+they are doors with a test OWED rather than doors with a claim.

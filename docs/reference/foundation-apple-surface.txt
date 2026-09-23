@@ -28,8 +28,8 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  147   open   49   struck   77
-#   protocol   shipped   18   open   13   struck   14
+#   class      shipped  148   open   48   struck   77
+#   protocol   shipped   19   open   12   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped   99   open   44   struck   17
 #   case       shipped  576   open  558   struck  168
@@ -1552,7 +1552,7 @@ class	shipped	NSURLSession		Networking / Essentials	-	objc
 class	shipped	NSURLSessionConfiguration		Networking / Essentials / Creating a session	-	objc
 class	shipped	NSURLSessionDataTask		Networking / Essentials / Adding data tasks to a session	-	objc
 class	shipped	NSURLSessionDownloadTask		Networking / Essentials / Adding download tasks to a session	-	objc
-class	open	NSURLSessionStreamTask		Networking / Essentials / Adding stream tasks to a session	-	objc
+class	shipped	NSURLSessionStreamTask		Networking / Essentials / Adding stream tasks to a session	-	objc
 class	shipped	NSURLSessionTask		Networking / Essentials	-	objc
 class	shipped	NSURLSessionTaskMetrics		Networking / Essentials / Working with a delegate / Collecting task metrics	-	objc
 class	shipped	NSURLSessionTaskTransactionMetrics		Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics	-	objc
@@ -2251,7 +2251,7 @@ protocol	shipped	NSURLProtocolClient		Networking / Essentials / Creating a sessi
 protocol	shipped	NSURLSessionDataDelegate		Networking / Essentials / Adding data tasks to a session	-	objc
 protocol	shipped	NSURLSessionDelegate		Networking / Essentials / Working with a delegate	-	objc
 protocol	open	NSURLSessionDownloadDelegate		Networking / Essentials / Adding download tasks to a session	-	objc
-protocol	open	NSURLSessionStreamDelegate		Networking / Essentials / Adding stream tasks to a session	-	objc
+protocol	shipped	NSURLSessionStreamDelegate		Networking / Essentials / Adding stream tasks to a session	-	objc
 protocol	shipped	NSURLSessionTaskDelegate		Networking / Essentials / Working with a delegate	-	objc
 protocol	open	NSURLSessionWebSocketDelegate		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 protocol	open	NSUserActivityDelegate		App Support / Activity Sharing / Monitoring activity-related behaviors	-	objc

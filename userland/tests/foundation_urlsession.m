@@ -252,8 +252,12 @@ int main(void)
 		 * positive half below rather than only subtracted from here. */
 		/* THE UPLOAD DOORS HAVE LEFT THIS LIST TOO - the seventh time - and the arrival joins the owed
 		 * list below, so removing a refusal strengthens the check rather than weakening it. */
+		/* AND THE STREAM FACTORY HAS LEFT IT (§58): `-streamTaskWithHostName:port:` is declared and
+		 * implemented now - a task that owns a connected socket - and its ARRIVAL is asserted where it
+		 * belongs, by the unit that drives it (foundation_streamtask), rather than by a name in a list here.
+		 * What stays refused is the WebSocket half, which is the same family's other row. */
 		static const char *excluded[] = {
-			"streamTaskWithHostName:port:", "webSocketTaskWithURL:",
+			"webSocketTaskWithURL:",
 			"initWithCoder:", "encodeWithCoder:", NULL
 		};
 		NSURLSession *session = [NSURLSession sharedSession];

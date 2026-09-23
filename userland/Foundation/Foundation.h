@@ -171,6 +171,7 @@
 #import <Foundation/FNCURLURLProtocol.h>
 #import <Foundation/NSURLSessionConfiguration.h>
 #import <Foundation/NSURLSessionTask.h>
+#import <Foundation/NSURLSessionStreamTask.h>
 #import <Foundation/NSURLSessionTaskMetrics.h>
 #import <Foundation/NSURLSession.h>
 #import <Foundation/NSHTTPURLResponse.h>
