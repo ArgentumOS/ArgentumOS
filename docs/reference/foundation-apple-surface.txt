@@ -28,11 +28,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  145   open   51   struck   77
+#   class      shipped  147   open   49   struck   77
 #   protocol   shipped   18   open   13   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped   96   open   47   struck   17
-#   case       shipped  509   open  625   struck  168
+#   enum       shipped   98   open   45   struck   17
+#   case       shipped  517   open  617   struck  168
 #   func       shipped   72   open   63   struck   54
 #   var        shipped  167   open  394   struck  353
 #   typealias  shipped   31   open   38   struck    7
@@ -1054,15 +1054,15 @@ case	shipped	NSURLSessionResponseAllow	NSURLSessionDataDelegate	Networking / Ess
 case	shipped	NSURLSessionResponseBecomeDownload	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
 case	shipped	NSURLSessionResponseBecomeStream	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
 case	shipped	NSURLSessionResponseCancel	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
-case	open	NSURLSessionTaskMetricsDomainResolutionProtocolHTTPS	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
-case	open	NSURLSessionTaskMetricsDomainResolutionProtocolTCP	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
-case	open	NSURLSessionTaskMetricsDomainResolutionProtocolTLS	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
-case	open	NSURLSessionTaskMetricsDomainResolutionProtocolUDP	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
-case	open	NSURLSessionTaskMetricsDomainResolutionProtocolUnknown	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
-case	open	NSURLSessionTaskMetricsResourceFetchTypeLocalCache	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
-case	open	NSURLSessionTaskMetricsResourceFetchTypeNetworkLoad	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
+case	shipped	NSURLSessionTaskMetricsDomainResolutionProtocolHTTPS	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
+case	shipped	NSURLSessionTaskMetricsDomainResolutionProtocolTCP	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
+case	shipped	NSURLSessionTaskMetricsDomainResolutionProtocolTLS	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
+case	shipped	NSURLSessionTaskMetricsDomainResolutionProtocolUDP	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
+case	shipped	NSURLSessionTaskMetricsDomainResolutionProtocolUnknown	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
+case	shipped	NSURLSessionTaskMetricsResourceFetchTypeLocalCache	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
+case	shipped	NSURLSessionTaskMetricsResourceFetchTypeNetworkLoad	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
 case	struck	NSURLSessionTaskMetricsResourceFetchTypeServerPush	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	deprecated	objc
-case	open	NSURLSessionTaskMetricsResourceFetchTypeUnknown	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
+case	shipped	NSURLSessionTaskMetricsResourceFetchTypeUnknown	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
 case	shipped	NSURLSessionTaskStateCanceling	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
 case	shipped	NSURLSessionTaskStateCompleted	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
 case	shipped	NSURLSessionTaskStateRunning	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
@@ -1554,8 +1554,8 @@ class	shipped	NSURLSessionDataTask		Networking / Essentials / Adding data tasks 
 class	shipped	NSURLSessionDownloadTask		Networking / Essentials / Adding download tasks to a session	-	objc
 class	open	NSURLSessionStreamTask		Networking / Essentials / Adding stream tasks to a session	-	objc
 class	shipped	NSURLSessionTask		Networking / Essentials	-	objc
-class	open	NSURLSessionTaskMetrics		Networking / Essentials / Working with a delegate / Collecting task metrics	-	objc
-class	open	NSURLSessionTaskTransactionMetrics		Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics	-	objc
+class	shipped	NSURLSessionTaskMetrics		Networking / Essentials / Working with a delegate / Collecting task metrics	-	objc
+class	shipped	NSURLSessionTaskTransactionMetrics		Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics	-	objc
 class	shipped	NSURLSessionUploadTask		Networking / Essentials / Adding upload tasks to a session	-	objc
 class	open	NSURLSessionWebSocketMessage		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 class	open	NSURLSessionWebSocketTask		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
@@ -1757,8 +1757,8 @@ enum	shipped	NSURLSessionAuthChallengeDisposition	NSURLSessionTaskDelegate	Netwo
 enum	open	NSURLSessionDelayedRequestDisposition	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks	-	objc
 enum	open	NSURLSessionMultipathServiceType	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP	-	swift-page
 enum	shipped	NSURLSessionResponseDisposition	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes	-	objc
-enum	open	NSURLSessionTaskMetricsDomainResolutionProtocol	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-enum	open	NSURLSessionTaskMetricsResourceFetchType	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
+enum	shipped	NSURLSessionTaskMetricsDomainResolutionProtocol	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
+enum	shipped	NSURLSessionTaskMetricsResourceFetchType	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
 enum	shipped	NSURLSessionTaskState	NSURLSessionTask	Networking / Essentials / Controlling the task state	-	swift-page
 enum	open	NSURLSessionWebSocketCloseCode	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection	-	swift-page
 enum	open	NSURLSessionWebSocketMessageType	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
