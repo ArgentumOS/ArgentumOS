@@ -27,7 +27,11 @@ CHECKS = (
     "capture-streams-is-refused-with-its-ground",
     "the-probe-served-what-it-was-asked",
     "the-tls-fixture-is-up",
-    "the-tls-handshake-is-BLOCKED",
+    "the-tls-handshake-completes",
+    "the-request-goes-through-the-tunnel",
+    "and-the-reply-comes-back-through-it",
+    "and-the-far-end-answered-through-the-tunnel",
+    "and-taking-the-tunnel-down-leaves-a-working-connection",
 )
 
 

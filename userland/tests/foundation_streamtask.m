@@ -373,6 +373,44 @@ static int fn_makeCertificate(const char *dir, const char *certPath, const char 
  * IT IS A THREAD AND NOT A CHILD PROCESS, DELIBERATELY: after `fork`, a process with a worker thread may only
  * call async-signal-safe functions, and libtls allocates. (The certificate above IS a child, because it
  * execs.) The peer holds its listener for one connection, handshakes it, reads a request, and answers. */
+
+/* THE BYTE FLOW, LOGGED THROUGH libtls's OWN BIO SEAM. This is the instrument `libressl_tls_pair.c` was written
+ * around, and it answers the one question left about the handshake: DOES THE CLIENTHELLO ARRIVE IN FULL? That
+ * file's header records the identical stall - "the ClientHello reaches the peer only in part" - and lists the
+ * three truths a byte-flow log separates, and nothing else can: the writer never offered all its bytes; the
+ * write was accepted but SHORT; or the reader got fewer bytes than were written and never asked again.
+ *
+ * BLOCKING IS REQUIRED with these callbacks (the tree's own peer says why): a non-blocking descriptor would make
+ * read/write answer EAGAIN, which libtls reads as a broken connection rather than as "call me again". The peer
+ * above sets the accepted descriptor blocking before it gets here. */
+struct fn_tls_bio {
+	int fd;
+};
+
+static ssize_t fn_tls_read(struct tls *ctx, void *buffer, size_t length, void *argument)
+{
+	struct fn_tls_bio *bio = argument;
+	ssize_t got;
+
+	(void)ctx;
+	got = read(bio->fd, buffer, length);
+	printf("FOUNDATION-STREAMTASK tls-leg: peer READ wants=%d got=%d%s\n",
+	       (int)length, (int)got, got < 0 ? " (error)" : "");
+	return got;
+}
+
+static ssize_t fn_tls_write(struct tls *ctx, const void *buffer, size_t length, void *argument)
+{
+	struct fn_tls_bio *bio = argument;
+	ssize_t put;
+
+	(void)ctx;
+	put = write(bio->fd, buffer, length);
+	printf("FOUNDATION-STREAMTASK tls-leg: peer WRITE offers=%d took=%d%s\n",
+	       (int)length, (int)put, put < 0 ? " (error)" : "");
+	return put;
+}
+
 @interface FNTLSPeer : NSObject
 {
 	@public
@@ -394,6 +432,7 @@ static int fn_makeCertificate(const char *dir, const char *certPath, const char 
 	struct tls_config *config = tls_config_new();
 	struct tls *ctx = tls_server();
 	struct tls *connection = NULL;
+	struct fn_tls_bio bio;
 	struct sockaddr_in addr;
 	int listener;
 	int fd;
@@ -429,6 +468,7 @@ static int fn_makeCertificate(const char *dir, const char *certPath, const char 
 		return;
 	}
 	accepted++;
+	bio.fd = fd;	/* the seam's argument: the callbacks above read from the descriptor the kernel handed us */
 	/* BLOCKING, EXPLICITLY, BECAUSE THIS TREE'S PROVEN TLS PEER DOES IT (libressl_tls_pair.c): libtls's default
 	 * BIO is a blocking one. HERE IT IS A MEASURED NO-OP, WHICH SETTLED ONE SUSPECT FOR GOOD: the descriptor
 	 * accept() hands back is ALREADY blocking (flags=2, no O_NONBLOCK), so this kernel does NOT propagate the
@@ -443,32 +483,31 @@ static int fn_makeCertificate(const char *dir, const char *certPath, const char 
 		}
 	}
 	for (;;) {
-		int rv = tls_accept_socket(ctx, &connection, fd);
+		int rv = tls_accept_cbs(ctx, &connection, fn_tls_read, fn_tls_write, &bio);
 
 		if (rv == 0) {
+			/* REPORTED, BECAUSE A SILENT `return` IS HOW THE DUPLICATED-ACCEPT BUG MASQUERADED AS A STALL: the
+			 * second accept failed on an already-accepted connection, the peer returned, and a run in that state
+			 * read as "the handshake neither completed nor failed". Every early exit in this peer now says so. */
+			printf("FOUNDATION-STREAMTASK tls-leg: the peer accepted the connection\n");
 			break;
 		}
 		if (rv == TLS_WANT_POLLIN || rv == TLS_WANT_POLLOUT) {
 			continue;	/* a blocking descriptor: libtls asking again, not a wait to poll for */
 		}
-		return;
-	}
-	for (;;) {
-		int rv = tls_accept_socket(ctx, &connection, fd);
-
-		if (rv == 0) {
-			break;
-		}
-		if (rv == TLS_WANT_POLLIN || rv == TLS_WANT_POLLOUT) {
-			continue;	/* a blocking descriptor: libtls asking again, not a wait to poll for */
-		}
+		printf("FOUNDATION-STREAMTASK tls-leg: the peer's accept FAILED: %s\n", tls_error(ctx));
 		return;
 	}
 	/* THE HANDSHAKE IS ITS OWN CALL, AND COUNTING THE ACCEPT AS ONE WAS THIS PROBE'S OWN BUG: libtls's
 	 * `tls_accept_socket` accepts a connection and DOES NOT PERFORM THE HANDSHAKE - the caller must ask, which
 	 * is exactly what `libressl_tls_pair.c`'s peer does and what the check on `handshakes` was reading without.
 	 * Found by putting this peer beside that one, line by line, and the correction is worth more than the
-	 * check it repaired: it turned "the handshake completes" into a measured FALSE. */
+	 * check it repaired: it turned "the handshake completes" into a measured FALSE.
+	 *
+	 * AND IT MUST BE ACCEPTED *ONCE*: an earlier repair of this block left TWO accept loops here (a duplicated
+	 * paste), and the second accept fails on a connection already accepted - so the peer RETURNED instead of
+	 * handshaking, and a run in that state read as "the handshake neither completed nor failed". That reading
+	 * was wrong, and the duplication is why the note below reports the accept's own result. */
 	for (;;) {
 		int rv = tls_handshake(connection);
 
@@ -755,6 +794,12 @@ int main(void)
 		int reqStatus;
 		__block BOOL writeDone = NO;
 		__block NSError *writeError = nil;
+		__block NSData *replyData = nil;
+		__block NSError *replyError = nil;
+		__block BOOL replyDone = NO;
+		__block BOOL downDone = NO;
+		__block BOOL downEOF = NO;
+		__block NSError *downError = nil;
 
 		snprintf(certPath, sizeof(certPath), "%s/cert.pem", dir);
 		snprintf(keyPath, sizeof(keyPath), "%s/key.pem", dir);
@@ -768,52 +813,91 @@ int main(void)
 		task = [session streamTaskWithHostName:@"127.0.0.1" port:46499];
 		[task resume];
 		[task startSecureConnection];
-		/* --- WHAT THE TUNNEL DOES, AND WHAT IT DOES NOT YET DO --------------------------------------------
+		/* --- THE TUNNEL, AND THE BUG THAT WAS HOLDING IT SHUT ---------------------------------------------
 		 *
-		 * THE HANDSHAKE IS PROVEN BY THE FAR END'S OWN ACCOUNT AND NOT BY A HANDLER: the peer is this tree's
-		 * libtls - and, MEASURED, the handshake is where this row stops today. See the measurement block below
-		 * for what is and is not established; the short version is that an earlier version of this comment
-		 * claimed the far end completes a handshake, and that claim was FALSE.
+		 * THE HANDSHAKE IS PROVEN BY THE FAR END'S OWN ACCOUNT, because the two TLS doors are parameterless
+		 * (Apple's are) and there is no handler to ask: the peer is this tree's libtls, its `tls_handshake` has
+		 * returned, and the byte flow behind that is logged line by line by the seam above. AND THE I/O ON TOP
+		 * OF IT IS THE REST OF THE EVIDENCE: the request goes out through SSL_write, the far end answers with
+		 * `HTTP/1.0 200 ok`, and the reply comes back through SSL_read - which cannot happen through a handshake
+		 * that did not happen.
 		 *
-		 * AND THE HANDSHAKE ITSELF IS BLOCKED, WHICH THIS BLOCK NOW SAYS INSTEAD OF CLAIMING THE OPPOSITE. The
-		 * first version of this leg asserted the handshake COMPLETED, reading the peer's accept as one - and
-		 * the repair is worth more than the check it fixed, because it turned a false claim into a measured
-		 * truth: `tls_accept_socket` accepts and does NOT handshake, so with `tls_handshake` actually asked for,
-		 * `handshakes` is ZERO and the far end is parked INSIDE its handshake.
-		 *
-		 * THE MEASUREMENT, IN THREE PLACES THAT AGREE (all instrumented, all removed again): the client's
-		 * `SSL_connect` returns WANT_WRITE and then WANT_READ and stays there; the peer's descriptor reports the
-		 * data READABLE at the kernel (`poll`=1, `revents`=POLLIN, and `poll` consumes nothing); and the peer's
-		 * handshake neither completes NOR fails. So the ClientHello leaves the client and reaches the far end,
-		 * and the far end still never finishes - which is the BYTE FLOW's question, and this tree already owns
-		 * the instrument for it: `libressl_tls_pair.c`'s `tls_accept_cbs` with logging `cb_read`/`cb_write`,
-		 * whose own header records the identical stall ("the ClientHello reaches the peer only in part").
-		 *
-		 * AND IT IS ASSERTED RATHER THAN HIDDEN, in this tree's own idiom: the check PASSES while the fault is
-		 * there and FAILS the moment a handshake completes - with the instruction in its message, so the blocked
-		 * item announces its own obsolescence instead of waiting to be remembered. */
+		 * WHAT WAS HOLDING IT SHUT, MEASURED RATHER THAN GUESSED, AND IT WAS NOT THE TLS CODE AT ALL: this
+		 * kernel leaves a `poll(2)` waiter PARKED when the timeout is NEGATIVE, even on a socket that has become
+		 * readable. The class's handshake wait passed `-1` (no caller deadline), so it sat there while the far
+		 * end's whole flight - 127 + 6 + 28 + 715 + 286 + 58 bytes, every one of them accepted - arrived on its
+		 * own socket. `fnPollForWrite:` now waits in bounded SLICES when there is no deadline (§58.1's fix and
+		 * the kernel's work item, both recorded), and the handshake completes on the first slice loop. */
 		/* AND THE WAIT IS PART OF THE CHECK'S MEANING, NOT A DELAY BEFORE IT: the handshake happens on the
 		 * WORKER thread while this one runs, so asking instantly is asking before the answer can exist. */
 		fn_waitFor((volatile int *)&tlsPeer->handshakes, 600);
-		check("the-tls-handshake-is-BLOCKED", tlsPeer->handshakes == 0,
-		      [NSString stringWithFormat:@"§58.1 IS BLOCKED HERE AND THIS CHECK IS THE ANNOUNCEMENT: the "
-		       @"ClientHello leaves the client (WANT_WRITE then WANT_READ) and the far end's socket reports it "
-		       @"readable, yet the far end's handshake neither completes nor fails (observed handshakes=%d). "
-		       @"WHEN IT COMPLETES THIS CHECK FAILS: rename it to the-tls-handshake-completes, assert "
-		       @"tlsPeer->handshakes == 1, then add the tunnel's own checks (writeData -> SSL_write, the reply "
-		       @"read back through SSL_read) and restore -stopSecureConnection's half.",
-		       tlsPeer->handshakes]);
-		/* THE I/O THAT FOLLOWS IS ATTEMPTED ANYWAY, SO THE NEXT UNIT STARTS FROM ITS OWN MEASUREMENT RATHER
-		 * THAN FROM A GUESS: it cannot be served while the handshake is parked, and that is printed below. */
+		check("the-tls-handshake-completes", tlsPeer->handshakes == 1,
+		      @"the far end's tls_handshake returned: the ClientHello and the client's Finished both crossed");
 		[task writeData:[@"GET / HTTP/1.0\r\n\r\n" dataUsingEncoding:NSUTF8StringEncoding]
 			timeout:10.0 completionHandler:^(NSError *e) {
 			writeError = e;
 			writeDone = YES;
 		}];
 		fn_waitFor((volatile int *)&writeDone, 1200);
-		/* PRINTED RATHER THAN CLAIMED: the peer's OWN tally. */
-		printf("FOUNDATION-STREAMTASK tls-leg accepted=%d handshakes=%d reply-sent=%d write-handler=%d\n",
-		       tlsPeer->accepted, tlsPeer->handshakes, (int)tlsPeer->served, (int)writeDone);
+		{
+			int waited = 0;
+
+			while(!tlsPeer->served && waited < 600) {	/* the peer replies only after reading the request */
+				usleep(10000);
+				waited++;
+			}
+		}
+		check("the-request-goes-through-the-tunnel", writeDone && writeError == nil && tlsPeer->served,
+		      @"SSL_write carried it and the far end READ it before answering - two sides, one tunnel");
+		[task readDataOfMinLength:1 maxLength:4096 timeout:10.0
+			completionHandler:^(NSData *data, BOOL atEOF, NSError *e) {
+			replyData = data;
+			replyError = e;
+			replyDone = YES;
+		}];
+		fn_waitFor((volatile int *)&replyDone, 1200);
+		check("and-the-reply-comes-back-through-it",
+		      replyDone && replyError == nil &&
+		      [[[NSString alloc] initWithData:replyData encoding:NSUTF8StringEncoding]
+			rangeOfString:@"HTTP/1.0 200 ok"].location != NSNotFound,
+		      @"the far end's own words, read back through SSL_read - the tunnel carries both ways");
+		check("and-the-far-end-answered-through-the-tunnel", tlsPeer->served,
+		      @"the peer's tls_write put its whole reply on the wire, counted by the seam's own log");
+		/* AND THE ROW'S OTHER OWED HALF, WHICH THE TUNNEL NOW MAKES OBSERVABLE: -stopSecureConnection takes the
+		 * TLS session down (an SSL_shutdown and an SSL_free), so what follows is plain I/O on the descriptor.
+		 *
+		 * THE CHECK IS THE SEQUENCE, NOT A GUESS ABOUT THE FAR END. One draft asserted that a plain read after
+		 * the stop completes - and it FAILED, correctly: a socket the far end has not closed yet is a socket on
+		 * which a read TIMES OUT, and that is not a failure of anything. What IS deterministic, and what says the
+		 * session came down without breaking the task, is that THE TASK KEEPS SERVING ITS QUEUE: both halves still
+		 * close and both doors still report. Whether the far end had closed or stayed quiet is PRINTED below. */
+		[task stopSecureConnection];
+		[task readDataOfMinLength:1 maxLength:4096 timeout:2.0
+			completionHandler:^(NSData *data, BOOL atEOF, NSError *e) {
+			(void)data;
+			downEOF = atEOF;
+			downError = e;
+			downDone = YES;
+		}];
+		fn_waitFor((volatile int *)&downDone, 300);
+		watcher->writeCloseds = 0;
+		watcher->readCloseds = 0;
+		[task closeWrite];
+		[task closeRead];
+		{
+			int waited = 0;
+
+			while((watcher->writeCloseds == 0 || watcher->readCloseds == 0) && waited < 600) {
+				usleep(10000);
+				waited++;
+			}
+		}
+		check("and-taking-the-tunnel-down-leaves-a-working-connection",
+		      watcher->writeCloseds == 1 && watcher->readCloseds == 1,
+		      @"both halves still close after -stopSecureConnection: the task kept serving its queue");
+		printf("FOUNDATION-STREAMTASK tls-leg accepted=%d handshakes=%d reply-sent=%d write-handler=%d after-stop-atEOF=%d after-stop-error=%d code=%ld\n",
+		       tlsPeer->accepted, tlsPeer->handshakes, (int)tlsPeer->served, (int)writeDone,
+		       (int)downEOF, downError != nil ? 1 : 0, (long)[downError code]);
 	}
 
 	printf("FOUNDATION-STREAMTASK RESULT ok=%d fail=%d\n", okc, failc);

@@ -10314,48 +10314,61 @@ makes the peer's end of file arrive. The kernel work item is named rather than p
 probe's check is `and-the-far-end-sees-the-connection-end` rather than "reaches the far end" - a claim this kernel
 can actually keep.
 
-### §58.1 — THE TLS LEG RAN, AND IT STOPPED AT THE HANDSHAKE (2026-09-22, corrected the same day)
+### §58.1 — THE TLS LEG RAN, FROM A FALSE CLAIM TO A WORKING TUNNEL (2026-09-22)
 
-**`-startSecureConnection` REACHES THE HANDSHAKE AND THE HANDSHAKE IS WHERE IT STOPS. The first version of this
-section claimed the opposite, and THAT CLAIM WAS FALSE - the correction is the substance of this entry.**
+**`-startSecureConnection` AND `-stopSecureConnection` ARE VERIFIED, AND THE WAY THERE FOUND A KERNEL BUG.** The
+row's TLS half is closed: the handshake completes, the request goes out through `SSL_write`, the far end answers,
+the reply comes back through `SSL_read`, and taking the tunnel down leaves a connection whose halves still close
+and whose doors still report. **20/20 probe checks, 3/3 case checks.**
 
-**WHAT WAS WRONG, AND WHY IT IS WORTH WRITING DOWN: `tls_accept_socket` DOES NOT PERFORM A HANDSHAKE.** libtls's
-accept functions create the connection; the caller must ask for the handshake (`tls_handshake`), which is
-exactly what `libressl_tls_pair.c`'s peer does. The probe's peer counted the ACCEPT as a handshake, so the check
-`the-tls-handshake-completes` was reading a counter that had never seen a handshake - a check that passed while
-proving nothing. It was found by putting this peer beside the tree's proven one, line by line. With
-`tls_handshake` actually called, `handshakes` is **zero**: **the far end never completes a handshake with this
-client.** The check is now `the-tls-handshake-is-BLOCKED`, which asserts the fault and fails (with its
-instructions) the moment the handshake works.
+**THE ROOT CAUSE WAS NOT THE TLS CODE - IT WAS `poll(2)` WITH A NEGATIVE TIMEOUT.** This kernel leaves a `poll`
+waiter **parked on a socket that has become readable** when the timeout is negative. The class's handshake wait
+has no caller deadline (the two TLS doors are parameterless, as Apple's are), so it passed `-1` - and it sat
+there while the far end's ENTIRE TLS flight arrived on its own socket. **`fnPollForWrite:` now waits in bounded
+1-second slices when there is no deadline**, handing the caller's own loop a live wait instead of an infinite one,
+and the handshake completes on the first slice loop. The kernel work item, named rather than papered over:
+**`poll(2)` must report readiness on a negative (infinite) timeout** - sibling to §58.2's `shutdown(2)` item, and
+the same shape: a socket-layer edge this class was the first to lean on. (The tree's own probes never pass a
+negative timeout; every wait in them is positive. That is why nobody had found it.)
 
-**THE MEASUREMENT, IN THREE PLACES THAT AGREE** (each instrumented, each removed again):
- * the client's `SSL_connect` returns **WANT_WRITE**, then **WANT_READ**, and stays there - so the ClientHello
-   is offered and finished by OpenSSL's account;
- * the peer's descriptor reports the data **READABLE at the kernel** (`poll`=1, `revents=POLLIN`; `poll` consumes
-   nothing, so the question could be asked without perturbing the handshake);
- * the peer's `tls_handshake` **neither completes nor fails** - it is parked inside.
-So the ClientHello leaves the client and reaches the far end, and the far end still never finishes.
+**THE MEASUREMENT THAT FOUND IT WAS THE BYTE FLOW, THROUGH libtls's OWN BIO SEAM** (`tls_accept_cbs` with logging
+`cb_read`/`cb_write` - the instrument `libressl_tls_pair.c` was written around):
 
-**AND ONE SUSPECT IS GONE, BY MEASUREMENT RATHER THAN ARGUMENT:** the accepted descriptor is **already blocking**
-(`flags=2`, no `O_NONBLOCK`), so this kernel does NOT propagate the client's non-blocking flag onto the accepted
-socket. (The class's sockets are non-blocking by design, and a far end stalling with the ClientHello on the wire
-is what such a propagation would have looked like. It is not that.) The explicit `set_blocking` the tree's own
-peer does is kept, as a no-op, for the same reason the tree's peer does it.
+```
+peer READ  wants=5    got=5            the record header
+peer READ  wants=1500 got=1500         THE CLIENTHELLO ARRIVES IN FULL
+peer WRITE offers=127/6/28/715/286/58  the far end's whole flight, every byte accepted
+peer READ  wants=53   got=53           the client's Finished follows - the handshake turns over
+```
+
+That killed the standing hypothesis (a partial record, the way this tree's own libressl unit was once bitten -
+"the ClientHello reaches the peer only in part", a kernel bug in `net/ipv4.c`'s partial reads) and pointed at the
+**waiter** rather than the **wire**. The seam stays in the probe, verbose on purpose, for the reason the tree's
+pair gives for its own narration: a stall then says WHICH readiness never arrived.
+
+**AND ONE SUSPECT WAS RETIRED BY MEASUREMENT RATHER THAN ARGUMENT:** the accepted descriptor is **already
+blocking** (`flags=2`, no `O_NONBLOCK`), so this kernel does NOT propagate the client's non-blocking flag onto
+the accepted socket. The explicit `set_blocking` the tree's own peer does is kept as a no-op, for the reason that
+peer does it.
+
+**TWO CORRECTIONS THIS ENTRY EXISTS TO KEEP.** (1) An earlier version of this section claimed the handshake
+completed: **`tls_accept_socket` does not handshake** (the caller must call `tls_handshake`, as the tree's proven
+peer does), so that check was reading the ACCEPT - a check that passed while proving nothing. It was found by
+putting this peer beside that one, line by line. (2) A later repair of that peer left **two accept loops** pasted
+one after another, so the second accept failed on an already-accepted connection and the peer RETURNED - and a run
+in that state read as "the handshake neither completed nor failed". **Every early exit in the peer now reports
+itself**, and the accept's own result is in the log, because a silent `return` is indistinguishable from a stall.
+
+**AND ONE DRAFTED CHECK WAS WITHDRAWN RATHER THAN FORCED GREEN:** "a plain read after the stop completes" failed -
+correctly - because a socket the far end has not closed yet is one a read TIMES OUT on, which is not a failure of
+anything. What is deterministic, and what the check now asserts, is that **the task keeps serving its queue**:
+both halves still close, both doors still report.
 
 **`openssl s_server` WAS TRIED FIRST, WHICH IS ITSELF A MEASUREMENT.** The leg's first version drove
 `openssl s_server -www` as the far end and the handshake stalled the same way - so that leg measured the SERVER
-and learned nothing about the class. The same stall is recorded in the libressl units through `openssl s_client`.
-The peer is therefore the tree's own libtls, and **`-stopSecureConnection`'s check was removed rather than left
-as a claim**: it can only be observed after the tunnel carries data.
+and learned nothing about the class (the same stall is recorded in the libressl units through `openssl s_client`).
+The peer is therefore the tree's own libtls, which is the substrate this guest has already proven.
 
-**WHAT THE NEXT UNIT OPENS WITH - THE BYTE FLOW, AND THIS TREE ALREADY OWNS THE INSTRUMENT FOR IT:** whether the
-ClientHello ARRIVES IN FULL. `libressl_tls_pair.c`'s `tls_accept_cbs` with logging `cb_read`/`cb_write` answers
-exactly that ("the writer never offered all its bytes; the write was accepted but SHORT; or the reader got fewer
-bytes than were written and never asked again"), and its own header records the identical stall - "the ClientHello
-reaches the peer only in part" - which was a KERNEL bug then (`net/ipv4.c` freeing a packet's unread remainder).
-A partial write or a partial read of a *large* record over a **non-blocking** socket is the shape to test first,
-because the class's plaintext legs all wrote a handful of bytes (and every one of them arrives), while a
-ClientHello is a few hundred.
-
-**AND THE ROW'S OTHER OWED ITEM IS UNCHANGED:** `-stopSecureConnection` is implemented (an `SSL_shutdown` +
-`SSL_free`) and its leg is owed along with the tunnel it needs.
+**WHAT THE ROW STILL OWES: NOTHING ON TLS.** `-captureStreams` stays refused by name, `betterRouteDiscovered` is
+declared-unraisable, and certificates are unverified (no trust store) - all three are §58 boundaries with their
+grounds recorded, not gaps.

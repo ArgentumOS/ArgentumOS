@@ -545,6 +545,7 @@ completionHandler:(void (^)(NSError *))completionHandler
 {
 	struct pollfd entry;
 	int milliseconds = -1;
+	int waitingForever = (deadline == nil);
 	int ready;
 
 	if (deadline != nil) {
@@ -564,15 +565,27 @@ completionHandler:(void (^)(NSError *))completionHandler
 	entry.fd = _fd;
 	entry.events = forWriting ? POLLOUT : POLLIN;
 	entry.revents = 0;
+	/* A WAIT WITH NO CALLER DEADLINE IS A LOOP OF BOUNDED SLICES, NOT ONE `poll` WITH A NEGATIVE TIMEOUT, AND ITS
+	 * REASON IS MEASURED (§58.1's byte flow): with `poll(fd, POLLIN, -1)` this kernel leaves the waiter parked on
+	 * a socket that HAS BECOME READABLE - the far end's whole TLS flight was on the wire (127 + 6 + 28 + 715 +
+	 * 286 + 58 bytes, all written), and the handshake poll never noticed. The tree's own probes never pass a
+	 * negative timeout; every wait in them is a positive one, and the handshake below is bounded by the same
+	 * slices. This is a work item against `poll(2)`, not a licence to leave the class waiting forever. */
+	if (waitingForever) {
+		milliseconds = 1000;
+	}
 	for (;;) {
 		ready = poll(&entry, 1, milliseconds);
 		if (ready < 0 && errno == EINTR) {
 			continue;
 		}
+		if (ready == 0 && waitingForever) {
+			continue;	/* a slice that expired, not a verdict: the caller has no deadline to be late for */
+		}
 		break;
 	}
 	if (ready <= 0) {
-		return ready == 0 ? -1 : -1;
+		return -1;
 	}
 	if ((entry.revents & (POLLERR | POLLHUP | POLLNVAL)) != 0 &&
 	    (entry.revents & (POLLIN | POLLOUT)) == 0) {
