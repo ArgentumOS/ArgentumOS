@@ -98,22 +98,26 @@ directly, and is a **design decision, not a substitution**.
 
 | Layer | Apple's names | This tree today |
 |---|---|---|
-| **AppKit drawing** | `NSBezierPath`, `NSColor`, `NSGraphicsContext`, `NSAffineTransform`, `NSShadow`, `NSGradient`, `NSImage`, `NSBitmapImageRep`; `-drawRect:`/`-isFlipped`/`-setNeedsDisplayInRect:` | `NSAffineTransform` **landed**; NSGeometry + the six NS↔CG **identity** conversions; a UIKit whose chrome is a pixman vector layer |
-| **Core Graphics** (this plan's subject) | `CGContext`, `CGPath`, `CGColor`, `CGColorSpace`, `CGAffineTransform`, `CGImage`, `CGDataProvider`, `CGGradient`/`CGShading`/`CGFunction`, `CGPattern`, `CGPDFDocument`/`CGPDFContext`/`CGPDFScanner`, `CGLayer` | `CGFloat`, `CGPoint`, `CGSize`, `CGRect`. **Nothing else** |
+| **AppKit drawing** | `NSBezierPath`, `NSColor`, `NSGraphicsContext`, `NSAffineTransform`, `NSShadow`, `NSGradient`, `NSImage`, `NSBitmapImageRep`; `-drawRect:`/`-isFlipped`/`-setNeedsDisplayInRect:` | **`NSAffineTransform` landed** (it lives in Foundation); **nothing else.** The AppKit itself does not exist — §11's Application Kit row is the ledger for that — and the C++ UIKit that once carried this row is **PARKED** (tag `park/argentum-uikit-u6a`), kept as the record of the widget behaviour worked out in it |
+| **Core Graphics** (this plan's subject) | `CGContext`, `CGPath`, `CGColor`, `CGColorSpace`, `CGAffineTransform`, `CGImage`, `CGDataProvider`, `CGGradient`/`CGShading`/`CGFunction`, `CGPattern`, `CGPDFDocument`/`CGPDFContext`/`CGPDFScanner`, `CGLayer` | **C1–C5 SHIPPED, C6–C8 OPEN**: the geometry and affine arithmetic (C1), the context with state/CTM/clip/path/fill and the clipper (C2), stroking and the arc family (C3), colour with lcms2 (C4), images with PNG and JPEG (C5) — **415 host checks across ten probes**. §11's row carries the running ledger and is the one to trust if the two ever disagree |
 | **Core Text** | `CTFont`, `CTLine`, `CTFrame`, `CTFontDrawGlyphs` | FreeType + HarfBuzz + a first-party text stack |
 
-**NAMING: TWO CONVENTIONS MEET HERE, and this plan does not settle the
-other one.** `cocoa-parity-plan.md` clones AppKit's *classes and
-semantics* with **unprefixed C++ names** (`View`, `Button`, `TableView`),
-and explicitly not "identical source". CoreGraphics is a **C** API whose
-identity *is* its spelling, so:
+**NAMING: TWO CONVENTIONS MET HERE, AND THE OTHER ONE IS NOW SETTLED.**
+`cocoa-parity-plan.md` clones AppKit's *classes and semantics*; CoreGraphics
+is a **C** API whose identity *is* its spelling, so:
 
 - **CG and Core Text keep Apple's spelling** (`CGContextRef`,
   `CGPathCreateMutable`, `CTLineCreateWithAttributedString`). A duplicate
   under other names is not a duplicate.
-- **AppKit-spelled drawing classes are the cocoa-parity plan's business**
-  — whether `NSBezierPath` becomes `BezierPath` is decided there, and
-  `§3` row 1 above lists them only to mark where the CG layer ends.
+- **THE APPKIT KEEPS APPLE'S `NS` SPELLING TOO.** This paragraph used to point
+  at an **unprefixed C++** convention (`View`, `Button`, `TableView`) and say the
+  choice was unsettled. **The language decision of 2026-09-21 settled it**: the
+  AppKit is pure Objective-C with Apple's `NS`-prefixed names (`NSView`,
+  `NSButton`, `NSBezierPath`) — and that unprefixed convention now belongs to the
+  **PARKED** C++ toolkit, not to the AppKit. So `NSBezierPath` does **not**
+  become `BezierPath`, and what stays `cocoa-parity-plan.md`'s business is the
+  class **inventory and semantics**, not the spelling. `§3` row 1 above still
+  lists them to mark where the CG layer ends.
 
 ## 4. The substrate: Xfb, and the flip is a CTM
 
@@ -371,7 +375,17 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
 - **C7 — PDF, both directions** (`CGPDFContext` → libharu;
   `CGPDFDocument`/`CGPDFScanner` → PDFium).
 - **C8 — the AppKit bridge**: `-[NSGraphicsContext graphicsPort]` returning
-  a `CGContextRef`, and the drawing classes of §3 row 1 over C2–C6.
+  a `CGContextRef`, plus the **six NS↔CG identity conversions** that make the
+  AppKit's own geometry and value types *be* the CoreGraphics ones —
+  `NSPoint`/`CGPoint`, `NSSize`/`CGSize`, `NSRect`/`CGRect`,
+  `NSAffineTransform`/`CGAffineTransform`, and the colour and image pairs. THIS
+  IS THE SEAM, NOT THE WIDGETS: **the drawing classes of §3 row 1 are
+  `cocoa-parity-plan.md`'s to build on top**, which is what §3 says when it draws
+  the CG layer's boundary — and C8's substrate is C2–C6, with C6 (gradients,
+  shadings, patterns) still open and C7 deliberately not required.
+  *The plan names the COUNT of those conversions but not the members; the list
+  above is reconstructed from §3 and should be pinned when C8 starts rather than
+  inherited from this bullet.*
 
 ## 8. The oracle — the honest gap, stated first
 
