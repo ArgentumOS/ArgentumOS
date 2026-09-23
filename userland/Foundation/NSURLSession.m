@@ -457,6 +457,42 @@
  *      NSURLErrorUnsupportedURL (-1002) and its completion handler is called;
  *   3. THE PROTOCOL IS KEPT ALIVE BY THE SESSION for the flight (a protocol deallocated mid-transfer
  *      would report into freed memory), and the per-transfer client is what knows the task. */
+/* THE CHALLENGE DOOR, AND THE ORDER IS APPLE'S: the task-level delegate is more specific, so it is asked
+ * first and the session's door is the fallback. IT IS SYNCHRONOUS - unlike the data and completion callbacks,
+ * which hop to the delegate queue - because the transport WAITS for the answer, exactly as it waits at the
+ * head of a response; hopping would make the wait unwaitable.
+ *
+ * A DELEGATE THAT IMPLEMENTS NEITHER DOOR IS NOT WAITED FOR: it is answered with PerformDefaultHandling,
+ * which is also what a delegate that implements one of them returns when it has no opinion. That keeps the
+ * rule the response-disposition door established - NO DOOR MEANS THE DEFAULT, WITHOUT WAITING. */
+- (void)fnAskForCredentialForTask:(NSURLSessionTask *)task
+			challenge:(NSURLAuthenticationChallenge *)challenge
+		completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
+					    NSURLCredential *credential))completionHandler
+{
+	id delegate = _delegate;
+
+	if (completionHandler == nil) {
+		return;
+	}
+	if ([delegate respondsToSelector:
+			@selector(URLSession:task:didReceiveChallenge:completionHandler:)]) {
+		[(id)delegate URLSession:self
+				    task:task
+		      didReceiveChallenge:challenge
+		       completionHandler:completionHandler];
+		return;
+	}
+	if ([delegate respondsToSelector:
+			@selector(URLSession:didReceiveChallenge:completionHandler:)]) {
+		[(id)delegate URLSession:self
+	       didReceiveChallenge:challenge
+		 completionHandler:completionHandler];
+		return;
+	}
+	completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
+}
+
 - (void)fnTaskDidResume:(NSURLSessionTask *)task
 {
 	NSURLRequest *request = [task currentRequest];

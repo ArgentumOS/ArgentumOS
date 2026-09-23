@@ -52,9 +52,25 @@ NS_ASSUME_NONNULL_BEGIN
 
 @class NSURLSession;
 
+@class NSURLAuthenticationChallenge;
+@class NSURLCredential;
 /* HOW A SESSION'S OWNER IS TOLD THINGS ABOUT THE SESSION rather than about one task. EVERY MEMBER IS
  * OPTIONAL, as Apple declares them, so an implementation answers what it cares about and a session asks
  * `-respondsToSelector:` before each door (the same rule the keyed-archiver delegates keep). */
+/* WHAT A DELEGATE DECIDES WHEN A SERVER ASKS FOR CREDENTIALS. The one thing NOT here is a case meaning
+ * "give me the credential": the delegate hands one over THROUGH the completion handler, which is Apple's
+ * shape and this class's.
+ *
+ * THE VALUES ARE OURS UNDER §11.6.1 D2, as every enum's in this library are - Apple publishes the case names
+ * and the case names only. UseCredential is 0 because it is the case a handler reaches for first, and a
+ * zeroed decision must not mean the opposite of what its author intended. */
+typedef NS_ENUM(NSInteger, NSURLSessionAuthChallengeDisposition) {
+	NSURLSessionAuthChallengeUseCredential = 0,
+	NSURLSessionAuthChallengePerformDefaultHandling = 1,
+	NSURLSessionAuthChallengeCancelAuthenticationChallenge = 2,
+	NSURLSessionAuthChallengeRejectProtectionSpace = 3
+};
+
 @protocol NSURLSessionDelegate <NSObject>
 
 @optional
@@ -210,6 +226,15 @@ didReceiveResponse:(NSURLResponse *)response
 							    NSError *error))completionHandler;
 
 - (void)fnTaskDidResume:(NSURLSessionTask *)task;
+
+/* THE INTERNAL CHALLENGE DOOR, for the transport to call when a server asks: it resolves the delegate (task
+ * door first, then session) and answers SYNCHRONOUSLY, because the transport waits for the credential the
+ * way it waits at the head of a response. Not an FNX door for the public surface - an internal one, so named
+ * with the fn prefix this library uses for those. */
+- (void)fnAskForCredentialForTask:(NSURLSessionTask *)task
+			challenge:(NSURLAuthenticationChallenge *)challenge
+		completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
+					    NSURLCredential *credential))completionHandler;
 
 /* THE DOWNLOAD DOORS. The completion-handler form takes a LOCATION rather than bytes - that is the whole
  * difference from the data task, and it is why a download handler and a data handler cannot share a

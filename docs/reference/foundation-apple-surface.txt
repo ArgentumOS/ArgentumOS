@@ -31,8 +31,8 @@
 #   class      shipped  144   open   52   struck   77
 #   protocol   shipped   18   open   13   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped   94   open   49   struck   17
-#   case       shipped  501   open  633   struck  168
+#   enum       shipped   96   open   47   struck   17
+#   case       shipped  509   open  625   struck  168
 #   func       shipped   72   open   63   struck   54
 #   var        shipped  167   open  394   struck  353
 #   typealias  shipped   31   open   38   struck    7
@@ -1035,14 +1035,14 @@ case	shipped	NSURLRequestReturnCacheDataElseLoad	NSMutableURLRequest	Networking 
 case	shipped	NSURLRequestReturnCacheDataElseLoad	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
 case	shipped	NSURLRequestUseProtocolCachePolicy	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
 case	shipped	NSURLRequestUseProtocolCachePolicy	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
-case	open	NSURLSessionAuthChallengeCancelAuthenticationChallenge	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	open	NSURLSessionAuthChallengeCancelAuthenticationChallenge	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	open	NSURLSessionAuthChallengePerformDefaultHandling	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	open	NSURLSessionAuthChallengePerformDefaultHandling	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	open	NSURLSessionAuthChallengeRejectProtectionSpace	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	open	NSURLSessionAuthChallengeRejectProtectionSpace	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	open	NSURLSessionAuthChallengeUseCredential	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	open	NSURLSessionAuthChallengeUseCredential	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
+case	shipped	NSURLSessionAuthChallengeCancelAuthenticationChallenge	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
+case	shipped	NSURLSessionAuthChallengeCancelAuthenticationChallenge	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
+case	shipped	NSURLSessionAuthChallengePerformDefaultHandling	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
+case	shipped	NSURLSessionAuthChallengePerformDefaultHandling	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
+case	shipped	NSURLSessionAuthChallengeRejectProtectionSpace	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
+case	shipped	NSURLSessionAuthChallengeRejectProtectionSpace	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
+case	shipped	NSURLSessionAuthChallengeUseCredential	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
+case	shipped	NSURLSessionAuthChallengeUseCredential	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
 case	open	NSURLSessionDelayedRequestCancel	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks / Dispositions	-	objc
 case	open	NSURLSessionDelayedRequestContinueLoading	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks / Dispositions	-	objc
 case	open	NSURLSessionDelayedRequestUseNewRequest	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks / Dispositions	-	objc
@@ -1752,8 +1752,8 @@ enum	shipped	NSURLRequestCachePolicy	NSMutableURLRequest	Networking / Requests a
 enum	shipped	NSURLRequestCachePolicy	NSURLRequest	Networking / Requests and responses / Working with a cache policy	-	swift-page
 enum	shipped	NSURLRequestNetworkServiceType	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type	-	swift-page
 enum	shipped	NSURLRequestNetworkServiceType	NSURLRequest	Networking / Requests and responses / Accessing the service type	-	swift-page
-enum	open	NSURLSessionAuthChallengeDisposition	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges	-	objc
-enum	open	NSURLSessionAuthChallengeDisposition	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges	-	objc
+enum	shipped	NSURLSessionAuthChallengeDisposition	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges	-	objc
+enum	shipped	NSURLSessionAuthChallengeDisposition	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges	-	objc
 enum	open	NSURLSessionDelayedRequestDisposition	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks	-	objc
 enum	open	NSURLSessionMultipathServiceType	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP	-	swift-page
 enum	shipped	NSURLSessionResponseDisposition	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes	-	objc
