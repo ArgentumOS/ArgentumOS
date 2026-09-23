@@ -6,6 +6,8 @@
  * NSURLSession.m — creation, the task factories and invalidation. The design is in NSURLSession.h.
  */
 #import <Foundation/NSURLSession.h>
+#import <Foundation/NSHTTPURLResponse.h>
+#import <Foundation/NSURLCache.h>
 #import <Foundation/NSURLSessionTask.h>
 #import <Foundation/NSURLSessionConfiguration.h>
 #import <Foundation/NSURLRequest.h>
@@ -41,6 +43,11 @@
 
 @interface FNSessionTransfer : NSObject <NSURLProtocolClient>
 {
+	/* THE BYTES THIS TRANSFER RECEIVED, kept ONLY so the cache can store what it saw: the
+	 * task accumulates its own copy and does not expose it (Apple's data task hands its bytes to the
+	 * completion handler and nowhere else), so without this there is nothing to cache. Nothing reads it
+	 * DURING the transfer, so it is not a second streaming buffer. */
+	NSMutableData *_body;
 	NSURLSessionTask *_task;
 	NSURLSession *_session;
 	NSCondition *_decision;	/* the response decision's wait, owned by the transfer so it outlives a call */
@@ -54,6 +61,22 @@
 - (void)fnTellTheTaskDelegate;
 @end
 
+
+/* THE POLICY IS DERIVED FROM THE RESPONSE, the one signal v1 reads: `Cache-Control: no-store` is the server
+ * saying do not keep this, and anything else may be kept. NSURLRequest's own cache policy is a second input
+ * Apple honours and this slice does not read - the narrowing section 49.2 records rather than hides. */
+static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
+{
+	if ([response isKindOfClass:[NSHTTPURLResponse class]]) {
+		NSString *control = [[(NSHTTPURLResponse *)response allHeaderFields] objectForKey:@"Cache-Control"];
+
+		if (control != nil && [control rangeOfString:@"no-store"
+					     options:NSCaseInsensitiveSearch].location != NSNotFound) {
+			return NSURLCacheStorageNotAllowed;
+		}
+	}
+	return NSURLCacheStorageAllowed;
+}
 
 @implementation FNSessionTransfer
 
@@ -153,6 +176,10 @@
 	NSOperationQueue *queue;
 
 	[_task fnProtocolDidLoadData:data];
+	if (_body == nil) {
+		_body = [[NSMutableData alloc] init];
+	}
+	[_body appendData:data];
 	/* AND THE DELEGATE IS TOLD, IF IT ASKED TO BE: the same bytes the task accumulates, one call per
 	 * chunk - asked with -respondsToSelector: because every member of these protocols is optional. */
 	delegate = (id <NSURLSessionDataDelegate>)[_session delegate];
@@ -184,6 +211,24 @@
 
 - (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol
 {
+	/* STORING BELONGS HERE BECAUSE THE BODY IS HERE AND THE TASK IS WHAT HAS BOTH: a protocol reports and
+	 * the loading system puts things away, which is whose job Apple considers this too. */
+	{
+		NSURLResponse *seen = [_task response];
+
+		if (seen != nil && _body != nil) {
+			NSCachedURLResponse *cached = [[NSCachedURLResponse alloc]
+							initWithResponse:seen
+								     data:_body
+								 userInfo:nil
+							    storagePolicy:fn_policyForResponse(seen)];
+
+			[[NSURLCache sharedURLCache] storeCachedResponse:cached forRequest:[_task originalRequest]];
+			[cached release];
+		}
+		[_body release];
+		_body = nil;
+	}
 	[_task fnProtocolDidFinishWithError:nil];
 	[self fnTellTheTaskDelegate];
 	[_session fnTransferDidEnd:protocol];

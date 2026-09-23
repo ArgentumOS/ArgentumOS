@@ -11,6 +11,7 @@
 #import <Foundation/NSURLCredential.h>
 #import <Foundation/NSURLAuthenticationChallenge.h>
 #import <Foundation/NSURLSession.h>
+#import <Foundation/NSURLCache.h>
 #import <Foundation/NSData.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
@@ -295,6 +296,25 @@ static size_t fn_curl_header_discard(char *ptr, size_t size, size_t nmemb, void 
 	memset(&transfer, 0, sizeof(transfer));
 	transfer.protocol = self;
 	transfer.headerBytes = [[NSMutableData alloc] init];
+
+	/* THE CACHE IS ASKED BEFORE THE NETWORK, AND A HIT DOES NOT DIAL OUT AT ALL - which is the entire point
+	 * of a cache and the easiest half of it to get wrong: a hit that still opens a connection costs what it
+	 * was supposed to save. The stored response goes to the client through the SAME doors a live one would,
+	 * so a delegate cannot tell a hit from a miss except by the order it sees them in. */
+	{
+		NSCachedURLResponse *cached = [[NSURLCache sharedURLCache] cachedResponseForRequest:request];
+
+		if(cached != nil) {
+			[_client URLProtocol:self
+			    didReceiveResponse:[cached response]
+			     cacheStoragePolicy:[cached storagePolicy]];
+			[_client URLProtocol:self didLoadData:[cached data]];
+			[_client URLProtocolDidFinishLoading:self];
+			[transfer.headerBytes release];
+			[pool release];
+			return;
+		}
+	}
 
 	curl = curl_easy_init();
 	if (curl == NULL) {
