@@ -9204,3 +9204,45 @@ documentation and every value decided and recorded. The owed surface is closed; 
 has no RFC 6265 counterpart, so a round-trip check must expect it to survive a property dictionary WITHOUT
 appearing in a `Set-Cookie` header — which is a check that would fail if the parser treated the dictionary
 as the wire format.
+
+### §47.3 — W7 SLICE 3 CLOSES (2026-09-21), AND ITS CHECKS FOUND THREE DEFECTS, TWO OF THEM OURS
+
+**LANDED: `NSHTTPCookie` (0301f22d, 17 checks) and `NSHTTPCookieStorage` (e96da15a, 19 checks), with the
+fast tier at 59/59 cases and 352/352 checks.** The value type and the two wire conversions; the store, its
+policy, and RFC 6265's two matching rules. Every name came from the documentation through the door §47.1
+describes (the `occ` variant of the page, no Apple header read); every value was decided and recorded in
+§47.2.
+
+**WHAT THE CHECKS WERE FOR, WHICH IS THE ARGUMENT FOR WRITING THEM THIS WAY.** Three defects, and TWO OF THE
+THREE WERE IN OUR OWN WORK - which is the ratio that keeps repeating and the reason a check that merely
+describes intended behaviour is worth almost nothing:
+
+  * `-setCookie:` POSTED A CHANGE THE POLICY HAD REFUSED, while `-setCookies:forURL:mainDocumentURL:` posted
+    only on a real change. Two doors of one class disagreed about what "changed" means, and the difference
+    became OBSERVABLE the moment a store was told to refuse everything: it still announced that its contents
+    had changed. The implementation was wrong and the check was right.
+  * A CHECK OF OURS ASSERTED A COUNT where it meant to assert a property - the task-scoped pair - and would
+    have passed while both halves of the property were broken. It now asserts that the cookie a task stored
+    is visible for THAT TASK'S URL and for no other host.
+  * And the ledger refused to let a DEPRECATED API ship: `NSHTTPCookieManagerAcceptPolicyChangedNotification`
+    is `struck` and §11.5 strikes deprecated API, so the policy setter quietly does its work and the probe
+    asserts the name is ABSENT. That is the second time this session the ledger's own rows corrected a
+    mistake before it landed (the first was the misspelled `NSURLRequestNetworkServiceType` family).
+
+**DECISIONS THIS SLICE MADE AND KEPT, each stated in one place rather than scattered through a .m:** the
+cookie property keys' values are OUR strings, chosen as RFC 6265's attribute names (§47.2); `domain` is
+NULLABLE because a host-only cookie is a real thing, not a malformed one; `sessionOnly` is a FUNCTION of the
+absent expiry so it cannot disagree with `expiresDate`; a cookie with no `Path` resolves to `/`; an equal
+cookie REPLACES rather than accumulates; the accept policy gates INSERTION, which is its only observable
+effect; the store is IN-MEMORY and persists nothing (§47.1), with the FSH-domain option named for later; and
+the two refusals - the group-container store door and the deprecated notification name - are ASSERTED ABSENT
+rather than merely absent.
+
+**WHAT W7 HAS LEFT, MEASURED AGAIN AFTER THIS SLICE: 10 open class rows.** Credentials (4:
+`NSURLAuthenticationChallenge`, `NSURLCredential`, `NSURLCredentialStorage`, `NSURLProtectionSpace`) - and
+these are PARKED ON A DECISION, the keychain question, which the user's direction says is worked WHEN that
+slice comes up. The cache (1: `NSURLCache`, which needs a store and the protocol's hooks).
+Streams/WebSocket/metrics (5: `NSURLSessionStreamTask`, `NSURLSessionWebSocketTask`,
+`NSURLSessionWebSocketMessage`, and the two `…TaskMetrics` records). Of those three groups, the cache and
+the metrics pair need NO decision and NO prerequisite - which is the same test the cookie family passed
+before it went first.
