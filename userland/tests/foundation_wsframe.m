@@ -218,6 +218,14 @@ int main(void)
 	check("and-an-empty-close-payload-means-no-code-at-all",
 	      FNWebSocketClosePayloadIsSendable(NULL, 0) && !FNWebSocketClosePayloadIsSendable(closeCode, 1),
 	      @"empty is legal; a payload that is neither empty nor carries a code is not");
+	/* A LENGTH THAT CLAIMS A CODE MUST COME WITH SOMEWHERE TO READ IT - the case this probe MISSED, and the
+	 * omission cost the task's probe a SIGSEGV: FNWebSocketClosePayloadIsSendable(NULL, 2) dereferenced address
+	 * zero, because the first version checked the length and not the pointer. The check above passes NULL with
+	 * length ZERO (legal) and length ONE (refused before any read), so the dangerous combination - NULL with a
+	 * length that promises two bytes - was the one nobody tried. It is tried here. */
+	check("and-a-length-that-promises-a-code-needs-a-payload-to-read-it",
+	      !FNWebSocketClosePayloadIsSendable(NULL, 2) && !FNWebSocketClosePayloadIsSendable(NULL, 126),
+	      @"found by slice 3b's probe crashing: NULL with a real length must be refused, not dereferenced");
 
 	printf("FOUNDATION-WSFRAME RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-WSFRAME-STATUS=%d\n", failc ? 1 : 0);

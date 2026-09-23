@@ -44,6 +44,7 @@ CHECKS = (
     "a-close-code-may-be-sent",
     "and-the-three-reserved-codes-may-not",
     "and-an-empty-close-payload-means-no-code-at-all",
+    "and-a-length-that-promises-a-code-needs-a-payload-to-read-it",
 )
 
 

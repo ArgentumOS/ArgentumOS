@@ -10643,6 +10643,15 @@ refused rather than sent, and the peer's exit code as its own account of the who
    peer whose accept never returns; a local named `accept` shadowing the socket call; and two explicit `retain`s
    ARC forbids.)
 
-**THE LADDER, COMPLETE:** values 7/7 · codec 16/16 · assembler 11/11 · handshake 14/14 · **the task 10/10** - and
-the two items still owed are named rather than implied: the reserved-code regression check in slice 2's probe, and
-the `wss:` leg (§59 slice 4), which costs nothing new because the stream's TLS is already verified.
+**THE LADDER, COMPLETE:** values 7/7 · codec 16/16 · assembler 11/11 · handshake 14/14 · **the task 10/10**.
+
+**AND THE FIRST OF THE TWO OWED ITEMS IS CLOSED THE SAME DAY: the reserved-code regression check exists and is
+green (codec 17/17).** It is the case slice 2's probe MISSED - `FNWebSocketClosePayloadIsSendable(NULL, 2)`, a
+length that promises a code with nothing to read it from - and the omission is worth stating plainly in the codec's
+own probe, because that probe DID test `NULL` twice (with length 0, legal, and length 1, refused before any read)
+and the dangerous pairing was the one combination nobody tried. A fix with no check is a fix waiting to be
+rediscovered, and this is what it took to notice: another probe, one layer up, crashing.
+
+**WHAT REMAINS FOR W7 IS ONE ITEM: THE `wss:` LEG (§59 slice 4), which costs nothing new** - the stream's TLS
+upgrade is already verified, so the leg is a TLS peer for the WebSocket probe (the pattern §58.1 already built: a
+certificate from `openssl req`, a libtls peer, one connection) and a `wss://` URL in place of `ws://`.
