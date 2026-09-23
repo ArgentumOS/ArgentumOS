@@ -1009,6 +1009,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_wsframe.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_wsframe"
+	# foundation_wsassemble: the framing's STATE HALF (§59 slice 2b) - frames in, messages out, including the
+	# interleaved control frame of §5.4 that §59 left as a measurement. It links both internal units.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_wsassemble.m -o .build/probe-foundation_wsassemble.o
+	$(MUSL64_OBJC) .build/probe-foundation_wsassemble.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_wsassemble"
 	# foundation_challengedoor: the two delegate doors, driven (W7 slice 4)
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		userland/tests/foundation_challengedoor.m -o .build/probe-foundation_challengedoor.o

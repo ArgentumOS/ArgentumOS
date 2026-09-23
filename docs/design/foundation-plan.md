@@ -10566,3 +10566,28 @@ be reported and never sent.
 
 **WHAT SLICE 2 STILL OWES (§59's own split):** the ASSEMBLER - fragmentation across frames, the interleaved
 control frames of §5.4 (the measurement §59 left deliberately open), and `maximumMessageSize`.
+
+**SLICE 2b (THE ASSEMBLER) LANDS (2026-09-22), GREEN: 11/11 probe checks, 3/3 case checks - AND THE MEASUREMENT
+§59 LEFT OPEN IS SETTLED.** `FNWebSocketAssembler` is the state half of the framing: frames in, messages and
+control frames out. **An interleaved control frame is answered WHEN IT ARRIVES, in the middle of a fragmented
+message, with the message it interrupted going on untouched** - the probe drives a real ping into the middle of a
+three-fragment "hello" and asserts BOTH halves, because a reader that queued it behind the message would stall a
+peer's keepalive for as long as the message takes, and a stall is exactly what a ping exists to detect.
+
+The frames it feeds are REAL: each is built with `FNWebSocketCreateFrame` and parsed with `FNWebSocketParseFrame`
+first, so what the assembler sees is what the task will see coming off a socket. It pins whole and fragmented
+messages of both kinds, the three §5.4 faults (a continuation with nothing to continue, a new message before the
+last finished, and a message past the limit), and the limit's own fidelity point in Apple's words - "includes the
+sum of all bytes from continuation frames" - so the same total sent in pieces must fail too. The default limit is
+OURS (D2): Apple documents the property and not its default, and the two published accounts of it disagree.
+
+**AND THE PROBE CAUGHT A REAL DESIGN GAP RATHER THAN A TYPO - THE FOURTH TIME THIS SESSION A TEST HAS TAUGHT THE
+CODE SOMETHING.** Its checks share one assembler, so when the "a new message before the last one finished"
+scenario left `_inMessage` SET, the NEXT scenario read the previous one's state and failed. The gap was in the
+ASSEMBLER, not the probe: a §5.4 fault returned without abandoning the message. Every error path now clears
+(`-abandonMessage`), on the ground that the task's answer to all three faults is the same - 1002 and close - so a
+connection that is over must not leave state that says otherwise. Two smaller lessons came with it, both from
+`-Werror`: an OUT-PARAMETER needs BOTH levels of its nullability specifier inside an NS_ASSUME_NONNULL region
+(`NSData **` is a pointer to a pointer), and a BLOCK whose captured variables are `const` cannot be the place
+those out-parameters are assigned - one over-clever shape, two compile errors, and a plain sequence said the same
+thing.
