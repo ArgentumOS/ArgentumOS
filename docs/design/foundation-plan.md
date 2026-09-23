@@ -9711,3 +9711,34 @@ reports, and what it does not:**
 on `NSURLSessionTaskDelegate`, which this library does not declare yet because the type it delivers did not
 exist until now. **A session that collects nothing and answers nil is worse than no metrics at all**, so the
 door and the records ship together or neither does.
+
+### §50.2 — THE METRICS HAVE NO NATURAL WAY UP, AND THE DIRECTIONS ARE NAMED (2026-09-21)
+
+**§50.1 SAID THE DOOR AND THE RECORDS SHIP TOGETHER OR NEITHER DOES, AND WRITING THE DOOR EXPOSED WHY THEY
+CANNOT SIMPLY BE JOINED.** The delegate door `-URLSession:task:didFinishCollectingMetrics:` goes on
+`NSURLSessionTaskDelegate` and the session delivers it BEFORE `-didCompleteWithError:`, which is Apple's order.
+The hard part is not the door: **it is that THE ONLY THING THAT CAN FILL THE RECORD IS THE BRIDGE - it owns the
+curl handle, and every measurement comes from `CURLINFO_*` on that handle - while THE ONLY THING THAT CAN
+DELIVER IT IS THE SESSION, and there is no Apple door between them.** In Apple's own stack the URL loading
+system produces the metrics and the protocol is not the source, so this library's seam has no counterpart to
+imitate, and the three ways up are genuinely different:
+
+  * **A CLIENT DOOR** (`-URLProtocol:didCollectMetrics:` or similar), which is a deviation like the challenge
+    door's completion handler - and the honest version of it, since a protocol reporting what it measured is
+    exactly what the challenge door already does.
+  * **THE BRIDGE WRITES THE RECORD ONTO THE TASK**, which needs no new door and no new plumbing - but it puts
+    a session-owned type into the transport's hands and makes the task a carrier of something the session
+    considers its own.
+  * **THE SESSION ASKS AFTERWARDS** - a door the bridge answers when the session calls it at the ending - which
+    inverts the direction of every other door in this seam and would be the only pull in a wall of pushes.
+
+**THE FIRST IS THE ONE THAT MATCHES THIS SEAM'S OWN PRECEDENT**, and the question is recorded rather than
+decided unilaterally because it is an API-shape decision of exactly the kind the user has settled several
+times already (the challenge door's completion handler was the same fork). **AND IT IS NOT URGENT**: the two
+records ship and are checked (§50.1, 14 checks), the pair is one door and one extraction away from complete,
+and nothing else in W7 waits on it.
+
+**THE REMAINING W7 WORK, IN ONE PLACE, SO IT IS NOT ASSEMBLED FROM COMMIT MESSAGES:** the metrics delivery
+(this section), then **a decision** between `NSURLSessionStreamTask` (a socket-backed task on this system's own
+socket layer, because curl exposes no raw socket) and `NSURLSessionWebSocketTask` + `Message` (an RFC 6455
+client) - **both transport work, and neither finishable by writing a value type and a probe.**
