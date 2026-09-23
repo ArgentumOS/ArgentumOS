@@ -10456,3 +10456,62 @@ consumed rather than lost, a spurious wake just sends the loop around, and no en
    test, which is exactly what the last one turned out to be. (A widening that makes the window easier to hit:
    poll a LONG descriptor list with the socket FIRST, so the scan is still running when the peer writes - the wake
    then lands after the socket has been looked at and before the registration, which is the window itself.)
+
+## §59 — THE WEBSOCKET SLICE, DESIGNED BEFORE IT IS BUILT (2026-09-22)
+
+**W7's LAST ROW, AND THE SURFACE IS MEASURED RATHER THAN RECALLED.** Apple's published pages, read the same way
+§57 and §58 read theirs (the ledger's 20 rows are the NAMES; these are their signatures and, where they carry
+one, their semantics):
+
+ * **THE TASK's eight rows.** `-sendMessage:completionHandler:` - "sends a WebSocket message, receiving the result
+   in a completion handler", and **"if an error occurs while sending the message, ANY OUTSTANDING WORK ALSO
+   FAILS"**. `-receiveMessageWithCompletionHandler:` - "reads a WebSocket message once ALL THE FRAMES of the
+   message are available", and it completes **ONCE PER CALL**: a listener re-arms from inside its own handler.
+   `-sendPingWithPongReceiveHandler:` - the pong goes to THAT handler, and "when sending multiple pings, the task
+   always calls `pongReceiveHandler` IN THE ORDER it sent the pings". `-cancelWithCloseCode:reason:` - "sends a
+   close frame with the given close code and optional close reason", while plain `-cancel` "sends a cancellation
+   frame with NO close code or reason" (a distinction worth keeping: it is the difference between a graceful close
+   and a dropped connection). `maximumMessageSize` - "the maximum number of bytes to buffer before the receive
+   call fails with an error ... includes the sum of all bytes from continuation frames". And the two readouts,
+   `closeCode` and `closeReason`.
+ * **THE SESSION's three factories.** `-webSocketTaskWithURL:`, `-webSocketTaskWithRequest:`,
+   `-webSocketTaskWithURL:protocols:`. The URL must be `ws:` or `wss:`; a protocol list is negotiated in the
+   handshake through `Sec-WebSocket-Protocol`; **and "reads/writes performed BEFORE THE HANDSHAKE COMPLETES ARE
+   ENQUEUED"** - which is a SEMANTIC, not a footnote: it is the substrate's operation queue, already built.
+ * **THE MESSAGE's five rows and the two enums** (§57 counted them): `data`, `string`, `type`, its two
+   initialisers; `NSURLSessionWebSocketMessageType` (Data, String); `NSURLSessionWebSocketCloseCode` (13 cases,
+   in the ledger by name).
+ * **THE DELEGATE's two doors:** `-URLSession:webSocketTask:didOpenWithProtocol:` and
+   `-URLSession:webSocketTask:didCloseWithCode:reason:`.
+
+**THE SUBSTRATE IS `NSURLSessionStreamTask`, WHICH IS WHY §57's ORDER WAS WHAT IT WAS.** The WebSocket task HOLDS
+a stream task and speaks RFC 6455 over it: the upgrade is an HTTP request on the stream, the accept digest is ONE
+SHA-1 AND ONE BASE64 (libcrypto's digest and `NSData`'s base64 - both already linked and already shipped), and
+everything after it is framing. No socket is re-implemented, and **`wss:` costs nothing new**: the stream's
+`-startSecureConnection` IS the upgrade's TLS, with §58.1's recorded deviation that certificates are not verified.
+
+**BOUNDARIES, EACH WITH ITS GROUND:**
+ * **`Sec-WebSocket-Extensions` IS NOT OFFERED**, and the task exposes no knob for one - which is Apple's shape
+   too. A server that INSISTS on an extension fails the handshake, and that is reported as a handshake failure
+   rather than silently downgraded.
+ * **`maximumMessageSize`'s DEFAULT IS OURS (D2).** Apple documents the property and NOT its default, and the
+   third-party reports of it contradict each other - so the value is CHOSEN and written down, not guessed from a
+   blog, and the probe asserts the value we chose rather than a value we inferred.
+ * **THE RECEIVE LOOP IS THE CALLER'S**, deliberately and as documented: one call, one message, no self-re-arming.
+ * **NO PERMESSAGE-DEFLATE, NO SUBPROTOCOL IMPLEMENTATION, NO SERVER SIDE, NO EXTENSION NEGOTIATION.** Each is
+   absent from the surface, and the refusals are asserted absent by the probe's inventory check (the §11.6
+   pattern this unit already uses elsewhere).
+
+**AND THE SLICES, IN THE ORDER THE WORK'S SHAPE FORCES THEM** - each with its own probe and case, each landing
+green or not landing:
+ 1. **THE VALUES**: the message (its two initialisers, `data`/`string`/`type`) and the two enums (2 + 13 cases).
+    No transport, and therefore exactly the shape `NSURLError`'s probe already had.
+ 2. **THE FRAMING LAYER**: masking, the frame parser and emitter, fragmentation, the control frames, and
+    `maximumMessageSize` - tested against a RAW peer, with no HTTP and no handshake in the way.
+ 3. **THE UPGRADE AND THE TASK**: the handshake on the stream (including `Sec-WebSocket-Accept` and the protocol
+    negotiation), the four doors, the two delegate doors, and the state machine.
+ 4. **THE `wss:` LEG**, through the stream's already-verified TLS.
+
+**WHAT IS DELIBERATELY NOT DECIDED HERE:** whether slice 3's `-receiveMessageWithCompletionHandler:` must
+tolerate interleaved control frames arriving mid-message (RFC 6455 ALLOWS them, so a parser that refuses them is
+wrong for a compliant server) - that is a measurement against the raw peer in slice 2, not a preference.
