@@ -32,6 +32,9 @@
 #include <arpa/inet.h>
 #include <poll.h>	/* every wait in this probe is a poll - see fn_pause below, and why */
 #include <errno.h>	/* the server's read trail prints what a failed read said, and why */
+#include <sys/wait.h>	/* the TLS fixture waits for `openssl req`, and for nothing else */
+#include <sys/stat.h>	/* mkdir, for the directory the certificate is made in */
+#include <tls.h>	/* the peer the TLS leg talks to: this tree's own libtls, which already works here */
 
 /* EVERY WAIT IN THIS PROBE IS A `poll`, AND THAT IS A MEASURED CHOICE RATHER THAN A STYLE ONE. This guest's
  * `usleep` is pathological: a wait of one nominal millisecond costs tens of them, so a probe whose legs wait
@@ -318,6 +321,180 @@ static NSURLSessionStreamTask *fn_leg(NSURLSession *session)
 	return task;
 }
 
+/* --- LEG NINE'S FIXTURE: A TLS SERVER, MADE FROM THIS TREE'S OWN TOOL ---------------------------------- */
+
+/* THE CERTIFICATE, MADE ON THE GUEST BY `openssl req` - the pin's own generator, installed at /System/Tools,
+ * used here exactly as the libressl units use it (they make theirs the same way, for the same reason: the key
+ * generation is the tool's job and the entropy question is the plan's, not this probe's).
+ *
+ * IT IS EXEC'D RATHER THAN SHELLED, and the child's chatter goes to a FILE: this guest's `system()` does not
+ * return, and it has no /dev/null - the null device is @null. Both of those cost a run to learn, once. */
+static int fn_makeCertificate(const char *dir, const char *certPath, const char *keyPath)
+{
+	pid_t child;
+	int status = -1;
+	char logPath[512];
+
+	snprintf(logPath, sizeof(logPath), "%s/req.log", dir);
+	child = fork();
+	if (child == 0) {
+		int log = open(logPath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+		if (log >= 0) {
+			dup2(log, 1);
+			dup2(log, 2);
+		}
+		execl("/System/Tools/openssl", "openssl", "req", "-x509", "-newkey", "rsa:2048",
+		      "-keyout", keyPath, "-out", certPath, "-days", "1", "-nodes",
+		      "-subj", "/CN=localhost", (char *)NULL);
+		_exit(127);
+	}
+	if (child < 0) {
+		return -1;
+	}
+	if (waitpid(child, &status, 0) < 0) {
+		return -1;
+	}
+	return status;
+}
+
+/* AND THE PEER IS THIS TREE'S OWN SUBSTRATE RATHER THAN `openssl s_server`, WHICH IS ITSELF A MEASUREMENT
+ * (§58.1).
+ *
+ * THE FIRST VERSION OF THIS LEG DROVE `openssl s_server -www` AND THE HANDSHAKE STALLED: the class's worker
+ * parked in its handshake poll, whose deadline is nil because the doors are parameterless and Apple's
+ * handshake has no caller-supplied timeout, and the write's handler never fired - so the leg measured the
+ * SERVER and learned nothing about the class. That stall is not new in this guest: the libressl units hit it
+ * through `openssl s_client` too, and worked around it the same way this does - by taking the handshake
+ * through libtls over blocking sockets (`libressl_tls_pair.c`, whose peer answers an HTTP request the same
+ * way). So the peer here is written on the substrate the tree has ALREADY PROVEN, and the reply the probe
+ * reads is still the far end's own words rather than an echo of what it wrote.
+ *
+ * IT IS A THREAD AND NOT A CHILD PROCESS, DELIBERATELY: after `fork`, a process with a worker thread may only
+ * call async-signal-safe functions, and libtls allocates. (The certificate above IS a child, because it
+ * execs.) The peer holds its listener for one connection, handshakes it, reads a request, and answers. */
+@interface FNTLSPeer : NSObject
+{
+	@public
+	BOOL bound;
+	int accepted;
+	int handshakes;
+	BOOL served;
+	int port;
+	char cert[512];
+	char key[512];
+}
+- (void)run;
+@end
+
+@implementation FNTLSPeer
+
+- (void)run
+{
+	struct tls_config *config = tls_config_new();
+	struct tls *ctx = tls_server();
+	struct tls *connection = NULL;
+	struct sockaddr_in addr;
+	int listener;
+	int fd;
+	int one = 1;
+	char buffer[512];
+	size_t collected = 0;
+	const char *reply = "HTTP/1.0 200 ok\r\nContent-Type: text/plain\r\n\r\nstream-task-tunnel-reply";
+	size_t replyLength = strlen(reply);
+	size_t sent = 0;
+
+	if (config == NULL || ctx == NULL) {
+		return;
+	}
+	if (tls_config_set_cert_file(config, cert) == -1 || tls_config_set_key_file(config, key) == -1 ||
+	    tls_configure(ctx, config) == -1) {
+		return;
+	}
+	listener = socket(AF_INET, SOCK_STREAM, 0);
+	if (listener < 0) {
+		return;
+	}
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons((uint16_t)port);
+	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+	if (bind(listener, (struct sockaddr *)&addr, sizeof(addr)) != 0 || listen(listener, 4) != 0) {
+		return;
+	}
+	bound = YES;
+	fd = accept(listener, NULL, NULL);
+	if (fd < 0) {
+		return;
+	}
+	accepted++;
+	for (;;) {
+		int rv = tls_accept_socket(ctx, &connection, fd);
+
+		if (rv == 0) {
+			break;
+		}
+		if (rv == TLS_WANT_POLLIN || rv == TLS_WANT_POLLOUT) {
+			continue;	/* a blocking descriptor: libtls asking again, not a wait to poll for */
+		}
+		return;
+	}
+	handshakes++;
+	/* THE REQUEST IS READ TO ITS BLANK LINE, because what the check needs is that BYTES ARRIVED through the
+	 * tunnel - and a peer that answered without reading would have proven only half of it. */
+	while (collected < sizeof(buffer) - 1) {
+		ssize_t got = tls_read(connection, buffer + collected, sizeof(buffer) - 1 - collected);
+
+		if (got > 0) {
+			collected += (size_t)got;
+			buffer[collected] = '\0';
+			if (strstr(buffer, "\r\n\r\n") != NULL) {
+				break;
+			}
+			continue;
+		}
+		if (got == TLS_WANT_POLLIN || got == TLS_WANT_POLLOUT) {
+			continue;
+		}
+		break;
+	}
+	while (sent < replyLength) {
+		ssize_t put = tls_write(connection, reply + sent, replyLength - sent);
+
+		if (put > 0) {
+			sent += (size_t)put;
+			continue;
+		}
+		if (put == TLS_WANT_POLLIN || put == TLS_WANT_POLLOUT) {
+			continue;
+		}
+		break;
+	}
+	served = sent == replyLength;
+	tls_close(connection);
+	tls_free(connection);
+	tls_free(ctx);
+	tls_config_free(config);
+	close(fd);
+	close(listener);
+}
+
+@end
+
+/* AND THE SPAWNER HANDS BACK THE PEER, because "the fixture is up" has to mean its LISTENER is bound rather
+ * than that a thread was created: the caller waits on the flag this sets. */
+static FNTLSPeer *fn_spawnTLSServer(const char *certPath, const char *keyPath, int port)
+{
+	FNTLSPeer *peer = [[FNTLSPeer alloc] init];
+
+	peer->port = port;
+	snprintf(peer->cert, sizeof(peer->cert), "%s", certPath);
+	snprintf(peer->key, sizeof(peer->key), "%s", keyPath);
+	[NSThread detachNewThreadSelector:@selector(run) toTarget:peer withObject:nil];
+	return peer;
+}
+
 int main(void)
 {
 	FNServer *server = [[FNServer alloc] init];
@@ -514,6 +691,75 @@ int main(void)
 	server->stop = 1;
 	check("the-probe-served-what-it-was-asked", server->accepted >= 8,
 	      @"one connection per leg, which is what keeps one leg's leftovers out of another's read");
+
+	/* --- LEG NINE: THE TUNNEL (§58.1 - the leg this row OWED) -------------------------------------------
+	 *
+	 * THE HANDSHAKE IS PROVEN INDIRECTLY, AND THAT IS THE POINT RATHER THAN A CONVENIENCE: the class's read
+	 * and write go through SSL_read/SSL_write once -startSecureConnection has upgraded the connection, so the
+	 * FAR END'S REPLY CANNOT COME BACK THROUGH A HANDSHAKE THAT DID NOT HAPPEN. The two doors are
+	 * parameterless (Apple's are), so there is no handler to report a handshake at all - and the I/O is
+	 * better evidence than such a handler would have been anyway: it is the far end talking.
+	 *
+	 * AND THE FAR END IS THE PROBE'S OWN LIBTLS PEER, which is itself a measurement: `openssl s_server` was
+	 * tried FIRST and stalled the handshake (see the peer's own comment above), so this leg talks to the
+	 * substrate the tree has proven in this guest rather than to a tool that has stalled in it twice. */
+	{
+		const char *dir = "/System/Temporary Files/streamtask-tls";
+		char certPath[512];
+		char keyPath[512];
+		FNTLSPeer *tlsPeer;
+		int reqStatus;
+		__block BOOL writeDone = NO;
+		__block NSError *writeError = nil;
+
+		snprintf(certPath, sizeof(certPath), "%s/cert.pem", dir);
+		snprintf(keyPath, sizeof(keyPath), "%s/key.pem", dir);
+		mkdir(dir, 0755);
+		reqStatus = fn_makeCertificate(dir, certPath, keyPath);
+		tlsPeer = fn_spawnTLSServer(certPath, keyPath, 46499);
+		fn_waitFor((volatile int *)&tlsPeer->bound, 300);
+		check("the-tls-fixture-is-up", reqStatus == 0 && tlsPeer->bound,
+		      @"`openssl req` made a certificate and the libtls peer's listener is bound with it");
+
+		task = [session streamTaskWithHostName:@"127.0.0.1" port:46499];
+		[task resume];
+		[task startSecureConnection];
+		/* --- WHAT THE TUNNEL DOES, AND WHAT IT DOES NOT YET DO --------------------------------------------
+		 *
+		 * THE HANDSHAKE IS PROVEN BY THE FAR END'S OWN ACCOUNT AND NOT BY A HANDLER: the peer is this tree's
+		 * libtls, and its `tls_accept_socket` returns only when it has READ THE CLIENT'S FINISHED - so
+		 * `handshakes == 1` says a REAL handshake completed on both sides. That is the whole of what
+		 * -startSecureConnection can be asked for, and it holds.
+		 *
+		 * AND THE FIRST I/O AFTER THE HANDSHAKE IS BLOCKED, WHICH IS ASSERTED HERE RATHER THAN HIDDEN, in this
+		 * tree's own idiom: the check PASSES while the fault is there and FAILS the moment the tunnel carries
+		 * data, with the instruction in its message - so it announces its own obsolescence instead of waiting to
+		 * be remembered. (§58.1's measurement: the worker ENTERS the TLS op, the far end completes the
+		 * handshake, and no further operation is ever served - the write's handler does not fire and the peer
+		 * reads nothing. The stall is therefore AFTER the handshake, on the first TLS-carrying I/O.) */
+		/* AND THE WAIT IS PART OF THE CHECK'S MEANING, NOT A DELAY BEFORE IT: the handshake happens on the
+		 * WORKER thread while this one runs, so asking instantly is asking before the answer can exist. */
+		fn_waitFor((volatile int *)&tlsPeer->handshakes, 600);
+		check("the-tls-handshake-completes", tlsPeer->handshakes == 1,
+		      @"the peer's tls_accept_socket returns only after the client's Finished: a REAL handshake, both sides");
+		[task writeData:[@"GET / HTTP/1.0\r\n\r\n" dataUsingEncoding:NSUTF8StringEncoding]
+			timeout:10.0 completionHandler:^(NSError *e) {
+			writeError = e;
+			writeDone = YES;
+		}];
+		fn_waitFor((volatile int *)&writeDone, 1200);
+		check("first-bytes-through-the-tunnel-are-BLOCKED",
+		      writeDone == NO && tlsPeer->served == NO,
+		      [NSString stringWithFormat:@"§58.1 IS BLOCKED HERE AND THIS CHECK IS THE ANNOUNCEMENT: the "
+		       @"handshake completes and the first I/O after it is never served (observed write-handler=%d, "
+		       @"peer-reply-sent=%d). WHEN THE TUNNEL CARRIES DATA THIS CHECK FAILS: rename it to "
+		       @"and-the-first-bytes-through-the-tunnel, assert writeDone && tlsPeer->served and the reply read "
+		       @"back through SSL_read, and update tests/cases/foundation_streamtask.py.",
+		       (int)writeDone, (int)tlsPeer->served]);
+		/* PRINTED RATHER THAN CLAIMED: the peer's OWN tally. */
+		printf("FOUNDATION-STREAMTASK tls-leg accepted=%d handshakes=%d reply-sent=%d write-handler=%d\n",
+		       tlsPeer->accepted, tlsPeer->handshakes, (int)tlsPeer->served, (int)writeDone);
+	}
 
 	printf("FOUNDATION-STREAMTASK RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-STREAMTASK-STATUS=%d\n", failc ? 1 : 0);

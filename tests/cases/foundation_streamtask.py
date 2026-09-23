@@ -26,6 +26,9 @@ CHECKS = (
     "and-it-was-measured",
     "capture-streams-is-refused-with-its-ground",
     "the-probe-served-what-it-was-asked",
+    "the-tls-fixture-is-up",
+    "the-tls-handshake-completes",
+    "first-bytes-through-the-tunnel-are-BLOCKED",
 )
 
 

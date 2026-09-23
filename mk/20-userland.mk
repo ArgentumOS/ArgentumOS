@@ -978,12 +978,15 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_metricsdelivery"
 	# foundation_streamtask: the duplex connection as a task (§58) - the minimum, the cap, the
-	# timeout-as-a-cancel, the half-close and the refused door. Its own server again, and NO TLS: the two TLS
-	# doors are implemented and their leg is §58.1, which needs a guest TLS server (the libressl units' pattern).
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+	# timeout-as-a-cancel, the half-close, the refused door, AND the TLS tunnel (§58.1). Its own server for the
+	# first eight legs, and its own LIBTLS PEER for the ninth: `openssl s_server` was tried FIRST and stalled
+	# the handshake in this guest (the same stall the libressl units' `s_client` shows), so the tunnel's far
+	# end is the substrate the tree has already proven there. That peer is why this probe needs -ltls.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests -I$(LIBRESSL_PREFIX)/include \
 		userland/tests/foundation_streamtask.m -o .build/probe-foundation_streamtask.o
 	$(MUSL64_OBJC) .build/probe-foundation_streamtask.o \
 		-L$(FNXLIB) -lfoundation \
+		-L$(LIBRESSL_PREFIX)/lib -ltls -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_streamtask"
 	# foundation_urlerror: the URL error names, their values, and the shape of the family (§56). No transport
 	# and no server: two of its checks read a REAL task's error and the rest are the codes themselves.

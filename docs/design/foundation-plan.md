@@ -10314,6 +10314,36 @@ makes the peer's end of file arrive. The kernel work item is named rather than p
 probe's check is `and-the-far-end-sees-the-connection-end` rather than "reaches the far end" - a claim this kernel
 can actually keep.
 
-**AND THE TWO TLS DOORS REMAIN IMPLEMENTED BUT UNVERIFIED** (§58.1, unchanged): `-startSecureConnection` and
-`-stopSecureConnection` are a real `SSL_CTX`/`SSL` wrap whose leg needs a guest TLS server, and until that runs
-they are doors with a test OWED rather than doors with a claim.
+### §58.1 — THE TLS LEG RAN, AND IT SEPARATED THE HANDSHAKE FROM THE TUNNEL (2026-09-22)
+
+**`-startSecureConnection` IS VERIFIED TO THE HALF THAT MATTERS MOST, AND THE OTHER HALF IS A NAMED BLOCK.**
+
+**THE HANDSHAKE IS PROVEN BY THE FAR END'S OWN ACCOUNT.** The probe now carries its own TLS peer - this tree's
+libtls (`tls_server`/`tls_accept_socket`/`tls_read`/`tls_write` over blocking sockets), which is the substrate
+`libressl_tls_pair.c` already proves in this guest - and its `tls_accept_socket` returns 0 **only after it has
+read the client's Finished**. So `handshakes == 1` is a real handshake completed on BOTH sides, and it is what
+`the-tls-handshake-completes` asserts. The certificate is made on the guest by `openssl req`, exactly as the
+libressl units make theirs.
+
+**AND `openssl s_server` WAS TRIED FIRST, WHICH IS ITSELF A MEASUREMENT.** The leg's first version drove
+`openssl s_server -www` as the far end and the handshake STALLED: the class's worker parked in its handshake
+poll - whose deadline is nil, because the two TLS doors are parameterless and Apple's handshake has no
+caller-supplied timeout - and the write's handler never fired, so that leg measured the SERVER and learned
+nothing about the class. The same stall is recorded in the libressl units through `openssl s_client`, and they
+worked around it the same way. The peer is therefore the tree's own libtls, and **`-stopSecureConnection`'s
+check was removed with it rather than left as a claim**: it can only be observed after the tunnel carries data.
+
+**THE BLOCK, MEASURED RATHER THAN GUESSED:** the worker ENTERS the TLS operation (`serve kind=4 ssl=0`), the far
+end completes the handshake (`handshakes=1`), and **no further operation is ever served** - the follow-up
+write's completion handler does not fire and the peer reads nothing. So the stall is AFTER the handshake, on the
+first TLS-carrying I/O, and the libtls peer's read is blocked waiting for a request that never leaves the
+client. The check is `first-bytes-through-the-tunnel-are-BLOCKED`, and it **passes while the fault is there and
+FAILS the moment the tunnel carries data**, with the rename-and-assert instruction in its own message (§45-Y's
+pattern, which this tree has now used three times, and which is why a blocked item cannot be quietly forgotten).
+
+**WHAT THE NEXT UNIT OPENS WITH:** the first `SSL_write` after `SSL_connect` returns - whether the class's
+non-blocking write path consumes `SSL_ERROR_WANT_WRITE` correctly, and whether `SSL_write`'s record reaches the
+peer at all (the peer is blocked in `tls_read`, which is the reading that says the bytes never left).
+
+**AND THE ROW'S OTHER OWED ITEM IS UNCHANGED:** `-stopSecureConnection` is implemented (an `SSL_shutdown` +
+`SSL_free`) and its leg is owed along with the tunnel it needs.
