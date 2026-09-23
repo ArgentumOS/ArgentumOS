@@ -387,6 +387,13 @@ int main(void)
 		check("a-redirect-loop-ends",
 		      [spinning error] != nil,
 		      @"a chain that never terminates must still terminate, and the hop bound is what does it");
+	/* AND THE FAILURE NAMES ITSELF, which §54 could not do when it shipped this bound (§56): the codes are
+	 * declared now, so the hop limit's error is Apple's own domain and code rather than a private one. */
+	check("and-the-failure-names-itself",
+	      [spinning error] != nil &&
+	      [[[spinning error] domain] isEqualToString:NSURLErrorDomain] &&
+	      [[spinning error] code] == NSURLErrorHTTPTooManyRedirects,
+	      @"a caller reads 'too many redirects', not a code in a domain of this library's own");
 		check("at-the-bound-and-not-before",
 		      loops == 21 &&
 		      [[hopper->lastMetrics transactionMetrics] count] == 21 &&

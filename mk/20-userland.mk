@@ -106,6 +106,7 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSData.m $(FOUNDATION_SRC)/NSDate.m \
 	$(FOUNDATION_SRC)/NSArray.m $(FOUNDATION_SRC)/NSDictionary.m \
 	$(FOUNDATION_SRC)/NSError.m $(FOUNDATION_SRC)/NSException.m \
+	$(FOUNDATION_SRC)/NSURLError.m \
 	$(FOUNDATION_SRC)/NSCharacterSet.m $(FOUNDATION_SRC)/NSIndexSet.m \
 	$(FOUNDATION_SRC)/NSIndexPath.m \
 	$(FOUNDATION_SRC)/NSLocale.m \
@@ -970,6 +971,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_metricsdelivery"
+	# foundation_urlerror: the URL error names, their values, and the shape of the family (§56). No transport
+	# and no server: two of its checks read a REAL task's error and the rest are the codes themselves.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_urlerror.m -o .build/probe-foundation_urlerror.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlerror.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlerror"
 	# foundation_challengedoor: the two delegate doors, driven (W7 slice 4)
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		userland/tests/foundation_challengedoor.m -o .build/probe-foundation_challengedoor.o

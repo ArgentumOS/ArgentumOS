@@ -64,6 +64,9 @@
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSError.h>
+/* THE URL LOADING SYSTEM'S ERROR NAMES (§56): the codes, the two reason enums and the userInfo keys. Its own
+ * header because the family is its own, and imported here so a caller of Foundation has them. */
+#import <Foundation/NSURLError.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSCharacterSet.h>
 #import <Foundation/NSIndexSet.h>

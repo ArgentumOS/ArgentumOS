@@ -10040,6 +10040,21 @@ FOLLOW when the answer is a request.
     method rules rather than "the same request with a new host": **301, 302 and 303 propose GET with no
     body** (303 MUST, and it is what browsers do for 301/302), while **307 and 308 keep the method AND the
     body** - which is the entire reason those two status codes exist;
+  * **THE HEADERS TRAVEL**, minus `Host` and `Content-Length`: a redirect that drops what the caller set
+    changes the request more than the server asked for;
+  * **THE HOP BOUND IS OURS, AND IS DOCUMENTED AS OURS**: Apple publishes no limit, so a number here is
+    permitted variation rather than a difference (§11.6 gate 1) - but a chain that never ends must still END,
+    which is why the bound is a check rather than a hope;
+  * **A DECLINED REDIRECT IS NOT A FAILURE**, which is Apple's contract and the sharpest change from today:
+    the task FINISHES with the 3xx it received (with no body, because the transfer was stopped at the head -
+    said rather than hidden), and **`redirectCount` counts redirects PERFORMED**, so a declined one is not
+    counted at all.
+
+**WHAT THE TASK AND THE RECORD LOOK LIKE AFTER A FOLLOW, which is what makes this checkable:** the SAME task
+runs the second transfer - `currentRequest` becomes the target while `originalRequest` stays the first -
+`redirectCount` is the number of hops, and the metrics record carries ONE TRANSACTION PER ATTEMPT, IN ORDER.
+That is exactly what §52's array was built for and what `foundation_metricsdelivery` could not exercise with a
+straight fetch: **the metrics unit proves the record exists; this one proves it can hold a chain.**
 
 ### §54.1 — THE RACE THE PROBE FOUND, WHICH NO AMOUNT OF READING WOULD HAVE (2026-09-22)
 
@@ -10078,18 +10093,42 @@ against the RECORD rather than against the transfer's visible behaviour, and the
 reading of the code had surfaced - a callback-driven abort is *earlier* than the report of the attempt it
 aborts. A probe that had only asserted the final body would have shipped the race.
 
-  * **THE HEADERS TRAVEL**, minus `Host` and `Content-Length`: a redirect that drops what the caller set
-    changes the request more than the server asked for;
-  * **THE HOP BOUND IS OURS, AND IS DOCUMENTED AS OURS**: Apple publishes no limit, so a number here is
-    permitted variation rather than a difference (§11.6 gate 1) - but a chain that never ends must still END,
-    which is why the bound is a check rather than a hope;
-  * **A DECLINED REDIRECT IS NOT A FAILURE**, which is Apple's contract and the sharpest change from today:
-    the task FINISHES with the 3xx it received (with no body, because the transfer was stopped at the head -
-    said rather than hidden), and **`redirectCount` counts redirects PERFORMED**, so a declined one is not
-    counted at all.
+## §55 — THE ERROR-CODE MASS, MEASURED: APPLE PUBLISHES THE NAMES AND *NOT* THE VALUES (2026-09-22)
 
-**WHAT THE TASK AND THE RECORD LOOK LIKE AFTER A FOLLOW, which is what makes this checkable:** the SAME task
-runs the second transfer - `currentRequest` becomes the target while `originalRequest` stays the first -
-`redirectCount` is the number of hops, and the metrics record carries ONE TRANSACTION PER ATTEMPT, IN ORDER.
-That is exactly what §52's array was built for and what `foundation_metricsdelivery` could not exercise with a
-straight fetch: **the metrics unit proves the record exists; this one proves it can hold a chain.**
+**THE FAMILY IS SMALLER THAN §50 ESTIMATED, AND THE BLOCKER IS EXACTLY WHERE THE VALUE WOULD BE.** §50 called
+it "146 rows, the largest single family in W7"; the committed surface file holds **59 open `case` rows** under
+`NSError` / *Error Codes / URL Errors*, plus 8 `var` keys and one `enum` row. Size was never the problem.
+
+**THE VALUES ARE, AND HERE IS THE MEASUREMENT RATHER THAN AN IMPRESSION:**
+
+  * the ObjC navigator index (the same `tutorials/data/index/foundation` the sweep tool reads) gives each
+    code's page: `NSURLErrorUnsupportedURL -> /documentation/foundation/nsurlerrorunsupportedurl-c.enum.case`;
+  * THAT PAGE'S JSON CARRIES AN ABSTRACT AND AN IDENTIFIER AND NO NUMBER: its declaration section is
+    `[{"kind":"identifier","text":"NSURLErrorUnsupportedURL"}]` - the `-1002` is not in the payload, with or
+    without `?language=occ` / `?language=objc`;
+  * **AND THE SWIFT VIEW IS NO BETTER**, which is the check that matters because this unit counts Swift pages:
+    `URLError.Code`'s per-case page, its `code` page, and `URLError` itself all name the cases and contain **no
+    `-100x` token anywhere** (a regex over each whole payload).
+
+**SO THE VALUES ARE PUBLISHED NOWHERE THIS UNIT MAY READ.** Apple's documentation IS the specification here
+(§11.2), and it stops at the name; the numbers live in the SDK HEADER - which §2's clean-room wall refuses -
+or in secondary prose that is not a spec. **AND INVENTING THEM IS THE ONE THING THE RULES FORBID MOST
+CLEARLY**, because these are not decorative values: `NSError.code` crosses every boundary a caller compares
+against, so a wrong number is a silently wrong comparison rather than a build error.
+
+**WHAT THAT LEAVES, WITH THE DECISION STATED AS THE USER'S RATHER THAN TAKEN HERE:**
+
+  1. **DECLARE THE NAMES WITH THE WIDELY-KNOWN VALUES**, recording the provenance for what it is: the values
+     Apple's SDK carries, established here by the three the tree ALREADY hardcodes *and names in comments*
+     (`-999` cancelled, `-1002` unsupported URL, `-3000` cannot create file) and by §54's failure path wanting
+     `NSURLErrorHTTPTooManyRedirects`. It makes those two call sites honest at once, and it is REFUTABLE the
+     day any one value is shown wrong;
+  2. **LEAVE THE MASS OPEN** and keep both call sites as they are - this library's own domain with a documented
+     code, which is what §54 shipped (a documented deviation, not a silent one);
+  3. **A THIRD PATH IS NOT AVAILABLE.** Declaring the names with values that are OURS under D2 is worse than
+     either: a distinct value is not *permitted variation*, it is an interoperability difference with no ground
+     to stand on - the one case where D2 does not apply, because Apple does publish what the number MEANS even
+     where it does not print it.
+
+**AND THE MEASUREMENT IS THIS SECTION'S REAL RESULT whichever way the decision goes:** no later session has to
+re-derive that Apple's pages stop at the name.

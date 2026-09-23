@@ -24,6 +24,7 @@ CHECKS = (
     "and-the-declined-hop-was-not-counted",
     "a-redirect-loop-ends",
     "at-the-bound-and-not-before",
+    "and-the-failure-names-itself",
     "the-probe-served-what-it-was-asked",
     "and-every-task-ended",
 )

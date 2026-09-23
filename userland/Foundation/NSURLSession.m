@@ -18,6 +18,9 @@
 #import <Foundation/NSURLProtocol.h>
 #import <Foundation/NSData.h>
 #import <Foundation/NSError.h>
+/* AND THE ERROR NAMES (§56): the unsupported-URL code and the hop-limit failure are constants now, so the
+ * library no longer spells their values where it reports them. */
+#import <Foundation/NSURLError.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSString.h>
 #include <stdio.h>
@@ -175,9 +178,12 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 		[_task fnProtocolDidReceiveResponse:_pendingResponse];
 		[_task fnProtocolDidFinishWithError:nil];
 		[self fnTellTheTaskDelegate];
+	/* THE FAILURE IS NOW APPLE'S OWN CODE AND DOMAIN (§56): §54 shipped this as a code in the bridge's own
+	 * domain *because* the NSURLError* mass was not declared - and the mass is declared now, so a caller reads
+	 * "too many redirects" where it used to read "code 2 of something else". */
 	} else {
-		NSError *tooMany = [[NSError alloc] initWithDomain:@"FNCURLURLProtocolErrorDomain"
-							      code:2
+		NSError *tooMany = [[NSError alloc] initWithDomain:@"NSURLErrorDomain"
+							      code:NSURLErrorHTTPTooManyRedirects
 							  userInfo:nil];
 
 		[_task fnProtocolDidFinishWithError:tooMany];
@@ -420,9 +426,9 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
  *     not counted, because `redirectCount` counts what was PERFORMED;
  *   * TOO MANY - the hop limit, which is OURS and says so: Apple publishes no number, so a limit here is
  *     permitted variation rather than a difference - but a chain that never ends must still END. TWENTY, which
- *     is what the browsers a user of this system has met use. The failure is this library's own domain,
- *     because the NSURLError* constant mass is not shipped yet (§50's last row), so naming
- *     NSURLErrorHTTPTooManyRedirects here would mean inventing a value this library does not declare. */
+ *     is what the browsers a user of this system has met use. (§54 shipped this failure in the bridge's own
+ *     domain BECAUSE the NSURLError* mass was not declared; §56 declared it, so the failure is now
+ *     NSURLErrorDomain / NSURLErrorHTTPTooManyRedirects and a caller can read what happened.) */
 - (void)URLProtocol:(NSURLProtocol *)protocol
     wasRedirectedToRequest:(NSURLRequest *)request
 	 redirectResponse:(NSURLResponse *)redirectResponse
@@ -789,7 +795,7 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 	}
 	if (protocolClass == nil) {
 		NSError *unsupported = [[NSError alloc] initWithDomain:@"NSURLErrorDomain"
-								 code:-1002
+								 code:NSURLErrorUnsupportedURL
 							     userInfo:nil];
 
 		[task fnProtocolDidFinishWithError:unsupported];

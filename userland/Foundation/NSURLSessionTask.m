@@ -6,6 +6,10 @@
  * NSURLSessionTask.m — the state machine and the fields. The design is in NSURLSessionTask.h.
  */
 #import <Foundation/NSURLSessionTask.h>
+/* AND THE SESSION'S OWN HEADER, because -resume messages a door declared there (-fnTaskDidResume:) and a
+ * message to an `id` whose selector no visible header declares compiles with a WARNING rather than an error -
+ * which is how this file called it undeclared for as long as the session header sat out of view. */
+#import <Foundation/NSURLSession.h>
 #include <Block.h>	/* Block_copy/Block_release: the runtime entry points, which
 				 * need no isa on the block - see the copy site below */
 #import <Foundation/NSURLRequest.h>
@@ -14,6 +18,9 @@
 #import <Foundation/NSURL.h>
 #import <Foundation/NSFileManager.h>
 #import <Foundation/NSError.h>
+/* THE ERROR NAMES THE TASK REPORTS (§56): -cancel's code and the body-file write failure are constants now
+ * rather than literals with the names in comments. */
+#import <Foundation/NSURLError.h>
 #import <Foundation/NSString.h>
 
 @implementation NSURLSessionTask
@@ -154,7 +161,7 @@
 	 * execution row gives Canceling its meaning and this comment changes with it. */
 	if (_state != NSURLSessionTaskStateCompleted) {
 		NSError *cancelled = [[NSError alloc] initWithDomain:@"NSURLErrorDomain"
-							       code:-999	/* NSURLErrorCancelled */
+							       code:NSURLErrorCancelled
 							   userInfo:nil];
 
 		_state = NSURLSessionTaskStateCompleted;
@@ -226,7 +233,7 @@
 			_location = [[NSURL fileURLWithPath:path] copy];
 		} else {
 			NSError *writeError = [[NSError alloc] initWithDomain:@"NSURLErrorDomain"
-									code:-3000	/* NSURLErrorCannotCreateFile */
+									code:NSURLErrorCannotCreateFile
 								    userInfo:nil];
 
 			error = writeError;	/* released below, after it has been reported */

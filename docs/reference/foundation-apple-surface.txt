@@ -31,10 +31,10 @@
 #   class      shipped  147   open   49   struck   77
 #   protocol   shipped   18   open   13   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped   98   open   45   struck   17
-#   case       shipped  517   open  617   struck  168
+#   enum       shipped   99   open   44   struck   17
+#   case       shipped  576   open  558   struck  168
 #   func       shipped   72   open   63   struck   54
-#   var        shipped  167   open  394   struck  353
+#   var        shipped  174   open  387   struck  353
 #   typealias  shipped   31   open   38   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -933,65 +933,65 @@ case	shipped	NSURLCredentialPersistenceForSession	NSURLCredential	Networking / A
 case	shipped	NSURLCredentialPersistenceNone	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
 case	shipped	NSURLCredentialPersistencePermanent	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
 case	open	NSURLCredentialPersistenceSynchronizable	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
-case	open	NSURLErrorAppTransportSecurityRequiresSecureConnection	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorBackgroundSessionInUseByAnotherProcess	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorBackgroundSessionRequiresSharedContainer	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorBackgroundSessionWasDisconnected	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorBadServerResponse	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorBadURL	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorCallIsActive	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorCancelled	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorCancelledReasonBackgroundUpdatesDisabled		Networking / Errors / Keys / Cancellation reasons	-	objc
-case	open	NSURLErrorCancelledReasonBackgroundUpdatesDisabled	NSURLSession	Networking / Essentials / Handling errors / Cancellation reasons	-	objc
-case	open	NSURLErrorCancelledReasonInsufficientSystemResources		Networking / Errors / Keys / Cancellation reasons	-	objc
-case	open	NSURLErrorCancelledReasonInsufficientSystemResources	NSURLSession	Networking / Essentials / Handling errors / Cancellation reasons	-	objc
-case	open	NSURLErrorCancelledReasonUserForceQuitApplication		Networking / Errors / Keys / Cancellation reasons	-	objc
-case	open	NSURLErrorCancelledReasonUserForceQuitApplication	NSURLSession	Networking / Essentials / Handling errors / Cancellation reasons	-	objc
-case	open	NSURLErrorCannotCloseFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorCannotConnectToHost	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorCannotCreateFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorCannotDecodeContentData	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorCannotDecodeRawData	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorCannotFindHost	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorCannotLoadFromNetwork	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorCannotMoveFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorCannotOpenFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorCannotParseResponse	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorCannotRemoveFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorCannotWriteToFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorClientCertificateRejected	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorClientCertificateRequired	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorDNSLookupFailed	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorDataLengthExceedsMaximum	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorDataNotAllowed	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorDownloadDecodingFailedMidStream	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorDownloadDecodingFailedToComplete	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorFileDoesNotExist	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorFileIsDirectory	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorFileOutsideSafeArea	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorHTTPTooManyRedirects	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorInternationalRoamingOff	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorNetworkConnectionLost	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorNetworkUnavailableReasonCellular		Networking / Errors / Keys / Unavailability reasons	-	objc
-case	open	NSURLErrorNetworkUnavailableReasonConstrained		Networking / Errors / Keys / Unavailability reasons	-	objc
-case	open	NSURLErrorNetworkUnavailableReasonExpensive		Networking / Errors / Keys / Unavailability reasons	-	objc
-case	open	NSURLErrorNetworkUnavailableReasonUltraConstrained		Networking / Errors / Keys / Enumeration Cases	-	objc
-case	open	NSURLErrorNoPermissionsToReadFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorNotConnectedToInternet	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorRedirectToNonExistentLocation	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorRequestBodyStreamExhausted	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorResourceUnavailable	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorSecureConnectionFailed	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorServerCertificateHasBadDate	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorServerCertificateHasUnknownRoot	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorServerCertificateNotYetValid	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorServerCertificateUntrusted	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorTimedOut	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorUnknown	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorUnsupportedURL	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorUserAuthenticationRequired	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorUserCancelledAuthentication	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLErrorZeroByteResource	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorAppTransportSecurityRequiresSecureConnection	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorBackgroundSessionInUseByAnotherProcess	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorBackgroundSessionRequiresSharedContainer	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorBackgroundSessionWasDisconnected	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorBadServerResponse	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorBadURL	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorCallIsActive	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorCancelled	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorCancelledReasonBackgroundUpdatesDisabled		Networking / Errors / Keys / Cancellation reasons	-	objc
+case	shipped	NSURLErrorCancelledReasonBackgroundUpdatesDisabled	NSURLSession	Networking / Essentials / Handling errors / Cancellation reasons	-	objc
+case	shipped	NSURLErrorCancelledReasonInsufficientSystemResources		Networking / Errors / Keys / Cancellation reasons	-	objc
+case	shipped	NSURLErrorCancelledReasonInsufficientSystemResources	NSURLSession	Networking / Essentials / Handling errors / Cancellation reasons	-	objc
+case	shipped	NSURLErrorCancelledReasonUserForceQuitApplication		Networking / Errors / Keys / Cancellation reasons	-	objc
+case	shipped	NSURLErrorCancelledReasonUserForceQuitApplication	NSURLSession	Networking / Essentials / Handling errors / Cancellation reasons	-	objc
+case	shipped	NSURLErrorCannotCloseFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorCannotConnectToHost	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorCannotCreateFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorCannotDecodeContentData	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorCannotDecodeRawData	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorCannotFindHost	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorCannotLoadFromNetwork	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorCannotMoveFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorCannotOpenFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorCannotParseResponse	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorCannotRemoveFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorCannotWriteToFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorClientCertificateRejected	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorClientCertificateRequired	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorDNSLookupFailed	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorDataLengthExceedsMaximum	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorDataNotAllowed	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorDownloadDecodingFailedMidStream	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorDownloadDecodingFailedToComplete	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorFileDoesNotExist	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorFileIsDirectory	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorFileOutsideSafeArea	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorHTTPTooManyRedirects	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorInternationalRoamingOff	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorNetworkConnectionLost	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorNetworkUnavailableReasonCellular		Networking / Errors / Keys / Unavailability reasons	-	objc
+case	shipped	NSURLErrorNetworkUnavailableReasonConstrained		Networking / Errors / Keys / Unavailability reasons	-	objc
+case	shipped	NSURLErrorNetworkUnavailableReasonExpensive		Networking / Errors / Keys / Unavailability reasons	-	objc
+case	shipped	NSURLErrorNetworkUnavailableReasonUltraConstrained		Networking / Errors / Keys / Enumeration Cases	-	objc
+case	shipped	NSURLErrorNoPermissionsToReadFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorNotConnectedToInternet	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorRedirectToNonExistentLocation	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorRequestBodyStreamExhausted	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorResourceUnavailable	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorSecureConnectionFailed	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorServerCertificateHasBadDate	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorServerCertificateHasUnknownRoot	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorServerCertificateNotYetValid	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorServerCertificateUntrusted	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorTimedOut	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorUnknown	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorUnsupportedURL	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorUserAuthenticationRequired	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorUserCancelledAuthentication	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
+case	shipped	NSURLErrorZeroByteResource	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
 case	struck	NSURLHandleLoadFailed	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
 case	struck	NSURLHandleLoadInProgress	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
 case	struck	NSURLHandleLoadSucceeded	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
@@ -1743,7 +1743,7 @@ enum	shipped	NSURLBookmarkResolutionOptions	NSURL	Fundamentals / URLs / Working 
 enum	shipped	NSURLCacheStoragePolicy	NSCachedURLResponse	Networking / Cache behavior / Setting cache storage policies	-	objc
 enum	shipped	NSURLCacheStoragePolicy	NSURLCache	Networking / Cache behavior / Cache storage policies	-	objc
 enum	shipped	NSURLCredentialPersistence	NSURLCredential	Networking / Authentication and credentials / Creating a credential	-	swift-page
-enum	open	NSURLErrorNetworkUnavailableReason		Networking / Errors / Keys	-	objc
+enum	shipped	NSURLErrorNetworkUnavailableReason		Networking / Errors / Keys	-	objc
 enum	struck	NSURLHandleStatus	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	swift-page
 enum	shipped	NSURLRelationship	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items	-	objc
 enum	shipped	NSURLRequestAttribution	NSMutableURLRequest	Networking / Requests and responses / Indicating the source of the request	-	swift-page
@@ -3055,14 +3055,14 @@ var	open	NSURLCustomIconKey	NSURL	Fundamentals / URLs / Accessing Resource Value
 var	open	NSURLDirectoryEntryCountKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Directory keys	-	objc
 var	open	NSURLDocumentIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	open	NSURLEffectiveIconKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLErrorBackgroundTaskCancelledReasonKey		Networking / Errors / Keys	-	objc
-var	open	NSURLErrorBackgroundTaskCancelledReasonKey	NSURLSession	Networking / Essentials / Handling errors / User info dictionary keys	-	objc
-var	open	NSURLErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
-var	open	NSURLErrorFailingURLErrorKey		Networking / Errors / Keys	-	objc
-var	open	NSURLErrorFailingURLPeerTrustErrorKey		Networking / Errors / Keys	-	objc
+var	shipped	NSURLErrorBackgroundTaskCancelledReasonKey		Networking / Errors / Keys	-	objc
+var	shipped	NSURLErrorBackgroundTaskCancelledReasonKey	NSURLSession	Networking / Essentials / Handling errors / User info dictionary keys	-	objc
+var	shipped	NSURLErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
+var	shipped	NSURLErrorFailingURLErrorKey		Networking / Errors / Keys	-	objc
+var	shipped	NSURLErrorFailingURLPeerTrustErrorKey		Networking / Errors / Keys	-	objc
 var	struck	NSURLErrorFailingURLStringErrorKey		Networking / Errors / Keys	deprecated	objc
-var	open	NSURLErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
-var	open	NSURLErrorNetworkUnavailableReasonKey		Networking / Errors / Keys	-	objc
+var	shipped	NSURLErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
+var	shipped	NSURLErrorNetworkUnavailableReasonKey		Networking / Errors / Keys	-	objc
 var	open	NSURLFileAllocatedSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	open	NSURLFileContentIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	open	NSURLFileIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
