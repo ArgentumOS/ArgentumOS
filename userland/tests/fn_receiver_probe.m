@@ -6,21 +6,44 @@
 #import <Foundation/Foundation.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 int main(void)
 {
 	NSString *capture = @"/System/Temporary Files/fn_receiver_probe.bin";
-	NSString *command;
 
 	setvbuf(stdout, NULL, _IONBF, 0);
 	printf("FNRCV-DIAG 1) alive\n");
 
 	unlink("/System/Temporary Files/fn_receiver_probe.bin");
-	command = [NSString stringWithFormat:
-		@"/System/Tools/netcat -l -p 46467 < /System/Devices/null > '%@' &", capture];
-	printf("FNRCV-DIAG 2) about to system(): %s\n", [command UTF8String]);
-	printf("FNRCV-DIAG 3) system() returned %d\n", system([command UTF8String]));
+	/* NOT system(): MEASURED - it spawns /bin/sh -c and NEVER RETURNS in this guest, which is what made
+	 * three rounds of this look like a receiver problem. fork()+execv() has nothing to wait on, and the
+	 * redirects happen before the exec so the receiver's stdin is the FSH's null device, not the console. */
+	printf("FNRCV-DIAG 2) forking the receiver\n");
+	{
+		pid_t pid = fork();
+
+		if (pid == 0) {
+			char *argv[5];
+			int nul, out;
+
+			argv[0] = "/System/Tools/netcat";
+			argv[1] = "-l";
+			argv[2] = "127.0.0.1";
+			argv[3] = "46467";
+			argv[4] = NULL;
+			if ((nul = open("/System/Devices/null", O_RDONLY)) >= 0) { dup2(nul, 0); close(nul); }
+			if ((out = open([capture UTF8String], O_WRONLY|O_CREAT|O_TRUNC, 0644)) >= 0) {
+				dup2(out, 1);
+				close(out);
+			}
+			execv("/System/Tools/netcat", argv);
+			_exit(127);
+		}
+		printf("FNRCV-DIAG 3) fork returned %d\n", (int)pid);
+	}
 	usleep(500000);
 
 	{
