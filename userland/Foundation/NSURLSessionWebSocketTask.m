@@ -70,6 +70,7 @@ enum {
 	NSInteger _closeCode;
 	NSData *_closeReason;
 	BOOL _weSentClose;
+	BOOL _secure;			/* wss: - the upgrade must go over TLS, and this is what remembers the scheme */
 }
 
 - (instancetype)fnInitWithURL:(NSURL *)url protocols:(NSArray *)protocols identifier:(NSUInteger)identifier;
@@ -99,9 +100,10 @@ enum {
 		return nil;
 	}
 	_host = [[url host] copy];
+	_secure = ([[url scheme] caseInsensitiveCompare:@"wss"] == NSOrderedSame);
 	_port = [[url port] integerValue];
 	if(_port == 0) {
-		_port = ([[url scheme] caseInsensitiveCompare:@"wss"] == NSOrderedSame) ? 443 : 80;
+		_port = _secure ? 443 : 80;
 	}
 	{
 		NSString *path = [url path];
@@ -221,6 +223,14 @@ enum {
 		return;
 	}
 	[_stream resume];
+	/* AND A wss: URL SECURES THE STREAM BEFORE THE UPGRADE GOES OUT - THE LINE THIS ROW EXISTED TO ADD. Without
+	 * it the request would be written IN THE CLEAR to a port where a TLS server is waiting, which is not an
+	 * unverified TLS path but an unimplemented one. THE ORDER NEEDS NO WAIT: -startSecureConnection is QUEUED on
+	 * the stream, and the stream serves its operations SERIALLY, so the upgrade request queued below cannot leave
+	 * before the TLS session is up. (Certificates are not verified - §58.1's recorded deviation, inherited.) */
+	if(_secure) {
+		[_stream startSecureConnection];
+	}
 	_key = [FNWebSocketCreateKey() copy];	/* the layer's +1, kept */
 	{
 		NSString *request = FNWebSocketUpgradeRequest(_host, _port, _path, _protocols, _key);
