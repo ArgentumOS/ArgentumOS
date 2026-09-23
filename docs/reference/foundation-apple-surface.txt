@@ -28,8 +28,8 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  149   open   47   struck   77
-#   protocol   shipped   19   open   12   struck   14
+#   class      shipped  150   open   46   struck   77
+#   protocol   shipped   20   open   11   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped  101   open   42   struck   17
 #   case       shipped  591   open  543   struck  168
@@ -1558,7 +1558,7 @@ class	shipped	NSURLSessionTaskMetrics		Networking / Essentials / Working with a 
 class	shipped	NSURLSessionTaskTransactionMetrics		Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics	-	objc
 class	shipped	NSURLSessionUploadTask		Networking / Essentials / Adding upload tasks to a session	-	objc
 class	shipped	NSURLSessionWebSocketMessage		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
-class	open	NSURLSessionWebSocketTask		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
+class	shipped	NSURLSessionWebSocketTask		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 class	shipped	NSUUID		Fundamentals / Unique Identifiers	-	objc
 class	open	NSUbiquitousKeyValueStore		Files and Data Persistence / iCloud key and value storage	-	objc
 class	struck	NSUnarchiver		Files and Data Persistence / Deprecated	deprecated	objc
@@ -2253,7 +2253,7 @@ protocol	shipped	NSURLSessionDelegate		Networking / Essentials / Working with a 
 protocol	open	NSURLSessionDownloadDelegate		Networking / Essentials / Adding download tasks to a session	-	objc
 protocol	shipped	NSURLSessionStreamDelegate		Networking / Essentials / Adding stream tasks to a session	-	objc
 protocol	shipped	NSURLSessionTaskDelegate		Networking / Essentials / Working with a delegate	-	objc
-protocol	open	NSURLSessionWebSocketDelegate		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
+protocol	shipped	NSURLSessionWebSocketDelegate		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 protocol	open	NSUserActivityDelegate		App Support / Activity Sharing / Monitoring activity-related behaviors	-	objc
 protocol	open	NSUserNotificationCenterDelegate		App Support / User Notifications	-	objc
 protocol	open	NSXMLParserDelegate		Files and Data Persistence / XML / Event-Based Processing	-	objc

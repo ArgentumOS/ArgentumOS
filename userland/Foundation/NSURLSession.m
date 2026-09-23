@@ -636,6 +636,38 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 	return [task autorelease];
 }
 
+/* THE WEBSOCKET FACTORIES, and the same four steps the stream factory takes: build it through the class's own
+ * fn door (a task is created BY a session), link it, keep it, hand it back autoreleased. THE URL IS CHECKED FOR
+ * ws:/wss: HERE rather than left to fail in the handshake with a worse message - Apple's rule is that the scheme
+ * must be one of those two, and a nil answer is this library's way of saying so. (The request form takes its URL
+ * from the request and passes any protocols through the header, which the handshake layer already does.) */
+- (NSURLSessionWebSocketTask *)webSocketTaskWithURL:(NSURL *)url protocols:(NSArray *)protocols
+{
+	NSURLSessionWebSocketTask *task;
+	NSString *scheme = [[url scheme] lowercaseString];
+
+	if(_invalid || (scheme == nil ||
+	   (![scheme isEqualToString:@"ws"] && ![scheme isEqualToString:@"wss"]))) {
+		return nil;
+	}
+	task = [[NSURLSessionWebSocketTask alloc] fnInitWithURL:url
+						     protocols:protocols
+						    identifier:_nextTaskIdentifier++];
+	[task fnSetSession:self];
+	[_tasks addObject:task];
+	return [task autorelease];
+}
+
+- (NSURLSessionWebSocketTask *)webSocketTaskWithURL:(NSURL *)url
+{
+	return [self webSocketTaskWithURL:url protocols:nil];
+}
+
+- (NSURLSessionWebSocketTask *)webSocketTaskWithRequest:(NSURLRequest *)request
+{
+	return [self webSocketTaskWithURL:[request URL] protocols:nil];
+}
+
 - (NSURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request
 				    completionHandler:(void (^)(NSURL *, NSURLResponse *, NSError *))completionHandler
 {

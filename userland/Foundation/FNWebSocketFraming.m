@@ -161,8 +161,13 @@ BOOL FNWebSocketClosePayloadIsSendable(const uint8_t *payload, size_t length)
 	if(length == 0) {
 		return YES;	/* a close with no code at all is legal (§5.5.1) */
 	}
-	if(length < 2) {
-		return NO;	/* a payload that is not empty must carry a 2-byte code */
+	if(payload == NULL || length < 2) {
+		/* A LENGTH THAT CLAIMS A CODE MUST COME WITH SOMEWHERE TO READ IT. The first version checked only the
+		 * length, so a caller that passed NULL with a nonzero length - which the TASK does, whose reason may be
+		 * nil - made this dereference address zero. FOUND BY THE TASK'S PROBE CRASHING (SIGSEGV), because slice
+		 * 2's own probe never tried that combination: it tested 0, 1 and valid codes, and every one of those has
+		 * a payload to look at. */
+		return NO;
 	}
 	code = ((uint64_t)payload[0] << 8) | (uint64_t)payload[1];
 	/* §7.4.1: these three are RESERVED for a reader to report what happened to it. Sending one would be a

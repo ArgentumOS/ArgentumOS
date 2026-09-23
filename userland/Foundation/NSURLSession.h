@@ -173,6 +173,10 @@ typedef NS_ENUM(NSInteger, NSURLSessionWebSocketMessageType) {
 @class NSURLSessionStreamTask;
 @class NSInputStream;
 @class NSOutputStream;
+/* AND THE WEBSOCKET TASK, for the three factories below - the SAME place the stream half's forward declaration
+ * sits, and for the same reason (§58's note above). This is the file-scope block; a `@class` inside the interface
+ * is what makes the compiler say "missing '@end'". */
+@class NSURLSessionWebSocketTask;
 
 @protocol NSURLSessionTaskDelegate <NSURLSessionDelegate>
 
@@ -320,6 +324,20 @@ didReceiveResponse:(NSURLResponse *)response
  * discovery mechanism this plan has never proposed. A caller who needs it gets a compile error naming the
  * absence rather than a task that cannot be built. */
 - (NSURLSessionStreamTask *)streamTaskWithHostName:(NSString *)hostname port:(NSInteger)port;
+
+/* THE THREE WEBSOCKET FACTORIES, AND THE URL IS THE ONE THAT DECIDES WHETHER THEY CAN WORK: "the provided URL
+ * must have a ws or wss scheme" (Apple's own words), so anything else answers nil rather than a task that would
+ * fail later with a worse message. `protocols` is the subprotocol list, negotiated in the handshake through
+ * Sec-WebSocket-Protocol (§59) - and the task WORKS BEFORE THE HANDSHAKE, because the page's other sentence is
+ * that "reads/writes performed before the handshake completes are enqueued and executed afterward".
+ *
+ * (THE FORWARD DECLARATION IS AT FILE SCOPE, ABOVE, and this comment is here because the first version put a
+ * `@class` on this very line - inside the interface - and the compiler answered "missing '@end'". §58's wiring
+ * note already recorded the same mistake for the stream half; it is a lesson this header has now taught twice.) */
+- (nullable NSURLSessionWebSocketTask *)webSocketTaskWithURL:(NSURL *)url;
+- (nullable NSURLSessionWebSocketTask *)webSocketTaskWithURL:(NSURL *)url
+						  protocols:(nullable NSArray *)protocols;
+- (nullable NSURLSessionWebSocketTask *)webSocketTaskWithRequest:(NSURLRequest *)request;
 
 /* THE INTERNAL CHALLENGE DOOR, for the transport to call when a server asks: it resolves the delegate (task
  * door first, then session) and answers SYNCHRONOUSLY, because the transport waits for the credential the

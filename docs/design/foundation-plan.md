@@ -3530,7 +3530,7 @@ vanishing.
 | **Networking / Authentication and credentials** | all classes shipped | — |
 | **Networking / Cache behavior** | all classes shipped | — |
 | **Networking / Cookies** | all classes shipped | — |
-| **Networking / Essentials** | 3 open | `NSURLSessionDownloadDelegate`, `NSURLSessionWebSocketDelegate`, `NSURLSessionWebSocketTask` |
+| **Networking / Essentials** | 1 open | `NSURLSessionDownloadDelegate` |
 | **Networking / Legacy** | ALL STRUCK: `NSURLAuthenticationChallengeSender`, `NSURLConnection`, `NSURLConnectionDataDelegate`, `NSURLConnectionDelegate`, `NSURLConnectionDownloadDelegate`, `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` | — |
 | **Networking / Local Network Services** | ALL STRUCK: `NSNetService`, `NSNetServiceDelegate` | — |
 | **Networking / Requests and responses** | all classes shipped | — |
@@ -10612,3 +10612,37 @@ lightweight generics (`NSArray<NSString *>` does not compile anywhere in this li
 NOT EXIST in this guest's musl** - so the nonce comes from `RAND_bytes`, which is already linked because the digest
 needs libcrypto. The fallback, when the CSPRNG cannot produce bytes, is mixed from the clock and the pid: **NAMED
 HERE AS A LIMITATION RATHER THAN LEFT SILENT**, the same open entropy question the libressl plan already carries.
+
+**SLICE 3b LANDS - THE TASK ITSELF - AND WITH IT W7'S WEBSOCKET FAMILY IS COMPLETE (2026-09-22): 10/10 probe
+checks, 3/3 case checks.** `NSURLSessionWebSocketTask` (a NSURLSessionTask that HOLDS a stream task and speaks the
+framing over it), the three session factories (a `ws:`/`wss:` URL or nil, Apple's own rule), and
+`NSURLSessionWebSocketDelegate`'s two doors. The probe connects to a RAW peer that speaks the upgrade in plain HTTP
+and RFC 6455 through the SAME CODEC, and the ten checks prove: the upgrade (the digest agreed on both sides), the
+subprotocol chosen from a list and reported by the delegate, a message ECHOED BY THE PEER (its own account of what
+it read, not what the client thinks it sent), a ping answered, the peer's close (1001 + "peer says bye") landing in
+BOTH the delegate door and `closeCode`/`closeReason`, exactly ONE ending, the ws-only rule, §7.4.1's reserved code
+refused rather than sent, and the peer's exit code as its own account of the whole script.
+
+**AND IT FOUND FOUR THINGS WHILE BEING BUILT, EACH WORTH KEEPING:**
+ * **A REAL BUG IN SLICE 2'S LAYER, FOUND BY A CRASH.** `FNWebSocketClosePayloadIsSendable(NULL, 2)` read address
+   zero: it checked the LENGTH and not the POINTER, and the task passes NULL whenever its reason is nil. Slice 2's
+   probe could not have caught it - it tested 0, 1 and valid codes, and every one of those has a payload to look
+   at. The guard is in; **A REGRESSION CHECK FOR IT IS OWED in `foundation_wsframe`.**
+ * **THE PUMP MUST NOT HOLD THE WORKER, AND THIS IS THE SLICE'S ONE DESIGN LESSON.** The substrate serves its
+   operations **serially**, so a read with an infinite timeout starves every write queued behind it. The symptom
+   was exact: the handshake succeeded and then the message never left the process. The fix is a bounded slice
+   (half a second) re-armed on every expiry, with a timeout treated as "no bytes yet" rather than as a failure -
+   **a task built on a serial queue cannot wait indefinitely anywhere.**
+ * **§5.1's DIRECTION IS TWO RULES AND A TASK WRITES ONE OF THEM.** Our frames are masked; the PEER'S ARE NOT. The
+   first pump parsed incoming frames with `expectMasked:YES` - the direction it WRITES in - so the peer's own echo
+   was read as a protocol violation (1002, whose error carries an empty `userInfo`, which is how the two failure
+   sources were told apart).
+ * **AND THE PROBE'S PEER ECHOED MASKED BYTES** - the half of §5.3 the codec deliberately leaves to its caller, the
+   same "asserting the wrong half of a contract" mistake slice 2's OWN probe made, met here from the other side.
+   (Plus three bugs of the probe's own: a missing `bind` - the symptom being `NSURLErrorCannotConnectToHost` and a
+   peer whose accept never returns; a local named `accept` shadowing the socket call; and two explicit `retain`s
+   ARC forbids.)
+
+**THE LADDER, COMPLETE:** values 7/7 · codec 16/16 · assembler 11/11 · handshake 14/14 · **the task 10/10** - and
+the two items still owed are named rather than implied: the reserved-code regression check in slice 2's probe, and
+the `wss:` leg (§59 slice 4), which costs nothing new because the stream's TLS is already verified.
