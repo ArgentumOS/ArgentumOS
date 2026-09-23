@@ -9564,3 +9564,18 @@ completeness means - the same distinction §47.3 drew for the cookie family.
 finds, store what the response's `cacheStoragePolicy` says may be stored, and never let a cache hit change
 what the DELEGATE is told - a delegate sees a response either way, which is why `cachedResponseIsValid:` exists
 as a separate door rather than a flag on the response.
+
+### §49.1 — THE SHIPPED `NSCachedURLResponse` AUDITS CLEAN (2026-09-21)
+
+**THE FIRST MOVE THIS SLICE MADE WAS THE AUDIT §49 CALLED FOR, AND IT FOUND NOTHING TO FIX** - which is a
+result worth recording, because the alternative (a class that shipped without its full surface) is the trap
+this project has recorded twice. Read against the documentation's seven rows, the tree's header carries
+`NSURLCacheStoragePolicy`, BOTH initialisers (`-initWithResponse:data:` and
+`-initWithResponse:data:userInfo:storagePolicy:`), and all four properties (`response`, `data`, `userInfo`
+- declared NULLABLE, which is the truthful annotation - and `storagePolicy`). It also conforms to `NSCopying`
+with this library's own `-copy` spelling rather than Cocoa's zone-taking form.
+
+**SO THE SLICE'S WORK IS ITS OWN STORE AND THE TWO BRIDGE HOOKS, and nothing about the value type.** The
+audit is recorded rather than mentioned because a clean audit is evidence about the tree: it means the seven
+rows were complete when the class landed, which is what "shipped" is supposed to mean here - the ledger's
+status says DECLARED, and this is the check that makes the stronger claim true for one more class.
