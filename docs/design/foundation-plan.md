@@ -9173,3 +9173,34 @@ the same situation §14.4 recorded for the KVC operator constants and the same c
 values are syntax, so they come from the documentation rather than from §11.6.1's D2 (which covers values
 Apple publishes by case name only). The constants' own pages carry those strings, and that is the next
 lookup, not a guess.
+
+### §47.2 — THE COOKIE CONSTANTS' VALUES ARE OURS, AND THAT IS MEASURED, NOT ASSUMED (2026-09-21)
+
+**THE LOOKUP ASKED WHETHER APPLE PUBLISHES THE STRING VALUES OF THE COOKIE KEYS, AND THE ANSWER IS NO —
+read off the page rather than assumed.** `NSHTTPCookieName`'s member page carries EXACTLY ONE section kind
+in `primaryContentSections` (`declarations`), and its declaration is
+
+    extern NSHTTPCookiePropertyKey const NSHTTPCookieName;
+
+— an `extern` with NO INITIALIZER. The occ patch's 42 operations replace metadata, titles, fragments and
+that declaration; there is no discussion section, so there is nowhere for a literal to live. The abstracts
+give MEANING ("An NSString object containing the name of the cookie (required)"), which is what §14.4's rule
+was written for: **Apple publishes the names and the meanings, so the VALUES ARE OURS.**
+
+**SO THE VALUES ARE CHOSEN AND STATED, in one place, as a decision rather than scattered through a .m:**
+the fifteen property keys take the **RFC 6265 attribute names** — `Name`, `Value`, `Domain`, `Path`,
+`Port`, `Version`, `Expires`, `Discard`, `Secure`, `Comment`, `CommentURL`, `MaximumAge`, `OriginURL`,
+`SameSitePolicy`, `SetByJavaScript` — and the two string policies take `Strict` and `Lax`. The reason is
+that these are not arbitrary identifiers: a property key's value is a key in the `properties` dictionary
+and the vocabulary a `Set-Cookie` header is written and parsed in, so the least surprising choice is the
+one the WIRE uses. It also means a cookie dictionary printed by this library is legible to anyone who knows
+HTTP, and that the decision can be revisited in ONE place if it ever needs to be.
+
+**WHAT IS NOW FULLY SPECIFIED, SO THE SLICE'S FIRST STEP IS DONE:** 21 + 15 class rows from §47.1, the 15
+property keys, the 2 same-site policies, and the two notification-name constants — every name read from the
+documentation and every value decided and recorded. The owed surface is closed; the next step is code.
+
+**AND ONE FACT WORTH KEEPING FOR THE PROBE:** `NSHTTPCookieSetByJavaScript` exists in the documentation and
+has no RFC 6265 counterpart, so a round-trip check must expect it to survive a property dictionary WITHOUT
+appearing in a `Set-Cookie` header — which is a check that would fail if the parser treated the dictionary
+as the wire format.
