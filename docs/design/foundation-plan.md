@@ -10372,3 +10372,32 @@ The peer is therefore the tree's own libtls, which is the substrate this guest h
 **WHAT THE ROW STILL OWES: NOTHING ON TLS.** `-captureStreams` stays refused by name, `betterRouteDiscovered` is
 declared-unraisable, and certificates are unverified (no trust store) - all three are §58 boundaries with their
 grounds recorded, not gaps.
+
+**AND THE KERNEL WORK ITEM THIS SECTION NAMED IS NOW FIXED (same day), AND IT WAS NARROWER AND MORE
+INTERESTING THAN "poll(2) IS BROKEN".**
+
+`sys_poll`/`sys_select`/`epoll_wait` all sleep on the channel `&do_select`, and this tree already woke it in
+plenty of places: every STATE CHANGE (accept, connect, close, free - `net/ipv4.c`, `net/unix.c`, and the tty,
+pipe, kbdaux, mousedev, usb-net, virtio-net, printk and inotify paths), and every DRAIN (a reader taking a packet
+out of a socket's queue). **DATA ARRIVING did not.** `net/ipv4.c`'s `loopback_deliver` qeued the datagram and
+woke only the socket's OWN channel - `wakeup(ip4)`, which is what a BLOCKING READER sleeps on - and
+`net/unix.c`'s twin did the same. A select(2)/poll(2) waiter sleeps on `&do_select`, so it needed a wake of its
+own. **Two lines**, at the only two places a socket's receive queue grows.
+
+**AND THAT IS ALSO THE ANSWER TO TWO OLD PUZZLES IN THIS TREE'S RECORDS.** "poll's timeout is exact" and "usleep
+is pathological" are the same fact seen twice: a finite wait ended ONLY when its own timeout expired, and then
+re-checked readiness - so every wait in this tree has always been as late as its timeout, and nothing else ever
+woke it. The slice loop the class now uses stops being load-bearing and becomes what it should be: defence.
+
+**AND THE GATE FOR THE FIX DOES NOT EXIST YET, WHICH IS RECORDED RATHER THAN HIDDEN.** The new
+`kernel_loopback_tcp` leg (`poll-without-a-deadline-is-woken-by-data`) was written AS the fix's gate and then
+MEASURED against a kernel with the fix reverted: **it passes anyway.** With the peer in another PROCESS, the
+sender's own drain wake crosses to the waiter - `&do_select` is a global channel - so a separate-process peer
+supplies the very wake the receiver's data path was missing. The leg is kept as a test of the BEHAVIOUR (a poll
+with no deadline IS woken), and the comment beside it says exactly that, so it cannot be mistaken for a gate.
+
+**SO THE MECHANISM BEHIND §58.1's STALL IS NOT YET PINNED, AND ITS SHAPE IS NAMED:** the TLS probe's far end is a
+THREAD OF THE SAME PROCESS as the waiter, and that handshake parked with the far end's whole flight on the wire.
+The next measurement is therefore whether a wake crosses threads of one address space - a same-process peer,
+polled with no deadline. That is a kernel question with a one-leg probe, and it is the first thing the next unit
+opens.

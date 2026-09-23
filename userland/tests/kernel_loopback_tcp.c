@@ -440,6 +440,81 @@ int main(void)
 		}
 	}
 
+	/*
+	 * IS A poll() WITH NO DEADLINE WOKEN BY ARRIVING DATA? THE THIRD READINESS CLASS.
+	 *
+	 *   * a STATE CHANGE - accept, connect, close, free - has always woken &do_select;
+	 *   * a DRAIN, a reader taking a packet out of the queue, has always woken it too;
+	 *   * DATA ARRIVING did not, and that is now fixed (net/ipv4.c's loopback_deliver, net/unix.c's twin).
+	 *
+	 * AND THIS LEG DOES NOT PROVE THAT FIX - MEASURED, NOT ASSUMED: it PASSES with the fix reverted, because
+	 * the SENDER's own path wakes &do_select for its drain, and that channel is global - so a peer in ANOTHER
+	 * PROCESS supplies the wake the receiver's data path is missing. That is what this comment records rather
+	 * than hides: the leg below is a real test of the BEHAVIOUR (a poll with no deadline must be woken), and
+	 * NOT a gate for the data-arrival wake.
+	 *
+	 * THE OPEN QUESTION IT LEAVES, AND IT IS §58.1's OWN SHAPE: the TLS probe's far end is a THREAD OF THE
+	 * SAME PROCESS as the waiter, and that handshake DID park with the data on the wire. So a wake may not
+	 * cross threads of one address space - which would be the mechanism behind §58.1's stall, and is the next
+	 * thing to measure (a same-process peer, polled with no deadline).
+	 *
+	 * THE DEADLINE IS THE POINT OF THIS LEG: it polls with -1 and the peer writes only AFTER a pause, so
+	 * nothing but a wake can end it. The watchdog reports the stall if none arrives.
+	 */
+	{
+		int s5, w5;
+		ssize_t n5;
+		pid_t p5 = fork();
+
+		if (p5 == 0) {
+			struct sockaddr_in from;
+			socklen_t fromlen = sizeof(from);
+			int cc = accept(ls, (struct sockaddr *)&from, &fromlen);
+
+			if (cc < 0) {
+				_exit(PEER_ACCEPT_FAILED);
+			}
+			usleep(300000);		/* by then the parent is already waiting in poll(-1) */
+			write_all(cc, "wake", 4);
+			_exit(PEER_OK);
+		}
+		s5 = socket(AF_INET, SOCK_STREAM, 0);
+		printf("KERNEL-LOOPBACK-DIAG phase 5 connect() = %d\n",
+		       connect(s5, (struct sockaddr *)&addr, sizeof(addr)));
+		w5 = poll_report("POLLIN with NO DEADLINE, the peer writing after a pause", s5, POLLIN, -1);
+		n5 = w5 > 0 ? read(s5, buf, sizeof(buf)) : -2;
+		printf("KERNEL-LOOPBACK-DIAG phase 5 poll = %d, read = %d\n", w5, (int)n5);
+		check("poll-without-a-deadline-is-woken-by-data", w5 > 0,
+		      w5 > 0 ? "" : "poll(-1) was not woken by arriving data (the watchdog caught the stall)");
+		check("and-the-woken-poll-had-the-payload-to-read", n5 == 4 && memcmp(buf, "wake", 4) == 0,
+		      n5 == 4 ? "" : n5 == -2 ? "no readability, so the read was not attempted"
+			      : "the read after the wake did not return the peer's four bytes");
+		close(s5);
+		{
+			int ticks = 0, st5 = -1, reaped5 = 0;
+
+			while (ticks < 50) {
+				pid_t r = waitpid(p5, &st5, WNOHANG);
+
+				if (r == p5) {
+					reaped5 = 1;
+					break;
+				}
+				if (r < 0) {
+					break;
+				}
+				usleep(100000);
+				ticks++;
+			}
+			if (!reaped5) {
+				kill(p5, SIGKILL);
+				waitpid(p5, &st5, 0);
+			}
+			printf("KERNEL-LOOPBACK-DIAG phase 5 peer exit code = %d\n",
+			       reaped5 && WIFEXITED(st5) ? WEXITSTATUS(st5) : -1);
+		}
+	}
+
 	/* THE PEER'S OWN ACCOUNT, read out of its exit code — the console stays single-writer.
 	 *
 	 * AND IT IS REAPED UNDER A DEADLINE, which the first version of this probe did NOT do: a peer

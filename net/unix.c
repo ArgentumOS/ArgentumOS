@@ -528,7 +528,12 @@ int unix_sendto(struct socket *s, struct fd *f, const char *buffer, __size_t cou
 	lock_resource(&packet_resource);
 	append_packet_to_queue(p, &u->packet_queue);
 	unlock_resource(&packet_resource);
+	/* AND THE SELECT/POLL WAITER ON THE SAME EVENT. The rule is written out in full at net/ipv4.c's
+	 * loopback_deliver, where its absence was measured: a BLOCKING READER sleeps on this socket, while a
+	 * select(2)/poll(2) waiter sleeps on &do_select and therefore needs a wake of its own - which every
+	 * state-change path in this file already does (see the accept/connect/close wakes above and below). */
 	wakeup(u);
+	wakeup(&do_select);
 	return count;
 }
 

@@ -104,7 +104,20 @@ static int loopback_deliver(struct socket *s, const char *buffer, __size_t count
 	lock_resource(&packet_resource);
 	append_packet_to_queue(p, &ip4->packet_queue);
 	unlock_resource(&packet_resource);
+	/* A SELECT/POLL WAITER SLEEPS ON ITS OWN CHANNEL, SO DATA ARRIVAL HAS TO WAKE IT TOO.
+	 *
+	 * THIS WAKE WAS MISSING, AND ITS ABSENCE WAS INVISIBLE FOR AS LONG AS EVERY CALLER USED A FINITE TIMEOUT:
+	 * the wait then expired, the loop re-checked ipv4_select(), found this queue non-empty and answered "ready" -
+	 * correct, but only ever AS LATE AS THE TIMEOUT. That is why every wait in this tree's probes reads as
+	 * "exact", and why usleep costs a whole tick: nothing else was waking them. A caller with NO deadline
+	 * (poll(fd, POLLIN, -1), or select(2) with a NULL timeval) had nothing to wake it at all, which is how
+	 * §58.1's TLS handshake sat for ever with the far end's whole flight already in this queue.
+	 *
+	 * `wakeup(ip4)` above wakes the BLOCKING READER, which sleeps on this socket; a select(2)/poll(2) waiter
+	 * sleeps on &do_select, so it needs its own wake. Every STATE-CHANGE path here already has both (ipv4_free,
+	 * ipv4_connect, ipv4_accept); the data path had only the first. */
 	wakeup(ip4);
+	wakeup(&do_select);
 	return count;
 }
 
