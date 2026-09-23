@@ -9346,3 +9346,38 @@ inventing an API.
 NOT A COINCIDENCE:** a value type, a second value type that describes a realm, a piece of mechanics that
 carries both, and a store keyed by the second - in-memory, process-wide, with the KEYCHAIN NAMED AS THE ONE
 SEAM WHERE PERSISTENCE WOULD SUBSTITUTE (§48). Everything else in this slice is a refusal with a reason.
+
+### §48.2 — THE AUTHENTICATION METHOD CONSTANTS, AND THE THREE GROUPS STILL TO READ (2026-09-21)
+
+**THE LOOKUP THAT §48.1 NAMED IS DONE, AND IT FOUND EIGHT NAMES — BY A ROUTE THAT IS WORTH RECORDING,
+because the obvious one failed.** Asking the `NSURLProtectionSpace` page for its constant GROUPS as
+`topicSections` returned NOTHING (they are not sections there). The index answered instead: walking the
+`occ` tree for titles with the `NSURLAuthenticationMethod` prefix yielded all eight, each with its own
+member page:
+
+    NSURLAuthenticationMethodDefault              NSURLAuthenticationMethodHTTPDigest
+    NSURLAuthenticationMethodHTTPBasic            NSURLAuthenticationMethodNTLM
+    NSURLAuthenticationMethodHTMLForm             NSURLAuthenticationMethodNegotiate
+    NSURLAuthenticationMethodClientCertificate    NSURLAuthenticationMethodServerTrust
+
+**THEIR VALUES ARE OURS, under the same rule as every enum case (D2).** An authentication method is not a
+wire string: it is the token `-authenticationMethod` answers and a caller compares against, so it is
+internal to this library and the three that name things this system does not have
+(`ClientCertificate`, `ServerTrust`, and `Negotiate`'s Kerberos half) are refused with the rest of the
+identity and trust surface (§48.1).
+
+**AND THE PROTOCOL AND PROXY TYPE CONSTANTS ARE ONE FETCH AWAY, NOW THAT THEIR PAGES ARE NAMED.** The
+protection-space page's `references` expose all three groups as ARTICLES - which is why the first attempt
+missed them, since they are neither classes nor section members:
+
+    foundation/nsurlprotectionspace-authentication-method-constants
+    foundation/nsurlprotectionspace-protocol-types
+    foundation/nsurlprotectionspace-proxy-types
+
+**THE LESSON, WHICH HAS NOW PAID THREE TIMES IN THIS ONE UNIT:** Apple's documentation is reachable and
+exact, but its SHAPE varies by member - a class page carries `topicSections`, a constant group is an
+`article`, and a namespace like `NSURLAuthenticationMethod` has no page at all and must be found by
+prefix in the index. **So the rule this unit adopted is the one to keep: look it up, and when a lookup comes
+back empty, try the other door before concluding anything about the API.** §47.1's path surprise and this
+section's empty group are the same lesson twice; guessing either would have produced a member list that
+looked authoritative and was wrong.
