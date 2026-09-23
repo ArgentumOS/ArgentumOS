@@ -1002,6 +1002,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_websocket.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_websocket"
+	# foundation_wsframe: RFC 6455's BYTE LAYER (§59 slice 2) - the frame codec, as pure functions. It links the
+	# library's internal FNWebSocketFraming (not public API, and exported like every other symbol in this .so).
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_wsframe.m -o .build/probe-foundation_wsframe.o
+	$(MUSL64_OBJC) .build/probe-foundation_wsframe.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_wsframe"
 	# foundation_challengedoor: the two delegate doors, driven (W7 slice 4)
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		userland/tests/foundation_challengedoor.m -o .build/probe-foundation_challengedoor.o

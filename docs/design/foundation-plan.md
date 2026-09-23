@@ -10536,3 +10536,33 @@ two enums (15 cases), the umbrella wiring, and `foundation_websocket` - a probe 
  * THE FIRST PROBE DID NOT COMPILE: it carried the LIBRARY's ownership into an ARC file - "ARC forbids explicit
    message send of 'release'". The library is MRC and the probes are ARC, and writing one in the other's idiom is
    a compile error rather than a style slip. A better teacher than a comment.
+
+**SLICE 2 (THE CODEC) LANDS (2026-09-22), GREEN: 16/16 probe checks, 3/3 case checks - AND IT IS A LAYER BECAUSE
+OF HOW IT IS TESTED.** `FNWebSocketFraming` is RFC 6455's byte layer as PURE FUNCTIONS: parse, mask (§5.3, and
+masking is its own inverse), build a frame, and the close payload's one rule that is not a byte rule. It is
+INTERNAL - not public API and not in Foundation.h, FNPointerTable's precedent and its words - so the probe imports
+it BY NAME, and **there is no socket, no handshake and no server anywhere in the case**: a codec that only existed
+inside the task could only be tested through a connection, and a failure would name a connection instead of a
+frame.
+
+**WHAT THE PROBE PINS:** both directions of the mask rule (§5.1/§5.3); THE THREE LENGTH ENCODINGS (§5.2, where 126
+and 127 are MARKERS rather than lengths - the single most common way a hand-written codec is wrong, and wrong only
+for payloads nobody tries); the control-frame rules (§5.5: never fragmented, never longer than 125 bytes); the
+INCREMENTAL CONTRACT (an incomplete frame answers 0, "ask again", which is neither an error nor a shorter frame);
+the NO-COPY property (the frame is a window into the caller's bytes); and §7.4.1's reserved close codes, which may
+be reported and never sent.
+
+**AND THREE THINGS THE SLICE TAUGHT, ALL BY FAILING FIRST:**
+ * TWO PROBE BUGS OF THE SAME SHAPE - A PROBE ASSERTING SOMETHING NOBODY PROMISED. The inverse check expected the
+   PARSER to have unmasked (it copies nothing, deliberately, so unmasking is the caller's half of §5.3), and the
+   long-control-frame check handed the parser an ALL-ZEROES buffer - opcode 0, a CONTINUATION, length 0, perfectly
+   legal - and called it a control frame. Each failed while the codec was right. That is the third time this
+   session has caught a check passing or failing for a reason other than the one it names, and the rule it keeps
+   teaching is one line: **BUILD THE THING YOU MEAN**;
+ * AN ARRAY PARAMETER NEEDS ITS OWN `_Nonnull` inside an NS_ASSUME_NONNULL region - pointers inherit the region,
+   arrays do not, and this tree builds with -Werror, which is how the line came to be written twice;
+ * AND AN INTERNAL HEADER THAT IS DELIBERATELY NOT IN `Foundation.h` MUST BE IMPORTED BY NAME by anything that
+   tests it - which is the point of the exclusion rather than an obstacle to it.
+
+**WHAT SLICE 2 STILL OWES (§59's own split):** the ASSEMBLER - fragmentation across frames, the interleaved
+control frames of §5.4 (the measurement §59 left deliberately open), and `maximumMessageSize`.
