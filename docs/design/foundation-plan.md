@@ -9521,3 +9521,46 @@ challenge needs a stateful exchange this bridge does not perform, and the dispos
 server's own answer as the outcome); the credential store is not consulted before asking the delegate; and
 the `NSURLError*` constant mass is still open, so the cancelled-challenge failure carries curl's own code
 rather than a name this library has not declared.
+
+## §49 — W7 SLICE 5 IS `NSURLCache`, AND ITS SURFACE IS OBTAINED (2026-09-21)
+
+**CHOSEN (user, 2026-09-21): the cache.** It is the one remaining W7 group whose HOOKS ALREADY EXIST:
+`NSCachedURLResponse` ships, and `NSURLProtocolClient` already declares
+`-URLProtocol:cachedResponseIsValid:` and the `cacheStoragePolicy` on the response door - so this slice fills
+a declared seam rather than opening a new one, which is the same argument that put the cookie family first.
+
+**`NSURLCache` - 16 rows, read through the same door (§47.1).** `+sharedURLCache`; the TWO initialisers
+(`-initWithMemoryCapacity:diskCapacity:directoryURL:` and the older `-initWithMemoryCapacity:diskCapacity:diskPath:`);
+`-cachedResponseForRequest:` and `-storeCachedResponse:forRequest:`; their task-scoped pair
+(`-getCachedResponseForDataTask:completionHandler:`, `-storeCachedResponse:forDataTask:`);
+`-removeCachedResponseForRequest:`, `-removeCachedResponseForDataTask:`, `-removeCachedResponsesSinceDate:`
+and `-removeAllCachedResponses`; and the four size properties (`currentDiskUsage`, `diskCapacity`,
+`currentMemoryUsage`, `memoryCapacity`) with `NSURLCacheStoragePolicy`.
+
+**`NSCachedURLResponse` - 7 rows, and they are the AUDIT of a class that already ships:** the two
+initialisers and `data`, `response`, `storagePolicy`, `userInfo`. **The first thing this slice does is check
+the shipped class against that list**, because "shipped" in the ledger means DECLARED and this list is what
+completeness means - the same distinction §47.3 drew for the cookie family.
+
+**FOUR DECISIONS THIS SLICE OWNS, STATED BEFORE THE CODE SO THEY ARE NOT DISCOVERED IN IT:**
+
+  * **THE STORE IS IN-MEMORY IN V1, AND THE DISK HALF NAMES AN FSH DOMAIN RATHER THAN INVENTING ONE.** The
+    initialisers accept a disk capacity and a directory (Apple's contract, and a caller compiling against
+    these headers must keep compiling), but nothing is written: `currentDiskUsage` answers 0 and
+    `diskCapacity` reports what it was told. This is the SAME shape as the cookie store's and the credential
+    store's, and for the same reason - a file layout invented ahead of the code that reads it is a layout
+    that will be wrong. When the disk half is wanted, its directory is an FSH domain the way
+    `/System/Temporary Files/` is.
+  * **AN ENTRY IS KEYED BY THE REQUEST THAT MADE IT**, and since a request has no value equality in this
+    library the key is the pair that IS a request's identity for caching: its URL and its method. Said here
+    because it is a real narrowing of Apple's contract, not an implementation detail.
+  * **THE STORAGE POLICY IS HONOURED, NOT STORED**, and that is the check with teeth: a response cached with
+    `NSURLCacheStorageNotAllowed` MUST NOT be served by `-cachedResponseForRequest:`, because a cache that
+    returns what it was told not to keep is worse than no cache at all.
+  * **`-removeCachedResponsesSinceDate:` NEEDS A DATE PER ENTRY**, which is why the store keeps WHEN each
+    response was cached alongside it - Apple's door cannot be answered any other way.
+
+**AND THE BRIDGE'S HALF IS THE PART WORTH GETTING RIGHT:** ask the cache before the network and serve what it
+finds, store what the response's `cacheStoragePolicy` says may be stored, and never let a cache hit change
+what the DELEGATE is told - a delegate sees a response either way, which is why `cachedResponseIsValid:` exists
+as a separate door rather than a flag on the response.
