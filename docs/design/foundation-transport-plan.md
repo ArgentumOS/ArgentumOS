@@ -312,6 +312,19 @@ plan:**
        ... the client POSTs ...
        read the capture: THE REQUEST'S BYTES ARE IN IT, headers and body together
 
+   **AND THE RECEIVER TOOL'S OWN FAILURE IS A KERNEL DEFECT - TRACED END TO END, so it is recorded here
+   rather than re-derived.** netcat's `socket()` returns -1, toybox passes that -1 straight to
+   `setsockopt` (its unchecked path), and `CHECK_UFD` in include/fnx/fd.h then has NO `ufd < 0` test:
+   `-1 > OPEN_MAX-1` is false, `current->fd[-1]` reads PAST THE ARRAY (the printk showed slot 60725, garbage),
+   and the check PASSES on it - after which `get_socket(-1)` reads a wild inode and `!S_ISSOCK` produces
+   `ENOTSOCK`, which is the exact "netcat: setsockopt: Not a socket" the console showed. Linux answers EBADF
+   without touching memory. Two separate defects, one in each layer, and neither visible from the other:
+   the kernel's missing bound, and toybox's unchecked `socket()`.
+   **SO THE PROBE SHOULD NOT USE A RECEIVER TOOL AT ALL.** The parent's own `socket()` is FINE - the same
+   printk showed a valid socket carrying TCP_NODELAY, curl's own - so the probe can bind, listen and accept
+   ITSELF, on the thread that made the task, before resuming it: the transfer runs on a detached thread, so
+   accept-then-read-then-assert needs no fork, no external tool, and no shell. That removes netcat from the
+   unit entirely, which is the right answer for a test that only ever wanted to see its own bytes arrive.
    **AND IT MUST BE STARTED WITH fork()+execv(), NOT system() - MEASURED, after three rounds of hangs that
    were attributed to everything but this.** A probe that does nothing but start the receiver and print shows
    it plainly: `about to system()` prints, and the print OF ITS RETURN VALUE never does. `system()` spawns
