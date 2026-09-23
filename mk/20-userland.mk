@@ -256,7 +256,11 @@ FN_FOUNDATION_CURL   = FNCURLURLProtocol.m
 # -startSecureConnection wraps its descriptor in a TLS session: <openssl/ssl.h>, from the libressl the
 # library ALREADY links. (curl is the reason libssl is on the link line, and the reason this file needs
 # no new library either - it needs the HEADERS, which is what a per-file include list is for.)
-FN_FOUNDATION_SSL    = NSURLSessionStreamTask.m
+FN_FOUNDATION_SSL    = NSURLSessionStreamTask.m FNWebSocketHandshake.m
+# FNWebSocketHandshake.m IS THE SECOND ENTRY, and for the same reason the first is here: §4.2.2's accept digest
+# is a SHA-1, so <openssl/sha.h> must be on that file's include path - and the comment above the ICU list applies
+# to this too: a file that needs a header and is not listed here fails on the GUEST ONLY, because the host has
+# libressl's headers on its default path.
 # NSCharacterSet.m JOINED THIS TABLE IN §15.5: its four ICU-backed rule sets read the general
 # category and the decomposition type, so <unicode/uchar.h> is on its include path. The link needed
 # nothing new - libfoundation has needed libicui18n/libicuuc/libicudata since F13.6.
@@ -1016,6 +1020,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_wsassemble.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_wsassemble"
+	# foundation_wshandshake: RFC 6455's OPENING HANDSHAKE (§59 slice 3a) - the request and the reply, with the
+	# accept digest tested against the RFC's own worked example. No socket, which is why it is a layer.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_wshandshake.m -o .build/probe-foundation_wshandshake.o
+	$(MUSL64_OBJC) .build/probe-foundation_wshandshake.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_wshandshake"
 	# foundation_challengedoor: the two delegate doors, driven (W7 slice 4)
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		userland/tests/foundation_challengedoor.m -o .build/probe-foundation_challengedoor.o

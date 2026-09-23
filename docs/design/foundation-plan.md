@@ -10591,3 +10591,24 @@ connection that is over must not leave state that says otherwise. Two smaller le
 (`NSData **` is a pointer to a pointer), and a BLOCK whose captured variables are `const` cannot be the place
 those out-parameters are assigned - one over-clever shape, two compile errors, and a plain sequence said the same
 thing.
+
+**SLICE 3a (THE OPENING HANDSHAKE) LANDS (2026-09-22), GREEN: 14/14 probe checks, 3/3 case checks - AND IT IS A
+LAYER FOR THE SAME REASON THE CODEC IS: THE PART OF A WEBSOCKET CLIENT MOST DANGEROUS TO GET WRONG IS THE PART THAT
+NEEDS NO SOCKET.** `FNWebSocketHandshake` (internal) is the request to send and what a reply must be, and the
+accept digest (§4.2.2) is tested **AGAINST RFC 6455'S OWN WORKED EXAMPLE** - key `dGhlIHNhbXBsZSBub25jZQ==` must
+produce accept `s3pPLMBiTxaQ9kYGzzhZRbK+xOo=`. If that line is wrong, nothing else in the case means anything: a
+client that accepts a WRONG accept has handed its connection to whatever answered - a cache, a proxy, a page that
+returned 101 - which is why this lands before the task does.
+
+Pinned with it: the nonce is sixteen random bytes (§4.1) and two calls differ; the request carries the request
+line (with a path even when the URL has none), Host, Upgrade, Connection, the version, the key and the protocol
+list - and **NO `Sec-WebSocket-Extensions` EVER**; the reply must be 101 AND upgraded AND carry the right accept,
+with headers matched **WITHOUT REGARD TO CASE** (HTTP's rule: a server spelling it `UPGRADE:` is a correct server);
+and a wrong accept, a non-101, or a 101 without the upgrade header are each refused *with a reason the caller can
+report*.
+
+**TWO COMPILE LESSONS, AND THE SECOND IS A FINDING RATHER THAN A SPELLING:** this tree's `NSArray.h` has no
+lightweight generics (`NSArray<NSString *>` does not compile anywhere in this library), and **`arc4random` DOES
+NOT EXIST in this guest's musl** - so the nonce comes from `RAND_bytes`, which is already linked because the digest
+needs libcrypto. The fallback, when the CSPRNG cannot produce bytes, is mixed from the clock and the pid: **NAMED
+HERE AS A LIMITATION RATHER THAN LEFT SILENT**, the same open entropy question the libressl plan already carries.
