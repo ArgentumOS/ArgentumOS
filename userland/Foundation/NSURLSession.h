@@ -84,7 +84,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)URLSession:(NSURLSession *)session
 didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
  completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
-			     NSURLCredential *credential))completionHandler;
+			     NSURLCredential * _Nullable credential))completionHandler;
 
 /* A background session finished handing over its events. Carried: this library has no background
  * machinery yet, so nothing calls it — stated rather than implied. */
@@ -172,7 +172,7 @@ didCompleteWithError:(nullable NSError *)error;
 	      task:(NSURLSessionTask *)task
 didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
  completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
-			     NSURLCredential *credential))completionHandler;
+			     NSURLCredential * _Nullable credential))completionHandler;
 
 /* WHAT THE TASK COST, AND IT ARRIVES BEFORE THE ENDING ABOVE - Apple's order, and the reason the delivery is
  * a separate call rather than a parameter of it: a delegate that wants the numbers has them before it
@@ -279,7 +279,7 @@ didReceiveResponse:(NSURLResponse *)response
 - (void)fnAskForCredentialForTask:(NSURLSessionTask *)task
 			challenge:(NSURLAuthenticationChallenge *)challenge
 		completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
-					    NSURLCredential *credential))completionHandler;
+					    NSURLCredential * _Nullable credential))completionHandler;
 
 /* THE DOWNLOAD DOORS. The completion-handler form takes a LOCATION rather than bytes - that is the whole
  * difference from the data task, and it is why a download handler and a data handler cannot share a

@@ -58,7 +58,7 @@ typedef struct FNCurlTransfer {
  * door is the client protocol's, and the client answers through the handler - synchronously, by contract. */
 - (void)fnAskClientForCredential:(NSURLAuthenticationChallenge *)challenge
 	       completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
-					   NSURLCredential *credential))completionHandler;
+					   NSURLCredential * _Nullable credential))completionHandler;
 - (void)fnReportRedirectToURL:(NSString *)location status:(long)status headers:(NSDictionary *)headers;
 - (void)fnReportFailure:(NSError *)error;
 @end
@@ -625,7 +625,7 @@ retry_transfer:
 
 - (void)fnAskClientForCredential:(NSURLAuthenticationChallenge *)challenge
 	       completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition,
-					   NSURLCredential *))completionHandler
+					   NSURLCredential * _Nullable))completionHandler
 {
 	if (_client == nil ||
 	    ![_client respondsToSelector:

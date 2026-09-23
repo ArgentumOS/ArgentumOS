@@ -117,7 +117,7 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 - (void)URLProtocol:(NSURLProtocol *)protocol
     didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 		    completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition,
-						NSURLCredential *))completionHandler
+						NSURLCredential * _Nullable))completionHandler
 {
 	(void)protocol;
 	[_session fnAskForCredentialForTask:_task challenge:challenge completionHandler:completionHandler];

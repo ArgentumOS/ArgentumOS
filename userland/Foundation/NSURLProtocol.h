@@ -149,7 +149,7 @@ typedef NS_ENUM(NSInteger, NSURLSessionAuthChallengeDisposition) {
 - (void)URLProtocol:(NSURLProtocol *)protocol
     didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 		  completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
-					      NSURLCredential *credential))completionHandler;
+					      NSURLCredential * _Nullable credential))completionHandler;
 
 /* AND THE END — one of these two, and this one carries no protocol, as Apple declares it. */
 - (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol;

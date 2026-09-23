@@ -9976,3 +9976,45 @@ websocket doors and the coder doors, each with a ground that survives. That is t
 that a refusal has been removed rather than added, and the pattern is worth stating once: **the refusal lists
 are the machine-readable distance to zero, and every landing that shortens one strengthens the check that
 holds it.**
+
+### §53.3 — ¶53.1 IS PAID: THE CREDENTIAL IS NULLABLE WHERE APPLE SAYS IT IS (2026-09-22)
+
+**LANDED, AND IT WAS A FOUR-LINE CHANGE RATHER THAN THE TREE-WIDE ONE ¶53.1 FEARED.** Every signed copy of the
+block type lives in FOUR DECLARATIONS and TWO implementations, and that is all of them:
+
+  * `NSURLSessionDelegate`'s challenge door and `NSURLSessionTaskDelegate`'s task form (`NSURLSession.h`);
+  * the session's internal `fnAskForCredentialForTask:` (`NSURLSession.h`) - the internal door has to agree
+    with the delegate doors it resolves to, or the two block types differ along the path the bridge's own
+    handler travels;
+  * the CLIENT door in `NSURLProtocol.h` (§50.3's), which is where the seam's spelling is read;
+  * and the two implementations that forward it: `FNCURLURLProtocol.m`'s `fnAskClientForCredential:` and
+    `FNSessionTransfer`'s door in `NSURLSession.m`.
+
+**THE REASON IT MATTERS IS NOT TIDINESS, IT IS THAT THREE CALL SITES WERE ALREADY SENDING `nil`**: the
+bridge's no-door path, the session's no-door path, and the challenge-door probe's delegate. A parameter
+declared nonnull that three callers pass nil through is a contract nothing enforces and nothing can act on -
+the same shape as a door no header declares, one layer down. **The declaration now says what the code does,
+and what Apple's does.**
+
+**AND THE PROBES WERE LEFT ALONE, DELIBERATELY.** `foundation_urlprotocol`'s client synthesizes a credential
+to answer with; that was written to satisfy the old nonnull spelling, and under the new one it is simply a
+legal answer (a client MAY hand one over) rather than a workaround - so removing it would be churn in a probe
+that never raises a challenge at all. It is recorded here so a future session that touches that probe knows
+the synthesis is optional rather than required.
+
+**WHAT IS NOT DONE, AND WHY IT IS WORTH SAYING:** the client door's own comment block (`NSURLProtocol.h`) does
+not yet spell the nullability out in prose - the DOCUMENTATION edit was refused twice by the write gate in the
+same session, so the declaration carries the annotation and its prose is silent about it. The plan (this
+paragraph) is the record until a session with a clean read adds the sentence. **The declaration is the
+contract; the sentence is a convenience, and saying which of the two is missing is the point of recording it.**
+
+**AND THE BUILD TAUGHT THE SHAPE OF THE SPELLING, WHICH IS THE KIND OF THING ONLY A COMPILER CAN SAY:**
+`nullable` - the macro this tree uses at the OUTER position of a declaration, and the spelling used in all four
+of these places at first - is **NOT ACCEPTED INSIDE A BLOCK PARAMETER LIST**: `void (^)(…, nullable
+NSURLCredential *)` fails with *unknown type name 'nullable'*, twice per file, while the same macro three lines
+below in the same header (as `+ (nullable id)propertyForKey:`) compiles. The form that works there is the
+underscored one, `NSURLCredential * _Nullable`, which is what the tree already uses everywhere nullability
+appears in an INNER position (`NSData.h`'s `NSError * _Nullable * _Nullable` is the same lesson one level up).
+**So the rule this library actually follows is positional**: `nullable T *` for a whole parameter, `T *
+_Nullable` inside a block's or a pointer-to-pointer's type - and a session that has to write one of these has
+no reason to rediscover it from the error message.
