@@ -10396,8 +10396,24 @@ sender's own drain wake crosses to the waiter - `&do_select` is a global channel
 supplies the very wake the receiver's data path was missing. The leg is kept as a test of the BEHAVIOUR (a poll
 with no deadline IS woken), and the comment beside it says exactly that, so it cannot be mistaken for a gate.
 
-**SO THE MECHANISM BEHIND §58.1's STALL IS NOT YET PINNED, AND ITS SHAPE IS NAMED:** the TLS probe's far end is a
-THREAD OF THE SAME PROCESS as the waiter, and that handshake parked with the far end's whole flight on the wire.
-The next measurement is therefore whether a wake crosses threads of one address space - a same-process peer,
-polled with no deadline. That is a kernel question with a one-leg probe, and it is the first thing the next unit
-opens.
+**SO THE MECHANISM BEHIND §58.1's STALL WAS NOT PINNED BY THAT - AND THE NEXT QUESTION WAS ASKED AND ANSWERED BY
+READING, WHICH DISSOLVED IT INTO A BETTER ONE.**
+
+The question was whether a wake crosses threads of one address space (the TLS probe's far end is a thread of the
+same process as the waiter). **`kernel/sleep.c`'s `wakeup(void *address)` answers it: NO, IT DOES NOT MATTER.**
+The waiters live in ONE GLOBAL `sleep_hash_table`, keyed by the canonicalized sleep address (`SLEEP_ADDR`, so a
+symbol reached through either image alias hashes the same) - so a wake finds every sleeper on that channel
+regardless of process, thread or address space. Cross-thread wakeups were never the problem.
+
+**WHICH LEAVES A LOST WAKEUP, AND ITS WINDOW IS VISIBLE IN `sys_poll`:** the loop CHECKS readiness, then calls
+`sleep(&do_select, ...)` - so a wake that lands BETWEEN the check and the registration finds nobody to wake and is
+gone. Nothing in `sys_poll` re-checks after registering. The TLS sequence is exactly that shape: the client sends
+the ClientHello, the far end answers IMMEDIATELY, and the reply's wake can arrive in that window - after which the
+poll sleeps for ever. A FINITE timeout hides it completely, because the wait ends anyway and the re-check finds the
+data: **which is the same fact as "poll's timeout is exact", seen from the other side, and it is why only an
+infinite wait could ever hang.**
+
+**THE GATE FOR THAT HAS A SHAPE NOW, AND IT IS NOT THE LEG ALREADY ADDED:** the existing leg's peer pauses 300ms,
+which GUARANTEES the waiter is asleep before the write - so it cannot exercise a window between check and sleep.
+A race needs repetition: a peer that writes with NO delay, polled with no deadline, run many times, with the
+watchdog naming the iteration that parks. That is the next unit, and it is a probe rather than a hypothesis.

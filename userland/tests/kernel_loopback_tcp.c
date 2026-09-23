@@ -453,10 +453,17 @@ int main(void)
 	 * than hides: the leg below is a real test of the BEHAVIOUR (a poll with no deadline must be woken), and
 	 * NOT a gate for the data-arrival wake.
 	 *
-	 * THE OPEN QUESTION IT LEAVES, AND IT IS §58.1's OWN SHAPE: the TLS probe's far end is a THREAD OF THE
-	 * SAME PROCESS as the waiter, and that handshake DID park with the data on the wire. So a wake may not
-	 * cross threads of one address space - which would be the mechanism behind §58.1's stall, and is the next
-	 * thing to measure (a same-process peer, polled with no deadline).
+	 * AND THE QUESTION THAT WAS LEFT HERE HAS SINCE BEEN ANSWERED BY READING, WHICH DISSOLVED IT: the guess was
+	 * that a wake might not cross threads of one address space (the TLS probe's far end is a thread of the same
+	 * process as its waiter). `kernel/sleep.c`'s wakeup() disproves it - the waiters live in ONE GLOBAL
+	 * sleep_hash_table keyed by the canonicalized sleep address, so a wake finds every sleeper on that channel
+	 * whatever its process, thread or address space. Cross-thread wakeups were never the problem.
+	 *
+	 * WHAT REMAINS, AND IT NEEDS A DIFFERENT LEG THAN THIS ONE: sys_poll CHECKS readiness and THEN sleeps, so a
+	 * wake landing between those two finds nobody and is lost - and this leg cannot catch that, because its peer
+	 * PAUSES first, which guarantees the waiter is already registered. Catching a window needs REPETITION: a peer
+	 * that writes with no delay, polled with no deadline, over many iterations, with the watchdog naming the
+	 * iteration that parks.
 	 *
 	 * THE DEADLINE IS THE POINT OF THIS LEG: it polls with -1 and the peer writes only AFTER a pause, so
 	 * nothing but a wake can end it. The watchdog reports the stall if none arrives.
