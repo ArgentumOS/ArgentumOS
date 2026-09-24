@@ -11041,6 +11041,35 @@ leg's write completion did run, and the probe DID issue its read - six times.
 
 **WHAT REMAINS:** that READ-COMPLETED counter, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5,
 `pty_write`).
+
+### §58.2l — NOT THE READ: EVERY SERVED READ FINISHED, SO THE WORKER IS STUCK BETWEEN OPERATIONS (2026-09-22)
+
+**THE COUNTER §58.2k NAMED, added where it belongs** - `fnDeliveredRead++` at the top of `-fnDeliverRead:`, which
+`-fnServeRead:`'s loop calls exactly once - and read by the probe through `-fnReadCounts:`.
+
+**MEASURED, THREE CONSECUTIVE RED RUNS, IDENTICAL:**
+```
+FOUNDATION-STREAMTASK-DIAG reply: done=0 errCode=0 len=0 has200=0
+  hops handed=14 ran=14 inline=0   ops enq=6/3/4 served=5/3/4   reads started=5 finished=5
+```
+**NOT ONE READ IS STUCK: every read the worker started, it also finished.** So the reply read (the 6th) is not
+waiting behind a worker that is busy INSIDE a read - the worker is stuck BETWEEN operations: after finishing read
+#5 and delivering it, it never takes the 6th off `_operations`.
+
+**WHAT THAT RULES OUT, AND WHAT IT NAMES:**
+ * RULED OUT: the read itself (poll/read/TLS - all five finished), the delegate hop (14/14), the probe's ordering
+   (all three writes served), and the lost-wakeup identity §58.2h caught (clean 0 of 8 in that hunt).
+ * NAMED: the task's OWN worker lifecycle in `-fnServe:` - the single thread `-resume` starts, which waits on
+   `_queue` (an `NSCondition`) and pops `_operations`. A signal cannot be missed behind an NSCondition whose
+   predicate is checked under its own lock, so the candidates are: the worker BLOCKED before its wait (the same
+   futex path §58.2i cured, if a second window exists there), or - more likely, and not yet excluded - **the
+   worker EXITED or returned mid-flow, leaving the 6th operation unserved for ever.**
+ * THE COUNTER THAT DECIDES IT: the worker's own lifecycle - entered `-fnServe` once, and the iteration where it
+   leaves (with the reason: `_stopped`, EOF, an error) - read once by the probe like the rest. One counter in
+   `-fnServe:` and two slots in `-fnServeCounts:`.
+
+**WHAT REMAINS:** that lifecycle counter, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5,
+`pty_write`).
 The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.

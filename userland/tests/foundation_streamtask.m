@@ -45,6 +45,9 @@
 - (void)fnStreamCountsHanded:(int *)handed ran:(int *)ran inline:(int *)inline_;
 /* §58.2k: what was ENQUEUED (0..2: read, write, other) and what the task's own worker SERVED (3..5). */
 - (void)fnServeCounts:(int *)counts;
+/* §58.2k's follow-up: reads STARTED and reads whose loop FINISHED (0..1) - the difference is where the
+ * worker is stuck. */
+- (void)fnReadCounts:(int *)counts;
 @end
 
 /* EVERY WAIT IN THIS PROBE IS A `poll`, AND THAT IS A MEASURED CHOICE RATHER THAN A STYLE ONE. This guest's
@@ -881,20 +884,24 @@ int main(void)
 			int ran = -1;
 			int inlineHops = -1;
 			int counts[6] = {-1, -1, -1, -1, -1, -1};
+			int readCounts[2] = {-1, -1};
 
 			/* §58.2j: THE HOP COUNTS, READ ONCE, FROM MEMORY. §58.2d asked this same question with writes
 			 * and got `handed=14 ran=7`; the library's writes here were then measured to BRIDGE the loss
 			 * (green with them, red 6 of 6 without), so this reads instead of writing. */
 			[task fnStreamCountsHanded:&handed ran:&ran inline:&inlineHops];
 			/* §58.2k: AND WHERE THE REPLY READ GOT TO - enqueued? served? - which is the question the last
-			 * red run left open, now that every hop is known to run. */
+			 * red run left open, now that every hop is known to run. `started - finished == 1` names a read
+			 * the worker is stuck inside; equal with a read still queued says it is stuck between them. */
 			[task fnServeCounts:counts];
+			[task fnReadCounts:readCounts];
 			printf("FOUNDATION-STREAMTASK-DIAG reply: done=%d errCode=%ld len=%d has200=%d"
 			       " hops handed=%d ran=%d inline=%d"
-			       " ops enq=%d/%d/%d served=%d/%d/%d\n",
+			       " ops enq=%d/%d/%d served=%d/%d/%d reads started=%d finished=%d\n",
 			       (int)replyDone, (long)(replyError != nil ? [replyError code] : 0),
 			       (int)(replyData != nil ? [replyData length] : 0), has200, handed, ran, inlineHops,
-			       counts[0], counts[1], counts[2], counts[3], counts[4], counts[5]);
+			       counts[0], counts[1], counts[2], counts[3], counts[4], counts[5],
+			       readCounts[0], readCounts[1]);
 		}
 		check("and-the-reply-comes-back-through-it",
 		      replyDone && replyError == nil &&

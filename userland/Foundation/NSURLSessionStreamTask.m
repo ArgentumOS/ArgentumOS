@@ -712,6 +712,7 @@ static int fnEnqueuedOther = 0;
 static int fnServedRead = 0;		/* what the task's OWN worker took off `_operations` */
 static int fnServedWrite = 0;
 static int fnServedOther = 0;
+static int fnDeliveredRead = 0;		/* reads whose loop FINISHED (see -fnReadCounts:) */
 
 /* §58.2k'S INSTRUMENT, AND IT LOCALIZES THE REMAINING LOSS IN ONE READ:
  *   counts[0..2] = -fnEnqueue: calls    by kind (read, write, other)
@@ -729,6 +730,20 @@ static int fnServedOther = 0;
 		counts[3] = fnServedRead;
 		counts[4] = fnServedWrite;
 		counts[5] = fnServedOther;
+	}
+}
+
+/* §58.2k'S FOLLOW-UP, AND IT IS THE ONE NUMBER THAT SEPARATES THE TWO REMAINING CANDIDATES: `fnServedRead`
+ * counts reads the worker STARTED (the switch in `-fnServeOperation:` runs BEFORE the read), and
+ * `fnDeliveredRead` counts the reads whose loop FINISHED (it is incremented where `-fnServeRead:`'s loop calls
+ * the delivery, which it does exactly once). So `servedRead - deliveredRead == 1` names a read the worker is
+ * stuck INSIDE - in the poll or in the read itself - while `servedRead == deliveredRead` with the next read
+ * still queued says the worker is stuck BETWEEN operations, which would be a dispatch problem and not the read. */
+- (void)fnReadCounts:(int *)counts
+{
+	if (counts != NULL) {
+		counts[0] = fnServedRead;
+		counts[1] = fnDeliveredRead;
 	}
 }
 
@@ -775,6 +790,11 @@ static int fnServedOther = 0;
 
 - (void)fnDeliverRead:(FNStreamOp *)operation data:(NSData *)data atEOF:(BOOL)atEOF error:(NSError *)error
 {
+	/* §58.2k'S FOLLOW-UP: `-fnServeRead:`'s loop calls this EXACTLY ONCE, at the end, for every read it
+	 * serves - so this counts the reads whose loop FINISHED, and `fnServedRead - fnDeliveredRead` is the number
+	 * of reads the worker is stuck INSIDE right now. Counted here rather than in the loop's tail so the count
+	 * lives beside the declaration it belongs to instead of in a third place. */
+	fnDeliveredRead++;
 	void (^handler)(NSData *, BOOL, NSError *) = operation->readHandler;
 	NSData *delivered = [data copy];
 	NSError *deliveredError = [error retain];
