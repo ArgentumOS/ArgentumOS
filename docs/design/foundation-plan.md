@@ -10801,7 +10801,28 @@ pattern), or explain the invisibility first - the loader's choice of which `libf
 obvious suspect, and the cheap check is the probe's own `readelf -d` NEEDED/RPATH against the guest's layout.
 Both are named here rather than guessed at.
 
-**WHAT REMAINS:** the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`). The deliberately
+### §58.2c — THE SINK IS SOLVED AND THE QUEUE IS EXONERATED: THE FAILING READ **IS** SERVED (2026-09-22)
+
+**§58.2b's "invisible" was the SINK, not the library, and the recipe is now known.** The same two diagnostics,
+re-written as **raw `write(2)` on fd 1** and named with the `FOUNDATION-STREAMTASK-` prefix the case's own lines
+carry, appeared IMMEDIATELY - 17 lines, in BOTH the harness's view and the raw guest transcript. What did not work
+was `fprintf(stderr, ...)` (which is what this library does elsewhere) and `printf` **even with `fflush(stdout)`**.
+So a class-side diagnostic IS possible in this tree; it just has to use the raw descriptor, and carrying the case's
+own prefix removes every doubt about whose line it is. The linker question §58.2b raised is answered NO: the probe's
+`readelf -d` needs exactly one `libfoundation.so.1`, there is exactly one in the rootfs, and it is the fresh one.
+
+**AND THE MEASUREMENT IT BOUGHT EXONERATES THE QUEUE - a real narrowing.** Both ends of the task's queue were
+COUNTED over one run rather than read by line order (two threads write those lines, so the interleaving is not the
+execution order; the counts are):
+ * **7 `enqueue READ` and 7 `served READ`; 10 `enqueue other` and 10 `served other`.**
+Every operation that entered the queue came out of it - INCLUDING the read whose handler never fires - and the
+operations after it completed, so the worker was never stuck either.
+**SO THE DEFECT IS INSIDE THAT READ'S OWN SERVICE, NOT IN THE QUEUE PATH:** `-fnServeRead:` ran, and either it never
+reached `-fnDeliverRead:`, or it delivered and the handler did not arrive. That is the next instrument, and it is
+one more raw-`write(2)` line at `-fnDeliverRead:` - the recipe above makes it a two-minute experiment now.
+
+**WHAT REMAINS:** that instrument, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
+The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
 
