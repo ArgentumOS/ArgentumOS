@@ -128,6 +128,13 @@ def declared(kind, name, text):
     any_form = (
         r"#\s*define\s+" + n + r"\b"                       # a macro
         r"|typedef[^;]*\b" + n + r"\s*;"                   # a typedef declarator
+        # A FUNCTION-POINTER TYPEDEF, WHICH THE ALTERNATIVE ABOVE DOES NOT REACH: the name sits
+        # inside the declarator `typedef void (*X)(void)`, so it is followed by `)` and not by `;`.
+        # MEASURED 2026-09-23 (C6.2): `CGDataProviderReleaseDataCallback` is DECLARED in
+        # CGDataProvider.h and its row had been `open` since C5, and C6.2's two CGFunction callbacks
+        # landed the same way — three shipped symbols the work list would have called unfinished
+        # forever. The tool's own contract is "declared as ANYTHING", and this is a declaration form.
+        r"|typedef[^;]*\(\s*\*\s*" + n + r"\s*\)"          # a function-pointer typedef
         r"|NS_ENUM\s*\(\s*[^,]+,\s*" + n + r"\s*\)"        # an NS_ENUM
         r"|NS_OPTIONS\s*\(\s*[^,]+,\s*" + n + r"\s*\)"     # an NS_OPTIONS
         r"|\b" + n + r"\s*[=,}]"                           # an enum member

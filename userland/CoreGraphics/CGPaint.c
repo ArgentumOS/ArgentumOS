@@ -18,6 +18,7 @@
 #include <CoreGraphics/CGGeometry.h>
 #include <CoreGraphics/CGPaint_internal.h>
 
+#include <math.h>
 #include <stdlib.h>
 
 /* THE ONE CLAMP IN THE LIBRARY, and it moved here from CGContext.c with the packer it serves. */
@@ -94,4 +95,177 @@ pixman_image_t *cg_paint_image(int px, int py, int w, int h, CGAffineTransform c
 	 * outside it should read transparent rather than wrap. */
 	pixman_image_set_repeat(image, PIXMAN_REPEAT_NONE);
 	return image;
+}
+
+/* ------------------------------------------------------------------------- */
+/* C6.2: the geometry a gradient and a shading SHARE                       */
+/* ------------------------------------------------------------------------- */
+
+/* THE PROJECTION OF A POINT ONTO THE RAMP'S AXIS, as a fraction of that axis. One dot product is the
+ * whole of it; the refusal is a start and an end at the SAME spot, which leaves the ramp no axis to
+ * run along and therefore no parameter to report. */
+int cg_paint_linear_parameter(CGPoint start, CGPoint end, CGFloat x, CGFloat y, CGFloat *t)
+{
+	CGFloat dx = end.x - start.x;
+	CGFloat dy = end.y - start.y;
+	CGFloat den = dx * dx + dy * dy;
+
+	if (den <= 0.0) {
+		return 0;
+	}
+	*t = ((x - start.x) * dx + (y - start.y) * dy) / den;
+	return 1;
+}
+
+/* THE RADIAL PARAMETER IS A ROOT SELECTION AND NOT A DISTANCE, which is why it is worth having in one
+ * place. `CGContextDrawRadialGradient` and a radial shading both blend between two CIRCLES, so the
+ * parameter at a point is the `t` that solves `|p - (c0 + t·d)| = r0 + t·dr` — a quadratic with TWO
+ * roots, of which the correct one is the one that puts the point on a circle of NON-NEGATIVE radius.
+ * Three cases, each of which a first draft gets wrong in its own way:
+ *
+ *   * A NEGATIVE DISCRIMINANT means no circle of the family passes through the point. That is not an
+ *     error: a genuine cone does not fill the plane, and the caller's answer is "nothing here".
+ *   * A VANISHING LEADING COEFFICIENT means the two circles are offset by exactly the difference in
+ *     their radii, so the family is a set of circles all TANGENT at one point and the equation is
+ *     LINEAR. Dividing by `2a` here is a division by zero.
+ *   * AND IF THE CONSTANT TERM VANISHES TOO THE LINE IS `0 = 0`: the point IS that tangency point,
+ *     every parameter in the family puts it on a circle of non-negative radius, and the equation
+ *     cannot choose. The FIRST STOP is the choice, because the tangency point lies ON the start
+ *     circle. MEASURED: this branch came out UNPAINTED (black) before it was written, which is a
+ *     visible hole at the apex of exactly the cone a caller draws with `startRadius = 0`. */
+int cg_paint_radial_parameter(CGPoint start_center, CGFloat start_radius, CGPoint end_center,
+			      CGFloat end_radius, CGFloat x, CGFloat y, CGFloat *t)
+{
+	CGFloat fx = x - start_center.x;
+	CGFloat fy = y - start_center.y;
+	CGFloat dx = end_center.x - start_center.x;
+	CGFloat dy = end_center.y - start_center.y;
+	CGFloat dr = end_radius - start_radius;
+	CGFloat a = dx * dx + dy * dy - dr * dr;
+	/* `b` CARRIES THE MINUS SIGN OF THE EXPANDED FORM (`-2t(f·d + r0·dr)`), which is the sign a
+	 * first draft drops: with it lost, the concentric case below selected the root that puts the
+	 * point on a circle of radius -ρ and the ramp came out mirrored. */
+	CGFloat b = -2.0 * (fx * dx + fy * dy + start_radius * dr);
+	CGFloat c = fx * fx + fy * fy - start_radius * start_radius;
+
+	if (a > -1e-12 && a < 1e-12) {
+		if (b > -1e-12 && b < 1e-12) {
+			if (c > -1e-12 && c < 1e-12) {
+				*t = 0.0;
+				return 1;
+			}
+			return 0;
+		}
+		*t = -c / b;
+		return 1;
+	}
+	{
+		CGFloat disc = b * b - 4.0 * a * c;
+		CGFloat sq;
+		CGFloat t1;
+		CGFloat t2;
+		int ok1;
+		int ok2;
+
+		if (disc < 0.0) {
+			return 0;
+		}
+		sq = sqrt(disc);
+		t1 = (-b + sq) / (2.0 * a);
+		t2 = (-b - sq) / (2.0 * a);
+		/* THE ROOT WITH A NON-NEGATIVE RADIUS IS THE ONE. Both roots put the point on SOME
+		 * circle of the family; only one of them is on a circle that exists, because a radius
+		 * `r0 + t·dr` below zero names a circle with no points. When both survive — the
+		 * overlapping-cone case — the smaller parameter is taken, the region nearer the start. */
+		ok1 = (start_radius + t1 * dr) >= 0.0;
+		ok2 = (start_radius + t2 * dr) >= 0.0;
+		if (ok1 && !ok2) {
+			*t = t1;
+		} else if (ok2 && !ok1) {
+			*t = t2;
+		} else {
+			*t = t1 < t2 ? t1 : t2;
+		}
+		return 1;
+	}
+}
+
+/* THE ANGULAR PARAMETER, which is the one that WRAPS: an angular ramp has no ends to extend past,
+ * because going round the circle returns to where it started. `t - floor(t)` is that wrap, written
+ * this way rather than with a comparison so that a NEGATIVE angle wraps too. */
+int cg_paint_conic_parameter(CGPoint center, CGFloat angle, CGFloat x, CGFloat y, CGFloat *t)
+{
+	const double turn = 6.283185307179586476925286766559;
+	double u = (atan2((double)(y - center.y), (double)(x - center.x)) - (double)angle) / turn;
+
+	*t = (CGFloat)(u - floor(u));
+	return 1;
+}
+
+/* THE EXTENSION RULE, WRITTEN ONCE FOR EVERY GEOMETRY. A parameter outside 0…1 is clamped to the
+ * near end only when that end is extended; otherwise the point is not painted at all, which is the
+ * whole meaning of a gradient's `CGGradientDrawingOptions` and of a shading's two `bool`s. */
+int cg_paint_extend(int extend_before, int extend_after, CGFloat *t)
+{
+	if (*t < 0.0) {
+		if (!extend_before) {
+			return 0;
+		}
+		*t = 0.0;
+	} else if (*t > 1.0) {
+		if (!extend_after) {
+			return 0;
+		}
+		*t = 1.0;
+	}
+	return 1;
+}
+
+/* ------------------------------------------------------------------------- */
+/* C6.2: colours into the numbers a paint composites                        */
+/* ------------------------------------------------------------------------- */
+
+int cg_paint_device_rgb_from_color(CGColorRef color, CGFloat rgba[4])
+{
+	CGColorSpaceRef device;
+	CGColorRef converted;
+	const CGFloat *comp;
+
+	if (color == NULL) {
+		return 0;
+	}
+	device = CGColorSpaceCreateDeviceRGB();
+	if (device == NULL) {
+		return 0;
+	}
+	converted = CGColorCreateCopyByMatchingToColorSpace(color, kCGRenderingIntentDefault, device,
+							    NULL);
+	CGColorSpaceRelease(device);
+	if (converted == NULL) {
+		return 0;
+	}
+	comp = CGColorGetComponents(converted);
+	rgba[0] = comp[0];
+	rgba[1] = comp[1];
+	rgba[2] = comp[2];
+	rgba[3] = comp[3];
+	CGColorRelease(converted);
+	return 1;
+}
+
+int cg_paint_device_rgb(CGColorSpaceRef space, const CGFloat *components, CGFloat rgba[4])
+{
+	CGColorRef color;
+	int ok;
+
+	if (space == NULL || components == NULL) {
+		return 0;
+	}
+	/* A COLOUR IS MADE AND THEN CONVERTED, rather than the numbers being handed to the engine
+	 * directly, because that is the door C4 already opened and a second door would be a second
+	 * answer to what a component means in a space. */
+	color = CGColorCreate(space, components);
+	ok = cg_paint_device_rgb_from_color(color, rgba);
+	CGColorRelease(color);
+	return ok;
 }

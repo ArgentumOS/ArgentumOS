@@ -27,8 +27,8 @@
 #include <CoreGraphics/CGColorSpace.h>
 #include <CoreGraphics/CGGeometry.h>
 #include <CoreGraphics/CGGradient_internal.h>
+#include <CoreGraphics/CGPaint_internal.h>
 
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,7 +67,6 @@ static void cg_unpainted(CGFloat rgba[4])
 CGGradientRef cg_gradient_create_with_colors(CGColorSpaceRef space, CGColorRef *colors, size_t count,
 					     const CGFloat *locations)
 {
-	CGColorSpaceRef device;
 	CGGradientRef g;
 	size_t i;
 
@@ -115,43 +114,28 @@ CGGradientRef cg_gradient_create_with_colors(CGColorSpaceRef space, CGColorRef *
 	g->refcount = 1;
 	g->count = count;
 
-	device = CGColorSpaceCreateDeviceRGB();
-	if (device == NULL) {
-		free(g);
-		return NULL;
-	}
 	for (i = 0; i < count; i++) {
-		CGColorRef converted;
-		const CGFloat *comp;
-
 		if (colors[i] == NULL) {
 			fprintf(stderr, "CG-REFUSE: gradient stop %lu is a NULL colour\n",
 				(unsigned long)i);
-			CGColorSpaceRelease(device);
 			free(g);
 			return NULL;
 		}
-		/* THE STOP'S COLOUR IS CONVERTED HERE, ONCE — see CGGradient.h for the deviation
-		 * this states: the ramp then interpolates in device RGB rather than inside the
-		 * caller's space. A space the engine cannot convert FROM (device CMYK today) is a
+		/* THE STOP'S COLOUR IS CONVERTED HERE, ONCE — see CGGradient.h for the deviation this
+		 * states: the ramp then interpolates in device RGB rather than inside the caller's
+		 * space. The conversion itself is CGPaint.c's (C6.2 moved it there, because a shading
+		 * converts what a caller's function RETURNED and the two must agree about what a colour
+		 * in a space means). A space the engine cannot convert FROM — device CMYK today — is a
 		 * refusal, not a ramp drawn with someone else's numbers. */
-		converted = CGColorCreateCopyByMatchingToColorSpace(colors[i], kCGRenderingIntentDefault,
-								    device, NULL);
-		if (converted == NULL) {
-			CGColorSpaceRelease(device);
-			free(g);
-			return NULL;
-		}
-		comp = CGColorGetComponents(converted);
 		g->stop[i].location = locations != NULL ? locations[i]
 							: (CGFloat)i / (CGFloat)(count - 1);
-		g->stop[i].rgba[0] = comp[0];
-		g->stop[i].rgba[1] = comp[1];
-		g->stop[i].rgba[2] = comp[2];
-		g->stop[i].rgba[3] = comp[3];
-		CGColorRelease(converted);
+		if (!cg_paint_device_rgb_from_color(colors[i], g->stop[i].rgba)) {
+			fprintf(stderr, "CG-REFUSE: gradient stop %lu cannot be converted into device "
+					"RGB\n", (unsigned long)i);
+			free(g);
+			return NULL;
+		}
 	}
-	CGColorSpaceRelease(device);
 	return g;
 }
 
@@ -266,52 +250,25 @@ static void cg_ramp_sample(CGGradientRef g, CGFloat t, CGFloat rgba[4])
 	rgba[3] = g->stop[g->count - 1].rgba[3];
 }
 
-/* THE EXTENSION RULE, WRITTEN ONCE FOR ALL THREE RAMPS. `t` outside 0…1 is painted with the nearest
- * stop's colour ONLY when the option for that end is set; otherwise the point is unpainted. Both
- * linear and radial ask this, so "which end extends" cannot differ between them. */
-static int cg_extend_parameter(CGGradientDrawingOptions options, CGFloat *t)
-{
-	if (*t < 0.0) {
-		if (!(options & kCGGradientDrawsBeforeStartLocation)) {
-			return 0;
-		}
-		*t = 0.0;
-	} else if (*t > 1.0) {
-		if (!(options & kCGGradientDrawsAfterEndLocation)) {
-			return 0;
-		}
-		*t = 1.0;
-	}
-	return 1;
-}
+/* THE THREE SAMPLERS, AND EACH IS NOW A HANDFUL OF LINES. Everything about WHERE a parameter is and
+ * WHAT happens past its ends lives in CGPaint.c — C6.2 moved it there so that a SHADING, which asks a
+ * caller's function for the colour at the same parameter, cannot come to a different conclusion about
+ * the geometry than a gradient does. What is left here is the part that is a RAMP rather than a
+ * geometry: walk the stops.
+ *
+ * THE "NOT PAINTED" PATH IS ONE `cg_unpainted` CALL IN EACH, and it is reached from two different
+ * questions — the gradient is NULL, or the geometry has no parameter at this point, or the point is
+ * past an end that is not extended. All three leave the same four zeros, which is what makes them
+ * indistinguishable to the composite and therefore not worth distinguishing here. */
 
 void cg_gradient_linear_sample(CGGradientRef gradient, CGPoint start, CGPoint end,
 			       CGGradientDrawingOptions options, CGFloat x, CGFloat y, CGFloat rgba[4])
 {
-	CGFloat dx;
-	CGFloat dy;
-	CGFloat den;
 	CGFloat t;
 
-	if (gradient == NULL) {
-		cg_unpainted(rgba);
-		return;
-	}
-	dx = end.x - start.x;
-	dy = end.y - start.y;
-	den = dx * dx + dy * dy;
-	/* A START AND AN END THAT ARE THE SAME POINT GIVE THE RAMP NO AXIS TO RUN ALONG, so there is
-	 * no parameter to compute — refused by leaving the point unpainted rather than by picking a
-	 * colour, since any colour chosen here would be a claim about a direction that does not exist.
-	 */
-	if (den <= 0.0) {
-		cg_unpainted(rgba);
-		return;
-	}
-	/* THE PROJECTION OF THE POINT ONTO THE RAMP'S AXIS, as a fraction of the axis — which is the
-	 * definition of the parameter and the reason the whole thing is one dot product. */
-	t = ((x - start.x) * dx + (y - start.y) * dy) / den;
-	if (!cg_extend_parameter(options, &t)) {
+	if (gradient == NULL || !cg_paint_linear_parameter(start, end, x, y, &t)
+	    || !cg_paint_extend((options & kCGGradientDrawsBeforeStartLocation) != 0,
+				(options & kCGGradientDrawsAfterEndLocation) != 0, &t)) {
 		cg_unpainted(rgba);
 		return;
 	}
@@ -322,115 +279,30 @@ void cg_gradient_radial_sample(CGGradientRef gradient, CGPoint start_center, CGF
 			       CGPoint end_center, CGFloat end_radius,
 			       CGGradientDrawingOptions options, CGFloat x, CGFloat y, CGFloat rgba[4])
 {
-	CGFloat fx;
-	CGFloat fy;
-	CGFloat dx;
-	CGFloat dy;
-	CGFloat dr;
-	CGFloat a;
-	CGFloat b;
-	CGFloat c;
 	CGFloat t;
 
-	if (gradient == NULL) {
-		cg_unpainted(rgba);
-		return;
-	}
-	/* `f` IS THE POINT MEASURED FROM THE START CIRCLE'S CENTRE, and the equation being solved is
-	 * `|f - t·d| = r0 + t·dr` — the point lies on the circle that the parameter `t` interpolates
-	 * between the two given circles. Expanding it gives the quadratic below. */
-	fx = x - start_center.x;
-	fy = y - start_center.y;
-	dx = end_center.x - start_center.x;
-	dy = end_center.y - start_center.y;
-	dr = end_radius - start_radius;
-	a = dx * dx + dy * dy - dr * dr;
-	/* `b` CARRIES THE MINUS SIGN OF THE EXPANDED FORM (`-2t(f·d + r0·dr)`), which is the sign a
-	 * first draft drops: with it lost, the concentric case below selected the root that puts the
-	 * point on a circle of radius -ρ, and the ramp came out mirrored. */
-	b = -2.0 * (fx * dx + fy * dy + start_radius * dr);
-	c = fx * fx + fy * fy - start_radius * start_radius;
-
-	if (a > -1e-12 && a < 1e-12) {
-		/* THE QUADRATIC HAS NO LEADING TERM: the two circles are offset by exactly the
-		 * difference in their radii, so the family is a set of circles all TANGENT at one point
-		 * and the parameter is LINEAR. Dividing here rather than by `2a` is the branch that a
-		 * first draft forgets. */
-		if (b > -1e-12 && b < 1e-12) {
-			/* AND IF THE CONSTANT TERM VANISHES TOO THE LINE IS `0 = 0`: the point IS the
-			 * tangency point, so EVERY parameter in the family puts it on a circle of
-			 * non-negative radius and the equation cannot choose. The first stop is the
-			 * choice, because the tangency point lies on the START circle — it is where
-			 * `r0` and the centre-to-centre distance meet — and picking anything else
-			 * would paint a colour the caller's first circle does not have. MEASURED: the
-			 * degenerate-cone check in coregraphics_gradient.c landed on this branch and
-			 * came out UNPAINTED (black) before it was written, which is a visible hole
-			 * at the apex of exactly the cone a caller draws with `startRadius = 0`. */
-			if (c > -1e-12 && c < 1e-12) {
-				t = 0.0;
-			} else {
-				cg_unpainted(rgba);
-				return;
-			}
-		} else {
-			t = -c / b;
-		}
-	} else {
-		CGFloat disc = b * b - 4.0 * a * c;
-		CGFloat sq;
-		CGFloat t1;
-		CGFloat t2;
-		int ok1;
-		int ok2;
-
-		/* NO REAL ROOT MEANS NO CIRCLE OF THE FAMILY PASSES THROUGH THIS POINT — which happens
-		 * for a genuinely conical ramp, where the family does not fill the plane. Not an error:
-		 * simply nothing to paint here. */
-		if (disc < 0.0) {
-			cg_unpainted(rgba);
-			return;
-		}
-		sq = sqrt(disc);
-		t1 = (-b + sq) / (2.0 * a);
-		t2 = (-b - sq) / (2.0 * a);
-		/* THE ROOT WITH A NON-NEGATIVE RADIUS IS THE ONE. Both roots put the point on SOME
-		 * circle of the family; only one of them is on a circle that exists, because a radius
-		 * `r0 + t·dr` below zero names a circle with no points. When both survive — the
-		 * overlapping-cone case — the smaller parameter is taken, which is the region nearer
-		 * the start circle. */
-		ok1 = (start_radius + t1 * dr) >= 0.0;
-		ok2 = (start_radius + t2 * dr) >= 0.0;
-		if (ok1 && !ok2) {
-			t = t1;
-		} else if (ok2 && !ok1) {
-			t = t2;
-		} else {
-			t = t1 < t2 ? t1 : t2;
-		}
-	}
-	if (!cg_extend_parameter(options, &t)) {
+	if (gradient == NULL
+	    || !cg_paint_radial_parameter(start_center, start_radius, end_center, end_radius, x, y, &t)
+	    || !cg_paint_extend((options & kCGGradientDrawsBeforeStartLocation) != 0,
+				(options & kCGGradientDrawsAfterEndLocation) != 0, &t)) {
 		cg_unpainted(rgba);
 		return;
 	}
 	cg_ramp_sample(gradient, t, rgba);
 }
 
-/* THE CONIC RAMP, WHICH IS THE ONE THAT WRAPS. Apple's conic draw takes no drawing-options
- * parameter, and that is not an omission to work around: an angular ramp has no ends to extend past,
- * because going round the circle returns to where it started. So the parameter is the angle measured
- * from the caller's starting angle, taken modulo one turn — `t - floor(t)` is that wrap, and it is
- * written this way rather than with a comparison so a negative angle wraps too. */
+/* NO EXTENSION IS APPLIED HERE, AND THAT IS THE CONIC RAMP'S CONTRACT RATHER THAN AN OVERSIGHT: it
+ * wraps, so the parameter has already been put inside 0…1 by `cg_paint_conic_parameter` and the two
+ * end flags would have nothing to describe. Apple's conic draw takes no options parameter for exactly
+ * that reason. */
 void cg_gradient_conic_sample(CGGradientRef gradient, CGPoint center, CGFloat angle, CGFloat x,
 			      CGFloat y, CGFloat rgba[4])
 {
-	const double turn = 6.283185307179586476925286766559;
-	double t;
+	CGFloat t;
 
-	if (gradient == NULL) {
+	if (gradient == NULL || !cg_paint_conic_parameter(center, angle, x, y, &t)) {
 		cg_unpainted(rgba);
 		return;
 	}
-	t = (atan2((double)(y - center.y), (double)(x - center.x)) - (double)angle) / turn;
-	t -= floor(t);
-	cg_ramp_sample(gradient, (CGFloat)t, rgba);
+	cg_ramp_sample(gradient, t, rgba);
 }

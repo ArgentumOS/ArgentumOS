@@ -691,7 +691,7 @@ func	struck	CGContextDrawPDFDocument	-	Reference / Functions	deprecated	objc
 func	open	CGContextDrawPDFPage	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	shipped	CGContextDrawPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 func	shipped	CGContextDrawRadialGradient	-	Opaque Types / Drawing Gradients and Shadings	-	objc
-func	open	CGContextDrawShading	-	Opaque Types / Drawing Gradients and Shadings	-	objc
+func	shipped	CGContextDrawShading	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 func	open	CGContextDrawTiledImage	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	open	CGContextEOClip	-	Opaque Types / Working with the Current Clipping Path	-	objc
 func	shipped	CGContextEOFillPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
@@ -961,10 +961,10 @@ func	open	CGFontGetUnitsPerEm	-	Opaque Types / Examining Font Metrics	-	objc
 func	open	CGFontGetXHeight	-	Opaque Types / Examining Font Metrics	-	objc
 func	open	CGFontRelease	-	Opaque Types / Retaining and Releasing a CGFont Object	-	objc
 func	open	CGFontRetain	-	Opaque Types / Retaining and Releasing a CGFont Object	-	objc
-func	open	CGFunctionCreate	-	Opaque Types / Creating Function Objects	-	objc
+func	shipped	CGFunctionCreate	-	Opaque Types / Creating Function Objects	-	objc
 func	open	CGFunctionGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
-func	open	CGFunctionRelease	-	Opaque Types / Retaining and Releasing CGFunction Objects	-	objc
-func	open	CGFunctionRetain	-	Opaque Types / Retaining and Releasing CGFunction Objects	-	objc
+func	shipped	CGFunctionRelease	-	Opaque Types / Retaining and Releasing CGFunction Objects	-	objc
+func	shipped	CGFunctionRetain	-	Opaque Types / Retaining and Releasing CGFunction Objects	-	objc
 func	open	CGGetActiveDisplayList	-	Services / Finding Displays	-	objc
 func	open	CGGetDisplayTransferByFormula	-	Services / Adjusting the Display Gamma	-	objc
 func	open	CGGetDisplayTransferByTable	-	Services / Adjusting the Display Gamma	-	objc
@@ -1251,14 +1251,14 @@ func	open	CGSetDisplayTransferByFormula	-	Services / Adjusting the Display Gamma
 func	open	CGSetDisplayTransferByTable	-	Services / Adjusting the Display Gamma	-	objc
 func	struck	CGSetLocalEventsFilterDuringSuppressionState	-	Services / Deprecated Functions	deprecated	objc
 func	struck	CGSetLocalEventsSuppressionInterval	-	Services / Deprecated Functions	deprecated	objc
-func	open	CGShadingCreateAxial	-	Opaque Types / Creating Shading Objects	-	objc
+func	shipped	CGShadingCreateAxial	-	Opaque Types / Creating Shading Objects	-	objc
 func	open	CGShadingCreateAxialWithContentHeadroom	-	Functions	-	objc
-func	open	CGShadingCreateRadial	-	Opaque Types / Creating Shading Objects	-	objc
+func	shipped	CGShadingCreateRadial	-	Opaque Types / Creating Shading Objects	-	objc
 func	open	CGShadingCreateRadialWithContentHeadroom	-	Functions	-	objc
 func	open	CGShadingGetContentHeadroom	-	Functions	-	objc
 func	open	CGShadingGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
-func	open	CGShadingRelease	-	Opaque Types / Retaining and Releasing Shading Objects	-	objc
-func	open	CGShadingRetain	-	Opaque Types / Retaining and Releasing Shading Objects	-	objc
+func	shipped	CGShadingRelease	-	Opaque Types / Retaining and Releasing Shading Objects	-	objc
+func	shipped	CGShadingRetain	-	Opaque Types / Retaining and Releasing Shading Objects	-	objc
 func	open	CGShieldingWindowID	-	Services / Capturing and Releasing Displays	-	objc
 func	open	CGShieldingWindowLevel	-	Services / Capturing and Releasing Displays	-	objc
 func	shipped	CGSizeApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
@@ -1397,7 +1397,7 @@ struct	open	CGDataConsumerCallbacks	-	Opaque Types / Creating Data Consumers	-	o
 struct	open	CGDataProviderDirectCallbacks	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 struct	open	CGDataProviderSequentialCallbacks	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
 struct	open	CGDeviceColor	-	Reference / Structures	-	objc
-struct	open	CGFunctionCallbacks	-	Opaque Types / Callbacks	-	objc
+struct	shipped	CGFunctionCallbacks	-	Opaque Types / Callbacks	-	objc
 struct	open	CGPSConverterCallbacks	-	Opaque Types / Callbacks	-	objc
 struct	shipped	CGPathElement	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 struct	open	CGPatternCallbacks	-	Opaque Types / Callbacks	-	objc
@@ -1421,7 +1421,7 @@ typealias	open	CGDataProviderGetBytesAtPositionCallback	-	Opaque Types / Creatin
 typealias	open	CGDataProviderGetBytesCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
 typealias	shipped	CGDataProviderRef	-	Opaque Types	-	objc
 typealias	open	CGDataProviderReleaseBytePointerCallback	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
-typealias	open	CGDataProviderReleaseDataCallback	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
+typealias	shipped	CGDataProviderReleaseDataCallback	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 typealias	open	CGDataProviderReleaseInfoCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
 typealias	open	CGDataProviderRewindCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
 typealias	open	CGDataProviderSkipForwardCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
@@ -1451,9 +1451,9 @@ typealias	open	CGEventTimestamp	-	Services / Data Types	-	objc
 typealias	shipped	CGFloat	-	CoreFoundation, CG-named / Reference / Data Types	-	objc
 typealias	open	CGFontIndex	-	Opaque Types / Working with Glyphs	-	objc
 typealias	open	CGFontRef	-	Opaque Types	-	objc
-typealias	open	CGFunctionEvaluateCallback	-	Opaque Types / Callbacks	-	objc
-typealias	open	CGFunctionRef	-	Opaque Types	-	objc
-typealias	open	CGFunctionReleaseInfoCallback	-	Opaque Types / Callbacks	-	objc
+typealias	shipped	CGFunctionEvaluateCallback	-	Opaque Types / Callbacks	-	objc
+typealias	shipped	CGFunctionRef	-	Opaque Types	-	objc
+typealias	shipped	CGFunctionReleaseInfoCallback	-	Opaque Types / Callbacks	-	objc
 typealias	open	CGGammaValue	-	Services / Data Types	-	objc
 typealias	open	CGGlyph	-	Opaque Types / Working with Glyphs	-	objc
 typealias	shipped	CGGradientRef	-	Opaque Types	-	objc
@@ -1489,7 +1489,7 @@ typealias	open	CGPSConverterMessageCallback	-	Opaque Types / Callbacks	-	objc
 typealias	open	CGPSConverterProgressCallback	-	Opaque Types / Callbacks	-	objc
 typealias	open	CGPSConverterRef	-	Opaque Types	-	objc
 typealias	open	CGPSConverterReleaseInfoCallback	-	Opaque Types / Callbacks	-	objc
-typealias	open	CGPathApplierFunction	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
+typealias	shipped	CGPathApplierFunction	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 typealias	open	CGPathApplyBlock	-	Reference / Data Types	-	objc
 typealias	shipped	CGPathRef	-	Opaque Types	-	objc
 typealias	open	CGPatternDrawPatternCallback	-	Opaque Types / Callbacks	-	objc
@@ -1500,7 +1500,7 @@ typealias	open	CGRefreshRate	-	Services / Data Types	-	objc
 typealias	open	CGRenderingBufferProviderRef	-	Type Aliases	-	objc
 typealias	open	CGScreenRefreshCallback	-	Services / Callbacks	-	objc
 typealias	open	CGScreenUpdateMoveCallback	-	Services / Callbacks	-	objc
-typealias	open	CGShadingRef	-	Opaque Types	-	objc
+typealias	shipped	CGShadingRef	-	Opaque Types	-	objc
 typealias	open	CGWheelCount	-	Services / Data Types	-	objc
 typealias	open	CGWindowID	-	Services / Data Types	-	objc
 typealias	open	CGWindowLevel	-	Services / Data Types	-	objc

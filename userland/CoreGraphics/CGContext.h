@@ -46,6 +46,9 @@
  * context's header and the gradient TYPE in the gradient's, so a caller who includes CGContext.h
  * alone must have both. */
 #include <CoreGraphics/CGGradient.h>
+/* AND CGShading.h, ON THE SAME REASON — the shading's draw verb is declared below, so a caller who
+ * includes CGContext.h alone must have the type. */
+#include <CoreGraphics/CGShading.h>
 /* AND CGImage.h, FOR THE IMAGE TYPE AND FOR `CGContextDrawImage`: Apple declares that function in
  * the context's header, and a caller who includes only CGContext.h has to reach it — which is
  * exactly why this include is here rather than the declaration being read somewhere else. */
@@ -246,6 +249,14 @@ void CGContextDrawRadialGradient(CGContextRef context, CGGradientRef gradient,
  * omission: an angular ramp has no ends to extend past. */
 void CGContextDrawConicGradient(CGContextRef context, CGGradientRef gradient, CGPoint center,
 				CGFloat angle);
+
+/*
+ * AND THE SHADING'S DRAWN FORM, WHICH IS THE SAME CONTRACT AS THE GRADIENTS ABOVE: it paints the
+ * CLIP, not the path, and the current path is untouched. The difference is entirely in where the
+ * colours come from — a shading carries its own geometry (it was built AXIAL or RADIAL) and calls the
+ * caller's function for a colour, so there is nothing to pass but the object.
+ */
+void CGContextDrawShading(CGContextRef context, CGShadingRef shading);
 
 /* The current point OF THE PATH, in user space: the pen position the last move or add left
  * behind. */

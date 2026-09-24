@@ -43,6 +43,7 @@
 #include <CoreGraphics/CGGradient_internal.h>
 #include <CoreGraphics/CGPath.h>
 #include <CoreGraphics/CGPaint_internal.h>
+#include <CoreGraphics/CGShading_internal.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -2213,4 +2214,44 @@ void CGContextDrawConicGradient(CGContextRef c, CGGradientRef gradient, CGPoint 
 	/* NO OPTIONS ARE SET, AND THAT IS THE CONIC RAMP'S CONTRACT RATHER THAN AN OVERSIGHT: it wraps,
 	 * so there is no beyond-the-ends for the two extension flags to describe. */
 	cg_draw_gradient(c, &gd, cg_conic_paint);
+}
+
+/* THE SHADING'S SAMPLER, AND IT NEEDS NO GEOMETRY FROM HERE: a shading was built axial or radial and
+ * carries its own two points, so the context hands over a user-space point and nothing else. That is
+ * why there is no `cg_shading_draw` struct beside `cg_gradient_draw` — there is nothing to fill in.
+ */
+static void cg_shading_paint(void *info, CGFloat x, CGFloat y, CGFloat rgba[4])
+{
+	cg_shading_sample((CGShadingRef)info, x, y, rgba);
+}
+
+void CGContextDrawShading(CGContextRef c, CGShadingRef shading)
+{
+	pixman_image_t *src;
+	int px;
+	int py;
+	int pw;
+	int ph;
+
+	if (c == NULL) {
+		return;
+	}
+	if (shading == NULL) {
+		fprintf(stderr, "CG-REFUSE: CGContextDrawShading needs a shading; a NULL one would "
+				"otherwise paint the clip with nothing and look like a clip that "
+				"worked\n");
+		return;
+	}
+	if (!cg_paint_extents(c, &px, &py, &pw, &ph)) {
+		return;
+	}
+	/* THE SAME ROAD THE GRADIENTS TAKE, which is the point of the substrate C6.1 built: the shading is
+	 * a different SOURCE and nothing else changes — the clip bounds it, the context's alpha multiplies
+	 * it, and the blend mode applies, all without this function mentioning any of them. */
+	src = cg_paint_image(px, py, pw, ph, c->state.ctm, c->state.alpha, cg_shading_paint, shading);
+	if (src == NULL) {
+		return;
+	}
+	cg_paint_clip(c, src, cg_op(c->state.blend));
+	pixman_image_unref(src);
 }

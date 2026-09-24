@@ -238,7 +238,7 @@ HOST_CG_OBJDIR  := $(HOST_OBJDIR)/coregraphics
 HOST_CG_MOBJS    = $(patsubst userland/CoreGraphics/%.m,$(HOST_CG_OBJDIR)/coregraphics-%.o,$(HOST_CG_MSRCS))
 # PIXMAN'S INCLUDE PATH NEEDS THE `pixman-1` SUBDIRECTORY NAMED: `pixman.h` includes
 # `pixman-version.h` from its own directory and is NOT self-contained.
-HOST_CG_PROBES  ?= coregraphics_context coregraphics_stroke coregraphics_stroke_context coregraphics_curve coregraphics_arc coregraphics_color coregraphics_color_foundation coregraphics_image coregraphics_image_png coregraphics_image_jpeg coregraphics_gradient coregraphics_gradient_colors
+HOST_CG_PROBES  ?= coregraphics_context coregraphics_stroke coregraphics_stroke_context coregraphics_curve coregraphics_arc coregraphics_color coregraphics_color_foundation coregraphics_image coregraphics_image_png coregraphics_image_jpeg coregraphics_gradient coregraphics_gradient_colors coregraphics_shading
 
 $(HOST_CG_OBJDIR)/coregraphics-%.o: userland/CoreGraphics/%.m
 	@mkdir -p $(HOST_CG_OBJDIR)
