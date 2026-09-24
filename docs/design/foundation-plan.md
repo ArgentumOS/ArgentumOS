@@ -11976,6 +11976,37 @@ both values and they were correct, which is what a detailed failure message is f
 decision plus a round-trip probe — and the README-shaped question of whether our format should be
 documented as ours.
 
+**SLICE 4b LANDED (2026-09-24): THE SERIALIZED FORM - APPLE'S FORM, OUR SCHEMA, AND A ROUND TRIP THAT IS
+ASSERTED.** `foundation_filewrapper` 12 -> **16 checks**, all green on the first build.
+
+**THE DIVISION IS THE DESIGN, AND APPLE'S OWN SENTENCE DRAWS IT:** the property holds "a data object in
+the format used by the NSFileWrapper PASTEBOARD TYPE", and "this data object is also suitable for passing
+to -initWithSerializedRepresentation:" - which names a PROPERTY LIST and says nothing about what is in
+it. **So the FORM is Apple's and the SCHEMA is OURS**, documented key by key in the header (`Type`,
+`PreferredFileName`, `FileName`, `FileAttributes`, `RegularFileContents`, `SymbolicLinkDestination`,
+`FileWrappers`) and written as an XML plist, because that is the format this library's plist layer speaks.
+**It is therefore NOT byte-compatible with Apple's own**, which is unverifiable by design - what IS
+asserted is the half Apple states (the data really is a property list) and the half a caller needs (a
+whole tree survives a round trip).
+
+**THE FOUR CHECKS, AND TWO OF THEM ARE ABOUT FAILING WELL:**
+ * the data **is a property list** - non-empty, and the plist layer reads it back to a dictionary;
+ * the tree **round-trips node for node**: the kinds, the four children by key, the bytes, and both links'
+   targets including the DANGLING one;
+ * **it REFUSES what is not ours**: bytes that are not a plist, a plist that is not a dictionary, a
+   dictionary whose `Type` is absent, and nil all answer nil - a damaged document must not become a
+   damaged object;
+ * **and it answers nil in exactly the case Apple names**: "-serializedRepresentation may be nil if the
+   user modifies the contents of the file system node after you call -readFromURL:options:error: or
+   -initWithURL:options:error:, but before -serializedRepresentation has read the contents of the file".
+   The probe produces it the only honest way - a LAZY wrapper whose file is then deleted - which is also
+   the third place the lazy/immediate distinction shows itself.
+
+**STILL OWED, AND IT IS ONE PAIR:** `-initWithCoder:`/`-encodeWithCoder:`. The class does not declare
+`NSCoding` conformance yet, and it is the same format question reached through the coder family rather
+than through a plist - so it is its own increment with its own round trip.
+
+
 
 
 

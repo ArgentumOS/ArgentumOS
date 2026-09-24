@@ -27,6 +27,7 @@
 #import <Foundation/NSException.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSNumber.h>
+#import <Foundation/NSPropertyListSerialization.h>
 #import <Foundation/NSURL.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -49,6 +50,8 @@ enum {
 	      options:(NSFileWrapperWritingOptions)options
    originalContents:(nullable NSString *)originalContents
 		error:(NSError ** _Nullable)error;
+- (nullable NSDictionary *)fnSerializedTree;
+- (nullable instancetype)initWithSerializedTree:(id)tree;
 @end
 
 /* AN ERROR, THE WAY THE REST OF THIS LIBRARY MAKES ONE: the code is the errno and the description is
@@ -740,6 +743,182 @@ originalContentsURL:(nullable NSURL *)originalContentsURL
 		}
 	}
 	return YES;
+}
+
+/* ---- SERIALIZING THE WHOLE TREE (W8 slice 4b) ----------------------------------------------------
+ *
+ * THE FORMAT IS OURS AND THE HEADER SAYS SO IN FULL; what belongs HERE is the two halves and the one
+ * thing that can fail. The recursion mirrors the class: a directory's children are a dictionary of
+ * key -> nested plist, a regular file carries its bytes, and a link carries its target. THE FAILURE IS
+ * APPLE'S OWN SENTENCE about the lazy form - "this property may be nil if the user modifies the contents
+ * of the file system node after you call -readFromURL:options:error: or -initWithURL:options:error:, but
+ * before -serializedRepresentation has read the contents of the file" - so a regular file whose bytes
+ * cannot be read makes the WHOLE answer nil rather than a tree with a hole in it.
+ */
+
+static NSString *const FNWrapperTypeKey = @"Type";
+static NSString *const FNWrapperPreferredNameKey = @"PreferredFileName";
+static NSString *const FNWrapperFileNameKey = @"FileName";
+static NSString *const FNWrapperAttributesKey = @"FileAttributes";
+static NSString *const FNWrapperContentsKey = @"RegularFileContents";
+static NSString *const FNWrapperLinkKey = @"SymbolicLinkDestination";
+static NSString *const FNWrapperChildrenKey = @"FileWrappers";
+
+static NSString *const FNWrapperTypeRegular = @"Regular";
+static NSString *const FNWrapperTypeDirectory = @"Directory";
+static NSString *const FNWrapperTypeSymbolicLink = @"SymbolicLink";
+
+/* THE TREE AS A PROPERTY LIST - one half of the round trip, and the only place the keys above are
+ * written. It answers nil when a regular file's bytes cannot be read, which is what makes the door below
+ * nil in exactly the case Apple names. */
+- (nullable NSDictionary *)fnSerializedTree
+{
+	NSMutableDictionary *tree = [NSMutableDictionary dictionary];
+
+	if (_kind == FNWrapperDirectory) {
+		NSMutableDictionary *children = [NSMutableDictionary dictionary];
+		NSArray *keys = [_fileWrappers allKeys];
+		NSUInteger i;
+
+		[tree setObject:FNWrapperTypeDirectory forKey:FNWrapperTypeKey];
+		for (i = 0; i < [keys count]; i++) {
+			NSString *key = [keys objectAtIndex:i];
+			NSFileWrapper *child = [_fileWrappers objectForKey:key];
+			NSDictionary *nested = [child fnSerializedTree];
+
+			if (nested == nil) {
+				return nil;
+			}
+			[children setObject:nested forKey:key];
+		}
+		[tree setObject:children forKey:FNWrapperChildrenKey];
+	} else if (_kind == FNWrapperSymbolicLink) {
+		if (_linkDestination == nil) {
+			return nil;
+		}
+		[tree setObject:FNWrapperTypeSymbolicLink forKey:FNWrapperTypeKey];
+		[tree setObject:_linkDestination forKey:FNWrapperLinkKey];
+	} else {
+		NSData *bytes = [self regularFileContents];
+
+		if (bytes == nil) {
+			return nil;
+		}
+		[tree setObject:FNWrapperTypeRegular forKey:FNWrapperTypeKey];
+		[tree setObject:bytes forKey:FNWrapperContentsKey];
+	}
+	if (_preferredFilename != nil) {
+		[tree setObject:_preferredFilename forKey:FNWrapperPreferredNameKey];
+	}
+	if (_filename != nil) {
+		[tree setObject:_filename forKey:FNWrapperFileNameKey];
+	}
+	if (_attributes != nil) {
+		[tree setObject:_attributes forKey:FNWrapperAttributesKey];
+	}
+	return tree;
+}
+
+/* AND BACK, WITH THE SAME KEYS, and with a REFUSAL rather than a guess for anything that is not one of
+ * ours: a plist that is not a dictionary, a dictionary with no Type, and a Type this class does not know
+ * all answer nil - which is what a caller holding a damaged document needs to hear. */
+- (nullable instancetype)initWithSerializedTree:(id)tree
+{
+	id type;
+
+	if (![tree isKindOfClass:[NSDictionary class]]) {
+		[self release];
+		return nil;
+	}
+	self = [self init];
+	if (self == nil) {
+		return nil;
+	}
+	type = [tree objectForKey:FNWrapperTypeKey];
+	_preferredFilename = [[tree objectForKey:FNWrapperPreferredNameKey] copy];
+	_filename = [[tree objectForKey:FNWrapperFileNameKey] copy];
+	_attributes = [[tree objectForKey:FNWrapperAttributesKey] copy];
+	if ([type isEqual:FNWrapperTypeDirectory]) {
+		id children = [tree objectForKey:FNWrapperChildrenKey];
+
+		_kind = FNWrapperDirectory;
+		_fileWrappers = [[NSMutableDictionary alloc] init];
+		if ([children isKindOfClass:[NSDictionary class]]) {
+			NSArray *keys = [children allKeys];
+			NSUInteger i;
+
+			for (i = 0; i < [keys count]; i++) {
+				NSString *key = [keys objectAtIndex:i];
+				NSFileWrapper *child = [[NSFileWrapper alloc]
+					initWithSerializedTree:[children objectForKey:key]];
+
+				if (child == nil) {
+					[self release];
+					return nil;
+				}
+				/* THE KEY THE CHILD WAS STORED UNDER IS THE KEY IT GOES BACK UNDER: re-deriving it from
+				 * the preferred name would RENAME a child that was deliberately given another key. */
+				if ([child preferredFilename] == nil) {
+					[child setPreferredFilename:key];
+				}
+				[child fnAdopt:self];
+				[_fileWrappers setObject:child forKey:key];
+				[child release];
+			}
+		}
+	} else if ([type isEqual:FNWrapperTypeSymbolicLink]) {
+		id destination = [tree objectForKey:FNWrapperLinkKey];
+
+		if (![destination isKindOfClass:[NSString class]]) {
+			[self release];
+			return nil;
+		}
+		_kind = FNWrapperSymbolicLink;
+		_linkDestination = [destination copy];
+	} else if ([type isEqual:FNWrapperTypeRegular]) {
+		id bytes = [tree objectForKey:FNWrapperContentsKey];
+
+		if (![bytes isKindOfClass:[NSData class]]) {
+			[self release];
+			return nil;
+		}
+		_kind = FNWrapperRegular;
+		_contents = [bytes copy];
+	} else {
+		[self release];
+		return nil;
+	}
+	return self;
+}
+
+- (nullable NSData *)serializedRepresentation
+{
+	NSDictionary *tree = [self fnSerializedTree];
+
+	if (tree == nil) {
+		return nil;
+	}
+	return [NSPropertyListSerialization dataWithPropertyList:tree
+							  format:NSPropertyListXMLFormat_v1_0
+							 options:0
+							   error:NULL];
+}
+
+- (nullable instancetype)initWithSerializedRepresentation:(NSData *)data
+{
+	id tree;
+
+	if (data == nil) {
+		return nil;
+	}
+	tree = [NSPropertyListSerialization propertyListWithData:data
+							 options:0
+							  format:NULL
+							   error:NULL];
+	if (tree == nil) {
+		return nil;
+	}
+	return [[NSFileWrapper alloc] initWithSerializedTree:tree];
 }
 
 @end

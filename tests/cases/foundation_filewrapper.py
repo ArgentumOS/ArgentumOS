@@ -30,6 +30,15 @@ The probe is `/System/Shared/tests/foundation_filewrapper`, ONE unit, importing 
   * `fw-unchanged-contents-are-linked-and-changed-ones-copied` — `originalContentsURL` is for not
                                  rewriting what did not change: identical bytes are LINKED into place
                                  (the same inode) while changed bytes are copied;
+  * `fw-serialization-is-a-property-list` — the representation's FORM is Apple's own stated half ("the
+                                 format used by the NSFileWrapper pasteboard type"), so the data really
+                                 is a property list;
+  * `fw-serialization-round-trips-the-tree` — and the whole tree survives a round trip through it, node
+                                 for node: kinds, children keys, bytes and link targets;
+  * `fw-serialization-refuses-what-is-not-ours` — bytes that are not a plist, a plist that is not a
+                                 dictionary, a dictionary with no Type and nil are all refused;
+  * `fw-serialization-is-nil-when-the-bytes-are-gone` — the failure Apple's own page names: a LAZY
+                                 wrapper whose file was deleted serializes to nil;
   * `probe-tree-removed`         — the tree is gone.
 
 IT WORKS IN A TREE OF ITS OWN MAKING under `/System/Temporary Files` and removes it at the end AND at
@@ -47,7 +56,10 @@ CHECKS = ("fw-wraps-a-file", "fw-wraps-a-directory-tree", "fw-wraps-a-link",
           "fw-a-second-child-with-one-name-gets-another-key",
           "fw-adding-to-a-non-directory-raises", "fw-a-new-wrapper-has-no-filename-yet",
           "fw-atomic-writing-leaves-no-temporary",
-          "fw-unchanged-contents-are-linked-and-changed-ones-copied", "probe-tree-removed")
+          "fw-unchanged-contents-are-linked-and-changed-ones-copied",
+          "fw-serialization-is-a-property-list", "fw-serialization-round-trips-the-tree",
+          "fw-serialization-refuses-what-is-not-ours",
+          "fw-serialization-is-nil-when-the-bytes-are-gone", "probe-tree-removed")
 
 
 class Case(BaseCase):

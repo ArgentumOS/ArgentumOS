@@ -367,6 +367,82 @@ int main(void)
 	}
 
 	{
+		/* ---- W8 SLICE 4b: THE WHOLE TREE AS DATA, AND BACK --------------------------------------- */
+		NSFileWrapper *tree = [[NSFileWrapper alloc] initWithPath:source];
+		NSData *representation = [tree serializedRepresentation];
+		NSFileWrapper *rebuilt = representation != nil ?
+			[[NSFileWrapper alloc] initWithSerializedRepresentation:representation] : nil;
+		NSDictionary *children = [rebuilt fileWrappers];
+		id plain = representation != nil ?
+			[NSPropertyListSerialization propertyListWithData:representation
+								  options:0
+								   format:NULL
+								    error:NULL] : nil;
+
+		/* THE FORM IS APPLE'S AND THE SCHEMA IS OURS: the data IS a property list (which is the half
+		 * Apple's own page states - "the format used by the NSFileWrapper pasteboard type"), and the
+		 * tree survives a round trip through it node for node. */
+		check("fw-serialization-is-a-property-list",
+		      representation != nil && [representation length] > 0 &&
+		      [plain isKindOfClass:[NSDictionary class]],
+		      [NSString stringWithFormat:@"data=%lu bytes plist=%s",
+			(unsigned long)(representation != nil ? [representation length] : 0),
+			[plain isKindOfClass:[NSDictionary class]] ? "yes" : "no"]);
+
+		check("fw-serialization-round-trips-the-tree",
+		      rebuilt != nil && [rebuilt isDirectory] && [children count] == 4 &&
+		      [[(NSFileWrapper *)[children objectForKey:@"hello.txt"] regularFileContents]
+			isEqualToData:[NSData dataWithBytes:"changed!" length:8]] &&
+		      [[children objectForKey:@"nested"] isDirectory] &&
+		      [[children objectForKey:@"link-rel"] isSymbolicLink] &&
+		      [[[children objectForKey:@"link-rel"] symbolicLinkDestination]
+			isEqualToString:@"hello.txt"] &&
+		      [[[children objectForKey:@"dangling"] symbolicLinkDestination]
+			isEqualToString:fn_path(@"nowhere-at-all")],
+		      [NSString stringWithFormat:@"rebuilt=%d children=%lu hello=%@ link=%@",
+			(int)(rebuilt != nil), (unsigned long)(children != nil ? [children count] : 0),
+			[[children objectForKey:@"hello.txt"] regularFileContents] != nil ? @"data" : @"nil",
+			[[children objectForKey:@"link-rel"] symbolicLinkDestination]]);
+	}
+
+	{
+		/* AND THE REFUSALS, WHICH ARE THE HALF THAT KEEPS A DAMAGED DOCUMENT FROM BECOMING A DAMAGED
+		 * OBJECT: bytes that are not a plist, a plist that is not a dictionary, and a dictionary whose
+		 * Type is missing or unknown all answer nil. */
+		NSData *garbage = [@"this is not a property list at all" dataUsingEncoding:NSUTF8StringEncoding];
+		NSData *array = [NSPropertyListSerialization dataWithPropertyList:
+					[NSArray arrayWithObject:@"no"]
+								format:NSPropertyListXMLFormat_v1_0
+							       options:0
+								 error:NULL];
+		NSData *typeless = [NSPropertyListSerialization dataWithPropertyList:
+					[NSDictionary dictionaryWithObject:@"x" forKey:@"Something"]
+								format:NSPropertyListXMLFormat_v1_0
+							       options:0
+								 error:NULL];
+
+		check("fw-serialization-refuses-what-is-not-ours",
+		      [[NSFileWrapper alloc] initWithSerializedRepresentation:garbage] == nil &&
+		      [[NSFileWrapper alloc] initWithSerializedRepresentation:array] == nil &&
+		      [[NSFileWrapper alloc] initWithSerializedRepresentation:typeless] == nil &&
+		      [[NSFileWrapper alloc] initWithSerializedRepresentation:nil] == nil,
+		      @"bytes that are not a plist, a plist that is not a dictionary, a dictionary with no Type "
+		      @"and nil are all refused");
+	}
+
+	{
+		/* AND THE FAILURE APPLE NAMES ITSELF: -serializedRepresentation "may be nil if the user modifies
+		 * the contents of the file system node after you call ... but before -serializedRepresentation
+		 * has read the contents of the file" - which is exactly the LAZY wrapper whose file has gone. */
+		NSFileWrapper *lazy = [[NSFileWrapper alloc] initWithPath:fn_path(@"source/nested/deep.txt")];
+
+		[manager removeItemAtPath:fn_path(@"source/nested/deep.txt") error:NULL];
+		check("fw-serialization-is-nil-when-the-bytes-are-gone",
+		      [lazy serializedRepresentation] == nil,
+		      @"a lazy wrapper whose file was deleted serializes to nil, which is Apple's own sentence");
+	}
+
+	{
 		NSError *cleanupError = nil;
 		BOOL removed = [manager removeItemAtPath:@PROBE_ROOT error:&cleanupError];
 

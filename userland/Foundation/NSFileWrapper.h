@@ -173,6 +173,28 @@ originalContentsURL:(nullable NSURL *)originalContentsURL
 
 - (nullable NSData *)regularFileContents;
 
+/* ---- SERIALIZING THE WHOLE TREE (W8 slice 4b) ---------------------------------------------------- */
+
+/* APPLE PUBLISHES THE FORM AND NOT THE SCHEMA, SO THE SCHEMA IS OURS AND IT IS WRITTEN DOWN HERE. The
+ * form is stated in Apple's own words: the property holds "a data object in the format used by the
+ * NSFileWrapper pasteboard type", and "this data object is also suitable for passing to
+ * -initWithSerializedRepresentation:". That names a PROPERTY LIST, so the representation is one - an XML
+ * plist, which is the format this library's plist layer speaks - with these keys, which are ours:
+ *
+ *   Type                     "Regular", "Directory" or "SymbolicLink"
+ *   PreferredFileName        the name a parent would key this child by (present when known)
+ *   FileName                 the name it was read from or written under (present when known)
+ *   FileAttributes           the attributes dictionary, when anything was read
+ *   RegularFileContents      a regular file's bytes
+ *   SymbolicLinkDestination  a link's target
+ *   FileWrappers             a dictionary of key -> nested representation (directories)
+ *
+ * It is therefore NOT byte-compatible with Apple's own, which is unverifiable by design (its format is
+ * undocumented); what IS asserted is that a whole tree survives a round trip through it, and that the
+ * data really is a property list - which is the half Apple does state. */
+- (nullable NSData *)serializedRepresentation;
+- (nullable instancetype)initWithSerializedRepresentation:(NSData *)data;
+
 @end
 
 NS_ASSUME_NONNULL_END
