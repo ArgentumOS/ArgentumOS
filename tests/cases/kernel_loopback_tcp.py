@@ -52,7 +52,9 @@ CHECKS = ("loopback-socket-created", "bind-to-127-0-0-1", "listen", "fork-the-pe
           "peer-close-reported-readable", "peer-close-is-observed-as-eof",
           "poll-without-a-deadline-is-woken-by-data",
           "and-the-woken-poll-had-the-payload-to-read",
-          "a-deadline-free-poll-survives-the-window-a-hundred-times")
+          "a-deadline-free-poll-survives-the-window-a-hundred-times",
+          "a-thread-pair-can-be-created", "the-thread-leg-connected",
+          "a-thread-blocked-in-read-is-woken-by-another-thread")
 
 
 class Case(BaseCase):

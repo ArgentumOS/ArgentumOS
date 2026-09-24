@@ -36,6 +36,7 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <poll.h>
+#include <pthread.h>	/* the thread-pair leg (§58.2): one process, two threads, one blocking read */
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -107,6 +108,39 @@ static void on_alarm(int sig)
 	printf("KERNEL-LOOPBACK-STATUS=1\n");
 	printf("KERNEL-LOOPBACK DONE\n");
 	_exit(1);
+}
+
+/* forward: the thread below writes through the same helper every other peer in this probe uses */
+static ssize_t write_all(int fd, const char *buf, size_t n);
+
+/*
+ * THE WRITER THREAD OF THE THREAD-PAIR LEG (§58.2, foundation-plan.md). It ACCEPTS, PAUSES so that the other
+ * thread is certainly blocked in read(2) by the time the bytes arrive, then writes the payload.
+ *
+ * THE PAUSE IS THE WHOLE POINT: a writer that won the race would be testing a read that never had to wait - and
+ * that read passes whether or not this kernel can wake a blocked reader in the same process. The alarm watchdog
+ * is what bounds the leg if the wake never comes.
+ */
+struct thread_pair {
+	int ls;			/* the listener to accept on */
+	int accepted;
+	volatile int stop;
+};
+
+static void *pair_writer(void *arg)
+{
+	struct thread_pair *tp = arg;
+	struct sockaddr_in from;
+	socklen_t fromlen = sizeof(from);
+	int c;
+
+	c = accept(tp->ls, (struct sockaddr *)&from, &fromlen);
+	tp->accepted = c;
+	if(c >= 0) {
+		usleep(300000);		/* by now the caller is blocked in read(2) */
+		write_all(c, PAYLOAD, strlen(PAYLOAD));
+	}
+	return NULL;
 }
 
 /* Does `poll(2)` report a CONNECTED loopback socket? That is a separate question from whether data
@@ -638,6 +672,61 @@ int main(void)
 			int stg = -1;
 
 			waitpid(pg, &stg, 0);
+		}
+	}
+
+	/*
+	 * THE THREAD PAIR: ONE THREAD BLOCKED IN A BLOCKING read(2), ANOTHER THREAD WRITING TO THE SAME CONNECTION -
+	 * TWO THREADS OF ONE PROCESS, WHICH IS THE ONE SHAPE NOTHING ELSE IN THIS TREE EXERCISES (§58.2).
+	 *
+	 * WHY IT EXISTS: foundation_streamtask's TLS leg is red with `done=0` - the read's completion handler never
+	 * runs - while its peer, a THREAD IN THE SAME PROCESS, had already put 115 bytes on the same connection with
+	 * write(2) and closed. Every other leg in this probe, and every other probe in this tree, uses a forked CHILD
+	 * as the far end; the same class with a forked peer (foundation_websockettask's wss: leg) is GREEN. So the
+	 * question here is exactly one: does a blocking socket read in one thread get woken by another thread's write
+	 * on the same connection?
+	 *   GREEN -> the kernel is fine and §58.2's defect is in that probe's own peer;
+	 *   RED   -> a kernel fact, with this as its reproducer.
+	 *
+	 * THE READ IS DELIBERATELY UNPOLLED AND UNBOUNDED: a poll first would test READINESS instead of the wake, and
+	 * a timeout would end the wait itself. The alarm watchdog is what bounds the leg, and the reader thread is
+	 * the one that blocks - the main thread only joins it.
+	 */
+	{
+		struct thread_pair tp;
+		pthread_t th;
+		int s6, r6;
+		char buf6[64];
+		ssize_t n6;
+
+		memset(&tp, 0, sizeof(tp));
+		tp.ls = ls;
+		tp.accepted = -1;
+		if (pthread_create(&th, NULL, pair_writer, &tp) != 0) {
+			check("a-thread-pair-can-be-created", 0, "pthread_create() itself failed");
+		} else {
+			/* THE COMPLEMENT, AND IT IS A CHECK RATHER THAN IMPLIED: the case compares the probe's own
+			 * tally against its check list, so a name that only ever appears on the FAILURE path would
+			 * make a good run look like it was missing one. This pair of lines is what makes the name
+			 * always present, with the failure branch above reporting the other value. */
+			check("a-thread-pair-can-be-created", 1, NULL);
+			s6 = socket(AF_INET, SOCK_STREAM, 0);
+			r6 = (s6 >= 0) ? connect(s6, (struct sockaddr *)&addr, sizeof(addr)) : -1;
+			check("the-thread-leg-connected", r6 == 0,
+			      r6 == 0 ? NULL : "connect() failed for the thread-pair leg");
+			if (r6 == 0) {
+				/* NOTHING IS ON THIS CONNECTION YET: this read either gets woken by the other
+				 * thread's write or it does not, and the watchdog reports which. */
+				n6 = read(s6, buf6, sizeof(buf6));
+				check("a-thread-blocked-in-read-is-woken-by-another-thread",
+				      n6 == (ssize_t)strlen(PAYLOAD) && memcmp(buf6, PAYLOAD, (size_t)n6) == 0,
+				      n6 < 0 ? "the blocking read returned an error" :
+				      n6 == 0 ? "the blocking read saw EOF before the payload" :
+				      "the blocking read returned the wrong bytes");
+				close(s6);
+			}
+			tp.stop = 1;
+			pthread_join(th, NULL);
 		}
 	}
 

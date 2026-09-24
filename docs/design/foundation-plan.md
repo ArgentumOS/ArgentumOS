@@ -10752,6 +10752,22 @@ blocking in `read(2)`, the other writing after a pause - which would turn this f
 fact with a small reproducer.** If that leg is green, the defect is in this probe's peer instead, and the probe's
 DIAG line (`FOUNDATION-STREAMTASK-DIAG reply: done=… errCode=… len=… has200=…`) is already in place to say which.
 
+**THE EXPERIMENT WAS RUN, AND IT SAYS THE KERNEL IS FINE (§58.2's own branch, green).** `kernel_loopback_tcp` now
+carries a THREAD-PAIR leg: one thread ACCEPTS and, after a 300ms pause - so the other side is certainly blocked -
+writes the payload; the main thread CONNECTS and does an UNPOLLED, UNBOUNDED blocking `read(2)`; the alarm
+watchdog bounds the leg if the wake never comes. It is reported as
+`a-thread-blocked-in-read-is-woken-by-another-thread`, and it is GREEN, in a 19/19 run - so **two threads of one
+process, one blocked in a blocking socket read, is a shape this kernel handles.** The leg is kept: nothing else in
+this tree covers that shape, and it is now the discriminator if a class ever fails this way again.
+
+**SO §58.2's DEFECT IS NOT THE KERNEL - and the next instrument follows from what that leaves, which is narrower
+than before.** The peer's BIO fd is the ACCEPTED descriptor (checked), the peer's `write(2)` really returned 91+24,
+and the class's own comment records that its sockets are NON-BLOCKING BY DESIGN (§58) - which means the client's
+`SSL_read` cannot be the thing blocking. A read operation that never completes, in a class whose socket is
+non-blocking and whose wait loop was already proven not to be the cause, must be stuck BEFORE `SSL_read` - i.e. in
+the read operation not being started or not being advanced by the task's own machinery. **The next instrument is
+therefore a DIAG on the CLASS side (does the queued read's worker ever begin?), not another probe experiment.**
+
 **THE TREE IS LEFT AS IT WAS FOUND ON THIS POINT:** red on that one check - red before this investigation and red
 after - with the diagnosis above instead of a guess. The probe's DIAG line is kept DELIBERATELY: it is the
 instrument the next unit will read, not leftover scaffolding.
