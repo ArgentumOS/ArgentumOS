@@ -22,13 +22,15 @@
  * spaces and capitals they are spelled with. Nothing here translates them.
  *
  * WHAT IS NOT HERE, named: NSURL-taking forms (they promise URL RESOURCE VALUES, which the ledger
- * still owes as a family of their own - §60 says why they wait), the delegate, extended attributes,
- * and mounting. Each is a real part of Cocoa's NSFileManager and none of them is half-built here.
+ * still owes as a family of their own - §60 says why they wait), extended attributes, and mounting.
+ * Each is a real part of Cocoa's NSFileManager and none of them is half-built here.
  *
  * AND WHAT WAS ON THAT LIST AND IS NOT ANY MORE: `-enumeratorAtPath:`, `-subpathsAtPath:` and
  * `-subpathsOfDirectoryAtPath:error:` (W8 slice 1, foundation-plan.md §60). The line used to read
  * "the walk is here, the enumerator objects are not" - the walk was this file's private recursion for
- * -copyItemAtPath:, and NSDirectoryEnumerator is now the walk's public form.
+ * -copyItemAtPath:, and NSDirectoryEnumerator is now the walk's public form. AND, in slice 2, THE
+ * DELEGATE: `NSFileManagerDelegate` (all 16 selectors) plus `-delegate`/`-setDelegate:`, which the
+ * same sentence used to name as absent.
  */
 
 #ifndef FOUNDATION_NSFILEMANAGER_H
@@ -43,6 +45,11 @@
 @class NSDirectoryEnumerator;
 @class NSError;
 @class NSString;
+@class NSURL;
+
+/* SAID BEFORE THE PROTOCOL, because that protocol's methods take the manager as their first argument
+ * and the @interface further down has not been read yet at that point. */
+@class NSFileManager;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -60,9 +67,112 @@ extern NSString *const NSFileTypeDirectory;
 extern NSString *const NSFileTypeSymbolicLink;
 extern NSString *const NSFileTypeUnknown;
 
+/* ---- THE DELEGATE (W8 slice 2, foundation-plan.md §60) ----------------------------------------
+ *
+ * EVERY MEMBER IS OPTIONAL ("The NSFileManagerDelegate protocol defines optional methods for managing
+ * operations involving the copying, moving, linking, or removal of files and directories"), and the
+ * file manager asks whether an operation "should begin at all" and whether it "should proceed when an
+ * error occurs". FOUR RULES, each taken from Apple's own pages:
+ *
+ *   THE URL FORM IS PREFERRED, NOT MERELY ACCEPTED: "the file manager always prefers methods that take
+ *   an NSURL object over those that take an NSString object" - so each family asks its URL selector
+ *   first and its path selector only when the URL one is absent;
+ *
+ *   THE QUESTION IS ASKED ONCE PER ITEM for a copy and a remove - "for a directory, this method is
+ *   called once for the directory and once for each item in the directory" - and ONLY FOR THE ITEM
+ *   ITSELF for a move, which Apple states as the difference: "if the item being moved is a directory,
+ *   the file manager notifies the delegate only for the directory itself and not for any of its
+ *   contents";
+ *
+ *   A VETO (NO) SKIPS THE ITEM, and for a directory that means its contents too, because the recursion
+ *   is never entered - Apple's own sentence for the remove case says exactly that ("returning NO
+ *   prevents both the directory and its children from being deleted"). The doctrine is stated in full
+ *   where it is implemented, including why a veto is a SKIP and not a failure;
+ *
+ *   THE ERROR DOOR IS ASKED ONLY WHEN IT EXISTS, and YES means the error is IGNORED ("the file manager
+ *   continues copying any other items and ignores the error"). An absent door leaves the error
+ *   standing, which is what keeps a delegate-less file manager behaving exactly as it did before.
+ */
+@protocol NSFileManagerDelegate <NSObject>
+
+@optional
+
+/* COPYING. */
+- (BOOL)fileManager:(NSFileManager *)fileManager
+shouldCopyItemAtPath:(NSString *)srcPath
+	     toPath:(NSString *)dstPath;
+- (BOOL)fileManager:(NSFileManager *)fileManager
+shouldCopyItemAtURL:(NSURL *)srcURL
+	      toURL:(NSURL *)dstURL;
+- (BOOL)fileManager:(NSFileManager *)fileManager
+shouldProceedAfterError:(NSError *)error
+  copyingItemAtPath:(NSString *)srcPath
+	     toPath:(NSString *)dstPath;
+- (BOOL)fileManager:(NSFileManager *)fileManager
+shouldProceedAfterError:(NSError *)error
+   copyingItemAtURL:(NSURL *)srcURL
+	      toURL:(NSURL *)dstURL;
+
+/* MOVING - the item itself, and NOT its contents. */
+- (BOOL)fileManager:(NSFileManager *)fileManager
+shouldMoveItemAtPath:(NSString *)srcPath
+	     toPath:(NSString *)dstPath;
+- (BOOL)fileManager:(NSFileManager *)fileManager
+shouldMoveItemAtURL:(NSURL *)srcURL
+	      toURL:(NSURL *)dstURL;
+- (BOOL)fileManager:(NSFileManager *)fileManager
+shouldProceedAfterError:(NSError *)error
+   movingItemAtPath:(NSString *)srcPath
+	     toPath:(NSString *)dstPath;
+- (BOOL)fileManager:(NSFileManager *)fileManager
+shouldProceedAfterError:(NSError *)error
+    movingItemAtURL:(NSURL *)srcURL
+	      toURL:(NSURL *)dstURL;
+
+/* REMOVING. */
+- (BOOL)fileManager:(NSFileManager *)fileManager shouldRemoveItemAtPath:(NSString *)path;
+- (BOOL)fileManager:(NSFileManager *)fileManager shouldRemoveItemAtURL:(NSURL *)URL;
+- (BOOL)fileManager:(NSFileManager *)fileManager
+shouldProceedAfterError:(NSError *)error
+ removingItemAtPath:(NSString *)path;
+- (BOOL)fileManager:(NSFileManager *)fileManager
+shouldProceedAfterError:(NSError *)error
+  removingItemAtURL:(NSURL *)URL;
+
+/* LINKING. */
+- (BOOL)fileManager:(NSFileManager *)fileManager
+shouldLinkItemAtPath:(NSString *)srcPath
+	     toPath:(NSString *)dstPath;
+- (BOOL)fileManager:(NSFileManager *)fileManager
+shouldLinkItemAtURL:(NSURL *)srcURL
+	      toURL:(NSURL *)dstURL;
+- (BOOL)fileManager:(NSFileManager *)fileManager
+shouldProceedAfterError:(NSError *)error
+  linkingItemAtPath:(NSString *)srcPath
+	     toPath:(NSString *)dstPath;
+- (BOOL)fileManager:(NSFileManager *)fileManager
+shouldProceedAfterError:(NSError *)error
+   linkingItemAtURL:(NSURL *)srcURL
+	      toURL:(NSURL *)dstURL;
+
+@end
+
 @interface NSFileManager : NSObject
+{
+	/* ASSIGN, NOT WEAK, and that is MEASURED rather than chosen: Apple's own declaration comes back
+	 * from its page as `unowned(unsafe) var delegate`, which is an unretained, NON-ZEROING reference.
+	 * The delegate must outlive the manager. */
+	id <NSFileManagerDelegate> _delegate;
+}
 
 + (NSFileManager *)defaultManager;
+
+/* Apple's own advice, kept because it is a hazard and not a style note: "assign a delegate to the file
+ * manager object only if you allocated and initialized the object yourself. Avoid assigning a delegate
+ * to the shared file manager" - a delegate on +defaultManager is consulted by EVERY caller of the
+ * process. The default value is nil. */
+- (nullable id <NSFileManagerDelegate>)delegate;
+- (void)setDelegate:(nullable id <NSFileManagerDelegate>)delegate;
 
 /* EXISTENCE, and the second door answers the question a caller usually means by it. */
 - (BOOL)fileExistsAtPath:(NSString *)path;
@@ -109,6 +219,15 @@ extern NSString *const NSFileTypeUnknown;
 		toPath:(NSString *)destinationPath
 		 error:(NSError ** _Nullable)error;
 - (BOOL)copyItemAtPath:(NSString *)sourcePath
+		toPath:(NSString *)destinationPath
+		 error:(NSError ** _Nullable)error;
+
+/* A HARD LINK, and it lands with the delegate rather than after it because the protocol's LINKING
+ * family (four selectors) would otherwise have no caller at all - a declared question nobody can ever
+ * be asked. link(2) is the whole implementation: it makes a second NAME for an inode, which is a
+ * different operation from -createSymbolicLinkAtPath: (that one makes a new inode that points at a
+ * path, and it is slice 3's row, not this one's). */
+- (BOOL)linkItemAtPath:(NSString *)sourcePath
 		toPath:(NSString *)destinationPath
 		 error:(NSError ** _Nullable)error;
 

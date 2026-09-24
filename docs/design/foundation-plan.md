@@ -3462,7 +3462,7 @@ vanishing.
 | **Files and Data Persistence / App-specific settings** | all classes shipped | — |
 | **Files and Data Persistence / Coordinated file access** | 3 open | `NSFileAccessIntent`, `NSFileCoordinator`, `NSFilePresenter` |
 | **Files and Data Persistence / Deprecated** | ALL STRUCK: `NSArchiver`, `NSUnarchiver` | — |
-| **Files and Data Persistence / File system operations** | 3 open | `NSFileManagerDelegate`, `NSFileProviderService`, `NSFileVersion` |
+| **Files and Data Persistence / File system operations** | 2 open | `NSFileProviderService`, `NSFileVersion` |
 | **Files and Data Persistence / Items** | ALL STRUCK: `NSMetadataItem` | — |
 | **Files and Data Persistence / JSON** | all classes shipped | — |
 | **Files and Data Persistence / Keyed Archivers** | all classes shipped | — |
@@ -11632,4 +11632,57 @@ lands, which the probe asserts as a NAMED boundary rather than hiding.
 **REGRESSION CHECKED, because these doors extend a shipped class:** `foundation_filemanager` is **9/9
 green** on the same image, and the family table's row for File system operations now reads 3 open
 rather than 4. The class count moved with it: **151 shipped, 45 open** (was 150 and 46).
+
+**SLICE 2 LANDED (2026-09-24): `NSFileManagerDelegate`, ALL 16 SELECTORS, AND THE FOUR FAMILIES WIRED
+IN - `protocol` 20 shipped / 11 open -> 21 / 10, and the family row 3 open -> 2.** What landed:
+`userland/Foundation/NSFileManager.h` (the protocol, `@optional` throughout, plus
+`-delegate`/`-setDelegate:` and an `_delegate` ivar), `NSFileManager.m` (the two questions, the
+preference rule and the recursive walks that ask them), `-linkItemAtPath:toPath:error:` - which lands
+here rather than in slice 3 **because the protocol's LINKING family would otherwise have no caller at
+all** - and its own probe and case (`foundation_filemanagerdelegate`, **18 checks**).
+
+**FOUR RULES, EACH MEASURED FROM APPLE'S PAGES BEFORE A LINE WAS WRITTEN, AND ONE OF THEM IS A
+PREFERENCE RATHER THAN A FALLBACK:**
+ * **"the file manager always prefers methods that take an `NSURL` object over those that take an
+   `NSString` object"** - so each family asks its URL selector FIRST and its path selector only when
+   the URL one is absent. The probe asserts BOTH halves: a delegate implementing both gets
+   `url=1 path=0`, and a path-only delegate is still asked. (This also corrects §60's own earlier
+   note, which had the URL delegate forms waiting for slice 6: they need only `+fileURLWithPath:`,
+   which F8 shipped. What waits is `includingPropertiesForKeys:`, and that is a different promise.)
+ * **THE QUESTION IS ASKED ONCE PER ITEM FOR A COPY AND A REMOVE** - "for a directory, this method is
+   called once for the directory and once for each item in the directory" - **AND ONLY FOR THE ITEM
+   ITSELF FOR A MOVE**: "if the item being moved is a directory, the file manager notifies the
+   delegate only for the directory itself and not for any of its contents". The probe's first run had
+   this wrong BY ONE (it forgot that the top-level item is one of the items); the measurement is what
+   said so, and 5 asked items is the corrected number.
+ * **A VETO IS A SKIP AND NOT A FAILURE, AND THE GROUND IS THIS CLASS'S OWN CONTRACT:** every failure
+   here answers NO and fills in an NSError whose code is an errno - and a refusal HAS no errno, so a
+   veto that answered NO would have to invent one. Apple names none either: its sentences say what is
+   not done, never that the operation failed. A veto skips the item, and for a directory that means
+   its contents, because the recursion is never entered - which is Apple's own sentence read for the
+   other three families ("returning NO prevents both the directory and its children from being
+   deleted").
+ * **THE ERROR DOOR IS ASKED ONLY WHEN IT EXISTS** - "may also call" - and an absent door leaves the
+   error standing, which is what keeps a delegate-less manager behaving exactly as it did before.
+
+**AND THE ONE PLACE THE TWO DOCTRINES MEET, MEASURED RATHER THAN REASONED:** with a veto on a
+directory inside a tree being REMOVED, the vetoed subtree survives and its sibling file goes - and the
+operation then reports **NO with ENOTEMPTY**, because the directory it was asked about cannot come out
+while a child remains. That failure is the SYSCALL talking, not the veto, and it has a real errno to
+carry; a delegate that answers YES to it gets **YES** from the same shape. The probe's first
+expectation here was YES-for-both, and it was wrong in the way that matters: it had read the veto
+doctrine so literally that it stopped believing `rmdir(2)`.
+
+**REGRESSIONS, ALL GREEN ON THE SAME IMAGE:** `foundation_filemanager` **9/9**,
+`foundation_directoryenumerator` **17/17**.
+
+**ONE BUILD NOTE, because it is the kind of trap this plan keeps recording:** both slices were
+VERIFIED against an image whose userland was built at 13:23 and whose probe was linked into the
+staging tree by hand, because the tree's CoreGraphics work (C6.1/C6.2, and C6.3 in flight) did not
+compile at that moment (`CGPattern.c` called `CGBitmapContextCreate` without
+`<CoreGraphics/CGBitmapContext.h>`; repaired in its own commit, `070aa257`). The Foundation library
+and the probe in that image are the current sources - but the honest statement is that the FULL
+`make testimg` gate has not yet been run green over the final tree, and that is the first thing to
+re-run once C6.3 settles.
+
 

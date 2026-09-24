@@ -19,6 +19,7 @@
 
 #import <Foundation/NSFileManager.h>
 #import <Foundation/NSDirectoryEnumerator.h>
+#import <Foundation/NSURL.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSData.h>
 #import <Foundation/NSDate.h>
@@ -120,26 +121,242 @@ static NSString *fn_joined(NSString *directory, NSString *name)
 	return [NSString stringWithFormat:@"%@/%@", directory, name];
 }
 
-static BOOL fn_remove_tree(const char *path, int *outErrno)
-{
-	struct stat st;
+@implementation NSFileManager
 
-	if (lstat(path, &st) != 0) {
-		*outErrno = errno;
++ (NSFileManager *)defaultManager
+{
+	if (fn_shared_file_manager == nil) {
+		fn_shared_file_manager = [[NSFileManager alloc] init];
+	}
+	return fn_shared_file_manager;
+}
+
+- (nullable id <NSFileManagerDelegate>)delegate
+{
+	return _delegate;
+}
+
+- (void)setDelegate:(nullable id <NSFileManagerDelegate>)delegate
+{
+	/* ASSIGN: no retain and no release. Apple's property comes back as `unowned(unsafe)`, and a
+	 * delegate that owned its manager (or the reverse) would be a cycle this class has no reason to
+	 * create. */
+	_delegate = delegate;
+}
+
+/* ---- THE TWO QUESTIONS (W8 slice 2, foundation-plan.md §60) ---------------------------------------
+ *
+ * WHICH OPERATION IS BEING ASKED ABOUT is this file-private enum's whole job: the veto question and
+ * the error question differ ONLY in which pair of delegate selectors they reach for, so each is ONE
+ * switch instead of four near-identical methods that can drift apart.
+ */
+typedef enum {
+	FNOperationCopy = 0,
+	FNOperationMove,
+	FNOperationRemove,
+	FNOperationLink
+} FNOperationKind;
+
+/* THE PREFERENCE RULE, IN ONE LINE THAT CAN BE POINTED AT: "the file manager always prefers methods
+ * that take an NSURL object over those that take an NSString object" - so a family asks its URL
+ * selector FIRST and its path selector only when the URL one is absent. */
+- (BOOL)fnDelegatePrefersURL:(SEL)urlSelector
+{
+	return _delegate != nil && [_delegate respondsToSelector:urlSelector];
+}
+
+/* "SHOULD IT BEGIN AT ALL" - and YES when there is nobody to ask, which is Apple's own answer for an
+ * unimplemented method: "if the delegate does not implement the appropriate methods, the file manager
+ * copies the given file or directory". */
+- (BOOL)fnDelegateShould:(FNOperationKind)kind from:(NSString *)source to:(nullable NSString *)destination
+{
+	if (_delegate == nil) {
+		return YES;
+	}
+	if (kind == FNOperationRemove) {
+		if ([self fnDelegatePrefersURL:@selector(fileManager:shouldRemoveItemAtURL:)]) {
+			return [_delegate fileManager:self shouldRemoveItemAtURL:[NSURL fileURLWithPath:source]];
+		}
+		if ([_delegate respondsToSelector:@selector(fileManager:shouldRemoveItemAtPath:)]) {
+			return [_delegate fileManager:self shouldRemoveItemAtPath:source];
+		}
+		return YES;
+	}
+	/* THE OTHER THREE ALL HAVE A DESTINATION, so from here it is not optional and the compiler can
+	 * see that. */
+	if (destination == nil) {
+		return YES;
+	}
+	{
+		NSString *to = destination;
+
+		switch (kind) {
+		case FNOperationCopy:
+			if ([self fnDelegatePrefersURL:@selector(fileManager:shouldCopyItemAtURL:toURL:)]) {
+				return [_delegate fileManager:self
+			      shouldCopyItemAtURL:[NSURL fileURLWithPath:source]
+					      toURL:[NSURL fileURLWithPath:to]];
+			}
+			if ([_delegate respondsToSelector:@selector(fileManager:shouldCopyItemAtPath:toPath:)]) {
+				return [_delegate fileManager:self shouldCopyItemAtPath:source toPath:to];
+			}
+			break;
+		case FNOperationMove:
+			if ([self fnDelegatePrefersURL:@selector(fileManager:shouldMoveItemAtURL:toURL:)]) {
+				return [_delegate fileManager:self
+			      shouldMoveItemAtURL:[NSURL fileURLWithPath:source]
+					      toURL:[NSURL fileURLWithPath:to]];
+			}
+			if ([_delegate respondsToSelector:@selector(fileManager:shouldMoveItemAtPath:toPath:)]) {
+				return [_delegate fileManager:self shouldMoveItemAtPath:source toPath:to];
+			}
+			break;
+		case FNOperationLink:
+			if ([self fnDelegatePrefersURL:@selector(fileManager:shouldLinkItemAtURL:toURL:)]) {
+				return [_delegate fileManager:self
+			      shouldLinkItemAtURL:[NSURL fileURLWithPath:source]
+					      toURL:[NSURL fileURLWithPath:to]];
+			}
+			if ([_delegate respondsToSelector:@selector(fileManager:shouldLinkItemAtPath:toPath:)]) {
+				return [_delegate fileManager:self shouldLinkItemAtPath:source toPath:to];
+			}
+			break;
+		case FNOperationRemove:
+			break;		/* answered above, before a destination could matter */
+		}
+	}
+	return YES;
+}
+
+/* "SHOULD IT PROCEED AFTER AN ERROR" - and NO when there is nobody to ask, which is the half of
+ * Apple's wording that matters most: "if you do not implement this method, the file manager assumes a
+ * response of YES" describes a consultation that only HAPPENS when there is someone to consult (the
+ * operation pages say the manager "may also call" it), so a manager whose delegate implements nothing
+ * must fail exactly as it did before this slice. */
+- (BOOL)fnDelegateProceedAfterError:(int)err
+			      kind:(FNOperationKind)kind
+			      from:(NSString *)source
+				to:(nullable NSString *)destination
+{
+	NSError *error;
+
+	if (_delegate == nil) {
 		return NO;
 	}
+	error = fn_error_from_errno(err);
+	if (kind == FNOperationRemove) {
+		if ([self fnDelegatePrefersURL:@selector(fileManager:shouldProceedAfterError:removingItemAtURL:)]) {
+			return [_delegate fileManager:self shouldProceedAfterError:error
+				     removingItemAtURL:[NSURL fileURLWithPath:source]];
+		}
+		if ([_delegate respondsToSelector:@selector(fileManager:shouldProceedAfterError:removingItemAtPath:)]) {
+			return [_delegate fileManager:self shouldProceedAfterError:error
+				    removingItemAtPath:source];
+		}
+		return NO;
+	}
+	if (destination == nil) {
+		return NO;
+	}
+	{
+		NSString *to = destination;
+
+		switch (kind) {
+		case FNOperationCopy:
+			if ([self fnDelegatePrefersURL:@selector(fileManager:shouldProceedAfterError:copyingItemAtURL:toURL:)]) {
+				return [_delegate fileManager:self shouldProceedAfterError:error
+					      copyingItemAtURL:[NSURL fileURLWithPath:source]
+							toURL:[NSURL fileURLWithPath:to]];
+			}
+			if ([_delegate respondsToSelector:@selector(fileManager:shouldProceedAfterError:copyingItemAtPath:toPath:)]) {
+				return [_delegate fileManager:self shouldProceedAfterError:error
+					     copyingItemAtPath:source
+							toPath:to];
+			}
+			break;
+		case FNOperationMove:
+			if ([self fnDelegatePrefersURL:@selector(fileManager:shouldProceedAfterError:movingItemAtURL:toURL:)]) {
+				return [_delegate fileManager:self shouldProceedAfterError:error
+					       movingItemAtURL:[NSURL fileURLWithPath:source]
+							toURL:[NSURL fileURLWithPath:to]];
+			}
+			if ([_delegate respondsToSelector:@selector(fileManager:shouldProceedAfterError:movingItemAtPath:toPath:)]) {
+				return [_delegate fileManager:self shouldProceedAfterError:error
+					      movingItemAtPath:source
+							toPath:to];
+			}
+			break;
+		case FNOperationLink:
+			if ([self fnDelegatePrefersURL:@selector(fileManager:shouldProceedAfterError:linkingItemAtURL:toURL:)]) {
+				return [_delegate fileManager:self shouldProceedAfterError:error
+					      linkingItemAtURL:[NSURL fileURLWithPath:source]
+							toURL:[NSURL fileURLWithPath:to]];
+			}
+			if ([_delegate respondsToSelector:@selector(fileManager:shouldProceedAfterError:linkingItemAtPath:toPath:)]) {
+				return [_delegate fileManager:self shouldProceedAfterError:error
+					     linkingItemAtPath:source
+							toPath:to];
+			}
+			break;
+		case FNOperationRemove:
+			break;
+		}
+	}
+	return NO;
+}
+
+/* THE ERROR PATH OF ONE ITEM, IN ONE PLACE, AND IT ANSWERS WHAT THE CALLER MUST RETURN: YES when the
+ * delegate swallowed the error (this arm is NOT a failure and the walk carries on), NO with *outErrno
+ * set when it stands. `err == 0` cannot happen on a real failure path, and EIO is the honest stand-in
+ * if it ever does - the alternatives are a zero errno reaching NSError or a success code in an error
+ * arm. */
+- (BOOL)fnFailed:(int)err
+	    kind:(FNOperationKind)kind
+	    from:(NSString *)source
+	      to:(nullable NSString *)destination
+	   error:(int *)outErrno
+{
+	if (err == 0) {
+		err = EIO;
+	}
+	if ([self fnDelegateProceedAfterError:err kind:kind from:source to:destination]) {
+		return YES;
+	}
+	*outErrno = err;
+	return NO;
+}
+
+/* THE RECURSIVE REMOVE, WITH BOTH QUESTIONS IN IT. Apple asks "prior to removing EACH item", and a NO
+ * on a directory "prevents both the directory and its children from being deleted" - which is exactly
+ * what never entering the recursion below gives, without having to walk the children to find out. */
+- (BOOL)fnRemoveItem:(NSString *)item error:(int *)outErrno
+{
+	const char *path = [item UTF8String];
+	struct stat st;
+
+	if (![self fnDelegateShould:FNOperationRemove from:item to:nil]) {
+		/* A VETO IS A SKIP AND NOT A FAILURE, and the ground is this class's OWN contract (header,
+		 * item 1): every failure here answers NO AND fills in an NSError whose code is an errno - and
+		 * a refusal HAS no errno. A veto that answered NO would therefore have to invent an error
+		 * code, which is the one thing this file refuses to do. Apple names none either: its
+		 * sentences say what is NOT done, never that the operation failed. */
+		return YES;
+	}
+	if (lstat(path, &st) != 0) {
+		return [self fnFailed:errno kind:FNOperationRemove from:item to:nil error:outErrno];
+	}
 	if (S_ISDIR(st.st_mode)) {
-		NSArray *names = fn_directory_names(path, outErrno);
+		int err = 0;
+		NSArray *names = fn_directory_names(path, &err);
 		NSUInteger i;
 
 		if (names == nil) {
-			return NO;
+			return [self fnFailed:err kind:FNOperationRemove from:item to:nil error:outErrno];
 		}
 		for (i = 0; i < [names count]; i++) {
-			NSString *child = fn_joined([NSString stringWithUTF8String:path],
-						    [names objectAtIndex:i]);
+			NSString *child = fn_joined(item, [names objectAtIndex:i]);
 
-			if (!fn_remove_tree([child UTF8String], outErrno)) {
+			if (![self fnRemoveItem:child error:outErrno]) {
 				return NO;
 			}
 		}
@@ -156,42 +373,45 @@ static BOOL fn_remove_tree(const char *path, int *outErrno)
 	 * makes the right choice possible; the bug was not using it at the end.
 	 */
 	if (S_ISDIR(st.st_mode) ? (rmdir(path) != 0) : (unlink(path) != 0)) {
-		*outErrno = errno;
-		return NO;
+		return [self fnFailed:errno kind:FNOperationRemove from:item to:nil error:outErrno];
 	}
 	return YES;
 }
 
-static BOOL fn_copy_tree(const char *from, const char *to, int *outErrno)
+/* THE RECURSIVE COPY, WITH THE SAME TWO QUESTIONS - and the FIRST one is asked "once for each item
+ * that needs to be copied ... once for the directory and once for each item in the directory", which
+ * is why the recursion is where the vetting happens. */
+- (BOOL)fnCopyItem:(NSString *)item to:(NSString *)target error:(int *)outErrno
 {
+	const char *from = [item UTF8String];
+	const char *to = [target UTF8String];
 	struct stat st;
 
+	if (![self fnDelegateShould:FNOperationCopy from:item to:target]) {
+		return YES;		/* a veto skips the item; a directory's children are never reached */
+	}
 	if (lstat(from, &st) != 0) {
-		*outErrno = errno;
-		return NO;
+		return [self fnFailed:errno kind:FNOperationCopy from:item to:target error:outErrno];
 	}
 	if (S_ISDIR(st.st_mode)) {
+		int err = 0;
 		NSArray *names;
+		NSUInteger i;
 
 		if (mkdir(to, st.st_mode & 07777) != 0 && errno != EEXIST) {
-			*outErrno = errno;
-			return NO;
+			return [self fnFailed:errno kind:FNOperationCopy from:item to:target error:outErrno];
 		}
-		names = fn_directory_names(from, outErrno);
+		names = fn_directory_names(from, &err);
 		if (names == nil) {
-			return NO;
+			return [self fnFailed:err kind:FNOperationCopy from:item to:target error:outErrno];
 		}
-		{
-			NSUInteger i;
+		for (i = 0; i < [names count]; i++) {
+			NSString *name = [names objectAtIndex:i];
+			NSString *source = fn_joined(item, name);
+			NSString *destination = fn_joined(target, name);
 
-			for (i = 0; i < [names count]; i++) {
-				NSString *name = [names objectAtIndex:i];
-				NSString *source = fn_joined([NSString stringWithUTF8String:from], name);
-				NSString *destination = fn_joined([NSString stringWithUTF8String:to], name);
-
-				if (!fn_copy_tree([source UTF8String], [destination UTF8String], outErrno)) {
-					return NO;
-				}
+			if (![self fnCopyItem:source to:destination error:outErrno]) {
+				return NO;
 			}
 		}
 		return YES;
@@ -203,14 +423,14 @@ static BOOL fn_copy_tree(const char *from, const char *to, int *outErrno)
 		ssize_t n;
 
 		if (in < 0) {
-			*outErrno = errno;
-			return NO;
+			return [self fnFailed:errno kind:FNOperationCopy from:item to:target error:outErrno];
 		}
 		out = open(to, O_WRONLY | O_CREAT | O_TRUNC, st.st_mode & 07777);
 		if (out < 0) {
-			*outErrno = errno;
+			int err = errno;
+
 			close(in);
-			return NO;
+			return [self fnFailed:err kind:FNOperationCopy from:item to:target error:outErrno];
 		}
 		while ((n = read(in, buffer, sizeof(buffer))) > 0) {
 			ssize_t written = 0;
@@ -219,10 +439,12 @@ static BOOL fn_copy_tree(const char *from, const char *to, int *outErrno)
 				ssize_t step = write(out, buffer + written, (size_t)(n - written));
 
 				if (step <= 0) {
-					*outErrno = errno != 0 ? errno : EIO;
+					int err = errno != 0 ? errno : EIO;
+
 					close(in);
 					close(out);
-					return NO;
+					return [self fnFailed:err kind:FNOperationCopy from:item to:target
+							error:outErrno];
 				}
 				written += step;
 			}
@@ -230,24 +452,42 @@ static BOOL fn_copy_tree(const char *from, const char *to, int *outErrno)
 		close(in);
 		close(out);
 		if (n < 0) {
-			*outErrno = errno;
-			return NO;
+			return [self fnFailed:errno kind:FNOperationCopy from:item to:target error:outErrno];
 		}
 		return YES;
 	}
-	/* A SYMLINK OR SOMETHING ELSE: named rather than guessed at. */
-	*outErrno = ENOTSUP;
-	return NO;
+	/* A SYMLINK OR SOMETHING ELSE: named rather than guessed at - and that naming is now the ERROR
+	 * DOOR's business too, so a delegate may swallow it. (Apple copies the link itself; this refuses
+	 * it, and that departure is a NAMED row of §60's slice 3 rather than a silence here.) */
+	return [self fnFailed:ENOTSUP kind:FNOperationCopy from:item to:target error:outErrno];
 }
 
-@implementation NSFileManager
-
-+ (NSFileManager *)defaultManager
+/* A MOVE IS ONE rename(2), AND THE DELEGATE IS ASKED ONCE, FOR THE ITEM ITSELF. Apple states the
+ * asymmetry as the difference from the copy above: "if the item being moved is a directory, the file
+ * manager notifies the delegate only for the directory itself and not for any of its contents". */
+- (BOOL)fnMoveItem:(NSString *)item to:(NSString *)target error:(int *)outErrno
 {
-	if (fn_shared_file_manager == nil) {
-		fn_shared_file_manager = [[NSFileManager alloc] init];
+	if (![self fnDelegateShould:FNOperationMove from:item to:target]) {
+		return YES;
 	}
-	return fn_shared_file_manager;
+	/* ONE SYSCALL, AND IT IS ONLY ONE BECAUSE BOTH PATHS ARE ON ONE FILESYSTEM: an EXDEV comes back
+	 * to the caller as itself rather than being silently turned into a copy. */
+	if (rename([item UTF8String], [target UTF8String]) != 0) {
+		return [self fnFailed:errno kind:FNOperationMove from:item to:target error:outErrno];
+	}
+	return YES;
+}
+
+/* A HARD LINK, so the delegate's LINKING family has a caller at all. */
+- (BOOL)fnLinkItem:(NSString *)item to:(NSString *)target error:(int *)outErrno
+{
+	if (![self fnDelegateShould:FNOperationLink from:item to:target]) {
+		return YES;
+	}
+	if (link([item UTF8String], [target UTF8String]) != 0) {
+		return [self fnFailed:errno kind:FNOperationLink from:item to:target error:outErrno];
+	}
+	return YES;
 }
 
 - (BOOL)fileExistsAtPath:(NSString *)path
@@ -467,7 +707,7 @@ static BOOL fn_copy_tree(const char *from, const char *to, int *outErrno)
 	if (path == nil) {
 		return fn_failed(error, EINVAL);
 	}
-	if (!fn_remove_tree([path UTF8String], &err)) {
+	if (![self fnRemoveItem:path error:&err]) {
 		return fn_failed(error, err);
 	}
 	return YES;
@@ -477,13 +717,13 @@ static BOOL fn_copy_tree(const char *from, const char *to, int *outErrno)
 		toPath:(NSString *)destinationPath
 		 error:(NSError ** _Nullable)error
 {
+	int err = 0;
+
 	if (sourcePath == nil || destinationPath == nil) {
 		return fn_failed(error, EINVAL);
 	}
-	/* ONE SYSCALL, AND IT IS ONLY ONE BECAUSE BOTH PATHS ARE ON ONE FILESYSTEM: an EXDEV comes
-	 * back to the caller as itself rather than being silently turned into a copy. */
-	if (rename([sourcePath UTF8String], [destinationPath UTF8String]) != 0) {
-		return fn_failed(error, errno);
+	if (![self fnMoveItem:sourcePath to:destinationPath error:&err]) {
+		return fn_failed(error, err);
 	}
 	return YES;
 }
@@ -497,7 +737,22 @@ static BOOL fn_copy_tree(const char *from, const char *to, int *outErrno)
 	if (sourcePath == nil || destinationPath == nil) {
 		return fn_failed(error, EINVAL);
 	}
-	if (!fn_copy_tree([sourcePath UTF8String], [destinationPath UTF8String], &err)) {
+	if (![self fnCopyItem:sourcePath to:destinationPath error:&err]) {
+		return fn_failed(error, err);
+	}
+	return YES;
+}
+
+- (BOOL)linkItemAtPath:(NSString *)sourcePath
+		toPath:(NSString *)destinationPath
+		 error:(NSError ** _Nullable)error
+{
+	int err = 0;
+
+	if (sourcePath == nil || destinationPath == nil) {
+		return fn_failed(error, EINVAL);
+	}
+	if (![self fnLinkItem:sourcePath to:destinationPath error:&err]) {
 		return fn_failed(error, err);
 	}
 	return YES;
