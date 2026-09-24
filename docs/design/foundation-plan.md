@@ -12287,18 +12287,26 @@ last=System/Shared/X11/xkb/symbols/sun_vndr/fi`, and then the harness's own ~45-
 the walk was advancing at roughly **25 MILLISECONDS PER ITEM**, which for a `/System`-sized tree (it carries
 the X11 tree, the curl headers and every probe) is MINUTES, not a hang.
 
-**WHAT THAT LEAVES, AND IT IS A REAL DEFECT OF ITS OWN: `-enumeratorAtPath:`/`-enumeratorAtURL:` COSTS ABOUT
-25 ms PER ITEM HERE.** For a caller on a tree of any size that is unusable, and it is NOT the mount-point
-rule's doing - the rule is a comparison of two `lstat` results on DIRECTORY items only. The candidates are
-unmeasured and deliberately not guessed at: the per-item `fn_join` string work, the per-directory
-`contentsOfDirectoryAtPath:`, or the file systems' own `readdir` (AGFS's and devfs's implementations both
-re-walk a directory per call, which would make listing a large directory quadratic). **The A/B that separates
-them is cheap and is the next step: the same tree through the path door and through the URL door, timed.**
+**AND THEN THE A/B REFUTED THE "25 MILLISECONDS PER ITEM" READING TOO, WHICH WAS ITSELF AN INFERENCE FROM THE
+SAME ~45-SECOND WINDOW AND NOT A MEASUREMENT.** Timed directly, on 300 items of the same tree:
+**path door 90.0 ms, URL door 110.0 ms** - about **0.3 ms per item**, with the URL form costing ~0.07 ms
+more per item for building the URL - and **one listing of a large directory (`/System/Shared/X11/xkb/symbols`)
+cost 0.0 ms.** So the walk is NOT slow, the URL door is NOT the cost, and the file systems' `readdir` is NOT
+quadratic on that sample either. **BOTH EARLIER READINGS WERE WRONG, AND BOTH WERE WRONG THE SAME WAY: a
+number inferred from a wall-clock cutoff instead of measured per operation.**
 
-**AND THE INSTRUMENT LESSON IS THE ONE FROM SLICE 6E, SHARPENED: AN UNBOUNDED LOOP WITH NO OUTPUT IS NOT AN
-EXPERIMENT - AND NEITHER IS A BOUNDED ONE THAT PRINTS NOTHING UNTIL IT ENDS.** The cap alone told me nothing
-(it never fired, and that silence was consistent with two DIFFERENT stories); the progress markers told me
-which one in a single run. Print progress, not just results.
+**WHAT IS ACTUALLY OPEN, STATED AS THE OPEN QUESTION IT IS:** in that one run the full `/System` walk had
+reached ~1000 items when the harness's command window closed, and 1000 items at 0.3 ms is a THIRD OF A
+SECOND - so the window was consumed by something else in that run and not by the walk. The candidates, none
+of them measured: the guest's own console output at that point, another leg of that probe, or a directory
+whose listing is pathological in a way the sample above did not include. **This is a `make test`-level
+mystery about one run, not a defect in the walk**, and it is recorded as such rather than dressed up as one.
+
+**AND THE INSTRUMENT LESSON, WHICH IS NOW SHARPER THAN WHEN THIS NOTE WAS FIRST WRITTEN: AN UNBOUNDED LOOP
+WITH NO OUTPUT IS NOT AN EXPERIMENT, A BOUNDED ONE THAT PRINTS NOTHING UNTIL IT ENDS IS NOT ONE EITHER, AND
+A NUMBER READ OFF A CUTOFF IS NOT A MEASUREMENT.** The cap told me nothing (its silence fitted two different
+stories); the progress markers told me the walk was MOVING; and only a timed A/B said how FAST - which
+turned out to be the opposite of what I had concluded twice. **Measure the operation, not the window.**
 
 **AND THE ORIGINAL PARAGRAPH IS KEPT BELOW AS IT WAS WRITTEN, SO THE CORRECTION HAS SOMETHING TO STAND
 AGAINST:** The first version of the mount-point leg enumerated `/` and never returned;
