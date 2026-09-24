@@ -10821,7 +10821,34 @@ operations after it completed, so the worker was never stuck either.
 reached `-fnDeliverRead:`, or it delivered and the handler did not arrive. That is the next instrument, and it is
 one more raw-`write(2)` line at `-fnDeliverRead:` - the recipe above makes it a two-minute experiment now.
 
-**WHAT REMAINS:** that instrument, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
+### §58.2d — THE DELIVERY HOP IS WHERE IT DIES: 7 OF 14 HOPS NEVER RAN (2026-09-22)
+
+**The sink §58.2c found makes the read path's whole delivery chain countable, and the count names the bug.** One
+run:
+```
+SR enter 7   | SR deliver clean 6 | SR deliver with ERROR 1 | DR handler NULL 0 | DR hop 14 | DR hop RAN 7
+```
+READING IT: **7 reads were served** - matching §58.2c's queue count exactly; **one of the 7 deliveries carried an
+ERROR**, which is the deadline path and therefore the failing read; **no handler was ever NULL**; and of **14 read
+deliveries** (the 7 from `-fnServeRead:` plus the ones the failure and teardown paths make) **ONLY 7 BLOCKS EVER
+RAN**.
+
+**SO THE HANDLER IS LOST IN `-fnHopToDelegateQueue:`, NOT IN THE QUEUE AND NOT IN THE READ.** That method hands the
+block to the session's `NSOperationQueue` with `-addOperationWithBlock:`, and half of those blocks never execute -
+the failing read's among them, which is exactly the `done=0` the probe has been reporting all along.
+
+**WHAT THAT MAKES THIS: the red Foundation case is a SYMPTOM OF AN `NSOperationQueue` DEFECT, not of the stream
+task.** The queue accepts operations and does not run them all. What is special about this caller is that the
+stream task adds them **from its own WORKER THREAD** - the first thing in this tree to do that - so the shape the
+next reproducer needs is a non-main-thread producer, not a single-threaded one.
+
+**THE NEXT REPRODUCER, NAMED AND SMALL:** a probe that adds N blocks with `-addOperationWithBlock:` from a
+non-main thread (and from several threads at once) and COUNTS how many ran - the same count-don't-read-order
+instrument that settled §58.2c. If the count equals N, the defect is elsewhere in the hop and the next candidate is
+the retain/release dance around `copied`; if it does not, `NSOperationQueue` has a thread-safety or block-loss bug
+with a small reproducer and a real fix.
+
+**WHAT REMAINS:** that reproducer, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
 The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
