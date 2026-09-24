@@ -10683,18 +10683,49 @@ return, or does it sleep?) - read out of the GUEST LOG, which is the only place 
 a sleeper is visible. Printing from both sides in one build is what the previous passes lacked: each one instrumented
 only one half and then reasoned about the other.
 
-**`kernel_pty_read` still asserts NEITHER outcome for this arm:** asserting the block would fail whenever the
-timer did fire, asserting the return would fail whenever it did not, and two flaky checks are worse than one
-honest observation. It prints `KERNEL-PTY-DIAG vtime read: returned=... code=...` for the record and asserts only
-the deterministic half of the arm - until the outcome is reliable, at which point that DIAG line becomes a check.
+**RESOLVED (§58.1c, sixth pass): THE KERNEL WAS RIGHT AND `waitpid(WNOHANG)` WAS WRONG - AND THE VTIME ARM IS NOW
+ASSERTED RATHER THAN OBSERVED (2026-09-22).**
 
-**WHAT REMAINS:** the §58.1 cure at the two interior `&tty->read_q` arms (above - the next unit, with this probe
-as its instrument and a bounded retry as its mechanism), then the six writer sites
-as its evidence and this probe's DIAG line as its instrument - then the two interior `&tty->read_q` arms (§58.1's
-cure, gated on the read becoming reliably wakable), then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5,
-`pty_write`). The deliberately un-raced check - "data already queued" - carries its reason in its own comment: a
-mid-window write would make it pass or fail on TIMING, and a flaky check in the committed suite is a defect of its
-own.
+**THE INSTRUMENT THE PREVIOUS PASS NAMED IS WHAT SETTLED IT: BOTH SIDES IN ONE BUILD.** The reader's own lines
+carried the whole handshake - `arm pid=7 tick=671` → `callout fire tick=681 chan=...` → `commit-returned pid=7
+tick=681` - so **the kernel armed the callout, fired it exactly `timeout` ticks later, woke the sleeper, and
+`sleep_commit` returned.** The read was never wedged. The probe's side said the rest: the reap gave up on
+**iteration 0** with `waitpid=-1 errno=10` (**ECHILD**) for a child that was ALIVE, and a `fork: me=5 got=7` line
+proved `fork()` had handed back a fresh pid.
+
+**THE DEFECT: `sys_wait4`'s WNOHANG PATH.** POSIX's three answers are: a zombie child → its pid; a stopped child →
+its pid only if `WUNTRACED` was asked for; **a living child → 0**; and `ECHILD` ONLY when no matching child exists.
+This kernel had the first two and never the third, because `flag` is reset at the end of every scan iteration, so
+the post-scan `if(flag) return 0;` can never fire: the loop breaks and the function falls through to
+`return -ECHILD`. **ECHILD means "no such child", so every bounded wait in userspace that polled a live child was
+told its child did not exist.**
+
+**AND THE FIX TOOK TWO ATTEMPTS, WITH THE SECOND ONE CAUGHT BY A TEST THAT ALREADY EXISTED - which is the part
+worth recording.** The first attempt returned 0 from inside the scan, as soon as a matching child was found alive;
+that is wrong, because it can preempt the ZOMBIE that comes later in the process table, so a reaper polling
+`waitpid(-1, WNOHANG)` was answered "nothing to report" while a zombie waited to be reaped. **`kernel_pipe_dup2`'s
+THREADED variants went from 11/11 to 9/11 (a stall at `i=2`) and a re-run reproduced it exactly**, so it was a
+regression rather than flakiness. The shipped form uses a SECOND variable: `flag` keeps its per-process meaning,
+`seen` is set by any matching child and cleared once per scan, and the WNOHANG decision is made ONCE, after the
+whole scan - `if(seen) return 0; else break;`. The stopped and zombie cases are still reported first, and the
+blocking path is untouched.
+
+**VERIFIED, AND IT IS WHAT CLOSES THIS UNIT:** `kernel_pty_read` reports `returned=1 code=0` in three consecutive
+runs - the child is reaped AND exited 0, i.e. **a `VMIN=0`/`VTIME=1` read with nothing written returns 0 once the
+timer expires**, the POSIX behaviour this investigation started from. The probe's DIAG line therefore became an
+ASSERTION (`a-vtime-read-returns-on-its-timer`) and every temporary diag on both sides is gone. With the corrected
+fix: `kernel_pipe_dup2` **11/11**, `procfs_devfs` **16/16**, `kernel_loopback_tcp` **6/6**.
+
+**THE MORAL, AND IT IS WORTH MORE THAN THE FIX:** the kernel was exonerated by its OWN diagnostics twice - once by
+the tick/fire/wake transcript, once by the callout machine's silence - and the real defect was in a THIRD place
+every instrument had been standing on. **A probe's own dependencies are part of its measurement**, and four passes
+were spent reasoning about a sleeper while the thing that failed was the call that reports on it. (The corollary
+showed up immediately: a fix for that call was itself wrong until an unrelated case - one that polls `-1`, where a
+live child and a zombie can both be present - disagreed with it.)
+
+**WHAT REMAINS:** the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`). The deliberately
+un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
+or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
 
 ## §59 — THE WEBSOCKET SLICE, DESIGNED BEFORE IT IS BUILT (2026-09-22)
 

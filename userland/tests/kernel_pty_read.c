@@ -166,10 +166,19 @@ static int reap_bounded(pid_t pid, int *status)
 			return 1;
 		}
 		if (w < 0) {
+			/* THIS BRANCH WAS THE BUG THAT COST THE WHOLE INVESTIGATION (§58.1c): waitpid(pid, &status,
+			 * WNOHANG) returned -1/ECHILD for a child that was ALIVE, so this "escape hatch" fired on
+			 * iteration 0 and every report of "the read did not return" was really "the reap gave up".
+			 * The kernel's sys_wait4 was fixed (a live matching child is a WNOHANG answer of 0, not
+			 * ECHILD) and the read now returns 0 on its timer, reaped on the first or second iteration.
+			 * Kept as a plain bail-out, because with WNOHANG a non-zero return here now really does mean
+			 * the child cannot be waited for. */
 			return 0;
 		}
 		nap_ms(10);
 	}
+	printf("KERNEL-PTY-DIAG reap exhausted its 500 iterations without reaping\n");
+	fflush(stdout);
 	kill(pid, SIGKILL);
 	waitpid(pid, status, 0);
 	return 0;
@@ -342,9 +351,21 @@ int main(void)
 				}
 				reaped = reap_bounded(pid, &status);
 				phase = -1;
-				printf("KERNEL-PTY-DIAG vtime read: returned=%d code=%d (NOT asserted - see §58.1c)\n",
-				       reaped, reaped && WIFEXITED(status) ? WEXITSTATUS(status) : -1);
-				fflush(stdout);
+				/* THE LIMIT IS GONE, SO THIS IS AN ASSERTION RATHER THAN AN OBSERVATION (§58.1c). The
+				 * five-pass story is in the plan and in the comments above; the short version is what
+				 * makes it assertable: the kernel's side of the handshake was measured CORRECT all along
+				 * (arm at tick 671, callout fire at 681, commit returned), while `waitpid(pid, &st,
+				 * WNOHANG)` returned -1/ECHILD for that LIVE child - so the probe's reap gave up on
+				 * iteration 0 and reported a wedged read. With sys_wait4 fixed (a live matching child is a
+				 * WNOHANG answer of 0, not ECHILD) this arm returns 0 on its timer in 3 of 3 runs, reaped
+				 * on the first or second iteration. Nothing here is timing-dependent any more. */
+				check("a-vtime-read-returns-on-its-timer",
+				      reaped && WIFEXITED(status) && WEXITSTATUS(status) == 0,
+				      reaped ? "the VMIN=0/VTIME=1 read returned something other than 0 - POSIX says the "
+					       "timer expires and the read returns 0 (plan §58.1c)"
+					     : "the VMIN=0/VTIME=1 read did not return within a reap bounded by nap_ms() - "
+					       "either the VTIME timer is not reaching its sleeper, or waitpid(WNOHANG) is "
+					       "refusing a live child again (plan §58.1c)");
 			}
 
 			/* AND THE SAME ARM WITH DATA ALREADY QUEUED: DELIBERATELY NOT A RACE. The obvious version of

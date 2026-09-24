@@ -22,7 +22,7 @@ int sys_wait4(__pid_t pid, int *status, int options, struct rusage *ru)
 {
 	struct proc *p;
 	struct proc *owner;
-	int flag, signum, errno;
+	int flag, seen, signum, errno;
 
 	/* FNX: a wait is a PROCESS's wait, not a thread's. Children are created and counted per PROCESS, so
 	 * a wait issued from a thread (a different struct proc) saw current->children == 0 and returned
@@ -49,6 +49,16 @@ int sys_wait4(__pid_t pid, int *status, int options, struct rusage *ru)
 	}
 	while(owner->children) {
 		flag = 0;
+		/* `seen` IS THE SCAN'S OWN MEMORY, AND THE TWO VARIABLES ARE NOT INTERCHANGEABLE: `flag` is
+		 * cleared at the end of every iteration because the pid SELECTORS below set it fresh per process,
+		 * so by the time the scan ends it only ever answers "did the LAST process match". `seen` is set
+		 * when any process matches and is cleared once per SCAN, which is what the WNOHANG decision after
+		 * the loop actually needs - and it must be made after the WHOLE scan, not inside it, or a live
+		 * child found early would preempt the zombie that comes later in the table (which is exactly the
+		 * defect the first version of this fix introduced, and kernel_pipe_dup2's threaded variants caught
+		 * it: a reaper polling waitpid(-1, WNOHANG) was answered 0 while a zombie waited to be reaped).
+		 * foundation-plan.md §58.1c. */
+		seen = 0;
 		FOR_EACH_PROCESS(p) {
 			if(!p->ppid || p->ppid->tgid != owner->tgid) {
 				p = p->next;
@@ -108,12 +118,20 @@ int sys_wait4(__pid_t pid, int *status, int options, struct rusage *ru)
 						get_rusage(p, ru);
 					}
 					return remove_zombie(p);
-				}			}
+				}
+				/* A MATCHING CHILD: REMEMBER IT FOR THE SCAN'S ANSWER (see `seen`'s comment above). The
+				 * stopped and zombie cases just above have already had their say, so scanning on skips
+				 * nothing - and NOT returning here is the whole point: a live child found early must not
+				 * preempt the zombie that comes later in the table, which is the defect the first version
+				 * of this fix introduced and kernel_pipe_dup2's threaded variants caught. The WNOHANG
+				 * decision is made ONCE, after the whole scan. */
+				seen = 1;
+			}
 			p = p->next;
 			flag = 0;
 		}
 		if(options & WNOHANG) {
-			if(flag) {
+			if(seen) {
 				return 0;
 			}
 			break;
