@@ -21,9 +21,14 @@
  * and this system's paths are FSH paths — /System/Applications, /System/Temporary Files — with the
  * spaces and capitals they are spelled with. Nothing here translates them.
  *
- * WHAT IS NOT HERE, named: NSURL-taking forms, the delegate, `-enumeratorAtPath:` and
- * `-subpathsAtPath:` (the walk is here, the enumerator objects are not), extended attributes, and
- * mounting. Each is a real part of Cocoa's NSFileManager and none of them is half-built here.
+ * WHAT IS NOT HERE, named: NSURL-taking forms (they promise URL RESOURCE VALUES, which the ledger
+ * still owes as a family of their own - §60 says why they wait), the delegate, extended attributes,
+ * and mounting. Each is a real part of Cocoa's NSFileManager and none of them is half-built here.
+ *
+ * AND WHAT WAS ON THAT LIST AND IS NOT ANY MORE: `-enumeratorAtPath:`, `-subpathsAtPath:` and
+ * `-subpathsOfDirectoryAtPath:error:` (W8 slice 1, foundation-plan.md §60). The line used to read
+ * "the walk is here, the enumerator objects are not" - the walk was this file's private recursion for
+ * -copyItemAtPath:, and NSDirectoryEnumerator is now the walk's public form.
  */
 
 #ifndef FOUNDATION_NSFILEMANAGER_H
@@ -35,6 +40,7 @@
 @class NSData;
 @class NSDate;
 @class NSDictionary;
+@class NSDirectoryEnumerator;
 @class NSError;
 @class NSString;
 
@@ -68,6 +74,27 @@ extern NSString *const NSFileTypeUnknown;
 
 /* THE NAMES IN A DIRECTORY, not the full paths: Cocoa's answer, and the caller joins them. */
 - (nullable NSArray *)contentsOfDirectoryAtPath:(NSString *)path error:(NSError ** _Nullable)error;
+
+/* ---- THE DEEP WALK (W8 slice 1, foundation-plan.md §60), AND ITS THREE ANSWERS ARE THREE RULES ----
+ *
+ * -enumeratorAtPath: hands back an NSDirectoryEnumerator whose ITEMS ARE RELATIVE TO `path` (Apple's
+ * own class page: "These pathnames are relative to the directory") and whose -level counts THIS
+ * directory as 0, so its immediate children are 1. A path that names a FILE is not an error and does
+ * not answer nil: Apple's word is that the enumerator then "enumerates no files - the first call to
+ * -nextObject will return nil". A nil PATH is the one case that answers nil.
+ *
+ * -subpathsAtPath: and -subpathsOfDirectoryAtPath:error: are the same walk collected into an array -
+ * the items in the whole subtree, in the SAME relative form, with the same refusal to recurse through
+ * a symlinked directory - and they differ only in the error channel, which is exactly how Apple
+ * describes the pair ("In macOS 10.5 and later, use -subpathsOfDirectoryAtPath:error: instead"):
+ * NEITHER is deprecated, so both ship. A path that cannot be OPENED AS A DIRECTORY - a file, a name
+ * that is not there - answers nil rather than an empty array, which is also what
+ * -contentsOfDirectoryAtPath:error: does with the same path, and one of the two doors fills in the
+ * error while the other has none to fill.
+ */
+- (nullable NSDirectoryEnumerator *)enumeratorAtPath:(NSString *)path;
+- (nullable NSArray *)subpathsAtPath:(NSString *)path;
+- (nullable NSArray *)subpathsOfDirectoryAtPath:(NSString *)path error:(NSError ** _Nullable)error;
 
 - (BOOL)createDirectoryAtPath:(NSString *)path
   withIntermediateDirectories:(BOOL)createIntermediates

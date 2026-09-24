@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  150   open   46   struck   77
+#   class      shipped  151   open   45   struck   77
 #   protocol   shipped   20   open   11   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped  101   open   42   struck   17
@@ -1386,7 +1386,7 @@ class	shipped	NSDecimalNumberHandler		Fundamentals / Numbers / Using reference t
 class	struck	NSDeleteCommand		App Support / Script Commands	declined	objc
 class	shipped	NSDictionary		Fundamentals / Basic Collections	-	objc
 class	shipped	NSDimension		Fundamentals / Essentials	-	objc
-class	open	NSDirectoryEnumerator		Files and Data Persistence / File system operations / Discovering directory contents	-	objc
+class	shipped	NSDirectoryEnumerator		Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 class	struck	NSDistantObject		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSDistantObjectRequest		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	open	NSDistributedLock		Low-Level Utilities / Threads and Locking	-	objc

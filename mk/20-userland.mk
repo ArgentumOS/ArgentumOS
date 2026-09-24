@@ -114,7 +114,8 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSInvocation.m \
 	$(FOUNDATION_SRC)/NSInvocation_amd64.S \
 	$(FOUNDATION_SRC)/NSInvocation.h $(FOUNDATION_SRC)/NSMethodSignature.h \
-	$(FOUNDATION_SRC)/NSEnumerator.m $(FOUNDATION_SRC)/NSPropertyListSerialization.m \
+	$(FOUNDATION_SRC)/NSEnumerator.m $(FOUNDATION_SRC)/NSDirectoryEnumerator.m \
+	$(FOUNDATION_SRC)/NSPropertyListSerialization.m \
 	$(FOUNDATION_SRC)/NSTimeZone.m $(FOUNDATION_SRC)/NSDateComponents.m \
 	$(FOUNDATION_SRC)/NSCalendar.m \
 	$(FOUNDATION_SRC)/NSURL.m \
@@ -200,6 +201,7 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSMutableOrderedSet.h \
 	$(FOUNDATION_SRC)/NSKeyValueObserving.h \
 	$(FOUNDATION_SRC)/NSEnumerator.h \
+	$(FOUNDATION_SRC)/NSDirectoryEnumerator.h \
 	$(FOUNDATION_SRC)/NSPropertyListSerialization.h \
 	$(FOUNDATION_SRC)/NSDateComponents.h \
 	$(FOUNDATION_SRC)/NSTimeZone.h \
@@ -764,6 +766,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_filemanager.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filemanager"
+	# foundation_directoryenumerator: W8 slice 1 acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> plus <unistd.h> for the symlink(2) its fixture makes.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_directoryenumerator.m -o .build/probe-foundation_directoryenumerator.o
+	$(MUSL64_OBJC) .build/probe-foundation_directoryenumerator.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_directoryenumerator"
 	# foundation_urlcomponents: F13.15 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \

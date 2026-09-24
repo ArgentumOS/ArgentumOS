@@ -75,6 +75,7 @@
 #import <Foundation/NSMethodSignature.h>
 #import <Foundation/NSInvocation.h>
 #import <Foundation/NSEnumerator.h>
+#import <Foundation/NSDirectoryEnumerator.h>
 #import <Foundation/NSPropertyListSerialization.h>
 #import <Foundation/NSURL.h>
 #import <Foundation/NSKeyValueCoding.h>

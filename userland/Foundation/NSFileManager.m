@@ -18,6 +18,7 @@
  */
 
 #import <Foundation/NSFileManager.h>
+#import <Foundation/NSDirectoryEnumerator.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSData.h>
 #import <Foundation/NSDate.h>
@@ -313,6 +314,65 @@ static BOOL fn_copy_tree(const char *from, const char *to, int *outErrno)
 		return nil;
 	}
 	return names;
+}
+
+/* ---- THE DEEP WALK (W8 slice 1, foundation-plan.md §60) -----------------------------------------
+ *
+ * THE ENUMERATOR'S CONTRACT IS IN ITS OWN HEADER; what belongs HERE is why these three doors are
+ * three lines each while the walk they answer with is a class. Apple's own sentence for the file case
+ * - "an enumerator object that enumerates no files; the first call to -nextObject will return nil" -
+ * is what makes an error channel unnecessary for -enumeratorAtPath:. A file, a name that is not
+ * there, and a directory that cannot be listed all arrive at the SAME enumerator, because the level-0
+ * listing inside decides it: nil from that listing is an empty frame, and an empty frame is a spent
+ * cursor. */
+- (nullable NSDirectoryEnumerator *)enumeratorAtPath:(NSString *)path
+{
+	if (path == nil) {
+		return nil;
+	}
+	return [[[NSDirectoryEnumerator alloc] initWithPath:path options:0] autorelease];
+}
+
+/* THE WALK THE TWO -subpaths DOORS SHARE, because they ARE one contract with and without an error
+ * channel - Apple's own 10.5 note ("use -subpathsOfDirectoryAtPath:error: instead") replaces the older
+ * spelling and not its behaviour. The root is listed here, once, so a path that is not a directory is
+ * refused in ONE place and both doors refuse it identically: nil, with the error where there is
+ * somewhere to put it. (An EMPTY directory is not that case - it lists fine and answers an empty
+ * array, which is the difference between "no items" and "not a directory".) */
+- (nullable NSArray *)fn_subpathsOfDirectoryAtPath:(NSString *)path error:(NSError ** _Nullable)error
+{
+	NSDirectoryEnumerator *walk;
+	NSMutableArray *subpaths;
+	NSString *item;
+
+	if (path == nil) {
+		fn_failed(error, EINVAL);
+		return nil;
+	}
+	{
+		int err = 0;
+
+		if (fn_directory_names([path UTF8String], &err) == nil) {
+			fn_failed(error, err);
+			return nil;
+		}
+	}
+	walk = [[[NSDirectoryEnumerator alloc] initWithPath:path options:0] autorelease];
+	subpaths = [NSMutableArray array];
+	while ((item = [walk nextObject]) != nil) {
+		[subpaths addObject:item];
+	}
+	return subpaths;
+}
+
+- (nullable NSArray *)subpathsAtPath:(NSString *)path
+{
+	return [self fn_subpathsOfDirectoryAtPath:path error:NULL];
+}
+
+- (nullable NSArray *)subpathsOfDirectoryAtPath:(NSString *)path error:(NSError ** _Nullable)error
+{
+	return [self fn_subpathsOfDirectoryAtPath:path error:error];
 }
 
 - (BOOL)createDirectoryAtPath:(NSString *)path

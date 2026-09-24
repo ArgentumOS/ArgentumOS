@@ -1,0 +1,186 @@
+/*
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ */
+/*
+ * NSDirectoryEnumerator.m — the deep walk (W8 slice 1). MANUAL OWNERSHIP: every allocation below is
+ * released in -dealloc, and the two doors that build a walk are NSFileManager's, not this class's.
+ *
+ * THE WALK IS A STACK, NOT A RECURSION, because the caller drives it one item at a time: three
+ * parallel arrays hold one frame per OPEN directory - its absolute path, its relative prefix, and the
+ * names still to visit at that level. The name list is kept REVERSED so the next name is
+ * `-lastObject` and taking it is `-removeLastObject`, which is O(1) and, more to the point, makes
+ * "where the cursor is in a level" a fact of the storage rather than an index to keep in step.
+ *
+ * TWO QUESTIONS ARE ANSWERED BY CALLING THE SHIPPED CLASS RATHER THAN BY REPEATING IT: the NAMES in a
+ * directory come from -contentsOfDirectoryAtPath:error:, and an item's ATTRIBUTES from
+ * -attributesOfItemAtPath:error:. Each costs one extra syscall per item, and each is worth it: the
+ * enumerator's `-fileAttributes` is then the SAME DICTIONARY a caller gets by asking the manager
+ * directly - one definition of "an item's attributes" in the tree instead of two that can drift - and
+ * both awkward cases get one rule each: a directory that cannot be listed pushes an EMPTY frame (a
+ * level with nothing in it), and an item that cannot be lstat(2)ed is skipped.
+ */
+
+#import <Foundation/NSDirectoryEnumerator.h>
+#import <Foundation/NSFileManager.h>
+#import <Foundation/NSArray.h>
+#import <Foundation/NSDictionary.h>
+#import <Foundation/NSString.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+/* A JOINED PATH with ONE rule, so the absolute side and the relative side cannot disagree: an empty
+ * prefix means "the name itself", which is exactly what keeps the root level's answers relative. */
+static NSString *fn_join(NSString *prefix, NSString *name)
+{
+	if ([prefix length] == 0) {
+		return name;
+	}
+	return [NSString stringWithFormat:@"%@/%@", prefix, name];
+}
+
+@implementation NSDirectoryEnumerator
+
+- (id)initWithPath:(NSString *)path options:(NSUInteger)options
+{
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	if (path == nil) {
+		[self release];
+		return nil;
+	}
+	_root = [path copy];
+	_dirStack = [[NSMutableArray alloc] init];
+	_relStack = [[NSMutableArray alloc] init];
+	_namesStack = [[NSMutableArray alloc] init];
+	_options = options;
+	_directoryAttributes = [[[NSFileManager defaultManager] attributesOfItemAtPath:_root
+									       error:NULL] retain];
+	[self fnOpenLevel:_root relative:@""];
+	return self;
+}
+
+- (void)dealloc
+{
+	[_root release];
+	[_dirStack release];
+	[_relStack release];
+	[_namesStack release];
+	[_directoryAttributes release];
+	[_currentPath release];
+	[super dealloc];
+}
+
+/* PUSH ONE LEVEL: the names in `absolute`, the relative prefix they are answered under, and the
+ * absolute path a name is joined to. A directory that cannot be listed pushes an EMPTY frame rather
+ * than failing: the level closes on its own on the next pass, so an unreadable directory is a level
+ * with nothing in it - which is what "an enumerator that enumerates no files" means. */
+- (void)fnOpenLevel:(NSString *)absolute relative:(NSString *)relative
+{
+	NSArray *names = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:absolute error:NULL];
+	NSMutableArray *reversed = [NSMutableArray array];
+
+	if (names != nil) {
+		NSUInteger i;
+
+		for (i = [names count]; i > 0; i--) {
+			[reversed addObject:[names objectAtIndex:i - 1]];
+		}
+	}
+	[_dirStack addObject:absolute];
+	[_relStack addObject:relative];
+	[_namesStack addObject:reversed];
+}
+
+- (nullable id)nextObject
+{
+	while ([_dirStack count] > 0) {
+		NSMutableArray *names = [_namesStack lastObject];
+		NSString *absoluteDir = [_dirStack lastObject];
+		NSString *relativeDir = [_relStack lastObject];
+		NSString *name;
+		NSString *absolute;
+		NSString *relative;
+		struct stat st;
+
+		/* THE LEVEL IS SPENT: close it, and let the loop look one level up. That closure is what
+		 * makes the walk depth-first without a recursive call. */
+		if ([names count] == 0) {
+			[_dirStack removeLastObject];
+			[_relStack removeLastObject];
+			[_namesStack removeLastObject];
+			continue;
+		}
+		name = [names lastObject];
+		absolute = fn_join(absoluteDir, name);
+		relative = fn_join(relativeDir, name);
+		if (lstat([absolute UTF8String], &st) != 0) {
+			/* REMOVED BETWEEN THE LISTING AND HERE: it is not an item any more, so there is
+			 * nothing to answer about it - and the rest of the level is still there. */
+			[names removeLastObject];
+			continue;
+		}
+		[names removeLastObject];
+		[_currentPath release];
+		_currentPath = [absolute retain];
+		_currentLevel = [_dirStack count];	/* the ROOT is level 0, so its children are 1 */
+		_currentIsDirectory = S_ISDIR(st.st_mode) ? YES : NO;
+		_returned = YES;
+		_pushedForCurrent = NO;
+		if (_currentIsDirectory) {
+			/* A REAL DIRECTORY, which is what the lstat above established: a SYMLINK to one is
+			 * answered and not entered, per the class's own rule. */
+			[self fnOpenLevel:absolute relative:relative];
+			_pushedForCurrent = YES;
+		}
+		return relative;
+	}
+	return nil;
+}
+
+- (nullable NSDictionary *)fileAttributes
+{
+	if (!_returned || _currentPath == nil) {
+		return nil;
+	}
+	return [[NSFileManager defaultManager] attributesOfItemAtPath:_currentPath error:NULL];
+}
+
+- (nullable NSDictionary *)directoryAttributes
+{
+	return _directoryAttributes;
+}
+
+- (NSUInteger)level
+{
+	return _currentLevel;
+}
+
+- (void)skipDescendents
+{
+	/* "CAUSES THE RECEIVER TO SKIP RECURSION INTO THE MOST RECENTLY OBTAINED SUBDIRECTORY" - so it
+	 * UNDOES the level that item opened. When the most recent item was a FILE (or a symlink, or
+	 * nothing has been returned yet) there is no such level and this is a no-op, which is the same
+	 * sentence read literally. */
+	if (!_pushedForCurrent) {
+		return;
+	}
+	[_dirStack removeLastObject];
+	[_relStack removeLastObject];
+	[_namesStack removeLastObject];
+	_pushedForCurrent = NO;
+}
+
+- (void)skipDescendants
+{
+	[self skipDescendents];
+}
+
+- (BOOL)isEnumeratingDirectoryPostOrder
+{
+	return (_options & NSDirectoryEnumerationIncludesDirectoriesPostOrder) != 0 ? YES : NO;
+}
+
+@end

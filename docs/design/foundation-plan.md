@@ -3462,7 +3462,7 @@ vanishing.
 | **Files and Data Persistence / App-specific settings** | all classes shipped | — |
 | **Files and Data Persistence / Coordinated file access** | 3 open | `NSFileAccessIntent`, `NSFileCoordinator`, `NSFilePresenter` |
 | **Files and Data Persistence / Deprecated** | ALL STRUCK: `NSArchiver`, `NSUnarchiver` | — |
-| **Files and Data Persistence / File system operations** | 4 open | `NSDirectoryEnumerator`, `NSFileManagerDelegate`, `NSFileProviderService`, `NSFileVersion` |
+| **Files and Data Persistence / File system operations** | 3 open | `NSFileManagerDelegate`, `NSFileProviderService`, `NSFileVersion` |
 | **Files and Data Persistence / Items** | ALL STRUCK: `NSMetadataItem` | — |
 | **Files and Data Persistence / JSON** | all classes shipped | — |
 | **Files and Data Persistence / Keyed Archivers** | all classes shipped | — |
@@ -11518,3 +11518,118 @@ door that delivers it, the authentication doors and the credential store, the re
 doors, the error names and their codes, and now both ends of the WebSocket family - **and each of the five
 WebSocket slices is a layer that was tested before the layer above it was written**, which is why the last two
 slices were about ORDER rather than about protocol.
+
+## §60 — W8, THE FILE SYSTEM DEEPENED: DESIGNED BEFORE IT IS BUILT (2026-09-24)
+
+**W8's ROW IS NINE CLASSES AND A DEPENDENCY NOBODY HAD NOTICED, AND THE DEPENDENCY IS THE FIRST THING TO SAY.**
+The ledger's own count (§12.3) is `NSDirectoryEnumerator`, `NSFileWrapper`, `NSFileSecurity`,
+`NSFileManagerDelegate`, then the coordinator family `NSFileCoordinator`/`NSFilePresenter`/`NSFileAccessIntent`/
+`NSFileVersion`/`NSFileProviderService`, plus `NSFileManager`'s member rows. Three of `NSFileManager`'s four
+documented **URL-taking** doors cannot be written faithfully today, and the reason is a family that is open,
+sized, and OWNS NO LEDGER ROW:
+
+```
+$ python3 tools/foundation-sweep.py --check      # 2026-09-24, the tree as it stands
+  class      shipped  150   open   46   struck   77
+  ...
+$ # and from docs/reference/foundation-apple-surface.txt, the same run:
+   148 open rows under `Fundamentals / URLs / Accessing Resource Values`
+       (7 typealias + 141 var) — and §11.3's table has NO row for that family at all
+```
+
+**SO §12.3 GAINS A ROW, AND IT IS NAMED RATHER THAN FOLDED INTO W8.** It is `NSURLResourceKey` and its constants,
+`-getResourceValue:forKey:error:` / `-resourceValuesForKeys:error:` on `NSURL`, the `NSURLFileResourceType*`
+values, and the volume/directory/ubiquitous/thumbnail key masses with their protection levels - **a UNIT of its
+own (call it W8p, "URL resource values"), because it is `NSURL`'s member debt rather than `NSFileManager`'s, and
+because W7's "two constant masses" claim did not reach it.** W7 closed the URL loading CLASSES; this family is
+filed under `Fundamentals / URLs`, not under `Networking`, and it stayed open through every W7 slice. Recording it
+is the point: **the enumeration doors were about to be written on top of it.**
+
+**THE MEASURED SURFACE, for the cheap half** (Apple's own pages, the same `/tutorials/data/...` JSON
+`tools/foundation-sweep.py` reads - the index gives `NSDirectoryEnumerator` as
+`foundation/filemanager/directoryenumerator`, `NSFileWrapper` as `foundation/filewrapper`):
+
+ * **`NSDirectoryEnumerator`** - `directoryAttributes`, `fileAttributes`, `level`, `-skipDescendents`,
+   `-skipDescendants` (BOTH spellings are documented and NEITHER carries a deprecation flag, so both ship), and
+   `-isEnumeratingDirectoryPostOrder`; it is an `NSEnumerator` (so `-nextObject`/`-allObjects` come from the
+   shipped parent) and it conforms to `NSFastEnumeration`.
+ * **`NSFileManager`'s "Discovering directory contents" section**, complete: `-contentsOfDirectoryAtPath:error:`
+   (SHIPPED), `-contentsOfDirectoryAtURL:includingPropertiesForKeys:options:error:`, `-enumeratorAtPath:`,
+   `-enumeratorAtURL:includingPropertiesForKeys:options:errorHandler:`, `-subpathsAtPath:`,
+   `-subpathsOfDirectoryAtPath:error:`, `-mountedVolumeURLsIncludingResourceValuesForKeys:options:`.
+ * **`NSFileManagerDelegate`** - FOUR families x FOUR selectors: should-move/copy/remove/link, each in a PATH form,
+   a URL form, and a `shouldProceedAfterError:` PATH and URL form. Sixteen rows, and it is a PROTOCOL: the hooks
+   are what makes a delegate visible, so the protocol half and the class half land together.
+ * **`NSFileWrapper`** - 8 initialisers, the 3 type queries, the child-wrappers dictionary and its add/remove/key
+   doors, the symbolic-link destination pair, the update/match/read group, `serializedRepresentation`, the
+   filename/preferred-filename pair, `fileAttributes`, `regularFileContents`, two write doors, `-icon`, and the
+   `ReadingOptions`/`WritingOptions` option sets.
+ * **`NSFileSecurity`** - Apple's ObjC page is THIN (its own topic sections carry only `-initWithCoder:`), so its
+   accessor surface is measured from the method index when its slice starts rather than assumed here.
+
+**THE SLICES, IN THE ORDER THE WORK'S SHAPE FORCES THEM:**
+ 1. **`NSDirectoryEnumerator` + the PATH doors** - `-enumeratorAtPath:`, `-subpathsAtPath:`,
+    `-subpathsOfDirectoryAtPath:error:`. No URL, no option list, nothing invented: the class, the depth-first
+    walk, `level`, the two attribute dictionaries, and `skipDescendents`/`skipDescendants`.
+ 2. **`NSFileManagerDelegate` + the delegate consultation** in the shipped copy/move/remove paths (PATH forms),
+    with `-setDelegate:`/`-delegate`; the URL forms wait for slice 6 for the same reason the doors do.
+ 3. **`NSFileManager`'s missing PATH member rows** - `-contentsAtPath:`, `-contentsEqualAtPath:andPath:`,
+    `-displayNameAtPath:`, `-componentsToDisplayForPath:`, `-setAttributes:ofItemAtPath:error:`,
+    `-attributesOfFileSystemForPath:error:`, `-createSymbolicLinkAtPath:withDestinationPath:error:`,
+    `-linkItemAtPath:toPath:error:`, `-getRelationship:ofDirectoryAtPath:toItemAtPath:error:`. The cheap rows:
+    they need nothing this tree lacks, and the ledger scores them.
+ 4. **`NSFileWrapper`** - the value and IO half, with `-icon` NAMED as out (an `NSImage` is AppKit's, not
+    Foundation's - the ground §39 used for the AppKit-shaped rows).
+ 5. **`NSFileSecurity`** - written against this tree's substrate rather than guessed: POSIX ACLs SHIPPED at M4
+    (the `acl` tool + `sys_fchmodat`), so the owner/group/mode/ACL accessors are reachable, and whatever
+    CFFileSecurity carries that AGFS has nowhere to put is a §11.6 register question rather than a silence.
+ 6. **THE URL HALF** - the enumerator's `includingPropertiesForKeys:`/`options:` (all five
+    `NSDirectoryEnumerationOptions` cases, `-producesRelativePathURLs` among them),
+    `-contentsOfDirectoryAtURL:...`, `-enumeratorAtURL:...`, the URL delegate forms, and
+    `-mountedVolumeURLsIncludingResourceValuesForKeys:options:` - **ON W8p**, because
+    `includingPropertiesForKeys:` is a PROMISE ABOUT VALUES and there is nowhere for the promise to land until
+    that family exists.
+ 7. **the coordinator family** - `NSFileCoordinator` + `NSFilePresenter` + `NSFileAccessIntent`: the presenter
+    registry, which §12.3 already says lives INSIDE the unit.
+ 8. **`NSFileVersion`** - needs the coordinator's naming and a version store.
+ 9. **`NSFileProviderService`** - plus `NSFileProviderServiceName`.
+
+**AND THE ROWS THAT ARE NAMED OUT NOW SO THEY ARE NOT DISCOVERED LATER:** `NSFileManager`'s iCloud half
+(`-ubiquityIdentityToken`, `-URLForUbiquityContainerIdentifier:`, `-isUbiquitousItemAtURL:`,
+`-setUbiquitous:itemAtURL:destinationURL:error:`, `-startDownloadingUbiquitousItemAtURL:`,
+`-evictUbiquitousItemAtURL:`, `-URLForPublishingUbiquitousItemAtURL:expirationDate:error:`) - Argentum has no
+iCloud, so each is a §11.6 necessity candidate with its own register entry rather than a missing method; plus
+`+defaultManagerForAuthorization:` (an `NSWorkspace.Authorization`) and `-icon` (an `NSImage`), which are other
+frameworks' types.
+
+**SLICE 1 LANDED (2026-09-24), AND THE LEDGER ROW IT FLIPPED IS A CLASS: `NSDirectoryEnumerator`,
+`open` -> `shipped`, with `--check` still reporting `consistent` afterwards, and the class count moving
+from 46 open to 45.** What landed: the class
+(`userland/Foundation/NSDirectoryEnumerator.{h,m}`, MANUAL OWNERSHIP, a stack-driven pre-order walk) and
+its three doors - `-enumeratorAtPath:`, `-subpathsAtPath:`, `-subpathsOfDirectoryAtPath:error:` - with a
+probe and a case of their own (`foundation_directoryenumerator`, **17 checks**), green on the guest.
+
+**AND THE RULES THE PROBE ASSERTS ARE THE ONES THAT WERE MEASURED RATHER THAN REMEMBERED** - this
+section opened by saying the contract had to be READ, and this is the payoff. The guest run's own DIAG:
+
+```
+FOUNDATION-DIRECTORYENUMERATOR DIAG walk: 8 item(s): a.txt dir1 dir1/b.txt dir1/sub dir1/sub/c.txt dir2 link zlink
+FOUNDATION-DIRECTORYENUMERATOR RESULT ok=17 fail=0
+```
+
+Pre-order; RELATIVE (`dir1/b.txt`, never `/System/Temporary Files/.../dir1/b.txt`); the level-0 rule
+checked per item as `level == 1 + the number of slashes`; `link` ANSWERED as a symlink and never entered,
+so there is no `link/b.txt`; a FILE as the path yielding a SPENT enumerator rather than nil; both skip
+spellings pruning exactly the one subtree; and the two `-subpaths` doors refusing a file with `ENOTDIR`
+and a name that is not there with `ENOENT` while answering `[]` for an empty directory.
+
+**TWO DECISIONS INSIDE THE CLASS, each stated where it lives:** the walk asks NSFileManager for a
+directory's NAMES and for an item's ATTRIBUTES instead of repeating either, which costs one extra syscall
+per item and buys one definition of "an item's attributes" in the tree; and the walk is PRE-ORDER only,
+so `-isEnumeratingDirectoryPostOrder` answers the stored options mask - `NO` through every door this slice
+lands, which the probe asserts as a NAMED boundary rather than hiding.
+
+**REGRESSION CHECKED, because these doors extend a shipped class:** `foundation_filemanager` is **9/9
+green** on the same image, and the family table's row for File system operations now reads 3 open
+rather than 4. The class count moved with it: **151 shipped, 45 open** (was 150 and 46).
+
