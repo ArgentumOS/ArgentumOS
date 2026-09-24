@@ -61,10 +61,42 @@ extern NSString *const NSFilePosixPermissions;
 extern NSString *const NSFileOwnerAccountID;
 extern NSString *const NSFileGroupOwnerAccountID;
 
-/* ... and the values NSFileType takes, which a caller compares against. */
+/* ---- THE KEYS THE SUBSTRATE CAN ANSWER (W8 slice 3c, foundation-plan.md §60) --------------------
+ *
+ * THREE MORE ITEM KEYS, each named by Apple's own page as the stat(2) FIELD ITSELF - "the value of
+ * st_ino, as returned by stat(2)" - so there is nothing to interpret: the inode, the link count, and
+ * the device. They are filled by -attributesOfItemAtPath: along with the six above.
+ */
+extern NSString *const NSFileSystemFileNumber;	/* st_ino */
+extern NSString *const NSFileReferenceCount;	/* st_nlink */
+extern NSString *const NSFileDeviceIdentifier;	/* st_dev */
+
+/* AND THE FIVE FILE-SYSTEM KEYS, which -attributesOfFileSystemForPath:error: answers with. Two units
+ * are worth stating twice, because Apple states them: the SIZES ARE BYTES ("the size of the file
+ * system in bytes"), and the NUMBER is `st_dev` ("the value corresponds to the value of st_dev, as
+ * returned by stat(2)") rather than the statfs(2) field one would reach for first. */
+extern NSString *const NSFileSystemSize;
+extern NSString *const NSFileSystemFreeSize;
+extern NSString *const NSFileSystemNodes;
+extern NSString *const NSFileSystemFreeNodes;
+extern NSString *const NSFileSystemNumber;
+
+/* A KEY THAT IS PUBLISHED AND NEVER FILLED, and that is a fact about this substrate rather than an
+ * omission: Apple's dictionary simply has no entry when the file system keeps no creation time, and
+ * this one keeps only the modification time and the inode change time (musl's `struct stat` has no
+ * birth time at all). The NAME is still Cocoa's API - a caller may look it up - so it is declared
+ * here and left absent from every dictionary this class builds. */
+extern NSString *const NSFileCreationDate;
+
+/* ... and the values NSFileType takes, which a caller compares against. A file that is neither a
+ * directory, a regular file nor a link is now NAMED rather than called unknown: the three below were
+ * missing, and the kernel's stat(2) answers all three. */
 extern NSString *const NSFileTypeRegular;
 extern NSString *const NSFileTypeDirectory;
 extern NSString *const NSFileTypeSymbolicLink;
+extern NSString *const NSFileTypeBlockSpecial;
+extern NSString *const NSFileTypeCharacterSpecial;
+extern NSString *const NSFileTypeSocket;
 extern NSString *const NSFileTypeUnknown;
 
 /* ---- THE DELEGATE (W8 slice 2, foundation-plan.md §60) ----------------------------------------
@@ -156,6 +188,16 @@ shouldProceedAfterError:(NSError *)error
 	      toURL:(NSURL *)dstURL;
 
 @end
+
+/* HOW ONE ITEM RELATES TO ANOTHER, declared HERE rather than with the search-path types below, because
+ * `-getRelationship:ofDirectoryAtPath:toItemAtPath:error:` NAMES IT in its signature: a type a method
+ * takes has to be read before that method, and the rest of the enums in this header are read after the
+ * @interface. "Is it inside, is it the same, or neither" - Apple's own three answers. */
+typedef enum {
+	NSURLRelationshipContains = 0,
+	NSURLRelationshipSame = 1,
+	NSURLRelationshipOther = 2
+} NSURLRelationship;
 
 @interface NSFileManager : NSObject
 {
@@ -269,6 +311,23 @@ shouldProceedAfterError:(NSError *)error
 - (nullable NSString *)destinationOfSymbolicLinkAtPath:(NSString *)path
 						 error:(NSError ** _Nullable)error;
 
+/* THE FILE SYSTEM'S OWN NUMBERS (W8 slice 3c), from statfs(2) - and Apple's sentence about what a
+ * dictionary means is what makes the missing entries honest rather than lazy: a key that is ABSENT is
+ * how a file system says it has no such attribute, so a caller sees the same thing here as it would on
+ * any Apple volume that does not keep it. "This method does not traverse a terminal symbolic link",
+ * which is why the lookup is lstat(2) first. */
+- (nullable NSDictionary *)attributesOfFileSystemForPath:(NSString *)path
+						   error:(NSError ** _Nullable)error;
+
+/* WHERE ONE ITEM STANDS RELATIVE TO A DIRECTORY, in three answers: "the directory may CONTAIN the item,
+ * it may be the SAME as the item, or it may not have a DIRECT relationship to the item." The directory
+ * is the first argument in Apple's spelling (and the out-parameter is first in the selector), and the
+ * comparison is a PATH one - this door is about locations, not about inodes. */
+- (BOOL)getRelationship:(NSURLRelationship *)outRelationship
+      ofDirectoryAtPath:(NSString *)directory
+	    toItemAtPath:(NSString *)otherPath
+		   error:(NSError ** _Nullable)error;
+
 - (nullable NSString *)currentDirectoryPath;
 - (BOOL)changeCurrentDirectoryPath:(NSString *)path;
 
@@ -377,13 +436,6 @@ typedef enum {
 	NSSystemDomainMask = 1 << 3,
 	NSAllDomainsMask = 0xFFFF	/* every bit, as its name says */
 } NSSearchPathDomainMask;
-
-/* How one item relates to another: is it inside, is it the same, or neither. */
-typedef enum {
-	NSURLRelationshipContains = 0,
-	NSURLRelationshipSame = 1,
-	NSURLRelationshipOther = 2
-} NSURLRelationship;
 
 /* WHERE TEMPORARY FILES GO, as a FUNCTION rather than a method because that is how Apple declares it (the
  * ledger files it under NSFileManager's "Accessing user directories"). The trailing separator is Apple's

@@ -36,6 +36,9 @@
 #include <sys/stat.h>		/* stat(2): the inode numbers of a directory and its parent (F13.22) */
 #include <fcntl.h>		/* AT_FDCWD / AT_REMOVEDIR: the OTHER door onto rmdir (F13.22) */
 #include <errno.h>
+#include <string.h>		/* memset/strncpy: the bound socket's address (§60 slice 3c) */
+#include <sys/socket.h>		/* ... and socket(2)/bind(2), which make an S_IFSOCK inode */
+#include <sys/un.h>
 
 #define PROBE_ROOT "/System/Temporary Files/nsfilemanager-probe"
 
@@ -426,6 +429,30 @@ int main(void)
 		[fm createFileAtPath:fn_s3(@"tree/sub/b.txt")
 			     contents:[@"bb" dataUsingEncoding:NSUTF8StringEncoding]
 			   attributes:nil];
+		/* TWO SPECIAL ITEMS AND ONE SIBLING, for slice 3c: the FIFO has NO Apple type value and the
+		 * SOCKET HAS ONE (so the pair shows both halves of the vocabulary rule), and `treebc` exists
+		 * only so that the relationship rule can be asked about a name that PREFIXES another. */
+		mkfifo([fn_s3(@"pipe") UTF8String], 0644);
+		{
+			int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+
+			if (fd >= 0) {
+				struct sockaddr_un address;
+
+				memset(&address, 0, sizeof(address));
+				address.sun_family = AF_UNIX;
+				strncpy(address.sun_path, [fn_s3(@"sock") UTF8String],
+					sizeof(address.sun_path) - 1);
+				if (bind(fd, (struct sockaddr *)&address, sizeof(address)) != 0) {
+					printf("FOUNDATION-FILEMANAGER fs-s3 DIAG bind: %s\n", strerror(errno));
+				}
+				/* THE INODE OUTLIVES THE DESCRIPTOR: a bound socket is a NAME on the file system,
+				 * and closing the fd does not unlink it - which is what makes it visible to
+				 * -attributesOfItemAtPath: at all. */
+				close(fd);
+			}
+		}
+		[fm createDirectoryAtPath:fn_s3(@"treebc") withIntermediateDirectories:NO attributes:nil error:NULL];
 
 		/* THE BYTES, AND THE ONE EXCLUSION APPLE NAMES: a DIRECTORY answers nil. A path that is not
 		 * there answers nil too, which is this door's whole error channel - it has none, in Cocoa
@@ -538,6 +565,105 @@ int main(void)
 			(int)[fm contentsEqualAtPath:fn_s3(@"link-one") andPath:fn_s3(@"link-copy")],
 			[fm contentsAtPath:fn_s3(@"link-copy")] != nil ?
 				[[fm contentsAtPath:fn_s3(@"link-copy")] description] : @"(nil)"]);
+
+		/* ---- W8 SLICE 3c: THE FILE SYSTEM'S OWN NUMBERS, THE INODE KEYS, THE MISSING TYPE WORDS AND
+		 * THE RELATIONSHIP RULE - and Apple states both of this doors' traps itself, so neither is a
+		 * judgement call: THE SIZES ARE BYTES ("the size of the file system in bytes") and the
+		 * FILE-SYSTEM NUMBER is `st_dev` ("the value corresponds to the value of st_dev, as returned by
+		 * stat(2)"), which is NOT the statfs(2) field a reader reaches for first. */
+		{
+			id fsAttributes = [fm attributesOfFileSystemForPath:fn_s3(@"file.txt") error:NULL];
+			id itemAttributes = [fm attributesOfItemAtPath:fn_s3(@"file.txt") error:NULL];
+			struct stat st;
+			unsigned long long size = [[fsAttributes objectForKey:NSFileSystemSize] unsignedLongLongValue];
+			unsigned long long freeSize = [[fsAttributes objectForKey:NSFileSystemFreeSize] unsignedLongLongValue];
+			unsigned long long nodes = [[fsAttributes objectForKey:NSFileSystemNodes] unsignedLongLongValue];
+			BOOL statOK = (lstat([fn_s3(@"file.txt") UTF8String], &st) == 0);
+
+			check("fs-attributes-of-file-system",
+			      fsAttributes != nil && size > 0 && freeSize > 0 && freeSize <= size && nodes > 0 &&
+			      statOK &&
+			      [[fsAttributes objectForKey:NSFileSystemNumber] unsignedLongLongValue] ==
+				(unsigned long long)st.st_dev,
+			      [NSString stringWithFormat:@"size=%llu free=%llu nodes=%llu number=%llu st_dev=%llu",
+				size, freeSize, nodes,
+				[[fsAttributes objectForKey:NSFileSystemNumber] unsignedLongLongValue],
+				statOK ? (unsigned long long)st.st_dev : 0ULL]);
+
+			/* THE THREE KEYS THAT ARE A stat(2) FIELD BY APPLE'S OWN NAMING, plus the key that is
+			 * PUBLISHED AND NEVER FILLED: this substrate keeps no birth time, and an absent entry is
+			 * how a file system says it has no such attribute. */
+			check("fs-item-attributes-name-the-inode",
+			      itemAttributes != nil && statOK &&
+			      [[itemAttributes objectForKey:NSFileSystemFileNumber] unsignedLongLongValue] ==
+				(unsigned long long)st.st_ino &&
+			      [[itemAttributes objectForKey:NSFileReferenceCount] unsignedLongLongValue] ==
+				(unsigned long long)st.st_nlink &&
+			      [[itemAttributes objectForKey:NSFileDeviceIdentifier] unsignedLongLongValue] ==
+				(unsigned long long)st.st_dev &&
+			      [itemAttributes objectForKey:NSFileCreationDate] == nil,
+			      [NSString stringWithFormat:@"ino=%llu/%llu links=%llu/%llu dev=%llu/%llu creation=%@",
+				[[itemAttributes objectForKey:NSFileSystemFileNumber] unsignedLongLongValue],
+				statOK ? (unsigned long long)st.st_ino : 0ULL,
+				[[itemAttributes objectForKey:NSFileReferenceCount] unsignedLongLongValue],
+				statOK ? (unsigned long long)st.st_nlink : 0ULL,
+				[[itemAttributes objectForKey:NSFileDeviceIdentifier] unsignedLongLongValue],
+				statOK ? (unsigned long long)st.st_dev : 0ULL,
+				[itemAttributes objectForKey:NSFileCreationDate] == nil ? @"absent" : @"present"]);
+
+			/* AND THE TYPE VOCABULARY, WHICH WAS MISSING THREE WORDS: a SOCKET is one of them and the
+			 * probe can make one, while a FIFO is NOT - Apple publishes no value for a fifo, so the
+			 * honest answer to a question whose vocabulary has no word is the unknown word. Both are
+			 * asserted, because "we name sockets now" and "we still do not invent a fifo" are two
+			 * halves of the same rule. */
+			check("fs-a-socket-is-named-and-a-fifo-is-not",
+			      [[itemAttributes objectForKey:NSFileType] isEqualToString:NSFileTypeRegular] &&
+			      [[[fm attributesOfItemAtPath:fn_s3(@"sock") error:NULL] objectForKey:NSFileType]
+				isEqualToString:NSFileTypeSocket] &&
+			      [[[fm attributesOfItemAtPath:fn_s3(@"pipe") error:NULL] objectForKey:NSFileType]
+				isEqualToString:NSFileTypeUnknown],
+			      [NSString stringWithFormat:@"regular=%@ socket=%@ fifo=%@",
+				[itemAttributes objectForKey:NSFileType],
+				[[fm attributesOfItemAtPath:fn_s3(@"sock") error:NULL] objectForKey:NSFileType],
+				[[fm attributesOfItemAtPath:fn_s3(@"pipe") error:NULL] objectForKey:NSFileType]]);
+
+			/* THE RELATIONSHIP RULE IS A PATH RULE, and the case that catches a careless
+			 * implementation is the SIBLING WHOSE NAME ONLY PREFIXES the directory: a plain
+			 * `hasPrefix:` would call `/…/treebc` "inside" `/…/tree`. */
+			{
+				NSURLRelationship relationship = NSURLRelationshipOther;
+				NSURLRelationship same = NSURLRelationshipOther;
+				NSURLRelationship sibling = NSURLRelationshipContains;
+				NSURLRelationship missing = NSURLRelationshipOther;
+				BOOL nested = [fm getRelationship:&relationship
+					       ofDirectoryAtPath:fn_s3(@"tree")
+						 toItemAtPath:fn_s3(@"tree/sub/b.txt")
+						      error:NULL];
+				BOOL self = [fm getRelationship:&same
+					  ofDirectoryAtPath:fn_s3(@"tree")
+					    toItemAtPath:fn_s3(@"tree")
+						 error:NULL];
+				BOOL prefixed = [fm getRelationship:&sibling
+					      ofDirectoryAtPath:fn_s3(@"tree")
+						toItemAtPath:fn_s3(@"treebc")
+						     error:NULL];
+				NSError *missingError = nil;
+				BOOL absent = [fm getRelationship:&missing
+					    ofDirectoryAtPath:fn_s3(@"tree")
+					      toItemAtPath:fn_s3(@"not-here")
+						   error:&missingError];
+
+				check("fs-relationship-is-about-locations",
+				      nested && relationship == NSURLRelationshipContains &&
+				      self && same == NSURLRelationshipSame &&
+				      prefixed && sibling == NSURLRelationshipOther &&
+				      !absent && missingError != nil && [missingError code] == ENOENT,
+				      [NSString stringWithFormat:@"nested=%d(%d) self=%d(%d) prefixed=%d(%d) "
+					"missing=%d code=%ld", (int)nested, (int)relationship, (int)self, (int)same,
+					(int)prefixed, (int)sibling, (int)absent,
+					(long)(missingError != nil ? [missingError code] : -1)]);
+			}
+		}
 
 		/* AND THE FIXTURE GOES, INCLUDING THE DANGLING LINK - which the recursive remove reaches
 		 * because it lstat(2)s and unlinks rather than following anything. */

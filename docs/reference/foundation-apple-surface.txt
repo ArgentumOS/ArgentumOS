@@ -34,7 +34,7 @@
 #   enum       shipped  101   open   42   struck   17
 #   case       shipped  591   open  543   struck  168
 #   func       shipped   72   open   63   struck   54
-#   var        shipped  174   open  387   struck  353
+#   var        shipped  186   open  375   struck  353
 #   typealias  shipped   31   open   38   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -2454,8 +2454,8 @@ var	struck	NSFTPPropertyUserPasswordKey	NSURLHandle	Networking / Legacy / URL Ha
 var	struck	NSFailedAuthenticationException	NSConnection	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
 var	open	NSFileAppendOnly	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	open	NSFileBusy	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
-var	open	NSFileCreationDate	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
-var	open	NSFileDeviceIdentifier	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
+var	shipped	NSFileCreationDate	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
+var	shipped	NSFileDeviceIdentifier	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	open	NSFileExtensionHidden	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileGroupOwnerAccountID	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	open	NSFileGroupOwnerAccountName	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
@@ -2486,20 +2486,20 @@ var	open	NSFileProtectionCompleteUntilFirstUserAuthentication	NSFileManager	File
 var	open	NSFileProtectionCompleteWhenUserInactive		Reference / Constants	-	objc
 var	open	NSFileProtectionKey	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	open	NSFileProtectionNone	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Working with Protection Levels	-	objc
-var	open	NSFileReferenceCount	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
+var	shipped	NSFileReferenceCount	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileSize	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
-var	open	NSFileSystemFileNumber	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
-var	open	NSFileSystemFreeNodes	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
-var	open	NSFileSystemFreeSize	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
-var	open	NSFileSystemNodes	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
-var	open	NSFileSystemNumber	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
-var	open	NSFileSystemSize	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
+var	shipped	NSFileSystemFileNumber	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
+var	shipped	NSFileSystemFreeNodes	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
+var	shipped	NSFileSystemFreeSize	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
+var	shipped	NSFileSystemNodes	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
+var	shipped	NSFileSystemNumber	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
+var	shipped	NSFileSystemSize	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileType	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
-var	open	NSFileTypeBlockSpecial	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Type Attributes	-	objc
-var	open	NSFileTypeCharacterSpecial	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Type Attributes	-	objc
+var	shipped	NSFileTypeBlockSpecial	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Type Attributes	-	objc
+var	shipped	NSFileTypeCharacterSpecial	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Type Attributes	-	objc
 var	shipped	NSFileTypeDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Type Attributes	-	objc
 var	shipped	NSFileTypeRegular	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Type Attributes	-	objc
-var	open	NSFileTypeSocket	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Type Attributes	-	objc
+var	shipped	NSFileTypeSocket	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Type Attributes	-	objc
 var	shipped	NSFileTypeSymbolicLink	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Type Attributes	-	objc
 var	shipped	NSFileTypeUnknown	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Type Attributes	-	objc
 var	shipped	NSFoundationVersionNumber		Low-Level Utilities / Versions and API Availability / Current Version	-	objc

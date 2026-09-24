@@ -11771,6 +11771,54 @@ by item, which is what that leg now demonstrates.
 **GATES:** `make testimg` exit 0; `foundation_filemanager` **15/15**, `foundation_filemanagerdelegate`
 **18/18**, `foundation_directoryenumerator` **17/17**.
 
+**SLICE 3c LANDED (2026-09-24): THE FILE SYSTEM'S OWN NUMBERS, THE INODE KEYS, THREE TYPE WORDS, AND THE
+RELATIONSHIP RULE - twelve ledger rows shipped, `foundation_filemanager` 15 -> 19 checks.** What landed
+on `NSFileManager`:
+
+ * **`-attributesOfFileSystemForPath:error:`**, from statfs(2), with BOTH of the units Apple states
+   itself - because both are easy to get wrong by one: the SIZES ARE BYTES ("the size of the file system
+   in bytes"), so the block size multiplies the block counts, and the FILE-SYSTEM NUMBER is **`st_dev`**
+   ("the value corresponds to the value of st_dev, as returned by stat(2)"), NOT the statfs field a
+   reader reaches for first (`f_fsid`). The door "does not traverse a terminal symbolic link", so it
+   lstat(2)s first - which is also where the number comes from;
+ * **THREE item keys whose meaning Apple defines AS the stat(2) field**: `NSFileSystemFileNumber`
+   (st_ino), `NSFileReferenceCount` (st_nlink) and `NSFileDeviceIdentifier` (st_dev), filled beside the
+   six that were already there;
+ * **THREE TYPE WORDS THAT WERE MISSING**: `NSFileTypeBlockSpecial`, `NSFileTypeCharacterSpecial` and
+   `NSFileTypeSocket` - so a socket is NAMED instead of called unknown (the probe makes one with a bound
+   AF_UNIX socket) - while a **FIFO stays unknown**, because Apple publishes no value for one and the
+   honest answer to a question whose vocabulary has no word is the unknown word. **Both halves are
+   asserted**, since "we name sockets now" and "we still do not invent a fifo" are one rule;
+ * **`-getRelationship:ofDirectoryAtPath:toItemAtPath:error:`** - Contains / Same / Other, where "the
+   directory may contain the item, it may be the same as the item, or it may not have a direct
+   relationship to the item". **It is a PATH rule and not an inode rule**, and the case that catches a
+   careless implementation is the SIBLING WHOSE NAME MERELY PREFIXES the directory: a plain `hasPrefix:`
+   calls `…/treebc` "inside" `…/tree`, and the check asserts Other for exactly that pair. Both paths
+   must exist; Apple leaves that unsaid and this class's error channel is where it goes (ENOENT);
+ * **`NSFileCreationDate` IS PUBLISHED AND NEVER FILLED**, deliberately and with its ground in the
+   header: this substrate keeps no birth time at all (musl's `struct stat` has none), and an ABSENT
+   ENTRY is how a file system says it has no such attribute - which is what a caller sees here as it
+   would on any Apple volume that does not keep one. The probe asserts the absence, so the choice is
+   measured rather than assumed.
+
+**AND ONE HEADER FACT WORTH ITS OWN LINE, because it is a compile-shaped trap rather than a design one:**
+`NSURLRelationship` had to MOVE to before the `@interface` - a type a method NAMES in its signature has
+to be read before that method, and this header's other enums (search paths, domains) are declared after
+the class for the reason that section gives.
+
+**GATES:** `make testimg` exit 0; `foundation_filemanager` **19/19**, `foundation_filemanagerdelegate`
+**18/18**, `foundation_directoryenumerator` **17/17**.
+
+**STILL OPEN IN SLICE 3, AND NOW THE ONLY ROWS LEFT THERE:** `-displayNameAtPath:` and
+`-componentsToDisplayForPath:` (localization-shaped: their rule needs DECIDING, since this system has no
+localization database for a display name to come from); `-setAttributes:ofItemAtPath:error:`, which is a
+MUTATOR and needs its own dictionary semantics per key; and the Apple-flag keys with no substrate here
+(`NSFileImmutable`/`NSFileBusy`/`NSFileAppendOnly`, the HFS creator/type codes, `NSFileExtensionHidden`,
+`NSFileProtection*`, and `NSFileOwnerAccountName`/`NSFileGroupOwnerAccountName` - the two NAMES are
+answerable through the account domains and are the cheapest of that group). Each is a row with a reason
+rather than a silence.
+
+
 
 
 

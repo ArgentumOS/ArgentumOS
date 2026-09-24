@@ -36,6 +36,17 @@ The probe is `/System/Shared/tests/foundation_filemanager`, ONE unit, importing 
                           never have enforced, with both items still in place;
   * `fs-copy-of-a-symlink-is-a-link` — a symlink SOURCE is copied AS A LINK, and a DANGLING one is
                           the proof: a copy that followed the link would have nothing to read;
+  * `fs-attributes-of-file-system` — the file system's own numbers, with Apple's two traps honoured:
+                          the SIZES ARE BYTES and the NUMBER is `st_dev`;
+  * `fs-item-attributes-name-the-inode` — `NSFileSystemFileNumber`/`NSFileReferenceCount`/
+                          `NSFileDeviceIdentifier` against st_ino/st_nlink/st_dev, and the
+                          published-but-never-filled `NSFileCreationDate` ABSENT (this substrate keeps
+                          no birth time, and an absent entry is how a file system says so);
+  * `fs-a-socket-is-named-and-a-fifo-is-not` — the three missing type values landed, so a socket is
+                          named; a FIFO stays unknown because Apple publishes no value for one;
+  * `fs-relationship-is-about-locations` — Contains / Same / Other, including the sibling whose name
+                          merely PREFIXES the directory's (which a plain `hasPrefix:` would call
+                          contained), and ENOENT when a side is missing;
   * `fs-cleanup`         — the tree is gone, which is also the recursive remove's own exercise.
 
 IT WORKS IN A TREE OF ITS OWN MAKING under `/System/Temporary Files` — this system's temp directory,
@@ -51,7 +62,9 @@ PROBE = "/System/Shared/tests/foundation_filemanager"
 CHECKS = ("fs-default-manager", "fs-create-and-list", "fs-write-and-size", "fs-move-and-copy",
           "fs-error-channel", "fs-link-and-cwd", "fs-contents-at-path", "fs-contents-equal",
           "fs-symbolic-link-door", "fs-copy-refuses-an-existing-destination",
-          "fs-move-refuses-an-existing-destination", "fs-copy-of-a-symlink-is-a-link", "fs-cleanup",
+          "fs-move-refuses-an-existing-destination", "fs-copy-of-a-symlink-is-a-link",
+          "fs-attributes-of-file-system", "fs-item-attributes-name-the-inode",
+          "fs-a-socket-is-named-and-a-fifo-is-not", "fs-relationship-is-about-locations", "fs-cleanup",
           "temporary-directory-is-the-fsh-path", "temporary-directory-exists")
 
 

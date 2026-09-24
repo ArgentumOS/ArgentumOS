@@ -28,6 +28,7 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSNumber.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <sys/types.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -44,9 +45,24 @@ NSString *const NSFilePosixPermissions = @"NSFilePosixPermissions";
 NSString *const NSFileOwnerAccountID = @"NSFileOwnerAccountID";
 NSString *const NSFileGroupOwnerAccountID = @"NSFileGroupOwnerAccountID";
 
+/* W8 slice 3c: the item keys whose meaning IS a stat(2) field, and the five file-system keys. */
+NSString *const NSFileSystemFileNumber = @"NSFileSystemFileNumber";
+NSString *const NSFileReferenceCount = @"NSFileReferenceCount";
+NSString *const NSFileDeviceIdentifier = @"NSFileDeviceIdentifier";
+NSString *const NSFileSystemSize = @"NSFileSystemSize";
+NSString *const NSFileSystemFreeSize = @"NSFileSystemFreeSize";
+NSString *const NSFileSystemNodes = @"NSFileSystemNodes";
+NSString *const NSFileSystemFreeNodes = @"NSFileSystemFreeNodes";
+NSString *const NSFileSystemNumber = @"NSFileSystemNumber";
+/* DECLARED AND NEVER FILLED, deliberately: this substrate keeps no birth time (see the header). */
+NSString *const NSFileCreationDate = @"NSFileCreationDate";
+
 NSString *const NSFileTypeRegular = @"NSFileTypeRegular";
 NSString *const NSFileTypeDirectory = @"NSFileTypeDirectory";
 NSString *const NSFileTypeSymbolicLink = @"NSFileTypeSymbolicLink";
+NSString *const NSFileTypeBlockSpecial = @"NSFileTypeBlockSpecial";
+NSString *const NSFileTypeCharacterSpecial = @"NSFileTypeCharacterSpecial";
+NSString *const NSFileTypeSocket = @"NSFileTypeSocket";
 NSString *const NSFileTypeUnknown = @"NSFileTypeUnknown";
 
 static NSFileManager *fn_shared_file_manager = nil;
@@ -80,6 +96,19 @@ static NSString *fn_type_of(mode_t mode)
 	}
 	if (S_ISREG(mode)) {
 		return NSFileTypeRegular;
+	}
+	/* THE THREE THAT WERE BEING CALLED unknown (W8 slice 3c): Apple names a block device, a character
+	 * device and a socket, and this kernel's stat(2) distinguishes all three - so "unknown" was this
+	 * class not asking. A FIFO IS NOT ONE OF THEM and stays unknown, because Apple publishes no value
+	 * for a fifo: the honest answer to a question whose vocabulary has no word is the unknown word. */
+	if (S_ISBLK(mode)) {
+		return NSFileTypeBlockSpecial;
+	}
+	if (S_ISCHR(mode)) {
+		return NSFileTypeCharacterSpecial;
+	}
+	if (S_ISSOCK(mode)) {
+		return NSFileTypeSocket;
 	}
 	return NSFileTypeUnknown;
 }
@@ -835,7 +864,97 @@ typedef enum {
 		       forKey:NSFileOwnerAccountID];
 	[attributes setObject:[NSNumber numberWithUnsignedInt:(unsigned int)st.st_gid]
 		       forKey:NSFileGroupOwnerAccountID];
+	/* AND THE THREE THAT ARE A stat(2) FIELD BY DEFINITION (W8 slice 3c), which is what Apple's own
+	 * pages say of them one by one. */
+	[attributes setObject:[NSNumber numberWithUnsignedLongLong:(unsigned long long)st.st_ino]
+		       forKey:NSFileSystemFileNumber];
+	[attributes setObject:[NSNumber numberWithUnsignedLong:(unsigned long)st.st_nlink]
+		       forKey:NSFileReferenceCount];
+	[attributes setObject:[NSNumber numberWithUnsignedLongLong:(unsigned long long)st.st_dev]
+		       forKey:NSFileDeviceIdentifier];
 	return attributes;
+}
+
+/* ---- THE FILE SYSTEM'S OWN NUMBERS, AND WHERE AN ITEM STANDS (W8 slice 3c) -----------------------
+ *
+ * THE TWO UNITS APPLE STATES ITSELF, because both are easy to get wrong by one: the SIZES ARE BYTES
+ * ("the size of the file system in bytes") rather than blocks, and the NUMBER is `st_dev` ("the value
+ * corresponds to the value of st_dev, as returned by stat(2)") rather than the statfs(2) field a
+ * reader would reach for first - `f_fsid`. So the block size multiplies the block counts here, and the
+ * file-system number comes from the item's own stat, which is also why this door lstat(2)s first.
+ */
+- (nullable NSDictionary *)attributesOfFileSystemForPath:(NSString *)path
+						   error:(NSError ** _Nullable)error
+{
+	struct statfs fs;
+	struct stat st;
+	NSMutableDictionary *attributes;
+
+	if (path == nil) {
+		fn_failed(error, EINVAL);
+		return nil;
+	}
+	/* "This method does not traverse a terminal symbolic link" - so the lstat is the contract and not
+	 * just a way to get the device: a LINK's own attributes are what this door is about. */
+	if (lstat([path UTF8String], &st) != 0) {
+		fn_failed(error, errno);
+		return nil;
+	}
+	if (statfs([path UTF8String], &fs) != 0) {
+		fn_failed(error, errno);
+		return nil;
+	}
+	attributes = [NSMutableDictionary dictionary];
+	[attributes setObject:[NSNumber numberWithUnsignedLongLong:
+				(unsigned long long)fs.f_bsize * (unsigned long long)fs.f_blocks]
+		       forKey:NSFileSystemSize];
+	[attributes setObject:[NSNumber numberWithUnsignedLongLong:
+				(unsigned long long)fs.f_bsize * (unsigned long long)fs.f_bfree]
+		       forKey:NSFileSystemFreeSize];
+	[attributes setObject:[NSNumber numberWithUnsignedLongLong:(unsigned long long)fs.f_files]
+		       forKey:NSFileSystemNodes];
+	[attributes setObject:[NSNumber numberWithUnsignedLongLong:(unsigned long long)fs.f_ffree]
+		       forKey:NSFileSystemFreeNodes];
+	[attributes setObject:[NSNumber numberWithUnsignedLongLong:(unsigned long long)st.st_dev]
+		       forKey:NSFileSystemNumber];
+	return attributes;
+}
+
+/* WHERE AN ITEM STANDS RELATIVE TO A DIRECTORY: "the directory may contain the item, it may be the
+ * same as the item, or it may not have a direct relationship to the item." THE COMPARISON IS A PATH
+ * ONE - this door is about locations and not about inodes, which is why two paths meaning one file
+ * (a hard link, or a link and its target) can answer Other. Both paths must exist, because a
+ * relationship between a location and nothing is not a relationship; Apple leaves that case unsaid and
+ * this class's error channel is the honest place to put it. */
+- (BOOL)getRelationship:(NSURLRelationship *)outRelationship
+      ofDirectoryAtPath:(NSString *)directory
+	    toItemAtPath:(NSString *)otherPath
+		   error:(NSError ** _Nullable)error
+{
+	struct stat st;
+
+	if (directory == nil || otherPath == nil || outRelationship == NULL) {
+		return fn_failed(error, EINVAL);
+	}
+	if (lstat([directory UTF8String], &st) != 0 || lstat([otherPath UTF8String], &st) != 0) {
+		return fn_failed(error, errno);
+	}
+	if ([otherPath isEqualToString:directory]) {
+		*outRelationship = NSURLRelationshipSame;
+		return YES;
+	}
+	/* A PREFIX IS NOT CONTAINMENT UNLESS IT ENDS AT A SEPARATOR: `/a/bc` is not inside `/a/b`, and a
+	 * comparison that forgot the slash would say it is. */
+	if ([otherPath hasPrefix:directory]) {
+		NSString *rest = [otherPath substringFromIndex:[directory length]];
+
+		if ([rest hasPrefix:@"/"] || [directory hasSuffix:@"/"]) {
+			*outRelationship = NSURLRelationshipContains;
+			return YES;
+		}
+	}
+	*outRelationship = NSURLRelationshipOther;
+	return YES;
 }
 
 /* ---- THE FILE'S BYTES, THE EQUALITY RULE, AND THE OTHER KIND OF LINK (W8 slice 3) ---------------
