@@ -81,6 +81,25 @@ static void pixel(CGContextRef c, int x, int y, unsigned char *out)
 	memcpy(out, d + (size_t)y * CGBitmapContextGetBytesPerRow(c) + (size_t)x * 4, 4);
 }
 
+/* A 2x1 STRIP: BLACK TEXEL, WHITE TEXEL. Drawn into a wide rect it is the smallest thing that can
+ * tell a sampler from a sampler — with NEAREST every destination pixel is one of the two source
+ * values, and with BILINEAR the pixels between the texel centres take intermediate ones. Nothing
+ * else about it can vary, which is what makes the check below a check about SAMPLING. */
+static const unsigned char strip_data[2 * 4] = {
+	/* B, G, R, A */
+	0, 0, 0, 255,   255, 255, 255, 255
+};
+
+static CGImageRef make_strip(void)
+{
+	CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, strip_data, sizeof(strip_data),
+								 NULL);
+
+	return CGImageCreate(2, 1, 8, 32, 8, CGColorSpaceCreateDeviceRGB(),
+			     kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little, provider, NULL,
+			     false, kCGRenderingIntentDefault);
+}
+
 static CGImageRef make_image(size_t bytes)
 {
 	CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, img_data, bytes, NULL);
@@ -281,6 +300,70 @@ int main(void)
 		CGImageRelease(si);
 		CGDataProviderRelease(sp);
 		CGContextRelease(c);
+	}
+
+	/* --- THE INTERPOLATION QUALITY, WHICH IS A REAL CHOICE HERE AND NOT A STORED FLAG ---------- */
+	/* THE TWO SAMPLERS ARE DISTINGUISHED BY THE PIXELS BETWEEN TEXEL CENTRES, and the checks are a
+	 * PAIR: the same strip drawn twice, once under each quality, with the middle columns asserted to
+	 * be intermediate in one and a source value in the other. A check on one quality alone would
+	 * pass for a library that ignored the setting entirely — which is the shape of a silent no-op. */
+	{
+		CGImageRef strip = make_strip();
+
+		c = fresh();
+		check("a fresh context samples NEAREST: the quality starts at kCGInterpolationNone",
+		      CGContextGetInterpolationQuality(c) == kCGInterpolationNone);
+		CGContextDrawImage(c, CGRectMake(0.0, 0.0, 8.0, 8.0), strip);
+		pixel(c, 3, 4, p);
+		{
+			int near3 = p[2];
+
+			pixel(c, 4, 4, p);
+			check("...and NEAREST gives only the source values: columns 3 and 4 are 0 and 255 "
+			      "with nothing between them",
+			      (near3 == 0 || near3 == 255) && (p[2] == 0 || p[2] == 255));
+		}
+		CGContextRelease(c);
+
+		c = fresh();
+		CGContextSetInterpolationQuality(c, kCGInterpolationMedium);
+		check("kCGInterpolationMedium is accepted and reads back as itself",
+		      CGContextGetInterpolationQuality(c) == kCGInterpolationMedium);
+		CGContextDrawImage(c, CGRectMake(0.0, 0.0, 8.0, 8.0), strip);
+		pixel(c, 3, 4, p);
+		{
+			int bil3 = p[2];
+
+			pixel(c, 4, 4, p);
+			check_num("...and BILINEAR puts an intermediate value at column 3", (double)bil3, 96.0,
+				  12.0);
+			check_num("...and another at column 4", (double)p[2], 159.0, 12.0);
+			check("...which is strictly between the two source values, where NEAREST could not "
+			      "produce anything", bil3 > 0 && bil3 < 255);
+		}
+		/* THE ENDS ARE STILL THE ENDS: an interpolator that lightened or darkened the edge texels
+		 * would pass the two checks above. */
+		pixel(c, 0, 4, p);
+		check_num("...and the first column is still the black texel", (double)p[2], 0.0, 0.0);
+		pixel(c, 7, 4, p);
+		check_num("...and the last is still the white one", (double)p[2], 255.0, 0.0);
+		CGContextRelease(c);
+
+		/* AND THE TWO FILTERS THIS LIBRARY DOES NOT HAVE ARE REFUSED, LEAVING THE QUALITY ALONE. */
+		c = fresh();
+		CGContextSetInterpolationQuality(c, kCGInterpolationMedium);
+		CGContextSetInterpolationQuality(c, kCGInterpolationLow);
+		check("kCGInterpolationLow is REFUSED rather than mapped onto one of the two samplers",
+		      CGContextGetInterpolationQuality(c) == kCGInterpolationMedium);
+		CGContextSetInterpolationQuality(c, kCGInterpolationHigh);
+		check("...and so is kCGInterpolationHigh",
+		      CGContextGetInterpolationQuality(c) == kCGInterpolationMedium);
+		CGContextSetInterpolationQuality(c, kCGInterpolationDefault);
+		check("...while kCGInterpolationDefault is accepted",
+		      CGContextGetInterpolationQuality(c) == kCGInterpolationDefault);
+		CGContextRelease(c);
+
+		CGImageRelease(strip);
 	}
 
 	/* --- and a blend mode this cannot apply is refused rather than dropped ----------------- */

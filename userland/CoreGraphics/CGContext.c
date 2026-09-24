@@ -46,6 +46,7 @@
 #include <CoreGraphics/CGPattern_internal.h>
 #include <CoreGraphics/CGShading_internal.h>
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -85,6 +86,9 @@ typedef struct cg_state {
 	CGFloat dash[CG_DASH_STATE_MAX];
 	int dash_count;
 	CGFloat dash_phase;
+	/* HOW `CGContextDrawImage` SAMPLES WHEN IT SCALES. See CGContext.h for why `kCGInterpolationNone`
+	 * is 0 and why that ordering is a decision rather than a habit. */
+	CGInterpolationQuality interpolation;
 	/* THE PATTERN PAINT, AND IT IS THE ONE THING IN THIS STATE THAT IS NOT A VALUE. Everything above
 	 * copies by assignment, which is why it is all numbers and bounded arrays; a pattern is an object,
 	 * so the copy is not free and the rules are stated where they are needed: `CGContextSaveGState`
@@ -210,6 +214,10 @@ static void cg_state_init_full(cg_state *st, int width, int height)
 	st->alpha = 1.0;
 	st->blend = kCGBlendModeNormal;
 	st->antialias = 1;
+	/* STATED RATHER THAN LEFT TO THE calloc THAT HAPPENS TO ZERO IT, for the reason the pattern
+	 * fields are stated too: a default that depends on an enumerator's position is a default nobody
+	 * chose, and this one is the library's PRE-EXISTING behaviour held on purpose (see CGContext.h). */
+	st->interpolation = kCGInterpolationNone;
 	/* APPLE'S DOCUMENTED DEFAULTS for the line state: width 1, butt caps, miter joins,
 	 * miter limit 10. A zero default for the width would be a stroke that draws nothing
 	 * — the failure a caller who sets everything explicitly never sees and everyone else
@@ -1428,7 +1436,7 @@ static void cg_traps_for_path(CGContextRef c, CGPathRef path, int even_odd, cg_t
 	 * THE TOLERANCE IS IN DEVICE SPACE, because that is the space the pixels are in: a
 	 * user-space tolerance would draw a zoomed curve visibly faceted. The scale below is an
 	 * UPPER BOUND on the CTM's — four numbers added instead of a square root, which is why
-	 * `math.h` is not in this file — and an upper bound is the SAFE direction: it
+	 * `math.h` was not in this file until the INTERPOLATING SAMPLER below needed a floor — and an upper bound is the SAFE direction: it
 	 * subdivides more finely than the device grid can show, never less. */
 	{
 		double a = c->state.ctm.a, b = c->state.ctm.b, cc = c->state.ctm.c, d = c->state.ctm.d;
@@ -2174,6 +2182,42 @@ void CGContextSetPatternPhase(CGContextRef c, CGSize phase)
  * is RECORDED on the image rather than honoured, which is why the getter for it exists and why
  * this comment says which of the two it is.
  * ------------------------------------------------------------------------------------- */
+/* THE PREMULTIPLIED COLOUR OF ONE TEXEL, CLAMPED TO THE IMAGE — the sampler the interpolating path
+ * below needs, and the one place that says what "premultiplied" means for it. IT IS APPLIED BEFORE
+ * ANY WEIGHTING between texels, which is not tidiness: lerping STRAIGHT components drags the colour
+ * of a fully transparent texel into a visible one, and that halo is what image scalers are known
+ * for. A chart with no alpha channel is already "premultiplied by one", so nothing happens to it,
+ * and a chart whose alpha is STRAIGHT is multiplied once, here, exactly as the nearest path does. */
+static void cg_image_texel(const unsigned char *src, size_t row_bytes, size_t stored, size_t img_w,
+			   size_t img_h, const int channels[4], int straight, int sx, int sy,
+			   double out[4])
+{
+	const unsigned char *s;
+
+	if (sx < 0) {
+		sx = 0;
+	}
+	if (sy < 0) {
+		sy = 0;
+	}
+	if (sx >= (int)img_w) {
+		sx = (int)img_w - 1;
+	}
+	if (sy >= (int)img_h) {
+		sy = (int)img_h - 1;
+	}
+	s = src + (size_t)sy * row_bytes + (size_t)sx * stored;
+	out[3] = (channels[3] < 0 ? 255.0 : (double)s[channels[3]]) / 255.0;
+	out[0] = (double)s[channels[0]] / 255.0;
+	out[1] = (double)s[channels[1]] / 255.0;
+	out[2] = (double)s[channels[2]] / 255.0;
+	if (straight && channels[3] >= 0) {
+		out[0] = out[0] * out[3];
+		out[1] = out[1] * out[3];
+		out[2] = out[2] * out[3];
+	}
+}
+
 void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 {
 	CGAffineTransform inverse;
@@ -2289,6 +2333,49 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 			u = (p.x - rect.origin.x) / rect.size.width;
 			v = (p.y - rect.origin.y) / rect.size.height;
 			if (u < 0.0 || u >= 1.0 || v < 0.0 || v >= 1.0) {
+				continue;
+			}
+			/* THE INTERPOLATING PATH IS TAKEN FIRST, SO THAT THE NEAREST SAMPLER BELOW STAYS
+			 * BYTE-FOR-BYTE WHAT IT WAS: `kCGInterpolationNone` is the default and the C5 image
+			 * probe pins its scaling, so the branch that changes behaviour is the new one. */
+			if (c->state.interpolation != kCGInterpolationNone) {
+				double mix[4];
+				double c00[4];
+				double c10[4];
+				double c01[4];
+				double c11[4];
+				double fx, fy, tx, ty;
+				int k, x0, y0;
+
+				/* TEXEL CENTRES: the point u in [0,1) is scaled into texel space, where texel i's
+				 * CENTRE sits at i + 0.5 — so the sample coordinate is u*width - 0.5 and the four
+				 * neighbours are the floor and the floor plus one. */
+				fx = u * (double)img_w - 0.5;
+				fy = (1.0 - v) * (double)img_h - 0.5;
+				x0 = (int)floor(fx);
+				y0 = (int)floor(fy);
+				tx = fx - (double)x0;
+				ty = fy - (double)y0;
+				cg_image_texel(src, row_bytes, (size_t)stored, img_w, img_h, channels, straight,
+					       x0, y0, c00);
+				cg_image_texel(src, row_bytes, (size_t)stored, img_w, img_h, channels, straight,
+					       x0 + 1, y0, c10);
+				cg_image_texel(src, row_bytes, (size_t)stored, img_w, img_h, channels, straight,
+					       x0, y0 + 1, c01);
+				cg_image_texel(src, row_bytes, (size_t)stored, img_w, img_h, channels, straight,
+					       x0 + 1, y0 + 1, c11);
+				for (k = 0; k < 4; k++) {
+					mix[k] = c00[k] * (1.0 - tx) * (1.0 - ty)
+					       + c10[k] * tx * (1.0 - ty)
+					       + c01[k] * (1.0 - tx) * ty
+					       + c11[k] * tx * ty;
+				}
+				d = c->data + (size_t)y * (size_t)c->stride + (size_t)x * 4u;
+				sa = mix[3] * alpha;
+				d[0] = (unsigned char)(mix[0] * 255.0 * sa + (double)d[0] * (1.0 - sa));
+				d[1] = (unsigned char)(mix[1] * 255.0 * sa + (double)d[1] * (1.0 - sa));
+				d[2] = (unsigned char)(mix[2] * 255.0 * sa + (double)d[2] * (1.0 - sa));
+				d[3] = (unsigned char)((double)d[3] * (1.0 - sa) + 255.0 * sa);
 				continue;
 			}
 			/* THE FLIP LIVES IN THIS ONE LINE: v = 1 is the TOP of the rect, and row 0 of the
@@ -2494,4 +2581,47 @@ void CGContextDrawShading(CGContextRef c, CGShadingRef shading)
 	}
 	cg_paint_clip(c, src, cg_op(c->state.blend));
 	pixman_image_unref(src);
+}
+
+/* ------------------------------------------------------------------------- */
+/* the interpolation quality                                                 */
+/* ------------------------------------------------------------------------- */
+
+/* HERE RATHER THAN WITH THE OTHER COLOUR SETTERS, because the one thing it controls is
+ * `CGContextDrawImage`, which is in this file's tail. THE TWO LEVELS THIS LIBRARY CANNOT HONOUR ARE
+ * REFUSED BY NAME AND NOT SILENTLY MAPPED ONTO THE TWO IT HAS: `kCGInterpolationLow` and
+ * `kCGInterpolationHigh` ask for a third and a fourth filter, this file has exactly two samplers
+ * (nearest and bilinear), and accepting them would give three different names one behaviour - the
+ * same collapse `kCGBlendModePlusDarker` and `kCGPatternTilingConstantSpacing` are refused for. THE
+ * STATE IS LEFT AS IT WAS on a refusal, which is the rule the dash pattern and the pattern setter
+ * already follow. */
+void CGContextSetInterpolationQuality(CGContextRef c, CGInterpolationQuality quality)
+{
+	if (c == NULL) {
+		return;
+	}
+	switch (quality) {
+	case kCGInterpolationNone:
+	case kCGInterpolationDefault:
+	case kCGInterpolationMedium:
+		c->state.interpolation = quality;
+		return;
+	case kCGInterpolationLow:
+	case kCGInterpolationHigh:
+	default:
+		fprintf(stderr, "CG-REFUSE: this library samples images NEAREST and BILINEAR only, so "
+				"kCGInterpolationLow and kCGInterpolationHigh - a third and a fourth filter "
+				"- are refused rather than mapped onto one of the two, and the quality is "
+				"left as it was\n");
+		return;
+	}
+}
+
+/* `Default` READS BACK AS ITSELF rather than as the sampler it selects, because what the property
+ * holds is WHAT THE CALLER ASKED FOR - the same arrangement NSGraphicsContext uses for the options
+ * CoreGraphics has no getter for. A NULL context answers `None`, which is also the state a context
+ * starts in. */
+CGInterpolationQuality CGContextGetInterpolationQuality(CGContextRef c)
+{
+	return c == NULL ? kCGInterpolationNone : c->state.interpolation;
 }

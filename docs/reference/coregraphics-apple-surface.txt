@@ -318,11 +318,11 @@ case	open	kCGImagePixelFormatRGB101010	-	Reference / Enumerations / Enumeration 
 case	open	kCGImagePixelFormatRGB555	-	Reference / Enumerations / Enumeration Cases	-	objc
 case	open	kCGImagePixelFormatRGB565	-	Reference / Enumerations / Enumeration Cases	-	objc
 case	open	kCGImagePixelFormatRGBCIF10	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	kCGInterpolationDefault	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
-case	open	kCGInterpolationHigh	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
-case	open	kCGInterpolationLow	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
-case	open	kCGInterpolationMedium	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
-case	open	kCGInterpolationNone	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
+case	shipped	kCGInterpolationDefault	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
+case	shipped	kCGInterpolationHigh	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
+case	shipped	kCGInterpolationLow	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
+case	shipped	kCGInterpolationMedium	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
+case	shipped	kCGInterpolationNone	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
 case	open	kCGKeyboardEventAutorepeat	-	Services / Constants / Constants	-	objc
 case	open	kCGKeyboardEventKeyboardType	-	Services / Constants / Constants	-	objc
 case	open	kCGKeyboardEventKeycode	-	Services / Constants / Constants	-	objc
@@ -519,7 +519,7 @@ enum	shipped	CGImageAlphaInfo	-	Opaque Types / Examining an image	-	objc
 enum	shipped	CGImageByteOrderInfo	-	Reference / Enumerations	-	objc
 enum	open	CGImageComponentInfo	-	Enumerations	-	objc
 enum	open	CGImagePixelFormatInfo	-	Reference / Enumerations	-	objc
-enum	open	CGInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
+enum	shipped	CGInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
 enum	shipped	CGLineCap	-	Opaque Types / Constants	-	objc
 enum	shipped	CGLineJoin	-	Opaque Types / Constants	-	objc
 enum	open	CGMomentumScrollPhase	-	Reference / Enumerations	-	objc
@@ -706,7 +706,7 @@ func	shipped	CGContextGetCTM	-	Opaque Types / Working with the Current Transform
 func	shipped	CGContextGetClipBoundingBox	-	Opaque Types / Working with the Current Clipping Path	-	objc
 func	open	CGContextGetContentToneMappingInfo	-	Functions	-	objc
 func	open	CGContextGetEDRTargetHeadroom	-	Reference / Functions	-	objc
-func	open	CGContextGetInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
+func	shipped	CGContextGetInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	shipped	CGContextGetPathBoundingBox	-	Opaque Types / Examining the Current Graphics Path	-	objc
 func	shipped	CGContextGetPathCurrentPoint	-	Opaque Types / Examining the Current Graphics Path	-	objc
 func	open	CGContextGetTextMatrix	-	Opaque Types / Drawing Text	-	objc
@@ -745,7 +745,7 @@ func	open	CGContextSetFont	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetFontSize	-	Opaque Types / Drawing Text	-	objc
 func	shipped	CGContextSetGrayFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	shipped	CGContextSetGrayStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
-func	open	CGContextSetInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
+func	shipped	CGContextSetInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	shipped	CGContextSetLineCap	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	shipped	CGContextSetLineDash	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	shipped	CGContextSetLineJoin	-	Opaque Types / Setting Path Drawing Options	-	objc

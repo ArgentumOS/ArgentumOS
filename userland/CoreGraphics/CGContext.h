@@ -169,6 +169,31 @@ void CGContextSetRGBFillColor(CGContextRef context, CGFloat red, CGFloat green, 
 void CGContextSetAlpha(CGContextRef context, CGFloat alpha);
 void CGContextSetBlendMode(CGContextRef context, CGBlendMode mode);
 
+/*
+ * THE INTERPOLATION QUALITY, WHICH IS HOW `CGContextDrawImage` SAMPLES WHEN IT SCALES. The names
+ * are Apple's, from the C0 ledger; **THE VALUES ARE OURS, AND `None` IS 0 ON PURPOSE**: Apple
+ * publishes case names and no numbers (the same rule Foundation's enums follow), and a zeroed
+ * graphics state should mean the behaviour this library had before the knob existed — NEAREST —
+ * rather than a side effect of a different ordering. THE DEFAULT IS THEREFORE STATED RATHER THAN
+ * INHERITED: a fresh context samples nearest, and a caller asks for anything else.
+ *
+ * TWO OF THE FIVE ARE REFUSED BY NAME AT THE SETTER, and that is a limitation named rather than
+ * hidden: this library has TWO samplers — nearest and bilinear — so `Default` and `Medium` are
+ * bilinear, while `Low` and `High` ask for a third and a fourth filter that do not exist here.
+ * Accepting them would give three names one behaviour, which is the silent collapse this tree
+ * refuses elsewhere (`kCGBlendModePlusDarker`, `kCGPatternTilingConstantSpacing`).
+ */
+typedef enum {
+	kCGInterpolationNone = 0,
+	kCGInterpolationDefault,
+	kCGInterpolationLow,
+	kCGInterpolationMedium,
+	kCGInterpolationHigh
+} CGInterpolationQuality;
+
+void CGContextSetInterpolationQuality(CGContextRef context, CGInterpolationQuality quality);
+CGInterpolationQuality CGContextGetInterpolationQuality(CGContextRef context);
+
 /* Antialiasing. `SetAllowsAntialiasing` is the context's capability and
  * `SetShouldAntialias` is the drawing state; a fill is antialiased only when BOTH say
  * so, which is the reading this tree gives the two names. The mechanism is real
