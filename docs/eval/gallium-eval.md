@@ -98,8 +98,15 @@ path first, and only after the Python question is decided.**
 
 ## 7. Open decisions
 
-- **Q-GaL1** — Python: admit it, or grant Mesa a permanent cross-seed
-  exception? (Precedent-setting; blocks everything else.)
+- ~~**Q-GaL1** — Python: admit it, or grant Mesa a permanent cross-seed
+  exception?~~ **ANSWERED (user, 2026-09-24): PYTHON IS ADMITTED** —
+  self-hosting-packages.md §3.6 and §D. **Mesa's §3 blocker is
+  therefore GONE**, and the cross-seed arm was not taken (it is
+  precedent-setting too; see §3.6). WHAT THIS DOES NOT CHANGE: §4's
+  hardware path (the DRM-equivalent kernel half, a winsys, NIR→ISA)
+  and **Q-GaL2/Q-GaL3** are untouched, and the FIRST step is no longer
+  Mesa but **CPython's own admission** (§3.6 owes its pin, its
+  musl+clang recipe and its on-FNX bootstrap).
 - **Q-GaL2** — If software GL is adopted, does GLX live in Xfb
   (server-side, DRI2/DRI3) or does the toolkit bypass GL entirely for
   now and only *clients* get GL?

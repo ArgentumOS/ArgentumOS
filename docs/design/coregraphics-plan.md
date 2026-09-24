@@ -389,8 +389,12 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   `NSAffineTransform`/`CGAffineTransform`, and the colour and image pairs. THIS
   IS THE SEAM, NOT THE WIDGETS: **the drawing classes of §3 row 1 are
   `cocoa-parity-plan.md`'s to build on top**, which is what §3 says when it draws
-  the CG layer's boundary — and C8's substrate is C2–C6, with C6 (gradients,
-  shadings, patterns) still open and C7 deliberately not required.
+  the CG layer's boundary — and C8's substrate is C2–C6, **ALL SIX OF WHICH ARE
+  NOW SHIPPED (C6 landed 2026-09-23, §11), so the substrate this bullet was
+  waiting on is complete**; C7 stays deliberately not required, and is itself
+  partly unblocked — PDFium's Python prerequisite is admitted
+  (self-hosting-packages.md §3.6), with CPython's own admission owed before
+  PDFium can be adopted (self-hosting-packages.md §6.4).
   *The plan names the COUNT of those conversions but not the members; the list
   above is reconstructed from §3 and should be pinned when C8 starts rather than
   inherited from this bullet.*

@@ -254,6 +254,18 @@ the plan's G3 gate and SH-0..SH-5.
   present; toybox vi is the in-guest editor baseline; the future
   first-party Editor app is the long-term home).
 - **dash** — the shell for configure/build scripts (already FNX's).
+- **CPython — ADMITTED (user, 2026-09-24, decision Q-GaL1)** — the
+  scripting runtime for build GENERATORS and the generator scripts they
+  run (meson, GN, and the Python-driven generators Mesa and PDFium both
+  need; PDFium in particular drives GN through Python). **PSF-2.0** —
+  permissive, and the roof is about GPL/LGPL, so the licence never was
+  the objection. **PIN, musl+clang BUILD RECIPE AND THE ON-FNX
+  BOOTSTRAP STEP ARE OWED** (§3.6): this entry records the ADMISSION,
+  not a built artefact, and CPython is the first §D member that must be
+  self-hosted BEFORE a dependent package can be adopted (§6.4) rather
+  than after. It REPLACES the roster's former "python is out" rule —
+  a POLICY ADMISSION, not one of the permissive-family substitutions
+  the rest of this section is made of.
 - **tar/cpio/file transfer** — toybox; sources arrive on the build
   volume as tarballs — **no network at runtime** is a requirement.
 - **clang-doc** — the UIKit documentation pipeline
@@ -270,7 +282,10 @@ the plan's G3 gate and SH-0..SH-5.
   needed on-FNX — the in-OS documentation volume is Markdown read
   directly, and the site is a build artifact. Recorded per the standing
   policy; rejected alternatives: pandoc/source-highlight/highlight
-  (GPL), pygments (needs Python).
+  (GPL), pygments — **whose stated reason here was "needs Python", now
+  RETIRED by §3.6**; pygments is BSD-2, so the lowdown pick now stands
+  on its own merits rather than on that ground, and this note is left
+  so the next reader does not re-read the objection as live.
 - **darkhttpd** (ISC) — **host-side only**: serves the built site for
   local preview and for the link check (`make site-preview`, `make
   site-check`) at the production base path (docs/design/website-plan.md
@@ -299,6 +314,32 @@ the plan's G3 gate and SH-0..SH-5.
    host round-trip. (Muon remains an option only for non-CMake,
    Meson-based packages — none currently needed.)
 5. Fonts (Liberation) are GUI content — not self-hosting-critical.
+6. ~~Scripting~~ **POLICY DECISION — CPython IS ADMITTED (user,
+   2026-09-24)**. The roster's "python is out" rule is RETIRED.
+   **Q-GaL1** ("Python: admit it, or grant Mesa a permanent cross-seed
+   exception?" — docs/eval/gallium-eval.md §7) is **ANSWERED: admit
+   it.** TWO packages had opened the same fork, which is why it was
+   decided once rather than per package: **Mesa** (gallium-eval §3, the
+   analysis that says the blocker "is the build system, not the code")
+   and **PDFium** (docs/design/pdfium-plan.md §2, which recorded GN but
+   never recorded GN's own Python prerequisite — the plan that argued
+   PDFium was adoptable was missing the line that decided it).
+   THE THREE OUTS were the ones gallium-eval enumerated: (a) admit
+   Python, (b) a permanent cross-seed exception per package, (c) port
+   the generators (unrealistic). **(b) WAS REJECTED FOR THE REASON
+   gallium-eval gives for rejecting it — it "breaks the rebuild
+   doctrine AND sets a precedent for every future meson/Python-based
+   package"** — so it is not the smaller choice, merely a repeated one.
+   WHAT IS NOW TRUE, RECORDED RATHER THAN LEFT TO BE DISCOVERED:
+   the `dash`/`awk`-only scripting discipline ENDS; **CPython is a §D
+   member and must itself be pinned, musl+clang-built and self-hosted**
+   before any package needing it can be *adopted for the system*
+   (§6.4) — so CPython's own admission line and its on-FNX bootstrap
+   measurement are OWED, and are the first step of any of these
+   adoptions; and every package parked on this ground REOPENS —
+   **Mesa/Gallium3D**, **Skia** (coregraphics-plan §5's table row gives
+   its verdict as "build fails the no-Python doctrine", which is now
+   void), **PlutoVG** (Meson/Python), and **meson** as a §D generator.
 
 Ordering note: gaps 1–2 (awk/patch) are resolved by the picks above;
 they were the first real blockers — they gate in-guest configure of the
@@ -335,10 +376,14 @@ a snapshot:
 2. **New build-time requirements**: any tool the package needs to
    *rebuild itself from source on-FNX* — generators (yacc/lex/gperf/
    ragel), configure machinery (autotools/meson/cmake), scripting
-   (python is out — note the replacement), etc. If the tool isn't
-   already in §C/§D, that is a **manifest update, not an exception**:
-   find the permissive member of the family (bison→byacc,
-   make→bmake, pkg-config→pkgconf, gawk→onetrueawk) or record the gap.
+   (**CPython IS ADMITTED — §3.6 and §D; this line read "python is out
+   — note the replacement" until 2026-09-24, decision Q-GaL1**), etc.
+   If the tool isn't already in §C/§D, that is a **manifest update, not
+   an exception**: find the permissive member of the family
+   (bison→byacc, make→bmake, pkg-config→pkgconf, gawk→onetrueawk) or
+   record the gap. THE SCRIPTING RULE IS THE ONE PLACE THAT WAS NOT
+   FOLLOWED, and §3.6 is where that is recorded: CPython was ADMITTED
+   by policy rather than replaced by a permissive member.
 3. **Format/content notes**: new fonts, data files, or formats the
    package ships that the self-hosted rebuild must also reproduce.
 4. The check is symmetric: a package is only *adopted for the system*

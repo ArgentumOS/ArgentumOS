@@ -25,7 +25,22 @@ sizes accordingly.
   in the roster (the LLVM executor). **GN (BSD-3-Clause)** is *new*
   — a manifest update at this decision (row added to
   self-hosting-packages.md §C/D): the generator for the PDFium build
-  only, not a system tool. GN itself builds with clang++.
+  only, not a system tool.
+- **AND THE GENERATOR'S OWN PREREQUISITE WAS MISSING FROM THIS PLAN
+  UNTIL 2026-09-24, WHICH MADE ITS ADMISSION ARGUMENT INCOMPLETE.**
+  This bullet said "GN itself builds with clang++" and stopped there;
+  GN's build bootstraps through **Python** (`build/gen.py`) and a
+  PDFium build runs **further Python generator scripts**, so the
+  blocker was never GN — it was SCRIPTING, which the roster forbade
+  outright. **That is now ANSWERED: CPython is admitted**
+  (self-hosting-packages.md §3.6/§D, decision Q-GaL1, user
+  2026-09-24), so PDFium's on-FNX rebuild path is no longer forbidden
+  by policy. **IT IS NOT THEREFORE COMPLETE**: CPython must itself be
+  pinned, musl+clang-built and self-hosted first (§6.4 makes a package
+  adoptable only when its on-FNX rebuild path is complete), so **S0
+  inherits CPython's admission as a PREREQUISITE rather than assuming
+  it** — and the bundled-dep audit and the many-thousand-file host
+  build are unchanged by this decision.
 - Bundled-dep overlap is an audit item at S0, not an assumption:
   freetype/libjpeg/zlib exist in the tree but PDFium vendors its own
   — the plan does **not** promise dedup on day one; PDFium builds
