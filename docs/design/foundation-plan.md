@@ -12006,6 +12006,43 @@ whole tree survives a round trip).
 `NSCoding` conformance yet, and it is the same format question reached through the coder family rather
 than through a plist - so it is its own increment with its own round trip.
 
+**SLICE 4c LANDED (2026-09-24), AND SLICE 4 IS COMPLETE: `NSFileWrapper` CODED - the same tree through a
+second transport, with the one difference between the two argued rather than accidental.**
+`foundation_filewrapper` 16 -> **18 checks**, green on the first gate run.
+
+**IT CONFORMS TO `NSSecureCoding`, AND THE POLICY WAS ALREADY DECIDED ONCE IN THIS TREE.** Apple lists
+this class under **both** `NSCoding` and `NSSecureCoding`, and `NSCoding.h` carries the standing ruling
+from W11: the DECLARATION ships and `+supportsSecureCoding` answers, while **the unarchiver's enforcement
+is a named coder work item** (`-decodeObjectOfClass:forKey:`) and not a class's business - "a class that
+conforms on Apple's platform and does not conform here is a DIFFERENCE". So this slice follows that
+ruling instead of re-deciding it, which is what a settled policy is for.
+
+**THE FIELDS GO IN ONE BY ONE**, under dotted keys the way this library's other coding classes spell
+theirs (`NS.measurementValue` is the precedent), **with the kind first because it decides which of the
+rest mean anything** - and `-initWithCoder:` therefore GATES ON THE CLASS, not just on the types: an
+unknown kind, a children container that is not a dictionary, a child that is not an `NSFileWrapper`, a
+link destination that is not a string and a contents that is not `NSData` all answer nil. That gating is
+exactly what the secure half is about, and it is answered here even though the unarchiver does not ask
+yet.
+
+**AND THE ONE PLACE THE TWO TRANSPORTS DIFFER IS NOW A RECORDED DECISION RATHER THAN AN ACCIDENT:** a
+regular file whose bytes cannot be read makes `-serializedRepresentation` answer **nil** (Apple's own
+sentence about the lazy form) while the coder **writes the nil it was given** and reads back a wrapper
+with no contents. One is Apple's documented nil and the other is what `NSCoding` means; the probe
+asserts both, side by side, in two checks that name the difference.
+
+**AND ONE BUILD FACT WORTH ITS LINE:** `NSCoding.h` only FORWARD-DECLARES `NSCoder`, so a `.m` that
+implements the pair must import `NSCoder.h` as well - without it, `-decodeIntegerForKey:` resolves to a
+method returning `id` and the assignment to `NSInteger` is an incompatible-pointer error. (The compiler
+says so; the fix is the import, not a cast.)
+
+**SLICE 4 IS COMPLETE.** `NSFileWrapper` ships as: a tree of three kinds, read from disk (with the
+immediate/lazy choice), written back (atomically, with name updating, and with the unchanged files
+hardlinked), serialized to and from a plist of our own schema, and coded. Its regressions:
+`foundation_filemanager` **25/25**, `foundation_filemanagerdelegate` **18/18**,
+`foundation_directoryenumerator` **17/17**.
+
+
 
 
 

@@ -443,6 +443,58 @@ int main(void)
 	}
 
 	{
+		/* ---- W8 SLICE 4c: THE SAME TREE THROUGH THE CODER --------------------------------------- */
+		NSFileWrapper *codedTree = [[NSFileWrapper alloc] initWithPath:source];
+		id archive = [NSKeyedArchiver archivedDataWithRootObject:codedTree];
+		id decoded = archive != nil ? [NSKeyedUnarchiver unarchiveObjectWithData:archive] : nil;
+		NSDictionary *codedChildren = [decoded fileWrappers];
+
+		/* THREE THINGS AT ONCE, AND THEY BELONG TOGETHER: Apple lists this class under NSCoding AND
+		 * NSSecureCoding (so the declaration answers and the class method says YES), and the tree
+		 * survives the coder exactly as it survives the plist. */
+		check("fw-coding-round-trips-the-tree",
+		      [NSFileWrapper supportsSecureCoding] &&
+		      [codedTree conformsToProtocol:@protocol(NSSecureCoding)] &&
+		      decoded != nil && [decoded isDirectory] && [codedChildren count] == 4 &&
+		      [[(NSFileWrapper *)[codedChildren objectForKey:@"hello.txt"] regularFileContents]
+			isEqualToData:[NSData dataWithBytes:"changed!" length:8]] &&
+		      [[codedChildren objectForKey:@"nested"] isDirectory] &&
+		      [[codedChildren objectForKey:@"link-rel"] isSymbolicLink] &&
+		      [[[codedChildren objectForKey:@"link-rel"] symbolicLinkDestination]
+			isEqualToString:@"hello.txt"] &&
+		      [[[codedChildren objectForKey:@"dangling"] symbolicLinkDestination]
+			isEqualToString:fn_path(@"nowhere-at-all")],
+		      [NSString stringWithFormat:@"secure=%d decoded=%d children=%lu hello=%@", 
+			(int)[NSFileWrapper supportsSecureCoding], (int)(decoded != nil),
+			(unsigned long)(codedChildren != nil ? [codedChildren count] : 0),
+			[[codedChildren objectForKey:@"hello.txt"] regularFileContents] != nil ? @"data" : @"nil"]);
+	}
+
+	{
+		/* AND THE ONE POINT WHERE THE TWO TRANSPORTS DIFFER, ARGUED RATHER THAN ACCIDENTAL: a regular
+		 * file whose bytes cannot be read makes -serializedRepresentation answer NIL (Apple's own
+		 * sentence about the lazy form) while the coder WRITES THE NIL IT WAS GIVEN. The fixture is made
+		 * here rather than borrowed, because a check that depends on another leg's file is a check that
+		 * depends on the order of two legs - a lesson this probe has already paid for once. */
+		NSFileWrapper *lazy;
+		id archive;
+		id decoded;
+
+		fn_make_file(fn_path(@"gone.txt"), "soon");
+		lazy = [[NSFileWrapper alloc] initWithPath:fn_path(@"gone.txt")];
+		[manager removeItemAtPath:fn_path(@"gone.txt") error:NULL];
+		archive = [NSKeyedArchiver archivedDataWithRootObject:lazy];
+		decoded = archive != nil ? [NSKeyedUnarchiver unarchiveObjectWithData:archive] : nil;
+		check("fw-coding-writes-what-it-was-given",
+		      archive != nil && decoded != nil && [decoded isRegularFile] &&
+		      [decoded regularFileContents] == nil && [lazy serializedRepresentation] == nil,
+		      [NSString stringWithFormat:@"archive=%lu bytes decoded=%d contents=%s plist=%s",
+			(unsigned long)(archive != nil ? [archive length] : 0), (int)(decoded != nil),
+			[decoded regularFileContents] == nil ? "nil" : "data",
+			[lazy serializedRepresentation] == nil ? "nil" : "data"]);
+	}
+
+	{
 		NSError *cleanupError = nil;
 		BOOL removed = [manager removeItemAtPath:@PROBE_ROOT error:&cleanupError];
 

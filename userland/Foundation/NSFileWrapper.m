@@ -23,6 +23,7 @@
 #import <Foundation/NSData.h>
 #import <Foundation/NSDate.h>
 #import <Foundation/NSDictionary.h>
+#import <Foundation/NSCoder.h>
 #import <Foundation/NSError.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSString.h>
@@ -919,6 +920,115 @@ static NSString *const FNWrapperTypeSymbolicLink = @"SymbolicLink";
 		return nil;
 	}
 	return [[NSFileWrapper alloc] initWithSerializedTree:tree];
+}
+
+/* ---- CODING (W8 slice 4c), WHICH IS THE SAME TREE THROUGH A DIFFERENT TRANSPORT ------------------
+ *
+ * APPLE LISTS THIS CLASS UNDER BOTH NSCoding AND NSSecureCoding, and this tree's policy for the secure
+ * half is stated where it belongs (NSCoding.h): `+supportsSecureCoding` ANSWERS, and the unarchiver does
+ * not yet ask - the coder's own work item rather than this class's business.
+ *
+ * THE FIELDS ARE ENCODED ONE BY ONE rather than as one nested blob, because that is what a coder is for:
+ * the archive shows the state and a reader of it can see the state. The keys are dotted the way this
+ * library's other coding classes spell theirs, and THE KIND GOES FIRST because it decides which of the
+ * rest mean anything.
+ *
+ * AND THE TWO TRANSPORTS DIFFER ON ONE POINT, DELIBERATELY: a regular file whose bytes cannot be read
+ * makes -serializedRepresentation answer NIL (Apple's own sentence about the lazy form), while the coder
+ * WRITES THE NIL IT WAS GIVEN and reads back a wrapper with no contents. Neither is a guess - one is
+ * Apple's documented nil and the other is what NSCoding means - and the probe asserts both, so the
+ * difference is a recorded decision rather than an accident.
+ */
++ (BOOL)supportsSecureCoding
+{
+	return YES;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	[coder encodeInteger:(NSInteger)_kind forKey:@"NS.fileWrapperKind"];
+	[coder encodeObject:_preferredFilename forKey:@"NS.fileWrapperPreferredFilename"];
+	[coder encodeObject:_filename forKey:@"NS.fileWrapperFilename"];
+	[coder encodeObject:_attributes forKey:@"NS.fileWrapperAttributes"];
+	if (_kind == FNWrapperDirectory) {
+		[coder encodeObject:_fileWrappers forKey:@"NS.fileWrapperChildren"];
+	} else if (_kind == FNWrapperSymbolicLink) {
+		[coder encodeObject:_linkDestination forKey:@"NS.fileWrapperLinkDestination"];
+	} else {
+		[coder encodeObject:[self regularFileContents] forKey:@"NS.fileWrapperContents"];
+	}
+}
+
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	NSInteger kind;
+
+	if (coder == nil) {
+		[self release];
+		return nil;
+	}
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	kind = [coder decodeIntegerForKey:@"NS.fileWrapperKind"];
+	/* THE KIND IS CHECKED BEFORE IT IS TRUSTED, and that check IS the class gate the secure half is
+	 * about: an archive naming a kind this class does not have is refused rather than guessed at. */
+	if (kind < 0 || kind > FNWrapperSymbolicLink) {
+		[self release];
+		return nil;
+	}
+	_kind = (NSUInteger)kind;
+	_preferredFilename = [[coder decodeObjectForKey:@"NS.fileWrapperPreferredFilename"] copy];
+	_filename = [[coder decodeObjectForKey:@"NS.fileWrapperFilename"] copy];
+	_attributes = [[coder decodeObjectForKey:@"NS.fileWrapperAttributes"] copy];
+	if (_kind == FNWrapperDirectory) {
+		id children = [coder decodeObjectForKey:@"NS.fileWrapperChildren"];
+
+		if (![children isKindOfClass:[NSDictionary class]]) {
+			[self release];
+			return nil;
+		}
+		_fileWrappers = [[NSMutableDictionary alloc] init];
+		{
+			NSArray *keys = [children allKeys];
+			NSUInteger i;
+
+			for (i = 0; i < [keys count]; i++) {
+				NSString *key = [keys objectAtIndex:i];
+				NSFileWrapper *child = [children objectForKey:key];
+
+				/* THE CHILD MUST BE ONE OF OURS, which is the same gate one level down. */
+				if (![child isKindOfClass:[NSFileWrapper class]]) {
+					[self release];
+					return nil;
+				}
+				if ([child preferredFilename] == nil) {
+					[child setPreferredFilename:key];
+				}
+				[child fnAdopt:self];
+				[_fileWrappers setObject:child forKey:key];
+			}
+		}
+	} else if (_kind == FNWrapperSymbolicLink) {
+		id destination = [coder decodeObjectForKey:@"NS.fileWrapperLinkDestination"];
+
+		if (![destination isKindOfClass:[NSString class]]) {
+			[self release];
+			return nil;
+		}
+		_linkDestination = [destination copy];
+	} else {
+		id bytes = [coder decodeObjectForKey:@"NS.fileWrapperContents"];
+
+		/* NIL IS ALLOWED HERE ON PURPOSE: see the transport note above. */
+		if (bytes != nil && ![bytes isKindOfClass:[NSData class]]) {
+			[self release];
+			return nil;
+		}
+		_contents = [bytes copy];
+	}
+	return self;
 }
 
 @end

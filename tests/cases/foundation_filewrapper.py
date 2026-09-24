@@ -39,6 +39,11 @@ The probe is `/System/Shared/tests/foundation_filewrapper`, ONE unit, importing 
                                  dictionary, a dictionary with no Type and nil are all refused;
   * `fw-serialization-is-nil-when-the-bytes-are-gone` — the failure Apple's own page names: a LAZY
                                  wrapper whose file was deleted serializes to nil;
+  * `fw-coding-round-trips-the-tree` — the class is listed under NSCoding AND NSSecureCoding, and the
+                                 whole tree survives the coder exactly as it survives the plist;
+  * `fw-coding-writes-what-it-was-given` — and the ONE point where the two transports differ, argued
+                                 rather than accidental: a wrapper whose bytes are gone serializes to
+                                 nil (Apple's own sentence) while the coder writes the nil it was given;
   * `probe-tree-removed`         — the tree is gone.
 
 IT WORKS IN A TREE OF ITS OWN MAKING under `/System/Temporary Files` and removes it at the end AND at
@@ -59,7 +64,8 @@ CHECKS = ("fw-wraps-a-file", "fw-wraps-a-directory-tree", "fw-wraps-a-link",
           "fw-unchanged-contents-are-linked-and-changed-ones-copied",
           "fw-serialization-is-a-property-list", "fw-serialization-round-trips-the-tree",
           "fw-serialization-refuses-what-is-not-ours",
-          "fw-serialization-is-nil-when-the-bytes-are-gone", "probe-tree-removed")
+          "fw-serialization-is-nil-when-the-bytes-are-gone",
+          "fw-coding-round-trips-the-tree", "fw-coding-writes-what-it-was-given", "probe-tree-removed")
 
 
 class Case(BaseCase):

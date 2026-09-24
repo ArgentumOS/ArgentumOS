@@ -50,6 +50,10 @@
 #define FOUNDATION_NSFILEWRAPPER_H
 
 #import <Foundation/NSObject.h>
+/* NSCoding's pair, because Apple's own page lists this class under BOTH NSCoding and NSSecureCoding -
+ * and this tree's policy for the secure half is stated in NSCoding.h: the declaration ships and the
+ * unarchiver does not yet ask, which is the coder's work item and not this class's. */
+#import <Foundation/NSCoding.h>
 
 @class NSData;
 @class NSDictionary;
@@ -76,7 +80,7 @@ typedef enum {
 	NSFileWrapperWritingWithNameUpdating = 1 << 1
 } NSFileWrapperWritingOptions;
 
-@interface NSFileWrapper : NSObject
+@interface NSFileWrapper : NSObject <NSSecureCoding>
 {
 	NSUInteger _kind;			/* regular, directory or symbolic link */
 	NSMutableDictionary *_fileWrappers;	/* children, keyed by UNIQUE filename (directories only) */
