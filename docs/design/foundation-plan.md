@@ -11223,8 +11223,11 @@ the end, and a block still in flight when the probe looks is indistinguishable f
    ending with `running == pending == operations` (27/27/27) before, **0 of 8** after. That probe has **no such
    cast** (the pattern appears nowhere else in `userland/tests`), so its instrument reads the thing it names. What
    is superseded is only §58.2i's sentence that the case stayed red.
- * **`foundation_operation`'s intermittent 29-of-50 leak remains OPEN and unexplained** (§58.2e/§58.2f): a
-   different probe, counted under a lock, and unasserted by this project's own rule about flaky checks.
+ * **`foundation_operation`'s intermittent 29-of-50 leak is CURED AND NOW ASSERTED (§58.2q).** The sentence this
+   bullet carried - "remains OPEN and unexplained" - was written from §58.2e/§58.2f's reading and did not carry
+   §58.2i's forward. The leak and §58.2h's parking are the SAME defect seen at the SAME counters: `_operations`
+   left non-empty because a worker never got back through its cleanup, which §58.2i's futex fix measured gone
+   (2 of 8 runs before, 0 of 8 after). What was genuinely owed was the ASSERTION, and §58.2q lands it.
  * **§58.2g's lesson needs its other half stated, because this section is its mirror image.** "Any per-event WRITE
    in this path bridges the loss" was true of that instrument; what this section adds is the converse - **a probe
    whose waits do not wait MANUFACTURES losses**, and a print costing one syscall's worth of delay is enough to
@@ -11241,6 +11244,45 @@ was not being spent at all.
 The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
+
+### §58.2q — THE `foundation_operation` LEAK, CLOSED AS AN ASSERTION: 50 BURSTS, 0 NON-EMPTY (2026-09-24)
+
+**THE ONE ITEM §58.2p LEFT OPEN IS CLOSED, AND WHAT WAS OWED WAS THE FIXTURE RATHER THAN A FIX.** §58.2p's "what
+survives" list kept the threaded-producer leak as "OPEN and unexplained" - but §58.2i had ALREADY measured it
+cured, and the two are the same defect read at the same counters: §58.2f's `29 operation(s) still in the queue`
+and §58.2h's `running=27 pending=27 operations=27` are both `_operations` left non-empty because a worker never
+got back through `-fnRunOnQueue`'s cleanup. So this section changed **nothing in the kernel and nothing in the
+library**: it lands the assertion §58.2p could not, because one burst per run could not support one.
+
+**WHY ONE BURST PER RUN COULD NOT BE ASSERTED, STATED AS A NUMBER.** At the pre-fix rate (~2 bursts in 8) **eight
+clean runs happen ~10% of the time BY LUCK** - so `0 of 8` was evidence and not proof, §58.2f's own rule (an
+intermittent defect must not be asserted in either direction) forbade both directions, and the count stayed a
+DIAG. The leg therefore performs **K = 10 bursts of 50 operations in ONE run**, counts the bursts whose bookkeeping
+never QUIESCES, and prints one line after the measurement (§58.2g: a per-event write is what hid this race twice):
+
+```
+FOUNDATION-OPERATION-DIAG threaded producer: 10 bursts of 50, ran=500, leaked bursts=0 (mask=0x0)
+```
+
+**MEASURED, FIVE CONSECUTIVE RUNS: 50 bursts, 2500 operations, `leaked bursts=0` with `mask=0x0` every time**,
+case green 14/14 each run (the probe went from 13 checks to 14). Under the pre-fix rate, fifty clean bursts happen
+with probability ~1e-6 - which is what turns the same reading from suggestive into assertable.
+
+**THE WAIT IS A QUIESCENCE WAIT, AND THAT IS WHAT MAKES THE CHECK HONEST RATHER THAN MERELY GREEN.** `ran == 50`
+means the last block's BODY has run, and its worker is still inside the cleanup AT THAT INSTANT - so §58.2h's
+single IMMEDIATE read cannot distinguish a healthy queue (one cleanup away from empty) from a parked one. The leg
+polls `running/pending/operations` until all three are 0, bounded at 2s, and counts a burst as LEAKED only if they
+never get there; a healthy queue arrives in microseconds. **The negative evidence is §58.2h's own reading through
+this same accessor - `running=27 pending=27 operations=27` under the leak** - so a burst that failed to drain WOULD
+be counted, and the check is not vacuous by construction. (The old `scheduler state:` DIAG is superseded by this
+one line: the counters it printed are exactly what the quiescence wait reads.)
+
+**LANDED:** `userland/tests/foundation_operation.m` (the repeated burst, the quiescence wait, the new check
+`and-every-burst-leaves-the-queue-empty`) and `tests/cases/foundation_operation.py` (the name added to `CHECKS`).
+**What remains open in §58.2 is now nothing** - with §58.2p's retraction standing, the section's ledger is: one
+cure kept on its own footing (§58.2i), one cure carrying its own behaviour test (§58.1c's `wait4` WNOHANG), one
+asserted closure (this section), and one rule about instruments that reads in both directions (§58.2g mirrored by
+§58.2p).
 
 ## §59 — THE WEBSOCKET SLICE, DESIGNED BEFORE IT IS BUILT (2026-09-22)
 

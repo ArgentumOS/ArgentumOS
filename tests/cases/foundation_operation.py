@@ -22,7 +22,12 @@ The probe is `/System/Shared/tests/foundation_operation`, ONE unit, importing on
   * `queue-resume-runs`             — and runs it on resume;
   * `queue-cancel-all`              — SUSPENDED FIRST, so cancellation is deterministic: nothing had
                                       begun, so "none of them ran" is a fact rather than a race;
-  * `queue-current-inside-operation` — `+currentQueue` answers the queue the operation is running in.
+  * `queue-current-inside-operation` — `+currentQueue` answers the queue the operation is running in;
+  * `every-block-added-from-a-worker-thread-runs` — a caller that is NOT the main thread still gets every
+                                      accepted operation run (§58.2e: the stream task's own shape);
+  * `and-every-burst-leaves-the-queue-empty` — and the scheduler drains to 0/0/0 after EVERY one of ten
+                                      bursts — §58.2h's leak, measured as an ASSERTION over ten bursts
+                                      instead of read once per run (§58.2i cured it; §58.2p left it owed).
 
 NAMED ABSENT, in the headers: `-completionBlock`/`-addOperationWithBlock:` (no blocks in this
 library's public headers), priority and quality-of-service ordering, asynchronous operations that own
@@ -39,6 +44,7 @@ CHECKS = ("operation-subclass-runs", "operation-base-main-raises", "operation-de
           "queue-runs-and-drains", "queue-serial-order", "queue-suspend-holds-work",
           "queue-resume-runs", "queue-cancel-all", "queue-current-inside-operation", "add-operation-with-block-runs-the-block",
           "every-block-added-from-a-worker-thread-runs",
+          "and-every-burst-leaves-the-queue-empty",
           "every-detached-thread-enters-its-selector", "and-every-detached-thread-finishes")
 
 

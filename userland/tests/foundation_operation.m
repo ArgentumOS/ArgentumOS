@@ -14,7 +14,10 @@
  *   queue-serial-order          with a limit of ONE, the START ORDER is the ADDITION ORDER, which is
  *                               what makes the limit observable at all;
  *   queue-cancel-all            suspending first makes cancellation DETERMINISTIC: nothing has begun,
- *                               so "none of them ran" is a fact rather than a race.
+ *                               so "none of them ran" is a fact rather than a race;
+ *   and-every-burst-leaves-the-queue-empty
+ *                               the THREADED producer's burst is repeated ten times, and the scheduler
+ *                               must drain to 0/0/0 after every one (§58.2q — the assertion §58.2p owed).
  *
  * AND ONE CHECK IS ABOUT A REFUSAL THAT MUST BE LOUD: `-main` is a hook, and the base class RAISES,
  * because a subclass that forgot to override it would otherwise succeed at doing nothing.
@@ -123,8 +126,11 @@
 @end
 
 /* THE PRODUCER THAT IS NOT THE MAIN THREAD (foundation-plan.md §58.2e). It exists because every other check in
- * this probe adds operations from main(), while the stream task adds them from its own WORKER thread - and its
- * TLS leg was measured to lose HALF its deliveries inside `[queue addOperationWithBlock:]` and nothing else. */
+ * this probe adds operations from main(), while the stream task adds them from its own WORKER thread - a SHAPE
+ * nothing else in this tree covered. The reading that first made this leg eligible ("its TLS leg loses HALF its
+ * deliveries inside `[queue addOperationWithBlock:]`, §58.2d) was WITHDRAWN by §58.2p - that probe had stopped
+ * waiting - so the JUSTIFICATION here is the shape and not that number: the leg is what then FOUND the
+ * scheduler's own leak, once per burst, and §58.2q measures that leak as an assertion. */
 @interface ProducerThread : NSObject
 {
 @public
@@ -350,58 +356,89 @@ int main(void)
 		      @"-addOperationWithBlock: runs its block, and the queue's own wait sees it");
 	}
 
-	/* ---- A PRODUCER THAT IS NOT THE MAIN THREAD (§58.2e) -------------------------------------------
+	/* ---- A PRODUCER THAT IS NOT THE MAIN THREAD (§58.2e), REPEATED (§58.2p's OPEN ITEM, CLOSED) -----
 	 *
 	 * THE ELIGIBILITY OF THIS LEG IS THE POINT, NOT THE QUEUE ITSELF: every check above adds operations from
 	 * main(), and the stream task adds them from its own WORKER thread - the shape nothing in this tree
-	 * exercised. Its TLS leg was MEASURED (§58.2d) to lose half its deliveries inside
-	 * `[queue addOperationWithBlock:]`: 14 hops handed to the queue, 7 ever ran. So the question is exactly:
-	 * does a queue run every operation when the caller is not the main thread?
+	 * exercised. So the question is exactly: does a queue run every operation when the caller is not the main
+	 * thread, AND DOES IT THEN GO QUIET?
 	 *
 	 * THE COUNT IS THE INSTRUMENT (the blocks run on N threads, so line order would prove nothing), the wait is
 	 * BOUNDED (a queue that loses an operation never drains, and this probe must report rather than hang), and
-	 * the counter is under a lock so a torn increment cannot fake a pass. */
+	 * the counter is under a lock so a torn increment cannot fake a pass.
+	 *
+	 * AND ONE BURST IS REPEATED, WHICH IS WHAT MAKES THE SECOND CHECK POSSIBLE. The defect this leg found was
+	 * INTERMITTENT: `29 operation(s) still in the queue` on its first run, 0 on the next three (§58.2f), and a
+	 * worker given a raw write between its steps never leaked at all (61 of 61). §58.2h then read the
+	 * SCHEDULER's own three numbers after a burst, in memory, once - and caught it twice in eight runs as
+	 * `running=27 pending=27 operations=27`: workers parked in the completion path, ~half of them. §58.2i's
+	 * `FUTEX_WAIT` fix (ARM BEFORE YOU LOOK) measured that state gone, 2 of 8 runs before and 0 of 8 after.
+	 *
+	 * BUT EIGHT CLEAN RUNS ARE NOT AN ASSERTION, and that is the whole reason for the loop: at the pre-fix rate
+	 * (~2 bursts in 8) a clean eight happens ~10% of the time BY LUCK, so the DIAG stayed a DIAG and §58.2p
+	 * could only leave the item open. One probe run now performs K bursts and counts the bursts whose
+	 * bookkeeping never QUIESCES - one number with a stated chance of being a lucky one rather than eight
+	 * readings of another.
+	 *
+	 * THE WAIT IS FOR QUIESCENCE, NOT A SLEEP, AND THAT IS THE INSTRUMENT'S CORRECTNESS: `ran == wanted` means
+	 * the last block's BODY has run, and its worker is still inside `-fnRunOnQueue`'s cleanup at that instant -
+	 * so an IMMEDIATE read of a perfectly healthy queue is expected to show `running=1 ops=1`, and §58.2h's
+	 * single immediate read could not tell that from a leak. Here a burst counts as leaked only if the three
+	 * numbers never reach 0/0/0 within 2s, which a healthy queue does in microseconds. */
 	{
-		NSOperationQueue *queue = [[NSOperationQueue alloc] init];
-		ProducerThread *producer = [[ProducerThread alloc] init];
-		NSLock *lock = [[NSLock alloc] init];
-		int ran = 0;
-		int waited = 0;
+		int bursts = 10;
 		int wanted = 50;
+		int produced = 0;
+		int leaked = 0;
+		int which = 0;			/* bit i set: burst i never quiesced */
+		int b;
 
-		producer->queue = queue;
-		producer->lock = lock;
-		producer->ran = &ran;
-		producer->count = wanted;
-		[queue setName:@"probe-threaded-queue"];
-		[NSThread detachNewThreadSelector:@selector(fnProduce) toTarget:producer withObject:nil];
-		while (ran < wanted && waited < 3000) {		/* 30s at 10ms: bounded, never a hang */
-			[NSThread sleepForTimeInterval:0.01];
-			waited++;
-		}
-		printf("FOUNDATION-OPERATION-DIAG threaded producer: ran=%d of %d, queue count=%lu, waited=%d\n",
-		       ran, wanted, (unsigned long)[queue operationCount], waited);
-		check("every-block-added-from-a-worker-thread-runs", ran == wanted,
-		      [NSString stringWithFormat:@"ran=%d of %d - a queue that ACCEPTS an operation must RUN it",
-		       ran, wanted]);
-		/* AND THE QUEUE'S OWN COUNT IS PRINTED, NOT ASSERTED (MEASURED 2026-09-22, §58.2f): this same leg
-		 * reported `29 operation(s) still in the queue` on its FIRST run and passed on the next three, and a
-		 * worker instrumented with a raw write between its steps never leaked at all (61 of 61). That is an
-		 * INTERMITTENT race in the worker's completion path, and an intermittent defect must not be asserted in
-		 * either direction: asserting the leak would go red on a run that happened to win the race, asserting
-		 * its absence would go red on a run that happened to lose, and a flaky check in the committed suite is a
-		 * defect of its own. The count stays in the DIAG line above, for whoever fixes the race - and the
-		 * RELIABLE property (every accepted operation runs) IS asserted, because that one held in every run. */
-		/* AND §58.2h: WHAT THE SCHEDULER BELIEVES, read in memory and printed ONCE - the §58.2g lesson applied
-		 * to the queue. `_running != 0` after every block has run says a worker is stuck in its cleanup;
-		 * `_running == 0` with a non-empty `_operations` says the removal is what missed. */
-		{
+		for (b = 0; b < bursts; b++) {
+			NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+			ProducerThread *producer = [[ProducerThread alloc] init];
+			NSLock *lock = [[NSLock alloc] init];
 			NSUInteger running = 0, pending = 0, ops = 0;
+			int ran = 0;
+			int waited = 0;
+			int quiet = 0;
+			int r;
 
-			[queue fnSchedulerCountsRunning:&running pending:&pending operations:&ops];
-			printf("FOUNDATION-OPERATION-DIAG scheduler state: running=%lu pending=%lu operations=%lu\n",
-			       (unsigned long)running, (unsigned long)pending, (unsigned long)ops);
+			producer->queue = queue;
+			producer->lock = lock;
+			producer->ran = &ran;
+			producer->count = wanted;
+			[queue setName:@"probe-threaded-queue"];
+			[NSThread detachNewThreadSelector:@selector(fnProduce) toTarget:producer withObject:nil];
+			while (ran < wanted && waited < 3000) {	/* 30s at 10ms: bounded, never a hang */
+				[NSThread sleepForTimeInterval:0.01];
+				waited++;
+			}
+			produced += ran;
+			for (r = 0; r < 200; r++) {		/* 2s: a healthy queue is quiet on the first or second read */
+				[queue fnSchedulerCountsRunning:&running pending:&pending operations:&ops];
+				if (running == 0 && pending == 0 && ops == 0) {
+					quiet = 1;
+					break;
+				}
+				[NSThread sleepForTimeInterval:0.01];
+			}
+			if (!quiet) {
+				leaked++;
+				which |= 1 << b;
+			}
 		}
+		/* ONE WRITE, AFTER THE MEASUREMENT - §58.2g's lesson is about writes DURING it. */
+		printf("FOUNDATION-OPERATION-DIAG threaded producer: %d bursts of %d, ran=%d, leaked bursts=%d (mask=0x%x)\n",
+		       bursts, wanted, produced, leaked, which);
+		check("every-block-added-from-a-worker-thread-runs", produced == wanted * bursts,
+		      [NSString stringWithFormat:@"ran=%d of %d - a queue that ACCEPTS an operation must RUN it",
+		       produced, wanted * bursts]);
+		/* THE ASSERTION §58.2p LEFT OWED, MADE POSSIBLE BY THE REPETITION RATHER THAN BY HOPE. The claim is
+		 * absence, so it is stated as one: every burst drains to `running=0 pending=0 operations=0`, and the
+		 * mask in the failure detail names the bursts that did not. */
+		check("and-every-burst-leaves-the-queue-empty", leaked == 0,
+		      [NSString stringWithFormat:@"%d of %d bursts left the scheduler non-empty (mask=0x%x) - a "
+			"worker parked in the completion path", leaked, bursts, which]);
 	}
 
 	/* ---- DO DETACHED THREADS RELIABLY ENTER THEIR SELECTOR? (§58.2g) -------------------------------
