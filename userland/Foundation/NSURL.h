@@ -154,6 +154,36 @@ typedef NSString *NSURLFileResourceType;
  * no type argument), so the shape is Cocoa's door with this tree's container spelling. */
 - (nullable NSDictionary *)resourceValuesForKeys:(NSArray *)keys
 					   error:(NSError ** _Nullable)error;
+/* ---- SETTING RESOURCE VALUES, WHERE A REFUSAL IS A NO-OP AND NOT AN ERROR (W8 slice 6b) ---------
+ *
+ * APPLE'S OWN SENTENCE FOR BOTH SETTERS, AND IT DECIDES THE DESIGN: "Attempts to set a read-only
+ * resource property or to set a resource property that is not supported by the resource are IGNORED and
+ * are NOT CONSIDERED ERRORS." So the honest refusal here is silence - the getter names what it does not
+ * have, and the setter does nothing about it - and this library does not decorate Apple's contract with
+ * an error of its own invention.
+ *
+ * WHAT THIS SUBSTRATE CAN WRITE IS ONE KEY TODAY: NSURLContentModificationDateKey, through
+ * NSFileManager's -setAttributes:ofItemAtPath:error: - a DELEGATION rather than new machinery, and the
+ * same fact seen from the URL side. Everything else this header declares is read-only here, and the
+ * keys Apple documents as settable on its own systems whose substrate this system does not have (the
+ * file security object, the quarantine properties, the tags, the hidden-extension bit, the immutables)
+ * are simply not answered, which is the same silence by a shorter route.
+ *
+ * AND THE ONE ERROR SHAPE THAT IS APPLE'S OWN: if a write reaches the file system and FAILS, the
+ * dictionary form answers NO with an error whose userInfo carries NSURLKeysOfUnsetValuesKey, whose value
+ * is "an array of [URLResourceKey] objects" - the keys that were not set. Apple's page for the method
+ * says "the resource values"; its page for the KEY says the keys, and the key's own page is the specific
+ * one, so the keys are what this library reports.
+ *
+ * AND A VALUE THE KEY CANNOT HOLD IS A CALLER ERROR: a value that is not an NSDate for the modification
+ * date fails the call rather than being written or silently ignored - the one case where this door
+ * answers NO for a reason of its own, named at the check that writes it.
+ */
+- (BOOL)setResourceValue:(nullable id)value
+		  forKey:(NSURLResourceKey)key
+		   error:(NSError ** _Nullable)error;
+- (BOOL)setResourceValues:(NSDictionary *)keyedValues error:(NSError ** _Nullable)error;
+
 - (BOOL)checkResourceIsReachableAndReturnError:(NSError ** _Nullable)error;
 - (void)removeCachedResourceValueForKey:(NSURLResourceKey)key;
 - (void)removeAllCachedResourceValues;
@@ -184,6 +214,8 @@ extern NSURLResourceKey const NSURLFileIdentifierKey;
 extern NSURLResourceKey const NSURLFileResourceIdentifierKey;
 extern NSURLResourceKey const NSURLFileResourceTypeKey;
 extern NSURLResourceKey const NSURLParentDirectoryURLKey;
+/* THE ERROR'S OWN KEY: the one Apple publishes for the setter-set's failure report. */
+extern NSURLResourceKey const NSURLKeysOfUnsetValuesKey;
 
 extern NSURLFileResourceType const NSURLFileResourceTypeRegular;
 extern NSURLFileResourceType const NSURLFileResourceTypeDirectory;

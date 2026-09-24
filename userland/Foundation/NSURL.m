@@ -31,6 +31,7 @@
 #include <unistd.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDate.h>
+#import <Foundation/NSFileManager.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSError.h>
 #import <Foundation/NSNull.h>
@@ -536,6 +537,7 @@ NSURLResourceKey const NSURLFileIdentifierKey = @"NSURLFileIdentifierKey";
 NSURLResourceKey const NSURLFileResourceIdentifierKey = @"NSURLFileResourceIdentifierKey";
 NSURLResourceKey const NSURLFileResourceTypeKey = @"NSURLFileResourceTypeKey";
 NSURLResourceKey const NSURLParentDirectoryURLKey = @"NSURLParentDirectoryURLKey";
+NSURLResourceKey const NSURLKeysOfUnsetValuesKey = @"NSURLKeysOfUnsetValuesKey";
 
 NSURLFileResourceType const NSURLFileResourceTypeRegular = @"NSURLFileResourceTypeRegular";
 NSURLFileResourceType const NSURLFileResourceTypeDirectory = @"NSURLFileResourceTypeDirectory";
@@ -767,6 +769,125 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 		}
 	}
 	return [answer autorelease];
+}
+
+/* ---- SETTING THEM (W8 slice 6b) ----------------------------------------------------------------
+ *
+ * APPLE'S RULE, AND IT IS THE OPPOSITE OF THE GETTER'S: "Attempts to set a read-only resource property
+ * or to set a resource property that is not supported by the resource are IGNORED and are not considered
+ * errors." So `-setResourceValue:forKey:error:` below answers YES for a read-only key, for an unknown
+ * key and for a URL that is not a file URL - writing nothing in all three cases - and does NOT invent an
+ * error Apple does not have. The getter names what it does not have; the setter is silent about it,
+ * which is the contract on each page.
+ *
+ * THE WRITE ITSELF IS A DELEGATION: NSFileManager owns the file system's write path (it is the class
+ * that has -setAttributes:ofItemAtPath:error:), so the URL side hands it the same fact under the same
+ * NAME_FM key. One implementation, two doors, which is the point of a resource value.
+ */
+- (BOOL)fnWriteResourceValue:(nullable id)value
+		      forKey:(NSURLResourceKey)key
+		       error:(NSError ** _Nullable)error
+{
+	/* NOT ONE OF THIS SUBSTRATE'S WRITABLE KEYS - see the header: ignored, not an error. */
+	if (![self isFileURL] || ![key isEqual:NSURLContentModificationDateKey]) {
+		return YES;
+	}
+	/* A VALUE THE KEY CANNOT HOLD IS A CALLER ERROR, the one case this door refuses for its own
+	 * reason: the key's type is published (a date), so a string is a mistake and not a no-op. */
+	if (value != nil && ![value isKindOfClass:[NSDate class]]) {
+		if (error != NULL) {
+			*error = fn_url_error(EINVAL, [NSString stringWithFormat:
+				@"%@ takes a date, not %@", key, [value class]]);
+		}
+		return NO;
+	}
+	if (value == nil) {
+		/* NOTHING TO WRITE MEANS NOTHING HAPPENS, rather than a date being invented for the
+		 * caller: this door sets a value, and nil is the absence of one. */
+		return YES;
+	}
+	{
+		NSDictionary *attributes = [NSDictionary dictionaryWithObject:value
+								      forKey:NSFileModificationDate];
+
+		if (![[NSFileManager defaultManager] setAttributes:attributes
+						      ofItemAtPath:[self path]
+							     error:error]) {
+			return NO;
+		}
+	}
+	/* AND THE CACHE FORGETS, RATHER THAN GUESSING: the file system may store what it likes (a
+	 * coarser timestamp, a refused change), so the object drops what it knew about this key and the
+	 * next read measures again. */
+	[_cachedResourceValues removeObjectForKey:key];
+	return YES;
+}
+
+- (BOOL)setResourceValue:(nullable id)value forKey:(NSURLResourceKey)key error:(NSError ** _Nullable)error
+{
+	if (error != NULL) {
+		*error = nil;
+	}
+	return [self fnWriteResourceValue:value forKey:key error:error];
+}
+
+- (BOOL)setResourceValues:(NSDictionary *)keyedValues error:(NSError ** _Nullable)error
+{
+	NSArray *keys = [keyedValues allKeys];
+	NSMutableArray *unset = [[NSMutableArray alloc] init];
+	NSUInteger i;
+	BOOL failed = NO;
+
+	if (error != NULL) {
+		*error = nil;
+	}
+	for (i = 0; i < [keys count]; i++) {
+		NSURLResourceKey key = [keys objectAtIndex:i];
+		NSError *one = nil;
+
+		if (![self fnWriteResourceValue:[keyedValues objectForKey:key] forKey:key error:&one]) {
+			/* A KEY WHOSE WRITE REACHED THE FILE SYSTEM AND FAILED IS REPORTED, which is the
+			 * error shape Apple publishes: the keys not set, under the key's own name. */
+			[unset addObject:key];
+			failed = YES;
+			if (error != NULL && *error == nil) {
+				*error = one;
+			}
+		}
+	}
+	if (failed) {
+		NSDictionary *userInfo;
+
+		/* APPLE'S OWN KEY PAGE SAYS THE VALUE IS "an array of URLResourceKey objects", and the key's
+		 * page is the specific one, so the KEYS are what is reported. When the write's own error is
+		 * already there, the array JOINS its userInfo rather than replacing it. */
+		if (*error != NULL && [*error userInfo] != nil) {
+			NSMutableDictionary *merged = [[NSMutableDictionary alloc]
+							initWithDictionary:[*error userInfo]];
+
+			[merged setObject:unset forKey:NSURLKeysOfUnsetValuesKey];
+			{
+				NSError *joined = [NSError errorWithDomain:[*error domain]
+								      code:[*error code]
+								  userInfo:merged];
+
+				if (error != NULL) {
+					*error = joined;
+				}
+			}
+			[merged release];
+		} else if (error != NULL) {
+			userInfo = [NSDictionary dictionaryWithObject:unset
+							       forKey:NSURLKeysOfUnsetValuesKey];
+			*error = [NSError errorWithDomain:@"NSPOSIXErrorDomain"
+						     code:EIO
+						 userInfo:userInfo];
+		}
+		[unset release];
+		return NO;
+	}
+	[unset release];
+	return YES;
 }
 
 - (BOOL)checkResourceIsReachableAndReturnError:(NSError ** _Nullable)error

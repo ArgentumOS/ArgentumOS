@@ -39,6 +39,17 @@
  *                                     nil takes the entry back out;
  *   rv-two-doors-agree                the URL's modification date and NSFileManager's attribute are the
  *                                     same fact through two doors;
+ *   rv-a-set-writes-and-the-cache-forgets  THE WRITE SIDE: a real write to the disk, read back through
+ *                                     the URL - and a set FORGETS what the cache knew, which is why the
+ *                                     read that follows the write is fresh rather than stale;
+ *   rv-a-set-is-visible-to-the-other-door  the same fact through NSFileManager, which is the delegation;
+ *   rv-a-set-of-a-read-only-key-is-a-no-op / -an-unknown-key / -on-a-non-file-url  Apple's sentence for
+ *                                     BOTH setters: such attempts "are ignored and are not considered
+ *                                     errors", so the door answers YES and writes nothing;
+ *   rv-a-set-of-many-applies-what-it-can  the dictionary form applies what it can and ignores the rest;
+ *   rv-set-many-reports-what-it-could-not-set  and reports, under NSURLKeysOfUnsetValuesKey, the keys
+ *                                     whose write REACHED the file system and failed;
+ *   rv-a-value-the-key-cannot-hold-is-refused  the one refusal this door makes for its own reason;
  *   probe-tree-removed                the tree is gone.
  */
 
@@ -354,6 +365,117 @@ int main(void)
 		      value != nil && [value isEqual:fn_lookup(attributes, NSFileModificationDate)],
 		      [NSString stringWithFormat:@"url=%@ attributes=%@", value,
 			fn_lookup(attributes, NSFileModificationDate)]);
+	}
+
+	/* ---- W8 SLICE 6b: THE WRITE SIDE, WHERE THE REFUSAL IS A NO-OP ----------------------------- */
+	{
+		NSURL *file = [NSURL fileURLWithPath:fn_path(@"inner/note.txt")];
+		NSDate *when = [NSDate dateWithTimeIntervalSince1970:1234567890.0];
+		NSDate *beforeWrite = nil;
+		NSDate *afterWrite = nil;
+		NSError *error = nil;
+		BOOL wrote;
+
+		/* READ FIRST, so the cache HOLDS a value before the write: that is what makes the
+		 * forget-the-cache rule observable rather than assumed. */
+		[file getResourceValue:&beforeWrite forKey:NSURLContentModificationDateKey error:NULL];
+		wrote = [file setResourceValue:when forKey:NSURLContentModificationDateKey error:&error];
+		[file getResourceValue:&afterWrite forKey:NSURLContentModificationDateKey error:NULL];
+		check("rv-a-set-writes-and-the-cache-forgets",
+		      wrote && error == nil && [afterWrite isEqual:when] &&
+		      ![afterWrite isEqual:beforeWrite],
+		      [NSString stringWithFormat:@"wrote=%d before=%@ after=%@ wanted=%@",
+			(int)wrote, beforeWrite, afterWrite, when]);
+
+		{
+			/* THE SAME FACT THROUGH THE OTHER DOOR, which is the whole point of a resource value. */
+			NSDictionary *attributes = [manager attributesOfItemAtPath:fn_path(@"inner/note.txt")
+									     error:NULL];
+
+			check("rv-a-set-is-visible-to-the-other-door",
+			      [fn_lookup(attributes, NSFileModificationDate) isEqual:when],
+			      [NSString stringWithFormat:@"nsfilemanager says %@",
+				fn_lookup(attributes, NSFileModificationDate)]);
+		}
+	}
+
+	{
+		/* APPLE'S SENTENCE, IN THREE SHAPES: a READ-ONLY key, an UNKNOWN key and a URL that is not a
+		 * FILE URL are all "ignored and are not considered errors" - so each answers YES with no error
+		 * and writes nothing, which the file's unchanged size demonstrates. */
+		NSURL *file = [NSURL fileURLWithPath:fn_path(@"inner/note.txt")];
+		NSURL *fresh = [NSURL fileURLWithPath:fn_path(@"inner/note.txt")];
+		NSURL *web = [NSURL URLWithString:@"https://example.invalid/thing"];
+		NSError *readOnly = nil;
+		NSError *unknown = nil;
+		NSError *nonFile = nil;
+
+		check("rv-a-set-of-a-read-only-key-is-a-no-op",
+		      [file setResourceValue:@"1" forKey:NSURLFileSizeKey error:&readOnly] &&
+		      readOnly == nil && fn_number_key(fresh, NSURLFileSizeKey) == 5,
+		      [NSString stringWithFormat:@"error=%@ size=%lld",
+			readOnly, fn_number_key(fresh, NSURLFileSizeKey)]);
+
+		check("rv-a-set-of-an-unknown-key-is-a-no-op",
+		      [file setResourceValue:@"1" forKey:@"NSURLNotAKeyWeAnswer" error:&unknown] &&
+		      unknown == nil,
+		      [NSString stringWithFormat:@"error=%@", unknown]);
+
+		check("rv-a-set-on-a-non-file-url-is-a-no-op",
+		      [web setResourceValue:@"1" forKey:NSURLNameKey error:&nonFile] && nonFile == nil,
+		      [NSString stringWithFormat:@"error=%@", nonFile]);
+	}
+
+	{
+		/* THE SET FORM: it applies what it can, ignores what it cannot, and reports only the writes
+		 * that REACHED THE FILE SYSTEM AND FAILED. */
+		NSURL *file = [NSURL fileURLWithPath:fn_path(@"inner/note.txt")];
+		NSURL *fresh = [NSURL fileURLWithPath:fn_path(@"inner/note.txt")];
+		NSDate *when = [NSDate dateWithTimeIntervalSince1970:1111111111.0];
+		NSDictionary *values = [NSDictionary dictionaryWithObjectsAndKeys:
+					when, NSURLContentModificationDateKey,
+					[NSNumber numberWithInt:1], NSURLFileSizeKey, nil];
+		NSError *error = nil;
+		BOOL applied = [file setResourceValues:values error:&error];
+		NSDate *readBack = nil;
+
+		[file getResourceValue:&readBack forKey:NSURLContentModificationDateKey error:NULL];
+		check("rv-a-set-of-many-applies-what-it-can",
+		      applied && error == nil && [readBack isEqual:when] && fn_number_key(fresh, NSURLFileSizeKey) == 5,
+		      [NSString stringWithFormat:@"applied=%d error=%@ date=%@ size=%lld",
+			(int)applied, error, readBack, fn_number_key(fresh, NSURLFileSizeKey)]);
+
+		{
+			/* AND THE ONE ERROR SHAPE APPLE PUBLISHES, PRODUCED BY A WRITE THAT REALLY FAILED: the
+			 * path does not exist, so the substrate's own write refuses, and the failure report
+			 * carries the keys that were not set under the key's own name. */
+			NSURL *missing = [NSURL fileURLWithPath:fn_path(@"inner/never-created")];
+			NSDictionary *impossible = [NSDictionary dictionaryWithObject:when
+									      forKey:NSURLContentModificationDateKey];
+			NSError *failure = nil;
+			BOOL refused = [missing setResourceValues:impossible error:&failure];
+			NSArray *unset = fn_lookup([failure userInfo], NSURLKeysOfUnsetValuesKey);
+
+			check("rv-set-many-reports-what-it-could-not-set",
+			      !refused && failure != nil && unset != nil && [unset count] == 1 &&
+			      [[unset objectAtIndex:0] isEqual:NSURLContentModificationDateKey],
+			      [NSString stringWithFormat:@"refused=%d error=%@ unset=%@",
+				(int)refused, failure, unset]);
+		}
+	}
+
+	{
+		/* AND A VALUE THE KEY CANNOT HOLD IS A CALLER ERROR - the one refusal this door makes for a
+		 * reason of its own, because the key's type is published (a date) and a string is a mistake
+		 * rather than a no-op. */
+		NSURL *file = [NSURL fileURLWithPath:fn_path(@"inner/note.txt")];
+		NSError *error = nil;
+		BOOL refused = [file setResourceValue:@"not a date" forKey:NSURLContentModificationDateKey
+						error:&error];
+
+		check("rv-a-value-the-key-cannot-hold-is-refused",
+		      !refused && error != nil,
+		      [NSString stringWithFormat:@"refused=%d error=%@", (int)refused, error]);
 	}
 
 	{

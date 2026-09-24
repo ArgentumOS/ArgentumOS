@@ -34,7 +34,7 @@
 #   enum       shipped  103   open   40   struck   17
 #   case       shipped  595   open  539   struck  168
 #   func       shipped   72   open   63   struck   54
-#   var        shipped  230   open  331   struck  353
+#   var        shipped  231   open  330   struck  353
 #   typealias  shipped   36   open   33   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -3110,7 +3110,7 @@ var	open	NSURLIsUbiquitousItemKey	NSURL	Fundamentals / URLs / Accessing Resource
 var	open	NSURLIsUserImmutableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	open	NSURLIsVolumeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	shipped	NSURLIsWritableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLKeysOfUnsetValuesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLKeysOfUnsetValuesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	open	NSURLLabelColorKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	open	NSURLLabelNumberKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLLinkCountKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc

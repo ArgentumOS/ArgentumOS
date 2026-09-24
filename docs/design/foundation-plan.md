@@ -12132,6 +12132,44 @@ door against `access(2)`'s own answer and PRINTS the uid, so it pins the door's 
 assumption about the user. Two slices running, the thing that was wrong was my expectation and not the
 tree - and both times the fix was to make the instrument print what decided it.
 
+**SLICE 6b LANDED (2026-09-24): THE WRITE SIDE, WHERE APPLE'S OWN SENTENCE MAKES A REFUSAL A NO-OP.**
+`foundation_urlresourcevalues` 14 -> **22 checks**, green.
+
+**THE DESIGN WAS CORRECTED BY THE MEASUREMENT BEFORE IT WAS WRITTEN.** I was about to make a read-only
+key an `EINVAL` refusal naming the key - and Apple's page for BOTH setters says the opposite in one
+sentence: *"Attempts to set a read-only resource property or to set a resource property that is not
+supported by the resource are **ignored and are not considered errors**."* So the honest refusal here is
+SILENCE: `-setResourceValue:forKey:error:` answers YES, writes nothing, and reports nothing for a
+read-only key, an unknown key **and a URL that is not a file URL** - and the asymmetry with the getter is
+Apple's, not a slip: the getter NAMES what it does not have (`YES` + nil for an unavailable property, its
+own published sentence) while the setter is silent about it. Each door follows its own page.
+
+**THE WRITE ITSELF IS A DELEGATION, WHICH IS THE POINT OF A RESOURCE VALUE.** One key is writable on this
+substrate today - `NSURLContentModificationDateKey` - and it is written by handing `NSFileManager` the same
+fact under the same key through `-setAttributes:ofItemAtPath:error:`. The probe reads it back through BOTH
+doors (`rv-a-set-is-visible-to-the-other-door`), so the delegation is asserted rather than assumed. Every
+other key this header declares is read-only here, and the keys Apple documents as settable whose substrate
+this system lacks (the file security object - §11.6.1 D13 - the quarantine properties, the tags, the
+hidden-extension bit, the immutables) are simply not answered, which is the same silence by a shorter route.
+
+**AND TWO RULES OF ITS OWN, BOTH ASSERTED:** a set FORGETS the cache entry rather than guessing what the
+file system stored - the probe reads the date, writes a new one, reads again and requires the NEW value, so
+a cache that kept the stale answer fails; and a value the key cannot hold (a string for a date) is a CALLER
+ERROR, the one refusal this door makes for its own reason, because the key's type is published.
+
+**THE ONE ERROR SHAPE IS APPLE'S TOO:** when a write actually reaches the file system and fails (the probe
+uses a path that does not exist), the dictionary form answers NO with an error carrying
+`NSURLKeysOfUnsetValuesKey` - whose value Apple's KEY page calls *"an array of `URLResourceKey` objects"*
+while the METHOD page calls them "the resource values". **The key's own page is the specific one, so the
+keys are what this library reports**, and the fact that Apple's two pages disagree is recorded here rather
+than averaged.
+
+**STILL OWED BY W8p: THE VOLUME KEYS** (49 rows across volume support, status and capacity) - each one
+needs its own reasoning rather than a blanket answer, because a blanket NO would be a LIE for the ones
+AGFS satisfies (it IS case-sensitive, it IS local, it has no ejection notion at all) - and then the
+ubiquitous/thumbnail/quarantine masses. After W8p: the coordinator family, `NSFileVersion` and
+`NSFileProviderService`.
+
 **AND ONE DEBT RECORDED RATHER THAN SILENTLY FIXED, because it is the URL unit's and not this slice's:**
 `NSURL` had **no `-dealloc` at all** before this slice - it copies its parts and released none of them -
 and one of those parts, `_scheme`, is not even owned (it comes from `-lowercaseString`, which answers an

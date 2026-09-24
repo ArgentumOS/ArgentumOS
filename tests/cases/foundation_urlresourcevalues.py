@@ -35,6 +35,21 @@ with POSIX calls so a failure cannot be the fixture's fault, and removes it at t
                                  while a SECOND URL for the same file still answers the disk's truth, and
                                  nil takes the entry back out;
   * `rv-two-doors-agree` — the URL's modification date and NSFileManager's attribute are one fact;
+  * `rv-a-set-writes-and-the-cache-forgets` — THE WRITE SIDE: a real write, read back through the URL,
+                                 and a set FORGETS what the cache knew (so the read after a write is
+                                 fresh, not stale);
+  * `rv-a-set-is-visible-to-the-other-door` — the same fact through NSFileManager, which is the
+                                 delegation: one implementation, two doors;
+  * `rv-a-set-of-a-read-only-key-is-a-no-op` / `rv-a-set-of-an-unknown-key-is-a-no-op` /
+                                 `rv-a-set-on-a-non-file-url-is-a-no-op` — Apple's sentence for BOTH
+                                 setters, verbatim: such attempts "are ignored and are not considered
+                                 errors" — so the door answers YES and writes nothing;
+  * `rv-a-set-of-many-applies-what-it-can` — the dictionary form applies what it can and ignores the
+                                 rest without reporting them;
+  * `rv-set-many-reports-what-it-could-not-set` — and reports, under `NSURLKeysOfUnsetValuesKey`, exactly
+                                 the keys whose write REACHED the file system and failed ("an array of
+                                 URLResourceKey objects", the key's own page);
+  * `rv-a-value-the-key-cannot-hold-is-refused` — the one refusal this door makes for its own reason;
   * `probe-tree-removed`         — the tree is gone.
 """
 
@@ -49,7 +64,12 @@ CHECKS = ("rv-the-keys-are-their-own-names", "rv-a-file-answers-its-facts",
           "rv-a-non-file-url-refuses", "rv-an-unknown-key-refuses",
           "rv-reachability-is-not-readability", "rv-the-cache-is-part-of-the-contract",
           "rv-removing-everything-clears-everything", "rv-a-temporary-value-is-not-on-disk",
-          "rv-two-doors-agree", "probe-tree-removed")
+          "rv-two-doors-agree",
+          "rv-a-set-writes-and-the-cache-forgets", "rv-a-set-is-visible-to-the-other-door",
+          "rv-a-set-of-a-read-only-key-is-a-no-op", "rv-a-set-of-an-unknown-key-is-a-no-op",
+          "rv-a-set-on-a-non-file-url-is-a-no-op", "rv-a-set-of-many-applies-what-it-can",
+          "rv-set-many-reports-what-it-could-not-set", "rv-a-value-the-key-cannot-hold-is-refused",
+          "probe-tree-removed")
 
 
 class Case(BaseCase):
