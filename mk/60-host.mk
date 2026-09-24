@@ -299,7 +299,7 @@ HOST_APPKIT_CFLAGS ?= -std=gnu11 -fPIC -g -Wall -Wextra -Iuserland
 HOST_APPKIT_MSRCS  := $(wildcard userland/AppKit/*.m)
 HOST_APPKIT_OBJDIR := $(HOST_OBJDIR)/appkit
 HOST_APPKIT_MOBJS   = $(patsubst userland/AppKit/%.m,$(HOST_APPKIT_OBJDIR)/appkit-%.o,$(HOST_APPKIT_MSRCS))
-HOST_APPKIT_PROBES ?= appkit_graphicscontext appkit_color
+HOST_APPKIT_PROBES ?= appkit_graphicscontext appkit_color appkit_bezierpath
 HOST_APPKIT_LDFLAGS = -L$(HOST_LIBDIR) -lappkit -lcoregraphics -lfoundation \
 		      -L$(CURDIR)/$(HOST_OBJCPFX)/lib -lobjc $(HOST_ICU_LIBS)
 

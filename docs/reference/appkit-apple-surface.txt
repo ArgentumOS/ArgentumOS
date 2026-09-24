@@ -20,24 +20,24 @@
 # 1501 struck: deprecated×1501
 #
 # BY KIND:
-#   case       open      1840
-#   case       shipped     33
+#   case       open      1832
+#   case       shipped     41
 #   case       struck     259
-#   class      open       319
-#   class      shipped      2
+#   class      open       318
+#   class      shipped      3
 #   class      struck      13
-#   enum       open       349
-#   enum       shipped      2
+#   enum       open       346
+#   enum       shipped      5
 #   enum       struck      19
 #   func       open        65
 #   func       struck      38
 #   macro      open        23
 #   macro      struck       2
-#   method     open      3237
-#   method     shipped     21
+#   method     open      3209
+#   method     shipped     49
 #   method     struck     534
-#   property   open      2984
-#   property   shipped     30
+#   property   open      2967
+#   property   shipped     47
 #   property   struck     132
 #   protocol   open       161
 #   protocol   struck       2
@@ -1188,13 +1188,13 @@ case	open	NSLineBreakStrategyHangulWordPriority	NSParagraphStyle	-	-	objc
 case	open	NSLineBreakStrategyNone	NSParagraphStyle	-	-	objc
 case	open	NSLineBreakStrategyPushOut	NSParagraphStyle	-	-	objc
 case	open	NSLineBreakStrategyStandard	NSParagraphStyle	-	-	objc
-case	open	NSLineCapStyleButt	NSBezierPath	-	-	objc
-case	open	NSLineCapStyleRound	NSBezierPath	-	-	objc
-case	open	NSLineCapStyleSquare	NSBezierPath	-	-	objc
+case	shipped	NSLineCapStyleButt	NSBezierPath	-	-	objc
+case	shipped	NSLineCapStyleRound	NSBezierPath	-	-	objc
+case	shipped	NSLineCapStyleSquare	NSBezierPath	-	-	objc
 case	struck	NSLineDoesntMove	-	-	deprecated	objc
-case	open	NSLineJoinStyleBevel	NSBezierPath	-	-	objc
-case	open	NSLineJoinStyleMiter	NSBezierPath	-	-	objc
-case	open	NSLineJoinStyleRound	NSBezierPath	-	-	objc
+case	shipped	NSLineJoinStyleBevel	NSBezierPath	-	-	objc
+case	shipped	NSLineJoinStyleMiter	NSBezierPath	-	-	objc
+case	shipped	NSLineJoinStyleRound	NSBezierPath	-	-	objc
 case	struck	NSLineMovesDown	-	-	deprecated	objc
 case	struck	NSLineMovesLeft	-	-	deprecated	objc
 case	struck	NSLineMovesRight	-	-	deprecated	objc
@@ -2044,8 +2044,8 @@ case	open	NSVisualEffectStateActive	NSVisualEffectView	-	-	objc
 case	open	NSVisualEffectStateFollowsWindowActiveState	NSVisualEffectView	-	-	objc
 case	open	NSVisualEffectStateInactive	NSVisualEffectView	-	-	objc
 case	open	NSWantsBidiLevels	NSGlyphStorage	-	-	objc
-case	open	NSWindingRuleEvenOdd	NSBezierPath	-	-	objc
-case	open	NSWindingRuleNonZero	NSBezierPath	-	-	objc
+case	shipped	NSWindingRuleEvenOdd	NSBezierPath	-	-	objc
+case	shipped	NSWindingRuleNonZero	NSBezierPath	-	-	objc
 case	open	NSWindowAbove	NSWindow	-	-	objc
 case	open	NSWindowAnimationBehaviorAlertPanel	NSWindow	-	-	objc
 case	open	NSWindowAnimationBehaviorDefault	NSWindow	-	-	objc
@@ -2195,7 +2195,7 @@ class	open	NSApplication	-	-	-	objc
 class	open	NSArrayController	-	-	-	objc
 class	open	NSAttributedString	-	-	-	objc
 class	open	NSBackgroundExtensionView	-	-	-	objc
-class	open	NSBezierPath	-	-	-	objc
+class	shipped	NSBezierPath	-	-	-	objc
 class	open	NSBindingSelectionMarker	-	-	-	objc
 class	open	NSBitmapImageRep	-	-	-	objc
 class	open	NSBox	-	-	-	objc
@@ -2673,8 +2673,8 @@ enum	open	NSLevelIndicatorStyle	NSLevelIndicator	-	-	objc
 enum	open	NSLevelIndicatorStyle	NSLevelIndicatorCell	-	-	objc
 enum	open	NSLineBreakMode	NSParagraphStyle	-	-	objc
 enum	open	NSLineBreakStrategy	NSParagraphStyle	-	-	objc
-enum	open	NSLineCapStyle	NSBezierPath	-	-	objc
-enum	open	NSLineJoinStyle	NSBezierPath	-	-	objc
+enum	shipped	NSLineCapStyle	NSBezierPath	-	-	objc
+enum	shipped	NSLineJoinStyle	NSBezierPath	-	-	objc
 enum	struck	NSLineMovementDirection	-	-	deprecated	objc
 enum	struck	NSLineSweepDirection	-	-	deprecated	objc
 enum	open	NSMatrixMode	NSMatrix	-	-	objc
@@ -2852,7 +2852,7 @@ enum	open	NSViewLayoutRegionAdaptivityAxis	-	-	-	objc
 enum	open	NSVisualEffectBlendingMode	NSVisualEffectView	-	-	objc
 enum	open	NSVisualEffectMaterial	NSVisualEffectView	-	-	objc
 enum	open	NSVisualEffectState	NSVisualEffectView	-	-	objc
-enum	open	NSWindingRule	NSBezierPath	-	-	objc
+enum	shipped	NSWindingRule	NSBezierPath	-	-	objc
 enum	open	NSWindowAnimationBehavior	NSWindow	-	-	objc
 enum	struck	NSWindowBackingLocation	NSWindow	-	deprecated	objc
 enum	open	NSWindowButton	NSWindow	-	-	objc
@@ -3036,11 +3036,11 @@ method	open	+badgeWithText	NSItemBadge	-	-	objc
 method	open	+beginGrouping	NSAnimationContext	-	-	objc
 method	open	+behaviorWithHandler	NSSliderAccessoryBehavior	-	-	objc
 method	open	+behaviorWithTarget	NSSliderAccessoryBehavior	-	-	objc
-method	open	+bezierPath	NSBezierPath	-	-	objc
-method	open	+bezierPathWithCGPath	NSBezierPath	-	-	objc
-method	open	+bezierPathWithOvalInRect	NSBezierPath	-	-	objc
-method	open	+bezierPathWithRect	NSBezierPath	-	-	objc
-method	open	+bezierPathWithRoundedRect	NSBezierPath	-	-	objc
+method	shipped	+bezierPath	NSBezierPath	-	-	objc
+method	shipped	+bezierPathWithCGPath	NSBezierPath	-	-	objc
+method	shipped	+bezierPathWithOvalInRect	NSBezierPath	-	-	objc
+method	shipped	+bezierPathWithRect	NSBezierPath	-	-	objc
+method	shipped	+bezierPathWithRoundedRect	NSBezierPath	-	-	objc
 method	open	+boldSystemFontOfSize	NSFont	-	-	objc
 method	open	+boundarySupplementaryItemWithLayoutSize	NSCollectionLayoutBoundarySupplementaryItem	-	-	objc
 method	open	+buttonTouchBarItemWithIdentifier	NSButtonTouchBarItem	-	-	objc
@@ -3132,7 +3132,7 @@ method	open	+estimatedDimension	NSCollectionLayoutDimension	-	-	objc
 method	open	+eventWithCGEvent	NSEvent	-	-	objc
 method	open	+eventWithEventRef	NSEvent	-	-	objc
 method	open	+fieldEditor	NSTextView	-	-	objc
-method	open	+fillRect	NSBezierPath	-	-	objc
+method	shipped	+fillRect	NSBezierPath	-	-	objc
 method	open	+fixedRadius	NSViewCornerRadius	-	-	objc
 method	open	+fixedSpacing	NSCollectionLayoutSpacing	-	-	objc
 method	open	+flexibleSpacing	NSCollectionLayoutSpacing	-	-	objc
@@ -3318,8 +3318,8 @@ method	open	+stepperTouchBarItemWithIdentifier	NSStepperTouchBarItem	-	-	objc
 method	open	+stopPeriodicEvents	NSEvent	-	-	objc
 method	open	+storyboardWithName	NSStoryboard	-	-	objc
 method	open	+strokeColorPickerWithIdentifier	NSColorPickerTouchBarItem	-	-	objc
-method	open	+strokeLineFromPoint	NSBezierPath	-	-	objc
-method	open	+strokeRect	NSBezierPath	-	-	objc
+method	shipped	+strokeLineFromPoint	NSBezierPath	-	-	objc
+method	shipped	+strokeRect	NSBezierPath	-	-	objc
 method	open	+supplementaryItemWithLayoutSize	NSCollectionLayoutSupplementaryItem	-	-	objc
 method	open	+systemFontOfSize	NSFont	-	-	objc
 method	open	+systemFontSizeForControlSize	NSFont	-	-	objc
@@ -3602,18 +3602,18 @@ method	open	-animationResizeTime	NSWindow	-	-	objc
 method	open	-animationShouldStart	NSAnimationDelegate	-	-	objc
 method	open	-animator	NSAnimatablePropertyContainer	-	-	objc
 method	open	-annotatedSubstringForProposedRange	NSTextCheckingClient	-	-	objc
-method	open	-appendBezierPath	NSBezierPath	-	-	objc
-method	open	-appendBezierPathWithArcFromPoint	NSBezierPath	-	-	objc
-method	open	-appendBezierPathWithArcWithCenter	NSBezierPath	-	-	objc
+method	shipped	-appendBezierPath	NSBezierPath	-	-	objc
+method	shipped	-appendBezierPathWithArcFromPoint	NSBezierPath	-	-	objc
+method	shipped	-appendBezierPathWithArcWithCenter	NSBezierPath	-	-	objc
 method	open	-appendBezierPathWithCGGlyph	NSBezierPath	-	-	objc
 method	open	-appendBezierPathWithCGGlyphs	NSBezierPath	-	-	objc
 method	struck	-appendBezierPathWithGlyph	NSBezierPath	-	deprecated	objc
 method	struck	-appendBezierPathWithGlyphs	NSBezierPath	-	deprecated	objc
-method	open	-appendBezierPathWithOvalInRect	NSBezierPath	-	-	objc
+method	shipped	-appendBezierPathWithOvalInRect	NSBezierPath	-	-	objc
 method	struck	-appendBezierPathWithPackedGlyphs	NSBezierPath	-	deprecated	objc
-method	open	-appendBezierPathWithPoints	NSBezierPath	-	-	objc
-method	open	-appendBezierPathWithRect	NSBezierPath	-	-	objc
-method	open	-appendBezierPathWithRoundedRect	NSBezierPath	-	-	objc
+method	shipped	-appendBezierPathWithPoints	NSBezierPath	-	-	objc
+method	shipped	-appendBezierPathWithRect	NSBezierPath	-	-	objc
+method	shipped	-appendBezierPathWithRoundedRect	NSBezierPath	-	-	objc
 method	open	-appendItemsWithIdentifiers	NSDiffableDataSourceSnapshot	-	-	objc
 method	open	-appendSectionsWithIdentifiers	NSDiffableDataSourceSnapshot	-	-	objc
 method	open	-application	NSApplication	-	-	objc
@@ -3849,7 +3849,7 @@ method	open	-close	NSSharingServicePicker	-	-	objc
 method	open	-close	NSWindow	-	-	objc
 method	open	-close	NSWindowController	-	-	objc
 method	open	-closeAllDocumentsWithDelegate	NSDocumentController	-	-	objc
-method	open	-closePath	NSBezierPath	-	-	objc
+method	shipped	-closePath	NSBezierPath	-	-	objc
 method	open	-closeSpellDocumentWithTag	NSSpellChecker	-	-	objc
 method	open	-closestTickMarkValueToValue	NSSlider	-	-	objc
 method	open	-closestTickMarkValueToValue	NSSliderCell	-	-	objc
@@ -4011,7 +4011,7 @@ method	open	-criteriaForRow	NSRuleEditor	-	-	objc
 method	open	-currentEditor	NSControl	-	-	objc
 method	open	-currentMode	NSColorPickingCustom	-	-	objc
 method	open	-cursorUpdate	NSResponder	-	-	objc
-method	open	-curveToPoint	NSBezierPath	-	-	objc
+method	shipped	-curveToPoint	NSBezierPath	-	-	objc
 method	open	-customSpacingAfterView	NSStackView	-	-	objc
 method	open	-customWindowsToEnterFullScreenForWindow	NSWindowDelegate	-	-	objc
 method	open	-customWindowsToExitFullScreenForWindow	NSWindowDelegate	-	-	objc
@@ -4338,7 +4338,7 @@ method	struck	-fileWrapperRepresentationOfType	NSDocument	-	deprecated	objc
 method	struck	-filename	NSSavePanel	-	deprecated	objc
 method	struck	-filenameExtension	NSWorkspace	-	deprecated	objc
 method	struck	-filenames	NSOpenPanel	-	deprecated	objc
-method	open	-fill	NSBezierPath	-	-	objc
+method	shipped	-fill	NSBezierPath	-	-	objc
 method	open	-fillBackgroundRectArray	NSLayoutManager	-	-	objc
 method	open	-finalLayoutAttributesForDisappearingDecorationElementOfKind	NSCollectionViewLayout	-	-	objc
 method	open	-finalLayoutAttributesForDisappearingItemAtIndexPath	NSCollectionViewLayout	-	-	objc
@@ -4417,7 +4417,7 @@ method	struck	-getGlyphsInRange	NSLayoutManager	-	deprecated	objc
 method	struck	-getGlyphsInRange	NSTypesetter	-	deprecated	objc
 method	open	-getHue	NSColor	-	-	objc
 method	struck	-getInfoForFile	NSWorkspace	-	deprecated	objc
-method	open	-getLineDash	NSBezierPath	-	-	objc
+method	shipped	-getLineDash	NSBezierPath	-	-	objc
 method	open	-getLineFragmentInsertionPointsForCharacterAtIndex	NSLayoutManager	-	-	objc
 method	open	-getLineFragmentRect	NSATSTypesetter	-	-	objc
 method	open	-getLineFragmentRect	NSTypesetter	-	-	objc
@@ -5029,7 +5029,7 @@ method	struck	-lineFragmentRectForProposedRect	NSTextContainer	-	deprecated	objc
 method	open	-lineFragmentUsedRectForGlyphAtIndex	NSLayoutManager	-	-	objc
 method	open	-lineSpacingAfterGlyphAtIndex	NSATSTypesetter	-	-	objc
 method	open	-lineSpacingAfterGlyphAtIndex	NSTypesetter	-	-	objc
-method	open	-lineToPoint	NSBezierPath	-	-	objc
+method	shipped	-lineToPoint	NSBezierPath	-	-	objc
 method	open	-loadColumnZero	NSBrowser	-	-	objc
 method	struck	-loadDataRepresentation	NSDocument	-	deprecated	objc
 method	struck	-loadFileWrapperRepresentation	NSDocument	-	deprecated	objc
@@ -5209,7 +5209,7 @@ method	open	-moveToEndOfParagraph	NSStandardKeyBindingResponding	-	-	objc
 method	open	-moveToEndOfParagraphAndModifySelection	NSStandardKeyBindingResponding	-	-	objc
 method	open	-moveToLeftEndOfLine	NSStandardKeyBindingResponding	-	-	objc
 method	open	-moveToLeftEndOfLineAndModifySelection	NSStandardKeyBindingResponding	-	-	objc
-method	open	-moveToPoint	NSBezierPath	-	-	objc
+method	shipped	-moveToPoint	NSBezierPath	-	-	objc
 method	open	-moveToRightEndOfLine	NSStandardKeyBindingResponding	-	-	objc
 method	open	-moveToRightEndOfLineAndModifySelection	NSStandardKeyBindingResponding	-	-	objc
 method	open	-moveToURL	NSDocument	-	-	objc
@@ -5544,9 +5544,9 @@ method	open	-registerNib	NSTableView	-	-	objc
 method	open	-registerServicesMenuSendTypes	NSApplication	-	-	objc
 method	open	-registerTextAttachmentViewProviderReusePolicy	NSTextView	-	-	objc
 method	open	-registerUserInterfaceItemSearchHandler	NSApplication	-	-	objc
-method	open	-relativeCurveToPoint	NSBezierPath	-	-	objc
-method	open	-relativeLineToPoint	NSBezierPath	-	-	objc
-method	open	-relativeMoveToPoint	NSBezierPath	-	-	objc
+method	shipped	-relativeCurveToPoint	NSBezierPath	-	-	objc
+method	shipped	-relativeLineToPoint	NSBezierPath	-	-	objc
+method	shipped	-relativeMoveToPoint	NSBezierPath	-	-	objc
 method	struck	-releaseGState	NSView	-	deprecated	objc
 method	open	-releaseGlobally	NSPasteboard	-	-	objc
 method	open	-relinquishPresentedItemToReader	NSDocument	-	-	objc
@@ -5579,7 +5579,7 @@ method	open	-removeAllItems	NSComboBoxCell	-	-	objc
 method	open	-removeAllItems	NSMenu	-	-	objc
 method	open	-removeAllItems	NSPopUpButton	-	-	objc
 method	open	-removeAllItems	NSPopUpButtonCell	-	-	objc
-method	open	-removeAllPoints	NSBezierPath	-	-	objc
+method	shipped	-removeAllPoints	NSBezierPath	-	-	objc
 method	open	-removeAllSymbolEffects	NSImageView	-	-	objc
 method	open	-removeAllSymbolEffectsWithOptions	NSImageView	-	-	objc
 method	open	-removeAllToolTips	NSView	-	-	objc
@@ -6062,7 +6062,7 @@ method	open	-setLabel	NSSegmentedControl	-	-	objc
 method	open	-setLanguage	NSSpellChecker	-	-	objc
 method	open	-setLayoutOrientation	NSTextView	-	-	objc
 method	open	-setLayoutRect	NSLayoutManager	-	-	objc
-method	open	-setLineDash	NSBezierPath	-	-	objc
+method	shipped	-setLineDash	NSBezierPath	-	-	objc
 method	open	-setLineFragmentRect	NSLayoutManager	-	-	objc
 method	open	-setLineFragmentRect	NSTypesetter	-	-	objc
 method	open	-setLocation	NSLayoutManager	-	-	objc
@@ -6322,7 +6322,7 @@ method	open	-stringForType	NSPasteboard	-	-	objc
 method	open	-stringForType	NSPasteboardItem	-	-	objc
 method	open	-stringLength	NSTextFinderClient	-	-	objc
 method	struck	-stringListForKey	NSPrinter	-	deprecated	objc
-method	open	-stroke	NSBezierPath	-	-	objc
+method	shipped	-stroke	NSBezierPath	-	-	objc
 method	open	-submenuAction	NSMenu	-	-	objc
 method	open	-subrowIndexesForRow	NSRuleEditor	-	-	objc
 method	open	-subscript	NSText	-	-	objc
@@ -6528,7 +6528,7 @@ method	struck	-trackScrollButtons	NSScroller	-	deprecated	objc
 method	open	-trackSwipeEventWithOptions	NSEvent	-	-	objc
 method	open	-traitsOfFont	NSFontManager	-	-	objc
 method	open	-transferWindowSharingToWindow	NSWindow	-	-	objc
-method	open	-transformUsingAffineTransform	NSBezierPath	-	-	objc
+method	shipped	-transformUsingAffineTransform	NSBezierPath	-	-	objc
 method	open	-transitionFromViewController	NSViewController	-	-	objc
 method	open	-translateOriginToPoint	NSView	-	-	objc
 method	open	-translateRectsNeedingDisplayInRect	NSView	-	-	objc
@@ -6812,7 +6812,7 @@ property	open	CGImage	NSBitmapImageRep	-	-	objc
 property	struck	CGLContextObj	NSOpenGLContext	-	deprecated	objc
 property	struck	CGLPBufferObj	NSOpenGLPixelBuffer	-	deprecated	objc
 property	struck	CGLPixelFormatObj	NSOpenGLPixelFormat	-	deprecated	objc
-property	open	CGPath	NSBezierPath	-	-	objc
+property	shipped	CGPath	NSBezierPath	-	-	objc
 property	open	CIContext	NSGraphicsContext	-	-	objc
 property	open	CIImage	NSCIImageRep	-	-	objc
 property	struck	EPSRepresentation	NSEPSImageRep	-	deprecated	objc
@@ -7341,7 +7341,7 @@ property	open	bezeled	NSCell	-	-	objc
 property	open	bezeled	NSDatePicker	-	-	objc
 property	struck	bezeled	NSProgressIndicator	-	deprecated	objc
 property	open	bezeled	NSTextField	-	-	objc
-property	open	bezierPathByFlatteningPath	NSBezierPath	-	-	objc
+property	shipped	bezierPathByFlatteningPath	NSBezierPath	-	-	objc
 property	open	bezierPathByReversingPath	NSBezierPath	-	-	objc
 property	open	bidiProcessingEnabled	NSATSTypesetter	-	-	objc
 property	open	bidiProcessingEnabled	NSTypesetter	-	-	objc
@@ -7384,7 +7384,7 @@ property	open	boundarySupplementaryItems	NSCollectionViewCompositionalLayoutConf
 property	struck	boundingBox	NSEPSImageRep	-	deprecated	objc
 property	open	boundingBox	NSPICTImageRep	-	-	objc
 property	open	boundingRectForFont	NSFont	-	-	objc
-property	open	bounds	NSBezierPath	-	-	objc
+property	shipped	bounds	NSBezierPath	-	-	objc
 property	open	bounds	NSCollectionLayoutVisibleItem	-	-	objc
 property	open	bounds	NSPDFImageRep	-	-	objc
 property	open	bounds	NSTextAttachment	-	-	objc
@@ -7630,7 +7630,7 @@ property	open	controlColor	NSColor	-	-	objc
 property	struck	controlDarkShadowColor	NSColor	-	deprecated	objc
 property	struck	controlHighlightColor	NSColor	-	deprecated	objc
 property	struck	controlLightHighlightColor	NSColor	-	deprecated	objc
-property	open	controlPointBounds	NSBezierPath	-	-	objc
+property	shipped	controlPointBounds	NSBezierPath	-	-	objc
 property	open	controlRepresentation	NSPickerTouchBarItem	-	-	objc
 property	open	controlRepresentation	NSToolbarItemGroup	-	-	objc
 property	struck	controlShadowColor	NSColor	-	deprecated	objc
@@ -7680,7 +7680,7 @@ property	open	currentOperation	NSPrintOperation	-	-	objc
 property	open	currentPage	NSPDFImageRep	-	-	objc
 property	open	currentPage	NSPrintOperation	-	-	objc
 property	open	currentParagraphStyle	NSTypesetter	-	-	objc
-property	open	currentPoint	NSBezierPath	-	-	objc
+property	shipped	currentPoint	NSBezierPath	-	-	objc
 property	open	currentProgress	NSAnimation	-	-	objc
 property	struck	currentSystemCursor	NSCursor	-	deprecated	objc
 property	open	currentSystemPresentationOptions	NSApplication	-	-	objc
@@ -7741,12 +7741,12 @@ property	open	defaultFlatness	NSBezierPath	-	-	objc
 property	open	defaultFocusRingType	NSCell	-	-	objc
 property	open	defaultFocusRingType	NSView	-	-	objc
 property	open	defaultItemIdentifiers	NSTouchBar	-	-	objc
-property	open	defaultLineCapStyle	NSBezierPath	-	-	objc
-property	open	defaultLineJoinStyle	NSBezierPath	-	-	objc
-property	open	defaultLineWidth	NSBezierPath	-	-	objc
+property	shipped	defaultLineCapStyle	NSBezierPath	-	-	objc
+property	shipped	defaultLineJoinStyle	NSBezierPath	-	-	objc
+property	shipped	defaultLineWidth	NSBezierPath	-	-	objc
 property	open	defaultMenu	NSCell	-	-	objc
 property	open	defaultMenu	NSView	-	-	objc
-property	open	defaultMiterLimit	NSBezierPath	-	-	objc
+property	shipped	defaultMiterLimit	NSBezierPath	-	-	objc
 property	open	defaultParagraphStyle	NSParagraphStyle	-	-	objc
 property	open	defaultParagraphStyle	NSTextView	-	-	objc
 property	open	defaultPerformer	NSHapticFeedbackManager	-	-	objc
@@ -7761,7 +7761,7 @@ property	open	defaultTokenizingCharacterSet	NSTokenFieldCell	-	-	objc
 property	open	defaultType	NSDocumentController	-	-	objc
 property	open	defaultTypesetterBehavior	NSTypesetter	-	-	objc
 property	struck	defaultVoice	NSSpeechSynthesizer	-	deprecated	objc
-property	open	defaultWindingRule	NSBezierPath	-	-	objc
+property	shipped	defaultWindingRule	NSBezierPath	-	-	objc
 property	open	defaults	NSUserDefaultsController	-	-	objc
 property	open	delay	NSWritingToolsCoordinatorAnimationParameters	-	-	objc
 property	open	delaysKeyEvents	NSGestureRecognizer	-	-	objc
@@ -7975,13 +7975,13 @@ property	open	effectiveCornerRadii	NSView	-	-	objc
 property	open	effectiveRowSizeStyle	NSTableView	-	-	objc
 property	open	effectiveStyle	NSTableView	-	-	objc
 property	open	effectsViewInserter	NSTextInsertionIndicator	-	-	objc
-property	open	elementCount	NSBezierPath	-	-	objc
+property	shipped	elementCount	NSBezierPath	-	-	objc
 property	open	elementKind	NSCollectionLayoutDecorationItem	-	-	objc
 property	open	elementKind	NSCollectionLayoutSupplementaryItem	-	-	objc
 property	open	elementRange	NSTextElement	-	-	objc
 property	open	emphasized	NSTableRowView	-	-	objc
 property	open	emphasized	NSVisualEffectView	-	-	objc
-property	open	empty	NSBezierPath	-	-	objc
+property	shipped	empty	NSBezierPath	-	-	objc
 property	open	empty	NSTextRange	-	-	objc
 property	open	empty	NSUserInterfaceCompressionOptions	-	-	objc
 property	open	emptyContentView	NSGridCell	-	-	objc
@@ -8530,18 +8530,18 @@ property	open	lineBreakMode	NSTextContainer	-	-	objc
 property	open	lineBreakStrategy	NSMutableParagraphStyle	-	-	objc
 property	open	lineBreakStrategy	NSParagraphStyle	-	-	objc
 property	open	lineBreakStrategy	NSTextField	-	-	objc
-property	open	lineCapStyle	NSBezierPath	-	-	objc
+property	shipped	lineCapStyle	NSBezierPath	-	-	objc
 property	open	lineFragmentPadding	NSATSTypesetter	-	-	objc
 property	open	lineFragmentPadding	NSTextContainer	-	-	objc
 property	open	lineFragmentPadding	NSTypesetter	-	-	objc
 property	open	lineHeightMultiple	NSMutableParagraphStyle	-	-	objc
 property	open	lineHeightMultiple	NSParagraphStyle	-	-	objc
-property	open	lineJoinStyle	NSBezierPath	-	-	objc
+property	shipped	lineJoinStyle	NSBezierPath	-	-	objc
 property	open	lineLayoutPadding	NSTextAttachment	-	-	objc
 property	open	lineScroll	NSScrollView	-	-	objc
 property	open	lineSpacing	NSMutableParagraphStyle	-	-	objc
 property	open	lineSpacing	NSParagraphStyle	-	-	objc
-property	open	lineWidth	NSBezierPath	-	-	objc
+property	shipped	lineWidth	NSBezierPath	-	-	objc
 property	open	linearExposure	NSColor	-	-	objc
 property	open	linkColor	NSColor	-	-	objc
 property	open	linkDetectionType	NSTextInputTraits	-	-	objc
@@ -8705,7 +8705,7 @@ property	open	minimumValueAccessory	NSSliderTouchBarItem	-	-	objc
 property	open	minimumWidth	NSMenu	-	-	objc
 property	open	miniwindowImage	NSWindow	-	-	objc
 property	open	miniwindowTitle	NSWindow	-	-	objc
-property	open	miterLimit	NSBezierPath	-	-	objc
+property	shipped	miterLimit	NSBezierPath	-	-	objc
 property	open	mixedStateImage	NSMenuItem	-	-	objc
 property	open	modalPanel	NSWindow	-	-	objc
 property	open	modalWindow	NSApplication	-	-	objc
@@ -9895,7 +9895,7 @@ property	open	widthAnchor	NSLayoutGuide	-	-	objc
 property	open	widthAnchor	NSView	-	-	objc
 property	open	widthDimension	NSCollectionLayoutSize	-	-	objc
 property	open	widthTracksTextView	NSTextContainer	-	-	objc
-property	open	windingRule	NSBezierPath	-	-	objc
+property	shipped	windingRule	NSBezierPath	-	-	objc
 property	open	window	NSAlert	-	-	objc
 property	open	window	NSEvent	-	-	objc
 property	open	window	NSView	-	-	objc
