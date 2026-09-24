@@ -436,6 +436,60 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   step of the AppKit ledger is one fetch of `/documentation/appkit.json`, not a new
   instrument, and it is what turns the member list above into Objective-C
   signatures a caller can compile against.
+  **AND THE OBJECTIVE-C SPELLINGS ARE NOW PINNED TOO, WHICH WAS THE ONE THING THE
+  SYMBOL PAGE COULD NOT GIVE.** The fetch that produced the list above came back
+  Swift-first (`var cgContext: CGContext { get }` and no Objective-C anywhere), and the
+  door is the tree's own: **the navigator tree lives at `/tutorials/data/index/<framework>`**,
+  which is the URL `tools/foundation-sweep.py:86` already uses, and its
+  `interfaceLanguages.occ` carries the ObjC titles. `NSGraphicsContext` sits under
+  `AppKit ▸ Drawing`, and its members, in Apple's own section order, are:
+  **Creating** — `+graphicsContextWithAttributes:`, `+graphicsContextWithBitmapImageRep:`,
+  `+graphicsContextWithCGContext:flipped:`, `+graphicsContextWithWindow:`,
+  `+graphicsContextWithGraphicsPort:flipped:`; **Current context** — `currentContext`,
+  `CGContext`, `graphicsPort`; **Graphics state** — `+restoreGraphicsState`,
+  `-restoreGraphicsState`, `+saveGraphicsState`, `-saveGraphicsState`, `+setGraphicsState:`;
+  **Destination** — `+currentContextDrawingToScreen`, `drawingToScreen`; **Information** —
+  `attributes`, `NSGraphicsContextAttributeKey`, `NSGraphicsContextRepresentationFormatName`,
+  `flipped`; **Flushing** — `-flushGraphics`; **Focus stack** — `-focusStack`,
+  `-setFocusStack:`; **Rendering options** — `compositingOperation`,
+  `NSCompositingOperation`, `imageInterpolation`, `NSImageInterpolation`, `shouldAntialias`,
+  `patternPhase`; **Core Image** — `CIContext`; **Colour rendering** —
+  `colorRenderingIntent`, `NSColorRenderingIntent`. **THREE NAMES CAME OUT OF THIS THAT
+  THE SWIFT PAGE HAD HIDDEN**: `focusStack`/`setFocusStack:` (a whole section the Swift
+  rendering did not list), and the two typealiases are spelled
+  `NSGraphicsContextAttributeKey` / `NSGraphicsContextRepresentationFormatName` rather than
+  the nested `NSGraphicsContext.AttributeKey` the Swift page shows. Two member *types* were
+  fetched rather than recalled: `patternPhase` is an `NSPoint` (`CGContextSetPatternPhase`
+  takes a size, so the bridge constructs one), and `focusStack` is `id` — and its page
+  returned a real Objective-C declaration, which is why a symbol page can sometimes answer
+  and the index always can.
+  **AND C8 HAS ALREADY FOUND TWO `CG` GAPS, BEFORE A LINE OF APPKIT WAS WRITTEN — which is
+  this plan's own thesis about the AppKit being CG's ORACLE (§8), arriving early.** The
+  three enums ride with members whose substrate was checked one by one:
+  `NSColorRenderingIntent`'s five cases and `NSImageInterpolation`'s five are each a
+  one-to-one match for a CoreGraphics enum **that this library does not expose a CONTEXT
+  setter for** — `CGContextSetInterpolationQuality` and `CGContextSetRenderingIntent` are
+  both ABSENT from `CGContext.h` (measured), so `imageInterpolation` and
+  `colorRenderingIntent` have nothing to forward to and are DEFERRED to a CG follow-on
+  rather than stored as silent state. `NSCompositingOperation` is the third: **60 names**,
+  of which the 30 modern `NSCompositingOperation…` cases map one-to-one onto `CGBlendMode`
+  EXCEPT `…PlusDarker` and `…Highlight` — which have no pixman operator here, exactly as
+  `kCGBlendModePlusDarker` is deliberately absent (CGContext.h says so) — and the other 30
+  are the pre-10.12 `NSComposite…` aliases, whose deprecation needs one more fetch before
+  the enum can be shipped with a complete, policy-checked case list.
+  **SO C8.1 IS SCOPED TO WHAT HAS SUBSTRATE, MEASURED RATHER THAN ASSUMED**: the seam
+  (`+graphicsContextWithCGContext:flipped:`, `CGContext`, `currentContext` and its setter,
+  the CLASS and instance `saveGraphicsState`/`restoreGraphicsState`, `flipped`,
+  `drawingToScreen`, `+currentContextDrawingToScreen`, `-flushGraphics`), plus
+  `shouldAntialias` and `patternPhase` (`CGContextSetShouldAntialias` and
+  `CGContextSetPatternPhase` both exist) and `focusStack` (a stored `id`). DEFERRED BY
+  NAME WITH A REASON EACH: `graphicsPort`, `+graphicsContextWithGraphicsPort:flipped:`,
+  `+setGraphicsState:` and `+graphicsContextWithWindow:` (DEPRECATED — §1 policy);
+  `CIContext` (no Core Image here); `+graphicsContextWithBitmapImageRep:` (needs
+  `NSBitmapImageRep`, §3 row 1's); `attributes` / `+graphicsContextWithAttributes:` and
+  their two typealiases (the KEY NAMES are not pinned yet, and an attributes dictionary
+  built on recalled keys is exactly what §2 forbids); and the two enum-backed properties
+  above, pending their CG setters.
   THIS IS THE SEAM, NOT THE WIDGETS: **the drawing classes of §3 row 1 are
   `cocoa-parity-plan.md`'s to build on top**, which is what §3 says when it draws
   the CG layer's boundary — and C8's substrate is C2–C6, **ALL SIX OF WHICH ARE NOW
