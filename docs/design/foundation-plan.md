@@ -3484,7 +3484,7 @@ vanishing.
 | **Files and Data Persistence / Items** | ALL STRUCK: `NSMetadataItem` | — |
 | **Files and Data Persistence / JSON** | all classes shipped | — |
 | **Files and Data Persistence / Keyed Archivers** | all classes shipped | — |
-| **Files and Data Persistence / Managed file access** | 2 open | `NSFileSecurity`, `NSFileWrapper` |
+| **Files and Data Persistence / Managed file access** | 1 open | `NSFileSecurity` |
 | **Files and Data Persistence / Property Lists** | all classes shipped | — |
 | **Files and Data Persistence / Queries** | ALL STRUCK: `NSMetadataQuery`, `NSMetadataQueryAttributeValueTuple`, `NSMetadataQueryDelegate`, `NSMetadataQueryResultGroup` | — |
 | **Files and Data Persistence / XML** | 7 open | `NSXMLDTD`, `NSXMLDTDNode`, `NSXMLDocument`, `NSXMLElement`, `NSXMLNode`, `NSXMLParser`, `NSXMLParserDelegate` |
@@ -11918,6 +11918,64 @@ one class with a narrow set of wrappers to `NSFileManager` with its delegate (al
 deep walk, its file-system view, its mutator, and **two data-loss fixes that were not in any probe's
 remit** (an existing destination was silently REPLACED by a copy and by a move). What comes next is
 slice 4: **`NSFileWrapper`**, the unit's first new class since `NSDirectoryEnumerator`.
+
+**SLICE 4 LANDED (2026-09-24): `NSFileWrapper` - A FILE-SYSTEM NODE AS AN OBJECT, READ AND WRITTEN.**
+Seven ledger rows (`class` 151/45 -> **152/44**, `enum` 101/42 -> **103/40**, `case` 591/543 ->
+**595/539**), and the unit's first new class since `NSDirectoryEnumerator`, with a probe and a case of its
+own: `foundation_filewrapper`, **12 checks**. `userland/Foundation/NSFileWrapper.{h,m}`.
+
+**IT IS A TREE, AND THAT IS THE DESIGN:** a regular file with its bytes, a directory with a dictionary of
+children **keyed by a unique filename**, or a symbolic link with a destination. Reading builds the tree
+from disk, writing puts it back, and everything in between is a value operation.
+
+**THE RULES THAT NEEDED MEASURING, EACH FROM APPLE'S OWN PAGES:**
+ * **THE KIND COMES FROM `lstat(2)`**, so a link is a link and not what it points at — which is what lets
+   a **dangling** one be wrapped at all (the probe wraps one and asserts both its target string and that
+   the target does not exist);
+ * **THE DICTIONARY KEY IS "the same as the passed-in file wrapper's preferred filename UNLESS that name
+   is already in use"**, and Apple does not say what the substituted name looks like — so the substitution
+   is OURS and it is a rule (`<name> 2`, `<name> 3`, ...), asserted by adding two children that both want
+   to be `photo.jpg`. And the two RAISES are Apple's sentences: adding a child to a non-directory, and
+   adding one with no preferred name;
+ * **`NSFileWrapperReadingImmediate` IS "the option to read files immediately", WHICH SAYS WHAT THE
+   DEFAULT IS: LAZY.** Without it a regular-file wrapper remembers where its bytes live and reads them
+   when `-regularFileContents` asks; with it, the bytes are taken then. THE PAIR IS OBSERVABLE and the
+   probe makes it so: wrap a file, change the file, then read — the lazy wrapper answers the NEW bytes and
+   the immediate one answers the old. `NSFileWrapperReadingWithoutMapping` is satisfied **by
+   construction**, because this class reads with `read(2)` and never maps anything;
+ * **`NSFileWrapperWritingWithNameUpdating` IS "descendant file wrappers' properties are set if the
+   writing succeeds"** — which is what makes `-filename` readable at all, since a wrapper built in memory
+   has none (the probe asserts the nil first, then the name after the write);
+ * **`Atomic`, FOR A TREE, IS BUILD-BESIDE-AND-RENAME**, so a reader sees either the old tree or the new
+   one; a destination that is already there is REMOVED first, because `rename(2)` will not replace a
+   non-empty directory — a choice, stated in the code rather than discovered;
+ * **`originalContentsURL` IS FOR NOT REWRITING WHAT DID NOT CHANGE**, and the implementation makes that
+   concrete and observable: a regular file whose bytes are IDENTICAL to the original's is **HARDLINKED**
+   into place (the two names share an inode) while changed bytes are copied — one call, two answers, both
+   asserted by inode identity.
+
+**WHAT IT DOES NOT DO, EACH WITH ITS GROUND IN THE HEADER:** `-icon` (an `NSImage`, which is AppKit's);
+`-serializedRepresentation`/`-initWithSerializedRepresentation:` and the `NSCoding` pair (Apple's
+serialization format is **undocumented** — "the file wrapper's data in the format used by the system" —
+so a format of our own would be a claim about compatibility rather than a copy of one; it is its own
+increment); and `-writeToFile:atomically:updateFilenames:`, whose own page says it "has been
+**DEPRECATED** in favor of" the URL form that DOES ship here.
+
+**AND TWO ERRORS WORTH KEEPING, BOTH IN THE PROBE RATHER THAN THE CLASS.** The first is a fact about this
+library meeting a fact about links: the probe's dangling link had a **relative** target, and **this
+library's `NSURL` takes absolute paths only (F8's rule)** — so `-symbolicLinkDestinationURL` answered nil
+and the check went red. The fixture now carries BOTH kinds deliberately (a relative target for the string
+form, an absolute one for the URL form). The second is an assertion of mine that was simply wrong: I
+compared the URL against the LINK's path when the door answers the TARGET's — the failing line printed
+both values and they were correct, which is what a detailed failure message is for.
+
+**GATES:** `make testimg` exit 0; `foundation_filewrapper` **12/12**, `foundation_filemanager` **25/25**,
+`foundation_filemanagerdelegate` **18/18**, `foundation_directoryenumerator` **17/17**.
+
+**WHAT SLICE 4'S SECOND HALF OWES:** the serialization pair (and with it `NSCoding`), which is a format
+decision plus a round-trip probe — and the README-shaped question of whether our format should be
+documented as ours.
+
 
 
 

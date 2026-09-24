@@ -472,7 +472,21 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   returned a real Objective-C declaration, which is why a symbol page can sometimes answer
   and the index always can.
   **AND C8 HAS ALREADY FOUND TWO `CG` GAPS, BEFORE A LINE OF APPKIT WAS WRITTEN — which is
-  this plan's own thesis about the AppKit being CG's ORACLE (§8), arriving early.** The
+  this plan's own thesis about the AppKit being CG's ORACLE (§8), arriving early.
+  **AND C8.6 CLOSED ONE OF THEM ON THE COREGRAPHICS SIDE, BECAUSE A CLASS THAT DRAWS TURNED OUT TO
+  NEED IT.** C8.5 found that `CGContextClip`/`CGContextEOClip` do not exist in this tree, which is why
+  `NSBezierPath`'s `-addClip`, `-setClip` and `+clipRect:` are absent TOGETHER — there was nothing to
+  forward to — and `-drawRect:`-style code needs a clip. Both are now implemented **for a RECTILINEAR
+  path**, which is §5's own technique 2 made concrete ("intersected as a region where rectilinear,
+  falling back to a mask only for antialiased path clips"): the path is swept into the SAME
+  device-space trapezoids a fill uses, every trapezoid of a rectilinear path IS a rectangle, and those
+  are unioned into the clip. So a clip is exact rather than approximated. **A SLANTED OR CURVED EDGE
+  IS REFUSED BY NAME**, because the honest approximation is a MASK and this library has none — a
+  fill's coverage comes from pixman's trapezoid rasterizer, and a clip needing per-pixel coverage
+  would have to multiply into every composite (the trapezoid mask, `cg_paint_clip`, and the
+  hand-written image blit). A rotated or skewed CTM is refused for the reason `CGContextClipToRect`
+  already gives. THE MASK HALF IS OWED AND NAMED, and it is the piece that will let `-addClip` take
+  the path a `-drawRect:` actually builds.** The
   three enums ride with members whose substrate was checked one by one:
   `NSColorRenderingIntent`'s five cases and `NSImageInterpolation`'s five are each a
   one-to-one match for a CoreGraphics enum **that this library does not expose a CONTEXT
