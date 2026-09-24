@@ -115,6 +115,43 @@
 
 @end
 
+/* THE PRODUCER THAT IS NOT THE MAIN THREAD (foundation-plan.md §58.2e). It exists because every other check in
+ * this probe adds operations from main(), while the stream task adds them from its own WORKER thread - and its
+ * TLS leg was measured to lose HALF its deliveries inside `[queue addOperationWithBlock:]` and nothing else. */
+@interface ProducerThread : NSObject
+{
+@public
+	NSOperationQueue *queue;
+	NSLock *lock;
+	int *ran;
+	int count;
+}
+- (void)fnProduce;
+@end
+
+@implementation ProducerThread
+
+- (void)fnProduce
+{
+	/* LOCALS, NOT `self`: a block that captures `self` from a detached thread's selector is how a probe earns
+	 * a use-after-free, and there is no reason for one here. */
+	NSOperationQueue *q = queue;
+	NSLock *l = lock;
+	int *counter = ran;
+	int total = count;
+	int i;
+
+	for (i = 0; i < total; i++) {
+		[q addOperationWithBlock:^{
+			[l lock];
+			(*counter)++;
+			[l unlock];
+		}];
+	}
+}
+
+@end
+
 static int okc, failc;
 
 static void check(const char *name, int ok, NSString * _Nullable detail)
@@ -272,6 +309,45 @@ int main(void)
 		[queue waitUntilAllOperationsAreFinished];
 		check("add-operation-with-block-runs-the-block", ran == 1,
 		      @"-addOperationWithBlock: runs its block, and the queue's own wait sees it");
+	}
+
+	/* ---- A PRODUCER THAT IS NOT THE MAIN THREAD (§58.2e) -------------------------------------------
+	 *
+	 * THE ELIGIBILITY OF THIS LEG IS THE POINT, NOT THE QUEUE ITSELF: every check above adds operations from
+	 * main(), and the stream task adds them from its own WORKER thread - the shape nothing in this tree
+	 * exercised. Its TLS leg was MEASURED (§58.2d) to lose half its deliveries inside
+	 * `[queue addOperationWithBlock:]`: 14 hops handed to the queue, 7 ever ran. So the question is exactly:
+	 * does a queue run every operation when the caller is not the main thread?
+	 *
+	 * THE COUNT IS THE INSTRUMENT (the blocks run on N threads, so line order would prove nothing), the wait is
+	 * BOUNDED (a queue that loses an operation never drains, and this probe must report rather than hang), and
+	 * the counter is under a lock so a torn increment cannot fake a pass. */
+	{
+		NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+		ProducerThread *producer = [[ProducerThread alloc] init];
+		NSLock *lock = [[NSLock alloc] init];
+		int ran = 0;
+		int waited = 0;
+		int wanted = 50;
+
+		producer->queue = queue;
+		producer->lock = lock;
+		producer->ran = &ran;
+		producer->count = wanted;
+		[queue setName:@"probe-threaded-queue"];
+		[NSThread detachNewThreadSelector:@selector(fnProduce) toTarget:producer withObject:nil];
+		while (ran < wanted && waited < 3000) {		/* 30s at 10ms: bounded, never a hang */
+			[NSThread sleepForTimeInterval:0.01];
+			waited++;
+		}
+		printf("FOUNDATION-OPERATION-DIAG threaded producer: ran=%d of %d, queue count=%lu, waited=%d\n",
+		       ran, wanted, (unsigned long)[queue operationCount], waited);
+		check("every-block-added-from-a-worker-thread-runs", ran == wanted,
+		      [NSString stringWithFormat:@"ran=%d of %d - a queue that ACCEPTS an operation must RUN it",
+		       ran, wanted]);
+		check("and-the-threaded-queue-drained", [queue operationCount] == 0,
+		      [NSString stringWithFormat:@"%lu operation(s) still in the queue",
+		       (unsigned long)[queue operationCount]]);
 	}
 
 	printf("FOUNDATION-OPERATION RESULT ok=%d fail=%d\n", okc, failc);

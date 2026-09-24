@@ -37,7 +37,8 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_operation"
 CHECKS = ("operation-subclass-runs", "operation-base-main-raises", "operation-dependency-order",
           "queue-runs-and-drains", "queue-serial-order", "queue-suspend-holds-work",
-          "queue-resume-runs", "queue-cancel-all", "queue-current-inside-operation", "add-operation-with-block-runs-the-block")
+          "queue-resume-runs", "queue-cancel-all", "queue-current-inside-operation", "add-operation-with-block-runs-the-block",
+          "every-block-added-from-a-worker-thread-runs", "and-the-threaded-queue-drained")
 
 
 class Case(BaseCase):

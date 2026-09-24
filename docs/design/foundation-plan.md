@@ -10848,7 +10848,33 @@ instrument that settled §58.2c. If the count equals N, the defect is elsewhere 
 the retain/release dance around `copied`; if it does not, `NSOperationQueue` has a thread-safety or block-loss bug
 with a small reproducer and a real fix.
 
-**WHAT REMAINS:** that reproducer, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
+**§58.2e — THE REPRODUCER WAS WRITTEN, AND IT FOUND A DIFFERENT REAL BUG (2026-09-22).** `foundation_operation`
+now has the leg §58.2d asked for - 50 blocks added with `-addOperationWithBlock:` **from a detached thread** (every
+earlier check in that probe adds from `main()`, which is why the shape was never covered), the counter under a lock
+so a torn increment cannot fake a pass, and a BOUNDED wait (30s) because a queue that loses an operation never
+drains and a probe must report rather than hang. Its two checks are `every-block-added-from-a-worker-thread-runs`
+and `and-the-threaded-queue-drained`.
+
+**MEASURED, and it is not what §58.2d predicted:**
+```
+every-block-added-from-a-worker-thread-runs  ok        <- ALL 50 blocks ran
+and-the-threaded-queue-drained  FAIL  29 operation(s) still in the queue
+```
+**So the threaded producer does NOT lose blocks - every one ran - but 29 of the 50 operations are STILL IN
+`_operations` AFTERWARDS.** The scheduler's own bookkeeping leaks finished operations. That is a different defect
+from the delivery loss, it is reproducible in one run, and it is now a RED CHECK rather than a note - deliberately,
+because a reproducer that cannot fail is not one.
+
+**WHAT IT MEANS FOR THE STREAM TASK, AND WHAT IT DOES NOT:** the `-fnServeRead:`/hop loss (§58.2d) is *not*
+explained by this leak - the hop's blocks all ran here. What the leak DOES explain is why a queue can wedge: an
+operation that stays in `_operations` is an operation the scheduler keeps looking at, and `-waitUntilAllOperationsAreFinished`
+would wait for it for ever (which is why this leg's wait is bounded). Since both bugs live in the same file and in
+the same two arrays, the next unit is that file: `_operations`/`_pending` bookkeeping, with
+`-removeObjectIdenticalTo:` as the first thing to look at (29 of 50 removals missing is what an identity test that
+is not identity looks like).
+
+**WHAT REMAINS:** the `_operations`/`_pending` bookkeeping in `NSOperation.m` (the leak first, since it is
+reproduced), then the delivery loss, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
 The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
