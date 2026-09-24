@@ -28,11 +28,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  153   open   43   struck   77
+#   class      shipped  154   open   42   struck   77
 #   protocol   shipped   21   open   10   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped  103   open   40   struck   17
-#   case       shipped  595   open  539   struck  168
+#   enum       shipped  105   open   38   struck   17
+#   case       shipped  604   open  530   struck  168
 #   func       shipped   72   open   63   struck   54
 #   var        shipped  238   open  323   struck  353
 #   typealias  shipped   36   open   33   struck    7
@@ -353,15 +353,15 @@ case	open	NSExecutableNotLoadableError	NSError	App Support / User-Relevant Error
 case	open	NSExecutableRuntimeMismatchError	NSBundle	App Support / Bundle Resources / Errors	-	objc
 case	open	NSExecutableRuntimeMismatchError	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
 case	open	NSFeatureUnsupportedError	NSError	App Support / User-Relevant Errors / Error Codes / Miscellaneous Errors	-	objc
-case	open	NSFileCoordinatorReadingForUploading	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
-case	open	NSFileCoordinatorReadingImmediatelyAvailableMetadataOnly	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
-case	open	NSFileCoordinatorReadingResolvesSymbolicLink	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
-case	open	NSFileCoordinatorReadingWithoutChanges	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
-case	open	NSFileCoordinatorWritingContentIndependentMetadataOnly	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
-case	open	NSFileCoordinatorWritingForDeleting	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
-case	open	NSFileCoordinatorWritingForMerging	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
-case	open	NSFileCoordinatorWritingForMoving	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
-case	open	NSFileCoordinatorWritingForReplacing	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
+case	shipped	NSFileCoordinatorReadingForUploading	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
+case	shipped	NSFileCoordinatorReadingImmediatelyAvailableMetadataOnly	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
+case	shipped	NSFileCoordinatorReadingResolvesSymbolicLink	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
+case	shipped	NSFileCoordinatorReadingWithoutChanges	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
+case	shipped	NSFileCoordinatorWritingContentIndependentMetadataOnly	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
+case	shipped	NSFileCoordinatorWritingForDeleting	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
+case	shipped	NSFileCoordinatorWritingForMerging	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
+case	shipped	NSFileCoordinatorWritingForMoving	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
+case	shipped	NSFileCoordinatorWritingForReplacing	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
 case	open	NSFileErrorMaximum		Files and Data Persistence / Errors / Error Codes	-	objc
 case	open	NSFileErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
 case	open	NSFileErrorMinimum		Files and Data Persistence / Errors / Error Codes	-	objc
@@ -1399,7 +1399,7 @@ class	struck	NSExistsCommand		App Support / Script Commands	declined	objc
 class	shipped	NSExpression		Fundamentals / Filltering	-	objc
 class	open	NSExtensionContext		App Support / Extension Support	-	objc
 class	open	NSExtensionItem		App Support / Attachments	-	objc
-class	open	NSFileAccessIntent		Files and Data Persistence / Coordinated file access	-	objc
+class	shipped	NSFileAccessIntent		Files and Data Persistence / Coordinated file access	-	objc
 class	open	NSFileCoordinator		Files and Data Persistence / Coordinated file access	-	objc
 class	shipped	NSFileHandle		Files and Data Persistence / Managed file access	-	objc
 class	shipped	NSFileManager		Files and Data Persistence / File system operations	-	objc
@@ -1651,8 +1651,8 @@ enum	open	NSDistributedNotificationOptions	NSDistributedNotificationCenter	App S
 enum	struck	NSEnergyFormatterUnit	NSEnergyFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
 enum	shipped	NSEnumerationOptions		Fundamentals / Iteration	-	objc
 enum	shipped	NSExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	swift-page
-enum	open	NSFileCoordinatorReadingOptions	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants	-	objc
-enum	open	NSFileCoordinatorWritingOptions	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants	-	objc
+enum	shipped	NSFileCoordinatorReadingOptions	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants	-	objc
+enum	shipped	NSFileCoordinatorWritingOptions	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants	-	objc
 enum	shipped	NSFileManagerItemReplacementOptions	NSFileManager	Files and Data Persistence / File system operations / Replacing items	-	objc
 enum	shipped	NSFileManagerResumeSyncBehavior	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
 enum	shipped	NSFileManagerSupportedSyncControls	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc

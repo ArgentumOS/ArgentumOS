@@ -3479,7 +3479,7 @@ vanishing.
 | **App Support / User-Relevant Errors** | all classes shipped | — |
 | **Files and Data Persistence / Adopting Codability** | all classes shipped | — |
 | **Files and Data Persistence / App-specific settings** | all classes shipped | — |
-| **Files and Data Persistence / Coordinated file access** | 3 open | `NSFileAccessIntent`, `NSFileCoordinator`, `NSFilePresenter` |
+| **Files and Data Persistence / Coordinated file access** | 2 open | `NSFileCoordinator`, `NSFilePresenter` |
 | **Files and Data Persistence / Deprecated** | ALL STRUCK: `NSArchiver`, `NSUnarchiver` | — |
 | **Files and Data Persistence / File system operations** | 2 open | `NSFileProviderService`, `NSFileVersion` |
 | **Files and Data Persistence / Items** | ALL STRUCK: `NSMetadataItem` | — |
@@ -12360,10 +12360,55 @@ own cause in the detail string:
  * **The shape that works**: the deferral is stored in the slot that `fnOpenLevel` pushes for that
    directory's OWN level - the level whose close answers it - and the answer happens only there.
 
-**AFTER W8p:** the coordinator family, `NSFileVersion` and `NSFileProviderService` - and standing beside
-them, the two items this unit has named and not closed: `NSDirectoryEnumerator`'s now-empty option word
-(nothing else in it is unimplemented, which the checks show), and the **devfs walk hang** recorded at slice
-6e, which is a defect of its own with two candidates to measure.
+**THE COORDINATOR FAMILY IS MEASURED, SPLIT, AND ITS FIRST SLICE LANDED (2026-09-24).** Apple's published
+surface for it is **37 members** - 13 on `NSFileCoordinator` (its initializer, the four registered-presenter
+doors, the synchronous accessor forms for one and two items, `-prepareForReadingItemsAtURLs:…`, the two
+will/did-move notifications, `-cancel`, the ubiquity notification and the two option sets) and **24 on
+`NSFilePresenter`** - so it lands as slices, exactly as W8p did, and **7a is the VOCABULARY its operations
+are spelled with**. `foundation_fileaccessintent` is a NEW probe with **6 checks**, green.
+
+**7a: THE OPTION SETS AND THE INTENT, WHICH IS THE WHOLE OF WHAT APPLE PUBLISHES FOR THAT CLASS.** Measured
+from the pages: `NSFileCoordinatorReadingOptions` has 4 members (`WithoutChanges`, `ResolvesSymbolicLink`,
+`ImmediatelyAvailableMetadataOnly`, `ForUploading`) and `NSFileCoordinatorWritingOptions` has 5
+(`ForDeleting`, `ForMoving`, `ForMerging`, `ForReplacing`, `ContentIndependentMetadataOnly`) - Apple's names
+with our values, §11.6.1 D2's standing rule - and `NSFileAccessIntent` publishes **TWO FACTORIES AND `-URL`
+and nothing else**: no options accessor, no kind accessor. **So none is invented, and the probe ASKS for one
+and requires NO** (`fai-there-is-no-options-accessor`), which is this library's rule for a boundary: assert
+it rather than leave it to be discovered.
+
+**AND ONE CHECK TAUGHT ME THAT A DEMAND NO CORRECT IMPLEMENTATION CAN MEET IS AN INSTRUMENT FAULT.**
+`fai-the-options-are-distinct-bits` first required all NINE values to be pairwise distinct and failed
+(`distinct=0`) - because **the reading and writing sets SHARE their low bits, as Apple's own numbering does**
+(each set starts at `1 << 0`), and the two are never compared to each other: they are the parameters of
+different doors. The check now asserts distinctness **within each set** and asserts combinability, which is
+what an option set has to be, and the failure is recorded here because it is the third time in this unit that
+the thing which was wrong was my expectation rather than the tree.
+
+**THE SLICES THAT REMAIN, WITH THE SUBSTRATE QUESTION STATED BEFORE THE CODE RATHER THAN DISCOVERED IN IT:**
+ * **7b - the SYNCHRONOUS accessor doors** (reading, writing, and the two 2-item forms). THIS IS WHERE THE
+   SEMANTICS HAVE TO BE STATED: there is **no coordination daemon and no file provider on this system**, so
+   what a coordinator can honestly do is coordinate **WITHIN THE PROCESS** - run the accessor, and inform the
+   presenters registered in this process. Whether the cross-process half becomes a service (a daemon over
+   the existing IPC) or a registered boundary is 7b's first decision, and it is the user's kind of decision
+   rather than the code's.
+ * **7c - the registered-presenter doors and `NSFilePresenter`'s IN-PROCESS CORE**: `+addFilePresenter:`,
+   `+removeFilePresenter:`, `+filePresenters`, `-initWithFilePresenter:`, `-purposeIdentifier`, the two
+   `-relinquishPresentedItemTo…` forms, `-savePresentedItemChangesWithCompletionHandler:`,
+   `-presentedItemDidChange` and the move notifications. The relinquish/completion-handler HANDSHAKE gets
+   measured before it is built, because it is the one place in this family where a wrong reading means a
+   HANG rather than a wrong answer.
+ * **7d - WHAT THIS SYSTEM CANNOT BRING ABOUT, REGISTERED RATHER THAN DECLARED AND FORGOTTEN:** the ubiquity
+   pair (`-observedPresentedItemUbiquityAttributes`, `-presentedItemDidChangeUbiquityAttributes:`), the
+   version trio (`-presentedItemDidGainVersion:` / `-DidLoseVersion:` / `-DidResolveConflictVersion:` and
+   their subitem forms) and `-accommodatePresentedItemEvictionWithCompletionHandler:`. iCloud, file
+   providers, conflict versions and APFS eviction are things this system does not have, and **a protocol
+   member whose event can never arrive is a member that would report nothing** - which is a boundary, and
+   boundaries are registered here rather than implied.
+
+**AFTER THE FAMILY:** `NSFileVersion` and `NSFileProviderService`, and still standing beside them the two
+items this unit has named and not closed - `NSDirectoryEnumerator`'s now-empty option word, and the
+`make test`-level timing mystery about one `/System` run, which the plan's own text has already corrected
+twice and which the next person should approach from the timed A/B rather than from that prose.
 
 **AND ONE DEBT RECORDED RATHER THAN SILENTLY FIXED, because it is the URL unit's and not this slice's:**
 `NSURL` had **no `-dealloc` at all** before this slice - it copies its parts and released none of them -
