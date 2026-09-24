@@ -10623,22 +10623,42 @@ listening. Every wait in that probe now goes through `nap_ms()` - a `poll(2)` ti
 the project's standing rule - including the writer child, which has to write LATE or a wake test silently becomes
 a queued-data test.
 
-**THE THIRD DEFECT IS REAL, SITS IN THE SHARED CALLOUT MACHINERY, AND IS INTERMITTENT - SO IT IS RECORDED AND NOT
-ASSERTED.** With the diagnostic kernel in place, **two runs of the SAME kernel disagreed**:
+**THE THIRD DEFECT IS REAL AND INTERMITTENT - SO IT IS RECORDED AND NOT ASSERTED. AND THE MACHINERY IS NOW
+PARTLY CLEARED (2026-09-22, second pass).** With the diagnostic kernel in place, **two runs of the SAME kernel
+disagreed**:
  * run A: `VTIME-DIAG SLEEPING chan=...311008 ticks=626 timeout=10` → `callout FIRED arg=...311008` →
    `WOKE ticks=636 cooked=0` → the read returned 0. The whole arrangement works.
  * run B: `VTIME-DIAG SLEEPING ... ticks=737` and then NOTHING - `wait_vtime_off` was never called at all,
    although that line is printed AFTER `add_callout()` has returned.
-So the callout enters the list and sometimes never leaves it: the defect is in `add_callout`'s delta list or in
-`do_callouts_bh`'s wake path - and its shape matters, because `do_callouts_bh` fires only while the HEAD's
-countdown has reached zero, so ONE entry whose countdown never completes stalls every later callout. That would
-also strand the console cursor blink, the floppy motor timer and the ATA timeouts, which share the list.
-**`kernel_pty_read` therefore asserts NEITHER outcome for this arm:** asserting the block would fail whenever the
+
+**A SECOND INSTRUMENT THEN CLEARED THE LIST SIDE, WHICH NARROWS IT A LONG WAY.** A temporary printk in
+`do_callouts_bh` - immediately BEFORE it calls the callback, so it names the entry being DEQUEUED - produced:
+```
+CALLOUT-DIAG dequeue fn=ffff80000d9ddb00 arg=ffff800000633008      <- the VTIME callout, by its channel
+```
+So the entry **does** come out of the list and its callback **does** run, in a run where the sleeper was still not
+woken. And the machinery's own complaints are ABSENT from that run's guest log - no `%s(): callout losing ticks.`
+(the tick handler's warning for a head already at zero), no `already running!` (runnable()'s guard, which is what
+would say a wake matched a process it then refused to queue), no `already sleeping!`, and no `no more callout
+slots!` (the pool). List, countdown, BH scheduling and pool are all doing their jobs; **what fails is the WAKE
+REACHING THE SLEEPER** - which is the §58.1 window class itself, on this channel, and the reason it is not
+astronomically rare is that the same channel is shared by every reader of that tty.
+
+**SO THE NEXT UNIT IS NO LONGER A DIAGNOSIS: IT IS THE CURE THIS PLAN HAS APPLIED ELEVEN TIMES ALREADY.**
+`tty_read`'s two interior `VTIME > 0` arms still call bare `sleep(&tty->read_q, ...)` - the only two waiters left
+in this file that do not arm before they look. Giving them the §58.1 shape (`sleep_arm` → re-look → `sleep_commit`)
+turns a lost wake into a BOUNDED RETRY of the arm's own loop, whatever the exact loss mechanism is, and
+`kernel_pty_read`'s DIAG line is the instrument that says whether the arm became reliable. (The `tty_read`
+fingerprint used at the main site is not needed here: these arms re-derive their whole condition from
+`CURRENT_TICKS` and `cooked_q.count` on every pass, so the loop itself is the re-look.)
+**`kernel_pty_read` still asserts NEITHER outcome for this arm:** asserting the block would fail whenever the
 timer did fire, asserting the return would fail whenever it did not, and two flaky checks are worse than one
 honest observation. It prints `KERNEL-PTY-DIAG vtime read: returned=... code=...` for the record and asserts only
-the deterministic half of the arm.
+the deterministic half of the arm - until the cure above makes the outcome reliable, at which point that DIAG line
+becomes a check and the limit is closed.
 
-**WHAT REMAINS:** the callout list itself - a kernel-side unit in its own right, with the two run transcripts above
+**WHAT REMAINS:** the §58.1 cure at the two interior `&tty->read_q` arms (above - the next unit, with this probe
+as its instrument and a bounded retry as its mechanism), then the six writer sites
 as its evidence and this probe's DIAG line as its instrument - then the two interior `&tty->read_q` arms (§58.1's
 cure, gated on the read becoming reliably wakable), then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5,
 `pty_write`). The deliberately un-raced check - "data already queued" - carries its reason in its own comment: a
