@@ -11681,8 +11681,15 @@ VERIFIED against an image whose userland was built at 13:23 and whose probe was 
 staging tree by hand, because the tree's CoreGraphics work (C6.1/C6.2, and C6.3 in flight) did not
 compile at that moment (`CGPattern.c` called `CGBitmapContextCreate` without
 `<CoreGraphics/CGBitmapContext.h>`; repaired in its own commit, `070aa257`). The Foundation library
-and the probe in that image are the current sources - but the honest statement is that the FULL
-`make testimg` gate has not yet been run green over the final tree, and that is the first thing to
-re-run once C6.3 settles.
+and the probe in that image are the current sources - but the honest statement was that the FULL
+`make testimg` gate had not yet been run green over the final tree.
+
+**AND IT HAS BEEN NOW, WHICH IS WHY THIS PARAGRAPH IS A RECORD RATHER THAN A DEBT: C6.3 landed
+(`34f9b747`), `make testimg` exits 0 over the settled tree, and the same three cases re-ran green on
+the image THAT build produced - `foundation_filemanagerdelegate` **18/18**, `foundation_filemanager`
+**9/9**, `foundation_directoryenumerator` **17/17**.** So slice 2 is verified twice: once against the
+hand-linked image (which is what made progress possible while C6 was in flight) and once against the
+ordinary build gate, and the shipped `.build/rootagfs.img` was refreshed with it.
+
 
 
