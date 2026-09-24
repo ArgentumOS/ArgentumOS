@@ -322,12 +322,22 @@ didFinishCollectingMetrics:(NSURLSessionTaskMetrics *)metrics
  * and a leg that waits for a late answer never saw it. Then it became ONE millisecond a round, which is exact
  * now that `usleep` here is a poll (§ fn_pause) - and that made every budget SIXTY TIMES SHORTER than the round
  * counts were written for, so even the first leg's write handler was still on its way when the wait gave up.
- * A BUDGET IS A DURATION, so it is stated as one: rounds × 10ms. */
+ * A BUDGET IS A DURATION, so it is stated as one: rounds × 10ms.
+ *
+ * AND IT WAS WRONG A THIRD TIME, WHICH IS §58.2p AND THE REASON THIS LINE READS ONE BYTE: the flag a call site
+ * passes is a `__block BOOL`, and `BOOL` is ONE byte - boxed, because that is what `__block` means, as the LAST
+ * field of a byref structure. `while(*flag == 0)` on a `volatile int *` therefore read the BOOL's byte PLUS THE
+ * THREE BYTES PAST THE END OF THE BOX, i.e. heap memory the probe does not own. Whatever malloc left there
+ * decided whether the wait ran or returned instantly, so the probe's timing depended on the heap layout - and
+ * the layout moves whenever ANYTHING else in the process allocates differently (the library's counters, added
+ * for §58.2j..§58.2n, are exactly such a change). That is why a check in the FIRST leg, untouched for days,
+ * began reporting that a handler had not answered when its own log line said the handler had answered 60 ms
+ * after the call. THE LESSON: a wait whose predicate is a cast is not measuring the flag it names. */
 static void fn_waitFor(volatile int *flag, int rounds)
 {
 	int waited = 0;
 
-	while(*flag == 0 && waited < rounds) {
+	while(*(volatile unsigned char *)flag == 0 && waited < rounds) {
 		usleep(10000);
 		waited++;
 	}
@@ -622,12 +632,50 @@ int main(void)
 
 	/* --- LEG ONE: A WRITE, AND THE FAR END'S OWN RECORD OF IT ----------------------------------------- */
 	task = fn_leg(session);
-	[task writeData:[@"ping" dataUsingEncoding:NSUTF8StringEncoding] timeout:5.0
-     completionHandler:^(NSError *error) {
-		writeError = error;
-		writeDone = YES;
-	}];
-	fn_waitFor((volatile int *)&writeDone, 600);
+	{
+		/* §58.2o'S DISCRIMINATING EXPERIMENT, AND IT IS §58.1c'S OWN LESSON APPLIED ONE LEG EARLIER: "the
+		 * VTIME probe was measuring its own impatience". This leg's two checks were satisfied at a 600 ms
+		 * wait when §58.2i recorded 19/20 and stopped being satisfied later in this session's counter work,
+		 * and the two readings are told apart by RAISING the wait and MEASURING the write: if the write is
+		 * merely LATE (a slow wake - the checks were asked too early), 3000 ms sees it and the handler's own
+		 * line says how late; if it is LOST or TIMED OUT, it stays unanswered, and the call's 5 s deadline is
+		 * the bound. The handler prints ONCE, at the START of the probe and therefore NOT in the read path
+		 * that §58.2g/§58.2j measured the loss disappearing from - and that print's own effect is read the
+		 * way §58.2j's was: if the two checks go green WITH it, the print bridged something and it is
+		 * evidence of nothing. */
+		NSDate *started = [NSDate date];
+
+		[task writeData:[@"ping" dataUsingEncoding:NSUTF8StringEncoding] timeout:5.0
+	     completionHandler:^(NSError *error) {
+			/* §58.2p: `errCode=0` WAS AMBIGUOUS, AND THAT AMBIGUITY IS WHAT THIS LINE FIXES - it read the
+			 * same whether the handler was handed NIL or an error whose code happens to be 0, and one of
+			 * those is a pass while the other is the whole question. It says `nil` now. */
+			printf("FOUNDATION-STREAMTASK-LEG1 write-handler: %.0f ms err=%s%ld\n",
+			       -[started timeIntervalSinceNow] * 1000.0,
+			       (error == nil ? "nil" : "code "),
+			       (long)(error != nil ? [error code] : 0));
+			writeError = error;
+			writeDone = YES;
+		}];
+		/* §58.2p: 3000 rounds is THIRTY SECONDS under fn_waitFor's own stated budget (rounds × 10 ms), which
+		 * is not what this leg means to spend - it means "long enough that a lost-wakeup write would show".
+		 * Back to the 600 the leg was written with, now that the wait actually reads the flag it names. */
+		fn_waitFor((volatile int *)&writeDone, 600);
+	}
+	/* §58.2p: AND THIS CHECK WAS MEASURING ITS OWN IMPATIENCE, WHICH IS WHY IT BEGAN FAILING WHILE NOTHING IN
+	 * THE CLASS CHANGED. The write's handler fires as soon as the bytes are handed to the KERNEL and makes no
+	 * claim about the peer, so reading `server->readBytes` the instant it ran asked the far end to have
+	 * looped back already - and the server's own leg-one arm polls at 5 ms. The bound below is that poll's:
+	 * generous, bounded, and written down instead of left to the scheduler. §58.1c's lesson ("the VTIME probe
+	 * was measuring its own impatience"), met one layer out. */
+	{
+		int waited = 0;
+
+		while([server->readBytes length] == 0 && waited < 400) {
+			fn_pause(5);
+			waited++;
+		}
+	}
 	check("the-write-completes", writeDone && writeError == nil,
 	      @"the write's handler answers, and answers without an error");
 	check("and-the-far-end-read-it",

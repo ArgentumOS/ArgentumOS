@@ -11176,6 +11176,68 @@ discipline that this file's own history says is the only kind that does not pert
 the smallest shape that survives: N threads contending one `NSLock`; (2) that one-line probe addition to name the
 first leg's write error; (3) the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
 
+### §58.2p — RETRACTION: THE RED WAS THE PROBE'S OWN WAIT - `fn_waitFor` READ FOUR BYTES AT A ONE-BYTE `__block BOOL` (2026-09-24)
+
+**THE CASE IS GREEN, FIVE CONSECUTIVE RUNS, AND NOTHING IN THE KERNEL OR THE CLASS CHANGED TO MAKE IT SO:**
+```
+FOUNDATION-STREAMTASK-LEG1 write-handler: 39 ms err=nil0
+FOUNDATION-STREAMTASK-DIAG reply: done=1 errCode=0 len=69 has200=1 hops handed=15 ran=15 inline=0
+  ops enq=6/3/4 served=6/3/4 reads started=6 finished=6 worker entered=9 loops=14 waits=12 left=1
+  noconnect=0 fin=6/3/4 unreturned=0 THISLEG before(loops=13 left=1) delta(loops=1 left=0)
+FOUNDATION-STREAMTASK RESULT ok=20 fail=0        <- five runs: 20/20, 20/20, 20/20, 20/20, 20/20
+```
+**THE DEFECT WAS ONE LINE IN THE PROBE, AND IT IS A CAST.** `fn_waitFor(volatile int *flag, ...)` spins on
+`*flag == 0`, and every call site hands it the address of a `__block BOOL`. **`BOOL` is ONE byte here**, and a
+`__block` variable is BOXED - that is what `__block` means - as the **last field of a byref structure**. So `*flag`
+read the flag's byte **and the three bytes past the end of the box**: heap memory the probe does not own. Whether
+the wait spent its rounds or **returned instantly** was decided by whatever `malloc` had left there - and that
+moves whenever anything else in the process allocates differently.
+
+**AND THAT IS EXACTLY WHAT §58.2J DID.** The library's operation counters (`fnHops*`, `fnEnqueued*`, `fnServed*`,
+`fnDeliveredRead`, `fnWorker*`) are such a change: they shifted the heap, the bytes past the box became non-zero,
+and **every `fn_waitFor` in this probe began returning immediately**. A probe that no longer waits reads its
+counters a few milliseconds early - which is precisely what §58.2k..§58.2o measured and could not explain:
+
+ * **"ONE READ IS ENQUEUED AND NEVER SERVED" (6 enqueued, 5 served)** - the enqueue had happened, the worker had
+   not yet fetched it, and the probe did not wait before looking. Nothing was lost, and nothing was parked;
+ * **"the worker is stuck BETWEEN operations" / `delta(loops=0 left=0)`** - the same, one layer in: the reading was
+   taken before the worker's next pass, and §58.2n's delta could not see a fetch that had not been attempted yet;
+ * **`unreturned=0`**, which §58.2o read as "parked on the condvar" - a true statement about a worker that was
+   simply **between two operations**, which is what a serial queue's worker is for most of its life;
+ * **the first leg's two checks failing while its own log line said the handler had answered at 39-60 ms with
+   `err=nil`** - the check ran before the handler did. §58.2o's `err=nil` fix is what made the contradiction
+   visible: a handler CANNOT have answered and also not have answered. **One line that cannot be true of both is
+   worth more than three that can.**
+
+**SO THE EARLIER SECTIONS' KERNEL READING IS WITHDRAWN, EXPLICITLY:** §58.2d's "7 of 14 hops never ran", §58.2j's
+"the loss is upstream of the delivery", §58.2k..§58.2n's parked/idle-worker readings, and §58.2o's "the loss is the
+condition signal" were each a **mid-flight reading by a probe that had stopped waiting**, and §58.2o's "WHAT
+REMAINS" list is superseded. The hop counters are the clearest case: `fnHopsHanded`/`fnHopsRan` are read ONCE, at
+the end, and a block still in flight when the probe looks is indistinguishable from a block the queue dropped -
+`14/7` and `14/14` are the same code read at two different moments.
+
+**WHAT SURVIVES, AND IT IS NOT NOTHING:**
+ * **§58.2i's `FUTEX_WAIT` fix STANDS**, on its own footing rather than on this case's: check-then-register is a
+   real lost-wakeup window (a waiter that looks, is pre-empted, and registers after the waker has already woken and
+   gone sleeps for ever), and its A/B was measured with **`foundation_operation`'s own counters** - 2 of 8 runs
+   ending with `running == pending == operations` (27/27/27) before, **0 of 8** after. That probe has **no such
+   cast** (the pattern appears nowhere else in `userland/tests`), so its instrument reads the thing it names. What
+   is superseded is only §58.2i's sentence that the case stayed red.
+ * **`foundation_operation`'s intermittent 29-of-50 leak remains OPEN and unexplained** (§58.2e/§58.2f): a
+   different probe, counted under a lock, and unasserted by this project's own rule about flaky checks.
+ * **§58.2g's lesson needs its other half stated, because this section is its mirror image.** "Any per-event WRITE
+   in this path bridges the loss" was true of that instrument; what this section adds is the converse - **a probe
+   whose waits do not wait MANUFACTURES losses**, and a print costing one syscall's worth of delay is enough to
+   hide one. Both directions say the same thing: here the apparatus is part of the system under test, and an
+   instrument has to be shown to read what it names before its readings are evidence.
+
+**THE RULE FOR THE NEXT PROBE, AND IT IS ONE LINE:** a wait must read THE OBJECT IT WAS GIVEN. Casting a
+`__block BOOL *` to `volatile int *` is not a style slip - it reads past an object. `fn_waitFor` now reads exactly
+one byte (`*(volatile unsigned char *)flag`), and a flag meant to be polled as an `int` should be declared as one.
+The same fix restored the budgets: `rounds × 10 ms` means the 3000 this section's first experiment passed in was
+**thirty seconds**, not the three it looked like - a number that never had a chance to be spent, because the wait
+was not being spent at all.
+
 The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
