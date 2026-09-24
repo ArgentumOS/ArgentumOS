@@ -39,6 +39,9 @@
 #include <string.h>		/* memset/strncpy: the bound socket's address (§60 slice 3c) */
 #include <sys/socket.h>		/* ... and socket(2)/bind(2), which make an S_IFSOCK inode */
 #include <sys/un.h>
+#include <pwd.h>		/* getpwuid/getgrgid: the account NAMES the probe checks against */
+#include <grp.h>
+#include <math.h>		/* fabs: the modification date is a double */
 
 #define PROBE_ROOT "/System/Temporary Files/nsfilemanager-probe"
 
@@ -670,6 +673,124 @@ int main(void)
 		cleaned = [fm removeItemAtPath:@S3_ROOT error:NULL];
 		if (!cleaned) {
 			printf("FOUNDATION-FILEMANAGER fs-s3-cleanup: the fixture is still at %s\n", S3_ROOT);
+		}
+	}
+
+	/* --- W8 SLICE 3d: THE ACCOUNT NAMES, AND THE MUTATOR -------------------------------------------- */
+	{
+		/* THE NAMES ARE THE ACCOUNT DATABASE'S ANSWER, not a string this probe knows by heart: it asks
+		 * the same question the class does (getpwuid/getgrgid on the item's ids), so a class that
+		 * hard-coded "root" would fail here while a system whose uid 0 has another name would not.
+		 * The fixture is made first, because the slice it belongs to removed its own tree. */
+		NSFileManager *fm = [NSFileManager defaultManager];
+		id named;
+		struct stat st;
+		BOOL statOK;
+		struct passwd *pw;
+		struct group *gr;
+		const char *ownerName;
+		const char *groupName;
+
+		[fm createDirectoryAtPath:@S3_ROOT withIntermediateDirectories:NO attributes:nil error:NULL];
+		[fm createFileAtPath:fn_s3(@"file.txt")
+			     contents:[@"hello" dataUsingEncoding:NSUTF8StringEncoding]
+			   attributes:nil];
+		named = [fm attributesOfItemAtPath:fn_s3(@"file.txt") error:NULL];
+		statOK = (stat([fn_s3(@"file.txt") UTF8String], &st) == 0);
+		pw = statOK ? getpwuid((uid_t)st.st_uid) : NULL;
+		gr = statOK ? getgrgid((gid_t)st.st_gid) : NULL;
+		ownerName = (pw != NULL && pw->pw_name != NULL) ? pw->pw_name : "";
+		groupName = (gr != NULL && gr->gr_name != NULL) ? gr->gr_name : "";
+
+		{
+			id ownerValue = [named objectForKey:NSFileOwnerAccountName];
+			id groupValue = [named objectForKey:NSFileGroupOwnerAccountName];
+			id wantedOwner = ownerName[0] != '\0' ? [NSString stringWithUTF8String:ownerName] : nil;
+			id wantedGroup = groupName[0] != '\0' ? [NSString stringWithUTF8String:groupName] : nil;
+
+			check("fs-attribute-names-are-the-accounts",
+			      named != nil && statOK && wantedOwner != nil && wantedGroup != nil &&
+			      [ownerValue isEqual:wantedOwner] && [groupValue isEqual:wantedGroup],
+			      [NSString stringWithFormat:@"owner=%@(want %s) group=%@(want %s)",
+				ownerValue, ownerName, groupValue, groupName]);
+		}
+
+		{
+			/* THE MUTATOR'S FIRST TWO SENTENCES IN ONE CALL: every key is TRIED and a key nothing
+			 * here acts on is not a failure ("attempts to make all changes specified in attributes
+			 * and IGNORES A REJECTION of an attempted modification"), so the answer is YES with the
+			 * two keys this class does know applied. */
+			NSMutableDictionary *changes = [NSMutableDictionary dictionary];
+			NSError *setError = nil;
+			BOOL applied;
+			id after;
+
+			[fm createFileAtPath:fn_s3(@"mutable.txt")
+				     contents:[@"m" dataUsingEncoding:NSUTF8StringEncoding]
+				   attributes:nil];
+			[changes setObject:[NSNumber numberWithUnsignedShort:0640]
+				    forKey:NSFilePosixPermissions];
+			[changes setObject:[NSDate dateWithTimeIntervalSince1970:1000000000.0]
+				    forKey:NSFileModificationDate];
+			[changes setObject:@YES forKey:@"FNXKeyNothingActsOn"];
+			applied = [fm setAttributes:changes ofItemAtPath:fn_s3(@"mutable.txt") error:&setError];
+			after = [fm attributesOfItemAtPath:fn_s3(@"mutable.txt") error:NULL];
+			check("fs-set-attributes-writes-permissions-and-a-date",
+			      applied && setError == nil &&
+			      [[after objectForKey:NSFilePosixPermissions] unsignedShortValue] == 0640 &&
+			      fabs([[after objectForKey:NSFileModificationDate] timeIntervalSince1970] -
+				   1000000000.0) < 1.0,
+			      [NSString stringWithFormat:@"applied=%d err=%@ mode=%o date=%.0f", (int)applied,
+				setError != nil ? [setError localizedDescription] : @"(none)",
+				[[after objectForKey:NSFilePosixPermissions] unsignedShortValue],
+				[[after objectForKey:NSFileModificationDate] timeIntervalSince1970]]);
+		}
+
+		/* AND THE SENTENCE THAT SEPARATES THIS DOOR FROM ITS READER: "if the last component of the
+		 * path is a symbolic link, THE SYSTEM TRAVERSES IT" - so setting permissions through a link
+		 * moves the TARGET's and leaves the LINK's own attributes alone, which is exactly the
+		 * difference between stat(2) and lstat(2) made observable. */
+		{
+			NSMutableDictionary *through = [NSMutableDictionary dictionary];
+			id linkBefore;
+			id targetBefore;
+			id linkAfter;
+			id targetAfter;
+			id linkBeforePermissions;
+			id linkAfterPermissions;
+			BOOL throughApplied;
+
+			symlink([@"file.txt" UTF8String], [fn_s3(@"link-one") UTF8String]);
+			linkBefore = [fm attributesOfItemAtPath:fn_s3(@"link-one") error:NULL];
+			targetBefore = [fm attributesOfItemAtPath:fn_s3(@"file.txt") error:NULL];
+			[through setObject:[NSNumber numberWithUnsignedShort:0604]
+				    forKey:NSFilePosixPermissions];
+			throughApplied = [fm setAttributes:through ofItemAtPath:fn_s3(@"link-one") error:NULL];
+			linkAfter = [fm attributesOfItemAtPath:fn_s3(@"link-one") error:NULL];
+			targetAfter = [fm attributesOfItemAtPath:fn_s3(@"file.txt") error:NULL];
+			linkBeforePermissions = [linkBefore objectForKey:NSFilePosixPermissions];
+			linkAfterPermissions = [linkAfter objectForKey:NSFilePosixPermissions];
+			check("fs-set-attributes-traverses-a-terminal-symlink",
+			      throughApplied &&
+			      [[targetAfter objectForKey:NSFilePosixPermissions] unsignedShortValue] == 0604 &&
+			      [linkAfterPermissions isEqual:linkBeforePermissions],
+			      [NSString stringWithFormat:@"applied=%d target %o->%o link %o->%o",
+				(int)throughApplied,
+				[[targetBefore objectForKey:NSFilePosixPermissions] unsignedShortValue],
+				[[targetAfter objectForKey:NSFilePosixPermissions] unsignedShortValue],
+				[[linkBefore objectForKey:NSFilePosixPermissions] unsignedShortValue],
+				[[linkAfter objectForKey:NSFilePosixPermissions] unsignedShortValue]]);
+		}
+
+		{
+			NSError *cleanupError = nil;
+			BOOL removed = [fm removeItemAtPath:@S3_ROOT error:&cleanupError];
+
+			if (!removed) {
+				printf("FOUNDATION-FILEMANAGER fs-s3d-cleanup: still at %s (%s)\n", S3_ROOT,
+				       cleanupError != nil ? [[cleanupError localizedDescription] UTF8String]
+							   : "no error");
+			}
 		}
 	}
 

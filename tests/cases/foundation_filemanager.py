@@ -47,6 +47,12 @@ The probe is `/System/Shared/tests/foundation_filemanager`, ONE unit, importing 
   * `fs-relationship-is-about-locations` — Contains / Same / Other, including the sibling whose name
                           merely PREFIXES the directory's (which a plain `hasPrefix:` would call
                           contained), and ENOENT when a side is missing;
+  * `fs-attribute-names-are-the-accounts` — the owner and group are NAMED, and the names are what the
+                          account database answers for those ids (not a string the class knows);
+  * `fs-set-attributes-writes-permissions-and-a-date` — permissions and modification date round-trip,
+                          and a key nothing acts on is IGNORED rather than a failure;
+  * `fs-set-attributes-traverses-a-terminal-symlink` — setting through a link moves the TARGET's mode
+                          and leaves the link's own alone (the stat-vs-lstat sentence);
   * `fs-cleanup`         — the tree is gone, which is also the recursive remove's own exercise.
 
 IT WORKS IN A TREE OF ITS OWN MAKING under `/System/Temporary Files` — this system's temp directory,
@@ -64,7 +70,9 @@ CHECKS = ("fs-default-manager", "fs-create-and-list", "fs-write-and-size", "fs-m
           "fs-symbolic-link-door", "fs-copy-refuses-an-existing-destination",
           "fs-move-refuses-an-existing-destination", "fs-copy-of-a-symlink-is-a-link",
           "fs-attributes-of-file-system", "fs-item-attributes-name-the-inode",
-          "fs-a-socket-is-named-and-a-fifo-is-not", "fs-relationship-is-about-locations", "fs-cleanup",
+          "fs-a-socket-is-named-and-a-fifo-is-not", "fs-relationship-is-about-locations",
+          "fs-attribute-names-are-the-accounts", "fs-set-attributes-writes-permissions-and-a-date",
+          "fs-set-attributes-traverses-a-terminal-symlink", "fs-cleanup",
           "temporary-directory-is-the-fsh-path", "temporary-directory-exists")
 
 

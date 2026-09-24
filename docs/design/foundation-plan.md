@@ -11836,6 +11836,48 @@ MUTATOR and needs its own dictionary semantics per key; and the Apple-flag keys 
 answerable through the account domains and are the cheapest of that group). Each is a row with a reason
 rather than a silence.
 
+**SLICE 3d LANDED (2026-09-24): THE ACCOUNT NAMES AND THE MUTATOR - `foundation_filemanager` 19 -> 22
+checks, and the two cheapest rows of that list are gone.**
+
+**THE TWO NAME KEYS READ THROUGH THE ACCOUNT DATABASE** (`getpwuid`/`getgrgid`, which this library
+already reaches for other classes), so an item's owner and group are NAMED and not only numbered - and
+an item whose uid has no account simply has no name entry, which is the dictionary's own way of saying
+so. **The probe compares against ITS OWN lookup rather than a hard-coded string**, which is the
+difference between measuring and reciting: a class that hard-coded "root" fails here, and this system's
+uid 0 is not called root at all - the passwd domain calls it **Admin**, and the group domain names gid 0
+the same way.
+
+**AND `-setAttributes:ofItemAtPath:error:` IS THREE OF APPLE'S SENTENCES, EACH ONE LOAD-BEARING:**
+ 1. *"the method attempts to make all changes specified in attributes and IGNORES ANY REJECTION of an
+    attempted modification"* - so every key is tried, a key nothing here acts on is NOT a failure, and
+    the error channel is about the ITEM (a path that is not there, an absent dictionary) and never
+    about a `chmod(2)` the kernel refused. The probe passes a mixed dictionary (one known key and one
+    nonsense key) and asserts YES with the known key applied;
+ 2. *"if the last component of the path is a symbolic link, the system TRAVERSES IT"* - which is
+    `stat(2)` here and `lstat(2)` in the reader, and the probe makes that difference **observable**:
+    setting permissions THROUGH a link moves the TARGET's mode (0644 -> 0604) and leaves the LINK's own
+    attributes bit-for-bit identical;
+ 3. *"the system sets NSFileOwnerAccountName and NSFileGroupOwnerAccountName only when NSFileType
+    specifies a file"* - a strange rule and a measured one: the NAME keys take effect only alongside
+    `NSFileType = NSFileTypeRegular`, while the ID keys carry no such condition. (A caller chowning a
+    DIRECTORY by name therefore gets nothing, which is what Apple says and this class now does.)
+
+The permission bits are read with `-unsignedShortValue` ("the code representing the POSIX
+file-permissions bit pattern"), and the date goes through `utimensat(2)` with **`UTIME_OMIT` for the
+access time**, because Apple's key names ONE date and inventing a value for the other would be a change
+nobody asked for.
+
+**GATES:** `make testimg` exit 0; `foundation_filemanager` **22/22**,
+`foundation_filemanagerdelegate` **18/18**, `foundation_directoryenumerator` **17/17**.
+
+**WHAT IS LEFT IN SLICE 3 IS NOW TWO ROWS**, and both are decisions rather than work: `-displayNameAtPath:`
+and `-componentsToDisplayForPath:` (their rule has to be DECIDED, because this system has no
+localization database for a display name to come from), and the Apple-flag keys with no substrate here
+(`NSFileImmutable`/`NSFileBusy`/`NSFileAppendOnly`, the HFS creator/type codes, `NSFileExtensionHidden`,
+`NSFileProtection*`) - each a published NAME whose dictionary entry can only be ABSENT, exactly the way
+`NSFileCreationDate` already is and is asserted to be.
+
+
 
 
 

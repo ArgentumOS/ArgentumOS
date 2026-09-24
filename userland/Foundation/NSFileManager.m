@@ -37,6 +37,9 @@
 #include <stdio.h>		/* remove(3) and rename(2) live here, not in unistd.h */
 #include <string.h>
 #include <stdlib.h>
+#include <pwd.h>		/* getpwuid(3)/getpwnam(3): the account NAMES (W8 slice 3d) */
+#include <grp.h>		/* ... and getgrgid(3)/getgrnam(3) for the group's */
+#include <math.h>		/* floor(3), for the nanoseconds of a date */
 
 NSString *const NSFileType = @"NSFileType";
 NSString *const NSFileSize = @"NSFileSize";
@@ -44,6 +47,9 @@ NSString *const NSFileModificationDate = @"NSFileModificationDate";
 NSString *const NSFilePosixPermissions = @"NSFilePosixPermissions";
 NSString *const NSFileOwnerAccountID = @"NSFileOwnerAccountID";
 NSString *const NSFileGroupOwnerAccountID = @"NSFileGroupOwnerAccountID";
+/* W8 slice 3d: the two NAME keys, which read through the account database and WRITE through it too. */
+NSString *const NSFileOwnerAccountName = @"NSFileOwnerAccountName";
+NSString *const NSFileGroupOwnerAccountName = @"NSFileGroupOwnerAccountName";
 
 /* W8 slice 3c: the item keys whose meaning IS a stat(2) field, and the five file-system keys. */
 NSString *const NSFileSystemFileNumber = @"NSFileSystemFileNumber";
@@ -872,7 +878,107 @@ typedef enum {
 		       forKey:NSFileReferenceCount];
 	[attributes setObject:[NSNumber numberWithUnsignedLongLong:(unsigned long long)st.st_dev]
 		       forKey:NSFileDeviceIdentifier];
+	/* AND THE TWO ACCOUNT NAMES (W8 slice 3d), which are the same fact as the two IDs one line up -
+	 * the difference is that the NAME has to come from the account database, which this library
+	 * already reaches for other classes. An item whose uid has no account simply has no name entry,
+	 * which is the dictionary's own way of saying so. */
+	{
+		struct passwd *pw = getpwuid((uid_t)st.st_uid);
+
+		if (pw != NULL && pw->pw_name != NULL) {
+			[attributes setObject:[NSString stringWithUTF8String:pw->pw_name]
+				       forKey:NSFileOwnerAccountName];
+		}
+	}
+	{
+		struct group *gr = getgrgid((gid_t)st.st_gid);
+
+		if (gr != NULL && gr->gr_name != NULL) {
+			[attributes setObject:[NSString stringWithUTF8String:gr->gr_name]
+				       forKey:NSFileGroupOwnerAccountName];
+		}
+	}
 	return attributes;
+}
+
+/* ---- SETTING THEM (W8 slice 3d), AND THREE OF APPLE'S SENTENCES ARE THE WHOLE DESIGN -------------
+ *
+ *  1. "THE METHOD ATTEMPTS TO MAKE ALL CHANGES SPECIFIED IN ATTRIBUTES AND IGNORES ANY REJECTION OF AN
+ *     ATTEMPTED MODIFICATION." So every key is tried and no individual failure is reported: the error
+ *     channel is for the ITEM (a path that is not there, an absent dictionary), not for a chmod(2) the
+ *     kernel refused. That is also why the loop below cannot fail.
+ *  2. "IF THE LAST COMPONENT OF THE PATH IS A SYMBOLIC LINK, THE SYSTEM TRAVERSES IT" - so this door
+ *     uses stat(2) where -attributesOfItemAtPath: uses lstat(2), and that one word is the difference
+ *     between setting a target's permissions and asking a link about itself.
+ *  3. "THE SYSTEM SETS NSFileOwnerAccountName AND NSFileGroupOwnerAccountName ONLY WHEN NSFileType
+ *     SPECIFIES A FILE." Which is a strange rule and a measured one: the NAME keys are honoured only
+ *     when the dictionary ALSO says NSFileType = NSFileTypeRegular. The ID keys carry no such
+ *     condition, so a caller that wants to chown a directory gives IDs.
+ */
+- (BOOL)setAttributes:(NSDictionary *)attributes ofItemAtPath:(NSString *)path error:(NSError ** _Nullable)error
+{
+	struct stat st;
+
+	if (path == nil || attributes == nil) {
+		return fn_failed(error, EINVAL);
+	}
+	if (stat([path UTF8String], &st) != 0) {
+		return fn_failed(error, errno);
+	}
+	/* THE PERMISSION BITS, and Apple says how they are spelled: "you must initialize the value with
+	 * the code representing the POSIX file-permissions bit pattern". */
+	if ([attributes objectForKey:NSFilePosixPermissions] != nil) {
+		mode_t mode = (mode_t)[[attributes objectForKey:NSFilePosixPermissions] unsignedShortValue];
+
+		chmod([path UTF8String], mode);	/* the result is IGNORED, by sentence 1 */
+	}
+	/* THE MODIFICATION DATE, through utimensat(2) with UTIME_OMIT for the access time: Apple's key
+	 * names one date, and inventing a value for the other would be a change nobody asked for. */
+	if ([attributes objectForKey:NSFileModificationDate] != nil) {
+		double when = [[attributes objectForKey:NSFileModificationDate] timeIntervalSince1970];
+		struct timespec times[2];
+		double whole = floor(when);
+
+		times[0].tv_sec = 0;
+		times[0].tv_nsec = UTIME_OMIT;
+		times[1].tv_sec = (time_t)whole;
+		times[1].tv_nsec = (long)((when - whole) * 1000000000.0);
+		utimensat(AT_FDCWD, [path UTF8String], times, 0);
+	}
+	/* THE OWNER AND THE GROUP BY ID FIRST, then by NAME, and the two are independent: chown(2) takes
+	 * -1 for "leave that one alone", which is exactly what an abridged call needs. */
+	if ([attributes objectForKey:NSFileOwnerAccountID] != nil ||
+	    [attributes objectForKey:NSFileGroupOwnerAccountID] != nil) {
+		uid_t uid = (uid_t)-1;
+		gid_t gid = (gid_t)-1;
+
+		if ([attributes objectForKey:NSFileOwnerAccountID] != nil) {
+			uid = (uid_t)[[attributes objectForKey:NSFileOwnerAccountID] unsignedIntValue];
+		}
+		if ([attributes objectForKey:NSFileGroupOwnerAccountID] != nil) {
+			gid = (gid_t)[[attributes objectForKey:NSFileGroupOwnerAccountID] unsignedIntValue];
+		}
+		chown([path UTF8String], uid, gid);
+	}
+	if ([[attributes objectForKey:NSFileType] isEqualToString:NSFileTypeRegular]) {
+		if ([attributes objectForKey:NSFileOwnerAccountName] != nil) {
+			struct passwd *pw = getpwnam([[attributes objectForKey:NSFileOwnerAccountName]
+							UTF8String]);
+
+			if (pw != NULL) {
+				chown([path UTF8String], pw->pw_uid, (gid_t)-1);
+			}
+		}
+		if ([attributes objectForKey:NSFileGroupOwnerAccountName] != nil) {
+			struct group *gr = getgrnam([[attributes objectForKey:NSFileGroupOwnerAccountName]
+							UTF8String]);
+
+			if (gr != NULL) {
+				chown([path UTF8String], (uid_t)-1, gr->gr_gid);
+			}
+		}
+	}
+	return YES;
 }
 
 /* ---- THE FILE SYSTEM'S OWN NUMBERS, AND WHERE AN ITEM STANDS (W8 slice 3c) -----------------------

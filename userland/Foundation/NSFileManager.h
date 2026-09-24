@@ -60,6 +60,10 @@ extern NSString *const NSFileModificationDate;
 extern NSString *const NSFilePosixPermissions;
 extern NSString *const NSFileOwnerAccountID;
 extern NSString *const NSFileGroupOwnerAccountID;
+/* W8 slice 3d: the same two facts as NAMES. They read through the account database and they WRITE
+ * through it as well (-setAttributes: resolves them with getpwnam/getgrnam). */
+extern NSString *const NSFileOwnerAccountName;
+extern NSString *const NSFileGroupOwnerAccountName;
 
 /* ---- THE KEYS THE SUBSTRATE CAN ANSWER (W8 slice 3c, foundation-plan.md §60) --------------------
  *
@@ -308,6 +312,23 @@ typedef enum {
 
 - (nullable NSDictionary *)attributesOfItemAtPath:(NSString *)path
 					    error:(NSError ** _Nullable)error;
+
+/* THE MUTATOR (W8 slice 3d), and THREE OF APPLE'S OWN SENTENCES ARE ITS WHOLE DESIGN:
+ *
+ *   1. "THE METHOD ATTEMPTS TO MAKE ALL CHANGES SPECIFIED IN ATTRIBUTES AND IGNORES ANY REJECTION OF
+ *      AN ATTEMPTED MODIFICATION" - so the error channel is about the ITEM (no such path, no
+ *      dictionary) and never about a chmod(2) the kernel refused;
+ *   2. "IF THE LAST COMPONENT OF THE PATH IS A SYMBOLIC LINK, THE SYSTEM TRAVERSES IT" - which is the
+ *      one word that separates this door from -attributesOfItemAtPath: (that one asks a LINK about
+ *      itself; this one acts on what the link NAMES);
+ *   3. the NAME keys are honoured "only when NSFileType specifies a file" - so
+ *      NSFileOwnerAccountName/NSFileGroupOwnerAccountName take effect only alongside
+ *      NSFileType = NSFileTypeRegular, while the ID keys carry no such condition.
+ */
+- (BOOL)setAttributes:(NSDictionary *)attributes
+	ofItemAtPath:(NSString *)path
+	       error:(NSError ** _Nullable)error;
+
 - (nullable NSString *)destinationOfSymbolicLinkAtPath:(NSString *)path
 						 error:(NSError ** _Nullable)error;
 

@@ -34,7 +34,7 @@
 #   enum       shipped  101   open   42   struck   17
 #   case       shipped  591   open  543   struck  168
 #   func       shipped   72   open   63   struck   54
-#   var        shipped  186   open  375   struck  353
+#   var        shipped  188   open  373   struck  353
 #   typealias  shipped   31   open   38   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -2458,7 +2458,7 @@ var	shipped	NSFileCreationDate	NSFileManager	Files and Data Persistence / File s
 var	shipped	NSFileDeviceIdentifier	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	open	NSFileExtensionHidden	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileGroupOwnerAccountID	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
-var	open	NSFileGroupOwnerAccountName	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
+var	shipped	NSFileGroupOwnerAccountName	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	open	NSFileHFSCreatorCode	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	open	NSFileHFSTypeCode	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileHandleConnectionAcceptedNotification	NSFileHandle	Files and Data Persistence / Managed file access / Working with notifications	-	swift-page
@@ -2477,7 +2477,7 @@ var	open	NSFileImmutable	NSFileManager	Files and Data Persistence / File system 
 var	open	NSFileManagerUnmountDissentingProcessIdentifierErrorKey	NSFileManager	Files and Data Persistence / File system operations / Unmounting volumes	-	objc
 var	shipped	NSFileModificationDate	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileOwnerAccountID	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
-var	open	NSFileOwnerAccountName	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
+var	shipped	NSFileOwnerAccountName	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	open	NSFilePathErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSFilePosixPermissions	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	open	NSFileProtectionComplete	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Working with Protection Levels	-	objc
