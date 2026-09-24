@@ -258,6 +258,17 @@ extern NSURLFileResourceType const NSURLFileResourceTypeUnknown;
 @class NSURL;
 @class NSString;
 
+/* THE PRIVATE HALF THAT IS METHODS: a CATEGORY, because a bare method declaration has no @interface to
+ * live in, and this point of the header is already inside its own NS_ASSUME_NONNULL region (a nested one
+ * does not compile) - the same shape NSFileWrapper uses for its private doors. */
+@interface NSURL (FNPrivate)
+/* PUT A VALUE THE CALLER HAS ALREADY READ INTO THIS URL'S CACHE - which is what "prefetched" means on
+ * Apple's `includingPropertiesForKeys:` doors: the URL answers from what it was GIVEN rather than asking
+ * the disk again, so a change made after the enumeration is not seen until the cache is cleared. It is the
+ * same cache the measured values go into, entered from the other side. */
+- (void)fnPrefetchValue:(nullable id)value forKey:(NSURLResourceKey)key;
+@end
+
 
 /* RESOLVE `reference` AGAINST `base`, both as URL text, per RFC 3986 §5.2. A reference that is
  * already absolute comes back as itself (normalised); one with no base to resolve against is

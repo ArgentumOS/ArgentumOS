@@ -12212,8 +12212,48 @@ passed first try: AGFS does keep `MIXED` and `mixed` apart.)
    media and automounting are concepts this system does not have, and a NO would be a statement about a
    question that was never asked.
 
-**AFTER W8p:** the ubiquitous/thumbnail/quarantine masses, then the coordinator family, `NSFileVersion`
-and `NSFileProviderService`.
+**SLICE 6d LANDED (2026-09-24): THE DIRECTORY LISTED AS URLs, WHICH IS WHAT `includingPropertiesForKeys:`
+HAS ALWAYS BEEN FOR.** `foundation_directoryenumerator` 17 -> **24 checks**, green.
+
+**THE DEBT THIS CLOSES IS THE ONE SLICES 1-3 WROTE DOWN:** "the URL forms wait for slice 6". They were
+waiting for the KEYS, and the keys now exist (6a-6c), which is what makes `includingPropertiesForKeys:`
+mean anything at all. So `-contentsOfDirectoryAtURL:includingPropertiesForKeys:options:error:` ships beside
+the path listing it borrows its names from, and the values are made real by a NEW private door on `NSURL`
+(`-fnPrefetchValue:forKey:`, in an `@interface NSURL (FNPrivate)` category) that puts a value the CALLER
+has already read into the URL's cache - the same cache the measured values go into, entered from the other
+side.
+
+**APPLE'S THREE RULES FOR THIS DOOR, ALL MEASURED FROM ITS PAGE AND ALL THREE IMPLEMENTED:** the result is
+an ARRAY OF URLs, one per contained item; **an EMPTY DIRECTORY ANSWERS AN EMPTY ARRAY rather than nil**
+(only an error answers nil); and the listing "does not return URLs for the current directory ('.'), parent
+directory ('..'), or resource forks (files that begin with '._') but it DOES return other hidden files".
+The ORDER is undefined - Apple's own sentence, so no check may assert a sequence, and the probe compares
+name SETS.
+
+**AND THE PROBE CAUGHT A REAL BUG IN MY FIRST VERSION OF THAT NAME RULE, WHICH IS WHY IT IS RECORDED:**
+putting the `._` skip in the SHARED `readdir` reader - where it looked like the tidy place - made such a
+name invisible to **RECURSIVE REMOVAL**, because remove and copy walk by listing. The probe's own tree
+cleanup then failed with **"Directory not empty"**, and the item was undeletable. **A LISTING may hide what
+a TRAVERSAL must still visit**, so the rule now lives AT THE DOOR where it was measured, and the path door
+- whose page has NOT been measured - keeps its own behaviour rather than inheriting a rule from a
+neighbour's page. The two must agree on exactly one thing, and the probe asserts it: a hidden file is an
+ENTRY. (The property door is what caught it; the check that failed was `probe-url-tree-removed`.)
+
+**THE PREFETCH IS PROVED FROM BOTH SIDES, WHICH IS THE POINT OF THE SLICE:** the listing is asked for
+`NSURLFileSizeKey`, the file is then GROWN on disk, and the LISTED URL still answers what it was given
+while a URL built afterwards answers the disk - and clearing that URL's cache with
+`-removeCachedResourceValueForKey:` makes it answer the disk too, which proves the two doors share ONE
+cache. A door that merely promised to prefetch would answer the new size in both halves.
+
+**AND THE BLOCKER NAMED LAST TURN IS RESOLVED, WITH ITS FACT WORTH KEEPING:** a method declaration needs
+an `@interface` to live in, `NSURL.h`'s private region is C functions only, and that point of the header is
+ALREADY inside its own `NS_ASSUME_NONNULL` region (one `BEGIN` at the top and one `END` at the bottom of
+the file), so the category is opened WITHOUT a nested region - a nested `NS_ASSUME_NONNULL_BEGIN` is a
+compile error, and an accidental unbalanced `END` is another.
+
+**AFTER W8p:** the ubiquitous/thumbnail/quarantine masses, the URL-taking ENUMERATOR and delegate doors
+(`-enumeratorAtURL:includingPropertiesForKeys:options:errorHandler:` needs the block question settled on its
+own terms), then the coordinator family, `NSFileVersion` and `NSFileProviderService`.
 
 **AND ONE DEBT RECORDED RATHER THAN SILENTLY FIXED, because it is the URL unit's and not this slice's:**
 `NSURL` had **no `-dealloc` at all** before this slice - it copies its parts and released none of them -

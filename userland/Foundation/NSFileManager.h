@@ -383,6 +383,25 @@ typedef enum {
  * how a file system says it has no such attribute, so a caller sees the same thing here as it would on
  * any Apple volume that does not keep it. "This method does not traverse a terminal symbolic link",
  * which is why the lookup is lstat(2) first. */
+/* A DIRECTORY LISTED AS URLs, WITH THE VALUES A CALLER ASKED FOR ALREADY IN THEM (W8 slice 6d).
+ *
+ * APPLE'S RULES, MEASURED FROM THE PAGE AND ALL THREE IMPLEMENTED: the result is an array of NSURL
+ * objects, "each of which identifies a file, directory, or symbolic link contained in" the directory; an
+ * EMPTY DIRECTORY ANSWERS AN EMPTY ARRAY rather than nil (only an error answers nil); and the listing
+ * "does not return URLs for the current directory (\".\"), parent directory (\"..\"), or resource forks
+ * (files that begin with \"._\") but it DOES return other hidden files" - so the dot rule and the `._` rule
+ * are both tested FROM BOTH SIDES, and `includingPropertiesForKeys:` is the reason the door exists: those
+ * values are PREFETCHED into each URL (NSURL's private prefetch door), which the probe proves by changing
+ * a file AFTER the listing and watching the listed URL answer the OLD value.
+ *
+ * THE ORDER OF THE RESULT IS UNDEFINED, which is Apple's own sentence and therefore nothing any check may
+ * assert on.
+ */
+- (nullable NSArray *)contentsOfDirectoryAtURL:(NSURL *)url
+		     includingPropertiesForKeys:(nullable NSArray *)keys
+					options:(NSUInteger)options
+					  error:(NSError ** _Nullable)error;
+
 - (nullable NSDictionary *)attributesOfFileSystemForPath:(NSString *)path
 						   error:(NSError ** _Nullable)error;
 

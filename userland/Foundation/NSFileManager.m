@@ -149,6 +149,11 @@ static NSArray *fn_directory_names(const char *path, int *outErrno)
 	while ((entry = readdir(dir)) != NULL) {
 		NSString *name;
 
+		/* ONLY THE TWO NAVIGATION NAMES: this reader is the SHARED one behind both listings AND the
+		 * recursive walks (remove, copy, move), so it must VISIT everything that exists. THE MEASURED
+		 * TRAP: filtering Apple's `._` resource-fork rule HERE made such a file invisible to RECURSIVE
+		 * REMOVAL, and the probe's tree cleanup then failed with "Directory not empty" - the rule belongs
+		 * to a LISTING door, not to the traversal underneath it. */
 		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
 			continue;
 		}
@@ -1004,6 +1009,65 @@ typedef enum {
  * reader would reach for first - `f_fsid`. So the block size multiplies the block counts here, and the
  * file-system number comes from the item's own stat, which is also why this door lstat(2)s first.
  */
+- (nullable NSArray *)contentsOfDirectoryAtURL:(NSURL *)url
+		     includingPropertiesForKeys:(nullable NSArray *)keys
+					options:(NSUInteger)options
+					  error:(NSError ** _Nullable)error
+{
+	NSString *path;
+	NSArray *names;
+	NSMutableArray *urls;
+	NSUInteger i;
+
+	if (url == nil || ![url isFileURL] || (path = [url path]) == nil) {
+		fn_failed(error, EINVAL);
+		return nil;
+	}
+	/* THE NAMES COME FROM THE PATH DOOR, so two listings cannot disagree about WHICH NAMES EXIST: dot,
+	 * dot-dot and resource forks are filtered THERE, once, for every listing door. */
+	names = [self contentsOfDirectoryAtPath:path error:error];
+	if (names == nil) {
+		return nil;
+	}
+	urls = [[NSMutableArray alloc] init];
+	for (i = 0; i < [names count]; i++) {
+		NSString *name = [names objectAtIndex:i];
+		NSURL *child;
+
+		/* APPLE'S NAME RULE FOR THIS DOOR, AND IT IS HERE RATHER THAN IN THE SHARED READER BECAUSE THE
+		 * PROBE CAUGHT WHAT PUTTING IT UNDER THERE DID: a `._` name became invisible to RECURSIVE
+		 * REMOVAL and the tree could not be deleted. A LISTING may hide it; a TRAVERSAL may not. */
+		if ([name hasPrefix:@"._"]) {
+			continue;
+		}
+		if ((options & NSDirectoryEnumerationSkipsHiddenFiles) != 0 && [name hasPrefix:@"."]) {
+			continue;
+		}
+		child = [[NSURL alloc] initFileURLWithPath:
+			 [NSString stringWithFormat:@"%@/%@", path, name]];
+		if (child == nil) {
+			continue;
+		}
+		/* THE PREFETCH: read the value NOW, on this directory's item, and hand it to the URL - which is
+		 * what makes the returned object answer from the enumeration's moment rather than from the disk
+		 * at the time of the question. */
+		if (keys != nil) {
+			NSUInteger k;
+
+			for (k = 0; k < [keys count]; k++) {
+				NSURLResourceKey key = [keys objectAtIndex:k];
+				id value = nil;
+
+				[child getResourceValue:&value forKey:key error:NULL];
+				[child fnPrefetchValue:value forKey:key];
+			}
+		}
+		[urls addObject:child];
+		[child release];
+	}
+	return [urls autorelease];
+}
+
 - (nullable NSDictionary *)attributesOfFileSystemForPath:(NSString *)path
 						   error:(NSError ** _Nullable)error
 {

@@ -55,7 +55,12 @@ CHECKS = ("walk-yields-the-whole-subtree", "walk-paths-are-relative-to-the-direc
           "subpaths-agree-with-the-enumerator",
           "a-symbolic-link-given-as-the-path-is-traversed",
           "an-empty-directory-answers-an-empty-array-not-nil",
-          "subpaths-refuse-what-is-not-a-directory", "probe-tree-removed")
+          "subpaths-refuse-what-is-not-a-directory",
+          "url-listing-keeps-hidden-and-drops-resource-forks", "a-listing-keeps-other-hidden-files",
+          "url-listing-of-an-empty-directory-is-an-empty-array",
+          "url-listing-refuses-what-is-not-a-directory",
+          "url-listing-prefetches-the-keys", "url-listing-honours-skips-hidden-files",
+          "probe-url-tree-removed", "probe-tree-removed")
 
 
 class Case(BaseCase):

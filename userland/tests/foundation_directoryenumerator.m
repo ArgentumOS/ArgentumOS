@@ -34,7 +34,27 @@
  *   subpaths-refuse-what-is-not-a-directory  nil AND the errno, for a file (ENOTDIR) and for a name
  *                                            that is not there (ENOENT);
  *   post-order-is-not-what-this-slice-builds  the boundary this slice NAMES rather than hides;
- *   probe-tree-removed                       the tree is gone.
+ *   url-listing-yields-file-urls             the URL door answers URLs, and its ORDER is undefined
+ *                                            (Apple's own sentence), so the names are compared as a set;
+ *   url-listing-keeps-hidden-and-drops-resource-forks  Apple's name rules FOR A LISTING, all measured on
+ *                                            this door's page: no ".", no "..", no "._" resource fork, but
+ *                                            OTHER hidden files ARE returned. The rule is applied AT THE
+ *                                            DOOR and not in the shared reader, because the probe caught
+ *                                            what the shared version did: it hid `._` names from RECURSIVE
+ *                                            REMOVAL, and the tree could no longer be deleted;
+ *   a-listing-keeps-other-hidden-files        and the PATH door, whose page has NOT been measured, keeps
+ *                                            its own behaviour - the one thing both must agree on is that
+ *                                            a hidden file is an ENTRY;
+ *   url-listing-of-an-empty-directory-is-an-empty-array  "no entries" is an empty array, NOT nil;
+ *   url-listing-refuses-what-is-not-a-directory  ENOTDIR for a file, ENOENT for a name that is not there;
+ *   url-listing-prefetches-the-keys           THE REASON THE DOOR EXISTS, proved from both sides: the
+ *                                            listing is asked for the size, the file is then GROWN on
+ *                                            disk, and the listed URL answers what it was GIVEN while a
+ *                                            URL built afterwards answers the disk - and clearing that
+ *                                            cache makes the listed URL answer the disk too;
+ *   url-listing-honours-skips-hidden-files    NSDirectoryEnumerationSkipsHiddenFiles drops the dot files
+ *                                            and only those;
+ *   probe-url-tree-removed                   that tree is gone too.
  */
 
 #import <Foundation/Foundation.h>
@@ -48,6 +68,10 @@
 
 #define PROBE_ROOT "/System/Temporary Files/nsdirectoryenumerator-probe"
 
+/* W8 SLICE 6d NEEDS ITS OWN TREE, because slice 1's walk legs assert an EXACT subtree and the names this
+ * slice is about (a hidden file, a resource fork, an empty directory) would change that list. */
+#define URL_ROOT "/System/Temporary Files/nsdirectoryenumerator-probe-url"
+
 static int okc, failc;
 
 static void check(const char *name, int ok, NSString * _Nullable detail)
@@ -60,6 +84,41 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		printf("FOUNDATION-DIRECTORYENUMERATOR %s FAIL %s\n", name,
 		       detail != nil ? [detail UTF8String] : "");
 	}
+}
+
+/* NULLABLE CONSTRUCTORS ROUTED THROUGH `id`, this tier's rule for -Werror=nullable-to-nonnull-conversion. */
+static id fn_url(NSString *path)
+{
+	return [NSURL fileURLWithPath:path];
+}
+
+static NSString *fn_url_path(NSString *relative)
+{
+	return [NSString stringWithFormat:@"%s/%@", URL_ROOT, relative];
+}
+
+static void fn_append(NSString *path, const char *bytes)
+{
+	int fd = open([path UTF8String], O_WRONLY | O_APPEND);
+
+	if (fd >= 0) {
+		size_t length = strlen(bytes);
+		ssize_t wrote = write(fd, bytes, length);
+
+		(void)wrote;
+		close(fd);
+	}
+}
+
+/* THE SIZE A URL ANSWERS, as a number, so a tri-state is not needed: -1 is "no answer". */
+static long long fn_size(NSURL *url, NSURLResourceKey key)
+{
+	id value = nil;
+
+	if (url == nil || ![url getResourceValue:&value forKey:key error:NULL] || value == nil) {
+		return -1;
+	}
+	return [value longLongValue];
 }
 
 static NSString *fn_path(NSString *relative)
@@ -333,6 +392,157 @@ int main(void)
 			forFile == nil ? "nil" : "an array", (long)(fileError != nil ? [fileError code] : -1),
 			forMissing == nil ? "nil" : "an array",
 			(long)(missingError != nil ? [missingError code] : -1)]);
+	}
+
+	/* ---- W8 SLICE 6d: THE DIRECTORY LISTED AS URLs, WITH THE VALUES PREFETCHED ------------------ */
+	{
+		NSFileManager *manager2 = [NSFileManager defaultManager];
+		NSURL *root = fn_url(@URL_ROOT);
+
+		[manager2 removeItemAtPath:@URL_ROOT error:NULL];
+		fn_make_dir(@URL_ROOT);
+		fn_make_file(fn_url_path(@"plain.txt"), "hello");
+		fn_make_file(fn_url_path(@".hidden"), "h");
+		fn_make_file(fn_url_path(@"._fork"), "f");	/* Apple's resource-fork NAME rule */
+		fn_make_dir(fn_url_path(@"subfolder"));
+
+		/* THREE OF APPLE'S RULES IN ONE LEG: an ARRAY of URLs, one per contained item; the dot rule
+		 * does NOT hide the others ("it does return other hidden files"); and the `._` rule does hide
+		 * the resource fork. The ORDER is undefined (Apple's sentence), so the names are compared as a
+		 * SET and never as a sequence. */
+		{
+			NSArray *listed = [manager2 contentsOfDirectoryAtURL:root
+						includingPropertiesForKeys:nil
+							   options:0
+							     error:NULL];
+			NSMutableSet *names = [NSMutableSet set];
+			BOOL allURLs = [listed count] > 0;
+			NSUInteger i;
+
+			for (i = 0; i < [listed count]; i++) {
+				id item = [listed objectAtIndex:i];
+
+				if (![item isKindOfClass:[NSURL class]] || ![item isFileURL]) {
+					allURLs = NO;
+					break;
+				}
+				[names addObject:[[item path] lastPathComponent]];
+			}
+			check("url-listing-keeps-hidden-and-drops-resource-forks",
+			      allURLs && [names count] == 3 && [names containsObject:@"plain.txt"] &&
+			      [names containsObject:@".hidden"] && [names containsObject:@"subfolder"],
+			      [NSString stringWithFormat:@"allURLs=%d names=%@", (int)allURLs, names]);
+		}
+
+		/* THE PATH DOOR, FOR CONTRAST, AND THE DIFFERENCE IS DELIBERATE: the `._` rule was MEASURED on
+		 * the URL door's page and nowhere else, so it is implemented THERE; the path door's page has not
+		 * been measured and its behaviour is not guessed at. What both must agree on is that a hidden
+		 * file is an ENTRY - which is where a listing and a traversal could have gone wrong. */
+		{
+			NSArray *byPath = [manager2 contentsOfDirectoryAtPath:@URL_ROOT error:NULL];
+			NSMutableSet *kept = [NSMutableSet setWithArray:byPath];
+
+			check("a-listing-keeps-other-hidden-files",
+			      [kept containsObject:@".hidden"] && ![kept containsObject:@"."] &&
+			      ![kept containsObject:@".."] && [byPath count] == 4,
+			      [NSString stringWithFormat:@"path door: %@", byPath]);
+		}
+
+		/* AN EMPTY DIRECTORY ANSWERS AN EMPTY ARRAY, which is Apple's sentence and NOT nil: only an
+		 * error answers nil. */
+		{
+			NSArray *empty = [manager2 contentsOfDirectoryAtURL:fn_url(fn_url_path(@"subfolder"))
+						includingPropertiesForKeys:nil
+								   options:0
+								     error:NULL];
+
+			check("url-listing-of-an-empty-directory-is-an-empty-array",
+			      empty != nil && [empty count] == 0,
+			      empty == nil ? @"nil, where Apple says an empty array" : @"empty");
+		}
+
+		/* AND THE REFUSALS: a FILE is not a directory (ENOTDIR) and a name that is not there is not
+		 * there (ENOENT) - nil AND the error each time. */
+		{
+			NSError *notDirectory = nil;
+			NSError *notThere = nil;
+			NSArray *a = [manager2 contentsOfDirectoryAtURL:fn_url(fn_url_path(@"plain.txt"))
+						    includingPropertiesForKeys:nil
+									       options:0
+									 error:&notDirectory];
+			NSArray *b = [manager2 contentsOfDirectoryAtURL:fn_url(fn_url_path(@"nowhere"))
+						    includingPropertiesForKeys:nil
+									       options:0
+									 error:&notThere];
+
+			check("url-listing-refuses-what-is-not-a-directory",
+			      a == nil && notDirectory != nil && [notDirectory code] == ENOTDIR &&
+			      b == nil && notThere != nil && [notThere code] == ENOENT,
+			      [NSString stringWithFormat:@"file: %ld, missing: %ld",
+				(long)(notDirectory != nil ? [notDirectory code] : -1),
+				(long)(notThere != nil ? [notThere code] : -1)]);
+		}
+
+		/* THE PREFETCH, PROVED FROM BOTH SIDES: the listing is asked for the SIZE, the file is then
+		 * GROWN ON DISK, and the listed URL still answers what it was GIVEN at listing time while a URL
+		 * built afterwards answers the disk. A door that merely promised to prefetch would answer the
+		 * new size in both cases and fail the first half of this check. */
+		{
+			NSArray *listed = [manager2 contentsOfDirectoryAtURL:root
+						includingPropertiesForKeys:@[ NSURLFileSizeKey ]
+							   options:0
+							     error:NULL];
+			NSURL *prefetched = nil;
+			NSUInteger i;
+
+			for (i = 0; i < [listed count]; i++) {
+				NSURL *item = [listed objectAtIndex:i];
+
+				if ([[[item path] lastPathComponent] isEqual:@"plain.txt"]) {
+					prefetched = item;
+				}
+			}
+			fn_append(fn_url_path(@"plain.txt"), "!!!");
+			{
+				long long fromListing = fn_size(prefetched, NSURLFileSizeKey);
+				long long fromDisk = fn_size(fn_url(fn_url_path(@"plain.txt")), NSURLFileSizeKey);
+
+				/* AND THE CACHE IS THE SAME ONE: clearing it makes the listed URL answer the disk. */
+				[prefetched removeCachedResourceValueForKey:NSURLFileSizeKey];
+				check("url-listing-prefetches-the-keys",
+				      prefetched != nil && fromListing == 5 && fromDisk == 8 &&
+				      fn_size(prefetched, NSURLFileSizeKey) == 8,
+				      [NSString stringWithFormat:@"listing=%lld disk=%lld after-remove=%lld",
+					fromListing, fromDisk, fn_size(prefetched, NSURLFileSizeKey)]);
+			}
+		}
+
+		/* THE OPTION IS HONOURED: Apple's NSDirectoryEnumerationSkipsHiddenFiles drops the dot files -
+		 * and only those. */
+		{
+			NSArray *listed = [manager2 contentsOfDirectoryAtURL:root
+						includingPropertiesForKeys:nil
+							   options:NSDirectoryEnumerationSkipsHiddenFiles
+							     error:NULL];
+			NSMutableSet *names = [NSMutableSet set];
+			NSUInteger i;
+
+			for (i = 0; i < [listed count]; i++) {
+				[names addObject:[[[listed objectAtIndex:i] path] lastPathComponent]];
+			}
+			check("url-listing-honours-skips-hidden-files",
+			      [names count] == 2 && ![names containsObject:@".hidden"] &&
+			      [names containsObject:@"plain.txt"] && [names containsObject:@"subfolder"],
+			      [NSString stringWithFormat:@"%@", names]);
+		}
+
+		{
+			NSError *cleanupError = nil;
+			BOOL removed = [manager2 removeItemAtPath:@URL_ROOT error:&cleanupError];
+
+			check("probe-url-tree-removed", removed && ![manager2 fileExistsAtPath:@URL_ROOT],
+			      cleanupError != nil ? [cleanupError localizedDescription] : @"still there");
+		}
 	}
 
 	{

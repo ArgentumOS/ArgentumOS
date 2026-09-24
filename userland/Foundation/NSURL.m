@@ -730,6 +730,11 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
  * values it has already read, that the cache lives as long as the object does, and that the two
  * -removeCached… doors take it back out. So a second ask for the same key answers what the object
  * REMEMBERS, not what the disk says now - which is observable, and is what this unit's probe measures. */
+- (void)fnPrefetchValue:(nullable id)value forKey:(NSURLResourceKey)key
+{
+	[[self fnCache] setObject:(value != nil ? value : (id)[NSNull null]) forKey:key];
+}
+
 - (nullable NSMutableDictionary *)fnCache
 {
 	if (_cachedResourceValues == nil) {
