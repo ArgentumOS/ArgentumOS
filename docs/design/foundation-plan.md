@@ -11691,5 +11691,54 @@ the image THAT build produced - `foundation_filemanagerdelegate` **18/18**, `fou
 hand-linked image (which is what made progress possible while C6 was in flight) and once against the
 ordinary build gate, and the shipped `.build/rootagfs.img` was refreshed with it.
 
+**SLICE 3 LANDED (2026-09-24): THE FILE'S BYTES, THE EQUALITY RULE, THE OTHER LINK - AND TWO FIXES
+THAT WERE DATA LOSS.** What landed: `-contentsAtPath:`, `-contentsEqualAtPath:andPath:` and
+`-createSymbolicLinkAtPath:withDestinationPath:error:`, plus THE DESTINATION RULE for the copy and the
+move. The probe `foundation_filemanager` went 9 -> **14 checks**, green through the ordinary gate.
+
+**THE TWO FIXES ARE THE POINT OF THE SLICE.** Apple says it twice, in its own words: "if a file with
+the same name already exists at dstPath, this method STOPS THE COPY ATTEMPT AND RETURNS AN APPROPRIATE
+ERROR", and for a move "if an item with the same name already exists at dstPath, this method stops the
+move attempt". This class did NEITHER - the copy wrote through O_CREAT|O_TRUNC, silently REPLACING what
+it found, and the move went through rename(2), which replaces a destination file BY DESIGN - so the
+probe asserts the answer AND THE BYTES: after the refused copy, the file that was already there is
+still there, byte for byte. A refusal that destroyed the data anyway would pass any check that read
+only the return value.
+
+**AND THE EQUALITY RULE IS THREE STEPS IN APPLE'S OWN ORDER** - "checks to see if they're the same
+file, then compares their size, and finally compares their contents"; directories as "the list of files
+and subdirectories each contains - contents of subdirectories are also compared"; and "does not
+traverse symbolic links, but compares the links themselves". Six answers are asserted, two of which a
+shallow implementation gets wrong: a tree differing ONLY in a subdirectory, and a link compared against
+its own target.
+
+**THE MEASUREMENT THAT COST THE MOST WAS NOT ABOUT ANY OF THAT: THIS SYSTEM'S USER STACK IS TWELVE
+KILOBYTES.** With the slice's fixes in, `foundation_filemanagerdelegate` - a probe this slice does not
+touch - began to **SEGFAULT BEFORE PRINTING ITS FIRST LINE**, reproducibly. The kernel's own fault dump
+is what explained it: a write 0x24 bytes below `rsp`, with the memory map showing the stack as
+`0x7fffffffd000`-`0x800000000000`, i.e. 12KB. The copy's file loop held an **8KB array on the stack**,
+so that path had been running with a few hundred bytes of headroom since F13.14, and one more frame
+anywhere in the chain was all it took to spend the rest. The buffers are HEAP now (the copy's, and both
+of this slice's new readers) and the delegate probe returned to 18/18 without a line of its own
+changing - which is what makes the diagnosis a measurement rather than a theory. **(A 12KB stack also
+makes every future multi-kilobyte local in these paths a defect waiting for a caller.)**
+
+**REGRESSIONS:** `foundation_filemanagerdelegate` **18/18** and `foundation_directoryenumerator`
+**17/17**, same image, ordinary `make testimg` gate.
+
+**WHAT SLICE 3 DOES NOT COVER, NAMED SO IT IS NOT MISTAKEN FOR DONE:** `-displayNameAtPath:` and
+`-componentsToDisplayForPath:` (both defined in terms of a LOCALIZATION database this system does not
+have, so their rule needs deciding rather than copying); `-attributesOfFileSystemForPath:error:` and the
+five `NSFileSystem*` keys it answers with; `-getRelationship:ofDirectoryAtPath:toItemAtPath:error:`; and
+`-setAttributes:ofItemAtPath:error:` with the rest of the item-attribute keys (`NSFileSystemFileNumber`,
+`NSFileReferenceCount`, `NSFileDeviceIdentifier`, `NSFileCreationDate`, the HFS creator/type codes, the
+protection classes, `NSFileBusy`/`NSFileImmutable`/`NSFileAppendOnly`, the block/character/socket type
+values). **AND THE COPY OF A SYMLINK SOURCE**, which still answers ENOTSUP while Apple copies the link:
+that is now the ONLY departure left in the copy, and it is deliberately not fixed in this slice because
+the delegate probe uses it as its deterministic per-item error source - fixing it means re-pointing
+those legs at the `EEXIST` this slice just created, which is the right next increment rather than a
+footnote.
+
+
 
 

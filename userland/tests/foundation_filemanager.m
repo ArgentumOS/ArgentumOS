@@ -58,6 +58,16 @@ static NSString *fn_path(NSString *relative)
 	return [NSString stringWithFormat:@"%s/%@", PROBE_ROOT, relative];
 }
 
+/* W8 SLICE 3 WORKS IN A TREE OF ITS OWN, in the same temp directory but BESIDE the one above: the
+ * cleanup legs assert things about PROBE_ROOT's own pieces (including this kernel's rmdir behaviour),
+ * and a fixture added inside it would end up measuring that assertion as much as the slice. */
+#define S3_ROOT "/System/Temporary Files/nsfilemanager-probe-s3"
+
+static NSString *fn_s3(NSString *relative)
+{
+	return [NSString stringWithFormat:@"%s/%@", S3_ROOT, relative];
+}
+
 int main(void)
 {
 	NSFileManager *manager = [NSFileManager defaultManager];
@@ -379,6 +389,140 @@ int main(void)
 		printf("FOUNDATION-FILEMANAGER fs-syscalls: rmdir(2) rc=%d errno=%d | unlink(2) rc=%d errno=%d | still-there=%d\n",
 		       rmdirRc, rmdirErr, unlinkRc, unlinkErr,
 		       (int)[manager fileExistsAtPath:syscallDir]);
+	}
+
+	/* --- W8 SLICE 3: THE FILE'S BYTES, THE EQUALITY RULE, THE TWO REFUSALS, AND THE OTHER LINK ------ */
+	{
+		/* EVERY QUESTION BELOW IS APPLE'S CONTRACT rather than a taste, and TWO OF THEM ARE FIXES: the
+		 * copy and the move used to REPLACE an existing destination silently - O_CREAT|O_TRUNC for the
+		 * copy, and rename(2) for the move, which does it by design. So the check that matters most
+		 * here is not that the call answers NO but that THE FILE THAT WAS ALREADY THERE IS STILL
+		 * THERE, BYTE FOR BYTE: a refusal that destroyed the data anyway would pass any check that
+		 * only read the return value.
+		 */
+		NSFileManager *fm = [NSFileManager defaultManager];
+		NSData *hello = [NSData dataWithBytes:"hello" length:5];
+		NSData *original = [NSData dataWithBytes:"original" length:8];
+		NSError *copyOntoError = nil;
+		NSError *moveOntoError = nil;
+		NSError *doorError = nil;
+		NSData *bytes;
+		NSData *survivor;
+		NSString *linkTarget;
+		BOOL copiedOnto;
+		BOOL movedOnto;
+		BOOL linkMade;
+		BOOL cleaned;
+
+		[fm removeItemAtPath:@S3_ROOT error:NULL];	/* a previous run's litter, if any */
+		[fm createDirectoryAtPath:fn_s3(@"tree/sub")
+	      withIntermediateDirectories:YES
+			   attributes:nil
+				error:NULL];
+		[fm createFileAtPath:fn_s3(@"file.txt") contents:hello attributes:nil];
+		[fm createFileAtPath:fn_s3(@"tree/a.txt")
+			     contents:[@"a" dataUsingEncoding:NSUTF8StringEncoding]
+			   attributes:nil];
+		[fm createFileAtPath:fn_s3(@"tree/sub/b.txt")
+			     contents:[@"bb" dataUsingEncoding:NSUTF8StringEncoding]
+			   attributes:nil];
+
+		/* THE BYTES, AND THE ONE EXCLUSION APPLE NAMES: a DIRECTORY answers nil. A path that is not
+		 * there answers nil too, which is this door's whole error channel - it has none, in Cocoa
+		 * either. */
+		bytes = [fm contentsAtPath:fn_s3(@"file.txt")];
+		check("fs-contents-at-path",
+		      bytes != nil && [bytes isEqualToData:hello] &&
+		      [fm contentsAtPath:fn_s3(@"tree")] == nil &&
+		      [fm contentsAtPath:fn_s3(@"not-here.txt")] == nil,
+		      [NSString stringWithFormat:@"file=%lu bytes, directory=%s, missing=%s",
+			(unsigned long)(bytes != nil ? [bytes length] : 0),
+			[fm contentsAtPath:fn_s3(@"tree")] == nil ? "nil" : "not nil",
+			[fm contentsAtPath:fn_s3(@"not-here.txt")] == nil ? "nil" : "not nil"]);
+
+		/* THE EQUALITY RULE'S SIX ANSWERS. Two links are built to ONE target, because "compares the
+		 * links themselves" is only observable when the targets agree; and the differing tree differs
+		 * in a SUBDIRECTORY, which is the half of Apple's sentence a shallow implementation misses
+		 * ("contents of subdirectories are also compared"). */
+		[fm createSymbolicLinkAtPath:fn_s3(@"link-one")
+		     withDestinationPath:fn_s3(@"file.txt")
+				   error:NULL];
+		[fm createSymbolicLinkAtPath:fn_s3(@"link-two")
+		     withDestinationPath:fn_s3(@"file.txt")
+				   error:NULL];
+		[fm copyItemAtPath:fn_s3(@"tree") toPath:fn_s3(@"tree-same") error:NULL];
+		[fm copyItemAtPath:fn_s3(@"tree") toPath:fn_s3(@"tree-diff") error:NULL];
+		[fm createFileAtPath:fn_s3(@"tree-diff/sub/b.txt")
+			     contents:[@"XX" dataUsingEncoding:NSUTF8StringEncoding]
+			   attributes:nil];
+		check("fs-contents-equal",
+		      [fm contentsEqualAtPath:fn_s3(@"file.txt") andPath:fn_s3(@"file.txt")] &&
+		      [fm contentsEqualAtPath:fn_s3(@"tree") andPath:fn_s3(@"tree-same")] &&
+		      ![fm contentsEqualAtPath:fn_s3(@"tree") andPath:fn_s3(@"tree-diff")] &&
+		      ![fm contentsEqualAtPath:fn_s3(@"tree/a.txt") andPath:fn_s3(@"tree/sub/b.txt")] &&
+		      [fm contentsEqualAtPath:fn_s3(@"link-one") andPath:fn_s3(@"link-two")] &&
+		      ![fm contentsEqualAtPath:fn_s3(@"link-one") andPath:fn_s3(@"file.txt")],
+		      [NSString stringWithFormat:@"same=%d trees=%d differing-tree=%d different-bytes=%d "
+			"two-links=%d link-vs-target=%d",
+			(int)[fm contentsEqualAtPath:fn_s3(@"file.txt") andPath:fn_s3(@"file.txt")],
+			(int)[fm contentsEqualAtPath:fn_s3(@"tree") andPath:fn_s3(@"tree-same")],
+			(int)[fm contentsEqualAtPath:fn_s3(@"tree") andPath:fn_s3(@"tree-diff")],
+			(int)[fm contentsEqualAtPath:fn_s3(@"tree/a.txt") andPath:fn_s3(@"tree/sub/b.txt")],
+			(int)[fm contentsEqualAtPath:fn_s3(@"link-one") andPath:fn_s3(@"link-two")],
+			(int)[fm contentsEqualAtPath:fn_s3(@"link-one") andPath:fn_s3(@"file.txt")]]);
+
+		/* THE OTHER KIND OF LINK, MADE TO SOMETHING THAT DOES NOT EXIST - which is the point of
+		 * Apple's own sentence about this door, and the thing a "check the target first"
+		 * implementation could not do. */
+		linkMade = [fm createSymbolicLinkAtPath:fn_s3(@"dangling")
+			    withDestinationPath:fn_s3(@"nowhere-at-all")
+					  error:&doorError];
+		linkTarget = [fm destinationOfSymbolicLinkAtPath:fn_s3(@"dangling") error:NULL];
+		check("fs-symbolic-link-door",
+		      linkMade && linkTarget != nil &&
+		      [linkTarget isEqualToString:fn_s3(@"nowhere-at-all")] &&
+		      ![fm fileExistsAtPath:fn_s3(@"nowhere-at-all")],
+		      [NSString stringWithFormat:@"made=%d target=%@ exists=%d error=%@", (int)linkMade,
+			linkTarget, (int)[fm fileExistsAtPath:fn_s3(@"nowhere-at-all")],
+			doorError != nil ? [doorError localizedDescription] : @"(none)"]);
+
+		/* THE TWO REFUSALS, AND THE BYTES THAT MUST SURVIVE THEM. */
+		[fm createFileAtPath:fn_s3(@"exists.txt") contents:original attributes:nil];
+		[fm createFileAtPath:fn_s3(@"other.txt")
+			     contents:[@"replacement" dataUsingEncoding:NSUTF8StringEncoding]
+			   attributes:nil];
+		copiedOnto = [fm copyItemAtPath:fn_s3(@"other.txt")
+					 toPath:fn_s3(@"exists.txt")
+					  error:&copyOntoError];
+		survivor = [fm contentsAtPath:fn_s3(@"exists.txt")];
+		check("fs-copy-refuses-an-existing-destination",
+		      !copiedOnto && copyOntoError != nil && [copyOntoError code] == EEXIST &&
+		      survivor != nil && [survivor isEqualToData:original] &&
+		      [fm fileExistsAtPath:fn_s3(@"other.txt")],
+		      [NSString stringWithFormat:@"copied=%d code=%ld survivor=%@ source-still-there=%d",
+			(int)copiedOnto, (long)(copyOntoError != nil ? [copyOntoError code] : -1),
+			survivor != nil ? [survivor description] : @"(nil)",
+			(int)[fm fileExistsAtPath:fn_s3(@"other.txt")]]);
+
+		movedOnto = [fm moveItemAtPath:fn_s3(@"other.txt")
+					toPath:fn_s3(@"exists.txt")
+					 error:&moveOntoError];
+		survivor = [fm contentsAtPath:fn_s3(@"exists.txt")];
+		check("fs-move-refuses-an-existing-destination",
+		      !movedOnto && moveOntoError != nil && [moveOntoError code] == EEXIST &&
+		      [fm fileExistsAtPath:fn_s3(@"other.txt")] &&
+		      survivor != nil && [survivor isEqualToData:original],
+		      [NSString stringWithFormat:@"moved=%d code=%ld source-still-there=%d survivor=%@",
+			(int)movedOnto, (long)(moveOntoError != nil ? [moveOntoError code] : -1),
+			(int)[fm fileExistsAtPath:fn_s3(@"other.txt")],
+			survivor != nil ? [survivor description] : @"(nil)"]);
+
+		/* AND THE FIXTURE GOES, INCLUDING THE DANGLING LINK - which the recursive remove reaches
+		 * because it lstat(2)s and unlinks rather than following anything. */
+		cleaned = [fm removeItemAtPath:@S3_ROOT error:NULL];
+		if (!cleaned) {
+			printf("FOUNDATION-FILEMANAGER fs-s3-cleanup: the fixture is still at %s\n", S3_ROOT);
+		}
 	}
 
 	/* --- AND WHERE A TEMPORARY FILE GOES, WHICH THE FSH ANSWERS RATHER THAN A CLASS ------------------ */

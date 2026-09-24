@@ -231,6 +231,39 @@ shouldProceedAfterError:(NSError *)error
 		toPath:(NSString *)destinationPath
 		 error:(NSError ** _Nullable)error;
 
+/* ---- A COPY AND A MOVE REFUSE AN EXISTING DESTINATION (W8 slice 3, AND BOTH ARE FIXES) ------------
+ *
+ * Apple says it in the copy's own discussion - "if a file with the same name already exists at dstPath,
+ * this method STOPS THE COPY ATTEMPT AND RETURNS AN APPROPRIATE ERROR" - and says the same about a
+ * move ("if an item with the same name already exists at dstPath, this method stops the move attempt
+ * and returns an appropriate error"). THIS CLASS DID NEITHER UNTIL THIS SLICE: the copy wrote through
+ * O_CREAT|O_TRUNC, silently REPLACING the file it found, and the move went through rename(2), which
+ * replaces a destination file BY DESIGN. Both are data loss the caller cannot see coming, so the
+ * destination is lstat(2)ed and an existing item is EEXIST - which is also the case Apple's
+ * `shouldProceedAfterError:` doors exist for.
+ */
+
+/* A SYMBOLIC LINK (the other kind of link, and the difference matters): link(2) makes a second name for
+ * an INODE, symlink(2) makes a NEW inode whose content is a path. Apple's own description is why the
+ * target is never resolved here: "this method does not traverse symbolic links contained in `path`,
+ * making it possible to create symbolic links to locations that DO NOT YET EXIST". */
+- (BOOL)createSymbolicLinkAtPath:(NSString *)path
+	     withDestinationPath:(NSString *)destPath
+			   error:(NSError ** _Nullable)error;
+
+/* THE FILE'S BYTES, and the exclusion is Apple's: a DIRECTORY answers nil ("if `path` specifies a
+ * directory, or if some other error occurs, this method returns nil"), and there is no error channel -
+ * this door has none in Cocoa either. The read follows a link, because what it answers is the CONTENTS
+ * of the file the path names. */
+- (nullable NSData *)contentsAtPath:(NSString *)path;
+
+/* THE THREE-STEP RULE, IN APPLE'S OWN ORDER: "for files, this method checks to see if they're the same
+ * file, then compares their size, and finally compares their contents"; directories are compared as
+ * "the list of files and subdirectories each contains - contents of subdirectories are also compared";
+ * and it "does not traverse symbolic links, but compares the links themselves", so two links are equal
+ * when they point at the same target and a link never equals the file it points at. */
+- (BOOL)contentsEqualAtPath:(NSString *)path1 andPath:(NSString *)path2;
+
 - (nullable NSDictionary *)attributesOfItemAtPath:(NSString *)path
 					    error:(NSError ** _Nullable)error;
 - (nullable NSString *)destinationOfSymbolicLinkAtPath:(NSString *)path

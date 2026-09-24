@@ -386,9 +386,17 @@ typedef enum {
 	const char *from = [item UTF8String];
 	const char *to = [target UTF8String];
 	struct stat st;
+	struct stat existing;
 
 	if (![self fnDelegateShould:FNOperationCopy from:item to:target]) {
 		return YES;		/* a veto skips the item; a directory's children are never reached */
+	}
+	/* THE DESTINATION MUST NOT EXIST, which is Apple's own sentence and the FIX for the data loss this
+	 * file used to commit: the copy wrote through O_CREAT|O_TRUNC, so it silently REPLACED whatever it
+	 * found there. The check is per ITEM rather than once at the door, because Apple states the rule
+	 * per dstPath and because a race between the two would be the same bug with a smaller window. */
+	if (lstat(to, &existing) == 0) {
+		return [self fnFailed:EEXIST kind:FNOperationCopy from:item to:target error:outErrno];
 	}
 	if (lstat(from, &st) != 0) {
 		return [self fnFailed:errno kind:FNOperationCopy from:item to:target error:outErrno];
@@ -398,7 +406,9 @@ typedef enum {
 		NSArray *names;
 		NSUInteger i;
 
-		if (mkdir(to, st.st_mode & 07777) != 0 && errno != EEXIST) {
+		/* NO EEXIST TOLERANCE ANY MORE: the destination was just shown not to exist, so a failure
+		 * here is a real failure rather than the ordinary case it used to be. */
+		if (mkdir(to, st.st_mode & 07777) != 0) {
 			return [self fnFailed:errno kind:FNOperationCopy from:item to:target error:outErrno];
 		}
 		names = fn_directory_names(from, &err);
@@ -419,20 +429,31 @@ typedef enum {
 	if (S_ISREG(st.st_mode)) {
 		int in = open(from, O_RDONLY);
 		int out;
-		char buffer[8192];
+		/* THE BUFFER IS ON THE HEAP, AND THAT IS A FIX RATHER THAN A STYLE CHOICE (W8 slice 3): this
+		 * system's user stack is TWELVE KILOBYTES (measured - a fault dump's own memory map shows
+		 * 0x7fffffffd000 to 0x800000000000), so an 8KB array here left the whole call chain about
+		 * three hundred bytes of headroom. It went unnoticed until a fix elsewhere in this file added
+		 * one more frame and a COPY began to segfault before printing a line - which is exactly how a
+		 * latent stack hazard behaves: not wrong, just spent. */
+		char *buffer = malloc(8192);
 		ssize_t n;
 
 		if (in < 0) {
 			return [self fnFailed:errno kind:FNOperationCopy from:item to:target error:outErrno];
+		}
+		if (buffer == NULL) {
+			close(in);
+			return [self fnFailed:ENOMEM kind:FNOperationCopy from:item to:target error:outErrno];
 		}
 		out = open(to, O_WRONLY | O_CREAT | O_TRUNC, st.st_mode & 07777);
 		if (out < 0) {
 			int err = errno;
 
 			close(in);
+			free(buffer);
 			return [self fnFailed:err kind:FNOperationCopy from:item to:target error:outErrno];
 		}
-		while ((n = read(in, buffer, sizeof(buffer))) > 0) {
+		while ((n = read(in, buffer, 8192)) > 0) {
 			ssize_t written = 0;
 
 			while (written < n) {
@@ -443,6 +464,7 @@ typedef enum {
 
 					close(in);
 					close(out);
+					free(buffer);
 					return [self fnFailed:err kind:FNOperationCopy from:item to:target
 							error:outErrno];
 				}
@@ -451,6 +473,7 @@ typedef enum {
 		}
 		close(in);
 		close(out);
+		free(buffer);
 		if (n < 0) {
 			return [self fnFailed:errno kind:FNOperationCopy from:item to:target error:outErrno];
 		}
@@ -467,8 +490,17 @@ typedef enum {
  * manager notifies the delegate only for the directory itself and not for any of its contents". */
 - (BOOL)fnMoveItem:(NSString *)item to:(NSString *)target error:(int *)outErrno
 {
+	struct stat existing;
+
 	if (![self fnDelegateShould:FNOperationMove from:item to:target]) {
 		return YES;
+	}
+	/* AND THE SAME RULE, WHICH rename(2) WILL NOT ENFORCE: "if an item with the same name already
+	 * exists at dstPath, this method stops the move attempt and returns an appropriate error" - while
+	 * rename(2) replaces a destination FILE by design, silently. That difference is the whole reason
+	 * this check is here rather than in the syscall. */
+	if (lstat([target UTF8String], &existing) == 0) {
+		return [self fnFailed:EEXIST kind:FNOperationMove from:item to:target error:outErrno];
 	}
 	/* ONE SYSCALL, AND IT IS ONLY ONE BECAUSE BOTH PATHS ARE ON ONE FILESYSTEM: an EXDEV comes back
 	 * to the caller as itself rather than being silently turned into a copy. */
@@ -786,6 +818,170 @@ typedef enum {
 	[attributes setObject:[NSNumber numberWithUnsignedInt:(unsigned int)st.st_gid]
 		       forKey:NSFileGroupOwnerAccountID];
 	return attributes;
+}
+
+/* ---- THE FILE'S BYTES, THE EQUALITY RULE, AND THE OTHER KIND OF LINK (W8 slice 3) ---------------
+ *
+ * ONE READER FOR "THE CONTENTS OF A FILE", because two callers need it and they must not disagree:
+ * -contentsAtPath: answers it, and the equality rule compares files with it. It uses stat(2) rather
+ * than lstat(2) on purpose - what it answers is the contents of the file the path NAMES, so a link is
+ * followed - and it refuses a DIRECTORY, which is Apple's own exclusion: "if `path` specifies a
+ * directory, or if some other error occurs, this method returns nil".
+ */
+static NSData *fn_file_data(NSString *path)
+{
+	NSMutableData *data;
+	/* HEAP, NOT STACK, for the same measured reason the copy's buffer is (§60 slice 3): a 12KB user
+	 * stack cannot afford an 8KB array with callers underneath it. */
+	char *buffer;
+	struct stat st;
+	ssize_t n;
+	int fd;
+
+	if (stat([path UTF8String], &st) != 0 || S_ISDIR(st.st_mode)) {
+		return nil;
+	}
+	fd = open([path UTF8String], O_RDONLY);
+	if (fd < 0) {
+		return nil;
+	}
+	buffer = malloc(8192);
+	if (buffer == NULL) {
+		close(fd);
+		return nil;
+	}
+	data = [NSMutableData dataWithCapacity:(NSUInteger)(st.st_size > 0 ? st.st_size : 64)];
+	while ((n = read(fd, buffer, 8192)) > 0) {
+		[data appendBytes:buffer length:(NSUInteger)n];
+	}
+	close(fd);
+	free(buffer);
+	if (n < 0) {
+		return nil;
+	}
+	return data;
+}
+
+/* A LINK'S TARGET, or nil: read at the link itself, which is the only way to compare two links as
+ * LINKS - Apple's "does not traverse symbolic links, but compares the links themselves". */
+static NSString *fn_link_target(NSString *path)
+{
+	/* HEAP AGAIN, and 4KB of stack is no more affordable here than 8KB was above. */
+	char *buffer = malloc(4096);
+	NSString *target;
+	ssize_t n;
+
+	if (buffer == NULL) {
+		return nil;
+	}
+	n = readlink([path UTF8String], buffer, 4095);
+	if (n < 0) {
+		free(buffer);
+		return nil;
+	}
+	buffer[n] = '\0';
+	target = [NSString stringWithUTF8String:buffer];
+	free(buffer);
+	return target;
+}
+
+- (nullable NSData *)contentsAtPath:(NSString *)path
+{
+	if (path == nil) {
+		return nil;
+	}
+	return fn_file_data(path);
+}
+
+/* THE DIRECTORY HALF OF THE EQUALITY RULE: "the contents are the list of files and subdirectories each
+ * contains - contents of subdirectories are also compared". The NAMES are compared as a SET, because
+ * readdir's order is not a promise either side makes, and each name must then compare equal in turn -
+ * which is what makes this recursive rather than a count of entries. */
+- (BOOL)fnDirectory:(NSString *)first equalsDirectory:(NSString *)second
+{
+	NSArray *names = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:first error:NULL];
+	NSArray *others = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:second error:NULL];
+	NSUInteger i;
+
+	if (names == nil || others == nil) {
+		return names == nil && others == nil;
+	}
+	if ([names count] != [others count]) {
+		return NO;
+	}
+	for (i = 0; i < [names count]; i++) {
+		NSString *name = [names objectAtIndex:i];
+
+		if (![others containsObject:name]) {
+			return NO;
+		}
+		if (![[NSFileManager defaultManager] contentsEqualAtPath:fn_joined(first, name)
+								andPath:fn_joined(second, name)]) {
+			return NO;
+		}
+	}
+	return YES;
+}
+
+- (BOOL)contentsEqualAtPath:(NSString *)path1 andPath:(NSString *)path2
+{
+	struct stat a;
+	struct stat b;
+	NSData *mine;
+	NSData *theirs;
+
+	if (path1 == nil || path2 == nil) {
+		return NO;
+	}
+	/* lstat, because a link is an ITEM here and not a window onto its target. */
+	if (lstat([path1 UTF8String], &a) != 0 || lstat([path2 UTF8String], &b) != 0) {
+		return NO;
+	}
+	/* APPLE'S FIRST STEP: "checks to see if they're the same file" - the filesystem's own identity
+	 * (device and inode), not a comparison of the pathnames. */
+	if (a.st_dev == b.st_dev && a.st_ino == b.st_ino) {
+		return YES;
+	}
+	if ((S_ISLNK(a.st_mode) ? YES : NO) != (S_ISLNK(b.st_mode) ? YES : NO)) {
+		return NO;		/* a link never equals the file it points at */
+	}
+	if (S_ISLNK(a.st_mode)) {
+		mine = fn_link_target(path1);
+		theirs = fn_link_target(path2);
+		return mine != nil && [mine isEqualToString:theirs];
+	}
+	if (S_ISDIR(a.st_mode) || S_ISDIR(b.st_mode)) {
+		if (!S_ISDIR(a.st_mode) || !S_ISDIR(b.st_mode)) {
+			return NO;	/* a directory never equals a file */
+		}
+		return [self fnDirectory:path1 equalsDirectory:path2];
+	}
+	if (!S_ISREG(a.st_mode) || !S_ISREG(b.st_mode)) {
+		return NO;		/* two devices, sockets or fifos are not compared by this rule */
+	}
+	/* THE SIZE BEFORE THE BYTES, which is Apple's order and the cheap half of it as well. */
+	if (a.st_size != b.st_size) {
+		return NO;
+	}
+	mine = fn_file_data(path1);
+	theirs = fn_file_data(path2);
+	return mine != nil && [mine isEqualToData:theirs];
+}
+
+- (BOOL)createSymbolicLinkAtPath:(NSString *)path
+	     withDestinationPath:(NSString *)destPath
+			   error:(NSError ** _Nullable)error
+{
+	if (path == nil || destPath == nil) {
+		return fn_failed(error, EINVAL);
+	}
+	/* symlink(2) DOES NOT RESOLVE ITS TARGET, which is exactly why this door can make a link to
+	 * somewhere that does not exist yet - Apple's own sentence about it, and the reason there is no
+	 * check here to "helpfully" refuse a dangling one. */
+	if (symlink([destPath UTF8String], [path UTF8String]) != 0) {
+		return fn_failed(error, errno);
+	}
+	return YES;
 }
 
 - (nullable NSString *)destinationOfSymbolicLinkAtPath:(NSString *)path

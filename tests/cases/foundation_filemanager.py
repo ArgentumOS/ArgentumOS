@@ -22,6 +22,18 @@ The probe is `/System/Shared/tests/foundation_filemanager`, ONE unit, importing 
                           non-empty description: the channel, not a silent zero;
   * `fs-link-and-cwd`    — a symbolic link's target through the service, and a
                           `-changeCurrentDirectoryPath:`/`-currentDirectoryPath` round trip;
+  * `fs-contents-at-path` — the file's BYTES, and Apple's one exclusion: a directory answers nil;
+  * `fs-contents-equal`  — the whole equality rule: the same file, two identical trees, a tree that
+                          differs in a SUBDIRECTORY, different bytes, two links to one target, and a
+                          link against its own target (which is where "compares the links themselves"
+                          becomes visible);
+  * `fs-symbolic-link-door` — `-createSymbolicLinkAtPath:withDestinationPath:error:` makes a link to a
+                          target that DOES NOT EXIST, and the target reads back;
+  * `fs-copy-refuses-an-existing-destination` — a FIX: the copy used to replace the file it found
+                          (O_CREAT|O_TRUNC). It answers NO with EEXIST now, and the assertion that
+                          matters is that the file that was already there is STILL THERE, byte for byte;
+  * `fs-move-refuses-an-existing-destination` — the same rule for the move, which `rename(2)` would
+                          never have enforced, with both items still in place;
   * `fs-cleanup`         — the tree is gone, which is also the recursive remove's own exercise.
 
 IT WORKS IN A TREE OF ITS OWN MAKING under `/System/Temporary Files` — this system's temp directory,
@@ -35,7 +47,9 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_filemanager"
 CHECKS = ("fs-default-manager", "fs-create-and-list", "fs-write-and-size", "fs-move-and-copy",
-          "fs-error-channel", "fs-link-and-cwd", "fs-cleanup",
+          "fs-error-channel", "fs-link-and-cwd", "fs-contents-at-path", "fs-contents-equal",
+          "fs-symbolic-link-door", "fs-copy-refuses-an-existing-destination",
+          "fs-move-refuses-an-existing-destination", "fs-cleanup",
           "temporary-directory-is-the-fsh-path", "temporary-directory-exists")
 
 
