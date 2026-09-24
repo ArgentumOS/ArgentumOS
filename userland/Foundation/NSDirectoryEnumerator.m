@@ -25,9 +25,15 @@
 #import <Foundation/NSFileManager.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
+#import <Foundation/NSError.h>
+#import <Foundation/NSURL.h>
 #import <Foundation/NSString.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+/* THE BLOCK RUNTIME, declared here rather than included, which is how NSFileHandle does it too. */
+extern void *_Block_copy(const void *aBlock);
+extern void _Block_release(const void *aBlock);
 
 /* A JOINED PATH with ONE rule, so the absolute side and the relative side cannot disagree: an empty
  * prefix means "the name itself", which is exactly what keeps the root level's answers relative. */
@@ -43,6 +49,15 @@ static NSString *fn_join(NSString *prefix, NSString *name)
 
 - (id)initWithPath:(NSString *)path options:(NSUInteger)options
 {
+	return [self initWithPath:path options:options prefetchKeys:nil yieldsURLs:NO errorHandler:NULL];
+}
+
+- (id)initWithPath:(NSString *)path
+	   options:(NSUInteger)options
+      prefetchKeys:(NSArray *)keys
+	yieldsURLs:(BOOL)yieldsURLs
+      errorHandler:(BOOL (^)(NSURL *url, NSError *error))handler
+{
 	self = [super init];
 	if (self == nil) {
 		return nil;
@@ -56,6 +71,11 @@ static NSString *fn_join(NSString *prefix, NSString *name)
 	_relStack = [[NSMutableArray alloc] init];
 	_namesStack = [[NSMutableArray alloc] init];
 	_options = options;
+	_prefetchKeys = [keys retain];
+	_yieldsURLs = yieldsURLs;
+	if (handler != NULL) {
+		_errorHandler = (BOOL (^)(NSURL *, NSError *))_Block_copy(handler);
+	}
 	_directoryAttributes = [[[NSFileManager defaultManager] attributesOfItemAtPath:_root
 									       error:NULL] retain];
 	[self fnOpenLevel:_root relative:@""];
@@ -69,6 +89,10 @@ static NSString *fn_join(NSString *prefix, NSString *name)
 	[_relStack release];
 	[_namesStack release];
 	[_directoryAttributes release];
+	[_prefetchKeys release];
+	if (_errorHandler != NULL) {
+		_Block_release(_errorHandler);
+	}
 	[_currentPath release];
 	[super dealloc];
 }
@@ -79,14 +103,43 @@ static NSString *fn_join(NSString *prefix, NSString *name)
  * with nothing in it - which is what "an enumerator that enumerates no files" means. */
 - (void)fnOpenLevel:(NSString *)absolute relative:(NSString *)relative
 {
-	NSArray *names = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:absolute error:NULL];
+	NSError *failed = nil;
+	NSArray *names = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:absolute
+									     error:&failed];
 	NSMutableArray *reversed = [NSMutableArray array];
+
+	/* A DIRECTORY THAT CANNOT BE OPENED IS WHAT THE HANDLER IS FOR, and its answer is the difference
+	 * between continuing and stopping (Apple: "return true if you want the enumeration to continue or
+	 * false if you want the enumeration to stop"). Only the ROOT's failure is silent, because the door
+	 * above promises an enumerator that enumerates NOTHING rather than a callback for a URL that was
+	 * never a directory to begin with. */
+	if (names == nil && failed != nil && ![absolute isEqual:_root] && _errorHandler != NULL) {
+		NSURL *where = [[NSURL alloc] initFileURLWithPath:absolute];
+		BOOL keepGoing = _errorHandler(where, failed);
+
+		[where release];
+		if (!keepGoing) {
+			[_dirStack removeAllObjects];
+			[_relStack removeAllObjects];
+			[_namesStack removeAllObjects];
+			return;
+		}
+	}
 
 	if (names != nil) {
 		NSUInteger i;
 
 		for (i = [names count]; i > 0; i--) {
-			[reversed addObject:[names objectAtIndex:i - 1]];
+			NSString *name = [names objectAtIndex:i - 1];
+
+			/* THE OPTIONS ARE HONOURED HERE: a hidden name is one whose OWN first character is a
+			 * dot - this system has no hidden bit, so that is the rule, and it is the same one the
+			 * resource-value door answers (NSURLIsHiddenKey) and the listing door filters by. */
+			if ((_options & NSDirectoryEnumerationSkipsHiddenFiles) != 0 &&
+			    [name hasPrefix:@"."]) {
+				continue;
+			}
+			[reversed addObject:name];
 		}
 	}
 	[_dirStack addObject:absolute];
@@ -131,9 +184,43 @@ static NSString *fn_join(NSString *prefix, NSString *name)
 		_pushedForCurrent = NO;
 		if (_currentIsDirectory) {
 			/* A REAL DIRECTORY, which is what the lstat above established: a SYMLINK to one is
-			 * answered and not entered, per the class's own rule. */
-			[self fnOpenLevel:absolute relative:relative];
-			_pushedForCurrent = YES;
+			 * answered and not entered, per the class's own rule - AND AN ENCOUNTERED MOUNT POINT IS
+			 * NOT ENTERED EITHER, which is this door's own sentence ("does not resolve symbolic links
+			 * or mount points encountered in the enumeration process, nor does it recurse through them
+			 * if they point to a directory"): a walk must not cross into another file system by
+			 * accident. The test is the DEVICE NUMBER of the child against the directory holding it,
+			 * and it applies to CHILDREN only - a mount point GIVEN AS THE PATH is traversed, because
+			 * the walk's first opendir(2) is not a comparison. */
+			struct stat parentSt;
+			BOOL sameDevice = lstat([absoluteDir UTF8String], &parentSt) != 0 ||
+					 parentSt.st_dev == st.st_dev;
+
+			if (sameDevice) {
+				[self fnOpenLevel:absolute relative:relative];
+				_pushedForCurrent = YES;
+			}
+		}
+		if (_yieldsURLs) {
+			/* THE URL ANSWER: built once per item and PRIMED with the values the caller asked for, so
+			 * the object answers from the enumeration's moment rather than from the disk at question
+			 * time. */
+			NSURL *item = [[NSURL alloc] initFileURLWithPath:absolute];
+
+			if (item == nil) {
+				return nil;
+			}
+			if (_prefetchKeys != nil) {
+				NSUInteger k;
+
+				for (k = 0; k < [_prefetchKeys count]; k++) {
+					NSURLResourceKey key = [_prefetchKeys objectAtIndex:k];
+					id value = nil;
+
+					[item getResourceValue:&value forKey:key error:NULL];
+					[item fnPrefetchValue:value forKey:key];
+				}
+			}
+			return [item autorelease];
 		}
 		return relative;
 	}

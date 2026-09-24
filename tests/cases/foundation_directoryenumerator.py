@@ -60,6 +60,9 @@ CHECKS = ("walk-yields-the-whole-subtree", "walk-paths-are-relative-to-the-direc
           "url-listing-of-an-empty-directory-is-an-empty-array",
           "url-listing-refuses-what-is-not-a-directory",
           "url-listing-prefetches-the-keys", "url-listing-honours-skips-hidden-files",
+          "url-enumerator-walks-and-yields-urls", "url-enumerator-prefetches-the-keys",
+          "url-enumerator-over-a-file-enumerates-nothing",
+          "url-enumerator-honours-skips-hidden-files",
           "probe-url-tree-removed", "probe-tree-removed")
 
 

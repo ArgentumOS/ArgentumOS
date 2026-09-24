@@ -402,6 +402,23 @@ typedef enum {
 					options:(NSUInteger)options
 					  error:(NSError ** _Nullable)error;
 
+/* THE DEEP WALK AS A DOOR (W8 slice 6e), which is where Apple puts it: the enumerator CLASS is the
+ * cursor, and the manager is what knows a directory.
+ *
+ * APPLE'S SENTENCES FOR THIS DOOR, ALL MEASURED FROM ITS PAGE: the enumerator deep-enumerates "the
+ * contents of the directory at" the URL; "the values for these keys are cached in the corresponding NSURL
+ * objects"; the handler is "an optional error handler block ... the handler block should return true if
+ * you want the enumeration to continue or false if you want the enumeration to stop"; and "if url is a
+ * filename, the method returns an enumerator object that enumerates no files - the first call to
+ * -nextObject returns nil", which is why a FILE URL answers a SPENT ENUMERATOR rather than nil. A URL
+ * that is not a file URL at all is refused with nil, and that is OURS: Apple's sentence covers a
+ * filename, and this door has no path to walk without one.
+ */
+- (nullable NSDirectoryEnumerator *)enumeratorAtURL:(NSURL *)url
+			  includingPropertiesForKeys:(nullable NSArray *)keys
+					     options:(NSUInteger)options
+					errorHandler:(nullable BOOL (^)(NSURL *url, NSError *error))handler;
+
 - (nullable NSDictionary *)attributesOfFileSystemForPath:(NSString *)path
 						   error:(NSError ** _Nullable)error;
 

@@ -12251,9 +12251,53 @@ ALREADY inside its own `NS_ASSUME_NONNULL` region (one `BEGIN` at the top and on
 the file), so the category is opened WITHOUT a nested region - a nested `NS_ASSUME_NONNULL_BEGIN` is a
 compile error, and an accidental unbalanced `END` is another.
 
-**AFTER W8p:** the ubiquitous/thumbnail/quarantine masses, the URL-taking ENUMERATOR and delegate doors
-(`-enumeratorAtURL:includingPropertiesForKeys:options:errorHandler:` needs the block question settled on its
-own terms), then the coordinator family, `NSFileVersion` and `NSFileProviderService`.
+**SLICE 6e LANDED (2026-09-24): THE DEEP WALK AS A DOOR, its answers URLs, its keys prefetched, and its
+options HONOURED.** `foundation_directoryenumerator` 24 -> **28 checks**, green.
+
+**THE DOOR IS WHERE APPLE PUTS IT:** the enumerator CLASS is the cursor and the manager is what knows a
+directory, so `-enumeratorAtURL:includingPropertiesForKeys:options:errorHandler:` lands beside the listing
+door and constructs the same walk with `yieldsURLs:YES`. Apple's sentences, all measured from the page and
+all implemented: the walk is DEEP; "the values for these keys are CACHED in the corresponding NSURL
+objects"; the handler is "an optional error handler block ... should return **true** if you want the
+enumeration to continue or false if you want the enumeration to stop"; and "if url is a FILENAME, the method
+returns an enumerator object that enumerates NO FILES - the first call to `-nextObject` returns nil" - which
+is why a file URL answers a SPENT ENUMERATOR rather than nil, while a non-file URL is refused with nil
+(ours: Apple's sentence covers a filename, and this door has no path to walk without one).
+
+**AND A CHECK FOUND A REAL GAP THAT WAS NOT THIS SLICE'S TO INVENT: THE WALK DID NOT HONOUR ITS OPTIONS.**
+Slice 1 carried the option word through the constructor and applied none of it - its own header said as
+much - so `NSDirectoryEnumerationSkipsHiddenFiles` did nothing and the check failed with
+`names={._fork, .hidden, plain.txt, subfolder}`. The arm now exists (the dot rule, which is this system's
+hidden rule because there is no hidden bit) and the check passes. **The post-order option is still carried
+and not honoured, and that is recorded as owed rather than implied.**
+
+**THE TWO FACTS OF THE BLOCK, EACH PAID FOR:** the handler is **`BOOL (^)(NSURL *, NSError *)`** - a `void`
+return made `!_errorHandler(...)` an invalid unary expression, and Apple's "return true to continue" is the
+reason it is not void - and a STORED block is `_Block_copy`'d and `_Block_release`'d, spelled exactly as
+`NSFileHandle` spells it.
+
+**AND THE FINDING THIS SLICE IS RECORDED BESIDE, WHICH IS A DEFECT OF ITS OWN AND NOT A DETAIL: WALKING
+INTO devfs HANGS THE GUEST.** The first version of the mount-point leg enumerated `/` and never returned;
+the second enumerated `/System` (where devfs is mounted at `/System/Devices`), PRINTED ITS START MARKER,
+never printed its end marker, and never reached its own 20 000-item cap - which means the walk was stuck
+inside a SINGLE `-nextObject`, not merely walking a large tree. **That also settles what the mount-point
+rule can do here**: Apple's rule (a walk "does not resolve symbolic links or mount points encountered in the
+enumeration process, nor does it recurse through them") IS implemented - a child whose device differs from
+its parent's is listed and not entered - and the hang proves **devfs reports the SAME device as the root**,
+because otherwise the rule would have skipped it and the walk would have returned. So the rule is
+IMPLEMENTED AND UNPROVABLE ON THIS SYSTEM, and the hang is PRE-EXISTING (slice 1's walk descends the same
+tree the same way) with two candidates worth measuring next: devfs's `readdir` looping in the kernel, or a
+REAL-DIRECTORY cycle inside devfs's synthesized tree (a symlink would not be descended, a real directory
+would).
+
+**AND THE INSTRUMENT LESSON, WHICH IS THE ONE WORTH CARRYING:** the first version of that leg had NO marker
+and NO cap, so a hang was indistinguishable from a crash and cost two runs to localise. The fixed instrument
+- print before, cap inside, print after - turned it into a diagnosis in one run. **An unbounded loop with no
+output is not an experiment.**
+
+**AFTER W8p:** the URL-taking DELEGATE doors (which must also update slice 2's probe, because its own rule
+says the URL form is preferred once implemented), then the coordinator family, `NSFileVersion` and
+`NSFileProviderService`.
 
 **AND ONE DEBT RECORDED RATHER THAN SILENTLY FIXED, because it is the URL unit's and not this slice's:**
 `NSURL` had **no `-dealloc` at all** before this slice - it copies its parts and released none of them -

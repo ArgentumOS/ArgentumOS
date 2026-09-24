@@ -30,9 +30,12 @@
 
 #import <Foundation/NSEnumerator.h>
 
+@class NSArray;
 @class NSDictionary;
+@class NSError;
 @class NSMutableArray;
 @class NSString;
+@class NSURL;
 
 /* NULLABILITY (F6): NONNULL by default, and the two exceptions are the attribute dictionaries, which
  * answer nil before the first item (and, for -directoryAttributes, whenever the starting directory
@@ -52,6 +55,9 @@ NS_ASSUME_NONNULL_BEGIN
 	BOOL _currentIsDirectory;
 	BOOL _returned;
 	BOOL _pushedForCurrent;			/* did returning it open a level underneath? */
+	NSArray *_prefetchKeys;			/* NSURLResourceKey objects to PRIME on every URL (retained) */
+	BOOL (^_errorHandler)(NSURL *url, NSError *error);	/* COPIED, or NULL (see NSFileHandle) */
+	BOOL _yieldsURLs;			/* the URL walk: every answer is an NSURL, not a relative path */
 }
 
 /* THE CURRENT ITEM AND THE STARTING DIRECTORY, and the two are NOT the same question: Apple abstracts
@@ -68,9 +74,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)skipDescendents;
 - (void)skipDescendants;
 
-/* Whether this enumerator was made in post-order mode. This slice's walk is PRE-ORDER and its doors
- * pass no options, so it answers NO today; §60's slice 6 is what will pass the bit in, and the walk
- * gains its post-order arm then. */
+/* Whether this enumerator was made in post-order mode. The walk is still PRE-ORDER - the option is
+ * carried and NOT honoured, which §60 records as owed by this class rather than hiding. */
 - (BOOL)isEnumeratingDirectoryPostOrder;
 
 /* OURS, NOT COCOA'S, and the same asymmetry NSEnumerator's -initWithSequence:reverse: has: the class
@@ -78,6 +83,27 @@ NS_ASSUME_NONNULL_BEGIN
  * `options` is a PARAMETER rather than a property because the path doors this slice lands have none
  * to give; it is carried so the post-order bit has one home when slice 6 arrives. */
 - (id)initWithPath:(NSString *)path options:(NSUInteger)options;
+
+/* THE URL WALK'S CONSTRUCTOR (W8 slice 6e), over the same walk: the answers become NSURLs, the requested
+ * resource values are PREFETCHED into each one (Apple: "the values for these keys are cached in the
+ * corresponding NSURL objects"), and an optional handler is called when a directory cannot be opened -
+ * "return true if you want the enumeration to continue or false if you want the enumeration to stop"
+ * (Apple's sentence for the door). A BLOCK PASSED IN IS COPIED, as everywhere else in this library.
+ *
+ * THE OPTIONS ARE HONOURED HERE AND NOT MERELY CARRIED: `NSDirectoryEnumerationSkipsHiddenFiles` skips a
+ * name whose own first character is a dot, which is this system's hidden rule (there is no hidden bit) -
+ * and the check that failed before this arm existed is why it is written rather than assumed.
+ *
+ * AND THE WALK REFUSES TO CROSS A FILE SYSTEM ON ITS OWN: Apple's sentence for this door is that it "does
+ * not resolve symbolic links or mount points encountered in the enumeration process, nor does it recurse
+ * through them if they point to a directory" - so an encountered mount point is LISTED and not entered,
+ * the same shape as the symlink rule and for the same reason. A mount point GIVEN AS THE PATH is
+ * traversed, because the walk's first opendir(2) is not a comparison. */
+- (id)initWithPath:(NSString *)path
+	   options:(NSUInteger)options
+      prefetchKeys:(nullable NSArray *)keys
+	yieldsURLs:(BOOL)yieldsURLs
+      errorHandler:(nullable BOOL (^)(NSURL *url, NSError *error))handler;
 
 @end
 

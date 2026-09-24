@@ -1068,6 +1068,23 @@ typedef enum {
 	return [urls autorelease];
 }
 
+- (nullable NSDirectoryEnumerator *)enumeratorAtURL:(NSURL *)url
+			  includingPropertiesForKeys:(NSArray *)keys
+					     options:(NSUInteger)options
+					errorHandler:(BOOL (^)(NSURL *url, NSError *error))handler
+{
+	NSString *path;
+
+	if (url == nil || ![url isFileURL] || (path = [url path]) == nil) {
+		return nil;
+	}
+	return [[[NSDirectoryEnumerator alloc] initWithPath:path
+						    options:options
+					       prefetchKeys:keys
+						 yieldsURLs:YES
+					       errorHandler:handler] autorelease];
+}
+
 - (nullable NSDictionary *)attributesOfFileSystemForPath:(NSString *)path
 						   error:(NSError ** _Nullable)error
 {

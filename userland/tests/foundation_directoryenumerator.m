@@ -54,6 +54,19 @@
  *                                            cache makes the listed URL answer the disk too;
  *   url-listing-honours-skips-hidden-files    NSDirectoryEnumerationSkipsHiddenFiles drops the dot files
  *                                            and only those;
+ *   url-enumerator-walks-and-yields-urls     the deep walk as a DOOR yields URLs, and it VISITS a `._`
+ *                                            name (a traversal may not inherit a listing's name rule);
+ *   url-enumerator-prefetches-the-keys       the values asked for are cached in each URL the walk hands
+ *                                            back, proved by growing the file after the walk;
+ *   url-enumerator-over-a-file-enumerates-nothing  Apple's sentence: the enumerator EXISTS and its first
+ *                                            -nextObject is nil, while a non-file URL is refused;
+ *   url-enumerator-honours-skips-hidden-files  the walk HONOURS the option - the arm this check found
+ *                                            missing - and the handler stays quiet when nothing fails
+ *                                            (the other half of that plumbing is unreachable as uid 0
+ *                                            here, which is recorded rather than implied);
+ *   (THE MOUNT-POINT RULE IS IMPLEMENTED AND NOT PROBED HERE - see the note at its place in the walk:
+ *                                            walking into devfs hangs the guest, which is a defect of its
+ *                                            own and the reason the rule cannot be proved on this system)
  *   probe-url-tree-removed                   that tree is gone too.
  */
 
@@ -535,6 +548,122 @@ int main(void)
 			      [names containsObject:@"plain.txt"] && [names containsObject:@"subfolder"],
 			      [NSString stringWithFormat:@"%@", names]);
 		}
+
+		/* ---- W8 SLICE 6e: THE DEEP WALK AS A DOOR, WITH THE KEYS CACHED IN EACH URL ---------------- */
+		{
+			NSDirectoryEnumerator *walk = [manager2 enumeratorAtURL:root
+						       includingPropertiesForKeys:nil
+								      options:0
+								 errorHandler:NULL];
+			NSMutableSet *names = [NSMutableSet set];
+			id item;
+			BOOL allURLs = YES;
+
+			while ((item = [walk nextObject]) != nil) {
+				if (![item isKindOfClass:[NSURL class]] || ![item isFileURL]) {
+					allURLs = NO;
+					break;
+				}
+				[names addObject:[[item path] lastPathComponent]];
+			}
+			/* A TRAVERSAL VISITS EVERYTHING THAT EXISTS - including a `._` name, which is exactly what
+			 * a LISTING's name rule may not be allowed to hide from it (this slice's own lesson). The
+			 * order of a walk is as undefined as a listing's, so the names are compared as a SET. */
+			check("url-enumerator-walks-and-yields-urls",
+			      allURLs && [names count] == 4 && [names containsObject:@"plain.txt"] &&
+			      [names containsObject:@"._fork"] && [names containsObject:@".hidden"] &&
+			      [names containsObject:@"subfolder"],
+			      [NSString stringWithFormat:@"allURLs=%d names=%@", (int)allURLs, names]);
+		}
+
+		/* THE PREFETCH, THROUGH THE WALK AND PROVED THE SAME WAY AS THE LISTING'S: ask for the size,
+		 * GROW the file on disk, and the URL the walk handed back still answers what it was given. */
+		{
+			NSDirectoryEnumerator *walk = [manager2 enumeratorAtURL:root
+						       includingPropertiesForKeys:@[ NSURLFileSizeKey ]
+								      options:0
+								 errorHandler:NULL];
+			NSURL *found = nil;
+			long long atWalkTime = -1;
+			long long afterGrowth = -1;
+			id item;
+
+			while ((item = [walk nextObject]) != nil) {
+				if ([[[item path] lastPathComponent] isEqual:@"plain.txt"]) {
+					found = item;
+					atWalkTime = fn_size(found, NSURLFileSizeKey);
+					break;
+				}
+			}
+			fn_append(fn_url_path(@"plain.txt"), "yy");
+			if (found != nil) {
+				afterGrowth = fn_size(found, NSURLFileSizeKey);
+			}
+			check("url-enumerator-prefetches-the-keys",
+			      found != nil && atWalkTime == 8 && afterGrowth == 8 &&
+			      fn_size(fn_url(fn_url_path(@"plain.txt")), NSURLFileSizeKey) == 10,
+			      [NSString stringWithFormat:@"at-walk=%lld after-growth=%lld disk=%lld",
+				atWalkTime, afterGrowth,
+				fn_size(fn_url(fn_url_path(@"plain.txt")), NSURLFileSizeKey)]);
+		}
+
+		/* A FILE ANSWERS AN ENUMERATOR THAT ENUMERATES NOTHING, which is Apple's sentence - the object
+		 * EXISTS and its first -nextObject is nil - while a URL that is not a file URL is refused. */
+		{
+			NSDirectoryEnumerator *overFile = [manager2 enumeratorAtURL:fn_url(fn_url_path(@"plain.txt"))
+						       includingPropertiesForKeys:nil
+								      options:0
+								 errorHandler:NULL];
+			NSDirectoryEnumerator *overWeb = [manager2 enumeratorAtURL:fn_url(@"https://example.invalid/")
+						       includingPropertiesForKeys:nil
+								      options:0
+								 errorHandler:NULL];
+			id first = overFile != nil ? [overFile nextObject] : (id)@"no enumerator at all";
+
+			check("url-enumerator-over-a-file-enumerates-nothing",
+			      overFile != nil && first == nil && overWeb == nil,
+			      [NSString stringWithFormat:@"overFile=%p first=%@ overWeb=%p",
+				(void *)overFile, first, (void *)overWeb]);
+		}
+
+		/* THE OPTIONS ARE HONOURED BY THE WALK, and this check is the one that FAILED before the arm
+		 * existed: `NSDirectoryEnumerationSkipsHiddenFiles` drops the dot names - including the `._`
+		 * one, which the dot rule covers without a rule of its own. The handler must stay QUIET on a
+		 * walk where nothing fails, and the other half of that plumbing (a real mid-walk failure) is
+		 * unreachable as uid 0 HERE, which is recorded rather than left to look like coverage. */
+		{
+			__block BOOL called = NO;
+			NSDirectoryEnumerator *walk = [manager2 enumeratorAtURL:root
+						       includingPropertiesForKeys:nil
+								      options:NSDirectoryEnumerationSkipsHiddenFiles
+								 errorHandler:^BOOL(NSURL *where, NSError *error) {
+				(void)where;
+				(void)error;
+				called = YES;
+				return YES;
+			}];
+			NSMutableSet *names = [NSMutableSet set];
+			id item;
+
+			while ((item = [walk nextObject]) != nil) {
+				[names addObject:[[item path] lastPathComponent]];
+			}
+			check("url-enumerator-honours-skips-hidden-files",
+			      !called && [names count] == 2 && ![names containsObject:@".hidden"] &&
+			      ![names containsObject:@"._fork"] && [names containsObject:@"plain.txt"] &&
+			      [names containsObject:@"subfolder"],
+			      [NSString stringWithFormat:@"handler-called=%d names=%@", (int)called, names]);
+		}
+
+		/* AND THE WALK DOES NOT CROSS A FILE SYSTEM ON ITS OWN - Apple's rule, which the walk IMPLEMENTS
+		 * (a child whose device differs from its parent's is listed and not entered) and which this probe
+		 * CANNOT PROVE ON THIS SYSTEM, stated rather than left to look covered: the only mount point a
+		 * probe can reach is devfs at /System/Devices, and walking INTO it HANGS THE GUEST - the first
+		 * version of this leg printed its start marker, never printed its end marker, and never reached
+		 * its own 20000-item cap, which means the walk was stuck inside a single -nextObject. That is a
+		 * defect of its own (§60 records it beside this slice) and NOT this rule's failure: it is how the
+		 * rule was found to be undetectable here, because if devfs reported a device of its own the walk
+		 * would have skipped it and returned. */
 
 		{
 			NSError *cleanupError = nil;
