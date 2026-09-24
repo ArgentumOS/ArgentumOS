@@ -10644,18 +10644,39 @@ slots!` (the pool). List, countdown, BH scheduling and pool are all doing their 
 REACHING THE SLEEPER** - which is the §58.1 window class itself, on this channel, and the reason it is not
 astronomically rare is that the same channel is shared by every reader of that tty.
 
-**SO THE NEXT UNIT IS NO LONGER A DIAGNOSIS: IT IS THE CURE THIS PLAN HAS APPLIED ELEVEN TIMES ALREADY.**
-`tty_read`'s two interior `VTIME > 0` arms still call bare `sleep(&tty->read_q, ...)` - the only two waiters left
-in this file that do not arm before they look. Giving them the §58.1 shape (`sleep_arm` → re-look → `sleep_commit`)
-turns a lost wake into a BOUNDED RETRY of the arm's own loop, whatever the exact loss mechanism is, and
-`kernel_pty_read`'s DIAG line is the instrument that says whether the arm became reliable. (The `tty_read`
-fingerprint used at the main site is not needed here: these arms re-derive their whole condition from
-`CURRENT_TICKS` and `cooked_q.count` on every pass, so the loop itself is the re-look.)
+**THE CURE IS IN AT BOTH ARMS - AND IT DID NOT MAKE THE ARM RELIABLE, WHICH IS THE NEW MEASUREMENT (2026-09-22,
+third pass).** `tty_read`'s two interior `VTIME > 0` arms now carry the §58.1 shape: `sleep_arm(&tty->read_q)` →
+re-look → `sleep_commit(...)`, with the arms' own condition as the re-look (the first re-checks
+`CURRENT_TICKS - ini_ticks >= timeout || cooked_q.count`, the second `cooked_q.count`), and every early exit
+disarms. A lost wake can now only cost one more pass of a loop that re-arms its callout - so the arm is strictly
+more robust than it was. **But four consecutive runs of `kernel_pty_read` all still report `returned=0`:** the read
+does not return within a reap bounded by an exact 5 seconds. So the loss is NOT the `add_callout` → `sleep` window
+as modelled (or not only that), and the two-arm cure cannot be credited with a fix on this evidence.
+
+**AND A CORRECTION TO THE PREVIOUS PASS, because its evidence could not bear the weight put on it.** The
+`CALLOUT-DIAG dequeue ... arg=ffff800000633008` line proves that *a* VTIME callout for that channel is dequeued and
+its callback runs *somewhere in the run* - and the probe's LAST check reads the slave on the same termios, so
+**the parent's own read can arm such a callout too**; that line sat near the end of the run, where the parent's
+check is. It therefore does NOT establish that the CHILD's callout ever fired. The list side is "a callout for this
+channel does come out and run", not "the failing read's callout does".
+
+**THE NEXT INSTRUMENT IS NAMED, AND THERE ARE NOW TWO LIVE HYPOTHESES RATHER THAN ONE:**
+ 1. **the child's callout never fires, while the parent's does** - which needs the tick handler's own view (the
+    head's `expires` at every tick while the child sleeps) or a dequeue line that identifies the CALLER's pid;
+ 2. **the child is not being scheduled promptly at all**, and every "the read did not return" is an observation
+    about the probe's timeline, not about the wake. The evidence that keeps this alive: in the diagnostic run the
+    child's own `about to read` / `read returned 0` lines appear in the guest log AFTER the parent had already
+    printed `reaped=0` and sent SIGKILL - and serial console ordering lags, but not by seconds. If (2) is true then
+    `nap_ms(10)` is not napping either (a `poll(2)` with only negative fds is a pure timeout, which this kernel's
+    `sys_poll` should honour - and that is worth measuring rather than trusting).
+**WHAT WOULD SEPARATE THEM** is one printk pair on the CHILD's side: the tick counter and `current->sleep_address`
+immediately before and after `sleep_commit`, plus a dequeue line carrying `current->pid`. That is the next unit, and
+it is a measurement rather than a fix.
+
 **`kernel_pty_read` still asserts NEITHER outcome for this arm:** asserting the block would fail whenever the
 timer did fire, asserting the return would fail whenever it did not, and two flaky checks are worse than one
 honest observation. It prints `KERNEL-PTY-DIAG vtime read: returned=... code=...` for the record and asserts only
-the deterministic half of the arm - until the cure above makes the outcome reliable, at which point that DIAG line
-becomes a check and the limit is closed.
+the deterministic half of the arm - until the outcome is reliable, at which point that DIAG line becomes a check.
 
 **WHAT REMAINS:** the §58.1 cure at the two interior `&tty->read_q` arms (above - the next unit, with this probe
 as its instrument and a bounded retry as its mechanism), then the six writer sites

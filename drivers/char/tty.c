@@ -756,8 +756,7 @@ int tty_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 				 * sleep on &tty->read_q, and NOTHING IN THIS TREE SLEEPS ON &tty->cooked_q (grep it), so
 				 * this timer's wake went nowhere: with VMIN=0, VTIME=1 and nothing written, a read blocked
 				 * FOR EVER where POSIX requires 0 once the timer expires. MEASURED, not deduced -
-				 * kernel_pty_read parked on its own watchdog in phase 2, and its check now asserts this
-				 * behaviour instead of recording the limit, so a regression here fails that case.
+				 * kernel_pty_read parked on its own watchdog in phase 2 (§58.1c has the transcripts).
 				 *
 				 * AND WAKING read_q ADDS NO NEW CLASS OF WAKE: it is the channel do_cook() already uses for
 				 * arriving input (drivers/char/tty.c:523), and a wake that arrives while a process is not
@@ -774,7 +773,24 @@ int tty_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 						if(f->flags & O_NONBLOCK) {
 							return -EAGAIN;
 						}
-						if(sleep(&tty->read_q, PROC_INTERRUPTIBLE)) {
+						/* ARM BEFORE THE LOOK - the §58.1 cure, and on THIS arm it is what makes a lost
+						 * wake recoverable instead of fatal. MEASURED (§58.1c): kernel_pty_read's DIAG
+						 * line shows this read sometimes never returning even though the callout was
+						 * dequeued and its callback RAN - the wake and the registration were simply not
+						 * co-resident. With the registration in place first, such a wake either finds us
+						 * or has already cleared the registration, and `sleep_commit` then returns WITHOUT
+						 * sleeping (kernel/sleep.c), so the loop runs once more: it re-checks the tick
+						 * arithmetic, re-arms the callout and tries again - a BOUNDED RETRY, never a stall.
+						 * THE LOOP'S OWN CONDITION IS THE RE-LOOK: everything this arm needs is derived
+						 * from CURRENT_TICKS and cooked_q.count on every pass, so there is nothing to
+						 * compare but those two. */
+						sleep_arm(&tty->read_q);
+						if(CURRENT_TICKS - ini_ticks >= timeout || tty->cooked_q.count) {
+							sleep_disarm();
+							continue;
+						}
+						if(sleep_commit(&tty->read_q, PROC_INTERRUPTIBLE)) {
+							sleep_disarm();
 							return -EINTR;
 						}
 					}
@@ -798,13 +814,21 @@ int tty_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 						}
 						timeout = tty->termios.c_cc[VTIME] * (HZ / 10);
 						creq.fn = wait_vtime_off;
-						creq.arg = (addr_t)&tty->read_q;	/* the channel this arm sleeps on below */
+						creq.arg = (addr_t)&tty->read_q;
 						add_callout(&creq, timeout);
 						if(f->flags & O_NONBLOCK) {
 							n = -EAGAIN;
 							break;
 						}
-						if(sleep(&tty->read_q, PROC_INTERRUPTIBLE)) {
+						/* ARM BEFORE THE LOOK here too, for the same reason: this arm's readiness test is
+						 * exactly `cooked_q.count > 0`, which is where the loop re-enters. */
+						sleep_arm(&tty->read_q);
+						if(tty->cooked_q.count) {
+							sleep_disarm();
+							continue;
+						}
+						if(sleep_commit(&tty->read_q, PROC_INTERRUPTIBLE)) {
+							sleep_disarm();
 							n = -EINTR;
 							break;
 						}
