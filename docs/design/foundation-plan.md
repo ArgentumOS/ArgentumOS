@@ -10540,10 +10540,43 @@ arm is visible to the second snapshot. **VERIFIED: `procfs_devfs` 16/16** - the 
 `kernel_pipe_dup2` 11/11, `kernel_loopback_tcp` 6/6 and `foundation_websockettask` 3/3.
 
 **WHAT REMAINS, CORRECTED:** the tty reader's TWO INTERIOR sites (the `VTIME > 0` arms), which the same helper
-cures but which **NO CASE CAN CURRENTLY EXERCISE** - they are reachable only with `VTIME > 0` set through termios,
-and nothing in the suite sets it. They therefore need a behaviour test first, in the same spirit as the pty read
-below. Also: the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, plus `pty_write`'s channel), and **two
-missing behaviour tests - a pty READ and a VMIN/VTIME read - which are now the gating items rather than the code**.
+cures but which **NO CASE COULD EXERCISE** - they are reachable only with `VTIME > 0` set through termios, and
+nothing in the suite set it. Also: the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, plus `pty_write`'s
+channel).
+
+### §58.1c — THE TWO BEHAVIOUR TESTS LANDED, AND THE SECOND ONE FOUND A KERNEL BUG (2026-09-22)
+
+**BOTH GATING TESTS ARE NOW IN THE SUITE: `kernel_pty_read` (probe `KERNEL-PTY`, case in the fast tier, shared
+session, 11 probe checks / 6 case checks, GREEN).** It uses a pty because a pty is the one tty a probe OWNS:
+setting `VMIN`/`VTIME` on the console would disturb the session the harness is reading. And it tests both halves
+of the pty, which is not cosmetic - **the master and the slave are DIFFERENT fsops**: `pty_master_driver_fsop`
+reads with `pty_read` (the §58.1 cure that had no behaviour test at all) and `pty_slave_driver_fsop` reads with
+`tty_read`. So the probe covers the master's wake, the slave's ICANON arm, and the `VTIME` arms together.
+
+**AND THE `VTIME` HALF IS NOT A TEST OF A CURE - IT FOUND A DEFECT, MEASURED ON THE FIRST RUN:**
+ * **WHAT HAPPENED:** with `VMIN=0`, `VTIME=1` and NOTHING written, the read NEVER RETURNED - the probe's own 20s
+   watchdog fired with "PARKED in phase 2". POSIX requires 0 once the timer expires.
+ * **THE CAUSE IS A CHANNEL MISMATCH, NOT A LOST WAKE:** `tty_read` sleeps on **`&tty->read_q`**
+   (`drivers/char/tty.c:759`) while the `VTIME` callout `wait_vtime_off` wakes **`&tty->cooked_q`**
+   (`drivers/char/tty.c:754`, via `creq.arg`). `wakeup()` matches ON THE CHANNEL, so the timer's wake can never
+   reach the sleeper - and on an idle pty nothing else wakes `read_q`, so the read waits for ever. **This also
+   explains why the interior arms could not be "cured mechanically": the arm/look/commit cure closes a window
+   between a check and a registration, and this is a different fault sitting underneath the same three lines.**
+ * **THE PROBE ASSERTS THE LIMIT, the §45-Y pattern** (`kernel_loopback_tcp`'s `poll-reports-...` check is the
+   precedent): `a-vtime-read-with-nothing-written-blocks-KNOWN-LIMIT` passes WHILE the behaviour is the limit and
+   its failure text says **"THE LIMIT IS GONE, so flip this check to assert that a VMIN=0/VTIME=1 read with
+   nothing written returns 0"**. The read runs in a CHILD with a bounded reap, so "it did not return" is an
+   observation rather than a hung case - a probe whose subject is a wedged path must never hang.
+ * **WHAT IT MEANS FOR §58.1:** the fix is a channel one-liner (`creq.arg` should be the channel the reader waits
+   on, at both `VTIME` sites), and THIS PROBE IS ITS GATE. Once the timer wakes the right channel, the two
+   interior arms become reachable AND wakable, and their arm/look/commit cure can be measured against it instead
+   of copied in blind - which is the order this project insists on.
+
+**WHAT REMAINS:** the `VTIME` channel fix (above, with `kernel_pty_read` as its gate), then the two interior
+`&tty->read_q` arms once that fix makes them verifiable, then the six writer sites (`&pipefs_write`,
+`&tty->write_q` ×5, `pty_write`). The one check that stays deliberately un-raced - "data already queued" - carries
+the reason in its own comment: this guest's `usleep()` costs tens of ms for a nominal 1ms, so a mid-window write
+would make that check pass or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
 
 ## §59 — THE WEBSOCKET SLICE, DESIGNED BEFORE IT IS BUILT (2026-09-22)
 

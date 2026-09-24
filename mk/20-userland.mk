@@ -1129,6 +1129,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# the answer must not be able to be about the TLS library (docs/design/libressl-plan.md L1).
 	$(MUSL64_CC) -O2 userland/tests/kernel_loopback_tcp.c \
 		-o "$(ROOTFS64)/System/Shared/tests/kernel_loopback_tcp"
+	# kernel_pty_read: ARE A PTY'S TWO READ PATHS WOKEN? - plain C with no Foundation. The MASTER reads
+	# through pty_read and the SLAVE through tty_read (two different fsops), and tty_read's VMIN/VTIME arms
+	# are reachable ONLY from a tty the probe owns - which is exactly why a pty is used here and the console
+	# is not. It is a BEHAVIOUR test first: two §58.1 cures went in unverifiable because nothing could reach
+	# them (docs/design/foundation-plan.md §58.1b).
+	$(MUSL64_CC) -O2 userland/tests/kernel_pty_read.c \
+		-o "$(ROOTFS64)/System/Shared/tests/kernel_pty_read"
 	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
 	# collection_view, tab_view, split_view, grid_view, kvc_basic,
 	# notification_basic, cell_basic, viewcontroller_basic, window_draw,
