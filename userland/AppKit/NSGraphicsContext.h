@@ -26,8 +26,22 @@
  *   NO SUBSTRATE IN THIS TREE: `CIContext` (no Core Image here), and
  *   `+graphicsContextWithBitmapImageRep:` (needs `NSBitmapImageRep` — §3 row 1's class).
  *
- *   AND TWO THAT ARE REAL COREGRAPHICS WORK, WITH THEIR REASONS MEASURED RATHER THAN ASSUMED — and
- *   the correction after them is why this paragraph had to be rewritten:
+ *   AND ONE THAT IS REAL COREGRAPHICS WORK, WITH ITS REASON MEASURED RATHER THAN ASSUMED:
+ *   `colorRenderingIntent` needs `CGContextSetRenderingIntent`, which **Apple HAS** (an `open` row
+ *   here), and what keeps it deferred is not the missing function but that nothing would CONSUME it -
+ *   an intent names how a colour is converted DURING drawing, and this library's drawing does not
+ *   convert (fills composite device numbers, images composite their own bytes).
+ *
+ *   AND THE GAP THAT WAS REAL IS CLOSED. `imageInterpolation` needed
+ *   `CGContextSetInterpolationQuality`, `CGContextGetInterpolationQuality` and
+ *   `CGInterpolationQuality` - **all three of which Apple has and this tree did not** - AND a sampler
+ *   that honours them, because the image blit was nearest-only. That CoreGraphics slice landed
+ *   (`17343a35`): a bilinear sampler that premultiplies each texel before weighting, with
+ *   `kCGInterpolationLow` and `kCGInterpolationHigh` refused by name because this library has two
+ *   filters and not four. **AND THIS IS THE ONE OPTION THAT READS THROUGH TO THE CONTEXT INSTEAD OF
+ *   BEING STORED** - see its declaration below. The asymmetry is not an oversight: CoreGraphics has a
+ *   getter for THIS one, which is exactly what made it a gap, and it is the same measurement that
+ *   made the other three stored options the correct arrangement.
  *
  *     * `imageInterpolation` needs `CGContextSetInterpolationQuality` AND
  *       `CGContextGetInterpolationQuality`, and **Apple HAS both** (both are `open` rows in this
@@ -120,6 +134,20 @@ typedef enum {
 	NSCompositingOperationLuminosity
 } NSCompositingOperation;
 
+/*
+ * HOW AN IMAGE IS SAMPLED WHEN IT IS SCALED - a one-to-one mapping onto `CGInterpolationQuality`, so
+ * the two levels this library cannot honour (`Low` and `High`) inherit THAT enum's refusals rather
+ * than getting new ones: the property below forwards to CoreGraphics, which refuses them. All five
+ * names are declared, because a caller's `switch` needs them and the refusal is the setter's job.
+ */
+typedef enum {
+	NSImageInterpolationDefault = 0,
+	NSImageInterpolationNone,
+	NSImageInterpolationLow,
+	NSImageInterpolationMedium,
+	NSImageInterpolationHigh
+} NSImageInterpolation;
+
 @interface NSGraphicsContext : NSObject
 {
 	CGContextRef _context;      /* NOT owned — see the header note */
@@ -201,6 +229,21 @@ typedef enum {
 @property NSPoint patternPhase;
 /* `NSCompositingOperationPlusDarker` IS REFUSED BY NAME rather than approximated — see the enum. */
 @property NSCompositingOperation compositingOperation;
+
+/*
+ * AND THIS ONE IS NOT STORED, WHICH IS ITS WHOLE DIFFERENCE FROM THE THREE ABOVE. They remember what
+ * they were asked for because CoreGraphics has no getter for any of them; THIS one has both halves on
+ * the CoreGraphics side, so it READS THROUGH: `-imageInterpolation` asks the context, and a refused
+ * `Low` or `High` therefore reports the quality ACTUALLY IN FORCE rather than the one that was asked
+ * for and rejected. A stored copy here would be the disagreement the other three cannot avoid and
+ * this one has no reason to accept.
+ *
+ * AND THE TWO ENUMS' ORDERS ARE NOT THE SAME — `NSImageInterpolationDefault` is 0 here while
+ * `kCGInterpolationNone` is 0 there, because the CoreGraphics ordering is this tree's own decision
+ * (`None` first, so a zeroed context means nearest). A CAST BETWEEN THEM WOULD THEREFORE SWAP
+ * `Default` AND `None` SILENTLY, which is why the mapping below is an explicit switch.
+ */
+@property NSImageInterpolation imageInterpolation;
 
 @end
 

@@ -223,6 +223,34 @@ int main(void)
 		      "which coregraphics_pattern.c pins)",
 		      [g patternPhase].x == 3.0 && [g patternPhase].y == 1.0);
 
+		/* --- AND THE ONE OPTION THAT READS THROUGH TO THE CONTEXT -------------------------- */
+		/* THE DIFFERENCE IS OBSERVABLE ONLY WHEN THE CONTEXT REFUSES SOMETHING, which is why that
+		 * is the check that matters: a property that STORED what it was given would report the
+		 * rejected level back, and this one reports what is actually in force. */
+		check("a fresh context reports interpolation None, which is THIS library's stated default "
+		      "(CoreGraphics' is None because a zeroed state means nearest)",
+		      [g imageInterpolation] == NSImageInterpolationNone);
+
+		[g setImageInterpolation:NSImageInterpolationMedium];
+		check("setImageInterpolation:Medium reads back as Medium",
+		      [g imageInterpolation] == NSImageInterpolationMedium);
+		/* THE PROPERTY REACHED THE CONTEXT, checked at the context rather than on the surface: the
+		 * SURFACE half of interpolation (nearest gives 0/255, bilinear gives 95/159 on a 2x1 strip)
+		 * is coregraphics_image.c's, and duplicating it here would test CoreGraphics twice and this
+		 * bridge once. */
+		check("...and it REACHED the context rather than only being remembered",
+		      CGContextGetInterpolationQuality(cc) == kCGInterpolationMedium);
+
+		[g setImageInterpolation:NSImageInterpolationLow];
+		check("setImageInterpolation:Low is REFUSED by CoreGraphics, and the property reports the "
+		      "quality ACTUALLY IN FORCE - which a storing property could not do",
+		      [g imageInterpolation] == NSImageInterpolationMedium);
+		check("...and the context is untouched by the refusal",
+		      CGContextGetInterpolationQuality(cc) == kCGInterpolationMedium);
+		[g setImageInterpolation:NSImageInterpolationHigh];
+		check("...and the same holds for High",
+		      [g imageInterpolation] == NSImageInterpolationMedium);
+
 		CGContextRelease(cc);
 	}
 
@@ -237,6 +265,10 @@ int main(void)
 		[none setCompositingOperation:NSCompositingOperationMultiply];
 		[none setPatternPhase:NSMakePoint(1.0, 1.0)];
 		check("...and all three setters are harmless with no context", 1);
+		check("...and a context-less object reports interpolation None rather than a stored fallback",
+		      [none imageInterpolation] == NSImageInterpolationNone);
+		[none setImageInterpolation:NSImageInterpolationMedium];
+		check("...and setting it is harmless too", 1);
 		[none release];
 	}
 

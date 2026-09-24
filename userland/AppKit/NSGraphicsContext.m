@@ -185,6 +185,58 @@ static CGBlendMode fn_blend_mode(NSCompositingOperation op, int *ok)
 	}
 }
 
+/* THE TWO ENUMS LINE UP BY NAME, SO THIS IS A SWITCH AND NOT A TABLE — and it has to be a switch
+ * rather than a cast, because THEIR ORDERINGS DIFFER: `NSImageInterpolationDefault` is 0 while
+ * `kCGInterpolationNone` is 0, since the CoreGraphics order is this tree's own choice (`None` first,
+ * so a zeroed graphics state means nearest). A cast would map `Default` onto `None` and vice versa,
+ * silently, and the property below would then report the opposite of what it was set to. */
+static CGInterpolationQuality fn_interpolation(NSImageInterpolation q)
+{
+	switch (q) {
+	case NSImageInterpolationNone: return kCGInterpolationNone;
+	case NSImageInterpolationLow: return kCGInterpolationLow;
+	case NSImageInterpolationMedium: return kCGInterpolationMedium;
+	case NSImageInterpolationHigh: return kCGInterpolationHigh;
+	case NSImageInterpolationDefault:
+	default:
+		return kCGInterpolationDefault;
+	}
+}
+
+/* AND BACK, because the getter asks the context rather than a stored field: what comes back is one of
+ * the three levels CoreGraphics ACCEPTS, and reading it as the AppKit case the caller used is what
+ * makes a refused `Low` report the quality in force. */
+static NSImageInterpolation fn_interpolation_ns(CGInterpolationQuality q)
+{
+	switch (q) {
+	case kCGInterpolationNone: return NSImageInterpolationNone;
+	case kCGInterpolationLow: return NSImageInterpolationLow;
+	case kCGInterpolationMedium: return NSImageInterpolationMedium;
+	case kCGInterpolationHigh: return NSImageInterpolationHigh;
+	case kCGInterpolationDefault:
+	default:
+		return NSImageInterpolationDefault;
+	}
+}
+
+- (NSImageInterpolation)imageInterpolation
+{
+	/* A CONTEXT-LESS OBJECT ANSWERS `None`, which is what a NULL context reads back as - the honest
+	 * answer for an object with nothing to ask, and not a stored fallback. */
+	return fn_interpolation_ns(CGContextGetInterpolationQuality(_context));
+}
+
+- (void)setImageInterpolation:(NSImageInterpolation)q
+{
+	if (_context != NULL) {
+		/* THE REFUSAL IS COREGRAPHICS' AND IS NOT DUPLICATED HERE. `kCGInterpolationLow` and
+		 * `…High` are rejected by `CGContextSetInterpolationQuality`, which also leaves the quality
+		 * where it was, so the getter above reports the truth afterwards with no second copy of the
+		 * rule to drift out of step. */
+		CGContextSetInterpolationQuality(_context, fn_interpolation(q));
+	}
+}
+
 - (NSCompositingOperation)compositingOperation
 {
 	return _compositingOperation;

@@ -490,6 +490,17 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   and not an approximation, and all three are shipped. THE MISTAKE IS RECORDED RATHER THAN DELETED
   because it is the kind that looks like rigour: it was a real measurement of OUR side, generalised
   to Apple's without being asked.
+  **AND THE LAST OF THE FIVE IS NOW CLOSED, IN TWO HALVES (2026-09-24).** `imageInterpolation` was the
+  one that really was a CoreGraphics gap, so it needed both: the CoreGraphics slice added
+  `CGInterpolationQuality`, `CGContextSetInterpolationQuality` and `CGContextGetInterpolationQuality`
+  **plus a real bilinear sampler** that premultiplies each texel before weighting (`17343a35`, with
+  `kCGInterpolationLow` and `…High` refused by name because this library has two filters and not
+  four), and the AppKit property forwards to it. **AND THAT PROPERTY IS THE ONE OPTION THAT READS
+  THROUGH TO THE CONTEXT INSTEAD OF STORING** — the same measurement seen from the other side:
+  CoreGraphics has a getter for THIS one and for none of the other three. The probe's check for it is
+  therefore THE REFUSAL AND NOT THE ROUND TRIP: after a rejected `Low`, `-imageInterpolation` reports
+  the quality ACTUALLY IN FORCE, which a storing property could not do. `colorRenderingIntent` is the
+  only deferral left, for the reason stated above — nothing here would consume an intent.
   **SO C8.1 IS SCOPED TO WHAT HAS SUBSTRATE, MEASURED RATHER THAN ASSUMED**: the seam
   (`+graphicsContextWithCGContext:flipped:`, `CGContext`, `currentContext` and its setter,
   the CLASS and instance `saveGraphicsState`/`restoreGraphicsState`, `flipped`,

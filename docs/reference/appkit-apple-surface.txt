@@ -1063,11 +1063,11 @@ case	open	NSImageFrameGrayBezel	NSImageCell	-	-	objc
 case	struck	NSImageFrameGroove	NSImageCell	-	deprecated	objc
 case	open	NSImageFrameNone	NSImageCell	-	-	objc
 case	struck	NSImageFramePhoto	NSImageCell	-	deprecated	objc
-case	open	NSImageInterpolationDefault	NSGraphicsContext	-	-	objc
-case	open	NSImageInterpolationHigh	NSGraphicsContext	-	-	objc
-case	open	NSImageInterpolationLow	NSGraphicsContext	-	-	objc
-case	open	NSImageInterpolationMedium	NSGraphicsContext	-	-	objc
-case	open	NSImageInterpolationNone	NSGraphicsContext	-	-	objc
+case	shipped	NSImageInterpolationDefault	NSGraphicsContext	-	-	objc
+case	shipped	NSImageInterpolationHigh	NSGraphicsContext	-	-	objc
+case	shipped	NSImageInterpolationLow	NSGraphicsContext	-	-	objc
+case	shipped	NSImageInterpolationMedium	NSGraphicsContext	-	-	objc
+case	shipped	NSImageInterpolationNone	NSGraphicsContext	-	-	objc
 case	open	NSImageLayoutDirectionLeftToRight	NSImage	-	-	objc
 case	open	NSImageLayoutDirectionRightToLeft	NSImage	-	-	objc
 case	open	NSImageLayoutDirectionUnspecified	NSImage	-	-	objc
@@ -2655,7 +2655,7 @@ enum	open	NSImageCacheMode	NSImage	-	-	objc
 enum	open	NSImageDynamicRange	-	-	-	objc
 enum	open	NSImageDynamicRange	NSImage	-	-	objc
 enum	open	NSImageFrameStyle	NSImageCell	-	-	objc
-enum	open	NSImageInterpolation	NSGraphicsContext	-	-	objc
+enum	shipped	NSImageInterpolation	NSGraphicsContext	-	-	objc
 enum	open	NSImageLayoutDirection	NSImage	-	-	objc
 enum	open	NSImageLoadStatus	NSImageDelegate	-	-	objc
 enum	open	NSImageRepLoadStatus	NSBitmapImageRep	-	-	objc
@@ -8305,7 +8305,7 @@ property	open	imageDynamicRange	NSImageView	-	-	objc
 property	open	imageFrameStyle	NSImageCell	-	-	objc
 property	open	imageFrameStyle	NSImageView	-	-	objc
 property	open	imageHugsTitle	NSButton	-	-	objc
-property	open	imageInterpolation	NSGraphicsContext	-	-	objc
+property	shipped	imageInterpolation	NSGraphicsContext	-	-	objc
 property	open	imageOrigin	NSRulerMarker	-	-	objc
 property	open	imagePosition	NSButton	-	-	objc
 property	open	imagePosition	NSButtonCell	-	-	objc
