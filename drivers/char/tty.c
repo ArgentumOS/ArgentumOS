@@ -34,11 +34,14 @@
 struct tty *tty_table;
 extern short int current_cons;
 
-static void wait_vtime_off(unsigned int arg)
+static void wait_vtime_off(addr_t arg)
 {
-	unsigned int *fn = (unsigned int *)arg;
-
-	wakeup(fn);
+	/* THE ARGUMENT IS AN ADDRESS, which is exactly why the callout API carries `addr_t` and no longer an
+	 * `unsigned int` (fnx/timer.h has the whole story): a 32-bit carrier truncated the pointer this
+	 * callback is handed, so `wakeup()` was asked to wake a FABRICATED address - a wrong bucket of
+	 * sleep_hash_table - and the VTIME sleeper was never woken. MEASURED by kernel_pty_read, which is now
+	 * the gate for the whole arrangement. */
+	wakeup((void *)arg);
 }
 
 static void termios2termio(struct termios *termios, struct termio *termio)

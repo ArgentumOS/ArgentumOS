@@ -44,7 +44,7 @@
 #define BEEP_FREQ	900	/* 900Hz */
 
 void pit_beep_on(void);
-void pit_beep_off(unsigned int);
+void pit_beep_off(addr_t);
 int pit_getcounter0(void);
 void pit_init(unsigned short int);
 

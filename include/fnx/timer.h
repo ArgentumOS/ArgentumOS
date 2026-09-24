@@ -26,16 +26,29 @@
 
 #define INFINITE_WAIT	0xFFFFFFFF
 
+/* THE CALLBACK'S ARGUMENT IS AN ADDRESS, NOT AN `unsigned int` - A BUG FIX, NOT A STYLE CHOICE
+ * (foundation-plan.md §58.1c). It was `unsigned int` in here AND in do_callouts_bh(), while tty_read's
+ * VTIME sites store a POINTER in it:
+ *
+ *     creq.arg = (addr_t)&tty->read_q;
+ *
+ * so the address was truncated to 32 bits AT THE ASSIGNMENT: wait_vtime_off() then called
+ * wakeup((void *)(uint32_t)address), which hashes the wrong bucket of sleep_hash_table and matches no
+ * sleeper - so the VTIME callout could not wake anything on this 64-bit kernel, whichever channel it
+ * named. MEASURED, not deduced: kernel_pty_read's VMIN=0/VTIME=1 read never returned, and correcting
+ * only the channel it named changed nothing. SEVEN OF THE EIGHT callout users pass a small integer
+ * (a console, a drive number), where 32 bits is plenty - which is exactly why the truncation went
+ * unnoticed; wait_vtime_off is the only one handed a pointer, and it is the only one that was silent. */
 struct callout {
 	int expires;
-	void (*fn)(unsigned int);
-	unsigned int arg;
+	void (*fn)(addr_t);
+	addr_t arg;
 	struct callout *next;
 };
 
 struct callout_req {
-	void (*fn)(unsigned int);
-	unsigned int arg;
+	void (*fn)(addr_t);
+	addr_t arg;
 };
 
 void add_callout(struct callout_req *, unsigned int);

@@ -467,7 +467,7 @@ void fbcon_screen_on(struct vconsole *vc)
 	}
 }
 
-void fbcon_screen_off(unsigned int arg)
+void fbcon_screen_off(addr_t arg)
 {
 	struct vconsole *vc;
 	unsigned int flags;
@@ -552,7 +552,7 @@ void fbcon_buf_scroll(struct vconsole *vc, int mode)
 	}
 }
 
-void fbcon_cursor_blink(unsigned int arg)
+void fbcon_cursor_blink(addr_t arg)
 {
 	struct vconsole *vc;
 	struct callout_req creq;

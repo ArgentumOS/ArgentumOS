@@ -269,12 +269,26 @@ int main(void)
 			 * (an `unsigned int` where a pointer belongs), and it is why the timer has never been able to
 			 * wake anything on this kernel, whichever channel it names.
 			 *
-			 * THE FIX IS THEREFORE THE `arg` TYPE (`addr_t`, plus the eight callbacks' parameter, which
-			 * pass small integers and are unaffected in behaviour) - AND THIS CHECK IS ITS GATE.
+			 * THE `arg` TYPE IS FIXED AND THE READ STILL DOES NOT RETURN - MEASURED, AND THAT IS THE
+			 * CURRENT STATE OF THIS FINDING. The truncation was real and is worth having: `arg` is `addr_t`
+			 * everywhere now (both structs, do_callouts_bh's locals, struct console's cursor_blink field,
+			 * and all eight callbacks with the five header declarations that move with them), and the build
+			 * found two further `unsigned int` carriers the reading had missed. But with all of it in, a
+			 * VMIN=0/VTIME=1 read with nothing written STILL parks past the bounded wait, so at least one
+			 * cause remains and it is NOT the argument's width.
 			 *
-			 * UNTIL THEN THE CHECK ASSERTS THE LIMIT (this project's §45-Y pattern: it passes WHILE the
-			 * behaviour is the limit, and its failure text says to flip it), run in a CHILD under a bounded
-			 * reap so that "it did not return" is an observation rather than a hung probe. */
+			 * SO THE CHECK GOES BACK TO ASSERTING THE LIMIT (this project's §45-Y pattern: it passes while
+			 * the behaviour is the limit and its failure text says to flip it), because a red case in the
+			 * committed suite would be worse than an unfixed bug. WHAT IS NAMED FOR THE NEXT PASS, rather
+			 * than guessed at here: instrument the callout itself - a printk in wait_vtime_off (does the
+			 * timer fire at all?) and one immediately after the sleep (did the sleeper come back?) separate
+			 * "the callout never fires" from "it fires and the sleeper is not woken", and they are two
+			 * completely different bugs. The two cells are:
+			 *     fires + not woken  -> the wake/sleep handshake on &tty->read_q
+			 *     never fires        -> add_callout/do_callouts_bh, which would also strand the console
+			 *                           blink, the floppy motor timer and the ATA timeouts that use it
+			 * It runs in a CHILD under a bounded reap, so "it did not return" is an observation rather than
+			 * a hung case. */
 			phase = 2;
 			{
 				pid_t pid = fork();

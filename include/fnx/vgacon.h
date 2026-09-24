@@ -43,9 +43,9 @@ void vgacon_blank_screen(struct vconsole *);
 void vgacon_scroll_screen(struct vconsole *, int, int);
 void vgacon_restore_screen(struct vconsole *);
 void vgacon_screen_on(struct vconsole *);
-void vgacon_screen_off(unsigned int);
+void vgacon_screen_off(addr_t);
 void vgacon_buf_scroll(struct vconsole *, int);
-void vgacon_cursor_blink(unsigned int);
+void vgacon_cursor_blink(addr_t);
 void vgacon_init(void);
 
 #endif /* _FNX_VGACON_H */

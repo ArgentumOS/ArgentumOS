@@ -21,9 +21,9 @@ void fbcon_blank_screen(struct vconsole *);
 void fbcon_scroll_screen(struct vconsole *, int, int);
 void fbcon_restore_screen(struct vconsole *);
 void fbcon_screen_on(struct vconsole *);
-void fbcon_screen_off(unsigned int);
+void fbcon_screen_off(addr_t);
 void fbcon_buf_scroll(struct vconsole *, int);
-void fbcon_cursor_blink(unsigned int);
+void fbcon_cursor_blink(addr_t);
 void fbcon_init(void);
 
 #endif /* _FNX_FBCON_H */

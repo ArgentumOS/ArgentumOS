@@ -347,8 +347,9 @@ void irq_timer_bh(struct sigcontext *sc)
 void do_callouts_bh(struct sigcontext *sc)
 {
 	struct callout *c;
-	void (*fn)(unsigned int);
-	unsigned int arg;
+	void (*fn)(addr_t);
+	addr_t arg;		/* an ADDRESS: see the note in fnx/timer.h - it was `unsigned int` and
+				 * truncated the pointer a callback like wait_vtime_off() needs */
 
 	while(callout_head) {
 		if(callout_head->expires) {

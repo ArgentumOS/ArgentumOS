@@ -218,7 +218,7 @@ static int fdc_motor_on(void)
 	return errno;
 }
 
-static void do_motor_off(unsigned int fdd)
+static void do_motor_off(addr_t fdd)
 {
 	outport_b(FDC_DOR, FDC_DMA_ENABLE | FDC_ENABLE | fdd);
 	fdd_status[fdd].motor = 0;
@@ -613,7 +613,7 @@ void irq_floppy(int num, struct sigcontext *sc)
 	}
 }
 
-void fdc_timer(unsigned int reason)
+void fdc_timer(addr_t reason)
 {
 	switch(reason) {
 		case FDC_TR_DEFAULT:

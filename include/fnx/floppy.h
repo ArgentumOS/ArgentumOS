@@ -87,7 +87,7 @@ struct fddt {
 };
 
 void irq_floppy(int, struct sigcontext *);
-void fdc_timer(unsigned int);
+void fdc_timer(addr_t);
 
 int fdc_open(struct inode *, struct fd *);
 int fdc_close(struct inode *, struct fd *);

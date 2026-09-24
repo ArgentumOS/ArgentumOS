@@ -16,7 +16,7 @@ void pit_beep_on(void)
 	outport_b(PS2_SYSCTRL_B, inport_b(PS2_SYSCTRL_B) | ENABLE_SDATA | ENABLE_TMR2G);
 }
 
-void pit_beep_off(unsigned int unused)
+void pit_beep_off(addr_t unused)
 {
 	outport_b(PS2_SYSCTRL_B, inport_b(PS2_SYSCTRL_B) & ~(ENABLE_SDATA | ENABLE_TMR2G));
 }

@@ -10599,10 +10599,31 @@ eight callbacks take `addr_t` (behaviourally irrelevant for the integer callers,
 pointer). **`kernel_pty_read` IS THE GATE**: its `KNOWN-LIMIT` check flips to the POSIX assertion the moment the
 read returns 0 on its timer - the check's own failure text says so, so the flip cannot be forgotten.
 
-**WHAT REMAINS:** the callout `arg` type change (above), then the two interior `&tty->read_q` arms (reachable AND
-wakable only once that lands), then the six writer sites. The deliberately un-raced check - "data already queued" -
-carries its reason in its own comment: this guest's `usleep()` costs tens of ms for a nominal 1ms, so a mid-window
-write would make it pass or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
+**THE CALLBACK-ARGUMENT TYPE CHANGE LANDED - A REAL DEFECT FIXED, BUT IT DID NOT CURE THE VTIME READ
+(2026-09-22).** `arg` is `addr_t` in both structs, in `do_callouts_bh`'s locals, in `struct console`'s
+`cursor_blink` field, and in every callback a callout fires: `wait_vtime_off`, `pit_beep_off`, `fbcon_screen_off`,
+`fbcon_cursor_blink`, `vgacon_screen_off` (and its declaration), `vgacon_cursor_blink`, `fdc_timer`,
+`do_motor_off` - plus the five header declarations that had to move with them. **COMPILING FOUND TWO MORE
+CARRIERS THAT READING HAD MISSED** (`struct console`'s field and `vgacon_cursor_blink`), which is the argument for
+compiling after a type change instead of reading for it.
+
+**AND WITH ALL OF IT IN, A VMIN=0/VTIME=1 READ WITH NOTHING WRITTEN STILL DOES NOT RETURN.** MEASURED on the
+rebuilt kernel. So the truncation was NECESSARY BUT NOT SUFFICIENT: at least one cause remains, and it is not the
+argument's width. The probe's check therefore asserts the LIMIT again - a red case in the committed suite would be
+worse than an unfixed bug - and **the next pass is NAMED rather than guessed: instrument the callout itself.** A
+printk in `wait_vtime_off` (does the timer fire at all?) and one immediately after the sleep (did the sleeper come
+back?) separate two completely different bugs:
+  * **it fires and the sleeper is not woken** - the wake/sleep handshake on `&tty->read_q`;
+  * **it never fires** - `add_callout`/`do_callouts_bh`, which would also strand the console blink, the floppy
+    motor timer and the ATA timeouts that use the same API.
+(The plan's own rule applies to this: unbounded theories die at a measurement, and this one has two candidates
+that one printk pair tells apart.)
+
+**WHAT REMAINS:** that diagnosis, then the two interior `&tty->read_q` arms (§58.1's cure - gated on the read
+becoming wakable), then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5,
+`pty_write`). The deliberately un-raced check - "data already queued" - carries its reason in its own comment:
+this guest's `usleep()` costs tens of ms for a nominal 1ms, so a mid-window write would make it pass or fail on
+TIMING, and a flaky check in the committed suite is a defect of its own.
 
 ## §59 — THE WEBSOCKET SLICE, DESIGNED BEFORE IT IS BUILT (2026-09-22)
 

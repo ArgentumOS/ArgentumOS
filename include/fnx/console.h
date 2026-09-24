@@ -167,7 +167,8 @@ struct video_parms {
 	void (*restore_screen)(struct vconsole *);
 	void (*screen_on)(struct vconsole *);
 	void (*buf_scroll)(struct vconsole *, int);
-	void (*cursor_blink)(unsigned int);
+	void (*cursor_blink)(addr_t);	/* ADDRESS, not `unsigned int`: the callout that fires it carries a
+					 * pointer (fnx/timer.h has the whole story - a 32-bit carrier truncated it) */
 };
 extern struct video_parms video;
 

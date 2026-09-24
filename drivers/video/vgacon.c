@@ -239,7 +239,7 @@ void vgacon_screen_on(struct vconsole *vc)
 	}
 }
 
-void vgacon_screen_off(unsigned int arg)
+void vgacon_screen_off(addr_t arg)
 {
 	unsigned int flags;
 
@@ -301,7 +301,7 @@ void vgacon_buf_scroll(struct vconsole *vc, int mode)
 	}
 }
 
-void vgacon_cursor_blink(unsigned int arg)
+void vgacon_cursor_blink(addr_t arg)
 {
 	/* not used */
 }
