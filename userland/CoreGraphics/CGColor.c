@@ -24,6 +24,11 @@ struct CGColor {
 	CGColorSpaceRef space;                    /* RETAINED, so the colour owns it */
 	int ncomp;                                /* the SPACE's components, alpha NOT counted */
 	CGFloat comp[CG_COLOR_MAX_COMPONENTS];    /* the components, ALPHA LAST */
+	/* THE PATTERN, FOR A COLOUR THAT HAS ONE (C6.3). A pattern colour's components are its ALPHA and
+	 * nothing else — `ncomp` is 1 and `comp[0]` is that alpha — because the colours come from the
+	 * pattern's cell. The pointer is RETAINED here, which is what lets a caller release their own
+	 * reference the moment the colour is made. */
+	CGPatternRef pattern;
 };
 
 /* THE ONE PLACE THAT DECIDES WHICH SPACES THIS LIBRARY CAN READ, so that `CGColorCreate` and
@@ -120,10 +125,59 @@ CGColorRef CGColorCreateCopy(CGColorRef color)
 	if (color == NULL) {
 		return NULL;
 	}
-	/* A COPY KEEPS THE SAME SPACE OBJECT, not a duplicate of it: a colour space here is an
-	 * immutable description of how components are to be read, so two colours sharing one is
-	 * what it is for. */
+	/* A PATTERN COLOUR IS COPIED THROUGH ITS OWN DOOR, because its components are not a colour in its
+	 * space: `CGColorCreate` refuses a pattern space (its numbers mean nothing without a pattern), so
+	 * a copy that went that way would return NULL for every pattern colour while looking right. */
+	if (color->pattern != NULL) {
+		return CGColorCreateWithPattern(color->space, color->pattern, color->comp);
+	}
+	/* OTHERWISE A COPY KEEPS THE SAME SPACE OBJECT, not a duplicate of it: a colour space here is an
+	 * immutable description of how components are to be read, so two colours sharing one is what it
+	 * is for. */
 	return CGColorCreate(color->space, color->comp);
+}
+
+/* THE PATTERN COLOUR — a colour whose paint is a DRAWING. See CGColor.h for the contract; what is
+ * worth saying here is the COMPONENT COUNT: `ncomp` is set to ZERO, so this colour has ONE component
+ * counting the alpha, which is what Apple's own documentation gives for a coloured pattern colour
+ * ("the array has one element, the alpha value"). The alternative encoding — one space component plus
+ * an alpha — would make `CGColorGetNumberOfComponents` answer 2 and disagree with the documentation
+ * this library is a duplication of. */
+CGColorRef CGColorCreateWithPattern(CGColorSpaceRef space, CGPatternRef pattern,
+				    const CGFloat *components)
+{
+	CGColorRef color;
+
+	if (space == NULL || CGColorSpaceGetModel(space) != kCGColorSpaceModelPattern) {
+		fprintf(stderr, "CG-REFUSE: CGColorCreateWithPattern needs a pattern colour space "
+				"(CGColorSpaceCreatePattern); a colour's other spaces have numbers, and "
+				"this one has a pattern\n");
+		return NULL;
+	}
+	if (pattern == NULL) {
+		fprintf(stderr, "CG-REFUSE: CGColorCreateWithPattern needs a pattern\n");
+		return NULL;
+	}
+	if (components == NULL) {
+		fprintf(stderr, "CG-REFUSE: CGColorCreateWithPattern needs the pattern's alpha; a NULL "
+				"array is refused rather than read as an opaque pattern\n");
+		return NULL;
+	}
+	color = calloc(1, sizeof(struct CGColor));
+	if (color == NULL) {
+		return NULL;
+	}
+	color->refcount = 1;
+	color->space = CGColorSpaceRetain(space);
+	color->pattern = CGPatternRetain(pattern);
+	color->ncomp = 0;
+	color->comp[0] = components[0];
+	return color;
+}
+
+CGPatternRef CGColorGetPattern(CGColorRef color)
+{
+	return color == NULL ? NULL : color->pattern;
 }
 
 CGColorRef CGColorCreateCopyWithAlpha(CGColorRef color, CGFloat alpha)
@@ -155,7 +209,10 @@ void CGColorRelease(CGColorRef color)
 		return;
 	}
 	/* THE SPACE IS RELEASED BY THE COLOUR THAT RETAINED IT, which is why creating a colour
-	 * from a caller's space is enough to outlive that caller's reference to it. */
+	 * from a caller's space is enough to outlive that caller's reference to it. THE PATTERN IS
+	 * RELEASED TOO, and this is the line that fires the caller's `releaseInfo` for a pattern the last
+	 * colour was holding. */
+	CGPatternRelease(color->pattern);
 	CGColorSpaceRelease(color->space);
 	free(color);
 }
@@ -193,6 +250,12 @@ bool CGColorEqualToColor(CGColorRef color1, CGColorRef color2)
 	 * the profile will be part of the comparison and this line will have to say so. */
 	if (CGColorSpaceGetModel(color1->space) != CGColorSpaceGetModel(color2->space) ||
 	    color1->ncomp != color2->ncomp) {
+		return false;
+	}
+	/* TWO PATTERN COLOURS ARE EQUAL WHEN THEY ARE THE SAME PATTERN AT THE SAME ALPHA, and the
+	 * components alone cannot say so: two pattern colours made from two different patterns both have
+	 * one component, so comparing just that would call a polka dot equal to a checkerboard. */
+	if (color1->pattern != color2->pattern) {
 		return false;
 	}
 	for (i = 0; i <= color1->ncomp; i++) {

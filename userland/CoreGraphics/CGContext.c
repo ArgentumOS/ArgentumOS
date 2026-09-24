@@ -43,6 +43,7 @@
 #include <CoreGraphics/CGGradient_internal.h>
 #include <CoreGraphics/CGPath.h>
 #include <CoreGraphics/CGPaint_internal.h>
+#include <CoreGraphics/CGPattern_internal.h>
 #include <CoreGraphics/CGShading_internal.h>
 
 #include <stdio.h>
@@ -84,6 +85,17 @@ typedef struct cg_state {
 	CGFloat dash[CG_DASH_STATE_MAX];
 	int dash_count;
 	CGFloat dash_phase;
+	/* THE PATTERN PAINT, AND IT IS THE ONE THING IN THIS STATE THAT IS NOT A VALUE. Everything above
+	 * copies by assignment, which is why it is all numbers and bounded arrays; a pattern is an object,
+	 * so the copy is not free and the rules are stated where they are needed: `CGContextSaveGState`
+	 * RETAINS into the saved slot, `CGContextRestoreGState` RELEASES the state it is replacing, and
+	 * `CGContextRelease` releases every slot it still holds. A struct copy that did none of those
+	 * would have two states releasing one pattern. */
+	CGPatternRef fill_pattern;
+	CGPatternRef stroke_pattern;
+	CGFloat fill_pattern_alpha;
+	CGFloat stroke_pattern_alpha;
+	CGSize pattern_phase;
 } cg_state;
 
 struct CGContext {
@@ -108,6 +120,12 @@ struct CGContext {
 
 	struct CGPath *path;
 };
+
+/* FORWARD, BECAUSE THE COLOUR SETTERS COME FIRST IN THIS FILE AND THE PATTERN THEY MUST CLEAR IS
+ * DEFINED WITH THE REST OF C6.3'S PAINT CODE, well below them. The rule it implements — a later paint
+ * replaces an earlier one of the other kind — is why the four component colour setters need it at
+ * all; see `CGContextSetGrayFillColor`. */
+static void cg_clear_pattern(CGPatternRef *slot);
 
 /* ------------------------------------------------------------------------- */
 /* small arithmetic                                                          */
@@ -204,6 +222,14 @@ static void cg_state_init_full(cg_state *st, int width, int height)
 	st->line_cap = kCGLineCapButt;
 	st->line_join = kCGLineJoinMiter;
 	st->miter_limit = 10.0;
+	/* NO PATTERN IS SET, and this is stated rather than left to the calloc that happens to zero the
+	 * context: a paint with no pattern is a colour, and a garbage pointer here would be a fill that
+	 * sampled a cell nobody drew. */
+	st->fill_pattern = NULL;
+	st->stroke_pattern = NULL;
+	st->fill_pattern_alpha = 1.0;
+	st->stroke_pattern_alpha = 1.0;
+	st->pattern_phase = CGSizeMake(0.0, 0.0);
 }
 
 CGContextRef CGBitmapContextCreate(void *data, size_t width, size_t height,
@@ -345,9 +371,17 @@ void CGContextRelease(CGContextRef c)
 		return;
 	}
 	for (i = 0; i < c->depth; i++) {
+		/* A CONTEXT'S DEATH IS THE OTHER PLACE A PATTERN'S `releaseInfo` CAN FIRE, so every saved
+		 * slot is walked as well as the live state: a caller who saved a state, set a pattern and
+		 * released the context without restoring would otherwise leak the pattern AND never see
+		 * `releaseInfo` called. */
+		CGPatternRelease(c->stack[i].fill_pattern);
+		CGPatternRelease(c->stack[i].stroke_pattern);
 		pixman_region32_fini(&c->stack[i].clip);
 	}
 	free(c->stack);
+	CGPatternRelease(c->state.fill_pattern);
+	CGPatternRelease(c->state.stroke_pattern);
 	pixman_region32_fini(&c->state.clip);
 	if (c->image != NULL) {
 		pixman_image_unref(c->image);
@@ -399,6 +433,11 @@ void CGContextSaveGState(CGContextRef c)
 	}
 	slot = &c->stack[c->depth];
 	*slot = c->state;
+	/* THE PATTERNS ARE RETAINED INTO THE SAVED SLOT — see cg_state's note. The assignment above copied
+	 * two pointers that the CURRENT state owns; the saved state needs its own claim on them, or the
+	 * first of the two to be replaced or released would take the other's pattern away. */
+	CGPatternRetain(slot->fill_pattern);
+	CGPatternRetain(slot->stroke_pattern);
 	/* THE CLIP IS DEEP-COPIED, and it must be: it is a region with its own
 	 * allocation, so a struct copy would leave two states sharing one buffer and a
 	 * later `ClipToRect` in the restored state would edit the saved one. */
@@ -417,6 +456,11 @@ void CGContextRestoreGState(CGContextRef c)
 	}
 	c->depth--;
 	pixman_region32_fini(&c->state.clip);
+	/* THE STATE BEING REPLACED LETS GO OF ITS PATTERNS FIRST, and the saved state's claim is what
+	 * survives — which is the pair to the retain `CGContextSaveGState` took. The order matters only
+	 * in that the release must not be of the very pointers about to be installed. */
+	CGPatternRelease(c->state.fill_pattern);
+	CGPatternRelease(c->state.stroke_pattern);
 	c->state = c->stack[c->depth];
 }
 
@@ -587,6 +631,13 @@ void CGContextSetGrayFillColor(CGContextRef c, CGFloat gray, CGFloat alpha)
 	if (c == NULL) {
 		return;
 	}
+	/* A COMPONENT COLOUR CLEARS A PATTERN JUST AS A `CGColor` ONE DOES, and this was the ONE hole in
+	 * the "the later paint wins" rule until the pattern probe's save/restore check found it: a caller
+	 * who set a pattern and then a component colour got the pattern, because this setter writes the
+	 * numbers the COLOUR path reads and the fill never asks for them while a pattern is set. Four
+	 * setters had it; all four clear it now, and the check that caught it is the one that fills after
+	 * a `CGContextSetRGBFillColor` and expects the colour. */
+	cg_clear_pattern(&c->state.fill_pattern);
 	c->state.rgba[0] = gray;
 	c->state.rgba[1] = gray;
 	c->state.rgba[2] = gray;
@@ -598,6 +649,7 @@ void CGContextSetRGBFillColor(CGContextRef c, CGFloat red, CGFloat green, CGFloa
 	if (c == NULL) {
 		return;
 	}
+	cg_clear_pattern(&c->state.fill_pattern);   /* see CGContextSetGrayFillColor */
 	c->state.rgba[0] = red;
 	c->state.rgba[1] = green;
 	c->state.rgba[2] = blue;
@@ -1456,6 +1508,103 @@ static int cg_fill_path(CGContextRef c, CGPathRef path, int even_odd, pixman_op_
 	return 0;
 }
 
+/* ------------------------------------------------------------------------- */
+/* C6.3: the pattern paint                                                   */
+/* ------------------------------------------------------------------------- */
+
+/* FORWARD, AND IT IS THE CLIP'S CORNER THE PATTERN PAINT NEEDS: `cg_paint_extents` is defined with
+ * the rest of the paint code just below, and the dispatcher above it asks for the rectangle before
+ * that definition has been read. Nothing here is recursive; the order is only about where the reader
+ * finds the paint substrate. */
+static int cg_paint_extents(CGContextRef c, int *px, int *py, int *pw, int *ph);
+
+/* WHAT A PATTERN'S SAMPLER NEEDS TO KNOW, gathered per fill and thrown away with it: the pattern, the
+ * cell rendered from it, and the phase the context had when the fill happened. */
+typedef struct {
+	CGPatternRef pattern;
+	cg_pattern_cell *cell;
+	CGSize phase;
+} cg_pattern_paint;
+
+static void cg_pattern_paint_eval(void *info, CGFloat x, CGFloat y, CGFloat rgba[4])
+{
+	cg_pattern_paint *pp = info;
+
+	/* `x` AND `y` ARRIVE IN USER SPACE, which is what the paint substrate hands every sampler and
+	 * what a pattern's phase and matrix are expressed against — so the sampler does the rest. */
+	cg_pattern_sample(pp->pattern, pp->cell, pp->phase, x, y, rgba);
+}
+
+/*
+ * THE ONE PLACE A PATH'S PAINT IS DECIDED: a colour or a pattern, and nothing else may be either.
+ * Every fill and every stroke in this file comes through here, which is what keeps a pattern from
+ * working for fills and silently not for strokes — the mistake a second dispatch inside the stroke
+ * would eventually produce.
+ *
+ * A DEVIATION, AND IT IS A VISIBLE ONE, SO IT IS WRITTEN DOWN WHERE THE SAMPLING HAPPENS. The paint
+ * substrate hands a sampler the point in the context's CURRENT user space — that is what every other
+ * paint wants, and it is what makes a gradient follow the CTM. Apple anchors a pattern in the DEFAULT
+ * user space instead, so that setting a CTM and then filling with a pattern leaves the tiles' size
+ * alone while this library scales them with the CTM. With no CTM set — which is what a caller who
+ * wants a fixed pattern does — the two spaces are the same up to the y flip and the pictures agree.
+ * Closing the gap means the context tracking the default user space separately from the current one,
+ * which is a change to the graphics state rather than to the pattern, and it is not in this slice.
+ */
+static void cg_paint_path(CGContextRef c, CGPathRef path, int even_odd, pixman_op_t op,
+			  const CGFloat *rgba, CGPatternRef pattern, CGFloat alpha)
+{
+	pixman_image_t *src;
+	cg_pattern_cell *cell;
+	cg_pattern_paint info;
+	int px;
+	int py;
+	int pw;
+	int ph;
+
+	if (c == NULL || path == NULL) {
+		return;
+	}
+	if (pattern == NULL) {
+		if (rgba == NULL) {
+			return;
+		}
+		/* A COLOUR'S ALPHA IS ITS OWN TIMES THE CONTEXT'S, which is why the multiply is here and not
+		 * in the caller: for a pattern there is no colour alpha, and the pattern's own alpha has
+		 * already been folded into `alpha` by whoever set the paint. */
+		cg_fill_path(c, path, even_odd, op, rgba[0], rgba[1], rgba[2], rgba[3] * alpha);
+		return;
+	}
+	if (!cg_paint_extents(c, &px, &py, &pw, &ph)) {
+		return;
+	}
+	/* THE CELL IS RENDERED PER FILL AND LET GO — see CGPattern_internal.h for why it is not cached. */
+	cell = cg_pattern_render_cell(pattern);
+	if (cell == NULL) {
+		return;
+	}
+	info.pattern = pattern;
+	info.cell = cell;
+	info.phase = c->state.pattern_phase;
+	src = cg_paint_image(px, py, pw, ph, c->state.ctm, alpha, cg_pattern_paint_eval, &info);
+	cg_pattern_cell_free(cell);
+	if (src == NULL) {
+		return;
+	}
+	/* THE PAINT IMAGE'S ORIGIN IS THE CLIP'S CORNER, so the trapezoid composite samples it from
+	 * there: `x_src`/`y_src` are the offsets a 1x1 colour never needed, and getting their sign wrong
+	 * shifts the whole pattern by the clip's corner. */
+	cg_fill_path_with_source(c, path, even_odd, op, src, -px, -py);
+	pixman_image_unref(src);
+}
+
+/* CLEARING A PATTERN IS A RELEASE AND A NULL, in one place because three callers do it: setting a
+ * colour, setting a new pattern, and nothing else. */
+static void cg_clear_pattern(CGPatternRef *slot)
+{
+	CGPatternRelease(*slot);
+	*slot = NULL;
+}
+
 /* THE DEVICE RECTANGLE A CLIP-ONLY PAINT COVERS: the clipping region's bounding box, intersected with
  * the surface. IT IS ASKED ONCE AND USED TWICE — by the paint builder, which sizes its image to it,
  * and by the composite, which paints exactly that many pixels — and that is the point of splitting
@@ -1498,12 +1647,17 @@ static void cg_fill_current_path(CGContextRef c, int even_odd)
 	if (c == NULL) {
 		return;
 	}
-	/* THE CONTEXT'S ALPHA MULTIPLIES THE COLOUR'S, at draw time, which is Apple's
-	 * contract for `CGContextSetAlpha` and the reason it is a separate field rather
-	 * than a modification of the fill colour. */
-	a = c->state.rgba[3] * c->state.alpha;
-	cg_fill_path(c, (CGPathRef)c->path, even_odd, cg_op(c->state.blend),
-		     c->state.rgba[0], c->state.rgba[1], c->state.rgba[2], a);
+	/* THE CONTEXT'S ALPHA MULTIPLIES THE PAINT'S, at draw time, which is Apple's contract for
+	 * `CGContextSetAlpha` and the reason it is a separate field rather than a modification of the fill
+	 * colour. WHICH PAINT IT IS — a colour or a pattern — is decided in one place, `cg_paint_path`. */
+	a = c->state.alpha;
+	if (c->state.fill_pattern != NULL) {
+		cg_paint_path(c, (CGPathRef)c->path, even_odd, cg_op(c->state.blend), NULL,
+			      c->state.fill_pattern, a * c->state.fill_pattern_alpha);
+	} else {
+		cg_paint_path(c, (CGPathRef)c->path, even_odd, cg_op(c->state.blend), c->state.rgba,
+			      NULL, a);
+	}
 	/* A FILL CONSUMES THE PATH. */
 	CGContextBeginPath(c);
 }
@@ -1536,9 +1690,13 @@ void CGContextFillRect(CGContextRef c, CGRect rect)
 		return;
 	}
 	CGPathAddRect(scratch, NULL, rect);
-	a = c->state.rgba[3] * c->state.alpha;
-	cg_fill_path(c, (CGPathRef)scratch, 0, cg_op(c->state.blend),
-		     c->state.rgba[0], c->state.rgba[1], c->state.rgba[2], a);
+	a = c->state.alpha;
+	if (c->state.fill_pattern != NULL) {
+		cg_paint_path(c, (CGPathRef)scratch, 0, cg_op(c->state.blend), NULL,
+			      c->state.fill_pattern, a * c->state.fill_pattern_alpha);
+	} else {
+		cg_paint_path(c, (CGPathRef)scratch, 0, cg_op(c->state.blend), c->state.rgba, NULL, a);
+	}
 	CGPathRelease((CGPathRef)scratch);
 }
 
@@ -1629,10 +1787,15 @@ static void cg_stroke_path_with_width(CGContextRef c, CGPathRef path, CGFloat wi
 		CGPathRelease(dashed);
 		return;
 	}
-	/* THE CONTEXT'S ALPHA MULTIPLIES THE STROKE COLOUR'S, exactly as it does for a fill. */
-	a = c->state.stroke_rgba[3] * c->state.alpha;
-	cg_fill_path(c, outline, 0, cg_op(c->state.blend), c->state.stroke_rgba[0],
-		     c->state.stroke_rgba[1], c->state.stroke_rgba[2], a);
+	/* THE CONTEXT'S ALPHA MULTIPLIES THE STROKE PAINT'S, exactly as it does for a fill, and the
+	 * STROKE's pattern is the one that applies here rather than the fill's. */
+	a = c->state.alpha;
+	if (c->state.stroke_pattern != NULL) {
+		cg_paint_path(c, outline, 0, cg_op(c->state.blend), NULL, c->state.stroke_pattern,
+			      a * c->state.stroke_pattern_alpha);
+	} else {
+		cg_paint_path(c, outline, 0, cg_op(c->state.blend), c->state.stroke_rgba, NULL, a);
+	}
 	CGPathRelease(outline);
 	CGPathRelease(dashed);
 }
@@ -1724,9 +1887,14 @@ void CGContextDrawPath(CGContextRef c, CGPathDrawingMode mode)
 		 * call the two public functions in a row: `FillPath` would clear the path the
 		 * stroke still needs. Both colours are in play, the fill's for the interior and the
 		 * stroke's for the outline. */
-		cg_fill_path(c, (CGPathRef)c->path, mode == kCGPathEOFillStroke,
-			     cg_op(c->state.blend), c->state.rgba[0], c->state.rgba[1],
-			     c->state.rgba[2], c->state.rgba[3] * c->state.alpha);
+		if (c->state.fill_pattern != NULL) {
+			cg_paint_path(c, (CGPathRef)c->path, mode == kCGPathEOFillStroke,
+				      cg_op(c->state.blend), NULL, c->state.fill_pattern,
+				      c->state.alpha * c->state.fill_pattern_alpha);
+		} else {
+			cg_paint_path(c, (CGPathRef)c->path, mode == kCGPathEOFillStroke,
+				      cg_op(c->state.blend), c->state.rgba, NULL, c->state.alpha);
+		}
 		cg_stroke_path_with_width(c, (CGPathRef)c->path, c->state.line_width);
 		CGContextBeginPath(c);
 		return;
@@ -1791,6 +1959,7 @@ void CGContextSetGrayStrokeColor(CGContextRef c, CGFloat gray, CGFloat alpha)
 	if (c == NULL) {
 		return;
 	}
+	cg_clear_pattern(&c->state.stroke_pattern);   /* see CGContextSetGrayFillColor */
 	c->state.stroke_rgba[0] = gray;
 	c->state.stroke_rgba[1] = gray;
 	c->state.stroke_rgba[2] = gray;
@@ -1802,6 +1971,7 @@ void CGContextSetRGBStrokeColor(CGContextRef c, CGFloat red, CGFloat green, CGFl
 	if (c == NULL) {
 		return;
 	}
+	cg_clear_pattern(&c->state.stroke_pattern);   /* see CGContextSetGrayFillColor */
 	c->state.stroke_rgba[0] = red;
 	c->state.stroke_rgba[1] = green;
 	c->state.stroke_rgba[2] = blue;
@@ -1888,9 +2058,20 @@ void CGContextSetFillColorWithColor(CGContextRef c, CGColorRef color)
 {
 	CGFloat rgba[4];
 
-	if (c == NULL || !cg_color_to_rgba(color, rgba)) {
+	if (c == NULL) {
 		return;
 	}
+	/* SEE `CGContextSetStrokeColorWithColor` FOR WHY THIS DOOR EXISTS. */
+	if (CGColorGetPattern(color) != NULL) {
+		cg_clear_pattern(&c->state.fill_pattern);
+		c->state.fill_pattern = CGPatternRetain(CGColorGetPattern(color));
+		c->state.fill_pattern_alpha = CGColorGetAlpha(color);
+		return;
+	}
+	if (!cg_color_to_rgba(color, rgba)) {
+		return;
+	}
+	cg_clear_pattern(&c->state.fill_pattern);
 	c->state.rgba[0] = rgba[0];
 	c->state.rgba[1] = rgba[1];
 	c->state.rgba[2] = rgba[2];
@@ -1901,13 +2082,72 @@ void CGContextSetStrokeColorWithColor(CGContextRef c, CGColorRef color)
 {
 	CGFloat rgba[4];
 
-	if (c == NULL || !cg_color_to_rgba(color, rgba)) {
+	if (c == NULL) {
 		return;
 	}
+	/* A PATTERN COLOUR SETS THE STROKE PATTERN, which is the other door into the pattern state and the
+	 * reason `CGColorGetPattern` exists: it is how a setter tells it was handed a pattern rather than
+	 * numbers. The alpha comes from the colour, which for a pattern colour IS its one component. */
+	if (CGColorGetPattern(color) != NULL) {
+		cg_clear_pattern(&c->state.stroke_pattern);
+		c->state.stroke_pattern = CGPatternRetain(CGColorGetPattern(color));
+		c->state.stroke_pattern_alpha = CGColorGetAlpha(color);
+		return;
+	}
+	if (!cg_color_to_rgba(color, rgba)) {
+		return;
+	}
+	cg_clear_pattern(&c->state.stroke_pattern);
 	c->state.stroke_rgba[0] = rgba[0];
 	c->state.stroke_rgba[1] = rgba[1];
 	c->state.stroke_rgba[2] = rgba[2];
 	c->state.stroke_rgba[3] = rgba[3];
+}
+
+/* THE PATTERN SETTERS. A COLOUR AND A PATTERN ARE TWO ANSWERS TO ONE QUESTION, so setting either
+ * CLEARS the other — the pair of halves is in the two `.WithColor` setters above and in the two
+ * below, and the rule is that the LATER one wins rather than that they coexist. A NULL pattern is
+ * REFUSED rather than read as "back to the colour": Apple has no such reading and neither does this
+ * library, and a caller who wants the colour back sets a colour. */
+void CGContextSetFillPattern(CGContextRef c, CGPatternRef pattern, const CGFloat *components)
+{
+	if (c == NULL) {
+		return;
+	}
+	if (pattern == NULL || components == NULL) {
+		fprintf(stderr, "CG-REFUSE: CGContextSetFillPattern needs a pattern and its components; "
+				"a NULL pair is refused rather than read as 'back to the fill "
+				"colour'\n");
+		return;
+	}
+	cg_clear_pattern(&c->state.fill_pattern);
+	c->state.fill_pattern = CGPatternRetain(pattern);
+	c->state.fill_pattern_alpha = components[0];
+}
+
+void CGContextSetStrokePattern(CGContextRef c, CGPatternRef pattern, const CGFloat *components)
+{
+	if (c == NULL) {
+		return;
+	}
+	if (pattern == NULL || components == NULL) {
+		fprintf(stderr, "CG-REFUSE: CGContextSetStrokePattern needs a pattern and its "
+				"components\n");
+		return;
+	}
+	cg_clear_pattern(&c->state.stroke_pattern);
+	c->state.stroke_pattern = CGPatternRetain(pattern);
+	c->state.stroke_pattern_alpha = components[0];
+}
+
+/* THE PHASE IS STATE AND NOT A DRAW PARAMETER, which is Apple's spelling and is why it can be set
+ * once and left: it applies to every pattern fill and stroke until it is changed, and it is saved and
+ * restored with the rest of the graphics state. */
+void CGContextSetPatternPhase(CGContextRef c, CGSize phase)
+{
+	if (c != NULL) {
+		c->state.pattern_phase = phase;
+	}
 }
 
 /* THE TWO SEAMS AN IMAGE DRAWN INTO A CONTEXT NEEDS, INCLUDED HERE RATHER THAN AT THE TOP OF THE

@@ -389,9 +389,9 @@ case	shipped	kCGPathElementMoveToPoint	-	Opaque Types / Applying a Function to t
 case	shipped	kCGPathFill	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
 case	shipped	kCGPathFillStroke	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
 case	shipped	kCGPathStroke	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
-case	open	kCGPatternTilingConstantSpacing	-	Opaque Types / Constants / Constants	-	objc
-case	open	kCGPatternTilingConstantSpacingMinimalDistortion	-	Opaque Types / Constants / Constants	-	objc
-case	open	kCGPatternTilingNoDistortion	-	Opaque Types / Constants / Constants	-	objc
+case	shipped	kCGPatternTilingConstantSpacing	-	Opaque Types / Constants / Constants	-	objc
+case	shipped	kCGPatternTilingConstantSpacingMinimalDistortion	-	Opaque Types / Constants / Constants	-	objc
+case	shipped	kCGPatternTilingNoDistortion	-	Opaque Types / Constants / Constants	-	objc
 case	open	kCGPopUpMenuWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	shipped	kCGRenderingIntentAbsoluteColorimetric	-	Opaque Types / Data Types / Constants	-	objc
 case	shipped	kCGRenderingIntentDefault	-	Opaque Types / Data Types / Constants	-	objc
@@ -531,7 +531,7 @@ enum	open	CGPDFObjectType	-	Opaque Types / Abstract Types for PDF Document Conte
 enum	open	CGPDFTagType	-	Reference / Enumerations	-	objc
 enum	shipped	CGPathDrawingMode	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 enum	shipped	CGPathElementType	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
-enum	open	CGPatternTiling	-	Opaque Types / Constants	-	objc
+enum	shipped	CGPatternTiling	-	Opaque Types / Constants	-	objc
 enum	shipped	CGRectEdge	-	CoreFoundation, CG-named / Reference / Enumerations	-	objc
 enum	open	CGScreenUpdateOperation	-	Services / Constants	-	objc
 enum	open	CGScrollEventUnit	-	Services / Constants	-	objc
@@ -594,7 +594,7 @@ func	open	CGColorCreateGenericGrayGamma2_2	-	Opaque Types / Creating Colors	-	ob
 func	shipped	CGColorCreateGenericRGB	-	Opaque Types / Creating Colors	-	objc
 func	open	CGColorCreateSRGB	-	Opaque Types / Creating Colors	-	objc
 func	open	CGColorCreateWithContentHeadroom	-	Functions	-	objc
-func	open	CGColorCreateWithPattern	-	Opaque Types / Creating Colors	-	objc
+func	shipped	CGColorCreateWithPattern	-	Opaque Types / Creating Colors	-	objc
 func	shipped	CGColorEqualToColor	-	Opaque Types / Examining a Color	-	objc
 func	shipped	CGColorGetAlpha	-	Opaque Types / Examining a Color	-	objc
 func	shipped	CGColorGetColorSpace	-	Opaque Types / Examining a Color	-	objc
@@ -602,7 +602,7 @@ func	shipped	CGColorGetComponents	-	Opaque Types / Examining a Color	-	objc
 func	open	CGColorGetConstantColor	-	Opaque Types / Creating Colors	-	objc
 func	open	CGColorGetContentHeadroom	-	Functions	-	objc
 func	shipped	CGColorGetNumberOfComponents	-	Opaque Types / Examining a Color	-	objc
-func	open	CGColorGetPattern	-	Opaque Types / Examining a Color	-	objc
+func	shipped	CGColorGetPattern	-	Opaque Types / Examining a Color	-	objc
 func	open	CGColorGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGColorRelease	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
 func	shipped	CGColorRetain	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
@@ -623,7 +623,7 @@ func	shipped	CGColorSpaceCreateICCBased	-	Opaque Types / Creating Color Spaces	-
 func	open	CGColorSpaceCreateIndexed	-	Opaque Types / Creating Color Spaces	-	objc
 func	shipped	CGColorSpaceCreateLab	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateLinearized	-	Reference / Functions	-	objc
-func	open	CGColorSpaceCreatePattern	-	Opaque Types / Creating Color Spaces	-	objc
+func	shipped	CGColorSpaceCreatePattern	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateWithColorSyncProfile	-	Reference / Functions	-	objc
 func	shipped	CGColorSpaceCreateWithICCData	-	Opaque Types / Creating Color Spaces	-	objc
 func	struck	CGColorSpaceCreateWithICCProfile	-	Opaque Types / Creating Color Spaces	deprecated	objc
@@ -739,7 +739,7 @@ func	open	CGContextSetEDRTargetHeadroom	-	Reference / Functions	-	objc
 func	open	CGContextSetFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetFillColorSpace	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	shipped	CGContextSetFillColorWithColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
-func	open	CGContextSetFillPattern	-	Opaque Types / Setting Path Drawing Options	-	objc
+func	shipped	CGContextSetFillPattern	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	open	CGContextSetFlatness	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	open	CGContextSetFont	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetFontSize	-	Opaque Types / Drawing Text	-	objc
@@ -751,7 +751,7 @@ func	shipped	CGContextSetLineDash	-	Opaque Types / Setting Path Drawing Options	
 func	shipped	CGContextSetLineJoin	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	shipped	CGContextSetLineWidth	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	shipped	CGContextSetMiterLimit	-	Opaque Types / Setting Path Drawing Options	-	objc
-func	open	CGContextSetPatternPhase	-	Opaque Types / Setting Path Drawing Options	-	objc
+func	shipped	CGContextSetPatternPhase	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	shipped	CGContextSetRGBFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	shipped	CGContextSetRGBStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetRenderingIntent	-	Opaque Types / Managing a Graphics Context	-	objc
@@ -764,7 +764,7 @@ func	open	CGContextSetShouldSubpixelQuantizeFonts	-	Opaque Types / Drawing Text	
 func	open	CGContextSetStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetStrokeColorSpace	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	shipped	CGContextSetStrokeColorWithColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
-func	open	CGContextSetStrokePattern	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
+func	shipped	CGContextSetStrokePattern	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetTextDrawingMode	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetTextMatrix	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetTextPosition	-	Opaque Types / Drawing Text	-	objc
@@ -1188,10 +1188,10 @@ func	shipped	CGPathIsEmpty	-	Opaque Types / Examining a Graphics Path	-	objc
 func	open	CGPathIsRect	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathRelease	-	Opaque Types / Retaining and Releasing a Path	-	objc
 func	shipped	CGPathRetain	-	Opaque Types / Retaining and Releasing a Path	-	objc
-func	open	CGPatternCreate	-	Opaque Types / Creating a Pattern	-	objc
+func	shipped	CGPatternCreate	-	Opaque Types / Creating a Pattern	-	objc
 func	open	CGPatternGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
-func	open	CGPatternRelease	-	Opaque Types / Retaining and Releasing a Pattern	-	objc
-func	open	CGPatternRetain	-	Opaque Types / Retaining and Releasing a Pattern	-	objc
+func	shipped	CGPatternRelease	-	Opaque Types / Retaining and Releasing a Pattern	-	objc
+func	shipped	CGPatternRetain	-	Opaque Types / Retaining and Releasing a Pattern	-	objc
 func	shipped	CGPointApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
 func	open	CGPointCreateDictionaryRepresentation	-	Reference / Creating a Dictionary Representation from a Geometric Primitive	-	objc
 func	struck	CGPointEqualToPoint	-	Reference / Functions	deprecated	objc
@@ -1400,7 +1400,7 @@ struct	open	CGDeviceColor	-	Reference / Structures	-	objc
 struct	shipped	CGFunctionCallbacks	-	Opaque Types / Callbacks	-	objc
 struct	open	CGPSConverterCallbacks	-	Opaque Types / Callbacks	-	objc
 struct	shipped	CGPathElement	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
-struct	open	CGPatternCallbacks	-	Opaque Types / Callbacks	-	objc
+struct	shipped	CGPatternCallbacks	-	Opaque Types / Callbacks	-	objc
 struct	shipped	CGPoint	-	CoreFoundation, CG-named / Reference / Structures	-	objc
 struct	shipped	CGRect	-	CoreFoundation, CG-named / Reference / Structures	-	objc
 struct	open	CGScreenUpdateMoveDelta	-	Services / Data Types	-	objc
@@ -1492,9 +1492,9 @@ typealias	open	CGPSConverterReleaseInfoCallback	-	Opaque Types / Callbacks	-	obj
 typealias	shipped	CGPathApplierFunction	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 typealias	open	CGPathApplyBlock	-	Reference / Data Types	-	objc
 typealias	shipped	CGPathRef	-	Opaque Types	-	objc
-typealias	open	CGPatternDrawPatternCallback	-	Opaque Types / Callbacks	-	objc
-typealias	open	CGPatternRef	-	Opaque Types	-	objc
-typealias	open	CGPatternReleaseInfoCallback	-	Opaque Types / Callbacks	-	objc
+typealias	shipped	CGPatternDrawPatternCallback	-	Opaque Types / Callbacks	-	objc
+typealias	shipped	CGPatternRef	-	Opaque Types	-	objc
+typealias	shipped	CGPatternReleaseInfoCallback	-	Opaque Types / Callbacks	-	objc
 typealias	open	CGRectCount	-	Services / Data Types	-	objc
 typealias	open	CGRefreshRate	-	Services / Data Types	-	objc
 typealias	open	CGRenderingBufferProviderRef	-	Type Aliases	-	objc

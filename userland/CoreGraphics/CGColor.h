@@ -36,6 +36,10 @@
 
 #include <CoreGraphics/CGBase.h>
 #include <CoreGraphics/CGColorSpace.h>
+/* AND CGPattern.h, BECAUSE TWO OF THIS HEADER'S DECLARATIONS NAME A PATTERN — `CGColorCreateWithPattern`
+ * takes one and `CGColorGetPattern` returns one. The include is safe in this direction: CGPattern.h
+ * needs neither this header nor the context's, so there is no cycle to break. */
+#include <CoreGraphics/CGPattern.h>
 
 typedef struct CGColor *CGColorRef;
 
@@ -83,6 +87,26 @@ CGColorRef CGColorRetain(CGColorRef color);
 void CGColorRelease(CGColorRef color);
 
 CGColorSpaceRef CGColorGetColorSpace(CGColorRef color);
+
+/*
+ * AND THE PATTERN COLOUR, WHICH IS A COLOUR WHOSE PAINT IS A DRAWING RATHER THAN NUMBERS. A colour
+ * made here carries a retained `CGPatternRef` and an alpha, and the alpha is the ONLY component it
+ * has: the pattern's own cell supplies the colours, so there is nothing else for the caller to give.
+ * `components[0]` is therefore that alpha.
+ *
+ * THE PATTERN MUST BE A COLOURED ONE, and the space must be the pattern space from
+ * `CGColorSpaceCreatePattern(NULL)`; both are REFUSED BY NAME otherwise rather than reinterpreted.
+ *
+ * AND THE RETURNED COLOUR IS DRAWN THROUGH THE CONTEXT'S COLOUR SETTERS: `CGContextSetFillColorWithColor`
+ * with a pattern colour sets the FILL PATTERN and its alpha, which is Apple's arrangement and the
+ * reason `CGColorGetPattern` exists — it is how a setter can tell it was handed a pattern at all.
+ */
+CGColorRef CGColorCreateWithPattern(CGColorSpaceRef space, CGPatternRef pattern,
+				    const CGFloat *components);
+
+/* The pattern a colour was made with, or NULL for a colour made the ordinary way. The returned
+ * reference is BORROWED. */
+CGPatternRef CGColorGetPattern(CGColorRef color);
 /* A BORROWED ARRAY: it points into the colour and lives exactly as long as it does. The
  * alternative — handing back a copy — would leak, and handing back a pointer the caller is
  * expected to free would be a different function. */

@@ -629,3 +629,21 @@ bool CGColorSpaceIsHDR(CGColorSpaceRef space)
 	 * builds neither, so it is NO for every space here. */
 	return 0;
 }
+
+/* THE PATTERN SPACE IS A SINGLETON LIKE THE DEVICE SPACES, and for the same reason they are: it has
+ * no profile, so `CGColorSpaceRelease` does not destroy it, and a caller who asks twice gets the same
+ * object back — which is what lets a colour's space be compared by pointer as well as by model. See
+ * CGColorSpace.h for why it has one component and why the uncoloured form is refused. */
+static struct CGColorSpace cg_pattern_space = { 0, kCGColorSpaceModelPattern, 1, NULL };
+
+CGColorSpaceRef CGColorSpaceCreatePattern(CGColorSpaceRef baseSpace)
+{
+	if (baseSpace != NULL) {
+		fprintf(stderr, "CG-REFUSE: CGColorSpaceCreatePattern does not implement an UNCOLOURED "
+				"pattern space — its cell would be drawn in a colour from the base "
+				"space, and this library draws coloured patterns only\n");
+		return NULL;
+	}
+	cg_pattern_space.refcount++;
+	return &cg_pattern_space;
+}

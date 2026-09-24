@@ -54,6 +54,8 @@
  * exactly why this include is here rather than the declaration being read somewhere else. */
 #include <CoreGraphics/CGImage.h>
 #include <CoreGraphics/CGPath.h>
+/* AND CGPattern.h, FOR THE TYPE THE THREE PATTERN SETTERS BELOW NAME. */
+#include <CoreGraphics/CGPattern.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -317,6 +319,27 @@ void CGContextStrokeLineSegments(CGContextRef context, const CGPoint *points, si
  * with the fill colour and then the stroke colour, FROM THE SAME PATH — which is why the
  * path is consumed at the end rather than by the first of the two. */
 void CGContextDrawPath(CGContextRef context, CGPathDrawingMode mode);
+
+/*
+ * THE PATTERN PAINTS (C6.3). A pattern is the third kind of paint, after a colour and a gradient: it
+ * is set as STATE rather than drawn, and every fill or stroke afterwards uses it until something
+ * replaces it — which is why the two setters are named `SetFill…` and `SetStroke…` and not `Draw…`,
+ * and why `CGContextSetFillColorWithColor` CLEARS a pattern that was set (a colour and a pattern are
+ * two answers to the same question and the later one wins; see CGColor.h for the pattern colour,
+ * which is the other door into this state).
+ *
+ * `components` is `1 + n`, where `n` is the base colour space's component count: the alpha LAST, and
+ * the leading values selecting a colour in the base space. THIS LIBRARY SHIPS THE COLOURED CASE ONLY,
+ * where `n` is zero and `components[0]` is the alpha — see `CGColorSpaceCreatePattern`, which refuses
+ * an uncoloured space for the reason CGPattern.h gives.
+ *
+ * AND THE PHASE IS IN USER SPACE, applied to the pattern's origin: a phase of (px, py) puts the
+ * tiling's origin at that point of the user space of whatever draws next. It is a SIZE and not a
+ * POINT, Apple's spelling, because a phase is a displacement.
+ */
+void CGContextSetFillPattern(CGContextRef context, CGPatternRef pattern, const CGFloat *components);
+void CGContextSetStrokePattern(CGContextRef context, CGPatternRef pattern, const CGFloat *components);
+void CGContextSetPatternPhase(CGContextRef context, CGSize phase);
 
 /* THE DASH PATTERN IS PART OF THE LINE STATE, so it is saved and restored, and it applies to
  * EVERY stroke the context draws — but to the PATH rather than to the pixels: the dashes are

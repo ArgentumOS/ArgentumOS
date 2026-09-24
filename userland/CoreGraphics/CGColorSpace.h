@@ -77,6 +77,19 @@ typedef enum {
 CGColorSpaceRef CGColorSpaceCreateDeviceRGB(void);
 CGColorSpaceRef CGColorSpaceCreateDeviceGray(void);
 CGColorSpaceRef CGColorSpaceCreateDeviceCMYK(void);
+/*
+ * THE PATTERN COLOUR SPACE, AND ITS ONE ARGUMENT IS ITS WHOLE STORY. A NULL `baseSpace` gives a
+ * COLOURED pattern space — one whose pattern supplies its own colours — and that is the only kind
+ * this library has: a non-NULL `baseSpace` asks for an UNCOLOURED (stencil) space, in which the
+ * pattern's cell is drawn in a colour taken from the space, and it is REFUSED BY NAME for the reason
+ * CGPattern.h gives at length.
+ *
+ * ONE COMPONENT, AND IT IS THE ALPHA. A colour in a coloured pattern space is a pattern plus an
+ * alpha and nothing else — the pattern carries the colours — so `CGColorSpaceGetNumberOfComponents`
+ * answers 1 and `CGColorCreate` refuses this space, because a pattern colour needs a pattern and
+ * `CGColorCreateWithPattern` is how one is made.
+ */
+CGColorSpaceRef CGColorSpaceCreatePattern(CGColorSpaceRef baseSpace);
 /* A NULL `whitePoint` is D50, which is Apple's documented default and exactly what the engine's
  * own Lab4 profile uses — so the default is not an approximation of Apple's, it is the same
  * thing. The black point and the range are accepted and have no effect, which is Apple's

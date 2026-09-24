@@ -190,9 +190,20 @@ cg_pattern_cell *cg_pattern_render_cell(CGPatternRef pattern)
 		free(cell);
 		return NULL;
 	}
-	ctx = CGBitmapContextCreate(cell->data, (size_t)width, (size_t)height, 8, (size_t)cell->stride,
-				    CGColorSpaceCreateDeviceRGB(),
-				    kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+	{
+		/* THE SPACE IS RELEASED AFTER THE CONTEXT TOOK ITS OWN REFERENCE, which is the one thing in
+		 * this function that could quietly leak: `CGBitmapContextCreate` retains what it is given, so
+		 * the reference this call creates is ours to let go of. A device space is a singleton, so the
+		 * leak would be a refcount that only ever grows — invisible until someone asked why the
+		 * "singleton" was never freed, which is the kind of debt this tree writes down instead. */
+		CGColorSpaceRef device = CGColorSpaceCreateDeviceRGB();
+
+		ctx = CGBitmapContextCreate(cell->data, (size_t)width, (size_t)height, 8,
+					    (size_t)cell->stride, device,
+					    kCGImageAlphaPremultipliedFirst
+						    | kCGImageByteOrder32Little);
+		CGColorSpaceRelease(device);
+	}
 	if (ctx == NULL) {
 		free(cell->data);
 		free(cell);
