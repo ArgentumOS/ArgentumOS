@@ -10901,6 +10901,25 @@ whatever makes a JUST-CREATED thread fail to proceed; the first measurement is t
 path (`-detachNewThreadSelector:` / `pthread_create`) and count how many of N detached threads actually ENTER their
 selector.
 
+### §58.2g — DETACHED THREADS ARE RELIABLE: 20 OF 20 ENTER AND FINISH, IN THREE RUNS (2026-09-22)
+
+**THE HYPOTHESIS §58.2f NAMED - a just-created thread failing to proceed - IS DISPROVED, and the leg that
+disproves it is kept.** `foundation_operation` now detaches 20 threads whose selector marks ENTRY and EXIT with two
+lock-protected increments and **nothing else** (no writes at all, because §58.2f measured that a per-event write
+hides the very race it was meant to measure), and prints the totals once, at the end.
+
+**MEASURED: `entered=20 exited=20 of 20, waited=1`, both checks `ok`, in THREE consecutive runs (probe 13/13).**
+So `-detachNewThreadSelector:` / `pthread_create` does not lose threads in this shape, and the whole "the thread
+never starts" family is now excluded for it.
+
+**WHAT THAT LEAVES, AND IT IS NARROWER:** the queue's own losses - §58.2d's 7-of-14 delivery hops and §58.2f's
+intermittent 29-of-50 leak - happen where this leg's threads are NOT: dispatched by the SCHEDULER while it holds the
+queue's condition lock, running an operation, and then RE-TAKING that lock to clean up. **The next instrument is
+therefore INSIDE the queue and in MEMORY, applying §58.2g's own lesson to it:** count what the scheduler believes at
+the end of a burst - `_running`, `_pending` and `_operations` - and print those three numbers once, from the probe,
+through a temporary accessor. `_running != 0` after every block has run says a worker is stuck in its cleanup;
+`_running == 0` with a non-empty `_operations` says the removal is what missed.
+
 **WHAT REMAINS:** that instrument, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
 The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass

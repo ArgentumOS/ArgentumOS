@@ -152,6 +152,38 @@
 
 @end
 
+/* A TARGET WHOSE SELECTOR MARKS ITS OWN ENTRY AND EXIT, IN MEMORY (foundation-plan.md §58.2g). THE POINT IS THAT
+ * IT DOES NOT WRITE: the last instrument died of its own perturbation - a raw write between the steps of the
+ * queue's worker made an intermittent leak vanish (61 of 61 clean) - so this one counts with two lock-protected
+ * increments and the CALLER prints the totals once, after the fact. */
+@interface ThreadEntryTarget : NSObject
+{
+@public
+	NSLock *lock;
+	int *entries;
+	int *exits;
+}
+- (void)fnEnterAndExit;
+@end
+
+@implementation ThreadEntryTarget
+
+- (void)fnEnterAndExit
+{
+	NSLock *l = lock;
+	int *e = entries;
+	int *x = exits;
+
+	[l lock];
+	(*e)++;
+	[l unlock];
+	[l lock];
+	(*x)++;
+	[l unlock];
+}
+
+@end
+
 static int okc, failc;
 
 static void check(const char *name, int ok, NSString * _Nullable detail)
@@ -353,6 +385,41 @@ int main(void)
 		 * its absence would go red on a run that happened to lose, and a flaky check in the committed suite is a
 		 * defect of its own. The count stays in the DIAG line above, for whoever fixes the race - and the
 		 * RELIABLE property (every accepted operation runs) IS asserted, because that one held in every run. */
+	}
+
+	/* ---- DO DETACHED THREADS RELIABLY ENTER THEIR SELECTOR? (§58.2g) -------------------------------
+	 *
+	 * THE QUESTION THE WHOLE TRAIL REDUCES TO. §58.2d's delivery loss (14 hops handed to the queue, 7 ever ran),
+	 * §58.2f's intermittent leak (29 of 50 operations left in `_operations` once, 0 on the next three runs) and
+	 * this session's `wait4` WNOHANG answer all have the same shape: a thread, or a just-created thread's first
+	 * step, that never proceeds. So this leg detaches N threads whose selector marks ENTRY and EXIT with two
+	 * lock-protected increments and nothing else - the caller prints the totals once, at the end, because a
+	 * per-event write is what made the previous instrument lose the very race it was measuring. */
+	{
+		NSLock *lock = [[NSLock alloc] init];
+		ThreadEntryTarget *target = [[ThreadEntryTarget alloc] init];
+		int entries = 0;
+		int exits = 0;
+		int waited = 0;
+		int threads = 20;
+		int i;
+
+		target->lock = lock;
+		target->entries = &entries;
+		target->exits = &exits;
+		for (i = 0; i < threads; i++) {
+			[NSThread detachNewThreadSelector:@selector(fnEnterAndExit) toTarget:target withObject:nil];
+		}
+		while (exits < threads && waited < 3000) {		/* 30s at 10ms: bounded, never a hang */
+			[NSThread sleepForTimeInterval:0.01];
+			waited++;
+		}
+		printf("FOUNDATION-OPERATION-DIAG detached threads: entered=%d exited=%d of %d, waited=%d\n",
+		       entries, exits, threads, waited);
+		check("every-detached-thread-enters-its-selector", entries == threads,
+		      [NSString stringWithFormat:@"%d of %d threads ever entered their selector", entries, threads]);
+		check("and-every-detached-thread-finishes", exits == threads,
+		      [NSString stringWithFormat:@"%d of %d threads finished their selector", exits, threads]);
 	}
 
 	printf("FOUNDATION-OPERATION RESULT ok=%d fail=%d\n", okc, failc);
