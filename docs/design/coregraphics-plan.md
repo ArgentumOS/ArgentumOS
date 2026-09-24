@@ -482,7 +482,16 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   the CLASS and instance `saveGraphicsState`/`restoreGraphicsState`, `flipped`,
   `drawingToScreen`, `+currentContextDrawingToScreen`, `-flushGraphics`), plus
   `shouldAntialias` and `patternPhase` (`CGContextSetShouldAntialias` and
-  `CGContextSetPatternPhase` both exist) and `focusStack` (a stored `id`). DEFERRED BY
+  `CGContextSetPatternPhase` both exist). **`focusStack` LEFT THIS LIST WHEN THE APPKIT
+  LEDGER WAS BUILT, AND IT IS THE FIRST THING THE LEDGER CORRECTED**: the member page
+  fetched an hour earlier reported `deprecated=False`, while the INDEX marks
+  `-focusStack` and `-setFocusStack:` **deprecated** — so they are `struck` in
+  docs/reference/appkit-apple-surface.txt and out of C8.1 by §1 policy. **TWO APPLE
+  ENDPOINTS DISAGREE ON THE DEPRECATION BOOLEAN, AND THE LEDGER FOLLOWS THE INDEX**,
+  which is the authority the CoreGraphics and Foundation sweeps already use; the
+  discrepancy is recorded because it is the same "conservative superset" seam §9
+  describes one level down, and because a pin that had trusted the symbol page would
+  have shipped a deprecated member. DEFERRED BY
   NAME WITH A REASON EACH: `graphicsPort`, `+graphicsContextWithGraphicsPort:flipped:`,
   `+setGraphicsState:` and `+graphicsContextWithWindow:` (DEPRECATED — §1 policy);
   `CIContext` (no Core Image here); `+graphicsContextWithBitmapImageRep:` (needs

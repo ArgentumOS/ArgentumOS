@@ -1,0 +1,340 @@
+#!/usr/bin/env python3
+# Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+# SPDX-License-Identifier: MIT
+"""C8's LEDGER SOURCE: the AppKit's documented surface, against this tree.
+
+WHY THIS IS A THIRD SWEEP AND NOT A COPY. `tools/coregraphics-sweep.py` says of
+itself that it is "the same shape as tools/foundation-sweep.py, DELIBERATELY ...
+because two sweeps that disagree about what a ledger row IS would be worse than
+one". The shape is identical here — the same seven columns, the same three
+statuses, the same `--refresh` (the only mode that touches the network) /
+`--check` (offline, a function of this tree alone) split — so the AppKit's rows
+mean what the other two ledgers' rows mean.
+
+SHARING THE MACHINERY WAS TRIED FIRST AND REJECTED ON A MEASUREMENT: importing
+`foundation-sweep.py` and overriding INDEX_URL/HEADERS/SURFACE is mechanically
+possible, but that instrument carries sixteen mentions of its own tool name and
+fourteen of "Foundation" inside logic that is ITS OWN — the plan family table
+(whose destination is `docs/design/foundation-plan.md`), the
+`NSFoundationVersionNumber` per-release heuristics, the 32-bit-only declinations.
+Overriding four constants would still have emitted Foundation's citations into an
+AppKit file. So this is a third instrument of the same shape, and what it
+deliberately does NOT have is named rather than left as a hole:
+
+  * NO `--families`: that mode REWRITES a block in a plan document, and the
+    AppKit's class inventory belongs to `cocoa-parity-plan.md` (coregraphics-plan
+    §7's C8 bullet says so). Its absence is a scope statement.
+  * NO 32-bit-only / per-release-version heuristics: those encode Foundation's
+    own exclusion history, not AppKit's.
+
+WHAT IT KEEPS IN FULL is the part that is POLICY, because that is where two
+sweeps drifting would matter: the three-value status vocabulary, `struck` for an
+Apple deprecation, the two inconsistency classes `--check` fails on, and the
+"declared as ANYTHING" test rather than a form-exact one.
+
+AND ONE DELIBERATE DIFFERENCE FROM FOUNDATION'S LEDGER, MEASURED AND RECORDED
+HERE SO IT IS NOT READ AS A MISTAKE. Foundation's surface EXCLUDES `method` and
+`property` rows (its header says what they are: "§11.2 SOURCE 1's business" — its
+probes' own `excluded` arrays, which exist because Foundation is largely landed
+and its members are tracked by the tests that assert them). THIS LEDGER KEEPS
+THEM, because the AppKit is UNBUILT: its classes' members ARE the work list, and
+a ledger that dropped them would describe NSGraphicsContext by naming the class
+and nothing it does. The count is printed in this file's header so the difference
+is visible at the top of the data rather than inferred from it.
+
+USAGE
+
+  tools/appkit-sweep.py --check             verify the file against our headers (offline)
+  tools/appkit-sweep.py --work-list [KIND]  print the open rows — the work list
+  tools/appkit-sweep.py --refresh           re-read Apple's index and rewrite the file
+"""
+
+import glob
+import json
+import os
+import re
+import sys
+import urllib.request
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SURFACE = os.path.join(ROOT, "docs/reference/appkit-apple-surface.txt")
+HEADERS = os.path.join(ROOT, "userland/AppKit/*.h")
+# THE NAVIGATOR TREE, NOT /documentation/appkit.json. Measured 2026-09-24: the
+# documentation landing page carries neither `interfaceLanguages` nor any member,
+# and a SYMBOL page's declarations come back Swift-first (`var cgContext: CGContext
+# { get }`). The Objective-C spellings live in the index's `interfaceLanguages.occ`,
+# which is the endpoint tools/foundation-sweep.py:86 already uses.
+INDEX_URL = "https://developer.apple.com/tutorials/data/index/appkit"
+TOOL = "tools/appkit-sweep.py"
+
+STATUS_SHIPPED = "shipped"
+STATUS_OPEN = "open"
+STATUS_STRUCK = "struck"
+
+# THE KINDS THAT ARE API. Everything else in the tree is navigation or prose and is
+# counted into the header instead of becoming rows, so the file's size is explained
+# where a reader meets it.
+KEPT = ("class", "protocol", "enum", "case", "typealias", "func", "macro", "struct",
+        "var", "method", "property")
+DROPPED = ("groupMarker", "collection", "article", "sampleCode", "module")
+
+
+def public_header_text():
+    """Every AppKit header with comments stripped, so a name mentioned in prose is
+    never mistaken for a name declared."""
+    text = []
+    for path in sorted(glob.glob(HEADERS)):
+        body = open(path, encoding="utf-8", errors="replace").read()
+        body = re.sub(r"/\*.*?\*/", " ", body, flags=re.S)
+        body = re.sub(r"//[^\n]*", " ", body)
+        text.append(body)
+    return "\n".join(text)
+
+
+def declared(kind, name, text):
+    """Does our surface DECLARE this name?
+
+    "AS ANYTHING" RATHER THAN IN APPLE'S FORM, the same rule the other two sweeps
+    state: a class is a class whether it arrives as an `@interface` or only as a
+    forward `@class`, and a constant is a constant whether it is a `#define` or an
+    `extern`. Comments are stripped by the caller, so each alternative below is a
+    DECLARATION form and not a mention.
+
+    THE SELECTOR CASE IS THE ONE THIS FRAMEWORK ADDS. Apple indexes an Objective-C
+    method by its whole selector — `+ graphicsContextWithCGContext:flipped:` — while
+    a header declares it as that selector; a ledger row's `name` is therefore
+    reduced to its FIRST component before the test, because that component plus a
+    colon or a keyword is what actually appears in the declaration.
+    """
+    n = re.escape(name)
+    any_form = (
+        r"#\s*define\s+" + n + r"\b"                               # a macro
+        r"|@\s*interface\s+" + n + r"\b"                           # a class
+        r"|@\s*protocol\s+" + n + r"\b"                            # a protocol
+        r"|@\s*class\s+" + n + r"\b"                               # a forward declaration
+        r"|typedef[^;]*\b" + n + r"\s*;"                           # a typedef declarator
+        r"|typedef[^;]*\(\s*\*\s*" + n + r"\s*\)"                  # a function-pointer typedef
+        r"|NS_ENUM\s*\(\s*[^,]+,\s*" + n + r"\s*\)"                # an NS_ENUM
+        r"|NS_OPTIONS\s*\(\s*[^,]+,\s*" + n + r"\s*\)"             # an NS_OPTIONS
+        r"|\b" + n + r"\s*[=,}]"                                   # an enum member
+        r"|struct\s+" + n + r"\b"                                  # a struct tag
+        r"|[+-]\s*\([^)]*\)\s*" + n + r"\b"                        # an instance/class method
+        r"|\b" + n + r"\s*;"                                       # a property or variable
+        r"|\b" + n + r"\s*:"                                       # a selector keyword or property
+        r"|^[A-Za-z_][\w \t\*]*\b" + n + r"\s*\([^;{]*\)\s*[;{]"   # a C prototype (AppKit's funcs)
+    )
+    return re.search(any_form, text, re.M | re.S)
+
+
+def row_name(node):
+    """The NAME a header would declare, from the title Apple shows a reader.
+
+    A METHOD'S TITLE CARRIES ITS SIGN (`- flushGraphics`) and its selector
+    punctuation (`+ graphicsContextWithCGContext:flipped:`); a PROPERTY'S CARRIES
+    `property `; neither appears in a header, so both are stripped here rather than
+    in the declaration test, where the strip would have to be repeated.
+    """
+    title = node.get("title", "")
+    if node.get("type") == "method":
+        title = re.sub(r"^[+-]\s*", "", title)
+        return title.split(":")[0].strip()
+    if node.get("type") == "property":
+        return re.sub(r"^property\s+", "", title).strip()
+    return title
+
+
+def collect(index):
+    """Walk the ObjC navigator tree. A groupMarker among a node's children sets the
+    FAMILY for the siblings that FOLLOW it — Apple's own taxonomy — and a class or
+    protocol becomes the OWNER of the members beneath it."""
+    rows = {}
+    dropped = {}
+    for root in index["interfaceLanguages"]["occ"]:
+        walk(root, [], None, None, rows, dropped)
+    return rows, dropped
+
+
+def walk(node, trail, owner, family, rows, dropped):
+    for child in node.get("children") or []:
+        kind = child.get("type", "?")
+        title = child.get("title", "?")
+        if kind == "groupMarker":
+            walk(child, trail + [title], owner, title, rows, dropped)
+            continue
+        if kind in DROPPED:
+            dropped[kind] = dropped.get(kind, 0) + 1
+            walk(child, trail + [title], owner, family, rows, dropped)
+            continue
+        if kind in KEPT:
+            name = row_name(child)
+            if name:
+                # THE KEY CARRIES THE NORMALISED OWNER, not the `None` the walk starts
+                # with: a mixed tuple is unsortable, and `sorted(rows)` is how the file is
+                # written — which is exactly how this failed the first time it ran
+                # (`'<' not supported between instances of 'NoneType' and 'str'`).
+                rows[(kind, name, owner or "-")] = {
+                    "kind": kind,
+                    "name": name,
+                    "owner": owner or "-",
+                    "family": family or "-",
+                    "deprecated": bool(child.get("deprecated")),
+                    "path": child.get("path", ""),
+                }
+        # A class or protocol is the OWNER of everything under it; every other kind
+        # passes the current owner down unchanged, which is how a member of a nested
+        # enum still reports the class it belongs to.
+        walk(child, trail + [title],
+             title if kind in ("class", "protocol") else owner, family, rows, dropped)
+
+
+def fetch_index():
+    with urllib.request.urlopen(INDEX_URL, timeout=180) as fh:
+        return json.load(fh)
+
+
+def refresh():
+    index = fetch_index()
+    rows, dropped = collect(index)
+    text = public_header_text()
+    out = []
+    counts = {}
+    reasons = {}
+    for key in sorted(rows):
+        r = rows[key]
+        if r["deprecated"]:
+            st, why = STATUS_STRUCK, "deprecated"
+        else:
+            st = STATUS_SHIPPED if declared(r["kind"], r["name"], text) else STATUS_OPEN
+            why = "-"
+        counts[(r["kind"], st)] = counts.get((r["kind"], st), 0) + 1
+        if st == STATUS_STRUCK:
+            reasons[why] = reasons.get(why, 0) + 1
+        # `src` is the page the name was read from, and it is the ObjC one: the whole
+        # point of reading the index rather than a symbol page is that this tree's
+        # surface is the Objective-C one.
+        out.append("\t".join((r["kind"], st, r["name"], r["owner"], r["family"], why,
+                              "objc")))
+    kept = sum(counts.values())
+    header = [
+        "# The AppKit's documented surface, against this tree.",
+        "# docs/design/coregraphics-plan.md §7's C8 bullet — the pin that created this file.",
+        "# GENERATED by %s --refresh — do not hand-edit the" % TOOL,
+        "# status column; --check fails when it drifts from the headers.",
+        "#",
+        "# source: " + INDEX_URL,
+        "#",
+        "# kind\tstatus\tname\towner\tfamily\twhy\tsrc",
+        "#",
+        "# %d API rows. THIS FILE KEEPS `method` AND `property` ROWS, WHICH THE" % kept,
+        "# FOUNDATION LEDGER EXCLUDES — deliberately, and the reason is that the AppKit is",
+        "# UNBUILT: a class's members ARE its work list, and dropping them would describe",
+        "# NSGraphicsContext by naming the class and nothing it does. Foundation's members",
+        "# are tracked by its probes' `excluded` arrays instead (foundation-sweep.py says so).",
+        "#",
+        "# excluded dimensions this file deliberately does NOT hold (distinct names):",
+        "#   groupMarker %4d — Apple's taxonomy headings, which become the `family` column" % len([1 for _ in range(dropped.get("groupMarker", 0))]),
+        "#   collection  %4d, article %4d, sampleCode %4d, module %4d — navigation and prose" % (
+            dropped.get("collection", 0), dropped.get("article", 0),
+            dropped.get("sampleCode", 0), dropped.get("module", 0)),
+        "#",
+        "# %d struck: %s" % (sum(reasons.values()), ", ".join("%s×%d" % (k, v) for k, v in sorted(reasons.items())) or "none"),
+        "#",
+        "# BY KIND:",
+    ]
+    for (kind, st), c in sorted(counts.items()):
+        header.append("#   %-10s %-8s %5d" % (kind, st, c))
+    open(SURFACE, "w", encoding="utf-8").write("\n".join(header + out) + "\n")
+    for (kind, st), c in sorted(counts.items()):
+        print("  %-10s %-8s %5d" % (kind, st, c))
+    print("appkit-sweep: wrote %d rows to %s" % (kept, os.path.relpath(SURFACE, ROOT)))
+    return 0
+
+
+def read_surface():
+    rows = []
+    for line in open(SURFACE, encoding="utf-8"):
+        if line.startswith("#") or not line.strip():
+            continue
+        kind, status, name, owner, family, why, src = line.rstrip("\n").split("\t")
+        rows.append((kind, status, name, owner, family, why, src))
+    return rows
+
+
+def check(strict=False):
+    """INCONSISTENCIES are facts about this tree the file has out of date, so they
+    FAIL and no one has to decide anything. POLICY FINDINGS are symbols Apple
+    deprecates that our headers still declare; what to DO about one is a decision,
+    and that is what `--strict` is for — the same two classes the other two sweeps
+    separate for the same reason."""
+    try:
+        text = public_header_text()
+        rows = read_surface()
+    except FileNotFoundError:
+        print("appkit-sweep: no %s yet — run --refresh" % os.path.relpath(SURFACE, ROOT))
+        return 1
+    bad, policy, counts = [], [], {}
+    live = {r[2] for r in rows if r[1] != STATUS_STRUCK}
+    for kind, status, name, owner, family, why, src in rows:
+        counts[(kind, status)] = counts.get((kind, status), 0) + 1
+        found = bool(declared(kind, name, text))
+        if status == STATUS_SHIPPED and not found:
+            bad.append("STALE SHIPPED CLAIM    %-9s %s — the file says we ship it and our "
+                       "headers do not declare it" % (kind, name))
+        elif status == STATUS_OPEN and found:
+            bad.append("PRESENT BUT LISTED OPEN %-8s %s — our headers now declare it; flip "
+                       "the row" % (kind, name))
+        elif status == STATUS_STRUCK and found and name not in live:
+            policy.append("%-9s %s [struck: %s]" % (kind, name, why))
+    print("appkit-sweep: %d symbols in the ledger" % len(rows))
+    for kind in sorted({k for k, _ in counts}):
+        print("  %-10s shipped %4d   open %4d   struck %4d" % (
+            kind, counts.get((kind, STATUS_SHIPPED), 0), counts.get((kind, STATUS_OPEN), 0),
+            counts.get((kind, STATUS_STRUCK), 0)))
+    if policy:
+        print("\n%d POLICY FINDING(S) — API Apple deprecates that we declare:\n" % len(policy))
+        for line in policy:
+            print("  " + line)
+    if bad:
+        print("\n%d INCONSISTENCIES:\n" % len(bad))
+        for line in bad:
+            print("  " + line)
+        return 1
+    if strict and policy:
+        return 1
+    print("appkit-sweep: consistent — every shipped name is declared and every open name is absent")
+    return 0
+
+
+def work_list(want=None):
+    rows = [r for r in read_surface() if r[1] == STATUS_OPEN and (want is None or r[0] == want)]
+    by_owner = {}
+    for kind, status, name, owner, family, why, src in rows:
+        by_owner.setdefault(owner, []).append((kind, name))
+    for owner in sorted(by_owner):
+        members = by_owner[owner]
+        print("\n## %s  (%d)" % (owner, len(members)))
+        for kind, name in sorted(members, key=lambda m: (m[0], m[1])):
+            print("   %-9s %s" % (kind, name))
+    print("\n%d open symbols" % len(rows))
+    return 0
+
+
+def main(argv):
+    mode = argv[1] if len(argv) > 1 else "--check"
+    if mode == "--refresh":
+        rc = refresh()
+        if rc == 0:
+            rc = check()
+        return rc
+    if mode == "--check":
+        return check()
+    if mode == "--strict":
+        return check(strict=True)
+    if mode == "--work-list":
+        return work_list(argv[2] if len(argv) > 2 else None)
+    print(__doc__)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
