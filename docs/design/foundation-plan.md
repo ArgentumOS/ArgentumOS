@@ -10772,6 +10772,35 @@ therefore a DIAG on the CLASS side (does the queued read's worker ever begin?), 
 after - with the diagnosis above instead of a guess. The probe's DIAG line is kept DELIBERATELY: it is the
 instrument the next unit will read, not leftover scaffolding.
 
+### §58.2b — THE CLASS-SIDE INSTRUMENT COULD NOT BE MADE VISIBLE, WHICH IS ITSELF A MEASURED TRAP
+
+**The step §58.2 named was written and it did not report.** Two `printf`s - one at the queue's entry
+(`-fnEnqueue:`) and one at its exit (`-fnServe`'s dequeue), the pair that decides whether a read ever entered the
+queue and whether the worker ever took it - produced NOTHING in the case log, across three attempts:
+ * on **`fprintf(stderr, ...)`**, which is what this library does elsewhere (NSObject.m's unimplemented-selector
+   report): nothing;
+ * on **stdout with `fflush(stdout)` after each line**, because the probe's own `printf`s DO appear and its
+   `check()` flushes after every line (so a library `printf` that never flushes would sit in stdio's buffer):
+   nothing;
+ * with the artifacts **verified by `strings` at every step**: the STAGED library
+   (`.build/fnxlib/libfoundation.so.1`), the GUEST's copy
+   (`.build/rootfs64/System/Libraries/libfoundation.so.1` - a path worth writing down, because it is NOT
+   `System/Shared/lib`, and looking in the wrong place makes a fresh library look stale), and the TEST IMAGE
+   itself each carried the diag string, and the probe binary was linked after the library.
+So the guest is provably running code that contains those lines, and the lines do not reach the console the case
+reads. **UNTIL THAT IS EXPLAINED, A CLASS-SIDE DIAGNOSTIC IS NOT AN INSTRUMENT**, and it also means every
+"the library change did not help" reading in this section has to be re-checked against its visibility.
+ * **THE ONE THAT MATTERS IS THE 500ms SLICE EXPERIMENT**, and its verdict SURVIVES - but on the right evidence:
+   it is a BEHAVIOURAL change, so what judges it is the PROBE's own check (which is plainly visible), and that
+   check stayed red. The change is separately confirmed to have been compiled in (library timestamp + `strings`).
+   So the slice conclusion stands on the probe's output, not on the library's.
+
+**THE NEXT STEP IS A SINK THAT IS KNOWN TO WORK, NOT ANOTHER `printf`:** have the class append to a file under
+`/System/Temporary Files` and read it out with the harness (the probe's DIAG line, which is visible, is the
+pattern), or explain the invisibility first - the loader's choice of which `libfoundation` a probe gets is the
+obvious suspect, and the cheap check is the probe's own `readelf -d` NEEDED/RPATH against the guest's layout.
+Both are named here rather than guessed at.
+
 **WHAT REMAINS:** the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`). The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
