@@ -695,6 +695,18 @@ int main(void)
 		[fm createFileAtPath:fn_s3(@"file.txt")
 			     contents:[@"hello" dataUsingEncoding:NSUTF8StringEncoding]
 			   attributes:nil];
+		/* A NESTED DIRECTORY TOO, because the two display doors are asked about a DIRECTORY and about a
+		 * path several components deep - and the fixture the PRECEDING leg used is GONE by now (that
+		 * leg removes its own tree). That is a trap worth stating: a check that borrows another leg's
+		 * fixture is a check that depends on the ORDER of two fixtures, and this probe just paid for
+		 * learning it. */
+		[fm createDirectoryAtPath:fn_s3(@"tree/sub")
+	      withIntermediateDirectories:YES
+			   attributes:nil
+				error:NULL];
+		[fm createFileAtPath:fn_s3(@"tree/sub/b.txt")
+			     contents:[@"b" dataUsingEncoding:NSUTF8StringEncoding]
+			   attributes:nil];
 		named = [fm attributesOfItemAtPath:fn_s3(@"file.txt") error:NULL];
 		statOK = (stat([fn_s3(@"file.txt") UTF8String], &st) == 0);
 		pw = statOK ? getpwuid((uid_t)st.st_uid) : NULL;
@@ -780,6 +792,61 @@ int main(void)
 				[[targetAfter objectForKey:NSFilePosixPermissions] unsignedShortValue],
 				[[linkBefore objectForKey:NSFilePosixPermissions] unsignedShortValue],
 				[[linkAfter objectForKey:NSFilePosixPermissions] unsignedShortValue]]);
+		}
+
+		/* ---- W8 SLICE 3e: WHAT TO SHOW A USER, AND THE KEYS WHOSE ENTRY CAN ONLY BE ABSENT --------- */
+		{
+			/* THE DISPLAY RULE, BOTH HALVES: an item that EXISTS answers its own name - there is no
+			 * localization database here for a "localized form" to come from, and Apple's "MAY ...
+			 * removal of filename extensions" makes doing nothing conforming - while a path that is
+			 * NOT there answers the path AS IS, which is Apple's own sentence and the whole path
+			 * rather than a component of it. */
+			NSString *name = [fm displayNameAtPath:fn_s3(@"file.txt")];
+			NSString *dirName = [fm displayNameAtPath:fn_s3(@"tree")];
+			NSString *missingName = [fm displayNameAtPath:fn_s3(@"not-here")];
+
+			check("fs-display-name-is-the-items-own-name",
+			      [name isEqualToString:@"file.txt"] && [dirName isEqualToString:@"tree"] &&
+			      [missingName isEqualToString:fn_s3(@"not-here")],
+			      [NSString stringWithFormat:@"file=%@ dir=%@ missing=%@", name, dirName,
+				missingName]);
+		}
+		{
+			/* AND THE SAME RULE COMPONENT BY COMPONENT, with the failure case answered the OTHER way
+			 * ("returns nil if path does not exist") - which is the one place the two doors disagree
+			 * and therefore the pair worth asserting together. */
+			id parts = [fm componentsToDisplayForPath:fn_s3(@"tree/sub/b.txt")];
+			id lastPart = [parts lastObject];
+
+			check("fs-components-to-display-are-the-components",
+			      parts != nil && [parts count] == 6 && [lastPart isEqualToString:@"b.txt"] &&
+			      [fm componentsToDisplayForPath:fn_s3(@"not-here")] == nil,
+			      [NSString stringWithFormat:@"%lu part(s), last=%@, missing=%s",
+				(unsigned long)(parts != nil ? [parts count] : 0), lastPart,
+				[fm componentsToDisplayForPath:fn_s3(@"not-here")] == nil ? "nil" : "not nil"]);
+		}
+		{
+			/* AND THE KEYS WHOSE ENTRY CAN ONLY BE ABSENT: seven names this class will never fill,
+			 * because this kernel has no chflags(2), no HFS and no data-protection classes - and an
+			 * ABSENT ENTRY is how a file system says it has no such attribute. The names are
+			 * published (the link proves it) and the dictionary is where the honesty shows. */
+			id flagKeys = @[ NSFileImmutable, NSFileAppendOnly, NSFileBusy, NSFileExtensionHidden,
+					 NSFileHFSCreatorCode, NSFileHFSTypeCode, NSFileProtectionKey ];
+			id attributes = [fm attributesOfItemAtPath:fn_s3(@"file.txt") error:NULL];
+			BOOL absent = YES;
+			NSUInteger i;
+
+			for (i = 0; i < [flagKeys count]; i++) {
+				id key = [flagKeys objectAtIndex:i];
+
+				if ([attributes objectForKey:key] != nil) {
+					absent = NO;
+				}
+			}
+			check("fs-the-flag-keys-are-published-and-absent",
+			      attributes != nil && [flagKeys count] == 7 && absent,
+			      [NSString stringWithFormat:@"%lu key(s), all absent=%d",
+				(unsigned long)[flagKeys count], (int)absent]);
 		}
 
 		{

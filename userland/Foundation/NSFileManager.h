@@ -65,6 +65,32 @@ extern NSString *const NSFileGroupOwnerAccountID;
 extern NSString *const NSFileOwnerAccountName;
 extern NSString *const NSFileGroupOwnerAccountName;
 
+/* ---- THE FLAG KEYS WITH NO SUBSTRATE HERE, AND THEY ARE PUBLISHED ANYWAY (W8 slice 3e) ----------
+ *
+ * EVERY ONE OF THESE IS A NAME WHOSE DICTIONARY ENTRY CAN ONLY BE ABSENT ON THIS SYSTEM, and that is
+ * the same position NSFileCreationDate already holds: an absent key is how a file system says it has no
+ * such attribute, which is exactly what a caller sees on an Apple volume that does not keep one. They
+ * are declared because the API surface is the specification - a caller may look any of them up, and a
+ * header that omits them would be a hole rather than a boundary. THE GROUND, ONE LINE EACH:
+ */
+extern NSString *const NSFileImmutable;		/* UF_IMMUTABLE: this kernel has no chflags(2) */
+extern NSString *const NSFileAppendOnly;	/* UF_APPEND likewise */
+extern NSString *const NSFileBusy;		/* the Finder's busy bit, which is not a file-system fact */
+extern NSString *const NSFileExtensionHidden;	/* ... nor is the Finder's extension-hiding bit */
+extern NSString *const NSFileHFSCreatorCode;	/* no HFS here, so no creator code to report */
+extern NSString *const NSFileHFSTypeCode;	/* ... nor an HFS type code */
+extern NSString *const NSFileProtectionKey;	/* no data-protection classes on this system */
+extern NSString *const NSFileProtectionComplete;
+extern NSString *const NSFileProtectionCompleteUnlessOpen;
+extern NSString *const NSFileProtectionCompleteUntilFirstUserAuthentication;
+extern NSString *const NSFileProtectionNone;
+
+/* AND THE THREE TYPED ALIASES Apple spells for these dictionaries, which are the reason its own
+ * signatures read as typed dictionaries rather than as `NSDictionary *`. */
+typedef NSString *NSFileAttributeKey;
+typedef NSString *NSFileAttributeType;
+typedef NSString *NSFileProtectionType;
+
 /* ---- THE KEYS THE SUBSTRATE CAN ANSWER (W8 slice 3c, foundation-plan.md §60) --------------------
  *
  * THREE MORE ITEM KEYS, each named by Apple's own page as the stat(2) FIELD ITSELF - "the value of
@@ -328,6 +354,26 @@ typedef enum {
 - (BOOL)setAttributes:(NSDictionary *)attributes
 	ofItemAtPath:(NSString *)path
 	       error:(NSError ** _Nullable)error;
+
+/* THE DISPLAY NAME (W8 slice 3e), and its rule HERE is a decision with two grounds. Apple: "the name of
+ * the file or directory at path in a LOCALIZED FORM appropriate for presentation to the user", and the
+ * discussion adds that display names "MAY also reflect other modifications, such as the removal of
+ * filename extensions". THIS SYSTEM HAS NO LOCALIZATION DATABASE - there is no `.lproj` anywhere and no
+ * language setting for a name to be looked up in - so a localized name HAS no value to take other than
+ * the item's own, and that "MAY" is what makes the choice conforming rather than a shortcut. The
+ * failure case is Apple's own sentence and it is exact: "if there is no file or directory at path, or if
+ * an error occurs, RETURNS path AS IS" - the whole path, not a component of it. (Apple annotates this
+ * NONNULL; a nil path is the one case its annotation does not cover, so the annotation here is the
+ * permissive one.) */
+- (nullable NSString *)displayNameAtPath:(NSString *)path;
+
+/* AND THE SAME RULE COMPONENT BY COMPONENT: "an array of NSString objects representing the user-visible
+ * components of path", and "returns nil if path does not exist" - so the two doors agree about the
+ * failure case (one answers the path, the other nothing) and about doing no localization. ONE
+ * DOCUMENTED DIFFERENCE from Apple's own example, whose first element is the VOLUME's name: this
+ * system's paths begin at the root and a volume has no name here, so the array is the path's own
+ * components with no synthesised first element. */
+- (nullable NSArray *)componentsToDisplayForPath:(NSString *)path;
 
 - (nullable NSString *)destinationOfSymbolicLinkAtPath:(NSString *)path
 						 error:(NSError ** _Nullable)error;

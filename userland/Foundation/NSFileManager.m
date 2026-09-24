@@ -51,6 +51,21 @@ NSString *const NSFileGroupOwnerAccountID = @"NSFileGroupOwnerAccountID";
 NSString *const NSFileOwnerAccountName = @"NSFileOwnerAccountName";
 NSString *const NSFileGroupOwnerAccountName = @"NSFileGroupOwnerAccountName";
 
+/* THE FLAG NAMES WITH NO SUBSTRATE HERE (W8 slice 3e) - published, never filled, never acted on: the
+ * header carries the one-line ground each of them has. */
+NSString *const NSFileImmutable = @"NSFileImmutable";
+NSString *const NSFileAppendOnly = @"NSFileAppendOnly";
+NSString *const NSFileBusy = @"NSFileBusy";
+NSString *const NSFileExtensionHidden = @"NSFileExtensionHidden";
+NSString *const NSFileHFSCreatorCode = @"NSFileHFSCreatorCode";
+NSString *const NSFileHFSTypeCode = @"NSFileHFSTypeCode";
+NSString *const NSFileProtectionKey = @"NSFileProtectionKey";
+NSString *const NSFileProtectionComplete = @"NSFileProtectionComplete";
+NSString *const NSFileProtectionCompleteUnlessOpen = @"NSFileProtectionCompleteUnlessOpen";
+NSString *const NSFileProtectionCompleteUntilFirstUserAuthentication =
+	@"NSFileProtectionCompleteUntilFirstUserAuthentication";
+NSString *const NSFileProtectionNone = @"NSFileProtectionNone";
+
 /* W8 slice 3c: the item keys whose meaning IS a stat(2) field, and the five file-system keys. */
 NSString *const NSFileSystemFileNumber = @"NSFileSystemFileNumber";
 NSString *const NSFileReferenceCount = @"NSFileReferenceCount";
@@ -1238,6 +1253,56 @@ static NSString *fn_link_target(NSString *path, int *outErrno)
 		return fn_failed(error, errno);
 	}
 	return YES;
+}
+
+/* ---- WHAT TO SHOW A USER (W8 slice 3e), AND THE RULE IS A DECISION WITH ITS GROUNDS ---------------
+ *
+ * APPLE'S TWO SENTENCES, AND WHAT THIS SYSTEM CAN DO WITH THEM: a display name is "the name of the file
+ * or directory at path in a LOCALIZED form appropriate for presentation", and the discussion allows
+ * that such names "MAY also reflect other modifications, such as the removal of filename extensions".
+ * THERE IS NO LOCALIZATION DATABASE HERE - no `.lproj`, no language setting - so a localized name has no
+ * value to take other than the item's own, and the "may" is what makes that conforming rather than a
+ * shortcut. The failure case is exact and is Apple's: "returns path AS IS" when there is no item there.
+ */
+- (nullable NSString *)displayNameAtPath:(NSString *)path
+{
+	struct stat st;
+
+	if (path == nil) {
+		return nil;
+	}
+	if (lstat([path UTF8String], &st) != 0) {
+		return path;	/* Apple's sentence, literally: the path itself */
+	}
+	return [path lastPathComponent];
+}
+
+- (nullable NSArray *)componentsToDisplayForPath:(NSString *)path
+{
+	NSArray *parts;
+	NSMutableArray *components;
+	struct stat st;
+	NSUInteger i;
+
+	if (path == nil) {
+		return nil;
+	}
+	if (lstat([path UTF8String], &st) != 0) {
+		return nil;	/* "returns nil if path does not exist" */
+	}
+	parts = [path componentsSeparatedByString:@"/"];
+	components = [NSMutableArray array];
+	for (i = 0; i < [parts count]; i++) {
+		NSString *part = [parts objectAtIndex:i];
+
+		if ([part length] > 0) {
+			/* NO LOCALIZATION, so a component's display name is the component - and the EMPTY pieces
+			 * a leading slash makes are dropped, which is also why a path of just "/" answers an
+			 * array with nothing in it. */
+			[components addObject:part];
+		}
+	}
+	return components;
 }
 
 - (nullable NSString *)destinationOfSymbolicLinkAtPath:(NSString *)path

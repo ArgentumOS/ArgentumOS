@@ -53,6 +53,13 @@ The probe is `/System/Shared/tests/foundation_filemanager`, ONE unit, importing 
                           and a key nothing acts on is IGNORED rather than a failure;
   * `fs-set-attributes-traverses-a-terminal-symlink` — setting through a link moves the TARGET's mode
                           and leaves the link's own alone (the stat-vs-lstat sentence);
+  * `fs-display-name-is-the-items-own-name` — a display name is the item's own name (no localization
+                          database exists here) and a path that is NOT there answers the path AS IS;
+  * `fs-components-to-display-are-the-components` — the same rule per component, with the failure case
+                          answered the other way (nil) - the one place the two doors disagree;
+  * `fs-the-flag-keys-are-published-and-absent` — seven keys this kernel has no substrate for are
+                          declared AND left out of the dictionary, because an absent entry is how a
+                          file system says it has no such attribute;
   * `fs-cleanup`         — the tree is gone, which is also the recursive remove's own exercise.
 
 IT WORKS IN A TREE OF ITS OWN MAKING under `/System/Temporary Files` — this system's temp directory,
@@ -72,7 +79,9 @@ CHECKS = ("fs-default-manager", "fs-create-and-list", "fs-write-and-size", "fs-m
           "fs-attributes-of-file-system", "fs-item-attributes-name-the-inode",
           "fs-a-socket-is-named-and-a-fifo-is-not", "fs-relationship-is-about-locations",
           "fs-attribute-names-are-the-accounts", "fs-set-attributes-writes-permissions-and-a-date",
-          "fs-set-attributes-traverses-a-terminal-symlink", "fs-cleanup",
+          "fs-set-attributes-traverses-a-terminal-symlink",
+          "fs-display-name-is-the-items-own-name", "fs-components-to-display-are-the-components",
+          "fs-the-flag-keys-are-published-and-absent", "fs-cleanup",
           "temporary-directory-is-the-fsh-path", "temporary-directory-exists")
 
 

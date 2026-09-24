@@ -11877,6 +11877,49 @@ localization database for a display name to come from), and the Apple-flag keys 
 `NSFileProtection*`) - each a published NAME whose dictionary entry can only be ABSENT, exactly the way
 `NSFileCreationDate` already is and is asserted to be.
 
+**SLICE 3e LANDED (2026-09-24), AND SLICE 3 IS COMPLETE: THE DISPLAY NAMES (A DECIDED RULE) AND THE
+FLAG KEYS THAT CAN ONLY BE ABSENT - fourteen more ledger rows, `foundation_filemanager` 22 -> 25
+checks.** The ledger reads `var` 199 shipped / 362 open and `typealias` 34 / 35, and `--check` is
+`consistent`.
+
+**THE TWO DISPLAY DOORS ARE THE ONE PLACE IN THIS UNIT WHERE APPLE SAYS "MAY", SO THE RULE IS A
+DECISION AND IS RECORDED AS ONE.** Apple: a display name is "the name of the file or directory at path
+in a LOCALIZED FORM appropriate for presentation to the user", and its discussion allows that display
+names "MAY also reflect other modifications, such as the removal of filename extensions". **There is no
+localization database on this system** - no `.lproj`, no language setting - so a localized name has no
+value to take other than the item's own, and the *may* is what makes that conforming rather than a
+shortcut. The failure cases are Apple's own sentences and they differ between the two doors, which is
+why the probe asserts them together: `-displayNameAtPath:` "RETURNS path AS IS" - the whole path, not a
+component - while `-componentsToDisplayForPath:` "returns nil if path does not exist". Both are now
+implemented and asserted, including that they disagree exactly there. **And one difference is documented
+rather than hidden:** Apple's own component example begins with the VOLUME's name; this system's paths
+begin at the root and a volume has no name here, so the array is the path's own components with no
+synthesised first element.
+
+**THE FOURTEEN FLAG KEYS ARE PUBLISHED AND THEIR ENTRIES CAN ONLY BE ABSENT** - eleven names
+(`NSFileImmutable`, `NSFileAppendOnly`, `NSFileBusy`, `NSFileExtensionHidden`, `NSFileHFSCreatorCode`,
+`NSFileHFSTypeCode`, `NSFileProtectionKey` and the four protection values) plus the three typed aliases
+Apple spells for these dictionaries (`NSFileAttributeKey`, `NSFileAttributeType`,
+`NSFileProtectionType`). Each has its one-line ground in the header - no `chflags(2)` for the two flags,
+no HFS for the codes, no data-protection classes for the protection keys - and the position is the same
+one `NSFileCreationDate` already holds: **an absent key is how a file system says it has no such
+attribute**, so a caller sees here what it would see on an Apple volume that does not keep one. The
+probe asserts the ABSENCE of seven of them in one dictionary, because declaring a name and filling it
+with something invented would be the failure; declaring it and leaving the entry out is the contract.
+
+**AND THE PROBE COST TWO RED CHECKS TO ONE TRAP WORTH RECORDING:** the display checks asked about
+`tree/sub/b.txt` and about a directory, and BOTH failed - not in the class, which answered exactly as
+specified (the path as-is, and nil) - but because **that fixture belongs to the PRECEDING leg, which
+removes its own tree at the end.** A check that borrows another leg's fixture is a check that depends on
+the ORDER of two fixtures; this leg now builds its own, and says so where it does.
+
+**SLICE 3 IS COMPLETE, AND WHAT IT ESTABLISHED IS WORTH ONE LINE:** the file system surface went from
+one class with a narrow set of wrappers to `NSFileManager` with its delegate (all 16 selectors), its
+deep walk, its file-system view, its mutator, and **two data-loss fixes that were not in any probe's
+remit** (an existing destination was silently REPLACED by a copy and by a move). What comes next is
+slice 4: **`NSFileWrapper`**, the unit's first new class since `NSDirectoryEnumerator`.
+
+
 
 
 
