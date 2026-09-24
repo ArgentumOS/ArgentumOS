@@ -20,24 +20,24 @@
 # 1501 struck: deprecated×1501
 #
 # BY KIND:
-#   case       open      1845
-#   case       shipped     28
+#   case       open      1840
+#   case       shipped     33
 #   case       struck     259
-#   class      open       320
-#   class      shipped      1
+#   class      open       319
+#   class      shipped      2
 #   class      struck      13
-#   enum       open       350
-#   enum       shipped      1
+#   enum       open       349
+#   enum       shipped      2
 #   enum       struck      19
 #   func       open        65
 #   func       struck      38
 #   macro      open        23
 #   macro      struck       2
-#   method     open      3251
-#   method     shipped      7
+#   method     open      3237
+#   method     shipped     21
 #   method     struck     534
-#   property   open      3007
-#   property   shipped      7
+#   property   open      2984
+#   property   shipped     30
 #   property   struck     132
 #   protocol   open       161
 #   protocol   struck       2
@@ -2235,7 +2235,7 @@ class	open	NSCollectionViewLayoutAttributes	-	-	-	objc
 class	open	NSCollectionViewLayoutInvalidationContext	-	-	-	objc
 class	open	NSCollectionViewTransitionLayout	-	-	-	objc
 class	open	NSCollectionViewUpdateItem	-	-	-	objc
-class	open	NSColor	-	-	-	objc
+class	shipped	NSColor	-	-	-	objc
 class	open	NSColorList	-	-	-	objc
 class	open	NSColorPanel	-	-	-	objc
 class	open	NSColorPicker	-	-	-	objc
@@ -3061,25 +3061,25 @@ method	open	+colorListNamed	NSColorList	-	-	objc
 method	open	+colorNamed	NSColor	-	-	objc
 method	open	+colorPickerWithIdentifier	NSColorPickerTouchBarItem	-	-	objc
 method	open	+colorWellWithStyle	NSColorWell	-	-	objc
-method	open	+colorWithCGColor	NSColor	-	-	objc
+method	shipped	+colorWithCGColor	NSColor	-	-	objc
 method	open	+colorWithCIColor	NSColor	-	-	objc
 method	open	+colorWithCalibratedHue	NSColor	-	-	objc
-method	open	+colorWithCalibratedRed	NSColor	-	-	objc
-method	open	+colorWithCalibratedWhite	NSColor	-	-	objc
+method	shipped	+colorWithCalibratedRed	NSColor	-	-	objc
+method	shipped	+colorWithCalibratedWhite	NSColor	-	-	objc
 method	open	+colorWithCatalogName	NSColor	-	-	objc
 method	open	+colorWithColorSpace	NSColor	-	-	objc
 method	open	+colorWithDeviceCyan	NSColor	-	-	objc
 method	open	+colorWithDeviceHue	NSColor	-	-	objc
-method	open	+colorWithDeviceRed	NSColor	-	-	objc
-method	open	+colorWithDeviceWhite	NSColor	-	-	objc
-method	open	+colorWithDisplayP3Red	NSColor	-	-	objc
-method	open	+colorWithGenericGamma22White	NSColor	-	-	objc
+method	shipped	+colorWithDeviceRed	NSColor	-	-	objc
+method	shipped	+colorWithDeviceWhite	NSColor	-	-	objc
+method	shipped	+colorWithDisplayP3Red	NSColor	-	-	objc
+method	shipped	+colorWithGenericGamma22White	NSColor	-	-	objc
 method	open	+colorWithHue	NSColor	-	-	objc
 method	open	+colorWithName	NSColor	-	-	objc
 method	open	+colorWithPatternImage	NSColor	-	-	objc
-method	open	+colorWithRed	NSColor	-	-	objc
-method	open	+colorWithSRGBRed	NSColor	-	-	objc
-method	open	+colorWithWhite	NSColor	-	-	objc
+method	shipped	+colorWithRed	NSColor	-	-	objc
+method	shipped	+colorWithSRGBRed	NSColor	-	-	objc
+method	shipped	+colorWithWhite	NSColor	-	-	objc
 method	open	+columnResizeCursorInDirections	NSCursor	-	-	objc
 method	open	+columnTerminatorsForLocale	NSTextTab	-	-	objc
 method	open	+comboButtonWithImage	NSComboButton	-	-	objc
@@ -3866,7 +3866,7 @@ method	open	-colorByApplyingContentHeadroom	NSColor	-	-	objc
 method	open	-colorUsingColorSpace	NSColor	-	-	objc
 method	struck	-colorUsingColorSpaceName	NSColor	-	deprecated	objc
 method	open	-colorUsingType	NSColor	-	-	objc
-method	open	-colorWithAlphaComponent	NSColor	-	-	objc
+method	shipped	-colorWithAlphaComponent	NSColor	-	-	objc
 method	open	-colorWithKey	NSColorList	-	-	objc
 method	open	-colorWithSystemEffect	NSColor	-	-	objc
 method	open	-colorizeByMappingGray	NSBitmapImageRep	-	-	objc
@@ -4406,7 +4406,7 @@ method	struck	-getAdvancements	NSFont	-	deprecated	objc
 method	open	-getBitmapDataPlanes	NSBitmapImageRep	-	-	objc
 method	struck	-getBoundingRects	NSFont	-	deprecated	objc
 method	open	-getColor	NSGradient	-	-	objc
-method	open	-getComponents	NSColor	-	-	objc
+method	shipped	-getComponents	NSColor	-	-	objc
 method	open	-getCompression	NSBitmapImageRep	-	-	objc
 method	open	-getCyan	NSColor	-	-	objc
 method	open	-getFileSystemInfoForPath	NSWorkspace	-	-	objc
@@ -4428,12 +4428,12 @@ method	open	-getPeriodicDelay	NSCell	-	-	objc
 method	open	-getPixel	NSBitmapImageRep	-	-	objc
 method	open	-getRectsBeingDrawn	NSView	-	-	objc
 method	open	-getRectsExposedDuringLiveResize	NSView	-	-	objc
-method	open	-getRed	NSColor	-	-	objc
+method	shipped	-getRed	NSColor	-	-	objc
 method	open	-getRow	NSBrowser	-	-	objc
 method	open	-getRow	NSMatrix	-	-	objc
 method	struck	-getValues	NSOpenGLContext	-	deprecated	objc
 method	struck	-getValues	NSOpenGLPixelFormat	-	deprecated	objc
-method	open	-getWhite	NSColor	-	-	objc
+method	shipped	-getWhite	NSColor	-	-	objc
 method	struck	-glyphAtIndex	NSLayoutManager	-	deprecated	objc
 method	open	-glyphIndexForCharacterAtIndex	NSLayoutManager	-	-	objc
 method	open	-glyphIndexForPoint	NSLayoutManager	-	-	objc
@@ -6803,7 +6803,7 @@ method	open	-yieldActivationToApplication	NSApplication	-	-	objc
 method	open	-yieldActivationToApplicationWithBundleIdentifier	NSApplication	-	-	objc
 method	open	-zoom	NSWindow	-	-	objc
 property	open	ARepeat	NSEvent	-	-	objc
-property	open	CGColor	NSColor	-	-	objc
+property	shipped	CGColor	NSColor	-	-	objc
 property	open	CGColorSpace	NSColorSpace	-	-	objc
 property	shipped	CGContext	NSGraphicsContext	-	-	objc
 property	open	CGDirectDisplayID	NSScreen	-	-	objc
@@ -7119,7 +7119,7 @@ property	open	alpha	NSCollectionViewLayoutAttributes	-	-	objc
 property	open	alpha	NSColorPanel	-	-	objc
 property	open	alpha	NSImageRep	-	-	objc
 property	open	alpha	NSScrubberLayoutAttributes	-	-	objc
-property	open	alphaComponent	NSColor	-	-	objc
+property	shipped	alphaComponent	NSColor	-	-	objc
 property	open	alphaValue	NSView	-	-	objc
 property	open	alphaValue	NSWindow	-	-	objc
 property	open	altIncrementValue	NSSlider	-	-	objc
@@ -7349,12 +7349,12 @@ property	open	bitmapData	NSBitmapImageRep	-	-	objc
 property	open	bitmapFormat	NSBitmapImageRep	-	-	objc
 property	open	bitsPerPixel	NSBitmapImageRep	-	-	objc
 property	open	bitsPerSample	NSImageRep	-	-	objc
-property	open	blackColor	NSColor	-	-	objc
+property	shipped	blackColor	NSColor	-	-	objc
 property	open	blackComponent	NSColor	-	-	objc
 property	open	blendingMode	NSVisualEffectView	-	-	objc
 property	open	blocksOtherRecognizers	NSSpeechRecognizer	-	-	objc
-property	open	blueColor	NSColor	-	-	objc
-property	open	blueComponent	NSColor	-	-	objc
+property	shipped	blueColor	NSColor	-	-	objc
+property	shipped	blueComponent	NSColor	-	-	objc
 property	open	borderColor	NSBox	-	-	objc
 property	open	borderRect	NSBox	-	-	objc
 property	open	borderShape	NSButton	-	-	objc
@@ -7394,7 +7394,7 @@ property	open	boxType	NSBox	-	-	objc
 property	open	branchImage	NSBrowserCell	-	-	objc
 property	open	breakEqualWidthsOption	NSUserInterfaceCompressionOptions	-	-	objc
 property	open	brightnessComponent	NSColor	-	-	objc
-property	open	brownColor	NSColor	-	-	objc
+property	shipped	brownColor	NSColor	-	-	objc
 property	open	browsingVersions	NSDocument	-	-	objc
 property	open	bundleIdentifier	NSRunningApplication	-	-	objc
 property	open	bundleURL	NSRunningApplication	-	-	objc
@@ -7487,7 +7487,7 @@ property	open	childNodes	NSTreeNode	-	-	objc
 property	open	childViewControllers	NSViewController	-	-	objc
 property	open	childWindows	NSWindow	-	-	objc
 property	open	childrenKeyPath	NSTreeController	-	-	objc
-property	open	clearColor	NSColor	-	-	objc
+property	shipped	clearColor	NSColor	-	-	objc
 property	open	clearsFilterPredicateOnInsertion	NSArrayController	-	-	objc
 property	open	clickCount	NSEvent	-	-	objc
 property	open	clickedColumn	NSBrowser	-	-	objc
@@ -7705,9 +7705,9 @@ property	open	customizationLabel	NSStepperTouchBarItem	-	-	objc
 property	open	customizationLabel	NSTouchBarItem	-	-	objc
 property	open	customizationPaletteIsRunning	NSToolbar	-	-	objc
 property	open	customizationRequiredItemIdentifiers	NSTouchBar	-	-	objc
-property	open	cyanColor	NSColor	-	-	objc
+property	shipped	cyanColor	NSColor	-	-	objc
 property	open	cyanComponent	NSColor	-	-	objc
-property	open	darkGrayColor	NSColor	-	-	objc
+property	shipped	darkGrayColor	NSColor	-	-	objc
 property	open	data	NSDataAsset	-	-	objc
 property	open	data1	NSEvent	-	-	objc
 property	open	data2	NSEvent	-	-	objc
@@ -8146,9 +8146,9 @@ property	open	grammarCheckingType	NSTextInputTraits	-	-	objc
 property	open	granularity	NSTextSelection	-	-	objc
 property	struck	graphicsContext	NSWindow	-	deprecated	objc
 property	struck	graphicsPort	NSGraphicsContext	-	deprecated	objc
-property	open	grayColor	NSColor	-	-	objc
-property	open	greenColor	NSColor	-	-	objc
-property	open	greenComponent	NSColor	-	-	objc
+property	shipped	grayColor	NSColor	-	-	objc
+property	shipped	greenColor	NSColor	-	-	objc
+property	shipped	greenComponent	NSColor	-	-	objc
 property	open	gridColor	NSColor	-	-	objc
 property	open	gridColor	NSTableView	-	-	objc
 property	open	gridStyleMask	NSTableView	-	-	objc
@@ -8519,7 +8519,7 @@ property	open	length	NSStatusItem	-	-	objc
 property	open	level	NSWindow	-	-	objc
 property	open	levelIndicatorStyle	NSLevelIndicator	-	-	objc
 property	open	levelIndicatorStyle	NSLevelIndicatorCell	-	-	objc
-property	open	lightGrayColor	NSColor	-	-	objc
+property	shipped	lightGrayColor	NSColor	-	-	objc
 property	open	limitsLayoutForSuspiciousContents	NSLayoutManager	-	-	objc
 property	open	limitsLayoutForSuspiciousContents	NSTextLayoutManager	-	-	objc
 property	open	lineBreakMode	NSCell	-	-	objc
@@ -8570,7 +8570,7 @@ property	open	locationInWindow	NSEvent	-	-	objc
 property	open	locked	NSDocument	-	-	objc
 property	open	logical	NSTextSelection	-	-	objc
 property	open	loops	NSSound	-	-	objc
-property	open	magentaColor	NSColor	-	-	objc
+property	shipped	magentaColor	NSColor	-	-	objc
 property	open	magentaComponent	NSColor	-	-	objc
 property	open	magnification	NSEvent	-	-	objc
 property	open	magnification	NSMagnificationGestureRecognizer	-	-	objc
@@ -8774,7 +8774,7 @@ property	open	numberOfColumns	NSMatrix	-	-	objc
 property	open	numberOfColumns	NSTableRowView	-	-	objc
 property	open	numberOfColumns	NSTableView	-	-	objc
 property	open	numberOfColumns	NSTextTable	-	-	objc
-property	open	numberOfComponents	NSColor	-	-	objc
+property	shipped	numberOfComponents	NSColor	-	-	objc
 property	open	numberOfGlyphs	NSFont	-	-	objc
 property	open	numberOfGlyphs	NSLayoutManager	-	-	objc
 property	open	numberOfItems	NSComboBox	-	-	objc
@@ -8847,7 +8847,7 @@ property	open	options	NSPredicateEditorRowTemplate	-	-	objc
 property	open	options	NSPrintPanel	-	-	objc
 property	open	options	NSTextTab	-	-	objc
 property	open	options	NSTrackingArea	-	-	objc
-property	open	orangeColor	NSColor	-	-	objc
+property	shipped	orangeColor	NSColor	-	-	objc
 property	open	ordered	NSTextList	-	-	objc
 property	open	orderedDocuments	NSApplication	-	-	objc
 property	open	orderedIndex	NSWindow	-	-	objc
@@ -9030,7 +9030,7 @@ property	open	pulldownAction	NSColorWell	-	-	objc
 property	open	pulldownTarget	NSColorWell	-	-	objc
 property	open	pullsDown	NSPopUpButton	-	-	objc
 property	open	pullsDown	NSPopUpButtonCell	-	-	objc
-property	open	purpleColor	NSColor	-	-	objc
+property	shipped	purpleColor	NSColor	-	-	objc
 property	open	quaternaryLabelColor	NSColor	-	-	objc
 property	open	quaternarySystemFillColor	NSColor	-	-	objc
 property	open	queryDescriptors	NSFontCollection	-	-	objc
@@ -9060,8 +9060,8 @@ property	open	recentsAutosaveName	NSSearchFieldCell	-	-	objc
 property	open	recipients	NSSharingService	-	-	objc
 property	open	rect	NSTrackingArea	-	-	objc
 property	open	rectPreservedDuringLiveResize	NSView	-	-	objc
-property	open	redColor	NSColor	-	-	objc
-property	open	redComponent	NSColor	-	-	objc
+property	shipped	redColor	NSColor	-	-	objc
+property	shipped	redComponent	NSColor	-	-	objc
 property	open	reduceMetricsOption	NSUserInterfaceCompressionOptions	-	-	objc
 property	open	refreshController	NSScrollView	-	-	objc
 property	open	refusesFirstResponder	NSCell	-	-	objc
@@ -9886,8 +9886,8 @@ property	open	wantsUpdateLayer	NSView	-	-	objc
 property	open	warningFillColor	NSLevelIndicator	-	-	objc
 property	open	warningValue	NSLevelIndicator	-	-	objc
 property	open	warningValue	NSLevelIndicatorCell	-	-	objc
-property	open	whiteColor	NSColor	-	-	objc
-property	open	whiteComponent	NSColor	-	-	objc
+property	shipped	whiteColor	NSColor	-	-	objc
+property	shipped	whiteComponent	NSColor	-	-	objc
 property	open	width	NSGridColumn	-	-	objc
 property	open	width	NSTableColumn	-	-	objc
 property	open	widthAdjustLimit	NSView	-	-	objc
@@ -9937,7 +9937,7 @@ property	open	xPlacement	NSGridView	-	-	objc
 property	open	yPlacement	NSGridCell	-	-	objc
 property	open	yPlacement	NSGridRow	-	-	objc
 property	open	yPlacement	NSGridView	-	-	objc
-property	open	yellowColor	NSColor	-	-	objc
+property	shipped	yellowColor	NSColor	-	-	objc
 property	open	yellowComponent	NSColor	-	-	objc
 property	open	zIndex	NSCollectionLayoutDecorationItem	-	-	objc
 property	open	zIndex	NSCollectionLayoutGroupCustomItem	-	-	objc
