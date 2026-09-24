@@ -24,6 +24,13 @@
 
 #include <stdio.h>
 
+/* THE PROBE'S SIDE OF §58.2h'S INSTRUMENT: the same selector NSOperation.m defines, declared here because a
+ * declaration inside that file's private category is one this probe could not see, and Objective-C resolves the
+ * call at runtime anyway. It reads the scheduler's own three numbers without writing anything. */
+@interface NSOperationQueue (FNSchedulerCounts)
+- (void)fnSchedulerCountsRunning:(NSUInteger *)running pending:(NSUInteger *)pending operations:(NSUInteger *)ops;
+@end
+
 /* THE LOG AND THE OPERATIONS SHARE IT, under a lock, because operations run on other threads. */
 @interface OpLog : NSObject
 {
@@ -385,6 +392,16 @@ int main(void)
 		 * its absence would go red on a run that happened to lose, and a flaky check in the committed suite is a
 		 * defect of its own. The count stays in the DIAG line above, for whoever fixes the race - and the
 		 * RELIABLE property (every accepted operation runs) IS asserted, because that one held in every run. */
+		/* AND §58.2h: WHAT THE SCHEDULER BELIEVES, read in memory and printed ONCE - the §58.2g lesson applied
+		 * to the queue. `_running != 0` after every block has run says a worker is stuck in its cleanup;
+		 * `_running == 0` with a non-empty `_operations` says the removal is what missed. */
+		{
+			NSUInteger running = 0, pending = 0, ops = 0;
+
+			[queue fnSchedulerCountsRunning:&running pending:&pending operations:&ops];
+			printf("FOUNDATION-OPERATION-DIAG scheduler state: running=%lu pending=%lu operations=%lu\n",
+			       (unsigned long)running, (unsigned long)pending, (unsigned long)ops);
+		}
 	}
 
 	/* ---- DO DETACHED THREADS RELIABLY ENTER THEIR SELECTOR? (§58.2g) -------------------------------

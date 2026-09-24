@@ -347,6 +347,29 @@ static void fn_set_current_queue(NSOperationQueue *queue)
 	return count;
 }
 
+/* TEMPORARY INSTRUMENT (foundation-plan.md §58.2h), AND IT IS DELIBERATELY SILENT: it reads what the SCHEDULER
+ * BELIEVES - `_running`, `_pending`, `_operations` - in ONE lock scope and returns the three numbers; the caller
+ * prints them once, after a burst. §58.2g's lesson applied to this class: an instrument that writes per event
+ * changes the thing it is measuring, and this one never writes at all.
+ *
+ * IT IS NOT DECLARED IN THE PRIVATE CATEGORY ON PURPOSE: a declaration here is a declaration the probe cannot see,
+ * and the probe declares the same selector on its side instead - Objective-C resolves it at runtime, so the two
+ * sides only have to agree on the name. */
+- (void)fnSchedulerCountsRunning:(NSUInteger *)running pending:(NSUInteger *)pending operations:(NSUInteger *)ops
+{
+	[_condition lock];
+	if (running != NULL) {
+		*running = _running;
+	}
+	if (pending != NULL) {
+		*pending = [_pending count];
+	}
+	if (ops != NULL) {
+		*ops = [_operations count];
+	}
+	[_condition unlock];
+}
+
 - (NSInteger)maxConcurrentOperationCount
 {
 	return _maxConcurrent;

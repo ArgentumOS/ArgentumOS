@@ -10920,7 +10920,39 @@ the end of a burst - `_running`, `_pending` and `_operations` - and print those 
 through a temporary accessor. `_running != 0` after every block has run says a worker is stuck in its cleanup;
 `_running == 0` with a non-empty `_operations` says the removal is what missed.
 
-**WHAT REMAINS:** that instrument, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
+### §58.2h — CAUGHT: ~HALF THE WORKERS STAY COUNTED AS RUNNING, PARKED IN THE CLEANUP (2026-09-22)
+
+**The instrument is in** - `-fnSchedulerCountsRunning:pending:operations:` on `NSOperationQueue`, read in ONE lock
+scope and printed ONCE by the probe (no per-event write, §58.2g's lesson) - and **eight runs of
+`foundation_operation` caught the leak twice:**
+```
+runs 1-6:  FOUNDATION-OPERATION-DIAG scheduler state: running=0  pending=0  operations=0
+run 7:     FOUNDATION-OPERATION-DIAG scheduler state: running=27 pending=27 operations=27
+run 8:     FOUNDATION-OPERATION-DIAG scheduler state: running=26 pending=26 operations=26
+```
+**AND EVERY ONE OF THOSE RUNS PASSED ITS CHECKS:** all 50 blocks ran
+(`every-block-added-from-a-worker-thread-runs` ok). So the parked workers are parked AFTER their block - **they never
+get back through the cleanup**, whose first act is `[_condition lock]`.
+
+**WHAT THE IDENTITY `running == pending == operations` SAYS, EXACTLY.** All three counters agree, which is the state
+of a worker that was dispatched (`_pending` + `_running++`), has not finished (`_operations` still holds it), and
+will now never move. Its cleanup is four statements and a `fnSchedule`: `_running--`, two removals, `broadcast`,
+`fnSchedule`, `unlock` - **nothing in it can block except the lock itself.** So a worker that has already run its
+block is parked on `[_condition lock]`, i.e. on the queue's `NSCondition`, which is a plain pthread mutex + condvar
+(verified, textbook).
+
+**SO THIS IS A LOST WAKEUP ON A MUTEX/CONDVAR HANDOFF, NOT A QUEUE-SIDE BOOKKEEPING BUG** - the same family as the
+three findings this session already carries: §58.1's lost wakeups (`sys_poll`/`do_select`/the readers), the
+thread-pair leg, and the `wait4` WNOHANG answer. It also explains the SHAPE of §58.2d's loss (about half of 14 hops
+never ran; about half of 50 workers park here) and why the earlier per-event writes made it disappear.
+
+**NAMED FOR THE NEXT PASS, AND IT IS A KERNEL INSTRUMENT THIS TIME:** count lost wakeups in the futex path
+(`kernel/syscalls/futex.c`, where this tree's `pthread_mutex_lock`/`unlock` goes) with the same
+count-in-memory-and-print-once discipline, and reproduce with the smallest userspace shape that survives: N threads
+contending ONE `NSLock`, entering and leaving, counted. The queue's accessor stays as the instrument that will say
+whether a fix cured it.
+
+**WHAT REMAINS:** that futex instrument, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
 The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
