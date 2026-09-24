@@ -226,7 +226,16 @@ int main(void)
 			"setSessionDescription:", "dataTaskWithRequest:", "dataTaskWithURL:",
 			"getTasksWithCompletionHandler:", "invalidateAndCancel",
 			"finishTasksAndInvalidate", "downloadTaskWithRequest:",
-			"uploadTaskWithRequest:fromData:", NULL
+			"uploadTaskWithRequest:fromData:",
+			/* THE WEBSOCKET FACTORIES ARE INSTANCE METHODS, WHICH IS WHERE APPLE PUTS THEM TOO - the
+			 * sibling of `-dataTaskWithURL:` rather than of `+sharedSession` - AND THAT IS THE WHOLE OF
+			 * THIS LIST'S SECOND STALE ENTRY: they were refused while their ledger row was unshipped,
+			 * §59 shipped them, and the first correction of this check put them in the WRONG LIST (the
+			 * class-method one), which the check answered with `missing +webSocketTaskWithURL:`. A
+			 * refusal list is a fact about the tree, and so is the half of the audit that says where a
+			 * name lives. */
+			"webSocketTaskWithURL:", "webSocketTaskWithURL:protocols:",
+			"webSocketTaskWithRequest:", NULL
 		};
 		static const char *taskSelectors[] = {
 			"taskIdentifier", "originalRequest", "currentRequest", "response", "error",
@@ -234,30 +243,22 @@ int main(void)
 			"countOfBytesReceived", "countOfBytesExpectedToReceive",
 			"resume", "suspend", "cancel", NULL
 		};
-		/* REFUSED, EACH BECAUSE THE CLASS OR THE ROW BEHIND IT IS NOT SHIPPED: the download/upload/
-		 * stream/websocket doors (their own ledger rows) and the coder doors.
+		/* REFUSED, EACH BECAUSE THE ROW BEHIND IT IS NOT SHIPPED - AND WHAT IS LEFT HERE IS THE TWO
+		 * CODER DOORS ALONE. THE DOWNLOAD, UPLOAD, STREAM AND WEBSOCKET DOORS HAVE ALL LEFT THIS LIST,
+		 * one landing at a time, and each ARRIVAL is asserted in the POSITIVE half above rather than
+		 * merely subtracted from here: the three WebSocket factories are classSelectors members now.
 		 *
-		 * AND THE TWO AUTHENTICATION DELEGATE DOORS HAVE LEFT THIS LIST TOO (§53): they were refused while
-		 * NSURLAuthenticationChallenge was "its own family", and that reason expired when §48 shipped the
-		 * family - the doors are declared on NSURLSessionDelegate and NSURLSessionTaskDelegate now, and
-		 * foundation_challengedoor is what asserts the DECLARATIONS. A selector listed here is one this
-		 * library promises NOT to answer, so removing it strengthens this check rather than weakening it.
+		 * AND THIS CHECK IS WHAT CAUGHT §59's LOOSE END, WHICH IS WHY IT IS WORTH ITS SHARPNESS: the
+		 * WebSocket row shipped its factories and NOTHING RE-RAN THIS PROBE for the rest of that work -
+		 * a selector listed here is one this library promises NOT to answer, so the check went red
+		 * exactly as designed, and stayed red until a full Foundation-tier run was finally made. A
+		 * refusal list is a fact about the tree, and a fact about the tree has to be revisited by a run.
 		 *
-		 * AND THE TWO COMPLETION-HANDLER FACTORIES LEFT THIS LIST WHEN THE EXECUTION ROW LANDED: they were
-		 * refused while NOTHING COULD RUN A TASK, and a refusal list is a fact about the tree that a
-		 * landing has to revisit - the third time this one check has been revisited, after the two
-		 * classes W7 shipped before it. */
-		/* THE DOWNLOAD DOORS HAVE LEFT THIS LIST, WHICH IS THE FIFTH TIME THIS SESSION: a refusal is a fact
-		 * about the TREE, and NSURLSessionDownloadTask is what made it stale. The arrival is asserted in the
-		 * positive half below rather than only subtracted from here. */
-		/* THE UPLOAD DOORS HAVE LEFT THIS LIST TOO - the seventh time - and the arrival joins the owed
-		 * list below, so removing a refusal strengthens the check rather than weakening it. */
-		/* AND THE STREAM FACTORY HAS LEFT IT (§58): `-streamTaskWithHostName:port:` is declared and
-		 * implemented now - a task that owns a connected socket - and its ARRIVAL is asserted where it
-		 * belongs, by the unit that drives it (foundation_streamtask), rather than by a name in a list here.
-		 * What stays refused is the WebSocket half, which is the same family's other row. */
+		 * The two authentication delegate doors left earlier (§53): they were refused while
+		 * NSURLAuthenticationChallenge was "its own family", and that reason expired when §48 shipped it
+		 * - the doors are declared on NSURLSessionDelegate and NSURLSessionTaskDelegate now, and
+		 * foundation_challengedoor is what asserts the DECLARATIONS. */
 		static const char *excluded[] = {
-			"webSocketTaskWithURL:",
 			"initWithCoder:", "encodeWithCoder:", NULL
 		};
 		NSURLSession *session = [NSURLSession sharedSession];
