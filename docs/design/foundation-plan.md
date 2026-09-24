@@ -10873,8 +10873,35 @@ the same two arrays, the next unit is that file: `_operations`/`_pending` bookke
 `-removeObjectIdenticalTo:` as the first thing to look at (29 of 50 removals missing is what an identity test that
 is not identity looks like).
 
-**WHAT REMAINS:** the `_operations`/`_pending` bookkeeping in `NSOperation.m` (the leak first, since it is
-reproduced), then the delivery loss, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
+### §58.2f — THE LEAK IS AN INTERMITTENT RACE, AND THE REPRODUCER NOW OBSERVES IT (2026-09-22)
+
+**MEASURED, and the SEQUENCE matters more than any single number:**
+ * the leg's **first** run: `every-block-added-from-a-worker-thread-runs ok` together with `29 operation(s) still in
+   the queue` - a clean reproduction of a leak;
+ * the **next three** runs, library untouched since: the same leg passes, count 0;
+ * the run with a temporary raw write between the four steps of `-fnRunOnQueue:` (entry, after `-start`, after the
+   lock, after the unlock): **61 of 61 workers completed every step and NOTHING leaked** - the diagnostic perturbs
+   the very window it was meant to measure.
+
+**SO IT IS AN INTERMITTENT RACE IN THE WORKER'S COMPLETION PATH, NOT A MISSING REMOVAL.** `_operations` and
+`_pending` are only touched under the queue's condition lock, `-removeObjectIdenticalTo:` IS identity
+(`_items[i] == object`), and the 29 leftovers are operations whose worker never reached the cleanup - 29 of 50 on
+one run, 0 of 50 on the next.
+
+**AND IT IS NOT ASSERTED, BY THIS PROJECT'S OWN RULE:** an intermittent defect cannot be asserted in either
+direction - asserting the leak goes red on a run that happened to win the race, asserting its absence goes red on a
+run that lost - and a flaky check in the committed suite is a defect of its own. The leg therefore ASSERTS the
+reliable property (`every-block-added-from-a-worker-thread-runs`, true in every run) and PRINTS the queue's own
+count in its DIAG line for whoever fixes the race.
+
+**WHAT THIS SHARES WITH THE OTHER RED:** §58.2d's delivery loss (14 hops handed to the queue, 7 ever ran) and this
+leak are both "a thread that never gets to its next step" - the same family as three findings this session already
+carries: the `wait4` WNOHANG answer, the thread-pair leg, and §58.1's lost wakeups. **NAMED FOR THE NEXT PASS:**
+whatever makes a JUST-CREATED thread fail to proceed; the first measurement is to instrument the *thread creation*
+path (`-detachNewThreadSelector:` / `pthread_create`) and count how many of N detached threads actually ENTER their
+selector.
+
+**WHAT REMAINS:** that instrument, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
 The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
