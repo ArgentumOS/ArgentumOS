@@ -46,11 +46,25 @@
  * same bits are declared under the modern spelling (`kCGImageByteOrder32Little` is 2 << 12, exactly
  * as `kCGBitmapByteOrder32Little` was); and the two masks, because a `bitmapInfo` word is a packed
  * pair and a named mask beats a literal. */
+/* THE FULL EIGHT, IN APPLE'S CANONICAL VALUES, and the two `NoneSkip*` ones had to MOVE to get
+ * there: this tree previously had `NoneSkipFirst = 4` and `NoneSkipLast = 5`, which is BOTH SWAPPED
+ * relative to Apple (where NoneSkipLast is 5 and NoneSkipFirst is 6) and a COLLISION with
+ * `kCGImageAlphaFirst`, whose value is 4. Nothing depended on the old numbers — the one user names
+ * the constant rather than spelling a literal, and the value every context and probe is built with,
+ * `kCGImageAlphaPremultipliedFirst`, keeps its value of 2 throughout — so this is a fidelity fix
+ * rather than a breaking change. It also fills the four names the ledger has been carrying as OPEN.
+ *
+ * `kCGImageAlphaOnly` is an alpha channel and NOTHING ELSE — no colour components at all — which is
+ * what a mask is, and the sampler in CGContextDrawImage handles it as its own case. */
 typedef enum {
-	kCGImageAlphaNoneSkipFirst = 4,
-	kCGImageAlphaNoneSkipLast = 5,
+	kCGImageAlphaNone = 0,
+	kCGImageAlphaPremultipliedLast = 1,
 	kCGImageAlphaPremultipliedFirst = 2,
-	kCGImageAlphaPremultipliedLast = 1
+	kCGImageAlphaLast = 3,
+	kCGImageAlphaFirst = 4,
+	kCGImageAlphaNoneSkipLast = 5,
+	kCGImageAlphaNoneSkipFirst = 6,
+	kCGImageAlphaOnly = 7
 } CGImageAlphaInfo;
 
 typedef enum {

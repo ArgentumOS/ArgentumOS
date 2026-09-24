@@ -1885,6 +1885,9 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 	CGAffineTransform inverse;
 	const unsigned char *src;
 	CGPoint corner[4];
+	int channels[4];
+	int straight = 0;
+	int stored = 0;
 	size_t size = 0;
 	size_t row_bytes;
 	size_t img_w, img_h;
@@ -1898,6 +1901,18 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 	}
 	if (!cg_image_is_drawable(image)) {
 		fprintf(stderr, "CG-REFUSE: this image was not built in the format these contexts draw\n");
+		return;
+	}
+	/* THE CHART IS READ ONCE, NOT PER PIXEL. `cg_image_layout` says where each of blue, green, red
+	 * and alpha lives inside a pixel — or that a channel is absent, which is how a grey chart and a
+	 * mask are handled without the loop below having a case for either — and whether the stored
+	 * alpha is straight. Everything past this point works in RGBA and lets the map do the work, so
+	 * THIS LOOP HAS NO FORMAT MATRIX IN IT AT ALL. */
+	cg_image_layout(CGImageGetColorSpace(image), CGImageGetAlphaInfo(image),
+			CGImageGetBitmapInfo(image) & ~0x1fu, channels, &stored, &straight);
+	if (stored == 0) {
+		fprintf(stderr, "CG-REFUSE: CGContextDrawImage cannot read this image's channel "
+				"layout\n");
 		return;
 	}
 	if (c->state.blend != kCGBlendModeNormal) {
@@ -1969,6 +1984,7 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 			const unsigned char *s;
 			double u, v;
 			double sa;
+			double sb, sg, sr, sv;
 			int sx, sy;
 
 			if (!pixman_region32_contains_point(&c->state.clip, x, y, NULL)) {
@@ -1991,15 +2007,27 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 			if (sy >= (int)img_h) {
 				sy = (int)img_h - 1;
 			}
-			s = src + (size_t)sy * row_bytes + (size_t)sx * 4u;
+			s = src + (size_t)sy * row_bytes + (size_t)sx * (size_t)stored;
 			d = c->data + (size_t)y * (size_t)c->stride + (size_t)x * 4u;
-			/* PREMULTIPLIED SOURCE-OVER: the format is premultiplied, so this is the simple
-			 * form of the blend — no division, and the destination alpha is updated by the same
-			 * rule as the channels. */
-			sa = ((double)s[3] / 255.0) * alpha;
-			d[0] = (unsigned char)((double)s[0] * sa + (double)d[0] * (1.0 - sa));
-			d[1] = (unsigned char)((double)s[1] * sa + (double)d[1] * (1.0 - sa));
-			d[2] = (unsigned char)((double)s[2] * sa + (double)d[2] * (1.0 - sa));
+			/* PREMULTIPLIED SOURCE-OVER, AND EVERY CHART REACHES IT THE SAME WAY: the channels
+			 * come through the map, so grey reads one byte three times and a mask reads none,
+			 * and a chart with no alpha channel reads 255 so the blend reduces to a copy.
+			 * A chart whose alpha is STRAIGHT is premultiplied right here — once, before the
+			 * composite — which is the same multiply CGImageCreateWithPNGDataProvider does, and
+			 * is why the blend below needs no case for it. */
+			sb = (double)s[channels[0]];
+			sg = (double)s[channels[1]];
+			sr = (double)s[channels[2]];
+			sv = channels[3] < 0 ? 255.0 : (double)s[channels[3]];
+			if (straight && channels[3] >= 0) {
+				sb = sb * sv / 255.0;
+				sg = sg * sv / 255.0;
+				sr = sr * sv / 255.0;
+			}
+			sa = (sv / 255.0) * alpha;
+			d[0] = (unsigned char)(sb * sa + (double)d[0] * (1.0 - sa));
+			d[1] = (unsigned char)(sg * sa + (double)d[1] * (1.0 - sa));
+			d[2] = (unsigned char)(sr * sa + (double)d[2] * (1.0 - sa));
 			d[3] = (unsigned char)((double)d[3] * (1.0 - sa) + 255.0 * sa);
 		}
 	}

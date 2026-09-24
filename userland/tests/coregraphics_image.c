@@ -120,14 +120,25 @@ int main(void)
 
 	/* --- and a chart this library cannot draw is REFUSED ---------------------------------- */
 	provider = CGDataProviderCreateWithData(NULL, img_data, sizeof(img_data), NULL);
-	check("a chart with a different alpha is refused",
-	      CGImageCreate(4, 4, 8, 32, 16, CGColorSpaceCreateDeviceRGB(),
-			    kCGImageAlphaPremultipliedLast | kCGImageByteOrder32Little, provider, NULL,
-			    false, kCGRenderingIntentDefault) == NULL);
-	check("...and so is a different bit depth",
+	/* THE MATRIX WIDENED, SO THIS CHECK MOVED RATHER THAN DISAPPEARED. A chart with
+	 * `kCGImageAlphaPremultipliedLast` used to be REFUSED, and now it is accepted, drawn, and
+	 * covered by its own check below — the rule the Foundation probes follow applies here too:
+	 * landing the code must move the assertion that asserted it was missing.
+	 *
+	 * WHAT IS STILL REFUSED IS STILL CHECKED, each for a reason: a bit depth that would have to be
+	 * SCALED, a `bitsPerPixel` that disagrees with the channels the chart actually has, and CMYK,
+	 * whose four COLOUR components would need conversion rather than reordering. */
+	check("a bit depth that would have to be scaled is refused",
 	      CGImageCreate(4, 4, 16, 64, 32, CGColorSpaceCreateDeviceRGB(),
 			    kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little, provider, NULL,
 			    false, kCGRenderingIntentDefault) == NULL);
+	check("...and a bitsPerPixel that disagrees with the chart's own channels",
+	      CGImageCreate(4, 4, 8, 32, 16, CGColorSpaceCreateDeviceRGB(), kCGImageAlphaNone,
+			    provider, NULL, false, kCGRenderingIntentDefault) == NULL);
+	check("...and CMYK, which the blit cannot reorder into RGB",
+	      CGImageCreate(4, 4, 8, 32, 16, CGColorSpaceCreateDeviceCMYK(),
+			    kCGImageAlphaNone | kCGImageByteOrder32Big, provider, NULL, false,
+			    kCGRenderingIntentDefault) == NULL);
 	check("...and a DECODE array, rather than ignoring it",
 	      CGImageCreate(4, 4, 8, 32, 16, CGColorSpaceCreateDeviceRGB(),
 			    kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little, provider, decode,
@@ -190,6 +201,85 @@ int main(void)
 		check_num("...green", (double)p[1], 127.5, 2.0);
 		CGImageRelease(himg);
 		CGDataProviderRelease(hp);
+		CGContextRelease(c);
+	}
+
+	/* --- and the WIDENED MATRIX, proven by DRAWING rather than by construction ------------- */
+	/* EVERY CHART BELOW WAS UNBUILDABLE BEFORE THIS SLICE. Numbers, not shapes: a grey chart has
+	 * one channel and three names for it, a `PremultipliedLast` chart is the other end of the same
+	 * 32-bit layout, and a `Last` chart promises samples that are NOT premultiplied — so the
+	 * sampler owes the multiply and half-transparent white must land at 64, the same number the
+	 * PNG path produces for the same reason. */
+	{
+		/* GREY: ONE BYTE PER PIXEL. Four different greys, so a wrong stride or a wrong map shows
+		 * up as the wrong pixel rather than as a plausible flat fill. */
+		static const unsigned char grey[4] = { 0x00, 0x40, 0x80, 0xff };
+		CGDataProviderRef gp = CGDataProviderCreateWithData(NULL, grey, sizeof(grey), NULL);
+		CGImageRef gi = CGImageCreate(4, 1, 8, 8, 4, CGColorSpaceCreateDeviceGray(),
+					      kCGImageAlphaNone, gp, NULL, false,
+					      kCGRenderingIntentDefault);
+
+		check("a GREY chart — one byte per pixel and no alpha — can be built", gi != NULL);
+		c = fresh();
+		/* THE RECT IS THE WHOLE SURFACE, AND THE READ IS THREE ROWS IN. A 4x1 image drawn into a
+		 * 4x4 rect lands in USER space y 0..4, and this context's CTM flips y — so the DEVICE rows
+		 * 0..3 sit at the BOTTOM of that rect and a read at (1,0) falls outside it entirely, which
+		 * is how the first version of this check got 0 with everything else correct. Drawing into
+		 * the full 8x8 surface makes the mapping one image pixel to two device columns, so column 1
+		 * is still image pixel 0 and column 3 is pixel 1. */
+		CGContextDrawImage(c, CGRectMake(0.0, 0.0, 8.0, 8.0), gi);
+		pixel(c, 3, 0, p);
+		check("...and it draws as GREY: blue, green and red all equal", p[0] == p[1] && p[1] == p[2]);
+		check_num("...at the value that pixel held", (double)p[1], 64.0, 0.0);
+		CGImageRelease(gi);
+		CGDataProviderRelease(gp);
+		CGContextRelease(c);
+	}
+	{
+		/* PREMULTIPLIEDLAST | 32Little: the byte order reverses on the way in, so this is
+		 * R, G, B, A in memory — the same pixels the library's own format holds, reached from
+		 * the other spelling. Drawing red must give red AND NOT BLUE. */
+		static const unsigned char rgba[4] = { 0xff, 0x00, 0x00, 0xff };
+		CGDataProviderRef rp = CGDataProviderCreateWithData(NULL, rgba, sizeof(rgba), NULL);
+		CGImageRef ri = CGImageCreate(1, 1, 8, 32, 4, CGColorSpaceCreateDeviceRGB(),
+					      kCGImageAlphaPremultipliedLast | kCGImageByteOrder32Little, rp,
+					      NULL, false, kCGRenderingIntentDefault);
+
+		check("a kCGImageAlphaPremultipliedLast chart is ACCEPTED now, not refused", ri != NULL);
+		c = fresh();
+		CGContextDrawImage(c, CGRectMake(0.0, 0.0, 8.0, 8.0), ri);
+		pixel(c, 0, 0, p);
+		check_num("...and its redchannel is red", (double)p[2], 255.0, 0.0);
+		check_num("...while its blue channel is NOT", (double)p[0], 0.0, 0.0);
+		CGImageRelease(ri);
+		CGDataProviderRelease(rp);
+		CGContextRelease(c);
+	}
+	{
+		/* STRAIGHT ALPHA: `kCGImageAlphaLast` samples are NOT premultiplied, so the sampler owes
+		 * the multiply — and the proof is the same 64 the premultiplied PNG case gives, arrived at
+		 * from the opposite direction. A library that forgot would land at 128.
+		 *
+		 * AND THE FIXTURE IS `A, B, G, R`, WHICH IS THE PART THAT FOOLED ME: `AlphaLast` is the
+		 * LOGICAL order, and `kCGImageByteOrder32Little` REVERSES it in memory, so the alpha's byte
+		 * is the FIRST one. My first version of this fixture wrote R, G, B, A — the reading one
+		 * expects from the name — and the alpha came back as 255. The code was right, the fixture
+		 * was wrong, and the check below is what said so. */
+		static const unsigned char straight[4] = { 0x80, 0xff, 0xff, 0xff };
+		CGDataProviderRef sp = CGDataProviderCreateWithData(NULL, straight, sizeof(straight), NULL);
+		CGImageRef si = CGImageCreate(1, 1, 8, 32, 4, CGColorSpaceCreateDeviceRGB(),
+					      kCGImageAlphaLast | kCGImageByteOrder32Little, sp, NULL, false,
+					      kCGRenderingIntentDefault);
+
+		check("a kCGImageAlphaLast chart — STRAIGHT alpha — can be built", si != NULL);
+		c = fresh();
+		CGContextDrawImage(c, CGRectMake(0.0, 0.0, 8.0, 8.0), si);
+		pixel(c, 0, 0, p);
+		check_num("...and the sampler PREMULTIPLIED it: half-transparent white lands at 64, not 128",
+			  (double)p[2], 64.0, 0.0);
+		check_num("...with its alpha preserved", (double)p[3], 128.0, 0.0);
+		CGImageRelease(si);
+		CGDataProviderRelease(sp);
 		CGContextRelease(c);
 	}
 

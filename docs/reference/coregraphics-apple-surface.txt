@@ -5,7 +5,7 @@
 #
 # sources: https://developer.apple.com/tutorials/data/index/coregraphics
 #          (plus .../index/corefoundation, CG-named rows only — see below)
-# measured: 2026-09-22
+# measured: 2026-09-23
 #
 # kind	status	name	owner	family	why	src
 #
@@ -39,7 +39,7 @@
 #   func       shipped  177   open  510   struck   48
 #   macro      shipped    7   open   98   struck    2
 #   enum       shipped   10   open   46   struck    1
-#   case       shipped   70   open  360   struck   14
+#   case       shipped   74   open  356   struck   14
 #   var        shipped   18   open  108   struck    9
 #   typealias  shipped    7   open   91   struck    2
 #   struct     shipped    6   open   14   struck    0
@@ -294,12 +294,12 @@ case	open	kCGGradientDrawsBeforeStartLocation	-	Opaque Types / Drawing Gradients
 case	open	kCGHIDEventTap	-	Services / Constants / Constants	-	objc
 case	open	kCGHeadInsertEventTap	-	Services / Constants / Constants	-	objc
 case	open	kCGHelpWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGImageAlphaFirst	-	Opaque Types / Examining an image / Constants	-	objc
-case	open	kCGImageAlphaLast	-	Opaque Types / Examining an image / Constants	-	objc
-case	open	kCGImageAlphaNone	-	Opaque Types / Examining an image / Constants	-	objc
+case	shipped	kCGImageAlphaFirst	-	Opaque Types / Examining an image / Constants	-	objc
+case	shipped	kCGImageAlphaLast	-	Opaque Types / Examining an image / Constants	-	objc
+case	shipped	kCGImageAlphaNone	-	Opaque Types / Examining an image / Constants	-	objc
 case	shipped	kCGImageAlphaNoneSkipFirst	-	Opaque Types / Examining an image / Constants	-	objc
 case	shipped	kCGImageAlphaNoneSkipLast	-	Opaque Types / Examining an image / Constants	-	objc
-case	open	kCGImageAlphaOnly	-	Opaque Types / Examining an image / Constants	-	objc
+case	shipped	kCGImageAlphaOnly	-	Opaque Types / Examining an image / Constants	-	objc
 case	shipped	kCGImageAlphaPremultipliedFirst	-	Opaque Types / Examining an image / Constants	-	objc
 case	shipped	kCGImageAlphaPremultipliedLast	-	Opaque Types / Examining an image / Constants	-	objc
 case	open	kCGImageByteOrder16Big	-	Reference / Enumerations / Constants	-	objc
