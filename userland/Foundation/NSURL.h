@@ -49,10 +49,23 @@
 
 #import <Foundation/NSObject.h>
 
+@class NSArray;
+@class NSMutableDictionary;
+@class NSDictionary;
+@class NSError;
 @class NSString;
 @class NSNumber;
 
 NS_ASSUME_NONNULL_BEGIN
+
+/* The key type is an opaque string, and the keys' VALUES are their own names, which is this library's
+ * standing spelling for a constant whose name Apple publishes and whose string nobody's program reads
+ * (§11.6.1 D2, the same rule NSFileManager's key names follow). The typedefs come BEFORE the interface
+ * that breathes them, which is what using them in a declaration requires. */
+typedef NSString *NSURLResourceKey;
+
+/* Apple's nine file resource types, whose values ARE their own names here (D2, as above). */
+typedef NSString *NSURLFileResourceType;
 
 @interface NSURL : NSObject <NSCopying>
 {
@@ -65,6 +78,7 @@ NS_ASSUME_NONNULL_BEGIN
 	NSString *_query;		/* nil when absent */
 	NSString *_fragment;		/* nil when absent */
 	BOOL _isFile;
+	NSMutableDictionary *_cachedResourceValues;	/* the resource-value cache, built lazily (W8 6a) */
 }
 
 /* nil when the string is not an absolute URL with a valid scheme. */
@@ -115,7 +129,70 @@ NS_ASSUME_NONNULL_BEGIN
 /* Immutable, so copying returns self. */
 - (id)copy;
 
+/* ---- ACCESSING RESOURCE VALUES (W8 slice 6a) ----------------------------------------------------
+ *
+ * THE FILE'S PROPERTIES AS VALUES, keyed by Cocoa's own key names, so a caller asks ONE question and
+ * gets an OBJECT back rather than calling lstat(2) and decoding a bitfield - the same reason
+ * NSFileManager's -attributesOfItemAtPath:error: exists, from the other side.
+ *
+ * THE CACHE IS PART OF THE CONTRACT AND NOT AN OPTIMISATION. Apple documents that a URL OBJECT caches
+ * the resource values it has read, that the cache lives until the object goes away, and that
+ * -removeCachedResourceValueForKey:/ -removeAllCachedResourceValues take it back out - which is what
+ * makes the two reads of a file that CHANGED between them the observable difference this unit is
+ * probed on. -setTemporaryResourceValue:forKey: is the other side of the same fact: a value that is
+ * NOT on disk and lives only in the object's cache.
+ *
+ * WHAT IS ANSWERED HERE, AND WHAT IS NOT: a key is answered when this substrate HAS the fact behind it
+ * (the stat family, access(2), the path itself), and a key this substrate has nothing behind is
+ * registered as open rather than answered with a guess - NSURLFileSecurityKey among them, whose value
+ * would have to be the CFFileSecurity facts §11.6.1 D13 records as absent here.
+ */
+- (BOOL)getResourceValue:(id _Nullable * _Nullable)value
+		  forKey:(NSURLResourceKey)key
+		   error:(NSError ** _Nullable)error;
+/* THE COLLECTIONS ARE THIS LIBRARY'S OWN AND CARRY NO GENERIC PARAMETERS (measured: `NSArray` here has
+ * no type argument), so the shape is Cocoa's door with this tree's container spelling. */
+- (nullable NSDictionary *)resourceValuesForKeys:(NSArray *)keys
+					   error:(NSError ** _Nullable)error;
+- (BOOL)checkResourceIsReachableAndReturnError:(NSError ** _Nullable)error;
+- (void)removeCachedResourceValueForKey:(NSURLResourceKey)key;
+- (void)removeAllCachedResourceValues;
+- (void)setTemporaryResourceValue:(nullable id)value forKey:(NSURLResourceKey)key;
+
 @end
+
+extern NSURLResourceKey const NSURLNameKey;
+extern NSURLResourceKey const NSURLLocalizedNameKey;
+extern NSURLResourceKey const NSURLPathKey;
+extern NSURLResourceKey const NSURLCanonicalPathKey;
+extern NSURLResourceKey const NSURLIsRegularFileKey;
+extern NSURLResourceKey const NSURLIsDirectoryKey;
+extern NSURLResourceKey const NSURLIsSymbolicLinkKey;
+extern NSURLResourceKey const NSURLIsReadableKey;
+extern NSURLResourceKey const NSURLIsWritableKey;
+extern NSURLResourceKey const NSURLIsExecutableKey;
+extern NSURLResourceKey const NSURLIsHiddenKey;
+extern NSURLResourceKey const NSURLFileSizeKey;
+extern NSURLResourceKey const NSURLFileAllocatedSizeKey;
+extern NSURLResourceKey const NSURLTotalFileSizeKey;
+extern NSURLResourceKey const NSURLTotalFileAllocatedSizeKey;
+extern NSURLResourceKey const NSURLLinkCountKey;
+extern NSURLResourceKey const NSURLContentModificationDateKey;
+extern NSURLResourceKey const NSURLContentAccessDateKey;
+extern NSURLResourceKey const NSURLAttributeModificationDateKey;
+extern NSURLResourceKey const NSURLFileIdentifierKey;
+extern NSURLResourceKey const NSURLFileResourceIdentifierKey;
+extern NSURLResourceKey const NSURLFileResourceTypeKey;
+extern NSURLResourceKey const NSURLParentDirectoryURLKey;
+
+extern NSURLFileResourceType const NSURLFileResourceTypeRegular;
+extern NSURLFileResourceType const NSURLFileResourceTypeDirectory;
+extern NSURLFileResourceType const NSURLFileResourceTypeSymbolicLink;
+extern NSURLFileResourceType const NSURLFileResourceTypeSocket;
+extern NSURLFileResourceType const NSURLFileResourceTypeCharacterSpecial;
+extern NSURLFileResourceType const NSURLFileResourceTypeBlockSpecial;
+extern NSURLFileResourceType const NSURLFileResourceTypeNamedPipe;
+extern NSURLFileResourceType const NSURLFileResourceTypeUnknown;
 
 /*
  * THE PRIVATE HALF, folded in from fnurl.h: the declarations this library shares internally.

@@ -12089,6 +12089,57 @@ it belongs (the coder door).
 **THE REMAINING W8 SLICES** are unchanged: the URL half on its own "W8p" row (the resource-value family,
 148 open rows), then the coordinator family, `NSFileVersion` and `NSFileProviderService`.
 
+**SLICE 6a LANDED (2026-09-24): THE RESOURCE-VALUE FAMILY BEGINS - the doors, the file keys, and the
+CACHE, which is the centrepiece.** `foundation_urlresourcevalues` is a NEW probe with **14 checks**,
+green; the W8p group goes from **148 open, 0 shipped** to **115 open, 33 shipped**.
+
+**WHAT SHIPS, AND WHAT IS DELIBERATELY NOT.** Six doors: `-getResourceValue:forKey:error:`,
+`-resourceValuesForKeys:error:`, `-checkResourceIsReachableAndReturnError:`,
+`-removeCachedResourceValueForKey:`, `-removeAllCachedResourceValues` and
+`-setTemporaryResourceValue:forKey:`. Under them, the keys this substrate HAS a fact behind: the name and
+the localized name, the path and the canonical path, the three kinds, the three `access(2)` answers, the
+dot-rule hidden flag, the four sizes, the link count, the three dates, the inode identifier, the resource
+type and its eight values, and the parent URL. **What is not shipped is not forgotten:** `NSURLFileSecurityKey`
+is absent *because its value would have to be the CFFileSecurity facts §11.6.1 D13 records as unavailable
+here*, and the volume/ubiquitous/thumbnail/quarantine/protection masses are **6b/6c** - the setters among
+them, which are a DELEGATION rather than new machinery (`-setResourceValue:forKey:error:` is
+`NSFileManager`'s `-setAttributes:ofItemAtPath:error:` seen from the URL side).
+
+**AND THE REASON THIS UNIT IS PROBED THE WAY IT IS: THE CACHE IS THE CONTRACT.** Apple documents that a
+URL object caches what it has read and that the two `-removeCached…` doors take it back out, so the probe
+reads a size, CHANGES THE FILE ON DISK, reads again and requires the CACHED answer, then clears the cache
+and requires the fresh one - `read=10 after-append=10 after-remove=20`, `removeAll` → 25. A cache that
+re-read instead would answer 20/25/25 and fail, which makes the difference between a cache and a re-read
+observable rather than a claim.
+
+**THREE MEASURED FACTS THE BUILD PAID FOR, EACH WORTH ITS LINE:**
+ * **`NSMutableDictionary.h` DOES NOT EXIST IN THIS TREE** - `NSMutableDictionary` is declared in
+   `NSDictionary.h` - and the CLEAN-ROOM GATE caught my import BY NAME (`resolves to no header in this
+   tree`). The gate did exactly what it exists for; the fix is to stop importing a header this library
+   does not have.
+ * **THIS LIBRARY'S COLLECTIONS CARRY NO LIGHTWEIGHT GENERICS**: `NSDictionary<NSURLResourceKey, id> *` is
+   a compile error here (`type arguments cannot be applied to non-parameterized class`), so Apple's
+   parameterized signatures are spelled with this tree's containers and the header says why.
+ * **`id *` NEEDS ITS INNER SPECIFIER SPELLED** - `id _Nullable * _Nullable` - where `NSError ** _Nullable`
+   needs only one, because `id` is itself a pointer and the nullability completeness rule covers both
+   levels. Found by the warning, not by reasoning.
+
+**AND THE INSTRUMENT WAS WRONG AGAIN, IN THE SAME WAY AS SLICE 5 - RECORDED BECAUSE IT IS A PATTERN.**
+`rv-a-file-answers-its-facts` first failed on my assertion that a 0644 file is not executable. **Measured:
+this kernel's `check_permission()` returns 0 for `uid == 0` (`kernel/syscalls.c`), and this guest's shell
+is root**, so root passes every access check and a 0644 file IS executable here. The check now asserts the
+door against `access(2)`'s own answer and PRINTS the uid, so it pins the door's arithmetic instead of my
+assumption about the user. Two slices running, the thing that was wrong was my expectation and not the
+tree - and both times the fix was to make the instrument print what decided it.
+
+**AND ONE DEBT RECORDED RATHER THAN SILENTLY FIXED, because it is the URL unit's and not this slice's:**
+`NSURL` had **no `-dealloc` at all** before this slice - it copies its parts and released none of them -
+and one of those parts, `_scheme`, is not even owned (it comes from `-lowercaseString`, which answers an
+autoreleased string). Slice 6a adds a `-dealloc` for the cache it introduces and stops there: releasing
+the parts would be a crash where `_scheme` is the object and a behaviour change beyond this slice where it
+is not. **The URL unit owes that ownership fix**, and it is written at the dealloc itself.
+
+
 
 
 

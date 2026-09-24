@@ -23,6 +23,17 @@
  */
 
 #import <Foundation/NSURL.h>
+
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#import <Foundation/NSArray.h>
+#import <Foundation/NSDate.h>
+#import <Foundation/NSDictionary.h>
+#import <Foundation/NSError.h>
+#import <Foundation/NSNull.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSNumber.h>
 #include "NSURL.h"		/* RFC 3986 §5.2: the resolution NSURL's relative door is FOR */
@@ -494,6 +505,325 @@ static NSRange fn_scheme_range(const char *bytes, size_t length)
 - (id)copy
 {
 	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) */
+}
+
+
+/* ------------------------------------------------------- resource values (W8 slice 6a) */
+
+/* THE KEYS' STRING VALUES ARE THEIR OWN NAMES, this library's standing spelling for a constant whose
+ * name Apple publishes and whose string no program of ours reads (§11.6.1 D2, exactly as
+ * NSFileManager's key names are spelled). */
+NSURLResourceKey const NSURLNameKey = @"NSURLNameKey";
+NSURLResourceKey const NSURLLocalizedNameKey = @"NSURLLocalizedNameKey";
+NSURLResourceKey const NSURLPathKey = @"NSURLPathKey";
+NSURLResourceKey const NSURLCanonicalPathKey = @"NSURLCanonicalPathKey";
+NSURLResourceKey const NSURLIsRegularFileKey = @"NSURLIsRegularFileKey";
+NSURLResourceKey const NSURLIsDirectoryKey = @"NSURLIsDirectoryKey";
+NSURLResourceKey const NSURLIsSymbolicLinkKey = @"NSURLIsSymbolicLinkKey";
+NSURLResourceKey const NSURLIsReadableKey = @"NSURLIsReadableKey";
+NSURLResourceKey const NSURLIsWritableKey = @"NSURLIsWritableKey";
+NSURLResourceKey const NSURLIsExecutableKey = @"NSURLIsExecutableKey";
+NSURLResourceKey const NSURLIsHiddenKey = @"NSURLIsHiddenKey";
+NSURLResourceKey const NSURLFileSizeKey = @"NSURLFileSizeKey";
+NSURLResourceKey const NSURLFileAllocatedSizeKey = @"NSURLFileAllocatedSizeKey";
+NSURLResourceKey const NSURLTotalFileSizeKey = @"NSURLTotalFileSizeKey";
+NSURLResourceKey const NSURLTotalFileAllocatedSizeKey = @"NSURLTotalFileAllocatedSizeKey";
+NSURLResourceKey const NSURLLinkCountKey = @"NSURLLinkCountKey";
+NSURLResourceKey const NSURLContentModificationDateKey = @"NSURLContentModificationDateKey";
+NSURLResourceKey const NSURLContentAccessDateKey = @"NSURLContentAccessDateKey";
+NSURLResourceKey const NSURLAttributeModificationDateKey = @"NSURLAttributeModificationDateKey";
+NSURLResourceKey const NSURLFileIdentifierKey = @"NSURLFileIdentifierKey";
+NSURLResourceKey const NSURLFileResourceIdentifierKey = @"NSURLFileResourceIdentifierKey";
+NSURLResourceKey const NSURLFileResourceTypeKey = @"NSURLFileResourceTypeKey";
+NSURLResourceKey const NSURLParentDirectoryURLKey = @"NSURLParentDirectoryURLKey";
+
+NSURLFileResourceType const NSURLFileResourceTypeRegular = @"NSURLFileResourceTypeRegular";
+NSURLFileResourceType const NSURLFileResourceTypeDirectory = @"NSURLFileResourceTypeDirectory";
+NSURLFileResourceType const NSURLFileResourceTypeSymbolicLink = @"NSURLFileResourceTypeSymbolicLink";
+NSURLFileResourceType const NSURLFileResourceTypeSocket = @"NSURLFileResourceTypeSocket";
+NSURLFileResourceType const NSURLFileResourceTypeCharacterSpecial = @"NSURLFileResourceTypeCharacterSpecial";
+NSURLFileResourceType const NSURLFileResourceTypeBlockSpecial = @"NSURLFileResourceTypeBlockSpecial";
+NSURLFileResourceType const NSURLFileResourceTypeNamedPipe = @"NSURLFileResourceTypeNamedPipe";
+NSURLFileResourceType const NSURLFileResourceTypeUnknown = @"NSURLFileResourceTypeUnknown";
+
+/* ONE PATH, ONE lstat - AND lstat RATHER THAN stat ON PURPOSE: -isSymbolicLinkKey asks about the LINK,
+ * and a link's -fileSizeKey is the length of the string it holds, where stat would answer about the
+ * target. This is NSFileWrapper's reader's rule, reached from the other side. */
+static int fn_url_lstat(NSURL *url, struct stat *st)
+{
+	NSString *path = [url path];
+
+	if (![url isFileURL] || path == nil) {
+		return -1;
+	}
+	return lstat([path UTF8String], st);
+}
+
+/* AN ERROR THE WAY THIS LIBRARY MAKES THEM: the code IS the errno and the description names the errno
+ * and what was asked about, so a refusal is auditable from outside. */
+static NSError *fn_url_error(int err, NSString *what)
+{
+	return [NSError errorWithDomain:@"NSPOSIXErrorDomain"
+				   code:err
+			       userInfo:[NSDictionary dictionaryWithObject:
+					 [NSString stringWithFormat:@"%@: %s", what, strerror(err)]
+								    forKey:NSLocalizedDescriptionKey]];
+}
+
+/* THE NINE FILE RESOURCE TYPES: one value per mode bit, and Unknown for the rest - which is Apple's
+ * own eighth case rather than an error. */
+static NSURLFileResourceType fn_url_resource_type(mode_t mode)
+{
+	if (S_ISREG(mode)) return NSURLFileResourceTypeRegular;
+	if (S_ISDIR(mode)) return NSURLFileResourceTypeDirectory;
+	if (S_ISLNK(mode)) return NSURLFileResourceTypeSymbolicLink;
+	if (S_ISSOCK(mode)) return NSURLFileResourceTypeSocket;
+	if (S_ISCHR(mode)) return NSURLFileResourceTypeCharacterSpecial;
+	if (S_ISBLK(mode)) return NSURLFileResourceTypeBlockSpecial;
+	if (S_ISFIFO(mode)) return NSURLFileResourceTypeNamedPipe;
+	return NSURLFileResourceTypeUnknown;
+}
+
+/* IS THIS KEY ONE OF THIS UNIT'S AT ALL? The distinction matters and is the reason this predicate
+ * exists: a key the library does not know is a REFUSAL (an error, named), while a key it knows and
+ * whose fact this substrate lacks leaves the key OUT of the answer (absent, not nil-in-a-dictionary). */
+static BOOL fn_url_answers_key(NSURLResourceKey key)
+{
+	static NSURLResourceKey const table[] = {
+		@"NSURLNameKey", @"NSURLLocalizedNameKey", @"NSURLPathKey", @"NSURLCanonicalPathKey",
+		@"NSURLIsRegularFileKey", @"NSURLIsDirectoryKey", @"NSURLIsSymbolicLinkKey",
+		@"NSURLIsReadableKey", @"NSURLIsWritableKey", @"NSURLIsExecutableKey",
+		@"NSURLIsHiddenKey", @"NSURLFileSizeKey", @"NSURLFileAllocatedSizeKey",
+		@"NSURLTotalFileSizeKey", @"NSURLTotalFileAllocatedSizeKey", @"NSURLLinkCountKey",
+		@"NSURLContentModificationDateKey", @"NSURLContentAccessDateKey",
+		@"NSURLAttributeModificationDateKey", @"NSURLFileIdentifierKey",
+		@"NSURLFileResourceIdentifierKey", @"NSURLFileResourceTypeKey", @"NSURLParentDirectoryURLKey",
+	};
+	size_t i;
+
+	for (i = 0; i < sizeof(table) / sizeof(table[0]); i++) {
+		if ([key isEqual:table[i]]) {
+			return YES;
+		}
+	}
+	return NO;
+}
+
+/* ONE KEY, ONE VALUE, from the stat and the path - and NIL THEREFORE MEANS "NOTHING BEHIND THIS KEY",
+ * never "the value is nil": a boolean key answers an NSNumber and a size answers an NSNumber, so a
+ * caller can always tell a fact from an absence. */
+- (nullable id)fnResourceValueForKey:(NSURLResourceKey)key
+				stat:(const struct stat *)st
+{
+	NSString *path = [self path];
+
+	if ([key isEqual:NSURLNameKey] || [key isEqual:NSURLLocalizedNameKey]) {
+		/* THERE IS NO LOCALISATION DATABASE, so the localized name is the item's own name - the
+		 * same decision -displayNameAtPath: records (§60 slice 3e). */
+		return [path lastPathComponent];
+	}
+	if ([key isEqual:NSURLPathKey]) {
+		return path;
+	}
+	if ([key isEqual:NSURLCanonicalPathKey]) {
+		char *resolved = realpath([path UTF8String], NULL);
+
+		if (resolved == NULL) {
+			return nil;
+		}
+		{
+			NSString *answer = [NSString stringWithUTF8String:resolved];
+
+			free(resolved);
+			return answer;
+		}
+	}
+	if ([key isEqual:NSURLIsRegularFileKey]) return [NSNumber numberWithBool:S_ISREG(st->st_mode)];
+	if ([key isEqual:NSURLIsDirectoryKey]) return [NSNumber numberWithBool:S_ISDIR(st->st_mode)];
+	if ([key isEqual:NSURLIsSymbolicLinkKey]) return [NSNumber numberWithBool:S_ISLNK(st->st_mode)];
+	if ([key isEqual:NSURLIsReadableKey]) return [NSNumber numberWithBool:access([path UTF8String], R_OK) == 0];
+	if ([key isEqual:NSURLIsWritableKey]) return [NSNumber numberWithBool:access([path UTF8String], W_OK) == 0];
+	if ([key isEqual:NSURLIsExecutableKey]) return [NSNumber numberWithBool:access([path UTF8String], X_OK) == 0];
+	if ([key isEqual:NSURLIsHiddenKey]) {
+		/* THE DOT RULE: this system has no hidden BIT, so an item is hidden when its own name begins
+		 * with a dot, which is the same convention the shell and the tools use. */
+		NSString *name = [path lastPathComponent];
+
+		/* NOT "." ITSELF, NOT ".." AND NOT THE ROOT - each of which begins with a dot and none of
+		 * which is a hidden item. */
+		return [NSNumber numberWithBool:[name hasPrefix:@"."] && ![name isEqual:@"."] &&
+					 ![[path lastPathComponent] isEqual:@"/"]];
+	}
+	if ([key isEqual:NSURLFileSizeKey]) return [NSNumber numberWithLongLong:(long long)st->st_size];
+	if ([key isEqual:NSURLFileAllocatedSizeKey]) return [NSNumber numberWithLongLong:(long long)st->st_blocks * 512];
+	if ([key isEqual:NSURLTotalFileSizeKey]) return [NSNumber numberWithLongLong:(long long)st->st_size];
+	if ([key isEqual:NSURLTotalFileAllocatedSizeKey]) return [NSNumber numberWithLongLong:(long long)st->st_blocks * 512];
+	if ([key isEqual:NSURLLinkCountKey]) return [NSNumber numberWithLongLong:(long long)st->st_nlink];
+	if ([key isEqual:NSURLContentModificationDateKey]) return [NSDate dateWithTimeIntervalSince1970:(double)st->st_mtime];
+	if ([key isEqual:NSURLContentAccessDateKey]) return [NSDate dateWithTimeIntervalSince1970:(double)st->st_atime];
+	if ([key isEqual:NSURLAttributeModificationDateKey]) return [NSDate dateWithTimeIntervalSince1970:(double)st->st_ctime];
+	/* THE IDENTIFIERS ARE THE INODE NUMBER here: Apple publishes the KEYS and calls the value opaque
+	 * ("an identifier that can be used to identify the file system resource uniquely"), and this
+	 * substrate's unique name for a resource is its inode - so that is what the opaque value is, and a
+	 * program that compares two of them for equality gets the right answer, which is all it promises. */
+	if ([key isEqual:NSURLFileIdentifierKey] || [key isEqual:NSURLFileResourceIdentifierKey]) {
+		return [NSNumber numberWithUnsignedLongLong:(unsigned long long)st->st_ino];
+	}
+	if ([key isEqual:NSURLFileResourceTypeKey]) return fn_url_resource_type(st->st_mode);
+	if ([key isEqual:NSURLParentDirectoryURLKey]) return [self URLByDeletingLastPathComponent];
+	return nil;
+}
+
+/* THE CACHE, AND WHY IT IS PART OF THE CONTRACT: Apple documents that a URL object caches the resource
+ * values it has already read, that the cache lives as long as the object does, and that the two
+ * -removeCached… doors take it back out. So a second ask for the same key answers what the object
+ * REMEMBERS, not what the disk says now - which is observable, and is what this unit's probe measures. */
+- (nullable NSMutableDictionary *)fnCache
+{
+	if (_cachedResourceValues == nil) {
+		_cachedResourceValues = [[NSMutableDictionary alloc] init];
+	}
+	return _cachedResourceValues;
+}
+
+- (BOOL)getResourceValue:(id _Nullable * _Nullable)value forKey:(NSURLResourceKey)key error:(NSError ** _Nullable)error
+{
+	struct stat st;
+	NSString *path;
+	id cached;
+
+	if (value != NULL) {
+		*value = nil;
+	}
+	if (![self isFileURL]) {
+		if (error != NULL) {
+			*error = fn_url_error(EINVAL, @"-getResourceValue:forKey:error: on a URL that is not a file URL");
+		}
+		return NO;
+	}
+	if (!fn_url_answers_key(key)) {
+		if (error != NULL) {
+			*error = fn_url_error(EINVAL, [NSString stringWithFormat:@"%@ is not a key this library answers", key]);
+		}
+		return NO;
+	}
+	cached = [[self fnCache] objectForKey:key];
+	if (cached != nil) {
+		if (value != NULL) {
+			*value = cached == [NSNull null] ? nil : cached;
+		}
+		return YES;
+	}
+	path = [self path];
+	if (fn_url_lstat(self, &st) != 0) {
+		if (error != NULL) {
+			*error = fn_url_error(errno, path);
+		}
+		return NO;
+	}
+	{
+		id answer = [self fnResourceValueForKey:key stat:&st];
+
+		[[self fnCache] setObject:(answer != nil ? answer : (id)[NSNull null]) forKey:key];
+		if (value != NULL) {
+			*value = answer;
+		}
+	}
+	return YES;
+}
+
+- (nullable NSDictionary *)resourceValuesForKeys:(NSArray *)keys
+					   error:(NSError ** _Nullable)error
+{
+	NSMutableDictionary *answer = [[NSMutableDictionary alloc] init];
+	NSUInteger i;
+
+	if (error != NULL) {
+		*error = nil;
+	}
+	for (i = 0; i < [keys count]; i++) {
+		NSURLResourceKey key = [keys objectAtIndex:i];
+		id value = nil;
+
+		if (!fn_url_answers_key(key)) {
+			/* A KEY THAT IS NOT OURS REFUSES THE WHOLE CALL, which is what makes the two shapes
+			 * different: this door is asked about a SET, and a set with something unknown in it is a
+			 * caller error rather than a partial answer. */
+			if (error != NULL) {
+				*error = fn_url_error(EINVAL, [NSString stringWithFormat:
+					@"%@ is not a key this library answers", key]);
+			}
+			[answer release];
+			return nil;
+		}
+		if ([self getResourceValue:&value forKey:key error:NULL]) {
+			if (value != nil) {
+				[answer setObject:value forKey:key];
+			}
+		} else {
+			/* ONE KEY THAT CANNOT BE READ (a missing file) DOES NOT SINK THE SET: the values that
+			 * could be read come back, and what could not is simply not in the dictionary. */
+			continue;
+		}
+	}
+	return [answer autorelease];
+}
+
+- (BOOL)checkResourceIsReachableAndReturnError:(NSError ** _Nullable)error
+{
+	NSString *path = [self path];
+
+	if (error != NULL) {
+		*error = nil;
+	}
+	if (![self isFileURL]) {
+		if (error != NULL) {
+			*error = fn_url_error(EINVAL, @"-checkResourceIsReachableAndReturnError: on a URL that is not a file URL");
+		}
+		return NO;
+	}
+	/* REACHABLE IS NOT READABLE: access(2) with F_OK asks exactly the question Apple's page asks -
+	 * whether the resource is there - and the read/write answers are the three other keys. */
+	if (access([path UTF8String], F_OK) == 0) {
+		return YES;
+	}
+	if (error != NULL) {
+		*error = fn_url_error(errno != 0 ? errno : ENOENT, path);
+	}
+	return NO;
+}
+
+- (void)removeCachedResourceValueForKey:(NSURLResourceKey)key
+{
+	[_cachedResourceValues removeObjectForKey:key];
+}
+
+- (void)removeAllCachedResourceValues
+{
+	[_cachedResourceValues removeAllObjects];
+}
+
+- (void)setTemporaryResourceValue:(nullable id)value forKey:(NSURLResourceKey)key
+{
+	/* A TEMPORARY VALUE IS A CACHE ENTRY AND NOTHING MORE: it is never written to the file system (which
+	 * is what makes it temporary) and it is read back by the doors above exactly like a measured one. */
+	if (value == nil) {
+		[_cachedResourceValues removeObjectForKey:key];
+		return;
+	}
+	[[self fnCache] setObject:value forKey:key];
+}
+
+/* ONLY THE CACHE IS RELEASED HERE, AND THE REST IS A RECORDED DEBT RATHER THAN A SILENT FIX. This
+ * object COPIES its parts and never released one of them (it had no -dealloc at all); one of them,
+ * `_scheme`, is not even owned - it comes from `-lowercaseString`, which answers an autoreleased
+ * string. Releasing the parts here would therefore be a crash where `_scheme` is the object and a
+ * behaviour change beyond this slice where it is not, so the ownership defect is owed by the URL unit
+ * (§60) instead of being half-fixed inside a feature commit. */
+- (void)dealloc
+{
+	[_cachedResourceValues release];
+	[super dealloc];
 }
 
 @end
