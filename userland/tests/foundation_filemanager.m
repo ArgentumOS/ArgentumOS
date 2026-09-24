@@ -517,6 +517,28 @@ int main(void)
 			(int)[fm fileExistsAtPath:fn_s3(@"other.txt")],
 			survivor != nil ? [survivor description] : @"(nil)"]);
 
+		/* A SYMLINK IS COPIED AS A LINK, AND THE DANGLING ONE IS THE PROOF: a "copy" that followed
+		 * the link would have nothing to read at all, so the dangling case is the sharpest form of the
+		 * question. Apple's copy pages name this only for a copy's DESTINATION, so what is asserted
+		 * here is the reading §60 records - the same family treats links as items ("does not traverse
+		 * symbolic links, but compares the links themselves"), and a copy that followed one would make
+		 * a copy of the link indistinguishable from a copy of its target. */
+		[fm copyItemAtPath:fn_s3(@"link-one") toPath:fn_s3(@"link-copy") error:NULL];
+		[fm copyItemAtPath:fn_s3(@"dangling") toPath:fn_s3(@"dangling-copy") error:NULL];
+		check("fs-copy-of-a-symlink-is-a-link",
+		      [[fm destinationOfSymbolicLinkAtPath:fn_s3(@"link-copy") error:NULL]
+			isEqualToString:fn_s3(@"file.txt")] &&
+		      [[fm destinationOfSymbolicLinkAtPath:fn_s3(@"dangling-copy") error:NULL]
+			isEqualToString:fn_s3(@"nowhere-at-all")] &&
+		      [fm contentsEqualAtPath:fn_s3(@"link-one") andPath:fn_s3(@"link-copy")] &&
+		      [[fm contentsAtPath:fn_s3(@"link-copy")] isEqualToData:hello],
+		      [NSString stringWithFormat:@"link-copy->%@ dangling-copy->%@ equal=%d bytes=%@",
+			[fm destinationOfSymbolicLinkAtPath:fn_s3(@"link-copy") error:NULL],
+			[fm destinationOfSymbolicLinkAtPath:fn_s3(@"dangling-copy") error:NULL],
+			(int)[fm contentsEqualAtPath:fn_s3(@"link-one") andPath:fn_s3(@"link-copy")],
+			[fm contentsAtPath:fn_s3(@"link-copy")] != nil ?
+				[[fm contentsAtPath:fn_s3(@"link-copy")] description] : @"(nil)"]);
+
 		/* AND THE FIXTURE GOES, INCLUDING THE DANGLING LINK - which the recursive remove reaches
 		 * because it lstat(2)s and unlinks rather than following anything. */
 		cleaned = [fm removeItemAtPath:@S3_ROOT error:NULL];

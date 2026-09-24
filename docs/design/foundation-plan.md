@@ -11739,6 +11739,39 @@ the delegate probe uses it as its deterministic per-item error source - fixing i
 those legs at the `EEXIST` this slice just created, which is the right next increment rather than a
 footnote.
 
+**SLICE 3b LANDED (2026-09-24): THE COPY OF A SYMLINK SOURCE IS A LINK - AND THE ERROR SOURCE IT TOOK
+WITH IT MOVED TWICE BEFORE IT WAS RIGHT.** The copy's last departure is gone: a source that is a link
+is now COPIED AS A LINK (readlink + symlink), so a copy of a link carries the link, and a **dangling**
+link can be copied at all - which the refusing version could not do. Apple names this only for a copy's
+DESTINATION ("if the last component of dstPath is a symbolic link, only the link is copied to the new
+path"); the source side is left unsaid, so §60 records the READING WITH ITS GROUND rather than a
+quotation: the same family treats links as items for equality ("does not traverse symbolic links, but
+compares the links themselves"), and a copy that FOLLOWED a link would make a copy of the link
+indistinguishable from a copy of its target, which is not what copying an ITEM can mean.
+`foundation_filemanager` went 14 -> **15 checks** (`fs-copy-of-a-symlink-is-a-link`, and the dangling
+one is the proof - a "copy" that followed it would have nothing to read).
+
+**AND THIS IS THE PART WORTH KEEPING, because the first two answers were both wrong.** The delegate
+probe's four error-door checks had been running on the symlink refusal, which was the departure being
+fixed, so the error source had to move. **The first move - to an existing destination - FAILED, and its
+failure is a fact about the SHAPE of a tree:** an existing destination refuses the copy's TOP item, and
+the top item of a tree is the WHOLE tree, so a delegate that swallows the error leaves nothing to
+continue with. Apple's sentence is "continues copying any other items and ignores the error", and that
+half is not observable when the only item is the tree itself. The measurement said so out loud
+(`copied=1 errors=1 a=0 z=0`), and **the second move is to a shape that can show it: a FIFO among
+regular files.** A FIFO can sit BESIDE files, so the copy refuses THAT item with ENOTSUP (an item that
+is neither a directory, a regular file nor a link - the refusal this file has always named) while its
+neighbours copy, and the check now asserts exactly Apple's promise: the FIFO is absent from the copy
+and `a.txt`/`z.txt` are present.
+
+**THE REFUSAL THAT REMAINS IS THEREFORE NAMED RATHER THAN ANONYMOUS:** a FIFO, a device or a socket as
+a copy SOURCE answers ENOTSUP by name and through the error door - which a delegate may swallow, item
+by item, which is what that leg now demonstrates.
+
+**GATES:** `make testimg` exit 0; `foundation_filemanager` **15/15**, `foundation_filemanagerdelegate`
+**18/18**, `foundation_directoryenumerator` **17/17**.
+
+
 
 
 

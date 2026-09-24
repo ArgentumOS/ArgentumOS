@@ -479,9 +479,27 @@ typedef enum {
 		}
 		return YES;
 	}
-	/* A SYMLINK OR SOMETHING ELSE: named rather than guessed at - and that naming is now the ERROR
-	 * DOOR's business too, so a delegate may swallow it. (Apple copies the link itself; this refuses
-	 * it, and that departure is a NAMED row of §60's slice 3 rather than a silence here.) */
+	/* A SYMLINK IS AN ITEM, AND A COPY OF ONE IS A LINK. Apple's copy pages say this only about a
+	 * copy's DESTINATION ("if the last component of dstPath is a symbolic link, only the link is copied
+	 * to the new path"); the SOURCE side is left unsaid, so the reading is stated WITH ITS GROUND rather
+	 * than quoted: the same family treats links as items for equality ("does not traverse symbolic
+	 * links, but compares the links themselves"), and a copy that FOLLOWED a link would make a copy of
+	 * the link indistinguishable from a copy of its target - which is not what copying an ITEM can
+	 * mean. This arm also makes a DANGLING link copyable, which the refusing version could not do. */
+	if (S_ISLNK(st.st_mode)) {
+		int err = 0;
+		NSString *linkTarget = fn_link_target(item, &err);
+
+		if (linkTarget == nil) {
+			return [self fnFailed:err kind:FNOperationCopy from:item to:target error:outErrno];
+		}
+		if (symlink([linkTarget UTF8String], to) != 0) {
+			return [self fnFailed:errno kind:FNOperationCopy from:item to:target error:outErrno];
+		}
+		return YES;
+	}
+	/* SOMETHING ELSE - a device, a socket, a fifo: named rather than guessed at, and the naming is the
+	 * ERROR DOOR's business too, so a delegate may swallow it. */
 	return [self fnFailed:ENOTSUP kind:FNOperationCopy from:item to:target error:outErrno];
 }
 
@@ -863,8 +881,13 @@ static NSData *fn_file_data(NSString *path)
 }
 
 /* A LINK'S TARGET, or nil: read at the link itself, which is the only way to compare two links as
- * LINKS - Apple's "does not traverse symbolic links, but compares the links themselves". */
-static NSString *fn_link_target(NSString *path)
+ * LINKS - Apple's "does not traverse symbolic links, but compares the links themselves".
+ *
+ * `outErrno` MAY BE NULL, AND THE ONE CALLER THAT NEEDS IT IS THE COPY: a comparison can treat a
+ * failure as a NO, while a copy has to REPORT why it could not read the link - and since the buffer is
+ * freed before the nil is returned, the errno is captured on the spot rather than read afterwards
+ * (free(3) is not something to read errno around). */
+static NSString *fn_link_target(NSString *path, int *outErrno)
 {
 	/* HEAP AGAIN, and 4KB of stack is no more affordable here than 8KB was above. */
 	char *buffer = malloc(4096);
@@ -872,11 +895,19 @@ static NSString *fn_link_target(NSString *path)
 	ssize_t n;
 
 	if (buffer == NULL) {
+		if (outErrno != NULL) {
+			*outErrno = ENOMEM;
+		}
 		return nil;
 	}
 	n = readlink([path UTF8String], buffer, 4095);
 	if (n < 0) {
+		int err = errno;
+
 		free(buffer);
+		if (outErrno != NULL) {
+			*outErrno = err;
+		}
 		return nil;
 	}
 	buffer[n] = '\0';
@@ -946,8 +977,8 @@ static NSString *fn_link_target(NSString *path)
 		return NO;		/* a link never equals the file it points at */
 	}
 	if (S_ISLNK(a.st_mode)) {
-		mine = fn_link_target(path1);
-		theirs = fn_link_target(path2);
+		mine = fn_link_target(path1, NULL);
+		theirs = fn_link_target(path2, NULL);
 		return mine != nil && [mine isEqualToString:theirs];
 	}
 	if (S_ISDIR(a.st_mode) || S_ISDIR(b.st_mode)) {

@@ -34,6 +34,8 @@ The probe is `/System/Shared/tests/foundation_filemanager`, ONE unit, importing 
                           matters is that the file that was already there is STILL THERE, byte for byte;
   * `fs-move-refuses-an-existing-destination` — the same rule for the move, which `rename(2)` would
                           never have enforced, with both items still in place;
+  * `fs-copy-of-a-symlink-is-a-link` — a symlink SOURCE is copied AS A LINK, and a DANGLING one is
+                          the proof: a copy that followed the link would have nothing to read;
   * `fs-cleanup`         — the tree is gone, which is also the recursive remove's own exercise.
 
 IT WORKS IN A TREE OF ITS OWN MAKING under `/System/Temporary Files` — this system's temp directory,
@@ -49,7 +51,7 @@ PROBE = "/System/Shared/tests/foundation_filemanager"
 CHECKS = ("fs-default-manager", "fs-create-and-list", "fs-write-and-size", "fs-move-and-copy",
           "fs-error-channel", "fs-link-and-cwd", "fs-contents-at-path", "fs-contents-equal",
           "fs-symbolic-link-door", "fs-copy-refuses-an-existing-destination",
-          "fs-move-refuses-an-existing-destination", "fs-cleanup",
+          "fs-move-refuses-an-existing-destination", "fs-copy-of-a-symlink-is-a-link", "fs-cleanup",
           "temporary-directory-is-the-fsh-path", "temporary-directory-exists")
 
 

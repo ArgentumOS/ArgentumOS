@@ -6,9 +6,9 @@
  * foundation_filemanagerdelegate, unit of 1 — W8 slice 2's acceptance for NSFileManagerDelegate.
  * docs/design/foundation-plan.md §60.
  *
- * ONE unit, importing only <Foundation/Foundation.h> (plus <unistd.h> for the symlink(2) and link(2)
- * the fixture makes). IT WORKS IN A TREE OF ITS OWN MAKING under /System/Temporary Files — this
- * system's temp directory, spelled the FSH way — and removes it at the end.
+ * ONE unit, importing only <Foundation/Foundation.h>. IT WORKS IN A TREE OF ITS OWN MAKING under
+ * /System/Temporary Files — this system's temp directory, spelled the FSH way — and removes it at the
+ * end.
  *
  * WHAT IT MEASURES, and every one of these is a RULE from Apple's own pages rather than a taste:
  *   delegate-defaults-to-nil-and-round-trips      the property's default is nil, and it is ASSIGN -
@@ -118,10 +118,15 @@ static void fn_make_file(NSString *path, const char *contents)
 	close(fd);
 }
 
-static void fn_make_link(NSString *target, NSString *at)
+/* A FIFO, and it is here for ONE reason: this probe needs a PER-ITEM error that is deterministic in a
+ * guest that runs as root. A symlink used to serve, and its refusal was a departure §60 recorded -
+ * fixed, because Apple copies the link - so the source of the error moved to the refusal that is still
+ * there: the copy answers ENOTSUP for a source that is neither a directory, a regular file nor a link
+ * (a fifo, a device, a socket), by name and through the error door. */
+static void fn_make_fifo(NSString *path)
 {
-	if (symlink([target UTF8String], [at UTF8String]) != 0) {
-		printf("FOUNDATION-FILEMANAGERDELEGATE DIAG symlink %s: %s\n", [at UTF8String],
+	if (mkfifo([path UTF8String], 0644) != 0) {
+		printf("FOUNDATION-FILEMANAGERDELEGATE DIAG mkfifo %s: %s\n", [path UTF8String],
 		       strerror(errno));
 	}
 }
@@ -536,11 +541,20 @@ int main(void)
 	}
 
 	{
-		/* THE ERROR DOORS, AND THE ERROR IS A SYMLINK INSIDE A TREE: this copy refuses a link with
-		 * ENOTSUP (a NAMED departure - §60's slice 3 - and, more usefully here, the one way to make a
-		 * PER-ITEM error happen at all in a guest that runs as root, where EACCES cannot be
-		 * manufactured). FOUR ANSWERS, and each is a different rule: no delegate, a delegate that
-		 * implements NO error door, one that swallows, and one that aborts. */
+		/* THE ERROR DOORS, AND THE ERROR IS A PER-ITEM REFUSAL INSIDE A TREE: a FIFO among regular
+		 * files, which the copy answers ENOTSUP for by name (§60 records that refusal - what it is NOT
+		 * is the symlink it used to be, because Apple copies a link, and a probe must not stand on a
+		 * departure).
+		 *
+		 * THE SHAPE MATTERS AS MUCH AS THE ERROR: a FIFO can sit BESIDE the files, so a delegate that
+		 * swallows it lets the walk reach the others - which is what Apple's "continues copying any
+		 * other items and ignores the error" actually promises, and something a failure at the TOP of
+		 * a tree could never show, since the whole tree is one item and there is nothing to continue
+		 * with. This leg taught that the hard way: an existing destination refuses the top item, so it
+		 * cannot demonstrate the "other items" half at all.
+		 *
+		 * FOUR ANSWERS, and each is a different rule: no delegate, a delegate that implements NO error
+		 * door, one that swallows, and one that aborts. */
 		SilentDelegate *silent = [[SilentDelegate alloc] init];
 		PathDelegate *swallow = [[PathDelegate alloc] init];
 		PathDelegate *abort = [[PathDelegate alloc] init];
@@ -563,8 +577,8 @@ int main(void)
 		abort->proceed = NO;
 		fn_make_dir(fn_path(@"trouble"));
 		fn_make_file(fn_path(@"trouble/a.txt"), "a");
+		fn_make_fifo(fn_path(@"trouble/pipe"));
 		fn_make_file(fn_path(@"trouble/z.txt"), "z");
-		fn_make_link(@"a.txt", fn_path(@"trouble/link"));
 
 		[manager setDelegate:nil];
 		withNone = [manager copyItemAtPath:fn_path(@"trouble") toPath:fn_path(@"trouble-none")
@@ -582,9 +596,10 @@ int main(void)
 
 		check("no-delegate-still-fails-on-an-error",
 		      !withNone && noDelegateError != nil && [noDelegateError code] == ENOTSUP &&
-		      ![manager fileExistsAtPath:fn_path(@"trouble-none/link")],
-		      [NSString stringWithFormat:@"copied=%d code=%ld", (int)withNone,
-			(long)(noDelegateError != nil ? [noDelegateError code] : -1)]);
+		      ![manager fileExistsAtPath:fn_path(@"trouble-none/pipe")],
+		      [NSString stringWithFormat:@"copied=%d code=%ld pipe=%d", (int)withNone,
+			(long)(noDelegateError != nil ? [noDelegateError code] : -1),
+			(int)[manager fileExistsAtPath:fn_path(@"trouble-none/pipe")]]);
 		/* AND THE SHAPE THAT NEEDS SAYING OUT LOUD: a delegate that conforms but implements NO error
 		 * door leaves the error STANDING. That is what Apple's "the file manager MAY also call this
 		 * method" means in practice, and it is the reason a delegate cannot silently swallow a failure
@@ -593,16 +608,19 @@ int main(void)
 		      !withSilent && silentError != nil && [silentError code] == ENOTSUP,
 		      [NSString stringWithFormat:@"copied=%d code=%ld", (int)withSilent,
 			(long)(silentError != nil ? [silentError code] : -1)]);
+		/* THE HALF THAT ONLY A PER-ITEM ERROR CAN SHOW: the walk CONTINUES, so the FIFO is absent from
+		 * the copy while its two neighbours are present. Apple's sentence is "continues copying any
+		 * other items and ignores the error", and this is what it means. */
 		check("the-error-door-can-swallow-an-error",
 		      withSwallow && [swallow->errors count] == 1 &&
 		      [manager fileExistsAtPath:fn_path(@"trouble-swallow/a.txt")] &&
 		      [manager fileExistsAtPath:fn_path(@"trouble-swallow/z.txt")] &&
-		      ![manager fileExistsAtPath:fn_path(@"trouble-swallow/link")],
-		      [NSString stringWithFormat:@"copied=%d errors=%lu a=%d z=%d link=%d", (int)withSwallow,
+		      ![manager fileExistsAtPath:fn_path(@"trouble-swallow/pipe")],
+		      [NSString stringWithFormat:@"copied=%d errors=%lu a=%d z=%d pipe=%d", (int)withSwallow,
 			(unsigned long)[swallow->errors count],
 			(int)[manager fileExistsAtPath:fn_path(@"trouble-swallow/a.txt")],
 			(int)[manager fileExistsAtPath:fn_path(@"trouble-swallow/z.txt")],
-			(int)[manager fileExistsAtPath:fn_path(@"trouble-swallow/link")]]);
+			(int)[manager fileExistsAtPath:fn_path(@"trouble-swallow/pipe")]]);
 		check("the-error-door-can-abort",
 		      !withAbort && abortError != nil && [abortError code] == ENOTSUP &&
 		      [abort->errors count] == 1,
