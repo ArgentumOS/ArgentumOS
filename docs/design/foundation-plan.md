@@ -10952,7 +10952,33 @@ count-in-memory-and-print-once discipline, and reproduce with the smallest users
 contending ONE `NSLock`, entering and leaving, counted. The queue's accessor stays as the instrument that will say
 whether a fix cured it.
 
-**WHAT REMAINS:** that futex instrument, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
+### §58.2i — THE FIX: `FUTEX_WAIT` NOW ARMS BEFORE IT LOOKS, AND THE PARKING IS GONE (0 OF 8) (2026-09-22)
+
+**THE SITE IS THE ONE EVERY FINDING IN THIS SECTION LEADS TO.** `kernel/syscalls/futex.c`'s `FUTEX_WAIT` did
+`if(*uaddr != val) return -EAGAIN;` and then a BARE `sleep(uaddr, ...)` - the check and the registration **not
+atomic together**, which is §58.1's window with no cure at all. `pthread_mutex_lock` reads the word, sees it held,
+calls `FUTEX_WAIT`; the kernel checks the word (still held) and REGISTERS - and if the holder unlocks and calls
+`FUTEX_WAKE` inside that gap, the wake finds no waiter and **the waiter sleeps for ever**. Both arms were bare, and
+the deadline-less one had no timer to rescue it.
+
+**THE CURE IS THE ONE THIS PLAN HAS NOW APPLIED TWELVE TIMES:** `sleep_arm(uaddr)` → re-look `*uaddr != val` (the
+SAME test the futex contract is about, and it sees the change because a mutex unlock STORES the word and THEN wakes
+- musl's `a_store` then `__wake`) → `sleep_commit`. The timeout arm also clears `current->timeout` on the re-look
+path, so a returned `-EAGAIN` cannot leave a deadline behind for the next syscall to inherit.
+
+**MEASURED, AND IT IS A CLEAN BEFORE/AFTER ON THE SAME INSTRUMENT** (the 8-run hunt of §58.2h: same probe, same
+counter, same command):
+ * **BEFORE:** 2 of 8 runs ended with `running=27 pending=27 operations=27`, and `...=26 ...=26 ...=26` - about half
+   the workers parked in the cleanup;
+ * **AFTER:** **0 of 8** runs ended with anything but `running=0 pending=0 operations=0`.
+So the futex window was real, it was the mechanism §58.2h caught with the scheduler's own counters, and the cure
+closes it.
+
+**AND IT DID NOT CURE `foundation_streamtask`:** that case is still red on
+`and-the-reply-comes-back-through-it` (19/20). So there is a SECOND, still-unexplained loss there - and its
+instrument already exists: re-measure §58.2d's counts (`DR hop` against `DR hop RAN`) on this fixed kernel.
+
+**WHAT REMAINS:** that re-measurement, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
 The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.

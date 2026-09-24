@@ -75,12 +75,38 @@ int sys_futex(int *uaddr, int op, int val, const struct timespec *timeout, int *
 			} else {
 				ticks = 0;
 			}
+			/* ARM BEFORE THE LOOK - §58.1's cure, AND THIS IS THE SITE WHERE IT MATTERS MOST. A FUTEX_WAIT's
+			 * contract is "if *uaddr != val return -EAGAIN, else sleep", and the check and the registration
+			 * are NOT atomic together. `pthread_mutex_lock` reads the word, sees it held, and calls
+			 * FUTEX_WAIT; the kernel then checks the word (still held) and REGISTERS - and if the holder
+			 * unlocks and calls FUTEX_WAKE inside that gap, the wake finds no waiter, and the waiter sleeps
+			 * FOR EVER.
+			 *
+			 * THAT IS MEASURED, NOT DEDUCED (foundation-plan.md §58.2h): in an NSOperationQueue burst of 50
+			 * blocks, ~half the worker threads park exactly here, with the scheduler's own three counters
+			 * all agreeing `_running == _pending == _operations == 26/27` - workers that ran their block and
+			 * never got back through the cleanup that re-takes the queue's mutex.
+			 *
+			 * ARMED FIRST, the wake either finds us or has already happened - and the re-look below SEES it,
+			 * because a mutex unlock STORES the word and THEN wakes (musl's a_store then __wake), so the
+			 * state change is always visible to a look that follows the arm. */
 			if(ticks) {
 				SAVE_FLAGS(flags); CLI();
 				current->timeout = ticks;
-				errno = sleep(uaddr, PROC_INTERRUPTIBLE);
+				sleep_arm(uaddr);
+				if(*uaddr != val) {
+					/* THE RE-LOOK: the word changed while we armed, so the answer is the one the
+					 * check above would have given - and the timeout must not be left armed for the
+					 * next syscall to inherit. */
+					current->timeout = 0;
+					sleep_disarm();
+					RESTORE_FLAGS(flags);
+					return -EAGAIN;
+				}
+				errno = sleep_commit(uaddr, PROC_INTERRUPTIBLE);
 				RESTORE_FLAGS(flags);
 				if(errno) {
+					sleep_disarm();
 					return -EINTR;
 				}
 				if(!current->timeout) {
@@ -89,8 +115,16 @@ int sys_futex(int *uaddr, int op, int val, const struct timespec *timeout, int *
 				}
 				current->timeout = 0;
 			} else {
-				errno = sleep(uaddr, PROC_INTERRUPTIBLE);
+				/* THE DEADLINE-LESS ARM NEEDS IT MORE, NOT LESS: there is no timer to end this wait, so a
+				 * wake lost in the window would park the thread for the life of the process. */
+				sleep_arm(uaddr);
+				if(*uaddr != val) {
+					sleep_disarm();
+					return -EAGAIN;
+				}
+				errno = sleep_commit(uaddr, PROC_INTERRUPTIBLE);
 				if(errno) {
+					sleep_disarm();
 					return -EINTR;
 				}
 			}
