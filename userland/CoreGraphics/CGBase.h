@@ -70,11 +70,19 @@
  *
  * APPLE'S HEADERS SOLVE THE SAME PROBLEM UNDER ANOTHER NAME: their `CFStringRef` is a bridged
  * declaration in a C header. There is no CF here, so the spelling is the Foundation class itself.
+ *
+ * `NSArray` JOINED THIS LIST WHEN THE FIRST SIGNATURE NEEDED ONE — `CGGradientCreateWithColors`
+ * (C6.1), whose Apple form is a `CFArrayRef` of `CGColorRef`. The class is named here for the same
+ * reason as the other two and NOT because an array takes an arbitrary place in these signatures: it
+ * is the Foundation counterpart of Apple's `CFArrayRef`, and what may live INSIDE it is that
+ * function's business, not this header's.
  */
 #ifdef __OBJC__
+@class NSArray;
 @class NSData;
 @class NSString;
 #else
+typedef struct objc_object NSArray;
 typedef struct objc_object NSData;
 typedef struct objc_object NSString;
 #endif

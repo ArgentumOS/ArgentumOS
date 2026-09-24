@@ -289,8 +289,8 @@ case	open	kCGGesturePhaseChanged	-	Reference / Enumerations / Constants	-	objc
 case	open	kCGGesturePhaseEnded	-	Reference / Enumerations / Constants	-	objc
 case	open	kCGGesturePhaseMayBegin	-	Reference / Enumerations / Constants	-	objc
 case	open	kCGGesturePhaseNone	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGGradientDrawsAfterEndLocation	-	Opaque Types / Drawing Gradients and Shadings / Constants	-	objc
-case	open	kCGGradientDrawsBeforeStartLocation	-	Opaque Types / Drawing Gradients and Shadings / Constants	-	objc
+case	shipped	kCGGradientDrawsAfterEndLocation	-	Opaque Types / Drawing Gradients and Shadings / Constants	-	objc
+case	shipped	kCGGradientDrawsBeforeStartLocation	-	Opaque Types / Drawing Gradients and Shadings / Constants	-	objc
 case	open	kCGHIDEventTap	-	Services / Constants / Constants	-	objc
 case	open	kCGHeadInsertEventTap	-	Services / Constants / Constants	-	objc
 case	open	kCGHelpWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
@@ -514,7 +514,7 @@ enum	open	CGEventType	-	Services / Constants	-	objc
 enum	open	CGFontPostScriptFormat	-	Opaque Types / Working with PostScript Fonts	-	objc
 enum	open	CGGesturePhase	-	Reference / Enumerations	-	objc
 enum	open	CGGlyphDeprecatedEnum	-	Reference / Enumerations	-	objc
-enum	open	CGGradientDrawingOptions	-	Opaque Types / Drawing Gradients and Shadings	-	objc
+enum	shipped	CGGradientDrawingOptions	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 enum	shipped	CGImageAlphaInfo	-	Opaque Types / Examining an image	-	objc
 enum	shipped	CGImageByteOrderInfo	-	Reference / Enumerations	-	objc
 enum	open	CGImageComponentInfo	-	Enumerations	-	objc
@@ -681,16 +681,16 @@ func	shipped	CGContextConvertRectToUserSpace	-	Opaque Types / Converting Between
 func	shipped	CGContextConvertSizeToDeviceSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
 func	shipped	CGContextConvertSizeToUserSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
 func	open	CGContextCopyPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	open	CGContextDrawConicGradient	-	Reference / Functions	-	objc
+func	shipped	CGContextDrawConicGradient	-	Reference / Functions	-	objc
 func	shipped	CGContextDrawImage	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	open	CGContextDrawImageApplyingToneMapping	-	Reference / Functions	-	objc
 func	open	CGContextDrawLayerAtPoint	-	Opaque Types / Drawing Core Graphics Layers	-	objc
 func	open	CGContextDrawLayerInRect	-	Opaque Types / Drawing Core Graphics Layers	-	objc
-func	open	CGContextDrawLinearGradient	-	Opaque Types / Drawing Gradients and Shadings	-	objc
+func	shipped	CGContextDrawLinearGradient	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 func	struck	CGContextDrawPDFDocument	-	Reference / Functions	deprecated	objc
 func	open	CGContextDrawPDFPage	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	shipped	CGContextDrawPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
-func	open	CGContextDrawRadialGradient	-	Opaque Types / Drawing Gradients and Shadings	-	objc
+func	shipped	CGContextDrawRadialGradient	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 func	open	CGContextDrawShading	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 func	open	CGContextDrawTiledImage	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	open	CGContextEOClip	-	Opaque Types / Working with the Current Clipping Path	-	objc
@@ -974,13 +974,13 @@ func	open	CGGetDisplaysWithRect	-	Services / Finding Displays	-	objc
 func	open	CGGetEventTapList	-	Services / Working With Event Taps	-	objc
 func	open	CGGetLastMouseDelta	-	Services / Controlling the Mouse Cursor	-	objc
 func	open	CGGetOnlineDisplayList	-	Services / Finding Displays	-	objc
-func	open	CGGradientCreateWithColorComponents	-	Opaque Types / Creating Gradient Instances	-	objc
-func	open	CGGradientCreateWithColors	-	Opaque Types / Creating Gradient Instances	-	objc
+func	shipped	CGGradientCreateWithColorComponents	-	Opaque Types / Creating Gradient Instances	-	objc
+func	shipped	CGGradientCreateWithColors	-	Opaque Types / Creating Gradient Instances	-	objc
 func	open	CGGradientCreateWithContentHeadroom	-	Functions	-	objc
 func	open	CGGradientGetContentHeadroom	-	Functions	-	objc
 func	open	CGGradientGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
-func	open	CGGradientRelease	-	Opaque Types / Retaining and Releasing a Gradient	-	objc
-func	open	CGGradientRetain	-	Opaque Types / Retaining and Releasing a Gradient	-	objc
+func	shipped	CGGradientRelease	-	Opaque Types / Retaining and Releasing a Gradient	-	objc
+func	shipped	CGGradientRetain	-	Opaque Types / Retaining and Releasing a Gradient	-	objc
 func	open	CGImageCalculateContentAverageLightLevel	-	Opaque Types / Adopting high dynamic range (HDR)	-	objc
 func	open	CGImageCalculateContentHeadroom	-	Opaque Types / Adopting high dynamic range (HDR)	-	objc
 func	open	CGImageContainsImageSpecificToneMappingMetadata	-	Reference / Functions	-	objc
@@ -1456,7 +1456,7 @@ typealias	open	CGFunctionRef	-	Opaque Types	-	objc
 typealias	open	CGFunctionReleaseInfoCallback	-	Opaque Types / Callbacks	-	objc
 typealias	open	CGGammaValue	-	Services / Data Types	-	objc
 typealias	open	CGGlyph	-	Opaque Types / Working with Glyphs	-	objc
-typealias	open	CGGradientRef	-	Opaque Types	-	objc
+typealias	shipped	CGGradientRef	-	Opaque Types	-	objc
 typealias	shipped	CGImageRef	-	Opaque Types	-	objc
 typealias	open	CGKeyCode	-	Services / Data Types	-	objc
 typealias	open	CGLayerRef	-	Opaque Types	-	objc

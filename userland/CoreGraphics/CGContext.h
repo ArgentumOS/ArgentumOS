@@ -42,6 +42,10 @@
 #include <CoreGraphics/CGColor.h>
 #include <CoreGraphics/CGColorSpace.h>
 #include <CoreGraphics/CGGeometry.h>
+/* AND CGGradient.h, FOR THE SAME REASON CGImage.h IS HERE: Apple declares the gradient DRAWS in the
+ * context's header and the gradient TYPE in the gradient's, so a caller who includes CGContext.h
+ * alone must have both. */
+#include <CoreGraphics/CGGradient.h>
 /* AND CGImage.h, FOR THE IMAGE TYPE AND FOR `CGContextDrawImage`: Apple declares that function in
  * the context's header, and a caller who includes only CGContext.h has to reach it — which is
  * exactly why this include is here rather than the declaration being read somewhere else. */
@@ -208,6 +212,40 @@ void CGContextAddRoundedRect(CGContextRef context, CGRect rect, CGFloat cornerWi
  * `CGImage.h` for the type, so a caller who includes this header alone has everything. The IMAGE
  * itself is that header's; what is here is the verb. */
 void CGContextDrawImage(CGContextRef context, CGRect rect, CGImageRef image);
+
+/*
+ * AND THE GRADIENT'S DRAWN FORMS, WHICH FOLLOW THE IMAGE'S ARRANGEMENT EXACTLY: the gradient is
+ * CGGradient.h's, the VERBS are here, and they are implemented in CGGradient.c because that is where
+ * the ramp's arithmetic lives. This is not a new shape — `CGContextDrawImage` above is declared here
+ * and defined in the image's file for the same reason.
+ *
+ * WHAT THESE PAINT IS THE CLIP, NOT THE PATH, which is Apple's contract and the reason they take no
+ * path: a gradient is a way of filling the current clipping region, and a caller who wants it inside
+ * a shape clips to that shape first. The current path is UNTOUCHED — no `BeginPath` is implied and
+ * none happens — so a caller may clip, draw a gradient, and then fill the path they had.
+ *
+ * THE TWO POINTS ARE USER SPACE, and they are the ramp's axis: `startPoint` gets the first stop's
+ * colour and `endPoint` the last. They are deliberately not called "left" and "right" — the axis may
+ * point anywhere on the page. `options` is what happens BEYOND those two points, and neither flag is
+ * the useful default: with neither, only the band between the points is painted and the rest of the
+ * clip is left exactly as it was.
+ *
+ * THE RADIAL FORM BLENDS BETWEEN TWO CIRCLES, and the second may be offset from the first, which is
+ * what makes a cone rather than a circle. Either radius may be zero (a point), and the two centres
+ * may coincide (concentric) — the degenerate cases are answered in CGGradient.c rather than refused,
+ * because Apple's own documentation draws them.
+ */
+void CGContextDrawLinearGradient(CGContextRef context, CGGradientRef gradient, CGPoint startPoint,
+				 CGPoint endPoint, CGGradientDrawingOptions options);
+void CGContextDrawRadialGradient(CGContextRef context, CGGradientRef gradient,
+				 CGPoint startCenter, CGFloat startRadius, CGPoint endCenter,
+				 CGFloat endRadius, CGGradientDrawingOptions options);
+/* THE ANGULAR RAMP. `angle` is where the ramp's first stop sits, measured from the positive x axis,
+ * and the ramp wraps — see CGGradient.c, where that wrap is the whole difference between this and
+ * the other two. It takes no drawing-options parameter, which is Apple's signature and not an
+ * omission: an angular ramp has no ends to extend past. */
+void CGContextDrawConicGradient(CGContextRef context, CGGradientRef gradient, CGPoint center,
+				CGFloat angle);
 
 /* The current point OF THE PATH, in user space: the pen position the last move or add left
  * behind. */

@@ -24,10 +24,15 @@
  * from this project rather than a preference.
  *
  * WHAT THIS FILE DOES NOT DO: it never decides whether the *shape* is right. It
- * decides coverage. Curves, strokes, dashes, shadows, text and gradients are all
- * absent (see CGContext.h), and the one input it REFUSES is a path whose edges cross
- * each other — because inside a band the sweep assumes the x-order of the active
- * edges is fixed, and a crossing breaks that assumption. See cg_find_crossing.
+ * decides coverage. Shadows and text are absent (see CGContext.h); gradients, which
+ * were on that list from C2 until C6.1, are here now — and they arrived WITHOUT
+ * changing this file's geometry at all, because a gradient is a different SOURCE
+ * composited through the same trapezoids (see CGPaint_internal.h). That is the shape
+ * of the extension: C2's pipeline was right, and what was missing was the colour.
+ * The one input the fill REFUSES is... nothing, any more: a path whose edges cross
+ * used to be refused because inside a band the sweep assumed the x-order of the
+ * active edges was fixed, and the sweep now ends its bands at every crossing as
+ * well as at every vertex.
  *
  * THE WINDING NUMBER'S SIGN IS NEVER EXAMINED, only whether it is zero, which is why
  * the default bitmap CTM's y-flip (a mirror, determinant -1) needs no special case:
@@ -35,7 +40,9 @@
  */
 #include <CoreGraphics/CGBitmapContext.h>
 #include <CoreGraphics/CGContext.h>
+#include <CoreGraphics/CGGradient_internal.h>
 #include <CoreGraphics/CGPath.h>
+#include <CoreGraphics/CGPaint_internal.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -105,16 +112,8 @@ struct CGContext {
 /* small arithmetic                                                          */
 /* ------------------------------------------------------------------------- */
 
-static CGFloat cg_clamp01(CGFloat v)
-{
-	if (v < 0.0) {
-		return 0.0;
-	}
-	if (v > 1.0) {
-		return 1.0;
-	}
-	return v;
-}
+/* THE CLAMP MOVED TO CGPaint.c WITH THE PREMULTIPLY in C6.1: the only caller here was the colour
+ * packer, and it now lives beside it, so this file no longer clamps anything. */
 
 /* 16.16 FIXED POINT IS PIXMAN'S OWN UNIT and the conversion is ours: pixman.h may
  * declare a `pixman_double_to_fixed`, but this file does not depend on which rounding
@@ -132,18 +131,11 @@ static pixman_fixed_t cg_fixed(double v)
 	return (pixman_fixed_t)(v * 65536.0 + (v >= 0.0 ? 0.5 : -0.5));
 }
 
-static uint32_t cg_premultiplied_pixel(CGFloat r, CGFloat g, CGFloat b, CGFloat a)
-{
-	uint32_t a8 = (uint32_t)(cg_clamp01(a) * 255.0 + 0.5);
-	uint32_t r8 = (uint32_t)(cg_clamp01(r * cg_clamp01(a)) * 255.0 + 0.5);
-	uint32_t g8 = (uint32_t)(cg_clamp01(g * cg_clamp01(a)) * 255.0 + 0.5);
-	uint32_t b8 = (uint32_t)(cg_clamp01(b * cg_clamp01(a)) * 255.0 + 0.5);
-
-	/* PIXMAN_a8r8g8b8 spells its name from the 32-BIT WORD: alpha in bits 31…24.
-	 * See CGBitmapContext.h for why that is the binding chosen for
-	 * `kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little`. */
-	return (a8 << 24) | (r8 << 16) | (g8 << 8) | b8;
-}
+/* THE PREMULTIPLY MOVED TO CGPaint.c IN C6.1, and the reason is C6's own: a gradient, a shading and
+ * a pattern each need to pack a SAMPLED colour into a pixel word, and so does a solid fill. Keeping
+ * this here would have meant either a second copy of the arithmetic for the paints or an exported
+ * symbol anyway — so it is one function in one place (CGPaint_internal.h declares it), and this
+ * comment is what is left of the version that lived here. See CGPaint.c for the format note. */
 
 static pixman_op_t cg_op(CGBlendMode mode)
 {
@@ -1355,16 +1347,24 @@ static void cg_sweep(cg_flatten *fl, cg_traps *tr, int even_odd)
 /* filling                                                                   */
 /* ------------------------------------------------------------------------- */
 
-static int cg_fill_path(CGContextRef c, CGPathRef path, int even_odd, pixman_op_t op,
-			CGFloat r, CGFloat g, CGFloat b, CGFloat a)
+/* THE TRAPEZOIDS A PATH MAKES, AND NOTHING ELSE. Flattening, the sweep, and the mask format are the
+ * geometry; the COLOUR is not. C6.1 split this out of the fill because a fill's source stopped being
+ * a colour: a gradient, a shading and a pattern are all SAMPLED sources, and they must take the same
+ * road as a constant one — one place that answers "where does this path cover", so a sampled fill
+ * and a solid fill cannot come to different conclusions about the shape they are filling.
+ *
+ * A PATH THAT CROSSES ITSELF IS NO LONGER REFUSED, and the reason is one function below: `cg_sweep`
+ * now ends its bands at every edge-edge CROSSING as well as at every vertex, so the x-order of the
+ * active edges holds inside each band and a path that crosses itself — or a stroke, whose overlaps
+ * ARE the design — computes like any other. The refusal was honest for its day ("the fill would be
+ * wrong in a way that looks deliberate") and the checks that asserted it now assert the fills it was
+ * refusing. */
+static void cg_traps_for_path(CGContextRef c, CGPathRef path, int even_odd, cg_traps *tr)
 {
 	cg_flatten fl;
-	cg_traps tr;
-	pixman_image_t *src;
-	uint32_t pixel;
 
 	memset(&fl, 0, sizeof(fl));
-	memset(&tr, 0, sizeof(tr));
+	memset(tr, 0, sizeof(*tr));
 	fl.ctm = c->state.ctm;
 	fl.width = (double)c->width;
 	fl.height = (double)c->height;
@@ -1393,48 +1393,101 @@ static int cg_fill_path(CGContextRef c, CGPathRef path, int even_odd, pixman_op_
 		}
 	}
 	cg_close_subpath(&fl);
-
-	/* NO REFUSAL STANDS HERE ANY MORE, AND THE REASON IS ONE FUNCTION BELOW: `cg_sweep`
-	 * now ends its bands at every edge-edge CROSSING as well as at every vertex, so the
-	 * x-order of the active edges holds inside each band and a path that crosses itself —
-	 * or a stroke, whose overlaps ARE the design — computes like any other. The refusal was
-	 * honest for its day ("the fill would be wrong in a way that looks deliberate") and the
-	 * checks that asserted it now assert the fills it was refusing. */
-	cg_sweep(&fl, &tr, even_odd);
+	cg_sweep(&fl, tr, even_odd);
 	free(fl.edges);
+}
 
-	if (tr.count == 0) {
-		free(tr.traps);
-		return 0;
+/* THE MASK FORMAT IS THE ANTIALIASING SWITCH, not a rounding step: pixman rasterizes the same
+ * trapezoids into an 8-bit mask when coverage is wanted and a 1-BIT mask when it is not, so "no
+ * antialiasing" is exact rather than approximated. Asked once, so the choice cannot drift between
+ * two copies of the same composite. */
+static pixman_format_code_t cg_mask_format(CGContextRef c)
+{
+	return (c->allows_antialiasing && c->state.antialias) ? PIXMAN_a8 : PIXMAN_a1;
+}
+
+/* THE COMPOSITE, AND THE ONLY ONE A PATH HAS: any source, at any offset, through this path's
+ * coverage. `x_src`/`y_src` sample the source; the trapezoids are already in surface coordinates, so
+ * the destination offsets are zero. */
+static void cg_composite_traps(CGContextRef c, cg_traps *tr, pixman_op_t op, pixman_image_t *src,
+			       int x_src, int y_src)
+{
+	if (tr->count == 0 || src == NULL) {
+		return;
 	}
+	pixman_image_set_clip_region32(c->image, &c->state.clip);
+	pixman_composite_trapezoids(op, src, c->image, cg_mask_format(c), x_src, y_src, 0, 0,
+				    tr->count, tr->traps);
+}
 
-	/* THE MASK FORMAT IS THE ANTIALIASING SWITCH, not a rounding step: pixman rasterizes
-	 * the same trapezoids into an 8-bit mask when coverage is wanted and a 1-BIT mask
-	 * when it is not, so "no antialiasing" is exact rather than approximated. */
-	pixman_format_code_t mask_format =
-		(c->allows_antialiasing && c->state.antialias) ? PIXMAN_a8 : PIXMAN_a1;
+/* A FILL WITH A SOURCE SOMEONE ELSE BUILT, which is what C6's sampled paints need: the caller has a
+ * device-space image and an offset into it, and everything else is the shape. */
+static void cg_fill_path_with_source(CGContextRef c, CGPathRef path, int even_odd, pixman_op_t op,
+				     pixman_image_t *src, int x_src, int y_src)
+{
+	cg_traps tr;
 
-	pixel = cg_premultiplied_pixel(r, g, b, a);
-	src = pixman_image_create_bits(PIXMAN_a8r8g8b8, 1, 1, &pixel, 4);
-	if (src != NULL) {
-		/* A 1×1 SOURCE MUST BE TOLD TO REPEAT, or only the FIRST destination pixel
-		 * samples it: the composite reads the source at (x_src + x, y_src + y) for every
-		 * pixel, so with PIXMAN_REPEAT_NONE every coordinate but (0,0) lands outside the
-		 * image and reads transparent. MEASURED — C2's first probe run painted exactly
-		 * one pixel, and the byte check at (0,0) passing while every other pixel stayed
-		 * empty is what identified it. */
-		pixman_image_set_repeat(src, PIXMAN_REPEAT_NORMAL);
-		/* ONE CALL SITE FOR BOTH MASK FORMATS, so the antialiasing choice cannot drift
-		 * between two copies of the same composite. `x_src`/`y_src` sample the 1×1
-		 * source and `x_dst`/`y_dst` offset the mask; the trapezoids are already in
-		 * surface coordinates, so only the source offsets matter and they are zero. */
-		pixman_image_set_clip_region32(c->image, &c->state.clip);
-		pixman_composite_trapezoids(op, src, c->image, mask_format, 0, 0, 0, 0,
-					    tr.count, tr.traps);
-		pixman_image_unref(src);
-	}
+	cg_traps_for_path(c, path, even_odd, &tr);
+	cg_composite_traps(c, &tr, op, src, x_src, y_src);
 	free(tr.traps);
+}
+
+/* AND THE CONSTANT-COLOUR FILL, WHICH IS THE SAME THING WITH A 1×1 SOURCE. This is the whole
+ * difference between C2's fill and C6's: a colour is a paint whose image happens to be one pixel. */
+static int cg_fill_path(CGContextRef c, CGPathRef path, int even_odd, pixman_op_t op,
+			CGFloat r, CGFloat g, CGFloat b, CGFloat a)
+{
+	pixman_image_t *src;
+	uint32_t pixel = cg_premultiplied_pixel(r, g, b, a);
+
+	src = pixman_image_create_bits(PIXMAN_a8r8g8b8, 1, 1, &pixel, 4);
+	if (src == NULL) {
+		return -1;
+	}
+	/* A 1×1 SOURCE MUST BE TOLD TO REPEAT, or only the FIRST destination pixel samples it: the
+	 * composite reads the source at (x_src + x, y_src + y) for every pixel, so with
+	 * PIXMAN_REPEAT_NONE every coordinate but (0,0) lands outside the image and reads
+	 * transparent. MEASURED — C2's first probe run painted exactly one pixel, and the byte check
+	 * at (0,0) passing while every other pixel stayed empty is what identified it. */
+	pixman_image_set_repeat(src, PIXMAN_REPEAT_NORMAL);
+	cg_fill_path_with_source(c, path, even_odd, op, src, 0, 0);
+	pixman_image_unref(src);
 	return 0;
+}
+
+/* THE DEVICE RECTANGLE A CLIP-ONLY PAINT COVERS: the clipping region's bounding box, intersected with
+ * the surface. IT IS ASKED ONCE AND USED TWICE — by the paint builder, which sizes its image to it,
+ * and by the composite, which paints exactly that many pixels — and that is the point of splitting
+ * it out: a builder and a composite that each computed their own extent could disagree by a row and
+ * leave a stripe of the surface unpainted, which is the kind of wrong picture that looks deliberate.
+ */
+static int cg_paint_extents(CGContextRef c, int *px, int *py, int *pw, int *ph)
+{
+	pixman_box32_t box = *pixman_region32_extents(&c->state.clip);
+	int x = box.x1 < 0 ? 0 : box.x1;
+	int y = box.y1 < 0 ? 0 : box.y1;
+	int x2 = box.x2 > c->width ? c->width : box.x2;
+	int y2 = box.y2 > c->height ? c->height : box.y2;
+
+	*px = x;
+	*py = y;
+	*pw = x2 - x;
+	*ph = y2 - y;
+	return *pw > 0 && *ph > 0;
+}
+
+/* PAINTING THE CLIP, WITH NO PATH IN IT AT ALL. A gradient's draw verbs fill the current clipping
+ * region and are indifferent to the current path (CGContext.h says why), so there is no mask to
+ * build: the clip is already set on the destination and the composite is the whole operation. */
+static void cg_paint_clip(CGContextRef c, pixman_image_t *src, pixman_op_t op)
+{
+	int px, py, pw, ph;
+
+	if (c == NULL || src == NULL || !cg_paint_extents(c, &px, &py, &pw, &ph)) {
+		return;
+	}
+	pixman_image_set_clip_region32(c->image, &c->state.clip);
+	pixman_image_composite32(op, src, NULL, c->image, 0, 0, 0, 0, px, py, pw, ph);
 }
 
 static void cg_fill_current_path(CGContextRef c, int even_odd)
@@ -2031,4 +2084,133 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 			d[3] = (unsigned char)((double)d[3] * (1.0 - sa) + 255.0 * sa);
 		}
 	}
+}
+
+/* ------------------------------------------------------------------------- */
+/* C6.1: the gradient draw verbs                                             */
+/* ------------------------------------------------------------------------- */
+
+/* THE VERBS DIFFER ONLY IN WHICH SAMPLER THEY HAND THE PAINT BUILDER, which is why there is one
+ * struct, one draw function and three one-line evaluators rather than three copies of the same
+ * twenty lines. The geometry the draw call carries — two points, two circles, or a centre and an
+ * angle — is what the samplers (CGGradient.c) know how to read; the DRAWING is here, where the CTM,
+ * the clip and the alpha are. */
+typedef struct {
+	CGGradientRef gradient;
+	CGPoint start;
+	CGPoint end;
+	CGFloat r0;
+	CGFloat r1;
+	CGFloat angle;
+	CGGradientDrawingOptions options;
+} cg_gradient_draw;
+
+static void cg_linear_paint(void *info, CGFloat x, CGFloat y, CGFloat rgba[4])
+{
+	const cg_gradient_draw *gd = info;
+
+	cg_gradient_linear_sample(gd->gradient, gd->start, gd->end, gd->options, x, y, rgba);
+}
+
+static void cg_radial_paint(void *info, CGFloat x, CGFloat y, CGFloat rgba[4])
+{
+	const cg_gradient_draw *gd = info;
+
+	cg_gradient_radial_sample(gd->gradient, gd->start, gd->r0, gd->end, gd->r1, gd->options, x, y,
+				  rgba);
+}
+
+static void cg_conic_paint(void *info, CGFloat x, CGFloat y, CGFloat rgba[4])
+{
+	const cg_gradient_draw *gd = info;
+
+	cg_gradient_conic_sample(gd->gradient, gd->start, gd->angle, x, y, rgba);
+}
+
+/* THE ONE ROAD ONTO THE SURFACE, so the three verbs cannot differ in anything but the sampler. The
+ * paint image is built over exactly the rectangle the composite will cover — `cg_paint_extents` is
+ * asked once by each — and the user-to-device mapping inside `cg_paint_image` is the CTM, which is
+ * what makes a rotated or scaled context do the right thing without any of this knowing about it. */
+static void cg_draw_gradient(CGContextRef c, cg_gradient_draw *gd, cg_paint_eval_fn eval)
+{
+	pixman_image_t *src;
+	int px;
+	int py;
+	int pw;
+	int ph;
+
+	if (!cg_paint_extents(c, &px, &py, &pw, &ph)) {
+		return;
+	}
+	src = cg_paint_image(px, py, pw, ph, c->state.ctm, c->state.alpha, eval, gd);
+	if (src == NULL) {
+		return;
+	}
+	cg_paint_clip(c, src, cg_op(c->state.blend));
+	pixman_image_unref(src);
+}
+
+void CGContextDrawLinearGradient(CGContextRef c, CGGradientRef gradient, CGPoint startPoint,
+				 CGPoint endPoint, CGGradientDrawingOptions options)
+{
+	cg_gradient_draw gd;
+
+	if (c == NULL) {
+		return;
+	}
+	if (gradient == NULL) {
+		fprintf(stderr, "CG-REFUSE: CGContextDrawLinearGradient needs a gradient; a NULL one "
+				"would otherwise paint the clip with nothing and look like a clip that "
+				"worked\n");
+		return;
+	}
+	memset(&gd, 0, sizeof(gd));
+	gd.gradient = gradient;
+	gd.start = startPoint;
+	gd.end = endPoint;
+	gd.options = options;
+	cg_draw_gradient(c, &gd, cg_linear_paint);
+}
+
+void CGContextDrawRadialGradient(CGContextRef c, CGGradientRef gradient, CGPoint startCenter,
+				 CGFloat startRadius, CGPoint endCenter, CGFloat endRadius,
+				 CGGradientDrawingOptions options)
+{
+	cg_gradient_draw gd;
+
+	if (c == NULL) {
+		return;
+	}
+	if (gradient == NULL) {
+		fprintf(stderr, "CG-REFUSE: CGContextDrawRadialGradient needs a gradient\n");
+		return;
+	}
+	memset(&gd, 0, sizeof(gd));
+	gd.gradient = gradient;
+	gd.start = startCenter;
+	gd.end = endCenter;
+	gd.r0 = startRadius;
+	gd.r1 = endRadius;
+	gd.options = options;
+	cg_draw_gradient(c, &gd, cg_radial_paint);
+}
+
+void CGContextDrawConicGradient(CGContextRef c, CGGradientRef gradient, CGPoint center, CGFloat angle)
+{
+	cg_gradient_draw gd;
+
+	if (c == NULL) {
+		return;
+	}
+	if (gradient == NULL) {
+		fprintf(stderr, "CG-REFUSE: CGContextDrawConicGradient needs a gradient\n");
+		return;
+	}
+	memset(&gd, 0, sizeof(gd));
+	gd.gradient = gradient;
+	gd.start = center;
+	gd.angle = angle;
+	/* NO OPTIONS ARE SET, AND THAT IS THE CONIC RAMP'S CONTRACT RATHER THAN AN OVERSIGHT: it wraps,
+	 * so there is no beyond-the-ends for the two extension flags to describe. */
+	cg_draw_gradient(c, &gd, cg_conic_paint);
 }
