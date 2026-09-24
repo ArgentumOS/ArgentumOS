@@ -499,6 +499,17 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   their two typealiases (the KEY NAMES are not pinned yet, and an attributes dictionary
   built on recalled keys is exactly what §2 forbids); and the two enum-backed properties
   above, pending their CG setters.
+  **AND THE NULLABILITY RULE, WHICH C8 OWED THE APPKIT, IS ENFORCED (2026-09-24).**
+  `tools/foundation-gate.py` now walks `userland/AppKit/` as well as `userland/Foundation/`
+  — it had walked only Foundation, so the AppKit was scanned for NOTHING: not the clean-room
+  wall and not the annotation rule. Its public-header set is derived from the same `SCAN_DIRS`
+  list as its walk, because the first attempt at the change moved the walk and left a
+  hardcoded `"userland/Foundation/"` behind; `<AppKit/...>` also came off the forbidden-import
+  list (the reasoning `<CoreGraphics/...>` was never on it: the directory is ours now, so the
+  wall is enforced by RESOLUTION), and all three rules were tested in both directions —
+  region removed, region unbalanced, and an unresolved `<AppKit/…>` import each refused, then
+  green again at 142 of 146 headers. foundation-plan.md §9 records the same extension where
+  the standing rule is stated.
   THIS IS THE SEAM, NOT THE WIDGETS: **the drawing classes of §3 row 1 are
   `cocoa-parity-plan.md`'s to build on top**, which is what §3 says when it draws
   the CG layer's boundary — and C8's substrate is C2–C6, **ALL SIX OF WHICH ARE NOW

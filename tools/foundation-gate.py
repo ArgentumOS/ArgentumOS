@@ -8,7 +8,7 @@ The Foundation is first-party and clean-room. Its design reads Cocoa's
 source is opened. Two halves of that are mechanically checkable, so they are a
 gate rather than a promise:
 
-  * no first-party file imports a GNUstep, ObjFW or AppKit header, AND every
+  * no first-party file imports a GNUstep or ObjFW header, AND every
     `<Foundation/...>` import RESOLVES to a header inside this tree. THE WALL USED TO BE
     CHECKED BY CASE - Apple's spelling was `<Foundation/...>` and ours `<foundation/...>` -
     and the library's directory was renamed to `Foundation/` (user's decision, 2026-09-20),
@@ -34,6 +34,24 @@ What this deliberately does NOT police: prose (naming Cocoa, GNUstep or a legacy
 runtime in a comment is normal and useful — importing their headers is not), and
 how COMPLETE a region is: that is the compiler's half, and in FOUNDATION_CFLAGS it
 is already an error.
+
+AND `<AppKit/...>` CAME OFF THE FORBIDDEN LIST FOR THE SAME REASON `<CoreGraphics/...>` WAS
+NEVER ON IT (2026-09-24, C8): `userland/AppKit/` now exists - it holds the Objective-C AppKit
+that `cocoa-parity-plan.md` builds on this tree's Foundation and this tree's CoreGraphics - so
+`AppKit/` is OUR spelling now, exactly as `Foundation/` and `CoreGraphics/` are. It is
+enforced by RESOLUTION instead of by prefix, and the import stays an offence the moment it
+names a header this tree does not have, which is what the wall was for.
+
+AND THE NULLABILITY RULE NOW COVERS THE APPKIT TOO. It did not until C8.1, and the gap was
+twofold: `userland/AppKit/` was not walked at all, and the AppKit's probe is
+`appkit_graphicscontext.m`, which the `foundation_` prefix filter also skipped. A directory
+that is not walked cannot be checked, and a rule enforced on one of two sibling libraries is
+not a rule. Both scans now name both libraries.
+
+THE TOOL KEEPS ITS `foundation-` NAME, WHICH IS NOW NARROWER THAN WHAT IT POLICES. It is
+named in mk/00-base.mk as a `userland64` prerequisite and in the standing rule recorded in
+foundation-plan.md §5, so a rename would break two references to buy one word; this docstring
+says what it actually covers.
 """
 
 import os
@@ -42,10 +60,10 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# The Foundation's own sources and public headers, plus the ObjC probes that
+# THE TWO FIRST-PARTY OBJECTIVE-C LIBRARIES, their public headers, and the ObjC probes
 # exercise them (they are first-party too, so they live under the same rule).
-SCAN_DIRS = ["userland/Foundation"]
-SCAN_PREFIXES = [("userland/tests", "foundation_")]
+SCAN_DIRS = ["userland/Foundation", "userland/AppKit"]
+SCAN_PREFIXES = [("userland/tests", "foundation_"), ("userland/tests", "appkit_")]
 
 IMPORT_RE = re.compile(r'^\s*#\s*(?:import|include)\s*[<"]([^>"]+)[>"]')
 
@@ -120,7 +138,6 @@ FORBIDDEN_EXACT = {
 # "Foundation/" is NOT here any more: our own headers are spelled `<Foundation/...>` too, so
 # the wall is enforced by RESOLUTION (see RESOLVES_INSIDE below) rather than by case.
 FORBIDDEN_PREFIXES = (
-    "AppKit/",
     "GNUstep",
     "GNUstepBase/",
     "ObjFW",
@@ -165,7 +182,7 @@ def offence(path):
             # THE WALL'S SECOND HALF, BY RESOLUTION: our Foundation is `userland/Foundation/`, so an
             # import that names it must land on a file that EXISTS there. A path that resolves
             # nowhere is not ours - and a spelling is no longer evidence of anything.
-            if target.startswith(("Foundation/", "foundation/")):
+            if target.startswith(("Foundation/", "foundation/", "AppKit/", "appkit/")):
                 if not os.path.exists(os.path.join(ROOT, "userland", target)):
                     return lineno, target + "  (resolves to no header in this tree)"
     return None
@@ -212,8 +229,8 @@ def nullability_offence(path):
 def main():
     files = scanned_files()
     if not files:
-        print("FOUNDATION-GATE: no Foundation sources found "
-              "(expected userland/Foundation/) - refusing to pass vacuously")
+        print("FOUNDATION-GATE: no sources found (expected userland/Foundation/ and "
+              "userland/AppKit/) - refusing to pass vacuously")
         return 1
     bad = []
     for path in files:
@@ -221,13 +238,17 @@ def main():
         if found:
             bad.append((os.path.relpath(path, ROOT), found[0], found[1]))
 
+    # FROM `SCAN_DIRS` AND NOT FROM A SECOND LITERAL. This list said "userland/Foundation/"
+    # while `scanned_files()` walked SCAN_DIRS, and the first attempt at C8's nullability
+    # extension moved the walk and NOT this line: the run reported 371 files scanned and
+    # "141 of 145 public header(s)" - the same 145 as before - because the AppKit's header was
+    # being walked and then filtered out here. One list cannot drift from itself.
     headers = [p for p in files
-               if os.path.relpath(p, ROOT).startswith("userland/Foundation/")
+               if any(os.path.relpath(p, ROOT).startswith(d + "/") for d in SCAN_DIRS)
                and p.endswith(".h")]
     if not headers:
-        print("FOUNDATION-GATE: no public headers found under "
-              "userland/Foundation/ - refusing to pass the annotation rule "
-              "vacuously")
+        print("FOUNDATION-GATE: no public headers found under %s - refusing to pass the "
+              "annotation rule vacuously" % " or ".join(SCAN_DIRS))
         return 1
     unannotated = []
     for path in headers:
@@ -240,7 +261,12 @@ def main():
             print("FOUNDATION-GATE: FAIL - the clean-room wall was crossed "
                   "(docs/design/foundation-plan.md §2):")
             for rel, lineno, target in bad:
-                print("  %s:%d imports <%s>" % (rel, lineno, target))
+                # QUOTED, NOT ANGLED: an offence whose target carries a reason - the
+                # resolution arm's "resolves to no header in this tree" - put that reason inside
+                # the `<...>` that names the import, which read as if the note were part of the
+                # path. Pre-existing, and only reachable on a failure path until the C8 gate test
+                # exercised it.
+                print('  %s:%d imports "%s"' % (rel, lineno, target))
             print("GNUstep/ObjFW/Apple-Foundation sources are not inputs to this "
                   "work, and <objc/Object.h> is off-limits.")
         if unannotated:

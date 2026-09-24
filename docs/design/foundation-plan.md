@@ -353,6 +353,22 @@ status.
   carries ANY annotation, but a header carrying NONE is silent — and none is exactly
   the state a newly written class lands in.
 
+  **AND SINCE C8.1 THE RULE COVERS `userland/AppKit/` TOO (2026-09-24).** The AppKit is the second
+  first-party Objective-C library — it builds on this Foundation and on this tree's CoreGraphics —
+  so a rule enforced on one of two sibling libraries is not a rule. THE GAP WAS TWOFOLD AND IS
+  WORTH RECORDING, because neither half looks like a gap on its own: `userland/AppKit/` was NOT
+  WALKED AT ALL, and the AppKit's probe is `appkit_graphicscontext.m`, which the `foundation_`
+  prefix filter also skipped. `scanned_files()` now names both directories and both probe prefixes,
+  **the PUBLIC-HEADER SET IS DERIVED FROM THE SAME `SCAN_DIRS` LIST RATHER THAN FROM A SECOND
+  LITERAL** — it had a hardcoded `"userland/Foundation/"` while the walk used `SCAN_DIRS`, so the
+  first attempt at this extension moved the walk and not the rule and reported 371 files scanned
+  with the same "141 of 145 public header(s)" as before — and `<AppKit/...>` came off the
+  forbidden-import list for the reason `<CoreGraphics/...>` was never on it: `userland/AppKit/` is
+  OURS now, so the wall is enforced by RESOLUTION. All three rules were then tested in BOTH
+  directions before this was called done (a region removed → refused; a region left unbalanced →
+  refused; an `<AppKit/NoSuchHeader.h>` → refused as resolving nowhere; restored → green,
+  142 of 146).
+
 - **F7 — `NSCalendar`, `NSTimeZone` and `NSDateComponents`. DONE (2026-09-17).**
   `foundation_calendar` 10/10 on a guest boot, and §9 records the two things the probe found on the
   way (the clamp's roll — a real bug — and, for the second time in this plan, a check whose detail
@@ -636,7 +652,9 @@ status.
   and closes it with `NS_ASSUME_NONNULL_END` in the same commit. Two mechanical
   halves back that up, and neither is advice: `-Werror=nullability-completeness`
   in `FOUNDATION_CFLAGS` refuses a HALF-annotated header, and `tools/foundation-gate.py`
-  refuses an UNANNOTATED one (the compiler is silent there, which is the gap).
+  refuses an UNANNOTATED one (the compiler is silent there, which is the gap) — **and since C8.1
+  that gate covers `userland/AppKit/` as well as `userland/Foundation/`, both libraries' headers
+  and both libraries' probes (see the standing-rule note in §9).**
   The gate is anchored at the start of a line, so naming the macro in prose does
   not satisfy it; the four exemptions are named in `NULLABILITY_EXEMPT` with a
   reason each, and the check refuses to pass vacuously if no headers are found.
