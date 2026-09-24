@@ -856,6 +856,21 @@ int main(void)
 			replyDone = YES;
 		}];
 		fn_waitFor((volatile int *)&replyDone, 1200);
+		/* STREAMTASK-DIAG, TEMPORARY (§58.1c's neighbourhood): this check failed with the peer's seam
+		 * showing 115 bytes accepted by `write(2)`, and a `readDataOfMinLength:1` returns as soon as ANY
+		 * byte is available - so the question is not "did the tunnel carry it" but "how much of it
+		 * arrived in this one call". A partial read is indistinguishable from a lost one in the check
+		 * below, and it is what a coalescing-sensitive expectation looks like. */
+		{
+			NSString *replyText = replyData ? [[NSString alloc] initWithData:replyData
+									 encoding:NSUTF8StringEncoding] : nil;
+			int has200 = (replyText != nil &&
+				      [replyText rangeOfString:@"HTTP/1.0 200 ok"].location != NSNotFound) ? 1 : 0;
+
+			printf("FOUNDATION-STREAMTASK-DIAG reply: done=%d errCode=%ld len=%d has200=%d\n",
+			       (int)replyDone, (long)(replyError != nil ? [replyError code] : 0),
+			       (int)(replyData != nil ? [replyData length] : 0), has200);
+		}
 		check("and-the-reply-comes-back-through-it",
 		      replyDone && replyError == nil &&
 		      [[[NSString alloc] initWithData:replyData encoding:NSUTF8StringEncoding]

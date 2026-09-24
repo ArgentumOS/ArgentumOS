@@ -10723,6 +10723,39 @@ were spent reasoning about a sleeper while the thing that failed was the call th
 showed up immediately: a fix for that call was itself wrong until an unrelated case - one that polls `-1`, where a
 live child and a zombie can both be present - disagreed with it.)
 
+### §58.2 — THE STREAM TASK'S TLS LEG IS RED, AND IT IS LOCALIZED (2026-09-22)
+
+**WHAT IS MEASURED.** `foundation_streamtask` fails ONE check - `and-the-reply-comes-back-through-it` - and a
+temporary DIAG line in the probe says exactly how: **`done=0`**. The read's completion handler NEVER RUNS, not even
+through its own 10s timeout, so this is not a lost byte and not a partial read. The peer's own seam (the libtls BIO)
+shows the story from its side: it READ the client's 35-byte request, WROTE 115 bytes with `write(2)`
+(`offers=91 took=91`, `offers=24 took=24`) and closed. So the connection carries traffic client→peer, the machine is
+alive, and the client's read is stuck.
+
+**WHAT IT IS NOT, EACH RULED OUT BY A MEASUREMENT RATHER THAN AN ARGUMENT:**
+ * **NOT the tunnel machinery.** `foundation_websockettask` - which rides THIS SAME `NSURLSessionStreamTask` and the
+   same vendored TLS - is green, including its `wss:` leg, on the same day.
+ * **NOT "one long `poll` parks on a readable socket"**, which was the standing §58.1 work item: capping every wait
+   in the class at 500ms slices changed NOTHING (`done=0` before and after), and that edit was REVERTED rather than
+   left in as an unverified change. The read is therefore stuck BEFORE its wait loop - i.e. inside the blocking
+   `SSL_read` - not in the loop that work item was about.
+ * **NOT today's kernel changes.** The `wait4` fix, the callout `arg` width and the tty work touch none of this;
+   this probe's own wait on its peer is a blocking `waitpid`, which a WNOHANG change cannot affect.
+
+**THE ONE STRUCTURAL DIFFERENCE LEFT, AND IT IS THE NEXT EXPERIMENT.** The `wss:` leg's peer is a forked CHILD
+PROCESS; this probe's peer is a THREAD IN THE SAME PROCESS (deliberately - the probe's own comment says why: libtls
+allocates, so `fork` is not available to it). A blocking `read(2)` in one thread that another thread's `write(2)`
+does not wake is a shape NOTHING in this tree tests: `kernel_loopback_tcp`'s cross-process leg is green and its
+`poll`/`select` legs are green, but nothing has one thread blocked in a blocking socket read while another thread
+writes to the same connection. **The experiment is a leg in `kernel_loopback_tcp` - two threads of one process, one
+blocking in `read(2)`, the other writing after a pause - which would turn this from a red class case into a kernel
+fact with a small reproducer.** If that leg is green, the defect is in this probe's peer instead, and the probe's
+DIAG line (`FOUNDATION-STREAMTASK-DIAG reply: done=… errCode=… len=… has200=…`) is already in place to say which.
+
+**THE TREE IS LEFT AS IT WAS FOUND ON THIS POINT:** red on that one check - red before this investigation and red
+after - with the diagnosis above instead of a guess. The probe's DIAG line is kept DELIBERATELY: it is the
+instrument the next unit will read, not leftover scaffolding.
+
 **WHAT REMAINS:** the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`). The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
