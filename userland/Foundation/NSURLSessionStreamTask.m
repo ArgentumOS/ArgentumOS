@@ -297,6 +297,20 @@ completionHandler:(void (^)(NSError *))completionHandler
 /* THE ONE PLACE AN OPERATION ENTERS THE QUEUE, and the reason a door cannot forget to wake the worker. */
 - (void)fnEnqueue:(FNStreamOp *)operation
 {
+	/* §58.2k: WHAT THE CALLER HANDED TO THIS TASK, by kind. `fnEnqueuedRead == 0` after a read door was called
+	 * says the probe never got that far (its write's completion gates its read), which is a different finding
+	 * from a read that was enqueued and never served. */
+	switch (operation->kind) {
+	case FNStreamOpRead:
+		fnEnqueuedRead++;
+		break;
+	case FNStreamOpWrite:
+		fnEnqueuedWrite++;
+		break;
+	default:
+		fnEnqueuedOther++;
+		break;
+	}
 	[_queue lock];
 	if (_stopped) {
 		[_queue unlock];
@@ -404,6 +418,20 @@ completionHandler:(void (^)(NSError *))completionHandler
 
 - (void)fnServeOperation:(FNStreamOp *)operation
 {
+	/* §58.2k: WHICH OPERATIONS THE TASK'S OWN WORKER ACTUALLY TOOK, counted by kind. A switch of its own so the
+	 * counting does not have to reach into the serving switch below - which has arms this instrument has no
+	 * business changing. */
+	switch (operation->kind) {
+	case FNStreamOpRead:
+		fnServedRead++;
+		break;
+	case FNStreamOpWrite:
+		fnServedWrite++;
+		break;
+	default:
+		fnServedOther++;
+		break;
+	}
 	switch (operation->kind) {
 	case FNStreamOpRead:
 		[self fnServeRead:operation];
@@ -671,16 +699,38 @@ completionHandler:(void (^)(NSError *))completionHandler
 
 /* --- REPORTING ----------------------------------------------------------------------------------- */
 
-/* THE HOP EVERY DOOR IN THIS SESSION USES (§52): the delegate queue when there is one, inline when there is
- * not. The block is COPIED, because a queued block outlives the call that made it - and in MRC a captured
- * block is not retained by the outer one. */
-/* §58.2j'S COUNTERS, AND THEY ARE IN MEMORY ON PURPOSE: the read-path diags written here first were
- * `NSString`-allocating raw writes, and they were measured to BRIDGE the very loss they were measuring - with
- * them in, `foundation_streamtask` passed 20/20; with them removed, it went red 6 of 6 (same kernel, same
- * library, diags the only difference). So these count silently and the PROBE reads them once, at the end. */
+/* §58.2'S COUNTERS, AND THEY ARE IN MEMORY ON PURPOSE: the read-path diags written here first were
+ * `NSString`-allocating raw writes, and they were MEASURED to BRIDGE the very loss they were measuring - with
+ * them in, `foundation_streamtask` passed 20/20; with them removed (one `git checkout`, same kernel, the same
+ * library otherwise), it went red 6 of 6. So these count silently and the PROBE reads them once, at the end. */
 static int fnHopsHanded = 0;
 static int fnHopsRan = 0;
 static int fnHopsInline = 0;
+static int fnEnqueuedRead = 0;		/* what the CALLER handed to this task */
+static int fnEnqueuedWrite = 0;
+static int fnEnqueuedOther = 0;
+static int fnServedRead = 0;		/* what the task's OWN worker took off `_operations` */
+static int fnServedWrite = 0;
+static int fnServedOther = 0;
+
+/* §58.2k'S INSTRUMENT, AND IT LOCALIZES THE REMAINING LOSS IN ONE READ:
+ *   counts[0..2] = -fnEnqueue: calls    by kind (read, write, other)
+ *   counts[3..5] = -fnServeOperation:   by kind
+ * `fnEnqueuedRead == 0` says the probe never handed the read over at all (its write's completion gates it);
+ * `fnEnqueuedRead == 1` with `fnServedRead == 0` says the task's own worker never picked it up (the task's
+ * queue, not the delegate's); both set with the handler still not run says the loss is inside the read itself.
+ * A RAW WRITE WOULD BE EVIDENCE OF NOTHING HERE - see the block above. */
+- (void)fnServeCounts:(int *)counts
+{
+	if (counts != NULL) {
+		counts[0] = fnEnqueuedRead;
+		counts[1] = fnEnqueuedWrite;
+		counts[2] = fnEnqueuedOther;
+		counts[3] = fnServedRead;
+		counts[4] = fnServedWrite;
+		counts[5] = fnServedOther;
+	}
+}
 
 /* THE HOP EVERY DOOR IN THIS SESSION USES (§52): the delegate queue when there is one, inline when there is
  * not. The block is COPIED, because a queued block outlives the call that made it - and in MRC a captured

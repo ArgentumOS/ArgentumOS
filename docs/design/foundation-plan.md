@@ -11011,6 +11011,36 @@ never handed at all.)
 `-fnEnqueue:` calls per kind, `-fnServeOperation:` entries per kind, and `-fnServeRead:` entries and completions;
 and check the probe's own order of operations, since the request leg's WRITE completion is what gates its READ. Any
 per-event write here is ruled out by measurement, not by taste.
+
+### §58.2k — ONE READ IS ENQUEUED AND NEVER SERVED: THE TASK'S OWN WORKER IS BUSY IN AN EARLIER OPERATION (2026-09-22)
+
+**THE INSTRUMENT §58.2j NAMED, BUILT THE SAME WAY** (counters in memory, one read by the probe - a per-event write
+is ruled out BY MEASUREMENT here, not by taste). It counts what the CALLER handed the task (`-fnEnqueue:`, by kind)
+and what the task's OWN worker took off `_operations` (`-fnServeOperation:`, by kind).
+
+**MEASURED, THREE CONSECUTIVE RED RUNS, IDENTICAL:**
+```
+FOUNDATION-STREAMTASK-DIAG reply: done=0 errCode=0 len=0 has200=0
+  hops handed=14 ran=14 inline=0   ops enq=6/3/4 served=5/3/4
+```
+READ IT AS: **SIX reads were handed to the task and FIVE were served**; all THREE writes were served; all four other
+operations were served. The delegate hop is clean (14/14), so §58.2d's loss is cured and **this is a different one:
+ONE READ OPERATION IS ENQUEUED AND NEVER PICKED UP.**
+
+That is the signature of a worker that is BUSY INSIDE A PREVIOUS OPERATION - the task's own queue is the ONE worker
+`-resume` starts, serving `_operations` one at a time - and NOT of a lost wakeup, which is what §58.2h caught and
+§58.2i cured (that identity `_running == _pending == _operations` is clean 0 of 8 in the same hunt).
+
+**SO THE LOSS IS INSIDE THE OPERATION BEING SERVED WHEN THE REPLY READ ARRIVES**, and the counter that separates the
+candidates is the one thing this instrument lacks: a READ-COMPLETED count (incremented after `-fnDeliverRead:` in
+`-fnServeRead:`). `readEntered - readDone == 1` names a read stuck inside the poll or the read itself;
+`readEntered == readDone` with the next read still queued says the worker is stuck somewhere else entirely.
+
+**AND THE PROBE'S OWN ORDER IS NOT THE ANSWER:** all three writes were served (`enq=3 served=3`), so the request
+leg's write completion did run, and the probe DID issue its read - six times.
+
+**WHAT REMAINS:** that READ-COMPLETED counter, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5,
+`pty_write`).
 The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
