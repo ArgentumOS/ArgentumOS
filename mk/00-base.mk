@@ -348,6 +348,39 @@ $(CG_LIB): $(CG_OBJS)
 	@mkdir -p $(FNXLIB)
 	$(MUSL64_CC) -fPIC -shared -Wl,-soname,libcoregraphics.so.1 $(CG_OBJS) $(CG_LDFLAGS) -o $@
 	ln -sf libcoregraphics.so.1 $(FNXLIB)/libcoregraphics.so
+
+# The AppKit (docs/design/coregraphics-plan.md, milestone C8): the bridge between this tree's
+# CoreGraphics and the Objective-C AppKit that cocoa-parity-plan.md builds on top. ONE CLASS SO FAR
+# — NSGraphicsContext, the seam — and it is its own shared object rather than a file inside
+# libfoundation because Apple's AppKit is its own framework and coregraphics-plan §3 row 1 draws the
+# boundary there.
+#
+# A GENERATED SOURCE LIST AND A UNIQUE OBJECT PREFIX, copying CoreGraphics' block above rather than
+# Foundation's hand-listed one: that comment records why (a library that gains a translation unit per
+# header, and a probe and a library source that must not share an object path). NOTHING IS
+# HAND-LISTED HERE, so adding NSColor.m or NSImage.m later needs no edit in this file.
+APPKIT_SRC   = userland/AppKit
+APPKIT_LIB   = $(FNXLIB)/libappkit.so.1
+APPKIT_MSRCS = $(notdir $(wildcard $(APPKIT_SRC)/*.m))
+APPKIT_OBJS  = $(addprefix $(FNXLIB)/appkit-,$(APPKIT_MSRCS:.m=.o))
+# THE LIBRARY IS PURE OBJECTIVE-C, so it has no CFLAGS line of its own: `<AppKit/…>` and
+# `<CoreGraphics/…>` both resolve through `-Iuserland`, and Foundation's headers through the ICU
+# include path the rule already passes. `-lfoundation` is what pulls the runtime in transitively —
+# the same arrangement the CoreGraphics objective-C file relies on, and the reason no `-lobjc`
+# appears on the GUEST link line (the host link needs it explicitly; see mk/60-host.mk).
+APPKIT_LDFLAGS = -L$(FNXLIB) -lcoregraphics -lfoundation
+
+define APPKIT_objc_rule
+$(FNXLIB)/appkit-$(1:.m=.o): $(APPKIT_SRC)/$(1)
+	@mkdir -p $(FNXLIB)
+	$$(MUSL64_OBJC) -fPIC -Iinclude -Iuserland -I$$(ICUPREFIX)/include -c $$< -o $$@
+endef
+$(foreach f,$(APPKIT_MSRCS),$(eval $(call APPKIT_objc_rule,$(f))))
+
+$(APPKIT_LIB): $(APPKIT_OBJS)
+	@mkdir -p $(FNXLIB)
+	$(MUSL64_OBJC) -fPIC -shared -Wl,-soname,libappkit.so.1 $(APPKIT_OBJS) $(APPKIT_LDFLAGS) -o $@
+	ln -sf libappkit.so.1 $(FNXLIB)/libappkit.so
 LLVM_CXX_SRC    = .build/llvm-src
 LLVM_CXX_CFG    = .build/llvm-cxx/Makefile
 LLVM_CXX_PREFIX = .build/llvm-cxx-prefix

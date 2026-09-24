@@ -289,6 +289,52 @@ host-coregraphics-run: host-coregraphics
 	if [ $$rc -ne 0 ]; then echo "host-coregraphics-run: FAILED"; exit 1; fi; \
 	echo "host-coregraphics-run: all $(words $(HOST_CG_PROBES)) probes passed"
 
+# --- THE APPKIT (docs/design/coregraphics-plan.md C8), built the way CoreGraphics is ---------
+# ONE OBJECT PREFIX (`appkit-`) AND IT IS NOBODY ELSE'S, the same rule the coregraphics one states.
+# THE HOST DOES NEED `-lobjc` EXPLICITLY WHERE THE GUEST DOES NOT: the guest resolves it through
+# libfoundation's NEEDED entry, while this link has no such transit and the runtime's own symbols
+# (`objc_msgSend`, the class metadata) would otherwise be undefined.
+HOST_APPKIT_LIB    ?= $(HOST_LIBDIR)/libappkit.so
+HOST_APPKIT_CFLAGS ?= -std=gnu11 -fPIC -g -Wall -Wextra -Iuserland
+HOST_APPKIT_MSRCS  := $(wildcard userland/AppKit/*.m)
+HOST_APPKIT_OBJDIR := $(HOST_OBJDIR)/appkit
+HOST_APPKIT_MOBJS   = $(patsubst userland/AppKit/%.m,$(HOST_APPKIT_OBJDIR)/appkit-%.o,$(HOST_APPKIT_MSRCS))
+HOST_APPKIT_PROBES ?= appkit_graphicscontext
+HOST_APPKIT_LDFLAGS = -L$(HOST_LIBDIR) -lappkit -lcoregraphics -lfoundation \
+		      -L$(CURDIR)/$(HOST_OBJCPFX)/lib -lobjc $(HOST_ICU_LIBS)
+
+$(HOST_APPKIT_OBJDIR)/appkit-%.o: userland/AppKit/%.m
+	@mkdir -p $(HOST_APPKIT_OBJDIR)
+	$(HOST_CC) $(HOST_APPKIT_CFLAGS) $(HOST_OBJCFLAGS) -I$(CURDIR)/$(HOST_OBJCPFX)/include \
+		-c $< -o $@
+
+$(HOST_APPKIT_LIB): $(HOST_APPKIT_MOBJS) $(HOST_CG_LIB)
+	@mkdir -p $(HOST_LIBDIR)
+	$(HOST_CC) $(HOST_APPKIT_CFLAGS) $(HOST_OBJCFLAGS) -I$(CURDIR)/$(HOST_OBJCPFX)/include \
+		-shared -o $@ $(HOST_APPKIT_MOBJS) $(HOST_APPKIT_LDFLAGS)
+
+define APPKIT_HOST_PROBE_rule
+$(HOST_BINDIR)/$(1): $(HOST_APPKIT_LIB) $$(wildcard userland/tests/$(1).m)
+	@mkdir -p $(HOST_BINDIR)
+	$$(HOST_CC) $$(HOST_RPATH) $$(HOST_APPKIT_CFLAGS) $$(HOST_OBJCFLAGS) -I$(CURDIR)/$(HOST_OBJCPFX)/include -fno-objc-arc \
+		userland/tests/$(1).m -L$(HOST_LIBDIR) -lappkit $$(HOST_APPKIT_LDFLAGS) -o $$@
+endef
+$(foreach p,$(HOST_APPKIT_PROBES),$(eval $(call APPKIT_HOST_PROBE_rule,$(p))))
+
+.PHONY: host-appkit host-appkit-run
+host-appkit: $(HOST_APPKIT_LIB) $(addprefix $(HOST_BINDIR)/,$(HOST_APPKIT_PROBES))
+	@echo "host-appkit: $(words $(HOST_APPKIT_MSRCS)) library source(s), $(words $(HOST_APPKIT_PROBES)) probe(s) in $(HOST_BINDIR)"
+
+# A PROBE THAT EXITS NON-ZERO IS A FAILURE, the same rule host-coregraphics-run states: this is a
+# GATE, not a report.
+host-appkit-run: host-appkit
+	@rc=0; for p in $(HOST_APPKIT_PROBES); do \
+		echo "== $$p =="; \
+		$(HOST_BINDIR)/$$p || { echo "   ($$p exited $$?)"; rc=1; }; \
+	done; \
+	if [ $$rc -ne 0 ]; then echo "host-appkit-run: FAILED"; exit 1; fi; \
+	echo "host-appkit-run: all $(words $(HOST_APPKIT_PROBES)) probes passed"
+
 # THE HOST RUNTIME ITSELF, and why this target exists. The prefix that was here had been configured
 # WITHOUT -DGNUSTEP and WITH OLDABI_COMPAT=ON, while the guest runtime is built with BOTH THE OTHER
 # WAY. Those are BEHAVIOURAL switches inside libobjc2, and the host run diverged on exactly the checks

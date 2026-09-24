@@ -106,6 +106,13 @@ def declared(kind, name, text):
     reduced to its FIRST component before the test, because that component plus a
     colon or a keyword is what actually appears in the declaration.
     """
+    # THE SIGN IS STRIPPED FOR THE TEST AND KEPT IN THE ROW (see row_name): Apple indexes
+    # `+saveGraphicsState` and `-saveGraphicsState` as separate members, and the class/instance
+    # distinction is the one that matters most about NSGraphicsContext, so the ROW carries it while
+    # the declaration test deliberately matches EITHER — a header that declares one and not the
+    # other is a fact `--check` cannot express yet, and saying so is better than a test that
+    # silently requires both.
+    name = re.sub(r"^[+-]\s*", "", name)
     n = re.escape(name)
     any_form = (
         r"#\s*define\s+" + n + r"\b"                               # a macro
@@ -126,6 +133,31 @@ def declared(kind, name, text):
     return re.search(any_form, text, re.M | re.S)
 
 
+def declared_row(kind, name, owner, text):
+    """Is this ROW declared — which is NOT the same question as `declared(name)`.
+
+    A MEMBER IS CREDITED ONLY WHEN ITS OWNER IS DECLARED TOO, and the first version of this
+    instrument got that wrong in a way that would have poisoned the whole ledger as C8 grew. It
+    asked only "is this name declared anywhere", and AppKit is a framework where names collide
+    constantly: landing NSGraphicsContext's `flipped` credited **NSView's and NSRulerView's**
+    `flipped` rows as well, and `context` came out shipped for **NSPrintOperation** — from a
+    METHOD PARAMETER name in our own header, which declares nothing at all. Five false credits from
+    eleven real members, measured, on the first run.
+
+    WHAT THIS STILL IS NOT: block-local. It says "we declare this class and this name", not "this
+    class declares this member" — so declaring a future NSView and an unrelated `flipped` elsewhere
+    would credit NSView.flipped. Closing that needs the test to read inside the owner's
+    `@interface` block, and it is recorded here rather than left as a surprise; until then the
+    ledger can over-credit, which is the safe direction for a work list (it never claims work that
+    is not there, and `--check` still fails the two inconsistency classes).
+    """
+    if not declared(kind, name, text):
+        return False
+    if owner and owner != "-" and not declared("class", owner, text):
+        return False
+    return True
+
+
 def row_name(node):
     """The NAME a header would declare, from the title Apple shows a reader.
 
@@ -136,8 +168,14 @@ def row_name(node):
     """
     title = node.get("title", "")
     if node.get("type") == "method":
-        title = re.sub(r"^[+-]\s*", "", title)
-        return title.split(":")[0].strip()
+        # THE SIGN SURVIVES (the `+`/`-` prefix) and only the SELECTOR TAIL is dropped, so
+        # `+ saveGraphicsState` and `- saveGraphicsState` become two rows instead of one. The
+        # first version stripped the sign and keyed them together — which is precisely the
+        # distinction this class turns on, and it was invisible until a probe drew through the
+        # seam and the two pairs had to be told apart.
+        sign = "+" if title.startswith("+") else "-"
+        tail = re.sub(r"^[+-]\s*", "", title).split(":")[0].strip()
+        return sign + tail
     if node.get("type") == "property":
         return re.sub(r"^property\s+", "", title).strip()
     return title
@@ -204,7 +242,8 @@ def refresh():
         if r["deprecated"]:
             st, why = STATUS_STRUCK, "deprecated"
         else:
-            st = STATUS_SHIPPED if declared(r["kind"], r["name"], text) else STATUS_OPEN
+            st = (STATUS_SHIPPED
+                  if declared_row(r["kind"], r["name"], r["owner"], text) else STATUS_OPEN)
             why = "-"
         counts[(r["kind"], st)] = counts.get((r["kind"], st), 0) + 1
         if st == STATUS_STRUCK:
@@ -276,7 +315,7 @@ def check(strict=False):
     live = {r[2] for r in rows if r[1] != STATUS_STRUCK}
     for kind, status, name, owner, family, why, src in rows:
         counts[(kind, status)] = counts.get((kind, status), 0) + 1
-        found = bool(declared(kind, name, text))
+        found = declared_row(kind, name, owner, text)
         if status == STATUS_SHIPPED and not found:
             bad.append("STALE SHIPPED CLAIM    %-9s %s — the file says we ship it and our "
                        "headers do not declare it" % (kind, name))

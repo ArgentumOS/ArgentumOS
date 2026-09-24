@@ -1397,6 +1397,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	@cp $(CG_LIB) "$(ROOTFS64)/System/Libraries/libcoregraphics.so.1"
 	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/CoreGraphics"
 	@cp userland/CoreGraphics/*.h "$(ROOTFS64)/System/Shared/Headers/CoreGraphics/"
+	# --- The AppKit (docs/design/coregraphics-plan.md C8): the bridge library and its headers,
+	# staged the same way CoreGraphics is, into the directory the `<AppKit/…>` import spelling names.
+	# `$(APPKIT_LIB)` IS A PREREQUISITE of this target (mk/00-base.mk builds it), for the reason the
+	# CoreGraphics staging line records: a rule that copies a file nothing builds works only on a
+	# machine where the file happens to be there.
+	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/AppKit"
+	@cp userland/AppKit/*.h "$(ROOTFS64)/System/Shared/Headers/AppKit/"
+	@cp $(APPKIT_LIB) "$(ROOTFS64)/System/Libraries/libappkit.so.1"
 
 	# --- shared C++ stack (dynamic-C++): the versioned libc++/libc++abi/
 	# libunwind .so files from the llvm-cxx prefix (built shared since the
