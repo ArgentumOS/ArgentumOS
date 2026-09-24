@@ -483,6 +483,116 @@ int main(void)
 	}
 	CGPathRelease((CGPathRef)path);
 
+	/* --- THE PATH CLIP: exact for a rectilinear path, refused otherwise --------------- */
+	/* THE CHECKS COUNT PIXELS, because a clip is not visible any other way: the assertion is on how
+	 * much of a full-surface fill SURVIVED, which one number per case settles. */
+	{
+		CGContextRef k = fresh();
+		CGPathRef rp = CGPathCreateMutable();
+
+		CGContextSetRGBFillColor(k, 1.0, 1.0, 1.0, 1.0);
+		CGPathAddRect((CGMutablePathRef)rp, NULL, CGRectMake(1.0, 1.0, 2.0, 2.0));
+		CGContextAddPath(k, rp);
+		CGContextClip(k);
+		CGContextFillRect(k, CGRectMake(0.0, 0.0, 4.0, 4.0));
+		/* THE UNIT IS BYTES, WHICH THIS PROBE'S OWN HELPER DECIDES AND I GOT WRONG FIVE TIMES: an
+		 * opaque white pixel is FOUR nonzero bytes, so a 2x2 clip is 16 and the whole 4x4 is 64. */
+		check_num("a path clip confines a full-surface fill to 2x2 of a 4x4 (16 bytes = 4 pixels)",
+			  (double)count_nonzero(k), 16.0, 0.0);
+		/* AND THE BOX READS BACK IN USER SPACE, converted from the device region it is stored as. */
+		{
+			CGRect box = CGContextGetClipBoundingBox(k);
+
+			check_num("...and GetClipBoundingBox reports it in USER space",
+				  (double)box.size.width, 2.0, 1e-9);
+		}
+		CGContextRelease(k);
+		CGPathRelease(rp);
+	}
+
+	/* THE TWO WINDING RULES, WHICH ONE PAIR OF CHECKS TELLS APART: two nested rects wind twice, so
+	 * non-zero keeps the middle and even-odd leaves a HOLE. */
+	{
+		int nonzero;
+		int evenodd;
+		int i;
+
+		for (i = 0; i < 2; i++) {
+			CGContextRef k = fresh();
+			CGMutablePathRef rp = CGPathCreateMutable();
+
+			CGContextSetRGBFillColor(k, 1.0, 1.0, 1.0, 1.0);
+			CGPathAddRect(rp, NULL, CGRectMake(0.0, 0.0, 4.0, 4.0));
+			CGPathAddRect(rp, NULL, CGRectMake(1.0, 1.0, 2.0, 2.0));
+			CGContextAddPath(k, (CGPathRef)rp);
+			if (i == 0) {
+				CGContextClip(k);
+			} else {
+				CGContextEOClip(k);
+			}
+			CGContextFillRect(k, CGRectMake(0.0, 0.0, 4.0, 4.0));
+			if (i == 0) {
+				nonzero = count_nonzero(k);
+			} else {
+				evenodd = count_nonzero(k);
+			}
+			CGContextRelease(k);
+			CGPathRelease((CGPathRef)rp);
+		}
+		check_num("a NON-ZERO path clip keeps the inner rect (both rings wind the same way; 64 "
+			  "bytes = the whole surface)", (double)nonzero, 64.0, 0.0);
+		check_num("...and an EVEN-ODD one leaves it as a HOLE (48 bytes = 12 pixels, the ring "
+			  "without its middle)", (double)evenodd, 48.0, 0.0);
+	}
+
+	/* AND A PATH THAT IS NOT RECTILINEAR IS REFUSED RATHER THAN APPROXIMATED. */
+	{
+		CGContextRef k = fresh();
+		CGMutablePathRef tri = CGPathCreateMutable();
+
+		CGContextSetRGBFillColor(k, 1.0, 1.0, 1.0, 1.0);
+		CGPathMoveToPoint(tri, NULL, 0.0, 0.0);
+		CGPathAddLineToPoint(tri, NULL, 4.0, 0.0);
+		CGPathAddLineToPoint(tri, NULL, 2.0, 4.0);
+		CGPathCloseSubpath(tri);
+		CGContextAddPath(k, (CGPathRef)tri);
+		CGContextClip(k);
+		CGContextFillRect(k, CGRectMake(0.0, 0.0, 4.0, 4.0));
+		check_num("a THREE-CORNERED clip is refused and the clip is left as it was (the whole "
+			  "surface still paints)", (double)count_nonzero(k), 64.0, 0.0);
+		CGContextRelease(k);
+		CGPathRelease((CGPathRef)tri);
+	}
+
+	/* A ROTATED CTM IS REFUSED for the reason CGContextClipToRect already refuses one. */
+	{
+		CGContextRef k = fresh();
+		CGPathRef rp = CGPathCreateMutable();
+
+		CGContextSetRGBFillColor(k, 1.0, 1.0, 1.0, 1.0);
+		CGContextRotateCTM(k, 0.5);
+		CGPathAddRect((CGMutablePathRef)rp, NULL, CGRectMake(1.0, 1.0, 2.0, 2.0));
+		CGContextAddPath(k, rp);
+		CGContextClip(k);
+		CGContextFillRect(k, CGRectMake(-4.0, -4.0, 16.0, 16.0));
+		check_num("a path clip under a ROTATED CTM is refused", (double)count_nonzero(k), 64.0, 0.0);
+		CGContextRelease(k);
+		CGPathRelease(rp);
+	}
+
+	/* AND A CLIP CONSUMES THE CURRENT PATH, as the fills do. */
+	{
+		CGPathRef rp = CGPathCreateMutable();
+		CGContextRef k = fresh();
+
+		CGPathAddRect((CGMutablePathRef)rp, NULL, CGRectMake(0.0, 0.0, 2.0, 2.0));
+		CGContextAddPath(k, rp);
+		CGContextClip(k);
+		check("...and it CONSUMES the current path", CGContextIsPathEmpty(k));
+		CGContextRelease(k);
+		CGPathRelease(rp);
+	}
+
 	printf("CG-PROBE: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

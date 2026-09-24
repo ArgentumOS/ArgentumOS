@@ -668,7 +668,7 @@ func	shipped	CGContextBeginPath	-	Opaque Types / Constructing a Current Graphics
 func	open	CGContextBeginTransparencyLayer	-	Opaque Types / Working with Transparency Layers	-	objc
 func	open	CGContextBeginTransparencyLayerWithRect	-	Opaque Types / Working with Transparency Layers	-	objc
 func	shipped	CGContextClearRect	-	Opaque Types / Drawing Shapes	-	objc
-func	open	CGContextClip	-	Opaque Types / Working with the Current Clipping Path	-	objc
+func	shipped	CGContextClip	-	Opaque Types / Working with the Current Clipping Path	-	objc
 func	open	CGContextClipToMask	-	Opaque Types / Working with the Current Clipping Path	-	objc
 func	shipped	CGContextClipToRect	-	Opaque Types / Working with the Current Clipping Path	-	objc
 func	open	CGContextClipToRects	-	Opaque Types / Working with the Current Clipping Path	-	objc
@@ -693,7 +693,7 @@ func	shipped	CGContextDrawPath	-	Opaque Types / Drawing the Current Graphics Pat
 func	shipped	CGContextDrawRadialGradient	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 func	shipped	CGContextDrawShading	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 func	open	CGContextDrawTiledImage	-	Opaque Types / Drawing Images and PDF Content	-	objc
-func	open	CGContextEOClip	-	Opaque Types / Working with the Current Clipping Path	-	objc
+func	shipped	CGContextEOClip	-	Opaque Types / Working with the Current Clipping Path	-	objc
 func	shipped	CGContextEOFillPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 func	open	CGContextEndPage	-	Opaque Types / Managing a Page-Based Graphics Context	-	objc
 func	open	CGContextEndTransparencyLayer	-	Opaque Types / Working with Transparency Layers	-	objc

@@ -1462,6 +1462,93 @@ static void cg_traps_for_path(CGContextRef c, CGPathRef path, int even_odd, cg_t
  * trapezoids into an 8-bit mask when coverage is wanted and a 1-BIT mask when it is not, so "no
  * antialiasing" is exact rather than approximated. Asked once, so the choice cannot drift between
  * two copies of the same composite. */
+/* A 16.16 FIXED VALUE AS A DEVICE COORDINATE, ROUNDED OUTWARD — the direction `CGRectIntegral` also
+ * takes in `CGContextClipToRect` above, and the safe one for a CLIP: a region rounded outward keeps at
+ * least the pixels the caller asked for, where rounding inward would silently clip some of them. */
+static int cg_floor_fixed(pixman_fixed_t v)
+{
+	return (int)floor((double)v / 65536.0);
+}
+
+static int cg_ceil_fixed(pixman_fixed_t v)
+{
+	return (int)ceil((double)v / 65536.0);
+}
+
+/* THE PATH CLIP. See CGContext.h for the boundary this draws: a rectilinear path is exact and
+ * anything else is refused, because a clip is a REGION here and a mask is the other half. */
+static void cg_clip_to_current_path(CGContextRef c, int even_odd)
+{
+	cg_traps tr;
+	pixman_region32_t path_region;
+	pixman_region32_t out;
+	int i;
+
+	if (c == NULL) {
+		return;
+	}
+	/* THE SAME REFUSAL `CGContextClipToRect` MAKES, AND FOR THE SAME REASON: under a rotation the
+	 * device-space trapezoids are the rotated shape, and the region that would hold them is not the
+	 * region the caller asked to keep. */
+	if (c->state.ctm.b != 0.0 || c->state.ctm.c != 0.0) {
+		fprintf(stderr, "CG-REFUSE: CGContextClip under a rotated or skewed CTM (the clip is a "
+				"device-space region of rectangles, and a rotated path is not one)\n");
+		return;
+	}
+	cg_traps_for_path(c, (CGPathRef)c->path, even_odd, &tr);
+	pixman_region32_init(&path_region);
+	for (i = 0; i < tr.count; i++) {
+		const pixman_trapezoid_t *t = &tr.traps[i];
+
+		/* A SLANTED SIDE IS THE REFUSAL: for every trapezoid of a rectilinear path the two points of
+		 * each side share an x, so this test is exact rather than a tolerance — a curve that had been
+		 * flattened into many small slanted pieces fails it, correctly, because a curve is not a
+		 * rectangle. */
+		if (t->left.p1.x != t->left.p2.x || t->right.p1.x != t->right.p2.x) {
+			fprintf(stderr, "CG-REFUSE: CGContextClip needs a RECTILINEAR path; this one has a "
+					"slanted or curved edge, which would need a MASK (this library clips "
+					"with a region of rectangles), so the clip is left as it was\n");
+			pixman_region32_fini(&path_region);
+			free(tr.traps);
+			return;
+		}
+		{
+			int x1 = cg_floor_fixed(t->left.p1.x);
+			int y1 = cg_floor_fixed(t->top);
+			int x2 = cg_ceil_fixed(t->right.p1.x);
+			int y2 = cg_ceil_fixed(t->bottom);
+
+			if (x2 > x1 && y2 > y1) {
+				pixman_region32_union_rect(&path_region, &path_region, x1, y1,
+							   (unsigned int)(x2 - x1),
+							   (unsigned int)(y2 - y1));
+			}
+		}
+	}
+	free(tr.traps);
+	/* INTERSECTED THROUGH A TEMPORARY, because `pixman_region32_intersect` takes a destination of its
+	 * own rather than one of its sources. */
+	pixman_region32_init(&out);
+	pixman_region32_intersect(&out, &c->state.clip, &path_region);
+	pixman_region32_fini(&c->state.clip);
+	pixman_region32_init(&c->state.clip);
+	pixman_region32_copy(&c->state.clip, &out);
+	pixman_region32_fini(&out);
+	pixman_region32_fini(&path_region);
+	/* A CLIP CONSUMES THE CURRENT PATH, as Apple's does — the same rule the fills follow. */
+	CGContextBeginPath(c);
+}
+
+void CGContextClip(CGContextRef c)
+{
+	cg_clip_to_current_path(c, 0);
+}
+
+void CGContextEOClip(CGContextRef c)
+{
+	cg_clip_to_current_path(c, 1);
+}
+
 static pixman_format_code_t cg_mask_format(CGContextRef c)
 {
 	return (c->allows_antialiasing && c->state.antialias) ? PIXMAN_a8 : PIXMAN_a1;
