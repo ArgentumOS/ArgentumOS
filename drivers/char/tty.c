@@ -745,13 +745,28 @@ int tty_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 				unsigned int ini_ticks = CURRENT_TICKS;
 				unsigned int timeout;
 
+				/* THE VTIME CALLBACK MUST WAKE THE CHANNEL THE READER IS ON - &tty->read_q, NOT
+				 * &tty->cooked_q - AND THAT DIFFERENCE IS A MEASURED BUG FIX, not a tidy-up
+				 * (foundation-plan.md §58.1c).
+				 *
+				 * wait_vtime_off() is `wakeup(arg)`, and wakeup() matches ON THE CHANNEL. Both arms below
+				 * sleep on &tty->read_q, and NOTHING IN THIS TREE SLEEPS ON &tty->cooked_q (grep it), so
+				 * this timer's wake went nowhere: with VMIN=0, VTIME=1 and nothing written, a read blocked
+				 * FOR EVER where POSIX requires 0 once the timer expires. MEASURED, not deduced -
+				 * kernel_pty_read parked on its own watchdog in phase 2, and its check now asserts this
+				 * behaviour instead of recording the limit, so a regression here fails that case.
+				 *
+				 * AND WAKING read_q ADDS NO NEW CLASS OF WAKE: it is the channel do_cook() already uses for
+				 * arriving input (drivers/char/tty.c:523), and a wake that arrives while a process is not
+				 * sleeping is harmless by construction (kernel/sleep.c: it clears the registration and the
+				 * caller's next look decides). */
 				if(!tty->termios.c_cc[VMIN]) {
 					/* VTIME is measured in tenths of second */
 					timeout = tty->termios.c_cc[VTIME] * (HZ / 10);
 
 					while(CURRENT_TICKS - ini_ticks < timeout && !tty->cooked_q.count) {
 						creq.fn = wait_vtime_off;
-						creq.arg = (addr_t)&tty->cooked_q;
+						creq.arg = (addr_t)&tty->read_q;
 						add_callout(&creq, timeout);
 						if(f->flags & O_NONBLOCK) {
 							return -EAGAIN;
@@ -780,7 +795,7 @@ int tty_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 						}
 						timeout = tty->termios.c_cc[VTIME] * (HZ / 10);
 						creq.fn = wait_vtime_off;
-						creq.arg = (addr_t)&tty->cooked_q;
+						creq.arg = (addr_t)&tty->read_q;	/* the channel this arm sleeps on below */
 						add_callout(&creq, timeout);
 						if(f->flags & O_NONBLOCK) {
 							n = -EAGAIN;

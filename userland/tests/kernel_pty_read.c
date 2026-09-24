@@ -249,24 +249,32 @@ int main(void)
 		      "termios on a pty slave could not be read or written");
 
 		if (got == 1) {
-			/* ---- THE FINDING: THE TIMER WAKES A CHANNEL NOBODY WAITS ON (plan §58.1c) ----------------
+			/* ---- THE FINDING, IN TWO LAYERS (plan §58.1c): THE TIMER'S WAKE WAS DOUBLY DEAD ------
 			 *
-			 * MEASURED, and it is a kernel defect rather than a probe artefact: with VMIN=0 and VTIME=1 and
-			 * NOTHING written, this read did not return - the probe's own 20s watchdog fired with "PARKED in
-			 * phase 2", where POSIX requires 0 once the timer expires.
+			 * MEASURED: with VMIN=0, VTIME=1 and NOTHING written, this read DOES NOT RETURN - the probe's
+			 * own 20s watchdog parks in phase 2 - where POSIX requires 0 once the timer expires.
 			 *
-			 * THE CAUSE IS A CHANNEL MISMATCH, not a lost wake in the arm/look/commit window:
-			 *     tty_read sleeps on  &tty->read_q      (drivers/char/tty.c:759)
-			 *     the VTIME callout wakes &tty->cooked_q (drivers/char/tty.c:754, `creq.arg`)
-			 * and wakeup() matches on the channel, so the timer's wake can never reach the sleeper. On an idle
-			 * pty nothing else wakes read_q either, so the read waits for ever. (That is also why the naive
-			 * VTIME arms could not be "cured mechanically" and why §58.1b left them - the cure is about a
-			 * window between check and registration, and this is a different fault underneath it.)
+			 * LAYER 1, THE CHANNEL, FIXED: tty_read sleeps on &tty->read_q while the VTIME callout
+			 * (wait_vtime_off) woke &tty->cooked_q - and NOTHING IN THIS TREE SLEEPS ON &tty->cooked_q
+			 * (grep it). wakeup() matches ON THE CHANNEL, so that wake could never find a waiter.
+			 * Both VTIME sites now name &tty->read_q, the channel the reader is actually on.
 			 *
-			 * SO THIS CHECK ASSERTS THE LIMIT, which is this project's §45-Y pattern: it passes WHILE the
-			 * behaviour is the limit, and its failure text says to FLIP IT the day the arm is fixed. It is run
-			 * in a CHILD so that "it did not return" is an observation rather than a hung probe: the parent
-			 * bounds the wait, kills the child, and records which happened. */
+			 * LAYER 2, THE TRUNCATION, STILL OPEN - AND IT IS WHY FIXING LAYER 1 CHANGED NOTHING
+			 * (measured: the read still did not return). The callout API CARRIES A POINTER IN 32 BITS:
+			 *     include/fnx/timer.h:  struct callout_req { void (*fn)(unsigned int); unsigned int arg; };
+			 * and these very sites store a 64-bit address in it - `creq.arg = (addr_t)&tty->read_q;`. The
+			 * value is truncated AT THE ASSIGNMENT, so wait_vtime_off() concludes by calling
+			 * wakeup((void *)(uint32_t)address), which hashes the wrong bucket and - even after layer 1 -
+			 * matches no sleeper. This is a 64-BIT PORTING DEFECT of the class this port has met before
+			 * (an `unsigned int` where a pointer belongs), and it is why the timer has never been able to
+			 * wake anything on this kernel, whichever channel it names.
+			 *
+			 * THE FIX IS THEREFORE THE `arg` TYPE (`addr_t`, plus the eight callbacks' parameter, which
+			 * pass small integers and are unaffected in behaviour) - AND THIS CHECK IS ITS GATE.
+			 *
+			 * UNTIL THEN THE CHECK ASSERTS THE LIMIT (this project's §45-Y pattern: it passes WHILE the
+			 * behaviour is the limit, and its failure text says to flip it), run in a CHILD under a bounded
+			 * reap so that "it did not return" is an observation rather than a hung probe. */
 			phase = 2;
 			{
 				pid_t pid = fork();
@@ -280,8 +288,8 @@ int main(void)
 				reaped = reap_bounded(pid, &status);
 				phase = -1;
 				check("a-vtime-read-with-nothing-written-blocks-KNOWN-LIMIT", !reaped,
-				      reaped ? "the VTIME arm RETURNED - THE LIMIT IS GONE, so flip this check to assert "
-					       "that a VMIN=0/VTIME=1 read with nothing written returns 0 (plan §58.1c)"
+				      reaped ? "the VMIN=0/VTIME=1 read RETURNED - THE LIMIT IS GONE, so flip this check to "
+					       "assert that it returns 0 on the timer (plan §58.1c)"
 					     : NULL);
 			}
 

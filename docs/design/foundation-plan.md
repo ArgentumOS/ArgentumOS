@@ -10572,11 +10572,37 @@ reads with `pty_read` (the §58.1 cure that had no behaviour test at all) and `p
    interior arms become reachable AND wakable, and their arm/look/commit cure can be measured against it instead
    of copied in blind - which is the order this project insists on.
 
-**WHAT REMAINS:** the `VTIME` channel fix (above, with `kernel_pty_read` as its gate), then the two interior
-`&tty->read_q` arms once that fix makes them verifiable, then the six writer sites (`&pipefs_write`,
-`&tty->write_q` ×5, `pty_write`). The one check that stays deliberately un-raced - "data already queued" - carries
-the reason in its own comment: this guest's `usleep()` costs tens of ms for a nominal 1ms, so a mid-window write
-would make that check pass or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
+**§58.1c UPDATE: THE CHANNEL FIX LANDED, IT WAS NOT ENOUGH, AND THE REASON IS A SECOND LAYER (2026-09-22).**
+
+**LAYER 1 - THE CHANNEL - IS FIXED AND IS NECESSARY.** Both `VTIME` sites in `tty_read` now set
+`creq.arg = (addr_t)&tty->read_q`: the arms sleep on `&tty->read_q` and **NOTHING IN THIS TREE SLEEPS ON
+`&tty->cooked_q`** (measured by grep, not assumed), so the timer's wake could never have found a waiter. Waking
+`read_q` adds no new class of wake - it is the channel `do_cook()` already uses for arriving input.
+
+**LAYER 2 - AND IT IS WHY FIXING LAYER 1 CHANGED NOTHING: THE CALLOUT API CARRIES A POINTER IN 32 BITS.**
+MEASURED: with layer 1 in, the flipped check still reported "DID NOT RETURN". The reason is not in `tty_read` at
+all:
+  * `include/fnx/timer.h`: `struct callout_req { void (*fn)(unsigned int); unsigned int arg; };`
+  * the `VTIME` sites store a 64-BIT ADDRESS in that `unsigned int`: `creq.arg = (addr_t)&tty->read_q;`
+  * so the address is **truncated at the assignment**, `wait_vtime_off()` receives 32 bits of it, and its
+    `wakeup()` hashes the wrong bucket of `sleep_hash_table` and matches no sleeper - whatever channel the sites
+    name. `kernel/timer.c` carries the same narrow types (its `struct callout` and the
+    `void (*fn)(unsigned int); unsigned int arg;` locals in `do_callouts_bh`).
+  * **THIS IS A 64-BIT PORTING DEFECT of the class this port has met before** - an `unsigned int` where a pointer
+    belongs - and it means the callout timer has NEVER been able to wake anything on this kernel. It hid because
+    seven of the eight callout users (`fbcon_screen_off`, `fbcon_cursor_blink`, `vgacon_screen_off`, `fdc_timer`,
+    `do_motor_off`, `pit_beep_off`, `ide->timer_fn`) pass a small INTEGER, where 32 bits is plenty; `wait_vtime_off`
+    is the only one handed a pointer, and it is the only one that was silent.
+
+**THE FIX, AND WHAT IT TOUCHES:** `arg` becomes `addr_t` in both structs and in `do_callouts_bh`'s locals, and the
+eight callbacks take `addr_t` (behaviourally irrelevant for the integer callers, required for a matching function
+pointer). **`kernel_pty_read` IS THE GATE**: its `KNOWN-LIMIT` check flips to the POSIX assertion the moment the
+read returns 0 on its timer - the check's own failure text says so, so the flip cannot be forgotten.
+
+**WHAT REMAINS:** the callout `arg` type change (above), then the two interior `&tty->read_q` arms (reachable AND
+wakable only once that lands), then the six writer sites. The deliberately un-raced check - "data already queued" -
+carries its reason in its own comment: this guest's `usleep()` costs tens of ms for a nominal 1ms, so a mid-window
+write would make it pass or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
 
 ## §59 — THE WEBSOCKET SLICE, DESIGNED BEFORE IT IS BUILT (2026-09-22)
 
