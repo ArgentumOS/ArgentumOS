@@ -12164,11 +12164,56 @@ while the METHOD page calls them "the resource values". **The key's own page is 
 keys are what this library reports**, and the fact that Apple's two pages disagree is recorded here rather
 than averaged.
 
-**STILL OWED BY W8p: THE VOLUME KEYS** (49 rows across volume support, status and capacity) - each one
-needs its own reasoning rather than a blanket answer, because a blanket NO would be a LIE for the ones
-AGFS satisfies (it IS case-sensitive, it IS local, it has no ejection notion at all) - and then the
-ubiquitous/thumbnail/quarantine masses. After W8p: the coordinator family, `NSFileVersion` and
-`NSFileProviderService`.
+**SLICE 6c LANDED (2026-09-24): THE VOLUME KEYS THIS SUBSTRATE CAN ANSWER - seven of them, each either
+delegated or PROVED, and the other 42 left open WITH THEIR GROUNDS.** `foundation_urlresourcevalues`
+22 -> **27 checks**, green on the first run.
+
+**THE RULE THAT DECIDED THE SCOPE, AND IT IS THE ONE THIS SECTION ALREADY STATED:** a volume key asked of a
+file URL is a question about the volume HOLDING it, the family is 49 rows, and **a blanket answer would be
+a LIE for the ones this system's file systems actually satisfy** - AGFS IS case-sensitive, it DOES have
+symbolic links, and its inodes ARE persistent identifiers, so answering "NO" across the
+`NSURLVolumeSupports…` mass would have been exactly the confident-wrong-answer this plan exists to avoid.
+So this slice answers **only the keys whose fact the substrate has**, and leaves the rest open with reasons.
+
+**WHAT IS ANSWERED (7):** the capacity pair (`NSURLVolumeTotalCapacityKey` /
+`NSURLVolumeAvailableCapacityKey`, through `NSFileManager`'s `-attributesOfFileSystemForPath:error:` - a
+delegation, and the probe asserts the two doors give the SAME number); `NSURLVolumeIsLocalKey` (YES as a
+fact about this system: AGFS, XBFS, ext2, FAT, iso9660, proc, devfs and devpts, with **no network file
+system client at all**); `NSURLVolumeIsReadOnlyKey`, where the distinction IS the key's meaning - a write
+probe on a read-only FILE SYSTEM is refused with **EROFS** while a permission denial is **EACCES**
+(measured: the kernel tests `IS_RDONLY_FS` for a write probe in `kernel/syscalls/access.c`), so EROFS is
+the volume's answer and EACCES says nothing about it; and the three supports-keys this system really
+satisfies.
+
+**AND WHERE THE VALUE IS A CLAIM ABOUT THE VOLUME, THE PROBE PROVES THE CLAIM.** The three supports-keys
+are each asserted WITH something the fixture does that could only work if the claim held - two names
+differing only in case kept as two distinct inodes, one identifier answering from two independently built
+URL objects, and the fixture's link reading back the name it points at. A volume's claimed capabilities
+are the worst place for a confident wrong answer, so the claim and its proof land in the same check. (They
+passed first try: AGFS does keep `MIXED` and `mixed` apart.)
+
+**THE 42 ROWS LEFT OPEN, GROUPED BY WHAT EACH ACTUALLY NEEDS:**
+ * **a purgeable-usage notion** - `NSURLVolumeAvailableCapacityForImportantUsageKey` and
+   `…ForOpportunisticUsageKey` (about what the system could FREE, not what is free);
+ * **a mount table as a source** - `NSURLVolumeNameKey`, `…LocalizedNameKey`, `…IdentifierKey`,
+   `…URLKey`/`…URLForRemountingKey`/`…UUIDStringKey`, `NSURLVolumeIsRootFileSystemKey`,
+   `NSURLIsVolumeKey`, `NSURLIsMountTriggerKey` (this system HAS mounts, and `st_dev` is a ready candidate
+   for the opaque identifier - what is missing is the door that NAMES a volume, which is a mount-table
+   read this library does not have yet);
+ * **a per-key substrate measurement, and NOT a guess** - the rest of the `NSURLVolumeSupports…` mass
+   (`CasePreservedNames`, `ExclusiveRenaming`, `Renaming`, `VolumeSizes`, `ImmutableFiles`,
+   `AccessPermissions`, `AdvisoryFileLocking`, `ExtendedSecurity`, `Compression`, `FileCloning`,
+   `HardLinks`, `Journaling`, `RootDirectoryDates`, `SparseFiles`, `SwapRenaming`, `ZeroRuns`): each asks
+   a question about AGFS that has to be MEASURED against the file system before it is answered, because
+   several of them are probably TRUE (hard links and rename-without-replace are the obvious candidates);
+ * **no substrate at all on this system** - the macOS status family (`IsEncrypted`, `IsEjectable`,
+   `IsRemovable`, `IsInternal`, `IsAutomounted`, `IsBrowsable`, `Subtype`, `TypeName`,
+   `MountFromLocation`, `SupportsFileProtection`, `IsJournaling`): volume vaults, ejection, removable
+   media and automounting are concepts this system does not have, and a NO would be a statement about a
+   question that was never asked.
+
+**AFTER W8p:** the ubiquitous/thumbnail/quarantine masses, then the coordinator family, `NSFileVersion`
+and `NSFileProviderService`.
 
 **AND ONE DEBT RECORDED RATHER THAN SILENTLY FIXED, because it is the URL unit's and not this slice's:**
 `NSURL` had **no `-dealloc` at all** before this slice - it copies its parts and released none of them -

@@ -217,6 +217,28 @@ extern NSURLResourceKey const NSURLParentDirectoryURLKey;
 /* THE ERROR'S OWN KEY: the one Apple publishes for the setter-set's failure report. */
 extern NSURLResourceKey const NSURLKeysOfUnsetValuesKey;
 
+/* ---- THE VOLUME KEYS THIS SUBSTRATE CAN ANSWER (W8 slice 6c) ---------------------------------------
+ *
+ * A VOLUME KEY ASKED OF A FILE URL IS A QUESTION ABOUT THE VOLUME HOLDING IT, and the family is 49 rows
+ * in the ledger whose answers are NOT uniform: several of Apple's `NSURLVolumeSupports…` questions are
+ * TRUE of this system's file systems (AGFS is case-sensitive, it has symlinks and persistent inode
+ * identifiers) and several have no substrate at all (no journal, no compression, no cloning, no file
+ * vault, no automount, no ejection). **A blanket answer would therefore be a LIE for the ones that are
+ * true, so this slice answers only the keys whose fact this system HAS, and leaves the rest open with
+ * their grounds recorded in §60 rather than guessing on either side.**
+ *
+ * WHERE A KEY'S VALUE IS A CLAIM ABOUT THE VOLUME, THE PROBE PROVES THE CLAIM: the three supports-keys
+ * below are asserted together with something the fixture DOES that could only work if the claim held (two
+ * names differing only in case, an identifier read back from a second URL, a link that resolves).
+ */
+extern NSURLResourceKey const NSURLVolumeTotalCapacityKey;
+extern NSURLResourceKey const NSURLVolumeAvailableCapacityKey;
+extern NSURLResourceKey const NSURLVolumeIsLocalKey;
+extern NSURLResourceKey const NSURLVolumeIsReadOnlyKey;
+extern NSURLResourceKey const NSURLVolumeSupportsCaseSensitiveNamesKey;
+extern NSURLResourceKey const NSURLVolumeSupportsPersistentIDsKey;
+extern NSURLResourceKey const NSURLVolumeSupportsSymbolicLinksKey;
+
 extern NSURLFileResourceType const NSURLFileResourceTypeRegular;
 extern NSURLFileResourceType const NSURLFileResourceTypeDirectory;
 extern NSURLFileResourceType const NSURLFileResourceTypeSymbolicLink;

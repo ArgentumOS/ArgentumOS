@@ -50,6 +50,16 @@
  *   rv-set-many-reports-what-it-could-not-set  and reports, under NSURLKeysOfUnsetValuesKey, the keys
  *                                     whose write REACHED the file system and failed;
  *   rv-a-value-the-key-cannot-hold-is-refused  the one refusal this door makes for its own reason;
+ *   vol-capacity-is-the-filesystems-and-both-doors-agree  a volume key asked of a file URL is about the
+ *                                     volume holding it, and the number agrees with NSFileManager's own
+ *                                     file-system attributes (two doors, one superblock);
+ *   vol-is-local-and-writable-here    every volume this system can mount is local, and the temp tree's
+ *                                     volume is writable here;
+ *   vol-supports-case-sensitive-names-and-the-proof / -persistent-ids / -symbolic-links  THE THREE
+ *                                     CLAIMS THE SUBSTRATE REALLY SUPPORTS, each PROVED by something the
+ *                                     fixture does: two names differing only in case becoming two inodes,
+ *                                     one identifier answering from two independently built URLs, and a
+ *                                     link reading back the name it points at;
  *   probe-tree-removed                the tree is gone.
  */
 
@@ -476,6 +486,88 @@ int main(void)
 		check("rv-a-value-the-key-cannot-hold-is-refused",
 		      !refused && error != nil,
 		      [NSString stringWithFormat:@"refused=%d error=%@", (int)refused, error]);
+	}
+
+	/* ---- W8 SLICE 6c: THE VOLUME'S KEY, AND WHERE THE VALUE IS A CLAIM, THE PROOF ---------------- */
+	{
+		NSURL *file = [NSURL fileURLWithPath:fn_path(@"inner/note.txt")];
+		NSDictionary *fs = [manager attributesOfFileSystemForPath:fn_path(@"inner") error:NULL];
+		long long total = fn_number_key(file, NSURLVolumeTotalCapacityKey);
+		long long available = fn_number_key(file, NSURLVolumeAvailableCapacityKey);
+
+		/* TWO DOORS, ONE SUPERBLOCK: the capacity through the URL and through NSFileManager's own
+		 * file-system attributes must be the same number. */
+		check("vol-capacity-is-the-filesystems-and-both-doors-agree",
+		      total > 0 && available >= 0 && available <= total &&
+		      total == [fn_lookup(fs, NSFileSystemSize) longLongValue] &&
+		      available == [fn_lookup(fs, NSFileSystemFreeSize) longLongValue],
+		      [NSString stringWithFormat:@"total=%lld available=%lld nsfilemanager=%@/%lld",
+			total, available, fn_lookup(fs, NSFileSystemSize),
+			(long long)[fn_lookup(fs, NSFileSystemFreeSize) longLongValue]]);
+	}
+
+	{
+		NSURL *file = [NSURL fileURLWithPath:fn_path(@"inner/note.txt")];
+		int local = fn_bool_key(file, NSURLVolumeIsLocalKey);
+		int readOnly = fn_bool_key(file, NSURLVolumeIsReadOnlyKey);
+
+		check("vol-is-local-and-writable-here", local == 1 && readOnly == 0,
+		      [NSString stringWithFormat:@"local=%d readOnly=%d (the temp tree lives on the root "
+			@"volume, which is writable)", local, readOnly]);
+	}
+
+	{
+		/* THREE CLAIMS ABOUT THE VOLUME, EACH ACCOMPANIED BY SOMETHING THE FIXTURE DOES THAT COULD
+		 * ONLY WORK IF THE CLAIM HELD - because a volume's claimed capabilities are the worst place
+		 * for a confident wrong answer. */
+		NSURL *file = [NSURL fileURLWithPath:fn_path(@"inner/note.txt")];
+		NSURL *again = [NSURL fileURLWithPath:fn_path(@"inner/note.txt")];
+		NSURL *upper = [NSURL fileURLWithPath:fn_path(@"inner/MIXED")];
+		NSURL *lower = [NSURL fileURLWithPath:fn_path(@"inner/mixed")];
+		id firstId = nil, secondId = nil;
+
+		/* CASE-SENSITIVE: the volume says so, and the fixture then keeps TWO NAMES THAT DIFFER ONLY
+		 * IN CASE as two distinct files with two distinct inodes. */
+		fn_write(fn_path(@"inner/MIXED"), "1");
+		fn_write(fn_path(@"inner/mixed"), "2");
+		{
+			struct stat a, b;
+			BOOL bothExist = lstat([[upper path] UTF8String], &a) == 0 &&
+					 lstat([[lower path] UTF8String], &b) == 0;
+
+			check("vol-supports-case-sensitive-names-and-the-proof",
+			      fn_bool_key(file, NSURLVolumeSupportsCaseSensitiveNamesKey) == 1 &&
+			      bothExist && a.st_ino != b.st_ino,
+			      [NSString stringWithFormat:@"claim=%d both names exist=%d inodes=%llu/%llu",
+				fn_bool_key(file, NSURLVolumeSupportsCaseSensitiveNamesKey), (int)bothExist,
+				(unsigned long long)a.st_ino, (unsigned long long)b.st_ino]);
+		}
+
+		/* PERSISTENT IDS: the claim is that the identifier survives, and the proof is two URL objects
+		 * built independently for the same path answering the SAME identifier. */
+		[file getResourceValue:&firstId forKey:NSURLFileResourceIdentifierKey error:NULL];
+		[again getResourceValue:&secondId forKey:NSURLFileResourceIdentifierKey error:NULL];
+		check("vol-supports-persistent-ids-and-the-proof",
+		      fn_bool_key(file, NSURLVolumeSupportsPersistentIDsKey) == 1 &&
+		      firstId != nil && [firstId isEqual:secondId],
+		      [NSString stringWithFormat:@"claim=%d first=%@ second=%@",
+			fn_bool_key(file, NSURLVolumeSupportsPersistentIDsKey), firstId, secondId]);
+
+		/* SYMBOLIC LINKS: the claim, plus the link the fixture made at the start resolving to the
+		 * file it names - which is what "supports symbolic links" has to mean to be worth anything. */
+		{
+			char target[64];
+			ssize_t got = readlink([fn_path(@"inner/link") UTF8String], target, sizeof(target) - 1);
+
+			if (got > 0) {
+				target[got] = '\0';
+			}
+			check("vol-supports-symbolic-links-and-the-proof",
+			      fn_bool_key(file, NSURLVolumeSupportsSymbolicLinksKey) == 1 && got > 0 &&
+			      strcmp(target, "note.txt") == 0,
+			      [NSString stringWithFormat:@"claim=%d the fixture's link reads back as %s",
+				fn_bool_key(file, NSURLVolumeSupportsSymbolicLinksKey), got > 0 ? target : "(nothing)"]);
+		}
 	}
 
 	{

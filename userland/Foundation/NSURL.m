@@ -538,6 +538,13 @@ NSURLResourceKey const NSURLFileResourceIdentifierKey = @"NSURLFileResourceIdent
 NSURLResourceKey const NSURLFileResourceTypeKey = @"NSURLFileResourceTypeKey";
 NSURLResourceKey const NSURLParentDirectoryURLKey = @"NSURLParentDirectoryURLKey";
 NSURLResourceKey const NSURLKeysOfUnsetValuesKey = @"NSURLKeysOfUnsetValuesKey";
+NSURLResourceKey const NSURLVolumeTotalCapacityKey = @"NSURLVolumeTotalCapacityKey";
+NSURLResourceKey const NSURLVolumeAvailableCapacityKey = @"NSURLVolumeAvailableCapacityKey";
+NSURLResourceKey const NSURLVolumeIsLocalKey = @"NSURLVolumeIsLocalKey";
+NSURLResourceKey const NSURLVolumeIsReadOnlyKey = @"NSURLVolumeIsReadOnlyKey";
+NSURLResourceKey const NSURLVolumeSupportsCaseSensitiveNamesKey = @"NSURLVolumeSupportsCaseSensitiveNamesKey";
+NSURLResourceKey const NSURLVolumeSupportsPersistentIDsKey = @"NSURLVolumeSupportsPersistentIDsKey";
+NSURLResourceKey const NSURLVolumeSupportsSymbolicLinksKey = @"NSURLVolumeSupportsSymbolicLinksKey";
 
 NSURLFileResourceType const NSURLFileResourceTypeRegular = @"NSURLFileResourceTypeRegular";
 NSURLFileResourceType const NSURLFileResourceTypeDirectory = @"NSURLFileResourceTypeDirectory";
@@ -600,6 +607,10 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 		@"NSURLContentModificationDateKey", @"NSURLContentAccessDateKey",
 		@"NSURLAttributeModificationDateKey", @"NSURLFileIdentifierKey",
 		@"NSURLFileResourceIdentifierKey", @"NSURLFileResourceTypeKey", @"NSURLParentDirectoryURLKey",
+		@"NSURLVolumeTotalCapacityKey", @"NSURLVolumeAvailableCapacityKey",
+		@"NSURLVolumeIsLocalKey", @"NSURLVolumeIsReadOnlyKey",
+		@"NSURLVolumeSupportsCaseSensitiveNamesKey", @"NSURLVolumeSupportsPersistentIDsKey",
+		@"NSURLVolumeSupportsSymbolicLinksKey",
 	};
 	size_t i;
 
@@ -673,6 +684,45 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 	}
 	if ([key isEqual:NSURLFileResourceTypeKey]) return fn_url_resource_type(st->st_mode);
 	if ([key isEqual:NSURLParentDirectoryURLKey]) return [self URLByDeletingLastPathComponent];
+
+	/* ---- THE VOLUME KEYS (W8 slice 6c), which are questions about the volume HOLDING this item ---- */
+	if ([key isEqual:NSURLVolumeTotalCapacityKey] || [key isEqual:NSURLVolumeAvailableCapacityKey]) {
+		/* THE CAPACITY IS THE FILE SYSTEM'S, THROUGH THE OTHER DOOR: NSFileManager already answers
+		 * NSFileSystemSize/FreeSize from the same superblock, so this is a delegation and the probe
+		 * asserts that the two doors agree rather than assuming it. */
+		NSDictionary *fs = [[NSFileManager defaultManager] attributesOfFileSystemForPath:path error:NULL];
+
+		return [fs objectForKey:([key isEqual:NSURLVolumeTotalCapacityKey]
+					 ? NSFileSystemSize : NSFileSystemFreeSize)];
+	}
+	if ([key isEqual:NSURLVolumeIsLocalKey]) {
+		/* EVERY VOLUME THIS SYSTEM CAN MOUNT IS LOCAL: the file systems it ships are AGFS, XBFS,
+		 * ext2, FAT, iso9660, proc, devfs and devpts, and there is no network file system client at
+		 * all - so this is YES as a fact about the system rather than a guess about the volume. */
+		return [NSNumber numberWithBool:YES];
+	}
+	if ([key isEqual:NSURLVolumeIsReadOnlyKey]) {
+		/* A MOUNT'S READ-ONLYNESS IS NOT A PERMISSION, AND THE DIFFERENCE IS THE KEY'S WHOLE POINT:
+		 * a write probe on a read-only FILE SYSTEM is refused with EROFS (the kernel tests
+		 * IS_RDONLY_FS for a write probe - kernel/syscalls/access.c, measured), while a permission
+		 * denial is EACCES. So EROFS is the volume's answer and EACCES says nothing about it. */
+		int probe;
+
+		errno = 0;
+		probe = access([path UTF8String], W_OK);
+		return [NSNumber numberWithBool:(probe != 0 && errno == EROFS) ? YES : NO];
+	}
+	if ([key isEqual:NSURLVolumeSupportsSymbolicLinksKey] ||
+	    [key isEqual:NSURLVolumeSupportsPersistentIDsKey] ||
+	    [key isEqual:NSURLVolumeSupportsCaseSensitiveNamesKey]) {
+		/* THE THREE SUPPORTS-KEYS THIS SYSTEM ANSWERS YES, EACH BECAUSE THE SUBSTRATE DOES IT: a
+		 * symlink between two names is a thing this file system stores (the probe's own fixture has
+		 * one), an inode number is a persistent identifier (NSURLFileResourceIdentifierKey IS that
+		 * number), and AGFS distinguishes DAILY from daily. THE PROBE PROVES EACH CLAIM rather than
+		 * repeating it - see the three "and the proof" checks - because a volume's claimed capabilities
+		 * are exactly the place where a confident wrong answer would be worst. */
+		return [NSNumber numberWithBool:YES];
+	}
 	return nil;
 }
 

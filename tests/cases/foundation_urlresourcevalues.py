@@ -50,6 +50,20 @@ with POSIX calls so a failure cannot be the fixture's fault, and removes it at t
                                  the keys whose write REACHED the file system and failed ("an array of
                                  URLResourceKey objects", the key's own page);
   * `rv-a-value-the-key-cannot-hold-is-refused` — the one refusal this door makes for its own reason;
+  * `vol-capacity-is-the-filesystems-and-both-doors-agree` — a volume key asked of a file URL is a question
+                                 about the volume HOLDING it, and the number agrees with NSFileManager's
+                                 own file-system attributes (two doors, one superblock);
+  * `vol-is-local-and-writable-here` — every file system this system can mount is local (there is no
+                                 network file system client at all), and the temp tree's volume is
+                                 writable;
+  * `vol-supports-case-sensitive-names-and-the-proof` / `vol-supports-persistent-ids-and-the-proof` /
+                                 `vol-supports-symbolic-links-and-the-proof` — THE THREE CLAIMS THE
+                                 SUBSTRATE REALLY SUPPORTS, each PROVED by something the fixture does:
+                                 two names differing only in case becoming two distinct inodes, one
+                                 identifier answering from two independently built URLs, and a link
+                                 reading back the name it points at. A volume's claimed capabilities are
+                                 the worst place for a confident wrong answer, which is why the other 42
+                                 volume rows are left OPEN with grounds rather than answered NO;
   * `probe-tree-removed`         — the tree is gone.
 """
 
@@ -69,7 +83,9 @@ CHECKS = ("rv-the-keys-are-their-own-names", "rv-a-file-answers-its-facts",
           "rv-a-set-of-a-read-only-key-is-a-no-op", "rv-a-set-of-an-unknown-key-is-a-no-op",
           "rv-a-set-on-a-non-file-url-is-a-no-op", "rv-a-set-of-many-applies-what-it-can",
           "rv-set-many-reports-what-it-could-not-set", "rv-a-value-the-key-cannot-hold-is-refused",
-          "probe-tree-removed")
+          "vol-capacity-is-the-filesystems-and-both-doors-agree", "vol-is-local-and-writable-here",
+          "vol-supports-case-sensitive-names-and-the-proof", "vol-supports-persistent-ids-and-the-proof",
+          "vol-supports-symbolic-links-and-the-proof", "probe-tree-removed")
 
 
 class Case(BaseCase):
