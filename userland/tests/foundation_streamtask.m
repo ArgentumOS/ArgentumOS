@@ -863,6 +863,12 @@ int main(void)
 		}
 		check("the-request-goes-through-the-tunnel", writeDone && writeError == nil && tlsPeer->served,
 		      @"SSL_write carried it and the far end READ it before answering - two sides, one tunnel");
+		/* §58.2m: THE COUNTERS ARE FILE-SCOPE STATICS, SO THEY AGGREGATE EVERY TASK THIS PROBE MADE - which is
+		 * why the whole-run reading (9 workers entered, 1 left, 8 parked) says nothing about THIS leg's worker
+		 * on its own. The instrument for the next pass is a DELTA AROUND THE REPLY READ - `-fnServeCounts:`
+		 * captured immediately before the read below and printed at the DIAG - whose `left` field answers
+		 * parked-vs-gone for this task exactly; it needs its array at file scope, which is why it is not here
+		 * yet. The counters themselves are in place and reading correctly. */
 		[task readDataOfMinLength:1 maxLength:4096 timeout:10.0
 			completionHandler:^(NSData *data, BOOL atEOF, NSError *e) {
 			replyData = data;
@@ -883,7 +889,7 @@ int main(void)
 			int handed = -1;
 			int ran = -1;
 			int inlineHops = -1;
-			int counts[6] = {-1, -1, -1, -1, -1, -1};
+			int counts[11] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 			int readCounts[2] = {-1, -1};
 
 			/* §58.2j: THE HOP COUNTS, READ ONCE, FROM MEMORY. §58.2d asked this same question with writes
@@ -897,11 +903,13 @@ int main(void)
 			[task fnReadCounts:readCounts];
 			printf("FOUNDATION-STREAMTASK-DIAG reply: done=%d errCode=%ld len=%d has200=%d"
 			       " hops handed=%d ran=%d inline=%d"
-			       " ops enq=%d/%d/%d served=%d/%d/%d reads started=%d finished=%d\n",
+			       " ops enq=%d/%d/%d served=%d/%d/%d reads started=%d finished=%d"
+			       " worker entered=%d loops=%d waits=%d left=%d noconnect=%d\n",
 			       (int)replyDone, (long)(replyError != nil ? [replyError code] : 0),
 			       (int)(replyData != nil ? [replyData length] : 0), has200, handed, ran, inlineHops,
 			       counts[0], counts[1], counts[2], counts[3], counts[4], counts[5],
-			       readCounts[0], readCounts[1]);
+			       readCounts[0], readCounts[1],
+			       counts[6], counts[7], counts[8], counts[9], counts[10]);
 		}
 		check("and-the-reply-comes-back-through-it",
 		      replyDone && replyError == nil &&

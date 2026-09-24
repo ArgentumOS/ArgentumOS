@@ -330,12 +330,14 @@ completionHandler:(void (^)(NSError *))completionHandler
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
+	fnWorkerEntered++;	/* §58.2m: once, when the worker thread reaches the loop */
 	if ([self fnConnect]) {
 		for (;;) {
 			FNStreamOp *operation = nil;
 
 			[_queue lock];
 			while ([_operations count] == 0 && !_stopped) {
+				fnWorkerWaits++;	/* §58.2m: one per pass spent asleep - see the counters' comment */
 				[_queue wait];
 			}
 			if ([_operations count] > 0) {
@@ -343,13 +345,17 @@ completionHandler:(void (^)(NSError *))completionHandler
 				[_operations removeObjectAtIndex:0];
 			}
 			[_queue unlock];
+			fnWorkerLoops++;		/* §58.2m: one per operation fetched (or per stop seen) */
 			if (operation == nil) {
 				break;			/* stopped, with the queue empty */
 			}
 			[self fnServeOperation:operation];
 			[operation release];
 		}
+	} else {
+		fnWorkerNoConnect++;	/* §58.2m: the worker never got as far as serving anything */
 	}
+	fnWorkerLeft++;			/* §58.2m: the worker RETURNED - and that is the answer, if it is 1 */
 	[self fnTeardown];
 	[pool release];
 	[self release];		/* pairs with the retain in -resume */
@@ -713,6 +719,16 @@ static int fnServedRead = 0;		/* what the task's OWN worker took off `_operation
 static int fnServedWrite = 0;
 static int fnServedOther = 0;
 static int fnDeliveredRead = 0;		/* reads whose loop FINISHED (see -fnReadCounts:) */
+/* §58.2m'S COUNTERS: THE WORKER'S OWN LIFECYCLE. §58.2l left exactly one fact unmeasured - whether the worker
+ * that is not taking the next operation is PARKED or GONE - and these four answer it: `entered` once, `loops` per
+ * pass of the serve loop, `waits` per `[_queue wait]` (so a signal that woke nobody is visible as waits >
+ * loops), and `left` when the loop is done. `loops == 5` with `left == 0` is a parked worker; `left == 1` is a
+ * worker that RETURNED mid-flow, which is the one way an enqueued operation is never served at all. */
+static int fnWorkerEntered = 0;
+static int fnWorkerLoops = 0;
+static int fnWorkerWaits = 0;
+static int fnWorkerLeft = 0;
+static int fnWorkerNoConnect = 0;
 
 /* §58.2k'S INSTRUMENT, AND IT LOCALIZES THE REMAINING LOSS IN ONE READ:
  *   counts[0..2] = -fnEnqueue: calls    by kind (read, write, other)
@@ -730,6 +746,12 @@ static int fnDeliveredRead = 0;		/* reads whose loop FINISHED (see -fnReadCounts
 		counts[3] = fnServedRead;
 		counts[4] = fnServedWrite;
 		counts[5] = fnServedOther;
+		/* §58.2m: THE WORKER'S LIFECYCLE, in the slots past the operation kinds. */
+		counts[6] = fnWorkerEntered;
+		counts[7] = fnWorkerLoops;
+		counts[8] = fnWorkerWaits;
+		counts[9] = fnWorkerLeft;
+		counts[10] = fnWorkerNoConnect;
 	}
 }
 

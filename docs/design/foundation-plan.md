@@ -11068,8 +11068,37 @@ waiting behind a worker that is busy INSIDE a read - the worker is stuck BETWEEN
    leaves (with the reason: `_stopped`, EOF, an error) - read once by the probe like the rest. One counter in
    `-fnServe:` and two slots in `-fnServeCounts:`.
 
-**WHAT REMAINS:** that lifecycle counter, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5,
-`pty_write`).
+### §58.2m — THE WORKER COUNTERS ARE IN, THEY AGGREGATE, AND THE AGGREGATE STILL SAYS SOMETHING (2026-09-22)
+
+**THE INSTRUMENT §58.2l NAMED is in `-fnServe:`** - `entered` once, `loops` per pass of the serve loop, `waits` per
+`[_queue wait]`, `left` when the loop ends, `noconnect` if the connection never happened - carried in slots 6..10 of
+`-fnServeCounts:` and printed by the probe.
+
+**MEASURED, THREE CONSECUTIVE RED RUNS, IDENTICAL:**
+```
+FOUNDATION-STREAMTASK-DIAG reply: done=0 errCode=0 len=0 has200=0
+  hops handed=14 ran=14 inline=0  ops enq=6/3/4 served=5/3/4  reads started=5 finished=5
+  worker entered=9 loops=13 waits=11 left=1 noconnect=0
+```
+
+**AND MY OWN INSTRUMENT HAS A CAVEAT, WHICH IS ITSELF THE FINDING TO RECORD FIRST: THE COUNTERS ARE FILE-SCOPE
+STATICS, SO THEY AGGREGATE EVERY TASK THE PROBE MADE.** This probe opens one connection per leg - nine tasks, nine
+workers - so `entered=9, left=1` does **not** say this leg's worker returned. It says eight of the nine serve loops
+are still running, which is exactly what UNSTOPPED tasks look like. (§58.2k's and §58.2l's operation counts are
+unaffected: they are additive, and only ONE read is missing across the whole probe.)
+
+**WHAT THE AGGREGATE DOES SETTLE:** the global read counts - six enqueued, five served - mean the reply read is the
+**only** operation lost in the entire run; every other leg's reads were served. And `entered=9` with `left=1` means
+at most ONE task's worker ever returned, so a "the worker exited" explanation for this leg would have to be that
+one.
+
+**THE NEXT INSTRUMENT, ALREADY SCOPED:** a DELTA around the reply read - `-fnServeCounts:` captured immediately
+before the read and printed at the DIAG. `left` moving during the leg names a worker that RETURNED (which would be
+the loss); `left` static names a worker PARKED in `[_queue wait]` with its operation sitting in `_operations`. It
+needs its capture array at file scope in the probe, and that is exactly where the draft stopped rather than leave a
+tree that would not compile.
+
+**WHAT REMAINS:** that delta, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
 The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
