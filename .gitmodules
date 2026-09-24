@@ -59,3 +59,6 @@
 [submodule "third_party/libwebp"]
 	path = third_party/libwebp
 	url = https://chromium.googlesource.com/webm/libwebp
+[submodule "third_party/libtiff"]
+	path = third_party/libtiff
+	url = https://gitlab.com/libtiff/libtiff.git
