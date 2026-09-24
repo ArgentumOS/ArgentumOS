@@ -243,7 +243,17 @@ int pty_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 			n = -EIO;
 			break;
 		}
-		if(sleep(&pty_read, PROC_INTERRUPTIBLE)) {
+		/* ARM BEFORE THE LOOK, the same cure the socket readers and the pipe reader carry (kernel/
+		 * sleep.c). `continue` IS the re-look here, and it covers both ways this read can end: the
+		 * other end wrote (cooked data to take) or the other end closed (which becomes -EIO above).
+		 * A blocking pty read has no timeout to rescue a lost wake either. */
+		sleep_arm(&pty_read);
+		if(tty->cooked_q.count > 0 || (tty->flags & TTY_OTHER_CLOSED)) {
+			sleep_disarm();
+			continue;
+		}
+		if(sleep_commit(&pty_read, PROC_INTERRUPTIBLE)) {
+			sleep_disarm();
 			n = -EINTR;
 			break;
 		}

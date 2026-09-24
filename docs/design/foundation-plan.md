@@ -10473,6 +10473,55 @@ consumed rather than lost, a spurious wake just sends the loop around, and no en
    forgets to arm does not stall - it burns the CPU. (And the general lesson, the same shape as this project's
    build traps: "revert the fix" must mean reverting the WHOLE fix, or the measurement is of a different bug.)
 
+### §58.1b — THE READERS: TWO CURED, ONE MEASURED AND REVERTED (2026-09-22)
+
+**THE INVENTORY WAS AN UNDERCOUNT, SO IT WAS MEASURED FIRST.** The line above says "the tty and the pipe readers".
+Grepping the actual sleepers on those channels gives 11 sites, and the READERS are 5 of them:
+`fs/pipefs/pipe.c` `&pipefs_read`; `drivers/char/pty.c` `&pty_read`; `drivers/char/tty.c` `&tty->read_q` ×3.
+(The other six are WRITERS - `&pipefs_write`, `&tty->write_q` ×5 - plus `pty_write`'s own channel, which the phrase
+never named.)
+
+**CURED AND VERIFIED - TWO OF THE THREE READER FILES:**
+ * **`fs/pipefs/pipe.c` - the pipe reader.** `sleep_arm(&pipefs_read)` → re-look
+   (`i->i_size || !i->u.pipefs.i_writers`) → `sleep_disarm(); continue;` → `sleep_commit(...)`. `continue` is the
+   whole re-look here because the loop head re-derives `limit` and `n` from the offsets, and the same arm covers
+   the writer having CLOSED instead. **VERIFIED: `kernel_pipe_dup2` 11/11** - a case about this reader - plus
+   `procfs_devfs` 16/16 and `kernel_loopback_tcp` 6/6.
+ * **`drivers/char/pty.c` - the pty reader.** The same shape, re-look `tty->cooked_q.count > 0 ||
+   (tty->flags & TTY_OTHER_CLOSED)`, which covers both ways this read ends (data, or the close that becomes -EIO).
+   **VERIFIED AS NON-REGRESSING (16/16 with it in, and 16/16 for it alone in the bisect below) - BUT NOT YET
+   EXERCISED: no case drives a pty READ, so its behaviour test is owed.**
+
+**`drivers/char/tty.c` - ATTEMPTED, MEASURED, REVERTED. THIS IS THE FINDING, AND IT COST THREE BUILDS WORTH
+KEEPING.** The console reader's final block was cured with the re-look `tty->cooked_q.count > 0 || TTY_OTHER_CLOSED`
+- the obvious one, and WRONG:
+ * **IT BROKE THE CONSOLE: `procfs_devfs` fell from 16/16 to 10/16**, with the guest log ending cleanly at
+   `FNX8-DONE` and then hanging on `cat /System/Processes/meminfo` until the case's 420s budget expired. Every
+   later check "missing" was a consequence of that one stall, not a separate fault.
+ * **AN A/B CLEARED THE CURE OF NOTHING AND THE OTHER EDITS OF EVERYTHING:** with all three edits stashed, the same
+   case is **16/16**. Then one site at a time, each with its own kernel rebuild: **tty alone → 4/11, hung; pty
+   alone → 16/16; pipe alone → 16/16.** So `tty.c` alone reproduces it, and the fix is not a build artefact.
+ * **THE ROOT CAUSE, AND IT IS A RULE ABOUT THE CURE RATHER THAN A TYPO.** `kernel/sleep.c`'s own comment says what
+   the re-look is for: `sleep_commit()` catches a wake that arrives AFTER the arm, so the ONLY protection against a
+   wake that arrived BEFORE it is the re-look - "any EARLIER one is visible right here". **The re-look is therefore
+   not an optimization: it MUST BE THE SAME PROGRESS TEST THE LOOP HEAD MAKES.** `cooked_q.count > 0` is true for a
+   PARTIAL ICANON LINE, and `tty_read` deliberately does NOT return one - it waits for a delimiter. So
+   `arm → re-look true → continue` never reaches the commit and never blocks: it is an infinite loop **with
+   interrupts on**, the console stops being served, and the session dies. A wrong-but-plausible re-look converts
+   a lost-wakeup into a BUSY-SPIN, which is a worse failure, which is exactly why the A/B and the bisect were
+   worth their cost.
+ * **WHAT A CORRECT FIX NEEDS, NAMED RATHER THAN GUESSED:** a readiness test that mirrors the head's ICANON
+   delimiter test (and its VMIN/VTIME counterparts) - i.e. HOIST the head's condition into one place the sleep site
+   can call, so the two can never drift. That touches the console read path, which every gate depends on, and it
+   gets its own gated unit. The two interior `&tty->read_q` sites (the VMIN/VTIME branches) sit behind the same
+   question and are NOT cured.
+ * **AND THE GENERAL RULE THIS LEAVES BEHIND: "the same cure elsewhere" is NOT a copy-paste.** The arm/commit pair
+   is universal, but the re-look is PER-SITE and must equal that site's own readiness test. Two of the three
+   readers here were mechanical; the third was not, and the difference was invisible until it was measured.
+
+**WHAT REMAINS, CORRECTED:** the tty reader (1 hot site + 2 interior sites, blocked on the hoist above), the six
+writer sites (`&pipefs_write`, `&tty->write_q` ×5, plus `pty_write`), and a pty-read behaviour test.
+
 ## §59 — THE WEBSOCKET SLICE, DESIGNED BEFORE IT IS BUILT (2026-09-22)
 
 **W7's LAST ROW, AND THE SURFACE IS MEASURED RATHER THAN RECALLED.** Apple's published pages, read the same way

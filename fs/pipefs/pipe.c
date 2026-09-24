@@ -85,7 +85,21 @@ int pipefs_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 				if(f->flags & O_NONBLOCK) {
 					return -EAGAIN;
 				}
-				if(sleep(&pipefs_read, PROC_INTERRUPTIBLE)) {
+				/* ARM BEFORE THE LOOK, the cure kernel/sleep.c documents - and the one this reader
+				 * needs most, because a blocking pipe read has NO TIMEOUT to rescue a lost wake: if the
+				 * writer's wake lands between the check above and the registration it finds nobody, and
+				 * the reader then sleeps with the data already in the buffer. Armed first, the wake
+				 * either finds us or has ALREADY HAPPENED - and a wake is always SECOND to the state
+				 * change that caused it, so a change that landed before the arm is still visible to the
+				 * re-look below. `continue` is the whole re-look: the loop head re-derives limit and n
+				 * from the offsets, and also covers the writer having CLOSED instead (the else arm). */
+				sleep_arm(&pipefs_read);
+				if(i->i_size || !i->u.pipefs.i_writers) {
+					sleep_disarm();
+					continue;
+				}
+				if(sleep_commit(&pipefs_read, PROC_INTERRUPTIBLE)) {
+					sleep_disarm();
 					return -EINTR;
 				}
 			} else {
