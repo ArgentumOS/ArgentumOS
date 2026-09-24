@@ -12276,8 +12276,32 @@ return made `!_errorHandler(...)` an invalid unary expression, and Apple's "retu
 reason it is not void - and a STORED block is `_Block_copy`'d and `_Block_release`'d, spelled exactly as
 `NSFileHandle` spells it.
 
-**AND THE FINDING THIS SLICE IS RECORDED BESIDE, WHICH IS A DEFECT OF ITS OWN AND NOT A DETAIL: WALKING
-INTO devfs HANGS THE GUEST.** The first version of the mount-point leg enumerated `/` and never returned;
+**AND THE FINDING THIS SLICE IS RECORDED BESIDE, CORRECTED BY MEASUREMENT TWO TURNS LATER - BECAUSE THE
+FIRST READING OF IT WAS WRONG.** The first version of that mount-point leg enumerated `/` and never
+returned; the second enumerated `/System`, printed its start marker, never printed its end marker, and its
+20000-item cap never fired - and I read that as **"the walk was stuck inside a single `-nextObject`"**, which
+is what an unbounded loop with no output looks like. **THE MEASURED TRUTH IS THAT IT WAS NOT STUCK AT ALL:
+it was still MOVING.** The instrument was rebuilt to print progress every 500 items and the answer came back
+in one run: `diag-500 last=System/Shared/Headers/curl/urlapi.h`, `diag-1000
+last=System/Shared/X11/xkb/symbols/sun_vndr/fi`, and then the harness's own ~45-second command timeout - so
+the walk was advancing at roughly **25 MILLISECONDS PER ITEM**, which for a `/System`-sized tree (it carries
+the X11 tree, the curl headers and every probe) is MINUTES, not a hang.
+
+**WHAT THAT LEAVES, AND IT IS A REAL DEFECT OF ITS OWN: `-enumeratorAtPath:`/`-enumeratorAtURL:` COSTS ABOUT
+25 ms PER ITEM HERE.** For a caller on a tree of any size that is unusable, and it is NOT the mount-point
+rule's doing - the rule is a comparison of two `lstat` results on DIRECTORY items only. The candidates are
+unmeasured and deliberately not guessed at: the per-item `fn_join` string work, the per-directory
+`contentsOfDirectoryAtPath:`, or the file systems' own `readdir` (AGFS's and devfs's implementations both
+re-walk a directory per call, which would make listing a large directory quadratic). **The A/B that separates
+them is cheap and is the next step: the same tree through the path door and through the URL door, timed.**
+
+**AND THE INSTRUMENT LESSON IS THE ONE FROM SLICE 6E, SHARPENED: AN UNBOUNDED LOOP WITH NO OUTPUT IS NOT AN
+EXPERIMENT - AND NEITHER IS A BOUNDED ONE THAT PRINTS NOTHING UNTIL IT ENDS.** The cap alone told me nothing
+(it never fired, and that silence was consistent with two DIFFERENT stories); the progress markers told me
+which one in a single run. Print progress, not just results.
+
+**AND THE ORIGINAL PARAGRAPH IS KEPT BELOW AS IT WAS WRITTEN, SO THE CORRECTION HAS SOMETHING TO STAND
+AGAINST:** The first version of the mount-point leg enumerated `/` and never returned;
 the second enumerated `/System` (where devfs is mounted at `/System/Devices`), PRINTED ITS START MARKER,
 never printed its end marker, and never reached its own 20 000-item cap - which means the walk was stuck
 inside a SINGLE `-nextObject`, not merely walking a large tree. **That also settles what the mount-point
