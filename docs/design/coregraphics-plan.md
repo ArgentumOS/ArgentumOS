@@ -382,22 +382,68 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   2026-09-23 (§11).
 - **C7 — PDF, both directions** (`CGPDFContext` → libharu;
   `CGPDFDocument`/`CGPDFScanner` → PDFium).
-- **C8 — the AppKit bridge**: `-[NSGraphicsContext graphicsPort]` returning
-  a `CGContextRef`, plus the **six NS↔CG identity conversions** that make the
-  AppKit's own geometry and value types *be* the CoreGraphics ones —
-  `NSPoint`/`CGPoint`, `NSSize`/`CGSize`, `NSRect`/`CGRect`,
-  `NSAffineTransform`/`CGAffineTransform`, and the colour and image pairs. THIS
-  IS THE SEAM, NOT THE WIDGETS: **the drawing classes of §3 row 1 are
+- **C8 — the AppKit bridge**, and below is its list **PINNED AT C8's START
+  (2026-09-24) as this bullet required, rather than inherited from the paragraph
+  it replaces.** Three things the reconstruction got wrong are recorded with it,
+  because each was measured rather than argued.
+  **THE SEAM IS `-CGContext`, NOT `-graphicsPort`, AND THAT IS NOW MEASURED
+  RATHER THAN ARGUED.** The old bullet said "`-[NSGraphicsContext graphicsPort]`
+  returning a `CGContextRef`". `NSGraphicsContext` was fetched from Apple's own
+  documentation JSON (the endpoint `tools/foundation-sweep.py` already reads), and
+  the answer is that **`graphicsPort` is DEPRECATED** — as are
+  `init(graphicsPort:flipped:)`, `init(window:)` and `setGraphicsState(_:)`. So the
+  one symbol this bullet named as C8's seam is the one §1's fourth and fifth
+  decisions (no deprecated APIs, vintage macOS 14) EXCLUDE, and the seam is the
+  live accessor **`-CGContext`** with **`+graphicsContextWithCGContext:flipped:`**.
+  This also closes the "declined pending SDK derivation" note that stood here an hour
+  earlier: the deprecation boolean needs no SDK, and §9's debt is only the VERSION.
+  **THE LIVE MEMBERS, from the same fetch** — `CGContext`, `init(cgContext:flipped:)`,
+  `currentContext` and its setter, `isFlipped`, `isDrawingToScreen`,
+  `currentContextDrawingToScreen`, `saveGraphicsState`/`restoreGraphicsState` (CLASS
+  **and** instance, which is why each is listed twice), `flushGraphics`, `attributes`
+  and `init(attributes:)`, `compositingOperation`, `colorRenderingIntent`,
+  `imageInterpolation`, `patternPhase`, `shouldAntialias` — with the enums and keys
+  that ride with them: `NSCompositingOperation`, `NSColorRenderingIntent`,
+  `NSImageInterpolation`, `NSGraphicsContext.AttributeKey` and
+  `RepresentationFormatName`. TWO MEMBERS ARE OUT OF SCOPE FOR A REASON THAT IS NOT
+  POLICY: **`ciContext` needs Core Image**, which does not exist here, and
+  **`init(bitmapImageRep:)` needs `NSBitmapImageRep`**, which is §3 row 1's and not
+  this seam's.
+  **THE CONVERSIONS ARE FOUR TYPE PAIRS, AND "SIX" WAS A MIS-COUNT.** §11 said
+  "the six `NSPointFromCGPoint`-family conversions"; the Foundation ledger has
+  **THREE** rows of that family — `NSPointFromCGPoint`, `NSSizeFromCGSize`,
+  `NSRectFromCGRect` — one per geometry type, because under
+  `NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES` the two type sets are *identical* and
+  the three other `…FromString` rows are string parsing, not conversions. **TWO OF
+  THE FOUR PAIRS ARE ALREADY LANDED**: the three geometry pairs (`NSGeometry.h`
+  holds the typedefs, the macro and the three functions) and the affine pair
+  (`NSAffineTransform` + its `NSAffineTransformStruct` property, whose six numbers
+  are `CGAffineTransform`'s). **SO C8's ACTUAL WORK IS TWO PAIRS AND A SEAM**, and
+  the two pairs are the ones that need classes this tree does not have:
+  **`NSColor`↔`CGColor` and `NSImage`↔`CGImage`** — and `NSColor`, `NSImage` and
+  `NSGraphicsContext` have **ZERO rows in the Foundation ledger**, because they are
+  AppKit.
+  **AND THAT IS C8's STRUCTURAL GAP, STATED RATHER THAN DISCOVERED LATE**: there is
+  no AppKit ledger. `docs/reference/` holds `coregraphics-apple-surface.txt` and
+  `foundation-apple-surface.txt`; C8's symbols therefore cannot be credited or
+  `--check`ed the way C1–C6's were, so C8 lands with **its probe as the gate and its
+  ledger as an owed item** (the AppKit's index belongs with §3 row 1's class
+  inventory, which is `cocoa-parity-plan.md`'s). **AND THE MECHANISM IS ALREADY
+  KNOWN, MEASURED WHILE PINNING THIS LIST**: a SYMBOL page's JSON carries the
+  deprecation boolean but NO Objective-C spelling (its declarations come back
+  Swift-first), while the **`interfaceLanguages.occ` map lives on an INDEX page** —
+  which is exactly the door `tools/foundation-sweep.py:395` already uses. So the FIRST
+  step of the AppKit ledger is one fetch of `/documentation/appkit.json`, not a new
+  instrument, and it is what turns the member list above into Objective-C
+  signatures a caller can compile against.
+  THIS IS THE SEAM, NOT THE WIDGETS: **the drawing classes of §3 row 1 are
   `cocoa-parity-plan.md`'s to build on top**, which is what §3 says when it draws
-  the CG layer's boundary — and C8's substrate is C2–C6, **ALL SIX OF WHICH ARE
-  NOW SHIPPED (C6 landed 2026-09-23, §11), so the substrate this bullet was
-  waiting on is complete**; C7 stays deliberately not required, and is itself
-  partly unblocked — PDFium's Python prerequisite is admitted
+  the CG layer's boundary — and C8's substrate is C2–C6, **ALL SIX OF WHICH ARE NOW
+  SHIPPED (C6 landed 2026-09-23, §11)**, so the substrate this bullet was waiting
+  on is complete; C7 stays deliberately not required, and is itself partly
+  unblocked — PDFium's Python prerequisite is admitted
   (self-hosting-packages.md §3.6), with CPython's own admission owed before
   PDFium can be adopted (self-hosting-packages.md §6.4).
-  *The plan names the COUNT of those conversions but not the members; the list
-  above is reconstructed from §3 and should be pinned when C8 starts rather than
-  inherited from this bullet.*
 
 ## 8. The oracle — the honest gap, stated first
 
@@ -529,10 +575,15 @@ keeps `CG`** — for the reason it gives.
 
 **WHY `CG` STAYS, "whatever it's called by us".** Not for Apple's sake: because the
 prefix is already load-bearing in this tree's OWN shipped public API. The four
-value types are `shipped` rows here, and the six `NSPointFromCGPoint`-family
+value types are `shipped` rows here, and the `NSPointFromCGPoint`-family
 conversions with `NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES` are **landed**
-Foundation rows (`foundation-plan.md` W2b, COMPLETE). Renaming this layer means
-renaming those six declared functions and their aliases — a break to Foundation's
+Foundation rows (`foundation-plan.md` W2b, COMPLETE) — **THREE of them, not six
+(measured 2026-09-24, when C8's list was pinned): `NSPointFromCGPoint`,
+`NSSizeFromCGSize` and `NSRectFromCGRect`, one per geometry type, since under the
+identity macro there is no inverse direction to declare. This and §7's C8 bullet
+both said "six", which counted the `…FromString` parsers by mistake.** Renaming
+this layer means
+renaming those declared functions and their aliases — a break to Foundation's
 public surface, for aesthetic distance, at the cost of the 1:1 map onto the
 documentation being duplicated. Deviations are documented instead
 (`CGDataProviderCreateWithCFData` taking an `NSData *` is the model case), which is
