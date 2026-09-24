@@ -10979,6 +10979,38 @@ closes it.
 instrument already exists: re-measure §58.2d's counts (`DR hop` against `DR hop RAN`) on this fixed kernel.
 
 **WHAT REMAINS:** that re-measurement, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
+
+### §58.2j — THE HOP IS CURED (14/14), THE INSTRUMENT'S OWN WRITES BRIDGED THE LOSS, AND IT IS UPSTREAM (2026-09-22)
+
+**THE RE-MEASUREMENT WAS DONE TWICE, AND THE FIRST ONE WAS WRONG IN AN INSTRUCTIVE WAY.** The first instrument
+re-added §58.2d's counters as `NSString`-allocating RAW WRITES in `-fnServeRead:` (poll, bytes read, deliver) and
+in `-fnHopToDelegateQueue:` - and with them in place **`foundation_streamtask` PASSED 20/20**, with
+`hops handed=14 ran=14` (against §58.2d's `14 ran 7`), `reply: done=1 len=69 has200=1`.
+
+**THEN THE DIAGS WERE REMOVED - `git checkout` of the one file, nothing else, same kernel - AND THE CASE WENT RED
+6 OF 6.** Same library otherwise, same kernel, same command. So those writes BRIDGE the loss: §58.2g's lesson is
+not a speciality of the queue's burst, it applies to this case too, and **any per-event write in this path is
+evidence of nothing.**
+
+**THE SECOND INSTRUMENT READS INSTEAD OF WRITING**: `NSURLSessionStreamTask` keeps `fnHopsHanded`/`fnHopsRan`/
+`fnHopsInline` in memory and exposes them through `-fnStreamCountsHanded:ran:inline:`, which the PROBE calls once,
+after the traffic. **MEASURED, FOUR CONSECUTIVE RED RUNS:**
+```
+FOUNDATION-STREAMTASK-DIAG reply: done=0 errCode=0 len=0 has200=0   hops handed=14 ran=14 inline=0
+```
+**SO THE DELEGATE HOP IS NOT THIS LOSS - EVERY HOP RAN** - and §58.2d's `14 ran 7` is CURED, which is a second
+result of §58.2i's futex fix. (In the diag run the reply's own hop was #15, and it ran: the missing one here is
+never handed at all.)
+
+**WHAT THAT LEAVES, AND IT IS UPSTREAM OF THE DELIVERY:** the probe's reply read never reaches
+`-fnDeliverRead:` - `done=0` with `len=0`, and no 15th hop. So the loss is in the TASK'S OWN SERVE PATH between
+`-readDataOfMinLength:...` and the delivery: the enqueue, the task worker picking the operation up, the
+`-fnServeRead:` poll, or the probe's own write-then-read sequencing.
+
+**NAMED FOR THE NEXT PASS, AND IT MUST BE THE SAME KIND OF INSTRUMENT** (memory, read once): count
+`-fnEnqueue:` calls per kind, `-fnServeOperation:` entries per kind, and `-fnServeRead:` entries and completions;
+and check the probe's own order of operations, since the request leg's WRITE completion is what gates its READ. Any
+per-event write here is ruled out by measurement, not by taste.
 The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.

@@ -36,6 +36,15 @@
 #include <sys/stat.h>	/* mkdir, for the directory the certificate is made in */
 #include <tls.h>	/* the peer the TLS leg talks to: this tree's own libtls, which already works here */
 
+/* §58.2j'S INSTRUMENT, THE PROBE'S SIDE OF IT: the same selector `NSURLSessionStreamTask.m` defines, declared
+ * here because a declaration inside that file's own region is one this probe could not see - and in Objective-C
+ * the two sides only have to agree on the NAME. It reads counters the library keeps IN MEMORY, because the
+ * library's own writes were measured to bridge the very loss under investigation (20/20 with them, red 6 of 6
+ * without). */
+@interface NSURLSessionStreamTask (FNStreamCounts)
+- (void)fnStreamCountsHanded:(int *)handed ran:(int *)ran inline:(int *)inline_;
+@end
+
 /* EVERY WAIT IN THIS PROBE IS A `poll`, AND THAT IS A MEASURED CHOICE RATHER THAN A STYLE ONE. This guest's
  * `usleep` is pathological: a wait of one nominal millisecond costs tens of them, so a probe whose legs wait
  * on a server's delay spent seventy seconds in waits that should have cost one - and the leg that waits for a
@@ -866,10 +875,18 @@ int main(void)
 									 encoding:NSUTF8StringEncoding] : nil;
 			int has200 = (replyText != nil &&
 				      [replyText rangeOfString:@"HTTP/1.0 200 ok"].location != NSNotFound) ? 1 : 0;
+			int handed = -1;
+			int ran = -1;
+			int inlineHops = -1;
 
-			printf("FOUNDATION-STREAMTASK-DIAG reply: done=%d errCode=%ld len=%d has200=%d\n",
+			/* §58.2j: THE HOP COUNTS, READ ONCE, FROM MEMORY. §58.2d asked this same question with writes
+			 * and got `handed=14 ran=7`; the library's writes here were then measured to BRIDGE the loss
+			 * (green with them, red 6 of 6 without), so this reads instead of writing. */
+			[task fnStreamCountsHanded:&handed ran:&ran inline:&inlineHops];
+			printf("FOUNDATION-STREAMTASK-DIAG reply: done=%d errCode=%ld len=%d has200=%d"
+			       " hops handed=%d ran=%d inline=%d\n",
 			       (int)replyDone, (long)(replyError != nil ? [replyError code] : 0),
-			       (int)(replyData != nil ? [replyData length] : 0), has200);
+			       (int)(replyData != nil ? [replyData length] : 0), has200, handed, ran, inlineHops);
 		}
 		check("and-the-reply-comes-back-through-it",
 		      replyDone && replyError == nil &&

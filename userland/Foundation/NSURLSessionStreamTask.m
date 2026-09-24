@@ -674,22 +674,53 @@ completionHandler:(void (^)(NSError *))completionHandler
 /* THE HOP EVERY DOOR IN THIS SESSION USES (§52): the delegate queue when there is one, inline when there is
  * not. The block is COPIED, because a queued block outlives the call that made it - and in MRC a captured
  * block is not retained by the outer one. */
+/* §58.2j'S COUNTERS, AND THEY ARE IN MEMORY ON PURPOSE: the read-path diags written here first were
+ * `NSString`-allocating raw writes, and they were measured to BRIDGE the very loss they were measuring - with
+ * them in, `foundation_streamtask` passed 20/20; with them removed, it went red 6 of 6 (same kernel, same
+ * library, diags the only difference). So these count silently and the PROBE reads them once, at the end. */
+static int fnHopsHanded = 0;
+static int fnHopsRan = 0;
+static int fnHopsInline = 0;
+
+/* THE HOP EVERY DOOR IN THIS SESSION USES (§52): the delegate queue when there is one, inline when there is
+ * not. The block is COPIED, because a queued block outlives the call that made it - and in MRC a captured
+ * block is not retained by the outer one. */
 - (void)fnHopToDelegateQueue:(void (^)(void))block
 {
 	NSOperationQueue *queue = [(NSURLSession *)_session delegateQueue];
 	void (^copied)(void);
 
 	if (queue == nil) {
+		fnHopsInline++;
 		block();
 		return;
 	}
+	fnHopsHanded++;
 	copied = Block_copy(block);
 	[self retain];
 	[queue addOperationWithBlock:^{
+		fnHopsRan++;
 		copied();
 		Block_release(copied);
 		[self release];
 	}];
+}
+
+/* TEMPORARY INSTRUMENT (foundation-plan.md §58.2j), SILENT BY DESIGN: the probe calls it once, after the
+ * traffic, and prints what it finds. §58.2d asked this same question a second way and got `14 handed, 7 run`;
+ * the question now is whether a kernel with the FUTEX_WAIT window fixed (§58.2i) still loses hops, since the
+ * case is red again with these counters as the ONLY difference from a green run. */
+- (void)fnStreamCountsHanded:(int *)handed ran:(int *)ran inline:(int *)inline_
+{
+	if (handed != NULL) {
+		*handed = fnHopsHanded;
+	}
+	if (ran != NULL) {
+		*ran = fnHopsRan;
+	}
+	if (inline_ != NULL) {
+		*inline_ = fnHopsInline;
+	}
 }
 
 - (void)fnDeliverRead:(FNStreamOp *)operation data:(NSData *)data atEOF:(BOOL)atEOF error:(NSError *)error
