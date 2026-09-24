@@ -33,7 +33,69 @@ static __thread NSGraphicsContext *fn_current;
 static __thread NSGraphicsContext *fn_stack[APPKIT_GSTATE_STACK_MAX];
 static __thread int fn_depth;
 
+/* THE ENUM TO THE OPERATOR, AND THE ONE CASE THAT HAS NO OPERATOR. `CGBlendMode`'s names track
+ * `NSCompositingOperation`'s one-for-one from `Clear` down to `Luminosity`, so this is a switch and
+ * not a table — and `NSCompositingOperationPlusDarker` has no case because `kCGBlendModePlusDarker`
+ * does not exist in this tree (no pixman operator computes it; CGContext.h says so). `*ok` reports
+ * that refusal and the setter turns it into a message, because drawing the nearest available thing
+ * instead would be a picture that looks deliberate. */
+static CGBlendMode fn_blend_mode(NSCompositingOperation op, int *ok)
+{
+	*ok = 1;
+	switch (op) {
+	case NSCompositingOperationClear: return kCGBlendModeClear;
+	case NSCompositingOperationCopy: return kCGBlendModeCopy;
+	case NSCompositingOperationSourceOver: return kCGBlendModeNormal;
+	case NSCompositingOperationSourceIn: return kCGBlendModeSourceIn;
+	case NSCompositingOperationSourceOut: return kCGBlendModeSourceOut;
+	case NSCompositingOperationSourceAtop: return kCGBlendModeSourceAtop;
+	case NSCompositingOperationDestinationOver: return kCGBlendModeDestinationOver;
+	case NSCompositingOperationDestinationIn: return kCGBlendModeDestinationIn;
+	case NSCompositingOperationDestinationOut: return kCGBlendModeDestinationOut;
+	case NSCompositingOperationDestinationAtop: return kCGBlendModeDestinationAtop;
+	case NSCompositingOperationXOR: return kCGBlendModeXOR;
+	case NSCompositingOperationPlusLighter: return kCGBlendModePlusLighter;
+	case NSCompositingOperationMultiply: return kCGBlendModeMultiply;
+	case NSCompositingOperationScreen: return kCGBlendModeScreen;
+	case NSCompositingOperationOverlay: return kCGBlendModeOverlay;
+	case NSCompositingOperationDarken: return kCGBlendModeDarken;
+	case NSCompositingOperationLighten: return kCGBlendModeLighten;
+	case NSCompositingOperationColorDodge: return kCGBlendModeColorDodge;
+	case NSCompositingOperationColorBurn: return kCGBlendModeColorBurn;
+	case NSCompositingOperationSoftLight: return kCGBlendModeSoftLight;
+	case NSCompositingOperationHardLight: return kCGBlendModeHardLight;
+	case NSCompositingOperationDifference: return kCGBlendModeDifference;
+	case NSCompositingOperationExclusion: return kCGBlendModeExclusion;
+	case NSCompositingOperationHue: return kCGBlendModeHue;
+	case NSCompositingOperationSaturation: return kCGBlendModeSaturation;
+	case NSCompositingOperationColor: return kCGBlendModeColor;
+	case NSCompositingOperationLuminosity: return kCGBlendModeLuminosity;
+	case NSCompositingOperationPlusDarker:
+	default:
+		*ok = 0;
+		return kCGBlendModeNormal;
+	}
+}
+
 @implementation NSGraphicsContext
+
+/* THE DEFAULTS LIVE IN `-init` AND NOT IN THE FACTORY, so that `alloc`/`init` — the path that makes
+ * a CONTEXT-LESS object, which the probe covers — starts from the same state as the factory does.
+ * AND THEY ARE NOT OPTIONAL, because `alloc` ZEROES THE IVARS: without this a fresh object would
+ * report antialiasing OFF (not the context's default of on) and a compositing operation of `Clear`,
+ * which is what enum value 0 happens to be and is not `SourceOver`. Three quiet wrong answers, all
+ * of them wrong in the direction of "draws nothing". */
+- (instancetype)init
+{
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	_shouldAntialias = YES;
+	_patternPhase = NSMakePoint(0.0, 0.0);
+	_compositingOperation = NSCompositingOperationSourceOver;
+	return self;
+}
 
 + (nullable NSGraphicsContext *)graphicsContextWithCGContext:(CGContextRef)cgContext
                                                     flipped:(BOOL)initialFlippedState
@@ -87,6 +149,63 @@ static __thread int fn_depth;
 {
 	if (_context != NULL) {
 		CGContextFlush(_context);
+	}
+}
+
+/* THE RENDERING OPTIONS: EACH SETTER REACHES THE CONTEXT, EACH GETTER ANSWERS FROM STORAGE — which
+ * is Apple's arrangement rather than a shortcut, because CoreGraphics has no getter for any of the
+ * three (measured; see the header's correction). The `!= NULL` guards are what make a context-less
+ * object harmless instead of a crash. */
+
+- (BOOL)shouldAntialias
+{
+	return _shouldAntialias;
+}
+
+- (void)setShouldAntialias:(BOOL)flag
+{
+	_shouldAntialias = flag ? YES : NO;
+	if (_context != NULL) {
+		CGContextSetShouldAntialias(_context, _shouldAntialias);
+	}
+}
+
+- (NSPoint)patternPhase
+{
+	return _patternPhase;
+}
+
+- (void)setPatternPhase:(NSPoint)phase
+{
+	_patternPhase = phase;
+	if (_context != NULL) {
+		/* A POINT IN, A SIZE OUT: that is Apple's own asymmetry between this property and
+		 * `CGContextSetPatternPhase`, and the conversion is the whole of the difference. */
+		CGContextSetPatternPhase(_context, CGSizeMake(phase.x, phase.y));
+	}
+}
+
+- (NSCompositingOperation)compositingOperation
+{
+	return _compositingOperation;
+}
+
+- (void)setCompositingOperation:(NSCompositingOperation)op
+{
+	CGBlendMode mode;
+	int ok;
+
+	mode = fn_blend_mode(op, &ok);
+	if (!ok) {
+		fprintf(stderr, "APPKIT-REFUSE: NSCompositingOperationPlusDarker has no operator in this "
+				"library — pixman computes no plus-darker, which is why "
+				"kCGBlendModePlusDarker is absent from CGContext.h — so the blend mode is "
+				"left as it was rather than set to the nearest available thing\n");
+		return;
+	}
+	_compositingOperation = op;
+	if (_context != NULL) {
+		CGContextSetBlendMode(_context, mode);
 	}
 }
 

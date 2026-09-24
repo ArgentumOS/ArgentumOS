@@ -162,6 +162,84 @@ int main(void)
 	[a flushGraphics];
 	check("-flushGraphics returns without disturbing the surface", 1);
 
+	/* --- THE RENDERING OPTIONS: A SETTER IS ONLY REAL IF IT REACHES THE CONTEXT --------- */
+	/* THESE ARE NOT ROUND-TRIP CHECKS. Reading back what was just written would pass for a setter
+	 * that stored and did nothing, so each one below is measured on the SURFACE instead — which is
+	 * the only way to tell "the context was told" from "the object remembers". */
+	{
+		CGContextRef cc = bitmap();
+		NSGraphicsContext *g = [NSGraphicsContext graphicsContextWithCGContext:cc flipped:YES];
+		int aa_on;
+		int aa_off;
+
+		check("a fresh context reports antialiasing ON, the context's default", [g shouldAntialias]);
+		check("...and SourceOver, the default blend mode",
+		      [g compositingOperation] == NSCompositingOperationSourceOver);
+		check("...and a pattern phase of (0,0)",
+		      [g patternPhase].x == 0.0 && [g patternPhase].y == 0.0);
+
+		/* A RECT 3.5 WIDE COVERS HALF OF DEVICE COLUMN 3: with antialiasing on that half-coverage
+		 * is a grey; with it off the column is a hard edge. Both halves are asserted, so a setter
+		 * that did nothing cannot pass by leaving one of them unchanged. */
+		CGContextSetRGBFillColor(cc, 1.0, 1.0, 1.0, 1.0);
+		[g setShouldAntialias:YES];
+		CGContextClearRect(cc, CGRectMake(0.0, 0.0, 8.0, 8.0));
+		CGContextFillRect(cc, CGRectMake(0.0, 0.0, 3.5, 8.0));
+		pixel(cc, 3, 4, p);
+		aa_on = p[2];
+		[g setShouldAntialias:NO];
+		CGContextClearRect(cc, CGRectMake(0.0, 0.0, 8.0, 8.0));
+		CGContextFillRect(cc, CGRectMake(0.0, 0.0, 3.5, 8.0));
+		pixel(cc, 3, 4, p);
+		aa_off = p[2];
+		check("setShouldAntialias REACHES the context: the half-covered edge pixel is a coverage "
+		      "value (1..254) when ON and a hard edge (0 or 255) when OFF",
+		      aa_on > 1 && aa_on < 254 && (aa_off == 0 || aa_off == 255));
+
+		/* WHITE MULTIPLIED BY MID-GREY STAYS MID-GREY; white composited OVER it would be white. */
+		CGContextClearRect(cc, CGRectMake(0.0, 0.0, 8.0, 8.0));
+		CGContextSetRGBFillColor(cc, 0.5, 0.5, 0.5, 1.0);
+		CGContextFillRect(cc, CGRectMake(0.0, 0.0, 8.0, 8.0));
+		[g setCompositingOperation:NSCompositingOperationMultiply];
+		CGContextSetRGBFillColor(cc, 1.0, 1.0, 1.0, 1.0);
+		CGContextFillRect(cc, CGRectMake(0.0, 0.0, 8.0, 8.0));
+		pixel(cc, 4, 4, p);
+		check("setCompositingOperation REACHES the context: white multiplied into mid-grey lands "
+		      "at ~128, where a source-over would land at 255",
+		      p[2] >= 124 && p[2] <= 132);
+
+		/* AND THE ONE CASE WITH NO OPERATOR IS REFUSED RATHER THAN APPROXIMATED. */
+		[g setCompositingOperation:NSCompositingOperationSourceOver];
+		[g setCompositingOperation:NSCompositingOperationPlusDarker];
+		check("...and PlusDarker, which pixman cannot compute, is REFUSED, leaving the operation "
+		      "where it was", [g compositingOperation] == NSCompositingOperationSourceOver);
+
+		/* THE PHASE ROUND-TRIPS, AND ITS OTHER HALF IS NAMED RATHER THAN GLOSSED: what a phase DOES
+		 * is only visible through a pattern fill, which is the CG pattern probe's territory (its
+		 * own header says the phase's direction is pinned there). This check is therefore the
+		 * property, not the effect, and it says which one it is. */
+		[g setPatternPhase:NSMakePoint(3.0, 1.0)];
+		check("setPatternPhase round-trips through the object (its EFFECT needs a pattern fill, "
+		      "which coregraphics_pattern.c pins)",
+		      [g patternPhase].x == 3.0 && [g patternPhase].y == 1.0);
+
+		CGContextRelease(cc);
+	}
+
+	/* --- a context-less object starts from the DEFAULTS, not from the zeroes alloc leaves --- */
+	{
+		NSGraphicsContext *none = [[NSGraphicsContext alloc] init];
+
+		check("a context-less object still reports antialiasing ON", [none shouldAntialias]);
+		check("...and SourceOver rather than the Clear that enum value 0 would give",
+		      [none compositingOperation] == NSCompositingOperationSourceOver);
+		[none setShouldAntialias:NO];
+		[none setCompositingOperation:NSCompositingOperationMultiply];
+		[none setPatternPhase:NSMakePoint(1.0, 1.0)];
+		check("...and all three setters are harmless with no context", 1);
+		[none release];
+	}
+
 	[NSGraphicsContext setCurrentContext:nil];
 	check("+setCurrentContext:nil clears the slot", [NSGraphicsContext currentContext] == nil);
 

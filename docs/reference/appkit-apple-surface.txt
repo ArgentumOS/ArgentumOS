@@ -20,12 +20,14 @@
 # 1501 struck: deprecated×1501
 #
 # BY KIND:
-#   case       open      1873
+#   case       open      1845
+#   case       shipped     28
 #   case       struck     259
 #   class      open       320
 #   class      shipped      1
 #   class      struck      13
-#   enum       open       351
+#   enum       open       350
+#   enum       shipped      1
 #   enum       struck      19
 #   func       open        65
 #   func       struck      38
@@ -34,8 +36,8 @@
 #   method     open      3251
 #   method     shipped      7
 #   method     struck     534
-#   property   open      3010
-#   property   shipped      4
+#   property   open      3007
+#   property   shipped      7
 #   property   struck     132
 #   protocol   open       161
 #   protocol   struck       2
@@ -403,63 +405,63 @@ case	open	NSColorWellStyleExpanded	NSColorWell	-	-	objc
 case	open	NSColorWellStyleMinimal	NSColorWell	-	-	objc
 case	open	NSComboButtonStyleSplit	NSComboButton	-	-	objc
 case	open	NSComboButtonStyleUnified	NSComboButton	-	-	objc
-case	open	NSCompositingOperationClear	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationClear	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationClear	NSImage	-	-	objc
-case	open	NSCompositingOperationColor	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationColor	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationColor	NSImage	-	-	objc
-case	open	NSCompositingOperationColorBurn	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationColorBurn	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationColorBurn	NSImage	-	-	objc
-case	open	NSCompositingOperationColorDodge	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationColorDodge	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationColorDodge	NSImage	-	-	objc
-case	open	NSCompositingOperationCopy	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationCopy	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationCopy	NSImage	-	-	objc
-case	open	NSCompositingOperationDarken	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationDarken	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationDarken	NSImage	-	-	objc
-case	open	NSCompositingOperationDestinationAtop	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationDestinationAtop	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationDestinationAtop	NSImage	-	-	objc
-case	open	NSCompositingOperationDestinationIn	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationDestinationIn	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationDestinationIn	NSImage	-	-	objc
-case	open	NSCompositingOperationDestinationOut	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationDestinationOut	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationDestinationOut	NSImage	-	-	objc
-case	open	NSCompositingOperationDestinationOver	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationDestinationOver	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationDestinationOver	NSImage	-	-	objc
-case	open	NSCompositingOperationDifference	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationDifference	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationDifference	NSImage	-	-	objc
-case	open	NSCompositingOperationExclusion	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationExclusion	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationExclusion	NSImage	-	-	objc
-case	open	NSCompositingOperationHardLight	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationHardLight	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationHardLight	NSImage	-	-	objc
 case	struck	NSCompositingOperationHighlight	NSGraphicsContext	-	deprecated	objc
 case	struck	NSCompositingOperationHighlight	NSImage	-	deprecated	objc
-case	open	NSCompositingOperationHue	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationHue	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationHue	NSImage	-	-	objc
-case	open	NSCompositingOperationLighten	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationLighten	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationLighten	NSImage	-	-	objc
-case	open	NSCompositingOperationLuminosity	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationLuminosity	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationLuminosity	NSImage	-	-	objc
-case	open	NSCompositingOperationMultiply	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationMultiply	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationMultiply	NSImage	-	-	objc
-case	open	NSCompositingOperationOverlay	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationOverlay	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationOverlay	NSImage	-	-	objc
-case	open	NSCompositingOperationPlusDarker	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationPlusDarker	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationPlusDarker	NSImage	-	-	objc
-case	open	NSCompositingOperationPlusLighter	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationPlusLighter	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationPlusLighter	NSImage	-	-	objc
-case	open	NSCompositingOperationSaturation	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationSaturation	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationSaturation	NSImage	-	-	objc
-case	open	NSCompositingOperationScreen	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationScreen	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationScreen	NSImage	-	-	objc
-case	open	NSCompositingOperationSoftLight	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationSoftLight	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationSoftLight	NSImage	-	-	objc
-case	open	NSCompositingOperationSourceAtop	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationSourceAtop	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationSourceAtop	NSImage	-	-	objc
-case	open	NSCompositingOperationSourceIn	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationSourceIn	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationSourceIn	NSImage	-	-	objc
-case	open	NSCompositingOperationSourceOut	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationSourceOut	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationSourceOut	NSImage	-	-	objc
-case	open	NSCompositingOperationSourceOver	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationSourceOver	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationSourceOver	NSImage	-	-	objc
-case	open	NSCompositingOperationXOR	NSGraphicsContext	-	-	objc
+case	shipped	NSCompositingOperationXOR	NSGraphicsContext	-	-	objc
 case	open	NSCompositingOperationXOR	NSImage	-	-	objc
 case	open	NSCompressedFontMask	-	-	-	objc
 case	open	NSCompressedFontMask	NSFontManager	-	-	objc
@@ -2577,7 +2579,7 @@ enum	open	NSColorSystemEffect	NSColor	-	-	objc
 enum	open	NSColorType	NSColor	-	-	objc
 enum	open	NSColorWellStyle	NSColorWell	-	-	objc
 enum	open	NSComboButtonStyle	NSComboButton	-	-	objc
-enum	open	NSCompositingOperation	NSGraphicsContext	-	-	objc
+enum	shipped	NSCompositingOperation	NSGraphicsContext	-	-	objc
 enum	open	NSCompositingOperation	NSImage	-	-	objc
 enum	open	NSControlBorderShape	NSButton	-	-	objc
 enum	open	NSControlBorderShape	NSSegmentedControl	-	-	objc
@@ -7554,7 +7556,7 @@ property	open	completionDelay	NSTokenFieldCell	-	-	objc
 property	open	completionHandler	NSAnimationContext	-	-	objc
 property	open	completionHandler	NSWritingToolsCoordinatorAnimationParameters	-	-	objc
 property	open	compositingFilter	NSView	-	-	objc
-property	open	compositingOperation	NSGraphicsContext	-	-	objc
+property	shipped	compositingOperation	NSGraphicsContext	-	-	objc
 property	open	compoundTypes	NSPredicateEditorRowTemplate	-	-	objc
 property	open	configuration	NSCollectionViewCompositionalLayout	-	-	objc
 property	struck	configurationDictionary	NSToolbar	-	deprecated	objc
@@ -8902,7 +8904,7 @@ property	open	pathSeparator	NSBrowser	-	-	objc
 property	open	pathStyle	NSPathCell	-	-	objc
 property	open	pathStyle	NSPathControl	-	-	objc
 property	open	patternImage	NSColor	-	-	objc
-property	open	patternPhase	NSGraphicsContext	-	-	objc
+property	shipped	patternPhase	NSGraphicsContext	-	-	objc
 property	open	permanentLink	NSSharingService	-	-	objc
 property	open	phase	NSEvent	-	-	objc
 property	open	phase	NSTouch	-	-	objc
@@ -9333,7 +9335,7 @@ property	open	sharingType	NSWindow	-	-	objc
 property	open	sheet	NSWindow	-	-	objc
 property	open	sheetParent	NSWindow	-	-	objc
 property	open	sheets	NSWindow	-	-	objc
-property	open	shouldAntialias	NSGraphicsContext	-	-	objc
+property	shipped	shouldAntialias	NSGraphicsContext	-	-	objc
 property	open	shouldBeArchived	NSLayoutConstraint	-	-	objc
 property	open	shouldCascadeWindows	NSWindowController	-	-	objc
 property	open	shouldCloseDocument	NSWindowController	-	-	objc

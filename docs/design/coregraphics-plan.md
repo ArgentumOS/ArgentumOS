@@ -475,8 +475,21 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   of which the 30 modern `NSCompositingOperation…` cases map one-to-one onto `CGBlendMode`
   EXCEPT `…PlusDarker` and `…Highlight` — which have no pixman operator here, exactly as
   `kCGBlendModePlusDarker` is deliberately absent (CGContext.h says so) — and the other 30
-  are the pre-10.12 `NSComposite…` aliases, whose deprecation needs one more fetch before
-  the enum can be shipped with a complete, policy-checked case list.
+  are the pre-10.12 `NSComposite…` aliases — AND C8.2 ANSWERED THAT: all of them, plus
+  `…Highlight`, came back `struck` from the ledger, so `NSCompositingOperation` is SHIPPED with its
+  28 live cases and the legacy family is not declared at all. `…PlusDarker` is the one live case
+  with no operator, so it is DECLARED and REFUSED BY NAME by the setter.
+  **AND C8.2 CORRECTED THE TWO DEFERRALS THIS PARAGRAPH DESCRIBED, WHICH WERE NOT TWO OF A KIND.**
+  `imageInterpolation` and `colorRenderingIntent` ARE genuinely deferred, and for the reasons above.
+  But the SAME paragraph also deferred `compositingOperation`, `shouldAntialias` and `patternPhase`
+  on a different argument — that "an AppKit property needs both halves" and that
+  `CGContextGetShouldAntialias`/`GetPatternPhase`/`GetBlendMode` do not exist — and ASKED OF APPLE'S
+  INDEX THOSE THREE GETTERS DO NOT EXIST IN APPLE EITHER (the ledger's only context getter in that
+  family is `CGContextGetInterpolationQuality`). Apple's own `NSGraphicsContext` therefore cannot be
+  reading them back: **it STORES them and its setter applies them**, so storing is the arrangement
+  and not an approximation, and all three are shipped. THE MISTAKE IS RECORDED RATHER THAN DELETED
+  because it is the kind that looks like rigour: it was a real measurement of OUR side, generalised
+  to Apple's without being asked.
   **SO C8.1 IS SCOPED TO WHAT HAS SUBSTRATE, MEASURED RATHER THAN ASSUMED**: the seam
   (`+graphicsContextWithCGContext:flipped:`, `CGContext`, `currentContext` and its setter,
   the CLASS and instance `saveGraphicsState`/`restoreGraphicsState`, `flipped`,
