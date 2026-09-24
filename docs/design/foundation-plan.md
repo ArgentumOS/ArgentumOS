@@ -10599,31 +10599,51 @@ eight callbacks take `addr_t` (behaviourally irrelevant for the integer callers,
 pointer). **`kernel_pty_read` IS THE GATE**: its `KNOWN-LIMIT` check flips to the POSIX assertion the moment the
 read returns 0 on its timer - the check's own failure text says so, so the flip cannot be forgotten.
 
-**THE CALLBACK-ARGUMENT TYPE CHANGE LANDED - A REAL DEFECT FIXED, BUT IT DID NOT CURE THE VTIME READ
-(2026-09-22).** `arg` is `addr_t` in both structs, in `do_callouts_bh`'s locals, in `struct console`'s
-`cursor_blink` field, and in every callback a callout fires: `wait_vtime_off`, `pit_beep_off`, `fbcon_screen_off`,
-`fbcon_cursor_blink`, `vgacon_screen_off` (and its declaration), `vgacon_cursor_blink`, `fdc_timer`,
-`do_motor_off` - plus the five header declarations that had to move with them. **COMPILING FOUND TWO MORE
-CARRIERS THAT READING HAD MISSED** (`struct console`'s field and `vgacon_cursor_blink`), which is the argument for
-compiling after a type change instead of reading for it.
+**§58.1c, THE `VTIME` SAGA: TWO REAL DEFECTS FIXED, A THIRD FOUND AND INTERMITTENT (2026-09-22).**
 
-**AND WITH ALL OF IT IN, A VMIN=0/VTIME=1 READ WITH NOTHING WRITTEN STILL DOES NOT RETURN.** MEASURED on the
-rebuilt kernel. So the truncation was NECESSARY BUT NOT SUFFICIENT: at least one cause remains, and it is not the
-argument's width. The probe's check therefore asserts the LIMIT again - a red case in the committed suite would be
-worse than an unfixed bug - and **the next pass is NAMED rather than guessed: instrument the callout itself.** A
-printk in `wait_vtime_off` (does the timer fire at all?) and one immediately after the sleep (did the sleeper come
-back?) separate two completely different bugs:
-  * **it fires and the sleeper is not woken** - the wake/sleep handshake on `&tty->read_q`;
-  * **it never fires** - `add_callout`/`do_callouts_bh`, which would also strand the console blink, the floppy
-    motor timer and the ATA timeouts that use the same API.
-(The plan's own rule applies to this: unbounded theories die at a measurement, and this one has two candidates
-that one printk pair tells apart.)
+**THE TWO THAT ARE FIXED - both found by this probe, both real, neither of them the cause the last reading
+blamed:**
+ * **THE CHANNEL.** `tty_read` sleeps on `&tty->read_q` while the VTIME callout woke `&tty->cooked_q` - a channel
+   **NOTHING IN THIS TREE SLEEPS ON** (measured by grep, not assumed). `wakeup()` matches on the channel, so that
+   wake could never find a waiter. Both VTIME sites now name `&tty->read_q`.
+ * **THE POINTER'S WIDTH.** The callout API carried `unsigned int arg` while those sites store a 64-bit address in
+   it (`creq.arg = (addr_t)&tty->read_q;`), so the value was truncated AT THE ASSIGNMENT and `wait_vtime_off()`
+   woke a fabricated address. `arg` is `addr_t` everywhere now - both structs, `do_callouts_bh`, `struct console`'s
+   `cursor_blink` field, all eight callbacks (`wait_vtime_off`, `pit_beep_off`, `fbcon_screen_off`,
+   `fbcon_cursor_blink`, `vgacon_screen_off`, `vgacon_cursor_blink`, `fdc_timer`, `do_motor_off`) and the five
+   header declarations that move with them. A 64-bit porting defect of the class this port has met before, and
+   **COMPILING FOUND TWO CARRIERS THAT READING HAD MISSED** (`struct console`'s field and `vgacon_cursor_blink`) -
+   the argument for compiling after a type change instead of reading for it.
 
-**WHAT REMAINS:** that diagnosis, then the two interior `&tty->read_q` arms (§58.1's cure - gated on the read
-becoming wakable), then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5,
-`pty_write`). The deliberately un-raced check - "data already queued" - carries its reason in its own comment:
-this guest's `usleep()` costs tens of ms for a nominal 1ms, so a mid-window write would make it pass or fail on
-TIMING, and a flaky check in the committed suite is a defect of its own.
+**THE PROCEDURAL LESSON, WHICH COST THE MOST: THE PROBE WAS MEASURING ITS OWN IMPATIENCE.** The read was reported
+as "never returns" across three attempts because the probe's "5s at 10ms" bound was 500 iterations of
+`usleep(10000)` - and usleep(3) on this guest is not a 10ms nap. The reap expired, the parent printed `reaped=0`
+and sent SIGKILL, and the CHILD went on to block, be woken by its callout, and print "read returned 0" with nobody
+listening. Every wait in that probe now goes through `nap_ms()` - a `poll(2)` timeout, which is exact here, per
+the project's standing rule - including the writer child, which has to write LATE or a wake test silently becomes
+a queued-data test.
+
+**THE THIRD DEFECT IS REAL, SITS IN THE SHARED CALLOUT MACHINERY, AND IS INTERMITTENT - SO IT IS RECORDED AND NOT
+ASSERTED.** With the diagnostic kernel in place, **two runs of the SAME kernel disagreed**:
+ * run A: `VTIME-DIAG SLEEPING chan=...311008 ticks=626 timeout=10` → `callout FIRED arg=...311008` →
+   `WOKE ticks=636 cooked=0` → the read returned 0. The whole arrangement works.
+ * run B: `VTIME-DIAG SLEEPING ... ticks=737` and then NOTHING - `wait_vtime_off` was never called at all,
+   although that line is printed AFTER `add_callout()` has returned.
+So the callout enters the list and sometimes never leaves it: the defect is in `add_callout`'s delta list or in
+`do_callouts_bh`'s wake path - and its shape matters, because `do_callouts_bh` fires only while the HEAD's
+countdown has reached zero, so ONE entry whose countdown never completes stalls every later callout. That would
+also strand the console cursor blink, the floppy motor timer and the ATA timeouts, which share the list.
+**`kernel_pty_read` therefore asserts NEITHER outcome for this arm:** asserting the block would fail whenever the
+timer did fire, asserting the return would fail whenever it did not, and two flaky checks are worse than one
+honest observation. It prints `KERNEL-PTY-DIAG vtime read: returned=... code=...` for the record and asserts only
+the deterministic half of the arm.
+
+**WHAT REMAINS:** the callout list itself - a kernel-side unit in its own right, with the two run transcripts above
+as its evidence and this probe's DIAG line as its instrument - then the two interior `&tty->read_q` arms (§58.1's
+cure, gated on the read becoming reliably wakable), then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5,
+`pty_write`). The deliberately un-raced check - "data already queued" - carries its reason in its own comment: a
+mid-window write would make it pass or fail on TIMING, and a flaky check in the committed suite is a defect of its
+own.
 
 ## §59 — THE WEBSOCKET SLICE, DESIGNED BEFORE IT IS BUILT (2026-09-22)
 

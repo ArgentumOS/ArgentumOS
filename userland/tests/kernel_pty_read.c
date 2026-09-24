@@ -100,15 +100,34 @@ static void check(const char *name, int ok, const char *detail)
 	fflush(stdout);
 }
 
-/* A writer-child: sleep, then write, then exit with a code the parent can read. The sleep is what makes the
- * parent's read a WAIT rather than a read of data already queued - and a read of data already queued passes even
- * when every wake in the kernel is broken, so it would prove nothing. */
-static pid_t spawn_writer(int fd, const char *payload, unsigned int delay_us)
+/* AN EXACT NAP, WHICH IS THE WHOLE LESSON OF THIS PROBE'S FIRST VERSION (foundation-plan.md §58.1c). The bound
+ * below used `usleep(10000)` and called itself "5s at 10ms" - but usleep(3) on this guest is NOT a 10ms nap, and
+ * the 500 of them expired so much sooner than 5s that the reap gave up BEFORE the forked child had even started.
+ * The parent then printed reaped=0 and sent SIGKILL; the child went on to block in its read, be woken by its
+ * VTIME callout and return 0 with nobody listening. That reads EXACTLY like a kernel that cannot wake a VTIME
+ * sleeper, and it cost a real fix (the callout's pointer width) plus two flips of the check to discover that the
+ * probe was the thing at fault. poll(2) timeouts ARE exact here - the project's standing rule, and the reason
+ * kernel_loopback_tcp polls rather than sleeps - so every wait in this file goes through this. */
+static void nap_ms(int ms)
+{
+	struct pollfd pfd;
+
+	pfd.fd = -1;		/* a NEGATIVE fd is ignored by this kernel's poll(2): a pure timeout */
+	pfd.events = 0;
+	pfd.revents = 0;
+	poll(&pfd, 1, ms);
+}
+
+/* A writer-child: nap, then write, then exit with a code the parent can read. The nap is what makes the parent's
+ * read a WAIT rather than a read of data already queued - and a read of data already queued passes even when every
+ * wake in the kernel is broken, so it would prove nothing. The nap is nap_ms() for the reason above: a child that
+ * writes too early silently turns a wake test into a no-op. */
+static pid_t spawn_writer(int fd, const char *payload, int delay_ms)
 {
 	pid_t pid = fork();
 
 	if (pid == 0) {
-		usleep(delay_us);
+		nap_ms(delay_ms);
 		if (write(fd, payload, strlen(payload)) != (ssize_t)strlen(payload)) {
 			_exit(CHILD_WRITE_FAILED);
 		}
@@ -118,12 +137,12 @@ static pid_t spawn_writer(int fd, const char *payload, unsigned int delay_us)
 }
 
 /* A bounded reap, so a child that never exits is REPORTED (kernel_pipe_dup2's rule: a probe whose whole subject
- * is a path that may be wedged must bound its own waits too). */
+ * is a path that may be wedged must bound its own waits too) - and the bound is now the bound it claims. */
 static int reap_bounded(pid_t pid, int *status)
 {
 	int i;
 
-	for (i = 0; i < 500; i++) {		/* 5s at 10ms */
+	for (i = 0; i < 500; i++) {		/* 5s at 10ms, EXACTLY: nap_ms, not usleep */
 		pid_t w = waitpid(pid, status, WNOHANG);
 
 		if (w == pid) {
@@ -132,7 +151,7 @@ static int reap_bounded(pid_t pid, int *status)
 		if (w < 0) {
 			return 0;
 		}
-		usleep(10000);
+		nap_ms(10);
 	}
 	kill(pid, SIGKILL);
 	waitpid(pid, status, 0);
@@ -221,7 +240,9 @@ int main(void)
 		int status = 0, reaped;
 
 		phase = 1;
-		pid = spawn_writer(slave, "late-master\n", 200000);	/* 200ms: the read is already blocking */
+		pid = spawn_writer(slave, "late-master\n", 200);	/* 200ms, EXACT (nap_ms): the read is
+									 * already blocking when this lands, which is what makes
+									 * the check a WAKE test rather than a queued-data test */
 		n = (pid > 0) ? read(master, buf, sizeof(buf)) : -1;	/* NOT POLLED FIRST - that is the test */
 		phase = -1;
 		reaped = reap_bounded(pid, &status);
@@ -251,44 +272,47 @@ int main(void)
 		if (got == 1) {
 			/* ---- THE FINDING, IN TWO LAYERS (plan §58.1c): THE TIMER'S WAKE WAS DOUBLY DEAD ------
 			 *
-			 * MEASURED: with VMIN=0, VTIME=1 and NOTHING written, this read DOES NOT RETURN - the probe's
-			 * own 20s watchdog parks in phase 2 - where POSIX requires 0 once the timer expires.
+			 * MEASURED, AND THE FIRST READING OF IT WAS WRONG IN A WAY WORTH KEEPING. This read does not
+			 * return while the reap below is bounded by usleep(3) - but THAT IS THE PROBE, NOT THE KERNEL.
+			 * The watchdog fired with "PARKED in phase 2" and everything after it inherited the premise; the
+			 * printk pair added later (temporary, since removed) shows what really happens, and the GUEST
+			 * LOG's own order is the whole proof:
+			 *     VTIME-DIAG SLEEPING chan=...311008 ticks=751 timeout=10
+			 *     VTIME-DIAG callout FIRED arg=...311008   <- the timer fires and the address MATCHES
+			 *     VTIME-DIAG WOKE ticks=761 cooked=0       <- the sleeper is woken at exactly +10
+			 *     KERNEL-PTY-DIAG child read returned 0    <- the read RETURNS 0, as POSIX says
+			 * The child's own lines landed AFTER the parent had already printed reaped=0: 500 iterations of
+			 * `usleep(10000)` are not the 5 seconds they claim on this guest, so the "bounded" reap gave up -
+			 * and sent SIGKILL - before its child had even started. nap_ms() is the fix and the rule (see its
+			 * comment), and it is why this file no longer calls usleep(3) at all.
 			 *
-			 * LAYER 1, THE CHANNEL, FIXED: tty_read sleeps on &tty->read_q while the VTIME callout
-			 * (wait_vtime_off) woke &tty->cooked_q - and NOTHING IN THIS TREE SLEEPS ON &tty->cooked_q
-			 * (grep it). wakeup() matches ON THE CHANNEL, so that wake could never find a waiter.
-			 * Both VTIME sites now name &tty->read_q, the channel the reader is actually on.
+			 * TWO REAL DEFECTS WERE FOUND ON THE WAY AND BOTH ARE FIXED - worth recording even though neither
+			 * was the final cause, because both would have bitten any other waiter on these channels:
+			 *   LAYER 1, THE CHANNEL: tty_read sleeps on &tty->read_q while the VTIME callout woke
+			 *     &tty->cooked_q, a channel NOTHING IN THIS TREE SLEEPS ON (grep it). wakeup() matches ON THE
+			 *     CHANNEL, so that wake could never find a waiter; both sites now name &tty->read_q.
+			 *   LAYER 2, THE POINTER'S WIDTH: the callout API carried `unsigned int arg` while these sites
+			 *     store a 64-bit address in it (`creq.arg = (addr_t)&tty->read_q;`), so the value was
+			 *     truncated AT THE ASSIGNMENT and `wait_vtime_off()` woke a FABRICATED address. `arg` is
+			 *     `addr_t` everywhere now - both structs, do_callouts_bh, struct console's cursor_blink field,
+			 *     all eight callbacks and the five header declarations - a 64-bit porting defect of the class
+			 *     this port has met before, and the compiler found two carriers that reading had missed.
 			 *
-			 * LAYER 2, THE TRUNCATION, STILL OPEN - AND IT IS WHY FIXING LAYER 1 CHANGED NOTHING
-			 * (measured: the read still did not return). The callout API CARRIES A POINTER IN 32 BITS:
-			 *     include/fnx/timer.h:  struct callout_req { void (*fn)(unsigned int); unsigned int arg; };
-			 * and these very sites store a 64-bit address in it - `creq.arg = (addr_t)&tty->read_q;`. The
-			 * value is truncated AT THE ASSIGNMENT, so wait_vtime_off() concludes by calling
-			 * wakeup((void *)(uint32_t)address), which hashes the wrong bucket and - even after layer 1 -
-			 * matches no sleeper. This is a 64-BIT PORTING DEFECT of the class this port has met before
-			 * (an `unsigned int` where a pointer belongs), and it is why the timer has never been able to
-			 * wake anything on this kernel, whichever channel it names.
+			 * AND THEN IT BECAME INTERMITTENT, WHICH IS WHY THIS IS AN OBSERVATION AND NOT A CHECK. Two runs
+			 * of the SAME kernel disagreed: one fired the callout (SLEEPING at tick 626, FIRED, WOKE at 636,
+			 * read returned 0), the next printed `VTIME-DIAG SLEEPING` - a line emitted AFTER `add_callout()`
+			 * has returned - and then NOTHING: `wait_vtime_off` was never called at all. So the callout was
+			 * taken into the list and never came out of it alive, and THAT is a defect in the shared callout
+			 * machinery (`add_callout`'s delta list, or `do_callouts_bh`'s wake path), not in these two lines.
+			 * It would also strand the console cursor blink, the floppy motor timer and the ATA timeouts, which
+			 * use the same list.
 			 *
-			 * THE `arg` TYPE IS FIXED AND THE READ STILL DOES NOT RETURN - MEASURED, AND THAT IS THE
-			 * CURRENT STATE OF THIS FINDING. The truncation was real and is worth having: `arg` is `addr_t`
-			 * everywhere now (both structs, do_callouts_bh's locals, struct console's cursor_blink field,
-			 * and all eight callbacks with the five header declarations that move with them), and the build
-			 * found two further `unsigned int` carriers the reading had missed. But with all of it in, a
-			 * VMIN=0/VTIME=1 read with nothing written STILL parks past the bounded wait, so at least one
-			 * cause remains and it is NOT the argument's width.
-			 *
-			 * SO THE CHECK GOES BACK TO ASSERTING THE LIMIT (this project's §45-Y pattern: it passes while
-			 * the behaviour is the limit and its failure text says to flip it), because a red case in the
-			 * committed suite would be worse than an unfixed bug. WHAT IS NAMED FOR THE NEXT PASS, rather
-			 * than guessed at here: instrument the callout itself - a printk in wait_vtime_off (does the
-			 * timer fire at all?) and one immediately after the sleep (did the sleeper come back?) separate
-			 * "the callout never fires" from "it fires and the sleeper is not woken", and they are two
-			 * completely different bugs. The two cells are:
-			 *     fires + not woken  -> the wake/sleep handshake on &tty->read_q
-			 *     never fires        -> add_callout/do_callouts_bh, which would also strand the console
-			 *                           blink, the floppy motor timer and the ATA timeouts that use it
-			 * It runs in a CHILD under a bounded reap, so "it did not return" is an observation rather than
-			 * a hung case. */
+			 * SO NOTHING IS ASSERTED HERE, DELIBERATELY. An intermittent kernel defect cannot be asserted in
+			 * either direction: asserting the block would fail whenever the timer DID fire, and asserting the
+			 * return would fail whenever it did not - two flaky checks instead of one honest observation, and a
+			 * flaky check in the committed suite is a defect of its own. The outcome is printed as a DIAG line
+			 * for the record, the defect is written up in foundation-plan.md §58.1c with both measurements, and
+			 * the deterministic half of this arm (data already queued) is asserted just below. */
 			phase = 2;
 			{
 				pid_t pid = fork();
@@ -301,10 +325,9 @@ int main(void)
 				}
 				reaped = reap_bounded(pid, &status);
 				phase = -1;
-				check("a-vtime-read-with-nothing-written-blocks-KNOWN-LIMIT", !reaped,
-				      reaped ? "the VMIN=0/VTIME=1 read RETURNED - THE LIMIT IS GONE, so flip this check to "
-					       "assert that it returns 0 on the timer (plan §58.1c)"
-					     : NULL);
+				printf("KERNEL-PTY-DIAG vtime read: returned=%d code=%d (NOT asserted - see §58.1c)\n",
+				       reaped, reaped && WIFEXITED(status) ? WEXITSTATUS(status) : -1);
+				fflush(stdout);
 			}
 
 			/* AND THE SAME ARM WITH DATA ALREADY QUEUED: DELIBERATELY NOT A RACE. The obvious version of

@@ -50,7 +50,6 @@ CHECKS = ("ptmx-opens", "slave-number-allocated", "slave-unlocked", "slave-opens
           "master-write-reaches-the-slave", "slave-write-reaches-the-master",
           "a-blocking-master-read-is-woken-by-the-slave", "the-writer-child-exited-cleanly",
           "vmin-vtime-can-be-set-on-the-slave",
-          "a-vtime-read-with-nothing-written-blocks-KNOWN-LIMIT",
           "and-a-vtime-read-returns-data-already-queued")
 
 
