@@ -142,6 +142,7 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSKeyedArchiver.m \
 	$(FOUNDATION_SRC)/NSProcessInfo.m \
 	$(FOUNDATION_SRC)/NSFileManager.m \
+	$(FOUNDATION_SRC)/NSFileSecurity.m \
 	$(FOUNDATION_SRC)/NSFileWrapper.m \
 	$(FOUNDATION_SRC)/NSURL.h \
 	$(FOUNDATION_SRC)/NSURLComponents.m \
@@ -175,6 +176,7 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSKeyedArchiver.h \
 	$(FOUNDATION_SRC)/NSProcessInfo.h \
 	$(FOUNDATION_SRC)/NSFileManager.h \
+	$(FOUNDATION_SRC)/NSFileSecurity.h \
 	$(FOUNDATION_SRC)/NSFileWrapper.h \
 	$(FOUNDATION_SRC)/NSURLComponents.h \
 	$(FOUNDATION_SRC)/NSRegularExpression.h \
@@ -792,6 +794,15 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_filewrapper.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filewrapper"
+	# foundation_filesecurity: W8 slice 5 acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> - and it asserts the ABSENCE of the bridged accessors, so the D13
+	# boundary is machine-checked rather than merely written down.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_filesecurity.m -o .build/probe-foundation_filesecurity.o
+	$(MUSL64_OBJC) .build/probe-foundation_filesecurity.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_filesecurity"
 	# foundation_urlcomponents: F13.15 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
