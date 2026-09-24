@@ -902,7 +902,7 @@ int main(void)
 			int handed = -1;
 			int ran = -1;
 			int inlineHops = -1;
-			int counts[11] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+			int counts[14] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 			int readCounts[2] = {-1, -1};
 
 			/* §58.2j: THE HOP COUNTS, READ ONCE, FROM MEMORY. §58.2d asked this same question with writes
@@ -918,12 +918,19 @@ int main(void)
 			       " hops handed=%d ran=%d inline=%d"
 			       " ops enq=%d/%d/%d served=%d/%d/%d reads started=%d finished=%d"
 			       " worker entered=%d loops=%d waits=%d left=%d noconnect=%d"
+			       " fin=%d/%d/%d unreturned=%d"
 			       " THISLEG before(loops=%d left=%d) delta(loops=%d left=%d)\n",
 			       (int)replyDone, (long)(replyError != nil ? [replyError code] : 0),
 			       (int)(replyData != nil ? [replyData length] : 0), has200, handed, ran, inlineHops,
 			       counts[0], counts[1], counts[2], counts[3], counts[4], counts[5],
 			       readCounts[0], readCounts[1],
 			       counts[6], counts[7], counts[8], counts[9], counts[10],
+			       /* §58.2n: THE SPLIT OF THE LAST TWO SHAPES. `unreturned` is the sum of every arm the
+				* worker ENTERED (slots 3..5) minus every arm it LEFT (slots 11..13): ZERO means it is parked
+				* BETWEEN operations - a lost `signal` on the task's `NSCondition` - and positive means it is
+				* stuck INSIDE an arm, which the by-kind split just before it names. */
+			       counts[11], counts[12], counts[13],
+			       (counts[3] + counts[4] + counts[5]) - (counts[11] + counts[12] + counts[13]),
 			       streamBeforeLoops, streamBeforeLeft,
 			       (streamBeforeLeft < 0 ? -1 : counts[7] - streamBeforeLoops),
 			       (streamBeforeLeft < 0 ? -1 : counts[9] - streamBeforeLeft));

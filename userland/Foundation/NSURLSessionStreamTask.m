@@ -484,6 +484,22 @@ completionHandler:(void (^)(NSError *))completionHandler
 		[self fnEndWithError:[self fnErrorWithCode:NSURLErrorUnsupportedURL]];
 		break;
 	}
+	/* §58.2n'S COUNTER, AND IT IS THE WHOLE POINT OF THIS ONE: every arm above returns through here, so this
+	 * counts the operations the worker has FINISHED against the ones it STARTED (the switch at the top). The
+	 * difference is the split between the last two shapes - parked between operations (zero) or stuck inside
+	 * an arm (one or more) - and it is taken HERE rather than in `-fnServe:`'s loop because it is the only
+	 * place that knows the kind without inspecting the operation a second time. */
+	switch (operation->kind) {
+	case FNStreamOpRead:
+		fnFinishedRead++;
+		break;
+	case FNStreamOpWrite:
+		fnFinishedWrite++;
+		break;
+	default:
+		fnFinishedOther++;
+		break;
+	}
 }
 
 /* A READ IS "UNTIL AT LEAST minBytes, NEVER MORE THAN maxBytes, AND A DEADLINE THAT CANCELS IT". The loop is
@@ -729,6 +745,18 @@ static int fnWorkerLoops = 0;
 static int fnWorkerWaits = 0;
 static int fnWorkerLeft = 0;
 static int fnWorkerNoConnect = 0;
+/* §58.2n'S COUNTER, AND IT IS THE ONE THAT SPLITS THE LAST TWO SHAPES: `fnServed*` counts ENTRY to an arm of
+ * `-fnServeOperation:` (the counting switch runs BEFORE the serving one), and these count the arm RETURNING,
+ * by kind. Read as `served - finished`:
+ *   ZERO  -> every arm the worker entered, it also left, so the worker is PARKED BETWEEN OPERATIONS with the
+ *            next one sitting in `_operations`: a lost `signal` on the task's `NSCondition` (the musl
+ *            `pthread_cond_signal` handshake, one layer above §58.2i's futex window);
+ *   >= 1  -> it is STUCK INSIDE AN ARM, and the by-kind split names it - `other` covers close/capture/
+ *            startTLS/stopTLS, the four arms with no inner counter, each doing real I/O (`SSL_shutdown` on the
+ *            socket, `shutdown(2)`) that can block. */
+static int fnFinishedRead = 0;
+static int fnFinishedWrite = 0;
+static int fnFinishedOther = 0;
 
 /* §58.2k'S INSTRUMENT, AND IT LOCALIZES THE REMAINING LOSS IN ONE READ:
  *   counts[0..2] = -fnEnqueue: calls    by kind (read, write, other)
@@ -752,6 +780,11 @@ static int fnWorkerNoConnect = 0;
 		counts[8] = fnWorkerWaits;
 		counts[9] = fnWorkerLeft;
 		counts[10] = fnWorkerNoConnect;
+		/* §58.2n: WHAT THE WORKER FINISHED, by kind - `counts[3..5] - counts[11..13]` is zero for a worker
+		 * parked between operations and positive for one stuck inside an arm. */
+		counts[11] = fnFinishedRead;
+		counts[12] = fnFinishedWrite;
+		counts[13] = fnFinishedOther;
 	}
 }
 

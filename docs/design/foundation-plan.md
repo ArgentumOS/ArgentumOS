@@ -11125,6 +11125,57 @@ kind* names the arm.
 
 **WHAT REMAINS:** that finished counter, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5,
 `pty_write`).
+
+### §58.2o — `unreturned = 0`: THE WORKER IS PARKED **BETWEEN** OPERATIONS, SO THE LOSS IS THE CONDITION SIGNAL (2026-09-24)
+
+**THE COUNTER §58.2n NAMED IS IN, AND IT SPLITS THE TWO SHAPES IN ONE READING.** `fnFinishedRead`/`Write`/`Other` are
+incremented where every arm of `-fnServeOperation:` returns (the same switch, one `break` later), exposed as slots
+11..13 of `-fnServeCounts:`, and the probe prints `fin=read/write/other` beside `unreturned` - the sum of arms
+ENTERED (slots 3..5) minus arms LEFT (slots 11..13).
+
+**MEASURED, THREE CONSECUTIVE RUNS, IDENTICAL:**
+```
+FOUNDATION-STREAMTASK-DIAG reply: done=0 errCode=0 len=0 has200=0 hops handed=14 ran=14 inline=0
+  ops enq=6/3/4 served=5/3/4 reads started=5 finished=5
+  worker entered=9 loops=13 waits=11 left=1 noconnect=0 fin=5/3/4 unreturned=0
+  THISLEG before(loops=13 left=1) delta(loops=0 left=0)
+```
+**`unreturned = 0`: EVERY ARM THE WORKER ENTERED, IT ALSO LEFT** - read, write and all four `other` arms - so
+§58.2n's shape **(b) is EXCLUDED**: the worker is not inside `SSL_shutdown`, `shutdown(2)`, or anything else that
+can block. **It is PARKED IN `[_queue wait]` with the reply read sitting in `_operations`.** The loss is the
+handshake's WAKE edge, not its waiter.
+
+**AND THAT IS A NARROWER CLAIM THAN IT LOOKS, WHICH IS WHY IT IS WORTH STATING PRECISELY.** The wait is a textbook
+`NSCondition` used correctly: the producer stores into `_operations` and signals **under the lock**, and the worker
+tests `[_operations count] == 0` **under the same lock**, so in userspace alone there is no window in which a signal
+can be raised before the waiter has registered and then forgotten. What is left is the layer below - the primitive
+`[_queue wait]`/`[_queue signal]` are built on (`pthread_cond_wait`/`pthread_cond_signal` → `FUTEX_WAIT`/
+`FUTEX_WAKE`) - and it is the SAME DEFECT §58.1c recorded and deliberately did not assert: "the callout list is
+CLEARED - the dequeue happens, and what fails is the wake reaching the sleeper". §58.2i closed the WAITER's window
+(`FUTEX_WAIT` now arms before it looks); what this reading names is the WAKER's side of it.
+
+**THE SECOND FAILURE, FOUND WHILE MEASURING, AND IT IS NOT THIS INSTRUMENT'S DOING.** Today's runs are **17 of 20**,
+not §58.2i's recorded 19 of 20: the FIRST, plain-socket leg fails `the-write-completes` and
+`and-the-far-end-read-it` in 3 of 3 runs, with byte-identical counters each time. The A/B that settles whose defect
+it is: the same library with these counters STASHED OUT and the image rebuilt reproduces **17/20 and the same three
+checks** - so the counter is innocent, and the second loss predates it. (It is also worth noting that §58.2k, §58.2l
+and §58.2m each quote their DIAG and NOT the run's RESULT count, so this failure may have been sitting in those runs
+unrecorded: a note that keeps the DIAG and drops the count cannot tell a one-check red from a three-check one.)
+
+**WHAT THE SECOND FAILURE MOST LIKELY IS, NAMED AS A HYPOTHESIS RATHER THAN A MEASUREMENT:** all three WRITE arms
+were served AND finished (`fin=5/3/4`), and the far end read NONE of the first leg's bytes, while the probe's own
+check (which requires the handler to answer WITHOUT an error) failed. That is the shape of `-fnServeWrite:`'s
+`poll(POLLOUT)` expiring at its deadline and reporting `NSURLErrorTimedOut` through a handler that ran - i.e. the
+same "wake reaching the sleeper" defect on the WRITE side, not a lost handler. The counters as they stand cannot
+tell a timed-out write from a lost one, and the one line that would is already half-written: the DIAG prints the
+REPLY READ's error code and not the first leg's write error. That is the next instrument, and it is one probe edit.
+
+**WHAT REMAINS, IN ORDER:** (1) the wake-side instrument in the kernel - count `FUTEX_WAKE` calls that found NO
+waiter, and `FUTEX_WAIT`'s post-arm re-look taking the `-EAGAIN` path, in memory, printed once, the §58.2h
+discipline that this file's own history says is the only kind that does not perturb what it measures - reproduced by
+the smallest shape that survives: N threads contending one `NSLock`; (2) that one-line probe addition to name the
+first leg's write error; (3) the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
+
 The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.
