@@ -56,3 +56,6 @@
 [submodule "third_party/giflib"]
 	path = third_party/giflib
 	url = https://git.code.sf.net/p/giflib/code
+[submodule "third_party/libwebp"]
+	path = third_party/libwebp
+	url = https://chromium.googlesource.com/webm/libwebp
