@@ -10519,8 +10519,31 @@ KEEPING.** The console reader's final block was cured with the re-look `tty->coo
    is universal, but the re-look is PER-SITE and must equal that site's own readiness test. Two of the three
    readers here were mechanical; the third was not, and the difference was invisible until it was measured.
 
-**WHAT REMAINS, CORRECTED:** the tty reader (1 hot site + 2 interior sites, blocked on the hoist above), the six
-writer sites (`&pipefs_write`, `&tty->write_q` ×5, plus `pty_write`), and a pty-read behaviour test.
+**AND THE FIX, WHICH IS A DIFFERENT SHAPE THAN "HOIST THE HEAD'S CONDITION" (2026-09-22).** Rather than restate
+the head's readiness logic (the duplication that made the first attempt wrong, and which would drift), the re-check
+asks the question a wake actually answers: **HAS THE CHANNEL CHANGED SINCE I LOOKED?** `tty_read_fingerprint()`
+snapshots four fields that together cover everything a `&tty->read_q` wake can mean - `read_q.count` (the RAW and
+MEDIUMRAW arms drain it), `cooked_q.count` (the ICANON and VMIN arms drain it), `kbd.mode` (it can change under a
+blocked read), and the `TTY_OTHER_CLOSED` bit (which the head turns into -EIO) - and the sleep site compares a
+before/after pair across the arm:
+
+	sleep_arm(&tty->read_q);	snapshot
+	if(changed since the snapshot) { sleep_disarm(); continue; }	snapshot again after the arm
+	sleep_commit(...)
+
+**IT IS TERMINATING BY CONSTRUCTION, WHICH IS THE PROPERTY THE FIRST VERSION LACKED:** each pass takes a FRESH
+snapshot, so a change can send it around at most once, and a pass with no change blocks in `sleep_commit()` exactly
+as the old unconditional `sleep()` did. And it closes the window for the reason the primitive's comment gives: a
+wake's state change is always FIRST and its wake SECOND, so a change that landed between the head's check and the
+arm is visible to the second snapshot. **VERIFIED: `procfs_devfs` 16/16** - the very case the naive attempt broke
+(16/16 → 10/16, hung at FNX8-DONE) and therefore the strongest detector available for this path - plus
+`kernel_pipe_dup2` 11/11, `kernel_loopback_tcp` 6/6 and `foundation_websockettask` 3/3.
+
+**WHAT REMAINS, CORRECTED:** the tty reader's TWO INTERIOR sites (the `VTIME > 0` arms), which the same helper
+cures but which **NO CASE CAN CURRENTLY EXERCISE** - they are reachable only with `VTIME > 0` set through termios,
+and nothing in the suite sets it. They therefore need a behaviour test first, in the same spirit as the pty read
+below. Also: the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, plus `pty_write`'s channel), and **two
+missing behaviour tests - a pty READ and a VMIN/VTIME read - which are now the gating items rather than the code**.
 
 ## §59 — THE WEBSOCKET SLICE, DESIGNED BEFORE IT IS BUILT (2026-09-22)
 

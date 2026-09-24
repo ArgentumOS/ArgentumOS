@@ -623,6 +623,49 @@ int tty_close(struct inode *i, struct fd *f)
 	return 0;
 }
 
+/*
+ * THE READ CHANNEL'S FINGERPRINT, AND WHY IT IS A FINGERPRINT RATHER THAN A READINESS TEST.
+ *
+ * `sleep_arm()`/`sleep_commit()` (kernel/sleep.c) close the lost-wakeup window, but the pair only works as its
+ * comment describes when the thing re-checked BETWEEN arming and committing is EXACTLY the test the loop head
+ * makes: sleep_commit() catches a wake that arrives AFTER the arm, so the only protection against one that
+ * arrived BEFORE it is that re-check. Applying that literally here is what went wrong the first time:
+ * `cooked_q.count > 0` is TRUE for a partial ICANON line, and tty_read deliberately does not return one - so
+ * `arm -> re-look true -> continue` never reached the commit and never blocked. That is an infinite loop with
+ * interrupts on, the console stops being served, and the session dies (measured: procfs_devfs 16/16 -> 10/16,
+ * hung right after FNX8-DONE; the plan's §58.1b has the whole bisect).
+ *
+ * WHAT A WAKE ON &tty->read_q ACTUALLY ANNOUNCES IS A CHANGE - so the honest re-check is "has the channel changed
+ * since I looked?", and a fingerprint answers that WITHOUT restating any of the readiness logic above (which is
+ * exactly the duplication that would drift). It is also TERMINATING by construction: every pass takes a fresh
+ * snapshot, so a change can send it around at most once, and a pass with no change blocks in sleep_commit() the
+ * way the old unconditional sleep() did.
+ *
+ * Four fields cover everything a read_q wake can mean: raw input queued (the RAW/MEDIUMRAW arm drains read_q), a
+ * line cooked (the ICANON and VMIN arms drain cooked_q), the keyboard mode changing under a blocked read, and the
+ * far end of a pty closing - TTY_OTHER_CLOSED, which the loop head turns into -EIO.
+ */
+struct tty_read_fp {
+	unsigned int read_q;
+	unsigned int cooked_q;
+	unsigned int kbd_mode;
+	unsigned int other_closed;
+};
+
+static void tty_read_fingerprint(struct tty *tty, struct tty_read_fp *fp)
+{
+	fp->read_q = tty->read_q.count;
+	fp->cooked_q = tty->cooked_q.count;
+	fp->kbd_mode = tty->kbd.mode;
+	fp->other_closed = (tty->flags & TTY_OTHER_CLOSED) ? 1 : 0;
+}
+
+static int tty_read_fp_differs(const struct tty_read_fp *a, const struct tty_read_fp *b)
+{
+	return a->read_q != b->read_q || a->cooked_q != b->cooked_q ||
+	       a->kbd_mode != b->kbd_mode || a->other_closed != b->other_closed;
+}
+
 int tty_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 {
 	unsigned int min;
@@ -775,9 +818,28 @@ int tty_read(struct inode *i, struct fd *f, char *buffer, __size_t count)
 			n = -EAGAIN;
 			break;
 		}
-		if(sleep(&tty->read_q, PROC_INTERRUPTIBLE)) {
-			n = -EINTR;
-			break;
+		/* ARM BEFORE THE LOOK (kernel/sleep.c), with the fingerprint above as the re-check - see its comment for
+		 * what the naive re-check did to this very path. THIS IS THE SITE THAT MATTERS MOST: an interactive
+		 * shell parks here with no timeout and no nonblocking caller, so a wake lost between the checks above and
+		 * the registration leaves the console dead until the next keypress. */
+		{
+			struct tty_read_fp fp, fp_now;
+
+			tty_read_fingerprint(tty, &fp);
+			sleep_arm(&tty->read_q);
+			tty_read_fingerprint(tty, &fp_now);
+			if(tty_read_fp_differs(&fp, &fp_now)) {
+				/* The channel moved while we were arming: a wake's state change is always FIRST and
+				 * its wake SECOND, so this is the case the re-check exists for. Go round for another
+				 * look - at most once per real change, which is what keeps it terminating. */
+				sleep_disarm();
+				continue;
+			}
+			if(sleep_commit(&tty->read_q, PROC_INTERRUPTIBLE)) {
+				sleep_disarm();
+				n = -EINTR;
+				break;
+			}
 		}
 	}
 
