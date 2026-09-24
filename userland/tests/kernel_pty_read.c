@@ -106,14 +106,31 @@ static void check(const char *name, int ok, const char *detail)
  * The parent then printed reaped=0 and sent SIGKILL; the child went on to block in its read, be woken by its
  * VTIME callout and return 0 with nobody listening. That reads EXACTLY like a kernel that cannot wake a VTIME
  * sleeper, and it cost a real fix (the callout's pointer width) plus two flips of the check to discover that the
- * probe was the thing at fault. poll(2) timeouts ARE exact here - the project's standing rule, and the reason
- * kernel_loopback_tcp polls rather than sleeps - so every wait in this file goes through this. */
+ * probe was the thing at fault.
+ *
+ * AND THE FIRST "FIX" FOR IT WAS NOT A NAP EITHER, WHICH IS THE SECOND HALF OF THE SAME LESSON. This function
+ * originally polled ONE DESCRIPTOR THAT WAS `-1` - a pure timeout, per POSIX and per this kernel's own
+ * `sys_poll` ("negative fds are ignored") - and the read it bounds STILL appeared to wedge (4 of 4 runs). If an
+ * fd-less poll returns immediately here, then this naps nothing, the parent SPINS through its 500 iterations
+ * instead of yielding, and on a single-CPU guest it STARVES the very child it is waiting for: the child never
+ * runs, `reaped` is 0, and the probe reports a wedged kernel that is not wedged. So the nap is taken on a REAL
+ * descriptor that is never ready - a pipe with its write end held open and nothing ever written - which is a
+ * wait under every implementation rather than under a reading of one. `never` is deliberately leaked: one pipe
+ * per process, and keeping the write end open is what stops the read end reporting EOF. */
 static void nap_ms(int ms)
 {
+	static int never = -1;
 	struct pollfd pfd;
 
-	pfd.fd = -1;		/* a NEGATIVE fd is ignored by this kernel's poll(2): a pure timeout */
-	pfd.events = 0;
+	if (never < 0) {
+		int pp[2];
+
+		if (pipe(pp) == 0) {
+			never = pp[0];	/* pp[1] stays open on purpose: with no writer this end is EOF */
+		}
+	}
+	pfd.fd = never;			/* a real descriptor, never ready; -1 only if pipe() itself failed */
+	pfd.events = POLLIN;
 	pfd.revents = 0;
 	poll(&pfd, 1, ms);
 }

@@ -10660,18 +10660,28 @@ its callback runs *somewhere in the run* - and the probe's LAST check reads the 
 check is. It therefore does NOT establish that the CHILD's callout ever fired. The list side is "a callout for this
 channel does come out and run", not "the failing read's callout does".
 
-**THE NEXT INSTRUMENT IS NAMED, AND THERE ARE NOW TWO LIVE HYPOTHESES RATHER THAN ONE:**
- 1. **the child's callout never fires, while the parent's does** - which needs the tick handler's own view (the
-    head's `expires` at every tick while the child sleeps) or a dequeue line that identifies the CALLER's pid;
- 2. **the child is not being scheduled promptly at all**, and every "the read did not return" is an observation
-    about the probe's timeline, not about the wake. The evidence that keeps this alive: in the diagnostic run the
-    child's own `about to read` / `read returned 0` lines appear in the guest log AFTER the parent had already
-    printed `reaped=0` and sent SIGKILL - and serial console ordering lags, but not by seconds. If (2) is true then
-    `nap_ms(10)` is not napping either (a `poll(2)` with only negative fds is a pure timeout, which this kernel's
-    `sys_poll` should honour - and that is worth measuring rather than trusting).
-**WHAT WOULD SEPARATE THEM** is one printk pair on the CHILD's side: the tick counter and `current->sleep_address`
-immediately before and after `sleep_commit`, plus a dequeue line carrying `current->pid`. That is the next unit, and
-it is a measurement rather than a fix.
+**FOURTH PASS: THE NAP IS NOW A REAL WAIT, AND IT CHANGED NOTHING - SO THE STARVATION HYPOTHESIS IS DEAD
+(2026-09-22).** `nap_ms` no longer polls a `-1` descriptor: it polls a REAL descriptor that is never ready (a pipe
+with its write end held open and nothing ever written), which is a wait under every implementation rather than
+under a reading of one. If the fd-less poll had been returning immediately, the parent would have spun through its
+500 iterations instead of yielding and starved the single-CPU guest's own child - the whole "the read did not
+return" observation would have been about the probe's timeline.
+**MEASURED: three more runs, all `returned=0`.** The parent is waiting now and the read still blocks. Hypothesis 2
+is disproved, and every observation about this arm is about the KERNEL.
+
+**WHAT IS ESTABLISHED, ACROSS ALL FOUR PASSES:** the channel is right (`&tty->read_q`, where the arm sleeps, and
+nothing sleeps on `&tty->cooked_q`); the callout's argument survives as a 64-bit address; the list machinery reports
+no anomaly (no `losing ticks`, no `already running!`, no pool exhaustion); a callout for this channel IS dequeued
+and its callback runs at some point in a run (but that may be the parent's); the arm now arms before it looks, so a
+lost wake can only cost another pass of its own loop; and the VMIN=0/VTIME=1 read STILL does not return within an
+exact 5s, in every configuration tried. One diagnostic run did work end to end (SLEEPING 626 → FIRED → WOKE 636 →
+returned 0), which is what says the machinery CAN work and that this is a timing-dependent loss.
+
+**THE NEXT INSTRUMENT IS NOW UNAMBIGUOUS AND IS ONE BUILD WITH PRINTKS ON BOTH SIDES** - `wait_vtime_off` (does the
+CHILD's callback run?) and `tty_read` around `sleep_arm`/`sleep_commit` (does the child register, does the commit
+return, or does it sleep?) - read out of the GUEST LOG, which is the only place the interleaving of a callback and
+a sleeper is visible. Printing from both sides in one build is what the previous passes lacked: each one instrumented
+only one half and then reasoned about the other.
 
 **`kernel_pty_read` still asserts NEITHER outcome for this arm:** asserting the block would fail whenever the
 timer did fire, asserting the return would fail whenever it did not, and two flaky checks are worse than one
