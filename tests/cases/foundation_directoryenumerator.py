@@ -31,7 +31,11 @@ The probe is `/System/Shared/tests/foundation_directoryenumerator`, ONE unit, im
   * `an-empty-directory-answers-an-empty-array-not-nil` — "no items" is not "not a directory";
   * `subpaths-refuse-what-is-not-a-directory` — nil AND the errno, for a file (ENOTDIR) and a name
                                            that is not there (ENOENT);
-  * `post-order-is-not-what-this-slice-builds` — the boundary this slice NAMES rather than hides;
+  * `a-walk-with-no-options-is-pre-order` — the OPTION decides the mode, and a walk that passed none is
+                                 pre-order;
+  * `post-order-answers-a-directory-after-its-contents` — W8 slice 6f, asserted as an ORDERING PROPERTY
+                                 rather than a name sequence: for every directory every path under it comes
+                                 first, and the ENUMERATED directory is not an item in either mode;
   * `probe-tree-removed`                  — the tree is gone.
 
 IT WORKS IN A TREE OF ITS OWN MAKING under `/System/Temporary Files` — this system's temp directory,
@@ -49,7 +53,8 @@ CHECKS = ("walk-yields-the-whole-subtree", "walk-paths-are-relative-to-the-direc
           "file-attributes-are-the-most-recent-items",
           "directory-attributes-are-the-starting-directorys",
           "the-walk-does-not-resolve-symbolic-links",
-          "post-order-is-not-what-this-slice-builds",
+          "a-walk-with-no-options-is-pre-order",
+          "post-order-answers-a-directory-after-its-contents",
           "a-file-enumerates-nothing", "all-objects-is-the-rest-of-the-walk",
           "skip-descendents-prunes-one-level", "skip-descendants-is-the-same-method",
           "subpaths-agree-with-the-enumerator",

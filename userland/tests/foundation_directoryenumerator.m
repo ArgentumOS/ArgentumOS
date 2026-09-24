@@ -33,7 +33,12 @@
  *   an-empty-directory-answers-an-empty-array-not-nil  "no items" is not "not a directory";
  *   subpaths-refuse-what-is-not-a-directory  nil AND the errno, for a file (ENOTDIR) and for a name
  *                                            that is not there (ENOENT);
- *   post-order-is-not-what-this-slice-builds  the boundary this slice NAMES rather than hides;
+ *   a-walk-with-no-options-is-pre-order      the OPTION decides the mode, and a walk that passed none
+ *                                            is pre-order;
+ *   post-order-answers-a-directory-after-its-contents  W8 slice 6f, asserted as an ORDERING PROPERTY
+ *                                            rather than a name sequence: for every directory, every path
+ *                                            under it comes first, and the ENUMERATED directory is not an
+ *                                            item in either mode;
  *   url-listing-yields-file-urls             the URL door answers URLs, and its ORDER is undefined
  *                                            (Apple's own sentence), so the names are compared as a set;
  *   url-listing-keeps-hidden-and-drops-resource-forks  Apple's name rules FOR A LISTING, all measured on
@@ -310,8 +315,10 @@ int main(void)
 		      [enteredLinks count] == 0 && [linkType isEqualToString:NSFileTypeSymbolicLink],
 		      [NSString stringWithFormat:@"link type=%@ entered=%@", linkType,
 			[enteredLinks componentsJoinedByString:@" "]]);
-		check("post-order-is-not-what-this-slice-builds", ![walk isEnumeratingDirectoryPostOrder],
-		      @"this slice's walk is pre-order and its doors pass no options (§60 slice 6)");
+		/* A WALK WITH NO OPTIONS IS PRE-ORDER - the BIT is what makes it post-order, and slice 6f
+		 * builds that arm (the leg below asserts its ORDERING property). */
+		check("a-walk-with-no-options-is-pre-order", ![walk isEnumeratingDirectoryPostOrder],
+		      @"the option, and not the walk, decides: this one passed none");
 	}
 
 	{
@@ -672,6 +679,68 @@ int main(void)
 			check("probe-url-tree-removed", removed && ![manager2 fileExistsAtPath:@URL_ROOT],
 			      cleanupError != nil ? [cleanupError localizedDescription] : @"still there");
 		}
+	}
+
+	{
+		/* ---- W8 SLICE 6f: POST-ORDER, WHICH IS AN ORDERING PROPERTY AND NOT A LIST OF NAMES ---------- */
+		NSDirectoryEnumerator *ordered = [manager enumeratorAtURL:fn_url(@PROBE_ROOT)
+					       includingPropertiesForKeys:nil
+						      options:NSDirectoryEnumerationIncludesDirectoriesPostOrder
+						 errorHandler:NULL];
+		NSMutableArray *seen = [NSMutableArray array];
+		NSArray *directories = @[ @"dir1", @"dir1/sub", @"dir2" ];
+		NSString *prefix = [NSString stringWithFormat:@"%s/", PROBE_ROOT];
+		BOOL everyURL = YES;
+		BOOL rootWasNotAnItem = YES;
+		BOOL orderHolds = YES;
+		NSUInteger i, d;
+		id item;
+
+		while ((item = [ordered nextObject]) != nil) {
+			if (![item isKindOfClass:[NSURL class]] || ![item isFileURL]) {
+				everyURL = NO;
+				break;
+			}
+			[seen addObject:item];
+		}
+		for (i = 0; i < [seen count]; i++) {
+			NSString *path = [[seen objectAtIndex:i] path];
+
+			if (![path hasPrefix:prefix]) {
+				rootWasNotAnItem = NO;		/* the ENUMERATED directory is level 0, never an item */
+			}
+		}
+		/* THE PROPERTY: FOR EVERY DIRECTORY, EVERY PATH UNDER IT COMES FIRST. That is what "returns
+		 * directories after their contents" means, and it is asserted as an ORDER rather than as a
+		 * sequence of names, because the order WITHIN a level is as undefined here as it is anywhere. */
+		for (d = 0; d < [directories count]; d++) {
+			NSString *directory = [directories objectAtIndex:d];
+			NSUInteger directoryIndex = NSNotFound;
+			NSUInteger childIndex;
+
+			for (i = 0; i < [seen count]; i++) {
+				NSString *relative = [[[seen objectAtIndex:i] path] substringFromIndex:[prefix length]];
+
+				if ([relative isEqual:directory]) {
+					directoryIndex = i;
+				}
+			}
+			for (childIndex = 0; childIndex < [seen count]; childIndex++) {
+				NSString *relative = [[[seen objectAtIndex:childIndex] path]
+						       substringFromIndex:[prefix length]];
+
+				if ([relative hasPrefix:[directory stringByAppendingString:@"/"]] &&
+				    directoryIndex != NSNotFound && childIndex > directoryIndex) {
+					orderHolds = NO;
+				}
+			}
+		}
+		check("post-order-answers-a-directory-after-its-contents",
+		      everyURL && [seen count] == 8 && rootWasNotAnItem && orderHolds &&
+		      [ordered isEnumeratingDirectoryPostOrder],
+		      [NSString stringWithFormat:@"items=%lu everyURL=%d root-not-an-item=%d order=%d "
+			@"postOrderFlag=%d", (unsigned long)[seen count], (int)everyURL,
+			(int)rootWasNotAnItem, (int)orderHolds, (int)[ordered isEnumeratingDirectoryPostOrder]]);
 	}
 
 	{

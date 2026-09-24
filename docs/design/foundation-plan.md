@@ -12295,9 +12295,43 @@ and NO cap, so a hang was indistinguishable from a crash and cost two runs to lo
 - print before, cap inside, print after - turned it into a diagnosis in one run. **An unbounded loop with no
 output is not an experiment.**
 
-**AFTER W8p:** the URL-taking DELEGATE doors (which must also update slice 2's probe, because its own rule
-says the URL form is preferred once implemented), then the coordinator family, `NSFileVersion` and
-`NSFileProviderService`.
+**SLICE 6f LANDED (2026-09-24), AND IT BEGINS WITH A CORRECTION TO THIS SECTION'S OWN TEXT.** The note
+above claimed the URL-taking DELEGATE doors were still owed. **THEY ARE NOT, AND WERE NOT: slice 2 built
+them.** Measured in the tree: `NSFileManagerDelegate` DECLARES all eight URL selectors; BOTH delegate helpers
+(`fnDelegateShould:from:to:` and `fnDelegateProceedAfterError:kind:from:to:`) ask the URL form first through
+`fnDelegatePrefersURL:` and fall back to the path form; and the probe carries
+`the-url-form-is-preferred-when-both-exist` plus the path-only-delegate leg that proves the fallback. Apple's
+rule is verbatim what slice 2 implemented - the URL method "performs the same task as the [path] method and
+is **preferred over that method** in macOS 10.6 and later". **A claim in the plan is not a fact about the
+tree**, which is the same lesson the register's own D10 records, and the correction is the honest half of
+this slice rather than a footnote to it.
+
+**THE SLICE ITSELF IS THE WALK'S POST-ORDER ARM, WHICH SLICE 1 NAMED AS A BOUNDARY AND LEFT OPEN.**
+`foundation_directoryenumerator` 28 -> **29 checks**, green. `NSDirectoryEnumerationIncludesDirectoriesPostOrder`
+is now HONOURED: a directory is answered AFTER its contents, and the probe asserts that as an **ORDERING
+PROPERTY** - for every directory, every path under it comes first, the yielded SET is the same eight items,
+and the ENUMERATED directory is not an item in either mode (it is the walk's level 0). Slice 1's boundary leg
+was RENAMED to `a-walk-with-no-options-is-pre-order`, because the boundary it named no longer exists: the
+OPTION decides the mode, and a walk that passed none is still pre-order.
+
+**AND THIS SLICE IS THE BEST ARGUMENT YET FOR PRINTING THE DIAGNOSIS IN THE CHECK'S OWN DETAIL**, because
+one check, one printed number, and three short runs did what guessing would not. Each failure announced its
+own cause in the detail string:
+ * **`items=5`** - the walk ENDED EARLY. The deferred item was stored as the RELATIVE path while the URL
+   answer is built from an ABSOLUTE one, and a URL made from a relative path is not a file URL at all, so
+   that branch answered nil, which is the walk's end-of-enumeration signal. The slot now carries both
+   spellings, `{absolute, relative}`, because the two doors need different ones.
+ * **`items=10`** - one item too many per descended directory. After deferring, control FELL THROUGH to the
+   immediate answer, so every directory we descended into was answered twice.
+ * **`items=7`** - one item too few, with `order=1` (the property already held). The deferral was stored in
+   the PARENT's slot, so two SIBLING directories overwrote each other and one was lost.
+ * **The shape that works**: the deferral is stored in the slot that `fnOpenLevel` pushes for that
+   directory's OWN level - the level whose close answers it - and the answer happens only there.
+
+**AFTER W8p:** the coordinator family, `NSFileVersion` and `NSFileProviderService` - and standing beside
+them, the two items this unit has named and not closed: `NSDirectoryEnumerator`'s now-empty option word
+(nothing else in it is unimplemented, which the checks show), and the **devfs walk hang** recorded at slice
+6e, which is a defect of its own with two candidates to measure.
 
 **AND ONE DEBT RECORDED RATHER THAN SILENTLY FIXED, because it is the URL unit's and not this slice's:**
 `NSURL` had **no `-dealloc` at all** before this slice - it copies its parts and released none of them -

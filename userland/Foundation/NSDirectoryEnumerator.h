@@ -58,6 +58,7 @@ NS_ASSUME_NONNULL_BEGIN
 	NSArray *_prefetchKeys;			/* NSURLResourceKey objects to PRIME on every URL (retained) */
 	BOOL (^_errorHandler)(NSURL *url, NSError *error);	/* COPIED, or NULL (see NSFileHandle) */
 	BOOL _yieldsURLs;			/* the URL walk: every answer is an NSURL, not a relative path */
+	NSMutableArray *_postStack;		/* one slot per open level: the item to answer when it CLOSES */
 }
 
 /* THE CURRENT ITEM AND THE STARTING DIRECTORY, and the two are NOT the same question: Apple abstracts
@@ -74,8 +75,11 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)skipDescendents;
 - (void)skipDescendants;
 
-/* Whether this enumerator was made in post-order mode. The walk is still PRE-ORDER - the option is
- * carried and NOT honoured, which §60 records as owed by this class rather than hiding. */
+/* Whether this enumerator was made in post-order mode (W8 slice 6f). HONOURED NOW: with
+ * NSDirectoryEnumerationIncludesDirectoriesPostOrder a directory is answered AFTER its contents, which is
+ * what the option's name says and what the probe asserts as an ORDERING PROPERTY - every path under a
+ * directory precedes the directory itself. The ENUMERATED directory is the walk's level 0 and is not an
+ * item in either mode, so post-order does not answer it last. */
 - (BOOL)isEnumeratingDirectoryPostOrder;
 
 /* OURS, NOT COCOA'S, and the same asymmetry NSEnumerator's -initWithSequence:reverse: has: the class

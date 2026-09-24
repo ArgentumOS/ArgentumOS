@@ -26,6 +26,7 @@
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSError.h>
+#import <Foundation/NSNull.h>
 #import <Foundation/NSURL.h>
 #import <Foundation/NSString.h>
 #include <sys/stat.h>
@@ -71,6 +72,7 @@ static NSString *fn_join(NSString *prefix, NSString *name)
 	_relStack = [[NSMutableArray alloc] init];
 	_namesStack = [[NSMutableArray alloc] init];
 	_options = options;
+	_postStack = [[NSMutableArray alloc] init];
 	_prefetchKeys = [keys retain];
 	_yieldsURLs = yieldsURLs;
 	if (handler != NULL) {
@@ -90,6 +92,7 @@ static NSString *fn_join(NSString *prefix, NSString *name)
 	[_namesStack release];
 	[_directoryAttributes release];
 	[_prefetchKeys release];
+	[_postStack release];
 	if (_errorHandler != NULL) {
 		_Block_release(_errorHandler);
 	}
@@ -145,6 +148,7 @@ static NSString *fn_join(NSString *prefix, NSString *name)
 	[_dirStack addObject:absolute];
 	[_relStack addObject:relative];
 	[_namesStack addObject:reversed];
+	[_postStack addObject:[NSNull null]];
 }
 
 - (nullable id)nextObject
@@ -161,9 +165,33 @@ static NSString *fn_join(NSString *prefix, NSString *name)
 		/* THE LEVEL IS SPENT: close it, and let the loop look one level up. That closure is what
 		 * makes the walk depth-first without a recursive call. */
 		if ([names count] == 0) {
+			/* THE LEVEL IS CLOSED, AND IN POST-ORDER MODE THAT IS WHERE ITS DIRECTORY IS ANSWERED:
+			 * the slot filled when the level was opened holds the item, and the answer happens once,
+			 * on the way OUT - which is what "returns directories after their contents" means. */
+			id deferred = [_postStack lastObject];
+
+			[_postStack removeLastObject];
 			[_dirStack removeLastObject];
 			[_relStack removeLastObject];
 			[_namesStack removeLastObject];
+			if (deferred != nil && deferred != [NSNull null]) {
+				/* THE SLOT CARRIES BOTH SPELLINGS: {absolute, relative}. The URL answer is built
+				 * from the ABSOLUTE path (a URL made from a relative path is not a file URL at all,
+				 * and answering nil there would END THE WALK - which is exactly what the first
+				 * version did, measured as "items=5" with the walk stopping at the first level
+				 * close), and the path answer is the relative one every other answer uses. */
+				NSString *asAbsolute = [deferred objectAtIndex:0];
+				NSString *asRelative = [deferred objectAtIndex:1];
+
+				if (_yieldsURLs) {
+					NSURL *item = [[NSURL alloc] initFileURLWithPath:asAbsolute];
+
+					if (item != nil) {
+						return [item autorelease];
+					}
+				}
+				return asRelative;
+			}
 			continue;
 		}
 		name = [names lastObject];
@@ -198,6 +226,18 @@ static NSString *fn_join(NSString *prefix, NSString *name)
 			if (sameDevice) {
 				[self fnOpenLevel:absolute relative:relative];
 				_pushedForCurrent = YES;
+				if ((_options & NSDirectoryEnumerationIncludesDirectoriesPostOrder) != 0) {
+					/* REMEMBERED IN THE SLOT fnOpenLevel JUST PUSHED - the one belonging to THIS
+					 * directory's own level - because that is the level whose close answers it. Both
+					 * halves of that were learned the hard way, and each is written down where it was
+					 * measured: putting the item in the PARENT's slot meant two sibling directories
+					 * overwrote each other (a tree of eight answered seven), and not stopping here
+					 * meant every descended directory was also answered on the way in (ten for
+					 * eight). */
+					[_postStack removeLastObject];
+					[_postStack addObject:[NSArray arrayWithObjects:absolute, relative, nil]];
+					continue;	/* its answer is the level's close, not this turn */
+				}
 			}
 		}
 		if (_yieldsURLs) {
