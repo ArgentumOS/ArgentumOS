@@ -11098,7 +11098,33 @@ the loss); `left` static names a worker PARKED in `[_queue wait]` with its opera
 needs its capture array at file scope in the probe, and that is exactly where the draft stopped rather than leave a
 tree that would not compile.
 
-**WHAT REMAINS:** that delta, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5, `pty_write`).
+### §58.2n — THE DELTA: THIS LEG'S WORKER NEITHER LEFT NOR LOOPED - IT IS BUSY, AND ONE COUNTER SPLITS THE SHAPES (2026-09-22)
+
+**THE DELTA `-fnServeCounts:` IS CAPTURED IMMEDIATELY BEFORE THE REPLY READ AND SUBTRACTED AT THE DIAG** (the
+library's counters are file-scope statics, so only a per-leg reading says anything about THIS task).
+
+**MEASURED, THREE CONSECUTIVE RED RUNS, IDENTICAL:**
+```
+FOUNDATION-STREAMTASK-DIAG ... THISLEG before(loops=13 left=1) delta(loops=0 left=0)
+```
+**DELTA ZERO ON BOTH FIELDS. FOR THIS LEG'S TASK, THE WORKER DID NOT RETURN AND IT DID NOT FETCH ANYTHING** between
+the capture and the DIAG. So §58.2l's hypothesis (b) - "the worker exited mid-flow" - is **excluded for this task**,
+and the worker is not looping either. **It is BUSY**, and exactly two shapes of busy remain:
+
+ * **(a) PARKED in `[_queue wait]`** with the reply read sitting in `_operations` - a lost `signal` on the task's
+   `NSCondition`: the same family as §58.1/§58.2i's lost wakeups, one layer up in musl's
+   `pthread_cond_wait`/`pthread_cond_signal` handshake; or
+ * **(b) STUCK INSIDE AN OPERATION IT STARTED.** "Served" counts only the ENTRY to `-fnServeOperation:` (and, for
+   reads, the delivery): `served other = 4` covers the close/capture/startTLS/stopTLS arms, **none of which has a
+   finished counter**, and those arms do real I/O (`SSL_shutdown` on a socket, `shutdown(2)`) that can block.
+
+**THE COUNTER THAT SPLITS THEM, AND IT IS SMALL:** count operations the worker has FINISHED - increment after
+`[self fnServeOperation:operation]` returns in the serve loop - and print `served(total) - finished`. Zero means the
+worker is parked BETWEEN operations (a lost wake); one or more means it is inside an arm, and counting *finished by
+kind* names the arm.
+
+**WHAT REMAINS:** that finished counter, then the six writer sites (`&pipefs_write`, `&tty->write_q` ×5,
+`pty_write`).
 The deliberately
 un-raced check - "data already queued" - keeps its reason in its own comment: a mid-window write would make it pass
 or fail on TIMING, and a flaky check in the committed suite is a defect of its own.

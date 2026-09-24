@@ -50,6 +50,13 @@
 - (void)fnReadCounts:(int *)counts;
 @end
 
+/* §58.2n'S DELTA SLOTS, AT FILE SCOPE BECAUSE THE CAPTURE AND THE PRINT ARE IN DIFFERENT BLOCKS. The library's
+ * counters are file-scope statics too, so they aggregate every task this probe makes; taking the reading HERE -
+ * immediately before the reply read - and subtracting it at the DIAG isolates THIS leg's task. `-1` means the
+ * capture never ran, and the delta line says so rather than printing a nonsense difference. */
+static int streamBeforeLoops = -1;
+static int streamBeforeLeft = -1;
+
 /* EVERY WAIT IN THIS PROBE IS A `poll`, AND THAT IS A MEASURED CHOICE RATHER THAN A STYLE ONE. This guest's
  * `usleep` is pathological: a wait of one nominal millisecond costs tens of them, so a probe whose legs wait
  * on a server's delay spent seventy seconds in waits that should have cost one - and the leg that waits for a
@@ -863,12 +870,18 @@ int main(void)
 		}
 		check("the-request-goes-through-the-tunnel", writeDone && writeError == nil && tlsPeer->served,
 		      @"SSL_write carried it and the far end READ it before answering - two sides, one tunnel");
-		/* §58.2m: THE COUNTERS ARE FILE-SCOPE STATICS, SO THEY AGGREGATE EVERY TASK THIS PROBE MADE - which is
-		 * why the whole-run reading (9 workers entered, 1 left, 8 parked) says nothing about THIS leg's worker
-		 * on its own. The instrument for the next pass is a DELTA AROUND THE REPLY READ - `-fnServeCounts:`
-		 * captured immediately before the read below and printed at the DIAG - whose `left` field answers
-		 * parked-vs-gone for this task exactly; it needs its array at file scope, which is why it is not here
-		 * yet. The counters themselves are in place and reading correctly. */
+		/* §58.2n: THE DELTA'S CAPTURE, immediately before the read that is lost. If `left` MOVES between here and
+		 * the DIAG below, this leg's worker RETURNED - and that is the loss. If it does not move, the worker is
+		 * PARKED in `[_queue wait]` with the reply read sitting in `_operations`: a lost signal, which is a
+		 * different bug from a worker that left. The counters are file-scope statics and therefore aggregate all
+		 * nine of this probe's tasks, which is exactly why the reading is taken here, per leg. */
+		{
+			int before[11];
+
+			[task fnServeCounts:before];
+			streamBeforeLoops = before[7];
+			streamBeforeLeft = before[9];
+		}
 		[task readDataOfMinLength:1 maxLength:4096 timeout:10.0
 			completionHandler:^(NSData *data, BOOL atEOF, NSError *e) {
 			replyData = data;
@@ -904,12 +917,16 @@ int main(void)
 			printf("FOUNDATION-STREAMTASK-DIAG reply: done=%d errCode=%ld len=%d has200=%d"
 			       " hops handed=%d ran=%d inline=%d"
 			       " ops enq=%d/%d/%d served=%d/%d/%d reads started=%d finished=%d"
-			       " worker entered=%d loops=%d waits=%d left=%d noconnect=%d\n",
+			       " worker entered=%d loops=%d waits=%d left=%d noconnect=%d"
+			       " THISLEG before(loops=%d left=%d) delta(loops=%d left=%d)\n",
 			       (int)replyDone, (long)(replyError != nil ? [replyError code] : 0),
 			       (int)(replyData != nil ? [replyData length] : 0), has200, handed, ran, inlineHops,
 			       counts[0], counts[1], counts[2], counts[3], counts[4], counts[5],
 			       readCounts[0], readCounts[1],
-			       counts[6], counts[7], counts[8], counts[9], counts[10]);
+			       counts[6], counts[7], counts[8], counts[9], counts[10],
+			       streamBeforeLoops, streamBeforeLeft,
+			       (streamBeforeLeft < 0 ? -1 : counts[7] - streamBeforeLoops),
+			       (streamBeforeLeft < 0 ? -1 : counts[9] - streamBeforeLeft));
 		}
 		check("and-the-reply-comes-back-through-it",
 		      replyDone && replyError == nil &&
