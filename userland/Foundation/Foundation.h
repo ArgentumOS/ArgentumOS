@@ -77,6 +77,7 @@
 #import <Foundation/NSEnumerator.h>
 #import <Foundation/NSDirectoryEnumerator.h>
 #import <Foundation/NSFileCoordinator.h>
+#import <Foundation/NSFilePresenter.h>
 #import <Foundation/NSFileSecurity.h>
 #import <Foundation/NSFileWrapper.h>
 #import <Foundation/NSPropertyListSerialization.h>

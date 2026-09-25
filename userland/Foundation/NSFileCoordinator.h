@@ -36,6 +36,7 @@
 #define FOUNDATION_NSFILECOORDINATOR_H
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSFilePresenter.h>
 
 @class NSError;
 @class NSURL;
@@ -91,8 +92,22 @@ typedef enum {
  * exactly what `nullable` means. */
 @interface NSFileCoordinator : NSObject
 {
-	id _presenter;			/* the coordinator's OWN presenter: NOT retained (it holds us), and 7c uses it */
+	id _presenter;			/* the coordinator's OWN presenter, NOT retained: see +addFilePresenter: */
 }
+
+/* ---- THE PROCESS-WIDE REGISTRY (W8 slice 7c) ------------------------------------------------------
+ *
+ * APPLE'S OWN SENTENCES, measured: +addFilePresenter: "registers the file presenter object PROCESS WIDE.
+ * Thus, any file coordinator objects you create later automatically know about the file presenter object
+ * and know to message it when its file or directory is affected"; "Be sure to balance calls to this method
+ * with a corresponding call to [removeFilePresenter:]"; and "You must remove file presenters from the
+ * process wide registry before the object is deallocated" - WHICH IS WHY THE REGISTRY DOES NOT OWN WHAT IT
+ * HOLDS: a registry that retained its presenters would keep objects alive whose owners believe they are
+ * gone, and Apple's rule (remove before deallocating) is exactly the rule a non-owning registry needs.
+ */
++ (void)addFilePresenter:(id<NSFilePresenter>)filePresenter;
++ (void)removeFilePresenter:(id<NSFilePresenter>)filePresenter;
++ (NSArray *)filePresenters;
 
 /* "This object is assumed to be performing the relevant file or directory operations and therefore does
  * NOT receive notifications about those operations" - so the coordinator's own presenter is excluded from

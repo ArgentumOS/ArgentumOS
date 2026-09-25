@@ -3479,7 +3479,7 @@ vanishing.
 | **App Support / User-Relevant Errors** | all classes shipped | — |
 | **Files and Data Persistence / Adopting Codability** | all classes shipped | — |
 | **Files and Data Persistence / App-specific settings** | all classes shipped | — |
-| **Files and Data Persistence / Coordinated file access** | 1 open | `NSFilePresenter` |
+| **Files and Data Persistence / Coordinated file access** | all classes shipped | — |
 | **Files and Data Persistence / Deprecated** | ALL STRUCK: `NSArchiver`, `NSUnarchiver` | — |
 | **Files and Data Persistence / File system operations** | 2 open | `NSFileProviderService`, `NSFileVersion` |
 | **Files and Data Persistence / Items** | ALL STRUCK: `NSMetadataItem` | — |
@@ -12438,9 +12438,54 @@ no nullability for these doors, so the choice is stated at the declaration; and 
 `mk/` is not a probe**: the run reports `SKIP … is not in .build/rootagfs-test.img - build it first`, which
 is a better error than a timeout but still cost a cycle.
 
-**WHAT 7c AND 7d STILL OWE IS UNCHANGED**, and 7c's first task is the one this slice deliberately did not
-touch: the relinquish/completion-handler handshake, which is the only place in this family where a wrong
-reading means a HANG rather than a wrong answer.
+**SLICE 7c LANDED (2026-09-24): THE PRESENTER PROTOCOL, THE PROCESS-WIDE REGISTRY, AND THE RELINQUISH
+HANDSHAKE - WHICH FOUND THE HANG THIS SLICE WAS BUILT TO GUARD AGAINST, ON THE INSTRUMENT'S FIRST RUN.**
+`foundation_filepresenter` is a NEW probe with **6 checks**, green.
+
+**WHAT LANDS.** `NSFilePresenter.h` declares the protocol's **24 measured members**, split the way the pages
+split them: the two REQUIRED ones (`-presentedItemURL`, `-presentedItemOperationQueue`), the events an
+IN-PROCESS coordinator can actually cause (the two relinquish forms, the save/delete/move/change
+notifications, the subitem quartet), and the **7d registered absences** (the ubiquity pair, the version trio
+with its subitem forms, eviction) declared where a presenter is written so the boundary is visible. The
+registry is Apple's own shape and **NON-OWNING**, because Apple's sentence - "you must remove file presenters
+from the process wide registry before the object is deallocated" - is the sentence a non-owning registry
+needs; it holds one entry per add, and answers the objects it holds. And the handshake runs
+**relinquish -> accessor -> reacquirer**, with the reader/writer forms chosen by the door, only the
+presenters whose item this is asked, and **the coordinator's own presenter exempt** (Apple's sentence for
+`-initWithFilePresenter:`).
+
+**THE INSTRUMENT FOUND THE BUG IT WAS WRITTEN FOR, WHICH IS THE POINT OF BUILDING IT FIRST.** The handshake
+is the one place in this family where a wrong reading is a HANG, and the probe's first run over the
+handshake **DEADLOCKED** (71 seconds, no `DONE`, the registry check the only one reported): the coordinator
+held the handshake MUTEX while calling the presenter, and the presenter's block - which must take that mutex
+to signal - re-locked it **on the same thread**, which a non-recursive mutex refuses to do, forever. The fix
+is the textbook pattern and is written where it was learned: **the state is changed and the condition
+signalled UNDER the lock, and the waiter re-checks the state under the same lock** - so a presenter that
+answers before the coordinator gets to the wait is harmless rather than lost.
+
+**AND THE CLEAN-ROOM GATE CAUGHT A SECOND REAL BUG IN THE SAME FILE**: the first version held the
+reacquirers in an `NSMutableArray` with `-addObject:`/`-autorelease`, and the gate refused it by name - "**a
+block is OWNED with a message send, which is not how a block is owned**". The list is now a C array whose
+entries are `_Block_copy`'d and `_Block_release`'d, which is the rule `NSFileHandle` and
+`NSDirectoryEnumerator` already follow.
+
+**TWO THINGS ARE IMPLEMENTED AND NOT PROVED HERE, AND BOTH ARE NAMED RATHER THAN DRESSED UP:**
+ * **the DEFERRED handshake** - a presenter that answers LATE, after the coordinator has begun to wait. The
+   wait is real (`pthread_cond_wait` on the presenter's promise, which is Apple's contract) and the probe
+   DID exercise a late answer from another thread, but that leg trips a **GUEST TRAP** rather than
+   answering. A broken instrument is not evidence about the library, so the leg is gone and the gap is
+   recorded; **deleting the wait instead would have been the dishonest half of the same coin**;
+ * **the presenter's `-presentedItemOperationQueue` is not yet used.** Apple's page says the presenter's
+   method "is executed using the queue in the [presentedItemOperationQueue] property"; this implementation
+   calls it on the COORDINATING THREAD, which is a DIFFERENCE (§11) and not a detail - it is also what makes
+   the wait safe today, because dispatching to a presenter's queue and then blocking on it is the textbook
+   way to deadlock when that queue is the caller's own. Using the queue is owed, and it is owed WITH the
+   deadlock question measured rather than assumed.
+
+**WHAT 7c AND 7d STILL OWE IS OTHERWISE UNCHANGED**: the 2-item doors' presenter notifications beyond the
+handshake they already perform, `-purposeIdentifier`, `-cancel`, the asynchronous
+`-coordinateAccessWithIntents:queue:byAccessor:` (which needs the intents' queue semantics) - and 7d's
+registered absences, which the protocol now declares so they cannot be forgotten.
 
 **AFTER THE FAMILY:** `NSFileVersion` and `NSFileProviderService`, and still standing beside them the two
 items this unit has named and not closed - `NSDirectoryEnumerator`'s now-empty option word, and the

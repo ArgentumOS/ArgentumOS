@@ -29,7 +29,7 @@
 #
 # counts by kind:
 #   class      shipped  155   open   41   struck   77
-#   protocol   shipped   21   open   10   struck   14
+#   protocol   shipped   22   open    9   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped  105   open   38   struck   17
 #   case       shipped  604   open  530   struck  168
@@ -2223,7 +2223,7 @@ protocol	shipped	NSDiscardableContent		Fundamentals / Purgeable Collections / Ma
 protocol	open	NSExtensionRequestHandling		App Support / Extension Support	-	objc
 protocol	shipped	NSFastEnumeration		Fundamentals / Iteration	-	objc
 protocol	shipped	NSFileManagerDelegate		Files and Data Persistence / File system operations	-	objc
-protocol	open	NSFilePresenter		Files and Data Persistence / Coordinated file access	-	objc
+protocol	shipped	NSFilePresenter		Files and Data Persistence / Coordinated file access	-	objc
 protocol	open	NSItemProviderReading		App Support / Attachments / Constants	-	objc
 protocol	open	NSItemProviderWriting		App Support / Attachments / Constants	-	objc
 protocol	shipped	NSKeyedArchiverDelegate		Files and Data Persistence / Keyed Archivers	-	objc
