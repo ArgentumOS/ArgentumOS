@@ -12510,11 +12510,46 @@ identifier never block each other, **even if they occur in different processes**
 system with a coordination service, which this one does not have, so that behaviour is 7b's boundary and
 not this slice's silence.
 
-**WHAT THE FAMILY STILL OWES, NOW SHORT AND ALL NAMED:** `-cancel` and the asynchronous
-`-coordinateAccessWithIntents:queue:byAccessor:` (both need the queue semantics, and they are the pair that
-`-cancel` was written for); the presenter's `-presentedItemOperationQueue` difference with its deadlock
-question; the deferred handshake's guest trap; and 7d's registered absences - which the protocol now
-DECLARES, so what 7d owes is the §11.6 registration and the door split rather than another measurement.
+**SLICE 7c-iii LANDED (2026-09-24): THE ASYNCHRONOUS DOOR AND `-cancel`, THE PAIR THEY WERE WRITTEN FOR.**
+`foundation_filepresenter` 11 -> **15 checks**, green on the first run - including the asynchronous door,
+which is the hardest thing in this family to get right because it involves a queue.
+
+**FOUR SENTENCES FROM THE DOOR'S PAGE, EACH MADE CODE:**
+ * "The file coordinator waits asynchronously to get access to the files and then **invokes the accessor
+   block ON THE SPECIFIED QUEUE**" - so the accessor really is handed to the queue
+   (`-addOperationWithBlock:`), and the probe waits for it rather than assuming it;
+ * "If an error occurs while waiting for access, **an error message is passed to the block**. You must check
+   the block's error parameter" - so the accessor takes the intents AND an error, which is why its shape is
+   `(NSArray *, NSError *)` and not the synchronous doors' `(NSURL *)` family;
+ * "always use the URL property of your intent objects ... **The system UPDATES this property** to account
+   for any changes to the underlying files" - so each intent's URL is replaced with the one the coordination
+   produced, and the probe asserts it with a READING INTENT THAT ASKED FOR THE LINK TO BE RESOLVED: after
+   the door, the intent's URL is the TARGET's;
+ * "The queue **must not be** [nil]" - and this door has NO error of its own to refuse with, so a nil queue
+   or an empty intent list answers by **DOING NOTHING**, written at the door and asserted by the probe.
+
+**AND `-cancel` IS TWO HALVES, ONE OF WHICH IS PROVED AND ONE NAMED.** Its page says it "cancels any
+ACTIVE file coordination calls", and that if the block "has not yet been executed - perhaps because the file
+coordinator is still waiting for a response from other file presenters - the file coordinator method **STOPS
+WAITING**". So the door clears the flag (a cancel with nothing in flight therefore does not poison the next
+call, which is asserted), and the handshake's wait loop ENDS on the flag with the accessor NOT run - the
+half whose proof needs the same second-thread instrument as the deferred handshake, and which is therefore
+implemented and named rather than claimed.
+
+**THE DIFFERENCE THIS DOOR CARRIES IS STATED AT IT:** the WAIT for the presenters happens on the CALLER'S
+THREAD, because there is no coordination service to wait in on this system, while the ACCESSOR does run on
+the given queue - and the probe PRINTS whether the door had already returned when the accessor ran, which is
+a fact about this system's queue rather than something to assert.
+
+**AND ONE NAMING TRAP WORTH ITS LINE:** the probe's symlink variable could not be called `link`, because a
+probe that includes `<unistd.h>` has POSIX `link(2)` in scope and the compiler reads the name as that
+function - "implicit conversion of a non-Objective-C pointer type" is what a shadowed syscall looks like.
+It is `linkURL`, and the fixture now makes the symlink the URL points at.
+
+**WHAT THE FAMILY STILL OWES, NOW DOWN TO FOUR NAMED ITEMS:** the presenter's
+`-presentedItemOperationQueue` difference with its deadlock question; the deferred handshake's guest trap;
+the in-wait half of `-cancel` (same instrument); and 7d's registered absences - which the protocol DECLARES,
+so what 7d owes is the §11.6 registration and the door split rather than another measurement.
 
 **AFTER THE FAMILY:** `NSFileVersion` and `NSFileProviderService`, and still standing beside them the two
 items this unit has named and not closed - `NSDirectoryEnumerator`'s now-empty option word, and the

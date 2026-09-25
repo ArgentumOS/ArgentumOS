@@ -41,6 +41,17 @@
  *                                          intended for apps that adopt App Sandbox ... If your macOS app
  *                                          is not sandboxed, this method serves no purpose" - declared so a
  *                                          balanced pair compiles, and notifying nobody;
+ *   cancel-with-nothing-active-does-not-stop-the-next-call  -cancel cancels ACTIVE calls ("any active
+ *                                          file coordination calls"), so a cancel with nothing in flight
+ *                                          does not stop the next one;
+ *   async-the-door-runs-the-accessor-on-its-queue  the asynchronous door: the accessor runs on the given
+ *                                          queue with the intents and a nil error, and the probe PRINTS
+ *                                          whether the door had already returned (a fact about this
+ *                                          system's queue rather than something to assert);
+ *   async-a-nil-queue-or-no-intents-does-nothing  the door has no error of its own, so a nil queue or an
+ *                                          empty intent list answers by doing nothing rather than crashing;
+ *   async-a-reading-intent-gets-the-coordinated-url  "The system updates this URL property to account for
+ *                                          any changes to the underlying files";
  *   probe-tree-removed                    the tree is gone.
  */
 
@@ -157,6 +168,7 @@ int main(void)
 	NSFileManager *manager = [NSFileManager defaultManager];
 	NSURL *item = fn_url(fn_path(@"presented.txt"));
 	NSURL *other = fn_url(fn_path(@"other.txt"));
+	NSURL *linkURL = fn_url(fn_path(@"link.txt"));	/* NOT named `link`: POSIX link(2) is in scope */
 	TestPresenter *presenter = [[TestPresenter alloc] initWithItem:item deferred:NO];
 	TestPresenter *stranger = [[TestPresenter alloc] initWithItem:other deferred:NO];
 	NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
@@ -170,6 +182,7 @@ int main(void)
 		if (f != NULL) { fputs("x", f); fclose(f); }
 		if (g != NULL) { fputs("y", g); fclose(g); }
 	}
+	symlink("presented.txt", [fn_path(@"link.txt") UTF8String]);
 
 	check("presenter-the-registry-is-add-list-and-remove",
 	      [[NSFileCoordinator filePresenters] count] == 0 &&
@@ -319,6 +332,104 @@ int main(void)
 		[coordinator itemAtURL:item willMoveToURL:moved];
 		check("willMove-has-no-purpose-on-a-system-without-a-sandbox", fn_moveCalls == 0,
 		      [NSString stringWithFormat:@"move calls=%d", fn_moveCalls]);
+	}
+
+	{
+		/* -CANCEL CANCELS *ACTIVE* CALLS, so a cancel with nothing active does not stop the next one -
+		 * which is the half of this door that needs no second thread to observe. */
+		__block int accessor = 0;
+
+		[coordinator cancel];
+		[coordinator coordinateReadingItemAtURL:item options:0 error:NULL byAccessor:^(NSURL *newURL) {
+			(void)newURL;
+			accessor++;
+		}];
+		check("cancel-with-nothing-active-does-not-stop-the-next-call", accessor == 1,
+		      [NSString stringWithFormat:@"the accessor ran %d time(s) after a cancel with no call in flight",
+			accessor]);
+	}
+
+	{
+		/* THE ASYNCHRONOUS DOOR: "waits asynchronously to get access to the files and then invokes the
+		 * accessor block ON THE SPECIFIED QUEUE", with "an error message ... passed to the block". The
+		 * probe polls because the accessor is not ours to schedule, and it PRINTS whether the door had
+		 * already returned - a fact about this system's queue rather than something to assert. */
+		NSFileAccessIntent *intent = [NSFileAccessIntent readingIntentWithURL:item options:0];
+		NSArray *intents = [NSArray arrayWithObject:intent];
+		NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+		__block NSUInteger calls = 0;
+		__block BOOL gotIntents = NO;
+		__block BOOL gotError = YES;
+		BOOL returnedFirst = NO;
+		int waited = 0;
+
+		[coordinator coordinateAccessWithIntents:intents queue:queue byAccessor:
+			^(NSArray *handedIntents, NSError *error) {
+			calls++;
+			gotIntents = [handedIntents count] == 1;
+			gotError = error != nil;
+		}];
+		while (calls == 0 && waited < 2000) {
+			usleep(1000);
+			waited++;
+		}
+		returnedFirst = (calls == 0);
+		check("async-the-door-runs-the-accessor-on-its-queue",
+		      calls == 1 && gotIntents && !gotError,
+		      [NSString stringWithFormat:@"calls=%lu intents=%d error=%d (the door returned before the "
+			@"accessor ran: %d, after %d ms)", (unsigned long)calls, (int)gotIntents, (int)gotError,
+			(int)returnedFirst, waited]);
+	}
+
+	{
+		/* AND THE REFUSALS THIS DOOR CAN MAKE: it has no error of its own, so a nil queue or an empty
+		 * intent list answers by DOING NOTHING rather than by crashing. */
+		__block NSUInteger calls = 0;
+		NSFileAccessIntent *intent = [NSFileAccessIntent readingIntentWithURL:item options:0];
+
+		[coordinator coordinateAccessWithIntents:[NSArray arrayWithObject:intent]
+						    queue:nil
+					       byAccessor:^(NSArray *handed, NSError *error) {
+			(void)handed;
+			(void)error;
+			calls++;
+		}];
+		[coordinator coordinateAccessWithIntents:[NSArray array]
+						    queue:[[NSOperationQueue alloc] init]
+					       byAccessor:^(NSArray *handed, NSError *error) {
+			(void)handed;
+			(void)error;
+			calls++;
+		}];
+		usleep(50000);
+		check("async-a-nil-queue-or-no-intents-does-nothing", calls == 0,
+		      [NSString stringWithFormat:@"the accessor ran %lu time(s)", (unsigned long)calls]);
+	}
+
+	{
+		/* "The system UPDATES this URL property to account for any changes to the underlying files" -
+		 * here, the URL the coordination produced: a reading intent that asked for the symbolic link to
+		 * be resolved sees the TARGET's URL afterwards. */
+		NSFileAccessIntent *intent = [NSFileAccessIntent readingIntentWithURL:linkURL
+								     options:NSFileCoordinatorReadingResolvesSymbolicLink];
+		NSArray *intents = [NSArray arrayWithObject:intent];
+		__block BOOL ran = NO;
+		int waited = 0;
+
+		[coordinator coordinateAccessWithIntents:intents
+						    queue:[[NSOperationQueue alloc] init]
+					       byAccessor:^(NSArray *handed, NSError *error) {
+			(void)handed;
+			(void)error;
+			ran = YES;
+		}];
+		while (!ran && waited < 2000) {
+			usleep(1000);
+			waited++;
+		}
+		check("async-a-reading-intent-gets-the-coordinated-url",
+		      ran && [[intent URL] isEqual:fn_url(fn_path(@"presented.txt"))],
+		      [NSString stringWithFormat:@"the intent's URL is now %@", [intent URL]]);
 	}
 
 	{

@@ -49,6 +49,24 @@
 	return _url;
 }
 
+- (BOOL)fnIsWriting
+{
+	return _writing;
+}
+
+- (BOOL)fnResolvesSymbolicLink
+{
+	return !_writing && (_options & NSFileCoordinatorReadingResolvesSymbolicLink) != 0;
+}
+
+- (void)fnSetURL:(NSURL *)url
+{
+	if (url != nil && url != _url) {
+		[_url release];
+		_url = [url retain];
+	}
+}
+
 - (void)dealloc
 {
 	[_url release];

@@ -8,6 +8,7 @@
 #import <Foundation/NSFilePresenter.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSLock.h>
+#import <Foundation/NSOperation.h>
 #import <Foundation/NSError.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSString.h>
@@ -155,10 +156,18 @@ static pthread_cond_t fn_handshake_cond = PTHREAD_COND_INITIALIZER;
 		 * A presenter that answers BEFORE we get here is harmless, because the state is read under the
 		 * lock and the loop is a re-check rather than a blind wait. */
 		pthread_mutex_lock(&fn_handshake_mutex);
-		while (!relinquished) {
+		while (!relinquished && _cancelled == 0) {
 			pthread_cond_wait(&fn_handshake_cond, &fn_handshake_mutex);
 		}
 		pthread_mutex_unlock(&fn_handshake_mutex);
+		if (_cancelled != 0) {
+			/* CANCELLED WHILE WAITING: "the file coordinator method STOPS WAITING" - the item was never
+			 * handed over, so nothing is reacquired for it and the accessor will not run. */
+			if (reacquirer != NULL) {
+				_Block_release(reacquirer);
+			}
+			break;
+		}
 		if (reacquirer != NULL) {
 			if (reacquirers->count == reacquirers->capacity) {
 				size_t grown = reacquirers->capacity > 0 ? reacquirers->capacity * 2 : 4;
@@ -262,6 +271,68 @@ static pthread_cond_t fn_handshake_cond = PTHREAD_COND_INITIALIZER;
 	[self fnNotifyDidMoveFrom:oldURL to:newURL];
 }
 
+- (void)cancel
+{
+	/* "it returns immediately without waiting for the file coordinator object to respond" - so this only
+	 * raises a flag and wakes whoever is waiting on it. */
+	_cancelled = 1;
+	pthread_mutex_lock(&fn_handshake_mutex);
+	pthread_cond_broadcast(&fn_handshake_cond);
+	pthread_mutex_unlock(&fn_handshake_mutex);
+}
+
+/* THE ASYNCHRONOUS DOOR: the same coordination as the synchronous ones, with the accessor handed to the
+ * caller's QUEUE instead of being called here. Apple's measured sentences are in the header; what this
+ * implementation states in addition is the part it cannot do asynchronously: THE WAIT FOR THE PRESENTERS
+ * happens on the caller's thread (there is no coordination service to wait in), while the ACCESSOR really
+ * does run on the given queue, which is where the difference from the synchronous doors lives. */
+- (void)coordinateAccessWithIntents:(NSArray *)intents
+			      queue:(NSOperationQueue *)queue
+			 byAccessor:(void (^)(NSArray *intents, NSError * _Nullable error))accessor
+{
+	struct fn_reacquirers reacquirers = { NULL, 0, 0 };
+	NSMutableArray *coordinated;
+	NSUInteger i;
+	BOOL proceed = YES;
+
+	_cancelled = 0;
+	/* "The queue must not be nil", and this door has NO error of its own to refuse with - so a nil queue
+	 * or an empty intent list answers by DOING NOTHING rather than by crashing. */
+	if (queue == nil || accessor == NULL || intents == nil || [intents count] == 0) {
+		return;
+	}
+	coordinated = [[NSMutableArray alloc] init];
+	for (i = 0; i < [intents count]; i++) {
+		NSFileAccessIntent *intent = [intents objectAtIndex:i];
+		BOOL writing = [intent fnIsWriting];
+		BOOL resolve = (writing ? NO : [intent fnResolvesSymbolicLink]);
+		NSURL *url = [self fnCoordinatedURL:[intent URL] resolve:resolve outError:NULL];
+
+		if (url == nil) {
+			proceed = NO;
+			break;
+		}
+		/* "The system UPDATES this URL property to account for any changes to the underlying files" -
+		 * which here means the URL the coordination produced. */
+		[intent fnSetURL:url];
+		if (![self fnHandshakeForURL:url writing:writing reacquirers:&reacquirers]) {
+			proceed = NO;
+			break;
+		}
+		[coordinated addObject:intent];
+	}
+	if (!proceed) {
+		fnReacquire(&reacquirers);
+		[coordinated release];
+		return;
+	}
+	[queue addOperationWithBlock:^{
+		accessor(coordinated, nil);
+		fnReacquire(&reacquirers);
+	}];
+	[coordinated release];
+}
+
 - (void)dealloc
 {
 	[_purposeIdentifier release];
@@ -345,6 +416,7 @@ static void fnReacquire(struct fn_reacquirers *reacquirers)
 	if (outError != NULL) {
 		*outError = nil;
 	}
+	_cancelled = 0;		/* "any ACTIVE calls": this one is the active call from here on */
 	if (reader == NULL) {
 		if (outError != NULL) {
 			*outError = fn_coordinator_error(EINVAL, @"a coordinated read needs an accessor");
@@ -364,8 +436,9 @@ static void fnReacquire(struct fn_reacquirers *reacquirers)
 		 * of relevant file presenters is called BEFORE your block executes"). */
 		struct fn_reacquirers reacquirers = { NULL, 0, 0 };
 
-		[self fnHandshakeForURL:coordinated writing:NO reacquirers:&reacquirers];
-		reader(coordinated);
+		if ([self fnHandshakeForURL:coordinated writing:NO reacquirers:&reacquirers]) {
+			reader(coordinated);
+		}
 		fnReacquire(&reacquirers);
 	}
 }
@@ -381,6 +454,7 @@ static void fnReacquire(struct fn_reacquirers *reacquirers)
 	if (outError != NULL) {
 		*outError = nil;
 	}
+	_cancelled = 0;
 	if (writer == NULL) {
 		if (outError != NULL) {
 			*outError = fn_coordinator_error(EINVAL, @"a coordinated write needs an accessor");
@@ -394,11 +468,12 @@ static void fnReacquire(struct fn_reacquirers *reacquirers)
 	{
 		struct fn_reacquirers reacquirers = { NULL, 0, 0 };
 
-		[self fnHandshakeForURL:coordinated writing:YES reacquirers:&reacquirers];
-		writer(coordinated);
-		/* THE WRITE IS WHAT MAKES A CHANGE, so this is the moment the presenters are told - after the
-		 * accessor has run and before the reacquirers hand the item back. */
-		[self fnNotifyDidChangeForURL:coordinated];
+		if ([self fnHandshakeForURL:coordinated writing:YES reacquirers:&reacquirers]) {
+			writer(coordinated);
+			/* THE WRITE IS WHAT MAKES A CHANGE, so this is the moment the presenters are told - after
+			 * the accessor has run and before the reacquirers hand the item back. */
+			[self fnNotifyDidChangeForURL:coordinated];
+		}
 		fnReacquire(&reacquirers);
 	}
 }
@@ -417,6 +492,7 @@ static void fnReacquire(struct fn_reacquirers *reacquirers)
 	if (outError != NULL) {
 		*outError = nil;
 	}
+	_cancelled = 0;
 	if (readerWriter == NULL) {
 		if (outError != NULL) {
 			*outError = fn_coordinator_error(EINVAL, @"a coordinated operation needs an accessor");
@@ -436,9 +512,14 @@ static void fnReacquire(struct fn_reacquirers *reacquirers)
 	{
 		struct fn_reacquirers reacquirers = { NULL, 0, 0 };
 
-		[self fnHandshakeForURL:reading writing:NO reacquirers:&reacquirers];
-		[self fnHandshakeForURL:writing writing:YES reacquirers:&reacquirers];
-		readerWriter(reading, writing);
+		{
+			BOOL readingProceeded = [self fnHandshakeForURL:reading writing:NO reacquirers:&reacquirers];
+			BOOL writingProceeded = [self fnHandshakeForURL:writing writing:YES reacquirers:&reacquirers];
+
+			if (readingProceeded && writingProceeded) {
+				readerWriter(reading, writing);
+			}
+		}
 		fnReacquire(&reacquirers);
 	}
 }
@@ -458,6 +539,7 @@ static void fnReacquire(struct fn_reacquirers *reacquirers)
 	if (outError != NULL) {
 		*outError = nil;
 	}
+	_cancelled = 0;
 	if (writer == NULL) {
 		if (outError != NULL) {
 			*outError = fn_coordinator_error(EINVAL, @"a coordinated operation needs an accessor");
@@ -475,11 +557,16 @@ static void fnReacquire(struct fn_reacquirers *reacquirers)
 	{
 		struct fn_reacquirers reacquirers = { NULL, 0, 0 };
 
-		[self fnHandshakeForURL:first writing:YES reacquirers:&reacquirers];
-		[self fnHandshakeForURL:second writing:YES reacquirers:&reacquirers];
-		writer(first, second);
-		[self fnNotifyDidChangeForURL:first];
-		[self fnNotifyDidChangeForURL:second];
+		{
+			BOOL firstProceeded = [self fnHandshakeForURL:first writing:YES reacquirers:&reacquirers];
+			BOOL secondProceeded = [self fnHandshakeForURL:second writing:YES reacquirers:&reacquirers];
+
+			if (firstProceeded && secondProceeded) {
+				writer(first, second);
+				[self fnNotifyDidChangeForURL:first];
+				[self fnNotifyDidChangeForURL:second];
+			}
+		}
 		fnReacquire(&reacquirers);
 	}
 }

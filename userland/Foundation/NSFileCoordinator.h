@@ -39,6 +39,7 @@
 #import <Foundation/NSFilePresenter.h>
 
 @class NSError;
+@class NSOperationQueue;
 @class NSURL;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -94,6 +95,7 @@ typedef enum {
 {
 	id _presenter;			/* the coordinator's OWN presenter, NOT retained: see +addFilePresenter: */
 	NSString *_purposeIdentifier;	/* COPIED, or nil: see -setPurposeIdentifier: */
+	volatile int _cancelled;	/* set by -cancel: an ACTIVE call ends its wait and runs no accessor */
 }
 
 /* ---- THE PROCESS-WIDE REGISTRY (W8 slice 7c) ------------------------------------------------------
@@ -129,6 +131,28 @@ typedef enum {
 - (void)setPurposeIdentifier:(nullable NSString *)identifier;
 - (void)itemAtURL:(NSURL *)oldURL willMoveToURL:(NSURL *)newURL;
 - (void)itemAtURL:(NSURL *)oldURL didMoveToURL:(NSURL *)newURL;
+
+/* "Performs a number of coordinated-read or -write operations ASYNCHRONOUSLY", measured: "The file
+ * coordinator waits asynchronously to get access to the files and then INVOKES THE ACCESSOR BLOCK ON THE
+ * SPECIFIED QUEUE. ... If an error occurs while waiting for access, AN ERROR MESSAGE IS PASSED TO THE BLOCK.
+ * You must check the block's error parameter before accessing any of the files." So the accessor takes the
+ * intents and an error, and "the system UPDATES this URL property to account for any changes to the
+ * underlying files" is why the intents handed to it are the coordinated ones.
+ *
+ * THE QUEUE "MUST NOT BE" nil, and this door has NO error of its own to refuse with - so a nil queue or an
+ * empty intent array answers by DOING NOTHING, which is written here rather than left to a crash. And the
+ * waiting half of -cancel is honoured by the handshake beside this door: "if the block ... has not yet been
+ * executed - perhaps because the file coordinator is still waiting for a response from other file
+ * presenters - the file coordinator method STOPS WAITING". */
+- (void)coordinateAccessWithIntents:(NSArray *)intents
+			      queue:(NSOperationQueue *)queue
+			 byAccessor:(void (^)(NSArray *intents, NSError * _Nullable error))accessor;
+
+/* "Cancels any active file coordination calls ... it returns immediately ... when this method returns, you
+ * cannot assume that the read or write operation occurred or did not occur." A cancelled operation ends its
+ * WAIT and does not run its accessor; a call made after the cancel is a NEW call and is not affected, which
+ * is what "any ACTIVE" calls means. */
+- (void)cancel;
 
 /* "This object is assumed to be performing the relevant file or directory operations and therefore does
  * NOT receive notifications about those operations" - so the coordinator's own presenter is excluded from
@@ -181,6 +205,14 @@ typedef enum {
 /* "The current URL for this file access intent." */
 - (NSURL *)URL;
 
+@end
+
+/* OURS: the coordinator updates an intent's URL when coordination changes it - Apple: "The system updates
+ * this property to account for any changes to the underlying files". */
+@interface NSFileAccessIntent (FNPrivate)
+- (void)fnSetURL:(NSURL *)url;
+- (BOOL)fnIsWriting;
+- (BOOL)fnResolvesSymbolicLink;
 @end
 
 NS_ASSUME_NONNULL_END
