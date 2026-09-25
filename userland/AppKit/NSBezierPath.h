@@ -37,13 +37,18 @@
  *   real piece of geometry rather than a forward. The FLATTENING copy IS here, because
  *   `CGPathCreateCopyByFlattening` exists.
  *
- *   THE WHOLE PATH-CLIP FAMILY, AND NOT FOR THE REASON I FIRST WROTE: `-addClip`, `-setClip` and
- *   `+clipRect:` are all absent. The first version of this paragraph said `-addClip` forwards to
- *   `CGContextClip` — WHICH DOES NOT EXIST. This library's context clips with a REGION OF RECTANGLES
- *   (`pixman_image_set_clip_region32`), so its only clip operations are `CGContextClipToRect`,
- *   `CGContextResetClip` and `CGContextGetClipBoundingBox`; a PATH clip needs a mask, which is the
- *   piece C2 deliberately left out (its header says so). So `-addClip` is not deferred for want of a
- *   forward — there is nothing to forward to — and a probe cannot ask for it either.
+ *   AND THE PATH CLIP, WHICH IS HERE NOW BECAUSE COREGRAPHICS GREW ONE (C8.6): `-addClip`,
+ *   `-setClip` and `+clipRect:` all forward to `CGContextClip`/`CGContextEOClip`/`CGContextClipToRect`,
+ *   which did not exist when this class was first written. THEY INHERIT THAT CLIP'S BOUNDARY, and it is
+ *   worth restating where a path author will meet it: a RECTILINEAR path clips EXACTLY, and a slanted
+ *   or curved one is REFUSED BY NAME by CoreGraphics, which leaves the clip as it was rather than
+ *   approximating it. The half owed is a MASK.
+ *
+ *   AND ONE SENTENCE OF THIS PARAGRAPH WAS WRONG AND STAYS CORRECTED: it said `-setClip` could not be
+ *   built from reset-then-intersect because that "would be wrong under a transform". It is not wrong —
+ *   the clip CoreGraphics stores is built in DEVICE space from the already-transformed path, so
+ *   resetting and re-intersecting replaces the clip exactly, which is what `-setClip` means. The first
+ *   version reasoned about the transform in USER space and drew the wrong conclusion.
  *
  *   AND DRAWING WITH NO CURRENT `NSGraphicsContext` DRAWS NOTHING, silently. That is Apple's
  *   behaviour by omission (there is no context to draw into) and it is stated here so a caller is not
@@ -190,6 +195,12 @@ typedef enum {
  * the context's line state from ours first (see the header note). */
 - (void)fill;
 - (void)stroke;
+/* THE CLIP FAMILY: `-addClip` INTERSECTS with this path, `-setClip` REPLACES the clip with it, and
+ * `+clipRect:` intersects with a rectangle. The receiver's path is untouched by either — CoreGraphics'
+ * clip consumes the copy the CONTEXT was given, not this object's. */
+- (void)addClip;
+- (void)setClip;
++ (void)clipRect:(NSRect)rect;
 
 /* THE COPY THAT KEEPS ITS CURVES, flattened — the one copy operation Core Graphics has. */
 @property (readonly, strong) NSBezierPath *bezierPathByFlatteningPath;

@@ -609,6 +609,49 @@ static CGContextRef fn_current(void)
 	CGContextDrawPath(ctx, kCGPathStroke);
 }
 
+/* THE CLIP FAMILY. Each reaches the CURRENT context, and the refusal a caller may meet is
+ * CoreGraphics' own (a non-rectilinear path) rather than a second copy of the rule here. */
+- (void)addClip
+{
+	CGContextRef ctx = fn_current();
+
+	if (ctx == NULL) {
+		return;
+	}
+	/* THE PATH GOES INTO THE CONTEXT AND THE CLIP CONSUMES IT THERE — `_path` is this object's and is
+	 * NOT touched, which is why a caller may clip with the same path twice. */
+	CGContextAddPath(ctx, (CGPathRef)_path);
+	if (_windingRule == NSWindingRuleEvenOdd) {
+		CGContextEOClip(ctx);
+	} else {
+		CGContextClip(ctx);
+	}
+}
+
+- (void)setClip
+{
+	CGContextRef ctx = fn_current();
+
+	if (ctx == NULL) {
+		return;
+	}
+	/* RESET THEN INTERSECT IS A REPLACE, and the correction that took: the clip CoreGraphics stores is
+	 * built in DEVICE space from the already-transformed path, so there is no transform to be wrong
+	 * about. See the header. */
+	CGContextResetClip(ctx);
+	[self addClip];
+}
+
++ (void)clipRect:(NSRect)rect
+{
+	CGContextRef ctx = fn_current();
+
+	if (ctx == NULL) {
+		return;
+	}
+	CGContextClipToRect(ctx, rect);
+}
+
 - (NSBezierPath *)bezierPathByFlatteningPath
 {
 	NSBezierPath *p;

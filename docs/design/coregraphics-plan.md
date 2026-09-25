@@ -485,7 +485,13 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   fill's coverage comes from pixman's trapezoid rasterizer, and a clip needing per-pixel coverage
   would have to multiply into every composite (the trapezoid mask, `cg_paint_clip`, and the
   hand-written image blit). A rotated or skewed CTM is refused for the reason `CGContextClipToRect`
-  already gives. THE MASK HALF IS OWED AND NAMED, and it is the piece that will let `-addClip` take
+  already gives. **AND THE APPKIT SIDE LANDED ON TOP OF IT (C8.7)**: `NSBezierPath`'s `-addClip`, `-setClip` and
+  `+clipRect:` all forward now, so a `-drawRect:` can clip to a rectangle or a rectilinear path. **AND
+  A SENTENCE I WROTE AN HOUR EARLIER WAS WRONG AND IS CORRECTED IN THE CLASS'S HEADER**: I had claimed
+  `-setClip` could not be built from reset-then-intersect because that "would be wrong under a
+  transform" — it is not, because the clip is built in DEVICE space from the already-transformed path,
+  so resetting and re-intersecting replaces it exactly. THE MASK HALF IS OWED AND NAMED, and it is the
+  piece that will let `-addClip` take
   the path a `-drawRect:` actually builds.** The
   three enums ride with members whose substrate was checked one by one:
   `NSColorRenderingIntent`'s five cases and `NSImageInterpolation`'s five are each a

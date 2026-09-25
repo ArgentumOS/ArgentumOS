@@ -279,6 +279,65 @@ int main(void)
 			CGContextResetClip(cg);
 		}
 
+		/* --- THE CLIP FAMILY, which C8.6's rectilinear path clip made possible ------------ */
+		{
+			NSBezierPath *a = [NSBezierPath bezierPathWithRect:NSMakeRect(0.0, 0.0, 8.0, 8.0)];
+			NSBezierPath *b = [NSBezierPath bezierPathWithRect:NSMakeRect(4.0, 4.0, 8.0, 8.0)];
+
+			/* TWICE WITH THE SAME PATH IS A NO-OP, and that is also the check that the RECEIVER's
+			 * path survived: CoreGraphics' clip consumes the COPY the context was given, not this
+			 * object's, so a second call clips with the same shape again. */
+			CGContextResetClip(cg);
+			CGContextClearRect(cg, CGRectMake(0.0, 0.0, 16.0, 16.0));
+			[a addClip];
+			[a addClip];
+			[NSBezierPath fillRect:NSMakeRect(0.0, 0.0, 16.0, 16.0)];
+			check("-addClip twice with the same path leaves the clip where it was (so the path "
+			      "survived)", inked(cg, 3, 3));
+			check("...and it is still a clip", !inked(cg, 9, 9));
+
+			CGContextResetClip(cg);
+			CGContextClearRect(cg, CGRectMake(0.0, 0.0, 16.0, 16.0));
+			[a addClip];
+			[b addClip];
+			[NSBezierPath fillRect:NSMakeRect(0.0, 0.0, 16.0, 16.0)];
+			check("...and two DIFFERENT clips INTERSECT: the overlap paints", inked(cg, 5, 5));
+			check("...while the first clip's own area no longer does", !inked(cg, 2, 2));
+
+			/* setClip REPLACES, which is the correction the header records. */
+			CGContextResetClip(cg);
+			CGContextClearRect(cg, CGRectMake(0.0, 0.0, 16.0, 16.0));
+			[a addClip];
+			[b setClip];
+			[NSBezierPath fillRect:NSMakeRect(0.0, 0.0, 16.0, 16.0)];
+			check("-setClip REPLACES the clip: the new area paints", inked(cg, 9, 9));
+			check("...and the replaced one no longer does", !inked(cg, 3, 3));
+
+			CGContextResetClip(cg);
+			CGContextClearRect(cg, CGRectMake(0.0, 0.0, 16.0, 16.0));
+			[NSBezierPath clipRect:NSMakeRect(2.0, 2.0, 4.0, 4.0)];
+			[NSBezierPath fillRect:NSMakeRect(0.0, 0.0, 16.0, 16.0)];
+			check("+clipRect: intersects", inked(cg, 3, 3));
+			check("...and confines", !inked(cg, 9, 9));
+
+			/* AND THE REFUSAL A CALLER MAY MEET IS COREGRAPHICS', INHERITED RATHER THAN COPIED. */
+			CGContextResetClip(cg);
+			CGContextClearRect(cg, CGRectMake(0.0, 0.0, 16.0, 16.0));
+			{
+				NSBezierPath *tri = [NSBezierPath bezierPath];
+
+				[tri moveToPoint:NSMakePoint(0.0, 0.0)];
+				[tri lineToPoint:NSMakePoint(16.0, 0.0)];
+				[tri lineToPoint:NSMakePoint(8.0, 16.0)];
+				[tri closePath];
+				[tri addClip];
+			}
+			[NSBezierPath fillRect:NSMakeRect(0.0, 0.0, 16.0, 16.0)];
+			check("a THREE-CORNERED -addClip is refused by CoreGraphics, leaving the clip alone",
+			      inked(cg, 1, 1));
+			CGContextResetClip(cg);
+		}
+
 		/* --- and with NO current context a draw does nothing rather than crashing -- */
 		[NSGraphicsContext setCurrentContext:nil];
 		{
