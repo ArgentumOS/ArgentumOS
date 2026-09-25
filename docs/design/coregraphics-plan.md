@@ -647,6 +647,34 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   The half-open comparison (`>` on BOTH endpoints) is what counts a vertex sitting exactly at the point's
   height once, rather than twice or not at all.
   8 ledger rows credited (1 enum, 5 cases, 2 methods), owner-scoped, and `--strict` clean first time.
+  **AND THE VIEW TREE ARRIVES (C8.14): `NSView` — ITS GEOMETRY, ITS TREE, ITS COORDINATE CONVERSIONS AND
+  ITS HIT TESTING, AND DELIBERATELY NOT ITS DRAWING.** The split is not a stop halfway: almost everything
+  a view does is answered by the TREE and nothing else, so all of it is provable WITHOUT a display
+  server, while the drawing is exactly where a SUBSTRATE has to be chosen — this AppKit has no window
+  server, so the honest answer is an offscreen render, and that deserves its own turn rather than a guess
+  smuggled in with the geometry. `-drawRect:` is therefore DECLARED here and does nothing, which is also
+  what Apple's plain `NSView` does: it exists to be OVERRIDDEN, and the slice that CALLS it is the next
+  one.
+  **AND `flipped` IS WHY CONVERSION IS NOT FRAME ARITHMETIC — WHICH THE PROBE PROVED BY FINDING A REAL
+  BUG IN IT.** The first version mirrored the point according to the CHILD's flip ALONE; the truth is the
+  COMPARISON OF TWO, because the frame's origin.y is measured in the SUPERVIEW's y direction while the
+  point is measured in the view's own, so the two agree only when both views have the SAME direction. A
+  FLIPPED SUPERVIEW WITH AN UNFLIPPED CHILD is where that shows — the child's own origin is at the BOTTOM
+  of its frame — and the one-sided test answered as if nothing had flipped at all. **Every unflipped check
+  in that probe would have passed either way**, which is the whole reason the flipped case is in it.
+  **AND THE OTHER THREE FAILURES THERE WERE THE TEST'S OWN, WHICH IS WORTH AS MUCH:** a released view is
+  STILL A SUBVIEW (releasing does not remove it), so a released-but-attached `big` shadowed the hit tests
+  under it; `fromView:nil` is the INVERSE of `toView:nil` rather than a repeat of it; and a subview MOVED
+  to another parent before that parent was removed left the root with nothing rather than with one. Each
+  was an expectation corrected against a measured answer.
+  **THE OWNERSHIP RULE IS ONE LINE WITH A CONSEQUENCE:** a parent OWNS its subviews and a subview BORROWS
+  its superview, so `-dealloc` CLEARS every child's borrowed link BEFORE releasing the array — otherwise a
+  child outliving its parent holds a pointer to a dying object, and the symptom is a crash much later. The
+  probe releases a parent with a child still alive and asserts the link came back nil.
+  The ledger needed TWO exception rows here, both because a row's owner is not a class name: the `NSView`
+  CLASS row is owned by `-`, and `-drawRect:` has TWO open rows — one owner-less and one under
+  `NSRulerMarker`, a class this tree does not ship — so only ours was flipped and the other stays open,
+  correctly.
   The
   three enums ride with members whose substrate was checked one by one:
   `NSColorRenderingIntent`'s five cases and `NSImageInterpolation`'s five are each a

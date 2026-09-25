@@ -2493,7 +2493,7 @@ class	open	NSUbiquitousKeyValueStore	-	-	-	objc
 class	open	NSUserActivity	-	-	-	objc
 class	open	NSUserDefaultsController	-	-	-	objc
 class	open	NSUserInterfaceCompressionOptions	-	-	-	objc
-class	open	NSView	-	-	-	objc
+class	shipped	NSView	-	-	-	objc
 class	open	NSViewAnimation	-	-	-	objc
 class	open	NSViewController	-	-	-	objc
 class	open	NSViewCornerConfiguration	-	-	-	objc
@@ -3539,7 +3539,7 @@ method	open	-addSelectionIndexPaths	NSTreeController	-	-	objc
 method	open	-addSelectionIndexes	NSArrayController	-	-	objc
 method	struck	-addSpeechDictionary	NSSpeechSynthesizer	-	deprecated	objc
 method	open	-addSplitViewItem	NSSplitViewController	-	-	objc
-method	open	-addSubview	NSView	-	-	objc
+method	shipped	-addSubview	NSView	-	-	objc
 method	open	-addSymbolEffect	NSImageView	-	-	objc
 method	open	-addTabStop	NSMutableParagraphStyle	-	-	objc
 method	open	-addTabViewItem	NSTabView	-	-	objc
@@ -3965,7 +3965,7 @@ method	struck	-convertBaseToScreen	NSWindow	-	deprecated	objc
 method	open	-convertFont	NSFontManager	-	-	objc
 method	open	-convertFontTraits	NSFontManager	-	-	objc
 method	open	-convertInteractionPoint	NSTextSelectionDataSource	-	-	objc
-method	open	-convertPoint	NSView	-	-	objc
+method	shipped	-convertPoint	NSView	-	-	objc
 method	open	-convertPointFromBacking	NSView	-	-	objc
 method	open	-convertPointFromBacking	NSWindow	-	-	objc
 method	struck	-convertPointFromBase	NSView	-	deprecated	objc
@@ -3976,7 +3976,7 @@ method	open	-convertPointToBacking	NSWindow	-	-	objc
 method	struck	-convertPointToBase	NSView	-	deprecated	objc
 method	open	-convertPointToLayer	NSView	-	-	objc
 method	open	-convertPointToScreen	NSWindow	-	-	objc
-method	open	-convertRect	NSView	-	-	objc
+method	shipped	-convertRect	NSView	-	-	objc
 method	open	-convertRectFromBacking	NSScreen	-	-	objc
 method	open	-convertRectFromBacking	NSView	-	-	objc
 method	open	-convertRectFromBacking	NSWindow	-	-	objc
@@ -4215,9 +4215,9 @@ method	open	-drawLabel	NSTabViewItem	-	-	objc
 method	open	-drawMarkersInRect	NSRulerView	-	-	objc
 method	open	-drawPageBorderWithSize	NSView	-	-	objc
 method	struck	-drawParts	NSScroller	-	deprecated	objc
-method	open	-drawRect	-	-	-	objc
+method	shipped	-drawRect	-	-	-	objc
 method	open	-drawRect	NSRulerMarker	-	-	objc
-method	open	-drawRect	NSView	-	-	objc
+method	shipped	-drawRect	NSView	-	-	objc
 method	open	-drawRepresentation	NSImage	-	-	objc
 method	open	-drawRow	NSTableView	-	-	objc
 method	open	-drawSegment	NSSegmentedCell	-	-	objc
@@ -4476,7 +4476,7 @@ method	open	-highlightColorInView	NSBrowserCell	-	-	objc
 method	open	-highlightColorWithFrame	NSCell	-	-	objc
 method	open	-highlightSelectionInClipRect	NSTableView	-	-	objc
 method	open	-highlightWithLevel	NSColor	-	-	objc
-method	open	-hitTest	NSView	-	-	objc
+method	shipped	-hitTest	NSView	-	-	objc
 method	open	-hitTestForEvent	NSCell	-	-	objc
 method	open	-hitTestRect	NSImage	-	-	objc
 method	open	-holdingPriorityForSubviewAtIndex	NSSplitView	-	-	objc
@@ -4723,7 +4723,7 @@ method	open	-initWithFrame	NSScrubber	-	-	objc
 method	open	-initWithFrame	NSTableView	-	-	objc
 method	open	-initWithFrame	NSText	-	-	objc
 method	open	-initWithFrame	NSTextView	-	-	objc
-method	open	-initWithFrame	NSView	-	-	objc
+method	shipped	-initWithFrame	NSView	-	-	objc
 method	open	-initWithICCProfileData	NSColorSpace	-	-	objc
 method	struck	-initWithIconRef	NSImage	-	deprecated	objc
 method	open	-initWithIdentifier	NSStoryboardSegue	-	-	objc
@@ -4924,7 +4924,7 @@ method	struck	-isCachedSeparately	NSImage	-	deprecated	objc
 method	struck	-isColor	NSPrinter	-	deprecated	objc
 method	open	-isColumnSelected	NSTableView	-	-	objc
 method	struck	-isDataRetained	NSImage	-	deprecated	objc
-method	open	-isDescendantOf	NSView	-	-	objc
+method	shipped	-isDescendantOf	NSView	-	-	objc
 method	open	-isEnabledAtIndex	NSPickerTouchBarItem	-	-	objc
 method	open	-isEnabledForSegment	NSSegmentedCell	-	-	objc
 method	open	-isEnabledForSegment	NSSegmentedControl	-	-	objc
@@ -5603,7 +5603,7 @@ method	open	-removeFile	NSColorList	-	-	objc
 method	struck	-removeFontDescriptor	NSFontManager	-	deprecated	objc
 method	open	-removeFontTrait	NSFontManager	-	-	objc
 method	open	-removeFromParentViewController	NSViewController	-	-	objc
-method	open	-removeFromSuperview	NSView	-	-	objc
+method	shipped	-removeFromSuperview	NSView	-	-	objc
 method	open	-removeFromSuperviewWithoutNeedingDisplay	NSView	-	-	objc
 method	open	-removeGestureRecognizer	NSView	-	-	objc
 method	open	-removeItem	NSMenu	-	-	objc
@@ -7388,7 +7388,7 @@ property	shipped	bounds	NSBezierPath	-	-	objc
 property	open	bounds	NSCollectionLayoutVisibleItem	-	-	objc
 property	open	bounds	NSPDFImageRep	-	-	objc
 property	open	bounds	NSTextAttachment	-	-	objc
-property	open	bounds	NSView	-	-	objc
+property	shipped	bounds	NSView	-	-	objc
 property	open	boundsRotation	NSView	-	-	objc
 property	open	boxType	NSBox	-	-	objc
 property	open	branchImage	NSBrowserCell	-	-	objc
@@ -8078,7 +8078,7 @@ property	open	fixesAttributesLazily	NSTextStorage	-	-	objc
 property	open	flatness	NSBezierPath	-	-	objc
 property	shipped	flipped	NSGraphicsContext	-	-	objc
 property	open	flipped	NSRulerView	-	-	objc
-property	open	flipped	NSView	-	-	objc
+property	shipped	flipped	NSView	-	-	objc
 property	open	floatValue	NSCell	-	-	objc
 property	open	floatValue	NSControl	-	-	objc
 property	open	floating	NSTableRowView	-	-	objc
@@ -8117,7 +8117,7 @@ property	open	frame	NSLayoutGuide	-	-	objc
 property	open	frame	NSMediaLibraryBrowserController	-	-	objc
 property	open	frame	NSScreen	-	-	objc
 property	open	frame	NSScrubberLayoutAttributes	-	-	objc
-property	open	frame	NSView	-	-	objc
+property	shipped	frame	NSView	-	-	objc
 property	open	frame	NSWindow	-	-	objc
 property	open	frameAutosaveName	NSWindow	-	-	objc
 property	open	frameCenterRotation	NSView	-	-	objc
@@ -8217,7 +8217,7 @@ property	open	hidden	NSSplitViewItemAccessoryViewController	-	-	objc
 property	open	hidden	NSTableColumn	-	-	objc
 property	open	hidden	NSTitlebarAccessoryViewController	-	-	objc
 property	open	hidden	NSToolbarItem	-	-	objc
-property	open	hidden	NSView	-	-	objc
+property	shipped	hidden	NSView	-	-	objc
 property	open	hiddenOrHasHiddenAncestor	NSMenuItem	-	-	objc
 property	open	hiddenOrHasHiddenAncestor	NSView	-	-	objc
 property	open	hiddenRowIndexes	NSTableView	-	-	objc
@@ -8745,7 +8745,7 @@ property	open	nameFieldLabel	NSSavePanel	-	-	objc
 property	open	nameFieldStringValue	NSSavePanel	-	-	objc
 property	open	navigational	NSToolbarItem	-	-	objc
 property	open	needsDisplay	NSMenuItemCell	-	-	objc
-property	open	needsDisplay	NSView	-	-	objc
+property	shipped	needsDisplay	NSView	-	-	objc
 property	open	needsLayout	NSView	-	-	objc
 property	open	needsPanelToBecomeKey	NSView	-	-	objc
 property	open	needsSizing	NSMenuItemCell	-	-	objc
@@ -9456,9 +9456,9 @@ property	open	substitutionsPanelAccessoryViewController	NSSpellChecker	-	-	objc
 property	open	subtitle	NSMenuItem	-	-	objc
 property	open	subtitle	NSWindow	-	-	objc
 property	open	subtype	NSEvent	-	-	objc
-property	open	subviews	NSView	-	-	objc
+property	shipped	subviews	NSView	-	-	objc
 property	open	supermenu	NSMenu	-	-	objc
-property	open	superview	NSView	-	-	objc
+property	shipped	superview	NSView	-	-	objc
 property	open	supplementariesFollowContentInsets	NSCollectionLayoutSection	-	-	objc
 property	open	supplementaryItems	NSCollectionLayoutGroup	-	-	objc
 property	open	supplementaryItems	NSCollectionLayoutItem	-	-	objc
@@ -9870,7 +9870,7 @@ property	open	visibleFrame	NSScreen	-	-	objc
 property	open	visibleItems	NSToolbar	-	-	objc
 property	open	visibleItemsInvalidationHandler	NSCollectionLayoutSection	-	-	objc
 property	open	visibleRect	NSScrubberLayout	-	-	objc
-property	open	visibleRect	NSView	-	-	objc
+property	shipped	visibleRect	NSView	-	-	objc
 property	open	voiceOverEnabled	NSWorkspace	-	-	objc
 property	open	volume	NSSound	-	-	objc
 property	struck	volume	NSSpeechSynthesizer	-	deprecated	objc
