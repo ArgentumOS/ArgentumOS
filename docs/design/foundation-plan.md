@@ -13062,6 +13062,17 @@ honest figure is **TWELVE selectors**, and the road to it is the measurement:
    with no implementation anywhere fails the build, while the baselined twelve stay visible as the work list
    they are.
 
+**AND THE FIRST VERSION OF THIS REPORT WAS A LIAR, WHICH IS WHY THE TOOL WAS FIXED BEFORE ITS LIST WAS
+ACTED ON.** Two scan rules were wrong and each one invented work that did not exist: **a SELECTOR IS NOT ONE
+IDENTIFIER** (`- (void)insertChild:(id)child atIndex:(NSUInteger)index` was read as `insertChild`, so an
+implemented method looked missing - and a DECLARATION separates its keywords with SPACES, not commas, which
+belong to a call), and **AN INHERITED IMPLEMENTATION COUNTS** (that same method is implemented on the
+ANCESTOR `NSXMLNode`, where the descendant walk could not see it). With both fixed, the list is **SIX**:
+**FIVE WORK ITEMS** - `NSURLSessionWebSocketMessage -type`, and `NSXMLElement`'s `-insertChildren:atIndex:`,
+`-removeChildAtIndex:`, `-replaceChildAtIndex:withNode:`, `-setChildren:` - and **ONE BOUNDARY**, KVO's
+informal `-observeValueForKeyPath:ofObject:change:context:`. Two independent instrument faults produced
+eleven phantom items, and the second one would have had me implement four methods that already existed.
+
 **AND THE REASON THE GAPS FELT LIKE EVERYTHING WAS ONE LINE.** `NSObject -doesNotRecognizeSelector:` did
 `fprintf` + **`abort()`** - the ONLY `abort()` in `userland/Foundation` - so every missing method expressed
 itself as **THE WHOLE GUEST PROCESS DYING**, with a message that named the selector and never the caller, and

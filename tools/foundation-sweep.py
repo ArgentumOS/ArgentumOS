@@ -762,7 +762,44 @@ def families(write=False):
 # or absent, never silently missing".
 UNIMPLEMENTED = os.path.join(ROOT, "docs/reference/foundation-unimplemented.txt")
 
-_METHOD = re.compile(r"^\s*[-+]\s*\([^)]*\)\s*([A-Za-z_]\w*(?::[A-Za-z_]\w*)*)", re.M)
+# A SELECTOR IS NOT ONE IDENTIFIER, and getting this wrong made the first version of this report a liar:
+# `- (void)insertChild:(id)child atIndex:(NSUInteger)index` was read as `insertChild`, so a method that
+# EXISTS looked missing. The scanner below walks the declaration the way the compiler does - an identifier,
+# then either nothing (no arguments) or `:` `(type)` `parameter`, repeated while commas separate the
+# keywords - and joins the keywords with their colons.
+_METHOD_HEAD = re.compile(r"^\s*[-+]\s*\(([^)]*)\)", re.M)
+
+
+def _method_selectors(body):
+    out = set()
+    for head in _METHOD_HEAD.finditer(body):
+        i = head.end()
+        parts = []
+        while True:
+            m = re.match(r"\s*([A-Za-z_]\w*)", body[i:])
+            if m is None:
+                break
+            name = m.group(1)
+            i += m.end()
+            colon = re.match(r"\s*:\s*\(([^)]*)\)", body[i:])
+            if colon is None:
+                if not parts:
+                    out.add(name)
+                break
+            parts.append(name + ":")
+            i += colon.end()
+            param = re.match(r"\s*[A-Za-z_]\w*", body[i:])
+            if param is not None:
+                i += param.end()
+            # A DECLARATION SEPARATES ITS KEYWORDS WITH SPACES, NOT COMMAS (commas belong to a CALL):
+            # `insertChild:(id)child atIndex:(NSUInteger)index`. So the loop continues while another
+            # keyword-and-colon-and-type follows, and stops at the `;`, `{` or `)` that ends the line.
+            nxt = re.match(r"\s*([A-Za-z_]\w*)\s*:\s*\(", body[i:])
+            if nxt is None:
+                break
+        if parts:
+            out.add("".join(parts))
+    return out
 _PROP = re.compile(r"@property\s*\(([^)]*)\)\s*[^;]*?([A-Za-z_]\w*)\s*;")
 _GETTER = re.compile(r"getter\s*=\s*(\w+)")
 _SETTER = re.compile(r"setter\s*=\s*(\w+)")
@@ -783,7 +820,7 @@ def _objc_blocks(text, kind):
         s = re.match(r"\s*:\s*(\w+)", rest)
         if s is not None:
             sup = s.group(1)
-        sels = set(_METHOD.findall(rest))
+        sels = _method_selectors(rest)
         for pm in _PROP.finditer(rest):
             attrs, prop = pm.group(1), pm.group(2)
             g, s = _GETTER.search(attrs), _SETTER.search(attrs)
@@ -831,15 +868,23 @@ def _library_surface():
     return declared, supers, implemented
 
 
-def _descendants(supers, name):
-    """every class that inherits from `name`, however deeply - the class-cluster walk."""
+def _related(supers, name):
+    """`name`, everything that inherits FROM it (a CLASS CLUSTER: NSNumber is abstract and its number
+    classes implement what it declares), and everything it inherits from (an ANCESTOR's implementation is
+    inherited: NSXMLElement declares -insertChild:atIndex: and NSXMLNode implements it). Both directions
+    are needed, and getting only one of them made an implemented method look missing."""
     out = {name}
     changed = True
     while changed:
         changed = False
         for cls, sup in supers.items():
-            if sup in out and cls not in out:
+            if sup in out and cls not in out:      # a descendant
                 out.add(cls)
+                changed = True
+        for cls in list(out):
+            sup = supers.get(cls)
+            if sup and sup not in out:             # an ancestor
+                out.add(sup)
                 changed = True
     return out
 
@@ -863,7 +908,7 @@ def unimplemented(write=False):
     for cls in sorted(declared):
         if cls.startswith("FN") or not cls[0].isupper():
             continue        # a class name is capitalised; anything else is the scan mis-reading a block
-        family = _descendants(supers, cls)
+        family = _related(supers, cls)
         have = set()
         for member in family:
             have |= implemented.get(member, set())
