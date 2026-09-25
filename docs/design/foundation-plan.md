@@ -12823,6 +12823,35 @@ which is the shape slice 6d's misplaced prefetch door had. **W8's remainder is n
 the ubiquitous, thumbnail, quarantine, application and protection masses (about 48 rows) and the four
 measurement debts.**
 
+**SLICE 6F LANDED (2026-09-24): THE KEY MASSES WHOSE SUBJECT THIS SYSTEM DOES NOT HAVE - declared,
+recognised, and ANSWERED BY APPLE'S OWN RULE.** `foundation_keymasses`, **5 checks**, green. 39 key constants
+plus 12 value constants and 4 types: the ubiquitous family (18 keys + the download-status / share-permission /
+share-role values), the thumbnail keys, the file-protection levels, the application keys, and the other
+resource keys (icons, labels, tags, immutability, quarantine, UTI-derived types, generation and document
+identifiers, hidden extension, excluded-from-backup, added-to-directory date).
+
+**THE RULE IS NOT OURS, IT IS APPLE'S GETTER PAGE:** "If this method returns [YES] and the value is populated
+with [nil], it means that the resource property is NOT AVAILABLE for the specified resource, and that no
+errors occurred when determining that the resource property was unavailable." So each key ANSWERS (YES), the
+value is NIL, and there is NO error - and the probe asserts that TRIPLE, because an unavailable property is
+neither an error nor a fabricated value. A ubiquitous item, a thumbnail, a quarantine flag, an icon, a label,
+a UTI, a tag list and a file-protection level are things this system does not have; a program written for
+Apple compiles, asks, and is told.
+
+**AND EXACTLY ONE OF THEM HAS A PLAIN FACT FOR AN ANSWER**, which is the one the others hang from:
+`NSURLIsUbiquitousItemKey` answers **NO** - nothing here is a ubiquitous item, because there is no cloud to be
+ubiquitous WITH. The value constants follow D2 (Apple's names, our strings).
+
+**THE SAME TABLE/CHAIN PAIR THAT SLICE 6E'S PROBE CAUGHT, CAUGHT THIS SLICE TOO - TWICE.** The recognition
+table (`fn_url_answers_key`) and the value chain are two places that must agree, and the first run failed
+every check with "is not a key this library answers". The insertion had missed because the list does not end
+where a reader would guess (a blank line before the closing brace), and the SECOND attempt regenerated the
+list from the LEDGER - which had just been refreshed, so the rows no longer read "open" and only the three
+extra names came back. **The durable way to build that list is from the header's own declarations**, which is
+what the third attempt did; a mechanical edit should read the artifact it is editing, not a derived ledger.
+Also: an identical redeclaration of `NSURLFileProtectionType` (already shipped via NSFileManager.h) is legal,
+and the ledger's own "PRESENT BUT LISTED OPEN" note is what said so.
+
 **SLICE XML-e LANDED (2026-09-24): THE SIX DTD EVENTS, AND THE DOCUMENT THAT KEEPS AND RE-WRITES ITS DTD -
 WHICH MAKES XML COMPLETE.** `foundation_xmldtdparse` is a NEW probe with **8 checks**, green.
 

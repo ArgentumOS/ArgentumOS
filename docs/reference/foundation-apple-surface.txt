@@ -34,8 +34,8 @@
 #   enum       shipped  113   open   30   struck   17
 #   case       shipped  772   open  362   struck  168
 #   func       shipped   72   open   63   struck   54
-#   var        shipped  248   open  313   struck  353
-#   typealias  shipped   36   open   33   struck    7
+#   var        shipped  302   open  259   struck  353
+#   typealias  shipped   42   open   27   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -2329,14 +2329,14 @@ typealias	open	NSTextCheckingKey	NSTextCheckingResult	Fundamentals / Pattern Mat
 typealias	open	NSTextCheckingTypes	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants	-	objc
 typealias	shipped	NSTimeInterval		Fundamentals / Date Representations	-	objc
 typealias	open	NSURLBookmarkFileCreationOptions	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
-typealias	open	NSURLFileProtectionType	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
-typealias	open	NSURLFileProtectionType	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
+typealias	shipped	NSURLFileProtectionType	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
+typealias	shipped	NSURLFileProtectionType	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 typealias	shipped	NSURLFileResourceType	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 typealias	shipped	NSURLResourceKey	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
-typealias	open	NSURLThumbnailDictionaryItem	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys	-	objc
-typealias	open	NSURLUbiquitousItemDownloadingStatus	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-typealias	open	NSURLUbiquitousSharedItemPermissions	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-typealias	open	NSURLUbiquitousSharedItemRole	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+typealias	shipped	NSURLThumbnailDictionaryItem	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys	-	objc
+typealias	shipped	NSURLUbiquitousItemDownloadingStatus	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+typealias	shipped	NSURLUbiquitousSharedItemPermissions	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+typealias	shipped	NSURLUbiquitousSharedItemRole	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 typealias	open	NSUncaughtExceptionHandler	NSException	App Support / Exceptions / Related Types	-	objc
 typealias	open	NSUndoManagerUserInfoKey	NSUndoManager	App Support / Undo / Working with user info	-	objc
 typealias	open	NSUserActivityPersistentIdentifier	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
@@ -3032,8 +3032,8 @@ var	struck	NSThreadWillExitNotification	NSThread	Low-Level Utilities / Threads a
 var	struck	NSThumbnail1024x1024SizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys / Constants	deprecated	objc
 var	struck	NSTimeDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSTimeFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSURLAddedToDirectoryDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLApplicationIsScriptableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Application keys	-	objc
+var	shipped	NSURLAddedToDirectoryDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLApplicationIsScriptableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Application keys	-	objc
 var	shipped	NSURLAttributeModificationDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLAuthenticationMethodClientCertificate	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Session-wide authentication challenges	-	objc
 var	shipped	NSURLAuthenticationMethodDefault	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Task-specific authentication challenges	-	objc
@@ -3046,15 +3046,15 @@ var	shipped	NSURLAuthenticationMethodServerTrust	NSURLProtectionSpace	Networking
 var	shipped	NSURLCanonicalPathKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLContentAccessDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLContentModificationDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLContentTypeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLCreationDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLContentTypeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLCreationDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	struck	NSURLCredentialStorageChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
 var	struck	NSURLCredentialStorageChangedNotification	NSURLCredentialStorage	Networking / Authentication and credentials / Tracking credential storage changes	deprecated	swift-page
 var	open	NSURLCredentialStorageRemoveSynchronizableCredentials	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials / Options	-	objc
-var	open	NSURLCustomIconKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLCustomIconKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	open	NSURLDirectoryEntryCountKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Directory keys	-	objc
-var	open	NSURLDocumentIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLEffectiveIconKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLDocumentIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLEffectiveIconKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLErrorBackgroundTaskCancelledReasonKey		Networking / Errors / Keys	-	objc
 var	shipped	NSURLErrorBackgroundTaskCancelledReasonKey	NSURLSession	Networking / Essentials / Handling errors / User info dictionary keys	-	objc
 var	shipped	NSURLErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
@@ -3066,17 +3066,17 @@ var	shipped	NSURLErrorNetworkUnavailableReasonKey		Networking / Errors / Keys	-	
 var	shipped	NSURLFileAllocatedSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	open	NSURLFileContentIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLFileIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
-var	open	NSURLFileProtectionComplete	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Protection levels	-	objc
-var	open	NSURLFileProtectionComplete	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys / Protection levels	-	objc
-var	open	NSURLFileProtectionCompleteUnlessOpen	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Protection levels	-	objc
-var	open	NSURLFileProtectionCompleteUnlessOpen	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys / Protection levels	-	objc
-var	open	NSURLFileProtectionCompleteUntilFirstUserAuthentication	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Protection levels	-	objc
-var	open	NSURLFileProtectionCompleteUntilFirstUserAuthentication	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys / Protection levels	-	objc
-var	open	NSURLFileProtectionCompleteWhenUserInactive	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Protection levels	-	objc
-var	open	NSURLFileProtectionCompleteWhenUserInactive	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys / Protection levels	-	objc
-var	open	NSURLFileProtectionKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
-var	open	NSURLFileProtectionNone	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Protection levels	-	objc
-var	open	NSURLFileProtectionNone	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys / Protection levels	-	objc
+var	shipped	NSURLFileProtectionComplete	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Protection levels	-	objc
+var	shipped	NSURLFileProtectionComplete	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys / Protection levels	-	objc
+var	shipped	NSURLFileProtectionCompleteUnlessOpen	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Protection levels	-	objc
+var	shipped	NSURLFileProtectionCompleteUnlessOpen	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys / Protection levels	-	objc
+var	shipped	NSURLFileProtectionCompleteUntilFirstUserAuthentication	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Protection levels	-	objc
+var	shipped	NSURLFileProtectionCompleteUntilFirstUserAuthentication	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys / Protection levels	-	objc
+var	shipped	NSURLFileProtectionCompleteWhenUserInactive	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Protection levels	-	objc
+var	shipped	NSURLFileProtectionCompleteWhenUserInactive	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys / Protection levels	-	objc
+var	shipped	NSURLFileProtectionKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
+var	shipped	NSURLFileProtectionNone	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Protection levels	-	objc
+var	shipped	NSURLFileProtectionNone	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys / Protection levels	-	objc
 var	shipped	NSURLFileResourceIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLFileResourceTypeBlockSpecial	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys / Constants	-	objc
 var	shipped	NSURLFileResourceTypeCharacterSpecial	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys / Constants	-	objc
@@ -3090,12 +3090,12 @@ var	shipped	NSURLFileResourceTypeUnknown	NSURL	Fundamentals / URLs / Accessing R
 var	open	NSURLFileScheme	NSURL	Fundamentals / URLs / Constants / Constants	-	objc
 var	open	NSURLFileSecurityKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLFileSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
-var	open	NSURLGenerationIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLHasHiddenExtensionKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLGenerationIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLHasHiddenExtensionKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	open	NSURLIsAliasFileKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	open	NSURLIsApplicationKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Application keys	-	objc
 var	shipped	NSURLIsDirectoryKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Directory keys	-	objc
-var	open	NSURLIsExcludedFromBackupKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLIsExcludedFromBackupKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLIsExecutableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLIsHiddenKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	open	NSURLIsMountTriggerKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
@@ -3105,18 +3105,18 @@ var	shipped	NSURLIsReadableKey	NSURL	Fundamentals / URLs / Accessing Resource Va
 var	shipped	NSURLIsRegularFileKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	open	NSURLIsSparseKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLIsSymbolicLinkKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLIsSystemImmutableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLIsUbiquitousItemKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLIsUserImmutableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLIsSystemImmutableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLIsUbiquitousItemKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLIsUserImmutableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLIsVolumeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	shipped	NSURLIsWritableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLKeysOfUnsetValuesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLLabelColorKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLLabelNumberKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLLabelColorKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLLabelNumberKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLLinkCountKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLLocalizedLabelKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLLocalizedLabelKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLLocalizedNameKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLLocalizedTypeDescriptionKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLLocalizedTypeDescriptionKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	open	NSURLMayHaveExtendedAttributesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	open	NSURLMayShareFileContentKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLNameKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
@@ -3130,46 +3130,46 @@ var	shipped	NSURLProtectionSpaceHTTPProxy	NSURLProtectionSpace	Networking / Auth
 var	shipped	NSURLProtectionSpaceHTTPS	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Protocol types	-	objc
 var	shipped	NSURLProtectionSpaceHTTPSProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	-	objc
 var	shipped	NSURLProtectionSpaceSOCKSProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	-	objc
-var	open	NSURLQuarantinePropertiesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLQuarantinePropertiesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	open	NSURLSessionDownloadTaskResumeData	NSURLSession	Networking / Essentials / Handling errors / User info dictionary keys	-	objc
 var	open	NSURLSessionTaskPriorityDefault	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc
 var	open	NSURLSessionTaskPriorityHigh	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc
 var	open	NSURLSessionTaskPriorityLow	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc
 var	open	NSURLSessionTransferSizeUnknown	NSURLSessionTask	Networking / Essentials / Obtaining task progress	-	objc
 var	open	NSURLSessionUploadTaskResumeData		Reference / Constants	-	objc
-var	open	NSURLTagNamesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
+var	shipped	NSURLTagNamesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	struck	NSURLThumbnailDictionaryKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys	deprecated	objc
 var	struck	NSURLThumbnailKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys	deprecated	objc
 var	shipped	NSURLTotalFileAllocatedSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLTotalFileSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	struck	NSURLTypeIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	deprecated	objc
-var	open	NSURLUbiquitousItemContainerDisplayNameKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousItemDownloadRequestedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousItemDownloadingErrorKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousItemDownloadingStatusCurrent	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
-var	open	NSURLUbiquitousItemDownloadingStatusDownloaded	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
-var	open	NSURLUbiquitousItemDownloadingStatusKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousItemDownloadingStatusNotDownloaded	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
-var	open	NSURLUbiquitousItemHasUnresolvedConflictsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousItemContainerDisplayNameKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousItemDownloadRequestedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousItemDownloadingErrorKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousItemDownloadingStatusCurrent	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
+var	shipped	NSURLUbiquitousItemDownloadingStatusDownloaded	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
+var	shipped	NSURLUbiquitousItemDownloadingStatusKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousItemDownloadingStatusNotDownloaded	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
+var	shipped	NSURLUbiquitousItemHasUnresolvedConflictsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	struck	NSURLUbiquitousItemIsDownloadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Deprecated	deprecated	objc
-var	open	NSURLUbiquitousItemIsDownloadingKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousItemIsExcludedFromSyncKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousItemIsSharedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousItemIsSyncPausedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousItemIsUploadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousItemIsUploadingKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousItemIsDownloadingKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousItemIsExcludedFromSyncKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousItemIsSharedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousItemIsSyncPausedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousItemIsUploadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousItemIsUploadingKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	struck	NSURLUbiquitousItemPercentDownloadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Deprecated	deprecated	objc
 var	struck	NSURLUbiquitousItemPercentUploadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Deprecated	deprecated	objc
-var	open	NSURLUbiquitousItemSupportedSyncControlsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousItemUploadingErrorKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousSharedItemCurrentUserPermissionsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousSharedItemCurrentUserRoleKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousSharedItemMostRecentEditorNameComponentsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousSharedItemOwnerNameComponentsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousSharedItemPermissionsReadOnly	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
-var	open	NSURLUbiquitousSharedItemPermissionsReadWrite	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
-var	open	NSURLUbiquitousSharedItemRoleOwner	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
-var	open	NSURLUbiquitousSharedItemRoleParticipant	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
+var	shipped	NSURLUbiquitousItemSupportedSyncControlsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousItemUploadingErrorKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousSharedItemCurrentUserPermissionsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousSharedItemCurrentUserRoleKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousSharedItemMostRecentEditorNameComponentsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousSharedItemOwnerNameComponentsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
+var	shipped	NSURLUbiquitousSharedItemPermissionsReadOnly	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
+var	shipped	NSURLUbiquitousSharedItemPermissionsReadWrite	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
+var	shipped	NSURLUbiquitousSharedItemRoleOwner	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
+var	shipped	NSURLUbiquitousSharedItemRoleParticipant	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
 var	open	NSURLVolumeAvailableCapacityForImportantUsageKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume capacity keys	-	objc
 var	open	NSURLVolumeAvailableCapacityForOpportunisticUsageKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume capacity keys	-	objc
 var	shipped	NSURLVolumeAvailableCapacityKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume capacity keys	-	objc

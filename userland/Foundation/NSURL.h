@@ -311,6 +311,104 @@ NSURL * _Nullable FNURLResolveRelative(NSString *reference, NSString * _Nullable
  * the security-scope machinery this system does not have — but the TYPES are Apple's
  * API and cost nothing to declare, so a program that names them compiles. Names from
  * Apple's documentation index; values are ours (§11.6.1 D2, see NSFileManager.h). */
+
+/* ---- THE KEY MASSES WHOSE SUBJECT THIS SYSTEM DOES NOT HAVE (W8p, slice 6f) ------------------------
+
+ *
+ * THESE ARE DECLARED AND THEY ARE RECOGNISED, AND THE ANSWER THEY GET IS APPLE'S OWN: the getter's page says
+ * "If this method returns [YES] and the value is populated with [nil], it means that the resource property is
+ * NOT AVAILABLE for the specified resource, and that no errors occurred when determining that the resource
+ * property was unavailable." A ubiquitous item, a thumbnail, a quarantine flag, an icon, a label, a UTI, a
+ * tag list and a file-protection level are things this system does not have, so their keys are ANSWERED NIL -
+ * which is not the same as an error and not the same as a fabricated value. A program written for Apple
+ * compiles, asks, and is told the truth.
+ *
+ * EXACTLY ONE OF THEM HAS A PLAIN FACT FOR AN ANSWER, and it is the one the others hang from:
+ * `NSURLIsUbiquitousItemKey` answers NO - the item is not a ubiquitous item, because there is no cloud to be
+ * ubiquitous WITH - so a caller can ask that question and get an answer rather than an absence.
+ *
+ * AND THE VALUES ARE OURS IN NUMBER (§11.6.1 D2): the names are Apple's, and the string values are the names
+ * themselves, this library's standing spelling (the same rule NSFileManager's and NSXMLParser's constants
+ * follow). */
+/* THE TYPES THE VALUES BELOW ARE SPELLED WITH. Apple publishes some of them in the families this slice also
+ * closes, so they are declared here with the values that use them rather than left to an earlier group. */
+typedef NSString *NSURLFileProtectionType;	/* the protection LEVELS’ type */
+
+
+
+
+/* ---- THE KEY MASSES WHOSE SUBJECT THIS SYSTEM DOES NOT HAVE (W8p, slice 6f) ------------------------
+ *
+ * THESE ARE DECLARED AND RECOGNISED, AND THE ANSWER THEY GET IS APPLE'S OWN: the getter's page says "If this
+ * method returns [YES] and the value is populated with [nil], it means that the resource property is NOT
+ * AVAILABLE for the specified resource, and that no errors occurred when determining that the resource
+ * property was unavailable." A ubiquitous item, a thumbnail, a quarantine flag, an icon, a label, a UTI, a
+ * tag list and a file-protection level are things this system does not have, so their keys are ANSWERED NIL -
+ * which is neither an error nor a fabricated value. A program written for Apple compiles, asks, and is told.
+ *
+ * EXACTLY ONE HAS A PLAIN FACT FOR AN ANSWER, and it is the one the others hang from:
+ * `NSURLIsUbiquitousItemKey` answers NO - nothing here is a ubiquitous item, because there is no cloud to be
+ * ubiquitous WITH.
+ *
+ * AND THE VALUES ARE OURS IN NUMBER (§11.6.1 D2): the names are Apple's and the strings are the names, this
+ * library's standing spelling for a constant whose name is published and whose value is not.
+ */
+typedef NSString *NSURLThumbnailDictionaryItem;
+typedef NSString *NSURLUbiquitousItemDownloadingStatus;
+typedef NSString *NSURLUbiquitousSharedItemPermissions;
+typedef NSString *NSURLUbiquitousSharedItemRole;
+extern NSURLResourceKey const NSURLAddedToDirectoryDateKey;
+extern NSURLResourceKey const NSURLApplicationIsScriptableKey;
+extern NSURLResourceKey const NSURLContentTypeKey;
+extern NSURLResourceKey const NSURLCreationDateKey;
+extern NSURLResourceKey const NSURLCustomIconKey;
+extern NSURLResourceKey const NSURLDocumentIdentifierKey;
+extern NSURLResourceKey const NSURLEffectiveIconKey;
+extern NSURLResourceKey const NSURLGenerationIdentifierKey;
+extern NSURLResourceKey const NSURLHasHiddenExtensionKey;
+extern NSURLResourceKey const NSURLIsExcludedFromBackupKey;
+extern NSURLResourceKey const NSURLIsSystemImmutableKey;
+extern NSURLResourceKey const NSURLThumbnailDictionaryKey;
+extern NSURLResourceKey const NSURLThumbnailKey;
+extern NSURLResourceKey const NSURLFileProtectionKey;
+extern NSURLResourceKey const NSURLIsUbiquitousItemKey;
+extern NSURLResourceKey const NSURLIsUserImmutableKey;
+extern NSURLResourceKey const NSURLLabelColorKey;
+extern NSURLResourceKey const NSURLLabelNumberKey;
+extern NSURLResourceKey const NSURLLocalizedLabelKey;
+extern NSURLResourceKey const NSURLLocalizedTypeDescriptionKey;
+extern NSURLResourceKey const NSURLQuarantinePropertiesKey;
+extern NSURLResourceKey const NSURLTagNamesKey;
+extern NSURLResourceKey const NSURLUbiquitousItemContainerDisplayNameKey;
+extern NSURLResourceKey const NSURLUbiquitousItemDownloadRequestedKey;
+extern NSURLResourceKey const NSURLUbiquitousItemDownloadingErrorKey;
+extern NSURLResourceKey const NSURLUbiquitousItemDownloadingStatusKey;
+extern NSURLResourceKey const NSURLUbiquitousItemHasUnresolvedConflictsKey;
+extern NSURLResourceKey const NSURLUbiquitousItemIsDownloadingKey;
+extern NSURLResourceKey const NSURLUbiquitousItemIsExcludedFromSyncKey;
+extern NSURLResourceKey const NSURLUbiquitousItemIsSharedKey;
+extern NSURLResourceKey const NSURLUbiquitousItemIsSyncPausedKey;
+extern NSURLResourceKey const NSURLUbiquitousItemIsUploadedKey;
+extern NSURLResourceKey const NSURLUbiquitousItemIsUploadingKey;
+extern NSURLResourceKey const NSURLUbiquitousItemSupportedSyncControlsKey;
+extern NSURLResourceKey const NSURLUbiquitousItemUploadingErrorKey;
+extern NSURLResourceKey const NSURLUbiquitousSharedItemCurrentUserPermissionsKey;
+extern NSURLResourceKey const NSURLUbiquitousSharedItemCurrentUserRoleKey;
+extern NSURLResourceKey const NSURLUbiquitousSharedItemMostRecentEditorNameComponentsKey;
+extern NSURLResourceKey const NSURLUbiquitousSharedItemOwnerNameComponentsKey;
+extern NSURLFileProtectionType const NSURLFileProtectionComplete;
+extern NSURLFileProtectionType const NSURLFileProtectionCompleteUnlessOpen;
+extern NSURLFileProtectionType const NSURLFileProtectionCompleteUntilFirstUserAuthentication;
+extern NSURLFileProtectionType const NSURLFileProtectionCompleteWhenUserInactive;
+extern NSURLFileProtectionType const NSURLFileProtectionNone;
+extern NSURLUbiquitousItemDownloadingStatus const NSURLUbiquitousItemDownloadingStatusCurrent;
+extern NSURLUbiquitousItemDownloadingStatus const NSURLUbiquitousItemDownloadingStatusDownloaded;
+extern NSURLUbiquitousItemDownloadingStatus const NSURLUbiquitousItemDownloadingStatusNotDownloaded;
+extern NSURLUbiquitousSharedItemPermissions const NSURLUbiquitousSharedItemPermissionsReadOnly;
+extern NSURLUbiquitousSharedItemPermissions const NSURLUbiquitousSharedItemPermissionsReadWrite;
+extern NSURLUbiquitousSharedItemRole const NSURLUbiquitousSharedItemRoleOwner;
+extern NSURLUbiquitousSharedItemRole const NSURLUbiquitousSharedItemRoleParticipant;
+
 typedef enum {
 	NSURLBookmarkCreationMinimalBookmark = 1 << 0,
 	NSURLBookmarkCreationSuitableForBookmarkFile = 1 << 1,

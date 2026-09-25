@@ -557,6 +557,62 @@ NSURLResourceKey const NSURLVolumeResourceCountKey = @"NSURLVolumeResourceCountK
 NSURLResourceKey const NSURLVolumeSupportsVolumeSizesKey = @"NSURLVolumeSupportsVolumeSizesKey";
 NSURLResourceKey const NSURLVolumeIsMountTriggerKey = @"NSURLVolumeIsMountTriggerKey";
 NSURLResourceKey const NSURLIsVolumeKey = @"NSURLIsVolumeKey";
+/* THE KEY MASSES WHOSE SUBJECT THIS SYSTEM DOES NOT HAVE (slice 6f): declared, recognised, answered nil -
+ * Apple's own "not available for this resource" - with one plain fact among them. */
+NSURLResourceKey const NSURLAddedToDirectoryDateKey = @"NSURLAddedToDirectoryDateKey";
+NSURLResourceKey const NSURLApplicationIsScriptableKey = @"NSURLApplicationIsScriptableKey";
+NSURLResourceKey const NSURLContentTypeKey = @"NSURLContentTypeKey";
+NSURLResourceKey const NSURLCreationDateKey = @"NSURLCreationDateKey";
+NSURLResourceKey const NSURLCustomIconKey = @"NSURLCustomIconKey";
+NSURLResourceKey const NSURLDocumentIdentifierKey = @"NSURLDocumentIdentifierKey";
+NSURLResourceKey const NSURLEffectiveIconKey = @"NSURLEffectiveIconKey";
+NSURLResourceKey const NSURLGenerationIdentifierKey = @"NSURLGenerationIdentifierKey";
+NSURLResourceKey const NSURLHasHiddenExtensionKey = @"NSURLHasHiddenExtensionKey";
+NSURLResourceKey const NSURLIsExcludedFromBackupKey = @"NSURLIsExcludedFromBackupKey";
+NSURLResourceKey const NSURLIsSystemImmutableKey = @"NSURLIsSystemImmutableKey";
+NSURLResourceKey const NSURLThumbnailDictionaryKey = @"NSURLThumbnailDictionaryKey";
+NSURLResourceKey const NSURLThumbnailKey = @"NSURLThumbnailKey";
+NSURLResourceKey const NSURLFileProtectionKey = @"NSURLFileProtectionKey";
+NSURLResourceKey const NSURLIsUbiquitousItemKey = @"NSURLIsUbiquitousItemKey";
+NSURLResourceKey const NSURLIsUserImmutableKey = @"NSURLIsUserImmutableKey";
+NSURLResourceKey const NSURLLabelColorKey = @"NSURLLabelColorKey";
+NSURLResourceKey const NSURLLabelNumberKey = @"NSURLLabelNumberKey";
+NSURLResourceKey const NSURLLocalizedLabelKey = @"NSURLLocalizedLabelKey";
+NSURLResourceKey const NSURLLocalizedTypeDescriptionKey = @"NSURLLocalizedTypeDescriptionKey";
+NSURLResourceKey const NSURLQuarantinePropertiesKey = @"NSURLQuarantinePropertiesKey";
+NSURLResourceKey const NSURLTagNamesKey = @"NSURLTagNamesKey";
+NSURLResourceKey const NSURLUbiquitousItemContainerDisplayNameKey = @"NSURLUbiquitousItemContainerDisplayNameKey";
+NSURLResourceKey const NSURLUbiquitousItemDownloadRequestedKey = @"NSURLUbiquitousItemDownloadRequestedKey";
+NSURLResourceKey const NSURLUbiquitousItemDownloadingErrorKey = @"NSURLUbiquitousItemDownloadingErrorKey";
+NSURLResourceKey const NSURLUbiquitousItemDownloadingStatusKey = @"NSURLUbiquitousItemDownloadingStatusKey";
+NSURLResourceKey const NSURLUbiquitousItemHasUnresolvedConflictsKey = @"NSURLUbiquitousItemHasUnresolvedConflictsKey";
+NSURLResourceKey const NSURLUbiquitousItemIsDownloadingKey = @"NSURLUbiquitousItemIsDownloadingKey";
+NSURLResourceKey const NSURLUbiquitousItemIsExcludedFromSyncKey = @"NSURLUbiquitousItemIsExcludedFromSyncKey";
+NSURLResourceKey const NSURLUbiquitousItemIsSharedKey = @"NSURLUbiquitousItemIsSharedKey";
+NSURLResourceKey const NSURLUbiquitousItemIsSyncPausedKey = @"NSURLUbiquitousItemIsSyncPausedKey";
+NSURLResourceKey const NSURLUbiquitousItemIsUploadedKey = @"NSURLUbiquitousItemIsUploadedKey";
+NSURLResourceKey const NSURLUbiquitousItemIsUploadingKey = @"NSURLUbiquitousItemIsUploadingKey";
+NSURLResourceKey const NSURLUbiquitousItemSupportedSyncControlsKey = @"NSURLUbiquitousItemSupportedSyncControlsKey";
+NSURLResourceKey const NSURLUbiquitousItemUploadingErrorKey = @"NSURLUbiquitousItemUploadingErrorKey";
+NSURLResourceKey const NSURLUbiquitousSharedItemCurrentUserPermissionsKey = @"NSURLUbiquitousSharedItemCurrentUserPermissionsKey";
+NSURLResourceKey const NSURLUbiquitousSharedItemCurrentUserRoleKey = @"NSURLUbiquitousSharedItemCurrentUserRoleKey";
+NSURLResourceKey const NSURLUbiquitousSharedItemMostRecentEditorNameComponentsKey = @"NSURLUbiquitousSharedItemMostRecentEditorNameComponentsKey";
+NSURLResourceKey const NSURLUbiquitousSharedItemOwnerNameComponentsKey = @"NSURLUbiquitousSharedItemOwnerNameComponentsKey";
+NSURLFileProtectionType const NSURLFileProtectionComplete = @"NSURLFileProtectionComplete";
+NSURLFileProtectionType const NSURLFileProtectionCompleteUnlessOpen = @"NSURLFileProtectionCompleteUnlessOpen";
+NSURLFileProtectionType const NSURLFileProtectionCompleteUntilFirstUserAuthentication = @"NSURLFileProtectionCompleteUntilFirstUserAuthentication";
+NSURLFileProtectionType const NSURLFileProtectionCompleteWhenUserInactive = @"NSURLFileProtectionCompleteWhenUserInactive";
+NSURLFileProtectionType const NSURLFileProtectionNone = @"NSURLFileProtectionNone";
+NSURLUbiquitousItemDownloadingStatus const NSURLUbiquitousItemDownloadingStatusCurrent = @"NSURLUbiquitousItemDownloadingStatusCurrent";
+NSURLUbiquitousItemDownloadingStatus const NSURLUbiquitousItemDownloadingStatusDownloaded = @"NSURLUbiquitousItemDownloadingStatusDownloaded";
+NSURLUbiquitousItemDownloadingStatus const NSURLUbiquitousItemDownloadingStatusNotDownloaded = @"NSURLUbiquitousItemDownloadingStatusNotDownloaded";
+NSURLUbiquitousSharedItemPermissions const NSURLUbiquitousSharedItemPermissionsReadOnly = @"NSURLUbiquitousSharedItemPermissionsReadOnly";
+NSURLUbiquitousSharedItemPermissions const NSURLUbiquitousSharedItemPermissionsReadWrite = @"NSURLUbiquitousSharedItemPermissionsReadWrite";
+NSURLUbiquitousSharedItemRole const NSURLUbiquitousSharedItemRoleOwner = @"NSURLUbiquitousSharedItemRoleOwner";
+NSURLUbiquitousSharedItemRole const NSURLUbiquitousSharedItemRoleParticipant = @"NSURLUbiquitousSharedItemRoleParticipant";
+/* THE KEY MASSES WHOSE SUBJECT THIS SYSTEM DOES NOT HAVE (slice 6f): declared, recognised, and answered nil
+ * - Apple's own "not available for this resource" - with one plain fact among them. */
+
 
 NSURLFileResourceType const NSURLFileResourceTypeRegular = @"NSURLFileResourceTypeRegular";
 NSURLFileResourceType const NSURLFileResourceTypeDirectory = @"NSURLFileResourceTypeDirectory";
@@ -734,6 +790,51 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 		@"NSURLVolumeURLKey", @"NSURLVolumeTypeNameKey", @"NSURLVolumeIsRootFileSystemKey",
 		@"NSURLVolumeResourceCountKey", @"NSURLVolumeSupportsVolumeSizesKey",
 		@"NSURLVolumeIsMountTriggerKey", @"NSURLIsVolumeKey",
+		@"NSURLAddedToDirectoryDateKey",
+		@"NSURLApplicationIsScriptableKey",
+		@"NSURLContentTypeKey",
+		@"NSURLCreationDateKey",
+		@"NSURLCustomIconKey",
+		@"NSURLDocumentIdentifierKey",
+		@"NSURLEffectiveIconKey",
+		@"NSURLGenerationIdentifierKey",
+		@"NSURLHasHiddenExtensionKey",
+		@"NSURLIsExcludedFromBackupKey",
+		@"NSURLIsSystemImmutableKey",
+		@"NSURLIsUbiquitousItemKey",
+		@"NSURLIsUserImmutableKey",
+		@"NSURLLabelColorKey",
+		@"NSURLLabelNumberKey",
+		@"NSURLLocalizedLabelKey",
+		@"NSURLLocalizedTypeDescriptionKey",
+		@"NSURLQuarantinePropertiesKey",
+		@"NSURLTagNamesKey",
+		@"NSURLUbiquitousItemContainerDisplayNameKey",
+		@"NSURLUbiquitousItemDownloadRequestedKey",
+		@"NSURLUbiquitousItemDownloadingErrorKey",
+		@"NSURLUbiquitousItemDownloadingStatusKey",
+		@"NSURLUbiquitousItemHasUnresolvedConflictsKey",
+		@"NSURLUbiquitousItemIsDownloadingKey",
+		@"NSURLUbiquitousItemIsExcludedFromSyncKey",
+		@"NSURLUbiquitousItemIsSharedKey",
+		@"NSURLUbiquitousItemIsSyncPausedKey",
+		@"NSURLUbiquitousItemIsUploadedKey",
+		@"NSURLUbiquitousItemIsUploadingKey",
+		@"NSURLUbiquitousItemSupportedSyncControlsKey",
+		@"NSURLUbiquitousItemUploadingErrorKey",
+		@"NSURLUbiquitousSharedItemCurrentUserPermissionsKey",
+		@"NSURLUbiquitousSharedItemCurrentUserRoleKey",
+		@"NSURLUbiquitousSharedItemMostRecentEditorNameComponentsKey",
+		@"NSURLUbiquitousSharedItemOwnerNameComponentsKey",
+		/* THE KEY MASSES WHOSE SUBJECT THIS SYSTEM DOES NOT HAVE (slice 6f): recognised HERE, and answered
+		 * nil by the value chain - which is Apple's own "not available for this resource" and NOT an error.
+		 * (The same table/chain pair that slice 6e's probe caught; this time the entries are inserted where
+		 * the list actually ends, which is the lesson in miniature.) */
+		@"NSURLFileProtectionKey",
+		@"NSURLIsApplicationKey",
+		@"NSURLThumbnailDictionaryKey",
+		@"NSURLThumbnailKey",
+
 	};
 	size_t i;
 
@@ -823,6 +924,11 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 		 * ext2, FAT, iso9660, proc, devfs and devpts, and there is no network file system client at
 		 * all - so this is YES as a fact about the system rather than a guess about the volume. */
 		return [NSNumber numberWithBool:YES];
+	}
+	/* THE ONE PLAIN FACT IN THE MASSES (slice 6f): this system has no cloud, so nothing here is a
+	 * ubiquitous item - an answer rather than an absence. */
+	if ([key isEqual:NSURLIsUbiquitousItemKey]) {
+		return [NSNumber numberWithBool:NO];
 	}
 	if ([key isEqual:NSURLVolumeIsReadOnlyKey] ||
 	    [key isEqual:NSURLVolumeNameKey] || [key isEqual:NSURLVolumeLocalizedNameKey] ||
