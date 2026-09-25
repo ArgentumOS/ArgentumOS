@@ -12972,6 +12972,24 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §61.3 — W10 SLICE 4, FIRST HALF: THE MODERN FAMILIES' CONSTANTS (2026-09-24)
+
+**THE 44 OPEN ROWS OF THIS CLASS ARE 4 ENUMS (25 CASES) AND 15 ATTRIBUTE-NAME CONSTANTS, AND THEY ARE NOW
+DECLARED** - the presentation-intent kinds and their column alignments, the inline presentation intents, the
+formatting options, and the attribute names for language, morphology, inflection, markdown source position,
+list delimiters, localized number formats, replacement indexes, alternate descriptions and image URLs.
+
+**THE NAMES ARE APPLE'S AND THE VALUES ARE OURS**, which is the recorded finding this library works under
+(§11.6.1 D2): Apple publishes the CASE NAMES and neither the numbers nor a stable order, and the constants'
+strings are their own names here. **AND THE BEHAVIOUR BEHIND THE FAMILIES IS NAMED AS ABSENT RATHER THAN
+IMPLIED**: a markdown importer, the grammar-agreement engine and the presentation-intent OBJECT graph are each
+a text subsystem of their own; this half ships the vocabulary they are spoken with, so a conforming program
+compiles and the absence is visible where it is asked for.
+
+**THE SECOND HALF IS THE FILE-FORMAT DOORS** (RTF/RTFD/HTML/docFormat), which §61 says should be DECLARED and
+REFUSE BY NAME - the probe currently asserts their absence, which is the honest v1 and the thing to change
+when they land.
+
 ## §61.2 — W10 SLICE 3 (CODING) LANDED WITH A MEASURED BOUNDARY (2026-09-24)
 
 `NSAttributedString` now declares and implements `NSCoding` and `NSSecureCoding`: `-encodeWithCoder:` carries

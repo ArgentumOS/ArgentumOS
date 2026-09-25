@@ -90,6 +90,24 @@ static NSString *fn_plist_offender(id object)
 
 @implementation NSAttributedString
 
+/* ---- THE MODERN FAMILIES' CONSTANTS (W10 slice 4): names Apple publishes, values ours (§11.6.1 D2). */
+NSAttributedStringKey const NSAlternateDescriptionAttributeName = @"NSAlternateDescriptionAttributeName";
+NSAttributedStringKey const NSImageURLAttributeName = @"NSImageURLAttributeName";
+NSAttributedStringKey const NSInflectionAgreementArgumentAttributeName = @"NSInflectionAgreementArgumentAttributeName";
+NSAttributedStringKey const NSInflectionAgreementConceptAttributeName = @"NSInflectionAgreementConceptAttributeName";
+NSAttributedStringKey const NSInflectionAlternativeAttributeName = @"NSInflectionAlternativeAttributeName";
+NSAttributedStringKey const NSInflectionReferentConceptAttributeName = @"NSInflectionReferentConceptAttributeName";
+NSAttributedStringKey const NSInflectionRuleAttributeName = @"NSInflectionRuleAttributeName";
+NSAttributedStringKey const NSInlinePresentationIntentAttributeName = @"NSInlinePresentationIntentAttributeName";
+NSAttributedStringKey const NSLanguageIdentifierAttributeName = @"NSLanguageIdentifierAttributeName";
+NSAttributedStringKey const NSListItemDelimiterAttributeName = @"NSListItemDelimiterAttributeName";
+NSAttributedStringKey const NSLocalizedNumberFormatAttributeName = @"NSLocalizedNumberFormatAttributeName";
+NSAttributedStringKey const NSMarkdownSourcePositionAttributeName = @"NSMarkdownSourcePositionAttributeName";
+NSAttributedStringKey const NSMorphologyAttributeName = @"NSMorphologyAttributeName";
+NSAttributedStringKey const NSPresentationIntentAttributeName = @"NSPresentationIntentAttributeName";
+NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementIndexAttributeName";
+
+
 - (instancetype)initWithString:(NSString *)str
 {
 	return [self initWithString:str attributes:nil];

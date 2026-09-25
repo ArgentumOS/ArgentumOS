@@ -31,10 +31,10 @@
 #   class      shipped  165   open   31   struck   77
 #   protocol   shipped   23   open    8   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped  114   open   29   struck   17
-#   case       shipped  774   open  360   struck  168
+#   enum       shipped  119   open   24   struck   17
+#   case       shipped  811   open  323   struck  168
 #   func       shipped   72   open   63   struck   54
-#   var        shipped  320   open  241   struck  353
+#   var        shipped  335   open  226   struck  353
 #   typealias  shipped   43   open   26   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -100,8 +100,8 @@ case	struck	NSArgumentsWrongScriptError	NSScriptCommand	App Support / Script Com
 case	struck	NSAtomicWrite	NSData	Fundamentals / Binary Data / Writing Data to a File / Legacy Constants	deprecated	objc
 case	shipped	NSAttributedStringEnumerationLongestEffectiveRangeNotRequired	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text / Getting the enumeration options	-	objc
 case	shipped	NSAttributedStringEnumerationReverse	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text / Getting the enumeration options	-	objc
-case	open	NSAttributedStringFormattingApplyReplacementIndexAttribute	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string / Getting the formatting options	-	objc
-case	open	NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string / Getting the formatting options	-	objc
+case	shipped	NSAttributedStringFormattingApplyReplacementIndexAttribute	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string / Getting the formatting options	-	objc
+case	shipped	NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string / Getting the formatting options	-	objc
 case	open	NSAttributedStringMarkdownInterpretedSyntaxFull	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Syntax Values	-	objc
 case	open	NSAttributedStringMarkdownInterpretedSyntaxInlineOnly	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Syntax Values	-	objc
 case	open	NSAttributedStringMarkdownInterpretedSyntaxInlineOnlyPreservingWhitespace	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Syntax Values	-	objc
@@ -526,14 +526,14 @@ case	open	NSISOLatin1StringEncoding	NSString	Fundamentals / Strings / Working wi
 case	open	NSISOLatin2StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSInPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	struck	NSIndexSubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
-case	open	NSInlinePresentationIntentBlockHTML	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
-case	open	NSInlinePresentationIntentCode	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
-case	open	NSInlinePresentationIntentEmphasized	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
-case	open	NSInlinePresentationIntentInlineHTML	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
-case	open	NSInlinePresentationIntentLineBreak	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
-case	open	NSInlinePresentationIntentSoftBreak	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
-case	open	NSInlinePresentationIntentStrikethrough	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
-case	open	NSInlinePresentationIntentStronglyEmphasized	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
+case	shipped	NSInlinePresentationIntentBlockHTML	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
+case	shipped	NSInlinePresentationIntentCode	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
+case	shipped	NSInlinePresentationIntentEmphasized	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
+case	shipped	NSInlinePresentationIntentInlineHTML	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
+case	shipped	NSInlinePresentationIntentLineBreak	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
+case	shipped	NSInlinePresentationIntentSoftBreak	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
+case	shipped	NSInlinePresentationIntentStrikethrough	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
+case	shipped	NSInlinePresentationIntentStronglyEmphasized	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
 case	shipped	NSInputMethodsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	struck	NSInternalScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSInternalSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
@@ -737,33 +737,33 @@ case	open	NSPostASAP	NSNotificationQueue	App Support / Notifications / Constants
 case	open	NSPostNow	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
 case	open	NSPostWhenIdle	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
 case	shipped	NSPreferencePanesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSPresentationIntentKindBlockQuote		Reference / Enumerations / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindBlockQuote	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindCodeBlock		Reference / Enumerations / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindCodeBlock	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindHeader		Reference / Enumerations / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindHeader	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindListItem		Reference / Enumerations / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindListItem	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindOrderedList		Reference / Enumerations / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindOrderedList	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindParagraph		Reference / Enumerations / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindParagraph	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindTable		Reference / Enumerations / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindTable	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindTableCell		Reference / Enumerations / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindTableCell	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindTableHeaderRow		Reference / Enumerations / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindTableHeaderRow	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindTableRow		Reference / Enumerations / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindTableRow	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindThematicBreak		Reference / Enumerations / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindThematicBreak	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindUnorderedList		Reference / Enumerations / Getting the presentation types	-	objc
-case	open	NSPresentationIntentKindUnorderedList	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	open	NSPresentationIntentTableColumnAlignmentCenter	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the alignment options	-	objc
-case	open	NSPresentationIntentTableColumnAlignmentLeft	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the alignment options	-	objc
-case	open	NSPresentationIntentTableColumnAlignmentRight	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the alignment options	-	objc
+case	shipped	NSPresentationIntentKindBlockQuote		Reference / Enumerations / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindBlockQuote	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindCodeBlock		Reference / Enumerations / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindCodeBlock	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindHeader		Reference / Enumerations / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindHeader	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindListItem		Reference / Enumerations / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindListItem	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindOrderedList		Reference / Enumerations / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindOrderedList	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindParagraph		Reference / Enumerations / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindParagraph	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindTable		Reference / Enumerations / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindTable	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindTableCell		Reference / Enumerations / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindTableCell	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindTableHeaderRow		Reference / Enumerations / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindTableHeaderRow	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindTableRow		Reference / Enumerations / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindTableRow	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindThematicBreak		Reference / Enumerations / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindThematicBreak	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindUnorderedList		Reference / Enumerations / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentKindUnorderedList	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
+case	shipped	NSPresentationIntentTableColumnAlignmentCenter	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the alignment options	-	objc
+case	shipped	NSPresentationIntentTableColumnAlignmentLeft	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the alignment options	-	objc
+case	shipped	NSPresentationIntentTableColumnAlignmentRight	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the alignment options	-	objc
 case	shipped	NSPrinterDescriptionDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSProcessInfoThermalStateCritical	NSProcessInfo	App Support / System Interaction / Getting the thermal state / Constants	-	swift-page
 case	shipped	NSProcessInfoThermalStateFair	NSProcessInfo	App Support / System Interaction / Getting the thermal state / Constants	-	swift-page
@@ -1616,7 +1616,7 @@ enum	shipped	NSActivityOptions	NSProcessInfo	App Support / System Interaction / 
 enum	shipped	NSAlignmentOptions		Fundamentals / Geometry / Related Types	-	objc
 enum	struck	NSAppleEventSendOptions	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types	declined	objc
 enum	shipped	NSAttributedStringEnumerationOptions	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
-enum	open	NSAttributedStringFormattingOptions	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
+enum	shipped	NSAttributedStringFormattingOptions	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 enum	open	NSAttributedStringMarkdownInterpretedSyntax	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
 enum	open	NSAttributedStringMarkdownParsingFailurePolicy	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
 enum	open	NSBackgroundActivityResult	NSBackgroundActivityScheduler	App Support / System Interaction / Constants	-	objc
@@ -1675,7 +1675,7 @@ enum	open	NSGrammaticalPronounType		Reference / Enumerations	-	objc
 enum	shipped	NSHTTPCookieAcceptPolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies	-	objc
 enum	shipped	NSHTTPCookieAcceptPolicy	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy	-	objc
 enum	shipped	NSISO8601DateFormatOptions	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants	-	objc
-enum	open	NSInlinePresentationIntent	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
+enum	shipped	NSInlinePresentationIntent	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 enum	struck	NSInsertionPosition	NSPositionalSpecifier	App Support / Object Specifiers / Constants	declined	objc
 enum	open	NSItemProviderErrorCode	NSItemProvider	App Support / Attachments / Constants	-	objc
 enum	open	NSItemProviderFileOptions	NSItemProvider	App Support / Attachments / Constants	-	objc
@@ -1708,9 +1708,9 @@ enum	shipped	NSOrderedCollectionDifferenceCalculationOptions	NSOrderedSet	Fundam
 enum	shipped	NSPointerFunctionsOptions	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants	-	objc
 enum	open	NSPostingStyle	NSNotificationQueue	App Support / Notifications / Constants	-	objc
 enum	shipped	NSPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	objc
-enum	open	NSPresentationIntentKind		Reference / Enumerations	-	objc
-enum	open	NSPresentationIntentKind	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
-enum	open	NSPresentationIntentTableColumnAlignment	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
+enum	shipped	NSPresentationIntentKind		Reference / Enumerations	-	objc
+enum	shipped	NSPresentationIntentKind	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
+enum	shipped	NSPresentationIntentTableColumnAlignment	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 enum	shipped	NSProcessInfoThermalState	NSProcessInfo	App Support / System Interaction / Getting the thermal state	-	swift-page
 enum	shipped	NSPropertyListFormat	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants	-	objc
 enum	shipped	NSPropertyListMutabilityOptions	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants	-	objc
@@ -2349,7 +2349,7 @@ typealias	struck	NSZone		Low-Level Utilities / Legacy	32-bit-only	objc
 typealias	shipped	unichar		Fundamentals / Characters	-	objc
 typealias	shipped	unichar	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 var	struck	NSAMPMDesignation	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSAlternateDescriptionAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
+var	shipped	NSAlternateDescriptionAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	open	NSAppleEventManagerWillProcessFirstEventNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	struck	NSAppleEventTimeOutDefault	NSAppleEventManager	App Support / Apple Event Handling / Constants / Constants	declined	objc
 var	struck	NSAppleEventTimeOutNone	NSAppleEventManager	App Support / Apple Event Handling / Constants / Constants	declined	objc
@@ -2545,17 +2545,17 @@ var	struck	NSHebrewCalendar	NSLocale	Fundamentals / Localization / Getting Displ
 var	open	NSHelpAnchorErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	struck	NSHourNameDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSISO8601Calendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
-var	open	NSImageURLAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
+var	shipped	NSImageURLAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	struck	NSInconsistentArchiveException	NSArchiver	Files and Data Persistence / Deprecated / Constants / Constants	deprecated	objc
 var	open	NSInconsistentArchiveException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	struck	NSIndianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
-var	open	NSInflectionAgreementArgumentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
-var	open	NSInflectionAgreementConceptAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
-var	open	NSInflectionAlternativeAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
+var	shipped	NSInflectionAgreementArgumentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
+var	shipped	NSInflectionAgreementConceptAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
+var	shipped	NSInflectionAlternativeAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	open	NSInflectionConceptsKey		Reference / Constants	-	objc
-var	open	NSInflectionReferentConceptAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
-var	open	NSInflectionRuleAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
-var	open	NSInlinePresentationIntentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
+var	shipped	NSInflectionReferentConceptAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
+var	shipped	NSInflectionRuleAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
+var	shipped	NSInlinePresentationIntentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	struck	NSIntHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	struck	NSIntMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	struck	NSIntMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
@@ -2590,7 +2590,7 @@ var	shipped	NSKeyValueChangeNotificationIsPriorKey		Reference / Type Aliases / T
 var	shipped	NSKeyValueChangeOldKey		Reference / Type Aliases / Type Properties	-	objc
 var	open	NSKeyedArchiveRootObjectKey	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Constants / Constants	-	objc
 var	struck	NSKeyedUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
-var	open	NSLanguageIdentifierAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
+var	shipped	NSLanguageIdentifierAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	struck	NSLaterTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSLinguisticTagAdjective	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
 var	struck	NSLinguisticTagAdverb	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
@@ -2630,7 +2630,7 @@ var	struck	NSLinguisticTagVerb	NSLinguisticTagger	Fundamentals / Deprecated / Su
 var	struck	NSLinguisticTagWhitespace	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
 var	struck	NSLinguisticTagWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
 var	struck	NSLinguisticTagWordJoiner	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSListItemDelimiterAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting formatting attribute keys	-	objc
+var	shipped	NSListItemDelimiterAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting formatting attribute keys	-	objc
 var	open	NSLoadedClasses	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
 var	open	NSLocalNotificationCenterType	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Type Properties	-	objc
 var	open	NSLocaleAlternateQuotationBeginDelimiterKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
@@ -2655,7 +2655,7 @@ var	open	NSLocaleVariantCode	NSLocale	Fundamentals / Localization / Accessing Lo
 var	shipped	NSLocalizedDescriptionKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	open	NSLocalizedFailureErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	open	NSLocalizedFailureReasonErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
-var	open	NSLocalizedNumberFormatAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
+var	shipped	NSLocalizedNumberFormatAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	open	NSLocalizedRecoveryOptionsErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSLocalizedRecoverySuggestionErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	open	NSMachErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
@@ -2665,7 +2665,7 @@ var	open	NSMapTableObjectPointerPersonality	NSPointerFunctions	Fundamentals / Po
 var	open	NSMapTableStrongMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
 var	open	NSMapTableWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
 var	struck	NSMapTableZeroingWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	deprecated	objc
-var	open	NSMarkdownSourcePositionAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
+var	shipped	NSMarkdownSourcePositionAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	shipped	NSMaximumKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSMetadataItemAcquisitionMakeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
 var	struck	NSMetadataItemAcquisitionModelKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
@@ -2870,7 +2870,7 @@ var	struck	NSMetadataUbiquitousSharedItemRoleOwner	NSMetadataItem	Files and Data
 var	struck	NSMetadataUbiquitousSharedItemRoleParticipant	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Role Values	declined	objc
 var	shipped	NSMinimumKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSMorphologyAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
+var	shipped	NSMorphologyAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	open	NSMultipleUnderlyingErrorsKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	open	NSNegateBooleanTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
 var	struck	NSNegativeCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
@@ -2911,7 +2911,7 @@ var	open	NSPortReceiveException	NSException	App Support / Exceptions / Related T
 var	open	NSPortSendException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	open	NSPortTimeoutException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	struck	NSPositiveCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
-var	open	NSPresentationIntentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
+var	shipped	NSPresentationIntentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	struck	NSPriorDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	open	NSProcessInfoPowerStateDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	open	NSProcessInfoPowerStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	swift-page
@@ -2935,7 +2935,7 @@ var	open	NSProgressThroughputKey	NSProgress	App Support / Progress / Inspecting 
 var	shipped	NSRangeException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	open	NSRecoveryAttempterErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSRegistrationDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
-var	open	NSReplacementIndexAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting text attribute keys	-	objc
+var	shipped	NSReplacementIndexAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting text attribute keys	-	objc
 var	struck	NSRepublicOfChinaCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSRunLoopCommonModes	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes / System Run Loop Modes	-	objc
 var	shipped	NSSecureUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc

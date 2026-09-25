@@ -37,11 +37,91 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+
+
+
+/* ---- THE MODERN ATTRIBUTE FAMILIES AND THEIR CONSTANTS (W10 slice 4) --------------------------------
+ *
+ * THE NAMES ARE APPLE'S AND THE VALUES ARE OURS, which is the recorded finding this library works under
+ * (§11.6.1 D2): Apple publishes the CASE NAMES of every one of these enums and neither their numbers nor a
+ * stable order, and the same is true of the attribute-name constants, whose strings are their own names here.
+ * A reader who needs the numbers should read them here rather than hope they match another platform.
+ *
+ * AND THE BEHAVIOUR BEHIND THE FAMILIES IS NOT IMPLEMENTED, WHICH IS NAMED RATHER THAN IMPLIED: a markdown
+ * importer, the grammar-agreement engine and the presentation-intent OBJECT graph are each a text subsystem
+ * of their own, and this slice ships the vocabulary they are spoken with - the constants and the option bits
+ * - so that a conforming program compiles and the absence is visible where it is asked for. */
+
+
+
+
 @class NSString, NSDictionary, NSArray, NSData, NSURL, NSError;
 
 /* "The type for the keys of the attribute dictionaries" - Apple's name, this library's spelling for a
  * typealias (§11.6.1 D2). */
 typedef NSString *NSAttributedStringKey;
+
+/* ---- THE MODERN ATTRIBUTE FAMILIES AND THEIR CONSTANTS (W10 slice 4) --------------------------------
+
+ * THE NAMES ARE APPLE'S AND THE VALUES ARE OURS, which is the recorded finding this library works under
+ * (§11.6.1 D2): Apple publishes the CASE NAMES of these enums and neither their numbers nor a stable order,
+ * and the same is true of the attribute-name constants, whose strings are their own names here. A reader who
+ * needs the numbers should read them here rather than hope they match another platform.
+ *
+ * AND THE BEHAVIOUR BEHIND THE FAMILIES IS NOT IMPLEMENTED, WHICH IS NAMED RATHER THAN IMPLIED: a markdown
+ * importer, the grammar-agreement engine and the presentation-intent OBJECT graph are each a text subsystem
+ * of their own, and this slice ships the vocabulary they are spoken with - the constants and the option bits
+ * - so that a conforming program compiles and the absence is visible where it is asked for. */
+
+typedef enum {
+	NSAttributedStringFormattingApplyReplacementIndexAttribute = 1 << 0,
+	NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging = 1 << 1,
+} NSAttributedStringFormattingOptions;
+typedef enum {
+	NSInlinePresentationIntentBlockHTML = 1 << 0,
+	NSInlinePresentationIntentCode = 1 << 1,
+	NSInlinePresentationIntentEmphasized = 1 << 2,
+	NSInlinePresentationIntentInlineHTML = 1 << 3,
+	NSInlinePresentationIntentLineBreak = 1 << 4,
+	NSInlinePresentationIntentSoftBreak = 1 << 5,
+	NSInlinePresentationIntentStrikethrough = 1 << 6,
+	NSInlinePresentationIntentStronglyEmphasized = 1 << 7,
+} NSInlinePresentationIntent;
+typedef enum {
+	NSPresentationIntentKindBlockQuote = 0,
+	NSPresentationIntentKindCodeBlock = 1,
+	NSPresentationIntentKindHeader = 2,
+	NSPresentationIntentKindListItem = 3,
+	NSPresentationIntentKindOrderedList = 4,
+	NSPresentationIntentKindParagraph = 5,
+	NSPresentationIntentKindTable = 6,
+	NSPresentationIntentKindTableCell = 7,
+	NSPresentationIntentKindTableHeaderRow = 8,
+	NSPresentationIntentKindTableRow = 9,
+	NSPresentationIntentKindThematicBreak = 10,
+	NSPresentationIntentKindUnorderedList = 11,
+} NSPresentationIntentKind;
+typedef enum {
+	NSPresentationIntentTableColumnAlignmentCenter = 0,
+	NSPresentationIntentTableColumnAlignmentLeft = 1,
+	NSPresentationIntentTableColumnAlignmentRight = 2,
+} NSPresentationIntentTableColumnAlignment;
+
+extern NSAttributedStringKey const NSAlternateDescriptionAttributeName;
+extern NSAttributedStringKey const NSImageURLAttributeName;
+extern NSAttributedStringKey const NSInflectionAgreementArgumentAttributeName;
+extern NSAttributedStringKey const NSInflectionAgreementConceptAttributeName;
+extern NSAttributedStringKey const NSInflectionAlternativeAttributeName;
+extern NSAttributedStringKey const NSInflectionReferentConceptAttributeName;
+extern NSAttributedStringKey const NSInflectionRuleAttributeName;
+extern NSAttributedStringKey const NSInlinePresentationIntentAttributeName;
+extern NSAttributedStringKey const NSLanguageIdentifierAttributeName;
+extern NSAttributedStringKey const NSListItemDelimiterAttributeName;
+extern NSAttributedStringKey const NSLocalizedNumberFormatAttributeName;
+extern NSAttributedStringKey const NSMarkdownSourcePositionAttributeName;
+extern NSAttributedStringKey const NSMorphologyAttributeName;
+extern NSAttributedStringKey const NSPresentationIntentAttributeName;
+extern NSAttributedStringKey const NSReplacementIndexAttributeName;
 
 /* "The options for enumerating attributes" - the two members Apple publishes. Reverse walks the runs
  * BACKWARDS, and LongestEffectiveRangeNotRequired PERMITS a shorter range than the longest one: this
