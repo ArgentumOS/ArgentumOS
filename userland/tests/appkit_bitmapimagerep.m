@@ -200,6 +200,39 @@ int main(void)
 			      [rep drawInRect:NSMakeRect(0.0, 0.0, (CGFloat)W, (CGFloat)H)]);
 			pixel(W / 2, H / 2, p);
 			check("...and the pixels really landed on the surface", p[0] == 0xff && p[3] == 0xff);
+			/* AND NOW A COLOUR WHOSE CHANNELS DISAGREE, WHICH WHITE CANNOT BE. The rep's bytes are
+			 * R, G, B, A, so opaque RED is 255, 0, 0, 255 — and the destination's memory is B, G, R, A,
+			 * so the arriving red is byte 2. **THIS CHECK IS THE ONE THAT WOULD HAVE CAUGHT A REAL BUG
+			 * THIS CLASS SHIPPED WITH:** its image was declared with the DEFAULT byte order, which for
+			 * that declaration reads the bytes as A, B, G, R — so RED (byte 0 = 0) came out fully
+			 * TRANSPARENT, and a probe filled with WHITE could never have seen it, because every channel
+			 * of white says the same thing. */
+			{
+				unsigned char *d2 = [rep bitmapData];
+				size_t k, cn = (size_t)[rep bytesPerRow] * (size_t)[rep pixelsHigh];
+
+				/* EVERY PIXEL, not just the first: the rep is 8x4 drawn into 16x16, so a destination
+				 * pixel in the middle reads a SOURCE pixel that is not (0,0) — setting one pixel and
+				 * sampling the middle is the check looking at the wrong source pixel. */
+				for (k = 0; k + 3 < cn; k += 4) {
+					d2[k] = 0xff;      /* R */
+					d2[k + 1] = 0x00;  /* G */
+					d2[k + 2] = 0x00;  /* B */
+					d2[k + 3] = 0xff;  /* A */
+				}
+				[rep setColorSpaceName:NSDeviceRGBColorSpace];
+				memset(surf, 0, sizeof(surf));
+				cg = CGBitmapContextCreate(surf, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
+							   kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+				gctx = [NSGraphicsContext graphicsContextWithCGContext:cg flipped:NO];
+				[NSGraphicsContext setCurrentContext:gctx];
+				[rep drawInRect:NSMakeRect(0.0, 0.0, (CGFloat)W, (CGFloat)H)];
+				pixel(W / 2, H / 2, p);
+				check("...and a RED pixel arrives RED, which a WHITE-only probe cannot tell (the "
+				      "declaration's byte order)", p[2] == 0xff && p[0] == 0x00 && p[3] == 0xff);
+				[NSGraphicsContext setCurrentContext:nil];
+				CGContextRelease(cg);
+			}
 			[NSGraphicsContext setCurrentContext:nil];
 			CGContextRelease(cg);
 			[rep release];

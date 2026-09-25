@@ -444,17 +444,54 @@ int main(void)
 			/* THE DESTINATION IS PREMULTIPLIED-FIRST LITTLE-ENDIAN, so memory is B, G, R, A. Image
 			 * pixel (0,0) is drawn 4x4 into the rect's TOP-LEFT, which is rows 0..3, cols 0..3. */
 			pixel(c, 0, 0, p);
-			/* THE FOUR CHANNELS ARE CHECKED ONE BY ONE rather than as one boolean, so the gate's own
-			 * output NAMES what arrived where — which is the measurement that locates the fault. The
-			 * source pixel is RGBA (0, 0, 255, 255); the destination's memory is B, G, R, A. */
-			check_num("...arriving with B intact (destination byte 0)", (double)p[0], 255.0, 0.0);
-			check_num("...with G intact (byte 1)", (double)p[1], 0.0, 0.0);
-			check_num("...with R intact (byte 2)", (double)p[2], 0.0, 0.0);
-			check_num("...and with ALPHA intact (byte 3)", (double)p[3], 255.0, 0.0);
+			/* THE DEFAULT BYTE ORDER IS LITTLE-ENDIAN, WHICH FOR THIS DECLARATION IS MEMORY A, B, G, R —
+			 * so byte 0 is the ALPHA and these bytes are a TRANSPARENT pixel, not the blue they look like.
+			 * THE DECLARATION DECIDES WHAT THE BYTES MEAN, and this check pins that rather than treating
+			 * the pixels as self-describing. */
+			check_num("...whose bytes are THEN A,B,G,R, so this pixel's alpha is byte 0 — transparent",
+				  (double)p[3], 0.0, 0.0);
 			/* THE OTHER HALF OF THE PAIR: the transparent pixels must STAY transparent, so a check
 			 * that painted everything would not pass here by accident. */
 			pixel(c, 7, 7, p);
 			check("...while the transparent ones stay transparent", p[0] == 0 && p[3] == 0);
+			CGContextRelease(c);
+			CGImageRelease(im);
+		}
+		CGDataProviderRelease(prov);
+	}
+
+	/* --- AND THE SAME BYTES WITH AN EXPLICIT BIG-ENDIAN WORD, WHICH IS THE CHECK THAT DECIDES WHERE THE
+	 * FAULT IS. Under Apple's word model the byte-order flags say how the 32-bit WORD is stored:
+	 *     PremultipliedFirst  = word ARGB;  32Little stores it BGRA  (this library's own layout)
+	 *     PremultipliedLast   = word RGBA;  32Little stores it ABGR
+	 * So a buffer written as R,G,B,A is a legitimate PremultipliedLast image ONLY with an explicit
+	 * 32Big — which stores the word in the named order — and that makes the alpha byte 3, not byte 0.
+	 * If the blue arrives here, THE BLIT IS RIGHT AND THE EARLIER IMAGE WAS MIS-DECLARED, and the fix
+	 * belongs in whichever caller declared a layout its bytes do not match. */
+	{
+		static const unsigned char rgba_bytes[2 * 2 * 4] = {
+			0, 0, 255, 255,   0, 0, 0, 0,
+			0, 0, 0, 0,       0, 0, 0, 0
+		};
+		CGDataProviderRef prov = CGDataProviderCreateWithData(NULL, rgba_bytes,
+								     sizeof(rgba_bytes), NULL);
+		CGImageRef im = CGImageCreate(2, 2, 8, 32, 8, CGColorSpaceCreateDeviceRGB(),
+					      kCGImageAlphaPremultipliedLast | kCGImageByteOrder32Big, prov,
+					      NULL, false, kCGRenderingIntentDefault);
+
+		check("...and the same bytes CAN be declared PREMULTIPLIED-LAST with an explicit 32Big",
+		      im != NULL);
+		if (im != NULL) {
+			CGContextRef c = fresh();
+
+			CGContextDrawImage(c, CGRectMake(0.0, 0.0, 8.0, 8.0), im);
+			pixel(c, 0, 0, p);
+			/* THE DESTINATION'S MEMORY IS THE LIBRARY'S OWN B, G, R, A, so the arriving BLUE is byte 0
+			 * and the arriving RED is byte 2 — writing this check against the SOURCE's byte index is the
+			 * mistake the first version made, and it asserted the wrong channel of the right pixel. */
+			check_num("...and then the BLUE arrives at the destination's byte 0", (double)p[0], 255.0, 0.0);
+			check_num("...with the RED at byte 2 still clear", (double)p[2], 0.0, 0.0);
+			check_num("...and the ALPHA from byte 3", (double)p[3], 255.0, 0.0);
 			CGContextRelease(c);
 			CGImageRelease(im);
 		}

@@ -226,9 +226,19 @@ static CGColorSpaceRef fn_space_for(NSString *name)
 		CGColorSpaceRef cs = fn_space_for(_colorSpaceName);
 		/* THE PARAMETER IS A PLAIN `uint32_t` IN THIS TREE, not Apple's `CGBitmapInfo` — which
 		 * does not exist here (measured at the declaration), and reaching for it was the same
-		 * kind of mistake as assuming an Apple CGPath function existed. */
-		uint32_t info = _hasAlpha ? (uint32_t)kCGImageAlphaPremultipliedLast
-					  : (uint32_t)kCGImageAlphaNone;
+		 * kind of mistake as assuming an Apple CGPath function existed.
+		 *
+		 * AND THE BYTE ORDER IS SAID OUT LOUD, WHICH IS THE FIX FOR A REAL BUG THIS FILE SHIPPED
+		 * WITH: this rep's bytes are R, G, B, A (the swizzle in `NSImage` writes that order and the
+		 * caller wrote that order), and `kCGImageAlphaPremultipliedLast` ALONE means the DEFAULT
+		 * byte order — which is little-endian, and for this declaration that is memory A, B, G, R.
+		 * So byte 0 was read as ALPHA: every opaque RED pixel has R=0 in byte 0 and came out fully
+		 * TRANSPARENT. It went unnoticed because the probe filled the rep with opaque WHITE, the
+		 * one colour whose channels all agree. 32Big stores the word in the NAMED order, which is
+		 * what these bytes are. */
+		uint32_t info = _hasAlpha
+			? (uint32_t)(kCGImageAlphaPremultipliedLast | kCGImageByteOrder32Big)
+			: (uint32_t)kCGImageByteOrder32Big;
 
 		if (prov != NULL && cs != NULL) {
 			_cgImage = CGImageCreate((size_t)_pixelsWide, (size_t)_pixelsHigh,

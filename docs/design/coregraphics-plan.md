@@ -604,6 +604,28 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   because C5.4 shipped the general format matrix as SUPPORTED, and an AppKit-side workaround would leave
   that matrix quietly untrue while fixing only the caller that complained. The check goes green when the
   blit does, and that is what closes this.
+  **AND THAT FINDING WAS WRONG, AND THE MEASUREMENT THAT REFUTED IT IS THE ONE THAT FOUND THE REAL BUG
+  (C8.12b).** The blit is NOT format-blind: `CGContextDrawImage` already reads a layout through
+  `cg_image_layout`, C5.4's single source of truth, and REFUSES layouts it cannot read. What the
+  reproduction actually did was DECLARE ITS IMAGE WRONGLY: `kCGImageAlphaPremultipliedLast` alone means
+  the DEFAULT byte order, which is little-endian, and for that declaration the word `RGBA` is stored as
+  `A, B, G, R` — so byte 0 IS the alpha and `[0,0,255,255]` is a TRANSPARENT pixel rather than the blue
+  it looks like to a human reading the bytes. **THE DECLARATION DECIDES WHAT THE BYTES MEAN; PIXELS ARE
+  NOT SELF-DESCRIBING.** Two checks now pin it: those bytes under the DEFAULT order are transparent, and
+  under an explicit `32Big` (the word in NAMED order) the blue arrives at the destination's byte 0 with
+  alpha 255. **AND THE FIRST VERSION OF THAT SECOND CHECK WAS ITSELF WRONG**, asserting the SOURCE's byte
+  index against the DESTINATION's memory — a gate that fails for the wrong reason, caught only because
+  the two channels disagreed.
+  **THE REAL BUG WAS IN THIS TREE'S OWN APPKIT CODE, WHICH IS WHERE THE FIX WENT:** `NSBitmapImageRep`'s
+  `-CGImage` declared `kCGImageAlphaPremultipliedLast` with NO byte order while its bytes are `R, G, B, A`,
+  so every bitmap-backed rep was read as `A, B, G, R` and an opaque RED pixel (byte 0 = 0) came out FULLY
+  TRANSPARENT — silent, and for every colour but white. **IT SHIPPED IN C8.9 AND C8.9's PROBE COULD NOT
+  SEE IT, because that probe filled its rep with opaque WHITE, the one colour whose channels all agree.**
+  The declaration now names its byte order, and the header states the order a caller's plane must be in.
+  **SO DECISION dec-d03ee1838990db64 ("fix the blit") WAS MADE ON EVIDENCE THAT DID NOT SURVIVE
+  MEASUREMENT:** nothing in CoreGraphics needed fixing, and the fix belongs to the caller — this tree's
+  own — that declared a layout its bytes did not match. The reproduction is GREEN now because it was
+  CORRECTED, not because anything in the blit changed.
   The
   three enums ride with members whose substrate was checked one by one:
   `NSColorRenderingIntent`'s five cases and `NSImageInterpolation`'s five are each a
