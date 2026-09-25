@@ -12903,6 +12903,32 @@ the freed part, so the reused blocks did not land on it. What the check therefor
 it catches the over-release direction (a crash), which is exactly the risk the fix carries - and the honest
 form of a detector whose positive direction does not fire is to say so where it lives, not to claim it.
 
+**SLICE 6I (2026-09-24): THE FIRST MEASUREMENT DEBT CLOSED BY MEASUREMENT AND RE-SCOPE - THE `make test`
+TIMING MYSTERY.** The debt was one RUN: a full `/System` walk had reached ~1000 items when the harness's
+command window (~45 s) closed, while the direct A/B measured **0.3 ms per item** (path door 90.0 ms, URL door
+110.0 ms per 300 items; one large directory listing 0.0 ms). 1000 items at 0.3 ms is **0.3 seconds**, so the
+window was consumed by something else in that run.
+
+**THE MEASUREMENT THAT CAN STILL BE TAKEN WAS TAKEN:** the case that carries this probe's walk legs,
+`foundation_directoryenumerator`, is **29/29 checks in 12.3 s INCLUDING THE GUEST BOOT** (measured today) - so
+the walk is a fraction of a boot, and neither the walk nor its per-item cost can account for a window. The
+three candidates the plan named (the guest's console output at that point, another leg of that probe, or a
+description-pathological directory) remain unseparated, and **the instrument that produced the original number
+is no longer in the tree**, so separating them would mean rebuilding a temporary timing leg - which is the new
+test tooling the standing instruction says not to add.
+
+**SO THE DEBT IS CLOSED AS A RE-SCOPE, WHICH IS THE FORM IT WAS OFFERED IN:** it was never a defect in the
+walk (the plan said so and the measurement agrees), the A/B stands as its number, and the run it describes is
+unreproducible with the current image. WHAT IS NOT CLOSED BY THIS, AND REMAINS OWED, IS THE OTHER THREE:
+the DEFERRED HANDSHAKE, the IN-WAIT HALF OF `-cancel`, and the PRESENTER-QUEUE DESIGN - each of which needs an
+instrument rather than a re-read, because each is a statement about WHEN something runs.
+
+**AND ONE INSTRUMENT NOTE THIS CLOSE ADDS:** the same walk that measures 0.3 ms per item will HANG THE GUEST if
+it is pointed at a mount point it is not allowed to cross (devfs at `/System/Devices` - recorded at the
+enumerator's own mount-point leg, where walking into it stops inside a single `-nextObject`). A timing number
+and a hang can therefore come from the same code path on different inputs, which is why the walk's own
+records name the input it was measured on.
+
 **SLICE XML-e LANDED (2026-09-24): THE SIX DTD EVENTS, AND THE DOCUMENT THAT KEEPS AND RE-WRITES ITS DTD -
 WHICH MAKES XML COMPLETE.** `foundation_xmldtdparse` is a NEW probe with **8 checks**, green.
 
