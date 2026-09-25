@@ -13090,6 +13090,25 @@ nobody) - now ships, with the exclusivity the initialisers keep asserted in both
 `-observeValueForKeyPath:ofObject:change:context:`, which the observer implements. **Five declared-and-missing
 selectors existed this morning; zero do now**, and the gate that would have caught them runs on every build.
 
+**AND THE `-copy` FRONT PRODUCED A REAL LIBRARY BUG, FOUND BY AN ATTRIBUTED-STRING PROBE AND FIXED.** The
+copy semantics themselves were already Apple-correct - 58 classes implement `-copy`, every immutable answers
+`[self retain]` (self, with the +1 ownership Apple's contract requires) and every mutable answers an IMMUTABLE
+SNAPSHOT, and every `NSMutableCopying` claim in the headers matches Apple - so the deviation was in a CALLER:
+**`NSString`'s abstract `-initWithUTF8String:` SUBSTITUTES an `NSOwnedString`** (its own comment says "a
+SUBCLASS overrides this and never reaches here, which is what keeps the receiver's kind intact"), and
+**`NSMutableString` never overrode it** - so `[[NSMutableString alloc] initWithUTF8String:""]` answered an
+IMMUTABLE string, and its first mutator went through the root class and died. That is the whole formatter
+path: `-initWithFormat:arguments:` builds through an `NSMutableString` and appends to it. **FIXED with two
+overrides** (19 lines, 0 deletions), which are two lines each because `NSOwnedString`'s storage init respects
+`self` - `NSString -init` returns self precisely so that it can. The class-constructor half of this same
+defect was found and fixed once before by the ordered-set probe; this is the instance half.
+
+**AND THE FIX COST ONE MORE SELF-INFLICTED FAULT, WHICH IS WHY THE NEXT PATCH WAS CHECKED WITH `git diff`
+BEFORE IT RAN:** the edit that stripped the temporary trace also rewrote `initWithUTF8String:""` into
+`initWithUTF8String:@""` - an NSString where a C string belongs - and two previously green cases (`foundation_core`,
+`foundation_string`) crashed with a SIGSEGV. The diff caught it. **A mechanical patch is a change like any
+other and gets read before it is believed.**
+
 **AND THE REASON THE GAPS FELT LIKE EVERYTHING WAS ONE LINE.** `NSObject -doesNotRecognizeSelector:` did
 `fprintf` + **`abort()`** - the ONLY `abort()` in `userland/Foundation` - so every missing method expressed
 itself as **THE WHOLE GUEST PROCESS DYING**, with a message that named the selector and never the caller, and

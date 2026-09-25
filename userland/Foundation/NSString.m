@@ -1869,6 +1869,25 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 
 @implementation NSMutableString
 
+/* THE RECEIVER'S KIND IS KEPT, AND THIS IS WHERE IT WAS NOT. NSString's abstract -initWithUTF8String: (and
+ * its -...Characters:length: sibling) SUBSTITUTES an NSOwnedString - "a SUBCLASS overrides this and never
+ * reaches here", says the comment there - and NSMutableString did not, so
+ * `[[NSMutableString alloc] initWithUTF8String:@""]` answered an IMMUTABLE string and its first mutator went
+ * through the root class and DIED. That is the whole formatter path: -initWithFormat:arguments: builds
+ * through an NSMutableString and appends to it, so EVERY -stringWithFormat: with a %@ in it aborted the
+ * guest. The override is two lines because NSOwnedString's storage init respects `self` (it begins
+ * `self = [super init]`, and NSString's -init returns self precisely so that it can) - so delegating to the
+ * SUPERCLASS there builds the units on the mutable instance itself. */
+- (id)initWithUTF8String:(const char *)utf8
+{
+	return [super initWithUTF8String:utf8];
+}
+
+- (id)initWithCharacters:(const unichar *)characters length:(NSUInteger)length
+{
+	return [super initWithCharacters:characters length:length];
+}
+
 - (void)setString:(NSString *)other
 {
 	const char *utf8 = [other UTF8String];
