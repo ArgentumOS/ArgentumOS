@@ -61,6 +61,7 @@
 #import <Foundation/NSDateComponents.h>
 #import <Foundation/NSTimeZone.h>
 #import <Foundation/NSCalendar.h>
+#import <Foundation/NSAttributedString.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSError.h>

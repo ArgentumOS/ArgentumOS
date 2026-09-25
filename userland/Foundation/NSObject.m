@@ -231,6 +231,8 @@ extern id object_dispose(id obj);
 	 * class killed a guest probe instead of reporting itself. Apple's page for this method names the
 	 * exception, and this library has an exception class, so the contract is the one to keep. The message
 	 * keeps the shape the old fprintf had, so every trace that already quotes it still matches. */
+	fprintf(stderr, "Foundation: -[%s %s] is not implemented\n",
+		class_getName(object_getClass(self)), sel_getName(aSelector));
 	[NSException raise:NSInvalidArgumentException
 		    format:@"-[%s %s] is not implemented",
 			   class_getName(object_getClass(self)), sel_getName(aSelector)];
