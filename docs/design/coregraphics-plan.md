@@ -539,6 +539,30 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   twice. The flip is OWNER-SCOPED (17 rows), plus the two rows whose owner field is not a class name:
   `NSImageRep` the class (owned by `-`) and `NSDeviceRGBColorSpace` (indexed under `NSColor`), which are
   named explicitly rather than swept up.
+  **AND THE CONTAINER ABOVE THE REPS ARRIVES (C8.10): `NSImage`.** It is not pixels — it is a named
+  thing with a SIZE that answers a drawing request by choosing one of its representations to do the
+  work, which is what makes the two classes worth having. **THE SIZE'S PRECEDENCE IS THE POINT AND IS
+  CHECKED BOTH WAYS:** an EXPLICIT size (from `-initWithSize:`/`-setSize:`) wins, otherwise the image
+  answers the FIRST representation's size, so a decoded PNG is as big as its pixels until a caller says
+  otherwise. `-isValid` asks a different question — whether there is anything to draw — and is NO for an
+  image with a size and no representations, which is exactly the empty canvas `+image` makes.
+  `-bestRepresentationForRect:context:hints:` picks the CLOSEST in points with ties to the first: Apple
+  leaves that rule to the class, so this is the stated decision rather than an inherited one.
+  **AND BOTH THE READ AND THE WRITE SIDES ARE NAMED:** `-initWithData:`/`-initWithContentsOfFile:`
+  decode through C8.9's reps, while `-TIFFRepresentation`, the `-drawInRect:fromRect:operation:fraction:`
+  family, `+imageNamed:`, the symbol-image family, `-cacheMode`/`-recache` and the `NSImageDelegate`
+  surface are ABSENT — the first for C8.9's measured reason (no encoder) and the rest for want of a
+  bundle, a search path, an appearance system or a compositing-operation surface.
+  **AND `-lockFocus`/`-unlockFocus` ARE THE NEXT SLICE RATHER THAN THIS ONE, DELIBERATELY:** this tree's
+  bitmap context is premultiplied-FIRST little-endian (a measured refusal in `CGBitmapContextCreate`)
+  while a rep's pixels are premultiplied-LAST, so an offscreen canvas needs a CHANNEL SWIZZLE between
+  the two rather than a wrap — which is a slice's worth of work on its own, not a line added to this
+  one.
+  43 ledger rows credited (28 `NSCompositingOperation` cases Apple indexes under NSImage as well as
+  `NSGraphicsContext`, 9 methods, 3 properties, the class, and one more `-initWithData`), owner-scoped
+  from the start, and `--strict` is clean on the first try — which is what C8.3's and C8.9's double flip
+  bought: the rule is now "flip the rows the tool NAMES, restricted to the owners this tree ships",
+  and the rows owned by classes that do not exist here stay open.
   The
   three enums ride with members whose substrate was checked one by one:
   `NSColorRenderingIntent`'s five cases and `NSImageInterpolation`'s five are each a
