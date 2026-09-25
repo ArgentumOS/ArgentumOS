@@ -12790,9 +12790,44 @@ with the thirteen in `NSXMLNode.h`), so a switch over a DTD kind mentions names 
 numbering the DTD kinds from zero made two of them THE SAME VALUE and the switch a duplicate case. **Two
 families that meet in one switch must not share a range.**
 
-**WHAT REMAINS IN XML IS ONE SLICE:** XML-e - the six DTD delegate events fired by the parser while it reads
-a document, the DTD handed to the document (`-dtd`/`-setDTD:`, registered since XML-c), and the external
-subset, which this slice REMEMBERS and does not fetch.
+**SLICE XML-e LANDED (2026-09-24): THE SIX DTD EVENTS, AND THE DOCUMENT THAT KEEPS AND RE-WRITES ITS DTD -
+WHICH MAKES XML COMPLETE.** `foundation_xmldtdparse` is a NEW probe with **8 checks**, green.
+
+**THE SUBSET IS READ, AND ITS DECLARATIONS BECOME THE SIX EVENTS - FROM THE SAME READER THE DTD OBJECTS USE.**
+XML-a skipped a document's internal subset as a balanced bracket region; now it is read, and
+`FNDTDDeclarationNodes(FromSubset)` is SHARED, so a declaration is understood in **exactly one place** in
+this library - the parser fires Apple's six events from that reading and `NSXMLDTD` builds its children from
+it. `NSXMLDocument` keeps what they said (`-dtd`/`-setDTD:`, registered since XML-c) and writes it back as a
+DOCTYPE that can be READ AGAIN, which is the round trip the probe checks. **The three boundaries are stated
+where they happen**: an EXTERNAL subset is NAMED and never fetched (a DOCTYPE naming a file that does not
+exist still parses and builds no DTD - asserted), an UNCLOSED subset is a parse error, and the DOCTYPE's own
+name is taken from the root element, because this parser reports the subset and not the name.
+
+**AND TWO THINGS THIS SLICE GOT WRONG, BOTH FOUND BY THE PROBE, BOTH WORTH THE LINE:**
+ * **AN EVENT HANDS OVER TEXT, SO THE CLASSIFICATION MUST BE THE READER'S OWN.** The element-declaration
+ * event carries the MODEL AS A STRING, and the node built from it has to be classified by the SAME rule that
+ * classifies a model - not by a second rule written in the class that consumes the event. The first
+ * compile error was a helper I had invented at the call site, which is exactly the shape of that mistake;
+ * the classifier is now exported from the one place that decides it (`FNDTDNodeKindForModel`);
+ * **THE ROUND TRIP WAS A LIE, AND IT LOOKED LIKE A PARSE FAILURE.** A DTD BUILT FROM EVENTS has no
+ * `-internalSubset` TEXT (nobody ever set it), so writing the document emitted a DOCTYPE with an EMPTY
+ * subset - and reading that back found nothing: `children=6` on the first parse, `again-dtd=(null)` on the
+ * second. The fix is one sentence of semantics: **the subset of a DTD is WHAT IT DECLARES**, whether it was
+ * set as text or built one declaration at a time, so `-internalSubset` computes it from the declarations
+ * written back out when no text was ever given.
+
+**XML IS COMPLETE: FIVE SLICES, FIVE PROBES, 52 CHECKS.** XML-a 12 (the event parser), XML-b 11 (the tree),
+XML-c 11 (the document and the bridge), XML-d 10 (the DTD data model), XML-e 8 (the six events and the
+document's DTD). **The family that the ledger listed as 181 rows, ALL OPEN, is closed**: the parser, its
+delegate's twenty members, the thirteen node kinds, the twenty-three node options, the tree, the document,
+the DTD and its nineteen node kinds, and the six DTD events - with XPath, XSLT, DTD validation, HTML tidying
+and canonicalization REGISTERED as boundaries at the doors they belong to, each with the engine it would
+need named.
+
+**WHAT THE NEXT SLICE OF THE PLAN IS:** the plan's remaining open mass is elsewhere now - `NSAttributedString`
+and its markdown family (60 rows), the App Support families (`NSBundle`, `NSUserActivity`, the item
+providers, 87 error-code rows among them), the automatic-grammar-agreement family, `NSScanner`/
+`NSDataDetector` - and W8p's remaining URL key masses, each with the ground it needs already recorded.
 
 **W8 IS COMPLETE, AND THE TOTAL IS CHECKABLE RATHER THAN ASSERTED.** The unit's nine slices, each with its
 landed probe and its checks: `NSDirectoryEnumerator` **29**, the URL resource values **27**,

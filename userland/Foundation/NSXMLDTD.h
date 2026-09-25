@@ -65,6 +65,8 @@ typedef enum {
 /* "A node in a DTD": one declaration, of one of the kinds above. */
 @interface NSXMLDTDNode : NSXMLNode
 {
+@public
+	NSString *_fnElementName;	/* OURS: see the note below on the ivar this replaces */
 	NSXMLDTDNodeKind _dtdKind;
 	NSString *_publicID;
 	NSString *_systemID;
@@ -118,6 +120,19 @@ typedef enum {
 + (nullable NSXMLDTDNode *)predefinedEntityDeclarationForName:(NSString *)name;
 
 @end
+
+/* THE DECLARATION READER, OURS AND SHARED WITH THE PARSER (slice XML-e): XML-a's parser fires the six DTD
+ * events FROM THIS READING rather than from a second one, so a declaration is understood in exactly one place
+ * in this library. It answers an ARRAY, because one <!ATTLIST> declares several attributes. */
+NSArray *FNDTDDeclarationNodes(NSString *declaration);
+/* AND THE SUBSET SPLITTER, for the same reason: one top-level scan of `<!...>` regions, quote-aware. */
+NSArray *FNDTDDeclarationNodesFromSubset(NSString *subset);
+/* THE TYPE SPELLING OF AN ATTRIBUTE DECLARATION, which is what the parser's event reports as a STRING. */
+NSString *FNDTDNodeTypeName(NSXMLDTDNode *node);
+/* AND THE ELEMENT FORM A MODEL TEXT MEANS, exported for the same reason: an <!ELEMENT> event hands over the
+ * MODEL AS TEXT, and the node built from it must be classified by the ONE rule that classifies a model -
+ * not by a second one written in the class that consumes the event. */
+NSXMLDTDNodeKind FNDTDNodeKindForModel(NSString *model);
 
 NS_ASSUME_NONNULL_END
 

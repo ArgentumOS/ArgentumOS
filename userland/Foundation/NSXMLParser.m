@@ -10,6 +10,7 @@
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSError.h>
 #import <Foundation/NSNull.h>
+#import <Foundation/NSXMLDTD.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSURL.h>
 
@@ -445,18 +446,104 @@ static NSString *fn_xml_decode(NSString *raw, int *outFailure)
 			continue;
 		}
 		if (fn_xml_skip(&x, "!DOCTYPE")) {
-			/* THE DTD IS DECLARED AND NOT INTERPRETED (slice XML-c): the internal subset is skipped as a
-			 * balanced bracket region, so a document with one parses and its DTD DECLARATIONS produce no
-			 * events here rather than producing wrong ones. */
+			/* THE INTERNAL SUBSET IS READ AND ITS DECLARATIONS BECOME THE SIX DTD EVENTS (slice XML-e), from
+			 * the SAME reader the DTD objects use: one understanding of a declaration in this library. The
+			 * EXTERNAL subset is REMEMBERED and not fetched - the identifiers are kept for the document's DTD
+			 * and no file or URL is opened, which is the boundary XML-a states for external entities. */
+			NSString *subset = nil;
 			int depth = 0;
+			NSUInteger subsetStart = 0;
+			BOOL haveSubset = NO;
 
 			while (fn_xml_peek(&x) != -1) {
 				int c = fn_xml_peek(&x);
 
+				if (c == '[' && depth == 0) {
+					fn_xml_advance(&x);
+					subsetStart = x.at;
+					haveSubset = YES;
+					depth = 1;
+					continue;
+				}
 				if (c == '[') depth++;
-				if (c == ']') depth--;
-				if (c == '>' && depth <= 0) { fn_xml_advance(&x); break; }
+				if (c == ']' && depth > 0) {
+					depth--;
+					if (depth == 0) {
+						subset = fn_xml_build(&x, subsetStart, x.at);
+						fn_xml_advance(&x);
+						continue;
+					}
+				}
+				if (c == '>' && depth == 0) { fn_xml_advance(&x); break; }
 				fn_xml_advance(&x);
+			}
+			if (haveSubset && subset == nil) {
+				/* AN UNCLOSED SUBSET IS AN ERROR rather than a silent end. */
+				[self fnFail:NSXMLParserDOCTYPEDeclNotFinishedError
+				     message:@"the internal subset is not closed"];
+				break;
+			}
+			if (subset != nil) {
+				NSArray *nodes = FNDTDDeclarationNodesFromSubset(subset);
+				NSUInteger n;
+
+				for (n = 0; n < [nodes count]; n++) {
+					NSXMLDTDNode *node = [nodes objectAtIndex:n];
+					NSXMLDTDNodeKind kind = [node DTDKind];
+					NSString *name = [node name];
+
+					if (kind == NSXMLElementDeclarationAnyKind ||
+					    kind == NSXMLElementDeclarationEmptyKind ||
+					    kind == NSXMLElementDeclarationElementKind ||
+					    kind == NSXMLElementDeclarationMixedKind ||
+					    kind == NSXMLElementDeclarationUndefinedKind) {
+						if (FN_XML_EVENT(parser:foundElementDeclarationWithName:model:)) {
+							[_delegate parser:self
+							    foundElementDeclarationWithName:name
+										       model:[node stringValue]];
+						}
+					} else if (kind == NSXMLNotationDeclarationKind) {
+						if (FN_XML_EVENT(parser:foundNotationDeclarationWithName:publicID:systemID:)) {
+							[_delegate parser:self
+							    foundNotationDeclarationWithName:name
+										     publicID:[node publicID]
+										     systemID:[node systemID]];
+						}
+					} else if (kind == NSXMLEntityGeneralKind ||
+						   kind == NSXMLEntityParameterKind ||
+						   kind == NSXMLEntityParsedKind ||
+						   kind == NSXMLEntityUnparsedKind) {
+						if ([node notationName] != nil) {
+							if (FN_XML_EVENT(parser:foundUnparsedEntityDeclarationWithName:publicID:systemID:notationName:)) {
+								[_delegate parser:self
+								    foundUnparsedEntityDeclarationWithName:name
+												 publicID:[node publicID]
+												 systemID:[node systemID]
+								notationName:[node notationName]];
+							}
+						} else if ([node systemID] != nil) {
+							if (FN_XML_EVENT(parser:foundExternalEntityDeclarationWithName:publicID:systemID:)) {
+								[_delegate parser:self
+								    foundExternalEntityDeclarationWithName:name
+												 publicID:[node publicID]
+												 systemID:[node systemID]];
+							}
+						} else if (FN_XML_EVENT(parser:foundInternalEntityDeclarationWithName:value:)) {
+							[_delegate parser:self
+							    foundInternalEntityDeclarationWithName:name
+										value:[node stringValue]];
+						}
+					} else if (FN_XML_EVENT(parser:foundAttributeDeclarationWithName:forElement:type:defaultValue:)) {
+						[_delegate parser:self
+						    foundAttributeDeclarationWithName:name
+								       forElement:[node fnElementName]
+									   type:FNDTDNodeTypeName(node)
+								   defaultValue:[node stringValue]];
+					}
+					if (_aborted) {
+						break;
+					}
+				}
 			}
 			continue;
 		}

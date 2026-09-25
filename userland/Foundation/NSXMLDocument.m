@@ -6,6 +6,7 @@
 
 #import <Foundation/NSXMLDocument.h>
 #import <Foundation/NSXMLParser.h>
+#import <Foundation/NSXMLDTD.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSData.h>
 #import <Foundation/NSDictionary.h>
@@ -25,6 +26,7 @@
 @interface FNXMLTreeBuilder : NSObject <NSXMLParserDelegate>
 {
 	NSXMLNode *_document;
+	NSXMLDTD *_dtd;			/* the DTD the declarations built, or nil */
 	NSMutableArray *_stack;		/* the elements being built, innermost last */
 	NSError *_error;
 }
@@ -135,6 +137,107 @@
 	[self fnAdd:[NSXMLNode processingInstructionWithName:target stringValue:data]];
 }
 
+/* THE SIX DTD EVENTS BUILD THE DOCUMENT'S DTD - from what the parser reports, which is what keeps the
+ * document's DTD and the parser's reading in agreement. The DTD is made on the first declaration and named
+ * for the ROOT element (see the header). */
+- (nullable NSXMLDTD *)fnDTD
+{
+	if (_dtd == nil) {
+		_dtd = [[NSXMLDTD alloc] init];
+
+		[_dtd setName:[[_document rootElement] name]];
+		[_document setDTD:_dtd];
+	}
+	return _dtd;
+}
+
+- (void)parser:(NSXMLParser *)parser foundElementDeclarationWithName:(NSString *)name model:(NSString *)model
+{
+	NSXMLDTDNode *node = [[NSXMLDTDNode alloc] initWithKind:FNDTDNodeKindForModel(model)];
+
+	[node setName:name];
+	[node setStringValue:model];
+
+	(void)parser;
+	[[self fnDTD] addChild:node];
+}
+
+- (void)parser:(NSXMLParser *)parser
+    foundAttributeDeclarationWithName:(NSString *)attributeName
+			    forElement:(NSString *)elementName
+				  type:(NSString *)type
+			  defaultValue:(NSString *)defaultValue
+{
+	NSXMLDTDNode *node = [[NSXMLDTDNode alloc] initWithKind:NSXMLAttributeKind];
+
+	(void)parser;
+	[node setName:attributeName];
+	[node setStringValue:defaultValue];
+	[node fnSetElementName:elementName];
+	[[self fnDTD] addChild:node];
+	[node release];
+}
+
+- (void)parser:(NSXMLParser *)parser
+    foundInternalEntityDeclarationWithName:(NSString *)name
+				     value:(NSString *)value
+{
+	NSXMLDTDNode *node = [[NSXMLDTDNode alloc] initWithKind:NSXMLEntityGeneralKind];
+
+	(void)parser;
+	[node setName:name];
+	[node setStringValue:value];
+	[[self fnDTD] addChild:node];
+	[node release];
+}
+
+- (void)parser:(NSXMLParser *)parser
+    foundExternalEntityDeclarationWithName:(NSString *)name
+				 publicID:(NSString *)publicID
+				 systemID:(NSString *)systemID
+{
+	NSXMLDTDNode *node = [[NSXMLDTDNode alloc] initWithKind:NSXMLEntityParsedKind];
+
+	(void)parser;
+	[node setName:name];
+	[node setPublicID:publicID];
+	[node setSystemID:systemID];
+	[[self fnDTD] addChild:node];
+	[node release];
+}
+
+- (void)parser:(NSXMLParser *)parser
+    foundUnparsedEntityDeclarationWithName:(NSString *)name
+				 publicID:(NSString *)publicID
+				 systemID:(NSString *)systemID
+			     notationName:(NSString *)notationName
+{
+	NSXMLDTDNode *node = [[NSXMLDTDNode alloc] initWithKind:NSXMLEntityUnparsedKind];
+
+	(void)parser;
+	[node setName:name];
+	[node setPublicID:publicID];
+	[node setSystemID:systemID];
+	[node setNotationName:notationName];
+	[[self fnDTD] addChild:node];
+	[node release];
+}
+
+- (void)parser:(NSXMLParser *)parser
+    foundNotationDeclarationWithName:(NSString *)name
+			     publicID:(NSString *)publicID
+			     systemID:(NSString *)systemID
+{
+	NSXMLDTDNode *node = [[NSXMLDTDNode alloc] initWithKind:NSXMLNotationDeclarationKind];
+
+	(void)parser;
+	[node setName:name];
+	[node setPublicID:publicID];
+	[node setSystemID:systemID];
+	[[self fnDTD] addChild:node];
+	[node release];
+}
+
 - (void)parser:(NSXMLParser *)parser parseErrorOccurred:(NSError *)parseError
 {
 	(void)parser;
@@ -145,6 +248,7 @@
 - (void)dealloc
 {
 	[_stack release];
+	[_dtd release];
 	[_error release];
 	[super dealloc];
 }
@@ -321,6 +425,18 @@
 	return nil;
 }
 
+- (nullable NSXMLDTD *)dtd
+{
+	return _dtd;
+}
+
+- (void)setDTD:(nullable NSXMLDTD *)dtd
+{
+	[dtd retain];
+	[_dtd release];
+	_dtd = dtd;
+}
+
 - (void)setRootElement:(id)root
 {
 	id existing = [self rootElement];
@@ -349,12 +465,33 @@
 	[text appendFormat:@"<?xml version=\"%@\" encoding=\"%@\"%@?>",
 		_version != nil ? _version : @"1.0", encoding,
 		_standalone ? @" standalone=\"yes\"" : @""];
+	if (_dtd != nil) {
+		/* THE DTD IS WRITTEN BACK WHERE IT WAS READ FROM: the DOCTYPE, with its identifiers and its
+		 * internal subset, in the one spelling that can be read again. */
+		NSString *rootName = [[self rootElement] name];
+
+		(void)rootName;
+		[text appendFormat:@"\n<!DOCTYPE %@", rootName != nil ? rootName : @""];
+		if ([_dtd publicID] != nil) {
+			[text appendFormat:@" PUBLIC \"%@\"", [_dtd publicID]];
+			if ([_dtd systemID] != nil) {
+				[text appendFormat:@" \"%@\"", [_dtd systemID]];
+			}
+		} else if ([_dtd systemID] != nil) {
+			[text appendFormat:@" SYSTEM \"%@\"", [_dtd systemID]];
+		}
+		if ([[_dtd internalSubset] length] > 0) {
+			[text appendFormat:@" [%@]", [_dtd internalSubset]];
+		}
+		[text appendString:@">"];
+	}
 	[text appendString:[self XMLStringWithOptions:(NSXMLNodeOptions)options]];
 	return [text dataUsingEncoding:NSUTF8StringEncoding];
 }
 
 - (void)dealloc
 {
+	[_dtd release];
 	[_version release];
 	[_characterEncoding release];
 	[_mimeType release];

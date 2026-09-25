@@ -33,6 +33,7 @@
 #import <Foundation/NSXMLNode.h>
 
 @class NSData;
+@class NSXMLDTD;
 @class NSDictionary;
 @class NSError;
 @class NSString;
@@ -67,6 +68,7 @@ enum {
 	NSString *_mimeType;
 	BOOL _standalone;
 	NSXMLDocumentContentKind _contentKind;
+	NSXMLDTD *_dtd;			/* the DTD this document declares, or nil */
 }
 
 /* FOUR DOORS TO A DOCUMENT: from bytes, from a file URL, from a string, and from a root element a caller
@@ -100,6 +102,13 @@ enum {
 
 - (nullable id)rootElement;
 - (void)setRootElement:(nullable id)root;
+
+/* THE DTD, WHICH XML-c REGISTERED AND SLICE XML-e SHIPS: a document parsed with an internal subset KEEPS
+ * what its declarations said, and writing the document out emits them again. Its NAME is the root element's,
+ * because the DOCTYPE's own name is not reported by the parser (a boundary of XML-a's DOCTYPE reading, which
+ * takes the subset and not the name). */
+- (nullable NSXMLDTD *)dtd;
+- (void)setDTD:(nullable NSXMLDTD *)dtd;
 
 /* THE TWO WRITING DOORS: the document's children as XML, with a declaration built from this document's own
  * attributes. -XMLDataWithOptions: takes the NODE options from NSXMLNode.h (pretty printing, quoting, the

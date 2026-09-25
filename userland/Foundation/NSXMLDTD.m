@@ -145,6 +145,8 @@ static NSXMLDTDNodeKind fn_dtd_attribute_kind(NSString *type)
 	return NSXMLAttributeCDATAKind;
 }
 
+NSString *FNDTDNodeTypeName(NSXMLDTDNode *node);
+
 static NSString *fn_dtd_attribute_type(NSXMLDTDNodeKind kind)
 {
 	switch (kind) {
@@ -161,7 +163,14 @@ static NSString *fn_dtd_attribute_type(NSXMLDTDNodeKind kind)
 	}
 }
 
+NSString *FNDTDNodeTypeName(NSXMLDTDNode *node)
+{
+	return fn_dtd_attribute_type([node DTDKind]);
+}
+
 /* THE CONTENT MODEL'S FORM, which is the element declaration's DTD kind. */
+NSXMLDTDNodeKind FNDTDNodeKindForModel(NSString *model);
+
 static NSXMLDTDNodeKind fn_dtd_element_kind(NSString *model)
 {
 	if (model == nil) return NSXMLElementDeclarationUndefinedKind;
@@ -172,9 +181,14 @@ static NSXMLDTDNodeKind fn_dtd_element_kind(NSString *model)
 	return NSXMLElementDeclarationUndefinedKind;
 }
 
+NSXMLDTDNodeKind FNDTDNodeKindForModel(NSString *model)
+{
+	return fn_dtd_element_kind(model);
+}
+
 /* ONE DECLARATION, PARSED INTO THE NODES IT DECLARES - a LIST, because ONE <!ATTLIST> may declare several
  * attributes and Apple's own event fires once per attribute. */
-static NSArray *fn_dtd_parse_declaration(NSString *declaration)
+NSArray *FNDTDDeclarationNodes(NSString *declaration)
 {
 	NSMutableArray *answer = [NSMutableArray array];
 	fn_dtd_reader r;
@@ -324,7 +338,7 @@ static NSArray *fn_dtd_parse_declaration(NSString *declaration)
 		[self release];
 		return nil;
 	}
-	nodes = fn_dtd_parse_declaration(string);
+	nodes = FNDTDDeclarationNodes(string);
 	if ([nodes count] == 0) {
 		/* A STRING THAT IS NOT A DECLARATION IS REFUSED rather than kept as an empty node: a DTD node with
 		 * no kind to say what it declares is a node a caller cannot use. */
@@ -341,13 +355,13 @@ static NSArray *fn_dtd_parse_declaration(NSString *declaration)
 
 - (void)fnSetElementName:(NSString *)name
 {
-	[_elementName release];
-	_elementName = [name copy];
+	[_fnElementName release];
+	_fnElementName = [name copy];
 }
 
 - (NSString *)fnElementName
 {
-	return _elementName;
+	return _fnElementName;
 }
 
 - (NSXMLDTDNodeKind)DTDKind { return _dtdKind; }
@@ -407,7 +421,7 @@ static NSArray *fn_dtd_parse_declaration(NSString *declaration)
 		}
 		/* AN ATTRIBUTE DECLARATION, whose element this node remembers (see the header). */
 		return [NSString stringWithFormat:@"<!ATTLIST %@ %@ %@ %@>",
-			_elementName != nil ? _elementName : @"", name, fn_dtd_attribute_type(_dtdKind),
+			_fnElementName != nil ? _fnElementName : @"", name, fn_dtd_attribute_type(_dtdKind),
 			value != nil ? value : @"#IMPLIED"];
 	}
 	}
@@ -418,7 +432,7 @@ static NSArray *fn_dtd_parse_declaration(NSString *declaration)
 	[_publicID release];
 	[_systemID release];
 	[_notationName release];
-	[_elementName release];
+	[_fnElementName release];
 	[super dealloc];
 }
 
@@ -493,18 +507,39 @@ static NSArray *fn_dtd_parse_declaration(NSString *declaration)
 - (void)setPublicID:(nullable NSString *)publicID { [_publicID release]; _publicID = [publicID copy]; }
 - (nullable NSString *)systemID { return _systemID; }
 - (void)setSystemID:(nullable NSString *)systemID { [_systemID release]; _systemID = [systemID copy]; }
-- (nullable NSString *)internalSubset { return _internalSubset; }
+- (nullable NSString *)internalSubset
+{
+	/* THE SUBSET IS WHAT THIS DTD DECLARES, which is true whether it was SET as text or BUILT from a
+	 * parser's events - and the second case is why this is not just the ivar: a document's DTD arrives one
+	 * declaration at a time, so the text it must write back is its own declarations written out. Without
+	 * this, writing a parsed document emitted a DOCTYPE with an EMPTY subset and reading it again found
+	 * nothing - a round trip that looked like a parse failure. */
+	if (_internalSubset != nil) {
+		return _internalSubset;
+	}
+	if ([self childCount] == 0) {
+		return nil;
+	}
+	{
+		NSMutableString *text = [NSMutableString string];
+		NSUInteger i;
+
+		for (i = 0; i < [self childCount]; i++) {
+			[text appendFormat:@"%@\n", [[self childAtIndex:i] XMLString]];
+		}
+		return text;
+	}
+}
 
 /* SETTING THE SUBSET PARSES IT: every `<!...>` at the top level becomes a child, quotes respected so that a
  * `>` inside a literal does not end a declaration early. */
-- (void)setInternalSubset:(nullable NSString *)internalSubset
+NSArray *FNDTDDeclarationNodesFromSubset(NSString *subset)
 {
-	NSString *text = internalSubset;
+	NSString *text = subset;
+	NSMutableArray *answer = [NSMutableArray array];
 	NSUInteger at = 0;
 	NSUInteger length = [text length];
 
-	[_internalSubset release];
-	_internalSubset = [text copy];
 	while (at < length) {
 		NSRange open = [text rangeOfString:@"<!" options:0 range:NSMakeRange(at, length - at)];
 		unichar quote = 0;
@@ -534,14 +569,28 @@ static NSArray *fn_dtd_parse_declaration(NSString *declaration)
 		{
 			NSString *declaration = [text substringWithRange:
 							NSMakeRange(open.location, end - open.location + 1)];
-			NSArray *nodes = fn_dtd_parse_declaration(declaration);
+			NSArray *nodes = FNDTDDeclarationNodes(declaration);
 			NSUInteger i;
 
 			for (i = 0; i < [nodes count]; i++) {
-				[self addChild:[nodes objectAtIndex:i]];
+				[answer addObject:[nodes objectAtIndex:i]];
 			}
 		}
 		at = end + 1;
+	}
+	return answer;
+}
+
+/* SETTING THE SUBSET PARSES IT, through the shared reader. */
+- (void)setInternalSubset:(nullable NSString *)internalSubset
+{
+	NSArray *nodes = FNDTDDeclarationNodesFromSubset(internalSubset);
+	NSUInteger i;
+
+	[_internalSubset release];
+	_internalSubset = [internalSubset copy];
+	for (i = 0; i < [nodes count]; i++) {
+		[self addChild:[nodes objectAtIndex:i]];
 	}
 }
 
