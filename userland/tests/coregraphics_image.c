@@ -415,6 +415,52 @@ int main(void)
 		CGContextRelease(c2);
 	}
 
+	/* --- AND A PREMULTIPLIED-LAST IMAGE, WHICH IS THE FORMAT AN APPKIT REP DECLARES ----------------- */
+	/* EVERY OTHER IMAGE IN THIS PROBE IS PREMULTIPLIED-FIRST LITTLE-ENDIAN, the format this tree's own
+	 * bitmap contexts use — so nothing here had ever asked whether the blit reads a
+	 * kCGImageAlphaPremultipliedLast image AS THE FORMAT SAYS. It matters because NSBitmapImageRep's
+	 * -CGImage declares exactly that, and an AppKit probe found a BLUE fill landing nowhere while WHITE
+	 * landed: a colour-dependent difference is a CHANNEL difference, which points here.
+	 *
+	 * THE PIXEL IS OPAQUE BLUE (R=0, G=0, B=255, A=255) — deliberately NOT white, because white is the
+	 * one colour that cannot tell a channel-order bug from correct behaviour: every channel says the
+	 * same thing. That is how the AppKit probe missed it, and it is why this check exists. */
+	{
+		static const unsigned char last_rgba[2 * 2 * 4] = {
+			0, 0, 255, 255,   0, 0, 0, 0,
+			0, 0, 0, 0,       0, 0, 0, 0
+		};
+		CGDataProviderRef prov = CGDataProviderCreateWithData(NULL, last_rgba,
+								     sizeof(last_rgba), NULL);
+		CGImageRef im = CGImageCreate(2, 2, 8, 32, 8, CGColorSpaceCreateDeviceRGB(),
+					      kCGImageAlphaPremultipliedLast, prov, NULL, false,
+					      kCGRenderingIntentDefault);
+
+		check("an image can be built in the PREMULTIPLIED-LAST format", im != NULL);
+		if (im != NULL) {
+			CGContextRef c = fresh();
+
+			CGContextDrawImage(c, CGRectMake(0.0, 0.0, 8.0, 8.0), im);
+			/* THE DESTINATION IS PREMULTIPLIED-FIRST LITTLE-ENDIAN, so memory is B, G, R, A. Image
+			 * pixel (0,0) is drawn 4x4 into the rect's TOP-LEFT, which is rows 0..3, cols 0..3. */
+			pixel(c, 0, 0, p);
+			/* THE FOUR CHANNELS ARE CHECKED ONE BY ONE rather than as one boolean, so the gate's own
+			 * output NAMES what arrived where — which is the measurement that locates the fault. The
+			 * source pixel is RGBA (0, 0, 255, 255); the destination's memory is B, G, R, A. */
+			check_num("...arriving with B intact (destination byte 0)", (double)p[0], 255.0, 0.0);
+			check_num("...with G intact (byte 1)", (double)p[1], 0.0, 0.0);
+			check_num("...with R intact (byte 2)", (double)p[2], 0.0, 0.0);
+			check_num("...and with ALPHA intact (byte 3)", (double)p[3], 255.0, 0.0);
+			/* THE OTHER HALF OF THE PAIR: the transparent pixels must STAY transparent, so a check
+			 * that painted everything would not pass here by accident. */
+			pixel(c, 7, 7, p);
+			check("...while the transparent ones stay transparent", p[0] == 0 && p[3] == 0);
+			CGContextRelease(c);
+			CGImageRelease(im);
+		}
+		CGDataProviderRelease(prov);
+	}
+
 	printf("CG-IMAGE: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

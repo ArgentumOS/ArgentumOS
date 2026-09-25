@@ -586,6 +586,24 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   A canvas is **1 pixel per point** (Apple scales by the destination screen's scale factor and this layer
   has no screen to ask), a NULL handler and a zero size are REFUSED BY NAME, and the handler's return
   value is IGNORED as Apple's is.
+
+  **AND THAT SLICE FOUND A COREGRAPHICS DEFECT, WHICH IS THE MORE USEFUL HALF OF IT (C8.12a).** The
+  AppKit probe first painted BLUE into the canvas and asserted it landed; it did not, while WHITE did.
+  **A COLOUR-DEPENDENT DIFFERENCE IS A CHANNEL DIFFERENCE**, so it was reproduced with AppKit removed
+  entirely: a CoreGraphics probe builds an image in `kCGImageAlphaPremultipliedLast` over a hand-written
+  OPAQUE BLUE pixel `[0,0,255,255]` and draws it, and the destination pixel comes back **ENTIRELY ZERO**
+  — the image composites as if fully transparent. **So `CGContextDrawImage` does not honour the format
+  the image declares.** Every pre-existing image in that probe is `kCGImageAlphaPremultipliedFirst |
+  kCGImageByteOrder32Little` (this tree's own layout), which is exactly why nothing here had asked.
+  **AND THE APPKIT PROBE COULD NOT HAVE CAUGHT IT, INSTRUCTIVELY:** its rep is filled with opaque WHITE
+  for determinism, and white is the one colour that cannot distinguish a channel-order bug from correct
+  behaviour, because every channel says the same thing.
+  **THE REPRODUCTION IS COMMITTED RED ON PURPOSE**, as a gate rather than an anecdote: four channel
+  assertions name what arrived where, so `make host-coregraphics-run` fails with the diagnosis spelled
+  out. **DECIDED (dec-d03ee1838990db64): THE FIX IS IN THE BLIT** — it will honour the declared format,
+  because C5.4 shipped the general format matrix as SUPPORTED, and an AppKit-side workaround would leave
+  that matrix quietly untrue while fixing only the caller that complained. The check goes green when the
+  blit does, and that is what closes this.
   The
   three enums ride with members whose substrate was checked one by one:
   `NSColorRenderingIntent`'s five cases and `NSImageInterpolation`'s five are each a
