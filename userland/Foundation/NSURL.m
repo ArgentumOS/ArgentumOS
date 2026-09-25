@@ -25,11 +25,13 @@
 #import <Foundation/NSURL.h>
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #import <Foundation/NSArray.h>
+#import <Foundation/NSData.h>
 #import <Foundation/NSDate.h>
 #import <Foundation/NSFileManager.h>
 #import <Foundation/NSDictionary.h>
@@ -545,6 +547,16 @@ NSURLResourceKey const NSURLVolumeIsReadOnlyKey = @"NSURLVolumeIsReadOnlyKey";
 NSURLResourceKey const NSURLVolumeSupportsCaseSensitiveNamesKey = @"NSURLVolumeSupportsCaseSensitiveNamesKey";
 NSURLResourceKey const NSURLVolumeSupportsPersistentIDsKey = @"NSURLVolumeSupportsPersistentIDsKey";
 NSURLResourceKey const NSURLVolumeSupportsSymbolicLinksKey = @"NSURLVolumeSupportsSymbolicLinksKey";
+NSURLResourceKey const NSURLVolumeNameKey = @"NSURLVolumeNameKey";
+NSURLResourceKey const NSURLVolumeLocalizedNameKey = @"NSURLVolumeLocalizedNameKey";
+NSURLResourceKey const NSURLVolumeIdentifierKey = @"NSURLVolumeIdentifierKey";
+NSURLResourceKey const NSURLVolumeURLKey = @"NSURLVolumeURLKey";
+NSURLResourceKey const NSURLVolumeTypeNameKey = @"NSURLVolumeTypeNameKey";
+NSURLResourceKey const NSURLVolumeIsRootFileSystemKey = @"NSURLVolumeIsRootFileSystemKey";
+NSURLResourceKey const NSURLVolumeResourceCountKey = @"NSURLVolumeResourceCountKey";
+NSURLResourceKey const NSURLVolumeSupportsVolumeSizesKey = @"NSURLVolumeSupportsVolumeSizesKey";
+NSURLResourceKey const NSURLVolumeIsMountTriggerKey = @"NSURLVolumeIsMountTriggerKey";
+NSURLResourceKey const NSURLIsVolumeKey = @"NSURLIsVolumeKey";
 
 NSURLFileResourceType const NSURLFileResourceTypeRegular = @"NSURLFileResourceTypeRegular";
 NSURLFileResourceType const NSURLFileResourceTypeDirectory = @"NSURLFileResourceTypeDirectory";
@@ -554,6 +566,110 @@ NSURLFileResourceType const NSURLFileResourceTypeCharacterSpecial = @"NSURLFileR
 NSURLFileResourceType const NSURLFileResourceTypeBlockSpecial = @"NSURLFileResourceTypeBlockSpecial";
 NSURLFileResourceType const NSURLFileResourceTypeNamedPipe = @"NSURLFileResourceTypeNamedPipe";
 NSURLFileResourceType const NSURLFileResourceTypeUnknown = @"NSURLFileResourceTypeUnknown";
+
+/* ---- THE MOUNT TABLE ------------------------------------------------------------------------------
+ * `/System/Processes/mounts` is this system's published mount table: one line per mount that is not kernel-internal,
+ * with `device mountpoint fstype rw|ro 0 0`. It is read on demand rather than cached here, because the URL's
+ * OWN cache is what makes repeated questions cheap (slice 6a) and a second cache would be a second truth. */
+/* READING A SYNTHETIC FILE, AND WHY IT NEEDS A LOOP: procfs's nodes report SIZE ZERO - their content is
+ * generated when they are read - and anything that reads "exactly st_size bytes" therefore answers EMPTY.
+ * That is what the first version of the mount-table reader did (twice, here and in NSFileManager), and the
+ * symptom was a volume list that was simply absent. This reads until EOF and needs no size at all. */
+static NSData *fn_mount_table_bytes(void)
+{
+	int fd = open("/System/Processes/mounts", O_RDONLY);
+	NSMutableData *answer;
+
+	if (fd < 0) {
+		return nil;
+	}
+	answer = [[NSMutableData alloc] init];
+	for (;;) {
+		char buffer[2048];
+		ssize_t got = read(fd, buffer, sizeof(buffer));
+
+		if (got <= 0) {
+			break;
+		}
+		[answer appendBytes:buffer length:(NSUInteger)got];
+	}
+	close(fd);
+	return [answer autorelease];
+}
+
+static NSArray *fn_mounts(void)
+{
+	id data = fn_mount_table_bytes();
+	NSString *text;
+	NSMutableArray *entries;
+
+	if (data == nil) {
+		return nil;
+	}
+	text = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+	if (text == nil) {
+		return nil;
+	}
+	entries = [NSMutableArray array];
+	{
+		NSArray *lines = [text componentsSeparatedByString:@"\n"];
+		NSUInteger i;
+
+		for (i = 0; i < [lines count]; i++) {
+			NSArray *fields = [[lines objectAtIndex:i] componentsSeparatedByString:@" "];
+			NSMutableArray *kept = [NSMutableArray array];
+			NSUInteger f;
+
+			for (f = 0; f < [fields count]; f++) {
+				NSString *field = [fields objectAtIndex:f];
+
+				if ([field length] > 0) {
+					[kept addObject:field];
+				}
+			}
+			if ([kept count] >= 4) {
+				[entries addObject:kept];
+			}
+		}
+	}
+	[text release];
+	return entries;
+}
+
+/* THE VOLUME HOLDING A PATH: the LONGEST mount point that prefixes it. A naive first-match would put
+ * `/proc/version` on the root volume, which is exactly the mistake this rule exists to avoid. */
+static NSArray *fn_volume_for_path(NSString *path)
+{
+	NSArray *entries = fn_mounts();
+	NSArray *best = nil;
+	NSUInteger bestLength = 0;
+	NSUInteger i;
+
+	if (path == nil) {
+		return nil;
+	}
+	for (i = 0; i < [entries count]; i++) {
+		NSArray *entry = [entries objectAtIndex:i];
+		NSString *mountPoint = [entry objectAtIndex:1];
+		NSUInteger length = [mountPoint length];
+
+		if ([mountPoint isEqual:@"/"]) {
+			if (best == nil) {
+				best = entry;
+				bestLength = 0;
+			}
+			continue;
+		}
+		if ([path isEqual:mountPoint] || [path hasPrefix:
+				[mountPoint stringByAppendingString:@"/"]]) {
+			if (length > bestLength) {
+				best = entry;
+				bestLength = length;
+			}
+		}
+	}
+	return best;
+}
 
 /* ONE PATH, ONE lstat - AND lstat RATHER THAN stat ON PURPOSE: -isSymbolicLinkKey asks about the LINK,
  * and a link's -fileSizeKey is the length of the string it holds, where stat would answer about the
@@ -611,6 +727,13 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 		@"NSURLVolumeIsLocalKey", @"NSURLVolumeIsReadOnlyKey",
 		@"NSURLVolumeSupportsCaseSensitiveNamesKey", @"NSURLVolumeSupportsPersistentIDsKey",
 		@"NSURLVolumeSupportsSymbolicLinksKey",
+		/* THE MOUNT TABLE'S KEYS (slice 6e) - AND THEIR ABSENCE FROM THIS TABLE IS WHAT MADE SIX CHECKS
+		 * FAIL AT ONCE: the value chain answered them and the RECOGNITION LIST refused them, so every one
+		 * came back nil. The two places have to agree, and the probe is what noticed. */
+		@"NSURLVolumeNameKey", @"NSURLVolumeLocalizedNameKey", @"NSURLVolumeIdentifierKey",
+		@"NSURLVolumeURLKey", @"NSURLVolumeTypeNameKey", @"NSURLVolumeIsRootFileSystemKey",
+		@"NSURLVolumeResourceCountKey", @"NSURLVolumeSupportsVolumeSizesKey",
+		@"NSURLVolumeIsMountTriggerKey", @"NSURLIsVolumeKey",
 	};
 	size_t i;
 
@@ -701,16 +824,70 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 		 * all - so this is YES as a fact about the system rather than a guess about the volume. */
 		return [NSNumber numberWithBool:YES];
 	}
-	if ([key isEqual:NSURLVolumeIsReadOnlyKey]) {
-		/* A MOUNT'S READ-ONLYNESS IS NOT A PERMISSION, AND THE DIFFERENCE IS THE KEY'S WHOLE POINT:
-		 * a write probe on a read-only FILE SYSTEM is refused with EROFS (the kernel tests
-		 * IS_RDONLY_FS for a write probe - kernel/syscalls/access.c, measured), while a permission
-		 * denial is EACCES. So EROFS is the volume's answer and EACCES says nothing about it. */
-		int probe;
+	if ([key isEqual:NSURLVolumeIsReadOnlyKey] ||
+	    [key isEqual:NSURLVolumeNameKey] || [key isEqual:NSURLVolumeLocalizedNameKey] ||
+	    [key isEqual:NSURLVolumeIdentifierKey] || [key isEqual:NSURLVolumeURLKey] ||
+	    [key isEqual:NSURLVolumeTypeNameKey] || [key isEqual:NSURLVolumeIsRootFileSystemKey] ||
+	    [key isEqual:NSURLVolumeResourceCountKey] || [key isEqual:NSURLVolumeSupportsVolumeSizesKey] ||
+	    [key isEqual:NSURLVolumeIsMountTriggerKey] || [key isEqual:NSURLIsVolumeKey]) {
+		NSArray *entry = fn_volume_for_path(path);
 
-		errno = 0;
-		probe = access([path UTF8String], W_OK);
-		return [NSNumber numberWithBool:(probe != 0 && errno == EROFS) ? YES : NO];
+		if (entry == nil) {
+			return nil;
+		}
+		{
+			NSString *device = [entry objectAtIndex:0];
+			NSString *mountPoint = [entry objectAtIndex:1];
+			NSString *fileSystem = [entry objectAtIndex:2];
+			NSString *flag = [entry objectAtIndex:3];
+
+			if ([key isEqual:NSURLVolumeNameKey] ||
+			    [key isEqual:NSURLVolumeLocalizedNameKey]) {
+				/* THE MOUNT POINT'S OWN NAME, and nothing more: there is no volume LABEL on this system,
+				 * so the name is where it is mounted (the root's is "/"). */
+				return [mountPoint isEqual:@"/"] ? @"/" : [mountPoint lastPathComponent];
+			}
+			if ([key isEqual:NSURLVolumeIdentifierKey]) {
+				/* OPAQUE, AND THE DEVICE IS WHAT MAKES IT ONE: Apple publishes the key and calls the
+				 * value opaque, and this system's name for a mounted volume is the device the table
+				 * names. Two files on one volume answer the SAME identifier, which is all the key
+				 * promises. */
+				return device;
+			}
+			if ([key isEqual:NSURLVolumeURLKey]) {
+				return [NSURL fileURLWithPath:mountPoint];
+			}
+			if ([key isEqual:NSURLVolumeTypeNameKey]) {
+				return fileSystem;
+			}
+			if ([key isEqual:NSURLVolumeIsRootFileSystemKey]) {
+				return [NSNumber numberWithBool:[mountPoint isEqual:@"/"] ? YES : NO];
+			}
+			if ([key isEqual:NSURLVolumeIsMountTriggerKey] || [key isEqual:NSURLIsVolumeKey]) {
+				/* A VOLUME IS THE ROOT OF A MOUNTED FILE SYSTEM and a MOUNT TRIGGER is a directory that
+				 * a mount landed on - which for this system are the same statement about the table. */
+				BOOL exact = [path isEqual:mountPoint] ? YES : NO;
+
+				return [NSNumber numberWithBool:exact];
+			}
+			if ([key isEqual:NSURLVolumeIsReadOnlyKey]) {
+				return [NSNumber numberWithBool:[flag isEqual:@"ro"] ? YES : NO];
+			}
+			if ([key isEqual:NSURLVolumeResourceCountKey]) {
+				NSDictionary *fs = [[NSFileManager defaultManager]
+							attributesOfFileSystemForPath:path error:NULL];
+
+				return [fs objectForKey:NSFileSystemNodes];
+			}
+			/* AND THE ONE THAT ASKS WHETHER SIZES CAN BE HAD AT ALL, answered by asking: a volume
+			 * reports sizes when its file-system attributes can be read. */
+			{
+				NSDictionary *fs = [[NSFileManager defaultManager]
+							attributesOfFileSystemForPath:path error:NULL];
+
+				return [NSNumber numberWithBool:fs != nil ? YES : NO];
+			}
+		}
 	}
 	if ([key isEqual:NSURLVolumeSupportsSymbolicLinksKey] ||
 	    [key isEqual:NSURLVolumeSupportsPersistentIDsKey] ||

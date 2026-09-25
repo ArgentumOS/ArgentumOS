@@ -239,6 +239,36 @@ extern NSURLResourceKey const NSURLVolumeSupportsCaseSensitiveNamesKey;
 extern NSURLResourceKey const NSURLVolumeSupportsPersistentIDsKey;
 extern NSURLResourceKey const NSURLVolumeSupportsSymbolicLinksKey;
 
+/* ---- THE MOUNT TABLE'S KEYS (W8p, slice 6e) --------------------------------------------------------
+ *
+ * THIS SYSTEM PUBLISHES ITS MOUNTS: `/proc/mounts` prints `device mountpoint fstype rw|ro 0 0` for every
+ * mount that is not a kernel-internal one (`fs/procfs/data.c`, measured), which is what these keys read.
+ * AND ONE OF THEM IS AN IMPROVEMENT ON SLICE 6c: `NSURLVolumeIsReadOnlyKey` was answered there by probing a
+ * WRITE and looking for EROFS (the kernel refuses a write on a read-only file system with that errno); the
+ * table says it outright, so it is read from the FLAG FIELD now and the probe asserts the two agree where
+ * both can be asked.
+ *
+ * A URL'S VOLUME IS THE LONGEST MOUNT POINT THAT PREFIXES ITS PATH, which is what makes `/proc/version` sit
+ * on the procfs volume rather than on the root that contains the mount point - the probe asserts exactly
+ * that, because a longest-prefix rule is the one thing a naive "first matching mount" gets wrong.
+ */
+extern NSURLResourceKey const NSURLVolumeNameKey;
+extern NSURLResourceKey const NSURLVolumeLocalizedNameKey;
+extern NSURLResourceKey const NSURLVolumeIdentifierKey;
+extern NSURLResourceKey const NSURLVolumeURLKey;
+extern NSURLResourceKey const NSURLVolumeTypeNameKey;
+extern NSURLResourceKey const NSURLVolumeIsRootFileSystemKey;
+extern NSURLResourceKey const NSURLVolumeResourceCountKey;
+extern NSURLResourceKey const NSURLVolumeSupportsVolumeSizesKey;
+extern NSURLResourceKey const NSURLVolumeIsMountTriggerKey;
+extern NSURLResourceKey const NSURLIsVolumeKey;
+
+/* AND THE OPTION SET IS NSFileManager's, NOT THIS CLASS'S: `NSVolumeEnumerationOptions` is declared in
+ * NSFileManager.h (with the two members Apple publishes) and this slice would have INVENTED a duplicate
+ * type here - which the ledger stopped, because a measured check of the tree showed the type already
+ * shipped. `NSVolumeEnumerationSkipHiddenVolumes` is CARRIED and acts on nothing: this system has no hidden
+ * volumes, since the table lists what is mounted. */
+
 extern NSURLFileResourceType const NSURLFileResourceTypeRegular;
 extern NSURLFileResourceType const NSURLFileResourceTypeDirectory;
 extern NSURLFileResourceType const NSURLFileResourceTypeSymbolicLink;

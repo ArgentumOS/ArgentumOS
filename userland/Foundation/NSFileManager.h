@@ -229,6 +229,11 @@ typedef enum {
 	NSURLRelationshipOther = 2
 } NSURLRelationship;
 
+typedef enum {
+	NSVolumeEnumerationSkipHiddenVolumes = 1 << 0,
+	NSVolumeEnumerationProduceFileReferenceURLs = 1 << 1
+} NSVolumeEnumerationOptions;
+
 @interface NSFileManager : NSObject
 {
 	/* ASSIGN, NOT WEAK, and that is MEASURED rather than chosen: Apple's own declaration comes back
@@ -402,6 +407,14 @@ typedef enum {
 					options:(NSUInteger)options
 					  error:(NSError ** _Nullable)error;
 
+/* "Returns the URLs of the mounted volumes", with the keys a caller asks for PREFETCHED into each - the
+ * volume-list half of W8p, and the door whose option set is declared below with it. On this system the table
+ * is `/proc/mounts` (measured: `device mountpoint fstype rw|ro 0 0` per line), and
+ * NSVolumeEnumerationSkipHiddenVolumes is CARRIED because this system has no hidden volumes to skip - the
+ * table lists what is mounted and nothing else. */
+- (nullable NSArray *)mountedVolumeURLsIncludingResourceValuesForKeys:(nullable NSArray *)propertyKeys
+							      options:(NSVolumeEnumerationOptions)options;
+
 /* THE DEEP WALK AS A DOOR (W8 slice 6e), which is where Apple puts it: the enumerator CLASS is the
  * cursor, and the manager is what knows a directory.
  *
@@ -471,10 +484,9 @@ typedef enum {
 	NSDirectoryEnumerationProducesRelativePathURLs = 1 << 4
 } NSDirectoryEnumerationOptions;
 
-typedef enum {
-	NSVolumeEnumerationSkipHiddenVolumes = 1 << 0,
-	NSVolumeEnumerationProduceFileReferenceURLs = 1 << 1
-} NSVolumeEnumerationOptions;
+/* (the NSVolumeEnumerationOptions declaration moved ABOVE the interface: the volume door takes it, and a
+ * declaration used before it is declared is a compile error - the second time in this family that a
+ * declaration's PLACE was the bug.) */
 
 /* What -replaceItemAtURL:...: may do with the item it replaces. */
 typedef enum {

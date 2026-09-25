@@ -1098,6 +1098,111 @@ typedef enum {
 	completionHandler([NSDictionary dictionary], nil);
 }
 
+/* THE MOUNT TABLE, READ WHERE THE DOOR THAT NEEDS IT LIVES: `/System/Processes/mounts` is
+ * `device mountpoint fstype rw|ro 0 0` per line (measured in fs/procfs/data.c) and the mount POINT is the
+ * second field. The volume KEYS are answered in NSURL.m, which does its own read with the longest-prefix
+ * rule; this is the same table read for its list. */
+static NSArray *fn_file_system_mounts(void)
+{
+	/* THE SAME LOOP AS NSURL.m's READER, FOR THE SAME REASON: the table is a SYNTHETIC file that reports
+	 * size zero, so reading it by size answers nothing. */
+	id data = nil;
+	{
+		int fd = open("/System/Processes/mounts", O_RDONLY);
+
+		if (fd >= 0) {
+			NSMutableData *bytes = [[NSMutableData alloc] init];
+
+			for (;;) {
+				char buffer[2048];
+				ssize_t got = read(fd, buffer, sizeof(buffer));
+
+				if (got <= 0) {
+					break;
+				}
+				[bytes appendBytes:buffer length:(NSUInteger)got];
+			}
+			close(fd);
+			data = [bytes autorelease];
+		}
+	}
+	NSString *text;
+	NSMutableArray *answer;
+
+	if (data == nil) {
+		return nil;
+	}
+	text = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+	if (text == nil) {
+		return nil;
+	}
+	answer = [NSMutableArray array];
+	{
+		NSArray *lines = [text componentsSeparatedByString:@"\n"];
+		NSUInteger i;
+
+		for (i = 0; i < [lines count]; i++) {
+			NSArray *fields = [[lines objectAtIndex:i] componentsSeparatedByString:@" "];
+			NSMutableArray *kept = [NSMutableArray array];
+			NSUInteger f;
+
+			for (f = 0; f < [fields count]; f++) {
+				if ([[fields objectAtIndex:f] length] > 0) {
+					[kept addObject:[fields objectAtIndex:f]];
+				}
+			}
+			if ([kept count] >= 4) {
+				[answer addObject:kept];
+			}
+		}
+	}
+	[text release];
+	return answer;
+}
+
+- (nullable NSArray *)mountedVolumeURLsIncludingResourceValuesForKeys:(nullable NSArray *)propertyKeys
+							      options:(NSVolumeEnumerationOptions)options
+{
+	/* THE TABLE IS READ THROUGH THE URL SIDE, where the parsing and the longest-prefix rule live: asking the
+	 * root URL for the mounted volumes' keys would need the URL to expose them, so the read is duplicated
+	 * HERE in its simplest form - one line per mount, the second field being the mount point. */
+	NSArray *entries = fn_file_system_mounts();
+	NSMutableArray *answer;
+
+	(void)options;		/* see the header: this system has no hidden volumes to skip */
+	if (entries == nil) {
+		return nil;
+	}
+	answer = [NSMutableArray array];
+	{
+		NSUInteger i;
+
+		for (i = 0; i < [entries count]; i++) {
+			NSString *mountPoint = [[entries objectAtIndex:i] objectAtIndex:1];
+			NSURL *url = [[NSURL alloc] initFileURLWithPath:mountPoint];
+			NSUInteger k;
+
+			if (url == nil) {
+				continue;
+			}
+			/* THE KEYS A CALLER ASKED FOR ARE PREFETCHED INTO EACH VOLUME'S URL, which is the whole point
+			 * of the door's name - and the same two-sided rule the directory listing uses (slice 6d). */
+			if (propertyKeys != nil) {
+				for (k = 0; k < [propertyKeys count]; k++) {
+					NSURLResourceKey key = [propertyKeys objectAtIndex:k];
+					id value = nil;
+
+					[url getResourceValue:&value forKey:key error:NULL];
+					[url fnPrefetchValue:value forKey:key];
+				}
+			}
+			[answer addObject:url];
+			[url release];
+		}
+	}
+	return answer;
+}
+
 - (nullable NSDictionary *)attributesOfFileSystemForPath:(NSString *)path
 						   error:(NSError ** _Nullable)error
 {
