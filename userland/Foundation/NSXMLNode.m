@@ -378,6 +378,61 @@ static NSString *fn_xml_escape_attribute(NSString *text, BOOL singleQuoted)
 	[child fnAdopt:self];
 }
 
+/* THE FOUR THAT WERE DECLARED AND MISSING, each built on the three primitives above rather than beside
+ * them: a list insert that keeps its ORDER, a removal by index, a replacement that ADOPTS before it
+ * detaches, and a whole-list set that heals the back edges. Apple's pages define what each does; what is
+ * chosen here (and asserted by the probe) is the out-of-range shape, which follows THIS class's own
+ * -childAtIndex: - a no-op rather than a raise, because a tree edit that cannot happen should not take the
+ * caller's process with it. */
+- (void)insertChildren:(NSArray *)children atIndex:(NSUInteger)index
+{
+	NSUInteger i;
+
+	if (children == nil) {
+		return;
+	}
+	/* THE INDEX ADVANCES: inserting [a, b] at 2 of [x, y] must give [x, y, a, b]. Inserting both at the
+	 * SAME index would reverse them, which is the bug this loop exists to not have. */
+	for (i = 0; i < [children count]; i++) {
+		[self insertChild:[children objectAtIndex:i] atIndex:index + i];
+	}
+}
+
+- (void)removeChildAtIndex:(NSUInteger)index
+{
+	if (_children == nil || index >= [_children count]) {
+		return;
+	}
+	[self fnRemoveChild:[_children objectAtIndex:index]];
+}
+
+- (void)replaceChildAtIndex:(NSUInteger)index withNode:(id)node
+{
+	id old;
+
+	if (_children == nil || index >= [_children count] || node == nil) {
+		return;
+	}
+	/* INSERT FIRST, THEN DETACH THE OLD ONE: inserting at `index` pushes the old node to index+1 and gives
+	 * the replacement its parent, and removing the old node by identity then leaves it parentless without
+	 * ever leaving the array in a state where the replacement is not there. */
+	old = [_children objectAtIndex:index];
+	[self insertChild:node atIndex:index];
+	[self fnRemoveChild:old];
+}
+
+- (void)setChildren:(NSArray *)children
+{
+	NSUInteger i;
+
+	while (_children != nil && [_children count] > 0) {
+		[self fnRemoveChild:[_children objectAtIndex:0]];
+	}
+	for (i = 0; i < [children count]; i++) {
+		[self addChild:[children objectAtIndex:i]];
+	}
+}
+
 - (void)fnAdopt:(id)parent
 {
 	_parent = parent;	/* NOT RETAINED: the tree owns downward, and the upward pointer is a back edge */

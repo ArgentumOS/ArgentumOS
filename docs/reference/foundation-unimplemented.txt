@@ -7,7 +7,3 @@
 # boundary - the two are different, and the file is where that is decided.
 NSObject                       observeValueForKeyPath:ofObject:change:context: # KVO's INFORMAL protocol: the observer implements it, not NSObject
 NSURLSessionWebSocketMessage   type                                     # not implemented yet
-NSXMLElement                   insertChildren:atIndex:                  # not implemented yet
-NSXMLElement                   removeChildAtIndex:                      # not implemented yet
-NSXMLElement                   replaceChildAtIndex:withNode:            # not implemented yet
-NSXMLElement                   setChildren:                             # not implemented yet

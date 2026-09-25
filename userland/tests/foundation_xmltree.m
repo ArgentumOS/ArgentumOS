@@ -47,6 +47,20 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 	}
 }
 
+
+/* the children's names, in order, joined - the only shape in which "the order is right" can be asserted */
+static NSString *fn_names(id element)
+{
+	NSArray *children = [element children];
+	NSMutableArray *names = [NSMutableArray array];
+	NSUInteger i;
+
+	for (i = 0; i < [children count]; i++) {
+		[names addObject:[[children objectAtIndex:i] name]];
+	}
+	return [names componentsJoinedByString:@","];
+}
+
 int main(void)
 {
 	{
@@ -58,12 +72,19 @@ int main(void)
 		NSXMLNode *text = [NSXMLNode textWithStringValue:@"t"];
 		NSXMLNode *pi = [NSXMLNode processingInstructionWithName:@"target" stringValue:@"data"];
 
+		/* THE DTD CLAUSE USED TO ASSERT AN ABSENCE ("the DTD kinds are slice XML-c's") AND WENT STALE THE
+		 * DAY SLICE XML-d SHIPPED THEM - the second instance of that bug class today, after
+		 * foundation_filecoordinator. It now asserts what IS: the factory answers a DTD node, and its kind
+		 * is in the DTD family, which this library numbers from 100 so the two families cannot be confused
+		 * in one switch. */
+		NSXMLNode *dtd = [NSXMLNode DTDNodeWithXMLString:@"<!ELEMENT a (#PCDATA)>"];
+
 		check("tree-the-factories-make-the-kinds",
 		      [document kind] == NSXMLDocumentKind && [element kind] == NSXMLElementKind &&
 		      [attribute kind] == NSXMLAttributeKind && [namespaceNode kind] == NSXMLNamespaceKind &&
 		      [comment kind] == NSXMLCommentKind && [text kind] == NSXMLTextKind &&
 		      [pi kind] == NSXMLProcessingInstructionKind &&
-		      [NSXMLNode DTDNodeWithXMLString:@"<!ELEMENT a (#PCDATA)>"] == nil,
+		      dtd != nil && [dtd kind] >= 100,
 		      [NSString stringWithFormat:@"kinds=%lu/%lu/%lu/%lu/%lu/%lu/%lu",
 			(unsigned long)[document kind], (unsigned long)[element kind],
 			(unsigned long)[attribute kind], (unsigned long)[namespaceNode kind],
@@ -237,6 +258,47 @@ int main(void)
 			@"http://www.w3.org/XML/1998/namespace"] &&
 		      [NSXMLNode predefinedNamespaceForPrefix:@"not-a-prefix"] == nil,
 		      @"the split helpers, and the two prefixes XML itself binds");
+	}
+
+	{
+		/* THE FOUR EDIT DOORS THAT WERE DECLARED AND MISSING UNTIL §62's REPORT NAMED THEM, AND THE ORDER
+		 * RULE THAT IS EASY TO GET WRONG: inserting [b, c] at 1 of [a, d] must give [a, b, c, d] - an
+		 * implementation that inserted both at the SAME index would reverse them, and only an ORDERED
+		 * assertion can see the difference. */
+		id root = [[NSXMLElement alloc] initWithName:@"root"];
+		id a = [[NSXMLElement alloc] initWithName:@"a"];
+		id b = [[NSXMLElement alloc] initWithName:@"b"];
+		id c = [[NSXMLElement alloc] initWithName:@"c"];
+		id d = [[NSXMLElement alloc] initWithName:@"d"];
+		id e = [[NSXMLElement alloc] initWithName:@"e"];
+		NSString *afterInsert, *afterRemove, *afterReplace, *afterSet;
+		BOOL parentsRight;
+
+		check("the-four-edit-doors-ship",
+		      [root respondsToSelector:@selector(insertChildren:atIndex:)] &&
+		      [root respondsToSelector:@selector(removeChildAtIndex:)] &&
+		      [root respondsToSelector:@selector(replaceChildAtIndex:withNode:)] &&
+		      [root respondsToSelector:@selector(setChildren:)],
+		      @"insertChildren:atIndex:, removeChildAtIndex:, replaceChildAtIndex:withNode:, setChildren:");
+
+		[root addChild:a];
+		[root addChild:d];
+		[root insertChildren:[NSArray arrayWithObjects:b, c, nil] atIndex:1];
+		afterInsert = fn_names(root);
+		parentsRight = [a parent] == root && [b parent] == root && [c parent] == root && [d parent] == root;
+		[root removeChildAtIndex:1];
+		afterRemove = fn_names(root);
+		[root replaceChildAtIndex:1 withNode:e];
+		afterReplace = fn_names(root);
+		[root setChildren:[NSArray arrayWithObject:d]];
+		afterSet = fn_names(root);
+		check("edit-doors-keep-order-and-parentage",
+		      [afterInsert isEqual:@"a,b,c,d"] && [afterRemove isEqual:@"a,c,d"] &&
+		      [afterReplace isEqual:@"a,e,d"] && [afterSet isEqual:@"d"] && parentsRight &&
+		      [c parent] == nil && [e parent] == nil && [a parent] == nil,
+		      [NSString stringWithFormat:@"insert=%@ remove=%@ replace=%@ set=%@ parents=%d c-parent=%@ "
+			@"e-parent=%@", afterInsert, afterRemove, afterReplace, afterSet, (int)parentsRight,
+			[c parent], [e parent]]);
 	}
 
 	printf("FOUNDATION-XMLTREE RESULT ok=%d fail=%d\n", okc, failc);
