@@ -79,6 +79,7 @@
 #import <Foundation/NSFileCoordinator.h>
 #import <Foundation/NSFilePresenter.h>
 #import <Foundation/NSFileSecurity.h>
+#import <Foundation/NSFileVersion.h>
 #import <Foundation/NSFileWrapper.h>
 #import <Foundation/NSPropertyListSerialization.h>
 #import <Foundation/NSURL.h>

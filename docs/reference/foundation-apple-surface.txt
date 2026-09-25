@@ -28,11 +28,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  155   open   41   struck   77
+#   class      shipped  156   open   40   struck   77
 #   protocol   shipped   22   open    9   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped  105   open   38   struck   17
-#   case       shipped  604   open  530   struck  168
+#   enum       shipped  107   open   36   struck   17
+#   case       shipped  606   open  528   struck  168
 #   func       shipped   72   open   63   struck   54
 #   var        shipped  238   open  323   struck  353
 #   typealias  shipped   36   open   33   struck    7
@@ -403,8 +403,8 @@ case	open	NSFileReadUnknownStringEncodingError		Files and Data Persistence / Err
 case	open	NSFileReadUnknownStringEncodingError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
 case	open	NSFileReadUnsupportedSchemeError		Files and Data Persistence / Errors / Error Codes	-	objc
 case	open	NSFileReadUnsupportedSchemeError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
-case	open	NSFileVersionAddingByMoving	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Constants / Constants	-	objc
-case	open	NSFileVersionReplacingByMoving	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Constants / Replacing options	-	objc
+case	shipped	NSFileVersionAddingByMoving	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Constants / Constants	-	objc
+case	shipped	NSFileVersionReplacingByMoving	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Constants / Replacing options	-	objc
 case	shipped	NSFileWrapperReadingImmediate	NSFileWrapper	Files and Data Persistence / Managed file access / Constants / Constants	-	objc
 case	shipped	NSFileWrapperReadingWithoutMapping	NSFileWrapper	Files and Data Persistence / Managed file access / Constants / Constants	-	objc
 case	shipped	NSFileWrapperWritingAtomic	NSFileWrapper	Files and Data Persistence / Managed file access / Constants / Constants	-	objc
@@ -1405,7 +1405,7 @@ class	shipped	NSFileHandle		Files and Data Persistence / Managed file access	-	o
 class	shipped	NSFileManager		Files and Data Persistence / File system operations	-	objc
 class	open	NSFileProviderService		Files and Data Persistence / File system operations / Accessing file provider services	-	objc
 class	shipped	NSFileSecurity		Files and Data Persistence / Managed file access	-	objc
-class	open	NSFileVersion		Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
+class	shipped	NSFileVersion		Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
 class	shipped	NSFileWrapper		Files and Data Persistence / Managed file access	-	objc
 class	shipped	NSFormatter		Fundamentals / Custom formatters	-	objc
 class	struck	NSGarbageCollector		Low-Level Utilities / Legacy / Legacy	deprecated	objc
@@ -1658,8 +1658,8 @@ enum	shipped	NSFileManagerResumeSyncBehavior	NSFileManager	Files and Data Persis
 enum	shipped	NSFileManagerSupportedSyncControls	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
 enum	shipped	NSFileManagerUnmountOptions	NSFileManager	Files and Data Persistence / File system operations / Unmounting volumes	-	objc
 enum	shipped	NSFileManagerUploadLocalVersionConflictPolicy	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
-enum	open	NSFileVersionAddingOptions	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Constants	-	objc
-enum	open	NSFileVersionReplacingOptions	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Constants	-	objc
+enum	shipped	NSFileVersionAddingOptions	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Constants	-	objc
+enum	shipped	NSFileVersionReplacingOptions	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Constants	-	objc
 enum	shipped	NSFileWrapperReadingOptions	NSFileWrapper	Files and Data Persistence / Managed file access / Constants	-	objc
 enum	shipped	NSFileWrapperWritingOptions	NSFileWrapper	Files and Data Persistence / Managed file access / Constants	-	objc
 enum	shipped	NSFormattingContext	NSFormatter	Fundamentals / Custom formatters / Constants	-	objc

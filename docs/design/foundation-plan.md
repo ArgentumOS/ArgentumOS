@@ -3482,7 +3482,7 @@ vanishing.
 | **Files and Data Persistence / App-specific settings** | all classes shipped | — |
 | **Files and Data Persistence / Coordinated file access** | all classes shipped | — |
 | **Files and Data Persistence / Deprecated** | ALL STRUCK: `NSArchiver`, `NSUnarchiver` | — |
-| **Files and Data Persistence / File system operations** | 2 open | `NSFileProviderService`, `NSFileVersion` |
+| **Files and Data Persistence / File system operations** | 1 open | `NSFileProviderService` |
 | **Files and Data Persistence / Items** | ALL STRUCK: `NSMetadataItem` | — |
 | **Files and Data Persistence / JSON** | all classes shipped | — |
 | **Files and Data Persistence / Keyed Archivers** | all classes shipped | — |
@@ -12582,8 +12582,44 @@ been bitten by the difference: the DEFERRED handshake, the IN-WAIT half of `-can
 design are MEASUREMENTS OWED - the first two because the instrument that makes a presenter answer late trips
 a guest trap, the third because its design question is the deadlock above.**
 
-**THE COORDINATOR FAMILY IS THEREFORE CLOSED AS FAR AS ITS PUBLISHED SURFACE GOES**, with its four
-measurement debts named. What remains in W8 is `NSFileVersion` and `NSFileProviderService`.
+**SLICE 8a LANDED (2026-09-24): `NSFileVersion` - THE CLASS IS WRITTEN AROUND A VERSION STORE, AND THE
+SPLIT FOLLOWS WHAT A STORE IS ACTUALLY NEEDED FOR.** `foundation_fileversion` is a NEW probe with **9
+checks**, green on the first run. Apple's abstract is "a snapshot of a file at a specific point in time" and
+its page publishes **25 members**; **the store is named on Apple's own pages** ("the system can save versions
+of a file in a version store"), so what this system can say is exactly what needs no store:
+
+ * **IMPLEMENTED, BECAUSE NO STORE IS NEEDED:** the CURRENT version of an item - its URL, its name, its
+   modification date (asserted through TWO doors, the version's and `NSFileManager`'s), whether its contents
+   are local - and the two collections that are **TRUTHFULLY EMPTY**: `+otherVersionsOfItemAtURL:` and
+   `+unresolvedConflictVersionsOfItemAtURL:` answer an **empty array**, which is not a euphemism but the
+   postcondition ("no versions other than the current one" is exactly true when nothing stores them), and
+   `+removeOtherVersionsOfItemAtURL:error:` therefore **SUCCEEDS**, because what it asks for already holds;
+ * **REGISTERED, BECAUSE A STORE IS NEEDED, AND REFUSED BY NAME:** `+addVersionOfItemAtURL:…` (nothing to add
+   a version TO), `-removeAndReturnError:` (the CURRENT version cannot be removed, and saying so is better
+   than pretending the item was rolled back), `+temporaryDirectoryURLForNewVersionOfItemAtURL:` (the
+   directory exists to stage a version FOR THE STORE), and `+versionOfItemAtURL:forPersistentIdentifier:`
+   beyond the identifier this class itself hands out. Each answers nil **with an error** where Apple gives
+   the door one, and nil alone where it does not;
+ * **REGISTERED RATHER THAN DECLARED:** the conflict machinery - `-isResolved`/`-setResolved:`,
+   `-localizedNameOfSavingComputer`, `-isDiscardable`. **A getter that answered YES or NO to "is this
+   conflict resolved" would be INVENTING A FACT**, which is worse than not having the getter, and there are
+   no conflict versions and no saving computers for those questions to be about.
+
+**AND TWO CHOICES ARE OURS, WRITTEN AT THE DECLARATIONS:** `-localizedName` is the item's OWN name (no
+localisation database, the rule `-displayNameAtPath:` and `NSURLLocalizedNameKey` already follow), and
+`-persistentIdentifier` is an opaque string this class defines whose ONE guarantee is Apple's own - that it
+"can be used to refer to this version in the future" - which the probe checks by **round tripping it**
+through `+versionOfItemAtURL:forPersistentIdentifier:` and by requiring that anything else is answered nil
+rather than matched loosely.
+
+**AND ONE PROCESS TRAP REPEATED ITSELF, WHICH IS WHY IT IS WRITTEN DOWN TWICE:** the probe and its `mk/` rule
+landed, the build was GREEN, and the test run answered NOTHING AT ALL - because the **case file had not been
+written**. That is 7b's trap ("a probe with no rule in `mk/` is not a probe") seen from the other end: **the
+probe, its rule and its case are ONE deliverable**, and a green build says nothing about the third leg.
+
+**WHAT REMAINS IN W8 IS ONE CLASS AND FOUR DEBTS:** `NSFileProviderService`, and the coordinator family's
+measurement debts (the deferred handshake, the in-wait half of `-cancel`, the presenter-queue design, and
+the `make test`-level timing mystery which the plan has already corrected twice).
 
 **AFTER THE FAMILY:** `NSFileVersion` and `NSFileProviderService`, and still standing beside them the two
 items this unit has named and not closed - `NSDirectoryEnumerator`'s now-empty option word, and the
