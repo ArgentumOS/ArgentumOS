@@ -28,11 +28,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  158   open   38   struck   77
+#   class      shipped  160   open   36   struck   77
 #   protocol   shipped   23   open    8   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped  109   open   34   struck   17
-#   case       shipped  703   open  431   struck  168
+#   enum       shipped  111   open   32   struck   17
+#   case       shipped  739   open  395   struck  168
 #   func       shipped   72   open   63   struck   54
 #   var        shipped  239   open  322   struck  353
 #   typealias  shipped   36   open   33   struck    7
@@ -1154,23 +1154,23 @@ case	open	NSWindowsCP1254StringEncoding	NSString	Fundamentals / Strings / Workin
 case	struck	NSWindowsNTOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	struck	NSWrapCalendarComponents	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	deprecated	objc
 case	open	NSXMLAttributeCDATAKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
-case	open	NSXMLAttributeDeclarationKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLAttributeDeclarationKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
 case	open	NSXMLAttributeEntitiesKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLAttributeEntityKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLAttributeEnumerationKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLAttributeIDKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLAttributeIDRefKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLAttributeIDRefsKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
-case	open	NSXMLAttributeKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLAttributeKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
 case	open	NSXMLAttributeNMTokenKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLAttributeNMTokensKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLAttributeNotationKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
-case	open	NSXMLCommentKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
-case	open	NSXMLDTDKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLCommentKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLDTDKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
 case	open	NSXMLDocumentHTMLKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	objc
 case	open	NSXMLDocumentIncludeContentTypeDeclaration	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
 case	open	NSXMLDocumentIncludeContentTypeDeclaration	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLDocumentKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLDocumentKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
 case	open	NSXMLDocumentTextKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	objc
 case	open	NSXMLDocumentTidyHTML	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
 case	open	NSXMLDocumentTidyHTML	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
@@ -1185,42 +1185,42 @@ case	open	NSXMLDocumentXMLKind	NSXMLDocument	Files and Data Persistence / XML / 
 case	open	NSXMLElementDeclarationAnyKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLElementDeclarationElementKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLElementDeclarationEmptyKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
-case	open	NSXMLElementDeclarationKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLElementDeclarationKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
 case	open	NSXMLElementDeclarationMixedKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLElementDeclarationUndefinedKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
-case	open	NSXMLElementKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
-case	open	NSXMLEntityDeclarationKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLElementKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLEntityDeclarationKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
 case	open	NSXMLEntityGeneralKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLEntityParameterKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLEntityParsedKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLEntityPredefined	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLEntityUnparsedKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
-case	open	NSXMLInvalidKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
-case	open	NSXMLNamespaceKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
-case	open	NSXMLNodeCompactEmptyElement	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodeExpandEmptyElement	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodeIsCDATA	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodeLoadExternalEntitiesAlways	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodeLoadExternalEntitiesNever	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodeLoadExternalEntitiesSameOriginOnly	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodeNeverEscapeContents	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodeOptionsNone	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	objc
-case	open	NSXMLNodePreserveAll	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodePreserveAttributeOrder	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodePreserveCDATA	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodePreserveCharacterReferences	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodePreserveDTD	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodePreserveEmptyElements	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodePreserveEntities	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodePreserveNamespaceOrder	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodePreservePrefixes	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodePreserveQuotes	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodePreserveWhitespace	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodePrettyPrint	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodePromoteSignificantWhitespace	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodeUseDoubleQuotes	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNodeUseSingleQuotes	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLNotationDeclarationKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLInvalidKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLNamespaceKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLNodeCompactEmptyElement	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodeExpandEmptyElement	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodeIsCDATA	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodeLoadExternalEntitiesAlways	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodeLoadExternalEntitiesNever	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodeLoadExternalEntitiesSameOriginOnly	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodeNeverEscapeContents	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodeOptionsNone	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	objc
+case	shipped	NSXMLNodePreserveAll	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodePreserveAttributeOrder	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodePreserveCDATA	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodePreserveCharacterReferences	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodePreserveDTD	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodePreserveEmptyElements	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodePreserveEntities	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodePreserveNamespaceOrder	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodePreservePrefixes	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodePreserveQuotes	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodePreserveWhitespace	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodePrettyPrint	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodePromoteSignificantWhitespace	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodeUseDoubleQuotes	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNodeUseSingleQuotes	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLNotationDeclarationKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
 case	shipped	NSXMLParserAttributeHasNoValueError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
 case	shipped	NSXMLParserAttributeListNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
 case	shipped	NSXMLParserAttributeListNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
@@ -1318,8 +1318,8 @@ case	shipped	NSXMLParserUnknownEncodingError	NSXMLParser	Files and Data Persiste
 case	shipped	NSXMLParserUnparsedEntityError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
 case	shipped	NSXMLParserXMLDeclNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
 case	shipped	NSXMLParserXMLDeclNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLProcessingInstructionKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
-case	open	NSXMLTextKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLProcessingInstructionKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLTextKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
 case	struck	NSXPCConnectionCodeSigningRequirementFailure	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	declined	objc
 case	struck	NSXPCConnectionErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / XPC Errors	declined	objc
 case	struck	NSXPCConnectionErrorMaximum	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	declined	objc
@@ -1604,8 +1604,8 @@ class	struck	NSWhoseSpecifier		App Support / Object Specifiers	declined	objc
 class	open	NSXMLDTD		Files and Data Persistence / XML / Tree-Based Processing	-	objc
 class	open	NSXMLDTDNode		Files and Data Persistence / XML / Tree-Based Processing	-	objc
 class	open	NSXMLDocument		Files and Data Persistence / XML / Tree-Based Processing	-	objc
-class	open	NSXMLElement		Files and Data Persistence / XML / Tree-Based Processing	-	objc
-class	open	NSXMLNode		Files and Data Persistence / XML / Tree-Based Processing	-	objc
+class	shipped	NSXMLElement		Files and Data Persistence / XML / Tree-Based Processing	-	objc
+class	shipped	NSXMLNode		Files and Data Persistence / XML / Tree-Based Processing	-	objc
 class	shipped	NSXMLParser		Files and Data Persistence / XML / Event-Based Processing	-	objc
 class	struck	NSXPCCoder		Low-Level Utilities / XPC Client	declined	objc
 class	struck	NSXPCConnection		Low-Level Utilities / XPC Client	declined	objc
@@ -1767,8 +1767,8 @@ enum	shipped	NSVolumeEnumerationOptions	NSFileManager	Files and Data Persistence
 enum	struck	NSWhoseSubelementIdentifier	NSWhoseSpecifier	App Support / Object Specifiers / Constants	declined	objc
 enum	open	NSXMLDTDNodeKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	swift-page
 enum	open	NSXMLDocumentContentKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	objc
-enum	open	NSXMLNodeKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	swift-page
-enum	open	NSXMLNodeOptions	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	objc
+enum	shipped	NSXMLNodeKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	swift-page
+enum	shipped	NSXMLNodeOptions	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	objc
 enum	shipped	NSXMLParserError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	objc
 enum	shipped	NSXMLParserExternalEntityResolvingPolicy	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	swift-page
 enum	struck	NSXPCConnectionOptions	NSXPCConnection	Low-Level Utilities / XPC Client / Creating a connection	declined	objc

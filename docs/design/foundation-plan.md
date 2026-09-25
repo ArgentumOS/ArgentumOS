@@ -3489,7 +3489,7 @@ vanishing.
 | **Files and Data Persistence / Managed file access** | all classes shipped | — |
 | **Files and Data Persistence / Property Lists** | all classes shipped | — |
 | **Files and Data Persistence / Queries** | ALL STRUCK: `NSMetadataQuery`, `NSMetadataQueryAttributeValueTuple`, `NSMetadataQueryDelegate`, `NSMetadataQueryResultGroup` | — |
-| **Files and Data Persistence / XML** | 5 open | `NSXMLDTD`, `NSXMLDTDNode`, `NSXMLDocument`, `NSXMLElement`, `NSXMLNode` |
+| **Files and Data Persistence / XML** | 3 open | `NSXMLDTD`, `NSXMLDTDNode`, `NSXMLDocument` |
 | **Files and Data Persistence / iCloud key and value storage** | 1 open | `NSUbiquitousKeyValueStore` |
 | **Fundamentals / Automatic grammar agreement** | 5 open; 1 STRUCK: `NSMorphologyCustomPronoun` | `NSInflectionRule`, `NSInflectionRuleExplicit`, `NSMorphology`, `NSMorphologyPronoun`, `NSTermOfAddress` |
 | **Fundamentals / Basic Collections** | 2 open | `NSOrderedCollectionChange`, `NSOrderedCollectionDifference` |
@@ -12679,8 +12679,45 @@ arrives through `-foundCharacters:`, `-publicID`/`-systemID` are nil because the
 and a document that is not UTF-8 is REFUSED with `NSXMLParserEncodingNotSupportedError` rather than parsed
 into nothing.
 
-**WHAT REMAINS IN XML:** the tree classes (`NSXMLNode`, `NSXMLElement`, `NSXMLDocument`) and the DTD family
-(`NSXMLDTD`, `NSXMLDTDNode`) with the six DTD delegate events - two more slices over the same text.
+**SLICE XML-b LANDED (2026-09-24): THE TREE - `NSXMLNode` AND `NSXMLElement`, BUILT BY HAND, WALKED AND
+WRITTEN BACK OUT.** `foundation_xmltree` is a NEW probe with **11 checks**, green. The node kinds (thirteen)
+and the node options (twenty-three) are generated from the ledger so they cannot drift from it, and what the
+two pages publish (about seventy members) is split the way the engines are: **SHIPPED** are the factories,
+the accessors, the tree navigation, the children, the attributes, the namespace helpers and the
+serialization; **REGISTERED** are XPath (an engine), XSLT (a processor), `-validate` (DTD validation),
+`NSXMLDocumentTidy*` (libxml2's HTML parser) and `-canonicalXMLStringPreservingComments:` (C14N is a
+specification of its own). `NSXMLDocument` is slice XML-c, because it is the class that PARSES into this
+tree. **Three storage readings are OURS AND ASSERTED**: an ATTRIBUTE lives in its element's own store (so
+`-children` is the content and `-attributes` is insertion-ordered), a NAMESPACE IS A CHILD of the element
+that declares it (so it appears in that element's start tag), and a NODE HAS ONE PARENT (adding adopts, and
+the upward pointer is not a retain).
+
+**FOUR BUGS THE PROBE FOUND, AND THE LAST ONE IS A BUILD TRAP WORTH CARRYING:**
+ * **AN EMPTY ELEMENT IS EXPANDED BY DEFAULT.** The first serializer wrote `<a>>` (a `>` from the format
+ * appended to a literal that already ended in one); when that was fixed it wrote the DEFAULT as if it were
+ * the compact form. Apple's default is a start tag AND an end tag, and `NSXMLNodeCompactEmptyElement` is
+ * what selects `<a/>` - and the check asserts BOTH forms, which is why three failures pointed at one line;
+ * **`NSXMLNodeOptions` NUMBERED SEQUENTIALLY MADE ITS FIRST MEMBER ZERO.** An option set's members are
+ * BITS; a member numbered 0 is invisible to a caller who passes it. The probe found this by asking for the
+ * compact form and getting the expanded one back - the enum is now generated as bits, with only
+ * `NSXMLNodeOptionsNone` at zero, which is what "no options" means;
+ * **`%*s` CAME BACK LITERAL.** This library's formatters do not implement every C99 specifier - `%C` was
+ * the first such discovery (XML-a) and a WIDTH FROM AN ARGUMENT is the second. The indent is now built by a
+ * loop, and the reason the discovery was possible is that the pretty-print failure's detail ESCAPED its
+ * newlines, because a failure whose value is cut at the first newline cannot be read;
+ * **THE BUILD TRAP, AND IT IS THE ONE TO REMEMBER: THE LIBRARY'S OBJECT RULE IS WILDCARD-BASED, BUT ITS
+ * REBUILD TRIGGER IS A HAND-WRITTEN LIST - AND THE `.o` RULES HAVE NO HEADER DEPENDENCY.** So a
+ * HEADER-ONLY change silently reuses a STALE object: the probe compiled against the corrected enum while
+ * the library kept the old numbers, and the symptom was three option checks failing with the right
+ * constants printed by the probe. The diagnosis came from MEASURING AT THE READER (print what the caller
+ * sees, then compare with what the code does). **It is the same class this project already recorded for the
+ * kernel** ("MUST rm -rf .build/64real after sigcontext/process.h changes - no header deps in Makefile"),
+ * and the fix has two halves: the new files are in `FOUNDATION_SRCS`/`FOUNDATION_HDRS`, and the stale
+ * objects are deleted.
+
+**WHAT REMAINS IN XML:** slice XML-c (`NSXMLDocument` and the parse bridge over XML-a's parser, with the
+XPath and XSLT boundaries at the doors they belong to) and slice XML-d (the DTD family - `NSXMLDTD`,
+`NSXMLDTDNode` and the six DTD delegate events - with the DTD node kinds).
 
 **W8 IS COMPLETE, AND THE TOTAL IS CHECKABLE RATHER THAN ASSERTED.** The unit's nine slices, each with its
 landed probe and its checks: `NSDirectoryEnumerator` **29**, the URL resource values **27**,

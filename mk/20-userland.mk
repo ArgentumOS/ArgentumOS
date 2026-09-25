@@ -146,6 +146,8 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSFileCoordinator.m \
 	$(FOUNDATION_SRC)/NSFileVersion.m \
 	$(FOUNDATION_SRC)/NSFileProviderService.m \
+	$(FOUNDATION_SRC)/NSXMLNode.m \
+	$(FOUNDATION_SRC)/NSXMLParser.m \
 	$(FOUNDATION_SRC)/NSFileSecurity.m \
 	$(FOUNDATION_SRC)/NSFileWrapper.m \
 	$(FOUNDATION_SRC)/NSURL.h \
@@ -184,6 +186,8 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSFilePresenter.h \
 	$(FOUNDATION_SRC)/NSFileVersion.h \
 	$(FOUNDATION_SRC)/NSFileProviderService.h \
+	$(FOUNDATION_SRC)/NSXMLNode.h \
+	$(FOUNDATION_SRC)/NSXMLParser.h \
 	$(FOUNDATION_SRC)/NSFileSecurity.h \
 	$(FOUNDATION_SRC)/NSFileWrapper.h \
 	$(FOUNDATION_SRC)/NSURLComponents.h \
@@ -810,6 +814,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_urlresourcevalues.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlresourcevalues"
+	# foundation_xmltree: XML slice XML-b acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> - a tree is built by hand, so there is no fixture.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_xmltree.m -o .build/probe-foundation_xmltree.o
+	$(MUSL64_OBJC) .build/probe-foundation_xmltree.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_xmltree"
 	# foundation_xmlparser: W8 slice XML-a acceptance (foundation-plan.md §60). ONE unit, only
 	# <Foundation/Foundation.h> plus the POSIX calls its file fixture makes.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
