@@ -226,12 +226,12 @@ case	open	NSBezelStyleSmallSquare	NSButtonCell	-	-	objc
 case	struck	NSBezelStyleTexturedRounded	NSButtonCell	-	deprecated	objc
 case	struck	NSBezelStyleTexturedSquare	NSButtonCell	-	deprecated	objc
 case	open	NSBezelStyleToolbar	NSButtonCell	-	-	objc
-case	open	NSBezierPathElementClosePath	NSBezierPath	-	-	objc
-case	open	NSBezierPathElementCubicCurveTo	NSBezierPath	-	-	objc
+case	shipped	NSBezierPathElementClosePath	NSBezierPath	-	-	objc
+case	shipped	NSBezierPathElementCubicCurveTo	NSBezierPath	-	-	objc
 case	struck	NSBezierPathElementCurveTo	NSBezierPath	-	deprecated	objc
-case	open	NSBezierPathElementLineTo	NSBezierPath	-	-	objc
-case	open	NSBezierPathElementMoveTo	NSBezierPath	-	-	objc
-case	open	NSBezierPathElementQuadraticCurveTo	NSBezierPath	-	-	objc
+case	shipped	NSBezierPathElementLineTo	NSBezierPath	-	-	objc
+case	shipped	NSBezierPathElementMoveTo	NSBezierPath	-	-	objc
+case	shipped	NSBezierPathElementQuadraticCurveTo	NSBezierPath	-	-	objc
 case	open	NSBitmapFormatAlphaFirst	NSBitmapImageRep	-	-	objc
 case	open	NSBitmapFormatAlphaNonpremultiplied	NSBitmapImageRep	-	-	objc
 case	open	NSBitmapFormatFloatingPointSamples	NSBitmapImageRep	-	-	objc
@@ -2543,7 +2543,7 @@ enum	open	NSBackgroundStyle	NSCell	-	-	objc
 enum	open	NSBackgroundStyle	NSView	-	-	objc
 enum	open	NSBackingStoreType	NSWindow	-	-	objc
 enum	open	NSBezelStyle	NSButtonCell	-	-	objc
-enum	open	NSBezierPathElement	NSBezierPath	-	-	objc
+enum	shipped	NSBezierPathElement	NSBezierPath	-	-	objc
 enum	open	NSBitmapFormat	NSBitmapImageRep	-	-	objc
 enum	open	NSBitmapImageFileType	NSBitmapImageRep	-	-	objc
 enum	open	NSBorderType	NSView	-	-	objc
@@ -3936,7 +3936,7 @@ method	open	-constraintsAffectingLayoutForOrientation	NSLayoutGuide	-	-	objc
 method	open	-constraintsAffectingLayoutForOrientation	NSView	-	-	objc
 method	open	-containsLocation	NSTextRange	-	-	objc
 method	open	-containsOptions	NSUserInterfaceCompressionOptions	-	-	objc
-method	open	-containsPoint	NSBezierPath	-	-	objc
+method	shipped	-containsPoint	NSBezierPath	-	-	objc
 method	struck	-containsPoint	NSTextContainer	-	deprecated	objc
 method	open	-containsRange	NSTextRange	-	-	objc
 method	open	-contentBorderThicknessForEdge	NSWindow	-	-	objc
@@ -4264,7 +4264,7 @@ method	open	-editItemAtIndexPath	NSBrowser	-	-	objc
 method	open	-editWithFrame	NSCell	-	-	objc
 method	open	-editWithFrame	NSControl	-	-	objc
 method	open	-edited	NSTextStorage	-	-	objc
-method	open	-elementAtIndex	NSBezierPath	-	-	objc
+method	shipped	-elementAtIndex	NSBezierPath	-	-	objc
 method	open	-enableCursorRects	NSWindow	-	-	objc
 method	struck	-enableFlushWindow	NSWindow	-	deprecated	objc
 method	open	-enableKeyEquivalentForDefaultButtonCell	NSWindow	-	-	objc

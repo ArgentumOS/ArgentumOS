@@ -352,6 +352,82 @@ int main(void)
 		CGContextRelease(cg);
 	}
 
+		/* --- THE ELEMENT MODEL, READ BACK ------------------------------------------------------ */
+		/* A PATH IS A SEQUENCE OF STEPS, and reading them back is what lets a caller walk a path it did
+		 * not build. The path below holds one of each kind this model has, in order. */
+		{
+			NSBezierPath *p = [NSBezierPath bezierPath];
+			CGPoint pts[3];
+
+			[p moveToPoint:NSMakePoint(1.0, 2.0)];
+			[p lineToPoint:NSMakePoint(3.0, 4.0)];
+			[p curveToPoint:NSMakePoint(8.0, 2.0) controlPoint1:NSMakePoint(5.0, 9.0)
+				 controlPoint2:NSMakePoint(7.0, 9.0)];
+			[p closePath];
+
+			check_num("the path reports four elements", (double)[p elementCount], 4.0, 0.0);
+			check("element 0 is a MoveTo", [p elementAtIndex:0] == NSBezierPathElementMoveTo);
+			pts[0] = NSMakePoint(-1.0, -1.0);
+			check("...and its associated points are written out",
+			      [p elementAtIndex:0 associatedPoints:pts] == NSBezierPathElementMoveTo &&
+			      pts[0].x == 1.0 && pts[0].y == 2.0);
+			check("element 1 is a LineTo with its endpoint",
+			      [p elementAtIndex:1 associatedPoints:pts] == NSBezierPathElementLineTo &&
+			      pts[0].x == 3.0 && pts[0].y == 4.0);
+			/* THE CUBIC IS THE TEST THAT THE POINT COUNT FOLLOWS THE ELEMENT KIND: three points. */
+			check("element 2 is a CubicCurveTo with THREE points",
+			      [p elementAtIndex:2 associatedPoints:pts] == NSBezierPathElementCubicCurveTo &&
+			      pts[0].x == 5.0 && pts[1].x == 7.0 && pts[2].x == 8.0);
+			check("element 3 is a ClosePath", [p elementAtIndex:3] == NSBezierPathElementClosePath);
+			/* AND A NULL ARRAY IS ALLOWED — asking for the KIND alone must not need storage. */
+			check("...and asking for the kind with a NULL array is fine",
+			      [p elementAtIndex:3 associatedPoints:NULL] == NSBezierPathElementClosePath);
+			/* AN INDEX PAST THE END IS REFUSED BY NAME, and the answer must be the one element that
+			 * carries NO points, so a caller that ignores the refusal cannot read uninitialised
+			 * memory out of its own array. */
+			pts[0] = NSMakePoint(-1.0, -1.0);
+			check("an index past the end is refused, and writes NO points",
+			      [p elementAtIndex:99 associatedPoints:pts] == NSBezierPathElementMoveTo &&
+			      pts[0].x == -1.0 && pts[0].y == -1.0);
+		}
+
+		/* --- AND MEMBERSHIP, BY THE PATH'S OWN WINDING RULE ------------------------------------ */
+		{
+			NSBezierPath *r = [NSBezierPath bezierPathWithRect:NSMakeRect(0.0, 0.0, 10.0, 10.0)];
+
+			check("a point inside a rectangle is inside the path",
+			      [r containsPoint:NSMakePoint(5.0, 5.0)]);
+			check("...and one beyond it is not", ![r containsPoint:NSMakePoint(15.0, 5.0)]);
+			check("...nor is one outside on the other side",
+			      ![r containsPoint:NSMakePoint(-1.0, 5.0)]);
+		}
+		/* THE PAIR THAT PROVES THE RULE IS HONOURED RATHER THAN ASSUMED: the SAME two nested rectangles
+		 * are a DONUT under even-odd and a SOLID under non-zero, because both rings wind the same way.
+		 * One rule would answer both questions identically, so the pair cannot pass by accident. */
+		{
+			NSBezierPath *donut = [NSBezierPath bezierPath];
+
+			[donut appendBezierPathWithRect:NSMakeRect(0.0, 0.0, 10.0, 10.0)];
+			[donut appendBezierPathWithRect:NSMakeRect(2.0, 2.0, 6.0, 6.0)];
+			[donut setWindingRule:NSWindingRuleEvenOdd];
+			check("a donut's CENTRE is OUTSIDE it under the even-odd rule",
+			      ![donut containsPoint:NSMakePoint(5.0, 5.0)]);
+			check("...while its RING is inside", [donut containsPoint:NSMakePoint(1.0, 5.0)]);
+			[donut setWindingRule:NSWindingRuleNonZero];
+			check("...and under the NON-ZERO rule the same centre is INSIDE",
+			      [donut containsPoint:NSMakePoint(5.0, 5.0)]);
+		}
+		/* AND THE TEST RUNS ON THE FLATTENED PATH, which an OVAL proves: it has no line segments at
+		 * all, so a crossing test that only understood straight edges would answer NO everywhere. */
+		{
+			NSBezierPath *oval = [NSBezierPath bezierPathWithOvalInRect:NSMakeRect(0.0, 0.0, 10.0, 6.0)];
+
+			check("an OVAL's centre is inside it, which a lines-only test could not say",
+			      [oval containsPoint:NSMakePoint(5.0, 3.0)]);
+			check("...and a corner of its bounding box is outside",
+			      ![oval containsPoint:NSMakePoint(0.5, 0.5)]);
+		}
+
 	printf("APPKIT-PATH: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

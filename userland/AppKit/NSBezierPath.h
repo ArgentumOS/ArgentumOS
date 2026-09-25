@@ -56,9 +56,11 @@
  *   left wondering. The alternative — raising — would make an ordinary mistake fatal, and this tree's
  *   CoreGraphics entry points take the same position on a NULL context.
  *
- *   `-containsPoint:` needs a point-in-path test, and `CGPath` here has none — the fill tests
- *   coverage, not membership. `-elementAtIndex:` and its associated-points family need AppKit's
- *   element model and an `NSPointArray`, which is a slice of its own. The glyph constructors
+ *   AND TWO OF THESE ARE NO LONGER TRUE, WHICH IS WHY THEY ARE STRUCK THROUGH HERE RATHER THAN DELETED:
+ *   `-containsPoint:` was said to need a point-in-path test CoreGraphics does not have, and
+ *   `-elementAtIndex:` to need its own slice — both are implemented now. The point-in-path test is a
+ *   crossing count over the FLATTENED path (which this class can already produce), so it needs nothing
+ *   from CoreGraphics that is not here; and the element model is declared above. The glyph constructors
  *   (`appendBezierPathWithCGGlyph…`, `+drawPackedGlyphs:atPoint:`) need `CGFont`, which this tree
  *   does not have.
  *
@@ -100,6 +102,21 @@ typedef enum {
 	NSWindingRuleNonZero = 0,
 	NSWindingRuleEvenOdd
 } NSWindingRule;
+
+/* THE ELEMENT MODEL: WHAT A PATH IS MADE OF, one step at a time.
+ *
+ * **AND `NSBezierPathElementCurveTo` IS DELIBERATELY ABSENT BECAUSE IT IS A `struck` ROW** — Apple
+ * deprecates it at the vintage this tree pins, and it has no legitimate producer: a curve element is
+ * either QUADRATIC or CUBIC, and Apple's own paths never come back as the ambiguous one. So this is a
+ * model without an unreachable value rather than a model with a hole, and `-elementAtIndex:` can
+ * therefore be total. THE NUMBERS ARE OURS (the policy: Apple publishes case names, never values). */
+typedef enum {
+	NSBezierPathElementMoveTo = 0,
+	NSBezierPathElementLineTo = 1,
+	NSBezierPathElementQuadraticCurveTo = 2,
+	NSBezierPathElementCubicCurveTo = 3,
+	NSBezierPathElementClosePath = 4
+} NSBezierPathElement;
 
 @interface NSBezierPath : NSObject <NSCopying>
 {
@@ -196,6 +213,19 @@ typedef enum {
  * the context's line state from ours first (see the header note). */
 - (void)fill;
 - (void)stroke;
+
+/* THE ELEMENT MODEL, READ BACK. `-elementAtIndex:` answers what the step AT that index is, and
+ * `-elementAtIndex:associatedPoints:` also writes the points that go with it — 1 for a move or a line,
+ * 2 for a quadratic, 3 for a cubic, 0 for a close — into a caller's array, or skips them if the array is
+ * NULL. AN INDEX PAST THE END IS REFUSED BY NAME rather than raising, which is this tree's rule for an
+ * ordinary mistake; Apple raises. */
+- (NSBezierPathElement)elementAtIndex:(NSInteger)index;
+- (NSBezierPathElement)elementAtIndex:(NSInteger)index associatedPoints:(nullable NSPointArray)points;
+
+/* AND WHETHER A POINT IS INSIDE THE PATH, by the path's own WINDING RULE — the same question the fill
+ * asks, answered in AppKit because CoreGraphics here tests coverage rather than membership. The test is
+ * run on the FLATTENED path, which is what makes it a polygon crossing count rather than an area. */
+- (BOOL)containsPoint:(NSPoint)point;
 /* THE CLIP FAMILY: `-addClip` INTERSECTS with this path, `-setClip` REPLACES the clip with it, and
  * `+clipRect:` intersects with a rectangle. The receiver's path is untouched by either — CoreGraphics'
  * clip consumes the copy the CONTEXT was given, not this object's. */

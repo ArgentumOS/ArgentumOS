@@ -31,6 +31,7 @@
 #import <Foundation/NSAffineTransform.h>
 
 #include <stdio.h>
+#include <string.h>
 
 /* THE DASH ARRAY IS BOUNDED IN THE OBJECT, for the reason the graphics state's is: a pattern is a
  * handful of numbers, and a longer one is REFUSED rather than truncated — dashes the caller did not
@@ -650,6 +651,189 @@ static CGContextRef fn_current(void)
 		return;
 	}
 	CGContextClipToRect(ctx, rect);
+}
+
+/* ------------------------------------------------------------------------- */
+/* the element model, read back                                              */
+/* ------------------------------------------------------------------------- */
+
+typedef struct {
+	NSInteger want;			/* the index being asked for */
+	NSInteger seen;			/* how many elements have gone by */
+	NSBezierPathElement got;
+	CGPoint pts[3];
+	int npts;
+	BOOL found;
+} fn_element_query;
+
+/* THE FIVE CASES ARE THE WHOLE ENUM, which is `NSBezierPathElement`'s payoff for omitting the
+ * deprecated `CurveTo`: there is no ambiguous element to fall back to, so this switch is total. */
+static NSBezierPathElement fn_element_of(CGPathElementType t, int *npts)
+{
+	switch (t) {
+	case kCGPathElementMoveToPoint:
+		*npts = 1;
+		return NSBezierPathElementMoveTo;
+	case kCGPathElementAddLineToPoint:
+		*npts = 1;
+		return NSBezierPathElementLineTo;
+	case kCGPathElementAddQuadCurveToPoint:
+		*npts = 2;
+		return NSBezierPathElementQuadraticCurveTo;
+	case kCGPathElementAddCurveToPoint:
+		*npts = 3;
+		return NSBezierPathElementCubicCurveTo;
+	case kCGPathElementCloseSubpath:
+		break;
+	}
+	*npts = 0;
+	return NSBezierPathElementClosePath;
+}
+
+static void fn_element_at(void *info, const CGPathElement *e)
+{
+	fn_element_query *q = info;
+	NSBezierPathElement kind;
+	int n = 0;
+	int i;
+
+	if (q->found) {
+		return;
+	}
+	kind = fn_element_of(e->type, &n);
+	if (q->seen != q->want) {
+		q->seen++;
+		return;
+	}
+	/* THE POINTS ARE THE PATH'S OWN, in the space this object was built in: a path has no transform,
+	 * so there is nothing to map them through. */
+	q->got = kind;
+	q->npts = n;
+	for (i = 0; i < n; i++) {
+		q->pts[i] = e->points[i];
+	}
+	q->found = YES;
+}
+
+- (NSBezierPathElement)elementAtIndex:(NSInteger)index
+{
+	return [self elementAtIndex:index associatedPoints:NULL];
+}
+
+- (NSBezierPathElement)elementAtIndex:(NSInteger)index associatedPoints:(nullable NSPointArray)points
+{
+	fn_element_query q;
+	NSInteger i;
+
+	memset(&q, 0, sizeof(q));
+	q.want = index;
+	CGPathApply((CGPathRef)_path, &q, fn_element_at);
+	if (!q.found) {
+		/* REFUSED BY NAME RATHER THAN RAISED: Apple raises for an index past the end, and this tree's
+		 * rule for an ordinary mistake is a stated refusal. The answer is MoveTo because that is the
+		 * only element with no points, so a caller that ignores the refusal cannot read uninitialised
+		 * memory out of `points`. */
+		fprintf(stderr, "APPKIT-REFUSE: -elementAtIndex: %ld is past the end of this path (%lu "
+				"element(s))\n", (long)index, (unsigned long)[self elementCount]);
+		return NSBezierPathElementMoveTo;
+	}
+	if (points != NULL) {
+		for (i = 0; i < q.npts; i++) {
+			points[i] = q.pts[i];
+		}
+	}
+	return q.got;
+}
+
+/* ------------------------------------------------------------------------- */
+/* the point-in-path test                                                    */
+/* ------------------------------------------------------------------------- */
+
+typedef struct {
+	CGFloat px;
+	CGFloat py;
+	NSInteger cross;	/* how many edges cross the ray to the right */
+	NSInteger wind;		/* and the net direction of those crossings */
+	CGPoint prev;
+	CGPoint sub;		/* the subpath's first point, for the closing edge */
+	BOOL have;
+} fn_hit;
+
+/* THE STANDARD HALF-OPEN CROSSING TEST: the ray is the horizontal line through the point, and one
+ * endpoint is compared inclusively and the other exclusively (`>` on both) so that a vertex lying
+ * exactly at the point's height is counted ONCE rather than twice or not at all. */
+static void fn_cross(fn_hit *h, CGPoint a, CGPoint b)
+{
+	if ((a.y > h->py) != (b.y > h->py)) {
+		CGFloat t = (h->py - a.y) / (b.y - a.y);
+		CGFloat x = a.x + t * (b.x - a.x);
+
+		if (h->px < x) {
+			h->cross++;
+			h->wind += (b.y > a.y) ? 1 : -1;
+		}
+	}
+}
+
+static void fn_hit_edge(void *info, const CGPathElement *e)
+{
+	fn_hit *h = info;
+	CGPoint p;
+
+	switch (e->type) {
+	case kCGPathElementMoveToPoint:
+		h->prev = e->points[0];
+		h->sub = e->points[0];
+		h->have = YES;
+		break;
+	case kCGPathElementAddLineToPoint:
+		p = e->points[0];
+		if (h->have) {
+			fn_cross(h, h->prev, p);
+		}
+		h->prev = p;
+		break;
+	case kCGPathElementAddQuadCurveToPoint:
+	case kCGPathElementAddCurveToPoint:
+		/* A FLATTENED PATH SHOULD HOLD NO CURVES AT ALL. One that survived is treated as the straight
+		 * line to its ENDPOINT — stated because the alternative, ignoring it, would silently drop an
+		 * edge and could turn an inside point into an outside one. */
+		p = e->points[e->type == kCGPathElementAddCurveToPoint ? 2 : 1];
+		if (h->have) {
+			fn_cross(h, h->prev, p);
+		}
+		h->prev = p;
+		break;
+	case kCGPathElementCloseSubpath:
+		if (h->have) {
+			fn_cross(h, h->prev, h->sub);
+		}
+		h->prev = h->sub;
+		break;
+	}
+}
+
+- (BOOL)containsPoint:(NSPoint)point
+{
+	CGPathRef flat = CGPathCreateCopyByFlattening((CGPathRef)_path, 0.1);
+	fn_hit h;
+
+	if (flat == NULL) {
+		return NO;
+	}
+	h.px = point.x;
+	h.py = point.y;
+	h.cross = 0;
+	h.wind = 0;
+	h.have = NO;
+	CGPathApply(flat, &h, fn_hit_edge);
+	CGPathRelease(flat);
+	/* THE PATH'S OWN WINDING RULE DECIDES, which is the promise `-containsPoint:` makes: even-odd
+	 * counts the crossings, non-zero asks whether they cancel. */
+	if (_windingRule == NSWindingRuleEvenOdd) {
+		return (h.cross & 1) != 0;
+	}
+	return h.wind != 0;
 }
 
 - (NSBezierPath *)bezierPathByFlatteningPath

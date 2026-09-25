@@ -626,6 +626,27 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   MEASUREMENT:** nothing in CoreGraphics needed fixing, and the fix belongs to the caller — this tree's
   own — that declared a layout its bytes did not match. The reproduction is GREEN now because it was
   CORRECTED, not because anything in the blit changed.
+  **AND THE PATH'S ELEMENT MODEL AND ITS MEMBERSHIP TEST ARRIVE (C8.13): `NSBezierPathElement`,
+  `-elementAtIndex:` AND `-containsPoint:`.** Both were named in C8.5's header as owed, with reasons —
+  that a point-in-path test had nothing in CoreGraphics to build on, and that the element model was a
+  slice of its own — and both reasons turned out to be smaller than they looked.
+  **THE ELEMENT MODEL SHIPS WITHOUT `NSBezierPathElementCurveTo`, BECAUSE IT IS A `struck` ROW:**
+  deprecated at this tree's pinned vintage, and with no legitimate producer — a curve element is either
+  QUADRATIC or CUBIC, and Apple's own paths never come back as the ambiguous one. **THAT IS WHAT MAKES
+  `-elementAtIndex:` TOTAL:** the five cases are the WHOLE enum, so the switch that maps a Core Graphics
+  element onto this one has no fallback to invent. An index past the end is REFUSED BY NAME and answers
+  MoveTo — the one element carrying no points — so a caller that ignores the refusal cannot read
+  uninitialised memory out of the array it passed.
+  **AND MEMBERSHIP NEEDED NOTHING FROM COREGRAPHICS AFTER ALL:** the test is a crossing count, and this
+  class can already FLATTEN a path (`CGPathCreateCopyByFlattening`, at the same tolerance the flattener
+  uses), so `-containsPoint:` is a polygon test over the flattened path. **THE PROBE PROVES THE RULE
+  RATHER THAN ASSUMING IT, WITH A PAIR:** two nested rectangles are a DONUT under even-odd and a SOLID
+  under non-zero, because both rings wind the same way — a single rule would answer both questions
+  identically, so the pair cannot pass by accident. An OVAL is the check that the flattening is
+  load-bearing: it has no line segments at all, so a lines-only crossing test would answer NO everywhere.
+  The half-open comparison (`>` on BOTH endpoints) is what counts a vertex sitting exactly at the point's
+  height once, rather than twice or not at all.
+  8 ledger rows credited (1 enum, 5 cases, 2 methods), owner-scoped, and `--strict` clean first time.
   The
   three enums ride with members whose substrate was checked one by one:
   `NSColorRenderingIntent`'s five cases and `NSImageInterpolation`'s five are each a
