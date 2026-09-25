@@ -3489,7 +3489,7 @@ vanishing.
 | **Files and Data Persistence / Managed file access** | all classes shipped | — |
 | **Files and Data Persistence / Property Lists** | all classes shipped | — |
 | **Files and Data Persistence / Queries** | ALL STRUCK: `NSMetadataQuery`, `NSMetadataQueryAttributeValueTuple`, `NSMetadataQueryDelegate`, `NSMetadataQueryResultGroup` | — |
-| **Files and Data Persistence / XML** | 7 open | `NSXMLDTD`, `NSXMLDTDNode`, `NSXMLDocument`, `NSXMLElement`, `NSXMLNode`, `NSXMLParser`, `NSXMLParserDelegate` |
+| **Files and Data Persistence / XML** | 5 open | `NSXMLDTD`, `NSXMLDTDNode`, `NSXMLDocument`, `NSXMLElement`, `NSXMLNode` |
 | **Files and Data Persistence / iCloud key and value storage** | 1 open | `NSUbiquitousKeyValueStore` |
 | **Fundamentals / Automatic grammar agreement** | 5 open; 1 STRUCK: `NSMorphologyCustomPronoun` | `NSInflectionRule`, `NSInflectionRuleExplicit`, `NSMorphology`, `NSMorphologyPronoun`, `NSTermOfAddress` |
 | **Fundamentals / Basic Collections** | 2 open | `NSOrderedCollectionChange`, `NSOrderedCollectionDifference` |
@@ -12631,6 +12631,56 @@ channel" is an `NSXPCConnection`, this system has no XPC, so it answers nil WITH
 reason the class is worth declaring at all: a program can ASK, and finds out.** And the two members are
 reachable on the one object a caller can hold (one it made), which the probe does, so nothing here is a
 declaration no check can reach.
+
+**SLICE XML-a LANDED (2026-09-24): THE EVENT-DRIVEN PARSER - AND THE PROBE FOUND FOUR BUGS, WHICH IS THE
+ONLY REASON TO BELIEVE THE PARSER IS REAL.** `foundation_xmlparser` is a NEW probe with **12 checks**, green.
+The ledger's XML family was **181 rows, ALL open**; the parser's own share of it is now closed: the class
+(`NSXMLParser`), its delegate protocol (the fourteen "Handling XML" members), the error domain, and the
+**93-name** error enum plus the **4-name** entity-resolving policy (§11.6.1 D2: Apple publishes the names and
+not the numbers, which are libxml2's internal codes - and this system has no libxml2, so the parser is
+hand-written: the single pass, the entity decoder, the attribute reader and the namespace expansion are all
+in this library).
+
+**WHAT THE PROBE ASSERTS AS AN ORDER, NOT A SET:** the event log, the decoded text and attributes, comments,
+CDATA, processing instructions (and that the XML DECLARATION is not reported as one), a self-closing
+element as a start AND an end, namespaces OFF (the qualified name, nil URI) and ON (local name, declared
+URI, qualified name as written), the prefix-mapping events, a malformed document with its CODE and its
+POSITION, two malformations told apart by their codes, an abort from a callback, and the file-URL
+initializer.
+
+**THE FOUR BUGS, EACH WORTH ITS LINE, BECAUSE EACH WAS INVISIBLE UNTIL SOMETHING RAN IT:**
+ * **`-[NSString initWithBytes:length:encoding:]` IS DECLARED AND NOT IMPLEMENTED IN THIS LIBRARY.** The
+   guest said so BY NAME and the parse aborted; strings are now built through `NSData` +
+   `-initWithData:encoding:`, which is the constructor this library has. A declared-but-unimplemented
+   selector is a trap that only a RUN reveals;
+ * **`%C` IS NOT STANDARD AND musl DOES NOT SUPPORT IT.** The entity decoder used `appendFormat:@"%C"`; it
+   now builds characters with `+stringWithCharacters:length:`, which needs no formatting at all - the
+   third time this project has been bitten by assuming a printf specifier (the digit-dropping regex and the
+   non-boolean CMake option were the others' kind);
+ * **THE TWO DOCUMENT EVENTS NEVER FIRED**, because the event macro takes the selector AS WRITTEN and the
+   call sites passed `parserDidStartDocument` without its colon - so the delegate was asked whether it
+   responded to a selector with no argument. **The probe's event log is what made it visible**: its first
+   entry was an element, not a document;
+ * **THE PARSER DOES NOT RETAIN ITS DELEGATE** (Apple's rule, implemented in `-setDelegate:`), and the probe
+   passed a TEMPORARY one, so the parser called FREED MEMORY - which answered "yes, I abort" from recycled
+   bytes and turned a comment error into a delegate-abort error. **The probe was breaking the contract it
+   exists to test**, and the fix is in the probe.
+
+**AND TWO INSTRUMENT LESSONS, ONE OF THEM THE FAMILIAR ONE:** a PROLOGUE MARKER printed before any parser
+work is what distinguished "no output because it crashed" from "no output because it hung" in a single run;
+and eight checks once reported `log=(null)` because the probe's delegate had no ordinary `-init`, so every
+recording went into a nil array in silence - **an instrument that silently records nothing** would have been
+read as a parser that fired no events.
+
+**THE BOUNDARIES OF THIS SLICE ARE STATED RATHER THAN IMPLIED:** no DTD is INTERPRETED (the internal subset
+is skipped as a balanced bracket region, so a document with one parses and its declarations produce no
+events rather than wrong ones), `-foundIgnorableWhitespace:` needs a DTD to say what is ignorable and so
+arrives through `-foundCharacters:`, `-publicID`/`-systemID` are nil because there is no external subset,
+and a document that is not UTF-8 is REFUSED with `NSXMLParserEncodingNotSupportedError` rather than parsed
+into nothing.
+
+**WHAT REMAINS IN XML:** the tree classes (`NSXMLNode`, `NSXMLElement`, `NSXMLDocument`) and the DTD family
+(`NSXMLDTD`, `NSXMLDTDNode`) with the six DTD delegate events - two more slices over the same text.
 
 **W8 IS COMPLETE, AND THE TOTAL IS CHECKABLE RATHER THAN ASSERTED.** The unit's nine slices, each with its
 landed probe and its checks: `NSDirectoryEnumerator` **29**, the URL resource values **27**,

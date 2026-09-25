@@ -28,13 +28,13 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  157   open   39   struck   77
-#   protocol   shipped   22   open    9   struck   14
+#   class      shipped  158   open   38   struck   77
+#   protocol   shipped   23   open    8   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped  107   open   36   struck   17
-#   case       shipped  606   open  528   struck  168
+#   enum       shipped  109   open   34   struck   17
+#   case       shipped  703   open  431   struck  168
 #   func       shipped   72   open   63   struck   54
-#   var        shipped  238   open  323   struck  353
+#   var        shipped  239   open  322   struck  353
 #   typealias  shipped   36   open   33   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1221,103 +1221,103 @@ case	open	NSXMLNodePromoteSignificantWhitespace	NSXMLNode	Files and Data Persist
 case	open	NSXMLNodeUseDoubleQuotes	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
 case	open	NSXMLNodeUseSingleQuotes	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
 case	open	NSXMLNotationDeclarationKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
-case	open	NSXMLParserAttributeHasNoValueError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserAttributeListNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserAttributeListNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserAttributeNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserAttributeNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserAttributeRedefinedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserCDATANotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserCharacterRefAtEOFError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserCharacterRefInDTDError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserCharacterRefInEpilogError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserCharacterRefInPrologError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserCommentContainsDoubleHyphenError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserCommentNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserConditionalSectionNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserConditionalSectionNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserDOCTYPEDeclNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserDelegateAbortedParseError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserDocumentStartError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserElementContentDeclNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserElementContentDeclNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEmptyDocumentError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEncodingNotSupportedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEntityBoundaryError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEntityIsExternalError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEntityIsParameterError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEntityNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEntityNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEntityRefAtEOFError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEntityRefInDTDError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEntityRefInEpilogError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEntityRefInPrologError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEntityRefLoopError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEntityReferenceMissingSemiError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEntityReferenceWithoutNameError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEntityValueRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserEqualExpectedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserExternalStandaloneEntityError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserExternalSubsetNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserExtraContentError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserGTRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserInternalError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserInvalidCharacterError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserInvalidCharacterInEntityError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserInvalidCharacterRefError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserInvalidConditionalSectionError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserInvalidDecimalCharacterRefError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserInvalidEncodingError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserInvalidEncodingNameError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserInvalidHexCharacterRefError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserInvalidURIError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserLTRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserLTSlashRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserLessThanSymbolInAttributeError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserLiteralNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserLiteralNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserMisplacedCDATAEndStringError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserMisplacedXMLDeclarationError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserMixedContentDeclNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserMixedContentDeclNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserNAMERequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserNMTOKENRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserNamespaceDeclarationError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserNoDTDError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserNotWellBalancedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserNotationNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserNotationNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserOutOfMemoryError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserPCDATARequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserParsedEntityRefAtEOFError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserParsedEntityRefInEpilogError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserParsedEntityRefInInternalError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserParsedEntityRefInInternalSubsetError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserParsedEntityRefInPrologError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserParsedEntityRefMissingSemiError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserParsedEntityRefNoNameError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserPrematureDocumentEndError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserProcessingInstructionNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserProcessingInstructionNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserPublicIdentifierRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserResolveExternalEntitiesAlways	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	swift-page
-case	open	NSXMLParserResolveExternalEntitiesNever	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	swift-page
-case	open	NSXMLParserResolveExternalEntitiesNoNetwork	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	swift-page
-case	open	NSXMLParserResolveExternalEntitiesSameOriginOnly	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	swift-page
-case	open	NSXMLParserSeparatorRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserSpaceRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserStandaloneValueError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserStringNotClosedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserStringNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserTagNameMismatchError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserURIFragmentError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserURIRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserUndeclaredEntityError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserUnfinishedTagError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserUnknownEncodingError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserUnparsedEntityError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserXMLDeclNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLParserXMLDeclNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserAttributeHasNoValueError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserAttributeListNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserAttributeListNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserAttributeNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserAttributeNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserAttributeRedefinedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserCDATANotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserCharacterRefAtEOFError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserCharacterRefInDTDError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserCharacterRefInEpilogError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserCharacterRefInPrologError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserCommentContainsDoubleHyphenError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserCommentNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserConditionalSectionNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserConditionalSectionNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserDOCTYPEDeclNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserDelegateAbortedParseError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserDocumentStartError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserElementContentDeclNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserElementContentDeclNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEmptyDocumentError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEncodingNotSupportedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEntityBoundaryError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEntityIsExternalError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEntityIsParameterError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEntityNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEntityNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEntityRefAtEOFError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEntityRefInDTDError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEntityRefInEpilogError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEntityRefInPrologError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEntityRefLoopError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEntityReferenceMissingSemiError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEntityReferenceWithoutNameError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEntityValueRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserEqualExpectedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserExternalStandaloneEntityError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserExternalSubsetNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserExtraContentError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserGTRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserInternalError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserInvalidCharacterError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserInvalidCharacterInEntityError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserInvalidCharacterRefError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserInvalidConditionalSectionError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserInvalidDecimalCharacterRefError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserInvalidEncodingError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserInvalidEncodingNameError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserInvalidHexCharacterRefError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserInvalidURIError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserLTRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserLTSlashRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserLessThanSymbolInAttributeError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserLiteralNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserLiteralNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserMisplacedCDATAEndStringError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserMisplacedXMLDeclarationError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserMixedContentDeclNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserMixedContentDeclNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserNAMERequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserNMTOKENRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserNamespaceDeclarationError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserNoDTDError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserNotWellBalancedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserNotationNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserNotationNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserOutOfMemoryError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserPCDATARequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserParsedEntityRefAtEOFError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserParsedEntityRefInEpilogError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserParsedEntityRefInInternalError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserParsedEntityRefInInternalSubsetError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserParsedEntityRefInPrologError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserParsedEntityRefMissingSemiError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserParsedEntityRefNoNameError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserPrematureDocumentEndError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserProcessingInstructionNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserProcessingInstructionNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserPublicIdentifierRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserResolveExternalEntitiesAlways	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLParserResolveExternalEntitiesNever	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLParserResolveExternalEntitiesNoNetwork	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLParserResolveExternalEntitiesSameOriginOnly	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	swift-page
+case	shipped	NSXMLParserSeparatorRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserSpaceRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserStandaloneValueError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserStringNotClosedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserStringNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserTagNameMismatchError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserURIFragmentError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserURIRequiredError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserUndeclaredEntityError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserUnfinishedTagError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserUnknownEncodingError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserUnparsedEntityError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserXMLDeclNotFinishedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLParserXMLDeclNotStartedError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants / Constants	-	objc
 case	open	NSXMLProcessingInstructionKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
 case	open	NSXMLTextKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
 case	struck	NSXPCConnectionCodeSigningRequirementFailure	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	declined	objc
@@ -1606,7 +1606,7 @@ class	open	NSXMLDTDNode		Files and Data Persistence / XML / Tree-Based Processin
 class	open	NSXMLDocument		Files and Data Persistence / XML / Tree-Based Processing	-	objc
 class	open	NSXMLElement		Files and Data Persistence / XML / Tree-Based Processing	-	objc
 class	open	NSXMLNode		Files and Data Persistence / XML / Tree-Based Processing	-	objc
-class	open	NSXMLParser		Files and Data Persistence / XML / Event-Based Processing	-	objc
+class	shipped	NSXMLParser		Files and Data Persistence / XML / Event-Based Processing	-	objc
 class	struck	NSXPCCoder		Low-Level Utilities / XPC Client	declined	objc
 class	struck	NSXPCConnection		Low-Level Utilities / XPC Client	declined	objc
 class	struck	NSXPCInterface		Low-Level Utilities / XPC Client	declined	objc
@@ -1769,8 +1769,8 @@ enum	open	NSXMLDTDNodeKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-
 enum	open	NSXMLDocumentContentKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	objc
 enum	open	NSXMLNodeKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	swift-page
 enum	open	NSXMLNodeOptions	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	objc
-enum	open	NSXMLParserError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	objc
-enum	open	NSXMLParserExternalEntityResolvingPolicy	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	swift-page
+enum	shipped	NSXMLParserError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	objc
+enum	shipped	NSXMLParserExternalEntityResolvingPolicy	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	swift-page
 enum	struck	NSXPCConnectionOptions	NSXPCConnection	Low-Level Utilities / XPC Client / Creating a connection	declined	objc
 func	open	CFBridgingRelease		Low-Level Utilities / Memory Management / Core Foundation ARC Integration	-	objc
 func	open	CFBridgingRetain		Low-Level Utilities / Memory Management / Core Foundation ARC Integration	-	objc
@@ -2256,7 +2256,7 @@ protocol	shipped	NSURLSessionTaskDelegate		Networking / Essentials / Working wit
 protocol	shipped	NSURLSessionWebSocketDelegate		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 protocol	open	NSUserActivityDelegate		App Support / Activity Sharing / Monitoring activity-related behaviors	-	objc
 protocol	open	NSUserNotificationCenterDelegate		App Support / User Notifications	-	objc
-protocol	open	NSXMLParserDelegate		Files and Data Persistence / XML / Event-Based Processing	-	objc
+protocol	shipped	NSXMLParserDelegate		Files and Data Persistence / XML / Event-Based Processing	-	objc
 protocol	struck	NSXPCListenerDelegate		Low-Level Utilities / XPC Services	declined	objc
 protocol	struck	NSXPCProxyCreating		Low-Level Utilities / XPC Client	declined	objc
 struct	shipped	NSAffineTransformStruct	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix	-	objc
@@ -3256,7 +3256,7 @@ var	struck	NSUserNotificationDefaultSoundName	NSUserNotification	App Support / U
 var	struck	NSWeekDayNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSWillBecomeMultiThreadedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
 var	struck	NSWillBecomeMultiThreadedNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
-var	open	NSXMLParserErrorDomain	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	objc
+var	shipped	NSXMLParserErrorDomain	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	objc
 var	struck	NSYearMonthWeekDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSZeroPoint		Fundamentals / Geometry / Zero Constant	-	objc
 var	shipped	NSZeroRect		Fundamentals / Geometry / Zero Constant	-	objc
