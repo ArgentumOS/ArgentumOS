@@ -12886,6 +12886,23 @@ its own file from the previous run (`EEXIST`) and MEASURED NOTHING. The second v
 microsecond, and the leg then proved what it claimed. A measurement that fails for a reason of the
 instrument's own making looks exactly like a fact about the machine.
 
+**SLICE 6H LANDED (2026-09-24): NSURL'S PART OWNERSHIP - THE DEBT SLICE 6A RECORDED AND DID NOT PAY.**
+`foundation_url_ownership` is a NEW probe (3 checks, green) over an AUDIT of the parse at `NSURL.m`: six parts
+(`absoluteString`, `user`, `host`, `path`, `query`, `fragment`) were copied or retained and **none was ever
+released**, and **two (`scheme`, `port`) were not owned at all** - the scheme came from `-lowercaseString`,
+which answers an autoreleased string, so a URL outliving the pool its parse ran in pointed at freed memory
+through that one part. Both are now copied and all nine parts (plus the cache) are released in `-dealloc`.
+The audit is the point: the naive fix - releasing the parts without asking who owns them - is a crash where
+the scheme is the object and a behaviour change where it is not, which is why 6a stopped and said so.
+
+**AND THE PROBE MEASURED ITS OWN LIMIT, WHICH IS RECORDED RATHER THAN HIDDEN:** its first check parses inside
+a pool, drains it, then allocates a 4000-string pile to REUSE what the pool freed before reading the parts -
+so an unowned part should be visibly wrong and an over-released one crashes, covering both directions of the
+ownership mistake. **It PASSED BEFORE THE FIX** (measured, 3/3): the pile's strings are not the same size as
+the freed part, so the reused blocks did not land on it. What the check therefore IS is a REGRESSION GUARD -
+it catches the over-release direction (a crash), which is exactly the risk the fix carries - and the honest
+form of a detector whose positive direction does not fire is to say so where it lives, not to claim it.
+
 **SLICE XML-e LANDED (2026-09-24): THE SIX DTD EVENTS, AND THE DOCUMENT THAT KEEPS AND RE-WRITES ITS DTD -
 WHICH MAKES XML COMPLETE.** `foundation_xmldtdparse` is a NEW probe with **8 checks**, green.
 

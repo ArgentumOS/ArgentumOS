@@ -211,7 +211,9 @@ static NSRange fn_scheme_range(const char *bytes, size_t length)
 			return nil;
 		}
 		_absoluteString = [string copy];
-		_scheme = [[string substringWithRange:schemeRange] lowercaseString];
+		/* OWNED LIKE EVERY OTHER PART: `-lowercaseString` answers an AUTORELEASED string, and a URL that
+		 * outlives the pool its parse ran in used to point at freed memory through this one part. */
+		_scheme = [[[string substringWithRange:schemeRange] lowercaseString] copy];
 		_isFile = [_scheme isEqualToString:FN_URL_FILE_SCHEME];
 		at = schemeRange.length + 1;
 
@@ -249,7 +251,7 @@ static NSRange fn_scheme_range(const char *bytes, size_t length)
 
 						_host = [[hostAndPort substringWithRange:
 							NSMakeRange(0, colon.location)] copy];
-						_port = [NSNumber numberWithInt:value];
+						_port = [[NSNumber numberWithInt:value] copy];
 					} else if ([hostAndPort length] > 0) {
 						/* An EMPTY authority leaves the host NIL, which is what
 						 * `file:///x` has: there is no host, not an empty-named one. */
@@ -1415,8 +1417,20 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
  * string. Releasing the parts here would therefore be a crash where `_scheme` is the object and a
  * behaviour change beyond this slice where it is not, so the ownership defect is owed by the URL unit
  * (§60) instead of being half-fixed inside a feature commit. */
+/* EVERY PART THE PARSE OWNS IS RELEASED HERE, which is the debt slice 6a recorded rather than paid: the URL
+ * unit copied and retained its parts and released none of them, and ONE of them (the scheme) was not even
+ * owned, so the fix had to be an AUDIT rather than a line - two of the nine parts were autoreleased and are
+ * now copied, and the other seven are released for the first time. `_isFile` is a BOOL and owns nothing. */
 - (void)dealloc
 {
+	[_absoluteString release];
+	[_scheme release];
+	[_user release];
+	[_host release];
+	[_port release];
+	[_path release];
+	[_query release];
+	[_fragment release];
 	[_cachedResourceValues release];
 	[super dealloc];
 }
