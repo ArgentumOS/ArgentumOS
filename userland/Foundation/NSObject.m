@@ -226,10 +226,16 @@ extern id object_dispose(id obj);
 
 - (void)doesNotRecognizeSelector:(SEL)aSelector
 {
-	fprintf(stderr, "Foundation: -[%s %s] is not implemented\n",
-		class_getName(object_getClass(self)), sel_getName(aSelector));
-	abort();
+	/* APPLE RAISES HERE; THIS ABORTED, AND THE DIFFERENCE IS NOT ACADEMIC: a missing selector took the
+	 * WHOLE PROCESS DOWN, so no @try/@catch could survive one - which is how a -copy that reached the root
+	 * class killed a guest probe instead of reporting itself. Apple's page for this method names the
+	 * exception, and this library has an exception class, so the contract is the one to keep. The message
+	 * keeps the shape the old fprintf had, so every trace that already quotes it still matches. */
+	[NSException raise:NSInvalidArgumentException
+		    format:@"-[%s %s] is not implemented",
+			   class_getName(object_getClass(self)), sel_getName(aSelector)];
 }
+
 
 /*
  * Protocol conformance, WITH the superclass walk: a class that inherits a

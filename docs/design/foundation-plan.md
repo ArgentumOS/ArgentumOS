@@ -3528,7 +3528,7 @@ vanishing.
 | **Fundamentals / Specialized Sets** | all classes shipped | — |
 | **Fundamentals / Spelling and Grammar** | 2 open | `NSSpellServer`, `NSSpellServerDelegate` |
 | **Fundamentals / Strings** | all classes shipped | — |
-| **Fundamentals / Strings with Metadata** | 5 open | `NSAttributedString`, `NSAttributedStringMarkdownParsingOptions`, `NSAttributedStringMarkdownSourcePosition`, `NSMutableAttributedString`, `NSPresentationIntent` |
+| **Fundamentals / Strings with Metadata** | 3 open | `NSAttributedStringMarkdownParsingOptions`, `NSAttributedStringMarkdownSourcePosition`, `NSPresentationIntent` |
 | **Fundamentals / Time and Motion** | all classes shipped | — |
 | **Fundamentals / URLs** | all classes shipped | — |
 | **Fundamentals / Unique Identifiers** | all classes shipped | — |
@@ -13035,6 +13035,41 @@ work BETWEEN the calls too.
     (encode what is representable, refuse by name otherwise) rather than discovered;
  4. **THE CONSTANT MASSES** (the 48 rows) and **THE FILE-FORMAT REFUSALS**, each with its ground recorded where
     the family was measured.
+
+## §62 — "WHY IS SO MUCH UNIMPLEMENTED?", MEASURED: TWELVE SELECTORS, AND ONE FATAL BARREL (2026-09-24)
+
+**THE QUESTION WAS WORTH ASKING AND THE ANSWER IS A NUMBER.** `tools/foundation-sweep.py --unimplemented` now
+diffs what the HEADERS declare against what the .m files IMPLEMENT, over all 172 classes of this library. The
+honest figure is **TWELVE selectors**, and the road to it is the measurement:
+
+ * a plain text scan says **57**, and most of that is the scan, not the library: a base class whose descendants
+   implement an inherited declaration (a CLASS CLUSTER - `NSNumber` is abstract and its number classes do the
+   work) and **PREPROCESSOR X-MACRO TABLES**, which generate selectors no line of source spells. `NSNumber.m:29`
+   generates the `numberWith*` constructors from `numberWith##NAME` and `:44` generates the `*Value` accessors
+   from `NAME##Value`; both were counted as gaps until the scan was taught to READ them (per FILE, applied only
+   to the classes that file implements - a narrow rule, not a blanket excuse);
+ * the hierarchy walk and the macro rule take it to **21**, and capitalisation (`a class name is capitalised;
+   anything else is the scan mis-reading a block`) takes it to **12**;
+ * **THE TWELVE ARE REAL AND THEY ARE NAMED IN `docs/reference/foundation-unimplemented.txt`, EACH WITH A
+   REASON**: ELEVEN are work items (`NSURLSessionWebSocketMessage`'s `data`/`string`/`type`, which is why that
+   class ships without its own accessors; `NSXMLElement`'s `insertChild`/`insertChildren`/
+   `removeChildAtIndex`/`replaceChildAtIndex`/`setChildren`; three setters on properties declared readwrite -
+   `setSessionDescription:`, `setProtocolClasses:`, `setTaskDescription:`), and **ONE IS A BOUNDARY**:
+   `NSObject observeValueForKeyPath` belongs to KVO's INFORMAL protocol - the observer implements it, not
+   NSObject. That is the inventory rule this project keeps, applied to methods: named or absent, never
+   silently missing;
+ * and the check RUNS IN THE GATE (`make foundation-sweep`, beside the ledger check): a NEW declared selector
+   with no implementation anywhere fails the build, while the baselined twelve stay visible as the work list
+   they are.
+
+**AND THE REASON THE GAPS FELT LIKE EVERYTHING WAS ONE LINE.** `NSObject -doesNotRecognizeSelector:` did
+`fprintf` + **`abort()`** - the ONLY `abort()` in `userland/Foundation` - so every missing method expressed
+itself as **THE WHOLE GUEST PROCESS DYING**, with a message that named the selector and never the caller, and
+no `@try/@catch` could survive it. Three of this session's hunts paid that toll in a day (`+stringWithCharacters:`,
+`-initWithFormat:` reaching `-copy` on a bare object, `-[NSOwnedString appendString:]`). **IT NOW RAISES
+`NSInvalidArgumentException`, which is Apple's contract for that method**, so a missing method is a catchable,
+named exception and the next one costs minutes instead of hours. The probe that proves the catch - a bare
+NSObject sent `-copy` inside `@try/@catch` - is the next check to write.
 
 **SLICE XML-e LANDED (2026-09-24): THE SIX DTD EVENTS, AND THE DOCUMENT THAT KEEPS AND RE-WRITES ITS DTD -
 WHICH MAKES XML COMPLETE.** `foundation_xmldtdparse` is a NEW probe with **8 checks**, green.

@@ -55,6 +55,12 @@ USAGE
 
   tools/foundation-sweep.py --check             verify the file against our headers (offline)
   tools/foundation-sweep.py --work-list [KIND]  print the open rows — the ledger's work list
+  tools/foundation-sweep.py --unimplemented     DECLARED BY A HEADER, IMPLEMENTED NOWHERE - the report
+                                                that keeps a missing method from being a fatal surprise.
+                                                --write baselines it into
+                                                docs/reference/foundation-unimplemented.txt, where every
+                                                line carries a reason: "not implemented yet" is a work
+                                                item, anything else is a boundary.
   tools/foundation-sweep.py --refresh           re-read Apple's index and rewrite the surface file
   tools/foundation-sweep.py --families [--write] verify (or rewrite) the plan's family status table
 
@@ -739,6 +745,150 @@ def families(write=False):
     return 0
 
 
+
+# --- --unimplemented: DECLARED BUT NOT IMPLEMENTED ---------------------------------------------------
+#
+# THE STATIC HALF OF A LESSON THAT COST HOURS. Apple's surface is what the HEADERS declare; what the
+# library IMPLEMENTS lives in the .m files; and nothing compared the two. The difference only became
+# audible when something CALLED a missing method - and then it was fatal, because NSObject's
+# -doesNotRecognizeSelector: ABORTED the process (it raises NSInvalidArgumentException now), so a gap that
+# could have been a line in a report killed a guest probe instead. This mode is that report.
+#
+# TWO KINDS OF HIT ARE NOT GAPS, and the scan WALKS THE HIERARCHY so they do not have to be excused by
+# hand: a subclass that implements an inherited declaration (a CLASS CLUSTER - NSNumber's accessors live
+# in its number classes, and its base class is abstract), and an implementation that sits in a category in
+# another file. What survives that walk is a real gap, and a real gap is either FIXED or WRITTEN DOWN with
+# a reason in docs/reference/foundation-unimplemented.txt - the inventory rule this project keeps, "named
+# or absent, never silently missing".
+UNIMPLEMENTED = os.path.join(ROOT, "docs/reference/foundation-unimplemented.txt")
+
+_METHOD = re.compile(r"^\s*[-+]\s*\([^)]*\)\s*([A-Za-z_]\w*(?::[A-Za-z_]\w*)*)", re.M)
+_PROP = re.compile(r"@property\s*\(([^)]*)\)\s*[^;]*?([A-Za-z_]\w*)\s*;")
+_GETTER = re.compile(r"getter\s*=\s*(\w+)")
+_SETTER = re.compile(r"setter\s*=\s*(\w+)")
+
+
+def _objc_blocks(text, kind):
+    """(name, superclass, selectors) for every @<kind> block in one file."""
+    for part in text.split("@end"):
+        at = part.rfind("@" + kind)
+        if at < 0:
+            continue
+        head = part[at + len(kind) + 1:].strip()
+        m = re.match(r"(\w+)", head)
+        if m is None:
+            continue
+        name, rest = m.group(1), head[m.end():]
+        sup = ""
+        s = re.match(r"\s*:\s*(\w+)", rest)
+        if s is not None:
+            sup = s.group(1)
+        sels = set(_METHOD.findall(rest))
+        for pm in _PROP.finditer(rest):
+            attrs, prop = pm.group(1), pm.group(2)
+            g, s = _GETTER.search(attrs), _SETTER.search(attrs)
+            sels.add(g.group(1) if g else prop)
+            if "readonly" not in attrs:
+                sels.add(s.group(1) if s else "set" + prop[0].upper() + prop[1:] + ":")
+        yield name, sup, sels
+
+
+def _macro_stems(text):
+    """What a token-paste macro GENERATES, in the two forms an X-macro table uses: `numberWith##NAME`
+    (a generated PREFIX) and `NAME##Value` (a generated SUFFIX). Either way the file contains selectors
+    that no line of source spells out, which is why a text scan cannot see them and why they are recorded
+    as generated rather than reported as gaps. Kept per FILE and applied only to the classes implemented
+    in that file: a rule this narrow is a reading of the source, not a blanket excuse."""
+    stems, suffixes = set(), set()
+    for m in re.finditer(r"([A-Za-z_]\w*)\s*##", text):
+        if len(m.group(1)) >= 4:
+            stems.add(m.group(1))
+    for m in re.finditer(r"##\s*([A-Za-z_]\w*)", text):
+        if len(m.group(1)) >= 4:
+            suffixes.add(m.group(1))
+    return stems, suffixes
+
+
+def _library_surface():
+    declared, supers, implemented = {}, {}, {}
+    for path in sorted(glob.glob(HEADERS)):
+        for name, sup, sels in _objc_blocks(open(path, errors="ignore").read(), "interface"):
+            declared.setdefault(name, set()).update(sels)
+            if sup:
+                supers.setdefault(name, sup)
+    for path in sorted(glob.glob(os.path.join(ROOT, "userland/Foundation/*.m"))):
+        text = open(path, errors="ignore").read()
+        stems, suffixes = _macro_stems(text)
+        in_file = set()
+        for name, _sup, sels in _objc_blocks(text, "implementation"):
+            implemented.setdefault(name, set()).update(sels)
+            in_file.add(name)
+        for name in in_file:
+            for sel in declared.get(name, ()):
+                if any(sel.startswith(stem) for stem in stems) or \
+                   any(sel.endswith(suffix) for suffix in suffixes):
+                    implemented[name].add(sel)
+    return declared, supers, implemented
+
+
+def _descendants(supers, name):
+    """every class that inherits from `name`, however deeply - the class-cluster walk."""
+    out = {name}
+    changed = True
+    while changed:
+        changed = False
+        for cls, sup in supers.items():
+            if sup in out and cls not in out:
+                out.add(cls)
+                changed = True
+    return out
+
+
+def _baseline():
+    if not os.path.exists(UNIMPLEMENTED):
+        return {}
+    out = {}
+    for line in open(UNIMPLEMENTED):
+        line = line.split("#")[0].strip()
+        if line:
+            parts = line.split()
+            out[(parts[0], parts[1])] = True
+    return out
+
+
+def unimplemented(write=False):
+    declared, supers, implemented = _library_surface()
+    base = _baseline()
+    hits = []
+    for cls in sorted(declared):
+        if cls.startswith("FN") or not cls[0].isupper():
+            continue        # a class name is capitalised; anything else is the scan mis-reading a block
+        family = _descendants(supers, cls)
+        have = set()
+        for member in family:
+            have |= implemented.get(member, set())
+        for sel in sorted(declared[cls] - have):
+            hits.append((cls, sel))
+    new = [h for h in hits if h not in base]
+    print("declared selectors with no implementation anywhere in the library: %d" % len(hits))
+    print("  baselined (named, with a reason): %d" % (len(hits) - len(new)))
+    print("  NEW, and this mode fails on them: %d" % len(new))
+    for cls, sel in new:
+        print("   %-30s %s" % (cls, sel))
+    if write:
+        with open(UNIMPLEMENTED, "w") as fh:
+            fh.write("# GENERATED by tools/foundation-sweep.py --unimplemented --write -\n")
+            fh.write("# do not hand-edit the KEYS; the reason column is yours to fill in.\n")
+            fh.write("#\n# A declared selector with no implementation in the library, or in any\n")
+            fh.write("# subclass of the class that declares it (a class cluster). Every line needs\n")
+            fh.write("# a reason: \"not implemented yet\" is a work item, and anything else is a\n")
+            fh.write("# boundary - the two are different, and the file is where that is decided.\n")
+            for cls, sel in hits:
+                fh.write("%-30s %-40s # not implemented yet\n" % (cls, sel))
+        print("baseline written to %s" % UNIMPLEMENTED)
+    return 1 if new else 0
+
+
 def work_list(want=None):
     rows = [r for r in read_surface() if r[1] == STATUS_OPEN and (want is None or r[0] == want)]
     by_family = {}
@@ -766,6 +916,8 @@ def main(argv):
         return check(strict=True)
     if mode == "--families":
         return families(write="--write" in argv[2:])
+    if mode == "--unimplemented":
+        return unimplemented(write="--write" in argv[2:])
     if mode == "--work-list":
         return work_list(argv[2] if len(argv) > 2 else None)
     print(__doc__)

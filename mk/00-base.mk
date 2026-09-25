@@ -408,6 +408,7 @@ foundation-gate: foundation-sweep
 # dated measurement, so record the date where the ledger is discussed).
 foundation-sweep:
 	@python3 tools/foundation-sweep.py --check
+	@python3 tools/foundation-sweep.py --unimplemented
 
 # FSH porting linter gate (proposal 6.1/Q1): zero-allow on System/Tools.
 fshlint:
