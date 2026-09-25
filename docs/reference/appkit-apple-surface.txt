@@ -2197,7 +2197,7 @@ class	open	NSAttributedString	-	-	-	objc
 class	open	NSBackgroundExtensionView	-	-	-	objc
 class	shipped	NSBezierPath	-	-	-	objc
 class	open	NSBindingSelectionMarker	-	-	-	objc
-class	open	NSBitmapImageRep	-	-	-	objc
+class	shipped	NSBitmapImageRep	-	-	-	objc
 class	open	NSBox	-	-	-	objc
 class	open	NSBrowser	-	-	-	objc
 class	open	NSBrowserCell	-	-	-	objc
@@ -2293,7 +2293,7 @@ class	open	NSHapticFeedbackManager	-	-	-	objc
 class	open	NSHelpManager	-	-	-	objc
 class	open	NSImage	-	-	-	objc
 class	open	NSImageCell	NSImageView	-	-	objc
-class	open	NSImageRep	-	-	-	objc
+class	shipped	NSImageRep	-	-	-	objc
 class	open	NSImageSymbolConfiguration	NSImage	-	-	objc
 class	open	NSImageView	-	-	-	objc
 class	struck	NSInputManager	-	-	deprecated	objc
@@ -3180,7 +3180,7 @@ method	open	+imageRepClassForType	NSImageRep	-	-	objc
 method	open	+imageRepWithCIImage	NSCIImageRep	-	-	objc
 method	open	+imageRepWithContentsOfFile	NSImageRep	-	-	objc
 method	open	+imageRepWithContentsOfURL	NSImageRep	-	-	objc
-method	open	+imageRepWithData	NSBitmapImageRep	-	-	objc
+method	shipped	+imageRepWithData	NSBitmapImageRep	-	-	objc
 method	struck	+imageRepWithData	NSEPSImageRep	-	deprecated	objc
 method	open	+imageRepWithData	NSPDFImageRep	-	-	objc
 method	open	+imageRepWithData	NSPICTImageRep	-	-	objc
@@ -4170,10 +4170,10 @@ method	open	-draggingImageForItemsAtIndexes	NSCollectionView	-	-	objc
 method	open	-draggingImageForRowsWithIndexes	NSBrowser	-	-	objc
 method	open	-draggingSession	NSDraggingSource	-	-	objc
 method	open	-draggingUpdated	NSDraggingDestination	-	-	objc
-method	open	-draw	NSImageRep	-	-	objc
+method	shipped	-draw	NSImageRep	-	-	objc
 method	struck	-drawArrow	NSScroller	-	deprecated	objc
 method	open	-drawAtPoint	NSImage	-	-	objc
-method	open	-drawAtPoint	NSImageRep	-	-	objc
+method	shipped	-drawAtPoint	NSImageRep	-	-	objc
 method	open	-drawAtPoint	NSTextLayoutFragment	-	-	objc
 method	open	-drawAtPoint	NSTextLineFragment	-	-	objc
 method	open	-drawBackgroundForBlock	NSTextTable	-	-	objc
@@ -4204,7 +4204,7 @@ method	open	-drawInBezierPath	NSGradient	-	-	objc
 method	struck	-drawInOpenGLContext	NSOpenGLLayer	-	deprecated	objc
 method	open	-drawInRect	NSGradient	-	-	objc
 method	open	-drawInRect	NSImage	-	-	objc
-method	open	-drawInRect	NSImageRep	-	-	objc
+method	shipped	-drawInRect	NSImageRep	-	-	objc
 method	open	-drawInsertionPointInRect	NSTextView	-	-	objc
 method	open	-drawInteriorWithFrame	NSCell	-	-	objc
 method	open	-drawKeyEquivalentWithFrame	NSMenuItemCell	-	-	objc
@@ -4601,9 +4601,9 @@ method	open	-initWithAttributedString	NSTextLineFragment	-	-	objc
 method	open	-initWithAttributedString	NSTextParagraph	-	-	objc
 method	open	-initWithAttributedString	NSWritingToolsCoordinatorContext	-	-	objc
 method	struck	-initWithAttributes	NSOpenGLPixelFormat	-	deprecated	objc
-method	open	-initWithBitmapDataPlanes	NSBitmapImageRep	-	-	objc
+method	shipped	-initWithBitmapDataPlanes	NSBitmapImageRep	-	-	objc
 method	open	-initWithCGColorSpace	NSColorSpace	-	-	objc
-method	open	-initWithCGImage	NSBitmapImageRep	-	-	objc
+method	shipped	-initWithCGImage	NSBitmapImageRep	-	-	objc
 method	open	-initWithCGImage	NSImage	-	-	objc
 method	struck	-initWithCGLContextObj	NSOpenGLContext	-	deprecated	objc
 method	struck	-initWithCGLPBufferObj	NSOpenGLPixelBuffer	-	deprecated	objc
@@ -6808,7 +6808,7 @@ property	open	CGColorSpace	NSColorSpace	-	-	objc
 property	shipped	CGContext	NSGraphicsContext	-	-	objc
 property	open	CGDirectDisplayID	NSScreen	-	-	objc
 property	open	CGEvent	NSEvent	-	-	objc
-property	open	CGImage	NSBitmapImageRep	-	-	objc
+property	shipped	CGImage	NSBitmapImageRep	-	-	objc
 property	struck	CGLContextObj	NSOpenGLContext	-	deprecated	objc
 property	struck	CGLPBufferObj	NSOpenGLPixelBuffer	-	deprecated	objc
 property	struck	CGLPixelFormatObj	NSOpenGLPixelFormat	-	deprecated	objc
@@ -7117,7 +7117,7 @@ property	open	allowsWritingToolsAffordance	NSTextField	-	-	objc
 property	open	alpha	NSCollectionLayoutVisibleItem	-	-	objc
 property	open	alpha	NSCollectionViewLayoutAttributes	-	-	objc
 property	open	alpha	NSColorPanel	-	-	objc
-property	open	alpha	NSImageRep	-	-	objc
+property	shipped	alpha	NSImageRep	-	-	objc
 property	open	alpha	NSScrubberLayoutAttributes	-	-	objc
 property	shipped	alphaComponent	NSColor	-	-	objc
 property	open	alphaValue	NSView	-	-	objc
@@ -7345,10 +7345,10 @@ property	shipped	bezierPathByFlatteningPath	NSBezierPath	-	-	objc
 property	open	bezierPathByReversingPath	NSBezierPath	-	-	objc
 property	open	bidiProcessingEnabled	NSATSTypesetter	-	-	objc
 property	open	bidiProcessingEnabled	NSTypesetter	-	-	objc
-property	open	bitmapData	NSBitmapImageRep	-	-	objc
+property	shipped	bitmapData	NSBitmapImageRep	-	-	objc
 property	open	bitmapFormat	NSBitmapImageRep	-	-	objc
-property	open	bitsPerPixel	NSBitmapImageRep	-	-	objc
-property	open	bitsPerSample	NSImageRep	-	-	objc
+property	shipped	bitsPerPixel	NSBitmapImageRep	-	-	objc
+property	shipped	bitsPerSample	NSImageRep	-	-	objc
 property	shipped	blackColor	NSColor	-	-	objc
 property	open	blackComponent	NSColor	-	-	objc
 property	open	blendingMode	NSVisualEffectView	-	-	objc
@@ -7411,7 +7411,7 @@ property	open	buttonTitle	NSSharingServicePickerTouchBarItem	-	-	objc
 property	open	buttonToolTip	NSColorPicker	-	-	objc
 property	open	buttons	NSAlert	-	-	objc
 property	open	bytesPerPlane	NSBitmapImageRep	-	-	objc
-property	open	bytesPerRow	NSBitmapImageRep	-	-	objc
+property	shipped	bytesPerRow	NSBitmapImageRep	-	-	objc
 property	open	cacheMode	NSImage	-	-	objc
 property	open	calendar	NSDatePicker	-	-	objc
 property	open	calendar	NSDatePickerCell	-	-	objc
@@ -7536,7 +7536,7 @@ property	open	colorSpace	NSScreen	-	-	objc
 property	open	colorSpace	NSWindow	-	-	objc
 property	open	colorSpaceModel	NSColorSpace	-	-	objc
 property	struck	colorSpaceName	NSColor	-	deprecated	objc
-property	open	colorSpaceName	NSImageRep	-	-	objc
+property	shipped	colorSpaceName	NSImageRep	-	-	objc
 property	open	colorSyncProfile	NSColorSpace	-	-	objc
 property	open	colorWellStyle	NSColorWell	-	-	objc
 property	open	column	NSGridCell	-	-	objc
@@ -8911,9 +8911,9 @@ property	open	phase	NSTouch	-	-	objc
 property	open	pinToVisibleBounds	NSCollectionLayoutBoundarySupplementaryItem	-	-	objc
 property	struck	pixelFormat	NSOpenGLContext	-	deprecated	objc
 property	struck	pixelFormat	NSOpenGLView	-	deprecated	objc
-property	open	pixelsHigh	NSImageRep	-	-	objc
+property	shipped	pixelsHigh	NSImageRep	-	-	objc
 property	struck	pixelsHigh	NSOpenGLPixelBuffer	-	deprecated	objc
-property	open	pixelsWide	NSImageRep	-	-	objc
+property	shipped	pixelsWide	NSImageRep	-	-	objc
 property	struck	pixelsWide	NSOpenGLPixelBuffer	-	deprecated	objc
 property	open	placeholderAttributedString	NSFormCell	-	-	objc
 property	open	placeholderAttributedString	NSPathCell	-	-	objc
@@ -9165,7 +9165,7 @@ property	open	safeAreaInsets	NSScreen	-	-	objc
 property	open	safeAreaInsets	NSView	-	-	objc
 property	open	safeAreaLayoutGuide	NSView	-	-	objc
 property	open	safeAreaRect	NSView	-	-	objc
-property	open	samplesPerPixel	NSBitmapImageRep	-	-	objc
+property	shipped	samplesPerPixel	NSBitmapImageRep	-	-	objc
 property	open	saturationComponent	NSColor	-	-	objc
 property	open	savePanelShowsFileFormatsControl	NSDocument	-	-	objc
 property	open	scalingFactor	NSPrintInfo	-	-	objc
@@ -9372,7 +9372,7 @@ property	open	simpleRectangularTextContainer	NSTextContainer	-	-	objc
 property	open	size	NSCollectionViewLayoutAttributes	-	-	objc
 property	open	size	NSDockTile	-	-	objc
 property	open	size	NSImage	-	-	objc
-property	open	size	NSImageRep	-	-	objc
+property	shipped	size	NSImageRep	-	-	objc
 property	open	size	NSMenu	-	-	objc
 property	open	size	NSTextContainer	-	-	objc
 property	struck	sizeMode	NSToolbar	-	deprecated	objc
@@ -11221,7 +11221,7 @@ var	open	NSDeviceIsPrinter	NSWindow	-	-	objc
 var	open	NSDeviceIsScreen	NSScreen	-	-	objc
 var	open	NSDeviceIsScreen	NSWindow	-	-	objc
 var	struck	NSDeviceNColorSpaceModel	NSColorSpace	-	deprecated	objc
-var	open	NSDeviceRGBColorSpace	NSColor	-	-	objc
+var	shipped	NSDeviceRGBColorSpace	NSColor	-	-	objc
 var	open	NSDeviceResolution	NSScreen	-	-	objc
 var	open	NSDeviceResolution	NSWindow	-	-	objc
 var	open	NSDeviceSize	NSScreen	-	-	objc
