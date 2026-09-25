@@ -220,6 +220,96 @@ int main(void)
 		}
 	}
 
+	{
+		/* THE SCOPE IS OURS: `im` at the top of the pool is out of reach here, which the compiler
+		 * said five times before this line existed. */
+		NSImage *im;
+
+			/* --- DRAWN INTO AN OFFSCREEN CANVAS: +imageWithSize:flipped:drawingHandler: -------------- */
+			/* THIS IS THE MODERN, NON-DEPRECATED FORM OF AN OFFSCREEN CANVAS. It is chosen deliberately:
+			 * `-lockFocus`/`-unlockFocus` are STRUCK (deprecated) rows at this tree's pinned vintage and
+			 * the standing policy is no deprecated APIs, so those two names are absent while this one is
+			 * built. THE SWIZZLE PROOF IS RED IN, RED OUT again — a backwards channel swizzle reads red as
+			 * BLUE and every other check here would still pass. */
+			{
+				CGContextRef cg;
+				NSGraphicsContext *gctx;
+
+				/* RED, DRAWN BY A HANDLER THAT ALSO ANSWERS NO — the answer is ignored, as Apple's is. */
+				im = [NSImage imageWithSize:NSMakeSize(8.0, 8.0) flipped:NO
+						 drawingHandler:^BOOL(NSRect dst) {
+					CGContextRef c = [[NSGraphicsContext currentContext] CGContext];
+
+					CGContextSetRGBFillColor(c, 1.0, 0.0, 0.0, 1.0);
+					CGContextFillRect(c, dst);
+					return NO;
+				}];
+				check("+imageWithSize:flipped:drawingHandler: makes an image", im != nil);
+				check("...which is VALID, because the canvas became a rep", [im isValid]);
+				check_num("...at the size it was given", (double)[im size].width, 8.0, 0.0);
+				check_num("...holding one representation", (double)[[im representations] count], 1.0, 0.0);
+
+				cg = make_context();
+				gctx = [NSGraphicsContext graphicsContextWithCGContext:cg flipped:NO];
+				[NSGraphicsContext setCurrentContext:gctx];
+				check("...and it draws", [im drawInRect:NSMakeRect(0.0, 0.0, (CGFloat)W, (CGFloat)H)]);
+				pixel(W / 2, H / 2, p);
+				check("...with the RED still RED (a backwards swizzle would read it as BLUE)",
+				      p[2] == 0xff && p[1] == 0x00 && p[0] == 0x00);
+				[im release];
+				[NSGraphicsContext setCurrentContext:nil];
+				CGContextRelease(cg);
+			}
+
+			/* AND THE FLIPPED FLAG MUST ACTUALLY FLIP SOMETHING: the SAME handler that paints the UPPER
+			 * half of its own coordinate space must land in the OPPOSITE half of the surface, and the two
+			 * runs must differ. This is the check that would catch a `flipped:` that was stored and never
+			 * applied — which is what the context does with it, so the flip has to be made here. */
+			{
+				BOOL upper[2];
+				int i;
+
+				for (i = 0; i < 2; i++) {
+					CGContextRef cg;
+					NSGraphicsContext *gctx;
+
+					im = [NSImage imageWithSize:NSMakeSize(8.0, 8.0) flipped:(i == 1)
+							 drawingHandler:^BOOL(NSRect dst) {
+						CGContextRef c = [[NSGraphicsContext currentContext] CGContext];
+
+						/* WHITE ON PURPOSE, AND THE REASON IS AN OPEN FINDING RATHER THAN A TASTE:
+					 * a BLUE fill (0,0,1,1) lands NOWHERE on the destination while WHITE
+					 * lands, with both opaque and premultiplied — so the blit's reading of
+					 * a kCGImageAlphaPremultipliedLast image's channels is in question,
+					 * and this check must not depend on the answer until that is settled.
+					 * See the C8.12 note in the plan. */
+					CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+						CGContextFillRect(c, CGRectMake(0.0, 4.0, 8.0, 4.0));   /* the UPPER half */
+						(void)dst;
+						return YES;
+					}];
+					cg = make_context();
+					gctx = [NSGraphicsContext graphicsContextWithCGContext:cg flipped:NO];
+					[NSGraphicsContext setCurrentContext:gctx];
+					[im drawInRect:NSMakeRect(0.0, 0.0, (CGFloat)W, (CGFloat)H)];
+					pixel(W / 2, 2, p);
+					upper[i] = (p[0] == 0xff);   /* B: this run's fill is BLUE, so B answers "painted?" */
+					[NSGraphicsContext setCurrentContext:nil];
+					CGContextRelease(cg);
+					[im release];
+				}
+				check("...and `flipped:` really flips: the same handler lands in the OPPOSITE half",
+				      upper[0] != upper[1]);
+			}
+
+			/* --- AND THE TWO REFUSALS ----------------------------------------------------------- */
+			check("a NULL drawing handler is REFUSED rather than crashing",
+			      [NSImage imageWithSize:NSMakeSize(8.0, 8.0) flipped:NO drawingHandler:NULL] == nil);
+			check("...and a size with no pixels is refused too",
+			      [NSImage imageWithSize:NSMakeSize(0.0, 0.0) flipped:NO
+				      drawingHandler:^BOOL(NSRect dst) { (void)dst; return YES; }] == nil);
+	}
+
 	printf("APPKIT-IMAGE: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

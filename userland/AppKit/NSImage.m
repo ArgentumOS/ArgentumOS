@@ -11,9 +11,20 @@
  */
 #import <AppKit/NSImage.h>
 #import <AppKit/NSBitmapImageRep.h>
+#import <AppKit/NSGraphicsContext.h>
+#import <CoreGraphics/CGBitmapContext.h>
+#import <CoreGraphics/CGColorSpace.h>
+#import <CoreGraphics/CGContext.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSString.h>
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+/* THE PRIVATE SEAM, DECLARED HERE AND NOT INSIDE THE IMPLEMENTATION. */
+@interface NSImage ()
+- (void)fnAdoptFocusBuffer:(unsigned char *)buf;
+@end
 
 @implementation NSImage
 
@@ -92,9 +103,29 @@
 	return self;
 }
 
+/* ADOPTING THE CANVAS FROM A CLASS METHOD, which cannot touch this instance's ivars: the class method
+ * makes the buffer and this instance owns it, and the seam is a private method rather than a
+ * friend-style ivar poke. The DECLARATION is in the extension ABOVE `@implementation`, because an
+ * `@interface` that opens inside an implementation ENDS it — which the compiler said plainly the first
+ * time this was written the other way round. */
+- (void)fnAdoptFocusBuffer:(unsigned char *)buf
+{
+	/* THE OLD ONE GOES FIRST — it was this object's, and the rep that borrowed it has already been
+	 * dropped by the caller path that replaces it. */
+	if (_focusBuffer != NULL) {
+		free(_focusBuffer);
+	}
+	_focusBuffer = buf;
+}
+
 - (void)dealloc
 {
 	[_reps release];
+	/* THE CANVAS IS OURS, AND MUST OUTLIVE THE REP THAT BORROWS IT — which is why it lives here rather
+	 * than on the class method's stack. */
+	if (_focusBuffer != NULL) {
+		free(_focusBuffer);
+	}
 	[super dealloc];
 }
 
@@ -198,6 +229,134 @@
 	NSSize s = [self size];
 
 	return [self drawInRect:NSMakeRect(point.x, point.y, s.width, s.height)];
+}
+
+/* BGRA -> RGBA, PREMULTIPLIED ON BOTH SIDES SO NO UN-PREMULTIPLY IS OWED. The source is this tree's
+ * bitmap-context format (alpha first in a little-endian word, which in MEMORY is B, G, R, A) and the
+ * destination is what a rep's `-CGImage` is built with (alpha last, so R, G, B, A). Getting this
+ * backwards is not subtle for long: red comes back blue, which is exactly what the probe checks. */
+static void fn_swizzle_bgra_to_rgba(const unsigned char *src, unsigned char *dst, size_t pixels)
+{
+	size_t i;
+
+	for (i = 0; i < pixels; i++) {
+		dst[0] = src[2];
+		dst[1] = src[1];
+		dst[2] = src[0];
+		dst[3] = src[3];
+		src += 4;
+		dst += 4;
+	}
+}
+
++ (nullable instancetype)imageWithSize:(NSSize)size
+			       flipped:(BOOL)flipped
+			drawingHandler:(nullable BOOL (^)(NSRect dstRect))drawingHandler
+{
+	NSImage *im = nil;
+	unsigned char *canvas;
+	unsigned char *buf;
+	CGColorSpaceRef cs;
+	CGContextRef ctx = NULL;
+	NSGraphicsContext *gstate = nil;
+	NSGraphicsContext *prev = nil;
+	NSInteger w = (NSInteger)ceil(size.width);
+	NSInteger h = (NSInteger)ceil(size.height);
+	size_t n;
+
+	if (drawingHandler == nil) {
+		fprintf(stderr, "APPKIT-REFUSE: +imageWithSize:flipped:drawingHandler: needs a handler\n");
+		return nil;
+	}
+	if (w <= 0 || h <= 0) {
+		fprintf(stderr, "APPKIT-REFUSE: +imageWithSize:flipped:drawingHandler: with a size of "
+				"%gx%g has no pixels to draw into\n", (double)size.width, (double)size.height);
+		return nil;
+	}
+	n = (size_t)w * (size_t)h * 4u;
+	canvas = calloc(1, n);
+	buf = malloc(n);
+	if (canvas == NULL || buf == NULL) {
+		free(canvas);
+		free(buf);
+		return nil;
+	}
+	cs = CGColorSpaceCreateDeviceRGB();
+	ctx = CGBitmapContextCreate(canvas, (size_t)w, (size_t)h, 8, (size_t)w * 4u, cs,
+				    kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+	CGColorSpaceRelease(cs);
+	if (ctx == NULL) {
+		free(canvas);
+		free(buf);
+		return nil;
+	}
+	/* A FRESH CANVAS IS EMPTY, not whatever the allocator had. */
+	CGContextClearRect(ctx, CGRectMake(0.0, 0.0, (CGFloat)w, (CGFloat)h));
+	/* THE FLAG IS HONOURED BY FLIPPING THE CTM, because NSGraphicsContext's `flipped` is a STATEMENT
+	 * about the context rather than a transform it applies to it — AND THE CONDITION IS THE OPPOSITE WAY
+	 * ROUND FROM THE FIRST VERSION, WHICH IS WHAT MEASURING FOUND:
+	 *
+	 * a CGBitmapContext's DEFAULT CTM is (1, 0, 0, -1, 0, h) — its origin is the TOP-LEFT and y grows
+	 * DOWNWARD — which is exactly what AppKit calls flipped:YES. So YES needs NO transform, and NO is
+	 * the case that needs the flip. The first version tested `if (flipped)`, applied the flip for YES,
+	 * and pushed the handler's rect to y-16 on an 8-tall canvas: an EMPTY canvas, silently. The
+	 * measurement that proved it printed this from inside the handler:
+	 *     flipped=0  CTM a=1 b=0 c=0 d=-1 tx=0 ty=8
+	 *     flipped=1  CTM a=1 b=0 c=0 d=1  tx=0 ty=-16
+	 */
+	if (!flipped) {
+		/* SCALE FIRST, THEN TRANSLATE — AND THE ORDER IS THE SECOND THING MEASURING CAUGHT, not a
+		 * style choice. In this tree the two calls compose as
+		 *     ScaleCTM(1, s):    d *= s;  ty *= s
+		 *     TranslateCTM(0, t): ty += t
+		 * (measured from the printed CTM, and it is why the first version was wrong twice). From the
+		 * bitmap default (d=-1, ty=h):
+		 *     Scale(1,-1)         -> d=1,  ty=-h
+		 *     then Translate(0,h) -> d=1,  ty=0    == IDENTITY, which is the y-up space this needs
+		 * The other order gives (d=1, ty=-2h) — the drawing lands at y-h, off an h-tall canvas. */
+		CGContextScaleCTM(ctx, 1.0, -1.0);
+		CGContextTranslateCTM(ctx, 0.0, (CGFloat)h);
+	}
+	gstate = [NSGraphicsContext graphicsContextWithCGContext:ctx flipped:flipped];
+	if (gstate == nil) {
+		CGContextRelease(ctx);
+		free(canvas);
+		free(buf);
+		return nil;
+	}
+	prev = [[NSGraphicsContext currentContext] retain];
+	[NSGraphicsContext setCurrentContext:gstate];
+	/* THE HANDLER DRAWS; ITS ANSWER IS DISCARDED, as Apple's is. */
+	(void)drawingHandler(NSMakeRect(0.0, 0.0, (CGFloat)w, (CGFloat)h));
+	[NSGraphicsContext setCurrentContext:prev];
+	[prev release];
+
+	im = [[self alloc] initWithSize:size];
+	if (im != nil) {
+		unsigned char *planes[1];
+		NSBitmapImageRep *rep;
+
+		fn_swizzle_bgra_to_rgba(canvas, buf, (size_t)w * (size_t)h);
+		planes[0] = buf;
+		rep = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:planes pixelsWide:w
+					pixelsHigh:h bitsPerSample:8 samplesPerPixel:4 hasAlpha:YES
+					isPlanar:NO colorSpaceName:NSDeviceRGBColorSpace
+					bytesPerRow:w * 4 bitsPerPixel:32];
+		if (rep == nil) {
+			[im release];
+			im = nil;
+			free(buf);
+		} else {
+			[im addRepresentation:rep];
+			[im fnAdoptFocusBuffer:buf];
+			[rep release];
+		}
+	} else {
+		free(buf);
+	}
+	CGContextRelease(ctx);
+	free(canvas);
+	return [im autorelease];
 }
 
 @end

@@ -3194,7 +3194,7 @@ method	struck	+imageUnfilteredFileTypes	NSImageRep	-	deprecated	objc
 method	struck	+imageUnfilteredPasteboardTypes	NSImage	-	deprecated	objc
 method	struck	+imageUnfilteredPasteboardTypes	NSImageRep	-	deprecated	objc
 method	open	+imageViewWithImage	NSImageView	-	-	objc
-method	open	+imageWithSize	NSImage	-	-	objc
+method	shipped	+imageWithSize	NSImage	-	-	objc
 method	open	+imageWithSymbolName	NSImage	-	-	objc
 method	open	+imageWithSystemSymbolName	NSImage	-	-	objc
 method	open	+indicatorBadge	NSItemBadge	-	-	objc

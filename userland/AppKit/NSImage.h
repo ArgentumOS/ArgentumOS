@@ -52,12 +52,31 @@ NS_ASSUME_NONNULL_BEGIN
 	NSArray *_reps;
 	NSSize _size;
 	BOOL _sizeIsExplicit;
+	/* THE SWIZZLED OFFSCREEN CANVAS, WHEN AN IMAGE WAS MADE BY DRAWING INTO ONE. It exists because a
+	 * representation BORROWS its bytes rather than owning them, so whoever makes the buffer must keep
+	 * it alive for as long as the rep — which is this object. See `+imageWithSize:flipped:drawingHandler:`. */
+	unsigned char *_focusBuffer;
 }
 
 /* AN EMPTY CANVAS — no representations, no size, `-isValid` NO. */
 + (instancetype)image;
 
 - (instancetype)initWithSize:(NSSize)size;
+
+/* AN IMAGE MADE BY DRAWING INTO AN OFFSCREEN CANVAS — the modern, non-deprecated way to say what
+ * `-lockFocus`/`-unlockFocus` used to say, and a deliberate choice rather than a preference: APPLE
+ * DEPRECATED THOSE TWO at the vintage this tree pins (macOS 14), and the standing policy is no
+ * deprecated APIs. They are therefore NOT declared here, while this is.
+ *
+ * The handler is called with the canvas's full rect and asked to draw; WHAT IT RETURNS IS IGNORED, as
+ * Apple's is — the drawing is the effect, and a handler that returns NO after painting has still
+ * painted. `flipped:` decides whether the handler's coordinate system has its origin at the TOP-LEFT
+ * (YES) or the bottom-left (NO), which is honoured by flipping the canvas's CTM.
+ *
+ * Two things are refused by name rather than half-done: a NULL handler, and a size with no pixels. */
++ (nullable instancetype)imageWithSize:(NSSize)size
+			       flipped:(BOOL)drawingHandlerShouldBeCalledWithFlippedContext
+			drawingHandler:(nullable BOOL (^)(NSRect dstRect))drawingHandler;
 - (nullable instancetype)initWithData:(NSData *)data;
 - (nullable instancetype)initWithContentsOfFile:(NSString *)path;
 - (nullable instancetype)initWithCGImage:(CGImageRef)cgImage size:(NSSize)size;

@@ -563,6 +563,29 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   from the start, and `--strict` is clean on the first try — which is what C8.3's and C8.9's double flip
   bought: the rule is now "flip the rows the tool NAMES, restricted to the owners this tree ships",
   and the rows owned by classes that do not exist here stay open.
+
+  **AND THE OFFSCREEN CANVAS ARRIVES IN ITS NON-DEPRECATED FORM (C8.12): `+imageWithSize:flipped:drawingHandler:`.**
+  The reverted C8.11 shipped `-lockFocus`/`-unlockFocus`, which are `struck: deprecated` rows at this
+  tree's pinned vintage, and the policy is no deprecated APIs; `imageWithSize` is an OPEN row, so this is
+  the same capability through the door the policy allows. It is also where the format disagreement is
+  paid: this tree's bitmap context is premultiplied-FIRST little-endian (BGRA in memory, a stated refusal
+  in `CGBitmapContextCreate`) while a rep's image is premultiplied-LAST, so the canvas is TWO buffers and
+  the swizzle happens ONCE rather than on a per-draw path. **THE PROBE'S PROOF IS RED IN, RED OUT**,
+  because a backwards swizzle reads red as BLUE and every other check would still pass.
+  **AND `flipped:` WAS WRONG TWICE, EACH TIME IN A WAY ONLY MEASURING FOUND.** (1) THE CONDITION WAS
+  INVERTED: a `CGBitmapContext`'s default CTM is `(1,0,0,-1,0,h)` — origin top-left, y downward — which
+  IS what AppKit calls `flipped:YES`, so YES needs no transform and NO is the case that needs the flip.
+  (2) THEN THE ORDER WAS WRONG: measured from the CTM printed inside the handler, this tree composes
+  `ScaleCTM(1,s)` as `d *= s; ty *= s` and `TranslateCTM(0,t)` as `ty += t`, so from that default the
+  y-up identity needs SCALE FIRST, THEN TRANSLATE; the order I had gives `ty = -2h` and moves the drawing
+  off an h-tall canvas — SILENTLY, as an empty canvas rather than an error.
+  **AND MEASURING TWICE STOPPED A WRONG FIX:** my plan for the failing check was "scan the rows and
+  correct the expectation", and both the flip theory and the first row-profile metric (which counted only
+  pixels whose BLUE byte was 0xff) would have had me rewrite a CORRECT check to match a broken draw.
+  What settled it was printing the CTM inside the handler and the canvas's own bytes at the writer.
+  A canvas is **1 pixel per point** (Apple scales by the destination screen's scale factor and this layer
+  has no screen to ask), a NULL handler and a zero size are REFUSED BY NAME, and the handler's return
+  value is IGNORED as Apple's is.
   The
   three enums ride with members whose substrate was checked one by one:
   `NSColorRenderingIntent`'s five cases and `NSImageInterpolation`'s five are each a
