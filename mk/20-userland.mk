@@ -148,6 +148,7 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSFileProviderService.m \
 	$(FOUNDATION_SRC)/NSXMLNode.m \
 	$(FOUNDATION_SRC)/NSXMLDocument.m \
+	$(FOUNDATION_SRC)/NSXMLDTD.m \
 	$(FOUNDATION_SRC)/NSXMLParser.m \
 	$(FOUNDATION_SRC)/NSFileSecurity.m \
 	$(FOUNDATION_SRC)/NSFileWrapper.m \
@@ -189,6 +190,7 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSFileProviderService.h \
 	$(FOUNDATION_SRC)/NSXMLNode.h \
 	$(FOUNDATION_SRC)/NSXMLDocument.h \
+	$(FOUNDATION_SRC)/NSXMLDTD.h \
 	$(FOUNDATION_SRC)/NSXMLParser.h \
 	$(FOUNDATION_SRC)/NSFileSecurity.h \
 	$(FOUNDATION_SRC)/NSFileWrapper.h \
@@ -816,6 +818,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_urlresourcevalues.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlresourcevalues"
+	# foundation_xmldtd: XML slice XML-d acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> plus the POSIX calls its file fixture makes.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_xmldtd.m -o .build/probe-foundation_xmldtd.o
+	$(MUSL64_OBJC) .build/probe-foundation_xmldtd.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_xmldtd"
 	# foundation_xmldocument: XML slice XML-c acceptance (foundation-plan.md §60). ONE unit, only
 	# <Foundation/Foundation.h> plus the POSIX calls its file fixture makes.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \

@@ -145,10 +145,16 @@ static NSString *fn_xml_escape_attribute(NSString *text, BOOL singleQuoted)
 
 + (id)DTDNodeWithXMLString:(NSString *)string
 {
-	/* REGISTERED (slice XML-c): a DTD node's KIND is one of the declaration kinds this slice does not
-	 * declare, so a node cannot be made without inventing what kind it is. */
-	(void)string;
-	return nil;
+	/* XML-d LANDED, SO THIS DOOR IS OPEN - AND IT OPENS THROUGH THE RUNTIME rather than through an import:
+	 * the declaration reader lives where the kinds it decides between live (NSXMLDTDNode's own file), and a
+	 * header import here would make the tree depend on the DTD it holds. The class is asked for by name,
+	 * which is what a forward declaration cannot do and what keeps the two families one-way. */
+	Class nodeClass = NSClassFromString(@"NSXMLDTDNode");
+
+	if (nodeClass == Nil) {
+		return nil;
+	}
+	return [[nodeClass alloc] initWithXMLString:string];
 }
 
 + (id)localNameForName:(NSString *)name

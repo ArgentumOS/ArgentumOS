@@ -3489,7 +3489,7 @@ vanishing.
 | **Files and Data Persistence / Managed file access** | all classes shipped | — |
 | **Files and Data Persistence / Property Lists** | all classes shipped | — |
 | **Files and Data Persistence / Queries** | ALL STRUCK: `NSMetadataQuery`, `NSMetadataQueryAttributeValueTuple`, `NSMetadataQueryDelegate`, `NSMetadataQueryResultGroup` | — |
-| **Files and Data Persistence / XML** | 2 open | `NSXMLDTD`, `NSXMLDTDNode` |
+| **Files and Data Persistence / XML** | all classes shipped | — |
 | **Files and Data Persistence / iCloud key and value storage** | 1 open | `NSUbiquitousKeyValueStore` |
 | **Fundamentals / Automatic grammar agreement** | 5 open; 1 STRUCK: `NSMorphologyCustomPronoun` | `NSInflectionRule`, `NSInflectionRuleExplicit`, `NSMorphology`, `NSMorphologyPronoun`, `NSTermOfAddress` |
 | **Fundamentals / Basic Collections** | 2 open | `NSOrderedCollectionChange`, `NSOrderedCollectionDifference` |
@@ -12753,9 +12753,46 @@ never missed; **the habit to break is reaching for an Apple-shaped header withou
 And XML-b's build trap was APPLIED rather than repeated: the new files are in `FOUNDATION_SRCS` and
 `FOUNDATION_HDRS`, so a later header change rebuilds what includes it.
 
-**WHAT REMAINS IN XML IS ONE SLICE:** XML-d - the DTD family (`NSXMLDTD`, `NSXMLDTDNode`), the six DTD
-delegate events of `NSXMLParserDelegate`, and the `NSXMLDTDNodeKind` enum whose declaration kinds the tree
-currently refuses (a DTD node cannot be made without knowing what kind it is).
+**SLICE XML-d LANDED (2026-09-24): THE DTD AS A DATA MODEL - AND THE FIX CAME FROM READING THE READER, NOT
+FROM PATCHING IT.** `foundation_xmldtd` is a NEW probe with **10 checks**, green. The nineteen node kinds are
+generated from the ledger (the ten attribute TYPES, the five element-declaration forms, the four entity
+kinds); `NSXMLDTDNode` parses a declaration out of its own text (which is also how `NSXMLNode`'s
+`+DTDNodeWithXMLString:` is answered, **through the runtime rather than an import**, so the tree does not
+depend on the DTD it holds); `NSXMLDTD` parses an internal subset into declaration children and answers the
+four lookups Apple describes; and the five PREDEFINED entities come from the specification's own table rather
+than from any document. **The PARSER-SIDE half is slice XML-e and is stated there**: the six DTD events of
+`NSXMLParserDelegate` are still declared and not fired, and a document still does not hand its DTD to
+`NSXMLDocument`.
+
+**TWO CHECKS FAILED TWICE, AND THE ONE-LINE FIX EXPLAINS BOTH: THE READER NEVER CROSSED A CLOSING QUOTE.**
+`fn_dtd_quoted` returned the literal with the cursor still ON its closing quote, so
+ * a NOTATION's SECOND quoted value (`PUBLIC "-//id//" "http://example/"`) started AT the first value's
+   closing quote and came back as the SPACES BETWEEN THEM, and
+ * an `<!ENTITY img SYSTEM "img.gif" NDATA gif>` marker was blocked by that same stray quote, so the entity
+   stayed a GENERAL entity and its notation name was nil.
+**ONE reader rule, two symptoms** - and the way it was found is the point: the first two repairs (reading the
+NDATA marker as a word, and removing a trim that depended on `-stringByTrimmingCharactersInSet:`) were
+PATCHES WRITTEN WITHOUT READING THE READER, and neither worked. Reading the twenty lines of `fn_dtd_quoted`
+found it in one pass. **The cost of guessing twice is recorded here so it is not repeated the same way.**
+
+**AND TWO BUILD TRAPS FIRED IN THIS SLICE, BOTH ALREADY RECORDED AND BOTH MINE:** `NSMutableArray.h` does
+not exist in this tree and the clean-room gate caught the import for the **FOURTH CONSECUTIVE SLICE** (the
+gate has now earned its place four times over); and `make testimg` **died at the sweep gate BEFORE building
+the image** because the ledger had not been refreshed for the DTD rows - so the next run executed the OLD
+image and printed THE IDENTICAL FAILURES, which read as "the fix did not work" when the truth was "the fix
+was never compiled". **The same numbers twice is a signal about the instrument**, and this plan has now
+recorded that shape three times (the stale `.o` with no header dependency, the stale staged header, and now
+the un-rebuilt image).
+
+**ONE MORE MEASURED FACT, FROM THE FIRST COMPILE ERROR:** the DTD kinds' VALUES START AT 100, and that is
+not arbitrary - **a NOTATION declaration's kind is a NODE kind** (`NSXMLNotationDeclarationKind`, declared
+with the thirteen in `NSXMLNode.h`), so a switch over a DTD kind mentions names from BOTH families, and
+numbering the DTD kinds from zero made two of them THE SAME VALUE and the switch a duplicate case. **Two
+families that meet in one switch must not share a range.**
+
+**WHAT REMAINS IN XML IS ONE SLICE:** XML-e - the six DTD delegate events fired by the parser while it reads
+a document, the DTD handed to the document (`-dtd`/`-setDTD:`, registered since XML-c), and the external
+subset, which this slice REMEMBERS and does not fetch.
 
 **W8 IS COMPLETE, AND THE TOTAL IS CHECKABLE RATHER THAN ASSERTED.** The unit's nine slices, each with its
 landed probe and its checks: `NSDirectoryEnumerator` **29**, the URL resource values **27**,

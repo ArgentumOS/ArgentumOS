@@ -81,6 +81,7 @@
 #import <Foundation/NSFileSecurity.h>
 #import <Foundation/NSFileVersion.h>
 #import <Foundation/NSFileProviderService.h>
+#import <Foundation/NSXMLDTD.h>
 #import <Foundation/NSXMLDocument.h>
 #import <Foundation/NSXMLNode.h>
 #import <Foundation/NSXMLParser.h>

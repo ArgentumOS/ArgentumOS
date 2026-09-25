@@ -178,6 +178,12 @@ typedef enum {
 
 @end
 
+/* OURS: THE SERIALIZER AS A METHOD RATHER THAN A C FUNCTION, because a SUBCLASS has to be able to override
+ * it - which is exactly what NSXMLDTDNode does, since a declaration is not an element. */
+@interface NSXMLNode (FNPrivate)
+- (NSString *)fnXMLStringWithOptions:(NSXMLNodeOptions)options depth:(NSUInteger)depth;
+@end
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSXMLNODE_H */
