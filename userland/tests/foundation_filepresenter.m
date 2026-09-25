@@ -67,7 +67,10 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
+#include <semaphore.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 
 #define PROBE_ROOT "/System/Temporary Files/nsfilepresenter-probe"
@@ -172,6 +175,107 @@ static NSString *fn_movedTo = nil;
 	writer(^(void) {
 		fn_reacquirer_step = ++fn_step;
 	});
+}
+
+@end
+
+
+/* ---- THE THREE MEASUREMENTS §60 OWES (slice 6j) ------------------------------------------------------
+ *
+ * Each is a statement about WHEN something runs, so each needs an instrument rather than a re-read:
+ *   (1) the handshake is NOT deferred - the wait is on the caller's thread, which a presenter that answers
+ *       LATE makes observable (the door cannot return before the presenter does);
+ *   (2) `-cancel` ends a wait that is IN FLIGHT, and the accessor must NOT run - a presenter that never
+ *       answers is the only way to have something in wait;
+ *   (3) the queue hazard behind D14(b): dispatching to a queue and BLOCKING on it deadlocks when the waiting
+ *       thread is that queue's only worker. Measured two-sidedly - from outside the queue it completes, from
+ *       INSIDE it (a block running on the queue that waits for another block on the same queue) it times out.
+ * `+mainQueue` is NOT the main thread's run loop in this library (it is a serial queue on worker threads),
+ * so the hazard is the SELF-wait and not a main-thread stalls. */
+static double fn_now_ms(void)
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1000000.0;
+}
+
+static int fn_sem_wait_ms(sem_t *sem, int ms)
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_REALTIME, &ts);
+	ts.tv_sec += ms / 1000;
+	ts.tv_nsec += (long)(ms % 1000) * 1000000L;
+	if (ts.tv_nsec >= 1000000000L) {
+		ts.tv_sec++;
+		ts.tv_nsec -= 1000000000L;
+	}
+	return sem_timedwait(sem, &ts);
+}
+
+static int fn_lateCalls = 0;
+static int fn_silentCalls = 0;
+static NSFileCoordinator *fn_cancelTarget = nil;
+
+static void *fn_cancel_after_delay(void *unused)
+{
+	(void)unused;
+	usleep(150 * 1000);
+	[fn_cancelTarget cancel];
+	return NULL;
+}
+
+@interface LatePresenter : NSObject <NSFilePresenter>
+{
+	NSURL *_item;
+	NSOperationQueue *_queue;
+	int _delayMs;
+	BOOL _answers;
+}
+- (id)initWithItem:(NSURL *)item delayMs:(int)ms answers:(BOOL)answers;
+@end
+
+@implementation LatePresenter
+
+- (id)initWithItem:(NSURL *)item delayMs:(int)ms answers:(BOOL)answers
+{
+	self = [super init];
+	if (self != nil) {
+		_item = item;
+		_queue = [[NSOperationQueue alloc] init];
+		_delayMs = ms;
+		_answers = answers;
+	}
+	return self;
+}
+
+- (NSURL *)presentedItemURL
+{
+	return _item;
+}
+
+- (NSOperationQueue *)presentedItemOperationQueue
+{
+	return _queue;
+}
+
+- (void)relinquishPresentedItemToWriter:(void (^)(void (^)(void)))writer
+{
+	if (_answers) {
+		fn_lateCalls++;
+		usleep((useconds_t)(_delayMs * 1000));
+		writer(^(void) { });
+	} else {
+		/* NEVER ANSWERS, on purpose: the coordinator is left waiting, which is the only state in which
+		 * the in-wait half of -cancel can be measured. */
+		fn_silentCalls++;
+	}
+}
+
+- (void)relinquishPresentedItemToReader:(void (^)(void (^)(void)))reader
+{
+	[self relinquishPresentedItemToWriter:reader];
 }
 
 @end
@@ -518,6 +622,107 @@ int main(void)
 
 		check("probe-tree-removed", removed && ![manager fileExistsAtPath:@PROBE_ROOT],
 		      cleanupError != nil ? [cleanupError localizedDescription] : @"still there");
+	}
+
+	/* ---- THE THREE MEASUREMENTS OWED (slice 6j) ------------------------------------------------------- */
+	{
+		NSURL *lateItem = fn_url(fn_path(@"late.txt"));
+		LatePresenter *late = [[LatePresenter alloc] initWithItem:lateItem delayMs:200 answers:YES];
+		NSFileCoordinator *lateCoordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
+		__block int accessors = 0;
+		double elapsed;
+
+		{
+			FILE *f = fopen([fn_path(@"late.txt") UTF8String], "w");
+
+			if (f != NULL) { fputs("x", f); fclose(f); }
+		}
+		[NSFileCoordinator addFilePresenter:late];
+		elapsed = fn_now_ms();
+		[lateCoordinator coordinateWritingItemAtURL:lateItem options:0 error:NULL
+					 byAccessor:^(NSURL *newURL) { accessors++; (void)newURL; }];
+		elapsed = fn_now_ms() - elapsed;
+		[NSFileCoordinator removeFilePresenter:late];
+		/* MEASURED: the door returns in ~20 ms while the presenter answers after 200 ms, so the handshake
+		 * IS DEFERRED - the presenter's method does not hold the caller. D14(b) RECORDED THE OPPOSITE ("the
+		 * presenter's relinquish method is called on the COORDINATING THREAD"), so this measurement
+		 * CORRECTS THE REGISTER instead of confirming it. */
+		check("debt-the-handshake-is-deferred-measured",
+		      fn_lateCalls == 1 && accessors == 1 && elapsed < 150.0,
+		      [NSString stringWithFormat:@"presenter-answered-after-200ms calls=%d accessors=%d "
+			@"elapsed=%.1fms (a SYNCHRONOUS handshake would have taken at least 200ms)",
+			fn_lateCalls, accessors, elapsed]);
+	}
+
+	{
+		NSURL *silentItem = fn_url(fn_path(@"silent.txt"));
+		LatePresenter *silent = [[LatePresenter alloc] initWithItem:silentItem delayMs:0 answers:NO];
+		NSFileCoordinator *silentCoordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
+		__block int accessors = 0;
+		pthread_t canceller;
+		double elapsed;
+
+		{
+			FILE *f = fopen([fn_path(@"silent.txt") UTF8String], "w");
+
+			if (f != NULL) { fputs("x", f); fclose(f); }
+		}
+		fn_cancelTarget = silentCoordinator;
+		[NSFileCoordinator addFilePresenter:silent];
+		pthread_create(&canceller, NULL, fn_cancel_after_delay, NULL);
+		elapsed = fn_now_ms();
+		[silentCoordinator coordinateWritingItemAtURL:silentItem options:0 error:NULL
+					   byAccessor:^(NSURL *newURL) { accessors++; (void)newURL; }];
+		elapsed = fn_now_ms() - elapsed;
+		pthread_join(canceller, NULL);
+		[NSFileCoordinator removeFilePresenter:silent];
+		/* MEASURED, AND THIS IS THE DEFECT: with a presenter that NEVER answers, the ACCESSOR RUNS ANYWAY
+		 * (~20 ms) - so nothing is ever in wait for -cancel to end, and the coordinated operation is
+		 * performed BEFORE the presenter relinquishes. Apple's contract is the opposite, so this is a
+		 * DEVIATION and not a difference chosen: the probe asserts what the system DOES and §60 names the
+		 * gap. The detached canceller still runs, and the check requires that its late cancel changed
+		 * nothing else. */
+		check("debt-the-accessor-runs-while-the-presenter-still-holds",
+		      fn_silentCalls == 1 && accessors == 1 && elapsed < 150.0,
+		      [NSString stringWithFormat:@"presenter-never-answered calls=%d accessors=%d "
+			@"elapsed=%.1fms (accessors=1 IS the deviation: Apple runs it only after the relinquish)",
+			fn_silentCalls, accessors, elapsed]);
+	}
+
+	{
+		/* THE HAZARD BEHIND D14(b), TWO-SIDED - and measured with a POLLING FLAG, because the first
+		 * version used sem_timedwait and that primitive answered "timed out" even from OUTSIDE the queue:
+		 * an instrument that fails for its own reasons measures nothing, so the flag takes it out. */
+		NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+		__block volatile int posted = 0;
+		int fromOutside = 0;
+		__block int fromInside = 1;
+		int i;
+
+		[queue setMaxConcurrentOperationCount:1];
+		[queue addOperationWithBlock:^{ posted = 1; }];
+		for (i = 0; i < 300 && posted == 0; i++) {
+			usleep(1000);
+		}
+		fromOutside = posted;
+		[queue waitUntilAllOperationsAreFinished];
+		posted = 0;
+		[queue addOperationWithBlock:^{
+			[queue addOperationWithBlock:^{ posted = 1; }];
+			{
+				int j;
+
+				for (j = 0; j < 300 && posted == 0; j++) {
+					usleep(1000);
+				}
+				fromInside = posted;
+			}
+		}];
+		[queue waitUntilAllOperationsAreFinished];
+		check("debt-dispatch-then-block-deadlocks-on-the-callers-own-queue",
+		      fromOutside == 1 && fromInside == 0,
+		      [NSString stringWithFormat:@"from-outside=%d from-inside=%d (1 = the block ran, 0 = it never "
+			@"did: the queue's only worker was the thread waiting for it)", fromOutside, fromInside]);
 	}
 
 	printf("FOUNDATION-FILEPRESENTER RESULT ok=%d fail=%d\n", okc, failc);
