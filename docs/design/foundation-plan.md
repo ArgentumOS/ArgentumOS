@@ -12972,6 +12972,70 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §61 — W10, ATTRIBUTED STRINGS: DESIGNED BEFORE IT IS BUILT (2026-09-24)
+
+**THE SURFACE IS MEASURED RATHER THAN RECALLED.** Apple's published page JSON for the class was read the way
+§57-§59 read theirs, INCLUDING THE OBJC SPELLINGS: the pages are Swift-first and carry an
+`interfaceLanguage: occ` variant whose overrides replace each symbol's title, so the Objective-C selector list
+below is Apple's own spelling and not a translation of Swift labels. Measured for the two classes:
+
+ * **`NSAttributedString`** - `initWithString:`, `initWithString:attributes:`, `initWithAttributedString:`,
+   `string`, `length`, `attributesAtIndex:effectiveRange:`, `attribute:atIndex:effectiveRange:`,
+   `attributesAtIndex:longestEffectiveRange:inRange:`, `attribute:atIndex:longestEffectiveRange:inRange:`,
+   `attributedSubstringFromRange:`, `isEqualToAttributedString:`,
+   `enumerateAttributesInRange:options:usingBlock:`, `enumerateAttribute:inRange:options:usingBlock:`,
+   `attributedStringByInflectingString` (a class method whose subject is the inflection family - see the
+   boundaries), plus the AppKit/UIKit/TextKit additions the page merges: `size`, `drawAtPoint:`, `drawInRect:`,
+   `drawWithRect:options:context:`, `boundingRectWithSize:options:context:`, `doubleClickAtIndex:`,
+   `nextWordFromIndex:forward:`, `lineBreakBeforeIndex:withinRange:`,
+   `lineBreakByHyphenatingBeforeIndex:withinRange:`, `containsAttachmentsInRange:`, `fontAttributesInRange:`,
+   `rulerAttributesInRange:`, `itemNumberInTextList:atIndex:`, `rangeOfTextBlock:atIndex:`,
+   `rangeOfTextList:atIndex:`, `rangeOfTextTable:atIndex:`, `prefersRTFDInRange:`, and the file-format doors
+   (`RTFFromRange:documentAttributes:`, `RTFDFromRange:documentAttributes:`, `RTFDFileWrapperFromRange:…`,
+   `fileWrapperFromRange:…`, `dataFromRange:…`, `docFormatFromRange:…`, `loadFromHTMLWithRequest:…`);
+ * **`NSMutableAttributedString`** - the mutation set (`addAttribute:value:range:`, `addAttributes:range:`,
+   `removeAttribute:range:`, `setAttributes:range:`, `replaceCharactersInRange:withString:`,
+   `replaceCharactersInRange:withAttributedString:`, `insertAttributedString:atIndex:`,
+   `appendAttributedString:`, `deleteCharactersInRange:`, `setAttributedString:`, `beginEditing`,
+   `endEditing`, `fixAttributesInRange:`, `mutableString`) and the reading doors (`readFromData:…`,
+   `readFromURL:…`, `readFromFileURL:…`, each with and without an error).
+
+**THE DATA MODEL IS OURS (D2), AND ITS OBSERVABLE CONTRACT IS WHAT THE PROBE WILL PIN: an attributed string is
+an ORDERED LIST OF RUNS - an `NSRange` in UTF-16 units (W1's rule, and the reason W10 cannot precede W1) and an
+`NSDictionary` of attributes - with ADJACENT RUNS OF EQUAL ATTRIBUTES COALESCED**, because that is visible
+through `attributesAtIndex:effectiveRange:`: Apple's contract is that the effective range is the LONGEST range
+the attribute value holds, so a store that kept every insertion as its own run would answer a short range and
+look wrong without being wrong. Editing splices runs; `beginEditing`/`endEditing` nest (a counter, not a flag),
+and the probe must show that an edit inside a group is observably coalesced at the end and that the accessors
+work BETWEEN the calls too.
+
+**BOUNDARIES, EACH WITH ITS GROUND, AND EACH NAMED SO A CONFORMING PROGRAM COMPILES:**
+ * **file formats** (RTF/RTFD/HTML/docFormat) - no writer and no parser of those formats exists here, and
+   Apple itself discourages the synchronous HTML initialisers; the doors are DECLARED and their bodies refuse
+   BY NAME, which is §11.3's refusals row rather than a silent no-op;
+ * **the AppKit/UIKit/TextKit half** - `size`, the `draw…` family, `boundingRectWithSize:`, the text-list,
+   ruler, attachment and word/line-break doors belong to the drawing frameworks, not to Foundation; they are
+   the AppKit duplication's business, are EXCLUDED here with that ground, and the probe asserts their ABSENCE
+   from this header;
+ * **the modern attribute families** (presentation intents, inflection, morphology, localized number format,
+   markdown source position) - 48 ledger rows between them, each a family with a GRAMMAR or a text system
+   behind it; the CONSTANTS are cheap and the behaviour is not, so the slice order below keeps them last
+   unless a user says otherwise.
+
+**AND THE SLICES, EACH WITH ITS OWN PROBE, GREEN OR NOT LANDING:**
+ 1. **THE DATA MODEL: the two classes as a run store** - the initialisers, `string`/`length`, the four
+    effective-range accessors, `attributedSubstringFromRange:`, `isEqualToAttributedString:`, the two
+    enumeration doors, the whole mutation set, `beginEditing`/`endEditing`, and the coalescing contract. This
+    is the slice the rest hangs from;
+ 2. **THE KEY TYPE AND THE CLASSIC OPTIONS**: `NSAttributedStringKey` and
+    `NSAttributedStringEnumerationOptions` (+ its two cases) - three ledger rows, and the options are
+    BEHAVIOURAL (`LongestEffectiveRangeNotRequired`, `Reverse`), so they land with a probe that shows both;
+ 3. **NSCoding**: the class conforms on Apple's page, so the archive half is owed; it is deferred to its own
+    slice because the attributes may hold values the tree's coder cannot represent and that has to be DECIDED
+    (encode what is representable, refuse by name otherwise) rather than discovered;
+ 4. **THE CONSTANT MASSES** (the 48 rows) and **THE FILE-FORMAT REFUSALS**, each with its ground recorded where
+    the family was measured.
+
 **SLICE XML-e LANDED (2026-09-24): THE SIX DTD EVENTS, AND THE DOCUMENT THAT KEEPS AND RE-WRITES ITS DTD -
 WHICH MAKES XML COMPLETE.** `foundation_xmldtdparse` is a NEW probe with **8 checks**, green.
 
