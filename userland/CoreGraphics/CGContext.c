@@ -89,6 +89,13 @@ typedef struct cg_state {
 	/* HOW `CGContextDrawImage` SAMPLES WHEN IT SCALES. See CGContext.h for why `kCGInterpolationNone`
 	 * is 0 and why that ordering is a decision rather than a habit. */
 	CGInterpolationQuality interpolation;
+	/* THE CLIP'S MASK HALF, OR NULL. The region above is the RECTANGULAR part of the clip and this is
+	 * the rest of it: an 8-bit coverage image over the WHOLE SURFACE (device space, origin 0,0), built
+	 * when a clip path has a slanted or curved edge. It is IMMUTABLE once built — a further clip
+	 * multiplies into a NEW image — so save and restore may share it by refcount, the way the pattern
+	 * is handled. IT IS REFCOUNTED, so the four lifetime sites below each know about it; a state that
+	 * copied the field without retaining would be a double release. */
+	pixman_image_t *clip_mask;
 	/* THE PATTERN PAINT, AND IT IS THE ONE THING IN THIS STATE THAT IS NOT A VALUE. Everything above
 	 * copies by assignment, which is why it is all numbers and bounded arrays; a pattern is an object,
 	 * so the copy is not free and the rules are stated where they are needed: `CGContextSaveGState`
@@ -218,6 +225,7 @@ static void cg_state_init_full(cg_state *st, int width, int height)
 	 * fields are stated too: a default that depends on an enumerator's position is a default nobody
 	 * chose, and this one is the library's PRE-EXISTING behaviour held on purpose (see CGContext.h). */
 	st->interpolation = kCGInterpolationNone;
+	st->clip_mask = NULL;
 	/* APPLE'S DOCUMENTED DEFAULTS for the line state: width 1, butt caps, miter joins,
 	 * miter limit 10. A zero default for the width would be a stroke that draws nothing
 	 * — the failure a caller who sets everything explicitly never sees and everyone else
@@ -385,11 +393,17 @@ void CGContextRelease(CGContextRef c)
 		 * `releaseInfo` called. */
 		CGPatternRelease(c->stack[i].fill_pattern);
 		CGPatternRelease(c->stack[i].stroke_pattern);
+		if (c->stack[i].clip_mask != NULL) {
+			pixman_image_unref(c->stack[i].clip_mask);
+		}
 		pixman_region32_fini(&c->stack[i].clip);
 	}
 	free(c->stack);
 	CGPatternRelease(c->state.fill_pattern);
 	CGPatternRelease(c->state.stroke_pattern);
+	if (c->state.clip_mask != NULL) {
+		pixman_image_unref(c->state.clip_mask);
+	}
 	pixman_region32_fini(&c->state.clip);
 	if (c->image != NULL) {
 		pixman_image_unref(c->image);
@@ -446,6 +460,11 @@ void CGContextSaveGState(CGContextRef c)
 	 * first of the two to be replaced or released would take the other's pattern away. */
 	CGPatternRetain(slot->fill_pattern);
 	CGPatternRetain(slot->stroke_pattern);
+	/* SHARED BY REFCOUNT, which is right for an image that clips are only ever ADDED to: a restore can
+	 * hand the same mask back without copying it. */
+	if (slot->clip_mask != NULL) {
+		pixman_image_ref(slot->clip_mask);
+	}
 	/* THE CLIP IS DEEP-COPIED, and it must be: it is a region with its own
 	 * allocation, so a struct copy would leave two states sharing one buffer and a
 	 * later `ClipToRect` in the restored state would edit the saved one. */
@@ -469,6 +488,9 @@ void CGContextRestoreGState(CGContextRef c)
 	 * in that the release must not be of the very pointers about to be installed. */
 	CGPatternRelease(c->state.fill_pattern);
 	CGPatternRelease(c->state.stroke_pattern);
+	if (c->state.clip_mask != NULL) {
+		pixman_image_unref(c->state.clip_mask);
+	}
 	c->state = c->stack[c->depth];
 }
 
@@ -605,6 +627,11 @@ void CGContextResetClip(CGContextRef c)
 {
 	if (c == NULL) {
 		return;
+	}
+	/* RESET MEANS THE WHOLE SURFACE, which is the region AND the mask. */
+	if (c->state.clip_mask != NULL) {
+		pixman_image_unref(c->state.clip_mask);
+		c->state.clip_mask = NULL;
 	}
 	pixman_region32_fini(&c->state.clip);
 	pixman_region32_init_rect(&c->state.clip, 0, 0, (unsigned int)c->width,
@@ -1462,6 +1489,65 @@ static void cg_traps_for_path(CGContextRef c, CGPathRef path, int even_odd, cg_t
  * trapezoids into an 8-bit mask when coverage is wanted and a 1-BIT mask when it is not, so "no
  * antialiasing" is exact rather than approximated. Asked once, so the choice cannot drift between
  * two copies of the same composite. */
+/* A SOLID 1x1 SOURCE, WHICH IS WHAT STAMPS A COVERAGE MASK OUT OF TRAPEZOIDS. ***THE PIXEL MUST
+ * OUTLIVE THE CALL AND THAT IS THE BUG THIS HELPER SHIPPED WITH FIRST:*** pixman does NOT copy the
+ * data given to `pixman_image_create_bits`, it keeps the POINTER, so a local `pixel` here pointed every
+ * image at a stack slot that died on return and every mask came out ALL ZERO — a clip that painted
+ * nothing, which is worse than the refusal it replaced because it is silent. MEASURED both ways: the
+ * same calls in a scope that outlived the composite gave correct edge coverage (32/96/159/223), this
+ * one gave 0. `static` because it is one immutable white pixel every caller may share. The 1x1 must
+ * REPEAT, or only (0,0) samples it — the same trap C2's fill records. */
+static pixman_image_t *cg_white_source(void)
+{
+	static uint32_t pixel = 0xffffffffu;
+	pixman_image_t *src = pixman_image_create_bits(PIXMAN_a8r8g8b8, 1, 1, &pixel, 4);
+
+	if (src != NULL) {
+		pixman_image_set_repeat(src, PIXMAN_REPEAT_NORMAL);
+	}
+	return src;
+}
+
+/* A COVERAGE MASK OVER THE WHOLE SURFACE, STAMPED FROM TRAPEZOIDS. a8 ALWAYS, even when the fill's own
+ * mask format would be a1, because coverage is the point of a mask and a 1-bit clip is a different
+ * feature. `pixman_image_create_bits` ZEROES the image, so anywhere the path does not cover is
+ * coverage 0 rather than uninitialised. */
+static pixman_image_t *cg_coverage_from_traps(CGContextRef c, cg_traps *tr)
+{
+	pixman_image_t *mask;
+	pixman_image_t *white;
+
+	mask = pixman_image_create_bits(PIXMAN_a8, c->width, c->height, NULL, 0);
+	if (mask == NULL) {
+		return NULL;
+	}
+	white = cg_white_source();
+	if (white != NULL) {
+		pixman_composite_trapezoids(PIXMAN_OP_SRC, white, mask, PIXMAN_a8, 0, 0, 0, 0, tr->count,
+					    tr->traps);
+		pixman_image_unref(white);
+	}
+	return mask;
+}
+
+/* THE CLIP MASK'S COVERAGE AT ONE DEVICE PIXEL, 0..255, or 255 when there is no mask. The image covers
+ * the whole surface at the origin, so the index is the pixel itself. */
+static unsigned int cg_clip_coverage(CGContextRef c, int x, int y)
+{
+	const unsigned char *d;
+	int stride;
+
+	if (c->state.clip_mask == NULL) {
+		return 255u;
+	}
+	if (x < 0 || y < 0 || x >= c->width || y >= c->height) {
+		return 0u;
+	}
+	d = (const unsigned char *)pixman_image_get_data(c->state.clip_mask);
+	stride = pixman_image_get_stride(c->state.clip_mask);
+	return (unsigned int)d[(size_t)y * (size_t)stride + (size_t)x];
+}
+
 /* A 16.16 FIXED VALUE AS A DEVICE COORDINATE, ROUNDED OUTWARD — the direction `CGRectIntegral` also
  * takes in `CGContextClipToRect` above, and the safe one for a CLIP: a region rounded outward keeps at
  * least the pixels the caller asked for, where rounding inward would silently clip some of them. */
@@ -1500,16 +1586,30 @@ static void cg_clip_to_current_path(CGContextRef c, int even_odd)
 	for (i = 0; i < tr.count; i++) {
 		const pixman_trapezoid_t *t = &tr.traps[i];
 
-		/* A SLANTED SIDE IS THE REFUSAL: for every trapezoid of a rectilinear path the two points of
-		 * each side share an x, so this test is exact rather than a tolerance — a curve that had been
-		 * flattened into many small slanted pieces fails it, correctly, because a curve is not a
-		 * rectangle. */
+		/* A SLANTED SIDE MEANS THE PATH IS NOT A RECTANGLE SET, and that is where the MASK half
+		 * begins: the whole path becomes an 8-bit coverage image and the clip carries BOTH halves. The
+		 * test is EXACT rather than a tolerance — for every trapezoid of a rectilinear path the two
+		 * points of each side share an x — so a curve flattened into many small slanted pieces takes
+		 * the mask path, which is what it needs. */
 		if (t->left.p1.x != t->left.p2.x || t->right.p1.x != t->right.p2.x) {
-			fprintf(stderr, "CG-REFUSE: CGContextClip needs a RECTILINEAR path; this one has a "
-					"slanted or curved edge, which would need a MASK (this library clips "
-					"with a region of rectangles), so the clip is left as it was\n");
+			pixman_image_t *mask = cg_coverage_from_traps(c, &tr);
+
 			pixman_region32_fini(&path_region);
 			free(tr.traps);
+			if (mask == NULL) {
+				return;
+			}
+			if (c->state.clip_mask != NULL) {
+				/* THE MASKS INTERSECT, and `IN` is the operator that does it: out = src × dst.a, so
+				 * compositing the OLD mask onto the new leaves new × old. MEASURED to work on two
+				 * alpha-only images (cover 255 -> 32 at an edge) after I first assumed it would not
+				 * and wrote a hand loop that DOUBLE-applied the clip. */
+				pixman_image_composite32(PIXMAN_OP_IN, c->state.clip_mask, NULL, mask, 0, 0, 0, 0,
+							 0, 0, c->width, c->height);
+				pixman_image_unref(c->state.clip_mask);
+			}
+			c->state.clip_mask = mask;
+			CGContextBeginPath(c);
 			return;
 		}
 		{
@@ -1564,8 +1664,27 @@ static void cg_composite_traps(CGContextRef c, cg_traps *tr, pixman_op_t op, pix
 		return;
 	}
 	pixman_image_set_clip_region32(c->image, &c->state.clip);
-	pixman_composite_trapezoids(op, src, c->image, cg_mask_format(c), x_src, y_src, 0, 0,
-				    tr->count, tr->traps);
+	if (c->state.clip_mask == NULL) {
+		pixman_composite_trapezoids(op, src, c->image, cg_mask_format(c), x_src, y_src, 0, 0,
+					    tr->count, tr->traps);
+		return;
+	}
+	/* THE PATH'S COVERAGE TIMES THE CLIP'S, WHICH TAKES A TEMPORARY: pixman composites through ONE
+	 * mask and here the mask is the PRODUCT of two — the fill's own coverage and the clip's — so the
+	 * product is built and the source goes through it. `IN` multiplies the clip into the path's
+	 * coverage, which is exactly the intersection a clip is. */
+	{
+		pixman_image_t *cover = cg_coverage_from_traps(c, tr);
+
+		if (cover == NULL) {
+			return;
+		}
+		pixman_image_composite32(PIXMAN_OP_IN, c->state.clip_mask, NULL, cover, 0, 0, 0, 0, 0, 0,
+					 c->width, c->height);
+		pixman_image_composite32(op, src, cover, c->image, x_src, y_src, 0, 0, 0, 0, c->width,
+					 c->height);
+		pixman_image_unref(cover);
+	}
 }
 
 /* A FILL WITH A SOURCE SOMEONE ELSE BUILT, which is what C6's sampled paints need: the caller has a
@@ -1732,7 +1851,12 @@ static void cg_paint_clip(CGContextRef c, pixman_image_t *src, pixman_op_t op)
 		return;
 	}
 	pixman_image_set_clip_region32(c->image, &c->state.clip);
-	pixman_image_composite32(op, src, NULL, c->image, 0, 0, 0, 0, px, py, pw, ph);
+	/* THE MASK SLOT IS FREE HERE, which makes this the one composite that needs no temporary: the mask
+	 * covers the whole surface at the origin, so it is sampled at the same device coordinates the
+	 * paint is drawn over — `px`/`py` are the offset that aligns it. */
+	pixman_image_composite32(op, src, c->state.clip_mask, c->image, 0, 0,
+				 c->state.clip_mask != NULL ? px : 0,
+				 c->state.clip_mask != NULL ? py : 0, px, py, pw, ph);
 }
 
 static void cg_fill_current_path(CGContextRef c, int even_odd)
@@ -2459,6 +2583,11 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 				}
 				d = c->data + (size_t)y * (size_t)c->stride + (size_t)x * 4u;
 				sa = mix[3] * alpha;
+				/* THIS BLIT COMPOSITES BY HAND RATHER THAN THROUGH pixman, so it has to consult the
+				 * clip's mask half itself. */
+				if (c->state.clip_mask != NULL) {
+					sa = sa * (double)cg_clip_coverage(c, x, y) / 255.0;
+				}
 				d[0] = (unsigned char)(mix[0] * 255.0 * sa + (double)d[0] * (1.0 - sa));
 				d[1] = (unsigned char)(mix[1] * 255.0 * sa + (double)d[1] * (1.0 - sa));
 				d[2] = (unsigned char)(mix[2] * 255.0 * sa + (double)d[2] * (1.0 - sa));
@@ -2493,6 +2622,9 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 				sr = sr * sv / 255.0;
 			}
 			sa = (sv / 255.0) * alpha;
+			if (c->state.clip_mask != NULL) {
+				sa = sa * (double)cg_clip_coverage(c, x, y) / 255.0;
+			}
 			d[0] = (unsigned char)(sb * sa + (double)d[0] * (1.0 - sa));
 			d[1] = (unsigned char)(sg * sa + (double)d[1] * (1.0 - sa));
 			d[2] = (unsigned char)(sr * sa + (double)d[2] * (1.0 - sa));

@@ -481,7 +481,7 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   falling back to a mask only for antialiased path clips"): the path is swept into the SAME
   device-space trapezoids a fill uses, every trapezoid of a rectilinear path IS a rectangle, and those
   are unioned into the clip. So a clip is exact rather than approximated. **A SLANTED OR CURVED EDGE
-  IS REFUSED BY NAME**, because the honest approximation is a MASK and this library has none — a
+  IS REFUSED BY NAME**, because the honest approximation is a MASK and this library had none — a
   fill's coverage comes from pixman's trapezoid rasterizer, and a clip needing per-pixel coverage
   would have to multiply into every composite (the trapezoid mask, `cg_paint_clip`, and the
   hand-written image blit). A rotated or skewed CTM is refused for the reason `CGContextClipToRect`
@@ -490,9 +490,28 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   A SENTENCE I WROTE AN HOUR EARLIER WAS WRONG AND IS CORRECTED IN THE CLASS'S HEADER**: I had claimed
   `-setClip` could not be built from reset-then-intersect because that "would be wrong under a
   transform" — it is not, because the clip is built in DEVICE space from the already-transformed path,
-  so resetting and re-intersecting replaces it exactly. THE MASK HALF IS OWED AND NAMED, and it is the
-  piece that will let `-addClip` take
-  the path a `-drawRect:` actually builds.** The
+  so resetting and re-intersecting replaces it exactly. The mask half that paragraph called owed is
+  BUILT as of C8.8, so `-addClip` now takes the path a `-drawRect:` actually builds.**
+  **AND THE MASK HALF IS BUILT (C8.8), WHICH CLOSES THE GAP C8.6 NAMED.** A path with a slanted or
+  curved edge is rasterised into an 8-BIT COVERAGE MASK over the surface instead of being refused, so a
+  clip has two halves — the region for what is rectilinear, the mask for the rest — and **BOTH ARE
+  APPLIED IN ALL THREE COMPOSITES**: the trapezoid fills (the fill's own coverage times the clip's,
+  through one temporary), the clip-only paints such as gradients and shadings (the mask slot is free
+  there), and the hand-written image blit (which composites pixel by pixel and so consults the mask
+  itself). **EACH OF THE THREE IS CHECKED IN ITS OWN PROBE**, because a mask that reached only the fills
+  would be the worst version of this: 6 checks in the context probe, 2 in the gradient probe, 2 in the
+  image probe. What is still refused is a clip under a ROTATED CTM (the check is made before the path is
+  swept) and `CGContextClipToRect` refuses a rotation for its own reason, so those two are the named
+  residual rather than a silently-wrong bounding box.
+  **AND THE MASK IS WHY THE FIRST ATTEMPT FAILED SILENTLY**, which is recorded at `cg_white_source`: the
+  1×1 white source that stamps a coverage mask pointed at a LOCAL pixel, and pixman keeps the POINTER
+  rather than copying the data — so every mask came out zero and a curved clip painted NOTHING instead
+  of refusing, which is worse than the refusal it replaced. Only measuring the mask's own bytes found
+  it, and two further hypotheses of mine died the same way in the same hour: `PIXMAN_OP_IN` was assumed
+  unable to multiply two alpha-only images (it can, measured: cover 255 -> 32 at an edge) and a
+  hand-written multiply replaced it, which DOUBLE-applied the clip; and a byte count was assumed able to
+  tell a confined fill from a full one, which it cannot when the clip's own bounding box is the
+  surface. The
   three enums ride with members whose substrate was checked one by one:
   `NSColorRenderingIntent`'s five cases and `NSImageInterpolation`'s five are each a
   one-to-one match for a CoreGraphics enum **that this library does not expose a CONTEXT

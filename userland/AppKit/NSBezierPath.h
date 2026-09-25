@@ -41,8 +41,9 @@
  *   `-setClip` and `+clipRect:` all forward to `CGContextClip`/`CGContextEOClip`/`CGContextClipToRect`,
  *   which did not exist when this class was first written. THEY INHERIT THAT CLIP'S BOUNDARY, and it is
  *   worth restating where a path author will meet it: a RECTILINEAR path clips EXACTLY, and a slanted
- *   or curved one is REFUSED BY NAME by CoreGraphics, which leaves the clip as it was rather than
- *   approximating it. The half owed is a MASK.
+ *   or curved one clips too, through CoreGraphics' COVERAGE MASK half — which did not exist when this
+ *   class was written and does now, so all three of these take any path shape. What remains refused at
+ *   the CoreGraphics level is a clip under a ROTATED CTM, and the reason is stated there.
  *
  *   AND ONE SENTENCE OF THIS PARAGRAPH WAS WRONG AND STAYS CORRECTED: it said `-setClip` could not be
  *   built from reset-then-intersect because that "would be wrong under a transform". It is not wrong —

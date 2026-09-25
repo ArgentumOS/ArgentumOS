@@ -14,9 +14,10 @@
  * WHAT IS DELIBERATELY ABSENT, AND WHY IT IS ABSENT RATHER THAN STUBBED: text, images,
  * text and shadows. **THE CONTEXT'S OWN PATH CLIP USED TO BE ON THIS LIST AND IS NOT ANY MORE**
  * (C8.6): `CGContextClip` and `CGContextEOClip` are implemented for a RECTILINEAR path, where a
- * device-space region of rectangles is EXACT, and a slanted or curved edge is REFUSED BY NAME
- * rather than approximated — the half-present machinery this note warned about is the MASK half,
- * and it is still owed rather than faked.
+ * device-space region of rectangles is EXACT, AND A SLANTED OR CURVED EDGE IS NO LONGER REFUSED
+ * either: the MASK half this note used to call owed is IMPLEMENTED, so a clip path of any shape now
+ * clips with COVERAGE. The half-present machinery the note warned about was real and the answer was
+ * to build it rather than fake it.
  *
  * THE STROKE HALF OF THIS LIST IS GONE, and the colour half has moved: C3 landed the
  * stroking (`CGContextStrokePath`, `SetLineWidth`, `SetLineCap`, `SetLineJoin`,
@@ -165,17 +166,22 @@ void CGContextClipToRect(CGContextRef context, CGRect rect);
  * that is exactly right: a clip is stored here as a REGION OF DEVICE-SPACE RECTANGLES, so a path can
  * be a clip only when its edges land on that grid.
  *
- * SO A RECTILINEAR PATH IS EXACT AND ANYTHING ELSE IS REFUSED BY NAME. The path is flattened and
- * swept into the same device-space trapezoids a FILL uses; every trapezoid of a rectilinear path is a
- * RECTANGLE, and those rectangles are unioned into the clip. A slanted or curved edge — a trapezoid
- * whose left or right side is not vertical — is refused rather than approximated, because the honest
- * approximation is a MASK and this library has none: a fill's coverage comes from pixman's trapezoid
- * rasterizer, and a clip that needs per-pixel coverage would have to multiply into every composite
- * (the trapezoid mask, `cg_paint_clip`, and the hand-written image blit).
+ * SO A RECTILINEAR PATH IS EXACT AND ANY OTHER SHAPE BECOMES A COVERAGE MASK. The path is flattened
+ * and swept into the same device-space trapezoids a FILL uses; every trapezoid of a rectilinear path is
+ * a RECTANGLE and those rectangles are unioned into the clip REGION, and a path with a slanted or
+ * curved edge is rasterised instead into an 8-BIT COVERAGE MASK over the surface, so the clip has two
+ * halves and both are applied. THAT SECOND HALF IS APPLIED IN ALL THREE COMPOSITES — the trapezoid
+ * fills (the path's coverage times the clip's, through a temporary), the clip-only paints such as
+ * gradients and shadings (the mask slot is free there), and the hand-written image blit (which
+ * composites pixel by pixel and consults the mask itself). A mask that reached only some of them would
+ * be worse than none, which is why each one is checked in its own probe.
  *
- * A ROTATED OR SKEWED CTM IS REFUSED for the reason `CGContextClipToRect` states, and a caller who
- * needs a curved or rotated clip is owed the mask half rather than a bounding box that keeps pixels
- * the caller asked to exclude. `EOClip` uses the even-odd rule and `Clip` the non-zero one, which is
+ * A ROTATED OR SKEWED CTM IS STILL REFUSED HERE, and it is the one refusal of this pair that the mask
+ * did not remove: the check is made before the path is swept, because a rotated clip would need the
+ * mask half for EVERY path rather than only the curved ones. `CGContextClipToRect` refuses a rotation
+ * for its own reason too (an axis-aligned region cannot hold a parallelogram), so a rotated rectangle
+ * clip needs a mask as well. Both are named residual work rather than silently approximated by a
+ * bounding box that would keep pixels the caller asked to exclude. `EOClip` uses the even-odd rule and `Clip` the non-zero one, which is
  * the same pair the fills use. BOTH CONSUME THE CURRENT PATH, as Apple's do.
  */
 void CGContextClip(CGContextRef context);

@@ -252,6 +252,34 @@ int main(void)
 	CGGradientRelease(g);
 	check("...and releasing it to zero is safe", 1);
 
+	/* --- AND THE CLIP'S MASK HALF REACHES THE CLIP-ONLY PAINTS, NOT ONLY THE FILLS -------------- */
+	/* A gradient does not go through the trapezoid path: `cg_paint_clip` composites a sampled image
+	 * through the mask slot directly. A mask that worked for fills and silently not for gradients
+	 * would be worse than none, so this is checked in its own probe.
+	 *
+	 * THE PATH IS THE USER-SPACE TRIANGLE (0,0),(16,0),(0,16), whose DEVICE form (the CTM flips y)
+	 * covers the half-surface py >= px — so the pixel to assert on is a DEVICE one: (14,2) is outside
+	 * it by a wide margin and (2,14) is well inside. REASONED IN DEVICE SPACE ON PURPOSE, because this
+	 * probe's `pixel()` reads the raw row and a user-space guess is what has cost me twice today. */
+	{
+		CGGradientRef grd = red_blue();
+		CGContextRef g = fresh();
+		unsigned char in[4];
+
+		CGContextBeginPath(g);
+		CGContextMoveToPoint(g, 0.0, 0.0);
+		CGContextAddLineToPoint(g, 16.0, 0.0);
+		CGContextAddLineToPoint(g, 0.0, 16.0);
+		CGContextClosePath(g);
+		CGContextClip(g);
+		CGContextDrawLinearGradient(g, grd, CGPointMake(0.0, 0.0), CGPointMake(16.0, 16.0), 0);
+		check_untouched("a gradient under a CURVED clip does not reach a pixel outside it", g, 14, 2);
+		pixel(g, 2, 14, in);
+		check("...and it DOES reach one inside the same clip", !(in[0] == 0 && in[1] == 0 && in[2] == 0));
+		CGGradientRelease(grd);
+		CGContextRelease(g);
+	}
+
 	printf("CG-GRADIENT: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

@@ -387,6 +387,34 @@ int main(void)
 		CGContextRelease(c);
 	}
 
+	/* --- AND THE CLIP'S MASK HALF REACHES THE HAND-WRITTEN BLIT, WHICH IS NOT A pixman COMPOSITE --- */
+	/* THIS IS THE ONE OF THE THREE THAT COULD EASILY HAVE BEEN MISSED AND NOT BE NOTICED: `DrawImage`
+	 * composites pixel by pixel in a loop rather than through pixman, so it consults the clip's mask
+	 * itself. A mask that worked for fills and gradients and silently not here would be the worst
+	 * version of all.
+	 *
+	 * THE PATH IS THE USER-SPACE TRIANGLE (0,0),(8,0),(0,8), whose DEVICE form (the CTM flips y) covers
+	 * the half-surface py >= px — so (7,1) is far outside it and (1,7) is inside. DEVICE coordinates on
+	 * purpose: this probe's `pixel()` reads the raw row. */
+	{
+		CGImageRef im = make_image(sizeof(img_data));
+		CGContextRef c2 = fresh();
+
+		CGContextBeginPath(c2);
+		CGContextMoveToPoint(c2, 0.0, 0.0);
+		CGContextAddLineToPoint(c2, 8.0, 0.0);
+		CGContextAddLineToPoint(c2, 0.0, 8.0);
+		CGContextClosePath(c2);
+		CGContextClip(c2);
+		CGContextDrawImage(c2, CGRectMake(0.0, 0.0, 8.0, 8.0), im);
+		pixel(c2, 7, 1, p);
+		check("an image drawn under a CURVED clip does not reach a pixel outside it", p[3] == 0);
+		pixel(c2, 1, 7, p);
+		check("...and it DOES reach one inside the same clip", p[3] != 0);
+		CGImageRelease(im);
+		CGContextRelease(c2);
+	}
+
 	printf("CG-IMAGE: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

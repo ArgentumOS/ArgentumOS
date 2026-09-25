@@ -545,10 +545,17 @@ int main(void)
 			  "without its middle)", (double)evenodd, 48.0, 0.0);
 	}
 
-	/* AND A PATH THAT IS NOT RECTILINEAR IS REFUSED RATHER THAN APPROXIMATED. */
+	/* --- THE MASK HALF: A PATH THAT IS NOT RECTILINEAR NOW CLIPS INSTEAD OF REFUSING --------- */
+	/* C8.6 REFUSED A SLANTED PATH because a clip was a REGION of rectangles. It is not any more: a
+	 * non-rectilinear path becomes an 8-bit COVERAGE MASK, and the clip carries both halves. These
+	 * checks are the fills' half of that; the gradient and image halves are in their own probes,
+	 * because a mask that only worked for one of the three composites would be worse than none. */
 	{
 		CGContextRef k = fresh();
 		CGMutablePathRef tri = CGPathCreateMutable();
+		unsigned char px[4];
+		int painted;
+		int outside_top_left;
 
 		CGContextSetRGBFillColor(k, 1.0, 1.0, 1.0, 1.0);
 		CGPathMoveToPoint(tri, NULL, 0.0, 0.0);
@@ -558,11 +565,95 @@ int main(void)
 		CGContextAddPath(k, (CGPathRef)tri);
 		CGContextClip(k);
 		CGContextFillRect(k, CGRectMake(0.0, 0.0, 4.0, 4.0));
-		check_num("a THREE-CORNERED clip is refused and the clip is left as it was (the whole "
-			  "surface still paints)", (double)count_nonzero(k), 64.0, 0.0);
+		painted = count_nonzero(k);
+		/* AND A BYTE COUNT CANNOT ANSWER THIS QUESTION, WHICH COST ME A WRONG EXPECTATION: the
+		 * triangle's own BOUNDING BOX IS THE WHOLE SURFACE, so with coverage it inks ALL SIXTEEN
+		 * pixels — the three corners with a few percent each. `painted == 64` is therefore correct
+		 * behaviour and reads exactly like "the mask did nothing". The assertions below are on
+		 * COVERAGE, which is the thing a mask actually is. (A white fill is premultiplied, so every
+		 * channel of a pixel equals its alpha, which is why one byte is enough.) */
+		check_num("...the byte count is the whole surface even though the clip confined it, because "
+			  "the triangle's bounding box IS the surface (why a count cannot test this)",
+			  (double)painted, 64.0, 0.0);
+		pixel(k, 1, 3, px);
+		check_num("...but the triangle's interior is painted FULLY", (double)px[2], 255.0, 1.0);
+		pixel(k, 0, 0, px);
+		outside_top_left = (px[2] > 0 && px[2] < 255);
+		check("...and its corner pixel is PARTIALLY covered, which is the proof this is a COVERAGE "
+		      "clip and not an all-or-nothing region", outside_top_left);
 		CGContextRelease(k);
 		CGPathRelease((CGPathRef)tri);
 	}
+
+	/* --- AND THE MASK INTERSECTS THE REGION, so two clips combine ---------------------------- */
+	{
+		CGContextRef k = fresh();
+		CGMutablePathRef tri = CGPathCreateMutable();
+		int both;
+		unsigned char px2[4];
+
+		CGContextSetRGBFillColor(k, 1.0, 1.0, 1.0, 1.0);
+		/* A RECTANGLE CLIP FIRST (the region half), THEN A TRIANGLE (the mask half). */
+		CGContextClipToRect(k, CGRectMake(0.0, 0.0, 2.0, 4.0));
+		CGPathMoveToPoint(tri, NULL, 0.0, 0.0);
+		CGPathAddLineToPoint(tri, NULL, 4.0, 0.0);
+		CGPathAddLineToPoint(tri, NULL, 2.0, 4.0);
+		CGPathCloseSubpath(tri);
+		CGContextAddPath(k, (CGPathRef)tri);
+		CGContextClip(k);
+		CGContextFillRect(k, CGRectMake(0.0, 0.0, 4.0, 4.0));
+		both = count_nonzero(k);
+		check("...and the two halves COMBINE: the triangle alone inks every pixel of a 4x4, so the "
+		      "disjoint pixels here can only come from the rect", both < 64);
+		/* THE PIXELS A RECT CLIP EXCLUDES ENTIRELY ARE THE READABLE PART: the triangle inks all of a
+		 * 4x4 surface, so a zero here can only be the region half. */
+		pixel(k, 3, 3, px2);
+		check("...a pixel outside the RECT is uninked even though the triangle covers it",
+		      px2[2] == 0);
+		pixel(k, 1, 3, px2);
+		check_num("...and one inside both is painted fully", (double)px2[2], 255.0, 1.0);
+		/* AND RESET CLEARS BOTH HALVES. */
+		CGContextResetClip(k);
+		CGContextClearRect(k, CGRectMake(0.0, 0.0, 4.0, 4.0));
+		CGContextFillRect(k, CGRectMake(0.0, 0.0, 4.0, 4.0));
+		check_num("...and ResetClip clears the mask as well as the region",
+			  (double)count_nonzero(k), 64.0, 0.0);
+		CGContextRelease(k);
+		CGPathRelease((CGPathRef)tri);
+	}
+
+	/* --- AND SAVE/RESTORE CARRIES THE MASK, which is the part a lifetime bug would show ---------- */
+	{
+		CGContextRef k = fresh();
+		CGMutablePathRef tri = CGPathCreateMutable();
+		int clipped;
+		int after_restore;
+
+		CGContextSetRGBFillColor(k, 1.0, 1.0, 1.0, 1.0);
+		CGPathMoveToPoint(tri, NULL, 0.0, 0.0);
+		CGPathAddLineToPoint(tri, NULL, 4.0, 0.0);
+		CGPathAddLineToPoint(tri, NULL, 2.0, 4.0);
+		CGPathCloseSubpath(tri);
+		CGContextAddPath(k, (CGPathRef)tri);
+		CGContextClip(k);
+		CGContextFillRect(k, CGRectMake(0.0, 0.0, 4.0, 4.0));
+		clipped = count_nonzero(k);
+		CGContextSaveGState(k);
+		CGContextResetClip(k);
+		CGContextClearRect(k, CGRectMake(0.0, 0.0, 4.0, 4.0));
+		CGContextFillRect(k, CGRectMake(0.0, 0.0, 4.0, 4.0));
+		check_num("...and with the mask RESET, the whole surface paints", (double)count_nonzero(k),
+			  64.0, 0.0);
+		CGContextRestoreGState(k);
+		CGContextClearRect(k, CGRectMake(0.0, 0.0, 4.0, 4.0));
+		CGContextFillRect(k, CGRectMake(0.0, 0.0, 4.0, 4.0));
+		after_restore = count_nonzero(k);
+		check("...and RESTORING brings the mask back, to the same coverage it had",
+		      after_restore == clipped);
+		CGContextRelease(k);
+		CGPathRelease((CGPathRef)tri);
+	}
+
 
 	/* A ROTATED CTM IS REFUSED for the reason CGContextClipToRect already refuses one. */
 	{
