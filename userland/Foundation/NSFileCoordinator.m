@@ -162,11 +162,17 @@ static pthread_cond_t fn_handshake_cond = PTHREAD_COND_INITIALIZER;
 		pthread_mutex_unlock(&fn_handshake_mutex);
 		if (_cancelled != 0) {
 			/* CANCELLED WHILE WAITING: "the file coordinator method STOPS WAITING" - the item was never
-			 * handed over, so nothing is reacquired for it and the accessor will not run. */
+			 * handed over, so nothing is reacquired for it and the accessor must NOT run. AND IT DID RUN
+			 * UNTIL THIS LINE WAS FIXED: the loop broke and the function then returned YES at the bottom,
+			 * which every door reads as "go ahead" - so the comment above was the intent and the return
+			 * value was the opposite. THE PROBE MEASURED IT (a presenter that never answers plus a cancel
+			 * at 150 ms: accessors=1) and this return is the fix: NO means the item was never handed over,
+			 * the door skips its accessor, and the reacquirers already collected are still run by the door
+			 * because those presenters DID relinquish. */
 			if (reacquirer != NULL) {
 				_Block_release(reacquirer);
 			}
-			break;
+			return NO;
 		}
 		if (reacquirer != NULL) {
 			if (reacquirers->count == reacquirers->capacity) {

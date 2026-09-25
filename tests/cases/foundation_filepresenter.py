@@ -69,8 +69,8 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_filepresenter"
-CHECKS = ("debt-the-handshake-is-deferred-measured",
-          "debt-the-accessor-runs-while-the-presenter-still-holds",
+CHECKS = ("debt-the-handshake-is-synchronous-measured",
+          "debt-a-cancelled-wait-does-not-run-the-accessor",
           "debt-dispatch-then-block-deadlocks-on-the-callers-own-queue", "presenter-the-registry-is-add-list-and-remove",
           "presenter-the-handshake-runs-around-the-accessor",
           "presenter-a-write-asks-the-writer-form",

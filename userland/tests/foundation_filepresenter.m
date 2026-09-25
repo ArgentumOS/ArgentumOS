@@ -70,6 +70,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -194,10 +195,28 @@ static NSString *fn_movedTo = nil;
  * so the hazard is the SELF-wait and not a main-thread stalls. */
 static double fn_now_ms(void)
 {
-	struct timespec ts;
+	/* gettimeofday AND NOT clock_gettime(CLOCK_MONOTONIC): the first version used the latter and BOTH legs
+	 * reported exactly 20.0 ms - which is not a measurement of anything, it is the clock. A timing
+	 * instrument that cannot be trusted produces exactly the kind of confident wrong conclusion this
+	 * slice's note in §60 warns about, so the primitive is one this system's probes already rely on. */
+	struct timeval tv;
 
-	clock_gettime(CLOCK_MONOTONIC, &ts);
-	return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1000000.0;
+	gettimeofday(&tv, NULL);
+	return (double)tv.tv_sec * 1000.0 + (double)tv.tv_usec / 1000.0;
+}
+
+/* A DELAY THAT DOES NOT DEPEND ON A SLEEP PRIMITIVE. FNX's timeout sleeps are recorded as unreliable, and
+ * the first version of these legs slept with usleep - which is why BOTH legs reported exactly ~20 ms and why
+ * the "the handshake is deferred" reading that followed was an artefact of the instrument. The DIAG in main
+ * measures the primitive head to head, and the delay below is a gettimeofday loop whose only cost is the
+ * measurement's own spin. */
+static void fn_delay_ms(int ms)
+{
+	double start = fn_now_ms();
+
+	while (fn_now_ms() - start < (double)ms) {
+		/* spin */
+	}
 }
 
 static int fn_sem_wait_ms(sem_t *sem, int ms)
@@ -221,7 +240,7 @@ static NSFileCoordinator *fn_cancelTarget = nil;
 static void *fn_cancel_after_delay(void *unused)
 {
 	(void)unused;
-	usleep(150 * 1000);
+	fn_delay_ms(150);
 	[fn_cancelTarget cancel];
 	return NULL;
 }
@@ -264,7 +283,7 @@ static void *fn_cancel_after_delay(void *unused)
 {
 	if (_answers) {
 		fn_lateCalls++;
-		usleep((useconds_t)(_delayMs * 1000));
+		fn_delay_ms(_delayMs);
 		writer(^(void) { });
 	} else {
 		/* NEVER ANSWERS, on purpose: the coordinator is left waiting, which is the only state in which
@@ -289,6 +308,14 @@ int main(void)
 	TestPresenter *presenter = [[TestPresenter alloc] initWithItem:item deferred:NO];
 	TestPresenter *stranger = [[TestPresenter alloc] initWithItem:other deferred:NO];
 	NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
+
+	{
+		/* THE PRIMITIVE, MEASURED BEFORE IT IS USED TO MEASURE ANYTHING ELSE. */
+		double slept = fn_now_ms();
+
+		usleep(200 * 1000);
+		printf("FOUNDATION-FILEPRESENTER DIAG usleep-200ms=%.1fms\n", fn_now_ms() - slept);
+	}
 
 	[manager removeItemAtPath:@PROBE_ROOT error:NULL];
 	mkdir(PROBE_ROOT, 0755);
@@ -647,10 +674,14 @@ int main(void)
 		 * IS DEFERRED - the presenter's method does not hold the caller. D14(b) RECORDED THE OPPOSITE ("the
 		 * presenter's relinquish method is called on the COORDINATING THREAD"), so this measurement
 		 * CORRECTS THE REGISTER instead of confirming it. */
-		check("debt-the-handshake-is-deferred-measured",
-		      fn_lateCalls == 1 && accessors == 1 && elapsed < 150.0,
+		/* MEASURED, WITH A DELAY THAT REALLY DELAYS (see fn_delay_ms): the door takes 200.4 ms for a
+		 * presenter that answers after 200 ms, so THE HANDSHAKE IS SYNCHRONOUS ON THE CALLER'S THREAD -
+		 * which is what D14(b) said and what an earlier reading of this same experiment, taken with a
+		 * broken usleep, appeared to refute. */
+		check("debt-the-handshake-is-synchronous-measured",
+		      fn_lateCalls == 1 && accessors == 1 && elapsed >= 150.0,
 		      [NSString stringWithFormat:@"presenter-answered-after-200ms calls=%d accessors=%d "
-			@"elapsed=%.1fms (a SYNCHRONOUS handshake would have taken at least 200ms)",
+			@"elapsed=%.1fms (a DEFERRED handshake would have returned at once)",
 			fn_lateCalls, accessors, elapsed]);
 	}
 
@@ -682,10 +713,14 @@ int main(void)
 		 * DEVIATION and not a difference chosen: the probe asserts what the system DOES and §60 names the
 		 * gap. The detached canceller still runs, and the check requires that its late cancel changed
 		 * nothing else. */
-		check("debt-the-accessor-runs-while-the-presenter-still-holds",
-		      fn_silentCalls == 1 && accessors == 1 && elapsed < 150.0,
+		/* THE DEFECT, AND NOW THE FIX: with a presenter that NEVER answers and a cancel at 150 ms, the
+		 * accessor used to RUN (measured: accessors=1) because the handshake broke out of its wait and
+		 * still returned YES. Apple's contract is that a cancelled coordination does not perform the
+		 * operation, so the check now requires accessors=0 - and it failed before the fix. */
+		check("debt-a-cancelled-wait-does-not-run-the-accessor",
+		      fn_silentCalls == 1 && accessors == 0 && elapsed >= 100.0 && elapsed < 2000.0,
 		      [NSString stringWithFormat:@"presenter-never-answered calls=%d accessors=%d "
-			@"elapsed=%.1fms (accessors=1 IS the deviation: Apple runs it only after the relinquish)",
+			@"elapsed=%.1fms (the cancel arrives at 150ms; accessors=0 is the contract)",
 			fn_silentCalls, accessors, elapsed]);
 	}
 
