@@ -144,6 +144,26 @@ typedef enum {
  * waiting half of -cancel is honoured by the handshake beside this door: "if the block ... has not yet been
  * executed - perhaps because the file coordinator is still waiting for a response from other file
  * presenters - the file coordinator method STOPS WAITING". */
+/* "Prepare to read or write from multiple files in a SINGLE BATCH operation" - and its block is not an
+ * accessor in the shape the other doors take, which is measured rather than assumed: "A [block] containing
+ * ADDITIONAL CALLS TO METHODS OF THIS CLASS ... The block you provide for the [batch] parameter does NOT
+ * perform the actual operations itself. Instead, you MUST CALL THE INDIVIDUAL COORDINATED READ AND WRITE
+ * METHODS FROM INSIDE THE BLOCK." So it takes no URLs and no error, and it "EXECUTES SYNCHRONOUSLY,
+ * BLOCKING THE CURRENT THREAD until the [batch] block finishes executing".
+ *
+ * WHAT THIS IMPLEMENTATION DOES WITH THAT is the same handshake the other doors perform, over the two
+ * lists: each item is coordinated (and refused with an error, in which case "the block ... is not
+ * executed"), the presenters of those items step aside, the batch block runs, and they are reacquired
+ * afterwards. Apple's own REASON for the door - "because file coordination requires interprocess
+ * communication, it is much more efficient to batch changes to large numbers of files" - is the half this
+ * system cannot need, since there is no interprocess communication to batch (see the boundary above). */
+- (void)prepareForReadingItemsAtURLs:(nullable NSArray *)readingURLs
+			     options:(NSFileCoordinatorReadingOptions)readingOptions
+		writingItemsAtURLs:(nullable NSArray *)writingURLs
+			     options:(NSFileCoordinatorWritingOptions)writingOptions
+			       error:(NSError ** _Nullable)outError
+			  byAccessor:(nullable void (^)(void))batchAccessor;
+
 - (void)coordinateAccessWithIntents:(NSArray *)intents
 			      queue:(NSOperationQueue *)queue
 			 byAccessor:(void (^)(NSArray *intents, NSError * _Nullable error))accessor;

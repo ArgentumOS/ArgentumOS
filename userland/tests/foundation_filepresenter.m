@@ -52,11 +52,19 @@
  *                                          empty intent list answers by doing nothing rather than crashing;
  *   async-a-reading-intent-gets-the-coordinated-url  "The system updates this URL property to account for
  *                                          any changes to the underlying files";
+ *   prepare-batches-the-presenters-around-one-block  the BATCH door: "This method executes synchronously,
+ *                                          blocking the current thread until the [batch] block finishes
+ *                                          executing", and the handshake runs ONCE around the whole
+ *                                          batch - asserted as an ORDER (relinquish, block, reacquire);
+ *   prepare-takes-both-lists              the read list goes to readers and the write list to writers;
+ *   prepare-refuses-a-bad-url-without-running-the-block  "the error is returned in this parameter and the
+ *                                          block ... is not executed";
  *   probe-tree-removed                    the tree is gone.
  */
 
 #import <Foundation/Foundation.h>
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -81,6 +89,11 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 static id fn_url(NSString *path)
 {
 	return [NSURL fileURLWithPath:path];
+}
+
+static id fn_web(void)
+{
+	return [NSURL URLWithString:@"https://example.invalid/x"];
 }
 
 static NSString *fn_path(NSString *relative)
@@ -430,6 +443,73 @@ int main(void)
 		check("async-a-reading-intent-gets-the-coordinated-url",
 		      ran && [[intent URL] isEqual:fn_url(fn_path(@"presented.txt"))],
 		      [NSString stringWithFormat:@"the intent's URL is now %@", [intent URL]]);
+	}
+
+	{
+		/* THE BATCH DOOR: "This method executes synchronously, blocking the current thread until the
+		 * [batch] block finishes executing", and its block holds NESTED coordinate calls rather than
+		 * performing the operations itself. The handshake runs ONCE around the whole batch, which is what
+		 * the door is for - and the ORDER is what the check measures. */
+		fn_step = 0;
+		fn_relinquish_step = 0;
+		fn_reacquirer_step = 0;
+		fn_readerCalls = 0;
+		fn_writerCalls = 0;
+		{
+			__block int blockStep = 0;
+
+			[coordinator prepareForReadingItemsAtURLs:[NSArray arrayWithObject:item]
+							  options:0
+						 writingItemsAtURLs:nil
+							  options:0
+							    error:NULL
+					       byAccessor:^{
+				blockStep = ++fn_step;
+			}];
+			check("prepare-batches-the-presenters-around-one-block",
+			      fn_readerCalls == 1 && fn_relinquish_step == 1 && blockStep == 2 &&
+			      fn_reacquirer_step == 3,
+			      [NSString stringWithFormat:@"reader=%d order=%d/%d/%d", fn_readerCalls,
+				fn_relinquish_step, blockStep, fn_reacquirer_step]);
+		}
+	}
+
+	{
+		/* BOTH LISTS ARE HANDSHAKEN, EACH ITEM WITH ITS OWN FORM: the read list to readers and the write
+		 * list to writers. */
+		fn_readerCalls = 0;
+		fn_writerCalls = 0;
+		[NSFileCoordinator addFilePresenter:stranger];		/* its item is other.txt */
+		[coordinator prepareForReadingItemsAtURLs:[NSArray arrayWithObject:item]
+						  options:0
+					     writingItemsAtURLs:[NSArray arrayWithObject:other]
+						  options:NSFileCoordinatorWritingForMerging
+						    error:NULL
+					       byAccessor:^{
+		}];
+		check("prepare-takes-both-lists", fn_readerCalls == 1 && fn_writerCalls == 1,
+		      [NSString stringWithFormat:@"reader=%d writer=%d", fn_readerCalls, fn_writerCalls]);
+		[NSFileCoordinator removeFilePresenter:stranger];
+	}
+
+	{
+		/* AND A URL THAT CANNOT BE COORDINATED REFUSES THE BATCH: "the error is returned in this parameter
+		 * and the block ... is not executed". */
+		__block int blockCalls = 0;
+		NSError *error = nil;
+
+		[coordinator prepareForReadingItemsAtURLs:
+			[NSArray arrayWithObjects:item, fn_web(), nil]
+						  options:0
+					     writingItemsAtURLs:nil
+						  options:0
+						    error:&error
+					       byAccessor:^{
+			blockCalls++;
+		}];
+		check("prepare-refuses-a-bad-url-without-running-the-block",
+		      blockCalls == 0 && error != nil && [error code] == EINVAL,
+		      [NSString stringWithFormat:@"block calls=%d error=%@", blockCalls, error]);
 	}
 
 	{

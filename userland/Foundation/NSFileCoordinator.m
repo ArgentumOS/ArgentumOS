@@ -271,6 +271,55 @@ static pthread_cond_t fn_handshake_cond = PTHREAD_COND_INITIALIZER;
 	[self fnNotifyDidMoveFrom:oldURL to:newURL];
 }
 
+- (void)prepareForReadingItemsAtURLs:(NSArray *)readingURLs
+			     options:(NSFileCoordinatorReadingOptions)readingOptions
+		writingItemsAtURLs:(NSArray *)writingURLs
+			     options:(NSFileCoordinatorWritingOptions)writingOptions
+			       error:(NSError **)outError
+			  byAccessor:(void (^)(void))batchAccessor
+{
+	struct fn_reacquirers reacquirers = { NULL, 0, 0 };
+	NSUInteger i;
+	BOOL proceed = YES;
+
+	(void)writingOptions;
+	(void)readingOptions;
+	if (outError != NULL) {
+		*outError = nil;
+	}
+	_cancelled = 0;
+	if (batchAccessor == NULL) {
+		if (outError != NULL) {
+			*outError = fn_coordinator_error(EINVAL, @"a batch accessor is required");
+		}
+		return;
+	}
+	/* THE TWO LISTS ARE HANDSHAKEN IN THE ORDER THEY ARE GIVEN, readers first - and a URL that cannot be
+	 * coordinated refuses the whole batch, with the block NOT executed, which is Apple's sentence. */
+	for (i = 0; i < [readingURLs count] && proceed; i++) {
+		NSURL *url = [self fnCoordinatedURL:[readingURLs objectAtIndex:i] resolve:NO outError:outError];
+
+		if (url == nil) {
+			proceed = NO;
+			break;
+		}
+		proceed = [self fnHandshakeForURL:url writing:NO reacquirers:&reacquirers];
+	}
+	for (i = 0; i < [writingURLs count] && proceed; i++) {
+		NSURL *url = [self fnCoordinatedURL:[writingURLs objectAtIndex:i] resolve:NO outError:outError];
+
+		if (url == nil) {
+			proceed = NO;
+			break;
+		}
+		proceed = [self fnHandshakeForURL:url writing:YES reacquirers:&reacquirers];
+	}
+	if (proceed) {
+		batchAccessor();
+	}
+	fnReacquire(&reacquirers);
+}
+
 - (void)cancel
 {
 	/* "it returns immediately without waiting for the file coordinator object to respond" - so this only

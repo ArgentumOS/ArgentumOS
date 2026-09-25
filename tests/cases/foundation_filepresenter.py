@@ -54,6 +54,13 @@ The probe is `/System/Shared/tests/foundation_filepresenter`, ONE unit, importin
                                  empty intent list answers by doing nothing rather than crashing;
   * `async-a-reading-intent-gets-the-coordinated-url` — "The system updates this URL property to account
                                  for any changes to the underlying files";
+  * `prepare-batches-the-presenters-around-one-block` — the BATCH door: "This method executes
+                                 synchronously, blocking the current thread until the [batch] block finishes
+                                 executing", and the handshake runs ONCE around the whole batch — asserted
+                                 as an ORDER (relinquish, block, reacquire);
+  * `prepare-takes-both-lists` — the read list goes to readers and the write list to writers;
+  * `prepare-refuses-a-bad-url-without-running-the-block` — "the error is returned in this parameter and
+                                 the block … is not executed";
   * `probe-tree-removed` — the tree is gone.
 """
 
@@ -74,7 +81,9 @@ CHECKS = ("presenter-the-registry-is-add-list-and-remove",
           "cancel-with-nothing-active-does-not-stop-the-next-call",
           "async-the-door-runs-the-accessor-on-its-queue",
           "async-a-nil-queue-or-no-intents-does-nothing",
-          "async-a-reading-intent-gets-the-coordinated-url", "probe-tree-removed")
+          "async-a-reading-intent-gets-the-coordinated-url",
+          "prepare-batches-the-presenters-around-one-block", "prepare-takes-both-lists",
+          "prepare-refuses-a-bad-url-without-running-the-block", "probe-tree-removed")
 
 
 class Case(BaseCase):
