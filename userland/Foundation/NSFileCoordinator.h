@@ -93,6 +93,7 @@ typedef enum {
 @interface NSFileCoordinator : NSObject
 {
 	id _presenter;			/* the coordinator's OWN presenter, NOT retained: see +addFilePresenter: */
+	NSString *_purposeIdentifier;	/* COPIED, or nil: see -setPurposeIdentifier: */
 }
 
 /* ---- THE PROCESS-WIDE REGISTRY (W8 slice 7c) ------------------------------------------------------
@@ -108,6 +109,26 @@ typedef enum {
 + (void)addFilePresenter:(id<NSFilePresenter>)filePresenter;
 + (void)removeFilePresenter:(id<NSFilePresenter>)filePresenter;
 + (NSArray *)filePresenters;
+
+/* "A string that uniquely identifies the file access that was performed by this file coordinator", whose
+ * rule is measured: "Coordinated reads and writes performed using the same purpose identifier never block
+ * each other, even if they occur in DIFFERENT PROCESSES" - a statement about a system with a coordination
+ * service, which this one does not have (see the doors), so what is honoured here is the PROPERTY and its
+ * spelling rule: "You cannot use [nil] or zero-length strings", which this door answers by IGNORING such an
+ * assignment and keeping what it had (a permitted variation: Apple says the value is not allowed and does
+ * not say what happens, so nothing is invented and nothing is silently stored).
+ *
+ * AND ONE DOOR THAT IS DELIBERATELY HALF A PAIR: -itemAtURL:didMoveToURL: "calls the
+ * [-presentedItemDidMoveToURL:] method for any of the item's file presenters", and it "must balance a call
+ * to" -itemAtURL:willMoveToURL:. THAT FIRST HALF SHIPS, AND THE SECOND IS APPLE'S OWN NO-OP HERE: "This
+ * method is intended for apps that adopt App Sandbox ... If your macOS app is not sandboxed, this method
+ * serves no purpose. This method is nonfunctional in iOS." This system has no app sandbox, so the will form
+ * is declared (a balanced pair must compile) and notifies nobody, which is Apple's sentence rather than an
+ * omission. */
+- (nullable NSString *)purposeIdentifier;
+- (void)setPurposeIdentifier:(nullable NSString *)identifier;
+- (void)itemAtURL:(NSURL *)oldURL willMoveToURL:(NSURL *)newURL;
+- (void)itemAtURL:(NSURL *)oldURL didMoveToURL:(NSURL *)newURL;
 
 /* "This object is assumed to be performing the relevant file or directory operations and therefore does
  * NOT receive notifications about those operations" - so the coordinator's own presenter is excluded from

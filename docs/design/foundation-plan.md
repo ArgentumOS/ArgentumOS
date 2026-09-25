@@ -12482,10 +12482,39 @@ entries are `_Block_copy`'d and `_Block_release`'d, which is the rule `NSFileHan
    way to deadlock when that queue is the caller's own. Using the queue is owed, and it is owed WITH the
    deadlock question measured rather than assumed.
 
-**WHAT 7c AND 7d STILL OWE IS OTHERWISE UNCHANGED**: the 2-item doors' presenter notifications beyond the
-handshake they already perform, `-purposeIdentifier`, `-cancel`, the asynchronous
-`-coordinateAccessWithIntents:queue:byAccessor:` (which needs the intents' queue semantics) - and 7d's
-registered absences, which the protocol now declares so they cannot be forgotten.
+**SLICE 7c-ii LANDED (2026-09-24): THE PURPOSE IDENTIFIER AND THE CHANGE/MOVE NOTIFICATIONS.**
+`foundation_filepresenter` 6 -> **11 checks**, green on the first run.
+
+**A WRITE IS WHAT MAKES A CHANGE, SO THE PRESENTERS ARE TOLD AFTER IT - AND A READ IS NOT.** The write doors
+now send `-presentedItemDidChange` to the presenters whose item it is (never the coordinator's own, as
+everywhere else) once the accessor has run and before the reacquirers hand the item back, and the probe
+asserts both halves: `a-write-tells-the-presenters-the-item-changed` and `a-read-does-not-tell-them`.
+
+**AND THE MOVE DOOR IS APPLE'S SENTENCE MADE CODE: "This method calls the [-presentedItemDidMoveToURL:]
+method for any of the item's file presenters."** So `-itemAtURL:didMoveToURL:` forwards to exactly those
+presenters, asserted with the new URL in hand.
+
+**AND ONE DOOR IS A NO-OP BECAUSE APPLE SAYS IT IS: `-itemAtURL:willMoveToURL:`.** Its page: "This method is
+intended for apps that adopt App Sandbox ... **If your macOS app is not sandboxed, this method serves no
+purpose. This method is nonfunctional in iOS.**" This system has no app sandbox, so the form is DECLARED -
+"this call must balance a call to" `-itemAtURL:didMoveToURL:`, so a balanced pair has to compile - and it
+notifies nobody, which is Apple's own reading rather than an omission dressed as one. The probe asserts the
+silence.
+
+**THE PURPOSE IDENTIFIER SHIPS WITH THE ONE RULE APPLE STATES FOR IT, AND THE OTHER HALF IS THE SAME BOUNDARY
+AS 7B.** The property round-trips, and "You cannot use [nil] or zero-length strings" is honoured by
+IGNORING such an assignment and keeping the previous value - **Apple states the rule and not the mechanism,
+so nothing is invented and nothing is silently stored**, and the reading is written at the accessor. What
+the identifier is FOR is measured as well: "Coordinated reads and writes performed using the same purpose
+identifier never block each other, **even if they occur in different processes**" - a statement about a
+system with a coordination service, which this one does not have, so that behaviour is 7b's boundary and
+not this slice's silence.
+
+**WHAT THE FAMILY STILL OWES, NOW SHORT AND ALL NAMED:** `-cancel` and the asynchronous
+`-coordinateAccessWithIntents:queue:byAccessor:` (both need the queue semantics, and they are the pair that
+`-cancel` was written for); the presenter's `-presentedItemOperationQueue` difference with its deadlock
+question; the deferred handshake's guest trap; and 7d's registered absences - which the protocol now
+DECLARES, so what 7d owes is the §11.6 registration and the door split rather than another measurement.
 
 **AFTER THE FAMILY:** `NSFileVersion` and `NSFileProviderService`, and still standing beside them the two
 items this unit has named and not closed - `NSDirectoryEnumerator`'s now-empty option word, and the

@@ -28,6 +28,19 @@
  *   (THE DEFERRED HANDSHAKE IS IMPLEMENTED AND NOT PROVED: the leg that made a presenter answer LATE from
  *                                          another thread trips a guest trap, so it is recorded rather than
  *                                          kept - see the note at its place in the probe);
+ *   purpose-a-string-round-trips-and-empty-is-ignored  "A string that uniquely identifies the file
+ *                                          access" round-trips, and the one spelling rule Apple states
+ *                                          ("You cannot use [nil] or zero-length strings") is honoured by
+ *                                          IGNORING such an assignment;
+ *   a-write-tells-the-presenters-the-item-changed / a-read-does-not-tell-them  the presenters are told the
+ *                                          item CHANGED after a write - and not after a read, because a
+ *                                          read changes nothing;
+ *   didMove-notifies-the-items-presenters  "This method calls the [-presentedItemDidMoveToURL:] method for
+ *                                          any of the item's file presenters";
+ *   willMove-has-no-purpose-on-a-system-without-a-sandbox  APPLE'S OWN SENTENCE: the will form "is
+ *                                          intended for apps that adopt App Sandbox ... If your macOS app
+ *                                          is not sandboxed, this method serves no purpose" - declared so a
+ *                                          balanced pair compiles, and notifying nobody;
  *   probe-tree-removed                    the tree is gone.
  */
 
@@ -72,6 +85,9 @@ static int fn_accessor_step = 0;
 static int fn_reacquirer_step = 0;
 static int fn_readerCalls = 0;
 static int fn_writerCalls = 0;
+static int fn_changeCalls = 0;
+static int fn_moveCalls = 0;
+static NSString *fn_movedTo = nil;
 @interface TestPresenter : NSObject <NSFilePresenter>
 {
 	NSURL *_item;
@@ -112,6 +128,17 @@ static int fn_writerCalls = 0;
 	reader(^(void) {
 		fn_reacquirer_step = ++fn_step;
 	});
+}
+
+- (void)presentedItemDidChange
+{
+	fn_changeCalls++;
+}
+
+- (void)presentedItemDidMoveToURL:(NSURL *)newURL
+{
+	fn_moveCalls++;
+	fn_movedTo = [newURL path];
 }
 
 - (void)relinquishPresentedItemToWriter:(void (^)(void (^)(void)))writer
@@ -230,6 +257,69 @@ int main(void)
 	 * checks above already pin what the handshake IS (the order, the two forms, the matching rule and the
 	 * coordinator's own exemption); what is missing is a safe way to make a presenter answer LATE, and that
 	 * is recorded as owed by this slice rather than dressed up by deleting the wait. */
+
+	{
+		/* THE PURPOSE IDENTIFIER, AND THE ONE SPELLING RULE APPLE STATES FOR IT: "You cannot use [nil] or
+		 * zero-length strings", answered here by IGNORING such an assignment and keeping what it had -
+		 * Apple states the rule and not the mechanism, so nothing is invented and nothing is stored. */
+		NSString *first = @"com.argentum.coordination.one";
+
+		[coordinator setPurposeIdentifier:first];
+		{
+			BOOL roundTrips = [[coordinator purposeIdentifier] isEqual:first];
+
+			[coordinator setPurposeIdentifier:@""];
+			[coordinator setPurposeIdentifier:nil];
+			check("purpose-a-string-round-trips-and-empty-is-ignored",
+			      roundTrips && [[coordinator purposeIdentifier] isEqual:first],
+			      [NSString stringWithFormat:@"after setting empty and nil: %@",
+				[coordinator purposeIdentifier]]);
+		}
+	}
+
+	{
+		/* A WRITE IS WHAT MAKES A CHANGE, so the presenters are told after it - and a READ is not. */
+		fn_changeCalls = 0;
+		[coordinator coordinateWritingItemAtURL:item
+						options:NSFileCoordinatorWritingForMerging
+						  error:NULL
+					     byAccessor:^(NSURL *newURL) {
+			(void)newURL;
+		}];
+		check("a-write-tells-the-presenters-the-item-changed", fn_changeCalls == 1,
+		      [NSString stringWithFormat:@"didChange calls=%d", fn_changeCalls]);
+
+		[coordinator coordinateReadingItemAtURL:item options:0 error:NULL byAccessor:^(NSURL *newURL) {
+			(void)newURL;
+		}];
+		check("a-read-does-not-tell-them", fn_changeCalls == 1,
+		      [NSString stringWithFormat:@"didChange calls after a read=%d", fn_changeCalls]);
+	}
+
+	{
+		/* APPLE'S MEASURED SENTENCE FOR THIS DOOR: "This method calls the [-presentedItemDidMoveToURL:]
+		 * method for any of the item's file presenters." */
+		NSURL *moved = fn_url(fn_path(@"presented-renamed.txt"));
+
+		fn_moveCalls = 0;
+		fn_movedTo = nil;
+		[coordinator itemAtURL:item didMoveToURL:moved];
+		check("didMove-notifies-the-items-presenters",
+		      fn_moveCalls == 1 && [fn_movedTo isEqual:[moved path]],
+		      [NSString stringWithFormat:@"move calls=%d movedTo=%@", fn_moveCalls, fn_movedTo]);
+	}
+
+	{
+		/* AND THE HALF PAIR THAT APPLE ITSELF CALLS A NO-OP HERE: "This method is intended for apps that
+		 * adopt App Sandbox ... If your macOS app is not sandboxed, this method serves no purpose." It is
+		 * declared so a balanced will/did pair compiles, and it notifies nobody. */
+		NSURL *moved = fn_url(fn_path(@"presented-will-move.txt"));
+
+		fn_moveCalls = 0;
+		[coordinator itemAtURL:item willMoveToURL:moved];
+		check("willMove-has-no-purpose-on-a-system-without-a-sandbox", fn_moveCalls == 0,
+		      [NSString stringWithFormat:@"move calls=%d", fn_moveCalls]);
+	}
 
 	{
 		NSError *cleanupError = nil;

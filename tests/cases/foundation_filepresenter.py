@@ -30,6 +30,20 @@ The probe is `/System/Shared/tests/foundation_filepresenter`, ONE unit, importin
                                  from another thread trips a GUEST TRAP, so it is recorded as owed rather
                                  than kept - a broken instrument is not evidence about the library, and
                                  deleting the wait would be worse than admitting the gap);
+  * `purpose-a-string-round-trips-and-empty-is-ignored` — "A string that uniquely identifies the file
+                                 access" round-trips, and the one spelling rule Apple states ("You cannot
+                                 use nil or zero-length strings") is honoured by IGNORING such an
+                                 assignment — Apple states the rule and not the mechanism, so nothing is
+                                 invented and nothing is silently stored;
+  * `a-write-tells-the-presenters-the-item-changed` / `a-read-does-not-tell-them` — the presenters are told
+                                 the item CHANGED after a write, and not after a read, because a read
+                                 changes nothing;
+  * `didMove-notifies-the-items-presenters` — "This method calls the [-presentedItemDidMoveToURL:] method
+                                 for any of the item's file presenters";
+  * `willMove-has-no-purpose-on-a-system-without-a-sandbox` — APPLE'S OWN SENTENCE: the will form "is
+                                 intended for apps that adopt App Sandbox … If your macOS app is not
+                                 sandboxed, this method serves no purpose" — declared so a balanced pair
+                                 compiles, notifying nobody;
   * `probe-tree-removed` — the tree is gone.
 """
 
@@ -43,7 +57,10 @@ CHECKS = ("presenter-the-registry-is-add-list-and-remove",
           "presenter-a-write-asks-the-writer-form",
           "presenter-only-the-matching-presenter-is-asked",
           "presenter-the-coordinators-own-presenter-is-not-asked",
-          "probe-tree-removed")
+          "purpose-a-string-round-trips-and-empty-is-ignored",
+          "a-write-tells-the-presenters-the-item-changed", "a-read-does-not-tell-them",
+          "didMove-notifies-the-items-presenters",
+          "willMove-has-no-purpose-on-a-system-without-a-sandbox", "probe-tree-removed")
 
 
 class Case(BaseCase):

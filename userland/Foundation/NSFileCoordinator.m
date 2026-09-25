@@ -179,6 +179,95 @@ static pthread_cond_t fn_handshake_cond = PTHREAD_COND_INITIALIZER;
 	return YES;
 }
 
+/* THE NOTIFICATION THE PRESENTERS OF AN ITEM GET WHEN A COORDINATED WRITE IS OVER: "Tells your object that
+ * the presented item's contents or attributes changed" - and it is sent for a WRITE and not for a read,
+ * because a read changes nothing. The coordinator's own presenter is exempt, as everywhere else. */
+- (void)fnNotifyDidChangeForURL:(NSURL *)url
+{
+	NSArray *registered = [NSFileCoordinator filePresenters];
+	NSUInteger i;
+
+	for (i = 0; i < [registered count]; i++) {
+		id presenter = [registered objectAtIndex:i];
+
+		if (presenter == _presenter) {
+			continue;
+		}
+		if (![presenter respondsToSelector:@selector(presentedItemURL)] ||
+		    ![[presenter presentedItemURL] isEqual:url]) {
+			continue;
+		}
+		if ([presenter respondsToSelector:@selector(presentedItemDidChange)]) {
+			[presenter presentedItemDidChange];
+		}
+	}
+}
+
+/* AND THE MOVE NOTIFICATION, Apple's measured sentence for the door: "This method calls the
+ * [-presentedItemDidMoveToURL:] method for any of the item's file presenters." */
+- (void)fnNotifyDidMoveFrom:(NSURL *)oldURL to:(NSURL *)newURL
+{
+	NSArray *registered = [NSFileCoordinator filePresenters];
+	NSUInteger i;
+
+	for (i = 0; i < [registered count]; i++) {
+		id presenter = [registered objectAtIndex:i];
+
+		if (presenter == _presenter) {
+			continue;
+		}
+		if (![presenter respondsToSelector:@selector(presentedItemURL)] ||
+		    ![[presenter presentedItemURL] isEqual:oldURL]) {
+			continue;
+		}
+		if ([presenter respondsToSelector:@selector(presentedItemDidMoveToURL:)]) {
+			[presenter presentedItemDidMoveToURL:newURL];
+		}
+	}
+}
+
+- (nullable NSString *)purposeIdentifier
+{
+	return _purposeIdentifier;
+}
+
+- (void)setPurposeIdentifier:(nullable NSString *)identifier
+{
+	/* "You cannot use [nil] or zero-length strings": such an assignment is IGNORED and the previous value
+	 * stays, which is this library's permitted reading of a rule Apple states without saying what happens. */
+	if (identifier == nil || [identifier length] == 0) {
+		return;
+	}
+	{
+		NSString *copy = [identifier copy];
+
+		[_purposeIdentifier release];
+		_purposeIdentifier = copy;
+	}
+}
+
+- (void)itemAtURL:(NSURL *)oldURL willMoveToURL:(NSURL *)newURL
+{
+	(void)oldURL;
+	(void)newURL;
+	/* APPLE'S OWN SENTENCE, AND THE WHOLE OF THIS DOOR HERE: "This method is intended for apps that adopt
+	 * App Sandbox ... If your macOS app is not sandboxed, this method serves no purpose." */
+}
+
+- (void)itemAtURL:(NSURL *)oldURL didMoveToURL:(NSURL *)newURL
+{
+	if (oldURL == nil || newURL == nil) {
+		return;
+	}
+	[self fnNotifyDidMoveFrom:oldURL to:newURL];
+}
+
+- (void)dealloc
+{
+	[_purposeIdentifier release];
+	[super dealloc];
+}
+
 /* AND THE OTHER END OF IT: each reacquirer runs once the accessor has finished. */
 /* AND THE OTHER END OF IT: each reacquirer runs once the accessor has finished, which is what the presenter
  * was promised when it stepped aside - and each is RELEASED the way it was acquired. */
@@ -307,6 +396,9 @@ static void fnReacquire(struct fn_reacquirers *reacquirers)
 
 		[self fnHandshakeForURL:coordinated writing:YES reacquirers:&reacquirers];
 		writer(coordinated);
+		/* THE WRITE IS WHAT MAKES A CHANGE, so this is the moment the presenters are told - after the
+		 * accessor has run and before the reacquirers hand the item back. */
+		[self fnNotifyDidChangeForURL:coordinated];
 		fnReacquire(&reacquirers);
 	}
 }
@@ -386,6 +478,8 @@ static void fnReacquire(struct fn_reacquirers *reacquirers)
 		[self fnHandshakeForURL:first writing:YES reacquirers:&reacquirers];
 		[self fnHandshakeForURL:second writing:YES reacquirers:&reacquirers];
 		writer(first, second);
+		[self fnNotifyDidChangeForURL:first];
+		[self fnNotifyDidChangeForURL:second];
 		fnReacquire(&reacquirers);
 	}
 }
