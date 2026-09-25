@@ -626,6 +626,23 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   MEASUREMENT:** nothing in CoreGraphics needed fixing, and the fix belongs to the caller — this tree's
   own — that declared a layout its bytes did not match. The reproduction is GREEN now because it was
   CORRECTED, not because anything in the blit changed.
+  **AND C8.12'S `flipped:` MEANT THE OPPOSITE OF WHAT IT SAID (C8.12c), WHICH IS THE THIRD CORRECTION TO
+  THAT ONE EXPRESSION.** Its own account records two: the condition was inverted, and the ORDER of
+  Scale/Translate was wrong. The correction for those SWAPPED THE BRANCH AS WELL, which made the code
+  self-consistent and the LABELS WRONG — `flipped:YES` produced a y-UP space and `flipped:NO` a y-down
+  one, exactly backwards from AppKit's meaning. **WHAT FINALLY MEASURED IT was the NSView probe's subview
+  placement:** a child of a flipped view drew into the BOTTOM of its frame instead of the top, with the
+  child's CTM printed and CORRECT (`a=1 d=-1 tx=4 ty=8`), which left the canvas's own orientation as the
+  only remaining explanation — and the canvas default, with no transform at all, is y-UP: the ordinary
+  Core Graphics convention.
+  **AND WHY C8.12's PROBE COULD NOT SEE IT IS THE MOST USEFUL PART:** it asserted only that the two
+  directions put the same handler in OPPOSITE halves, AND A SWAPPED PAIR OF MEANINGS SATISFIES THAT JUST
+  AS WELL. That is the same shape as the white-only colour that could not see a channel-order bug, and the
+  byte count that could not tell a confined fill from a full one: **a check that can tell two states APART
+  but cannot say what either one MEANS.** The check now pins the meaning — the handler paints the FIRST
+  TWO UNITS OF ITS OWN Y and each direction is asserted against the rows it must land in: row 12 of 16 for
+  `flipped:NO` (its own y = 0 at the bottom) and row 0 for `flipped:YES` (at the top). Both measured. The
+  fix is the branch with the order correction KEPT, because Scale-then-Translate was right.
   **AND THE PATH'S ELEMENT MODEL AND ITS MEMBERSHIP TEST ARRIVE (C8.13): `NSBezierPathElement`,
   `-elementAtIndex:` AND `-containsPoint:`.** Both were named in C8.5's header as owed, with reasons —
   that a point-in-path test had nothing in CoreGraphics to build on, and that the element model was a

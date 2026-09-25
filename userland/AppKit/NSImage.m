@@ -293,27 +293,36 @@ static void fn_swizzle_bgra_to_rgba(const unsigned char *src, unsigned char *dst
 	/* A FRESH CANVAS IS EMPTY, not whatever the allocator had. */
 	CGContextClearRect(ctx, CGRectMake(0.0, 0.0, (CGFloat)w, (CGFloat)h));
 	/* THE FLAG IS HONOURED BY FLIPPING THE CTM, because NSGraphicsContext's `flipped` is a STATEMENT
-	 * about the context rather than a transform it applies to it — AND THE CONDITION IS THE OPPOSITE WAY
-	 * ROUND FROM THE FIRST VERSION, WHICH IS WHAT MEASURING FOUND:
+	 * about the context rather than a transform it applies to it — and the transform is needed for
+	 * `flipped:YES`, which is AppKit's y-DOWN system.
 	 *
-	 * a CGBitmapContext's DEFAULT CTM is (1, 0, 0, -1, 0, h) — its origin is the TOP-LEFT and y grows
-	 * DOWNWARD — which is exactly what AppKit calls flipped:YES. So YES needs NO transform, and NO is
-	 * the case that needs the flip. The first version tested `if (flipped)`, applied the flip for YES,
-	 * and pushed the handler's rect to y-16 on an 8-tall canvas: an EMPTY canvas, silently. The
-	 * measurement that proved it printed this from inside the handler:
-	 *     flipped=0  CTM a=1 b=0 c=0 d=-1 tx=0 ty=8
-	 *     flipped=1  CTM a=1 b=0 c=0 d=1  tx=0 ty=-16
+	 * **THE CONDITION WAS INVERTED FOR A WHOLE SLICE, AND THIS IS THE SECOND CORRECTION TO IT.** The
+	 * first version applied the mirror for YES and pushed the handler's rect to y-2h — an EMPTY canvas,
+	 * silently — and the fix for THAT swapped the branch as well as correcting the ORDER. That made the
+	 * code self-consistent and the LABELS WRONG: YES produced a y-up space and NO a y-down one, exactly
+	 * backwards. C8.12's probe could not see it because it asserted only that the two land in OPPOSITE
+	 * halves — never WHICH half each means — and a swapped pair satisfies that just as well.
+	 *
+	 * WHAT FINALLY MEASURED IT was the view probe's subview placement: a child of a flipped view drew
+	 * into the BOTTOM of its frame instead of the top, with the CTM printed and correct
+	 * (`a=1 d=-1 tx=4 ty=8`), which left the canvas's own orientation as the only remaining
+	 * explanation.
+	 *
+	 * THE GROUND TRUTH, and it is what the probe now PINS rather than merely compares: with NO
+	 * transform the canvas's user y grows UP (the ordinary Core Graphics convention), so a handler
+	 * filling its own y in [0, 2) lands in the BOTTOM rows; with the mirror below it lands in the TOP
+	 * rows, which is what AppKit's flipped:YES means.
 	 */
-	if (!flipped) {
-		/* SCALE FIRST, THEN TRANSLATE — AND THE ORDER IS THE SECOND THING MEASURING CAUGHT, not a
-		 * style choice. In this tree the two calls compose as
-		 *     ScaleCTM(1, s):    d *= s;  ty *= s
+	if (flipped) {
+		/* SCALE FIRST, THEN TRANSLATE — THE ONE THING THE FIRST CORRECTION GOT RIGHT, and not a style
+		 * choice. In this tree the two calls compose as
+		 *     ScaleCTM(1, s):     d *= s;  ty *= s
 		 *     TranslateCTM(0, t): ty += t
-		 * (measured from the printed CTM, and it is why the first version was wrong twice). From the
-		 * bitmap default (d=-1, ty=h):
+		 * (measured from the printed CTM). From the bitmap default (d=-1, ty=h):
 		 *     Scale(1,-1)         -> d=1,  ty=-h
-		 *     then Translate(0,h) -> d=1,  ty=0    == IDENTITY, which is the y-up space this needs
-		 * The other order gives (d=1, ty=-2h) — the drawing lands at y-h, off an h-tall canvas. */
+		 *     then Translate(0,h) -> d=1,  ty=0    == IDENTITY, which here is y-DOWN: the default is
+		 * y-up, and undoing it is what makes the flagged space run downward from the top.
+		 * The other order gives (d=1, ty=-2h) — the drawing lands at y-2h, OFF an h-tall canvas. */
 		CGContextScaleCTM(ctx, 1.0, -1.0);
 		CGContextTranslateCTM(ctx, 0.0, (CGFloat)h);
 	}

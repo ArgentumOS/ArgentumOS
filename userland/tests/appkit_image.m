@@ -261,30 +261,28 @@ int main(void)
 				CGContextRelease(cg);
 			}
 
-			/* AND THE FLIPPED FLAG MUST ACTUALLY FLIP SOMETHING: the SAME handler that paints the UPPER
-			 * half of its own coordinate space must land in the OPPOSITE half of the surface, and the two
-			 * runs must differ. This is the check that would catch a `flipped:` that was stored and never
-			 * applied — which is what the context does with it, so the flip has to be made here. */
+			/* --- AND `flipped:` MUST MEAN SOMETHING SPECIFIC, NOT MERELY DIFFER --------------------------- */
+			/* ***THIS CHECK IS WHY A REAL BUG SURVIVED A WHOLE SLICE.*** It used to assert only that the two
+			 * directions put the same handler in OPPOSITE halves — WHICH A SWAPPED PAIR OF MEANINGS SATISFIES
+			 * JUST AS WELL. The handler now paints THE FIRST TWO UNITS OF ITS OWN Y, and each direction is
+			 * asserted against the rows it MUST land in: `flipped:YES` is AppKit's y-DOWN system, so its own
+			 * y = 0 is the TOP row of the destination, and `flipped:NO` puts it at the BOTTOM. */
 			{
-				BOOL upper[2];
+				int first[2];
 				int i;
-
+			
 				for (i = 0; i < 2; i++) {
 					CGContextRef cg;
 					NSGraphicsContext *gctx;
-
+					int y;
+			
 					im = [NSImage imageWithSize:NSMakeSize(8.0, 8.0) flipped:(i == 1)
 							 drawingHandler:^BOOL(NSRect dst) {
 						CGContextRef c = [[NSGraphicsContext currentContext] CGContext];
-
-						/* WHITE ON PURPOSE, AND THE REASON IS AN OPEN FINDING RATHER THAN A TASTE:
-					 * a BLUE fill (0,0,1,1) lands NOWHERE on the destination while WHITE
-					 * lands, with both opaque and premultiplied — so the blit's reading of
-					 * a kCGImageAlphaPremultipliedLast image's channels is in question,
-					 * and this check must not depend on the answer until that is settled.
-					 * See the C8.12 note in the plan. */
-					CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
-						CGContextFillRect(c, CGRectMake(0.0, 4.0, 8.0, 4.0));   /* the UPPER half */
+			
+						/* THE FIRST TWO UNITS OF THE HANDLER'S OWN Y, IN BLUE. */
+						CGContextSetRGBFillColor(c, 0.0, 0.0, 1.0, 1.0);
+						CGContextFillRect(c, CGRectMake(0.0, 0.0, 8.0, 2.0));
 						(void)dst;
 						return YES;
 					}];
@@ -292,14 +290,21 @@ int main(void)
 					gctx = [NSGraphicsContext graphicsContextWithCGContext:cg flipped:NO];
 					[NSGraphicsContext setCurrentContext:gctx];
 					[im drawInRect:NSMakeRect(0.0, 0.0, (CGFloat)W, (CGFloat)H)];
-					pixel(W / 2, 2, p);
-					upper[i] = (p[0] == 0xff);   /* B: this run's fill is BLUE, so B answers "painted?" */
+					first[i] = -1;
+					for (y = 0; y < H; y++) {
+						pixel(W / 2, y, p);
+						if (p[0] == 0xff && first[i] < 0) {
+							first[i] = y;
+						}
+					}
 					[NSGraphicsContext setCurrentContext:nil];
 					CGContextRelease(cg);
 					[im release];
 				}
-				check("...and `flipped:` really flips: the same handler lands in the OPPOSITE half",
-				      upper[0] != upper[1]);
+				/* THE CANVAS IS 8 TALL AND THE DESTINATION 16, so the fill's two units become four rows. */
+				check_num("...and `flipped:NO` puts its own y = 0 at the BOTTOM (row 12 of 16)",
+					  (double)first[0], 12.0, 0.0);
+				check_num("...while `flipped:YES` puts it at the TOP (row 0)", (double)first[1], 0.0, 0.0);
 			}
 
 			/* --- AND THE TWO REFUSALS ----------------------------------------------------------- */
