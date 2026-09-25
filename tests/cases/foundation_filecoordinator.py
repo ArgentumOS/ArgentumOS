@@ -45,7 +45,7 @@ CHECKS = ("coordinator-runs-the-read-accessor-once", "coordinator-runs-the-write
           "coordinator-resolves-a-symbolic-link-when-asked",
           "coordinator-refuses-without-running-the-accessor",
           "coordinator-refuses-a-missing-accessor",
-          "coordinator-owes-the-asynchronous-and-presenter-doors", "probe-tree-removed")
+          "coordinator-ships-the-doors-the-family-publishes", "probe-tree-removed")
 
 
 class Case(BaseCase):

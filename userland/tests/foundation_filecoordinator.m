@@ -244,26 +244,31 @@ int main(void)
 	}
 
 	{
-		/* THE BOUNDARY, ASSERTED: the doors this slice does not ship do not EXIST on the object, so
-		 * nothing half-built answers for the family's cross-process and presenter halves. */
-		NSArray *owed = [NSArray arrayWithObjects:
+		/* THE INVENTORY, ASSERTED BOTH WAYS - AND THIS LIST USED TO BE AN "OWED" LIST THAT WENT STALE:
+		 * slices 7c and 7d shipped all five of these doors and this check kept asserting their ABSENCE, so
+		 * the case went red and stayed red until a later slice ran it again. That is exactly the failure
+		 * mode §11.2 names - A PROBE ASSERTING AN ABSENCE ASSERTS A FACT ABOUT THE TREE, AND LANDING THE
+		 * CODE DOES NOT UPDATE IT - and the repair is to assert what IS: the family publishes these doors
+		 * and every one of them SHIPS; what is absent is the CROSS-PROCESS behaviour behind them (D14(a)),
+		 * which no selector list can see. */
+		NSArray *doors = [NSArray arrayWithObjects:
 			@"coordinateAccessWithIntents:queue:byAccessor:",
 			@"prepareForReadingItemsAtURLs:options:writingItemsAtURLs:options:error:byAccessor:",
 			@"itemAtURL:willMoveToURL:", @"itemAtURL:didMoveToURL:", @"cancel", nil];
-		NSMutableArray *present = [NSMutableArray array];
+		NSMutableArray *missing = [NSMutableArray array];
 		NSUInteger i;
 
-		for (i = 0; i < [owed count]; i++) {
-			NSString *name = [owed objectAtIndex:i];
+		for (i = 0; i < [doors count]; i++) {
+			NSString *name = [doors objectAtIndex:i];
 
-			if ([coordinator respondsToSelector:NSSelectorFromString(name)]) {
-				[present addObject:name];
+			if (![coordinator respondsToSelector:NSSelectorFromString(name)]) {
+				[missing addObject:name];
 			}
 		}
-		check("coordinator-owes-the-asynchronous-and-presenter-doors",
-		      [present count] == 0,
-		      [NSString stringWithFormat:@"this slice shipped more than it says: %@",
-			[present componentsJoinedByString:@", "]]);
+		check("coordinator-ships-the-doors-the-family-publishes",
+		      [missing count] == 0,
+		      [NSString stringWithFormat:@"still owed: %@",
+			[missing componentsJoinedByString:@", "]]);
 	}
 
 	{

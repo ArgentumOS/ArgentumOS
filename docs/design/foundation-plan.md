@@ -12958,6 +12958,16 @@ weighing, not of the one that shipped. **AND THE INSTRUMENT'S FIRST VERSION WAS 
 LINE: it used `sem_timedwait`, which answered "timed out" even from OUTSIDE the queue**, so it would have
 "measured" a deadlock that was not there; a polling flag took the primitive out of the experiment.
 
+**AND RUNNING THIS SLICE'S NEIGHBOUR FOUND A CASE THAT HAD BEEN RED SINCE SLICE 7D:**
+`foundation_filecoordinator`'s inventory check listed five doors as OWED and asserted their ABSENCE - but
+slices 7c and 7d had shipped all five, and nothing updated the list, so the case went red and stayed red
+until a later slice ran it. **THAT IS EXACTLY THE FAILURE MODE §11.2 NAMES** ("a probe asserting an absence
+asserts a fact about the tree, and landing the code does not update it"), it is why the ledger has a
+mechanical source at all, and the repair is to assert what IS: the family publishes those doors, every one
+ships, and what is absent is the CROSS-PROCESS behaviour behind them (D14(a)) - which no selector list can
+see. The check is renamed for what it now proves (`coordinator-ships-the-doors-the-family-publishes`), and
+`foundation_filecoordinator` is 9/9.
+
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
