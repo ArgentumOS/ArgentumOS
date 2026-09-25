@@ -48,7 +48,8 @@ CHECKS = ("tree-the-factories-make-the-kinds", "tree-an-element-serializes-with-
           "tree-navigation-is-document-order", "tree-attributes-live-in-the-elements-own-store",
           "tree-namespaces-are-children-and-resolve-upward",
           "tree-elements-for-name-and-for-local-name",
-          "tree-the-name-helpers-split-and-bind-prefixes""the-four-edit-doors-ship", "edit-doors-keep-order-and-parentage",
+          "tree-the-name-helpers-split-and-bind-prefixes",
+          "the-four-edit-doors-ship", "edit-doors-keep-order-and-parentage",
           )
 
 

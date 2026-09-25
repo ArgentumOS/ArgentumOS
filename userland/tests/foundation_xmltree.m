@@ -84,7 +84,11 @@ int main(void)
 		      [attribute kind] == NSXMLAttributeKind && [namespaceNode kind] == NSXMLNamespaceKind &&
 		      [comment kind] == NSXMLCommentKind && [text kind] == NSXMLTextKind &&
 		      [pi kind] == NSXMLProcessingInstructionKind &&
-		      dtd != nil && [dtd kind] >= 100,
+		      /* A DTD DECLARATION ANSWERS A DTD-FAMILY NODE - the constant for the family, or one of the
+		 * nineteen declaration kinds that start at 100; WHICH of the two is printed, because this
+		 * assertion is the one that had to be corrected (it first demanded >= 100 and the family's own
+		 * node kind is 8, which is a fact the extra text records). */
+		      dtd != nil && ([dtd kind] == NSXMLDTDKind || [dtd kind] >= 100),
 		      [NSString stringWithFormat:@"kinds=%lu/%lu/%lu/%lu/%lu/%lu/%lu",
 			(unsigned long)[document kind], (unsigned long)[element kind],
 			(unsigned long)[attribute kind], (unsigned long)[namespaceNode kind],

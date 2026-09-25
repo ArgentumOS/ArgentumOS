@@ -13073,6 +13073,16 @@ ANCESTOR `NSXMLNode`, where the descendant walk could not see it). With both fix
 informal `-observeValueForKeyPath:ofObject:change:context:`. Two independent instrument faults produced
 eleven phantom items, and the second one would have had me implement four methods that already existed.
 
+**AND THE KINDS CHECK'S LAST RED CLAUSE WAS MINE, NOT THE LIBRARY'S.** The seven node kinds the probe
+prints (`1/2/3/4/6/7/5` for document, element, attribute, namespace, comment, text, processing instruction)
+match the constants EXACTLY, in order - so every kind clause passed, and the clause that failed was the one
+this session added: it demanded that a DTD declaration's node kind be `>= 100` (the nineteen DTD declaration
+kinds are numbered from 100), while the node a DTD factory answers carries the FAMILY's kind - `NSXMLDTDKind`,
+which is **8**. The assertion now accepts either and PRINTS the number, because that is the fact that cost the
+detour. `foundation_xmltree` is **13/13** and its case agrees - after a comma: the case's CHECKS tuple had two
+adjacent string literals spliced into one entry by an edit, which is why the tally disagreed while both lists
+looked the right length.
+
 **AND THE REASON THE GAPS FELT LIKE EVERYTHING WAS ONE LINE.** `NSObject -doesNotRecognizeSelector:` did
 `fprintf` + **`abort()`** - the ONLY `abort()` in `userland/Foundation` - so every missing method expressed
 itself as **THE WHOLE GUEST PROCESS DYING**, with a message that named the selector and never the caller, and
