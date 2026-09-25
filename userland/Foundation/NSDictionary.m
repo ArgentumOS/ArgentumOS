@@ -15,12 +15,35 @@
  * storage the base class owns.
  */
 
+#import <Foundation/NSException.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSArray.h>	/* the allKeys/allValues family returns one */
 #import <objc/runtime.h>
 #include <objc/objc-arc.h>	/* objc_retain/objc_release: the C slots are not ARC-managed */
 #include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+
+/* THE REFUSAL'S DIAGNOSTIC, AND IT IS write(2) FOR THE REASON THIS LIBRARY'S DIAGNOSTICS ARE: printf and
+ * fprintf produce NOTHING here (measured and recorded), so a message a guest can see goes out on the raw
+ * descriptor. The exception carries the same text for a caller; this is for the log. */
+static void fn_dict_refusal(const char *what, const char *dictClass, const char *keyClass)
+{
+	char buffer[192];
+	int n = 0;
+	const char *tag = "Foundation: -[";
+	const char *s;
+
+	for (s = tag; *s && n < 60; s++) buffer[n++] = *s;
+	for (s = dictClass; *s && n < 90; s++) buffer[n++] = *s;
+	for (s = " " ; *s && n < 92; s++) buffer[n++] = *s;
+	for (s = what; *s && n < 130; s++) buffer[n++] = *s;
+	for (s = "]: "; *s && n < 134; s++) buffer[n++] = *s;
+	for (s = keyClass; *s && n < 170; s++) buffer[n++] = *s;
+	buffer[n++] = '\n';
+	(void)write(2, buffer, (size_t)n);
+}
 
 struct FNDictEntry {
 	struct FNDictEntry *next;
@@ -155,6 +178,27 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 
 - (void)setObjectInternal:(id)value forKey:(id)key
 {
+	/* THE SAME TWO REFUSALS AT THE DOOR EVERY INITIALISER COMES THROUGH: -initWithObjects:forKeys:count:,
+	 * -initWithDictionary: and the literal forms reach the table HERE, and a bare object filed as a key with
+	 * a nil value is exactly what the attributed-string store tripped over (a FRESH table, count 0,
+	 * receiving a plain NSObject key with nothing under it). A key that does not conform to NSCopying raises
+	 * with a message that NAMES THE TABLE AND THE KEY, which is more than [key copy] would have said. */
+	if (value == nil) {
+		fn_dict_refusal("insert: value must not be nil, key is a",
+			class_getName(object_getClass(self)),
+			key != nil ? class_getName(object_getClass(key)) : "nil");
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-[%s insert]: value must not be nil - use -removeObjectForKey:",
+				   class_getName(object_getClass(self))];
+	}
+	if (key != nil && ![key conformsToProtocol:@protocol(NSCopying)]) {
+		fn_dict_refusal("insert: key must conform to NSCopying, key is a",
+			class_getName(object_getClass(self)),
+			class_getName(object_getClass(key)));
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-[%s insert]: key <%s> does not conform to NSCopying",
+				   class_getName(object_getClass(self)), class_getName(object_getClass(key))];
+	}
 	struct FNDictEntry *entry;
 	unsigned long index;
 
@@ -702,8 +746,24 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 
 - (void)setObject:(id)value forKey:(id)key
 {
-	if (value == nil || key == nil) {
-		return;		/* Cocoa raises; v1 has no exceptions yet (F4) */
+	/* APPLE'S CONTRACT, NOW THAT THE EXCEPTIONS IT WAS WAITING FOR ARE HERE. The v1 comment read "Cocoa
+	 * raises; v1 has no exceptions yet (F4)" - and F4 brought them, so the deferral is due: a NIL VALUE
+	 * raises NSInvalidArgumentException (Apple: "use -removeObjectForKey:"), and so does a NIL KEY, rather
+	 * than a silent drop, which is how a caller loses an entry and never learns. */
+	if (value == nil) {
+		fn_dict_refusal("setObject:forKey: value must not be nil, key is a",
+			class_getName(object_getClass(self)),
+			key != nil ? class_getName(object_getClass(key)) : "nil");
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-[%s setObject:forKey:]: value must not be nil - use -removeObjectForKey:",
+				   class_getName(object_getClass(self))];
+	}
+	if (key == nil) {
+		fn_dict_refusal("setObject:forKey: key must not be nil", 
+			class_getName(object_getClass(self)), "nil");
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-[%s setObject:forKey:]: key must not be nil",
+				   class_getName(object_getClass(self))];
 	}
 	[self setObjectInternal:value forKey:key];
 }

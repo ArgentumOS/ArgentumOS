@@ -13109,6 +13109,27 @@ BEFORE IT RAN:** the edit that stripped the temporary trace also rewrote `initWi
 `foundation_string`) crashed with a SIGSEGV. The diff caught it. **A mechanical patch is a change like any
 other and gets read before it is believed.**
 
+**AND THE `-copy` HUNT ENDED IN A DICTIONARY USE-AFTER-FREE, FOUND BY A POINTER RATHER THAN BY READING.**
+`-setObject:forKey:` carried the comment *"Cocoa raises; v1 has no exceptions yet (F4)"* - and F4 brought
+them, so that deferral is discharged: a NIL VALUE and a NIL KEY now raise `NSInvalidArgumentException` (Apple's
+rule, and Apple's advice to use `-removeObjectForKey:`), at the public door AND at `-setObjectInternal:`, which
+every initialiser comes through; the diagnostic goes out on raw `write(2)`, because this library's `printf` and
+`fprintf` produce nothing. **NO PROBE BROKE**: `foundation_core`, `foundation_string` and `foundation_formatters`
+are green with the refusals in.
+
+**WHAT THE HUNT ITSELF FOUND, IN ORDER, EACH STEP RULING SOMETHING OUT BY MEASUREMENT:** the entry that
+reaches `[key copy]` has a BARE NSObject key and an EMPTY value; tombstones are impossible (the remove path
+unlinks, releases and frees); the varargs walk is correct; `-initWithObjects:forKeys:count:` already guards; and
+the store is EXONERATED - a trace of every store-side release, matched against the dictionary side's
+`dealloc`/`copy-of` pointers, shows NO release followed by a copy of the same pointer. What the pointer trace
+did show is the fault itself, in two lines of log: **`dealloc X` and then `copy-of X` - a dictionary copied
+after it was freed**, in library code outside the attributed string. That single fault explains every symptom
+this thread showed - the `{A}`-reading-as-`{B}` corruption, the alternating SIGSEGV and abort, and the
+intermittency - because freed memory presents as a different class each run. **THE REMAINING INSTRUMENT IS
+FOUR MARKERS, ONE PER DICTIONARY-COPY SITE OUTSIDE `NSDictionary.m`** (`NSURL.m:1342`, two in
+`NSPropertyListSerialization.m`, two in `NSUserDefaults.m`), each naming itself, so the copy that follows a
+`dealloc` of the same pointer identifies the code that holds a dictionary it does not own.
+
 **AND THE REASON THE GAPS FELT LIKE EVERYTHING WAS ONE LINE.** `NSObject -doesNotRecognizeSelector:` did
 `fprintf` + **`abort()`** - the ONLY `abort()` in `userland/Foundation` - so every missing method expressed
 itself as **THE WHOLE GUEST PROCESS DYING**, with a message that named the selector and never the caller, and
