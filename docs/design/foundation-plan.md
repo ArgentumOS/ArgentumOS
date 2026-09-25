@@ -12196,11 +12196,13 @@ passed first try: AGFS does keep `MIXED` and `mixed` apart.)
 **THE 42 ROWS LEFT OPEN, GROUPED BY WHAT EACH ACTUALLY NEEDS:**
  * **a purgeable-usage notion** - `NSURLVolumeAvailableCapacityForImportantUsageKey` and
    `…ForOpportunisticUsageKey` (about what the system could FREE, not what is free);
- * **a mount table as a source** - `NSURLVolumeNameKey`, `…LocalizedNameKey`, `…IdentifierKey`,
-   `…URLKey`/`…URLForRemountingKey`/`…UUIDStringKey`, `NSURLVolumeIsRootFileSystemKey`,
-   `NSURLIsVolumeKey`, `NSURLIsMountTriggerKey` (this system HAS mounts, and `st_dev` is a ready candidate
-   for the opaque identifier - what is missing is the door that NAMES a volume, which is a mount-table
-   read this library does not have yet);
+ * **A MOUNT TABLE, AND IT ARRIVED (slice 6e)**: this system publishes its mounts at
+   `/System/Processes/mounts` (`device mountpoint fstype rw|ro 0 0`, measured in `fs/procfs/data.c`), so
+   `NSURLVolumeNameKey`, `…LocalizedNameKey`, `…IdentifierKey` (the DEVICE), `…URLKey`, `…TypeNameKey`,
+   `…IsRootFileSystemKey`, `…ResourceCountKey`, `…SupportsVolumeSizesKey`, `…IsMountTriggerKey` and
+   `NSURLIsVolumeKey` SHIP with `NSFileManager`'s `-mountedVolumeURLsIncludingResourceValuesForKeys:options:`
+   - and `NSURLVolumeIsReadOnlyKey` now reads the table's FLAG FIELD instead of probing a write for EROFS
+   (that reading's distinction survives in the header: EROFS is the volume, EACCES is a permission);
  * **a per-key substrate measurement, and NOT a guess** - the rest of the `NSURLVolumeSupports…` mass
    (`CasePreservedNames`, `ExclusiveRenaming`, `Renaming`, `VolumeSizes`, `ImmutableFiles`,
    `AccessPermissions`, `AdvisoryFileLocking`, `ExtendedSecurity`, `Compression`, `FileCloning`,
