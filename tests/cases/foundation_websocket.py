@@ -35,7 +35,8 @@ CHECKS = (
     "the-two-message-types-are-the-values-we-chose",
     "the-twelve-closed-codes-are-the-rfcs",
     "and-the-code-that-is-not-in-the-rfc-is-ours",
-)
+"message-accessors-answer-what-the-initialisers-stored",
+          )
 
 
 class Case(BaseCase):

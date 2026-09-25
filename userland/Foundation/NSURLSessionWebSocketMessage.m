@@ -63,6 +63,25 @@
 	return self;
 }
 
+/* THE THREE ACCESSORS THE CLASS STORED FOR AND NEVER ANSWERED. `_type` was written by both initialisers and
+ * read by nobody, which is exactly the shape §62's report exists to catch: declared in the header, absent
+ * from the implementation, invisible until something asks. The exclusivity the initialisers maintain (one of
+ * -data and -string is always nil) is what -type is FOR, so the getters hand back the state as it is. */
+- (nullable NSData *)data
+{
+	return _data;
+}
+
+- (nullable NSString *)string
+{
+	return _string;
+}
+
+- (NSURLSessionWebSocketMessageType)type
+{
+	return _type;
+}
+
 - (void)dealloc
 {
 	[_data release];

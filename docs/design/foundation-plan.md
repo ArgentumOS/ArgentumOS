@@ -13083,6 +13083,13 @@ detour. `foundation_xmltree` is **13/13** and its case agrees - after a comma: t
 adjacent string literals spliced into one entry by an edit, which is why the tally disagreed while both lists
 looked the right length.
 
+**AND THE WORK LIST IS CLOSED.** The last item - `NSURLSessionWebSocketMessage`'s **`-data`, `-string` and
+`-type`**, which the class STORED FOR AND NEVER ANSWERED (`_type` was written by both initialisers and read by
+nobody) - now ships, with the exclusivity the initialisers keep asserted in both directions
+(`foundation_websocket` 8/8). The baseline is **ONE LINE**, and it is not a work item: KVO's informal
+`-observeValueForKeyPath:ofObject:change:context:`, which the observer implements. **Five declared-and-missing
+selectors existed this morning; zero do now**, and the gate that would have caught them runs on every build.
+
 **AND THE REASON THE GAPS FELT LIKE EVERYTHING WAS ONE LINE.** `NSObject -doesNotRecognizeSelector:` did
 `fprintf` + **`abort()`** - the ONLY `abort()` in `userland/Foundation` - so every missing method expressed
 itself as **THE WHOLE GUEST PROCESS DYING**, with a message that named the selector and never the caller, and

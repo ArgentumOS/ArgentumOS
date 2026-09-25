@@ -143,6 +143,24 @@ int main(void)
 	check("and-the-code-that-is-not-in-the-rfc-is-ours", NSURLSessionWebSocketCloseCodeInvalid == 0,
 	      @"Apple publishes the name and not the value, so 0 is our choice (D2)");
 
+	{
+		/* THE THREE ACCESSORS THE CLASS STORED FOR AND NEVER ANSWERED - declared on Apple's page, written by
+		 * the initialisers, and read by nobody until §62's report named them. The exclusivity the
+		 * initialisers keep is what -type is for, so both directions are asserted. */
+		NSData *payload = [@"hello" dataUsingEncoding:NSUTF8StringEncoding];
+		NSURLSessionWebSocketMessage *binary = [[NSURLSessionWebSocketMessage alloc] initWithData:payload];
+		NSURLSessionWebSocketMessage *text = [[NSURLSessionWebSocketMessage alloc] initWithString:@"hi"];
+
+		check("message-accessors-answer-what-the-initialisers-stored",
+		      [binary type] == NSURLSessionWebSocketMessageTypeData &&
+		      [binary data] != nil && [binary string] == nil &&
+		      [text type] == NSURLSessionWebSocketMessageTypeString &&
+		      [text string] != nil && [text data] == nil,
+		      [NSString stringWithFormat:@"binary: type=%ld data=%lu string=%@ | text: type=%ld data=%@ "
+			@"string=%@", (long)[binary type], (unsigned long)[[binary data] length], [binary string],
+			(long)[text type], [text data], [text string]]);
+	}
+
 	printf("FOUNDATION-WEBSOCKET RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-WEBSOCKET-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-WEBSOCKET DONE\n");
