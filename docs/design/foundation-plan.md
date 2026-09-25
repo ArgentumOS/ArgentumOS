@@ -12972,6 +12972,31 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §61.1 — W10 SLICE 1 LANDED (2026-09-24): THE RUN STORE, AND THE BUG THAT TOOK THE LONGEST
+
+`foundation_attributedstring` is a NEW probe with **18 checks**, green, and the two classes ship: the
+immutable `NSAttributedString` and the mutable `NSMutableAttributedString`, the run store with COALESCING (the
+contract `-attributesAtIndex:effectiveRange:` makes observable), the four effective-range accessors, the
+substring door, the two enumeration doors, the splice family, the nesting edit counter, and Apple's
+`NSRangeException` for an out-of-range index. The header records every chosen rule and every boundary.
+
+**AND THE LAST BUG WAS A DOUBLE FREE IN THIS STORE, FOUND BY `addr2line` ON A RETURN ADDRESS.** The probe's
+splices died intermittently - a run reading `{B}` where `{A}` was built, `-[NSObject copy] is not implemented`,
+SIGSEGV and SIGABRT alternating - for the whole of a long session. It was
+`-replaceCharactersInRange:withAttributedString:` handing each copied attributes dictionary to the run array
+(which takes ownership) and THEN RELEASING IT AGAIN: every run the splice inserted held a dictionary with one
+release too many, so it died while the run still pointed at it. `__builtin_return_address(2)` inside
+`-[NSDictionary dealloc]`, resolved with `addr2line` against the library, named the method; removing the
+release took the probe from 11 to 18 checks.
+
+**THE INSTRUMENTS THAT FOUND IT ARE THE PART WORTH KEEPING**, since none of them existed this morning and
+three of them are now permanent: the declared-vs-implemented gate (`--unimplemented`, which caught the damage
+my own strip did to a file); the `NSObject` raise, which turned a missing method from a process-killing
+`abort()` into a catchable, self-naming exception; and Apple's dictionary refusals, which turn a silently
+dropped entry into a named failure that prints the table class, the key class and - during the hunt - the
+caller's address. And one rule earned the hard way: **`git diff` before every mechanical patch.** Five edits
+today did more or less than intended because that check was skipped, and the last one deleted a file's head.
+
 ## §61 — W10, ATTRIBUTED STRINGS: DESIGNED BEFORE IT IS BUILT (2026-09-24)
 
 **THE SURFACE IS MEASURED RATHER THAN RECALLED.** Apple's published page JSON for the class was read the way

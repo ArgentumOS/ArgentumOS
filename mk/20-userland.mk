@@ -165,6 +165,7 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSURLResponse.m \
 	$(FOUNDATION_SRC)/NSCachedURLResponse.m \
 	$(FOUNDATION_SRC)/NSURLProtocol.m \
+	$(FOUNDATION_SRC)/NSAttributedString.m \
 	$(FOUNDATION_SRC)/NSHTTPURLResponse.m
 FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h \
 	$(FOUNDATION_SRC)/NSByteOrder.h \
@@ -239,6 +240,7 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSURLSessionTask.h \
 	$(FOUNDATION_SRC)/NSURLSession.h \
 	$(FOUNDATION_SRC)/NSHTTPURLResponse.h \
+	$(FOUNDATION_SRC)/NSAttributedString.h \
 	$(FOUNDATION_SRC)/Foundation.h
 # -Iinclude: the plist CORE (include/plist.h) is shared with libconfig, which
 # consumes it from C — see the one-core-two-skins decision in the plan.
@@ -818,6 +820,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_url_ownership.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_url_ownership"
+	# foundation_attributedstring: W10 slice 1's acceptance (foundation-plan.md §61). ONE unit, only
+	# <Foundation/Foundation.h> - the run store and its coalescing contract, with the inventory both ways.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_attributedstring.m -o .build/probe-foundation_attributedstring.o
+	$(MUSL64_OBJC) .build/probe-foundation_attributedstring.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_attributedstring"
 	# foundation_substratekeys: W8p slice 6g (foundation-plan.md §60). The MEASUREMENT INSTRUMENT for the
 	# eighteen keys that need a substrate fact: it prints what the file system does.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
