@@ -3479,7 +3479,7 @@ vanishing.
 | **App Support / User-Relevant Errors** | all classes shipped | — |
 | **Files and Data Persistence / Adopting Codability** | all classes shipped | — |
 | **Files and Data Persistence / App-specific settings** | all classes shipped | — |
-| **Files and Data Persistence / Coordinated file access** | 2 open | `NSFileCoordinator`, `NSFilePresenter` |
+| **Files and Data Persistence / Coordinated file access** | 1 open | `NSFilePresenter` |
 | **Files and Data Persistence / Deprecated** | ALL STRUCK: `NSArchiver`, `NSUnarchiver` | — |
 | **Files and Data Persistence / File system operations** | 2 open | `NSFileProviderService`, `NSFileVersion` |
 | **Files and Data Persistence / Items** | ALL STRUCK: `NSMetadataItem` | — |
@@ -12404,6 +12404,43 @@ the thing which was wrong was my expectation rather than the tree.
    providers, conflict versions and APFS eviction are things this system does not have, and **a protocol
    member whose event can never arrive is a member that would report nothing** - which is a boundary, and
    boundaries are registered here rather than implied.
+
+**SLICE 7b LANDED (2026-09-24): THE SYNCHRONOUS ACCESSOR DOORS, IN-PROCESS, WITH THE BOUNDARY ASSERTED.**
+`foundation_filecoordinator` is a NEW probe with **9 checks**, green.
+
+**THE SUBSTRATE DECISION WAS TAKEN BEFORE THE CODE AND IS STATED AT THE DOORS: THIS SYSTEM HAS NO
+COORDINATION SERVICE AND NO FILE PROVIDER.** Apple's coordinator coordinates "among file presenters" and,
+on its own platform, across processes through a system service. What this implementation does - and all it
+claims - is coordinate **WITHIN THE PROCESS**: the accessor runs, and (7c) the presenters registered in this
+process are informed. **Cross-process coordination is not silently implied**: there is no daemon to do it,
+and building one is a subsystem whose first question ("should Argentum have a file-coordination service?")
+is the user's rather than the code's. The probe asserts the boundary the other way round as well: the doors
+this slice does NOT ship do not exist on the object
+(`coordinator-owes-the-asynchronous-and-presenter-doors`).
+
+**THREE MEASURED CORRECTIONS TO WHAT THIS PLAN HAD ASSUMED, ALL FROM THE DOORS' OWN PAGE:**
+ * **THE DOORS RETURN `void`** and report through `outError` - not a BOOL as this note's own predecessor
+   assumed. And the sentence that goes with it is the reason every refusal is asserted BY COUNTING: "the
+   error is returned in this parameter and the block in the [accessor] parameter **is not executed**";
+ * **THE ACCESSOR RECEIVES ONLY URLs** - `(NSURL *)` for one item, `(NSURL *, NSURL *)` for two - because
+   the error goes to the caller's `outError`. There is no error parameter in the block;
+ * **THE ACCESSOR'S URL IS AUTHORITATIVE**: "the actual URL passed to the [accessor] may be DIFFERENT than
+   the one in this parameter ... **always use the URL passed into the block**". The one option with a
+   meaning here rides on exactly that: `NSFileCoordinatorReadingResolvesSymbolicLink` hands the accessor the
+   RESOLVED item, and the probe asserts it **from both sides** - resolved with the option, the link itself
+   without it.
+
+**AND FOUR SMALL FACTS THE BUILD PAID FOR, EACH WORTH ITS LINE:** `NSError` needs a `@class` in the header
+(a forward declaration is not a type); `strerror` needs `<string.h>` (C99 refuses the implicit declaration);
+**the URL and accessor parameters are `nullable`** because this library REFUSES nil with a NAMED ERROR rather
+than invoking it - a parameter that may be nil and is refused is what `nullable` means, and Apple publishes
+no nullability for these doors, so the choice is stated at the declaration; and **a probe with no rule in
+`mk/` is not a probe**: the run reports `SKIP … is not in .build/rootagfs-test.img - build it first`, which
+is a better error than a timeout but still cost a cycle.
+
+**WHAT 7c AND 7d STILL OWE IS UNCHANGED**, and 7c's first task is the one this slice deliberately did not
+touch: the relinquish/completion-handler handshake, which is the only place in this family where a wrong
+reading means a HANG rather than a wrong answer.
 
 **AFTER THE FAMILY:** `NSFileVersion` and `NSFileProviderService`, and still standing beside them the two
 items this unit has named and not closed - `NSDirectoryEnumerator`'s now-empty option word, and the

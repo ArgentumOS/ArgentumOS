@@ -37,6 +37,7 @@
 
 #import <Foundation/NSObject.h>
 
+@class NSError;
 @class NSURL;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -58,6 +59,71 @@ typedef enum {
 	NSFileCoordinatorWritingForReplacing = 1 << 3,
 	NSFileCoordinatorWritingContentIndependentMetadataOnly = 1 << 4,
 } NSFileCoordinatorWritingOptions;
+
+/* ---- THE COORDINATOR ITSELF (W8 slice 7b): THE SYNCHRONOUS ACCESSOR DOORS -------------------------
+ *
+ * APPLE'S OWN WORDS FOR WHAT A COORDINATED OPERATION IS, measured from the doors' page: "the actual URL
+ * passed to the [accessor] may be DIFFERENT than the one in this parameter ... ALWAYS USE THE URL PASSED
+ * INTO THE BLOCK INSTEAD OF THE VERSION YOU PROVIDED" - so the accessor's URL is authoritative and this
+ * implementation hands it the URL it actually coordinated.
+ *
+ * AND THE ERROR SHAPE IS THE OTHER HALF, VERBATIM: "If a file presenter encounters an error while preparing
+ * for this read operation, that error is returned in this parameter and the block in the [accessor]
+ * parameter IS NOT EXECUTED." So these doors return VOID and report through `outError`, and a refusal means
+ * the accessor never runs - which is why every refusal here is asserted by a check that also asserts the
+ * accessor did not fire.
+ *
+ * THE BOUNDARY, STATED AT THE DOORS BECAUSE IT IS WHAT THEY MEAN HERE (§11.6.1 is where it is registered):
+ * **THIS SYSTEM HAS NO COORDINATION SERVICE AND NO FILE PROVIDER.** Apple's coordinator coordinates "among
+ * file presenters" and, on its own platform, across PROCESSES through a system service. What this
+ * implementation can honestly do is coordinate WITHIN THE PROCESS - run the accessor, and (7c) inform the
+ * presenters registered in this process. Cross-process coordination is not silently implied: there is no
+ * daemon to do it, and building one is a subsystem of its own rather than a slice of this family.
+ *
+ * THE OPTIONS THAT HAVE A MEANING HERE ARE HONOURED AND THE REST ARE NOT PRETENDED:
+ * `NSFileCoordinatorReadingResolvesSymbolicLink` resolves the item before the accessor sees it (asserted
+ * from both sides by the probe); the others describe presenter notifications and version behaviour that
+ * arrive with 7c and 7d.
+ */
+/* NULLABILITY, OURS AND STATED: Apple publishes no nullability for these doors, and this library REFUSES a
+ * nil URL and a nil accessor WITH A NAMED ERROR rather than invoking them - so those parameters are
+ * `nullable` and the refusals are asserted by the probe. A parameter that may be nil and is refused is
+ * exactly what `nullable` means. */
+@interface NSFileCoordinator : NSObject
+{
+	id _presenter;			/* the coordinator's OWN presenter: NOT retained (it holds us), and 7c uses it */
+}
+
+/* "This object is assumed to be performing the relevant file or directory operations and therefore does
+ * NOT receive notifications about those operations" - so the coordinator's own presenter is excluded from
+ * the notifications this coordinator causes, which is a rule 7c will need. */
+- (id)initWithFilePresenter:(nullable id)filePresenterOrNil;
+
+- (void)coordinateReadingItemAtURL:(nullable NSURL *)url
+			   options:(NSFileCoordinatorReadingOptions)options
+			     error:(NSError ** _Nullable)outError
+			byAccessor:(nullable void (^)(NSURL *newURL))reader;
+
+- (void)coordinateWritingItemAtURL:(NSURL *)url
+			   options:(NSFileCoordinatorWritingOptions)options
+			     error:(NSError ** _Nullable)outError
+			byAccessor:(nullable void (^)(NSURL *newURL))writer;
+
+- (void)coordinateReadingItemAtURL:(nullable NSURL *)readingURL
+			   options:(NSFileCoordinatorReadingOptions)readingOptions
+		  writingItemAtURL:(nullable NSURL *)writingURL
+			   options:(NSFileCoordinatorWritingOptions)writingOptions
+			     error:(NSError ** _Nullable)outError
+			byAccessor:(nullable void (^)(NSURL *newReadingURL, NSURL *newWritingURL))readerWriter;
+
+- (void)coordinateWritingItemAtURL:(nullable NSURL *)url1
+			   options:(NSFileCoordinatorWritingOptions)options1
+		  writingItemAtURL:(nullable NSURL *)url2
+			   options:(NSFileCoordinatorWritingOptions)options2
+			     error:(NSError ** _Nullable)outError
+			byAccessor:(nullable void (^)(NSURL *newURL1, NSURL *newURL2))writer;
+
+@end
 
 /* "The details of a coordinated-read or coordinated-write operation" - and the WHOLE of what Apple
  * publishes for it, measured from its page: the two factories and `-URL`. THERE IS NO PUBLISHED ACCESSOR

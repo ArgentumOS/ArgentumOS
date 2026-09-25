@@ -143,6 +143,7 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSProcessInfo.m \
 	$(FOUNDATION_SRC)/NSFileManager.m \
 	$(FOUNDATION_SRC)/NSFileAccessIntent.m \
+	$(FOUNDATION_SRC)/NSFileCoordinator.m \
 	$(FOUNDATION_SRC)/NSFileSecurity.m \
 	$(FOUNDATION_SRC)/NSFileWrapper.m \
 	$(FOUNDATION_SRC)/NSURL.h \
@@ -804,6 +805,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_urlresourcevalues.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlresourcevalues"
+	# foundation_filecoordinator: W8 slice 7b acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> plus the POSIX calls its fixture makes.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_filecoordinator.m -o .build/probe-foundation_filecoordinator.o
+	$(MUSL64_OBJC) .build/probe-foundation_filecoordinator.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_filecoordinator"
 	# foundation_fileaccessintent: W8 slice 7a acceptance (foundation-plan.md §60). ONE unit, only
 	# <Foundation/Foundation.h> - the vocabulary needs no fixture and touches no file system.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \

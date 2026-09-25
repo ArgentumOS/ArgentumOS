@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  154   open   42   struck   77
+#   class      shipped  155   open   41   struck   77
 #   protocol   shipped   21   open   10   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped  105   open   38   struck   17
@@ -1400,7 +1400,7 @@ class	shipped	NSExpression		Fundamentals / Filltering	-	objc
 class	open	NSExtensionContext		App Support / Extension Support	-	objc
 class	open	NSExtensionItem		App Support / Attachments	-	objc
 class	shipped	NSFileAccessIntent		Files and Data Persistence / Coordinated file access	-	objc
-class	open	NSFileCoordinator		Files and Data Persistence / Coordinated file access	-	objc
+class	shipped	NSFileCoordinator		Files and Data Persistence / Coordinated file access	-	objc
 class	shipped	NSFileHandle		Files and Data Persistence / Managed file access	-	objc
 class	shipped	NSFileManager		Files and Data Persistence / File system operations	-	objc
 class	open	NSFileProviderService		Files and Data Persistence / File system operations / Accessing file provider services	-	objc
