@@ -3489,7 +3489,7 @@ vanishing.
 | **Files and Data Persistence / Managed file access** | all classes shipped | — |
 | **Files and Data Persistence / Property Lists** | all classes shipped | — |
 | **Files and Data Persistence / Queries** | ALL STRUCK: `NSMetadataQuery`, `NSMetadataQueryAttributeValueTuple`, `NSMetadataQueryDelegate`, `NSMetadataQueryResultGroup` | — |
-| **Files and Data Persistence / XML** | 3 open | `NSXMLDTD`, `NSXMLDTDNode`, `NSXMLDocument` |
+| **Files and Data Persistence / XML** | 2 open | `NSXMLDTD`, `NSXMLDTDNode` |
 | **Files and Data Persistence / iCloud key and value storage** | 1 open | `NSUbiquitousKeyValueStore` |
 | **Fundamentals / Automatic grammar agreement** | 5 open; 1 STRUCK: `NSMorphologyCustomPronoun` | `NSInflectionRule`, `NSInflectionRuleExplicit`, `NSMorphology`, `NSMorphologyPronoun`, `NSTermOfAddress` |
 | **Fundamentals / Basic Collections** | 2 open | `NSOrderedCollectionChange`, `NSOrderedCollectionDifference` |
@@ -12715,9 +12715,47 @@ the upward pointer is not a retain).
  * and the fix has two halves: the new files are in `FOUNDATION_SRCS`/`FOUNDATION_HDRS`, and the stale
  * objects are deleted.
 
-**WHAT REMAINS IN XML:** slice XML-c (`NSXMLDocument` and the parse bridge over XML-a's parser, with the
-XPath and XSLT boundaries at the doors they belong to) and slice XML-d (the DTD family - `NSXMLDTD`,
-`NSXMLDTDNode` and the six DTD delegate events - with the DTD node kinds).
+**SLICE XML-c LANDED (2026-09-24): `NSXMLDocument`, AND THE BRIDGE FROM THE PARSER INTO THE TREE.**
+`foundation_xmldocument` is a NEW probe with **11 checks**, green on its first functional run - and the
+bridge is the slice's whole idea: **XML-a produces EVENTS, XML-b holds a TREE, and this class turns one into
+the other by running XML-a's parser over a DELEGATE THAT BUILDS THE TREE** (not by writing a second parser,
+which is what keeps the XML reading rules in one place). Then it writes the tree back out, declaration and
+all.
+
+**THE OPTIONS ARE WHERE THE BOUNDARY HAD TO BE DRAWN, AND IT IS DRAWN PER DOOR RATHER THAN PER FEATURE:**
+FOUR of the five document options describe a pipeline this system does not have - `NSXMLDocumentValidate`
+(DTD validation), `NSXMLDocumentTidyHTML` and `NSXMLDocumentTidyXML` (libxml2's HTML tidier) and
+`NSXMLDocumentXInclude` - so passing one to a PARSING door is **NIL AND AN ERROR THAT NAMES IT** (the probe
+asserts all four names), which is the difference between a document that could not be read the way the
+caller asked for and one that was quietly read a different way. The FIFTH,
+`NSXMLDocumentIncludeContentTypeDeclaration`, describes the HTML/XHTML OUTPUT: that door has no error to
+refuse with, so it is IGNORED - and the header says so, because silence with a stated reason is not the same
+thing as silence. `-dtd`/`-setDTD:` (XML-d's class), `-validate` and the three XSLT doors are registered the
+same way.
+
+**AND TWO BOUNDARIES ARE STATED WHERE A READER MEETS THEM RATHER THAN LEFT TO BE DISCOVERED:** the XML
+DECLARATION is **not read back** (XML-a reports a document's `<?xml ...?>` as nothing at all), so a parsed
+document keeps this class's DEFAULTS - "1.0", "UTF-8", not standalone - and writing it out EMITS a
+declaration built from those attributes; and a CDATA block arrives as a TEXT child **whose marking is not
+recorded**, so writing it back escapes what was raw. Both are consequences of decisions taken in XML-a and
+XML-b, which is what keeping the rules in one place buys and costs.
+
+**THREE STORAGE DECISIONS INSIDE THE BRIDGE, EACH FROM AN EARLIER SLICE:** an element keeps the QUALIFIED
+name the document wrote (XML-a hands the local and qualified names separately when namespaces are on), an
+`xmlns`/`xmlns:p` attribute becomes a NAMESPACE CHILD rather than an attribute (XML-b's stated reading), and
+the XML declaration is not stored as a processing instruction (XML-a's).
+
+**AND ONE PERSONAL TRAP IS RECORDED FOR THE THIRD TIME, WHICH IS WHY IT IS RECORDED AT ALL:
+`NSMutableArray.h` AND `NSMutableDictionary.h` DO NOT EXIST IN THIS TREE** - those classes live in
+`NSArray.h` and `NSDictionary.h` - and the CLEAN-ROOM GATE HAS CAUGHT AN IMPORT OF THEM BY NAME IN THREE
+CONSECUTIVE SLICES (XML-a's parser, XML-b's tree, XML-c's document). The gate is the safety net and it has
+never missed; **the habit to break is reaching for an Apple-shaped header without checking the tree has it.**
+And XML-b's build trap was APPLIED rather than repeated: the new files are in `FOUNDATION_SRCS` and
+`FOUNDATION_HDRS`, so a later header change rebuilds what includes it.
+
+**WHAT REMAINS IN XML IS ONE SLICE:** XML-d - the DTD family (`NSXMLDTD`, `NSXMLDTDNode`), the six DTD
+delegate events of `NSXMLParserDelegate`, and the `NSXMLDTDNodeKind` enum whose declaration kinds the tree
+currently refuses (a DTD node cannot be made without knowing what kind it is).
 
 **W8 IS COMPLETE, AND THE TOTAL IS CHECKABLE RATHER THAN ASSERTED.** The unit's nine slices, each with its
 landed probe and its checks: `NSDirectoryEnumerator` **29**, the URL resource values **27**,

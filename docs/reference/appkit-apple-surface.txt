@@ -3054,7 +3054,7 @@ method	open	+canInitWithPasteboard	NSSound	-	-	objc
 method	open	+capsuleCornerConfigurationWithMaximumRadius	NSViewCornerConfiguration	-	-	objc
 method	open	+checkboxWithTitle	NSButton	-	-	objc
 method	struck	+clearCurrentContext	NSOpenGLContext	-	deprecated	objc
-method	open	+clipRect	NSBezierPath	-	-	objc
+method	shipped	+clipRect	NSBezierPath	-	-	objc
 method	struck	+colorForControlTint	NSColor	-	deprecated	objc
 method	open	+colorFromPasteboard	NSColor	-	-	objc
 method	open	+colorListNamed	NSColorList	-	-	objc
@@ -3494,7 +3494,7 @@ method	open	-addButtonWithTitle	NSAlert	-	-	objc
 method	open	-addChild	NSTreeController	-	-	objc
 method	open	-addChildViewController	NSViewController	-	-	objc
 method	open	-addChildWindow	NSWindow	-	-	objc
-method	open	-addClip	NSBezierPath	-	-	objc
+method	shipped	-addClip	NSBezierPath	-	-	objc
 method	struck	-addCollection	NSFontManager	-	deprecated	objc
 method	open	-addColumn	NSBrowser	-	-	objc
 method	open	-addColumn	NSMatrix	-	-	objc
@@ -5961,7 +5961,7 @@ method	open	-setCellAttribute	NSCell	-	-	objc
 method	open	-setCellClass	NSBrowser	-	-	objc
 method	struck	-setChannelMapping	NSSound	-	deprecated	objc
 method	struck	-setCharacterIndex	NSLayoutManager	-	deprecated	objc
-method	open	-setClip	NSBezierPath	-	-	objc
+method	shipped	-setClip	NSBezierPath	-	-	objc
 method	open	-setClippingResistancePriority	NSStackView	-	-	objc
 method	open	-setColor	NSBitmapImageRep	-	-	objc
 method	open	-setColor	NSColorList	-	-	objc

@@ -28,11 +28,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  160   open   36   struck   77
+#   class      shipped  161   open   35   struck   77
 #   protocol   shipped   23   open    8   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped  111   open   32   struck   17
-#   case       shipped  739   open  395   struck  168
+#   enum       shipped  112   open   31   struck   17
+#   case       shipped  753   open  381   struck  168
 #   func       shipped   72   open   63   struck   54
 #   var        shipped  239   open  322   struck  353
 #   typealias  shipped   36   open   33   struck    7
@@ -1167,21 +1167,21 @@ case	open	NSXMLAttributeNMTokensKind	NSXMLDTDNode	Files and Data Persistence / X
 case	open	NSXMLAttributeNotationKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	shipped	NSXMLCommentKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
 case	shipped	NSXMLDTDKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
-case	open	NSXMLDocumentHTMLKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	objc
-case	open	NSXMLDocumentIncludeContentTypeDeclaration	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLDocumentIncludeContentTypeDeclaration	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLDocumentHTMLKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	objc
+case	shipped	NSXMLDocumentIncludeContentTypeDeclaration	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLDocumentIncludeContentTypeDeclaration	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
 case	shipped	NSXMLDocumentKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
-case	open	NSXMLDocumentTextKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	objc
-case	open	NSXMLDocumentTidyHTML	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLDocumentTidyHTML	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLDocumentTidyXML	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLDocumentTidyXML	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLDocumentValidate	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLDocumentValidate	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLDocumentXHTMLKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	objc
-case	open	NSXMLDocumentXInclude	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLDocumentXInclude	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
-case	open	NSXMLDocumentXMLKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	objc
+case	shipped	NSXMLDocumentTextKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	objc
+case	shipped	NSXMLDocumentTidyHTML	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLDocumentTidyHTML	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLDocumentTidyXML	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLDocumentTidyXML	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLDocumentValidate	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLDocumentValidate	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLDocumentXHTMLKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	objc
+case	shipped	NSXMLDocumentXInclude	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLDocumentXInclude	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	objc
+case	shipped	NSXMLDocumentXMLKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	objc
 case	open	NSXMLElementDeclarationAnyKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLElementDeclarationElementKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	open	NSXMLElementDeclarationEmptyKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
@@ -1603,7 +1603,7 @@ class	shipped	NSValueTransformer		Low-Level Utilities / Value Wrappers and Trans
 class	struck	NSWhoseSpecifier		App Support / Object Specifiers	declined	objc
 class	open	NSXMLDTD		Files and Data Persistence / XML / Tree-Based Processing	-	objc
 class	open	NSXMLDTDNode		Files and Data Persistence / XML / Tree-Based Processing	-	objc
-class	open	NSXMLDocument		Files and Data Persistence / XML / Tree-Based Processing	-	objc
+class	shipped	NSXMLDocument		Files and Data Persistence / XML / Tree-Based Processing	-	objc
 class	shipped	NSXMLElement		Files and Data Persistence / XML / Tree-Based Processing	-	objc
 class	shipped	NSXMLNode		Files and Data Persistence / XML / Tree-Based Processing	-	objc
 class	shipped	NSXMLParser		Files and Data Persistence / XML / Event-Based Processing	-	objc
@@ -1766,7 +1766,7 @@ enum	struck	NSUserNotificationActivationType	NSUserNotification	App Support / Us
 enum	shipped	NSVolumeEnumerationOptions	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 enum	struck	NSWhoseSubelementIdentifier	NSWhoseSpecifier	App Support / Object Specifiers / Constants	declined	objc
 enum	open	NSXMLDTDNodeKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	swift-page
-enum	open	NSXMLDocumentContentKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	objc
+enum	shipped	NSXMLDocumentContentKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	objc
 enum	shipped	NSXMLNodeKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	swift-page
 enum	shipped	NSXMLNodeOptions	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	objc
 enum	shipped	NSXMLParserError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	objc
