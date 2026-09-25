@@ -11,15 +11,9 @@
  */
 #import <AppKit/NSImage.h>
 #import <AppKit/NSBitmapImageRep.h>
-#import <AppKit/NSGraphicsContext.h>
-#import <CoreGraphics/CGBitmapContext.h>
-#import <CoreGraphics/CGColorSpace.h>
-#import <CoreGraphics/CGContext.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSString.h>
 #include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 @implementation NSImage
 
@@ -204,121 +198,6 @@
 	NSSize s = [self size];
 
 	return [self drawInRect:NSMakeRect(point.x, point.y, s.width, s.height)];
-}
-
-/* BGRA -> RGBA, PREMULTIPLIED ON BOTH SIDES SO NO UN-PREMULTIPLY IS OWED. The source is this tree's
- * bitmap-context format (alpha first in a little-endian word, which in MEMORY is B, G, R, A) and the
- * destination is what a rep's `-CGImage` is built with (alpha last, so R, G, B, A). Getting this
- * backwards is not subtle for long: red comes back blue, which is exactly what the probe checks. */
-static void fn_swizzle_bgra_to_rgba(const unsigned char *src, unsigned char *dst, size_t pixels)
-{
-	size_t i;
-
-	for (i = 0; i < pixels; i++) {
-		dst[0] = src[2];
-		dst[1] = src[1];
-		dst[2] = src[0];
-		dst[3] = src[3];
-		src += 4;
-		dst += 4;
-	}
-}
-
-- (void)lockFocus
-{
-	NSSize s = [self size];
-	CGColorSpaceRef cs;
-	NSGraphicsContext *gstate;
-	NSInteger w = (NSInteger)ceil(s.width);
-	NSInteger h = (NSInteger)ceil(s.height);
-
-	if (_focusContext != NULL) {
-		return;
-	}
-	/* A ZERO-PIXEL CANVAS IS REFUSED BY NAME: it would make a context nothing can be drawn into and a
-	 * rep with no pixels, which is a silent nothing rather than an answer. */
-	if (w <= 0 || h <= 0) {
-		fprintf(stderr, "APPKIT-REFUSE: -lockFocus on an image with no SIZE (got %gx%g); set the "
-				"size first\n", (double)s.width, (double)s.height);
-		return;
-	}
-	_canvas = calloc(1, (size_t)w * (size_t)h * 4u);
-	if (_canvas == NULL) {
-		return;
-	}
-	cs = CGColorSpaceCreateDeviceRGB();
-	_focusContext = CGBitmapContextCreate(_canvas, (size_t)w, (size_t)h, 8, (size_t)w * 4u, cs,
-					      kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
-	CGColorSpaceRelease(cs);
-	if (_focusContext == NULL) {
-		free(_canvas);
-		_canvas = NULL;
-		return;
-	}
-	/* A FRESH CANVAS IS EMPTY, not whatever the allocator had — the same rule the rep's own allocated
-	 * buffer follows. */
-	CGContextClearRect(_focusContext, CGRectMake(0.0, 0.0, (CGFloat)w, (CGFloat)h));
-	gstate = [NSGraphicsContext graphicsContextWithCGContext:_focusContext flipped:NO];
-	if (gstate == nil) {
-		CGContextRelease(_focusContext);
-		_focusContext = NULL;
-		free(_canvas);
-		_canvas = NULL;
-		return;
-	}
-	_focusW = w;
-	_focusH = h;
-	_focusGState = [gstate retain];
-	/* RETAINED, AND IT MAY BE NIL — retaining nil is nil, so an image focused with NO context current
-	 * is a legitimate state and `-unlockFocus` puts nil back. */
-	_gstatePrevious = [[NSGraphicsContext currentContext] retain];
-	[NSGraphicsContext setCurrentContext:gstate];
-}
-
-- (void)unlockFocus
-{
-	unsigned char *buf;
-	size_t n;
-
-	if (_focusContext == NULL) {
-		return;
-	}
-	[NSGraphicsContext setCurrentContext:_gstatePrevious];
-	[_focusGState release];
-	_focusGState = nil;
-	[_gstatePrevious release];
-	_gstatePrevious = nil;
-	CGContextRelease(_focusContext);
-	_focusContext = NULL;
-
-	n = (size_t)_focusW * (size_t)_focusH * 4u;
-	buf = malloc(n);
-	if (buf != NULL) {
-		unsigned char *planes[1];
-		NSBitmapImageRep *rep;
-
-		fn_swizzle_bgra_to_rgba(_canvas, buf, (size_t)_focusW * (size_t)_focusH);
-		/* THE PREVIOUS FOCUS REP GOES, AND ITS BUFFER WITH IT: the rep BORROWS the buffer, so keeping
-		 * one and dropping the other is a dangling pointer rather than a leak. */
-		if (_focusRep != nil) {
-			[self removeRepresentation:_focusRep];
-			_focusRep = nil;
-		}
-		free(_focusBuffer);
-		_focusBuffer = buf;
-		planes[0] = buf;
-		rep = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:planes pixelsWide:_focusW
-					pixelsHigh:_focusH bitsPerSample:8 samplesPerPixel:4 hasAlpha:YES
-					isPlanar:NO colorSpaceName:NSDeviceRGBColorSpace
-					bytesPerRow:_focusW * 4 bitsPerPixel:32];
-		if (rep != nil) {
-			[self addRepresentation:rep];
-			_focusRep = rep;
-			[rep release];
-		}
-	}
-	free(_canvas);
-	_canvas = NULL;
 }
 
 @end
