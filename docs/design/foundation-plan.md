@@ -13068,8 +13068,11 @@ itself as **THE WHOLE GUEST PROCESS DYING**, with a message that named the selec
 no `@try/@catch` could survive it. Three of this session's hunts paid that toll in a day (`+stringWithCharacters:`,
 `-initWithFormat:` reaching `-copy` on a bare object, `-[NSOwnedString appendString:]`). **IT NOW RAISES
 `NSInvalidArgumentException`, which is Apple's contract for that method**, so a missing method is a catchable,
-named exception and the next one costs minutes instead of hours. The probe that proves the catch - a bare
-NSObject sent `-copy` inside `@try/@catch` - is the next check to write.
+named exception and the next one costs minutes instead of hours. **AND THAT PROBE IS WRITTEN AND GREEN:** `foundation_core`'s
+`a-missing-method-raises-and-can-be-caught` sends `-copy` and `-mutableCopy` to a bare `NSObject` inside
+`@try/@catch` and asserts BOTH halves of the contract - the exception is raised, it is named
+`NSInvalidArgumentException`, and THE PROCESS IS STILL THERE AFTERWARDS TO SAY SO (which is the half that was
+missing while the method aborted). `foundation_core` is 55 checks and green.
 
 **SLICE XML-e LANDED (2026-09-24): THE SIX DTD EVENTS, AND THE DOCUMENT THAT KEEPS AND RE-WRITES ITS DTD -
 WHICH MAKES XML COMPLETE.** `foundation_xmldtdparse` is a NEW probe with **8 checks**, green.

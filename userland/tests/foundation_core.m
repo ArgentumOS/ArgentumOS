@@ -140,6 +140,35 @@ int main(void)
 	}
 
 	/*
+	 * A MISSING METHOD MUST BE CATCHABLE, AND IT WAS NOT. -doesNotRecognizeSelector: used to fprintf and
+	 * ABORT - the only abort() in userland/Foundation - so a gap in the library expressed itself as THE
+	 * WHOLE PROCESS DYING: no caller named, and no @try/@catch able to survive it. Apple's page for that
+	 * method names NSInvalidArgumentException, and this check asserts BOTH halves of the contract: the
+	 * exception is raised, and the process is still here afterwards to say so.
+	 */
+	{
+		id bare = [[NSObject alloc] init];
+		BOOL copyRaised = NO, mutableRaised = NO, namedRight = NO;
+
+		@try {
+			(void)[bare copy];
+		} @catch (NSException *e) {
+			copyRaised = YES;
+			namedRight = [[e name] isEqualToString:NSInvalidArgumentException];
+		}
+		@try {
+			(void)[bare mutableCopy];
+		} @catch (NSException *e) {
+			mutableRaised = YES;
+		}
+		check("a-missing-method-raises-and-can-be-caught",
+		      copyRaised && mutableRaised && namedRight,
+		      [[NSString stringWithFormat:@"root-copy-raised=%d root-mutableCopy-raised=%d "
+			@"NSInvalidArgumentException=%d", (int)copyRaised, (int)mutableRaised, (int)namedRight]
+			UTF8String]);
+	}
+
+	/*
 	 * The runtime's pools, with the library loaded. F0 ships no pool class
 	 * (the runtime adopts any class named NSAutoreleasePool — plan §6), so
 	 * this check is also the one that proves ARC's @autoreleasepool still
