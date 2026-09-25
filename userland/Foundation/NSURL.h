@@ -371,6 +371,55 @@ extern NSURLResourceKey const NSURLIsSystemImmutableKey;
 extern NSURLResourceKey const NSURLThumbnailDictionaryKey;
 extern NSURLResourceKey const NSURLThumbnailKey;
 extern NSURLResourceKey const NSURLFileProtectionKey;
+
+/* ---- THE SUBSTRATE-MEASURED KEYS (W8p, slice 6g) ---------------------------------------------------
+ *
+ * EACH OF THESE WAS ANSWERED FROM A MEASUREMENT TAKEN IN THE GUEST, NOT FROM A GUESS, and the measurement is
+ * named per key:
+ *
+ *   - `NSURLIsSparseKey` - a file with a hole is CHARGED IN FULL by this file system (measured: one byte at 0,
+ *     one at 1 MiB, `size=1048577 allocated=1049088`), so the general test (`allocated < size`) answers NO;
+ *   - `NSURLMayHaveExtendedAttributesKey` - MEASURED AT THE ITEM: `setxattr`/`listxattr`/`getxattr` all succeed
+ *     on AGFS and `listxattr` fails with EOPNOTSUPP on procfs, so this one key answers YES and NO on the same
+ *     machine;
+ *   - `NSURLPreferredIOBlockSizeKey` - the volume's own block size from `statfs` (1024 on the root, 4096 on
+ *     procfs);
+ *   - `NSURLVolumeSupportsHardLinksKey` - PROVED by the probe: two names, one inode, a link count of 2;
+ *   - `NSURLVolumeSupportsExclusiveRenamingKey` - `renameat2(RENAME_NOREPLACE)` answers ENOSYS;
+ *   - `NSURLDirectoryEntryCountKey` - the count of the entries a listing returns (measured two-sidedly: 0 for
+ *     an empty directory, n for n);
+ *   - `NSURLIsPurgeableKey`, `NSURLIsAliasFileKey`, `NSURLVolumeIsEncryptedKey` - NO, each a TRUE statement
+ *     about the item with its ground named: nothing here evicts file content, the macOS alias format does not
+ *     exist, and no volume is encrypted;
+ *   - AND SEVEN THAT ARE UNAVAILABLE: nil, which is Apple's own "the resource property is NOT AVAILABLE for
+ *     the specified resource, and no errors occurred". `NSURLVolumeCreationDateKey` (the file system records
+ *     no volume creation time), `NSURLFileContentIdentifierKey` (content identifiers identify clone-shared
+ *     content and there is no cloning), `NSURLMayShareFileContentKey` (no sharing substrate),
+ *     `NSURLIsPackageKey`/`NSURLIsApplicationKey` (package identity is a Finder/LaunchServices notion; the
+ *     build stages `/Applications` EMPTY and the kernel has no bundle marker - measured), and
+ *     `NSURLVolumeIsRemovableKey`/`...IsEjectableKey` (the device tree publishes removable media as device
+ *     CLASSES - `Disk/USB`, `Disk/Floppy` - but never associates a MOUNT with its device node, so a USB
+ *     stick and a fixed disk are indistinguishable through it: a NAMED limitation of the substrate, not a
+ *     NO we could stand behind).
+ */
+extern NSURLResourceKey const NSURLDirectoryEntryCountKey;
+extern NSURLResourceKey const NSURLFileContentIdentifierKey;
+extern NSURLResourceKey const NSURLIsAliasFileKey;
+extern NSURLResourceKey const NSURLIsApplicationKey;
+extern NSURLResourceKey const NSURLIsPackageKey;
+extern NSURLResourceKey const NSURLIsPurgeableKey;
+extern NSURLResourceKey const NSURLIsSparseKey;
+extern NSURLResourceKey const NSURLMayHaveExtendedAttributesKey;
+extern NSURLResourceKey const NSURLMayShareFileContentKey;
+extern NSURLResourceKey const NSURLPreferredIOBlockSizeKey;
+extern NSURLResourceKey const NSURLVolumeCreationDateKey;
+extern NSURLResourceKey const NSURLVolumeIsEjectableKey;
+extern NSURLResourceKey const NSURLVolumeIsEncryptedKey;
+extern NSURLResourceKey const NSURLVolumeIsRemovableKey;
+extern NSURLResourceKey const NSURLVolumeSupportsExclusiveRenamingKey;
+extern NSURLResourceKey const NSURLVolumeSupportsFileCloningKey;
+extern NSURLResourceKey const NSURLVolumeSupportsHardLinksKey;
+extern NSURLResourceKey const NSURLVolumeSupportsSparseFilesKey;
 extern NSURLResourceKey const NSURLIsUbiquitousItemKey;
 extern NSURLResourceKey const NSURLIsUserImmutableKey;
 extern NSURLResourceKey const NSURLLabelColorKey;

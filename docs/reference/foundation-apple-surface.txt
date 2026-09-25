@@ -34,7 +34,7 @@
 #   enum       shipped  113   open   30   struck   17
 #   case       shipped  772   open  362   struck  168
 #   func       shipped   72   open   63   struck   54
-#   var        shipped  302   open  259   struck  353
+#   var        shipped  320   open  241   struck  353
 #   typealias  shipped   42   open   27   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -3052,7 +3052,7 @@ var	struck	NSURLCredentialStorageChangedNotification	NSNotification	App Support 
 var	struck	NSURLCredentialStorageChangedNotification	NSURLCredentialStorage	Networking / Authentication and credentials / Tracking credential storage changes	deprecated	swift-page
 var	open	NSURLCredentialStorageRemoveSynchronizableCredentials	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials / Options	-	objc
 var	shipped	NSURLCustomIconKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLDirectoryEntryCountKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Directory keys	-	objc
+var	shipped	NSURLDirectoryEntryCountKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Directory keys	-	objc
 var	shipped	NSURLDocumentIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLEffectiveIconKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLErrorBackgroundTaskCancelledReasonKey		Networking / Errors / Keys	-	objc
@@ -3064,7 +3064,7 @@ var	struck	NSURLErrorFailingURLStringErrorKey		Networking / Errors / Keys	deprec
 var	shipped	NSURLErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSURLErrorNetworkUnavailableReasonKey		Networking / Errors / Keys	-	objc
 var	shipped	NSURLFileAllocatedSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
-var	open	NSURLFileContentIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
+var	shipped	NSURLFileContentIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLFileIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLFileProtectionComplete	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Protection levels	-	objc
 var	shipped	NSURLFileProtectionComplete	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys / Protection levels	-	objc
@@ -3092,18 +3092,18 @@ var	open	NSURLFileSecurityKey	NSURL	Fundamentals / URLs / Accessing Resource Val
 var	shipped	NSURLFileSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLGenerationIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLHasHiddenExtensionKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLIsAliasFileKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
-var	open	NSURLIsApplicationKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Application keys	-	objc
+var	shipped	NSURLIsAliasFileKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
+var	shipped	NSURLIsApplicationKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Application keys	-	objc
 var	shipped	NSURLIsDirectoryKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Directory keys	-	objc
 var	shipped	NSURLIsExcludedFromBackupKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLIsExecutableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLIsHiddenKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	open	NSURLIsMountTriggerKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
-var	open	NSURLIsPackageKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
-var	open	NSURLIsPurgeableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
+var	shipped	NSURLIsPackageKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
+var	shipped	NSURLIsPurgeableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLIsReadableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLIsRegularFileKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
-var	open	NSURLIsSparseKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
+var	shipped	NSURLIsSparseKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLIsSymbolicLinkKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLIsSystemImmutableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLIsUbiquitousItemKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
@@ -3117,12 +3117,12 @@ var	shipped	NSURLLinkCountKey	NSURL	Fundamentals / URLs / Accessing Resource Val
 var	shipped	NSURLLocalizedLabelKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLLocalizedNameKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLLocalizedTypeDescriptionKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLMayHaveExtendedAttributesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
-var	open	NSURLMayShareFileContentKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
+var	shipped	NSURLMayHaveExtendedAttributesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
+var	shipped	NSURLMayShareFileContentKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLNameKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLParentDirectoryURLKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Directory keys	-	objc
 var	shipped	NSURLPathKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLPreferredIOBlockSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
+var	shipped	NSURLPreferredIOBlockSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	struck	NSURLProtectionSpaceFTP	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Protocol types	deprecated	objc
 var	struck	NSURLProtectionSpaceFTPProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	deprecated	objc
 var	shipped	NSURLProtectionSpaceHTTP	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Protocol types	-	objc
@@ -3173,17 +3173,17 @@ var	shipped	NSURLUbiquitousSharedItemRoleParticipant	NSURL	Fundamentals / URLs /
 var	open	NSURLVolumeAvailableCapacityForImportantUsageKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume capacity keys	-	objc
 var	open	NSURLVolumeAvailableCapacityForOpportunisticUsageKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume capacity keys	-	objc
 var	shipped	NSURLVolumeAvailableCapacityKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume capacity keys	-	objc
-var	open	NSURLVolumeCreationDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
+var	shipped	NSURLVolumeCreationDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	shipped	NSURLVolumeIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	open	NSURLVolumeIsAutomountedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume status keys	-	objc
 var	open	NSURLVolumeIsBrowsableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume status keys	-	objc
-var	open	NSURLVolumeIsEjectableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume status keys	-	objc
-var	open	NSURLVolumeIsEncryptedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume status keys	-	objc
+var	shipped	NSURLVolumeIsEjectableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume status keys	-	objc
+var	shipped	NSURLVolumeIsEncryptedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume status keys	-	objc
 var	open	NSURLVolumeIsInternalKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume status keys	-	objc
 var	open	NSURLVolumeIsJournalingKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume status keys	-	objc
 var	shipped	NSURLVolumeIsLocalKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume status keys	-	objc
 var	shipped	NSURLVolumeIsReadOnlyKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume status keys	-	objc
-var	open	NSURLVolumeIsRemovableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume status keys	-	objc
+var	shipped	NSURLVolumeIsRemovableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume status keys	-	objc
 var	shipped	NSURLVolumeIsRootFileSystemKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume status keys	-	objc
 var	open	NSURLVolumeLocalizedFormatDescriptionKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	shipped	NSURLVolumeLocalizedNameKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
@@ -3197,17 +3197,17 @@ var	open	NSURLVolumeSupportsAdvisoryFileLockingKey	NSURL	Fundamentals / URLs / A
 var	open	NSURLVolumeSupportsCasePreservedNamesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	shipped	NSURLVolumeSupportsCaseSensitiveNamesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	open	NSURLVolumeSupportsCompressionKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
-var	open	NSURLVolumeSupportsExclusiveRenamingKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
+var	shipped	NSURLVolumeSupportsExclusiveRenamingKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	open	NSURLVolumeSupportsExtendedSecurityKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
-var	open	NSURLVolumeSupportsFileCloningKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
+var	shipped	NSURLVolumeSupportsFileCloningKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	open	NSURLVolumeSupportsFileProtectionKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume status keys	-	objc
-var	open	NSURLVolumeSupportsHardLinksKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
+var	shipped	NSURLVolumeSupportsHardLinksKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	open	NSURLVolumeSupportsImmutableFilesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	open	NSURLVolumeSupportsJournalingKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	shipped	NSURLVolumeSupportsPersistentIDsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	open	NSURLVolumeSupportsRenamingKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	open	NSURLVolumeSupportsRootDirectoryDatesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
-var	open	NSURLVolumeSupportsSparseFilesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
+var	shipped	NSURLVolumeSupportsSparseFilesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	open	NSURLVolumeSupportsSwapRenamingKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	shipped	NSURLVolumeSupportsSymbolicLinksKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	shipped	NSURLVolumeSupportsVolumeSizesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc

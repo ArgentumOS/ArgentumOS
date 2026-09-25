@@ -29,6 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
+#include <sys/xattr.h>
 #include <unistd.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSData.h>
@@ -573,6 +575,25 @@ NSURLResourceKey const NSURLIsSystemImmutableKey = @"NSURLIsSystemImmutableKey";
 NSURLResourceKey const NSURLThumbnailDictionaryKey = @"NSURLThumbnailDictionaryKey";
 NSURLResourceKey const NSURLThumbnailKey = @"NSURLThumbnailKey";
 NSURLResourceKey const NSURLFileProtectionKey = @"NSURLFileProtectionKey";
+/* THE SUBSTRATE-MEASURED KEYS (slice 6g): the measurement is named at each branch below. */
+NSURLResourceKey const NSURLDirectoryEntryCountKey = @"NSURLDirectoryEntryCountKey";
+NSURLResourceKey const NSURLFileContentIdentifierKey = @"NSURLFileContentIdentifierKey";
+NSURLResourceKey const NSURLIsAliasFileKey = @"NSURLIsAliasFileKey";
+NSURLResourceKey const NSURLIsApplicationKey = @"NSURLIsApplicationKey";
+NSURLResourceKey const NSURLIsPackageKey = @"NSURLIsPackageKey";
+NSURLResourceKey const NSURLIsPurgeableKey = @"NSURLIsPurgeableKey";
+NSURLResourceKey const NSURLIsSparseKey = @"NSURLIsSparseKey";
+NSURLResourceKey const NSURLMayHaveExtendedAttributesKey = @"NSURLMayHaveExtendedAttributesKey";
+NSURLResourceKey const NSURLMayShareFileContentKey = @"NSURLMayShareFileContentKey";
+NSURLResourceKey const NSURLPreferredIOBlockSizeKey = @"NSURLPreferredIOBlockSizeKey";
+NSURLResourceKey const NSURLVolumeCreationDateKey = @"NSURLVolumeCreationDateKey";
+NSURLResourceKey const NSURLVolumeIsEjectableKey = @"NSURLVolumeIsEjectableKey";
+NSURLResourceKey const NSURLVolumeIsEncryptedKey = @"NSURLVolumeIsEncryptedKey";
+NSURLResourceKey const NSURLVolumeIsRemovableKey = @"NSURLVolumeIsRemovableKey";
+NSURLResourceKey const NSURLVolumeSupportsExclusiveRenamingKey = @"NSURLVolumeSupportsExclusiveRenamingKey";
+NSURLResourceKey const NSURLVolumeSupportsFileCloningKey = @"NSURLVolumeSupportsFileCloningKey";
+NSURLResourceKey const NSURLVolumeSupportsHardLinksKey = @"NSURLVolumeSupportsHardLinksKey";
+NSURLResourceKey const NSURLVolumeSupportsSparseFilesKey = @"NSURLVolumeSupportsSparseFilesKey";
 NSURLResourceKey const NSURLIsUbiquitousItemKey = @"NSURLIsUbiquitousItemKey";
 NSURLResourceKey const NSURLIsUserImmutableKey = @"NSURLIsUserImmutableKey";
 NSURLResourceKey const NSURLLabelColorKey = @"NSURLLabelColorKey";
@@ -627,6 +648,15 @@ NSURLFileResourceType const NSURLFileResourceTypeUnknown = @"NSURLFileResourceTy
  * `/System/Processes/mounts` is this system's published mount table: one line per mount that is not kernel-internal,
  * with `device mountpoint fstype rw|ro 0 0`. It is read on demand rather than cached here, because the URL's
  * OWN cache is what makes repeated questions cheap (slice 6a) and a second cache would be a second truth. */
+/* THE FILE SYSTEM A PATH LIVES ON, from the mount table slice 6e reads. The capability keys below are
+ * per-VOLUME, so they ask which volume the item is on rather than assuming the root. */
+static NSString * _Nullable fn_volume_fstype(NSString *path)
+{
+	NSArray *entry = fn_volume_for_path(path);
+
+	return entry != nil && [entry count] > 2 ? [entry objectAtIndex:2] : nil;
+}
+
 /* READING A SYNTHETIC FILE, AND WHY IT NEEDS A LOOP: procfs's nodes report SIZE ZERO - their content is
  * generated when they are read - and anything that reads "exactly st_size bytes" therefore answers EMPTY.
  * That is what the first version of the mount-table reader did (twice, here and in NSFileManager), and the
@@ -790,6 +820,49 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 		@"NSURLVolumeURLKey", @"NSURLVolumeTypeNameKey", @"NSURLVolumeIsRootFileSystemKey",
 		@"NSURLVolumeResourceCountKey", @"NSURLVolumeSupportsVolumeSizesKey",
 		@"NSURLVolumeIsMountTriggerKey", @"NSURLIsVolumeKey",
+		@"NSURLDirectoryEntryCountKey",
+		@"NSURLFileContentIdentifierKey",
+		@"NSURLIsAliasFileKey",
+		@"NSURLIsApplicationKey",
+		@"NSURLIsPackageKey",
+		@"NSURLIsPurgeableKey",
+		@"NSURLIsSparseKey",
+		@"NSURLMayHaveExtendedAttributesKey",
+		@"NSURLMayShareFileContentKey",
+		@"NSURLPreferredIOBlockSizeKey",
+		@"NSURLVolumeCreationDateKey",
+		@"NSURLVolumeIsEjectableKey",
+		@"NSURLVolumeIsEncryptedKey",
+		@"NSURLVolumeIsRemovableKey",
+		@"NSURLVolumeSupportsExclusiveRenamingKey",
+		@"NSURLVolumeSupportsFileCloningKey",
+		@"NSURLVolumeSupportsHardLinksKey",
+		@"NSURLVolumeSupportsSparseFilesKey",
+		@"NSURLIsUbiquitousItemKey",
+		@"NSURLIsUserImmutableKey",
+		@"NSURLLabelColorKey",
+		@"NSURLLabelNumberKey",
+		@"NSURLLocalizedLabelKey",
+		@"NSURLLocalizedTypeDescriptionKey",
+		@"NSURLQuarantinePropertiesKey",
+		@"NSURLTagNamesKey",
+		@"NSURLUbiquitousItemContainerDisplayNameKey",
+		@"NSURLUbiquitousItemDownloadRequestedKey",
+		@"NSURLUbiquitousItemDownloadingErrorKey",
+		@"NSURLUbiquitousItemDownloadingStatusKey",
+		@"NSURLUbiquitousItemHasUnresolvedConflictsKey",
+		@"NSURLUbiquitousItemIsDownloadingKey",
+		@"NSURLUbiquitousItemIsExcludedFromSyncKey",
+		@"NSURLUbiquitousItemIsSharedKey",
+		@"NSURLUbiquitousItemIsSyncPausedKey",
+		@"NSURLUbiquitousItemIsUploadedKey",
+		@"NSURLUbiquitousItemIsUploadingKey",
+		@"NSURLUbiquitousItemSupportedSyncControlsKey",
+		@"NSURLUbiquitousItemUploadingErrorKey",
+		@"NSURLUbiquitousSharedItemCurrentUserPermissionsKey",
+		@"NSURLUbiquitousSharedItemCurrentUserRoleKey",
+		@"NSURLUbiquitousSharedItemMostRecentEditorNameComponentsKey",
+		@"NSURLUbiquitousSharedItemOwnerNameComponentsKey",
 		@"NSURLAddedToDirectoryDateKey",
 		@"NSURLApplicationIsScriptableKey",
 		@"NSURLContentTypeKey",
@@ -929,6 +1002,69 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 	 * ubiquitous item - an answer rather than an absence. */
 	if ([key isEqual:NSURLIsUbiquitousItemKey]) {
 		return [NSNumber numberWithBool:NO];
+	}
+	/* THE SUBSTRATE-MEASURED KEYS (slice 6g). The measurement that justifies each answer is in the header and
+	 * repeated at the branch, because a capability claim without its measurement is exactly the confident wrong
+	 * answer this file's volume section warns about. */
+	if ([key isEqual:NSURLIsSparseKey]) {
+		/* allocated < size is the general test for a hole; measured, this file system charges the gap. */
+		id allocated = nil, size = nil;
+
+		[self getResourceValue:&allocated forKey:NSURLFileAllocatedSizeKey error:NULL];
+		[self getResourceValue:&size forKey:NSURLFileSizeKey error:NULL];
+		if (allocated == nil || size == nil) {
+			return nil;
+		}
+		return [NSNumber numberWithBool:
+			([allocated unsignedLongLongValue] < [size unsignedLongLongValue]) ? YES : NO];
+	}
+	if ([key isEqual:NSURLMayHaveExtendedAttributesKey]) {
+		/* MEASURED AT THE ITEM: listxattr succeeds where the file system has extended attributes (AGFS,
+		 * where the probe set one) and fails with EOPNOTSUPP where it does not (procfs). */
+		errno = 0;
+		return [NSNumber numberWithBool:(listxattr([path UTF8String], NULL, 0) >= 0) ? YES : NO];
+	}
+	if ([key isEqual:NSURLPreferredIOBlockSizeKey]) {
+		struct statfs st;
+
+		if (statfs([path UTF8String], &st) == 0) {
+			return [NSNumber numberWithUnsignedLongLong:(unsigned long long)st.f_bsize];
+		}
+		return nil;
+	}
+	if ([key isEqual:NSURLDirectoryEntryCountKey]) {
+		NSArray *entries = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:path error:NULL];
+
+		return entries != nil ? [NSNumber numberWithUnsignedLongLong:(unsigned long long)[entries count]] : nil;
+	}
+	if ([key isEqual:NSURLVolumeSupportsHardLinksKey] ||
+	    [key isEqual:NSURLVolumeSupportsSparseFilesKey] ||
+	    [key isEqual:NSURLVolumeSupportsFileCloningKey] ||
+	    [key isEqual:NSURLVolumeSupportsExclusiveRenamingKey]) {
+		NSString *fstype = fn_volume_fstype(path);
+		NSNumber *answer = [NSNumber numberWithBool:NO];
+
+		if ([key isEqual:NSURLVolumeSupportsHardLinksKey]) {
+			/* PROVED by the probe: link() succeeds on AGFS - two names, one inode, count 2. */
+			answer = [NSNumber numberWithBool:[fstype isEqual:@"agfs"] ? YES : NO];
+		}
+		/* Sparse files: NO (the gap was charged). Cloning: NO (no cloning interface exists). Exclusive
+		 * renaming: NO (renameat2 answers ENOSYS, measured). */
+		return answer;
+	}
+	if ([key isEqual:NSURLIsPurgeableKey] || [key isEqual:NSURLIsAliasFileKey] ||
+	    [key isEqual:NSURLVolumeIsEncryptedKey]) {
+		/* Each NO is TRUE of the item and its ground is named in the header: nothing here evicts file
+		 * content, the macOS alias format does not exist, and no volume is encrypted. */
+		return [NSNumber numberWithBool:NO];
+	}
+	if ([key isEqual:NSURLVolumeCreationDateKey] || [key isEqual:NSURLFileContentIdentifierKey] ||
+	    [key isEqual:NSURLMayShareFileContentKey] || [key isEqual:NSURLIsPackageKey] ||
+	    [key isEqual:NSURLIsApplicationKey] || [key isEqual:NSURLVolumeIsRemovableKey] ||
+	    [key isEqual:NSURLVolumeIsEjectableKey]) {
+		/* UNAVAILABLE, which is Apple's "the resource property is NOT AVAILABLE for the specified resource,
+		 * and no errors occurred" - the grounds are in the header, measured one by one. */
+		return nil;
 	}
 	if ([key isEqual:NSURLVolumeIsReadOnlyKey] ||
 	    [key isEqual:NSURLVolumeNameKey] || [key isEqual:NSURLVolumeLocalizedNameKey] ||

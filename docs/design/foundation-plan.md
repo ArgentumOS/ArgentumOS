@@ -12852,6 +12852,40 @@ what the third attempt did; a mechanical edit should read the artifact it is edi
 Also: an identical redeclaration of `NSURLFileProtectionType` (already shipped via NSFileManager.h) is legal,
 and the ledger's own "PRESENT BUT LISTED OPEN" note is what said so.
 
+**SLICE 6G LANDED (2026-09-24): THE SUBSTRATE-MEASURED KEYS - MEASURED FIRST, THEN ASSERTED.**
+`foundation_substratekeys`, **8 checks**, green, and **18 keys** ship: the ones that could not be answered from
+the ledger because each needed a fact about the machine. THE PROBE RAN TWICE ON PURPOSE: the first run was an
+INSTRUMENT that printed what the file system does, and the assertions were written FROM those numbers. The
+measurements stay printed beside every check, because a capability claim without its measurement is exactly the
+confident wrong answer the volume section warns about.
+
+**THE MEASUREMENTS, WHICH ARE THE ANSWERS:** a file with a hole is **charged in full** (`size=1048577
+allocated=1049088`, one byte at 0 and one at 1 MiB) so `NSURLIsSparseKey` and `…SupportsSparseFilesKey` are
+NO; `setxattr`/`listxattr`/`getxattr` **all succeed on AGFS** and `listxattr` on a procfs file answers
+**EOPNOTSUPP**, so `NSURLMayHaveExtendedAttributesKey` is ONE key with TWO answers on one machine (YES on the
+root, NO on procfs); the block size is the volume's own `statfs` value (**1024** on the root, **4096** on
+procfs); `link()` really runs - **two names, ONE inode (117255), a link count of 2** - so
+`…SupportsHardLinksKey` is YES; `renameat2(RENAME_NOREPLACE)` answers **ENOSYS** so
+`…SupportsExclusiveRenamingKey` is NO; the entry count is two-sided (**0** for an empty directory, **5** for
+the populated one); and `NSURLIsPurgeableKey`, `NSURLIsAliasFileKey`, `NSURLVolumeIsEncryptedKey` are NO, each
+a TRUE statement with its ground named.
+
+**AND SEVEN ARE UNAVAILABLE - Apple's "the resource property is NOT AVAILABLE for the specified resource, and
+no errors occurred"** - `NSURLVolumeCreationDateKey` (the file system records no volume creation time),
+`NSURLFileContentIdentifierKey` (content identifiers identify clone-shared content; there is no cloning),
+`NSURLMayShareFileContentKey`, `NSURLIsPackageKey`/`NSURLIsApplicationKey` (package identity is a
+Finder/LaunchServices notion: **the build stages `/Applications` EMPTY and the kernel has no bundle marker**,
+both measured), and `NSURLVolumeIsRemovableKey`/`…IsEjectableKey` - these last two being a **NAMED LIMITATION OF
+THE SUBSTRATE**: the device tree publishes removable media as device CLASSES (`Disk/USB`, `Disk/Floppy`), but
+it never associates a MOUNT with its device node, so a USB stick and a fixed disk are indistinguishable
+through it, and a NO we could not stand behind is worse than an honest absence.
+
+**THE INSTRUMENT FOUND ITS OWN BUG, WHICH IS WHAT AN INSTRUMENT IS FOR:** a scratch directory named by PID is
+not unique - the guest image PERSISTS between `make test` runs and pids repeat - so the first hard-link leg hit
+its own file from the previous run (`EEXIST`) and MEASURED NOTHING. The second version names it by pid AND
+microsecond, and the leg then proved what it claimed. A measurement that fails for a reason of the
+instrument's own making looks exactly like a fact about the machine.
+
 **SLICE XML-e LANDED (2026-09-24): THE SIX DTD EVENTS, AND THE DOCUMENT THAT KEEPS AND RE-WRITES ITS DTD -
 WHICH MAKES XML COMPLETE.** `foundation_xmldtdparse` is a NEW probe with **8 checks**, green.
 
