@@ -511,7 +511,35 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   unable to multiply two alpha-only images (it can, measured: cover 255 -> 32 at an edge) and a
   hand-written multiply replaced it, which DOUBLE-applied the clip; and a byte count was assumed able to
   tell a confined fill from a full one, which it cannot when the clip's own bounding box is the
-  surface. The
+  surface.
+  **AND THE APPKIT'S IMAGE SIDE BEGINS WITH THE REPRESENTATION LAYER (C8.9): `NSImageRep` AND
+  `NSBitmapImageRep`.** `NSImageRep` is the metadata every representation has — pixels, points, colour
+  space — plus ONE shared drawing rule; `NSBitmapImageRep` is the rep that OWNS pixels, and the door to
+  Core Graphics both ways (`+imageRepWithData:` decodes PNG and JPEG by SNIFFING the data's own first
+  bytes, `-initWithCGImage:`/`-CGImage` bridge to an image). `-drawInRect:` works for EVERY rep at once
+  because the base implements it once and asks the subclass for `-CGImage` — the same read-through
+  shape the context's properties use. A layout it cannot hold is REFUSED rather than half-accepted (a
+  zero dimension; a planar request, since this rep holds one plane), and a freshly allocated buffer is
+  ZEROED so a first draw cannot depend on what the allocator had.
+  **THE WRITE SIDE IS ABSENT FOR A MEASURED REASON, AND THAT REASON IS THE CONTENT OF THE NOTE:**
+  CoreGraphics in this tree has the two DECODERS and **NO ENCODER** — there is no `CGImageDestination`
+  here, and no libpng/libjpeg write path behind one — so `-representationUsingType:properties:`,
+  `-TIFFRepresentation` and the `NSBitmapImageFileType` enumeration that belongs to them are ABSENT
+  rather than declared-and-refused: there is nothing for a caller to reach, so "no encoder" is the
+  honest surface rather than a stub with a name.
+  **AND ONE STATED DEVIATION CARRIES ITS DESIGN:** a rep built from encoded data is CGIMAGE-BACKED, so
+  `-bitmapData` answers NULL rather than unpacking a second copy of the same bytes. Apple always
+  exposes a bitmap because its decoder always produces one; this layer decodes straight into a
+  `CGImage` because that is the only decoder it has, and copying would be a second owner of the same
+  bytes with no way to say which is authoritative. The probe ASSERTS the NULL rather than hiding it.
+  20 ledger rows credited (2 classes, 6 methods, 11 properties, 1 var) and `--strict` clean.
+  **AND THE FLIP WAS WRONG FIRST IN EXACTLY THE WAY C8.3's WAS:** by (kind, name) alone it credited
+  **37** rows across every owner — including `size` on classes that do not exist in this tree — and the
+  sweep's STALE SHIPPED CLAIM guard caught it on the next run. That guard has now earned its place
+  twice. The flip is OWNER-SCOPED (17 rows), plus the two rows whose owner field is not a class name:
+  `NSImageRep` the class (owned by `-`) and `NSDeviceRGBColorSpace` (indexed under `NSColor`), which are
+  named explicitly rather than swept up.
+  The
   three enums ride with members whose substrate was checked one by one:
   `NSColorRenderingIntent`'s five cases and `NSImageInterpolation`'s five are each a
   one-to-one match for a CoreGraphics enum **that this library does not expose a CONTEXT
