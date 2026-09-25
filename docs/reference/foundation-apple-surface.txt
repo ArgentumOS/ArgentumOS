@@ -28,14 +28,14 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  163   open   33   struck   77
+#   class      shipped  165   open   31   struck   77
 #   protocol   shipped   23   open    8   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped  113   open   30   struck   17
-#   case       shipped  772   open  362   struck  168
+#   enum       shipped  114   open   29   struck   17
+#   case       shipped  774   open  360   struck  168
 #   func       shipped   72   open   63   struck   54
 #   var        shipped  320   open  241   struck  353
-#   typealias  shipped   42   open   27   struck    7
+#   typealias  shipped   43   open   26   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -98,8 +98,8 @@ case	shipped	NSApplicationSupportDirectory	NSFileManager	Files and Data Persiste
 case	struck	NSArgumentEvaluationScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSArgumentsWrongScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSAtomicWrite	NSData	Fundamentals / Binary Data / Writing Data to a File / Legacy Constants	deprecated	objc
-case	open	NSAttributedStringEnumerationLongestEffectiveRangeNotRequired	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text / Getting the enumeration options	-	objc
-case	open	NSAttributedStringEnumerationReverse	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text / Getting the enumeration options	-	objc
+case	shipped	NSAttributedStringEnumerationLongestEffectiveRangeNotRequired	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text / Getting the enumeration options	-	objc
+case	shipped	NSAttributedStringEnumerationReverse	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text / Getting the enumeration options	-	objc
 case	open	NSAttributedStringFormattingApplyReplacementIndexAttribute	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string / Getting the formatting options	-	objc
 case	open	NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string / Getting the formatting options	-	objc
 case	open	NSAttributedStringMarkdownInterpretedSyntaxFull	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Syntax Values	-	objc
@@ -1346,7 +1346,7 @@ class	struck	NSAppleScript		App Support / Script Execution	declined	objc
 class	struck	NSArchiver		Files and Data Persistence / Deprecated	deprecated	objc
 class	shipped	NSArray		Fundamentals / Basic Collections	-	objc
 class	shipped	NSAssertionHandler		App Support / Assertions	-	objc
-class	open	NSAttributedString		Fundamentals / Strings with Metadata	-	objc
+class	shipped	NSAttributedString		Fundamentals / Strings with Metadata	-	objc
 class	open	NSAttributedStringMarkdownParsingOptions		Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown	-	objc
 class	open	NSAttributedStringMarkdownSourcePosition		Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 class	shipped	NSAutoreleasePool		Low-Level Utilities / Memory Management	-	objc
@@ -1456,7 +1456,7 @@ class	struck	NSMorphologyCustomPronoun		Fundamentals / Automatic grammar agreeme
 class	open	NSMorphologyPronoun		Fundamentals / Automatic grammar agreement	-	objc
 class	struck	NSMoveCommand		App Support / Script Commands	declined	objc
 class	shipped	NSMutableArray		Fundamentals / Basic Collections	-	objc
-class	open	NSMutableAttributedString		Fundamentals / Strings with Metadata	-	objc
+class	shipped	NSMutableAttributedString		Fundamentals / Strings with Metadata	-	objc
 class	shipped	NSMutableCharacterSet		Fundamentals / Characters	-	objc
 class	shipped	NSMutableData		Fundamentals / Binary Data	-	objc
 class	shipped	NSMutableDictionary		Fundamentals / Basic Collections	-	objc
@@ -1615,7 +1615,7 @@ class	struck	NSXPCListenerEndpoint		Low-Level Utilities / XPC Services	declined	
 enum	shipped	NSActivityOptions	NSProcessInfo	App Support / System Interaction / Managing activities	-	objc
 enum	shipped	NSAlignmentOptions		Fundamentals / Geometry / Related Types	-	objc
 enum	struck	NSAppleEventSendOptions	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types	declined	objc
-enum	open	NSAttributedStringEnumerationOptions	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
+enum	shipped	NSAttributedStringEnumerationOptions	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
 enum	open	NSAttributedStringFormattingOptions	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 enum	open	NSAttributedStringMarkdownInterpretedSyntax	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
 enum	open	NSAttributedStringMarkdownParsingFailurePolicy	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
@@ -2274,7 +2274,7 @@ struct	shipped	NSSwappedDouble		Low-Level Utilities / Byte Ordering / Constants	
 struct	shipped	NSSwappedFloat		Low-Level Utilities / Byte Ordering / Constants	-	objc
 typealias	struck	NSAppleEventManagerSuspensionID	NSAppleEventManager	App Support / Apple Event Handling / Suspending and resuming Apple events	declined	objc
 typealias	open	NSAttributedStringFormattingContextKey		Reference / Type Aliases	-	objc
-typealias	open	NSAttributedStringKey	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes	-	objc
+typealias	shipped	NSAttributedStringKey	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes	-	objc
 typealias	open	NSBackgroundActivityCompletionHandler	NSBackgroundActivityScheduler	App Support / System Interaction / Scheduling Activity	-	objc
 typealias	open	NSCalendarIdentifier	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars	-	objc
 typealias	open	NSComparator	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
