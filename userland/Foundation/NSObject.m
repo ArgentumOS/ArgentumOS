@@ -13,6 +13,8 @@
 
 #import <Foundation/NSObject.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <stdio.h>
 #include <stdlib.h>
 #import <Foundation/NSString.h>	/* -description has to return one */
 #import <Foundation/NSByteOrder.h>	/* the byte-order family (W2c) */
@@ -231,8 +233,18 @@ extern id object_dispose(id obj);
 	 * class killed a guest probe instead of reporting itself. Apple's page for this method names the
 	 * exception, and this library has an exception class, so the contract is the one to keep. The message
 	 * keeps the shape the old fprintf had, so every trace that already quotes it still matches. */
-	fprintf(stderr, "Foundation: -[%s %s] is not implemented\n",
-		class_getName(object_getClass(self)), sel_getName(aSelector));
+	/* ON write(2) AND NOT fprintf: this library's printf family produces NOTHING (a recorded property), so a
+	 * message that only fprintf writes is a message nobody sees - which is exactly how an unimplemented
+	 * selector came to abort a probe silently. The raw descriptor is the channel that reaches the console. */
+	{
+		char line[192];
+		int n = snprintf(line, sizeof line, "Foundation: -[%s %s] is not implemented\n",
+			class_getName(object_getClass(self)), sel_getName(aSelector));
+
+		if (n > 0) {
+			(void)write(2, line, (size_t)n);
+		}
+	}
 	[NSException raise:NSInvalidArgumentException
 		    format:@"-[%s %s] is not implemented",
 			   class_getName(object_getClass(self)), sel_getName(aSelector)];

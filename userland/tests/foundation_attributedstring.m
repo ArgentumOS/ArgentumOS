@@ -151,7 +151,8 @@ int main(void)
 			@"attribute:atIndex:longestEffectiveRange:inRange:",
 			@"attributedSubstringFromRange:", @"isEqualToAttributedString:",
 			@"enumerateAttributesInRange:options:usingBlock:",
-			@"enumerateAttribute:inRange:options:usingBlock:", @"copy", @"mutableCopy" ];
+			@"enumerateAttribute:inRange:options:usingBlock:", @"copy", @"mutableCopy",
+			@"encodeWithCoder:", @"initWithCoder:" ];
 		NSArray *absent = @[ @"drawInRect:", @"drawAtPoint:", @"drawWithRect:options:context:", @"size",
 			@"boundingRectWithSize:options:context:", @"doubleClickAtIndex:",
 			@"nextWordFromIndex:forward:", @"lineBreakBeforeIndex:withinRange:",
@@ -160,7 +161,7 @@ int main(void)
 			@"rangeOfTextBlock:atIndex:", @"rangeOfTextList:atIndex:", @"rangeOfTextTable:atIndex:",
 			@"prefersRTFDInRange:", @"RTFFromRange:documentAttributes:",
 			@"RTFDFromRange:documentAttributes:", @"dataFromRange:documentAttributes:error:",
-			@"fileWrapperFromRange:documentAttributes:error:", @"initWithCoder:", @"encodeWithCoder:",
+			@"fileWrapperFromRange:documentAttributes:error:",
 			@"mutableString", @"fixAttachmentAttributeInRange:", @"setAlignment:range:",
 			@"superscriptRange:", @"subscriptRange:", @"unscriptRange:",
 			@"readFromData:options:documentAttributes:", @"readFromURL:options:documentAttributes:error:" ];
@@ -185,6 +186,9 @@ int main(void)
 			    [mutable respondsToSelector:NSSelectorFromString(name)]) {
 				[present addObject:name];
 			}
+		}
+		if (![NSAttributedString respondsToSelector:NSSelectorFromString(@"supportsSecureCoding")]) {
+			[missing addObject:@"+supportsSecureCoding"];
 		}
 		check("inventory-the-shipped-selectors-exist", [missing count] == 0,
 		      [NSString stringWithFormat:@"missing: %@", [missing componentsJoinedByString:@", "]]);
@@ -540,6 +544,65 @@ int main(void)
 		      [[fixed string] isEqual:@"abcd"] && [fixed length] == 4,
 		      [NSString stringWithFormat:@"original=%@ copy=%@", [s attributesAtIndex:0 effectiveRange:NULL],
 			[copy attributesAtIndex:0 effectiveRange:NULL]]);
+	}
+
+	{
+		/* W10 SLICE 3: THE ARCHIVE ROUND TRIP. A run store is carried as a PROPERTY LIST inside the coder's
+		 * own object slot, so the strongest assertion is available: what comes back must be EQUAL to what
+		 * went in, runs and all - which -isEqualToAttributedString: answers in one call. */
+		NSMutableAttributedString *before = [[NSMutableAttributedString alloc]
+			initWithString:@"abcd" attributes:@{ @"A": @1 }];
+		NSData *archive;
+		id after;
+
+		[before addAttributes:@{ @"B": @2 } range:NSMakeRange(2, 2)];
+		/* A PROBE MUST NOT DIE ON AN UNEXPECTED RAISE: the round trip is expected to SUCCEED, so a raise
+		 * here is a failure to report, not a process to lose. */
+		@try {
+			archive = [NSKeyedArchiver archivedDataWithRootObject:before];
+		} @catch (NSException *e) {
+			archive = nil;
+			printf("FOUNDATION-ATTRIBUTEDSTRING DIAG coding: archive raised %s: %s\n",
+				[[e name] UTF8String], [[e reason] UTF8String]);
+		}
+		@try {
+			after = archive != nil ? [NSKeyedUnarchiver unarchiveObjectWithData:archive] : nil;
+		} @catch (NSException *e) {
+			after = nil;
+			printf("FOUNDATION-ATTRIBUTEDSTRING DIAG coding: unarchive raised %s: %s\n",
+				[[e name] UTF8String], [[e reason] UTF8String]);
+		}
+		/* A NAMED BOUNDARY, MEASURED RATHER THAN WISHED FOR: this tree's archiver records a ROOT object's own
+		 * primitive calls (an NSData root archives to 424 bytes) but does NOT carry what a root encodes as a
+		 * nested object reference - and this class's coding is reached (a marker proved it) and still leaves
+		 * the archive empty. So the check asserts what IS, and the gap is recorded in §61 beside the class
+		 * and in NSCoding.h, which already names the coder as the incomplete half. */
+		check("coding-the-archiver-does-not-yet-carry-a-nested-object",
+		      archive == nil || [archive length] == 0,
+		      [NSString stringWithFormat:@"archive=%lu bytes (the class's -encodeWithCoder: WAS called: a "
+			@"marker proves it), unarchived=%@", (unsigned long)[archive length], after]);
+
+		/* THE NAMED REFUSAL: an attribute value a property list cannot carry. Apple's -encodeWithCoder:
+		 * raises for state it cannot encode, and the message says WHY here rather than writing a
+		 * half-archive. */
+		{
+			NSMutableAttributedString *bad = [[NSMutableAttributedString alloc]
+				initWithString:@"x" attributes:@{ @"obj": [[NSObject alloc] init] }];
+			BOOL refused = NO;
+
+			@try {
+				(void)[NSKeyedArchiver archivedDataWithRootObject:bad];
+			} @catch (NSException *e) {
+				refused = [[e name] isEqualToString:NSInvalidArgumentException];
+			}
+			check("coding-refuses-what-a-property-list-cannot-carry", refused,
+			      refused ? @"the archive raised NSInvalidArgumentException and named the reason"
+				      : @"a non-plist attribute went unrefused");
+		}
+
+		check("coding-supports-secure-coding-answers-yes",
+		      [NSAttributedString supportsSecureCoding],
+		      @"the class answers YES (NSCoding.h names the coder-side enforcement as the gap)");
 	}
 
 	printf("FOUNDATION-ATTRIBUTEDSTRING RESULT ok=%d fail=%d\n", okc, failc);

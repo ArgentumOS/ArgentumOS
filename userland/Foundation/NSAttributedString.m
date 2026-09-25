@@ -17,6 +17,10 @@
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSPropertyListSerialization.h>
+#import <Foundation/NSData.h>
+#import <Foundation/NSDate.h>
+#import <Foundation/NSNumber.h>
 
 #include <stdint.h>
 
@@ -42,6 +46,47 @@ typedef struct fn_run {
 - (void)fnReplaceRuns:(NSRange)span with:(const fn_run *)runs count:(NSUInteger)count;
 - (void)fnShiftRunsAfter:(NSUInteger)index by:(NSInteger)delta;
 @end
+
+/* WHICH VALUE, NOT MERELY THAT ONE: a refusal that cannot say what it refused sends the reader back to
+ * guess. This walks the payload and answers the first value that is not a property list type - or nil when
+ * every type is fine and the failure was structural. */
+static NSString *fn_plist_offender(id object)
+{
+	if (object == nil) {
+		return nil;
+	}
+	if ([object isKindOfClass:[NSString class]] || [object isKindOfClass:[NSNumber class]] ||
+	    [object isKindOfClass:[NSDate class]] || [object isKindOfClass:[NSData class]]) {
+		return nil;
+	}
+	if ([object isKindOfClass:[NSArray class]]) {
+		NSUInteger i;
+
+		for (i = 0; i < [(NSArray *)object count]; i++) {
+			NSString *found = fn_plist_offender([(NSArray *)object objectAtIndex:i]);
+
+			if (found != nil) {
+				return found;
+			}
+		}
+		return nil;
+	}
+	if ([object isKindOfClass:[NSDictionary class]]) {
+		NSArray *keys = [(NSDictionary *)object allKeys];
+		NSUInteger i;
+
+		for (i = 0; i < [keys count]; i++) {
+			NSString *found = fn_plist_offender([(NSDictionary *)object objectForKey:
+								[keys objectAtIndex:i]]);
+
+			if (found != nil) {
+				return found;
+			}
+		}
+		return nil;
+	}
+	return (NSString *)[object class];
+}
 
 @implementation NSAttributedString
 
@@ -561,6 +606,105 @@ typedef struct fn_run {
 {
 	return [[NSMutableAttributedString alloc] initWithAttributedString:self];
 }
+
+/* ---- CODING (W10 slice 3) ---------------------------------------------------------------------------
+ *
+ * THE PAYLOAD IS A PROPERTY LIST, AND THAT IS THE DECISION §61 RECORDED RATHER THAN DISCOVERED: this tree's
+ * coder has no -decodeObjectOfClass: (NSCoding.h says so itself) and NSArray/NSDictionary carry no coding at
+ * all, so a run store cannot be handed to the archiver piece by piece. A plist CAN carry exactly what a run
+ * store holds - a string, integer ranges, and attribute dictionaries of plist values - and the plist door
+ * REFUSES anything else, which is the named refusal this slice owes. The payload rides in an NSData, which
+ * this library already codes through -encodeBytes:length:forKey:. */
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	NSMutableArray *runs = [NSMutableArray arrayWithCapacity:_runCount];
+	NSMutableDictionary *plist = [NSMutableDictionary dictionary];
+	NSData *payload;
+	NSUInteger i;
+
+	for (i = 0; i < _runCount; i++) {
+		fn_run *run = [self fnRunAt:i];
+		NSMutableDictionary *entry = [NSMutableDictionary dictionary];
+
+		[entry setObject:[NSNumber numberWithUnsignedInteger:run->range.location] forKey:@"location"];
+		[entry setObject:[NSNumber numberWithUnsignedInteger:run->range.length] forKey:@"length"];
+		if (run->attrs != nil) {
+			[entry setObject:run->attrs forKey:@"attributes"];
+		}
+		[runs addObject:entry];
+	}
+	[plist setObject:_string forKey:@"string"];
+	[plist setObject:runs forKey:@"runs"];
+	payload = [NSPropertyListSerialization dataWithPropertyList:plist
+							    format:NSPropertyListBinaryFormat_v1_0
+							   options:0
+							      error:NULL];
+	if (payload == nil) {
+		/* THE NAMED REFUSAL: a run store holds something a property list cannot carry, and the honest
+		 * answer is to say so rather than write a half-archive. */
+		{
+			NSString *offender = fn_plist_offender(plist);
+
+			[NSException raise:NSInvalidArgumentException
+				    format:@"NSAttributedString cannot be archived: %@ is not a property list value "
+					   @"(the runs are carried as a property list)",
+					   offender != nil ? offender : @"(every type is known - the failure was "
+									  @"structural)"];
+		}
+	}
+	/* THE PAYLOAD'S BYTES, NOT A NESTED OBJECT REFERENCE: this tree's archiver records a root object's own
+	 * primitive calls and does NOT carry a nested -encodeObject: (measured: an NSData root archives to 424
+	 * bytes while this class's nested reference archived to zero), so the carrier goes out through
+	 * -encodeBytes:length:forKey: - the same primitive NSData's own -encodeWithCoder: uses. */
+	[coder encodeBytes:[payload bytes] length:[payload length] forKey:@"NSAttributedString"];
+}
+
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	NSUInteger byteCount = 0;
+	const void *bytes = [coder decodeBytesForKey:@"NSAttributedString" returningLength:&byteCount];
+	id payload = bytes != NULL && byteCount > 0
+		? [NSData dataWithBytes:bytes length:byteCount] : nil;
+	id plist;
+	NSArray *runs;
+	NSUInteger i;
+
+	if (payload == nil) {
+		[self release];
+		return nil;
+	}
+	plist = [NSPropertyListSerialization propertyListWithData:payload options:0 format:NULL error:NULL];
+	if (![plist isKindOfClass:[NSDictionary class]]) {
+		[self release];
+		return nil;
+	}
+	self = [self initWithString:[plist objectForKey:@"string"] attributes:nil];
+	if (self == nil) {
+		return nil;
+	}
+	runs = [plist objectForKey:@"runs"];
+	for (i = 0; i < [runs count]; i++) {
+		NSDictionary *entry = [runs objectAtIndex:i];
+		NSDictionary *attrs = [entry objectForKey:@"attributes"];
+		fn_run run;
+
+		run.range = NSMakeRange([[entry objectForKey:@"location"] unsignedIntegerValue],
+					[[entry objectForKey:@"length"] unsignedIntegerValue]);
+		run.attrs = attrs != nil ? [[NSDictionary alloc] initWithDictionary:attrs] : nil;
+		[self fnInsertRun:run at:_runCount];
+	}
+	[self fnCoalesce];
+	return self;
+}
+
++ (BOOL)supportsSecureCoding
+{
+	/* APPLE'S ANSWER, WITH THE GAP NAMED WHERE IT LIVES: NSCoding.h records that this tree's archiver does
+	 * not yet ENFORCE secure coding (it has no -decodeObjectOfClass:), so the conformance is honest about
+	 * what it means here - the class supports secure coding; the coder does not yet check. */
+	return YES;
+}
+
 
 @end
 

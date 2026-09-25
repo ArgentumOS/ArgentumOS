@@ -33,6 +33,7 @@
  */
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSCoding.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -51,7 +52,11 @@ typedef enum {
 	NSAttributedStringEnumerationReverse = 1 << 1
 } NSAttributedStringEnumerationOptions;
 
-@interface NSAttributedString : NSObject <NSCopying, NSMutableCopying>
+/* CODING: the class conforms on Apple's page (NSCoding + NSSecureCoding), and the payload travels as a
+ * PROPERTY LIST - see the .m for why that is the decision rather than a shortcut. THE ENFORCEMENT IS THE
+ * CODER'S GAP, NAMED IN NSCoding.h: it has no -decodeObjectOfClass:, so +supportsSecureCoding answers YES
+ * while the archiver does not yet check. */
+@interface NSAttributedString : NSObject <NSCopying, NSMutableCopying, NSCoding, NSSecureCoding>
 {
 @protected		/* the mutable subclass works on the same store, which is the whole point of the split */
 	NSString *_string;
@@ -81,6 +86,10 @@ typedef enum {
 		  atIndex:(NSUInteger)location
     longestEffectiveRange:(nullable NSRangePointer)range
 		  inRange:(NSRange)rangeLimit;
+
+- (void)encodeWithCoder:(NSCoder *)coder;
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
++ (BOOL)supportsSecureCoding;
 
 - (NSAttributedString *)attributedSubstringFromRange:(NSRange)range;
 - (BOOL)isEqualToAttributedString:(NSAttributedString *)other;

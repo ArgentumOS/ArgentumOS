@@ -12972,6 +12972,29 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §61.2 — W10 SLICE 3 (CODING) LANDED WITH A MEASURED BOUNDARY (2026-09-24)
+
+`NSAttributedString` now declares and implements `NSCoding` and `NSSecureCoding`: `-encodeWithCoder:` carries
+the run store as a **PROPERTY LIST** (this was §61's decision, not a shortcut - this tree's coder has no
+`-decodeObjectOfClass:`, and `NSArray`/`NSDictionary` carry no coding at all, so a run store cannot be handed
+to the archiver piece by piece), and a run store holding something a property list cannot carry raises
+`NSInvalidArgumentException` **NAMING THE VALUE'S CLASS** - the named refusal §61 promised. `+supportsSecureCoding`
+answers YES, with `NSCoding.h`'s recorded coder-side gap referenced rather than implied.
+
+**AND THE ARCHIVER TURNED OUT TO BE THE INCOMPLETE HALF, MEASURED RATHER THAN ASSUMED.** The probe asserts a
+NAMED BOUNDARY instead of a round trip, because that is what the machine does: `-encodeWithCoder:` IS called
+(a `write(2)` marker inside it proved so) and the archive still comes back **empty**, while an `NSData` root -
+whose own coding goes out through `-encodeBytes:length:forKey:` - archives to 424 bytes. So **this archiver
+records a ROOT object's own primitive calls and does not carry what a root encodes as a NESTED OBJECT
+REFERENCE**, including through `-encodeBytes:` inside that root. What the class owes is therefore done; what the
+route needs is the archiver's object table, and that is now a named gap with its two control measurements
+rather than a mystery.
+
+**AND ONE LIBRARY BLINDNESS WAS CURED ON THE WAY:** `-doesNotRecognizeSelector:` printed its message with
+`fprintf`, and **this library's printf family produces nothing** (a recorded property), so every missing-method
+message in the tree was going to a dead descriptor - which is why two of today's aborts were silent. It goes
+out on `write(2)` now, with the class and the selector, and it found its first two culprits within the hour.
+
 ## §61.1 — W10 SLICE 1 LANDED (2026-09-24): THE RUN STORE, AND THE BUG THAT TOOK THE LONGEST
 
 `foundation_attributedstring` is a NEW probe with **18 checks**, green, and the two classes ship: the

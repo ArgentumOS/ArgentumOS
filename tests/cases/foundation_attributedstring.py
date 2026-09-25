@@ -34,7 +34,10 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_attributedstring"
-CHECKS = ("primitives-a-store-owns-what-it-was-given",
+CHECKS = ("coding-the-archiver-does-not-yet-carry-a-nested-object",
+          "coding-refuses-what-a-property-list-cannot-carry",
+          "coding-supports-secure-coding-answers-yes",
+          "primitives-a-store-owns-what-it-was-given",
           "primitives-dictionaries-behave-as-the-store-assumes",
           "primitives-constructors-do-not-alias-their-source",
           "inventory-the-shipped-selectors-exist", "inventory-the-boundaries-are-absent",
