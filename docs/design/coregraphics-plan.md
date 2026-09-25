@@ -563,6 +563,27 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   from the start, and `--strict` is clean on the first try — which is what C8.3's and C8.9's double flip
   bought: the rule is now "flip the rows the tool NAMES, restricted to the owners this tree ships",
   and the rows owned by classes that do not exist here stay open.
+  **AND THE CLASSIC IDIOM ARRIVES (C8.11): `-lockFocus`/`-unlockFocus`, THE OFFSCREEN CANVAS.** It is the
+  reason `NSImage` is useful without a window: `-lockFocus` makes a canvas of the image's SIZE, makes a
+  context over it, and makes that context CURRENT; `-unlockFocus` puts the previous context back and
+  turns the canvas into a representation. Everything the AppKit has learned so far — the context, a
+  colour, a path, a clip — composes into it.
+  **AND IT IS WHERE THE FORMAT DISAGREEMENT HAD TO BE PAID, WHICH IS WHY IT WAS ITS OWN SLICE:** this
+  tree's bitmap context is premultiplied-FIRST little-endian (BGRA in memory, a stated refusal in
+  `CGBitmapContextCreate`) while a rep's image is premultiplied-LAST (RGBA), so the canvas is TWO
+  buffers and the swizzle happens ONCE, at unlock, rather than on a per-draw path. **THE PROBE'S PROOF
+  IS RED IN, RED OUT**, because that is the failure that would otherwise be silent: a backwards swizzle
+  reads red as BLUE and every other check in this family would still pass.
+  THREE CONSEQUENCES ARE NAMED RATHER THAN LEFT TO BE DISCOVERED: a canvas is **1 pixel per point**
+  (Apple scales by the destination screen's scale factor, and this layer has no screen to ask);
+  `-lockFocus` on an image with **no size is refused by name** rather than making a zero-pixel canvas;
+  and `-unlockFocus` with no lock is a **no-op** rather than a raise. A second focus **REPLACES** the
+  previous canvas — its rep goes and its buffer with it, because the rep BORROWS the buffer and keeping
+  one without the other is a dangling pointer rather than a leak; the probe checks the count stays 1.
+  **A SLICE WITH NO LEDGER ROWS, FOR A MEASURED REASON:** `lockFocus`/`unlockFocus` are absent from the
+  extracted surface entirely (grep: zero rows), so there is nothing to flip and `--strict` is clean
+  without a flip — which is the first time that has been true here, and it is a fact about the ledger
+  rather than a choice.
   The
   three enums ride with members whose substrate was checked one by one:
   `NSColorRenderingIntent`'s five cases and `NSImageInterpolation`'s five are each a

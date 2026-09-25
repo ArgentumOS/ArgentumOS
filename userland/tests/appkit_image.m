@@ -220,6 +220,78 @@ int main(void)
 		}
 	}
 
+		/* --- THE OFFSCREEN CANVAS: -lockFocus / -unlockFocus ------------------------------- */
+		/* THE CHANNEL SWIZZLE IS THE THING THAT COULD BE SILENTLY WRONG, so the check that matters
+		 * most here is RED IN, RED OUT: this tree's bitmap context is premultiplied-FIRST
+		 * little-endian (BGRA in memory) and a rep's image is premultiplied-LAST (RGBA), so a
+		 * backwards swizzle reads red as BLUE and every other check would still pass. */
+		{
+			NSImage *canvas;
+			CGContextRef outer;
+			NSGraphicsContext *gctx, *inner;
+
+			memset(surf, 0, sizeof(surf));
+			outer = make_context();
+			gctx = [NSGraphicsContext graphicsContextWithCGContext:outer flipped:NO];
+			[NSGraphicsContext setCurrentContext:gctx];
+
+			canvas = [[NSImage alloc] initWithSize:NSMakeSize(8.0, 8.0)];
+			[canvas lockFocus];
+			inner = [NSGraphicsContext currentContext];
+			check("-lockFocus makes a DIFFERENT context current (the canvas, not the caller's)",
+			      inner != nil && inner != gctx);
+			check("...with a real CGContext behind it", [inner CGContext] != NULL);
+			check("...and the image is still INVALID while the canvas is open, because nothing is "
+			      "committed yet", ![canvas isValid]);
+
+			/* DRAW RED INTO THE CANVAS. */
+			CGContextSetRGBFillColor([inner CGContext], 1.0, 0.0, 0.0, 1.0);
+			CGContextFillRect([inner CGContext], CGRectMake(0.0, 0.0, 8.0, 8.0));
+			check("...and the CALLER's surface is untouched while the canvas is the current context",
+			      surf[0] == 0 && surf[1] == 0 && surf[2] == 0 && surf[3] == 0);
+
+			[canvas unlockFocus];
+			check("unlocking puts the PREVIOUS context back", [NSGraphicsContext currentContext] == gctx);
+			check("...and the image is VALID now, because the canvas became a representation",
+			      [canvas isValid]);
+			check_num("...holding exactly ONE representation",
+				  (double)[[canvas representations] count], 1.0, 0.0);
+
+			/* *** THE SWIZZLE PROOF *** */
+			memset(surf, 0, sizeof(surf));
+			check("...and drawing it puts pixels on a surface",
+			      [canvas drawInRect:NSMakeRect(0.0, 0.0, (CGFloat)W, (CGFloat)H)]);
+			pixel(W / 2, H / 2, p);
+			check("...with the RED still RED — a backwards channel swizzle would read it as BLUE",
+			      p[2] == 0xff && p[1] == 0x00 && p[0] == 0x00);
+			check("...and opaque", p[3] == 0xff);
+
+			/* A SECOND FOCUS REPLACES THE FIRST RATHER THAN PILING REPS UP. */
+			[canvas lockFocus];
+			check("a second -lockFocus opens the canvas again",
+			      [NSGraphicsContext currentContext] != gctx);
+			[canvas unlockFocus];
+			check_num("...and REPLACES the previous canvas rather than accumulating reps",
+				  (double)[[canvas representations] count], 1.0, 0.0);
+			[NSGraphicsContext setCurrentContext:nil];
+			CGContextRelease(outer);
+			[canvas release];
+		}
+
+		/* --- AND THE REFUSAL AND THE NO-OP, WHICH ARE THE EDGES ------------------------------ */
+		{
+			NSImage *empty = [NSImage image];
+
+			[NSGraphicsContext setCurrentContext:nil];
+			[empty lockFocus];
+			check("-lockFocus on an image with NO size is REFUSED rather than making a 0-pixel canvas",
+			      [NSGraphicsContext currentContext] == nil);
+			[empty unlockFocus];
+			[empty unlockFocus];
+			check("...and -unlockFocus with no lock is a no-op however often it is called", YES);
+			check("...leaving the image invalid", ![empty isValid]);
+		}
+
 	printf("APPKIT-IMAGE: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

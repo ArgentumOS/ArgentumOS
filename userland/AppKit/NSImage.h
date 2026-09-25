@@ -44,6 +44,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @class NSGraphicsContext;
+@class NSBitmapImageRep;
 
 @interface NSImage : NSObject
 {
@@ -52,6 +53,19 @@ NS_ASSUME_NONNULL_BEGIN
 	NSArray *_reps;
 	NSSize _size;
 	BOOL _sizeIsExplicit;
+	/* THE OFFSCREEN CANVAS, AND THERE ARE TWO BUFFERS ON PURPOSE. `_canvas` is what the bitmap context
+	 * was created OVER, in this tree's premultiplied-FIRST little-endian format; `_focusBuffer` is the
+	 * CHANNEL-SWIZZLED copy that a representative BORROWS, in the premultiplied-LAST order a rep is
+	 * built with. The two layers disagree about channel order and neither one can un-disagree, so the
+	 * swizzle happens once, at `-unlockFocus`, rather than on a per-draw path. */
+	unsigned char *_canvas;
+	unsigned char *_focusBuffer;
+	NSInteger _focusW;
+	NSInteger _focusH;
+	CGContextRef _focusContext;
+	NSGraphicsContext *_focusGState;       /* RETAINED while locked */
+	NSGraphicsContext *_gstatePrevious;    /* RETAINED, to put back at -unlockFocus */
+	NSBitmapImageRep *_focusRep;           /* NOT RETAINED HERE: the representation list owns it */
 }
 
 /* AN EMPTY CANVAS — no representations, no size, `-isValid` NO. */
@@ -87,6 +101,18 @@ NS_ASSUME_NONNULL_BEGIN
  * Both answer NO when there is nothing to draw rather than raising. */
 - (BOOL)drawAtPoint:(NSPoint)point;
 - (BOOL)drawInRect:(NSRect)rect;
+
+/* THE OFFSCREEN CANVAS, WHICH IS THE CLASSIC APPKIT IDIOM AND THE REASON THIS CLASS DOES NOT NEED A
+ * WINDOW TO BE USEFUL: `-lockFocus` makes a canvas of the image's SIZE, makes a context over it, and
+ * makes that context CURRENT; `-unlockFocus` puts the previous context back and turns the canvas into a
+ * representation. The pixels drawn in between are the image.
+ *
+ * A CANVAS IS ONE PIXEL PER POINT HERE (1:1), which is a stated simplification: Apple scales by the
+ * destination screen's scale factor, and this layer has no screen to ask. `-lockFocus` on an image with
+ * no size is REFUSED by name rather than making a zero-pixel canvas, and `-unlockFocus` without a lock
+ * is a no-op rather than a raise. */
+- (void)lockFocus;
+- (void)unlockFocus;
 
 @end
 
