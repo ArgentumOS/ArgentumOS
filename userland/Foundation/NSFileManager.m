@@ -1085,6 +1085,19 @@ typedef enum {
 					       errorHandler:handler] autorelease];
 }
 
+- (void)getFileProviderServicesForItemAtURL:(NSURL *)url
+			  completionHandler:(void (^)(NSDictionary *, NSError *))completionHandler
+{
+	if (completionHandler == NULL) {
+		return;
+	}
+	(void)url;
+	/* EMPTY, AND CALLED: no file provider extension can be registered for an item on this system, so the
+	 * set of services is empty - and the caller is TOLD, which is the difference between an empty answer
+	 * and no answer. */
+	completionHandler([NSDictionary dictionary], nil);
+}
+
 - (nullable NSDictionary *)attributesOfFileSystemForPath:(NSString *)path
 						   error:(NSError ** _Nullable)error
 {

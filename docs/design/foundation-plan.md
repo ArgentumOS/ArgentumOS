@@ -3482,7 +3482,7 @@ vanishing.
 | **Files and Data Persistence / App-specific settings** | all classes shipped | — |
 | **Files and Data Persistence / Coordinated file access** | all classes shipped | — |
 | **Files and Data Persistence / Deprecated** | ALL STRUCK: `NSArchiver`, `NSUnarchiver` | — |
-| **Files and Data Persistence / File system operations** | 1 open | `NSFileProviderService` |
+| **Files and Data Persistence / File system operations** | all classes shipped | — |
 | **Files and Data Persistence / Items** | ALL STRUCK: `NSMetadataItem` | — |
 | **Files and Data Persistence / JSON** | all classes shipped | — |
 | **Files and Data Persistence / Keyed Archivers** | all classes shipped | — |
@@ -12617,9 +12617,39 @@ landed, the build was GREEN, and the test run answered NOTHING AT ALL - because 
 written**. That is 7b's trap ("a probe with no rule in `mk/` is not a probe") seen from the other end: **the
 probe, its rule and its case are ONE deliverable**, and a green build says nothing about the third leg.
 
-**WHAT REMAINS IN W8 IS ONE CLASS AND FOUR DEBTS:** `NSFileProviderService`, and the coordinator family's
-measurement debts (the deferred handshake, the in-wait half of `-cancel`, the presenter-queue design, and
-the `make test`-level timing mystery which the plan has already corrected twice).
+**SLICE 9 LANDED (2026-09-24): `NSFileProviderService` - AND WITH IT W8 IS COMPLETE.**
+`foundation_fileproviderservice` is a NEW probe with **4 checks**, green on the first run.
+
+**THE CLASS'S SUBJECT IS A SUBSYSTEM THIS SYSTEM DOES NOT HAVE, AND THE PROBE'S JOB IS THAT THE ABSENCE IS
+ANSWERED RATHER THAN HIDDEN.** Apple's abstract: "a service that provides a custom communication channel
+between your app and a File Provider extension" - and its published surface is TWO members. The lookup is
+where Apple puts it: **NSFileManager's `-getFileProviderServicesForItemAtURL:completionHandler:`**, and this
+system's answer is an **EMPTY DICTIONARY WITH THE HANDLER CALLED** - "no file provider service is registered
+for this item" is exactly what an extensionless system can say, and CALLING BACK is the difference between
+an empty answer and no answer. The connection door is **REFUSED BY NAME**: "the custom communication
+channel" is an `NSXPCConnection`, this system has no XPC, so it answers nil WITH an error - **which is the
+reason the class is worth declaring at all: a program can ASK, and finds out.** And the two members are
+reachable on the one object a caller can hold (one it made), which the probe does, so nothing here is a
+declaration no check can reach.
+
+**W8 IS COMPLETE, AND THE TOTAL IS CHECKABLE RATHER THAN ASSERTED.** The unit's nine slices, each with its
+landed probe and its checks: `NSDirectoryEnumerator` **29**, the URL resource values **27**,
+`NSFileManagerDelegate` **18**, `NSFileManager`'s member rows **25**, `NSFileWrapper` **18**,
+`NSFileSecurity` **7**, `NSFileAccessIntent` **6**, `NSFileCoordinator` **9**, `NSFilePresenter` **18**,
+`NSFileVersion` **9**, `NSFileProviderService` **4** - **170 checks over eleven probes**, every one green in
+a QEMU guest, with the ledger's own rows flipped as each declaration landed.
+
+**AND WHAT W8 LEAVES BEHIND IS NAMED RATHER THAN TIDY, WHICH IS THE POINT OF HAVING KEPT THE LEDGERS:**
+ * **two register rows**: §11.6.1 **D13** (`NSFileSecurity` is Apple's stub, and the CFFileSecurity facts
+   have no substrate here) and **D14** (the coordinator family's boundary in three parts);
+ * **four measurement debts**: the DEFERRED handshake and the IN-WAIT half of `-cancel` (both blocked on the
+   same instrument - making a presenter answer late trips a guest trap), the presenter's
+   `-presentedItemOperationQueue` design with its deadlock question, and the `make test`-level timing
+   mystery about one `/System` run that this plan has already corrected TWICE and whose next approach
+   should start from the timed A/B rather than from its own prose;
+ * **the unit's own open rows**: W8p's remaining masses (the ubiquitous, thumbnail and quarantine keys and
+   the mount-table-backed volume keys), each with the ground it needs recorded where the family was
+   measured.
 
 **AFTER THE FAMILY:** `NSFileVersion` and `NSFileProviderService`, and still standing beside them the two
 items this unit has named and not closed - `NSDirectoryEnumerator`'s now-empty option word, and the

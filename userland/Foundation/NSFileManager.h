@@ -419,6 +419,15 @@ typedef enum {
 					     options:(NSUInteger)options
 					errorHandler:(nullable BOOL (^)(NSURL *url, NSError *error))handler;
 
+/* THE LOOKUP FOR A FILE PROVIDER'S SERVICES (W8 slice 9), and it is Apple's own home for it: the SERVICE
+ * object's page has two members and neither of them is this one. What this system answers is EMPTY, and
+ * that is the postcondition rather than a degradation - a file provider extension is a subsystem this
+ * system does not have, so there is no service to return for any item. The handler IS CALLED, so a caller
+ * learns the answer instead of waiting for one. */
+- (void)getFileProviderServicesForItemAtURL:(NSURL *)url
+			  completionHandler:(void (^)(NSDictionary * _Nullable services,
+						      NSError * _Nullable error))completionHandler;
+
 - (nullable NSDictionary *)attributesOfFileSystemForPath:(NSString *)path
 						   error:(NSError ** _Nullable)error;
 
