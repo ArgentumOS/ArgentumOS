@@ -12792,6 +12792,37 @@ with the thirteen in `NSXMLNode.h`), so a switch over a DTD kind mentions names 
 numbering the DTD kinds from zero made two of them THE SAME VALUE and the switch a duplicate case. **Two
 families that meet in one switch must not share a range.**
 
+**SLICE 6E LANDED (2026-09-24): THE MOUNT TABLE - the "source" the 42 open volume rows were waiting for the
+most.** `foundation_mountedvolumes`, **8 checks**, green: this system PUBLISHES its mounts at
+`/System/Processes/mounts` (`device mountpoint fstype rw|ro 0 0` per line - measured in `fs/procfs/data.c`),
+and the volume keys that were registered for want of a table now read one: `NSURLVolumeNameKey`,
+`…LocalizedNameKey`, `…IdentifierKey` (the DEVICE), `…URLKey`, `…TypeNameKey`, `…IsRootFileSystemKey`,
+`…ResourceCountKey`, `…SupportsVolumeSizesKey`, `…IsMountTriggerKey`, `NSURLIsVolumeKey` - plus
+`NSFileManager`'s `-mountedVolumeURLsIncludingResourceValuesForKeys:options:`, whose keys are PREFETCHED into
+each URL the way the directory listing prefetches (slice 6d). **A URL's volume is the LONGEST MOUNT POINT THAT
+PREFIXES ITS PATH**, asserted by the probe because it is the one thing a naive first-match gets wrong.
+`NSURLVolumeIsReadOnlyKey` now reads the table's FLAG FIELD; slice 6c had probed a write for EROFS, and that
+reading's distinction (EROFS is the volume, EACCES is a permission) survives in the header as the reason the
+table is the better source.
+
+**FOUR BUGS ITS PROBE FOUND, EACH A SHAPE WORTH KEEPING:** (1) **THE TABLE IS NOT AT `/proc/mounts` - THIS FSH
+MOUNTS PROCFS AT `/System/Processes`**, read off `system.mounts.conf` after six checks answered empty: the
+second time in this workstream that an FSH path was not the platform's spelling (the first was
+`/System/Devices`); (2) **A SYNTHETIC FILE REPORTS SIZE ZERO, SO READING IT BY SIZE ANSWERS EMPTY** -
+`+dataWithContentsOfFile:` reads exactly `st_size` bytes, which for a procfs node is none, so the table is
+read with a LOOP until EOF in BOTH readers, and the symptom (an absent volume list) says nothing about the
+cause; (3) **THE RECOGNITION TABLE AND THE VALUE CHAIN ARE TWO PLACES THAT MUST AGREE** - the ten keys went
+into the chain and not into `fn_url_answers_key`, so `-getResourceValue:` refused every one, SIX CHECKS NIL AT
+ONCE; (4) **and my own expectations twice** - the probe asked about paths that do not exist (a resource value
+is asked OF A RESOURCE) and expected the name "proc" from the old reading.
+
+**AND THE LEDGER STOPPED ME INVENTING AN API:** I declared `NSURLVolumeEnumerationOptions`, and the ledger -
+consulted FIRST - showed `NSVolumeEnumerationOptions` already ships on `NSFileManager` with both of Apple's
+members; the same edit also USED A TYPE BEFORE ITS DECLARATION (the typedef had to move above the interface),
+which is the shape slice 6d's misplaced prefetch door had. **W8's remainder is now small and all registered:
+the ubiquitous, thumbnail, quarantine, application and protection masses (about 48 rows) and the four
+measurement debts.**
+
 **SLICE XML-e LANDED (2026-09-24): THE SIX DTD EVENTS, AND THE DOCUMENT THAT KEEPS AND RE-WRITES ITS DTD -
 WHICH MAKES XML COMPLETE.** `foundation_xmldtdparse` is a NEW probe with **8 checks**, green.
 
