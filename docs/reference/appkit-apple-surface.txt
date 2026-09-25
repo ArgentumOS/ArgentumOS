@@ -3738,7 +3738,7 @@ method	open	-browserDidScroll	NSBrowserDelegate	-	-	objc
 method	open	-browserWillScroll	NSBrowserDelegate	-	-	objc
 method	open	-buttonToolTip	NSColorPickingDefault	-	-	objc
 method	struck	-cacheDepthMatchesImageDepth	NSImage	-	deprecated	objc
-method	open	-cacheDisplayInRect	NSView	-	-	objc
+method	shipped	-cacheDisplayInRect	NSView	-	-	objc
 method	struck	-cacheImageInRect	NSWindow	-	deprecated	objc
 method	struck	-cachesBezierPath	NSBezierPath	-	deprecated	objc
 method	open	-calcDrawInfo	NSCell	-	-	objc

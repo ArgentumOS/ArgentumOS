@@ -18,8 +18,61 @@
  *   * WHICH SUBVIEW A POINT HITS when two overlap: the array is back-to-front, so the LAST one wins.
  */
 #import <AppKit/NSView.h>
+#import <AppKit/NSBitmapImageRep.h>
+#import <AppKit/NSGraphicsContext.h>
+
+#import <CoreGraphics/CGContext.h>
 
 #include <stdio.h>
+#include <string.h>
+
+/* A VIEW THAT PAINTS, SO THAT "WAS `-drawRect:` CALLED, AND WITH WHAT?" IS ANSWERABLE. It records the
+ * count and the rect it was handed, and fills a rectangle GIVEN IN ITS OWN COORDINATES — which is what
+ * makes the flip observable: the same own-coordinates rectangle lands at the top of its frame or at the
+ * bottom depending on the direction its system runs in. */
+@interface PaintView : NSView
+{
+@public
+	int draws;
+	NSRect lastRect;
+	NSRect fill;
+	double red;
+	double green;
+	double blue;
+}
+@end
+
+@implementation PaintView
+
+- (void)drawRect:(NSRect)dirtyRect
+{
+	CGContextRef c = [[NSGraphicsContext currentContext] CGContext];
+
+	draws++;
+	lastRect = dirtyRect;
+	if (c != NULL) {
+		CGContextSetRGBFillColor(c, (CGFloat)red, (CGFloat)green, (CGFloat)blue, 1.0);
+		CGContextFillRect(c, fill);
+	}
+}
+
+@end
+
+/* A REP WITH WRITABLE BYTES, since `-cacheDisplayInRect:` refuses a CGIMAGE-BACKED one. */
+static NSBitmapImageRep *canvas_rep(NSInteger w, NSInteger h)
+{
+	return [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL pixelsWide:w pixelsHigh:h
+				bitsPerSample:8 samplesPerPixel:4 hasAlpha:YES isPlanar:NO
+				colorSpaceName:NSDeviceRGBColorSpace bytesPerRow:w * 4 bitsPerPixel:32];
+}
+
+/* The bytes of one pixel of a rep, in its own order (R, G, B, A). */
+static void rep_pixel(NSBitmapImageRep *r, NSInteger x, NSInteger y, unsigned char *out)
+{
+	const unsigned char *d = [r bitmapData];
+
+	memcpy(out, d + ((size_t)y * (size_t)[r bytesPerRow] + (size_t)x * 4u), 4);
+}
 
 static int failures;
 
@@ -228,6 +281,156 @@ int main(void)
 			[root release];
 		}
 	}
+
+		/* --- THE OFFSCREEN RENDER: `-drawRect:` CALLED, WITH A REAL CONTEXT ------------------- */
+		{
+			PaintView *v = [[PaintView alloc] initWithFrame:NSMakeRect(0.0, 0.0, 8.0, 8.0)];
+			NSBitmapImageRep *rep = canvas_rep(8, 8);
+			unsigned char px[4];
+
+			v->fill = NSMakeRect(0.0, 0.0, 8.0, 8.0);
+			v->red = 1.0;
+			v->green = 0.0;
+			v->blue = 0.0;
+			[v cacheDisplayInRect:NSMakeRect(0.0, 0.0, 8.0, 8.0) toBitmapImageRep:rep];
+			check_num("caching the display CALLS -drawRect: once", (double)v->draws, 1.0, 0.0);
+			check_num("...and hands it the rect in the view's own coordinates", v->lastRect.size.width,
+				  8.0, 0.0);
+			rep_pixel(rep, 4, 4, px);
+			check("...with a context it can really draw into: the pixels are RED",
+			      px[0] == 0xff && px[1] == 0x00 && px[2] == 0x00 && px[3] == 0xff);
+			[v release];
+			[rep release];
+		}
+
+		/* --- AND THE SUBVIEWS ARE DRAWN, AT THEIR FRAMES --------------------------------------- */
+		{
+			PaintView *root = [[PaintView alloc] initWithFrame:NSMakeRect(0.0, 0.0, 8.0, 8.0)];
+			PaintView *child = [[PaintView alloc] initWithFrame:NSMakeRect(4.0, 0.0, 4.0, 4.0)];
+			NSBitmapImageRep *rep = canvas_rep(8, 8);
+			unsigned char px[4];
+
+			root->fill = NSMakeRect(0.0, 0.0, 8.0, 8.0);
+			root->red = 1.0;
+			root->green = 0.0;
+			root->blue = 0.0;
+			/* THE ROOT IS FLIPPED, so its y runs DOWN and a frame's origin.y is its TOP edge — which means
+			 * the rep's rows ARE the view's y, with no inversion to reason about. */
+			[root setFlipped:YES];
+			child->fill = NSMakeRect(0.0, 0.0, 4.0, 4.0);
+			child->red = 0.0;
+			child->green = 0.0;
+			child->blue = 1.0;
+			[child setFlipped:YES];
+			[root addSubview:child];
+
+			[root cacheDisplayInRect:NSMakeRect(0.0, 0.0, 8.0, 8.0) toBitmapImageRep:rep];
+			check_num("a subview is drawn too", (double)child->draws, 1.0, 0.0);
+			rep_pixel(rep, 5, 1, px);
+			check("...and it lands at its FRAME: the right half is BLUE", px[2] == 0xff && px[0] == 0x00);
+			rep_pixel(rep, 1, 1, px);
+			check("...while the left half is the PARENT's red", px[0] == 0xff && px[2] == 0x00);
+			[child release];
+			[root release];
+			[rep release];
+		}
+
+		/* --- ***THE FLIP***: THE SAME OWN-COORDINATES RECTANGLE, IN TWO DIRECTIONS ------------- */
+		/* A child that paints only THE UPPER PART OF ITS OWN SYSTEM shows which end that is, AND THE
+		 * ASSERTIONS NAME THE ROWS rather than merely requiring the two to differ. ***THAT DISTINCTION IS
+		 * THE WHOLE LESSON OF THIS SESSION:*** a check that can tell two states APART but cannot say what
+		 * either one MEANS cannot see a swapped pair, which is how C8.12's `flipped:` survived a slice
+		 * meaning the opposite of what it said. */
+		{
+			BOOL at_top[2];      /* is the child's own upper part at the frame's TOP? */
+			BOOL at_bottom[2];
+			int i;
+
+			for (i = 0; i < 2; i++) {
+				PaintView *root = [[PaintView alloc] initWithFrame:NSMakeRect(0.0, 0.0, 8.0, 8.0)];
+				PaintView *child = [[PaintView alloc] initWithFrame:NSMakeRect(4.0, 0.0, 4.0, 4.0)];
+				NSBitmapImageRep *rep = canvas_rep(8, 8);
+				unsigned char px[4];
+
+				root->fill = NSMakeRect(0.0, 0.0, 8.0, 8.0);
+				root->red = 1.0;
+				[root setFlipped:YES];
+				/* THE UPPER PART OF THE CHILD'S OWN SYSTEM, four tall. */
+				child->fill = NSMakeRect(0.0, 2.0, 4.0, 2.0);
+				child->blue = 1.0;
+				child->red = 0.0;
+				child->green = 0.0;
+				[child setFlipped:(i == 1)];
+				[root addSubview:child];
+				[root cacheDisplayInRect:NSMakeRect(0.0, 0.0, 8.0, 8.0) toBitmapImageRep:rep];
+				rep_pixel(rep, 5, 1, px);
+				at_top[i] = (px[2] == 0xff);
+				rep_pixel(rep, 5, 3, px);
+				at_bottom[i] = (px[2] == 0xff);
+				[child release];
+				[root release];
+				[rep release];
+			}
+			/* THE CHILD'S DIRECTION MATCHES ITS PARENT'S (i == 1, both flipped): its own y = 2 is BELOW
+			 * its own y = 0, so the paint is at the BOTTOM of its frame — the frame's rows 2..3. */
+			check("a child whose direction MATCHES its parent's paints its own upper part at the "
+			      "frame's BOTTOM", at_bottom[1] && !at_top[1]);
+			/* AND ONE WHOSE DIRECTION DIFFERS IS MIRRORED ENTIRELY: the same own part lands at the TOP. */
+			check("...and one whose direction DIFFERS paints it at the frame's TOP",
+			      at_top[0] && !at_bottom[0]);
+		}
+
+		/* --- THE CLIP IS THE VIEW'S OWN BOUNDS ------------------------------------------------ */
+		{
+			PaintView *root = [[PaintView alloc] initWithFrame:NSMakeRect(0.0, 0.0, 8.0, 8.0)];
+			PaintView *child = [[PaintView alloc] initWithFrame:NSMakeRect(4.0, 0.0, 2.0, 2.0)];
+			NSBitmapImageRep *rep = canvas_rep(8, 8);
+			unsigned char px[4];
+
+			root->fill = NSMakeRect(0.0, 0.0, 8.0, 8.0);
+			root->red = 1.0;
+			root->green = 0.0;
+			root->blue = 0.0;
+			[root setFlipped:YES];
+			/* THE CHILD PAINTS FAR BEYOND ITSELF, which its clip must stop. */
+			child->fill = NSMakeRect(0.0, 0.0, 8.0, 8.0);
+			child->red = 0.0;
+			child->green = 0.0;
+			child->blue = 1.0;
+			[child setFlipped:YES];
+			[root addSubview:child];
+			[root cacheDisplayInRect:NSMakeRect(0.0, 0.0, 8.0, 8.0) toBitmapImageRep:rep];
+			rep_pixel(rep, 5, 1, px);
+			check("a subview painting beyond itself is CLIPPED to its bounds", px[2] == 0xff);
+			rep_pixel(rep, 7, 5, px);
+			check("...so a pixel outside it keeps the PARENT's colour", px[0] == 0xff && px[2] == 0x00);
+			[child release];
+			[root release];
+			[rep release];
+		}
+
+		/* --- AND THE DESTINATION OUTSIDE THE VIEW IS LEFT ALONE, PLUS THE TWO REFUSALS --------- */
+		{
+			PaintView *v = [[PaintView alloc] initWithFrame:NSMakeRect(0.0, 0.0, 4.0, 4.0)];
+			NSBitmapImageRep *rep = canvas_rep(16, 16);
+			unsigned char px[4];
+			int before;
+
+			v->fill = NSMakeRect(0.0, 0.0, 4.0, 4.0);
+			v->blue = 1.0;
+			[v setFlipped:YES];
+			[v cacheDisplayInRect:NSMakeRect(0.0, 0.0, 4.0, 4.0) toBitmapImageRep:rep];
+			rep_pixel(rep, 12, 12, px);
+			check("the part of the destination outside the view is left UNTOUCHED",
+			      px[0] == 0 && px[1] == 0 && px[2] == 0 && px[3] == 0);
+			before = v->draws;
+			[v cacheDisplayInRect:NSMakeRect(0.0, 0.0, 4.0, 4.0) toBitmapImageRep:nil];
+			check("...and a NULL rep is refused rather than crashing", v->draws == before);
+			[v cacheDisplayInRect:NSMakeRect(0.0, 0.0, 0.0, 4.0) toBitmapImageRep:rep];
+			check("...as is an empty rect", v->draws == before);
+			[v release];
+			[rep release];
+		}
 
 	printf("APPKIT-VIEW: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;

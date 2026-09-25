@@ -13,9 +13,12 @@
  * no window server, so the honest answer is an offscreen one, and that decision deserves its own turn
  * rather than a guess smuggled in with the geometry.
  *
- * SO `-drawRect:` IS DECLARED HERE AND DOES NOTHING, which is also what Apple's plain `NSView` does: a
- * view with no subclass draws nothing, and the method exists to be OVERRIDDEN. A subclass that overrides
- * it is drawing code waiting for the slice that calls it.
+ * `-drawRect:` IS DECLARED IN THIS SLICE AND DOES NOTHING — which is also what Apple's plain `NSView`
+ * does, since a view with no subclass draws nothing and the method exists to be OVERRIDDEN — **AND
+ * `-cacheDisplayInRect:toBitmapImageRep:` IS WHAT CALLS IT.** That method is this layer's SUBSTRATE
+ * ANSWER: with no window server, a view is asked to draw into a BITMAP the caller supplies, which is the
+ * one thing a window system would otherwise be doing for it. `-display` and `-displayIfNeeded` stay
+ * ABSENT because they mean "draw me where I live", and nothing here can answer where that is.
  *
  * THE TWO PARTS OF A VIEW'S GEOMETRY, AND WHY BOTH EXIST: `frame` is the view's rectangle in its
  * SUPERVIEW's coordinates, and `bounds` is its own coordinate system. They are usually the same size and
@@ -41,6 +44,7 @@
  * surface each need a subsystem that does not exist here; each is absent rather than stubbed.
  */
 
+#import <AppKit/NSBitmapImageRep.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSGeometry.h>
 #import <Foundation/NSObject.h>
@@ -88,6 +92,23 @@ NS_ASSUME_NONNULL_BEGIN
  * that is still in a parent's list must outlive nothing — the parent owns it. */
 @property (readonly, copy) NSArray *subviews;
 @property (nullable, readonly) NSView *superview;
+/* THE OFFSCREEN RENDER. The view draws ITSELF AND ITS SUBVIEWS into the caller's bitmap — which is what
+ * Apple's method of this name does, and the reason it is the right door here: it needs no window, it
+ * takes the destination from the caller, and it is a `open` row rather than a deprecated one.
+ *
+ * THE PIXELS GO THROUGH A CANVAS AND THEN INTO THE REP, rather than the context being made over the
+ * rep's own bytes, and the reason is MEASURED: this tree's bitmap context is premultiplied-FIRST
+ * little-endian and a rep's bytes are premultiplied-LAST, so the two cannot be the same buffer. The
+ * canvas comes from `NSImage`'s offscreen implementation — one canvas, one channel swizzle, stated once
+ * — and the copy into the rep is then a row-ordered byte move between two buffers that agree.
+ *
+ * A rep with no writable bytes (a CGIMAGE-BACKED one, which is what `+imageRepWithData:` produces) is
+ * REFUSED BY NAME: caching into it would need a second copy this layer has no way to hand back.
+ * `-drawRect:` IS GIVEN THE REP'S RECT IN THE VIEW'S OWN COORDINATES, and every view in the tree is
+ * given the CONSERVATIVE dirty rect — its whole bounds — rather than a finer clip; that is a stated
+ * simplification, not a claim about the argument's precision. */
+- (void)cacheDisplayInRect:(NSRect)rect toBitmapImageRep:(nullable NSBitmapImageRep *)bitmapImageRep;
+
 - (void)addSubview:(NSView *)aView;
 - (void)removeFromSuperview;
 

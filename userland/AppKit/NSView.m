@@ -13,6 +13,9 @@
  * dangling pointer that only shows up as a crash much later, which is what `-dealloc` below prevents.
  */
 #import <AppKit/NSView.h>
+#import <AppKit/NSGraphicsContext.h>
+#import <AppKit/NSImage.h>
+#include <stdio.h>
 #include <string.h>
 
 /* A POINT FROM A VIEW'S OWN SYSTEM INTO ITS SUPERVIEW'S, AND BACK. The flip is the entire difference,
@@ -340,6 +343,129 @@ static NSRect fn_intersect(NSRect a, NSRect b)
 		v = [v superview];
 	}
 	return r;
+}
+
+/* ------------------------------------------------------------------------- */
+/* the offscreen render                                                      */
+/* ------------------------------------------------------------------------- */
+
+/* ONE VIEW, IN ITS PARENT'S COORDINATE SYSTEM, WITH ITS SUBVIEWS.
+ *
+ * THE FLIP RULE HERE IS THE SAME ONE `fn_to_super` USES, AND FOR THE SAME REASON: the frame places the
+ * view in its parent's y direction, the view's own coordinates run in ITS direction, and the two are the
+ * same rectangle read from opposite ends exactly when the directions DIFFER. So a view whose direction
+ * differs from its parent's is entered by MIRRORING about its frame — and the ORDER of the two calls is
+ * load-bearing, measured in NSImage's canvas: SCALE FIRST, THEN TRANSLATE, because a translate applied
+ * after a scale is not itself mirrored.
+ *
+ * A NON-ZERO BOUNDS ORIGIN IS REFUSED BY NAME, and it is the one thing this draw does not model: a
+ * bounds origin that is not zero is a scroll offset, which C8.14's header already lists as not modelled,
+ * and offsetting it here would be a second, silently different answer to the same question. */
+static void fn_draw_view(NSView *v, CGContextRef cg, NSRect dirty)
+{
+	NSRect f = [v frame];
+	NSRect b = [v bounds];
+	NSView *parent = [v superview];
+	BOOL same = (parent == nil) ? NO : ([v isFlipped] == [parent isFlipped]);
+	NSArray *subs;
+	NSUInteger i;
+
+	if (b.origin.x != 0.0 || b.origin.y != 0.0) {
+		fprintf(stderr, "APPKIT-REFUSE: -cacheDisplayInRect: will not draw a view whose BOUNDS ORIGIN "
+				"is not zero (%g, %g) — that is a scroll offset, and this layer does not model "
+				"one\n", (double)b.origin.x, (double)b.origin.y);
+		return;
+	}
+	CGContextSaveGState(cg);
+	/* ENTER THE VIEW'S RECTANGLE IN THE PARENT'S SYSTEM, then its own. */
+	if (parent == nil) {
+		/* THE ROOT DRAWS IN THE DESTINATION'S OWN SYSTEM, which the canvas gives as y-down — so a root
+		 * that is NOT flipped has to be mirrored about its whole frame. */
+		if (![v isFlipped]) {
+			CGContextScaleCTM(cg, 1.0, -1.0);
+			CGContextTranslateCTM(cg, 0.0, f.origin.y + f.size.height);
+		}
+	} else if (!same) {
+		CGContextScaleCTM(cg, 1.0, -1.0);
+		CGContextTranslateCTM(cg, f.origin.x, f.origin.y + f.size.height);
+	} else {
+		CGContextTranslateCTM(cg, f.origin.x, f.origin.y);
+	}
+	/* THE VIEW'S OWN CLIP, so a subclass cannot draw outside itself. */
+	CGContextClipToRect(cg, b);
+	[v drawRect:dirty];
+	subs = [v subviews];
+	for (i = 0; i < [subs count]; i++) {
+		fn_draw_view([subs objectAtIndex:i], cg, dirty);
+	}
+	CGContextRestoreGState(cg);
+}
+
+- (void)cacheDisplayInRect:(NSRect)rect toBitmapImageRep:(NSBitmapImageRep *)bitmapImageRep
+{
+	NSImage *canvas;
+	NSArray *reps;
+	NSBitmapImageRep *src;
+	const unsigned char *sp;
+	unsigned char *dp;
+	NSInteger rows;
+	NSInteger cols;
+	NSInteger row;
+	size_t sstride;
+	size_t dstride;
+
+	if (bitmapImageRep == nil || rect.size.width <= 0.0 || rect.size.height <= 0.0) {
+		fprintf(stderr, "APPKIT-REFUSE: -cacheDisplayInRect: needs a bitmap rep and a non-empty "
+				"rect\n");
+		return;
+	}
+	dp = [bitmapImageRep bitmapData];
+	if (dp == NULL) {
+		fprintf(stderr, "APPKIT-REFUSE: -cacheDisplayInRect: needs a rep with WRITABLE bytes; this "
+				"one is CGIMAGE-BACKED (what +imageRepWithData: produces) and caching into it "
+				"would need a second copy of the pixels\n");
+		return;
+	}
+	/* THE CANVAS IS THE REP'S PIXEL SIZE, and `flipped:YES` because that is the destination's own
+	 * orientation: y grows down from the top, which is what a bitmap's rows mean. */
+	canvas = [NSImage imageWithSize:NSMakeSize((CGFloat)[bitmapImageRep pixelsWide],
+						   (CGFloat)[bitmapImageRep pixelsHigh])
+				flipped:YES
+			 drawingHandler:^BOOL(NSRect dst) {
+		CGContextRef c = [[NSGraphicsContext currentContext] CGContext];
+
+		if (c != NULL) {
+			[NSGraphicsContext saveGraphicsState];
+			fn_draw_view(self, c, rect);
+			[NSGraphicsContext restoreGraphicsState];
+		}
+		(void)dst;
+		return YES;
+	}];
+	if (canvas == nil) {
+		return;
+	}
+	reps = [canvas representations];
+	src = ([reps count] > 0) ? [reps objectAtIndex:0] : nil;
+	sp = (src != nil) ? [src bitmapData] : NULL;
+	if (sp == NULL) {
+		return;
+	}
+	/* ROW BY ROW, BECAUSE THE TWO STRIDES NEED NOT MATCH — and both buffers are R, G, B, A
+	 * premultiplied, so the move is a copy rather than a conversion. */
+	rows = [bitmapImageRep pixelsHigh];
+	cols = [bitmapImageRep pixelsWide];
+	if (rows > [src pixelsHigh]) {
+		rows = [src pixelsHigh];
+	}
+	if (cols > [src pixelsWide]) {
+		cols = [src pixelsWide];
+	}
+	sstride = (size_t)[src bytesPerRow];
+	dstride = (size_t)[bitmapImageRep bytesPerRow];
+	for (row = 0; row < rows; row++) {
+		memcpy(dp + (size_t)row * dstride, sp + (size_t)row * sstride, (size_t)cols * 4u);
+	}
 }
 
 - (void)drawRect:(NSRect)dirtyRect

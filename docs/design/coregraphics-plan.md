@@ -643,6 +643,30 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   TWO UNITS OF ITS OWN Y and each direction is asserted against the rows it must land in: row 12 of 16 for
   `flipped:NO` (its own y = 0 at the bottom) and row 0 for `flipped:YES` (at the top). Both measured. The
   fix is the branch with the order correction KEPT, because Scale-then-Translate was right.
+  **AND `-drawRect:` IS CALLED AT LAST (C8.15): `-cacheDisplayInRect:toBitmapImageRep:`.** That method is
+  this layer's SUBSTRATE ANSWER — with no window server, a view is asked to draw into a BITMAP the caller
+  supplies, which is the one thing a window system would otherwise be doing for it — and it is an OPEN row
+  where `-lockFocus` is `struck`. `-display` and `-displayIfNeeded` stay ABSENT because they mean "draw me
+  where I live", and nothing here can answer where that is.
+  **THE PIXELS GO THROUGH A CANVAS AND THEN INTO THE REP, AND THE REASON IS MEASURED:** this tree's bitmap
+  context is premultiplied-FIRST little-endian and a rep's bytes are premultiplied-LAST, so the two cannot
+  be one buffer. The canvas comes from `NSImage`'s offscreen implementation — ONE canvas, ONE channel
+  swizzle, stated once — and the copy into the rep is then a row-ordered byte move between two buffers
+  that agree. A rep with no writable bytes (a CGIMAGE-BACKED one, which is what `+imageRepWithData:`
+  produces) is REFUSED BY NAME rather than given a silent half-answer.
+  **THE RECURSION IS THE SUBSTANCE:** every view is entered in its parent's system and then its own,
+  CLIPPED to its bounds so a subclass cannot draw outside itself, and a view whose direction DIFFERS from
+  its parent's is entered by MIRRORING about its frame — the same comparison the coordinate conversions
+  need, with the same SCALE-FIRST-THEN-TRANSLATE order the canvas has. A non-zero BOUNDS ORIGIN is refused
+  by name, because it is the scroll offset C8.14 already lists as not modelled and offsetting it here
+  would be a second, silently different answer to the same question.
+  THE PROBE DRIVES IT WITH A SUBCLASS THAT PAINTS, and the checks that carry the weight are: `-drawRect:`
+  IS called, with the rect in the view's OWN coordinates, and the pixels really land in the caller's rep; a
+  subview lands at its FRAME; a subview painting beyond itself is CLIPPED to its bounds; the destination
+  outside the view stays UNTOUCHED; and the two refusals. **AND ITS FLIP CHECK NOW NAMES ROWS RATHER THAN
+  MERELY REQUIRING THE TWO DIRECTIONS TO DIFFER** — the child's own upper part at the frame's BOTTOM when
+  its direction matches its parent's, and at the TOP when it differs — because that is the distinction
+  whose absence let C8.12c's swapped pair survive a whole slice.
   **AND THE PATH'S ELEMENT MODEL AND ITS MEMBERSHIP TEST ARRIVE (C8.13): `NSBezierPathElement`,
   `-elementAtIndex:` AND `-containsPoint:`.** Both were named in C8.5's header as owed, with reasons —
   that a point-in-path test had nothing in CoreGraphics to build on, and that the element model was a
