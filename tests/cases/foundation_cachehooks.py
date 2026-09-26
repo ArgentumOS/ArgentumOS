@@ -15,6 +15,9 @@ CHECKS = (
     "the-bridge-did-not-reach-the-listener",
     "a-no-store-response-is-not-kept",
     "and-it-goes-out-again-next-time",
+    "the-cache-door-is-asked",
+    "a-nil-answer-keeps-nothing",
+    "the-refused-entry-goes-out-again",
 )
 
 

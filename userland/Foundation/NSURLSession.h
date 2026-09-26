@@ -48,6 +48,8 @@
 @class NSURL;
 @class NSURLRequest;
 
+@class NSCachedURLResponse;
+
 NS_ASSUME_NONNULL_BEGIN
 
 /* THE KEY A FAILED DOWNLOAD'S ERROR CARRIES ITS RESUME DATA UNDER (§62.31): Apple's name, and the reason a
@@ -266,6 +268,16 @@ willPerformHTTPRedirection:(NSHTTPURLResponse *)response
 	 dataTask:(NSURLSessionDataTask *)dataTask
 didReceiveResponse:(NSURLResponse *)response
  completionHandler:(void (^)(NSURLSessionResponseDisposition disposition))completionHandler;
+
+/* AND THE DECISION ABOUT KEEPING THE ANSWER (§62.33): Apple's door takes the response that WOULD be stored and
+ * answers with what to store instead - or with NIL, which keeps nothing. It is a DATA-task door, so a download
+ * is not asked (this library's arrangement, and Apple's: a download's file is not a cache entry here). A
+ * delegate that does not implement it is not asked AND IS NOT WAITED FOR, which is the rule every door in this
+ * library keeps - and the reason the store still happens for a caller who never wrote one. */
+- (void)URLSession:(NSURLSession *)session
+	  dataTask:(NSURLSessionDataTask *)dataTask
+willCacheResponse:(NSCachedURLResponse *)proposedResponse
+ completionHandler:(void (^)(NSCachedURLResponse * _Nullable cachedResponse))completionHandler;
 
 @end
 

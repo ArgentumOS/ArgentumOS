@@ -428,6 +428,21 @@ willPerformHTTPRedirection:(NSHTTPURLResponse *)response
 	completionHandler(request);
 }
 
+/* THE CACHE DECISION, TRANSLATED (§62.33): the session asks what to store and this class asks its delegate -
+ * whose NIL means "keep nothing" on both sides, so the answer passes through unchanged. A delegate that
+ * implements no such door is not asked here either, and the session's own answer stands. */
+- (void)URLSession:(NSURLSession *)session
+	  dataTask:(NSURLSessionDataTask *)dataTask
+willCacheResponse:(NSCachedURLResponse *)proposedResponse
+ completionHandler:(void (^)(NSCachedURLResponse *))completionHandler
+{
+	if ([_delegate respondsToSelector:@selector(connection:willCacheResponse:)]) {
+		completionHandler([_delegate connection:self willCacheResponse:proposedResponse]);
+		return;
+	}
+	completionHandler(proposedResponse);
+}
+
 /* THE UPLOAD'S PROGRESS DOOR (§62.32): the session's numbers, which are the transport's, in this protocol's
  * own spelling. Apple's connection door spells them NSInteger where the session's uses int64_t, so this is a
  * cast rather than a recount. */

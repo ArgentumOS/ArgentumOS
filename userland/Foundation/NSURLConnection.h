@@ -71,8 +71,11 @@
  *     cancellation for it to report. (A delegate's OWN cancel is its own act, and it answers with it.)
  *   * `-connection:needNewBodyStream:` — the transport does not consume `NSURLRequest`'s
  *     `HTTPBodyStream`, so there is no body to ask for again on a redirect.
- *   * `-connection:willCacheResponse:` — the session offers no cache-decision door for a connection to
- *     translate, so a delegate could not be asked.
+ * THE CACHE-DECISION DOOR NOW SHIPS TOO (§62.33), and its refusal fell the way the two before it did: §62.25
+ * refused `-connection:willCacheResponse:` because "the session offers no cache-decision door to translate",
+ * and the session HAS one now (`-URLSession:dataTask:willCacheResponse:completionHandler:`) — so the ground is
+ * retired by a landing. THREE OF THE REFUSALS this class's header once carried have fallen that way, and not
+ * one of them by a decision taken here.
  *
  * AND THE DOWNLOAD HALF IS SLICE 2, WHICH LANDED BESIDE THIS COMMENT: `NSURLConnectionDownloadDelegate`
  * is declared below and the connection runs an `NSURLSessionDownloadTask` for it, stopping at the
@@ -112,6 +115,7 @@
 @class NSData;
 @class NSError;
 @class NSOperationQueue;
+@class NSCachedURLResponse;
 @class NSURLAuthenticationChallenge;
 @class NSURL;
 @class NSURLProtectionSpace;
@@ -191,6 +195,9 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;
  * task's own running total and `expectedTotalBytes` is what the response said (0 or negative means the
  * server never named a length). ALL THREE ARE THE TASK'S NUMBERS, translated rather than recounted, so this
  * door cannot disagree with the task about the same transfer. */
+- (nullable NSCachedURLResponse *)connection:(NSURLConnection *)connection
+			  willCacheResponse:(NSCachedURLResponse *)cachedResponse;
+
 - (void)connection:(NSURLConnection *)connection
   didSendBodyData:(NSInteger)bytesWritten
 totalBytesWritten:(NSInteger)totalBytesWritten

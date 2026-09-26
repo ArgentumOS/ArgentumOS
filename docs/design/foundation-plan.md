@@ -12977,6 +12977,36 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.33 — THE CACHE-DECISION CHAIN: THE STORE PATH LEARNS TO ASK (§62.26, 2026-09-26)
+
+**WHAT SHIPPED.** The fourth leg of the pattern, and the one where the *question* had never been asked at all:
+* **`NSURLSessionDataDelegate`'s `-URLSession:dataTask:willCacheResponse:completionHandler:`** (Apple's door and
+  names), asked **before the session stores anything** — the store path in `-URLProtocolDidFinishLoading:` kept
+  every cacheable response without consulting anyone, which is a hole Apple's API has a door for;
+* **`-connection:willCacheResponse:`**, which §62.25 had refused "because the session offers no cache-decision
+  door for a connection to translate". **THREE OF THE REFUSALS this class's header once carried have now fallen
+  to a LANDING rather than to a decision taken here** (§62.29's download progress, §62.32's upload progress, and
+  this one) — which is what a refusal whose ground is a measurement is for.
+
+**THE CONTRACT ON BOTH SIDES IS NIL MEANS KEEP NOTHING**, so the connection's translation is a pass-through
+rather than a rule: the session hands over the response that WOULD be stored, the connection asks its delegate,
+and the delegate's answer — including nil — goes back unchanged. **A DELEGATE THAT IMPLEMENTS NO SUCH DOOR IS
+NOT ASKED AND IS NOT WAITED FOR**, on both layers, so a caller who never wrote a cache decision keeps the old
+behaviour exactly. It is a DATA-task door, so a download is not asked (this library's arrangement and Apple's:
+a download's file is not a cache entry here).
+
+**VERIFIED ON BOTH SIDES OF THE SEAM.** `foundation_cachehooks` gained a leg that answers NIL and then PROVES it:
+the same URL is requested again and **the server is contacted again** (`contacts == 5`), which is the only
+evidence that a decision was honoured rather than recorded — three checks, 12/12 green. And the CONNECTION's
+half is exercised through the runtime, as its other doors are: three checks (`the-cache-decision-refuses-what-
+the-delegate-refuses`, `…passes-what-the-delegate-keeps`, `and-a-delegate-with-no-such-door-lets-the-proposal-
+stand`) — `foundation_urlconnection` 28/28 green. **THE SECOND OF THOSE CHECKS ASSERTED IDENTITY** (`stored ==
+proposed`), which is the property that matters for a pass-through: a translation that rebuilt the proposal
+would lose the caller's own object, and no behavioural check downstream would notice.
+
+Regressions: `foundation_urlsession` 6/6, `foundation_urlsession_task` 6/6, `foundation_downloadresume` 6/6,
+`foundation_authloop` 3/3. `foundation-sweep --check` consistent; `--families --check` matches.
+
 ## §62.32 — THE UPLOAD-PROGRESS CHAIN: A TRANSPORT CALLBACK, A SESSION DOOR, AND A CONNECTION DOOR THAT WAS REFUSED (2026-09-26)
 
 **WHAT SHIPPED.** The third leg of the pattern §62.29 established — a session-side door retired a connection-side

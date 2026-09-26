@@ -401,7 +401,33 @@ totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
 								 userInfo:nil
 							    storagePolicy:fn_policyForResponse(seen)];
 
-			[[NSURLCache sharedURLCache] storeCachedResponse:cached forRequest:[_task originalRequest]];
+			/* ASK BEFORE STORING (§62.33): the door takes the response that WOULD be stored and answers with
+			 * what to store instead - or with NIL, which keeps nothing. THE HANDLER IS ANSWERED INLINE,
+			 * because the store happens on this transfer's thread and nothing waits on it: a delegate that
+			 * does not implement the door is not asked and is not waited for. */
+			{
+				id <NSURLSessionDataDelegate> cacheDelegate =
+					(id <NSURLSessionDataDelegate>)[_session delegate];
+
+				if ([_task isKindOfClass:[NSURLSessionDataTask class]] &&
+				    [cacheDelegate respondsToSelector:
+					@selector(URLSession:dataTask:willCacheResponse:completionHandler:)]) {
+					__block NSCachedURLResponse *chosen = nil;
+
+					[cacheDelegate URLSession:_session
+							 dataTask:(NSURLSessionDataTask *)_task
+					 willCacheResponse:cached
+					  completionHandler:^(NSCachedURLResponse *toStore) {
+						chosen = [toStore retain];
+					}];
+					[cached release];
+					cached = chosen;
+				}
+			}
+			if (cached != nil) {
+				[[NSURLCache sharedURLCache] storeCachedResponse:cached
+								      forRequest:[_task originalRequest]];
+			}
 			[cached release];
 		}
 		[_body release];

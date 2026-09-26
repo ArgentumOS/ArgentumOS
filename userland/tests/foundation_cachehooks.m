@@ -107,6 +107,34 @@ static void fn_waitForEnding(void)
 	fn_lastBody = nil;
 }
 
+/* THE CACHE-DECIDER (§62.33): the session asks this door about every response it WOULD store, and the leg below
+ * makes it answer NIL - "keep nothing" - and then proves it by making the same request again and watching the
+ * server get contacted. It is its own class because the sessions the other legs use have no delegate at all. */
+@interface FnCacheDecider : NSObject <NSURLSessionDataDelegate>
+{
+	@public
+	int asks;
+	BOOL refuse;
+}
+
+@end
+
+@implementation FnCacheDecider
+
+- (void)URLSession:(NSURLSession *)session
+	  dataTask:(NSURLSessionDataTask *)dataTask
+willCacheResponse:(NSCachedURLResponse *)proposedResponse
+ completionHandler:(void (^)(NSCachedURLResponse *))completionHandler
+{
+	(void)session;
+	(void)dataTask;
+	(void)proposedResponse;
+	asks++;
+	completionHandler(refuse ? nil : proposedResponse);
+}
+
+@end
+
 int main(void)
 {
 	NSURLCache *own = [[NSURLCache alloc] initWithMemoryCapacity:1024 * 1024
@@ -180,6 +208,58 @@ int main(void)
 	fn_waitForEnding();
 	check("and-it-goes-out-again-next-time", contacts == 3,
 	      @"a refused cache entry leaves the request going to the server every time");
+
+	/* --- AND THE DECISION IS ASKED FOR (§62.33) ------------------------------------------------------ */
+	{
+		FnCacheDecider *decider = [[FnCacheDecider alloc] init];
+		NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
+		NSURLSession *deciding = [NSURLSession sessionWithConfiguration:configuration
+								      delegate:decider
+								     delegateQueue:nil];
+		NSMutableURLRequest *refused = [NSMutableURLRequest requestWithURL:
+			[NSURL URLWithString:@"http://127.0.0.1:46491/refused"]];
+		NSMutableURLRequest *refusedAgain = [NSMutableURLRequest requestWithURL:
+			[NSURL URLWithString:@"http://127.0.0.1:46491/refused"]];
+		NSURLSessionDataTask *legTask;
+
+		[refused setTimeoutInterval:10.0];
+		[refusedAgain setTimeoutInterval:10.0];
+		decider->refuse = YES;
+
+		legTask = [deciding dataTaskWithRequest:refused
+			      completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+			(void)response;
+			(void)error;
+			fn_lastBody = data;
+		}];
+		[legTask resume];
+		fn_serve_one(listener, "refused body", NO);
+		contacts++;
+		fn_waitForEnding();
+		check("the-cache-door-is-asked",
+		      decider->asks == 1,
+		      @"a response that WOULD be stored is put to the delegate before it is kept - the door the "
+		      @"store path had no question at all for");
+		check("a-nil-answer-keeps-nothing",
+		      decider->asks == 1 &&
+		      [[NSURLCache sharedURLCache] cachedResponseForRequest:refused] == nil,
+		      @"nil means keep nothing, and nothing is what the cache holds");
+
+		legTask = [deciding dataTaskWithRequest:refusedAgain
+			      completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+			(void)response;
+			(void)error;
+			fn_lastBody = data;
+		}];
+		[legTask resume];
+		fn_serve_one(listener, "refused body", NO);
+		contacts++;
+		fn_waitForEnding();
+		check("the-refused-entry-goes-out-again",
+		      contacts == 5 && decider->asks == 2,
+		      @"the same URL is asked for again and the server is contacted again: the decision was "
+		      @"honoured rather than recorded");
+	}
 
 	close(listener);
 	printf("FOUNDATION-CACHEHOOKS RESULT ok=%d fail=%d contacts=%d\n", okc, failc, contacts);

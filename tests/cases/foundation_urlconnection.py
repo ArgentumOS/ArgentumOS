@@ -65,6 +65,9 @@ CHECKS = ("connection-class-declared", "delegate-protocols-declared",
           "the-auth-doors-are-declared", "the-modern-door-supersedes-the-deprecated-pair",
           "the-deprecated-pair-is-asked-gate-first", "a-no-from-the-gate-means-no-authentication",
           "no-auth-door-means-the-default-without-waiting",
+          "the-cache-decision-refuses-what-the-delegate-refuses",
+          "the-cache-decision-passes-what-the-delegate-keeps",
+          "and-a-delegate-with-no-such-door-lets-the-proposal-stand",
           "the-declared-surface-is-what-ships")
 
 

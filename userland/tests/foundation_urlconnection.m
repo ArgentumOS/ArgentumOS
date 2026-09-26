@@ -372,6 +372,29 @@ didFinishDownloadingToURL:(NSURL *)location
 
 @end
 
+/* THE CACHE-DECIDER FOR A CONNECTION (§62.33): it answers what the test tells it to, so the translation's two
+ * branches - the delegate's answer, and the proposal when there is no such door - are both measurable. */
+@interface FNCacheAnswerer : NSObject <NSURLConnectionDataDelegate>
+{
+	@public
+	int asks;
+	BOOL keep;
+}
+
+@end
+
+@implementation FNCacheAnswerer
+
+- (NSCachedURLResponse *)connection:(NSURLConnection *)connection
+		  willCacheResponse:(NSCachedURLResponse *)cachedResponse
+{
+	(void)connection;
+	asks++;
+	return keep ? cachedResponse : nil;
+}
+
+@end
+
 @interface FNEmptyConnDelegate : NSObject <NSURLConnectionDelegate>
 @end
 @implementation FNEmptyConnDelegate
@@ -944,6 +967,75 @@ int main(void)
 			check("no-auth-door-means-the-default-without-waiting",
 			      disposition == NSURLSessionAuthChallengePerformDefaultHandling && given == nil,
 			      @"a delegate that cares about none of this is never blocked on");
+		}
+	}
+
+	/* --- 10. THE CACHE DECISION, TRANSLATED (§62.33) ------------------------------------------------ */
+	{
+		SEL sel = NSSelectorFromString(@"URLSession:dataTask:willCacheResponse:completionHandler:");
+		typedef void (*Fn)(id, SEL, NSURLSession *, NSURLSessionDataTask *, NSCachedURLResponse *,
+				   void (^)(NSCachedURLResponse *));
+		NSURLResponse *plain = [[NSURLResponse alloc] initWithURL:fn_url(@"http://example.invalid/")
+								 MIMEType:@"text/plain"
+						    expectedContentLength:3
+							 textEncodingName:nil];
+		id bytes = [@"abc" dataUsingEncoding:NSUTF8StringEncoding];
+		NSCachedURLResponse *proposed = [[NSCachedURLResponse alloc]
+			initWithResponse:plain data:bytes userInfo:nil
+			   storagePolicy:NSURLCacheStorageAllowed];
+		NSURLConnection *conn;
+		__block NSCachedURLResponse *stored = nil;
+		FNCacheAnswerer *refuser = [[FNCacheAnswerer alloc] init];
+		BOOL present;
+
+		conn = [[NSURLConnection alloc]
+			initWithRequest:[NSURLRequest requestWithURL:fn_url(@"file:///dev/null")]
+			     delegate:(id)refuser
+		     startImmediately:NO];
+		present = (conn != nil) && [conn respondsToSelector:sel];
+		if(present) {
+			((Fn)objc_msgSend)(conn, sel, nil, nil, proposed,
+					   ^(NSCachedURLResponse *chosen) { stored = chosen; });
+		}
+		check("the-cache-decision-refuses-what-the-delegate-refuses",
+		      present && refuser->asks == 1 && stored == nil,
+		      @"a delegate saying \"keep nothing\" reaches the session as nil, which is the same word on "
+		      @"both sides");
+
+		stored = nil;
+		{
+			FNCacheAnswerer *keeper = [[FNCacheAnswerer alloc] init];
+
+			keeper->keep = YES;
+			conn = [[NSURLConnection alloc]
+				initWithRequest:[NSURLRequest requestWithURL:fn_url(@"file:///dev/null")]
+				     delegate:(id)keeper
+			     startImmediately:NO];
+			if([conn respondsToSelector:sel]) {
+				((Fn)objc_msgSend)(conn, sel, nil, nil, proposed,
+						   ^(NSCachedURLResponse *chosen) { stored = chosen; });
+			}
+			check("the-cache-decision-passes-what-the-delegate-keeps",
+			      keeper->asks == 1 && stored == proposed,
+			      @"a delegate that keeps it hands the SAME proposal back, unrebuilt");
+		}
+
+		stored = nil;
+		{
+			FNEmptyConnDelegate *silent = [[FNEmptyConnDelegate alloc] init];
+
+			conn = [[NSURLConnection alloc]
+				initWithRequest:[NSURLRequest requestWithURL:fn_url(@"file:///dev/null")]
+				     delegate:(id)silent
+			     startImmediately:NO];
+			if([conn respondsToSelector:sel]) {
+				((Fn)objc_msgSend)(conn, sel, nil, nil, proposed,
+						   ^(NSCachedURLResponse *chosen) { stored = chosen; });
+			}
+			check("and-a-delegate-with-no-such-door-lets-the-proposal-stand",
+			      stored == proposed,
+			      @"a caller that never wrote a cache decision is not waited for, and the session's own "
+			      @"answer stands");
 		}
 	}
 
