@@ -115,90 +115,104 @@ static NSUInteger fn_utf16_index(const NSUInteger *map, NSUInteger length, NSUIn
 	return length;
 }
 
-@implementation NSTextCheckingResult
-
-+ (instancetype)resultWithRanges:(const NSRange *)ranges count:(NSUInteger)count
+/* ---- NAMED CAPTURE GROUPS, TRANSLATED FOR AN ENGINE THAT CANNOT SPELL THEM -------------------------
+ *
+ * POSIX ERE has no `(?<name>...)`; its `(` IS the capture group, numbered left to right. So the translation
+ * is the identity on numbering - `(?<name>` becomes `(` and the name is recorded, which is why a regular
+ * expression that uses named groups keeps working for callers that address groups by INDEX as well.
+ *
+ * IT IS A SCAN RATHER THAN A SUBSTITUTION, and the difference is not pedantry: `\(` is an escaped literal,
+ * `[(]` is a literal inside a class, and `[[:alpha:]]` has brackets of its own. A blind replace would move a
+ * group boundary and change what the pattern means, and would do it silently. So escapes, character classes
+ * and the class-nesting form are all tracked here.
+ *
+ * TWO CHOICES APPLE DOES NOT PUBLISH, both stated where they are made: a name that appears on two groups keeps
+ * the FIRST (the second occurrence is transliterated as a plain group and is not addressable by name), and a
+ * `(?<` that is NOT followed by a usable name and a `>` is passed through UNTOUCHED - so regcomp refuses the
+ * whole pattern with its own message rather than this function inventing one.
+ */
+static NSString *fn_translate_named_groups(NSString *pattern, NSDictionary **outNames,
+					      NSUInteger *outGroups)
 {
-	NSTextCheckingResult *result = [[self alloc] init];
+	NSUInteger length = [pattern length];
+	NSMutableString *out = [NSMutableString stringWithCapacity:length];
+	NSMutableDictionary *names = [NSMutableDictionary dictionary];
+	NSUInteger i = 0;
+	NSUInteger groups = 0;
+	BOOL inClass = NO;
 
-	if (result == nil) {
-		return nil;
-	}
-	if (count > 0) {
-		result->_ranges = malloc(count * sizeof(NSRange));
-		if (result->_ranges == NULL) {
-			return nil;
+	while (i < length) {
+		unichar c = [pattern characterAtIndex:i];
+
+		if (c == '\\' && i + 1 < length) {
+			[out appendString:[pattern substringWithRange:NSMakeRange(i, 2)]];
+			i += 2;
+			continue;
 		}
-		memcpy(result->_ranges, ranges, count * sizeof(NSRange));
+		if (inClass) {
+			[out appendString:[pattern substringWithRange:NSMakeRange(i, 1)]];
+			if (c == ']') {
+				inClass = NO;
+			}
+			i++;
+			continue;
+		}
+		if (c == '[') {
+			inClass = YES;
+			[out appendString:@"["];
+			i++;
+			continue;
+		}
+		if (c == '(') {
+			if (i + 3 < length && [pattern characterAtIndex:i + 1] == '?' &&
+			    [pattern characterAtIndex:i + 2] == '<') {
+				NSUInteger from = i + 3;
+				NSUInteger close = from;
+				BOOL usable = YES;
+				NSString *name;
+
+				while (close < length && [pattern characterAtIndex:close] != '>') {
+					close++;
+				}
+				if (close >= length || close == from) {
+					usable = NO;
+				}
+				for (NSUInteger k = from; usable && k < close; k++) {
+					unichar n = [pattern characterAtIndex:k];
+
+					if (k == from) {
+						usable = (n == '_' ||
+							  (n >= 'A' && n <= 'Z') || (n >= 'a' && n <= 'z'));
+					} else {
+						usable = (n == '_' ||
+							  (n >= 'A' && n <= 'Z') || (n >= 'a' && n <= 'z') ||
+							  (n >= '0' && n <= '9'));
+					}
+				}
+				if (usable) {
+					name = [pattern substringWithRange:NSMakeRange(from, close - from)];
+					groups++;
+					if ([names objectForKey:name] == nil) {
+						[names setObject:[NSNumber numberWithUnsignedInteger:groups]
+							  forKey:name];
+					}
+					[out appendString:@"("];
+					i = close + 1;
+					continue;
+				}
+			}
+			groups++;
+			[out appendString:@"("];
+			i++;
+			continue;
+		}
+		[out appendString:[pattern substringWithRange:NSMakeRange(i, 1)]];
+		i++;
 	}
-	result->_count = count;
-	return result;
-}
-
-- (NSUInteger)numberOfRanges
-{
-	return _count;
-}
-
-- (NSRange)range
-{
-	return [self rangeAtIndex:0];
-}
-
-- (NSRange)rangeAtIndex:(NSUInteger)index
-{
-	if (index >= _count) {
-		return NSMakeRange(NSNotFound, 0);
-	}
-	return _ranges[index];
-}
-
-- (void)dealloc
-{
-	free(_ranges);
-}
-
-- (BOOL)isEqual:(id)other
-{
-	NSTextCheckingResult *them;
-
-	if (other == self) {
-		return YES;
-	}
-	if (other == nil || ![other isKindOfClass:[NSTextCheckingResult class]]) {
-		return NO;
-	}
-	them = (NSTextCheckingResult *)other;
-	if (them->_count != _count) {
-		return NO;
-	}
-	return _count == 0 || memcmp(_ranges, them->_ranges, _count * sizeof(NSRange)) == 0;
-}
-
-- (NSUInteger)hash
-{
-	return _count;
-}
-
-- (NSString *)description
-{
-	NSMutableString *out = [NSMutableString stringWithFormat:@"<match %lu ranges", (unsigned long)_count];
-	NSUInteger i;
-
-	for (i = 0; i < _count; i++) {
-		[out appendFormat:@" (%lu,%lu)", (unsigned long)_ranges[i].location,
-				   (unsigned long)_ranges[i].length];
-	}
-	[out appendString:@">"];
+	*outNames = names;
+	*outGroups = groups;
 	return out;
 }
-
-- (id)copy
-{
-	return [NSTextCheckingResult resultWithRanges:_ranges count:_count];
-}
-
-@end
 
 @implementation NSRegularExpression
 
@@ -216,6 +230,7 @@ static NSUInteger fn_utf16_index(const NSUInteger *map, NSUInteger length, NSUIn
 	regex_t *compiled;
 	int flags = REG_EXTENDED;
 	int result;
+	long groups = 0;
 	const char *text;
 
 	self = [super init];
@@ -232,7 +247,18 @@ static NSUInteger fn_utf16_index(const NSUInteger *map, NSUInteger length, NSUIn
 	if ((options & NSRegularExpressionAnchorsMatchLines) != 0) {
 		flags |= REG_NEWLINE;
 	}
-	text = [pattern UTF8String];
+	/* THE PATTERN GOES THROUGH THE NAMED-GROUP TRANSLATION FIRST: the engine sees the translated text (which is
+	 * byte-identical to the caller's unless a named group was used), while `-pattern` answers what the caller
+	 * wrote - Apple's contract, and the reason `_pattern` is the original below. */
+	{
+		NSDictionary *names = nil;
+		NSUInteger counted = 0;
+		NSString *translated = fn_translate_named_groups(pattern, &names, &counted);
+
+		_groupNames = [names copy];
+		groups = counted;
+		text = [translated UTF8String];
+	}
 	result = regcomp(compiled, text != NULL ? text : "", flags);
 	if (result != 0) {
 		char message[256];
@@ -245,6 +271,8 @@ static NSUInteger fn_utf16_index(const NSUInteger *map, NSUInteger length, NSUIn
 							     [NSString stringWithUTF8String:message] }];
 		}
 		free(compiled);
+		[_groupNames release];
+		_groupNames = nil;
 		return nil;
 	}
 	_compiled = compiled;
@@ -255,6 +283,24 @@ static NSUInteger fn_utf16_index(const NSUInteger *map, NSUInteger length, NSUIn
 			      NSRegularExpressionAnchorsMatchLines |
 			      NSRegularExpressionDotMatchesLineSeparators);
 	_captures = compiled->re_nsub;
+	/* THE TRANSLATION'S OWN COUNT MUST MATCH THE ENGINE'S, and this is where a disagreement would surface: a
+	 * group counted by the scan and not by regcomp means the translation moved a boundary, and every NAME
+	 * would then be off by one - ranges that look right and address the wrong group, which is the worst
+	 * possible failure for a library that answers by INDEX. So a disagreement REFUSES the pattern. The count
+	 * comes from the same scan that produced the names, because a second scanner would be a second answer. */
+	if ([_groupNames count] > 0 && (long)_captures != groups) {
+		if (error != NULL) {
+			*error = [NSError errorWithDomain:@"NSRegularExpressionErrorDomain"
+						     code:result
+						 userInfo:@{ NSLocalizedDescriptionKey :
+							     @"a capture group name could not be placed" }];
+		}
+		regfree(compiled);
+		free(compiled);
+		[_groupNames release];
+		_groupNames = nil;
+		return nil;
+	}
 	return self;
 }
 
@@ -264,6 +310,11 @@ static NSUInteger fn_utf16_index(const NSUInteger *map, NSUInteger length, NSUIn
 		regfree((regex_t *)_compiled);
 		free(_compiled);
 	}
+	[_groupNames release];
+	/* `_pattern` IS NOT RELEASED HERE BECAUSE IT WAS NEVER RETAINED, which is a pre-existing ownership defect
+	 * of this class rather than a decision: `-init` assigns the caller's string. It is NAMED rather than fixed
+	 * quietly with them, because the same file's `-copy` recompiles from `_pattern` and a release here would
+	 * change when a dangling one is noticed. The URL unit's `-dealloc` debt (§60) was the same shape. */
 }
 
 - (NSString *)pattern
@@ -279,6 +330,16 @@ static NSUInteger fn_utf16_index(const NSUInteger *map, NSUInteger length, NSUIn
 - (NSUInteger)numberOfCaptureGroups
 {
 	return _captures;
+}
+
+/* THE NAME MAP, asked by `-[NSTextCheckingResult rangeWithName:]`. A name no group carries answers NSNotFound,
+ * which is that method's own spelling for "nothing here" and is also what it answers for a group that did not
+ * participate in the match. */
+- (NSUInteger)indexOfCaptureGroupNamed:(NSString *)name
+{
+	NSNumber *index = (name != nil) ? (NSNumber *)[_groupNames objectForKey:name] : nil;
+
+	return index != nil ? [index unsignedIntegerValue] : NSNotFound;
 }
 
 - (NSArray *)fnMatchesIn:(NSString *)string range:(NSRange)range
@@ -335,8 +396,13 @@ static NSUInteger fn_utf16_index(const NSUInteger *map, NSUInteger length, NSUIn
 					ranges[i] = NSMakeRange(from, to - from);
 				}
 			}
-			[results addObject:[NSTextCheckingResult resultWithRanges:ranges
-									   count:_captures + 1]];
+			/* THE RESULT IS TYPED, which is what §62.18 changed here: a match is a
+			 * NSTextCheckingTypeRegularExpression result carrying the expression it came from, so
+			 * -resultType, -regularExpression and -rangeWithName: all answer for it. */
+			[results addObject:[NSTextCheckingResult
+						regularExpressionCheckingResultWithRanges:ranges
+										     count:_captures + 1
+									 regularExpression:self]];
 			free(ranges);
 		}
 		if (matches[0].rm_eo > 0) {
@@ -371,6 +437,35 @@ static NSUInteger fn_utf16_index(const NSUInteger *map, NSUInteger length, NSUIn
 				range:(NSRange)range
 {
 	return [[self matchesInString:string options:options range:range] count];
+}
+
+/* APPLE'S GENERAL WAY TO WALK THE MATCHES, and the one its NSDataDetector page uses as its example. THE FLAGS
+ * ARE ALWAYS ZERO HERE, and that is a statement rather than an oversight: NSMatchingProgress and
+ * NSMatchingCompleted are the options NSMatchingReportProgress and NSMatchingReportCompletion ASK FOR, and this
+ * engine is SYNCHRONOUS - a POSIX regexec call cannot report progress, so there is no progress call to make and
+ * this file already refuses those two options by name at the top. A caller who wants to stop early has `stop`,
+ * which is the mechanism that does not depend on the engine. */
+- (void)enumerateMatchesInString:(NSString *)string
+			 options:(NSMatchingOptions)options
+			   range:(NSRange)range
+		      usingBlock:(void (^)(NSTextCheckingResult *result, NSMatchingFlags flags,
+					   BOOL *stop))block
+{
+	NSArray *matches;
+	NSUInteger i;
+
+	if (block == nil) {
+		return;
+	}
+	matches = [self matchesInString:string options:options range:range];
+	for (i = 0; i < [matches count]; i++) {
+		BOOL stop = NO;
+
+		block([matches objectAtIndex:i], (NSMatchingFlags)0, &stop);
+		if (stop) {
+			break;
+		}
+	}
 }
 
 - (nullable NSTextCheckingResult *)firstMatchInString:(NSString *)string

@@ -28,14 +28,14 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  166   open   30   struck   77
+#   class      shipped  167   open   29   struck   77
 #   protocol   shipped   23   open    8   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped  129   open   14   struck   17
-#   case       shipped 1052   open   82   struck  168
+#   enum       shipped  130   open   13   struck   17
+#   case       shipped 1068   open   66   struck  168
 #   func       shipped   83   open   52   struck   54
-#   var        shipped  511   open   50   struck  353
-#   typealias  shipped   54   open   15   struck    7
+#   var        shipped  522   open   39   struck  353
+#   typealias  shipped   56   open   13   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -888,22 +888,22 @@ case	shipped	NSSymbolStringEncoding	NSString	Fundamentals / Strings / Working wi
 case	shipped	NSSystemDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
 case	shipped	NSTaskTerminationReasonExit	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	swift-page
 case	shipped	NSTaskTerminationReasonUncaughtSignal	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	swift-page
-case	open	NSTextCheckingAllCustomTypes	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTextCheckingAllSystemTypes	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTextCheckingAllTypes	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTextCheckingTypeAddress	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTextCheckingTypeCorrection	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTextCheckingTypeDash	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTextCheckingTypeDate	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTextCheckingTypeGrammar	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTextCheckingTypeLink	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTextCheckingTypeOrthography	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTextCheckingTypePhoneNumber	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTextCheckingTypeQuote	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTextCheckingTypeRegularExpression	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTextCheckingTypeReplacement	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTextCheckingTypeSpelling	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTextCheckingTypeTransitInformation	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingAllCustomTypes	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingAllSystemTypes	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingAllTypes	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingTypeAddress	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingTypeCorrection	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingTypeDash	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingTypeDate	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingTypeGrammar	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingTypeLink	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingTypeOrthography	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingTypePhoneNumber	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingTypeQuote	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingTypeRegularExpression	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingTypeReplacement	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingTypeSpelling	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+case	shipped	NSTextCheckingTypeTransitInformation	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 case	struck	NSTimeZoneCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSTimeZoneCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSTimeZoneNameStyleDaylightSaving	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
@@ -1374,7 +1374,7 @@ class	struck	NSCountCommand		App Support / Script Commands	declined	objc
 class	shipped	NSCountedSet		Fundamentals / Specialized Sets	-	objc
 class	struck	NSCreateCommand		App Support / Script Commands	declined	objc
 class	shipped	NSData		Fundamentals / Binary Data	-	objc
-class	open	NSDataDetector		Fundamentals / Pattern Matching	-	objc
+class	shipped	NSDataDetector		Fundamentals / Pattern Matching	-	objc
 class	shipped	NSDate		Fundamentals / Date Representations	-	objc
 class	shipped	NSDateComponents		Fundamentals / Calendrical Calculations	-	objc
 class	shipped	NSDateComponentsFormatter		Fundamentals / Date Formatting	-	objc
@@ -1736,7 +1736,7 @@ enum	shipped	NSStringEncodingConversionOptions	NSString	Fundamentals / Strings /
 enum	shipped	NSStringEnumerationOptions	NSString	Fundamentals / Strings / Performing Linguistic Analysis	-	objc
 enum	shipped	NSTaskTerminationReason	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants	-	swift-page
 enum	struck	NSTestComparisonOperation	NSSpecifierTest	App Support / Object Matching Tests / Constants	declined	objc
-enum	open	NSTextCheckingType	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants	-	objc
+enum	shipped	NSTextCheckingType	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants	-	objc
 enum	shipped	NSTimeZoneNameStyle	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
 enum	shipped	NSURLBookmarkCreationOptions	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
 enum	shipped	NSURLBookmarkResolutionOptions	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
@@ -2325,8 +2325,8 @@ typealias	shipped	NSStreamSocketSecurityLevel	NSStream	Low-Level Utilities / Str
 typealias	shipped	NSStringEncoding	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 typealias	shipped	NSStringEncodingDetectionOptionsKey	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 typealias	shipped	NSStringTransform	NSString	Fundamentals / Strings / Transforming Strings	-	objc
-typealias	open	NSTextCheckingKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants	-	objc
-typealias	open	NSTextCheckingTypes	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants	-	objc
+typealias	shipped	NSTextCheckingKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants	-	objc
+typealias	shipped	NSTextCheckingTypes	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants	-	objc
 typealias	shipped	NSTimeInterval		Fundamentals / Date Representations	-	objc
 typealias	open	NSURLBookmarkFileCreationOptions	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
 typealias	shipped	NSURLFileProtectionType	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
@@ -3014,17 +3014,17 @@ var	shipped	NSSystemClockDidChangeNotification	NSNotification	App Support / Noti
 var	shipped	NSSystemTimeZoneDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSSystemTimeZoneDidChangeNotification	NSTimeZone	Fundamentals / Calendrical Calculations / Recognizing Notifications	-	swift-page
 var	shipped	NSTaskDidTerminateNotification	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with notifications	-	objc
-var	open	NSTextCheckingAirlineKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-var	open	NSTextCheckingCityKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-var	open	NSTextCheckingCountryKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-var	open	NSTextCheckingFlightKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-var	open	NSTextCheckingJobTitleKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-var	open	NSTextCheckingNameKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-var	open	NSTextCheckingOrganizationKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-var	open	NSTextCheckingPhoneKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-var	open	NSTextCheckingStateKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-var	open	NSTextCheckingStreetKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-var	open	NSTextCheckingZIPKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+var	shipped	NSTextCheckingAirlineKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+var	shipped	NSTextCheckingCityKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+var	shipped	NSTextCheckingCountryKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+var	shipped	NSTextCheckingFlightKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+var	shipped	NSTextCheckingJobTitleKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+var	shipped	NSTextCheckingNameKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+var	shipped	NSTextCheckingOrganizationKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+var	shipped	NSTextCheckingPhoneKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+var	shipped	NSTextCheckingStateKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+var	shipped	NSTextCheckingStreetKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
+var	shipped	NSTextCheckingZIPKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 var	struck	NSThisDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSThousandsSeparator	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	struck	NSThreadWillExitNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page

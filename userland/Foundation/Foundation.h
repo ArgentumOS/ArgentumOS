@@ -158,7 +158,9 @@
 #import <Foundation/NSProcessInfo.h>
 #import <Foundation/NSFileManager.h>
 #import <Foundation/NSURLComponents.h>
+#import <Foundation/NSTextCheckingResult.h>
 #import <Foundation/NSRegularExpression.h>
+#import <Foundation/NSDataDetector.h>
 #import <Foundation/NSLock.h>
 #import <Foundation/NSThread.h>
 #import <Foundation/NSTimer.h>

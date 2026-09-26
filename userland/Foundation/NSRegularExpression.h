@@ -27,6 +27,21 @@
  * that boundary through one conversion, which is the only place in this file that has to know both.
  * A pattern that cannot compile is REFUSED at construction with an NSError carrying the engine's own
  * message, because that message names the offending part of the pattern.
+ *
+ * WHAT §62.18 ADDED HERE, and why each addition had to be here rather than somewhere tidier:
+ *
+ *   * EVERY MATCH IS NOW A `NSTextCheckingTypeRegularExpression` RESULT, built through Apple's own
+ *     `+regularExpressionCheckingResultWithRanges:count:regularExpression:` instead of the bare ranges
+ *     constructor this file used to call. `NSTextCheckingResult` left this header for its own (§62.18), and the
+ *     bare constructor is still the F13.16 addition it was — but a match with no declared kind was a match a
+ *     caller could not classify, which is now fixed;
+ *   * NAMED GROUPS, which POSIX ERE cannot spell. `(?<name>…)` is TRANSLATED to `(` before regcomp — the same
+ *     capture group to the engine — and the names are kept, in declaration order, on the object that owns the
+ *     pattern (see `-indexOfCaptureGroupNamed:` below). The translation is a SCAN, not a substitution: it
+ *     tracks backslash escapes and character classes, because `\(` and `[(]` are literals that must not be
+ *     touched;
+ *   * `-enumerateMatchesInString:options:range:usingBlock:`, Apple's general way to walk matches and the one
+ *     its `NSDataDetector` page uses as its example.
  */
 
 #ifndef FOUNDATION_NSREGULAREXPRESSION_H
@@ -34,8 +49,10 @@
 
 #import <Foundation/NSObject.h>
 #import <Foundation/NSObjCRuntime.h>
+#import <Foundation/NSTextCheckingResult.h>	/* a match IS a text-checking result */
 
 @class NSArray;
+@class NSDictionary;
 @class NSError;
 @class NSMutableString;
 @class NSString;
@@ -71,25 +88,11 @@ enum {
 	NSMatchingInternalError = 0x10
 };
 
-/* ONE MATCH: the whole match is range 0, and each capture group follows in order. A group that did
- * not participate is NSNotFound's location, which is Cocoa's spelling of "this group matched
- * nothing". */
-@interface NSTextCheckingResult : NSObject <NSCopying>
-{
-	NSRange *_ranges;
-	NSUInteger _count;
-}
-
-+ (instancetype)resultWithRanges:(const NSRange *)ranges count:(NSUInteger)count;
-- (NSUInteger)numberOfRanges;
-- (NSRange)range;
-- (NSRange)rangeAtIndex:(NSUInteger)index;
-
-- (BOOL)isEqual:(nullable id)other;
-- (NSUInteger)hash;
-- (NSString *)description;
-
-@end
+/* ONE MATCH — `NSTextCheckingResult`, whose own header is where the class lives: its thirteen kinds, its
+ * payloads, and the keys of its component dictionaries. It is IMPORTED (at the top of this file) rather than
+ * declared here because every match this class answers with IS a text-checking result of type
+ * `NSTextCheckingTypeRegularExpression`, so a caller that matches and then reads the result has one class to
+ * learn rather than two. */
 
 @interface NSRegularExpression : NSObject <NSCopying>
 {
@@ -97,6 +100,7 @@ enum {
 	NSString *_pattern;
 	NSRegularExpressionOptions _options;
 	NSUInteger _captures;
+	NSDictionary *_groupNames;	/* OUR OWN: capture-group name -> index, in declaration order */
 }
 
 + (nullable instancetype)regularExpressionWithPattern:(NSString *)pattern
@@ -109,6 +113,22 @@ enum {
 - (NSString *)pattern;
 - (NSRegularExpressionOptions)options;
 - (NSUInteger)numberOfCaptureGroups;
+
+/* AN ADDITION, and it is the one seam named groups needed. Apple has no such method because Apple's engine has
+ * named groups natively; this library compiles with POSIX ERE (the decision §10 recorded), which has no
+ * `(?<name>…)` construct at all - so the pattern is TRANSLATED on the way to the engine (the `(?<name>` prefix
+ * becomes a plain `(`, which is the same group) and the names are remembered here. `-rangeWithName:` on a
+ * result comes through this method, which is why the map lives on the pattern's own object: the name is a
+ * property of the pattern, and a property of the pattern does not belong on a match. */
+- (NSUInteger)indexOfCaptureGroupNamed:(NSString *)name;
+
+/* THE BLOCK ENUMERATOR, which Apple's page for `NSDataDetector` uses as its example of the general way to walk
+ * matches. `stop` is the caller's, and setting it stops the walk after the current block invocation. */
+- (void)enumerateMatchesInString:(NSString *)string
+			 options:(NSMatchingOptions)options
+			   range:(NSRange)range
+		      usingBlock:(void (^)(NSTextCheckingResult *result, NSMatchingFlags flags,
+					   BOOL *stop))block;
 
 - (NSArray *)matchesInString:(NSString *)string
 		     options:(NSMatchingOptions)options

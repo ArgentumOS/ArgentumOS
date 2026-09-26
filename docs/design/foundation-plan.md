@@ -89,6 +89,9 @@ and both the header and this document carry it.
 | **D14** | THE COORDINATOR FAMILY'S BOUNDARY, in three parts. **(a)** `NSFileCoordinator` coordinates WITHIN THE PROCESS: there is no coordination service and no file provider, so the CROSS-PROCESS half of every door is absent - as is `-itemAtURL:didChangeUbiquityAttributes:`, which is the caller's half of an event that cannot occur. **(b)** `NSFilePresenter`'s `-presentedItemOperationQueue` IS NOT USED: the presenter's relinquish method is called on the COORDINATING THREAD, not on that queue - **AND THAT SENTENCE IS NOW MEASURED RATHER THAN ASSERTED** (slice 6j: a door takes **200.4 ms** for a presenter that answers after 200 ms, so the caller really waits). **AN EARLIER READING OF THE SAME EXPERIMENT APPEARED TO REFUTE IT AND WAS THE INSTRUMENT'S FAULT**: the presenters slept with `usleep`, which on this system returns after **15.5-16.6 ms** however long it is asked for, so both legs reported a flat ~20 ms and the "deferred handshake" that was written here for one commit was an artefact. The delay is now a gettimeofday loop and the primitive is measured head to head in the probe's own DIAG line. **(c)** the ubiquity pair, the version trio with its subitem forms, and `-accommodatePresentedItemEvictionWithCompletionHandler:` are DECLARED on the protocol (so a conforming class compiles and the boundary is visible where a presenter is written) and their events can never arrive. | **(ii) a dependency this system lacks** for (a) and (c): no coordination daemon, no file provider, no iCloud, no APFS eviction. For (b) the ground was stated and was not (ii): dispatching to the presenter's queue and then BLOCKING on the handshake DEADLOCKS whenever that queue is the caller's own - the main queue being the common case - so the alternative is not a different design but a hang. **THAT HAZARD IS NOW MEASURED, TWO-SIDEDLY (slice 6j)**: with a serial queue whose single worker is the waiting thread, a block dispatched to that queue NEVER RUNS (300 ms of polling), while the same block from OUTSIDE the queue runs at once. (`+mainQueue` in this library is a SERIAL QUEUE ON WORKER THREADS and not the main thread's run loop, so the hazard is the SELF-wait rather than a stalled main thread.) **AND THE DEVIATION ABOVE IS NOT A DIFFERENCE CHOSEN - it is a DEFECT AND IT IS OWED A FIX**: the accessor must not run before the presenters have relinquished | `NSFileCoordinator.h` (at the registry and at each door), `NSFilePresenter.h` (at the registered absences), plan §60 | **BOUNDARY** - and what is UNPROVEN rather than absent is §60's: the deferred handshake, the in-wait half of `-cancel`, and the presenter-queue design are MEASUREMENTS OWED, not differences chosen |
 | **D13** | `NSFileSecurity` ships as exactly what Apple's Overview says it is — "a stub class that encapsulates security information about a file … contains no methods of its own. Instead, it is transparently bridged to CFFileSecurity" — so the facts it stands for (the owner, the group, the mode, the access control list, the owner UUID, the group UUID) have **no accessor here**, where Apple publishes them as `CFFileSecurity`'s C functions (`CFFileSecurityGetOwner`/`SetOwner`, `…GetGroup`/`SetGroup`, `…GetMode`/`SetMode`, `…CopyAccessControlList`/`SetAccessControlList`, `…CopyOwnerUUID`/`SetOwnerUUID`, `…CopyGroupUUID`/`SetGroupUUID` — all twelve measured from the CoreFoundation index) | **(ii) a dependency this system lacks** — this tree HAS NO COREFOUNDATION: no `CFFileSecurity`, no `CFUUID`, no CF family at all, so there is nothing for this class to be bridged TO; and inventing the accessors onto it would be INVENTING AN API, which §11.5 forbids more strongly than refusing one | `NSFileSecurity.h` (the measurement, Apple's two sentences, and both Argentum homes for the facts), plan §60, and the probe `foundation_filesecurity`, whose `fs-the-bridged-accessors-are-absent` check asks for every one of the twelve names and requires NO | **BOUNDARY, AND MACHINE-CHECKED** — the facts stay reachable where this system actually keeps them: `NSFileManager`'s `-attributesOfItemAtPath:error:` and `-setAttributes:ofItemAtPath:error:` for the owner, the group and the mode, and the kernel's xattr-backed POSIX-ACL store (`kernel/acl.c`, `include/fnx/acl.h`) with the `acl` tool on top for the ACL. When a CoreFoundation arrives the state lands WITH its doors, and this row is updated rather than deleted |
 
+| **D15** | asking `NSDataDetector` for **`NSTextCheckingTypeAddress`** is REFUSED: the door answers nil with an `NSError` in `NSDataDetectorErrorDomain` carrying code `NSDataDetectorTypeNeedsSubstrateCode` | **(ii) a dependency this system lacks** — Apple's address detector is a locale-dependent POSTAL-ADDRESS GRAMMAR over per-country data (which words are street suffixes, where an address ENDS, what a postal code looks like, which region names are regions), and this system has neither the grammar nor the data. The one piece that would come free - the nine component keys - shipped in §62.19 and is what a caller would read an address OUT of, which is exactly why the absence of the thing that WRITES one has to be visible | `NSDataDetector.h` (the class comment, and the two code constants), this plan §62.19, and `foundation_datadetector`'s `address-and-transit-refuse-by-name` check | **BOUNDARY, AND IT IS APPLE'S OWN MECHANISM RATHER THAN AN INVENTION**: `+dataDetectorWithTypes:error:` is documented to answer nil WITH an error ("if an error was encountered, returns nil, and error contains the error"), so refusing here is the contract's error path rather than a silent omission - and the check reads the DOMAIN and the CODE, so a change that stopped refusing would fail the gate rather than merely change a return value |
+| **D16** | asking `NSDataDetector` for **`NSTextCheckingTypeTransitInformation`** is REFUSED the same way, with the same code | **(ii) a dependency this system lacks** — a transit result is a FLIGHT and an AIRLINE (`NSTextCheckingAirlineKey`, `NSTextCheckingFlightKey`), so the detector needs an airline code table and enough schedule data to know what a flight number looks like; there is no such data on this system and no service to ask | `NSDataDetector.h` (the class comment and the two code constants), this plan §62.19, the same check | **BOUNDARY** — and the FOURTH CATEGORY DOES NOT EXIST, which is why only two rows were needed: asking a data detector for Spelling, Orthography, Grammar, Correction, Quote, Dash, Replacement or RegularExpression is an ERROR ON APPLE'S OWN PAGE (those are what `NSSpellChecker` and `NSRegularExpression` produce), so refusing them is the CONTRACT rather than a deviation, and a deviation row for them would inflate the debt by eight |
+
 **HOW THIS REGISTER STAYS TRUE.** It is prose, not a gate: no tooling reads it. The standing rule is
 that **a deviation lands WITH its row** (the same rule nullability has, and that one has a gate); the
 cross-check that the rows correspond to real claims in the headers is a reading, done when the family is
@@ -3519,7 +3522,7 @@ vanishing.
 | **Fundamentals / Measurements** | all classes shipped | — |
 | **Fundamentals / Names** | all classes shipped | — |
 | **Fundamentals / Numbers** | all classes shipped | — |
-| **Fundamentals / Pattern Matching** | 2 open | `NSDataDetector`, `NSScanner` |
+| **Fundamentals / Pattern Matching** | 1 open | `NSScanner` |
 | **Fundamentals / Physical Dimension** | all classes shipped | — |
 | **Fundamentals / Pointer Collections** | all classes shipped | — |
 | **Fundamentals / Purgeable Collections** | all classes shipped | — |
@@ -12971,6 +12974,156 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.19 — `NSDataDetector` LANDS, AND TWO OF APPLE'S FIVE DETECTORS ARE REFUSED BY NAME (2026-09-26)
+
+**THE UNIT WAS "NSTextCheckingResult + NSDataDetector, END TO END", AND THE TWO ARE ONE STORY: the class is the
+RESULT and this is the object that PRODUCES the natural-language kinds.** §62.18 built the class and the
+vocabulary; this is the detector over it, with its probe (`foundation_datadetector`, **22 checks**) and its case,
+green on a guest boot. Thirty-one ledger rows moved in the same work (sixteen checking-type cases, the enum, two
+typealiases, the eleven component keys, and `NSDataDetector` itself), so **that family's** open count went from
+**2 to 1** and the library's total from 255 to 224 - and the one row left in the family is named rather than left
+to be discovered: **`NSScanner`**, which is the next unit in this family and not a piece of this one.
+
+**WHAT SHIPS IS THREE DETECTORS, AND WHAT THEY RECOGNISE IS WRITTEN DOWN BECAUSE APPLE DOES NOT WRITE IT DOWN.**
+Apple's page for `NSDataDetector` says a detector "matches natural language text for predefined data patterns" and
+stops; its `+dataDetectorWithTypes:error:` page names the five supported types and publishes no acceptance rule
+for any of them. So which strings match is PERMITTED VARIATION (§11.6's first gate - where Apple leaves behaviour
+undefined, any choice conforms) and the header states all three rule sets in full, because a caller has to be able
+to read the contract somewhere:
+
+* **LINK**: `scheme://…` (scheme `[A-Za-z][A-Za-z0-9+.-]*`) or a bare `www.` host; trailing punctuation trimmed,
+  with a closing bracket kept only when the match OPENED it, so `…/Foo_(bar)` keeps its parenthesis while
+  `(see http://x.example/)` does not; a scheme-less match is given `http` when the `NSURL` is built, because a
+  bare host is not a URL this library's `NSURL` can parse and a link result with a nil URL is no use;
+* **DATE**: four forms - `YYYY-MM-DD`, `M/D/YYYY`, `Month D, YYYY`, `D Month YYYY` (month names case-insensitively
+  and by any prefix of three letters or more, which is what makes `Sep`, `Sept` and `September` one month without
+  a table of abbreviations) - plus a TIME of `H:MM[:SS]` with an optional `AM`/`PM`; a date and a time joined by a
+  space, a comma or the word `at` are ONE result. NOT a general natural-language date parser, and that is the
+  named boundary: relative phrases, durations and locale formats beyond these are absent;
+* **PHONE**: a bounded run of 7 to 15 digits with optional `+`, spaces, `-`, `.` and parentheses, with the
+  boundary checked on BOTH sides and a bare run of fewer than ten digits refused when it has no separator.
+  **THERE IS NO NUMBERING-PLAN DATABASE HERE**, so what is found is a SHAPE; whether a shape is a working number
+  is not a question this class can answer.
+
+**AND THE OVERLAP RULE IS ONE RULE, BECAUSE TWO DETECTORS CAN WANT THE SAME TEXT.** `2026-09-26` is a hyphenated
+eight-digit run as well as a date, and `http://example.com/2026-09-26` contains a date inside a link. So
+candidates from all three detectors are resolved in ONE place: among matches starting at the same place the LONGER
+wins, and at equal length the LINK claims first, then the DATE, then the PHONE; a match overlapping one already
+accepted is dropped. The answer is therefore in document order and never overlaps - asserted on both texts, and
+the date-wins case is asserted on the hyphenated date where the two spans are IDENTICAL.
+
+**THE REFUSALS ARE THE INTERESTING PART, AND THEY SPLIT INTO THE TWO KINDS THIS PROJECT KEEPS APART.**
+* **ADDRESS and TRANSITINFORMATION ARE REFUSED BY NAME** (nil plus an `NSError` in `NSDataDetectorErrorDomain`,
+  code `NSDataDetectorTypeNeedsSubstrateCode`): a postal-address grammar over per-country data and an airline
+  schedule are things this system does not have. They are now **§11.6.1 D15 and D16**, with ground (ii).
+* **THE OTHER EIGHT ARE NOT A DEVIATION AT ALL** (Spelling, Orthography, Grammar, Correction, Quote, Dash,
+  Replacement, RegularExpression, code `NSDataDetectorTypeNotADataDetectorCode`): they are the kinds
+  `NSSpellChecker` and `NSRegularExpression` produce, and Apple's own page says the supported detectors are the
+  five. A deviation row for them would have inflated the debt by eight, and the register now says so in D16.
+* **AND THE CHECK READS THE DOMAIN AND THE CODE**, not merely that the call failed: a change that stopped refusing
+  would fail the gate rather than quietly change a return value.
+
+**THE PROBE FOUND THREE BUGS, AND THE FIRST ONE WAS THE KIND THAT WOULD HAVE LOOKED LIKE A WORKING DETECTOR.**
+* **A SEPARATOR COUNTED WHEN NOTHING FOLLOWED IT.** The rule that keeps an integer from being a phone number is
+  "7 to 15 digits, WITH a separator or a `+`, or at least ten digits bare" - and the first version set the
+  separator flag on ANY space, including the space AFTER a run. So `order 20260926 shipped` produced a phone
+  number: a bare eight-digit integer, which is exactly what the rule exists to refuse. The flag is now raised only
+  when a DIGIT FOLLOWS a separator, and the check asserts the refusal from three sides (eight digits bare, a bare
+  seven-digit run, and fourteen digits accepted).
+* **THE LEADING PARENTHESIS WAS LEFT OUT OF THE MATCH.** The scan started at the first digit, so
+  `(555) 123-4567` answered the range `555) 123-4567` - a range that does not cover the text a caller would
+  highlight. The `(` is now taken when nothing alphanumeric precedes it.
+* **AND ONE WAS THE PROBE'S OWN ARITHMETIC, NOT THE LIBRARY'S** - the run's kind this project has recorded before:
+  a check asserted `count == 2` for a text where the date is INSIDE the link (the answer is 1, which is the whole
+  point of the overlap rule), and another asserted a result's offset as a hand-counted `23` where the detector
+  answered `25` and was right. The first is now two checks - the containment case, and a text where the two do NOT
+  overlap - and the second asserts WHAT THE RANGE COVERS rather than a number, so the text is written down once.
+
+**AND THE HOST LOOP IS WHERE ALL THREE WERE FOUND, WHICH COST ONE FINDING ALONG THE WAY.** `make host-foundation`
+does not currently build: `FN_HOST_SRCS` is a wildcard over every Foundation source, and four of them
+(`FNCURLURLProtocol.m`, `FNWebSocketHandshake.m`, `NSURLSessionStreamTask.m`, `NSURLSessionWebSocketTask.m`) need
+the CROSS-BUILT curl and libressl HEADERS and LIBRARIES, which a host link cannot use. The fast loop was therefore
+used with `FN_HOST_SRCS` overridden on the command line to the pure subset (plus `NSURLSession.m`, which references
+the two session-task classes) and the host library rebuilt with `rm .build/host/lib/libfoundation.so` first - the
+`.so` is newer than the objects a changed list contains, so make relinks NOTHING and the stale library answers for
+the new one. **THE BUILD FRAGMENT IS STALE RATHER THAN WRONG, AND REPAIRING IT IS ITS OWN UNIT** (it needs either
+an exclusion list or host-built curl, and either one changes what `--host` can verify), so it is recorded here
+rather than smuggled into this slice. The guest gate remains the verification of record: the two new cases pass
+**2/2 cases and 12/12 checks**, and the three cases that could have been broken by §62.18's changes to
+`NSRegularExpression` were re-run green (`foundation_regex` 9/9, `foundation_predicate` 28/28,
+`foundation_core` 55/55).
+
+## §62.18 — `NSTextCheckingResult` BECOMES THE GENERAL CLASS, AND NAMED GROUPS COST A TRANSLATION (2026-09-26)
+
+**F13.16 BUILT HALF A CLASS AND THIS IS THE OTHER HALF, WHICH IS WHY IT TOUCHED `NSRegularExpression` TOO.** What
+shipped then was a ranges container sized for one producer; Apple's class is thirty-odd members over thirteen
+kinds of result. So the class left `NSRegularExpression.h` for a header of its own, grew every factory and every
+payload accessor, and - the part that reaches back into the regex class - **a match is now a
+`NSTextCheckingTypeRegularExpression` RESULT**, built through Apple's own
+`+regularExpressionCheckingResultWithRanges:count:regularExpression:` instead of the bare ranges constructor. Before
+this, a match answered `resultType` 0 and `-regularExpression` nil, i.e. a result a caller could not classify;
+the two checks that assert the typing and the payload travel with the probe (`foundation_textchecking`, **15
+checks**).
+
+**TWO REAL DEFECTS IN THE OLD CLASS ARE FIXED, AND BOTH WERE INVISIBLE WHILE RANGES WERE ALL IT HAD.**
+* **`-copy` ANSWERED A NEW RANGES-ONLY OBJECT.** The ownership rule this library keeps (§62) is that an immutable
+  value answers `[self retain]`; the old version allocated a second result and copied the ranges alone, which
+  would have silently DROPPED every payload the moment this file grew them. It is now `[self retain]`, and the
+  check asserts identity AND that the payload survived.
+* **`-isEqual:` COMPARED RANGES AND NOTHING ELSE.** Two link results of one kind and one range that found two
+  different URLs were equal. It now compares the type, the ranges and all twelve payload fields, with `-hash`
+  consistent with it, and the check asserts both the equal pair and the unequal ones.
+
+**AND `-rangeWithName:` IS REAL RATHER THAN DECLARED, WHICH IS WHAT THE TRANSLATION IS FOR.** POSIX ERE - the
+engine §10 chose and this library still uses - has no `(?<name>…)` construct at all. Rather than ship a method that
+can only answer `NSNotFound`, `NSRegularExpression` now TRANSLATES the pattern on the way to `regcomp`: the
+`(?<name>` prefix becomes a plain `(` (the same capture group to the engine, so numbering is untouched and
+`-rangeAtIndex:` keeps working), and the names are kept in declaration order. Three consequences are stated where
+they happen and pinned by checks:
+* **THE TRANSLATION IS A SCAN, NOT A SUBSTITUTION.** Backslash escapes and character classes are tracked, because
+  `a\.b` and `val[(]x[)]` are literals that a blind replace would move; the check asserts both the hit and the
+  MISS on a non-matching string, since 0 matches is what proves the escape survived;
+* **`-pattern` STILL ANSWERS WHAT THE CALLER WROTE** (the translation is the engine's view, not the object's), and
+  `-numberOfCaptureGroups` is the engine's own `re_nsub`;
+* **THE SCAN'S OWN COUNT MUST MATCH THE ENGINE'S**, and a disagreement REFUSES the pattern rather than answering
+  ranges that address the wrong groups. The count comes from the same scan that produced the names, because a
+  second scanner would be a second answer.
+* **THE MAP LIVES ON THE EXPRESSION, NOT ON THE RESULT** - a name is a property of the PATTERN, and the result
+  already stores the expression Apple's own API gives it. That is the one addition the translation needed
+  (`-indexOfCaptureGroupNamed:`), and it is marked as an addition in the header.
+* **AND TWO CHOICES APPLE DOES NOT PUBLISH** are stated at the scanner: a name on two groups keeps the FIRST, and a
+  `(?<` that is not followed by a usable name and a `>` is passed through UNTOUCHED so that `regcomp` refuses the
+  whole pattern with ITS OWN message instead of this function inventing one.
+
+**`-resultByAdjustingRangesWithOffset:`'S REFUSAL IS OURS AND SAYS SO.** Apple publishes a parameter note and a
+return value for it and NO RULE for a shift that would invalidate a range; §11.6's first gate applies, and the
+choice is the one this library makes for a caller error everywhere else (F4): `NSInvalidArgumentException`,
+raised before anything is built, with a check that catches it and reads the name.
+
+**THE VOCABULARY IS OURS AND THE PROBE CLAIMS ONLY WHAT IS TRUE OF IT (§11.6.1 D2).** The thirteen checking types,
+their three masks and the eleven component keys were landed by a mechanical measurement: Apple's own pages give the
+CASE NAMES, an abstract, and NO NUMBER - in the ObjC view and in the Swift view alike, with `variantOverrides`
+applied (the recipe §62 recorded). So the bits follow the order Apple's page LISTS the cases in, the system/custom
+split is ours (the low 16 bits vs the rest, which is the SHAPE Apple's prose describes - "the user can extend those
+types by subclassing"), and the checks assert the properties that would actually hurt a caller: the thirteen are
+distinct single bits, the masks are disjoint and their union is `AllTypes`, and the eleven keys are eleven distinct
+strings (two sharing a value would make a component unaddressable). The `All…` names are filed by Apple under the
+`NSTextCheckingTypes` TYPEDEF rather than under the enum, and the header says so where they are spelled.
+
+**TWO THINGS ARE NAMED AS ABSENT RATHER THAN DECLARED AND LEFT EMPTY:**
+* **`NSCoding`/`NSSecureCoding`.** Apple's class conforms to both. A regular-expression result must archive the
+  PATTERN it came from, and `NSRegularExpression` conforms to neither in this tree (`NSCopying` only, where Apple
+  declares `NSSecureCoding` too), so the two conformances are one unit and it is OWED rather than refused -
+  declaring them without it would be the silent lie this library refuses;
+* **`+resultWithRanges:count:` STAYS AS AN ADDITION** with `resultType` 0 ("no checker made this"), because it is
+  public API in this tree and a subclass of a checker needs a way to speak in ranges. It is what
+  `NSRegularExpression` used to build matches with, and what the range checks use.
+* **AND THE LAST THING THIS SLICE TOUCHED IS AN ACKNOWLEDGED DEBT, NOT A FIX:** `NSRegularExpression`'s `_pattern`
+  is assigned from the caller and never retained, and `-dealloc` does not release it. That is the same shape as
+  `NSURL`'s `-dealloc` debt §60 recorded, it is named at the dealloc, and it wants the URL unit's treatment (one
+  slice that fixes the ownership of the whole part list) rather than a one-line change that would alter when a
+  dangling pattern is noticed.
 
 ## §62.17 — THE LOAD PATH IS PROVEN, NOT ASSUMED (2026-09-24)
 

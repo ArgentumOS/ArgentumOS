@@ -155,7 +155,9 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSFileWrapper.m \
 	$(FOUNDATION_SRC)/NSURL.h \
 	$(FOUNDATION_SRC)/NSURLComponents.m \
+	$(FOUNDATION_SRC)/NSTextCheckingResult.m \
 	$(FOUNDATION_SRC)/NSRegularExpression.m \
+	$(FOUNDATION_SRC)/NSDataDetector.m \
 	$(FOUNDATION_SRC)/NSLock.m \
 	$(FOUNDATION_SRC)/NSThread.m \
 	$(FOUNDATION_SRC)/NSRunLoop.m \
@@ -200,7 +202,9 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSFileSecurity.h \
 	$(FOUNDATION_SRC)/NSFileWrapper.h \
 	$(FOUNDATION_SRC)/NSURLComponents.h \
+	$(FOUNDATION_SRC)/NSTextCheckingResult.h \
 	$(FOUNDATION_SRC)/NSRegularExpression.h \
+	$(FOUNDATION_SRC)/NSDataDetector.h \
 	$(FOUNDATION_SRC)/NSLock.h \
 	$(FOUNDATION_SRC)/NSThread.h \
 	$(FOUNDATION_SRC)/NSTimer.h \
@@ -814,6 +818,25 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) -shared .build/probe-foundation_bundle_payload.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_bundle_payload.so"
+	# foundation_textchecking: §62.18's acceptance - NSTextCheckingResult as the GENERAL class (every factory,
+	# every payload, the ranges, the shift and its refusal, the identity rules) plus the vocabulary §62.19 landed
+	# with it, and the named-group translation seen through the class that produces a match. ONE unit, only
+	# <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_textchecking.m -o .build/probe-foundation_textchecking.o
+	$(MUSL64_OBJC) .build/probe-foundation_textchecking.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_textchecking"
+	# foundation_datadetector: §62.19's acceptance - the three detectors that have data here, the TWO that are
+	# refused by name (Address and TransitInformation, ground (i) in the §11.6 register), and the one rule that
+	# decides what happens when two detectors claim the same span.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_datadetector.m -o .build/probe-foundation_datadetector.o
+	$(MUSL64_OBJC) .build/probe-foundation_datadetector.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_datadetector"
 	# foundation_directoryenumerator: W8 slice 1 acceptance (foundation-plan.md §60). ONE unit, only
 	# <Foundation/Foundation.h> plus <unistd.h> for the symlink(2) its fixture makes.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
