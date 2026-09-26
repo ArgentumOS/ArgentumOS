@@ -1045,6 +1045,46 @@ NULL
 			[british displayNameForKey:NSLocaleScriptCode value:@"Latn"]] UTF8String]);
 	}
 
+	{
+		/* THE ENCODING AND OPTION SETS, AND THE PROPERTY THAT MATTERS: the options are a BIT SET, so no two of
+		 * them may share a value, and the two legacy members keep the numbers they have always had (a search
+		 * with NSLiteralSearch must still mean "no options" and NSCaseInsensitiveSearch must still be 1).
+		 * A collision here would make an option unrequestable, silently. */
+		unsigned long opt[] = { (unsigned long)NSLiteralSearch, (unsigned long)NSCaseInsensitiveSearch,
+			(unsigned long)NSAnchoredSearch, (unsigned long)NSBackwardsSearch,
+			(unsigned long)NSDiacriticInsensitiveSearch, (unsigned long)NSForcedOrderingSearch,
+			(unsigned long)NSNumericSearch, (unsigned long)NSRegularExpressionSearch,
+			(unsigned long)NSWidthInsensitiveSearch };
+		int distinct = 1;
+		unsigned i, j;
+
+		for (i = 0; i < sizeof opt / sizeof opt[0]; i++) {
+			if (i > 0 && opt[i] != 0 && (opt[i] & (opt[i] - 1)) == 0) {
+				/* a power of two (or zero for NSLiteralSearch): what a bit set member must be */
+			} else if (i > 0) {
+				distinct = 0;
+			}
+			for (j = i + 1; j < sizeof opt / sizeof opt[0]; j++) {
+				if (opt[i] != 0 && opt[i] == opt[j]) {
+					distinct = 0;
+				}
+			}
+		}
+		check("option-set-members-are-distinct-bits",
+		      distinct && NSLiteralSearch == 0 && NSCaseInsensitiveSearch == 1 &&
+		      (NSBackwardsSearch & NSCaseInsensitiveSearch) == 0 &&
+		      NSASCIIStringEncoding == 1 && NSUTF8StringEncoding == 4 && NSUnicodeStringEncoding == 10,
+		      "options are distinct powers of two; the legacy members keep their old values");
+		check("transforms-and-keys-are-their-own-names",
+		      [NSStringTransformLatinToCyrillic isEqualToString:@"NSStringTransformLatinToCyrillic"] &&
+		      [NSStringTransformStripDiacritics isEqualToString:@"NSStringTransformStripDiacritics"] &&
+		      [NSStringEncodingDetectionSuggestedEncodingsKey
+			isEqualToString:@"NSStringEncodingDetectionSuggestedEncodingsKey"] &&
+		      [NSCharacterConversionException isEqualToString:@"NSCharacterConversionException"] &&
+		      [NSParseErrorException isEqualToString:@"NSParseErrorException"],
+		      "each transform, detection key and exception name equals its own name");
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

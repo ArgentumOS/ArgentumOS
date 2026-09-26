@@ -69,25 +69,59 @@
  * means ("a nil locale means 'no locale-sensitive rules'"), and an NSError**
  * out-parameter is nullable at BOTH levels: the caller may pass NULL for
  * "no error report". */
+#import <Foundation/NSException.h>	/* NSExceptionName, which two constants below are spelled with */
+
 NS_ASSUME_NONNULL_BEGIN
 
 
-/* Cocoa's option set, reduced to the ones a UTF-8 byte comparison can honour. */
+/* Cocoa's option set. The first two are the ones a UTF-8 byte comparison honours; the rest are named so a
+ * conforming call compiles and the ones this library cannot honour are REFUSED rather than silently ignored -
+ * a search that quietly ignores NSRegularExpressionSearch answers a different question than the one asked.
+ * Values ours (§11.6.1 D2), bit sets as their names say; NSCaseInsensitiveSearch keeps the value it always
+ * had, so this changes no existing behaviour. */
 typedef enum {
 	NSLiteralSearch = 0,
-	NSCaseInsensitiveSearch = 1
+	NSCaseInsensitiveSearch = 1 << 0,
+	NSAnchoredSearch = 1 << 1,
+	NSBackwardsSearch = 1 << 2,
+	NSDiacriticInsensitiveSearch = 1 << 3,
+	NSForcedOrderingSearch = 1 << 4,
+	NSNumericSearch = 1 << 5,
+	NSRegularExpressionSearch = 1 << 6,
+	NSWidthInsensitiveSearch = 1 << 7
 } NSStringCompareOptions;
 
 /*
- * Cocoa's encodings, and the raw values are Cocoa's so a numeric comparison in
- * existing code still means the same thing. Only the UTF-8 one is SUPPORTED here
- * (it is the storage); the others are named so the calls compile and can be
- * rejected honestly rather than silently mis-encoded.
+ * Cocoa's encodings. The three raw values in the first block are COCOA'S, kept so a numeric comparison in
+ * existing code still means the same thing; the rest are OURS (§11.6.1 D2 - Apple publishes the names of these
+ * constants and not a table this library can copy), numbered in one contiguous run above the legacy ones. Only
+ * UTF-8 is SUPPORTED here (it is the storage); the others are named so the calls compile and can be rejected
+ * honestly rather than silently mis-encoded.
  */
 typedef enum {
 	NSASCIIStringEncoding = 1,
 	NSUTF8StringEncoding = 4,
-	NSUnicodeStringEncoding = 10
+	NSUnicodeStringEncoding = 10,
+	NSNEXTSTEPStringEncoding = 100,
+	NSJapaneseEUCStringEncoding = 101,
+	NSShiftJISStringEncoding = 102,
+	NSISOLatin1StringEncoding = 103,
+	NSISOLatin2StringEncoding = 104,
+	NSSymbolStringEncoding = 105,
+	NSNonLossyASCIIStringEncoding = 106,
+	NSISO2022JPStringEncoding = 107,
+	NSMacOSRomanStringEncoding = 108,
+	NSWindowsCP1250StringEncoding = 109,
+	NSWindowsCP1251StringEncoding = 110,
+	NSWindowsCP1252StringEncoding = 111,
+	NSWindowsCP1253StringEncoding = 112,
+	NSWindowsCP1254StringEncoding = 113,
+	NSUTF16StringEncoding = 114,
+	NSUTF16BigEndianStringEncoding = 115,
+	NSUTF16LittleEndianStringEncoding = 116,
+	NSUTF32StringEncoding = 117,
+	NSUTF32BigEndianStringEncoding = 118,
+	NSUTF32LittleEndianStringEncoding = 119
 } NSStringEncoding;
 
 /* THE TWO OPTION SETS THE WINDOWS TAKE (2026-09-20). The doors that use them — a
@@ -314,6 +348,43 @@ typedef enum {
 	const char * const _rstr;
 }
 @end
+
+/* THE TRANSFORMS AND THE DETECTION KEYS (the coverage slice). A transform is a NAME a -stringByApplyingTransform:
+ * call takes, and this library implements NONE of them, so each constant is declared and the door that would use
+ * it is refused rather than silently ignored; the detection keys are the option keys of a similar door. Names
+ * Apple's, values ours (§11.6.1 D2), and the two types come with them because no caller can name a transform
+ * without them. */
+typedef NSString *NSStringTransform;
+typedef NSString *NSStringEncodingDetectionOptionsKey;
+
+extern NSStringTransform const NSStringTransformFullwidthToHalfwidth;
+extern NSStringTransform const NSStringTransformHiraganaToKatakana;
+extern NSStringTransform const NSStringTransformLatinToArabic;
+extern NSStringTransform const NSStringTransformLatinToCyrillic;
+extern NSStringTransform const NSStringTransformLatinToGreek;
+extern NSStringTransform const NSStringTransformLatinToHangul;
+extern NSStringTransform const NSStringTransformLatinToHebrew;
+extern NSStringTransform const NSStringTransformLatinToHiragana;
+extern NSStringTransform const NSStringTransformLatinToKatakana;
+extern NSStringTransform const NSStringTransformLatinToThai;
+extern NSStringTransform const NSStringTransformMandarinToLatin;
+extern NSStringTransform const NSStringTransformStripCombiningMarks;
+extern NSStringTransform const NSStringTransformStripDiacritics;
+extern NSStringTransform const NSStringTransformToLatin;
+extern NSStringTransform const NSStringTransformToUnicodeName;
+extern NSStringTransform const NSStringTransformToXMLHex;
+
+extern NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionAllowLossyKey;
+extern NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionDisallowedEncodingsKey;
+extern NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionFromWindowsKey;
+extern NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionLikelyLanguageKey;
+extern NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionLossySubstitutionKey;
+extern NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionSuggestedEncodingsKey;
+extern NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySuggestedEncodingsKey;
+
+/* Apple declares these two in THIS header, which is why they are here rather than in NSException.h. */
+extern NSExceptionName const NSCharacterConversionException;
+extern NSExceptionName const NSParseErrorException;
 
 NS_ASSUME_NONNULL_END
 

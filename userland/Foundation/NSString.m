@@ -550,6 +550,32 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 
 @implementation NSString
 
+NSStringTransform const NSStringTransformFullwidthToHalfwidth = @"NSStringTransformFullwidthToHalfwidth";
+NSStringTransform const NSStringTransformHiraganaToKatakana = @"NSStringTransformHiraganaToKatakana";
+NSStringTransform const NSStringTransformLatinToArabic = @"NSStringTransformLatinToArabic";
+NSStringTransform const NSStringTransformLatinToCyrillic = @"NSStringTransformLatinToCyrillic";
+NSStringTransform const NSStringTransformLatinToGreek = @"NSStringTransformLatinToGreek";
+NSStringTransform const NSStringTransformLatinToHangul = @"NSStringTransformLatinToHangul";
+NSStringTransform const NSStringTransformLatinToHebrew = @"NSStringTransformLatinToHebrew";
+NSStringTransform const NSStringTransformLatinToHiragana = @"NSStringTransformLatinToHiragana";
+NSStringTransform const NSStringTransformLatinToKatakana = @"NSStringTransformLatinToKatakana";
+NSStringTransform const NSStringTransformLatinToThai = @"NSStringTransformLatinToThai";
+NSStringTransform const NSStringTransformMandarinToLatin = @"NSStringTransformMandarinToLatin";
+NSStringTransform const NSStringTransformStripCombiningMarks = @"NSStringTransformStripCombiningMarks";
+NSStringTransform const NSStringTransformStripDiacritics = @"NSStringTransformStripDiacritics";
+NSStringTransform const NSStringTransformToLatin = @"NSStringTransformToLatin";
+NSStringTransform const NSStringTransformToUnicodeName = @"NSStringTransformToUnicodeName";
+NSStringTransform const NSStringTransformToXMLHex = @"NSStringTransformToXMLHex";
+
+NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionAllowLossyKey = @"NSStringEncodingDetectionAllowLossyKey";
+NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionDisallowedEncodingsKey = @"NSStringEncodingDetectionDisallowedEncodingsKey";
+NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionFromWindowsKey = @"NSStringEncodingDetectionFromWindowsKey";
+NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionLikelyLanguageKey = @"NSStringEncodingDetectionLikelyLanguageKey";
+NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionLossySubstitutionKey = @"NSStringEncodingDetectionLossySubstitutionKey";
+NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionSuggestedEncodingsKey = @"NSStringEncodingDetectionSuggestedEncodingsKey";
+NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySuggestedEncodingsKey = @"NSStringEncodingDetectionUseOnlySuggestedEncodingsKey";
+
+
 + (id)stringWithUTF8String:(const char *)utf8
 {
 	/* Bounded to a concrete class: NSString itself has no storage. */

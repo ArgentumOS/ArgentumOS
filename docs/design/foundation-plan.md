@@ -12972,6 +12972,29 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.2 — THE COVERAGE SLICE, SECOND LANDING: NSString'S 54 ROWS (2026-09-24)
+
+**THE 54 OPEN `NSString` ROWS ARE ALL CONSTANTS TOO** - 27 cases and 25 string constants plus the 2 typealiases
+that spell them (`NSStringTransform`, `NSStringEncodingDetectionOptionsKey`) - and they are shipped: the 7
+missing search options appended to `NSStringCompareOptions` as distinct bits, the 20 missing encodings appended
+to `NSStringEncoding`, and the 15 transforms, 7 encoding-detection keys and 2 exception names as constants whose
+values are their own names.
+
+**TWO VALUES ARE COCOA'S AND DELIBERATELY KEPT**: `NSLiteralSearch = 0` and `NSCaseInsensitiveSearch = 1` (and
+`NSASCIIStringEncoding = 1`, `NSUTF8StringEncoding = 4`, `NSUnicodeStringEncoding = 10`) already had their
+Cocoa numbers in this header, and changing them to "ours" would have been a silent behavioural change for code
+that compares numbers. The new members are ours (§11.6.1 D2) and the header now says WHICH IS WHICH - the old
+comment claimed every raw value was Cocoa's, which would have been false from this commit onward.
+
+**AND TWO PROPERTIES ARE NOW CHECKED RATHER THAN ASSUMED:** `option-set-members-are-distinct-bits` (no two
+options share a value, and the two legacy members keep theirs - a collision would make an option unrequestable
+in silence) and `transforms-and-keys-are-their-own-names`.
+
+**A STAGING LESSON, AGAIN:** the guest build failed on `NSExceptionName` in
+`.build/sterlingc/guest/include/Foundation/NSString.h` - a STAGED COPY of the header - because `NSString.h` did
+not import `NSException.h`. The library built fine, which is exactly the shape of the recorded staging trap: the
+failure names a path you edited and a copy you did not.
+
 ## §62.1 — THE COVERAGE SLICE BEGINS: NSError'S 86 ROWS (2026-09-24)
 
 **86 OF THE 87 OPEN `NSError` ROWS WERE CONSTANTS** - 13 domains, 13 user-info keys and 73 error codes - so the

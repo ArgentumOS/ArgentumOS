@@ -26,6 +26,9 @@ NSString *const NSMallocException = @"NSMallocException";
 
 @implementation NSException
 
+NSExceptionName const NSCharacterConversionException = @"NSCharacterConversionException";
+NSExceptionName const NSParseErrorException = @"NSParseErrorException";
+
 + (NSException *)exceptionWithName:(NSString *)name
 			    reason:(NSString *)reason
 			  userInfo:(NSDictionary *)userInfo

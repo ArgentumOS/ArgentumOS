@@ -36,6 +36,10 @@
  * returns its result. */
 NS_ASSUME_NONNULL_BEGIN
 
+/* Apple spells an exception name with its own type. Declared here because the string constants (and the
+ * NSString ones) are spelled with it. */
+typedef NSString *NSExceptionName;
+
 /* Cocoa's standard names; code that catches by name expects these spellings. */
 extern NSString *const NSGenericException;
 extern NSString *const NSRangeException;

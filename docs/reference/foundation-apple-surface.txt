@@ -32,10 +32,10 @@
 #   protocol   shipped   23   open    8   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped  119   open   24   struck   17
-#   case       shipped  949   open  185   struck  168
+#   case       shipped  976   open  158   struck  168
 #   func       shipped   72   open   63   struck   54
-#   var        shipped  348   open  213   struck  353
-#   typealias  shipped   43   open   26   struck    7
+#   var        shipped  390   open  171   struck  353
+#   typealias  shipped   46   open   23   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -77,7 +77,7 @@ case	shipped	NSAllApplicationsDirectory	NSFileManager	Files and Data Persistence
 case	shipped	NSAllDomainsMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
 case	shipped	NSAllLibrariesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSAllPredicateModifier	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	open	NSAnchoredSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
+case	shipped	NSAnchoredSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	shipped	NSAndPredicateType	NSCompoundPredicate	Fundamentals / Filltering / Getting Information About a Compound Predicate / Constants	-	objc
 case	shipped	NSAnyKeyExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	shipped	NSAnyPredicateModifier	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
@@ -110,7 +110,7 @@ case	open	NSAttributedStringMarkdownParsingFailureReturnPartiallyParsedIfPossibl
 case	shipped	NSAutosavedInformationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	open	NSBackgroundActivityResultDeferred	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
 case	open	NSBackgroundActivityResultFinished	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
-case	open	NSBackwardsSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
+case	shipped	NSBackwardsSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	struck	NSBeginsWithComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	shipped	NSBeginsWithPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSBetweenPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
@@ -312,7 +312,7 @@ case	shipped	NSDesktopDirectory	NSFileManager	Files and Data Persistence / File 
 case	shipped	NSDeveloperApplicationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSDeveloperDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSDiacriticInsensitivePredicateOption	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	swift-page
-case	open	NSDiacriticInsensitiveSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
+case	shipped	NSDiacriticInsensitiveSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	shipped	NSDirectPredicateModifier	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSDirectoryEnumerationIncludesDirectoriesPostOrder	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Enumeration Cases	-	objc
 case	shipped	NSDirectoryEnumerationProducesRelativePathURLs	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Enumeration Cases	-	objc
@@ -425,7 +425,7 @@ case	shipped	NSFileWriteUnsupportedSchemeError		Files and Data Persistence / Err
 case	shipped	NSFileWriteUnsupportedSchemeError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
 case	shipped	NSFileWriteVolumeReadOnlyError		Files and Data Persistence / Errors / Error Codes	-	objc
 case	shipped	NSFileWriteVolumeReadOnlyError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
-case	open	NSForcedOrderingSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
+case	shipped	NSForcedOrderingSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	shipped	NSFormattingContextBeginningOfSentence	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
 case	shipped	NSFormattingContextDynamic	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
 case	shipped	NSFormattingContextListItem	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
@@ -507,7 +507,7 @@ case	shipped	NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain	NSHTTPCookie	Net
 case	shipped	NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy / Policies	-	objc
 case	struck	NSHourCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSHourCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	open	NSISO2022JPStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSISO2022JPStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSISO8601DateFormatWithColonSeparatorInTime	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	shipped	NSISO8601DateFormatWithColonSeparatorInTimeZone	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	shipped	NSISO8601DateFormatWithDashSeparatorInDate	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
@@ -522,8 +522,8 @@ case	shipped	NSISO8601DateFormatWithTime	NSISO8601DateFormatter	Fundamentals / D
 case	shipped	NSISO8601DateFormatWithTimeZone	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	shipped	NSISO8601DateFormatWithWeekOfYear	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	shipped	NSISO8601DateFormatWithYear	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSISOLatin1StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSISOLatin2StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSISOLatin1StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSISOLatin2StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSInPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	struck	NSIndexSubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	shipped	NSInlinePresentationIntentBlockHTML	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
@@ -559,7 +559,7 @@ case	open	NSJSONWritingFragmentsAllowed	NSJSONSerialization	Files and Data Persi
 case	shipped	NSJSONWritingPrettyPrinted	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data / Formatting JSON	-	objc
 case	shipped	NSJSONWritingSortedKeys	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data / Formatting JSON	-	objc
 case	open	NSJSONWritingWithoutEscapingSlashes	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data / Formatting JSON	-	objc
-case	open	NSJapaneseEUCStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSJapaneseEUCStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSKeyPathExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSKeySpecifierEvaluationScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	shipped	NSKeyValueChangeInsertion		Reference / Enumerations / Constants	-	objc
@@ -606,7 +606,7 @@ case	shipped	NSLocaleLanguageDirectionRightToLeft	NSLocale	Fundamentals / Locali
 case	shipped	NSLocaleLanguageDirectionTopToBottom	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
 case	shipped	NSLocaleLanguageDirectionUnknown	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
 case	struck	NSMACHOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
-case	open	NSMacOSRomanStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSMacOSRomanStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	struck	NSMachPortDeallocateNone	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
 case	struck	NSMachPortDeallocateReceiveRight	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
 case	struck	NSMachPortDeallocateSendRight	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
@@ -642,7 +642,7 @@ case	struck	NSMonthCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculatio
 case	struck	NSMonthCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSMoviesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSMusicDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSNEXTSTEPStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSNEXTSTEPStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	struck	NSNetServiceListenForConnections	NSNetService	Networking / Local Network Services / Constants / Constants	declined	objc
 case	struck	NSNetServiceNoAutoRename	NSNetService	Networking / Local Network Services / Constants / Constants	declined	objc
 case	struck	NSNetServicesActivityInProgress	NSNetService	Networking / Local Network Services / Constants / Constants	declined	swift-page
@@ -659,7 +659,7 @@ case	struck	NSNoScriptError	NSScriptCommand	App Support / Script Commands / Cons
 case	struck	NSNoSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	struck	NSNoSubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	struck	NSNoTopLevelContainersSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
-case	open	NSNonLossyASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSNonLossyASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSNormalizedPredicateOption	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	swift-page
 case	shipped	NSNotEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSNotPredicateType	NSCompoundPredicate	Fundamentals / Filltering / Getting Information About a Compound Predicate / Constants	-	objc
@@ -694,7 +694,7 @@ case	shipped	NSNumberFormatterRoundHalfUp	NSNumberFormatter	Fundamentals / Numbe
 case	shipped	NSNumberFormatterRoundUp	NSNumberFormatter	Fundamentals / Numbers / Constants / Constants	-	swift-page
 case	shipped	NSNumberFormatterScientificStyle	NSNumberFormatter	Fundamentals / Numbers / Constants / Formatting Styles	-	objc
 case	shipped	NSNumberFormatterSpellOutStyle	NSNumberFormatter	Fundamentals / Numbers / Constants / Formatting Styles	-	objc
-case	open	NSNumericSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
+case	shipped	NSNumericSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	struck	NSOSF1OperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	open	NSOpenStepUnicodeReservedBase	NSCharacterSet	Fundamentals / Characters / Creating a Custom Character Set / Constants	-	objc
 case	struck	NSOperationNotSupportedForKeyScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
@@ -825,7 +825,7 @@ case	shipped	NSRegularExpressionAnchorsMatchLines	NSRegularExpression	Fundamenta
 case	shipped	NSRegularExpressionCaseInsensitive	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	swift-page
 case	shipped	NSRegularExpressionDotMatchesLineSeparators	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	swift-page
 case	shipped	NSRegularExpressionIgnoreMetacharacters	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	swift-page
-case	open	NSRegularExpressionSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
+case	shipped	NSRegularExpressionSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	shipped	NSRegularExpressionUseUnicodeWordBoundaries	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	swift-page
 case	shipped	NSRegularExpressionUseUnixLineSeparators	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	swift-page
 case	struck	NSRelativeAfter	NSRelativeSpecifier	App Support / Object Specifiers / Constants / Constants	declined	swift-page
@@ -852,7 +852,7 @@ case	struck	NSScannedOption		Low-Level Utilities / Legacy / Legacy / Constants	d
 case	struck	NSSecondCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSSecondCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSSharedPublicDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSShiftJISStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSShiftJISStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	struck	NSSolarisOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	open	NSSortConcurrent		Fundamentals / Iteration / Constants	-	objc
 case	open	NSSortStable		Fundamentals / Iteration / Constants	-	objc
@@ -884,7 +884,7 @@ case	shipped	NSStringEnumerationReverse	NSString	Fundamentals / Strings / Perfor
 case	shipped	NSStringEnumerationSubstringNotRequired	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
 case	shipped	NSSubqueryExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSSunOSOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
-case	open	NSSymbolStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSSymbolStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSSystemDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
 case	shipped	NSTaskTerminationReasonExit	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	swift-page
 case	shipped	NSTaskTerminationReasonUncaughtSignal	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	swift-page
@@ -1082,12 +1082,12 @@ case	shipped	NSURLSessionWebSocketCloseCodeTLSHandshakeFailure	NSURLSessionWebSo
 case	shipped	NSURLSessionWebSocketCloseCodeUnsupportedData	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
 case	shipped	NSURLSessionWebSocketMessageTypeData	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session / Enumeration Cases	-	objc
 case	shipped	NSURLSessionWebSocketMessageTypeString	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session / Enumeration Cases	-	objc
-case	open	NSUTF16BigEndianStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSUTF16LittleEndianStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSUTF16StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSUTF32BigEndianStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSUTF32LittleEndianStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSUTF32StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSUTF16BigEndianStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSUTF16LittleEndianStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSUTF16StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSUTF32BigEndianStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSUTF32LittleEndianStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSUTF32StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSUTF8StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSUbiquitousFileErrorMaximum		Files and Data Persistence / Errors / General iCloud File Errors	-	objc
 case	shipped	NSUbiquitousFileErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / iCloud File Errors	-	objc
@@ -1144,13 +1144,13 @@ case	struck	NSWeekdayCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculat
 case	struck	NSWeekdayCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	struck	NSWeekdayOrdinalCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSWeekdayOrdinalCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	open	NSWidthInsensitiveSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
+case	shipped	NSWidthInsensitiveSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	struck	NSWindows95OperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
-case	open	NSWindowsCP1250StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSWindowsCP1251StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSWindowsCP1252StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSWindowsCP1253StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSWindowsCP1254StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSWindowsCP1250StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSWindowsCP1251StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSWindowsCP1252StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSWindowsCP1253StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+case	shipped	NSWindowsCP1254StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	struck	NSWindowsNTOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	struck	NSWrapCalendarComponents	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	deprecated	objc
 case	shipped	NSXMLAttributeCDATAKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
@@ -2281,7 +2281,7 @@ typealias	open	NSComparator	NSArray	Fundamentals / Basic Collections / Sorting	-
 typealias	open	NSDistributedNotificationCenterType	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants	-	objc
 typealias	shipped	NSErrorDomain	NSError	App Support / User-Relevant Errors / Supporting Types	-	objc
 typealias	open	NSErrorUserInfoKey	NSError	App Support / User-Relevant Errors / Providing Error User Info	-	objc
-typealias	open	NSExceptionName	NSException	App Support / Exceptions / Related Types	-	objc
+typealias	shipped	NSExceptionName	NSException	App Support / Exceptions / Related Types	-	objc
 typealias	shipped	NSFileAttributeKey	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 typealias	shipped	NSFileAttributeType	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 typealias	shipped	NSFileProtectionType	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
@@ -2323,8 +2323,8 @@ typealias	shipped	NSStreamSOCKSProxyConfiguration	NSStream	Low-Level Utilities /
 typealias	shipped	NSStreamSOCKSProxyVersion	NSStream	Low-Level Utilities / Streams / Constants	-	objc
 typealias	shipped	NSStreamSocketSecurityLevel	NSStream	Low-Level Utilities / Streams / Constants	-	objc
 typealias	shipped	NSStringEncoding	NSString	Fundamentals / Strings / Working with Encodings	-	objc
-typealias	open	NSStringEncodingDetectionOptionsKey	NSString	Fundamentals / Strings / Working with Encodings	-	objc
-typealias	open	NSStringTransform	NSString	Fundamentals / Strings / Transforming Strings	-	objc
+typealias	shipped	NSStringEncodingDetectionOptionsKey	NSString	Fundamentals / Strings / Working with Encodings	-	objc
+typealias	shipped	NSStringTransform	NSString	Fundamentals / Strings / Transforming Strings	-	objc
 typealias	open	NSTextCheckingKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants	-	objc
 typealias	open	NSTextCheckingTypes	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants	-	objc
 typealias	shipped	NSTimeInterval		Fundamentals / Date Representations	-	objc
@@ -2395,8 +2395,8 @@ var	open	NSCalendarIdentifierTamil	NSCalendar	Fundamentals / Calendrical Calcula
 var	open	NSCalendarIdentifierTelugu	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	open	NSCalendarIdentifierVietnamese	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	open	NSCalendarIdentifierVikram	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
-var	open	NSCharacterConversionException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSCharacterConversionException	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+var	shipped	NSCharacterConversionException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSCharacterConversionException	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 var	struck	NSChineseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	struck	NSClassDescriptionNeededForClassNotification	NSClassDescription	App Support / Script Dictionary Description / Notifications	declined	swift-page
 var	open	NSClassDescriptionNeededForClassNotification	NSNotification	App Support / Notifications / Creating Notifications / AppKit	-	swift-page
@@ -2902,8 +2902,8 @@ var	struck	NSOwnedPointerHashCallBacks	NSHashTable	Fundamentals / Pointer Collec
 var	struck	NSOwnedPointerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	struck	NSOwnedPointerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSPOSIXErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
-var	open	NSParseErrorException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSParseErrorException	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
+var	shipped	NSParseErrorException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSParseErrorException	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 var	struck	NSPersianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	struck	NSPointerToStructHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSPortDidBecomeInvalidNotification	NSPort	Low-Level Utilities / Sockets / Working with notifications	-	objc
@@ -2969,45 +2969,45 @@ var	shipped	NSStreamSocketSecurityLevelNone	NSStream	Low-Level Utilities / Strea
 var	shipped	NSStreamSocketSecurityLevelSSLv2	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
 var	shipped	NSStreamSocketSecurityLevelSSLv3	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
 var	shipped	NSStreamSocketSecurityLevelTLSv1	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStringEncodingDetectionAllowLossyKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
-var	open	NSStringEncodingDetectionDisallowedEncodingsKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
-var	open	NSStringEncodingDetectionFromWindowsKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
-var	open	NSStringEncodingDetectionLikelyLanguageKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
-var	open	NSStringEncodingDetectionLossySubstitutionKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
-var	open	NSStringEncodingDetectionSuggestedEncodingsKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
-var	open	NSStringEncodingDetectionUseOnlySuggestedEncodingsKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
+var	shipped	NSStringEncodingDetectionAllowLossyKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
+var	shipped	NSStringEncodingDetectionDisallowedEncodingsKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
+var	shipped	NSStringEncodingDetectionFromWindowsKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
+var	shipped	NSStringEncodingDetectionLikelyLanguageKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
+var	shipped	NSStringEncodingDetectionLossySubstitutionKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
+var	shipped	NSStringEncodingDetectionSuggestedEncodingsKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
+var	shipped	NSStringEncodingDetectionUseOnlySuggestedEncodingsKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
 var	shipped	NSStringEncodingErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
-var	open	NSStringTransformFullwidthToHalfwidth	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
-var	open	NSStringTransformFullwidthToHalfwidth	NSString	Fundamentals / Strings / Transforming Strings / Halfwidth and Fullwidth Form Conversion	-	objc
-var	open	NSStringTransformHiraganaToKatakana	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
-var	open	NSStringTransformHiraganaToKatakana	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
-var	open	NSStringTransformLatinToArabic	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
-var	open	NSStringTransformLatinToArabic	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
-var	open	NSStringTransformLatinToCyrillic	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
-var	open	NSStringTransformLatinToCyrillic	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
-var	open	NSStringTransformLatinToGreek	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
-var	open	NSStringTransformLatinToHangul	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
-var	open	NSStringTransformLatinToHangul	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
-var	open	NSStringTransformLatinToHebrew	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
-var	open	NSStringTransformLatinToHebrew	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
-var	open	NSStringTransformLatinToHiragana	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
-var	open	NSStringTransformLatinToHiragana	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
-var	open	NSStringTransformLatinToKatakana	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
-var	open	NSStringTransformLatinToKatakana	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
-var	open	NSStringTransformLatinToThai	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
-var	open	NSStringTransformLatinToThai	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
-var	open	NSStringTransformMandarinToLatin	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
-var	open	NSStringTransformMandarinToLatin	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
-var	open	NSStringTransformStripCombiningMarks	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
-var	open	NSStringTransformStripCombiningMarks	NSString	Fundamentals / Strings / Transforming Strings / Diacritic and Combining Mark Removal	-	objc
-var	open	NSStringTransformStripDiacritics	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
-var	open	NSStringTransformStripDiacritics	NSString	Fundamentals / Strings / Transforming Strings / Diacritic and Combining Mark Removal	-	objc
-var	open	NSStringTransformToLatin	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
-var	open	NSStringTransformToLatin	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
-var	open	NSStringTransformToUnicodeName	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
-var	open	NSStringTransformToUnicodeName	NSString	Fundamentals / Strings / Transforming Strings / Character Representation	-	objc
-var	open	NSStringTransformToXMLHex	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
-var	open	NSStringTransformToXMLHex	NSString	Fundamentals / Strings / Transforming Strings / Character Representation	-	objc
+var	shipped	NSStringTransformFullwidthToHalfwidth	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
+var	shipped	NSStringTransformFullwidthToHalfwidth	NSString	Fundamentals / Strings / Transforming Strings / Halfwidth and Fullwidth Form Conversion	-	objc
+var	shipped	NSStringTransformHiraganaToKatakana	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
+var	shipped	NSStringTransformHiraganaToKatakana	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
+var	shipped	NSStringTransformLatinToArabic	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
+var	shipped	NSStringTransformLatinToArabic	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
+var	shipped	NSStringTransformLatinToCyrillic	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
+var	shipped	NSStringTransformLatinToCyrillic	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
+var	shipped	NSStringTransformLatinToGreek	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
+var	shipped	NSStringTransformLatinToHangul	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
+var	shipped	NSStringTransformLatinToHangul	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
+var	shipped	NSStringTransformLatinToHebrew	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
+var	shipped	NSStringTransformLatinToHebrew	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
+var	shipped	NSStringTransformLatinToHiragana	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
+var	shipped	NSStringTransformLatinToHiragana	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
+var	shipped	NSStringTransformLatinToKatakana	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
+var	shipped	NSStringTransformLatinToKatakana	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
+var	shipped	NSStringTransformLatinToThai	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
+var	shipped	NSStringTransformLatinToThai	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
+var	shipped	NSStringTransformMandarinToLatin	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
+var	shipped	NSStringTransformMandarinToLatin	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
+var	shipped	NSStringTransformStripCombiningMarks	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
+var	shipped	NSStringTransformStripCombiningMarks	NSString	Fundamentals / Strings / Transforming Strings / Diacritic and Combining Mark Removal	-	objc
+var	shipped	NSStringTransformStripDiacritics	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
+var	shipped	NSStringTransformStripDiacritics	NSString	Fundamentals / Strings / Transforming Strings / Diacritic and Combining Mark Removal	-	objc
+var	shipped	NSStringTransformToLatin	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
+var	shipped	NSStringTransformToLatin	NSString	Fundamentals / Strings / Transforming Strings / Transliteration	-	objc
+var	shipped	NSStringTransformToUnicodeName	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
+var	shipped	NSStringTransformToUnicodeName	NSString	Fundamentals / Strings / Transforming Strings / Character Representation	-	objc
+var	shipped	NSStringTransformToXMLHex	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
+var	shipped	NSStringTransformToXMLHex	NSString	Fundamentals / Strings / Transforming Strings / Character Representation	-	objc
 var	shipped	NSSumKeyValueOperator		Reference / Constants	-	objc
 var	open	NSSystemClockDidChangeNotification	NSDate	Fundamentals / Date Representations / Recognizing Notifications	-	swift-page
 var	open	NSSystemClockDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page

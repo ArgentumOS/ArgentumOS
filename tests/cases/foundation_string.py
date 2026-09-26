@@ -39,6 +39,7 @@ CHECKS = (
           "charset-symbols", "charset-titled", "charset-non-base", "charset-decomposable",
           "charset-whitespace-family", "charset-letter-family",
           "charset-punct-and-control", "locale-display-names",
+          "option-set-members-are-distinct-bits", "transforms-and-keys-are-their-own-names",
           )
 
 
