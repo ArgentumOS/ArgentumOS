@@ -9,7 +9,8 @@
  */
 
 #import <Foundation/NSException.h>
-#import <Foundation/NSThread.h>	/* the handler lives in the thread dictionary */
+#import <Foundation/NSThread.h>
+#include <objc/objc-exception.h>	/* the runtime's uncaught hook: the only code that KNOWS */	/* the handler lives in the thread dictionary */
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSString.h>
@@ -195,3 +196,24 @@ NSString *NSAssertionHandlerKey = @"NSAssertionHandler";
 
 @end
 
+/*
+ * THE UNCAUGHT-EXCEPTION HANDLER (the gap §62.3 named). -raise calls objc_exception_throw, so an uncaught
+ * exception never returns into Foundation and there is no place here that could NOTICE one - the runtime
+ * notices, and libobjc exposes the hook for it (objc/objc-exception.h). Both of Apple's functions are here:
+ * the setter installs into the runtime AND keeps its own copy, because the runtime's setter ANSWERS the
+ * previous handler while having no getter, and Apple's getter must answer the CURRENT one.
+ */
+static NSUncaughtExceptionHandler fn_uncaught_handler = NULL;
+
+NSUncaughtExceptionHandler NSGetUncaughtExceptionHandler(void)
+{
+	return fn_uncaught_handler;
+}
+
+void NSSetUncaughtExceptionHandler(NSUncaughtExceptionHandler handler)
+{
+	/* The two handler TYPES name the same call: the runtime's takes an `id`, Apple's an NSException *, and a
+	 * handler written to Apple's signature is the one a caller hands over. */
+	fn_uncaught_handler = handler;
+	(void)objc_setUncaughtExceptionHandler((objc_uncaught_exception_handler)handler);
+}

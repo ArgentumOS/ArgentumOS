@@ -12972,6 +12972,24 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.4 — THE UNCAUGHT-EXCEPTION HANDLER, AND WHERE THE TRUTH TURNED OUT TO LIVE (2026-09-24)
+
+**§62.3 NAMED A GAP; THIS CLOSES IT, AND THE SEARCH IS THE INTERESTING PART.** `-raise` calls
+`objc_exception_throw`, so an uncaught exception NEVER RETURNS INTO FOUNDATION - which is why there is no
+"uncaught" code in NSException.m or NSObject.m to hook: nothing in the library is ever in a position to notice.
+The code that notices is the RUNTIME, and libobjc2 exposes exactly that hook
+(`.build/libobjc2-src/objc/objc-exception.h`: `objc_uncaught_exception_handler` +
+`objc_setUncaughtExceptionHandler`). So `NSSetUncaughtExceptionHandler` installs into the runtime AND keeps its
+own copy - the runtime's setter answers the PREVIOUS handler and has no getter, while Apple's getter must answer
+the CURRENT one - and `NSGetUncaughtExceptionHandler` answers that copy.
+
+**AND THE CHECK THAT COULD HAVE BEEN A LIE IS NOT.** A round trip (set, then get) proves nothing about whether
+the runtime CALLS a handler, so the probe forks: the CHILD installs a handler that writes a marker down a PIPE
+and then raises for real, and the PARENT asserts the marker arrived
+(`uncaught-handler-is-called-by-the-runtime`). It passes, which is a measured statement about the runtime rather
+than an assumption about it - and it is the same discipline as the strings-with-format probe's caller-side va
+rule and the archiver boundary: **assert the property, not the adjacency of the API.**
+
 ## §62.3 — THE COVERAGE SLICE, THIRD LANDING: NSException'S 15 NAMES (2026-09-24)
 
 **THE 18 OPEN `NSException` ROWS ARE 15 EXCEPTION NAMES, ONE HANDLER TYPEDEF AND THE TWO HANDLER FUNCTIONS.**

@@ -40,6 +40,17 @@ NS_ASSUME_NONNULL_BEGIN
  * NSString ones) are spelled with it. */
 typedef NSString *NSExceptionName;
 
+/* THE UNCAUGHT-EXCEPTION HANDLER. Apple's pair, and the detection belongs to the RUNTIME: -raise calls
+ * objc_exception_throw, which never returns to Foundation when nothing catches it, so the only code that KNOWS
+ * an exception went uncaught is the Objective-C runtime - which exposes this very hook. The handler is called
+ * on the thread that threw, before the runtime terminates the process. */
+@class NSException;   /* the typedef below names the class, which is declared after it */
+
+typedef void (*NSUncaughtExceptionHandler)(NSException *exception);
+
+extern NSUncaughtExceptionHandler _Nullable NSGetUncaughtExceptionHandler(void);
+extern void NSSetUncaughtExceptionHandler(NSUncaughtExceptionHandler _Nullable handler);
+
 /* THE NAMES OF THE EXCEPTIONS THIS LIBRARY DOES NOT RAISE ITSELF. Apple declares them all in NSException.h, and
  * they are here for the same reason: a caller has to be able to CATCH one, and a catch needs a name. Values are
  * their own names (the names are Apple's; §11.6.1 D2 for the strings). */

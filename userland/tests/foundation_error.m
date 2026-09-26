@@ -27,6 +27,26 @@
 
 static int okc, failc;
 
+/*
+ * THE MARKER HANDLER the child process installs. It writes ONE line on fd 1 - the descriptor a probe's output
+ * actually reaches in this system - so the case can see that the RUNTIME called the uncaught handler, which is
+ * the half of the contract this library cannot observe from the inside: -raise hands the exception to
+ * objc_exception_throw, and nothing in Foundation learns whether anything caught it.
+ */
+static int fn_marker_fd = -1;	/* armed with a pipe, so the PARENT can assert the runtime called this */
+
+static void fn_marker_handler(NSException *exception)
+{
+	const char *name = [[exception name] UTF8String];
+	char line[160];
+	int n = snprintf(line, sizeof line, "FOUNDATION-ERROR uncaught-handler-fired name=%s\n",
+			 name != NULL ? name : "(null)");
+
+	if (n > 0) {
+		(void)write(fn_marker_fd >= 0 ? fn_marker_fd : 1, line, (size_t)n);
+	}
+}
+
 static void check(const char *name, int ok, const char *detail)
 {
 	if (ok) {
@@ -434,6 +454,54 @@ int main(void)
 			isEqualToString:@"NSInvalidArchiveOperationException"] &&
 		      [NSUndefinedKeyException isEqualToString:NSInvalidArgumentException] == 0,
 		      "five exception names read back as themselves and two stay distinct");
+	}
+
+	{
+		/* THE UNCAUGHT-EXCEPTION HANDLER: the round trip is asserted here, and WHETHER THE RUNTIME CALLS IT is
+		 * measured in a CHILD process - the only place an uncaught exception may happen without ending the
+		 * probe. The child installs a handler that writes a marker on fd 1 and then raises for real; the
+		 * marker in the console output is the case's assertion, because Foundation cannot know it from the
+		 * inside: -raise hands the exception to objc_exception_throw and never learns the outcome. */
+		NSUncaughtExceptionHandler before = NSGetUncaughtExceptionHandler();
+		NSUncaughtExceptionHandler after;
+
+		NSSetUncaughtExceptionHandler((NSUncaughtExceptionHandler)fn_marker_handler);
+		after = NSGetUncaughtExceptionHandler();
+		check("uncaught-handler-round-trips",
+		      after != NULL && after != before,
+		      "the setter installs a handler into the runtime and the getter answers the same one");
+		fflush(NULL);
+		{
+			/* A PIPE, SO THE ASSERTION IS THE PROBE'S OWN: the marker the handler writes travels back to the
+			 * PARENT, which then asserts that the runtime called it - the one fact Foundation cannot observe
+			 * from the inside, and the reason a round trip alone would have been a weaker check. */
+			int fds[2];
+			char seen[160];
+			ssize_t got = 0;
+
+			if (pipe(fds) == 0) {
+				fn_marker_fd = fds[1];
+				if (fork() == 0) {
+					NSException *boom = [[NSException alloc] initWithName:@"FnProbeUncaught"
+										      reason:@"this probe means it"
+										    userInfo:nil];
+					close(fds[0]);
+					[boom raise];	/* NOTHING CATCHES IT: the runtime must call the handler */
+					_exit(3);	/* unreachable: -raise does not return */
+				}
+				close(fds[1]);
+				fn_marker_fd = -1;
+				got = read(fds[0], seen, sizeof seen - 1);
+				close(fds[0]);
+			}
+			if (got > 0) {
+				seen[got] = '\0';
+			}
+			check("uncaught-handler-is-called-by-the-runtime",
+			      got > 0 && strstr(seen, "name=FnProbeUncaught") != NULL,
+			      got > 0 ? seen : "the child's uncaught exception produced no marker from the handler");
+			usleep(200000);	/* the child finishes on its own; no sys/wait.h for one use */
+		}
 	}
 
 	printf("FOUNDATION-ERROR RESULT ok=%d fail=%d\n", okc, failc);

@@ -33,7 +33,7 @@
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped  119   open   24   struck   17
 #   case       shipped  976   open  158   struck  168
-#   func       shipped   72   open   63   struck   54
+#   func       shipped   74   open   61   struck   54
 #   var        shipped  409   open  152   struck  353
 #   typealias  shipped   46   open   23   struck    7
 #   struct     shipped    8   open    0   struck    5
@@ -1835,7 +1835,7 @@ func	struck	NSFreeHashTable	NSHashTable	Fundamentals / Pointer Collections / Dep
 func	struck	NSFreeMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	open	NSFullUserName	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	shipped	NSGetSizeAndAlignment		Low-Level Utilities / Objective-C Runtime / Serialization	-	objc
-func	open	NSGetUncaughtExceptionHandler	NSException	App Support / Exceptions / Functions	-	objc
+func	shipped	NSGetUncaughtExceptionHandler	NSException	App Support / Exceptions / Functions	-	objc
 func	open	NSHFSTypeCodeFromFileType	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
 func	open	NSHFSTypeOfFile	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
 func	struck	NSHashGet	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
@@ -1904,7 +1904,7 @@ func	open	NSRoundDownToMultipleOfPageSize		Low-Level Utilities / Memory Manageme
 func	open	NSRoundUpToMultipleOfPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	open	NSSearchPathForDirectoriesInDomains	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
 func	shipped	NSSelectorFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
-func	open	NSSetUncaughtExceptionHandler	NSException	App Support / Exceptions / Functions	-	objc
+func	shipped	NSSetUncaughtExceptionHandler	NSException	App Support / Exceptions / Functions	-	objc
 func	struck	NSSetZoneName		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
 func	open	NSShouldRetainWithZone		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
 func	shipped	NSSizeFromCGSize		Fundamentals / Geometry / Managing Sizes	-	objc
