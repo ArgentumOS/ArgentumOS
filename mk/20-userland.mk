@@ -241,6 +241,7 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSURLSession.h \
 	$(FOUNDATION_SRC)/NSHTTPURLResponse.h \
 	$(FOUNDATION_SRC)/NSAttributedString.h \
+	$(FOUNDATION_SRC)/NSMorphology.h \
 	$(FOUNDATION_SRC)/Foundation.h
 # -Iinclude: the plist CORE (include/plist.h) is shared with libconfig, which
 # consumes it from C — see the one-core-two-skins decision in the plan.

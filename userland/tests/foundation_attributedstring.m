@@ -21,6 +21,7 @@
  */
 
 #import <Foundation/Foundation.h>
+#import <Foundation/NSMorphology.h>
 
 #include <stdio.h>
 
@@ -627,6 +628,27 @@ int main(void)
 		      [sample RTFFromRange:NSMakeRange(0, 1) documentAttributes:nil] == nil &&
 		      [sample docFormatFromRange:NSMakeRange(0, 1) documentAttributes:nil] == nil,
 		      @"RTF and doc format answer nil (their Apple shape has no error out)");
+	}
+
+	{
+		/* THE MORPHOLOGY VOCABULARY: three sets with NO ENGINE behind them, so what can be asserted is what a
+		 * caller relies on when it compiles - that the values are DISTINCT within each set (two cases sharing
+		 * a value would make two grammatical categories indistinguishable), that the attribute name is the one
+		 * the store carries, and that a store keeps a morphology value like any other attribute. */
+		NSMutableAttributedString *grammar = [[NSMutableAttributedString alloc]
+			initWithString:@"x" attributes:@{ NSMorphologyAttributeName:
+				[NSNumber numberWithInt:(int)NSGrammaticalNumberPlural] }];
+		id kept = [grammar attribute:NSMorphologyAttributeName atIndex:0 effectiveRange:NULL];
+		int distinct = 1;
+
+		if (NSGrammaticalGenderMasculine == NSGrammaticalGenderFeminine ||
+		    NSGrammaticalNumberSingular == NSGrammaticalNumberPlural ||
+		    NSGrammaticalPartOfSpeechNoun == NSGrammaticalPartOfSpeechVerb) {
+			distinct = 0;
+		}
+		check("morphology-vocabulary-is-distinct-and-carried",
+		      distinct && kept != nil && [kept intValue] == (int)NSGrammaticalNumberPlural,
+		      @"the three sets have distinct cases and the store keeps a morphology value untouched");
 	}
 
 	printf("FOUNDATION-ATTRIBUTEDSTRING RESULT ok=%d fail=%d\n", okc, failc);

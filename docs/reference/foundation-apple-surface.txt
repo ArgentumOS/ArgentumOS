@@ -31,8 +31,8 @@
 #   class      shipped  165   open   31   struck   77
 #   protocol   shipped   23   open    8   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped  119   open   24   struck   17
-#   case       shipped  990   open  144   struck  168
+#   enum       shipped  122   open   21   struck   17
+#   case       shipped 1016   open  118   struck  168
 #   func       shipped   74   open   61   struck   54
 #   var        shipped  448   open  113   struck  353
 #   typealias  shipped   47   open   22   struck    7
@@ -460,32 +460,32 @@ case	open	NSGrammaticalDefinitenessNotSet		Reference / Enumerations / Enumeratio
 case	open	NSGrammaticalDeterminationDependent		Reference / Enumerations / Enumeration Cases	-	objc
 case	open	NSGrammaticalDeterminationIndependent		Reference / Enumerations / Enumeration Cases	-	objc
 case	open	NSGrammaticalDeterminationNotSet		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalGenderFeminine	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Gender	-	objc
-case	open	NSGrammaticalGenderMasculine	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Gender	-	objc
-case	open	NSGrammaticalGenderNeuter	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Gender	-	objc
-case	open	NSGrammaticalGenderNotSet	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Gender	-	objc
-case	open	NSGrammaticalNumberNotSet	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
-case	open	NSGrammaticalNumberPlural	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
-case	open	NSGrammaticalNumberPluralFew	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
-case	open	NSGrammaticalNumberPluralMany	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
-case	open	NSGrammaticalNumberPluralTwo	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
-case	open	NSGrammaticalNumberSingular	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
-case	open	NSGrammaticalNumberZero	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
-case	open	NSGrammaticalPartOfSpeechAbbreviation	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	open	NSGrammaticalPartOfSpeechAdjective	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	open	NSGrammaticalPartOfSpeechAdposition	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	open	NSGrammaticalPartOfSpeechAdverb	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	open	NSGrammaticalPartOfSpeechConjunction	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	open	NSGrammaticalPartOfSpeechDeterminer	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	open	NSGrammaticalPartOfSpeechInterjection	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	open	NSGrammaticalPartOfSpeechLetter	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	open	NSGrammaticalPartOfSpeechNotSet	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	open	NSGrammaticalPartOfSpeechNoun	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	open	NSGrammaticalPartOfSpeechNumeral	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	open	NSGrammaticalPartOfSpeechParticle	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	open	NSGrammaticalPartOfSpeechPreposition	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	open	NSGrammaticalPartOfSpeechPronoun	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	open	NSGrammaticalPartOfSpeechVerb	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
+case	shipped	NSGrammaticalGenderFeminine	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Gender	-	objc
+case	shipped	NSGrammaticalGenderMasculine	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Gender	-	objc
+case	shipped	NSGrammaticalGenderNeuter	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Gender	-	objc
+case	shipped	NSGrammaticalGenderNotSet	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Gender	-	objc
+case	shipped	NSGrammaticalNumberNotSet	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
+case	shipped	NSGrammaticalNumberPlural	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
+case	shipped	NSGrammaticalNumberPluralFew	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
+case	shipped	NSGrammaticalNumberPluralMany	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
+case	shipped	NSGrammaticalNumberPluralTwo	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
+case	shipped	NSGrammaticalNumberSingular	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
+case	shipped	NSGrammaticalNumberZero	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
+case	shipped	NSGrammaticalPartOfSpeechAbbreviation	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
+case	shipped	NSGrammaticalPartOfSpeechAdjective	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
+case	shipped	NSGrammaticalPartOfSpeechAdposition	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
+case	shipped	NSGrammaticalPartOfSpeechAdverb	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
+case	shipped	NSGrammaticalPartOfSpeechConjunction	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
+case	shipped	NSGrammaticalPartOfSpeechDeterminer	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
+case	shipped	NSGrammaticalPartOfSpeechInterjection	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
+case	shipped	NSGrammaticalPartOfSpeechLetter	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
+case	shipped	NSGrammaticalPartOfSpeechNotSet	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
+case	shipped	NSGrammaticalPartOfSpeechNoun	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
+case	shipped	NSGrammaticalPartOfSpeechNumeral	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
+case	shipped	NSGrammaticalPartOfSpeechParticle	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
+case	shipped	NSGrammaticalPartOfSpeechPreposition	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
+case	shipped	NSGrammaticalPartOfSpeechPronoun	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
+case	shipped	NSGrammaticalPartOfSpeechVerb	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
 case	open	NSGrammaticalPersonFirst		Reference / Enumerations / Enumeration Cases	-	objc
 case	open	NSGrammaticalPersonNotSet		Reference / Enumerations / Enumeration Cases	-	objc
 case	open	NSGrammaticalPersonSecond		Reference / Enumerations / Enumeration Cases	-	objc
@@ -1667,9 +1667,9 @@ enum	shipped	NSFormattingUnitStyle	NSFormatter	Fundamentals / Custom formatters 
 enum	open	NSGrammaticalCase		Reference / Enumerations	-	objc
 enum	open	NSGrammaticalDefiniteness		Reference / Enumerations	-	objc
 enum	open	NSGrammaticalDetermination		Reference / Enumerations	-	objc
-enum	open	NSGrammaticalGender	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
-enum	open	NSGrammaticalNumber	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
-enum	open	NSGrammaticalPartOfSpeech	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
+enum	shipped	NSGrammaticalGender	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
+enum	shipped	NSGrammaticalNumber	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
+enum	shipped	NSGrammaticalPartOfSpeech	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
 enum	open	NSGrammaticalPerson		Reference / Enumerations	-	objc
 enum	open	NSGrammaticalPronounType		Reference / Enumerations	-	objc
 enum	shipped	NSHTTPCookieAcceptPolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies	-	objc

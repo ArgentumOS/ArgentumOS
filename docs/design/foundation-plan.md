@@ -12972,6 +12972,20 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.7 — THE COVERAGE SLICE, SIXTH LANDING: NSMORPHOLOGY'S 29 ROWS (2026-09-24)
+
+**THE 29 OPEN ROWS ARE THREE ENUMS AND THEIR 26 CASES** (`NSGrammaticalGender`, `NSGrammaticalNumber`,
+`NSGrammaticalPartOfSpeech`), and the class they belong to had **no file in this tree at all** - the only trace
+of `NSMorphology` was the attributed-string attribute NAME. So this landing creates `NSMorphology.h` (Apple's own
+home for them, staged like the other Foundation headers) and states in it what is true: **there is no morphology
+ENGINE here** - nothing inflects, agrees or resolves a referent - and the attribute that carries these values is
+stored and copied like any other without being acted on.
+
+**AND THE CHECK IS ABOUT WHAT A CALLER RELIES ON WHEN IT COMPILES:** that the cases are DISTINCT within each set
+(two sharing a value would make two grammatical categories indistinguishable) and that a store KEEPS a morphology
+value untouched. The names are Apple's and the values ours (§11.6.1 D2), and the values here are sequential
+because nothing in this system compares them.
+
 ## §62.6 — THE COVERAGE SLICE, FIFTH LANDING: NSCALENDAR'S 26 ROWS (2026-09-24)
 
 **AND THIS ONE CHANGED A DECISION THE HEADER HAD MADE, FOR THE BETTER.** `NSCalendarUnitDayOfYear`,

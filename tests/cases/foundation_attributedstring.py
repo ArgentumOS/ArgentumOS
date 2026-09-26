@@ -34,7 +34,8 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_attributedstring"
-CHECKS = ("coding-the-archiver-does-not-yet-carry-a-nested-object",
+CHECKS = ("morphology-vocabulary-is-distinct-and-carried",
+          "coding-the-archiver-does-not-yet-carry-a-nested-object",
           "coding-refuses-what-a-property-list-cannot-carry",
           "coding-supports-secure-coding-answers-yes",
           "file-format-doors-refuse-by-name",
