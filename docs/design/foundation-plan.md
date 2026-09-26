@@ -3555,7 +3555,7 @@ vanishing.
 | **Networking / Cache behavior** | all classes shipped | — |
 | **Networking / Cookies** | all classes shipped | — |
 | **Networking / Essentials** | 1 open | `NSURLSessionDownloadDelegate` |
-| **Networking / Legacy** | 6 open | `NSURLAuthenticationChallengeSender`, `NSURLConnectionDownloadDelegate`, `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` |
+| **Networking / Legacy** | 5 open | `NSURLAuthenticationChallengeSender`, `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` |
 | **Networking / Local Network Services** | ALL STRUCK: `NSNetService`, `NSNetServiceDelegate` | — |
 | **Networking / Requests and responses** | all classes shipped | — |
 | **Networking / Service Discovery** | ALL STRUCK: `NSNetServiceBrowser`, `NSNetServiceBrowserDelegate` | — |
@@ -12976,6 +12976,50 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.26 — `NSURLConnectionDownloadDelegate` LANDS, AND THE DISPATCH RULE IT NEEDED IS STATED (2026-09-26)
+
+**WHAT SHIPPED.** `NSURLConnectionDownloadDelegate` and the download path over `NSURLSessionDownloadTask` —
+slice 2 of the family §62.25 began. With it the ledger's four rows for the family are all `shipped`, which is what
+the slice boundary in §62.25 was drawn to make expressible.
+
+**THE DOWNLOAD PATH IS TWO LINES OF DISPATCH AND ONE BLOCK.** `-fnMakeSessionAndTask` asks
+`fnDelegateIsADownloadDelegate` and then creates EITHER a data task OR a download task; the download's completion
+handler (`-downloadTaskWithRequest:completionHandler:`, the session's own door, which writes the body to
+`NSTemporaryDirectory()` and hands over the LOCATION) becomes the delegate's
+`-connectionDidFinishDownloading:destinationURL:` through `-fnFinishDownloadAtLocation:withError:`, which is
+`-fnFinishWithError:`'s shape with a different success door — including the same self-retain guard, for the reason
+that method documents.
+
+**THE DISPATCH RULE IS STATED BECAUSE APPLE PUBLISHES THE DOOR AND NOT THE DISPATCH: A CONNECTION DOWNLOADS WHEN
+ITS DELEGATE IMPLEMENTS `-connectionDidFinishDownloading:destinationURL:`** — the door that MEANS a download — and
+otherwise it receives bytes. It is asked BY SELECTOR rather than by protocol conformance, and the reason is a
+measurement this tree already records twice: a protocol's metadata exists only when something in the process
+ADOPTS it, so a conformance test would make the dispatch depend on a linker detail. The probe pins the consequence:
+its download delegate ADOPTS BOTH PROTOCOLS and implements the data doors too, and the check asserts those doors
+were never called (`the-data-doors-are-not-used-for-a-download`).
+
+**AND ONE HAZARD THE IMPLEMENTATION HAD TO HANDLE, FOUND BY READING THE TASK RATHER THAN BY A CRASH.** A download
+task's ending notifies the SESSION's `-URLSession:task:didCompleteWithError:` AND THEN calls the download handler
+(`NSURLSessionTask.m`'s `fnProtocolDidFinishWithError:` calls `[super …]` first). Reporting at that door would tell
+a download delegate its transfer had finished LOADING — a DATA-door contract it never adopted — and, worse, would
+tear the connection down and release the `-start` retain BEFORE the location existed. So that door DEFERS when the
+delegate is a download delegate; the download handler is the ending.
+
+**TWO OF THE THREE DOORS ARE REFUSED BY NAME, EACH WITH A GROUND THE LOADING SYSTEM MEASURES:**
+* **`-connection:didWriteData:totalBytesWritten:expectedTotalBytes:`** — THE SESSION REPORTS NO DOWNLOAD PROGRESS.
+  `NSURLSession.h` declares no download delegate protocol at all; its only download door is the completion
+  handler. NAMED CONSEQUENCE: a download-progress door on `NSURLSession` is owed work, and this refusal is what it
+  blocks — the same relationship `-sender` has to the five authentication doors (§62.25).
+* **`-connectionDidResumeDownloading:totalBytesWritten:expectedTotalBytes:`** — THERE IS NO RESUME: the session
+  ships no `-downloadTaskWithResumeData:`, so a transfer can only start from the beginning.
+THE FINISHING DOOR IS THE ONE THAT MATTERS AND IT IS IMPLEMENTED: Apple's own contract makes receiving the finished
+file the delegate's essential act.
+
+**VERIFIED.** The probe gained four checks and lost one (the old `download-protocol-is-the-next-slice` asserted the
+protocol was ABSENT — the §11.2 discipline applied to itself: what arrives is asserted beside what remains absent),
+so `foundation_urlconnection` is now 18 checks and the case's `CHECKS` tuple moved with it. The download round trip
+is a REAL transfer over `file://` again, and the check that matters reads the bytes out of the destination file.
 
 ## §62.25 — `NSURLConnection` LANDS: THE FIRST PAYMENT ON §62.24'S WORK LIST, AS A FACADE (2026-09-26)
 

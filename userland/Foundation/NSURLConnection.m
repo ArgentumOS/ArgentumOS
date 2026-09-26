@@ -36,6 +36,7 @@
 #import <Foundation/NSURLRequest.h>
 #import <Foundation/NSURLResponse.h>
 #import <Foundation/NSHTTPURLResponse.h>
+#import <Foundation/NSURLSessionTask.h>
 #import <Foundation/NSData.h>	/* NSMutableData is declared here too (NSData.h:194) */
 #import <Foundation/NSError.h>
 #import <Foundation/NSString.h>
@@ -208,8 +209,28 @@ typedef struct {
 	if (_session == nil) {
 		return NO;
 	}
-	_task = [[_session dataTaskWithRequest:_request] retain];
+	if ([self fnDelegateIsADownloadDelegate]) {
+		/* THE DOWNLOAD PATH (slice 2): the body goes to a file and the completion hands over its
+		 * LOCATION. The block is the session's door, and this class is what turns it into the delegate's
+		 * own ending - see fnFinishDownloadAtLocation:withError:. */
+		_task = [[_session downloadTaskWithRequest:_request
+					completionHandler:^(NSURL *location, NSURLResponse *response,
+							    NSError *error) {
+			(void)response;	/* the download protocol has no response door: Apple's contract for it is
+					 * the FILE, and a delegate that wants the head of the answer is a data
+					 * delegate. */
+			[self fnFinishDownloadAtLocation:location withError:error];
+		}] retain];
+	} else {
+		_task = [[_session dataTaskWithRequest:_request] retain];
+	}
 	return _task != nil;
+}
+
+/* THE DISPATCH RULE, ASKED BY SELECTOR (the header says why conformance would be worse). */
+- (BOOL)fnDelegateIsADownloadDelegate
+{
+	return [_delegate respondsToSelector:@selector(connectionDidFinishDownloading:destinationURL:)];
 }
 
 - (void)start
@@ -304,6 +325,31 @@ typedef struct {
 	[self release];	/* the guard */
 }
 
+/* THE DOWNLOAD'S ENDING, WHICH IS THE SAME SHAPE AS fnFinishWithError: WITH A DIFFERENT SUCCESS DOOR -
+ * and the shape includes the guard, for the reason that method documents. */
+- (void)fnFinishDownloadAtLocation:(NSURL *)location withError:(NSError *)error
+{
+	if (_finished) {
+		return;
+	}
+	_finished = YES;
+	[self retain];
+
+	if (_cancelled) {
+		/* nothing is reported, exactly as a cancelled data connection reports nothing */
+	} else if (error != nil) {
+		if ([_delegate respondsToSelector:@selector(connection:didFailWithError:)]) {
+			[_delegate connection:self didFailWithError:error];
+		}
+	} else if (location != nil) {
+		[_delegate connectionDidFinishDownloading:self destinationURL:location];
+	}
+
+	[self fnTearDown];
+	[self release];	/* the -start retain */
+	[self release];	/* the guard */
+}
+
 - (void)fnTearDown
 {
 	[_task release];
@@ -330,8 +376,14 @@ didReceiveResponse:(NSURLResponse *)response
 	/* THE DECISION DOOR IS ANSWERED AT ONCE AND THE BODY IS NEVER HELD: NSURLConnection has no
 	 * equivalent of "wait while the delegate decides" — Apple's `-connection:didReceiveResponse:` is a
 	 * notification, not a question — so Allow is the only faithful translation. */
-	if ([_delegate respondsToSelector:@selector(connection:didReceiveResponse:)]) {
-		[_delegate connection:self didReceiveResponse:response];
+	/* AND A DOWNLOAD DELEGATE IS NOT TOLD, even though the session delivers this door for EVERY task it
+	 * runs, download tasks included (measured: the probe's download delegate saw one response and one data
+	 * call before this guard existed). A download's contract is the FILE. The handler is still called,
+	 * because the transfer WAITS for it - only the delegate is spared. */
+	if (![self fnDelegateIsADownloadDelegate]) {
+		if ([_delegate respondsToSelector:@selector(connection:didReceiveResponse:)]) {
+			[_delegate connection:self didReceiveResponse:response];
+		}
 	}
 	completionHandler(NSURLSessionResponseAllow);
 }
@@ -340,6 +392,9 @@ didReceiveResponse:(NSURLResponse *)response
 	  dataTask:(NSURLSessionDataTask *)dataTask
     didReceiveData:(NSData *)data
 {
+	if ([self fnDelegateIsADownloadDelegate]) {
+		return;	/* the bytes are the download's FILE, not a delegate's stream: see the door above */
+	}
 	if ([_delegate respondsToSelector:@selector(connection:didReceiveData:)]) {
 		[_delegate connection:self didReceiveData:data];
 	}
@@ -354,6 +409,13 @@ willPerformHTTPRedirection:(NSHTTPURLResponse *)response
 	/* THE ONE PLACE THE TWO PROTOCOLS HAVE THE SAME SHAPE, SO NOTHING IS TRANSLATED: the delegate's
 	 * RETURN VALUE IS the session's completion-handler argument, and `nil` means "do not follow" on both
 	 * sides. A delegate that implements no such door is not asked and the redirect IS followed. */
+	/* A DOWNLOAD DELEGATE IS NOT ASKED, AND THAT IS ITS PROTOCOL'S OWN SHAPE RATHER THAN A CHOICE HERE:
+	 * NSURLConnectionDownloadDelegate declares no redirect door, so there is nothing to ask it. The
+	 * redirect is followed; currentRequest still moves, because the task's does. */
+	if ([self fnDelegateIsADownloadDelegate]) {
+		completionHandler(request);
+		return;
+	}
 	if ([_delegate respondsToSelector:@selector(connection:willSendRequest:redirectResponse:)]) {
 		NSURLRequest *next = [_delegate connection:self
 					   willSendRequest:request
@@ -368,6 +430,15 @@ willPerformHTTPRedirection:(NSHTTPURLResponse *)response
 	      task:(NSURLSessionTask *)task
 didCompleteWithError:(NSError *)error
 {
+	/* A DOWNLOAD'S ENDING ARRIVES TWICE, AND ONLY ONE OF THEM IS THE REPORT: the task's own
+	 * -fnProtocolDidFinishWithError: notifies THIS session-delegate door and only then calls the download
+	 * handler. Reporting here would tell a download delegate that its transfer had finished LOADING - a
+	 * DATA-door contract it never adopted - and, worse, would tear the connection down (releasing the
+	 * -start retain) BEFORE the location existed. So this door DEFERS to the download handler, which is
+	 * the ending for a download. The probe pins it: a download delegate's data doors are never called. */
+	if ([self fnDelegateIsADownloadDelegate]) {
+		return;
+	}
 	[self fnFinishWithError:error];
 }
 

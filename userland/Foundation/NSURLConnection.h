@@ -63,10 +63,27 @@
  *   * `-connection:willCacheResponse:` — the session offers no cache-decision door for a connection to
  *     translate, so a delegate could not be asked.
  *
- * AND THE DOWNLOAD HALF IS NAMED AS THE NEXT SLICE RATHER THAN HALF-DONE: `NSURLConnectionDownloadDelegate`
- * and the download path over `NSURLSessionDownloadTask` are slice 2. The ledger tracks that protocol as
- * its OWN row, so it stays `open` while this class and its two data-side protocols go `shipped` — a
- * slice boundary the ledger can express, which is why it is drawn here.
+ * AND THE DOWNLOAD HALF IS SLICE 2, WHICH LANDED BESIDE THIS COMMENT: `NSURLConnectionDownloadDelegate`
+ * is declared below and the connection runs an `NSURLSessionDownloadTask` for it, stopping at the
+ * session's own door (`-downloadTaskWithRequest:completionHandler:`), which writes the body to a file and
+ * hands over its LOCATION — the caller moves it, as Apple's contract says.
+ *
+ * THE DISPATCH RULE IS STATED BECAUSE APPLE PUBLISHES THE DOOR AND NOT THE DISPATCH: A CONNECTION
+ * DOWNLOADS WHEN ITS DELEGATE IMPLEMENTS `-connectionDidFinishDownloading:destinationURL:` — the door
+ * that MEANS a download — and otherwise it receives bytes. Asked by SELECTOR, and the reason is a
+ * measurement this tree already records (foundation_url.m): a protocol's metadata exists only when
+ * something in the process ADOPTS it, so a conformance test would make the dispatch depend on a linker
+ * detail. A delegate that implements both the data doors and the download door therefore downloads.
+ *
+ * TWO OF THE DOWNLOAD DOORS ARE REFUSED BY NAME, EACH WITH A GROUND THE LOADING SYSTEM MEASURES:
+ *   * `-connection:didWriteData:totalBytesWritten:expectedTotalBytes:` — THE SESSION REPORTS NO DOWNLOAD
+ *     PROGRESS. Its only download door is the completion handler (it declares no download delegate
+ *     protocol at all), so there is nothing to translate a byte count from. NAMED CONSEQUENCE: a
+ *     download-progress door on `NSURLSession` is itself owed work, and this refusal is what it blocks.
+ *   * `-connectionDidResumeDownloading:totalBytesWritten:expectedTotalBytes:` — THERE IS NO RESUME: the
+ *     session ships no `-downloadTaskWithResumeData:`, so a transfer can only start from the beginning.
+ * THE FINISHING DOOR IS THE ONE THAT MATTERS AND IT IS IMPLEMENTED: Apple's own contract makes receiving
+ * the finished file the delegate's essential act here.
  */
 
 #ifndef FOUNDATION_NSURLCONNECTION_H
@@ -77,10 +94,11 @@
 @class NSData;
 @class NSError;
 @class NSOperationQueue;
+@class NSURL;
 @class NSURLRequest;
 @class NSURLResponse;
 @class NSURLSession;
-@class NSURLSessionDataTask;
+@class NSURLSessionTask;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -124,6 +142,26 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+/* THE DOWNLOAD PROTOCOL: a delegate that wants the body WRITTEN SOMEWHERE rather than handed to it as
+ * bytes. The destination is the session's own temporary file — the caller is expected to MOVE it, exactly
+ * as Apple's contract says, because the directory is temporary — and the connection hands it over at the
+ * one door below. */
+@protocol NSURLConnectionDownloadDelegate <NSURLConnectionDelegate>
+
+@optional
+
+/* THE BODY IS ON DISK AT `destinationURL`, AND A CALLER MUST MOVE IT BEFORE RETURNING: the file lives in
+ * `NSTemporaryDirectory()` and nothing here keeps it alive afterwards.
+ *
+ * IT IS THE ONLY DOOR A DOWNLOAD DELEGATE HEARS. The data doors (`-connection:didReceiveResponse:`,
+ * `-connection:didReceiveData:`, `-connectionDidFinishLoading:`) are NOT sent to it even when it
+ * implements them, and it is NOT asked about a redirect - this protocol declares no such door, so the
+ * redirect is followed. Both are stated because the session itself delivers its per-chunk doors for every
+ * task it runs, download tasks included: the exclusion is this class's, and the probe asserts it. */
+- (void)connectionDidFinishDownloading:(NSURLConnection *)connection destinationURL:(NSURL *)destinationURL;
+
+@end
+
 /*
  * THE CONNECTION. Its behaviour is in NSURLConnection.m; what a caller needs to know is the shape:
  * A CONNECTION IS STARTED EXPLICITLY — creating it with `startImmediately:NO` gives the caller the
@@ -135,7 +173,9 @@ NS_ASSUME_NONNULL_BEGIN
 	NSURLRequest *_currentRequest;	/* moved by a followed redirect; see the property */
 	id _delegate;			/* UNRETAINED, as Apple's is: the delegate owns the connection */
 	NSURLSession *_session;		/* the private session that runs this connection's task */
-	NSURLSessionDataTask *_task;
+	NSURLSessionTask *_task;	/* a DATA task or a DOWNLOAD task: the connection runs one or the other,
+					 * and every door it uses (resume, cancel, the two request accessors) lives on
+					 * the base class. */
 	NSOperationQueue *_delegateQueue;
 	BOOL _started;
 	BOOL _finished;

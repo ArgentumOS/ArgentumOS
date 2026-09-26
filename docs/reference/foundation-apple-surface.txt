@@ -35,7 +35,7 @@
 #
 # counts by kind:
 #   class      shipped  173   open   52   struck   48
-#   protocol   shipped   27   open   13   struck    5
+#   protocol   shipped   28   open   12   struck    5
 #   macro      shipped  113   open    8   struck  132
 #   enum       shipped  130   open   21   struck    9
 #   case       shipped 1068   open  159   struck   75
@@ -2250,7 +2250,7 @@ protocol	shipped	NSStreamDelegate		Low-Level Utilities / Streams	-	objc
 protocol	open	NSURLAuthenticationChallengeSender		Networking / Legacy / URL Authentication Challenge Sender	deprecated	objc
 protocol	shipped	NSURLConnectionDataDelegate		Networking / Legacy / URL Connection	deprecated	objc
 protocol	shipped	NSURLConnectionDelegate		Networking / Legacy / URL Connection	deprecated	objc
-protocol	open	NSURLConnectionDownloadDelegate		Networking / Legacy / URL Connection	deprecated	objc
+protocol	shipped	NSURLConnectionDownloadDelegate		Networking / Legacy / URL Connection	deprecated	objc
 protocol	open	NSURLDownloadDelegate		Networking / Legacy / URL Download	deprecated	objc
 protocol	open	NSURLHandleClient		Networking / Legacy / URL Handle	deprecated	objc
 protocol	shipped	NSURLProtocolClient		Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes	-	objc

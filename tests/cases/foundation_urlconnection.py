@@ -28,8 +28,11 @@ start first, and the one door that needs a 3xx (the redirect) is tested directly
   * `redirect-door-with-no-delegate-door-follows` — a delegate that implements nothing is not asked;
   * `refused-doors-are-absent`              — the inventory: the run-loop pair, the five authentication
                                               doors and the three session-shape doors, each with a ground;
-  * `download-protocol-is-the-next-slice`   — NSURLConnectionDownloadDelegate is absent, and the LEDGER
-                                              carries that as an open row rather than a refusal;
+  * `download-protocol-declared`             — the download protocol exists, with the door that means it;
+  * `download-round-trip`                    — a real download: the delegate is handed a file holding the body;
+  * `the-data-doors-are-not-used-for-a-download` — a delegate implementing BOTH protocols is not fed by the
+                                              data doors (the dispatch rule);
+  * `download-refusals-are-absent`           — progress and resume are refused, with measured grounds;
   * `the-declared-surface-is-what-ships`    — every door this slice ships is reachable.
 
 THE LAST TWO ARE THE §11.2 DISCIPLINE: a door that is declared and never called is worse than an absent
@@ -48,7 +51,9 @@ CHECKS = ("connection-class-declared", "delegate-protocols-declared",
           "redirect-door-follows-what-the-delegate-returns",
           "redirect-door-nil-means-do-not-follow", "redirect-door-passes-a-different-request",
           "redirect-door-with-no-delegate-door-follows", "refused-doors-are-absent",
-          "download-protocol-is-the-next-slice", "the-declared-surface-is-what-ships")
+          "download-protocol-declared", "download-round-trip",
+          "the-data-doors-are-not-used-for-a-download", "download-refusals-are-absent",
+          "the-declared-surface-is-what-ships")
 
 
 class Case(BaseCase):

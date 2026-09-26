@@ -194,6 +194,72 @@ static BOOL fn_protocol_has(Protocol *proto, const char *sel)
 @implementation FNEmptyConnDelegate
 @end
 
+/* THE DOWNLOAD DELEGATE, AND IT ADOPTS BOTH PROTOCOLS ON PURPOSE: the dispatch rule ("a delegate that
+ * implements -connectionDidFinishDownloading:destinationURL: downloads") must be shown to WIN over the
+ * data doors, not merely to exist. It therefore implements the data doors as well and COUNTS their calls,
+ * and it implements `-connection:didWriteData:…` - a door this library refuses - so that "never called" is
+ * a fact about a real implementation rather than about a missing one. */
+@interface FNDownloadRecorder : NSObject <NSURLConnectionDownloadDelegate, NSURLConnectionDataDelegate>
+{
+	@public
+	NSURL *destination;
+	int finishCount;
+	int failCount;
+	int dataDoorCalls;
+	int responseDoorCalls;
+	int writeProgressCalls;
+	BOOL done;
+}
+
+@end
+
+@implementation FNDownloadRecorder
+
+- (void)connectionDidFinishDownloading:(NSURLConnection *)connection destinationURL:(NSURL *)aURL
+{
+	(void)connection;
+	destination = aURL;
+	finishCount++;
+	done = YES;
+}
+
+- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error
+{
+	(void)connection;
+	(void)error;
+	failCount++;
+	done = YES;
+}
+
+/* THE DOORS BELOW MUST NEVER BE CALLED, which is what makes them worth implementing here. */
+- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data
+{
+	(void)connection;
+	(void)data;
+	dataDoorCalls++;
+}
+
+- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response
+{
+	(void)connection;
+	(void)response;
+	responseDoorCalls++;
+}
+
+- (void)connection:(NSURLConnection *)connection
+	 didWriteData:(long long)bytesWritten
+    totalBytesWritten:(long long)totalBytesWritten
+    expectedTotalBytes:(long long)expectedTotalBytes
+{
+	(void)connection;
+	(void)bytesWritten;
+	(void)totalBytesWritten;
+	(void)expectedTotalBytes;
+	writeProgressCalls++;
+}
+
+@end
+
 /* WHERE THE ROUND TRIPS READ AND WRITE. The guest's temporary directory is this library's own
  * NSTemporaryDirectory (plan §11.6: it is hardcoded, and a probe that used TMPDIR would be testing the
  * environment instead). */
@@ -214,18 +280,23 @@ static NSURL *fn_write_fixture(NSString *name, NSData *bytes)
  * system's THREAD (the deviation NSURLConnection.h documents - the run loop has no door to hand work to
  * another thread, so Apple's "the thread you started it on" cannot be honoured). That means the main
  * thread here is free to WAIT, and a wait is all this needs. */
-static BOOL fn_wait_for(FNConnRecorder *r, int milliseconds)
+static BOOL fn_wait_flag(BOOL *flag, int milliseconds)
 {
 	int slept = 0;
 
 	/* THE GRANULARITY IS THE GUEST'S, NOT THIS FILE'S: a 2 ms sleep is rounded up hard by this system's
 	 * clock, so a ten-thousand-iteration loop is minutes rather than twenty seconds - measured, and the
 	 * reason this loop sleeps in 20 ms steps and counts them against a wall-clock budget. */
-	while (!r->done && slept < milliseconds) {
+	while (!*flag && slept < milliseconds) {
 		usleep(20000);
 		slept += 20;
 	}
-	return r->done;
+	return *flag;
+}
+
+static BOOL fn_wait_for(FNConnRecorder *r, int milliseconds)
+{
+	return fn_wait_flag(&r->done, milliseconds);
 }
 
 int main(void)
@@ -453,12 +524,59 @@ int main(void)
 			@"authentication doors absent=%d, the three session-shape doors absent=%d",
 			(int)runloopPair, (int)authDoors, (int)dataDoors]);
 
-		/* THE DOWNLOAD HALF IS THE NEXT SLICE, AND ITS ABSENCE IS A ROW THE LEDGER TRACKS rather than a
-		 * silent gap: NSURLConnectionDownloadDelegate is `open` in the surface file. */
-		check("download-protocol-is-the-next-slice",
-		      objc_getProtocol("NSURLConnectionDownloadDelegate") == NULL,
-		      @"NSURLConnectionDownloadDelegate is not declared (slice 2), which the ledger records "
-		      @"as an open row rather than a refusal");
+		/* THE DOWNLOAD PROTOCOL, WHICH SLICE 2 DECLARED: asserted PRESENT now, and asserted where its
+		 * metadata exists - the fixture above adopts it, which is what registers it. */
+		check("download-protocol-declared",
+		      objc_getProtocol("NSURLConnectionDownloadDelegate") != NULL &&
+		      fn_protocol_has(objc_getProtocol("NSURLConnectionDownloadDelegate"),
+				      "connectionDidFinishDownloading:destinationURL:"),
+		      @"NSURLConnectionDownloadDelegate is declared, with the door that MEANS a download");
+	}
+
+	/* --- 8. THE DOWNLOAD PATH (slice 2) ------------------------------------------------------------- */
+	{
+		const char *bytes = "the download door, and the file it leaves behind\n";
+		NSData *fixture = [NSData dataWithBytes:bytes length:strlen(bytes)];
+		NSURL *url = fn_write_fixture(@"fnconn-download.txt", fixture);
+		FNDownloadRecorder *rec = [[FNDownloadRecorder alloc] init];
+		NSURLConnection *conn = [NSURLConnection connectionWithRequest:
+						[NSURLRequest requestWithURL:url]
+					delegate:rec];
+		BOOL ended = fn_wait_flag(&rec->done, 20000);
+		NSData *landed = nil;
+		Protocol *dl = objc_getProtocol("NSURLConnectionDownloadDelegate");
+
+		(void)conn;
+		if (rec->destination != nil) {
+			landed = [NSData dataWithContentsOfFile:[rec->destination path]];
+		}
+
+		/* THE ROUND TRIP IS THE CHECK THAT MATTERS: the body is a FILE a caller could keep, and the
+		 * connection reached it through the session's own download task. */
+		check("download-round-trip",
+		      ended && rec->finishCount == 1 && rec->failCount == 0 &&
+		      rec->destination != nil && [landed isEqualToData:fixture],
+		      [NSString stringWithFormat:@"the delegate was handed %@ and the file holds %d of %d bytes "
+			@"(finishes=%d fails=%d)", rec->destination ? [rec->destination path] : @"(nothing)",
+			(int)[landed length], (int)[fixture length], rec->finishCount, rec->failCount]);
+
+		/* AND THE DISPATCH RULE HOLDS: a delegate that implements the data doors TOO is not fed by them. */
+		check("the-data-doors-are-not-used-for-a-download",
+		      rec->dataDoorCalls == 0 && rec->responseDoorCalls == 0 && rec->writeProgressCalls == 0,
+		      [NSString stringWithFormat:@"data=%d response=%d progress=%d - a download delegate hears the "
+			@"download doors only, even though it implements the others",
+			rec->dataDoorCalls, rec->responseDoorCalls, rec->writeProgressCalls]);
+
+		/* THE TWO REFUSED DOORS AND THE GROUND THEY SHARE: the session reports no download progress and
+		 * has no resume. */
+		check("download-refusals-are-absent",
+		      !fn_protocol_has(dl, "connection:didWriteData:totalBytesWritten:expectedTotalBytes:") &&
+		      !fn_protocol_has(dl,
+			"connectionDidResumeDownloading:totalBytesWritten:expectedTotalBytes:") &&
+		      ![NSURLSession instancesRespondToSelector:
+			NSSelectorFromString(@"downloadTaskWithResumeData:")],
+		      @"neither progress nor resume is declared, and the session has no resume door to build one "
+		      @"on - both grounds are measured, not assumed");
 	}
 
 	/* --- 7. THE DOORS THAT DO SHIP, ON THE CLASS AND THE PROTOCOLS ------------------------------- */
