@@ -12977,6 +12977,47 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.35 — THE RE-SEND'S BODY: `needNewBodyStream:` LANDS, AND THE LAST NON-STRUCTURAL REFUSAL IN THAT HEADER GOES (2026-09-26)
+
+**WHAT SHIPPED.** The fifth and last leg of the chain, and the one that completes the family:
+* **`NSURLSessionTaskDelegate`'s `-URLSession:task:needNewBodyStream:`** (Apple's door, Apple's names) — asked when
+  a transfer has to run again with a body that was a STREAM, because a stream is CONSUMED by being sent;
+* **the one funnel where a re-send is decided**: `FNSessionTransfer`'s redirect path, which every re-send passes
+  through. The ask happens there, and the replacement goes onto a **COPY of the request** — the original is what
+  `originalRequest` reports, and a redirect must not rewrite history;
+* **`-connection:needNewBodyStream:`**, which §62.25 refused, §62.34 sharpened, and this unit lands. Its
+  translation is one call in each direction, and nil from the delegate goes back as nil rather than as a
+  fabricated stream.
+
+**THE BRIDGE ALREADY MADE THIS POSSIBLE, AND THAT WAS MEASURED RATHER THAN ASSUMED:** `-fnReportRedirectToURL:`
+copies the original request for a 307/308 (§54's method rules the RFC defines), so the follow CARRIES the stream
+the attempt just spent — which is exactly why the ask triggers and why the check is meaningful rather than
+vacuous. And **ONE CASE IS NAMED RATHER THAN HIDDEN**: the transport's own 401 re-issue replays the transfer
+INSIDE the bridge and cannot ask a delegate anything, so a stream body re-sent after a challenge arrives empty —
+a work item, and the header says so (the bridge would need a first-party door, in the shape of the metrics and
+body-data doors it already has).
+
+**VERIFIED.** `foundation_urlsession_task` is **27/27 green** with a leg that POSTs from an `NSInputStream` to a
+server answering 307 and then 200: the first attempt carried the body, THE DELEGATE WAS ASKED FOR A NEW ONE (once),
+and the re-sent request carried the fresh body. `foundation_urlconnection` is **30/30 green** with the
+translation's two branches, and one of them asserts **identity** — the stream the delegate handed back is the very
+object the session receives, not a copy. Regressions: `foundation_urlsession` 6/6, `foundation_cachehooks` 3/3,
+`foundation_downloadresume` 6/6, `foundation_authloop` 3/3.
+
+**THREE MISTAKES, AND THE FIRST IS A BLIND SPOT WORTH KNOWING ABOUT:**
+* **the method was implemented on the WRONG CLASS** — in `FNSessionTransfer`'s category instead of on
+  `NSURLSession` — so the runtime answered "not implemented" for a method that plainly WAS implemented, one class
+  over. **`foundation-sweep --unimplemented` cannot catch this class of mistake**: it asks whether a selector is
+  implemented ANYWHERE, and it was. A probe that runs the path is what caught it;
+* **the probe's selector had FOUR parts where the selector has THREE**: `needNewBodyStream:` IS the block
+  argument's label, so there is no separate `completionHandler:` component — unlike the cache door, whose block
+  has a label of its own. `-respondsToSelector:` answered NO and the check failed for a reason no amount of
+  reading the door would have shown;
+* and one false alarm, recorded because the *suspicion* was right even though the fact was not: two `RESULT`
+  printf lines in that probe looked like a duplication (this session had already found one, in
+  `NSURLConnection.h`), and they turned out to be the final line and an early-exit path that reports the same
+  tally before giving up.
+
 ## §62.34 — A STREAM BODY IS SENT, AND ONE MORE REFUSAL'S GROUND IS SHARPENED BY A LANDING (§62.34, 2026-09-26)
 
 **WHAT SHIPPED, AND IT IS A DEFECT FIX RATHER THAN A FEATURE.** The bridge read `NSURLRequest`'s `HTTPBody` and knew

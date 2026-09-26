@@ -69,13 +69,13 @@
  *   * `-connection:didCancelAuthenticationChallenge:` — ONE CHALLENGE AT A TIME, ANSWERED SYNCHRONOUSLY: the
  *     transport waits for an answer, so a live challenge is never superseded by the connection and there is no
  *     cancellation for it to report. (A delegate's OWN cancel is its own act, and it answers with it.)
- *   * `-connection:needNewBodyStream:` — A WORK ITEM RATHER THAN A DEVIATION, AND ITS GROUND WAS SHARPENED BY
- *     §62.34 RATHER THAN INHERITED. §62.25 refused it because "the transport does not consume
- *     `NSURLRequest`'s `HTTPBodyStream`" — TRUE THEN, FALSE NOW: the transport SENDS a stream body (that was
- *     itself a defect: a stream body used to be dropped in silence). What remains is the RE-SEND: a stream is
- *     consumed by being sent, so a 401 re-issue inside the transport or a redirect in the session has no body
- *     to send the second time, and Apple's door is exactly the one that hands over a NEW stream. Landing it
- *     needs the session-side door first (`-URLSession:task:needNewBodyStream:`), which is the next unit.
+ * THE BODY-STREAM DOOR NOW SHIPS TOO (§62.35), and its ground fell the way the others did: §62.25 refused
+ * `-connection:needNewBodyStream:` because the transport did not consume `HTTPBodyStream` at all, §62.34 made it
+ * SEND one, and this unit is the RE-SEND — a stream is consumed by being sent, so the redirect the session
+ * re-issues needs a fresh one, and Apple's door is the one that hands it over. ONE CASE REMAINS NAMED RATHER
+ * THAN HIDDEN: the transport's own 401 re-issue replays the transfer INSIDE the bridge and cannot ask a delegate
+ * anything, so a stream body re-sent after a challenge arrives empty — a work item (the bridge would need a
+ * first-party door to ask through, in the shape of the metrics and body-data doors it already has).
  * THE CACHE-DECISION DOOR NOW SHIPS TOO (§62.33), and its refusal fell the way the two before it did: §62.25
  * refused `-connection:willCacheResponse:` because "the session offers no cache-decision door to translate",
  * and the session HAS one now (`-URLSession:dataTask:willCacheResponse:completionHandler:`) — so the ground is
@@ -120,6 +120,7 @@
 @class NSData;
 @class NSError;
 @class NSOperationQueue;
+@class NSInputStream;
 @class NSCachedURLResponse;
 @class NSURLAuthenticationChallenge;
 @class NSURL;
@@ -200,6 +201,9 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;
  * task's own running total and `expectedTotalBytes` is what the response said (0 or negative means the
  * server never named a length). ALL THREE ARE THE TASK'S NUMBERS, translated rather than recounted, so this
  * door cannot disagree with the task about the same transfer. */
+- (nullable NSInputStream *)connection:(NSURLConnection *)connection
+	     needNewBodyStream:(NSURLRequest *)request;
+
 - (nullable NSCachedURLResponse *)connection:(NSURLConnection *)connection
 			  willCacheResponse:(NSCachedURLResponse *)cachedResponse;
 

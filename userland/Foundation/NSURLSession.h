@@ -215,6 +215,15 @@ didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
  * count, and its transactions in order. A task with no transaction to report still gets this call with an
  * EMPTY LIST rather than no call at all: the door's contract is its PLACE in the sequence, not a promise that
  * something was measured. */
+/* THE BODY WAS A STREAM AND THE TRANSFER HAS TO RUN AGAIN (§62.35): a stream is CONSUMED by being sent, so a
+ * re-send - the redirect this library re-issues, and any attempt the transport replays - needs a FRESH one. The
+ * handler is answered with the stream to send, or with nil when there is none left to give; a delegate that
+ * implements no such door is not asked and is not waited for, which is the rule every door in this library
+ * keeps. */
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
+  needNewBodyStream:(void (^)(NSInputStream * _Nullable bodyStream))completionHandler;
+
 - (void)URLSession:(NSURLSession *)session
 	      task:(NSURLSessionTask *)task
    didSendBodyData:(int64_t)bytesSent

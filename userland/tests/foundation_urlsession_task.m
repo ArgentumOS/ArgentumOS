@@ -193,6 +193,32 @@ totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
 
 @end
 
+/* THE RE-SEND'S BODY (§62.35): a stream is consumed by being sent, so a redirected POST has to be given a NEW
+ * one. This delegate hands over a fresh stream over the same bytes and counts the ask, which is what makes the
+ * check a measurement rather than a hope. */
+@interface FnBodyStreamDelegate : NSObject <NSURLSessionTaskDelegate>
+{
+	@public
+	int asks;
+	NSData *bytes;
+}
+
+@end
+
+@implementation FnBodyStreamDelegate
+
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
+  needNewBodyStream:(void (^)(NSInputStream *))completionHandler
+{
+	(void)session;
+	(void)task;
+	asks++;
+	completionHandler([NSInputStream inputStreamWithData:bytes]);
+}
+
+@end
+
 int main(void)
 {
 	/* UNBUFFERED, AND IT IS NOT A PREFERENCE: a probe that CRASHES loses everything printf put in a
@@ -663,6 +689,126 @@ int main(void)
 			progress->lastExpected, (int)[sent length]]);
 	}
 
+	/* --- A REDIRECTED POST: THE STREAM IS SPENT, SO A NEW ONE IS ASKED FOR (§62.35) ----------------- */
+	{
+		unsigned char rawBytes[8] = { 0x1d, 0x1f, 0x2b, 0x2f, 0x41, 0x43, 0x47, 0x53 };
+		NSData *streamed = [NSData dataWithBytes:rawBytes length:8];
+		FnBodyStreamDelegate *streamDelegate = [[FnBodyStreamDelegate alloc] init];
+		NSURLSessionConfiguration *configuration3 = [NSURLSessionConfiguration defaultSessionConfiguration];
+		NSURLSession *session3 = [NSURLSession sessionWithConfiguration:configuration3
+								       delegate:streamDelegate
+								      delegateQueue:nil];
+		NSMutableURLRequest *redirected = [NSMutableURLRequest requestWithURL:fn_url(@"http://127.0.0.1:46470/first")];
+		NSURLSessionDataTask *redirectTask;
+		struct sockaddr_in addr3;
+		unsigned char firstBuf[4096], secondBuf[4096];
+		size_t firstTotal = 0, secondTotal = 0;
+		int listener3, conn3 = -1, one3 = 1, tries3 = 0, firstFound = 0, secondFound = 0;
+		__block BOOL called3 = NO;
+
+		streamDelegate->bytes = streamed;
+		[redirected setHTTPMethod:@"POST"];
+		[redirected setValue:[NSString stringWithFormat:@"%d", (int)[streamed length]]
+		  forHTTPHeaderField:@"Content-Length"];
+		[redirected setHTTPBodyStream:[NSInputStream inputStreamWithData:streamed]];
+		[redirected setTimeoutInterval:5.0];
+
+		listener3 = socket(AF_INET, SOCK_STREAM, 0);
+		memset(&addr3, 0, sizeof(addr3));
+		addr3.sin_family = AF_INET;
+		addr3.sin_port = htons(46470);
+		addr3.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		setsockopt(listener3, SOL_SOCKET, SO_REUSEADDR, &one3, sizeof(one3));
+		check("the-redirect-leg-binds-its-own-listener",
+		      bind(listener3, (struct sockaddr *)&addr3, sizeof(addr3)) == 0 && listen(listener3, 2) == 0,
+		      @"this leg is its own receiver, and it must answer TWICE");
+
+		redirectTask = [session3 dataTaskWithRequest:redirected
+				      completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+			(void)data;
+			(void)response;
+			(void)error;
+			called3 = YES;
+		}];
+		[redirectTask resume];
+
+		/* THE FIRST REQUEST IS ANSWERED 307, WHICH IS THE STATUS THAT EXISTS TO KEEP BOTH THE METHOD AND THE
+		 * BODY - so the follow is a COPY of this request, carrying the stream this attempt has just spent. */
+		conn3 = accept(listener3, NULL, NULL);
+		if(conn3 >= 0) {
+			const char *answer = "HTTP/1.1 307 Temporary Redirect\r\n"
+					     "Location: http://127.0.0.1:46470/second\r\n"
+					     "Content-Length: 0\r\nConnection: close\r\n\r\n";
+
+			fcntl(conn3, F_SETFL, O_NONBLOCK);
+			tries3 = 0;
+			while(tries3 < 100 && firstTotal < sizeof(firstBuf)) {
+				ssize_t n = read(conn3, firstBuf + firstTotal, sizeof(firstBuf) - firstTotal);
+
+				if(n > 0) {
+					firstTotal += (size_t)n;
+				} else {
+					usleep(10000);
+					tries3++;
+				}
+			}
+			write(conn3, answer, strlen(answer));
+			close(conn3);
+		}
+
+		/* AND THE SECOND CARRIES THE BODY THE DELEGATE HANDED OVER, or the redirect lost it. */
+		conn3 = accept(listener3, NULL, NULL);
+		if(conn3 >= 0) {
+			const char *answer = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}";
+
+			fcntl(conn3, F_SETFL, O_NONBLOCK);
+			tries3 = 0;
+			while(tries3 < 100 && secondTotal < sizeof(secondBuf)) {
+				ssize_t n = read(conn3, secondBuf + secondTotal, sizeof(secondBuf) - secondTotal);
+
+				if(n > 0) {
+					secondTotal += (size_t)n;
+				} else {
+					usleep(10000);
+					tries3++;
+				}
+			}
+			write(conn3, answer, strlen(answer));
+			close(conn3);
+		}
+		close(listener3);
+		{
+			int waited3 = 0;
+
+			while(!called3 && waited3 < 300) {
+				usleep(10000);
+				waited3++;
+			}
+		}
+		{
+			size_t i;
+
+			for(i = 0; i + [streamed length] <= firstTotal; i++) {
+				if(memcmp(firstBuf + i, [streamed bytes], [streamed length]) == 0) {
+					firstFound = 1;
+					break;
+				}
+			}
+			for(i = 0; i + [streamed length] <= secondTotal; i++) {
+				if(memcmp(secondBuf + i, [streamed bytes], [streamed length]) == 0) {
+					secondFound = 1;
+					break;
+				}
+			}
+		}
+		check("the-redirected-post-kept-its-body-on-the-way-out", firstFound,
+		      @"307 exists to keep the method and the body, and the first attempt sent both");
+		check("the-delegate-was-asked-for-a-new-stream", streamDelegate->asks == 1,
+		      @"the stream was spent by the first attempt, so the re-send asked for a fresh one");
+		check("the-re-sent-request-carries-the-fresh-body", secondFound,
+		      [NSString stringWithFormat:@"the second attempt carried %s (%d byte(s) received)",
+			secondFound ? "the body" : "NO body", (int)secondTotal]);
+	}
 	printf("FOUNDATION-URLSESSION-TASK RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-URLSESSION-TASK-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-URLSESSION-TASK DONE\n");

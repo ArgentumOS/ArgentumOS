@@ -68,6 +68,8 @@ CHECKS = ("connection-class-declared", "delegate-protocols-declared",
           "the-cache-decision-refuses-what-the-delegate-refuses",
           "the-cache-decision-passes-what-the-delegate-keeps",
           "and-a-delegate-with-no-such-door-lets-the-proposal-stand",
+          "the-re-send-ask-reaches-the-delegate",
+          "and-no-such-door-answers-nothing-rather-than-fabricating",
           "the-declared-surface-is-what-ships")
 
 

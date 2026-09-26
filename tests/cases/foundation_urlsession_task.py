@@ -45,7 +45,10 @@ CHECKS = ("completion-handler-factory-answers-a-task", "task-resume-runs-the-tra
           "receiver-binds", "receiver-listens", "receiver-accepts-a-connection",
           "upload-run-ends", "upload-body-arrives-byte-for-byte",
           "the-upload-progress-door-is-reported", "the-stream-leg-binds-its-own-listener",
-          "a-stream-body-is-sent")
+          "a-stream-body-is-sent", "the-redirect-leg-binds-its-own-listener",
+          "the-redirected-post-kept-its-body-on-the-way-out",
+          "the-delegate-was-asked-for-a-new-stream",
+          "the-re-sent-request-carries-the-fresh-body")
 
 
 class Case(BaseCase):

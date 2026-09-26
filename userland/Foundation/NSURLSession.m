@@ -59,6 +59,8 @@
 - (NSURLRequest * _Nullable)fnAskAboutRedirectForTask:(NSURLSessionTask *)task
 					    response:(NSHTTPURLResponse *)response
 					    proposed:(NSURLRequest *)request;
+/* §62.35: the re-send's body, asked of the delegate when the body was a STREAM - see the implementation. */
+- (NSURLRequest *)fnRequestBodyForResend:(NSURLRequest *)request task:(NSURLSessionTask *)task;
 @end
 
 @interface FNSessionTransfer : NSObject <NSURLProtocolClient>
@@ -212,8 +214,15 @@ totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
 	 * on the stack. All three end the flight, which is what lets the session release the protocol. */
 	if (_pendingAction == 1) {
 		_redirects++;
-		[_task fnProtocolDidRedirectToRequest:_pendingFollow];
-		[_session fnStartTransferForTask:_task request:_pendingFollow client:self];
+		/* THE BODY OF A RE-SEND (§62.35), AND THIS IS THE ONE PLACE EVERY RE-SEND PASSES THROUGH: a stream is
+		 * consumed by being sent, so the follow's request may need a FRESH one from the delegate before it can
+		 * run again. */
+		{
+			NSURLRequest *next = [_session fnRequestBodyForResend:_pendingFollow task:_task];
+
+			[_task fnProtocolDidRedirectToRequest:next];
+			[_session fnStartTransferForTask:_task request:next client:self];
+		}
 	} else if (_pendingAction == 2) {
 		[_task fnProtocolDidReceiveResponse:_pendingResponse];
 		[_task fnProtocolDidFinishWithError:nil];
@@ -621,6 +630,43 @@ totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
 NSString * const NSURLSessionDownloadTaskResumeData = @"NSURLSessionDownloadTaskResumeData";
 
 @implementation NSURLSession
+
+/* THE RE-SEND'S BODY, AND THE ONLY PLACE A DELEGATE CAN BE ASKED FOR ONE (§62.35): a body carried as BYTES
+ * needs nothing (bytes are sent as often as they are asked for), while a body carried as a STREAM has been
+ * spent by the attempt that just ran. Apple's door hands over a replacement, and this method puts it on a COPY
+ * of the request rather than mutating the caller's - the original is what `originalRequest` reports, and a
+ * redirect must not rewrite history.
+ *
+ * AND A DELEGATE THAT IMPLEMENTS NO SUCH DOOR IS NOT ASKED, so the request goes as it is with the spent stream
+ * on it: the transfer is then whatever an empty body makes it, which is the honest consequence of nobody being
+ * there to answer rather than a fabricated one. */
+- (NSURLRequest *)fnRequestBodyForResend:(NSURLRequest *)request task:(NSURLSessionTask *)task
+{
+	id <NSURLSessionTaskDelegate> delegate;
+	__block NSInputStream *fresh = nil;
+	NSMutableURLRequest *rebuilt;
+
+	if ([request HTTPBodyStream] == nil) {
+		return request;
+	}
+	delegate = (id <NSURLSessionTaskDelegate>)[self delegate];
+	if (![delegate respondsToSelector:@selector(URLSession:task:needNewBodyStream:)]) {
+		return request;
+	}
+	[delegate URLSession:self
+			task:task
+	    needNewBodyStream:^(NSInputStream *bodyStream) {
+		fresh = [bodyStream retain];
+	}];
+	if (fresh == nil) {
+		return request;	/* nothing to send with, and inventing a stream is nobody's business */
+	}
+	rebuilt = [request mutableCopy];
+	[rebuilt setHTTPBodyStream:fresh];
+	[fresh release];
+	return [rebuilt autorelease];
+}
+
 
 /* THE SHARED SESSION, made once and answered by identity from then on: a singleton that answered a new
  * object each time would make "shared" a lie, and the probe pins the identity rather than the equality. */

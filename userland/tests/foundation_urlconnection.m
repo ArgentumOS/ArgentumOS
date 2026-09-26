@@ -372,6 +372,29 @@ didFinishDownloadingToURL:(NSURL *)location
 
 @end
 
+/* THE RE-SENDER (§62.35): it hands back a stream when asked, and records the ask - so the translation is a
+ * measurement rather than a claim. */
+@interface FNBodyStreamAnswerer : NSObject <NSURLConnectionDataDelegate>
+{
+	@public
+	int asks;
+	NSInputStream *stream;
+}
+
+@end
+
+@implementation FNBodyStreamAnswerer
+
+- (NSInputStream *)connection:(NSURLConnection *)connection needNewBodyStream:(NSURLRequest *)request
+{
+	(void)connection;
+	(void)request;
+	asks++;
+	return stream;
+}
+
+@end
+
 /* THE CACHE-DECIDER FOR A CONNECTION (§62.33): it answers what the test tells it to, so the translation's two
  * branches - the delegate's answer, and the proposal when there is no such door - are both measurable. */
 @interface FNCacheAnswerer : NSObject <NSURLConnectionDataDelegate>
@@ -1036,6 +1059,48 @@ int main(void)
 			      stored == proposed,
 			      @"a caller that never wrote a cache decision is not waited for, and the session's own "
 			      @"answer stands");
+		}
+	}
+
+	/* --- 11. THE RE-SEND'S BODY, TRANSLATED (§62.35) ------------------------------------------------- */
+	{
+		SEL sel = NSSelectorFromString(@"URLSession:task:needNewBodyStream:");
+		typedef void (*Fn)(id, SEL, NSURLSession *, NSURLSessionTask *, void (^)(NSInputStream *));
+		FNBodyStreamAnswerer *answerer = [[FNBodyStreamAnswerer alloc] init];
+		NSURLConnection *conn = [[NSURLConnection alloc]
+			initWithRequest:[NSURLRequest requestWithURL:fn_url(@"file:///dev/null")]
+			     delegate:(id)answerer
+		     startImmediately:NO];
+		id bytes = [@"fresh body" dataUsingEncoding:NSUTF8StringEncoding];
+		__block NSInputStream *given = nil;
+		BOOL present = (conn != nil) && [conn respondsToSelector:sel];
+
+		answerer->stream = [NSInputStream inputStreamWithData:bytes];
+		if(present) {
+			((Fn)objc_msgSend)(conn, sel, nil, nil,
+					   ^(NSInputStream *bodyStream) { given = bodyStream; });
+		}
+		check("the-re-send-ask-reaches-the-delegate",
+		      present && answerer->asks == 1 && given == answerer->stream,
+		      @"the session asks, the connection asks its delegate, and the stream it handed back is what the "
+		      @"session receives - the same object, not a copy");
+
+		given = nil;
+		{
+			FNEmptyConnDelegate *silent = [[FNEmptyConnDelegate alloc] init];
+
+			conn = [[NSURLConnection alloc]
+				initWithRequest:[NSURLRequest requestWithURL:fn_url(@"file:///dev/null")]
+				     delegate:(id)silent
+			     startImmediately:NO];
+			if([conn respondsToSelector:sel]) {
+				((Fn)objc_msgSend)(conn, sel, nil, nil,
+						   ^(NSInputStream *bodyStream) { given = bodyStream; });
+			}
+			check("and-no-such-door-answers-nothing-rather-than-fabricating",
+			      given == nil,
+			      @"a delegate that never wrote one is not asked and is not waited for: the session is "
+			      @"answered with nil rather than with a stream nobody offered");
 		}
 	}
 

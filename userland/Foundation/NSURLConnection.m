@@ -428,6 +428,20 @@ willPerformHTTPRedirection:(NSHTTPURLResponse *)response
 	completionHandler(request);
 }
 
+/* THE RE-SEND'S BODY (§62.35): the session asks, this class asks its delegate - whose answer, including nil,
+ * goes straight back. Apple's connection door takes the REQUEST whose body is needed, and the session's takes a
+ * completion handler, so the translation is one call in each direction. */
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
+  needNewBodyStream:(void (^)(NSInputStream *))completionHandler
+{
+	if ([_delegate respondsToSelector:@selector(connection:needNewBodyStream:)]) {
+		completionHandler([_delegate connection:self needNewBodyStream:[task currentRequest]]);
+		return;
+	}
+	completionHandler(nil);	/* nobody to ask: the transfer runs with the body it has (which is spent) */
+}
+
 /* THE CACHE DECISION, TRANSLATED (§62.33): the session asks what to store and this class asks its delegate -
  * whose NIL means "keep nothing" on both sides, so the answer passes through unchanged. A delegate that
  * implements no such door is not asked here either, and the session's own answer stands. */
