@@ -12972,6 +12972,25 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.13 — THE COVERAGE SLICE, TWELFTH LANDING: NSDATA'S OPTION SETS (2026-09-24)
+
+**AND THIS ONE NEARLY INTRODUCED A COLLISION, WHICH IS THE INTERESTING PART.** The ten open `NSData` rows are
+option members, and this header had ALREADY assigned 1 and 2 inside its base64 encoding set
+(`64CharacterLineLength = 1`, `EndLineWithLineFeed = 2`). Apple's own numbers for the two members added beside
+them are 1<<1 and 1<<3, so COPYING APPLE'S VALUES WOULD HAVE COLLIDED with what was already there - one of the
+four options would have become unrequestable, silently, and nothing else would have failed. They take free bits
+(4 and 8) instead, the header says why, and the check asserts the four are distinct.
+
+**THE FILE-PROTECTION VALUES CARRY A REAL MASK, NOT A DECORATIVE ONE:** AND-ing `NSDataWritingFileProtectionMask`
+with a value has to EXTRACT it, so the values are consecutive (None, Complete, CompleteUnlessOpen,
+CompleteUntilFirstUserAuthentication, CompleteWhenUserInactive) and the check requires
+`(Complete & Mask) == Complete`. Nothing in this system acts on file protection - it is named so a caller
+compiles - and `NSDataWritingWithoutOverwriting` sits OUTSIDE the mask, which the check also requires.
+
+**THIS IS THE THIRD TIME THIS SESSION THAT "COPY APPLE'S NUMBER" WOULD HAVE BEEN WRONG** - after
+`NSURLFileScheme = @"file"` and `NSCalendarIdentifierBangla = @"bangla"` - and the first time the wrongness was a
+COLLISION rather than a wrong string.
+
 ## §62.12 — THE COVERAGE SLICE, ELEVENTH LANDING: NSFILEMANAGER'S FUNCTIONS (2026-09-24)
 
 **THE ROW THE HEADER ITSELF DEFERRED IS PAID.** NSFileManager.h said NSHomeDirectory() and

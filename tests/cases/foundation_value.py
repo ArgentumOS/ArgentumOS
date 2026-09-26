@@ -30,8 +30,7 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_value"
 CHECKS = (
-          "number-convert", "number-value", "number-compare", "number-description", "number-api-complete", "number-matrix", "data-roundtrip", "data-mutable", "date", "cross-tu", "data-api-complete", "date-api-complete", "data-extras", "data-base64", "data-mutable-extras", "date-extras", "data-block-enumeration", "data-url-url", "data-url-write", "data-url-read", "data-url-nonfile-url", "data-url-nonfile-refuse", "date-nscoding-round-trip", "data-nscoding-round-trip", "uuid-round-trip", "uuid-version-and-variant", "date-interval", "date-interval-intersections", "value-transformer-registry", "value-transformer-transform",
-          )
+          "number-convert", "number-value", "number-compare", "number-description", "number-api-complete", "number-matrix", "data-roundtrip", "data-mutable", "date", "cross-tu", "data-api-complete", "date-api-complete", "data-extras", "data-base64", "data-mutable-extras", "date-extras", "data-block-enumeration", "data-url-url", "data-url-write", "data-url-read", "data-url-nonfile-url", "data-url-nonfile-refuse", "date-nscoding-round-trip", "data-nscoding-round-trip", "uuid-round-trip", "uuid-version-and-variant", "date-interval", "date-interval-intersections", "value-transformer-registry", "value-transformer-transform", "data-option-sets-are-collision-free")
 
 
 class Case(BaseCase):

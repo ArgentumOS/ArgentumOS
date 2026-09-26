@@ -32,7 +32,7 @@
 #   protocol   shipped   23   open    8   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped  127   open   16   struck   17
-#   case       shipped 1031   open  103   struck  168
+#   case       shipped 1041   open   93   struck  168
 #   func       shipped   83   open   52   struck   54
 #   var        shipped  509   open   52   struck  353
 #   typealias  shipped   54   open   15   struck    7
@@ -250,8 +250,8 @@ case	shipped	NSCoreServiceDirectory	NSFileManager	Files and Data Persistence / F
 case	shipped	NSCustomSelectorPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSDataBase64DecodingIgnoreUnknownCharacters	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations / Constants	-	objc
 case	shipped	NSDataBase64Encoding64CharacterLineLength	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations / Constants	-	objc
-case	open	NSDataBase64Encoding76CharacterLineLength	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations / Constants	-	objc
-case	open	NSDataBase64EncodingEndLineWithCarriageReturn	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations / Constants	-	objc
+case	shipped	NSDataBase64Encoding76CharacterLineLength	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations / Constants	-	objc
+case	shipped	NSDataBase64EncodingEndLineWithCarriageReturn	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations / Constants	-	objc
 case	shipped	NSDataBase64EncodingEndLineWithLineFeed	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations / Constants	-	objc
 case	shipped	NSDataCompressionAlgorithmLZ4	NSData	Fundamentals / Binary Data / Compressing and Decompressing Data / Algorithms	-	objc
 case	shipped	NSDataCompressionAlgorithmLZ4	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data / Algorithms	-	objc
@@ -262,19 +262,19 @@ case	shipped	NSDataCompressionAlgorithmLZMA	NSMutableData	Fundamentals / Binary 
 case	shipped	NSDataCompressionAlgorithmZlib	NSData	Fundamentals / Binary Data / Compressing and Decompressing Data / Algorithms	-	objc
 case	shipped	NSDataCompressionAlgorithmZlib	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data / Algorithms	-	objc
 case	struck	NSDataReadingMapped	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
-case	open	NSDataReadingMappedAlways	NSData	Fundamentals / Binary Data / Reading Data from a File / Constants	-	objc
+case	shipped	NSDataReadingMappedAlways	NSData	Fundamentals / Binary Data / Reading Data from a File / Constants	-	objc
 case	shipped	NSDataReadingMappedIfSafe	NSData	Fundamentals / Binary Data / Reading Data from a File / Constants	-	objc
 case	shipped	NSDataReadingUncached	NSData	Fundamentals / Binary Data / Reading Data from a File / Constants	-	objc
 case	shipped	NSDataSearchAnchored	NSData	Fundamentals / Binary Data / Finding Data / Constants	-	objc
 case	shipped	NSDataSearchBackwards	NSData	Fundamentals / Binary Data / Finding Data / Constants	-	objc
 case	shipped	NSDataWritingAtomic	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
-case	open	NSDataWritingFileProtectionComplete	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
-case	open	NSDataWritingFileProtectionCompleteUnlessOpen	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
-case	open	NSDataWritingFileProtectionCompleteUntilFirstUserAuthentication	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
-case	open	NSDataWritingFileProtectionCompleteWhenUserInactive	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
-case	open	NSDataWritingFileProtectionMask	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
-case	open	NSDataWritingFileProtectionNone	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
-case	open	NSDataWritingWithoutOverwriting	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
+case	shipped	NSDataWritingFileProtectionComplete	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
+case	shipped	NSDataWritingFileProtectionCompleteUnlessOpen	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
+case	shipped	NSDataWritingFileProtectionCompleteUntilFirstUserAuthentication	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
+case	shipped	NSDataWritingFileProtectionCompleteWhenUserInactive	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
+case	shipped	NSDataWritingFileProtectionMask	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
+case	shipped	NSDataWritingFileProtectionNone	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
+case	shipped	NSDataWritingWithoutOverwriting	NSData	Fundamentals / Binary Data / Writing Data to a File / Constants	-	objc
 case	shipped	NSDateComponentUndefined	NSDateComponents	Fundamentals / Calendrical Calculations / Validating a Date / Constants	-	objc
 case	shipped	NSDateComponentsFormatterUnitsStyleAbbreviated	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Styles	-	swift-page
 case	shipped	NSDateComponentsFormatterUnitsStyleBrief	NSDateComponentsFormatter	Fundamentals / Date Formatting / Constants / Styles	-	swift-page

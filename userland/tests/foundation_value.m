@@ -836,6 +836,26 @@ int main(void)
 		      "forward, reverse, and the class it answers for");
 	}
 
+	{
+		/* THE OPTION SETS, WHERE A COLLISION IS THE FAILURE THAT MATTERS: this header had already assigned 1
+		 * and 2 inside the base64 set, so the two members added beside them had to take FREE bits - copying
+		 * Apple's numbers would have made one of the four unrequestable in silence. The file-protection values
+		 * are a MASK-VALUED set, so AND-ing Mask with a value must extract it. */
+		check("data-option-sets-are-collision-free",
+		      (NSDataBase64Encoding64CharacterLineLength & NSDataBase64EncodingEndLineWithLineFeed) == 0 &&
+		      (NSDataBase64Encoding64CharacterLineLength & NSDataBase64Encoding76CharacterLineLength) == 0 &&
+		      (NSDataBase64EncodingEndLineWithLineFeed & NSDataBase64EncodingEndLineWithCarriageReturn) == 0 &&
+		      (NSDataBase64Encoding76CharacterLineLength &
+		       NSDataBase64EncodingEndLineWithCarriageReturn) == 0 &&
+		      (NSDataReadingMappedAlways & NSDataReadingMappedIfSafe) == 0 &&
+		      (NSDataReadingMappedAlways & NSDataReadingUncached) == 0 &&
+		      (NSDataWritingWithoutOverwriting & NSDataWritingFileProtectionMask) == 0 &&
+		      (NSDataWritingFileProtectionComplete & NSDataWritingFileProtectionMask) ==
+		       NSDataWritingFileProtectionComplete &&
+		      NSDataWritingFileProtectionMask == 0xff,
+		      "the base64 members are distinct bits, MappedAlways is its own, and the protection mask extracts a value");
+	}
+
 	printf("FOUNDATION-VALUE RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

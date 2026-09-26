@@ -60,7 +60,13 @@ NS_ASSUME_NONNULL_BEGIN
 typedef enum {
 	NSDataBase64EncodingDefault = 0,
 	NSDataBase64Encoding64CharacterLineLength = 1,
-	NSDataBase64EncodingEndLineWithLineFeed = 2
+	NSDataBase64EncodingEndLineWithLineFeed = 2,
+	/* THE NEXT TWO TAKE FREE BITS ON PURPOSE, AND THE REASON IS WORTH READING: this set already assigned 1 and
+	 * 2 to its own members, so copying Apple's numbers here would COLLIDE with them - a collision that would
+	 * make one of the four options unrequestable in silence. Values are ours (§11.6.1 D2) and the check asserts
+	 * the four are distinct. */
+	NSDataBase64Encoding76CharacterLineLength = 4,
+	NSDataBase64EncodingEndLineWithCarriageReturn = 8
 } NSDataBase64EncodingOptions;
 
 /* The DECODING option set, which is where NSDataBase64DecodingIgnoreUnknownCharacters
@@ -86,12 +92,23 @@ typedef enum {
 typedef enum {
 	NSDataReadingDefault = 0,
 	NSDataReadingMappedIfSafe = 1,
-	NSDataReadingUncached = 2
+	NSDataReadingUncached = 2,
+	NSDataReadingMappedAlways = 4
 } NSDataReadingOptions;
 
 typedef enum {
 	NSDataWritingDefault = 0,
-	NSDataWritingAtomic = 1
+	NSDataWritingAtomic = 1,
+	/* THE FILE-PROTECTION VALUES ARE A MASK-VALUED SET, WHICH IS WHY Mask IS A REAL MASK: AND-ing it with a
+	 * value has to extract the protection, so the values are consecutive and Mask covers exactly them. Nothing
+	 * in this system acts on file protection - it is named so a caller compiles and the header says the rest. */
+	NSDataWritingFileProtectionNone = 0,
+	NSDataWritingFileProtectionComplete = 1,
+	NSDataWritingFileProtectionCompleteUnlessOpen = 2,
+	NSDataWritingFileProtectionCompleteUntilFirstUserAuthentication = 3,
+	NSDataWritingFileProtectionCompleteWhenUserInactive = 4,
+	NSDataWritingFileProtectionMask = 0xff,
+	NSDataWritingWithoutOverwriting = 1 << 12
 } NSDataWritingOptions;
 
 /*
