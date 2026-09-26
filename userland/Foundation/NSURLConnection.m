@@ -21,12 +21,14 @@
  * other half — A CONNECTION KEEPS ITSELF ALIVE UNTIL IT IS FINISHED — so `-start` retains and the
  * ending releases, and a caller who drops its reference immediately still gets its delegate calls.
  *
- * DECISION 3: THE CHALLENGE DOOR OF THE SESSION IS *NOT* IMPLEMENTED HERE, WHICH IS THE ACTIVE FORM OF
- * THE REFUSALS THE HEADER NAMES. The session asks its delegate for a disposition and a credential; a
- * connection delegate has no `NSURLAuthenticationChallenge` SENDER to answer through (that class ships
- * no `-sender` — its own header records why, and §62.24 makes it an owed row), so forwarding the
- * question would offer a door a caller cannot use. Not implementing it leaves the session's own
- * default in force, which is what "this delegate cannot answer challenges" means.
+ * DECISION 3: THE SESSION'S CHALLENGE DOOR *IS* IMPLEMENTED, AND IT DEFERS THE ANSWER TO THE DELEGATE'S
+ * OWN SENDER. It could not be, once: `NSURLAuthenticationChallenge` shipped no `-sender`, so forwarding the
+ * question would have offered a door a caller could not answer. §62.27 landed the sender (an owed row since
+ * §62.24) and this is what it unblocked. THE TRANSLATION IS BY REFERENCE, NOT BY COPY: the challenge is
+ * handed to the delegate AS IS, so the sender inside it is the TRANSPORT'S OWN thunk over the continuation
+ * the transfer is blocked on — the delegate's answer therefore resumes the transfer directly, with no
+ * second answer path anywhere. That is also why the session's completion handler is NOT called when a
+ * delegate door exists: calling it AND letting the sender call it would answer the same challenge twice.
  */
 #import <Foundation/NSURLConnection.h>
 #import <Foundation/NSURLSession.h>
@@ -424,6 +426,52 @@ willPerformHTTPRedirection:(NSHTTPURLResponse *)response
 		return;
 	}
 	completionHandler(request);
+}
+
+/* THE AUTHENTICATION TRANSLATION, WITH APPLE'S PRECEDENCE WRITTEN OUT RATHER THAN IMPLIED (the header
+ * states it for a caller; this is the code that keeps it):
+ *
+ *   * THE MODERN DOOR SUPERSEDES THE DEPRECATED PAIR, so a delegate that implements it is the only one
+ *     asked — and it must answer, through the challenge's sender;
+ *   * THE GATE IS ASKED NEXT, and a NO means "do not authenticate": the transfer continues WITHOUT
+ *     credentials, which is what the session's own default handling means for a 401;
+ *   * THEN THE DEPRECATED CHALLENGE DOOR, answered exactly as the modern one is (the same sender);
+ *   * AND NO DOOR AT ALL MEANS THE DEFAULT, WITHOUT WAITING — the rule every door in this library keeps,
+ *     and the reason a delegate that cares about none of this is never blocked on.
+ *
+ * `NSURLAuthenticationChallenge`'s sender is the LOADING SYSTEM'S thunk over the continuation this handler
+ * IS, so a delegate that answers through the sender calls that continuation directly; there is exactly one
+ * answer path and it is the transport's.
+ */
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
+didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
+ completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition,
+			    NSURLCredential *))completionHandler
+{
+	id delegate = _delegate;
+
+	if ([delegate respondsToSelector:
+			@selector(connection:willSendRequestForAuthenticationChallenge:)]) {
+		[(id <NSURLConnectionDelegate>)delegate connection:self
+			willSendRequestForAuthenticationChallenge:challenge];
+		return;	/* the delegate answered through challenge.sender, as the header requires */
+	}
+	if ([delegate respondsToSelector:
+			@selector(connection:canAuthenticateAgainstProtectionSpace:)]) {
+		if (![(id <NSURLConnectionDelegate>)delegate connection:self
+				canAuthenticateAgainstProtectionSpace:[challenge protectionSpace]]) {
+			completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
+			return;
+		}
+	}
+	if ([delegate respondsToSelector:
+			@selector(connection:didReceiveAuthenticationChallenge:)]) {
+		[(id <NSURLConnectionDelegate>)delegate connection:self
+			didReceiveAuthenticationChallenge:challenge];
+		return;	/* answered through the sender, like the modern door */
+	}
+	completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
 }
 
 - (void)URLSession:(NSURLSession *)session

@@ -43,18 +43,31 @@
  *       DECLARING THEM AS NO-OPS WOULD BE THE WORSE OPTION — a caller would believe it had arranged
  *       delivery it had not.
  *
- * REFUSED BY NAME, WITH GROUNDS (each is asserted absent in the probe's `excluded` array, and the
- * grounds are the register's kind (ii), "a dependency this system does not have"):
- *   * THE AUTHENTICATION DOORS — `-connection:willSendRequestForAuthenticationChallenge:`,
- *     `-connection:didReceiveAuthenticationChallenge:`, `-connection:didCancelAuthenticationChallenge:`,
- *     `-connection:canAuthenticateAgainstProtectionSpace:` and `-connectionShouldUseCredentialStorage:`.
- *     A CHALLENGE CANNOT BE ANSWERED FROM A DELEGATE HERE: `NSURLAuthenticationChallenge` ships no
- *     `-sender` (its own header records that decision under §48.1), and `-sender` is what Apple's
- *     delegate protocol is built on — `[challenge.sender useCredential:forAuthenticationChallenge:]` is
- *     the delegate's half of the exchange. The session answers challenges through its OWN
- *     completion-handler door, which a connection delegate cannot reach. NAMED CONSEQUENCE: `-sender`
- *     is itself an owed row now (§62.24 retired the "Legacy" strike its header cites), and landing it is
- *     what would make these five doors implementable — that is the work, not this comment.
+ * AUTHENTICATION IS HERE NOW, BECAUSE `-sender` LANDED (§62.27 — §62.24 had put it on the work list, and a
+ * challenge that carries a working sender is what makes an answer possible from a delegate). THREE DOORS
+ * ARE DECLARED BELOW, WITH APPLE'S OWN PRECEDENCE: the MODERN door
+ * (`-connection:willSendRequestForAuthenticationChallenge:`) SUPERSEDES the deprecated pair, so a delegate
+ * that implements it is the only one asked; otherwise `-connection:canAuthenticateAgainstProtectionSpace:`
+ * is asked FIRST as a gate (a `NO` means "do not authenticate", and the transfer continues without
+ * credentials), and then `-connection:didReceiveAuthenticationChallenge:`. A DELEGATE THAT IMPLEMENTS ONE OF
+ * THESE MUST ANSWER, THROUGH THE CHALLENGE'S OWN SENDER — `[challenge.sender useCredential:…]` — because a
+ * connection's delegate has no completion handler to answer with, and the transport is BLOCKED until the
+ * challenge is answered.
+ *
+ * AND TWO OF THE FIVE ARE STILL REFUSED, WITH GROUNDS THE LOADING SYSTEM MEASURES:
+ *   * `-connectionShouldUseCredentialStorage:` — THE LOADING SYSTEM CONSULTS NO CREDENTIAL STORE, so there is
+ *     nothing for a delegate to permit or forbid: the transport's challenge carries a nil proposed credential
+ *     and the store (`NSURLCredentialStorage`) is the caller's business, not the transfer's.
+ *   * `-connection:didCancelAuthenticationChallenge:` — ONE CHALLENGE AT A TIME, ANSWERED SYNCHRONOUSLY: the
+ *     transport waits for an answer, so a live challenge is never superseded by the connection and there is no
+ *     cancellation for it to report. (A delegate's OWN cancel is its own act, and it answers with it.)
+ *   * `-connection:needNewBodyStream:` — the transport does not consume `NSURLRequest`'s
+ *     `HTTPBodyStream`, so there is no body to ask for again on a redirect.
+ *   * `-connection:didSendBodyData:totalBytesWritten:totalBytesExpectedToWrite:` — upload progress. The
+ *     session uploads from DATA (`-uploadTaskWithRequest:fromData:`), so the bytes are handed over
+ *     before the transfer starts and there is no progressive upload to report.
+ *   * `-connection:willCacheResponse:` — the session offers no cache-decision door for a connection to
+ *     translate, so a delegate could not be asked.
  *   * `-connection:needNewBodyStream:` — the transport does not consume `NSURLRequest`'s
  *     `HTTPBodyStream`, so there is no body to ask for again on a redirect.
  *   * `-connection:didSendBodyData:totalBytesWritten:totalBytesExpectedToWrite:` — upload progress. The
@@ -94,7 +107,9 @@
 @class NSData;
 @class NSError;
 @class NSOperationQueue;
+@class NSURLAuthenticationChallenge;
 @class NSURL;
+@class NSURLProtectionSpace;
 @class NSURLRequest;
 @class NSURLResponse;
 @class NSURLSession;
@@ -114,6 +129,23 @@ NS_ASSUME_NONNULL_BEGIN
 /* THE TRANSFER FAILED. Called at most once, and never after `-connectionDidFinishLoading:`. A CANCEL IS
  * NOT A FAILURE (see `-cancel`), so a cancelled connection does not reach this door. */
 - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error;
+
+/* THE SERVER IS ASKING, AND THIS IS THE MODERN DOOR: it SUPERSEDES the two deprecated ones below, so a
+ * delegate that implements it is the only one asked. ANSWER IT THROUGH THE CHALLENGE'S SENDER -
+ * `[challenge.sender useCredential:credential forAuthenticationChallenge:challenge]` - because the transport
+ * is blocked until the challenge is answered and this door has no completion handler to answer with. */
+- (void)connection:(NSURLConnection *)connection
+willSendRequestForAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;
+
+/* AND THE DEPRECATED PAIR, WHICH §62.24's POLICY PUT BACK IN SCOPE RATHER THAN LEFT AS HISTORY: an older
+ * application's delegate implements THESE, so they are answered here with Apple's own precedence above.
+ * `-connection:canAuthenticateAgainstProtectionSpace:` is the GATE - `NO` means do not authenticate, and the
+ * transfer continues without credentials - and `-connection:didReceiveAuthenticationChallenge:` is the
+ * challenge itself, answered the same way the modern door is. */
+- (BOOL)connection:(NSURLConnection *)connection
+canAuthenticateAgainstProtectionSpace:(NSURLProtectionSpace *)protectionSpace;
+- (void)connection:(NSURLConnection *)connection
+didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;
 
 @end
 

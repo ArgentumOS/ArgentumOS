@@ -12977,6 +12977,56 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.28 — THE AUTHENTICATION DOORS LAND: WHAT §62.27 UNBLOCKED (2026-09-26)
+
+**WHAT SHIPPED.** Three of the five `NSURLConnection` authentication doors, with APPLE'S OWN PRECEDENCE written
+into the code and into the header: the MODERN door
+(`-connection:willSendRequestForAuthenticationChallenge:`) and the DEPRECATED PAIR
+(`-connection:canAuthenticateAgainstProtectionSpace:`, `-connection:didReceiveAuthenticationChallenge:`) that
+§62.24's policy put back in scope. The session's challenge door (`-URLSession:task:didReceiveChallenge:
+completionHandler:`) is now implemented on the connection — it was DELIBERATELY not implemented before, and §62.25
+said why: a challenge could not be answered from a connection delegate because `NSURLAuthenticationChallenge`
+shipped no `-sender`.
+
+**THE TRANSLATION IS BY REFERENCE, NOT BY COPY, AND THAT IS WHAT MAKES ONE ANSWER PATH POSSIBLE.** The challenge
+is handed to the delegate AS IS, so the sender inside it is THE TRANSPORT'S OWN THUNK over the continuation the
+transfer is blocked on (§62.27's `FNAuthenticationChallengeSender`). The delegate's answer therefore resumes the
+transport directly, and this class never calls the session's completion handler when a delegate door exists —
+calling both would answer the same challenge twice. A connection delegate has no completion handler at all, which
+is why the header says an implementing delegate MUST answer: returning from the door without answering leaves the
+transfer waiting.
+
+**THE PRECEDENCE, AS FOUR BRANCHES:** the modern door, if implemented, is the ONLY one asked (it supersedes the
+pair); otherwise the GATE is asked first, and a `NO` means "do not authenticate" — the transfer continues WITHOUT
+credentials, which is the session's own default handling for a 401; then the deprecated challenge door; and NO DOOR
+AT ALL MEANS THE DEFAULT, WITHOUT WAITING, the rule every door in this library keeps.
+
+**TWO OF THE FIVE ARE STILL REFUSED, WITH GROUNDS THE LOADING SYSTEM MEASURES:** `-connectionShouldUseCredentialStorage:`
+— THE LOADING SYSTEM CONSULTS NO CREDENTIAL STORE, so there is nothing for a delegate to permit or forbid (the
+transport's challenge carries a nil proposed credential and the store is the caller's business);
+`-connection:didCancelAuthenticationChallenge:` — ONE CHALLENGE AT A TIME, ANSWERED SYNCHRONOUSLY, so a live
+challenge is never superseded by the connection and there is no cancellation for it to report.
+
+**VERIFIED SERVER-FREE, BY THE SAME RUNTIME TECHNIQUE THE REDIRECT USES**: `foundation_urlconnection` gained five
+checks and one corrected inventory, and is **23/23 green**. The strongest of them,
+`the-modern-door-supersedes-the-deprecated-pair`, hands the connection a delegate that implements ALL THREE doors
+and asserts that the modern one was asked ONCE, the gate and the deprecated door NOT AT ALL, the fixture sender
+received the credential — **and that the continuation this class was given was never called (`disposition == -1`)**,
+which is the one-answer-path property stated as a measurement rather than as a comment.
+
+**AND ONE CHECK OF MINE FAILED FIRST, WHICH IS THE MORE USEFUL HALF OF THE RECORD.** The two deprecated-pair legs
+were written against the all-three delegate, and they failed — because the precedence rule correctly skipped the
+pair. THE BUG WAS THE CHECK'S, NOT THE CODE'S, and the fix was structural rather than a tweak: a delegate's doors
+are a property of its CLASS (`-respondsToSelector:`), so "does not implement the modern door" has to be a different
+class, and `FNDeprecatedAuthDelegate` exists for that. There is a second, older copy of the same lesson in this file
+(the redirect fixture) and a third in §62.25's `startImmediately`; what they share is a check asserting what its
+author expected rather than what the code says.
+
+**NO LEDGER REFRESH WAS OWED**, and that was checked rather than assumed: the three doors are METHODS, and this
+ledger's convention keeps methods out of the surface file (its header says so — members are §11.2 SOURCE 1's
+business, the probes' own arrays) — so `--check` and `--families --check` both stayed green without one, and the
+public header count moved 170 -> 171 only because `-sender`'s protocol additions went into an existing header.
+
 ## §62.27 — `-sender` LANDS: THE ACCESSOR §48.1 REFUSED, AND WHAT IT UNBLOCKS (2026-09-26)
 
 **WHAT SHIPPED.** `NSURLAuthenticationChallenge` KEEPS the `sender:` its initialisers always accepted and hands it
