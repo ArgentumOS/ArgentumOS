@@ -13024,7 +13024,19 @@ to distrust; the numbers above were re-derived per file from the data itself bef
   `propertyListFromData:mutabilityOption:format:errorDescription:`) were tolerated as NECESSARY and are now OWED;
 * **the probes' `excluded` arrays** carry entries whose stated reason is a deprecation, and those entries stop being
   registrable deviations under §11.6 for the same reason — they are work items, which is what those arrays already
-  call the machine-readable distance to zero;
+  call the machine-readable distance to zero. **AND THE RELABEL WAS CARRIED OUT IN THE SAME UNIT, not left as a
+  consequence for later: TEN SITES ACROSS NINE PROBES that named the retired policy as the REASON for an absence
+  were rewritten to say the name is OWED** — `foundation_httpcookiestorage` and `foundation_taskmetrics` (a check
+  message each), `appkit_image` (the comment that justified preferring `+imageWithSize:flipped:drawingHandler:`
+  over `-lockFocus`/`-unlockFocus`), and the comment blocks in `foundation_port`, `foundation_runloop`,
+  `foundation_task`, `foundation_urlrequest` (twice), `foundation_collection` and `foundation_value`. THE ABSENCE
+  ASSERTIONS THEMSELVES WERE KEPT DELIBERATELY: a check that a now-OWED name is absent is still TRUE (it is
+  unimplemented), and it is the tripwire that fails the day the name lands and its ledger row flips to shipped —
+  which is exactly the §11.2 service those probes exist to give. What changed is that no probe any longer presents
+  an unimplemented item as a policy exclusion; verified by rebuilding and restaging all nine (guest probes
+  recompiled 11:16–11:17, the two new messages confirmed inside the staged binaries) and by re-running the two
+  cases whose messages changed (`foundation_httpcookiestorage` 19 checks, `foundation_taskmetrics` 14 checks,
+  both green);
 * **the CoreGraphics plan's policy 4** ("No deprecated APIs, as policy") is REVERSED in place, and its policy 5 (the
   macOS 14 vintage) is kept for the one thing it is still good for: it says WHICH deprecation a symbol carries, so a
   10.5 deprecation and a 14.0 one do not read alike. Its ledger's `excluded-by-policy` is now a LABEL

@@ -442,7 +442,7 @@ int main(void)
 			 * SHIP (F7 and stage E). These are absent from NSDATE's own surface
 			 * because they are the CALENDAR's methods, which is where Cocoa puts them:
 			 * the arithmetic lives on the calendar as -dateByAdding…. */
-			"descriptionWithCalendarFormat:timeZone:locale:",	/* deprecated, and the calendar's */
+			"descriptionWithCalendarFormat:timeZone:locale:",	/* the CALENDAR's method, and Apple deprecated it: OWED (§62.24) */
 			"dateByAddingComponents:toDate:options:",		/* NSCalendar's method, not NSDate's */
 			"dateByAddingUnit:value:toDate:options:",		/* NSCalendar's method, not NSDate's */
 			/* THE TWO NSCoding ENTRIES USED TO BE LISTED HERE. NSDate implements them now

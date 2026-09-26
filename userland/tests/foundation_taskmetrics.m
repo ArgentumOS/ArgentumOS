@@ -106,7 +106,8 @@ int main(void)
 	/* --- WHAT IS REFUSED, ASSERTED ABSENT ----------------------------------------------------------- */
 	check("the-deprecated-fetch-type-is-absent",
 	      ![tx respondsToSelector:NSSelectorFromString(@"NSURLSessionTaskMetricsResourceFetchTypeServerPush")],
-	      @"ServerPush is struck (deprecated) in the ledger, so its name is not here");
+	      @"ServerPush carries the ledger's deprecated LABEL and is OWED (plan section 62.24), so its "
+	      @"name is not here because it is unimplemented - not because a policy strikes it");
 	check("the-known-fetch-types-are-present",
 	      NSURLSessionTaskMetricsResourceFetchTypeUnknown == 0 &&
 	      NSURLSessionTaskMetricsResourceFetchTypeNetworkLoad == 1 &&

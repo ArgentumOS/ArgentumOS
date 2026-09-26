@@ -464,7 +464,9 @@ int main(void)
 			"propertyList:isValidForFormat:", NULL
 		};
 		static const char *excluded[] = {
-			/* NSStream forms, and the deprecation-era entry points. */
+			/* NSStream forms (a dependency this library does not have), and the deprecation-era entry
+			 * points - which §62.24 (2026-09-26) turned from policy exclusions into OWED rows: every
+			 * entry below is unimplemented work, and this array is that distance to zero. */
 			"propertyListWithStream:options:format:error:",
 			"writePropertyList:toStream:format:options:error:",
 			"propertyListFromData:mutabilityOption:format:errorDescription:",

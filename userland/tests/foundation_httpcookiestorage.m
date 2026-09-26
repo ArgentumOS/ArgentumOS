@@ -219,7 +219,9 @@ int main(void)
 	      @"an app-group store is a concept this system does not have, so the name is not here");
 	check("the-deprecated-accept-policy-notification-is-absent",
 	      NSClassFromString(@"NSHTTPCookieManagerAcceptPolicyChangedNotification") == nil,
-	      @"the deprecated name is not shipped (section 11.5)");
+	      @"Apple deprecated this name, and since 2026-09-26 that makes it a WORK ITEM rather than an "
+	      @"exclusion (plan section 62.24): it is absent because it is UNIMPLEMENTED, and this check is "
+	      @"the tripwire that will fail the day it lands and the ledger row flips to shipped");
 
 	printf("FOUNDATION-HTTPCOOKIESTORAGE RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-HTTPCOOKIESTORAGE-STATUS=%d\n", failc ? 1 : 0);

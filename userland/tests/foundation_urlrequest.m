@@ -381,7 +381,9 @@ int main(void)
 
 	{
 		/* THE ENUM VALUES ARE OURS (D2), so they are PINNED here rather than assumed — including the
-		 * documented alias and the HOLE the struck …VoIP left at 1. */
+		 * documented alias and the HOLE the …VoIP case left at 1. THAT HOLE IS AN OWED ROW, NOT A
+		 * STRIKE: it used to be struck as deprecated, and §62.24 retired that ground (2026-09-26), so
+		 * the value stays pinned and the name is a work item. */
 		check("url-request-enum-values",
 		      NSURLRequestUseProtocolCachePolicy == 0 &&
 		      NSURLRequestReloadIgnoringLocalCacheData == 1 &&
@@ -446,8 +448,9 @@ int main(void)
 		};
 		/*
 		 * REFUSED, AND ASSERTED ABSENT: the transport doors (a request here is a DESCRIPTION), the two
-		 * coder doors (an archive form Apple does not publish), and the deprecated certificate doors
-		 * §11.5 struck.
+		 * coder doors (an archive form Apple does not publish), and the certificate doors Apple
+		 * DEPRECATED - which §11.5 struck until 2026-09-26, and which §62.24 makes OWED: they are absent
+		 * because they are unimplemented, and this array is the distance to zero for them too.
 		 */
 		static const char *excluded[] = {
 			"start", "resume", "loadRequest:",

@@ -36,7 +36,8 @@
  * NOT GATED, AND WHY: `launchRequirement`/`launchRequirementData` are not declared at all (no code-signing
  * requirement subsystem exists here), and the Apple-deprecated four (`-launchPath`, `-setLaunchPath:`,
  * `-launch`, `-currentDirectoryPath`/`-setCurrentDirectoryPath:`, `+launchedTaskWithLaunchPath:arguments:`)
- * are struck by §11.5 and absent by policy.
+ * are OWED: they were "struck by §11.5 and absent by policy" until 2026-09-26, when the deprecation ground
+ * was RETIRED (§62.24) - they are absent now because they are UNIMPLEMENTED.
  */
 
 #import <Foundation/Foundation.h>

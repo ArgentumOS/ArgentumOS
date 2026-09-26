@@ -40,7 +40,8 @@
 #include <unistd.h>
 
 /* A PORT THE PROBE CAN LISTEN TO. The hook is OURS (the delegate that would have carried the readiness is
- * Apple-deprecated and struck), so a consumer subclasses to hear it. */
+ * Apple-deprecated - which since 2026-09-26 makes it a WORK ITEM rather than an exclusion, plan section
+ * 62.24 - so this is a placeholder for API this library still OWES), so a consumer subclasses to hear it. */
 @interface FnReadablePort : NSSocketPort
 {
 	NSUInteger _ready;

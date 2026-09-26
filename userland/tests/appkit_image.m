@@ -226,10 +226,13 @@ int main(void)
 		NSImage *im;
 
 			/* --- DRAWN INTO AN OFFSCREEN CANVAS: +imageWithSize:flipped:drawingHandler: -------------- */
-			/* THIS IS THE MODERN, NON-DEPRECATED FORM OF AN OFFSCREEN CANVAS. It is chosen deliberately:
-			 * `-lockFocus`/`-unlockFocus` are STRUCK (deprecated) rows at this tree's pinned vintage and
-			 * the standing policy is no deprecated APIs, so those two names are absent while this one is
-			 * built. THE SWIZZLE PROOF IS RED IN, RED OUT again — a backwards channel swizzle reads red as
+			/* THE OFFSCREEN CANVAS IS BUILT THROUGH +imageWithSize:flipped:drawingHandler:, AND THE REASON
+			 * IS NO LONGER A POLICY. It was: `-lockFocus`/`-unlockFocus` used to be STRUCK as deprecated
+			 * rows, and the standing policy was "no deprecated APIs". THAT POLICY WAS RETIRED on
+			 * 2026-09-26 (plan section 62.24) - the two names are OWED now, and the ledger labels them
+			 * `deprecated` rather than excluding them. What still decides this form is preference, not
+			 * rule: the handler form is the modern spelling, and this check proves the canvas path either
+			 * way. THE SWIZZLE PROOF IS RED IN, RED OUT again — a backwards channel swizzle reads red as
 			 * BLUE and every other check here would still pass. */
 			{
 				CGContextRef cg;

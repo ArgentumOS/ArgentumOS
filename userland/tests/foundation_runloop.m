@@ -194,7 +194,9 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 /*
  * A PORT THE RUN LOOP IS TOLD TO WATCH — through NSRunLoop's OWN door (`-addPort:forMode:`), which is
  * Apple's current API and was unimplementable until a port class existed (§43). `-portDidBecomeReadable`
- * is ours: the delegate that would have carried the readiness is Apple-deprecated and struck.
+ * is ours: the delegate that would have carried the readiness is Apple-deprecated, and since 2026-09-26
+ * that makes it a WORK ITEM rather than an exclusion (§62.24) - this hook is a placeholder for a name
+ * this library still OWES.
  */
 @interface FnLoopPort : NSSocketPort
 {
