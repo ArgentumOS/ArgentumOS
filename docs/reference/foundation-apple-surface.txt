@@ -31,8 +31,8 @@
 #   class      shipped  165   open   31   struck   77
 #   protocol   shipped   23   open    8   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped  127   open   16   struck   17
-#   case       shipped 1041   open   93   struck  168
+#   enum       shipped  129   open   14   struck   17
+#   case       shipped 1047   open   87   struck  168
 #   func       shipped   83   open   52   struck   54
 #   var        shipped  509   open   52   struck  353
 #   typealias  shipped   54   open   15   struck    7
@@ -663,9 +663,9 @@ case	shipped	NSNonLossyASCIIStringEncoding	NSString	Fundamentals / Strings / Wor
 case	shipped	NSNormalizedPredicateOption	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	swift-page
 case	shipped	NSNotEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSNotPredicateType	NSCompoundPredicate	Fundamentals / Filltering / Getting Information About a Compound Predicate / Constants	-	objc
-case	open	NSNotificationCoalescingOnName	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
-case	open	NSNotificationCoalescingOnSender	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
-case	open	NSNotificationNoCoalescing	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
+case	shipped	NSNotificationCoalescingOnName	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
+case	shipped	NSNotificationCoalescingOnSender	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
+case	shipped	NSNotificationNoCoalescing	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
 case	shipped	NSNotificationSuspensionBehaviorCoalesce	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Constants	-	objc
 case	shipped	NSNotificationSuspensionBehaviorDeliverImmediately	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Constants	-	objc
 case	shipped	NSNotificationSuspensionBehaviorDrop	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Constants	-	objc
@@ -733,9 +733,9 @@ case	struck	NSPositionBefore	NSPositionalSpecifier	App Support / Object Specifie
 case	struck	NSPositionBeginning	NSPositionalSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	struck	NSPositionEnd	NSPositionalSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	struck	NSPositionReplace	NSPositionalSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
-case	open	NSPostASAP	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
-case	open	NSPostNow	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
-case	open	NSPostWhenIdle	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
+case	shipped	NSPostASAP	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
+case	shipped	NSPostNow	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
+case	shipped	NSPostWhenIdle	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
 case	shipped	NSPreferencePanesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSPresentationIntentKindBlockQuote		Reference / Enumerations / Getting the presentation types	-	objc
 case	shipped	NSPresentationIntentKindBlockQuote	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
@@ -1696,7 +1696,7 @@ enum	shipped	NSMatchingOptions	NSRegularExpression	Fundamentals / Pattern Matchi
 enum	shipped	NSMeasurementFormatterUnitOptions	NSMeasurementFormatter	Fundamentals / Measurements / Specifying the Format	-	swift-page
 enum	struck	NSNetServiceOptions	NSNetService	Networking / Local Network Services / Constants	declined	objc
 enum	struck	NSNetServicesError	NSNetService	Networking / Local Network Services / Constants	declined	swift-page
-enum	open	NSNotificationCoalescing	NSNotificationQueue	App Support / Notifications / Constants	-	objc
+enum	shipped	NSNotificationCoalescing	NSNotificationQueue	App Support / Notifications / Constants	-	objc
 enum	shipped	NSNotificationSuspensionBehavior	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants	-	objc
 enum	shipped	NSNumberFormatterBehavior	NSNumberFormatter	Fundamentals / Numbers / Constants	-	objc
 enum	shipped	NSNumberFormatterPadPosition	NSNumberFormatter	Fundamentals / Numbers / Constants	-	objc
@@ -1706,7 +1706,7 @@ enum	shipped	NSOperationQueuePriority	NSOperation	App Support / Operations / Con
 enum	shipped	NSOrderedCollectionDifferenceCalculationOptions	NSArray	Fundamentals / Basic Collections / Comparing with Another Array	-	objc
 enum	shipped	NSOrderedCollectionDifferenceCalculationOptions	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set	-	objc
 enum	shipped	NSPointerFunctionsOptions	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants	-	objc
-enum	open	NSPostingStyle	NSNotificationQueue	App Support / Notifications / Constants	-	objc
+enum	shipped	NSPostingStyle	NSNotificationQueue	App Support / Notifications / Constants	-	objc
 enum	shipped	NSPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	objc
 enum	shipped	NSPresentationIntentKind		Reference / Enumerations	-	objc
 enum	shipped	NSPresentationIntentKind	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc

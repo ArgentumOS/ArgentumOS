@@ -251,6 +251,23 @@ int main(void)
 		      "the two bit sets are distinct within themselves (not across each other) and each name is itself");
 	}
 
+	{
+		/* THE QUEUE'S STYLES AND COALESCING POLICIES: the styles are a bit set whose members must be DISTINCT
+		 * (two sharing a value would make one unrequestable), and the coalescing policies likewise - with
+		 * NSNotificationNoCoalescing being ZERO, which is not a collision but the absence of one. */
+		check("notification-queue-vocabulary",
+		      NSPostASAP != NSPostWhenIdle &&
+		      NSPostWhenIdle != NSPostNow &&
+		      NSPostASAP != NSPostNow &&
+		      (NSPostASAP & NSPostWhenIdle) == 0 &&
+		      (NSPostWhenIdle & NSPostNow) == 0 &&
+		      NSNotificationNoCoalescing == 0 &&
+		      (NSNotificationCoalescingOnName & NSNotificationCoalescingOnSender) == 0 &&
+		      NSNotificationCoalescingOnName != NSNotificationNoCoalescing,
+		      "the three posting styles are distinct bits and the coalescing policies are distinct, with "
+		      "NoneCoalescing being zero");
+	}
+
 	printf("FOUNDATION-NOTIFICATION RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-NOTIFICATION-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-NOTIFICATION DONE\n");

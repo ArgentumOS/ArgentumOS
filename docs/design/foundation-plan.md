@@ -12972,6 +12972,20 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.14 — THE COVERAGE SLICE, THIRTEENTH LANDING: NSNotificationQueue'S VOCABULARY (2026-09-24)
+
+**AND THE CLASS'S ABSENCE IS NAMED WITH ITS REASON, WHICH THE PLAN ALREADY KNEW:** the eight open rows are two
+enums - `NSPostingStyle` (ASAP / WhenIdle / Now) and `NSNotificationCoalescing` (none / by name / by sender) -
+and Apple declares them in `NSNotification.h` itself, so they were appended THERE rather than in a new file. **The
+QUEUE is not declared, and the reason is the one the family notes already record: a queue delivers at a point in
+the RUN LOOP (idle, or as soon as possible without blocking), and this tree's run loop exposes no phase seam to
+hang that on.** The vocabulary ships; the queue waits for the seam.
+
+**THE CHECK DISTINGUISHES A COLLISION FROM ZERO:** the three posting styles must be distinct BITS (two sharing a
+value would make one unrequestable), and `NSNotificationNoCoalescing` is **zero, which is not a collision but the
+absence of one** - a distinction worth asserting explicitly, since a check that only compared values would treat
+"none" as a suspicious duplicate.
+
 ## §62.13 — THE COVERAGE SLICE, TWELFTH LANDING: NSDATA'S OPTION SETS (2026-09-24)
 
 **AND THIS ONE NEARLY INTRODUCED A COLLISION, WHICH IS THE INTERESTING PART.** The ten open `NSData` rows are

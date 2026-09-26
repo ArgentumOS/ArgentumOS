@@ -16,7 +16,8 @@ PROBE = "/System/Shared/tests/foundation_notification"
 CHECKS = ("notification-value", "center-selector", "center-filters", "center-remove",
           "center-block-form", "center-block-queue", "center-dead-observer",
           "notification-names-are-their-own-names",
-          "distributed-notification-vocabulary")
+          "distributed-notification-vocabulary",
+          "notification-queue-vocabulary")
 
 
 class Case(BaseCase):

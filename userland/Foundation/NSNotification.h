@@ -77,6 +77,26 @@ extern NSNotificationName const NSSystemClockDidChangeNotification;
 extern NSNotificationName const NSSystemTimeZoneDidChangeNotification;
 extern NSNotificationName const NSUbiquityIdentityDidChangeNotification;
 
+/* ---- THE NOTIFICATION QUEUE'S VOCABULARY, AND THE QUEUE'S ABSENCE NAMED (the coverage slice) ----------
+ *
+ * Apple declares these two sets in THIS header, beside the queue class they configure, so they belong here.
+ * THE CLASS ITSELF IS NOT DECLARED IN THIS SYSTEM, AND THE REASON IS RECORDED RATHER THAN IMPLIED: a queue
+ * delivers a notification at a point in the RUN LOOP - idle, or as soon as possible without blocking - and this
+ * tree's run loop exposes no phase seam to hang that on yet. So the styles and the coalescing policies ship as
+ * the vocabulary a conforming caller compiles against, and the queue waits for the seam.
+ */
+typedef enum {
+	NSPostASAP = 1 << 0,
+	NSPostWhenIdle = 1 << 1,
+	NSPostNow = 1 << 2
+} NSPostingStyle;
+
+typedef enum {
+	NSNotificationNoCoalescing = 0,
+	NSNotificationCoalescingOnName = 1 << 0,
+	NSNotificationCoalescingOnSender = 1 << 1
+} NSNotificationCoalescing;
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSNOTIFICATION_H */
