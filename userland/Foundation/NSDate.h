@@ -62,11 +62,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSDate *)earlierDate:(NSDate *)other;
 - (NSDate *)laterDate:(NSDate *)other;
 
-/* Immutable, so copying returns self. */
-- (id)copy;
-- (id)mutableCopy;
-- (id)copy;
-- (id)mutableCopy;
+/* Immutable, so copying returns self. There is deliberately NO -mutableCopy: Apple's NSDate does not
+ * declare one, and leaving NSObject's in place means [date mutableCopy] RAISES, which is what Apple's does. */
 
 NS_ASSUME_NONNULL_END
 

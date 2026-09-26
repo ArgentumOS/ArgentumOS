@@ -109,10 +109,6 @@ NSString *const NSMallocException = @"NSMallocException";
 	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) — immutable */
 }
 
-- (id)mutableCopy
-{
-	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) */
-}
 
 
 @end
