@@ -110,6 +110,8 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSCharacterSet.m $(FOUNDATION_SRC)/NSIndexSet.m \
 	$(FOUNDATION_SRC)/NSScanner.m \
 	$(FOUNDATION_SRC)/NSOrthography.m \
+	$(FOUNDATION_SRC)/NSBlockOperation.m \
+	$(FOUNDATION_SRC)/NSInvocationOperation.m \
 	$(FOUNDATION_SRC)/NSIndexPath.m \
 	$(FOUNDATION_SRC)/NSLocale.m \
 	$(FOUNDATION_SRC)/NSMethodSignature.m \
@@ -206,6 +208,8 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSURLComponents.h \
 	$(FOUNDATION_SRC)/NSScanner.h \
 	$(FOUNDATION_SRC)/NSOrthography.h \
+	$(FOUNDATION_SRC)/NSBlockOperation.h \
+	$(FOUNDATION_SRC)/NSInvocationOperation.h \
 	$(FOUNDATION_SRC)/NSTextCheckingResult.h \
 	$(FOUNDATION_SRC)/NSRegularExpression.h \
 	$(FOUNDATION_SRC)/NSDataDetector.h \
@@ -857,6 +861,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_orthography.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_orthography"
+	# foundation_operation_leaves: §62.22's acceptance - the two CONCRETE operations (NSBlockOperation and
+	# NSInvocationOperation). ONE unit, only <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_operation_leaves.m -o .build/probe-foundation_operation_leaves.o
+	$(MUSL64_OBJC) .build/probe-foundation_operation_leaves.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_operation_leaves"
 	# foundation_directoryenumerator: W8 slice 1 acceptance (foundation-plan.md §60). ONE unit, only
 	# <Foundation/Foundation.h> plus <unistd.h> for the symlink(2) its fixture makes.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \

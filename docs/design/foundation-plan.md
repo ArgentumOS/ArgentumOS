@@ -3471,7 +3471,7 @@ vanishing.
 | **App Support / Object Matching Tests** | ALL STRUCK: `NSLogicalTest`, `NSScriptWhoseTest`, `NSSpecifierTest` | — |
 | **App Support / Object Specifiers** | ALL STRUCK: `NSIndexSpecifier`, `NSMiddleSpecifier`, `NSNameSpecifier`, `NSPositionalSpecifier`, `NSPropertySpecifier`, `NSRandomSpecifier`, `NSRangeSpecifier`, `NSRelativeSpecifier`, `NSScriptObjectSpecifier`, `NSUniqueIDSpecifier`, `NSWhoseSpecifier` | — |
 | **App Support / On-Demand Resources** | ALL STRUCK: `NSBundleResourceRequest` | — |
-| **App Support / Operations** | 2 open | `NSBlockOperation`, `NSInvocationOperation` |
+| **App Support / Operations** | all classes shipped | — |
 | **App Support / Progress** | all classes shipped | — |
 | **App Support / Scheduling** | all classes shipped | — |
 | **App Support / Script Commands** | ALL STRUCK: `NSCloneCommand`, `NSCloseCommand`, `NSCountCommand`, `NSCreateCommand`, `NSDeleteCommand`, `NSExistsCommand`, `NSGetCommand`, `NSMoveCommand`, `NSQuitCommand`, `NSScriptCommand`, `NSSetCommand` | — |
@@ -12974,6 +12974,63 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.22 — THE TWO CONCRETE OPERATIONS LAND, AND THE PROBE FOUND AN ABORT IN THE INVOCATION TRAMPOLINES (2026-09-26)
+
+**THE FAMILY'S MISSING HALF.** `NSOperation` has shipped since F13.19 with the shape Apple documents — a subclass
+overrides `-main`, `-start` runs it, the condition variable is what `-waitUntilFinished` waits on — and **nothing in
+the library ever subclassed it except a private one-block helper inside `NSOperation.m`**. So a caller who wanted an
+operation had to write a subclass, while Apple's two ready-made ones did not exist. They do now:
+`NSBlockOperation` (several units of work that belong to one operation) and `NSInvocationOperation` (one method call
+held as an object). **App Support / Operations is `all classes shipped`**; the library's open count went 220 → 218;
+`foundation_operation_leaves` is **16 checks** and its case is green on a guest boot.
+
+**`NSBlockOperation` IS TWO RULES AND ONE DEVIATION.** The rules are Apple's: the operation is "finished only when
+all blocks have finished executing" — asserted by reading `-isFinished` and `-isExecuting` **from inside a running
+block**, which is where that sentence has content — and `-addExecutionBlock:` raises
+`NSInvalidArgumentException` "while the receiver is executing or has already finished", asserted **from both sides**
+(after the run, and from inside a block). The deviation is the CONCURRENCY: Apple dispatches the blocks onto a work
+queue, and `NSOperation.h` here says outright that the only kind of operation this library has is non-concurrent, so
+the blocks run one after another on the caller's thread. It is the family's existing boundary showing through rather
+than a new choice, and one consequence is the class's own stated gain: **cancellation becomes granular**, because a
+block operation is the one concrete operation whose units a caller can count — `-isCancelled` is checked BEFORE EACH
+BLOCK, so cancelling from inside one skips the rest (a block already running is never interrupted).
+
+**AND THE BLOCK IS COPIED WITH THE RUNTIME'S ENTRY POINT, NOT WITH A MESSAGE.** This tree's gate refuses
+`copy`/`retain`/`release`/`autorelease` sent to a block-typed name, because `-copy` is a message send that makes the
+runtime read the block's ISA — measured in the URL session as a null-page fault that presented as "the library
+crashes for no reason". `Block_copy`/`Block_release` cannot depend on the isa, so the block this class stores is a
+HEAP block, the array's own retain/release are the blocks runtime's business, and the check that a block capturing a
+**dead frame** still runs is what proves the copy happened at all.
+
+**`NSInvocationOperation` IS THE BRIDGE THE FAMILY WAS MISSING, AND ITS `-result` IS FIVE RULES IN ONE PROPERTY**
+(Apple's paragraph, implemented in the order its own sentences imply): not finished → nil; **cancelled → raises
+`NSInvocationOperationCancelledException`**; a failure from the run → **raised again**; a **void return type →
+raises `NSInvocationOperationVoidResultException`**; and otherwise the value, the object itself or an `NSValue`
+carrying the bytes. **THAT LAST PART IS WHY `NSMethodSignature`'S RETURN TYPE *AND* RETURN LENGTH ARE BOTH READ**,
+and the check reads the bytes back out of the `NSValue` — a pointer that came back would pass a check that only
+looked at the class. And the two exception names, **declared in `NSException.h` since F4 and never raised by
+anything until now, finally have a raiser**: that header pointed at a class that did not exist.
+
+**AND THE PROBE FOUND A REAL DEFECT IN A FILE THIS UNIT DOES NOT OWN — AN ABORT, NOT A WRONG ANSWER.** The check
+that Apple calls for ("if an exception was raised during the execution of the method or invocation, accessing this
+property raises that exception again") **killed the process with SIGABRT and printed nothing**: gdb put the frames
+in order — `-[FNLeafTarget raiseIt]` → **`fn_call_image`** → `-[NSInvocation invokeWithTarget:]` →
+`-[NSInvocationOperation main]` → `-[NSOperation start]` — and `objc_exception_throw` aborted INSIDE THE UNWIND.
+**THE CAUSE IS THE HAND-WRITTEN TRAMPOLINES IN `NSInvocation_amd64.S`: they had no `.cfi_*` directives, so they had
+no FDE, so the unwinder could not walk through them — which means ANY exception raised by a method called through an
+`NSInvocation` aborted the process, with no `@try` anywhere above it able to catch.** The fix is **four directives
+per function** (the frames were always rbp-based, so `.cfi_def_cfa_offset`/`.cfi_offset`/`.cfi_def_cfa_register`/
+`.cfi_def_cfa` say exactly what the prologue already does, rather than describing a different shape), landed WITH
+this unit because the unit's own contract was unreachable without it: both trampolines carry them now, the check
+passes, and `foundation_core`'s 55 checks — which include the forwarding path `fn_forward_entry` exists for — are
+green. **THE LESSON WORTH KEEPING: a defect found by a probe is fixed where it lives, and the probe's own rule was
+the verification.**
+
+**WHAT IS STILL NAMED RATHER THAN DONE, AND IT IS ADJACENT RATHER THAN HIDDEN:** `NSOperation`'s own surface is
+still short of Apple's page — `-completionBlock`, `-qualityOfService`, `-name`, `-queuePriority` and
+`-addExecutionBlock:`'s counterpart on the queue are the family's next row, and none of them is needed by these two
+classes.
 
 ## §62.21 — `NSOrthography` LANDS, AND §62.18'S ORTHOGRAPHY DOOR HAS A CLASS AT LAST (2026-09-26)
 

@@ -14,6 +14,16 @@
  * the caller's `al` says they are used, and `al` is UNDEFINED for a non-variadic
  * prototype — which is exactly what a forwarded method has. So the capture must
  * save xmm0-7 unconditionally, and only assembler can say that.
+ *
+ * AND WHY EVERY FUNCTION HERE CARRIES ITS OWN `.cfi_*` DIRECTIVES (§62.22, MEASURED): a
+ * hand-written frame with no DWARF had NO FDE, so the unwinder could not walk through
+ * it — and an exception raised by a method called through either trampoline therefore
+ * ABORTED the process inside `objc_exception_throw`, with no `@try` anywhere above it
+ * able to catch. Found by the `NSInvocationOperation` probe, whose contract is that
+ * `-result` re-raises what the run raised: the backtrace put `fn_call_image` between
+ * the target method and `-[NSInvocation invokeWithTarget:]`, and four directives per
+ * function are the whole fix. The frames were always rbp-based, so the CFA rules below
+ * say exactly what the prologue does rather than describing a different shape.
  */
 
 #define FN_GPR		0
@@ -41,8 +51,12 @@
 					 * below legal, with or without -fPIC */
 	.type	fn_forward_entry, @function
 fn_forward_entry:
+	.cfi_startproc
 	pushq	%rbp
+	.cfi_def_cfa_offset	16
+	.cfi_offset	%rbp, -16
 	movq	%rsp, %rbp
+	.cfi_def_cfa_register	%rbp
 	movq	%rdi, fn_forward_regs+FN_GPR+0(%rip)
 	movq	%rsi, fn_forward_regs+FN_GPR+8(%rip)
 	movq	%rdx, fn_forward_regs+FN_GPR+16(%rip)
@@ -63,7 +77,9 @@ fn_forward_entry:
 	movq	fn_forward_regs+FN_RET_INT(%rip), %rax
 	movsd	fn_forward_regs+FN_RET_FP(%rip), %xmm0
 	leave
+	.cfi_def_cfa	%rsp, 8
 	ret
+	.cfi_endproc
 	.size	fn_forward_entry, .-fn_forward_entry
 
 /*
@@ -80,8 +96,12 @@ fn_forward_entry:
 	.hidden	fn_call_image
 	.type	fn_call_image, @function
 fn_call_image:
+	.cfi_startproc
 	pushq	%rbp
+	.cfi_def_cfa_offset	16
+	.cfi_offset	%rbp, -16
 	movq	%rsp, %rbp
+	.cfi_def_cfa_register	%rbp
 	subq	$16, %rsp
 	movq	%rdi, %r11		/* the function to call */
 	movq	%rsi, -8(%rbp)		/* the image, parked across the call */
@@ -106,7 +126,9 @@ fn_call_image:
 	movq	%rax, FN_RET_INT(%r10)
 	movsd	%xmm0, FN_RET_FP(%r10)
 	leave
+	.cfi_def_cfa	%rsp, 8
 	ret
+	.cfi_endproc
 	.size	fn_call_image, .-fn_call_image
 
 	.data

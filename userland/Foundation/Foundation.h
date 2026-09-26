@@ -168,6 +168,8 @@
 #import <Foundation/NSTimer.h>
 #import <Foundation/NSRunLoop.h>
 #import <Foundation/NSOperation.h>
+#import <Foundation/NSBlockOperation.h>
+#import <Foundation/NSInvocationOperation.h>
 #import <Foundation/NSOperationQueue.h>
 #import <Foundation/NSProgress.h>
 #import <Foundation/NSUserDefaults.h>
