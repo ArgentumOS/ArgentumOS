@@ -12977,6 +12977,32 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.30 — THE COVERAGE §62.28 MOVED COMES BACK: BOTH ANSWER PATHS ARE EXERCISED (2026-09-26)
+
+**WHAT CHANGED, AND WHY IT IS A UNIT RATHER THAN A FOOTNOTE.** §62.28 made `NSURLConnection`'s authentication doors
+answer through the challenge's SENDER, which left the COMPLETION-HANDLER form of the answer unexercised — the form an
+`NSURLSession` delegate uses and therefore the one most callers write. §62.28 said where the coverage would return
+(that probe's server serves exactly two connections, so it needed a second leg rather than a tweak). This is that
+leg: `foundation_authloop` now drives TWO 401 exchanges against the same listener — the first answered through the
+sender (as before), the second through the handler — and asserts the same thing of both: the credential reaches the
+wire base64-encoded, and the transfer ends 200. `FNAnswerer` gained the flag that selects the path and the counters
+that prove which one ran, so the check reads `asked=1 handler=1 sender=0` for the second leg rather than assuming it.
+
+**AND THE LEG COST A USE-AFTER-FREE, WHICH IS THE INTERESTING PART.** The first version created the session inside
+the task-creation expression:
+
+    task = [([NSURLSession sessionWithConfiguration:…]) dataTaskWithRequest:…];
+
+A task keeps an UNRETAINED reference to its session, so that session was free to deallocate the moment the statement
+ended, and the transfer called back into freed memory — the guest took a register dump AFTER the checks above it had
+already passed, which is exactly the shape of failure that reads as "the library is broken" rather than "the probe is
+wrong". Leg 1 never showed it because it holds its session in a local, which is also the fix here. THE RULE, STATED
+WHERE IT BIT: in this loading system a session must outlive its task by a reference the CALLER holds.
+
+**VERIFIED:** `foundation_authloop` **13/13 green** (12 named checks plus the probe's own tally line), and the case
+with its updated `CHECKS` tuple passes. No library file changed, so no ledger refresh was owed and no other case
+could be affected by construction.
+
 ## §62.29 — THE SESSION'S DOWNLOAD DELEGATE LANDS, AND THE LAST REFUSAL IN THE CONNECTION'S DOWNLOAD HALF GOES WITH IT (2026-09-26)
 
 **WHAT SHIPPED.** `NSURLSessionDownloadDelegate` — the protocol row that was `open` — and the two dispatches it

@@ -42,8 +42,10 @@ static void check(const char *name, BOOL held, NSString *why)
 	int asked;
 	int metricsCalls;
 	long transactions;
-	int senderCalls;	/* the door was entered */
+	int senderCalls;	/* the door was entered, and answered through the SENDER */
 	int senderPresent;	/* and the challenge carried a sender to answer through */
+	int handlerCalls;	/* ... or answered through the COMPLETION HANDLER instead */
+	BOOL useHandler;	/* which of the two paths this instance takes (§62.30) */
 }
 @end
 
@@ -78,6 +80,18 @@ didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
 	 * is what an NSURLSession delegate uses, and the next unit (NSURLConnection's five authentication doors)
 	 * is where it is exercised - the server here serves exactly two connections, so a second transfer cannot
 	 * be added to this probe without a second server leg. */
+	/* THE TWO ANSWER PATHS, AND THE SECOND ONE IS WHY THIS LEG EXISTS: §62.28 moved the completion-handler
+	 * path's coverage here (the connection's doors use the SENDER, so nothing else exercised the handler),
+	 * and this instance is told which path to take. Both must move the same transfer - that is the property
+	 * Apple's API guarantees by allowing both doors at once. */
+	if(useHandler) {
+		handlerCalls++;
+		handler(NSURLSessionAuthChallengeUseCredential,
+			[NSURLCredential credentialWithUser:@"kyle"
+						   password:@"secret"
+						persistence:NSURLCredentialPersistenceNone]);
+		return;
+	}
 	senderCalls++;
 	if([challenge sender] != nil) {
 		senderPresent = 1;
@@ -222,6 +236,79 @@ int main(void)
 		waited++;
 	}
 	check("the-loop-terminates", done, @"a server that always asks must not spin the client");
+
+	/* --- LEG 2: THE SAME 401, ANSWERED THROUGH THE COMPLETION HANDLER INSTEAD OF THE SENDER -----------
+	 *
+	 * §62.28 MOVED THIS PATH'S COVERAGE HERE AND SAID SO: the connection's authentication doors answer
+	 * through the challenge's sender, so after that unit NOTHING exercised the handler form - which is the
+	 * form an NSURLSession delegate uses and therefore the one most callers write. The server above serves
+	 * exactly two connections, so the coverage had to come back as a second leg rather than as a tweak. */
+	{
+		FNAnswerer *secondAnswerer = [[FNAnswerer alloc] init];
+		NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
+		NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:
+						[NSURL URLWithString:@"http://127.0.0.1:46481/handler"]];
+		__block BOOL done2 = NO;
+		__block NSInteger status2 = 0;
+		/* THE SESSION IS HELD IN A LOCAL, AND THAT IS NOT STYLE: a task keeps an UNRETAINED reference to
+		 * its session, so a session created inside the task-creation expression is free to deallocate the
+		 * moment that statement ends - the transfer then calls back into a freed session. The first version
+		 * of this leg did exactly that and took the guest down with a register dump after the checks above
+		 * it had passed. Leg 1 above holds its session the same way, which is why it never showed. */
+		NSURLSession *session2 = [NSURLSession sessionWithConfiguration:configuration
+								      delegate:secondAnswerer
+								     delegateQueue:nil];
+		NSURLSessionTask *task;
+		NSString *third = nil, *fourth = nil;
+		int waited2 = 0;
+
+		secondAnswerer->useHandler = YES;
+		task = [session2 dataTaskWithRequest:request
+			  completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+			(void)data;
+			(void)error;
+			status2 = [(NSHTTPURLResponse *)response statusCode];
+			done2 = YES;
+		}];
+		[task resume];
+		(void)session2;	/* named so the lifetime is explicit, not incidental */
+
+		conn = accept(listener, NULL, NULL);
+		third = conn >= 0 ? fn_read_request(conn) : nil;
+		if(conn >= 0) {
+			const char *answer = "HTTP/1.1 401 Unauthorized\r\n"
+					     "WWW-Authenticate: Basic realm=\"Probe\"\r\n"
+					     "Content-Length: 0\r\n"
+					     "Connection: close\r\n\r\n";
+
+			write(conn, answer, strlen(answer));
+			close(conn);
+		}
+		conn = accept(listener, NULL, NULL);
+		fourth = conn >= 0 ? fn_read_request(conn) : nil;
+		if(conn >= 0) {
+			const char *answer = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}";
+
+			write(conn, answer, strlen(answer));
+			close(conn);
+		}
+		while(!done2 && waited2 < 300) {
+			usleep(10000);
+			waited2++;
+		}
+
+		check("the-handler-answer-also-carries-the-credential",
+		      third != nil &&
+		      [[third lowercaseString] rangeOfString:@"authorization:"].location == NSNotFound &&
+		      fourth != nil &&
+		      [fourth rangeOfString:@"a3lsZTpzZWNyZXQ="].location != NSNotFound &&
+		      status2 == 200 && secondAnswerer->asked == 1 && secondAnswerer->handlerCalls == 1 &&
+		      secondAnswerer->senderCalls == 0,
+		      [NSString stringWithFormat:@"the completion-handler path: asked=%d handler=%d sender=%d, "
+			@"status=%d - and the credential still reached the wire",
+			secondAnswerer->asked, secondAnswerer->handlerCalls,
+			secondAnswerer->senderCalls, (int)status2]);
+	}
 	check("the-attempt-guard-held", answerer->asked == 1,
 	      @"asked exactly once, so the second 401 would have ended it rather than looping");
 	/* AND THE METRICS SAW TWO TRANSACTIONS, which is the boundary the record's array exists for: the 401 and
