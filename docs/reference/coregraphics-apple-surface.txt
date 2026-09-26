@@ -5,17 +5,26 @@
 #
 # sources: https://developer.apple.com/tutorials/data/index/coregraphics
 #          (plus .../index/corefoundation, CG-named rows only — see below)
-# measured: 2026-09-23
+# measured: 2026-09-26
 #
 # kind	status	name	owner	family	why	src
 #
-# THE `deprecated` REASON IS A CONSERVATIVE SUPERSET, AND THAT IS MEASURED:
-# Apple's index gives the BOOLEAN (137 of 3064 nodes) but its pages carry NO
-# version — `platforms` reads {"name": "macOS", "deprecated": false} with no
-# `deprecatedAt`. This file is therefore 'deprecated as of the SDK Apple's
-# documentation described on the date above', a LATER vintage than the pinned
-# macOS 14, so a post-14 deprecation strikes a row the contract would keep.
-# Closing that needs the SDK headers — see the plan's §9.
+# AND 76 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# 2026-09-26): to support porting older Mac applications, all items removed for being
+# deprecated are un-deprecated and added to the work list. They carry `deprecated` in the
+# `why` column, which says what KIND of work a row is, and they are open/shipped like any other.
+#
+# `deprecated` IS A MEASURED FLAG AND NO LONGER A GROUND (the user's policy, 2026-09-26):
+# to support porting older Mac applications, all items removed for being deprecated are
+# un-deprecated in Argentum Foundation and added to the work list - and this duplication,
+# a Cocoa-parity surface a ported application compiles against, follows the same decision.
+# SO A ROW CARRYING `deprecated` IS OWED OR SHIPPED LIKE ANY OTHER, and the flag is
+# INFORMATION about what kind of work it is. THE MEASUREMENT STANDS: Apple's index gives
+# the BOOLEAN (137 of 3064 nodes) and its pages carry NO version — `platforms` reads
+# {"name": "macOS", "deprecated": false} with no `deprecatedAt` — so the flag is a
+# CONSERVATIVE SUPERSET, 'deprecated as of the SDK Apple's documentation described on the
+# date above', a LATER vintage than the pinned macOS 14. Closing that needs the SDK
+# headers, and it matters MORE now: the flag no longer decides anything, it only labels.
 #
 # COREFOUNDATION CONTRIBUTES 19 ROWS, AND ONLY THE CG-NAMED ONES. The CG
 # value types are not CoreGraphics' to document — `CGPoint` lives at
@@ -33,18 +42,18 @@
 # counted, NOT excluded: 0 distinct names Apple documents on a `swift.` page
 # but which carry the CG spelling.
 #
-# why the struck rows are struck: deprecated 76
+# why the struck rows are struck: 
 #
 # counts by kind:
-#   func       shipped  177   open  510   struck   48
-#   macro      shipped    7   open   98   struck    2
-#   enum       shipped   10   open   46   struck    1
-#   case       shipped   74   open  356   struck   14
-#   var        shipped   18   open  108   struck    9
-#   typealias  shipped    7   open   91   struck    2
-#   struct     shipped    6   open   14   struck    0
-case	struck	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
-case	struck	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
+#   func       shipped  207   open  528   struck    0
+#   macro      shipped    7   open  100   struck    0
+#   enum       shipped   13   open   44   struck    0
+#   case       shipped   84   open  360   struck    0
+#   var        shipped   18   open  117   struck    0
+#   typealias  shipped   17   open   83   struck    0
+#   struct     shipped    8   open   12   struck    0
+case	open	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
+case	open	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	open	CGPDFDataFormatJPEG2000	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
 case	open	CGPDFDataFormatJPEGEncoded	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
 case	open	CGPDFDataFormatRaw	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
@@ -111,16 +120,16 @@ case	open	kCGBackingStoreRetained	-	Services / Data Types / Constants	-	objc
 case	open	kCGBackstopMenuLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGBaseWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	shipped	kCGBitmapAlphaInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	-	objc
-case	struck	kCGBitmapByteOrder16Big	-	Opaque Types / Examining an image / Constants	deprecated	objc
-case	struck	kCGBitmapByteOrder16Little	-	Opaque Types / Examining an image / Constants	deprecated	objc
-case	struck	kCGBitmapByteOrder32Big	-	Opaque Types / Examining an image / Constants	deprecated	objc
-case	struck	kCGBitmapByteOrder32Little	-	Opaque Types / Examining an image / Constants	deprecated	objc
-case	struck	kCGBitmapByteOrderDefault	-	Opaque Types / Examining an image / Constants	deprecated	objc
+case	open	kCGBitmapByteOrder16Big	-	Opaque Types / Examining an image / Constants	deprecated	objc
+case	open	kCGBitmapByteOrder16Little	-	Opaque Types / Examining an image / Constants	deprecated	objc
+case	open	kCGBitmapByteOrder32Big	-	Opaque Types / Examining an image / Constants	deprecated	objc
+case	open	kCGBitmapByteOrder32Little	-	Opaque Types / Examining an image / Constants	deprecated	objc
+case	open	kCGBitmapByteOrderDefault	-	Opaque Types / Examining an image / Constants	deprecated	objc
 case	shipped	kCGBitmapByteOrderInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	-	objc
-case	struck	kCGBitmapByteOrderMask	-	Opaque Types / Examining an image / Enumeration Cases	deprecated	objc
+case	open	kCGBitmapByteOrderMask	-	Opaque Types / Examining an image / Enumeration Cases	deprecated	objc
 case	open	kCGBitmapComponentInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	-	objc
-case	struck	kCGBitmapFloatComponents	-	Opaque Types / Examining an image / Constants	deprecated	objc
-case	struck	kCGBitmapFloatInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	deprecated	objc
+case	open	kCGBitmapFloatComponents	-	Opaque Types / Examining an image / Constants	deprecated	objc
+case	open	kCGBitmapFloatInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	deprecated	objc
 case	open	kCGBitmapLayoutABGR	-	Enumerations / Enumeration Cases	-	objc
 case	open	kCGBitmapLayoutARGB	-	Enumerations / Enumeration Cases	-	objc
 case	open	kCGBitmapLayoutAlphaOnly	-	Enumerations / Enumeration Cases	-	objc
@@ -216,8 +225,8 @@ case	open	kCGDisplayStreamUpdateRefreshedRects	-	Services / Constants / Constant
 case	open	kCGDisplayUnMirrorFlag	-	Services / Constants / Constants	-	objc
 case	open	kCGDockWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGDraggingWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	struck	kCGEncodingFontSpecific	-	Opaque Types / Constants / Constants	deprecated	objc
-case	struck	kCGEncodingMacRoman	-	Opaque Types / Constants / Constants	deprecated	objc
+case	open	kCGEncodingFontSpecific	-	Opaque Types / Constants / Constants	deprecated	objc
+case	open	kCGEncodingMacRoman	-	Opaque Types / Constants / Constants	deprecated	objc
 case	open	kCGErrorCannotComplete	-	Reference / Enumerations / Constants	-	objc
 case	open	kCGErrorFailure	-	Reference / Enumerations / Constants	-	objc
 case	open	kCGErrorIllegalArgument	-	Reference / Enumerations / Constants	-	objc
@@ -309,10 +318,10 @@ case	shipped	kCGImageByteOrder32Big	-	Reference / Enumerations / Constants	-	obj
 case	open	kCGImageByteOrder32Host	-	Reference / Enumerations / Enumeration Cases	-	objc
 case	shipped	kCGImageByteOrder32Little	-	Reference / Enumerations / Constants	-	objc
 case	shipped	kCGImageByteOrderDefault	-	Reference / Enumerations / Constants	-	objc
-case	struck	kCGImageByteOrderMask	-	Reference / Enumerations / Constants	deprecated	objc
+case	open	kCGImageByteOrderMask	-	Reference / Enumerations / Constants	deprecated	objc
 case	open	kCGImageComponentFloat	-	Enumerations / Enumeration Cases	-	objc
 case	open	kCGImageComponentInteger	-	Enumerations / Enumeration Cases	-	objc
-case	struck	kCGImagePixelFormatMask	-	Reference / Enumerations / Enumeration Cases	deprecated	objc
+case	open	kCGImagePixelFormatMask	-	Reference / Enumerations / Enumeration Cases	deprecated	objc
 case	open	kCGImagePixelFormatPacked	-	Reference / Enumerations / Enumeration Cases	-	objc
 case	open	kCGImagePixelFormatRGB101010	-	Reference / Enumerations / Enumeration Cases	-	objc
 case	open	kCGImagePixelFormatRGB555	-	Reference / Enumerations / Enumeration Cases	-	objc
@@ -537,7 +546,7 @@ enum	open	CGScreenUpdateOperation	-	Services / Constants	-	objc
 enum	open	CGScrollEventUnit	-	Services / Constants	-	objc
 enum	open	CGScrollPhase	-	Reference / Enumerations	-	objc
 enum	open	CGTextDrawingMode	-	Opaque Types / Drawing Text	-	objc
-enum	struck	CGTextEncoding	-	Opaque Types / Constants	deprecated	objc
+enum	open	CGTextEncoding	-	Opaque Types / Constants	deprecated	objc
 enum	open	CGToneMapping	-	Reference / Enumerations	-	objc
 enum	open	CGWindowBackingType	-	Services / Data Types	-	objc
 enum	open	CGWindowImageOption	-	Services / Data Types	-	objc
@@ -579,7 +588,7 @@ func	open	CGCaptureAllDisplays	-	Services / Capturing and Releasing Displays	-	o
 func	open	CGCaptureAllDisplaysWithOptions	-	Services / Capturing and Releasing Displays	-	objc
 func	open	CGColorConversionInfoConvertData	-	Reference / Functions	-	objc
 func	open	CGColorConversionInfoCreate	-	Opaque Types / Creating a Color Conversion	-	objc
-func	struck	CGColorConversionInfoCreateForToneMapping	-	Functions	deprecated	objc
+func	open	CGColorConversionInfoCreateForToneMapping	-	Functions	deprecated	objc
 func	open	CGColorConversionInfoCreateFromList	-	Opaque Types / Creating a Color Conversion	-	objc
 func	open	CGColorConversionInfoCreateFromListWithArguments	-	Reference / Functions	-	objc
 func	open	CGColorConversionInfoCreateWithOptions	-	Opaque Types / Creating a Color Conversion	-	objc
@@ -608,7 +617,7 @@ func	shipped	CGColorRelease	-	Opaque Types / Retaining and Releasing Color Objec
 func	shipped	CGColorRetain	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
 func	open	CGColorSpaceCopyBaseColorSpace	-	Reference / Functions	-	objc
 func	open	CGColorSpaceCopyICCData	-	Opaque Types / Examining a Color Space	-	objc
-func	struck	CGColorSpaceCopyICCProfile	-	Opaque Types / Examining a Color Space	deprecated	objc
+func	open	CGColorSpaceCopyICCProfile	-	Opaque Types / Examining a Color Space	deprecated	objc
 func	open	CGColorSpaceCopyName	-	Opaque Types / Examining a Color Space	-	objc
 func	open	CGColorSpaceCopyPropertyList	-	Opaque Types / Examining a Color Space	-	objc
 func	shipped	CGColorSpaceCreateCalibratedGray	-	Opaque Types / Creating Color Spaces	-	objc
@@ -626,9 +635,9 @@ func	open	CGColorSpaceCreateLinearized	-	Reference / Functions	-	objc
 func	shipped	CGColorSpaceCreatePattern	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateWithColorSyncProfile	-	Reference / Functions	-	objc
 func	shipped	CGColorSpaceCreateWithICCData	-	Opaque Types / Creating Color Spaces	-	objc
-func	struck	CGColorSpaceCreateWithICCProfile	-	Opaque Types / Creating Color Spaces	deprecated	objc
+func	open	CGColorSpaceCreateWithICCProfile	-	Opaque Types / Creating Color Spaces	deprecated	objc
 func	shipped	CGColorSpaceCreateWithName	-	Opaque Types / Creating Color Spaces	-	objc
-func	struck	CGColorSpaceCreateWithPlatformColorSpace	-	Opaque Types / Creating Color Spaces	deprecated	objc
+func	open	CGColorSpaceCreateWithPlatformColorSpace	-	Opaque Types / Creating Color Spaces	deprecated	objc
 func	open	CGColorSpaceCreateWithPropertyList	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceGetBaseColorSpace	-	Opaque Types / Examining a Color Space	-	objc
 func	open	CGColorSpaceGetColorTable	-	Opaque Types / Examining a Color Space	-	objc
@@ -649,7 +658,7 @@ func	open	CGColorSpaceUsesITUR_2100TF	-	Reference / Functions	-	objc
 func	open	CGCompleteDisplayConfiguration	-	Services / Configuring Displays	-	objc
 func	open	CGConfigureDisplayFadeEffect	-	Services / Display Fade Effects	-	objc
 func	open	CGConfigureDisplayMirrorOfDisplay	-	Services / Configuring Displays	-	objc
-func	struck	CGConfigureDisplayMode	-	Services / Configuring Displays	deprecated	objc
+func	open	CGConfigureDisplayMode	-	Services / Configuring Displays	deprecated	objc
 func	open	CGConfigureDisplayOrigin	-	Services / Configuring Displays	-	objc
 func	open	CGConfigureDisplayStereoOperation	-	Services / Configuring Displays	-	objc
 func	open	CGConfigureDisplayWithDisplayMode	-	Services / Configuring Displays	-	objc
@@ -687,7 +696,7 @@ func	open	CGContextDrawImageApplyingToneMapping	-	Reference / Functions	-	objc
 func	open	CGContextDrawLayerAtPoint	-	Opaque Types / Drawing Core Graphics Layers	-	objc
 func	open	CGContextDrawLayerInRect	-	Opaque Types / Drawing Core Graphics Layers	-	objc
 func	shipped	CGContextDrawLinearGradient	-	Opaque Types / Drawing Gradients and Shadings	-	objc
-func	struck	CGContextDrawPDFDocument	-	Reference / Functions	deprecated	objc
+func	open	CGContextDrawPDFDocument	-	Reference / Functions	deprecated	objc
 func	open	CGContextDrawPDFPage	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	shipped	CGContextDrawPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 func	shipped	CGContextDrawRadialGradient	-	Opaque Types / Drawing Gradients and Shadings	-	objc
@@ -724,7 +733,7 @@ func	shipped	CGContextRetain	-	Opaque Types / Retaining and Releasing Graphics C
 func	shipped	CGContextRotateCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
 func	shipped	CGContextSaveGState	-	Opaque Types / Saving and Restoring Graphics State	-	objc
 func	shipped	CGContextScaleCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
-func	struck	CGContextSelectFont	-	Opaque Types / Drawing Text	deprecated	objc
+func	open	CGContextSelectFont	-	Opaque Types / Drawing Text	deprecated	objc
 func	shipped	CGContextSetAllowsAntialiasing	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	open	CGContextSetAllowsFontSmoothing	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetAllowsFontSubpixelPositioning	-	Opaque Types / Drawing Text	-	objc
@@ -768,12 +777,12 @@ func	shipped	CGContextSetStrokePattern	-	Opaque Types / Setting Fill, Stroke, an
 func	open	CGContextSetTextDrawingMode	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetTextMatrix	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetTextPosition	-	Opaque Types / Drawing Text	-	objc
-func	struck	CGContextShowGlyphs	-	Opaque Types / Drawing Text	deprecated	objc
-func	struck	CGContextShowGlyphsAtPoint	-	Opaque Types / Drawing Text	deprecated	objc
+func	open	CGContextShowGlyphs	-	Opaque Types / Drawing Text	deprecated	objc
+func	open	CGContextShowGlyphsAtPoint	-	Opaque Types / Drawing Text	deprecated	objc
 func	open	CGContextShowGlyphsAtPositions	-	Opaque Types / Drawing Text	-	objc
-func	struck	CGContextShowGlyphsWithAdvances	-	Opaque Types / Drawing Text	deprecated	objc
-func	struck	CGContextShowText	-	Opaque Types / Drawing Text	deprecated	objc
-func	struck	CGContextShowTextAtPoint	-	Opaque Types / Drawing Text	deprecated	objc
+func	open	CGContextShowGlyphsWithAdvances	-	Opaque Types / Drawing Text	deprecated	objc
+func	open	CGContextShowText	-	Opaque Types / Drawing Text	deprecated	objc
+func	open	CGContextShowTextAtPoint	-	Opaque Types / Drawing Text	deprecated	objc
 func	open	CGContextStrokeEllipseInRect	-	Opaque Types / Drawing Shapes	-	objc
 func	shipped	CGContextStrokeLineSegments	-	Opaque Types / Drawing Shapes	-	objc
 func	shipped	CGContextStrokePath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
@@ -783,8 +792,8 @@ func	shipped	CGContextSynchronize	-	Opaque Types / Managing a Graphics Context	-
 func	open	CGContextSynchronizeAttributes	-	Functions	-	objc
 func	shipped	CGContextTranslateCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
 func	open	CGConvertColorDataWithFormat	-	Reference / Functions	-	objc
-func	struck	CGCursorIsDrawnInFramebuffer	-	Services / Controlling the Mouse Cursor	deprecated	objc
-func	struck	CGCursorIsVisible	-	Services / Controlling the Mouse Cursor	deprecated	objc
+func	open	CGCursorIsDrawnInFramebuffer	-	Services / Controlling the Mouse Cursor	deprecated	objc
+func	open	CGCursorIsVisible	-	Services / Controlling the Mouse Cursor	deprecated	objc
 func	open	CGDataConsumerCreate	-	Opaque Types / Creating Data Consumers	-	objc
 func	open	CGDataConsumerCreateWithCFData	-	Opaque Types / Creating Data Consumers	-	objc
 func	open	CGDataConsumerCreateWithURL	-	Opaque Types / Creating Data Consumers	-	objc
@@ -803,9 +812,9 @@ func	open	CGDataProviderGetTypeID	-	Opaque Types / Working with Core Foundation 
 func	shipped	CGDataProviderRelease	-	Opaque Types / Retaining and Releasing Data Providers	-	objc
 func	shipped	CGDataProviderRetain	-	Opaque Types / Retaining and Releasing Data Providers	-	objc
 func	open	CGDirectDisplayCopyCurrentMetalDevice	-	Reference / Functions	-	objc
-func	struck	CGDisplayAvailableModes	-	Services / Creating and Managing Display Modes	deprecated	objc
-func	struck	CGDisplayBestModeForParameters	-	Services / Creating and Managing Display Modes	deprecated	objc
-func	struck	CGDisplayBestModeForParametersAndRefreshRate	-	Services / Creating and Managing Display Modes	deprecated	objc
+func	open	CGDisplayAvailableModes	-	Services / Creating and Managing Display Modes	deprecated	objc
+func	open	CGDisplayBestModeForParameters	-	Services / Creating and Managing Display Modes	deprecated	objc
+func	open	CGDisplayBestModeForParametersAndRefreshRate	-	Services / Creating and Managing Display Modes	deprecated	objc
 func	open	CGDisplayBounds	-	Services / Retrieving Display Parameters	-	objc
 func	open	CGDisplayCapture	-	Services / Capturing and Releasing Displays	-	objc
 func	open	CGDisplayCaptureWithOptions	-	Services / Capturing and Releasing Displays	-	objc
@@ -814,26 +823,26 @@ func	open	CGDisplayCopyColorSpace	-	Services / Getting the Display Configuration
 func	open	CGDisplayCopyDisplayMode	-	Services / Creating and Managing Display Modes	-	objc
 func	open	CGDisplayCreateImage	-	Functions	-	objc
 func	open	CGDisplayCreateImageForRect	-	Functions	-	objc
-func	struck	CGDisplayCurrentMode	-	Services / Creating and Managing Display Modes	deprecated	objc
+func	open	CGDisplayCurrentMode	-	Services / Creating and Managing Display Modes	deprecated	objc
 func	open	CGDisplayFade	-	Services / Display Fade Effects	-	objc
-func	struck	CGDisplayFadeOperationInProgress	-	Services / Display Fade Effects	deprecated	objc
+func	open	CGDisplayFadeOperationInProgress	-	Services / Display Fade Effects	deprecated	objc
 func	open	CGDisplayGammaTableCapacity	-	Services / Adjusting the Display Gamma	-	objc
 func	open	CGDisplayGetDrawingContext	-	Services / Capturing and Releasing Displays	-	objc
 func	open	CGDisplayHideCursor	-	Services / Controlling the Mouse Cursor	-	objc
 func	open	CGDisplayIDToOpenGLDisplayMask	-	Services / Finding Displays	-	objc
-func	struck	CGDisplayIOServicePort	-	Services / Getting the Display Configuration	deprecated	objc
+func	open	CGDisplayIOServicePort	-	Services / Getting the Display Configuration	deprecated	objc
 func	open	CGDisplayIsActive	-	Services / Getting the Display Configuration	-	objc
 func	open	CGDisplayIsAlwaysInMirrorSet	-	Services / Getting the Display Configuration	-	objc
 func	open	CGDisplayIsAsleep	-	Services / Getting the Display Configuration	-	objc
 func	open	CGDisplayIsBuiltin	-	Services / Getting the Display Configuration	-	objc
-func	struck	CGDisplayIsCaptured	-	Services / Capturing and Releasing Displays	deprecated	objc
+func	open	CGDisplayIsCaptured	-	Services / Capturing and Releasing Displays	deprecated	objc
 func	open	CGDisplayIsInHWMirrorSet	-	Services / Getting the Display Configuration	-	objc
 func	open	CGDisplayIsInMirrorSet	-	Services / Getting the Display Configuration	-	objc
 func	open	CGDisplayIsMain	-	Services / Getting the Display Configuration	-	objc
 func	open	CGDisplayIsOnline	-	Services / Getting the Display Configuration	-	objc
 func	open	CGDisplayIsStereo	-	Services / Getting the Display Configuration	-	objc
 func	open	CGDisplayMirrorsDisplay	-	Services / Getting the Display Configuration	-	objc
-func	struck	CGDisplayModeCopyPixelEncoding	-	Services / Getting Information About a Display Mode	deprecated	objc
+func	open	CGDisplayModeCopyPixelEncoding	-	Services / Getting Information About a Display Mode	deprecated	objc
 func	open	CGDisplayModeGetHeight	-	Services / Getting Information About a Display Mode	-	objc
 func	open	CGDisplayModeGetIODisplayModeID	-	Services / Getting Information About a Display Mode	-	objc
 func	open	CGDisplayModeGetIOFlags	-	Services / Getting Information About a Display Mode	-	objc
@@ -871,12 +880,12 @@ func	open	CGDisplayStreamUpdateGetDropCount	-	Functions	-	objc
 func	open	CGDisplayStreamUpdateGetMovedRectsDelta	-	Functions	-	objc
 func	open	CGDisplayStreamUpdateGetRects	-	Functions	-	objc
 func	open	CGDisplayStreamUpdateGetTypeID	-	Functions	-	objc
-func	struck	CGDisplaySwitchToMode	-	Services / Creating and Managing Display Modes	deprecated	objc
+func	open	CGDisplaySwitchToMode	-	Services / Creating and Managing Display Modes	deprecated	objc
 func	open	CGDisplayUnitNumber	-	Services / Getting the Display Configuration	-	objc
 func	open	CGDisplayUsesOpenGLAcceleration	-	Services / Getting the Display Configuration	-	objc
 func	open	CGDisplayVendorNumber	-	Services / Getting the Display Configuration	-	objc
 func	open	CGEXRToneMappingGammaGetDefaultOptions	-	Functions	-	objc
-func	struck	CGEnableEventStateCombining	-	Services / Deprecated Functions	deprecated	objc
+func	open	CGEnableEventStateCombining	-	Services / Deprecated Functions	deprecated	objc
 func	open	CGErrorSetCallback	-	Reference / Functions	-	objc
 func	open	CGEventCreate	-	Services / Working With Events	-	objc
 func	open	CGEventCreateCopy	-	Services / Working With Events	-	objc
@@ -944,7 +953,7 @@ func	open	CGFontCreatePostScriptEncoding	-	Opaque Types / Working with PostScrip
 func	open	CGFontCreatePostScriptSubset	-	Opaque Types / Working with PostScript Fonts	-	objc
 func	open	CGFontCreateWithDataProvider	-	Opaque Types / Creating Font Objects	-	objc
 func	open	CGFontCreateWithFontName	-	Opaque Types / Creating Font Objects	-	objc
-func	struck	CGFontCreateWithPlatformFont	-	Opaque Types / Creating Font Objects	deprecated	objc
+func	open	CGFontCreateWithPlatformFont	-	Opaque Types / Creating Font Objects	deprecated	objc
 func	open	CGFontGetAscent	-	Opaque Types / Examining Font Metrics	-	objc
 func	open	CGFontGetCapHeight	-	Opaque Types / Examining Font Metrics	-	objc
 func	open	CGFontGetDescent	-	Opaque Types / Examining Font Metrics	-	objc
@@ -1019,7 +1028,7 @@ func	open	CGImageMaskCreate	-	Opaque Types / Creating image masks	-	objc
 func	shipped	CGImageRelease	-	Opaque Types / Retaining and releasing images	-	objc
 func	shipped	CGImageRetain	-	Opaque Types / Retaining and releasing images	-	objc
 func	open	CGImageShouldToneMap	-	Reference / Functions	-	objc
-func	struck	CGInhibitLocalEvents	-	Services / Deprecated Functions	deprecated	objc
+func	open	CGInhibitLocalEvents	-	Services / Deprecated Functions	deprecated	objc
 func	open	CGLayerCreateWithContext	-	Opaque Types / Creating Layer Objects	-	objc
 func	open	CGLayerGetContext	-	Opaque Types / Examining a Layer	-	objc
 func	open	CGLayerGetSize	-	Opaque Types / Examining a Layer	-	objc
@@ -1084,18 +1093,18 @@ func	open	CGPDFDocumentAllowsPrinting	-	Opaque Types / Working with an Encrypted
 func	open	CGPDFDocumentCreateWithProvider	-	Opaque Types / Creating PDF Documents	-	objc
 func	open	CGPDFDocumentCreateWithURL	-	Opaque Types / Creating PDF Documents	-	objc
 func	open	CGPDFDocumentGetAccessPermissions	-	Reference / Functions	-	objc
-func	struck	CGPDFDocumentGetArtBox	-	Opaque Types / Getting Page Information	deprecated	objc
-func	struck	CGPDFDocumentGetBleedBox	-	Opaque Types / Getting Page Information	deprecated	objc
+func	open	CGPDFDocumentGetArtBox	-	Opaque Types / Getting Page Information	deprecated	objc
+func	open	CGPDFDocumentGetBleedBox	-	Opaque Types / Getting Page Information	deprecated	objc
 func	open	CGPDFDocumentGetCatalog	-	Opaque Types / Examining a PDF Document	-	objc
-func	struck	CGPDFDocumentGetCropBox	-	Opaque Types / Getting Page Information	deprecated	objc
+func	open	CGPDFDocumentGetCropBox	-	Opaque Types / Getting Page Information	deprecated	objc
 func	open	CGPDFDocumentGetID	-	Opaque Types / Examining a PDF Document	-	objc
 func	open	CGPDFDocumentGetInfo	-	Opaque Types / Examining a PDF Document	-	objc
-func	struck	CGPDFDocumentGetMediaBox	-	Opaque Types / Getting Page Information	deprecated	objc
+func	open	CGPDFDocumentGetMediaBox	-	Opaque Types / Getting Page Information	deprecated	objc
 func	open	CGPDFDocumentGetNumberOfPages	-	Opaque Types / Examining a PDF Document	-	objc
 func	open	CGPDFDocumentGetOutline	-	Reference / Functions	-	objc
 func	open	CGPDFDocumentGetPage	-	Opaque Types / Examining a PDF Document	-	objc
-func	struck	CGPDFDocumentGetRotationAngle	-	Opaque Types / Getting Page Information	deprecated	objc
-func	struck	CGPDFDocumentGetTrimBox	-	Opaque Types / Getting Page Information	deprecated	objc
+func	open	CGPDFDocumentGetRotationAngle	-	Opaque Types / Getting Page Information	deprecated	objc
+func	open	CGPDFDocumentGetTrimBox	-	Opaque Types / Getting Page Information	deprecated	objc
 func	open	CGPDFDocumentGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	open	CGPDFDocumentGetVersion	-	Opaque Types / Examining a PDF Document	-	objc
 func	open	CGPDFDocumentIsEncrypted	-	Opaque Types / Working with an Encrypted PDF Document	-	objc
@@ -1194,12 +1203,12 @@ func	shipped	CGPatternRelease	-	Opaque Types / Retaining and Releasing a Pattern
 func	shipped	CGPatternRetain	-	Opaque Types / Retaining and Releasing a Pattern	-	objc
 func	shipped	CGPointApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
 func	open	CGPointCreateDictionaryRepresentation	-	Reference / Creating a Dictionary Representation from a Geometric Primitive	-	objc
-func	struck	CGPointEqualToPoint	-	Reference / Functions	deprecated	objc
+func	shipped	CGPointEqualToPoint	-	Reference / Functions	deprecated	objc
 func	shipped	CGPointMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
 func	open	CGPointMakeWithDictionaryRepresentation	-	Reference / Creating a Geometric Primitive from a Dictionary Representation	-	objc
-func	struck	CGPostKeyboardEvent	-	Services / Deprecated Functions	deprecated	objc
-func	struck	CGPostMouseEvent	-	Services / Deprecated Functions	deprecated	objc
-func	struck	CGPostScrollWheelEvent	-	Services / Deprecated Functions	deprecated	objc
+func	open	CGPostKeyboardEvent	-	Services / Deprecated Functions	deprecated	objc
+func	open	CGPostMouseEvent	-	Services / Deprecated Functions	deprecated	objc
+func	open	CGPostScrollWheelEvent	-	Services / Deprecated Functions	deprecated	objc
 func	open	CGPreflightListenEventAccess	-	Reference / Functions	-	objc
 func	open	CGPreflightPostEventAccess	-	Reference / Functions	-	objc
 func	open	CGPreflightScreenCaptureAccess	-	Reference / Functions	-	objc
@@ -1208,7 +1217,7 @@ func	shipped	CGRectContainsPoint	-	Reference / Checking for Membership	-	objc
 func	shipped	CGRectContainsRect	-	Reference / Checking for Membership	-	objc
 func	open	CGRectCreateDictionaryRepresentation	-	Reference / Creating a Dictionary Representation from a Geometric Primitive	-	objc
 func	shipped	CGRectDivide	-	Reference / Modifying Rectangles	-	objc
-func	struck	CGRectEqualToRect	-	Reference / Comparing Values	deprecated	objc
+func	open	CGRectEqualToRect	-	Reference / Comparing Values	deprecated	objc
 func	shipped	CGRectGetHeight	-	Reference / Getting Height and Width	-	objc
 func	shipped	CGRectGetMaxX	-	Reference / Getting Min, Mid, and Max Values	-	objc
 func	shipped	CGRectGetMaxY	-	Reference / Getting Min, Mid, and Max Values	-	objc
@@ -1229,10 +1238,10 @@ func	open	CGRectMakeWithDictionaryRepresentation	-	Reference / Creating a Geomet
 func	shipped	CGRectOffset	-	Reference / Modifying Rectangles	-	objc
 func	shipped	CGRectStandardize	-	Reference / Modifying Rectangles	-	objc
 func	shipped	CGRectUnion	-	Reference / Modifying Rectangles	-	objc
-func	struck	CGRegisterScreenRefreshCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
+func	open	CGRegisterScreenRefreshCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
 func	open	CGReleaseAllDisplays	-	Services / Capturing and Releasing Displays	-	objc
 func	open	CGReleaseDisplayFadeReservation	-	Services / Display Fade Effects	-	objc
-func	struck	CGReleaseScreenRefreshRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
+func	open	CGReleaseScreenRefreshRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
 func	open	CGRenderingBufferLockBytePtr	-	Functions	-	objc
 func	open	CGRenderingBufferProviderCreate	-	Functions	-	objc
 func	open	CGRenderingBufferProviderCreateWithCFData	-	Functions	-	objc
@@ -1243,14 +1252,14 @@ func	open	CGRequestListenEventAccess	-	Reference / Functions	-	objc
 func	open	CGRequestPostEventAccess	-	Reference / Functions	-	objc
 func	open	CGRequestScreenCaptureAccess	-	Reference / Functions	-	objc
 func	open	CGRestorePermanentDisplayConfiguration	-	Services / Configuring Displays	-	objc
-func	struck	CGScreenRegisterMoveCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
-func	struck	CGScreenUnregisterMoveCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
+func	open	CGScreenRegisterMoveCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
+func	open	CGScreenUnregisterMoveCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
 func	open	CGSessionCopyCurrentDictionary	-	Services / Getting Window Server Information	-	objc
 func	open	CGSetDisplayTransferByByteTable	-	Services / Adjusting the Display Gamma	-	objc
 func	open	CGSetDisplayTransferByFormula	-	Services / Adjusting the Display Gamma	-	objc
 func	open	CGSetDisplayTransferByTable	-	Services / Adjusting the Display Gamma	-	objc
-func	struck	CGSetLocalEventsFilterDuringSuppressionState	-	Services / Deprecated Functions	deprecated	objc
-func	struck	CGSetLocalEventsSuppressionInterval	-	Services / Deprecated Functions	deprecated	objc
+func	open	CGSetLocalEventsFilterDuringSuppressionState	-	Services / Deprecated Functions	deprecated	objc
+func	open	CGSetLocalEventsSuppressionInterval	-	Services / Deprecated Functions	deprecated	objc
 func	shipped	CGShadingCreateAxial	-	Opaque Types / Creating Shading Objects	-	objc
 func	open	CGShadingCreateAxialWithContentHeadroom	-	Functions	-	objc
 func	shipped	CGShadingCreateRadial	-	Opaque Types / Creating Shading Objects	-	objc
@@ -1263,13 +1272,13 @@ func	open	CGShieldingWindowID	-	Services / Capturing and Releasing Displays	-	ob
 func	open	CGShieldingWindowLevel	-	Services / Capturing and Releasing Displays	-	objc
 func	shipped	CGSizeApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
 func	open	CGSizeCreateDictionaryRepresentation	-	Reference / Creating a Dictionary Representation from a Geometric Primitive	-	objc
-func	struck	CGSizeEqualToSize	-	Reference / Functions	deprecated	objc
+func	shipped	CGSizeEqualToSize	-	Reference / Functions	deprecated	objc
 func	shipped	CGSizeMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
 func	open	CGSizeMakeWithDictionaryRepresentation	-	Reference / Creating a Geometric Primitive from a Dictionary Representation	-	objc
-func	struck	CGUnregisterScreenRefreshCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
+func	open	CGUnregisterScreenRefreshCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
 func	shipped	CGVectorMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
-func	struck	CGWaitForScreenRefreshRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
-func	struck	CGWaitForScreenUpdateRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
+func	open	CGWaitForScreenRefreshRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
+func	open	CGWaitForScreenUpdateRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
 func	open	CGWarpMouseCursorPosition	-	Services / Controlling the Mouse Cursor	-	objc
 func	open	CGWindowLevelForKey	-	Services / Getting Window Server Information	-	objc
 func	open	CGWindowListCopyWindowInfo	-	Services / Getting Window Information	-	objc
@@ -1277,7 +1286,7 @@ func	open	CGWindowListCreate	-	Services / Getting Window Information	-	objc
 func	open	CGWindowListCreateDescriptionFromArray	-	Services / Getting Window Information	-	objc
 func	open	CGWindowListCreateImage	-	Functions	-	objc
 func	open	CGWindowListCreateImageFromArray	-	Functions	-	objc
-func	struck	CGWindowServerCFMachPort	-	Services / Getting Window Server Information	deprecated	objc
+func	open	CGWindowServerCFMachPort	-	Services / Getting Window Server Information	deprecated	objc
 func	open	CGWindowServerCreateServerPort	-	Reference / Functions	-	objc
 macro	shipped	CGAffineTransformMake	-	Reference / Macros	-	objc
 macro	open	CGDisplayNoErr	-	Reference / Constants	-	objc
@@ -1340,13 +1349,13 @@ macro	open	kCGDisplayHeight	-	Services / Constants / Constants	-	objc
 macro	open	kCGDisplayIOFlags	-	Services / Constants / Constants	-	objc
 macro	open	kCGDisplayMode	-	Services / Constants / Constants	-	objc
 macro	open	kCGDisplayModeIsInterlaced	-	Services / Constants / Constants	-	objc
-macro	struck	kCGDisplayModeIsSafeForHardware	-	Services / Constants / Constants	deprecated	objc
+macro	open	kCGDisplayModeIsSafeForHardware	-	Services / Constants / Constants	deprecated	objc
 macro	open	kCGDisplayModeIsStretched	-	Services / Constants / Constants	-	objc
 macro	open	kCGDisplayModeIsTelevisionOutput	-	Services / Constants / Constants	-	objc
 macro	open	kCGDisplayModeUsableForDesktopGUI	-	Services / Constants / Constants	-	objc
 macro	open	kCGDisplayRefreshRate	-	Services / Constants / Constants	-	objc
 macro	open	kCGDisplaySamplesPerPixel	-	Services / Constants / Constants	-	objc
-macro	struck	kCGDisplayWidth	-	Services / Constants / Constants	deprecated	objc
+macro	open	kCGDisplayWidth	-	Services / Constants / Constants	deprecated	objc
 macro	open	kCGDockWindowLevel	-	Reference / Constants	-	objc
 macro	open	kCGDraggingWindowLevel	-	Reference / Constants	-	objc
 macro	open	kCGEventFilterMaskPermitAllEvents	-	Reference / Macros	-	objc
@@ -1428,8 +1437,8 @@ typealias	open	CGDataProviderSkipForwardCallback	-	Opaque Types / Creating Seque
 typealias	open	CGDirectDisplayID	-	Services / Data Types	-	objc
 typealias	open	CGDisplayBlendFraction	-	Services / Data Types	-	objc
 typealias	open	CGDisplayConfigRef	-	Services / Data Types	-	objc
-typealias	struck	CGDisplayCount	-	Services / Data Types	deprecated	objc
-typealias	struck	CGDisplayErr	-	Services / Data Types	deprecated	objc
+typealias	open	CGDisplayCount	-	Services / Data Types	deprecated	objc
+typealias	open	CGDisplayErr	-	Services / Data Types	deprecated	objc
 typealias	open	CGDisplayFadeInterval	-	Services / Data Types	-	objc
 typealias	open	CGDisplayFadeReservationToken	-	Services / Data Types	-	objc
 typealias	open	CGDisplayModeRef	-	Services / Data Types	-	objc
@@ -1513,8 +1522,8 @@ var	shipped	CGRectNull	-	Reference / Constants	-	objc
 var	shipped	CGRectZero	-	Reference / Constants / Constants	-	objc
 var	shipped	CGSizeZero	-	Reference / Constants / Constants	-	objc
 var	open	kCGAdaptiveMaximumBitDepth	-	Variables	-	objc
-var	struck	kCGBitmapByteOrder16Host	-	Opaque Types / Constants / Constants	deprecated	objc
-var	struck	kCGBitmapByteOrder32Host	-	Opaque Types / Constants / Constants	deprecated	objc
+var	open	kCGBitmapByteOrder16Host	-	Opaque Types / Constants / Constants	deprecated	objc
+var	open	kCGBitmapByteOrder32Host	-	Opaque Types / Constants / Constants	deprecated	objc
 var	open	kCGColorBlack	-	Opaque Types / Getting System Colors	-	objc
 var	open	kCGColorClear	-	Opaque Types / Getting System Colors	-	objc
 var	open	kCGColorConversionBlackPointCompensation	-	Opaque Types / Type Properties	-	objc
@@ -1526,7 +1535,7 @@ var	shipped	kCGColorSpaceDCIP3	-	Opaque Types / Accessing System-Defined Color S
 var	shipped	kCGColorSpaceDisplayP3	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceDisplayP3_HLG	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceDisplayP3_PQ	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	struck	kCGColorSpaceDisplayP3_PQ_EOTF	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
+var	open	kCGColorSpaceDisplayP3_PQ_EOTF	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
 var	open	kCGColorSpaceExtendedDisplayP3	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceExtendedGray	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceExtendedITUR_2020	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
@@ -1537,16 +1546,16 @@ var	open	kCGColorSpaceExtendedLinearSRGB	-	Opaque Types / Accessing System-Defin
 var	open	kCGColorSpaceExtendedRange	-	Reference / Constants	-	objc
 var	open	kCGColorSpaceExtendedSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceGenericCMYK	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	struck	kCGColorSpaceGenericGray	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
+var	open	kCGColorSpaceGenericGray	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
 var	shipped	kCGColorSpaceGenericGrayGamma2_2	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	shipped	kCGColorSpaceGenericLab	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	struck	kCGColorSpaceGenericRGB	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
+var	open	kCGColorSpaceGenericRGB	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
 var	open	kCGColorSpaceGenericRGBLinear	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	shipped	kCGColorSpaceGenericXYZ	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	shipped	kCGColorSpaceITUR_2020	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	struck	kCGColorSpaceITUR_2020_HLG	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
-var	struck	kCGColorSpaceITUR_2020_PQ	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
-var	struck	kCGColorSpaceITUR_2020_PQ_EOTF	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
+var	open	kCGColorSpaceITUR_2020_HLG	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
+var	open	kCGColorSpaceITUR_2020_PQ	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
+var	open	kCGColorSpaceITUR_2020_PQ_EOTF	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
 var	open	kCGColorSpaceITUR_2020_sRGBGamma	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceITUR_2100_HLG	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceITUR_2100_PQ	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
@@ -1640,4 +1649,4 @@ var	open	kCGWindowOwnerName	-	Services / Constants / Constants	-	objc
 var	open	kCGWindowOwnerPID	-	Services / Constants / Constants	-	objc
 var	open	kCGWindowSharingState	-	Services / Constants / Constants	-	objc
 var	open	kCGWindowStoreType	-	Services / Constants / Constants	-	objc
-var	struck	kCGWindowWorkspace	-	Services / Constants / Constants	deprecated	objc
+var	open	kCGWindowWorkspace	-	Services / Constants / Constants	deprecated	objc

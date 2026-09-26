@@ -30,7 +30,10 @@ deliberately does NOT have is named rather than left as a hole:
 WHAT IT KEEPS IN FULL is the part that is POLICY, because that is where two
 sweeps drifting would matter: the three-value status vocabulary, `struck` for an
 Apple deprecation, the two inconsistency classes `--check` fails on, and the
-"declared as ANYTHING" test rather than a form-exact one.
+"declared as ANYTHING" test rather than a form-exact one - WITH ONE AMENDMENT SINCE (user,
+2026-09-26): the deprecation ground was RETIRED, so an Apple-deprecated row is OWED rather than
+struck and carries `deprecated` in its `why` column. `refresh` records the decision in the user's
+own words.
 
 AND ONE DELIBERATE DIFFERENCE FROM FOUNDATION'S LEDGER, MEASURED AND RECORDED
 HERE SO IT IS NOT READ AS A MISTAKE. Foundation's surface EXCLUDES `method` and
@@ -237,14 +240,21 @@ def refresh():
     out = []
     counts = {}
     reasons = {}
+    deprecated = 0
     for key in sorted(rows):
         r = rows[key]
+        # THE DEPRECATION GROUND IS RETIRED (the user's policy, 2026-09-26): "to support porting older Mac
+        # applications, all items removed for being deprecated are un-deprecated in Argentum Foundation, and added
+        # to the work list." THAT APPLIES TO THIS DUPLICATION TOO (the same decision, same date): it is a
+        # Cocoa-parity surface that a ported application compiles against, so an API Apple deprecated is a PORTING
+        # TARGET rather than something this tree is spared. A deprecated row is therefore judged SHIPPED or OPEN by
+        # its declaration like any other, and `why` records `deprecated` as INFORMATION about what KIND of work it
+        # is - its replacement may be a different shape, and a porting caller meets it by name.
+        st = (STATUS_SHIPPED
+              if declared_row(r["kind"], r["name"], r["owner"], text) else STATUS_OPEN)
+        why = "deprecated" if r["deprecated"] else "-"
         if r["deprecated"]:
-            st, why = STATUS_STRUCK, "deprecated"
-        else:
-            st = (STATUS_SHIPPED
-                  if declared_row(r["kind"], r["name"], r["owner"], text) else STATUS_OPEN)
-            why = "-"
+            deprecated = deprecated + 1
         counts[(r["kind"], st)] = counts.get((r["kind"], st), 0) + 1
         if st == STATUS_STRUCK:
             reasons[why] = reasons.get(why, 0) + 1
@@ -278,6 +288,12 @@ def refresh():
         "#",
         "# %d struck: %s" % (sum(reasons.values()), ", ".join("%s×%d" % (k, v) for k, v in sorted(reasons.items())) or "none"),
         "#",
+        "# AND %d ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy," % deprecated,
+        "# 2026-09-26): to support porting older Mac applications, all items removed for being",
+        "# deprecated are un-deprecated in Argentum Foundation and added to the work list. THEY CARRY",
+        "# `deprecated` IN THE `why` COLUMN, WHICH SAYS WHAT KIND OF WORK A ROW IS - only the grounds",
+        "# §11.5 keeps, and this file's own swift-only rule, can still strike one.",
+        "#",
         "# BY KIND:",
     ]
     for (kind, st), c in sorted(counts.items()):
@@ -301,7 +317,7 @@ def read_surface():
 
 def check(strict=False):
     """INCONSISTENCIES are facts about this tree the file has out of date, so they
-    FAIL and no one has to decide anything. POLICY FINDINGS are symbols Apple
+    FAIL and no one has to decide anything. POLICY FINDINGS are symbols this ledger
     deprecates that our headers still declare; what to DO about one is a decision,
     and that is what `--strict` is for — the same two classes the other two sweeps
     separate for the same reason."""
@@ -330,7 +346,7 @@ def check(strict=False):
             kind, counts.get((kind, STATUS_SHIPPED), 0), counts.get((kind, STATUS_OPEN), 0),
             counts.get((kind, STATUS_STRUCK), 0)))
     if policy:
-        print("\n%d POLICY FINDING(S) — API Apple deprecates that we declare:\n" % len(policy))
+        print("\n%d POLICY FINDING(S) — API this ledger STRIKES that we declare:\n" % len(policy))
         for line in policy:
             print("  " + line)
     if bad:

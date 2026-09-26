@@ -12,7 +12,9 @@ docs/reference/foundation-apple-surface.txt.
 THE STATUS COLUMN IS THE LEDGER, AND IT HAS THREE VALUES:
 
   shipped  our public headers DECLARE it — and `--check` fails if they stop.
-  open     documented, not deprecated, and not ours. THIS IS THE WORK LIST,
+  open     documented, and not ours. THIS IS THE WORK LIST, and IT INCLUDES APPLE-DEPRECATED
+           API: the deprecation ground was retired on 2026-09-26 (see struck_reason), so such
+           rows are owed rather than struck and say `deprecated` in the `why` column,
            and `--check` fails if our headers start declaring one without the
            row being flipped — which is the bug class §11.2's source 1 hid for
            months (a probe asserting an ABSENCE asserts a fact about the tree,
@@ -240,8 +242,11 @@ def struck_reason(row):
         return "swift-only"
     if row.get("swift") and not is_objc_shaped(row["name"]):
         return "swift-only"
-    if apple_says_deprecated(row):
-        return "deprecated"
+    # THE DEPRECATION GROUND IS RETIRED (the user's policy, 2026-09-26): "to support porting older Mac
+    # applications, all items removed for being deprecated are un-deprecated in Argentum Foundation, and added to
+    # the work list." SO `apple_says_deprecated` NO LONGER STRIKES A ROW - IT MARKS ONE. The reason still travels
+    # into the `why` column, because a deprecated symbol is a different KIND of work item: its replacement may be a
+    # different shape, and a caller porting an application meets it BY NAME. The four other grounds are untouched.
     return None
 
 
@@ -350,10 +355,14 @@ def is_declined(row):
 
 
 def why_of(row):
-    """The `why` column: the reason this row is not simply shipped or open."""
+    """The `why` column: the reason this row is not simply shipped or open, OR — since 2026-09-26 — the KIND of
+    work it is. `deprecated` is the informational one: it does NOT strike (see STRIKE_REASONS), so a row carrying
+    it is owed or shipped by its declaration, and the column keeps the fact that Apple deprecated it — which is
+    what a porting caller meets by name."""
     if row["name"] in REQUIRED_BY_LIVE_API:      # empty today; see above
         return "required-by-live-api"
-    return struck_reason(row) or ("declined" if is_declined(row) else "-")
+    return struck_reason(row) or ("declined" if is_declined(row)
+                                  else ("deprecated" if apple_says_deprecated(row) else "-"))
 
 
 # EVERY strike reason, in one place. The first version of the fourth exclusion
@@ -361,7 +370,14 @@ def why_of(row):
 # fell from 52 to 42 while `func open` rose by the same 10, because ten zone
 # functions were carrying a reason the status test did not recognise. A reason
 # that does not strike is a row that lies about where it stands.
-STRIKE_REASONS = ("32-bit-only", "swift-only", "deprecated", "os-version-constant", "declined")
+#
+# AND THE FIFTH REASON CAME OUT OF THIS TABLE (2026-09-26): `deprecated` is no longer a STRIKE but an
+# INFORMATIONAL `why`, so a row carrying it is judged SHIPPED or OPEN by its declaration like any other. That is
+# what the user's policy asks for - deprecated API is a PORTING TARGET, not something this library is spared.
+STRIKE_REASONS = ("32-bit-only", "swift-only", "os-version-constant", "declined")
+
+# THE INFORMATIONAL REASONS: a `why` that does NOT strike. `deprecated` is the only one today, and it is here so
+# that a reader can tell "this row is work because Apple deprecated it" from "this row is work".
 
 
 def status_of(kind, name, why, text):
@@ -472,10 +488,11 @@ def refresh():
     out = []
     counts = {}
     reasons = {}
+    deprecated = 0
     excepted = 0
     for key in sorted(rows):
         r = rows[key]
-        why = why_of(r)
+        why = why_of(r)  # "deprecated" here is INFORMATION, not an exclusion: see STRIKE_REASONS
         st = status_of(r["kind"], r["name"], why, text)
         if why == "required-by-live-api" and not declared(r["kind"], r["name"], text):
             raise SystemExit("sweep: REQUIRED_BY_LIVE_API names %r but our headers do not declare it — "
@@ -485,6 +502,8 @@ def refresh():
             reasons[why] = reasons.get(why, 0) + 1
         elif why == "required-by-live-api":
             excepted = excepted + 1
+        if why == "deprecated":
+            deprecated = deprecated + 1
         out.append("\t".join((r["kind"], st, r["name"], r["owner"], r["family"], why or "-",
                               "swift-page" if r.get("swift") else "objc")))
     header = [
@@ -514,6 +533,12 @@ def refresh():
         "# on the path marker, which hid real ObjC constants from the ledger.",
         "#",
         "# why the struck rows are struck: " + ", ".join("%s %d" % (k, v) for k, v in sorted(reasons.items())),
+        "#",
+        "# AND %d ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy," % deprecated,
+        "# 2026-09-26): to support porting older Mac applications, all items removed for being",
+        "# deprecated are un-deprecated in Argentum Foundation and added to the work list. They carry",
+        "# `deprecated` in this column, which says what KIND of work a row is - only the grounds §11.5",
+        "# keeps can still strike one.",
         "#",
         "# THE NAMED EXCEPTION TO §11.5 (user, 2026-09-18): " + ", ".join(
             "%s (%s)" % (k, v) for k, v in sorted(REQUIRED_BY_LIVE_API.items())),
@@ -567,7 +592,7 @@ def check(strict=False):
     `shipped` row the headers no longer declare, or an `open` row they now do.
     Nobody has to decide anything, so they fail the check.
 
-    POLICY FINDINGS are symbols Apple deprecates that our headers still
+    POLICY FINDINGS are symbols this ledger STRIKES that our headers still
     declare. §11.5 says we do not ship those — but what to DO about one is a
     decision (measured case: `NSZone`, which the Legacy-group rule sweeps up and
     which Apple's own NON-deprecated `NSCopying` methods take as a parameter).
@@ -651,7 +676,7 @@ def check(strict=False):
     print("               never read by this tool — is recorded in the surface file's header by --refresh)")
     if policy:
         print("\n%d POLICY FINDING(S) — API this ledger STRIKES that we still declare (a struck row is one" % len(policy))
-        print("§11.5 removes: deprecated, swift-only, 32-bit-only, an OS-version constant, or DECLINED BY")
+        print("§11.5 removes: swift-only, 32-bit-only, an OS-version constant, or DECLINED BY")
         print("PROJECT DECISION. each needs a ledger row, and --strict is what fails on them):\n")
         for line in policy:
             print("  " + line)

@@ -22,21 +22,27 @@
 # and its members keep their ObjC names; this file's first version excluded them
 # on the path marker, which hid real ObjC constants from the ledger.
 #
-# why the struck rows are struck: 32-bit-only 13, declined 345, deprecated 341, os-version-constant 110, swift-only 22
+# why the struck rows are struck: 32-bit-only 13, declined 348, os-version-constant 110, swift-only 22
+#
+# AND 338 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# 2026-09-26): to support porting older Mac applications, all items removed for being
+# deprecated are un-deprecated in Argentum Foundation and added to the work list. They carry
+# `deprecated` in this column, which says what KIND of work a row is - only the grounds §11.5
+# keeps can still strike one.
 #
 # THE NAMED EXCEPTION TO §11.5 (user, 2026-09-18): 
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  172   open   24   struck   77
-#   protocol   shipped   25   open    6   struck   14
-#   macro      shipped  113   open    4   struck  136
-#   enum       shipped  130   open   13   struck   17
-#   case       shipped 1068   open   66   struck  168
-#   func       shipped   83   open   52   struck   54
-#   var        shipped  522   open   39   struck  353
-#   typealias  shipped   63   open    6   struck    7
-#   struct     shipped    8   open    0   struck    5
+#   class      shipped  172   open   53   struck   48
+#   protocol   shipped   25   open   15   struck    5
+#   macro      shipped  113   open    8   struck  132
+#   enum       shipped  130   open   21   struck    9
+#   case       shipped 1068   open  159   struck   75
+#   func       shipped   83   open   94   struck   12
+#   var        shipped  529   open  178   struck  207
+#   typealias  shipped   63   open    8   struck    5
+#   struct     shipped    8   open    5   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
 case	shipped	NSActivityAutomaticTerminationDisabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -97,7 +103,7 @@ case	shipped	NSApplicationScriptsDirectory	NSFileManager	Files and Data Persiste
 case	shipped	NSApplicationSupportDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	struck	NSArgumentEvaluationScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSArgumentsWrongScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
-case	struck	NSAtomicWrite	NSData	Fundamentals / Binary Data / Writing Data to a File / Legacy Constants	deprecated	objc
+case	open	NSAtomicWrite	NSData	Fundamentals / Binary Data / Writing Data to a File / Legacy Constants	deprecated	objc
 case	shipped	NSAttributedStringEnumerationLongestEffectiveRangeNotRequired	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text / Getting the enumeration options	-	objc
 case	shipped	NSAttributedStringEnumerationReverse	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text / Getting the enumeration options	-	objc
 case	shipped	NSAttributedStringFormattingApplyReplacementIndexAttribute	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string / Getting the formatting options	-	objc
@@ -159,8 +165,8 @@ case	shipped	NSCalculationOverflow		Fundamentals / Numbers / Performing arithmet
 case	shipped	NSCalculationOverflow	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
 case	shipped	NSCalculationUnderflow		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
 case	shipped	NSCalculationUnderflow	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
-case	struck	NSCalendarCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSCalendarCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSCalendarCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSCalendarCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSCalendarMatchFirst	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
 case	shipped	NSCalendarMatchLast	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
 case	shipped	NSCalendarMatchNextTime	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
@@ -237,7 +243,7 @@ case	shipped	NSCoderValueNotFoundError	NSCoder	Files and Data Persistence / Keye
 case	shipped	NSCoderValueNotFoundError	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
 case	open	NSCollectionChangeInsert	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Types of Ordered Collection Changes	-	objc
 case	open	NSCollectionChangeRemove	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Types of Ordered Collection Changes	-	objc
-case	struck	NSCollectorDisabledOption		Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
+case	open	NSCollectorDisabledOption		Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
 case	open	NSCompressionErrorMaximum	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
 case	open	NSCompressionErrorMinimum	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
 case	open	NSCompressionFailedError	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
@@ -261,7 +267,7 @@ case	shipped	NSDataCompressionAlgorithmLZMA	NSData	Fundamentals / Binary Data / 
 case	shipped	NSDataCompressionAlgorithmLZMA	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data / Algorithms	-	objc
 case	shipped	NSDataCompressionAlgorithmZlib	NSData	Fundamentals / Binary Data / Compressing and Decompressing Data / Algorithms	-	objc
 case	shipped	NSDataCompressionAlgorithmZlib	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data / Algorithms	-	objc
-case	struck	NSDataReadingMapped	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
+case	open	NSDataReadingMapped	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
 case	shipped	NSDataReadingMappedAlways	NSData	Fundamentals / Binary Data / Reading Data from a File / Constants	-	objc
 case	shipped	NSDataReadingMappedIfSafe	NSData	Fundamentals / Binary Data / Reading Data from a File / Constants	-	objc
 case	shipped	NSDataReadingUncached	NSData	Fundamentals / Binary Data / Reading Data from a File / Constants	-	objc
@@ -302,8 +308,8 @@ case	shipped	NSDateIntervalFormatterLongStyle	NSDateIntervalFormatter	Fundamenta
 case	shipped	NSDateIntervalFormatterMediumStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	shipped	NSDateIntervalFormatterNoStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	shipped	NSDateIntervalFormatterShortStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	struck	NSDayCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSDayCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSDayCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSDayCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSDecodingFailurePolicyRaiseException	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder / Failure Policies	-	swift-page
 case	shipped	NSDecodingFailurePolicySetErrorAndReturn	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder / Failure Policies	-	swift-page
 case	open	NSDecompressionFailedError	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
@@ -326,16 +332,16 @@ case	shipped	NSDocumentationDirectory	NSFileManager	Files and Data Persistence /
 case	shipped	NSDownloadsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	struck	NSEndsWithComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	shipped	NSEndsWithPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	struck	NSEnergyFormatterUnitCalorie	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	struck	NSEnergyFormatterUnitJoule	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	struck	NSEnergyFormatterUnitKilocalorie	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	struck	NSEnergyFormatterUnitKilojoule	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSEnergyFormatterUnitCalorie	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSEnergyFormatterUnitJoule	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSEnergyFormatterUnitKilocalorie	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSEnergyFormatterUnitKilojoule	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	shipped	NSEnumerationConcurrent		Fundamentals / Iteration / Constants	-	objc
 case	shipped	NSEnumerationReverse		Fundamentals / Iteration / Constants	-	objc
 case	struck	NSEqualToComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	shipped	NSEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	struck	NSEraCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSEraCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSEraCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSEraCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSEvaluatedObjectExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSEverySubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	shipped	NSExecutableArchitectureMismatchError	NSBundle	App Support / Bundle Resources / Errors	-	objc
@@ -498,15 +504,15 @@ case	struck	NSGreaterThanComparison	NSSpecifierTest	App Support / Object Matchin
 case	struck	NSGreaterThanOrEqualToComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	shipped	NSGreaterThanOrEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSGreaterThanPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	struck	NSHPUXOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
+case	open	NSHPUXOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	shipped	NSHTTPCookieAcceptPolicyAlways	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies / Policies	-	objc
 case	shipped	NSHTTPCookieAcceptPolicyAlways	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy / Policies	-	objc
 case	shipped	NSHTTPCookieAcceptPolicyNever	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies / Policies	-	objc
 case	shipped	NSHTTPCookieAcceptPolicyNever	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy / Policies	-	objc
 case	shipped	NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies / Policies	-	objc
 case	shipped	NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy / Policies	-	objc
-case	struck	NSHourCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSHourCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSHourCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSHourCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSISO2022JPStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSISO8601DateFormatWithColonSeparatorInTime	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	shipped	NSISO8601DateFormatWithColonSeparatorInTimeZone	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
@@ -549,7 +555,7 @@ case	shipped	NSItemProviderUnavailableCoercionError	NSItemProvider	App Support /
 case	shipped	NSItemProviderUnexpectedValueClassError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 case	shipped	NSItemProviderUnknownError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 case	shipped	NSItemReplacementDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	struck	NSJSONReadingAllowFragments	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	deprecated	objc
+case	open	NSJSONReadingAllowFragments	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	deprecated	objc
 case	shipped	NSJSONReadingFragmentsAllowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
 case	open	NSJSONReadingJSON5Allowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
 case	shipped	NSJSONReadingMutableContainers	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
@@ -575,29 +581,29 @@ case	shipped	NSKeyValueObservingOptionPrior		Reference / Enumerations / Constant
 case	shipped	NSKeyValueSetSetMutation		Reference / Enumerations / Enumeration Cases	-	objc
 case	shipped	NSKeyValueUnionSetMutation		Reference / Enumerations / Enumeration Cases	-	objc
 case	shipped	NSKeyValueValidationError	NSError	App Support / User-Relevant Errors / Error Codes / Miscellaneous Errors	-	objc
-case	struck	NSLengthFormatterUnitCentimeter	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	struck	NSLengthFormatterUnitFoot	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	struck	NSLengthFormatterUnitInch	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	struck	NSLengthFormatterUnitKilometer	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	struck	NSLengthFormatterUnitMeter	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	struck	NSLengthFormatterUnitMile	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	struck	NSLengthFormatterUnitMillimeter	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	struck	NSLengthFormatterUnitYard	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSLengthFormatterUnitCentimeter	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSLengthFormatterUnitFoot	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSLengthFormatterUnitInch	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSLengthFormatterUnitKilometer	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSLengthFormatterUnitMeter	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSLengthFormatterUnitMile	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSLengthFormatterUnitMillimeter	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSLengthFormatterUnitYard	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	struck	NSLessThanComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	struck	NSLessThanOrEqualToComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	shipped	NSLessThanOrEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSLessThanPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSLibraryDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSLikePredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	struck	NSLinguisticTaggerJoinNames	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
-case	struck	NSLinguisticTaggerOmitOther	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
-case	struck	NSLinguisticTaggerOmitPunctuation	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
-case	struck	NSLinguisticTaggerOmitWhitespace	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
-case	struck	NSLinguisticTaggerOmitWords	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
-case	struck	NSLinguisticTaggerUnitDocument	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
-case	struck	NSLinguisticTaggerUnitParagraph	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
-case	struck	NSLinguisticTaggerUnitSentence	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
-case	struck	NSLinguisticTaggerUnitWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
+case	open	NSLinguisticTaggerJoinNames	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
+case	open	NSLinguisticTaggerOmitOther	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
+case	open	NSLinguisticTaggerOmitPunctuation	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
+case	open	NSLinguisticTaggerOmitWhitespace	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
+case	open	NSLinguisticTaggerOmitWords	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
+case	open	NSLinguisticTaggerUnitDocument	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
+case	open	NSLinguisticTaggerUnitParagraph	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
+case	open	NSLinguisticTaggerUnitSentence	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
+case	open	NSLinguisticTaggerUnitWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
 case	shipped	NSLiteralSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	shipped	NSLocalDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
 case	shipped	NSLocaleLanguageDirectionBottomToTop	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
@@ -605,17 +611,17 @@ case	shipped	NSLocaleLanguageDirectionLeftToRight	NSLocale	Fundamentals / Locali
 case	shipped	NSLocaleLanguageDirectionRightToLeft	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
 case	shipped	NSLocaleLanguageDirectionTopToBottom	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
 case	shipped	NSLocaleLanguageDirectionUnknown	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
-case	struck	NSMACHOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
+case	open	NSMACHOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	shipped	NSMacOSRomanStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	struck	NSMachPortDeallocateNone	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
-case	struck	NSMachPortDeallocateReceiveRight	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
-case	struck	NSMachPortDeallocateSendRight	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
-case	struck	NSMappedRead	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
-case	struck	NSMassFormatterUnitGram	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	struck	NSMassFormatterUnitKilogram	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	struck	NSMassFormatterUnitOunce	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	struck	NSMassFormatterUnitPound	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	struck	NSMassFormatterUnitStone	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSMachPortDeallocateNone	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
+case	open	NSMachPortDeallocateReceiveRight	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
+case	open	NSMachPortDeallocateSendRight	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
+case	open	NSMappedRead	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
+case	open	NSMassFormatterUnitGram	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSMassFormatterUnitKilogram	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSMassFormatterUnitOunce	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSMassFormatterUnitPound	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	open	NSMassFormatterUnitStone	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	shipped	NSMatchesPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSMatchingAnchored	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 case	shipped	NSMatchingCompleted	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	objc
@@ -636,10 +642,10 @@ case	struck	NSMiddleSubelement	NSWhoseSpecifier	App Support / Object Specifiers 
 case	shipped	NSMinXEdge		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
 case	shipped	NSMinYEdge		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
 case	shipped	NSMinusSetExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
-case	struck	NSMinuteCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSMinuteCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	struck	NSMonthCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSMonthCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSMinuteCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSMinuteCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSMonthCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSMonthCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSMoviesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSMusicDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSNEXTSTEPStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -695,7 +701,7 @@ case	shipped	NSNumberFormatterRoundUp	NSNumberFormatter	Fundamentals / Numbers /
 case	shipped	NSNumberFormatterScientificStyle	NSNumberFormatter	Fundamentals / Numbers / Constants / Formatting Styles	-	objc
 case	shipped	NSNumberFormatterSpellOutStyle	NSNumberFormatter	Fundamentals / Numbers / Constants / Formatting Styles	-	objc
 case	shipped	NSNumericSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
-case	struck	NSOSF1OperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
+case	open	NSOSF1OperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	open	NSOpenStepUnicodeReservedBase	NSCharacterSet	Fundamentals / Characters / Creating a Custom Character Set / Constants	-	objc
 case	struck	NSOperationNotSupportedForKeyScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSOperationNotSupportedForKeySpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
@@ -727,7 +733,7 @@ case	shipped	NSPointerFunctionsOpaquePersonality	NSPointerFunctions	Fundamentals
 case	shipped	NSPointerFunctionsStrongMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
 case	shipped	NSPointerFunctionsStructPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
 case	shipped	NSPointerFunctionsWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
-case	struck	NSPointerFunctionsZeroingWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	deprecated	objc
+case	open	NSPointerFunctionsZeroingWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	deprecated	objc
 case	struck	NSPositionAfter	NSPositionalSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	struck	NSPositionBefore	NSPositionalSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	struck	NSPositionBeginning	NSPositionalSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
@@ -789,8 +795,8 @@ case	shipped	NSPropertyListWriteInvalidError	NSPropertyListSerialization	Files a
 case	shipped	NSPropertyListWriteStreamError	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
 case	shipped	NSPropertyListWriteStreamError	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
 case	shipped	NSPropertyListXMLFormat_v1_0	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants / Constants	-	objc
-case	struck	NSProprietaryStringEncoding		Fundamentals / Deprecated / Constants	deprecated	objc
-case	struck	NSProprietaryStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	deprecated	objc
+case	open	NSProprietaryStringEncoding		Fundamentals / Deprecated / Constants	deprecated	objc
+case	open	NSProprietaryStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	deprecated	objc
 case	shipped	NSQualityOfServiceBackground	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
 case	shipped	NSQualityOfServiceBackground	NSOperation	App Support / Operations / Constants / Constants	-	objc
 case	shipped	NSQualityOfServiceBackground	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	objc
@@ -811,8 +817,8 @@ case	shipped	NSQualityOfServiceUtility	NSBackgroundActivityScheduler	App Support
 case	shipped	NSQualityOfServiceUtility	NSOperation	App Support / Operations / Constants / Constants	-	objc
 case	shipped	NSQualityOfServiceUtility	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	objc
 case	shipped	NSQualityOfServiceUtility	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work / Constants	-	objc
-case	struck	NSQuarterCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSQuarterCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSQuarterCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSQuarterCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	struck	NSRandomSubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	struck	NSReceiverEvaluationScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSReceiversCantHandleCommandScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
@@ -848,12 +854,12 @@ case	shipped	NSRoundUp	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using r
 case	struck	NSSaveOptionsAsk	NSCloseCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSSaveOptionsNo	NSCloseCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSSaveOptionsYes	NSCloseCommand	App Support / Script Commands / Constants / Constants	declined	objc
-case	struck	NSScannedOption		Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
-case	struck	NSSecondCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSSecondCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSScannedOption		Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
+case	open	NSSecondCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSSecondCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSSharedPublicDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSShiftJISStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	struck	NSSolarisOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
+case	open	NSSolarisOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	open	NSSortConcurrent		Fundamentals / Iteration / Constants	-	objc
 case	open	NSSortStable		Fundamentals / Iteration / Constants	-	objc
 case	shipped	NSStreamEventEndEncountered	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
@@ -883,7 +889,7 @@ case	shipped	NSStringEnumerationLocalized	NSString	Fundamentals / Strings / Perf
 case	shipped	NSStringEnumerationReverse	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
 case	shipped	NSStringEnumerationSubstringNotRequired	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
 case	shipped	NSSubqueryExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
-case	struck	NSSunOSOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
+case	open	NSSunOSOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	shipped	NSSymbolStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSSystemDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
 case	shipped	NSTaskTerminationReasonExit	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	swift-page
@@ -904,8 +910,8 @@ case	shipped	NSTextCheckingTypeRegularExpression	NSTextCheckingResult	Fundamenta
 case	shipped	NSTextCheckingTypeReplacement	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 case	shipped	NSTextCheckingTypeSpelling	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 case	shipped	NSTextCheckingTypeTransitInformation	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	struck	NSTimeZoneCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSTimeZoneCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSTimeZoneCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSTimeZoneCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSTimeZoneNameStyleDaylightSaving	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
 case	shipped	NSTimeZoneNameStyleGeneric	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
 case	shipped	NSTimeZoneNameStyleShortDaylightSaving	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
@@ -914,7 +920,7 @@ case	shipped	NSTimeZoneNameStyleShortStandard	NSTimeZone	Fundamentals / Calendri
 case	shipped	NSTimeZoneNameStyleStandard	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
 case	shipped	NSTrashDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSURLBookmarkCreationMinimalBookmark	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
-case	struck	NSURLBookmarkCreationPreferFileIDResolution	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	deprecated	objc
+case	open	NSURLBookmarkCreationPreferFileIDResolution	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	deprecated	objc
 case	shipped	NSURLBookmarkCreationSecurityScopeAllowOnlyReadAccess	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
 case	shipped	NSURLBookmarkCreationSuitableForBookmarkFile	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
 case	shipped	NSURLBookmarkCreationWithSecurityScope	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
@@ -992,10 +998,10 @@ case	shipped	NSURLErrorUnsupportedURL	NSError	App Support / User-Relevant Errors
 case	shipped	NSURLErrorUserAuthenticationRequired	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
 case	shipped	NSURLErrorUserCancelledAuthentication	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
 case	shipped	NSURLErrorZeroByteResource	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	struck	NSURLHandleLoadFailed	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
-case	struck	NSURLHandleLoadInProgress	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
-case	struck	NSURLHandleLoadSucceeded	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
-case	struck	NSURLHandleNotLoaded	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
+case	open	NSURLHandleLoadFailed	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
+case	open	NSURLHandleLoadInProgress	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
+case	open	NSURLHandleLoadSucceeded	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
+case	open	NSURLHandleNotLoaded	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
 case	shipped	NSURLNetworkServiceTypeAVStreaming	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
 case	shipped	NSURLNetworkServiceTypeAVStreaming	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
 case	shipped	NSURLNetworkServiceTypeBackground	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
@@ -1010,8 +1016,8 @@ case	shipped	NSURLNetworkServiceTypeResponsiveData	NSMutableURLRequest	Networkin
 case	shipped	NSURLNetworkServiceTypeResponsiveData	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
 case	shipped	NSURLNetworkServiceTypeVideo	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
 case	shipped	NSURLNetworkServiceTypeVideo	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	struck	NSURLNetworkServiceTypeVoIP	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	deprecated	swift-page
-case	struck	NSURLNetworkServiceTypeVoIP	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	deprecated	swift-page
+case	open	NSURLNetworkServiceTypeVoIP	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	deprecated	swift-page
+case	open	NSURLNetworkServiceTypeVoIP	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	deprecated	swift-page
 case	shipped	NSURLNetworkServiceTypeVoice	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
 case	shipped	NSURLNetworkServiceTypeVoice	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
 case	shipped	NSURLRelationshipContains	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items / URL Relationships	-	objc
@@ -1061,7 +1067,7 @@ case	shipped	NSURLSessionTaskMetricsDomainResolutionProtocolUDP	NSURLSessionTask
 case	shipped	NSURLSessionTaskMetricsDomainResolutionProtocolUnknown	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
 case	shipped	NSURLSessionTaskMetricsResourceFetchTypeLocalCache	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
 case	shipped	NSURLSessionTaskMetricsResourceFetchTypeNetworkLoad	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
-case	struck	NSURLSessionTaskMetricsResourceFetchTypeServerPush	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	deprecated	objc
+case	open	NSURLSessionTaskMetricsResourceFetchTypeServerPush	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	deprecated	objc
 case	shipped	NSURLSessionTaskMetricsResourceFetchTypeUnknown	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
 case	shipped	NSURLSessionTaskStateCanceling	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
 case	shipped	NSURLSessionTaskStateCompleted	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
@@ -1103,8 +1109,8 @@ case	open	NSUbiquitousKeyValueStoreAccountChange	NSUbiquitousKeyValueStore	Files
 case	open	NSUbiquitousKeyValueStoreInitialSyncChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
 case	open	NSUbiquitousKeyValueStoreQuotaViolationChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
 case	open	NSUbiquitousKeyValueStoreServerChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
-case	struck	NSUncachedRead	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
-case	struck	NSUndefinedDateComponent	NSDateComponents	Fundamentals / Calendrical Calculations / Validating a Date / Constants	deprecated	objc
+case	open	NSUncachedRead	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
+case	open	NSUndefinedDateComponent	NSDateComponents	Fundamentals / Calendrical Calculations / Validating a Date / Constants	deprecated	objc
 case	shipped	NSUnicodeStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSUnionSetExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSUnknownKeyScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
@@ -1124,35 +1130,35 @@ case	shipped	NSUserActivityRemoteApplicationTimedOutError	NSUserActivity	App Sup
 case	shipped	NSUserCancelledError	NSError	App Support / User-Relevant Errors / Error Codes / Cancellation	-	objc
 case	shipped	NSUserDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSUserDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
-case	struck	NSUserNotificationActivationTypeActionButtonClicked	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
-case	struck	NSUserNotificationActivationTypeAdditionalActionClicked	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
-case	struck	NSUserNotificationActivationTypeContentsClicked	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
-case	struck	NSUserNotificationActivationTypeNone	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
-case	struck	NSUserNotificationActivationTypeReplied	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
+case	open	NSUserNotificationActivationTypeActionButtonClicked	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
+case	open	NSUserNotificationActivationTypeAdditionalActionClicked	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
+case	open	NSUserNotificationActivationTypeContentsClicked	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
+case	open	NSUserNotificationActivationTypeNone	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
+case	open	NSUserNotificationActivationTypeReplied	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
 case	shipped	NSValidationErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Validation Errors	-	objc
 case	shipped	NSValidationErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Validation Errors	-	objc
 case	shipped	NSVariableExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	shipped	NSVolumeEnumerationProduceFileReferenceURLs	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents / Volume Enumeration Options	-	objc
 case	shipped	NSVolumeEnumerationSkipHiddenVolumes	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents / Volume Enumeration Options	-	objc
-case	struck	NSWeekCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSWeekCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	struck	NSWeekOfMonthCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSWeekOfMonthCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	struck	NSWeekOfYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSWeekOfYearCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	struck	NSWeekdayCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSWeekdayCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	struck	NSWeekdayOrdinalCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSWeekdayOrdinalCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSWeekCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSWeekCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSWeekOfMonthCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSWeekOfMonthCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSWeekOfYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSWeekOfYearCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSWeekdayCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSWeekdayCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSWeekdayOrdinalCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSWeekdayOrdinalCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSWidthInsensitiveSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
-case	struck	NSWindows95OperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
+case	open	NSWindows95OperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	shipped	NSWindowsCP1250StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSWindowsCP1251StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSWindowsCP1252StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSWindowsCP1253StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSWindowsCP1254StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	struck	NSWindowsNTOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
-case	struck	NSWrapCalendarComponents	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	deprecated	objc
+case	open	NSWindowsNTOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
+case	open	NSWrapCalendarComponents	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	deprecated	objc
 case	shipped	NSXMLAttributeCDATAKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	shipped	NSXMLAttributeDeclarationKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
 case	shipped	NSXMLAttributeEntitiesKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
@@ -1332,10 +1338,10 @@ case	struck	NSXPCConnectionInvalid	NSXPCConnection	Low-Level Utilities / XPC Cli
 case	struck	NSXPCConnectionPrivileged	NSXPCConnection	Low-Level Utilities / XPC Client / Creating a connection / Constants	declined	objc
 case	struck	NSXPCConnectionReplyInvalid	NSError	App Support / User-Relevant Errors / Error Codes / XPC Errors	declined	objc
 case	struck	NSXPCConnectionReplyInvalid	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	declined	objc
-case	struck	NSYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSYearCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	struck	NSYearForWeekOfYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	struck	NSYearForWeekOfYearCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSYearCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	open	NSYearForWeekOfYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	open	NSYearForWeekOfYearCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NS_BigEndian		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
 case	shipped	NS_LittleEndian		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
 case	shipped	NS_UnknownByteOrder		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
@@ -1343,7 +1349,7 @@ class	shipped	NSAffineTransform		Fundamentals / Geometry	-	objc
 class	struck	NSAppleEventDescriptor		App Support / Apple Event Handling	declined	objc
 class	struck	NSAppleEventManager		App Support / Apple Event Handling	declined	objc
 class	struck	NSAppleScript		App Support / Script Execution	declined	objc
-class	struck	NSArchiver		Files and Data Persistence / Deprecated	deprecated	objc
+class	open	NSArchiver		Files and Data Persistence / Deprecated	deprecated	objc
 class	shipped	NSArray		Fundamentals / Basic Collections	-	objc
 class	shipped	NSAssertionHandler		App Support / Assertions	-	objc
 class	shipped	NSAttributedString		Fundamentals / Strings with Metadata	-	objc
@@ -1353,12 +1359,12 @@ class	shipped	NSAutoreleasePool		Low-Level Utilities / Memory Management	-	objc
 class	open	NSBackgroundActivityScheduler		App Support / System Interaction	-	objc
 class	shipped	NSBlockOperation		App Support / Operations	-	objc
 class	shipped	NSBundle		App Support / Bundle Resources	-	objc
-class	struck	NSBundleResourceRequest		App Support / On-Demand Resources	deprecated	objc
+class	open	NSBundleResourceRequest		App Support / On-Demand Resources	deprecated	objc
 class	shipped	NSByteCountFormatter		Fundamentals / Data sizes	-	objc
 class	shipped	NSCache		Fundamentals / Purgeable Collections	-	objc
 class	shipped	NSCachedURLResponse		Networking / Cache behavior	-	objc
 class	shipped	NSCalendar		Fundamentals / Calendrical Calculations	-	objc
-class	struck	NSCalendarDate		Fundamentals / Deprecated	deprecated	objc
+class	open	NSCalendarDate		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSCharacterSet		Fundamentals / Characters	-	objc
 class	struck	NSClassDescription		App Support / Script Dictionary Description	declined	objc
 class	struck	NSCloneCommand		App Support / Script Commands	declined	objc
@@ -1368,7 +1374,7 @@ class	shipped	NSComparisonPredicate		Fundamentals / Filltering	-	objc
 class	shipped	NSCompoundPredicate		Fundamentals / Filltering	-	objc
 class	shipped	NSCondition		Low-Level Utilities / Threads and Locking	-	objc
 class	open	NSConditionLock		Low-Level Utilities / Threads and Locking	-	objc
-class	struck	NSConnection		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	open	NSConnection		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSConstantString		Reference / Classes	-	objc
 class	struck	NSCountCommand		App Support / Script Commands	declined	objc
 class	shipped	NSCountedSet		Fundamentals / Specialized Sets	-	objc
@@ -1387,11 +1393,11 @@ class	struck	NSDeleteCommand		App Support / Script Commands	declined	objc
 class	shipped	NSDictionary		Fundamentals / Basic Collections	-	objc
 class	shipped	NSDimension		Fundamentals / Essentials	-	objc
 class	shipped	NSDirectoryEnumerator		Files and Data Persistence / File system operations / Discovering directory contents	-	objc
-class	struck	NSDistantObject		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-class	struck	NSDistantObjectRequest		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	open	NSDistantObject		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	open	NSDistantObjectRequest		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	open	NSDistributedLock		Low-Level Utilities / Threads and Locking	-	objc
 class	open	NSDistributedNotificationCenter		App Support / Cross-Process Notifications	-	objc
-class	struck	NSEnergyFormatter		Fundamentals / Deprecated	deprecated	objc
+class	open	NSEnergyFormatter		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSEnumerator		Fundamentals / Iteration	-	objc
 class	shipped	NSError		App Support / User-Relevant Errors	-	objc
 class	shipped	NSException		App Support / Exceptions	-	objc
@@ -1408,13 +1414,13 @@ class	shipped	NSFileSecurity		Files and Data Persistence / Managed file access	-
 class	shipped	NSFileVersion		Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
 class	shipped	NSFileWrapper		Files and Data Persistence / Managed file access	-	objc
 class	shipped	NSFormatter		Fundamentals / Custom formatters	-	objc
-class	struck	NSGarbageCollector		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	open	NSGarbageCollector		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSGetCommand		App Support / Script Commands	declined	objc
 class	shipped	NSHTTPCookie		Networking / Essentials / Creating a session / Setting cookie policies	-	objc
 class	shipped	NSHTTPCookieStorage		Networking / Cookies	-	objc
 class	shipped	NSHTTPURLResponse		Networking / Requests and responses	-	objc
 class	shipped	NSHashTable		Fundamentals / Pointer Collections	-	objc
-class	struck	NSHost		Low-Level Utilities / Sockets	deprecated	objc
+class	open	NSHost		Low-Level Utilities / Sockets	deprecated	objc
 class	shipped	NSISO8601DateFormatter		Fundamentals / Date Formatting	-	objc
 class	shipped	NSIndexPath		Fundamentals / Indexes	-	objc
 class	shipped	NSIndexSet		Fundamentals / Indexes	-	objc
@@ -1430,21 +1436,21 @@ class	open	NSKeyValueSharedObservers		Reference / Classes	-	objc
 class	open	NSKeyValueSharedObserversSnapshot		Reference / Classes	-	objc
 class	shipped	NSKeyedArchiver		Files and Data Persistence / Keyed Archivers	-	objc
 class	shipped	NSKeyedUnarchiver		Files and Data Persistence / Keyed Archivers	-	objc
-class	struck	NSLengthFormatter		Fundamentals / Deprecated	deprecated	objc
-class	struck	NSLinguisticTagger		Fundamentals / Deprecated	deprecated	objc
+class	open	NSLengthFormatter		Fundamentals / Deprecated	deprecated	objc
+class	open	NSLinguisticTagger		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSListFormatter		Fundamentals / Lists	-	objc
 class	shipped	NSLocale		Fundamentals / Localization	-	objc
 class	open	NSLocalizedNumberFormatRule		Reference / Classes	-	objc
 class	shipped	NSLock		Low-Level Utilities / Threads and Locking	-	objc
 class	struck	NSLogicalTest		App Support / Object Matching Tests	declined	objc
-class	struck	NSMachBootstrapServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-class	struck	NSMachPort		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	open	NSMachBootstrapServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	open	NSMachPort		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSMapTable		Fundamentals / Pointer Collections	-	objc
-class	struck	NSMassFormatter		Fundamentals / Deprecated	deprecated	objc
+class	open	NSMassFormatter		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSMeasurement		Fundamentals / Essentials	-	objc
 class	shipped	NSMeasurementFormatter		Fundamentals / Measurements	-	objc
-class	struck	NSMessagePort		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-class	struck	NSMessagePortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	open	NSMessagePort		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	open	NSMessagePortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSMetadataItem		Files and Data Persistence / Items	declined	objc
 class	struck	NSMetadataQuery		Files and Data Persistence / Queries	declined	objc
 class	struck	NSMetadataQueryAttributeValueTuple		Files and Data Persistence / Queries / Getting query results	declined	objc
@@ -1452,7 +1458,7 @@ class	struck	NSMetadataQueryResultGroup		Files and Data Persistence / Queries / 
 class	shipped	NSMethodSignature		Low-Level Utilities / Invocations	-	objc
 class	struck	NSMiddleSpecifier		App Support / Object Specifiers	declined	objc
 class	open	NSMorphology		Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule	-	objc
-class	struck	NSMorphologyCustomPronoun		Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features	deprecated	objc
+class	open	NSMorphologyCustomPronoun		Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features	deprecated	objc
 class	open	NSMorphologyPronoun		Fundamentals / Automatic grammar agreement	-	objc
 class	struck	NSMoveCommand		App Support / Script Commands	declined	objc
 class	shipped	NSMutableArray		Fundamentals / Basic Collections	-	objc
@@ -1466,8 +1472,8 @@ class	shipped	NSMutableSet		Fundamentals / Basic Collections	-	objc
 class	shipped	NSMutableString		Fundamentals / Strings	-	objc
 class	shipped	NSMutableURLRequest		Networking / Requests and responses	-	objc
 class	struck	NSNameSpecifier		App Support / Object Specifiers	declined	objc
-class	struck	NSNetService		Networking / Local Network Services	deprecated	objc
-class	struck	NSNetServiceBrowser		Networking / Service Discovery	deprecated	objc
+class	struck	NSNetService		Networking / Local Network Services	declined	objc
+class	struck	NSNetServiceBrowser		Networking / Service Discovery	declined	objc
 class	shipped	NSNotification		App Support / Notifications	-	objc
 class	shipped	NSNotificationCenter		App Support / Notifications	-	objc
 class	open	NSNotificationQueue		App Support / Notifications	-	objc
@@ -1487,9 +1493,9 @@ class	shipped	NSPipe		Low-Level Utilities / Tasks and Pipes	-	objc
 class	shipped	NSPointerArray		Fundamentals / Pointer Collections	-	objc
 class	shipped	NSPointerFunctions		Fundamentals / Pointer Collections / Getting the Pointer Functions	-	objc
 class	shipped	NSPort		Low-Level Utilities / Sockets	-	objc
-class	struck	NSPortCoder		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-class	struck	NSPortMessage		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-class	struck	NSPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	open	NSPortCoder		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	open	NSPortMessage		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	open	NSPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSPositionalSpecifier		App Support / Object Specifiers	declined	objc
 class	shipped	NSPredicate		Fundamentals / Filltering	-	objc
 class	open	NSPresentationIntent		Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
@@ -1497,7 +1503,7 @@ class	shipped	NSProcessInfo		App Support / System Interaction	-	objc
 class	shipped	NSProgress		App Support / Progress	-	objc
 class	shipped	NSPropertyListSerialization		Files and Data Persistence / Property Lists	-	objc
 class	struck	NSPropertySpecifier		App Support / Object Specifiers	declined	objc
-class	struck	NSProtocolChecker		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	open	NSProtocolChecker		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSProxy		Low-Level Utilities / Remote Objects	-	objc
 class	shipped	NSPurgeableData		Fundamentals / Purgeable Collections	-	objc
 class	struck	NSQuitCommand		App Support / Script Commands	declined	objc
@@ -1522,7 +1528,7 @@ class	shipped	NSSet		Fundamentals / Basic Collections	-	objc
 class	struck	NSSetCommand		App Support / Script Commands	declined	objc
 class	open	NSSimpleCString		Reference / Classes	-	objc
 class	shipped	NSSocketPort		Low-Level Utilities / Sockets	-	objc
-class	struck	NSSocketPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	open	NSSocketPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSSortDescriptor		Fundamentals / Sorting	-	objc
 class	struck	NSSpecifierTest		App Support / Object Matching Tests	declined	objc
 class	open	NSSpellServer		Fundamentals / Spelling and Grammar	-	objc
@@ -1538,11 +1544,11 @@ class	shipped	NSURL		Fundamentals / URLs	-	objc
 class	shipped	NSURLAuthenticationChallenge		Networking / Authentication and credentials	-	objc
 class	shipped	NSURLCache		Networking / Cache behavior	-	objc
 class	shipped	NSURLComponents		Fundamentals / URLs	-	objc
-class	struck	NSURLConnection		Networking / Legacy / URL Connection	deprecated	objc
+class	open	NSURLConnection		Networking / Legacy / URL Connection	deprecated	objc
 class	shipped	NSURLCredential		Networking / Authentication and credentials	-	objc
 class	shipped	NSURLCredentialStorage		Networking / Authentication and credentials	-	objc
-class	struck	NSURLDownload		Networking / Legacy / URL Download	deprecated	objc
-class	struck	NSURLHandle		Networking / Legacy / URL Handle	deprecated	objc
+class	open	NSURLDownload		Networking / Legacy / URL Download	deprecated	objc
+class	open	NSURLHandle		Networking / Legacy / URL Handle	deprecated	objc
 class	shipped	NSURLProtectionSpace		Networking / Authentication and credentials	-	objc
 class	shipped	NSURLProtocol		Networking / Essentials / Creating a session / Supporting custom protocols	-	objc
 class	shipped	NSURLQueryItem		Fundamentals / URLs	-	objc
@@ -1561,7 +1567,7 @@ class	shipped	NSURLSessionWebSocketMessage		Networking / Essentials / Adding Web
 class	shipped	NSURLSessionWebSocketTask		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 class	shipped	NSUUID		Fundamentals / Unique Identifiers	-	objc
 class	open	NSUbiquitousKeyValueStore		Files and Data Persistence / iCloud key and value storage	-	objc
-class	struck	NSUnarchiver		Files and Data Persistence / Deprecated	deprecated	objc
+class	open	NSUnarchiver		Files and Data Persistence / Deprecated	deprecated	objc
 class	shipped	NSUndoManager		App Support / Undo	-	objc
 class	struck	NSUniqueIDSpecifier		App Support / Object Specifiers	declined	objc
 class	shipped	NSUnit		Fundamentals / Essentials	-	objc
@@ -1593,9 +1599,9 @@ class	open	NSUserActivity		App Support / Activity Sharing	-	objc
 class	struck	NSUserAppleScriptTask		Low-Level Utilities / Scripts and External Tasks	declined	objc
 class	struck	NSUserAutomatorTask		Low-Level Utilities / Scripts and External Tasks	declined	objc
 class	shipped	NSUserDefaults		Files and Data Persistence / App-specific settings	-	objc
-class	struck	NSUserNotification		App Support / User Notifications	deprecated	objc
-class	struck	NSUserNotificationAction		App Support / User Notifications	deprecated	objc
-class	struck	NSUserNotificationCenter		App Support / User Notifications	deprecated	objc
+class	open	NSUserNotification		App Support / User Notifications	deprecated	objc
+class	open	NSUserNotificationAction		App Support / User Notifications	deprecated	objc
+class	open	NSUserNotificationCenter		App Support / User Notifications	deprecated	objc
 class	struck	NSUserScriptTask		Low-Level Utilities / Scripts and External Tasks	declined	objc
 class	shipped	NSUserUnixTask		Low-Level Utilities / Scripts and External Tasks	-	objc
 class	shipped	NSValue		Low-Level Utilities / Value Wrappers and Transformations	-	objc
@@ -1648,7 +1654,7 @@ enum	shipped	NSDateIntervalFormatterStyle	NSDateIntervalFormatter	Fundamentals /
 enum	shipped	NSDecodingFailurePolicy	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder	-	swift-page
 enum	shipped	NSDirectoryEnumerationOptions	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 enum	shipped	NSDistributedNotificationOptions	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants	-	objc
-enum	struck	NSEnergyFormatterUnit	NSEnergyFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
+enum	open	NSEnergyFormatterUnit	NSEnergyFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
 enum	shipped	NSEnumerationOptions		Fundamentals / Iteration	-	objc
 enum	shipped	NSExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	swift-page
 enum	shipped	NSFileCoordinatorReadingOptions	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants	-	objc
@@ -1685,12 +1691,12 @@ enum	shipped	NSJSONWritingOptions	NSJSONSerialization	Files and Data Persistence
 enum	shipped	NSKeyValueChange		Reference / Enumerations	-	objc
 enum	shipped	NSKeyValueObservingOptions		Reference / Enumerations	-	objc
 enum	shipped	NSKeyValueSetMutationKind		Reference / Enumerations	-	objc
-enum	struck	NSLengthFormatterUnit	NSLengthFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
-enum	struck	NSLinguisticTaggerOptions	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags	deprecated	objc
-enum	struck	NSLinguisticTaggerUnit	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
+enum	open	NSLengthFormatterUnit	NSLengthFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
+enum	open	NSLinguisticTaggerOptions	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags	deprecated	objc
+enum	open	NSLinguisticTaggerUnit	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
 enum	shipped	NSLocaleLanguageDirection	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language	-	objc
-enum	struck	NSMachPortOptions	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
-enum	struck	NSMassFormatterUnit	NSMassFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
+enum	open	NSMachPortOptions	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
+enum	open	NSMassFormatterUnit	NSMassFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
 enum	shipped	NSMatchingFlags	NSRegularExpression	Fundamentals / Pattern Matching / Constants	-	objc
 enum	shipped	NSMatchingOptions	NSRegularExpression	Fundamentals / Pattern Matching / Constants	-	objc
 enum	shipped	NSMeasurementFormatterUnitOptions	NSMeasurementFormatter	Fundamentals / Measurements / Specifying the Format	-	swift-page
@@ -1744,7 +1750,7 @@ enum	shipped	NSURLCacheStoragePolicy	NSCachedURLResponse	Networking / Cache beha
 enum	shipped	NSURLCacheStoragePolicy	NSURLCache	Networking / Cache behavior / Cache storage policies	-	objc
 enum	shipped	NSURLCredentialPersistence	NSURLCredential	Networking / Authentication and credentials / Creating a credential	-	swift-page
 enum	shipped	NSURLErrorNetworkUnavailableReason		Networking / Errors / Keys	-	objc
-enum	struck	NSURLHandleStatus	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	swift-page
+enum	open	NSURLHandleStatus	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	swift-page
 enum	shipped	NSURLRelationship	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items	-	objc
 enum	shipped	NSURLRequestAttribution	NSMutableURLRequest	Networking / Requests and responses / Indicating the source of the request	-	swift-page
 enum	shipped	NSURLRequestAttribution	NSURLRequest	Networking / Requests and responses / Indicating the source of the request	-	swift-page
@@ -1762,7 +1768,7 @@ enum	shipped	NSURLSessionTaskMetricsResourceFetchType	NSURLSessionTaskTransactio
 enum	shipped	NSURLSessionTaskState	NSURLSessionTask	Networking / Essentials / Controlling the task state	-	swift-page
 enum	shipped	NSURLSessionWebSocketCloseCode	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection	-	swift-page
 enum	shipped	NSURLSessionWebSocketMessageType	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
-enum	struck	NSUserNotificationActivationType	NSUserNotification	App Support / User Notifications / Constants	deprecated	swift-page
+enum	open	NSUserNotificationActivationType	NSUserNotification	App Support / User Notifications / Constants	deprecated	swift-page
 enum	shipped	NSVolumeEnumerationOptions	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 enum	struck	NSWhoseSubelementIdentifier	NSWhoseSpecifier	App Support / Object Specifiers / Constants	declined	objc
 enum	shipped	NSXMLDTDNodeKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	swift-page
@@ -1774,31 +1780,31 @@ enum	shipped	NSXMLParserExternalEntityResolvingPolicy	NSXMLParser	Files and Data
 enum	struck	NSXPCConnectionOptions	NSXPCConnection	Low-Level Utilities / XPC Client / Creating a connection	declined	objc
 func	open	CFBridgingRelease		Low-Level Utilities / Memory Management / Core Foundation ARC Integration	-	objc
 func	open	CFBridgingRetain		Low-Level Utilities / Memory Management / Core Foundation ARC Integration	-	objc
-func	struck	NSAllHashTableObjects	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSAllMapTableKeys	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSAllMapTableValues	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSAllHashTableObjects	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSAllMapTableKeys	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSAllMapTableValues	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSAllocateCollectable		Low-Level Utilities / Legacy / Legacy	32-bit-only	objc
 func	shipped	NSAllocateMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	struck	NSAllocateObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	32-bit-only	objc
 func	shipped	NSClassFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
-func	struck	NSCompareHashTables	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSCompareMapTables	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSCompareHashTables	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSCompareMapTables	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSContainsRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSConvertHostDoubleToSwapped		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	shipped	NSConvertHostFloatToSwapped		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	shipped	NSConvertSwappedDoubleToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	shipped	NSConvertSwappedFloatToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	struck	NSCopyHashTableWithZone	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSCopyMapTableWithZone	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSCopyHashTableWithZone	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSCopyMapTableWithZone	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSCopyMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
-func	struck	NSCopyObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	deprecated	objc
+func	open	NSCopyObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	deprecated	objc
 func	open	NSCountFrames		Reference / Debugging	-	objc
-func	struck	NSCountHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSCountMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSCreateHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSCreateHashTableWithZone	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSCreateMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSCreateMapTableWithZone	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSCountHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSCountMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSCreateHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSCreateHashTableWithZone	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSCreateMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSCreateMapTableWithZone	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSCreateZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	shipped	NSDeallocateMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	struck	NSDeallocateObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	32-bit-only	objc
@@ -1820,10 +1826,10 @@ func	struck	NSDefaultMallocZone		Low-Level Utilities / Legacy / Managing Zones	3
 func	shipped	NSDivideRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSEdgeInsetsEqual		Fundamentals / Geometry / Comparing edge insets	-	objc
 func	shipped	NSEdgeInsetsMake		Fundamentals / Geometry / Creating an edge insets structure	-	objc
-func	struck	NSEndHashTableEnumeration	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSEndMapTableEnumeration	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSEnumerateHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSEnumerateMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSEndHashTableEnumeration	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSEndMapTableEnumeration	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSEnumerateHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSEnumerateMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSEqualPoints		Fundamentals / Geometry / Managing Points	-	objc
 func	shipped	NSEqualRanges		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSEqualRects		Fundamentals / Geometry / Managing Rectangles	-	objc
@@ -1831,18 +1837,18 @@ func	shipped	NSEqualSizes		Fundamentals / Geometry / Managing Sizes	-	objc
 func	open	NSExtraRefCount		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
 func	shipped	NSFileTypeForHFSTypeCode	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
 func	open	NSFrameAddress		Reference / Debugging	-	objc
-func	struck	NSFreeHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSFreeMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSFreeHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSFreeMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSFullUserName	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	shipped	NSGetSizeAndAlignment		Low-Level Utilities / Objective-C Runtime / Serialization	-	objc
 func	shipped	NSGetUncaughtExceptionHandler	NSException	App Support / Exceptions / Functions	-	objc
 func	shipped	NSHFSTypeCodeFromFileType	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
 func	shipped	NSHFSTypeOfFile	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
-func	struck	NSHashGet	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSHashInsert	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSHashInsertIfAbsent	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSHashInsertKnownAbsent	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSHashRemove	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSHashGet	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSHashInsert	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSHashInsertIfAbsent	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSHashInsertKnownAbsent	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSHashRemove	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSHeight		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSHomeDirectory	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	shipped	NSHomeDirectoryForUser	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
@@ -1860,17 +1866,17 @@ func	shipped	NSLocationInRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	open	NSLog		App Support / Diagnostics and Debugging	-	objc
 func	open	NSLogPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	open	NSLogv		App Support / Diagnostics and Debugging	-	objc
-func	struck	NSMakeCollectable		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+func	open	NSMakeCollectable		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 func	shipped	NSMakePoint		Fundamentals / Geometry / Managing Points	-	objc
 func	shipped	NSMakeRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSMakeRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSMakeSize		Fundamentals / Geometry / Managing Sizes	-	objc
-func	struck	NSMapGet	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSMapInsert	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSMapInsertIfAbsent	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSMapInsertKnownAbsent	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSMapMember	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSMapRemove	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSMapGet	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSMapInsert	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSMapInsertIfAbsent	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSMapInsertKnownAbsent	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSMapMember	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSMapRemove	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSMaxRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSMaxX		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSMaxY		Fundamentals / Geometry / Managing Rectangles	-	objc
@@ -1879,8 +1885,8 @@ func	shipped	NSMidY		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSMinX		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSMinY		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSMouseInRect		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	struck	NSNextHashEnumeratorItem	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSNextMapEnumeratorPair	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSNextHashEnumeratorItem	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSNextMapEnumeratorPair	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSOffsetRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSOpenStepRootDirectory	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
 func	open	NSPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
@@ -1890,29 +1896,29 @@ func	shipped	NSPointInRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSPointToCGPoint		Fundamentals / Geometry / Managing Points	-	objc
 func	open	NSProtocolFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	open	NSRangeFromString		Fundamentals / Ranges / Managing ranges	-	objc
-func	struck	NSRealMemoryAvailable		Low-Level Utilities / Memory Management / Memory Management	deprecated	objc
-func	struck	NSReallocateCollectable		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+func	open	NSRealMemoryAvailable		Low-Level Utilities / Memory Management / Memory Management	deprecated	objc
+func	open	NSReallocateCollectable		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 func	open	NSRecordAllocationEvent		Reference / Debugging	-	objc
 func	shipped	NSRectFromCGRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSRectFromString		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSRectToCGRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	struck	NSRecycleZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
-func	struck	NSResetHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSResetMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSResetHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSResetMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	open	NSReturnAddress		Reference / Debugging	-	objc
 func	open	NSRoundDownToMultipleOfPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	open	NSRoundUpToMultipleOfPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	shipped	NSSearchPathForDirectoriesInDomains	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
 func	shipped	NSSelectorFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	shipped	NSSetUncaughtExceptionHandler	NSException	App Support / Exceptions / Functions	-	objc
-func	struck	NSSetZoneName		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
+func	open	NSSetZoneName		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
 func	open	NSShouldRetainWithZone		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
 func	shipped	NSSizeFromCGSize		Fundamentals / Geometry / Managing Sizes	-	objc
 func	shipped	NSSizeFromString		Fundamentals / Geometry / Managing Sizes	-	objc
 func	shipped	NSSizeToCGSize		Fundamentals / Geometry / Managing Sizes	-	objc
 func	shipped	NSStringFromClass		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
-func	struck	NSStringFromHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	struck	NSStringFromMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSStringFromHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	open	NSStringFromMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSStringFromPoint		Fundamentals / Geometry / Managing Points	-	objc
 func	open	NSStringFromProtocol		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	shipped	NSStringFromRange		Fundamentals / Ranges / Managing ranges	-	objc
@@ -1960,7 +1966,7 @@ func	struck	NSZoneFromPointer		Low-Level Utilities / Legacy / Managing Zones	32-
 func	struck	NSZoneMalloc		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	struck	NSZoneName		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	struck	NSZoneRealloc		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
-func	struck	NXReadNSObjectFromCoder		Files and Data Persistence / Deprecated	deprecated	objc
+func	open	NXReadNSObjectFromCoder		Files and Data Persistence / Deprecated	deprecated	objc
 macro	shipped	ABS		Reference / Macros	-	objc
 macro	shipped	FOUNDATION_EXPORT		Reference / Macros	-	objc
 macro	shipped	FOUNDATION_EXTERN		Reference / Macros	-	objc
@@ -2106,10 +2112,10 @@ macro	shipped	NSLocalizedString		Fundamentals / Localization	-	objc
 macro	shipped	NSLocalizedStringFromTable		Fundamentals / Localization	-	objc
 macro	shipped	NSLocalizedStringFromTableInBundle		Fundamentals / Localization	-	objc
 macro	shipped	NSLocalizedStringWithDefaultValue		Fundamentals / Localization	-	objc
-macro	struck	NSMaximumStringLength	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-macro	struck	NSNotAPointerMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-macro	struck	NSNotAnIntMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-macro	struck	NSNotAnIntegerMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+macro	open	NSMaximumStringLength	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+macro	open	NSNotAPointerMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+macro	open	NSNotAnIntMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+macro	open	NSNotAnIntegerMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 macro	shipped	NSObjectAutoreleasedEvent		Reference / Macros	-	objc
 macro	shipped	NSObjectExtraRefDecrementedEvent		Reference / Macros	-	objc
 macro	shipped	NSObjectExtraRefIncrementedEvent		Reference / Macros	-	objc
@@ -2216,7 +2222,7 @@ macro	shipped	NS_VOIDRETURN	NSException	App Support / Exceptions / Legacy Macros
 macro	shipped	NS_WARN_UNUSED_RESULT		Reference / Macros	-	objc
 protocol	shipped	NSCacheDelegate		Fundamentals / Purgeable Collections / Managing the Delegate	-	objc
 protocol	shipped	NSCoding		Files and Data Persistence / Adopting Codability	-	objc
-protocol	struck	NSConnectionDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+protocol	open	NSConnectionDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 protocol	shipped	NSCopying		Low-Level Utilities / Copying	-	objc
 protocol	shipped	NSDecimalNumberBehaviors		Fundamentals / Numbers / Using reference types / Managing Behavior	-	objc
 protocol	shipped	NSDiscardableContent		Fundamentals / Purgeable Collections / Managing Discardable Content	-	objc
@@ -2229,24 +2235,24 @@ protocol	shipped	NSItemProviderWriting		App Support / Attachments / Constants	-	
 protocol	shipped	NSKeyedArchiverDelegate		Files and Data Persistence / Keyed Archivers	-	objc
 protocol	shipped	NSKeyedUnarchiverDelegate		Files and Data Persistence / Keyed Archivers	-	objc
 protocol	shipped	NSLocking		Low-Level Utilities / Threads and Locking	-	objc
-protocol	struck	NSMachPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+protocol	open	NSMachPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 protocol	struck	NSMetadataQueryDelegate		Files and Data Persistence / Queries	declined	objc
 protocol	shipped	NSMutableCopying		Low-Level Utilities / Copying	-	objc
 protocol	struck	NSNetServiceBrowserDelegate		Networking / Service Discovery	declined	objc
 protocol	struck	NSNetServiceDelegate		Networking / Local Network Services	declined	objc
 protocol	shipped	NSObject		Low-Level Utilities / Object Basics	-	objc
-protocol	struck	NSPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+protocol	open	NSPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 protocol	open	NSPredicateValidating		Protocols	-	objc
 protocol	shipped	NSProgressReporting		App Support / Progress	-	objc
 protocol	shipped	NSSecureCoding		Files and Data Persistence / Adopting Codability	-	objc
 protocol	open	NSSpellServerDelegate		Fundamentals / Spelling and Grammar	-	objc
 protocol	shipped	NSStreamDelegate		Low-Level Utilities / Streams	-	objc
-protocol	struck	NSURLAuthenticationChallengeSender		Networking / Legacy / URL Authentication Challenge Sender	deprecated	objc
-protocol	struck	NSURLConnectionDataDelegate		Networking / Legacy / URL Connection	deprecated	objc
-protocol	struck	NSURLConnectionDelegate		Networking / Legacy / URL Connection	deprecated	objc
-protocol	struck	NSURLConnectionDownloadDelegate		Networking / Legacy / URL Connection	deprecated	objc
-protocol	struck	NSURLDownloadDelegate		Networking / Legacy / URL Download	deprecated	objc
-protocol	struck	NSURLHandleClient		Networking / Legacy / URL Handle	deprecated	objc
+protocol	open	NSURLAuthenticationChallengeSender		Networking / Legacy / URL Authentication Challenge Sender	deprecated	objc
+protocol	open	NSURLConnectionDataDelegate		Networking / Legacy / URL Connection	deprecated	objc
+protocol	open	NSURLConnectionDelegate		Networking / Legacy / URL Connection	deprecated	objc
+protocol	open	NSURLConnectionDownloadDelegate		Networking / Legacy / URL Connection	deprecated	objc
+protocol	open	NSURLDownloadDelegate		Networking / Legacy / URL Download	deprecated	objc
+protocol	open	NSURLHandleClient		Networking / Legacy / URL Handle	deprecated	objc
 protocol	shipped	NSURLProtocolClient		Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes	-	objc
 protocol	shipped	NSURLSessionDataDelegate		Networking / Essentials / Adding data tasks to a session	-	objc
 protocol	shipped	NSURLSessionDelegate		Networking / Essentials / Working with a delegate	-	objc
@@ -2263,11 +2269,11 @@ struct	shipped	NSAffineTransformStruct	NSAffineTransform	Fundamentals / Geometry
 struct	shipped	NSDecimal		Fundamentals / Numbers	-	objc
 struct	shipped	NSEdgeInsets		Fundamentals / Geometry	-	objc
 struct	shipped	NSFastEnumerationState	NSFastEnumeration	Fundamentals / Iteration / Constants	-	objc
-struct	struck	NSHashEnumerator	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
-struct	struck	NSHashTableCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
-struct	struck	NSMapEnumerator	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
-struct	struck	NSMapTableKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
-struct	struck	NSMapTableValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
+struct	open	NSHashEnumerator	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
+struct	open	NSHashTableCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
+struct	open	NSMapEnumerator	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
+struct	open	NSMapTableKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
+struct	open	NSMapTableValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
 struct	shipped	NSOperatingSystemVersion	NSProcessInfo	App Support / System Interaction / Getting host information	-	objc
 struct	shipped	NSRange		Fundamentals / Ranges	-	objc
 struct	shipped	NSSwappedDouble		Low-Level Utilities / Byte Ordering / Constants	-	objc
@@ -2293,8 +2299,8 @@ typealias	shipped	NSItemProviderCompletionHandler	NSItemProvider	App Support / A
 typealias	shipped	NSItemProviderLoadHandler	NSItemProvider	App Support / Attachments / Constants	-	objc
 typealias	shipped	NSKeyValueChangeKey		Reference / Type Aliases	-	objc
 typealias	shipped	NSKeyValueOperator		Reference / Type Aliases	-	objc
-typealias	struck	NSLinguisticTag	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
-typealias	struck	NSLinguisticTagScheme	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
+typealias	open	NSLinguisticTag	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
+typealias	open	NSLinguisticTagScheme	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
 typealias	shipped	NSLocaleKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key	-	objc
 typealias	shipped	NSMapTableOptions	NSMapTable	Fundamentals / Pointer Collections / Creating and Initializing a Map Table	-	objc
 typealias	shipped	NSNotificationName	NSNotification	App Support / Notifications / Creating Notifications	-	swift-page
@@ -2348,7 +2354,7 @@ typealias	shipped	NSValueTransformerName	NSValueTransformer	Low-Level Utilities 
 typealias	struck	NSZone		Low-Level Utilities / Legacy	32-bit-only	objc
 typealias	shipped	unichar		Fundamentals / Characters	-	objc
 typealias	shipped	unichar	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
-var	struck	NSAMPMDesignation	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSAMPMDesignation	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSAlternateDescriptionAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	shipped	NSAppleEventManagerWillProcessFirstEventNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	struck	NSAppleEventTimeOutDefault	NSAppleEventManager	App Support / Apple Event Handling / Constants / Constants	declined	objc
@@ -2361,11 +2367,11 @@ var	struck	NSAppleScriptErrorRange	NSAppleScript	App Support / Script Execution 
 var	shipped	NSArgumentDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
 var	shipped	NSAssertionHandlerKey	NSThread	Low-Level Utilities / Threads and Locking / Working with Thread Properties	-	objc
 var	shipped	NSAverageKeyValueOperator		Reference / Constants	-	objc
-var	struck	NSBuddhistCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	open	NSBuddhistCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSBundleDidLoadNotification	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
-var	struck	NSBundleResourceRequestLoadingPriorityUrgent	NSBundleResourceRequest	App Support / On-Demand Resources / Setting the download priority	deprecated	objc
-var	struck	NSBundleResourceRequestLowDiskSpaceNotification	NSBundleResourceRequest	App Support / On-Demand Resources / Working with notifications	deprecated	swift-page
-var	struck	NSBundleResourceRequestLowDiskSpaceNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
+var	open	NSBundleResourceRequestLoadingPriorityUrgent	NSBundleResourceRequest	App Support / On-Demand Resources / Setting the download priority	deprecated	objc
+var	open	NSBundleResourceRequestLowDiskSpaceNotification	NSBundleResourceRequest	App Support / On-Demand Resources / Working with notifications	deprecated	swift-page
+var	open	NSBundleResourceRequestLowDiskSpaceNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
 var	shipped	NSCalendarDayChangedNotification	NSCalendar	Fundamentals / Calendrical Calculations / Recognizing Notifications	-	swift-page
 var	shipped	NSCalendarDayChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSCalendarIdentifierBangla	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
@@ -2397,22 +2403,22 @@ var	shipped	NSCalendarIdentifierVietnamese	NSCalendar	Fundamentals / Calendrical
 var	shipped	NSCalendarIdentifierVikram	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCharacterConversionException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSCharacterConversionException	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-var	struck	NSChineseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	open	NSChineseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	struck	NSClassDescriptionNeededForClassNotification	NSClassDescription	App Support / Script Dictionary Description / Notifications	declined	swift-page
 var	shipped	NSClassDescriptionNeededForClassNotification	NSNotification	App Support / Notifications / Creating Notifications / AppKit	-	swift-page
 var	shipped	NSCocoaErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
-var	struck	NSConnectionDidDieNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
-var	struck	NSConnectionDidInitializeNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
-var	struck	NSConnectionReplyMode	NSConnection	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
+var	open	NSConnectionDidDieNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
+var	open	NSConnectionDidInitializeNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
+var	open	NSConnectionReplyMode	NSConnection	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
 var	shipped	NSCountKeyValueOperator		Reference / Constants	-	objc
-var	struck	NSCurrencySymbol	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
+var	open	NSCurrencySymbol	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSCurrentLocaleDidChangeNotification	NSLocale	Fundamentals / Localization / Getting the User’s Locale	-	objc
-var	struck	NSDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	struck	NSDateTimeOrdering	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSDateTimeOrdering	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSDeallocateZombies		App Support / Diagnostics and Debugging	-	objc
 var	shipped	NSDebugDescriptionErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSDebugEnabled		App Support / Diagnostics and Debugging	-	objc
-var	struck	NSDecimalDigits	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
+var	open	NSDecimalDigits	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSDecimalNumberDivideByZeroException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
 var	shipped	NSDecimalNumberDivideByZeroException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSDecimalNumberExactnessException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
@@ -2421,17 +2427,17 @@ var	shipped	NSDecimalNumberOverflowException	NSDecimalNumber	Fundamentals / Numb
 var	shipped	NSDecimalNumberOverflowException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSDecimalNumberUnderflowException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
 var	shipped	NSDecimalNumberUnderflowException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	struck	NSDecimalSeparator	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
+var	open	NSDecimalSeparator	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSDefaultRunLoopMode	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes / System Run Loop Modes	-	objc
 var	shipped	NSDestinationInvalidException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	struck	NSDidBecomeSingleThreadedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
-var	struck	NSDidBecomeSingleThreadedNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
+var	open	NSDidBecomeSingleThreadedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
+var	open	NSDidBecomeSingleThreadedNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
 var	shipped	NSDistinctUnionOfArraysKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSDistinctUnionOfObjectsKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSDistinctUnionOfSetsKeyValueOperator		Reference / Constants	-	objc
-var	struck	NSEarlierTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSEarlierTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSEdgeInsetsZero		Fundamentals / Geometry / Getting the zero constant	-	objc
-var	struck	NSErrorFailingURLStringKey		Networking / Errors / Deprecated	deprecated	objc
+var	open	NSErrorFailingURLStringKey		Networking / Errors / Deprecated	deprecated	objc
 var	shipped	NSExtensionHostDidBecomeActiveNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
 var	shipped	NSExtensionHostDidBecomeActiveNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSExtensionHostDidEnterBackgroundNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
@@ -2446,12 +2452,12 @@ var	open	NSExtensionItemAttributedTitleKey	NSExtensionItem	App Support / Attachm
 var	open	NSExtensionItemsAndErrorsKey	NSExtensionContext	App Support / Extension Support / Handling requests	-	objc
 var	shipped	NSExtensionJavaScriptFinalizeArgumentKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 var	shipped	NSExtensionJavaScriptPreprocessingResultsKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
-var	struck	NSFTPPropertyActiveTransferModeKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	struck	NSFTPPropertyFTPProxy	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	struck	NSFTPPropertyFileOffsetKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	struck	NSFTPPropertyUserLoginKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	struck	NSFTPPropertyUserPasswordKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	struck	NSFailedAuthenticationException	NSConnection	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
+var	open	NSFTPPropertyActiveTransferModeKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	open	NSFTPPropertyFTPProxy	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	open	NSFTPPropertyFileOffsetKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	open	NSFTPPropertyUserLoginKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	open	NSFTPPropertyUserPasswordKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	open	NSFailedAuthenticationException	NSConnection	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
 var	shipped	NSFileAppendOnly	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileBusy	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileCreationDate	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
@@ -2467,7 +2473,7 @@ var	shipped	NSFileHandleDataAvailableNotification	NSFileHandle	Files and Data Pe
 var	shipped	NSFileHandleDataAvailableNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSFileHandleNotificationDataItem	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	-	objc
 var	shipped	NSFileHandleNotificationFileHandleItem	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	-	objc
-var	struck	NSFileHandleNotificationMonitorModes	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	deprecated	objc
+var	open	NSFileHandleNotificationMonitorModes	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	deprecated	objc
 var	shipped	NSFileHandleOperationException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSFileHandleOperationException	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	-	objc
 var	shipped	NSFileHandleReadCompletionNotification	NSFileHandle	Files and Data Persistence / Managed file access / Working with notifications	-	objc
@@ -2508,14 +2514,14 @@ var	shipped	NSGlobalDomain	NSUserDefaults	Files and Data Persistence / App-speci
 var	open	NSGrammarCorrections	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
 var	open	NSGrammarRange	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
 var	open	NSGrammarUserDescription	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
-var	struck	NSGregorianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	open	NSGregorianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSHTTPCookieComment	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
 var	shipped	NSHTTPCookieCommentURL	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
 var	shipped	NSHTTPCookieDiscard	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
 var	shipped	NSHTTPCookieDomain	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
 var	shipped	NSHTTPCookieExpires	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	struck	NSHTTPCookieManagerAcceptPolicyChangedNotification	NSHTTPCookieStorage	Networking / Cookies / Tracking cookie storage changes	deprecated	swift-page
-var	struck	NSHTTPCookieManagerAcceptPolicyChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
+var	open	NSHTTPCookieManagerAcceptPolicyChangedNotification	NSHTTPCookieStorage	Networking / Cookies / Tracking cookie storage changes	deprecated	swift-page
+var	open	NSHTTPCookieManagerAcceptPolicyChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
 var	shipped	NSHTTPCookieManagerCookiesChangedNotification	NSHTTPCookieStorage	Networking / Cookies / Tracking cookie storage changes	-	swift-page
 var	shipped	NSHTTPCookieManagerCookiesChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSHTTPCookieMaximumAge	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
@@ -2530,25 +2536,25 @@ var	shipped	NSHTTPCookieSecure	NSHTTPCookie	Networking / Essentials / Creating a
 var	shipped	NSHTTPCookieSetByJavaScript	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Type Properties	-	objc
 var	shipped	NSHTTPCookieValue	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
 var	shipped	NSHTTPCookieVersion	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	struck	NSHTTPPropertyErrorPageDataKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	struck	NSHTTPPropertyHTTPProxy	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	struck	NSHTTPPropertyRedirectionHeadersKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	struck	NSHTTPPropertyServerHTTPVersionKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	struck	NSHTTPPropertyStatusCodeKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	struck	NSHTTPPropertyStatusReasonKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	open	NSHTTPPropertyErrorPageDataKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	open	NSHTTPPropertyHTTPProxy	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	open	NSHTTPPropertyRedirectionHeadersKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	open	NSHTTPPropertyServerHTTPVersionKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	open	NSHTTPPropertyStatusCodeKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	open	NSHTTPPropertyStatusReasonKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
 var	open	NSHashTableCopyIn	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
 var	open	NSHashTableObjectPointerPersonality	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
 var	open	NSHashTableStrongMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
 var	open	NSHashTableWeakMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
-var	struck	NSHashTableZeroingWeakMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	deprecated	objc
-var	struck	NSHebrewCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	open	NSHashTableZeroingWeakMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	deprecated	objc
+var	open	NSHebrewCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSHelpAnchorErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
-var	struck	NSHourNameDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	struck	NSISO8601Calendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	open	NSHourNameDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSISO8601Calendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSImageURLAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
-var	struck	NSInconsistentArchiveException	NSArchiver	Files and Data Persistence / Deprecated / Constants / Constants	deprecated	objc
+var	shipped	NSInconsistentArchiveException	NSArchiver	Files and Data Persistence / Deprecated / Constants / Constants	deprecated	objc
 var	shipped	NSInconsistentArchiveException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	struck	NSIndianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	open	NSIndianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSInflectionAgreementArgumentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSInflectionAgreementConceptAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSInflectionAlternativeAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
@@ -2556,14 +2562,14 @@ var	open	NSInflectionConceptsKey		Reference / Constants	-	objc
 var	shipped	NSInflectionReferentConceptAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSInflectionRuleAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSInlinePresentationIntentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
-var	struck	NSIntHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	struck	NSIntMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	struck	NSIntMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	struck	NSIntegerHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	struck	NSIntegerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	struck	NSIntegerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSIntHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSIntMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSIntMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSIntegerHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSIntegerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSIntegerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSInternalInconsistencyException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	struck	NSInternationalCurrencyString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
+var	open	NSInternationalCurrencyString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSInvalidArchiveOperationException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSInvalidArchiveOperationException	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Constants / Constants	-	objc
 var	shipped	NSInvalidArgumentException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
@@ -2577,11 +2583,11 @@ var	shipped	NSInvocationOperationVoidResultException	NSException	App Support / E
 var	shipped	NSInvocationOperationVoidResultException	NSInvocationOperation	App Support / Operations / Constants / Constants	-	objc
 var	open	NSIsNilTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
 var	open	NSIsNotNilTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
-var	struck	NSIslamicCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
-var	struck	NSIslamicCivilCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	open	NSIslamicCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	open	NSIslamicCivilCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSItemProviderErrorDomain	NSItemProvider	App Support / Attachments / Constants	-	objc
 var	shipped	NSItemProviderPreferredImageSizeKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
-var	struck	NSJapaneseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	open	NSJapaneseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSKeepAllocationStatistics		App Support / Diagnostics and Debugging	-	objc
 var	shipped	NSKeyValueChangeIndexesKey		Reference / Type Aliases / Type Properties	-	objc
 var	shipped	NSKeyValueChangeKindKey		Reference / Type Aliases / Type Properties	-	objc
@@ -2589,47 +2595,47 @@ var	shipped	NSKeyValueChangeNewKey		Reference / Type Aliases / Type Properties	-
 var	shipped	NSKeyValueChangeNotificationIsPriorKey		Reference / Type Aliases / Type Properties	-	objc
 var	shipped	NSKeyValueChangeOldKey		Reference / Type Aliases / Type Properties	-	objc
 var	open	NSKeyedArchiveRootObjectKey	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Constants / Constants	-	objc
-var	struck	NSKeyedUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
+var	open	NSKeyedUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
 var	shipped	NSLanguageIdentifierAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
-var	struck	NSLaterTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	struck	NSLinguisticTagAdjective	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagAdverb	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagClassifier	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagCloseParenthesis	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagCloseQuote	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagConjunction	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagDash	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagDeterminer	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagIdiom	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagInterjection	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagNoun	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagNumber	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagOpenParenthesis	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagOpenQuote	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagOrganizationName	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Name Types	deprecated	objc
-var	struck	NSLinguisticTagOther	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
-var	struck	NSLinguisticTagOtherPunctuation	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagOtherWhitespace	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagOtherWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagParagraphBreak	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagParticle	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagPersonalName	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Name Types	deprecated	objc
-var	struck	NSLinguisticTagPlaceName	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Name Types	deprecated	objc
-var	struck	NSLinguisticTagPreposition	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagPronoun	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagPunctuation	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
-var	struck	NSLinguisticTagSchemeLanguage	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
-var	struck	NSLinguisticTagSchemeLemma	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
-var	struck	NSLinguisticTagSchemeLexicalClass	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
-var	struck	NSLinguisticTagSchemeNameType	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
-var	struck	NSLinguisticTagSchemeNameTypeOrLexicalClass	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
-var	struck	NSLinguisticTagSchemeScript	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
-var	struck	NSLinguisticTagSchemeTokenType	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
-var	struck	NSLinguisticTagSentenceTerminator	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagVerb	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	struck	NSLinguisticTagWhitespace	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
-var	struck	NSLinguisticTagWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
-var	struck	NSLinguisticTagWordJoiner	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLaterTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSLinguisticTagAdjective	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagAdverb	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagClassifier	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagCloseParenthesis	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagCloseQuote	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagConjunction	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagDash	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagDeterminer	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagIdiom	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagInterjection	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagNoun	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagNumber	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagOpenParenthesis	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagOpenQuote	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagOrganizationName	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Name Types	deprecated	objc
+var	open	NSLinguisticTagOther	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
+var	open	NSLinguisticTagOtherPunctuation	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagOtherWhitespace	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagOtherWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagParagraphBreak	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagParticle	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagPersonalName	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Name Types	deprecated	objc
+var	open	NSLinguisticTagPlaceName	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Name Types	deprecated	objc
+var	open	NSLinguisticTagPreposition	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagPronoun	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagPunctuation	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
+var	open	NSLinguisticTagSchemeLanguage	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
+var	open	NSLinguisticTagSchemeLemma	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
+var	open	NSLinguisticTagSchemeLexicalClass	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
+var	open	NSLinguisticTagSchemeNameType	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
+var	open	NSLinguisticTagSchemeNameTypeOrLexicalClass	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
+var	open	NSLinguisticTagSchemeScript	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
+var	open	NSLinguisticTagSchemeTokenType	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
+var	open	NSLinguisticTagSentenceTerminator	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagVerb	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	open	NSLinguisticTagWhitespace	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
+var	open	NSLinguisticTagWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
+var	open	NSLinguisticTagWordJoiner	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
 var	shipped	NSListItemDelimiterAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting formatting attribute keys	-	objc
 var	shipped	NSLoadedClasses	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
 var	shipped	NSLocalNotificationCenterType	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Type Properties	-	objc
@@ -2664,7 +2670,7 @@ var	open	NSMapTableCopyIn	NSPointerFunctions	Fundamentals / Pointer Collections 
 var	open	NSMapTableObjectPointerPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
 var	open	NSMapTableStrongMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
 var	open	NSMapTableWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
-var	struck	NSMapTableZeroingWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	deprecated	objc
+var	open	NSMapTableZeroingWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	deprecated	objc
 var	shipped	NSMarkdownSourcePositionAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	shipped	NSMaximumKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSMetadataItemAcquisitionMakeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
@@ -2850,7 +2856,7 @@ var	struck	NSMetadataUbiquitousItemDownloadingStatusDownloaded	NSMetadataItem	Fi
 var	struck	NSMetadataUbiquitousItemDownloadingStatusKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
 var	struck	NSMetadataUbiquitousItemDownloadingStatusNotDownloaded	NSMetadataItem	Files and Data Persistence / Items / iCloud Download Status Values	declined	objc
 var	struck	NSMetadataUbiquitousItemHasUnresolvedConflictsKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
-var	struck	NSMetadataUbiquitousItemIsDownloadedKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	deprecated	objc
+var	struck	NSMetadataUbiquitousItemIsDownloadedKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
 var	struck	NSMetadataUbiquitousItemIsDownloadingKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
 var	struck	NSMetadataUbiquitousItemIsExternalDocumentKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
 var	struck	NSMetadataUbiquitousItemIsSharedKey	NSMetadataItem	Files and Data Persistence / Items / iCloud Keys	declined	objc
@@ -2869,50 +2875,50 @@ var	struck	NSMetadataUbiquitousSharedItemPermissionsReadWrite	NSMetadataItem	Fil
 var	struck	NSMetadataUbiquitousSharedItemRoleOwner	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Role Values	declined	objc
 var	struck	NSMetadataUbiquitousSharedItemRoleParticipant	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Role Values	declined	objc
 var	shipped	NSMinimumKeyValueOperator		Reference / Constants	-	objc
-var	struck	NSMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSMorphologyAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSMultipleUnderlyingErrorsKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	open	NSNegateBooleanTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
-var	struck	NSNegativeCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
+var	open	NSNegativeCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	struck	NSNetServicesErrorCode	NSNetService	Networking / Local Network Services / Constants / Constants	declined	swift-page
 var	struck	NSNetServicesErrorDomain	NSNetService	Networking / Local Network Services / Constants / Constants	declined	objc
-var	struck	NSNextDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	struck	NSNextNextDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	struck	NSNonOwnedPointerHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	struck	NSNonOwnedPointerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	struck	NSNonOwnedPointerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	struck	NSNonOwnedPointerOrNullMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	struck	NSNonRetainedObjectHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	struck	NSNonRetainedObjectMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	struck	NSNonRetainedObjectMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSNextDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSNextNextDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSNonOwnedPointerHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSNonOwnedPointerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSNonOwnedPointerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSNonOwnedPointerOrNullMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSNonRetainedObjectHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSNonRetainedObjectMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSNonRetainedObjectMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSNotFound		Fundamentals / Ranges / Related types	-	objc
 var	shipped	NSNotificationDeliverImmediately	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Constants	-	objc
 var	shipped	NSNotificationPostToAllSessions	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Constants	-	objc
 var	shipped	NSOSStatusErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
-var	struck	NSObjectHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSObjectHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSObjectInaccessibleException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	struck	NSObjectMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	struck	NSObjectMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSObjectMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSObjectMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSObjectNotAvailableException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSOldStyleException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	open	NSOperationNotSupportedForKeyException		Reference / Constants	-	objc
 var	open	NSOperationQueueDefaultMaxConcurrentOperationCount	NSOperationQueue	App Support / Operations / Managing the Execution of Operations	-	objc
-var	struck	NSOwnedObjectIdentityHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	struck	NSOwnedPointerHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	struck	NSOwnedPointerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	struck	NSOwnedPointerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSOwnedObjectIdentityHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSOwnedPointerHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSOwnedPointerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSOwnedPointerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSPOSIXErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	shipped	NSParseErrorException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSParseErrorException	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-var	struck	NSPersianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
-var	struck	NSPointerToStructHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	open	NSPersianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	open	NSPointerToStructHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSPortDidBecomeInvalidNotification	NSPort	Low-Level Utilities / Sockets / Working with notifications	-	objc
 var	shipped	NSPortReceiveException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSPortSendException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSPortTimeoutException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	struck	NSPositiveCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
+var	open	NSPositiveCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSPresentationIntentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
-var	struck	NSPriorDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSPriorDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSProcessInfoPowerStateDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSProcessInfoPowerStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	swift-page
 var	open	NSProcessInfoThermalStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	objc
@@ -2936,20 +2942,20 @@ var	shipped	NSRangeException	NSException	App Support / Exceptions / Related Type
 var	shipped	NSRecoveryAttempterErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSRegistrationDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
 var	shipped	NSReplacementIndexAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting text attribute keys	-	objc
-var	struck	NSRepublicOfChinaCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	open	NSRepublicOfChinaCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSRunLoopCommonModes	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes / System Run Loop Modes	-	objc
 var	shipped	NSSecureUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
-var	struck	NSShortDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	struck	NSShortMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	struck	NSShortTimeDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	struck	NSShortWeekDayNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSShortDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSShortMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSShortTimeDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSShortWeekDayNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSStreamDataWrittenToMemoryStreamKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
 var	shipped	NSStreamFileCurrentOffsetKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
 var	shipped	NSStreamNetworkServiceType	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
 var	shipped	NSStreamNetworkServiceTypeBackground	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
 var	shipped	NSStreamNetworkServiceTypeCallSignaling	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
 var	shipped	NSStreamNetworkServiceTypeVideo	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	struck	NSStreamNetworkServiceTypeVoIP	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	deprecated	objc
+var	open	NSStreamNetworkServiceTypeVoIP	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	deprecated	objc
 var	shipped	NSStreamNetworkServiceTypeVoice	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
 var	shipped	NSStreamSOCKSErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	shipped	NSStreamSOCKSErrorDomain	NSStream	Low-Level Utilities / Streams / Constants	-	objc
@@ -3025,13 +3031,13 @@ var	shipped	NSTextCheckingPhoneKey	NSTextCheckingResult	Fundamentals / Pattern M
 var	shipped	NSTextCheckingStateKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 var	shipped	NSTextCheckingStreetKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 var	shipped	NSTextCheckingZIPKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-var	struck	NSThisDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	struck	NSThousandsSeparator	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
-var	struck	NSThreadWillExitNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
-var	struck	NSThreadWillExitNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
-var	struck	NSThumbnail1024x1024SizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys / Constants	deprecated	objc
-var	struck	NSTimeDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	struck	NSTimeFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSThisDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSThousandsSeparator	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
+var	open	NSThreadWillExitNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
+var	open	NSThreadWillExitNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
+var	open	NSThumbnail1024x1024SizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys / Constants	deprecated	objc
+var	open	NSTimeDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSTimeFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSURLAddedToDirectoryDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLApplicationIsScriptableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Application keys	-	objc
 var	shipped	NSURLAttributeModificationDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
@@ -3048,8 +3054,8 @@ var	shipped	NSURLContentAccessDateKey	NSURL	Fundamentals / URLs / Accessing Reso
 var	shipped	NSURLContentModificationDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLContentTypeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLCreationDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	struck	NSURLCredentialStorageChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
-var	struck	NSURLCredentialStorageChangedNotification	NSURLCredentialStorage	Networking / Authentication and credentials / Tracking credential storage changes	deprecated	swift-page
+var	shipped	NSURLCredentialStorageChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
+var	shipped	NSURLCredentialStorageChangedNotification	NSURLCredentialStorage	Networking / Authentication and credentials / Tracking credential storage changes	deprecated	swift-page
 var	open	NSURLCredentialStorageRemoveSynchronizableCredentials	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials / Options	-	objc
 var	shipped	NSURLCustomIconKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLDirectoryEntryCountKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Directory keys	-	objc
@@ -3060,7 +3066,7 @@ var	shipped	NSURLErrorBackgroundTaskCancelledReasonKey	NSURLSession	Networking /
 var	shipped	NSURLErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	shipped	NSURLErrorFailingURLErrorKey		Networking / Errors / Keys	-	objc
 var	shipped	NSURLErrorFailingURLPeerTrustErrorKey		Networking / Errors / Keys	-	objc
-var	struck	NSURLErrorFailingURLStringErrorKey		Networking / Errors / Keys	deprecated	objc
+var	open	NSURLErrorFailingURLStringErrorKey		Networking / Errors / Keys	deprecated	objc
 var	shipped	NSURLErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSURLErrorNetworkUnavailableReasonKey		Networking / Errors / Keys	-	objc
 var	shipped	NSURLFileAllocatedSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
@@ -3123,8 +3129,8 @@ var	shipped	NSURLNameKey	NSURL	Fundamentals / URLs / Accessing Resource Values /
 var	shipped	NSURLParentDirectoryURLKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Directory keys	-	objc
 var	shipped	NSURLPathKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLPreferredIOBlockSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
-var	struck	NSURLProtectionSpaceFTP	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Protocol types	deprecated	objc
-var	struck	NSURLProtectionSpaceFTPProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	deprecated	objc
+var	shipped	NSURLProtectionSpaceFTP	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Protocol types	deprecated	objc
+var	shipped	NSURLProtectionSpaceFTPProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	deprecated	objc
 var	shipped	NSURLProtectionSpaceHTTP	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Protocol types	-	objc
 var	shipped	NSURLProtectionSpaceHTTPProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	-	objc
 var	shipped	NSURLProtectionSpaceHTTPS	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Protocol types	-	objc
@@ -3138,11 +3144,11 @@ var	open	NSURLSessionTaskPriorityLow	NSURLSessionTask	Networking / Essentials / 
 var	open	NSURLSessionTransferSizeUnknown	NSURLSessionTask	Networking / Essentials / Obtaining task progress	-	objc
 var	open	NSURLSessionUploadTaskResumeData		Reference / Constants	-	objc
 var	shipped	NSURLTagNamesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	struck	NSURLThumbnailDictionaryKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys	deprecated	objc
-var	struck	NSURLThumbnailKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys	deprecated	objc
+var	shipped	NSURLThumbnailDictionaryKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys	deprecated	objc
+var	shipped	NSURLThumbnailKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys	deprecated	objc
 var	shipped	NSURLTotalFileAllocatedSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLTotalFileSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
-var	struck	NSURLTypeIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	deprecated	objc
+var	open	NSURLTypeIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	deprecated	objc
 var	shipped	NSURLUbiquitousItemContainerDisplayNameKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemDownloadRequestedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemDownloadingErrorKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
@@ -3151,15 +3157,15 @@ var	shipped	NSURLUbiquitousItemDownloadingStatusDownloaded	NSURL	Fundamentals / 
 var	shipped	NSURLUbiquitousItemDownloadingStatusKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemDownloadingStatusNotDownloaded	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
 var	shipped	NSURLUbiquitousItemHasUnresolvedConflictsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	struck	NSURLUbiquitousItemIsDownloadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Deprecated	deprecated	objc
+var	open	NSURLUbiquitousItemIsDownloadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Deprecated	deprecated	objc
 var	shipped	NSURLUbiquitousItemIsDownloadingKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemIsExcludedFromSyncKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemIsSharedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemIsSyncPausedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemIsUploadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemIsUploadingKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	struck	NSURLUbiquitousItemPercentDownloadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Deprecated	deprecated	objc
-var	struck	NSURLUbiquitousItemPercentUploadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Deprecated	deprecated	objc
+var	open	NSURLUbiquitousItemPercentDownloadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Deprecated	deprecated	objc
+var	open	NSURLUbiquitousItemPercentUploadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Deprecated	deprecated	objc
 var	shipped	NSURLUbiquitousItemSupportedSyncControlsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemUploadingErrorKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousSharedItemCurrentUserPermissionsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
@@ -3220,12 +3226,12 @@ var	shipped	NSURLVolumeUUIDStringKey	NSURL	Fundamentals / URLs / Accessing Resou
 var	open	NSUbiquitousKeyValueStoreChangeReasonKey	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
 var	open	NSUbiquitousKeyValueStoreChangedKeysKey	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
 var	open	NSUbiquitousKeyValueStoreDidChangeExternallyNotification	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
-var	struck	NSUbiquitousUserDefaultsCompletedInitialSyncNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
-var	struck	NSUbiquitousUserDefaultsDidChangeAccountsNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
-var	struck	NSUbiquitousUserDefaultsNoCloudAccountNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
+var	open	NSUbiquitousUserDefaultsCompletedInitialSyncNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
+var	open	NSUbiquitousUserDefaultsDidChangeAccountsNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
+var	open	NSUbiquitousUserDefaultsNoCloudAccountNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
 var	shipped	NSUbiquityIdentityDidChangeNotification	NSFileManager	Files and Data Persistence / File system operations / Working with notifications	-	swift-page
 var	shipped	NSUbiquityIdentityDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	struck	NSUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
+var	open	NSUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
 var	shipped	NSUndefinedKeyException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSUnderlyingErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	open	NSUndoCloseGroupingRunLoopOrdering	NSUndoManager	App Support / Undo / Working with run loops	-	objc
@@ -3252,12 +3258,12 @@ var	shipped	NSUnionOfSetsKeyValueOperator		Reference / Constants	-	objc
 var	open	NSUserActivityTypeBrowsingWeb	NSUserActivity	App Support / Activity Sharing / Browsing the web	-	objc
 var	shipped	NSUserDefaultsDidChangeNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Monitoring settings changes and issues	-	objc
 var	shipped	NSUserDefaultsSizeLimitExceededNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Monitoring settings changes and issues	-	objc
-var	struck	NSUserNotificationDefaultSoundName	NSUserNotification	App Support / User Notifications / Constants	deprecated	objc
-var	struck	NSWeekDayNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	struck	NSWillBecomeMultiThreadedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
-var	struck	NSWillBecomeMultiThreadedNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
+var	open	NSUserNotificationDefaultSoundName	NSUserNotification	App Support / User Notifications / Constants	deprecated	objc
+var	open	NSWeekDayNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSWillBecomeMultiThreadedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
+var	open	NSWillBecomeMultiThreadedNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
 var	shipped	NSXMLParserErrorDomain	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	objc
-var	struck	NSYearMonthWeekDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	open	NSYearMonthWeekDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSZeroPoint		Fundamentals / Geometry / Zero Constant	-	objc
 var	shipped	NSZeroRect		Fundamentals / Geometry / Zero Constant	-	objc
 var	shipped	NSZeroSize		Fundamentals / Geometry / Zero Constant	-	objc

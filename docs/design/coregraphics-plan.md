@@ -17,10 +17,21 @@ existed only in conversation while the tree said the opposite:
 3. **The surface is ours; only the engine is borrowable** (§5) — Apple's
    headers and documentation prose cannot be vendored or copied, so no
    library can *be* this API.
-4. **No deprecated APIs, as policy** — *"As with Foundation, do not
-   implement or expose deprecated APIs as policy."*
+4. **DEPRECATED APIs ARE IN SCOPE, as policy** (user, 2026-09-26, and it
+   SUPERSEDES this clause's earlier wording, which was *"as with Foundation, do
+   not implement or expose deprecated APIs as policy"*) — *"to support porting
+   older Mac applications, all items removed for being deprecated are
+   un-deprecated in Argentum Foundation, and added to the work list."* THE SAME
+   DECISION COVERS THIS DUPLICATION: a Cocoa-parity surface exists so that an
+   older application compiles against it, and the API such an application
+   actually calls is often the API Apple deprecated years later.
 5. **The deprecation vintage is the macOS 14 SDK** (user, 2026-09:
-   *"deprecated as of the macOS 14 SDK sounds reasonable to me"*).
+   *"deprecated as of the macOS 14 SDK sounds reasonable to me"*) — AND THE
+   VINTAGE IS NOW A **LABEL RATHER THAN A GATE**: the ledger's `why` column
+   records `deprecated` for a row Apple deprecates, and that row is OWED or
+   SHIPPED like any other. The vintage still matters for one thing, and it is
+   worth keeping for it: it says WHICH deprecation we are talking about, so a
+   symbol deprecated at 10.5 and one deprecated at 14.0 do not read alike.
 6. **AppKit IS PURE OBJECTIVE-C** (user, 2026-09-21: *"AppKit will be pure
    Objective-C."*) — Apple's `NS`-prefixed class names and Apple's semantics,
    built on this tree's Foundation, which is already Objective-C. This settles
@@ -33,11 +44,13 @@ existed only in conversation while the tree said the opposite:
 
 ## 2. The contract, stated so it can be checked
 
-> **The reference contract is the non-deprecated public API of the macOS 14
-> SDK.** A symbol is in scope if it is declared in a macOS 14 SDK header
-> and carries no deprecation for that vintage; a symbol deprecated at or
-> before 14.0 is **excluded by policy**, recorded with the version it was
-> deprecated at and its replacement where Apple names one.
+> **The reference contract is the public API of the macOS 14 SDK, DEPRECATED
+> SYMBOLS INCLUDED.** A symbol is in scope if it is declared in a macOS 14 SDK
+> header; where Apple deprecates it, the ledger records that as a LABEL
+> (`why` = `deprecated`) and the row is owed like any other. What the vintage
+> distinguishes is *introduced, deprecated, obsoleted* — the annotation is a
+> triple — so the record keeps all three and the replacement where Apple names
+> one, which is what a porting caller needs to see.
 
 Apple's annotation is a **triple**, not a boolean — measured:
 `SCREEN_CAPTURE_OBSOLETE(10.5, 14.0, 15.0)` is *introduced, deprecated,
@@ -50,7 +63,7 @@ vintage makes it machine-checkable rather than a per-symbol judgement.
 | State | Meaning |
 |---|---|
 | `shipped` / `open` | the ordinary ledger states (as Foundation's) |
-| `excluded-by-policy` | Apple deprecates it — policy 4 in §1 |
+| `deprecated` (a `why` label, not a state) | Apple deprecates it — **policy 4 in §1 was REVERSED on 2026-09-26**, so this labels a row that is `open`/`shipped` rather than excluding it |
 | `legacy-but-live` | Apple does **not** deprecate it but it is obsolete in practice |
 
 `legacy-but-live` needs a **separate, named decision**; it must not be

@@ -16,7 +16,9 @@ sweeps that disagree about what a ledger row IS would be worse than one.
 THE STATUS COLUMN IS THE LEDGER, AND IT HAS THREE VALUES:
 
   shipped  our public headers DECLARE it — and `--check` fails if they stop.
-  open     documented, not deprecated, and not ours. THIS IS THE WORK LIST.
+  open     documented, and not ours. THIS IS THE WORK LIST, and since 2026-09-26 IT INCLUDES
+           APPLE-DEPRECATED API: the deprecation ground was retired (see STRIKE_REASONS), so
+           such a row is owed and carries `deprecated` in its `why` column.
   struck   Apple deprecates it, so by the standing policy (no deprecated APIs,
            mirroring Foundation's) it is REMOVED: we neither ship it nor owe it.
 
@@ -91,7 +93,12 @@ STATUS_STRUCK = "struck"
 
 # Every strike reason, in one place (Foundation's lesson: a reason that does not
 # strike is a row that lies about where it stands).
-STRIKE_REASONS = ("deprecated", "swift-only")
+# AND THE `deprecated` REASON CAME OUT OF THIS TABLE (the user's policy, 2026-09-26): "to support porting older Mac
+# applications, all items removed for being deprecated are un-deprecated in Argentum Foundation, and added to the
+# work list." THE SAME DECISION COVERS THIS DUPLICATION, which is a Cocoa-parity surface a ported application
+# compiles against. So `deprecated` is an INFORMATIONAL `why` now - a row carrying it is judged SHIPPED or OPEN by
+# its declaration, and the column tells a reader what KIND of work it is.
+STRIKE_REASONS = ("swift-only",)
 
 
 def public_header_text():
@@ -165,13 +172,15 @@ def struck_reason(row):
         return "swift-only"
     if row.get("swift") and not is_cg_shaped(row["name"]):
         return "swift-only"
-    if row.get("deprecated"):
-        return "deprecated"
+    # `deprecated` USED TO BE HERE AND IS NOT ANY MORE (2026-09-26): see STRIKE_REASONS. `why_of` still reports it,
+    # as information.
     return None
 
 
 def why_of(row):
-    return struck_reason(row) or "-"
+    """The `why` column. A reason here does NOT strike unless it is in STRIKE_REASONS: `deprecated` is the
+    informational one, and it says what kind of work the row is."""
+    return struck_reason(row) or ("deprecated" if row.get("deprecated") else "-")
 
 
 def status_of(kind, name, why, text):
@@ -283,9 +292,12 @@ def refresh():
     out = []
     counts = {}
     reasons = {}
+    deprecated = 0
     for key in sorted(rows):
         r = rows[key]
         why = why_of(r)
+        if why == "deprecated":
+            deprecated = deprecated + 1
         st = status_of(r["kind"], r["name"], why, text)
         counts[(r["kind"], st)] = counts.get((r["kind"], st), 0) + 1
         if st == STATUS_STRUCK:
@@ -304,13 +316,22 @@ def refresh():
         "#",
         "# kind\tstatus\tname\towner\tfamily\twhy\tsrc",
         "#",
-        "# THE `deprecated` REASON IS A CONSERVATIVE SUPERSET, AND THAT IS MEASURED:",
-        "# Apple's index gives the BOOLEAN (137 of 3064 nodes) but its pages carry NO",
-        "# version — `platforms` reads {\"name\": \"macOS\", \"deprecated\": false} with no",
-        "# `deprecatedAt`. This file is therefore 'deprecated as of the SDK Apple's",
-        "# documentation described on the date above', a LATER vintage than the pinned",
-        "# macOS 14, so a post-14 deprecation strikes a row the contract would keep.",
-        "# Closing that needs the SDK headers — see the plan's §9.",
+        "# AND %d ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy," % deprecated,
+        "# 2026-09-26): to support porting older Mac applications, all items removed for being",
+        "# deprecated are un-deprecated and added to the work list. They carry `deprecated` in the",
+        "# `why` column, which says what KIND of work a row is, and they are open/shipped like any other.",
+        "#",
+        "# `deprecated` IS A MEASURED FLAG AND NO LONGER A GROUND (the user's policy, 2026-09-26):",
+        "# to support porting older Mac applications, all items removed for being deprecated are",
+        "# un-deprecated in Argentum Foundation and added to the work list - and this duplication,",
+        "# a Cocoa-parity surface a ported application compiles against, follows the same decision.",
+        "# SO A ROW CARRYING `deprecated` IS OWED OR SHIPPED LIKE ANY OTHER, and the flag is",
+        "# INFORMATION about what kind of work it is. THE MEASUREMENT STANDS: Apple's index gives",
+        "# the BOOLEAN (137 of 3064 nodes) and its pages carry NO version — `platforms` reads",
+        "# {\"name\": \"macOS\", \"deprecated\": false} with no `deprecatedAt` — so the flag is a",
+        "# CONSERVATIVE SUPERSET, 'deprecated as of the SDK Apple's documentation described on the",
+        "# date above', a LATER vintage than the pinned macOS 14. Closing that needs the SDK",
+        "# headers, and it matters MORE now: the flag no longer decides anything, it only labels.",
         "#",
         "# COREFOUNDATION CONTRIBUTES %d ROWS, AND ONLY THE CG-NAMED ONES. The CG" % cf_kept,
         "# value types are not CoreGraphics' to document — `CGPoint` lives at",
@@ -360,9 +381,10 @@ def check(strict=False):
     `shipped` row the headers no longer declare, or an `open` row they now do.
     Nobody has to decide anything, so they fail.
 
-    POLICY FINDINGS are symbols Apple deprecates that our headers still declare.
-    The standing policy says we do not ship those, but what to DO about one is a
-    decision, so they are reported and `--strict` makes them fail.
+    POLICY FINDINGS are symbols this ledger STRIKES that our headers still declare.
+    §11.5 says we do not ship those, but what to DO about one is a decision, so they
+    are reported and `--strict` makes them fail. (Deprecation is no longer such a
+    ground: see STRIKE_REASONS.)
     """
     text = public_header_text()
     rows = read_surface()
@@ -401,7 +423,7 @@ def check(strict=False):
         for line in twin:
             print("  " + line)
     if policy:
-        print("\n%d POLICY FINDING(S) — API Apple deprecates that we declare:\n" % len(policy))
+        print("\n%d POLICY FINDING(S) — API this ledger STRIKES that we declare:\n" % len(policy))
         for line in policy:
             print("  " + line)
     if bad:
