@@ -187,6 +187,36 @@ static NSRange fn_scheme_range(const char *bytes, size_t length)
 
 @implementation NSURL
 
+/* THE ONE KEY WHOSE VALUE IS NOT ITS OWN NAME: a scheme is a wire string ("file" in a file URL), not a
+ * resource key, and Apple's value for it is @"file". It is declared beside the keys because Apple declares it
+ * there, and defined with the value that makes it work. */
+NSString *const NSURLFileScheme = @"file";
+NSURLResourceKey NSURLIsMountTriggerKey = @"NSURLIsMountTriggerKey";
+NSURLResourceKey NSURLVolumeAvailableCapacityForImportantUsageKey = @"NSURLVolumeAvailableCapacityForImportantUsageKey";
+NSURLResourceKey NSURLVolumeAvailableCapacityForOpportunisticUsageKey = @"NSURLVolumeAvailableCapacityForOpportunisticUsageKey";
+NSURLResourceKey NSURLVolumeIsAutomountedKey = @"NSURLVolumeIsAutomountedKey";
+NSURLResourceKey NSURLVolumeIsBrowsableKey = @"NSURLVolumeIsBrowsableKey";
+NSURLResourceKey NSURLVolumeIsInternalKey = @"NSURLVolumeIsInternalKey";
+NSURLResourceKey NSURLVolumeIsJournalingKey = @"NSURLVolumeIsJournalingKey";
+NSURLResourceKey NSURLVolumeLocalizedFormatDescriptionKey = @"NSURLVolumeLocalizedFormatDescriptionKey";
+NSURLResourceKey NSURLVolumeMaximumFileSizeKey = @"NSURLVolumeMaximumFileSizeKey";
+NSURLResourceKey NSURLVolumeMountFromLocationKey = @"NSURLVolumeMountFromLocationKey";
+NSURLResourceKey NSURLVolumeSubtypeKey = @"NSURLVolumeSubtypeKey";
+NSURLResourceKey NSURLVolumeSupportsAccessPermissionsKey = @"NSURLVolumeSupportsAccessPermissionsKey";
+NSURLResourceKey NSURLVolumeSupportsAdvisoryFileLockingKey = @"NSURLVolumeSupportsAdvisoryFileLockingKey";
+NSURLResourceKey NSURLVolumeSupportsCasePreservedNamesKey = @"NSURLVolumeSupportsCasePreservedNamesKey";
+NSURLResourceKey NSURLVolumeSupportsCompressionKey = @"NSURLVolumeSupportsCompressionKey";
+NSURLResourceKey NSURLVolumeSupportsExtendedSecurityKey = @"NSURLVolumeSupportsExtendedSecurityKey";
+NSURLResourceKey NSURLVolumeSupportsFileProtectionKey = @"NSURLVolumeSupportsFileProtectionKey";
+NSURLResourceKey NSURLVolumeSupportsImmutableFilesKey = @"NSURLVolumeSupportsImmutableFilesKey";
+NSURLResourceKey NSURLVolumeSupportsJournalingKey = @"NSURLVolumeSupportsJournalingKey";
+NSURLResourceKey NSURLVolumeSupportsRenamingKey = @"NSURLVolumeSupportsRenamingKey";
+NSURLResourceKey NSURLVolumeSupportsRootDirectoryDatesKey = @"NSURLVolumeSupportsRootDirectoryDatesKey";
+NSURLResourceKey NSURLVolumeSupportsSwapRenamingKey = @"NSURLVolumeSupportsSwapRenamingKey";
+NSURLResourceKey NSURLVolumeSupportsZeroRunsKey = @"NSURLVolumeSupportsZeroRunsKey";
+NSURLResourceKey NSURLVolumeURLForRemountingKey = @"NSURLVolumeURLForRemountingKey";
+NSURLResourceKey NSURLVolumeUUIDStringKey = @"NSURLVolumeUUIDStringKey";
+
 /* THE ONE CONSTRUCTOR THE OTHERS GO THROUGH. It is deliberately private-ish
  * (declared here, not in the header): a URL is made from a string or from a
  * path, and both go through the same parse so they cannot disagree. */

@@ -34,7 +34,8 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_urlcomponents"
 CHECKS = ("components-parse-the-field", "components-decodes-and-keeps", "components-render",
           "components-query-items", "components-ipv6-and-port", "components-url-and-copy",
-          "rfc3986-normal-examples", "rfc3986-abnormal-examples", "url-relative-door")
+          "rfc3986-normal-examples", "rfc3986-abnormal-examples", "url-relative-door",
+          "resource-keys-are-their-wire-names")
 
 
 class Case(BaseCase):

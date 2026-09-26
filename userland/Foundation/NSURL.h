@@ -473,6 +473,40 @@ typedef enum {
 	NSURLBookmarkResolutionWithoutImplicitStartAccessing = 1 << 3
 } NSURLBookmarkResolutionOptions;
 
+/* ---- THE FILE-SYSTEM AND VOLUME RESOURCE KEYS (the coverage slice) --------------------------------
+ *
+ * THE NAMES ARE APPLE'S AND THE VALUES ARE THE SAME STRINGS, because a resource key is a WIRE NAME: a
+ * caller asks -getResourceValue:forKey: with it, and a key answering a different string would be a
+ * different question. No key here carries any value other than its own name, and no door in this system
+ * reads them yet - they ship as the vocabulary of a door that does not exist, and this comment says so
+ * rather than implying one. */
+extern NSString *const NSURLFileScheme;   /* @"file": a scheme, not a key - Apple declares it here */
+extern NSURLResourceKey NSURLIsMountTriggerKey;
+extern NSURLResourceKey NSURLVolumeAvailableCapacityForImportantUsageKey;
+extern NSURLResourceKey NSURLVolumeAvailableCapacityForOpportunisticUsageKey;
+extern NSURLResourceKey NSURLVolumeIsAutomountedKey;
+extern NSURLResourceKey NSURLVolumeIsBrowsableKey;
+extern NSURLResourceKey NSURLVolumeIsInternalKey;
+extern NSURLResourceKey NSURLVolumeIsJournalingKey;
+extern NSURLResourceKey NSURLVolumeLocalizedFormatDescriptionKey;
+extern NSURLResourceKey NSURLVolumeMaximumFileSizeKey;
+extern NSURLResourceKey NSURLVolumeMountFromLocationKey;
+extern NSURLResourceKey NSURLVolumeSubtypeKey;
+extern NSURLResourceKey NSURLVolumeSupportsAccessPermissionsKey;
+extern NSURLResourceKey NSURLVolumeSupportsAdvisoryFileLockingKey;
+extern NSURLResourceKey NSURLVolumeSupportsCasePreservedNamesKey;
+extern NSURLResourceKey NSURLVolumeSupportsCompressionKey;
+extern NSURLResourceKey NSURLVolumeSupportsExtendedSecurityKey;
+extern NSURLResourceKey NSURLVolumeSupportsFileProtectionKey;
+extern NSURLResourceKey NSURLVolumeSupportsImmutableFilesKey;
+extern NSURLResourceKey NSURLVolumeSupportsJournalingKey;
+extern NSURLResourceKey NSURLVolumeSupportsRenamingKey;
+extern NSURLResourceKey NSURLVolumeSupportsRootDirectoryDatesKey;
+extern NSURLResourceKey NSURLVolumeSupportsSwapRenamingKey;
+extern NSURLResourceKey NSURLVolumeSupportsZeroRunsKey;
+extern NSURLResourceKey NSURLVolumeURLForRemountingKey;
+extern NSURLResourceKey NSURLVolumeUUIDStringKey;
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSURL_H */

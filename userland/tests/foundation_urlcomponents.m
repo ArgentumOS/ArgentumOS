@@ -214,6 +214,19 @@ int main(void)
 			relative != nil ? [relative absoluteString] : @"(nil)", plain]);
 	}
 
+	{
+		/* A RESOURCE KEY IS A WIRE NAME, so the check is that each answers the STRING Apple's header answers -
+		 * a key that answered a different string would ask a different question - and that the one member of
+		 * this family that is not a key at all, NSURLFileScheme, answers "file" rather than its own name. */
+		check("resource-keys-are-their-wire-names",
+		      [NSURLVolumeUUIDStringKey isEqualToString:@"NSURLVolumeUUIDStringKey"] &&
+		      [NSURLVolumeIsInternalKey isEqualToString:@"NSURLVolumeIsInternalKey"] &&
+		      [NSURLIsMountTriggerKey isEqualToString:@"NSURLIsMountTriggerKey"] &&
+		      [NSURLFileScheme isEqualToString:@"file"] &&
+		      [NSURLFileScheme isEqualToString:@"NSURLFileScheme"] == 0,
+		      @"three resource keys read back as themselves and NSURLFileScheme reads back as \"file\"");
+	}
+
 	printf("FOUNDATION-URLCOMPONENTS RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

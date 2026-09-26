@@ -12972,6 +12972,20 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.5 — THE COVERAGE SLICE, FOURTH LANDING: NSURL'S 28 ROWS (2026-09-24)
+
+**26 OF NSURL'S 28 OPEN ROWS ARE FILE-SYSTEM AND VOLUME RESOURCE KEYS** (the rest are the bookmark-options
+typealias and one key already declared), and they ship: each is a constant whose value is the SAME STRING as its
+name, because a resource key is a WIRE NAME - a caller asks -getResourceValue:forKey: with it, and a key that
+answered a different string would be a different question. No door in this system reads them yet, which the
+header says rather than implying one.
+
+**AND THE GENERATOR GOT ONE WRONG, WHICH THE CHECK NOW CATCHES.** `NSURLFileScheme` was swept up with the keys
+and given its own name as a value; it is not a key at all but a SCHEME, and Apple's value for it is `@"file"`.
+The header and the definition are corrected and the check asserts both halves - three keys read back as
+themselves, and `NSURLFileScheme` reads back as `"file"` AND NOT as `"NSURLFileScheme"`. That second half is
+the one a name-only sweep would have missed, and it is the difference between a wire value and a label.
+
 ## §62.4 — THE UNCAUGHT-EXCEPTION HANDLER, AND WHERE THE TRUTH TURNED OUT TO LIVE (2026-09-24)
 
 **§62.3 NAMED A GAP; THIS CLOSES IT, AND THE SEARCH IS THE INTERESTING PART.** `-raise` calls
