@@ -185,6 +185,7 @@
 #import <Foundation/NSTask.h>
 #import <Foundation/NSURLRequest.h>
 #import <Foundation/NSURLResponse.h>
+#import <Foundation/NSURLConnection.h>
 #import <Foundation/NSCachedURLResponse.h>
 #import <Foundation/NSURLCache.h>
 #import <Foundation/NSURLProtocol.h>

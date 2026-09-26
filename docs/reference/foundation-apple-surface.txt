@@ -34,8 +34,8 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  172   open   53   struck   48
-#   protocol   shipped   25   open   15   struck    5
+#   class      shipped  173   open   52   struck   48
+#   protocol   shipped   27   open   13   struck    5
 #   macro      shipped  113   open    8   struck  132
 #   enum       shipped  130   open   21   struck    9
 #   case       shipped 1068   open  159   struck   75
@@ -1544,7 +1544,7 @@ class	shipped	NSURL		Fundamentals / URLs	-	objc
 class	shipped	NSURLAuthenticationChallenge		Networking / Authentication and credentials	-	objc
 class	shipped	NSURLCache		Networking / Cache behavior	-	objc
 class	shipped	NSURLComponents		Fundamentals / URLs	-	objc
-class	open	NSURLConnection		Networking / Legacy / URL Connection	deprecated	objc
+class	shipped	NSURLConnection		Networking / Legacy / URL Connection	deprecated	objc
 class	shipped	NSURLCredential		Networking / Authentication and credentials	-	objc
 class	shipped	NSURLCredentialStorage		Networking / Authentication and credentials	-	objc
 class	open	NSURLDownload		Networking / Legacy / URL Download	deprecated	objc
@@ -2248,8 +2248,8 @@ protocol	shipped	NSSecureCoding		Files and Data Persistence / Adopting Codabilit
 protocol	open	NSSpellServerDelegate		Fundamentals / Spelling and Grammar	-	objc
 protocol	shipped	NSStreamDelegate		Low-Level Utilities / Streams	-	objc
 protocol	open	NSURLAuthenticationChallengeSender		Networking / Legacy / URL Authentication Challenge Sender	deprecated	objc
-protocol	open	NSURLConnectionDataDelegate		Networking / Legacy / URL Connection	deprecated	objc
-protocol	open	NSURLConnectionDelegate		Networking / Legacy / URL Connection	deprecated	objc
+protocol	shipped	NSURLConnectionDataDelegate		Networking / Legacy / URL Connection	deprecated	objc
+protocol	shipped	NSURLConnectionDelegate		Networking / Legacy / URL Connection	deprecated	objc
 protocol	open	NSURLConnectionDownloadDelegate		Networking / Legacy / URL Connection	deprecated	objc
 protocol	open	NSURLDownloadDelegate		Networking / Legacy / URL Download	deprecated	objc
 protocol	open	NSURLHandleClient		Networking / Legacy / URL Handle	deprecated	objc

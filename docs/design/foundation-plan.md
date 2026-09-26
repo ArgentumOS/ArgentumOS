@@ -3555,7 +3555,7 @@ vanishing.
 | **Networking / Cache behavior** | all classes shipped | — |
 | **Networking / Cookies** | all classes shipped | — |
 | **Networking / Essentials** | 1 open | `NSURLSessionDownloadDelegate` |
-| **Networking / Legacy** | 9 open | `NSURLAuthenticationChallengeSender`, `NSURLConnection`, `NSURLConnectionDataDelegate`, `NSURLConnectionDelegate`, `NSURLConnectionDownloadDelegate`, `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` |
+| **Networking / Legacy** | 6 open | `NSURLAuthenticationChallengeSender`, `NSURLConnectionDownloadDelegate`, `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` |
 | **Networking / Local Network Services** | ALL STRUCK: `NSNetService`, `NSNetServiceDelegate` | — |
 | **Networking / Requests and responses** | all classes shipped | — |
 | **Networking / Service Discovery** | ALL STRUCK: `NSNetServiceBrowser`, `NSNetServiceBrowserDelegate` | — |
@@ -12976,6 +12976,82 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.25 — `NSURLConnection` LANDS: THE FIRST PAYMENT ON §62.24'S WORK LIST, AS A FACADE (2026-09-26)
+
+**WHAT SHIPPED.** Apple's older way to perform an exchange — the class, `NSURLConnectionDelegate` and
+`NSURLConnectionDataDelegate` — landed as `userland/Foundation/NSURLConnection.{h,m}`, and the ledger's three
+rows for them moved from `open`/`deprecated` to `shipped`. **`NSURLConnectionDownloadDelegate` deliberately did
+NOT**: it is its own ledger row, so the slice boundary (the download path over `NSURLSessionDownloadTask`) is
+expressible in the ledger rather than hidden in a TODO — that protocol and its path are slice 2.
+
+**IT IS A FACADE, NOT A TRANSPORT, AND THAT WAS THE WHOLE DESIGN.** The loading system already exists
+(§46 request/response, §52 the protocol, §53 the session, the libcurl bridge): the connection runs an
+`NSURLSessionDataTask` and TRANSLATES the session's callbacks into the connection's delegate protocol. Writing a
+second byte mover would have put a transfer's semantics in two places, and the second one would be the untested
+one. Three consequences are load-bearing:
+* **STREAMING IS REAL, and it is why each connection owns a PRIVATE session** (with itself as the session's
+  delegate). A session holds ONE delegate, so the completion-handler form — which hands over the whole body at
+  the end — would have made `-connection:didReceiveData:` fire once with everything and turned a documented
+  streaming contract into a lie.
+* **THE REDIRECT DOOR IS AN IDENTITY MAPPING, NOT AN APPROXIMATION**: `-connection:willSendRequest:
+  redirectResponse:` RETURNS the request to run next and `nil` means "do not follow", which is literally the
+  session's own `willPerformHTTPRedirection:newRequest:completionHandler:` contract (`nil` = do not follow). No
+  rule is re-invented.
+* **THE SYNCHRONOUS DOOR USES THE SHARED SESSION AND A CONDITION VARIABLE** (`+sendSynchronousRequest:
+  returningResponse:error:` — Apple-deprecated, and in scope by §62.24): there is no delegate to stream to, so
+  the completion-handler form is right there, and the wait is a hand-rolled pthread pair (the idiom
+  `NSFileCoordinator` already uses).
+
+**TWO DEVIATIONS, BOTH WITH MEASURED GROUNDS (§11.6's register):** (1) THE DELEGATE IS CALLED ON THE LOADING
+SYSTEM'S THREAD, not on "the thread whose run loop you started the connection on" — `NSRunLoop.h` names its own
+absence ("run-loop sources and observers, `-performSelector:…` and the block [forms]"), so there is NO door to
+hand work to a run loop from another thread, which is what Apple's delivery contract is built on;
+`-setDelegateQueue:` IS honoured, so a caller that needs a specific thread has a way to name it. (2)
+`-scheduleInRunLoop:forMode:` and `-unscheduleFromRunLoop:` are REFUSED BY NAME for the same reason: they exist
+to direct delivery that cannot be directed, and a no-op would let a caller believe it had arranged something.
+
+**REFUSED BY NAME, WITH GROUNDS** (each asserted absent in the probe's inventory): the FIVE authentication doors
+(`-connection:willSendRequestForAuthenticationChallenge:`, `-connection:didReceiveAuthenticationChallenge:`,
+`-connection:didCancelAuthenticationChallenge:`, `-connection:canAuthenticateAgainstProtectionSpace:`,
+`-connectionShouldUseCredentialStorage:`) — **a challenge cannot be answered from a delegate here** because
+`NSURLAuthenticationChallenge` ships no `-sender` (its own header records that under §48.1, and §62.24 makes
+`-sender` AN OWED ROW — landing it is what would make those five doors implementable: that is the work, not a
+comment); `-connection:needNewBodyStream:` (the transport does not consume `HTTPBodyStream`);
+`-connection:didSendBodyData:totalBytesWritten:totalBytesExpectedToWrite:` (the session uploads from DATA, so
+there is no progressive upload to report); `-connection:willCacheResponse:` (the session offers no
+cache-decision door to translate).
+
+**AND ONE DEVIATION A CALLER MEETS AT THE DOOR:** `+canHandleRequest:` answers about WHAT IS REGISTERED. This
+library ships an EMPTY `NSURLProtocol` registry (its rule is Apple's, "+registerClass: before starting any URL
+loading"), so a fresh process answers NO even for `http` until a transport is registered — unlike Apple, whose
+built-in protocols are always there. The header says so; the alternative, a hardcoded scheme list, would answer
+YES for schemes nothing can run.
+
+**THE PROBE: `foundation_urlconnection`, 15 checks, 15/15 GREEN, and SERVER-FREE BY DESIGN.** The round trips use
+`file://` (a real transfer through NSURLConnection -> NSURLSession -> NSURLProtocol -> the bridge, with nothing
+to start first), and the one door that needs a 3xx — the redirect — is tested DIRECTLY through the runtime: the
+translation is a pure function of (delegate, proposed request, response), exercised with three answerers (a
+request, nil, and a delegate that implements nothing). The probe also asserts the refusals one by one, which is
+§11.2's rule that a door declared and never called is worse than an absent one. `tests/cases/foundation_urlconnection.py`
+is 6/6, and the sibling `foundation_url` was AMENDED rather than left: its `url-loading-system-absent` check had
+been made half-false for the FOURTH time (this time by a POLICY change rather than by a W7 slice), so the
+`NSURLConnection` conjunct moved out and `urlconnection-shipped` was asserted beside it — the file's own rule.
+
+**THREE BUGS, ALL OF THEM MINE, AND ONE OF THEM WORTH THE WHOLE EXERCISE:**
+* **`startImmediately` WAS TAKEN AND NEVER USED** in the designated initializer, so `+connectionWithRequest:
+  delegate:` — the common door — created a connection that NOTHING EVER STARTED. It reads as a hang, not as a
+  mistake, and the probe found it on its first green-ish run. Fixed, and the parameter's reason is now written
+  where it is honoured.
+* **THE PROBE'S OWN RECORDER BUILT ITS SEQUENCE WITH A MESSAGE TO NIL** (`order = [order stringByAppendingString:@"R"]`
+  on a nil `order` stays nil), so `the-calls-arrive-in-order` read `(null)` while every count was right.
+* **A BULK EDIT REWROTE A HELPER'S OWN BODY INTO A SELF-CALL** (`fn_fileURL` calling `fn_fileURL`), i.e. infinite
+  recursion — a stack-overflow crash whose fault (the stack's guard page, then an instruction-fetch fault, the
+  address moving with the stack top across runs) READS EXACTLY LIKE A LIBRARY DEFECT. I misattributed it twice,
+  first to `+[NSURL fileURLWithPath:]` and then to `writeToFile:atomically:`, before instrumenting either side of
+  the statement localized it to my own function. THE LESSON IS THE PROJECT'S OLD ONE, RESTATED: instrument at the
+  writer before theorizing about the library — and note that a *plausible* library defect is exactly what a
+  self-inflicted recursion looks like from the outside.
 
 ## §62.24 — THE DEPRECATION GROUND IS RETIRED: DEPRECATED API IS A PORTING TARGET, NOT AN EXCLUSION (2026-09-26)
 

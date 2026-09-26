@@ -108,22 +108,35 @@ int main(void)
 		 * distinction the request/response values already rest on.
 		 */
 		check("url-loading-system-absent",
-		      objc_getClass("NSURLConnection") == NULL &&
 		      ![NSURL respondsToSelector:sel_registerName(
 			  "URLByResolvingBookmarkData:options:relativeToURL:"
 			  "bookmarkDataIsStale:error:")],
-		      "the URL LOADING system is still absent: no connection class");
+		      "what is still absent from the loading system: the bookmark-resolution door");
 
 		/* AND THE SESSION ARRIVED, which is W7 slice 2c - THE THIRD TIME THIS ONE CHECK HAS BEEN MADE
 		 * HALF-FALSE, after NSURLRequest (slice 1) and NSURLProtocol (slice 2a). The rule has not
 		 * changed: an absence assertion is a fact about the TREE, and a landing that changes the tree
 		 * revisits it - so the arrival is asserted beside the absence rather than only subtracted from
-		 * it. */
+		 * it. AND IT HAS NOW HAPPENED A FOURTH TIME, WITH A NEW CAUSE: `NSURLConnection` arrived by
+		 * §62.24 (the user's policy of 2026-09-26 retired the deprecation ground and put that family on
+		 * the work list) rather than by a W7 slice - the first arrival in this file that came from a
+		 * POLICY change, which is why the arrival is asserted below with its own row in the ledger. */
 		check("url-session-shipped",
 		      objc_getClass("NSURLSession") != NULL &&
 		      objc_getClass("NSURLSessionConfiguration") != NULL &&
 		      objc_getClass("NSURLSessionTask") != NULL,
 		      "the session family ships (W7 slice 2c): the session, its configuration and a task");
+
+		/* AND THE CONNECTION ARRIVED, WHICH IS §62.25: the deprecated family is a PORTING TARGET now, so
+		 * the older door ships beside the newer one rather than instead of it. Asserted here because this
+		 * file is where the loading system's shape is stated, and asserted BESIDE the absence above for
+		 * the reason the comment gives. */
+		check("urlconnection-shipped",
+		      objc_getClass("NSURLConnection") != NULL &&
+		      [(id)objc_getClass("NSURLConnection") respondsToSelector:sel_registerName(
+			  "sendSynchronousRequest:returningResponse:error:")],
+		      "NSURLConnection ships (§62.25): the first row of §62.24's work list to land, facade over "
+		      "the session rather than a second transport");
 
 		/* AND THE SEAM ARRIVED, WHICH IS SLICE 2a: an NSURLProtocol subclass is how ANY protocol plugs
 		 * in, so the plug-in point comes before the transport that will be its first implementation.

@@ -31,6 +31,7 @@ PROBE = "/System/Shared/tests/foundation_url"
 CHECKS = ("url-parse", "url-refusals", "url-loading-system-absent", "url-request-values-shipped",
           "urlprotocol-seam-shipped", "url-session-shipped", "url-shipped", "url-file", "url-file-refusals",
           "url-append-path", "url-delete-path", "url-equality", "url-identity",
+          "urlconnection-shipped",
           "cross-tu")
 
 

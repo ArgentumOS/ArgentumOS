@@ -173,6 +173,7 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSBundle.m \
 	$(FOUNDATION_SRC)/NSURLRequest.m \
 	$(FOUNDATION_SRC)/NSURLResponse.m \
+	$(FOUNDATION_SRC)/NSURLConnection.m \
 	$(FOUNDATION_SRC)/NSCachedURLResponse.m \
 	$(FOUNDATION_SRC)/NSURLProtocol.m \
 	$(FOUNDATION_SRC)/NSAttributedString.m \
@@ -252,6 +253,7 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSPredicate.h \
 	$(FOUNDATION_SRC)/NSURLRequest.h \
 	$(FOUNDATION_SRC)/NSURLResponse.h \
+	$(FOUNDATION_SRC)/NSURLConnection.h \
 	$(FOUNDATION_SRC)/NSCachedURLResponse.h \
 	$(FOUNDATION_SRC)/NSURLProtocol.h \
 	$(FOUNDATION_SRC)/FNCURLURLProtocol.h \
@@ -1169,6 +1171,16 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_urlrequest.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlrequest"
+	# foundation_urlconnection: §62.25's acceptance - the DEPRECATED family that §62.24's policy put back
+	# on the work list. A FACADE over the session, so the checks are: a real transfer (through file://,
+	# which needs no server), the order of the delegate calls, and the redirect translation asked
+	# directly through the runtime because a 3xx needs a server this probe deliberately avoids.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_urlconnection.m -o .build/probe-foundation_urlconnection.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlconnection.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlconnection"
 	# foundation_urlprotocol: W7 slice 2a's acceptance - THE SEAM AND THE CACHED VALUE. ONE unit, only
 	# <Foundation/Foundation.h>, and NO transport anywhere: what is asserted is the plug-in point (the
 	# base's documented defaults, the registration order, the request-property table's identity rule) and
