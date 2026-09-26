@@ -148,6 +148,7 @@ typedef NS_ENUM(NSInteger, NSURLSessionTaskState) {
 {
 	NSURL *_location;
 	void (^_downloadHandler)(NSURL *, NSURLResponse *, NSError *);
+	int64_t _resumeOffset;		/* the bytes already held when this task RESUMED a transfer (§62.31) */
 }
 
 /* FNX: the session's own doors, in the group NSURLSessionTask documents. */
@@ -162,6 +163,28 @@ typedef NS_ENUM(NSInteger, NSURLSessionTaskState) {
 
 /* non-nil once the body has been written; the caller moves the file. */
 @property (nullable, readonly, copy) NSURL *location;
+
+/* STOP, AND KEEP WHAT ARRIVED SO THE TRANSFER CAN BE CONTINUED (§62.31). The handler is called with the resume
+ * data - or with NIL when there is nothing to resume (nothing arrived, or the task never started), which is
+ * Apple's rule and the reason the parameter is nullable. The data is OPAQUE: it is this library's own packing
+ * (a plist of the request, the offset and the bytes so far) and a caller only ever hands it back to
+ * `-downloadTaskWithResumeData:`. */
+- (void)cancelByProducingResumeData:(void (^)(NSData * _Nullable resumeData))completionHandler;
+
+/* FNX: the packing, exposed because the session has to build the door above out of it - and because a probe
+ * can then show what the opaque blob is made of rather than trusting it. Nil when there is nothing to resume. */
+- (nullable NSData *)fnResumeData;
+
+/* FNX: the session's own door for a RESUMED task, which is the one that carries an offset. */
+- (instancetype)fnInitWithResumeData:(NSData *)resumeData
+			  identifier:(NSUInteger)identifier
+		     downloadHandler:(nullable void (^)(NSURL *location,
+							NSURLResponse *response,
+							NSError *error))handler;
+
+/* THE OFFSET A RESUMED TASK STARTED FROM, and zero for one that started from the beginning - which is why the
+ * delegate door is only ever told about a task whose offset is not zero. */
+@property (readonly) int64_t fnResumeOffset;
 
 @end
 

@@ -50,6 +50,11 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/* THE KEY A FAILED DOWNLOAD'S ERROR CARRIES ITS RESUME DATA UNDER (§62.31): Apple's name, and the reason a
+ * caller can recover from a dropped connection without ever having called `-cancelByProducingResumeData:` -
+ * the transfer failed, and the ERROR ITSELF says how to continue it. */
+extern NSString * const NSURLSessionDownloadTaskResumeData;
+
 @class NSURLSession;
 
 @class NSURLAuthenticationChallenge;
@@ -266,11 +271,9 @@ didReceiveResponse:(NSURLResponse *)response
  * THE PROGRESS DOOR IS OPTIONAL AND THE ASYMMETRY IS THE POINT: a delegate may care only about the finished
  * file, or only about how the transfer is going, and each is a complete answer on its own.
  *
- * AND APPLE'S THIRD DOOR IS REFUSED BY NAME RATHER THAN DECLARED AND NEVER CALLED:
- * `-URLSession:downloadTask:didResumeAtOffset:expectedTotalBytes:` needs a RESUMABLE transfer, and this
- * session has none - it ships no `-downloadTaskWithResumeData:`, so a download can only start from the
- * beginning. A declared door nothing can call is worse than an absent one (§11.2), and the ledger's
- * `NSURLSessionDownloadTaskResumeData` row stays `open` for the same reason.
+ * AND APPLE'S THIRD DOOR SHIPS NOW (§62.31), BECAUSE THE SESSION GAINED THE RESUMABLE TRANSFERS IT NEEDS:
+ * `-URLSession:downloadTask:didResumeAtOffset:expectedTotalBytes:` is sent when a task built from resume data
+ * starts, and the resume data comes from the task's own `-cancelByProducingResumeData:`.
  */
 @protocol NSURLSessionDownloadDelegate <NSURLSessionTaskDelegate>
 
@@ -287,6 +290,15 @@ didFinishDownloadingToURL:(NSURL *)location;
        didWriteData:(int64_t)bytesWritten
   totalBytesWritten:(int64_t)totalBytesWritten
 totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite;
+
+/* IT RESUMED, AND FROM WHERE: sent ONCE, when a task built from resume data starts - before any chunk. The
+ * offset is the bytes the resumed transfer already held, and `expectedTotalBytes` is the whole body's size when
+ * the interrupted transfer had learned it (0 when it had not, which is why the header states that rather than
+ * leaving a caller to read 0 as "no body"). */
+- (void)URLSession:(NSURLSession *)session
+      downloadTask:(NSURLSessionDownloadTask *)downloadTask
+didResumeAtOffset:(int64_t)fileOffset
+expectedTotalBytes:(int64_t)expectedTotalBytes;
 
 @end
 
@@ -389,6 +401,16 @@ totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite;
 				    completionHandler:(void (^)(NSURL *location,
 								NSURLResponse *response,
 								NSError *error))completionHandler;
+
+/* CONTINUE A DOWNLOAD THAT WAS STOPPED, FROM THE DATA THE INTERRUPTED TASK PRODUCED
+ * (`-cancelByProducingResumeData:`). THE DATA IS OPAQUE AND THE SESSION IS WHAT GIVES IT MEANING: a task built
+ * from it carries the bytes already held and asks the server for the REST. A BLOB THIS LIBRARY DID NOT WRITE
+ * MAKES THESE DOORS RETURN NIL rather than a task built from whatever it happened to contain. */
+- (NSURLSessionDownloadTask *)downloadTaskWithResumeData:(NSData *)resumeData;
+- (NSURLSessionDownloadTask *)downloadTaskWithResumeData:(NSData *)resumeData
+				      completionHandler:(void (^)(NSURL *location,
+								  NSURLResponse *response,
+								  NSError *error))completionHandler;
 
 /* THE TASKS THIS SESSION HAS MADE, grouped the way Apple groups them. The upload and download arrays are
  * ALWAYS EMPTY here, because those classes are not shipped — see the header above. */

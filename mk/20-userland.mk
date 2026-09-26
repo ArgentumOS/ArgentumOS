@@ -1183,6 +1183,17 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_urlconnection.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlconnection"
+	# foundation_downloadresume: §62.31's acceptance - RESUME end to end, WITH A REAL SERVER. The probe is
+	# the server: it sends half a body and then STALLS mid-transfer (which is what makes the cancel
+	# deterministic), resumes from the data its own cancel produced, and asserts the resumed request carries
+	# `Range: bytes=10-`, that the delegate was told the offset, and that the finished file is the WHOLE body.
+	# A third leg drops the connection on purpose, so the error's own resume-data key is exercised too.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_downloadresume.m -o .build/probe-foundation_downloadresume.o
+	$(MUSL64_OBJC) .build/probe-foundation_downloadresume.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_downloadresume"
 	# foundation_urlprotocol: W7 slice 2a's acceptance - THE SEAM AND THE CACHED VALUE. ONE unit, only
 	# <Foundation/Foundation.h>, and NO transport anywhere: what is asserted is the plug-in point (the
 	# base's documented defaults, the registration order, the request-property table's identity rule) and

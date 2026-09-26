@@ -21,6 +21,7 @@
 /* THE ERROR NAMES THE TASK REPORTS (§56): -cancel's code and the body-file write failure are constants now
  * rather than literals with the names in comments. */
 #import <Foundation/NSURLError.h>
+#import <Foundation/NSPropertyListSerialization.h>	/* the resume blob is a plist (§62.31) */
 #import <Foundation/NSString.h>
 
 @implementation NSURLSessionTask
@@ -221,8 +222,114 @@
 
 - (NSURL *)location { return _location; }
 
+- (int64_t)fnResumeOffset { return _resumeOffset; }
+
+/* --- RESUME (§62.31) --------------------------------------------------------------------------------
+ *
+ * THE PACKING IS THIS LIBRARY'S OWN AND IT IS A PLIST, which is the honest choice for something APPLE DECLARES
+ * OPAQUE: a caller never reads it, and a plist is a format this library already carries
+ * (NSPropertyListSerialization) rather than a private byte layout nobody can inspect. It holds the URL, the
+ * method, the body if there was one, HOW MANY BYTES ARRIVED, and those bytes - so a resumed task can rebuild
+ * the request and continue the body rather than starting over.
+ *
+ * AND NIL MEANS NOTHING TO RESUME, which is a real answer rather than a failure: a task cancelled before its
+ * first byte has no partial body, and Apple's own contract makes the resume data nullable for exactly that.
+ */
+- (NSData *)fnResumeData
+{
+	NSMutableDictionary *fields;
+	NSURL *url = [[self currentRequest] URL];
+	NSData *plist;
+	NSError *error = nil;
+
+	if (_receivedData == nil || [(_receivedData) length] == 0 || url == nil) {
+		return nil;
+	}
+	fields = [NSMutableDictionary dictionary];
+	[fields setObject:[url absoluteString] forKey:@"URL"];
+	[fields setObject:[[self currentRequest] HTTPMethod] forKey:@"Method"];
+	[fields setObject:[NSNumber numberWithLongLong:(long long)[(_receivedData) length]]
+		   forKey:@"Offset"];
+	[fields setObject:_receivedData forKey:@"Data"];
+	if (_countOfBytesExpectedToReceive > 0) {
+		[fields setObject:[NSNumber numberWithLongLong:_countOfBytesExpectedToReceive]
+			   forKey:@"Total"];
+	}
+	if ([[self currentRequest] HTTPBody] != nil) {
+		[fields setObject:[[self currentRequest] HTTPBody] forKey:@"Body"];
+	}
+	/* XML RATHER THAN BINARY, AND THAT IS A MEASUREMENT RATHER THAN A PREFERENCE: this library's plist WRITER
+	 * supports only `NSPropertyListXMLFormat_v1_0` - it answers NIL for any other format
+	 * (NSPropertyListSerialization.m says so in so many words) - so a binary request here produced a resume
+	 * blob that was always nil, which the probe's first run showed as "0 byte(s) of resume data" while the
+	 * transfer was demonstrably holding ten. The blob is OPAQUE, so its format is this library's business. */
+	plist = [NSPropertyListSerialization dataWithPropertyList:fields
+							  format:NSPropertyListXMLFormat_v1_0
+							 options:0
+							   error:&error];
+	return plist;
+}
+
+- (void)cancelByProducingResumeData:(void (^)(NSData *))completionHandler
+{
+	/* THE DATA IS BUILT BEFORE THE CANCEL, because cancelling is what clears the task's state: asking after it
+	 * would ask about a transfer that is already over. */
+	NSData *resumeData = [[self fnResumeData] retain];
+
+	[self cancel];
+	if (completionHandler != nil) {
+		completionHandler([resumeData autorelease]);
+	}
+}
+
+- (instancetype)fnInitWithResumeData:(NSData *)resumeData
+			  identifier:(NSUInteger)identifier
+		     downloadHandler:(void (^)(NSURL *, NSURLResponse *, NSError *))handler
+{
+	NSDictionary *fields;
+	NSMutableURLRequest *request;
+	NSData *partial;
+	NSError *error = nil;
+
+	/* A BLOB THIS LIBRARY DID NOT WRITE IS NOT A RESUME: the caller gets nil rather than a task built from
+	 * whatever a plist happened to contain. */
+	fields = [NSPropertyListSerialization propertyListWithData:resumeData
+							  options:0
+							   format:NULL
+							    error:&error];
+	if (![fields isKindOfClass:[NSDictionary class]]) {
+		return nil;
+	}
+	request = [NSMutableURLRequest requestWithURL:
+			[NSURL URLWithString:[fields objectForKey:@"URL"]]];
+	if ([fields objectForKey:@"Method"] != nil) {
+		[request setHTTPMethod:[fields objectForKey:@"Method"]];
+	}
+	if ([fields objectForKey:@"Body"] != nil) {
+		[request setHTTPBody:[fields objectForKey:@"Body"]];
+	}
+	partial = [fields objectForKey:@"Data"];
+	/* THE RANGE HEADER IS WHAT MAKES IT A RESUME RATHER THAN A RESTART, and it is set HERE rather than in the
+	 * transport because the transport already sends a request's headers (the bridge passes them to libcurl):
+	 * a byte range needs no new machinery anywhere. */
+	[request setValue:[NSString stringWithFormat:@"bytes=%d-", (int)[partial length]]
+	forHTTPHeaderField:@"Range"];
+
+	self = [self fnInitWithRequest:request identifier:identifier downloadHandler:handler];
+	if (self != nil) {
+		_resumeOffset = (int64_t)[partial length];
+		/* THE BYTES ALREADY HELD BECOME THE TASK'S OWN, so the body it reports is the WHOLE body: a resumed
+		 * download that reported only its second half would be a trap for every caller. */
+		[self fnProtocolDidLoadData:partial];
+		_countOfBytesExpectedToReceive = [[fields objectForKey:@"Total"] longLongValue];
+	}
+	return self;
+}
+
 - (void)fnProtocolDidFinishWithError:(NSError *)error
 {
+	NSError *attached = nil;	/* the error carrying resume data, released after super has reported it */
+
 	/* THE BODY BECOMES A FILE ONLY ON SUCCESS: a failed transfer has nothing to write, and a handler told
 	 * about a location holding a partial body would be worse than one told nothing. */
 	if (error == nil && _receivedData != nil) {
@@ -240,7 +347,31 @@
 			[writeError autorelease];
 		}
 	}
+	/* A FAILED DOWNLOAD CARRIES ITS RESUME DATA ON THE ERROR ITSELF (§62.31), so a caller can recover from a
+	 * dropped connection without having asked for anything: the transfer failed, and the error says how to
+	 * continue it. The error is REBUILT rather than mutated - NSError is immutable - and RELEASED BELOW,
+	 * after it has been reported, which is this file's existing idiom for the write failure above. */
+	{
+		NSData *resume = [self fnResumeData];
+
+		if (error != nil && resume != nil) {
+			NSMutableDictionary *fields = [[error userInfo] mutableCopy];
+			NSError *withResume;
+
+			if (fields == nil) {
+				fields = [[NSMutableDictionary alloc] init];
+			}
+			[fields setObject:resume forKey:NSURLSessionDownloadTaskResumeData];
+			withResume = [[NSError alloc] initWithDomain:[error domain]
+								code:[error code]
+							    userInfo:fields];
+			[fields release];
+			attached = withResume;
+			error = attached;
+		}
+	}
 	[super fnProtocolDidFinishWithError:error];
+	[attached release];
 	if (_downloadHandler != NULL) {
 		_downloadHandler(_location, _response, error);
 	}

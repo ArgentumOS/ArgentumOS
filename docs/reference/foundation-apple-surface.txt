@@ -40,7 +40,7 @@
 #   enum       shipped  130   open   21   struck    9
 #   case       shipped 1068   open  159   struck   75
 #   func       shipped   83   open   94   struck   12
-#   var        shipped  529   open  178   struck  207
+#   var        shipped  530   open  177   struck  207
 #   typealias  shipped   63   open    8   struck    5
 #   struct     shipped    8   open    5   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -3137,7 +3137,7 @@ var	shipped	NSURLProtectionSpaceHTTPS	NSURLProtectionSpace	Networking / Authenti
 var	shipped	NSURLProtectionSpaceHTTPSProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	-	objc
 var	shipped	NSURLProtectionSpaceSOCKSProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	-	objc
 var	shipped	NSURLQuarantinePropertiesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	open	NSURLSessionDownloadTaskResumeData	NSURLSession	Networking / Essentials / Handling errors / User info dictionary keys	-	objc
+var	shipped	NSURLSessionDownloadTaskResumeData	NSURLSession	Networking / Essentials / Handling errors / User info dictionary keys	-	objc
 var	open	NSURLSessionTaskPriorityDefault	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc
 var	open	NSURLSessionTaskPriorityHigh	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc
 var	open	NSURLSessionTaskPriorityLow	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc

@@ -12977,6 +12977,49 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.31 — RESUME LANDS: CANCEL WITH DATA, CONTINUE FROM AN OFFSET, AND THE ERROR THAT CARRIES ITS OWN WAY FORWARD (2026-09-26)
+
+**WHAT SHIPPED.** `NSURLSessionDownloadTask`'s `-cancelByProducingResumeData:`,
+`NSURLSession`'s two `-downloadTaskWithResumeData:` doors, the delegate door
+`-URLSession:downloadTask:didResumeAtOffset:expectedTotalBytes:` (§62.29 had refused it by name, and this unit is
+what retires that ground), and the `NSURLSessionDownloadTaskResumeData` key — which is the row that was `open`
+precisely because a *failed* transfer could not hand back the way to continue it.
+
+**THE RESUME BLOB IS THIS LIBRARY'S OWN PACKING, AND THAT IS THE HONEST CHOICE FOR SOMETHING APPLE DECLARES
+OPAQUE**: a plist holding the URL, the method, the body if there was one, HOW MANY BYTES ARRIVED and those bytes.
+It is a format this tree already carries, it can be inspected, and a caller only ever hands it back.
+
+**AND THE RANGE REQUEST NEEDED NO NEW MACHINERY ANYWHERE.** `-fnInitWithResumeData:…` sets
+`Range: bytes=<offset>-` on the rebuilt request, and THE TRANSPORT ALREADY SENDS A REQUEST'S HEADERS (the bridge
+passes them to libcurl) — so a resumable transfer is an ordinary header rather than a transport feature. That
+measurement is what decided this unit's scope.
+
+**THE CONNECTION'S RESUME DOOR IS STILL REFUSED, WITH A CORRECTED GROUND.** §62.26 refused
+`-connectionDidResumeDownloading:…` on the ground "the session has no resume" — true then, FALSE now, and a stale
+ground is exactly what this plan hunts. THE GROUND THAT REMAINS IS STRUCTURAL: **AN `NSURLConnection` CANNOT BE
+GIVEN RESUME DATA** — Apple never added an initializer that takes it — so a connection can only start from the
+beginning and a door announcing a resume would announce something that cannot happen. The probe's check was
+CORRECTED for the same reason and in the same commit: it used to assert the session had no resume API, and now it
+asserts BOTH halves — the connection's door is absent *and* the session has the doors — which is what makes the
+refusal a property of this class rather than of the loading system.
+
+**VERIFIED WITH A REAL SERVER, AND THE PROBE IS THE SERVER.** `foundation_downloadresume` (8 checks, 8/8 green)
+listens on its own loopback socket, serves a 20-byte body it sends only HALF of and then STALLS mid-transfer — THE
+STALL IS WHAT MAKES THE CANCEL DETERMINISTIC, with no assumption about which side is faster — cancels its own
+download, resumes from the produced data, and asserts: the resumed request carries `Range: bytes=10-` ON THE WIRE;
+the delegate was told it resumed at 10; and **the file it ends with holds ALL TWENTY bytes** — the ten from before
+the cancel and the ten from after, rather than a second half reported as if it were a body. A third leg drops the
+connection on purpose so the ERROR's own resume-data key is exercised, and a fourth asks the session to resume from
+a blob this library never wrote, which answers nil rather than a task built from whatever a plist contained.
+
+**THREE BUGS OF MINE, AND THE FIRST IS A MEASUREMENT THIS TREE NOW RECORDS:** the resume blob was requested in
+BINARY plist format, and **this library's plist writer supports only `NSPropertyListXMLFormat_v1_0`** — it answers
+nil for anything else — so the blob was ALWAYS nil while the transfer demonstrably held ten bytes (the probe's own
+diagnostic said `totalWritten=10`). XML it is, with the reason written where the call is. The other two: the
+session's plain factory called an initializer shape that did not exist (fixed by passing a nil handler to the one
+that does), and one of the probe's `stringWithFormat:` calls was missing a bracket because its last argument was
+itself a message send — the compiler named the line, which is the cheapest kind of bug there is.
+
 ## §62.30 — THE COVERAGE §62.28 MOVED COMES BACK: BOTH ANSWER PATHS ARE EXERCISED (2026-09-26)
 
 **WHAT CHANGED, AND WHY IT IS A UNIT RATHER THAN A FOOTNOTE.** §62.28 made `NSURLConnection`'s authentication doors

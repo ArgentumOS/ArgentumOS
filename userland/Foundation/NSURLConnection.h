@@ -95,10 +95,15 @@
  * two doors cannot drift. The refusal's ground ("the session reports no download progress") is retired by
  * that landing rather than by a decision here, which is what a refusal with a measured ground is FOR.
  *
- * ONE IS STILL REFUSED: `-connectionDidResumeDownloading:totalBytesWritten:expectedTotalBytes:` — THERE IS
- * NO RESUME: the session ships no `-downloadTaskWithResumeData:`, so a transfer can only start from the
- * beginning. THE FINISHING DOOR IS THE ONE THAT MATTERS AND IT IS IMPLEMENTED: Apple's own contract makes
- * receiving the finished file the delegate's essential act here.
+ * AND ONE IS STILL REFUSED, WHOSE GROUND §62.31 CORRECTED RATHER THAN INHERITED:
+ * `-connectionDidResumeDownloading:totalBytesWritten:expectedTotalBytes:`. The old ground was "the SESSION has
+ * no resume" — TRUE when §62.26 wrote it and FALSE now, since the session ships
+ * `-downloadTaskWithResumeData:` and `-cancelByProducingResumeData:` (§62.31). THE GROUND THAT REMAINS IS
+ * STRUCTURAL AND PAST THIS CLASS'S REACH: **AN `NSURLConnection` CANNOT BE GIVEN RESUME DATA.** The class has
+ * no initializer that takes it — Apple never added one, and resume is the newer API's story — so a connection
+ * can only ever start from the beginning, and a door that announces a resume would be announcing something
+ * that cannot happen. THE FINISHING DOOR IS THE ONE THAT MATTERS AND IT IS IMPLEMENTED: Apple's own contract
+ * makes receiving the finished file the delegate's essential act here.
  */
 
 #ifndef FOUNDATION_NSURLCONNECTION_H

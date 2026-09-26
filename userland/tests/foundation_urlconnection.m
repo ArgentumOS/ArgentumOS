@@ -765,13 +765,20 @@ int main(void)
 
 		/* THE TWO REFUSED DOORS AND THE GROUND THEY SHARE: the session reports no download progress and
 		 * has no resume. */
+		/* THE GROUND §62.31 CORRECTED RATHER THAN THE REFUSAL: this check used to assert that the SESSION had
+		 * no resume API, and that was true when §62.29 wrote it and false one unit later. WHAT REMAINS IS
+		 * STRUCTURAL - an NSURLConnection cannot be GIVEN resume data - so the check now states BOTH halves:
+		 * the connection's door is absent, AND the session has the doors that make the absence a property of
+		 * this class rather than of the loading system. */
 		check("download-refusals-are-absent",
 		      !fn_protocol_has(dl,
 			"connectionDidResumeDownloading:totalBytesWritten:expectedTotalBytes:") &&
-		      ![NSURLSession instancesRespondToSelector:
-			NSSelectorFromString(@"downloadTaskWithResumeData:")],
-		      @"RESUME is the one refusal left: it is not declared, and the session has no resume door to "
-		      @"build one on - the ground is measured, not assumed");
+		      [NSURLSession instancesRespondToSelector:
+			NSSelectorFromString(@"downloadTaskWithResumeData:")] &&
+		      [NSURLSessionDownloadTask instancesRespondToSelector:
+			NSSelectorFromString(@"cancelByProducingResumeData:")],
+		      @"the CONNECTION's resume door is absent while the SESSION has the resume API (§62.31): the "
+		      @"refusal is structural - a connection cannot be given resume data - not a missing dependency");
 
 		/* AND THE SESSION'S OWN DOWNLOAD PROTOCOL, WHICH §62.29 DECLARED AND THE PROGRESS DOOR NEEDS: its
 		 * required/optional split is asserted where the door lives, because a protocol whose shape is

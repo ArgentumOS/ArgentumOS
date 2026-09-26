@@ -553,6 +553,8 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 
 @end
 
+NSString * const NSURLSessionDownloadTaskResumeData = @"NSURLSessionDownloadTaskResumeData";
+
 @implementation NSURLSession
 
 /* THE SHARED SESSION, made once and answered by identity from then on: a singleton that answered a new
@@ -742,6 +744,45 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 	return [self webSocketTaskWithURL:[request URL] protocols:nil];
 }
 
+- (NSURLSessionDownloadTask *)downloadTaskWithResumeData:(NSData *)resumeData
+{
+	NSURLSessionDownloadTask *task;
+
+	if (_invalid) {
+		return nil;
+	}
+	/* NIL FROM THE TASK MEANS THE BLOB WAS NOT OURS, and this door passes that on rather than inventing a task:
+	 * a resume of something this library did not write is not a resume (see -fnInitWithResumeData:…). */
+	task = [[NSURLSessionDownloadTask alloc] fnInitWithResumeData:resumeData
+							   identifier:_nextTaskIdentifier++
+						      downloadHandler:nil];
+	if (task == nil) {
+		return nil;
+	}
+	[task fnSetSession:self];
+	[_tasks addObject:task];
+	return [task autorelease];
+}
+
+- (NSURLSessionDownloadTask *)downloadTaskWithResumeData:(NSData *)resumeData
+				      completionHandler:(void (^)(NSURL *, NSURLResponse *, NSError *))completionHandler
+{
+	NSURLSessionDownloadTask *task;
+
+	if (_invalid) {
+		return nil;
+	}
+	task = [[NSURLSessionDownloadTask alloc] fnInitWithResumeData:resumeData
+							   identifier:_nextTaskIdentifier++
+						      downloadHandler:completionHandler];
+	if (task == nil) {
+		return nil;
+	}
+	[task fnSetSession:self];
+	[_tasks addObject:task];
+	return [task autorelease];
+}
+
 - (NSURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request
 				    completionHandler:(void (^)(NSURL *, NSURLResponse *, NSError *))completionHandler
 {
@@ -881,6 +922,24 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 
 - (void)fnTaskDidResume:(NSURLSessionTask *)task
 {
+	/* A RESUMED DOWNLOAD IS ANNOUNCED BEFORE ANY CHUNK ARRIVES (§62.31), which is Apple's order and the only
+	 * one that makes sense: a delegate that wants to show "continuing from N" has to hear it before the
+	 * chunks start arriving at N. The offset is the task's, and the expected total is what the interrupted
+	 * transfer had learned - 0 when it never knew. */
+	if ([task isKindOfClass:[NSURLSessionDownloadTask class]] &&
+	    [(NSURLSessionDownloadTask *)task fnResumeOffset] > 0) {
+		id <NSURLSessionDownloadDelegate> downloadDelegate =
+			(id <NSURLSessionDownloadDelegate>)[self delegate];
+
+		if ([downloadDelegate respondsToSelector:
+			@selector(URLSession:downloadTask:didResumeAtOffset:expectedTotalBytes:)]) {
+			[downloadDelegate URLSession:self
+					downloadTask:(NSURLSessionDownloadTask *)task
+				 didResumeAtOffset:[(NSURLSessionDownloadTask *)task fnResumeOffset]
+				expectedTotalBytes:[task countOfBytesExpectedToReceive]];
+		}
+	}
+
 	FNSessionTransfer *client = [[FNSessionTransfer alloc] initWithTask:task session:self];
 
 	/* AND THE START IS NOT WRITTEN HERE ANY MORE (§54): a followed redirect starts the next request on the
