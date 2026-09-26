@@ -12972,6 +12972,27 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.12 — THE COVERAGE SLICE, ELEVENTH LANDING: NSFILEMANAGER'S FUNCTIONS (2026-09-24)
+
+**THE ROW THE HEADER ITSELF DEFERRED IS PAID.** NSFileManager.h said NSHomeDirectory() and
+NSHomeDirectoryForUser() "are still absent, named: both need the account database, which this tree reads through
+the passwd domain". The account database is reachable - this same file already calls getpwuid(3) for account NAMES
+and NSUserDefaults calls it for its own directory - so a home directory is NOT a policy this class invents: it is
+the pw_dir the account database answers. An unknown user answers nil (Apple's contract for the by-name form) and
+a uid with no entry falls back to "/" (NSHomeDirectory() is documented never to fail). NSUserName/NSFullUserName
+(pw_name, GECOS) and NSOpenStepRootDirectory() come with them.
+
+**AND TWO REFUSALS ARE ASSERTED RATHER THAN TOLERATED:** NSHFSTypeOfFile() answers nil because an HFS type lives
+in a RESOURCE FORK this system does not have, and NSSearchPathForDirectoriesInDomains() answers an empty array
+AND LOGS, because an empty list would read as "no such directory exists" - a different statement from "this
+system does not answer that question" (its directories are reached by name). The two HFS *string* functions are
+pure four-character arithmetic and the check round-trips them.
+
+**TWO TRAPS THIS LANDING COST, BOTH WORTH THE RECORD:** `[NSHFSTypeOfFile:@"/x"]` is a MESSAGE SENT TO A FUNCTION
+POINTER (a C function needs `NSHFSTypeOfFile(@"/x")`) - four compiler errors from two lines; and the probe's
+`check` takes an NSString detail, the fourth time today that signature has bitten (some probes take const char *,
+some NSString *, and the difference is only visible at the call site).
+
 ## §62.11 — THE COVERAGE SLICE, TENTH LANDING: NSDISTRIBUTEDNOTIFICATIONCENTER (2026-09-24)
 
 **VOCABULARY WITH NO DOOR, FOR THE SAME REASON AS NSITEMPROVIDER, AND SAYING SO:** a distributed notification

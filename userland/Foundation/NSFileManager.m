@@ -1548,3 +1548,131 @@ NSString *NSTemporaryDirectory(void)
 {
 	return @"/System/Temporary Files/";
 }
+
+/*
+ * THE USER-DIRECTORY FUNCTIONS, AND THE ROW THE HEADER DEFERRED IS PAID HERE. A home directory is not a policy
+ * this class invents: it is the pw_dir the ACCOUNT DATABASE answers - the same getpwuid(3) this file already
+ * uses for account NAMES and NSUserDefaults uses for its own directory. An unknown user answers nil, which is
+ * Apple's contract for NSHomeDirectoryForUser:, and a uid with no entry falls back to "/" rather than nil,
+ * because Apple's NSHomeDirectory() is documented never to fail.
+ */
+NSString *NSUserName(void)
+{
+	struct passwd *pw = getpwuid(getuid());
+
+	return (pw != NULL && pw->pw_name != NULL) ? [NSString stringWithUTF8String:pw->pw_name] : nil;
+}
+
+NSString *NSFullUserName(void)
+{
+	struct passwd *pw = getpwuid(getuid());
+
+	/* The GECOS field is where the account database keeps the display name; an empty one is no name at all. */
+	if (pw == NULL || pw->pw_gecos == NULL || pw->pw_gecos[0] == '\0') {
+		return nil;
+	}
+	return [NSString stringWithUTF8String:pw->pw_gecos];
+}
+
+NSString *NSHomeDirectory(void)
+{
+	struct passwd *pw = getpwuid(getuid());
+
+	if (pw == NULL || pw->pw_dir == NULL || pw->pw_dir[0] == '\0') {
+		return @"/";
+	}
+	return [NSString stringWithUTF8String:pw->pw_dir];
+}
+
+NSString *NSHomeDirectoryForUser(NSString *userName)
+{
+	struct passwd *pw;
+
+	if (userName == nil) {
+		return nil;
+	}
+	pw = getpwnam([userName UTF8String]);
+	if (pw == NULL || pw->pw_dir == NULL || pw->pw_dir[0] == '\0') {
+		return nil;
+	}
+	return [NSString stringWithUTF8String:pw->pw_dir];
+}
+
+NSString *NSOpenStepRootDirectory(void)
+{
+	return @"/";
+}
+
+/*
+ * THE TWO HFS TYPE-CODE FUNCTIONS ARE STRING ARITHMETIC over a four-character code, which is the whole of what
+ * they are: a classic Mac file type is four characters packed into a 32-bit integer. NSHFSTypeOfFile() is NOT
+ * implemented, because the type of a file on classic HFS lives in a RESOURCE FORK this system does not have -
+ * so it answers nil and says so on the log rather than inventing a file-system fact.
+ */
+NSString *NSFileTypeForHFSTypeCode(unsigned int hfsTypeCode)
+{
+	char code[5];
+	int i;
+
+	for (i = 0; i < 4; i++) {
+		code[i] = (char)((hfsTypeCode >> (8 * (3 - i))) & 0xff);
+	}
+	code[4] = '\0';
+	return [NSString stringWithUTF8String:code];
+}
+
+unsigned int NSHFSTypeCodeFromFileType(NSString *fileType)
+{
+	const char *bytes = (fileType != nil) ? [fileType UTF8String] : NULL;
+	unsigned int code = 0;
+	int i;
+
+	if (bytes == NULL || strlen(bytes) != 4) {
+		return 0;
+	}
+	for (i = 0; i < 4; i++) {
+		code = (code << 8) | (unsigned char)bytes[i];
+	}
+	return code;
+}
+
+NSString *NSHFSTypeOfFile(NSString *fullFilePath)
+{
+	const char *path = (fullFilePath != nil) ? [fullFilePath UTF8String] : NULL;
+	char line[256];
+	int n = snprintf(line, sizeof line,
+			 "Foundation: -NSHFSTypeOfFile refused for %s: an HFS type lives in a resource fork this "
+			 "system does not have\n", path != NULL ? path : "(null)");
+
+	if (n > 0) {
+		(void)write(2, line, (size_t)n);
+	}
+	return nil;
+}
+
+/*
+ * THE LEGACY SEARCH IS A NAMED REFUSAL, NOT AN EMPTY ANSWER. Apple's
+ * NSSearchPathForDirectoriesInDomains() answers a LIST OF PATHS for a domain, and this system's file-system
+ * hierarchy does not have that shape: its directories are reached BY NAME (System/Libraries, System/Temporary
+ * Files, ...) and there is no domain-mask search behind them. Returning an empty array silently would look like
+ * "no such directory exists", which is a different statement from "this system does not answer that question",
+ * so the refusal is written on the log where it can be seen.
+ */
+NSArray *NSSearchPathForDirectoriesInDomains(NSSearchPathDirectory directory,
+							 NSSearchPathDomainMask domainMask, BOOL expandTilde)
+{
+	char line[256];
+	int n = snprintf(line, sizeof line,
+			 "Foundation: NSSearchPathForDirectoriesInDomains refused (directory %ld, mask %lu): this "
+			 "system's directories are named, not searched\n",
+			 (long)directory, (unsigned long)domainMask);
+
+	(void)expandTilde;
+	if (n > 0) {
+		(void)write(2, line, (size_t)n);
+	}
+	return @[];
+}
+
+NSString *const NSFileManagerUnmountDissentingProcessIdentifierErrorKey =
+	@"NSFileManagerUnmountDissentingProcessIdentifierErrorKey";

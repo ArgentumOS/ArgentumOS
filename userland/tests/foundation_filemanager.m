@@ -881,6 +881,34 @@ int main(void)
 		      @"the directory NSTemporaryDirectory() names exists and is a directory");
 	}
 
+	{
+		/* THE USER-DIRECTORY FUNCTIONS AND THE TWO REFUSALS. NSHomeDirectory() is the pw_dir the ACCOUNT
+		 * DATABASE answers, so the strongest cross-check available is that asking for the CURRENT user's home
+		 * BY NAME gives the same answer - and that a user who does not exist gives nil rather than a path that
+		 * merely looks plausible. The HFS pair is string arithmetic and must round-trip.
+		 *
+		 * NOTE THE CALL SYNTAX: these are C FUNCTIONS, so NSHFSTypeOfFile(x) is a call while [NSHFSTypeOfFile:x]
+		 * is a MESSAGE SENT TO A FUNCTION POINTER - which is the compiler error this check was first written
+		 * with, four errors in two lines. */
+		NSString *probeHome = NSHomeDirectory();
+		NSString *probeByName = NSHomeDirectoryForUser(NSUserName());
+		unsigned int probeCode = (unsigned int)0x54455854;	/* 'TEXT' */
+
+		check("user-directory-functions",
+		      probeHome != nil && probeByName != nil && [probeByName isEqualToString:probeHome] &&
+		      NSHomeDirectoryForUser(@"a-user-who-does-not-exist") == nil &&
+		      [NSOpenStepRootDirectory() isEqualToString:@"/"] &&
+		      NSUserName() != nil,
+		      @"home-by-name equals home; an unknown user is nil; the OpenStep root is /");
+		check("hfs-type-code-round-trip-and-the-refusals",
+		      NSHFSTypeCodeFromFileType(NSFileTypeForHFSTypeCode(probeCode)) == probeCode &&
+		      [NSFileTypeForHFSTypeCode(probeCode) isEqualToString:@"TEXT"] &&
+		      NSHFSTypeCodeFromFileType(@"TOOLONG") == 0 &&
+		      NSHFSTypeOfFile(@"/System/Devices/null") == nil &&
+		      [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) count] == 0,
+		      @"the HFS pair round-trips; NSHFSTypeOfFile and the legacy path search both refuse");
+	}
+
 	printf("FOUNDATION-FILEMANAGER RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

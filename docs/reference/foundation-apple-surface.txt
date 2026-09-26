@@ -33,9 +33,9 @@
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped  127   open   16   struck   17
 #   case       shipped 1031   open  103   struck  168
-#   func       shipped   74   open   61   struck   54
-#   var        shipped  508   open   53   struck  353
-#   typealias  shipped   53   open   16   struck    7
+#   func       shipped   83   open   52   struck   54
+#   var        shipped  509   open   52   struck  353
+#   typealias  shipped   54   open   15   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -1829,23 +1829,23 @@ func	shipped	NSEqualRanges		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSEqualRects		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSEqualSizes		Fundamentals / Geometry / Managing Sizes	-	objc
 func	open	NSExtraRefCount		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
-func	open	NSFileTypeForHFSTypeCode	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
+func	shipped	NSFileTypeForHFSTypeCode	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
 func	open	NSFrameAddress		Reference / Debugging	-	objc
 func	struck	NSFreeHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSFreeMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSFullUserName	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
+func	shipped	NSFullUserName	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	shipped	NSGetSizeAndAlignment		Low-Level Utilities / Objective-C Runtime / Serialization	-	objc
 func	shipped	NSGetUncaughtExceptionHandler	NSException	App Support / Exceptions / Functions	-	objc
-func	open	NSHFSTypeCodeFromFileType	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
-func	open	NSHFSTypeOfFile	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
+func	shipped	NSHFSTypeCodeFromFileType	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
+func	shipped	NSHFSTypeOfFile	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
 func	struck	NSHashGet	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSHashInsert	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSHashInsertIfAbsent	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSHashInsertKnownAbsent	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSHashRemove	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSHeight		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSHomeDirectory	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
-func	open	NSHomeDirectoryForUser	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
+func	shipped	NSHomeDirectory	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
+func	shipped	NSHomeDirectoryForUser	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	shipped	NSHostByteOrder		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	open	NSIncrementExtraRefCount		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
 func	shipped	NSInsetRect		Fundamentals / Geometry / Managing Rectangles	-	objc
@@ -1882,7 +1882,7 @@ func	open	NSMouseInRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	struck	NSNextHashEnumeratorItem	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSNextMapEnumeratorPair	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSOffsetRect		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSOpenStepRootDirectory	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
+func	shipped	NSOpenStepRootDirectory	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
 func	open	NSPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	shipped	NSPointFromCGPoint		Fundamentals / Geometry / Managing Points	-	objc
 func	shipped	NSPointFromString		Fundamentals / Geometry / Managing Points	-	objc
@@ -1902,7 +1902,7 @@ func	struck	NSResetMapTable	NSMapTable	Fundamentals / Pointer Collections / Depr
 func	open	NSReturnAddress		Reference / Debugging	-	objc
 func	open	NSRoundDownToMultipleOfPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	open	NSRoundUpToMultipleOfPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
-func	open	NSSearchPathForDirectoriesInDomains	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
+func	shipped	NSSearchPathForDirectoriesInDomains	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
 func	shipped	NSSelectorFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	shipped	NSSetUncaughtExceptionHandler	NSException	App Support / Exceptions / Functions	-	objc
 func	struck	NSSetZoneName		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
@@ -1952,7 +1952,7 @@ func	open	NSSwapShort		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	shipped	NSTemporaryDirectory	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	shipped	NSUnionRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSUnionRect		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSUserName	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
+func	shipped	NSUserName	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	shipped	NSWidth		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	struck	NSZoneCalloc		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	struck	NSZoneFree		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
@@ -2285,7 +2285,7 @@ typealias	shipped	NSExceptionName	NSException	App Support / Exceptions / Related
 typealias	shipped	NSFileAttributeKey	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 typealias	shipped	NSFileAttributeType	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 typealias	shipped	NSFileProtectionType	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
-typealias	open	NSFileProviderServiceName	NSFileManager	Files and Data Persistence / File system operations / Accessing file provider services	-	objc
+typealias	shipped	NSFileProviderServiceName	NSFileManager	Files and Data Persistence / File system operations / Accessing file provider services	-	objc
 typealias	shipped	NSHTTPCookiePropertyKey	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs	-	objc
 typealias	shipped	NSHTTPCookieStringPolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Securing cookies	-	objc
 typealias	shipped	NSHashTableOptions	NSHashTable	Fundamentals / Pointer Collections / Constants	-	objc
@@ -2474,7 +2474,7 @@ var	shipped	NSFileHandleReadCompletionNotification	NSFileHandle	Files and Data P
 var	shipped	NSFileHandleReadToEndOfFileCompletionNotification	NSFileHandle	Files and Data Persistence / Managed file access / Working with notifications	-	swift-page
 var	shipped	NSFileHandleReadToEndOfFileCompletionNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSFileImmutable	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
-var	open	NSFileManagerUnmountDissentingProcessIdentifierErrorKey	NSFileManager	Files and Data Persistence / File system operations / Unmounting volumes	-	objc
+var	shipped	NSFileManagerUnmountDissentingProcessIdentifierErrorKey	NSFileManager	Files and Data Persistence / File system operations / Unmounting volumes	-	objc
 var	shipped	NSFileModificationDate	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileOwnerAccountID	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileOwnerAccountName	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc

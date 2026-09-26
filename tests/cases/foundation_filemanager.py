@@ -82,7 +82,8 @@ CHECKS = ("fs-default-manager", "fs-create-and-list", "fs-write-and-size", "fs-m
           "fs-set-attributes-traverses-a-terminal-symlink",
           "fs-display-name-is-the-items-own-name", "fs-components-to-display-are-the-components",
           "fs-the-flag-keys-are-published-and-absent", "fs-cleanup",
-          "temporary-directory-is-the-fsh-path", "temporary-directory-exists")
+          "temporary-directory-is-the-fsh-path", "temporary-directory-exists",
+          "user-directory-functions", "hfs-type-code-round-trip-and-the-refusals")
 
 
 class Case(BaseCase):

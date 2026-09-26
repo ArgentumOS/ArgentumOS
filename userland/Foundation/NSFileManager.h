@@ -572,6 +572,37 @@ typedef enum {
  * rather than a path constant. Only the temporary directory is answered here. */
 NSString *NSTemporaryDirectory(void);
 
+/* ---- THE USER-DIRECTORY AND LEGACY PATH FUNCTIONS (the coverage slice) -------------------------------
+ *
+ * THE ROW EARLIER IN THIS HEADER THAT DEFERRED NSHomeDirectory() IS NOW PAID: it waited for "the account
+ * database", and this tree reads that through the passwd domain - the same getpwuid(3) that
+ * NSFileManager's own account-name code and NSUserDefaults already use. A home directory is therefore NOT a
+ * policy this class invents: it is the pw_dir the account database answers, exactly as Apple's does. An
+ * unknown user answers nil (Apple's contract for NSHomeDirectoryForUser:).
+ *
+ * THE THREE HFS FUNCTIONS ARE THE CLASSIC MAC TYPE-CODE DOOR, and two of them are pure string arithmetic over a
+ * four-character code, which is why they are implemented. NSHFSTypeOfFile() is NOT: the type of a file on
+ * classic HFS lives in a RESOURCE FORK this system does not have, so it answers nil and says why on the log
+ * rather than pretending a file system fact it cannot read.
+ */
+extern NSString * _Nullable NSUserName(void);
+extern NSString * _Nullable NSFullUserName(void);
+extern NSString * NSHomeDirectory(void);
+extern NSString * _Nullable NSHomeDirectoryForUser(NSString * _Nullable userName);
+extern NSString * NSOpenStepRootDirectory(void);
+extern NSString * _Nullable NSFileTypeForHFSTypeCode(unsigned int hfsTypeCode);
+extern unsigned int NSHFSTypeCodeFromFileType(NSString * _Nullable fileType);
+extern NSString * _Nullable NSHFSTypeOfFile(NSString * _Nullable fullFilePath);
+extern NSArray *NSSearchPathForDirectoriesInDomains(NSSearchPathDirectory directory,
+							   NSSearchPathDomainMask domainMask,
+							   BOOL expandTilde);
+
+/* Apple's type for a file provider service's name. */
+typedef NSString *NSFileProviderServiceName;
+
+/* The key an unmount error carries when a process dissents: value == name, this library's convention. */
+extern NSString *const NSFileManagerUnmountDissentingProcessIdentifierErrorKey;
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSFILEMANAGER_H */
