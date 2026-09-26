@@ -108,6 +108,7 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSError.m $(FOUNDATION_SRC)/NSException.m \
 	$(FOUNDATION_SRC)/NSURLError.m \
 	$(FOUNDATION_SRC)/NSCharacterSet.m $(FOUNDATION_SRC)/NSIndexSet.m \
+	$(FOUNDATION_SRC)/NSScanner.m \
 	$(FOUNDATION_SRC)/NSIndexPath.m \
 	$(FOUNDATION_SRC)/NSLocale.m \
 	$(FOUNDATION_SRC)/NSMethodSignature.m \
@@ -202,6 +203,7 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSFileSecurity.h \
 	$(FOUNDATION_SRC)/NSFileWrapper.h \
 	$(FOUNDATION_SRC)/NSURLComponents.h \
+	$(FOUNDATION_SRC)/NSScanner.h \
 	$(FOUNDATION_SRC)/NSTextCheckingResult.h \
 	$(FOUNDATION_SRC)/NSRegularExpression.h \
 	$(FOUNDATION_SRC)/NSDataDetector.h \
@@ -305,7 +307,7 @@ FN_FOUNDATION_SSL    = NSURLSessionStreamTask.m FNWebSocketHandshake.m NSURLSess
 # THE ICU-HEADER LIST IS PER FILE, and a file that needs it and is not here fails on the GUEST ONLY
 # (the host has ICU's headers on its default include path). NSDecimalNumber.m asks ICU for the locale's
 # decimal separator, so it belongs in this list - which the guest build is what proved.
-FN_FOUNDATION_ICU   = NSCalendar.m NSDateFormatter.m NSNumberFormatter.m NSPredicate.m NSTimeZone.m \
+FN_FOUNDATION_ICU   = NSScanner.m NSCalendar.m NSDateFormatter.m NSNumberFormatter.m NSPredicate.m NSTimeZone.m \
                       NSCharacterSet.m NSLocale.m NSDecimalNumber.m NSListFormatter.m \
                       NSISO8601DateFormatter.m NSDateIntervalFormatter.m NSByteCountFormatter.m \
                       NSRelativeDateTimeFormatter.m NSDateComponentsFormatter.m NSMeasurementFormatter.m \
@@ -837,6 +839,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_datadetector.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_datadetector"
+	# foundation_scanner: §62.20's acceptance - NSScanner, the last open name in the Pattern Matching family. ONE
+	# unit, only <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_scanner.m -o .build/probe-foundation_scanner.o
+	$(MUSL64_OBJC) .build/probe-foundation_scanner.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_scanner"
 	# foundation_directoryenumerator: W8 slice 1 acceptance (foundation-plan.md §60). ONE unit, only
 	# <Foundation/Foundation.h> plus <unistd.h> for the symlink(2) its fixture makes.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \

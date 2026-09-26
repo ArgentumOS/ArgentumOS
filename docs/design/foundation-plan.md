@@ -3522,7 +3522,7 @@ vanishing.
 | **Fundamentals / Measurements** | all classes shipped | — |
 | **Fundamentals / Names** | all classes shipped | — |
 | **Fundamentals / Numbers** | all classes shipped | — |
-| **Fundamentals / Pattern Matching** | 1 open | `NSScanner` |
+| **Fundamentals / Pattern Matching** | all classes shipped | — |
 | **Fundamentals / Physical Dimension** | all classes shipped | — |
 | **Fundamentals / Pointer Collections** | all classes shipped | — |
 | **Fundamentals / Purgeable Collections** | all classes shipped | — |
@@ -12974,6 +12974,87 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.20 — `NSScanner` LANDS, AND THE PATTERN MATCHING FAMILY IS COMPLETE (2026-09-26)
+
+**THE LAST OPEN NAME IN THE FAMILY, AND THE ONLY ONE THAT IS NOT A MATCHER.** `NSRegularExpression` finds every
+occurrence of a pattern, `NSTextCheckingResult` is the value it answers with, and `NSDataDetector` (§62.19)
+produces natural-language kinds — all three now ship, and this one reads a string IN ORDER: an integer here, a word
+there, which is what a parser or a config reader wants instead of a pattern per field. `NSScanner` is **24 checks**
+in `foundation_scanner`, its case is green on a guest boot, and the family's ledger row is now `all classes
+shipped` — the library's open count went 224 → 223 and **Pattern Matching has nothing left in it**.
+
+**THE POSITION IS THE WHOLE CONTRACT, SO THE RULES THAT MOVE IT ARE THE CLASS.** Each of these is on Apple's own
+pages and each is asserted:
+* the characters to be skipped (whitespace and newlines by default) are skipped **BEFORE** an element is examined and
+  **never while one is being scanned** — which is also why a scan FOR the skipped characters finds nothing, Apple's
+  own named case;
+* **THE SKIP IS NOT THE SCAN**: when a scan then fails, the position is left AFTER the skipped run rather than
+  before it (the first version of the probe expected 0 and the library answered 3 — the library was right, and the
+  check now says why);
+* the skipped characters are matched as **single values**, so case detection never applies to them and a composed
+  character cannot be one — the skip is one `-characterIsMember:` per UTF-16 unit;
+* `-scanLocation` **IS AN INPUT** (Apple's own reason for the property is backing up to rescan), and setting it past
+  the end **raises `NSRangeException`** — the only raise on the class, asserted by name and followed by proof that
+  the scanner still works;
+* `-isAtEnd` ignores what would be skipped and **DOES NOT MOVE THE POSITION** — a question is not a scan, which is
+  the save-and-restore;
+* a scan that finds nothing **MOVES NOTHING**, `-scanUpToString:` leaves the position at the **START** of the string
+  it matched (so a caller can scan that string next), and **EVERY** scan takes `NULL` as its result, which is how a
+  caller says "skip past this".
+
+**THE FOUR NUMERIC GRAMMARS ARE WRITTEN OUT AND STATED, BECAUSE APPLE PUBLISHES NO GRAMMAR** (every numeric page
+says what it returns and that "overflow is considered a valid representation", and not one says what a
+representation IS). So the header carries them: digits with an optional sign on the signed doors and a `-` REFUSED
+by `-scanUnsignedLongLong:` (the door exists to reach what a signed long long cannot hold); an overflowing run
+VALID with the position past all of it and the accumulator taken in the requested width (it wraps); decimal floats
+requiring **at least one digit**, which is why the IEEE words for infinity and NaN are not scanned; the optional
+`0x` on hex integers against the **REQUIRED** one on hex floats — the latter being Apple's sentence rather than a
+choice. The extent of each representation is found HERE and the VALUE comes from the C library, because the one
+thing a scanner must do that `strtod` cannot is say where the number ended, and for a localized separator `strtod`
+cannot even start.
+
+**AND `locale` AFFECTS ONE THING, WHICH IS WHAT APPLE SAYS IT AFFECTS: THE DECIMAL SEPARATOR.** It is read from ICU
+by the locale's identifier — **THE SAME ROUTE `NSNumberFormatter` ALREADY USES for the same fact**, so the two
+cannot disagree — and this is why `NSScanner.m` is in the mk's per-file ICU list. The lookup does NOT go through
+`-[NSLocale objectForKey:]`, which answers nil for that key here because this library's `NSLocale` has no locale
+database (its own header says so). **AND THE PROBE CHECKS THAT RELATIONALLY**: it asks `NSNumberFormatter` what a
+locale's separator IS and then requires the scanner to agree, so the check holds whether or not the machine's ICU
+data has a German locale in it — where a check that expected `,` would have been about the machine rather than
+about the library. (The host run prints `separator=[,]` for de_DE, so the interesting branch is the one taken.)
+
+**`-scanDecimal:` BUILDS THE NSDECIMAL ITSELF** — this tree has no string→NSDecimal parser and Apple's
+`NSDecimalFromString` is deprecated — and TWO OF ITS RULES ARE OURS AND ARE NAMED AT THE METHOD: digits beyond the
+38 the format holds are TRUNCATED toward zero with the exponent raised to match (the only thing a fixed-width
+mantissa can do), and an exponent outside −128…127 CLAMPS, which is the saturation rule `NSDecimal.h` already
+documents for the arithmetic rather than a convention invented here. The result is then put through the family's
+own `NSDecimalCompact`, so a scanned `1.50` and a computed `1.5` are ONE value with ONE printed form instead of two
+representations that merely compare equal.
+
+**THE ONE PLACE IN THE LIBRARY WHERE `-copy` IS NOT THE RECEIVER.** A scanner is MUTABLE — `-scanLocation` moves —
+so its `-copy` is a real, independent copy with the same position, and the check proves the independence by moving
+one and reading the other. Everywhere else §62's rule stands: an immutable value answers `[self retain]`.
+
+**FIVE OF THE SIX FAILURES THE PROBE'S FIRST RUN FOUND WERE THE PROBE'S OWN, AND ONE WAS A RULE SHOWING ITSELF.**
+The real ones were expectations: a location asserted AFTER a later scan had moved it (twice), `0x1.8p1` counted as
+eight characters when it is seven, and a locale clause that assumed `+localizedScannerWithString:` would use a
+GERMAN locale when Apple says it uses `+currentLocale`. The interesting one is that `-scanString:@" "` finds
+nothing in `"7 x 8 y 9"` — **BECAUSE THE SPACE IS SKIPPED BEFORE THE MATCH IS LOOKED FOR**, which is the skip rule
+doing exactly what the header says, and the check now uses `-scanUpToString:` there instead and says so.
+
+**AND ONE DEFECT OUTSIDE THIS CLASS IS RECORDED RATHER THAN FIXED, because it belongs to another unit:
+`-[NSString compare:options:range:]` APPLIES THE RANGE TO BOTH SIDES** where Apple's own parameter is named
+`rangeOfReceiverToCompare` and its page says "the range of the receiver over which to perform the comparison". The
+tree's implementation compares `[self substringWithRange:range]` against `[other substringWithRange:range]`, so a
+caller whose needle is shorter than the range reads out of bounds; the method is already in
+`foundation_string`'s `excluded` array, which is where it stayed visible. It is a WORK ITEM for the string family
+(one line and one check), and it is NAMED HERE because **THIS CLASS WOULD HAVE USED IT AND CANNOT**: `-scanString:`
+and `-scanUpToString:` compare the receiver's own substring instead, for exactly that reason.
+
+**NOT HERE, NAMED:** the SWIFT-ONLY members Apple documents beside the ObjC ones (`scanCharacter()`,
+`currentIndex`, and the `scanInt(representation:)` family taking a `Scanner.NumberRepresentation`) are excluded by
+§11.5's swift-only ground, the same way every other Swift-only overload in this library is. There is no
+`-initWithCoder:` either: Apple's class conforms to `NSCopying` and to no coding protocol.
 
 ## §62.19 — `NSDataDetector` LANDS, AND TWO OF APPLE'S FIVE DETECTORS ARE REFUSED BY NAME (2026-09-26)
 

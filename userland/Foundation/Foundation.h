@@ -71,6 +71,7 @@
 #import <Foundation/NSURLError.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSCharacterSet.h>
+#import <Foundation/NSScanner.h>
 #import <Foundation/NSIndexSet.h>
 #import <Foundation/NSIndexPath.h>
 #import <Foundation/NSLocale.h>
