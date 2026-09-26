@@ -26,7 +26,10 @@ PROBE = "/System/Shared/tests/foundation_bundle"
 CHECKS = ("bundle-rejects-a-directory-with-no-manifest", "bundle-accepts-both-layouts",
           "bundle-reads-its-plist-manifest", "bundle-finds-its-executable", "bundle-resource-lookup",
           "bundle-localizations-come-from-lproj-directories", "main-bundle-exists-even-for-a-plain-tool",
-          "bundle-by-identifier-searches-the-opened-ones", "bundle-load-refuses-a-payload-that-is-not-code",
+          "bundle-by-identifier-searches-the-opened-ones", "bundle-load-brings-in-real-code",
+          "bundle-principal-class-comes-from-the-manifest", "bundle-loaded-class-is-usable",
+          "bundle-load-posts-its-notification-with-the-classes",
+          "bundle-load-refuses-a-payload-that-is-not-code",
           "bundle-unload-answers-no-when-nothing-was-loaded")
 
 

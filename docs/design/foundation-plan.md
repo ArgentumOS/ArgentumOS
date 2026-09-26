@@ -12972,6 +12972,29 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.17 — THE LOAD PATH IS PROVEN, NOT ASSUMED (2026-09-24)
+
+**§62.16 NAMED THE POSITIVE LOAD PATH AS UNVERIFIED; THIS CLOSES IT.** The fixture bundle now carries a REAL
+SHARED LIBRARY as its executable: `userland/tests/foundation_bundle_payload.m` is built `-shared -fPIC` into
+`/System/Shared/tests/foundation_bundle_payload.so`, and the probe COPIES the bytes into its fixture bundle as
+that bundle's CFBundleExecutable (a text placeholder cannot stand in for it any more - dlopen opens a real file).
+The manifest names `BundleFixturePrincipal` as NSPrincipalClass, and four checks now assert the whole sequence:
+`-load` dlopens and answers YES; `-principalClass` is the class the library defines; **an INSTANCE of it answers
+through the library's own code** (`-fixtureAnswer` returning its string, which is the check that proves code
+loaded rather than a symbol resolved); and NSBundleDidLoadNotification carried NSLoadedClasses naming that class,
+observed by a registered observer.
+
+**AND ONE CHECK WAS WRONG FOR A REASON WORTH RECORDING:** `bundle-unload-answers-no-when-nothing-was-loaded`
+asserted `![contents unload]`, and `contents` HAD been loaded by the new load checks - so unloading it
+legitimately succeeded and the check failed while the class was right. It now uses a FRESH BUNDLE OBJECT that no
+earlier check has touched, which is the deterministic form: **a check whose own precondition other checks can
+change is a check that measures its neighbours.**
+
+**TWO PATCHES DID NOT APPLY AND THE PROBE SAID SO:** both attempts to narrow that check used literal anchors that
+no longer matched, so the file kept the old text and the failure persisted with OLD detail text - the tell. The
+third attempt located the call BY NAME and printed it before replacing it, which is the discipline this session
+keeps having to relearn.
+
 ## §62.16 — NSBUNDLE IS A REAL CLASS, AND IT DEFINES WHAT A BUNDLE IS (2026-09-24)
 
 **A BUNDLE IS A DIRECTORY CONTAINING AN Info.plist, AND THE MANIFEST IS A REAL PROPERTY LIST** read through

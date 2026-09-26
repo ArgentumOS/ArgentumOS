@@ -805,6 +805,15 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_bundle.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_bundle"
+	# THE PAYLOAD: a shared library the probe copies INTO its fixture bundle as that bundle's executable, so
+	# -load's positive path (dlopen a real shared object, then objc_getClass the NSPrincipalClass) is asserted
+	# rather than assumed. It is a plugin, not a program, so it is built -shared with the same Foundation it will
+	# be loaded beside.
+	$(MUSL64_OBJC) -c -fobjc-arc -fPIC -Iuserland \
+		userland/tests/foundation_bundle_payload.m -o .build/probe-foundation_bundle_payload.o
+	$(MUSL64_OBJC) -shared .build/probe-foundation_bundle_payload.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_bundle_payload.so"
 	# foundation_directoryenumerator: W8 slice 1 acceptance (foundation-plan.md §60). ONE unit, only
 	# <Foundation/Foundation.h> plus <unistd.h> for the symlink(2) its fixture makes.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
