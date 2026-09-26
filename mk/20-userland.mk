@@ -142,6 +142,7 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSKeyedArchiver.m \
 	$(FOUNDATION_SRC)/NSProcessInfo.m \
 	$(FOUNDATION_SRC)/NSFileManager.m \
+	$(FOUNDATION_SRC)/NSBundle.m \
 	$(FOUNDATION_SRC)/NSFileAccessIntent.m \
 	$(FOUNDATION_SRC)/NSFileCoordinator.m \
 	$(FOUNDATION_SRC)/NSFileVersion.m \
@@ -795,6 +796,15 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_filemanager.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filemanager"
+	# foundation_bundle: the NSBundle definition. ONE unit, only <Foundation/Foundation.h> plus <fcntl.h> and
+	# <sys/stat.h> for the FIXTURE IT BUILDS ITSELF - a Contents/ bundle, a flat one and a plain directory -
+	# so no test-only manifest format exists in the image and there is no fixture ordering to get wrong.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_bundle.m -o .build/probe-foundation_bundle.o
+	$(MUSL64_OBJC) .build/probe-foundation_bundle.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_bundle"
 	# foundation_directoryenumerator: W8 slice 1 acceptance (foundation-plan.md §60). ONE unit, only
 	# <Foundation/Foundation.h> plus <unistd.h> for the symlink(2) its fixture makes.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
@@ -1736,3 +1746,5 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 # the ELF64 userland tree, so the kernel can boot /System/Tools/init straight
 # off hdb (no initrd). Attached as a second IDE disk (hdb), it becomes the
 # boot root via the kernel cmdline 'root=/dev/hdb rootfstype=ext2'.
+
+

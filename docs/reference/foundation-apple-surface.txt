@@ -28,7 +28,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  165   open   31   struck   77
+#   class      shipped  166   open   30   struck   77
 #   protocol   shipped   23   open    8   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped  129   open   14   struck   17
@@ -1352,7 +1352,7 @@ class	open	NSAttributedStringMarkdownSourcePosition		Fundamentals / Strings with
 class	shipped	NSAutoreleasePool		Low-Level Utilities / Memory Management	-	objc
 class	open	NSBackgroundActivityScheduler		App Support / System Interaction	-	objc
 class	open	NSBlockOperation		App Support / Operations	-	objc
-class	open	NSBundle		App Support / Bundle Resources	-	objc
+class	shipped	NSBundle		App Support / Bundle Resources	-	objc
 class	struck	NSBundleResourceRequest		App Support / On-Demand Resources	deprecated	objc
 class	shipped	NSByteCountFormatter		Fundamentals / Data sizes	-	objc
 class	shipped	NSCache		Fundamentals / Purgeable Collections	-	objc

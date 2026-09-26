@@ -3459,7 +3459,7 @@ vanishing.
 | **App Support / Apple Event Handling** | ALL STRUCK: `NSAppleEventDescriptor`, `NSAppleEventManager` | — |
 | **App Support / Assertions** | all classes shipped | — |
 | **App Support / Attachments** | 4 open | `NSExtensionItem`, `NSItemProvider`, `NSItemProviderReading`, `NSItemProviderWriting` |
-| **App Support / Bundle Resources** | 1 open | `NSBundle` |
+| **App Support / Bundle Resources** | all classes shipped | — |
 | **App Support / Cross-Process Notifications** | 1 open | `NSDistributedNotificationCenter` |
 | **App Support / Exceptions** | all classes shipped | — |
 | **App Support / Extension Support** | 2 open | `NSExtensionContext`, `NSExtensionRequestHandling` |
@@ -12971,6 +12971,35 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.16 — NSBUNDLE IS A REAL CLASS, AND IT DEFINES WHAT A BUNDLE IS (2026-09-24)
+
+**A BUNDLE IS A DIRECTORY CONTAINING AN Info.plist, AND THE MANIFEST IS A REAL PROPERTY LIST** read through
+NSPropertyListSerialization. Two layouts are accepted because Apple has both: flat (Foo.app/Info.plist) and
+Contents/ (Foo.app/Contents/{Info.plist,MacOS/,Resources/}). The keys are Apple's (CFBundleIdentifier,
+CFBundleExecutable, CFBundleName, NSPrincipalClass, CFBundleLocalizations) and a missing key is nil rather than
+an error. `+mainBundle` walks up from /proc/self/cmdline's argv[0] - the seam NSProcessInfo already reads - and
+answers a bundle whose path is the executable's DIRECTORY with a nil manifest for a tool that lives in no bundle,
+which is Apple's own answer. `-load`/`-isLoaded`/`-principalClass`/`-unload` are implemented over the real dynamic
+linker (dlopen -> objc_getClass on NSPrincipalClass -> dlclose) and a successful load posts
+NSBundleDidLoadNotification with NSLoadedClasses, the two constants this class shipped with in §62.15 and now
+actually uses.
+
+**AND THE PROBE FOUND TWO REAL DEFECTS ON ITS FIRST RUN, WHICH IS THE WHOLE POINT OF IT:**
+
+  * `-[NSFileManager directoryContentsAtPath:]` WAS DECLARED AND NOT IMPLEMENTED. It is implemented now
+    (opendir, sorted because a caller comparing two listings should not have to know the file system's order),
+    and the reason the omission was invisible until now is worth recording: **a missing method is a raise, and
+    a raise inside a probe is an ABORT rather than a failed check** - it took the write(2) diagnostic added in
+    §62.4 to name it.
+  * `+[NSBundle mainBundle]` fell back to `-initWithPath:` for the tool case, which correctly answers NIL
+    because that directory has no manifest by this class's own definition - so mainBundle was nil. The tool case
+    now goes through a bare door that gives a path and no manifest, which is what Apple's mainBundle is.
+
+**AND ONE HALF IS NAMED AS UNVERIFIED:** the probe asserts that a payload which is NOT code fails to load and
+that isLoaded/principalClass/unload behave (10/10), but the POSITIVE load path - -load bringing in a real shared
+library and -principalClass answering its class - is NOT yet exercised, because that needs an .so as the fixture.
+It is the next step rather than a claim.
 
 ## §62.15 — THE COVERAGE SLICE, FOURTEENTH LANDING: NSBUNDLE'S VOCABULARY (2026-09-24)
 

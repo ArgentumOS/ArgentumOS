@@ -595,6 +595,41 @@ typedef enum {
 	return YES;
 }
 
+/*
+ * THE CONTENTS OF A DIRECTORY, WHICH WAS DECLARED AND NOT IMPLEMENTED - and the omission was invisible until
+ * NSBundle asked for it, because a missing method is a raise and a raise inside a probe is an abort rather than
+ * a failed check. The entries are returned SORTED: opendir's order is the file system's business, and a caller
+ * comparing two listings should not have to know that.
+ */
+- (nullable NSArray *)directoryContentsAtPath:(NSString *)path
+{
+	NSMutableArray *names = [NSMutableArray array];
+	struct dirent *entry;
+	DIR *dir;
+
+	if (path == nil) {
+		return nil;
+	}
+	dir = opendir([path UTF8String]);
+	if (dir == NULL) {
+		return nil;
+	}
+	while ((entry = readdir(dir)) != NULL) {
+		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+			continue;
+		}
+		{
+			NSString *name = [NSString stringWithUTF8String:entry->d_name];
+
+			if (name != nil) {
+				[names addObject:name];
+			}
+		}
+	}
+	closedir(dir);
+	return [names sortedArrayUsingSelector:@selector(compare:)];
+}
+
 - (BOOL)fileExistsAtPath:(NSString *)path
 {
 	return [self fileExistsAtPath:path isDirectory:NULL];
