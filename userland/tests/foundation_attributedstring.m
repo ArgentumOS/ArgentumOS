@@ -152,16 +152,17 @@ int main(void)
 			@"attributedSubstringFromRange:", @"isEqualToAttributedString:",
 			@"enumerateAttributesInRange:options:usingBlock:",
 			@"enumerateAttribute:inRange:options:usingBlock:", @"copy", @"mutableCopy",
-			@"encodeWithCoder:", @"initWithCoder:" ];
+			@"encodeWithCoder:", @"initWithCoder:",
+			@"dataFromRange:documentAttributes:error:", @"RTFFromRange:documentAttributes:",
+			@"RTFDFromRange:documentAttributes:", @"RTFDFileWrapperFromRange:documentAttributes:",
+			@"docFormatFromRange:documentAttributes:", @"fileWrapperFromRange:documentAttributes:error:" ];
 		NSArray *absent = @[ @"drawInRect:", @"drawAtPoint:", @"drawWithRect:options:context:", @"size",
 			@"boundingRectWithSize:options:context:", @"doubleClickAtIndex:",
 			@"nextWordFromIndex:forward:", @"lineBreakBeforeIndex:withinRange:",
 			@"lineBreakByHyphenatingBeforeIndex:withinRange:", @"containsAttachmentsInRange:",
 			@"fontAttributesInRange:", @"rulerAttributesInRange:", @"itemNumberInTextList:atIndex:",
 			@"rangeOfTextBlock:atIndex:", @"rangeOfTextList:atIndex:", @"rangeOfTextTable:atIndex:",
-			@"prefersRTFDInRange:", @"RTFFromRange:documentAttributes:",
-			@"RTFDFromRange:documentAttributes:", @"dataFromRange:documentAttributes:error:",
-			@"fileWrapperFromRange:documentAttributes:error:",
+			@"prefersRTFDInRange:",
 			@"mutableString", @"fixAttachmentAttributeInRange:", @"setAlignment:range:",
 			@"superscriptRange:", @"subscriptRange:", @"unscriptRange:",
 			@"readFromData:options:documentAttributes:", @"readFromURL:options:documentAttributes:error:" ];
@@ -189,6 +190,10 @@ int main(void)
 		}
 		if (![NSAttributedString respondsToSelector:NSSelectorFromString(@"supportsSecureCoding")]) {
 			[missing addObject:@"+supportsSecureCoding"];
+		}
+		if (![NSAttributedString respondsToSelector:
+				NSSelectorFromString(@"loadFromHTMLWithRequest:options:completionHandler:")]) {
+			[missing addObject:@"+loadFromHTMLWithRequest:options:completionHandler:"];
 		}
 		check("inventory-the-shipped-selectors-exist", [missing count] == 0,
 		      [NSString stringWithFormat:@"missing: %@", [missing componentsJoinedByString:@", "]]);
@@ -603,6 +608,25 @@ int main(void)
 		check("coding-supports-secure-coding-answers-yes",
 		      [NSAttributedString supportsSecureCoding],
 		      @"the class answers YES (NSCoding.h names the coder-side enforcement as the gap)");
+	}
+
+	{
+		/* THE FILE-FORMAT DOORS REFUSE BY NAME, AND THE NAME IS THE ASSERTION: a door that answered a silent
+		 * nil would be indistinguishable from an empty document, so the check reads the NSError's own
+		 * description and requires it to say which format and why. */
+		NSAttributedString *sample = [[NSAttributedString alloc] initWithString:@"x"];
+		NSError *error = nil;
+		NSData *data = [sample dataFromRange:NSMakeRange(0, 1) documentAttributes:nil error:&error];
+		NSString *description = [error localizedDescription];
+
+		check("file-format-doors-refuse-by-name",
+		      data == nil && error != nil && description != nil &&
+		      [description rangeOfString:@"not implemented"].location != NSNotFound,
+		      [NSString stringWithFormat:@"data=%@ error=%@", data, description]);
+		check("file-format-doors-answer-nil-rather-than-pretending",
+		      [sample RTFFromRange:NSMakeRange(0, 1) documentAttributes:nil] == nil &&
+		      [sample docFormatFromRange:NSMakeRange(0, 1) documentAttributes:nil] == nil,
+		      @"RTF and doc format answer nil (their Apple shape has no error out)");
 	}
 
 	printf("FOUNDATION-ATTRIBUTEDSTRING RESULT ok=%d fail=%d\n", okc, failc);

@@ -19,6 +19,7 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSPropertyListSerialization.h>
 #import <Foundation/NSData.h>
+#import <Foundation/NSError.h>
 #import <Foundation/NSDate.h>
 #import <Foundation/NSNumber.h>
 
@@ -86,6 +87,29 @@ static NSString *fn_plist_offender(id object)
 		return nil;
 	}
 	return (NSString *)[object class];
+}
+
+/* ONE REFUSAL, BUILT THE SAME WAY EVERYWHERE: an NSError whose domain and description NAME the format and
+ * the reason. Apple's own shape for a door that cannot do its work - and the reason a silent nil would be
+ * worse is the reason the dictionary has one: a caller that loses a value without being told cannot tell a
+ * failure from an empty answer. */
+static void fn_format_refusal_log(NSString *selector, NSString *what)
+{
+	NSString *line = [NSString stringWithFormat:@"Foundation: %@ refused: %@\n", selector, what];
+	const char *bytes = [line UTF8String];
+
+	if (bytes != NULL) {
+		(void)write(2, bytes, strlen(bytes));
+	}
+}
+
+static NSError *fn_format_refusal(NSString *selector, NSString *what)
+{
+	NSDictionary *info = [NSDictionary dictionaryWithObject:
+		[NSString stringWithFormat:@"%@ is not implemented: %@", selector, what]
+							     forKey:NSLocalizedDescriptionKey];
+
+	return [NSError errorWithDomain:@"NSAttributedStringDocumentErrorDomain" code:1 userInfo:info];
 }
 
 @implementation NSAttributedString
@@ -723,6 +747,85 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 	return YES;
 }
 
+
+
+/* ---- THE FILE-FORMAT DOORS (W10 slice 4), EACH REFUSING BY NAME ----------------------------------- */
+- (nullable NSData *)dataFromRange:(NSRange)range
+	       documentAttributes:(nullable NSDictionary *)dict
+			    error:(NSError **)error
+{
+	(void)range;
+	(void)dict;
+	if (error != NULL) {
+		*error = fn_format_refusal(@"-dataFromRange:documentAttributes:error:",
+					   @"no document format is implemented in this system");
+	}
+	return nil;
+}
+
+- (nullable NSData *)RTFFromRange:(NSRange)range documentAttributes:(nullable NSDictionary *)dict
+{
+	(void)range;
+	(void)dict;
+	/* Apple's RTF writers answer NSData and have NO error out; a refusal that cannot report through an
+	 * NSError says so in the one channel it has - the log - and answers nil. */
+	fn_format_refusal_log(@"-RTFFromRange:documentAttributes:", @"RTF is not implemented");
+	return nil;
+}
+
+- (nullable NSData *)RTFDFromRange:(NSRange)range documentAttributes:(nullable NSDictionary *)dict
+{
+	(void)range;
+	(void)dict;
+	fn_format_refusal_log(@"-RTFDFromRange:documentAttributes:", @"RTFD is not implemented");
+	return nil;
+}
+
+- (nullable NSFileWrapper *)RTFDFileWrapperFromRange:(NSRange)range
+				documentAttributes:(nullable NSDictionary *)dict
+{
+	(void)range;
+	(void)dict;
+	fn_format_refusal_log(@"-RTFDFileWrapperFromRange:documentAttributes:", @"RTFD is not implemented");
+	return nil;
+}
+
+- (nullable NSDictionary *)fileWrapperFromRange:(NSRange)range
+			   documentAttributes:(nullable NSDictionary *)dict
+					error:(NSError **)error
+{
+	(void)range;
+	(void)dict;
+	if (error != NULL) {
+		*error = fn_format_refusal(@"-fileWrapperFromRange:documentAttributes:error:",
+					   @"no document format is implemented in this system");
+	}
+	return nil;
+}
+
+- (nullable NSData *)docFormatFromRange:(NSRange)range documentAttributes:(nullable NSDictionary *)dict
+{
+	(void)range;
+	(void)dict;
+	fn_format_refusal_log(@"-docFormatFromRange:documentAttributes:", @"the doc format is not implemented");
+	return nil;
+}
+
++ (void)loadFromHTMLWithRequest:(NSURLRequest *)request
+			options:(nullable NSDictionary *)options
+	      completionHandler:(void (^)(NSAttributedString *, NSDictionary *, NSError *))completionHandler
+{
+	/* THE ONE DOOR WITH AN ERROR CHANNEL AND A BLOCK: the handler is called ONCE with the refusal, which is
+	 * the shape Apple documents (the completion handler always runs) and the honest half of a load that
+	 * cannot happen. */
+	(void)request;
+	(void)options;
+	if (completionHandler != NULL) {
+		completionHandler(nil, nil,
+			fn_format_refusal(@"+loadFromHTMLWithRequest:options:completionHandler:",
+					  @"HTML import needs a parser and a network fetch, neither of which exists here"));
+	}
+}
 
 @end
 

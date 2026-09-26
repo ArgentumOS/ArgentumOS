@@ -34,6 +34,8 @@
 
 #import <Foundation/NSObject.h>
 #import <Foundation/NSCoding.h>
+#import <Foundation/NSURLRequest.h>
+#import <Foundation/NSFileWrapper.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -166,6 +168,31 @@ typedef enum {
 		  atIndex:(NSUInteger)location
     longestEffectiveRange:(nullable NSRangePointer)range
 		  inRange:(NSRange)rangeLimit;
+
+/* ---- THE FILE-FORMAT DOORS, DECLARED AND REFUSING BY NAME (W10 slice 4) -----------------------------
+ *
+ * RTF, RTFD, HTML and the doc format are NOT implemented: no writer or parser of those formats exists in this
+ * system. Apple's own shape for a door that cannot do its work is an NSError the caller must handle - and
+ * Apple itself discourages the synchronous HTML initialisers - so each door returns nil AND sets an error that
+ * NAMES the format and the reason, rather than returning a silent nil or pretending to write. */
+- (nullable NSData *)dataFromRange:(NSRange)range
+	       documentAttributes:(nullable NSDictionary *)dict
+			    error:(NSError ** _Nullable)error;
+- (nullable NSData *)RTFFromRange:(NSRange)range
+	     documentAttributes:(nullable NSDictionary *)dict;
+- (nullable NSData *)RTFDFromRange:(NSRange)range
+	      documentAttributes:(nullable NSDictionary *)dict;
+- (nullable NSFileWrapper *)RTFDFileWrapperFromRange:(NSRange)range
+				documentAttributes:(nullable NSDictionary *)dict;
+- (nullable NSDictionary *)fileWrapperFromRange:(NSRange)range
+			   documentAttributes:(nullable NSDictionary *)dict
+					error:(NSError ** _Nullable)error;
+- (nullable NSData *)docFormatFromRange:(NSRange)range
+		   documentAttributes:(nullable NSDictionary *)dict;
++ (void)loadFromHTMLWithRequest:(NSURLRequest *)request
+			options:(nullable NSDictionary *)options
+	      completionHandler:(void (^)(NSAttributedString * _Nullable, NSDictionary * _Nullable,
+					  NSError * _Nullable))completionHandler;
 
 - (void)encodeWithCoder:(NSCoder *)coder;
 - (nullable instancetype)initWithCoder:(NSCoder *)coder;

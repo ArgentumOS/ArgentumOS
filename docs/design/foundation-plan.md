@@ -12972,6 +12972,27 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §61.4 — W10 SLICE 4, SECOND HALF: THE FILE-FORMAT DOORS REFUSE BY NAME (2026-09-24)
+
+**W10 IS COMPLETE.** The seven document-format doors now exist and each one REFUSES BY NAME:
+`-dataFromRange:documentAttributes:error:`, `-RTFFromRange:documentAttributes:`, `-RTFDFromRange:documentAttributes:`,
+`-RTFDFileWrapperFromRange:documentAttributes:`, `-fileWrapperFromRange:documentAttributes:error:`,
+`-docFormatFromRange:documentAttributes:` and `+loadFromHTMLWithRequest:options:completionHandler:`.
+
+**THE REFUSAL IS THE ASSERTION, NOT A COURTESY.** The doors with an error out set an NSError whose description
+names the door and the reason ("no document format is implemented in this system"), and the probe READS THAT
+DESCRIPTION - so a future silent nil fails the check instead of passing quietly. The doors Apple gives no error
+out (`-RTFFromRange:`, `-docFormatFromRange:`) log their refusal on `write(2)`, the only channel this library's
+messages actually reach, and the completion-handler door calls its handler ONCE with the refusal, which is the
+contract Apple documents rather than a silent return.
+
+**AND THE PROBE'S ABSENCE LIST WAS FLIPPED ON PURPOSE THIS TIME**, which is the discipline the day earned: three
+probes in this tree still asserted an absence that had since landed (`foundation_filecoordinator` red since 7d,
+`foundation_xmltree`'s DTD clause, and this class's own coding doors), so the two doors' selectors moved from
+`absent` to `implemented` in the same commit that implemented them, and the two class-side selector checks
+(`+supportsSecureCoding`, `+loadFromHTMLWithRequest:…`) were added because a class method asked of an INSTANCE
+reads as missing - a mistake this slice made twice before it was noticed.
+
 ## §61.3 — W10 SLICE 4, FIRST HALF: THE MODERN FAMILIES' CONSTANTS (2026-09-24)
 
 **THE 44 OPEN ROWS OF THIS CLASS ARE 4 ENUMS (25 CASES) AND 15 ATTRIBUTE-NAME CONSTANTS, AND THEY ARE NOW
