@@ -450,6 +450,20 @@ int main(void)
 				(long)[c hour], (long)[c minute], (long)[c second]] UTF8String]);
 	}
 
+	{
+		/* THREE PROPERTIES, EACH A PLACE THE VOCABULARY COULD LIE: Apple's option spelling must be the SAME BIT
+		 * as the house name it aliases (or a caller using Apple's name would ask for nothing), the newly
+		 * declared unit must be Apple's own bit (1 << 8, the one the existing list skipped), and an
+		 * identifier must be the lowercase WIRE STRING the initialiser accepts. */
+		check("calendar-alias-and-wire-values",
+		      NSCalendarWrapComponents == NSCalendarOptionsWrapComponents &&
+		      NSCalendarSearchBackwards == NSCalendarOptionsSearchBackwards &&
+		      NSCalendarUnitDayOfYear == (1UL << 8) &&
+		      [NSCalendarIdentifierBangla isEqualToString:@"bangla"] &&
+		      [NSCalendarDayChangedNotification isEqualToString:@"NSCalendarDayChangedNotification"],
+		      "the aliases equal their house names, DayOfYear is Apple's bit, and an identifier is its wire string");
+	}
+
 	printf("FOUNDATION-CALENDAR RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

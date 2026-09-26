@@ -166,6 +166,19 @@ static NSDate *fn_cal_date(UCalendar *calendar, UErrorCode *status)
 
 @implementation NSCalendar
 
+NSString *const NSCalendarDayChangedNotification = @"NSCalendarDayChangedNotification";
+NSCalendarIdentifier const NSCalendarIdentifierBangla = @"bangla";
+NSCalendarIdentifier const NSCalendarIdentifierDangi = @"dangi";
+NSCalendarIdentifier const NSCalendarIdentifierGujarati = @"gujarati";
+NSCalendarIdentifier const NSCalendarIdentifierKannada = @"kannada";
+NSCalendarIdentifier const NSCalendarIdentifierMalayalam = @"malayalam";
+NSCalendarIdentifier const NSCalendarIdentifierMarathi = @"marathi";
+NSCalendarIdentifier const NSCalendarIdentifierOdia = @"odia";
+NSCalendarIdentifier const NSCalendarIdentifierTamil = @"tamil";
+NSCalendarIdentifier const NSCalendarIdentifierTelugu = @"telugu";
+NSCalendarIdentifier const NSCalendarIdentifierVietnamese = @"vietnamese";
+NSCalendarIdentifier const NSCalendarIdentifierVikram = @"vikram";
+
 + (NSCalendar *)currentCalendar
 {
 	return [[self alloc] initWithCalendarIdentifier:NSCalendarIdentifierGregorian];

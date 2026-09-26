@@ -32,10 +32,10 @@
 #   protocol   shipped   23   open    8   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped  119   open   24   struck   17
-#   case       shipped  976   open  158   struck  168
+#   case       shipped  990   open  144   struck  168
 #   func       shipped   74   open   61   struck   54
-#   var        shipped  435   open  126   struck  353
-#   typealias  shipped   46   open   23   struck    7
+#   var        shipped  448   open  113   struck  353
+#   typealias  shipped   47   open   22   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -161,19 +161,19 @@ case	shipped	NSCalculationUnderflow		Fundamentals / Numbers / Performing arithme
 case	shipped	NSCalculationUnderflow	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
 case	struck	NSCalendarCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	struck	NSCalendarCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	open	NSCalendarMatchFirst	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
-case	open	NSCalendarMatchLast	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
-case	open	NSCalendarMatchNextTime	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
-case	open	NSCalendarMatchNextTimePreservingSmallerUnits	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
-case	open	NSCalendarMatchPreviousTimePreservingSmallerUnits	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
-case	open	NSCalendarMatchStrictly	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
-case	open	NSCalendarSearchBackwards	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
-case	open	NSCalendarUnitCalendar	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Calendars and Time Zones	-	objc
-case	open	NSCalendarUnitCalendar	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Calendars and Time Zones	-	objc
+case	shipped	NSCalendarMatchFirst	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
+case	shipped	NSCalendarMatchLast	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
+case	shipped	NSCalendarMatchNextTime	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
+case	shipped	NSCalendarMatchNextTimePreservingSmallerUnits	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
+case	shipped	NSCalendarMatchPreviousTimePreservingSmallerUnits	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
+case	shipped	NSCalendarMatchStrictly	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
+case	shipped	NSCalendarSearchBackwards	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
+case	shipped	NSCalendarUnitCalendar	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Calendars and Time Zones	-	objc
+case	shipped	NSCalendarUnitCalendar	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Calendars and Time Zones	-	objc
 case	shipped	NSCalendarUnitDay	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Weeks and Days	-	objc
 case	shipped	NSCalendarUnitDay	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Weeks and Days	-	objc
-case	open	NSCalendarUnitDayOfYear	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Weeks and Days	-	objc
-case	open	NSCalendarUnitDayOfYear	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Weeks and Days	-	objc
+case	shipped	NSCalendarUnitDayOfYear	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Weeks and Days	-	objc
+case	shipped	NSCalendarUnitDayOfYear	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Weeks and Days	-	objc
 case	shipped	NSCalendarUnitEra	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Years and Months	-	objc
 case	shipped	NSCalendarUnitEra	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Years and Months	-	objc
 case	shipped	NSCalendarUnitHour	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Hours, Minutes, and Seconds	-	objc
@@ -192,8 +192,8 @@ case	shipped	NSCalendarUnitQuarter	NSCalendar	Fundamentals / Calendrical Calcula
 case	shipped	NSCalendarUnitQuarter	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Years and Months	-	objc
 case	shipped	NSCalendarUnitSecond	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Hours, Minutes, and Seconds	-	objc
 case	shipped	NSCalendarUnitSecond	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Hours, Minutes, and Seconds	-	objc
-case	open	NSCalendarUnitTimeZone	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Calendars and Time Zones	-	objc
-case	open	NSCalendarUnitTimeZone	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Calendars and Time Zones	-	objc
+case	shipped	NSCalendarUnitTimeZone	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Calendars and Time Zones	-	objc
+case	shipped	NSCalendarUnitTimeZone	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Calendars and Time Zones	-	objc
 case	shipped	NSCalendarUnitWeekOfMonth	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Weeks and Days	-	objc
 case	shipped	NSCalendarUnitWeekOfMonth	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Weeks and Days	-	objc
 case	shipped	NSCalendarUnitWeekOfYear	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Weeks and Days	-	objc
@@ -206,7 +206,7 @@ case	shipped	NSCalendarUnitYear	NSCalendar	Fundamentals / Calendrical Calculatio
 case	shipped	NSCalendarUnitYear	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Years and Months	-	objc
 case	shipped	NSCalendarUnitYearForWeekOfYear	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Years and Months	-	objc
 case	shipped	NSCalendarUnitYearForWeekOfYear	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Years and Months	-	objc
-case	open	NSCalendarWrapComponents	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
+case	shipped	NSCalendarWrapComponents	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
 case	struck	NSCannotCreateScriptCommandError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	shipped	NSCaseInsensitivePredicateOption	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	swift-page
 case	shipped	NSCaseInsensitiveSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
@@ -2276,7 +2276,7 @@ typealias	struck	NSAppleEventManagerSuspensionID	NSAppleEventManager	App Support
 typealias	open	NSAttributedStringFormattingContextKey		Reference / Type Aliases	-	objc
 typealias	shipped	NSAttributedStringKey	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes	-	objc
 typealias	open	NSBackgroundActivityCompletionHandler	NSBackgroundActivityScheduler	App Support / System Interaction / Scheduling Activity	-	objc
-typealias	open	NSCalendarIdentifier	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars	-	objc
+typealias	shipped	NSCalendarIdentifier	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars	-	objc
 typealias	open	NSComparator	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
 typealias	open	NSDistributedNotificationCenterType	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants	-	objc
 typealias	shipped	NSErrorDomain	NSError	App Support / User-Relevant Errors / Supporting Types	-	objc
@@ -2366,17 +2366,17 @@ var	open	NSBundleDidLoadNotification	NSBundle	App Support / Bundle Resources / G
 var	struck	NSBundleResourceRequestLoadingPriorityUrgent	NSBundleResourceRequest	App Support / On-Demand Resources / Setting the download priority	deprecated	objc
 var	struck	NSBundleResourceRequestLowDiskSpaceNotification	NSBundleResourceRequest	App Support / On-Demand Resources / Working with notifications	deprecated	swift-page
 var	struck	NSBundleResourceRequestLowDiskSpaceNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
-var	open	NSCalendarDayChangedNotification	NSCalendar	Fundamentals / Calendrical Calculations / Recognizing Notifications	-	swift-page
-var	open	NSCalendarDayChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSCalendarIdentifierBangla	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
+var	shipped	NSCalendarDayChangedNotification	NSCalendar	Fundamentals / Calendrical Calculations / Recognizing Notifications	-	swift-page
+var	shipped	NSCalendarDayChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSCalendarIdentifierBangla	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCalendarIdentifierBuddhist	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCalendarIdentifierChinese	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCalendarIdentifierCoptic	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
-var	open	NSCalendarIdentifierDangi	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
+var	shipped	NSCalendarIdentifierDangi	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCalendarIdentifierEthiopicAmeteAlem	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCalendarIdentifierEthiopicAmeteMihret	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCalendarIdentifierGregorian	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
-var	open	NSCalendarIdentifierGujarati	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
+var	shipped	NSCalendarIdentifierGujarati	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCalendarIdentifierHebrew	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCalendarIdentifierISO8601	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCalendarIdentifierIndian	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
@@ -2385,16 +2385,16 @@ var	shipped	NSCalendarIdentifierIslamicCivil	NSCalendar	Fundamentals / Calendric
 var	shipped	NSCalendarIdentifierIslamicTabular	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCalendarIdentifierIslamicUmmAlQura	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCalendarIdentifierJapanese	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
-var	open	NSCalendarIdentifierKannada	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
-var	open	NSCalendarIdentifierMalayalam	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
-var	open	NSCalendarIdentifierMarathi	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
-var	open	NSCalendarIdentifierOdia	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
+var	shipped	NSCalendarIdentifierKannada	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
+var	shipped	NSCalendarIdentifierMalayalam	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
+var	shipped	NSCalendarIdentifierMarathi	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
+var	shipped	NSCalendarIdentifierOdia	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCalendarIdentifierPersian	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCalendarIdentifierRepublicOfChina	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
-var	open	NSCalendarIdentifierTamil	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
-var	open	NSCalendarIdentifierTelugu	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
-var	open	NSCalendarIdentifierVietnamese	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
-var	open	NSCalendarIdentifierVikram	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
+var	shipped	NSCalendarIdentifierTamil	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
+var	shipped	NSCalendarIdentifierTelugu	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
+var	shipped	NSCalendarIdentifierVietnamese	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
+var	shipped	NSCalendarIdentifierVikram	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCharacterConversionException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSCharacterConversionException	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 var	struck	NSChineseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc

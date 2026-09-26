@@ -76,14 +76,35 @@ typedef enum {
 	NSCalendarUnitWeekOfYear		= (1UL << 13),
 	NSCalendarUnitYearForWeekOfYear		= (1UL << 14),
 	NSCalendarUnitNanosecond		= (1UL << 15),
-	/* NOT here, and each because it is not a field of a date: Cocoa's
-	 * NSCalendarUnitDayOfYear (a derivation this class does not offer),
-	 * NSCalendarUnitCalendar and NSCalendarUnitTimeZone (they ask for the
-	 * calendar and the zone OBJECTS in the result, which NSDateComponents does
-	 * not carry). Declaring a unit that silently fills in nothing would be the
-	 * half-answer this family refuses. */
+	NSCalendarUnitDayOfYear		= (1UL << 8),
+	NSCalendarUnitCalendar		= (1UL << 16),
+	NSCalendarUnitTimeZone		= (1UL << 17),
+	/* THE THREE ABOVE ARE DECLARED SO A CONFORMING PROGRAM COMPILES, AND THE DOOR REFUSES THEM. Apple
+	 * declares all three; what this class does not do is FILL them - DayOfYear is a derivation it does not
+	 * offer, and Calendar/TimeZone ask for the calendar and zone OBJECTS in the result, which
+	 * NSDateComponents does not carry. A refusal belongs in the door that would answer, not in a missing
+	 * name: refusing to declare them only broke callers who spelled a name Apple's header spells. */
 	NSCalendarUnitCount			= 0
 } NSCalendarUnit;
+
+/* The match options -nextDateAfterDate:matchingComponents:options: takes. None is honoured: this calendar
+ * answers by arithmetic rather than by searching a table of candidate dates, so each one names a search this
+ * class does not perform - which is why they are here with their reasons and the door refuses them. */
+typedef enum {
+	NSCalendarMatchStrictly				= (1UL << 8),
+	NSCalendarMatchPreviousTimePreservingSmallerUnits = (1UL << 9),
+	NSCalendarMatchNextTime				= (1UL << 10),
+	NSCalendarMatchNextTimePreservingSmallerUnits	= (1UL << 11),
+	NSCalendarMatchLast				= (1UL << 12),
+	NSCalendarMatchFirst				= (1UL << 13)
+} NSCalendarMatchOptions;
+
+/* THE CALENDAR IDENTIFIERS, AS WIRE STRINGS: Apple's value for NSCalendarIdentifierGregorian is @"gregorian",
+ * which is what this class already accepts, and every identifier below follows the same lowercase rule. THE
+ * IMPLEMENTATION SUPPORTS THE GREGORIAN ONE ONLY - -initWithCalendarIdentifier: recognises these names and
+ * refuses the rest - so the names ship as vocabulary and the refusal stays where the work would be. */
+typedef NSString *NSCalendarIdentifier;
+
 
 /*
  * The options -dateByAdding… takes. ZERO is the only honoured value: the other
@@ -96,6 +117,13 @@ typedef enum {
 	NSCalendarOptionsWrapComponents	= (1UL << 0),		/* refused */
 	NSCalendarOptionsSearchBackwards = (1UL << 2)		/* refused */
 } NSCalendarOptions;
+
+/* Apple's spelling of the two options this class already had under its own names, aliases rather than
+ * renames because the house names have callers and Apple's have to compile. */
+typedef enum {
+	NSCalendarWrapComponents		= NSCalendarOptionsWrapComponents,
+	NSCalendarSearchBackwards		= NSCalendarOptionsSearchBackwards
+} NSCalendarOptionAliases;
 
 @interface NSCalendar : NSObject <NSCopying>
 {
@@ -199,6 +227,21 @@ typedef enum {
  * object because every caller feeds it straight into a locale string. */
 const char * _Nullable fn_calendar_keyword(NSString *identifier);
 
+
+/* Apple's name for the day-changed notification, spelled with the type the tree's notifications use. */
+extern NSString *const NSCalendarDayChangedNotification;   /* NSNotificationName is not a type here yet */
+
+extern NSCalendarIdentifier const NSCalendarIdentifierBangla;
+extern NSCalendarIdentifier const NSCalendarIdentifierDangi;
+extern NSCalendarIdentifier const NSCalendarIdentifierGujarati;
+extern NSCalendarIdentifier const NSCalendarIdentifierKannada;
+extern NSCalendarIdentifier const NSCalendarIdentifierMalayalam;
+extern NSCalendarIdentifier const NSCalendarIdentifierMarathi;
+extern NSCalendarIdentifier const NSCalendarIdentifierOdia;
+extern NSCalendarIdentifier const NSCalendarIdentifierTamil;
+extern NSCalendarIdentifier const NSCalendarIdentifierTelugu;
+extern NSCalendarIdentifier const NSCalendarIdentifierVietnamese;
+extern NSCalendarIdentifier const NSCalendarIdentifierVikram;
 
 NS_ASSUME_NONNULL_END
 

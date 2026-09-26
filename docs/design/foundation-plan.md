@@ -12972,6 +12972,25 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.6 — THE COVERAGE SLICE, FIFTH LANDING: NSCALENDAR'S 26 ROWS (2026-09-24)
+
+**AND THIS ONE CHANGED A DECISION THE HEADER HAD MADE, FOR THE BETTER.** `NSCalendarUnitDayOfYear`,
+`NSCalendarUnitCalendar` and `NSCalendarUnitTimeZone` were DELIBERATELY NOT DECLARED, with a comment explaining
+that declaring a unit which silently fills in nothing would be a half-answer. The comment's concern is right and
+its remedy was in the wrong place: **a refusal belongs in the DOOR, not in a missing name** - Apple's header
+declares all three, so omitting them only broke callers who spelled a name Apple spells. They are declared now,
+the reason is recorded beside them, and the door still refuses.
+
+**TWO MORE PLACES THE VOCABULARY COULD LIE, BOTH NOW CHECKED:** Apple's option spelling must be the SAME BIT as
+the house name it aliases (`NSCalendarWrapComponents == NSCalendarOptionsWrapComponents`), or a caller using
+Apple's name would ask for nothing; and `NSCalendarUnitDayOfYear` must be **Apple's own bit, 1 << 8**, which is
+the bit the existing list had skipped - so the alias enum had to be moved BELOW the options it aliases (it was
+first written above them, and the compiler said so).
+
+**AND THE IDENTIFIERS ARE WIRE STRINGS:** `NSCalendarIdentifierBangla` is `@"bangla"`, following the rule Apple's
+`NSCalendarIdentifierGregorian = @"gregorian"` sets - the same distinction as `NSURLFileScheme = @"file"`, and
+the second time today that a name-only value would have been wrong.
+
 ## §62.5 — THE COVERAGE SLICE, FOURTH LANDING: NSURL'S 28 ROWS (2026-09-24)
 
 **26 OF NSURL'S 28 OPEN ROWS ARE FILE-SYSTEM AND VOLUME RESOURCE KEYS** (the rest are the bookmark-options
