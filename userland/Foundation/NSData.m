@@ -662,6 +662,14 @@ static NSString *fn_path_for_url(NSURL *url, NSError **errorPtr)
 	}
 }
 
+/* APPLE'S ANSWER, WITH THE GAP NAMED WHERE IT LIVES: NSCoding.h records that this tree's archiver does not yet
+ * ENFORCE secure coding, so the conformance (NSData.h, §62.23) says what it can guard and the coder's own debt is
+ * that file's. */
++ (BOOL)supportsSecureCoding
+{
+	return YES;
+}
+
 - (instancetype)initWithCoder:(NSCoder *)coder
 {
 	NSUInteger length = 0;

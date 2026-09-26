@@ -145,7 +145,10 @@ def declared(kind, name, text):
         return re.search(r"@protocol\s+" + n + r"\b", text)
     any_form = (
         r"#\s*define\s+" + n + r"\b"                       # a macro
-        r"|typedef[^;]*\b" + n + r"\s*;"                   # a typedef declarator
+        # A TYPEDEF DECLARATOR, INCLUDING A BLOCK OR FUNCTION-POINTER ONE (§62.23): `typedef void (^NAME)(id);`
+        # ends in `)`, so a matcher that insisted on `;` after the name MISSED every block typedef — which is how
+        # NSItemProviderCompletionHandler and NSItemProviderLoadHandler stayed "open" while being declared here.
+        r"|typedef[^;]*\b" + n + r"\s*[;)]"
         r"|NS_ENUM\s*\(\s*[^,]+,\s*" + n + r"\s*\)"        # an NS_ENUM
         r"|NS_OPTIONS\s*\(\s*[^,]+,\s*" + n + r"\s*\)"     # an NS_OPTIONS
         r"|\b" + n + r"\s*[=,}]"                           # an enum member

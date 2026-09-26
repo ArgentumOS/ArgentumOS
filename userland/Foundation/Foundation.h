@@ -172,6 +172,7 @@
 #import <Foundation/NSInvocationOperation.h>
 #import <Foundation/NSOperationQueue.h>
 #import <Foundation/NSProgress.h>
+#import <Foundation/NSItemProvider.h>
 #import <Foundation/NSUserDefaults.h>
 #import <Foundation/NSPort.h>
 #import <Foundation/NSSocketPort.h>

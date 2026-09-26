@@ -3461,7 +3461,7 @@ vanishing.
 | **App Support / Activity Sharing** | 2 open | `NSUserActivity`, `NSUserActivityDelegate` |
 | **App Support / Apple Event Handling** | ALL STRUCK: `NSAppleEventDescriptor`, `NSAppleEventManager` | — |
 | **App Support / Assertions** | all classes shipped | — |
-| **App Support / Attachments** | 4 open | `NSExtensionItem`, `NSItemProvider`, `NSItemProviderReading`, `NSItemProviderWriting` |
+| **App Support / Attachments** | 1 open | `NSExtensionItem` |
 | **App Support / Bundle Resources** | all classes shipped | — |
 | **App Support / Cross-Process Notifications** | 1 open | `NSDistributedNotificationCenter` |
 | **App Support / Exceptions** | all classes shipped | — |
@@ -12974,6 +12974,98 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.23 — `NSItemProvider` LANDS, ITS VOCABULARY STOPS BEING A CLASS-SHAPED HOLE, AND THE SWEEP'S TYPEDEF MATCHER IS FIXED (2026-09-26)
+
+**THE CLASS THAT WAS ABSENT ON PURPOSE, AND WHY THE PURPOSE EXPIRED.** §62.10 shipped this header's vocabulary with
+the note that "an item provider exists to hand a payload to another process, and this system's interprocess story is
+its own... the door is absent rather than stubbed". What the class turned out to be, on measurement, is three things
+whose substrate is ALL IN-PROCESS: an ordered list of type-identifier registrations, the LOADING of one of them
+(data, a file, an archived object, a caller's handler), and the OBJECT CONVERSION the two protocols describe. The
+caller that made the case is this system's own desktop — the pasteboard decision records ONE session pasteboard and
+a drag-and-drop design that carries data between windows IN ONE SESSION — so the process-crossing half is what stays
+absent and the rest ships. **Attachments went from 4 open rows to 1** (`NSExtensionItem`, which is that family's
+own next step and nothing else's), and the library's open count **218 → 210** — three of those rows are this unit's
+and FIVE are the instrument fix below, which is itself the finding, and `foundation_itemprovider` is **16 checks**.
+
+**AND THE HEADER HAD A SECOND, SMALLER HOLE THAT IS FIXED WITH IT: `NSItemProvider.h` WAS NEVER IN THE UMBRELLA.**
+The vocabulary shipped as a self-contained header — which is what the sweep checks — while `Foundation.h` did not
+import it, so a caller could not reach those constants through the umbrella at all. It is imported now, and the
+finding is worth the sentence because it is exactly the class of gap the sweep CANNOT see: it reads headers, not
+the umbrella.
+
+**THE RULES ARE OURS AND ARE STATED WHERE THEY ARE DECIDED.** The store is a LIST, because Apple's own sentence for
+`-registeredTypeIdentifiers` is "in the same order they were registered"; registering one identifier twice REPLACES
+the earlier registration and KEEPS ITS POSITION (Apple publishes no rule, and the alternative would answer one
+identifier twice and make the order meaningless). THE FOUR COERCIONS the loading doors are documented to do are
+done: the data door answers the bytes of a DATA registration, the CONTENTS of a FILE one, the ARCHIVE of an ITEM one
+and what a handler produced; the file door answers the registration's own file or A COPY IN THE TEMPORARY DIRECTORY;
+the in-place door answers the original URL and `isInPlace` YES only when the registration carried
+`OpenInPlace`; and the object door matches the class's readable identifiers and lets the CLASS build the object. The
+temporary copy's name comes from `suggestedName` (reduced to its LAST PATH COMPONENT, because a payload does not
+choose a directory) or from the type identifier's last component, and a name already taken gets `-1`, `-2` …, so two
+loads cannot overwrite each other. THE VISIBILITY LEVELS ARE RECORDED AND GATE NOTHING — they say who may see an item
+when a drag crosses a PROCESS boundary, and there is no other process here. AND EVERY LOAD ANSWERS SYNCHRONOUSLY
+(the completion handler has already run when the load returns) with an ALREADY-FINISHED `NSProgress`, because this
+library has no work queue to defer to and a caller that blocks on the answer must not deadlock.
+
+**TWO BOUNDARIES ARE NAMED RATHER THAN IMPLIED.** The `expectedValueClass` a load handler is given is ALWAYS `Nil`,
+because Apple derives it from the CALLER'S COMPLETION BLOCK SIGNATURE — which this library cannot read — so no
+class-based coercion happens at `-loadItemForTypeIdentifier:options:completionHandler:` and a caller that needs an
+object uses `-loadObjectOfClass:`. And `-sourceFrame`/`-containerFrame` answer their zero value, because they are
+where the DRAG SYSTEM records what an item occupies in the window and nothing here positions a drag.
+
+**WHAT IS ABSENT, EACH WITH ITS GROUND:** every **`UTType`**-taking door (`-initWithContentsOfURL:contentType:…`, the
+two `…ForContentType:` loads, the two `…ForContentType:` registrations, `registeredContentTypes`,
+`registeredContentTypesForOpenInPlace`, `registeredContentTypesConformingToContentType:`) because **THIS SYSTEM HAS
+NO `UTType` AND NO IDENTIFIER DATABASE AT ALL** — measured: no `UTType` name is in the ledger and no `public.*`
+table exists anywhere in the tree; the five **CloudKit** share registrations (§11.6 ground (ii), and a service
+besides); **`preferredPresentationStyle`**, whose type is UIKit's. And `-initWithContentsOfURL:` ships WITH ONE
+STATED DEVIATION: it records **`public.file-url`**, because a file's CONTENT type comes from the database — so a
+provider built from `photo.jpg` answers NO to `hasItemConformingToTypeIdentifier:@"public.jpeg"`, which the header
+says in those words.
+
+**THE PROBE FOUND A REAL BUG IN ITS OWN LIBRARY, AND THE CHECK THAT FOUND IT IS THE ONE WORTH COPYING: THE
+COERCION WAS DECIDED BY THE VALUE'S RUNTIME CLASS INSTEAD OF BY WHAT THE REGISTRATION WAS MADE AS.** An `NSData`
+registered through `-initWithItem:typeIdentifier:` — an ITEM, whose data door must answer its ARCHIVE — answered the
+bytes themselves, because `isKindOfClass:[NSData class]` was asked first. **THE DIAGNOSTIC SAID IT IN FOUR BYTES:**
+`archive=4 archiveHead=item`. The fix is a switch on the registration's payload kind with the class check left for
+handler-backed registrations, which have no kind to consult. **AND THE PROBE ITSELF COST TWO ABORTS BEFORE THAT**,
+both the same mistake in a different place: an exception raised inside a CHECK'S OWN DIAGNOSTIC turns a failed check
+into an aborted probe that prints nothing, so `+unarchiveObjectWithData:nil` in a format string destroyed the whole
+run's output. The unarchive is guarded now.
+
+**AND THE SWEEP ITSELF WAS LYING ABOUT SEVEN ROWS, WHICH IS THE OTHER FINDING WORTH THE SPACE.** Two of this unit's
+rows are TYPEDEFS — `NSItemProviderCompletionHandler` and `NSItemProviderLoadHandler` — and they were declared in the
+header all along while the ledger called them OPEN, because **the matcher's typedef branch required `;` after the
+name and `typedef void (^NAME)(id);` ends in `)`**: it could not see ANY block typedef. Fixing it (accept `;` OR `)`)
+flipped SEVEN rows, and **five of them are not this unit's**: `NSComparator`, `NSProgressPublishingHandler`,
+`NSProgressUnpublishingHandler`, `NSUncaughtExceptionHandler` and `NSUserUnixTaskCompletionHandler` were all declared
+and all invisible — each verified by name against its own header before the fix was believed, because an instrument
+that reports a name as shipped when nothing declares it would be a worse liar than the one it replaced. **THE
+GENERAL LESSON: a scan rule that cannot match a SHAPE (a block, a function pointer) reads as a WORK ITEM rather than
+as a blind spot, and the work looks reals — five rows of it were sitting in the queue being counted as unshipped.**
+
+**AND ONE CONFORMANCE WAS ADDED, ONE IS OWED, AND THE DIFFERENCE IS THE POINT.** Apple's completion handler is typed
+`__kindof id<NSSecureCoding>`, so the classes a provider hands back have to conform. **`NSData`'s conformance was
+MISSING BUT ITS CODING PAIR ALREADY EXISTED**, so declaring it (plus `+supportsSecureCoding`) was complete in two
+lines and is part of this unit. **`NSString` AND `NSURL` CONFORM TO `NSCopying` ONLY — THEY HAVE NO CODING PAIR AT
+ALL** — so their conformances are their own units' work, and the consequence is stated where it shows: a caller
+handing a string or a URL to an item-provider completion handler gets a TYPE WARNING about this library's gap, and
+the object travels correctly either way. The probe says that in one function (`fn_item_value`) rather than at nine
+call sites.
+
+**AND ONE MORE GAP WAS MEASURED BY THIS UNIT'S OWN PROBE, IN A CLASS IT DOES NOT OWN: `-[NSURL lastPathComponent]`
+IS NOT IMPLEMENTED IN THIS TREE** — nor are its `-pathExtension` and `-URLByDeleting…` siblings; `NSURL.h` declares
+none of them, which is why no instrument could have counted them (methods are not ledger rows, and the sweep's
+`--unimplemented` mode only judges DECLARED selectors). The probe needed it to name the temporary copies it checks,
+found the per-method message `Foundation: -[NSURL lastPathComponent] is not implemented` on the guest, and asks
+through `[[url path] lastPathComponent]` instead — the string family's own door, which ships. **IT IS A WORK ITEM
+FOR THE URL UNIT AND IT IS NAMED HERE BECAUSE THE PROBE FOUND IT**, which is the same shape as §62.22's trampoline:
+a unit's acceptance test is where a neighbour's gap becomes visible.
+
+**STILL OPEN IN THIS FAMILY, NAMED: `NSExtensionItem`** — the container (four properties and three keys, one of
+which is the attachments array THIS class is the element of) is the App Support / Attachments family's last row.
 
 ## §62.22 — THE TWO CONCRETE OPERATIONS LAND, AND THE PROBE FOUND AN ABORT IN THE INVOCATION TRAMPOLINES (2026-09-26)
 

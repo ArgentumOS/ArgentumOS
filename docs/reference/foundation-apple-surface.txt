@@ -28,14 +28,14 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  171   open   25   struck   77
-#   protocol   shipped   23   open    8   struck   14
+#   class      shipped  172   open   24   struck   77
+#   protocol   shipped   25   open    6   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped  130   open   13   struck   17
 #   case       shipped 1068   open   66   struck  168
 #   func       shipped   83   open   52   struck   54
 #   var        shipped  522   open   39   struck  353
-#   typealias  shipped   56   open   13   struck    7
+#   typealias  shipped   63   open    6   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -1424,7 +1424,7 @@ class	open	NSInflectionRuleExplicit		Fundamentals / Automatic grammar agreement	
 class	shipped	NSInputStream		Low-Level Utilities / Streams	-	objc
 class	shipped	NSInvocation		Low-Level Utilities / Invocations	-	objc
 class	shipped	NSInvocationOperation		App Support / Operations	-	objc
-class	open	NSItemProvider		App Support / Attachments	-	objc
+class	shipped	NSItemProvider		App Support / Attachments	-	objc
 class	shipped	NSJSONSerialization		Files and Data Persistence / JSON	-	objc
 class	open	NSKeyValueSharedObservers		Reference / Classes	-	objc
 class	open	NSKeyValueSharedObserversSnapshot		Reference / Classes	-	objc
@@ -2224,8 +2224,8 @@ protocol	open	NSExtensionRequestHandling		App Support / Extension Support	-	objc
 protocol	shipped	NSFastEnumeration		Fundamentals / Iteration	-	objc
 protocol	shipped	NSFileManagerDelegate		Files and Data Persistence / File system operations	-	objc
 protocol	shipped	NSFilePresenter		Files and Data Persistence / Coordinated file access	-	objc
-protocol	open	NSItemProviderReading		App Support / Attachments / Constants	-	objc
-protocol	open	NSItemProviderWriting		App Support / Attachments / Constants	-	objc
+protocol	shipped	NSItemProviderReading		App Support / Attachments / Constants	-	objc
+protocol	shipped	NSItemProviderWriting		App Support / Attachments / Constants	-	objc
 protocol	shipped	NSKeyedArchiverDelegate		Files and Data Persistence / Keyed Archivers	-	objc
 protocol	shipped	NSKeyedUnarchiverDelegate		Files and Data Persistence / Keyed Archivers	-	objc
 protocol	shipped	NSLocking		Low-Level Utilities / Threads and Locking	-	objc
@@ -2277,7 +2277,7 @@ typealias	open	NSAttributedStringFormattingContextKey		Reference / Type Aliases	
 typealias	shipped	NSAttributedStringKey	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes	-	objc
 typealias	open	NSBackgroundActivityCompletionHandler	NSBackgroundActivityScheduler	App Support / System Interaction / Scheduling Activity	-	objc
 typealias	shipped	NSCalendarIdentifier	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars	-	objc
-typealias	open	NSComparator	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
+typealias	shipped	NSComparator	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
 typealias	shipped	NSDistributedNotificationCenterType	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants	-	objc
 typealias	shipped	NSErrorDomain	NSError	App Support / User-Relevant Errors / Supporting Types	-	objc
 typealias	open	NSErrorUserInfoKey	NSError	App Support / User-Relevant Errors / Providing Error User Info	-	objc
@@ -2289,8 +2289,8 @@ typealias	shipped	NSFileProviderServiceName	NSFileManager	Files and Data Persist
 typealias	shipped	NSHTTPCookiePropertyKey	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs	-	objc
 typealias	shipped	NSHTTPCookieStringPolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Securing cookies	-	objc
 typealias	shipped	NSHashTableOptions	NSHashTable	Fundamentals / Pointer Collections / Constants	-	objc
-typealias	open	NSItemProviderCompletionHandler	NSItemProvider	App Support / Attachments / Constants	-	objc
-typealias	open	NSItemProviderLoadHandler	NSItemProvider	App Support / Attachments / Constants	-	objc
+typealias	shipped	NSItemProviderCompletionHandler	NSItemProvider	App Support / Attachments / Constants	-	objc
+typealias	shipped	NSItemProviderLoadHandler	NSItemProvider	App Support / Attachments / Constants	-	objc
 typealias	shipped	NSKeyValueChangeKey		Reference / Type Aliases	-	objc
 typealias	shipped	NSKeyValueOperator		Reference / Type Aliases	-	objc
 typealias	struck	NSLinguisticTag	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
@@ -2303,8 +2303,8 @@ typealias	shipped	NSPointArray		Fundamentals / Geometry / Related Types	-	objc
 typealias	shipped	NSPointPointer		Fundamentals / Geometry / Related Types	-	objc
 typealias	shipped	NSProgressFileOperationKind	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	swift-page
 typealias	shipped	NSProgressKind	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
-typealias	open	NSProgressPublishingHandler	NSProgress	App Support / Progress / Observing and Controlling File Progress by Other Processes	-	objc
-typealias	open	NSProgressUnpublishingHandler	NSProgress	App Support / Progress / Observing and Controlling File Progress by Other Processes	-	objc
+typealias	shipped	NSProgressPublishingHandler	NSProgress	App Support / Progress / Observing and Controlling File Progress by Other Processes	-	objc
+typealias	shipped	NSProgressUnpublishingHandler	NSProgress	App Support / Progress / Observing and Controlling File Progress by Other Processes	-	objc
 typealias	shipped	NSProgressUserInfoKey	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
 typealias	shipped	NSPropertyListReadOptions	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants	-	objc
 typealias	shipped	NSPropertyListWriteOptions	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Serializing a Property List	-	objc
@@ -2337,13 +2337,13 @@ typealias	shipped	NSURLThumbnailDictionaryItem	NSURL	Fundamentals / URLs / Acces
 typealias	shipped	NSURLUbiquitousItemDownloadingStatus	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 typealias	shipped	NSURLUbiquitousSharedItemPermissions	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 typealias	shipped	NSURLUbiquitousSharedItemRole	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-typealias	open	NSUncaughtExceptionHandler	NSException	App Support / Exceptions / Related Types	-	objc
+typealias	shipped	NSUncaughtExceptionHandler	NSException	App Support / Exceptions / Related Types	-	objc
 typealias	open	NSUndoManagerUserInfoKey	NSUndoManager	App Support / Undo / Working with user info	-	objc
 typealias	open	NSUserActivityPersistentIdentifier	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
 typealias	struck	NSUserAppleScriptTaskCompletionHandler	NSUserAppleScriptTask	Low-Level Utilities / Scripts and External Tasks / Constants	declined	objc
 typealias	struck	NSUserAutomatorTaskCompletionHandler	NSUserAutomatorTask	Low-Level Utilities / Scripts and External Tasks / Constants	declined	objc
 typealias	struck	NSUserScriptTaskCompletionHandler	NSUserScriptTask	Low-Level Utilities / Scripts and External Tasks / Constants	declined	objc
-typealias	open	NSUserUnixTaskCompletionHandler	NSUserUnixTask	Low-Level Utilities / Scripts and External Tasks / Constants	-	objc
+typealias	shipped	NSUserUnixTaskCompletionHandler	NSUserUnixTask	Low-Level Utilities / Scripts and External Tasks / Constants	-	objc
 typealias	shipped	NSValueTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry	-	objc
 typealias	struck	NSZone		Low-Level Utilities / Legacy	32-bit-only	objc
 typealias	shipped	unichar		Fundamentals / Characters	-	objc
