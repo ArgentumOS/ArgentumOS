@@ -3517,7 +3517,7 @@ vanishing.
 | **Fundamentals / Indexes** | all classes shipped | — |
 | **Fundamentals / Iteration** | all classes shipped | — |
 | **Fundamentals / Lists** | all classes shipped | — |
-| **Fundamentals / Localization** | 1 open | `NSOrthography` |
+| **Fundamentals / Localization** | all classes shipped | — |
 | **Fundamentals / Mass, Weight, and Force** | all classes shipped | — |
 | **Fundamentals / Measurements** | all classes shipped | — |
 | **Fundamentals / Names** | all classes shipped | — |
@@ -12974,6 +12974,62 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.21 — `NSOrthography` LANDS, AND §62.18'S ORTHOGRAPHY DOOR HAS A CLASS AT LAST (2026-09-26)
+
+**THIS ONE EXISTS FOR A REASON THAT IS NOT ITSELF, WHICH IS WORTH SAYING FIRST.** §62.18 gave `NSTextCheckingResult`
+Apple's whole surface — `+orthographyCheckingResultWithRange:orthography:` and its `-orthography` payload among it —
+**and the class those two members speak in did not exist**, so the pair could only be handed nil. That is the kind of
+gap a surface-complete class can hide: the members were declared, implemented and green, and the ACCOUNT of what
+they carry was missing. `NSOrthography` closes it, its probe's ninth check is that exact door, and the Localization
+family's row is now `all classes shipped` — the library's open count went 223 → 222.
+
+**THE CLASS IS TWO VALUES AND FIVE OVERRIDES.** The state is a dominant script and a language map (ISO 15924 and
+BCP-47 tags, the spellings a program already uses elsewhere); everything else derives from them or is one of
+NSObject's own doors — `-isEqual:`, `-hash`, `-description` and `-copy`, overridden rather than added, because an
+orthography is a VALUE and two built the same way have to compare equal or a dictionary keyed by one would miss.
+`-copy` is `[self retain]`, the §62 rule, since an orthography has no mutable state.
+
+**THE INVARIANT IS ENFORCED AT CONSTRUCTION, AND THAT IS THE ONE THING THIS CLASS ADDS TO APPLE'S PAGES.** The
+dominant script must be a key of the map, and that key's array must not be empty. Apple publishes no such rule, and
+its `-dominantLanguage` is DECLARED to answer a string while a map missing the dominant script would leave it with
+none — so the initializer REFUSES such a map rather than accepting it and answering nil later, which is §11.6.1
+**D4's precedent** applied again (`+dataWithBytes:length:` RAISES instead of answering the nil its annotation
+forbids). **FIVE REFUSALS, ALL ASSERTED BY NAME**: a nil script, a nil map, a value that is not an array, no entry
+for the dominant script, and an empty array for it. The two QUERY doors (`-languagesForScript:`,
+`-dominantLanguageForScript:`) are the ones that CAN miss and answer nil — their argument is arbitrary data rather
+than this object's own state — and both are annotated `nullable` to say what the documented behaviour is.
+**AND THE NULLABILITY POINT IS MEASURED RATHER THAN ASSUMED**: Apple's doc pages render every declaration with the
+qualifiers stripped (§62.20 found `NSScanner`'s `intoString:` shown as `(NSString **)` when it must be nullable in
+the header), so there is no published qualifier to disagree with here.
+
+**THE ORDER OF `-allScripts` AND `-allLanguages` IS OURS AND IS STATED WHERE IT IS DECIDED.** A map has no order a
+value type should expose — this library's `NSDictionary` is a HASH TABLE, so its enumeration order is not a fact
+about the value — so the scripts are answered SORTED by the byte-wise comparison the rest of the library uses, and
+the languages are then the concatenation, in that script order, of each script's OWN array. **THAT INNER ORDER IS
+REAL DATA AND IS PRESERVED**: `{"Latn": ["en", "fr"]}` says English is the dominant language of the Latin script,
+which is why `-dominantLanguage` is the first element of the dominant script's array rather than an alphabetical
+winner.
+
+**AND `+defaultOrthographyForLanguage:` IS CHECKED AGAINST APPLE'S OWN WORKED EXAMPLE.** The factory determines the
+script from ICU's likely-subtags data — the binding this library already uses for the data-driven families — and
+Apple's page states the answer for Hindi: a map with a single key `Deva` whose array holds `hi`. **THAT IS A CHECK
+NOW, not an illustration**, and it is asserted beside four more languages the same table answers (ru → Cyrl,
+ar → Arab, ja → Jpan, en → Latn). Two things about the answer are ours and are named: the language stored in the map
+is **THE TAG AS GIVEN** (ICU's maximised form is used to find the script and is not stored — again Apple's example),
+and a tag the data does not know at all becomes the ISO 15924 code for an undetermined script, **`Zyyy`**, so the
+factory is total (measured: `xx` comes back from ICU unchanged, while `und` and the empty tag are maximised to
+`en_Latn_US` and therefore answer `Latn` — which is why an EMPTY tag is refused separately, as this door's argument
+IS a language tag).
+
+**CODING SHIPS, because Apple's class conforms to `NSCoding` and `NSSecureCoding`.** The two values travel under
+this library's own key names (a program never sees them, which is why they are spellings rather than transcriptions
+of anything), and `-initWithCoder:` goes **through the designated initializer**, so an archive cannot carry a state
+the initializer would have refused. `+supportsSecureCoding` answers YES and `NSCoding.h`'s own recorded gap stands:
+this tree's unarchiver does not yet ask.
+
+**NOT HERE, NAMED:** the Swift-only `LocalizedStringResource` conformance Apple's Swift view shows is excluded by
+§11.5's swift-only ground, as every Swift-only conformance in this library is.
 
 ## §62.20 — `NSScanner` LANDS, AND THE PATTERN MATCHING FAMILY IS COMPLETE (2026-09-26)
 
