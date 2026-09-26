@@ -30,7 +30,8 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_error"
 CHECKS = ("error-api-complete", "exception-api-complete", "error-value",
-          "exception-raise", "exception-throw", "error-cross-tu", "assert-fires", "assert-passing", "assert-numbered", "param-assert", "assert-handler", "thread-dictionary" )
+          "exception-raise", "exception-throw", "error-cross-tu", "assert-fires", "assert-passing", "assert-numbered", "param-assert", "assert-handler", "thread-dictionary",
+          "error-code-families-bracket-their-own-codes", "error-domains-and-keys-are-their-own-names" )
 
 
 class Case(BaseCase):

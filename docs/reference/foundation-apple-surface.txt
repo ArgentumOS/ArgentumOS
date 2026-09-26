@@ -32,9 +32,9 @@
 #   protocol   shipped   23   open    8   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped  119   open   24   struck   17
-#   case       shipped  811   open  323   struck  168
+#   case       shipped  949   open  185   struck  168
 #   func       shipped   72   open   63   struck   54
-#   var        shipped  335   open  226   struck  353
+#   var        shipped  348   open  213   struck  353
 #   typealias  shipped   43   open   26   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -118,21 +118,21 @@ case	shipped	NSBinarySearchingFirstEqual	NSArray	Fundamentals / Basic Collection
 case	shipped	NSBinarySearchingInsertionIndex	NSArray	Fundamentals / Basic Collections / Constants / Constants	-	objc
 case	shipped	NSBinarySearchingLastEqual	NSArray	Fundamentals / Basic Collections / Constants / Constants	-	objc
 case	shipped	NSBlockExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
-case	open	NSBundleErrorMaximum	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
-case	open	NSBundleErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
-case	open	NSBundleErrorMinimum	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
-case	open	NSBundleErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
+case	shipped	NSBundleErrorMaximum	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
+case	shipped	NSBundleErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
+case	shipped	NSBundleErrorMinimum	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
+case	shipped	NSBundleErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
 case	open	NSBundleExecutableArchitectureARM64	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
 case	open	NSBundleExecutableArchitectureI386	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
 case	open	NSBundleExecutableArchitecturePPC	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
 case	open	NSBundleExecutableArchitecturePPC64	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
 case	open	NSBundleExecutableArchitectureX86_64	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
-case	open	NSBundleOnDemandResourceExceededMaximumSizeError	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
-case	open	NSBundleOnDemandResourceExceededMaximumSizeError	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
-case	open	NSBundleOnDemandResourceInvalidTagError	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
-case	open	NSBundleOnDemandResourceInvalidTagError	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
-case	open	NSBundleOnDemandResourceOutOfSpaceError	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
-case	open	NSBundleOnDemandResourceOutOfSpaceError	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
+case	shipped	NSBundleOnDemandResourceExceededMaximumSizeError	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
+case	shipped	NSBundleOnDemandResourceExceededMaximumSizeError	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
+case	shipped	NSBundleOnDemandResourceInvalidTagError	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
+case	shipped	NSBundleOnDemandResourceInvalidTagError	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
+case	shipped	NSBundleOnDemandResourceOutOfSpaceError	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
+case	shipped	NSBundleOnDemandResourceOutOfSpaceError	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
 case	shipped	NSByteCountFormatterCountStyleBinary	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	swift-page
 case	shipped	NSByteCountFormatterCountStyleDecimal	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	swift-page
 case	shipped	NSByteCountFormatterCountStyleFile	NSByteCountFormatter	Fundamentals / Data sizes / Constants / Constants	-	swift-page
@@ -210,31 +210,31 @@ case	open	NSCalendarWrapComponents	NSCalendar	Fundamentals / Calendrical Calcula
 case	struck	NSCannotCreateScriptCommandError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	shipped	NSCaseInsensitivePredicateOption	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	swift-page
 case	shipped	NSCaseInsensitiveSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
-case	open	NSCloudSharingConflictError		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
-case	open	NSCloudSharingConflictError	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
-case	open	NSCloudSharingErrorMaximum		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
-case	open	NSCloudSharingErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
-case	open	NSCloudSharingErrorMinimum		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
-case	open	NSCloudSharingErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
-case	open	NSCloudSharingNetworkFailureError		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
-case	open	NSCloudSharingNetworkFailureError	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
-case	open	NSCloudSharingNoPermissionError		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
-case	open	NSCloudSharingNoPermissionError	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
-case	open	NSCloudSharingOtherError		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
-case	open	NSCloudSharingOtherError	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
-case	open	NSCloudSharingQuotaExceededError		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
-case	open	NSCloudSharingQuotaExceededError	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
-case	open	NSCloudSharingTooManyParticipantsError		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
-case	open	NSCloudSharingTooManyParticipantsError	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
-case	open	NSCoderErrorMaximum	NSCoder	Files and Data Persistence / Keyed Archivers / Error Codes	-	objc
-case	open	NSCoderErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
-case	open	NSCoderErrorMinimum	NSCoder	Files and Data Persistence / Keyed Archivers / Error Codes	-	objc
-case	open	NSCoderErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
-case	open	NSCoderInvalidValueError	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
-case	open	NSCoderReadCorruptError	NSCoder	Files and Data Persistence / Keyed Archivers / Error Codes	-	objc
-case	open	NSCoderReadCorruptError	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
-case	open	NSCoderValueNotFoundError	NSCoder	Files and Data Persistence / Keyed Archivers / Error Codes	-	objc
-case	open	NSCoderValueNotFoundError	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
+case	shipped	NSCloudSharingConflictError		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
+case	shipped	NSCloudSharingConflictError	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
+case	shipped	NSCloudSharingErrorMaximum		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
+case	shipped	NSCloudSharingErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
+case	shipped	NSCloudSharingErrorMinimum		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
+case	shipped	NSCloudSharingErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
+case	shipped	NSCloudSharingNetworkFailureError		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
+case	shipped	NSCloudSharingNetworkFailureError	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
+case	shipped	NSCloudSharingNoPermissionError		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
+case	shipped	NSCloudSharingNoPermissionError	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
+case	shipped	NSCloudSharingOtherError		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
+case	shipped	NSCloudSharingOtherError	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
+case	shipped	NSCloudSharingQuotaExceededError		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
+case	shipped	NSCloudSharingQuotaExceededError	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
+case	shipped	NSCloudSharingTooManyParticipantsError		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
+case	shipped	NSCloudSharingTooManyParticipantsError	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
+case	shipped	NSCoderErrorMaximum	NSCoder	Files and Data Persistence / Keyed Archivers / Error Codes	-	objc
+case	shipped	NSCoderErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
+case	shipped	NSCoderErrorMinimum	NSCoder	Files and Data Persistence / Keyed Archivers / Error Codes	-	objc
+case	shipped	NSCoderErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
+case	shipped	NSCoderInvalidValueError	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
+case	shipped	NSCoderReadCorruptError	NSCoder	Files and Data Persistence / Keyed Archivers / Error Codes	-	objc
+case	shipped	NSCoderReadCorruptError	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
+case	shipped	NSCoderValueNotFoundError	NSCoder	Files and Data Persistence / Keyed Archivers / Error Codes	-	objc
+case	shipped	NSCoderValueNotFoundError	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
 case	open	NSCollectionChangeInsert	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Types of Ordered Collection Changes	-	objc
 case	open	NSCollectionChangeRemove	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Types of Ordered Collection Changes	-	objc
 case	struck	NSCollectorDisabledOption		Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
@@ -338,21 +338,21 @@ case	struck	NSEraCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations
 case	struck	NSEraCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSEvaluatedObjectExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSEverySubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
-case	open	NSExecutableArchitectureMismatchError	NSBundle	App Support / Bundle Resources / Errors	-	objc
-case	open	NSExecutableArchitectureMismatchError	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
-case	open	NSExecutableErrorMaximum	NSBundle	App Support / Bundle Resources / Errors	-	objc
-case	open	NSExecutableErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
-case	open	NSExecutableErrorMinimum	NSBundle	App Support / Bundle Resources / Errors	-	objc
-case	open	NSExecutableErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
-case	open	NSExecutableLinkError	NSBundle	App Support / Bundle Resources / Errors	-	objc
-case	open	NSExecutableLinkError	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
-case	open	NSExecutableLoadError	NSBundle	App Support / Bundle Resources / Errors	-	objc
-case	open	NSExecutableLoadError	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
-case	open	NSExecutableNotLoadableError	NSBundle	App Support / Bundle Resources / Errors	-	objc
-case	open	NSExecutableNotLoadableError	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
-case	open	NSExecutableRuntimeMismatchError	NSBundle	App Support / Bundle Resources / Errors	-	objc
-case	open	NSExecutableRuntimeMismatchError	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
-case	open	NSFeatureUnsupportedError	NSError	App Support / User-Relevant Errors / Error Codes / Miscellaneous Errors	-	objc
+case	shipped	NSExecutableArchitectureMismatchError	NSBundle	App Support / Bundle Resources / Errors	-	objc
+case	shipped	NSExecutableArchitectureMismatchError	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
+case	shipped	NSExecutableErrorMaximum	NSBundle	App Support / Bundle Resources / Errors	-	objc
+case	shipped	NSExecutableErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
+case	shipped	NSExecutableErrorMinimum	NSBundle	App Support / Bundle Resources / Errors	-	objc
+case	shipped	NSExecutableErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
+case	shipped	NSExecutableLinkError	NSBundle	App Support / Bundle Resources / Errors	-	objc
+case	shipped	NSExecutableLinkError	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
+case	shipped	NSExecutableLoadError	NSBundle	App Support / Bundle Resources / Errors	-	objc
+case	shipped	NSExecutableLoadError	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
+case	shipped	NSExecutableNotLoadableError	NSBundle	App Support / Bundle Resources / Errors	-	objc
+case	shipped	NSExecutableNotLoadableError	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
+case	shipped	NSExecutableRuntimeMismatchError	NSBundle	App Support / Bundle Resources / Errors	-	objc
+case	shipped	NSExecutableRuntimeMismatchError	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
+case	shipped	NSFeatureUnsupportedError	NSError	App Support / User-Relevant Errors / Error Codes / Miscellaneous Errors	-	objc
 case	shipped	NSFileCoordinatorReadingForUploading	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
 case	shipped	NSFileCoordinatorReadingImmediatelyAvailableMetadataOnly	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
 case	shipped	NSFileCoordinatorReadingResolvesSymbolicLink	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
@@ -362,12 +362,12 @@ case	shipped	NSFileCoordinatorWritingForDeleting	NSFileCoordinator	Files and Dat
 case	shipped	NSFileCoordinatorWritingForMerging	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
 case	shipped	NSFileCoordinatorWritingForMoving	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
 case	shipped	NSFileCoordinatorWritingForReplacing	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants / Constants	-	objc
-case	open	NSFileErrorMaximum		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
-case	open	NSFileErrorMinimum		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
-case	open	NSFileLockingError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileLockingError	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
+case	shipped	NSFileErrorMaximum		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
+case	shipped	NSFileErrorMinimum		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
+case	shipped	NSFileLockingError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileLockingError	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
 case	shipped	NSFileManagerItemReplacementUsingNewMetadataOnly	NSFileManager	Files and Data Persistence / File system operations / Replacing items / Using File Replacement Options	-	objc
 case	shipped	NSFileManagerItemReplacementWithoutDeletingBackupItem	NSFileManager	Files and Data Persistence / File system operations / Replacing items / Using File Replacement Options	-	objc
 case	shipped	NSFileManagerResumeSyncBehaviorAfterUploadWithFailOnConflict	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Identifying sync behaviors	-	objc
@@ -376,55 +376,55 @@ case	shipped	NSFileManagerResumeSyncBehaviorPreserveLocalChanges	NSFileManager	F
 case	shipped	NSFileManagerSupportedSyncControlsFailUploadOnConflict	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Inspecting supported sync controls	-	objc
 case	shipped	NSFileManagerSupportedSyncControlsPauseSync	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Inspecting supported sync controls	-	objc
 case	shipped	NSFileManagerUnmountAllPartitionsAndEjectDisk	NSFileManager	Files and Data Persistence / File system operations / Unmounting volumes / Unmount Behavior	-	objc
-case	open	NSFileManagerUnmountBusyError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileManagerUnmountBusyError	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
-case	open	NSFileManagerUnmountUnknownError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileManagerUnmountUnknownError	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
+case	shipped	NSFileManagerUnmountBusyError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileManagerUnmountBusyError	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
+case	shipped	NSFileManagerUnmountUnknownError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileManagerUnmountUnknownError	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
 case	shipped	NSFileManagerUnmountWithoutUI	NSFileManager	Files and Data Persistence / File system operations / Unmounting volumes / Unmount Behavior	-	objc
 case	shipped	NSFileManagerUploadConflictPolicyDefault	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Working with conflict policies	-	objc
 case	shipped	NSFileManagerUploadConflictPolicyFailOnConflict	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization / Working with conflict policies	-	objc
-case	open	NSFileNoSuchFileError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileNoSuchFileError	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
-case	open	NSFileReadCorruptFileError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileReadCorruptFileError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
-case	open	NSFileReadInapplicableStringEncodingError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileReadInapplicableStringEncodingError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
-case	open	NSFileReadInvalidFileNameError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileReadInvalidFileNameError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
-case	open	NSFileReadNoPermissionError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileReadNoPermissionError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
-case	open	NSFileReadNoSuchFileError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileReadNoSuchFileError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
-case	open	NSFileReadTooLargeError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileReadTooLargeError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
-case	open	NSFileReadUnknownError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileReadUnknownError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
-case	open	NSFileReadUnknownStringEncodingError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileReadUnknownStringEncodingError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
-case	open	NSFileReadUnsupportedSchemeError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileReadUnsupportedSchemeError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
+case	shipped	NSFileNoSuchFileError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileNoSuchFileError	NSError	App Support / User-Relevant Errors / Error Codes / File Errors	-	objc
+case	shipped	NSFileReadCorruptFileError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileReadCorruptFileError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
+case	shipped	NSFileReadInapplicableStringEncodingError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileReadInapplicableStringEncodingError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
+case	shipped	NSFileReadInvalidFileNameError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileReadInvalidFileNameError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
+case	shipped	NSFileReadNoPermissionError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileReadNoPermissionError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
+case	shipped	NSFileReadNoSuchFileError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileReadNoSuchFileError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
+case	shipped	NSFileReadTooLargeError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileReadTooLargeError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
+case	shipped	NSFileReadUnknownError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileReadUnknownError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
+case	shipped	NSFileReadUnknownStringEncodingError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileReadUnknownStringEncodingError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
+case	shipped	NSFileReadUnsupportedSchemeError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileReadUnsupportedSchemeError	NSError	App Support / User-Relevant Errors / Error Codes / File Reading Errors	-	objc
 case	shipped	NSFileVersionAddingByMoving	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Constants / Constants	-	objc
 case	shipped	NSFileVersionReplacingByMoving	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Constants / Replacing options	-	objc
 case	shipped	NSFileWrapperReadingImmediate	NSFileWrapper	Files and Data Persistence / Managed file access / Constants / Constants	-	objc
 case	shipped	NSFileWrapperReadingWithoutMapping	NSFileWrapper	Files and Data Persistence / Managed file access / Constants / Constants	-	objc
 case	shipped	NSFileWrapperWritingAtomic	NSFileWrapper	Files and Data Persistence / Managed file access / Constants / Constants	-	objc
 case	shipped	NSFileWrapperWritingWithNameUpdating	NSFileWrapper	Files and Data Persistence / Managed file access / Constants / Constants	-	objc
-case	open	NSFileWriteFileExistsError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileWriteFileExistsError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
-case	open	NSFileWriteInapplicableStringEncodingError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileWriteInapplicableStringEncodingError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
-case	open	NSFileWriteInvalidFileNameError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileWriteInvalidFileNameError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
-case	open	NSFileWriteNoPermissionError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileWriteNoPermissionError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
-case	open	NSFileWriteOutOfSpaceError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileWriteOutOfSpaceError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
-case	open	NSFileWriteUnknownError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileWriteUnknownError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
-case	open	NSFileWriteUnsupportedSchemeError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileWriteUnsupportedSchemeError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
-case	open	NSFileWriteVolumeReadOnlyError		Files and Data Persistence / Errors / Error Codes	-	objc
-case	open	NSFileWriteVolumeReadOnlyError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
+case	shipped	NSFileWriteFileExistsError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileWriteFileExistsError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
+case	shipped	NSFileWriteInapplicableStringEncodingError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileWriteInapplicableStringEncodingError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
+case	shipped	NSFileWriteInvalidFileNameError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileWriteInvalidFileNameError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
+case	shipped	NSFileWriteNoPermissionError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileWriteNoPermissionError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
+case	shipped	NSFileWriteOutOfSpaceError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileWriteOutOfSpaceError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
+case	shipped	NSFileWriteUnknownError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileWriteUnknownError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
+case	shipped	NSFileWriteUnsupportedSchemeError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileWriteUnsupportedSchemeError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
+case	shipped	NSFileWriteVolumeReadOnlyError		Files and Data Persistence / Errors / Error Codes	-	objc
+case	shipped	NSFileWriteVolumeReadOnlyError	NSError	App Support / User-Relevant Errors / Error Codes / File Writing Errors	-	objc
 case	open	NSForcedOrderingSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	shipped	NSFormattingContextBeginningOfSentence	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
 case	shipped	NSFormattingContextDynamic	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
@@ -432,9 +432,9 @@ case	shipped	NSFormattingContextListItem	NSFormatter	Fundamentals / Custom forma
 case	shipped	NSFormattingContextMiddleOfSentence	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
 case	shipped	NSFormattingContextStandalone	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
 case	shipped	NSFormattingContextUnknown	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
-case	open	NSFormattingError	NSError	App Support / User-Relevant Errors / Error Codes / Formatting Errors	-	objc
-case	open	NSFormattingErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Formatting Errors	-	objc
-case	open	NSFormattingErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Formatting Errors	-	objc
+case	shipped	NSFormattingError	NSError	App Support / User-Relevant Errors / Error Codes / Formatting Errors	-	objc
+case	shipped	NSFormattingErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Formatting Errors	-	objc
+case	shipped	NSFormattingErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Formatting Errors	-	objc
 case	shipped	NSFormattingUnitStyleLong	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
 case	shipped	NSFormattingUnitStyleMedium	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
 case	shipped	NSFormattingUnitStyleShort	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
@@ -770,24 +770,24 @@ case	shipped	NSProcessInfoThermalStateFair	NSProcessInfo	App Support / System In
 case	shipped	NSProcessInfoThermalStateNominal	NSProcessInfo	App Support / System Interaction / Getting the thermal state / Constants	-	swift-page
 case	shipped	NSProcessInfoThermalStateSerious	NSProcessInfo	App Support / System Interaction / Getting the thermal state / Constants	-	swift-page
 case	shipped	NSPropertyListBinaryFormat_v1_0	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants / Constants	-	objc
-case	open	NSPropertyListErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
-case	open	NSPropertyListErrorMaximum	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
-case	open	NSPropertyListErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
-case	open	NSPropertyListErrorMinimum	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
+case	shipped	NSPropertyListErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
+case	shipped	NSPropertyListErrorMaximum	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
+case	shipped	NSPropertyListErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
+case	shipped	NSPropertyListErrorMinimum	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
 case	shipped	NSPropertyListImmutable	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants / Constants	-	objc
 case	shipped	NSPropertyListMutableContainers	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants / Constants	-	objc
 case	shipped	NSPropertyListMutableContainersAndLeaves	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants / Constants	-	objc
 case	shipped	NSPropertyListOpenStepFormat	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants / Constants	-	objc
-case	open	NSPropertyListReadCorruptError	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
-case	open	NSPropertyListReadCorruptError	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
-case	open	NSPropertyListReadStreamError	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
-case	open	NSPropertyListReadStreamError	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
-case	open	NSPropertyListReadUnknownVersionError	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
-case	open	NSPropertyListReadUnknownVersionError	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
-case	open	NSPropertyListWriteInvalidError	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
-case	open	NSPropertyListWriteInvalidError	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
-case	open	NSPropertyListWriteStreamError	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
-case	open	NSPropertyListWriteStreamError	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
+case	shipped	NSPropertyListReadCorruptError	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
+case	shipped	NSPropertyListReadCorruptError	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
+case	shipped	NSPropertyListReadStreamError	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
+case	shipped	NSPropertyListReadStreamError	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
+case	shipped	NSPropertyListReadUnknownVersionError	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
+case	shipped	NSPropertyListReadUnknownVersionError	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
+case	shipped	NSPropertyListWriteInvalidError	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
+case	shipped	NSPropertyListWriteInvalidError	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
+case	shipped	NSPropertyListWriteStreamError	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
+case	shipped	NSPropertyListWriteStreamError	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
 case	shipped	NSPropertyListXMLFormat_v1_0	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants / Constants	-	objc
 case	struck	NSProprietaryStringEncoding		Fundamentals / Deprecated / Constants	deprecated	objc
 case	struck	NSProprietaryStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	deprecated	objc
@@ -1089,16 +1089,16 @@ case	open	NSUTF32BigEndianStringEncoding	NSString	Fundamentals / Strings / Worki
 case	open	NSUTF32LittleEndianStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	open	NSUTF32StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSUTF8StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSUbiquitousFileErrorMaximum		Files and Data Persistence / Errors / General iCloud File Errors	-	objc
-case	open	NSUbiquitousFileErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / iCloud File Errors	-	objc
-case	open	NSUbiquitousFileErrorMinimum		Files and Data Persistence / Errors / General iCloud File Errors	-	objc
-case	open	NSUbiquitousFileErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / iCloud File Errors	-	objc
-case	open	NSUbiquitousFileNotUploadedDueToQuotaError		Files and Data Persistence / Errors / General iCloud File Errors	-	objc
-case	open	NSUbiquitousFileNotUploadedDueToQuotaError	NSError	App Support / User-Relevant Errors / Error Codes / iCloud File Errors	-	objc
-case	open	NSUbiquitousFileUbiquityServerNotAvailable		Files and Data Persistence / Errors / General iCloud File Errors	-	objc
-case	open	NSUbiquitousFileUbiquityServerNotAvailable	NSError	App Support / User-Relevant Errors / Error Codes / iCloud File Errors	-	objc
-case	open	NSUbiquitousFileUnavailableError		Files and Data Persistence / Errors / General iCloud File Errors	-	objc
-case	open	NSUbiquitousFileUnavailableError	NSError	App Support / User-Relevant Errors / Error Codes / iCloud File Errors	-	objc
+case	shipped	NSUbiquitousFileErrorMaximum		Files and Data Persistence / Errors / General iCloud File Errors	-	objc
+case	shipped	NSUbiquitousFileErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / iCloud File Errors	-	objc
+case	shipped	NSUbiquitousFileErrorMinimum		Files and Data Persistence / Errors / General iCloud File Errors	-	objc
+case	shipped	NSUbiquitousFileErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / iCloud File Errors	-	objc
+case	shipped	NSUbiquitousFileNotUploadedDueToQuotaError		Files and Data Persistence / Errors / General iCloud File Errors	-	objc
+case	shipped	NSUbiquitousFileNotUploadedDueToQuotaError	NSError	App Support / User-Relevant Errors / Error Codes / iCloud File Errors	-	objc
+case	shipped	NSUbiquitousFileUbiquityServerNotAvailable		Files and Data Persistence / Errors / General iCloud File Errors	-	objc
+case	shipped	NSUbiquitousFileUbiquityServerNotAvailable	NSError	App Support / User-Relevant Errors / Error Codes / iCloud File Errors	-	objc
+case	shipped	NSUbiquitousFileUnavailableError		Files and Data Persistence / Errors / General iCloud File Errors	-	objc
+case	shipped	NSUbiquitousFileUnavailableError	NSError	App Support / User-Relevant Errors / Error Codes / iCloud File Errors	-	objc
 case	open	NSUbiquitousKeyValueStoreAccountChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
 case	open	NSUbiquitousKeyValueStoreInitialSyncChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
 case	open	NSUbiquitousKeyValueStoreQuotaViolationChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
@@ -1109,19 +1109,19 @@ case	shipped	NSUnicodeStringEncoding	NSString	Fundamentals / Strings / Working w
 case	shipped	NSUnionSetExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSUnknownKeyScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSUnknownKeySpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
-case	open	NSUserActivityConnectionUnavailableError	NSError	App Support / User-Relevant Errors / Error Codes / User Activity Errors	-	objc
-case	open	NSUserActivityConnectionUnavailableError	NSUserActivity	App Support / Activity Sharing / Reporting errors	-	objc
-case	open	NSUserActivityErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / User Activity Errors	-	objc
-case	open	NSUserActivityErrorMaximum	NSUserActivity	App Support / Activity Sharing / Reporting errors	-	objc
-case	open	NSUserActivityErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / User Activity Errors	-	objc
-case	open	NSUserActivityErrorMinimum	NSUserActivity	App Support / Activity Sharing / Reporting errors	-	objc
-case	open	NSUserActivityHandoffFailedError	NSError	App Support / User-Relevant Errors / Error Codes / User Activity Errors	-	objc
-case	open	NSUserActivityHandoffFailedError	NSUserActivity	App Support / Activity Sharing / Reporting errors	-	objc
-case	open	NSUserActivityHandoffUserInfoTooLargeError	NSError	App Support / User-Relevant Errors / Error Codes / User Activity Errors	-	objc
-case	open	NSUserActivityHandoffUserInfoTooLargeError	NSUserActivity	App Support / Activity Sharing / Reporting errors	-	objc
-case	open	NSUserActivityRemoteApplicationTimedOutError	NSError	App Support / User-Relevant Errors / Error Codes / User Activity Errors	-	objc
-case	open	NSUserActivityRemoteApplicationTimedOutError	NSUserActivity	App Support / Activity Sharing / Reporting errors	-	objc
-case	open	NSUserCancelledError	NSError	App Support / User-Relevant Errors / Error Codes / Cancellation	-	objc
+case	shipped	NSUserActivityConnectionUnavailableError	NSError	App Support / User-Relevant Errors / Error Codes / User Activity Errors	-	objc
+case	shipped	NSUserActivityConnectionUnavailableError	NSUserActivity	App Support / Activity Sharing / Reporting errors	-	objc
+case	shipped	NSUserActivityErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / User Activity Errors	-	objc
+case	shipped	NSUserActivityErrorMaximum	NSUserActivity	App Support / Activity Sharing / Reporting errors	-	objc
+case	shipped	NSUserActivityErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / User Activity Errors	-	objc
+case	shipped	NSUserActivityErrorMinimum	NSUserActivity	App Support / Activity Sharing / Reporting errors	-	objc
+case	shipped	NSUserActivityHandoffFailedError	NSError	App Support / User-Relevant Errors / Error Codes / User Activity Errors	-	objc
+case	shipped	NSUserActivityHandoffFailedError	NSUserActivity	App Support / Activity Sharing / Reporting errors	-	objc
+case	shipped	NSUserActivityHandoffUserInfoTooLargeError	NSError	App Support / User-Relevant Errors / Error Codes / User Activity Errors	-	objc
+case	shipped	NSUserActivityHandoffUserInfoTooLargeError	NSUserActivity	App Support / Activity Sharing / Reporting errors	-	objc
+case	shipped	NSUserActivityRemoteApplicationTimedOutError	NSError	App Support / User-Relevant Errors / Error Codes / User Activity Errors	-	objc
+case	shipped	NSUserActivityRemoteApplicationTimedOutError	NSUserActivity	App Support / Activity Sharing / Reporting errors	-	objc
+case	shipped	NSUserCancelledError	NSError	App Support / User-Relevant Errors / Error Codes / Cancellation	-	objc
 case	shipped	NSUserDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSUserDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
 case	struck	NSUserNotificationActivationTypeActionButtonClicked	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
@@ -1129,8 +1129,8 @@ case	struck	NSUserNotificationActivationTypeAdditionalActionClicked	NSUserNotifi
 case	struck	NSUserNotificationActivationTypeContentsClicked	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
 case	struck	NSUserNotificationActivationTypeNone	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
 case	struck	NSUserNotificationActivationTypeReplied	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
-case	open	NSValidationErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Validation Errors	-	objc
-case	open	NSValidationErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Validation Errors	-	objc
+case	shipped	NSValidationErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Validation Errors	-	objc
+case	shipped	NSValidationErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Validation Errors	-	objc
 case	shipped	NSVariableExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	shipped	NSVolumeEnumerationProduceFileReferenceURLs	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents / Volume Enumeration Options	-	objc
 case	shipped	NSVolumeEnumerationSkipHiddenVolumes	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents / Volume Enumeration Options	-	objc
@@ -2400,7 +2400,7 @@ var	open	NSCharacterConversionException	NSString	Fundamentals / Strings / Workin
 var	struck	NSChineseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	struck	NSClassDescriptionNeededForClassNotification	NSClassDescription	App Support / Script Dictionary Description / Notifications	declined	swift-page
 var	open	NSClassDescriptionNeededForClassNotification	NSNotification	App Support / Notifications / Creating Notifications / AppKit	-	swift-page
-var	open	NSCocoaErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
+var	shipped	NSCocoaErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	struck	NSConnectionDidDieNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
 var	struck	NSConnectionDidInitializeNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
 var	struck	NSConnectionReplyMode	NSConnection	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
@@ -2410,7 +2410,7 @@ var	open	NSCurrentLocaleDidChangeNotification	NSLocale	Fundamentals / Localizati
 var	struck	NSDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSDateTimeOrdering	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSDeallocateZombies		App Support / Diagnostics and Debugging	-	objc
-var	open	NSDebugDescriptionErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
+var	shipped	NSDebugDescriptionErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSDebugEnabled		App Support / Diagnostics and Debugging	-	objc
 var	struck	NSDecimalDigits	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSDecimalNumberDivideByZeroException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
@@ -2478,7 +2478,7 @@ var	open	NSFileManagerUnmountDissentingProcessIdentifierErrorKey	NSFileManager	F
 var	shipped	NSFileModificationDate	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileOwnerAccountID	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileOwnerAccountName	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
-var	open	NSFilePathErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
+var	shipped	NSFilePathErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSFilePosixPermissions	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileProtectionComplete	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Working with Protection Levels	-	objc
 var	shipped	NSFileProtectionCompleteUnlessOpen	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Working with Protection Levels	-	objc
@@ -2542,7 +2542,7 @@ var	open	NSHashTableStrongMemory	NSHashTable	Fundamentals / Pointer Collections 
 var	open	NSHashTableWeakMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
 var	struck	NSHashTableZeroingWeakMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	deprecated	objc
 var	struck	NSHebrewCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
-var	open	NSHelpAnchorErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
+var	shipped	NSHelpAnchorErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	struck	NSHourNameDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSISO8601Calendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSImageURLAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
@@ -2653,12 +2653,12 @@ var	shipped	NSLocaleScriptCode	NSLocale	Fundamentals / Localization / Accessing 
 var	open	NSLocaleUsesMetricSystem	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
 var	open	NSLocaleVariantCode	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
 var	shipped	NSLocalizedDescriptionKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
-var	open	NSLocalizedFailureErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
-var	open	NSLocalizedFailureReasonErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
+var	shipped	NSLocalizedFailureErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
+var	shipped	NSLocalizedFailureReasonErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSLocalizedNumberFormatAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
-var	open	NSLocalizedRecoveryOptionsErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
+var	shipped	NSLocalizedRecoveryOptionsErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSLocalizedRecoverySuggestionErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
-var	open	NSMachErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
+var	shipped	NSMachErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	shipped	NSMallocException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	open	NSMapTableCopyIn	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Copy Option	-	objc
 var	open	NSMapTableObjectPointerPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
@@ -2871,7 +2871,7 @@ var	struck	NSMetadataUbiquitousSharedItemRoleParticipant	NSMetadataItem	Files an
 var	shipped	NSMinimumKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSMorphologyAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
-var	open	NSMultipleUnderlyingErrorsKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
+var	shipped	NSMultipleUnderlyingErrorsKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	open	NSNegateBooleanTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
 var	struck	NSNegativeCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	struck	NSNetServicesErrorCode	NSNetService	Networking / Local Network Services / Constants / Constants	declined	swift-page
@@ -2888,7 +2888,7 @@ var	struck	NSNonRetainedObjectMapValueCallBacks	NSMapTable	Fundamentals / Pointe
 var	shipped	NSNotFound		Fundamentals / Ranges / Related types	-	objc
 var	open	NSNotificationDeliverImmediately	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Constants	-	objc
 var	open	NSNotificationPostToAllSessions	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Constants	-	objc
-var	open	NSOSStatusErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
+var	shipped	NSOSStatusErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	struck	NSObjectHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	open	NSObjectInaccessibleException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	struck	NSObjectMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
@@ -2901,7 +2901,7 @@ var	struck	NSOwnedObjectIdentityHashCallBacks	NSHashTable	Fundamentals / Pointer
 var	struck	NSOwnedPointerHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	struck	NSOwnedPointerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	struck	NSOwnedPointerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSPOSIXErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
+var	shipped	NSPOSIXErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	open	NSParseErrorException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	open	NSParseErrorException	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 var	struck	NSPersianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
@@ -2933,7 +2933,7 @@ var	open	NSProgressFileURLKey	NSProgress	App Support / Progress / Inspecting Pro
 var	open	NSProgressKindFile	NSProgress	App Support / Progress / Inspecting Progress Information / Recognizing Kinds of Progress	-	objc
 var	open	NSProgressThroughputKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using General Keys	-	objc
 var	shipped	NSRangeException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSRecoveryAttempterErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
+var	shipped	NSRecoveryAttempterErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSRegistrationDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
 var	shipped	NSReplacementIndexAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting text attribute keys	-	objc
 var	struck	NSRepublicOfChinaCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
@@ -2976,7 +2976,7 @@ var	open	NSStringEncodingDetectionLikelyLanguageKey	NSString	Fundamentals / Stri
 var	open	NSStringEncodingDetectionLossySubstitutionKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
 var	open	NSStringEncodingDetectionSuggestedEncodingsKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
 var	open	NSStringEncodingDetectionUseOnlySuggestedEncodingsKey	NSString	Fundamentals / Strings / Working with Encodings / Type Properties	-	objc
-var	open	NSStringEncodingErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
+var	shipped	NSStringEncodingErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	open	NSStringTransformFullwidthToHalfwidth	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
 var	open	NSStringTransformFullwidthToHalfwidth	NSString	Fundamentals / Strings / Transforming Strings / Halfwidth and Fullwidth Form Conversion	-	objc
 var	open	NSStringTransformHiraganaToKatakana	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc

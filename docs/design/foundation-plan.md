@@ -12972,6 +12972,18 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.1 — THE COVERAGE SLICE BEGINS: NSError'S 86 ROWS (2026-09-24)
+
+**86 OF THE 87 OPEN `NSError` ROWS WERE CONSTANTS** - 13 domains, 13 user-info keys and 73 error codes - so the
+whole slice is generated from the ledger and shipped: every number is the constant's own name, and each error
+code's family is numbered so its `Minimum`/`Maximum` pair ENCLOSES EXACTLY ITS OWN CODES. Names Apple's, values
+ours (§11.6.1 D2); what a code must do is be comparable and printable, and what a *family* must do is bracket
+itself - the header says exactly that rather than implying Apple's numbers.
+
+**THE FIRST NUMBERING CAME OUT INVERTED** (`Minimum` above `Maximum`, because the codes were numbered in
+alphabetical order and the skip landed on the wrong side), and the check that now guards it is the one that
+would have caught it: `error-code-families-bracket-their-own-codes` reads three families end to end.
+
 ## §61.4 — W10 SLICE 4, SECOND HALF: THE FILE-FORMAT DOORS REFUSE BY NAME (2026-09-24)
 
 **W10 IS COMPLETE.** The seven document-format doors now exist and each one REFUSES BY NAME:

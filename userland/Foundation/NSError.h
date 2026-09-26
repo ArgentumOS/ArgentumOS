@@ -75,6 +75,103 @@ extern NSString *const NSUnderlyingErrorKey;
 - (NSString *)localizedDescription;
 - (nullable NSString *)localizedFailureReason;
 
+
+
+/* ---- THE ERROR DOMAINS, USER-INFO KEYS AND CODES (the coverage slice) ------------------------------
+ *
+ * THE NAMES ARE APPLE'S AND THE VALUES ARE OURS (§11.6.1 D2), WITH ONE PROPERTY THAT DOES MATTER: an error
+ * code is a number a caller can compare, so each family here is numbered sequentially and its Minimum/Maximum
+ * pair ENCLOSES EXACTLY ITS OWN CODES. A program that compares against the symbols is right; a program that
+ * hardcodes Apple's numbers is not portable, and this header says so rather than implying a fidelity the
+ * library does not claim. */
+extern NSErrorDomain const NSCocoaErrorDomain;
+extern NSErrorDomain const NSDebugDescriptionErrorKey;
+extern NSErrorDomain const NSFilePathErrorKey;
+extern NSErrorDomain const NSHelpAnchorErrorKey;
+extern NSErrorDomain const NSLocalizedFailureErrorKey;
+extern NSErrorDomain const NSLocalizedFailureReasonErrorKey;
+extern NSErrorDomain const NSLocalizedRecoveryOptionsErrorKey;
+extern NSErrorDomain const NSMachErrorDomain;
+extern NSErrorDomain const NSMultipleUnderlyingErrorsKey;
+extern NSErrorDomain const NSOSStatusErrorDomain;
+extern NSErrorDomain const NSPOSIXErrorDomain;
+extern NSErrorDomain const NSRecoveryAttempterErrorKey;
+extern NSErrorDomain const NSStringEncodingErrorKey;
+
+extern NSInteger const NSBundleErrorMaximum;
+extern NSInteger const NSBundleErrorMinimum;
+extern NSInteger const NSBundleOnDemandResourceExceededMaximumSizeError;
+extern NSInteger const NSBundleOnDemandResourceInvalidTagError;
+extern NSInteger const NSBundleOnDemandResourceOutOfSpaceError;
+extern NSInteger const NSCloudSharingConflictError;
+extern NSInteger const NSCloudSharingErrorMaximum;
+extern NSInteger const NSCloudSharingErrorMinimum;
+extern NSInteger const NSCloudSharingNetworkFailureError;
+extern NSInteger const NSCloudSharingNoPermissionError;
+extern NSInteger const NSCloudSharingOtherError;
+extern NSInteger const NSCloudSharingQuotaExceededError;
+extern NSInteger const NSCloudSharingTooManyParticipantsError;
+extern NSInteger const NSCoderErrorMaximum;
+extern NSInteger const NSCoderErrorMinimum;
+extern NSInteger const NSCoderInvalidValueError;
+extern NSInteger const NSCoderReadCorruptError;
+extern NSInteger const NSCoderValueNotFoundError;
+extern NSInteger const NSExecutableArchitectureMismatchError;
+extern NSInteger const NSExecutableErrorMaximum;
+extern NSInteger const NSExecutableErrorMinimum;
+extern NSInteger const NSExecutableLinkError;
+extern NSInteger const NSExecutableLoadError;
+extern NSInteger const NSExecutableNotLoadableError;
+extern NSInteger const NSExecutableRuntimeMismatchError;
+extern NSInteger const NSFeatureUnsupportedError;
+extern NSInteger const NSFileErrorMaximum;
+extern NSInteger const NSFileErrorMinimum;
+extern NSInteger const NSFileLockingError;
+extern NSInteger const NSFileManagerUnmountBusyError;
+extern NSInteger const NSFileManagerUnmountUnknownError;
+extern NSInteger const NSFileNoSuchFileError;
+extern NSInteger const NSFileReadCorruptFileError;
+extern NSInteger const NSFileReadInapplicableStringEncodingError;
+extern NSInteger const NSFileReadInvalidFileNameError;
+extern NSInteger const NSFileReadNoPermissionError;
+extern NSInteger const NSFileReadNoSuchFileError;
+extern NSInteger const NSFileReadTooLargeError;
+extern NSInteger const NSFileReadUnknownError;
+extern NSInteger const NSFileReadUnknownStringEncodingError;
+extern NSInteger const NSFileReadUnsupportedSchemeError;
+extern NSInteger const NSFileWriteFileExistsError;
+extern NSInteger const NSFileWriteInapplicableStringEncodingError;
+extern NSInteger const NSFileWriteInvalidFileNameError;
+extern NSInteger const NSFileWriteNoPermissionError;
+extern NSInteger const NSFileWriteOutOfSpaceError;
+extern NSInteger const NSFileWriteUnknownError;
+extern NSInteger const NSFileWriteUnsupportedSchemeError;
+extern NSInteger const NSFileWriteVolumeReadOnlyError;
+extern NSInteger const NSFormattingError;
+extern NSInteger const NSFormattingErrorMaximum;
+extern NSInteger const NSFormattingErrorMinimum;
+extern NSInteger const NSPropertyListErrorMaximum;
+extern NSInteger const NSPropertyListErrorMinimum;
+extern NSInteger const NSPropertyListReadCorruptError;
+extern NSInteger const NSPropertyListReadStreamError;
+extern NSInteger const NSPropertyListReadUnknownVersionError;
+extern NSInteger const NSPropertyListWriteInvalidError;
+extern NSInteger const NSPropertyListWriteStreamError;
+extern NSInteger const NSUbiquitousFileErrorMaximum;
+extern NSInteger const NSUbiquitousFileErrorMinimum;
+extern NSInteger const NSUbiquitousFileNotUploadedDueToQuotaError;
+extern NSInteger const NSUbiquitousFileUbiquityServerNotAvailable;
+extern NSInteger const NSUbiquitousFileUnavailableError;
+extern NSInteger const NSUserActivityConnectionUnavailableError;
+extern NSInteger const NSUserActivityErrorMaximum;
+extern NSInteger const NSUserActivityErrorMinimum;
+extern NSInteger const NSUserActivityHandoffFailedError;
+extern NSInteger const NSUserActivityHandoffUserInfoTooLargeError;
+extern NSInteger const NSUserActivityRemoteApplicationTimedOutError;
+extern NSInteger const NSUserCancelledError;
+extern NSInteger const NSValidationErrorMaximum;
+extern NSInteger const NSValidationErrorMinimum;
+
 NS_ASSUME_NONNULL_END
 
 @end

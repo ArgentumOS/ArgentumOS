@@ -392,6 +392,35 @@ int main(void)
 			(int)(first == again), fn_helper_ran, fn_helper_differs] UTF8String]);
 	}
 
+	{
+		/* THE ERROR CODES ARE OURS, SO WHAT MUST HOLD IS THE FAMILY BRACKET: a program that tests a code
+		 * against its family's Minimum/Maximum pair has to get the right answer, and a code that escaped
+		 * its own range would make that pair a lie. The first attempt at this numbering came out INVERTED
+		 * (Minimum above Maximum) and this check is what would have caught it. */
+		check("error-code-families-bracket-their-own-codes",
+		      NSFileErrorMinimum < NSFileNoSuchFileError &&
+		      NSFileNoSuchFileError < NSFileErrorMaximum &&
+		      NSCoderErrorMinimum < NSCoderReadCorruptError &&
+		      NSCoderReadCorruptError < NSCoderErrorMaximum &&
+		      NSPropertyListErrorMinimum < NSPropertyListReadCorruptError &&
+		      NSPropertyListReadCorruptError < NSPropertyListErrorMaximum,
+		      [[NSString stringWithFormat:@"file %ld<%ld<%ld coder %ld<%ld<%ld plist %ld<%ld<%ld",
+			(long)NSFileErrorMinimum, (long)NSFileNoSuchFileError, (long)NSFileErrorMaximum,
+			(long)NSCoderErrorMinimum, (long)NSCoderReadCorruptError, (long)NSCoderErrorMaximum,
+			(long)NSPropertyListErrorMinimum, (long)NSPropertyListReadCorruptError,
+			(long)NSPropertyListErrorMaximum] UTF8String]);
+		check("error-domains-and-keys-are-their-own-names",
+		      [NSCocoaErrorDomain isEqualToString:@"NSCocoaErrorDomain"] &&
+		      [NSPOSIXErrorDomain isEqualToString:@"NSPOSIXErrorDomain"] &&
+		      [NSMachErrorDomain isEqualToString:@"NSMachErrorDomain"] &&
+		      [NSLocalizedFailureReasonErrorKey isEqualToString:@"NSLocalizedFailureReasonErrorKey"] &&
+		      [NSFilePathErrorKey isEqualToString:@"NSFilePathErrorKey"] &&
+		      [NSDebugDescriptionErrorKey isEqualToString:@"NSDebugDescriptionErrorKey"],
+		      [[NSString stringWithFormat:@"cocoa=%@ posix=%@ reason=%@ path=%@", NSCocoaErrorDomain,
+			NSPOSIXErrorDomain, NSLocalizedFailureReasonErrorKey,
+			NSFilePathErrorKey] UTF8String]);
+	}
+
 	printf("FOUNDATION-ERROR RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness
