@@ -15,8 +15,10 @@ CHECKS = (
     "the-copy-door-keeps-the-space",
     "the-copy-door-keeps-the-count",
     "the-copy-door-keeps-the-credential",
-    "the-documented-sender-argument-still-compiles",
-    "but-the-sender-accessor-is-absent",
+    "the-sender-argument-is-kept-and-handed-back",
+    "a-challenge-with-no-sender-answers-nil",
+    "the-copy-door-takes-the-sender-it-was-given",
+    "the-sender-protocol-shape",
 )
 
 

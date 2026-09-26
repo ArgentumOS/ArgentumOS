@@ -174,6 +174,7 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSURLRequest.m \
 	$(FOUNDATION_SRC)/NSURLResponse.m \
 	$(FOUNDATION_SRC)/NSURLConnection.m \
+	$(FOUNDATION_SRC)/FNAuthenticationChallengeSender.m \
 	$(FOUNDATION_SRC)/NSCachedURLResponse.m \
 	$(FOUNDATION_SRC)/NSURLProtocol.m \
 	$(FOUNDATION_SRC)/NSAttributedString.m \
@@ -257,6 +258,7 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSCachedURLResponse.h \
 	$(FOUNDATION_SRC)/NSURLProtocol.h \
 	$(FOUNDATION_SRC)/FNCURLURLProtocol.h \
+	$(FOUNDATION_SRC)/FNAuthenticationChallengeSender.h \
 	$(FOUNDATION_SRC)/NSURLSessionConfiguration.h \
 	$(FOUNDATION_SRC)/NSURLSessionTask.h \
 	$(FOUNDATION_SRC)/NSURLSession.h \

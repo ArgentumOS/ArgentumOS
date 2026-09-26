@@ -3555,7 +3555,7 @@ vanishing.
 | **Networking / Cache behavior** | all classes shipped | — |
 | **Networking / Cookies** | all classes shipped | — |
 | **Networking / Essentials** | 1 open | `NSURLSessionDownloadDelegate` |
-| **Networking / Legacy** | 5 open | `NSURLAuthenticationChallengeSender`, `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` |
+| **Networking / Legacy** | 4 open | `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` |
 | **Networking / Local Network Services** | ALL STRUCK: `NSNetService`, `NSNetServiceDelegate` | — |
 | **Networking / Requests and responses** | all classes shipped | — |
 | **Networking / Service Discovery** | ALL STRUCK: `NSNetServiceBrowser`, `NSNetServiceBrowserDelegate` | — |
@@ -12976,6 +12976,47 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.27 — `-sender` LANDS: THE ACCESSOR §48.1 REFUSED, AND WHAT IT UNBLOCKS (2026-09-26)
+
+**WHAT SHIPPED.** `NSURLAuthenticationChallenge` KEEPS the `sender:` its initialisers always accepted and hands it
+back through `-sender` (a retained, nullable `id <NSURLAuthenticationChallengeSender>`), Apple's sender protocol is
+declared with its three required actions and its two optional ones, and a new internal class —
+`FNAuthenticationChallengeSender` — implements it as a THUNK over the loading system's own continuation. The
+ledger's `protocol NSURLAuthenticationChallengeSender` row moved `open` -> `shipped`.
+
+**WHY THE REFUSAL FELL, IN ONE PARAGRAPH.** §48.1 refused the accessor because Apple files it under "Legacy", and
+§62.24 RETIRED THE DEPRECATION GROUND (the user's policy, 2026-09-26 — deprecated API is a porting target). `-sender`
+is exactly the seam that policy was for: A DELEGATE ANSWERS A CHALLENGE BY SENDING
+`-useCredential:forAuthenticationChallenge:` TO THE SENDER, which is how the entire older authentication API works
+and therefore how an older application's networking code works. §62.25 named this row as what blocks the five
+`NSURLConnection` authentication doors; it is landed here and those doors are the next unit.
+
+**WHAT §48.1 WAS PROTECTING AGAINST IS KEPT, IN A DIFFERENT FORM.** The refusal's real complaint was that the
+sender was "an object of unknown type". It is now a PROTOCOL with Apple's own required/optional split, asserted at
+the names AND the requiredness (`the-sender-protocol-shape`), so a caller compiles against a contract. And the
+library's sender does not invent an answer path: `FNAuthenticationChallengeSender` holds a `Block_copy` of THE SAME
+continuation the transport passed to `-fnAskClientForCredential:completionHandler:` — a synchronous wait by design —
+so answering through the sender and answering through the handler MOVE THE SAME TRANSFER. Apple's API allows both at
+once for exactly that reason. IT ANSWERS ONCE: a second answer is ignored, because the handler resumes a
+continuation that has already resumed.
+
+**THE ONE PLACE THE TRANSPORT CHANGED** is `FNCURLURLProtocol`'s 401 branch: the continuation block is now a named
+local, the sender is built around it, and the challenge is handed out WITH that sender (`-initWithProtectionPoints:
+…`'s `sender:` argument at last carries something). The copy door's rule is recorded where it is implemented: a
+challenge copied with a sender argument carries THAT argument, not the original's — the door exists so a transport
+can hand out a challenge whose answers go somewhere of its choosing.
+
+**VERIFIED, AND WITH A COVERAGE MOVE STATED RATHER THAN HIDDEN.** `foundation_authloop` now answers its 401
+THROUGH THE SENDER (`[challenge sender] useCredential:forAuthenticationChallenge:`) instead of through the handler,
+and its existing checks then prove the sender's answer reached the wire — the credential arrives base64-encoded, and
+not in plaintext, on the re-issued request. It also gained `the-challenge-carried-a-sender`. THE
+COMPLETION-HANDLER PATH'S COVERAGE MOVES TO THE NEXT UNIT, and the reason is structural rather than convenient:
+that probe's server serves exactly two connections, so a second transfer cannot be added without a second server
+leg, and the connection's five doors are where the handler path is exercised next.
+`foundation_authenticationchallenge` lost the check that asserted `-sender` ABSENT — §11.2's rule again, an absence
+assertion is a fact about the tree — and gained four: the argument is kept and handed back, a challenge built
+without one answers nil, the copy door takes the sender it was given, and the protocol's shape.
 
 ## §62.26 — `NSURLConnectionDownloadDelegate` LANDS, AND THE DISPATCH RULE IT NEEDED IS STATED (2026-09-26)
 

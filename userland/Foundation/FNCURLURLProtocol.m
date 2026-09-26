@@ -9,6 +9,7 @@
 #import <Foundation/FNCURLURLProtocol.h>
 #import <Foundation/NSURLProtectionSpace.h>
 #import <Foundation/NSURLCredential.h>
+#import <Foundation/FNAuthenticationChallengeSender.h>
 #import <Foundation/NSURLAuthenticationChallenge.h>
 #import <Foundation/NSURLSession.h>
 #import <Foundation/NSURLCache.h>
@@ -213,20 +214,32 @@ static size_t fn_curl_header(char *ptr, size_t size, size_t nmemb, void *userdat
 
 			transfer->attempt = 1;
 			if (space != nil) {
+				/* THE CONTINUATION, NAMED SO IT CAN BE REACHED TWICE - and that is the whole point of
+				 * §62.27 (§48.1 refused `-sender` as Apple-deprecated; §62.24 retired that ground and this
+				 * is the seam it was blocking). A delegate may answer the MODERN way, by calling this
+				 * handler, or the OLDER way, by sending `-useCredential:forAuthenticationChallenge:` to the
+				 * challenge's sender - and the sender is a thunk over THIS block, so both answers move the
+				 * same transfer rather than starting a second one. Apple's own API allows both at once for
+				 * exactly this reason. */
+				void (^continuation)(NSURLSessionAuthChallengeDisposition,
+						     NSURLCredential *) =
+					^(NSURLSessionAuthChallengeDisposition chosen, NSURLCredential *given) {
+					disposition = (NSInteger)chosen;
+					credential = [given retain];
+				};
+				FNAuthenticationChallengeSender *sender = [[FNAuthenticationChallengeSender alloc]
+					fnInitWithCompletionHandler:continuation];
 				NSURLAuthenticationChallenge *challenge = [[NSURLAuthenticationChallenge alloc]
 					initWithProtectionSpace:space
 					     proposedCredential:nil
 					   previousFailureCount:0
 						failureResponse:nil
 						      error:nil
-						     sender:nil];
+						     sender:sender];
 
+				[sender release];
 				[transfer->protocol fnAskClientForCredential:challenge
-					completionHandler:^(NSURLSessionAuthChallengeDisposition chosen,
-							    NSURLCredential *given) {
-					disposition = (NSInteger)chosen;
-					credential = [given retain];
-				}];
+					completionHandler:continuation];
 				[challenge release];
 			}
 			if (disposition == NSURLSessionAuthChallengeUseCredential && credential != nil) {

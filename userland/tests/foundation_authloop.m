@@ -42,6 +42,8 @@ static void check(const char *name, BOOL held, NSString *why)
 	int asked;
 	int metricsCalls;
 	long transactions;
+	int senderCalls;	/* the door was entered */
+	int senderPresent;	/* and the challenge carried a sender to answer through */
 }
 @end
 
@@ -66,10 +68,30 @@ didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
  completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition, NSURLCredential *))handler
 {
 	asked++;
-	handler(NSURLSessionAuthChallengeUseCredential,
-		[NSURLCredential credentialWithUser:@"kyle"
-					   password:@"secret"
-					persistence:NSURLCredentialPersistenceNone]);
+	/* ANSWERED THROUGH THE SENDER, WHICH IS §62.27'S WHOLE POINT: this is the OLDER way a delegate answers -
+	 * `[challenge.sender useCredential:forAuthenticationChallenge:]` - and the challenge here came from the
+	 * transport, so the sender is the library's own thunk over the continuation the transport is waiting on.
+	 * `handler` is deliberately NOT called: the same transfer must move whichever door is used, and calling
+	 * both would be answering twice.
+	 *
+	 * THE HANDLER PATH'S COVERAGE MOVES RATHER THAN DISAPPEARS, AND IT IS NAMED: the completion-handler form
+	 * is what an NSURLSession delegate uses, and the next unit (NSURLConnection's five authentication doors)
+	 * is where it is exercised - the server here serves exactly two connections, so a second transfer cannot
+	 * be added to this probe without a second server leg. */
+	senderCalls++;
+	if([challenge sender] != nil) {
+		senderPresent = 1;
+		[(id <NSURLAuthenticationChallengeSender>)[challenge sender]
+			useCredential:[NSURLCredential credentialWithUser:@"kyle"
+								 password:@"secret"
+							      persistence:NSURLCredentialPersistenceNone]
+		forAuthenticationChallenge:challenge];
+	} else {
+		handler(NSURLSessionAuthChallengeUseCredential,
+			[NSURLCredential credentialWithUser:@"kyle"
+						   password:@"secret"
+						persistence:NSURLCredentialPersistenceNone]);
+	}
 }
 @end
 
@@ -168,6 +190,12 @@ int main(void)
 	second = conn >= 0 ? fn_read_request(conn) : nil;
 	check("the-delegate-was-asked-exactly-once", answerer->asked == 1,
 	      @"the attempt guard is the server's, and the delegate should not be asked again");
+	/* AND THE CHALLENGE CARRIED A SENDER, which is what let this delegate answer the OLDER way (§62.27):
+	 * the accessor was refused under §48.1 and §62.24 retired that ground, so the check that asserted it
+	 * ABSENT is gone and this one asserts the seam instead. */
+	check("the-challenge-carried-a-sender",
+	      answerer->senderCalls == 1 && answerer->senderPresent == 1,
+	      @"the transport hands out a challenge with a sender, so a delegate can answer through it");
 	/* THE WIRE CARRIES IT ENCODED, which is the check's own first version getting it wrong: "kyle:secret" in
 	 * base64 is a3lsZTpzZWNyZXQ=, and asserting the PLAINTEXT would fail against a bridge that was working
 	 * perfectly - the header could not contain the plaintext even if every layer did its job, because Basic

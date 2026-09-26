@@ -11,6 +11,7 @@ CHECKS = (
     "the-first-request-came-without-credentials",
     "the-transfer-comes-back-after-the-401",
     "the-delegate-was-asked-exactly-once",
+    "the-challenge-carried-a-sender",
     "the-second-request-carries-the-credential",
     "and-not-in-plaintext",
     "the-loop-terminates",
