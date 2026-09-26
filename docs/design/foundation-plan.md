@@ -12972,6 +12972,19 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.11 — THE COVERAGE SLICE, TENTH LANDING: NSDISTRIBUTEDNOTIFICATIONCENTER (2026-09-24)
+
+**VOCABULARY WITH NO DOOR, FOR THE SAME REASON AS NSITEMPROVIDER, AND SAYING SO:** a distributed notification
+exists to carry a message BETWEEN PROCESSES, and this system's interprocess story is its own (a session pasteboard
+rather than a distributed notification bus), so the suspension behaviours, the posting options, the center type
+and the three names ship and the center does not. The class has no ledger rows at all - it is not declared here -
+so nothing was being withheld by leaving it out.
+
+**THE VALUES FOLLOW THE CONVENTION THE NSNOTIFICATION LANDING ESTABLISHED** (each name answers its own name, a
+recorded deviation from Apple's literal strings), and the check asserts the property the *sets* have: distinct
+bits WITHIN each set, while the two sets may share a number because they are different types - the exact mistake
+the item-provider check made first, now written down as the reason this one is phrased the way it is.
+
 ## §62.10 — THE COVERAGE SLICE, NINTH LANDING: NSITEMPROVIDER'S 18 ROWS (2026-09-24)
 
 **VOCABULARY WITH NO DOOR, AND THE HEADER SAYS WHICH:** `NSItemProvider`'s class rows are already struck in the

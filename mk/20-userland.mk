@@ -162,6 +162,7 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSGeometry.m \
 	$(FOUNDATION_SRC)/NSProgress.m \
 	$(FOUNDATION_SRC)/NSItemProvider.m \
+	$(FOUNDATION_SRC)/NSDistributedNotificationCenter.m \
 	$(FOUNDATION_SRC)/NSURLRequest.m \
 	$(FOUNDATION_SRC)/NSURLResponse.m \
 	$(FOUNDATION_SRC)/NSCachedURLResponse.m \
@@ -206,6 +207,7 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSOperationQueue.h \
 	$(FOUNDATION_SRC)/NSProgress.h \
 	$(FOUNDATION_SRC)/NSItemProvider.h \
+	$(FOUNDATION_SRC)/NSDistributedNotificationCenter.h \
 	$(FOUNDATION_SRC)/NSFastEnumeration.h $(FOUNDATION_SRC)/NSArray.h \
 	$(FOUNDATION_SRC)/NSDictionary.h $(FOUNDATION_SRC)/NSError.h \
 	$(FOUNDATION_SRC)/NSException.h $(FOUNDATION_SRC)/NSCharacterSet.h \

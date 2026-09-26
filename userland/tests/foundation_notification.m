@@ -19,6 +19,7 @@
  */
 
 #import <Foundation/Foundation.h>
+#import <Foundation/NSDistributedNotificationCenter.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -231,6 +232,23 @@ int main(void)
 			isEqualToString:@"NSProcessInfoPowerStateDidChangeNotification"] &&
 		      [NSSystemClockDidChangeNotification isEqualToString:NSProcessInfoPowerStateDidChangeNotification] == 0,
 		      "every declared notification name equals its own name and the type is Apple's");
+	}
+
+	{
+		/* VOCABULARY WITH NO DOOR AGAIN, AND THE ASSERTIONS ARE ABOUT THE SETS: within the suspension
+		 * behaviours and within the posting options the values must be DISTINCT BITS (a collision would make
+		 * a behaviour unrequestable), while the two SETS may share a number because they are different types -
+		 * the mistake the item-provider check made first. The names answer their own names. */
+		check("distributed-notification-vocabulary",
+		      (NSNotificationSuspensionBehaviorDrop & NSNotificationSuspensionBehaviorCoalesce) == 0 &&
+		      (NSNotificationSuspensionBehaviorCoalesce & NSNotificationSuspensionBehaviorHold) == 0 &&
+		      (NSNotificationSuspensionBehaviorHold & NSNotificationSuspensionBehaviorDeliverImmediately) == 0 &&
+		      (NSDistributedNotificationDeliverImmediately &
+		       NSDistributedNotificationPostToAllSessions) == 0 &&
+		      [NSLocalNotificationCenterType isEqualToString:@"NSLocalNotificationCenterType"] &&
+		      [NSNotificationPostToAllSessions isEqualToString:@"NSNotificationPostToAllSessions"] &&
+		      [NSNotificationDeliverImmediately isEqualToString:@"NSNotificationDeliverImmediately"],
+		      "the two bit sets are distinct within themselves (not across each other) and each name is itself");
 	}
 
 	printf("FOUNDATION-NOTIFICATION RESULT ok=%d fail=%d\n", okc, failc);
