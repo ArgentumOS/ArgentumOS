@@ -161,6 +161,45 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
  * AND §54'S DECISION IS TAKEN HERE, because this is the first moment the record is complete: the redirect was
  * decided inside the transport's header callback (see -wasRedirectedToRequest:), where this attempt's
  * transaction had not been reported yet. */
+/* UPLOAD PROGRESS, FROM THE TRANSFER TO THE DELEGATE (§62.32), and it sits beside the metrics door because it
+ * is the same kind of report: something the transport knows and Apple's NSURLProtocolClient has no door for.
+ * `bytesSent` is the delta the bridge computed, so a delegate can sum it or ignore it and still read the two
+ * totals correctly. */
+- (void)URLProtocol:(NSURLProtocol *)protocol
+    fnDidSendBodyData:(int64_t)bytesSent
+      totalBytesSent:(int64_t)totalBytesSent
+totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
+{
+	id <NSURLSessionTaskDelegate> delegate = (id <NSURLSessionTaskDelegate>)[_session delegate];
+	NSOperationQueue *queue = [_session delegateQueue];
+
+	(void)protocol;
+	if (![delegate respondsToSelector:
+		@selector(URLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:)]) {
+		return;
+	}
+	if (queue == nil) {
+		[delegate URLSession:_session
+				task:_task
+		     didSendBodyData:bytesSent
+		      totalBytesSent:totalBytesSent
+		totalBytesExpectedToSend:totalBytesExpectedToSend];
+		return;
+	}
+	/* THE SAME HOP, WITH THE SAME RETAINS: see the note in -URLProtocol:didLoadData:. */
+	[self retain];
+	[delegate retain];
+	[queue addOperationWithBlock:^{
+		[delegate URLSession:_session
+				task:_task
+		     didSendBodyData:bytesSent
+		      totalBytesSent:totalBytesSent
+		totalBytesExpectedToSend:totalBytesExpectedToSend];
+		[delegate release];
+		[self release];
+	}];
+}
+
 - (void)URLProtocol:(NSURLProtocol *)protocol fnDidCollectMetrics:(NSURLSessionTaskTransactionMetrics *)metrics
 {
 	[_transactions addObject:metrics];

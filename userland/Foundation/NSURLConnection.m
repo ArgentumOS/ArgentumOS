@@ -428,6 +428,25 @@ willPerformHTTPRedirection:(NSHTTPURLResponse *)response
 	completionHandler(request);
 }
 
+/* THE UPLOAD'S PROGRESS DOOR (§62.32): the session's numbers, which are the transport's, in this protocol's
+ * own spelling. Apple's connection door spells them NSInteger where the session's uses int64_t, so this is a
+ * cast rather than a recount. */
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
+   didSendBodyData:(int64_t)bytesSent
+    totalBytesSent:(int64_t)totalBytesSent
+totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
+{
+	if ([_delegate respondsToSelector:
+			@selector(connection:didSendBodyData:totalBytesWritten:
+				  totalBytesExpectedToWrite:)]) {
+		[_delegate connection:self
+		    didSendBodyData:(NSInteger)bytesSent
+	       totalBytesWritten:(NSInteger)totalBytesSent
+	   totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToSend];
+	}
+}
+
 /* THE DOWNLOAD'S PROGRESS DOOR (§62.29), AND IT IS A TRANSLATION LIKE EVERY OTHER DOOR HERE: the session's
  * numbers are the task's own running totals, and the connection's protocol spells the same three facts. */
 - (void)URLSession:(NSURLSession *)session

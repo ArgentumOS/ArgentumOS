@@ -54,7 +54,15 @@
  * connection's delegate has no completion handler to answer with, and the transport is BLOCKED until the
  * challenge is answered.
  *
- * AND TWO OF THE FIVE ARE STILL REFUSED, WITH GROUNDS THE LOADING SYSTEM MEASURES:
+ * UPLOAD PROGRESS SHIPS TOO, AND ITS REFUSAL FELL THE SAME WAY THE DOWNLOAD'S DID: §62.25 refused
+ * `-connection:didSendBodyData:totalBytesWritten:totalBytesExpectedToWrite:` on the ground that "the session
+ * uploads from DATA, so the bytes are handed over before the transfer starts and there is no progressive
+ * upload to report". THE TRANSPORT NOW COUNTS THE BYTES AS THEY LEAVE (§62.32: libcurl's own progress
+ * callback, which fires for EVERY transfer and reports both directions), so the ground is retired by a
+ * landing rather than by a decision here — the second time in two units, which is the point of a refusal
+ * whose ground is a measurement.
+ *
+ * AND TWO OF THE FIVE AUTHENTICATION DOORS ARE STILL REFUSED, WITH GROUNDS THE LOADING SYSTEM MEASURES:
  *   * `-connectionShouldUseCredentialStorage:` — THE LOADING SYSTEM CONSULTS NO CREDENTIAL STORE, so there is
  *     nothing for a delegate to permit or forbid: the transport's challenge carries a nil proposed credential
  *     and the store (`NSURLCredentialStorage`) is the caller's business, not the transfer's.
@@ -63,16 +71,6 @@
  *     cancellation for it to report. (A delegate's OWN cancel is its own act, and it answers with it.)
  *   * `-connection:needNewBodyStream:` — the transport does not consume `NSURLRequest`'s
  *     `HTTPBodyStream`, so there is no body to ask for again on a redirect.
- *   * `-connection:didSendBodyData:totalBytesWritten:totalBytesExpectedToWrite:` — upload progress. The
- *     session uploads from DATA (`-uploadTaskWithRequest:fromData:`), so the bytes are handed over
- *     before the transfer starts and there is no progressive upload to report.
- *   * `-connection:willCacheResponse:` — the session offers no cache-decision door for a connection to
- *     translate, so a delegate could not be asked.
- *   * `-connection:needNewBodyStream:` — the transport does not consume `NSURLRequest`'s
- *     `HTTPBodyStream`, so there is no body to ask for again on a redirect.
- *   * `-connection:didSendBodyData:totalBytesWritten:totalBytesExpectedToWrite:` — upload progress. The
- *     session uploads from DATA (`-uploadTaskWithRequest:fromData:`), so the bytes are handed over
- *     before the transfer starts and there is no progressive upload to report.
  *   * `-connection:willCacheResponse:` — the session offers no cache-decision door for a connection to
  *     translate, so a delegate could not be asked.
  *
@@ -193,6 +191,11 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;
  * task's own running total and `expectedTotalBytes` is what the response said (0 or negative means the
  * server never named a length). ALL THREE ARE THE TASK'S NUMBERS, translated rather than recounted, so this
  * door cannot disagree with the task about the same transfer. */
+- (void)connection:(NSURLConnection *)connection
+  didSendBodyData:(NSInteger)bytesWritten
+totalBytesWritten:(NSInteger)totalBytesWritten
+totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;
+
 - (void)connection:(NSURLConnection *)connection
 	 didWriteData:(long long)bytesWritten
     totalBytesWritten:(long long)totalBytesWritten

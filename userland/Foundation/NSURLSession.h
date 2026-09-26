@@ -215,6 +215,12 @@ didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
  * something was measured. */
 - (void)URLSession:(NSURLSession *)session
 	      task:(NSURLSessionTask *)task
+   didSendBodyData:(int64_t)bytesSent
+    totalBytesSent:(int64_t)totalBytesSent
+totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend;
+
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
 didFinishCollectingMetrics:(NSURLSessionTaskMetrics *)metrics;
 
 /* THE ANSWER NAMED SOMEWHERE ELSE, AND WHETHER TO GO THERE (§54). `request` is the NEXT request the loading

@@ -12977,6 +12977,47 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.32 — THE UPLOAD-PROGRESS CHAIN: A TRANSPORT CALLBACK, A SESSION DOOR, AND A CONNECTION DOOR THAT WAS REFUSED (2026-09-26)
+
+**WHAT SHIPPED.** The third leg of the pattern §62.29 established — a session-side door retired a connection-side
+refusal — and this time the chain starts at the TRANSPORT:
+* **libcurl's own progress callback** (`CURLOPT_XFERINFOFUNCTION`, with `CURLOPT_NOPROGRESS` turned off) is armed
+  for EVERY transfer, and it reports **both directions** through one function, so the bridge tells them apart by
+  what moved. It reports **when the count MOVES rather than on every curl tick** (curl calls that function several
+  times a second), and a non-zero return aborts, which is also how a stop that arrived mid-flight gets noticed;
+* a **first-party protocol door** — `-URLProtocol:fnDidSendBodyData:totalBytesSent:totalBytesExpectedToSend:` —
+  the same kind of door as the metrics one, for the same reason: the transport knows these numbers and Apple's
+  `NSURLProtocolClient` has no door for them;
+* **`NSURLSessionTaskDelegate`'s `-URLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:`**
+  (Apple's door, Apple's names), dispatched with the same delegate-queue hop and the same retains every other
+  report in that file uses;
+* and **`-connection:didSendBodyData:totalBytesWritten:totalBytesExpectedToWrite:`**, which §62.25 had refused on
+  the ground that "the session uploads from DATA, so there is no progressive upload to report". **THE GROUND IS
+  RETIRED BY A LANDING RATHER THAN BY A DECISION HERE — the second time in two units** (§62.29 did the same for
+  the download's progress door), which is what a refusal whose ground is a measurement is FOR.
+
+**THE DELTA IS THE MEMO'S**, computed before the memo moves: `bytesSent` is "what left since the last report" and
+is a different number from the running total beside it, equal to it only on a first or single report. The first
+version of that callback had a nonsense expression where the delta should be, and it was caught by reading it
+rather than by a compiler — worth recording because a *plausible-looking* arithmetic expression in a callback is
+exactly what a probe would have to be aimed at to find.
+
+**AND ONE COMMITTED DEFECT WAS FOUND WHILE EDITING THIS HEADER, WHICH IS THE HONEST PART OF THE RECORD:** §62.29's
+edit to `NSURLConnection.h` **duplicated three refusal bullets** — `needNewBodyStream:`, `didSendBodyData:`,
+`willCacheResponse:` appeared twice — and a duplicated comment block compiles and reads as a mistake nobody owns.
+The reason it survived a commit is that the edit that caused it was an insertion whose replacement text also
+ended with the bullets it was replacing; the reason it was found is that the check that anchors on those bullets
+insisted on exactly one occurrence. **That check (`s.count(old) == 1` before every replacement) is why this cost a
+minute instead of a release**, and the duplicated copy is removed here.
+
+**VERIFIED.** `foundation_urlsession_task` is **21/21 green** with the new
+`the-upload-progress-door-is-reported`: the last report's running total and expected total are BOTH the body's
+length, read from the transfer rather than assumed — and the leg needed a delegate at all, which it did not have
+before (it created its session with none), so the check would have been vacuous without one. Regressions:
+`foundation_urlsession` 6/6, `foundation_urlconnection` 6/6, `foundation_downloadresume` 6/6 — the last of those
+matters because a download must report NO upload progress, and the memo's initial values are what make the
+callback silent for one.
+
 ## §62.31 — RESUME LANDS: CANCEL WITH DATA, CONTINUE FROM AN OFFSET, AND THE ERROR THAT CARRIES ITS OWN WAY FORWARD (2026-09-26)
 
 **WHAT SHIPPED.** `NSURLSessionDownloadTask`'s `-cancelByProducingResumeData:`,

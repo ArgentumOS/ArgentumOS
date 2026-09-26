@@ -45,6 +45,8 @@ typedef struct FNCurlTransfer {
 	int cancelledChallenge;		/* the client cancelled the challenge */
 	NSURLCredential *credential;	/* the credential the client handed back, or nil */
 	volatile int stopped;		/* -stopLoading was called from another thread */
+	int64_t reportedUpload;		/* the last upload total REPORTED, so progress is not a stream of duplicates */
+	int64_t reportedUploadExpected;
 } FNCurlTransfer;
 
 /* THE PRIVATE DOORS THE C CALLBACKS REACH THE OBJECT THROUGH: a C function cannot message an object it
@@ -124,6 +126,49 @@ static size_t fn_curl_write(char *ptr, size_t size, size_t nmemb, void *userdata
 	[client URLProtocol:transfer->protocol
 		didLoadData:[NSData dataWithBytes:ptr length:bytes]];
 	return bytes;
+}
+
+/* UPLOAD PROGRESS (§62.32), AND CURL CALLS THIS SEVERAL TIMES A SECOND FOR EVERY TRANSFER, which is why the
+ * numbers are compared against what was last REPORTED rather than forwarded blindly: a caller wants to know
+ * when the count moves, not how often curl looked. The first call always reports, because the memo starts at
+ * zero and an upload that has sent nothing yet is still the start of one.
+ *
+ * A NON-ZERO RETURN ABORTS THE TRANSFER, which is also how a stop that arrived while the transfer was running
+ * gets noticed here. */
+static int fn_curl_progress(void *userdata, curl_off_t dltotal, curl_off_t dlnow,
+			    curl_off_t ultotal, curl_off_t ulnow)
+{
+	FNCurlTransfer *transfer = (FNCurlTransfer *)userdata;
+	id <NSURLProtocolClient> client;
+
+	(void)dltotal;
+	(void)dlnow;
+	if (transfer->stopped) {
+		return 1;
+	}
+	int64_t previous;
+
+	if (ulnow == transfer->reportedUpload && ultotal == transfer->reportedUploadExpected) {
+		return 0;
+	}
+	client = [transfer->protocol client];
+	/* THE DELTA IS THE MEMO'S, TAKEN BEFORE THE MEMO MOVES: `bytesSent` is "what left since the last report",
+	 * which is a different number from the running total beside it, and the two are only equal on a first or
+	 * single report. */
+	previous = transfer->reportedUpload;
+	transfer->reportedUpload = ulnow;
+	transfer->reportedUploadExpected = ultotal;
+	if (client == nil) {
+		return 0;	/* nobody is listening: keep going rather than abort */
+	}
+	if ([client respondsToSelector:
+			@selector(URLProtocol:fnDidSendBodyData:totalBytesSent:totalBytesExpectedToSend:)]) {
+		[client URLProtocol:transfer->protocol
+		    fnDidSendBodyData:(int64_t)ulnow - previous
+		      totalBytesSent:(int64_t)ulnow
+		totalBytesExpectedToSend:(int64_t)ultotal];
+	}
+	return 0;
 }
 
 /* THE HEADER BLOCK ARRIVES HERE, LINE BY LINE, AND THE BLANK LINE IS THE MOMENT THE RESPONSE EXISTS. */
@@ -512,6 +557,12 @@ static NSURLSessionTaskTransactionMetrics *fn_metrics_for_transfer(FNCurlTransfe
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS,
 				 (long)([[self request] timeoutInterval] * 1000.0));
 	}
+	/* THE PROGRESS CALLBACK IS ARMED FOR EVERY TRANSFER, AND `dltotal` TELLS THE TWO KINDS APART: curl reports
+	 * both directions through one function, so the upload total is zero for a download and the memo simply
+	 * never moves. `CURLOPT_NOPROGRESS` MUST BE ZERO - curl's default is ON, which would ignore this. */
+	curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+	curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, fn_curl_progress);
+	curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &transfer);
 	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
 	/* No SIGALRM-based timeouts: this is a library thread inside a process that may have its own. */
 	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);

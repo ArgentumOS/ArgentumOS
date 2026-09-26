@@ -160,6 +160,39 @@ didCompleteWithError:(NSError *)error
 @end
 
 
+/* THE UPLOAD-PROGRESS DELEGATE (§62.32), AND IT IS ITS OWN CLASS BECAUSE THE LEG NEEDED A DELEGATE AT ALL: the
+ * upload leg below used to create its session with NO delegate, so there was nobody for a task-delegate door to
+ * reach. This one does nothing but record, which is what makes the check that reads it meaningful: the numbers
+ * are read, not assumed. */
+@interface FnUploadProgressDelegate : NSObject <NSURLSessionTaskDelegate>
+{
+	@public
+	int sendCalls;
+	int64_t lastBytesSent;
+	int64_t lastTotalSent;
+	int64_t lastExpected;
+}
+
+@end
+
+@implementation FnUploadProgressDelegate
+
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
+   didSendBodyData:(int64_t)bytesSent
+    totalBytesSent:(int64_t)totalBytesSent
+totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
+{
+	(void)session;
+	(void)task;
+	sendCalls++;
+	lastBytesSent = bytesSent;
+	lastTotalSent = totalBytesSent;
+	lastExpected = totalBytesExpectedToSend;
+}
+
+@end
+
 int main(void)
 {
 	/* UNBUFFERED, AND IT IS NOT A PREFERENCE: a probe that CRASHES loses everything printf put in a
@@ -460,8 +493,11 @@ int main(void)
 	{
 		unsigned char rawBytes[8] = { 0xff, 0xfe, 0x00, 0x01, 0x80, 0x7f, 0xc3, 0x28 };
 		NSData *sent = [NSData dataWithBytes:rawBytes length:8];
+		FnUploadProgressDelegate *progress = [[FnUploadProgressDelegate alloc] init];
 		NSURLSession *session = [NSURLSession sessionWithConfiguration:
-						[NSURLSessionConfiguration defaultSessionConfiguration]];
+						[NSURLSessionConfiguration defaultSessionConfiguration]
+							      delegate:progress
+							 delegateQueue:nil];
 		NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:fn_url(@"http://127.0.0.1:46467/")];
 		NSURLSessionUploadTask *task;
 		__block BOOL called = NO;
@@ -536,6 +572,16 @@ int main(void)
 			check("upload-body-arrives-byte-for-byte", found,
 			      @"a body of NON-UTF-8 bytes reaches the far end - the pre-fix bridge sent nothing");
 		}
+		/* AND THE UPLOAD'S PROGRESS WAS REPORTED (§62.32), which §62.25 refused the CONNECTION's door for on the
+		 * ground that there was nothing progressive to report. The numbers are the transfer's, so the check reads
+		 * them: the last report's running total and expected total are BOTH the body's length. */
+		check("the-upload-progress-door-is-reported",
+		      progress->sendCalls >= 1 && progress->lastBytesSent > 0 &&
+		      progress->lastTotalSent == (int64_t)[sent length] &&
+		      progress->lastExpected == (int64_t)[sent length],
+		      [NSString stringWithFormat:@"%d report(s): last delta %lld, total %lld of %lld, body %d",
+			progress->sendCalls, progress->lastBytesSent, progress->lastTotalSent,
+			progress->lastExpected, (int)[sent length]]);
 	}
 
 	printf("FOUNDATION-URLSESSION-TASK RESULT ok=%d fail=%d\n", okc, failc);

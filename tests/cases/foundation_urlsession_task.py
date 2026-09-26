@@ -43,7 +43,8 @@ CHECKS = ("completion-handler-factory-answers-a-task", "task-resume-runs-the-tra
           "download-handler-receives-a-location", "download-writes-the-body-where-it-says",
           "disposition-cancel-withholds-the-body", "disposition-allow-lets-the-body-through",
           "receiver-binds", "receiver-listens", "receiver-accepts-a-connection",
-          "upload-run-ends", "upload-body-arrives-byte-for-byte")
+          "upload-run-ends", "upload-body-arrives-byte-for-byte",
+          "the-upload-progress-door-is-reported")
 
 
 class Case(BaseCase):

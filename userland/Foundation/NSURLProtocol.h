@@ -173,6 +173,15 @@ typedef NS_ENUM(NSInteger, NSURLSessionAuthChallengeDisposition) {
 - (void)URLProtocol:(NSURLProtocol *)protocol
     fnDidCollectMetrics:(NSURLSessionTaskTransactionMetrics *)metrics;
 
+/* AND THE SAME KIND OF DOOR FOR AN UPLOAD'S PROGRESS (§62.32): the transfer is what counts the bytes as they
+ * leave, so this is the only place the numbers exist - Apple's NSURLProtocolClient has no door for it, which
+ * is why this one is first-party like the metrics door above. `bytesSent` is what moved since the last report,
+ * `totalBytesSent` is the transfer's running total, and `totalBytesExpectedToSend` is what the request said. */
+- (void)URLProtocol:(NSURLProtocol *)protocol
+    fnDidSendBodyData:(int64_t)bytesSent
+      totalBytesSent:(int64_t)totalBytesSent
+totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend;
+
 @end
 
 @interface NSURLProtocol : NSObject
