@@ -166,7 +166,7 @@ static NSDate *fn_cal_date(UCalendar *calendar, UErrorCode *status)
 
 @implementation NSCalendar
 
-NSString *const NSCalendarDayChangedNotification = @"NSCalendarDayChangedNotification";
+NSNotificationName const NSCalendarDayChangedNotification = @"NSCalendarDayChangedNotification";
 NSCalendarIdentifier const NSCalendarIdentifierBangla = @"bangla";
 NSCalendarIdentifier const NSCalendarIdentifierDangi = @"dangi";
 NSCalendarIdentifier const NSCalendarIdentifierGujarati = @"gujarati";

@@ -160,6 +160,23 @@ static NSString *fn_region(NSArray *parts)
 
 @implementation NSLocale
 
+NSString *const NSCurrentLocaleDidChangeNotification = @"NSCurrentLocaleDidChangeNotification";
+NSString *const NSLocaleAlternateQuotationBeginDelimiterKey = @"NSLocaleAlternateQuotationBeginDelimiterKey";
+NSString *const NSLocaleAlternateQuotationEndDelimiterKey = @"NSLocaleAlternateQuotationEndDelimiterKey";
+NSString *const NSLocaleCalendar = @"NSLocaleCalendar";
+NSString *const NSLocaleCollationIdentifier = @"NSLocaleCollationIdentifier";
+NSString *const NSLocaleCollatorIdentifier = @"NSLocaleCollatorIdentifier";
+NSString *const NSLocaleCurrencyCode = @"NSLocaleCurrencyCode";
+NSString *const NSLocaleCurrencySymbol = @"NSLocaleCurrencySymbol";
+NSString *const NSLocaleDecimalSeparator = @"NSLocaleDecimalSeparator";
+NSString *const NSLocaleExemplarCharacterSet = @"NSLocaleExemplarCharacterSet";
+NSString *const NSLocaleGroupingSeparator = @"NSLocaleGroupingSeparator";
+NSString *const NSLocaleMeasurementSystem = @"NSLocaleMeasurementSystem";
+NSString *const NSLocaleQuotationBeginDelimiterKey = @"NSLocaleQuotationBeginDelimiterKey";
+NSString *const NSLocaleQuotationEndDelimiterKey = @"NSLocaleQuotationEndDelimiterKey";
+NSString *const NSLocaleUsesMetricSystem = @"NSLocaleUsesMetricSystem";
+NSString *const NSLocaleVariantCode = @"NSLocaleVariantCode";
+
 + (instancetype)currentLocale
 {
 	const char *env = getenv("LC_ALL");

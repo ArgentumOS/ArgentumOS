@@ -12972,6 +12972,20 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.8 — THE COVERAGE SLICE, SEVENTH LANDING: NSLOCALE AND NSNOTIFICATION (2026-09-24)
+
+**31 ROWS ACROSS TWO FAMILIES, AND ONE OF THEM PAID OFF A DEBT THE CALENDAR LANDING RECORDED.** `NSLocale`'s 16
+key constants ship (value == name, the convention this header already had - the change notification included),
+and `NSNotification`'s 14 names ship WITH the `NSNotificationName` typedef that was missing when
+`NSCalendarDayChangedNotification` needed it - so that constant is now spelled with the type Apple spells it with,
+the follow-through the earlier commit promised.
+
+**AND THE NOTIFICATION NAMES CARRY A DEVIATION RECORDED IN THE HEADER:** in Apple's headers these values are the
+literal `@"NS....Notification"` strings AND are the CF spellings; here every value IS its own name, matching this
+library's existing locale convention and the only spelling that can be consistent before anything posts them.
+**NOTHING IN THIS SYSTEM POSTS THEM** - a caller that observes one waits forever - so the check asserts what is
+true of vocabulary (each equals its own name, they are distinct) rather than pretending to a delivery.
+
 ## §62.7 — THE COVERAGE SLICE, SIXTH LANDING: NSMORPHOLOGY'S 29 ROWS (2026-09-24)
 
 **THE 29 OPEN ROWS ARE THREE ENUMS AND THEIR 26 CASES** (`NSGrammaticalGender`, `NSGrammaticalNumber`,

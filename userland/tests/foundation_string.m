@@ -1085,6 +1085,19 @@ NULL
 		      "each transform, detection key and exception name equals its own name");
 	}
 
+	{
+		/* THE LOCALE KEYS ARE THE CONVENTION THIS LIBRARY ALREADY HAD (value == name), and the property worth
+		 * asserting is that they are DISTINCT - two keys sharing a string would make two locale properties
+		 * indistinguishable - plus that the locale-change notification is one of them. */
+		check("locale-keys-are-their-own-names",
+		      [NSLocaleCurrencyCode isEqualToString:@"NSLocaleCurrencyCode"] &&
+		      [NSLocaleVariantCode isEqualToString:@"NSLocaleVariantCode"] &&
+		      [NSLocaleUsesMetricSystem isEqualToString:@"NSLocaleUsesMetricSystem"] &&
+		      [NSCurrentLocaleDidChangeNotification isEqualToString:@"NSCurrentLocaleDidChangeNotification"] &&
+		      [NSLocaleCurrencyCode isEqualToString:NSLocaleVariantCode] == 0,
+		      "four locale keys read back as themselves and two stay distinct");
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

@@ -51,6 +51,32 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+/* APPLE'S TYPE FOR A NOTIFICATION NAME, declared beside the names that are spelled with it. It is a typedef
+ * with no behaviour - the type Apple declares for the same constants. */
+typedef NSString *NSNotificationName;
+
+/* ---- THE NAMES OF NOTIFICATIONS THIS SYSTEM DOES NOT POST (the coverage slice) ----------------------
+ *
+ * ONE DELIBERATE SIMPLIFICATION, stated because it is a deviation: in Apple's headers these values are the
+ * literal @"NS....Notification" strings AND they are also the CF/AppKit spellings; here every name's value IS
+ * its own name, which is this library's existing convention for the locale keys (NSLocale.h) and the only one
+ * that can be consistent before anything posts or observes them. NOTHING IN THIS SYSTEM POSTS THESE, so a
+ * caller that observes one waits forever - which is why they are here as vocabulary with that said out loud. */
+extern NSNotificationName const NSAppleEventManagerWillProcessFirstEventNotification;
+extern NSNotificationName const NSClassDescriptionNeededForClassNotification;
+extern NSNotificationName const NSExtensionHostDidBecomeActiveNotification;
+extern NSNotificationName const NSExtensionHostDidEnterBackgroundNotification;
+extern NSNotificationName const NSExtensionHostWillEnterForegroundNotification;
+extern NSNotificationName const NSExtensionHostWillResignActiveNotification;
+extern NSNotificationName const NSMetadataQueryDidFinishGatheringNotification;
+extern NSNotificationName const NSMetadataQueryDidStartGatheringNotification;
+extern NSNotificationName const NSMetadataQueryDidUpdateNotification;
+extern NSNotificationName const NSMetadataQueryGatheringProgressNotification;
+extern NSNotificationName const NSProcessInfoPowerStateDidChangeNotification;
+extern NSNotificationName const NSSystemClockDidChangeNotification;
+extern NSNotificationName const NSSystemTimeZoneDidChangeNotification;
+extern NSNotificationName const NSUbiquityIdentityDidChangeNotification;
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSNOTIFICATION_H */

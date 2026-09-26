@@ -102,6 +102,31 @@ typedef enum {
 	NSLocaleLanguageDirectionBottomToTop = 4
 } NSLocaleLanguageDirection;
 
+/* ---- THE REMAINING LOCALE KEYS, AND THE LOCALE-CHANGE NOTIFICATION (the coverage slice) -------------
+ *
+ * THE VALUE OF EVERY KEY HERE IS ITS OWN NAME, which is this header's convention for all of them (NSLocaleKey is
+ * a wire name only WITHIN this library: -objectForKey: is asked with what is declared here). The change
+ * notification is declared as a STRING until NSNotificationName exists, which the notification landing below
+ * brings in. */
+typedef NSString *NSLocaleKey;
+
+extern NSString *const NSCurrentLocaleDidChangeNotification;
+extern NSString *const NSLocaleAlternateQuotationBeginDelimiterKey;
+extern NSString *const NSLocaleAlternateQuotationEndDelimiterKey;
+extern NSString *const NSLocaleCalendar;
+extern NSString *const NSLocaleCollationIdentifier;
+extern NSString *const NSLocaleCollatorIdentifier;
+extern NSString *const NSLocaleCurrencyCode;
+extern NSString *const NSLocaleCurrencySymbol;
+extern NSString *const NSLocaleDecimalSeparator;
+extern NSString *const NSLocaleExemplarCharacterSet;
+extern NSString *const NSLocaleGroupingSeparator;
+extern NSString *const NSLocaleMeasurementSystem;
+extern NSString *const NSLocaleQuotationBeginDelimiterKey;
+extern NSString *const NSLocaleQuotationEndDelimiterKey;
+extern NSString *const NSLocaleUsesMetricSystem;
+extern NSString *const NSLocaleVariantCode;
+
 NS_ASSUME_NONNULL_END
 
 @end

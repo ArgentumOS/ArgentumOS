@@ -220,6 +220,19 @@ int main(void)
 		      "a post after an observer was deallocated without removing itself did not crash and was not delivered");
 	}
 
+	{
+		/* THE NAMES NOBODY POSTS: the check can only assert what is true of vocabulary - each name equals its
+		 * own string, they are distinct, and NSNotificationName is the type they are spelled with. NOTHING IN
+		 * THIS SYSTEM POSTS THEM, so an observer waits forever; that is recorded in the header, not tested
+		 * into an absence. */
+		check("notification-names-are-their-own-names",
+		      [NSSystemClockDidChangeNotification isEqualToString:@"NSSystemClockDidChangeNotification"] &&
+		      [NSProcessInfoPowerStateDidChangeNotification
+			isEqualToString:@"NSProcessInfoPowerStateDidChangeNotification"] &&
+		      [NSSystemClockDidChangeNotification isEqualToString:NSProcessInfoPowerStateDidChangeNotification] == 0,
+		      "every declared notification name equals its own name and the type is Apple's");
+	}
+
 	printf("FOUNDATION-NOTIFICATION RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-NOTIFICATION-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-NOTIFICATION DONE\n");

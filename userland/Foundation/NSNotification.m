@@ -12,6 +12,21 @@
 
 @implementation NSNotification
 
+NSNotificationName const NSAppleEventManagerWillProcessFirstEventNotification = @"NSAppleEventManagerWillProcessFirstEventNotification";
+NSNotificationName const NSClassDescriptionNeededForClassNotification = @"NSClassDescriptionNeededForClassNotification";
+NSNotificationName const NSExtensionHostDidBecomeActiveNotification = @"NSExtensionHostDidBecomeActiveNotification";
+NSNotificationName const NSExtensionHostDidEnterBackgroundNotification = @"NSExtensionHostDidEnterBackgroundNotification";
+NSNotificationName const NSExtensionHostWillEnterForegroundNotification = @"NSExtensionHostWillEnterForegroundNotification";
+NSNotificationName const NSExtensionHostWillResignActiveNotification = @"NSExtensionHostWillResignActiveNotification";
+NSNotificationName const NSMetadataQueryDidFinishGatheringNotification = @"NSMetadataQueryDidFinishGatheringNotification";
+NSNotificationName const NSMetadataQueryDidStartGatheringNotification = @"NSMetadataQueryDidStartGatheringNotification";
+NSNotificationName const NSMetadataQueryDidUpdateNotification = @"NSMetadataQueryDidUpdateNotification";
+NSNotificationName const NSMetadataQueryGatheringProgressNotification = @"NSMetadataQueryGatheringProgressNotification";
+NSNotificationName const NSProcessInfoPowerStateDidChangeNotification = @"NSProcessInfoPowerStateDidChangeNotification";
+NSNotificationName const NSSystemClockDidChangeNotification = @"NSSystemClockDidChangeNotification";
+NSNotificationName const NSSystemTimeZoneDidChangeNotification = @"NSSystemTimeZoneDidChangeNotification";
+NSNotificationName const NSUbiquityIdentityDidChangeNotification = @"NSUbiquityIdentityDidChangeNotification";
+
 + (instancetype)notificationWithName:(NSString *)name object:(nullable id)object
 {
 	return [[[self alloc] initWithName:name object:object userInfo:nil] autorelease];

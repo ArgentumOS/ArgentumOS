@@ -34,8 +34,8 @@
 #   enum       shipped  122   open   21   struck   17
 #   case       shipped 1016   open  118   struck  168
 #   func       shipped   74   open   61   struck   54
-#   var        shipped  448   open  113   struck  353
-#   typealias  shipped   47   open   22   struck    7
+#   var        shipped  486   open   75   struck  353
+#   typealias  shipped   49   open   20   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -2295,9 +2295,9 @@ typealias	shipped	NSKeyValueChangeKey		Reference / Type Aliases	-	objc
 typealias	shipped	NSKeyValueOperator		Reference / Type Aliases	-	objc
 typealias	struck	NSLinguisticTag	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
 typealias	struck	NSLinguisticTagScheme	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
-typealias	open	NSLocaleKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key	-	objc
+typealias	shipped	NSLocaleKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key	-	objc
 typealias	shipped	NSMapTableOptions	NSMapTable	Fundamentals / Pointer Collections / Creating and Initializing a Map Table	-	objc
-typealias	open	NSNotificationName	NSNotification	App Support / Notifications / Creating Notifications	-	swift-page
+typealias	shipped	NSNotificationName	NSNotification	App Support / Notifications / Creating Notifications	-	swift-page
 typealias	shipped	NSPoint		Fundamentals / Geometry	-	objc
 typealias	shipped	NSPointArray		Fundamentals / Geometry / Related Types	-	objc
 typealias	shipped	NSPointPointer		Fundamentals / Geometry / Related Types	-	objc
@@ -2350,7 +2350,7 @@ typealias	shipped	unichar		Fundamentals / Characters	-	objc
 typealias	shipped	unichar	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 var	struck	NSAMPMDesignation	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSAlternateDescriptionAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
-var	open	NSAppleEventManagerWillProcessFirstEventNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSAppleEventManagerWillProcessFirstEventNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	struck	NSAppleEventTimeOutDefault	NSAppleEventManager	App Support / Apple Event Handling / Constants / Constants	declined	objc
 var	struck	NSAppleEventTimeOutNone	NSAppleEventManager	App Support / Apple Event Handling / Constants / Constants	declined	objc
 var	struck	NSAppleScriptErrorAppName	NSAppleScript	App Support / Script Execution / Constants / Constants	declined	objc
@@ -2399,14 +2399,14 @@ var	shipped	NSCharacterConversionException	NSException	App Support / Exceptions 
 var	shipped	NSCharacterConversionException	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 var	struck	NSChineseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	struck	NSClassDescriptionNeededForClassNotification	NSClassDescription	App Support / Script Dictionary Description / Notifications	declined	swift-page
-var	open	NSClassDescriptionNeededForClassNotification	NSNotification	App Support / Notifications / Creating Notifications / AppKit	-	swift-page
+var	shipped	NSClassDescriptionNeededForClassNotification	NSNotification	App Support / Notifications / Creating Notifications / AppKit	-	swift-page
 var	shipped	NSCocoaErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	struck	NSConnectionDidDieNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
 var	struck	NSConnectionDidInitializeNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
 var	struck	NSConnectionReplyMode	NSConnection	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
 var	shipped	NSCountKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSCurrencySymbol	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
-var	open	NSCurrentLocaleDidChangeNotification	NSLocale	Fundamentals / Localization / Getting the User’s Locale	-	objc
+var	shipped	NSCurrentLocaleDidChangeNotification	NSLocale	Fundamentals / Localization / Getting the User’s Locale	-	objc
 var	struck	NSDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	struck	NSDateTimeOrdering	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSDeallocateZombies		App Support / Diagnostics and Debugging	-	objc
@@ -2432,14 +2432,14 @@ var	shipped	NSDistinctUnionOfSetsKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSEarlierTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSEdgeInsetsZero		Fundamentals / Geometry / Getting the zero constant	-	objc
 var	struck	NSErrorFailingURLStringKey		Networking / Errors / Deprecated	deprecated	objc
-var	open	NSExtensionHostDidBecomeActiveNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
-var	open	NSExtensionHostDidBecomeActiveNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSExtensionHostDidEnterBackgroundNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
-var	open	NSExtensionHostDidEnterBackgroundNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSExtensionHostWillEnterForegroundNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
-var	open	NSExtensionHostWillEnterForegroundNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSExtensionHostWillResignActiveNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
-var	open	NSExtensionHostWillResignActiveNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSExtensionHostDidBecomeActiveNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
+var	shipped	NSExtensionHostDidBecomeActiveNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSExtensionHostDidEnterBackgroundNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
+var	shipped	NSExtensionHostDidEnterBackgroundNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSExtensionHostWillEnterForegroundNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
+var	shipped	NSExtensionHostWillEnterForegroundNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSExtensionHostWillResignActiveNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
+var	shipped	NSExtensionHostWillResignActiveNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	open	NSExtensionItemAttachmentsKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
 var	open	NSExtensionItemAttributedContentTextKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
 var	open	NSExtensionItemAttributedTitleKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
@@ -2633,25 +2633,25 @@ var	struck	NSLinguisticTagWordJoiner	NSLinguisticTagger	Fundamentals / Deprecate
 var	shipped	NSListItemDelimiterAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting formatting attribute keys	-	objc
 var	open	NSLoadedClasses	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
 var	open	NSLocalNotificationCenterType	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Type Properties	-	objc
-var	open	NSLocaleAlternateQuotationBeginDelimiterKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
-var	open	NSLocaleAlternateQuotationEndDelimiterKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
-var	open	NSLocaleCalendar	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
-var	open	NSLocaleCollationIdentifier	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
-var	open	NSLocaleCollatorIdentifier	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
+var	shipped	NSLocaleAlternateQuotationBeginDelimiterKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
+var	shipped	NSLocaleAlternateQuotationEndDelimiterKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
+var	shipped	NSLocaleCalendar	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
+var	shipped	NSLocaleCollationIdentifier	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
+var	shipped	NSLocaleCollatorIdentifier	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
 var	shipped	NSLocaleCountryCode	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
-var	open	NSLocaleCurrencyCode	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
-var	open	NSLocaleCurrencySymbol	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
-var	open	NSLocaleDecimalSeparator	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
-var	open	NSLocaleExemplarCharacterSet	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
-var	open	NSLocaleGroupingSeparator	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
+var	shipped	NSLocaleCurrencyCode	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
+var	shipped	NSLocaleCurrencySymbol	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
+var	shipped	NSLocaleDecimalSeparator	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
+var	shipped	NSLocaleExemplarCharacterSet	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
+var	shipped	NSLocaleGroupingSeparator	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
 var	shipped	NSLocaleIdentifier	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
 var	shipped	NSLocaleLanguageCode	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
-var	open	NSLocaleMeasurementSystem	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
-var	open	NSLocaleQuotationBeginDelimiterKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
-var	open	NSLocaleQuotationEndDelimiterKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
+var	shipped	NSLocaleMeasurementSystem	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
+var	shipped	NSLocaleQuotationBeginDelimiterKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
+var	shipped	NSLocaleQuotationEndDelimiterKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
 var	shipped	NSLocaleScriptCode	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
-var	open	NSLocaleUsesMetricSystem	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
-var	open	NSLocaleVariantCode	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
+var	shipped	NSLocaleUsesMetricSystem	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
+var	shipped	NSLocaleVariantCode	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
 var	shipped	NSLocalizedDescriptionKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSLocalizedFailureErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSLocalizedFailureReasonErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
@@ -2824,13 +2824,13 @@ var	struck	NSMetadataItemWhereFromsKey	NSMetadataItem	Files and Data Persistence
 var	struck	NSMetadataItemWhiteBalanceKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
 var	struck	NSMetadataQueryAccessibleUbiquitousExternalDocumentsScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
 var	struck	NSMetadataQueryDidFinishGatheringNotification	NSMetadataQuery	Files and Data Persistence / Queries / Working with notifications	declined	swift-page
-var	open	NSMetadataQueryDidFinishGatheringNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSMetadataQueryDidFinishGatheringNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	struck	NSMetadataQueryDidStartGatheringNotification	NSMetadataQuery	Files and Data Persistence / Queries / Working with notifications	declined	swift-page
-var	open	NSMetadataQueryDidStartGatheringNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSMetadataQueryDidStartGatheringNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	struck	NSMetadataQueryDidUpdateNotification	NSMetadataQuery	Files and Data Persistence / Queries / Working with notifications	declined	swift-page
-var	open	NSMetadataQueryDidUpdateNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSMetadataQueryDidUpdateNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	struck	NSMetadataQueryGatheringProgressNotification	NSMetadataQuery	Files and Data Persistence / Queries / Working with notifications	declined	swift-page
-var	open	NSMetadataQueryGatheringProgressNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSMetadataQueryGatheringProgressNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	struck	NSMetadataQueryIndexedLocalComputerScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
 var	struck	NSMetadataQueryIndexedNetworkScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
 var	struck	NSMetadataQueryLocalComputerScope	NSMetadataQuery	Files and Data Persistence / Queries / Constants / Constants	declined	objc
@@ -2913,8 +2913,8 @@ var	shipped	NSPortTimeoutException	NSException	App Support / Exceptions / Relate
 var	struck	NSPositiveCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSPresentationIntentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	struck	NSPriorDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSProcessInfoPowerStateDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSProcessInfoPowerStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	swift-page
+var	shipped	NSProcessInfoPowerStateDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSProcessInfoPowerStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	swift-page
 var	open	NSProcessInfoThermalStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	objc
 var	open	NSProgressEstimatedTimeRemainingKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using General Keys	-	objc
 var	open	NSProgressFileAnimationImageKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
@@ -3009,10 +3009,10 @@ var	shipped	NSStringTransformToUnicodeName	NSString	Fundamentals / Strings / Tra
 var	shipped	NSStringTransformToXMLHex	NSMutableString	Fundamentals / Strings / Constants / Constants	-	objc
 var	shipped	NSStringTransformToXMLHex	NSString	Fundamentals / Strings / Transforming Strings / Character Representation	-	objc
 var	shipped	NSSumKeyValueOperator		Reference / Constants	-	objc
-var	open	NSSystemClockDidChangeNotification	NSDate	Fundamentals / Date Representations / Recognizing Notifications	-	swift-page
-var	open	NSSystemClockDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSSystemTimeZoneDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSSystemTimeZoneDidChangeNotification	NSTimeZone	Fundamentals / Calendrical Calculations / Recognizing Notifications	-	swift-page
+var	shipped	NSSystemClockDidChangeNotification	NSDate	Fundamentals / Date Representations / Recognizing Notifications	-	swift-page
+var	shipped	NSSystemClockDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSSystemTimeZoneDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSSystemTimeZoneDidChangeNotification	NSTimeZone	Fundamentals / Calendrical Calculations / Recognizing Notifications	-	swift-page
 var	shipped	NSTaskDidTerminateNotification	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with notifications	-	objc
 var	open	NSTextCheckingAirlineKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 var	open	NSTextCheckingCityKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
@@ -3223,8 +3223,8 @@ var	open	NSUbiquitousKeyValueStoreDidChangeExternallyNotification	NSUbiquitousKe
 var	struck	NSUbiquitousUserDefaultsCompletedInitialSyncNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
 var	struck	NSUbiquitousUserDefaultsDidChangeAccountsNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
 var	struck	NSUbiquitousUserDefaultsNoCloudAccountNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
-var	open	NSUbiquityIdentityDidChangeNotification	NSFileManager	Files and Data Persistence / File system operations / Working with notifications	-	swift-page
-var	open	NSUbiquityIdentityDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
+var	shipped	NSUbiquityIdentityDidChangeNotification	NSFileManager	Files and Data Persistence / File system operations / Working with notifications	-	swift-page
+var	shipped	NSUbiquityIdentityDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	struck	NSUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
 var	shipped	NSUndefinedKeyException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSUnderlyingErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc

@@ -25,6 +25,7 @@
 #define FOUNDATION_NSCALENDAR_H
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSNotification.h>	/* NSNotificationName */
 
 @class NSDate;
 @class NSTimeZone;
@@ -229,7 +230,7 @@ const char * _Nullable fn_calendar_keyword(NSString *identifier);
 
 
 /* Apple's name for the day-changed notification, spelled with the type the tree's notifications use. */
-extern NSString *const NSCalendarDayChangedNotification;   /* NSNotificationName is not a type here yet */
+extern NSNotificationName const NSCalendarDayChangedNotification;
 
 extern NSCalendarIdentifier const NSCalendarIdentifierBangla;
 extern NSCalendarIdentifier const NSCalendarIdentifierDangi;
