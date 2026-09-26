@@ -88,15 +88,17 @@
  * something in the process ADOPTS it, so a conformance test would make the dispatch depend on a linker
  * detail. A delegate that implements both the data doors and the download door therefore downloads.
  *
- * TWO OF THE DOWNLOAD DOORS ARE REFUSED BY NAME, EACH WITH A GROUND THE LOADING SYSTEM MEASURES:
- *   * `-connection:didWriteData:totalBytesWritten:expectedTotalBytes:` — THE SESSION REPORTS NO DOWNLOAD
- *     PROGRESS. Its only download door is the completion handler (it declares no download delegate
- *     protocol at all), so there is nothing to translate a byte count from. NAMED CONSEQUENCE: a
- *     download-progress door on `NSURLSession` is itself owed work, and this refusal is what it blocks.
- *   * `-connectionDidResumeDownloading:totalBytesWritten:expectedTotalBytes:` — THERE IS NO RESUME: the
- *     session ships no `-downloadTaskWithResumeData:`, so a transfer can only start from the beginning.
- * THE FINISHING DOOR IS THE ONE THAT MATTERS AND IT IS IMPLEMENTED: Apple's own contract makes receiving
- * the finished file the delegate's essential act here.
+ * AND THE PROGRESS DOOR THAT WAS REFUSED HERE NOW SHIPS, BECAUSE THE SESSION GAINED THE DOOR IT WAS
+ * MISSING (§62.29): `NSURLSessionDownloadDelegate` declares
+ * `-URLSession:downloadTask:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:`, the session
+ * dispatches it as the chunks arrive, and this class TRANSLATES it — the numbers are the TASK's own, so the
+ * two doors cannot drift. The refusal's ground ("the session reports no download progress") is retired by
+ * that landing rather than by a decision here, which is what a refusal with a measured ground is FOR.
+ *
+ * ONE IS STILL REFUSED: `-connectionDidResumeDownloading:totalBytesWritten:expectedTotalBytes:` — THERE IS
+ * NO RESUME: the session ships no `-downloadTaskWithResumeData:`, so a transfer can only start from the
+ * beginning. THE FINISHING DOOR IS THE ONE THAT MATTERS AND IT IS IMPLEMENTED: Apple's own contract makes
+ * receiving the finished file the delegate's essential act here.
  */
 
 #ifndef FOUNDATION_NSURLCONNECTION_H
@@ -181,6 +183,15 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;
 @protocol NSURLConnectionDownloadDelegate <NSURLConnectionDelegate>
 
 @optional
+
+/* HOW THE TRANSFER IS GOING, AS THE CHUNKS ARRIVE. `bytesWritten` is the chunk, `totalBytesWritten` is the
+ * task's own running total and `expectedTotalBytes` is what the response said (0 or negative means the
+ * server never named a length). ALL THREE ARE THE TASK'S NUMBERS, translated rather than recounted, so this
+ * door cannot disagree with the task about the same transfer. */
+- (void)connection:(NSURLConnection *)connection
+	 didWriteData:(long long)bytesWritten
+    totalBytesWritten:(long long)totalBytesWritten
+    expectedTotalBytes:(long long)expectedTotalBytes;
 
 /* THE BODY IS ON DISK AT `destinationURL`, AND A CALLER MUST MOVE IT BEFORE RETURNING: the file lives in
  * `NSTemporaryDirectory()` and nothing here keeps it alive afterwards.

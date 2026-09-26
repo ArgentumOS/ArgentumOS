@@ -258,6 +258,38 @@ didReceiveResponse:(NSURLResponse *)response
 
 @end
 
+/*
+ * THE DOWNLOAD DELEGATE, AND THE ONE DOOR APPLE MAKES REQUIRED IS THE ONLY ONE THAT CANNOT BE OMITTED: the
+ * body is on disk at `location` and a delegate MUST MOVE IT BEFORE RETURNING, because the file lives in
+ * `NSTemporaryDirectory()` and nothing keeps it afterwards.
+ *
+ * THE PROGRESS DOOR IS OPTIONAL AND THE ASYMMETRY IS THE POINT: a delegate may care only about the finished
+ * file, or only about how the transfer is going, and each is a complete answer on its own.
+ *
+ * AND APPLE'S THIRD DOOR IS REFUSED BY NAME RATHER THAN DECLARED AND NEVER CALLED:
+ * `-URLSession:downloadTask:didResumeAtOffset:expectedTotalBytes:` needs a RESUMABLE transfer, and this
+ * session has none - it ships no `-downloadTaskWithResumeData:`, so a download can only start from the
+ * beginning. A declared door nothing can call is worse than an absent one (§11.2), and the ledger's
+ * `NSURLSessionDownloadTaskResumeData` row stays `open` for the same reason.
+ */
+@protocol NSURLSessionDownloadDelegate <NSURLSessionTaskDelegate>
+
+@required
+
+- (void)URLSession:(NSURLSession *)session
+      downloadTask:(NSURLSessionDownloadTask *)downloadTask
+didFinishDownloadingToURL:(NSURL *)location;
+
+@optional
+
+- (void)URLSession:(NSURLSession *)session
+      downloadTask:(NSURLSessionDownloadTask *)downloadTask
+       didWriteData:(int64_t)bytesWritten
+  totalBytesWritten:(int64_t)totalBytesWritten
+totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite;
+
+@end
+
 @interface NSURLSession : NSObject
 {
 	NSURLSessionConfiguration *_configuration;

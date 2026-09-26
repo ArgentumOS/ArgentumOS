@@ -60,7 +60,7 @@ typedef struct {
 	BOOL done;
 } fn_sync_state;
 
-@interface NSURLConnection () <NSURLSessionDataDelegate>
+@interface NSURLConnection () <NSURLSessionDataDelegate, NSURLSessionDownloadDelegate>
 @end
 
 @implementation NSURLConnection
@@ -426,6 +426,23 @@ willPerformHTTPRedirection:(NSHTTPURLResponse *)response
 		return;
 	}
 	completionHandler(request);
+}
+
+/* THE DOWNLOAD'S PROGRESS DOOR (§62.29), AND IT IS A TRANSLATION LIKE EVERY OTHER DOOR HERE: the session's
+ * numbers are the task's own running totals, and the connection's protocol spells the same three facts. */
+- (void)URLSession:(NSURLSession *)session
+      downloadTask:(NSURLSessionDownloadTask *)downloadTask
+       didWriteData:(int64_t)bytesWritten
+  totalBytesWritten:(int64_t)totalBytesWritten
+totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite
+{
+	if ([_delegate respondsToSelector:
+			@selector(connection:didWriteData:totalBytesWritten:expectedTotalBytes:)]) {
+		[_delegate connection:self
+			 didWriteData:(long long)bytesWritten
+		    totalBytesWritten:(long long)totalBytesWritten
+		    expectedTotalBytes:(long long)totalBytesExpectedToWrite];
+	}
 }
 
 /* THE AUTHENTICATION TRANSLATION, WITH APPLE'S PRECEDENCE WRITTEN OUT RATHER THAN IMPLIED (the header

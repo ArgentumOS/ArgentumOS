@@ -3554,7 +3554,7 @@ vanishing.
 | **Networking / Authentication and credentials** | all classes shipped | — |
 | **Networking / Cache behavior** | all classes shipped | — |
 | **Networking / Cookies** | all classes shipped | — |
-| **Networking / Essentials** | 1 open | `NSURLSessionDownloadDelegate` |
+| **Networking / Essentials** | all classes shipped | — |
 | **Networking / Legacy** | 4 open | `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` |
 | **Networking / Local Network Services** | ALL STRUCK: `NSNetService`, `NSNetServiceDelegate` | — |
 | **Networking / Requests and responses** | all classes shipped | — |
@@ -12976,6 +12976,47 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.29 — THE SESSION'S DOWNLOAD DELEGATE LANDS, AND THE LAST REFUSAL IN THE CONNECTION'S DOWNLOAD HALF GOES WITH IT (2026-09-26)
+
+**WHAT SHIPPED.** `NSURLSessionDownloadDelegate` — the protocol row that was `open` — and the two dispatches it
+needs, plus the `NSURLConnection` door that was blocked on it:
+* the protocol declares ONE REQUIRED DOOR (`-URLSession:downloadTask:didFinishDownloadingToURL:`, where a delegate
+  must move the file before returning) and ONE OPTIONAL ONE (the progress door);
+* `NSURLSession` dispatches the progress door as the chunks arrive, and the finishing door BEFORE
+  `-URLSession:task:didCompleteWithError:` — Apple's order, and it is load-bearing: a delegate that moves the file
+  in the first has it in place when the second says the transfer is over;
+* and **`-connection:didWriteData:totalBytesWritten:expectedTotalBytes:` now ships**, which is the payoff: §62.26
+  had refused it with a measured ground ("the session reports no download progress"), and the ground is retired by
+  the session gaining the door rather than by a decision here. **That is what a refusal with a measured ground is
+  FOR** — the refusal and the work that retires it are the same object seen twice.
+
+**THE NUMBERS ARE THE TASK'S, SO THE TWO DOORS CANNOT DRIFT.** The session's translation reads
+`-countOfBytesReceived` / `-countOfBytesExpectedToReceive` — the task's own public properties, already maintained
+by `-fnProtocolDidLoadData:` — and the connection's translation passes them through as `long long`, which is the
+connection protocol's own spelling. Nothing recounts anything, at either layer.
+
+**AND APPLE'S THIRD DOWNLOAD DOOR IS REFUSED BY NAME RATHER THAN DECLARED AND NEVER CALLED:**
+`-URLSession:downloadTask:didResumeAtOffset:expectedTotalBytes:` needs a RESUMABLE transfer and this session has
+none — no `-downloadTaskWithResumeData:`, so a download starts from the beginning. The ledger's
+`NSURLSessionDownloadTaskResumeData` row therefore stays `open`, and the connection's
+`-connectionDidResumeDownloading:…` stays refused with the same ground.
+
+**VERIFIED.** `foundation_urlconnection` is **25/25 GREEN**: the progress door fires with THIS transfer's totals
+(the last chunk positive, the running total and the expected total both equal to the file's length — read, not
+assumed), the data-door exclusion check narrowed to the doors it is actually about, the resume refusal stands
+alone, and the session protocol's required/optional split is asserted where it was declared. Regressions:
+`foundation_urlsession` 6/6, `foundation_urlsession_task` 6/6, `foundation_authloop` 3/3. `make rootagfs` clean;
+ledger refreshed and `--families --check` matches.
+
+**TWO MISTAKES OF MINE, BOTH THE SAME KIND, BOTH CAUGHT BY A TOOL RATHER THAN BY READING:**
+* the probe called this file's two-argument `fn_protocol_has` with a third `required` flag that belongs to the
+  CHALLENGE probe's helper — twice, and the compiler refused both. The fix is the honest one: a second helper
+  (`fn_protocol_requires`) rather than an argument whose meaning a call site has to remember.
+* the session-protocol shape check FAILED on its first run, because `objc_getProtocol` answers NULL for a protocol
+  the CALLING BINARY never adopts — the measurement `foundation_url.m` already records about NSURLProtocolClient,
+  and the fix is its recorded remedy: a fixture class in the probe that adopts the protocol. The check was right;
+  the file's knowledge of the runtime was not.
 
 ## §62.28 — THE AUTHENTICATION DOORS LAND: WHAT §62.27 UNBLOCKED (2026-09-26)
 

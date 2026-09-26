@@ -100,6 +100,7 @@
  * inside the other one: the ORDER is the contract (§52), and a separate call is something a reader of the
  * ending can see. */
 - (void)fnTellMetrics;
+- (void)fnTellTheDownloadDelegate;
 @end
 
 
@@ -270,6 +271,7 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 	NSOperationQueue *queue;
 
 	[_task fnProtocolDidLoadData:data];
+	[self fnTellDownloadProgress:data];	/* the task has counted it; this is where a delegate hears */
 	if (_body == nil) {
 		_body = [[NSMutableData alloc] init];
 	}
@@ -297,6 +299,49 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 	[data retain];
 	[queue addOperationWithBlock:^{
 		[delegate URLSession:_session dataTask:(NSURLSessionDataTask *)_task didReceiveData:data];
+		[data release];
+		[delegate release];
+		[self release];
+	}];
+}
+
+/* THE DOWNLOAD PROGRESS DOOR, DISPATCHED ON THE SAME TERMS AS THE CHUNK DOOR ABOVE - which is what makes the
+ * two consistent: a delegate that wants every chunk and one that wants a running total are asking the same
+ * question of the same transfer.
+ *
+ * THE NUMBERS ARE THE TASK'S, NOT A SECOND ACCOUNTING: `countOfBytesReceived` and
+ * `countOfBytesExpectedToReceive` are the task's own public properties, already maintained by
+ * `-fnProtocolDidLoadData:`, so this door cannot drift from what the task reports about itself. The chunk's
+ * length is `bytesWritten`; the expected total is the response's, and 0 or -1 means the server never said. */
+- (void)fnTellDownloadProgress:(NSData *)data
+{
+	id <NSURLSessionDownloadDelegate> delegate = (id <NSURLSessionDownloadDelegate>)[_session delegate];
+	NSOperationQueue *queue = [_session delegateQueue];
+
+	if (![_task isKindOfClass:[NSURLSessionDownloadTask class]] ||
+	    ![delegate respondsToSelector:
+		@selector(URLSession:downloadTask:didWriteData:totalBytesWritten:
+			  totalBytesExpectedToWrite:)]) {
+		return;
+	}
+	if (queue == nil) {
+		[delegate URLSession:_session
+		       downloadTask:(NSURLSessionDownloadTask *)_task
+			didWriteData:(int64_t)[data length]
+		   totalBytesWritten:[_task countOfBytesReceived]
+	   totalBytesExpectedToWrite:[_task countOfBytesExpectedToReceive]];
+		return;
+	}
+	/* THE SAME HOP, WITH THE SAME RETAINS: see the note in -URLProtocol:didLoadData:. */
+	[self retain];
+	[delegate retain];
+	[data retain];
+	[queue addOperationWithBlock:^{
+		[delegate URLSession:_session
+		       downloadTask:(NSURLSessionDownloadTask *)_task
+			didWriteData:(int64_t)[data length]
+		   totalBytesWritten:[_task countOfBytesReceived]
+	   totalBytesExpectedToWrite:[_task countOfBytesExpectedToReceive]];
 		[data release];
 		[delegate release];
 		[self release];
@@ -337,6 +382,30 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
  * THE RECORD IS THE LOADING SYSTEM'S, ASSEMBLED ACROSS THE TWO THINGS THAT KNOW IT: the transactions are the
  * PROTOCOL's (each one measured at the handle), and the span and the redirect count are this object's - the
  * span from its own creation, which is when the task began to run, to this instant. */
+/* THE DOWNLOAD DELEGATE'S FINISHING DOOR, AND IT IS ONLY EVER CALLED FOR A DOWNLOAD WITH A FILE: `location`
+ * is nil when the transfer failed (the task writes nothing on an error, by its own design), and a door told
+ * about a location holding a partial body would be worse than one told nothing. */
+- (void)fnTellTheDownloadDelegate
+{
+	id <NSURLSessionDownloadDelegate> delegate = (id <NSURLSessionDownloadDelegate>)[_session delegate];
+	NSURL *location;
+
+	if (![_task isKindOfClass:[NSURLSessionDownloadTask class]]) {
+		return;
+	}
+	location = [(NSURLSessionDownloadTask *)_task location];
+	if (location == nil ||
+	    ![delegate respondsToSelector:@selector(URLSession:downloadTask:didFinishDownloadingToURL:)]) {
+		return;
+	}
+	/* THE DELEGATE QUEUE IS HONOURED HERE TOO, but NOT with a hop that could reorder it against the
+	 * completion door: both are dispatched from the same call, in order, so a queue that is serial keeps
+	 * the order Apple states. */
+	[delegate URLSession:_session
+	       downloadTask:(NSURLSessionDownloadTask *)_task
+    didFinishDownloadingToURL:location];
+}
+
 - (void)fnTellMetrics
 {
 	id <NSURLSessionTaskDelegate> delegate = (id <NSURLSessionTaskDelegate>)[_session delegate];
@@ -383,6 +452,11 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 	/* AND THE METRICS GO FIRST EVEN WHEN THE COMPLETION DOOR IS NOT IMPLEMENTED, which is why this call sits
 	 * ABOVE the guard rather than inside it: Apple declares the two as separate notifications, and a
 	 * delegate may implement either one. */
+	/* THE ORDER IS APPLE'S AND IT IS LOad-BEARING: a download's FILE is reported BEFORE its task is, so a
+	 * delegate that moves the file in the first door has it in place by the time the second says the
+	 * transfer is over. AND IT SITS ABOVE THE COMPLETION DOOR'S GUARD for the reason the metrics call does -
+	 * Apple declares these as separate notifications, and a delegate may implement either one. */
+	[self fnTellTheDownloadDelegate];
 	[self fnTellMetrics];
 	if (![delegate respondsToSelector:@selector(URLSession:task:didCompleteWithError:)]) {
 		return;

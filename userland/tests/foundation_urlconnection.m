@@ -81,6 +81,22 @@ static BOOL fn_protocol_has(Protocol *proto, const char *sel)
 	return d.types != NULL;
 }
 
+/* AND THE SAME QUESTION ABOUT A REQUIRED DOOR, which needs its own helper rather than a third argument on the
+ * one above: the two are different claims about a protocol, and a call site that has to remember which is
+ * which is a call site that will get it wrong (the first version of the session-protocol check did exactly
+ * that, and the compiler refused it). */
+static BOOL fn_protocol_requires(Protocol *proto, const char *sel)
+{
+	struct objc_method_description d;
+
+	if (proto == NULL) {
+		return NO;
+	}
+	d = protocol_getMethodDescription(proto, sel_registerName(sel),
+					  YES, YES);
+	return d.types != NULL;
+}
+
 /* --- THE DELEGATES THE ROUND TRIPS USE ------------------------------------------------------------- */
 
 /* WHAT THE DELEGATE SAW, IN ORDER. `order` is a bit string so the SEQUENCE is a check rather than three
@@ -335,6 +351,27 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 
 @end
 
+/* A CLASS THAT ADOPTS THE SESSION'S DOWNLOAD PROTOCOL, AND IT EXISTS FOR A MEASUREMENT RATHER THAN FOR
+ * BEHAVIOUR: `objc_getProtocol` answers NULL for a protocol THE CALLING BINARY NEVER ADOPTS, however many
+ * other images use it (foundation_url.m records the same thing about NSURLProtocolClient). The check below
+ * asks about this protocol's shape, so this file has to adopt it - and it implements ONLY the required door,
+ * which is the second thing the check asserts: the progress door really is optional. */
+@interface FNDownloadDelegateShape : NSObject <NSURLSessionDownloadDelegate>
+@end
+
+@implementation FNDownloadDelegateShape
+
+- (void)URLSession:(NSURLSession *)session
+      downloadTask:(NSURLSessionDownloadTask *)downloadTask
+didFinishDownloadingToURL:(NSURL *)location
+{
+	(void)session;
+	(void)downloadTask;
+	(void)location;
+}
+
+@end
+
 @interface FNEmptyConnDelegate : NSObject <NSURLConnectionDelegate>
 @end
 @implementation FNEmptyConnDelegate
@@ -354,6 +391,9 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 	int dataDoorCalls;
 	int responseDoorCalls;
 	int writeProgressCalls;
+	long long lastBytesWritten;
+	long long lastTotalWritten;
+	long long lastExpectedTotal;
 	BOOL done;
 }
 
@@ -392,16 +432,18 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 	responseDoorCalls++;
 }
 
+/* A DOWNLOAD DOOR SINCE §62.29, SO IT IS EXPECTED TO FIRE - and it records the three numbers so the check
+ * can assert they are about THIS transfer rather than merely that a call happened. */
 - (void)connection:(NSURLConnection *)connection
 	 didWriteData:(long long)bytesWritten
     totalBytesWritten:(long long)totalBytesWritten
     expectedTotalBytes:(long long)expectedTotalBytes
 {
 	(void)connection;
-	(void)bytesWritten;
-	(void)totalBytesWritten;
-	(void)expectedTotalBytes;
 	writeProgressCalls++;
+	lastBytesWritten = bytesWritten;
+	lastTotalWritten = totalBytesWritten;
+	lastExpectedTotal = expectedTotalBytes;
 }
 
 @end
@@ -705,21 +747,43 @@ int main(void)
 
 		/* AND THE DISPATCH RULE HOLDS: a delegate that implements the data doors TOO is not fed by them. */
 		check("the-data-doors-are-not-used-for-a-download",
-		      rec->dataDoorCalls == 0 && rec->responseDoorCalls == 0 && rec->writeProgressCalls == 0,
-		      [NSString stringWithFormat:@"data=%d response=%d progress=%d - a download delegate hears the "
-			@"download doors only, even though it implements the others",
-			rec->dataDoorCalls, rec->responseDoorCalls, rec->writeProgressCalls]);
+		      rec->dataDoorCalls == 0 && rec->responseDoorCalls == 0,
+		      [NSString stringWithFormat:@"data=%d response=%d - a download delegate hears the download "
+			@"doors only, even though it implements the data ones",
+			rec->dataDoorCalls, rec->responseDoorCalls]);
+
+		/* AND THE PROGRESS DOOR, WHICH IS A DOWNLOAD DOOR AND THEREFORE *IS* HEARD (§62.29): the totals must
+		 * be about THIS transfer, so the check reads them rather than counting calls. */
+		check("the-download-progress-door-is-reported",
+		      rec->writeProgressCalls >= 1 && rec->lastBytesWritten > 0 &&
+		      rec->lastTotalWritten == (long long)[fixture length] &&
+		      rec->lastExpectedTotal == (long long)[fixture length],
+		      [NSString stringWithFormat:@"%d progress call(s): last chunk %lld, running total %lld, "
+			@"expected %lld, and the file is %d bytes",
+			rec->writeProgressCalls, rec->lastBytesWritten, rec->lastTotalWritten,
+			rec->lastExpectedTotal, (int)[fixture length]]);
 
 		/* THE TWO REFUSED DOORS AND THE GROUND THEY SHARE: the session reports no download progress and
 		 * has no resume. */
 		check("download-refusals-are-absent",
-		      !fn_protocol_has(dl, "connection:didWriteData:totalBytesWritten:expectedTotalBytes:") &&
 		      !fn_protocol_has(dl,
 			"connectionDidResumeDownloading:totalBytesWritten:expectedTotalBytes:") &&
 		      ![NSURLSession instancesRespondToSelector:
 			NSSelectorFromString(@"downloadTaskWithResumeData:")],
-		      @"neither progress nor resume is declared, and the session has no resume door to build one "
-		      @"on - both grounds are measured, not assumed");
+		      @"RESUME is the one refusal left: it is not declared, and the session has no resume door to "
+		      @"build one on - the ground is measured, not assumed");
+
+		/* AND THE SESSION'S OWN DOWNLOAD PROTOCOL, WHICH §62.29 DECLARED AND THE PROGRESS DOOR NEEDS: its
+		 * required/optional split is asserted where the door lives, because a protocol whose shape is
+		 * assumed is a protocol nobody checked. */
+		check("the-session-download-protocol-shape",
+		      fn_protocol_requires(objc_getProtocol("NSURLSessionDownloadDelegate"),
+				      "URLSession:downloadTask:didFinishDownloadingToURL:") &&
+		      fn_protocol_has(objc_getProtocol("NSURLSessionDownloadDelegate"),
+				      "URLSession:downloadTask:didWriteData:totalBytesWritten:"
+				      "totalBytesExpectedToWrite:"),
+		      @"the file door is REQUIRED and the progress door is OPTIONAL - and the resume door is "
+		      @"refused by name rather than declared and never called");
 	}
 
 	/* --- 7. THE DOORS THAT DO SHIP, ON THE CLASS AND THE PROTOCOLS ------------------------------- */

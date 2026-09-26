@@ -32,7 +32,9 @@ start first, and the one door that needs a 3xx (the redirect) is tested directly
   * `download-round-trip`                    — a real download: the delegate is handed a file holding the body;
   * `the-data-doors-are-not-used-for-a-download` — a delegate implementing BOTH protocols is not fed by the
                                               data doors (the dispatch rule);
-  * `download-refusals-are-absent`           — progress and resume are refused, with measured grounds;
+  * `the-download-progress-door-is-reported` — the progress door fires with this transfer's own totals;
+  * `download-refusals-are-absent`           — RESUME is the one refusal left, with its measured ground;
+  * `the-session-download-protocol-shape`    — the session's download protocol: file REQUIRED, progress optional;
   * `the-auth-doors-are-declared`            — the modern door and the deprecated pair §62.24 put in scope;
   * `the-modern-door-supersedes-the-deprecated-pair` — asked once, and answered through the SENDER (the
                                               continuation is not called by this class at all);
@@ -58,7 +60,8 @@ CHECKS = ("connection-class-declared", "delegate-protocols-declared",
           "redirect-door-nil-means-do-not-follow", "redirect-door-passes-a-different-request",
           "redirect-door-with-no-delegate-door-follows", "refused-doors-are-absent",
           "download-protocol-declared", "download-round-trip",
-          "the-data-doors-are-not-used-for-a-download", "download-refusals-are-absent",
+          "the-data-doors-are-not-used-for-a-download", "the-download-progress-door-is-reported",
+          "download-refusals-are-absent", "the-session-download-protocol-shape",
           "the-auth-doors-are-declared", "the-modern-door-supersedes-the-deprecated-pair",
           "the-deprecated-pair-is-asked-gate-first", "a-no-from-the-gate-means-no-authentication",
           "no-auth-door-means-the-default-without-waiting",
