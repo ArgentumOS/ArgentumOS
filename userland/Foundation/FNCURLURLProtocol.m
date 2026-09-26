@@ -23,6 +23,7 @@
 #import <Foundation/NSURL.h>
 #import <Foundation/NSURLRequest.h>
 #import <Foundation/NSHTTPURLResponse.h>
+#import <Foundation/NSInputStream.h>	/* the stream a body may arrive as (§62.34) */
 #import <Foundation/NSThread.h>
 #import <Foundation/NSError.h>
 #import <Foundation/NSAutoreleasePool.h>
@@ -47,6 +48,9 @@ typedef struct FNCurlTransfer {
 	volatile int stopped;		/* -stopLoading was called from another thread */
 	int64_t reportedUpload;		/* the last upload total REPORTED, so progress is not a stream of duplicates */
 	int64_t reportedUploadExpected;
+	NSInputStream *bodyStream;	/* NOT RETAINED, like the protocol above: the REQUEST owns it and the request
+					 * outlives the transfer. IT IS CONSUMED BY SENDING, which is why a re-send cannot use
+					 * it again (see the body branch). */
 } FNCurlTransfer;
 
 /* THE PRIVATE DOORS THE C CALLBACKS REACH THE OBJECT THROUGH: a C function cannot message an object it
@@ -126,6 +130,21 @@ static size_t fn_curl_write(char *ptr, size_t size, size_t nmemb, void *userdata
 	[client URLProtocol:transfer->protocol
 		didLoadData:[NSData dataWithBytes:ptr length:bytes]];
 	return bytes;
+}
+
+/* A BODY THAT ARRIVES AS A STREAM IS PULLED FROM HERE (§62.34), because that is what `CURLOPT_UPLOAD` does:
+ * curl calls this until it is answered with zero, and zero is also what an error looks like - the stream's own
+ * status is the caller's business, and a body that stops early is a short body rather than a silent nothing. */
+static size_t fn_curl_read(char *ptr, size_t size, size_t nmemb, void *userdata)
+{
+	FNCurlTransfer *transfer = (FNCurlTransfer *)userdata;
+	NSInteger got;
+
+	if (transfer->stopped || transfer->bodyStream == nil) {
+		return 0;
+	}
+	got = [transfer->bodyStream read:(uint8_t *)ptr maxLength:size * nmemb];
+	return got > 0 ? (size_t)got : 0;
 }
 
 /* UPLOAD PROGRESS (§62.32), AND CURL CALLS THIS SEVERAL TIMES A SECOND FOR EVERY TRANSFER, which is why the
@@ -590,7 +609,32 @@ static NSURLSessionTaskTransactionMetrics *fn_metrics_for_transfer(FNCurlTransfe
 		if (headerList != NULL) {
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerList);
 		}
-		if ([request HTTPBody] != nil) {
+		if ([request HTTPBodyStream] != nil) {
+			/* A BODY THAT ARRIVES AS A STREAM IS NOW SENT AS ONE, AND UNTIL THIS ROW IT WAS SENT AS NOTHING
+			 * AT ALL - the same class of defect as the UTF-8 one below, with the same shape: the body was
+			 * OMITTED, with no error and no body, and a server could only report a request with nothing in it.
+			 *
+			 * `CURLOPT_UPLOAD` MAKES CURL PULL from `fn_curl_read`, and THE METHOD IS SET EXPLICITLY because
+			 * that option's own default is PUT - a caller's POST must stay a POST. THE LENGTH IS THE CALLER'S
+			 * IF THEY PUBLISHED ONE and unknown otherwise, which HTTP/1.1 answers with chunked encoding (curl
+			 * does that for -1).
+			 *
+			 * AND THE STREAM IS SINGLE-USE, WHICH IS WHY A RE-SEND IS NOT HANDLED HERE: a redirect or a 401
+			 * re-issue would ask this same, already-consumed stream for its body a second time and get
+			 * nothing. That is a property of the request rather than of this branch - Apple's answer to it is
+			 * a delegate door that hands over a NEW stream, and this library has not landed that yet (the
+			 * refusal is named in NSURLConnection.h, where a caller meets it). */
+			NSString *published = [request valueForHTTPHeaderField:@"Content-Length"];
+
+			transfer.bodyStream = [request HTTPBodyStream];
+			[transfer.bodyStream open];
+			curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+			curl_easy_setopt(curl, CURLOPT_READFUNCTION, fn_curl_read);
+			curl_easy_setopt(curl, CURLOPT_READDATA, &transfer);
+			curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, [[request HTTPMethod] UTF8String]);
+			curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE,
+					 published != nil ? (curl_off_t)[published longLongValue] : (curl_off_t)-1);
+		} else if ([request HTTPBody] != nil) {
 			/* THE BYTES ARE HANDED OVER AS BYTES, AND THE FIRST VERSION DID NOT: it round-tripped the body
 			 * through -initWithData:encoding:NSUTF8StringEncoding and sent the STRING's bytes, so a body
 			 * that is not valid UTF-8 made that initializer answer nil and THE BODY WAS DROPPED - not

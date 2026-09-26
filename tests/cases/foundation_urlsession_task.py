@@ -44,7 +44,8 @@ CHECKS = ("completion-handler-factory-answers-a-task", "task-resume-runs-the-tra
           "disposition-cancel-withholds-the-body", "disposition-allow-lets-the-body-through",
           "receiver-binds", "receiver-listens", "receiver-accepts-a-connection",
           "upload-run-ends", "upload-body-arrives-byte-for-byte",
-          "the-upload-progress-door-is-reported")
+          "the-upload-progress-door-is-reported", "the-stream-leg-binds-its-own-listener",
+          "a-stream-body-is-sent")
 
 
 class Case(BaseCase):

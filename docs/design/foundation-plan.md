@@ -12977,6 +12977,38 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.34 — A STREAM BODY IS SENT, AND ONE MORE REFUSAL'S GROUND IS SHARPENED BY A LANDING (§62.34, 2026-09-26)
+
+**WHAT SHIPPED, AND IT IS A DEFECT FIX RATHER THAN A FEATURE.** The bridge read `NSURLRequest`'s `HTTPBody` and knew
+nothing about `HTTPBodyStream`, so **A CALLER WHO SET A STREAM BODY SENT A REQUEST WITH NO BODY AT ALL** — omitted,
+with no error, and a server that could only report a request with nothing in it. That is the SAME SHAPE as the
+defect two rows below it in the same function (the UTF-8 body that was dropped by a lossy string round trip), and
+the comment here says so rather than treating it as new.
+
+**WHAT IT TAKES TO SEND ONE.** `CURLOPT_UPLOAD` makes curl PULL from a read callback (`fn_curl_read`, which reads
+the Foundation stream and answers zero at its end), and **THE METHOD IS SET EXPLICITLY because that option's own
+default is PUT** — a caller's POST has to stay a POST. The length is the caller's if they published one (a stream
+has no length anyone can ask for, which is why Apple's contract says to set `Content-Length`) and unknown
+otherwise, which HTTP/1.1 answers with chunked encoding.
+
+**AND THE REFUSAL WHOSE GROUND THIS LANDING FALSIFIED WAS SHARPENED RATHER THAN LEFT STANDING:**
+`-connection:needNewBodyStream:` was refused because "the transport does not consume `HTTPBodyStream`" — true when
+§62.25 wrote it, false now. WHAT REMAINS IS A WORK ITEM RATHER THAN A DEVIATION: **A STREAM IS CONSUMED BY BEING
+SENT**, so a 401 re-issue inside the transport or a redirect in the session has no body to send the second time,
+and Apple's door is the one that hands over a NEW stream. Landing it needs the session-side door first
+(`-URLSession:task:needNewBodyStream:`), which is the next unit — and the header says exactly that where a caller
+meets the absence, rather than leaving a ground that a reader could no longer check.
+
+**VERIFIED.** `foundation_urlsession_task` gained a leg that POSTs a body from an `NSInputStream` and asserts the
+receiver saw it byte-for-byte (the same receiver-is-the-probe idiom the other upload leg uses), plus its own
+listener check: **23/23 green**. Regressions: `foundation_urlsession` 6/6, `foundation_urlconnection` 6/6,
+`foundation_cachehooks` 3/3, `foundation_downloadresume` 6/6, `foundation_authloop` 3/3.
+
+**TWO MECHANICAL ERRORS, BOTH CAUGHT BY THE COMPILER:** the stream's header was not imported (so `-read:maxLength:`
+was an unknown selector and its `NSInteger` return became `id`), and the setup code holds the transfer struct BY
+VALUE where the callbacks hold it by pointer — so the same field is `transfer.bodyStream` in one place and
+`transfer->bodyStream` in the other. The compiler named both.
+
 ## §62.33 — THE CACHE-DECISION CHAIN: THE STORE PATH LEARNS TO ASK (§62.26, 2026-09-26)
 
 **WHAT SHIPPED.** The fourth leg of the pattern, and the one where the *question* had never been asked at all:

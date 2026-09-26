@@ -575,6 +575,85 @@ int main(void)
 		/* AND THE UPLOAD'S PROGRESS WAS REPORTED (§62.32), which §62.25 refused the CONNECTION's door for on the
 		 * ground that there was nothing progressive to report. The numbers are the transfer's, so the check reads
 		 * them: the last report's running total and expected total are BOTH the body's length. */
+	/* --- AND A BODY THAT ARRIVES AS A STREAM IS SENT (§62.34) ---------------------------------------- */
+	{
+		unsigned char rawBytes[8] = { 0x02, 0x03, 0x05, 0x07, 0x0b, 0x0d, 0x11, 0x13 };
+		NSData *streamed = [NSData dataWithBytes:rawBytes length:8];
+		id stream = [NSInputStream inputStreamWithData:streamed];
+		NSURLSessionConfiguration *configuration2 = [NSURLSessionConfiguration defaultSessionConfiguration];
+		NSURLSession *session2 = [NSURLSession sessionWithConfiguration:configuration2];
+		NSMutableURLRequest *streamRequest = [NSMutableURLRequest requestWithURL:fn_url(@"http://127.0.0.1:46468/")];
+		NSURLSessionDataTask *streamTask;
+		struct sockaddr_in addr2;
+		unsigned char buf2[4096];
+		size_t total2 = 0;
+		int listener2, conn2 = -1, one2 = 1, tries2 = 0, foundStream = 0;
+		__block BOOL called2 = NO;
+
+		[streamRequest setHTTPMethod:@"POST"];
+		/* A STREAM HAS NO LENGTH ANYONE CAN ASK FOR, so a caller PUBLISHES one - which is what Apple's own
+		 * contract says, and what the bridge reads to set curl's upload size. */
+		[streamRequest setValue:[NSString stringWithFormat:@"%d", (int)[streamed length]]
+		     forHTTPHeaderField:@"Content-Length"];
+		[streamRequest setHTTPBodyStream:stream];
+		[streamRequest setTimeoutInterval:3.0];
+
+		listener2 = socket(AF_INET, SOCK_STREAM, 0);
+		memset(&addr2, 0, sizeof(addr2));
+		addr2.sin_family = AF_INET;
+		addr2.sin_port = htons(46468);
+		addr2.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		setsockopt(listener2, SOL_SOCKET, SO_REUSEADDR, &one2, sizeof(one2));
+		check("the-stream-leg-binds-its-own-listener",
+		      bind(listener2, (struct sockaddr *)&addr2, sizeof(addr2)) == 0 &&
+		      listen(listener2, 1) == 0,
+		      @"this leg is its own receiver too");
+
+		streamTask = [session2 dataTaskWithRequest:streamRequest
+			       completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+			(void)data;
+			(void)response;
+			(void)error;
+			called2 = YES;
+		}];
+		[streamTask resume];
+		conn2 = accept(listener2, NULL, NULL);
+		if(conn2 >= 0) {
+			fcntl(conn2, F_SETFL, O_NONBLOCK);
+			while(tries2 < 100 && total2 < sizeof(buf2)) {
+				ssize_t n = read(conn2, buf2 + total2, sizeof(buf2) - total2);
+
+				if(n > 0) {
+					total2 += (size_t)n;
+				} else {
+					usleep(10000);
+					tries2++;
+				}
+			}
+			close(conn2);
+		}
+		close(listener2);
+		while(!called2) {
+			usleep(10000);
+		}
+		{
+			size_t i;
+
+			for(i = 0; i + [streamed length] <= total2; i++) {
+				if(memcmp(buf2 + i, [streamed bytes], [streamed length]) == 0) {
+					foundStream = 1;
+					break;
+				}
+			}
+		}
+		/* THE BODY WAS OMITTED ENTIRELY BEFORE THIS ROW: the bridge read `HTTPBody` and knew nothing about
+		 * `HTTPBodyStream`, so a caller who set one sent a request with no body at all - the same shape of
+		 * defect as the UTF-8 body one two rows up. */
+		check("a-stream-body-is-sent", foundStream,
+		      [NSString stringWithFormat:@"the receiver saw %d byte(s) and the streamed body %s",
+			(int)total2, foundStream ? "PRESENT" : "ABSENT"]);
+	}
+
 		check("the-upload-progress-door-is-reported",
 		      progress->sendCalls >= 1 && progress->lastBytesSent > 0 &&
 		      progress->lastTotalSent == (int64_t)[sent length] &&

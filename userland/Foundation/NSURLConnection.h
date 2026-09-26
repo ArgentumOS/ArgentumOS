@@ -69,8 +69,13 @@
  *   * `-connection:didCancelAuthenticationChallenge:` — ONE CHALLENGE AT A TIME, ANSWERED SYNCHRONOUSLY: the
  *     transport waits for an answer, so a live challenge is never superseded by the connection and there is no
  *     cancellation for it to report. (A delegate's OWN cancel is its own act, and it answers with it.)
- *   * `-connection:needNewBodyStream:` — the transport does not consume `NSURLRequest`'s
- *     `HTTPBodyStream`, so there is no body to ask for again on a redirect.
+ *   * `-connection:needNewBodyStream:` — A WORK ITEM RATHER THAN A DEVIATION, AND ITS GROUND WAS SHARPENED BY
+ *     §62.34 RATHER THAN INHERITED. §62.25 refused it because "the transport does not consume
+ *     `NSURLRequest`'s `HTTPBodyStream`" — TRUE THEN, FALSE NOW: the transport SENDS a stream body (that was
+ *     itself a defect: a stream body used to be dropped in silence). What remains is the RE-SEND: a stream is
+ *     consumed by being sent, so a 401 re-issue inside the transport or a redirect in the session has no body
+ *     to send the second time, and Apple's door is exactly the one that hands over a NEW stream. Landing it
+ *     needs the session-side door first (`-URLSession:task:needNewBodyStream:`), which is the next unit.
  * THE CACHE-DECISION DOOR NOW SHIPS TOO (§62.33), and its refusal fell the way the two before it did: §62.25
  * refused `-connection:willCacheResponse:` because "the session offers no cache-decision door to translate",
  * and the session HAS one now (`-URLSession:dataTask:willCacheResponse:completionHandler:`) — so the ground is
