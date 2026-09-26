@@ -12972,6 +12972,18 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.15 — THE COVERAGE SLICE, FOURTEENTH LANDING: NSBUNDLE'S VOCABULARY (2026-09-24)
+
+**7 ROWS, A NEW HEADER, AND A WARNING WORTH THE SPACE.** The five open `case`s are the executable-architecture
+codes and the two `var`s are the did-load notification and its userInfo key. `NSBundle.h` does not exist in this
+tree - this system's bundles are AGFS directories with a libconfig manifest, which the toolkit and the window
+manager read directly - so nothing was being withheld by the class's absence.
+
+**AND APPLE'S FIVE VALUES ARE Mach-O cputypes, BECAUSE A PROGRAM COMPARES THEM AGAINST A MACH-O HEADER. THIS
+SYSTEM'S EXECUTABLES ARE ELF.** A caller that compares one of these against a header it read itself is comparing
+against nothing, so the values are ours (§11.6.1 D2), the header says exactly that, and the check asserts only what
+is true (the codes are distinct; the names are their own names) rather than a comparison with no counterpart here.
+
 ## §62.14 — THE COVERAGE SLICE, THIRTEENTH LANDING: NSNotificationQueue'S VOCABULARY (2026-09-24)
 
 **AND THE CLASS'S ABSENCE IS NAMED WITH ITS REASON, WHICH THE PLAN ALREADY KNEW:** the eight open rows are two

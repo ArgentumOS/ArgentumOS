@@ -32,9 +32,9 @@
 #   protocol   shipped   23   open    8   struck   14
 #   macro      shipped  113   open    4   struck  136
 #   enum       shipped  129   open   14   struck   17
-#   case       shipped 1047   open   87   struck  168
+#   case       shipped 1052   open   82   struck  168
 #   func       shipped   83   open   52   struck   54
-#   var        shipped  509   open   52   struck  353
+#   var        shipped  511   open   50   struck  353
 #   typealias  shipped   54   open   15   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -122,11 +122,11 @@ case	shipped	NSBundleErrorMaximum	NSBundleResourceRequest	App Support / On-Deman
 case	shipped	NSBundleErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
 case	shipped	NSBundleErrorMinimum	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
 case	shipped	NSBundleErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
-case	open	NSBundleExecutableArchitectureARM64	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
-case	open	NSBundleExecutableArchitectureI386	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
-case	open	NSBundleExecutableArchitecturePPC	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
-case	open	NSBundleExecutableArchitecturePPC64	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
-case	open	NSBundleExecutableArchitectureX86_64	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
+case	shipped	NSBundleExecutableArchitectureARM64	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
+case	shipped	NSBundleExecutableArchitectureI386	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
+case	shipped	NSBundleExecutableArchitecturePPC	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
+case	shipped	NSBundleExecutableArchitecturePPC64	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
+case	shipped	NSBundleExecutableArchitectureX86_64	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
 case	shipped	NSBundleOnDemandResourceExceededMaximumSizeError	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
 case	shipped	NSBundleOnDemandResourceExceededMaximumSizeError	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
 case	shipped	NSBundleOnDemandResourceInvalidTagError	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
@@ -2362,7 +2362,7 @@ var	shipped	NSArgumentDomain	NSUserDefaults	Files and Data Persistence / App-spe
 var	shipped	NSAssertionHandlerKey	NSThread	Low-Level Utilities / Threads and Locking / Working with Thread Properties	-	objc
 var	shipped	NSAverageKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSBuddhistCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
-var	open	NSBundleDidLoadNotification	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
+var	shipped	NSBundleDidLoadNotification	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
 var	struck	NSBundleResourceRequestLoadingPriorityUrgent	NSBundleResourceRequest	App Support / On-Demand Resources / Setting the download priority	deprecated	objc
 var	struck	NSBundleResourceRequestLowDiskSpaceNotification	NSBundleResourceRequest	App Support / On-Demand Resources / Working with notifications	deprecated	swift-page
 var	struck	NSBundleResourceRequestLowDiskSpaceNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
@@ -2631,7 +2631,7 @@ var	struck	NSLinguisticTagWhitespace	NSLinguisticTagger	Fundamentals / Deprecate
 var	struck	NSLinguisticTagWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
 var	struck	NSLinguisticTagWordJoiner	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
 var	shipped	NSListItemDelimiterAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting formatting attribute keys	-	objc
-var	open	NSLoadedClasses	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
+var	shipped	NSLoadedClasses	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
 var	shipped	NSLocalNotificationCenterType	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Type Properties	-	objc
 var	shipped	NSLocaleAlternateQuotationBeginDelimiterKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
 var	shipped	NSLocaleAlternateQuotationEndDelimiterKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc

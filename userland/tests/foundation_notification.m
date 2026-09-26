@@ -19,6 +19,7 @@
  */
 
 #import <Foundation/Foundation.h>
+#import <Foundation/NSBundle.h>
 #import <Foundation/NSDistributedNotificationCenter.h>
 #include <stdio.h>
 #include <string.h>
@@ -266,6 +267,22 @@ int main(void)
 		      NSNotificationCoalescingOnName != NSNotificationNoCoalescing,
 		      "the three posting styles are distinct bits and the coalescing policies are distinct, with "
 		      "NoneCoalescing being zero");
+	}
+
+	{
+		/* THE ARCHITECTURE CODES AND THE BUNDLE'S TWO NAMES. The codes must be DISTINCT - a caller asking "is
+		 * this bundle ARM64?" must not get the same answer as "is it x86-64?" - and the two constants must
+		 * answer their own names. NOTE WHAT IS NOT ASSERTED: nothing here compares a code against an
+		 * executable header, because this system's executables are ELF and these five are Mach-O-flavoured
+		 * names; the header says so. */
+		check("bundle-vocabulary",
+		      NSBundleExecutableArchitectureI386 != NSBundleExecutableArchitecturePPC &&
+		      NSBundleExecutableArchitecturePPC != NSBundleExecutableArchitectureX86_64 &&
+		      NSBundleExecutableArchitectureX86_64 != NSBundleExecutableArchitecturePPC64 &&
+		      NSBundleExecutableArchitecturePPC64 != NSBundleExecutableArchitectureARM64 &&
+		      [NSBundleDidLoadNotification isEqualToString:@"NSBundleDidLoadNotification"] &&
+		      [NSLoadedClasses isEqualToString:@"NSLoadedClasses"],
+		      "the five architecture codes are distinct and the two bundle names are their own names");
 	}
 
 	printf("FOUNDATION-NOTIFICATION RESULT ok=%d fail=%d\n", okc, failc);
