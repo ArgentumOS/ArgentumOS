@@ -12972,6 +12972,23 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.10 — THE COVERAGE SLICE, NINTH LANDING: NSITEMPROVIDER'S 18 ROWS (2026-09-24)
+
+**VOCABULARY WITH NO DOOR, AND THE HEADER SAYS WHICH:** `NSItemProvider`'s class rows are already struck in the
+ledger (an item provider exists to hand a payload to another process, and this system's interprocess story is its
+own), so what ships is the vocabulary a conforming caller compiles against - the error codes, the visibility
+levels, the file option bit, the two block typedefs and the four keys - in a new `NSItemProvider.h` plus a
+constants-only `.m`. The door is ABSENT rather than stubbed, which is the honest half.
+
+**AND THE CHECK'S FIRST VERSION WAS WRONG IN AN INSTRUCTIVE WAY:** it asserted that
+`NSItemProviderFileOptionOpenInPlace` and `NSItemProviderRepresentationVisibilityAll` do NOT share a bit. They do
+- `1 << 0` each - AND THAT IS CORRECT C: they are different enums, and a value may repeat across types. The check
+now compares WITHIN each set and the detail string prints every value it examined, so the next failure of this
+check names its own clause instead of repeating one summary line.
+
+**A SMALLER TRAP:** the new header's copyright line was first written "Kyle J. Cardoso". The licence rule names the
+holder exactly, and it was corrected in the same landing.
+
 ## §62.9 — THE COVERAGE SLICE, EIGHTH LANDING: NSPROGRESS'S 20 ROWS (2026-09-24)
 
 **5 TYPEALIASES AND 15 CONSTANTS, AND THE TYPEDEFS ARE THE INTERESTING HALF.** `NSProgressKind`,

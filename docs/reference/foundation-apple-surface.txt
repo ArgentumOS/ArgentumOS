@@ -31,10 +31,10 @@
 #   class      shipped  165   open   31   struck   77
 #   protocol   shipped   23   open    8   struck   14
 #   macro      shipped  113   open    4   struck  136
-#   enum       shipped  122   open   21   struck   17
-#   case       shipped 1016   open  118   struck  168
+#   enum       shipped  125   open   18   struck   17
+#   case       shipped 1025   open  109   struck  168
 #   func       shipped   74   open   61   struck   54
-#   var        shipped  501   open   60   struck  353
+#   var        shipped  505   open   56   struck  353
 #   typealias  shipped   52   open   17   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -539,15 +539,15 @@ case	struck	NSInternalScriptError	NSScriptCommand	App Support / Script Commands 
 case	struck	NSInternalSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	shipped	NSIntersectSetExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSInvalidIndexSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
-case	open	NSItemProviderFileOptionOpenInPlace	NSItemProvider	App Support / Attachments / Constants / File Options	-	objc
-case	open	NSItemProviderItemUnavailableError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
-case	open	NSItemProviderRepresentationVisibilityAll	NSItemProvider	App Support / Attachments / Constants / Enumeration Cases	-	objc
-case	open	NSItemProviderRepresentationVisibilityGroup	NSItemProvider	App Support / Attachments / Constants / Enumeration Cases	-	objc
-case	open	NSItemProviderRepresentationVisibilityOwnProcess	NSItemProvider	App Support / Attachments / Constants / Enumeration Cases	-	objc
-case	open	NSItemProviderRepresentationVisibilityTeam	NSItemProvider	App Support / Attachments / Constants / Enumeration Cases	-	objc
-case	open	NSItemProviderUnavailableCoercionError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
-case	open	NSItemProviderUnexpectedValueClassError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
-case	open	NSItemProviderUnknownError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
+case	shipped	NSItemProviderFileOptionOpenInPlace	NSItemProvider	App Support / Attachments / Constants / File Options	-	objc
+case	shipped	NSItemProviderItemUnavailableError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
+case	shipped	NSItemProviderRepresentationVisibilityAll	NSItemProvider	App Support / Attachments / Constants / Enumeration Cases	-	objc
+case	shipped	NSItemProviderRepresentationVisibilityGroup	NSItemProvider	App Support / Attachments / Constants / Enumeration Cases	-	objc
+case	shipped	NSItemProviderRepresentationVisibilityOwnProcess	NSItemProvider	App Support / Attachments / Constants / Enumeration Cases	-	objc
+case	shipped	NSItemProviderRepresentationVisibilityTeam	NSItemProvider	App Support / Attachments / Constants / Enumeration Cases	-	objc
+case	shipped	NSItemProviderUnavailableCoercionError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
+case	shipped	NSItemProviderUnexpectedValueClassError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
+case	shipped	NSItemProviderUnknownError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 case	shipped	NSItemReplacementDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	struck	NSJSONReadingAllowFragments	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	deprecated	objc
 case	shipped	NSJSONReadingFragmentsAllowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
@@ -1677,9 +1677,9 @@ enum	shipped	NSHTTPCookieAcceptPolicy	NSHTTPCookieStorage	Networking / Cookies /
 enum	shipped	NSISO8601DateFormatOptions	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants	-	objc
 enum	shipped	NSInlinePresentationIntent	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 enum	struck	NSInsertionPosition	NSPositionalSpecifier	App Support / Object Specifiers / Constants	declined	objc
-enum	open	NSItemProviderErrorCode	NSItemProvider	App Support / Attachments / Constants	-	objc
-enum	open	NSItemProviderFileOptions	NSItemProvider	App Support / Attachments / Constants	-	objc
-enum	open	NSItemProviderRepresentationVisibility	NSItemProvider	App Support / Attachments / Constants	-	objc
+enum	shipped	NSItemProviderErrorCode	NSItemProvider	App Support / Attachments / Constants	-	objc
+enum	shipped	NSItemProviderFileOptions	NSItemProvider	App Support / Attachments / Constants	-	objc
+enum	shipped	NSItemProviderRepresentationVisibility	NSItemProvider	App Support / Attachments / Constants	-	objc
 enum	shipped	NSJSONReadingOptions	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object	-	objc
 enum	shipped	NSJSONWritingOptions	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data	-	objc
 enum	shipped	NSKeyValueChange		Reference / Enumerations	-	objc
@@ -2444,8 +2444,8 @@ var	open	NSExtensionItemAttachmentsKey	NSExtensionItem	App Support / Attachments
 var	open	NSExtensionItemAttributedContentTextKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
 var	open	NSExtensionItemAttributedTitleKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
 var	open	NSExtensionItemsAndErrorsKey	NSExtensionContext	App Support / Extension Support / Handling requests	-	objc
-var	open	NSExtensionJavaScriptFinalizeArgumentKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
-var	open	NSExtensionJavaScriptPreprocessingResultsKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
+var	shipped	NSExtensionJavaScriptFinalizeArgumentKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
+var	shipped	NSExtensionJavaScriptPreprocessingResultsKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 var	struck	NSFTPPropertyActiveTransferModeKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
 var	struck	NSFTPPropertyFTPProxy	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
 var	struck	NSFTPPropertyFileOffsetKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
@@ -2579,8 +2579,8 @@ var	open	NSIsNilTransformerName	NSValueTransformer	Low-Level Utilities / Value W
 var	open	NSIsNotNilTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
 var	struck	NSIslamicCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	struck	NSIslamicCivilCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
-var	open	NSItemProviderErrorDomain	NSItemProvider	App Support / Attachments / Constants	-	objc
-var	open	NSItemProviderPreferredImageSizeKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
+var	shipped	NSItemProviderErrorDomain	NSItemProvider	App Support / Attachments / Constants	-	objc
+var	shipped	NSItemProviderPreferredImageSizeKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 var	struck	NSJapaneseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSKeepAllocationStatistics		App Support / Diagnostics and Debugging	-	objc
 var	shipped	NSKeyValueChangeIndexesKey		Reference / Type Aliases / Type Properties	-	objc
