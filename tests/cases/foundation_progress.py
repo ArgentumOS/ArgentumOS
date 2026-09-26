@@ -35,7 +35,7 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_progress"
 CHECKS = (
           "progress-fraction", "progress-finished", "progress-child-attaches-to-current", "progress-child-scales-into-parent", "progress-child-completed-share", "progress-share-is-the-ceiling", "progress-cancel-propagates", "progress-pause-resume", "progress-kind-and-userinfo", "progress-zero-total", "nsprogressreporting",
-          )
+          "progress-file-keys-are-their-own-names")
 
 
 class Case(BaseCase):

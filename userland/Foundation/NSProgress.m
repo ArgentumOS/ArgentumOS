@@ -54,6 +54,22 @@ static NSMutableArray *fn_stack(void)
 
 @implementation NSProgress
 
+NSProgressUserInfoKey const NSProgressEstimatedTimeRemainingKey = @"NSProgressEstimatedTimeRemainingKey";
+NSProgressUserInfoKey const NSProgressFileAnimationImageKey = @"NSProgressFileAnimationImageKey";
+NSProgressUserInfoKey const NSProgressFileAnimationImageOriginalRectKey = @"NSProgressFileAnimationImageOriginalRectKey";
+NSProgressUserInfoKey const NSProgressFileCompletedCountKey = @"NSProgressFileCompletedCountKey";
+NSProgressUserInfoKey const NSProgressFileIconKey = @"NSProgressFileIconKey";
+NSProgressUserInfoKey const NSProgressFileOperationKindCopying = @"NSProgressFileOperationKindCopying";
+NSProgressUserInfoKey const NSProgressFileOperationKindDecompressingAfterDownloading = @"NSProgressFileOperationKindDecompressingAfterDownloading";
+NSProgressUserInfoKey const NSProgressFileOperationKindDownloading = @"NSProgressFileOperationKindDownloading";
+NSProgressUserInfoKey const NSProgressFileOperationKindKey = @"NSProgressFileOperationKindKey";
+NSProgressUserInfoKey const NSProgressFileOperationKindReceiving = @"NSProgressFileOperationKindReceiving";
+NSProgressUserInfoKey const NSProgressFileOperationKindUploading = @"NSProgressFileOperationKindUploading";
+NSProgressUserInfoKey const NSProgressFileTotalCountKey = @"NSProgressFileTotalCountKey";
+NSProgressUserInfoKey const NSProgressFileURLKey = @"NSProgressFileURLKey";
+NSProgressUserInfoKey const NSProgressKindFile = @"NSProgressKindFile";
+NSProgressUserInfoKey const NSProgressThroughputKey = @"NSProgressThroughputKey";
+
 - (instancetype)init
 {
 	self = [super init];

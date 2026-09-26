@@ -43,6 +43,17 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef NSString *NSProgressKind;
+typedef NSString *NSProgressFileOperationKind;
+typedef NSString *NSProgressUserInfoKey;
+
+/* THE TWO HANDLER TYPES ARE BLOCKS, which is what Apple declares: a publisher is handed the progress to
+ * observe, and an unpublishing handler is handed the same. Neither is CALLED anywhere in this system yet -
+ * -publish and -unpublish have no implementation to call them from - so they are declared as the signatures
+ * they are, with that said rather than implied. */
+typedef void (^NSProgressPublishingHandler)(NSProgress *progress);
+typedef void (^NSProgressUnpublishingHandler)(void);
+
 @interface NSProgress : NSObject
 {
 	int64_t _totalUnitCount;
@@ -115,6 +126,28 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol NSProgressReporting <NSObject>
 @property (readonly) NSProgress *progress;
 @end
+
+/* ---- THE FILE-OPERATION KIND AND THE USER-INFO KEYS (the coverage slice) ---------------------------
+ *
+ * A KIND AND ITS VALUES ARE A WIRE PAIR: NSProgressFileOperationKindKey is asked for with a kind, and the kinds
+ * below are the answers - so the check asserts both that each answers its own name (this library's convention
+ * for user-info keys, see NSLocale.h) and that the key exists to be asked with. Nothing in this system publishes
+ * progress yet; the vocabulary ships ahead of the door, as elsewhere. */
+extern NSProgressUserInfoKey const NSProgressEstimatedTimeRemainingKey;
+extern NSProgressUserInfoKey const NSProgressFileAnimationImageKey;
+extern NSProgressUserInfoKey const NSProgressFileAnimationImageOriginalRectKey;
+extern NSProgressUserInfoKey const NSProgressFileCompletedCountKey;
+extern NSProgressUserInfoKey const NSProgressFileIconKey;
+extern NSProgressUserInfoKey const NSProgressFileOperationKindCopying;
+extern NSProgressUserInfoKey const NSProgressFileOperationKindDecompressingAfterDownloading;
+extern NSProgressUserInfoKey const NSProgressFileOperationKindDownloading;
+extern NSProgressUserInfoKey const NSProgressFileOperationKindKey;
+extern NSProgressUserInfoKey const NSProgressFileOperationKindReceiving;
+extern NSProgressUserInfoKey const NSProgressFileOperationKindUploading;
+extern NSProgressUserInfoKey const NSProgressFileTotalCountKey;
+extern NSProgressUserInfoKey const NSProgressFileURLKey;
+extern NSProgressUserInfoKey const NSProgressKindFile;
+extern NSProgressUserInfoKey const NSProgressThroughputKey;
 
 NS_ASSUME_NONNULL_END
 

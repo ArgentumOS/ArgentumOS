@@ -34,8 +34,8 @@
 #   enum       shipped  122   open   21   struck   17
 #   case       shipped 1016   open  118   struck  168
 #   func       shipped   74   open   61   struck   54
-#   var        shipped  486   open   75   struck  353
-#   typealias  shipped   49   open   20   struck    7
+#   var        shipped  501   open   60   struck  353
+#   typealias  shipped   52   open   17   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -2301,11 +2301,11 @@ typealias	shipped	NSNotificationName	NSNotification	App Support / Notifications 
 typealias	shipped	NSPoint		Fundamentals / Geometry	-	objc
 typealias	shipped	NSPointArray		Fundamentals / Geometry / Related Types	-	objc
 typealias	shipped	NSPointPointer		Fundamentals / Geometry / Related Types	-	objc
-typealias	open	NSProgressFileOperationKind	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	swift-page
-typealias	open	NSProgressKind	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
+typealias	shipped	NSProgressFileOperationKind	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	swift-page
+typealias	shipped	NSProgressKind	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
 typealias	open	NSProgressPublishingHandler	NSProgress	App Support / Progress / Observing and Controlling File Progress by Other Processes	-	objc
 typealias	open	NSProgressUnpublishingHandler	NSProgress	App Support / Progress / Observing and Controlling File Progress by Other Processes	-	objc
-typealias	open	NSProgressUserInfoKey	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
+typealias	shipped	NSProgressUserInfoKey	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
 typealias	shipped	NSPropertyListReadOptions	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants	-	objc
 typealias	shipped	NSPropertyListWriteOptions	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Serializing a Property List	-	objc
 typealias	shipped	NSRangePointer		Fundamentals / Ranges / Related types	-	objc
@@ -2916,22 +2916,22 @@ var	struck	NSPriorDayDesignations	NSUserDefaults	Files and Data Persistence / Ap
 var	shipped	NSProcessInfoPowerStateDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSProcessInfoPowerStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	swift-page
 var	open	NSProcessInfoThermalStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	objc
-var	open	NSProgressEstimatedTimeRemainingKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using General Keys	-	objc
-var	open	NSProgressFileAnimationImageKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
-var	open	NSProgressFileAnimationImageOriginalRectKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
-var	open	NSProgressFileCompletedCountKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
-var	open	NSProgressFileIconKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
-var	open	NSProgressFileOperationKindCopying	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
-var	open	NSProgressFileOperationKindDecompressingAfterDownloading	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
-var	open	NSProgressFileOperationKindDownloading	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
+var	shipped	NSProgressEstimatedTimeRemainingKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using General Keys	-	objc
+var	shipped	NSProgressFileAnimationImageKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
+var	shipped	NSProgressFileAnimationImageOriginalRectKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
+var	shipped	NSProgressFileCompletedCountKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
+var	shipped	NSProgressFileIconKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
+var	shipped	NSProgressFileOperationKindCopying	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
+var	shipped	NSProgressFileOperationKindDecompressingAfterDownloading	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
+var	shipped	NSProgressFileOperationKindDownloading	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
 var	open	NSProgressFileOperationKindDuplicating		Reference / Constants	-	swift-page
-var	open	NSProgressFileOperationKindKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
-var	open	NSProgressFileOperationKindReceiving	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
-var	open	NSProgressFileOperationKindUploading	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
-var	open	NSProgressFileTotalCountKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
-var	open	NSProgressFileURLKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
-var	open	NSProgressKindFile	NSProgress	App Support / Progress / Inspecting Progress Information / Recognizing Kinds of Progress	-	objc
-var	open	NSProgressThroughputKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using General Keys	-	objc
+var	shipped	NSProgressFileOperationKindKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
+var	shipped	NSProgressFileOperationKindReceiving	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
+var	shipped	NSProgressFileOperationKindUploading	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
+var	shipped	NSProgressFileTotalCountKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
+var	shipped	NSProgressFileURLKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
+var	shipped	NSProgressKindFile	NSProgress	App Support / Progress / Inspecting Progress Information / Recognizing Kinds of Progress	-	objc
+var	shipped	NSProgressThroughputKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using General Keys	-	objc
 var	shipped	NSRangeException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSRecoveryAttempterErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSRegistrationDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc

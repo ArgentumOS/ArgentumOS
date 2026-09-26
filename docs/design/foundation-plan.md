@@ -12972,6 +12972,20 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.9 — THE COVERAGE SLICE, EIGHTH LANDING: NSPROGRESS'S 20 ROWS (2026-09-24)
+
+**5 TYPEALIASES AND 15 CONSTANTS, AND THE TYPEDEFS ARE THE INTERESTING HALF.** `NSProgressKind`,
+`NSProgressFileOperationKind` and `NSProgressUserInfoKey` are string types; `NSProgressPublishingHandler` and
+`NSProgressUnpublishingHandler` are **BLOCKS**, which is what Apple declares - a publisher is handed the progress
+to observe and an unpublishing handler is handed the same. NEITHER IS CALLED ANYWHERE IN THIS SYSTEM YET
+(`-publish` and `-unpublish` have no implementation to call them from), so they ship as the signatures they are
+with that said out loud.
+
+**THE 15 CONSTANTS ARE A KEY AND ITS ANSWERS, WHICH IS WHY THE CHECK ASSERTS THE PAIR:** the key names WHERE a
+kind goes and each kind is an answer, so a key confused with a kind would ask the wrong question - and the check
+requires `NSProgressFileOperationKindKey` and `NSProgressFileOperationKindDownloading` to stay DISTINCT while both
+answer their own names.
+
 ## §62.8 — THE COVERAGE SLICE, SEVENTH LANDING: NSLOCALE AND NSNOTIFICATION (2026-09-24)
 
 **31 ROWS ACROSS TWO FAMILIES, AND ONE OF THEM PAID OFF A DEBT THE CALENDAR LANDING RECORDED.** `NSLocale`'s 16

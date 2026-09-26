@@ -177,6 +177,22 @@ int main(void)
 		      @"the protocol, its one member, and the NSObject protocol it inherits");
 	}
 
+	{
+		/* A KEY AND THE KINDS IT IS ASKED WITH ARE A PAIR: the key names WHERE a kind goes and each kind is an
+		 * ANSWER, so the check asserts that every one of them answers its own name (this library's convention
+		 * for user-info keys) and that the key is not confused with a kind. Nothing here publishes progress
+		 * yet, so this is the vocabulary's own consistency - which is exactly what a caller can rely on. */
+		check("progress-file-keys-are-their-own-names",
+		      [NSProgressFileOperationKindKey isEqualToString:@"NSProgressFileOperationKindKey"] &&
+		      [NSProgressFileOperationKindDownloading
+			isEqualToString:@"NSProgressFileOperationKindDownloading"] &&
+		      [NSProgressFileURLKey isEqualToString:@"NSProgressFileURLKey"] &&
+		      [NSProgressKindFile isEqualToString:@"NSProgressKindFile"] &&
+		      [NSProgressThroughputKey isEqualToString:@"NSProgressThroughputKey"] &&
+		      [NSProgressFileOperationKindKey isEqualToString:NSProgressFileOperationKindDownloading] == 0,
+		      @"every file-progress key and kind equals its own name, and the key is distinct from the kind it is asked with");
+	}
+
 	printf("FOUNDATION-PROGRESS RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness
