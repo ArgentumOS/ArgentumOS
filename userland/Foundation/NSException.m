@@ -26,6 +26,22 @@ NSString *const NSMallocException = @"NSMallocException";
 
 @implementation NSException
 
+NSExceptionName const NSDestinationInvalidException = @"NSDestinationInvalidException";
+NSExceptionName const NSInconsistentArchiveException = @"NSInconsistentArchiveException";
+NSExceptionName const NSInvalidArchiveOperationException = @"NSInvalidArchiveOperationException";
+NSExceptionName const NSInvalidReceivePortException = @"NSInvalidReceivePortException";
+NSExceptionName const NSInvalidSendPortException = @"NSInvalidSendPortException";
+NSExceptionName const NSInvalidUnarchiveOperationException = @"NSInvalidUnarchiveOperationException";
+NSExceptionName const NSInvocationOperationCancelledException = @"NSInvocationOperationCancelledException";
+NSExceptionName const NSInvocationOperationVoidResultException = @"NSInvocationOperationVoidResultException";
+NSExceptionName const NSObjectInaccessibleException = @"NSObjectInaccessibleException";
+NSExceptionName const NSObjectNotAvailableException = @"NSObjectNotAvailableException";
+NSExceptionName const NSOldStyleException = @"NSOldStyleException";
+NSExceptionName const NSPortReceiveException = @"NSPortReceiveException";
+NSExceptionName const NSPortSendException = @"NSPortSendException";
+NSExceptionName const NSPortTimeoutException = @"NSPortTimeoutException";
+NSExceptionName const NSUndefinedKeyException = @"NSUndefinedKeyException";
+
 NSExceptionName const NSCharacterConversionException = @"NSCharacterConversionException";
 NSExceptionName const NSParseErrorException = @"NSParseErrorException";
 

@@ -421,6 +421,21 @@ int main(void)
 			NSFilePathErrorKey] UTF8String]);
 	}
 
+	{
+		/* THE NAMES OF THE EXCEPTIONS THIS LIBRARY DOES NOT RAISE ITSELF: a caller can only CATCH what it can
+		 * name, so the check is that each constant exists and equals its own name - and that the ones this
+		 * library DOES raise are distinct from them (a collision would make two unrelated conditions
+		 * indistinguishable to a catch). */
+		check("exception-names-are-their-own-names",
+		      [NSInvalidArgumentException isEqualToString:@"NSInvalidArgumentException"] &&
+		      [NSUndefinedKeyException isEqualToString:@"NSUndefinedKeyException"] &&
+		      [NSPortTimeoutException isEqualToString:@"NSPortTimeoutException"] &&
+		      [NSInvalidArchiveOperationException
+			isEqualToString:@"NSInvalidArchiveOperationException"] &&
+		      [NSUndefinedKeyException isEqualToString:NSInvalidArgumentException] == 0,
+		      "five exception names read back as themselves and two stay distinct");
+	}
+
 	printf("FOUNDATION-ERROR RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

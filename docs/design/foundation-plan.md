@@ -12972,6 +12972,19 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.3 — THE COVERAGE SLICE, THIRD LANDING: NSException'S 15 NAMES (2026-09-24)
+
+**THE 18 OPEN `NSException` ROWS ARE 15 EXCEPTION NAMES, ONE HANDLER TYPEDEF AND THE TWO HANDLER FUNCTIONS.**
+The 15 names ship: Apple declares them all in NSException.h and they are here for the reason a catch exists -
+**a caller can only catch what it can name** - with values that are their own names (the names are Apple's;
+§11.6.1 D2 for the strings). The check reads five of them back and requires two to stay DISTINCT, because a
+collision between two exception names would make two unrelated conditions indistinguishable to a `@catch`.
+
+**THE TYPEDEF AND THE TWO FUNCTIONS ARE NOT DONE AND ARE NAMED AS SUCH** (`NSUncaughtExceptionHandler`,
+`NSSetUncaughtExceptionHandler`, `NSGetUncaughtExceptionHandler`): they need the library's uncaught path to call
+a settable handler, and that path was NOT FOUND in NSException.m or NSObject.m - so this is a real gap to design
+rather than a constant to declare, and the ledger keeps those three rows open until it is.
+
 ## §62.2 — THE COVERAGE SLICE, SECOND LANDING: NSString'S 54 ROWS (2026-09-24)
 
 **THE 54 OPEN `NSString` ROWS ARE ALL CONSTANTS TOO** - 27 cases and 25 string constants plus the 2 typealiases

@@ -34,7 +34,7 @@
 #   enum       shipped  119   open   24   struck   17
 #   case       shipped  976   open  158   struck  168
 #   func       shipped   72   open   63   struck   54
-#   var        shipped  390   open  171   struck  353
+#   var        shipped  409   open  152   struck  353
 #   typealias  shipped   46   open   23   struck    7
 #   struct     shipped    8   open    0   struck    5
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -2423,7 +2423,7 @@ var	shipped	NSDecimalNumberUnderflowException	NSDecimalNumber	Fundamentals / Num
 var	shipped	NSDecimalNumberUnderflowException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	struck	NSDecimalSeparator	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSDefaultRunLoopMode	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes / System Run Loop Modes	-	objc
-var	open	NSDestinationInvalidException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSDestinationInvalidException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	struck	NSDidBecomeSingleThreadedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
 var	struck	NSDidBecomeSingleThreadedNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
 var	shipped	NSDistinctUnionOfArraysKeyValueOperator		Reference / Constants	-	objc
@@ -2547,7 +2547,7 @@ var	struck	NSHourNameDesignations	NSUserDefaults	Files and Data Persistence / Ap
 var	struck	NSISO8601Calendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSImageURLAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	struck	NSInconsistentArchiveException	NSArchiver	Files and Data Persistence / Deprecated / Constants / Constants	deprecated	objc
-var	open	NSInconsistentArchiveException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSInconsistentArchiveException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	struck	NSIndianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSInflectionAgreementArgumentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSInflectionAgreementConceptAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
@@ -2564,17 +2564,17 @@ var	struck	NSIntegerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collection
 var	struck	NSIntegerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSInternalInconsistencyException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	struck	NSInternationalCurrencyString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
-var	open	NSInvalidArchiveOperationException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSInvalidArchiveOperationException	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Constants / Constants	-	objc
+var	shipped	NSInvalidArchiveOperationException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSInvalidArchiveOperationException	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Constants / Constants	-	objc
 var	shipped	NSInvalidArgumentException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSInvalidReceivePortException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSInvalidSendPortException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSInvalidUnarchiveOperationException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSInvalidUnarchiveOperationException	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Constants / Constants	-	objc
-var	open	NSInvocationOperationCancelledException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSInvocationOperationCancelledException	NSInvocationOperation	App Support / Operations / Constants / Constants	-	objc
-var	open	NSInvocationOperationVoidResultException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSInvocationOperationVoidResultException	NSInvocationOperation	App Support / Operations / Constants / Constants	-	objc
+var	shipped	NSInvalidReceivePortException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSInvalidSendPortException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSInvalidUnarchiveOperationException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSInvalidUnarchiveOperationException	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Constants / Constants	-	objc
+var	shipped	NSInvocationOperationCancelledException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSInvocationOperationCancelledException	NSInvocationOperation	App Support / Operations / Constants / Constants	-	objc
+var	shipped	NSInvocationOperationVoidResultException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSInvocationOperationVoidResultException	NSInvocationOperation	App Support / Operations / Constants / Constants	-	objc
 var	open	NSIsNilTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
 var	open	NSIsNotNilTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
 var	struck	NSIslamicCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
@@ -2890,11 +2890,11 @@ var	open	NSNotificationDeliverImmediately	NSDistributedNotificationCenter	App Su
 var	open	NSNotificationPostToAllSessions	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Constants	-	objc
 var	shipped	NSOSStatusErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	struck	NSObjectHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSObjectInaccessibleException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSObjectInaccessibleException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	struck	NSObjectMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	struck	NSObjectMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSObjectNotAvailableException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSOldStyleException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSObjectNotAvailableException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSOldStyleException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	open	NSOperationNotSupportedForKeyException		Reference / Constants	-	objc
 var	open	NSOperationQueueDefaultMaxConcurrentOperationCount	NSOperationQueue	App Support / Operations / Managing the Execution of Operations	-	objc
 var	struck	NSOwnedObjectIdentityHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
@@ -2907,9 +2907,9 @@ var	shipped	NSParseErrorException	NSString	Fundamentals / Strings / Working with
 var	struck	NSPersianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	struck	NSPointerToStructHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSPortDidBecomeInvalidNotification	NSPort	Low-Level Utilities / Sockets / Working with notifications	-	objc
-var	open	NSPortReceiveException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSPortSendException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSPortTimeoutException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSPortReceiveException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSPortSendException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSPortTimeoutException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	struck	NSPositiveCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSPresentationIntentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	struck	NSPriorDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
@@ -3226,7 +3226,7 @@ var	struck	NSUbiquitousUserDefaultsNoCloudAccountNotification	NSUserDefaults	Fil
 var	open	NSUbiquityIdentityDidChangeNotification	NSFileManager	Files and Data Persistence / File system operations / Working with notifications	-	swift-page
 var	open	NSUbiquityIdentityDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	struck	NSUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
-var	open	NSUndefinedKeyException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
+var	shipped	NSUndefinedKeyException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSUnderlyingErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	open	NSUndoCloseGroupingRunLoopOrdering	NSUndoManager	App Support / Undo / Working with run loops	-	objc
 var	shipped	NSUndoManagerCheckpointNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page

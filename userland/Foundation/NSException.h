@@ -40,6 +40,10 @@ NS_ASSUME_NONNULL_BEGIN
  * NSString ones) are spelled with it. */
 typedef NSString *NSExceptionName;
 
+/* THE NAMES OF THE EXCEPTIONS THIS LIBRARY DOES NOT RAISE ITSELF. Apple declares them all in NSException.h, and
+ * they are here for the same reason: a caller has to be able to CATCH one, and a catch needs a name. Values are
+ * their own names (the names are Apple's; §11.6.1 D2 for the strings). */
+
 /* Cocoa's standard names; code that catches by name expects these spellings. */
 extern NSString *const NSGenericException;
 extern NSString *const NSRangeException;
@@ -72,6 +76,22 @@ extern NSString *const NSMallocException;
 
 
 
+
+extern NSExceptionName const NSDestinationInvalidException;
+extern NSExceptionName const NSInconsistentArchiveException;
+extern NSExceptionName const NSInvalidArchiveOperationException;
+extern NSExceptionName const NSInvalidReceivePortException;
+extern NSExceptionName const NSInvalidSendPortException;
+extern NSExceptionName const NSInvalidUnarchiveOperationException;
+extern NSExceptionName const NSInvocationOperationCancelledException;
+extern NSExceptionName const NSInvocationOperationVoidResultException;
+extern NSExceptionName const NSObjectInaccessibleException;
+extern NSExceptionName const NSObjectNotAvailableException;
+extern NSExceptionName const NSOldStyleException;
+extern NSExceptionName const NSPortReceiveException;
+extern NSExceptionName const NSPortSendException;
+extern NSExceptionName const NSPortTimeoutException;
+extern NSExceptionName const NSUndefinedKeyException;
 
 NS_ASSUME_NONNULL_END
 
