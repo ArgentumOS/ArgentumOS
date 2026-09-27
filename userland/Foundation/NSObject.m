@@ -492,6 +492,269 @@ NSByteOrder NSHostByteOrder(void)
 	return NS_LittleEndian;
 }
 
+/* ===================================================================================================
+ * THE BYTE-ORDER CONVERSIONS (§62.51): one helper per width and a direction decided once
+ *
+ * A byte-order conversion is a REVERSAL of the bytes and nothing else, so the only thing that differs
+ * between the forty-two functions above is which direction the caller wrote. THE DEVICE THEY SHARE IS A
+ * SWAP OF A FIXED WIDTH; the differences are worked out by asking NSHostByteOrder() rather than by
+ * assuming, so that the same source is right on a machine whose order is not this one's.
+ * =================================================================================================== */
+
+static unsigned short fn_bo_swap16(unsigned short value)
+{
+	return (unsigned short)__builtin_bswap16(value);
+}
+
+static unsigned int fn_bo_swap32(unsigned int value)
+{
+	return (unsigned int)__builtin_bswap32(value);
+}
+
+static unsigned long long fn_bo_swap64(unsigned long long value)
+{
+	return (unsigned long long)__builtin_bswap64(value);
+}
+
+/* THE PLAIN SWAPS: a reversal, with no host involved. */
+unsigned short NSSwapShort(unsigned short value)
+{
+	return fn_bo_swap16(value);
+}
+
+unsigned int NSSwapInt(unsigned int value)
+{
+	return fn_bo_swap32(value);
+}
+
+unsigned long NSSwapLong(unsigned long value)
+{
+	return fn_bo_swap64(value);
+}
+
+unsigned long long NSSwapLongLong(unsigned long long value)
+{
+	return fn_bo_swap64(value);
+}
+
+float NSSwapFloat(float value)
+{
+	NSSwappedFloat swapped = NSConvertHostFloatToSwapped(value);
+
+	swapped.v = fn_bo_swap32((unsigned int)swapped.v);
+	return NSConvertSwappedFloatToHost(swapped);
+}
+
+double NSSwapDouble(double value)
+{
+	NSSwappedDouble swapped = NSConvertHostDoubleToSwapped(value);
+
+	swapped.v = fn_bo_swap64((unsigned long long)swapped.v);
+	return NSConvertSwappedDoubleToHost(swapped);
+}
+
+/* WHERE THE HOST STANDS. `NSSwapHostXToLittle` changes nothing on a little-endian host and reverses on a
+ * big-endian one; the rule is ASKED of the host rather than assumed, so these stay right if the system is
+ * ever built for a machine whose order is the other one. */
+unsigned short NSSwapHostShortToBig(unsigned short value)
+{
+	return (NSHostByteOrder() == NS_BigEndian) ? value : NSSwapShort(value);
+}
+
+unsigned short NSSwapHostShortToLittle(unsigned short value)
+{
+	return (NSHostByteOrder() == NS_LittleEndian) ? value : NSSwapShort(value);
+}
+
+unsigned int NSSwapHostIntToBig(unsigned int value)
+{
+	return (NSHostByteOrder() == NS_BigEndian) ? value : NSSwapInt(value);
+}
+
+unsigned int NSSwapHostIntToLittle(unsigned int value)
+{
+	return (NSHostByteOrder() == NS_LittleEndian) ? value : NSSwapInt(value);
+}
+
+unsigned long NSSwapHostLongToBig(unsigned long value)
+{
+	return (NSHostByteOrder() == NS_BigEndian) ? value : NSSwapLong(value);
+}
+
+unsigned long NSSwapHostLongToLittle(unsigned long value)
+{
+	return (NSHostByteOrder() == NS_LittleEndian) ? value : NSSwapLong(value);
+}
+
+unsigned long long NSSwapHostLongLongToBig(unsigned long long value)
+{
+	return (NSHostByteOrder() == NS_BigEndian) ? value : NSSwapLongLong(value);
+}
+
+unsigned long long NSSwapHostLongLongToLittle(unsigned long long value)
+{
+	return (NSHostByteOrder() == NS_LittleEndian) ? value : NSSwapLongLong(value);
+}
+
+float NSSwapHostFloatToBig(float value)
+{
+	if (NSHostByteOrder() == NS_BigEndian) {
+		return value;
+	}
+	return NSSwapFloat(value);
+}
+
+float NSSwapHostFloatToLittle(float value)
+{
+	if (NSHostByteOrder() == NS_LittleEndian) {
+		return value;
+	}
+	return NSSwapFloat(value);
+}
+
+double NSSwapHostDoubleToBig(double value)
+{
+	if (NSHostByteOrder() == NS_BigEndian) {
+		return value;
+	}
+	return NSSwapDouble(value);
+}
+
+double NSSwapHostDoubleToLittle(double value)
+{
+	if (NSHostByteOrder() == NS_LittleEndian) {
+		return value;
+	}
+	return NSSwapDouble(value);
+}
+
+/* AND THE DOOR BACK IS THE SAME DOOR: a conversion out of an order and into the host is the mirror of the
+ * host conversion, so it CALLS it rather than repeating the rule. Two implementations of one rule is two
+ * places for it to be wrong. */
+unsigned short NSSwapBigShortToHost(unsigned short value)
+{
+	return NSSwapHostShortToBig(value);
+}
+
+unsigned short NSSwapLittleShortToHost(unsigned short value)
+{
+	return NSSwapHostShortToLittle(value);
+}
+
+unsigned int NSSwapBigIntToHost(unsigned int value)
+{
+	return NSSwapHostIntToBig(value);
+}
+
+unsigned int NSSwapLittleIntToHost(unsigned int value)
+{
+	return NSSwapHostIntToLittle(value);
+}
+
+unsigned long NSSwapBigLongToHost(unsigned long value)
+{
+	return NSSwapHostLongToBig(value);
+}
+
+unsigned long NSSwapLittleLongToHost(unsigned long value)
+{
+	return NSSwapHostLongToLittle(value);
+}
+
+unsigned long long NSSwapBigLongLongToHost(unsigned long long value)
+{
+	return NSSwapHostLongLongToBig(value);
+}
+
+unsigned long long NSSwapLittleLongLongToHost(unsigned long long value)
+{
+	return NSSwapHostLongLongToLittle(value);
+}
+
+float NSSwapBigFloatToHost(float value)
+{
+	return NSSwapHostFloatToBig(value);
+}
+
+float NSSwapLittleFloatToHost(float value)
+{
+	return NSSwapHostFloatToLittle(value);
+}
+
+double NSSwapBigDoubleToHost(double value)
+{
+	return NSSwapHostDoubleToBig(value);
+}
+
+double NSSwapLittleDoubleToHost(double value)
+{
+	return NSSwapHostDoubleToLittle(value);
+}
+
+/* AND BETWEEN TWO ORDERS THAT ARE NOT THE HOST'S THERE IS NO HOST TO CONSULT: big-endian bytes written for
+ * little-endian bytes are a reversal on every machine there is, so this is the plain swap whatever the
+ * host's order happens to be — which is the one place a host-independent answer exists at all. */
+unsigned short NSSwapBigShortToLittle(unsigned short value)
+{
+	return NSSwapShort(value);
+}
+
+unsigned short NSSwapLittleShortToBig(unsigned short value)
+{
+	return NSSwapShort(value);
+}
+
+unsigned int NSSwapBigIntToLittle(unsigned int value)
+{
+	return NSSwapInt(value);
+}
+
+unsigned int NSSwapLittleIntToBig(unsigned int value)
+{
+	return NSSwapInt(value);
+}
+
+unsigned long NSSwapBigLongToLittle(unsigned long value)
+{
+	return NSSwapLong(value);
+}
+
+unsigned long NSSwapLittleLongToBig(unsigned long value)
+{
+	return NSSwapLong(value);
+}
+
+unsigned long long NSSwapBigLongLongToLittle(unsigned long long value)
+{
+	return NSSwapLongLong(value);
+}
+
+unsigned long long NSSwapLittleLongLongToBig(unsigned long long value)
+{
+	return NSSwapLongLong(value);
+}
+
+float NSSwapBigFloatToLittle(float value)
+{
+	return NSSwapFloat(value);
+}
+
+float NSSwapLittleFloatToBig(float value)
+{
+	return NSSwapFloat(value);
+}
+
+double NSSwapBigDoubleToLittle(double value)
+{
+	return NSSwapDouble(value);
+}
+
+double NSSwapLittleDoubleToBig(double value)
+{
+	return NSSwapDouble(value);
+}
+
+
 /* ------------------------------------------------------ the page functions */
 
 void *NSAllocateMemoryPages(NSUInteger numberOfBytes)

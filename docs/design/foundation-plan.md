@@ -12977,6 +12977,43 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.51 — THE BYTE-ORDER CONVERSIONS: A FAMILY THAT CAN BE PROVED RATHER THAN INSPECTED (2026-09-26)
+
+**WHAT SHIPPED: FORTY-TWO FUNCTIONS, THIRTY OF THEM OWED.** Apple deprecated the `NSSwap*` set at 10.9 in favour of
+`CFSwap*`; §62.24 put them back. The twelve CROSS directions came with them although the ledger does not list them
+as open: a caller who needs big-endian bytes on a little-endian machine has **no other door**, and a family with a
+hole in it is a family a caller has to work around. **The open count is 305 → 275.**
+
+**THEY ARE ONE HELPER PER WIDTH AND ONE DIRECTION RULE, WHICH IS THE WHOLE IMPLEMENTATION.** A byte-order conversion
+is a REVERSAL of the bytes; the only thing that differs between the forty-two is which direction the caller wrote.
+So `NSObject.m` — where this tree keeps its free functions, beside the page functions and `NSHostByteOrder` — has
+three swap helpers and then one-liners, and the two rules that need deciding are decided ONCE:
+
+  * a HOST conversion is the identity when the direction is the host's own and a reversal when it is not, and the
+    host is **asked** (`NSHostByteOrder()`, which returns a constant here by construction) rather than assumed;
+  * the door BACK out of an order and into the host **calls the host conversion** rather than repeating the rule —
+    two implementations of one rule is two places for it to be wrong.
+
+**AND THE PROBE PROVES THEM FOUR WAYS, WHICH IS WHY THIS FAMILY WAS WORTH CHOOSING.** A family of arithmetic on
+byte patterns is one of the few places a restored API can be *established* rather than merely declared: a known
+value becomes the known value per width (and float and double by their BYTES, since a reversed 1.0f is a denormal
+that prints as nothing useful); **swapping twice is the identity for all forty-two**; a host conversion is the
+identity or a reversal according to the order the probe PRINTS; and a conversion between two non-host orders is a
+reversal whatever the host is. **The last check is the control**: a thirty-two-bit implementation passes every
+thirty-two-bit check above and fails the wide one.
+
+**TWO CORRECTIONS INSIDE THE UNIT, BOTH MINE.** `unsigned long` is SIXTY-FOUR BITS here, so `NSSwapLong` is a wide
+swap — the probe's first version asserted the thirty-two-bit reading and **printed a correct-looking value beside the
+failure**, which is how a wrong expectation takes a reading to find. And the second correction is a process lesson
+that cost five build cycles: a chain of regex edits on the probe's own text clobbered a check's CONDITIONAND left
+its message behind, and every recovery attempt was built from my memory of the text rather than from the text. **The
+rule is the one §62.50 already recorded — read it, then make one exact edit — and this unit is the second time in two
+units that not following it cost the most time of anything in the change.**
+
+**VERIFIED.** `foundation_byteorder` is **6/6 green in one guest run**, its case 6/6. Regressions:
+`foundation_collection` 6/6, `foundation_string` 6/6 and `foundation_kvc` 6/6 — the classes that share the file the
+free functions live in.
+
 ## §62.50 — THE FORMATTER TRIO: ONE SHAPE THREE TIMES, AND A UNIT THAT HAD TO MEAN SOMETHING (2026-09-26)
 
 **WHAT SHIPPED: TWENTY-THREE ROWS, AND THIS TIME BOTH KINDS.** The 20 attributed rows — `NSLengthFormatter` 9,

@@ -39,7 +39,7 @@
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  136   open   15   struck    9
 #   case       shipped 1132   open   95   struck   75
-#   func       shipped  115   open   62   struck   12
+#   func       shipped  145   open   32   struck   12
 #   var        shipped  641   open   66   struck  207
 #   typealias  shipped   65   open    6   struck    5
 #   struct     shipped   13   open    0   struck    0
@@ -1925,36 +1925,36 @@ func	shipped	NSStringFromRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSStringFromRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSStringFromSelector		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	shipped	NSStringFromSize		Fundamentals / Geometry / Managing Sizes	-	objc
-func	open	NSSwapBigDoubleToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapBigFloatToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapBigIntToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapBigLongLongToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapBigLongToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapBigShortToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapDouble		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapFloat		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapHostDoubleToBig		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapHostDoubleToLittle		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapHostFloatToBig		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapHostFloatToLittle		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapHostIntToBig		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapHostIntToLittle		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapHostLongLongToBig		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapHostLongLongToLittle		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapHostLongToBig		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapHostLongToLittle		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapHostShortToBig		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapHostShortToLittle		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapInt		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapLittleDoubleToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapLittleFloatToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapLittleIntToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapLittleLongLongToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapLittleLongToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapLittleShortToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapLong		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapLongLong		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSSwapShort		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapBigDoubleToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapBigFloatToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapBigIntToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapBigLongLongToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapBigLongToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapBigShortToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapDouble		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapFloat		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapHostDoubleToBig		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapHostDoubleToLittle		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapHostFloatToBig		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapHostFloatToLittle		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapHostIntToBig		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapHostIntToLittle		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapHostLongLongToBig		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapHostLongLongToLittle		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapHostLongToBig		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapHostLongToLittle		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapHostShortToBig		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapHostShortToLittle		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapInt		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapLittleDoubleToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapLittleFloatToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapLittleIntToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapLittleLongLongToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapLittleLongToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapLittleShortToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapLong		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapLongLong		Low-Level Utilities / Byte Ordering / Functions	-	objc
+func	shipped	NSSwapShort		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	shipped	NSTemporaryDirectory	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	shipped	NSUnionRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSUnionRect		Fundamentals / Geometry / Managing Rectangles	-	objc
