@@ -3538,7 +3538,7 @@ vanishing.
 | **Fundamentals / Unique Identifiers** | all classes shipped | — |
 | **Low-Level Utilities / Copying** | all classes shipped | — |
 | **Low-Level Utilities / Invocations** | all classes shipped | — |
-| **Low-Level Utilities / Legacy** | 7 open | `NSConnection`, `NSConnectionDelegate`, `NSDistantObject`, `NSDistantObjectRequest`, `NSGarbageCollector`, `NSPortCoder`, `NSProtocolChecker` |
+| **Low-Level Utilities / Legacy** | 6 open | `NSConnection`, `NSConnectionDelegate`, `NSDistantObject`, `NSDistantObjectRequest`, `NSGarbageCollector`, `NSPortCoder` |
 | **Low-Level Utilities / Memory Management** | all classes shipped | — |
 | **Low-Level Utilities / Object Basics** | all classes shipped | — |
 | **Low-Level Utilities / Remote Objects** | all classes shipped | — |
@@ -3547,7 +3547,7 @@ vanishing.
 | **Low-Level Utilities / Sockets** | 1 open | `NSHost` |
 | **Low-Level Utilities / Streams** | all classes shipped | — |
 | **Low-Level Utilities / Tasks and Pipes** | all classes shipped | — |
-| **Low-Level Utilities / Threads and Locking** | 2 open | `NSConditionLock`, `NSDistributedLock` |
+| **Low-Level Utilities / Threads and Locking** | 1 open | `NSConditionLock` |
 | **Low-Level Utilities / Value Wrappers and Transformations** | all classes shipped | — |
 | **Low-Level Utilities / XPC Client** | ALL STRUCK: `NSXPCCoder`, `NSXPCConnection`, `NSXPCInterface`, `NSXPCProxyCreating` | — |
 | **Low-Level Utilities / XPC Services** | ALL STRUCK: `NSXPCListener`, `NSXPCListenerDelegate`, `NSXPCListenerEndpoint` | — |
@@ -12976,6 +12976,54 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
+
+**WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else
+to work.** The port family is now down to its DO heart. **The open count is 243 → 241.**
+
+**THE PROXY'S PROPERTY IS NOT "A BAD CALL RAISES" BUT "A BAD CALL NEVER REACHES THE TARGET", AND THE PROBE MEASURES
+BOTH HALVES.** A checker that forwarded everything and let the runtime complain about the result would pass a check
+that only looked for an exception, so the target keeps a counter for the door OUTSIDE the protocol and the refusal
+check asserts that the counter never moved. The filter asks **the protocol** (`protocol_getMethodDescription`, once
+required and once optional) rather than the target — and the two checks that separate those questions are the
+optional door the target *does* implement (forwarded) and the optional door it does *not* (refused).
+
+**AND MEASURING THE REFUSAL FOUND A REAL FACT ABOUT THIS RUNTIME: ANSWERING NIL FOR A MISSING SIGNATURE TAKES A
+SIGBUS.** The probe's first run crashed at exactly the refusal — the forwarding path here does not survive a missing
+signature — so the refusal is **raised from `-methodSignatureForSelector:`**, which is the same refusal reached
+before the machinery that cannot carry it. The header says the nil answer is what Apple's shape implies and why it
+is not what this library does.
+
+**TWO MORE MEASURED FACTS THE CLASSES CARRY.** This library's **`NSProxy` is a root class with no `-init`**, so a
+checker's initializer must not call `[super init]` — the first version did, and the probe crashed on the first
+checker anybody made. And the refusal's message **cannot name the protocol**, because `NSStringFromProtocol` is one
+of §62.52's refusals (the runtime's name-to-protocol lookup answers NULL); a unit's boundary showing up inside
+another unit's diagnostic is worth recording rather than working around silently.
+
+**THE LOCK IS A FILE, AND EVERY CHECK WORKS THROUGH TWO OR THREE OBJECTS ON ONE PATH** — because a lock is only a
+lock if somebody *else* is refused. `open(2)` with `O_CREAT|O_EXCL` is the whole claim, so the atomicity is the
+kernel's and nothing here reads-then-writes. The three stated rules are the three things the probe measures:
+calling `-tryLock` twice on the holder is not a failure; `-unlock` releases **only** what the caller holds (a third
+object's `-unlock` changes nothing, which a fourth claimant confirms); and `-breakLock` takes it from anybody,
+which is the door a lock left by a dead process needs. **`-lockDate` READS THE FILE**, so the check that matters is
+that a NON-HOLDER can read when the lock was taken — a date the object remembered would answer nil for every lock
+but its own.
+
+**VERIFIED.** `foundation_protocolchecker` **6/6** and `foundation_distributedlock` **7/7**, each green in one guest
+run with its case 6/6. Regression: `foundation_portnames` 6/6. Standing-rule gate before the commit: **1 baselined,
+0 NEW.**
+
+**ONE TRAP OF MY OWN, AND IT WAS IN THE GENERATOR RATHER THAN THE CODE:** the two case files came out with a
+DOUBLE-ESCAPED `\\d`, so the probe's own tally line never matched and a green probe was reported as a failed case.
+It is the third escaping mistake in this thread (§62.54's heredoc, §62.50's `str.replace` chain) — the pattern is
+always the same: **text that has to survive two languages is written, not generated.**
+
+### WHAT IS LEFT IN THIS FAMILY
+
+The DO heart: `NSConnection`, `NSDistantObject`, `NSPortCoder`. It is what the name server's process-local boundary
+waits for — publishing a port for another process needs the accept path `NSConnection` owns — and it is the largest
+single thing this family has left.
 
 ## §62.54 — THE NAMING HALF: A NAME THAT FINDS SOMETHING YOU CAN SEND TO (2026-09-26)
 

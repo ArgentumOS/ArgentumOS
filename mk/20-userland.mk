@@ -1425,6 +1425,27 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_portnames"
+	# foundation_protocolchecker: §62.55's acceptance - the proxy that answers only for its protocol. Every refusal
+	# is measured TWICE (the call is refused AND the target's own counter shows the method never ran), and the two
+	# optional-door checks separate "asked the protocol" from "asked the target".
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_protocolchecker.m -o .build/probe-foundation_protocolchecker.o
+	$(MUSL64_OBJC) .build/probe-foundation_protocolchecker.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_protocolchecker"
+	# foundation_distributedlock: §62.55's acceptance - the lock that is a file. Every check works through TWO
+	# objects on one path, because a lock is only a lock if somebody ELSE is refused.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_distributedlock.m -o .build/probe-foundation_distributedlock.o
+	$(MUSL64_OBJC) .build/probe-foundation_distributedlock.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_distributedlock"
 	# foundation_redirect: following a redirect, decided by the delegate, bounded by the hop limit (§54).
 	# Its own HTTP server again (a 302, a 307, a decline and a never-ending chain), and it reads §52's record
 	# off the delegate, so it links the bridge and curl exactly as the two units beside it do.

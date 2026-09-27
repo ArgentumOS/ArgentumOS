@@ -34,7 +34,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  185   open   40   struck   48
+#   class      shipped  187   open   38   struck   48
 #   protocol   shipped   33   open    7   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  137   open   14   struck    9
@@ -1395,7 +1395,7 @@ class	shipped	NSDimension		Fundamentals / Essentials	-	objc
 class	shipped	NSDirectoryEnumerator		Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 class	open	NSDistantObject		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	open	NSDistantObjectRequest		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-class	open	NSDistributedLock		Low-Level Utilities / Threads and Locking	-	objc
+class	shipped	NSDistributedLock		Low-Level Utilities / Threads and Locking	-	objc
 class	open	NSDistributedNotificationCenter		App Support / Cross-Process Notifications	-	objc
 class	shipped	NSEnergyFormatter		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSEnumerator		Fundamentals / Iteration	-	objc
@@ -1503,7 +1503,7 @@ class	shipped	NSProcessInfo		App Support / System Interaction	-	objc
 class	shipped	NSProgress		App Support / Progress	-	objc
 class	shipped	NSPropertyListSerialization		Files and Data Persistence / Property Lists	-	objc
 class	struck	NSPropertySpecifier		App Support / Object Specifiers	declined	objc
-class	open	NSProtocolChecker		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	shipped	NSProtocolChecker		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSProxy		Low-Level Utilities / Remote Objects	-	objc
 class	shipped	NSPurgeableData		Fundamentals / Purgeable Collections	-	objc
 class	struck	NSQuitCommand		App Support / Script Commands	declined	objc

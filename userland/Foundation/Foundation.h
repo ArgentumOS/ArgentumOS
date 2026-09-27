@@ -185,6 +185,8 @@
 #import <Foundation/NSMessagePortNameServer.h>
 #import <Foundation/NSSocketPortNameServer.h>
 #import <Foundation/NSMachBootstrapServer.h>
+#import <Foundation/NSProtocolChecker.h>
+#import <Foundation/NSDistributedLock.h>
 #import <Foundation/NSPortMessage.h>
 #import <Foundation/NSSocketPort.h>
 #import <Foundation/NSFileHandle.h>
