@@ -30,6 +30,8 @@
 #import <Foundation/NSError.h>
 #import <Foundation/NSCharacterSet.h>
 #import <Foundation/NSLocale.h>
+#import <Foundation/FNTextBreaking.h>
+#import <Foundation/NSValue.h>
 #import <Foundation/NSException.h>
 
 /*
@@ -2403,4 +2405,248 @@ NSString *NSStringFromRange(NSRange range)
 		 (unsigned long)range.length);
 	return [[NSOwnedString alloc] initWithUTF8String:buffer];
 }
+@end
+
+/* ===================================================================================================
+ * THE ENUMERATION (§62.48)
+ *
+ * The units come from `FNTextBreaking`, which is the library's one answer to where a word, a line, a sentence, a
+ * paragraph and a composed character begin and end; nothing here second-guesses it. `FNTextBreaking.h` names this
+ * method as one of its two callers, and this is that caller arriving.
+ * =================================================================================================== */
+
+/* WHICH UNIT THE OPTIONS ASK FOR, AND THEY MAY ASK FOR EXACTLY ONE. Zero names no unit at all and two name two
+ * answers: `ByWords | BySentences` is a contradiction rather than a default, so it raises instead of guessing. */
+static FNTextUnit fn_enumeration_pick_unit(NSStringEnumerationOptions opts)
+{
+	FNTextUnit unit = FNTextUnitWord;
+	int named = 0;
+
+	if (opts & NSStringEnumerationLocalized) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-enumerateSubstringsInRange:options:usingBlock: cannot break for a locale: this "
+				   @"library breaks with the root locale's rules, and a locale-directed walk is not "
+				   @"something it can quietly approximate"];
+	}
+	if (opts & NSStringEnumerationByCaretPositions) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-enumerateSubstringsInRange:options:usingBlock: cannot enumerate by caret "
+				   @"positions: a caret is a text-input layout's unit, and this library has no layout"];
+	}
+	if (opts & NSStringEnumerationByDeletionClusters) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-enumerateSubstringsInRange:options:usingBlock: cannot enumerate by deletion "
+				   @"clusters: a cluster is a text-input layout's unit, and this library has no layout"];
+	}
+	if (opts & NSStringEnumerationByLines) { unit = FNTextUnitLine; named++; }
+	if (opts & NSStringEnumerationByParagraphs) { unit = FNTextUnitParagraph; named++; }
+	if (opts & NSStringEnumerationByComposedCharacterSequences) { unit = FNTextUnitComposedCharacter; named++; }
+	if (opts & NSStringEnumerationByWords) { unit = FNTextUnitWord; named++; }
+	if (opts & NSStringEnumerationBySentences) { unit = FNTextUnitSentence; named++; }
+
+	if (named != 1) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-enumerateSubstringsInRange:options:usingBlock: needs exactly one unit option, and "
+				   @"%d were given", named];
+	}
+	return unit;
+}
+
+/* THE NEXT LARGER UNIT THIS ENGINE CAN NAME. A paragraph is the largest, so its own; a line and a sentence are
+ * enclosed by their paragraph, a word by its sentence, and a composed character by its word. */
+static FNTextUnit fn_enumeration_enclosing_unit(FNTextUnit unit)
+{
+	switch (unit) {
+	case FNTextUnitLine:
+	case FNTextUnitSentence:
+		return FNTextUnitParagraph;
+	case FNTextUnitWord:
+		return FNTextUnitSentence;
+	case FNTextUnitComposedCharacter:
+		return FNTextUnitWord;
+	case FNTextUnitParagraph:
+	default:
+		return FNTextUnitParagraph;
+	}
+}
+
+/* --- WHAT A CALLER MEANT BY "WORDS" ------------------------------------------------ */
+
+/* THE TWO PREDICATES ARE SMALL AND STATED RATHER THAN BORROWED. ASCII letters and digits count, and ANY code unit
+ * above ASCII is taken as a letter rather than as punctuation: a string of non-Latin words is enumerated correctly
+ * by that rule, and the cost is that an isolated typographic quotation mark is treated as one. The approximation
+ * is named here because the alternative — a table of every script's letters — is not what this method is. */
+static BOOL fn_enumerate_is_alnum(unichar c)
+{
+	return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c > 127;
+}
+
+static BOOL fn_enumerate_is_space(unichar c)
+{
+	return c == 0x0020 || c == 0x0009 || c == 0x000a || c == 0x000d || c == 0x000b || c == 0x000c;
+}
+
+static BOOL fn_enumerate_has_alnum(NSString *string, NSRange range)
+{
+	NSUInteger i;
+
+	for (i = range.location; i < NSMaxRange(range); i++) {
+		if (fn_enumerate_is_alnum([string characterAtIndex:i])) {
+			return YES;
+		}
+	}
+	return NO;
+}
+
+/* A UNIT IS ITS TEXT AND NOT THE WHITESPACE AROUND IT: Apple's options name words and sentences, and ICU's
+ * boundaries sit after the space that follows one. */
+static NSRange fn_enumerate_trim(NSString *string, NSRange range)
+{
+	NSUInteger start = range.location;
+	NSUInteger end = NSMaxRange(range);
+
+	while (start < end && fn_enumerate_is_space([string characterAtIndex:start])) {
+		start++;
+	}
+	while (end > start && fn_enumerate_is_space([string characterAtIndex:end - 1])) {
+		end--;
+	}
+	return NSMakeRange(start, end - start);
+}
+
+/* THE UNITS TO EMIT, IN ORDER: the engine's units with this method's policy applied. IT IS A LIST FOR BOTH WALKS —
+ * forward and reversed — because the policy needs a unit's neighbours (interior punctuation joins its word) and a
+ * walk that had to look ahead while emitting could not honour `stop` without having already decided. */
+static NSArray *fn_enumerate_units(NSString *string, FNTextUnit unit, NSRange range)
+{
+	NSMutableArray *raw = [NSMutableArray array];
+	NSMutableArray *out = [NSMutableArray array];
+	NSUInteger i;
+
+	[FNTextBreaking fnEnumerate:unit inString:string range:range usingBlock:^(NSRange unitRange, BOOL *stop) {
+		(void)stop;
+		[raw addObject:[NSValue valueWithRange:unitRange]];
+	}];
+
+	if (unit == FNTextUnitWord) {
+		i = 0;
+		while (i < [raw count]) {
+			NSRange current = fn_enumerate_trim(string, [[raw objectAtIndex:i] rangeValue]);
+
+			if (current.length > 0) {
+				/* INTERIOR PUNCTUATION BELONGS TO ITS WORD: ICU answers "don't" as three units, and a
+				 * punctuation unit that TOUCHES a word on both sides is part of it. */
+				while (i + 2 < [raw count]) {
+					NSRange next = fn_enumerate_trim(string, [[raw objectAtIndex:i + 1] rangeValue]);
+					NSRange after = fn_enumerate_trim(string, [[raw objectAtIndex:i + 2] rangeValue]);
+
+					if (next.length > 0 && !fn_enumerate_has_alnum(string, next) &&
+					    fn_enumerate_has_alnum(string, current) &&
+					    fn_enumerate_has_alnum(string, after) &&
+					    NSMaxRange(current) == next.location && NSMaxRange(next) == after.location) {
+						current.length = NSMaxRange(after) - current.location;
+						i += 2;
+						continue;
+					}
+					break;
+				}
+				if (fn_enumerate_has_alnum(string, current)) {
+					[out addObject:[NSValue valueWithRange:current]];
+				}
+			}
+			i++;
+		}
+		return out;
+	}
+	/* A BLANK LINE IS A LINE AND IS KEPT: dropping it would change a caller's LINE COUNT, and counting lines is
+	 * half of what the option is for. Only a SENTENCE is trimmed here, and only a trimmed-to-nothing unit goes. */
+	for (i = 0; i < [raw count]; i++) {
+		NSRange unitRange = (unit == FNTextUnitSentence)
+			? fn_enumerate_trim(string, [[raw objectAtIndex:i] rangeValue])
+			: [[raw objectAtIndex:i] rangeValue];
+
+		if (unit == FNTextUnitSentence && unitRange.length == 0) {
+			continue;
+		}
+		[out addObject:[NSValue valueWithRange:unitRange]];
+	}
+	return out;
+}
+
+@implementation NSString (FNEnumeration)
+
+- (void)enumerateSubstringsInRange:(NSRange)range
+			   options:(NSStringEnumerationOptions)opts
+			usingBlock:(void (^)(NSString * _Nullable substring,
+					     NSRange substringRange,
+					     NSRange enclosingRange,
+					     BOOL *stop))block
+{
+	FNTextUnit unit;
+	FNTextUnit encloser;
+	BOOL noSubstring = (opts & NSStringEnumerationSubstringNotRequired) != 0;
+	BOOL reverse = (opts & NSStringEnumerationReverse) != 0;
+	__block BOOL callerStopped = NO;
+
+	if (block == nil) {
+		return;
+	}
+	unit = fn_enumeration_pick_unit(opts);
+	encloser = fn_enumeration_enclosing_unit(unit);
+
+	/* ONE BODY FOR BOTH WALKS: the forward walk hands each unit straight to the caller, the reversed walk hands it
+	 * to a buffer first, and the difference between the two is which order they are replayed in rather than what a
+	 * caller is told. */
+	void (^emit)(NSRange) = ^(NSRange unitRange) {
+		BOOL stop = NO;
+		NSString *substring = nil;
+		NSRange enclosing = [FNTextBreaking fnUnitContaining:encloser inString:self
+							     atIndex:unitRange.location];
+
+		/* A UNIT IN NO LARGER UNIT IS ITS OWN ENCLOSING RANGE, which is what a BLANK LINE is: it is a line and
+		 * it is in no paragraph. The engine answers NSNotFound for "nothing contains this", so the two rules
+		 * meet without either guessing. */
+		if (enclosing.location == NSNotFound) {
+			enclosing = unitRange;
+		}
+
+		if (!noSubstring) {
+			substring = [self substringWithRange:unitRange];
+		}
+		block(substring, unitRange, enclosing, &stop);
+		if (stop) {
+			callerStopped = YES;
+		}
+	};
+
+	{
+		NSArray *units = fn_enumerate_units(self, unit, range);
+		NSUInteger i;
+
+		if (!reverse) {
+			for (i = 0; i < [units count]; i++) {
+				NSRange unitRange = [[units objectAtIndex:i] rangeValue];
+
+				emit(unitRange);
+				if (callerStopped) {
+					break;
+				}
+			}
+		} else {
+			/* A REVERSED WALK IS THE SAME LIST READ BACKWARDS: an ICU iterator is a forward cursor, so the
+			 * units are decided first and replayed in whichever order the caller asked for. */
+			i = [units count];
+			while (i > 0) {
+				NSRange unitRange = [[units objectAtIndex:i - 1] rangeValue];
+
+				emit(unitRange);
+				i--;
+				if (callerStopped) {
+					break;
+				}
+			}
+		}
+	}
+}
+
 @end

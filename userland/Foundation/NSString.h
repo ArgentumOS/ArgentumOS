@@ -147,6 +147,8 @@ typedef enum {
 	NSStringEnumerationByDeletionClusters = 1 << 9
 } NSStringEnumerationOptions;
 
+
+
 @interface NSString : NSObject <NSCopying>
 
 /* Creation. The `init` family returns +1, as ARC decides BY NAME. */
@@ -283,6 +285,30 @@ typedef enum {
 - (NSString *)stringByStandardizingPath;
 - (BOOL)isAbsolutePath;
 
+
+/* ===================================================================================================
+ * THE DOOR THAT CONSUMES THE OPTIONS ABOVE (§62.48)
+ *
+ * Apple's enumeration. The UNITS COME FROM `FNTextBreaking`, which is the library's one answer to where a word, a
+ * sentence, a paragraph, a line and a composed character begin and end — `FNTextBreaking.h` names this method as one
+ * of its two callers, and this is that caller arriving.
+ *
+ * AND ITS BOUNDARIES ARE STATED RATHER THAN DISCOVERED. Three of the ten options are REFUSED with an exception
+ * rather than honoured approximately: `NSStringEnumerationLocalized`, `…ByCaretPositions` and `…ByDeletionClusters`.
+ * The first asks for locale-directed breaking where this library breaks with the root locale (the stance
+ * NSLocale's own unit records); the other two name a caret and a deletion cluster, which are a text-input layout's
+ * units and not a string's. A caller that needs them needs them from the toolkit that owns the layout.
+ *
+ * `enclosingRange` IS THE NEXT LARGER UNIT THIS ENGINE CAN NAME, and which unit that is depends on what is being
+ * enumerated: a LINE or a SENTENCE is enclosed by its PARAGRAPH, a WORD by its SENTENCE, and a composed CHARACTER
+ * by its WORD. A PARAGRAPH is enclosed by nothing larger, so its enclosing range is its own.
+ * =================================================================================================== */
+- (void)enumerateSubstringsInRange:(NSRange)range
+			   options:(NSStringEnumerationOptions)opts
+			usingBlock:(void (^)(NSString * _Nullable substring,
+					     NSRange substringRange,
+					     NSRange enclosingRange,
+					     BOOL *stop))block;
 @end
 
 @interface NSOwnedString : NSString

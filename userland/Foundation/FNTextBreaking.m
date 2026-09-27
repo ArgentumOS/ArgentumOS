@@ -31,6 +31,9 @@ static UBreakIterator *fn_open_iterator(FNTextUnit unit, const UChar *buffer, in
 		return ubrk_open(UBRK_SENTENCE, NULL, buffer, length, status);
 	case FNTextUnitParagraph:
 		return ubrk_open(UBRK_LINE, NULL, buffer, length, status);
+	case FNTextUnitLine:
+		/* THE SAME ITERATOR AS A PARAGRAPH, AND THE DIFFERENCE IS THE MERGE BELOW: a paragraph is a run of these. */
+		return ubrk_open(UBRK_LINE, NULL, buffer, length, status);
 	case FNTextUnitComposedCharacter:
 		return ubrk_open(UBRK_CHARACTER, NULL, buffer, length, status);
 	case FNTextUnitWord:
@@ -39,23 +42,56 @@ static UBreakIterator *fn_open_iterator(FNTextUnit unit, const UChar *buffer, in
 	}
 }
 
-/* IS THERE A BLANK LINE BETWEEN TWO OFFSETS? That is what separates two PARAGRAPHS, and it is asked of the buffer
- * rather than of a second iterator: a gap holding two line breaks (or a line break and other whitespace) ends one. */
-static BOOL fn_gap_has_a_blank_line(const UChar *buffer, int32_t from, int32_t to)
+/* LINES ARE NOT ICU'S, AND THAT IS THE CORRECTION THIS FILE CARRIES (2026-09-26). `ubrk_*`'s line iterator answers
+ * WHERE A LINE COULD WRAP — UAX#14 offers a break after a space — and not where a line ENDS: asked for the lines of
+ * "first line" it answers "first " and "line". The paragraph rule is written over LINES (a run that does not meet a
+ * blank one), so it cannot be written over wrap opportunities, and its first version looked at the gap between two
+ * of them FOR TWO LINE BREAKS — a gap that holds a space. The result was ONE PARAGRAPH PER STRING, and nothing
+ * caught it until `-enumerateSubstringsInRange:options:` asked for lines and printed what it was given.
+ *
+ * A LINE HERE IS ITS TEXT AND NOT ITS TERMINATOR: the terminator is what separates one unit from the next, which is
+ * why the two helpers below are separate rather than one index. */
+static int32_t fn_line_text_end(const UChar *buffer, int32_t from, int32_t length)
 {
-	int32_t i;
-	int32_t breaks = 0;
+	int32_t i = from;
 
-	for (i = from; i < to; i++) {
+	while (i < length) {
 		UChar c = buffer[i];
 
 		if (c == 0x000a || c == 0x000d || c == 0x2028 || c == 0x2029) {
-			if (++breaks >= 2) {
-				return YES;
-			}
+			return i;
+		}
+		i++;
+	}
+	return length;
+}
+
+/* PAST ONE TERMINATOR, with `\r\n` counted once: the index where the next line's text begins. */
+static int32_t fn_line_next(const UChar *buffer, int32_t textEnd, int32_t length)
+{
+	if (textEnd >= length) {
+		return length;
+	}
+	if (buffer[textEnd] == 0x000d && (textEnd + 1) < length && buffer[textEnd + 1] == 0x000a) {
+		return textEnd + 2;
+	}
+	return textEnd + 1;
+}
+
+/* IS THE LINE WHOSE TEXT IS `from..textEnd` BLANK? Other whitespace counts as blank too: a line holding only
+ * spaces separates two paragraphs to a reader, and this rule says so. */
+static BOOL fn_line_is_blank(const UChar *buffer, int32_t from, int32_t textEnd)
+{
+	int32_t i;
+
+	for (i = from; i < textEnd; i++) {
+		UChar c = buffer[i];
+
+		if (c != 0x0020 && c != 0x0009) {
+			return NO;
 		}
 	}
-	return NO;
+	return YES;
 }
 
 @implementation FNTextBreaking
@@ -97,6 +133,57 @@ static BOOL fn_gap_has_a_blank_line(const UChar *buffer, int32_t from, int32_t t
 		free(buffer);
 		return;
 	}
+	/* LINES AND PARAGRAPHS ARE BUILT FROM THE LINE RULE RATHER THAN FROM AN ITERATOR, and they are built HERE so
+	 * that `+fnUnitContaining:` — which delegates to this method — cannot answer differently from this walk. */
+	if (unit == FNTextUnitLine || unit == FNTextUnitParagraph) {
+		int32_t at = (int32_t)from;
+
+		while (at < (int32_t)to) {
+			int32_t textEnd = fn_line_text_end(buffer, at, (int32_t)length);
+			int32_t unitEnd = textEnd;
+			BOOL stop = NO;
+
+			if (unit == FNTextUnitParagraph) {
+				int32_t lineStart;
+				int32_t lastTextEnd;
+
+				if (fn_line_is_blank(buffer, at, textEnd)) {
+					/* A BLANK LINE IS THE SEPARATOR AND BELONGS TO NO PARAGRAPH. */
+					at = fn_line_next(buffer, textEnd, (int32_t)length);
+					continue;
+				}
+				/* WALK FORWARD WHILE THE NEXT LINE EXISTS AND IS NOT BLANK, KEEPING WHERE THE LAST ONE'S TEXT
+				 * ENDS: the paragraph runs to there, so it includes its own line breaks and not a separator's. */
+				lineStart = at;
+				lastTextEnd = textEnd;
+				while (1) {
+					int32_t nextStart = fn_line_next(buffer,
+						fn_line_text_end(buffer, lineStart, (int32_t)length),
+						(int32_t)length);
+					int32_t nextTextEnd;
+
+					if (nextStart >= (int32_t)to) {
+						break;
+					}
+					nextTextEnd = fn_line_text_end(buffer, nextStart, (int32_t)length);
+					if (fn_line_is_blank(buffer, nextStart, nextTextEnd)) {
+						break;
+					}
+					lineStart = nextStart;
+					lastTextEnd = nextTextEnd;
+				}
+				unitEnd = lastTextEnd;
+			}
+			block(NSMakeRange((NSUInteger)at, (NSUInteger)(unitEnd - at)), &stop);
+			if (stop) {
+				break;
+			}
+			at = (unit == FNTextUnitParagraph) ? unitEnd : fn_line_next(buffer, textEnd, (int32_t)length);
+		}
+		free(buffer);
+		return;
+	}
+
 	for (i = 0, status = U_ZERO_ERROR; ; ) {
 		int32_t at = (count == 0) ? ubrk_first(iterator) : ubrk_next(iterator);
 
@@ -117,6 +204,12 @@ static BOOL fn_gap_has_a_blank_line(const UChar *buffer, int32_t from, int32_t t
 	}
 	ubrk_close(iterator);
 
+	/* ICU'S UNITS ARE HANDED ON AS THEY ARE, INCLUDING THE PUNCTUATION AND THE WHITESPACE, AND THAT IS A DECISION
+	 * RATHER THAN AN OVERSIGHT: `NSLinguisticTagger` builds on this method and ITS contract is to tag every token,
+	 * punctuation included. A caller who asked Apple's `NSStringEnumerationByWords` is asking a different question
+	 * — and the policy that answers it lives in `-enumerateSubstringsInRange:options:usingBlock:`, which is where
+	 * the question is asked. (Measured: applying the word policy HERE broke four of the tagger's checks, and its
+	 * probe said which.) */
 	/* EVERY UNIT IS A PAIR OF ADJACENT BOUNDARIES, and the last boundary is the text's end. */
 	for (i = 0; i + 1 < count; i++) {
 		NSUInteger unitStart = (NSUInteger)bounds[i];
@@ -129,14 +222,6 @@ static BOOL fn_gap_has_a_blank_line(const UChar *buffer, int32_t from, int32_t t
 		if (unitStart >= to) {
 			break;
 		}
-		if (unit == FNTextUnitParagraph) {
-			/* MERGE THE RUN: a paragraph is every following line that does NOT start after a blank line. */
-			while (i + 2 < count &&
-			       !fn_gap_has_a_blank_line(buffer, bounds[i + 1], bounds[i + 2])) {
-				i++;
-				unitEnd = (NSUInteger)bounds[i + 1];
-			}
-		}
 		block(NSMakeRange(unitStart, unitEnd - unitStart), &stop);
 		if (stop) {
 			break;
@@ -148,7 +233,7 @@ static BOOL fn_gap_has_a_blank_line(const UChar *buffer, int32_t from, int32_t t
 
 + (NSRange)fnUnitContaining:(FNTextUnit)unit inString:(NSString *)string atIndex:(NSUInteger)index
 {
-	__block NSRange answer = NSMakeRange(0, [string length]);
+	__block NSRange answer = NSMakeRange(NSNotFound, 0);
 
 	if (index >= [string length]) {
 		return NSMakeRange(NSNotFound, 0);

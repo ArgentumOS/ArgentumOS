@@ -12977,6 +12977,52 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.48 — `-enumerateSubstringsInRange:options:usingBlock:`, AND TWO DEFECTS IT FOUND BENEATH (2026-09-26)
+
+**THE LEDGER OWED NOTHING HERE, AND THAT IS THE FINDING RATHER THAN A CONVENIENCE.** Every name in this family —
+`NSStringEnumerationOptions` and all eleven of its cases — was already `shipped`, and **the method that consumes them
+was declared nowhere.** The surface file read complete while the door did not exist: the same shape as §62.47's
+vocabulary-with-nothing-to-say, one level worse, because a reader checking the ledger would have concluded the
+family was finished. The method is landed with its implementation, and **no row changed — the open count stays
+339.** (A follow-up worth considering, not done: the sweep could flag a declared OPTION TYPE whose cases no library
+method ever reads.)
+
+**THE UNITS COME FROM `FNTextBreaking`, WHICH IS WHAT ITS OWN HEADER SAYS IT EXISTS FOR** — it names this method as
+one of its two callers. The boundaries are stated rather than discovered: a LINE or a SENTENCE is enclosed by its
+PARAGRAPH, a WORD by its SENTENCE, a composed CHARACTER by its WORD; a unit in NO larger unit — a blank line — is
+its own. `Reverse` is a buffered walk (an ICU iterator is a forward cursor); `SubstringNotRequired` reports ranges
+and hands back nothing; `Localized`, `ByCaretPositions` and `ByDeletionClusters` **refuse**, as do zero units and
+two units, because a caller who wrote `ByWords | BySentences` asked a question with two answers.
+
+**AND THE PROBE FOUND TWO REAL DEFECTS IN THE ENGINE UNDERNEATH IT.** Neither was mine to introduce and both had
+been there since `FNTextBreaking` landed:
+
+  * **ICU's line iterator answers WHERE A LINE COULD WRAP, NOT WHERE IT ENDS.** Asked for the lines of
+    `"first line"` it answers `"first "` and `"line"` — UAX#14 offers a break after a space. The engine's paragraph
+    rule is written over LINES (a run that does not meet a blank one), so it measured the gap between two wrap
+    opportunities FOR TWO LINE BREAKS — a gap holding a space — and **every string was ONE paragraph.** The fix is
+    a line rule of the engine's own: a line is its text up to its terminator, `\r\n` counted once, and the
+    paragraph is a run of those not interrupted by a blank one.
+  * **A WORD CARRIED THE SPACE THAT FOLLOWED IT, AND PUNCTUATION ARRIVED AS ITS OWN UNIT** — `"Dogs "`, and a lone
+    `"."` beside it — because ICU's boundaries sit where the next unit starts. Apple's `ByWords` hands back words,
+    so the enumeration does too: units are trimmed, interior punctuation that touches a word on both sides joins it
+    (`"don't"`, `"3.14"`), and a unit holding no letter or digit is a separator.
+
+**THE TWO FIXES SPLIT, AND THE SECOND SPLIT IS THE INTERESTING ONE.** The LINE/PARAGRAPH fix belongs in the engine
+and stayed there. The WORD policy did NOT: applied in the engine it **broke four of `NSLinguisticTagger`'s checks** —
+its contract is to tag every token, punctuation included — and its probe named which four. **The engine hands on
+ICU's units as they are, and the policy lives where the question is asked**, in
+`-enumerateSubstringsInRange:options:usingBlock:`, which is the caller that asked for Apple's semantics. That is not
+a duplicated rule: it is two callers with two contracts, and the measurement is what separated them.
+
+**VERIFIED.** `foundation_enumerate_substrings` is **8/8 green in one guest run**, its case 6/6. Regressions:
+`foundation_linguistictagger` 6/6 (it is the engine's other consumer and the reason the word policy moved),
+`foundation_attributedstring` 6/6, `foundation_string` 6/6. Three more of my own traps, all recorded and all
+repeated: **the `![…]` message construct and a doubled bracket level** (twice now); an `NSRange` read without
+counting the array first, which made the probe **abort with no message instead of failing with one** — the probe now
+counts before it indexes; and **dropping zero-length units**, which silently changed a caller's LINE COUNT, when a
+blank line is a line.
+
 ## §62.47 — `NSURLHandle`: A RESTORED VOCABULARY, AND THE CLASS THAT MAKES IT MEAN SOMETHING (2026-09-26)
 
 **WHAT SHIPPED: EIGHTEEN ROWS, AND THE LIST IS EXACT BECAUSE IT WAS DIFFED RATHER THAN RECALLED.** The

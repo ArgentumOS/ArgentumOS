@@ -34,7 +34,12 @@ typedef NS_ENUM(NSInteger, FNTextUnit) {
 	FNTextUnitWord = 0,
 	FNTextUnitSentence = 1,
 	FNTextUnitParagraph = 2,
-	FNTextUnitComposedCharacter = 3
+	FNTextUnitComposedCharacter = 3,
+	/* LINES ARE THE UNIT THE OTHERS ARE BUILT FROM: ICU's default iterator IS a line breaker, and this engine's
+	 * paragraph is a RUN of lines that does not start after a blank one. Asking for lines is therefore the same
+	 * iterator WITHOUT the merge, and giving it a name of its own is what lets `-enumerateSubstringsInRange:`
+	 * answer `NSStringEnumerationByLines` without a second implementation of where a line ends. */
+	FNTextUnitLine = 4
 };
 
 @interface FNTextBreaking : NSObject
