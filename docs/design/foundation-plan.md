@@ -13182,17 +13182,28 @@ new code compiles clean under `-Wall`.
 CANNOT LINK.** `FN_HOST_SRCS` is a wildcard over `userland/Foundation/*.m`, so the host build compiles
 `FNCURLURLProtocol.m` — and `tools/curl-build.sh`'s header records the opposite intent in as many words:
 *"libcurl has no host consumer: the Foundation's probes are guest-only, so a host half would be dead weight."* The
-library therefore links with undefined `curl_*`/`SSL_*` symbols and every probe link then fails. **It also carries
-no signal for this unit: `foundation_attributedstring` is not in `HOST_PROBES`**, so the host run would not have
-executed the new checks even if it linked. Recorded rather than papered over, and **THE USER'S DECISION WAS THE
-OTHER OF THE TWO GROUNDS: GIVE THE HOST FRAGMENT ITS ONE-LINE CURL HALF** — `HOST_LDFLAGS` gains `-lcurl -lssl
--lcrypto`, which is the very change `tools/curl-build.sh`'s header anticipated ("It gets added when something on the
-host links libcurl, which is a one-line change and not a redesign"), noted at the declaration in `mk/60-host.mk`
-with its reason: the host run uses the HOST's curl and OpenSSL, exactly as it uses the host's glibc and ICU rather
-than the guest's musl and staged prefixes. **VERIFIED: `make host-foundation-run` exits 0 with 27 probes and every
-tally `fail=0`** — and one consequence is stated so it is not misread as coverage: the host probe list is
-unchanged, so this unit's own host signal is still zero (`foundation_attributedstring` is not in `HOST_PROBES`) and
-what the fix restores is the host suite's ability to run at all.
+library therefore links with undefined `curl_*`/`SSL_*` symbols and every probe link then fails. Recorded rather
+than papered over, and **THE USER'S DECISION WAS THE OTHER OF THE TWO GROUNDS: GIVE THE HOST FRAGMENT ITS ONE-LINE
+CURL HALF** — `HOST_LDFLAGS` gains `-lcurl -lssl -lcrypto`, which is the very change `tools/curl-build.sh`'s header
+anticipated ("It gets added when something on the host links libcurl, which is a one-line change and not a
+redesign"), noted at the declaration in `mk/60-host.mk` with its reason: the host run uses the HOST's curl and
+OpenSSL, exactly as it uses the host's glibc and ICU rather than the guest's musl and staged prefixes.
+
+**AND THEN THE SECOND HALF, WHICH THE SAME RUN EXPOSED: THE PROBE WAS NOT IN `HOST_PROBES` AT ALL.** The host
+suite was green again and still exercised NOTHING of this unit, because `foundation_attributedstring` had never
+been added to that list — so `make host-foundation-run` exits 0 and says nothing about RTF. **FIXED (the user's
+decision, 2026-09-26): the probe is in `HOST_PROBES` now, and it is HOST-CLEAN RATHER THAN EXEMPTED** — measured,
+**`ok=29 fail=0` in ONE host run, with 28 probes and every tally `fail=0`**: the same 29 checks the guest runs, so
+the RTF assertions (the signed `\u-3?` included) are now proved on glibc as well as on musl. **NOTHING HAD TO BE
+CARVED OUT TO GET IT THERE**, which is worth stating because the obvious alternative — exempting a check that
+misbehaves — is exactly the kind of quiet exclusion this plan keeps having to hunt for. Two warnings are
+deliberately unchanged and neither is new: the probe's pre-existing `-Wnonnull` at line 498
+(`-addAttribute:value:nil`, the recorded nil-REMOVES rule) and the library's three pre-existing
+`-Wnullable-to-nonnull` sites; the host probe rule passes neither as an error.
+
+**A STALE COUNT IN THE SAME FILE, FIXED BECAUSE THIS UNIT MADE IT STALER:** the per-unit-compile comment in
+`mk/60-host.mk` claimed "12 of the 27 probes are a single translation unit" — already wrong before this unit (20 of
+the 27 had no support half), and now measured and stated as **21 of the 28**.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 

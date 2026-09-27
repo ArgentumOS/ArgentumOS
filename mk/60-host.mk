@@ -149,14 +149,14 @@ $(HOST_FOUNDATION_LIB): $(FN_HOST_OBJS)
 # THE HOST-CLEAN PROBES: every one EXCEPT the five that read the guest's filesystem or an FSH path
 # (foundation_collection, foundation_filemanager, foundation_string, foundation_url, foundation_value -
 # they would fail here for a reason that is not a bug). Those five stay guest-only.
-HOST_PROBES ?= foundation_pointers foundation_calendar foundation_codecs foundation_decimal foundation_decimalnumber foundation_notification foundation_coder foundation_core foundation_dateformatter foundation_error foundation_expression foundation_formatters foundation_kvc foundation_kvo foundation_numberformatter foundation_nsvalue foundation_operation foundation_orderedset foundation_predicate foundation_processinfo foundation_progress foundation_regex foundation_runloop foundation_set foundation_sort foundation_thread foundation_urlcomponents
+HOST_PROBES ?= foundation_attributedstring foundation_pointers foundation_calendar foundation_codecs foundation_decimal foundation_decimalnumber foundation_notification foundation_coder foundation_core foundation_dateformatter foundation_error foundation_expression foundation_formatters foundation_kvc foundation_kvo foundation_numberformatter foundation_nsvalue foundation_operation foundation_orderedset foundation_predicate foundation_processinfo foundation_progress foundation_regex foundation_runloop foundation_set foundation_sort foundation_thread foundation_urlcomponents
 define FN_HOST_PROBE_rule
 $(HOST_BINDIR)/$(1): $(HOST_FOUNDATION_LIB) $(wildcard userland/tests/$(1).m) $(wildcard userland/tests/$(1)_support.m)
 	@mkdir -p $(HOST_BINDIR) $(HOST_OBJDIR)
 # PER-UNIT COMPILES, WHICH IS NOT COSMETIC: one driver invocation with both sources does NOT
 # apply -fobjc-arc and -fno-objc-arc per file, so the probe main came out MRC and `c = nil`
-# released nothing. The guest mk compiles per file too. THE SUPPORT HALF IS OPTIONAL: 12 of
-# the 27 probes are a single translation unit.
+# released nothing. The guest mk compiles per file too. THE SUPPORT HALF IS OPTIONAL: 21 of
+# the 28 probes are a single translation unit (measured 2026-09-26).
 	$$(HOST_CC) $$(HOST_CFLAGS) -Iuserland/tests -fobjc-arc -c $$(wildcard userland/tests/$(1).m) -o $(HOST_OBJDIR)/probe-$(1).o
 	@if [ -f userland/tests/$(1)_support.m ]; then \
 		$$(HOST_CC) $$(HOST_CFLAGS) -Iuserland/tests -fno-objc-arc -c userland/tests/$(1)_support.m \
