@@ -25,6 +25,7 @@
 
 #import <Foundation/NSNotificationQueue.h>
 #import <Foundation/FNRunLoopQueue.h>
+#import <Foundation/FNRunLoopModes.h>
 #import <Foundation/NSNotificationCenter.h>
 #import <Foundation/NSNotification.h>
 #import <Foundation/NSThread.h>
@@ -66,9 +67,8 @@ static NSString *const FNNQDefaultKey = @"NSNotificationQueue.FNDefault";
 
 @end
 
-/* THE QUEUE'S OWN PRIVATE DOORS, DECLARED SO THE CATEGORY BELOW CAN CALL THEM: a method defined in one
- * @implementation is not visible to another without a declaration, and this file has two (the class and the
- * run-loop seam). */
+/* THE QUEUE'S OWN PRIVATE DOORS, DECLARED SO THE CATEGORY BELOW CAN CALL THEM: a method defined in one class
+ * block is not visible in another without a declaration, and this file has two (the class and the run-loop seam). */
 @interface NSNotificationQueue (FNPrivate)
 - (void)fnDropPendingMatching:(NSNotification *)notification mask:(NSUInteger)mask;
 - (void)fnTakeDueWhenIdle:(BOOL)idle mode:(NSString *)mode into:(NSMutableArray *)due;
@@ -101,8 +101,12 @@ static BOOL fn_matches(NSNotification *pending, NSNotification *criteria, NSUInt
 	return YES;
 }
 
-/* MAY THIS POST GO OUT IN `mode`? An empty list is the default mode (the enqueue door makes that impossible by
- * substituting it, and the check is kept so a list mutated empty cannot silently start firing everywhere). */
+/* MAY THIS POST GO OUT IN `mode`? THE RULE IS NOT OURS TO SPELL OUT HERE ANY MORE (§62.62): the first version
+ * of this function compared mode names with -isEqual:, which meant a notification enqueued
+ * `forModes:@[NSRunLoopCommonModes]` could NEVER be posted — while a timer added for the common modes fires in
+ * every mode, because the run loop has always treated "common" as "everything". One rule, one definition
+ * (FNRunLoopModes.h); this is the list-walking half of it. An empty list allows nothing, which the enqueue door
+ * makes unreachable and the check keeps true for a list someone empties afterwards. */
 static BOOL fn_modes_allow(NSArray *modes, NSString *mode)
 {
 	NSUInteger i;
@@ -111,7 +115,7 @@ static BOOL fn_modes_allow(NSArray *modes, NSString *mode)
 		return NO;
 	}
 	for (i = 0; i < [modes count]; i++) {
-		if ([[modes objectAtIndex:i] isEqual:mode]) {
+		if (FNRunLoopModeAllows([modes objectAtIndex:i], mode)) {
 			return YES;
 		}
 	}

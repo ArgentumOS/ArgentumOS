@@ -3,15 +3,18 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * NSRunLoop — the loop that waits, and the place timers are kept. F13.18.
+ * NSRunLoop — the loop that waits, and the place timers, sources, performers and notification posts are kept.
+ * F13.18 (§62.62 added the performers and the visitors the queue needed).
  *
- * WHAT IT RUNS, in v1: TIMERS. A run loop with file-descriptor sources, ports, observers and block
- * performers is a different design at each of those words, and only the timer half is here — which is
- * the half a program with no event sources needs to schedule work.
+ * WHAT IT RUNS: TIMERS (§12.3's W6), SOURCES (§43), PERFORMERS (§62.62) and the suspended notifications a
+ * thread's NSNotificationQueue holds (§62.61). A loop with ports, observers and a CoreFoundation bridge is a
+ * different design at each of those words, and what is not here is named at the foot of this comment rather
+ * than left to be discovered.
  *
- * THE MODES ARE NAMES, NOT MACHINES: a timer is added for a mode, and a loop running that mode fires
- * it. `NSDefaultRunLoopMode` and `NSRunLoopCommonModes` are the two Cocoa names, and a timer added
- * for the COMMON modes is fired by every mode — which is the whole of what "common" means here.
+ * THE MODES ARE NAMES, NOT MACHINES: an entry is added for a mode, and a loop running that mode carries it.
+ * `NSDefaultRunLoopMode` and `NSRunLoopCommonModes` are the two Cocoa names, and an entry added for the COMMON
+ * modes is carried by every mode — which is the whole of what "common" means here, and it is now ONE function
+ * (§62.62, FNRunLoopModes.h) rather than a rule each kind of entry spelled for itself.
  *
  * HOW IT WAITS, and this one is a kernel fact worth stating where a caller can read it: the loop's
  * wait is `select(2)` with a timeout, because THIS KERNEL RETURNS FROM `nanosleep(2)` EARLY (measured
@@ -19,9 +22,12 @@
  * it re-checks the clock after every wait rather than trusting it — but it will spin, and the CPU
  * cost of that is the C library's and the kernel's to fix, not this class's to hide.
  *
- * WHAT IS NOT HERE, named: run-loop sources and observers, `-performSelector:…` and the block
- * performers, `-runLoop`/`-getCFRunLoop`, and `NSRunLoopCommonModes` as a real mode SET rather than
- * the single name it is treated as.
+ * WHAT IS NOT HERE, named, AND THIS LIST SHRANK RATHER THAN GREW (§62.62 corrected it): run-loop OBSERVERS
+ * (`-addObserver:forKeyPath:…` and the activity notifications), `-runLoop`/`-getCFRunLoop` — which are
+ * CoreFoundation doors and this system has NO CoreFoundation, so there is nothing for them to answer (the same
+ * ground §11.6.1's D13 register gives NSFileSecurity), and `NSRunLoopCommonModes` as a real mode SET rather than
+ * the single name it is treated as. It no longer names the SOURCES (they landed in §43) or the PERFORMERS
+ * (they land with this comment).
  */
 
 #ifndef FOUNDATION_NSRUNLOOP_H
@@ -43,9 +49,10 @@ extern NSString *const NSRunLoopCommonModes;
  * methods below say `NSString *` and mean the same type). */
 typedef NSString * NSRunLoopMode;
 
-/* FORWARD-DECLARED: the ivars only need the names, and the implementation imports NSArray.h. A port is
- * forward-declared for the same reason AND because the dependency runs the other way: NSPort.h imports
- * THIS header, so importing it back would be a cycle. */
+/* FORWARD-DECLARED: the ivars and the performer doors only need the names, and the implementation imports
+ * NSArray.h. A port is forward-declared for the same reason AND because the dependency runs the other way:
+ * NSPort.h imports THIS header, so importing it back would be a cycle. */
+@class NSArray;
 @class NSMutableArray;
 @class NSPort;
 
@@ -56,6 +63,7 @@ typedef NSString * NSRunLoopMode;
 	NSString *_currentMode;
 	BOOL _running;
 	NSMutableArray *_sources;	/* FNRunLoopSource, created on first use */
+	NSMutableArray *_performers;	/* FNPerformer, created on first use (§62.62) */
 }
 
 + (NSRunLoop *)currentRunLoop;
@@ -111,6 +119,36 @@ typedef NSString * NSRunLoopMode;
 
 /* Every source this target registered, in every mode. */
 - (void)removeSourceForTarget:(id)target;
+
+/*
+ * THE PERFORMERS (§62.62), Apple's five doors, and their contract is Apple's to state — read off the pages
+ * rather than recalled, because two of the clauses are the kind a guess gets wrong:
+ *
+ *   * "This method sets up a timer to perform the aSelector message ... AT THE START OF THE NEXT RUN LOOP
+ *     ITERATION", so a performer is a REQUEST the loop honours, not a call;
+ *   * "messages with a LOWER order value are sent BEFORE messages with a higher order value" (so 0 runs first);
+ *   * the receiver RETAINS the target and the argument until the message is sent — an ownership rule with teeth,
+ *     and the reason this class holds both rather than borrowing them;
+ *   * the message is sent only while the loop is running in one of the given `modes`, and otherwise waits.
+ *
+ * `-cancelPerformSelector:target:argument:` requires SELECTOR AND ARGUMENT to match as well as the target;
+ * `-cancelPerformSelectorsWithTarget:` cancels by TARGET ALONE and "removes the perform requests for the object
+ * from ALL modes".
+ *
+ * THE BLOCK FORMS are macOS 10.12+ and are the same request with a block instead of a selector. Apple's own page
+ * for `-performBlock:` does NOT state which modes it uses; the resolution recorded on Apple's developer forum
+ * ("performBlock: is equivalent to performInModes:block: with an array containing the default run loop mode") is
+ * what this implements, and it is cited here because the alternative readings would differ observably.
+ */
+- (void)performSelector:(SEL)aSelector
+		 target:(id)target
+	       argument:(nullable id)arg
+		  order:(NSUInteger)order
+		  modes:(NSArray *)modes;
+- (void)cancelPerformSelector:(SEL)aSelector target:(id)target argument:(nullable id)arg;
+- (void)cancelPerformSelectorsWithTarget:(id)target;
+- (void)performBlock:(void (^)(void))block;
+- (void)performInModes:(NSArray *)modes block:(void (^)(void))block;
 
 @end
 

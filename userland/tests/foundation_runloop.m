@@ -35,24 +35,36 @@
 #include <unistd.h>		/* pipe(2), write(2): the SOURCE's descriptor */
 #include <sys/socket.h>	/* socketpair(2): the PORT's descriptor */
 
-/* THE TARGET: what each check's timers tell, and in what order. */
+/* THE TARGET: what each check's timers tell, and in what order. §62.62 added the performer half — two methods
+ * whose ORDER a check can read, an argument to prove the message carried it, an observer for the queue's
+ * common-modes check, and a flag a block can set. */
 @interface LoopProbe : NSObject
 {
 	NSUInteger _fires;
 	NSUInteger _firstTimer;
 	NSUInteger _secondTimer;
+	NSUInteger _notifications;
 	NSMutableString *_order;
 	NSRunLoop *_otherLoop;
+	id _lastArgument;
+	BOOL _blockRan;
 }
 - (void)count:(id)timer;
 - (void)recordFirst:(id)timer;
 - (void)recordSecond:(id)timer;
+- (void)noteA:(id)argument;
+- (void)noteB:(id)argument;
+- (void)note:(NSNotification *)notification;
 - (void)noteLoop:(id)ignored;
 - (NSUInteger)fires;
 - (NSUInteger)firstTimer;
 - (NSUInteger)secondTimer;
+- (NSUInteger)notifications;
 - (NSString *)order;
 - (NSRunLoop *)otherLoop;
+- (nullable id)lastArgument;
+- (BOOL)blockRan;
+- (void)setBlockRan:(BOOL)ran;
 @end
 
 @implementation LoopProbe
@@ -87,10 +99,35 @@
 	_fires++;
 }
 
+/* THE PERFORMER TARGETS: one letter each into the ORDER, so a check can see which message was sent and when. */
+- (void)noteA:(id)argument
+{
+	_lastArgument = argument;
+	[_order appendString:@"A"];
+	_fires++;
+}
+
+- (void)noteB:(id)argument
+{
+	_lastArgument = argument;
+	[_order appendString:@"B"];
+	_fires++;
+}
+
+- (void)note:(NSNotification *)notification
+{
+	(void)notification;
+	_notifications++;
+}
+
 - (NSUInteger)fires { return _fires; }
 - (NSUInteger)firstTimer { return _firstTimer; }
 - (NSUInteger)secondTimer { return _secondTimer; }
+- (NSUInteger)notifications { return _notifications; }
 - (NSString *)order { return _order; }
+- (nullable id)lastArgument { return _lastArgument; }
+- (BOOL)blockRan { return _blockRan; }
+- (void)setBlockRan:(BOOL)ran { _blockRan = ran; }
 
 /* CALLED FROM THE DETACHED THREAD, which is the only way this file can see another thread's loop:
  * the pointer is captured where the OTHER thread is the current one. */
@@ -569,6 +606,175 @@ int main(void)
 		if (pairMade == 0) {
 			close(pair[1]);
 		}
+	}
+
+	/* ---- THE PERFORMERS (§62.62) ------------------------------------------------------------------- */
+	{
+		/* A PERFORMER RUNS AT THE START OF THE NEXT PASS, NOT WHEN IT IS SCHEDULED — Apple's own words for
+		 * -performSelector:target:argument:order:modes:, and the argument has to arrive with it. */
+		LoopProbe *probe = [[LoopProbe alloc] init];
+		NSRunLoop *loop = [NSRunLoop currentRunLoop];
+		NSString *argument = @"the performer argument";
+
+		[loop performSelector:@selector(noteA:)
+			       target:probe
+			     argument:argument
+				order:0
+				modes:[NSArray arrayWithObject:NSDefaultRunLoopMode]];
+		{
+			NSUInteger beforePass = [probe fires];
+
+			[loop runMode:NSDefaultRunLoopMode
+			   beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+			check("a-performer-runs-at-the-start-of-the-next-pass",
+			      beforePass == 0 && [probe fires] == 1 && [probe lastArgument] == argument,
+			      [NSString stringWithFormat:@"before=%lu after=%lu argument=%@",
+				(unsigned long)beforePass, (unsigned long)[probe fires], [probe lastArgument]]);
+		}
+	}
+
+	{
+		/* ORDER, NOT REGISTRATION: noteA is scheduled FIRST with order 5 and noteB LAST with order 1, so the
+		 * log must read BA — which is the only way the check can tell the two apart. */
+		LoopProbe *probe = [[LoopProbe alloc] init];
+		NSRunLoop *loop = [NSRunLoop currentRunLoop];
+
+		[loop performSelector:@selector(noteA:)
+			       target:probe
+			     argument:nil
+				order:5
+				modes:[NSArray arrayWithObject:NSDefaultRunLoopMode]];
+		[loop performSelector:@selector(noteB:)
+			       target:probe
+			     argument:nil
+				order:1
+				modes:[NSArray arrayWithObject:NSDefaultRunLoopMode]];
+		[loop runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+		check("performers-run-in-order-not-in-registration-order",
+		      [[probe order] isEqualToString:@"BA"],
+		      [NSString stringWithFormat:@"order=%@ (want BA: lower order first)", [probe order]]);
+	}
+
+	{
+		/* THE NARROW CANCEL: -cancelPerformSelector:target:argument: requires the SELECTOR AND ARGUMENT to
+		 * match too, so cancelling noteA must leave noteB standing. */
+		LoopProbe *probe = [[LoopProbe alloc] init];
+		NSRunLoop *loop = [NSRunLoop currentRunLoop];
+
+		[loop performSelector:@selector(noteA:)
+			       target:probe
+			     argument:nil
+				order:0
+				modes:[NSArray arrayWithObject:NSDefaultRunLoopMode]];
+		[loop performSelector:@selector(noteB:)
+			       target:probe
+			     argument:nil
+				order:0
+				modes:[NSArray arrayWithObject:NSDefaultRunLoopMode]];
+		[loop cancelPerformSelector:@selector(noteA:) target:probe argument:nil];
+		[loop runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+		check("cancel-perform-selector-removes-only-that-one",
+		      [[probe order] isEqualToString:@"B"],
+		      [NSString stringWithFormat:@"order=%@ (want B: only noteB survived)", [probe order]]);
+	}
+
+	{
+		/* THE BROAD CANCEL: -cancelPerformSelectorsWithTarget: "ignores the selector and argument" and clears
+		 * the target's requests from every mode — and a DIFFERENT target's performer must survive it, which is
+		 * what makes this a check rather than a "nothing ran" tautology. */
+		LoopProbe *probe = [[LoopProbe alloc] init];
+		LoopProbe *other = [[LoopProbe alloc] init];
+		NSRunLoop *loop = [NSRunLoop currentRunLoop];
+
+		[loop performSelector:@selector(noteA:) target:probe argument:nil order:0
+				modes:[NSArray arrayWithObject:NSDefaultRunLoopMode]];
+		[loop performSelector:@selector(noteB:) target:probe argument:nil order:0
+				modes:[NSArray arrayWithObject:NSDefaultRunLoopMode]];
+		[loop performSelector:@selector(noteA:) target:other argument:nil order:0
+				modes:[NSArray arrayWithObject:NSDefaultRunLoopMode]];
+		[loop cancelPerformSelectorsWithTarget:probe];
+		[loop runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+		check("cancel-perform-selectors-with-target-removes-all-of-them",
+		      [probe fires] == 0 && [other fires] == 1,
+		      [NSString stringWithFormat:@"cancelledTarget=%lu otherTarget=%lu (want 0 and 1)",
+			(unsigned long)[probe fires], (unsigned long)[other fires]]);
+	}
+
+	{
+		/* THE BLOCK FORMS: -performBlock: runs on the loop (Apple's page does not say in which modes; the
+		 * forum resolution the header cites says the default one), and -performInModes:block: waits for ITS
+		 * mode — which the negative half proves. */
+		LoopProbe *probe = [[LoopProbe alloc] init];
+		NSRunLoop *loop = [NSRunLoop currentRunLoop];
+
+		[loop performBlock:^{
+			[probe setBlockRan:YES];
+		}];
+		[loop runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+		check("perform-block-runs-on-the-loop",
+		      [probe blockRan],
+		      @"the block set its flag during a pass");
+	}
+
+	{
+		LoopProbe *probe = [[LoopProbe alloc] init];
+		NSRunLoop *loop = [NSRunLoop currentRunLoop];
+		BOOL afterDefaultMode;
+
+		[loop performInModes:[NSArray arrayWithObject:@"RLProbeMode"]
+			       block:^{
+				       [probe setBlockRan:YES];
+			       }];
+		[loop runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+		afterDefaultMode = [probe blockRan];
+		[loop runMode:@"RLProbeMode" beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+		check("perform-in-modes-block-waits-for-its-mode",
+		      !afterDefaultMode && [probe blockRan],
+		      [NSString stringWithFormat:@"afterDefaultMode=%d afterItsMode=%d",
+			(int)afterDefaultMode, (int)[probe blockRan]]);
+	}
+
+	/* ---- THE COMMON MODES (§62.62's defect): "common" means EVERY mode, for everything ------------------ */
+	{
+		/* THE TIMER HALF, which was always true — and is the REASON the rule exists. */
+		LoopProbe *probe = [[LoopProbe alloc] init];
+		NSRunLoop *loop = [NSRunLoop currentRunLoop];
+		NSTimer *timer = [NSTimer timerWithTimeInterval:0.0
+							 target:probe
+						       selector:@selector(count:)
+						       userInfo:nil
+							repeats:NO];
+
+		[loop addTimer:timer forMode:NSRunLoopCommonModes];
+		[loop runMode:@"RLProbeMode" beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+		check("the-common-mode-carries-a-timer-in-any-mode",
+		      [probe fires] == 1,
+		      [NSString stringWithFormat:@"fires=%lu in RLProbeMode",
+			(unsigned long)[probe fires]]);
+	}
+
+	{
+		/* THE NOTIFICATION HALF, WHICH IS THE DEFECT THIS UNIT FIXED: the queue compared mode names with
+		 * -isEqual:, so a notification enqueued for the COMMON modes could never be posted while a timer
+		 * added for them fired everywhere. One rule now, so a custom mode must carry it. */
+		LoopProbe *probe = [[LoopProbe alloc] init];
+		NSRunLoop *loop = [NSRunLoop currentRunLoop];
+
+		[[NSNotificationCenter defaultCenter] addObserver:probe
+							 selector:@selector(note:)
+							     name:@"rl-common"
+							   object:nil];
+		[[NSNotificationQueue defaultQueue]
+			enqueueNotification:[NSNotification notificationWithName:@"rl-common" object:nil]
+			     postingStyle:NSPostASAP
+			     coalesceMask:NSNotificationNoCoalescing
+				 forModes:[NSArray arrayWithObject:NSRunLoopCommonModes]];
+		[loop runMode:@"RLProbeMode" beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+		check("the-common-mode-carries-a-notification-in-any-mode",
+		      [probe notifications] == 1,
+		      [NSString stringWithFormat:@"notifications=%lu in RLProbeMode (was impossible before §62.62)",
+			(unsigned long)[probe notifications]]);
+		[[NSNotificationCenter defaultCenter] removeObserver:probe];
 	}
 
 	printf("FOUNDATION-RUNLOOP RESULT ok=%d fail=%d\n", okc, failc);

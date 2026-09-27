@@ -41,11 +41,16 @@ EVERY RUN IN THE PROBE IS BOUNDED BY A DEADLINE: `-run` never returns while a re
 live, so a probe that called it would hang rather than fail.
 
 NAMED ABSENT, AND EACH ONE IS CURRENT APPLE API RATHER THAN A DEPRECATED SURFACE: `-limitDateForMode:`
-and `-acceptInputForMode:beforeDate:` (the other two one-pass doors), the
-`-performSelector:target:argument:order:modes:` family with its two cancel forms (a scheduled-perform
-queue, which no caller here needs yet), `-getCFRunLoop` (there is no CF in this tree), and
-`NSRunLoopCommonModes` as a real mode SET rather than the single name it is treated as. THE TWO THAT
-CAME OFF THIS LIST ARE RUN-LOOP SOURCES (W6a) and APPLE'S PORT DOOR (W6b).
+and `-acceptInputForMode:beforeDate:` (the other two one-pass doors), `-getCFRunLoop` (there is no CF in
+this tree), and `NSRunLoopCommonModes` as a real mode SET rather than the single name it is treated as.
+THE THREE THAT CAME OFF THIS LIST ARE RUN-LOOP SOURCES (W6a), APPLE'S PORT DOOR (W6b) and — as of §62.62 —
+THE PERFORMER FAMILY (`-performSelector:target:argument:order:modes:`, its two cancel forms,
+`-performBlock:` and `-performInModes:block:`), each with checks.
+
+AND §62.62'S EIGHT CHECKS ARE ALSO WHERE A DEFECT OF §62.61 WAS CAUGHT AND FIXED: the notification queue
+compared mode NAMES with `-isEqual:`, so `forModes:@[NSRunLoopCommonModes]` could never be posted, while a
+timer added for the common modes fires in every mode. `the-common-mode-carries-a-timer-in-any-mode` and
+`the-common-mode-carries-a-notification-in-any-mode` are the pair that pins the single rule for both.
 """
 
 import re
@@ -58,7 +63,15 @@ CHECKS = ("timer-fires-once", "timer-repeats-until-invalidated", "timer-order-fo
           "runmode-one-pass",
           "source-fires-when-ready", "source-idle-does-not-fire", "source-keeps-loop-alive",
           "source-waits-for-readiness", "source-dead-target-is-skipped",
-          "runloop-addport-schedules", "runloop-removeport-unschedules")
+          "runloop-addport-schedules", "runloop-removeport-unschedules",
+          "a-performer-runs-at-the-start-of-the-next-pass",
+          "performers-run-in-order-not-in-registration-order",
+          "cancel-perform-selector-removes-only-that-one",
+          "cancel-perform-selectors-with-target-removes-all-of-them",
+          "perform-block-runs-on-the-loop",
+          "perform-in-modes-block-waits-for-its-mode",
+          "the-common-mode-carries-a-timer-in-any-mode",
+          "the-common-mode-carries-a-notification-in-any-mode")
 
 
 class Case(BaseCase):

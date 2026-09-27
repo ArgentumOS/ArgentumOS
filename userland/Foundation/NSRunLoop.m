@@ -27,6 +27,9 @@
  * is about to wait" — so the loop has to tell the queue which phase it reached. This is the only file that
  * knows, and FNRunLoopQueue.h is the internal contract between them. */
 #import <Foundation/FNRunLoopQueue.h>
+/* AND THE MODE RULE ALL THREE OF THEM SHARE (§62.62) — a timer, a notification and a performer all ask "may this
+ * be delivered in the mode the loop is running?", and they must not answer it differently. */
+#import <Foundation/FNRunLoopModes.h>
 /* THE WEAK API LIVES HERE (objc_storeWeak/objc_loadWeak, documented as zeroing), not in
  * <objc/runtime.h>. THE FOUNDATION LIBRARY IS MRC - ARC is a per-file choice and no file in this
  * directory takes it - so a non-owning reference is spelled with the runtime's own functions,
@@ -293,6 +296,84 @@ static double fn_now(void)
 
 @end
 
+/* ====================================================================================================
+ * THE PERFORMER OBJECT (§62.62) — declared HERE, before the class that keeps them, because an object type has to
+ * be known before it is used and the doors belong in the class's own block, where Apple declares them. (This
+ * comment once SPELLED that block's keyword, which made tools/foundation-sweep.py attribute every method in this
+ * file to a class name ending in a bracket — the standing trap §62.57 records, and it cost a build here too.)
+ *
+ * A PERFORMER IS A REQUEST, NOT A CALL: Apple's -performSelector:target:argument:order:modes: "sets up a timer to
+ * perform the aSelector message ... at the start of the next run loop iteration", so nothing sends a message when
+ * the door is called — the door SCHEDULES, and -fnRunPerformersInMode: (from the top of -runMode:beforeDate:) is
+ * what sends.
+ *
+ * AND THE RECEIVER OWNS WHAT IT WAS GIVEN: Apple's own words — "the receiver retains the target and anArgument
+ * objects until the timer for the message fires". Both are RETAINED for as long as the request is pending, which
+ * is the difference between a request that survives its caller and one that does not. The block forms hold a
+ * Block_copy for the same reason.
+ * ==================================================================================================== */
+
+#include <Block.h>
+
+@interface FNPerformer : NSObject
+{
+@public
+	BOOL _isBlock;
+	SEL _selector;
+	id _target;		/* RETAINED while pending (Apple's rule, above) */
+	id _argument;		/* RETAINED */
+	id _block;		/* Block_copy'd, released in -dealloc */
+	NSUInteger _order;
+	NSArray *_modes;	/* retained; never nil and never empty */
+}
+@end
+
+@implementation FNPerformer
+
+- (void)dealloc
+{
+	[_target release];
+	[_argument release];
+	[_modes release];
+	if (_block != nil) {
+		Block_release(_block);
+	}
+	[super dealloc];		/* NSObject's -dealloc is what frees the instance */
+}
+
+@end
+
+/* CALL A BLOCK WITHOUT SPELLING ITS CAST AT THE CALL SITE, and that is a GATE requirement rather than a style
+ * one: tools/foundation-gate.py collects the names a file's block declarations introduce with a regex whose
+ * second alternative matches a block-CAST expression followed by an identifier, so an inline cast at a call site
+ * makes the CAST'S RECEIVER a "block name" for the whole file — and every later release send to that receiver is
+ * then reported as a block owned with a message send. Measured here: the first version of the performer loop was
+ * flagged twice, on two `[performer release]` sends in OTHER methods. The cast lives in one place instead — and
+ * THIS COMMENT HAD TO STOP SPELLING IT OUT, because the gate reads comments too (it flagged the sentence above
+ * before it flagged any code). */
+static void fn_invoke_block(id block)
+{
+	if (block != nil) {
+		((void (^)(void))block)();
+	}
+}
+
+/* MAY THIS PERFORMER BE SENT IN `mode`? The list-walking half of the shared rule (§62.62's FNRunLoopModes.h). */
+static BOOL fn_performer_modes_allow(FNPerformer *performer, NSString *mode)
+{
+	NSUInteger i;
+
+	if (mode == nil || [performer->_modes count] == 0) {
+		return NO;
+	}
+	for (i = 0; i < [performer->_modes count]; i++) {
+		if (FNRunLoopModeAllows([performer->_modes objectAtIndex:i], mode)) {
+			return YES;
+		}
+	}
+	return NO;
+}
+
 @implementation NSRunLoop
 
 + (NSRunLoop *)currentRunLoop
@@ -347,17 +428,30 @@ static double fn_now(void)
 	[_modes addObject:mode];
 }
 
+/* THE MODE RULE, DEFINED ONCE (§62.62) — AND IT IS THE ONLY DEFINITION. This rule used to live here as a static
+ * for timers while NSNotificationQueue.m kept a SECOND, WRONGER copy (`-isEqual:` on the names, no common-modes
+ * clause), so a notification enqueued `forModes:@[NSRunLoopCommonModes]` could never be posted even though a
+ * timer added for the common modes fires in every mode. One function now, with three callers: the timers below,
+ * the notification queue, and the performers. */
+BOOL FNRunLoopModeAllows(NSString *entryMode, NSString *runningMode)
+{
+	if (entryMode == nil || runningMode == nil) {
+		return NO;
+	}
+	if ([entryMode isEqualToString:runningMode]) {
+		return YES;
+	}
+	if ([entryMode isEqualToString:NSRunLoopCommonModes]) {
+		return YES;			/* the common set is everything */
+	}
+	return [runningMode isEqualToString:NSRunLoopCommonModes];
+}
+
 /* DOES A MODE FIRE THIS TIMER? The mode it was added for, or the common modes, or the loop is
  * running the common modes — which is the whole of what "common" means here. */
 static BOOL fn_mode_fires(NSString *timerMode, NSString *runningMode)
 {
-	if ([timerMode isEqualToString:runningMode]) {
-		return YES;
-	}
-	if ([timerMode isEqualToString:NSRunLoopCommonModes]) {
-		return YES;
-	}
-	return [runningMode isEqualToString:NSRunLoopCommonModes];
+	return FNRunLoopModeAllows(timerMode, runningMode);
 }
 
 - (BOOL)fnHasLiveTimersForMode:(NSString *)mode
@@ -416,6 +510,10 @@ static BOOL fn_mode_fires(NSString *timerMode, NSString *runningMode)
 
 	(void)limit;
 	_currentMode = mode != nil ? mode : NSDefaultRunLoopMode;
+	/* THE PERFORMERS GO FIRST, AND THAT IS APPLE'S WORD FOR IT (§62.62): `-performSelector:…:modes:` "sets up a
+	 * timer to perform the aSelector message on the receiver AT THE START OF THE NEXT RUN LOOP ITERATION", so
+	 * this is that moment — the top of a pass, before the timers are examined. */
+	[self fnRunPerformersInMode:_currentMode];
 	for (i = 0; i < [_timers count]; i++) {
 		NSTimer *timer = [_timers objectAtIndex:i];
 
@@ -450,11 +548,15 @@ static BOOL fn_mode_fires(NSString *timerMode, NSString *runningMode)
  * A QUEUED NOTIFICATION IS WORK (§62.61), and leaving it out of this answer would be a real bug rather than a
  * tidiness point: `-runUntilDate:` asks this question BEFORE its wait, so a loop whose only work was a queued
  * NSPostWhenIdle notification would decide it had nothing to do and return without ever reaching the phase that
- * would post it. */
+ * would post it.
+ *
+ * AND SO IS A PENDING PERFORMER (§62.62), for exactly the same reason — the loop has to enter to reach the top
+ * of a pass, where a performer runs. */
 - (BOOL)fnHasLiveWorkForMode:(NSString *)mode
 {
 	return [self fnHasLiveTimersForMode:mode] || [self fnHasLiveSourcesForMode:mode] ||
-	       [NSNotificationQueue fnHasPendingWorkForMode:mode];
+	       [NSNotificationQueue fnHasPendingWorkForMode:mode] ||
+	       [self fnHasPendingPerformerForMode:mode];
 }
 
 /* APPLE'S PORT DOOR: IT IS THE FORWARD AND NOTHING ELSE. A port already knows how to be watched —
@@ -638,6 +740,167 @@ static BOOL fn_mode_fires(NSString *timerMode, NSString *runningMode)
 		}
 		[self runMode:_currentMode beforeDate:nil];
 	}
+}
+
+/* ---- THE PERFORMERS (§62.62): Apple's five doors, in the class's own block, sent at the top of a pass. The
+ * request object and the mode helper are declared above it, because an object type has to be known before the
+ * class that keeps it — and the doors belong here rather than in a category of their own because Apple declares
+ * them on this class, which is where a reader looks for them. */
+
+/* CREATED ON FIRST USE, for the same reason the sources are: a run loop is made by three different doors
+ * (+currentRunLoop, +mainRunLoop and NSObject's -init). */
+- (NSMutableArray *)fnPerformers
+{
+	if (_performers == nil) {
+		_performers = [[NSMutableArray alloc] init];
+	}
+	return _performers;
+}
+
+- (void)performSelector:(SEL)aSelector
+		 target:(id)target
+	       argument:(nullable id)arg
+		  order:(NSUInteger)order
+		  modes:(NSArray *)modes
+{
+	FNPerformer *performer;
+
+	if (target == nil) {
+		return;		/* there is nothing to send to; Apple publishes no meaning for a nil target here */
+	}
+	performer = [[FNPerformer alloc] init];
+	performer->_selector = aSelector;
+	performer->_target = [target retain];
+	performer->_argument = [arg retain];
+	performer->_order = order;
+	performer->_modes = [[NSArray alloc] initWithArray:(modes != nil && [modes count] > 0)
+				   ? modes : [NSArray arrayWithObject:NSDefaultRunLoopMode]];
+	[[self fnPerformers] addObject:performer];
+	[performer release];		/* ... the array owns it now */
+}
+
+- (void)performBlock:(void (^)(void))block
+{
+	/* APPLE'S PAGE DOES NOT STATE THE MODES; the developer-forum resolution cited in the header does — the
+	 * default mode — and it is implemented here rather than inferred. */
+	[self performInModes:[NSArray arrayWithObject:NSDefaultRunLoopMode] block:block];
+}
+
+- (void)performInModes:(NSArray *)modes block:(void (^)(void))block
+{
+	FNPerformer *performer;
+
+	if (block == nil) {
+		return;
+	}
+	performer = [[FNPerformer alloc] init];
+	performer->_isBlock = YES;
+	performer->_block = Block_copy(block);	/* the runtime's own entry point: the run loop holds it past the call */
+	performer->_modes = [[NSArray alloc] initWithArray:(modes != nil && [modes count] > 0)
+				   ? modes : [NSArray arrayWithObject:NSDefaultRunLoopMode]];
+	[[self fnPerformers] addObject:performer];
+	[performer release];
+}
+
+/* THE TWO CANCELS DIFFER IN WHAT THEY MATCH, and Apple states the difference in as many words:
+ * -cancelPerformSelector:target:argument: requires "the selector and argument as well as the target", while
+ * -cancelPerformSelectorsWithTarget: "cancels the previously scheduled messages associated with the target,
+ * IGNORING THE SELECTOR AND ARGUMENT ... from ALL MODES". Neither touches a block performer, which has no
+ * target to match. */
+- (void)cancelPerformSelector:(SEL)aSelector target:(id)target argument:(nullable id)arg
+{
+	NSUInteger i = 0;
+
+	while (_performers != nil && i < [_performers count]) {
+		FNPerformer *performer = [_performers objectAtIndex:i];
+
+		if (!performer->_isBlock && performer->_selector == aSelector &&
+		    performer->_target == target && performer->_argument == arg) {
+			[_performers removeObjectAtIndex:i];	/* the array releases it */
+			continue;
+		}
+		i++;
+	}
+}
+
+- (void)cancelPerformSelectorsWithTarget:(id)target
+{
+	NSUInteger i = 0;
+
+	while (_performers != nil && i < [_performers count]) {
+		FNPerformer *performer = [_performers objectAtIndex:i];
+
+		if (!performer->_isBlock && performer->_target == target) {
+			[_performers removeObjectAtIndex:i];
+			continue;
+		}
+		i++;
+	}
+}
+
+/* THE SENDING, AND IT TAKES THE DUE ONES OUT FIRST so that a performer scheduling another performer cannot loop
+ * this call forever — the new request belongs to the NEXT pass, which is what "at the start of the next run loop
+ * iteration" means for it. */
+- (void)fnRunPerformersInMode:(NSString *)mode
+{
+	NSMutableArray *due = [NSMutableArray array];
+	NSUInteger i, j;
+
+	if (_performers == nil) {
+		return;
+	}
+	i = 0;
+	while (i < [_performers count]) {
+		FNPerformer *performer = [_performers objectAtIndex:i];
+
+		if (fn_performer_modes_allow(performer, mode)) {
+			[due addObject:performer];
+			[_performers removeObjectAtIndex:i];
+			continue;
+		}
+		i++;
+	}
+	/* "MESSAGES WITH A LOWER ORDER VALUE ARE SENT BEFORE MESSAGES WITH A HIGHER ORDER VALUE" — and an insertion
+	 * sort is STABLE, so two performers with the same order keep the order they were scheduled in.
+	 *
+	 * `key` IS RETAINED FOR THE DURATION, WHICH IS NOT OPTIONAL UNDER MRC: `[due objectAtIndex:i]` is a BORROWED
+	 * reference, and the first `-replaceObjectAtIndex:` below releases whatever sat in index i — which for the
+	 * first swap IS `key`. Without the retain the sort reads freed memory (measured: SIGSEGV inside -objc_retain
+	 * the first time two performers with different orders were scheduled). The sibling sort in
+	 * NSNotificationQueue.m had the same shape and was fixed with it. */
+	for (i = 1; i < [due count]; i++) {
+		FNPerformer *key = [[due objectAtIndex:i] retain];
+
+		j = i;
+		while (j > 0 && ((FNPerformer *)[due objectAtIndex:j - 1])->_order > key->_order) {
+			[due replaceObjectAtIndex:j withObject:[due objectAtIndex:j - 1]];
+			j--;
+		}
+		[due replaceObjectAtIndex:j withObject:key];
+		[key release];
+	}
+	for (i = 0; i < [due count]; i++) {
+		FNPerformer *performer = [due objectAtIndex:i];
+
+		if (performer->_isBlock) {
+			fn_invoke_block(performer->_block);
+		} else if (performer->_target != nil) {
+			[performer->_target performSelector:performer->_selector
+						 withObject:performer->_argument];
+		}
+	}
+}
+
+- (BOOL)fnHasPendingPerformerForMode:(NSString *)mode
+{
+	NSUInteger i;
+
+	for (i = 0; _performers != nil && i < [_performers count]; i++) {
+		if (fn_performer_modes_allow([_performers objectAtIndex:i], mode)) {
+			return YES;
+		}
+	}
+	return NO;
 }
 
 @end

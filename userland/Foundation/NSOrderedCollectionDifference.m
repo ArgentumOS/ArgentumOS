@@ -545,19 +545,26 @@ static void fn_difference_partition(NSArray *changes, NSArray **insertions, NSAr
 
 /* SORT AN INDEX LIST ASCENDING. The script walks BACKWARDS from the end, so it emits BOTH lists in descending
  * order; every consumer here wants ascending, and the lists are short enough that an insertion sort keeps the
- * ordering rule in one readable place. */
+ * ordering rule in one readable place.
+ *
+ * `key` IS RETAINED FOR THE DURATION, AND THAT IS AN MRC RULE RATHER THAN A PRECAUTION: `[indexes objectAtIndex:i]`
+ * is a BORROWED reference, and the first `-replaceObjectAtIndex:` releases whatever sat in index i — which is
+ * `key` itself. This version survived only because the objects here are NSNumbers the caller also put in an
+ * autorelease pool; the SAME SHAPE crashed in NSRunLoop's performer sort, whose objects were owned by the array
+ * alone (§62.62), and both were fixed together. */
 static void fn_sort_ascending(NSMutableArray *indexes)
 {
 	NSUInteger i, j;
 
 	for (i = 1; i < [indexes count]; i++) {
-		id key = [indexes objectAtIndex:i];
+		id key = [[indexes objectAtIndex:i] retain];
 		NSUInteger keyValue = [key unsignedIntegerValue];
 
 		for (j = i; j > 0 && [[indexes objectAtIndex:j - 1] unsignedIntegerValue] > keyValue; j--) {
 			[indexes replaceObjectAtIndex:j withObject:[indexes objectAtIndex:j - 1]];
 		}
 		[indexes replaceObjectAtIndex:j withObject:key];
+		[key release];
 	}
 }
 

@@ -13417,6 +13417,73 @@ regenerated (`App Support / Notifications`: all classes shipped). `foundation-ga
 public headers** open a nullability region; `--unimplemented`: **0 NEW** (1 baselined). The probe needed STAGING
 for the guest (mk/20-userland.mk's probe list is hand-written) and an entry in `HOST_PROBES`.
 
+## §62.62 — `NSRunLoop`'S PERFORMERS, AND THE MODE RULE THAT HAD TWO SPELLINGS (2026-09-26)
+
+**NO LEDGER ROW MOVES**, and that is said first because this unit is the other kind: `NSRunLoop` already ships, so
+what landed is METHOD-level — **Apple's five performer doors** — plus, and more importantly, **one defect the
+previous unit exposed, fixed by there being one mode rule instead of two.**
+
+**THE DEFECT, MEASURED: `forModes:@[NSRunLoopCommonModes]` COULD NEVER POST A NOTIFICATION.** A timer added for
+the common modes fires in EVERY mode — NSRunLoop.h has said so since F13.18, and `fn_mode_fires` implemented it —
+while NSNotificationQueue's own check compared mode names with `-isEqual:` and had no common-modes clause at all.
+So the same mode list meant two different things depending on what it was attached to, and one of the two could
+never fire. **The fix is not a clause added to the second copy but the second copy DELETED:** `FNRunLoopModeAllows`
+(FNRunLoopModes.h) is now the one definition, and the timers, the notification queue and the performers all call
+it. Two checks pin the pair — `the-common-mode-carries-a-timer-in-any-mode` (which was always true, and is the
+reason the rule exists) and `the-common-mode-carries-a-notification-in-any-mode` (which was impossible before
+this unit).
+
+**THE FIVE DOORS, AND THREE CLAUSES A GUESS GETS WRONG.** Read off Apple's pages rather than recalled:
+`-performSelector:target:argument:order:modes:`, its two cancels, and the two block forms.
+
+* **A PERFORMER IS A REQUEST, NOT A CALL**: the door "sets up a timer to perform the aSelector message ... AT THE
+  START OF THE NEXT RUN LOOP ITERATION", so nothing is sent when it is scheduled — the top of a pass in
+  `-runMode:beforeDate:` is where `-fnRunPerformersInMode:` sends.
+* **THE RECEIVER RETAINS THE TARGET AND THE ARGUMENT** until the message goes out. That is an ownership rule with
+  teeth, and it is why the request object holds both rather than borrowing them.
+* **A LOWER `order` GOES FIRST** — "messages with a lower order value are sent before messages with a higher order
+  value" — which the probe checks by scheduling in the OPPOSITE order to the one it asserts (`BA`).
+* **THE BLOCK FORMS** are macOS 10.12+, and `-performBlock:`'s MODES ARE NOT ON APPLE'S PAGE — the resolution is
+  on Apple's own developer forum ("equivalent to `-performInModes:block:` with an array containing the default run
+  loop mode"), so that is what this implements, cited where it is followed.
+
+**AND THE PROBE FOUND AN MRC USE-AFTER-FREE THAT HAD BEEN SITTING IN THE DIFFERENCE UNIT'S SORT.** The insertion
+sort that puts the due performers in `order` read `key` as a BORROWED reference and then `-replaceObjectAtIndex:`d
+the slot `key` sat in — which RELEASES it — so the next line sorted a dangling pointer: **SIGSEGV inside
+`-objc_retain`**, found with gdb the first time two performers were scheduled. **The same shape is in
+`fn_sort_ascending` in NSOrderedCollectionDifference.m**, where it had passed every check only because those
+objects were NSNumbers the caller had also put in an autorelease pool — a lucky save, not a correct one. Both now
+retain `key` for the duration, and the fix is commented where it lives so the next insertion sort in this thread
+does not have to rediscover it.
+
+**TWO TOOL TRAPS, EACH OF WHICH COST A BUILD, AND BOTH ARE THE SAME LESSON IN DIFFERENT CLOTHES:**
+
+1. **A COMMENT THAT SPELLS THE BLOCK KEYWORD STOLE THE SWEEP'S ATTRIBUTION** — §62.57's standing trap, hit again.
+   One sentence of prose ("the doors live inside the class's own block keyword ...") made
+   `tools/foundation-sweep.py` attribute EVERY method in NSRunLoop.m to a class name ending in a bracket, so
+   `--unimplemented` reported **11 of NSRunLoop's own selectors as implemented nowhere** — including
+   `-runUntilDate:`, which had been there since F13.18.
+2. **AND THEN THE FIX'S OWN COMMENT TRIPPED THE GATE, WHICH READS COMMENTS TOO.** `tools/foundation-gate.py`
+   collects a file's block-typed names with a regex whose second alternative matches a block CAST followed by an
+   identifier — so the inline cast in the send loop made the performer object a "block name" for the whole file,
+   and the gate reported two `[performer release]` sends in OTHER methods as blocks owned with a message send.
+   Moving the cast into a helper fixed the code; the COMMENT that explained it had to stop spelling the pattern
+   out, because it flagged the sentence before it flagged anything else.
+
+**WHAT IS NOT HERE, AND THE LIST SHRANK RATHER THAN GREW** (the header's own list was corrected rather than
+appended to): run-loop OBSERVERS, `-runLoop`/`-getCFRunLoop` — CoreFoundation doors, and this system has no CF, so
+there is nothing for them to answer, which is the ground §11.6.1's D13 register already gives `NSFileSecurity` —
+and `NSRunLoopCommonModes` as a real mode SET rather than the single name it is. It no longer names the SOURCES
+(§43) or the PERFORMERS (this unit).
+
+**VERIFIED.** Host: `make host-foundation-run` — **30 probes, every tally `fail=0`**, with `foundation_runloop` at
+**22/22** (14 old checks + 8 new). Guest: `make testimg` then
+`make test TESTS='foundation_runloop,foundation_difference,foundation_notificationqueue'` → **`TESTS-OK 3/3
+case(s), 18/18 check(s) in 17s`** in ONE shared session — the three probes the mode-rule change could touch, all
+green on the first try (runloop 22, difference 22, notificationqueue 10). `foundation-sweep --check`: consistent
+(no row moves, so no `--refresh` was needed); `--unimplemented`: **0 NEW** (1 baselined). `foundation-gate`: **OK —
+519 files, 194 of 198 public headers** open a nullability region.
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else
