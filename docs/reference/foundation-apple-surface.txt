@@ -34,11 +34,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  175   open   50   struck   48
+#   class      shipped  178   open   47   struck   48
 #   protocol   shipped   31   open    9   struck    5
 #   macro      shipped  116   open    5   struck  132
-#   enum       shipped  133   open   18   struck    9
-#   case       shipped 1115   open  112   struck   75
+#   enum       shipped  136   open   15   struck    9
+#   case       shipped 1132   open   95   struck   75
 #   func       shipped  115   open   62   struck   12
 #   var        shipped  641   open   66   struck  207
 #   typealias  shipped   65   open    6   struck    5
@@ -332,10 +332,10 @@ case	shipped	NSDocumentationDirectory	NSFileManager	Files and Data Persistence /
 case	shipped	NSDownloadsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	struck	NSEndsWithComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	shipped	NSEndsWithPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	open	NSEnergyFormatterUnitCalorie	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	open	NSEnergyFormatterUnitJoule	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	open	NSEnergyFormatterUnitKilocalorie	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	open	NSEnergyFormatterUnitKilojoule	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSEnergyFormatterUnitCalorie	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSEnergyFormatterUnitJoule	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSEnergyFormatterUnitKilocalorie	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSEnergyFormatterUnitKilojoule	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	shipped	NSEnumerationConcurrent		Fundamentals / Iteration / Constants	-	objc
 case	shipped	NSEnumerationReverse		Fundamentals / Iteration / Constants	-	objc
 case	struck	NSEqualToComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
@@ -581,14 +581,14 @@ case	shipped	NSKeyValueObservingOptionPrior		Reference / Enumerations / Constant
 case	shipped	NSKeyValueSetSetMutation		Reference / Enumerations / Enumeration Cases	-	objc
 case	shipped	NSKeyValueUnionSetMutation		Reference / Enumerations / Enumeration Cases	-	objc
 case	shipped	NSKeyValueValidationError	NSError	App Support / User-Relevant Errors / Error Codes / Miscellaneous Errors	-	objc
-case	open	NSLengthFormatterUnitCentimeter	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	open	NSLengthFormatterUnitFoot	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	open	NSLengthFormatterUnitInch	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	open	NSLengthFormatterUnitKilometer	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	open	NSLengthFormatterUnitMeter	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	open	NSLengthFormatterUnitMile	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	open	NSLengthFormatterUnitMillimeter	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	open	NSLengthFormatterUnitYard	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSLengthFormatterUnitCentimeter	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSLengthFormatterUnitFoot	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSLengthFormatterUnitInch	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSLengthFormatterUnitKilometer	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSLengthFormatterUnitMeter	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSLengthFormatterUnitMile	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSLengthFormatterUnitMillimeter	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSLengthFormatterUnitYard	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	struck	NSLessThanComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	struck	NSLessThanOrEqualToComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	shipped	NSLessThanOrEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
@@ -617,11 +617,11 @@ case	open	NSMachPortDeallocateNone	NSMachPort	Low-Level Utilities / Legacy / Leg
 case	open	NSMachPortDeallocateReceiveRight	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
 case	open	NSMachPortDeallocateSendRight	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
 case	open	NSMappedRead	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
-case	open	NSMassFormatterUnitGram	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	open	NSMassFormatterUnitKilogram	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	open	NSMassFormatterUnitOunce	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	open	NSMassFormatterUnitPound	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	open	NSMassFormatterUnitStone	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSMassFormatterUnitGram	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSMassFormatterUnitKilogram	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSMassFormatterUnitOunce	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSMassFormatterUnitPound	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
+case	shipped	NSMassFormatterUnitStone	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	shipped	NSMatchesPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSMatchingAnchored	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 case	shipped	NSMatchingCompleted	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	objc
@@ -1397,7 +1397,7 @@ class	open	NSDistantObject		Low-Level Utilities / Legacy / Legacy	deprecated	obj
 class	open	NSDistantObjectRequest		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	open	NSDistributedLock		Low-Level Utilities / Threads and Locking	-	objc
 class	open	NSDistributedNotificationCenter		App Support / Cross-Process Notifications	-	objc
-class	open	NSEnergyFormatter		Fundamentals / Deprecated	deprecated	objc
+class	shipped	NSEnergyFormatter		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSEnumerator		Fundamentals / Iteration	-	objc
 class	shipped	NSError		App Support / User-Relevant Errors	-	objc
 class	shipped	NSException		App Support / Exceptions	-	objc
@@ -1436,7 +1436,7 @@ class	open	NSKeyValueSharedObservers		Reference / Classes	-	objc
 class	open	NSKeyValueSharedObserversSnapshot		Reference / Classes	-	objc
 class	shipped	NSKeyedArchiver		Files and Data Persistence / Keyed Archivers	-	objc
 class	shipped	NSKeyedUnarchiver		Files and Data Persistence / Keyed Archivers	-	objc
-class	open	NSLengthFormatter		Fundamentals / Deprecated	deprecated	objc
+class	shipped	NSLengthFormatter		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSLinguisticTagger		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSListFormatter		Fundamentals / Lists	-	objc
 class	shipped	NSLocale		Fundamentals / Localization	-	objc
@@ -1446,7 +1446,7 @@ class	struck	NSLogicalTest		App Support / Object Matching Tests	declined	objc
 class	open	NSMachBootstrapServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	open	NSMachPort		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSMapTable		Fundamentals / Pointer Collections	-	objc
-class	open	NSMassFormatter		Fundamentals / Deprecated	deprecated	objc
+class	shipped	NSMassFormatter		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSMeasurement		Fundamentals / Essentials	-	objc
 class	shipped	NSMeasurementFormatter		Fundamentals / Measurements	-	objc
 class	open	NSMessagePort		Low-Level Utilities / Legacy / Legacy	deprecated	objc
@@ -1654,7 +1654,7 @@ enum	shipped	NSDateIntervalFormatterStyle	NSDateIntervalFormatter	Fundamentals /
 enum	shipped	NSDecodingFailurePolicy	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder	-	swift-page
 enum	shipped	NSDirectoryEnumerationOptions	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 enum	shipped	NSDistributedNotificationOptions	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants	-	objc
-enum	open	NSEnergyFormatterUnit	NSEnergyFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
+enum	shipped	NSEnergyFormatterUnit	NSEnergyFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
 enum	shipped	NSEnumerationOptions		Fundamentals / Iteration	-	objc
 enum	shipped	NSExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	swift-page
 enum	shipped	NSFileCoordinatorReadingOptions	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants	-	objc
@@ -1691,12 +1691,12 @@ enum	shipped	NSJSONWritingOptions	NSJSONSerialization	Files and Data Persistence
 enum	shipped	NSKeyValueChange		Reference / Enumerations	-	objc
 enum	shipped	NSKeyValueObservingOptions		Reference / Enumerations	-	objc
 enum	shipped	NSKeyValueSetMutationKind		Reference / Enumerations	-	objc
-enum	open	NSLengthFormatterUnit	NSLengthFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
+enum	shipped	NSLengthFormatterUnit	NSLengthFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
 enum	shipped	NSLinguisticTaggerOptions	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags	deprecated	objc
 enum	shipped	NSLinguisticTaggerUnit	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
 enum	shipped	NSLocaleLanguageDirection	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language	-	objc
 enum	open	NSMachPortOptions	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
-enum	open	NSMassFormatterUnit	NSMassFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
+enum	shipped	NSMassFormatterUnit	NSMassFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
 enum	shipped	NSMatchingFlags	NSRegularExpression	Fundamentals / Pattern Matching / Constants	-	objc
 enum	shipped	NSMatchingOptions	NSRegularExpression	Fundamentals / Pattern Matching / Constants	-	objc
 enum	shipped	NSMeasurementFormatterUnitOptions	NSMeasurementFormatter	Fundamentals / Measurements / Specifying the Format	-	swift-page

@@ -98,6 +98,9 @@
 #import <Foundation/NSPredicate.h>
 #import <Foundation/NSExpression.h>
 #import <Foundation/NSFormatter.h>
+#import <Foundation/NSLengthFormatter.h>
+#import <Foundation/NSMassFormatter.h>
+#import <Foundation/NSEnergyFormatter.h>
 #import <Foundation/NSDateFormatter.h>
 #import <Foundation/NSNumberFormatter.h>
 #import <Foundation/NSListFormatter.h>

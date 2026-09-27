@@ -3508,7 +3508,7 @@ vanishing.
 | **Fundamentals / Date Formatting** | all classes shipped | — |
 | **Fundamentals / Date Representations** | all classes shipped | — |
 | **Fundamentals / Dates and times** | all classes shipped | — |
-| **Fundamentals / Deprecated** | 4 open | `NSCalendarDate`, `NSEnergyFormatter`, `NSLengthFormatter`, `NSMassFormatter` |
+| **Fundamentals / Deprecated** | 1 open | `NSCalendarDate` |
 | **Fundamentals / Electricity** | all classes shipped | — |
 | **Fundamentals / Energy, Heat, and Light** | all classes shipped | — |
 | **Fundamentals / Essentials** | all classes shipped | — |
@@ -12976,6 +12976,46 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.50 — THE FORMATTER TRIO: ONE SHAPE THREE TIMES, AND A UNIT THAT HAD TO MEAN SOMETHING (2026-09-26)
+
+**WHAT SHIPPED: TWENTY-THREE ROWS, AND THIS TIME BOTH KINDS.** The 20 attributed rows — `NSLengthFormatter` 9,
+`NSMassFormatter` 6, `NSEnergyFormatter` 5, each an enum and its unit cases — **and the three CLASS rows**, which
+sits in the other half of the open list (§62.49's re-ranking: `why=-`, never deprecated and never declared). A unit
+that serves the policy's list and the audit's list at once is the shape to prefer from here. The three families now
+read `shipped` with nothing open, and **the open count is 328 → 305.**
+
+**THE SHAPE IS THE HOUSE'S, AND IT WAS TAKEN FROM A SIBLING RATHER THAN INVENTED.** `NSByteCountFormatter` already
+did the whole job one quantity over: a TABLE of units, a BASE unit to carry a measurement between doors, a
+NATURAL-UNIT chooser, and static helpers owned per file (its own comment records that the decimal-separator helper
+is static there *and* here, deliberately). The trio follows it exactly, so a reader who knows one knows all three.
+
+**AND THE ARITHMETIC IS THE ONLY PLACE A FORMATTER CAN BE WRONG, SO THE PROBE MEASURES VALUES.** 1500 m is
+`1.5 km`; half a kilogram is `500 g`; 1000 J is `1 kJ`; 836800 J is `200 kcal`; a person 1.75 m tall is `5 ft …
+in`; 70 kg is `154.3 lb`. **THE CHOOSER IS MEASURED IN BOTH DIRECTIONS** — 1500 m picks kilometres and 0.0005 m
+picks millimetres — because a chooser stuck at one end of its table would satisfy half the checks and look right.
+The last check is the CONTROL: the same measurement with the person flag OFF is metric, so a flag that changed
+nothing fails there.
+
+**THE LOCALE STANCE IS STATED RATHER THAN ASSUMED.** This library formats with the root locale, so the DEFAULT
+family is metric and `forPersonHeightUse` / `forPersonMassUse` / `forFoodEnergyUse` are what ask for the other one.
+Energy's flag is not metric-versus-imperial — energy has no imperial units — and it chooses the CALORIE family the
+way a food label does, which is said in the header rather than left for a caller to discover. The unit VALUES are
+ours under §11.6.1 D2 (Apple prints the names and not the numbers), with a stated scheme: metric ascending, then
+the imperial units in the documentation's order.
+
+**VERIFIED.** `foundation_quantity_formatters` is **8/8 green in one guest run**, its case 6/6. Regressions:
+`foundation_formatters` 6/6 and `foundation_numberformatter` 6/6 — the family this joins, and the umbrella changed
+to carry the three headers.
+
+**AND THE UNIT COST FOUR BUILD CYCLES TO A HABIT RATHER THAN TO THE CODE.** `+[NSSet setWithObjects:]` is a
+varargs constructor this library does not declare, and the replacement — `setWithArray:` with `arrayWithObjects:` —
+cost FOUR cycles to a script that chased closing brackets across multi-line calls and kept missing. The lesson is
+recorded where it belongs: **a heuristic that counts brackets costs turns; read the text, then make one exact
+edit** — which closed all three in a single pass. Two smaller ones, both the same shape as this session's recurring
+failures: the natural-unit chooser was written once as a muddle and rewritten plainly, and transforming the mass
+implementation into the energy one with a chain of `str.replace` calls failed and was replaced by WRITING the file,
+which is what should have been done first.
 
 ## §62.49 — THE PRE-10.9 CALENDAR IDENTIFIERS: ONE PROPERTY, AND IT IS IDENTITY (2026-09-26)
 

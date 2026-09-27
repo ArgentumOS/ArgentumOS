@@ -132,6 +132,9 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSData.h \
 		$(FOUNDATION_SRC)/NSCalendar.h \
 	$(FOUNDATION_SRC)/NSFormatter.m \
+	$(FOUNDATION_SRC)/NSEnergyFormatter.m \
+	$(FOUNDATION_SRC)/NSLengthFormatter.m \
+	$(FOUNDATION_SRC)/NSMassFormatter.m \
 	$(FOUNDATION_SRC)/NSDateFormatter.m \
 	$(FOUNDATION_SRC)/NSNumberFormatter.m \
 	$(FOUNDATION_SRC)/NSSet.m \
@@ -236,6 +239,9 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSMethodSignature.h \
 	$(FOUNDATION_SRC)/NSInvocation.h \
 	$(FOUNDATION_SRC)/NSFormatter.h \
+	$(FOUNDATION_SRC)/NSEnergyFormatter.h \
+	$(FOUNDATION_SRC)/NSLengthFormatter.h \
+	$(FOUNDATION_SRC)/NSMassFormatter.h \
 	$(FOUNDATION_SRC)/NSDateFormatter.h \
 	$(FOUNDATION_SRC)/NSNumberFormatter.h \
 	$(FOUNDATION_SRC)/NSSet.h \
@@ -1362,6 +1368,17 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendar_identifiers"
+	# foundation_quantity_formatters: §62.50's acceptance - the formatter trio. Every value is ABSOLUTE (measured
+	# against the unit's definition), and the NATURAL-UNIT CHOOSER is measured in both directions because one stuck
+	# at an end of the table would satisfy half the checks and look right.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_quantity_formatters.m -o .build/probe-foundation_quantity_formatters.o
+	$(MUSL64_OBJC) .build/probe-foundation_quantity_formatters.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_quantity_formatters"
 	# foundation_redirect: following a redirect, decided by the delegate, bounded by the hop limit (§54).
 	# Its own HTTP server again (a 302, a 307, a decline and a never-ending chain), and it reads §52's record
 	# off the delegate, so it links the bridge and curl exactly as the two units beside it do.
