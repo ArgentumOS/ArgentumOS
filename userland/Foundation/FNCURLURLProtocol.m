@@ -30,6 +30,8 @@
 
 #include <curl/curl.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <stdio.h>
 #include <string.h>
 
 /* THE TRANSFER'S OWN STATE, on the loading thread's stack for as long as the transfer runs. It carries
@@ -133,8 +135,16 @@ static size_t fn_curl_write(char *ptr, size_t size, size_t nmemb, void *userdata
 }
 
 /* A BODY THAT ARRIVES AS A STREAM IS PULLED FROM HERE (§62.34), because that is what `CURLOPT_UPLOAD` does:
- * curl calls this until it is answered with zero, and zero is also what an error looks like - the stream's own
- * status is the caller's business, and a body that stops early is a short body rather than a silent nothing. */
+ * curl calls this until it is answered with zero.
+ *
+ * AND A NEGATIVE READ IS AN ERROR RATHER THAN AN ENDING (§62.36). THE FIRST VERSION OF THIS LINE COLLAPSED THE
+ * TWO - `return got > 0 ? (size_t)got : 0` - and its comment CLAIMED the difference did not matter ("a body
+ * that stops early is a short body rather than a silent nothing"). THAT CLAIM WAS FALSE, AND A MEASUREMENT IS
+ * WHAT FALSIFIED IT: this library's `-read:maxLength:` answers **-1 for a stream that is not open** (its own
+ * header says a caller owes `-open`, and `EBADF` is the status it sets), so an error became an END OF BODY -
+ * and with no `Content-Length` on the request the transfer then SUCCEEDED with an empty body, silently. A
+ * TRUNCATED UPLOAD THAT REPORTS SUCCESS IS THE WORST SHAPE A BUG LIKE THIS CAN HAVE, which is why the fix is
+ * a failure rather than a guess: curl has one way to be told "stop, this is broken" and it is this. */
 static size_t fn_curl_read(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
 	FNCurlTransfer *transfer = (FNCurlTransfer *)userdata;
@@ -144,7 +154,13 @@ static size_t fn_curl_read(char *ptr, size_t size, size_t nmemb, void *userdata)
 		return 0;
 	}
 	got = [transfer->bodyStream read:(uint8_t *)ptr maxLength:size * nmemb];
-	return got > 0 ? (size_t)got : 0;
+	if (got > 0) {
+		return (size_t)got;
+	}
+	if (got == 0) {
+		return 0;	/* the end of the body, which is a legitimate answer */
+	}
+	return CURL_READFUNC_ABORT;	/* an ERROR, and it fails the transfer */
 }
 
 /* UPLOAD PROGRESS (§62.32), AND CURL CALLS THIS SEVERAL TIMES A SECOND FOR EVERY TRANSFER, which is why the

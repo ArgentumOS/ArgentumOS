@@ -12977,6 +12977,50 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.36 — A READ THAT FAILS IS NOT AN END OF BODY: THE DEFECT, THE FIX, AND A CHECK THAT HAD TO BE TAUGHT TO FAIL (2026-09-26)
+
+**THE DEFECT, AND IT WAS MEASURED RATHER THAN ARGUED.** The bridge's stream reader was one line:
+
+    return got > 0 ? (size_t)got : 0;
+
+so **anything that was not data became "the end of the body"** — including an ERROR. This library's
+`-read:maxLength:` answers **-1** for a stream that is not open (its own header says a caller owes `-open`, and
+`EBADF` is the status it sets), so a read failure was silently an empty body — and **an upload with no
+`Content-Length` then reported SUCCESS while sending nothing at all.** And the comment above that line had claimed
+the opposite in so many words: "a body that stops early is a short body rather than a silent nothing." **Nobody had
+measured it; §62.34 wrote the claim, and this unit falsified it.**
+
+**THE FIX IS THREE BRANCHES AND A CURL CONTRACT:** `got > 0` is data, `got == 0` is the legitimate end of a body,
+and `got < 0` returns **`CURL_READFUNC_ABORT`** — curl's one way of being told "stop, this is broken" — which fails
+the transfer instead of truncating it quietly. A truncated upload that reports success is the worst shape this bug
+could have, which is why the fix fails loudly rather than guessing.
+
+**AND THE CHECK HAD TO BE TAUGHT TO FAIL, TWICE OVER, WHICH IS THE MORE USEFUL HALF OF THE RECORD:**
+* the FIRST version passed **with and without the fix**: its server never answered, so the client failed on a
+  **timeout** — and a timeout is also an `NSError`, so "an error happened" was true either way. A check that cannot
+  fail is worse than no check, which is why the negative trial was run at all;
+* the SECOND version answered properly but still could not discriminate, and a marker found out why: **with no
+  `Content-Length`, curl never pulls the body at all for an upload of unknown size** (measured: `FNSETUP stream=1
+  len=0`, then not one read callback). There was no read to fail;
+* the THIRD version publishes a length and asserts **WHICH error**: with the fix curl reports
+  `CURLE_ABORTED_BY_CALLBACK` (42), and with the old line it reports `CURLE_READ_ERROR` (26). **The negative trial
+  says so in the check's own message** — it failed with "the upload reported an error (code 26)" — so the check is
+  known to fail for the right reason and pass only when the read is what ended the transfer.
+
+**A SECOND DEFECT IS NAMED RATHER THAN LEFT IN THE MARGIN**, because the same measurement exposed it: **a
+stream-bodied request with no `Content-Length` sends NO body at all** — curl does not pull an upload of unknown
+size as this bridge configures it, so the chunked case needs its own work (the transfer *succeeds*, which is the
+same silent shape this unit fixed for the error path).
+
+**AND ONE HAZARD OF THE PROBE ITSELF:** a server probe that writes to a socket the client has already closed dies
+by **SIGPIPE** (the default action is to terminate the process, which is how this leg's first green run became a
+dead probe printing nothing). `signal(SIGPIPE, SIG_IGN)` is now set in that probe, and the hazard is latent for every
+socket-writing probe in this tier.
+
+**VERIFIED.** `foundation_urlsession_task` is **29/29 green**, with the negative trial recorded above.
+Regressions: `foundation_urlsession` 6/6, `foundation_urlconnection` 6/6, `foundation_downloadresume` 6/6,
+`foundation_authloop` 3/3. `foundation-sweep --check` consistent.
+
 ## §62.35 — THE RE-SEND'S BODY: `needNewBodyStream:` LANDS, AND THE LAST NON-STRUCTURAL REFUSAL IN THAT HEADER GOES (2026-09-26)
 
 **WHAT SHIPPED.** The fifth and last leg of the chain, and the one that completes the family:

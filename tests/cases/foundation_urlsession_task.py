@@ -48,7 +48,9 @@ CHECKS = ("completion-handler-factory-answers-a-task", "task-resume-runs-the-tra
           "a-stream-body-is-sent", "the-redirect-leg-binds-its-own-listener",
           "the-redirected-post-kept-its-body-on-the-way-out",
           "the-delegate-was-asked-for-a-new-stream",
-          "the-re-sent-request-carries-the-fresh-body")
+          "the-re-sent-request-carries-the-fresh-body",
+          "the-broken-stream-leg-binds-its-own-listener",
+          "a-stream-that-cannot-be-read-fails-the-transfer-with-the-reads-error")
 
 
 class Case(BaseCase):

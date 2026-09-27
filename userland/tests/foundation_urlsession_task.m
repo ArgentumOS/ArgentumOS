@@ -219,6 +219,24 @@ totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
 
 @end
 
+/* A STREAM THAT FAILS TO READ (§62.36), which is what makes the error-versus-end distinction measurable: it
+ * answers -1 from -read:maxLength:, exactly what this library's own NSInputStream answers for a stream that was
+ * never opened. WITHOUT THE FIX the transfer SUCCEEDS with an empty body (no Content-Length means chunked, and
+ * an immediate end is a legitimate empty chunked body); with it, the transfer FAILS. */
+@interface FnFailingStream : NSInputStream
+@end
+
+@implementation FnFailingStream
+
+- (NSInteger)read:(uint8_t *)buffer maxLength:(NSUInteger)len
+{
+	(void)buffer;
+	(void)len;
+	return -1;
+}
+
+@end
+
 int main(void)
 {
 	/* UNBUFFERED, AND IT IS NOT A PREFERENCE: a probe that CRASHES loses everything printf put in a
@@ -226,6 +244,12 @@ int main(void)
 	 * disappears. Measured here: the first diagnostic run showed no marker at all and read as "it died
 	 * before the first statement", which was false — the crash was simply later than the lost buffer. */
 	setvbuf(stdout, NULL, _IONBF, 0);
+	/* THE PROBE IS A SERVER AND IT WRITES TO SOCKETS THE CLIENT MAY HAVE CLOSED, so SIGPIPE must not be allowed
+	 * to kill it: an aborted upload (§62.36) closes the connection before the answer is written, and the default
+	 * action for that write is to TERMINATE THE PROCESS - which is how this leg's first green run turned into a
+	 * dead probe printing nothing. A latent hazard for every socket-writing probe here, and named rather than
+	 * worked around. */
+	signal(SIGPIPE, SIG_IGN);
 	printf("FOUNDATION-URLSESSION-TASK-DIAG 0) alive after setvbuf\n");
 	printf("FOUNDATION-URLSESSION-TASK-DIAG 0b) NSURLSession class = %s\n",
 		[NSURLSession class] != Nil ? "present" : "MISSING");
@@ -809,6 +833,90 @@ int main(void)
 		      [NSString stringWithFormat:@"the second attempt carried %s (%d byte(s) received)",
 			secondFound ? "the body" : "NO body", (int)secondTotal]);
 	}
+	/* --- A STREAM THAT CANNOT BE READ FAILS THE TRANSFER RATHER THAN TRUNCATING IT (§62.36) ---------- */
+	{
+		FnFailingStream *broken = [[FnFailingStream alloc] init];
+		NSURLSessionConfiguration *configuration4 = [NSURLSessionConfiguration defaultSessionConfiguration];
+		NSURLSession *session4 = [NSURLSession sessionWithConfiguration:configuration4];
+		NSMutableURLRequest *brokenRequest = [NSMutableURLRequest requestWithURL:fn_url(@"http://127.0.0.1:46471/")];
+		NSURLSessionDataTask *brokenTask;
+		struct sockaddr_in addr4;
+		int listener4, conn4 = -1, one4 = 1;
+		__block BOOL called4 = NO;
+		__block NSError *brokenError = nil;
+
+		/* THE LENGTH IS PUBLISHED, AND THE CHECK READS THE ERROR'S CODE RATHER THAN ITS PRESENCE - which is the
+		 * only way this can discriminate. Without a length, curl never pulls the body at all for an upload of
+		 * unknown size (measured: the read callback is not called even once), so there is no read to fail and the
+		 * leg passes either way. With a length, a SHORT body is also an error - so "an error happened" proves
+		 * nothing; WHAT PROVES SOMETHING IS WHICH error, and the two are distinguishable because the fix makes
+		 * curl report its "aborted by callback" code instead of a send failure. */
+		[brokenRequest setHTTPMethod:@"POST"];
+		[brokenRequest setValue:@"8" forHTTPHeaderField:@"Content-Length"];
+		[brokenRequest setHTTPBodyStream:broken];
+		[brokenRequest setTimeoutInterval:3.0];
+
+		listener4 = socket(AF_INET, SOCK_STREAM, 0);
+		memset(&addr4, 0, sizeof(addr4));
+		addr4.sin_family = AF_INET;
+		addr4.sin_port = htons(46471);
+		addr4.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		setsockopt(listener4, SOL_SOCKET, SO_REUSEADDR, &one4, sizeof(one4));
+		check("the-broken-stream-leg-binds-its-own-listener",
+		      bind(listener4, (struct sockaddr *)&addr4, sizeof(addr4)) == 0 && listen(listener4, 1) == 0,
+		      @"this leg is its own receiver as well");
+
+		brokenTask = [session4 dataTaskWithRequest:brokenRequest
+			     completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+			(void)data;
+			(void)response;
+			brokenError = error;
+			called4 = YES;
+		}];
+		[brokenTask resume];
+		conn4 = accept(listener4, NULL, NULL);
+		if(conn4 >= 0) {
+			char drain[1024];
+			int tries4 = 0;
+
+			fcntl(conn4, F_SETFL, O_NONBLOCK);
+			while(tries4 < 50) {
+				if(read(conn4, drain, sizeof(drain)) <= 0) {
+					usleep(10000);
+					tries4++;
+				}
+			}
+			/* THE SERVER ANSWERS, AND THAT IS WHAT MAKES THE CHECK MEAN ANYTHING: with the old callback the
+			 * empty body was accepted and the transfer then SUCCEEDED - so the first version of this leg, which
+			 * never answered, was passed even by the bug it exists to catch (the client timed out waiting for a
+			 * response, and a timeout is also an NSError). A CHECK THAT CANNOT FAIL IS WORSE THAN NO CHECK. */
+			{
+				const char *answer = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}";
+
+				write(conn4, answer, strlen(answer));
+			}
+			close(conn4);
+		}
+		close(listener4);
+		{
+			int waited4 = 0;
+
+			while(!called4 && waited4 < 300) {
+				usleep(10000);
+				waited4++;
+			}
+		}
+		/* 42 IS `CURLE_ABORTED_BY_CALLBACK`, AND IT IS NAMED HERE RATHER THAN BECAUSE THE PROBE CANNOT IMPORT
+		 * curl's HEADERS: it is the code this library reports for a read callback that said "stop", which is what
+		 * a FAILED read now says. A short body would report a SEND failure instead - a different number - so this
+		 * check can only pass when the read error is what ended the transfer. */
+		check("a-stream-that-cannot-be-read-fails-the-transfer-with-the-reads-error",
+		      called4 && brokenError != nil && [brokenError code] == 42,
+		      [NSString stringWithFormat:@"the upload reported %@ (code %d) - a read that FAILS is not an empty "
+			@"body, and the code says the read is what ended it",
+			brokenError != nil ? @"an error" : @"SUCCESS", brokenError != nil ? (int)[brokenError code] : 0]);
+	}
+
 	printf("FOUNDATION-URLSESSION-TASK RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-URLSESSION-TASK-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-URLSESSION-TASK DONE\n");
