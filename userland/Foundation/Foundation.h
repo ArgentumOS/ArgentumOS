@@ -175,6 +175,7 @@
 #import <Foundation/NSRunLoop.h>
 #import <Foundation/NSHost.h>
 #import <Foundation/NSAttributedStringMarkdown.h>
+#import <Foundation/NSPresentationIntent.h>
 #import <Foundation/NSOperation.h>
 #import <Foundation/NSBlockOperation.h>
 #import <Foundation/NSInvocationOperation.h>

@@ -34,7 +34,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  197   open   28   struck   48
+#   class      shipped  198   open   27   struck   48
 #   protocol   shipped   33   open    7   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  140   open   11   struck    9
@@ -1498,7 +1498,7 @@ class	shipped	NSPortMessage		Low-Level Utilities / Legacy / Legacy	deprecated	ob
 class	shipped	NSPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSPositionalSpecifier		App Support / Object Specifiers	declined	objc
 class	shipped	NSPredicate		Fundamentals / Filltering	-	objc
-class	open	NSPresentationIntent		Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
+class	shipped	NSPresentationIntent		Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 class	shipped	NSProcessInfo		App Support / System Interaction	-	objc
 class	shipped	NSProgress		App Support / Progress	-	objc
 class	shipped	NSPropertyListSerialization		Files and Data Persistence / Property Lists	-	objc

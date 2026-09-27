@@ -3532,7 +3532,7 @@ vanishing.
 | **Fundamentals / Specialized Sets** | all classes shipped | — |
 | **Fundamentals / Spelling and Grammar** | 2 open | `NSSpellServer`, `NSSpellServerDelegate` |
 | **Fundamentals / Strings** | all classes shipped | — |
-| **Fundamentals / Strings with Metadata** | 1 open | `NSPresentationIntent` |
+| **Fundamentals / Strings with Metadata** | all classes shipped | — |
 | **Fundamentals / Time and Motion** | all classes shipped | — |
 | **Fundamentals / URLs** | all classes shipped | — |
 | **Fundamentals / Unique Identifiers** | all classes shipped | — |
@@ -13586,6 +13586,65 @@ check(s) in 12s`**, the probe's own tally `ok=10 fail=0` in one run. `foundation
 **consistent**, all nine rows flipped, the family table regenerated (`Strings with Metadata`: 3 open → 1).
 `foundation-gate`: **OK — 525 files, 196 of 200 public headers** open a nullability region; `--unimplemented`:
 **0 NEW** (1 baselined). The probe needed staging for the guest and an entry in `HOST_PROBES`.
+
+## §62.65 — `NSPresentationIntent`: THE FAMILY'S LAST ROW, AND THE TWO ANSWERS THAT ARE NOT FIELDS (2026-09-26)
+
+**WHAT SHIPPED: ONE ROW — `NSPresentationIntent` — AND `Fundamentals / Strings with Metadata` IS NOW COMPLETE.**
+`class shipped` went **197 → 198**, and the family that §62.64 left at one row has none left. This is also the
+object the W10 vocabulary has been pointing at since the attributes shipped: `NSPresentationIntentAttributeName`
+names its value, `NSPresentationIntentKind` is its kind, and `NSPresentationIntentTableColumnAlignment` aligns its
+table's columns — all three already declared, all three now with a class to belong to.
+
+**THE SHAPE IS APPLE'S AND IT IS THE POINT: TWELVE FACTORIES, ONE PER KIND, AND NO `-init` AND NO SETTERS.** An
+intent's fields are decided by WHAT KIND OF THING IT IS — a header has a level, a list item an ordinal, a table
+row a row number, a table its columns — so a half-built intent (a header with no level, a table with no column
+count) is a state this API cannot express, and the implementation adds none. The fields are set once, by the
+factory that knows what its kind means.
+
+**AND TWO OF THE CLASS'S DOORS ANSWER SOMETHING THE FIELDS DO NOT, WHICH IS WHY IT IS NOT JUST A RECORD:**
+
+* **`-indentationLevel` IS COMPUTED FROM THE PARENT CHAIN, AND APPLE'S OWN SENTENCE DECIDES HOW.** Three
+  clauses: "the initial list has an indentation level of 0", "each time you nest a new list, the indentation
+  level for new list increases by 1", and — the one that rules out the obvious implementation — **"all elements
+  within the same list have the same indentation level."** A count of list ANCESTORS gives the initial list 0 but
+  its OWN ITEMS 1, so the items would not share their list's level. The rule implemented is the count of lists in
+  the chain (the receiver's own kind included) MINUS the outermost, and the probe builds the document the
+  sentence describes — a list, an item in it, a list nested inside that item, an item in that — and requires
+  **0, 0, 1, 1**.
+* **`-isEquivalentToPresentationIntent:` COMPARES ATTRIBUTES AND NOT IDENTITY**, in Apple's words: "two intents
+  are equivalent if their attributes match. This method doesn't consider the [identity] property ... when
+  determining their equivalence" — which is exactly what a caller comparing a re-parsed document against the
+  original needs. **THE PROBE CHECKS THE PAIR, NOT ONE SIDE**: two intents differing only in identity are
+  equivalent AND two differing in a field are not, so neither an "always YES" nor an "always NO" implementation
+  can pass. **AND THE PARENT IS NOT COMPARED EITHER**, which is our reading of "their attributes" rather than
+  Apple's: two intents that differ only in WHERE they hang are the case the method exists for, and the probe
+  asserts that reading so a later change to it is a deliberate one.
+
+**THE ABSENCE RULE IS SPLIT, AND THE SPLIT IS STATED WHERE IT BITES:** Apple publishes exactly one — a non-table
+intent's `-columnAlignments` is nil ("if the intent is not a table, the value of this property is nil") — and for
+the numeric fields it publishes none, so a field a kind does not carry answers 0 HERE and says so (§11.6.1 D2).
+The probe checks both sides of the published one, and the "always nil" implementation cannot pass it because a
+table's alignments must come back.
+
+**TWO HOUSE RULES APPLIED RATHER THAN RE-DERIVED, for the third unit running:** the `languageHint` is a SNAPSHOT
+taken through `-initWithString:` rather than `-copy`, and the alignments array is copied on the way in. The probe
+mutates a mutable source under both and requires the intent not to have changed.
+
+**VERIFIED.** Host: `make host-foundation-run` — **33 probes, every tally `fail=0`**, the new probe at **`ok=9
+fail=0`**. Guest: `make testimg` then `make test TESTS='foundation_presentationintent'` → **`TESTS-OK 1/1
+case(s), 6/6 check(s) in 12s`**, the probe's own tally `ok=9 fail=0` in one run. `foundation-sweep --refresh` +
+`--check`: **consistent**, the row flipped, the family table regenerated and **`Strings with Metadata` no longer
+appears among the families with open rows**. `foundation-gate`: **OK — 528 files, 197 of 201 public headers**
+open a nullability region; `--unimplemented`: **0 NEW** (1 baselined). The probe needed staging for the guest and
+an entry in `HOST_PROBES`.
+
+**AND THE THREAD'S SHAPE, WORTH STATING WHERE THE FAMILY CLOSES:** seven units have now closed or completed a
+family — Basic Collections (§62.59), Threads and Locking (§62.60), Notifications (§62.61), the run loop's own
+listed gaps (§62.62), Sockets (§62.63), and Strings with Metadata across §62.64 and this one. What remains among
+the 28 open classes is `Reference / Classes` (4: the two `NSKeyValueSharedObservers`, `NSLocalizedNumberFormatRule`,
+`NSSimpleCString`), `User Notifications` (4, the deprecated set §62.24 makes owed), and singletons. **AND TWO
+DEPENDENCIES ARE STILL OWED AS THINGS TO BUILD RATHER THAN THINGS TO PORT** — the markdown importer (§12.6) and
+the run-loop observers — which is the distinction §12.6's rule exists to keep visible.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
