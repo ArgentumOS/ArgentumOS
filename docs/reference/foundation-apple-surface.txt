@@ -34,14 +34,14 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  198   open   27   struck   48
+#   class      shipped  199   open   26   struck   48
 #   protocol   shipped   33   open    7   struck    5
 #   macro      shipped  116   open    5   struck  132
-#   enum       shipped  140   open   11   struck    9
-#   case       shipped 1142   open   85   struck   75
+#   enum       shipped  141   open   10   struck    9
+#   case       shipped 1144   open   83   struck   75
 #   func       shipped  164   open   13   struck   12
 #   var        shipped  645   open   62   struck  207
-#   typealias  shipped   65   open    6   struck    5
+#   typealias  shipped   66   open    5   struck    5
 #   struct     shipped   13   open    0   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -114,8 +114,8 @@ case	shipped	NSAttributedStringMarkdownInterpretedSyntaxInlineOnlyPreservingWhit
 case	shipped	NSAttributedStringMarkdownParsingFailureReturnError	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Failure Policies	-	objc
 case	shipped	NSAttributedStringMarkdownParsingFailureReturnPartiallyParsedIfPossible	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Failure Policies	-	objc
 case	shipped	NSAutosavedInformationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSBackgroundActivityResultDeferred	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
-case	open	NSBackgroundActivityResultFinished	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
+case	shipped	NSBackgroundActivityResultDeferred	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
+case	shipped	NSBackgroundActivityResultFinished	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
 case	shipped	NSBackwardsSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	struck	NSBeginsWithComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	shipped	NSBeginsWithPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
@@ -1356,7 +1356,7 @@ class	shipped	NSAttributedString		Fundamentals / Strings with Metadata	-	objc
 class	shipped	NSAttributedStringMarkdownParsingOptions		Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown	-	objc
 class	shipped	NSAttributedStringMarkdownSourcePosition		Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 class	shipped	NSAutoreleasePool		Low-Level Utilities / Memory Management	-	objc
-class	open	NSBackgroundActivityScheduler		App Support / System Interaction	-	objc
+class	shipped	NSBackgroundActivityScheduler		App Support / System Interaction	-	objc
 class	shipped	NSBlockOperation		App Support / Operations	-	objc
 class	shipped	NSBundle		App Support / Bundle Resources	-	objc
 class	open	NSBundleResourceRequest		App Support / On-Demand Resources	deprecated	objc
@@ -1625,7 +1625,7 @@ enum	shipped	NSAttributedStringEnumerationOptions	NSAttributedString	Fundamental
 enum	shipped	NSAttributedStringFormattingOptions	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 enum	shipped	NSAttributedStringMarkdownInterpretedSyntax	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
 enum	shipped	NSAttributedStringMarkdownParsingFailurePolicy	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
-enum	open	NSBackgroundActivityResult	NSBackgroundActivityScheduler	App Support / System Interaction / Constants	-	objc
+enum	shipped	NSBackgroundActivityResult	NSBackgroundActivityScheduler	App Support / System Interaction / Constants	-	objc
 enum	shipped	NSBinarySearchingOptions	NSArray	Fundamentals / Basic Collections / Constants	-	objc
 enum	shipped	NSByteCountFormatterCountStyle	NSByteCountFormatter	Fundamentals / Data sizes / Constants	-	swift-page
 enum	shipped	NSByteCountFormatterUnits	NSByteCountFormatter	Fundamentals / Data sizes / Constants	-	objc
@@ -2281,7 +2281,7 @@ struct	shipped	NSSwappedFloat		Low-Level Utilities / Byte Ordering / Constants	-
 typealias	struck	NSAppleEventManagerSuspensionID	NSAppleEventManager	App Support / Apple Event Handling / Suspending and resuming Apple events	declined	objc
 typealias	open	NSAttributedStringFormattingContextKey		Reference / Type Aliases	-	objc
 typealias	shipped	NSAttributedStringKey	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes	-	objc
-typealias	open	NSBackgroundActivityCompletionHandler	NSBackgroundActivityScheduler	App Support / System Interaction / Scheduling Activity	-	objc
+typealias	shipped	NSBackgroundActivityCompletionHandler	NSBackgroundActivityScheduler	App Support / System Interaction / Scheduling Activity	-	objc
 typealias	shipped	NSCalendarIdentifier	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars	-	objc
 typealias	shipped	NSComparator	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
 typealias	shipped	NSDistributedNotificationCenterType	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants	-	objc

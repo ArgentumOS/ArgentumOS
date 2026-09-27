@@ -3478,7 +3478,7 @@ vanishing.
 | **App Support / Script Commands** | ALL STRUCK: `NSCloneCommand`, `NSCloseCommand`, `NSCountCommand`, `NSCreateCommand`, `NSDeleteCommand`, `NSExistsCommand`, `NSGetCommand`, `NSMoveCommand`, `NSQuitCommand`, `NSScriptCommand`, `NSSetCommand` | — |
 | **App Support / Script Dictionary Description** | ALL STRUCK: `NSClassDescription`, `NSScriptClassDescription`, `NSScriptCommandDescription`, `NSScriptSuiteRegistry` | — |
 | **App Support / Script Execution** | ALL STRUCK: `NSAppleScript` | — |
-| **App Support / System Interaction** | 1 open | `NSBackgroundActivityScheduler` |
+| **App Support / System Interaction** | all classes shipped | — |
 | **App Support / Undo** | all classes shipped | — |
 | **App Support / User Notifications** | 4 open | `NSUserNotification`, `NSUserNotificationAction`, `NSUserNotificationCenter`, `NSUserNotificationCenterDelegate` |
 | **App Support / User-Relevant Errors** | all classes shipped | — |
@@ -13645,6 +13645,50 @@ the 28 open classes is `Reference / Classes` (4: the two `NSKeyValueSharedObserv
 `NSSimpleCString`), `User Notifications` (4, the deprecated set §62.24 makes owed), and singletons. **AND TWO
 DEPENDENCIES ARE STILL OWED AS THINGS TO BUILD RATHER THAN THINGS TO PORT** — the markdown importer (§12.6) and
 the run-loop observers — which is the distinction §12.6's rule exists to keep visible.
+
+## §62.66 — `NSBackgroundActivityScheduler`: AN ACTIVITY, ITS ANSWER, AND A HAZARD THE PROBE MEASURED (2026-09-26)
+
+**WHAT SHIPPED: FIVE ROWS — the class, `NSBackgroundActivityResult` with its two cases, and the
+`NSBackgroundActivityCompletionHandler` typealias.** `class shipped` went **198 → 199**, `enum 140 → 141`, `case
+1142 → 1144`, `typealias 65 → 66`. It is Apple-deprecated and ships anyway: §62.24's decision is that deprecated
+API is a porting target rather than an exclusion. **AND THE FAMILY'S CLASSES ARE ALL SHIPPED NOW** — the family
+table reads "all classes shipped" — with the honest footnote that **seven rows owned by `NSProcessInfo` in that
+family's other groups remain open** (the legacy OS-NAME cases, which are that class's surface, and the
+thermal-state notification): the family table counts CLASSES, and it is worth saying out loud which part of a
+family it is counting.
+
+**THE CLASS IS AN ACTIVITY THAT DECIDES ITS OWN FUTURE, AND THE ENGINE IS OURS.** Apple's shape: a block is
+called and given a COMPLETION HANDLER, and the answer it passes decides what happens next — **DEFERRED always
+comes back** ("the activity has not finished", whatever `-repeats` says), **FINISHED comes back only when
+`-repeats` is set**, and `-invalidate` stops the future rather than the present, which is Apple's own sentence
+for that door: "when invalidate is used to stop an activity that is currently executing, the activity will still
+finish executing". The mechanism runs on the run loop this tree already ships: one ONE-SHOT timer at `-interval`,
+and the completion handler is what schedules the next one.
+
+**AND THE PROBE FOUND A REAL HAZARD, WHICH IS THE PART WORTH THE PARAGRAPH: AN ACTIVITY THAT RESCHEDULES ITSELF
+WITH AN INTERVAL OF ZERO SPINS THE RUN LOOP FOREVER.** A zero-interval timer is ALREADY DUE, and this loop's pass
+re-reads its timer list as it walks it — so the newly added timer is fired inside the SAME pass, which schedules
+another one, and the pass never ends. **It is not hypothetical: a DEFERRED activity with `-interval` 0 hung the
+first build of the probe** — after five checks had already printed, which is the sort of hang that reads as a
+test-harness problem until you look. The fix is a FLOOR under the interval (one millisecond) with the reason
+written where it lives, and the same hazard is why **three of the probe's checks assert an INVARIANT rather than
+a count**: "it came back", "it ran EXACTLY once", "the count STOPPED GROWING". How many times a deferred or
+repeating activity runs inside a window is the interval's business; that it grows, or does not, is the class's.
+
+**THE DEFAULTS ARE SPLIT THE WAY THE PAGES ARE, and the split was found by looking rather than by guessing:**
+Apple states two of the five — `-qualityOfService` "is `NSQualityOfServiceBackground`" and `-repeats` "is
+**false**" (the second is the one a reader would assume the other way) — and publishes no starting value for
+`-interval` or `-tolerance`, which start at 0 as OUR choice (§11.6.1 D2). `-shouldDefer` is READ-ONLY because it
+is the SYSTEM's answer to the app ("system conditions have changed ... deferral is recommended"), so with no such
+system it answers NO and says so, and `-tolerance`/`-qualityOfService` are KEPT AND REPORTED rather than obeyed,
+because the operating-system scheduler they are hints for is the thing this system does not have. **That is a
+named boundary rather than a stub**: both are real state with real answers, and the absence is the scheduler's.
+
+**VERIFIED.** Host: `make host-foundation-run` — **34 probes, every tally `fail=0`**, the new probe at **`ok=8
+fail=0`**. Guest: `make testimg` then `make test TESTS='foundation_backgroundactivity'` → **`TESTS-OK 1/1
+case(s), 6/6 check(s) in 12s`**, the probe's own tally `ok=8 fail=0` in one run. `foundation-sweep --refresh` +
+`--check`: **consistent**, the five rows flipped, and the family table regenerated. `foundation-gate`: **OK — 531
+files, 198 of 202 public headers** open a nullability region; `--unimplemented`: **0 NEW** (1 baselined).
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
