@@ -12977,6 +12977,34 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.41 — THE COMPOSITION, ALONE IN ONE PROBE: A CONNECTION ACROSS A 401 WITH A STREAM BODY (2026-09-26)
+
+**WHAT THIS CLOSES.** §62.40 joined the transport's own 401 re-issue to a fresh body and NAMED one untested link:
+the chain `401 -> the session's delegate -> the connection -> the connection's delegate`. `foundation_connectionauth`
+is that link, verified: **a connection whose transfer is challenged hears the challenge, answers it through the
+challenge's SENDER, is asked for a NEW body when the transport re-issues, and ends with its delegate told the
+transfer finished** — with the re-issued request carrying BOTH the credential and the body, read off the wire.
+
+**AND THE FIRST ATTEMPT AT THIS WAS REVERTED, WHICH IS WHY THE PROBE IS A FILE.** It began as a fifth leg of
+`foundation_authloop`, and it failed with a result NOBODY COULD ATTRIBUTE: that probe's four legs share ONE listener
+with per-leg `accept()` calls, so a fifth leg's connections interleave with the earlier ones' — and the diagnostic
+that should have separated them could not, because **two of those legs use the same delegate class**, and a class
+name cannot tell two instances apart. The remedy is the shape this tree already prefers elsewhere: **one probe, one
+path, its own listener** — the same reasoning that keeps `foundation_urlconnection` server-free and gives
+`foundation_downloadresume` its own hand-written range server.
+
+**THE PROBE IS ITS OWN SERVER**, answering twice: the first request gets a 401 with a Basic challenge, and the
+second — which must carry the credential and the body again — gets a 200. It also carries the two hazards the last
+few units cost: `signal(SIGPIPE, SIG_IGN)` (a server probe writes to sockets the client may have closed) and a
+request reader that ACCUMULATES rather than stopping after one read (a POST arrives in more than one segment).
+
+**AND THE CONCLUSION IS A NEGATIVE ONE, WHICH IS WORTH STATING PLAINLY: THERE WAS NO LIBRARY BUG.** The composition
+works; the earlier failure was entirely the probe's interleaving. That is a better outcome than a defect found by
+accident in a test harness, and it is only knowable because the probe was rebuilt to be attributable.
+
+**VERIFIED.** `foundation_connectionauth` is **7/7 green**, its case 6/6. NO LIBRARY FILE CHANGED in this unit, so no
+regression run was owed and `foundation-sweep --check` is unaffected by construction.
+
 ## §62.40 — THE 401 RE-ISSUE CAN NOW HAND OVER A FRESH BODY (§62.40, 2026-09-26)
 
 **WHAT SHIPPED, AND IT IS THE GAP §62.35 NAMED.** The transport re-issues a 401 **itself** (`goto retry_transfer:`),
