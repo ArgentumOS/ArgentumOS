@@ -37,6 +37,7 @@
 #define FOUNDATION_NSLOCALE_H
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSCalendar.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
 
@@ -130,5 +131,28 @@ extern NSString *const NSLocaleVariantCode;
 NS_ASSUME_NONNULL_END
 
 @end
+
+
+/* ===================================================================================================
+ * THE LEGACY CALENDAR IDENTIFIERS (§62.49)
+ *
+ * Apple deprecated these eleven names at 10.9 in favour of the `NSCalendarIdentifier*` spelling, and §62.24's
+ * policy puts them back. EACH ONE IS ITS MODERN NAME RATHER THAN A SECOND STRING WITH THE SAME CHARACTERS: a
+ * `NSString *const` of its own would be A DIFFERENT OBJECT, so a caller comparing identities — which is what a
+ * calendar identifier is for — would get a different answer from the same program, and this family's whole job is
+ * that a pre-2013 program behaves as it did. The macro is the only spelling that keeps the object identical, and
+ * the sentinel `NSUndefinedDateComponent` is recorded the same way for the same reason.
+ * =================================================================================================== */
+#define NSGregorianCalendar		NSCalendarIdentifierGregorian
+#define NSBuddhistCalendar		NSCalendarIdentifierBuddhist
+#define NSChineseCalendar		NSCalendarIdentifierChinese
+#define NSHebrewCalendar		NSCalendarIdentifierHebrew
+#define NSIndianCalendar		NSCalendarIdentifierIndian
+#define NSIslamicCalendar		NSCalendarIdentifierIslamic
+#define NSIslamicCivilCalendar		NSCalendarIdentifierIslamicCivil
+#define NSISO8601Calendar		NSCalendarIdentifierISO8601
+#define NSJapaneseCalendar		NSCalendarIdentifierJapanese
+#define NSPersianCalendar		NSCalendarIdentifierPersian
+#define NSRepublicOfChinaCalendar	NSCalendarIdentifierRepublicOfChina
 
 #endif /* FOUNDATION_NSLOCALE_H */

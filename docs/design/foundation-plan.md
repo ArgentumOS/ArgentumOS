@@ -12977,6 +12977,55 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.49 — THE PRE-10.9 CALENDAR IDENTIFIERS: ONE PROPERTY, AND IT IS IDENTITY (2026-09-26)
+
+**WHAT SHIPPED: ELEVEN NAMES, AND THE LEDGER MOVES FOR THE FIRST TIME IN FOUR UNITS.** `NSGregorianCalendar` and
+its ten siblings were deprecated at 10.9 in favour of the `NSCalendarIdentifier*` spelling; §62.24 put them back.
+`NSLocale` now reads **38 `shipped`, 0 `open`** and **the open count is 328** — the unit was chosen from a
+re-ranking (below) rather than by hand, which is why it is the §62.46 pattern one level over rather than another
+guess.
+
+**THEY ARE MACROS, AND THE REASON IS THE CHECK RATHER THAN THE TIDINESS.** A `NSString *const` of its own would be
+**a different object** with the same characters: a program that hands `NSGregorianCalendar` to
+`+[NSCalendar calendarWithIdentifier:]` and one that hands the modern name would reach the same calendar *by
+accident*, and a program that COMPARED IDENTITIES — which is what a key like this is for — would get a different
+answer from the same source. So each name is `#define … NSCalendarIdentifier…`, the object is identical, and the
+probe's first check is a **pointer comparison**. (`NSUndefinedDateComponent` is recorded the same way for the same
+reason.) The sweep accepted the macros as `var` rows, which is now measured rather than assumed.
+
+**THE PROBE CARRIES ITS OWN CONTROL, BECAUSE THREE CHECKS ABOUT ONE OBJECT WOULD ALL PASS IF EVERY NAME HAD
+COLLAPSED INTO ONE.** Beyond identity, eleven distinct values must be eleven values, a legacy name must do the job
+the modern one does (the same date answered the same way — `-calendarIdentifier` is a door this library does not
+declare, so the property is measured through behaviour rather than through the accessor the obvious version reached
+for), and finally **the Buddhist and Gregorian calendars must DISAGREE about one date**: the Buddhist era is 2569
+where the Gregorian is 2026, so an alias that lost its meaning fails there and nowhere else.
+
+**VERIFIED.** `foundation_calendar_identifiers` is **4/4 green in one guest run**, its case 6/6. Regressions:
+`foundation_calendar` 6/6 and `foundation_calendar_legacy` 6/6 — both touch the headers this landed in, and
+`NSLocale.h` now imports `NSCalendar.h` so the macro resolves wherever it is used alone.
+
+### THE RE-RANKING THAT CHOSE IT (2026-09-26)
+
+**THE OPEN LIST IS TWO LISTS, AND FOUR UNITS IN A ROW WERE DRAWN FROM THE SMALLER ONE.** Of the 339 rows that were
+open before this unit, **131 were `deprecated`** — §62.24's policy target — and **208 were `why=-`: never
+deprecated and never declared**, which is an AUDIT gap rather than a policy one. **AND THE BIGGEST BUCKETS HAVE NO
+FAMILY AT ALL**, because the surface file leaves the family column empty for a whole CLASS or a free FUNCTION:
+**50 undeclared classes, 58 unnamed functions, 34 unattributed enum cases, 9 protocols.** Reading only the
+attributed rows had been reading the smaller half.
+
+Ranked by coherent unit, with the sizes measured:
+
+| unit | rows | why it is one unit |
+|---|---|---|
+| `NSLengthFormatter` + `NSMassFormatter` + `NSEnergyFormatter` | 20 | largest named family; one shape three times |
+| `NSLocale`'s legacy calendar identifiers | 11 | **LANDED as §62.49** |
+| the `NSSwap*` byte-order functions | ~44 | mechanical and provable by round trip |
+| Distributed Objects and the port family (~12 classes) | large | biggest coherent CLASS group left |
+| the grammatical/morphology family (34 cases + 6 classes) | ~50 | one modern family |
+| `NSUserNotification`, `NSNotificationQueue`, the distributed centre | 7 + 2 | one notification stack |
+| `NSLog` / `NSLogv` | 2 | the most-called Foundation function here is undeclared |
+| `NSArchiver` / `NSUnarchiver` | 2 | the pre-`NSKeyedArchiver` pair |
+
 ## §62.48 — `-enumerateSubstringsInRange:options:usingBlock:`, AND TWO DEFECTS IT FOUND BENEATH (2026-09-26)
 
 **THE LEDGER OWED NOTHING HERE, AND THAT IS THE FINDING RATHER THAN A CONVENIENCE.** Every name in this family —

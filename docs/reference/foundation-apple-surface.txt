@@ -40,7 +40,7 @@
 #   enum       shipped  133   open   18   struck    9
 #   case       shipped 1115   open  112   struck   75
 #   func       shipped  115   open   62   struck   12
-#   var        shipped  630   open   77   struck  207
+#   var        shipped  641   open   66   struck  207
 #   typealias  shipped   65   open    6   struck    5
 #   struct     shipped   13   open    0   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -2367,7 +2367,7 @@ var	struck	NSAppleScriptErrorRange	NSAppleScript	App Support / Script Execution 
 var	shipped	NSArgumentDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
 var	shipped	NSAssertionHandlerKey	NSThread	Low-Level Utilities / Threads and Locking / Working with Thread Properties	-	objc
 var	shipped	NSAverageKeyValueOperator		Reference / Constants	-	objc
-var	open	NSBuddhistCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	shipped	NSBuddhistCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSBundleDidLoadNotification	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
 var	open	NSBundleResourceRequestLoadingPriorityUrgent	NSBundleResourceRequest	App Support / On-Demand Resources / Setting the download priority	deprecated	objc
 var	open	NSBundleResourceRequestLowDiskSpaceNotification	NSBundleResourceRequest	App Support / On-Demand Resources / Working with notifications	deprecated	swift-page
@@ -2403,7 +2403,7 @@ var	shipped	NSCalendarIdentifierVietnamese	NSCalendar	Fundamentals / Calendrical
 var	shipped	NSCalendarIdentifierVikram	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc
 var	shipped	NSCharacterConversionException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSCharacterConversionException	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-var	open	NSChineseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	shipped	NSChineseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	struck	NSClassDescriptionNeededForClassNotification	NSClassDescription	App Support / Script Dictionary Description / Notifications	declined	swift-page
 var	shipped	NSClassDescriptionNeededForClassNotification	NSNotification	App Support / Notifications / Creating Notifications / AppKit	-	swift-page
 var	shipped	NSCocoaErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
@@ -2514,7 +2514,7 @@ var	shipped	NSGlobalDomain	NSUserDefaults	Files and Data Persistence / App-speci
 var	open	NSGrammarCorrections	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
 var	open	NSGrammarRange	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
 var	open	NSGrammarUserDescription	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
-var	open	NSGregorianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	shipped	NSGregorianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSHTTPCookieComment	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
 var	shipped	NSHTTPCookieCommentURL	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
 var	shipped	NSHTTPCookieDiscard	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
@@ -2547,14 +2547,14 @@ var	open	NSHashTableObjectPointerPersonality	NSHashTable	Fundamentals / Pointer 
 var	open	NSHashTableStrongMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
 var	open	NSHashTableWeakMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
 var	shipped	NSHashTableZeroingWeakMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	deprecated	objc
-var	open	NSHebrewCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	shipped	NSHebrewCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSHelpAnchorErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSHourNameDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSISO8601Calendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	shipped	NSISO8601Calendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSImageURLAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	shipped	NSInconsistentArchiveException	NSArchiver	Files and Data Persistence / Deprecated / Constants / Constants	deprecated	objc
 var	shipped	NSInconsistentArchiveException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSIndianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	shipped	NSIndianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSInflectionAgreementArgumentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSInflectionAgreementConceptAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSInflectionAlternativeAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
@@ -2583,11 +2583,11 @@ var	shipped	NSInvocationOperationVoidResultException	NSException	App Support / E
 var	shipped	NSInvocationOperationVoidResultException	NSInvocationOperation	App Support / Operations / Constants / Constants	-	objc
 var	open	NSIsNilTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
 var	open	NSIsNotNilTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
-var	open	NSIslamicCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
-var	open	NSIslamicCivilCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	shipped	NSIslamicCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	shipped	NSIslamicCivilCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSItemProviderErrorDomain	NSItemProvider	App Support / Attachments / Constants	-	objc
 var	shipped	NSItemProviderPreferredImageSizeKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
-var	open	NSJapaneseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	shipped	NSJapaneseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSKeepAllocationStatistics		App Support / Diagnostics and Debugging	-	objc
 var	shipped	NSKeyValueChangeIndexesKey		Reference / Type Aliases / Type Properties	-	objc
 var	shipped	NSKeyValueChangeKindKey		Reference / Type Aliases / Type Properties	-	objc
@@ -2910,7 +2910,7 @@ var	shipped	NSOwnedPointerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Co
 var	shipped	NSPOSIXErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	shipped	NSParseErrorException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSParseErrorException	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-var	open	NSPersianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	shipped	NSPersianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSPointerToStructHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSPortDidBecomeInvalidNotification	NSPort	Low-Level Utilities / Sockets / Working with notifications	-	objc
 var	shipped	NSPortReceiveException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
@@ -2942,7 +2942,7 @@ var	shipped	NSRangeException	NSException	App Support / Exceptions / Related Type
 var	shipped	NSRecoveryAttempterErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSRegistrationDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
 var	shipped	NSReplacementIndexAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting text attribute keys	-	objc
-var	open	NSRepublicOfChinaCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
+var	shipped	NSRepublicOfChinaCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSRunLoopCommonModes	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes / System Run Loop Modes	-	objc
 var	shipped	NSSecureUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
 var	shipped	NSShortDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
