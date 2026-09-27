@@ -12991,33 +12991,42 @@ is why this unit needs nothing §62.54 did not already provide. Every connection
 `NSConnectionReplyMode`, because an in-process exchange is one wait: the client running that mode is what pumps the
 service, and a service left in the default mode would DEADLOCK against it.
 
-**THE BOUNDARY IS OBJECTS IN, OBJECTS OUT, AND TODAY THAT MEANS THE PROPERTY-LIST KINDS** — strings, numbers,
-dates, data, arrays and dictionaries — because a message IS a property list. Anything else is refused with its class
-named, and a nil is refused too: a property list has no way to write down an absence, and inventing a sentinel would
-be this library deciding what a caller's nil means.
+**THE BOUNDARY IS OBJECTS IN, OBJECTS OUT — AND THIS PARAGRAPH WAS WRONG WHEN IT WAS FIRST WRITTEN, WHICH §62.57
+FIXED.** It said the kinds were "the property-list kinds", because that is what the coder of this unit carried: the
+property-list serialiser, chosen after a probe failure that was read as a stub in the archiver. **That reading was a
+MIS-ATTRIBUTION** — see §62.57 — so the coder now carries a keyed archive and **any `NSCoding` object crosses**,
+with its class rebuilt on the far side. A nil is still refused as an ARGUMENT, but the ground is the CONTAINER rather
+than the property list: a message's arguments are an array, and an array cannot hold a nil.
 
-**FIVE THINGS THE PROBE MEASURED, EACH OF WHICH NAMED THE NEXT ONE:**
+**FIVE THINGS THE PROBE MEASURED, EACH OF WHICH NAMED THE NEXT ONE** — with the first two CORRECTED by §62.57, and
+left here in their corrected form rather than deleted, because the mistake is the most useful thing in this section:
 
-  * **THE KEYED ARCHIVER'S READER IS A STUB.** The first version carried objects with `NSKeyedArchiver`, and the
-    probe answered with the library's own words: `+[NSKeyedArchiver unarchiveObjectWithData:] is not implemented`.
-    The coder carries **property lists** instead — what the whole configuration system of this tree runs on.
-  * **AND THAT IS A HOLE IN THE STANDING RULE'S INSTRUMENT, RECORDED BECAUSE IT MATTERS:** `--unimplemented` counts
-    a STUB as an implementation. It asks whether a DEFINITION EXISTS, not whether it does anything — so the gate
-    that guards "nothing declared without a definition" cannot see a declared door whose body raises.
+  * **~~THE KEYED ARCHIVER'S READER IS A STUB.~~ WRONG, AND §62.57 IS WHERE IT WAS MEASURED SO.** The first version
+    carried objects with the property-list serialiser, and the probe failure that caused that recusal was
+    `+[NSKeyedArchiver unarchiveObjectWithData:] is not implemented` — **a class method that does not exist on the
+    class it was sent to.** `+unarchiveObjectWithData:` is declared on `NSKeyedUnarchiver` and implemented on it; the
+    message was the library CORRECTLY naming the class it was sent to. The reader was never a stub, and the coder
+    carries the ARCHIVE (§62.57).
+  * **~~AND THAT IS A HOLE IN THE STANDING RULE'S INSTRUMENT.~~ WITHDRAWN WITH ITS EVIDENCE.** The claim was that
+    `--unimplemented` counts a stub as an implementation, proven by the archiver case — and the archiver case was
+    not a stub. **The gate's blind spot may well be real (it asks whether a DEFINITION EXISTS, not whether it does
+    anything), but this was not a demonstration of it**, and §62.57 keeps the question OPEN rather than answered.
   * **THE PROPERTY-LIST SERIALISER IS CLASS-STRICT**: it refused an `NSMutableDictionary` with its own words while
-    writing the `NSDictionary` holding the same entries. The fix is a conversion, and the fact is the reason for it.
+    writing the `NSDictionary` holding the same entries. **True, and measured — but no longer load-bearing**: the
+    archiver knows BOTH spellings of a collection class, so §62.57 removed the immutable conversions that fact had
+    caused in `NSConnection`.
   * **THE FORMAT MATTERS AND THE FIRST REFUSAL BLAMED THE WRONG THING**: asking for the BINARY format made the
-    writer answer nil for a dictionary it can plainly write, and the refusal named the OBJECT's class. XML is the
-    format here, **and the serialiser's own reason is carried through the refusal now** — a diagnostic that names
-    the wrong cause is worse than none.
+    writer answer nil for a dictionary it can plainly write, and the refusal named the OBJECT's class. XML was the
+    format then, **and the serialiser's own reason is carried through the refusal** — a diagnostic that names the
+    wrong cause is worse than none. (The property list is gone from the coder now; the diagnostic lesson stands.)
   * **`-invokeWithTarget:` SETS THE TARGET AND NOT THE SELECTOR**, so the service's first invocation was not a call
-    at all. The service sets both.
+    at all. The service sets both. **This one was right, and it is still load-bearing.**
 
-**VERIFIED.** `foundation_dobjects` is **8/8 green in one guest run**, its case 6/6 — nearly every check a ROUND TRIP
+**VERIFIED (AT THE TIME).** `foundation_dobjects` was **8/8 green in one guest run**, its case 6/6 — nearly every check a ROUND TRIP
 whose answer only the service can compute, and the boundary measured from BOTH sides: a scalar RESULT is refused by
 the service (the client raises with its message) and a scalar ARGUMENT is refused by the proxy, which the service's
 own counter confirms was never called. Regressions: `foundation_portnames` 6/6, `foundation_protocolchecker` 6/6.
-Standing-rule gate: **1 baselined, 0 NEW** — with the hole above noted.
+Standing-rule gate: **1 baselined, 0 NEW.** (§62.57 re-runs the same probe at **10/10** after the carrier swap.)
 
 **AND A CLIENT'S PROXY MUST BE TOLD ITS PROTOCOL** (`-setProtocolForProxy:`): an invocation is built from a
 signature, and nothing but the protocol can describe a method the far side implements. Without one the proxy answers
@@ -13030,6 +13039,73 @@ have not described".
 classes, `NSProtocolChecker`, `NSDistributedLock`, `NSConnection`, `NSDistantObject` and `NSPortCoder` are all
 landed, and the four names that came with the connection with them. What remains on the ledger belongs to other
 families.
+
+## §62.57 — "STUBS OF IMPLEMENTED CLASSES AND METHODS ARE UNACCEPTABLE" — AND THE CLAIM THAT RULE EXPOSED (2026-09-26)
+
+**THE RULE, FROM THE USER:** *stubs of implemented classes and methods are unacceptable.* It is a second tooth on the
+rule that already governs this thread ("anything declared in a header must be defined somewhere"): the first says a
+DECLARATION must have a definition, and this one says a DEFINITION must not be a stub. **The work list it creates is a
+category the current gate cannot see**, because `--unimplemented` asks whether a definition exists, not whether it
+does anything.
+
+**AND THE FIRST THING THE RULE EXPOSED WAS A FALSE CLAIM IN THIS PLAN.** §62.56 recorded, as a measured fact, that the
+keyed archiver's reader is a stub, and built a boundary on it (a property-list carrier; a nil that cannot be written).
+Measured now:
+
+  * **`+unarchiveObjectWithData:` IS DECLARED ON `NSKeyedUnarchiver`** (`userland/Foundation/NSKeyedArchiver.h`, in
+    that class's interface) **AND IMPLEMENTED ON IT** (`NSKeyedArchiver.m`: the `NSKeyedArchiver` block ends at line
+    384, the `NSKeyedUnarchiver` block runs 386-726, and that class door is at 388).
+  * **THE MESSAGE THAT WAS READ AS A STUB NAMED THE CLASS THE CALL WENT TO**: §62.56's `NSPortCoder` called
+    `[NSKeyedArchiver unarchiveObjectWithData:]` — a class method `NSKeyedArchiver` does not declare — so the library
+    answered *correctly* about an unrecognised selector, and the class in that message WAS the diagnosis.
+  * **IT IS ALREADY EXERCISED**: `userland/tests/foundation_coder.m` reads archives back through
+    `[NSKeyedUnarchiver unarchiveObjectWithData:]` in four places.
+
+**SO THE CORRECTION IS NOT ONLY IN THE RECORD: THE CODER NOW CARRIES WHAT IT SHOULD HAVE CARRIED.** `NSPortCoder`'s
+`-encodeObject:`/`-decodeObject` use `+[NSKeyedArchiver archivedDataWithRootObject:]` /
+`+[NSKeyedUnarchiver unarchiveObjectWithData:]`, so **any `NSCoding` object crosses** — its class crosses as a name
+the far side rebuilds — and the refusal for something unarchivable is the **archiver's own**, naming the class, on the
+SENDING side. Two declarations of the old premise went with it:
+
+  * the **immutable-dictionary conversions in `NSConnection`** are gone (the archiver knows both spellings of a
+    collection class, and the reader rebuilds them mutable), and
+  * the **nil-argument refusal states its true ground**: the coder CAN write a nil (`$null`, index 0, and
+    `-fnObjectAtIndex:` answers nil for it), but a message's arguments are an **array**, and an array cannot hold a
+    nil at all. The refusal is about the CRATE, not about the property list.
+
+**VERIFIED.** `foundation_dobjects` **10/10 green in one guest run**, its case 6/6, with the two new checks being the
+correction made measurable: **`an-object-with-its-own-state-crosses-both-ways`** — a probe-defined `NSCoding` class
+(`FnTicket`) travels out and a DIFFERENT object built by the service comes back (`back != sent`, and its tag is the
+service's own), which the property-list carrier could not have done; and
+**`an-object-that-is-not-nscoding-is-refused-by-the-coder`** — an object conforming to nothing raises with `FnOpaque`
+in the message and **the service's counter is unchanged**, because the archive is written before the message is sent.
+Regressions: `foundation_coder` 6/6 (the archive's own probe, which is the one that proves the reader), and
+`foundation_portnames` 6/6. Standing-rule gate: **1 baselined, 0 NEW**.
+
+**A MEASURED TOOL TRAP, AND IT COST A BUILD.** `tools/foundation-sweep.py` finds a file's blocks by splitting on the
+terminator and taking the **LAST** occurrence of the block-opening keyword — so a single COMMENT that spells that
+keyword (as an earlier version of the comment in `NSPortCoder.m` did, naming the class the reader lives on) silently
+moved the whole file's method list onto the class the comment named, and the gate then reported **every one of
+NSPortCoder's nine selectors as implemented nowhere**. The file now says so in its own comment, and the keyword is
+written nowhere in it. **The same rule applies to a header**: that keyword spelled inside a comment can steal a
+declaration block's attribution, which is why a comment that needs to name a block says "the class's own block".
+
+**THE STUB WORK LIST, MEASURED RATHER THAN GUESSED** (the in-body refusal sites in `userland/Foundation`, which is
+the enforcement the new rule actually has — the gate cannot see this class):
+
+  * `NSPort` and `NSFileHandle`: the `NSCoding` doors refuse, on the ground that Apple publishes no wire format for a
+    port or a file handle. **Not stubs of an unimplemented mechanism — named boundaries**, each with a reason.
+  * `NSAttributedString`: `-RTFFromRange:documentAttributes:` and the three other document-format doors refuse, and
+    return an `NSError` that says so. **The candidate for the first real stub work**: RTF is a format this system
+    could document, and the class is otherwise complete.
+  * `NSInvocation`: the register-argument subset and the "no such method" refusal. **Boundaries**, both named.
+  * `NSObject`: `-doesNotRecognizeSelector:` — the mechanism itself, correct as it stands.
+  * `NSFileSecurity`: **Apple's own "stub class", shipped as one** by recorded decision (D13), machine-checked by the
+    `foundation_filesecurity` probe. Not a gap but a register entry, and it stays one.
+
+**AND THE GATE'S BLIND SPOT IS NOW UNPROVEN RATHER THAN PROVEN**: §62.56's "the gate counts a stub as an
+implementation" rests entirely on the archiver case, and the archiver case was not a stub. The question stays open,
+and the honest instrument for the new rule is the enumeration above plus a probe that RUNS each door.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 

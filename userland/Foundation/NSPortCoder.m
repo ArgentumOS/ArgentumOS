@@ -11,7 +11,7 @@
 #import <Foundation/NSPortCoder.h>
 #import <Foundation/NSPortMessage.h>
 #import <Foundation/NSPort.h>
-#import <Foundation/NSPropertyListSerialization.h>
+#import <Foundation/NSKeyedArchiver.h>
 #import <Foundation/NSData.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDate.h>
@@ -45,40 +45,35 @@
 	return self;
 }
 
-/* ONE OBJECT, ONE COMPONENT, WRITTEN AS A PROPERTY LIST — AND THE CHOICE WAS MEASURED RATHER THAN ASSUMED. The
- * first version used the keyed archiver, and the probe answered with the library's own words:
- * `+[NSKeyedArchiver unarchiveObjectWithData:] is not implemented` — the DECLARED door is a STUB, so a coder built
- * on it builds messages nothing can read. What IS implemented here is the property-list serialiser, which is what
- * the whole configuration system of this tree runs on.
+/* ONE OBJECT, ONE COMPONENT, WRITTEN AS A KEYED ARCHIVE — AND THE FIRST VERSION OF THIS METHOD IS WHY THIS COMMENT
+ * IS LONG. It used the property list instead, on the strength of a probe that had failed with the library's own
+ * words:
  *
- * THAT MAKES THE BOUNDARY CONCRETE: the kinds a message can carry are the kinds a property list can write —
- * strings, numbers, dates, data, arrays and dictionaries — and anything else is REFUSED WITH ITS CLASS NAMED, and
- * a nil is refused too, because a property list has no way to write down an absence. */
+ *     +[NSKeyedArchiver unarchiveObjectWithData:] is not implemented
+ *
+ * AND THAT WAS A MIS-ATTRIBUTION, measured when §62.57 re-examined it: `+unarchiveObjectWithData:` is declared on
+ * `NSKeyedUnarchiver` (NSKeyedArchiver.h) and implemented on it (NSKeyedArchiver.m, in that class's own block) — the
+ * call had been made on `NSKeyedArchiver`, which does not declare it, so that message was the library CORRECTLY
+ * reporting an unrecognised selector and NAMING THE CLASS it went to. The class in the message WAS the diagnosis,
+ * and it was read as a fact about the library; the recusal that followed — a property-list carrier, and a nil that
+ * cannot be written down — was a boundary invented from a wrong cause.
+ *
+ * (AND THE WORD THAT OPENS AN IMPLEMENTATION BLOCK APPEARS NOWHERE IN THIS FILE, DELIBERATELY: this tree's sweep
+ * attributes a file's blocks with a LAST-MATCH rule, so a single comment that spells that keyword — as an earlier
+ * version of this very comment did — silently moves the file's WHOLE method list onto the class the comment named,
+ * and the sweep then reports every selector here as implemented nowhere. Measured; it cost one build.)
+ *
+ * SO A MESSAGE CARRIES ANY `NSCoding` OBJECT, and the kinds are not the property list's: the objects table of an
+ * archive is what a message is made of. The refusal that remains is the ARCHIVER's own and it names the class — an
+ * object that is neither a value type nor `NSCoding` raises there, on this side, before anything is sent. */
 - (void)encodeObject:(id)anObject
 {
-	NSError *error = nil;
-	NSData *data;
-
-	if (anObject == nil) {
-		[NSException raise:NSInvalidArgumentException
-			    format:@"a nil cannot be carried in a message: a message is a property list, and a property "
-				   @"list has no way to write down an absence. Use a sentinel of your own."];
-	}
-	/* THE FORMAT IS XML, AND THAT TOO WAS MEASURED: the binary format this first asked for made the writer answer
-	 * nil for a dictionary it can plainly write, and the refusal below used to blame the OBJECT's class for it —
-	 * a diagnostic that named the wrong cause. THE SERIALISER'S OWN WORDS ARE CARRIED THROUGH NOW, so the next
-	 * failure of this kind says what actually went wrong. */
-	data = [NSPropertyListSerialization dataWithPropertyList:anObject
-							   format:NSPropertyListXMLFormat_v1_0
-							  options:0
-							    error:&error];
-	if (data == nil) {
-		[NSException raise:NSInvalidArgumentException
-			    format:@"%@ cannot be carried in a message: a message is a property list, and the kinds it can "
-				   @"write are strings, numbers, dates, data, arrays and dictionaries (%@)", [anObject class],
-				   error != nil ? [error localizedDescription] : @"the serialiser gave no reason"];
-	}
-	[_components addObject:data];
+	/* NO ERROR TO REPORT HERE, AND THAT IS A PROPERTY OF THE ARCHIVER RATHER THAN OPTIMISM: it answers data or it
+	 * raises. A NIL OBJECT IS CARRIED — it is `$null`, index 0 of the objects table, and the reader answers nil for
+	 * that reference (`NSKeyedArchiver.m`, `-fnObjectAtIndex:`) — WHICH IS A FACT ABOUT THE CODER AND NOT ABOUT A
+	 * CALL: a nil ARGUMENT is still refused one level up, by `NSConnection`, because the message's crate is an array
+	 * and an array cannot hold a nil. The refusal there states that ground, and §62.57 is why it is stated. */
+	[_components addObject:[NSKeyedArchiver archivedDataWithRootObject:anObject]];
 }
 
 - (id)decodeObject
@@ -90,7 +85,7 @@
 	}
 	data = [_components objectAtIndex:_index];
 	_index++;
-	return [NSPropertyListSerialization propertyListWithData:data options:0 format:NULL error:NULL];
+	return [NSKeyedUnarchiver unarchiveObjectWithData:data];
 }
 
 - (void)dispatch

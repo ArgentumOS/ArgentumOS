@@ -7,16 +7,24 @@
  * `NSPortCoder` — A CODER THAT GOES SOMEWHERE (§62.56). It is the object a distributed-objects message is built
  * with: objects are added to it, and `-dispatch` sends them.
  *
- * HOW IT CARRIES AN OBJECT, STATED BECAUSE IT IS THE WHOLE DESIGN: an object is written as a PROPERTY LIST and ONE
- * OBJECT BECOMES ONE COMPONENT of the message — and a component is `NSData`, which is what this library's
- * transport can carry (§62.53). Nothing here invents a wire format for objects; the property-list serialiser is the
- * format and the coder is the envelope.
+ * HOW IT CARRIES AN OBJECT, STATED BECAUSE IT IS THE WHOLE DESIGN: an object is written by the KEYED ARCHIVER and
+ * ONE OBJECT BECOMES ONE COMPONENT of the message — and a component is `NSData`, which is what this library's
+ * transport can carry (§62.53). Nothing here invents a wire format for objects; the archive is the format and the
+ * coder is the envelope.
  *
- * THE KINDS A MESSAGE CAN CARRY ARE THEREFORE THE KINDS A PROPERTY LIST CAN WRITE — strings, numbers, dates, data,
- * arrays and dictionaries — and anything else is REFUSED WITH ITS CLASS NAMED (a nil among them: a property list
- * has no way to write down an absence). THE FIRST VERSION USED THE KEYED ARCHIVER AND THE PROBE MEASURED IT OUT:
- * `+[NSKeyedArchiver unarchiveObjectWithData:]` is a STUB here, so a coder built on it built messages nothing
- * could read.
+ * SO ANY `NSCoding` OBJECT CAN CROSS, and so can a nil COMPONENT, because the archive's objects table has a `$null`
+ * slot at index 0 and the reader answers nil for it. A nil ARGUMENT is a different question and it is still refused
+ * — by `NSConnection`, not here — because the message's crate is an array, and an array cannot hold a nil at all.
+ * THE OBVIOUS QUESTION — "WHY NOT ALWAYS?" — HAS A MEASURED ANSWER WORTH THE PARAGRAPH, because this coder spent one
+ * unit refusing what it now carries: its first version used the property list, on the strength of a probe that had
+ * failed with the library's own words,
+ *
+ *     +[NSKeyedArchiver unarchiveObjectWithData:] is not implemented
+ *
+ * which was read as a stub in the library. §62.57 re-measured it: `+unarchiveObjectWithData:` is declared on
+ * `NSKeyedUnarchiver` and implemented on it, the call had been made on `NSKeyedArchiver`, which does not declare it,
+ * and the message was the library CORRECTLY naming the class it was sent to. The class in the message was the
+ * diagnosis; the property-list carrier and the nil refusal were a boundary built on a wrong cause.
  *
  * TWO OF APPLE'S DOORS REFUSE, WITH GROUNDS THAT COME FROM THE UNIT THAT MADE THEM IMPOSSIBLE:
  *

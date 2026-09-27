@@ -279,7 +279,10 @@ static NSString *fn_next_reply_name(void)
 	}
 	replyPort = [[NSPortNameServer defaultPortNameServer] portForName:replyName];
 	coder = [[NSPortCoder alloc] initWithReceivePort:nil sendPort:replyPort components:nil];
-	[coder encodeObject:[NSDictionary dictionaryWithDictionary:reply]];	/* class-strict: see -fnSendInvocation: */
+	/* A MUTABLE DICTIONARY GOES AS IT IS, and that is a §62.57 change: the archiver writes the class it was handed
+	 * (`NSMutableDictionary`) and the reader knows BOTH spellings, so the immutable copy that used to be made here
+	 * for the property-list serialiser's sake buys nothing now. */
+	[coder encodeObject:reply];
 	[coder dispatch];
 	[coder release];
 	[reply release];
@@ -336,9 +339,11 @@ static NSString *fn_next_reply_name(void)
 		id argument = nil;
 
 		[invocation getArgument:&argument atIndex:(NSInteger)i];
-		/* A NIL ARGUMENT IS REFUSED RATHER THAN SENT: a message is a property list, and a property list cannot
-		 * write down an absence. Inventing a sentinel here would be this library deciding what a caller's nil
-		 * means — so the caller is told to pass one of their own. */
+		/* A NIL ARGUMENT IS REFUSED RATHER THAN SENT — AND §62.57 CORRECTED THE GROUND, WHICH USED TO BE "a message
+		 * is a property list, and a property list cannot write down an absence". The coder can write one now: a nil
+		 * is `$null` in an archive. THE CRATE IS WHAT REFUSES: a message's arguments are an ARRAY, and an array
+		 * cannot hold a nil at all, so there is nothing for the coder to encode. Inventing a sentinel here would be
+		 * this library deciding what a caller's nil means, so the caller is told to pass one of their own. */
 		if (argument == nil) {
 			if (outError != NULL) {
 				*outError = [NSString stringWithFormat:@"%@ was sent a nil argument, and a nil cannot cross "
@@ -357,11 +362,10 @@ static NSString *fn_next_reply_name(void)
 		[request setObject:[(NSMessagePort *)_receivePort name] forKey:FNReplyNameKey];
 	}
 	coder = [[NSPortCoder alloc] initWithReceivePort:_receivePort sendPort:_sendPort components:nil];
-	/* IMMUTABLE SHAPES, BECAUSE THIS TREE'S PROPERTY-LIST SERIALISER IS CLASS-STRICT: it refused an
-	 * `NSMutableDictionary` with its own words — "NSMutableDictionary cannot be carried in a message" — while
-	 * writing the `NSDictionary` that holds the same entries. The probe measured that, and the conversion is the
-	 * whole of the fix. */
-	[coder encodeObject:[NSDictionary dictionaryWithDictionary:request]];
+	/* A MUTABLE DICTIONARY GOES AS IT IS, and that is a §62.57 change: the archiver writes the class it was handed
+	 * (`NSMutableDictionary`) and the reader knows BOTH spellings, so the immutable copy that used to be made here
+	 * for the property-list serialiser's sake buys nothing now. */
+	[coder encodeObject:request];
 	_waitingForReply = YES;
 	[coder dispatch];
 	[coder release];

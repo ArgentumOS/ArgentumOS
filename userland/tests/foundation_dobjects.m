@@ -17,6 +17,12 @@
  * is not an object is refused by the PROXY before anything is sent — which the service's call counter confirms,
  * because a refusal that still called the method would be no boundary at all.
  *
+ * AND WHAT CROSSES IS ANY `NSCoding` OBJECT, WHICH IS THE HALF §62.57 HAD TO RE-MEASURE: the coder carries a keyed
+ * archive, so an object with its own state travels (its class crosses as a NAME the far side rebuilds) and an object
+ * that conforms to nothing is refused by the archiver on the SENDING side. The two checks that end the client block
+ * exist so that the correction is measured rather than asserted, and both of them count the service's calls — a
+ * ticket that came back is a ticket that was built there, and an object refused here never reached it.
+ *
  * AND THE ONE NON-OBVIOUS RULE IS EXERCISED RATHER THAN ASSUMED: the service and the client share a run loop, and
  * both ports are watched in `NSConnectionReplyMode`, because the client's wait is what pumps the service.
  */
@@ -43,11 +49,63 @@ static void check(const char *name, BOOL held, NSString *why)
 - (NSString *)greet:(NSString *)who;
 - (NSString *)shout:(NSString *)word and:(NSString *)more;
 - (id)nothing:(id)thing;
+- (id)stamp:(id)ticket;		/* an object with its OWN STATE: only an archive can carry one */
+- (id)opaque:(id)thing;		/* an object that is NOT NSCoding: refused on the SENDING side */
 - (int)count;			/* a scalar RESULT: refused by the service */
 - (id)doubleNumber:(int)number;	/* a scalar ARGUMENT: refused by the proxy */
 @end
 
-/* ---- the service: two doors that cross, and two that cannot ---- */
+/* ---- AN OBJECT WITH ITS OWN STATE, AND ONE WITHOUT ---------------------------------------------- */
+
+/* NOT ONE KIND HERE IS A PROPERTY-LIST KIND, and that is the point: `FnTicket` is a class this probe defines, its
+ * only state is a string, and NOTHING about it is archivable except that it conforms to `NSCoding`. The carrier this
+ * coder used before §62.57 could not have sent it, and `FnOpaque` is the control — the same sort of object without
+ * the conformance, which the archiver must refuse by name. */
+@interface FnTicket : NSObject <NSCoding>
+{
+	NSString *_tag;
+}
+- (instancetype)initWithTag:(NSString *)tag;
+- (NSString *)tag;
+@end
+
+@implementation FnTicket
+
+- (instancetype)initWithTag:(NSString *)tag
+{
+	self = [super init];
+	if (self != nil) {
+		/* A FRESH STRING AND NOT -copy, which is a fact about this library rather than a style: -copy is not a
+		 * door every value class answers, and a probe that leaned on it would be measuring the wrong thing. */
+		_tag = [NSString stringWithFormat:@"%@", tag];
+	}
+	return self;
+}
+
+- (NSString *)tag { return _tag; }
+
+- (void)encodeWithCoder:(NSCoder *)coder { [coder encodeObject:_tag forKey:@"tag"]; }
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+	self = [super init];
+	if (self != nil) {
+		id decoded = [coder decodeObjectForKey:@"tag"];
+
+		_tag = decoded != nil ? [NSString stringWithFormat:@"%@", decoded] : @"(no tag)";
+	}
+	return self;
+}
+
+@end
+
+@interface FnOpaque : NSObject
+@end
+
+@implementation FnOpaque
+@end
+
+/* ---- the service: doors that cross, and two that cannot ---- */
 
 @interface FnEchoService : NSObject
 {
@@ -57,6 +115,8 @@ static void check(const char *name, BOOL held, NSString *why)
 - (NSString *)greet:(NSString *)who;
 - (NSString *)shout:(NSString *)word and:(NSString *)more;
 - (id)nothing:(id)thing;
+- (id)stamp:(id)ticket;
+- (id)opaque:(id)thing;
 - (int)count;				/* a scalar RESULT: refused by the service */
 - (id)doubleNumber:(int)number;		/* a scalar ARGUMENT: refused by the proxy */
 - (int)calls;
@@ -82,6 +142,22 @@ static void check(const char *name, BOOL held, NSString *why)
 	_calls++;
 	(void)thing;
 	return nil;			/* a nil RESULT crosses as "no value", which is not the same as an error */
+}
+
+/* THE SERVICE BUILDS THE OBJECT IT SENDS BACK, which is what makes this a round trip: the client never had this
+ * object, and its class crossed as a name the far side rebuilt. */
+- (id)stamp:(id)ticket
+{
+	_calls++;
+	return [[FnTicket alloc] initWithTag:
+		[NSString stringWithFormat:@"stamped-%@", [(FnTicket *)ticket tag]]];
+}
+
+- (id)opaque:(id)thing
+{
+	_calls++;			/* it must NOT reach this: the refusal is on the sending side */
+	(void)thing;
+	return @"opaque";
 }
 
 - (int)count { return 42; }
@@ -182,6 +258,47 @@ int main(void)
 			      [shouted isEqual:@"one! two!"] && nothing == nil && [service calls] == 3,
 			      [NSString stringWithFormat:@"two arguments answered \"%@\" and a nil result arrived as nil "
 				@"(not as an error), with the service's counter at %d", shouted, [service calls]]);
+		}
+
+		/* --- AN OBJECT WITH ITS OWN STATE, AND AN OBJECT THE ARCHIVER REFUSES ------------------------ */
+		{
+			FnTicket *sent = [[FnTicket alloc] initWithTag:@"42"];
+			id back = nil;
+			BOOL notConformingWasRefused = NO;
+			NSString *refusal = nil;
+			NSString *failure = nil;
+
+			@try {
+				back = [(id<FnEchoDoors>)proxy stamp:sent];
+			} @catch (NSException *exception) {
+				failure = [exception reason];
+			}
+			/* A DIFFERENT OBJECT WITH THE SERVICE'S OWN TAG: `!=` is half of the check, because a proxy that
+			 * echoed back the ticket it was handed would pass a value comparison and fail this one. */
+			check("an-object-with-its-own-state-crosses-both-ways",
+			      back != nil && back != sent && [[(FnTicket *)back tag] isEqual:@"stamped-42"] &&
+			      [service calls] == 4,
+			      [NSString stringWithFormat:@"a ticket tagged \"42\" answered %@ tagged \"%@\"%s, and the "
+				@"service recorded %d call(s)",
+				back != nil ? (id)[back class] : (id)@"(nothing)",
+				back != nil ? [(FnTicket *)back tag] : @"-",
+				failure != nil ? [[@" with the error: " stringByAppendingString:failure] UTF8String] : "",
+				[service calls]]);
+
+			@try {
+				(void)[(id<FnEchoDoors>)proxy opaque:[[FnOpaque alloc] init]];
+			} @catch (NSException *exception) {
+				notConformingWasRefused = YES;
+				refusal = [exception reason];
+			}
+			/* AND THE COUNTER IS STILL 4: the archive is written BEFORE the message is sent, so an object the
+			 * archiver refuses never leaves this side — which is the whole difference between refusing one and
+			 * sending something the far side cannot rebuild. */
+			check("an-object-that-is-not-nscoding-is-refused-by-the-coder",
+			      notConformingWasRefused && refusal != nil &&
+			      [refusal rangeOfString:@"FnOpaque"].location != NSNotFound && [service calls] == 4,
+			      [NSString stringWithFormat:@"an object conforming to nothing raised: %@ — and the service's "
+				@"counter is still %d", refusal != nil ? refusal : @"(nothing)", [service calls]]);
 		}
 
 		/* --- THE BOUNDARY, FROM BOTH SIDES ------------------------------------------------------------ */

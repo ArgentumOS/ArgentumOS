@@ -14,6 +14,12 @@ THE BOUNDARY IS MEASURED FROM BOTH SIDES: a method whose RESULT is not an object
 the PROXY before anything is sent - which the service's own counter confirms, because a refusal that still
 called the method would be no boundary at all.
 
+WHAT CROSSES IS ANY `NSCoding` OBJECT, which is the half §62.57 had to re-measure: the coder carries a
+keyed archive, so an object with its OWN STATE travels (its class crosses as a name the far side rebuilds),
+and an object that conforms to nothing is refused by the archiver on the SENDING side. Both of those checks
+count the service's calls, so a ticket that came back is a ticket that was built there, and a refused object
+never reached it.
+
 The probe is `/System/Shared/tests/foundation_dobjects`, ONE unit, importing only `<Foundation/Foundation.h>`.
 """
 
@@ -27,6 +33,8 @@ CHECKS = (
     "a-client-gets-a-proxy-for-the-published-name",
     "a-call-crosses-and-the-service-s-computed-answer-comes-back",
     "two-arguments-and-a-nil-result-cross",
+    "an-object-with-its-own-state-crosses-both-ways",
+    "an-object-that-is-not-nscoding-is-refused-by-the-coder",
     "a-scalar-result-is-refused-by-the-service",
     "a-scalar-argument-is-refused-by-the-proxy-and-nothing-is-called",
     "an-unregistered-name-answers-no-proxy",
