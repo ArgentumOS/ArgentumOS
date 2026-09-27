@@ -18,6 +18,8 @@ CHECKS = (
     "the-attempt-guard-held",
     "the-reissue-is-two-transactions",
     "the-handler-answer-also-carries-the-credential",
+    "the-first-attempt-sent-the-streamed-body",
+    "the-re-issued-attempt-has-a-fresh-body",
 )
 
 

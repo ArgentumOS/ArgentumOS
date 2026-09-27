@@ -535,6 +535,10 @@ static NSURLSessionTaskTransactionMetrics *fn_metrics_for_transfer(FNCurlTransfe
 	memset(&transfer, 0, sizeof(transfer));
 	transfer.protocol = self;
 	transfer.headerBytes = [[NSMutableData alloc] init];
+	/* THE REPLACEMENT STREAM A RE-SEND WAS GIVEN (§62.40), RETAINED FOR AS LONG AS THE RETRY NEEDS IT: it is
+	 * declared HERE, above the label the retry jumps back to, because a local declared below the label would be
+	 * re-initialised by the jump and the stream would be forgotten (and leaked) on the second pass. */
+	NSInputStream *replacement = nil;
 
 	/* THE CACHE IS ASKED BEFORE THE NETWORK, AND A HIT DOES NOT DIAL OUT AT ALL - which is the entire point
 	 * of a cache and the easiest half of it to get wrong: a hit that still opens a connection costs what it
@@ -734,6 +738,37 @@ retry_transfer:
 		[self fnReportMetrics:fn_metrics_for_transfer(&transfer, attemptStarted)];
 	}
 	if (transfer.retry && transfer.credential != nil) {
+		/* A RE-SEND WITH A SPENT STREAM NEEDS A FRESH ONE (§62.40), AND THIS IS THE ONLY PLACE IT CAN BE ASKED
+		 * FOR: the transport re-issues a 401 by jumping back to the label below, so the session - and therefore
+		 * any delegate door it could offer - never sees the second attempt. The ask goes through a FIRST-PARTY
+		 * CLIENT DOOR for exactly that reason, and the stream it hands back is RETAINED here (a caller's stream
+		 * has no other owner over the retry) and released when this transfer function returns.
+		 *
+		 * AND THE SIZE IS RE-ESTABLISHED, WHICH THE FIRST VERSION OF THIS DID NOT DO: the setup above runs ONCE,
+		 * so the upload was sized from the stream the first attempt had already spent - ZERO REMAINING BYTES -
+		 * and zero is a size curl honours by sending nothing, which is why the re-issued request reached the
+		 * server with no body at all. A replacement that can report its own length is sized from it here, exactly
+		 * as the setup sizes a first attempt (§62.38). */
+		NSURLProtocol *owner = transfer.protocol;
+
+		if (transfer.bodyStream != nil && [owner request] != nil &&
+		    [owner client] != nil &&
+		    [[owner client] respondsToSelector:@selector(URLProtocol:fnNewBodyStreamForReSend:)]) {
+			NSInputStream *fresh = [(id <NSURLProtocolClient>)[owner client]
+				URLProtocol:owner fnNewBodyStreamForReSend:[owner request]];
+
+			if (fresh != nil) {
+				uint8_t *bytes = NULL;
+				NSUInteger length = 0;
+
+				replacement = [fresh retain];
+				transfer.bodyStream = replacement;
+				[replacement open];
+				if ([replacement getBuffer:&bytes length:&length]) {
+					curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)length);
+				}
+			}
+		}
 		transfer.retry = 0;
 		transfer.responded = 0;
 		goto retry_transfer;
@@ -780,6 +815,7 @@ retry_transfer:
 		curl_slist_free_all(headerList);
 	}
 	curl_easy_cleanup(curl);
+	[replacement release];
 	[transfer.headerBytes release];
 	[pool release];
 }

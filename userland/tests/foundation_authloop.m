@@ -46,6 +46,8 @@ static void check(const char *name, BOOL held, NSString *why)
 	int senderPresent;	/* and the challenge carried a sender to answer through */
 	int handlerCalls;	/* ... or answered through the COMPLETION HANDLER instead */
 	BOOL useHandler;	/* which of the two paths this instance takes (§62.30) */
+	int streamAsks;		/* the transport re-issued a 401 and asked for a fresh body (§62.36) */
+	NSData *bodyBytes;	/* what a fresh stream is made of */
 }
 @end
 
@@ -62,6 +64,16 @@ didFinishCollectingMetrics:(NSURLSessionTaskMetrics *)metrics
 	(void)task;
 	metricsCalls++;
 	transactions = (long)[[metrics transactionMetrics] count];
+}
+
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
+  needNewBodyStream:(void (^)(NSInputStream *))completionHandler
+{
+	(void)session;
+	(void)task;
+	streamAsks++;
+	completionHandler([NSInputStream inputStreamWithData:bodyBytes]);
 }
 
 - (void)URLSession:(NSURLSession *)session
@@ -117,13 +129,16 @@ static NSString *fn_read_request(int fd)
 	ssize_t n;
 
 	fcntl(fd, F_SETFL, O_NONBLOCK);
-	while(tries < 200) {
+	/* IT ACCUMULATES UNTIL THE PEER STOPS TALKING, AND THE FIRST VERSION STOPPED AFTER ONE READ: "one read is
+	 * the head of the request" was true while this probe only looked at headers, and it is FALSE for a request
+	 * that carries a BODY (§62.36) - curl writes the head and the body as separate segments, so a single read
+	 * sees a POST with nothing after it and a body check would fail against a bridge that was working. The wait
+	 * is still bounded, in both time and bytes. */
+	while(tries < 200 && [data length] < 4096) {
 		n = read(fd, buf, sizeof(buf));
 		if(n > 0) {
 			[data appendBytes:buf length:(NSUInteger)n];
-			if([data length] > 0) {
-				break;	/* one read is the head of the request; that is all this looks at */
-			}
+			tries = 0;	/* data arrived: the clock restarts */
 		} else {
 			usleep(10000);
 			tries++;
@@ -160,8 +175,17 @@ int main(void)
 		NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
 		NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:
 						[NSURL URLWithString:@"http://127.0.0.1:46481/"]];
-		NSString *body = @"{\"ok\":true}";
+		NSString *body = @"{\"ok\":true}";	/* what the server answers with once the credential is accepted */
+		NSData *streamedBody = [@"a-body-that-must-survive-a-401" dataUsingEncoding:NSUTF8StringEncoding];
 
+		/* THE BODY IS A STREAM, WHICH IS THE POINT (§62.36): the transport re-issues this 401 ITSELF, so the
+		 * second attempt has no way to ask anyone for a body except the first-party door this unit landed -
+		 * and the check below is that the re-issued request carries it. */
+		[request setHTTPMethod:@"POST"];
+		[request setValue:[NSString stringWithFormat:@"%d", (int)[streamedBody length]]
+	     forHTTPHeaderField:@"Content-Length"];
+		[request setHTTPBodyStream:[NSInputStream inputStreamWithData:streamedBody]];
+		answerer->bodyBytes = streamedBody;
 		[request setTimeoutInterval:10.0];
 		[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
 		session = [NSURLSession sessionWithConfiguration:configuration
@@ -224,6 +248,23 @@ int main(void)
 	check("and-not-in-plaintext",
 	      second != nil && [second rangeOfString:@"kyle:secret"].location == NSNotFound,
 	      @"a bridge that put the secret on the wire unencoded would be leaking it");
+	/* AND THE STREAMED BODY SURVIVED THE CHALLENGE, WHICH TAKES A FRESH STREAM TO DO (§62.36): the first
+	 * attempt spends the caller's stream, the transport re-issues a 401 by itself, and the only way that second
+	 * attempt can have a body is the first-party door this unit landed. */
+	printf("FOUNDATION-AUTHLOOP DIAG first=%d bytes, second=%d bytes\n",
+	       (int)(first != nil ? [first length] : -1), (int)(second != nil ? [second length] : -1));
+	printf("FOUNDATION-AUTHLOOP DIAG second-head: %.100s\n",
+	       second != nil ? [[second stringByReplacingOccurrencesOfString:@"\r\n" withString:@"|"]
+				UTF8String] : "(nil)");
+	check("the-first-attempt-sent-the-streamed-body",
+	      first != nil && [first rangeOfString:@"a-body-that-must-survive-a-401"].location != NSNotFound,
+	      @"the caller's stream reached the wire on the first attempt");
+	check("the-re-issued-attempt-has-a-fresh-body",
+	      second != nil && [second rangeOfString:@"a-body-that-must-survive-a-401"].location != NSNotFound &&
+	      answerer->streamAsks == 1,
+	      [NSString stringWithFormat:@"the re-issued request carried the body again (%d byte(s) of request "
+		@"read), and the transport asked for a fresh stream %d time(s)",
+		(int)[second length], answerer->streamAsks]);
 	if(conn >= 0) {
 		const char *answer = "HTTP/1.1 200 OK\r\nContent-Length: 11\r\nConnection: close\r\n\r\n{\"ok\":true}";
 

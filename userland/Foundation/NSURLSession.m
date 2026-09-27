@@ -163,6 +163,28 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
  * AND §54'S DECISION IS TAKEN HERE, because this is the first moment the record is complete: the redirect was
  * decided inside the transport's header callback (see -wasRedirectedToRequest:), where this attempt's
  * transaction had not been reported yet. */
+/* THE RE-SEND'S STREAM, ASKED OF THE SESSION'S DELEGATE (§62.36). THE TRANSPORT RE-ISSUES A 401 ITSELF (a
+ * jump in its own loop), so that attempt never reaches the session - and this door is the only way a delegate
+ * can hand over a body for it. The question is Apple's `-URLSession:task:needNewBodyStream:` , the same one the
+ * redirect path asks, and the answer is returned for the transport to retain. */
+- (NSInputStream *)URLProtocol:(NSURLProtocol *)protocol fnNewBodyStreamForReSend:(NSURLRequest *)request
+{
+	id <NSURLSessionTaskDelegate> delegate = (id <NSURLSessionTaskDelegate>)[_session delegate];
+	__block NSInputStream *fresh = nil;
+
+	(void)protocol;
+	(void)request;
+	if (![delegate respondsToSelector:@selector(URLSession:task:needNewBodyStream:)]) {
+		return nil;	/* nobody to ask: the transfer runs with the body it has, which is spent */
+	}
+	[delegate URLSession:_session
+			task:_task
+	    needNewBodyStream:^(NSInputStream *bodyStream) {
+		fresh = [bodyStream retain];
+	}];
+	return [fresh autorelease];
+}
+
 /* UPLOAD PROGRESS, FROM THE TRANSFER TO THE DELEGATE (§62.32), and it sits beside the metrics door because it
  * is the same kind of report: something the transport knows and Apple's NSURLProtocolClient has no door for.
  * `bytesSent` is the delta the bridge computed, so a delegate can sum it or ignore it and still read the two

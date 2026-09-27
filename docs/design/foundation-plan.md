@@ -12977,6 +12977,35 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.40 — THE 401 RE-ISSUE CAN NOW HAND OVER A FRESH BODY (§62.40, 2026-09-26)
+
+**WHAT SHIPPED, AND IT IS THE GAP §62.35 NAMED.** The transport re-issues a 401 **itself** (`goto retry_transfer:`),
+so the session never sees that attempt and no delegate door could be asked from it — which is why a stream body
+re-sent after a challenge arrived empty. Now:
+* a **first-party client door**, `-URLProtocol:fnNewBodyStreamForReSend:`, is the ask;
+* the **session's transfer** answers it by putting Apple's own question to its delegate
+  (`-URLSession:task:needNewBodyStream:`), so the connection's `-connection:needNewBodyStream:` — landed in §62.35 —
+  is reachable from the 401 path as well as the redirect path;
+* the stream handed back is **retained** for the retry (declared ABOVE the label, so the jump cannot re-initialise
+  it) and released when the transfer function returns.
+
+**AND THE FIX WAS NOT ONLY THE ASK — WHICH IS WHAT THE FIRST ATTEMPT AT THIS UNIT GOT WRONG, AND WHAT THE HONEST
+READER OF THE OLD PATCH WOULD ALSO HAVE MISSED.** The setup runs **once**, before the label, so the upload had been
+**sized from the stream the first attempt had already spent: zero remaining bytes.** Zero is a size curl honours by
+sending nothing — so even with a perfect fresh stream, the re-issued request reached the server with no body at
+all, and that is exactly what the earlier measurement showed (`second=0 bytes`). **The retry now re-establishes the
+size from the replacement's own buffer**, the same rule §62.38 uses for a first attempt.
+
+**VERIFIED.** `foundation_authloop` is **15/15 green**: the first attempt sends the streamed body, **the delegate is
+asked for a fresh one (once)**, and **the re-issued request carries it**. Regressions: `foundation_urlconnection`
+6/6, `foundation_urlsession` 6/6, `foundation_urlsession_task` 6/6, `foundation_cachehooks` 3/3,
+`foundation_downloadresume` 6/6. `foundation-sweep --check` consistent.
+
+**ONE LINK IS NOT DIRECTLY EXERCISED AND IS NAMED:** the probe drives the 401 through a SESSION, so the chain
+`401 → session delegate → connection → connection delegate` is a composition of two translations that are each
+tested separately (`foundation_authloop` here, `foundation_urlconnection` for the connection's door) rather than
+end to end in one probe. A connection that follows a 401 with a stream body is the case that would exercise it.
+
 ## §62.39 — A BODY NOBODY CAN MEASURE IS REFUSED, LOUDLY (§62.39, 2026-09-26)
 
 **WHAT SHIPPED, AND IT IS §62.36'S SHAPE APPLIED TO THE OTHER SILENT PATH.** §62.38 solved the unpublished length

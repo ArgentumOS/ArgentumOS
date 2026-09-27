@@ -177,6 +177,13 @@ typedef NS_ENUM(NSInteger, NSURLSessionAuthChallengeDisposition) {
  * leave, so this is the only place the numbers exist - Apple's NSURLProtocolClient has no door for it, which
  * is why this one is first-party like the metrics door above. `bytesSent` is what moved since the last report,
  * `totalBytesSent` is the transfer's running total, and `totalBytesExpectedToSend` is what the request said. */
+/* AND THE THIRD OF THESE (§62.36), FOR THE ONE RE-SEND A DELEGATE CANNOT REACH ANY OTHER WAY: the transport
+ * re-issues a 401 ITSELF (`goto retry_transfer:`), so the session never sees the second attempt and no delegate
+ * door can be asked from there. A body that was a STREAM has been spent by the first attempt, so this door asks
+ * the client for a fresh one - Apple's contract for a replacement is "a new, UNOPENED stream". */
+- (nullable NSInputStream *)URLProtocol:(NSURLProtocol *)protocol
+	       fnNewBodyStreamForReSend:(NSURLRequest *)request;
+
 - (void)URLProtocol:(NSURLProtocol *)protocol
     fnDidSendBodyData:(int64_t)bytesSent
       totalBytesSent:(int64_t)totalBytesSent
