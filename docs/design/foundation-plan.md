@@ -3538,7 +3538,7 @@ vanishing.
 | **Fundamentals / Unique Identifiers** | all classes shipped | — |
 | **Low-Level Utilities / Copying** | all classes shipped | — |
 | **Low-Level Utilities / Invocations** | all classes shipped | — |
-| **Low-Level Utilities / Legacy** | 6 open | `NSConnection`, `NSConnectionDelegate`, `NSDistantObject`, `NSDistantObjectRequest`, `NSGarbageCollector`, `NSPortCoder` |
+| **Low-Level Utilities / Legacy** | 3 open | `NSConnectionDelegate`, `NSDistantObjectRequest`, `NSGarbageCollector` |
 | **Low-Level Utilities / Memory Management** | all classes shipped | — |
 | **Low-Level Utilities / Object Basics** | all classes shipped | — |
 | **Low-Level Utilities / Remote Objects** | all classes shipped | — |
@@ -12976,6 +12976,60 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.56 — DISTRIBUTED OBJECTS: A CALL THAT TRAVELS, ON THIS LIBRARY'S OWN TRANSPORT AND REGISTRY (2026-09-26)
+
+**WHAT SHIPPED: SEVEN ROWS — `NSConnection`, `NSDistantObject` and `NSPortCoder` WITH the four names that come with
+them** (`NSConnectionDidInitializeNotification`, `NSConnectionDidDieNotification`, `NSConnectionReplyMode`,
+`NSFailedAuthenticationException`). **The port family is COMPLETE, and the open count is 241 → 234.**
+
+**THE DESIGN WAS FORCED BY AN EARLIER UNIT'S BOUNDARY, AND THAT IS THE MOST INTERESTING THING HERE: THE REPLY GOES
+TO A NAME.** §62.53's transport refuses a component that is not data, so a requester cannot hand over "send the
+answer here" as a port. It registers a NAME for its own receive port instead and puts that name in the request; the
+service looks the name up and sends the answer there. **A NAME SERVER IS EXACTLY THE MECHANISM FOR THAT** — which
+is why this unit needs nothing §62.54 did not already provide. Every connection's port is watched in
+`NSConnectionReplyMode`, because an in-process exchange is one wait: the client running that mode is what pumps the
+service, and a service left in the default mode would DEADLOCK against it.
+
+**THE BOUNDARY IS OBJECTS IN, OBJECTS OUT, AND TODAY THAT MEANS THE PROPERTY-LIST KINDS** — strings, numbers,
+dates, data, arrays and dictionaries — because a message IS a property list. Anything else is refused with its class
+named, and a nil is refused too: a property list has no way to write down an absence, and inventing a sentinel would
+be this library deciding what a caller's nil means.
+
+**FIVE THINGS THE PROBE MEASURED, EACH OF WHICH NAMED THE NEXT ONE:**
+
+  * **THE KEYED ARCHIVER'S READER IS A STUB.** The first version carried objects with `NSKeyedArchiver`, and the
+    probe answered with the library's own words: `+[NSKeyedArchiver unarchiveObjectWithData:] is not implemented`.
+    The coder carries **property lists** instead — what the whole configuration system of this tree runs on.
+  * **AND THAT IS A HOLE IN THE STANDING RULE'S INSTRUMENT, RECORDED BECAUSE IT MATTERS:** `--unimplemented` counts
+    a STUB as an implementation. It asks whether a DEFINITION EXISTS, not whether it does anything — so the gate
+    that guards "nothing declared without a definition" cannot see a declared door whose body raises.
+  * **THE PROPERTY-LIST SERIALISER IS CLASS-STRICT**: it refused an `NSMutableDictionary` with its own words while
+    writing the `NSDictionary` holding the same entries. The fix is a conversion, and the fact is the reason for it.
+  * **THE FORMAT MATTERS AND THE FIRST REFUSAL BLAMED THE WRONG THING**: asking for the BINARY format made the
+    writer answer nil for a dictionary it can plainly write, and the refusal named the OBJECT's class. XML is the
+    format here, **and the serialiser's own reason is carried through the refusal now** — a diagnostic that names
+    the wrong cause is worse than none.
+  * **`-invokeWithTarget:` SETS THE TARGET AND NOT THE SELECTOR**, so the service's first invocation was not a call
+    at all. The service sets both.
+
+**VERIFIED.** `foundation_dobjects` is **8/8 green in one guest run**, its case 6/6 — nearly every check a ROUND TRIP
+whose answer only the service can compute, and the boundary measured from BOTH sides: a scalar RESULT is refused by
+the service (the client raises with its message) and a scalar ARGUMENT is refused by the proxy, which the service's
+own counter confirms was never called. Regressions: `foundation_portnames` 6/6, `foundation_protocolchecker` 6/6.
+Standing-rule gate: **1 baselined, 0 NEW** — with the hole above noted.
+
+**AND A CLIENT'S PROXY MUST BE TOLD ITS PROTOCOL** (`-setProtocolForProxy:`): an invocation is built from a
+signature, and nothing but the protocol can describe a method the far side implements. Without one the proxy answers
+no signature and the runtime reports an unrecognised selector — which is the honest answer to "call this method I
+have not described".
+
+### THE PORT FAMILY IS COMPLETE
+
+`NSPort`, `NSPortMessage`, `NSPortDelegate`, `NSMachPort` (+ its options), `NSMessagePort`, the four name-server
+classes, `NSProtocolChecker`, `NSDistributedLock`, `NSConnection`, `NSDistantObject` and `NSPortCoder` are all
+landed, and the four names that came with the connection with them. What remains on the ledger belongs to other
+families.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 

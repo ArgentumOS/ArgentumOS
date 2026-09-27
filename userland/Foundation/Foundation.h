@@ -187,6 +187,9 @@
 #import <Foundation/NSMachBootstrapServer.h>
 #import <Foundation/NSProtocolChecker.h>
 #import <Foundation/NSDistributedLock.h>
+#import <Foundation/NSPortCoder.h>
+#import <Foundation/NSDistantObject.h>
+#import <Foundation/NSConnection.h>
 #import <Foundation/NSPortMessage.h>
 #import <Foundation/NSSocketPort.h>
 #import <Foundation/NSFileHandle.h>

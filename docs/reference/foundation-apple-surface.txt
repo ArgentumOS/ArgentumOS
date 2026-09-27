@@ -34,13 +34,13 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  187   open   38   struck   48
+#   class      shipped  190   open   35   struck   48
 #   protocol   shipped   33   open    7   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  137   open   14   struck    9
 #   case       shipped 1135   open   92   struck   75
 #   func       shipped  164   open   13   struck   12
-#   var        shipped  641   open   66   struck  207
+#   var        shipped  645   open   62   struck  207
 #   typealias  shipped   65   open    6   struck    5
 #   struct     shipped   13   open    0   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1374,7 +1374,7 @@ class	shipped	NSComparisonPredicate		Fundamentals / Filltering	-	objc
 class	shipped	NSCompoundPredicate		Fundamentals / Filltering	-	objc
 class	shipped	NSCondition		Low-Level Utilities / Threads and Locking	-	objc
 class	open	NSConditionLock		Low-Level Utilities / Threads and Locking	-	objc
-class	open	NSConnection		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	shipped	NSConnection		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSConstantString		Reference / Classes	-	objc
 class	struck	NSCountCommand		App Support / Script Commands	declined	objc
 class	shipped	NSCountedSet		Fundamentals / Specialized Sets	-	objc
@@ -1393,7 +1393,7 @@ class	struck	NSDeleteCommand		App Support / Script Commands	declined	objc
 class	shipped	NSDictionary		Fundamentals / Basic Collections	-	objc
 class	shipped	NSDimension		Fundamentals / Essentials	-	objc
 class	shipped	NSDirectoryEnumerator		Files and Data Persistence / File system operations / Discovering directory contents	-	objc
-class	open	NSDistantObject		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	shipped	NSDistantObject		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	open	NSDistantObjectRequest		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSDistributedLock		Low-Level Utilities / Threads and Locking	-	objc
 class	open	NSDistributedNotificationCenter		App Support / Cross-Process Notifications	-	objc
@@ -1493,7 +1493,7 @@ class	shipped	NSPipe		Low-Level Utilities / Tasks and Pipes	-	objc
 class	shipped	NSPointerArray		Fundamentals / Pointer Collections	-	objc
 class	shipped	NSPointerFunctions		Fundamentals / Pointer Collections / Getting the Pointer Functions	-	objc
 class	shipped	NSPort		Low-Level Utilities / Sockets	-	objc
-class	open	NSPortCoder		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	shipped	NSPortCoder		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSPortMessage		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSPositionalSpecifier		App Support / Object Specifiers	declined	objc
@@ -2407,9 +2407,9 @@ var	shipped	NSChineseCalendar	NSLocale	Fundamentals / Localization / Getting Dis
 var	struck	NSClassDescriptionNeededForClassNotification	NSClassDescription	App Support / Script Dictionary Description / Notifications	declined	swift-page
 var	shipped	NSClassDescriptionNeededForClassNotification	NSNotification	App Support / Notifications / Creating Notifications / AppKit	-	swift-page
 var	shipped	NSCocoaErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
-var	open	NSConnectionDidDieNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
-var	open	NSConnectionDidInitializeNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
-var	open	NSConnectionReplyMode	NSConnection	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
+var	shipped	NSConnectionDidDieNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
+var	shipped	NSConnectionDidInitializeNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
+var	shipped	NSConnectionReplyMode	NSConnection	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
 var	shipped	NSCountKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSCurrencySymbol	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSCurrentLocaleDidChangeNotification	NSLocale	Fundamentals / Localization / Getting the User’s Locale	-	objc
@@ -2457,7 +2457,7 @@ var	shipped	NSFTPPropertyFTPProxy	NSURLHandle	Networking / Legacy / URL Handle /
 var	shipped	NSFTPPropertyFileOffsetKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
 var	shipped	NSFTPPropertyUserLoginKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
 var	shipped	NSFTPPropertyUserPasswordKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	open	NSFailedAuthenticationException	NSConnection	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
+var	shipped	NSFailedAuthenticationException	NSConnection	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
 var	shipped	NSFileAppendOnly	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileBusy	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileCreationDate	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
