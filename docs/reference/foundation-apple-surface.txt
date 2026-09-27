@@ -34,7 +34,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  193   open   32   struck   48
+#   class      shipped  194   open   31   struck   48
 #   protocol   shipped   33   open    7   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  138   open   13   struck    9
@@ -1476,7 +1476,7 @@ class	struck	NSNetService		Networking / Local Network Services	declined	objc
 class	struck	NSNetServiceBrowser		Networking / Service Discovery	declined	objc
 class	shipped	NSNotification		App Support / Notifications	-	objc
 class	shipped	NSNotificationCenter		App Support / Notifications	-	objc
-class	open	NSNotificationQueue		App Support / Notifications	-	objc
+class	shipped	NSNotificationQueue		App Support / Notifications	-	objc
 class	shipped	NSNull		Fundamentals / Special Semantic Values	-	objc
 class	shipped	NSNumber		Fundamentals / Numbers	-	objc
 class	shipped	NSNumberFormatter		Fundamentals / Numbers	-	objc

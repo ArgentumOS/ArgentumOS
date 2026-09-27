@@ -77,14 +77,16 @@ extern NSNotificationName const NSSystemClockDidChangeNotification;
 extern NSNotificationName const NSSystemTimeZoneDidChangeNotification;
 extern NSNotificationName const NSUbiquityIdentityDidChangeNotification;
 
-/* ---- THE NOTIFICATION QUEUE'S VOCABULARY, AND THE QUEUE'S ABSENCE NAMED (the coverage slice) ----------
+/* ---- THE NOTIFICATION QUEUE'S VOCABULARY, AND THE SEAM THE CLASS FINALLY GOT (§62.61) ----------------
  *
  * Apple declares these two sets in THIS header, beside the queue class they configure, so they belong here.
- * THE CLASS ITSELF IS NOT DECLARED IN THIS SYSTEM, AND THE REASON IS RECORDED RATHER THAN IMPLIED: a queue
- * delivers a notification at a point in the RUN LOOP - idle, or as soon as possible without blocking - and this
- * tree's run loop exposes no phase seam to hang that on yet. So the styles and the coalescing policies ship as
- * the vocabulary a conforming caller compiles against, and the queue waits for the seam.
- */
+ *
+ * AND THE CLASS ARRIVED, THROUGH THE PROBLEM THIS COMMENT USED TO NAME: it said the queue was absent because "a
+ * queue delivers a notification at a point in the RUN LOOP - idle, or as soon as possible without blocking - and
+ * this tree's run loop exposes no phase seam to hang that on yet". §12.6's rule is that a dependency we lack is
+ * ADDED rather than refused, so the seam was added — FNRunLoopQueue.h is the internal contract, and NSRunLoop
+ * now tells the queue which phase it reached. See NSNotificationQueue.h for what each posting style means and
+ * where the loop reaches it. */
 typedef enum {
 	NSPostASAP = 1 << 0,
 	NSPostWhenIdle = 1 << 1,

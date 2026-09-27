@@ -3468,7 +3468,7 @@ vanishing.
 | **App Support / Exceptions** | all classes shipped | — |
 | **App Support / Extension Support** | 2 open | `NSExtensionContext`, `NSExtensionRequestHandling` |
 | **App Support / NSObject Script Support** | ALL STRUCK: `NSScriptCoercionHandler`, `NSScriptExecutionContext` | — |
-| **App Support / Notifications** | 1 open | `NSNotificationQueue` |
+| **App Support / Notifications** | all classes shipped | — |
 | **App Support / Object Matching Tests** | ALL STRUCK: `NSLogicalTest`, `NSScriptWhoseTest`, `NSSpecifierTest` | — |
 | **App Support / Object Specifiers** | ALL STRUCK: `NSIndexSpecifier`, `NSMiddleSpecifier`, `NSNameSpecifier`, `NSPositionalSpecifier`, `NSPropertySpecifier`, `NSRandomSpecifier`, `NSRangeSpecifier`, `NSRelativeSpecifier`, `NSScriptObjectSpecifier`, `NSUniqueIDSpecifier`, `NSWhoseSpecifier` | — |
 | **App Support / On-Demand Resources** | 1 open | `NSBundleResourceRequest` |
@@ -13346,6 +13346,76 @@ to shipped, the family table regenerated (`Threads and Locking`: 1 open → 0), 
 exactly one row plus the counts block. `foundation-gate`: **OK — 514 files, 191 of 195 public headers** open a
 nullability region; `--unimplemented`: **0 NEW** (1 baselined). The probe needed no staging work — it was already
 in the guest and host probe lists, which is the other half of why extending it was cheaper than adding one.
+
+## §62.61 — `NSNotificationQueue`, AND THE RUN-LOOP SEAM IT HAD BEEN WAITING FOR (2026-09-26)
+
+**WHAT SHIPPED: ONE ROW — `NSNotificationQueue` — AND THIS TIME THE CLASS WAS NOT THE HARD PART.** `class shipped`
+went **193 → 194**, and **the `App Support / Notifications` family is now complete** (`NSNotification`,
+`NSNotificationCenter` and the queue all ship). The enums and all six constants were already here, because a
+coverage slice had shipped the VOCABULARY while recording why the class itself was missing.
+
+**AND THAT RECORDED REASON IS WHAT MADE THIS UNIT A TWO-FILE UNIT.** `NSNotification.h` said, in as many words,
+that "a queue delivers a notification at a point in the RUN LOOP - idle, or as soon as possible without
+blocking - and this tree's run loop exposes no phase seam to hang that on yet". §12.6's rule is that a dependency
+this system lacks is **ADDED rather than refused**, so the unit added the seam and the class stands on it. The two
+queued posting styles are DEFINED by that seam, which is why neither could ship alone:
+
+* **`NSPostASAP`** — "posted when the current run-loop callout completes" — is the END of a pass in
+  `-runMode:beforeDate:`, after the timers and sources for that pass have run.
+* **`NSPostWhenIdle`** — "posted only when the run loop is idle (wait state)" — is the moment BEFORE the loop
+  blocks in `-runUntilDate:`/`-run`. Before, not after: posting it on the way OUT of the sleep would make "idle"
+  mean "just after waking".
+* **AND A THIRD SEAM, WHICH IS THE ONE THAT WOULD HAVE BEEN A SILENT BUG: a queued notification counts as LIVE
+  WORK.** `-runUntilDate:` asks `-fnHasLiveWorkForMode:` BEFORE it waits, and a loop whose only work was a queued
+  `NSPostWhenIdle` notification would have decided it had nothing to do and returned — never reaching the phase
+  that posts it. The check that proves it is `post-when-idle-arrives-when-the-loop-is-about-to-wait`, which the
+  loop can only pass by entering at all.
+
+**THE CONTRACT BETWEEN THE TWO FILES IS AN INTERNAL HEADER, `FNRunLoopQueue.h`** — not Apple's API, not in
+`Foundation.h`, and two questions: "the loop reached this phase, post what belongs to it" and "is there work you
+would not otherwise know about?". Three calls in `NSRunLoop.m`, each with the phase's meaning written where it
+happens.
+
+**THE CLASS ITSELF.** Five doors: `+defaultQueue`, `-initWithNotificationCenter:`, the 4-argument
+`-enqueueNotification:postingStyle:coalesceMask:forModes:`, the 2-argument convenience form, and
+`-dequeueNotificationsMatching:coalesceMask:`. **The convenience form is Apple's and NOT deprecated** (macOS
+10.0+; checked rather than recalled, because it LOOKS legacy), and Apple states exactly what it means: it
+"coalesces only notifications that match both the notification's name and object", in `NSDefaultRunLoopMode`.
+Three facts about the data model, each with a ground:
+
+* **COALESCING ACTS ON WHAT IS STILL WAITING** — never on what a center has delivered — and a notification stops
+  being coalescable the moment its phase arrives, because it is no longer in the queue. `NSNotificationNoCoalescing`
+  (0) matches NOTHING, so it removes nothing, and the same removal rule serves both coalescing and
+  `-dequeueNotificationsMatching:` because they are the same question asked by two doors.
+* **`NSPostNow` COALESCES FIRST AND THEN POSTS SYNCHRONOUSLY**, which is the whole difference between it and a
+  bare `-postNotification:` — and the probe asserts BOTH halves (the queued copy is dropped AND the delivery has
+  already happened when the call returns).
+* **OURS, AND STATED WHERE IT LIVES (§11.6.1 D2): the SENDER comparison in a match is POINTER IDENTITY** ("the
+  same object", which is what a sender is) **while the NAME comparison is `-isEqual:`** (a name is a string).
+  Apple says two notifications "match" and not how.
+* **THE MODES LIST GATES DELIVERY, NOT ENQUEUEING**, and a nil/empty list means `NSDefaultRunLoopMode`.
+
+**AND ONE DESIGN POINT THAT IS ABOUT MRC RATHER THAN ABOUT COCOA: the per-thread registry holds NO references.**
+A queue joins its thread's run loop on init, as an `NSValue` wrapping a NON-RETAINING pointer, and removes its own
+entry in `-dealloc`. A registry of STRONG references would be unremovable — the entry would keep the queue alive,
+so `-dealloc` could never run — which is the classic way this pattern leaks. The thread dictionary is the
+per-thread store this library already had, so the default queue needed no new mechanism, which is what Apple's own
+sentence describes.
+
+**TWO BUILD ERRORS, BOTH OF THE "THE TOOL NAMED IT IN ONE LINE" KIND, AND BOTH WORTH THE RECORD:**
+`FNRunLoopQueue.h` declares a CATEGORY, and a category without its class's interface is *"cannot find interface
+declaration for 'NSNotificationQueue'"* — the seam header must import the class's own header. And the probe used
+`self` inside `main()`, which is a C function: eight errors, one per use, because `self` is only implicit inside a
+method. Neither was a design problem; both were the build saying precisely what was wrong.
+
+**VERIFIED.** Host: `make host-foundation-run` — **30 probes, every tally `fail=0`**, the new probe at
+**`ok=10 fail=0`**. Guest: `make testimg` then `make test TESTS='foundation_notificationqueue'` →
+**`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**, the probe's own tally `ok=10 fail=0` in ONE run, GREEN ON THE
+FIRST TRY — which matters here more than usual, because the probe drives the run loop, three posting styles and a
+second thread. `foundation-sweep --check`: **consistent**, the row flipped to shipped, the family table
+regenerated (`App Support / Notifications`: all classes shipped). `foundation-gate`: **OK — 518 files, 193 of 197
+public headers** open a nullability region; `--unimplemented`: **0 NEW** (1 baselined). The probe needed STAGING
+for the guest (mk/20-userland.mk's probe list is hand-written) and an entry in `HOST_PROBES`.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 

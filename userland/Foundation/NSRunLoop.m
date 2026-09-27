@@ -22,6 +22,11 @@
 #import <Foundation/NSDate.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSString.h>
+/* THE NOTIFICATION QUEUE'S SEAM (§62.61). Two of NSNotificationQueue's posting styles are DEFINED as points in
+ * a run loop — "as soon as possible" is "when the current callout completes" and "when idle" is "when the loop
+ * is about to wait" — so the loop has to tell the queue which phase it reached. This is the only file that
+ * knows, and FNRunLoopQueue.h is the internal contract between them. */
+#import <Foundation/FNRunLoopQueue.h>
 /* THE WEAK API LIVES HERE (objc_storeWeak/objc_loadWeak, documented as zeroing), not in
  * <objc/runtime.h>. THE FOUNDATION LIBRARY IS MRC - ARC is a per-file choice and no file in this
  * directory takes it - so a non-owning reference is spelled with the runtime's own functions,
@@ -427,6 +432,11 @@ static BOOL fn_mode_fires(NSString *timerMode, NSString *runningMode)
 	 * ONE PASS and the waiting belongs to -runUntilDate:/-run (the deviation the probe pins as
 	 * `runmode-one-pass`). */
 	[self fnPollSourcesInMode:_currentMode seconds:0 dispatch:YES];
+	/* AND THE PASS ENDS BY GIVING THE NOTIFICATION QUEUE ITS "AS SOON AS POSSIBLE" PHASE (§62.61): this pass's
+	 * callouts have run, so a notification enqueued NSPostASAP is due NOW — posting it here is exactly what
+	 * "posted when the current run-loop callout completes" means. It happens BEFORE the answer below is
+	 * computed, because posting is synchronous and may enqueue more; that new work has to be visible. */
+	[NSNotificationQueue fnPostPendingWhenIdle:NO mode:_currentMode];
 	/* ... and the answer says whether there is still work: a loop with nothing live stops. */
 	return fired || [self fnHasLiveWorkForMode:_currentMode];
 }
@@ -435,10 +445,16 @@ static BOOL fn_mode_fires(NSString *timerMode, NSString *runningMode)
 /* ---- the sources (W6a) --------------------------------------------------- */
 
 /* The loop keeps running while EITHER kind of work is live. One function, so the two doors below cannot
- * disagree about what "still has work" means. */
+ * disagree about what "still has work" means.
+ *
+ * A QUEUED NOTIFICATION IS WORK (§62.61), and leaving it out of this answer would be a real bug rather than a
+ * tidiness point: `-runUntilDate:` asks this question BEFORE its wait, so a loop whose only work was a queued
+ * NSPostWhenIdle notification would decide it had nothing to do and return without ever reaching the phase that
+ * would post it. */
 - (BOOL)fnHasLiveWorkForMode:(NSString *)mode
 {
-	return [self fnHasLiveTimersForMode:mode] || [self fnHasLiveSourcesForMode:mode];
+	return [self fnHasLiveTimersForMode:mode] || [self fnHasLiveSourcesForMode:mode] ||
+	       [NSNotificationQueue fnHasPendingWorkForMode:mode];
 }
 
 /* APPLE'S PORT DOOR: IT IS THE FORWARD AND NOTHING ELSE. A port already knows how to be watched —
@@ -591,6 +607,10 @@ static BOOL fn_mode_fires(NSString *timerMode, NSString *runningMode)
 	       (limit == nil || [limit timeIntervalSinceNow] > 0)) {
 		double soonest = [self fnNextFire:_currentMode];
 
+		/* "WHEN IDLE" IS THIS POINT AND NOT ANOTHER ONE (§62.61): the loop is about to WAIT, which is the last
+		 * moment at which it can still be said to have had nothing else to do. A NSPostWhenIdle notification
+		 * is posted HERE, before the sleep — not after it, which would make "idle" mean "just after waking". */
+		[NSNotificationQueue fnPostPendingWhenIdle:YES mode:_currentMode];
 		if (soonest > 0) {
 			[self fnPollSourcesInMode:_currentMode
 					  seconds:soonest - fn_now()
@@ -608,6 +628,7 @@ static BOOL fn_mode_fires(NSString *timerMode, NSString *runningMode)
 	while ([self fnHasLiveWorkForMode:_currentMode]) {
 		double soonest = [self fnNextFire:_currentMode];
 
+		[NSNotificationQueue fnPostPendingWhenIdle:YES mode:_currentMode];	/* see -runUntilDate: */
 		if (soonest > 0) {
 			[self fnPollSourcesInMode:_currentMode
 					  seconds:soonest - fn_now()
