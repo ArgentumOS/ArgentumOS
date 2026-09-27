@@ -631,9 +631,21 @@ static NSURLSessionTaskTransactionMetrics *fn_metrics_for_transfer(FNCurlTransfe
 			 * OMITTED, with no error and no body, and a server could only report a request with nothing in it.
 			 *
 			 * `CURLOPT_UPLOAD` MAKES CURL PULL from `fn_curl_read`, and THE METHOD IS SET EXPLICITLY because
-			 * that option's own default is PUT - a caller's POST must stay a POST. THE LENGTH IS THE CALLER'S
-			 * IF THEY PUBLISHED ONE and unknown otherwise, which HTTP/1.1 answers with chunked encoding (curl
-			 * does that for -1).
+			 * that option's own default is PUT - a caller's POST must stay a POST. A PUBLISHED LENGTH IS
+			 * HONOURED (`Content-Length`), and it is the path that WORKS.
+			 *
+			 * AN UNPUBLISHED LENGTH IS A KNOWN GAP, AND IT IS NAMED HERE BECAUSE THE PARENTHETICAL THAT USED
+			 * TO SIT IN THIS SPOT CLAIMED THE OPPOSITE: "unknown otherwise, which HTTP/1.1 answers with chunked
+			 * encoding (curl does that for -1)" is FALSE IN THIS BUILD. MEASURED (§62.37): a request with a
+			 * stream body and NO `Content-Length` sends NO BODY AT ALL and the transfer SUCCEEDS - curl never
+			 * calls `fn_curl_read` even once (`FNSETUP stream=1 len=0`, then not one read callback) - which is
+			 * the same silent shape §62.36 fixed for a read error. THE OPTION SET IS NOT OBVIOUSLY WRONG: the
+			 * method, `CURLOPT_UPLOAD`, the read function and `INFILESIZE_LARGE = -1` are what curl's own
+			 * command line does for `-T -`, and the HOST'S libcurl 8.14.1 sends the body chunked for exactly
+			 * that (measured), while the guest runs **libcurl/8.22.0-DEV**, so a version difference is the
+			 * standing hypothesis rather than the absence of a rule. WHAT IT NEEDS is one more measurement with
+			 * this case exercised, and then either a documented switch (curl has `CURLOPT_TRANSFER_ENCODING`)
+			 * or a refusal at the door - not a guess, because the working path must not be broken to guess.
 			 *
 			 * AND THE STREAM IS SINGLE-USE, WHICH IS WHY A RE-SEND IS NOT HANDLED HERE: a redirect or a 401
 			 * re-issue would ask this same, already-consumed stream for its body a second time and get

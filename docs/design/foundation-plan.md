@@ -12977,6 +12977,31 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.37 — AN UNPUBLISHED LENGTH SENDS NOTHING: THE CLAIM, THE MEASUREMENT, AND WHAT THE FIX NEEDS (2026-09-26)
+
+**ONE THING WAS FIXED IN §62.36 AND A SECOND WAS NAMED THERE; THIS IS THE NAMED ONE, EXAMINED.** A stream-bodied
+request with **no `Content-Length`** sends **NO BODY AT ALL**, and the transfer **SUCCEEDS** — the same silent shape
+§62.36 fixed on the error path, now on the success path.
+
+**WHAT WAS MEASURED, AND IT INCLUDES THE OPTION SET BEING *NOT* OBVIOUSLY THE CULPRIT:**
+* in the guest, that request never calls `fn_curl_read` even once (`FNSETUP stream=1 len=0`, then not one read
+  callback) and the transfer completes with a 200;
+* **the HOST'S libcurl 8.14.1 DOES send the body chunked for exactly this shape** — `curl -X POST -T -` against a
+  loopback listener, body present, `Transfer-Encoding: chunked` in the head (measured here, not assumed);
+* and the guest runs **libcurl/8.22.0-DEV** (the vendored build), i.e. a DIFFERENT VERSION from the one that works.
+**SO THE STANDING HYPOTHESIS IS A VERSION DIFFERENCE, AND WHAT IT NEEDS IS ONE MORE MEASUREMENT** with this case
+exercised — then either a documented switch (curl has `CURLOPT_TRANSFER_ENCODING`) or a refusal at the door. It is
+NOT a guess, because the working `Content-Length` path must not be broken in order to guess.
+
+**AND THE COMMENT THAT SAID OTHERWISE WAS CORRECTED IN THE SAME BREATH.** The bridge's stream branch claimed
+"unknown otherwise, which HTTP/1.1 answers with chunked encoding (curl does that for -1)" — a sentence that reads
+like a decision and asserts a property NOBODY HAD MEASURED, which is exactly the shape §62.36 caught one line below
+it ("a body that stops early is a short body rather than a silent nothing"). That claim is now replaced by the
+measurement, where the next reader of that branch will meet it.
+
+**VERIFIED:** the change is documentation, and the case is unchanged and green — `foundation_urlsession_task`
+**6/6** — with `make rootagfs` clean. Nothing else was touched, because nothing else had been established.
+
 ## §62.36 — A READ THAT FAILS IS NOT AN END OF BODY: THE DEFECT, THE FIX, AND A CHECK THAT HAD TO BE TAUGHT TO FAIL (2026-09-26)
 
 **THE DEFECT, AND IT WAS MEASURED RATHER THAN ARGUED.** The bridge's stream reader was one line:
