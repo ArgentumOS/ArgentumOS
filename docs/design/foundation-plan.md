@@ -12977,6 +12977,42 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.44 — `NSMapTable`'S LEGACY C API: THE CALL-BACKS, THE TABLE, AND THE HAND (2026-09-26)
+
+**WHAT SHIPPED: THIRTY-SIX OF THE FAMILY'S THIRTY-EIGHT NAMES, AND THE TWO THAT DID NOT ARE REFUSED WITH A GROUND
+THIS LIBRARY ALREADY RECORDED.** The pre-10.5 functions and call-back STRUCTS Apple deprecated when
+`NSPointerFunctions` arrived: nineteen functions, three structs, the three sentinels, and thirteen pre-built
+call-back sets. `NSCreateMapTableWithZone` and `NSCopyMapTableWithZone` are NOT among them, because they take an
+`NSZone` — **and `NSObjCRuntime.h` records the user-driven sequence that removed every zone-taking method, then
+every zone-returning one, and finally the type itself.** A header cannot spell a type the library removed on
+purpose, so those two rows stay OWED with that ground, and the ledger says exactly that: **37 `shipped`, 2 `open`,
+and the open count is 417.**
+
+**THE DESIGN WAS MEASURED BEFORE IT WAS WRITTEN, AND THAT IS WHERE THIS UNIT'S VALUE IS.** The obvious
+implementation would have bridged these call-backs onto `NSPointerFunctions` — the same engine `NSHashTable` and
+`NSPointerFunctions`-built tables already use — and IT CANNOT BE DONE:
+
+    typedef NSUInteger (*NSPointerFunctionsHashFunction)(const void *item, …);
+    /* legacy:                     unsigned (*hash)(NSMapTable *table, const void *key); */
+
+**A C FUNCTION POINTER CANNOT CLOSE OVER ITS TABLE**, and Apple's call-backs are promised the table. So the
+implementation is a **private subclass** — `FNLegacyMapTable` — that holds the call-backs and the pairs, hands
+`self` to every one of them, and leaves the modern object API untouched. THE PROBE'S PURPOSE CHECK is that hand:
+it registers a call-back **that records what it was handed** and fails if the table is lost anywhere between the
+caller and the engine.
+
+**AND THE DEVIATION THE DESIGN CARRIES IS NAMED AND MEASURED RATHER THAN LEFT TO BE FOUND:** the legacy mode is a
+**linear scan**, so **a caller's `hash` call-back is never consulted** — it compares. Apple's legacy table hashes;
+this one compares; a call-back that hashes but compares everything equal would behave differently here. The probe's
+first version asserted *hash* calls and failed with "0 hash call(s)" — **the fourth time in this thread that a
+check's premise, not the code, was the thing that was wrong** — and the check now measures the scan instead.
+
+**VERIFIED.** `foundation_legacymaptable` is **15/15 green** in one guest run, its case 6/6. Regressions:
+`foundation_collection` 6/6 and `foundation_string` 6/6 (the family that shares the pointer engine). Two imports
+this file needed were caught by the tools rather than by reading: `NSMutableString.h` does not exist in this tree
+(the gate's clean-room rule refuses an import that resolves to no header — the second time that rule has caught me),
+and the ARC boundary into a C API needed `__bridge` casts (the compiler's own words).
+
 ## §62.43 — A SECOND FAMILY, AND A WHOLE ONE: THE LEGACY LOCALIZATION KEYS (2026-09-26)
 
 **WHAT SHIPPED: `NSUserDefaults`' TWENTY-NINE DEPRECATED NAMES, WHICH IS THE WHOLE FAMILY.** Twenty-six are the

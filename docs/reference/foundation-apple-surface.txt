@@ -36,13 +36,13 @@
 # counts by kind:
 #   class      shipped  174   open   51   struck   48
 #   protocol   shipped   30   open   10   struck    5
-#   macro      shipped  113   open    8   struck  132
+#   macro      shipped  116   open    5   struck  132
 #   enum       shipped  132   open   19   struck    9
 #   case       shipped 1077   open  150   struck   75
-#   func       shipped   83   open   94   struck   12
-#   var        shipped  597   open  110   struck  207
+#   func       shipped  100   open   77   struck   12
+#   var        shipped  610   open   97   struck  207
 #   typealias  shipped   65   open    6   struck    5
-#   struct     shipped    8   open    5   struck    0
+#   struct     shipped   11   open    2   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
 case	shipped	NSActivityAutomaticTerminationDisabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -1781,14 +1781,14 @@ enum	struck	NSXPCConnectionOptions	NSXPCConnection	Low-Level Utilities / XPC Cli
 func	open	CFBridgingRelease		Low-Level Utilities / Memory Management / Core Foundation ARC Integration	-	objc
 func	open	CFBridgingRetain		Low-Level Utilities / Memory Management / Core Foundation ARC Integration	-	objc
 func	open	NSAllHashTableObjects	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSAllMapTableKeys	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSAllMapTableValues	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSAllMapTableKeys	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSAllMapTableValues	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSAllocateCollectable		Low-Level Utilities / Legacy / Legacy	32-bit-only	objc
 func	shipped	NSAllocateMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	struck	NSAllocateObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	32-bit-only	objc
 func	shipped	NSClassFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	open	NSCompareHashTables	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSCompareMapTables	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSCompareMapTables	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSContainsRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSConvertHostDoubleToSwapped		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	shipped	NSConvertHostFloatToSwapped		Low-Level Utilities / Byte Ordering / Functions	-	objc
@@ -1800,10 +1800,10 @@ func	shipped	NSCopyMemoryPages		Low-Level Utilities / Memory Management / Memory
 func	open	NSCopyObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	deprecated	objc
 func	open	NSCountFrames		Reference / Debugging	-	objc
 func	open	NSCountHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSCountMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSCountMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	open	NSCreateHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	open	NSCreateHashTableWithZone	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSCreateMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSCreateMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	open	NSCreateMapTableWithZone	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	struck	NSCreateZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	shipped	NSDeallocateMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
@@ -1827,9 +1827,9 @@ func	shipped	NSDivideRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSEdgeInsetsEqual		Fundamentals / Geometry / Comparing edge insets	-	objc
 func	shipped	NSEdgeInsetsMake		Fundamentals / Geometry / Creating an edge insets structure	-	objc
 func	open	NSEndHashTableEnumeration	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSEndMapTableEnumeration	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSEndMapTableEnumeration	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	open	NSEnumerateHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSEnumerateMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSEnumerateMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSEqualPoints		Fundamentals / Geometry / Managing Points	-	objc
 func	shipped	NSEqualRanges		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSEqualRects		Fundamentals / Geometry / Managing Rectangles	-	objc
@@ -1838,7 +1838,7 @@ func	open	NSExtraRefCount		Low-Level Utilities / Objective-C Runtime / Object Al
 func	shipped	NSFileTypeForHFSTypeCode	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
 func	open	NSFrameAddress		Reference / Debugging	-	objc
 func	open	NSFreeHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSFreeMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSFreeMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSFullUserName	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	shipped	NSGetSizeAndAlignment		Low-Level Utilities / Objective-C Runtime / Serialization	-	objc
 func	shipped	NSGetUncaughtExceptionHandler	NSException	App Support / Exceptions / Functions	-	objc
@@ -1871,12 +1871,12 @@ func	shipped	NSMakePoint		Fundamentals / Geometry / Managing Points	-	objc
 func	shipped	NSMakeRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSMakeRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSMakeSize		Fundamentals / Geometry / Managing Sizes	-	objc
-func	open	NSMapGet	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSMapInsert	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSMapInsertIfAbsent	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSMapInsertKnownAbsent	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSMapMember	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSMapRemove	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSMapGet	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSMapInsert	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSMapInsertIfAbsent	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSMapInsertKnownAbsent	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSMapMember	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSMapRemove	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSMaxRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSMaxX		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSMaxY		Fundamentals / Geometry / Managing Rectangles	-	objc
@@ -1886,7 +1886,7 @@ func	shipped	NSMinX		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSMinY		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSMouseInRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	open	NSNextHashEnumeratorItem	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSNextMapEnumeratorPair	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSNextMapEnumeratorPair	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSOffsetRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSOpenStepRootDirectory	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
 func	open	NSPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
@@ -1904,7 +1904,7 @@ func	shipped	NSRectFromString		Fundamentals / Geometry / Managing Rectangles	-	o
 func	shipped	NSRectToCGRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	struck	NSRecycleZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	open	NSResetHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSResetMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSResetMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	open	NSReturnAddress		Reference / Debugging	-	objc
 func	open	NSRoundDownToMultipleOfPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	open	NSRoundUpToMultipleOfPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
@@ -1918,7 +1918,7 @@ func	shipped	NSSizeFromString		Fundamentals / Geometry / Managing Sizes	-	objc
 func	shipped	NSSizeToCGSize		Fundamentals / Geometry / Managing Sizes	-	objc
 func	shipped	NSStringFromClass		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	open	NSStringFromHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSStringFromMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	shipped	NSStringFromMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSStringFromPoint		Fundamentals / Geometry / Managing Points	-	objc
 func	open	NSStringFromProtocol		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	shipped	NSStringFromRange		Fundamentals / Ranges / Managing ranges	-	objc
@@ -2113,9 +2113,9 @@ macro	shipped	NSLocalizedStringFromTable		Fundamentals / Localization	-	objc
 macro	shipped	NSLocalizedStringFromTableInBundle		Fundamentals / Localization	-	objc
 macro	shipped	NSLocalizedStringWithDefaultValue		Fundamentals / Localization	-	objc
 macro	open	NSMaximumStringLength	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-macro	open	NSNotAPointerMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-macro	open	NSNotAnIntMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-macro	open	NSNotAnIntegerMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+macro	shipped	NSNotAPointerMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+macro	shipped	NSNotAnIntMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+macro	shipped	NSNotAnIntegerMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 macro	shipped	NSObjectAutoreleasedEvent		Reference / Macros	-	objc
 macro	shipped	NSObjectExtraRefDecrementedEvent		Reference / Macros	-	objc
 macro	shipped	NSObjectExtraRefIncrementedEvent		Reference / Macros	-	objc
@@ -2271,9 +2271,9 @@ struct	shipped	NSEdgeInsets		Fundamentals / Geometry	-	objc
 struct	shipped	NSFastEnumerationState	NSFastEnumeration	Fundamentals / Iteration / Constants	-	objc
 struct	open	NSHashEnumerator	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
 struct	open	NSHashTableCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
-struct	open	NSMapEnumerator	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
-struct	open	NSMapTableKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
-struct	open	NSMapTableValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
+struct	shipped	NSMapEnumerator	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
+struct	shipped	NSMapTableKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
+struct	shipped	NSMapTableValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types	deprecated	objc
 struct	shipped	NSOperatingSystemVersion	NSProcessInfo	App Support / System Interaction / Getting host information	-	objc
 struct	shipped	NSRange		Fundamentals / Ranges	-	objc
 struct	shipped	NSSwappedDouble		Low-Level Utilities / Byte Ordering / Constants	-	objc
@@ -2563,11 +2563,11 @@ var	shipped	NSInflectionReferentConceptAttributeName	NSAttributedString	Fundamen
 var	shipped	NSInflectionRuleAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSInlinePresentationIntentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	open	NSIntHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSIntMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSIntMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	shipped	NSIntMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	shipped	NSIntMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	open	NSIntegerHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSIntegerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSIntegerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	shipped	NSIntegerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	shipped	NSIntegerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSInternalInconsistencyException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSInternationalCurrencyString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSInvalidArchiveOperationException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
@@ -2885,28 +2885,28 @@ var	struck	NSNetServicesErrorDomain	NSNetService	Networking / Local Network Serv
 var	shipped	NSNextDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSNextNextDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	open	NSNonOwnedPointerHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSNonOwnedPointerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSNonOwnedPointerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSNonOwnedPointerOrNullMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	shipped	NSNonOwnedPointerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	shipped	NSNonOwnedPointerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	shipped	NSNonOwnedPointerOrNullMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	open	NSNonRetainedObjectHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSNonRetainedObjectMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSNonRetainedObjectMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	shipped	NSNonRetainedObjectMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	shipped	NSNonRetainedObjectMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSNotFound		Fundamentals / Ranges / Related types	-	objc
 var	shipped	NSNotificationDeliverImmediately	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Constants	-	objc
 var	shipped	NSNotificationPostToAllSessions	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Constants	-	objc
 var	shipped	NSOSStatusErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	open	NSObjectHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSObjectInaccessibleException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSObjectMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSObjectMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	shipped	NSObjectMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	shipped	NSObjectMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSObjectNotAvailableException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSOldStyleException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	open	NSOperationNotSupportedForKeyException		Reference / Constants	-	objc
 var	open	NSOperationQueueDefaultMaxConcurrentOperationCount	NSOperationQueue	App Support / Operations / Managing the Execution of Operations	-	objc
 var	open	NSOwnedObjectIdentityHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	open	NSOwnedPointerHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSOwnedPointerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
-var	open	NSOwnedPointerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	shipped	NSOwnedPointerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
+var	shipped	NSOwnedPointerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSPOSIXErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	shipped	NSParseErrorException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSParseErrorException	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
