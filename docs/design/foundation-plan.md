@@ -3532,7 +3532,7 @@ vanishing.
 | **Fundamentals / Specialized Sets** | all classes shipped | — |
 | **Fundamentals / Spelling and Grammar** | 2 open | `NSSpellServer`, `NSSpellServerDelegate` |
 | **Fundamentals / Strings** | all classes shipped | — |
-| **Fundamentals / Strings with Metadata** | 3 open | `NSAttributedStringMarkdownParsingOptions`, `NSAttributedStringMarkdownSourcePosition`, `NSPresentationIntent` |
+| **Fundamentals / Strings with Metadata** | 1 open | `NSPresentationIntent` |
 | **Fundamentals / Time and Motion** | all classes shipped | — |
 | **Fundamentals / URLs** | all classes shipped | — |
 | **Fundamentals / Unique Identifiers** | all classes shipped | — |
@@ -13541,6 +13541,51 @@ which is the one place this probe is slower than its siblings. `foundation-sweep
 regenerated (`Low-Level Utilities / Sockets`: 1 open → 0). `foundation-gate`: **OK — 522 files, 195 of 199 public
 headers** open a nullability region; `--unimplemented`: **0 NEW** (1 baselined). The probe needed staging for the
 guest and an entry in `HOST_PROBES`.
+
+## §62.64 — THE MARKDOWN FAMILY'S TWO VALUE OBJECTS: THE NOUNS SHIP BEFORE THE ENGINE (2026-09-26)
+
+**WHAT SHIPPED: NINE ROWS — `NSAttributedStringMarkdownParsingOptions` and `NSAttributedStringMarkdownSourcePosition`
+with the two enums and their five cases.** `class shipped` went **195 → 197**, `enum 138 → 140`, `case 1137 →
+1142`, and **`Fundamentals / Strings with Metadata` is down to ONE open row** (`NSPresentationIntent`, which is a
+twelve-factory class and gets a unit of its own rather than riding along at the end of one).
+
+**AND THE NOUNS SHIP WHILE THE ENGINE DOES NOT, WHICH THE PLAN HAS DONE BEFORE AND SAYS SO.** §12.6 still lists "a
+markdown parser" as a dependency this tree has to ADD; what these classes are is what an importer would be
+CONFIGURED with and what it would RECORD about where text came from — so a caller can build, compare and copy both
+objects today, and the day the parser lands it has its options object waiting. W10 shipped the same family's
+attributes and enums the same way.
+
+**THE ONE QUESTION THE UNIT COULD HAVE GOT WRONG QUIETLY IS THE STARTING VALUES, AND THE ANSWER IS SPLIT.** Apple's
+own pages state two of them in as many words — `allowsExtendedAttributes` ("The default is `NO`") and
+`languageCode` ("The default is `nil`") — and publish the other three properties with NO starting value at all. So
+the class's `-init` documents exactly that split: two of the five are Apple's, and the other three (the `Full`
+syntax, the forgiving `ReturnPartiallyParsedIfPossible` policy, no source-position attributes) are OURS and are
+labelled as ours. **The first draft of the header asserted all five as Apple's, and the property pages are what
+corrected it** — which is the fourth time in this thread that looking an API claim up has beaten recalling it.
+
+**THE REAL ARITHMETIC IS `-rangeInString:`, BECAUSE THE TWO COORDINATE SYSTEMS DO NOT MEET.** Apple's source
+positions are 1-based LINE and COLUMN numbers where **a column is a UTF-8 BYTE offset** ("columns represent UTF-8
+indices; for multi-byte characters, the column indicates the first byte"), while every range in this library is in
+UTF-16 units. So the conversion walks the string's own bytes — the ones `-UTF8String` answers with — counting
+UTF-16 units as it goes, and **a 4-byte sequence counts as TWO units** because it is a surrogate pair; an
+implementation that counted characters would pass every ASCII check here. TWO more choices are stated rather than
+assumed, because Apple publishes the method's PURPOSE and not its rules: **the end position is EXCLUSIVE**, and a
+position past the end of the string is CLAMPED rather than refused.
+
+**AND THE CHECK WITH TEETH IS THE BYTE RULE:** `a-column-is-a-utf8-byte-and-not-a-character` builds "héllo",
+takes columns 1..6, and requires FOUR UTF-16 units and the substring "héll" — where a character-counting
+implementation answers five and "héllo". The probe's own tally would not have noticed; only the assertion does.
+
+**TWO HOUSE RULES APPLIED RATHER THAN RE-DERIVED:** copying is `-copy` and not `-copyWithZone:` (the §11.6.1 D1
+deviation — the protocol declares the entry point), and the `languageCode` setter takes a real snapshot through
+`-initWithString:` rather than `-copy`, for the reason the locking family and the attributed-string store record.
+
+**VERIFIED.** Host: `make host-foundation-run` — **32 probes, every tally `fail=0`**, the new probe at **`ok=10
+fail=0`**. Guest: `make testimg` then `make test TESTS='foundation_markdown'` → **`TESTS-OK 1/1 case(s), 6/6
+check(s) in 12s`**, the probe's own tally `ok=10 fail=0` in one run. `foundation-sweep --refresh` + `--check`:
+**consistent**, all nine rows flipped, the family table regenerated (`Strings with Metadata`: 3 open → 1).
+`foundation-gate`: **OK — 525 files, 196 of 200 public headers** open a nullability region; `--unimplemented`:
+**0 NEW** (1 baselined). The probe needed staging for the guest and an entry in `HOST_PROBES`.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 

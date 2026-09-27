@@ -174,6 +174,7 @@
 #import <Foundation/NSTimer.h>
 #import <Foundation/NSRunLoop.h>
 #import <Foundation/NSHost.h>
+#import <Foundation/NSAttributedStringMarkdown.h>
 #import <Foundation/NSOperation.h>
 #import <Foundation/NSBlockOperation.h>
 #import <Foundation/NSInvocationOperation.h>

@@ -34,11 +34,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  195   open   30   struck   48
+#   class      shipped  197   open   28   struck   48
 #   protocol   shipped   33   open    7   struck    5
 #   macro      shipped  116   open    5   struck  132
-#   enum       shipped  138   open   13   struck    9
-#   case       shipped 1137   open   90   struck   75
+#   enum       shipped  140   open   11   struck    9
+#   case       shipped 1142   open   85   struck   75
 #   func       shipped  164   open   13   struck   12
 #   var        shipped  645   open   62   struck  207
 #   typealias  shipped   65   open    6   struck    5
@@ -108,11 +108,11 @@ case	shipped	NSAttributedStringEnumerationLongestEffectiveRangeNotRequired	NSAtt
 case	shipped	NSAttributedStringEnumerationReverse	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text / Getting the enumeration options	-	objc
 case	shipped	NSAttributedStringFormattingApplyReplacementIndexAttribute	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string / Getting the formatting options	-	objc
 case	shipped	NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string / Getting the formatting options	-	objc
-case	open	NSAttributedStringMarkdownInterpretedSyntaxFull	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Syntax Values	-	objc
-case	open	NSAttributedStringMarkdownInterpretedSyntaxInlineOnly	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Syntax Values	-	objc
-case	open	NSAttributedStringMarkdownInterpretedSyntaxInlineOnlyPreservingWhitespace	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Syntax Values	-	objc
-case	open	NSAttributedStringMarkdownParsingFailureReturnError	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Failure Policies	-	objc
-case	open	NSAttributedStringMarkdownParsingFailureReturnPartiallyParsedIfPossible	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Failure Policies	-	objc
+case	shipped	NSAttributedStringMarkdownInterpretedSyntaxFull	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Syntax Values	-	objc
+case	shipped	NSAttributedStringMarkdownInterpretedSyntaxInlineOnly	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Syntax Values	-	objc
+case	shipped	NSAttributedStringMarkdownInterpretedSyntaxInlineOnlyPreservingWhitespace	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Syntax Values	-	objc
+case	shipped	NSAttributedStringMarkdownParsingFailureReturnError	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Failure Policies	-	objc
+case	shipped	NSAttributedStringMarkdownParsingFailureReturnPartiallyParsedIfPossible	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Failure Policies	-	objc
 case	shipped	NSAutosavedInformationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	open	NSBackgroundActivityResultDeferred	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
 case	open	NSBackgroundActivityResultFinished	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
@@ -1353,8 +1353,8 @@ class	open	NSArchiver		Files and Data Persistence / Deprecated	deprecated	objc
 class	shipped	NSArray		Fundamentals / Basic Collections	-	objc
 class	shipped	NSAssertionHandler		App Support / Assertions	-	objc
 class	shipped	NSAttributedString		Fundamentals / Strings with Metadata	-	objc
-class	open	NSAttributedStringMarkdownParsingOptions		Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown	-	objc
-class	open	NSAttributedStringMarkdownSourcePosition		Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
+class	shipped	NSAttributedStringMarkdownParsingOptions		Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown	-	objc
+class	shipped	NSAttributedStringMarkdownSourcePosition		Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 class	shipped	NSAutoreleasePool		Low-Level Utilities / Memory Management	-	objc
 class	open	NSBackgroundActivityScheduler		App Support / System Interaction	-	objc
 class	shipped	NSBlockOperation		App Support / Operations	-	objc
@@ -1623,8 +1623,8 @@ enum	shipped	NSAlignmentOptions		Fundamentals / Geometry / Related Types	-	objc
 enum	struck	NSAppleEventSendOptions	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types	declined	objc
 enum	shipped	NSAttributedStringEnumerationOptions	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
 enum	shipped	NSAttributedStringFormattingOptions	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
-enum	open	NSAttributedStringMarkdownInterpretedSyntax	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
-enum	open	NSAttributedStringMarkdownParsingFailurePolicy	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
+enum	shipped	NSAttributedStringMarkdownInterpretedSyntax	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
+enum	shipped	NSAttributedStringMarkdownParsingFailurePolicy	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
 enum	open	NSBackgroundActivityResult	NSBackgroundActivityScheduler	App Support / System Interaction / Constants	-	objc
 enum	shipped	NSBinarySearchingOptions	NSArray	Fundamentals / Basic Collections / Constants	-	objc
 enum	shipped	NSByteCountFormatterCountStyle	NSByteCountFormatter	Fundamentals / Data sizes / Constants	-	swift-page
