@@ -13184,8 +13184,15 @@ CANNOT LINK.** `FN_HOST_SRCS` is a wildcard over `userland/Foundation/*.m`, so t
 *"libcurl has no host consumer: the Foundation's probes are guest-only, so a host half would be dead weight."* The
 library therefore links with undefined `curl_*`/`SSL_*` symbols and every probe link then fails. **It also carries
 no signal for this unit: `foundation_attributedstring` is not in `HOST_PROBES`**, so the host run would not have
-executed the new checks even if it linked. Recorded rather than papered over; the fix is either excluding the curl
-bridge from the host source list or giving the host fragment its one-line curl half, and that choice is a decision.
+executed the new checks even if it linked. Recorded rather than papered over, and **THE USER'S DECISION WAS THE
+OTHER OF THE TWO GROUNDS: GIVE THE HOST FRAGMENT ITS ONE-LINE CURL HALF** — `HOST_LDFLAGS` gains `-lcurl -lssl
+-lcrypto`, which is the very change `tools/curl-build.sh`'s header anticipated ("It gets added when something on the
+host links libcurl, which is a one-line change and not a redesign"), noted at the declaration in `mk/60-host.mk`
+with its reason: the host run uses the HOST's curl and OpenSSL, exactly as it uses the host's glibc and ICU rather
+than the guest's musl and staged prefixes. **VERIFIED: `make host-foundation-run` exits 0 with 27 probes and every
+tally `fail=0`** — and one consequence is stated so it is not misread as coverage: the host probe list is
+unchanged, so this unit's own host signal is still zero (`foundation_attributedstring` is not in `HOST_PROBES`) and
+what the fix restores is the host suite's ability to run at all.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 

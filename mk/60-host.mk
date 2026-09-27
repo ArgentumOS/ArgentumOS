@@ -82,7 +82,13 @@ HOST_ICU_LIBS    = $(shell pkg-config --libs icu-i18n 2>/dev/null)
 # test file deallocated correctly every time, because that file had no such flag.
 HOST_CFLAGS      = -fPIC -g -Iinclude -Iuserland $(HOST_OBJCFLAGS)
 HOST_RPATH       = -Wl,-rpath,$(CURDIR)/$(HOST_LIBDIR) -Wl,-rpath,$(CURDIR)/$(HOST_OBJCPFX)/lib
-HOST_LDFLAGS     = -L$(HOST_LIBDIR) -L$(HOST_OBJCPFX)/lib -lobjc
+# -lcurl -lssl -lcrypto: THE HOST HALF OF THE CURL BRIDGE (2026-09-26). `FN_HOST_SRCS` is a wildcard, so
+# the host build compiles `FNCURLURLProtocol.m` - which includes <curl/curl.h> and calls the LibreSSL API -
+# and a probe link then fails on undefined `curl_*`/`SSL_*` unless the host libraries are named here. This
+# is the change tools/curl-build.sh's header anticipated ("It gets added when something on the host links
+# libcurl, which is a one-line change and not a redesign"); the HOST's curl and OpenSSL are used, exactly
+# as the host run uses the host's glibc and ICU rather than the guest's musl and staged prefixes.
+HOST_LDFLAGS     = -L$(HOST_LIBDIR) -L$(HOST_OBJCPFX)/lib -lobjc -lcurl -lssl -lcrypto
 
 # THE PER-FILE TABLES THAT STILL MATTER: six sources include <unicode/...>, one includes <zlib.h>,
 # and one is a root class. (The guest block's MRC list is NOT repeated - the whole library is MRC.)
