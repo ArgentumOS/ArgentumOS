@@ -653,15 +653,30 @@ static NSURLSessionTaskTransactionMetrics *fn_metrics_for_transfer(FNCurlTransfe
 			 * a delegate door that hands over a NEW stream, and this library has not landed that yet (the
 			 * refusal is named in NSURLConnection.h, where a caller meets it). */
 			NSString *published = [request valueForHTTPHeaderField:@"Content-Length"];
+			uint8_t *streamBytes = NULL;
+			NSUInteger streamLength = 0;
+			curl_off_t uploadSize = (curl_off_t)-1;
 
 			transfer.bodyStream = [request HTTPBodyStream];
 			[transfer.bodyStream open];
+			/* THE LENGTH, IN PRIORITY ORDER (§62.38): the caller's header first, then THE STREAM'S OWN BUFFER if
+			 * it can name one - `-getBuffer:length:` answers for a stream held in memory, which is the common
+			 * case and the one this library can always recognise - and nothing else, because an upload whose size
+			 * cannot be established sends NO BODY AT ALL through this transport (measured twice: the implicit
+			 * route and `CURLOPT_TRANSFER_ENCODING` both fail in the vendored curl 8.22.0-DEV, while libcurl
+			 * 8.14.1 on this host sends the same request chunked). ASKING THE STREAM IS WHAT MAKES THE COMMON
+			 * CASE WORK; a stream that genuinely cannot say is the remaining gap, and it is NAMED rather than
+			 * left to look like an empty body. */
+			if (published != nil) {
+				uploadSize = (curl_off_t)[published longLongValue];
+			} else if ([transfer.bodyStream getBuffer:&streamBytes length:&streamLength]) {
+				uploadSize = (curl_off_t)streamLength;
+			}
 			curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
 			curl_easy_setopt(curl, CURLOPT_READFUNCTION, fn_curl_read);
 			curl_easy_setopt(curl, CURLOPT_READDATA, &transfer);
 			curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, [[request HTTPMethod] UTF8String]);
-			curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE,
-					 published != nil ? (curl_off_t)[published longLongValue] : (curl_off_t)-1);
+			curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, uploadSize);
 		} else if ([request HTTPBody] != nil) {
 			/* THE BYTES ARE HANDED OVER AS BYTES, AND THE FIRST VERSION DID NOT: it round-tripped the body
 			 * through -initWithData:encoding:NSUTF8StringEncoding and sent the STRING's bytes, so a body

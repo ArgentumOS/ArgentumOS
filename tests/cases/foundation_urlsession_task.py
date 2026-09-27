@@ -50,7 +50,9 @@ CHECKS = ("completion-handler-factory-answers-a-task", "task-resume-runs-the-tra
           "the-delegate-was-asked-for-a-new-stream",
           "the-re-sent-request-carries-the-fresh-body",
           "the-broken-stream-leg-binds-its-own-listener",
-          "a-stream-that-cannot-be-read-fails-the-transfer-with-the-reads-error")
+          "a-stream-that-cannot-be-read-fails-the-transfer-with-the-reads-error",
+          "the-unpublished-length-leg-binds-its-own-listener",
+          "a-stream-body-with-no-published-length-is-sent")
 
 
 class Case(BaseCase):

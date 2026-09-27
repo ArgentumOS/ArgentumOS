@@ -12977,6 +12977,37 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.38 — ASK THE STREAM ITSELF: THE UNPUBLISHED LENGTH IS SOLVED FOR THE COMMON CASE, AND THE REST IS NAMED (2026-09-26)
+
+**THE MEASUREMENT THAT DECIDED IT, AND THE TWO CANDIDATES IT KILLED.** §62.37 left one hypothesis standing (a curl
+version difference) and one switch to try. Both were tested in one guest run:
+* `CURLOPT_TRANSFER_ENCODING, 1L` — curl's documented ask for a chunked transfer — **does NOT help**: with it set,
+  the unpublishable-length leg still reaches the server as a **105-byte head with no body and not one read
+  callback** (`FNUP size=-1 published=0`, then no `FNREAD`), while the same option set is what the *host's*
+  libcurl 8.14.1 turns into a chunked upload. The candidate is dead, and it is recorded as dead rather than left
+  as a thing to try;
+* so the standing explanation is still the vendored **libcurl/8.22.0-DEV** behaving differently from 8.14.1, and
+  THIS LIBRARY CANNOT FIX THAT BY ASKING CURL NICER.
+
+**WHAT IT DOES INSTEAD, WHICH SOLVES THE CASE THAT MATTERS: ASK THE STREAM.** The length now comes from the
+caller's `Content-Length` **if published**, and otherwise from **the stream's own buffer** —
+`-getBuffer:length:`, which this library's `NSInputStream` answers for a body held in memory and which is exactly
+the common case (a generated body, a serialised document, anything a caller has in hand). Measured: the leg that
+sent NOTHING now sends its eight bytes, and **that check was seen to fail first** — its own message read "the
+receiver saw 105 byte(s) and the body was ABSENT" — so it is a check that discriminates rather than one that
+merely passes.
+
+**AND THE REMAINING GAP IS NAMED RATHER THAN LEFT TO LOOK LIKE AN EMPTY BODY:** a stream that genuinely cannot
+report a length (a pipe, a socket, a lazy generator) still sends nothing through this transport. The next step
+there is the shape §62.36 established — **fail the transfer loudly** with an error a caller can act on (publish
+`Content-Length`, or hand over a stream that can say), rather than a silent success; it is not done here because
+the fix above covers the case the failure was measured on, and the loud refusal is its own change to the transfer
+path rather than a line in a setup block.
+
+**VERIFIED.** `foundation_urlsession_task` is **31/31 green**, with the new leg's negative result on record.
+Regressions: `foundation_urlsession` 6/6, `foundation_urlconnection` 6/6, `foundation_cachehooks` 3/3,
+`foundation_downloadresume` 6/6, `foundation_authloop` 3/3. `foundation-sweep --check` consistent.
+
 ## §62.37 — AN UNPUBLISHED LENGTH SENDS NOTHING: THE CLAIM, THE MEASUREMENT, AND WHAT THE FIX NEEDS (2026-09-26)
 
 **ONE THING WAS FIXED IN §62.36 AND A SECOND WAS NAMED THERE; THIS IS THE NAMED ONE, EXAMINED.** A stream-bodied

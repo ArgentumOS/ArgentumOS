@@ -917,6 +917,89 @@ int main(void)
 			brokenError != nil ? @"an error" : @"SUCCESS", brokenError != nil ? (int)[brokenError code] : 0]);
 	}
 
+	/* --- A STREAM BODY WITH NO PUBLISHED LENGTH (§62.38) -------------------------------------------- */
+	{
+		unsigned char rawBytes[8] = { 0x31, 0x37, 0x43, 0x49, 0x59, 0x61, 0x6d, 0x79 };
+		NSData *unpublished = [NSData dataWithBytes:rawBytes length:8];
+		NSURLSessionConfiguration *configuration5 = [NSURLSessionConfiguration defaultSessionConfiguration];
+		NSURLSession *session5 = [NSURLSession sessionWithConfiguration:configuration5];
+		NSMutableURLRequest *noLength = [NSMutableURLRequest requestWithURL:fn_url(@"http://127.0.0.1:46472/")];
+		NSURLSessionDataTask *noLengthTask;
+		struct sockaddr_in addr5;
+		unsigned char buf5[4096];
+		size_t total5 = 0;
+		int listener5, conn5 = -1, one5 = 1, tries5 = 0, found5 = 0;
+		__block BOOL called5 = NO;
+
+		/* NO Content-Length: the caller is uploading something whose size it does not know (a pipe, a generated
+		 * body), and HTTP/1.1's answer to that is chunked encoding. */
+		[noLength setHTTPMethod:@"POST"];
+		[noLength setHTTPBodyStream:[NSInputStream inputStreamWithData:unpublished]];
+		[noLength setTimeoutInterval:3.0];
+
+		listener5 = socket(AF_INET, SOCK_STREAM, 0);
+		memset(&addr5, 0, sizeof(addr5));
+		addr5.sin_family = AF_INET;
+		addr5.sin_port = htons(46472);
+		addr5.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		setsockopt(listener5, SOL_SOCKET, SO_REUSEADDR, &one5, sizeof(one5));
+		check("the-unpublished-length-leg-binds-its-own-listener",
+		      bind(listener5, (struct sockaddr *)&addr5, sizeof(addr5)) == 0 && listen(listener5, 1) == 0,
+		      @"this leg is its own receiver as well");
+
+		noLengthTask = [session5 dataTaskWithRequest:noLength
+			       completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+			(void)data;
+			(void)response;
+			(void)error;
+			called5 = YES;
+		}];
+		[noLengthTask resume];
+		conn5 = accept(listener5, NULL, NULL);
+		if(conn5 >= 0) {
+			fcntl(conn5, F_SETFL, O_NONBLOCK);
+			while(tries5 < 100 && total5 < sizeof(buf5)) {
+				ssize_t n = read(conn5, buf5 + total5, sizeof(buf5) - total5);
+
+				if(n > 0) {
+					total5 += (size_t)n;
+				} else {
+					usleep(10000);
+					tries5++;
+				}
+			}
+			{
+				const char *answer = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}";
+
+				write(conn5, answer, strlen(answer));
+			}
+			close(conn5);
+		}
+		close(listener5);
+		{
+			int waited5 = 0;
+
+			while(!called5 && waited5 < 300) {
+				usleep(10000);
+				waited5++;
+			}
+		}
+		{
+			size_t i;
+
+			for(i = 0; i + [unpublished length] <= total5; i++) {
+				if(memcmp(buf5 + i, [unpublished bytes], [unpublished length]) == 0) {
+					found5 = 1;
+					break;
+				}
+			}
+		}
+		check("a-stream-body-with-no-published-length-is-sent",
+		      found5,
+		      [NSString stringWithFormat:@"the receiver saw %d byte(s) and the body was %s - an unpublishable "
+			@"length means CHUNKED, not nothing", (int)total5, found5 ? "PRESENT" : "ABSENT"]);
+	}
+
 	printf("FOUNDATION-URLSESSION-TASK RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-URLSESSION-TASK-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-URLSESSION-TASK DONE\n");
