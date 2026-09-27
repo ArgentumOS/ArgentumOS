@@ -73,6 +73,7 @@
 #import <Foundation/NSCharacterSet.h>
 #import <Foundation/NSScanner.h>
 #import <Foundation/NSOrthography.h>
+#import <Foundation/NSLinguisticTagger.h>
 #import <Foundation/NSIndexSet.h>
 #import <Foundation/NSIndexPath.h>
 #import <Foundation/NSLocale.h>

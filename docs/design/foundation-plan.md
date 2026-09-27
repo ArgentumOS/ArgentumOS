@@ -3508,7 +3508,7 @@ vanishing.
 | **Fundamentals / Date Formatting** | all classes shipped | — |
 | **Fundamentals / Date Representations** | all classes shipped | — |
 | **Fundamentals / Dates and times** | all classes shipped | — |
-| **Fundamentals / Deprecated** | 5 open | `NSCalendarDate`, `NSEnergyFormatter`, `NSLengthFormatter`, `NSLinguisticTagger`, `NSMassFormatter` |
+| **Fundamentals / Deprecated** | 4 open | `NSCalendarDate`, `NSEnergyFormatter`, `NSLengthFormatter`, `NSMassFormatter` |
 | **Fundamentals / Electricity** | all classes shipped | — |
 | **Fundamentals / Energy, Heat, and Light** | all classes shipped | — |
 | **Fundamentals / Essentials** | all classes shipped | — |
@@ -12976,6 +12976,52 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.42 — THE LARGEST FAMILY ON THE WORK LIST: `NSLinguisticTagger` AND ITS FIFTY-ONE NAMES (2026-09-26)
+
+**WHAT SHIPPED, AND IT IS THE BIGGEST SINGLE BITE OUT OF §62.24'S LIST: ONE DEPRECATED CLASS AND FIFTY-ONE
+VOCABULARY NAMES.** Apple replaced `NSLinguisticTagger` with `NLTagger` in 10.15; the ledger owed the class row and
+fifty-one rows naming its vocabulary — seven schemes, thirty-two tags, two enums with nine cases, and two
+typealiases — and **ALL FIFTY-TWO ARE `shipped` NOW.** The ledger's open count fell to **482** (from 541).
+
+**WHY THE VOCABULARY IS THE POINT RATHER THAN A TRIM:** a ported application's source is full of `switch` statements
+on `NSLinguisticTagNoun` and comparisons against `NSLinguisticTagSchemeTokenType`. Declaring them is what makes that
+source COMPILE, which is the whole of §62.24's policy — and it is why the probe PINS EVERY CONSTANT (exists,
+non-empty, distinct within its scheme) instead of sampling a few. A copy-paste in the header would break a caller's
+switch silently, and that is the property the check is aimed at.
+
+**WHAT IS IMPLEMENTED IS THE HALF THIS SYSTEM CAN DO HONESTLY**, over the same KIND of dependency the rest of this
+library uses — a rule over a library it links, not a table somebody typed:
+* **TOKENIZATION OVER ICU'S BREAK ITERATOR**, through a new internal bridge (`FNTextBreaking`), which walks words,
+  sentences and paragraphs — and WHICH LIVES IN ITS OWN FILE because `NSString`'s
+  `-enumerateSubstringsInRange:options:usingBlock:` DECLARES THE SAME QUESTION AND IS THE SWEEP'S ONE BASELINED
+  UNIMPLEMENTED SELECTOR: one truth in one place, and the next consumer has a home to adopt rather than a second
+  implementation to reconcile;
+* **THE TWO SCHEMES THAT ARE PROPERTIES OF THE TEXT**: `TokenType` — with the refined punctuation tags the
+  vocabulary already carries, and the STRAIGHT QUOTE resolved BY CONTEXT (a character with no direction of its own
+  cannot be classified alone) — and `Script`, from ICU's script property;
+* **THE ORTHOGRAPHY DOORS**, because `NSOrthography` is a class this library already has (§62.21).
+
+**AND FIVE REFUSALS, EACH MEASURED RATHER THAN MERELY DESCRIBED:** the four morphological schemes
+(`LexicalClass`, `NameType`, `NameTypeOrLexicalClass`, `Lemma`) and `Language` answer NOTHING — the probe asserts
+the SAME token answering `Word` under `TokenType` and nil under all five — with the ground that ICU publishes no
+part-of-speech tagger and no language identifier in its C API; they are absent from
+`+availableTagSchemesForUnit:language:` as well, so the refusal is READABLE BEFORE ANYTHING IS BUILT. `JoinNames`
+is a case with no effect, and the probe runs the same enumeration with and without it to show that.
+
+**THREE MISTAKES, AND EVERY ONE WAS THE CHECK'S PREMISE RATHER THAN THE CODE'S** — which is by now this project's
+most reliable pattern, and the reason the checks print what they SAW:
+* ICU's short name for Han is **"Hani"**, not the "Han" a human would write — the check expected the human's;
+* `NSOrthography -initWithDominantScript:languageMap:` **RAISES for a nil map** (its header says a map is required
+  and its implementation says so in those words), and the probe passed nil and died with an uncaught exception:
+  THE LIBRARY WAS RIGHT;
+* the straight quote came back `OpenQuote Word OpenQuote` and the check's message PRINTED THE SEQUENCE — which is
+  what made the classifier's real gap visible (it has no context) instead of leaving "something was wrong".
+
+**VERIFIED.** `foundation_linguistictagger` is **13/13 green**; the family's ledger rows are 52 `shipped`, the open
+count is 482, and `foundation-sweep --check` is consistent. Smokes after the umbrella header changed (which recompiles
+the whole userland): `foundation_scanner` 6/6, `foundation_string` 6/6, `foundation_orthography` 6/6,
+`foundation_urlconnection` 6/6.
 
 ## §62.41 — THE COMPOSITION, ALONE IN ONE PROBE: A CONNECTION ACROSS A 401 WITH A STREAM BODY (2026-09-26)
 

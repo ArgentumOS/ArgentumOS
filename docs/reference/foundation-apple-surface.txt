@@ -34,14 +34,14 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  173   open   52   struck   48
+#   class      shipped  174   open   51   struck   48
 #   protocol   shipped   30   open   10   struck    5
 #   macro      shipped  113   open    8   struck  132
-#   enum       shipped  130   open   21   struck    9
-#   case       shipped 1068   open  159   struck   75
+#   enum       shipped  132   open   19   struck    9
+#   case       shipped 1077   open  150   struck   75
 #   func       shipped   83   open   94   struck   12
-#   var        shipped  530   open  177   struck  207
-#   typealias  shipped   63   open    8   struck    5
+#   var        shipped  568   open  139   struck  207
+#   typealias  shipped   65   open    6   struck    5
 #   struct     shipped    8   open    5   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -595,15 +595,15 @@ case	shipped	NSLessThanOrEqualToPredicateOperatorType	NSComparisonPredicate	Fund
 case	shipped	NSLessThanPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSLibraryDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSLikePredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	open	NSLinguisticTaggerJoinNames	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
-case	open	NSLinguisticTaggerOmitOther	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
-case	open	NSLinguisticTaggerOmitPunctuation	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
-case	open	NSLinguisticTaggerOmitWhitespace	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
-case	open	NSLinguisticTaggerOmitWords	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
-case	open	NSLinguisticTaggerUnitDocument	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
-case	open	NSLinguisticTaggerUnitParagraph	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
-case	open	NSLinguisticTaggerUnitSentence	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
-case	open	NSLinguisticTaggerUnitWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
+case	shipped	NSLinguisticTaggerJoinNames	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
+case	shipped	NSLinguisticTaggerOmitOther	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
+case	shipped	NSLinguisticTaggerOmitPunctuation	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
+case	shipped	NSLinguisticTaggerOmitWhitespace	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
+case	shipped	NSLinguisticTaggerOmitWords	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
+case	shipped	NSLinguisticTaggerUnitDocument	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
+case	shipped	NSLinguisticTaggerUnitParagraph	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
+case	shipped	NSLinguisticTaggerUnitSentence	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
+case	shipped	NSLinguisticTaggerUnitWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Constants	deprecated	objc
 case	shipped	NSLiteralSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	shipped	NSLocalDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
 case	shipped	NSLocaleLanguageDirectionBottomToTop	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
@@ -1437,7 +1437,7 @@ class	open	NSKeyValueSharedObserversSnapshot		Reference / Classes	-	objc
 class	shipped	NSKeyedArchiver		Files and Data Persistence / Keyed Archivers	-	objc
 class	shipped	NSKeyedUnarchiver		Files and Data Persistence / Keyed Archivers	-	objc
 class	open	NSLengthFormatter		Fundamentals / Deprecated	deprecated	objc
-class	open	NSLinguisticTagger		Fundamentals / Deprecated	deprecated	objc
+class	shipped	NSLinguisticTagger		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSListFormatter		Fundamentals / Lists	-	objc
 class	shipped	NSLocale		Fundamentals / Localization	-	objc
 class	open	NSLocalizedNumberFormatRule		Reference / Classes	-	objc
@@ -1692,8 +1692,8 @@ enum	shipped	NSKeyValueChange		Reference / Enumerations	-	objc
 enum	shipped	NSKeyValueObservingOptions		Reference / Enumerations	-	objc
 enum	shipped	NSKeyValueSetMutationKind		Reference / Enumerations	-	objc
 enum	open	NSLengthFormatterUnit	NSLengthFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
-enum	open	NSLinguisticTaggerOptions	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags	deprecated	objc
-enum	open	NSLinguisticTaggerUnit	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
+enum	shipped	NSLinguisticTaggerOptions	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags	deprecated	objc
+enum	shipped	NSLinguisticTaggerUnit	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
 enum	shipped	NSLocaleLanguageDirection	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language	-	objc
 enum	open	NSMachPortOptions	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
 enum	open	NSMassFormatterUnit	NSMassFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
@@ -2299,8 +2299,8 @@ typealias	shipped	NSItemProviderCompletionHandler	NSItemProvider	App Support / A
 typealias	shipped	NSItemProviderLoadHandler	NSItemProvider	App Support / Attachments / Constants	-	objc
 typealias	shipped	NSKeyValueChangeKey		Reference / Type Aliases	-	objc
 typealias	shipped	NSKeyValueOperator		Reference / Type Aliases	-	objc
-typealias	open	NSLinguisticTag	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
-typealias	open	NSLinguisticTagScheme	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
+typealias	shipped	NSLinguisticTag	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
+typealias	shipped	NSLinguisticTagScheme	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
 typealias	shipped	NSLocaleKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key	-	objc
 typealias	shipped	NSMapTableOptions	NSMapTable	Fundamentals / Pointer Collections / Creating and Initializing a Map Table	-	objc
 typealias	shipped	NSNotificationName	NSNotification	App Support / Notifications / Creating Notifications	-	swift-page
@@ -2598,44 +2598,44 @@ var	open	NSKeyedArchiveRootObjectKey	NSKeyedArchiver	Files and Data Persistence 
 var	open	NSKeyedUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
 var	shipped	NSLanguageIdentifierAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	open	NSLaterTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSLinguisticTagAdjective	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagAdverb	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagClassifier	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagCloseParenthesis	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagCloseQuote	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagConjunction	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagDash	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagDeterminer	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagIdiom	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagInterjection	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagNoun	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagNumber	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagOpenParenthesis	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagOpenQuote	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagOrganizationName	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Name Types	deprecated	objc
-var	open	NSLinguisticTagOther	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
-var	open	NSLinguisticTagOtherPunctuation	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagOtherWhitespace	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagOtherWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagParagraphBreak	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagParticle	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagPersonalName	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Name Types	deprecated	objc
-var	open	NSLinguisticTagPlaceName	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Name Types	deprecated	objc
-var	open	NSLinguisticTagPreposition	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagPronoun	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagPunctuation	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
-var	open	NSLinguisticTagSchemeLanguage	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
-var	open	NSLinguisticTagSchemeLemma	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
-var	open	NSLinguisticTagSchemeLexicalClass	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
-var	open	NSLinguisticTagSchemeNameType	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
-var	open	NSLinguisticTagSchemeNameTypeOrLexicalClass	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
-var	open	NSLinguisticTagSchemeScript	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
-var	open	NSLinguisticTagSchemeTokenType	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
-var	open	NSLinguisticTagSentenceTerminator	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagVerb	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	open	NSLinguisticTagWhitespace	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
-var	open	NSLinguisticTagWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
-var	open	NSLinguisticTagWordJoiner	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagAdjective	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagAdverb	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagClassifier	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagCloseParenthesis	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagCloseQuote	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagConjunction	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagDash	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagDeterminer	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagIdiom	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagInterjection	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagNoun	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagNumber	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagOpenParenthesis	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagOpenQuote	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagOrganizationName	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Name Types	deprecated	objc
+var	shipped	NSLinguisticTagOther	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
+var	shipped	NSLinguisticTagOtherPunctuation	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagOtherWhitespace	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagOtherWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagParagraphBreak	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagParticle	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagPersonalName	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Name Types	deprecated	objc
+var	shipped	NSLinguisticTagPlaceName	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Name Types	deprecated	objc
+var	shipped	NSLinguisticTagPreposition	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagPronoun	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagPunctuation	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
+var	shipped	NSLinguisticTagSchemeLanguage	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
+var	shipped	NSLinguisticTagSchemeLemma	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
+var	shipped	NSLinguisticTagSchemeLexicalClass	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
+var	shipped	NSLinguisticTagSchemeNameType	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
+var	shipped	NSLinguisticTagSchemeNameTypeOrLexicalClass	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
+var	shipped	NSLinguisticTagSchemeScript	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
+var	shipped	NSLinguisticTagSchemeTokenType	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Schemes	deprecated	objc
+var	shipped	NSLinguisticTagSentenceTerminator	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagVerb	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
+var	shipped	NSLinguisticTagWhitespace	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
+var	shipped	NSLinguisticTagWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
+var	shipped	NSLinguisticTagWordJoiner	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
 var	shipped	NSListItemDelimiterAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting formatting attribute keys	-	objc
 var	shipped	NSLoadedClasses	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
 var	shipped	NSLocalNotificationCenterType	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Type Properties	-	objc
