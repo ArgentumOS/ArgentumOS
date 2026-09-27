@@ -3496,7 +3496,7 @@ vanishing.
 | **Files and Data Persistence / XML** | all classes shipped | — |
 | **Files and Data Persistence / iCloud key and value storage** | 1 open | `NSUbiquitousKeyValueStore` |
 | **Fundamentals / Automatic grammar agreement** | 6 open | `NSInflectionRule`, `NSInflectionRuleExplicit`, `NSMorphology`, `NSMorphologyCustomPronoun`, `NSMorphologyPronoun`, `NSTermOfAddress` |
-| **Fundamentals / Basic Collections** | 2 open | `NSOrderedCollectionChange`, `NSOrderedCollectionDifference` |
+| **Fundamentals / Basic Collections** | all classes shipped | — |
 | **Fundamentals / Binary Data** | all classes shipped | — |
 | **Fundamentals / Calendrical Calculations** | all classes shipped | — |
 | **Fundamentals / Characters** | all classes shipped | — |
@@ -13204,6 +13204,89 @@ deliberately unchanged and neither is new: the probe's pre-existing `-Wnonnull` 
 **A STALE COUNT IN THE SAME FILE, FIXED BECAUSE THIS UNIT MADE IT STALER:** the per-unit-compile comment in
 `mk/60-host.mk` claimed "12 of the 27 probes are a single translation unit" — already wrong before this unit (20 of
 the 27 had no support half), and now measured and stated as **21 of the 28**.
+
+## §62.59 — THE ORDERED COLLECTION DIFFERENCE: W13'S LAST ROW, A DIFF ALGORITHM PAID, AND THREE BUGS THE PROBE FOUND (2026-09-26)
+
+**WHAT SHIPPED: FIVE ROWS — `NSOrderedCollectionDifference`, `NSOrderedCollectionChange`, `NSCollectionChangeType`
+and its two cases** — plus the EIGHT DOORS the two collection classes carry (four on `NSArray`, four on
+`NSOrderedSet`) and the diff algorithm §12.6 had been cataloguing as a dependency to ADD. **`class shipped` went
+**190 → 192**, and **the `Fundamentals / Basic Collections` family is now COMPLETE: its two open rows are gone.**
+W13 — "the collections completed" — has no rows left.
+
+**THE DIRECTION IS THE THING TO GET RIGHT, AND IT IS NOT WHAT THE SELECTOR NAME SUGGESTS.** `[A
+differenceFromArray:B]` answers a difference that, APPLIED TO B, produces A: the receiver is the DESTINATION and
+the argument is the SOURCE. The proof is not a reading of the name but two of Apple's own worked examples —
+`-arrayByApplyingDifference:` and `-differenceFromArray:` both define `diff = [modified differenceFromArray:
+original]` and then show `[original arrayByApplyingDifference:diff] == modified` — and it is the same direction as
+Swift's `CollectionDifference`, whose `difference(from:)` is called on the new collection. **SO THE TYPE CARRIES
+TWO DIFFERENT INDEX SPACES, which is the whole reason it is not just two index sets:** an INSERTION's `index` is
+in the receiver, a REMOVAL's in the argument. Apple's `-associatedIndex` page states the move pairing in exactly
+that shape: "the object @"Red" moves from index 8 to index 3" is `removal{index 8, associatedIndex 3}` +
+`insertion{index 3, associatedIndex 8}`.
+
+**AND ONE OF APPLE'S EXAMPLES CONTRADICTS THE OTHER TWO, WHICH IS RECORDED RATHER THAN RESOLVED AWAY:** the
+`-differenceFromArray:withOptions:` page's InferMoves example calls `[original differenceFromArray:modified]` and
+then reports indexes as though `original` were the source. Two pages agree and one does not, so the direction
+above is implemented and the odd page's NUMBERS are used as a specification nowhere; the header says so where a
+reader will meet it. (The plan has recorded this class of doc defect before — §27's page with the wrong
+declaration.)
+
+**THE DIFF ITSELF IS MYERS' GREEDY O(ND) SHORTEST EDIT SCRIPT, WHICH THE PLAN PERMITS BY NAME.** §12.6 listed "a
+diff algorithm" as something to ADD because "Apple's `differenceFromArray:` has a published contract and no
+table" — and the contract is exactly what the probe asserts. Apple even documents the freedom: its `@[A,B,C]` to
+`@[C,B]` example says a legitimate difference "may remove index 0 and move index 1 to index 1". The
+implementation trims the common prefix and suffix first (which is what keeps the trace small for the common
+case), then runs the trace-based Myers on the middle. **AND IT CARRIES ONE NAMED LIMIT, STATED WITH ITS GROUND:**
+the trace is O(D·(N+M)) memory, so a middle larger than `FN_DIFF_MAX_NODES` (1024) takes the COARSE script
+(everything removed, everything inserted) — still a valid difference, not a minimal one, and it infers no moves.
+The linear-space refinement is the fix when something needs it; silently allocating hundreds of megabytes would
+be worse than saying so.
+
+**THE DOORS ARE DECLARED AS CATEGORIES, WHICH IS THE HOUSE PATTERN AND HAS A MECHANICAL REASON.** They are
+implemented beside the differ in `NSOrderedCollectionDifference.m`, and a method declared in a class's OWN
+`@interface` but implemented in another translation unit makes clang warn `-Wincomplete-implementation` in the
+class's file (measured: four warnings in `NSArray.m` and four in `NSOrderedSet.m`). The plist conveniences
+(`+arrayWithContentsOfFile:`) are declared the same way for the same reason. A caller cannot tell:
+`[array differenceFromArray:other]` is the same call.
+
+**AND A TRAP WORTH THE LINE, BECAUSE IT WOULD HAVE PUT THE DOORS ON THE WRONG CLASS: `NSArray.h`'s
+`NS_ASSUME_NONNULL_END` SITS *INSIDE* `@interface NSMutableArray`** (a pre-existing wart: the class's `@end` is
+after the region's end). So "insert the new declarations just before `NS_ASSUME_NONNULL_END`" — a reasonable
+reading of that file — puts them on `NSMutableArray`, where `[anImmutableArray differenceFromArray:]` would not
+compile. Caught by reading the `@interface`/`@end` line numbers rather than by the compiler, which accepted it
+happily.
+
+**THREE BUGS THE PROBE FOUND, AND ONE OF THEM IS THE INTERESTING KIND.**
+
+1. **THE DIFFER HUNG, AND THE CAUSE WAS ONE CHARACTER: `k++` where the recurrence needs `k += 2`.** Myers
+   alternates diagonals by parity, so a step of 1 reads cells that were never written; `found` then never became
+   true and the BACKTRACK walked from a sentinel — a loop that would have run ~10^18 times. It presented as a
+   probe that printed nothing at all (a pipe-buffered stdout lost everything on SIGTERM, so even the checks that
+   had already passed were invisible until the run was repeated under `stdbuf -o0`). Two defences landed: the
+   step is 2, and if `found` is somehow false the script FALLS BACK to the coarse one instead of backtracking off
+   the trace.
+2. **THE PROBE ITSELF HAD AN UNSIGNED UNDERFLOW: `for (i = 39; i > 0; i -= 2)` never ends** — at `i == 1` the
+   decrement wraps to `NSUIntegerMax` and the loop appends objects until memory runs out. The library's own loops
+   were checked for the same shape and are clean (every one counts up, or counts down with the test on the
+   pre-decrement value). The lesson is the one this plan keeps re-learning in a new costume: when a hang is
+   reproduced, the fault is not automatically in the code just written — here the new class was correct and the
+   new TEST was not.
+3. **AND AN EXPECTATION OF MINE WAS WRONG WHERE THE CODE WAS RIGHT.** The index-set check asserted that inserting
+   at 1 and removing at 2 from `@[a,b,c]` yields `@[a,one,c]`; it yields `@[a,one,b]`, because REMOVALS APPLY
+   FIRST and an insertion's index is in the result of that. The check was corrected to the contract, and the
+   comment now says why — asserting the wrong number and then "fixing" the library to match it is exactly how a
+   contract gets inverted.
+
+**VERIFIED.** Host: `make host-foundation-run` — **29 probes, every tally `fail=0`**, the new probe at **`ok=22
+fail=0`**. Guest: `make testimg` then `make test TESTS='foundation_difference'` → **`TESTS-OK 1/1 case(s), 6/6
+check(s) in 12s`**, the probe's own tally `ok=22 fail=0` in ONE run, GREEN ON THE FIRST TRY — which is worth
+saying because the guest compiles probes with `-Werror=nullable-to-nonnull-conversion` and this probe drives
+blocks and C arrays. `foundation-sweep --refresh` + `--check`: **consistent**, with all five rows flipped to
+shipped and the family table regenerated (Basic Collections: 2 open → 0). `foundation-gate`: **OK — 514 files, 191
+of 195 public headers** open a nullability region; `--unimplemented`: **0 NEW** (1 baselined). The new probe also
+had to be STAGED for the guest — the guest probe list in `mk/20-userland.mk` is hand-written per probe, unlike
+the library's wildcard — and the first guest attempt SKIPPED for exactly that, which is the failure mode the
+harness's own message names.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 

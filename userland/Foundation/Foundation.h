@@ -151,6 +151,7 @@
 #import <Foundation/NSCacheDelegate.h>
 #import <Foundation/NSSet.h>
 #import <Foundation/NSCountedSet.h>
+#import <Foundation/NSOrderedCollectionDifference.h>
 #import <Foundation/NSOrderedSet.h>
 #import <Foundation/NSMutableOrderedSet.h>
 #import <Foundation/NSValue.h>

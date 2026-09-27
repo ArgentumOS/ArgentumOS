@@ -24,6 +24,7 @@
 #import <Foundation/NSObject.h>
 #import <Foundation/NSFastEnumeration.h>
 #import <Foundation/NSEnumerator.h>
+#import <Foundation/NSOrderedCollectionDifference.h>
 
 @class NSString;
 @class NSIndexSet;
@@ -106,6 +107,36 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+/* ---- THE DIFFERENCE DOORS (2026-09-26) --------------------------------------------------------------
+ *
+ * THE PLACEMENT IS THE HOUSE PATTERN RATHER THAN THE CLASS'S OWN INTERFACE, and the reason is mechanical: the
+ * doors are IMPLEMENTED beside the differ, in NSOrderedCollectionDifference.m (as categories), and a method
+ * declared in a class's own @interface but implemented in another translation unit makes clang warn
+ * `-Wincomplete-implementation` in the class's own file. The plist conveniences (`+arrayWithContentsOfFile:`)
+ * are declared the same way, for the same reason. A CALLER cannot tell the difference: `[array
+ * differenceFromArray:other]` is the same call either way, and the umbrella header includes both.
+ *
+ * THE DIRECTION IS THE THING TO GET RIGHT, and NSOrderedCollectionDifference.h is its subject: `[A
+ * differenceFromArray:B]` answers a difference that, APPLIED TO B, produces A. The receiver is the DESTINATION
+ * and the argument is the SOURCE, so an INSERTION's `index` is in the receiver and a REMOVAL's is in the
+ * argument. */
+@interface NSArray (NSOrderedCollectionDifferenceAdditions)
+
+- (NSOrderedCollectionDifference *)differenceFromArray:(NSArray *)other;
+- (NSOrderedCollectionDifference *)differenceFromArray:(NSArray *)other
+					  withOptions:(NSOrderedCollectionDifferenceCalculationOptions)options;
+/* THE EQUIVALENCE-TEST FORM. Apple: "don't use the option inferMoves when providing a block for the equivalence
+ * test. The changes returned in the difference object don't include valid values for associatedIndex" — so a
+ * move option here is IGNORED and every associated index stays NSNotFound, which is what that page describes. */
+- (NSOrderedCollectionDifference *)differenceFromArray:(NSArray *)other
+					  withOptions:(NSOrderedCollectionDifferenceCalculationOptions)options
+				  usingEquivalenceTest:(BOOL (^)(id obj1, id obj2))block;
+/* "Creates a new array by applying a difference object to an existing array." The RECEIVER IS THE SOURCE, so
+ * `[b arrayByApplyingDifference:[a differenceFromArray:b]]` answers `a`. */
+- (NSArray *)arrayByApplyingDifference:(NSOrderedCollectionDifference *)difference;
+
+@end
+
 @interface NSMutableArray : NSArray <NSMutableCopying>
 
 + (instancetype)array;
@@ -146,17 +177,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 /* `array[i] = x`: replaces, and APPENDS when i == count (Cocoa's rule). */
 - (void)setObject:(id)object atIndexedSubscript:(NSUInteger)index;
-
-/* HOW A DIFFERENCE WAS CALCULATED (2026-09-20), declared here because the difference class's
- * own header does not exist yet and Apple files the type under this one. It is a bit set:
- * inferMoves asks the differ to work out what moved rather than reporting a removal plus an
- * insertion, and the other two suppress a side. Names from Apple's documentation index;
- * values are ours (§11.6.1 D2, see NSFileManager.h). */
-typedef enum {
-	NSOrderedCollectionDifferenceCalculationInferMoves = 1 << 0,
-	NSOrderedCollectionDifferenceCalculationOmitInsertedObjects = 1 << 1,
-	NSOrderedCollectionDifferenceCalculationOmitRemovedObjects = 1 << 2
-} NSOrderedCollectionDifferenceCalculationOptions;
 
 NS_ASSUME_NONNULL_END
 

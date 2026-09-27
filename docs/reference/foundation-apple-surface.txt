@@ -34,11 +34,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  190   open   35   struck   48
+#   class      shipped  192   open   33   struck   48
 #   protocol   shipped   33   open    7   struck    5
 #   macro      shipped  116   open    5   struck  132
-#   enum       shipped  137   open   14   struck    9
-#   case       shipped 1135   open   92   struck   75
+#   enum       shipped  138   open   13   struck    9
+#   case       shipped 1137   open   90   struck   75
 #   func       shipped  164   open   13   struck   12
 #   var        shipped  645   open   62   struck  207
 #   typealias  shipped   65   open    6   struck    5
@@ -241,8 +241,8 @@ case	shipped	NSCoderReadCorruptError	NSCoder	Files and Data Persistence / Keyed 
 case	shipped	NSCoderReadCorruptError	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
 case	shipped	NSCoderValueNotFoundError	NSCoder	Files and Data Persistence / Keyed Archivers / Error Codes	-	objc
 case	shipped	NSCoderValueNotFoundError	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
-case	open	NSCollectionChangeInsert	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Types of Ordered Collection Changes	-	objc
-case	open	NSCollectionChangeRemove	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Types of Ordered Collection Changes	-	objc
+case	shipped	NSCollectionChangeInsert	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Types of Ordered Collection Changes	-	objc
+case	shipped	NSCollectionChangeRemove	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Types of Ordered Collection Changes	-	objc
 case	open	NSCollectorDisabledOption		Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
 case	open	NSCompressionErrorMaximum	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
 case	open	NSCompressionErrorMinimum	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
@@ -1483,8 +1483,8 @@ class	shipped	NSNumberFormatter		Fundamentals / Numbers	-	objc
 class	shipped	NSObject		Low-Level Utilities / Object Basics	-	swift-page
 class	shipped	NSOperation		App Support / Operations	-	objc
 class	shipped	NSOperationQueue		App Support / Operations	-	objc
-class	open	NSOrderedCollectionChange		Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes	-	objc
-class	open	NSOrderedCollectionDifference		Fundamentals / Basic Collections / Comparing with Another Array	-	objc
+class	shipped	NSOrderedCollectionChange		Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes	-	objc
+class	shipped	NSOrderedCollectionDifference		Fundamentals / Basic Collections / Comparing with Another Array	-	objc
 class	shipped	NSOrderedSet		Fundamentals / Specialized Sets	-	objc
 class	shipped	NSOrthography		Fundamentals / Localization	-	objc
 class	shipped	NSOutputStream		Low-Level Utilities / Streams	-	objc
@@ -1634,7 +1634,7 @@ enum	shipped	NSCalculationError	NSDecimalNumberBehaviors	Fundamentals / Numbers 
 enum	shipped	NSCalendarOptions	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
 enum	shipped	NSCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
 enum	shipped	NSCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units	-	objc
-enum	open	NSCollectionChangeType	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes	-	objc
+enum	shipped	NSCollectionChangeType	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes	-	objc
 enum	shipped	NSComparisonPredicateModifier	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	objc
 enum	open	NSComparisonPredicateOptions	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	swift-page
 enum	shipped	NSComparisonResult		Fundamentals / Sorting	-	objc
