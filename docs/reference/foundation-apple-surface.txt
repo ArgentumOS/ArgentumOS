@@ -34,7 +34,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  192   open   33   struck   48
+#   class      shipped  193   open   32   struck   48
 #   protocol   shipped   33   open    7   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  138   open   13   struck    9
@@ -1373,7 +1373,7 @@ class	shipped	NSCoder		Files and Data Persistence / Keyed Archivers	-	objc
 class	shipped	NSComparisonPredicate		Fundamentals / Filltering	-	objc
 class	shipped	NSCompoundPredicate		Fundamentals / Filltering	-	objc
 class	shipped	NSCondition		Low-Level Utilities / Threads and Locking	-	objc
-class	open	NSConditionLock		Low-Level Utilities / Threads and Locking	-	objc
+class	shipped	NSConditionLock		Low-Level Utilities / Threads and Locking	-	objc
 class	shipped	NSConnection		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSConstantString		Reference / Classes	-	objc
 class	struck	NSCountCommand		App Support / Script Commands	declined	objc

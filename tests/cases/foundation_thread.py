@@ -22,6 +22,9 @@ The probe is `/System/Shared/tests/foundation_thread`, ONE unit, importing only
   * `lock-before-date`             — a deadline that passes: NO, after about the time it was given;
   * `condition-signals`            — a waiter woken by a signaller;
   * `thread-detached-runs`         — a detached thread runs its target, and the ARGUMENT arrives;
+  * `thread-start-runs-its-target` — the same, through `-initWithTarget:selector:object:` then `-start`
+                                     (the door §14.5 left open with a measured `ran=0`, fixed by giving
+                                     the thread ownership of its target and argument);
   * `thread-sleep-returns`        — WHAT THE LIBRARY OWNS: a positive interval and a deadline
                                      already past both RETURN, in bounded time. The elapsed time is
                                      PRINTED and not asserted, because this kernel returns from
@@ -29,6 +32,22 @@ The probe is `/System/Shared/tests/foundation_thread`, ONE unit, importing only
                                      deadline loop, which uses clock_gettime and took its full
                                      40ms. Recorded in the plan as a kernel trait, F13.17;
   * `thread-cancel-is-a-flag`      — cancellation is a flag, and nothing here interrupts a thread.
+
+AND §62.60'S SEVEN, for `NSConditionLock`, where the family's FIRST cross-thread handover is asserted:
+
+  * `condition-lock-hands-over-across-threads` — one thread BLOCKS in `-lockWhenCondition:1` and another
+                                     sets that value through `-unlockWithCondition:`; the flag proves the
+                                     handover happened, which a lock-then-test-then-release would lose;
+  * `condition-lock-exposes-its-condition` — the value it was built with;
+  * `condition-lock-try-when-condition` — the matching value takes it, a wrong one answers NO and LEAVES
+                                     THE LOCK FREE (the last clause takes it to prove that);
+  * `condition-lock-unlock-sets-the-value` — `-unlockWithCondition:` sets the value and releases;
+  * `condition-lock-before-date-times-out` — a deadline that passes: NO, after about the time given;
+  * `condition-lock-when-condition-before-date-times-out` — the condition is never met, so only the deadline
+                                     ends it, and the lock must NOT be left held when it gives up;
+  * `the-name-setter-copies-for-the-whole-family` — a MUTABLE string is handed to all four classes and then
+                                     mutated, so a setter that merely assigned would answer the mutated
+                                     string. This is the regression guard for §62.60's second defect fix.
 
 EVERY WAIT IN THE PROBE IS BOUNDED: a failure is a wrong number or a false flag, never a hang,
 because a hang is the one outcome a probe cannot report.
@@ -43,6 +62,11 @@ CHECKS = ("thread-current-and-main", "lock-serialises-two-threads", "lock-try-lo
           "lock-recursive-reenters", "lock-before-date", "condition-signals",
           "thread-detached-runs", "thread-sleep-returns", "thread-cancel-is-a-flag",
           "thread-start-runs-its-target",
+          "condition-lock-hands-over-across-threads", "condition-lock-exposes-its-condition",
+          "condition-lock-try-when-condition", "condition-lock-unlock-sets-the-value",
+          "condition-lock-before-date-times-out",
+          "condition-lock-when-condition-before-date-times-out",
+          "the-name-setter-copies-for-the-whole-family",
           )
 
 

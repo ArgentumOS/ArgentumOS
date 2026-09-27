@@ -4,7 +4,7 @@
  */
 /*
  * foundation_thread, unit of 1 — F13.17's acceptance for the locking classes and NSThread.
- * docs/design/foundation-plan.md §10.
+ * docs/design/foundation-plan.md §10 (and §62.60 for NSConditionLock, which joined the family later).
  *
  * ONE unit, importing only <Foundation/Foundation.h> plus <sys/time.h> for the elapsed-time
  * measurements.
@@ -16,6 +16,10 @@
  * THE MEASUREMENT THAT EARNS ITS PLACE IS `lock-serialises-two-threads`: two threads each add to one
  * counter 20000 times under an NSLock, and the total is asserted to be EXACTLY 40000. A lock that did
  * nothing would give a smaller number and nothing else, which is what makes the number the check.
+ *
+ * AND THE NEWEST CHECK IS THE SAME IDEA FOR `NSConditionLock`: one thread BLOCKS in -lockWhenCondition:1
+ * and another sets that value, so the handover cannot happen unless the class really does hold the lock
+ * across the test and the wait.
  */
 
 #import <Foundation/Foundation.h>
@@ -30,10 +34,12 @@
 {
 	NSLock *_counterLock;
 	NSCondition *_condition;
+	NSConditionLock *_conditionLock;
 	NSLock *_flagLock;
 	NSInteger _counter;
 	BOOL _woken;
 	BOOL _ran;
+	BOOL _handover;
 	id _argument;
 	double _slept;
 }
@@ -41,10 +47,13 @@
 - (void)addMany:(id)ignored;
 - (void)waiter:(id)ignored;
 - (void)signaller:(id)ignored;
+- (void)conditionLockWaiter:(id)ignored;
+- (void)conditionLockSignaller:(id)ignored;
 - (void)record:(id)argument;
 - (NSInteger)counter;
 - (BOOL)woken;
 - (BOOL)ran;
+- (BOOL)handover;
 - (id)argument;
 @end
 
@@ -56,6 +65,7 @@
 		_counterLock = [[NSLock alloc] init];
 		_flagLock = [[NSLock alloc] init];
 		_condition = [[NSCondition alloc] init];
+		_conditionLock = [[NSConditionLock alloc] initWithCondition:0];
 	}
 	return self;
 }
@@ -96,6 +106,27 @@
 	[_condition unlock];
 }
 
+/* LOCK AND WAIT AS ONE STEP: this thread blocks inside the lock until the VALUE is 1, and there is no window
+ * between the test and the wait for the signaller to slip into — which is the whole reason the class exists. */
+- (void)conditionLockWaiter:(id)ignored
+{
+	(void)ignored;
+	[_conditionLock lockWhenCondition:1];
+	[_flagLock lock];
+	_handover = YES;
+	[_flagLock unlock];
+	[_conditionLock unlock];
+}
+
+/* THE OTHER HALF: set the value and release, which wakes the waiter on the OLD value to look again. */
+- (void)conditionLockSignaller:(id)ignored
+{
+	(void)ignored;
+	[NSThread sleepForTimeInterval:0.05];
+	[_conditionLock lock];
+	[_conditionLock unlockWithCondition:1];
+}
+
 - (void)record:(id)argument
 {
 	[_flagLock lock];
@@ -122,6 +153,16 @@
 
 	[_flagLock lock];
 	value = _ran;
+	[_flagLock unlock];
+	return value;
+}
+
+- (BOOL)handover
+{
+	BOOL value;
+
+	[_flagLock lock];
+	value = _handover;
 	[_flagLock unlock];
 	return value;
 }
@@ -330,6 +371,123 @@ int main(void)
 		      [[thread name] isEqualToString:@"never-started"],
 		      [NSString stringWithFormat:@"cancelled=%d executing=%d finished=%d",
 			(int)[thread isCancelled], (int)[thread isExecuting], (int)[thread isFinished]]);
+	}
+
+	/* ---- NSConditionLock (§62.60): the value-carrying member of the family -------------------------- */
+	{
+		/* THE HANDOVER, ACROSS TWO THREADS, WHICH IS THE WHOLE CLASS. The waiter blocks inside
+		 * -lockWhenCondition:1 (the value starts at 0), and the signaller sets that value through
+		 * -unlockWithCondition:. A class that took the lock, tested and released BEFORE waiting would
+		 * lose exactly this handover, so the flag is the assertion. */
+		ThreadWork *work = [[ThreadWork alloc] init];
+		double deadline = fn_now() + 3.0;
+
+		[NSThread detachNewThreadSelector:@selector(conditionLockWaiter:) toTarget:work withObject:nil];
+		[NSThread sleepForTimeInterval:0.05];
+		[NSThread detachNewThreadSelector:@selector(conditionLockSignaller:) toTarget:work
+				       withObject:nil];
+		while (![work handover] && fn_now() < deadline) {
+			[NSThread sleepForTimeInterval:0.005];
+		}
+		check("condition-lock-hands-over-across-threads",
+		      [work handover],
+		      [NSString stringWithFormat:@"handover=%d", (int)[work handover]]);
+	}
+
+	{
+		NSConditionLock *lock = [[NSConditionLock alloc] initWithCondition:7];
+		BOOL exact;
+
+		check("condition-lock-exposes-its-condition",
+		      [lock condition] == 7,
+		      [NSString stringWithFormat:@"condition=%ld", (long)[lock condition]]);
+		exact = [lock tryLockWhenCondition:7];
+		if (exact) {
+			[lock unlock];
+		}
+		{
+			/* A WRONG VALUE MUST NOT LEAVE THE LOCK HELD: the class takes it, tests, and releases —
+			 * so the door is usable again immediately, which the last clause proves by taking it. */
+			BOOL wrong = [lock tryLockWhenCondition:8];
+			BOOL freeAgain = [lock tryLock];
+
+			check("condition-lock-try-when-condition",
+			      exact && !wrong && freeAgain,
+			      [NSString stringWithFormat:@"exact=%d wrong=%d freeAgain=%d",
+				(int)exact, (int)wrong, (int)freeAgain]);
+			if (freeAgain) {
+				[lock unlock];
+			}
+		}
+	}
+
+	{
+		NSConditionLock *lock = [[NSConditionLock alloc] initWithCondition:3];
+
+		[lock lock];
+		[lock unlockWithCondition:9];
+		check("condition-lock-unlock-sets-the-value",
+		      [lock condition] == 9,
+		      [NSString stringWithFormat:@"condition=%ld", (long)[lock condition]]);
+	}
+
+	{
+		NSConditionLock *lock = [[NSConditionLock alloc] initWithCondition:1];
+		double started;
+		BOOL got;
+		double elapsed;
+
+		[lock lock];
+		started = fn_now();
+		got = [lock lockBeforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+		elapsed = fn_now() - started;
+		check("condition-lock-before-date-times-out",
+		      !got && elapsed >= 0.04,
+		      [NSString stringWithFormat:@"got=%d elapsed=%.3f", (int)got, elapsed]);
+		[lock unlock];
+	}
+
+	{
+		/* THE CONDITION IS NEVER MET, so the only way out is the deadline — and the lock must NOT be left
+		 * held when it gives up (a timed door that leaked its lock would wedge the next caller). */
+		NSConditionLock *lock = [[NSConditionLock alloc] initWithCondition:3];
+		double started = fn_now();
+		BOOL got = [lock lockWhenCondition:4 beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+		double elapsed = fn_now() - started;
+		BOOL free = [lock tryLock];
+
+		check("condition-lock-when-condition-before-date-times-out",
+		      !got && elapsed >= 0.04 && free,
+		      [NSString stringWithFormat:@"got=%d elapsed=%.3f freeAfter=%d", (int)got, elapsed,
+			(int)free]);
+		if (free) {
+			[lock unlock];
+		}
+	}
+
+	{
+		/* APPLE DECLARES `name` `copy`, AND THIS IS THE CHECK THAT PROVES IT FOR ALL FOUR CLASSES: a
+		 * MUTABLE source is handed over and then MUTATED, so a setter that merely assigned would answer
+		 * the mutated string. It is also the regression guard for the three siblings, whose setters
+		 * assigned until §62.60. */
+		NSMutableString *source = [[NSMutableString alloc] initWithString:@"before"];
+		NSLock *plain = [[NSLock alloc] init];
+		NSRecursiveLock *recursive = [[NSRecursiveLock alloc] init];
+		NSCondition *condition = [[NSCondition alloc] init];
+		NSConditionLock *conditionLock = [[NSConditionLock alloc] initWithCondition:0];
+
+		[plain setName:source];
+		[recursive setName:source];
+		[condition setName:source];
+		[conditionLock setName:source];
+		[source appendString:@"-mutated"];
+		check("the-name-setter-copies-for-the-whole-family",
+		      [[plain name] isEqualToString:@"before"] &&
+		      [[recursive name] isEqualToString:@"before"] &&
+		      [[condition name] isEqualToString:@"before"] &&
+		      [[conditionLock name] isEqualToString:@"before"],
+		      [NSString stringWithFormat:@"lock=%@ recursive=%@ condition=%@ conditionLock=%@",
+			[plain name], [recursive name], [condition name], [conditionLock name]]);
 	}
 
 	printf("FOUNDATION-THREAD RESULT ok=%d fail=%d\n", okc, failc);

@@ -3547,7 +3547,7 @@ vanishing.
 | **Low-Level Utilities / Sockets** | 1 open | `NSHost` |
 | **Low-Level Utilities / Streams** | all classes shipped | — |
 | **Low-Level Utilities / Tasks and Pipes** | all classes shipped | — |
-| **Low-Level Utilities / Threads and Locking** | 1 open | `NSConditionLock` |
+| **Low-Level Utilities / Threads and Locking** | all classes shipped | — |
 | **Low-Level Utilities / Value Wrappers and Transformations** | all classes shipped | — |
 | **Low-Level Utilities / XPC Client** | ALL STRUCK: `NSXPCCoder`, `NSXPCConnection`, `NSXPCInterface`, `NSXPCProxyCreating` | — |
 | **Low-Level Utilities / XPC Services** | ALL STRUCK: `NSXPCListener`, `NSXPCListenerDelegate`, `NSXPCListenerEndpoint` | — |
@@ -13287,6 +13287,65 @@ of 195 public headers** open a nullability region; `--unimplemented`: **0 NEW** 
 had to be STAGED for the guest — the guest probe list in `mk/20-userland.mk` is hand-written per probe, unlike
 the library's wildcard — and the first guest attempt SKIPPED for exactly that, which is the failure mode the
 harness's own message names.
+
+## §62.60 — `NSConditionLock`, AND THE TWO DEFECTS THE SAME FILE HAD BEEN CARRYING QUIETLY (2026-09-26)
+
+**WHAT SHIPPED: ONE ROW — `NSConditionLock` — AND IT COMPLETES A FAMILY.** `class shipped` went **192 → 193**,
+and `Low-Level Utilities / Threads and Locking` now has no open rows: `NSLock`, `NSRecursiveLock`, `NSCondition`
+and `NSConditionLock` all ship. It joins the existing header rather than getting one of its own, which is that
+file's own recorded choice ("ONE HEADER FOR THE FOUR, which Cocoa splits").
+
+**THE CLASS IS A LOCK THAT CARRIES A VALUE, AND ITS REASON TO EXIST IS ONE INDIVISIBLE STEP.** Apple declares
+ten members: `-initWithCondition:`, `-condition`, `-lockWhenCondition:`, `-tryLockWhenCondition:`,
+`-unlockWithCondition:`, `-lockBeforeDate:`, `-lockWhenCondition:beforeDate:`, `-tryLock`, `name`, and the two
+`NSLocking` members it inherits from the family's protocol. **`-lockWhenCondition:` acquires the lock AND waits
+for the value as one step** — a caller that had to lock, test and wait itself would have to hold the lock across
+the test, and getting that wrong is the classic lost wakeup. `-unlockWithCondition:` is the other half: it SETS
+the value, BROADCASTS (not signals — waiters wait for different values, so waking one arbitrary waiter could wake
+the wrong one) and releases. `-condition` is read UNDER the lock, because a value read without it says what was
+true at a moment nobody can name.
+
+**TWO SMALL CHOICES, EACH WITH ITS GROUND.** `-init` is OURS (§11.6.1 D2): Apple declares only
+`-initWithCondition:`, and an object whose mutex was never initialised would crash at the first door rather than
+answer, so `-init` is `-initWithCondition:0`. And **both timed doors POLL** — each attempt takes the lock, tests
+and releases, then sleeps a millisecond — for the family's own recorded reason: `pthread_mutex_timedlock` is not
+portable, which `NSLock`'s `-lockBeforeDate:` already says where it implements the same contract. The polling
+shape matters here in a way it does not for `NSLock`: a poll that HELD the lock while it waited would deadlock
+against the signaller it is waiting for.
+
+**AND THE UNIT'S REAL FINDING IS TWO DEFECTS THIS FILE HAD BEEN CARRYING, BOTH NAMED BY A TOOL RATHER THAN BY
+TASTE:**
+
+1. **EVERY `-dealloc` IN THE FILE OMITTED `[super dealloc]`, AND THAT IS A LEAK RATHER THAN A STYLE POINT.**
+   `NSObject`'s own `-dealloc` is what FREES THE INSTANCE (its comment says so: the runtime sends `-dealloc` and
+   does not free afterwards), so a subclass that never chains to it leaves the object's memory behind — every
+   `NSLock`, `NSRecursiveLock` and `NSCondition` ever released was leaked. **clang had been saying so three
+   times**: `-Wobjc-missing-super-calls`, one warning per class, in a file nobody had compiled with the warnings
+   read. The fix is one line per `-dealloc`, and the warning count for this file went 3 → 0.
+2. **EVERY `-setName:` ASSIGNED ITS ARGUMENT WHERE APPLE DECLARES THE PROPERTY `copy`.** The three shipped
+   setters stored the caller's pointer without owning it, so a name built from a mutable string could change
+   under the lock — and could dangle if the caller let go. All four classes now take a SNAPSHOT, through
+   `-initWithString:` and not `-copy` (this library's `-copy` is documented as not a value copy, which is the
+   same ground the attributed-string store records), and every `-dealloc` releases it.
+
+**BOTH FIXES ARE PROVEN BY ONE CHECK THAT WOULD HAVE FAILED BEFORE THEM:** `the-name-setter-copies-for-the-whole-family`
+hands a MUTABLE string to all four classes and then MUTATES it, and requires every name to still read `before` —
+an assigning setter answers `before-mutated`. The `[super dealloc]` half is proven at the build rather than at
+runtime (the compiler's own warning is what names it), which is stated rather than implied.
+
+**AND THE LESSON WORTH THE LINE: READING THE FILE'S OWN WARNINGS WAS WORTH MORE THAN THE NEW CLASS.** The unit
+was to be one small class; compiling the file it was joining, with `-Wall` read rather than ignored, turned up a
+leak in three shipped classes and an ownership difference from Apple in the same three. **A family is worth
+reading when you join it** — the new member cost about what the two fixes did.
+
+**VERIFIED.** Host: `make host-foundation-run` — **29 probes, every tally `fail=0`**, `foundation_thread` at
+**17/17** (10 old checks + 7 new). Guest: `make testimg` then `make test TESTS='foundation_thread'` →
+**`TESTS-OK 1/1 case(s), 6/6 check(s) in 13s`**, the probe's own tally `ok=17 fail=0` in ONE run, so the handshake
+and the copy semantics hold on musl as well as glibc. `foundation-sweep --check`: **consistent**, the row flipped
+to shipped, the family table regenerated (`Threads and Locking`: 1 open → 0), and the surface file's diff is
+exactly one row plus the counts block. `foundation-gate`: **OK — 514 files, 191 of 195 public headers** open a
+nullability region; `--unimplemented`: **0 NEW** (1 baselined). The probe needed no staging work — it was already
+in the guest and host probe lists, which is the other half of why extending it was cheaper than adding one.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
