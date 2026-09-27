@@ -1,32 +1,24 @@
 # Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
 # SPDX-License-Identifier: MIT
-"""The mount table's volume keys — W8p slice 6e's acceptance (foundation-plan.md §60).
+"""The run store and its file-format doors — W10 slice 1's acceptance, extended by §62.58.
 
-THIS SYSTEM PUBLISHES ITS MOUNTS: `/proc/mounts` prints `device mountpoint fstype rw|ro 0 0` for every mount
-that is not kernel-internal (measured in `fs/procfs/data.c`), and that is what these keys read. One of them is
-an IMPROVEMENT on slice 6c: `NSURLVolumeIsReadOnlyKey` was answered there by probing a write and looking for
-EROFS — whose point was that a mount's read-onlyness is not a permission — and the table says it outright, so
-it is read from the flag field now.
+THE SUBJECT IS `NSAttributedString` AS A RUN STORE. Apple's promise for `-attributesAtIndex:effectiveRange:`
+is the LONGEST range over which the attributes are the same, so the checks build equal attribute sets in
+several different ways — one dictionary over a whole string, two appends, an edit group — and require each to
+read back as ONE run. Beside that: the primitives the store assumes (`-copy` on a dictionary, a mutable
+dictionary's snapshot), the coding paths, and the inventory BOTH WAYS (the shipped selectors must exist and
+the AppKit/UIKit/TextKit half must be absent).
 
-A URL's volume is THE LONGEST MOUNT POINT THAT PREFIXES ITS PATH, which is what puts `/proc/version` on the
-procfs volume rather than on the root that contains the mount point — and the probe asserts exactly that,
-because a longest-prefix rule is the one thing a naive "first matching mount" gets wrong.
+§62.58 MADE THE RTF DOOR A REAL WRITER, so the two checks that used to assert the doors answer nil are now
+seven: RTF produces a document with its own shell, escapes the format's reserved characters, carries
+non-ASCII as the signed `\\uN?` escape, turns an inline-intent bit into the control word that means it, and
+writes a line feed as a paragraph break — while the doors that still cannot do their work (RTFD, the doc
+format) are still required to REFUSE BY NAME, because a silent nil is indistinguishable from an empty
+document.
 
 The probe is `/System/Shared/tests/foundation_attributedstring`, ONE unit, importing only
-`<Foundation/Foundation.h>`. NO FIXTURE: it asks about the volumes it is running on.
-
-  * `masses-the-door-lists-the-table` — and the guest has at least the root, procfs and the device tree;
-  * `masses-a-file-reports-the-volume-holding-it` — the longest-prefix rule;
-  * `masses-the-name-and-type-come-from-the-table` — the mount point's own name (there are no volume labels
-                                 here) and the file system's name;
-  * `masses-the-identifier-is-the-device` — opaque, and the same for two files on one volume;
-  * `masses-read-only-comes-from-the-table-flag` — the guest mounts both read-write, so the check asserts the
-                                 TABLE was read rather than the opposite;
-  * `masses-is-volume-and-is-mount-trigger` — the root of a mounted file system, and a directory a mount
-                                 landed on, are one statement about the table;
-  * `masses-the-resource-count-and-size-support-come-from-the-file-system` — answered by asking the file
-                                 system, which is what those keys are about;
-  * `masses-the-door-prefetches-the-keys`.
+`<Foundation/Foundation.h>`. NO FIXTURE: an attributed string is built from a string, and the RTF checks read
+the produced BYTES rather than a decoded string.
 """
 
 import re
@@ -39,7 +31,12 @@ CHECKS = ("morphology-vocabulary-is-distinct-and-carried",
           "coding-refuses-what-a-property-list-cannot-carry",
           "coding-supports-secure-coding-answers-yes",
           "file-format-doors-refuse-by-name",
-          "file-format-doors-answer-nil-rather-than-pretending",
+          "rtf-writes-a-document-with-its-own-shell",
+          "rtf-escapes-the-formats-reserved-characters",
+          "rtf-carries-non-ascii-as-the-signed-u-escape",
+          "rtf-maps-an-inline-intent-bit-to-its-control-word",
+          "rtf-writes-a-line-feed-as-a-paragraph-break",
+          "the-other-format-doors-still-refuse-by-name",
           "primitives-a-store-owns-what-it-was-given",
           "primitives-dictionaries-behave-as-the-store-assumes",
           "primitives-constructors-do-not-alias-their-source",

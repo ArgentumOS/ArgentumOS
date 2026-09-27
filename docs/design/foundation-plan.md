@@ -13107,6 +13107,86 @@ the enforcement the new rule actually has — the gate cannot see this class):
 implementation" rests entirely on the archiver case, and the archiver case was not a stub. The question stays open,
 and the honest instrument for the new rule is the enumeration above plus a probe that RUNS each door.
 
+## §62.58 — RTF: THE FIRST DOCUMENT FORMAT THIS SYSTEM CAN WRITE, AND THE FIVE REFUSALS THAT KEPT THEIR GROUNDS (2026-09-26)
+
+**WHAT SHIPPED.** `-RTFFromRange:documentAttributes:` is a REAL RTF writer rather than a door that answers nil.
+§62.57 named it as the first candidate for real stub work — *"RTF is a format this system could document, and the
+class is otherwise complete"* — and it is now the one document format Argentum writes. No new class, no new file
+and therefore **no ledger row moves**: the Apple surface ledger is SYMBOL-level with methods and properties
+counted rather than listed, so a method-level landing changes `shipped` in neither direction and `open` stays at
+**234** (case 92, var 62, class 35, enum 14, func 13, protocol 7, typealias 6, macro 5).
+
+**THE WRITER IS THREE QUESTIONS, AND EACH ONE IS THE FORMAT'S RATHER THAN OURS.** RTF's wire is 7-bit ASCII and
+it reserves exactly three characters, so a writer is (1) what to escape, (2) which runs carry which control
+words, and (3) the document shell:
+
+* **THE ESCAPES.** `\` `{` `}` go out backslash-escaped, because a raw `{` would open a group and a raw `\` would
+  start a control word. **A LINE FEED IS A PARAGRAPH BREAK (`\par`) AND A CR IS TREATED AS THE FIRST HALF OF A
+  CRLF PAIR** — a CRLF is ONE break, not two, which is the mistake a `\n`-only escape makes on every file written
+  on another system. A tab is `\tab`.
+* **THE NON-ASCII ESCAPE IS `\uN?` AND ITS VALUE IS SIGNED — THE ONE PLACE A WRITER IS EASY TO GET WRONG.** RTF
+  carries a character outside the ANSI code page as a SIGNED 16-bit decimal value, so U+00E9 goes out as
+  `\u233?`, U+2014 as `\u8212?`, and a character in the top half of the BMP — U+FFFD — as **`\u-3?`** and NOT as
+  65533. The whole reason this is computed through a `short` is that sign, and the probe asserts all three
+  values: **`rtf-carries-non-ascii-as-the-signed-u-escape`** is the check that would fail if the conversion were
+  done in an unsigned type — which is exactly how a reader would silently mis-render an em dash.
+* **THE FORMATTING VOCABULARY IS THIS LIBRARY'S OWN, AND THAT IS A RULE RATHER THAN A GAP.**
+  `NSInlinePresentationIntent` is the one character-formatting vocabulary Foundation declares here, and each of
+  its bits has a direct RTF control word: strong emphasis → `\b`/`\b0`, emphasis → `\i`/`\i0`, strikethrough →
+  `\strike`/`\strike0`, code → `\f1`/`\f0`. **Every control word carries its trailing delimiting space**, because
+  a word that ran straight into a letter would be read as a longer name (`\bhello` is ONE word).
+* **THE SHELL IS A PLACEHOLDER WHERE IT HAS TO BE, AND SAYS SO.** `\ansi\ansicpg1252\deff0`, a font table with the
+  default `\f0` and the monospace `\f1`, and the colour table's single automatic entry. **The font NAMES are
+  placeholders because that is what RTF font names are for — a reader substitutes one — and this system's own
+  font resolution lives in the FSH font directories, not in a writer.** The 12 pt default (`\fs24`) is our choice
+  under D2: Apple publishes no size attribute and this library has none.
+
+**THE BOUNDARY IS A TYPE THAT DOES NOT EXIST, WHICH IS WHY THIS IS NOT A STUB AND §62.57'S CANDIDATE WAS THE
+RIGHT ONE.** The AppKit character attributes a reader of Apple's documentation would expect this writer to map —
+font, colour, paragraph style, underline — **have no type in this system**: there is no `NSFont`, `NSColor` or
+`NSParagraphStyle` anywhere in the tree, so no caller can construct one and there is nothing for the writer to
+map. A writer that ignored attributes it COULD be handed would be the stub the rule forbids; this one maps the
+whole vocabulary it can be handed. The header states the boundary where a reader meets it.
+
+**AND FIVE REFUSALS KEPT THEIR GROUNDS RATHER THAN BECOMING SILENCE.** A door that cannot do its work still
+answers nil WITH a reason, and each ground is now the real one rather than a blanket "no document format is
+implemented in this system":
+
+| door | ground |
+|---|---|
+| `-RTFDFromRange:documentAttributes:` / `-RTFDFileWrapperFromRange:…` | RTFD needs the ATTACHMENT no class in this library defines |
+| `-docFormatFromRange:documentAttributes:` | the doc format is Microsoft Word's BINARY container, whose specification this system does not carry |
+| `+loadFromHTMLWithRequest:…` | HTML import needs a parser and a fetch (Apple itself discourages the synchronous form) |
+| `-dataFromRange:documentAttributes:error:` / `-fileWrapperFromRange:…` | the polymorphic doors pick their format from a document-type attribute whose value vocabulary belongs to the AppKit half that is not here |
+
+**THE UNIT ALSO KILLED THREE WRONG SENTENCES IN THE TREE, WHICH IS §11.2'S SERVICE DONE ON OURSELVES RATHER THAN
+ON THE LEDGER.** Completing a door does not update a comment that says the door answers nil, and three had gone
+stale in exactly that way: the header's W10-slice-1 "what this slice does not carry" list (it named all four file
+formats as unimplemented); the probe's own header comment (it listed "the file-format doors" among the things the
+inventory requires to be ABSENT — they have been DECLARED since W10 slice 4, so that sentence was wrong even
+before this unit, and it ALSO still described the coding protocols as owed when slice 3 had shipped them); and the
+case's docstring, which **described a different case entirely** (the mount-table volume keys — a copy-paste that
+had survived every run because nothing reads a docstring).
+
+**VERIFIED.** `make testimg` then `make test TESTS='foundation_attributedstring'` → **`TESTS-OK 1/1 case(s), 6/6
+check(s) in 12s`**, the probe's own tally **`ok=29 fail=0`** in ONE guest run. The two checks that asserted the
+doors answer nil are replaced by seven that assert what now IS — the shell, the three reserved characters, the
+three signed escape values, an inline-intent control word with its closer, the paragraph break, and the doors that
+still refuse — and `file-format-doors-refuse-by-name` (the polymorphic door's `NSError`) is KEPT unchanged because
+that door still refuses. Standing rules: `tools/foundation-sweep.py --unimplemented` **0 NEW** (1 baselined,
+`NSObject`'s KVO observer method), and `--check` **consistent** with the family table un-drifted. The three
+pre-existing `-Wnullable-to-nonnull` sites in this file (lines 279, 839, 1259) are untouched and unchanged; the
+new code compiles clean under `-Wall`.
+
+**AND AN ORTHOGONAL, PRE-EXISTING BREAK FOUND WHILE TRYING TO ALSO RUN THE HOST SUITE: `make host-foundation-run`
+CANNOT LINK.** `FN_HOST_SRCS` is a wildcard over `userland/Foundation/*.m`, so the host build compiles
+`FNCURLURLProtocol.m` — and `tools/curl-build.sh`'s header records the opposite intent in as many words:
+*"libcurl has no host consumer: the Foundation's probes are guest-only, so a host half would be dead weight."* The
+library therefore links with undefined `curl_*`/`SSL_*` symbols and every probe link then fails. **It also carries
+no signal for this unit: `foundation_attributedstring` is not in `HOST_PROBES`**, so the host run would not have
+executed the new checks even if it linked. Recorded rather than papered over; the fix is either excluding the curl
+bridge from the host source list or giving the host fragment its one-line curl half, and that choice is a decision.
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else

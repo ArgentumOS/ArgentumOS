@@ -23,9 +23,10 @@
  *   - -fixAttributesInRange: drops runs that fall outside the string and coalesces what is left; there are no
  *     attribute defaults to install, because no attribute in this library has a rendering default.
  *
- * WHAT W10 SLICE 1 DOES NOT CARRY, EACH WITH ITS GROUND, SO A CONFORMING PROGRAM STILL COMPILES: the file
- * formats (RTF/RTFD/HTML/docFormat - no writer or parser of those formats exists here, and the doors are
- * DECLARED with bodies that REFUSE BY NAME rather than doing nothing); the AppKit/UIKit/TextKit half (`size`,
+ * WHAT W10 SLICE 1 DOES NOT CARRY, EACH WITH ITS GROUND, SO A CONFORMING PROGRAM STILL COMPILES: three of the
+ * four file formats (RTFD, HTML and the doc format - §62.58 made the FOURTH, RTF, a real writer, so the doors
+ * are DECLARED with bodies that either write the format or REFUSE BY NAME rather than doing nothing); the
+ * AppKit/UIKit/TextKit half (`size`,
  * the `draw…` family, `boundingRectWithSize:`, text lists, rulers, attachments, word and line-break
  * questions) which belongs to the drawing frameworks and is EXCLUDED here - the probe asserts their ABSENCE;
  * -mutableString (a LIVE proxy over the store, not a copy, and a slice of its own); and the two coding
@@ -169,12 +170,21 @@ typedef enum {
     longestEffectiveRange:(nullable NSRangePointer)range
 		  inRange:(NSRange)rangeLimit;
 
-/* ---- THE FILE-FORMAT DOORS, DECLARED AND REFUSING BY NAME (W10 slice 4) -----------------------------
+/* ---- THE FILE-FORMAT DOORS (W10 slice 4): RTF WRITES, THE REST REFUSE BY NAME -----------------------
  *
- * RTF, RTFD, HTML and the doc format are NOT implemented: no writer or parser of those formats exists in this
- * system. Apple's own shape for a door that cannot do its work is an NSError the caller must handle - and
- * Apple itself discourages the synchronous HTML initialisers - so each door returns nil AND sets an error that
- * NAMES the format and the reason, rather than returning a silent nil or pretending to write. */
+ * -RTFFromRange:documentAttributes: is a REAL RTF writer (§62.58): a valid `{\rtf1…}` document carrying the
+ * range's text with RTF's reserved characters escaped, non-ASCII as the format's own `\uN?` escape, and the
+ * NSInlinePresentationIntent bits as the control words that mean them. IT IS NOT A STUB, AND WHAT IT DOES
+ * NOT CARRY IS A BOUNDARY WITH A GROUND: the AppKit character attributes (font, colour, paragraph style,
+ * underline) have NO TYPE IN THIS SYSTEM - there is no NSFont, NSColor or NSParagraphStyle anywhere in the
+ * tree - so no caller can construct one and there is nothing to map.
+ *
+ * THE REST STILL REFUSE, EACH NAMING ITS FORMAT AND ITS REASON, rather than answering a silent nil that a
+ * caller could not tell from an empty document: RTFD needs an attachment no class here defines; the doc
+ * format is Word's binary container, whose specification this system does not carry; HTML import needs a
+ * parser and a fetch; and the polymorphic doors pick their format from a document-type attribute whose value
+ * vocabulary belongs to the AppKit half that is not here. Apple's own shape for a door that cannot do its
+ * work is an NSError the caller must handle, and Apple itself discourages the synchronous HTML forms. */
 - (nullable NSData *)dataFromRange:(NSRange)range
 	       documentAttributes:(nullable NSDictionary *)dict
 			    error:(NSError ** _Nullable)error;

@@ -112,6 +112,122 @@ static NSError *fn_format_refusal(NSString *selector, NSString *what)
 	return [NSError errorWithDomain:@"NSAttributedStringDocumentErrorDomain" code:1 userInfo:info];
 }
 
+/* ---- RTF: THE ONE DOCUMENT FORMAT THIS SYSTEM CAN WRITE (§62.58) ------------------------------------
+ *
+ * RTF'S WIRE IS 7-BIT ASCII AND IT RESERVES THREE CHARACTERS: `\` introduces a control word and `{` `}`
+ * open and close a group. Everything else is literal, so a writer is exactly two questions - what to
+ * escape, and which runs carry which control words.
+ *
+ * THE ESCAPE IS THE FORMAT'S OWN AND NOT A CHOICE: `\u<SIGNED 16-BIT DECIMAL>?` is how RTF carries a
+ * character outside the ANSI code page, and the trailing `?` is the one-character fallback every reader
+ * accepts. THE VALUE IS SIGNED, which is the whole reason it is computed through a `short`: U+00E9 goes
+ * out as `\u233?`, U+2014 as `\u8212?`, and a character in the top half of the BMP - U+FFFD, say - goes out
+ * NEGATIVE as `\u-3?` rather than as 65533.
+ *
+ * THE FORMATTING VOCABULARY IS THIS LIBRARY'S OWN. `NSInlinePresentationIntent` is the one character-
+ * formatting vocabulary Foundation declares here (emphasis, strong emphasis, strikethrough, code), and each
+ * of its bits has a direct RTF control word, so the mapping is a rule and not a table. The AppKit attributes
+ * a reader might expect - font, colour, paragraph style, underline - have NO TYPE IN THIS SYSTEM (there is
+ * no NSFont, NSColor or NSParagraphStyle anywhere in the tree), so no caller can construct one and there is
+ * nothing to map. That is the boundary, and it is stated in the header. */
+
+/* Append `text` to `out` with RTF's own escaping. A line feed ends a paragraph (`\par`); a carriage return
+ * is treated as the first half of a CRLF pair rather than as a second break; a tab is `\tab`. */
+static void fn_rtf_append_escaped(NSMutableString *out, NSString *text)
+{
+	NSUInteger i, length = [text length];
+
+	for (i = 0; i < length; i++) {
+		unichar c = [text characterAtIndex:i];
+
+		switch (c) {
+		case '\\':
+			[out appendString:@"\\\\"];
+			break;
+		case '{':
+			[out appendString:@"\\{"];
+			break;
+		case '}':
+			[out appendString:@"\\}"];
+			break;
+		case '\r':
+			/* CR LF is ONE break: the LF that follows is consumed rather than emitted twice. */
+			if (i + 1 < length && [text characterAtIndex:i + 1] == '\n') {
+				i++;
+			}
+			[out appendString:@"\\par\n"];
+			break;
+		case '\n':
+			[out appendString:@"\\par\n"];
+			break;
+		case '\t':
+			[out appendString:@"\\tab "];
+			break;
+		default:
+			if (c >= 0x20 && c < 0x7F) {
+				[out appendString:[NSString stringWithCharacters:&c length:1]];
+			} else {
+				[out appendString:@"\\u"];
+				[out appendString:[[NSNumber numberWithInt:(int)(short)c] stringValue]];
+				[out appendString:@"?"];
+			}
+			break;
+		}
+	}
+}
+
+/* THE INLINE-INTENT BITS AS RTF CONTROL WORDS. The opens go out in a fixed order and the closes in the
+ * reverse so the nesting is visibly balanced, and every control word carries its trailing delimiting space -
+ * a word that ran straight into a letter would otherwise be read as a longer name (`\bhello` is one word). */
+static void fn_rtf_append_intent(NSMutableString *out, NSDictionary *attrs, BOOL opening)
+{
+	id value = attrs != nil ? [attrs objectForKey:NSInlinePresentationIntentAttributeName] : nil;
+	int bits = [value isKindOfClass:[NSNumber class]] ? [value intValue] : 0;
+
+	if (!opening) {
+		if ((bits & NSInlinePresentationIntentCode) != 0) {
+			[out appendString:@"\\f0 "];
+		}
+		if ((bits & NSInlinePresentationIntentStrikethrough) != 0) {
+			[out appendString:@"\\strike0 "];
+		}
+		if ((bits & NSInlinePresentationIntentEmphasized) != 0) {
+			[out appendString:@"\\i0 "];
+		}
+		if ((bits & NSInlinePresentationIntentStronglyEmphasized) != 0) {
+			[out appendString:@"\\b0 "];
+		}
+		return;
+	}
+	if ((bits & NSInlinePresentationIntentStronglyEmphasized) != 0) {
+		[out appendString:@"\\b "];
+	}
+	if ((bits & NSInlinePresentationIntentEmphasized) != 0) {
+		[out appendString:@"\\i "];
+	}
+	if ((bits & NSInlinePresentationIntentStrikethrough) != 0) {
+		[out appendString:@"\\strike "];
+	}
+	if ((bits & NSInlinePresentationIntentCode) != 0) {
+		[out appendString:@"\\f1 "];
+	}
+}
+
+/* THE DOCUMENT SHELL. `\ansi\ansicpg1252` names the code page the fallback characters belong to, `\deff0`
+ * names the default font, and the font table carries the two faces this writer can refer to - the default
+ * `\f0` and the monospace `\f1` that `NSInlinePresentationIntentCode` selects. THE FONT NAMES ARE
+ * PLACEHOLDERS AND SAY SO: RTF names a font so that a reader can SUBSTITUTE one, and this system's own font
+ * resolution lives in the file system's font directories, not in a writer. The size (12 pt, `\fs24`) is our
+ * default too - Apple publishes no size attribute and this library has none (§11.6.1 D2) - and the colour
+ * table's single entry is the automatic colour, which is what an uncoloured run uses. */
+static void fn_rtf_append_document_head(NSMutableString *out)
+{
+	[out appendString:@"{\\rtf1\\ansi\\ansicpg1252\\deff0\n"];
+	[out appendString:@"{\\fonttbl{\\f0\\fnil\\fcharset0 Helvetica;}{\\f1\\fmodern\\fcharset0 Courier;}}\n"];
+	[out appendString:@"{\\colortbl;\\red0\\green0\\blue0;}\n"];
+	[out appendString:@"\\f0\\fs24 "];
+}
+
 @implementation NSAttributedString
 
 /* ---- THE MODERN FAMILIES' CONSTANTS (W10 slice 4): names Apple publishes, values ours (§11.6.1 D2). */
@@ -749,7 +865,16 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 
 
 
-/* ---- THE FILE-FORMAT DOORS (W10 slice 4), EACH REFUSING BY NAME ----------------------------------- */
+/* ---- THE FILE-FORMAT DOORS (W10 slice 4) -----------------------------------------------------------
+ *
+ * RTF WRITES AND THE REST REFUSE, EACH BY NAME: -RTFFromRange:documentAttributes: is a real RTF writer
+ * (§62.58) and the doors beside it answer nil with a reason. What each still-refusing door's reason IS,
+ * said here where the code says it too: RTFD needs the ATTACHMENT that no class in this library defines;
+ * the doc format is Microsoft Word's BINARY container, whose specification this system does not carry; HTML
+ * import needs a parser and a fetch (and Apple itself discourages the synchronous form); and the polymorphic
+ * doors pick their format from a document-type attribute whose value vocabulary belongs to the AppKit half
+ * that is not here. A refusal that cannot report through an NSError says so in the one channel it has - the
+ * log - and answers nil. */
 - (nullable NSData *)dataFromRange:(NSRange)range
 	       documentAttributes:(nullable NSDictionary *)dict
 			    error:(NSError **)error
@@ -763,21 +888,61 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 	return nil;
 }
 
+/* THE RTF WRITER: a real document, not a stub. The range is CLAMPED to the string rather than raising
+ * (Apple publishes no behaviour for an out-of-range write, §11.6.1 D2), the runs covering the range are
+ * walked in order, and each run contributes its text escaped and bracketed by the control words its
+ * NSInlinePresentationIntent bits select. `documentAttributes:` is an INPUT and is unused: Apple's modern
+ * declaration has no out-parameter (the `**` of the older API is gone), and the only attributes an
+ * RTF-specific writer could consume - a default font, a paper size - name AppKit objects this system does
+ * not have. */
 - (nullable NSData *)RTFFromRange:(NSRange)range documentAttributes:(nullable NSDictionary *)dict
 {
-	(void)range;
+	NSMutableString *out = [NSMutableString string];
+	NSUInteger length = [_string length];
+	NSUInteger cursor, stop;
+
 	(void)dict;
-	/* Apple's RTF writers answer NSData and have NO error out; a refusal that cannot report through an
-	 * NSError says so in the one channel it has - the log - and answers nil. */
-	fn_format_refusal_log(@"-RTFFromRange:documentAttributes:", @"RTF is not implemented");
-	return nil;
+
+	if (range.location > length) {
+		range.location = length;
+	}
+	if (range.length > length - range.location) {
+		range.length = length - range.location;
+	}
+	cursor = range.location;
+	stop = range.location + range.length;
+
+	fn_rtf_append_document_head(out);
+	while (cursor < stop) {
+		fn_run *run = [self fnRunContaining:cursor];
+		NSUInteger runEnd, limit;
+		NSRange slice;
+
+		if (run == NULL) {
+			break;
+		}
+		runEnd = run->range.location + run->range.length;
+		limit = runEnd < stop ? runEnd : stop;
+		if (limit <= cursor) {
+			break;
+		}
+		slice = NSMakeRange(cursor, limit - cursor);
+		fn_rtf_append_intent(out, run->attrs, YES);
+		fn_rtf_append_escaped(out, [_string substringWithRange:slice]);
+		fn_rtf_append_intent(out, run->attrs, NO);
+		cursor = limit;
+	}
+	[out appendString:@"\n}\n"];
+
+	return [out dataUsingEncoding:NSUTF8StringEncoding];
 }
 
 - (nullable NSData *)RTFDFromRange:(NSRange)range documentAttributes:(nullable NSDictionary *)dict
 {
 	(void)range;
 	(void)dict;
-	fn_format_refusal_log(@"-RTFDFromRange:documentAttributes:", @"RTFD is not implemented");
+	fn_format_refusal_log(@"-RTFDFromRange:documentAttributes:", @"RTFD needs an attachment this library "
+			      @"has no class for");
 	return nil;
 }
 
@@ -786,7 +951,8 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 {
 	(void)range;
 	(void)dict;
-	fn_format_refusal_log(@"-RTFDFileWrapperFromRange:documentAttributes:", @"RTFD is not implemented");
+	fn_format_refusal_log(@"-RTFDFileWrapperFromRange:documentAttributes:", @"RTFD needs an attachment this "
+			      @"library has no class for");
 	return nil;
 }
 
@@ -798,7 +964,8 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 	(void)dict;
 	if (error != NULL) {
 		*error = fn_format_refusal(@"-fileWrapperFromRange:documentAttributes:error:",
-					   @"no document format is implemented in this system");
+					   @"the format it would wrap is named by a document-type attribute this "
+					   @"library does not declare");
 	}
 	return nil;
 }
@@ -807,7 +974,8 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 {
 	(void)range;
 	(void)dict;
-	fn_format_refusal_log(@"-docFormatFromRange:documentAttributes:", @"the doc format is not implemented");
+	fn_format_refusal_log(@"-docFormatFromRange:documentAttributes:", @"the doc format is Microsoft Word's "
+			      @"binary container, whose specification this system does not carry");
 	return nil;
 }
 

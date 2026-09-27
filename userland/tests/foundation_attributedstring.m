@@ -15,15 +15,17 @@
  * string, two appends, an edit group - and require every one of them to read back as ONE range.
  *
  * AND THE INVENTORY RUNS BOTH WAYS, which is the rule this library's classes carry: the selectors that ship
- * must EXIST, and the ones this slice does not carry must be ABSENT with the reason recorded here and in the
- * header - the AppKit/UIKit/TextKit half, -mutableString (a live proxy, not a copy), the file-format doors,
- * and the two coding protocols.
+ * must EXIST - the file-format doors among them (§62.58 made RTF a real writer and left RTFD, HTML and the doc
+ * format refusing by name) and the coding pair - and the ones this slice does not carry must be ABSENT with the
+ * reason recorded here and in the header: the AppKit/UIKit/TextKit half, -mutableString (a live proxy, not a
+ * copy), and the two reader doors (readFromData:/readFromURL:).
  */
 
 #import <Foundation/Foundation.h>
 #import <Foundation/NSMorphology.h>
 
 #include <stdio.h>
+#include <string.h>
 
 static int okc, failc;
 
@@ -45,6 +47,27 @@ static NSString *fn_B(void) { return @"B"; }
 static NSString *fn_r(NSRange r)
 {
 	return [NSString stringWithFormat:@"(%lu,%lu)", (unsigned long)r.location, (unsigned long)r.length];
+}
+
+/* RTF IS ASCII ON THE WIRE, SO THE RTF CHECKS READ THE BYTES DIRECTLY (§62.58). Asserting on the bytes rather
+ * than through a decoded NSString also keeps the assertions independent of this library's own decoder, which
+ * is the instrument-under-test elsewhere in this same probe. */
+static int fn_bytes_contain(NSData *data, const char *needle)
+{
+	const unsigned char *bytes = data != nil ? [data bytes] : NULL;
+	size_t length = data != nil ? (size_t)[data length] : 0;
+	size_t n = strlen(needle);
+	size_t i;
+
+	if (bytes == NULL || n == 0 || length < n) {
+		return 0;
+	}
+	for (i = 0; i + n <= length; i++) {
+		if (memcmp(bytes + i, needle, n) == 0) {
+			return 1;
+		}
+	}
+	return 0;
 }
 
 int main(void)
@@ -612,9 +635,13 @@ int main(void)
 	}
 
 	{
-		/* THE FILE-FORMAT DOORS REFUSE BY NAME, AND THE NAME IS THE ASSERTION: a door that answered a silent
-		 * nil would be indistinguishable from an empty document, so the check reads the NSError's own
-		 * description and requires it to say which format and why. */
+		/* ---- THE FILE-FORMAT DOORS: RTF WRITES, THE REST STILL REFUSE BY NAME (§62.58) --------------
+		 *
+		 * RTF IS A REAL WRITER NOW, and these checks read the BYTES it produces rather than trusting a
+		 * description of them: the document shell, the format's reserved characters escaped, non-ASCII as the
+		 * signed `\uN?` escape, an inline-intent bit as the control word that means it, and a line feed as a
+		 * paragraph break. The doors that still cannot do their work are still required to REFUSE BY NAME,
+		 * because a silent nil is indistinguishable from an empty document. */
 		NSAttributedString *sample = [[NSAttributedString alloc] initWithString:@"x"];
 		NSError *error = nil;
 		NSData *data = [sample dataFromRange:NSMakeRange(0, 1) documentAttributes:nil error:&error];
@@ -624,10 +651,79 @@ int main(void)
 		      data == nil && error != nil && description != nil &&
 		      [description rangeOfString:@"not implemented"].location != NSNotFound,
 		      [NSString stringWithFormat:@"data=%@ error=%@", data, description]);
-		check("file-format-doors-answer-nil-rather-than-pretending",
-		      [sample RTFFromRange:NSMakeRange(0, 1) documentAttributes:nil] == nil &&
+
+		{
+			/* THE SHELL: `{`, the `\rtf1` header, a font table, and the closing `}` as the last byte before
+			 * the trailing newline. A document that failed any of these would not open in a reader. */
+			NSData *rtf = [sample RTFFromRange:NSMakeRange(0, 1) documentAttributes:nil];
+			const unsigned char *bytes = rtf != nil ? [rtf bytes] : NULL;
+			NSUInteger length = rtf != nil ? [rtf length] : 0;
+
+			check("rtf-writes-a-document-with-its-own-shell",
+			      bytes != NULL && length >= 2 && bytes[0] == '{' &&
+			      fn_bytes_contain(rtf, "\\rtf1") && fn_bytes_contain(rtf, "{\\fonttbl") &&
+			      bytes[length - 2] == '}' && bytes[length - 1] == '\n',
+			      [NSString stringWithFormat:@"rtf=%@ (%lu bytes)", rtf, (unsigned long)length]);
+		}
+
+		/* THE THREE RESERVED CHARACTERS, EACH ESCAPED: a raw `{` would open a group and a raw `\` would start
+		 * a control word, so the format requires all three backslash-escaped. */
+		{
+			NSAttributedString *reserved = [[NSAttributedString alloc] initWithString:@"a{b}c\\d"];
+			NSData *out = [reserved RTFFromRange:NSMakeRange(0, 7) documentAttributes:nil];
+
+			check("rtf-escapes-the-formats-reserved-characters",
+			      fn_bytes_contain(out, "\\{") && fn_bytes_contain(out, "\\}") &&
+			      fn_bytes_contain(out, "\\\\"),
+			      @"each of `{` `}` `\\` goes out backslash-escaped");
+		}
+
+		/* THE `\uN?` ESCAPE AND ITS SIGN: U+00E9 is 233, U+2014 is 8212, and U+FFFD is NEGATIVE (-3, because
+		 * the format reads the value as a signed 16-bit number). */
+		{
+			NSAttributedString *eacute = [[NSAttributedString alloc] initWithString:@"\u00e9"];
+			NSAttributedString *emdash = [[NSAttributedString alloc] initWithString:@"\u2014"];
+			NSAttributedString *replacement = [[NSAttributedString alloc] initWithString:@"\ufffd"];
+
+			check("rtf-carries-non-ascii-as-the-signed-u-escape",
+			      fn_bytes_contain([eacute RTFFromRange:NSMakeRange(0, 1) documentAttributes:nil],
+					       "\\u233?") &&
+			      fn_bytes_contain([emdash RTFFromRange:NSMakeRange(0, 1) documentAttributes:nil],
+					       "\\u8212?") &&
+			      fn_bytes_contain([replacement RTFFromRange:NSMakeRange(0, 1) documentAttributes:nil],
+					       "\\u-3?"),
+			      @"U+00E9 -> \\u233?, U+2014 -> \\u8212?, U+FFFD -> \\u-3?");
+		}
+
+		{
+			/* AN INLINE-INTENT BIT BECOMES THE CONTROL WORD THAT MEANS IT: strong emphasis opens `\b` and, so
+			 * the emphasis does not leak, closes `\b0`. */
+			NSMutableAttributedString *strong = [[NSMutableAttributedString alloc] initWithString:@"bold"];
+			NSData *out;
+
+			[strong addAttribute:NSInlinePresentationIntentAttributeName
+				       value:[NSNumber numberWithInt:NSInlinePresentationIntentStronglyEmphasized]
+				       range:NSMakeRange(0, 4)];
+			out = [strong RTFFromRange:NSMakeRange(0, 4) documentAttributes:nil];
+			check("rtf-maps-an-inline-intent-bit-to-its-control-word",
+			      fn_bytes_contain(out, "\\b ") && fn_bytes_contain(out, "\\b0 "),
+			      @"strong emphasis opens \\b and closes \\b0");
+		}
+
+		{
+			NSAttributedString *twoLines = [[NSAttributedString alloc] initWithString:@"a\nb"];
+			NSData *out = [twoLines RTFFromRange:NSMakeRange(0, 3) documentAttributes:nil];
+
+			check("rtf-writes-a-line-feed-as-a-paragraph-break",
+			      fn_bytes_contain(out, "\\par"),
+			      @"a line feed becomes \\par");
+		}
+
+		check("the-other-format-doors-still-refuse-by-name",
+		      [sample RTFDFromRange:NSMakeRange(0, 1) documentAttributes:nil] == nil &&
+		      [sample RTFDFileWrapperFromRange:NSMakeRange(0, 1) documentAttributes:nil] == nil &&
 		      [sample docFormatFromRange:NSMakeRange(0, 1) documentAttributes:nil] == nil,
-		      @"RTF and doc format answer nil (their Apple shape has no error out)");
+		      @"RTFD and the doc format answer nil (their Apple shape has no error out)");
 	}
 
 	{
