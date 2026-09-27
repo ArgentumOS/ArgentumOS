@@ -174,6 +174,7 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSURLRequest.m \
 	$(FOUNDATION_SRC)/NSURLResponse.m \
 	$(FOUNDATION_SRC)/NSURLConnection.m \
+	$(FOUNDATION_SRC)/NSURLHandle.m \
 	$(FOUNDATION_SRC)/FNAuthenticationChallengeSender.m \
 	$(FOUNDATION_SRC)/NSLinguisticTagger.m \
 	$(FOUNDATION_SRC)/FNTextBreaking.m \
@@ -257,6 +258,7 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSURLRequest.h \
 	$(FOUNDATION_SRC)/NSURLResponse.h \
 	$(FOUNDATION_SRC)/NSURLConnection.h \
+	$(FOUNDATION_SRC)/NSURLHandle.h \
 	$(FOUNDATION_SRC)/NSCachedURLResponse.h \
 	$(FOUNDATION_SRC)/NSURLProtocol.h \
 	$(FOUNDATION_SRC)/FNCURLURLProtocol.h \
@@ -1327,6 +1329,17 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendar_legacy"
+	# foundation_urlhandle: §62.47's acceptance - NSURLHandle, its client protocol and the eleven property keys.
+	# The check is the MEANING: the class files a real response under Apple's keys and calls a client in order, so a
+	# vocabulary that nothing fills would fail rather than compile. Its transport is an in-process NSURLProtocol.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_urlhandle.m -o .build/probe-foundation_urlhandle.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlhandle.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlhandle"
 	# foundation_redirect: following a redirect, decided by the delegate, bounded by the hop limit (§54).
 	# Its own HTTP server again (a 302, a 307, a decline and a never-ending chain), and it reads §52's record
 	# off the delegate, so it links the bridge and curl exactly as the two units beside it do.

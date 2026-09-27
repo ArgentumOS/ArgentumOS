@@ -34,13 +34,13 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  174   open   51   struck   48
-#   protocol   shipped   30   open   10   struck    5
+#   class      shipped  175   open   50   struck   48
+#   protocol   shipped   31   open    9   struck    5
 #   macro      shipped  116   open    5   struck  132
-#   enum       shipped  132   open   19   struck    9
-#   case       shipped 1111   open  116   struck   75
+#   enum       shipped  133   open   18   struck    9
+#   case       shipped 1115   open  112   struck   75
 #   func       shipped  115   open   62   struck   12
-#   var        shipped  619   open   88   struck  207
+#   var        shipped  630   open   77   struck  207
 #   typealias  shipped   65   open    6   struck    5
 #   struct     shipped   13   open    0   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -998,10 +998,10 @@ case	shipped	NSURLErrorUnsupportedURL	NSError	App Support / User-Relevant Errors
 case	shipped	NSURLErrorUserAuthenticationRequired	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
 case	shipped	NSURLErrorUserCancelledAuthentication	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
 case	shipped	NSURLErrorZeroByteResource	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
-case	open	NSURLHandleLoadFailed	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
-case	open	NSURLHandleLoadInProgress	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
-case	open	NSURLHandleLoadSucceeded	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
-case	open	NSURLHandleNotLoaded	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
+case	shipped	NSURLHandleLoadFailed	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
+case	shipped	NSURLHandleLoadInProgress	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
+case	shipped	NSURLHandleLoadSucceeded	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
+case	shipped	NSURLHandleNotLoaded	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data / Constants	deprecated	swift-page
 case	shipped	NSURLNetworkServiceTypeAVStreaming	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
 case	shipped	NSURLNetworkServiceTypeAVStreaming	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
 case	shipped	NSURLNetworkServiceTypeBackground	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
@@ -1548,7 +1548,7 @@ class	shipped	NSURLConnection		Networking / Legacy / URL Connection	deprecated	o
 class	shipped	NSURLCredential		Networking / Authentication and credentials	-	objc
 class	shipped	NSURLCredentialStorage		Networking / Authentication and credentials	-	objc
 class	open	NSURLDownload		Networking / Legacy / URL Download	deprecated	objc
-class	open	NSURLHandle		Networking / Legacy / URL Handle	deprecated	objc
+class	shipped	NSURLHandle		Networking / Legacy / URL Handle	deprecated	objc
 class	shipped	NSURLProtectionSpace		Networking / Authentication and credentials	-	objc
 class	shipped	NSURLProtocol		Networking / Essentials / Creating a session / Supporting custom protocols	-	objc
 class	shipped	NSURLQueryItem		Fundamentals / URLs	-	objc
@@ -1750,7 +1750,7 @@ enum	shipped	NSURLCacheStoragePolicy	NSCachedURLResponse	Networking / Cache beha
 enum	shipped	NSURLCacheStoragePolicy	NSURLCache	Networking / Cache behavior / Cache storage policies	-	objc
 enum	shipped	NSURLCredentialPersistence	NSURLCredential	Networking / Authentication and credentials / Creating a credential	-	swift-page
 enum	shipped	NSURLErrorNetworkUnavailableReason		Networking / Errors / Keys	-	objc
-enum	open	NSURLHandleStatus	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	swift-page
+enum	shipped	NSURLHandleStatus	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	swift-page
 enum	shipped	NSURLRelationship	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items	-	objc
 enum	shipped	NSURLRequestAttribution	NSMutableURLRequest	Networking / Requests and responses / Indicating the source of the request	-	swift-page
 enum	shipped	NSURLRequestAttribution	NSURLRequest	Networking / Requests and responses / Indicating the source of the request	-	swift-page
@@ -2252,7 +2252,7 @@ protocol	shipped	NSURLConnectionDataDelegate		Networking / Legacy / URL Connecti
 protocol	shipped	NSURLConnectionDelegate		Networking / Legacy / URL Connection	deprecated	objc
 protocol	shipped	NSURLConnectionDownloadDelegate		Networking / Legacy / URL Connection	deprecated	objc
 protocol	open	NSURLDownloadDelegate		Networking / Legacy / URL Download	deprecated	objc
-protocol	open	NSURLHandleClient		Networking / Legacy / URL Handle	deprecated	objc
+protocol	shipped	NSURLHandleClient		Networking / Legacy / URL Handle	deprecated	objc
 protocol	shipped	NSURLProtocolClient		Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes	-	objc
 protocol	shipped	NSURLSessionDataDelegate		Networking / Essentials / Adding data tasks to a session	-	objc
 protocol	shipped	NSURLSessionDelegate		Networking / Essentials / Working with a delegate	-	objc
@@ -2452,11 +2452,11 @@ var	open	NSExtensionItemAttributedTitleKey	NSExtensionItem	App Support / Attachm
 var	open	NSExtensionItemsAndErrorsKey	NSExtensionContext	App Support / Extension Support / Handling requests	-	objc
 var	shipped	NSExtensionJavaScriptFinalizeArgumentKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 var	shipped	NSExtensionJavaScriptPreprocessingResultsKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
-var	open	NSFTPPropertyActiveTransferModeKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	open	NSFTPPropertyFTPProxy	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	open	NSFTPPropertyFileOffsetKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	open	NSFTPPropertyUserLoginKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	open	NSFTPPropertyUserPasswordKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	shipped	NSFTPPropertyActiveTransferModeKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	shipped	NSFTPPropertyFTPProxy	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	shipped	NSFTPPropertyFileOffsetKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	shipped	NSFTPPropertyUserLoginKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	shipped	NSFTPPropertyUserPasswordKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
 var	open	NSFailedAuthenticationException	NSConnection	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
 var	shipped	NSFileAppendOnly	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileBusy	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
@@ -2536,12 +2536,12 @@ var	shipped	NSHTTPCookieSecure	NSHTTPCookie	Networking / Essentials / Creating a
 var	shipped	NSHTTPCookieSetByJavaScript	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Type Properties	-	objc
 var	shipped	NSHTTPCookieValue	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
 var	shipped	NSHTTPCookieVersion	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	open	NSHTTPPropertyErrorPageDataKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	open	NSHTTPPropertyHTTPProxy	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	open	NSHTTPPropertyRedirectionHeadersKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	open	NSHTTPPropertyServerHTTPVersionKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	open	NSHTTPPropertyStatusCodeKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	open	NSHTTPPropertyStatusReasonKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	shipped	NSHTTPPropertyErrorPageDataKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	shipped	NSHTTPPropertyHTTPProxy	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	shipped	NSHTTPPropertyRedirectionHeadersKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	shipped	NSHTTPPropertyServerHTTPVersionKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	shipped	NSHTTPPropertyStatusCodeKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
+var	shipped	NSHTTPPropertyStatusReasonKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
 var	open	NSHashTableCopyIn	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
 var	open	NSHashTableObjectPointerPersonality	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
 var	open	NSHashTableStrongMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc

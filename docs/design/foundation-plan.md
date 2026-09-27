@@ -3555,7 +3555,7 @@ vanishing.
 | **Networking / Cache behavior** | all classes shipped | — |
 | **Networking / Cookies** | all classes shipped | — |
 | **Networking / Essentials** | all classes shipped | — |
-| **Networking / Legacy** | 4 open | `NSURLDownload`, `NSURLDownloadDelegate`, `NSURLHandle`, `NSURLHandleClient` |
+| **Networking / Legacy** | 2 open | `NSURLDownload`, `NSURLDownloadDelegate` |
 | **Networking / Local Network Services** | ALL STRUCK: `NSNetService`, `NSNetServiceDelegate` | — |
 | **Networking / Requests and responses** | all classes shipped | — |
 | **Networking / Service Discovery** | ALL STRUCK: `NSNetServiceBrowser`, `NSNetServiceBrowserDelegate` | — |
@@ -12976,6 +12976,54 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.47 — `NSURLHandle`: A RESTORED VOCABULARY, AND THE CLASS THAT MAKES IT MEAN SOMETHING (2026-09-26)
+
+**WHAT SHIPPED: EIGHTEEN ROWS, AND THE LIST IS EXACT BECAUSE IT WAS DIFFED RATHER THAN RECALLED.** The
+`NSURLHandle` family's open set — computed against the committed ledger, not by eye — closed as: **the class row
+itself, the `NSURLHandleClient` protocol row** (both of which carry an EMPTY family column in the surface file, which
+is why the first count said sixteen), **eleven property keys**, and **`NSURLHandleStatus` with its four cases.**
+Apple deprecated the whole family at 10.4 in favour of `NSURLConnection`/`NSURLDownload`, and §62.24 put it back.
+**The open count is 339.**
+
+**THE OWED ROWS WERE THE VOCABULARY, AND THE CLASS IS HERE BECAUSE A KEY NEEDS SOMETHING TO KEY INTO.** Eleven
+`NSFTPProperty…`/`NSHTTPProperty…` constants and a load status are not a family on their own: a property key is a key
+INTO a handle's property bag and a status is the status OF a handle's load. Declaring them alone would have been a
+vocabulary with nothing to say — the same reasoning that put `NSMapTable`'s call-backs and their table in one unit.
+
+**AND ITS LOADING DOOR IS THE LIBRARY'S OWN, WHICH IS THE DESIGN DECISION WORTH STATING.** `-loadInForeground` is
+`+[NSURLConnection sendSynchronousRequest:…]`, so the bytes a pre-2005 program receives are the bytes this library's
+modern door would have given it — ONE TRANSPORT, TWO SPELLINGS, not a second HTTP client to keep in step. The
+background load is a THREAD around that same call. Two consequences are named where the code is rather than left to
+be discovered:
+
+  * **every client call-back is made on the loading thread**, which is what "in background" means and is a promise
+    this class can keep; and
+  * **`-endLoadInBackground` does NOT join the thread.** The natural reading would be to wait, and the reason it
+    does not is that a client is told when a load ends, so an end that blocked could only ever be called by a client
+    that had already been told. What it does is reset the handle so the next `-beginLoadInBackground` starts a fresh
+    load — the state a caller needs, which is not the same thing as a join.
+
+`-propertyForKey:` still flushes the cache and loads, `-propertyForKeyIfAvailable:` still does not: that distinction
+is the only thing the two names were ever for.
+
+**THE PROBE MEASURES THE MEANING, NOT THE NAMES, WHICH IS THE ONLY WAY THIS UNIT COULD FAIL HONESTLY.** A key
+declared and never filed, a status that never becomes `LoadSucceeded`, a client protocol nobody calls — all three
+compile and would pass a check that counted declarations. So the probe loads a real resource **through the library's
+own transport** (a registered `NSURLProtocol` answering in process — this tree's recipe for an HTTP probe, and the
+reason there is no socket and no test that fails for reasons that are not about the class), asserts what the handle
+FILED under Apple's keys (status 200, the server header, a reason phrase, the redirection header), and asserts that
+a background load tells its client **begin, then the bytes, then finish — in that order**. A failure door is exercised
+too: no data, `LoadFailed`, and a non-empty reason.
+
+**VERIFIED.** `foundation_urlhandle` is **10/10 green in one guest run**, its case 6/6. Regressions:
+`foundation_urlconnection` 6/6 (the transport both handles use) and `foundation_string` 6/6. **FOUR TRAPS, THREE OF
+THEM MY OWN HABITS:** the probe is ARC and I wrote `release`/`dealloc` into it — the FOURTH time this session — and
+then removed them with a regex that mis-modelled Objective-C's message syntax TWICE before a line-level filter did
+it, which is a small lesson about regex and a smaller one about not repeating a habit; the protocol was declared
+before the class it names and needed `@class NSURLHandle;`; and **the new header had to join the umbrella
+`Foundation.h`** — a step no internal header in this thread needed, and the reason the probe could not see the type
+at all.
 
 ## §62.46 — THE PRE-10.9 CALENDAR UNION NAMES: ALIASES THAT MUST MEAN THE SAME THING (2026-09-26)
 
