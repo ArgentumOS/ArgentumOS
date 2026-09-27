@@ -34,11 +34,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  178   open   47   struck   48
-#   protocol   shipped   31   open    9   struck    5
+#   class      shipped  180   open   45   struck   48
+#   protocol   shipped   33   open    7   struck    5
 #   macro      shipped  116   open    5   struck  132
-#   enum       shipped  136   open   15   struck    9
-#   case       shipped 1132   open   95   struck   75
+#   enum       shipped  137   open   14   struck    9
+#   case       shipped 1135   open   92   struck   75
 #   func       shipped  164   open   13   struck   12
 #   var        shipped  641   open   66   struck  207
 #   typealias  shipped   65   open    6   struck    5
@@ -613,9 +613,9 @@ case	shipped	NSLocaleLanguageDirectionTopToBottom	NSLocale	Fundamentals / Locali
 case	shipped	NSLocaleLanguageDirectionUnknown	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
 case	open	NSMACHOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	shipped	NSMacOSRomanStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSMachPortDeallocateNone	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
-case	open	NSMachPortDeallocateReceiveRight	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
-case	open	NSMachPortDeallocateSendRight	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
+case	shipped	NSMachPortDeallocateNone	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
+case	shipped	NSMachPortDeallocateReceiveRight	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
+case	shipped	NSMachPortDeallocateSendRight	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
 case	open	NSMappedRead	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
 case	shipped	NSMassFormatterUnitGram	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	shipped	NSMassFormatterUnitKilogram	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
@@ -1444,7 +1444,7 @@ class	open	NSLocalizedNumberFormatRule		Reference / Classes	-	objc
 class	shipped	NSLock		Low-Level Utilities / Threads and Locking	-	objc
 class	struck	NSLogicalTest		App Support / Object Matching Tests	declined	objc
 class	open	NSMachBootstrapServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-class	open	NSMachPort		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	shipped	NSMachPort		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSMapTable		Fundamentals / Pointer Collections	-	objc
 class	shipped	NSMassFormatter		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSMeasurement		Fundamentals / Essentials	-	objc
@@ -1494,7 +1494,7 @@ class	shipped	NSPointerArray		Fundamentals / Pointer Collections	-	objc
 class	shipped	NSPointerFunctions		Fundamentals / Pointer Collections / Getting the Pointer Functions	-	objc
 class	shipped	NSPort		Low-Level Utilities / Sockets	-	objc
 class	open	NSPortCoder		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-class	open	NSPortMessage		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	shipped	NSPortMessage		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	open	NSPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSPositionalSpecifier		App Support / Object Specifiers	declined	objc
 class	shipped	NSPredicate		Fundamentals / Filltering	-	objc
@@ -1695,7 +1695,7 @@ enum	shipped	NSLengthFormatterUnit	NSLengthFormatter	Fundamentals / Deprecated /
 enum	shipped	NSLinguisticTaggerOptions	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags	deprecated	objc
 enum	shipped	NSLinguisticTaggerUnit	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
 enum	shipped	NSLocaleLanguageDirection	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language	-	objc
-enum	open	NSMachPortOptions	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
+enum	shipped	NSMachPortOptions	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
 enum	shipped	NSMassFormatterUnit	NSMassFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
 enum	shipped	NSMatchingFlags	NSRegularExpression	Fundamentals / Pattern Matching / Constants	-	objc
 enum	shipped	NSMatchingOptions	NSRegularExpression	Fundamentals / Pattern Matching / Constants	-	objc
@@ -2235,13 +2235,13 @@ protocol	shipped	NSItemProviderWriting		App Support / Attachments / Constants	-	
 protocol	shipped	NSKeyedArchiverDelegate		Files and Data Persistence / Keyed Archivers	-	objc
 protocol	shipped	NSKeyedUnarchiverDelegate		Files and Data Persistence / Keyed Archivers	-	objc
 protocol	shipped	NSLocking		Low-Level Utilities / Threads and Locking	-	objc
-protocol	open	NSMachPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+protocol	shipped	NSMachPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 protocol	struck	NSMetadataQueryDelegate		Files and Data Persistence / Queries	declined	objc
 protocol	shipped	NSMutableCopying		Low-Level Utilities / Copying	-	objc
 protocol	struck	NSNetServiceBrowserDelegate		Networking / Service Discovery	declined	objc
 protocol	struck	NSNetServiceDelegate		Networking / Local Network Services	declined	objc
 protocol	shipped	NSObject		Low-Level Utilities / Object Basics	-	objc
-protocol	open	NSPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+protocol	shipped	NSPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 protocol	open	NSPredicateValidating		Protocols	-	objc
 protocol	shipped	NSProgressReporting		App Support / Progress	-	objc
 protocol	shipped	NSSecureCoding		Files and Data Persistence / Adopting Codability	-	objc

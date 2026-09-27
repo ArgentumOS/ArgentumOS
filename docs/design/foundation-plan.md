@@ -3538,7 +3538,7 @@ vanishing.
 | **Fundamentals / Unique Identifiers** | all classes shipped | — |
 | **Low-Level Utilities / Copying** | all classes shipped | — |
 | **Low-Level Utilities / Invocations** | all classes shipped | — |
-| **Low-Level Utilities / Legacy** | 16 open | `NSConnection`, `NSConnectionDelegate`, `NSDistantObject`, `NSDistantObjectRequest`, `NSGarbageCollector`, `NSMachBootstrapServer`, `NSMachPort`, `NSMachPortDelegate`, `NSMessagePort`, `NSMessagePortNameServer`, `NSPortCoder`, `NSPortDelegate`, `NSPortMessage`, `NSPortNameServer`, `NSProtocolChecker`, `NSSocketPortNameServer` |
+| **Low-Level Utilities / Legacy** | 12 open | `NSConnection`, `NSConnectionDelegate`, `NSDistantObject`, `NSDistantObjectRequest`, `NSGarbageCollector`, `NSMachBootstrapServer`, `NSMessagePort`, `NSMessagePortNameServer`, `NSPortCoder`, `NSPortNameServer`, `NSProtocolChecker`, `NSSocketPortNameServer` |
 | **Low-Level Utilities / Memory Management** | all classes shipped | — |
 | **Low-Level Utilities / Object Basics** | all classes shipped | — |
 | **Low-Level Utilities / Remote Objects** | all classes shipped | — |
@@ -12977,6 +12977,73 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.53 — THE PORT FAMILY COMES BACK FROM THE STRIKE: A MESSAGE THAT CROSSES A PORT (2026-09-26)
+
+**WHAT SHIPPED: THE MESSAGE TRANSPORT AND THE PORT THAT USES IT.** `NSPortDelegate`, `NSPortMessage`, the two send
+doors on `NSPort`, an `NSSocketPort` that CARRIES a message, `NSMachPort` with `NSMachPortOptions` and its three
+deallocate constants, and `NSMachPortDelegate`. **The open count is 256 → 248**, and **`+[NSPort port]` answers an
+`NSMachPort`** because that is Apple's answer and the note that said otherwise ("the only concrete subclass §11.5
+left standing") stopped being true the moment the family came back.
+
+**THIS UNIT IS THE POLICY REVERSING A STRIKE, AND THE TWO NOTES THAT RECORDED THE STRIKE WERE CORRECTED RATHER
+THAN LEFT TO MISLEAD.** `NSPort.h` said "THE CLASS IS ALMOST ALL STRUCK", listing a message type, a delegate
+protocol, three subclasses and a connection class as EXCLUDED BY NAME — with the reasoning that a name is not
+declared until it works. §62.24 retired the deprecation ground as a strike, so those names are a porting target
+again; the note now says which landed, which are on the work list, and why. `NSSocketPort.h` carried the same
+claim from the other side.
+
+**THE FRAME IS OURS (§11.6.1 D2) AND IT IS WRITTEN WHERE IT IS USED: an eight-byte header in NETWORK BYTE ORDER —
+the message id and the payload length — then a count and each component's length and bytes.** Network order rather
+than the host's, because a message that works between two processes on this machine should not stop working
+between two machines. Three rules of the transport are stated rather than discovered:
+
+  * **A PARTIAL ARRIVAL IS NORMAL**: what has come is kept and a frame is delivered only when all of it is here.
+  * **ONE READ PER READINESS REPORT**, because a second read on a socket with nothing left would BLOCK inside a
+    run-loop callback — which is how a loop stops responding.
+  * **A LENGTH TOO LARGE TO BELIEVE INVALIDATES THE PORT** rather than allocating for it: the length comes off the
+    wire, and a header claiming two gigabytes must not become two gigabytes.
+
+The `msgid` reaches the wire because `NSPortMessage` sends through the GENERAL door
+(`-sendBeforeDate:msgid:components:from:reserved:`), with the narrow form defined in terms of it at a msgid of zero
+— Apple's relationship, and the reason a transport implements only the general one.
+
+**THERE IS NO MACH HERE, AND EVERY CONSEQUENCE IS REFUSED AT THE DOOR RATHER THAN APPROXIMATED.** A port is an
+AF_UNIX SOCKET PAIR carrying the frame above; `NSMachPort` is a SUBCLASS of `NSSocketPort` rather than its sibling
+(a sibling would duplicate the only transport this system has); `-machPort` answers this system's handle — the
+descriptor — rather than pretending to name a port right; the four from-number doors **REFUSE**, because a bare
+number names nothing without port rights; and `NSMachPortDelegate`'s `-handleMachMessage:` is **declared and never
+called**, which its header says out loud, because a `mach_msg_header_t` is not something this system produces. The
+way a second holder reaches a port is `-peerPort` — OURS, stated as such, and handed over ONCE so two ports never
+share one descriptor.
+
+**THE PROBE WRITES THE FRAME ITSELF, IN NETWORK BYTE ORDER, INSTEAD OF ASKING THE LIBRARY TO SEND AND RECEIVE ITS
+OWN BYTES.** That is the difference between a test and a tautology: a round trip through one implementation passes
+for ANY frame at all, including one no other implementation could read. So the checks that matter are checked
+against bytes the probe builds: a message arrives with its id and its two components intact; **HALF A FRAME IS NOT
+A MESSAGE** (four bytes of a header, a pump, nothing delivered — then the rest, and it is); a non-data component is
+refused at the send door; and an unbelievable length leaves the port invalid. A pair per check, because the last
+one deliberately invalidates a port.
+
+**VERIFIED.** `foundation_machport` is **7/7 green in one guest run**, its case 6/6. Regression: `foundation_port`
+6/6 — the existing probe for this pair of classes, which is where `+port`'s answer and the socket port's new
+transport would have shown a break. And the standing rule's gate, run before this commit:
+`foundation-sweep.py --unimplemented` reports **1 baselined** (the KVO observer method, a boundary) and **0 NEW**.
+
+**FIVE OF MY OWN TRAPS, ALL OF THEM FAMILIAR ONES.** The probe is ARC and I wrote `release`/`dealloc` into it —
+**the fifth time in this thread**; `NSPortMessage.h` was never added to the umbrella, so the probe saw a forward
+declaration and no interface; `close(2)` needed `<unistd.h>` and `signal(2)` needed `<signal.h>` (again); the
+library's nullable `-objectAtIndex:`/`-dataUsingEncoding:` needed `id` locals and nil checks before non-null doors
+(three sites); and the case file was generated with DOUBLE-ESCAPED newlines, so it would not import at all — a
+generator bug that reported itself the moment the harness loaded the file, which is exactly when it should.
+
+### WHAT IS NOT HERE, AND WHY IT IS ON THE WORK LIST RATHER THAN DECLARED
+
+`NSMessagePort`, `NSPortNameServer`, `NSMessagePortNameServer`, `NSSocketPortNameServer`, `NSMachBootstrapServer`,
+`NSConnection`, `NSDistantObject` and `NSPortCoder` are **not declared**, per the standing rule that nothing is
+declared until it is defined. The naming half needs something this unit does not have: a name server publishes a
+port for ANOTHER PROCESS to find, which needs the accept-and-connect path that `NSConnection` owns — and
+`NSConnection` needs the proxy machinery on top of it. They stay on the ledger as open work.
+
 ## §62.52 — THE REST OF THE FREE-FUNCTION BUCKET: NINETEEN IN, NINE OUT WITH GROUNDS (2026-09-26)
 
 **WHAT SHIPPED: NINETEEN FUNCTIONS, AND THE LEDGER'S REMAINDER IS EXACTLY THE REFUSALS.** Logging (`NSLog`,
@@ -14078,6 +14145,33 @@ been made half-false for the FOURTH time (this time by a POLICY change rather th
   self-inflicted recursion looks like from the outside.
 
 ## §62.24 — THE DEPRECATION GROUND IS RETIRED: DEPRECATED API IS A PORTING TARGET, NOT AN EXCLUSION (2026-09-26)
+
+**AND A COMPANION RULE, ADDED BY THE USER THE SAME DAY AND BINDING ON EVERY UNIT BELOW: ANYTHING DECLARED IN A
+HEADER MUST BE DEFINED SOMEWHERE. A declared-but-undefined name is UNACCEPTABLE, DOES NOT COUNT AS DONE, and goes on
+the work list instead of shipping as an empty promise.**
+
+What the rule changes in practice:
+
+  * **No header-only slices.** A unit's declarations and their definitions land together, and a class whose methods
+    are not yet implemented is **not declared at all** — which is this family's own older rule, printed in
+    `NSPort.h`: "a name is not declared until it works".
+  * **A PROTOCOL IS EXEMPT**, and deliberately so: `@protocol X` with its methods is a declaration by nature and
+    needs no definition. Reading a protocol as an undefined declaration would be a category error.
+  * **A door that cannot be implemented REFUSES AT THE DOOR** — with a ground — rather than being declared and left
+    hollow. §62.52's nine refusals (`NSCopyObject`'s unsettable retain count, the runtime's NULL protocol lookup,
+    the removed `NSZone`, the unsafe frame walk, no CoreFoundation, no unarchiver) are the worked examples.
+
+**THE INSTRUMENT ALREADY EXISTS AND IS NOW PART OF THE COMMIT DISCIPLINE:**
+`python3 tools/foundation-sweep.py --unimplemented` lists "declared selectors with no implementation anywhere in the
+library", separates baselined entries (each with a reason in `docs/reference/foundation-unimplemented.txt`) from NEW
+ones, and **fails on any NEW**. It takes a second or two, and it runs before every commit in this thread.
+Measured 2026-09-26 while landing the port family (§62.53): **1 baselined** — `NSObject`'s KVO observer method, which
+is a boundary rather than a work item, because the *observer* implements it — and **0 NEW**.
+
+Related and worth knowing when reading the ledger: the same sweep's `shipped` column is computed from what the
+**headers** declare, so `shipped` alone does not prove a definition exists. That is exactly why `--unimplemented` is
+the check this rule needs, and why the two columns must not be confused.
+
 
 **THE USER'S DECISION, IN THEIR WORDS: "to support porting older Mac applications, all items removed for being
 deprecated are un-deprecated in Argentum Foundation, and added to the work list."** And in a second sentence the same

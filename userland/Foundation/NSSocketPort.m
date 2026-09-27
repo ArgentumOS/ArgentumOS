@@ -22,8 +22,13 @@
  */
 
 #import <Foundation/NSSocketPort.h>
+#import <Foundation/NSPortMessage.h>
+#import <Foundation/NSArray.h>
 #import <Foundation/NSData.h>
+#import <Foundation/NSDate.h>
 #import <Foundation/NSString.h>
+#include <arpa/inet.h>		/* htonl/ntohl: the frame is written in NETWORK byte order */
+#include <errno.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>		/* snprintf: the service name */
@@ -54,6 +59,7 @@ static NSData *fn_sockaddr_data(NSSocketNativeHandle fd, BOOL peer)
 - (BOOL)fnBindEphemeral:(struct sockaddr_in *)local;
 - (BOOL)fnConnect:(NSData *)address;
 - (void)fnCloseSocket;
+- (void)fnTakeOwnership;
 @end
 
 @implementation NSSocketPort
@@ -124,6 +130,16 @@ static NSData *fn_sockaddr_data(NSSocketNativeHandle fd, BOOL peer)
 		}
 	}
 	return NO;
+}
+
+- (void)fnTakeOwnership
+{
+	/* THIS PORT BECOMES RESPONSIBLE FOR ITS DESCRIPTOR. A descriptor the CALLER made is the caller's to close,
+	 * which is the right rule until the caller HANDS IT OVER — and that hand is the only reason this door
+	 * exists. The machinery is the same one -fnCloseSocket uses; what changes is who owns the socket. */
+	if (_socket >= 0) {
+		_ownsSocket = YES;
+	}
 }
 
 - (BOOL)fnConnect:(NSData *)address
@@ -329,6 +345,227 @@ static NSData *fn_sockaddr_data(NSSocketNativeHandle fd, BOOL peer)
 	return _type;
 }
 
+/* ===================================================================================================
+ * THE MESSAGE TRANSPORT (§62.53)
+ *
+ * THE FRAME IS OURS (§11.6.1 D2) BECAUSE APPLE'S IS NOT PUBLISHED, and it is deliberately the simplest shape
+ * that can carry what a message is: an eight-byte header in NETWORK BYTE ORDER — the message id and the
+ * payload length — and then the payload, which is a count followed by each component's length and bytes.
+ * Network order rather than the host's, because a message that works between two processes on this machine
+ * should not stop working between two machines.
+ *
+ * PARTIAL ARRIVALS ARE THE NORMAL CASE, NOT AN ERROR: a socket read may deliver half a frame, so what has
+ * arrived is kept in `_incoming` and a frame is delivered only when all of it is there. ONE READ PER
+ * READINESS REPORT is the rule — the run loop reports readability again while data remains — because a
+ * second read on a socket with nothing left would BLOCK inside a run-loop callback, which is how a loop
+ * stops responding.
+ *
+ * A FRAME TOO LARGE TO BELIEVE IS REFUSED BY INVALIDATING THE PORT rather than by allocating for it: the
+ * payload length comes off the wire, and a length that pretends to be a gigabyte must not become one.
+ * =================================================================================================== */
+
+#define FN_PORT_HEADER_BYTES	8u
+#define FN_PORT_PAYLOAD_LIMIT	(4u * 1024u * 1024u)
+
+/* THE FRAME, OR NIL WHEN A COMPONENT CANNOT BE WRITTEN DOWN. A component that is not data — Apple's other
+ * documented kind is a port, which means a port RIGHT — is refused at this door rather than silently dropped. */
+static NSData *fn_port_frame(uint32_t msgid, NSArray *components)
+{
+	NSMutableData *payload = [[NSMutableData alloc] init];
+	NSMutableData *frame = [[NSMutableData alloc] init];
+	uint32_t header[2];
+	uint32_t encoded;
+	NSUInteger i;
+
+	encoded = htonl((uint32_t)[components count]);
+	[payload appendBytes:&encoded length:sizeof(encoded)];
+	for (i = 0; i < [components count]; i++) {
+		id one = [components objectAtIndex:i];
+
+		if (![one isKindOfClass:[NSData class]]) {
+			[payload release];
+			[frame release];
+			return nil;
+		}
+		encoded = htonl((uint32_t)[one length]);
+		[payload appendBytes:&encoded length:sizeof(encoded)];
+		[payload appendData:one];
+	}
+	header[0] = htonl(msgid);
+	header[1] = htonl((uint32_t)[payload length]);
+	[frame appendBytes:header length:sizeof(header)];
+	[frame appendData:payload];
+	[payload release];
+	return [frame autorelease];
+}
+
+/* ---- the message transport ---------------------------------------------- */
+
+- (BOOL)fnWriteFrame:(NSData *)frame
+{
+	const unsigned char *bytes = (const unsigned char *)[frame bytes];
+	NSUInteger length = [frame length];
+	NSUInteger written = 0;
+
+	while (written < length) {
+		ssize_t n = write(_socket, bytes + written, length - written);
+
+		if (n > 0) {
+			written += (NSUInteger)n;
+			continue;
+		}
+		if (n < 0 && errno == EINTR) {
+			continue;
+		}
+		return NO;		/* EPIPE, EAGAIN, EBADF: the message did not go */
+	}
+	return YES;
+}
+
+- (BOOL)sendBeforeDate:(NSDate *)date
+		 msgid:(NSUInteger)msgid
+	    components:(NSMutableArray *)components
+		  from:(NSPort *)receivePort
+	      reserved:(NSUInteger)headerSpaceReserved
+{
+	NSData *frame;
+	BOOL sent;
+
+	(void)date;		/* a socket write here is blocking and short: there is no deadline to honour */
+	(void)receivePort;	/* the return address is the RECEIVER's business in this transport */
+	(void)headerSpaceReserved;
+	if (_socket < 0 || ![self isValid]) {
+		return NO;
+	}
+	frame = fn_port_frame((uint32_t)msgid, components);
+	if (frame == nil) {
+		return NO;
+	}
+	sent = [self fnWriteFrame:frame];
+	if (!sent && errno == EPIPE) {
+		/* THE PEER IS GONE, AND A PORT WHOSE PEER IS GONE IS NOT A PORT: Apple's NSConnection notices this
+		 * too, and the honest report is an invalid port rather than a silent NO on every future send. */
+		[self invalidate];
+	}
+	return sent;
+}
+
+/* DELIVER EVERY COMPLETE FRAME IN THE BUFFER, in arrival order, and keep any partial one. */
+- (void)fnDeliverMessages
+{
+	while ([_incoming length] >= FN_PORT_HEADER_BYTES) {
+		const unsigned char *bytes = (const unsigned char *)[_incoming bytes];
+		NSUInteger available = [_incoming length];
+		NSUInteger offset = FN_PORT_HEADER_BYTES;
+		NSUInteger consumed;
+		uint32_t header[2];
+		uint32_t msgid;
+		uint32_t payloadLength;
+		uint32_t count;
+		uint32_t i;
+		NSMutableArray *components;
+		NSPortMessage *message;
+
+		memcpy(header, bytes, sizeof(header));
+		msgid = ntohl(header[0]);
+		payloadLength = ntohl(header[1]);
+		if (payloadLength > FN_PORT_PAYLOAD_LIMIT) {
+			[self invalidate];
+			return;
+		}
+		if (available < FN_PORT_HEADER_BYTES + (NSUInteger)payloadLength) {
+			return;		/* the rest is still on its way */
+		}
+		consumed = FN_PORT_HEADER_BYTES + (NSUInteger)payloadLength;
+		components = [[NSMutableArray alloc] init];
+		if (payloadLength < sizeof(uint32_t)) {
+			/* A PAYLOAD THAT CANNOT HOLD ITS OWN COUNT is not a frame this library wrote; it is dropped
+			 * whole rather than parsed optimistically. */
+			[self fnDropPrefix:consumed];
+			[components release];
+			continue;
+		}
+		memcpy(&count, bytes + offset, sizeof(count));
+		count = ntohl(count);
+		offset += sizeof(count);
+		for (i = 0; i < count; i++) {
+			uint32_t length;
+
+			if (offset + sizeof(length) > consumed) {
+				break;
+			}
+			memcpy(&length, bytes + offset, sizeof(length));
+			length = ntohl(length);
+			offset += sizeof(length);
+			if (offset + (NSUInteger)length > consumed) {
+				break;
+			}
+			[components addObject:[NSData dataWithBytes:bytes + offset length:(NSUInteger)length]];
+			offset += (NSUInteger)length;
+		}
+		message = [[NSPortMessage alloc] initWithSendPort:self receivePort:self components:components];
+		[message setMsgid:msgid];
+		if (_delegate != nil && [_delegate respondsToSelector:@selector(handlePortMessage:)]) {
+			[_delegate handlePortMessage:message];
+		}
+		[message release];
+		[components release];
+		[self fnDropPrefix:consumed];
+		[self fnDropInvalidated];	/* the delegate may have invalidated this port while handling it */
+		if (![self isValid]) {
+			return;
+		}
+	}
+}
+
+- (void)fnDropPrefix:(NSUInteger)consumed
+{
+	NSUInteger remaining = [_incoming length] - consumed;
+	NSMutableData *rest;
+
+	if (remaining == 0) {
+		[_incoming setLength:0];
+		return;
+	}
+	/* SLICED INTO A NEW BUFFER rather than compacted in place, so this uses only the methods this library's
+	 * NSMutableData is known to have: a transport that hung on an unimplemented slicing door would be a
+	 * mystery, and a copy of at most one frame is not what makes this slow. */
+	rest = [[NSMutableData alloc] initWithBytes:(const unsigned char *)[_incoming bytes] + consumed
+					    length:remaining];
+	[_incoming release];
+	_incoming = rest;
+}
+
+- (void)fnDropInvalidated
+{
+	if (![self isValid] && _incoming != nil) {
+		[_incoming release];
+		_incoming = nil;
+	}
+}
+
+- (void)portDidBecomeReadable
+{
+	unsigned char chunk[4096];
+	ssize_t got;
+
+	if (_socket < 0 || ![self isValid]) {
+		return;
+	}
+	got = read(_socket, chunk, sizeof(chunk));
+	if (got <= 0) {
+		/* ZERO IS A CLOSED PEER and a negative is an error: neither is a message, so the port reports
+		 * nothing. Apple's ports deliver "the port died" through the connection above them, and that is
+		 * where this belongs rather than in a message nobody sent. */
+		return;
+	}
+	if (_incoming == nil) {
+		_incoming = [[NSMutableData alloc] init];
+	}
+	[_incoming appendBytes:chunk length:(NSUInteger)got];
+	[self fnDeliverMessages];
+}
+
 /* ---- being a run-loop source, and being taken apart ---------------------- */
 
 - (void)scheduleInRunLoop:(NSRunLoop *)runLoop forMode:(NSRunLoopMode)mode
@@ -369,6 +606,7 @@ static NSData *fn_sockaddr_data(NSSocketNativeHandle fd, BOOL peer)
 {
 	[self fnCloseSocket];
 	[_address release];
+	[_incoming release];		/* a half-received frame dies with the port that was receiving it */
 	[super dealloc];
 }
 

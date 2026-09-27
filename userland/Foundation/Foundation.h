@@ -179,6 +179,8 @@
 #import <Foundation/NSItemProvider.h>
 #import <Foundation/NSUserDefaults.h>
 #import <Foundation/NSPort.h>
+#import <Foundation/NSMachPort.h>
+#import <Foundation/NSPortMessage.h>
 #import <Foundation/NSSocketPort.h>
 #import <Foundation/NSFileHandle.h>
 #import <Foundation/NSPipe.h>

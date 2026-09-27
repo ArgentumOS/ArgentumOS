@@ -55,7 +55,10 @@
 #import <Foundation/NSPort.h>
 
 @class NSData;
+@class NSDate;
+@class NSPort;
 @class NSString;
+@class NSMutableData;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -67,6 +70,7 @@ NS_ASSUME_NONNULL_BEGIN
 	int _protocol;			/* the protocol argument of socket(2) */
 	BOOL _ownsSocket;		/* NO for a descriptor the caller made */
 	NSData *_address;		/* the raw struct sockaddr of this end */
+	NSMutableData *_incoming;	/* a message being received, possibly in pieces (see the .m) */
 }
 
 /* A local TCP/IP socket of type SOCK_STREAM: bound on an ephemeral port and listening. */
@@ -98,6 +102,16 @@ NS_ASSUME_NONNULL_BEGIN
 					       socketType:(int)type
 						 protocol:(int)protocol
 						  address:(NSData *)address;
+
+/* THE MESSAGE TRANSPORT (§62.53). `-sendBeforeDate:components:from:reserved:` is inherited from NSPort and
+ * OVERRIDDEN HERE, because a socket is what this library has to carry a message with; the delegate in
+ * `-setDelegate:` is handed every complete message this port receives, which is what makes a scheduled
+ * socket port a message endpoint rather than only a readable descriptor. The frame itself is the .m's
+ * business and is stated there. */
+- (BOOL)sendBeforeDate:(NSDate *)date
+	    components:(nullable NSMutableArray *)components
+		  from:(nullable NSPort *)receivePort
+	      reserved:(NSUInteger)headerSpaceReserved;
 
 /* The raw struct sockaddr of this end, as an NSData. */
 - (NSData *)address;

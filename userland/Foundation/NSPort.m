@@ -21,6 +21,7 @@
  */
 
 #import <Foundation/NSPort.h>
+#import <Foundation/NSMachPort.h>
 #import <Foundation/NSSocketPort.h>
 #import <Foundation/NSCoding.h>
 #import <Foundation/NSCoder.h>
@@ -39,9 +40,11 @@ NSString *const NSPortDidBecomeInvalidNotification = @"NSPortDidBecomeInvalidNot
 
 + (NSPort *)port
 {
-	/* AUTORELEASED, as a method not named alloc/new/copy must be under MRC — and NSSocketPort because it
-	 * is the only concrete subclass §11.5 left standing (see the header). */
-	return [[[NSSocketPort alloc] init] autorelease];
+	/* AUTORELEASED, as a method not named alloc/new/copy must be under MRC. IT ANSWERS AN NSMachPort, WHICH IS
+	 * APPLE'S ANSWER AND NOW THIS LIBRARY'S TOO (§62.53): this method used to answer an NSSocketPort "because it
+	 * is the only concrete subclass §11.5 left standing", and that stopped being true when the port family came
+	 * back from the strike. */
+	return [[[NSMachPort alloc] init] autorelease];
 }
 
 - (instancetype)init
@@ -114,6 +117,45 @@ NSString *const NSPortDidBecomeInvalidNotification = @"NSPortDidBecomeInvalidNot
 	/* ZERO, AND IT IS A REAL ANSWER: the message API that would have needed reserved space is struck, so
 	 * there is nothing this port reserves. */
 	return 0;
+}
+
+- (void)setDelegate:(id <NSPortDelegate>)anObject
+{
+	/* NOT RETAINED, WHICH IS APPLE'S RULE FOR THIS ONE: a delegate and the port it serves are usually each other's
+	 * reason to exist, and a retained delegate would be a cycle that no port ever leaves. */
+	_delegate = anObject;
+}
+
+- (id <NSPortDelegate>)delegate
+{
+	return _delegate;
+}
+
+- (BOOL)sendBeforeDate:(NSDate *)date
+	    components:(NSMutableArray *)components
+		  from:(NSPort *)receivePort
+	      reserved:(NSUInteger)headerSpaceReserved
+{
+	/* THE NARROW FORM CARRIES NO MESSAGE ID, so it asks for the general one with a zero. That is Apple's
+	 * relationship between the two doors, and it is why a transport implements only the general one. */
+	return [self sendBeforeDate:date msgid:0 components:components from:receivePort
+			   reserved:headerSpaceReserved];
+}
+
+- (BOOL)sendBeforeDate:(NSDate *)date
+		 msgid:(NSUInteger)msgid
+	    components:(NSMutableArray *)components
+		  from:(NSPort *)receivePort
+	      reserved:(NSUInteger)headerSpaceReserved
+{
+	/* THE ABSTRACT BASE HAS NO TRANSPORT, so it answers NO rather than pretending to have sent something. Every
+	 * concrete port in this library overrides THIS door — see NSSocketPort for the one this system has. */
+	(void)date;
+	(void)msgid;
+	(void)components;
+	(void)receivePort;
+	(void)headerSpaceReserved;
+	return NO;
 }
 
 - (void)portDidBecomeReadable
