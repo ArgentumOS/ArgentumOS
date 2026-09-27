@@ -36,6 +36,13 @@
  * get wrong. */
 #define NSDateComponentUndefined	NSIntegerMax
 
+/* THE PRE-10.9 SENTINEL NAME (§62.46), and it is the SAME SENTINEL: Apple deprecated `NSUndefinedDateComponent` at
+ * 10.9 in favour of `NSDateComponentUndefined`, so a program written before then must compile and MEAN THE SAME
+ * THING - which is why this is the value and not a second one. It is written as a `#define` for the reason the
+ * modern spelling is: `NSIntegerMax` does not fit an `int`, so it cannot be an enumerator, and the deprecated
+ * spelling being an enumerator is a detail of Apple's header that a caller never relies on. */
+#define NSUndefinedDateComponent	NSDateComponentUndefined
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface NSDateComponents : NSObject <NSCopying>

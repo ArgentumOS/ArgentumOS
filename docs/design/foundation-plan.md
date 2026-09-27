@@ -12977,6 +12977,43 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.46 — THE PRE-10.9 CALENDAR UNION NAMES: ALIASES THAT MUST MEAN THE SAME THING (2026-09-26)
+
+**WHAT SHIPPED: SEVENTEEN DECLARATIONS THAT CLEAR THIRTY-FOUR ROWS.** The pair's 34 open names are ENUM CASES rather
+than methods — the sixteen pre-10.9 `NSCalendarUnit` spellings, `NSWrapCalendarComponents` and
+`NSUndefinedDateComponent` — and Apple documents the same enum on both classes' pages, so one alias block in
+`NSCalendar.h` plus one `#define` in `NSDateComponents.h` flips the rows of BOTH. The ledger reads
+**`NSCalendar` 73 `shipped` / 2 `open`** and **`NSDateComponents` 36 / 2**, and the two that remain are the same two
+in each list: `NSCalendarUnitIsLeapMonth` and `NSCalendarUnitIsRepeatedDay`, recorded open and **not** deprecated,
+which name a search over a table of candidate dates that this rule-based calendar does not have. **The open count is
+357.**
+
+**THE HOUSE ALREADY HAD THE PATTERN, SO THIS IS NOT AN INVENTION.** `NSCalendarOptionAliases` was already there for
+`NSCalendarWrapComponents`/`NSCalendarSearchBackwards` — Apple's spelling of names the class already had — and the
+unit block follows it. Each alias is written as `= NSCalendarUnitX`, so **a legacy spelling is the modern bit**, and
+that is the whole design: a restored name given a bit of its own would COMPILE AND COMPUTE A DIFFERENT DATE, which is
+the worst kind of success because nothing about the call site looks wrong. The values remain ours under §11.6.1 D2 —
+Apple's documentation prints the case names and the deprecation vintages and never the numbers — so the rule behind
+them is the pairing itself, and `NSWeekCalendarUnit` (the one name with two plausible modern twins) is pinned to
+`NSCalendarUnitWeekOfYear` and MEASURED rather than asserted.
+
+**THE PROBE MEASURES THE MEANING, NOT THE NAMES, AND IT CARRIES ITS OWN NEGATIVE CONTROL.** Every legacy spelling is
+compared against the modern unit it names *through the calendar* — the same fields out of
+`-components:fromDate:` — and the check also asserts the **absolute** date it built (1969-07-20), so a wrong bit
+cannot pass. The sixth check is the control: asked for the month ALONE, the calendar must answer the month and leave
+the year and day undefined — if a unit were answered no matter which bit was asked, every comparison above would pass
+and mean nothing. **AND THE PROBE ITSELF WAS CAUGHT ONCE: its first version had a line reading
+`[weeks weekOfYear] == [weeks weekOfYear]`, which is the kind of assertion that only looks like a test** — it was
+replaced by asking through each spelling and printing both answers.
+
+**VERIFIED.** `foundation_calendar_legacy` is **6/6** (five meaning checks and the control) 6/6 in the case, one guest
+run; `foundation_calendar` (F7's own probe) 6/6 against the new alias block, which is the regression that mattered
+here — declarations only, no logic. Three small traps, all recorded elsewhere and all repeated anyway: the probe
+compiled under ARC and I wrote `release` calls into it (probes are ARC, the library is MRC); a `(int)` cast of a
+message send inside an argument list tripped the parser once more; and the enums had to be declared in a way clang
+accepts for a value (`NSIntegerMax`) that does not fit an `int`, which is why `NSUndefinedDateComponent` is a
+`#define` beside the modern spelling rather than an enumerator of its own.
+
 ## §62.45 — `NSHashTable`'S LEGACY C API: THE SAME HAND, AND A TYPE THAT SAID NO (2026-09-26)
 
 **WHAT SHIPPED: TWENTY-SIX NAMES.** The same pre-10.5 family in the class it belongs to: the call-back STRUCT, the

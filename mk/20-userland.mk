@@ -1316,6 +1316,17 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_legacyhashtable"
+	# foundation_calendar_legacy: §62.46's acceptance - the pre-10.9 calendar unit names, the wrap option and the
+	# undefined sentinel. The property is not that the names exist but that THEY MEAN THE SAME THING, so the probe
+	# compares legacy spellings against modern ones THROUGH THE CALENDAR and prints the fields it saw.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_calendar_legacy.m -o .build/probe-foundation_calendar_legacy.o
+	$(MUSL64_OBJC) .build/probe-foundation_calendar_legacy.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendar_legacy"
 	# foundation_redirect: following a redirect, decided by the delegate, bounded by the hop limit (§54).
 	# Its own HTTP server again (a 302, a 307, a decline and a never-ending chain), and it reads §52's record
 	# off the delegate, so it links the bridge and curl exactly as the two units beside it do.

@@ -126,6 +126,41 @@ typedef enum {
 	NSCalendarSearchBackwards		= NSCalendarOptionsSearchBackwards
 } NSCalendarOptionAliases;
 
+/* ===================================================================================================
+ * THE PRE-10.9 UNIT NAMES (§62.46), AND THEY ARE ALIASES RATHER THAN RENAMES
+ *
+ * Apple deprecated these sixteen names at 10.9 in favour of the `NSCalendarUnit*` spelling, and §62.24's policy
+ * put them back: a program written before 2013 must compile and MEAN THE SAME THING, which is why each one takes
+ * the VALUE OF THE MODERN UNIT IT NAMES rather than a bit of its own. The pairing is the documented equivalence
+ * (Apple's deprecation note for each says "use NSCalendarUnitWeekOfYear", not "use the other bit"), and where a
+ * legacy name has no one modern twin the value is OURS UNDER §11.6.1 D2 — the older names are one scheme with a
+ * hole in it, and this block fills the hole with the concept the name is about.
+ *
+ * THE VALUES ARE COCOA'S WHERE COCOA PUBLISHES ONE, and Cocoa publishes none: Apple's documentation prints the
+ * case names and the deprecation vintages, never the numbers (§11.6.1 D2's standing finding). So each alias is
+ * written as `= NSCalendarUnitX` — a value that is in this library and has a rule behind it — and a caller who
+ * combines the legacy spellings gets the modern bits, which is the only outcome that keeps meaning.
+ * =================================================================================================== */
+typedef enum {
+	NSEraCalendarUnit			= NSCalendarUnitEra,
+	NSYearCalendarUnit			= NSCalendarUnitYear,
+	NSMonthCalendarUnit			= NSCalendarUnitMonth,
+	NSDayCalendarUnit			= NSCalendarUnitDay,
+	NSHourCalendarUnit			= NSCalendarUnitHour,
+	NSMinuteCalendarUnit			= NSCalendarUnitMinute,
+	NSSecondCalendarUnit			= NSCalendarUnitSecond,
+	NSWeekCalendarUnit			= NSCalendarUnitWeekOfYear,
+	NSWeekdayCalendarUnit			= NSCalendarUnitWeekday,
+	NSWeekdayOrdinalCalendarUnit		= NSCalendarUnitWeekdayOrdinal,
+	NSQuarterCalendarUnit			= NSCalendarUnitQuarter,
+	NSWeekOfMonthCalendarUnit		= NSCalendarUnitWeekOfMonth,
+	NSWeekOfYearCalendarUnit		= NSCalendarUnitWeekOfYear,
+	NSYearForWeekOfYearCalendarUnit		= NSCalendarUnitYearForWeekOfYear,
+	NSTimeZoneCalendarUnit			= NSCalendarUnitTimeZone,
+	NSCalendarCalendarUnit			= NSCalendarUnitCalendar,
+	NSWrapCalendarComponents		= NSCalendarOptionsWrapComponents
+} NSCalendarUnitAliases;
+
 @interface NSCalendar : NSObject <NSCopying>
 {
 	NSString *_identifier;

@@ -38,7 +38,7 @@
 #   protocol   shipped   30   open   10   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  132   open   19   struck    9
-#   case       shipped 1077   open  150   struck   75
+#   case       shipped 1111   open  116   struck   75
 #   func       shipped  115   open   62   struck   12
 #   var        shipped  619   open   88   struck  207
 #   typealias  shipped   65   open    6   struck    5
@@ -165,8 +165,8 @@ case	shipped	NSCalculationOverflow		Fundamentals / Numbers / Performing arithmet
 case	shipped	NSCalculationOverflow	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
 case	shipped	NSCalculationUnderflow		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
 case	shipped	NSCalculationUnderflow	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using reference types / Managing Behavior / Constants / Constants	-	objc
-case	open	NSCalendarCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSCalendarCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSCalendarCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSCalendarCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSCalendarMatchFirst	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
 case	shipped	NSCalendarMatchLast	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
 case	shipped	NSCalendarMatchNextTime	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
@@ -308,8 +308,8 @@ case	shipped	NSDateIntervalFormatterLongStyle	NSDateIntervalFormatter	Fundamenta
 case	shipped	NSDateIntervalFormatterMediumStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	shipped	NSDateIntervalFormatterNoStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	shipped	NSDateIntervalFormatterShortStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
-case	open	NSDayCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSDayCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSDayCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSDayCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSDecodingFailurePolicyRaiseException	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder / Failure Policies	-	swift-page
 case	shipped	NSDecodingFailurePolicySetErrorAndReturn	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder / Failure Policies	-	swift-page
 case	open	NSDecompressionFailedError	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
@@ -340,8 +340,8 @@ case	shipped	NSEnumerationConcurrent		Fundamentals / Iteration / Constants	-	obj
 case	shipped	NSEnumerationReverse		Fundamentals / Iteration / Constants	-	objc
 case	struck	NSEqualToComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	shipped	NSEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	open	NSEraCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSEraCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSEraCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSEraCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSEvaluatedObjectExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSEverySubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	shipped	NSExecutableArchitectureMismatchError	NSBundle	App Support / Bundle Resources / Errors	-	objc
@@ -511,8 +511,8 @@ case	shipped	NSHTTPCookieAcceptPolicyNever	NSHTTPCookie	Networking / Essentials 
 case	shipped	NSHTTPCookieAcceptPolicyNever	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy / Policies	-	objc
 case	shipped	NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies / Policies	-	objc
 case	shipped	NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy / Policies	-	objc
-case	open	NSHourCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSHourCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSHourCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSHourCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSISO2022JPStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSISO8601DateFormatWithColonSeparatorInTime	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	shipped	NSISO8601DateFormatWithColonSeparatorInTimeZone	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
@@ -642,10 +642,10 @@ case	struck	NSMiddleSubelement	NSWhoseSpecifier	App Support / Object Specifiers 
 case	shipped	NSMinXEdge		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
 case	shipped	NSMinYEdge		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
 case	shipped	NSMinusSetExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
-case	open	NSMinuteCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSMinuteCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	open	NSMonthCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSMonthCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSMinuteCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSMinuteCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSMonthCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSMonthCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSMoviesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSMusicDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSNEXTSTEPStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -817,8 +817,8 @@ case	shipped	NSQualityOfServiceUtility	NSBackgroundActivityScheduler	App Support
 case	shipped	NSQualityOfServiceUtility	NSOperation	App Support / Operations / Constants / Constants	-	objc
 case	shipped	NSQualityOfServiceUtility	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	objc
 case	shipped	NSQualityOfServiceUtility	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work / Constants	-	objc
-case	open	NSQuarterCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSQuarterCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSQuarterCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSQuarterCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	struck	NSRandomSubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	struck	NSReceiverEvaluationScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSReceiversCantHandleCommandScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
@@ -855,8 +855,8 @@ case	struck	NSSaveOptionsAsk	NSCloseCommand	App Support / Script Commands / Cons
 case	struck	NSSaveOptionsNo	NSCloseCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSSaveOptionsYes	NSCloseCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	open	NSScannedOption		Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
-case	open	NSSecondCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSSecondCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSSecondCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSSecondCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSSharedPublicDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSShiftJISStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	open	NSSolarisOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
@@ -910,8 +910,8 @@ case	shipped	NSTextCheckingTypeRegularExpression	NSTextCheckingResult	Fundamenta
 case	shipped	NSTextCheckingTypeReplacement	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 case	shipped	NSTextCheckingTypeSpelling	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 case	shipped	NSTextCheckingTypeTransitInformation	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-case	open	NSTimeZoneCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSTimeZoneCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSTimeZoneCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSTimeZoneCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSTimeZoneNameStyleDaylightSaving	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
 case	shipped	NSTimeZoneNameStyleGeneric	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
 case	shipped	NSTimeZoneNameStyleShortDaylightSaving	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
@@ -1110,7 +1110,7 @@ case	open	NSUbiquitousKeyValueStoreInitialSyncChange	NSUbiquitousKeyValueStore	F
 case	open	NSUbiquitousKeyValueStoreQuotaViolationChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
 case	open	NSUbiquitousKeyValueStoreServerChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
 case	open	NSUncachedRead	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
-case	open	NSUndefinedDateComponent	NSDateComponents	Fundamentals / Calendrical Calculations / Validating a Date / Constants	deprecated	objc
+case	shipped	NSUndefinedDateComponent	NSDateComponents	Fundamentals / Calendrical Calculations / Validating a Date / Constants	deprecated	objc
 case	shipped	NSUnicodeStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSUnionSetExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSUnknownKeyScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
@@ -1140,16 +1140,16 @@ case	shipped	NSValidationErrorMinimum	NSError	App Support / User-Relevant Errors
 case	shipped	NSVariableExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	shipped	NSVolumeEnumerationProduceFileReferenceURLs	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents / Volume Enumeration Options	-	objc
 case	shipped	NSVolumeEnumerationSkipHiddenVolumes	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents / Volume Enumeration Options	-	objc
-case	open	NSWeekCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSWeekCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	open	NSWeekOfMonthCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSWeekOfMonthCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	open	NSWeekOfYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSWeekOfYearCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	open	NSWeekdayCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSWeekdayCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	open	NSWeekdayOrdinalCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSWeekdayOrdinalCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSWeekCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSWeekCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSWeekOfMonthCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSWeekOfMonthCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSWeekOfYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSWeekOfYearCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSWeekdayCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSWeekdayCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSWeekdayOrdinalCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSWeekdayOrdinalCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSWidthInsensitiveSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	open	NSWindows95OperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	shipped	NSWindowsCP1250StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1158,7 +1158,7 @@ case	shipped	NSWindowsCP1252StringEncoding	NSString	Fundamentals / Strings / Wor
 case	shipped	NSWindowsCP1253StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSWindowsCP1254StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	open	NSWindowsNTOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
-case	open	NSWrapCalendarComponents	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	deprecated	objc
+case	shipped	NSWrapCalendarComponents	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	deprecated	objc
 case	shipped	NSXMLAttributeCDATAKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	shipped	NSXMLAttributeDeclarationKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
 case	shipped	NSXMLAttributeEntitiesKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
@@ -1338,10 +1338,10 @@ case	struck	NSXPCConnectionInvalid	NSXPCConnection	Low-Level Utilities / XPC Cli
 case	struck	NSXPCConnectionPrivileged	NSXPCConnection	Low-Level Utilities / XPC Client / Creating a connection / Constants	declined	objc
 case	struck	NSXPCConnectionReplyInvalid	NSError	App Support / User-Relevant Errors / Error Codes / XPC Errors	declined	objc
 case	struck	NSXPCConnectionReplyInvalid	NSXPCConnection	Low-Level Utilities / XPC Client / Error codes	declined	objc
-case	open	NSYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSYearCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	open	NSYearForWeekOfYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
-case	open	NSYearForWeekOfYearCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSYearCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
+case	shipped	NSYearForWeekOfYearCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
+case	shipped	NSYearForWeekOfYearCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NS_BigEndian		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
 case	shipped	NS_LittleEndian		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
 case	shipped	NS_UnknownByteOrder		Low-Level Utilities / Byte Ordering / Constants / Constants	-	objc
