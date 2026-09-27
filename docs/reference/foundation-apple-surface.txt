@@ -34,7 +34,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  194   open   31   struck   48
+#   class      shipped  195   open   30   struck   48
 #   protocol   shipped   33   open    7   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  138   open   13   struck    9
@@ -1420,7 +1420,7 @@ class	shipped	NSHTTPCookie		Networking / Essentials / Creating a session / Setti
 class	shipped	NSHTTPCookieStorage		Networking / Cookies	-	objc
 class	shipped	NSHTTPURLResponse		Networking / Requests and responses	-	objc
 class	shipped	NSHashTable		Fundamentals / Pointer Collections	-	objc
-class	open	NSHost		Low-Level Utilities / Sockets	deprecated	objc
+class	shipped	NSHost		Low-Level Utilities / Sockets	deprecated	objc
 class	shipped	NSISO8601DateFormatter		Fundamentals / Date Formatting	-	objc
 class	shipped	NSIndexPath		Fundamentals / Indexes	-	objc
 class	shipped	NSIndexSet		Fundamentals / Indexes	-	objc

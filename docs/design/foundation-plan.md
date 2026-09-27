@@ -3544,7 +3544,7 @@ vanishing.
 | **Low-Level Utilities / Remote Objects** | all classes shipped | — |
 | **Low-Level Utilities / Run Loop Scheduling** | all classes shipped | — |
 | **Low-Level Utilities / Scripts and External Tasks** | 3 STRUCK: `NSUserAppleScriptTask`, `NSUserAutomatorTask`, `NSUserScriptTask` | — |
-| **Low-Level Utilities / Sockets** | 1 open | `NSHost` |
+| **Low-Level Utilities / Sockets** | all classes shipped | — |
 | **Low-Level Utilities / Streams** | all classes shipped | — |
 | **Low-Level Utilities / Tasks and Pipes** | all classes shipped | — |
 | **Low-Level Utilities / Threads and Locking** | all classes shipped | — |
@@ -13483,6 +13483,64 @@ case(s), 18/18 check(s) in 17s`** in ONE shared session — the three probes the
 green on the first try (runloop 22, difference 22, notificationqueue 10). `foundation-sweep --check`: consistent
 (no row moves, so no `--refresh` was needed); `--unimplemented`: **0 NEW** (1 baselined). `foundation-gate`: **OK —
 519 files, 194 of 198 public headers** open a nullability region.
+
+## §62.63 — `NSHost`: A DEPRECATED ROW THAT SHIPS, AND A FAMILY THAT CLOSES (2026-09-26)
+
+**WHAT SHIPPED: ONE ROW — `NSHost` — AND `Low-Level Utilities / Sockets` IS NOW COMPLETE.** `class shipped` went
+**194 → 195**, and the row still carries its `deprecated` label, which under §62.24's decision says what KIND of
+work it was rather than keeping it out: Apple deprecated the class in favour of the Network framework, and a
+surface built so that an older application compiles is defeated by excluding precisely what such an application
+calls.
+
+**THE CLASS IS A VIEW OVER THE LOCAL RESOLVER AND NOTHING MORE, WHICH IS APPLE'S OWN SENTENCE:** the doors "use
+the available network administration services to discover this information but do NOT CONTACT THE HOST ITSELF".
+So there is no socket in the implementation, no timeout and no protocol — `getaddrinfo(3)`/`getnameinfo(3)`
+through musl in this tree, reading the FSH hosts domain (§M5) — **and the probe runs in a guest with no NIC**,
+which is the consequence that makes the claim checkable rather than rhetorical.
+
+**THREE FACTS APPLE PUBLISHES, EACH OF WHICH IS A PROPERTY OF THE IMPLEMENTATION:**
+
+* **A HOST MAY HAVE SEVERAL NAMES AND SEVERAL ADDRESSES** — "sales" and "sales.anycorp.com" are one host. So
+  `-name`/`-address` answer ONE of them ("chosen arbitrarily if multiple") and `-names`/`-addresses` answer ALL;
+  the two arrays are IMMUTABLE because Apple also says the methods are THREAD-SAFE, and a caller mutating one
+  would be mutating another thread's answer.
+* **DO NOT USE `+alloc`/`-init`**: a host only exists as an answer from the name service, so the three class
+  methods are the doors and `-init` is not declared at all.
+* **THE REVERSE LOOKUP IS PART OF THE SAME SERVICE**: `getnameinfo` without `NI_NUMERICHOST` is what turns
+  127.0.0.1 back into "localhost", and it is a local query like any other — which is why an address-first host
+  still has names.
+
+**AND TWO THINGS ARE OURS, STATED WHERE THEY LIVE (§11.6.1 D2):** the IVARS (Apple documents its own layout,
+`addresses`/`names`/`reserved`; this library spells its own with a leading underscore and has no `reserved` slot
+to keep, and neither is reachable by a caller), and the observation that **`-address` and `-name` are NULLABLE** —
+not Apple's spelling, but the honest one for a host built from a name the service has no ADDRESS for, which is
+exactly the case Apple's own "the information may be incomplete" describes. The alternative, an empty string,
+would invent an address.
+
+**THE THREE CACHE DOORS SHIP ANSWERING AS APPLE DOCUMENTS THEM NOW:** the class's own annotation on
+`+isHostCacheEnabled`, `+setHostCacheEnabled:` and `+flushHostCache` is **"Caching no longer supported"**, so
+there is no cache, the getter answers NO and the other two do nothing. **That is a published answer rather than a
+stub**, and it is the shape this plan already recorded for `NSDateComponentsFormatter`'s `formattingContext`
+(whose abstract is Apple's own "Not yet supported"). The check asserts the getter's answer after asking for a
+cache, so a later implementation of one would fail it deliberately.
+
+**AND THE UNIT RE-LEARNED A LESSON THIS THREAD HAS NOW RECORDED THREE TIMES: THE GUEST IS THE STRICTER
+COMPILER.** The probe passed the NULLABLE `-address` inline to `-containsObject:`, whose parameter is nonnull: the
+HOST build compiles with no such flag and was green, and the guest's `-Werror=nullable-to-nonnull-conversion`
+failed the build on two sites. The fix is the shape this tree's own url probe records — bind the nullable to a
+local and guard it in the conjunction. **AND ONE INSTRUMENT ERROR ON TOP OF IT, WHICH COST A MINUTE:** the
+"BUILDFAIL" report printed a grep for `error|Error` whose only hits were the `-Werror=…` flags echoed inside the
+failed command line, so the log READ as error-free while the real errors were two hundred lines higher. A grep
+for a word that also appears in the build's own flags is not a search for failures.
+
+**VERIFIED.** Host: `make host-foundation-run` — **31 probes, every tally `fail=0`**, the new probe at **`ok=8
+fail=0`**. Guest: `make testimg` then `make test TESTS='foundation_host'` → **`TESTS-OK 1/1 case(s), 6/6
+check(s) in 27s`**, the probe's own tally `ok=8 fail=0` — and the 27 seconds are the resolver's reverse lookups,
+which is the one place this probe is slower than its siblings. `foundation-sweep --refresh` + `--check`:
+**consistent**, the row flipped to shipped (still `deprecated` in the `why` column), and the family table
+regenerated (`Low-Level Utilities / Sockets`: 1 open → 0). `foundation-gate`: **OK — 522 files, 195 of 199 public
+headers** open a nullability region; `--unimplemented`: **0 NEW** (1 baselined). The probe needed staging for the
+guest and an entry in `HOST_PROBES`.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
