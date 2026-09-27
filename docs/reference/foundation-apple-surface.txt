@@ -39,7 +39,7 @@
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  136   open   15   struck    9
 #   case       shipped 1132   open   95   struck   75
-#   func       shipped  145   open   32   struck   12
+#   func       shipped  164   open   13   struck   12
 #   var        shipped  641   open   66   struck  207
 #   typealias  shipped   65   open    6   struck    5
 #   struct     shipped   13   open    0   struck    0
@@ -1821,7 +1821,7 @@ func	shipped	NSDecimalPower		Fundamentals / Numbers / Performing arithmetic usin
 func	shipped	NSDecimalRound		Fundamentals / Numbers / Performing arithmetic using references	-	objc
 func	shipped	NSDecimalString		Fundamentals / Numbers / Converting between decimals and strings	-	objc
 func	shipped	NSDecimalSubtract		Fundamentals / Numbers / Performing arithmetic using references	-	objc
-func	open	NSDecrementExtraRefCountWasZero		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
+func	shipped	NSDecrementExtraRefCountWasZero		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
 func	struck	NSDefaultMallocZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	shipped	NSDivideRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSEdgeInsetsEqual		Fundamentals / Geometry / Comparing edge insets	-	objc
@@ -1834,9 +1834,9 @@ func	shipped	NSEqualPoints		Fundamentals / Geometry / Managing Points	-	objc
 func	shipped	NSEqualRanges		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSEqualRects		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSEqualSizes		Fundamentals / Geometry / Managing Sizes	-	objc
-func	open	NSExtraRefCount		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
+func	shipped	NSExtraRefCount		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
 func	shipped	NSFileTypeForHFSTypeCode	NSFileManager	Files and Data Persistence / File system operations / Working with HFS file types	-	objc
-func	open	NSFrameAddress		Reference / Debugging	-	objc
+func	shipped	NSFrameAddress		Reference / Debugging	-	objc
 func	shipped	NSFreeHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSFreeMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSFullUserName	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
@@ -1853,20 +1853,20 @@ func	shipped	NSHeight		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSHomeDirectory	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	shipped	NSHomeDirectoryForUser	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 func	shipped	NSHostByteOrder		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSIncrementExtraRefCount		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
+func	shipped	NSIncrementExtraRefCount		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
 func	shipped	NSInsetRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSIntegralRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSIntegralRectWithOptions		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSIntersectionRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSIntersectionRect		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSIntersectsRect		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSIntersectsRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSIsEmptyRect		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSIsFreedObject		Reference / Debugging	-	objc
+func	shipped	NSIsFreedObject		Reference / Debugging	-	objc
 func	shipped	NSLocationInRange		Fundamentals / Ranges / Managing ranges	-	objc
-func	open	NSLog		App Support / Diagnostics and Debugging	-	objc
-func	open	NSLogPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
-func	open	NSLogv		App Support / Diagnostics and Debugging	-	objc
-func	open	NSMakeCollectable		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+func	shipped	NSLog		App Support / Diagnostics and Debugging	-	objc
+func	shipped	NSLogPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
+func	shipped	NSLogv		App Support / Diagnostics and Debugging	-	objc
+func	shipped	NSMakeCollectable		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 func	shipped	NSMakePoint		Fundamentals / Geometry / Managing Points	-	objc
 func	shipped	NSMakeRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSMakeRect		Fundamentals / Geometry / Managing Rectangles	-	objc
@@ -1884,30 +1884,30 @@ func	shipped	NSMidX		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSMidY		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSMinX		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSMinY		Fundamentals / Geometry / Managing Rectangles	-	objc
-func	open	NSMouseInRect		Fundamentals / Geometry / Managing Rectangles	-	objc
+func	shipped	NSMouseInRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSNextHashEnumeratorItem	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSNextMapEnumeratorPair	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSOffsetRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSOpenStepRootDirectory	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
-func	open	NSPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
+func	shipped	NSPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	shipped	NSPointFromCGPoint		Fundamentals / Geometry / Managing Points	-	objc
 func	shipped	NSPointFromString		Fundamentals / Geometry / Managing Points	-	objc
 func	shipped	NSPointInRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSPointToCGPoint		Fundamentals / Geometry / Managing Points	-	objc
 func	open	NSProtocolFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
-func	open	NSRangeFromString		Fundamentals / Ranges / Managing ranges	-	objc
-func	open	NSRealMemoryAvailable		Low-Level Utilities / Memory Management / Memory Management	deprecated	objc
-func	open	NSReallocateCollectable		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-func	open	NSRecordAllocationEvent		Reference / Debugging	-	objc
+func	shipped	NSRangeFromString		Fundamentals / Ranges / Managing ranges	-	objc
+func	shipped	NSRealMemoryAvailable		Low-Level Utilities / Memory Management / Memory Management	deprecated	objc
+func	shipped	NSReallocateCollectable		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+func	shipped	NSRecordAllocationEvent		Reference / Debugging	-	objc
 func	shipped	NSRectFromCGRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSRectFromString		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSRectToCGRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	struck	NSRecycleZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	shipped	NSResetHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSResetMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSReturnAddress		Reference / Debugging	-	objc
-func	open	NSRoundDownToMultipleOfPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
-func	open	NSRoundUpToMultipleOfPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
+func	shipped	NSReturnAddress		Reference / Debugging	-	objc
+func	shipped	NSRoundDownToMultipleOfPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
+func	shipped	NSRoundUpToMultipleOfPageSize		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	shipped	NSSearchPathForDirectoriesInDomains	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
 func	shipped	NSSelectorFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	shipped	NSSetUncaughtExceptionHandler	NSException	App Support / Exceptions / Functions	-	objc

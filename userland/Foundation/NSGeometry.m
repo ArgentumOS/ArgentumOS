@@ -421,3 +421,30 @@ NSString *NSStringFromRect(NSRect aRect)
 		 aRect.size.width, aRect.size.height);
 	return [[NSString alloc] initWithUTF8String:buffer];
 }
+
+/* THE TWO RECTANGLE PREDICATES (§62.52). See NSGeometry.h for the edge rule each one states. */
+BOOL NSIntersectsRect(NSRect aRect, NSRect bRect)
+{
+	/* TOUCHING IS NOT INTERSECTING: a shared edge answers NO, which is what a drawing caller needs and what the
+	 * strict comparisons below say. */
+	if (NSMaxX(aRect) <= NSMinX(bRect) || NSMaxX(bRect) <= NSMinX(aRect)) {
+		return NO;
+	}
+	if (NSMaxY(aRect) <= NSMinY(bRect) || NSMaxY(bRect) <= NSMinY(aRect)) {
+		return NO;
+	}
+	return YES;
+}
+
+BOOL NSMouseInRect(NSPoint aPoint, NSRect aRect, BOOL isFlipped)
+{
+	/* A POINT ON THE MINIMUM EDGE IS INSIDE AND ONE ON THE MAXIMUM EDGE IS NOT, with the flag deciding which pair
+	 * of edges that is: in a flipped system the drawing grows downwards, so the TOP edge takes the role the BOTTOM
+	 * has in an unflipped one. The same corner therefore answers the same way before and after a flip. */
+	if (isFlipped) {
+		return aPoint.x >= NSMinX(aRect) && aPoint.x < NSMaxX(aRect) &&
+		       aPoint.y > NSMinY(aRect) && aPoint.y <= NSMaxY(aRect);
+	}
+	return aPoint.x >= NSMinX(aRect) && aPoint.x < NSMaxX(aRect) &&
+	       aPoint.y >= NSMinY(aRect) && aPoint.y < NSMaxY(aRect);
+}

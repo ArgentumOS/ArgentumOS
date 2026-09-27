@@ -12977,6 +12977,48 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.52 — THE REST OF THE FREE-FUNCTION BUCKET: NINETEEN IN, NINE OUT WITH GROUNDS (2026-09-26)
+
+**WHAT SHIPPED: NINETEEN FUNCTIONS, AND THE LEDGER'S REMAINDER IS EXACTLY THE REFUSALS.** Logging (`NSLog`,
+`NSLogv`), the page arithmetic (`NSPageSize`, `NSLogPageSize`, the two rounders), `NSRealMemoryAvailable`,
+`NSRangeFromString`, the extra-retain-count trio, the stack doors, the four garbage-collector doors, and the two
+rectangle predicates. **The open count is 275 → 256**, and the nine names still open in that bucket are the nine this
+unit refused — which is the cleanest account the work list has given of anything.
+
+**EACH REFUSAL HAS A GROUND THAT IS A MEASUREMENT OR A TYPE, NOT A JUDGEMENT:**
+
+  * `NSCopyObject` — a faithful raw byte copy must give the copy a **retain count of one**, and this runtime
+    publishes no way to **set** a count (only to read, retain and release). A copy carrying the original's count
+    would be a wrong count in an object nobody would suspect.
+  * `NSProtocolFromString` / `NSStringFromProtocol` — the runtime's protocol lookup **answers NULL for protocols this
+    library itself declares**; the tree's own `foundation_url.m` records measuring it. A name-to-protocol door would
+    lie.
+  * `NSSetZoneName` / `NSShouldRetainWithZone` — they name `NSZone`, which this library **removed on purpose**
+    (`NSObjCRuntime.h` records the sequence). A header cannot spell a type the library deleted.
+  * `NSCountFrames` — counting frames means walking them, and a walk that reads a bad frame pointer faults. **The
+    door is absent rather than dangerous**, and `NSFrameAddress`/`NSReturnAddress` answer level zero and **NULL**
+    beyond it for the same reason, which the probe measures.
+  * `CFBridgingRelease` / `CFBridgingRetain` — CoreFoundation's bridge functions, and there is no CF here.
+  * `NXReadNSObjectFromCoder` — it decodes what `NSArchiver` wrote, and this library has no unarchiver yet.
+
+**TWO SIGNS IN THE UNIT ARE NOT APPLE'S, AND BOTH SAY SO.** `NSMakeCollectable` takes an object of this library's own
+because there is no `CFTypeRef`; and `NSCopyObject`'s zone argument is **accepted and ignored** — that one was
+written and then withdrawn with the function, and the note survives in the header beside the refusal.
+
+**AND ONE SCOPE DECISION WAS MADE BY THE COMPILER RATHER THAN BY TASTE.** Adding `_Nonnull` specifiers to this
+block made clang check `NSObjCRuntime.h` **throughout** — one annotation enables the rule for a whole file — and the
+cascade reached a block type two hundred lines up and kept going. Annotating that header is **its own unit**; what
+this block needed was `@class NSString;` and `<stdarg.h>`, and the specifiers came back out. The probe, meanwhile,
+added the two imports a dozen of my probes have forgotten: `<signal.h>` (again) and, in the log check, `<fcntl.h>`.
+
+**AND THE ONE PROBE FAILURE WAS ARC'S, WHICH IS WHY ITS MESSAGE WAS WORTH HAVING.** The extra-count check read 2
+where it expected 1: `NSIncrementExtraRefCount` answers `id`, **ARC retains a strong `id` result**, and the count was
+the subject of the check. Holding the result `__unsafe_unretained` fixed it, and the probe says why in a comment —
+a message that printed the number rather than the diagnosis is what made it a one-cycle fix instead of a hunt.
+
+**VERIFIED.** `foundation_free_misc` is **10/10 green in one guest run**, its case 6/6. Regressions:
+`foundation_collection` 6/6, `foundation_string` 6/6, `foundation_kvc` 6/6.
+
 ## §62.51 — THE BYTE-ORDER CONVERSIONS: A FAMILY THAT CAN BE PROVED RATHER THAN INSPECTED (2026-09-26)
 
 **WHAT SHIPPED: FORTY-TWO FUNCTIONS, THIRTY OF THEM OWED.** Apple deprecated the `NSSwap*` set at 10.9 in favour of

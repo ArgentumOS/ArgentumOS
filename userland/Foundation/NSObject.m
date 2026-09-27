@@ -837,3 +837,162 @@ void objc_enumerationMutation(id object)
 		    format:@"*** Collection was mutated while being enumerated."];
 }
 @end
+
+/* ===================================================================================================
+ * THE FREE FUNCTIONS OF §62.52: see NSObjCRuntime.h for each one's rule
+ * =================================================================================================== */
+
+void NSLogv(NSString *format, va_list args)
+{
+	NSString *message;
+	const char *utf8;
+	char prefix[32];
+	int length;
+
+	if (format == nil) {
+		return;
+	}
+	/* THE MESSAGE IS BUILT BY THE LIBRARY'S OWN FORMATTER, so `%@` and the rest mean what they mean everywhere
+	 * else in this library, and it is written to STANDARD ERROR in one call per piece — the same raw write the
+	 * rest of the library uses, because a stdout that has been redirected must not swallow a log. */
+	message = [[NSString alloc] initWithFormat:format arguments:args];
+	utf8 = message != nil ? [message UTF8String] : NULL;
+	length = snprintf(prefix, sizeof prefix, "[%d] ", (int)getpid());
+	if (length > 0) {
+		(void)write(2, prefix, (size_t)length);
+	}
+	if (utf8 != NULL) {
+		(void)write(2, utf8, strlen(utf8));
+	}
+	(void)write(2, "\n", 1);
+	[message release];
+}
+
+void NSLog(NSString *format, ...)
+{
+	va_list args;
+
+	va_start(args, format);
+	NSLogv(format, args);
+	va_end(args);
+}
+
+NSUInteger NSPageSize(void)
+{
+	long size = sysconf(_SC_PAGESIZE);
+
+	return size > 0 ? (NSUInteger)size : 4096;
+}
+
+NSUInteger NSLogPageSize(void)
+{
+	NSUInteger page = NSPageSize();
+	NSUInteger bits = 0;
+
+	while (page > 1) {
+		page >>= 1;
+		bits++;
+	}
+	return bits;
+}
+
+NSUInteger NSRoundDownToMultipleOfPageSize(NSUInteger bytes)
+{
+	NSUInteger page = NSPageSize();
+
+	return page == 0 ? bytes : (bytes / page) * page;
+}
+
+NSUInteger NSRoundUpToMultipleOfPageSize(NSUInteger bytes)
+{
+	NSUInteger page = NSPageSize();
+	NSUInteger down = NSRoundDownToMultipleOfPageSize(bytes);
+
+	return down == bytes ? bytes : down + page;
+}
+
+NSUInteger NSRealMemoryAvailable(void)
+{
+	long pages = sysconf(_SC_PHYS_PAGES);
+	long size = sysconf(_SC_PAGESIZE);
+
+	return (pages > 0 && size > 0) ? (NSUInteger)pages * (NSUInteger)size : 0;
+}
+
+NSRange NSRangeFromString(NSString *aString)
+{
+	long location = 0;
+	long length = 0;
+
+	if (aString != nil && sscanf([aString UTF8String], "{%ld, %ld}", &location, &length) == 2) {
+		return NSMakeRange((NSUInteger)location, (NSUInteger)length);
+	}
+	return NSMakeRange(0, 0);
+}
+
+/* THE EXTRA RETAIN COUNT, IN TERMS OF THE ONE COUNT THIS RUNTIME HAS. Apple's runtime keeps a count BESIDE the
+ * basic one; this library keeps one, so the equivalence is stated rather than implied: the extra count is the
+ * retain count minus the basic one, and every door below is that sentence. */
+NSUInteger NSExtraRefCount(id object)
+{
+	NSUInteger count = [object retainCount];
+
+	return count > 0 ? count - 1 : 0;
+}
+
+id NSIncrementExtraRefCount(id object)
+{
+	return [object retain];
+}
+
+BOOL NSDecrementExtraRefCountWasZero(id object)
+{
+	/* ONE DECREMENT CANNOT BE BOTH SILENT AND SAFE HERE. Apple's function is what `-release` is built from, and a
+	 * caller that is told YES does the deallocation itself — which is exactly what this implementation does NOT do,
+	 * because with one count there is no way to decrement and still leave the object alive for the caller to free.
+	 * So it ANSWERS and leaves the release to the caller, and the header says so: this is the one place in the
+	 * family where the two runtimes' shapes make the faithful implementation the dangerous one. */
+	if ([object retainCount] <= 1) {
+		return YES;
+	}
+	[object release];
+	return NO;
+}
+
+void *NSFrameAddress(NSUInteger level)
+{
+	/* LEVEL ZERO IS WHAT A COMPILER ANSWERS FOR WITHOUT A CHAINED FRAME POINTER. Beyond it the honest answer is
+	 * NULL rather than a pointer read out of a frame that may not be there. */
+	return level == 0 ? __builtin_frame_address(0) : NULL;
+}
+
+void *NSReturnAddress(NSUInteger level)
+{
+	return level == 0 ? __builtin_return_address(0) : NULL;
+}
+
+/* THE GARBAGE-COLLECTOR DOORS. There is no collector, so each is given the behaviour Apple documents for a program
+ * that is not collected — and that is not a stub: it is the documented behaviour, and the header says which one. */
+id NSMakeCollectable(id anObject)
+{
+	return anObject;	/* every valid object is collectable; a collected one does not exist to be asked */
+}
+
+void *NSReallocateCollectable(void *pointer, NSUInteger size, NSUInteger options)
+{
+	(void)options;		/* the options describe a collector's alignment rules, and there is no collector */
+
+	return realloc(pointer, size);
+}
+
+void NSRecordAllocationEvent(NSInteger event, id object)
+{
+	(void)event;
+	(void)object;
+}
+
+BOOL NSIsFreedObject(id anObject)
+{
+	(void)anObject;
+	return NO;		/* nothing is freed while a caller can hold a pointer to it */
+}

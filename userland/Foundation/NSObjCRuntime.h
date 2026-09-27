@@ -358,4 +358,71 @@ typedef enum {
 #define NSLocalizedStringWithDefaultValue(key, tbl, bundle, val, comment) \
 	[(bundle) localizedStringForKey:(key) value:(val) table:(tbl)]
 
+
+/* ===================================================================================================
+ * THE FREE FUNCTIONS THAT WERE STILL MISSING (§62.52)
+ *
+ * Apple's `NSObjCRuntime.h` declares a handful of C functions beside the classes, and these are the ones this
+ * library did not have. Each carries its own rule where the rule is a choice rather than a fact.
+ *
+ * TWO SIGNATURES ARE NOT APPLE'S, AND THE REASON IS A TYPE THIS LIBRARY DOES NOT HAVE RATHER THAN A PREFERENCE:
+ * there is no `NSZone`, so `NSCopyObject`'s third argument is ACCEPTED AND IGNORED (a caller who passes the zone
+ * Apple's header asks for still compiles, and there is nothing for the value to mean); and there is no
+ * `CFTypeRef`, so `NSMakeCollectable` takes an object of this library's own.
+ * =================================================================================================== */
+/* THESE CARRY NO NULLABILITY SPECIFIERS, WHICH IS A DELIBERATE CHOICE ABOUT SCOPE. A file with ONE specifier is
+ * checked THROUGHOUT by clang, and this header has unannotated pointers in its older declarations — so annotating
+ * this block would either cascade through the whole header or leave it half-annotated. ANNOTATING `NSObjCRuntime.h`
+ * IS ITS OWN UNIT and not a footnote to this one; what this block needed was the two things below. */
+#include <stdarg.h>	/* va_list, for NSLogv */
+@class NSString;
+
+/* LOGGING. Apple's `NSLog` writes to STANDARD ERROR with a prefix; so does this one, and the prefix is the process
+ * id, which is what a reader of a log needs and what needs no date formatter to produce. `NSLogv` is the doer. */
+void NSLog(NSString *format, ...);
+void NSLogv(NSString *format, va_list args);
+
+/* PAGES. The size comes from the system that will honour it (`sysconf`) rather than from a constant written here,
+ * and the rounding is the arithmetic the names promise. */
+NSUInteger NSPageSize(void);
+NSUInteger NSLogPageSize(void);			/* the base-two logarithm of the page size, which is what a shift needs */
+NSUInteger NSRoundDownToMultipleOfPageSize(NSUInteger bytes);
+NSUInteger NSRoundUpToMultipleOfPageSize(NSUInteger bytes);
+
+/* THE WHOLE MACHINE'S RAM as the kernel reports it, NOT the memory that happens to be free: a caller who wants
+ * that is asking the kernel rather than this library, and the header says which question this answers. */
+NSUInteger NSRealMemoryAvailable(void);
+
+/* A RANGE FROM ITS OWN DESCRIPTION: the format `NSStringFromRange` writes, and {0, 0} for anything else, which is
+ * a stated answer rather than a refusal because a string that does not describe a range describes no range. */
+NSRange NSRangeFromString(NSString *aString);
+
+/* `NSCopyObject` IS NOT HERE, AND THE REASON IS MEASURABLE RATHER THAN A JUDGEMENT: a faithful raw byte copy must
+ * give the copy a RETAIN COUNT OF ONE, and this library's runtime publishes no way to SET a count — only to read
+ * one and to retain and release. A copy carrying the original's count would be a wrong count in an object nobody
+ * would suspect, so the door is absent and `-copy` is the one that honours a class's own rules. */
+
+/* THE EXTRA RETAIN COUNT. Apple's runtime keeps a count beyond the basic one and these are its doors. THIS
+ * LIBRARY'S RUNTIME HAS NO SEPARATE COUNTER, so the equivalence is stated where they are defined: the extra count
+ * is the retain count minus the basic one, which is the only reading of the two that agrees with `-retainCount`. */
+NSUInteger NSExtraRefCount(id object);
+id NSIncrementExtraRefCount(id object);
+BOOL NSDecrementExtraRefCountWasZero(id object);
+
+/* THE STACK. Level zero is what a compiler is obliged to answer for; a higher level needs a CHAINED FRAME POINTER,
+ * which this build does not promise, so these answer NULL beyond the levels they can honour rather than reading a
+ * frame that may not be there. `NSCountFrames` IS ABSENT for the same reason and not by oversight: counting frames
+ * means walking them, and a walk that reads a bad frame pointer faults — the door is absent rather than dangerous. */
+void *NSFrameAddress(NSUInteger level);
+void *NSReturnAddress(NSUInteger level);
+
+/* THE GARBAGE-COLLECTOR DOORS, WHICH THIS LIBRARY HAS BY NAME AND NOT BY COLLECTOR. Each is given the behaviour
+ * Apple documents for a program that is not collected: an object IS collectable while it is valid, NOTHING is
+ * reported as freed, and recording an allocation event is a no-op because there is nothing to record it for. */
+id NSMakeCollectable(id anObject);
+void *NSReallocateCollectable(void *pointer, NSUInteger size, NSUInteger options);
+void NSRecordAllocationEvent(NSInteger event, id object);
+BOOL NSIsFreedObject(id anObject);
+
+
 #endif /* FOUNDATION_NSOBJCRUNTIME_H */

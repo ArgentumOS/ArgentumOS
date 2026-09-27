@@ -188,4 +188,15 @@ NSString *NSStringFromRect(NSRect aRect);
 
 NS_ASSUME_NONNULL_END
 
+
+/* THE TWO RECTANGLE PREDICATES (§62.52). `NSIntersectsRect` answers NO for rectangles that merely TOUCH: a shared
+ * edge is not an overlap. `NSMouseInRect` takes the flag that says which coordinate system the rectangle is in,
+ * and the rule it states is that a point ON THE MINIMUM EDGE IS INSIDE and one on the MAXIMUM EDGE IS NOT — with
+ * the flag deciding which pair of edges that is, so a rectangle answers the same way about the same corner before
+ * and after a flip. */
+NS_ASSUME_NONNULL_BEGIN
+BOOL NSIntersectsRect(NSRect aRect, NSRect bRect);
+BOOL NSMouseInRect(NSPoint aPoint, NSRect aRect, BOOL isFlipped);
+NS_ASSUME_NONNULL_END
+
 #endif /* FOUNDATION_NSGEOMETRY_H */

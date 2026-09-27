@@ -1390,6 +1390,17 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_byteorder"
+	# foundation_free_misc: §62.52's acceptance - the free functions in NSObjCRuntime.h/NSGeometry.h this library
+	# lacked. Absolute relations (a page size IS a power of two, touching is NOT intersecting), the stack doors
+	# asked for levels they cannot honour (NULL, not a bad read), and NSLog measured BY REDIRECTING fd 2.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_free_misc.m -o .build/probe-foundation_free_misc.o
+	$(MUSL64_OBJC) .build/probe-foundation_free_misc.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_free_misc"
 	# foundation_redirect: following a redirect, decided by the delegate, bounded by the hop limit (§54).
 	# Its own HTTP server again (a 302, a 307, a decline and a never-ending chain), and it reads §52's record
 	# off the delegate, so it links the bridge and curl exactly as the two units beside it do.
