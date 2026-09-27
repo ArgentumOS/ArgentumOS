@@ -34,11 +34,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  199   open   26   struck   48
+#   class      shipped  200   open   25   struck   48
 #   protocol   shipped   33   open    7   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  141   open   10   struck    9
-#   case       shipped 1144   open   83   struck   75
+#   case       shipped 1146   open   81   struck   75
 #   func       shipped  164   open   13   struck   12
 #   var        shipped  645   open   62   struck  207
 #   typealias  shipped   66   open    5   struck    5
@@ -795,8 +795,8 @@ case	shipped	NSPropertyListWriteInvalidError	NSPropertyListSerialization	Files a
 case	shipped	NSPropertyListWriteStreamError	NSError	App Support / User-Relevant Errors / Error Codes / Property List Errors	-	objc
 case	shipped	NSPropertyListWriteStreamError	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Error Codes	-	objc
 case	shipped	NSPropertyListXMLFormat_v1_0	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants / Constants	-	objc
-case	open	NSProprietaryStringEncoding		Fundamentals / Deprecated / Constants	deprecated	objc
-case	open	NSProprietaryStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	deprecated	objc
+case	shipped	NSProprietaryStringEncoding		Fundamentals / Deprecated / Constants	deprecated	objc
+case	shipped	NSProprietaryStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	deprecated	objc
 case	shipped	NSQualityOfServiceBackground	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
 case	shipped	NSQualityOfServiceBackground	NSOperation	App Support / Operations / Constants / Constants	-	objc
 case	shipped	NSQualityOfServiceBackground	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	objc
@@ -1364,7 +1364,7 @@ class	shipped	NSByteCountFormatter		Fundamentals / Data sizes	-	objc
 class	shipped	NSCache		Fundamentals / Purgeable Collections	-	objc
 class	shipped	NSCachedURLResponse		Networking / Cache behavior	-	objc
 class	shipped	NSCalendar		Fundamentals / Calendrical Calculations	-	objc
-class	open	NSCalendarDate		Fundamentals / Deprecated	deprecated	objc
+class	shipped	NSCalendarDate		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSCharacterSet		Fundamentals / Characters	-	objc
 class	struck	NSClassDescription		App Support / Script Dictionary Description	declined	objc
 class	struck	NSCloneCommand		App Support / Script Commands	declined	objc

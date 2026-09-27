@@ -121,7 +121,10 @@ typedef enum {
 	NSUTF16LittleEndianStringEncoding = 116,
 	NSUTF32StringEncoding = 117,
 	NSUTF32BigEndianStringEncoding = 118,
-	NSUTF32LittleEndianStringEncoding = 119
+	NSUTF32LittleEndianStringEncoding = 119,
+	/* THE DEPRECATED ENCODING, which §62.24 keeps in scope: Apple publishes the name and no value, so the
+	 * value is ours (§11.6.1 D2) and 2^16 leaves the enumerated values above it alone. */
+	NSProprietaryStringEncoding = 65536
 } NSStringEncoding;
 
 /* THE TWO OPTION SETS THE WINDOWS TAKE (2026-09-20). The doors that use them — a

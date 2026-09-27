@@ -3508,7 +3508,7 @@ vanishing.
 | **Fundamentals / Date Formatting** | all classes shipped | — |
 | **Fundamentals / Date Representations** | all classes shipped | — |
 | **Fundamentals / Dates and times** | all classes shipped | — |
-| **Fundamentals / Deprecated** | 1 open | `NSCalendarDate` |
+| **Fundamentals / Deprecated** | all classes shipped | — |
 | **Fundamentals / Electricity** | all classes shipped | — |
 | **Fundamentals / Energy, Heat, and Light** | all classes shipped | — |
 | **Fundamentals / Essentials** | all classes shipped | — |
@@ -13689,6 +13689,60 @@ fail=0`**. Guest: `make testimg` then `make test TESTS='foundation_backgroundact
 case(s), 6/6 check(s) in 12s`**, the probe's own tally `ok=8 fail=0` in one run. `foundation-sweep --refresh` +
 `--check`: **consistent**, the five rows flipped, and the family table regenerated. `foundation-gate`: **OK — 531
 files, 198 of 202 public headers** open a nullability region; `--unimplemented`: **0 NEW** (1 baselined).
+
+## §62.67 — `NSCalendarDate`: THREE ROWS, FOUR DEFECTS, AND THE DAY THAT DOES NOT EXIST (2026-09-26)
+
+**WHAT SHIPPED: the class plus `NSProprietaryStringEncoding` — three rows, because Apple lists that one constant
+at TWO paths** (`Fundamentals / Deprecated / Constants` and `NSString / Strings / Working with Encodings`).
+`class shipped` went **199 → 200**, `case 1144 → 1146`, and **`Fundamentals / Deprecated` is COMPLETE** — the
+family table now reads "all classes shipped", which with §62.66's block is the second family this session has
+finished. Both are Apple-deprecated and both ship, per §62.24.
+
+**THE SHAPE IS THE DESIGN: it is an `NSDate` SUBCLASS whose FIELDS ARE COMPUTED AND NEVER STORED.** The cellar is
+NSDate's own instant (this library stores seconds since 1970); what the older API adds is the two things it
+carried AROUND an instant — a CALENDAR FORMAT (`strftime`/`strptime` spelling, which is what "calendar format"
+means) and a TIME ZONE that says how the instant reads as fields. So `-setTimeZone:` moves every field at once
+and moves the instant not at all, and the probe asserts exactly that as one check.
+
+**THE ARITHMETIC IS THE C LIBRARY'S, WITH ONE RULE THAT IS NOT: `gmtime_r` plus the zone's OFFSET FOR THAT DATE,
+and `timegm` on the way back — never `mktime`, which would apply the C library's zone on top of the offset
+already applied (the classic double-count).** The zone is asked about the DATE rather than about now
+(`-secondsFromGMTForDate:`, date-dependent because daylight saving is), which is what keeps the zone the
+receiver's rather than the process's. **And there is one portability fact this file is the first in the tree to
+need: `strptime` is XSI and `timegm` is GNU/BSD, and asking glibc for XSI alone takes away its DEFAULT
+declarations for `timegm` — so the file opens, before any include, with a guarded `_GNU_SOURCE`.**
+
+**THREE RULES ARE OURS AND ARE MARKED SO (§11.6.1 D2), because Apple's pages publish the messages and not the
+rules:** the **default calendar format** is `%Y-%m-%d %H:%M:%S %z` (the page states the property and no value);
+`-dateByAddingYears:…:` is **calendar-aware with the day CLAMPED TO THE MONTH IT LANDS IN — 31 JANUARY PLUS ONE
+MONTH IS 28 FEBRUARY**; and `-years:…:sinceDate:` decomposes **largest component first**, the only order in which
+the answer is well defined. **The parse's rule is stated too: a format that names a NUMERIC zone (`%z`) wins,
+which is what makes a round trip through the default format exact wherever it is read — while `%Z`, a zone NAME,
+is printed and is NOT resolved, because turning a name into an offset is a lookup this class does not own.**
+
+**AND THE PROBE FOUND FOUR DEFECTS, ALL FOUR IN THIS CLASS'S OWN ARITHMETIC RATHER THAN IN THE C LIBRARY, which
+is the case for writing the instrument before believing the design:**
+
+1. **A YEAR NORMALISATION THAT DID NOT NEED TO EXIST.** `strptime` already answers struct tm's convention
+   (`tm_year` is the year minus 1900, for `%Y` as much as `%y`); code that "fixed up" a year it took to be
+   absolute made **2026 parse as 226 and print as "226-09-27"** — an instant 1800 years in the past.
+2. **THE CARRY-VERSUS-CLAMP QUESTION, WHICH IS A DESIGN QUESTION THE PROBE FORCED RATHER THAN A BUG.** Adding a
+   month to 31 January and letting the fields carry answered **2026-03-03**; the class now clamps, and the
+   choice is documented in the header rather than the test being bent to the code. Not publishing the rule is
+   what made it a decision; publishing it is what makes it checkable.
+3. **`gmtime_r` LEAVES `tm_gmtoff` AT ZERO, AND `strftime` READS IT.** A date in UTC+1 printed **"+0000"** — the
+   fields have to SAY which zone they are in, because that is the only thing `%z`/`%Z` consult.
+4. **`timegm` OVERWRITES `tm_gmtoff`** (it fills in the struct it is handed, with GMT's own, since GMT is what it
+   converts for) — and C does not order that call against a read of the same field in one expression, so the
+   first version of the zone-stated parse drifted by **a silent hour**. The offset is now read out first.
+
+**VERIFIED.** Host: `make host-foundation-run` — **35 probes, every tally `fail=0`**, the new probe at **`ok=12
+fail=0`** after the four fixes (it read `ok=9 fail=3`, then `ok=11 fail=1`, on the way). Guest: `make testimg`
+then `make test TESTS='foundation_calendardate'` → **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12.3s`**, the probe's
+own tally `ok=12 fail=0` in one run — including `strptime`'s `%z` under musl, which is the part of this unit that
+most depended on the guest answering as the host does. `foundation-sweep --refresh` + `--check`: **consistent**,
+three rows flipped, family table regenerated. `foundation-gate`: **OK — 534 files, 199 of 203 public headers**;
+`--unimplemented`: **0 NEW**.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 

@@ -177,6 +177,7 @@
 #import <Foundation/NSAttributedStringMarkdown.h>
 #import <Foundation/NSPresentationIntent.h>
 #import <Foundation/NSBackgroundActivityScheduler.h>
+#import <Foundation/NSCalendarDate.h>
 #import <Foundation/NSOperation.h>
 #import <Foundation/NSBlockOperation.h>
 #import <Foundation/NSInvocationOperation.h>
