@@ -12977,6 +12977,35 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.43 — A SECOND FAMILY, AND A WHOLE ONE: THE LEGACY LOCALIZATION KEYS (2026-09-26)
+
+**WHAT SHIPPED: `NSUserDefaults`' TWENTY-NINE DEPRECATED NAMES, WHICH IS THE WHOLE FAMILY.** Twenty-six are the
+LOCALIZATION KEYS an application written before `NSLocale` read out of the user's defaults (`[defaults
+objectForKey:NSMonthNameArray]`); three are the `NSUbiquitousUserDefaults…` NOTIFICATION NAMES. **All 34 of the
+class's rows are `shipped` now, and the ledger's open count is 453 — exactly twenty-nine fewer.**
+
+**WHAT THESE ARE IS A NAME, AND THAT IS ALSO WHAT APPLE'S ARE:** each key's value is the key string a store is asked
+about, so `-objectForKey:NSMonthNameArray` answers whatever the store holds under that spelling — and nothing in
+this library puts anything there, because the data behind a legacy localization key was always the user's. The
+VOCABULARY IS THE DELIVERABLE, which is §62.24's policy in its purest form: a ported application's source names
+these constants, and naming them is what makes that source compile.
+
+**AND THE THREE iCLOUD NAMES ARE THE FIRST REFUSAL IN THIS THREAD THAT IS AN ABSENCE OF INFRASTRUCTURE RATHER THAN
+OF A LIBRARY:** this system has no ubiquitous defaults store, so nothing will ever post them. They are DECLARED —
+a caller's observer registration compiles — and the probe MEASURES the absence rather than asserting it: it
+registers an observer for one, changes the store (which posts the store's OWN notification, asserted in the same
+probe), and checks that the cloud one stayed at zero. **That is what "no iCloud" looks like as a test.**
+
+**TWO MISTAKES OF MINE, AND BOTH ARE ONE I HAD ALREADY MADE ONCE:** a python heredoc with a literal newline inside a
+single-quoted string (so the patch never ran — nothing was written and the tree was untouched, which is the good
+failure mode), and A MISSING BRACKET on a `check()` whose last argument was a message send. The bracket has now cost
+this session three separate compiles, and the lesson is the same each time — an argument that is itself a send needs
+its own `]` before the call's `)`.
+
+**VERIFIED.** `foundation_defaults` is **38/38 green** (its two new checks included), the family's 34 rows are
+`shipped`, the ledger's open count is 453, and `foundation-sweep --check` is consistent. No library BEHAVIOUR
+changed — twenty-nine constants were declared and defined — so no regression run beyond the probe itself was owed.
+
 ## §62.42 — THE LARGEST FAMILY ON THE WORK LIST: `NSLinguisticTagger` AND ITS FIFTY-ONE NAMES (2026-09-26)
 
 **WHAT SHIPPED, AND IT IS THE BIGGEST SINGLE BITE OUT OF §62.24'S LIST: ONE DEPRECATED CLASS AND FIFTY-ONE

@@ -49,6 +49,39 @@ NSString *const NSArgumentDomain = @"NSArgumentDomain";
 NSString *const NSGlobalDomain = @"NSGlobalDomain";
 NSString *const NSRegistrationDomain = @"NSRegistrationDomain";
 NSString *const NSUserDefaultsDidChangeNotification = @"NSUserDefaultsDidChangeNotification";
+
+/* §62.43: the legacy localization keys, and the ubiquity notifications whose absence is stated in the header.
+ * THE VALUE IS THE NAME, which is the convention Apple's own keys keep - and the reason a probe can check it. */
+NSString *const NSAMPMDesignation = @"NSAMPMDesignation";
+NSString *const NSCurrencySymbol = @"NSCurrencySymbol";
+NSString *const NSDateFormatString = @"NSDateFormatString";
+NSString *const NSDateTimeOrdering = @"NSDateTimeOrdering";
+NSString *const NSDecimalDigits = @"NSDecimalDigits";
+NSString *const NSDecimalSeparator = @"NSDecimalSeparator";
+NSString *const NSEarlierTimeDesignations = @"NSEarlierTimeDesignations";
+NSString *const NSHourNameDesignations = @"NSHourNameDesignations";
+NSString *const NSInternationalCurrencyString = @"NSInternationalCurrencyString";
+NSString *const NSLaterTimeDesignations = @"NSLaterTimeDesignations";
+NSString *const NSMonthNameArray = @"NSMonthNameArray";
+NSString *const NSNegativeCurrencyFormatString = @"NSNegativeCurrencyFormatString";
+NSString *const NSNextDayDesignations = @"NSNextDayDesignations";
+NSString *const NSNextNextDayDesignations = @"NSNextNextDayDesignations";
+NSString *const NSPositiveCurrencyFormatString = @"NSPositiveCurrencyFormatString";
+NSString *const NSPriorDayDesignations = @"NSPriorDayDesignations";
+NSString *const NSShortDateFormatString = @"NSShortDateFormatString";
+NSString *const NSShortMonthNameArray = @"NSShortMonthNameArray";
+NSString *const NSShortTimeDateFormatString = @"NSShortTimeDateFormatString";
+NSString *const NSShortWeekDayNameArray = @"NSShortWeekDayNameArray";
+NSString *const NSThisDayDesignations = @"NSThisDayDesignations";
+NSString *const NSThousandsSeparator = @"NSThousandsSeparator";
+NSString *const NSTimeDateFormatString = @"NSTimeDateFormatString";
+NSString *const NSTimeFormatString = @"NSTimeFormatString";
+NSString *const NSWeekDayNameArray = @"NSWeekDayNameArray";
+NSString *const NSYearMonthWeekDesignations = @"NSYearMonthWeekDesignations";
+NSString *const NSUbiquitousUserDefaultsCompletedInitialSyncNotification = @"NSUbiquitousUserDefaultsCompletedInitialSyncNotification";
+NSString *const NSUbiquitousUserDefaultsDidChangeAccountsNotification = @"NSUbiquitousUserDefaultsDidChangeAccountsNotification";
+NSString *const NSUbiquitousUserDefaultsNoCloudAccountNotification = @"NSUbiquitousUserDefaultsNoCloudAccountNotification";
+
 NSString *const NSUserDefaultsSizeLimitExceededNotification = @"NSUserDefaultsSizeLimitExceededNotification";
 
 /* ONE MEBIBYTE PER DOMAIN. Apple documents the notification and publishes no number, so this is a rule of

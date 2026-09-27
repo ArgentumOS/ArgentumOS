@@ -106,6 +106,54 @@ extern NSString *const NSUserDefaultsSizeLimitExceededNotification;
 /* The per-domain maximum, in bytes of the serialized USER file. Ours, because Apple publishes no number. */
 extern const NSUInteger NSUserDefaultsMaximumDomainSize;
 
+/* --- THE LEGACY LOCALIZATION KEYS, AND THE UBIQUITY NOTIFICATIONS (§62.43) ---------------------------
+ *
+ * TWENTY-SIX KEYS AND THREE NOTIFICATION NAMES, AND THEY ARE HERE BECAUSE §62.24 RETIRED THE DEPRECATION
+ * GROUND: these are the keys an application written before `NSLocale` read out of the user's defaults
+ * (`[defaults objectForKey:NSMonthNameArray]`), Apple dropped them when localization moved into `NSLocale`, and
+ * a ported application's SOURCE still names every one of them.
+ *
+ * WHAT THEY ARE IS A NAME AND NOTHING ELSE — which is also what Apple's own are: each one's value is the key
+ * string a defaults store is asked about, so `objectForKey:NSMonthNameArray` answers whatever the store holds
+ * under that spelling and NOTHING IN THIS LIBRARY PUTS ANYTHING THERE. That is the honest shape of a legacy
+ * key: the vocabulary compiles, and the data behind it was always the user's.
+ *
+ * AND THE THREE NOTIFICATIONS ARE NAMED WITH THEIR ABSENCE STATED: `NSUbiquitousUserDefaults…` are the iCloud
+ * defaults store's notifications, THIS SYSTEM HAS NO UBIQUITOUS STORE, and nothing here posts them. A caller
+ * that registers an observer for one compiles and is never told — which is what "no iCloud" means, said where
+ * the name is rather than left to be discovered at runtime.
+ */
+extern NSString *const NSAMPMDesignation;
+extern NSString *const NSCurrencySymbol;
+extern NSString *const NSDateFormatString;
+extern NSString *const NSDateTimeOrdering;
+extern NSString *const NSDecimalDigits;
+extern NSString *const NSDecimalSeparator;
+extern NSString *const NSEarlierTimeDesignations;
+extern NSString *const NSHourNameDesignations;
+extern NSString *const NSInternationalCurrencyString;
+extern NSString *const NSLaterTimeDesignations;
+extern NSString *const NSMonthNameArray;
+extern NSString *const NSNegativeCurrencyFormatString;
+extern NSString *const NSNextDayDesignations;
+extern NSString *const NSNextNextDayDesignations;
+extern NSString *const NSPositiveCurrencyFormatString;
+extern NSString *const NSPriorDayDesignations;
+extern NSString *const NSShortDateFormatString;
+extern NSString *const NSShortMonthNameArray;
+extern NSString *const NSShortTimeDateFormatString;
+extern NSString *const NSShortWeekDayNameArray;
+extern NSString *const NSThisDayDesignations;
+extern NSString *const NSThousandsSeparator;
+extern NSString *const NSTimeDateFormatString;
+extern NSString *const NSTimeFormatString;
+extern NSString *const NSWeekDayNameArray;
+extern NSString *const NSYearMonthWeekDesignations;
+extern NSString *const NSUbiquitousUserDefaultsCompletedInitialSyncNotification;
+extern NSString *const NSUbiquitousUserDefaultsDidChangeAccountsNotification;
+extern NSString *const NSUbiquitousUserDefaultsNoCloudAccountNotification;
+
+
 @interface NSUserDefaults : NSObject
 {
 	NSString *_appDomain;			/* the persistent domain writes go to, NSGlobalDomain by default */

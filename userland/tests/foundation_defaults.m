@@ -675,6 +675,65 @@ int main(void)
 	/* ---- the scratch tree, the image's Configuration/, and out ---------- */
 	[manager removeItemAtPath:root error:NULL];
 
+	/* --- THE LEGACY LOCALIZATION KEYS, AND THE NOTIFICATIONS NOTHING POSTS (§62.43) ------------------ */
+	{
+		NSArray *keys = [NSArray arrayWithObjects:
+			NSAMPMDesignation, NSCurrencySymbol, NSDateFormatString, NSDateTimeOrdering,
+			NSDecimalDigits, NSDecimalSeparator, NSEarlierTimeDesignations,
+			NSHourNameDesignations, NSInternationalCurrencyString, NSLaterTimeDesignations,
+			NSMonthNameArray, NSNegativeCurrencyFormatString, NSNextDayDesignations,
+			NSNextNextDayDesignations, NSPositiveCurrencyFormatString, NSPriorDayDesignations,
+			NSShortDateFormatString, NSShortMonthNameArray, NSShortTimeDateFormatString,
+			NSShortWeekDayNameArray, NSThisDayDesignations, NSThousandsSeparator,
+			NSTimeDateFormatString, NSTimeFormatString, NSWeekDayNameArray,
+			NSYearMonthWeekDesignations, nil];
+		NSMutableSet *seen = [NSMutableSet set];
+		int distinct = 1;
+		NSUInteger i;
+
+		for(i = 0; i < [keys count]; i++) {
+			NSString *key = [keys objectAtIndex:i];
+
+			if(key == nil || [key length] == 0 || [seen containsObject:key]) {
+				distinct = 0;
+				break;
+			}
+			[seen addObject:key];
+		}
+		/* THE VALUE IS THE NAME, which is the convention these keys keep and the only property of a key that can
+		 * be pinned from here: what a store holds UNDER it was always the user's. */
+		check("the-legacy-localization-keys-are-pinned",
+		      distinct && [keys count] == 26 &&
+		      [NSMonthNameArray isEqualToString:@"NSMonthNameArray"] &&
+		      [NSThousandsSeparator isEqualToString:@"NSThousandsSeparator"],
+		      [NSString stringWithFormat:@"%d legacy keys, all non-empty and distinct, with the two obvious "
+			@"spellings pinned", (int)[keys count]]);
+
+		/* AND THE THREE UBIQUITY NOTIFICATIONS ARE NAMED AND NOTHING POSTS THEM, WHICH IS MEASURED RATHER THAN
+		 * ASSERTED: an observer is registered for one, the store is changed (which posts its OWN notification,
+		 * asserted above), and this one stays at zero. A system with no ubiquitous store is what that looks
+		 * like - and registering an observer for it still compiles, which is the whole of what the policy
+		 * asks of a name like this. */
+		{
+			FnDefaultsObserver *cloudObserver = [[FnDefaultsObserver alloc] init];
+			NSUserDefaults *store = [NSUserDefaults standardUserDefaults];
+
+			[[NSNotificationCenter defaultCenter] addObserver:cloudObserver
+							       selector:@selector(note:)
+								   name:NSUbiquitousUserDefaultsDidChangeAccountsNotification
+								 object:nil];
+			[store setObject:@"cloud-check" forKey:@"cloud-check"];
+			[store removeObjectForKey:@"cloud-check"];
+			check("the-ubiquity-notifications-are-named-and-never-posted",
+			      NSUbiquitousUserDefaultsCompletedInitialSyncNotification != nil &&
+			      NSUbiquitousUserDefaultsNoCloudAccountNotification != nil &&
+			      ![[NSUbiquitousUserDefaultsCompletedInitialSyncNotification description]
+				isEqual:NSUbiquitousUserDefaultsDidChangeAccountsNotification] &&
+			      [cloudObserver countOf:NSUbiquitousUserDefaultsDidChangeAccountsNotification] == 0,
+			      @"three names a caller can register for, and not one of them is ever posted here");
+		}
+	}
+
 	printf("FOUNDATION-DEFAULTS RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output: after a probe the console can stop serving input for a
 	 * while, so an `echo $?` the harness types may never run. This is the same value: failc ? 1 : 0 is the

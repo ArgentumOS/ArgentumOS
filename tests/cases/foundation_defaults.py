@@ -72,6 +72,8 @@ CHECKS = (
     "defaults-refuses-escaping-domain", "defaults-corrupt-file-refused",
     "defaults-size-limit",
     "defaults-store-location", "defaults-store-location-cleanup",
+    "the-legacy-localization-keys-are-pinned",
+    "the-ubiquity-notifications-are-named-and-never-posted",
 )
 
 

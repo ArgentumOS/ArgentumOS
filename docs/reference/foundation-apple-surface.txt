@@ -40,7 +40,7 @@
 #   enum       shipped  132   open   19   struck    9
 #   case       shipped 1077   open  150   struck   75
 #   func       shipped   83   open   94   struck   12
-#   var        shipped  568   open  139   struck  207
+#   var        shipped  597   open  110   struck  207
 #   typealias  shipped   65   open    6   struck    5
 #   struct     shipped    8   open    5   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -2354,7 +2354,7 @@ typealias	shipped	NSValueTransformerName	NSValueTransformer	Low-Level Utilities 
 typealias	struck	NSZone		Low-Level Utilities / Legacy	32-bit-only	objc
 typealias	shipped	unichar		Fundamentals / Characters	-	objc
 typealias	shipped	unichar	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
-var	open	NSAMPMDesignation	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSAMPMDesignation	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSAlternateDescriptionAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	shipped	NSAppleEventManagerWillProcessFirstEventNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	struck	NSAppleEventTimeOutDefault	NSAppleEventManager	App Support / Apple Event Handling / Constants / Constants	declined	objc
@@ -2411,14 +2411,14 @@ var	open	NSConnectionDidDieNotification	NSConnection	Low-Level Utilities / Legac
 var	open	NSConnectionDidInitializeNotification	NSConnection	Low-Level Utilities / Legacy / Legacy / Notifications	deprecated	objc
 var	open	NSConnectionReplyMode	NSConnection	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
 var	shipped	NSCountKeyValueOperator		Reference / Constants	-	objc
-var	open	NSCurrencySymbol	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
+var	shipped	NSCurrencySymbol	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSCurrentLocaleDidChangeNotification	NSLocale	Fundamentals / Localization / Getting the User’s Locale	-	objc
-var	open	NSDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSDateTimeOrdering	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSDateTimeOrdering	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSDeallocateZombies		App Support / Diagnostics and Debugging	-	objc
 var	shipped	NSDebugDescriptionErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSDebugEnabled		App Support / Diagnostics and Debugging	-	objc
-var	open	NSDecimalDigits	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
+var	shipped	NSDecimalDigits	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSDecimalNumberDivideByZeroException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
 var	shipped	NSDecimalNumberDivideByZeroException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSDecimalNumberExactnessException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
@@ -2427,7 +2427,7 @@ var	shipped	NSDecimalNumberOverflowException	NSDecimalNumber	Fundamentals / Numb
 var	shipped	NSDecimalNumberOverflowException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSDecimalNumberUnderflowException	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Recognizing Exceptions	-	objc
 var	shipped	NSDecimalNumberUnderflowException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSDecimalSeparator	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
+var	shipped	NSDecimalSeparator	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSDefaultRunLoopMode	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes / System Run Loop Modes	-	objc
 var	shipped	NSDestinationInvalidException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	open	NSDidBecomeSingleThreadedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
@@ -2435,7 +2435,7 @@ var	open	NSDidBecomeSingleThreadedNotification	NSThread	Low-Level Utilities / Th
 var	shipped	NSDistinctUnionOfArraysKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSDistinctUnionOfObjectsKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSDistinctUnionOfSetsKeyValueOperator		Reference / Constants	-	objc
-var	open	NSEarlierTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSEarlierTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSEdgeInsetsZero		Fundamentals / Geometry / Getting the zero constant	-	objc
 var	open	NSErrorFailingURLStringKey		Networking / Errors / Deprecated	deprecated	objc
 var	shipped	NSExtensionHostDidBecomeActiveNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
@@ -2549,7 +2549,7 @@ var	open	NSHashTableWeakMemory	NSHashTable	Fundamentals / Pointer Collections / 
 var	open	NSHashTableZeroingWeakMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	deprecated	objc
 var	open	NSHebrewCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSHelpAnchorErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
-var	open	NSHourNameDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSHourNameDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	open	NSISO8601Calendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSImageURLAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	shipped	NSInconsistentArchiveException	NSArchiver	Files and Data Persistence / Deprecated / Constants / Constants	deprecated	objc
@@ -2569,7 +2569,7 @@ var	open	NSIntegerHashCallBacks	NSHashTable	Fundamentals / Pointer Collections /
 var	open	NSIntegerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	open	NSIntegerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSInternalInconsistencyException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSInternationalCurrencyString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
+var	shipped	NSInternationalCurrencyString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSInvalidArchiveOperationException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSInvalidArchiveOperationException	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Constants / Constants	-	objc
 var	shipped	NSInvalidArgumentException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
@@ -2597,7 +2597,7 @@ var	shipped	NSKeyValueChangeOldKey		Reference / Type Aliases / Type Properties	-
 var	open	NSKeyedArchiveRootObjectKey	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Constants / Constants	-	objc
 var	open	NSKeyedUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
 var	shipped	NSLanguageIdentifierAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
-var	open	NSLaterTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSLaterTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSLinguisticTagAdjective	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
 var	shipped	NSLinguisticTagAdverb	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
 var	shipped	NSLinguisticTagClassifier	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
@@ -2875,15 +2875,15 @@ var	struck	NSMetadataUbiquitousSharedItemPermissionsReadWrite	NSMetadataItem	Fil
 var	struck	NSMetadataUbiquitousSharedItemRoleOwner	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Role Values	declined	objc
 var	struck	NSMetadataUbiquitousSharedItemRoleParticipant	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Role Values	declined	objc
 var	shipped	NSMinimumKeyValueOperator		Reference / Constants	-	objc
-var	open	NSMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSMorphologyAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSMultipleUnderlyingErrorsKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	open	NSNegateBooleanTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
-var	open	NSNegativeCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
+var	shipped	NSNegativeCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	struck	NSNetServicesErrorCode	NSNetService	Networking / Local Network Services / Constants / Constants	declined	swift-page
 var	struck	NSNetServicesErrorDomain	NSNetService	Networking / Local Network Services / Constants / Constants	declined	objc
-var	open	NSNextDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSNextNextDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSNextDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSNextNextDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	open	NSNonOwnedPointerHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	open	NSNonOwnedPointerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	open	NSNonOwnedPointerMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
@@ -2916,9 +2916,9 @@ var	shipped	NSPortDidBecomeInvalidNotification	NSPort	Low-Level Utilities / Sock
 var	shipped	NSPortReceiveException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSPortSendException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSPortTimeoutException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSPositiveCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
+var	shipped	NSPositiveCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSPresentationIntentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
-var	open	NSPriorDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSPriorDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSProcessInfoPowerStateDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSProcessInfoPowerStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	swift-page
 var	open	NSProcessInfoThermalStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	objc
@@ -2945,10 +2945,10 @@ var	shipped	NSReplacementIndexAttributeName	NSAttributedString	Fundamentals / St
 var	open	NSRepublicOfChinaCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSRunLoopCommonModes	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes / System Run Loop Modes	-	objc
 var	shipped	NSSecureUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
-var	open	NSShortDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSShortMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSShortTimeDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSShortWeekDayNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSShortDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSShortMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSShortTimeDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSShortWeekDayNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSStreamDataWrittenToMemoryStreamKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
 var	shipped	NSStreamFileCurrentOffsetKey	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
 var	shipped	NSStreamNetworkServiceType	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
@@ -3031,13 +3031,13 @@ var	shipped	NSTextCheckingPhoneKey	NSTextCheckingResult	Fundamentals / Pattern M
 var	shipped	NSTextCheckingStateKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 var	shipped	NSTextCheckingStreetKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 var	shipped	NSTextCheckingZIPKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
-var	open	NSThisDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSThousandsSeparator	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
+var	shipped	NSThisDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSThousandsSeparator	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	open	NSThreadWillExitNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
 var	open	NSThreadWillExitNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
 var	open	NSThumbnail1024x1024SizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys / Constants	deprecated	objc
-var	open	NSTimeDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSTimeFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSTimeDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSTimeFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSURLAddedToDirectoryDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLApplicationIsScriptableKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Application keys	-	objc
 var	shipped	NSURLAttributeModificationDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
@@ -3226,9 +3226,9 @@ var	shipped	NSURLVolumeUUIDStringKey	NSURL	Fundamentals / URLs / Accessing Resou
 var	open	NSUbiquitousKeyValueStoreChangeReasonKey	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
 var	open	NSUbiquitousKeyValueStoreChangedKeysKey	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
 var	open	NSUbiquitousKeyValueStoreDidChangeExternallyNotification	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
-var	open	NSUbiquitousUserDefaultsCompletedInitialSyncNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
-var	open	NSUbiquitousUserDefaultsDidChangeAccountsNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
-var	open	NSUbiquitousUserDefaultsNoCloudAccountNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
+var	shipped	NSUbiquitousUserDefaultsCompletedInitialSyncNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
+var	shipped	NSUbiquitousUserDefaultsDidChangeAccountsNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
+var	shipped	NSUbiquitousUserDefaultsNoCloudAccountNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
 var	shipped	NSUbiquityIdentityDidChangeNotification	NSFileManager	Files and Data Persistence / File system operations / Working with notifications	-	swift-page
 var	shipped	NSUbiquityIdentityDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	open	NSUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
@@ -3259,11 +3259,11 @@ var	open	NSUserActivityTypeBrowsingWeb	NSUserActivity	App Support / Activity Sha
 var	shipped	NSUserDefaultsDidChangeNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Monitoring settings changes and issues	-	objc
 var	shipped	NSUserDefaultsSizeLimitExceededNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Monitoring settings changes and issues	-	objc
 var	open	NSUserNotificationDefaultSoundName	NSUserNotification	App Support / User Notifications / Constants	deprecated	objc
-var	open	NSWeekDayNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSWeekDayNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	open	NSWillBecomeMultiThreadedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
 var	open	NSWillBecomeMultiThreadedNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
 var	shipped	NSXMLParserErrorDomain	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	objc
-var	open	NSYearMonthWeekDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
+var	shipped	NSYearMonthWeekDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSZeroPoint		Fundamentals / Geometry / Zero Constant	-	objc
 var	shipped	NSZeroRect		Fundamentals / Geometry / Zero Constant	-	objc
 var	shipped	NSZeroSize		Fundamentals / Geometry / Zero Constant	-	objc
