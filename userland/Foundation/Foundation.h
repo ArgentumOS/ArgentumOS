@@ -180,6 +180,11 @@
 #import <Foundation/NSUserDefaults.h>
 #import <Foundation/NSPort.h>
 #import <Foundation/NSMachPort.h>
+#import <Foundation/NSMessagePort.h>
+#import <Foundation/NSPortNameServer.h>
+#import <Foundation/NSMessagePortNameServer.h>
+#import <Foundation/NSSocketPortNameServer.h>
+#import <Foundation/NSMachBootstrapServer.h>
 #import <Foundation/NSPortMessage.h>
 #import <Foundation/NSSocketPort.h>
 #import <Foundation/NSFileHandle.h>

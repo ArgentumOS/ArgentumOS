@@ -3538,7 +3538,7 @@ vanishing.
 | **Fundamentals / Unique Identifiers** | all classes shipped | — |
 | **Low-Level Utilities / Copying** | all classes shipped | — |
 | **Low-Level Utilities / Invocations** | all classes shipped | — |
-| **Low-Level Utilities / Legacy** | 12 open | `NSConnection`, `NSConnectionDelegate`, `NSDistantObject`, `NSDistantObjectRequest`, `NSGarbageCollector`, `NSMachBootstrapServer`, `NSMessagePort`, `NSMessagePortNameServer`, `NSPortCoder`, `NSPortNameServer`, `NSProtocolChecker`, `NSSocketPortNameServer` |
+| **Low-Level Utilities / Legacy** | 7 open | `NSConnection`, `NSConnectionDelegate`, `NSDistantObject`, `NSDistantObjectRequest`, `NSGarbageCollector`, `NSPortCoder`, `NSProtocolChecker` |
 | **Low-Level Utilities / Memory Management** | all classes shipped | — |
 | **Low-Level Utilities / Object Basics** | all classes shipped | — |
 | **Low-Level Utilities / Remote Objects** | all classes shipped | — |
@@ -12976,6 +12976,57 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 **WHAT THIS LEAVES OPEN IS NOW A NAMED DEFECT RATHER THAN AN UNPROVEN CLAIM:** the coordinator must not run an
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
+
+## §62.54 — THE NAMING HALF: A NAME THAT FINDS SOMETHING YOU CAN SEND TO (2026-09-26)
+
+**WHAT SHIPPED: FIVE CLASSES, AND THE ONE OF THEM THAT REFUSES.** `NSPortNameServer` with its registry, the
+`NSMessagePort` that registers itself under a name, and the three subclasses — `NSMessagePortNameServer`,
+`NSSocketPortNameServer`, `NSMachBootstrapServer` — which are **three names for one mechanism**, so their
+implementations are a page rather than three files saying the same thing. **The open count is 248 → 243.**
+
+**ALMOST EVERY CHECK IS A DELIVERY RATHER THAN A LOOKUP, WHICH IS THE ONLY WAY THIS HALF CAN BE PROVED.** A registry
+that stored and returned objects while nothing could reach them passes every lookup check there is; so a port is
+registered under a name, **the name is resolved through a different door**, and a message sent to what the name
+answered arrives at the port that registered it. That is the probe's central check, and the rest of it measures the
+rules the headers STATE rather than let a caller discover:
+
+  * **a second registration REPLACES the first** — measured by WHO RECEIVES: the second port's delegate gets the
+    message and the first's gets nothing;
+  * **a host is answerable only when it is this machine** — nil, empty, `localhost`, `127.0.0.1` and the local host
+    name answer the port, and anything else answers nil, because a process-local table cannot ask another machine;
+  * **an invalidated port forgets its own name**, which is the same rule as `-removePortForName:` seen from the
+    port's side;
+  * **all three servers answer from ONE registry**, because there is one mechanism here: the same name resolves
+    through the socket server and through the bootstrap server's `-servicePortWithName:`.
+
+**AND ONE DOOR REFUSES, WHICH IS THE HONEST SPLIT OF THIS HALF.** `NSMessagePort` and `NSMachPort` are SOCKET PAIRS,
+so the far end is something this process holds and can publish — that is what makes an in-process registry work at
+all. **A SOCKET PORT IS AN ADDRESS**: publishing one means telling another process where to connect, and serving
+that connection needs an accept path this library does not have yet — `NSConnection` is where it belongs. So
+`NSSocketPortNameServer -registerPort:name:` answers **NO** rather than storing something nothing can be sent to,
+and its header says why.
+
+`NSMessagePort` DERIVES FROM `NSMachPort` for the same reason `NSMachPort` derives from `NSSocketPort`: the pair,
+the transport and the ownership rules are one mechanism, and a sibling would duplicate them. Two consequences are
+stated for a caller rather than left to be found: a message port also answers `-machPort`, and `-peerPort` answers
+nil for a NAMED port, because the far end was handed to the name server and "handed over once" means exactly that.
+
+**VERIFIED.** `foundation_portnames` is **10/10 green in one guest run**, its case 6/6. Regression:
+`foundation_machport` 6/6 — the transport and pair machinery this half is built on. And the standing rule's gate,
+run before this commit: `--unimplemented` reports **1 baselined** (the KVO observer method, a boundary) and
+**0 NEW**.
+
+**TWO TRAPS THIS UNIT COST.** `+sharedInstance` was declared as returning `NSPortNameServer *`, so the bootstrap
+server's own `-servicePortWithName:` was INVISIBLE through it and the probe would not compile — the fix was to
+declare the concrete type, which is also what Apple's returns an `id` for. And generating five files with one
+Python heredoc died on its own quoting (the same lesson as §62.50's `str.replace` chain): **write the file, don't
+generate it.**
+
+### WHAT REMAINS
+
+`NSProtocolChecker` and `NSDistributedLock` (the two self-contained classes left in this family), then the DO heart
+— `NSConnection`, `NSDistantObject`, `NSPortCoder` — which is what the name server's process-local boundary is
+waiting for.
 
 ## §62.53 — THE PORT FAMILY COMES BACK FROM THE STRIKE: A MESSAGE THAT CROSSES A PORT (2026-09-26)
 

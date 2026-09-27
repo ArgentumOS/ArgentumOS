@@ -34,7 +34,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  180   open   45   struck   48
+#   class      shipped  185   open   40   struck   48
 #   protocol   shipped   33   open    7   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  137   open   14   struck    9
@@ -1443,14 +1443,14 @@ class	shipped	NSLocale		Fundamentals / Localization	-	objc
 class	open	NSLocalizedNumberFormatRule		Reference / Classes	-	objc
 class	shipped	NSLock		Low-Level Utilities / Threads and Locking	-	objc
 class	struck	NSLogicalTest		App Support / Object Matching Tests	declined	objc
-class	open	NSMachBootstrapServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	shipped	NSMachBootstrapServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSMachPort		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSMapTable		Fundamentals / Pointer Collections	-	objc
 class	shipped	NSMassFormatter		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSMeasurement		Fundamentals / Essentials	-	objc
 class	shipped	NSMeasurementFormatter		Fundamentals / Measurements	-	objc
-class	open	NSMessagePort		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-class	open	NSMessagePortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	shipped	NSMessagePort		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	shipped	NSMessagePortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSMetadataItem		Files and Data Persistence / Items	declined	objc
 class	struck	NSMetadataQuery		Files and Data Persistence / Queries	declined	objc
 class	struck	NSMetadataQueryAttributeValueTuple		Files and Data Persistence / Queries / Getting query results	declined	objc
@@ -1495,7 +1495,7 @@ class	shipped	NSPointerFunctions		Fundamentals / Pointer Collections / Getting t
 class	shipped	NSPort		Low-Level Utilities / Sockets	-	objc
 class	open	NSPortCoder		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSPortMessage		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-class	open	NSPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	shipped	NSPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSPositionalSpecifier		App Support / Object Specifiers	declined	objc
 class	shipped	NSPredicate		Fundamentals / Filltering	-	objc
 class	open	NSPresentationIntent		Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
@@ -1528,7 +1528,7 @@ class	shipped	NSSet		Fundamentals / Basic Collections	-	objc
 class	struck	NSSetCommand		App Support / Script Commands	declined	objc
 class	open	NSSimpleCString		Reference / Classes	-	objc
 class	shipped	NSSocketPort		Low-Level Utilities / Sockets	-	objc
-class	open	NSSocketPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	shipped	NSSocketPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSSortDescriptor		Fundamentals / Sorting	-	objc
 class	struck	NSSpecifierTest		App Support / Object Matching Tests	declined	objc
 class	open	NSSpellServer		Fundamentals / Spelling and Grammar	-	objc

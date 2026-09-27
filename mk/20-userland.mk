@@ -1413,6 +1413,18 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_machport"
+	# foundation_portnames: §62.54's acceptance - the naming half of the port family. Almost every check is a
+	# DELIVERY rather than a lookup (a name that resolves to something nothing can reach would pass every lookup
+	# check there is), plus the stated rules: a second registration replaces, a host is answerable only when it is
+	# this machine, an invalidated port forgets its own name, and a socket port cannot be published here at all.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_portnames.m -o .build/probe-foundation_portnames.o
+	$(MUSL64_OBJC) .build/probe-foundation_portnames.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_portnames"
 	# foundation_redirect: following a redirect, decided by the delegate, bounded by the hop limit (§54).
 	# Its own HTTP server again (a 302, a 307, a decline and a never-ending chain), and it reads §52's record
 	# off the delegate, so it links the bridge and curl exactly as the two units beside it do.
