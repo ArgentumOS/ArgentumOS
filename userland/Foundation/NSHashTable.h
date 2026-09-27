@@ -88,4 +88,71 @@ typedef NSPointerFunctionsOptions NSHashTableOptions;
 
 NS_ASSUME_NONNULL_END
 
+
+/* ===================================================================================================
+ * THE LEGACY C API (§62.45), THE SAME DESIGN AS NSMapTable'S AND FOR THE SAME REASON
+ *
+ * These are the pre-10.5 functions and the call-back STRUCT Apple deprecated when `NSPointerFunctions` arrived.
+ * Apple's call-backs are promised THE TABLE — `unsigned (*hash)(NSHashTable *table, const void *pointer)` — and a
+ * C function pointer cannot close over one, so the engine's own function pointers (which take no table) cannot be
+ * what backs them. The implementation is a private subclass that carries the call-backs and hands itself to every
+ * one of them; see NSMapTable.h's note for the full argument.
+ *
+ * TWO OF THE TWENTY-EIGHT NAMES ARE NOT HERE, AND THE GROUND IS THE LIBRARY'S OWN: `NSCreateHashTableWithZone` and
+ * `NSCopyHashTableWithZone` take an `NSZone`, and `NSObjCRuntime.h` records the user-driven sequence that removed
+ * every zone-taking method, then every zone-returning one, and finally the type itself. A header cannot spell a
+ * type this library removed on purpose, so those two rows stay owed; the other twenty-six land.
+ *
+ * FIELD ORDER AND THE SENTINEL ARE OURS UNDER §11.6.1 D2.
+ * =================================================================================================== */
+
+NS_ASSUME_NONNULL_BEGIN
+
+typedef struct {
+	unsigned (*hash)(NSHashTable *table, const void *pointer);
+	BOOL (*isEqual)(NSHashTable *table, const void *pointer1, const void *pointer2);
+	void (*retain)(NSHashTable *table, const void *pointer);
+	void (*release)(NSHashTable *table, const void *pointer);
+	NSString * _Nullable (* _Nullable describe)(NSHashTable *table, const void *pointer);
+	const void *notAKeyMarker;
+} NSHashTableCallBacks;
+
+/* THE ENUMERATOR IS A VALUE THE CALLER HOLDS, as the map table's is. */
+typedef struct {
+	NSHashTable *table;
+	NSUInteger index;
+	NSArray *objects;
+} NSHashEnumerator;
+
+/* THE EIGHT PRE-BUILT SETS, and the legacy OPTION constant that came with them: `NSHashTableZeroingWeakMemory` was
+ * a flag passed where the modern API takes `NSHashTableOptions`, and its value is ours (D2) — declared rather than
+ * interpreted, because nothing here can honour a zeroing weak table that the modern options do not describe. */
+extern const NSHashTableCallBacks NSIntHashCallBacks;
+extern const NSHashTableCallBacks NSIntegerHashCallBacks;
+extern const NSHashTableCallBacks NSNonOwnedPointerHashCallBacks;
+extern const NSHashTableCallBacks NSNonRetainedObjectHashCallBacks;
+extern const NSHashTableCallBacks NSObjectHashCallBacks;
+extern const NSHashTableCallBacks NSOwnedObjectIdentityHashCallBacks;
+extern const NSHashTableCallBacks NSOwnedPointerHashCallBacks;
+extern const NSHashTableCallBacks NSPointerToStructHashCallBacks;
+extern const NSUInteger NSHashTableZeroingWeakMemory;
+
+NSHashTable *NSCreateHashTable(NSHashTableCallBacks callBacks, NSUInteger capacity);
+void NSFreeHashTable(NSHashTable *table);
+void NSResetHashTable(NSHashTable *table);
+BOOL NSCompareHashTables(NSHashTable *table1, NSHashTable *table2);
+void *NSHashGet(NSHashTable *table, const void *pointer);
+void NSHashInsert(NSHashTable *table, const void *pointer);
+void NSHashInsertKnownAbsent(NSHashTable *table, const void *pointer);
+void *NSHashInsertIfAbsent(NSHashTable *table, const void *pointer);
+void NSHashRemove(NSHashTable *table, const void *pointer);
+NSUInteger NSCountHashTable(NSHashTable *table);
+NSString *NSStringFromHashTable(NSHashTable *table);
+NSArray *NSAllHashTableObjects(NSHashTable *table);
+NSHashEnumerator NSEnumerateHashTable(NSHashTable *table);
+void *NSNextHashEnumeratorItem(NSHashEnumerator *enumerator);
+void NSEndHashTableEnumeration(NSHashEnumerator *enumerator);
+
+NS_ASSUME_NONNULL_END
+
 #endif /* FOUNDATION_NSHASHTABLE_H */

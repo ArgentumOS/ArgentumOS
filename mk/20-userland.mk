@@ -263,6 +263,7 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/FNAuthenticationChallengeSender.h \
 	$(FOUNDATION_SRC)/NSLinguisticTagger.h \
 	$(FOUNDATION_SRC)/FNTextBreaking.h \
+	$(FOUNDATION_SRC)/FNLegacyMapTable.h \
 	$(FOUNDATION_SRC)/NSURLSessionConfiguration.h \
 	$(FOUNDATION_SRC)/NSURLSessionTask.h \
 	$(FOUNDATION_SRC)/NSURLSession.h \
@@ -1303,6 +1304,18 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_legacymaptable"
+	# foundation_legacyhashtable: §62.45's acceptance - NSHashTable's LEGACY C API, the same design as the map
+	# table's and sharing its scan: the hash table's legacy mode stores each element as the inner table's KEY. The
+	# probe checks the same HAND (a call-back is handed its table) and that the set relations are ANSWERED rather
+	# than inherited from storage a legacy table does not use.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_legacyhashtable.m -o .build/probe-foundation_legacyhashtable.o
+	$(MUSL64_OBJC) .build/probe-foundation_legacyhashtable.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_legacyhashtable"
 	# foundation_redirect: following a redirect, decided by the delegate, bounded by the hop limit (§54).
 	# Its own HTTP server again (a 302, a 307, a decline and a never-ending chain), and it reads §52's record
 	# off the delegate, so it links the bridge and curl exactly as the two units beside it do.

@@ -78,7 +78,6 @@ typedef NSPointerFunctionsOptions NSMapTableOptions;
 
 NS_ASSUME_NONNULL_END
 
-#endif /* FOUNDATION_NSMAPTABLE_H */
 
 /* THE SENTINELS: a call-back returns one of these when there is no answer, and each is a pointer no real key of
  * that personality can be. THEY SIT OUTSIDE THE NULLABILITY REGION because a MACRO is not a declaration — and
@@ -173,3 +172,5 @@ BOOL NSNextMapEnumeratorPair(NSMapEnumerator *enumerator,
 void NSEndMapTableEnumeration(NSMapEnumerator *enumerator);
 
 NS_ASSUME_NONNULL_END
+
+#endif /* FOUNDATION_NSMAPTABLE_H */

@@ -16,6 +16,7 @@
  */
 
 #import <Foundation/NSMapTable.h>
+#import <Foundation/FNLegacyMapTable.h>
 #import <Foundation/FNPointerTable.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
@@ -298,23 +299,6 @@
  * is a table that carries its own call-backs and hands itself to them. THE MODERN PATH IS UNTOUCHED.
  * =================================================================================================== */
 
-@interface FNLegacyMapTable : NSMapTable
-{
-	NSMapTableKeyCallBacks _keyCallBacks;
-	NSMapTableValueCallBacks _valueCallBacks;
-	void **_legacyKeys;
-	void **_legacyValues;
-	NSUInteger _legacyCount;
-	NSUInteger _legacyCapacity;
-}
-- (instancetype)fnInitWithKeyCallBacks:(NSMapTableKeyCallBacks)keyCallBacks
-			valueCallBacks:(NSMapTableValueCallBacks)valueCallBacks
-			     capacity:(NSUInteger)capacity;
-- (NSUInteger)fnIndexForKey:(const void *)key;
-- (void *)fnKeyAtIndex:(NSUInteger)index;
-- (void *)fnValueAtIndex:(NSUInteger)index;
-- (void)fnAppendKey:(const void *)key value:(const void *)value;
-@end
 
 @implementation FNLegacyMapTable
 

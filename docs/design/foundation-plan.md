@@ -12977,6 +12977,46 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.45 — `NSHashTable`'S LEGACY C API: THE SAME HAND, AND A TYPE THAT SAID NO (2026-09-26)
+
+**WHAT SHIPPED: TWENTY-SIX NAMES.** The same pre-10.5 family in the class it belongs to: the call-back STRUCT, the
+enumerator, the eight pre-built sets, the legacy `NSHashTableZeroingWeakMemory` option, and fifteen functions. The
+ledger reads **27 `shipped`, 6 `open`**, and those six are named rather than left as a gap: **two take an `NSZone`**
+(this library removed the type on purpose — the ground `NSMapTable`'s unit already states) and **four are the legacy
+option constants** `NSHashTableStrongMemory`, `NSHashTableWeakMemory`, `NSHashTableObjectPointerPersonality` and
+`NSHashTableCopyIn`, which the ledger records as open and **not** deprecated — they belong to the class's modern
+`NSHashTableOptions` inventory and not to this unit. **The open count is 391.**
+
+**THE DESIGN WAS SETTLED BY THE MAP TABLE'S UNIT, AND THE SHARING OF IT WAS REFUSED BY THE COMPILER.** The plan was
+to have the hash table's legacy mode WRAP the map table's, and store each element as the inner table's key. It does
+not compile:
+
+    NSMapTableKeyCallBacks keys;
+    keys.hash = callBacks.hash;   /* unsigned (*)(NSHashTable *, const void *) */
+                                  /* into    unsigned (*)(NSMapTable *, const void *) */
+
+**Apple's two legacy APIs ARE DIFFERENT TYPES BY DESIGN** — a hash-table call-back is promised an `NSHashTable *`,
+a map-table call-back an `NSMapTable *`, and a caller's function pointer cannot serve both. So each legacy layer
+owns its scan: **the rule is shared (a linear scan consulting `isEqual`, never the hash) and the code is not, and
+the reason is a type rather than a preference.** `FNLegacyMapTable` was extracted to its own internal header on the
+way here (it is not public API, and the hash table no longer imports it).
+
+**A SECOND REAL DEFECT, AND THE INSTRUMENT THAT FOUND IT WAS THE MESSAGE RATHER THAN THE CHECK.** The first version
+of the set relations walked `-allObjects`, which WRAPS a non-object member in an `NSValue` — and a wrapper is not
+the member it wraps, so `intersectsHashTable:`, `isSubsetOfHashTable:`, `isEqualToHashTable:` and `NSCompareHashTables`
+all answered **NO**, a table compared with **itself** included. The check failed with prose that did not say which
+door had failed; it was rewritten to PRINT EVERY BOOLEAN AND BOTH COUNTS (`counts 2/1, equalToItself=0 …`), and the
+data named the defect in one run. The relations now read the storage directly, and `-allObjects` hands back the
+members themselves for the three OBJECT personalities (recognised by the function pointers the library's own
+pre-built sets were built from) and wrapped pointers otherwise — a stated boundary, since a bare pointer cannot be
+an element of an `NSArray` without becoming one.
+
+**VERIFIED.** `foundation_legacyhashtable` is **12/12 green** in one guest run, its case 6/6. Regressions:
+`foundation_legacymaptable` 6/6 (the unit whose design this one follows), `foundation_collection` 6/6,
+`foundation_defaults` 6/6. AND THE SAME IMPORT TRAP CAUGHT ME A **THIRD** TIME: `NSMutableString.h` does not exist in
+this tree, and the clean-room gate refuses an import that resolves to no header — three times now, each one the same
+file, which is the sort of repetition that a habit rather than a rule would have prevented.
+
 ## §62.44 — `NSMapTable`'S LEGACY C API: THE CALL-BACKS, THE TABLE, AND THE HAND (2026-09-26)
 
 **WHAT SHIPPED: THIRTY-SIX OF THE FAMILY'S THIRTY-EIGHT NAMES, AND THE TWO THAT DID NOT ARE REFUSED WITH A GROUND

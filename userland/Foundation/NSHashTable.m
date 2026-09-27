@@ -15,6 +15,12 @@
  */
 
 #import <Foundation/NSHashTable.h>
+#import <Foundation/NSValue.h>
+/* NSMutableString and NSMutableArray live in their immutable classes headers in this tree - the gate refuses an
+ * import that resolves to no header, and it has now caught this same phantom twice. */
+#import <Foundation/NSSet.h>
+#include <stdlib.h>
+#include <string.h>
 #import <Foundation/FNPointerTable.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSSet.h>
@@ -301,3 +307,431 @@
 }
 
 @end
+
+/* ===================================================================================================
+ * THE LEGACY C API (§62.45): a subclass that WRAPS THE SHARED SCAN. NSMapTable's legacy table carries the
+ * call-backs and hands itself to them; a hash table is the same thing WITH NO VALUES, so it stores the element as
+ * the key and passes no value call-backs at all — one scan, one ownership rule, and no second implementation of
+ * "is this pointer here" that could disagree with the first.
+ * =================================================================================================== */
+
+/* ITS OWN SCAN, AND THE REASON IS A TYPE RATHER THAN A PREFERENCE: Apple's hash-table call-backs take an
+ * `NSHashTable *` while the map table's take an `NSMapTable *`, so a caller's function pointer CANNOT be handed to
+ * the other class's table — the two APIs are different types by design. THE RULE IS THE SAME ONE (a linear scan that
+ * consults `isEqual` and never the hash); the storage is this class's, and the shared scan was tried first and
+ * failed to compile, which is how the type difference announced itself. */
+@interface FNLegacyHashTable : NSHashTable
+{
+	NSHashTableCallBacks _callBacks;
+	void **_members;
+	NSUInteger _memberCount;
+	NSUInteger _memberCapacity;
+	BOOL _membersAreObjects;
+}
+- (instancetype)fnInitWithCallBacks:(NSHashTableCallBacks)callBacks capacity:(NSUInteger)capacity;
+- (NSUInteger)fnIndexOfMember:(const void *)pointer;
+- (void *)fnMemberAtIndex:(NSUInteger)index;
+@end
+
+@implementation FNLegacyHashTable
+
+- (instancetype)fnInitWithCallBacks:(NSHashTableCallBacks)callBacks capacity:(NSUInteger)capacity
+{
+	self = [super init];
+	if (self != nil) {
+		_callBacks = callBacks;
+		/* WHETHER A MEMBER IS AN OBJECT IS A FACT ABOUT THE PERSONALITY, and the eight pre-built sets are this
+		 * library's own, so the three OBJECT ones are recognised by the function pointers they were built from. A
+		 * caller's own call-back set is treated as POINTERS — a stated boundary, and the reason `NSAllHashTableObjects`
+		 * wraps: a bare pointer cannot be an element of an `NSArray` without becoming one. */
+		_membersAreObjects =
+			(callBacks.hash == NSObjectHashCallBacks.hash &&
+			 callBacks.isEqual == NSObjectHashCallBacks.isEqual) ||
+			(callBacks.hash == NSNonRetainedObjectHashCallBacks.hash &&
+			 callBacks.isEqual == NSNonRetainedObjectHashCallBacks.isEqual) ||
+			(callBacks.hash == NSOwnedObjectIdentityHashCallBacks.hash &&
+			 callBacks.isEqual == NSOwnedObjectIdentityHashCallBacks.isEqual);
+		_memberCapacity = capacity > 0 ? capacity : 4;
+		_members = (void **)calloc(_memberCapacity, sizeof(void *));
+		if (_members == NULL) {
+			[self release];
+			return nil;
+		}
+	}
+	return self;
+}
+
+- (NSUInteger)fnIndexOfMember:(const void *)pointer
+{
+	NSUInteger i;
+
+	for (i = 0; i < _memberCount; i++) {
+		if (_callBacks.isEqual != NULL) {
+			if (_callBacks.isEqual(self, _members[i], pointer)) {
+				return i;
+			}
+		} else if (_members[i] == pointer) {
+			return i;
+		}
+	}
+	return NSNotFound;
+}
+
+- (void *)fnMemberAtIndex:(NSUInteger)index
+{
+	return index < _memberCount ? _members[index] : NULL;
+}
+
+- (NSUInteger)count { return _memberCount; }
+
+- (id)anyObject
+{
+	return _memberCount > 0 ? (id)_members[0] : nil;
+}
+
+- (NSArray *)allObjects
+{
+	NSMutableArray *out = [[NSMutableArray alloc] init];
+	NSUInteger i;
+
+	for (i = 0; i < _memberCount; i++) {
+		[out addObject:_membersAreObjects ? (id)_members[i] : (id)[NSValue valueWithPointer:_members[i]]];
+	}
+	return [out autorelease];
+}
+
+- (NSSet *)setRepresentation
+{
+	return [NSSet setWithArray:[self allObjects]];
+}
+
+- (BOOL)containsObject:(id)anObject
+{
+	return [self fnIndexOfMember:(const void *)anObject] != NSNotFound;
+}
+
+- (id)member:(id)object
+{
+	NSUInteger index = [self fnIndexOfMember:(const void *)object];
+
+	return index == NSNotFound ? nil : (id)_members[index];
+}
+
+- (NSEnumerator *)objectEnumerator
+{
+	return [[self allObjects] objectEnumerator];
+}
+
+/* `-addObject:` LEAVES AN EQUAL MEMBER ALONE, which is Apple's own rule for this class. */
+- (void)addObject:(id)object
+{
+	if ([self containsObject:object]) {
+		return;
+	}
+	if (_memberCount == _memberCapacity) {
+		_memberCapacity *= 2;
+		_members = (void **)realloc(_members, sizeof(void *) * _memberCapacity);
+	}
+	if (_callBacks.retain != NULL) {
+		_callBacks.retain(self, (const void *)object);
+	}
+	_members[_memberCount++] = (void *)object;
+}
+
+- (void)removeObject:(id)object
+{
+	NSUInteger index = [self fnIndexOfMember:(const void *)object];
+
+	if (index == NSNotFound) {
+		return;
+	}
+	if (_callBacks.release != NULL) {
+		_callBacks.release(self, _members[index]);
+	}
+	_memberCount--;
+	if (index < _memberCount) {
+		memmove(&_members[index], &_members[index + 1], sizeof(void *) * (_memberCount - index));
+	}
+}
+
+- (void)removeAllObjects
+{
+	NSUInteger i;
+
+	for (i = 0; i < _memberCount; i++) {
+		if (_callBacks.release != NULL) {
+			_callBacks.release(self, _members[i]);
+		}
+	}
+	_memberCount = 0;
+}
+
+/* THE FOUR SET-RELATION DOORS ARE OVERRIDDEN RATHER THAN INHERITED, and that is not tidiness: the parent would
+ * answer from its OWN (empty) storage, which is a wrong answer rather than a missing one. */
+- (void)intersectHashTable:(NSHashTable *)other
+{
+	NSUInteger i;
+
+	/* IT WALKS THE STORAGE AND NOT `-allObjects`, WHICH IS THE BUG THE FIRST VERSION HAD: that array wraps a
+	 * non-object member in an `NSValue`, and a wrapper is not the member it wraps, so every relation answered NO
+	 * — a table compared with ITSELF included. */
+	for (i = _memberCount; i > 0; i--) {
+		if (![other containsObject:(id)_members[i - 1]]) {
+			[self removeObject:(id)_members[i - 1]];
+		}
+	}
+}
+
+- (BOOL)intersectsHashTable:(NSHashTable *)other
+{
+	NSUInteger i;
+
+	for (i = 0; i < _memberCount; i++) {
+		if ([other containsObject:(id)_members[i]]) {
+			return YES;
+		}
+	}
+	return NO;
+}
+
+- (BOOL)isSubsetOfHashTable:(NSHashTable *)other
+{
+	NSUInteger i;
+
+	for (i = 0; i < _memberCount; i++) {
+		if (![other containsObject:(id)_members[i]]) {
+			return NO;
+		}
+	}
+	return YES;
+}
+
+- (BOOL)isEqualToHashTable:(NSHashTable *)other
+{
+	return [self count] == [other count] && [self isSubsetOfHashTable:other];
+}
+
+- (id)copy
+{
+	FNLegacyHashTable *copy = [[FNLegacyHashTable alloc] fnInitWithCallBacks:_callBacks
+								       capacity:[self count]];
+	NSUInteger i;
+
+	for (i = 0; i < _memberCount; i++) {
+		[copy addObject:(id)_members[i]];
+	}
+	return copy;
+}
+
+- (void)dealloc
+{
+	[self removeAllObjects];
+	free(_members);
+	[super dealloc];
+}
+
+@end
+
+/* --- THE EIGHT PRE-BUILT SETS, AND THE LEGACY OPTION ------------------------------------------------ */
+
+static unsigned fn_ptr_hash(NSHashTable *table, const void *pointer)
+{
+	(void)table;
+	return (unsigned)((uintptr_t)pointer >> 2);
+}
+
+static BOOL fn_ptr_equal(NSHashTable *table, const void *a, const void *b)
+{
+	(void)table;
+	return a == b;
+}
+
+static NSString *fn_ptr_describe(NSHashTable *table, const void *pointer)
+{
+	(void)table;
+	return [NSString stringWithFormat:@"%p", pointer];
+}
+
+static unsigned fn_object_hash(NSHashTable *table, const void *pointer)
+{
+	(void)table;
+	return (unsigned)[(id)pointer hash];
+}
+
+static BOOL fn_object_equal(NSHashTable *table, const void *a, const void *b)
+{
+	(void)table;
+	return [(id)a isEqual:(id)b];
+}
+
+static void fn_object_retain(NSHashTable *table, const void *pointer)
+{
+	(void)table;
+	[(id)pointer retain];
+}
+
+static void fn_object_release(NSHashTable *table, const void *pointer)
+{
+	(void)table;
+	[(id)pointer release];
+}
+
+static NSString *fn_object_describe(NSHashTable *table, const void *pointer)
+{
+	(void)table;
+	return [(id)pointer description];
+}
+
+static unsigned fn_int_hash(NSHashTable *table, const void *pointer)
+{
+	(void)table;
+	return (unsigned)(long)pointer;
+}
+
+static BOOL fn_int_equal(NSHashTable *table, const void *a, const void *b)
+{
+	(void)table;
+	return (long)a == (long)b;
+}
+
+static NSString *fn_int_describe(NSHashTable *table, const void *pointer)
+{
+	(void)table;
+	return [NSString stringWithFormat:@"%ld", (long)pointer];
+}
+
+static void fn_owned_release(NSHashTable *table, const void *pointer)
+{
+	(void)table;
+	free((void *)pointer);
+}
+
+const NSHashTableCallBacks NSObjectHashCallBacks = {
+	fn_object_hash, fn_object_equal, fn_object_retain, fn_object_release, fn_object_describe,
+	(void *)-1
+};
+
+const NSHashTableCallBacks NSNonOwnedPointerHashCallBacks = {
+	fn_ptr_hash, fn_ptr_equal, NULL, NULL, fn_ptr_describe, (void *)-1
+};
+
+const NSHashTableCallBacks NSNonRetainedObjectHashCallBacks = {
+	fn_object_hash, fn_object_equal, NULL, NULL, fn_object_describe, (void *)-1
+};
+
+/* THE IDENTITY VARIANT: an object's POINTER is its identity, where the object set hashes and compares by value. */
+const NSHashTableCallBacks NSOwnedObjectIdentityHashCallBacks = {
+	fn_ptr_hash, fn_ptr_equal, fn_object_retain, fn_object_release, fn_object_describe, (void *)-1
+};
+
+const NSHashTableCallBacks NSOwnedPointerHashCallBacks = {
+	fn_ptr_hash, fn_ptr_equal, NULL, fn_owned_release, fn_ptr_describe, (void *)-1
+};
+
+const NSHashTableCallBacks NSPointerToStructHashCallBacks = {
+	fn_ptr_hash, fn_ptr_equal, NULL, NULL, fn_ptr_describe, (void *)-1
+};
+
+const NSHashTableCallBacks NSIntHashCallBacks = {
+	fn_int_hash, fn_int_equal, NULL, NULL, fn_int_describe, (void *)(long)-1
+};
+
+const NSHashTableCallBacks NSIntegerHashCallBacks = {
+	fn_int_hash, fn_int_equal, NULL, NULL, fn_int_describe, (void *)(long)-1
+};
+
+const NSUInteger NSHashTableZeroingWeakMemory = 1;
+
+/* --- THE FUNCTIONS --------------------------------------------------------------------------------- */
+
+NSHashTable *NSCreateHashTable(NSHashTableCallBacks callBacks, NSUInteger capacity)
+{
+	/* NO ZONE FORM, AND THE HEADER SAYS WHY: this library has no `NSZone` type, so this is a legacy table's only
+	 * creation door. */
+	return [[FNLegacyHashTable alloc] fnInitWithCallBacks:callBacks capacity:capacity];
+}
+
+void NSFreeHashTable(NSHashTable *table) { [table release]; }
+void NSResetHashTable(NSHashTable *table) { [table removeAllObjects]; }
+NSUInteger NSCountHashTable(NSHashTable *table) { return [table count]; }
+NSArray *NSAllHashTableObjects(NSHashTable *table) { return [table allObjects]; }
+
+void *NSHashGet(NSHashTable *table, const void *pointer)
+{
+	return (void *)[table member:(id)pointer];
+}
+
+void NSHashInsert(NSHashTable *table, const void *pointer)
+{
+	[table addObject:(id)pointer];
+}
+
+void NSHashInsertKnownAbsent(NSHashTable *table, const void *pointer)
+{
+	[table addObject:(id)pointer];
+}
+
+void *NSHashInsertIfAbsent(NSHashTable *table, const void *pointer)
+{
+	void *existing = (void *)[table member:(id)pointer];
+
+	if (existing != NULL) {
+		return existing;
+	}
+	[table addObject:(id)pointer];
+	return NULL;
+}
+
+void NSHashRemove(NSHashTable *table, const void *pointer)
+{
+	[table removeObject:(id)pointer];
+}
+
+NSString *NSStringFromHashTable(NSHashTable *table)
+{
+	NSMutableString *text = [[NSMutableString alloc] initWithString:@"{"];
+	NSEnumerator *objects = [table objectEnumerator];
+	id object;
+	NSUInteger i = 0, count = [table count];
+
+	while ((object = [objects nextObject]) != nil) {
+		[text appendFormat:@"%@%@", object, (++i < count) ? @"; " : @""];
+	}
+	[text appendString:@"}"];
+	return [text autorelease];
+}
+
+NSHashEnumerator NSEnumerateHashTable(NSHashTable *table)
+{
+	NSHashEnumerator enumerator;
+
+	enumerator.table = table;
+	enumerator.index = 0;
+	enumerator.objects = [NSAllHashTableObjects(table) retain];
+	return enumerator;
+}
+
+void *NSNextHashEnumeratorItem(NSHashEnumerator *enumerator)
+{
+	void *item;
+
+	if (enumerator == NULL || enumerator->index >= [enumerator->objects count]) {
+		return NULL;
+	}
+	item = [(NSValue *)[enumerator->objects objectAtIndex:enumerator->index] pointerValue];
+	enumerator->index++;
+	return item;
+}
+
+void NSEndHashTableEnumeration(NSHashEnumerator *enumerator)
+{
+	if (enumerator != NULL) {
+		[enumerator->objects release];
+		enumerator->objects = nil;
+	}
+}
+
+BOOL NSCompareHashTables(NSHashTable *table1, NSHashTable *table2)
+{
+	return [table1 isEqualToHashTable:table2];
+}
