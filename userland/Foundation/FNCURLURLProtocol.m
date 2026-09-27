@@ -50,6 +50,7 @@ typedef struct FNCurlTransfer {
 	volatile int stopped;		/* -stopLoading was called from another thread */
 	int64_t reportedUpload;		/* the last upload total REPORTED, so progress is not a stream of duplicates */
 	int64_t reportedUploadExpected;
+	int refusedNoLength;		/* the body was a stream whose LENGTH COULD NOT BE ESTABLISHED (§62.39) */
 	NSInputStream *bodyStream;	/* NOT RETAINED, like the protocol above: the REQUEST owns it and the request
 					 * outlives the transfer. IT IS CONSUMED BY SENDING, which is why a re-send cannot use
 					 * it again (see the body branch). */
@@ -671,6 +672,14 @@ static NSURLSessionTaskTransactionMetrics *fn_metrics_for_transfer(FNCurlTransfe
 				uploadSize = (curl_off_t)[published longLongValue];
 			} else if ([transfer.bodyStream getBuffer:&streamBytes length:&streamLength]) {
 				uploadSize = (curl_off_t)streamLength;
+			} else {
+				/* NOTHING HERE CAN ESTABLISH A SIZE, AND THIS BUILD SENDS NO BODY AT ALL FOR AN UPLOAD OF
+				 * UNKNOWN SIZE (§62.37, §62.38 - measured twice, with the implicit route and with curl's own
+				 * chunked switch). SO THE TRANSFER IS REFUSED, LOUDLY, RATHER THAN RUN AND SUCCEED WITH AN
+				 * EMPTY BODY: that is the shape §62.36 established for a failed read, applied to a body that
+				 * cannot be described. A caller can act on this: publish a `Content-Length`, or hand over a
+				 * stream that can report its length. */
+				transfer.refusedNoLength = 1;
 			}
 			curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
 			curl_easy_setopt(curl, CURLOPT_READFUNCTION, fn_curl_read);
@@ -696,7 +705,10 @@ static NSURLSessionTaskTransactionMetrics *fn_metrics_for_transfer(FNCurlTransfe
 	 * here. THE ATTEMPT COUNT IS THE GUARD - the flag is only ever set when transfer->attempt was 0, so the
 	 * second pass cannot set it again, and a server that always answers 401 does not spin. */
 retry_transfer:
-	if (transfer.credential != nil) {
+	if (transfer.refusedNoLength) {
+		/* NOTHING RUNS: the setup refused the body, and the ending below is where that is reported - the
+		 * same chain every other outcome goes through, so the failure travels the ordinary path. */
+	} else if (transfer.credential != nil) {
 		curl_easy_setopt(curl, CURLOPT_USERNAME, [[transfer.credential user] UTF8String]);
 		curl_easy_setopt(curl, CURLOPT_PASSWORD, [[transfer.credential password] UTF8String]);
 		/* CURLAUTH_BASIC AND NOT CURLAUTH_ANY, AND THAT IS THE WHOLE OF THIS BUG: with ANY, curl WAITS FOR A
@@ -710,7 +722,7 @@ retry_transfer:
 	/* THE INSTANT THIS ATTEMPT BEGINS (§52): curl reports DURATIONS and no instants, so this capture is the
 	 * base of every date in the record - and it is taken PER ATTEMPT, because a re-issued 401 is a SECOND
 	 * transaction rather than a longer first one. */
-	{
+	if (!transfer.refusedNoLength) {
 		NSDate *attemptStarted = [NSDate date];
 
 		_transfer = &transfer;
@@ -727,7 +739,19 @@ retry_transfer:
 		goto retry_transfer;
 	}
 
-	if (transfer.cancelledChallenge) {
+	if (transfer.refusedNoLength) {
+		/* THE REFUSAL, WITH A SENTENCE A CALLER CAN ACT ON. THE DOMAIN AND CODE ARE THE TRANSPORT'S OWN
+		 * because no Apple error means this: `NSURLErrorRequestBodyStreamExhausted` is about a stream that
+		 * RAN DRY, and this is a body nobody could measure - a different fact, and inventing a name for it
+		 * would be worse than saying it plainly. */
+		[_client URLProtocol:self didFailWithError:
+			[NSError errorWithDomain:@"FNCURLURLProtocol"
+					    code:3
+					userInfo:@{NSLocalizedDescriptionKey:
+						@"the body is a stream with no published Content-Length, and this transport "
+						@"cannot send an upload of unknown size: publish one, or hand over a stream "
+						@"that can report its length (an in-memory stream does)"}]];
+	} else if (transfer.cancelledChallenge) {
 		/* THE CLIENT CANCELLED THE CHALLENGE: that is a failure of the task, not a response to hand back. */
 		/* THE CODE IS THE TRANSPORT'S OWN, because the NSURLError* constant mass is NOT SHIPPED YET (it is
 		 * its own ledger row and its own slice): naming a constant this library does not declare would

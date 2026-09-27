@@ -1000,6 +1000,54 @@ int main(void)
 			@"length means CHUNKED, not nothing", (int)total5, found5 ? "PRESENT" : "ABSENT"]);
 	}
 
+	/* --- A BODY NOBODY CAN MEASURE IS REFUSED, NOT SENT AS NOTHING (§62.39) -------------------------- */
+	{
+		NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"fn-unmeasurable-body.txt"];
+		NSURLSessionConfiguration *configuration6 = [NSURLSessionConfiguration defaultSessionConfiguration];
+		NSURLSession *session6 = [NSURLSession sessionWithConfiguration:configuration6];
+		NSMutableURLRequest *unmeasurable = [NSMutableURLRequest requestWithURL:fn_url(@"http://127.0.0.1:46473/")];
+		NSURLSessionDataTask *task6;
+		__block BOOL called6 = NO;
+		__block NSError *refusal = nil;
+
+		{
+			id bodyBytes = [@"a body nobody can measure" dataUsingEncoding:NSUTF8StringEncoding];
+
+			[bodyBytes writeToFile:path atomically:YES];
+		}
+		[unmeasurable setHTTPMethod:@"POST"];
+		/* A FILE-BACKED STREAM, AND NO LISTENER ANYWHERE: its bytes are not in memory, so it cannot report a
+		 * length, and no Content-Length is published - the case that used to send NOTHING and succeed. THERE IS
+		 * NO SERVER, SO THE CHECK CANNOT PASS BY ACCIDENT: the refusal happens BEFORE the transport dials, and a
+		 * transport that dialled instead would fail to connect - a different error, and a different code. */
+		[unmeasurable setHTTPBodyStream:[NSInputStream inputStreamWithFileAtPath:path]];
+		[unmeasurable setTimeoutInterval:3.0];
+		task6 = [session6 dataTaskWithRequest:unmeasurable
+			   completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+			(void)data;
+			(void)response;
+			refusal = error;
+			called6 = YES;
+		}];
+		[task6 resume];
+		{
+			int waited6 = 0;
+
+			while(!called6 && waited6 < 300) {
+				usleep(10000);
+				waited6++;
+			}
+		}
+		check("an-unmeasurable-stream-body-is-refused-rather-than-sent-as-nothing",
+		      called6 && refusal != nil &&
+		      [[refusal domain] isEqualToString:@"FNCURLURLProtocol"] && [refusal code] == 3,
+		      [NSString stringWithFormat:@"the upload reported %@ (domain %@, code %d) - a body nobody can "
+			@"measure is refused with a sentence a caller can act on, not sent as an empty one",
+			refusal != nil ? @"an error" : @"SUCCESS",
+			refusal != nil ? [refusal domain] : @"(none)",
+			refusal != nil ? (int)[refusal code] : 0]);
+	}
+
 	printf("FOUNDATION-URLSESSION-TASK RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-URLSESSION-TASK-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-URLSESSION-TASK DONE\n");

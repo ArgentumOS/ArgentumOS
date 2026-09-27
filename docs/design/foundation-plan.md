@@ -12977,6 +12977,34 @@ see. The check is renamed for what it now proves (`coordinator-ships-the-doors-t
 accessor before its presenters relinquish. The four measurement debts are otherwise closed (the timing mystery
 in 6i), and the W8 workstream's own queue is empty.
 
+## §62.39 — A BODY NOBODY CAN MEASURE IS REFUSED, LOUDLY (§62.39, 2026-09-26)
+
+**WHAT SHIPPED, AND IT IS §62.36'S SHAPE APPLIED TO THE OTHER SILENT PATH.** §62.38 solved the unpublished length
+for the case that matters (the stream's own buffer) and NAMED what it did not solve: a stream that genuinely
+cannot report a length — a file, a pipe, a socket, a lazy generator. Left alone, that case **sends no body and the
+transfer SUCCEEDS**. Now it is **refused**, with a sentence a caller can act on: *publish a `Content-Length`, or
+hand over a stream that can report its length (an in-memory stream does)*. The refusal is reported through the
+ordinary ending chain, so it travels the same path every other outcome takes, and the domain and code are the
+transport's own — because `NSURLErrorRequestBodyStreamExhausted` means a stream that RAN DRY, and a body nobody
+could measure is a different fact. Inventing a name for it would be worse than saying it plainly.
+
+**THE CHECK CANNOT PASS BY ACCIDENT, AND THAT IS STRUCTURAL RATHER THAN LUCKY:** its request points at a port with
+**NO LISTENER AT ALL**. A transport that dialled instead of refusing would fail to CONNECT — a different error with
+a different code — so the check's own condition (this transport's domain, code 3) is only satisfiable by the
+refusal, which happens **before** the transfer is dialled. And it was pushed through a negative trial: with the
+refusal disabled the check FAILS, and its own message says why — *"the upload reported an error (domain
+FNCURLURLProtocol, code 7)"* (7 is `CURLE_COULDNT_CONNECT`). **The check is known to fail for the right reason and
+to pass only for the other one.**
+
+**VERIFIED.** `foundation_urlsession_task` is **32/32 green**. Regressions: `foundation_urlsession` 6/6,
+`foundation_urlconnection` 6/6, `foundation_cachehooks` 3/3, `foundation_downloadresume` 6/6,
+`foundation_authloop` 3/3.
+
+**AND THE PATTERN THIS AREA HAS NOW ESTABLISHED, WORTH SAYING ONCE:** every silent failure fixed here was found
+the same way — a probe that ran the path, a marker at the writer, and a check that was then *made to fail* on
+purpose. The comments that claimed these paths were fine were never the evidence; three of them were falsified in
+as many units (§62.34, §62.36, §62.37).
+
 ## §62.38 — ASK THE STREAM ITSELF: THE UNPUBLISHED LENGTH IS SOLVED FOR THE COMMON CASE, AND THE REST IS NAMED (2026-09-26)
 
 **THE MEASUREMENT THAT DECIDED IT, AND THE TWO CANDIDATES IT KILLED.** §62.37 left one hypothesis standing (a curl
