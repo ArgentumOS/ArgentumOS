@@ -14022,6 +14022,42 @@ node-level one carry DIFFERENT enums and the writer meant one of them — a fide
 `-Wincompatible-pointer-types-discards-qualifiers` 1 (`NSFileCoordinator`'s block captures a struct BY VALUE and
 mutates it through `&`, throwing the mutation away — a real bug whose fix must decide the struct's LIFETIME first).
 
+## §62.73 — THE WARNING SWEEP, PHASE 4: DOORS DECLARED ON ONE CLASS AND IMPLEMENTED ON ANOTHER (2026-09-26)
+
+**67 → 52 warnings, fifteen of them from ONE placement mistake in the XML node hierarchy.**
+`-Wincomplete-implementation` went **11 → 6**, and with it a group the compiler had been warning about all along:
+`NSXMLDocument` and `NSXMLDTD` calling `-addChild:` and `-insertChild:atIndex:` **against a declaration it could
+not find** — the same `-Wobjc-method-access` class that hid §62.69's selector typo, where a call nobody can check
+is a call nobody is checking.
+
+**THE DIAGNOSIS, AND IT IS THE SAME SHAPE AS §62.72'S:** the five child-mutation doors were **DECLARED on
+`NSXMLElement` and IMPLEMENTED on the base `NSXMLNode`**. `NSXMLElement` satisfied its own declaration with a pure
+`[super addChild:]` forwarder; the other five had no forwarder at all, so the compiler reported them missing at
+`NSXMLElement` *and* could not resolve them for the two classes that actually call them (`NSXMLDocument`,
+`NSXMLDTD` are siblings of `NSXMLElement`, not subclasses of it — so `NSXMLElement`'s declaration was never
+visible to them).
+
+**THE FIX IS ONE DECISION: declare the six doors on the base, where they are already implemented, and delete the
+redeclaration and the forwarder that existed only to satisfy it.** No behaviour changes — it is the same method
+the same objects already reached — and what changes is that the compiler now checks the call sites. **The
+deviation is stated in the header itself (§11.6):** Apple declares the child-mutation API on the three classes that
+MUTATE (`NSXMLElement`, `NSXMLDocument`, `NSXMLDTD`), while this tree declares it ONCE, on the node all three
+inherit from — a PLACEMENT difference, not a semantic one, and the note in the header says exactly that.
+
+**VERIFIED.** Host: `make host-foundation-run` — **37 probes, every tally `fail=0`**. Guest: `make testimg` +
+`make test TESTS='foundation_xmldocument,foundation_xmldtd,foundation_xmlparser'` → **`TESTS-OK 3/3 case(s), 18/18
+check(s) in 14s`** — three cases, because the change is in the hierarchy they all stand on. `foundation-gate`:
+**OK — 543 files, 203 of 207 public headers**; `--unimplemented`: **0 NEW**; sweep consistent.
+
+**WHAT IS LEFT — 52 warnings:** `-Wobjc-method-access` 26 + `-Wreceiver-forward-class` 11 (the mechanical pair, and
+the next phase: mostly one missing import each) · `-Wincomplete-implementation` 6 (`NSSocketPort`'s
+`-sendBeforeDate:components:from:reserved:`, which needs a refusal or an implementation, and **`NSString`'s five**
+— `-UTF8String`, `-length`, `-characterCount`, `-characterAtIndex:` and
+`-enumerateSubstringsInRange:options:usingBlock:` — where the implementation lives in categories while the
+interface declares them, so the fix is a real code move in a 2600-line file) · `-Wenum-conversion` 4 (the XML
+`-initWithKind:` sites) · `-Wprotocol` 1 · `-Wobjc-protocol-method-implementation` 1 ·
+`-Wincompatible-pointer-types-discards-qualifiers` 1.
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else

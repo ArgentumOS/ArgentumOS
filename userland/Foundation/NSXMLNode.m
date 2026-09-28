@@ -657,11 +657,6 @@ static NSString *fn_xml_escape_attribute(NSString *text, BOOL singleQuoted)
 	return answer;
 }
 
-- (void)addChild:(id)child
-{
-	[super addChild:child];
-}
-
 - (void)normalizeAdjacentTextNodesPreservingCDATA:(BOOL)preserve
 {
 	NSUInteger i = 0;

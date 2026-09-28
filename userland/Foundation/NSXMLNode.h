@@ -134,6 +134,20 @@ typedef enum {
 - (nullable id)previousSibling;
 - (void)detach;
 
+/* THE CHILD-MUTATION DOORS, DECLARED HERE BECAUSE THIS IS WHERE THEY ARE IMPLEMENTED - and this is a PLACEMENT
+ * DEVIATION from Apple, stated rather than hidden (§11.6). Apple declares them on the three classes that MUTATE -
+ * NSXMLElement, NSXMLDocument and NSXMLDTD - while this tree has ONE implementation, on the node all three
+ * inherit from; NSXMLElement's copy of the declarations was satisfied by a pure `[super addChild:]` forwarder and
+ * the other five simply did not resolve, which is why the compiler reported them as missing here and as calls it
+ * could not check in NSXMLDocument and NSXMLDTD (the -Wobjc-method-access class that hid §62.69's selector typo).
+ * Declaring them on the base changes NO behaviour: it is the same method the same objects already reached. */
+- (void)addChild:(id)child;
+- (void)insertChild:(id)child atIndex:(NSUInteger)index;
+- (void)insertChildren:(NSArray *)children atIndex:(NSUInteger)index;
+- (void)removeChildAtIndex:(NSUInteger)index;
+- (void)replaceChildAtIndex:(NSUInteger)index withNode:(id)node;
+- (void)setChildren:(nullable NSArray *)children;
+
 /* "Emitting Node Content": the node written back out as XML, with the options that decide its shape. */
 - (NSString *)XMLString;
 - (NSString *)XMLStringWithOptions:(NSXMLNodeOptions)options;
@@ -157,12 +171,8 @@ typedef enum {
 - (NSArray *)elementsForName:(NSString *)name;
 - (NSArray *)elementsForLocalName:(NSString *)localName URI:(nullable NSString *)URI;
 
-- (void)addChild:(id)child;
-- (void)insertChild:(id)child atIndex:(NSUInteger)index;
-- (void)insertChildren:(NSArray *)children atIndex:(NSUInteger)index;
-- (void)removeChildAtIndex:(NSUInteger)index;
-- (void)replaceChildAtIndex:(NSUInteger)index withNode:(id)node;
-- (void)setChildren:(nullable NSArray *)children;
+/* THE CHILD-MUTATION DOORS ARE INHERITED, not redeclared: see the note in NSXMLNode's interface for why this
+ * tree declares them once, on the node that implements them. */
 - (void)normalizeAdjacentTextNodesPreservingCDATA:(BOOL)preserve;
 
 - (void)addAttribute:(id)attribute;
