@@ -34,14 +34,14 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  218   open    7   struck   48
-#   protocol   shipped   36   open    4   struck    5
+#   class      shipped  219   open    6   struck   48
+#   protocol   shipped   37   open    3   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  147   open    4   struck    9
 #   case       shipped 1184   open   43   struck   75
 #   func       shipped  165   open   12   struck   12
-#   var        shipped  658   open   49   struck  207
-#   typealias  shipped   66   open    5   struck    5
+#   var        shipped  659   open   48   struck  207
+#   typealias  shipped   67   open    4   struck    5
 #   struct     shipped   13   open    0   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -1595,7 +1595,7 @@ class	shipped	NSUnitPressure		Fundamentals / Mass, Weight, and Force	-	objc
 class	shipped	NSUnitSpeed		Fundamentals / Time and Motion	-	objc
 class	shipped	NSUnitTemperature		Fundamentals / Energy, Heat, and Light	-	objc
 class	shipped	NSUnitVolume		Fundamentals / Physical Dimension	-	objc
-class	open	NSUserActivity		App Support / Activity Sharing	-	objc
+class	shipped	NSUserActivity		App Support / Activity Sharing	-	objc
 class	struck	NSUserAppleScriptTask		Low-Level Utilities / Scripts and External Tasks	declined	objc
 class	struck	NSUserAutomatorTask		Low-Level Utilities / Scripts and External Tasks	declined	objc
 class	shipped	NSUserDefaults		Files and Data Persistence / App-specific settings	-	objc
@@ -2260,7 +2260,7 @@ protocol	shipped	NSURLSessionDownloadDelegate		Networking / Essentials / Adding 
 protocol	shipped	NSURLSessionStreamDelegate		Networking / Essentials / Adding stream tasks to a session	-	objc
 protocol	shipped	NSURLSessionTaskDelegate		Networking / Essentials / Working with a delegate	-	objc
 protocol	shipped	NSURLSessionWebSocketDelegate		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
-protocol	open	NSUserActivityDelegate		App Support / Activity Sharing / Monitoring activity-related behaviors	-	objc
+protocol	shipped	NSUserActivityDelegate		App Support / Activity Sharing / Monitoring activity-related behaviors	-	objc
 protocol	shipped	NSUserNotificationCenterDelegate		App Support / User Notifications	-	objc
 protocol	shipped	NSXMLParserDelegate		Files and Data Persistence / XML / Event-Based Processing	-	objc
 protocol	struck	NSXPCListenerDelegate		Low-Level Utilities / XPC Services	declined	objc
@@ -2345,7 +2345,7 @@ typealias	shipped	NSURLUbiquitousSharedItemPermissions	NSURL	Fundamentals / URLs
 typealias	shipped	NSURLUbiquitousSharedItemRole	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 typealias	shipped	NSUncaughtExceptionHandler	NSException	App Support / Exceptions / Related Types	-	objc
 typealias	open	NSUndoManagerUserInfoKey	NSUndoManager	App Support / Undo / Working with user info	-	objc
-typealias	open	NSUserActivityPersistentIdentifier	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
+typealias	shipped	NSUserActivityPersistentIdentifier	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
 typealias	struck	NSUserAppleScriptTaskCompletionHandler	NSUserAppleScriptTask	Low-Level Utilities / Scripts and External Tasks / Constants	declined	objc
 typealias	struck	NSUserAutomatorTaskCompletionHandler	NSUserAutomatorTask	Low-Level Utilities / Scripts and External Tasks / Constants	declined	objc
 typealias	struck	NSUserScriptTaskCompletionHandler	NSUserScriptTask	Low-Level Utilities / Scripts and External Tasks / Constants	declined	objc
@@ -3255,7 +3255,7 @@ var	shipped	NSUndoManagerWillUndoChangeNotification	NSUndoManager	App Support / 
 var	shipped	NSUnionOfArraysKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSUnionOfObjectsKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSUnionOfSetsKeyValueOperator		Reference / Constants	-	objc
-var	open	NSUserActivityTypeBrowsingWeb	NSUserActivity	App Support / Activity Sharing / Browsing the web	-	objc
+var	shipped	NSUserActivityTypeBrowsingWeb	NSUserActivity	App Support / Activity Sharing / Browsing the web	-	objc
 var	shipped	NSUserDefaultsDidChangeNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Monitoring settings changes and issues	-	objc
 var	shipped	NSUserDefaultsSizeLimitExceededNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Monitoring settings changes and issues	-	objc
 var	shipped	NSUserNotificationDefaultSoundName	NSUserNotification	App Support / User Notifications / Constants	deprecated	objc

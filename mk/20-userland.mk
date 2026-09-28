@@ -274,6 +274,8 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSArchiver.h \
 	$(FOUNDATION_SRC)/NSUbiquitousKeyValueStore.h \
 	$(FOUNDATION_SRC)/NSBundleResourceRequest.h \
+	$(FOUNDATION_SRC)/NSUserActivity.h \
+	$(FOUNDATION_SRC)/FNUserActivity.h \
 	$(FOUNDATION_SRC)/FNBundleResourceRequest.h \
 	$(FOUNDATION_SRC)/FNSUbiquitousStore.h \
 	$(FOUNDATION_SRC)/FNArchiverWire.h \
@@ -1350,6 +1352,16 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_resourcerequest.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_resourcerequest"
+	# foundation_useractivity: §62.89's acceptance - the activity object and its delegate, closing
+	# `App Support / Activity Sharing`. ONE unit, Foundation only: the activity's own state is real and the
+	# second device is absent, so the two continuity doors are driven through the seam and report the error
+	# code this library already declares.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_useractivity.m -o .build/probe-foundation_useractivity.o
+	$(MUSL64_OBJC) .build/probe-foundation_useractivity.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_useractivity"
 	# foundation_downloadresume: §62.31's acceptance - RESUME end to end, WITH A REAL SERVER. The probe is
 	# the server: it sends half a body and then STALLS mid-transfer (which is what makes the cancel
 	# deterministic), resumes from the data its own cancel produced, and asserts the resumed request carries
