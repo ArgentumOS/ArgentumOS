@@ -168,7 +168,7 @@
 				  type:(NSString *)type
 			  defaultValue:(NSString *)defaultValue
 {
-	NSXMLDTDNode *node = [[NSXMLDTDNode alloc] initWithKind:NSXMLAttributeKind];
+	NSXMLDTDNode *node = [[NSXMLDTDNode alloc] initWithKind:(NSXMLDTDNodeKind)NSXMLAttributeKind];
 
 	(void)parser;
 	[node setName:attributeName];
@@ -228,7 +228,7 @@
 			     publicID:(NSString *)publicID
 			     systemID:(NSString *)systemID
 {
-	NSXMLDTDNode *node = [[NSXMLDTDNode alloc] initWithKind:NSXMLNotationDeclarationKind];
+	NSXMLDTDNode *node = [[NSXMLDTDNode alloc] initWithKind:(NSXMLDTDNodeKind)NSXMLNotationDeclarationKind];
 
 	(void)parser;
 	[node setName:name];

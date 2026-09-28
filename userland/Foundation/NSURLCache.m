@@ -11,6 +11,7 @@
 #import <Foundation/NSURLSessionTask.h>
 #import <Foundation/NSData.h>
 #import <Foundation/NSDate.h>
+#import <Foundation/NSString.h>
 
 /* APPLE'S OWN DEFAULT SIZES for the shared cache, so that a shared cache which stored nothing is not what a
  * caller gets by saying nothing. */

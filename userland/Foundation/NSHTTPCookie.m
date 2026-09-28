@@ -11,6 +11,7 @@
 #import <Foundation/NSNumber.h>
 #import <Foundation/NSDateFormatter.h>
 #import <Foundation/NSLocale.h>
+#import <Foundation/NSCharacterSet.h>
 
 /* THE VALUES ARE THIS LIBRARY'S, CHOSEN AS THE RFC 6265 ATTRIBUTE NAMES, and the reasoning lives in the
  * header next to the declarations. Keeping the definitions together makes the choice visible in one screen

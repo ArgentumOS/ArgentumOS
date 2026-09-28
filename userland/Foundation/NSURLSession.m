@@ -26,6 +26,8 @@
 #include <stdio.h>
 #import <Foundation/NSOperationQueue.h>
 #import <Foundation/NSLock.h>	/* NSCondition lives HERE, not in a header of its own */
+#import <Foundation/NSURLSessionStreamTask.h>
+#import <Foundation/NSURLSessionWebSocketTask.h>
 
 /* THE PER-TRANSFER CLIENT, AND IT IS WHY THE SESSION DOES NOT HAVE TO MAP A PROTOCOL BACK TO ITS TASK.
  * A protocol reports through its CLIENT, and the thing that knows which task a transfer belongs to is this

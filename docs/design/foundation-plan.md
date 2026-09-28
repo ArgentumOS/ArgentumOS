@@ -14058,6 +14058,56 @@ interface declares them, so the fix is a real code move in a 2600-line file) · 
 `-initWithKind:` sites) · `-Wprotocol` 1 · `-Wobjc-protocol-method-implementation` 1 ·
 `-Wincompatible-pointer-types-discards-qualifiers` 1.
 
+## §62.74 — THE WARNING SWEEP, PHASE 5: A WARNING THAT WAS RIGHT ABOUT THE TYPE AND WRONG ABOUT THE CODE (2026-09-26)
+
+**52 → 14 warnings (100 → 14 for the whole sweep), AND ONE REGRESSION I CAUSED AND THEN HAD TO UNDERSTAND.** The
+mechanical half first, because it is the larger half:
+
+* **the parser protocol was missing SIX of Apple's own DTD/entity declaration doors** that the parser calls — the
+  delegate methods for element, attribute, notation, internal/external and unparsed-entity declarations.
+  `-FN_XML_EVENT` consults `-respondsToSelector:` on an `id <NSXMLParserDelegate>` whose protocol knew nothing
+  about them, so the compiler could not check a single call. They are declared now, optional as Apple's are;
+* **two node initializers declared nowhere** — `-initWithKind:name:value:` (which `NSXMLDocument` and `NSXMLDTD`
+  reach through `[super …]`: three unchecked calls, where a mistyped argument would have compiled) and
+  `-initWithXMLString:` — now in `NSXMLNode.h`'s internal category, with the declaration and the implementation
+  agreeing on `NSXMLNodeKind`;
+* **the `NSXMLDTDNode` seam moved to a header** (`-fnSetElementName:`/`-fnElementName`): `NSXMLDocument` sets it and
+  `NSXMLParser` reads it, and a declaration only `NSXMLDTD.m` could see made both calls invisible;
+* **nine missing imports**, and four enum casts.
+
+**AND THEN THE PART WORTH THE SECTION: the enum warnings were RIGHT ABOUT THE TYPES AND WRONG ABOUT THE CODE.**
+`-Wswitch` said `case NSXMLNotationDeclarationKind:` is not in `NSXMLDTDNodeKind`, and `-Wenum-conversion` said the
+same about four `-initWithKind:` sites. All five are DELIBERATE, and the design is why: **a DTD node's NODE kind is
+always `NSXMLDTDKind`** (its initializer calls `[super initWithKind:NSXMLDTDKind …]`), and **a declaration whose
+kind has no DTD-kind equivalent — a notation declaration among them — keeps a NODE-kind VALUE in `_dtdKind`.** So
+the original case MATCHED at runtime, and the compiler was complaining about which enum the constant came from.
+
+**"FIXING" IT BY CHANGING THE CODE BROKE A PROBE.** Asking `[self kind] == NSXMLNotationDeclarationKind` instead —
+which reads as the more careful question — answers NO for every DTD node, so notation declarations stopped printing
+their form and the written DTD stopped round-tripping: **`foundation_xmldtdparse` fell to 6 of 8 checks.** The
+correct question is asked of the STORED VALUE, `(NSXMLNodeKind)_dtdKind == NSXMLNotationDeclarationKind`, in an `if`
+BEFORE the switch rather than as a cast case — because **a cast does not satisfy `-Wswitch`: the value really is not
+a member of that enum, which is exactly why the value is what gets asked.**
+
+**AND THE BISECT IS PART OF THE RECORD, because it turned "probably mine" into "mine":** the failing case PASSES at
+`fcacd89c` (the commit before the sweep) and failed with my changes parked — so the cause was phase 2's two enum
+"fixes", not anything later. Widening the guest set to the whole XML family is what caught it at all; one case
+would have passed.
+
+**VERIFIED.** Host: `make host-foundation-run` — **37 probes, every tally `fail=0`**. Guest: `make testimg` then
+`make test TESTS='foundation_xmlparser,foundation_xmldtd,foundation_xmldtdparse,foundation_xmldocument'` →
+**`TESTS-OK 4/4 case(s), 24/24 check(s) in 15s`** — all four, because one of them is what caught the regression.
+Full-recompile warnings **14**. `foundation-gate`: **OK — 543 files, 203 of 207 public headers**;
+`--unimplemented`: **0 NEW**; sweep consistent.
+
+**WHAT IS LEFT — 14 warnings:** `-Wincomplete-implementation` 6 (**`NSString`'s five** — `-UTF8String`, `-length`,
+`-characterCount`, `-characterAtIndex:`, `-enumerateSubstringsInRange:options:usingBlock:` — where the
+implementations live in categories while the interface declares them, so the fix is a code move in a 2600-line
+file; and `NSSocketPort`'s `-sendBeforeDate:components:from:reserved:`, which needs a refusal or an implementation)
+· `-Wobjc-method-access` 2 · `-Wprotocol` 1 · `-Wobjc-protocol-method-implementation` 1 ·
+`-Wincompatible-pointer-types-discards-qualifiers` 1 (`NSFileCoordinator`'s block-captured mutation, whose fix must
+decide the struct's lifetime first) · `-Wenum-conversion` 1 (`-fnFirstChildOfKind:`).
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else

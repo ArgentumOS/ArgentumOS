@@ -23,6 +23,7 @@
 #import <Foundation/NSURLError.h>
 #import <Foundation/NSPropertyListSerialization.h>	/* the resume blob is a plist (§62.31) */
 #import <Foundation/NSString.h>
+#import <Foundation/NSNumber.h>
 
 @implementation NSURLSessionTask
 

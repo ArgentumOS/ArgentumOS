@@ -74,7 +74,7 @@ static NSString *fn_xml_escape_attribute(NSString *text, BOOL singleQuoted)
 
 /* A NODE IS MADE PRIVATELY AND ANSWERED THROUGH THE FACTORIES, which is what keeps the kinds consistent
  * with the fields they use. */
-- (id)initWithKind:(NSUInteger)kind name:(NSString *)name value:(NSString *)value
+- (id)initWithKind:(NSXMLNodeKind)kind name:(NSString *)name value:(NSString *)value
 {
 	self = [super init];
 	if (self == nil) {

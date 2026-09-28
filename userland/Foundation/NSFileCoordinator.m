@@ -13,6 +13,7 @@
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSURL.h>
+#import <Foundation/NSOperationQueue.h>	/* -addOperationWithBlock: is declared here */
 
 #include <errno.h>
 #include <pthread.h>

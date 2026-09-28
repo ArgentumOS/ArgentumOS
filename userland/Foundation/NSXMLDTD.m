@@ -12,14 +12,11 @@
 #import <Foundation/NSError.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSURL.h>
+#import <Foundation/NSCharacterSet.h>
 
-/* THE PRIVATE HALF, declared before it is used: the element name an attribute declaration belongs to (which
- * -attributeDeclarationForName:elementName: looks up by), and the fact that this class OVERRIDES the
- * serializer its parent declares in its own private category. */
-@interface NSXMLDTDNode (FNPrivate)
-- (void)fnSetElementName:(NSString *)name;
-- (NSString *)fnElementName;
-@end
+/* THE PRIVATE HALF HAS MOVED TO THE HEADER (NSXMLDTD.h, the FNDTDInternal category): these two doors have
+ * CALLERS OUTSIDE THIS FILE - NSXMLDocument sets an attribute declaration's element name and NSXMLParser reads it
+ * - and a declaration only this file could see made both calls unchecked. */
 
 /* ---- THE DECLARATION READER -----------------------------------------------------------------------
  * One function over a string, because every form XML declares is `<!KEYWORD ...>` with quoted parts that may
@@ -302,7 +299,7 @@ NSArray *FNDTDDeclarationNodes(NSString *declaration)
 		if (name == nil) {
 			return answer;
 		}
-		node = [[NSXMLDTDNode alloc] initWithKind:NSXMLNotationDeclarationKind];
+		node = [[NSXMLDTDNode alloc] initWithKind:(NSXMLDTDNodeKind)NSXMLNotationDeclarationKind];
 		[node setName:name];
 		word = fn_dtd_word(&r);
 		if ([word isEqual:@"PUBLIC"]) {
@@ -389,11 +386,16 @@ NSArray *FNDTDDeclarationNodes(NSString *declaration)
 	if ([self kind] != NSXMLDTDKind) {
 		return [super fnXMLStringWithOptions:options depth:depth];
 	}
-	/* A NOTATION DECLARATION IS A NODE KIND, NOT A DTD KIND, and testing it here - inside a switch over
-	 * `_dtdKind` - made the arm DEAD: the compiler said "case value not in enumerated type 'NSXMLDTDNodeKind'",
-	 * and a notation declaration therefore never printed its own <!NOTATION> form. It is asked BEFORE the switch,
-	 * against the node's own kind. */
-	if ([self kind] == NSXMLNotationDeclarationKind) {
+	/* THE QUESTION IS ASKED OF THE STORED VALUE, AND THE `if` IS NOT A STYLE CHOICE. A DTD node's NODE kind is
+	 * always NSXMLDTDKind (its initializer says so), and the declarations whose kind has no DTD-kind equivalent -
+	 * a notation declaration among them - keep a NODE kind in `_dtdKind`. So the question is
+	 * "(NSXMLNodeKind)_dtdKind == NSXMLNotationDeclarationKind"; asking it of `[self kind]` answers NO for every
+	 * node, and §62.74 records that "fixing" the compiler's -Wswitch warning by changing the question to that form
+	 * broke foundation_xmldtdparse (6 of 8 checks) until the value it was asked of was the value it meant.
+	 *
+	 * It is an `if` rather than a `case (NSXMLDTDNodeKind)…` because that cast does NOT satisfy -Wswitch - the
+	 * value really is not a member of the switch's enum, which is exactly why the value is what gets asked. */
+	if ((NSXMLNodeKind)_dtdKind == NSXMLNotationDeclarationKind) {
 		if (_publicID != nil) {
 			return [NSString stringWithFormat:@"<!NOTATION %@ PUBLIC \"%@\" \"%@\">", name, _publicID,
 				_systemID != nil ? _systemID : @""];

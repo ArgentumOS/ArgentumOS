@@ -77,6 +77,13 @@ typedef enum {
 - (nullable id)initWithXMLString:(NSString *)string;
 - (id)initWithKind:(NSXMLDTDNodeKind)kind;
 
+/* THE ELEMENT AN ATTRIBUTE DECLARATION BELONGS TO, which Apple's -attributeDeclarationForName:elementName: looks
+ * up by and does not otherwise expose. Declared in the HEADER's internal category rather than in NSXMLDTD.m
+ * because it has callers in other files - NSXMLDocument sets it, NSXMLParser reads it - and a declaration only
+ * one file could see made both calls invisible to the compiler. */
+- (void)fnSetElementName:(NSString *)name;
+- (NSString *)fnElementName;
+
 - (NSXMLDTDNodeKind)DTDKind;
 - (void)setDTDKind:(NSXMLDTDNodeKind)kind;
 - (nullable NSString *)publicID;

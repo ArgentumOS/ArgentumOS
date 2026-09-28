@@ -195,6 +195,15 @@ typedef enum {
  * it - which is exactly what NSXMLDTDNode does, since a declaration is not an element. */
 @interface NSXMLNode (FNPrivate)
 - (NSString *)fnXMLStringWithOptions:(NSXMLNodeOptions)options depth:(NSUInteger)depth;
+
+/* THE DESIGNATED INITIALIZER AND THE XML-STRING DOOR, declared here so the compiler can CHECK them: the
+ * implementations are in this file, and NSXMLDocument and NSXMLDTD reach the initializer through
+ * `[super initWithKind:name:value:]` - calls that were UNCHECKED because no declaration existed, which is the
+ * -Wobjc-method-access class that hid §62.69's selector typo. A mistyped argument would have compiled silently. */
+- (id)initWithKind:(NSXMLNodeKind)kind
+	      name:(nullable NSString *)name
+	     value:(nullable NSString *)value;
+- (nullable id)initWithXMLString:(NSString *)string;
 @end
 
 NS_ASSUME_NONNULL_END

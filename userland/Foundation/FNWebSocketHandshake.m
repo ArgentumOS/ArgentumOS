@@ -16,6 +16,7 @@
  * MRC, like every file in this library.
  */
 #import <Foundation/FNWebSocketHandshake.h>
+#import <Foundation/NSCharacterSet.h>
 #include <openssl/sha.h>
 #include <openssl/rand.h>
 #include <stdlib.h>

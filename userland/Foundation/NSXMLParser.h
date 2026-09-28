@@ -230,6 +230,35 @@ typedef enum {
 - (nullable NSData *)parser:(NSXMLParser *)parser
     resolveExternalEntityName:(NSString *)name
 		     systemID:(nullable NSString *)systemID;
+/* APPLE'S DTD/ENTITY DECLARATION DOORS, WHICH THIS PROTOCOL DID NOT DECLARE WHILE THE PARSER CALLED ALL SIX of
+ * them: -FN_XML_EVENT consults -respondsToSelector: on an `id <NSXMLParserDelegate>` whose protocol knew nothing
+ * about them, so the compiler could not check a single one. They are optional in Apple's protocol and optional
+ * here. */
+- (void)parser:(NSXMLParser *)parser
+    foundElementDeclarationWithName:(NSString *)elementName
+			       model:(NSString *)model;
+- (void)parser:(NSXMLParser *)parser
+    foundAttributeDeclarationWithName:(NSString *)attributeName
+			    forElement:(NSString *)elementName
+				type:(nullable NSString *)type
+			defaultValue:(nullable NSString *)defaultValue;
+- (void)parser:(NSXMLParser *)parser
+    foundNotationDeclarationWithName:(NSString *)name
+			    publicID:(nullable NSString *)publicID
+			    systemID:(nullable NSString *)systemID;
+- (void)parser:(NSXMLParser *)parser
+    foundUnparsedEntityDeclarationWithName:(NSString *)name
+				  publicID:(nullable NSString *)publicID
+				  systemID:(nullable NSString *)systemID
+			      notationName:(nullable NSString *)notationName;
+- (void)parser:(NSXMLParser *)parser
+    foundExternalEntityDeclarationWithName:(NSString *)name
+				  publicID:(nullable NSString *)publicID
+				  systemID:(nullable NSString *)systemID;
+- (void)parser:(NSXMLParser *)parser
+    foundInternalEntityDeclarationWithName:(NSString *)name
+				     value:(nullable NSString *)value;
+
 - (void)parser:(NSXMLParser *)parser parseErrorOccurred:(NSError *)parseError;
 - (void)parser:(NSXMLParser *)parser validationErrorOccurred:(NSError *)validationError;
 

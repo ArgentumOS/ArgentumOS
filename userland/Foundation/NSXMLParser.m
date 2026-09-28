@@ -502,8 +502,10 @@ static NSString *fn_xml_decode(NSString *raw, int *outFailure)
 							    foundElementDeclarationWithName:name
 										       model:[node stringValue]];
 						}
-					} else if ([node kind] == NSXMLNotationDeclarationKind) {	/* a NODE kind: the DTD-kind chain above
-								 * is the wrong question for a notation declaration */
+					} else if ((NSXMLNodeKind)kind == NSXMLNotationDeclarationKind) {	/* the CAST is the point: a
+								 * declaration with no DTD-kind equivalent keeps a
+								 * NODE kind in the DTD-kind field (see NSXMLDTD's
+								 * serializer for the full note) */
 						if (FN_XML_EVENT(parser:foundNotationDeclarationWithName:publicID:systemID:)) {
 							[_delegate parser:self
 							    foundNotationDeclarationWithName:name
