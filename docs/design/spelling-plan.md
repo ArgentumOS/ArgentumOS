@@ -1,8 +1,9 @@
 # Spelling and grammar — plan and licence decision
 
-**Status: ENGINE AND DATA DECIDED (user, 2026-09-26). Nothing adopted yet; no code exists.**
-**Decision: the engine is SymSpell (MIT) and the base image ships PERMISSIVE dictionary packs only; copyleft
-dictionaries are INSTALLABLE packs, never base-image content.**
+**Status: THE ENGINE IS DEFERRED (user, 2026-09-26, superseding the same day's SymSpell choice). The Foundation
+half is being built NOW and depends on no engine.**
+**Standing while the engine is open: the base image ships PERMISSIVE dictionary packs only; copyleft dictionaries
+are INSTALLABLE packs, never base-image content.**
 
 ## 1. What the OS owes, and where the split is
 
@@ -59,27 +60,35 @@ ICU-based, dictionary-compatible); SymSpell's README, mirrored at github.com/RUL
 language-independent, frequency dictionaries); the per-language licence table in OpenEmbedded's
 `hunspell-dictionaries.bb`; Debian's copyright files for `scowl`, `igerman98` and `hunspell-fr`.
 
-## 3. The decision (user, 2026-09-26)
+## 3. The decisions (user, 2026-09-26)
 
-1. **Engine: SymSpell — MIT.** Permissive-only, accepted WITH its limit: no affix morphology.
-2. **Data: permissive packs on the base image; copyleft packs installable only.** Base-image packs are the
-   permissive set above plus FrequencyWords-derived lists; GPL/MPL packs are installable and never base content.
+1. **THE ENGINE IS DEFERRED, AND THE FIRST CHOICE WAS WITHDRAWN ON LANGUAGE GROUNDS.** SymSpell (MIT) was picked
+   earlier the same day and is now CANCELLED: it validates against a word list, which is the wrong instrument for
+   the languages this system most needs to serve. A word list cannot recognise a Finnish or Hungarian inflection,
+   a Turkish suffix chain or a German compound as a word, and for Chinese, Japanese and Thai it cannot even
+   establish where the words END — so adopting it would have produced a checker that is confidently wrong in
+   exactly the places a spell checker is judged. The licence was never the problem; the *shape* of the engine was.
+   **No engine is chosen, and the choice is not to be made on licence grounds alone** — it is a language question
+   first, which is what this revision records.
+2. **Data: permissive packs on the base image; copyleft packs installable only.** This STANDS and is
+   engine-independent: the permissive set is `en-US`/`en-CA`/`nl`/`ru`/`tr`/`ie` plus FrequencyWords-derived
+   lists, and GPL/MPL packs are installable and never base-image content.
 
 ## 4. What the decision costs, stated rather than discovered
 
-1. **WORD-LIST VALIDATION IS NOT MORPHOLOGY, AND THE UI MUST NOT PRETEND OTHERWISE.** SymSpell answers "is this
-   string in the list" plus ranked suggestions; it does not know that a Finnish or Hungarian inflection or a
-   German compound is a legal word. Expect false positives on exactly those languages, and say so in the API
-   docs and the preferences UI.
+1. **WORD-LIST VALIDATION IS NOT MORPHOLOGY, AND THE UI MUST NOT PRETEND OTHERWISE.** This is the finding that
+   CANCELLED SymSpell (§3.1) and it constrains whatever engine is eventually chosen: a frequency list answers "is
+   this string in the list", not "is this a legal word" — the difference is invisible in English and decisive in
+   Finnish, Hungarian, Turkish and German, and it is not a difference a UI can paper over.
 2. **THE COPYLEFT TIER IS DEFERRED, NOT SOLVED.** A GPL `.dic`/`.aff` pack is data *in the affix format*, so
    consuming those packs later needs an affix engine — which is precisely where the **MPL-1.1 (Hunspell 1.7.x)
    vs LGPL-3 (Nuspell)** question resurfaces. Also note: DERIVING a frequency list from a GPL dictionary makes a
    derivative of that data, so the copyleft packs must ship as the dictionaries they are, not as converted lists.
-3. **THE CANONICAL SYMSPELL IS C#, AND THE C++ PORTS ARE THIRD-PARTY AND UNAUDITED.** SymSpell's author states
-   the ports "have not been tested … whether they are an exact port, error free, provide identical results or are
-   as fast as the original". Vendoring one therefore owes BOTH a licence verification (MIT per port — the PHP and
-   Rust ports are MIT, the C++ ones must be checked individually) and a correctness check against the reference
-   behaviour before it is trusted.
+3. **ANY THIRD-PARTY ENGINE IS VENDORED WITH BOTH CHECKS, NOT ONE.** The withdrawn SymSpell choice illustrated it:
+   its canonical implementation is C# and its C++ ports are third-party, with the author stating they "have not
+   been tested … whether they are an exact port, error free, provide identical results or are as fast as the
+   original" — so vendoring any engine owes a licence verification AND a correctness check against the reference
+   behaviour. Applies unchanged to the affix engines, whose reference behaviours are their own test suites.
 4. **CJK AND THAI NEED SEGMENTATION BEFORE ANY LOOKUP.** Hunspell/Nuspell have no affix dictionaries for Chinese
    or Japanese, and a "word" frequency list cannot be consulted without knowing where the words end. ICU's break
    iterators are already adopted; the permissive tokenisers are jieba (MIT, zh), Kuromoji (Apache-2.0, ja) and
@@ -92,10 +101,13 @@ language-independent, frequency dictionaries); the per-language licence table in
 
 ## 5. Next steps
 
-1. **`NSSpellServer` + `NSSpellServerDelegate` + the three grammar vars (6 rows, closes the family) — ENGINE-
-   AGNOSTIC, so it can land before any engine is vendored.** The Foundation half is the server API and its
-   delegate protocol; it needs no SymSpell and no dictionary.
-2. Vendor and verify one SymSpell C++ port (licence + reference-behaviour check), then the base-image permissive
-   frequency packs, each with its own licence file and provenance.
+1. **`NSSpellServer` + `NSSpellServerDelegate` + the three grammar vars — 6 rows, and this closes the family.
+   BEING BUILT NOW, AND IT IS ENGINE-AGNOSTIC BY CONSTRUCTION:** the server side is the API a SERVICE implements
+   and the protocol the service answers; both are written against whatever engine that service eventually links,
+   so deferring the engine does not block it. This is the whole reason it goes first.
+2. Reopen the engine question ON LANGUAGE GROUNDS once there is a server to plug into: the honest candidates are
+   the affix engines (Hunspell 1.7.x under MPL-1.1, Nuspell under LGPL-3) whose morphology is what the withdrawn
+   choice lacked, and a CJK/Thai path (ICU break iterators are already adopted; jieba MIT, Kuromoji Apache-2.0,
+   MeCab tri-licence incl. BSD) for the languages no affix dictionary covers.
 3. Design the installable pack format for the copyleft tier — including the decision about which affix engine
    reads them, and the honest statement that a pack's engine is an added dependency, not part of the base system.

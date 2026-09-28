@@ -270,6 +270,8 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/FNCURLURLProtocol.h \
 	$(FOUNDATION_SRC)/FNAuthenticationChallengeSender.h \
 	$(FOUNDATION_SRC)/NSLinguisticTagger.h \
+	$(FOUNDATION_SRC)/NSSpellServer.h \
+	$(FOUNDATION_SRC)/FNSpellServerDispatch.h \
 	$(FOUNDATION_SRC)/FNTextBreaking.h \
 	$(FOUNDATION_SRC)/FNLegacyMapTable.h \
 	$(FOUNDATION_SRC)/NSURLSessionConfiguration.h \
@@ -1302,6 +1304,16 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_urldownload.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urldownload"
+	# foundation_spellserver: §62.85's acceptance - THE SERVER SIDE of a spell-checking service, and the last
+	# rows of `Fundamentals / Spelling and Grammar`. ONE unit, and it links nothing but Foundation: the engine is
+	# DEFERRED (docs/design/spelling-plan.md §3), so what is exercised is the API a service implements, its
+	# delegate protocol, the three grammar keys, and the dispatch seam that reaches all seven optional doors.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_spellserver.m -o .build/probe-foundation_spellserver.o
+	$(MUSL64_OBJC) .build/probe-foundation_spellserver.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_spellserver"
 	# foundation_downloadresume: §62.31's acceptance - RESUME end to end, WITH A REAL SERVER. The probe is
 	# the server: it sends half a body and then STALLS mid-transfer (which is what makes the cancel
 	# deterministic), resumes from the data its own cancel produced, and asserts the resumed request carries

@@ -3530,7 +3530,7 @@ vanishing.
 | **Fundamentals / Sorting** | all classes shipped | — |
 | **Fundamentals / Special Semantic Values** | all classes shipped | — |
 | **Fundamentals / Specialized Sets** | all classes shipped | — |
-| **Fundamentals / Spelling and Grammar** | 2 open | `NSSpellServer`, `NSSpellServerDelegate` |
+| **Fundamentals / Spelling and Grammar** | all classes shipped | — |
 | **Fundamentals / Strings** | all classes shipped | — |
 | **Fundamentals / Strings with Metadata** | all classes shipped | — |
 | **Fundamentals / Time and Motion** | all classes shipped | — |
@@ -14611,6 +14611,71 @@ are part of the measurement; a stricter ad-hoc command invents regressions that 
 singletons `NSUbiquitousKeyValueStore` / `NSBundleResourceRequest` / `NSSpellServer` + its delegate, the deprecated
 pair `NSArchiver`/`NSUnarchiver` + `NXReadNSObjectFromCoder`), plus the markdown importer and the run-loop
 observers owed as things to BUILD.
+
+
+## §62.85 — THE SERVER SIDE OF A SPELL-CHECKING SERVICE: FIVE ROWS, A FAMILY CLOSED, AND AN ENGINE DELIBERATELY NOT CHOSEN (2026-09-26)
+
+**FIVE ROWS: `NSSpellServer`, `NSSpellServerDelegate` and the three grammar keys** — so `Fundamentals / Spelling and
+Grammar` is COMPLETE. `class shipped` 213 → **214** (open 12 → **11**), `protocol` 35 → **36**, `var` 649 → **652**.
+**AND A COUNT IS CORRECTED: §62.81 and this thread's own notes said SIX rows.** The ledger says five (one class, one
+protocol, three vars), and a wrong count is worth correcting out loud because it is the kind of number that gets
+reused.
+
+**THE ENGINE IS DEFERRED BY DECISION, AND THE FIRST CHOICE WAS WITHDRAWN ON *LANGUAGE* GROUNDS** (user,
+2026-09-26 — docs/design/spelling-plan.md §3, whose first version chose SymSpell and is superseded the same day). A
+word list cannot recognise a Finnish or Hungarian inflection or a German compound as a word, and for Chinese,
+Japanese and Thai it cannot even establish where the words END — so the permissive-choice engine would have been
+confidently wrong exactly where a spell checker is judged. **The licence was never the problem; the SHAPE of the
+engine was**, and the standing lesson is recorded in the plan: this decision is a language question first.
+
+**WHICH IS WHY THIS HALF COULD LAND NOW: IT IS ENGINE-AGNOSTIC BY CONSTRUCTION.** `NSSpellServer` is the API a
+SERVICE implements — register a language, set a delegate, run — and the delegate does the work. Nothing in this class
+knows what a word is. The engine belongs to the service, which is also where a weak-copyleft engine or a copyleft
+dictionary pack would put its licence obligation, leaving `libfoundation` MIT.
+
+**WHAT SHIPPED.** `NSSpellServer.h`: the class's five doors (`-delegate`, `-setDelegate:`,
+`-registerLanguage:byVendor:`, `-isWordInUserDictionaries:caseSensitive:`, `-run`); `NSSpellServerDelegate` with all
+**seven** optional doors as Apple declares them (the classic `findMisspelledWordInString:language:wordCount:countOnly:`,
+guesses, completions, `checkGrammarInString:language:details:`, the 10.6 unified `checkString:offset:types:options:orthography:wordCount:`,
+and the learn/forget notifications); and the three keys, whose VALUE SHAPES are stated where a reader needs them —
+corrections as an `NSArray` of `NSString`, **the range BOXED IN AN `NSValue`** (a range is a C struct and cannot go
+into a collection) and relative to the SENTENCE rather than the checked string, and the user description as an
+`NSString` that must be supplied with or instead of the corrections or the user gets a flagged unit they can do
+nothing about. `NSSpellServer.m`: the language registry (per-language vendor sets), the unretained delegate, the two
+word stores, `-run` as the current run loop, and the seam functions.
+
+**`FNSpellServerDispatch.h` IS THE REASON THE PROTOCOL IS NOT DEAD DECLARATION.** Seven delegate doors are reached by
+a CLIENT, no client is shipped, and Apple's wire between the two is a private distributed-objects protocol — so a
+protocol-only unit would have been seven declarations nobody can drive. The seam is one function per door, internal
+and named, called by the probe exactly as a future client protocol will call it, and it also defines the fallbacks:
+an unwritten door answers `NSMakeRange(NSNotFound, 0)`, a nil array or a zero count — never an exception, never a
+fabricated answer. **ONE SEAM ENTRY HAS NO DELEGATE DOOR** (`…IgnoreWord`: Apple's "words to ignore" travel WITH the
+client's request) and it is called out rather than slipped in.
+
+**THREE BOUNDARIES ARE STATED RATHER THAN DISCOVERED:** the word store is **IN MEMORY ONLY in v1** — Apple keeps
+learned words in a per-user spelling directory and this system has no such store, so a service owns persistence; the
+repository's "the engine is not chosen" position means this class never consults one; and **`-run` runs a loop
+nothing is connected to yet**, which the header says in as many words.
+
+**THE PROBE'S OWN TALLY CAUGHT MY ARITHMETIC, TWICE, AND THAT IS WORTH RECORDING.** The first host run reported
+`ok=16 fail=2`: I had hard-coded the expected location of `"mispelt"` in `"a mispelt word"` as 5 and of `"is"` in
+`"this are wrong"` as 5, and both are **2**. The implementation was right both times; the expectations were guesses.
+**COUNT AN INDEX, DO NOT EYEBALL IT** — and note that a green case-level tally with a failing probe tally is the
+signature of THIS class of defect, not of a broken library. One `-Wnonnull` also surfaced from the probe passing
+`nil` to `-registerLanguage:byVendor:`, and the fix was the TRUTHFUL one: the implementation refuses nil rather than
+crashing, so the header now declares those two doors' parameters `nullable`.
+
+**VERIFIED.** Host: `make host-foundation-run` → the new probe **`ok=18 fail=0`**. Guest: `make testimg` then
+`make test TESTS='foundation_spellserver'` → **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**. The probe compiles under
+the tier's own toolchain (`tools/musl-clang-objc64.sh … -Werror=nullable-to-nonnull-conversion`) with **zero**
+warnings. `foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**; `foundation-gate`: **OK**
+(561 files, 209 of 213 headers); `--unimplemented`: **0 NEW**.
+
+**WHERE THE THREAD STANDS: 11 open classes** — `Reference / Classes` at three (one is the `NSSimpleCString` scope
+question §62.81 stated), the singletons (`NSUbiquitousKeyValueStore`, `NSBundleResourceRequest`, `NSSpellServer` is no
+longer among them), the deprecated pair (`NSArchiver`/`NSUnarchiver` + `NXReadNSObjectFromCoder`), plus the markdown
+importer and the run-loop observers owed as things to BUILD — **and the engine question, now open on language
+grounds, waiting for a server to plug into (this section is that server).**
 
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)

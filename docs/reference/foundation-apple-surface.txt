@@ -34,13 +34,13 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  213   open   12   struck   48
-#   protocol   shipped   35   open    5   struck    5
+#   class      shipped  214   open   11   struck   48
+#   protocol   shipped   36   open    4   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  147   open    4   struck    9
 #   case       shipped 1180   open   47   struck   75
 #   func       shipped  164   open   13   struck   12
-#   var        shipped  649   open   58   struck  207
+#   var        shipped  652   open   55   struck  207
 #   typealias  shipped   66   open    5   struck    5
 #   struct     shipped   13   open    0   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1531,7 +1531,7 @@ class	shipped	NSSocketPort		Low-Level Utilities / Sockets	-	objc
 class	shipped	NSSocketPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSSortDescriptor		Fundamentals / Sorting	-	objc
 class	struck	NSSpecifierTest		App Support / Object Matching Tests	declined	objc
-class	open	NSSpellServer		Fundamentals / Spelling and Grammar	-	objc
+class	shipped	NSSpellServer		Fundamentals / Spelling and Grammar	-	objc
 class	shipped	NSStream		Low-Level Utilities / Streams	-	objc
 class	shipped	NSString		Fundamentals / Strings	-	objc
 class	shipped	NSTask		Low-Level Utilities / Scripts and External Tasks	-	objc
@@ -2245,7 +2245,7 @@ protocol	shipped	NSPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecate
 protocol	open	NSPredicateValidating		Protocols	-	objc
 protocol	shipped	NSProgressReporting		App Support / Progress	-	objc
 protocol	shipped	NSSecureCoding		Files and Data Persistence / Adopting Codability	-	objc
-protocol	open	NSSpellServerDelegate		Fundamentals / Spelling and Grammar	-	objc
+protocol	shipped	NSSpellServerDelegate		Fundamentals / Spelling and Grammar	-	objc
 protocol	shipped	NSStreamDelegate		Low-Level Utilities / Streams	-	objc
 protocol	shipped	NSURLAuthenticationChallengeSender		Networking / Legacy / URL Authentication Challenge Sender	deprecated	objc
 protocol	shipped	NSURLConnectionDataDelegate		Networking / Legacy / URL Connection	deprecated	objc
@@ -2511,9 +2511,9 @@ var	shipped	NSFileTypeUnknown	NSFileManager	Files and Data Persistence / File sy
 var	shipped	NSFoundationVersionNumber		Low-Level Utilities / Versions and API Availability / Current Version	-	objc
 var	shipped	NSGenericException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSGlobalDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
-var	open	NSGrammarCorrections	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
-var	open	NSGrammarRange	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
-var	open	NSGrammarUserDescription	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
+var	shipped	NSGrammarCorrections	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
+var	shipped	NSGrammarRange	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
+var	shipped	NSGrammarUserDescription	NSSpellServer	Fundamentals / Spelling and Grammar / Constants / Constants	-	objc
 var	shipped	NSGregorianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSHTTPCookieComment	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
 var	shipped	NSHTTPCookieCommentURL	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
