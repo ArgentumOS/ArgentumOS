@@ -1243,24 +1243,121 @@ NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySugges
  */
 - (NSRange)rangeOfCharacterFromSet:(NSCharacterSet *)set
 {
-	size_t offset = 0;
-	size_t character = 0;
+	/* APPLE'S OWN DELEGATION: its page for this door says it "invokes with no options", so it calls the
+	 * one that takes them rather than keeping a second copy of the walk. */
+	return [self rangeOfCharacterFromSet:set options:0 range:NSMakeRange(0, [self length])];
+}
 
-	while (offset < [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]) {
+- (NSRange)rangeOfCharacterFromSet:(NSCharacterSet *)set
+			   options:(NSStringCompareOptions)mask
+{
+	/* ...and this one "invokes with the entire extent of the receiver for the range". */
+	return [self rangeOfCharacterFromSet:set options:mask range:NSMakeRange(0, [self length])];
+}
+
+- (NSRange)rangeOfCharacterFromSet:(NSCharacterSet *)set
+			   options:(NSStringCompareOptions)mask
+			     range:(NSRange)range
+{
+	NSUInteger first = NSNotFound, firstLength = 0;
+	NSUInteger last = NSNotFound, lastLength = 0;
+	size_t offset, end;
+
+	/* THE PAGE'S TWO REQUIREMENTS, EACH WITH ITS OWN EXCEPTION: a nil set is NSInvalidArgumentException
+	 * and a range past the end is NSRangeException. They are different kinds of mistake — the first is a
+	 * bad argument whatever the receiver is, the second is a bad argument FOR THIS receiver — and the
+	 * page names each, so each gets its own. */
+	if (set == nil) {
+		[NSException raise:NSInvalidArgumentException
+		            format:@"-[NSString %@]: the character set is nil", NSStringFromSelector(_cmd)];
+	}
+	fn_line_check_range(self, range, _cmd);
+
+	/* THE SCAN STILL WALKS BYTES AND COUNTS UNITS, which is the arithmetic the no-options door has
+	 * always had: a match's UNIT range is what a caller indexes with. Backwards does not mean a second
+	 * walk — this one records the first hit and the last, and which of them is the answer is decided at
+	 * the end. */
+	offset = fn_unit_to_byte(self, range.location);
+	end = fn_unit_to_byte(self, NSMaxRange(range));
+
+	while (offset < end) {
 		size_t width = utf8_seq_length([self byteAtIndex:offset]);
+		NSUInteger from = fn_byte_to_unit(self, offset);
+		NSUInteger to = fn_byte_to_unit(self, offset + width);
 
-		if ([set characterIsMember:[self characterAtIndex:character]]) {
-			/* THE SCAN WALKS BYTES AND COUNTS UNITS, so the answer is mapped
-			 * back: a match's unit range, which is what a caller indexes with. */
-			NSUInteger from = fn_byte_to_unit(self, offset);
-
-			return NSMakeRange(from, fn_byte_to_unit(self, offset + width) - from);
+		if ([set characterIsMember:[self characterAtIndex:from]]) {
+			if (first == NSNotFound) {
+				first = from;
+				firstLength = to - from;
+			}
+			last = from;
+			lastLength = to - from;
 		}
 		offset += width;
-		character++;
 	}
-	return NSMakeRange(NSNotFound, 0);
+
+	if (first == NSNotFound) {
+		return NSMakeRange(NSNotFound, 0);
+	}
+
+	/* ANCHORED RESTRICTS WHICH HIT COUNTS RATHER THAN ASKING A DIFFERENT QUESTION: the match must sit at
+	 * the boundary the search starts from — the range's FIRST character going forward, its LAST going
+	 * backward — so a hit anywhere else is not a match at all. */
+	if (mask & NSAnchoredSearch) {
+		if (mask & NSBackwardsSearch) {
+			return (last + lastLength == NSMaxRange(range))
+			       ? NSMakeRange(last, lastLength) : NSMakeRange(NSNotFound, 0);
+		}
+		return (first == range.location) ? NSMakeRange(first, firstLength) : NSMakeRange(NSNotFound, 0);
+	}
+
+	/* AND NO UNICODE NORMALIZATION IS DONE, which is the page's other rule and falls out of comparing
+	 * units: canonically equivalent forms do not match, and the probe holds it to that. */
+	if (mask & NSBackwardsSearch) {
+		return NSMakeRange(last, lastLength);
+	}
+	return NSMakeRange(first, firstLength);
 }
+
+- (NSString *)commonPrefixWithString:(NSString *)other options:(NSStringCompareOptions)mask
+{
+	NSUInteger n, i;
+
+	if (other == nil) {
+		/* A NIL ARGUMENT HAS NOTHING IN COMMON WITH ANYTHING, so the answer is the empty prefix. */
+		return [NSString string];
+	}
+	n = [self length];
+	if ([other length] < n) {
+		n = [other length];
+	}
+	for (i = 0; i < n; i++) {
+		unichar a = [self characterAtIndex:i];
+		unichar b = [other characterAtIndex:i];
+
+		if (mask & NSCaseInsensitiveSearch) {
+			/* THE LIBRARY'S OWN FOLD, applied to a UNIT rather than a byte — the same rule
+			 * -compare:options: applies, so the two doors cannot disagree about case. */
+			if (a >= 'A' && a <= 'Z') {
+				a = (unichar)(a - 'A' + 'a');
+			}
+			if (b >= 'A' && b <= 'Z') {
+				b = (unichar)(b - 'A' + 'a');
+			}
+		}
+		if (a != b) {
+			break;
+		}
+	}
+	/* THE RESULT IS TAKEN FROM THE RECEIVER — not a merge, and not the argument's characters — which is
+	 * what makes Apple's "Mädchen" example answer the receiver's spelling. */
+	return [self substringWithRange:NSMakeRange(0, i)];
+}
+
+/* (A -propertyListFromStringsFileFormat WAS TRIED HERE AND WITHDRAWN — see NSString.h for the
+ * measurement: a `.strings` body is brace-less and this library's old-style plist reader answers NIL for
+ * one, so the door cannot honour its contract until the READER accepts a brace-less dictionary. That is
+ * a defect in the reader, and it is owed its own unit.) */
 
 - (NSArray *)componentsSeparatedByCharactersInSet:(NSCharacterSet *)set
 {

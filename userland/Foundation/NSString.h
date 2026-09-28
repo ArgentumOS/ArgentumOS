@@ -275,6 +275,54 @@ typedef enum {
 - (NSString *)stringByTrimmingCharactersInSet:(NSCharacterSet *)set;
 - (NSString *)stringByReplacingCharactersInRange:(NSRange)range withString:(NSString *)replacement;
 
+/* ===================================================================================================
+ * THE SEARCH AND COMPARISON DOORS THAT TAKE OPTIONS.
+ *
+ * A CHARACTER-SET SEARCH TAKES TWO OPTIONS AND NO OTHERS — NSAnchoredSearch and NSBackwardsSearch.
+ * The pair is not a guess: Apple's page for -rangeOfCharacterFromSet:options: names exactly those two
+ * in its parameter list, and the absence of a case option is the point — a SET already says which
+ * characters match, so folding case would widen a question the caller answered precisely. ANCHORED
+ * means the match must be at the boundary the search starts from: the range's FIRST character going
+ * forward, its LAST going backward. Nothing is normalised: canonically equivalent forms do not match,
+ * which Apple states on the page and which the probe checks.
+ *
+ * THE TWO RAISES ARE THE PAGE'S OWN REQUIREMENTS, written where a caller meets them: a NIL set raises
+ * NSInvalidArgumentException ("this value must not be nil"), and a range past the end raises
+ * NSRangeException ("aRange must not exceed the bounds of the receiver").
+ *
+ * AND THE DELEGATION IS APPLE'S, NOT A CONVENIENCE: the page for -rangeOfCharacterFromSet: says it
+ * "invokes with no options", and this one says it invokes "with the entire extent of the receiver for
+ * the range". So the three doors are ONE scan with the boundaries and the direction handed in, and the
+ * oldest of them now calls the newest rather than keeping a second copy of the walk.
+ *
+ * -commonPrefixWithString:options: takes NSCaseInsensitiveSearch and NSLiteralSearch (also named on its
+ * page), and the string it returns is built from the RECEIVER'S characters — Apple's own example is
+ * "Mädchen" against "Mädchenschule" answering the receiver's spelling, not the argument's.
+ *
+ * AND ONE DEVIATION IS STATED RATHER THAN LEFT TO BE DISCOVERED, BECAUSE APPLE'S OWN EXAMPLE IS THE CASE
+ * THAT TRIPS IT: the two spellings in that example are CANONICALLY EQUIVALENT rather than equal, and the
+ * default (non-NSLiteralSearch) comparison Apple describes treats them as matching. **This library
+ * normalises NOWHERE** — its ordering and its folding are byte-wise and it says so (the stance
+ * NSLocale's own unit records) — so a canonically equivalent pair answers as DIFFERENT here and the
+ * prefix stops where the spellings part. That is deliberately the same rule -compare: applies: a class
+ * with two notions of "equal" would be worse than a class with one documented one. Passing
+ * NSLiteralSearch changes nothing, because exactness is already the only thing this door does.
+ *
+ * (-propertyListFromStringsFileFormat WAS IN THIS UNIT AND IS WITHDRAWN, with the measurement that
+ * withdrew it: a `.strings` body is brace-less — `"a" = "b";` — and this library's old-style plist
+ * reader answers NIL for one, so the door cannot honour Apple's contract until the READER accepts a
+ * brace-less dictionary. It is a defect in the reader rather than in this door, it is worth its own
+ * unit, and the probe of this one records the nil rather than hiding it. THE ROW STAYS OPEN IN THE
+ * LEDGER, which is the honest place for it: a door that cannot parse the format its name promises is
+ * not shipped.)
+ * =================================================================================================== */
+- (NSRange)rangeOfCharacterFromSet:(NSCharacterSet *)set
+			   options:(NSStringCompareOptions)mask;
+- (NSRange)rangeOfCharacterFromSet:(NSCharacterSet *)set
+			   options:(NSStringCompareOptions)mask
+			     range:(NSRange)range;
+- (NSString *)commonPrefixWithString:(NSString *)other options:(NSStringCompareOptions)mask;
+
 /* Conversions. */
 - (int)intValue;
 - (NSInteger)integerValue;

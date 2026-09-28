@@ -48,6 +48,16 @@ CHECKS = (
           "line-enumerator-has-no-trailing-empty-line",
           "line-enumerator-of-an-empty-string-yields-nothing", "line-enumerator-honours-stop",
           "line-invalid-range-raises",
+          "set-search-no-options-door-survives", "set-search-backwards-answers-the-last",
+          "set-search-anchored-forward", "set-search-anchored-does-not-scan",
+          "set-search-anchored-backward-at-the-end",
+          "set-search-anchored-backward-elsewhere-is-not-a-match",
+          "set-search-range-limits-the-scan", "set-search-not-found-answers-notfound",
+          "set-search-does-not-normalize", "set-search-nil-set-raises",
+          "set-search-invalid-range-raises",
+          "common-prefix-stops-where-they-part", "common-prefix-is-the-receiver-characters",
+          "common-prefix-of-equals-is-the-whole-string", "common-prefix-of-strangers-is-empty",
+          "common-prefix-nil-argument-is-empty",
           )
 
 

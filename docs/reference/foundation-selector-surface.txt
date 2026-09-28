@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1779   open  906   struck  243
+#   method     shipped 1782   open  903   struck  243
 #   property   shipped 1025   open  465   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3034,7 +3034,7 @@ method	open	-canBeConvertedToEncoding:	NSString	Fundamentals / Strings / Working
 method	open	-capitalizedStringWithLocale:	NSString	Fundamentals / Strings / Changing Case	-	objc
 method	shipped	-caseInsensitiveCompare:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-characterAtIndex:	NSString	Fundamentals / Strings / Getting Characters and Bytes	-	objc
-method	open	-commonPrefixWithString:options:	NSString	Fundamentals / Strings / Getting a Shared Prefix	-	objc
+method	shipped	-commonPrefixWithString:options:	NSString	Fundamentals / Strings / Getting a Shared Prefix	-	objc
 method	shipped	-compare:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-compare:options:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-compare:options:range:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
@@ -3125,8 +3125,8 @@ method	open	+pathWithComponents:	NSString	Fundamentals / Strings / Working with 
 method	shipped	-propertyList	NSString	Fundamentals / Strings / Converting String Contents Into a Property List	-	objc
 method	open	-propertyListFromStringsFileFormat	NSString	Fundamentals / Strings / Converting String Contents Into a Property List	-	objc
 method	shipped	-rangeOfCharacterFromSet:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
-method	open	-rangeOfCharacterFromSet:options:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
-method	open	-rangeOfCharacterFromSet:options:range:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
+method	shipped	-rangeOfCharacterFromSet:options:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
+method	shipped	-rangeOfCharacterFromSet:options:range:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	open	-rangeOfComposedCharacterSequenceAtIndex:	NSString	Fundamentals / Strings / Determining Composed Character Sequences	-	objc
 method	open	-rangeOfComposedCharacterSequencesForRange:	NSString	Fundamentals / Strings / Determining Composed Character Sequences	-	objc
 method	shipped	-rangeOfString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc

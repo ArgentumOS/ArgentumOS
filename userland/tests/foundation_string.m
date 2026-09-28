@@ -1211,6 +1211,127 @@ NULL
 		}
 	}
 
+	{
+		/* THE OPTIONS DOORS. The clauses worth checking are the ones a reader would DOUBT: the option
+		 * pair Apple names and no others, the two DIFFERENT exceptions, the no-normalization rule the
+		 * page states outright, and the receiver-spelling rule for a common prefix. */
+		NSString *s = @"abcabc";                 /* a0 b1 c2 a3 b4 c5 */
+		NSCharacterSet *ac = [NSCharacterSet characterSetWithCharactersInString:@"ac"];
+		NSCharacterSet *onlyA = [NSCharacterSet characterSetWithCharactersInString:@"a"];
+		NSCharacterSet *none = [NSCharacterSet characterSetWithCharactersInString:@"z"];
+		NSRange r;
+
+		r = [s rangeOfCharacterFromSet:ac];
+		check("set-search-no-options-door-survives",
+		      r.location == 0 && r.length == 1,
+		      "the oldest door answers the first member - the one it delegates to kept its behaviour");
+
+		r = [s rangeOfCharacterFromSet:ac options:NSBackwardsSearch];
+		check("set-search-backwards-answers-the-last",
+		      r.location == 5 && r.length == 1,
+		      "NSBackwardsSearch is the other end of the same scan, not a second scan");
+
+		r = [s rangeOfCharacterFromSet:ac options:NSAnchoredSearch];
+		check("set-search-anchored-forward",
+		      r.location == 0 && r.length == 1,
+		      "anchored forward matches at the range's FIRST character");
+
+		r = [s rangeOfCharacterFromSet:onlyA options:NSAnchoredSearch range:NSMakeRange(1, 5)];
+		check("set-search-anchored-does-not-scan",
+		      r.location == NSNotFound,
+		      "an anchored search does not scan: the a at 3 is past the boundary, so there is no match");
+
+		r = [s rangeOfCharacterFromSet:ac options:NSAnchoredSearch | NSBackwardsSearch];
+		check("set-search-anchored-backward-at-the-end",
+		      r.location == 5 && r.length == 1,
+		      "anchored backward matches at the range's LAST character");
+
+		r = [s rangeOfCharacterFromSet:onlyA options:NSAnchoredSearch | NSBackwardsSearch];
+		check("set-search-anchored-backward-elsewhere-is-not-a-match",
+		      r.location == NSNotFound,
+		      "the last character is c, so an a anywhere else is not an anchored match");
+
+		r = [s rangeOfCharacterFromSet:onlyA options:0 range:NSMakeRange(1, 5)];
+		check("set-search-range-limits-the-scan",
+		      r.location == 3 && r.length == 1,
+		      "a range starts the scan later: the first a in {1,5} is at 3");
+
+		r = [s rangeOfCharacterFromSet:none];
+		check("set-search-not-found-answers-notfound",
+		      r.location == NSNotFound && r.length == 0,
+		      "nothing found is {NSNotFound, 0}");
+
+		/* APPLE'S OWN NO-NORMALIZATION EXAMPLE, as close as a probe can hold it: a decomposed "u" plus
+		 * COMBINING DIAERESIS is not the precomposed "u with diaeresis", and the page says so. */
+		{
+			NSString *decomposed = @"stru\u0308del";
+			NSCharacterSet *precomposed = [NSCharacterSet characterSetWithCharactersInString:@"\u00fc"];
+
+			r = [decomposed rangeOfCharacterFromSet:precomposed];
+			check("set-search-does-not-normalize",
+			      r.location == NSNotFound,
+			      "a canonically equivalent pair does not match - no normalization is performed");
+		}
+
+		{
+			int caughtInvalid = 0, caughtRange = 0;
+
+			@try {
+				[s rangeOfCharacterFromSet:nil];
+			} @catch (NSException *exception) {
+				caughtInvalid = [exception.name isEqualToString:NSInvalidArgumentException];
+			}
+			check("set-search-nil-set-raises",
+			      caughtInvalid,
+			      "a nil set raises NSInvalidArgumentException, which Apple's page names");
+
+			@try {
+				[s rangeOfCharacterFromSet:ac options:0 range:NSMakeRange(2, 99)];
+			} @catch (NSException *exception) {
+				caughtRange = [exception.name isEqualToString:NSRangeException];
+			}
+			check("set-search-invalid-range-raises",
+			      caughtRange,
+			      "a range past the end raises NSRangeException - a DIFFERENT exception from the nil set");
+		}
+
+		{
+			NSString *prefix;
+
+			prefix = [@"abcdef" commonPrefixWithString:@"abcxyz" options:0];
+			check("common-prefix-stops-where-they-part",
+			      [prefix isEqualToString:@"abc"],
+			      "the shared opening run and nothing more");
+
+			prefix = [@"ABCdef" commonPrefixWithString:@"abcdef" options:NSCaseInsensitiveSearch];
+			check("common-prefix-is-the-receiver-characters",
+			      [prefix isEqualToString:@"ABCdef"],
+			      "the two differ ONLY in case, so the fold makes them equal throughout and the answer is "
+			      "the RECEIVER's spelling - not the argument's lowercase one");
+
+			prefix = [@"abcdef" commonPrefixWithString:@"abcdef" options:0];
+			check("common-prefix-of-equals-is-the-whole-string",
+			      [prefix isEqualToString:@"abcdef"],
+			      "an identical argument gives everything");
+
+			prefix = [@"abc" commonPrefixWithString:@"xyz" options:0];
+			check("common-prefix-of-strangers-is-empty",
+			      [prefix length] == 0,
+			      "nothing in common is an empty prefix, not nil");
+
+			prefix = [@"abc" commonPrefixWithString:nil options:0];
+			check("common-prefix-nil-argument-is-empty",
+			      prefix != nil && [prefix length] == 0,
+			      "a nil argument has nothing in common, and the door still answers a string");
+		}
+
+		/* (A .strings check STOOD HERE AND IS WITHDRAWN WITH ITS DOOR. The measurement it produced is
+		 * kept, because it is the whole reason the door is gone: this library's old-style plist reader
+		 * answers NIL for a BRACE-LESS body — `"a" = "b";`, which is what a `.strings` file contains —
+		 * so -propertyListFromStringsFileFormat could not honour its contract. The defect is in the
+		 * READER and belongs to its own unit; the header says so, and the ledger keeps the row open.) */
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

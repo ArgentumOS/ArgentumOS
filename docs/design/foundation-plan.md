@@ -15776,6 +15776,60 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.1 — THE SEARCH DOORS THAT TAKE OPTIONS, AND ONE ROW WITHDRAWN BY ITS OWN PROBE (2026-09-28)
+
+**WHAT SHIPPED: THREE DOORS, AND THE FAMILY IS WHOLE.** `-rangeOfCharacterFromSet:options:`,
+`-rangeOfCharacterFromSet:options:range:` and `-commonPrefixWithString:options:`. **`method open` went
+906 → 903.**
+
+**THE OPTION SET IS APPLE'S AND IT IS A PAIR, NOT A SPRAWL: `NSAnchoredSearch` and `NSBackwardsSearch`,
+and no case option.** Those two names were read out of the page's own reference IDENTIFIERS rather than
+from its prose, because the parameter text renders them as bare references. The ABSENCE of a case option
+is the point: a character SET already says which characters match, so folding case would widen a question
+the caller had answered precisely. **THE TWO FAILURES ARE THE PAGE'S OWN REQUIREMENTS, AND THEY ARE
+DIFFERENT EXCEPTIONS**: a nil set raises `NSInvalidArgumentException` ("this value must not be nil")
+while a range past the end raises `NSRangeException` — one is a bad argument whatever the receiver is,
+the other is a bad argument FOR THIS receiver — and the probe holds each separately. The page's
+deterministic no-normalization rule is checked too: a decomposed `u` plus COMBINING DIAERESIS does not
+match a precomposed `ü`.
+
+**THE DELEGATION IS APPLE'S, NOT A CONVENIENCE, AND IT IS WHAT KEEPS THE ARITHMETIC SINGLE.** The page for
+`-rangeOfCharacterFromSet:` says it *"invokes with no options"*; this one says it invokes *"with the
+entire extent of the receiver for the range"*. So the OLDEST door now CALLS the newest instead of keeping
+a second copy of the walk: one scan, `first` and `last` recorded, and direction plus anchor deciding which
+of them counts. Backwards is not a second walk, and anchored is not a different question — it restricts
+which hit is a match.
+
+**AND ONE ROW IS WITHDRAWN, BY ITS OWN PROBE RATHER THAN BY INSPECTION.**
+`-propertyListFromStringsFileFormat` was implemented here as a call into the library's old-style plist
+reader — the equivalence §62.108 recorded, that a `.strings` file IS an old-style property list — and its
+check came back **`answered nil`**. A `.strings` body is BRACE-LESS (`"a" = "b";`) and this library's
+old-style reader does not accept one, so the door cannot honour the contract its own name promises. That
+is **a defect in the READER rather than in the door**, it is owed its own unit, and the row **stays open
+in the ledger**, which is the honest place for it. The implementation, the declaration and the check were
+all removed rather than left as dead code, and the measurement is recorded in the header, in the probe
+and here.
+
+**ONE DEVIATION IS STATED RATHER THAN LEFT TO BE DISCOVERED, AND APPLE'S OWN EXAMPLE IS THE CASE THAT
+TRIPS IT.** `-commonPrefixWithString:options:`'s page gives "Mädchen" against "Mädchenschule" and says the
+answer keeps the RECEIVER's spelling — which only holds if the default comparison treats those two
+CANONICALLY EQUIVALENT spellings as equal. **This library normalises nowhere** (the stance `NSLocale`'s
+own unit records), so such a pair answers as different and the prefix stops where the spellings part. That
+is deliberately the same rule `-compare:` applies: one documented notion of equality beats two, and the
+header says so where a caller meets it.
+
+**VERIFICATION.** Probe `foundation_string` **71/71** and the guest case **`TESTS-OK 1/1 case(s), 6/6
+check(s) in 12s`**; `foundation-gate` **OK**; `--unimplemented` **0 NEW**. **AND TWO INSTRUMENT LESSONS
+CAME OUT OF THE TWO FAILURES:**
+* **A CHECK THAT CANNOT SAY WHAT IT SAW IS NOT AN INSTRUMENT.** The `.strings` failure line printed only
+  MY expectation, so the first run said "failed" and nothing more; it took a second run with the ACTUAL
+  answer in the detail to learn it was `nil`. Putting the observed value in the check's detail is the
+  form the withdrawal note keeps.
+* **ONE FAILURE WAS MY ARITHMETIC, NOT THE CODE.** `common-prefix-is-the-receiver-characters` expected
+  `"ABC"` from `"ABCdef"` against `"abcdef"`, but the two differ ONLY in case — so under
+  `NSCaseInsensitiveSearch` the fold makes them equal throughout and the answer is the whole receiver.
+  The check now asserts `"ABCdef"` and still tests exactly what it was written to test.
+
 ## §63 — THE FIRST SLICE OF THE SELECTOR WORK LIST: `NSString`'S LINE DOORS, AND A TERMINATOR SET THAT WAS MISSING ONE (2026-09-28)
 
 **THE LEDGER FINALLY DRIVES WORK RATHER THAN DESCRIBING IT.** §62.110 put 1,374 open selectors on the
