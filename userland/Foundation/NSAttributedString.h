@@ -130,6 +130,12 @@ extern NSAttributedStringKey const NSInflectionReferentConceptAttributeName;
 extern NSAttributedStringKey const NSInflectionRuleAttributeName;
 extern NSAttributedStringKey const NSInlinePresentationIntentAttributeName;
 extern NSAttributedStringKey const NSLanguageIdentifierAttributeName;
+/* §62.107: THE ONE ATTRIBUTE NAME APPLE'S FOUNDATION INDEX DOES NOT FILE UNDER FOUNDATION — its ledger
+ * has no row for this name because Apple documents it on an AppKit page — and the markdown importer needs it,
+ * because Apple conveys a link with EXACTLY this attribute and there is no inline intent for one. So it is
+ * declared here, in the Foundation header that owns every other attribute name in this library, and the
+ * deviation is on the record rather than hidden behind a home the tree does not have. */
+extern NSAttributedStringKey const NSLinkAttributeName;
 extern NSAttributedStringKey const NSListItemDelimiterAttributeName;
 extern NSAttributedStringKey const NSLocalizedNumberFormatAttributeName;
 extern NSAttributedStringKey const NSMarkdownSourcePositionAttributeName;

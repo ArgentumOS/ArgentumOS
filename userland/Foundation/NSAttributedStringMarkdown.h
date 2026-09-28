@@ -18,11 +18,15 @@
  * classes answer their own questions and nothing else.
  */
 
+#import <Foundation/NSAttributedString.h>
 #import <Foundation/NSObject.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class NSData;
+@class NSError;
 @class NSString;
+@class NSURL;
 
 /* HOW MUCH OF THE MARKDOWN A PARSE WOULD TURN INTO ATTRIBUTES. Apple publishes the case names and their
  * meanings ("Full" = block structure and inline formatting, "InlineOnly" = the inline half without the block
@@ -104,6 +108,28 @@ typedef enum {
  * an end before its start answers an empty range at the start. (§11.6.1 D2.) */
 - (NSRange)rangeInString:(NSString *)string;
 
+@end
+
+/* THE THREE DOORS (§62.107), declared where the options they take live. Apple's own pages show them as
+ * initialisers OF NSAttributedString and publish neither the header they sit in nor the values of the enums
+ * above, so the placement is this library's and the reason is the same one the options class was written down
+ * with: a caller compiling against this header finds the whole surface of one subsystem in one place.
+ *
+ * THE CONTRACT, in Apple's words where they exist: an attributed string carrying the source's SEMANTICS —
+ * inline intents and block presentation intents — and NOT its styling; nil plus an error when the source is
+ * not valid markdown and the options say a failure should be reported (see the conventions at the parser). */
+@interface NSAttributedString (NSAttributedStringMarkdown)
+- (nullable instancetype)initWithMarkdown:(NSData *)markdown
+                                  options:(nullable NSAttributedStringMarkdownParsingOptions *)options
+                                  baseURL:(nullable NSURL *)baseURL
+                                    error:(NSError * _Nullable * _Nullable)error;
+- (nullable instancetype)initWithMarkdownString:(NSString *)markdownString
+                                        options:(nullable NSAttributedStringMarkdownParsingOptions *)options
+                                        baseURL:(nullable NSURL *)baseURL
+                                          error:(NSError * _Nullable * _Nullable)error;
+- (nullable instancetype)initWithContentsOfMarkdownFileAtURL:(NSURL *)url
+                                                     options:(nullable NSAttributedStringMarkdownParsingOptions *)options
+                                                       error:(NSError * _Nullable * _Nullable)error;
 @end
 
 NS_ASSUME_NONNULL_END

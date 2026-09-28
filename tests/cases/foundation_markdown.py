@@ -44,6 +44,22 @@ CHECKS = ("the-options-start-from-their-two-published-and-three-our-defaults",
           "a-range-covers-the-line-between-the-two-columns",
           "a-range-can-span-two-lines",
           "a-column-is-a-utf8-byte-and-not-a-character",
+          # §62.107: the importer's half.
+          "header-intent-and-level",
+          "inline-intent-bits",
+          "link-attributes-and-base-url",
+          "code-block-language-and-literal-content",
+          "list-intent-nesting-ordinal-and-delimiter",
+          "table-refused-by-name",
+          "image-alt-and-url-attributes",
+          "relative-destination-without-a-base-has-no-url",
+          "entities-and-escapes",
+          "hard-break-and-soft-break-bits",
+          "failure-policy-difference",
+          "inline-only-syntaxes",
+          "source-position-attributes",
+          "extended-attributes",
+          "language-code-attribute",
           "a-position-past-the-end-is-clamped")
 
 

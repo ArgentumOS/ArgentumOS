@@ -15628,6 +15628,71 @@ then `make test TESTS='foundation_constants*'` → **`TESTS-OK 1/1 case(s), 6/6 
 - **4 MACROS** (`NSLocalizedAttributedString*`) behind the **markdown importer**, a subsystem to build (§62.105).
 - **1 PROTOCOL** (`NSPredicateValidating`) — four visitor doors plus a validation walk; awaiting a decision.
 
+## §62.107 — THE MARKDOWN IMPORTER: ONE SUBSYSTEM, THREE BUGS, AND THE BUG NOT IN IT (2026-09-28)
+
+**WHAT SHIPPED: THE MARKDOWN IMPORTER** — the half Apple's options were waiting for since §62.64. Three doors
+(`-initWithMarkdown:options:baseURL:error:`, `-initWithMarkdownString:…`, `-initWithContentsOfMarkdownFileAtURL:…`)
+and the parser behind them, in `NSAttributedStringMarkdown.m`: the block level (paragraphs, ATX and setext
+headers, thematic breaks, fenced code with a language hint, nested block quotes, ordered/unordered lists with
+ordinals, delimiters and nesting) and the inline level (escapes, code spans, emphasis/strong/combined,
+strikethrough, links, images, autolinks, inline HTML, entities, hard and soft breaks, and Apple's
+`^[text](key: value)` extended attributes).
+
+**THE UNIT'S PRODUCT IS SEMANTIC, AND THAT IS APPLE'S OWN STATEMENT OF THE DESIGN**: "The system doesn't add
+style attributes to match the Markdown elements." Nothing here writes a font or a colour. A run carries an
+inline intent (`NSInlinePresentationIntentAttributeName`, an NSNumber of bits) and a block intent
+(`NSPresentationIntentAttributeName`, an object) — and, in Apple's model, **the run carries the INNERMOST intent
+with the rest reached through `parentIntent`**, which the probe now asserts as a chain (paragraph → list item with
+ordinal 2 → ordered list).
+
+**THE CONVENTIONS THIS LIBRARY HAD TO CHOOSE** (Apple publishes the vocabulary, not the algorithm — the shape
+§11.6.1 D2 already records for enum values), each named in the header, asserted by the probe, and listed here:
+a block ends with "
+"; **a TABLE IS NOT PARSED — a named refusal, because Apple publishes neither the character
+content of a row nor the home of the alignment enum, so emitting cells would be inventing the wire**; an image
+contributes its alt text with `NSImageURLAttributeName` + `NSAlternateDescriptionAttributeName`; four or more
+emphasis characters are literal, as is an intraword `_`; **a relative destination with no baseURL leaves no URL
+behind** (this library's NSURL refuses relative references — see the bug below); extended-attribute values that
+are numeric or true/false arrive as NSNumbers; `languageCode` rides `NSLanguageIdentifierAttributeName`; the two
+failure cases are an unterminated fence and a malformed extended attribute, reported in this library's own domain
+because Apple publishes none; and InlineOnly collapses every whitespace run while
+InlineOnlyPreservingWhitespace keeps the source's.
+
+**THREE BUGS, AND THE ONE THAT WAS NOT OURS.** The importer shipped only after it had RUN, and running it found:
+1. **`+[NSURL URLWithString:relativeToURL:nil]` SEGFAULTED** — a relative reference with a nil base, which is
+   exactly what Apple's importer asks for on a relative image destination. `fnResolveAgainst:` read the base's
+   ivars with no nil check: a message to nil is safe, an **ivar read through a nil pointer is not**. Fixed with
+   RFC 3986 §5.1's own rule — a reference with no scheme cannot resolve against nothing, because the scheme is
+   the one thing only the base can supply — so it answers nil, which is also what NSURL.h already promised by
+   refusing relative resolution (F8) and what NSURL.m's own comment described. **The markdown probe's
+   relative-destination check is that fix's regression test.**
+2. **An outer intent was overwriting the inner one on a run**: the list and the item were painted over the
+   item's ranges AFTER the paragraph that is the run's real semantics, so a list item read back as the list.
+   The fix is the model itself — only the innermost intent rides a run.
+3. **Two parser defects the probe caught**: an extended attribute's key kept a leading space (so `@"n"` missed
+   while `@" n"` hit), and a source ending in a newline split into a phantom empty final line, which put a blank
+   line inside every fence that ran to the end of the document.
+
+**AND THE UNIT COST ONE MISTAKE WORTH RECORDING**: the importer's probe was written as a NEW file named after the
+subsystem — which OVERWROTE §62.64's tracked `foundation_markdown` probe (it had shipped 10 checks for the two
+value objects). Caught before the commit by `HOST_PROBES`, which already named it. The repair is the better
+design anyway: the importer's 15 checks were MERGED INTO that probe as a second half, so one file now covers the
+whole markdown family, and the case's `CHECKS` tuple grew from 10 to 25 names. **The rule this is the third
+instance of: check whether the name is taken before creating a test artefact.**
+
+**VERIFICATION.** Probe `foundation_markdown` **25/25 on the host** (the original 10 plus 15) and the guest case
+**`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**. Host suite: **54 probes, no failure**. Library **zero** warnings.
+`foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**; `--unimplemented`: **0 NEW**.
+**NO LEDGER ROW CLOSES, AND THAT IS EXPECTED**: the importer is method-level work, and the one name it needed
+that Apple's Foundation index does not file under Foundation — `NSLinkAttributeName`, which Apple documents on an
+AppKit page — is declared in `NSAttributedString.h` with that deviation on the record. **The open count stays 5.**
+
+**WHERE THE THREAD STANDS: 4 MACROS AND 1 RECORDED DECISION — AND THE MACROS ARE NOW UNBLOCKED.** The reason the
+four `NSLocalizedAttributedString*` macros were owed was that Apple's contract parses the localized value **as
+markdown**; that importer now exists, so §62.108 is the `NSBundle -localizedAttributedStringForKey:value:table:`
+door plus the four macros that call it — and then the ledger's open material is the one protocol left open by
+decision.
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else

@@ -238,6 +238,8 @@ static void fn_rtf_append_document_head(NSMutableString *out)
  * caller's context dictionary and any log of it spell. */
 NSAttributedStringFormattingContextKey const NSInflectionConceptsKey = @"NSInflectionConceptsKey";
 
+NSAttributedStringKey const NSLinkAttributeName = @"NSLinkAttributeName";
+
 @implementation NSAttributedString
 
 /* ---- THE MODERN FAMILIES' CONSTANTS (W10 slice 4): names Apple publishes, values ours (§11.6.1 D2). */

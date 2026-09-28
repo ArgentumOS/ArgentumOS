@@ -558,6 +558,20 @@ NSURL * _Nullable FNURLResolveRelative(NSString *reference, NSString * _Nullable
 {
 	NSURLComponents *target = [[NSURLComponents alloc] init];
 
+	/* §62.107'S BUG, FOUND BY THE MARKDOWN IMPORTER AND FIXED HERE: every branch below but the first reads
+	 * the base's components, and an Objective-C message to nil is safe while an IVAR READ THROUGH A NIL
+	 * POINTER IS NOT — so a *relative* reference against a nil base (a markdown image with a relative
+	 * destination and no baseURL, which is exactly what Apple's importer asks for) took the process down.
+	 * THE RULE IS RFC 3986 §5.1's, not a guard for its own sake: a reference with NO scheme cannot be
+	 * resolved against nothing, because the scheme is the one thing only the base can supply. So it answers
+	 * nil — which is also what this library's NSURL.h already promised by refusing relative resolution
+	 * (F8), and what NSURL.m's own comment on the door describes. A reference WITH a scheme still passes
+	 * through untouched: the first branch never reads the base. */
+	if (base == nil && _scheme == nil) {
+		[target release];
+		return nil;
+	}
+
 	if (_scheme != nil) {
 		target->_scheme = _scheme;
 		target->_user = _user;
