@@ -185,6 +185,7 @@
 #import <Foundation/NSMorphology.h>
 #import <Foundation/NSInflectionRule.h>
 #import <Foundation/NSTermOfAddress.h>
+#import <Foundation/NSLocalizedNumberFormatRule.h>
 #import <Foundation/NSOperation.h>
 #import <Foundation/NSBlockOperation.h>
 #import <Foundation/NSInvocationOperation.h>

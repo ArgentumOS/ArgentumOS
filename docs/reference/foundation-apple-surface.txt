@@ -34,7 +34,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  211   open   14   struck   48
+#   class      shipped  212   open   13   struck   48
 #   protocol   shipped   34   open    6   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  147   open    4   struck    9
@@ -1440,7 +1440,7 @@ class	shipped	NSLengthFormatter		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSLinguisticTagger		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSListFormatter		Fundamentals / Lists	-	objc
 class	shipped	NSLocale		Fundamentals / Localization	-	objc
-class	open	NSLocalizedNumberFormatRule		Reference / Classes	-	objc
+class	shipped	NSLocalizedNumberFormatRule		Reference / Classes	-	objc
 class	shipped	NSLock		Low-Level Utilities / Threads and Locking	-	objc
 class	struck	NSLogicalTest		App Support / Object Matching Tests	declined	objc
 class	shipped	NSMachBootstrapServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
