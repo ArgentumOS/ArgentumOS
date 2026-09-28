@@ -1286,6 +1286,37 @@ int main(void)
 			[log componentsJoinedByString:@" "]] UTF8String]);
 	}
 
+	/* §62.99: THE PROTOCOL PAIR. A protocol is a runtime object, so the two doors are the runtime's own
+	 * conversion — and the check that matters is the ROUND TRIP, because a name that did not come back to the
+	 * same protocol would still look right one way. The refusals get equal weight: a protocol that is not
+	 * loaded has no object (Apple's contract for this door), and nil has no name. */
+	{
+		Protocol *copying = @protocol(NSCopying);
+		NSString *name = copying != NULL ? NSStringFromProtocol(copying) : nil;
+		Protocol *back = NSProtocolFromString(@"NSCopying");
+		BOOL sameProtocol = (back != NULL && back == copying);
+
+		check("runtime-protocol-name-round-trip",
+		      name != nil && [name isEqualToString:@"NSCopying"] && sameProtocol &&
+		      NSStringFromProtocol(NSProtocolFromString(@"NSFastEnumeration")) != nil &&
+		      [NSStringFromProtocol(NSProtocolFromString(@"NSFastEnumeration"))
+			isEqualToString:@"NSFastEnumeration"],
+		      [[NSString stringWithFormat:@"name=%@ roundTrip=%d", name, (int)sameProtocol] UTF8String]);
+
+		/* AND THE NAME IS USABLE AS A KEY, which is the use Apple's documentation gives this pair: a
+		 * protocol object is not -copyable, so the string is what a dictionary takes. */
+		{
+			NSMutableDictionary *byName = [NSMutableDictionary dictionary];
+
+			[byName setObject:@"the copying protocol" forKey:name];
+			check("runtime-protocol-doors-refuse-what-is-absent",
+			      NSProtocolFromString(@"NSNoSuchProtocolHere") == NULL &&
+			      NSStringFromProtocol(NULL) == nil && NSProtocolFromString(nil) == NULL &&
+			      [[byName objectForKey:@"NSCopying"] isEqualToString:@"the copying protocol"],
+			      "an unloaded protocol has no object, nil has no name, and the name works as a key");
+		}
+	}
+
 	printf("FOUNDATION-CORE RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

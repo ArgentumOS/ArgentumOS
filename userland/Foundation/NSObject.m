@@ -971,6 +971,27 @@ void *NSReturnAddress(NSUInteger level)
 	return level == 0 ? __builtin_return_address(0) : NULL;
 }
 
+/* THE PROTOCOL PAIR (§62.99). A protocol IS a runtime object here, so the conversion is the runtime's own two
+ * calls and nothing has to be kept in step by hand: `objc_getProtocol` is the reason a protocol that has not been
+ * loaded answers nil (Apple's contract for this door, and the probe checks it), and the name comes back as a
+ * string so that a protocol can be a dictionary key - which is the use Apple's documentation gives this pair.
+ * NIL IN, NIL OUT, both ways: `NSStringFromProtocol(NULL)` has no name to answer with. */
+NSString *NSStringFromProtocol(Protocol *protocol)
+{
+	if (protocol == NULL) {
+		return nil;
+	}
+	return [NSString stringWithUTF8String:protocol_getName(protocol)];
+}
+
+Protocol *NSProtocolFromString(NSString *name)
+{
+	if (name == nil) {
+		return NULL;
+	}
+	return objc_getProtocol([name UTF8String]);
+}
+
 /* THE GARBAGE-COLLECTOR DOORS. There is no collector, so each is given the behaviour Apple documents for a program
  * that is not collected — and that is not a stub: it is the documented behaviour, and the header says which one. */
 id NSMakeCollectable(id anObject)

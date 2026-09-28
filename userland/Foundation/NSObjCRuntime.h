@@ -29,6 +29,7 @@
 
 #include <limits.h>
 #include <objc/objc.h>	/* BOOL, YES, NO */
+#include <objc/runtime.h>	/* Protocol, for the two runtime utilities below */
 
 /*
  * NULLABILITY (F6). These are the STANDARD spellings, and they are defined here
@@ -111,7 +112,7 @@ typedef unsigned short unichar;
 
 /* The block comparator the sorted/sort ...UsingComparator: forms take, and the
  * options for the binary-search family. Both are Cocoa's spellings. */
-typedef NSComparisonResult (^NSComparator)(id object1, id object2);
+typedef NSComparisonResult (^NSComparator)(id _Nonnull object1, id _Nonnull object2);
 
 typedef enum {
 	NSBinarySearchingFirstEqual = 1,
@@ -132,7 +133,7 @@ typedef enum {
  * Objective-C type — `const char *` in and `NSUInteger *` out, which is also why this header
  * needs no nullability region (it is one of the four the gate exempts by name).
  */
-const char *NSGetSizeAndAlignment(const char *typePtr, NSUInteger *sizep, NSUInteger *alignp);
+const char * _Nullable NSGetSizeAndAlignment(const char * _Nonnull typePtr, NSUInteger * _Nullable sizep, NSUInteger * _Nullable alignp);
 
 /* THE DEBUG SWITCHES (W2g): globals a program reads and sets. This library does not act on any
  * of them yet — the allocation machinery that would consult them is not built — and
@@ -379,8 +380,8 @@ typedef enum {
 
 /* LOGGING. Apple's `NSLog` writes to STANDARD ERROR with a prefix; so does this one, and the prefix is the process
  * id, which is what a reader of a log needs and what needs no date formatter to produce. `NSLogv` is the doer. */
-void NSLog(NSString *format, ...);
-void NSLogv(NSString *format, va_list args);
+void NSLog(NSString * _Nonnull format, ...);
+void NSLogv(NSString * _Nonnull format, va_list args);
 
 /* PAGES. The size comes from the system that will honour it (`sysconf`) rather than from a constant written here,
  * and the rounding is the arithmetic the names promise. */
@@ -395,7 +396,7 @@ NSUInteger NSRealMemoryAvailable(void);
 
 /* A RANGE FROM ITS OWN DESCRIPTION: the format `NSStringFromRange` writes, and {0, 0} for anything else, which is
  * a stated answer rather than a refusal because a string that does not describe a range describes no range. */
-NSRange NSRangeFromString(NSString *aString);
+NSRange NSRangeFromString(NSString * _Nonnull aString);
 
 /* `NSCopyObject` IS NOT HERE, AND THE REASON IS MEASURABLE RATHER THAN A JUDGEMENT: a faithful raw byte copy must
  * give the copy a RETAIN COUNT OF ONE, and this library's runtime publishes no way to SET a count — only to read
@@ -405,24 +406,31 @@ NSRange NSRangeFromString(NSString *aString);
 /* THE EXTRA RETAIN COUNT. Apple's runtime keeps a count beyond the basic one and these are its doors. THIS
  * LIBRARY'S RUNTIME HAS NO SEPARATE COUNTER, so the equivalence is stated where they are defined: the extra count
  * is the retain count minus the basic one, which is the only reading of the two that agrees with `-retainCount`. */
-NSUInteger NSExtraRefCount(id object);
-id NSIncrementExtraRefCount(id object);
-BOOL NSDecrementExtraRefCountWasZero(id object);
+NSUInteger NSExtraRefCount(id _Nonnull object);
+id _Nonnull NSIncrementExtraRefCount(id _Nonnull object);
+BOOL NSDecrementExtraRefCountWasZero(id _Nonnull object);
 
 /* THE STACK. Level zero is what a compiler is obliged to answer for; a higher level needs a CHAINED FRAME POINTER,
  * which this build does not promise, so these answer NULL beyond the levels they can honour rather than reading a
  * frame that may not be there. `NSCountFrames` IS ABSENT for the same reason and not by oversight: counting frames
  * means walking them, and a walk that reads a bad frame pointer faults — the door is absent rather than dangerous. */
-void *NSFrameAddress(NSUInteger level);
-void *NSReturnAddress(NSUInteger level);
+void * _Nullable NSFrameAddress(NSUInteger level);
+void * _Nullable NSReturnAddress(NSUInteger level);
+
+/* THE THREE RUNTIME UTILITIES (§62.99), and the type they pass is the runtime's own: `Protocol` is declared by
+ * <objc/runtime.h>, which this header includes for exactly this reason (NSObject.h already did). Apple declares
+ * these in NSObjCRuntime.h too, which is why the pair lives here rather than in a class's header — a protocol is
+ * not an object and no class owns these. */
+NSString * _Nullable NSStringFromProtocol(Protocol * _Nullable protocol);
+Protocol * _Nullable NSProtocolFromString(NSString * _Nullable name);
 
 /* THE GARBAGE-COLLECTOR DOORS, WHICH THIS LIBRARY HAS BY NAME AND NOT BY COLLECTOR. Each is given the behaviour
  * Apple documents for a program that is not collected: an object IS collectable while it is valid, NOTHING is
  * reported as freed, and recording an allocation event is a no-op because there is nothing to record it for. */
-id NSMakeCollectable(id anObject);
-void *NSReallocateCollectable(void *pointer, NSUInteger size, NSUInteger options);
-void NSRecordAllocationEvent(NSInteger event, id object);
-BOOL NSIsFreedObject(id anObject);
+id _Nullable NSMakeCollectable(id _Nullable anObject);
+void * _Nullable NSReallocateCollectable(void * _Nullable pointer, NSUInteger size, NSUInteger options);
+void NSRecordAllocationEvent(NSInteger event, id _Nullable object);
+BOOL NSIsFreedObject(id _Nullable anObject);
 
 
 #endif /* FOUNDATION_NSOBJCRUNTIME_H */

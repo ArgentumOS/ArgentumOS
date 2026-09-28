@@ -32,6 +32,8 @@ CHECKS = (
           "lifecycle", "equality", "identity", "arc-pool", "cross-tu", "nsobject-api-complete", "runtime-class-names", "runtime-selector-names", "runtime-range-string", "geometry-rects", "geometry-edges", "geometry-strings", "geometry-cg-types", "geometry-alignment", "c-byte-order", "kvc-operator-constants", "c-memory-pages", "c-size-and-alignment", "c-debug-switches", "methodsignature-parses", "methodsignature-grammar", "methodsignature-offsets", "methodsignature-sizes", "methodsignature-lookup", "invocation-api", "forwarding-hook", "forwarding-invocation", "forwarding-target", "nsobject-protocol", "affine-rotation-and-indexing", "affine-append-versus-prepend", "mutators-raise-out-of-range", "objectAtIndex-raises-out-of-range", "mrr-pool-refuses-retain", "mrr-pool-releases-on-drain", "mrr-proxy-forwards", "json-round-trip", "json-validity", "json-options", "json-reading-options", "undo-initial-state", "undo-registers", "undo-reverses-newest-first", "undo-redo-reapplies", "undo-remove-all-actions", "undo-grouping-level", "undo-grouping-unwinds", "undo-explicit-group-is-bounded", "undo-action-name-reaches-redo", "undo-registration-can-be-disabled", "copy-family-keeps-the-original",
           "undo-prepare-with-invocation-target", "undo-block-handler", "undo-notifications",
               "a-missing-method-raises-and-can-be-caught",
+              # §62.99: the protocol pair Apple declares in NSObjCRuntime.h.
+              "runtime-protocol-name-round-trip", "runtime-protocol-doors-refuse-what-is-absent",
 )
 
 
