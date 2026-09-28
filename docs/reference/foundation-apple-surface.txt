@@ -34,11 +34,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  204   open   21   struck   48
+#   class      shipped  207   open   18   struck   48
 #   protocol   shipped   34   open    6   struck    5
 #   macro      shipped  116   open    5   struck  132
-#   enum       shipped  142   open    9   struck    9
-#   case       shipped 1151   open   76   struck   75
+#   enum       shipped  147   open    4   struck    9
+#   case       shipped 1180   open   47   struck   75
 #   func       shipped  164   open   13   struck   12
 #   var        shipped  649   open   58   struck  207
 #   typealias  shipped   66   open    5   struck    5
@@ -445,27 +445,27 @@ case	shipped	NSFormattingUnitStyleLong	NSFormatter	Fundamentals / Custom formatt
 case	shipped	NSFormattingUnitStyleMedium	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
 case	shipped	NSFormattingUnitStyleShort	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
 case	shipped	NSFunctionExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
-case	open	NSGrammaticalCaseAblative		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalCaseAccusative		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalCaseAdessive		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalCaseAllative		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalCaseDative		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalCaseElative		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalCaseEssive		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalCaseGenitive		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalCaseIllative		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalCaseInessive		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalCaseLocative		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalCaseNominative		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalCaseNotSet		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalCasePrepositional		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalCaseTranslative		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalDefinitenessDefinite		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalDefinitenessIndefinite		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalDefinitenessNotSet		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalDeterminationDependent		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalDeterminationIndependent		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalDeterminationNotSet		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalCaseAblative		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalCaseAccusative		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalCaseAdessive		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalCaseAllative		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalCaseDative		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalCaseElative		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalCaseEssive		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalCaseGenitive		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalCaseIllative		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalCaseInessive		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalCaseLocative		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalCaseNominative		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalCaseNotSet		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalCasePrepositional		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalCaseTranslative		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalDefinitenessDefinite		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalDefinitenessIndefinite		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalDefinitenessNotSet		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalDeterminationDependent		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalDeterminationIndependent		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalDeterminationNotSet		Reference / Enumerations / Enumeration Cases	-	objc
 case	shipped	NSGrammaticalGenderFeminine	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Gender	-	objc
 case	shipped	NSGrammaticalGenderMasculine	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Gender	-	objc
 case	shipped	NSGrammaticalGenderNeuter	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Gender	-	objc
@@ -492,14 +492,14 @@ case	shipped	NSGrammaticalPartOfSpeechParticle	NSMorphology	Fundamentals / Autom
 case	shipped	NSGrammaticalPartOfSpeechPreposition	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
 case	shipped	NSGrammaticalPartOfSpeechPronoun	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
 case	shipped	NSGrammaticalPartOfSpeechVerb	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	open	NSGrammaticalPersonFirst		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalPersonNotSet		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalPersonSecond		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalPersonThird		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalPronounTypeNotSet		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalPronounTypePersonal		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalPronounTypePossessive		Reference / Enumerations / Enumeration Cases	-	objc
-case	open	NSGrammaticalPronounTypeReflexive		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalPersonFirst		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalPersonNotSet		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalPersonSecond		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalPersonThird		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalPronounTypeNotSet		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalPronounTypePersonal		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalPronounTypePossessive		Reference / Enumerations / Enumeration Cases	-	objc
+case	shipped	NSGrammaticalPronounTypeReflexive		Reference / Enumerations / Enumeration Cases	-	objc
 case	struck	NSGreaterThanComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	struck	NSGreaterThanOrEqualToComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	shipped	NSGreaterThanOrEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
@@ -1457,9 +1457,9 @@ class	struck	NSMetadataQueryAttributeValueTuple		Files and Data Persistence / Qu
 class	struck	NSMetadataQueryResultGroup		Files and Data Persistence / Queries / Getting query results	declined	objc
 class	shipped	NSMethodSignature		Low-Level Utilities / Invocations	-	objc
 class	struck	NSMiddleSpecifier		App Support / Object Specifiers	declined	objc
-class	open	NSMorphology		Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule	-	objc
-class	open	NSMorphologyCustomPronoun		Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features	deprecated	objc
-class	open	NSMorphologyPronoun		Fundamentals / Automatic grammar agreement	-	objc
+class	shipped	NSMorphology		Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule	-	objc
+class	shipped	NSMorphologyCustomPronoun		Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features	deprecated	objc
+class	shipped	NSMorphologyPronoun		Fundamentals / Automatic grammar agreement	-	objc
 class	struck	NSMoveCommand		App Support / Script Commands	declined	objc
 class	shipped	NSMutableArray		Fundamentals / Basic Collections	-	objc
 class	shipped	NSMutableAttributedString		Fundamentals / Strings with Metadata	-	objc
@@ -1670,14 +1670,14 @@ enum	shipped	NSFileWrapperReadingOptions	NSFileWrapper	Files and Data Persistenc
 enum	shipped	NSFileWrapperWritingOptions	NSFileWrapper	Files and Data Persistence / Managed file access / Constants	-	objc
 enum	shipped	NSFormattingContext	NSFormatter	Fundamentals / Custom formatters / Constants	-	objc
 enum	shipped	NSFormattingUnitStyle	NSFormatter	Fundamentals / Custom formatters / Constants	-	objc
-enum	open	NSGrammaticalCase		Reference / Enumerations	-	objc
-enum	open	NSGrammaticalDefiniteness		Reference / Enumerations	-	objc
-enum	open	NSGrammaticalDetermination		Reference / Enumerations	-	objc
+enum	shipped	NSGrammaticalCase		Reference / Enumerations	-	objc
+enum	shipped	NSGrammaticalDefiniteness		Reference / Enumerations	-	objc
+enum	shipped	NSGrammaticalDetermination		Reference / Enumerations	-	objc
 enum	shipped	NSGrammaticalGender	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
 enum	shipped	NSGrammaticalNumber	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
 enum	shipped	NSGrammaticalPartOfSpeech	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
-enum	open	NSGrammaticalPerson		Reference / Enumerations	-	objc
-enum	open	NSGrammaticalPronounType		Reference / Enumerations	-	objc
+enum	shipped	NSGrammaticalPerson		Reference / Enumerations	-	objc
+enum	shipped	NSGrammaticalPronounType		Reference / Enumerations	-	objc
 enum	shipped	NSHTTPCookieAcceptPolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies	-	objc
 enum	shipped	NSHTTPCookieAcceptPolicy	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy	-	objc
 enum	shipped	NSISO8601DateFormatOptions	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants	-	objc

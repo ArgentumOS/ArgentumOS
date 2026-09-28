@@ -3495,7 +3495,7 @@ vanishing.
 | **Files and Data Persistence / Queries** | ALL STRUCK: `NSMetadataQuery`, `NSMetadataQueryAttributeValueTuple`, `NSMetadataQueryDelegate`, `NSMetadataQueryResultGroup` | — |
 | **Files and Data Persistence / XML** | all classes shipped | — |
 | **Files and Data Persistence / iCloud key and value storage** | 1 open | `NSUbiquitousKeyValueStore` |
-| **Fundamentals / Automatic grammar agreement** | 6 open | `NSInflectionRule`, `NSInflectionRuleExplicit`, `NSMorphology`, `NSMorphologyCustomPronoun`, `NSMorphologyPronoun`, `NSTermOfAddress` |
+| **Fundamentals / Automatic grammar agreement** | 3 open | `NSInflectionRule`, `NSInflectionRuleExplicit`, `NSTermOfAddress` |
 | **Fundamentals / Basic Collections** | all classes shipped | — |
 | **Fundamentals / Binary Data** | all classes shipped | — |
 | **Fundamentals / Calendrical Calculations** | all classes shipped | — |
@@ -14247,6 +14247,45 @@ including the coordinator's own case. `foundation-gate`: **OK — 543 files, 203
 TALLY, while a case defect shows a green tally with a failing case-level check* — which separates "revert and
 bisect" from "fix the test"; and *a forward declaration turns a selector typo into a warning*, because clang
 assumes `id` and never checks the label.
+
+## §62.78 — THE MORPHOLOGY VALUE TYPES: 37 ROWS, AND A FRESH MORPHOLOGY THAT READ AS FEMININE (2026-09-26)
+
+**WHAT SHIPPED: THIRTY-SEVEN ROWS.** `NSMorphology`, `NSMorphologyCustomPronoun` and `NSMorphologyPronoun`, plus
+the **five grammatical enums their own properties need** — `NSGrammaticalDefiniteness`, `NSGrammaticalDetermination`,
+`NSGrammaticalCase` (15 cases), `NSGrammaticalPerson`, `NSGrammaticalPronounType` — and their **29 cases**.
+`class shipped` went **204 → 207**, `enum 142 → 147`, `case 1151 → 1180`, and
+**`Fundamentals / Automatic grammar agreement` went from 6 open to 3** — the rule/address half
+(`NSInflectionRule`, `NSInflectionRuleExplicit`, `NSTermOfAddress`) is the next unit, and with it the family closes.
+
+**WHAT IS REAL HERE IS THE VALUE, AND THE BOUNDARY IS ALREADY IN THE HEADER.** This header opened by saying "there
+is NO morphology ENGINE here — nothing inflects, agrees or resolves a referent", and the three classes extend that
+statement rather than contradicting it: eight grammatical fields, a pronoun with the morphology it agrees with, a
+custom-pronoun record of five forms — each copied, compared, hashed, archived and asked whether it says anything.
+
+**THREE DOORS WHERE THE HONEST ANSWER IS NOT AN IMPLEMENTATION:**
+
+* **`-setCustomPronoun:forLanguage:error:` REFUSES BY NAME**, with the language in the error, because that door is
+  PER-LANGUAGE PRONOUN DATA and this system carries none — accepting a value nothing can ever read back is the
+  silence this library's doors exist to avoid;
+* **`+isSupportedForLanguage:` answers NO** for the same ground;
+* **`+userMorphology` ANSWERS A VALUE**, which is the honest reading rather than the convenient one: Apple's returns
+  the USER'S morphological preferences, and a system with none has a user whose morphology is UNSPECIFIED. It
+  answers a **FRESH** unspecified instance every call, because a morphology is MUTABLE and a shared one would let
+  one caller's `-setNumber:` change every other caller's answer.
+
+**AND THE PROBE FOUND A REAL BUG ON ITS FIRST RUN — the kind only a first run finds: A FRESH MORPHOLOGY READ AS
+FEMININE.** `NSGrammaticalGenderNotSet` is **THREE** (it is the value the enum shipped with, whose `Feminine` is
+zero), so a freshly allocated instance — which is all zeroes — claimed to be feminine, and `-isUnspecified`
+*correctly* said it was not unspecified. The five enums added here put `...NotSet` at zero precisely so that a
+zeroed allocation means "nothing said", and the fix is an `-init` that names each unset case, which extends that
+guarantee to the one enum that predates them **instead of special-casing the reader**. The rule the file now
+states: **an initialisation rule belongs to the class, not to the allocation.**
+
+**VERIFIED.** Host: `make host-foundation-run` — **38 probes, every tally `fail=0`** (the new probe read `ok=10
+fail=2` before the `-init` and `ok=12 fail=0` after). Guest: `make testimg` then
+`make test TESTS='foundation_morphology'` → **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**.
+`foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**, 37 rows flipped, family table
+regenerated. `foundation-gate`: **OK — 545 files**; `--unimplemented`: **0 NEW**.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
