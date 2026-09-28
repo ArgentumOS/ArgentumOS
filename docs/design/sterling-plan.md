@@ -607,8 +607,47 @@ Measured: `GOLDEN-SPECIMENS-OK all 11` including the new `EmitsStruct`, and
   representation) and `struct-unknown-base.ag` (§7.16's base needs the base's
   declarations, so a base this file does not declare is §9.5's importer's).
 
-**What remains of the struct emitter's checklist — items 1–5, 7 and 8 below are
-DONE; the ones marked OWED are not:**
+**Landed (2026-09, third piece): §7.25's CALL SITE, §7.16's upcast, and §7.56's
+`func` — so `08-structs.ag` EMITS AND COMPILES.** Measured:
+`CORPUS-EMIT 2 of 13` (`08-structs` and `10-literals-and-types`, both honest this
+time), `REFUSE-OK all 23`, `COMPILE-OK EmitsStruct` with the new pieces in it.
+
+- **The receiver's TYPE is what the call site needed, and the emitter never had
+  one.** `a.length()` is `Point_length(&a)` — not a send — so the SEND node has to
+  ask what `a` is before it can emit anything. The answer is an environment of
+  **declared** types by name (`current_env`), filled from a body's parameters, its
+  declared locals, and a struct's own fields. Only *declared* types are recorded,
+  which is enough: §4's two inference rules (a local whose type comes from its
+  initializer, an unsuffixed literal) both land on a scalar or a class, never on a
+  struct — a struct is constructed by name.
+- **§7.16's upcast falls out of the same walk.** `Point3` does not declare
+  `length`, so `p3.length()` is `Point_length((const Point *)&p3)`: the declaring
+  struct supplies BOTH the prefix and the cast's type, so the two cannot
+  disagree — and the cast's `const` comes from §7.14's inference run against the
+  OWNER's body (which is why `current_struct` is installed as the owner while it
+  runs). The anonymous member sits at offset 0, which is what makes `&p3` valid
+  as a `Point *`.
+- **§7.56's `func` is emitted**: a plain C function, declared in the header and
+  defined in the `.m`, with its parameters' declared types in the same
+  environment. Declaring every one in the header is also what makes the source
+  order of two `func`s stop mattering. `tests/refuse/func.ag` is RETIRED (its
+  expectation is the thing that is emitted now) — and note what closing that loss
+  bought: `CORPUS-EMIT` went 1 → 0 when `func` was merely *refused*, and 0 → 2
+  once it was *emitted*.
+- **The initializer's decision has a measured consequence.** §7.49 + the 2026-09
+  decision make `Counter Counter_init(Counter self, int32_t start)` take `self`
+  **by value**, where every other struct function takes a pointer — so its fields
+  are `self.count`, NOT `self->count`. The first emission wrote `self->count = start;`
+  and clang rejected it twice ("member reference type 'Counter' is not a pointer"
+  and "expression is not assignable"). One flag (`current_self_by_value`), set in
+  `emit_struct_body` from `is_initializer`.
+  - **Still owed for the initializer: the CALL.** `Counter(start: 3)` has to
+    become `Counter_init(<a zeroed Counter>, 3)` — the by-value `self` has to come
+    from somewhere. `08-structs.ag` DECLARES `init` and never calls it, so this is
+    pinned the first time a call appears rather than guessed.
+
+**What remains of the struct emitter's checklist — items 1–8 are now DONE except
+the initializer's call site, which is item 8's second half:**
 
 1. the `typedef struct Name { … } Name;` and its stored `var` fields;
 2. §7.16's anonymous base member (`struct Point;`, first, offset 0);
@@ -622,17 +661,15 @@ DONE; the ones marked OWED are not:**
    body has to reach `self->` too, which needs the enclosing struct's fields (an
    inherited one needs the base's declarations, and a base in another file is
    §9.5's importer);
-6. **OWED — the call site:** `a.length()` → `Point_length(&a)`, which needs a
-   **name → struct-type environment** (params, locals and fields) that the
-   emitter does not have — 08's `func total(a: Point, b: Point)` forces it, since
-   a free function calls a struct method on its parameters. The scaffolding was
-   built and then REMOVED rather than left dead: `struct_resolve_method` and
-   `struct_find_method` walked the base chain for exactly this, and
-   `declared_structs` is populated for the check that a receiver's type is one of
-   the file's own.
-7. **OWED with 6 — the inherited call's upcast**
+6. **DONE — the call site:** `a.length()` → `Point_length(&a)`, through the
+   **name → struct-type environment** (`current_env`) that the emitter did not
+   have. 08's `func total(a: Point, b: Point)` forced it, since a free function
+   calls a struct method on its parameters. The scaffolding
+   (`struct_resolve_method`, `struct_find_method`) was removed as dead code when
+   the call site was deferred and RE-ADDED here, now that it is used.
+7. **DONE — the inherited call's upcast**
    (`p3.length()` → `Point_length((const Point *)&p3)`);
-8. **OWED — the struct initializer. DECIDED (user, 2026-09): a declared `init`
+8. **the struct initializer. DECIDED (user, 2026-09): a declared `init` takes
    `self` BY VALUE and returns the struct.** `init(start: Int32)` on `Counter`
    emits `Counter Counter_init(Counter self, int32_t start)`, and the body's
    `return self;` is the struct it hands back (the same append §7.49 already makes
@@ -645,13 +682,11 @@ DONE; the ones marked OWED are not:**
    other mutating struct method takes) was rejected because it would make
    `Counter(start: 3)` un-usable as an expression, and §6's literal reading
    constructs inline.
-   - **The consequence this creates, recorded so it is not discovered: the CALL
-     site has to supply `self`.** `Counter(start: 3)` is not a free-standing
-     literal when a declared initializer exists — it becomes
-     `Counter_init(<some zeroed Counter>, 3)`, so the emitter needs a source for
-     that value (a zeroed compound literal is the obvious one). Corpus 08
-     declares `init` and never calls it, so this is not exercised yet and is
-     pinned the first time a call appears rather than guessed now.
+   - **The DECLARATION is emitted; the CALL is still owed.** The by-value `self`
+     has to come from somewhere, so `Counter(start: 3)` becomes
+     `Counter_init(<a zeroed Counter>, 3)` — a zeroed compound literal is the
+     obvious source — and 08 declares `init` without ever calling it, so the call
+     is pinned the first time one appears.
    - The two initialized forms therefore differ, and deliberately: with **no**
      declared initializer, `Point(x: 1, y: 2)` is §6's literal
      (`(Point){ .x = 1, .y = 2 }`, the memberwise set); **with** one, the same

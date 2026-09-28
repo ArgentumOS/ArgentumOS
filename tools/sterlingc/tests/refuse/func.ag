@@ -1,7 +1,0 @@
-/* §7.56: `func` is a bare function, and its DEFINITION is a C function this
- * emitter does not write yet. It was parsed and dropped with NO count kept, so
- * a file's whole function left the tree silently — which the struct slice made
- * visible, because `08-structs.ag` is structs plus one `func`. */
-func total(a: Int32, b: Int32) -> Int32 {
-    return a + b;
-}

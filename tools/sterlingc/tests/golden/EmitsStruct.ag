@@ -61,6 +61,32 @@ struct Point3: Point {
     }
 }
 
+/*
+ * §7.25's CALL SITE, which is the other half of "a struct's methods are C
+ * functions": `a.length()` is not a send at all, it is `Point_length(&a)` — the
+ * receiver's ADDRESS with the declaring struct's prefix. A `func` is how the case
+ * is reachable, because a class's or a struct's own methods could always have
+ * written `self.`; a free function takes its receiver as a PARAMETER, which is
+ * what forces the emitter to know a name's type.
+ *
+ * `spread` is the second case §7.16 needs: `Point3` does not declare `length`, so
+ * the call reaches the BASE's function through an UPCAST —
+ * `Point_length((const Point *)&p3)`, and the cast is `const` because that method
+ * does not mutate (the same §7.14 inference, applied to the receiver).
+ */
+func total(a: Point, b: Point) -> Float32 {
+    return a.length() + b.length()
+}
+
+func spread(p3: Point3) -> Float32 {
+    return p3.length()
+}
+
 class Holder: Object {
     property origin: Point
+
+    /* A class body reaches a struct's function the same way. */
+    method distance(left: Point, right: Point) -> Float32 {
+        return left.length() + right.length()
+    }
 }

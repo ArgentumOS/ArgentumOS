@@ -19,9 +19,14 @@ typedef struct Point3 {
 
 void Point3_moveTo(Point3 *self, float x, float y, float z);
 
+float total(Point a, Point b);
+float spread(Point3 p3);
+
 @interface Holder : NSObject
 
 @property (nonatomic, assign) Point origin;
+
+- (float)distance:(Point)left right:(Point)right;
 
 @end
 

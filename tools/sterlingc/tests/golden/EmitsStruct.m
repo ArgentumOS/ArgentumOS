@@ -24,6 +24,21 @@ void Point3_moveTo(Point3 *self, float x, float y, float z)
 	self->z = z;
 }
 
+float total(Point a, Point b)
+{
+	return Point_length(&a) + Point_length(&b);
+}
+
+float spread(Point3 p3)
+{
+	return Point_length((const Point *)&p3);
+}
+
 @implementation Holder
+
+- (float)distance:(Point)left right:(Point)right
+{
+	return Point_length(&left) + Point_length(&right);
+}
 
 @end
