@@ -15776,6 +15776,48 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.3 — PERCENT-ENCODING BOTH WAYS: TWO RULES, AND THE ANNOTATION THAT HAD TO SAY WHAT THE CODE ACCEPTS (2026-09-28)
+
+**WHAT SHIPPED: THE TWO NON-DEPRECATED DOORS OF THE FAMILY.** `-stringByAddingPercentEncodingWithAllowedCharacters:`
+and the `stringByRemovingPercentEncoding` READONLY PROPERTY (Apple's own declaring form, so the header
+declares it as a property). **`method open` 903 → 902, `property open` 465 → 464.**
+
+**THREE FACTS FROM THE PAGE ARE THE WHOLE OF THE ENCODER, AND ONE IS COUNTER-INTUITIVE.** UTF-8 determines
+the encoded bytes, so one character can become several `%XX` triples; the answer is nil when the
+transformation is not possible, which in this library is exactly a **nil set**; and — the one a reasonable
+implementer gets wrong — **"any characters in `allowedCharacters` outside of the 7-bit ASCII range are
+ignored"**, so a character IS encoded even when the set names its code point. The test is on the BYTE, not
+on the character, and the probe holds both halves: with a set holding `c`, `a`, `f` AND `é`, the letters
+pass through and the `é` becomes `%C3%A9` anyway.
+
+**THE DECODER ANSWERS NIL IN THREE DIFFERENT WAYS AND ALL THREE ARE CHECKED**: a `%` not followed by two
+hex digits (a bad digit, or a truncated tail), and decoded bytes that are not well-formed UTF-8 — because
+"the matching UTF-8 characters" do not exist for `%FF`, and **`fn_is_utf8` also rejects the forms a naive
+lead/continuation check accepts**: overlong encodings, surrogate code points, and leads past U+10FFFF. Hex
+is accepted in either case, and plain text with nothing to decode is not an error.
+
+**THE TWO DEPRECATED DOORS STAY OPEN, ON A GROUND THAT IS NOT DEPRECATION.** §62.24 makes deprecated API a
+porting target, so `-stringByAddingPercentEscapesUsingEncoding:` and
+`-stringByReplacingPercentEscapesUsingEncoding:` are owed — but their contract is "escape the characters
+that are not legal in a URL", and **Apple does not publish WHICH characters those are** for the legacy
+call. Writing that set from memory would be inventing a specification, and picking a set for a URL
+component is precisely the argument the modern door takes. They await a citable set.
+
+**AND THE BUILD DID THE ANNOTATION SWEEP'S JOB BEFORE ANY GATE COULD.** The first declaration said
+`NSCharacterSet *allowedCharacters` — non-null under the header's `NS_ASSUME_NONNULL` region — while the
+implementation ACCEPTS nil and answers nil. **The probe, compiled under
+`-Werror=nullable-to-nonnull-conversion`, refused to build** ("implicit conversion from nullable pointer to
+non-nullable pointer type"). That is the standing practice — annotate what the implementation accepts —
+enforcing itself through a CALLER rather than through review, and the parameter is now `_Nullable` with the
+reason written in the header. **AND ONE CHECK FAILED ON ITS OWN EXPECTATION RATHER THAN ON THE CODE**: the
+ASCII-only check had been given a set containing ONLY the e-acute, so `c`, `a` and `f` were correctly
+encoded too; the set now holds the letters as well, which is what makes it the rule's own test. That is the
+second value-against-the-wrong-input lesson in two units, and the same one: **the expectation is part of
+the instrument.**
+
+**VERIFICATION.** Probe `foundation_string` **84/84** and the guest case **`TESTS-OK 1/1 case(s), 6/6
+check(s) in 12s`**; `foundation-gate` **OK**; `--unimplemented` **0 NEW**.
+
 ## §63.1 — THE SEARCH DOORS THAT TAKE OPTIONS, AND ONE ROW WITHDRAWN BY ITS OWN PROBE (2026-09-28)
 
 **WHAT SHIPPED: THREE DOORS, AND THE FAMILY IS WHOLE.** `-rangeOfCharacterFromSet:options:`,

@@ -1332,6 +1332,88 @@ NULL
 		 * READER and belongs to its own unit; the header says so, and the ledger keeps the row open.) */
 	}
 
+	{
+		/* PERCENT-ENCODING, BOTH DIRECTIONS. The checks aim at the clauses a reader would doubt rather than
+		 * at the arithmetic: the ASCII-ONLY allowed set, the UTF-8 byte expansion, and the three different
+		 * ways a decode can be invalid. */
+		NSCharacterSet *alnum = [NSCharacterSet characterSetWithCharactersInString:
+		                         @"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"];
+		NSCharacterSet *accents = [NSCharacterSet characterSetWithCharactersInString:@"\u00e9"];
+		NSString *encoded, *decoded;
+
+		encoded = [@"a b" stringByAddingPercentEncodingWithAllowedCharacters:alnum];
+		check("percent-encodes-what-the-set-excludes",
+		      [encoded isEqualToString:@"a%20b"],
+		      "the space is not in the set, so it becomes %20");
+
+		encoded = [@"a-._~" stringByAddingPercentEncodingWithAllowedCharacters:
+		           [NSCharacterSet characterSetWithCharactersInString:@"a-._~"]];
+		check("percent-leaves-the-allowed-characters-alone",
+		      [encoded isEqualToString:@"a-._~"],
+		      "every character is in the set, so nothing is encoded");
+
+		encoded = [@"caf\u00e9" stringByAddingPercentEncodingWithAllowedCharacters:alnum];
+		check("percent-encodes-by-utf8-bytes",
+		      [encoded isEqualToString:@"caf%C3%A9"],
+		      "one character became the TWO bytes UTF-8 gives it - the page's own rule");
+
+		/* THE SET HOLDS THE THREE ASCII LETTERS *AND* THE E-ACUTE, which is what makes this the rule's own
+		 * test: only the ASCII members can be honoured, so `caf` passes through untouched while the e-acute
+		 * — a member of the set — is encoded anyway. (The first version of this check allowed ONLY the
+		 * e-acute, so `caf` was correctly encoded too and the check failed on its own expectation.) */
+		encoded = [@"caf\u00e9" stringByAddingPercentEncodingWithAllowedCharacters:
+		           [NSCharacterSet characterSetWithCharactersInString:@"acf\u00e9"]];
+		check("percent-ignores-a-non-ascii-set-member",
+		      [encoded isEqualToString:@"caf%C3%A9"],
+		      "a set member outside 7-bit ASCII is IGNORED, so the e-acute is encoded anyway");
+
+		encoded = [@"abc" stringByAddingPercentEncodingWithAllowedCharacters:nil];
+		check("percent-encoding-with-no-set-is-nil",
+		      encoded == nil,
+		      "a nil set is the one way this door cannot do its job, and it says so with nil");
+
+		decoded = [@"a%20b" stringByRemovingPercentEncoding];
+		check("percent-decodes",
+		      [decoded isEqualToString:@"a b"],
+		      "%20 is a space again");
+
+		decoded = [@"caf%c3%a9" stringByRemovingPercentEncoding];
+		check("percent-decodes-lowercase-hex",
+		      [decoded isEqualToString:@"caf\u00e9"],
+		      "hex digits are accepted in either case, and the two bytes become one character");
+
+		encoded = [@"a b/c?d" stringByAddingPercentEncodingWithAllowedCharacters:alnum];
+		decoded = [encoded stringByRemovingPercentEncoding];
+		check("percent-round-trips",
+		      [decoded isEqualToString:@"a b/c?d"],
+		      "what the encoder escaped, the decoder gives back unchanged");
+
+		decoded = [@"abc%ZZ" stringByRemovingPercentEncoding];
+		check("percent-decode-nil-on-a-bad-digit",
+		      decoded == nil,
+		      "a % followed by a non-hex character is an invalid sequence");
+
+		decoded = [@"abc%" stringByRemovingPercentEncoding];
+		check("percent-decode-nil-on-a-truncated-tail",
+		      decoded == nil,
+		      "a % at the end has no two digits to read");
+
+		decoded = [@"%FF" stringByRemovingPercentEncoding];
+		check("percent-decode-nil-on-non-utf8",
+		      decoded == nil,
+		      "0xFF is not UTF-8, so there are no matching characters to answer with");
+
+		decoded = [@"%C0%AF" stringByRemovingPercentEncoding];
+		check("percent-decode-nil-on-an-overlong-form",
+		      decoded == nil,
+		      "C0 AF is a two-byte OVERLONG encoding of /, which no encoder produces");
+
+		decoded = [@"plain" stringByRemovingPercentEncoding];
+		check("percent-decode-leaves-plain-text-alone",
+		      [decoded isEqualToString:@"plain"],
+		      "nothing to decode is not an error");
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

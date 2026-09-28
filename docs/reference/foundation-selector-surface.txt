@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1782   open  903   struck  243
-#   property   shipped 1025   open  465   struck  146
+#   method     shipped 1783   open  902   struck  243
+#   property   shipped 1026   open  464   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -3141,7 +3141,7 @@ method	open	-sizeWithFont:forWidth:lineBreakMode:	NSString	Fundamentals / String
 method	open	-sizeWithFont:minFontSize:actualFontSize:forWidth:lineBreakMode:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	open	-sr_sensorForDeletionRecordsFromSensor	NSString	Fundamentals / Strings / Instance Methods	deprecated	objc
 method	shipped	+string	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
-method	open	-stringByAddingPercentEncodingWithAllowedCharacters:	NSString	Fundamentals / Strings / Working with URL Strings	-	objc
+method	shipped	-stringByAddingPercentEncodingWithAllowedCharacters:	NSString	Fundamentals / Strings / Working with URL Strings	-	objc
 method	open	-stringByAddingPercentEscapesUsingEncoding:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-stringByAppendingFormat:	NSString	Fundamentals / Strings / Combining Strings	-	objc
 method	shipped	-stringByAppendingPathComponent:	NSString	Fundamentals / Strings / Working with Paths	-	objc
@@ -3214,7 +3214,7 @@ property	open	stringByAbbreviatingWithTildeInPath	NSString	Fundamentals / String
 property	shipped	stringByDeletingLastPathComponent	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	stringByDeletingPathExtension	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	open	stringByExpandingTildeInPath	NSString	Fundamentals / Strings / Working with Paths	-	objc
-property	open	stringByRemovingPercentEncoding	NSString	Fundamentals / Strings / Working with URL Strings	-	objc
+property	shipped	stringByRemovingPercentEncoding	NSString	Fundamentals / Strings / Working with URL Strings	-	objc
 property	open	stringByResolvingSymlinksInPath	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	stringByStandardizingPath	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	uppercaseString	NSString	Fundamentals / Strings / Changing Case	-	objc

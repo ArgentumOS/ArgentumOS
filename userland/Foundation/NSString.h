@@ -323,6 +323,37 @@ typedef enum {
 			     range:(NSRange)range;
 - (NSString *)commonPrefixWithString:(NSString *)other options:(NSStringCompareOptions)mask;
 
+/* ===================================================================================================
+ * PERCENT-ENCODING, IN BOTH DIRECTIONS, ON APPLE'S OWN RULES.
+ *
+ * ENCODING replaces every character NOT in the set with percent-encoded characters, and THREE FACTS FROM
+ * THE PAGE ARE THE WHOLE OF THE BEHAVIOUR: **UTF-8 is what determines the encoded bytes** (so one
+ * character can become several `%XX` triples); **a member of `allowedCharacters` outside the 7-bit ASCII
+ * range is IGNORED**, which means such a character is encoded even when the set names its code point —
+ * the test is on the BYTE, not on the character; and the answer is nil when the transformation is not
+ * possible, which in this library is exactly a NIL SET, because there is then no set to test against.
+ *
+ * DECODING replaces percent sequences with the matching UTF-8 characters and answers **nil for an invalid
+ * percent-encoding sequence** — either a `%` not followed by two hex digits, or bytes that are not
+ * well-formed UTF-8 once decoded (overlong forms, surrogate code points and beyond-U+10FFFF leads
+ * included, so every answer is a string some encoder could have produced).
+ *
+ * THE DEPRECATED PAIR — `-stringByAddingPercentEscapesUsingEncoding:` and
+ * `-stringByReplacingPercentEscapesUsingEncoding:` — is NOT here, and the reason is not the deprecation
+ * (§62.24 makes deprecated API a porting target): their contract is "escape the characters that are not
+ * legal in a URL", and **Apple does not publish WHICH characters those are** for the legacy call. Writing
+ * the set from memory would be inventing a specification, and a set chosen for a URL component is exactly
+ * the argument the modern door takes. They stay open in the ledger until that set can be cited.
+ *
+ * The declaring form is Apple's: `stringByRemovingPercentEncoding` is a READONLY PROPERTY there.
+ * =================================================================================================== */
+/* AND THE SET IS `_Nullable`, BECAUSE THE IMPLEMENTATION ACCEPTS NIL AND ANSWERS NIL — the probe asserts
+ * exactly that, and it is the annotate-what-the-implementation-accepts rule doing its job: the first
+ * version of this declaration said non-null and the probe, compiled under
+ * -Werror=nullable-to-nonnull-conversion, refused to build. */
+- (nullable NSString *)stringByAddingPercentEncodingWithAllowedCharacters:(nullable NSCharacterSet *)allowedCharacters;
+@property (readonly, nullable) NSString *stringByRemovingPercentEncoding;
+
 /* Conversions. */
 - (int)intValue;
 - (NSInteger)integerValue;

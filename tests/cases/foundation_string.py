@@ -58,6 +58,13 @@ CHECKS = (
           "common-prefix-stops-where-they-part", "common-prefix-is-the-receiver-characters",
           "common-prefix-of-equals-is-the-whole-string", "common-prefix-of-strangers-is-empty",
           "common-prefix-nil-argument-is-empty",
+          "percent-encodes-what-the-set-excludes", "percent-leaves-the-allowed-characters-alone",
+          "percent-encodes-by-utf8-bytes", "percent-ignores-a-non-ascii-set-member",
+          "percent-encoding-with-no-set-is-nil", "percent-decodes",
+          "percent-decodes-lowercase-hex", "percent-round-trips",
+          "percent-decode-nil-on-a-bad-digit", "percent-decode-nil-on-a-truncated-tail",
+          "percent-decode-nil-on-non-utf8", "percent-decode-nil-on-an-overlong-form",
+          "percent-decode-leaves-plain-text-alone",
           )
 
 

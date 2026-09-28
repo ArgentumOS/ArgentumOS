@@ -613,6 +613,79 @@ static NSUInteger fn_line_terminator_length(NSString *string, NSUInteger i)
 	return 1;
 }
 
+/* --- PERCENT-ENCODING'S TWO PRIMITIVES -------------------------------------------------------- */
+
+/* ONE HEX DIGIT, OR -1. Both directions need it: the reader to parse a `%XX` triple, and nothing else —
+ * the writer never parses. It lives here rather than inside either door because a decoder that disagreed
+ * with itself about `%0a` would be a bug waiting for a lowercase producer. */
+static int fn_hex_value(unichar c)
+{
+	if (c >= '0' && c <= '9') {
+		return c - '0';
+	}
+	if (c >= 'a' && c <= 'f') {
+		return c - 'a' + 10;
+	}
+	if (c >= 'A' && c <= 'F') {
+		return c - 'A' + 10;
+	}
+	return -1;
+}
+
+/* IS THIS BYTE RUN WELL-FORMED UTF-8? The decoder needs the answer because it promises "the matching
+ * UTF-8 characters", and a run of bytes that is not UTF-8 HAS no matching characters — so the honest
+ * answer is nil rather than a guess. Structural rules AND the three a naive lead/continuation check
+ * misses: OVERLONG forms (which decode to a character no encoder produced), SURROGATE code points (not
+ * characters), and leads beyond U+10FFFF. */
+static BOOL fn_is_utf8(const char *bytes, size_t size)
+{
+	size_t i = 0;
+
+	while (i < size) {
+		unsigned char lead = (unsigned char)bytes[i];
+		size_t width, k;
+
+		if (lead < 0x80) {
+			i++;
+			continue;
+		}
+		if ((lead & 0xE0) == 0xC0) {
+			width = 2;
+			if (lead < 0xC2) {
+				return NO;				/* 0xC0/0xC1 can only start an overlong form */
+			}
+		} else if ((lead & 0xF0) == 0xE0) {
+			width = 3;
+		} else if ((lead & 0xF8) == 0xF0) {
+			width = 4;
+			if (lead > 0xF4) {
+				return NO;				/* beyond U+10FFFF */
+			}
+		} else {
+			return NO;					/* a stray continuation byte, or 0xF8+ */
+		}
+		if (i + width > size) {
+			return NO;					/* truncated */
+		}
+		for (k = 1; k < width; k++) {
+			if (((unsigned char)bytes[i + k] & 0xC0) != 0x80) {
+				return NO;
+			}
+		}
+		if (width == 3 && lead == 0xE0 && ((unsigned char)bytes[i + 1] & 0xE0) == 0x80) {
+			return NO;					/* overlong */
+		}
+		if (width == 3 && lead == 0xED && ((unsigned char)bytes[i + 1] & 0xE0) == 0xA0) {
+			return NO;					/* a surrogate code point */
+		}
+		if (width == 4 && lead == 0xF0 && ((unsigned char)bytes[i + 1] & 0xF0) == 0x80) {
+			return NO;					/* overlong */
+		}
+		i += width;
+	}
+	return YES;
+}
+
 /* THE RANGE REFUSAL, SPELLED ONCE. Compared as `location` then `length` rather than as
  * `NSMaxRange`, because a range whose location is already past the end can have a length that
  * overflows the sum — the comparison is the same and this one cannot wrap. */
@@ -1428,6 +1501,104 @@ NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySugges
 		start = end;
 	}
 	return [self substringWithRange:NSMakeRange(start, end - start)];
+}
+
+/* ===================================================================================================
+ * PERCENT-ENCODING, BOTH DIRECTIONS. See NSString.h for the rules and for why the deprecated pair is
+ * not here at all.
+ * =================================================================================================== */
+- (nullable NSString *)stringByAddingPercentEncodingWithAllowedCharacters:(NSCharacterSet *)allowedCharacters
+{
+	NSMutableString *out = [[NSMutableString alloc] init];
+	size_t offset = 0;
+	size_t total = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+
+	if (allowedCharacters == nil) {
+		/* "nil if the transformation is not possible" is Apple's own wording for the failure answer, and a
+		 * nil set is the one way this door cannot do its job: there is no set to test a character against. */
+		return nil;
+	}
+	while (offset < total) {
+		size_t width = utf8_seq_length([self byteAtIndex:offset]);
+		unsigned char lead = [self byteAtIndex:offset];
+
+		/* ONLY A 7-BIT ASCII CHARACTER CAN BE ALLOWED: the page says a member of the set outside that range
+		 * is IGNORED, so a multi-byte sequence is encoded even when the set names the same code point. The
+		 * test is on the BYTE, which is why it is written here and not in the set. */
+		if (width == 1 && lead < 0x80 && [allowedCharacters characterIsMember:(unichar)lead]) {
+			char one[2];
+
+			one[0] = (char)lead;
+			one[1] = '\0';
+			[out appendUTF8String:one];
+		} else {
+			/* UTF-8 IS WHAT DETERMINES THE ESCAPE, so a character becomes as many triples as it has
+			 * bytes — and a caller reading the answer sees the same bytes the URL would carry. */
+			size_t i;
+
+			for (i = offset; i < offset + width; i++) {
+				char escape[4];
+
+				snprintf(escape, sizeof escape, "%%%02X", [self byteAtIndex:i]);
+				[out appendUTF8String:escape];
+			}
+		}
+		offset += width;
+	}
+	return out;
+}
+
+- (nullable NSString *)stringByRemovingPercentEncoding
+{
+	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+	char *decoded = malloc(size + 1);
+	size_t in = 0, out = 0;
+	NSString *result;
+	size_t units;
+	unichar *buffer;
+
+	if (decoded == NULL) {
+		return nil;
+	}
+	while (in < size) {
+		unsigned char c = [self byteAtIndex:in];
+
+		if (c == '%') {
+			/* TWO HEX DIGITS OR NOTHING: a `%` at the end, or one followed by a non-digit, is the "invalid
+			 * percent-encoding sequence" the page names, and the answer is nil rather than a guess. */
+			int hi = (in + 1 < size) ? fn_hex_value([self byteAtIndex:in + 1]) : -1;
+			int lo = (in + 2 < size) ? fn_hex_value([self byteAtIndex:in + 2]) : -1;
+
+			if (hi < 0 || lo < 0) {
+				free(decoded);
+				return nil;
+			}
+			decoded[out++] = (char)((hi << 4) | lo);
+			in += 3;
+			continue;
+		}
+		decoded[out++] = (char)c;
+		in++;
+	}
+
+	/* THE BYTES MUST BE UTF-8, because the promise is "the matching UTF-8 CHARACTERS": a run that is not
+	 * UTF-8 has no matching characters, and nil is the honest answer rather than a replacement character. */
+	if (!fn_is_utf8(decoded, out)) {
+		free(decoded);
+		return nil;
+	}
+
+	units = fn_utf8_to_utf16(decoded, out, NULL);
+	buffer = malloc((units + 1) * sizeof(unichar));
+	if (buffer == NULL) {
+		free(decoded);
+		return nil;
+	}
+	fn_utf8_to_utf16(decoded, out, buffer);
+	result = [NSString stringWithCharacters:buffer length:units];
+	free(buffer);
+	free(decoded);
+	return result;
 }
 
 - (NSArray *)componentsSeparatedByString:(NSString *)separator
