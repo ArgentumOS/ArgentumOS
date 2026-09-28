@@ -1,0 +1,15 @@
+/* §9.16: a struct takes the same shape through its CONSTRUCTOR function — the
+ * function applies the field defaults and then the caller's arguments — and
+ * that function is §7.8's, which the emitter does not write yet (nor §6's
+ * memberwise literal that a struct with no declared `init` constructs through).
+ * So a struct FIELD's default has no home yet and is refused; a CLASS stored
+ * property's default is emitted (see tests/golden/EmitsDefaults). */
+struct RefuseStructFieldDefault {
+    var value: Int32 = 0
+}
+
+class RefuseStructFieldDefaultHost: Object {
+    method m() -> Void {
+        return;
+    }
+}

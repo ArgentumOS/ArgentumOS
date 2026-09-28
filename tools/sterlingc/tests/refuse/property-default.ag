@@ -1,4 +1,0 @@
-/* §9.16: the default is emitted by a synthesised defaults method, not by the property. */
-class RefuseDefault: Object {
-    readonly property weight: Int32 = 3
-}

@@ -1,0 +1,6 @@
+/* §9.16: the default is applied by writing STORAGE — the synthesised defaults
+ * method assigns the property's ivar — and a COMPUTED property has no storage,
+ * so there is nothing for a default to be written into. */
+class RefuseComputedDefault: Object {
+    property total: Int32 = 3 { return 0 }
+}

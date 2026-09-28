@@ -1608,15 +1608,16 @@ emit_property_line(FILE *out, const st_decl *d, int stored, const char **error)
 	if (d->array_rank > 0) {
 		return refuse("a sized array declaration (§7.64)", error);
 	}
-	if (d->has_initial) {
-		/*
-		 * §9.16: a stored property's default is emitted as a synthesised
-		 * *defaults* method, because neither an ivar nor a C struct member
-		 * may carry an initializer (measured). Refused, so the value is
-		 * never silently lost — which is what happened while this parsed
-		 * into a variable called `discard`.
-		 */
-		return refuse("a stored property's default (§9.16)", error);
+	/*
+	 * §9.16: a stored property's default is APPLIED BY GENERATED CODE, not by
+	 * the declaration — measured, neither an ObjC ivar nor a C struct member
+	 * may carry an initializer. So the property emits with no value and the
+	 * class's synthesised `__sterling_defaults` is what writes it; the value is
+	 * NOT lost, it moved. A COMPUTED property has no storage for a default to
+	 * be written into, so that combination is refused rather than dropped.
+	 */
+	if (d->has_initial && (!stored || d->body != NULL)) {
+		return refuse("a default on a computed property (§9.16)", error);
 	}
 	if (d->ownership == ST_OWN_UNOWNED) {
 		return refuse("`unowned` (§7.53)", error);
@@ -2900,6 +2901,101 @@ emit_extern(FILE *out, const st_expr *call)
 }
 
 /*
+ * §9.16: a stored property's default is applied by GENERATED CODE, because
+ * **neither an ObjC ivar nor a C struct member may carry an initializer**
+ * (measured: `int32_t x = 7;` in an ivar block and in a struct are each
+ * "expected ';' at end of declaration list"). The mechanism is a synthesised
+ * method of the emitter's own — one per class that has defaults, private to the
+ * generated unit, never named by an author — and every initializer calls it.
+ *
+ * The spelling is `__sterling_defaults`: `__sterling_` is the trap macro's
+ * (`__sterling_v`), and a generated name is what §4's reserved-name list is for.
+ */
+#define STERLING_DEFAULTS_SELECTOR "__sterling_defaults"
+
+static int
+class_has_defaults(const st_class *c)
+{
+	const st_decl *d;
+
+	for (d = c->decls; d != NULL; d = d->next) {
+		if (d->kind == ST_DECL_PROPERTY && d->body == NULL &&
+		    d->has_initial) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/*
+ * `self->_name = <value>;` and not `self.name = <value>`: a READONLY stored
+ * property has no setter — §9.16 leans on the initializer form precisely because
+ * "nothing else could ever give it a value" — so the IVAR is the one shape that
+ * works for both. It is also ARC-correct: a direct store to a `strong` ivar is
+ * compiled as a retained store, exactly as the setter would be.
+ *
+ * Auto-synthesis is what makes `_name` the ivar's name: the emitter writes no
+ * `@synthesize`, so clang's default is the only rule in play.
+ */
+static int
+emit_defaults_body(FILE *out, const st_class *c, const char **error)
+{
+	const st_decl *d;
+
+	for (d = c->decls; d != NULL; d = d->next) {
+		if (d->kind != ST_DECL_PROPERTY || d->body != NULL ||
+		    !d->has_initial) {
+			continue;
+		}
+		fprintf(out, "\tself->_%s = ", d->name.text);
+		if (!emit_expr(out, d->initial, map_type(d->type.name.text),
+			       error)) {
+			return 0;
+		}
+		fprintf(out, ";\n");
+	}
+	return 1;
+}
+
+/*
+ * §9.16's three-step order, and it is NOT arbitrary: (1) the chain §7.49
+ * requires, (2) the synthesised defaults, (3) the author's body. An ObjC
+ * initializer may return a DIFFERENT object from the one it was sent to — which
+ * is what the chain is for — so defaults written before it could be written into
+ * an object that is then discarded. "Before the body" is the rule; "before the
+ * initializer" would be the bug.
+ *
+ * Recognising the chain is STRUCTURAL, not textual: §7.49's rewrite leaves a
+ * `self = <send to super>`, and a leading statement of that shape is the chain.
+ */
+static int
+stmt_is_super_chain(const st_stmt *s)
+{
+	return s != NULL && s->kind == ST_STMT_EXPR && s->value != NULL &&
+	       s->value->kind == ST_EXPR_ASSIGN && s->value->base != NULL &&
+	       s->value->base->kind == ST_EXPR_SELF &&
+	       s->value->arg_count == 1 && s->value->args[0].value != NULL &&
+	       s->value->args[0].value->kind == ST_EXPR_SEND &&
+	       s->value->args[0].value->base != NULL &&
+	       s->value->args[0].value->base->kind == ST_EXPR_SUPER;
+}
+
+/* The synthesised method itself, or nothing when the class has no defaults. */
+static int
+emit_defaults_method(FILE *out, const st_class *c, const char **error)
+{
+	if (!class_has_defaults(c)) {
+		return 1;
+	}
+	fprintf(out, "- (void)%s\n{\n", STERLING_DEFAULTS_SELECTOR);
+	if (!emit_defaults_body(out, c, error)) {
+		return 0;
+	}
+	fprintf(out, "}\n\n");
+	return 1;
+}
+
+/*
  * §7.4: one declaration list's DEFINITIONS — the method bodies, and the computed
  * property whose block IS its getter (§7.54). Shared by a class's own
  * `@implementation` and a category's, which is where a category's bodies go.
@@ -2910,7 +3006,8 @@ emit_extern(FILE *out, const st_expr *call)
  * declarations to `@interface X ()` and definitions to `@implementation X`.
  */
 static int
-emit_definitions(FILE *out, const st_decl *decls, const char **error)
+emit_definitions(FILE *out, const st_decl *decls, int has_defaults,
+		 const char **error)
 {
 	const st_decl *d;
 
@@ -2934,9 +3031,34 @@ emit_definitions(FILE *out, const st_decl *decls, const char **error)
 		saved_env = current_env_count;
 		env_add_params(d);
 		collect_local_types(d->body);
-		if (!emit_stmt_list(out, d->body, 1,
-				    map_type(d->type.name.text), error)) {
-			return 0;
+		/*
+		 * §9.16's step 2: an initializer calls the synthesised defaults
+		 * AFTER its chain and BEFORE the author's body. Both orders are
+		 * wrong the other way round — see `stmt_is_super_chain` — so a
+		 * leading chain is emitted on its own and the call goes between.
+		 */
+		if (has_defaults && is_initializer(d) &&
+		    stmt_is_super_chain(d->body)) {
+			if (!emit_stmt(out, d->body, 1, NULL, error)) {
+				return 0;
+			}
+			fprintf(out, "\t[self %s];\n",
+				STERLING_DEFAULTS_SELECTOR);
+			if (!emit_stmt_list(out, d->body->next, 1,
+					    map_type(d->type.name.text),
+					    error)) {
+				return 0;
+			}
+		} else {
+			if (has_defaults && is_initializer(d)) {
+				fprintf(out, "\t[self %s];\n",
+					STERLING_DEFAULTS_SELECTOR);
+			}
+			if (!emit_stmt_list(out, d->body, 1,
+					    map_type(d->type.name.text),
+					    error)) {
+				return 0;
+			}
 		}
 		current_env_count = saved_env;
 		/*
@@ -3439,7 +3561,16 @@ emit_implementation_of(FILE *out, const st_class *c,
 
 	mangle_name(c->name.text, namebuf, sizeof(namebuf));
 	fprintf(out, "@implementation %s\n\n", namebuf);
-	if (!emit_definitions(out, c->decls, error)) {
+	/*
+	 * §9.16: the synthesised defaults method FIRST, because every initializer
+	 * below calls it and a call needs the definition to be visible — the
+	 * mechanism is internal to the generated unit and is declared nowhere
+	 * else.
+	 */
+	if (!emit_defaults_method(out, c, error)) {
+		return 0;
+	}
+	if (!emit_definitions(out, c->decls, class_has_defaults(c), error)) {
 		return 0;
 	}
 	/*
@@ -3454,7 +3585,7 @@ emit_implementation_of(FILE *out, const st_class *c,
 		if (e->is_category || strcmp(e->target.text, c->name.text) != 0) {
 			continue;
 		}
-		if (!emit_definitions(out, e->decls, error)) {
+		if (!emit_definitions(out, e->decls, 0, error)) {
 			return 0;
 		}
 	}
@@ -3604,7 +3735,7 @@ st_emit_implementation(FILE *out, const st_program *program,
 		mangle_name(e->target.text, namebuf, sizeof(namebuf));
 		fprintf(out, "@implementation %s (%s)\n\n", namebuf,
 			e->name.text);
-		if (!emit_definitions(out, e->decls, error)) {
+		if (!emit_definitions(out, e->decls, 0, error)) {
 			return 0;
 		}
 		fprintf(out, "@end\n");

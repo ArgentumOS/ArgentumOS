@@ -693,6 +693,46 @@ the initializer's call site, which is item 8's second half:**
      syntax is a call to the declared function. Both are "construct", which is
      the consistency §7.48 was reaching for.
 
+**Landed (2026-09, fourth piece): §9.16's stored-property default — the CLASS
+side — as a synthesised defaults method.** §9.16 decides the declaration states
+the value and *generated code applies it* (measured: neither an ObjC ivar nor a C
+struct member may carry an initializer), so the emitter writes a
+`- (void)__sterling_defaults` per class that has defaults, and every initializer
+calls it.
+
+- **The three-step order is the whole subtlety.** (1) the chain §7.49 requires,
+  (2) the defaults, (3) the author's body. An ObjC initializer may return a
+  DIFFERENT object from the one it was sent to — which is exactly what the chain
+  is for — so defaults written before it could land in an object that is then
+  discarded. The chain is recognised STRUCTURALLY (§7.49's rewrite leaves
+  `self = <send to super>`, so a leading statement of that shape is the chain),
+  and `EmitsDefaults` pins both positions: `Base`'s initializer has no chain,
+  `Sub`'s does.
+- **The defaults write the IVAR (`self->_count = 0;`), not the property.** A
+  `readonly` stored property has NO setter — §9.16 leans on the initializer form
+  precisely because "nothing else could ever give it a value" — so the setter form
+  would not compile. The ivar form is also ARC-correct (a direct store to a
+  `strong` ivar is a retained store, as the setter is), and `_name` is what
+  auto-synthesis makes the name, since the emitter writes no `@synthesize`.
+- **What still refuses, both by name:** a default on a COMPUTED property (no
+  storage for it to be written into) and a default on a STRUCT field — the struct
+  side of §9.16 goes through §7.8's constructor function, "the function applies
+  the field defaults and then the caller's arguments", and neither that function
+  nor §6's memberwise literal is written yet. `tests/refuse/property-default.ag`
+  is RETIRED (its expectation is now what is emitted) and those two take its
+  place; the new golden is `EmitsDefaults`.
+- **A consequence worth naming: a class with defaults and NO initializer has an
+  inert defaults method.** §9.16 makes a declared initializer required and puts
+  the refusal on the *construction* (`Sub()` — measured, ObjC would otherwise
+  inherit the base's `init` and apply none of `Sub`'s defaults), not on the
+  declaration. So `02`/`05`/`06` — none of which declares an initializer — get a
+  `__sterling_defaults` nothing calls, which is faithful to the decision and is
+  exactly the hole the doc acknowledges. `02` then stops at an imported nullable
+  name (§9.5's importer) and `05` at `unowned` (§7.53).
+- **OWED: the construction rule itself.** Refusing `Sub()` where `Sub` has
+  defaults and no declared initializer is the language's rule and is not
+  implemented; `resolve_constructions_in_program` is where it goes.
+
 - The type table (`sterling-syntax.md` §4) and its **reference/value rule** — a
   class type is a reference, a scalar and a **struct** are values; declared
   structs (`struct`), imported ones (`NSRange` and friends), struct literals (a

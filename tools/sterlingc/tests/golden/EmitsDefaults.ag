@@ -1,0 +1,50 @@
+/*
+ * EmitsDefaults.ag — §9.16's stored-property default, as emitted.
+ *
+ * Copyright © 2026 Kyle J. Cardoza. MIT licence (see docs/LICENSE).
+ *
+ * §9.16 DECIDED (2026-09): the declaration states the value and the DECLARATION
+ * IS ALL IT CAN STATE — measured, neither an ObjC ivar nor a C struct member may
+ * carry an initializer (`int32_t x = 7;` in an ivar block and in a struct are
+ * each "expected ';' at end of declaration list"). So the value is applied by
+ * generated code: a synthesised defaults method, one per class that has defaults,
+ * private to the generated unit and never named by an author.
+ *
+ * TWO THINGS THIS SPECIMEN PINS, and both are silent if they go the wrong way:
+ *
+ *   - the defaults are written through the IVAR (`self->_count = 0;`) and not
+ *     through the property. A `readonly` stored property HAS no setter — 09.16
+ *     leans on the initializer form precisely because "nothing else could ever
+ *     give it a value" — so the setter form would not compile, and the ivar form
+ *     is the one shape that works for both. It is also ARC-correct: a direct
+ *     store to a `strong` ivar is a retained store, exactly as the setter is.
+ *   - the call site's PLACE in an initializer, which §9.16 fixes as a three-step
+ *     order: (1) the chain §7.49 requires, (2) the defaults, (3) the author's
+ *     body. `Sub`'s initializer chains and `Base`'s does not, so both orders are
+ *     visible here. The chain must come FIRST because an ObjC initializer may
+ *     return a DIFFERENT object from the one it was sent to — which is what the
+ *     chain is for — so defaults written before it could be written into an
+ *     object that is then discarded.
+ *
+ * `plain` has no default and is therefore absent from the defaults method, which
+ * is what makes the method's membership a fact rather than an assumption.
+ */
+class Base: Object {
+    property count: Int32 = 0
+    property label: String = "hi"
+    readonly property flag: Bool = false
+    property plain: Int32
+
+    init(start: Int32) {
+        self.count = start
+    }
+}
+
+class Sub: Base {
+    property extra: Int32 = 7
+
+    init(v: Int32) {
+        self = Base(start: v)
+        self.extra = v
+    }
+}
