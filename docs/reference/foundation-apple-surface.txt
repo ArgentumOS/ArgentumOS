@@ -22,9 +22,9 @@
 # and its members keep their ObjC names; this file's first version excluded them
 # on the path marker, which hid real ObjC constants from the ledger.
 #
-# why the struck rows are struck: 32-bit-only 20, declined 354, frame-walk-unsupported 1, needs-corefoundation 2, os-version-constant 110, swift-only 22
+# why the struck rows are struck: 32-bit-only 20, declined 359, frame-walk-unsupported 1, needs-corefoundation 2, os-version-constant 110, swift-only 22
 #
-# AND 329 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# AND 326 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): to support porting older Mac applications, all items removed for being
 # deprecated are un-deprecated in Argentum Foundation and added to the work list. They carry
 # `deprecated` in this column, which says what KIND of work a row is - only the grounds §11.5
@@ -37,10 +37,10 @@
 #   class      shipped  221   open    0   struck   52
 #   protocol   shipped   39   open    1   struck    5
 #   macro      shipped  116   open    5   struck  132
-#   enum       shipped  147   open    4   struck    9
-#   case       shipped 1205   open   20   struck   77
+#   enum       shipped  149   open    2   struck    9
+#   case       shipped 1215   open    9   struck   78
 #   func       shipped  167   open    0   struck   22
-#   var        shipped  675   open   32   struck  207
+#   var        shipped  680   open   23   struck  211
 #   typealias  shipped   67   open    4   struck    5
 #   struct     shipped   13   open    0   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -938,7 +938,7 @@ case	shipped	NSURLCacheStorageNotAllowed	NSURLCache	Networking / Cache behavior 
 case	shipped	NSURLCredentialPersistenceForSession	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
 case	shipped	NSURLCredentialPersistenceNone	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
 case	shipped	NSURLCredentialPersistencePermanent	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
-case	open	NSURLCredentialPersistenceSynchronizable	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	-	swift-page
+case	struck	NSURLCredentialPersistenceSynchronizable	NSURLCredential	Networking / Authentication and credentials / Creating a credential / Persistence strategies	declined	swift-page
 case	shipped	NSURLErrorAppTransportSecurityRequiresSecureConnection	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
 case	shipped	NSURLErrorBackgroundSessionInUseByAnotherProcess	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
 case	shipped	NSURLErrorBackgroundSessionRequiresSharedContainer	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
@@ -1016,8 +1016,8 @@ case	shipped	NSURLNetworkServiceTypeResponsiveData	NSMutableURLRequest	Networkin
 case	shipped	NSURLNetworkServiceTypeResponsiveData	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
 case	shipped	NSURLNetworkServiceTypeVideo	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
 case	shipped	NSURLNetworkServiceTypeVideo	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
-case	open	NSURLNetworkServiceTypeVoIP	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	deprecated	swift-page
-case	open	NSURLNetworkServiceTypeVoIP	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	deprecated	swift-page
+case	shipped	NSURLNetworkServiceTypeVoIP	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	deprecated	swift-page
+case	shipped	NSURLNetworkServiceTypeVoIP	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	deprecated	swift-page
 case	shipped	NSURLNetworkServiceTypeVoice	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
 case	shipped	NSURLNetworkServiceTypeVoice	NSURLRequest	Networking / Requests and responses / Accessing the service type / Network service types	-	swift-page
 case	shipped	NSURLRelationshipContains	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items / URL Relationships	-	objc
@@ -1049,13 +1049,13 @@ case	shipped	NSURLSessionAuthChallengeRejectProtectionSpace	NSURLSessionDelegate
 case	shipped	NSURLSessionAuthChallengeRejectProtectionSpace	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
 case	shipped	NSURLSessionAuthChallengeUseCredential	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
 case	shipped	NSURLSessionAuthChallengeUseCredential	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	open	NSURLSessionDelayedRequestCancel	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks / Dispositions	-	objc
-case	open	NSURLSessionDelayedRequestContinueLoading	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks / Dispositions	-	objc
-case	open	NSURLSessionDelayedRequestUseNewRequest	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks / Dispositions	-	objc
-case	open	NSURLSessionMultipathServiceTypeAggregate	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP / Service types	-	swift-page
-case	open	NSURLSessionMultipathServiceTypeHandover	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP / Service types	-	swift-page
-case	open	NSURLSessionMultipathServiceTypeInteractive	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP / Service types	-	swift-page
-case	open	NSURLSessionMultipathServiceTypeNone	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP / Service types	-	swift-page
+case	shipped	NSURLSessionDelayedRequestCancel	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks / Dispositions	-	objc
+case	shipped	NSURLSessionDelayedRequestContinueLoading	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks / Dispositions	-	objc
+case	shipped	NSURLSessionDelayedRequestUseNewRequest	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks / Dispositions	-	objc
+case	shipped	NSURLSessionMultipathServiceTypeAggregate	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP / Service types	-	swift-page
+case	shipped	NSURLSessionMultipathServiceTypeHandover	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP / Service types	-	swift-page
+case	shipped	NSURLSessionMultipathServiceTypeInteractive	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP / Service types	-	swift-page
+case	shipped	NSURLSessionMultipathServiceTypeNone	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP / Service types	-	swift-page
 case	shipped	NSURLSessionResponseAllow	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
 case	shipped	NSURLSessionResponseBecomeDownload	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
 case	shipped	NSURLSessionResponseBecomeStream	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
@@ -1067,7 +1067,7 @@ case	shipped	NSURLSessionTaskMetricsDomainResolutionProtocolUDP	NSURLSessionTask
 case	shipped	NSURLSessionTaskMetricsDomainResolutionProtocolUnknown	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
 case	shipped	NSURLSessionTaskMetricsResourceFetchTypeLocalCache	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
 case	shipped	NSURLSessionTaskMetricsResourceFetchTypeNetworkLoad	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
-case	open	NSURLSessionTaskMetricsResourceFetchTypeServerPush	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	deprecated	objc
+case	shipped	NSURLSessionTaskMetricsResourceFetchTypeServerPush	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	deprecated	objc
 case	shipped	NSURLSessionTaskMetricsResourceFetchTypeUnknown	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
 case	shipped	NSURLSessionTaskStateCanceling	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
 case	shipped	NSURLSessionTaskStateCompleted	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
@@ -1760,8 +1760,8 @@ enum	shipped	NSURLRequestNetworkServiceType	NSMutableURLRequest	Networking / Req
 enum	shipped	NSURLRequestNetworkServiceType	NSURLRequest	Networking / Requests and responses / Accessing the service type	-	swift-page
 enum	shipped	NSURLSessionAuthChallengeDisposition	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges	-	objc
 enum	shipped	NSURLSessionAuthChallengeDisposition	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges	-	objc
-enum	open	NSURLSessionDelayedRequestDisposition	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks	-	objc
-enum	open	NSURLSessionMultipathServiceType	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP	-	swift-page
+enum	shipped	NSURLSessionDelayedRequestDisposition	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks	-	objc
+enum	shipped	NSURLSessionMultipathServiceType	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP	-	swift-page
 enum	shipped	NSURLSessionResponseDisposition	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes	-	objc
 enum	shipped	NSURLSessionTaskMetricsDomainResolutionProtocol	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
 enum	shipped	NSURLSessionTaskMetricsResourceFetchType	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
@@ -3056,7 +3056,7 @@ var	shipped	NSURLContentTypeKey	NSURL	Fundamentals / URLs / Accessing Resource V
 var	shipped	NSURLCreationDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLCredentialStorageChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
 var	shipped	NSURLCredentialStorageChangedNotification	NSURLCredentialStorage	Networking / Authentication and credentials / Tracking credential storage changes	deprecated	swift-page
-var	open	NSURLCredentialStorageRemoveSynchronizableCredentials	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials / Options	-	objc
+var	struck	NSURLCredentialStorageRemoveSynchronizableCredentials	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials / Options	declined	objc
 var	shipped	NSURLCustomIconKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLDirectoryEntryCountKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Directory keys	-	objc
 var	shipped	NSURLDocumentIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
@@ -3138,11 +3138,11 @@ var	shipped	NSURLProtectionSpaceHTTPSProxy	NSURLProtectionSpace	Networking / Aut
 var	shipped	NSURLProtectionSpaceSOCKSProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	-	objc
 var	shipped	NSURLQuarantinePropertiesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLSessionDownloadTaskResumeData	NSURLSession	Networking / Essentials / Handling errors / User info dictionary keys	-	objc
-var	open	NSURLSessionTaskPriorityDefault	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc
-var	open	NSURLSessionTaskPriorityHigh	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc
-var	open	NSURLSessionTaskPriorityLow	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc
-var	open	NSURLSessionTransferSizeUnknown	NSURLSessionTask	Networking / Essentials / Obtaining task progress	-	objc
-var	open	NSURLSessionUploadTaskResumeData		Reference / Constants	-	objc
+var	shipped	NSURLSessionTaskPriorityDefault	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc
+var	shipped	NSURLSessionTaskPriorityHigh	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc
+var	shipped	NSURLSessionTaskPriorityLow	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc
+var	shipped	NSURLSessionTransferSizeUnknown	NSURLSessionTask	Networking / Essentials / Obtaining task progress	-	objc
+var	shipped	NSURLSessionUploadTaskResumeData		Reference / Constants	-	objc
 var	shipped	NSURLTagNamesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLThumbnailDictionaryKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys	deprecated	objc
 var	shipped	NSURLThumbnailKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys	deprecated	objc
@@ -3157,15 +3157,15 @@ var	shipped	NSURLUbiquitousItemDownloadingStatusDownloaded	NSURL	Fundamentals / 
 var	shipped	NSURLUbiquitousItemDownloadingStatusKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemDownloadingStatusNotDownloaded	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys / Constants	-	objc
 var	shipped	NSURLUbiquitousItemHasUnresolvedConflictsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousItemIsDownloadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Deprecated	deprecated	objc
+var	struck	NSURLUbiquitousItemIsDownloadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Deprecated	declined	objc
 var	shipped	NSURLUbiquitousItemIsDownloadingKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemIsExcludedFromSyncKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemIsSharedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemIsSyncPausedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemIsUploadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemIsUploadingKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
-var	open	NSURLUbiquitousItemPercentDownloadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Deprecated	deprecated	objc
-var	open	NSURLUbiquitousItemPercentUploadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Deprecated	deprecated	objc
+var	struck	NSURLUbiquitousItemPercentDownloadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Deprecated	declined	objc
+var	struck	NSURLUbiquitousItemPercentUploadedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Deprecated	declined	objc
 var	shipped	NSURLUbiquitousItemSupportedSyncControlsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemUploadingErrorKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousSharedItemCurrentUserPermissionsKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc

@@ -373,6 +373,18 @@ DECLINED_ROOTS = frozenset((
 
 # Free-standing rows that belong to a declined family without being owned by one of its roots.
 DECLINED_SYMBOLS = frozenset((
+    # THE SYNCHRONISATION SURFACE (§62.102), declined by §48.1's recorded decision and NAMED rather than
+    # lumped together: iCloud does not exist on this system and the plan has never proposed it, which is a
+    # SCOPE ground (not deprecation - that ground was retired, and these names are not deprecated anyway).
+    # NSURLCredential.h already carries the sentence for its own case; these five are the rest of it: a
+    # credential persistence that means "sync it", the option to REMOVE synchronised credentials, and the
+    # three ubiquitous-item resource keys (an iCloud document's download state and its two progress
+    # percentages - facts about a cloud this system does not have).
+    "NSURLCredentialPersistenceSynchronizable",
+    "NSURLCredentialStorageRemoveSynchronizableCredentials",
+    "NSURLUbiquitousItemIsDownloadedKey",
+    "NSURLUbiquitousItemPercentDownloadedKey",
+    "NSURLUbiquitousItemPercentUploadedKey",
     "NSNetServiceOptions", "NSNetServicesErrorDomain", "NSNetServicesErrorCode",
     # THE GC-ERA OPTIONS of the declined `NSGarbageCollector`: they exist only to configure a collector, so
     # they go with it.

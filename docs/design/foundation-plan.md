@@ -15351,6 +15351,99 @@ disposition, the task priorities, the URL resource-property and credential const
 localized-attributed-string family, which needs the markdown importer the thread still owes), 4 enums and 4
 typealiases. The things owed as BUILD work are unchanged: the markdown importer and the run-loop observers.
 
+
+## §62.101 — THE NETWORKING CLUSTER, AND THREE REFUSALS WRITTEN UNDER A RETIRED GROUND (2026-09-28)
+
+**SEVENTEEN ROWS SHIPPED** — `class shipped` unchanged (221/0), `case` shipped 1205 → **1222**, `case` **open 20 →
+3**, `var` shipped 675 → **679**, `var` open 32 → **28** — and the shape of the unit is the one §62.93 and §62.94
+had found twice already: **three refusals in shipped headers had been written under the deprecation ground that
+was RETIRED on 2026-09-26**, so the names they dismissed were owed rather than absent.
+
+1. **`NSURLNetworkServiceTypeVoIP` — THE GAP THE HEADER LEFT ON PURPOSE.** `NSURLRequest.h` said: "*ONE VALUE IS
+   A GAP ON PURPOSE: NSURLNetworkServiceTypeVoIP sat at 1 and is STRUCK (§11.5 — Apple deprecated it in macOS
+   13), so 1 stays vacant rather than silently renumbering its neighbours.*" With that ground retired the
+   sentence stops being a reason, and `1` is ours to fill — a hole a caller can fall into is worse than a name
+   that compiles. **DEPRECATION DOES NOT MAKE A NAME ABSENT: a caller porting an old program is exactly who
+   needs it.**
+2. **`ServerPush` — AND THE ENUM BEHIND IT WAS WRONG, NOT MERELY SHORT.** `NSURLSessionTaskMetrics.h` said
+   "*ServerPush IS NOT HERE: the ledger carries it as STRUCK (deprecated)*". Declaring it forced the second
+   half into view: Apple's order is Unknown, NetworkLoad, **ServerPush**, LocalCache, while this enum had
+   SKIPPED the third case and closed the gap — so a caller's number meant a different thing here than there.
+   **`LocalCache` MOVED 2 → 3.** Nothing in the library answers anything but `Unknown` (§50.1), so no shipped
+   reading changed.
+3. **The credential case is the third — and it is NOT deprecation**, so it is declined instead of shipped:
+   that is §62.102, and the distinction is the point of both sections.
+
+**AND THE UNIT'S ONE PIECE OF REAL BEHAVIOUR SHIPS WIRED RATHER THAN DECLARED.** `earliestBeginDate` is a new
+property on `NSURLSessionTask`, and the delegate door `-URLSession:task:willBeginDelayedRequest:completionHandler:`
+is called from the TOP of the session's resume path (`-fnTaskDidResume:`), where the answer decides everything:
+`ContinueLoading` proceeds, **`UseNewRequest` moves what the task is about through the same door a followed
+redirect uses**, and `Cancel` ends the task before a transfer exists. Two boundaries are stated where they live
+rather than hidden: this system has **no delayed-start scheduler** (a date does not make the task wait; a resumed
+task carrying one asks at resume time), and the completion handler is called **synchronously**, so a delegate that
+never calls it leaves the task proceeding rather than waiting for an answer that cannot arrive.
+
+**THE PROBE HAS A CONTROL, WHICH IS WHAT MAKES THE DOOR'S CHECK MEAN ANYTHING:** the same delegate, with a task
+that carries **no** date, must not be asked at all. Six more checks cover the published values — the four
+multipath values with the carried property and its copy, the three priorities (0.1/0.5/1.0) with
+`TransferSizeUnknown = -1` **and a fresh task now answering the DEFAULT priority** (which the constant's arrival
+made it possible to state), Apple's cache order, and the filled slot at 1.
+
+| what | note |
+|---|---|
+| `NSURLSessionMultipathServiceType` (4 cases) + `multipathServiceType` | CARRIED — this system has no MPTCP |
+| `NSURLSessionDelayedRequestDisposition` (3 cases) + the delegate door + `earliestBeginDate` | wired into the resume path and controlled in the probe |
+| `NSURLSessionTaskPriority{Low,Default,High}` + `NSURLSessionTransferSizeUnknown` | 0.1 / 0.5 / 1.0 / −1 |
+| `NSURLNetworkServiceTypeVoIP` | fills the deliberate gap at 1 |
+| `NSURLSessionTaskMetricsResourceFetchTypeServerPush` | and `LocalCache` 2 → 3 |
+| `NSURLSessionUploadTaskResumeData` | declared AND defined beside its download twin |
+
+**AND THE UNIT COST TWO MEASURED TRAPS, BOTH WORTH KEEPING:**
+- **A header declaration without its definition is a LINK error**, and that is the earliest moment the standing
+  rule can catch it: `NSURLSessionUploadTaskResumeData` was declared before it was defined, and building the
+  PROBE (not just the library) is what said so.
+- **THE GUEST TOOLCHAIN IS STRICTER THAN THE HOST'S, AND THAT IS WHAT A GUEST RUN IS FOR.** The probe compiled
+  and passed 20/20 on the host, then `make testimg` FAILED to compile it for the guest: the tier's
+  `-Werror=nullable-to-nonnull-conversion` refuses a nullable `-URL` handed to `-isEqual:` (the host build only
+  warns). The stale image then ran the OLD probe, which is why the case showed two failing checks that had
+  nothing to do with the library. **Compile a new or changed probe with `tools/musl-clang-objc64.sh` and the
+  strict flag BEFORE running testimg** — a host-only compile is not the check it looks like.
+
+**VERIFIED.** Host: the extended probe against the host library → **20/20 checks**. Guest: `make testimg` then
+`make test TESTS='foundation_urlsession*'` → the batch's run, §62.102's note. Library: **zero** warnings.
+
+
+## §62.102 — THE iCLOUD SURFACE DECLINED BY ITS OWN RECORDED DECISION (2026-09-28)
+
+**FIVE ROWS CLOSED BY DECLINING THEM, WHICH IS THE RIGHT CLOSE FOR A SCOPE GROUND RATHER THAN A DEPRECATION
+ONE:** `NSURLCredentialPersistenceSynchronizable`, `NSURLCredentialStorageRemoveSynchronizableCredentials`, and
+the three ubiquitous-item resource keys (`NSURLUbiquitousItemIsDownloadedKey`,
+`…PercentDownloadedKey`, `…PercentUploadedKey`). The ground is already written in `NSURLCredential.h` —
+"*refused with the rest of the synchronisation surface (§48.1) — it exists for iCloud, which this system does not
+have and this plan has never proposed*" — so this unit invented no reason; it made the LEDGER say what the header
+already said, with the §48.1 citation beside the names in `tools/foundation-sweep.py`'s `DECLINED_SYMBOLS`.
+
+**THE BATCH'S NUMBERS, IN ONE PLACE** — the ledger was refreshed once for §62.101 + §62.102 (each refresh scans
+the whole tree, so one pass answers both):
+
+    open rows      66 → 44      (22 closed: 17 shipped, 5 declined)
+    case           20 →  3 open (shipped 1205 → 1222)
+    var            32 → 28 open (shipped  675 →  679)
+    func            0 →  0 open (167 shipped)
+    class           0 →  0 open (221 shipped), protocol 1, macro 5, enum 4, typealias 4
+
+**VERIFIED.** `foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**;
+`--unimplemented`: **0 NEW**; `make foundation-gate`: **OK**. Guest: `make test TESTS='foundation_urlsession*'`
+→ the three URLSession cases, §62.101's extended one included.
+
+**WHERE THE THREAD STANDS: 44 OPEN ROWS.** Almost all are the long tail of small constants — typealiases,
+macros, the thread/cookie notifications — plus the four `NSLocalizedAttributedString*` macros, whose cluster also
+owns `NSAttributedStringFormattingContextKey` and `NSInflectionConceptsKey` (a formatting-context key, NOT an
+NSError key), and three names that need a unit of their own rather than a guess: `NSPredicateValidating` (its
+doors are a visitor family, of which one is measured), `NSOperationNotSupportedForKeyException` (a KVC exception
+NAME, which needs the raise-site audit) and `NSSortOptions`, whose rows also need the
+`-sortedArrayWithOptions:usingComparator:` doors that do not exist yet.
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else
