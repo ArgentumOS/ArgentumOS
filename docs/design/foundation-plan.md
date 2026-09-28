@@ -3480,7 +3480,7 @@ vanishing.
 | **App Support / Script Execution** | ALL STRUCK: `NSAppleScript` | — |
 | **App Support / System Interaction** | all classes shipped | — |
 | **App Support / Undo** | all classes shipped | — |
-| **App Support / User Notifications** | 4 open | `NSUserNotification`, `NSUserNotificationAction`, `NSUserNotificationCenter`, `NSUserNotificationCenterDelegate` |
+| **App Support / User Notifications** | all classes shipped | — |
 | **App Support / User-Relevant Errors** | all classes shipped | — |
 | **Files and Data Persistence / Adopting Codability** | all classes shipped | — |
 | **Files and Data Persistence / App-specific settings** | all classes shipped | — |
@@ -13743,6 +13743,91 @@ own tally `ok=12 fail=0` in one run — including `strptime`'s `%z` under musl, 
 most depended on the guest answering as the host does. `foundation-sweep --refresh` + `--check`: **consistent**,
 three rows flipped, family table regenerated. `foundation-gate`: **OK — 534 files, 199 of 203 public headers**;
 `--unimplemented`: **0 NEW**.
+
+## §62.68 — THE USER NOTIFICATIONS FAMILY: ELEVEN ROWS, TWO SENTENCES, AND ONE RULE THAT IS OURS (2026-09-26)
+
+**WHAT SHIPPED: THE WHOLE FAMILY — ELEVEN ROWS.** Three classes (`NSUserNotification`, `NSUserNotificationAction`,
+`NSUserNotificationCenter`), the `NSUserNotificationCenterDelegate` protocol, `NSUserNotificationActivationType`
+with its **five cases**, and `NSUserNotificationDefaultSoundName`. `class shipped` went **200 → 203**, `protocol
+33 → 34`, `enum 141 → 142`, `case 1146 → 1151`, `var 645 → 646`, and **`App Support / User Notifications` reads
+"all classes shipped"** — **the third family this session has closed** (after System Interaction's classes with
+§62.66 and Deprecated with §62.67). Apple-deprecated, replaced by the UserNotifications framework, and in scope per
+§62.24: a surface built so that an older application compiles is defeated by excluding what it calls.
+
+**THE TWO HALVES ARE APPLE'S AND THEY ARE NOT SYMMETRIC, which is the first thing this unit had to get right
+rather than assume:**
+
+* **`-deliverNotification:` PRESENTS, UNCONDITIONALLY, and Apple says so in one sentence** — "The `isPresented`
+  property of the `NSUserNotification` object will ALWAYS be set to true if a notification is delivered using this
+  method." (The sentence arrived mangled out of the doc JSON — *"The [REF] property of the [REF] object will
+  always be set to [REF]"* — and reading the references is what turned it into a rule the probe could assert:
+  `isPresented`, `NSUserNotification`, `true`.)
+* **`-scheduleNotification:` QUEUES, and the queue is an array Apple makes SETTABLE:** "Specifies an array of
+  scheduled user notifications that have not yet been delivered. Newly scheduled notifications are added to the
+  END of the array. You may also bulk-schedule notifications by SETTING this array. Bulk setting new scheduled
+  notifications UNSCHEDULES existing notifications."
+
+**SO THE ENGINE IS ONE ONE-SHOT TIMER PER QUEUED NOTIFICATION, armed for its `-deliveryDate` on the run loop that
+scheduled it — the shape §62.66 landed, and its floor applies here too** (a nil delivery date means the FLOOR, not
+zero: an already-due timer added to the loop that is walking its timer list fires inside the same pass). The queue
+array and the timer array share their indices, so every door that moves a notification moves its timer in the same
+operation. **A repeat is a CALENDAR question and goes to the shipped NSCalendar: `-deliveryRepeatInterval` is added
+to the delivery date with `-dateByAddingComponents:toDate:options:`, and an interval that does not move the date
+forward is refused rather than repeated forever.**
+
+**AND ONE RULE IS OURS, MARKED AS SUCH (§11.6.1 D2), because Apple's delegation door is defined in terms of a fact
+this system does not have.** `-userNotificationCenter:shouldPresentNotification:` is documented as sent "when the
+user notification center has DECIDED NOT TO PRESENT your notification" — a decision Apple's centre makes from the
+**frontmost application**. This system has no frontmost-application signal, so **THE DELEGATE IS THE SIGNAL**: a
+notification that comes due on the scheduled path is presented unless its delegate refuses, a delegate that does
+not implement the door means present, and — because of Apple's own sentence above — a `-deliverNotification:` call
+is presented regardless. The two doors do not contradict each other, and the probe asserts all three cases.
+
+**WHAT THIS CLASS HONESTLY DOES NOT HAVE, stated rather than stubbed:** there is **no presentation service** (so
+"presented" is a RECORD the centre keeps, and the probe asserts the record); **no push service** (`-isRemote` is
+always NO); and **no UI to send an activation** — which is why the activation entry point lives in the INTERNAL
+seam `FNUserNotification.h` next to the four setters the delivery owns, where a future UI layer can reach it and
+the probe can drive it, rather than being invented on the public surface where an application would have no
+business calling it. Every one of those is a real answer to a real door, not a refusal.
+
+**TWO ANNOTATIONS ARE FLAGGED RATHER THAN GUESSED**, because Apple's published shape and Apple's own object
+disagree: **`-contentImage` is an `NSImage *` on Apple's system and THIS SYSTEM HAS NO NSImage** (Foundation has
+never owned an image class here — the drawing layer is the toolkit's), so it is declared `id` with `copy`
+ownership: the only workable reading, since inventing an NSImage in Foundation to satisfy one property would
+invent an image type for a system that draws elsewhere; and **`-actionButtonTitle`/`-otherButtonTitle` are
+non-optional in Apple's shape while a freshly created notification has neither set** — ours matches the
+ANNOTATION, because that is what a ported application compiles against, and the fresh-state nil is Apple's
+behaviour too. Both are recorded rather than reconciled.
+
+**THREE DEFECTS THIS UNIT COST, and the second one generalises:**
+
+1. **A `-copy` THAT ANSWERED AN AUTORELEASED OBJECT.** The factory's body was written twice — once autoreleasing
+   for `+actionWithIdentifier:title:`, once not for `-copy` — and the second said `[self actionWith…]`. So the
+   notification's own setter stored a **borrowed** action as if it owned it, the pool drained, and the next
+   `release` of that slot ran on freed memory: a **segfault inside `-dealloc`** that no assertion named. The
+   repository's own note for this defect class already exists ("a borrowed value stored as an owner"): the fix is
+   ONE +1 initialiser that the factory wraps in `autorelease` and `-copy` does not.
+2. **AN IVAR-LAYOUT ARTEFACT, whose signature is worth recognising: EVERY IVAR OF ONE CLASS READ AS THE CLASS
+   POINTER** (`&_title` printed as `self`). The linked library still carried a layout from before the six
+   `@synthesize` declarations; a fresh compile of the same source had the right one (`_title` at offset 48). A
+   targeted `rm` of the object and the library fixed it. **When every field of one class is garbage at once,
+   suspect the build, not the logic** — and note the guest library's source list is a *wildcard* while the
+   dependency lists are explicit, so a partial build can leave an old shape behind.
+3. **`@synthesize` IS NOT AN IMPLEMENTATION TO THE GATE**, and this cost a guest build rather than a test:
+   `foundation-sweep --unimplemented` reads a **written** accessor, so a value object that lets the compiler
+   synthesise its 16 stored properties is reported as **25 declared-but-undefined selectors** — and
+   `make testimg` depends on that gate (`mk/00-base.mk:411`), so the *build* failed before any check ran. The
+   accessors are now written out, which is this tree's convention for exactly this reason.
+   *(And two faults in the probe itself: a report string whose arguments were out of order, and a check that
+   failed because the DELEGATE WAS STILL REFUSING from the check before it — a check that depends on the previous
+   check's state is a defect in the check.)*
+
+**VERIFIED.** Host: `make host-foundation-run` — **36 probes, every tally `fail=0`**, the new probe at **`ok=19
+fail=0`** (it segfaulted on the way, which is finding 1, and read 18/19 while finding 1's sibling bug was in the
+test). Guest: `make testimg` then `make test TESTS='foundation_usernotification'` → **`TESTS-OK 1/1 case(s), 6/6
+check(s) in 12s`**, the probe's own tally `ok=19 fail=0` in one run. `foundation-sweep --refresh` (exit 0) +
+`--families --write` + `--check`: **consistent**, eleven rows flipped, family table regenerated.
+`foundation-gate`: **OK — 540 files, 202 of 206 public headers**; `--unimplemented`: **0 NEW**.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
