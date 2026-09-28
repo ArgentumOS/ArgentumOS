@@ -3560,7 +3560,7 @@ vanishing.
 | **Networking / Requests and responses** | all classes shipped | — |
 | **Networking / Service Discovery** | ALL STRUCK: `NSNetServiceBrowser`, `NSNetServiceBrowserDelegate` | — |
 | **Protocols** | 1 open | `NSPredicateValidating` |
-| **Reference / Classes** | 4 open | `NSKeyValueSharedObservers`, `NSKeyValueSharedObserversSnapshot`, `NSLocalizedNumberFormatRule`, `NSSimpleCString` |
+| **Reference / Classes** | 3 open | `NSKeyValueSharedObservers`, `NSKeyValueSharedObserversSnapshot`, `NSSimpleCString` |
 <!-- END GENERATED (families) -->
 
 ### What the class index never covered: the C surface
