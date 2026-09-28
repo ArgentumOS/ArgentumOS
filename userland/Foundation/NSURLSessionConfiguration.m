@@ -21,6 +21,7 @@
 		_timeoutIntervalForRequest = 60.0;
 		_timeoutIntervalForResource = 604800.0;	/* 7 days */
 		_networkServiceType = NSURLNetworkServiceTypeDefault;
+		_multipathServiceType = NSURLSessionMultipathServiceTypeNone;
 		_allowsCellularAccess = YES;
 		_allowsExpensiveNetworkAccess = YES;
 		_allowsConstrainedNetworkAccess = YES;
@@ -61,6 +62,8 @@
 - (void)setTimeoutIntervalForResource:(NSTimeInterval)interval { _timeoutIntervalForResource = interval; }
 - (NSURLRequestNetworkServiceType)networkServiceType { return _networkServiceType; }
 - (void)setNetworkServiceType:(NSURLRequestNetworkServiceType)type { _networkServiceType = type; }
+- (NSURLSessionMultipathServiceType)multipathServiceType { return _multipathServiceType; }
+- (void)setMultipathServiceType:(NSURLSessionMultipathServiceType)type { _multipathServiceType = type; }
 - (BOOL)allowsCellularAccess { return _allowsCellularAccess; }
 - (void)setAllowsCellularAccess:(BOOL)flag { _allowsCellularAccess = flag; }
 - (BOOL)allowsExpensiveNetworkAccess { return _allowsExpensiveNetworkAccess; }
@@ -94,6 +97,7 @@
 	copy->_timeoutIntervalForRequest = _timeoutIntervalForRequest;
 	copy->_timeoutIntervalForResource = _timeoutIntervalForResource;
 	copy->_networkServiceType = _networkServiceType;
+	copy->_multipathServiceType = _multipathServiceType;
 	copy->_allowsCellularAccess = _allowsCellularAccess;
 	copy->_allowsExpensiveNetworkAccess = _allowsExpensiveNetworkAccess;
 	copy->_allowsConstrainedNetworkAccess = _allowsConstrainedNetworkAccess;

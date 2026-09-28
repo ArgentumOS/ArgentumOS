@@ -25,6 +25,14 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSNumber.h>
 
+/* THE THREE PRIORITY CONSTANTS AND THE UNKNOWN SIZE (§62.101). Apple declares these beside the class rather
+ * than in an enum, and the values are its documentation's: the default is the middle of the range, low and high
+ * are the published steps, and an unknown size is -1 everywhere a byte count is a guess. */
+const float NSURLSessionTaskPriorityDefault = 0.5f;
+const float NSURLSessionTaskPriorityLow = 0.1f;
+const float NSURLSessionTaskPriorityHigh = 1.0f;
+const int64_t NSURLSessionTransferSizeUnknown = -1;
+
 @implementation NSURLSessionTask
 
 /* THE REPORTING DOORS ARE THE SESSION'S, and they are what turns a protocol's callbacks into a task's
@@ -131,6 +139,17 @@
 - (float)priority { return _priority; }
 - (void)setPriority:(float)priority { _priority = priority; }
 - (NSURLSessionTaskState)state { return _state; }
+
+/* THE DELAYED START'S DATE, CARRIED (§62.101) — what it drives is in the session's resume path, where the
+ * delegate is asked. */
+- (NSDate *)earliestBeginDate { return _earliestBeginDate; }
+- (void)setEarliestBeginDate:(NSDate *)date
+{
+	NSDate *old = _earliestBeginDate;
+
+	_earliestBeginDate = [date copy];
+	[old release];
+}
 - (int64_t)countOfBytesReceived { return _countOfBytesReceived; }
 - (int64_t)countOfBytesExpectedToReceive { return _countOfBytesExpectedToReceive; }
 
@@ -178,6 +197,7 @@
 	[_response release];
 	[_error release];
 	[_taskDescription release];
+	[_earliestBeginDate release];
 	[_receivedData release];
 	if (_completionHandler != NULL) {
 		Block_release(_completionHandler);

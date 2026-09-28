@@ -53,6 +53,34 @@ static NSURL *fn_url(NSString *string)
 - (void)URLSession:(NSURLSession *)session didBecomeInvalidWithError:(NSError *)error { (void)error; }
 @end
 
+
+/* THE DELAYED-REQUEST DELEGATE (§62.101): it RECORDS what it was asked and answers with a mode, so the probe can
+ * assert the door ran, what it was given, and what its answer did - and, in the control, that it did NOT run. */
+@interface FnDelayedDelegate : NSObject <NSURLSessionTaskDelegate>
+{
+@public
+	int asked;
+	NSURLSessionTask *sawTask;
+	NSURLRequest *sawRequest;
+	int mode;			/* 0 continue, 1 use the new request, 2 cancel */
+	NSString *newURL;
+}
+@end
+@implementation FnDelayedDelegate
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
+willBeginDelayedRequest:(NSURLRequest *)request
+ completionHandler:(void (^)(NSURLSessionDelayedRequestDisposition, NSURLRequest *))completionHandler
+{
+	(void)session;
+	asked++;
+	sawTask = task;
+	sawRequest = request;
+	completionHandler((NSURLSessionDelayedRequestDisposition)mode,
+			  newURL != nil ? [NSURLRequest requestWithURL:fn_url(newURL)] : nil);
+}
+@end
+
 int main(void)
 {
 	/* --- THE SHARED SESSION IS ONE SESSION -------------------------------------------------------- */
@@ -312,6 +340,116 @@ int main(void)
 		      NSURLSessionResponseBecomeDownload == 2 &&
 		      NSURLSessionResponseBecomeStream == 3,
 		      @"the disposition's four values, which are ours under D2");
+	}
+
+	/* --- §62.101: THE DELAYED-REQUEST DOOR, ITS CONTROL, AND THE VALUES BESIDE IT ---------------------- */
+	{
+		NSURLSessionConfiguration *configuration =
+			[NSURLSessionConfiguration ephemeralSessionConfiguration];
+		FnDelayedDelegate *delegate = [[FnDelayedDelegate alloc] init];
+		NSURLSession *session = [NSURLSession sessionWithConfiguration:configuration
+								     delegate:delegate
+								delegateQueue:nil];
+		NSURLRequest *original = [NSURLRequest requestWithURL:fn_url(@"file:///nonexistent-original")];
+
+		/* (1) A DATE MAKES THE SESSION ASK, AND A CANCEL ANSWER STOPS THE TASK BEFORE ANY TRANSFER EXISTS. */
+		delegate->mode = 2;
+		{
+			NSURLSessionDataTask *task = [session dataTaskWithRequest:original];
+
+			[task setEarliestBeginDate:[NSDate dateWithTimeIntervalSinceNow:60]];
+			[task resume];
+
+			check("delayed-request-door-is-asked-and-a-cancel-stops-the-task",
+			      delegate->asked == 1 && delegate->sawTask == task &&
+			      [[[delegate->sawRequest URL] absoluteString] isEqualToString:@"file:///nonexistent-original"] &&
+			      [task state] == NSURLSessionTaskStateCompleted &&
+			      [[task error] code] == NSURLErrorCancelled,
+			      [NSString stringWithFormat:@"asked=%d state=%d code=%ld", delegate->asked,
+						  (int)[task state], (long)[[task error] code]]);
+		}
+
+		/* (2) THE CONTROL: WITHOUT A DATE THE DOOR IS NOT ASKED AT ALL - which is the half that makes (1) mean
+		 * something. The task then starts (a file:// URL, so nothing leaves the machine) and its own ending is
+		 * whatever the missing file gives; only "the door was not asked" is asserted. */
+		delegate->asked = 0;
+		{
+			NSURLSessionDataTask *task = [session dataTaskWithRequest:original];
+
+			[task resume];
+
+			check("delayed-request-door-is-not-asked-without-a-date",
+			      delegate->asked == 0, @"the door belongs to a DELAYED request");
+		}
+
+		/* (3) UseNewRequest MOVES WHAT THE TASK IS ABOUT, through the same door a redirect uses. */
+		delegate->mode = 1;
+		delegate->asked = 0;
+		delegate->newURL = @"file:///nonexistent-replacement";
+		{
+			NSURLSessionDataTask *task = [session dataTaskWithRequest:original];
+
+			[task setEarliestBeginDate:[NSDate dateWithTimeIntervalSinceNow:60]];
+			[task resume];
+
+			check("delayed-request-replacement-moves-the-task",
+			      delegate->asked == 1 &&
+			      [[[[task currentRequest] URL] absoluteString] isEqualToString:@"file:///nonexistent-replacement"],
+			      [NSString stringWithFormat:@"asked=%d current=%@", delegate->asked,
+						  [[task currentRequest] URL]]);
+		}
+
+		check("upload-resume-key-names-itself",
+		      [NSURLSessionDownloadTaskResumeData isEqualToString:@"NSURLSessionDownloadTaskResumeData"] &&
+		      [NSURLSessionUploadTaskResumeData isEqualToString:@"NSURLSessionUploadTaskResumeData"],
+		      @"both resume keys carry their own name, which is what a plist or a log spells");
+	}
+
+	/* THE CARRIED AND PUBLISHED VALUES OF THE SAME ROW. */
+	{
+		NSURLSessionConfiguration *configuration =
+			[NSURLSessionConfiguration defaultSessionConfiguration];
+		NSURLSessionConfiguration *copy;
+
+		[configuration setMultipathServiceType:NSURLSessionMultipathServiceTypeInteractive];
+		copy = [configuration copy];
+
+		check("multipath-service-type-is-carried-and-snapshot",
+		      NSURLSessionMultipathServiceTypeNone == 0 &&
+		      NSURLSessionMultipathServiceTypeHandover == 1 &&
+		      NSURLSessionMultipathServiceTypeInteractive == 2 &&
+		      NSURLSessionMultipathServiceTypeAggregate == 3 &&
+		      [[NSURLSessionConfiguration defaultSessionConfiguration] multipathServiceType] ==
+			      NSURLSessionMultipathServiceTypeNone &&
+		      [configuration multipathServiceType] == NSURLSessionMultipathServiceTypeInteractive &&
+		      [copy multipathServiceType] == NSURLSessionMultipathServiceTypeInteractive,
+		      @"the four values, the default, and the copy that carries the choice");
+	}
+
+	check("task-priorities-are-apples-and-a-new-task-answers-the-default",
+	      NSURLSessionTaskPriorityLow == 0.1f && NSURLSessionTaskPriorityDefault == 0.5f &&
+	      NSURLSessionTaskPriorityHigh == 1.0f && NSURLSessionTransferSizeUnknown == (int64_t)-1 &&
+	      [[[NSURLSessionDataTask alloc] fnInitWithRequest:
+			[NSURLRequest requestWithURL:fn_url(@"https://example.com/p")]
+					 identifier:1001] priority] == NSURLSessionTaskPriorityDefault,
+	      @"0.1/0.5/1.0, -1 for an unknown size, and a fresh task at the default priority");
+
+	{
+		NSMutableURLRequest *voip = [NSMutableURLRequest requestWithURL:fn_url(@"https://example.com/v")];
+
+		[voip setNetworkServiceType:NSURLNetworkServiceTypeVoIP];
+		check("voip-and-server-push-are-declared-where-apple-declares-them",
+		      NSURLNetworkServiceTypeVoIP == 1 && NSURLNetworkServiceTypeVideo == 2 &&
+		      NSURLNetworkServiceTypeBackground == 3 &&
+		      NSURLSessionTaskMetricsResourceFetchTypeUnknown == 0 &&
+		      NSURLSessionTaskMetricsResourceFetchTypeNetworkLoad == 1 &&
+		      NSURLSessionTaskMetricsResourceFetchTypeServerPush == 2 &&
+		      NSURLSessionTaskMetricsResourceFetchTypeLocalCache == 3 &&
+		      [voip networkServiceType] == NSURLNetworkServiceTypeVoIP &&
+		      NSURLSessionDelayedRequestContinueLoading == 0 &&
+		      NSURLSessionDelayedRequestUseNewRequest == 1 &&
+		      NSURLSessionDelayedRequestCancel == 2,
+		      @"the filled slot at 1, Apple's cache order (ServerPush third), and the three dispositions");
 	}
 
 	printf("FOUNDATION-URLSESSION RESULT ok=%d fail=%d\n", okc, failc);

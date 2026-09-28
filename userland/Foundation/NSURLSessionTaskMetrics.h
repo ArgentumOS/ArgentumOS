@@ -38,14 +38,18 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /*
- * HOW A RESOURCE WAS OBTAINED. `ServerPush` IS NOT HERE: the ledger carries it as STRUCK (deprecated), and
- * section 11.5 strikes deprecated API - so a caller who passes its number gets a value this library does not
- * recognise, which is the honest outcome for a name that is deliberately absent.
+ * HOW A RESOURCE WAS OBTAINED. `ServerPush` WAS ABSENT BECAUSE THE LEDGER CARRIED IT AS STRUCK FOR BEING
+ * DEPRECATED — and that ground was RETIRED on 2026-09-26 (plan row D7, §62.24), so §62.101 declares it AND
+ * MOVES `LocalCache` TO THE PLACE APPLE'S OWN ENUM GIVES IT. The move is the honest half: Apple's order is
+ * Unknown, NetworkLoad, ServerPush, LocalCache, while this enum had skipped the third case and closed the gap
+ * — which would have made a caller's number mean a different thing here than there. Nothing in this library
+ * answers anything but `Unknown` (§50.1), so no shipped reading changes.
  */
 typedef NS_ENUM(NSInteger, NSURLSessionTaskMetricsResourceFetchType) {
 	NSURLSessionTaskMetricsResourceFetchTypeUnknown = 0,
 	NSURLSessionTaskMetricsResourceFetchTypeNetworkLoad = 1,
-	NSURLSessionTaskMetricsResourceFetchTypeLocalCache = 2
+	NSURLSessionTaskMetricsResourceFetchTypeServerPush = 2,
+	NSURLSessionTaskMetricsResourceFetchTypeLocalCache = 3
 };
 
 /* HOW A NAME WAS RESOLVED. All five are declared; only `Unknown` is ever answered on this system, because the

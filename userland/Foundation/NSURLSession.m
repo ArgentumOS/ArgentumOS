@@ -652,6 +652,7 @@ totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
 @end
 
 NSString * const NSURLSessionDownloadTaskResumeData = @"NSURLSessionDownloadTaskResumeData";
+NSString * const NSURLSessionUploadTaskResumeData = @"NSURLSessionUploadTaskResumeData";
 
 @implementation NSURLSession
 
@@ -1057,6 +1058,42 @@ NSString * const NSURLSessionDownloadTaskResumeData = @"NSURLSessionDownloadTask
 
 - (void)fnTaskDidResume:(NSURLSessionTask *)task
 {
+	/* THE DELAYED REQUEST (§62.101), ASKED BEFORE ANYTHING ELSE HAPPENS — Apple asks it when a task's date
+	 * arrives, and the ANSWER decides whether the original request, a new one, or nothing at all is loaded.
+	 * The asymmetry with Apple is the missing scheduler, and it is stated where it lives: a resumed task that
+	 * CARRIES a date asks its delegate here rather than waiting for the date to pass. */
+	if ([task earliestBeginDate] != nil) {
+		id <NSURLSessionTaskDelegate> taskDelegate = (id <NSURLSessionTaskDelegate>)[self delegate];
+
+		if ([taskDelegate respondsToSelector:
+			@selector(URLSession:task:willBeginDelayedRequest:completionHandler:)]) {
+			__block NSURLSessionDelayedRequestDisposition answer = NSURLSessionDelayedRequestContinueLoading;
+			__block NSURLRequest *replacement = nil;
+			void (^handler)(NSURLSessionDelayedRequestDisposition, NSURLRequest *) =
+				^(NSURLSessionDelayedRequestDisposition disposition, NSURLRequest *newRequest) {
+					answer = disposition;
+					replacement = [newRequest retain];
+				};
+
+			[taskDelegate URLSession:self
+					   task:task
+			  willBeginDelayedRequest:[task currentRequest]
+				completionHandler:handler];
+
+			/* A CANCELLED DELAYED REQUEST ENDS BEFORE A TRANSFER EXISTS, and a REPLACEMENT moves what the task is
+			 * about through the same door a followed redirect uses — so there is one way to change it. */
+			if (answer == NSURLSessionDelayedRequestCancel) {
+				[replacement release];
+				[task cancel];
+				return;
+			}
+			if (answer == NSURLSessionDelayedRequestUseNewRequest && replacement != nil) {
+				[task fnProtocolDidRedirectToRequest:replacement];
+			}
+			[replacement release];
+		}
+	}
+
 	/* A RESUMED DOWNLOAD IS ANNOUNCED BEFORE ANY CHUNK ARRIVES (§62.31), which is Apple's order and the only
 	 * one that makes sense: a delegate that wants to show "continuing from N" has to hear it before the
 	 * chunks start arriving at N. The offset is the task's, and the expected total is what the interrupted

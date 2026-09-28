@@ -36,6 +36,7 @@
 #import <Foundation/NSObject.h>
 
 @class NSData;
+@class NSDate;
 @class NSError;
 @class NSMutableData;
 @class NSString;
@@ -62,6 +63,7 @@ typedef NS_ENUM(NSInteger, NSURLSessionTaskState) {
 	NSError *_error;
 	NSString *_taskDescription;
 	float _priority;
+	NSDate *_earliestBeginDate;
 	NSURLSessionTaskState _state;
 	int64_t _countOfBytesReceived;
 	int64_t _countOfBytesExpectedToReceive;
@@ -112,6 +114,13 @@ typedef NS_ENUM(NSInteger, NSURLSessionTaskState) {
 @property (nullable, copy) NSString *taskDescription;
 /* Apple's range is 0.0–1.0 with a default of 0.5; CARRIED, with nothing scheduling on it yet. */
 @property float priority;
+
+/* THE DELAYED START (§62.101). Apple's contract: a task with a date will not begin before it, and when the
+ * date arrives the session offers the request to the delegate's `-URLSession:task:willBeginDelayedRequest:
+ * completionHandler:`. THE DOOR IS REAL HERE, and the date's own half has a STATED BOUNDARY: this system has
+ * no delayed-start scheduler, so a date does not make the task wait — a resumed task WITH a date asks the
+ * delegate at resume time, which is the half a delegate can observe in-process. */
+@property (nullable, copy) NSDate *earliestBeginDate;
 @property (readonly) NSURLSessionTaskState state;
 /* 0 until a transfer runs: there is no transfer in this row, and these say so by staying zero. */
 @property (readonly) int64_t countOfBytesReceived;
@@ -124,6 +133,18 @@ typedef NS_ENUM(NSInteger, NSURLSessionTaskState) {
 @end
 
 /* THE DATA TASK IS THE ONE THAT CARRIES A REQUEST, which is the only thing it adds here. */
+/* THE THREE PRIORITIES APPLE PUBLISHES (§62.101): floats rather than enum cases, and the values are its
+ * documentation's own — 0.1 low, 0.5 default, 1.0 high, inside the [0.0, 1.0] range the property's note
+ * gives. Only the ends of that range are documented as such, which is why three names are published and a
+ * scale is not. */
+extern const float NSURLSessionTaskPriorityDefault;
+extern const float NSURLSessionTaskPriorityLow;
+extern const float NSURLSessionTaskPriorityHigh;
+
+/* AND THE PLACEHOLDER FOR A SIZE NOBODY KNOWS YET: Apple's `-1`, which the byte-count properties answer while a
+ * transfer's expected size is still unsettled. */
+extern const int64_t NSURLSessionTransferSizeUnknown;
+
 @interface NSURLSessionDataTask : NSURLSessionTask
 
 @end

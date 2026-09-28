@@ -39,6 +39,17 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/* MULTIPATH TCP'S SERVICE TYPE (§62.101), Apple's four values. NOTHING HERE OPENS A SECOND SUBFLOW — this
+ * system has no MPTCP — so the property is CARRIED rather than acted on, the standing the file-protection bits
+ * and the other carried flags already have: a caller sets it, gets it back, and this note is the record of what
+ * does not happen. */
+typedef NS_ENUM(NSInteger, NSURLSessionMultipathServiceType) {
+	NSURLSessionMultipathServiceTypeNone = 0,
+	NSURLSessionMultipathServiceTypeHandover = 1,
+	NSURLSessionMultipathServiceTypeInteractive = 2,
+	NSURLSessionMultipathServiceTypeAggregate = 3
+};
+
 @interface NSURLSessionConfiguration : NSObject <NSCopying>
 {
 	NSString *_identifier;
@@ -46,6 +57,7 @@ NS_ASSUME_NONNULL_BEGIN
 	NSTimeInterval _timeoutIntervalForRequest;
 	NSTimeInterval _timeoutIntervalForResource;
 	NSURLRequestNetworkServiceType _networkServiceType;
+	NSURLSessionMultipathServiceType _multipathServiceType;
 	BOOL _allowsCellularAccess;
 	BOOL _allowsExpensiveNetworkAccess;
 	BOOL _allowsConstrainedNetworkAccess;
@@ -72,6 +84,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property NSTimeInterval timeoutIntervalForRequest;
 @property NSTimeInterval timeoutIntervalForResource;
 @property NSURLRequestNetworkServiceType networkServiceType;
+
+/* CARRIED, NOT ACTED ON — see the enum's note above. */
+@property NSURLSessionMultipathServiceType multipathServiceType;
 @property BOOL allowsCellularAccess;
 @property BOOL allowsExpensiveNetworkAccess;
 @property BOOL allowsConstrainedNetworkAccess;

@@ -56,6 +56,9 @@ NS_ASSUME_NONNULL_BEGIN
  * caller can recover from a dropped connection without ever having called `-cancelByProducingResumeData:` -
  * the transfer failed, and the ERROR ITSELF says how to continue it. */
 extern NSString * const NSURLSessionDownloadTaskResumeData;
+/* AND ITS UPLOAD TWIN (§62.101): the key an error's userInfo carries when a RESUMABLE UPLOAD can be picked up
+ * again. Declared beside the download one because that is the pair Apple declares, and its value is the name. */
+extern NSString * const NSURLSessionUploadTaskResumeData;
 
 @class NSURLSession;
 
@@ -185,6 +188,14 @@ typedef NS_ENUM(NSInteger, NSURLSessionWebSocketMessageType) {
  * is what makes the compiler say "missing '@end'". */
 @class NSURLSessionWebSocketTask;
 
+/* WHAT TO DO WITH A DELAYED REQUEST (§62.101) — Apple's three answers in Apple's order, and the value the
+ * delegate hands back through the door below. */
+typedef NS_ENUM(NSInteger, NSURLSessionDelayedRequestDisposition) {
+	NSURLSessionDelayedRequestContinueLoading = 0,
+	NSURLSessionDelayedRequestUseNewRequest = 1,
+	NSURLSessionDelayedRequestCancel = 2
+};
+
 @protocol NSURLSessionTaskDelegate <NSURLSessionDelegate>
 
 @optional
@@ -200,6 +211,19 @@ didCompleteWithError:(nullable NSError *)error;
  * through an `(id)` cast since §48, which compiles whether or not a header declares it - so the loop passed
  * its checks while a caller could not read the contract and the compiler could not check a call to it. The
  * build's two `-Wobjc-method-access` warnings were exactly that, in the toolchain's own words. */
+/* THE DELAYED REQUEST (§62.101), asked when a resumed task carries an `earliestBeginDate`. THE DELEGATE
+ * DECIDES: continue with the request it is given, use the new one it hands back, or cancel the task — and the
+ * session acts on the answer BEFORE any transport work happens.
+ *
+ * ONE BOUNDARY IS STATED IN THE TYPE RATHER THAN HIDDEN: the completion handler is called SYNCHRONOUSLY by this
+ * session (a delegate that calls it later, or never, is impossible in an in-process design with no scheduler),
+ * and a delegate that never calls it leaves the task proceeding with its original request. */
+- (void)URLSession:(NSURLSession *)session
+	      task:(NSURLSessionTask *)task
+willBeginDelayedRequest:(NSURLRequest *)request
+ completionHandler:(void (^)(NSURLSessionDelayedRequestDisposition disposition,
+			     NSURLRequest * _Nullable newRequest))completionHandler;
+
 - (void)URLSession:(NSURLSession *)session
 	      task:(NSURLSessionTask *)task
 didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge

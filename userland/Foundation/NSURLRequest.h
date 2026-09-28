@@ -18,9 +18,10 @@
  * probe. NSURLRequestReloadIgnoringCacheData is the ALIAS Apple documents it as, so it shares a value
  * with NSURLRequestReloadIgnoringLocalCacheData instead of being a seventh number.
  *
- * ONE VALUE IS A GAP ON PURPOSE: NSURLNetworkServiceTypeVoIP sat at 1 and is STRUCK (§11.5 —
- * Apple deprecated it in macOS 13), so 1 stays vacant rather than silently renumbering its neighbours.
- * A struck name remains visible as a hole.
+ * THE ONE VACANT VALUE IS FILLED NOW (§62.101): NSURLNetworkServiceTypeVoIP sat at 1 and was struck for
+ * being deprecated, which the retired ground no longer justifies. The enum is Apple's own list with no hole in
+ * it — a hole a caller can fall into is worse than a name that compiles. DEPRECATION DOES NOT MAKE A NAME
+ * ABSENT: a caller porting an old program is exactly who needs it.
  *
  * REFUSED BY NAME, each because it needs something this library does not ship or is a different unit:
  *   - THE TRANSPORT: `NSURLSession`, `NSURLConnection`, `NSURLProtocol`, and every `-resume`/`-start`/
@@ -66,6 +67,10 @@ typedef NS_ENUM(NSUInteger, NSURLRequestCachePolicy) {
  * keys are). Value 1 is vacant: see the note above on the struck …VoIP. */
 typedef NS_ENUM(NSUInteger, NSURLRequestNetworkServiceType) {
 	NSURLNetworkServiceTypeDefault = 0,
+	/* §62.101: THE GAP IS FILLED. This slot was left vacant on purpose when the name was STRUCK for being
+	 * deprecated — and that ground was RETIRED on 2026-09-26 (plan row D7, §62.24), so the value is owed and
+	 * 1 is the VoIP case Apple's own header puts there. */
+	NSURLNetworkServiceTypeVoIP = 1,
 	NSURLNetworkServiceTypeVideo = 2,
 	NSURLNetworkServiceTypeBackground = 3,
 	NSURLNetworkServiceTypeVoice = 4,
