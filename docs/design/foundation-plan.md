@@ -14379,6 +14379,57 @@ singletons (`NSUbiquitousKeyValueStore`, `NSBundleResourceRequest`, `NSURLDownlo
 + its delegate, …) and the deprecated pair (`NSArchiver`/`NSUnarchiver` + `NXReadNSObjectFromCoder`), plus the two
 dependencies owed as things to BUILD: the markdown importer and the run-loop observers.
 
+## §62.81 — THE LOCALIZATION'S NUMBER-FORMAT RULE: ONE PUBLISHED DOOR (2026-09-26)
+
+**ONE ROW: `NSLocalizedNumberFormatRule`.** `class shipped` went **211 → 212**, and `Reference / Classes` (the
+family it sits in, with three unrelated siblings) went from four open rows to three.
+
+**THE PUBLISHED SURFACE IS ONE DOOR, AND THAT IS A FACT ABOUT APPLE'S PAGE RATHER THAN AN ECONOMY OF OURS.** The
+class is documented with `+automatic` and with the two conformances (`NSCopying`, `NSSecureCoding`) — and with
+nothing else, no instance doors at all. So this header is **COMPLETE against what Apple publishes**: a rule VALUE,
+copiable and archivable. The boundary is the one §62.79's rules state a family over: **NOTHING HERE FORMATS A
+NUMBER.** A rule is a thing a formatter WOULD consult; this system's formatters do their own work (see
+`NSNumberFormatter`), so the value exists, answers for itself, and drives nothing — which the header says rather
+than leaving a reader to discover.
+
+`+automatic` ANSWERS A VALUE rather than refusing, on the reading §62.78 and §62.79 both used: a system that has
+such a rule as a thing to name has one. It is a FRESH instance each call, because a rule is copiable state and a
+shared one would be a shared answer — the same reason `+userMorphology` and `+automaticRule` are fresh.
+
+**AND ONE WARNING OF MINE, CAUGHT BEFORE IT LANDED:** the probe's first version tested `-isEqual:nil`. `-isEqual:`
+is declared with a **NON-NULL** argument, so that is a `-Wnonnull` warning — and this project holds its warning
+count at zero (§62.77). The nil arm is gone, and the reason it must not come back is written in the probe where
+the next reader will meet it, which is the difference between fixing a thing and knowing why.
+
+**A FINDING RECORDED RATHER THAN DECIDED, from the same reconnaissance — `NSSimpleCString`.** It is also in
+`Reference / Classes` and it is documented with **TWO IVARS AND NO API**: an Apple implementation detail that a
+conforming application cannot call. The three moves are not equivalent, and only one of them is mine:
+
+* shipping an empty class would be a **STUB**, which this project refuses outright (§62.53's rule);
+* declaring it **DECLINED** is a **SCOPE** decision — and the sweep's decline list (`DECLINED_ROOTS`) is the user's
+  OWN scope decision (AppleScript, XPC, Spotlight, Bonjour), with the user's own words as its ground; adding a
+  class to it on a different ground is not the agent's call;
+* so **the row stays open and the question is stated** — here, and in the ledger — rather than being closed by a
+  decision nobody made.
+
+**AND ONE CLASS WAS NOT JUDGED AT ALL:** `NSKeyValueSharedObserversSnapshot`'s documentation page would not resolve
+during this unit. **A class whose surface has not been seen is not a class whose surface is empty** — the same
+discipline that keeps a missing `.o` from being read as an absent source file (§62.65's build trap) applies to a
+missing page.
+
+**VERIFIED.** Host: `make host-foundation-run` — **41 probes, every tally `fail=0`**, the new probe at
+**`ok=6 fail=0` with ZERO warnings**. Guest: `make testimg` then
+`make test TESTS='foundation_numberformatrule'` → **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**.
+`foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**, one row flipped, family table
+regenerated and landed separately (`37fc0e41` — the sweep writes that table into this document, so a
+`--families --write` always leaves the plan modified). `foundation-gate`: **OK**; `--unimplemented`: **0 NEW**.
+
+**WHERE THE THREAD STANDS: 13 open classes**, with `Reference / Classes` at three (one of which is the
+`NSSimpleCString` scope question above), the singletons (`NSUbiquitousKeyValueStore`, `NSBundleResourceRequest`,
+`NSURLDownload` + its delegate, `NSSpellServer` + its delegate) and the deprecated pair
+(`NSArchiver`/`NSUnarchiver` + `NXReadNSObjectFromCoder`) — plus the two dependencies owed as things to BUILD: the
+markdown importer and the run-loop observers.
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else
