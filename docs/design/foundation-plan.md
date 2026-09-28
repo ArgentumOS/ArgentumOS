@@ -15505,6 +15505,57 @@ its name suggests); plus the two singleton refusals-to-guess, `NSPredicateValida
 one door is measured) and `NSOperationNotSupportedForKeyException` (a KVC exception NAME that needs the
 raise-site audit).
 
+
+## §62.104 — THE LAST TWO ENUMS, AND A STABILITY PROMISE MEASURED RATHER THAN DECLARED (2026-09-28)
+
+**FOUR ROWS SHIPPED — `NSSortOptions` with `NSSortConcurrent` and `NSSortStable`, and
+`NSComparisonPredicateOptions` — taking the ledger from 12 open to 8.**
+
+**`NSSortOptions` WAS NOT JUST A MISSING ENUM: ITS ROWS ALSO NEEDED THE DOORS.** `NSArray.h` had
+`-sortedArrayUsingComparator:` and `NSMutableArray` had `-sortUsingComparator:`, but neither options form
+existed, and an option nothing accepts is a name rather than an option. So the unit added
+`-sortedArrayWithOptions:usingComparator:` and `-sortWithOptions:usingComparator:` — **and then found that the
+work was mostly already done, which is the interesting half:**
+
+1. **THE SORT ALREADY KEEPS THE PROMISE.** Reading `array_sorted_with_comparator` before writing the doors showed
+   an INSERTION sort that moves an element only while the comparison says `NSOrderedDescending` — so two elements
+   that compare EQUAL keep the order they arrived in. **`NSSortStable` IS THEREFORE HONOURED BY WHAT THE SORT IS
+   RATHER THAN BY A BRANCH**, the same property an `NSSortDescriptor` chain promises (F10), and the doors pass the
+   option through with a comment saying so.
+2. **AND THE PROBE MEASURES IT RATHER THAN TAKING THE COMMENT'S WORD:** five strings whose LENGTHS collide
+   (`bb a cc d ee` → lengths 2, 1, 2, 1, 2) sorted by length must come out `a, d, bb, cc, ee` — which is exactly
+   the stable order and exactly the thing an unstable sort would get wrong — **through BOTH doors**, so the
+   immutable and the mutable paths are compared with each other as well.
+3. **`NSSortConcurrent` IS A HINT THIS LIBRARY DOES NOT TAKE**, stated where the option lives: nothing here sorts
+   concurrently, so a caller who passes it gets a correct, sequential answer.
+
+**AND THE COMPARISON-PREDICATE TYPE WAS THE SAME SHAPE ONE LEVEL DOWN.** `NSPredicate.h` declared
+`NSPredicateOptions` — which is **Apple's DEPRECATED name** for the same bits — as its primary type, with
+`NSComparisonPredicateOptions` missing. This is the *third* time this thread has found a deprecated spelling
+standing in for a modern one (§62.93's `allowFragments`, §62.96's transformer name), and it is reversed the same
+way: the modern type is declared, the deprecated name stays as an alias of it, and the two
+`NSComparisonPredicate` doors now take the modern one. The probe holds the bits (0x01/0x02/0x04), builds a
+predicate with two of them and asserts the predicate KEEPS them.
+
+**VERIFIED.** Host: `make host-foundation-run` → **54 probes, no failure** (the extended probe now 12/12 on both
+the host and the guest), library **zero** warnings. Guest: `make testimg` then
+`make test TESTS='foundation_constants*'` → **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**.
+`foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**; `--unimplemented`: **0 NEW**.
+One refresh for this unit: `enum` open 2 → 0 (shipped 149 → **151**), `case` open 2 → 0 (shipped 1222 →
+**1224**).
+
+**WHERE THE THREAD STANDS: EIGHT OPEN ROWS, AND THEY ARE TWO NAMED DECISIONS PLUS ONE CLUSTER.**
+- **A CLUSTER OF SIX** — the four `NSLocalizedAttributedString*` macros with `NSAttributedStringFormattingContextKey`
+  and `NSInflectionConceptsKey`. They are ONE surface (the attributed-string **formatting context**: the key type,
+  a key for inflection concepts, and the four macros that build a localized attributed string) and they need one
+  lookup of the macro expansion before anything can be written. The reconnaissance already corrected one wrong
+  assumption about them: `NSInflectionConceptsKey` is a formatting-context key, **not** an NSError key.
+- **TWO ROWS LEFT OPEN ON PURPOSE, WITH THEIR REASONS RECORDED:** `NSPredicateValidating` — its doors are a whole
+  VISITOR family (one door, `-visitPredicate:error:`, is measured), and declaring a protocol with a fraction of
+  its doors would be inventing the rest; and `NSOperationNotSupportedForKeyException` — a KVC exception NAME,
+  which needs the audit of `NSKeyValueCoding.m`'s raise sites (all five raise `NSInvalidArgumentException`
+  today) before it can be raised from the right one.
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else

@@ -36,6 +36,10 @@ CHECKS = (
     "keys-and-kinds-value-their-names",
     "undo-run-loop-ordering-and-the-xml-entity-kind",
     "error-user-info-key-type",
+    # §62.104: the last two enums — the comparison-predicate options type and the sort options, the second
+    # MEASURED through both doors rather than declared.
+    "comparison-predicate-options-type",
+    "sort-options-and-the-stability-promise",
 )
 
 

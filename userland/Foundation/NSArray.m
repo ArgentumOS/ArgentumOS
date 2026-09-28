@@ -345,6 +345,15 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	return array_sorted_with_comparator(self, comparator);
 }
 
+/* THE OPTIONS FORM (§62.104): the same algorithm, and the option is a FACT ABOUT IT rather than a branch —
+ * the insertion sort keeps equal elements in the order they arrived, which is what NSSortStable asks for. A
+ * concurrency hint is not taken (nothing here sorts concurrently), and the probe asserts the stability. */
+- (NSArray *)sortedArrayWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator
+{
+	(void)options;
+	return array_sorted_with_comparator(self, comparator);
+}
+
 /* THE DESCRIPTOR CHAIN, and the reason the helper above is an INSERTION sort: it moves an element
  * only while the comparison says NSOrderedDescending, so two elements that compare EQUAL keep
  * the order they arrived in. A chain PROMISES that (F10), and the probe measures the promise
@@ -899,6 +908,14 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 }
 
 - (void)sortUsingComparator:(NSComparator)comparator
+{
+	if (comparator == NULL) {
+		return;
+	}
+	[self setArray:array_sorted_with_comparator(self, comparator)];
+}
+
+- (void)sortWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator
 {
 	if (comparator == NULL) {
 		return;

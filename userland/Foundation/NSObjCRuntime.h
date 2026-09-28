@@ -62,6 +62,19 @@ typedef unsigned long NSUInteger;
  */
 #define NSNotFound	NSIntegerMax
 
+/* THE SORT OPTIONS (§62.104), Apple's two bits and APPLE'S HOME FOR THEM: `NSObjCRuntime.h` is where the
+ * general runtime options live rather than `NSArray.h`, because more than one collection door takes them.
+ * `NSSortConcurrent` IS A HINT and this library does not take it (nothing here sorts concurrently).
+ * `NSSortStable` IS A PROMISE, and this library's comparator sort ALREADY KEEPS IT: it is an insertion sort
+ * that moves an element only while the comparison says NSOrderedDescending, so two elements that compare
+ * EQUAL keep the order they arrived in — the same property an `NSSortDescriptor` chain promises (F10). The
+ * option is therefore honoured by WHAT THE SORT IS rather than by a branch, and the probe measures it. */
+typedef NSUInteger NSSortOptions;
+enum {
+	NSSortConcurrent = (1UL << 0),
+	NSSortStable = (1UL << 4)
+};
+
 typedef enum {
 	NSOrderedAscending = -1,
 	NSOrderedSame = 0,

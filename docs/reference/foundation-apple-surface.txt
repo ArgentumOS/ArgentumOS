@@ -37,8 +37,8 @@
 #   class      shipped  221   open    0   struck   52
 #   protocol   shipped   39   open    1   struck    5
 #   macro      shipped  117   open    4   struck  132
-#   enum       shipped  149   open    2   struck    9
-#   case       shipped 1222   open    2   struck   78
+#   enum       shipped  151   open    0   struck    9
+#   case       shipped 1224   open    0   struck   78
 #   func       shipped  167   open    0   struck   22
 #   var        shipped  701   open    2   struck  211
 #   typealias  shipped   70   open    1   struck    5
@@ -860,8 +860,8 @@ case	shipped	NSSecondCalendarUnit	NSDateComponents	Fundamentals / Calendrical Ca
 case	shipped	NSSharedPublicDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSShiftJISStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSSolarisOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
-case	open	NSSortConcurrent		Fundamentals / Iteration / Constants	-	objc
-case	open	NSSortStable		Fundamentals / Iteration / Constants	-	objc
+case	shipped	NSSortConcurrent		Fundamentals / Iteration / Constants	-	objc
+case	shipped	NSSortStable		Fundamentals / Iteration / Constants	-	objc
 case	shipped	NSStreamEventEndEncountered	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
 case	shipped	NSStreamEventErrorOccurred	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
 case	shipped	NSStreamEventHasBytesAvailable	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
@@ -1636,7 +1636,7 @@ enum	shipped	NSCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations /
 enum	shipped	NSCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units	-	objc
 enum	shipped	NSCollectionChangeType	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes	-	objc
 enum	shipped	NSComparisonPredicateModifier	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	objc
-enum	open	NSComparisonPredicateOptions	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	swift-page
+enum	shipped	NSComparisonPredicateOptions	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	swift-page
 enum	shipped	NSComparisonResult		Fundamentals / Sorting	-	objc
 enum	shipped	NSCompoundPredicateType	NSCompoundPredicate	Fundamentals / Filltering / Getting Information About a Compound Predicate	-	objc
 enum	shipped	NSDataBase64DecodingOptions	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations	-	objc
@@ -1734,7 +1734,7 @@ enum	shipped	NSRoundingMode	NSDecimalNumberBehaviors	Fundamentals / Numbers / Us
 enum	struck	NSSaveOptions	NSCloseCommand	App Support / Script Commands / Constants	declined	objc
 enum	shipped	NSSearchPathDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 enum	shipped	NSSearchPathDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
-enum	open	NSSortOptions		Fundamentals / Iteration	-	objc
+enum	shipped	NSSortOptions		Fundamentals / Iteration	-	objc
 enum	shipped	NSStreamEvent	NSStream	Low-Level Utilities / Streams / Constants	-	objc
 enum	shipped	NSStreamStatus	NSStream	Low-Level Utilities / Streams / Constants	-	objc
 enum	shipped	NSStringCompareOptions	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc

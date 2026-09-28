@@ -81,6 +81,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSString *)componentsJoinedByString:(NSString *)separator;
 - (NSArray *)sortedArrayUsingSelector:(SEL)comparator;
 - (NSArray *)sortedArrayUsingComparator:(NSComparator)comparator;
+/* THE OPTIONS FORM (§62.104). `NSSortStable` is honoured by the algorithm this library already sorts with
+ * (NSObjCRuntime.h's note says which, and the probe MEASURES it); `NSSortConcurrent` is a hint nothing here
+ * takes, so a caller who passes it gets a correct, sequential answer. */
+- (NSArray *)sortedArrayWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator;
 /* THE DESCRIPTOR FORMS (F10). `sortDescriptors` is an ARRAY because a sort is a CHAIN: the first
  * descriptor decides, a tie falls to the second, and a tie that survives the whole chain keeps
  * the INPUT order — the sort is STABLE, which the probe measures directly. The C-function form
@@ -162,6 +166,7 @@ NS_ASSUME_NONNULL_BEGIN
 	 withObjectsFromArray:(NSArray *)other
 			  range:(NSRange)otherRange;
 - (void)sortUsingComparator:(NSComparator)comparator;
+- (void)sortWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator;
 - (void)sortUsingSelector:(SEL)comparator;
 - (void)sortUsingDescriptors:(NSArray *)sortDescriptors;
 - (void)sortUsingFunction:(NSInteger (*)(id, id, void *))comparator context:(nullable void *)context;

@@ -176,6 +176,59 @@ int main(void)
 		      @"an NSErrorUserInfoKey is spellable and usable as a dictionary key");
 	}
 
+	/* 9. THE COMPARISON PREDICATE'S OPTION TYPE, AND THE SORT OPTIONS — the last two enums (§62.104). */
+	{
+		NSComparisonPredicateOptions options =
+			(NSCaseInsensitivePredicateOption | NSNormalizedPredicateOption);
+		NSComparisonPredicate *predicate = [[NSComparisonPredicate alloc]
+			initWithLeftExpression:[NSExpression expressionForKeyPath:@"name"]
+			       rightExpression:[NSExpression expressionForConstantValue:@"ada"]
+				      modifier:NSDirectPredicateModifier
+					  type:NSEqualToPredicateOperatorType
+				       options:options];
+
+		check("comparison-predicate-options-type",
+		      NSCaseInsensitivePredicateOption == 0x01 && NSDiacriticInsensitivePredicateOption == 0x02 &&
+		      NSNormalizedPredicateOption == 0x04 && predicate != nil &&
+		      [predicate options] == options,
+		      [NSString stringWithFormat:@"the modern type takes the bits and the predicate keeps them (%lu)",
+						  (unsigned long)[predicate options]]);
+	}
+
+	/* AND THE SORT OPTIONS, MEASURED RATHER THAN DECLARED: `NSSortStable` is a PROMISE, so the check is that
+	 * elements comparing EQUAL keep the order they arrived in — through BOTH doors. */
+	{
+		NSArray *items = @[ @"bb", @"a", @"cc", @"d", @"ee" ];	/* lengths 2,1,2,1,2 */
+		NSArray *sorted = [items sortedArrayWithOptions:NSSortStable
+					      usingComparator:^NSComparisonResult(id a, id b) {
+			NSUInteger la = [a length];
+			NSUInteger lb = [b length];
+
+			return la < lb ? NSOrderedAscending : (la > lb ? NSOrderedDescending
+								      : NSOrderedSame);
+		}];
+		NSMutableArray *mutable = [items mutableCopy];
+
+		[mutable sortWithOptions:NSSortStable usingComparator:^NSComparisonResult(id a, id b) {
+			NSUInteger la = [a length];
+			NSUInteger lb = [b length];
+
+			return la < lb ? NSOrderedAscending : (la > lb ? NSOrderedDescending
+								      : NSOrderedSame);
+		}];
+
+		check("sort-options-and-the-stability-promise",
+		      NSSortConcurrent == (1UL << 0) && NSSortStable == (1UL << 4) &&
+		      [sorted count] == 5 && [[sorted objectAtIndex:0] isEqualToString:@"a"] &&
+		      [[sorted objectAtIndex:1] isEqualToString:@"d"] &&
+		      [[sorted objectAtIndex:2] isEqualToString:@"bb"] &&
+		      [[sorted objectAtIndex:3] isEqualToString:@"cc"] &&
+		      [[sorted objectAtIndex:4] isEqualToString:@"ee"] &&
+		      [mutable isEqualToArray:sorted],
+		      [NSString stringWithFormat:@"stable order must be a, d, bb, cc, ee and both doors must agree: %@ / %@",
+						  sorted, mutable]);
+	}
+
 	printf("FOUNDATION-CONSTANTS RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-CONSTANTS-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-CONSTANTS DONE\n");

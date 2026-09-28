@@ -113,6 +113,10 @@ enum {
 	NSAnyPredicateModifier = 2
 };
 
+/* THE TYPE OF A COMPARISON PREDICATE'S OPTIONS (§62.104). `NSPredicateOptions` BELOW IS APPLE'S DEPRECATED NAME
+ * for the same bits — this header had the deprecated spelling as its primary and the modern name missing,
+ * which is the shape §62.93 found in the JSON options, reversed the same way. */
+typedef NSUInteger NSComparisonPredicateOptions;
 typedef NSUInteger NSPredicateOptions;
 enum {
 	NSCaseInsensitivePredicateOption = 0x01,
@@ -144,12 +148,12 @@ enum {
 			     rightExpression:(NSExpression *)rightExpression
 				    modifier:(NSComparisonPredicateModifier)modifier
 					type:(NSPredicateOperatorType)type
-				     options:(NSPredicateOptions)options;
+				     options:(NSComparisonPredicateOptions)options;
 - (instancetype)initWithLeftExpression:(NSExpression *)leftExpression
 		       rightExpression:(NSExpression *)rightExpression
 			      modifier:(NSComparisonPredicateModifier)modifier
 				  type:(NSPredicateOperatorType)type
-			       options:(NSPredicateOptions)options;
+			       options:(NSComparisonPredicateOptions)options;
 
 - (NSExpression *)leftExpression;
 - (NSExpression *)rightExpression;
