@@ -17,6 +17,7 @@
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSEnumerator.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSArray.h>	/* -componentsSeparatedByString: answers one, and its doors were unchecked */
 #import <Foundation/NSURL.h>
 
 /* The field name, case-insensitively (RFC 9110 §5.1) — the same rule the request's door uses, kept here

@@ -44,6 +44,7 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSOperationQueue.h>
 #import <Foundation/NSArray.h>
+#import <Foundation/NSURLAuthenticationChallenge.h>	/* -protectionSpace was an unchecked call */
 
 #include <pthread.h>
 
@@ -60,7 +61,14 @@ typedef struct {
 	BOOL done;
 } fn_sync_state;
 
-@interface NSURLConnection () <NSURLSessionDataDelegate, NSURLSessionDownloadDelegate>
+/* THE DOWNLOAD CONFORMANCE IS GONE, AND THE MEASUREMENT IS WHY: this class reaches the session's own
+ * `-downloadTaskWithRequest:completionHandler:`, which reports the finish ITSELF - so implementing the
+ * protocol's one required door as well reported the same download TWICE (foundation_urlconnection read
+ * "finishes=2" and failed). Nothing is lost by dropping it: the header says the dispatch rule is asked BY
+ * SELECTOR precisely because a conformance would make the behaviour depend on a linker detail, and the
+ * progress door is still delivered for the same reason. What the conformance did do was make the compiler
+ * demand a method that must not exist. */
+@interface NSURLConnection () <NSURLSessionDataDelegate>
 @end
 
 @implementation NSURLConnection

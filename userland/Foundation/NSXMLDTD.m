@@ -675,7 +675,7 @@ NSArray *FNDTDDeclarationNodesFromSubset(NSString *subset)
 
 - (nullable NSXMLDTDNode *)notationDeclarationForName:(NSString *)name
 {
-	return [self fnFirstChildOfKind:NSXMLNotationDeclarationKind named:name];
+	return [self fnFirstChildOfKind:(NSXMLDTDNodeKind)NSXMLNotationDeclarationKind named:name];
 }
 
 + (nullable NSXMLDTDNode *)predefinedEntityDeclarationForName:(NSString *)name

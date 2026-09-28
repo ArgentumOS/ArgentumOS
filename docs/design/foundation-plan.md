@@ -14153,6 +14153,49 @@ public headers**; `--unimplemented`: **0 NEW**; sweep consistent.
 mutates it through `&` — a real bug whose fix must decide the struct's LIFETIME first) · `-Wenum-conversion` 1
 (`-fnFirstChildOfKind:`).
 
+## §62.76 — THE WARNING SWEEP, PHASE 7: A CONFORMANCE THAT DEMANDED A BUG (2026-09-26)
+
+**8 → 1 warnings (100 → 1 for the whole sweep), and the last one is a real design question rather than a
+warning.** Four fixes, and the fourth is the one worth the section:
+
+1. **Two missing imports** — `NSArray.h` in `NSHTTPURLResponse.m` and `NSURLAuthenticationChallenge.h` in
+   `NSURLConnection.m`. **The lesson is about triage, not about imports:** my earlier import batch keyed off
+   `-Wreceiver-forward-class`, and an *instance* method sent to a forward-declared class reports as
+   `-Wobjc-method-access` ONLY — so two of that class survived the earlier sweep.
+2. **`NSSocketPort`'s public message door was a REDECLARATION.** This class overrides the INTERNAL
+   `-sendBeforeDate:msgid:components:from:reserved:`, and `NSPort`'s public door already routes into it with a
+   message id of 0 (see `NSPort.m`) — so the public method is inherited, and the redeclaration said something the
+   compiler reported as an implementation that does not exist. Phase 4's pattern exactly.
+3. **Two `NSXMLDocument` calls on a base-typed ivar** (`[_document rootElement]`, `[_document setDTD:]`) got the
+   cast that says what the ivar's declared type cannot. The calls themselves were never in doubt.
+4. **AND `NSURLConnection`'s `NSURLSessionDownloadDelegate` CONFORMANCE DEMANDED A BUG.** The protocol's one
+   required door was unimplemented (the standing rule's own case), so implementing it looked obviously right — and
+   it **DOUBLE-REPORTED the finish**: this class reaches the session's own
+   `-downloadTaskWithRequest:completionHandler:`, which reports the download finish itself, so the probe's tally
+   went **RED (`ok=29 fail=1`, "finishes=2")** and `foundation_urlconnection` failed. **THE FIX WAS TO REMOVE THE
+   CONFORMANCE, not to satisfy it**, and nothing is lost: this class's own header says the dispatch rule is asked
+   BY SELECTOR precisely because a conformance would make the behaviour depend on a linker detail, and the
+   progress door arrives for the same reason. What the conformance actually did was make the compiler demand a
+   method that must not exist.
+
+**AND THE RULE RECORDED IN §62.75 PAID FOR ITSELF IMMEDIATELY:** "a REAL behavioural break shows up in the
+PROBE'S OWN TALLY, while a case defect shows a green tally with a failing case-level check" — reading the tally
+first turned "a case failed" into "my method double-reports" in one step, instead of a bisect.
+
+**VERIFIED.** Host: `make host-foundation-run` — **37 probes, every tally `fail=0`**. Guest: `make testimg` then
+`make test TESTS='foundation_urlconnection,foundation_port,foundation_xmldocument'` → **`TESTS-OK 3/3 case(s),
+18/18 check(s) in 14s`** — including the case that caught the double-report. Full-recompile warnings **1**.
+`foundation-gate`: **OK — 543 files, 203 of 207 public headers**; `--unimplemented`: **0 NEW**; sweep consistent.
+
+**WHAT IS LEFT — 1 warning, AND IT IS A DESIGN DECISION RATHER THAN A TYPO:** `NSFileCoordinator`'s
+`-accessWithIntents:queue:byAccessor:` captures `struct fn_reacquirers` BY VALUE into the operation block and calls
+the MUTATING `fnReacquire(&reacquirers)` from inside it. The compiler reports the const capture; the ANALYSIS says
+the mutation lands on the block's private COPY — and because the copy shares the `items` POINTER, `fnReacquire`
+still releases every reacquirer and frees the array exactly once, so the behaviour is **fragile rather than
+leaking**, which is why it has never shown. The fix has to decide the struct's LIFETIME first (the block runs after
+the frame it was captured from may be gone, so a pointer is not the answer either), and the honest instrument is a
+probe that counts releases on the reacquirer path. That is its own unit.
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else

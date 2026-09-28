@@ -103,15 +103,12 @@ NS_ASSUME_NONNULL_BEGIN
 						 protocol:(int)protocol
 						  address:(NSData *)address;
 
-/* THE MESSAGE TRANSPORT (§62.53). `-sendBeforeDate:components:from:reserved:` is inherited from NSPort and
- * OVERRIDDEN HERE, because a socket is what this library has to carry a message with; the delegate in
- * `-setDelegate:` is handed every complete message this port receives, which is what makes a scheduled
- * socket port a message endpoint rather than only a readable descriptor. The frame itself is the .m's
- * business and is stated there. */
-- (BOOL)sendBeforeDate:(NSDate *)date
-	    components:(nullable NSMutableArray *)components
-		  from:(nullable NSPort *)receivePort
-	      reserved:(NSUInteger)headerSpaceReserved;
+/* THE MESSAGE TRANSPORT (§62.53), AND THE DECLARATION IS NOT REPEATED HERE. What this class overrides is the
+ * INTERNAL form - `-sendBeforeDate:msgid:components:from:reserved:` - and NSPort's public door already routes
+ * into it with a message id of 0 (see NSPort.m), so the public method is INHERITED and a redeclaration said
+ * something the compiler then reported as an implementation that does not exist. The delegate in `-setDelegate:`
+ * is handed every complete message this port receives, which is what makes a scheduled socket port a message
+ * endpoint rather than only a readable descriptor; the frame itself is the .m's business and is stated there. */
 
 /* The raw struct sockaddr of this end, as an NSData. */
 - (NSData *)address;

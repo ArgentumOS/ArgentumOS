@@ -145,8 +145,11 @@
 	if (_dtd == nil) {
 		_dtd = [[NSXMLDTD alloc] init];
 
-		[_dtd setName:[[_document rootElement] name]];
-		[_document setDTD:_dtd];
+		/* THE CASTS ARE THE POINT: _document is stored as the BASE (NSXMLNode *), and both calls want doors only
+		 * the DOCUMENT has - the receiver here is the document itself, so the cast says what the ivar's declared
+		 * type cannot. Two -Wobjc-method-access warnings, and the calls themselves were never in doubt. */
+		[_dtd setName:[[(NSXMLDocument *)_document rootElement] name]];
+		[(NSXMLDocument *)_document setDTD:_dtd];
 	}
 	return _dtd;
 }
