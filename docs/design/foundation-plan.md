@@ -15776,6 +15776,68 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §62.111 — THE SWEEP'S PER-NAME SCAN BECOMES ONE PASS: 51 SECONDS TO 1.5, PROVED BY DIFFERENTIAL TEST (2026-09-28)
+
+**WHAT SHIPPED: ONE INVERSION, IN `declared()`.** `tools/foundation-sweep.py` asked "does our surface
+declare this name?" by building a per-name alternation of seven declaration forms and scanning the whole
+comment-stripped header text — 3,225 rows × 0.4 MB, **measured at HEAD: 49.8 s**. The forms are now
+CAPTURED ONCE into a set (`declared_names()`), and the per-row question is a membership test. The same
+`--check`, the same verdicts, **50.9 s → 0.604 s**; the whole gate target (`--check` then
+`--unimplemented`) is **1.54 s**, and `--refresh` — network fetch, both ledgers, full check — is **1.9 s**.
+
+**THE COST WAS NOT SPREAD EVENLY, WHICH IS WHY IT WAS FIXABLE RATHER THAN INHERENT.** Measured per
+alternative over the 3,225 names: **enum member `\bNAME\s*[=,}]` 23.7 s**, **variable declarator
+`\bNAME\s*;` 22.9 s**, prototype 15.2 s, typedef 4.3 s, and the rest 1.0–1.7 s each. The two dominant
+forms both BEGIN with a `\b` ASSERTION, and that is precisely what defeats Python's literal-prefix fast
+path: with a literal first character the engine can skip through the text, and with an assertion in front
+of it there is nothing to skip to, so every one of the 3,225 names re-scans 0.4 MB from position 0.
+
+**THE INVERSION IS EXACT RATHER THAN APPROXIMATE, AND THAT IS THE WHOLE ARGUMENT FOR IT.** Every
+alternative requires the literal NAME to occur, so the set of names the alternation can bind is exactly
+the set the generalised patterns CAPTURE — "for each name, does a form match?" and "which names does each
+form match?" have the same answer, and the second is one pass. Two places needed care, both named in the
+code:
+
+* **THE TYPEDEF IS A PROPERTY OF A SPAN, NOT OF ONE PATTERN.** Its per-name form is
+  `typedef[^;]*\bNAME\s*[;)]`, whose `[^;]*` cannot cross a `;` — so a name is typedef-declared exactly
+  when it sits inside some `typedef`-to-`;` span and is followed by `;` or `)`. The walk takes each
+  `typedef`, its terminator, then every identifier-before-`;`/`)` inside. Collapsing it to one greedy
+  pattern would have MISSED names the per-name form finds — that counterexample was built first
+  (`typedef struct { void (*cb)(int); } T;`, where the naive generalisation captures `int` and not `cb`).
+* **A MATCH AT INDEX 0 OF A SPAN IS DROPPED.** It begins where `typedef` ends, so the character before it
+  is a word character and the per-name form's `\b` would have refused it — `typedefFoo;` declares
+  nothing. Without that guard the set would quietly be a SUPERSET, which is the dangerous direction: an
+  unknown name reading as declared turns a real gap into a `shipped` row.
+
+**PROOF, AND IT IS THE PART WORTH KEEPING.** A gate whose verdict is preserved only by inspection is not
+preserved. Three instruments, in increasing order of strength:
+
+1. **A DIFFERENTIAL TEST against HEAD's implementation** — the old `declared()` and the new set, asked
+   about **6,218 names**: every ledger name, every owner, 1,000 identifiers drawn at random from the
+   header text, and adversarial shapes (`cb`, `int`, `typedef`, `Foo`, `NSZone`). **0 disagreements.**
+2. **AN A/B OF THE GATE ITSELF**: `--check`'s full transcript and exit code, HEAD versus the new code —
+   **byte-identical**, both exit 0.
+3. **A BYTE-IDENTICAL REWRITE**: `--refresh` re-wrote BOTH ledgers and `git status` on `docs/reference/`
+   is empty, so neither the 3,225 symbol rows nor the 4,564 selector rows moved. And the three
+   falsification tests still fire (a flipped `open`→`shipped` row, a flipped `shipped`→`open` row, and a
+   falsified counts block each take `--check` from exit 0 to exit 1 with the right diagnosis).
+
+**AND ONE CORRECTION TO §62.110, WHICH THIS UNIT WAS SENT TO DO AND WHICH FOUND ITSELF WRONG.**
+§62.110 recorded `_related()`'s transitive-descendant blow-up as a defect whose fix "is its own unit",
+implying it was why `--unimplemented` stays at 1 baselined / 0 NEW. **It hides nothing: measured, a sound
+reachability (ancestors transitive, descent one level) finds the SAME 1 hit / 1 baselined / 0 NEW.** The
+sentence is corrected in place. What is actually true is narrower: the report's own label — "declared
+selectors with no implementation ANYWHERE in the library" — is an accurate description of what it
+computes, and `_related`'s docstring is what disagrees with the code. **No unit is owed for it**, and that
+is the finding.
+
+**A MEASURED FOLLOW-UP, RECORDED RATHER THAN SILENTLY FIXED.** The two sibling sweeps carry the same
+per-name alternation and the same leading-`\b` forms, and **neither is in the build** (nothing under `mk/`
+invokes them): `tools/appkit-sweep.py` takes **26.7 s** over 12,475 symbols and
+`tools/coregraphics-sweep.py` **4.2 s**. The inversion applies to them the same way, but each has its own
+alternation — AppKit adds a `\bNAME\s*:` form for selector keywords and properties — so each wants its own
+differential proof rather than a copy of this one's.
+
 ## §62.110 — THE SELECTOR SURFACE ENTERS THE LEDGER: 4,564 ROWS, AND THE FOUR BUGS ITS OWN COUNTS CAUGHT (2026-09-28)
 
 **WHAT SHIPPED: THE DIMENSION §11.2 SAID WAS SOMEBODY ELSE'S.** The symbol surface covered every kind
@@ -15856,9 +15918,14 @@ correct by design (the sign, as with `NSBundle` above) — not a ledger gap.
   50.2s, against which this unit's selector arm adds **0.08s**. It runs on every build
   (`foundation-gate: foundation-sweep`), and the cost is `declared()`'s per-row regex over the whole
   comment-stripped header text.
-* **`_related()` HAS BUG 2'S SHAPE**, and `--unimplemented` is built on it: its descendant direction is
-  transitive over the same root, so the family it computes is the whole library for any class that reaches
-  NSObject — which is why that report has stayed at 1 baselined / 0 NEW. Fixing it is its own unit.
+* **`_related()` HAS BUG 2'S SHAPE** — its descendant direction is transitive over the same root, so the
+  family it computes is the whole library for any class that reaches NSObject, and `--unimplemented` is
+  built on it. **CORRECTED IN §62.111, AND THIS SENTENCE WAS WRONG:** it said that is "why that report
+  has stayed at 1 baselined / 0 NEW", implying the blow-up HIDES work. It hides none — measured, a sound
+  reachability (ancestors transitive, descent one level) finds the SAME 1 hit / 1 baselined / 0 NEW, so
+  no unit is owed. What is true is narrower and worth keeping: the report's own label, "declared
+  selectors with no implementation ANYWHERE in the library", is the accurate description of what it
+  computes, and `_related`'s docstring is the thing that disagrees with the code.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 

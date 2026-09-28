@@ -145,7 +145,7 @@ def public_header_text():
     return "\n".join(text)
 
 
-def declared(kind, name, text):
+def declared(kind, name, text, names=None):
     """Does our surface DECLARE this name?
 
     TWO RULES, AND THE SECOND ONE WAS LEARNED FROM A WRONG ANSWER. A class is an
@@ -163,26 +163,74 @@ def declared(kind, name, text):
 
     That test is still not "the name appears somewhere": comments are stripped
     first, and each alternative is a declaration form (a #define, a typedef's
-    declarator, an enum body member, a variable declarator, a prototype)."""
-    n = re.escape(name)
+    declarator, an enum body member, a variable declarator, a prototype).
+
+    AND SINCE §62.111 IT IS ONE PASS INSTEAD OF 3,225. `names` is the set
+    declared_names() builds; pass it in and the test costs a set lookup. Asked
+    without it — a one-off, a probe — this falls back to building it, which is
+    the same answer at the old price."""
     if kind == "class":
-        return re.search(r"@interface\s+" + n + r"\b", text)
+        return re.search(r"@interface\s+" + re.escape(name) + r"\b", text)
     if kind == "protocol":
-        return re.search(r"@protocol\s+" + n + r"\b", text)
-    any_form = (
-        r"#\s*define\s+" + n + r"\b"                       # a macro
-        # A TYPEDEF DECLARATOR, INCLUDING A BLOCK OR FUNCTION-POINTER ONE (§62.23): `typedef void (^NAME)(id);`
-        # ends in `)`, so a matcher that insisted on `;` after the name MISSED every block typedef — which is how
-        # NSItemProviderCompletionHandler and NSItemProviderLoadHandler stayed "open" while being declared here.
-        r"|typedef[^;]*\b" + n + r"\s*[;)]"
-        r"|NS_ENUM\s*\(\s*[^,]+,\s*" + n + r"\s*\)"        # an NS_ENUM
-        r"|NS_OPTIONS\s*\(\s*[^,]+,\s*" + n + r"\s*\)"     # an NS_OPTIONS
-        r"|\b" + n + r"\s*[=,}]"                           # an enum member
-        r"|struct\s+" + n + r"\b"                          # a struct tag
-        r"|^[A-Za-z_][\w \t\*]*\b" + n + r"\s*\([^;{]*\)\s*[;{]"  # prototype or definition
-        r"|\b" + n + r"\s*;"                               # a variable declarator
-    )
-    return re.search(any_form, text, re.M | re.S)
+        return re.search(r"@protocol\s+" + re.escape(name) + r"\b", text)
+    if names is None:
+        names = declared_names(text)
+    return name in names
+
+
+# THE DECLARATION FORMS, GENERALISED OVER THE NAME, SO ONE PASS ANSWERS FOR EVERY NAME (§62.111).
+#
+# `declared()` above used to build a per-name alternation and scan the whole comment-stripped header
+# text once FOR EACH NAME. Measured at HEAD: 3,225 rows × 0.4 MB = 49.8 s, and the cost is not spread
+# evenly — `\bNAME\s*[=,}]` cost 23.7 s and `\bNAME\s*;` 22.9 s, because an alternative that BEGINS with
+# a `\b` assertion cannot use Python's literal-prefix fast path, so it scans from position 0 every time.
+#
+# THE INVERSION IS EXACT RATHER THAN APPROXIMATE, and that is the whole reason it is safe: EVERY
+# alternative requires the literal NAME to occur, so the set of names the alternation can bind is
+# exactly the set these patterns CAPTURE. Each pattern below is one of the same forms, written so the
+# name it captures is the name the per-name form would have matched — a maximal identifier run bounded
+# by a word boundary, which is what `\bNAME` asks for.
+_DECL_FORM_RX = (
+    re.compile(r"#\s*define\s+([A-Za-z_]\w*)"),                                    # a macro
+    re.compile(r"NS_ENUM\s*\(\s*[^,]+,\s*([A-Za-z_]\w*)\s*\)"),                    # an NS_ENUM
+    re.compile(r"NS_OPTIONS\s*\(\s*[^,]+,\s*([A-Za-z_]\w*)\s*\)"),                 # an NS_OPTIONS
+    re.compile(r"\b([A-Za-z_]\w*)\s*[=,}]"),                                       # an enum member
+    re.compile(r"struct\s+([A-Za-z_]\w*)"),                                        # a struct tag
+    re.compile(r"^[A-Za-z_][\w \t\*]*\b([A-Za-z_]\w*)\s*\([^;{]*\)\s*[;{]", re.M | re.S),  # a prototype
+    re.compile(r"\b([A-Za-z_]\w*)\s*;"),                                           # a variable declarator
+)
+
+# THE TYPEDEF IS THE ONE FORM THAT NEEDS ITS OWN WALK, and the reason is that its per-name form is a
+# property of a SPAN rather than of one pattern: `typedef[^;]*\bNAME\s*[;)]` cannot cross a `;`, so a
+# name is typedef-declared exactly when it sits inside some `typedef`-to-`;` span followed by `;` or `)`.
+# This keeps §62.23's case (a block typedef ENDS in `)`), which a single greedy pattern misses.
+# `typedef` is matched WITHOUT word boundaries because the original alt had none either — `mytypedef_x`
+# is a `typedef` to that pattern, and this must not be stricter than the test it replaces.
+_TYPEDEF_RX = re.compile(r"typedef")
+_TYPEDEF_TAIL_RX = re.compile(r"([A-Za-z_]\w*)\s*[;)]")
+
+
+def declared_names(text):
+    """{name} — every identifier our public surface declares, in ONE pass over `text`.
+
+    The exact inverse of the per-name test `declared()` used to run for each name; see _DECL_FORM_RX
+    for why the inversion is exact, and the typedef walk below for the one form where it is not
+    obvious."""
+    out = set()
+    for rx in _DECL_FORM_RX:
+        for m in rx.finditer(text):
+            out.add(m.group(1))
+    for td in _TYPEDEF_RX.finditer(text):
+        end = text.find(";", td.end())
+        span = text[td.end():] if end < 0 else text[td.end():end + 1]
+        for m in _TYPEDEF_TAIL_RX.finditer(span):
+            # A MATCH AT INDEX 0 BEGINS WHERE `typedef` ENDS, so the character before it is a word
+            # character and the per-name form's `\b` would have refused it: `typedefFoo;` declares
+            # nothing. Dropping it is what keeps this the SAME set rather than a superset.
+            if m.start() == 0:
+                continue
+            out.add(m.group(1))
+    return out
 
 
 # A name Apple gives a Swift-interop annotation. These EXIST ONLY TO SUPPORT
@@ -473,10 +521,10 @@ STRIKE_REASONS = ("32-bit-only", "swift-only", "os-version-constant", "declined"
 # that a reader can tell "this row is work because Apple deprecated it" from "this row is work".
 
 
-def status_of(kind, name, why, text):
+def status_of(kind, name, why, text, names=None):
     if why in STRIKE_REASONS:
         return STATUS_STRUCK
-    return STATUS_SHIPPED if declared(kind, name, text) else STATUS_OPEN
+    return STATUS_SHIPPED if declared(kind, name, text, names) else STATUS_OPEN
 
 
 def apple_says_deprecated(row):
@@ -972,6 +1020,7 @@ def refresh():
     index = fetch_index()
     rows, dropped, swift_seen, selectors = collect(index)
     text = public_header_text()
+    declared_set = declared_names(text)     # ONE pass for every row (§62.111); see declared_names()
     out = []
     counts = {}
     reasons = {}
@@ -980,8 +1029,8 @@ def refresh():
     for key in sorted(rows):
         r = rows[key]
         why = why_of(r)  # "deprecated" here is INFORMATION, not an exclusion: see STRIKE_REASONS
-        st = status_of(r["kind"], r["name"], why, text)
-        if why == "required-by-live-api" and not declared(r["kind"], r["name"], text):
+        st = status_of(r["kind"], r["name"], why, text, declared_set)
+        if why == "required-by-live-api" and not declared(r["kind"], r["name"], text, declared_set):
             raise SystemExit("sweep: REQUIRED_BY_LIVE_API names %r but our headers do not declare it — "
                              "an exception is a claim, and this one is false" % r["name"])
         counts[(r["kind"], st)] = counts.get((r["kind"], st), 0) + 1
@@ -1097,6 +1146,7 @@ def check(strict=False):
     fail. The ledger row is the record; this is the reminder.
     """
     text = public_header_text()
+    declared_set = declared_names(text)     # ONE pass, not one per row (§62.111)
     rows = read_surface()
     bad, policy = [], []
     counts = {}
@@ -1104,7 +1154,7 @@ def check(strict=False):
     swift_only = []
     for kind, status, name, owner, family, why, src in rows:
         counts[(kind, status)] = counts.get((kind, status), 0) + 1
-        found = bool(declared(kind, name, text))
+        found = bool(declared(kind, name, text, declared_set))
         #
         # §11.5's THIRD EXCLUSION, AND ITS PROOF. Two invariants hold over every
         # row, both checkable from this file alone, and they say exactly what the
