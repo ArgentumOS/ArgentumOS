@@ -40,12 +40,19 @@ the amendment revoked it. An entry there is a CHECKED claim (the run fails if ou
 headers do not declare the name), which is what makes an exception different from
 a softened rule.
 
-The three exclusions, each counted rather than silently dropped (the numbers
+AND THE SELECTOR SURFACE IS NO LONGER AN EXCLUSION (2026-09-28, §62.110). The 2,500 methods and
+1,603 properties this file used to drop — recorded as "§11.2 source 1's business, the dimension
+source 1 must still grow into" — are now held BY THIS TOOL, in a SIBLING ledger generated from the
+same index walk: docs/reference/foundation-selector-surface.txt. Source 1 (the probes' inventories)
+still carries a selector's BEHAVIOUR; this pair carries its EXISTENCE, which is the half that was
+never measured, and `--check` holds both to the tree. It is a separate file because the row is per
+(owner, selector) and its shipped test is a declaration in the owner's own @interface/@protocol
+block — not a name that occurs somewhere in the header text — so the two ledgers answer different
+questions and must not share a status column.
+
+What each file still excludes, counted rather than silently dropped (the numbers
 are written into the surface file's header on every `--refresh`):
 
-  * `method` and `property` — the SELECTOR surface. It is §11.2 source 1's
-    business (the probes' inventories), not this file's, and it is the
-    dimension source 1 must still grow into.
   * `symbol` — Apple's instance-variable documentation (NSSimpleCString's
     `bytes`, `numBytes`). Not API a class library mirrors.
   * Swift-only overlay spellings — a node whose path says `swift.` is the
@@ -63,7 +70,8 @@ USAGE
                                                 docs/reference/foundation-unimplemented.txt, where every
                                                 line carries a reason: "not implemented yet" is a work
                                                 item, anything else is a boundary.
-  tools/foundation-sweep.py --refresh           re-read Apple's index and rewrite the surface file
+  tools/foundation-sweep.py --refresh           re-read Apple's index and rewrite BOTH ledgers
+                                                (the symbol surface and the selector surface)
   tools/foundation-sweep.py --families [--write] verify (or rewrite) the plan's family status table
 
 `--refresh` is the ONLY mode that touches the network, and it is deliberately
@@ -81,6 +89,11 @@ import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SURFACE = os.path.join(ROOT, "docs/reference/foundation-apple-surface.txt")
+# THE SELECTOR LEDGER, the sibling of the symbol surface (2026-09-28, §62.110). One row per
+# (owner, selector): Apple's documented METHOD and PROPERTY nodes, held to this tree by `--check`.
+# It is a separate file because the row's shipped test is a declaration inside the owner's own
+# @interface/@protocol block, not a name that occurs somewhere in the header text.
+SELECTOR_SURFACE = os.path.join(ROOT, "docs/reference/foundation-selector-surface.txt")
 PLAN = os.path.join(ROOT, "docs/design/foundation-plan.md")
 # THE PLAN'S FAMILY TABLE IS GENERATED TOO. It was hand-written once and had drifted in 13 of its 83 rows
 # — every one of them a class that had since shipped — which made a status table read as a work queue that
@@ -93,10 +106,21 @@ FAMILY_END = "<!-- END GENERATED (families) -->"
 HEADERS = os.path.join(ROOT, "userland/Foundation/*.h")
 INDEX_URL = "https://developer.apple.com/tutorials/data/index/foundation"
 
-# Kinds this file holds, and the kinds it deliberately does not (see the
-# docstring: method/property are source 1's, symbol is Apple's ivars).
+# Kinds the SYMBOL surface holds, and the kind it deliberately does not (see the docstring: `symbol`
+# is Apple's ivar documentation). `method` and `property` are NOT dropped here any more — they are the
+# sibling ledger's kinds, declared just below.
 KINDS = ("class", "protocol", "macro", "enum", "case", "func", "var", "typealias", "struct")
-DROP_KINDS = ("method", "property", "symbol")
+
+# THE SELECTOR KINDS (2026-09-28, §62.110). They were the dimension this file recorded as excluded and
+# left to §11.2's source 1 ("the dimension source 1 must still grow into"); they are now held by
+# SELECTOR_SURFACE, from the same index walk, and `--check` holds both ledgers to the tree.
+SELECTOR_KINDS = ("method", "property")
+DROP_KINDS = ("symbol",)
+
+# A METHOD NODE'S TITLE IS THE SELECTOR WITH ITS SIGN — `- initWithDecimal:`, `+ alloc` — and the sign
+# is part of the API (a class method and an instance method are different doors). It is kept in the
+# ledger's NAME column so a reader sees which one Apple documents, and enforced by `--check`.
+SELECTOR_TITLE_RE = re.compile(r"^([-+])\s*(.*)$")
 
 # Symbols whose page lives outside this framework's documentation but which ARE
 # this framework's own API: NSObject, the root class, is documented with the
@@ -480,18 +504,394 @@ def fetch_index():
         return json.load(fh)
 
 
+# ==========================================================================
+# THE SELECTOR LEDGER (2026-09-28, §62.110)
+#
+# §11.2's second source covered every kind the class index left out EXCEPT the two the selector surface
+# is: Apple's documented methods and properties. This file used to DROP them and hand them to source 1 —
+# "the dimension source 1 must still grow into" — whose inventories carry a selector's BEHAVIOUR and
+# never its EXISTENCE, so the larger half of the API was measured by nobody. It is measured here, off
+# the SAME walk (one walk, one notion of owner and family: a second walk drifts, which is what walk()'s
+# own note is about), into docs/reference/foundation-selector-surface.txt.
+#
+# A ROW IS (OWNER, SELECTOR), because a selector name is not unique across classes: `- count` is
+# NSArray's, NSDictionary's and NSSet's, and each has its own answer. The OWNER is the class or protocol
+# whose page Apple files it under, and — the rule that makes this ledger more than a column in the
+# symbol surface — THAT TYPE IS THE ONE WHOSE BLOCK MUST DECLARE IT. A name occurring somewhere in the
+# header text is not enough.
+#
+# AND A STRIKE IS INHERITED FROM THE OWNER. The symbol side already says striking a root strikes its
+# members; here that is the whole selector surface of the four declined families and their servants —
+# measured 2026-09-28, EVERY owner referenced by a selector row that our headers do not declare is a
+# STRUCK row in the symbol ledger — so no selector row can read "open" merely because its class was
+# refused by project decision.
+# ==========================================================================
+
+# A METHOD HEAD, WITH ITS SIGN, and the re.M is NOT optional: without it `^` matches only at position 0,
+# so finditer() would return the FIRST method of each block and the ledger would report 56 shipped
+# methods where there are thousands. (This bug was in the first draft and the generated counts caught
+# it — 2,629 "open" methods, almost all of them declared here. The instrument's own numbers are the
+# falsification test; that is why the ledger is generated before it is believed.)
+_SEL_HEAD = re.compile(r"^\s*([-+])\s*\(([^)]*)\)", re.M)      # a method head, WITH its sign
+
+
+def _end_of_parens(body, i):
+    """Index just past the BALANCED parenthesised group that starts at `body[i] == '('`.
+
+    A TYPE CAN CONTAIN PARENTHESES, and a regex cannot count them: `- (NSArray *)
+    sortedArrayUsingFunction:(NSInteger (*)(id, id, void *))comparator context:(void *)context;` has a
+    `)` INSIDE the first parameter's type, so a `\\(([^)]*)\\)` match stops early and the selector walk
+    truncates to `sortedArrayUsingFunction:` — which is why `-sortedArrayUsingFunction:context:` read as
+    OPEN in the first generated ledger while the header declares it two lines of source away. Counting
+    depth is the whole fix."""
+    depth = 0
+    while i < len(body):
+        c = body[i]
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return i
+
+
+def split_selector_name(kind, name):
+    """(sign, selector) for a ledger NAME. A method's carries its sign (`- initWithDecimal:`); a
+    property's is bare, because Apple documents the property and the accessors it implies are the
+    compiler's business."""
+    if kind == "method":
+        m = SELECTOR_TITLE_RE.match(name)
+        if m:
+            return m.group(1), m.group(2)
+    return "", name
+
+
+def _selectors_signed(body):
+    """{("+"/"-", selector)} declared in one @interface/@protocol body.
+
+    A SECOND SCANNER rather than a change to _method_selectors, which `--unimplemented` has used since
+    it was written and which answers a different question (does ANY implementation exist — there the
+    sign is irrelevant). Here the sign IS the API: `+ alloc` and `- alloc` are different doors, and the
+    ledger records which one Apple documents. The colon walk is the same one _method_selectors does,
+    for the reason printed there: `insertChild:atIndex:` is one selector, not two."""
+    out = set()
+    for head in _SEL_HEAD.finditer(body):
+        sign = head.group(1)
+        i = head.end()
+        parts = []
+        while True:
+            m = re.match(r"\s*([A-Za-z_]\w*)", body[i:])
+            if m is None:
+                break
+            name = m.group(1)
+            i += m.end()
+            colon = re.match(r"\s*:\s*\(", body[i:])
+            if colon is None:
+                if not parts:
+                    out.add((sign, name))
+                break
+            parts.append(name + ":")
+            # THE TYPE IS SKIPPED BY COUNTING PARENTHESES, not by a regex — see _end_of_parens().
+            i = _end_of_parens(body, i + colon.end() - 1)
+            param = re.match(r"\s*[A-Za-z_]\w*", body[i:])
+            if param is not None:
+                i += param.end()
+            if re.match(r"\s*([A-Za-z_]\w*)\s*:\s*\(", body[i:]) is None:
+                break
+        if parts:
+            out.add((sign, "".join(parts)))
+    for pm in _PROP.finditer(body):
+        attrs, prop = pm.group(1) or "", pm.group(2)   # NO attribute list is a real form, not an error
+        sign = "+" if re.search(r"\bclass\b", attrs) else "-"
+        g, s = _GETTER.search(attrs), _SETTER.search(attrs)
+        out.add((sign, g.group(1) if g else prop))
+        if "readonly" not in attrs:
+            out.add((sign, s.group(1) if s else "set" + prop[0].upper() + prop[1:] + ":"))
+    return out
+
+
+def _typed_blocks(text, kind):
+    """(name, [related types], {signed selectors}) for every @<kind> block in one file.
+
+    `kind` is `interface` or `protocol`, and the RELATED list is the superclass and the adopted
+    protocols — ONE list, because they are the same edge here: a class that adopts a protocol answers
+    its doors, and a subclass inherits its superclass's. This is the `--unimplemented` scanner's split
+    (@end) and its rfind, kept identical on purpose so the two cannot disagree about which block a
+    selector belongs to."""
+    for part in text.split("@end"):
+        at = part.rfind("@" + kind)
+        if at < 0:
+            continue
+        head = part[at + len(kind) + 1:].strip()
+        m = re.match(r"(\w+)", head)
+        if m is None:
+            continue
+        name, rest = m.group(1), head[m.end():]
+        rel = []
+        sup = re.match(r"\s*:\s*(\w+)", rest)
+        if sup:
+            rel.append(sup.group(1))
+            rest = rest[sup.end():]
+        adopt = re.match(r"\s*<([^>]*)>", rest)
+        if adopt:
+            rel += [p.strip() for p in adopt.group(1).split(",") if p.strip()]
+            rest = rest[adopt.end():]
+        yield name, rel, _selectors_signed(rest)
+
+
+def _declared_types():
+    """({type: {signed selectors}}, {type: [related types]}) read from every public header."""
+    members, parents = {}, {}
+    for path in sorted(glob.glob(HEADERS)):
+        text = open(path, encoding="utf-8", errors="replace").read()
+        for kind in ("interface", "protocol"):
+            for name, rel, sels in _typed_blocks(text, kind):
+                members.setdefault(name, set()).update(sels)
+                if rel:
+                    parents.setdefault(name, []).extend(rel)
+    return members, parents
+
+
+def _reachable(parents, name):
+    """`name`, its ANCESTORS transitively, and its DIRECT descendants only.
+
+    WHY THE DESCENDANT DIRECTION IS NOT TRANSITIVE, AND IT IS NOT A DETAIL — the first version of this
+    function walked it transitively and the generated ledger caught it: NSObject is the ROOT, so every
+    class descends from it, and one step of descent from NSObject reaches the whole library. Measured
+    on that run: `-set`, declared ONLY on NSOrderedSet, was reported SHIPPED for NSAffineTransform. The
+    scale was measured too, because a claim about a number is a claim: 2,884 selectors shipped before
+    the fix and 2,769 after, so 115 rows were reading as done when their own owner does not declare
+    them. A ledger that says "we ship this" because SOME class somewhere declares the same selector is
+    §11.2's bug class with the sign flipped.
+
+    ONE LEVEL OF DESCENT IS WHAT A CLUSTER NEEDS AND ALL IT NEEDS: NSNumber's concrete subclasses are
+    its direct subclasses. The ancestor direction stays transitive, because that IS inheritance — a
+    subclass's API is its ancestors' API. Protocols ride the same edge set (the adopted list is in
+    `parents`), so a conforming class answers its protocol's doors, one level out."""
+    out = {name}
+    stack = [name]
+    while stack:
+        for p in parents.get(stack.pop(), ()):
+            if p not in out:
+                out.add(p)
+                stack.append(p)
+    for cls, rel in parents.items():
+        if name in rel:
+            out.add(cls)
+    return out
+
+
+def _selector_why(row):
+    """The `why` for a SELECTOR row.
+
+    THE ONE RULE IT MUST NOT INHERIT FROM struck_reason() IS THE SWIFT-ONLY TEST, and that was caught
+    before it ran: the test asks whether a NAME carries the ObjC shape (NS-prefixed, or all-caps),
+    which is true of every symbol and FALSE of every selector — so applying it here would strike the
+    WHOLE ledger. `swift` is informational for a selector and rides the `src` column, exactly as the
+    symbol side treats an ObjC-spelled name found on a swift page. The grounds that are about the NAME
+    still apply: they are about what the caller would have to write."""
+    if is_declined(row):
+        return "declined"
+    if is_32bit_only(row) or is_per_release_version_constant(row):
+        return struck_reason(row)
+    if NEEDS_COREFOUNDATION_RE.match(row["name"]) or FRAME_WALK_RE.match(row["name"]):
+        return struck_reason(row)
+    if SWIFT_INTEROP_RE.search(row["name"]):
+        return "swift-only"
+    return "deprecated" if apple_says_deprecated(row) else "-"
+
+
+def selectors_status(selectors):
+    """[(kind, status, name, owner, family, why, src)] — the selector rows, judged against this tree.
+
+    THE OWNER'S GROUND COMES FIRST: if the symbol ledger strikes the owner, the member is struck with
+    the owner's `why`. Only when the owner is not struck does the row take its own ground, and then its
+    OWNER-BLOCK declaration decides shipped vs open."""
+    members, parents = _declared_types()
+    owner_status = {}
+    for kind, st, name, owner, fam, why, src in read_surface():
+        if kind in ("class", "protocol"):
+            owner_status[name] = (st, why)
+    reach, out = {}, []
+    for key in sorted(selectors, key=lambda k: (k[3], k[0], k[2])):
+        r = selectors[key]
+        owner = r["owner"]
+        if not owner:
+            continue        # no enclosing page: counted by the caller, never guessed at
+        if owner not in reach:
+            reach[owner] = _reachable(parents, owner)
+        ost = owner_status.get(owner)
+        if ost and ost[0] == STATUS_STRUCK:
+            why, st = (ost[1] or "declined"), STATUS_STRUCK
+        else:
+            why = _selector_why(r)
+            if why in STRIKE_REASONS:
+                st = STATUS_STRUCK
+            else:
+                have = set()
+                for t in reach[owner]:
+                    have |= members.get(t, set())
+                if r["kind"] == "property":
+                    shipped = ("-", r["name"]) in have or ("+", r["name"]) in have
+                else:
+                    shipped = (r["sign"], r["name"]) in have
+                st = STATUS_SHIPPED if shipped else STATUS_OPEN
+        name = (r["sign"] + r["name"]) if r["kind"] == "method" else r["name"]
+        out.append((r["kind"], st, name, owner, r["family"], why or "-",
+                    "swift-page" if r.get("swift") else "objc"))
+    return out
+
+
+def write_selector_surface(selectors, dropped):
+    """Write the selector ledger — header and rows — from the walk that writes the symbol surface."""
+    rows = selectors_status(selectors)
+    counts, reasons, deprecated = {}, {}, 0
+    for kind, st, name, owner, family, why, src in rows:
+        counts[(kind, st)] = counts.get((kind, st), 0) + 1
+        if st == STATUS_STRUCK:
+            reasons[why] = reasons.get(why, 0) + 1
+        if why == "deprecated":
+            deprecated += 1
+    unowned = sum(1 for r in selectors.values() if not r["owner"])
+    header = [
+        "# Foundation's documented SELECTOR surface, against this tree.",
+        "# docs/design/foundation-plan.md §11.2 and §62.110.",
+        "# GENERATED by tools/foundation-sweep.py --refresh — do not hand-edit the",
+        "# status column; --check fails when it drifts from the headers.",
+        "#",
+        "# source: " + INDEX_URL,
+        "#",
+        "# kind\tstatus\tname\towner\tfamily\twhy\tsrc",
+        "#",
+        "# ONE ROW PER (OWNER, SELECTOR): Apple's documented METHOD and PROPERTY nodes, which the symbol",
+        "# surface (docs/reference/foundation-apple-surface.txt) deliberately does not hold. That file",
+        "# said so for months — 'the SELECTOR surface ... §11.2 SOURCE 1's business, the dimension source",
+        "# 1 must still grow into' — and source 1 (the probes' inventories) carries a selector's",
+        "# BEHAVIOUR, never its EXISTENCE. This is the measurement that was missing.",
+        "#",
+        "# A METHOD's name carries its SIGN (`- initWithDecimal:`, `+ alloc`): a class method and an",
+        "# instance method are different doors. A PROPERTY's is bare — Apple documents the property, and",
+        "# the accessors it implies are the compiler's, so a property row is shipped when the owner's",
+        "# block declares EITHER accessor.",
+        "#",
+        "# STATUS.  shipped  the owner's block declares it, or a type it inherits from or that inherits",
+        "#                    from it does (a class cluster, a subclass, a class adopting a protocol).",
+        "#          open     documented, and declared NOWHERE in that set: THE WORK LIST.",
+        "#          struck   OUT by §11.5, or struck WITH ITS OWNER — striking a root strikes its members,",
+        "#                   which is how the declined families' whole selector surface is removed rather",
+        "#                   than left open. The `why` column says which ground.",
+        "#",
+        "# why the struck rows are struck: " + ", ".join("%s %d" % (k, v) for k, v in sorted(reasons.items())),
+        "#",
+        "# AND %d ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy," % deprecated,
+        "# 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a",
+        "# row is, never that it is excluded.",
+        "#",
+        "# selectors from OTHER FRAMEWORKS that Apple indexes on a Foundation page, excluded and counted: %d"
+        % len(dropped.get("selector-external", ())),
+        "#   (%d method/property nodes carried no enclosing class and are NOT rows)" % unowned,
+        "#",
+        "# counts by kind:",
+    ]
+    for kind in SELECTOR_KINDS:
+        got = [counts.get((kind, s), 0) for s in (STATUS_SHIPPED, STATUS_OPEN, STATUS_STRUCK)]
+        header.append("#   %-10s shipped %4d   open %4d   struck %4d" % (kind, *got))
+    out = ["\t".join(r) for r in rows]
+    open(SELECTOR_SURFACE, "w", encoding="utf-8").write("\n".join(header + out) + "\n")
+    print("sweep: wrote %s (%d selectors)" % (os.path.relpath(SELECTOR_SURFACE, ROOT), len(out)))
+    return 0
+
+
+def read_selectors():
+    rows = []
+    for line in open(SELECTOR_SURFACE, encoding="utf-8"):
+        if line.startswith("#") or not line.strip():
+            continue
+        rows.append(tuple(line.rstrip("\n").split("\t")))
+    return rows
+
+
+def selector_header_counts():
+    """{kind: (shipped, open, struck)} as the selector ledger's own header claims them."""
+    text = open(SELECTOR_SURFACE, encoding="utf-8").read()
+    return {m.group(1): (int(m.group(2)), int(m.group(3)), int(m.group(4)))
+            for m in HEADER_COUNT_RE.finditer(text)}
+
+
+def check_selectors(strict=False):
+    """Hold the SELECTOR ledger to this tree, offline — the symbol check's sibling, same two findings.
+
+    IT NEEDS NO NETWORK and no second copy of Apple's ground: a shipped/open row is decided by the
+    owner's block alone, and a struck row is a claim about our headers (the name must NOT be declared
+    there). So the check is a function of this tree and this file, like the symbol side."""
+    pretty = os.path.relpath(SELECTOR_SURFACE, ROOT)
+    if not os.path.exists(SELECTOR_SURFACE):
+        print("foundation-sweep: %s is MISSING — run tools/foundation-sweep.py --refresh" % pretty)
+        return 1
+    members, parents = _declared_types()
+    rows = read_selectors()
+    bad, policy, counts, reach = [], [], {}, {}
+    for kind, status, name, owner, family, why, src in rows:
+        counts[(kind, status)] = counts.get((kind, status), 0) + 1
+        sign, sel = split_selector_name(kind, name)
+        if owner not in reach:
+            reach[owner] = _reachable(parents, owner)
+        have = set()
+        for t in reach[owner]:
+            have |= members.get(t, set())
+        found = (("-", sel) in have or ("+", sel) in have) if kind == "property" else ((sign, sel) in have)
+        if status == STATUS_SHIPPED and not found:
+            bad.append("STALE SHIPPED CLAIM    %-8s %s %s — the ledger says the owner's block declares it "
+                       "and it does not" % (kind, owner, name))
+        elif status == STATUS_OPEN and found:
+            bad.append("PRESENT BUT LISTED OPEN %-8s %s %s — the owner's block declares it now; flip the row"
+                       % (kind, owner, name))
+        elif status == STATUS_STRUCK and found:
+            policy.append("%-8s %s %s [struck: %s]" % (kind, owner, name, why))
+    for hkind, claimed in sorted(selector_header_counts().items()):
+        got = tuple(counts.get((hkind, s), 0) for s in (STATUS_SHIPPED, STATUS_OPEN, STATUS_STRUCK))
+        if claimed != got:
+            bad.append("STALE COUNT BLOCK     %-8s the header claims shipped/open/struck %s and the rows are "
+                       "%s — fix: tools/foundation-sweep.py --refresh" % (hkind, claimed, got))
+    print("foundation-sweep: %d selectors in the ledger" % len(rows))
+    for kind in sorted({k for k, _ in counts}):
+        print("  %-10s shipped %4d   open %4d   struck %4d" % (
+            kind, counts.get((kind, STATUS_SHIPPED), 0),
+            counts.get((kind, STATUS_OPEN), 0), counts.get((kind, STATUS_STRUCK), 0)))
+    if policy:
+        print("\n%d POLICY FINDING(S) in the selector ledger — API this ledger STRIKES that we declare"
+              % len(policy))
+        print("(each needs a ledger row; --strict is what fails on them):\n")
+        for line in policy:
+            print("  " + line)
+    if bad:
+        print("\n%d SELECTOR INCONSISTENCIES:\n" % len(bad))
+        for line in bad:
+            print("  " + line)
+        return 1
+    if strict and policy:
+        return 1
+    print("foundation-sweep: selector ledger consistent — every shipped selector is declared by its owner "
+          "and every open one is absent")
+    return 0
+
+
 def collect(index):
     """Walk the ObjC navigator tree. A groupMarker among a node's children sets
     the FAMILY for the siblings that FOLLOW it — Apple's own taxonomy — and a
     class or protocol becomes the OWNER of the members beneath it. Returns
-    (rows, dropped, swift_seen), where rows is keyed by (kind, name, owner)."""
-    rows, dropped, swift_seen = {}, {}, set()
+    (rows, dropped, swift_seen, selectors), where rows is keyed by (kind, name, owner) for the symbol
+    surface and selectors by (kind, sign, name, owner) for the selector ledger — ONE walk, so the two
+    cannot disagree about who owns a name or which family it sits in."""
+    rows, dropped, swift_seen, selectors = {}, {}, set(), {}
     for root in index["interfaceLanguages"]["occ"]:
-        walk(root, [], None, rows, dropped, swift_seen)
-    return rows, dropped, swift_seen
+        walk(root, [], None, rows, dropped, swift_seen, selectors)
+    return rows, dropped, swift_seen, selectors
 
 
-def walk(node, trail, owner, rows, dropped, swift_seen):
+def walk(node, trail, owner, rows, dropped, swift_seen, selectors):
     """The children of `node`, with the family trail and owner in force when the
     walk arrives here. One function, not two: the top level and a class page
     nest the same way, and this file's first version proved that a duplicated
@@ -511,7 +911,25 @@ def walk(node, trail, owner, rows, dropped, swift_seen):
         path = child.get("path", "")
         swift = ("-swift." in path) or ("/swift." in path)
         ours_path = path.startswith("/documentation/foundation/")
-        if kind in DROP_KINDS:
+        if kind in SELECTOR_KINDS:
+            # THE SELECTOR LEDGER'S BRANCH (2026-09-28, §62.110). A method node's title is the selector
+            # WITH its sign; a property node's is the bare name. They are keyed with their OWNER,
+            # because a selector name is not unique across classes.
+            if ours_path or child.get("title") in KEEP_ELSEWHERE:
+                title = child.get("title", "")
+                m = SELECTOR_TITLE_RE.match(title) if kind == "method" else None
+                sign, sel = (m.group(1), m.group(2)) if m else ("", title)
+                key = (kind, sign, sel, owner or "")
+                row = selectors.get(key)
+                if row is None or (child.get("deprecated") and not row["deprecated"]):
+                    selectors[key] = {"kind": kind, "sign": sign, "name": sel, "owner": owner or "",
+                                      "deprecated": bool(child.get("deprecated")), "swift": swift,
+                                      "family": " / ".join(trail)}
+                elif swift and not row["swift"]:
+                    row["swift"] = True
+            else:
+                dropped.setdefault("selector-external", set()).add(child.get("title", ""))
+        elif kind in DROP_KINDS:
             dropped.setdefault(kind, set()).add(child.get("title", ""))
         elif not ours_path and child.get("title") not in KEEP_ELSEWHERE:
             # Apple's Foundation pages carry a cross-framework index — every
@@ -547,12 +965,12 @@ def walk(node, trail, owner, rows, dropped, swift_seen):
         if child.get("children"):
             walk(child, trail,
                  child.get("title", "") if kind in ("class", "protocol") else owner,
-                 rows, dropped, swift_seen)
+                 rows, dropped, swift_seen, selectors)
 
 
 def refresh():
     index = fetch_index()
-    rows, dropped, swift_seen = collect(index)
+    rows, dropped, swift_seen, selectors = collect(index)
     text = public_header_text()
     out = []
     counts = {}
@@ -590,10 +1008,16 @@ def refresh():
         "# which is the point of the third exclusion's proof (see --check).",
         "#",
         "# excluded dimensions this file deliberately does NOT hold (distinct names):",
-        "#   method   %4d documented selectors — §11.2 SOURCE 1's business" % len(dropped.get("method", ())),
-        "#   property %4d — likewise" % len(dropped.get("property", ())),
         "#   symbol   %4d — Apple's instance-variable documentation" % len(dropped.get("symbol", ())),
         "#   other    %4d — other frameworks' symbols Apple indexes on a Foundation page" % len(dropped.get("other-framework", ())),
+        "#   selectors from other frameworks %4d — see the sibling ledger's own header"
+        % len(dropped.get("selector-external", ())),
+        "#",
+        "# AND THE SELECTOR SURFACE IS NOT ONE OF THEM ANY MORE (2026-09-28, §62.110). It is held by",
+        "# docs/reference/foundation-selector-surface.txt — %d rows of Apple's documented methods and"
+        % sum(1 for r in selectors.values() if r["owner"]),
+        "# properties, one per (owner, selector) — written by the same --refresh and verified by the same",
+        "# --check.",
         "#",
         "# counted, NOT excluded: %d distinct names Apple documents on a `swift.` page"
         % len(swift_seen),
@@ -621,6 +1045,9 @@ def refresh():
             header.append("#   %-10s shipped %4d   open %4d   struck %4d" % (kind, *got))
     open(SURFACE, "w", encoding="utf-8").write("\n".join(header + out) + "\n")
     print("sweep: wrote %s (%d symbols)" % (os.path.relpath(SURFACE, ROOT), len(out)))
+    # THE SELECTOR LEDGER, written AFTER the symbol surface because its rows inherit their owner's
+    # ground and read that ground from the file just written (selectors_status()).
+    write_selector_surface(selectors, dropped)
     return 0
 
 
@@ -897,7 +1324,12 @@ def _method_selectors(body):
         if parts:
             out.add("".join(parts))
     return out
-_PROP = re.compile(r"@property\s*\(([^)]*)\)\s*[^;]*?([A-Za-z_]\w*)\s*;")
+# THE ATTRIBUTE LIST IS OPTIONAL, and requiring it was a measured miss (2026-09-28, §62.110): 30 of this
+# tree's 263 property declarations carry no attributes at all (`@property NSAffineTransformStruct
+# transformStruct;`), so `@property\s*\(` never matched them and their accessors were absent from the
+# declared selector set — which the selector ledger then called OPEN. Group 1 is None when there is no
+# list, so every consumer reads `pm.group(1) or ""`.
+_PROP = re.compile(r"@property\s*(?:\(\s*([^)]*)\s*\))?\s*[^;]*?([A-Za-z_]\w*)\s*;")
 _GETTER = re.compile(r"getter\s*=\s*(\w+)")
 _SETTER = re.compile(r"setter\s*=\s*(\w+)")
 
@@ -919,7 +1351,7 @@ def _objc_blocks(text, kind):
             sup = s.group(1)
         sels = _method_selectors(rest)
         for pm in _PROP.finditer(rest):
-            attrs, prop = pm.group(1), pm.group(2)
+            attrs, prop = pm.group(1) or "", pm.group(2)   # see _PROP: the attribute list is optional
             g, s = _GETTER.search(attrs), _SETTER.search(attrs)
             sels.add(g.group(1) if g else prop)
             if "readonly" not in attrs:
@@ -1041,8 +1473,27 @@ def work_list(want=None):
         print("\n## %s  (%d)" % (family or "(no family)", len(members)))
         for kind, name, owner in sorted(members, key=lambda m: (m[0], m[1])):
             print("   %-9s %s%s" % (kind, name, ("\t[%s]" % owner) if owner else ""))
-    print("\n%d open symbols" % len(rows))
+    # THE SELECTOR LEDGER'S OPEN ROWS, grouped by OWNER rather than by family: a selector's work item is
+    # "this class's block does not declare it", so the class is what a reader needs to see beside it.
+    srows = read_selectors() if os.path.exists(SELECTOR_SURFACE) else []
+    srows = [r for r in srows if r[1] == STATUS_OPEN and (want is None or r[0] == want)]
+    by_owner = {}
+    for kind, status, name, owner, family, why, src in srows:
+        by_owner.setdefault(owner or "(no owner)", []).append((kind, name, why))
+    for owner in sorted(by_owner):
+        print("\n## selectors of %s  (%d)" % (owner, len(by_owner[owner])))
+        for kind, name, why in sorted(by_owner[owner], key=lambda m: (m[0], m[1])):
+            print("   %-9s %s%s" % (kind, name, ("\t[%s]" % why) if why != "-" else ""))
+    print("\n%d open symbols, %d open selectors" % (len(rows), len(srows)))
     return 0
+
+
+def check_all(strict=False):
+    """BOTH ledgers, and both are RUN even when the first fails: a short-circuit would hide the second
+    ledger's findings behind the first's, which is the wrong thing to hide while fixing a tree."""
+    rc_symbols = check(strict=strict)
+    rc_selectors = check_selectors(strict=strict)
+    return 1 if (rc_symbols or rc_selectors) else 0
 
 
 def main(argv):
@@ -1050,12 +1501,12 @@ def main(argv):
     if mode == "--refresh":
         rc = refresh()
         if rc == 0:
-            rc = check()
+            rc = check_all()
         return rc
     if mode == "--check":
-        return check()
+        return check_all()
     if mode == "--strict":
-        return check(strict=True)
+        return check_all(strict=True)
     if mode == "--families":
         return families(write="--write" in argv[2:])
     if mode == "--unimplemented":

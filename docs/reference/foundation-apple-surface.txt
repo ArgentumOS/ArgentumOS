@@ -12,10 +12,14 @@
 # which is the point of the third exclusion's proof (see --check).
 #
 # excluded dimensions this file deliberately does NOT hold (distinct names):
-#   method   2500 documented selectors — §11.2 SOURCE 1's business
-#   property 1603 — likewise
 #   symbol     61 — Apple's instance-variable documentation
 #   other     306 — other frameworks' symbols Apple indexes on a Foundation page
+#   selectors from other frameworks  289 — see the sibling ledger's own header
+#
+# AND THE SELECTOR SURFACE IS NOT ONE OF THEM ANY MORE (2026-09-28, §62.110). It is held by
+# docs/reference/foundation-selector-surface.txt — 4564 rows of Apple's documented methods and
+# properties, one per (owner, selector) — written by the same --refresh and verified by the same
+# --check.
 #
 # counted, NOT excluded: 239 distinct names Apple documents on a `swift.` page
 # but which carry the ObjC spelling. An NS_ENUM's page lives under `-swift.enum`
