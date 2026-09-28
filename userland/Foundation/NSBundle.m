@@ -11,6 +11,7 @@
  */
 
 #import <Foundation/NSBundle.h>
+#import <Foundation/NSAttributedStringMarkdown.h>
 #import <Foundation/NSData.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSArray.h>
@@ -435,6 +436,55 @@ static NSString *fn_layout_for_path(NSString *path)
 	[_layout release];
 	[_info release];
 	[super dealloc];
+}
+
+/* THE TABLE A NAME REFERS TO, read with this library's own property-list reader: a `.strings` file IS an
+ * old-style property list whose dictionary is the table. nil (an absent or unreadable file) is not an error
+ * here — the door's contract has two fallbacks after it. */
+- (NSDictionary *)fnStringTableNamed:(NSString *)tableName
+{
+	NSString *path = [self pathForResource:tableName ofType:@"strings"];
+	NSData *data;
+	id parsed;
+
+	if (path == nil) {
+		return nil;
+	}
+	data = [NSData dataWithContentsOfFile:path];
+	if (data == nil) {
+		return nil;
+	}
+	parsed = [NSPropertyListSerialization propertyListWithData:data options:0 format:NULL error:NULL];
+	return [parsed isKindOfClass:[NSDictionary class]] ? parsed : nil;
+}
+
+- (NSString *)localizedStringForKey:(NSString *)key
+			     value:(nullable NSString *)value
+			     table:(nullable NSString *)tableName
+{
+	NSDictionary *table = [self fnStringTableNamed:((tableName != nil && [tableName length] > 0)
+						       ? tableName : @"Localizable")];
+	NSString *found = (table != nil) ? [table objectForKey:key] : nil;
+
+	if (found != nil) {
+		return found;
+	}
+	if (value != nil && [value length] > 0) {
+		return value;
+	}
+	return key;
+}
+
+- (NSAttributedString *)localizedAttributedStringForKey:(NSString *)key
+						 value:(nullable NSString *)value
+						 table:(nullable NSString *)tableName
+{
+	NSString *localized = [self localizedStringForKey:key value:value table:tableName];
+
+	return [[NSAttributedString alloc] initWithMarkdownString:localized
+							  options:nil
+							  baseURL:nil
+							    error:NULL];
 }
 
 @end

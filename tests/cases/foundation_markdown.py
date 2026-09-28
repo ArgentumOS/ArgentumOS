@@ -60,6 +60,11 @@ CHECKS = ("the-options-start-from-their-two-published-and-three-our-defaults",
           "source-position-attributes",
           "extended-attributes",
           "language-code-attribute",
+          # §62.108: the string-table doors and both macro families (the classic door was missing).
+          "localized-string-door-fallbacks",
+          "localized-attributed-door-parses-markdown",
+          "localized-attributed-macros",
+          "localized-string-macros",
           "a-position-past-the-end-is-clamped")
 
 

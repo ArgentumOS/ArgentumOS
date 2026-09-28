@@ -36,7 +36,7 @@
 # counts by kind:
 #   class      shipped  221   open    0   struck   52
 #   protocol   shipped   39   open    1   struck    5
-#   macro      shipped  117   open    4   struck  132
+#   macro      shipped  121   open    0   struck  132
 #   enum       shipped  151   open    0   struck    9
 #   case       shipped 1224   open    0   struck   78
 #   func       shipped  167   open    0   struck   22
@@ -2104,10 +2104,10 @@ macro	struck	NSFoundationVersionNumber_iPhoneOS_3_1		Low-Level Utilities / Versi
 macro	struck	NSFoundationVersionNumber_iPhoneOS_3_2		Low-Level Utilities / Versions and API Availability / iOS Version Numbers	os-version-constant	objc
 macro	shipped	NSFoundationVersionWithFileManagerResourceForkSupport	NSFileManager	Files and Data Persistence / File system operations / Determining resource fork support	-	objc
 macro	shipped	NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES		Reference / Macros	-	objc
-macro	open	NSLocalizedAttributedString		Reference / Macros	-	objc
-macro	open	NSLocalizedAttributedStringFromTable		Reference / Macros	-	objc
-macro	open	NSLocalizedAttributedStringFromTableInBundle		Reference / Macros	-	objc
-macro	open	NSLocalizedAttributedStringWithDefaultValue		Reference / Macros	-	objc
+macro	shipped	NSLocalizedAttributedString		Reference / Macros	-	objc
+macro	shipped	NSLocalizedAttributedStringFromTable		Reference / Macros	-	objc
+macro	shipped	NSLocalizedAttributedStringFromTableInBundle		Reference / Macros	-	objc
+macro	shipped	NSLocalizedAttributedStringWithDefaultValue		Reference / Macros	-	objc
 macro	shipped	NSLocalizedString		Fundamentals / Localization	-	objc
 macro	shipped	NSLocalizedStringFromTable		Fundamentals / Localization	-	objc
 macro	shipped	NSLocalizedStringFromTableInBundle		Fundamentals / Localization	-	objc

@@ -372,6 +372,20 @@ typedef enum {
 #define NSLocalizedStringWithDefaultValue(key, tbl, bundle, val, comment) \
 	[(bundle) localizedStringForKey:(key) value:(val) table:(tbl)]
 
+/* THE ATTRIBUTED FAMILY (§62.108), whose bodies shadow the four above exactly — which is what they are: the
+ * same lookup, and then the value PARSED AS MARKDOWN (the attributed door's contract, and the whole reason
+ * these rows waited for §62.107's importer). Apple publishes these four macro NAMES and their meanings and
+ * not their literal `#define` text; the shape below is therefore derived from the family it shadows, which is
+ * the one place a derivation is safe, and the probe holds each macro to the door's own behaviour. */
+#define NSLocalizedAttributedString(key, comment) \
+	[[NSBundle mainBundle] localizedAttributedStringForKey:(key) value:@"" table:nil]
+#define NSLocalizedAttributedStringFromTable(key, tbl, comment) \
+	[[NSBundle mainBundle] localizedAttributedStringForKey:(key) value:@"" table:(tbl)]
+#define NSLocalizedAttributedStringFromTableInBundle(key, tbl, bundle, comment) \
+	[(bundle) localizedAttributedStringForKey:(key) value:@"" table:(tbl)]
+#define NSLocalizedAttributedStringWithDefaultValue(key, tbl, bundle, val, comment) \
+	[(bundle) localizedAttributedStringForKey:(key) value:(val) table:(tbl)]
+
 
 /* ===================================================================================================
  * THE FREE FUNCTIONS THAT WERE STILL MISSING (§62.52)

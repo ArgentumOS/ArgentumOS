@@ -22,6 +22,7 @@
 
 #import <Foundation/NSObject.h>
 #import <Foundation/NSArray.h>
+#import <Foundation/NSAttributedString.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSNotification.h>
 
@@ -90,6 +91,30 @@ extern NSString *const NSLoadedClasses;
 - (NSDictionary * _Nullable)infoDictionary;
 - (id _Nullable)objectForInfoDictionaryKey:(NSString *)key;
 - (NSArray *)localizations;
+
+/* THE STRING-TABLE DOORS (§62.108). THE CLASSIC ONE WAS MISSING, and that was a real defect rather than a
+ * gap: the four `NSLocalizedString` macros have been SHIPPED for a long time (they are macros, so they are
+ * not compiled until used) and every one of them calls this method — which no header declared and no
+ * implementation defined. A caller who used one got a compile warning and an unrecognised selector at
+ * runtime. It is here now, with Apple's own contract: the table's value for the key, else `value` when it is
+ * non-empty, else THE KEY ITSELF.
+ *
+ * AND THE LOOKUP'S ONE BOUNDARY, named rather than implied: this library performs no LANGUAGE NEGOTIATION.
+ * Apple's door consults the user's preferred languages against the bundle's `.lproj` directories; this one
+ * reads the table the bundle's own resource lookup finds (`-pathForResource:ofType:`, which is flat). A
+ * `.lproj`-aware search is a later slice, and until it lands a localized bundle should carry the table its
+ * default language wants. */
+- (NSString *)localizedStringForKey:(NSString *)key
+			     value:(nullable NSString *)value
+			     table:(nullable NSString *)tableName;
+
+/* THE ATTRIBUTED DOOR (§62.108), which is what the four `NSLocalizedAttributedString` macros call: the same
+ * lookup, with the localized value then PARSED AS MARKDOWN — which is Apple's contract for it and the reason
+ * these four rows were owed for as long as they were. It answers a string rather than nil for the same reason
+ * the classic door does: a missing key falls back to the value, then to the key. */
+- (NSAttributedString *)localizedAttributedStringForKey:(NSString *)key
+						 value:(nullable NSString *)value
+						 table:(nullable NSString *)tableName;
 
 - (NSString * _Nullable)pathForResource:(NSString * _Nullable)name ofType:(NSString * _Nullable)ext;
 - (NSString * _Nullable)pathForResource:(NSString * _Nullable)name

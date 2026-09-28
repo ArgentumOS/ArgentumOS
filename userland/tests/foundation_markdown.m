@@ -506,6 +506,75 @@ int main(void)
 		      [NSString stringWithFormat:@"language=%@", s]);
 	}
 
+	/* ================= §62.108: THE STRING-TABLE DOORS AND BOTH MACRO FAMILIES ================= */
+	{
+		NSBundle *main = [NSBundle mainBundle];
+		NSAttributedString *attributed;
+		NSString *plain;
+
+		/* 26. THE CLASSIC DOOR'S TWO FALLBACKS, which are Apple's rule: the value when it is non-empty,
+		 * and THE KEY ITSELF when it is not. This door is also the repair of a real defect: the four
+		 * NSLocalizedString macros have shipped for a long time calling a method no header declared. */
+		plain = [main localizedStringForKey:@"FN_NO_SUCH_KEY" value:@"a fallback" table:nil];
+		{
+			NSString *empty = [main localizedStringForKey:@"FN_NO_SUCH_KEY" value:@"" table:nil];
+
+			check("localized-string-door-fallbacks",
+			      main != nil && [plain isEqualToString:@"a fallback"] &&
+			      [empty isEqualToString:@"FN_NO_SUCH_KEY"],
+			      [NSString stringWithFormat:@"value=%@ key=%@", plain, empty]);
+		}
+
+		/* 27. THE ATTRIBUTED DOOR: the same lookup, and the value PARSED AS MARKDOWN — the bit that
+		 * makes it a different door rather than a second name for the first. */
+		/* NOTE THE TRAILING NEWLINE IN WHAT FOLLOWS, because it is the convention rather than an
+		 * accident: the value is parsed as MARKDOWN, Full syntax emits one block per line, and a block
+		 * ends with "\n" — so a localized attributed string arrives with it. */
+		attributed = [main localizedAttributedStringForKey:@"FN_NO_SUCH_KEY"
+							     value:@"plain **bold** text"
+							     table:nil];
+		check("localized-attributed-door-parses-markdown",
+		      [[attributed string] isEqualToString:@"plain bold text\n"] &&
+		      bits_at(attributed, @"bold") == NSInlinePresentationIntentStronglyEmphasized,
+		      [NSString stringWithFormat:@"text=%@ bits=%u", [attributed string],
+		       bits_at(attributed, @"bold")]);
+
+		/* 28. THE FOUR MACROS, all four held to the door's own behaviour: three answer the KEY (their
+		 * value argument is empty) and the WITH-DEFAULT one answers its value — parsed, which is the
+		 * whole point of the family. */
+		{
+			NSAttributedString *one = NSLocalizedAttributedString(@"FN_NO_SUCH_KEY", nil);
+			NSAttributedString *two = NSLocalizedAttributedStringFromTable(@"FN_NO_SUCH_KEY", nil, nil);
+			NSAttributedString *three = NSLocalizedAttributedStringFromTableInBundle(
+				@"FN_NO_SUCH_KEY", nil, [NSBundle mainBundle], nil);
+			NSAttributedString *four = NSLocalizedAttributedStringWithDefaultValue(
+				@"FN_NO_SUCH_KEY", nil, [NSBundle mainBundle], @"an *emphasized* default", nil);
+
+			check("localized-attributed-macros",
+			      [[one string] isEqualToString:@"FN_NO_SUCH_KEY\n"] &&
+			      [[two string] isEqualToString:@"FN_NO_SUCH_KEY\n"] &&
+			      [[three string] isEqualToString:@"FN_NO_SUCH_KEY\n"] &&
+			      [[four string] isEqualToString:@"an emphasized default\n"] &&
+			      bits_at(four, @"emphasized") == NSInlinePresentationIntentEmphasized,
+			      [NSString stringWithFormat:@"one=%@ two=%@ three=%@ four=%@ %u",
+			       [one string], [two string], [three string], [four string],
+			       bits_at(four, @"emphasized")]);
+		}
+
+		/* 29. AND THE CLASSIC MACROS, which this unit repaired: the same two fallbacks through the
+		 * macros themselves, since a macro whose door is missing compiles into an unrecognised selector. */
+		{
+			NSString *keyFallback = NSLocalizedString(@"FN_NO_SUCH_KEY", nil);
+			NSString *valueFallback = NSLocalizedStringWithDefaultValue(@"FN_NO_SUCH_KEY", nil,
+				[NSBundle mainBundle], @"a default", nil);
+
+			check("localized-string-macros",
+			      [keyFallback isEqualToString:@"FN_NO_SUCH_KEY"] &&
+			      [valueFallback isEqualToString:@"a default"],
+			      [NSString stringWithFormat:@"key=%@ value=%@", keyFallback, valueFallback]);
+		}
+	}
+
 	printf("FOUNDATION-MARKDOWN RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-MARKDOWN DONE\n");
 	return failc == 0 ? 0 : 1;
