@@ -14108,6 +14108,51 @@ file; and `NSSocketPort`'s `-sendBeforeDate:components:from:reserved:`, which ne
 `-Wincompatible-pointer-types-discards-qualifiers` 1 (`NSFileCoordinator`'s block-captured mutation, whose fix must
 decide the struct's lifetime first) · `-Wenum-conversion` 1 (`-fnFirstChildOfKind:`).
 
+## §62.75 — THE WARNING SWEEP, PHASE 6: `NSString`'S MISPLACED METHOD, FOUR REFUSALS, AND A CASE THAT COULD NEVER PASS (2026-09-26)
+
+**14 → 8 warnings (100 → 8 for the whole sweep).**
+
+**WHAT CHANGED IN `NSString`:**
+
+* **`-enumerateSubstringsInRange:options:usingBlock:` MOVED out of the `NSString (FNEnumeration)` category into
+  the class's own block.** A category implementing a method the INTERFACE declares is what
+  `-Wobjc-protocol-method-implementation` reports, and the cost is real: **at runtime a category body silently
+  WINS over a class body**, so a reader cannot tell which one ran. The three file-static helpers it calls stay at
+  the end of the file with the rest of the enumeration family, so their prototypes now precede the class block —
+  without them the build fails with undeclared-function errors (measured).
+* **FOUR NAMED REFUSALS on the base** for `-length`, `-characterCount`, `-characterAtIndex:` and `-UTF8String`.
+  This `NSString` is a **CLASS CLUSTER** — `NSOwnedString`, `NSConstantString` (and `NSMutableString` through the
+  first) hold the characters and implement those doors — and **the base's `-init` RETURNS SELF**, which its own
+  comment says is load-bearing: the concrete classes' designated initialiser begins with `self = [super init]`,
+  and routing it back made the two call each other forever. So a bare `[[NSString alloc] init]` is a real object
+  with **NO `-length` at all**, and the selector simply did not exist: the refusal turns a `doesNotRecognizeSelector`
+  from nowhere into a diagnosis that names the door and the way out.
+
+**AND THE CASE THAT COULD NEVER PASS, which is why this phase was reverted once and then landed.** The first
+attempt was reverted because `make test` came back 1/2 cases — and running that case ALONE, as the note said to,
+still failed 5/6 **while every probe-level check PASSED and the probe's own tally was green (`ok=8 fail=0`)**. The
+raw guest log then gave the truth: the probe prints
+`a-line-is-enclosed-by-its-paragraph-and-a-blank-line-by-itself` and
+`tests/cases/foundation_enumerate_substrings.py` expects `…-and-a-paragraph-by-itself`. **The case had never
+matched its probe, so it could never pass.** It now uses the probe's own wording, and it is **6/6**.
+
+**THE DISTINGUISHING EVIDENCE, worth keeping because it decides what to do next: a REAL behavioural break shows up
+in the PROBE'S OWN TALLY** (the earlier `foundation_xmldtdparse` regression read **6 of 8**), **while a case defect
+shows a GREEN tally with a failing case-level check.** The first says revert and bisect; the second says fix the
+test.
+
+**VERIFIED.** Host: `make host-foundation-run` — **37 probes, every tally `fail=0`** (so the four refusals are
+unreachable for every object the probes build, which is the cluster design holding). Guest: `make testimg` +
+`make test TESTS='foundation_enumerate_substrings,foundation_string,foundation_collection'` → **`TESTS-OK 3/3
+case(s), 18/18 check(s) in 15s`**. Full-recompile warnings **8**. `foundation-gate`: **OK — 543 files, 203 of 207
+public headers**; `--unimplemented`: **0 NEW**; sweep consistent.
+
+**WHAT IS LEFT — 8 warnings:** `-Wobjc-method-access` 2 · `-Wprotocol` 1 · `-Wincomplete-implementation` 1
+(`NSSocketPort`'s `-sendBeforeDate:components:from:reserved:`) ·
+`-Wincompatible-pointer-types-discards-qualifiers` 1 (`NSFileCoordinator`'s block captures a struct BY VALUE and
+mutates it through `&` — a real bug whose fix must decide the struct's LIFETIME first) · `-Wenum-conversion` 1
+(`-fnFirstChildOfKind:`).
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else
