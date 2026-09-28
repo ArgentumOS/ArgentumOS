@@ -329,11 +329,27 @@ DECLINED_ROOTS = frozenset((
     # Bonjour. Its two CLASSES are already struck as deprecated; this reaches their SERVANTS, which
     # are not deprecated and were left open — the shape §12.5 called a ledger question before a unit.
     "NSNetService", "NSNetServiceBrowser", "NSNetServiceDelegate", "NSNetServiceBrowserDelegate",
+    # FOUR SCOPE DECISIONS OF THE USER'S (2026-09-26), each recorded with its ground rather than left open:
+    #   * `NSSimpleCString` — documented with TWO IVARS AND NO API: an implementation detail a conforming
+    #     application cannot call, so there is nothing to implement, and a stub class is refused by the
+    #     project's own rule (§62.53).
+    #   * `NSKeyValueSharedObservers` and `NSKeyValueSharedObserversSnapshot` — documented with no usable
+    #     surface either; the snapshot type is a marker with no doors.
+    #   * `NSGarbageCollector` — THERE IS NO GC RUNTIME IN THIS SYSTEM (Apple removed the collector, and
+    #     this library never had one), so a class whose whole surface is "the collector" has nothing to
+    #     speak to. Its two OPTIONS are declined below. **`NSMakeCollectable` AND `NSReallocateCollectable`
+    #     ARE NOT HERE ON PURPOSE: they are SHIPPED ordinary helpers that stand on their own, and striking a
+    #     shipped row would mean deleting working code** — the same distinction that keeps `NSHostByteOrder`.
+    "NSSimpleCString", "NSKeyValueSharedObservers", "NSKeyValueSharedObserversSnapshot",
+    "NSGarbageCollector",
 ))
 
 # Free-standing rows that belong to a declined family without being owned by one of its roots.
 DECLINED_SYMBOLS = frozenset((
     "NSNetServiceOptions", "NSNetServicesErrorDomain", "NSNetServicesErrorCode",
+    # THE GC-ERA OPTIONS of the declined `NSGarbageCollector`: they exist only to configure a collector, so
+    # they go with it.
+    "NSCollectorDisabledOption", "NSScannedOption",
 ))
 
 

@@ -3538,7 +3538,7 @@ vanishing.
 | **Fundamentals / Unique Identifiers** | all classes shipped | — |
 | **Low-Level Utilities / Copying** | all classes shipped | — |
 | **Low-Level Utilities / Invocations** | all classes shipped | — |
-| **Low-Level Utilities / Legacy** | 3 open | `NSConnectionDelegate`, `NSDistantObjectRequest`, `NSGarbageCollector` |
+| **Low-Level Utilities / Legacy** | 2 open; 1 STRUCK: `NSGarbageCollector` | `NSConnectionDelegate`, `NSDistantObjectRequest` |
 | **Low-Level Utilities / Memory Management** | all classes shipped | — |
 | **Low-Level Utilities / Object Basics** | all classes shipped | — |
 | **Low-Level Utilities / Remote Objects** | all classes shipped | — |
@@ -3560,7 +3560,7 @@ vanishing.
 | **Networking / Requests and responses** | all classes shipped | — |
 | **Networking / Service Discovery** | ALL STRUCK: `NSNetServiceBrowser`, `NSNetServiceBrowserDelegate` | — |
 | **Protocols** | 1 open | `NSPredicateValidating` |
-| **Reference / Classes** | 3 open | `NSKeyValueSharedObservers`, `NSKeyValueSharedObserversSnapshot`, `NSSimpleCString` |
+| **Reference / Classes** | 3 STRUCK: `NSKeyValueSharedObservers`, `NSKeyValueSharedObserversSnapshot`, `NSSimpleCString` | — |
 <!-- END GENERATED (families) -->
 
 ### What the class index never covered: the C surface
@@ -14887,6 +14887,40 @@ one under `-Werror=nullable-to-nonnull-conversion`). `foundation-gate`: **OK**; 
 `NSKeyValueSharedObservers` and its snapshot, and `NSSimpleCString` (the scope question §62.81 stated) — plus the
 markdown importer and run-loop observers owed as things to BUILD, and the spelling engine still open on language
 grounds.
+
+
+## §62.90 — FOUR SCOPE ROWS DECLINED BY NAME, SO THE LEDGER CONTAINS ONLY WORK THAT CAN BE DONE (2026-09-26)
+
+**THE USER'S DECISION, RECORDED HERE BECAUSE DECLINING APPLE API IS A SCOPE DECISION AND NOT A FINDING:** four
+rows that had been sitting OPEN as questions are now **struck as `declined`**, each with its ground —
+`NSSimpleCString` (**documented with two ivars and NO API**: an implementation detail a conforming application
+cannot call, so there is nothing to implement and a stub class is refused by the project's own rule),
+`NSKeyValueSharedObservers` and its `NSKeyValueSharedObserversSnapshot` (documented with no usable surface), and
+`NSGarbageCollector` (**there is no GC runtime in this system** — Apple removed the collector and this library
+never had one, so a class whose whole surface is "the collector" has nothing to speak to). `class struck` 48 →
+**52**; `class open` **6 → 2**.
+
+**AND IT HAD TO GO THROUGH THE SWEEP RATHER THAN THE LEDGER.** The ledger's status column is generated, so a
+decline is expressed in the sweep's own data — `DECLINED_ROOTS` for a class (which strikes its members with it)
+and `DECLINED_SYMBOLS` for a free-standing row — and then `--refresh`, `--families --write`, `--check`. Two GC-era
+OPTIONS came along: `NSCollectorDisabledOption` and `NSScannedOption` exist only to configure the collector, so
+they go with it.
+
+**AND THE ONE DISTINCTION THAT MATTERED, WHICH IS THE SAME RULE THAT KEEPS `NSHostByteOrder`:** `NSMakeCollectable`
+and `NSReallocateCollectable` are **NOT** struck. They are SHIPPED ordinary helpers that stand on their own, and
+**striking a shipped row would have meant deleting working code rather than flipping a row** — a decline is for
+work that will not be done, not for work already done. `NSAllocateCollectable` stays struck as it was, for its own
+32-bit-only reason.
+
+**WHAT IS LEFT OPEN IS NOW EXACTLY WHAT WILL BE BUILT: two classes.** `NSDistantObjectRequest` (which lands with
+`NSConnectionDelegate` and the `NSException` coding it needs, §62.91) and `NSExtensionContext` with
+`NSExtensionRequestHandling` and `NSExtensionItemsAndErrorsKey`. **The fall from six to two is a SCOPE decision
+rather than progress in implementing something** — said plainly because a shrinking open count reads like
+achievement and this one is a statement of intent.
+
+**VERIFIED.** `foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**;
+`foundation-gate`: **OK**; `--unimplemented`: **0 NEW** (a struck row is not a declaration, so nothing new is
+owed).
 
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)

@@ -22,9 +22,9 @@
 # and its members keep their ObjC names; this file's first version excluded them
 # on the path marker, which hid real ObjC constants from the ledger.
 #
-# why the struck rows are struck: 32-bit-only 13, declined 348, os-version-constant 110, swift-only 22
+# why the struck rows are struck: 32-bit-only 13, declined 354, os-version-constant 110, swift-only 22
 #
-# AND 338 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# AND 335 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): to support porting older Mac applications, all items removed for being
 # deprecated are un-deprecated in Argentum Foundation and added to the work list. They carry
 # `deprecated` in this column, which says what KIND of work a row is - only the grounds §11.5
@@ -34,11 +34,11 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  219   open    6   struck   48
+#   class      shipped  219   open    2   struck   52
 #   protocol   shipped   37   open    3   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  147   open    4   struck    9
-#   case       shipped 1184   open   43   struck   75
+#   case       shipped 1184   open   41   struck   77
 #   func       shipped  165   open   12   struck   12
 #   var        shipped  659   open   48   struck  207
 #   typealias  shipped   67   open    4   struck    5
@@ -243,7 +243,7 @@ case	shipped	NSCoderValueNotFoundError	NSCoder	Files and Data Persistence / Keye
 case	shipped	NSCoderValueNotFoundError	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
 case	shipped	NSCollectionChangeInsert	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Types of Ordered Collection Changes	-	objc
 case	shipped	NSCollectionChangeRemove	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Types of Ordered Collection Changes	-	objc
-case	open	NSCollectorDisabledOption		Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
+case	struck	NSCollectorDisabledOption		Low-Level Utilities / Legacy / Legacy / Constants	declined	objc
 case	open	NSCompressionErrorMaximum	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
 case	open	NSCompressionErrorMinimum	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
 case	open	NSCompressionFailedError	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
@@ -854,7 +854,7 @@ case	shipped	NSRoundUp	NSDecimalNumberBehaviors	Fundamentals / Numbers / Using r
 case	struck	NSSaveOptionsAsk	NSCloseCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSSaveOptionsNo	NSCloseCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSSaveOptionsYes	NSCloseCommand	App Support / Script Commands / Constants / Constants	declined	objc
-case	open	NSScannedOption		Low-Level Utilities / Legacy / Legacy / Constants	deprecated	objc
+case	struck	NSScannedOption		Low-Level Utilities / Legacy / Legacy / Constants	declined	objc
 case	shipped	NSSecondCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	shipped	NSSecondCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSSharedPublicDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
@@ -1414,7 +1414,7 @@ class	shipped	NSFileSecurity		Files and Data Persistence / Managed file access	-
 class	shipped	NSFileVersion		Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
 class	shipped	NSFileWrapper		Files and Data Persistence / Managed file access	-	objc
 class	shipped	NSFormatter		Fundamentals / Custom formatters	-	objc
-class	open	NSGarbageCollector		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	struck	NSGarbageCollector		Low-Level Utilities / Legacy / Legacy	declined	objc
 class	struck	NSGetCommand		App Support / Script Commands	declined	objc
 class	shipped	NSHTTPCookie		Networking / Essentials / Creating a session / Setting cookie policies	-	objc
 class	shipped	NSHTTPCookieStorage		Networking / Cookies	-	objc
@@ -1432,8 +1432,8 @@ class	shipped	NSInvocation		Low-Level Utilities / Invocations	-	objc
 class	shipped	NSInvocationOperation		App Support / Operations	-	objc
 class	shipped	NSItemProvider		App Support / Attachments	-	objc
 class	shipped	NSJSONSerialization		Files and Data Persistence / JSON	-	objc
-class	open	NSKeyValueSharedObservers		Reference / Classes	-	objc
-class	open	NSKeyValueSharedObserversSnapshot		Reference / Classes	-	objc
+class	struck	NSKeyValueSharedObservers		Reference / Classes	declined	objc
+class	struck	NSKeyValueSharedObserversSnapshot		Reference / Classes	declined	objc
 class	shipped	NSKeyedArchiver		Files and Data Persistence / Keyed Archivers	-	objc
 class	shipped	NSKeyedUnarchiver		Files and Data Persistence / Keyed Archivers	-	objc
 class	shipped	NSLengthFormatter		Fundamentals / Deprecated	deprecated	objc
@@ -1526,7 +1526,7 @@ class	struck	NSScriptWhoseTest		App Support / Object Matching Tests	declined	obj
 class	shipped	NSSecureUnarchiveFromDataTransformer		Files and Data Persistence / Keyed Archivers	-	objc
 class	shipped	NSSet		Fundamentals / Basic Collections	-	objc
 class	struck	NSSetCommand		App Support / Script Commands	declined	objc
-class	open	NSSimpleCString		Reference / Classes	-	objc
+class	struck	NSSimpleCString		Reference / Classes	declined	objc
 class	shipped	NSSocketPort		Low-Level Utilities / Sockets	-	objc
 class	shipped	NSSocketPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSSortDescriptor		Fundamentals / Sorting	-	objc
