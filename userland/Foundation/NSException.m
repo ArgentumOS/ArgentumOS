@@ -9,6 +9,7 @@
  */
 
 #import <Foundation/NSException.h>
+#import <Foundation/NSCoder.h>
 #import <Foundation/NSThread.h>
 #include <objc/objc-exception.h>	/* the runtime's uncaught hook: the only code that KNOWS */	/* the handler lives in the thread dictionary */
 #import <Foundation/NSDictionary.h>
@@ -80,6 +81,30 @@ NSExceptionName const NSParseErrorException = @"NSParseErrorException";
 - (NSDictionary *)userInfo
 {
 	return _userInfo;
+}
+
+/* --- THE CODER DOORS (§62.91: they were missing, and the DO reply needs them) --------------------- */
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	[coder encodeObject:_name forKey:@"name"];
+	[coder encodeObject:_reason forKey:@"reason"];
+	[coder encodeObject:_userInfo forKey:@"userInfo"];
+}
+
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	id name = [coder decodeObjectForKey:@"name"];
+	id reason = [coder decodeObjectForKey:@"reason"];
+	id userInfo = [coder decodeObjectForKey:@"userInfo"];
+
+	if (name == nil) {
+		/* AN EXCEPTION WITHOUT A NAME IS NOT ONE — the initialiser refuses that — so an archive carrying none
+		 * is refused here rather than handed on as an object every reader would trip over. */
+		[self release];
+		return nil;
+	}
+	return [self initWithName:name reason:reason userInfo:userInfo];
 }
 
 - (void)raise

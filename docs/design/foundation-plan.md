@@ -3538,7 +3538,7 @@ vanishing.
 | **Fundamentals / Unique Identifiers** | all classes shipped | — |
 | **Low-Level Utilities / Copying** | all classes shipped | — |
 | **Low-Level Utilities / Invocations** | all classes shipped | — |
-| **Low-Level Utilities / Legacy** | 2 open; 1 STRUCK: `NSGarbageCollector` | `NSConnectionDelegate`, `NSDistantObjectRequest` |
+| **Low-Level Utilities / Legacy** | 1 STRUCK: `NSGarbageCollector` | — |
 | **Low-Level Utilities / Memory Management** | all classes shipped | — |
 | **Low-Level Utilities / Object Basics** | all classes shipped | — |
 | **Low-Level Utilities / Remote Objects** | all classes shipped | — |
@@ -14921,6 +14921,62 @@ achievement and this one is a statement of intent.
 **VERIFIED.** `foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**;
 `foundation-gate`: **OK**; `--unimplemented`: **0 NEW** (a struck row is not a declaration, so nothing new is
 owed).
+
+
+## §62.91 — THE INTERCEPTION: A REQUEST A DELEGATE ANSWERS ITSELF, AND AN EXCEPTION THAT CROSSES (2026-09-26)
+
+**TWO ROWS: `NSDistantObjectRequest` and `NSConnectionDelegate`** — the port family's last owed pieces. `class
+shipped` 219 → **220** (open 2 → **1**), `protocol` 37 → **38**.
+
+**AND THE UNIT BEGAN BY FIXING A GAP THE FEATURE MADE VISIBLE.** Scoping it showed that
+`NSDistantObjectRequest`'s only behavioural door is `-replyWithException:`, which must deliver an `NSException` —
+and **THIS LIBRARY'S `NSException` WAS MISSING THE `NSCoding` CONFORMANCE APPLE DECLARES** (`<NSCopying>` here,
+`<NSCopying, NSCoding>` there). Since the DO wire refuses an unarchivable object ON THE SENDING SIDE (§62.53), an
+exception could not have crossed at all. The user chose to do it properly, so `NSException` gained the two coder
+doors over `name`/`reason`/`userInfo`, and the probe asserts that round trip **on its own** — a failure there would
+make the interception check inexplicable.
+
+**THE FEATURE, AND THE FOUR DECISIONS INSIDE IT:**
+
+1. **THE DELEGATE GETS FIRST REFUSAL, BEFORE THE ROOT OBJECT IS CALLED.** A connection with a delegate is offered
+   the request through `-connection:handleRequest:`; YES means the delegate OWNS THE REPLY — the root object is
+   not called and the connection sends nothing. The probe proves it with the service's own COUNTER (zero calls),
+   because an answer alone cannot tell the two paths apart.
+2. **ONE SENDER FOR EVERY ANSWER.** The connection's reply path (to a NAME, §62.56) is now a single method used by
+   the ordinary path and by `-replyWithException:` alike, so the wire has one shape rather than two that drift; it
+   gained a THIRD ARM — `exception` — beside `value` and `error`.
+3. **AN EXCEPTION IS RAISED AT THE DESTINATION**, which is Apple's words for the door and now measurable: the
+   client holds the exception across the unwind (the pool must not free the object being thrown) and re-raises it.
+4. **THE CONVERSATION IS MADE ONCE, LAZILY, AND THE DELEGATE NAMES IT** (`-createConversationForConnection:`,
+   whose documented default is a plain `NSObject`), and it travels ON the request with the connection and the
+   invocation.
+
+**TWO DOORS DECLARED, THREE ABSENT WITH THEIR GROUNDS** — the discipline this header already applied to
+`NSFailedAuthenticationException`: `-connection:shouldMakeNewConnection:` is NOT declared (there are no PARENT AND
+CHILD connections here: an in-process connection is a socket pair the process already holds, so there is no child
+to allow), and neither are the two authentication doors (nothing in this library authenticates). The probe asserts
+their ABSENCE rather than assuming it.
+
+**AND A REQUEST HAS ONE REPLY: A SECOND `-replyWithException:` RAISES.** The client stopped waiting after the first
+answer, so a second would vanish — silence being the worst outcome, it raises instead.
+
+**THE PROBE FOUND ONE DEFECT AND THE DIAGNOSTIC LOCALISED IT IN A SINGLE RUN.** The check that the request carries
+its connection, invocation and conversation failed — and the FIRST thing done was to make it PRINT the three flags
+plus the count, which said immediately: connection ✓, conversation ✓, **selector ✗**. The cause was the probe's
+own `==` between two SELs, a comparison **this runtime does not guarantee** (Foundation's stage-F work recorded
+the same fact, and its fix was `sel_isEqual`). One word in the probe, and the unit was passing 10/10.
+
+**VERIFIED.** Host: `make host-foundation-run` → **47 probes, no failure**. Guest: `make testimg` then
+`make test TESTS='foundation_d*object*'` → **`TESTS-OK 2/2 case(s), 12/12 check(s) in 13s`** — the NEW case AND
+**the shipped port family's own case**, which matters because this unit modified TWO shipped classes
+(`NSConnection` and `NSException`). The probe compiles under the tier's toolchain with **zero** warnings. The
+library builds with **zero** warnings. `foundation-gate`: **OK**; `foundation-sweep --refresh` + `--families
+--write` + `--check`: **consistent**; `--unimplemented`: **0 NEW**.
+
+**WHERE THE THREAD STANDS: ONE OPEN CLASS.** `NSExtensionContext`, with `NSExtensionRequestHandling` and
+`NSExtensionItemsAndErrorsKey`, is all that is left of the ledger's class list — every other open name is a
+protocol member or a case inside a shipped family. The markdown importer and the run-loop observers remain owed as
+things to BUILD, and the spelling engine is still open on language grounds.
 
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)

@@ -34,8 +34,8 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  219   open    2   struck   52
-#   protocol   shipped   37   open    3   struck    5
+#   class      shipped  220   open    1   struck   52
+#   protocol   shipped   38   open    2   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  147   open    4   struck    9
 #   case       shipped 1184   open   41   struck   77
@@ -1394,7 +1394,7 @@ class	shipped	NSDictionary		Fundamentals / Basic Collections	-	objc
 class	shipped	NSDimension		Fundamentals / Essentials	-	objc
 class	shipped	NSDirectoryEnumerator		Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 class	shipped	NSDistantObject		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-class	open	NSDistantObjectRequest		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+class	shipped	NSDistantObjectRequest		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSDistributedLock		Low-Level Utilities / Threads and Locking	-	objc
 class	shipped	NSDistributedNotificationCenter		App Support / Cross-Process Notifications	-	objc
 class	shipped	NSEnergyFormatter		Fundamentals / Deprecated	deprecated	objc
@@ -2222,7 +2222,7 @@ macro	shipped	NS_VOIDRETURN	NSException	App Support / Exceptions / Legacy Macros
 macro	shipped	NS_WARN_UNUSED_RESULT		Reference / Macros	-	objc
 protocol	shipped	NSCacheDelegate		Fundamentals / Purgeable Collections / Managing the Delegate	-	objc
 protocol	shipped	NSCoding		Files and Data Persistence / Adopting Codability	-	objc
-protocol	open	NSConnectionDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
+protocol	shipped	NSConnectionDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 protocol	shipped	NSCopying		Low-Level Utilities / Copying	-	objc
 protocol	shipped	NSDecimalNumberBehaviors		Fundamentals / Numbers / Using reference types / Managing Behavior	-	objc
 protocol	shipped	NSDiscardableContent		Fundamentals / Purgeable Collections / Managing Discardable Content	-	objc

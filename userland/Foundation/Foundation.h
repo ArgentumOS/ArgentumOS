@@ -79,6 +79,7 @@
 #import <Foundation/NSUbiquitousKeyValueStore.h>
 #import <Foundation/NSBundleResourceRequest.h>
 #import <Foundation/NSUserActivity.h>
+#import <Foundation/NSDistantObjectRequest.h>
 #import <Foundation/NSIndexSet.h>
 #import <Foundation/NSIndexPath.h>
 #import <Foundation/NSLocale.h>

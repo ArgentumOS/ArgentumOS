@@ -275,6 +275,8 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSUbiquitousKeyValueStore.h \
 	$(FOUNDATION_SRC)/NSBundleResourceRequest.h \
 	$(FOUNDATION_SRC)/NSUserActivity.h \
+	$(FOUNDATION_SRC)/NSDistantObjectRequest.h \
+	$(FOUNDATION_SRC)/FNDistantObjectRequest.h \
 	$(FOUNDATION_SRC)/FNUserActivity.h \
 	$(FOUNDATION_SRC)/FNBundleResourceRequest.h \
 	$(FOUNDATION_SRC)/FNSUbiquitousStore.h \
@@ -1362,6 +1364,15 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_useractivity.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_useractivity"
+	# foundation_distantobjectrequest: §62.91's acceptance - the interception that lets a connection's
+	# delegate answer a request itself, closing the port family's last owed pieces. ONE unit, Foundation only:
+	# a published name, a proxy told its protocol, and a delegate that answers with a value or an exception.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_distantobjectrequest.m -o .build/probe-foundation_distantobjectrequest.o
+	$(MUSL64_OBJC) .build/probe-foundation_distantobjectrequest.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_distantobjectrequest"
 	# foundation_downloadresume: §62.31's acceptance - RESUME end to end, WITH A REAL SERVER. The probe is
 	# the server: it sends half a body and then STALLS mid-transfer (which is what makes the cancel
 	# deterministic), resumes from the data its own cancel produced, and asserts the resumed request carries

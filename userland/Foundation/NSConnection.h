@@ -36,9 +36,33 @@
 #import <Foundation/NSObject.h>
 #import <Foundation/NSPort.h>
 
-@class NSPort, NSPortNameServer, NSDistantObject, NSRunLoop, NSString;
+@class NSPort, NSPortNameServer, NSDistantObject, NSDistantObjectRequest, NSRunLoop, NSString;
+@class NSConnection;	/* the protocol below names it, and the class comes after */
+
 
 NS_ASSUME_NONNULL_BEGIN
+
+/* THE CONNECTION'S DELEGATE — AND **TWO OF APPLE'S DOORS ARE DECLARED, THREE ARE ABSENT WITH THEIR GROUNDS**,
+ * which is the same discipline this header already applies to `NSFailedAuthenticationException`:
+ *   * `-connection:shouldMakeNewConnection:` is NOT declared: there are no PARENT AND CHILD connections here.
+ *     A child connection exists when a named service is contacted and forms one; this library's connections are
+ *     socket pairs the process already holds (§62.56), so there is no child to allow or refuse.
+ *   * the two AUTHENTICATION doors are NOT declared: `NSFailedAuthenticationException` "EXISTS AND IS NEVER
+ *     RAISED" for the same reason — nothing in this library authenticates.
+ * The two that ARE here are the two this library consults. */
+@protocol NSConnectionDelegate <NSObject>
+@optional
+
+/* THE INTERCEPTION POINT: return YES to say the delegate has taken responsibility for the request (it will call
+ * `-replyWithException:` — now or later), or NO to let the connection serve it as if no delegate existed. */
+- (BOOL)connection:(NSConnection *)connection handleRequest:(NSDistantObjectRequest *)doreq;
+
+/* THE CONVERSATION'S TOKEN, made once per connection when the first request arrives. Apple's default is an
+ * `NSObject` instance, and that is what this library uses when the delegate does not answer. */
+- (id)createConversationForConnection:(NSConnection *)connection;
+
+@end
+
 
 /* Posted when a connection is made, and when one is invalidated; the notification's object is the connection. */
 extern NSString *const NSConnectionDidInitializeNotification;
@@ -60,10 +84,17 @@ extern NSString *const NSFailedAuthenticationException;
 	BOOL _valid;
 	BOOL _waitingForReply;
 	id _replyValue;
+	id _delegate;			/* NOT retained: the delegate owns the connection, as Apple's does */
+	id _conversation;		/* made once, lazily, when a request first arrives */
 }
 
 + (nullable NSConnection *)connectionWithReceivePort:(nullable NSPort *)receivePort
 					    sendPort:(nullable NSPort *)sendPort;
+
+/* THE DELEGATE, NOT RETAINED — the connection is the thing a delegate usually owns, so keeping it alive would
+ * be the cycle Apple's `weak` delegate exists to avoid. */
+- (nullable id <NSConnectionDelegate>)delegate;
+- (void)setDelegate:(nullable id <NSConnectionDelegate>)anObject;
 
 /* THE SERVICE SIDE: make a connection that answers for `rootObject`, and publish it under `name`. */
 + (nullable NSConnection *)serviceConnectionWithName:(NSString *)name

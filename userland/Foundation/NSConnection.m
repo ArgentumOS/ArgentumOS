@@ -13,6 +13,9 @@
  */
 
 #import <Foundation/NSConnection.h>
+#import <Foundation/NSDistantObjectRequest.h>
+#import <Foundation/FNDistantObjectRequest.h>
+#import <Foundation/NSException.h>
 #import <Foundation/NSDistantObject.h>
 #import <Foundation/NSPortCoder.h>
 #import <Foundation/NSPortMessage.h>
@@ -45,6 +48,9 @@ static NSString *const FNArgumentsKey = @"arguments";
 static NSString *const FNReplyNameKey = @"reply";
 static NSString *const FNValueKey = @"value";
 static NSString *const FNErrorKey = @"error";
+/* THE THIRD ARM OF AN ANSWER (§62.91): a delegate may reply with an exception instead of a value, and the
+ * client RAISES it — which is Apple's contract for `-replyWithException:`. */
+static NSString *const FNExceptionKey = @"exception";
 
 /* A REPLY NAME NOBODY ELSE WILL MAKE, because two clients in one process must not answer each other's requests. */
 static NSUInteger gReplyCounter = 0;
@@ -225,9 +231,6 @@ static NSString *fn_next_reply_name(void)
 	NSMethodSignature *signature = (selector != NULL) ? [_rootObject methodSignatureForSelector:selector] : nil;
 	NSString *error = nil;
 	id value = nil;
-	NSMutableDictionary *reply;
-	NSPort *replyPort;
-	NSPortCoder *coder;
 
 	if (_rootObject == nil) {
 		error = @"this connection answers for no object";
@@ -264,24 +267,77 @@ static NSString *fn_next_reply_name(void)
 			/* THE SELECTOR HAS TO BE SET AS WELL AS THE TARGET: `-invokeWithTarget:` sets only the target, and
 			 * an invocation without a selector is not a call — the library's own message says so. */
 			[invocation setSelector:selector];
+			/* THE DELEGATE GETS FIRST REFUSAL: a connection with one is offered the request BEFORE the root
+			 * object is called, and a delegate that answers YES OWNS THE REPLY — the root object is not called
+			 * and nothing is sent from here, because the request sends the answer when the delegate says so. */
+			if (_delegate != nil &&
+			    [(id)_delegate respondsToSelector:@selector(connection:handleRequest:)]) {
+				NSDistantObjectRequest *doreq =
+					[[NSDistantObjectRequest alloc] fnInitWithConnection:self
+										   conversation:[self fnConversation]
+										     invocation:invocation
+										      replyName:replyName];
+
+				if ([(id <NSConnectionDelegate>)_delegate connection:self handleRequest:doreq]) {
+					[doreq release];
+					return;
+				}
+				[doreq release];
+			}
 			[invocation invokeWithTarget:_rootObject];
 			if ([signature methodReturnLength] > 0 && returnType != NULL && returnType[0] == '@') {
 				[invocation getReturnValue:&value];
 			}
 		}
 	}
-	/* THE ANSWER GOES TO A NAME, because a port cannot be carried in a message. */
-	reply = [[NSMutableDictionary alloc] init];
-	if (error != nil) {
+	/* THE ANSWER GOES THROUGH THE ONE SENDER (§62.91), which is also what a delegate's `-replyWithException:`
+	 * uses — so the shape of an answer exists once. (The mutable dictionary still goes as it is: §62.57's point
+	 * about the archiver writing the class it was handed stands, it simply lives in the sender now.) */
+	[self fnReplyToName:replyName value:value error:error exception:nil];
+}
+
+/* ---- THE DELEGATE, THE CONVERSATION, AND THE ONE REPLY SENDER (§62.91) --------------------------- */
+
+- (nullable id <NSConnectionDelegate>)delegate { return _delegate; }
+
+- (void)setDelegate:(nullable id <NSConnectionDelegate>)anObject { _delegate = anObject; }
+
+/* THE CONVERSATION IS MADE ONCE, when the first request arrives — and the delegate NAMES it if it can, which is
+ * Apple's `-createConversationForConnection:` whose documented default is a plain `NSObject` instance. */
+- (id)fnConversation
+{
+	if (_conversation == nil) {
+		if (_delegate != nil &&
+		    [(id)_delegate respondsToSelector:@selector(createConversationForConnection:)]) {
+			_conversation = [(id <NSConnectionDelegate>)_delegate createConversationForConnection:self];
+		}
+		if (_conversation == nil) {
+			_conversation = [[NSObject alloc] init];
+		}
+	}
+	return _conversation;
+}
+
+/* ONE PLACE THAT SENDS AN ANSWER, used by the ordinary path and by a delegate's `-replyWithException:` alike, so
+ * the wire has one shape rather than two that could drift. AN EXCEPTION WINS over a value or an error, because a
+ * delegate that sends one has said what happened. */
+- (void)fnReplyToName:(NSString *)replyName value:(nullable id)value error:(nullable NSString *)error
+	    exception:(nullable NSException *)exception
+{
+	NSMutableDictionary *reply = [[NSMutableDictionary alloc] init];
+	NSPort *replyPort;
+	NSPortCoder *coder;
+
+	if (exception != nil) {
+		[reply setObject:exception forKey:FNExceptionKey];
+	} else if (error != nil) {
 		[reply setObject:error forKey:FNErrorKey];
 	} else if (value != nil) {
 		[reply setObject:value forKey:FNValueKey];
 	}
+	/* THE ANSWER GOES TO A NAME, because a port cannot be carried in a message. */
 	replyPort = [[NSPortNameServer defaultPortNameServer] portForName:replyName];
 	coder = [[NSPortCoder alloc] initWithReceivePort:nil sendPort:replyPort components:nil];
-	/* A MUTABLE DICTIONARY GOES AS IT IS, and that is a §62.57 change: the archiver writes the class it was handed
-	 * (`NSMutableDictionary`) and the reader knows BOTH spellings, so the immutable copy that used to be made here
-	 * for the property-list serialiser's sake buys nothing now. */
 	[coder encodeObject:reply];
 	[coder dispatch];
 	[coder release];
@@ -320,6 +376,7 @@ static NSString *fn_next_reply_name(void)
 	NSMutableDictionary *request = [[NSMutableDictionary alloc] init];
 	NSDictionary *reply;
 	NSPortCoder *coder;
+	id exception = nil;
 	NSString *error = nil;
 	id value = nil;
 	NSUInteger i;
@@ -385,12 +442,22 @@ static NSString *fn_next_reply_name(void)
 		_replyValue = nil;		/* taken by the caller of this method below, then released */
 		error = [reply objectForKey:FNErrorKey];
 		value = [reply objectForKey:FNValueKey];
+		/* HELD ACROSS THE RAISE: this method unwinds through the caller, and an object released by the pool on
+		 * the way out is an object nobody can catch. */
+		exception = [[reply objectForKey:FNExceptionKey] retain];
 		[reply autorelease];
 	}
 	[arguments release];
 	[request release];
 	if (outError != NULL) {
 		*outError = error;
+	}
+	if (exception != nil) {
+		/* AN EXCEPTION FROM THE OTHER END IS RAISED HERE — Apple, in words: it "is automatically raised when it
+		 * arrives at its destination". The autorelease is the belt: if raising ever returned, our retain is
+		 * given back. */
+		[exception autorelease];
+		[exception raise];
 	}
 	return value;
 }

@@ -22,6 +22,7 @@
 #define FOUNDATION_NSEXCEPTION_H
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSCoding.h>
 #include <stdarg.h>
 
 @class NSString;
@@ -62,7 +63,10 @@ extern NSString *const NSInvalidArgumentException;
 extern NSString *const NSInternalInconsistencyException;
 extern NSString *const NSMallocException;
 
-@interface NSException : NSObject <NSCopying>
+/* **`NSCoding` IS PART OF APPLE'S DECLARATION AND WAS MISSING HERE** (§62.91). It is not decoration: an
+ * exception is what crosses a distributed-objects REPLY (`-replyWithException:`), and the DO wire refuses an
+ * unarchivable object on the SENDING side — so without these two doors the reply path simply cannot carry one. */
+@interface NSException : NSObject <NSCopying, NSCoding>
 {
 	NSString *_name;
 	NSString *_reason;
@@ -82,6 +86,12 @@ extern NSString *const NSMallocException;
 - (nullable NSDictionary *)userInfo;
 
 - (void)raise;
+
+/* THE CODER DOORS. The KEYS are this library's (Apple's are private) and follow the house convention — the
+ * plain property names, as NSTermOfAddress and NSMorphology write theirs. */
+- (void)encodeWithCoder:(NSCoder *)coder;
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
+
 + (void)raise:(NSString *)name format:(NSString *)format, ...;
 + (void)raise:(NSString *)name format:(NSString *)format arguments:(va_list)arguments;
 
