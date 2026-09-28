@@ -156,7 +156,8 @@ BOOL NSCompareMapTables(NSMapTable *table1, NSMapTable *table2);
 void *NSMapGet(NSMapTable *table, const void *key);
 void NSMapInsert(NSMapTable *table, const void *key, const void *value);
 void NSMapInsertKnownAbsent(NSMapTable *table, const void *key, const void *value);
-void *NSMapInsertIfAbsent(NSMapTable *table, const void *key, const void *value);
+/* NULL when the entry was inserted, the existing value when it was not - see NSHashTable's note. */
+void * _Nullable NSMapInsertIfAbsent(NSMapTable *table, const void *key, const void *value);
 void NSMapRemove(NSMapTable *table, const void *key);
 BOOL NSMapMember(NSMapTable *table, const void *key,
 		 void * _Nullable * _Nullable originalKey,

@@ -13936,6 +13936,54 @@ kind-enum confusion in the XML family (`NSXMLNodeKind` passed where `NSXMLDTDNod
 that can never match — 6 warnings across `NSXMLDocument`, `NSXMLDTD` and `NSXMLParser`). Each is a defect with its
 diagnosis attached; phase 2 executes them.
 
+## §62.71 — THE WARNING SWEEP, PHASE 2: SEVEN DEFECTS THE COMPILER HAD ALREADY NAMED (2026-09-26)
+
+**84 → 72 warnings, and five whole classes at ZERO:** `-Wincompatible-pointer-types` (5), `-Wpointer-bool-conversion`
+(1), `-Wswitch` (1), `-Wenum-compare` (1) and `-Wnonnull` (3). The seven fixes, each with the diagnosis that
+produced it:
+
+1. **`NSFileManager`'s link comparison held STRINGS in `NSData` slots** — the branch compares `fn_link_target`'s
+   answers, which are paths. The type confusion was invisible to a reader of either branch and reported by the
+   compiler three times.
+2. **`NSHTTPCookie`'s `-commentURL` promised an `NSURL` and returned a string** — a promise the return did not
+   keep. It now BUILDS the URL from the attribute's text, which is what a Set-Cookie header carries.
+3. **`NSXMLNode`'s `-objectValue` was declared `NSString *` and answered the NODE** — Apple's type for that door is
+   `id`, and this class's answer (the node itself, since these classes hold strings) is honest under it. A
+   fidelity fix as much as a warning fix.
+4. **`NSHashInsertIfAbsent`, `NSMapInsertIfAbsent` and `NSNextHashEnumeratorItem` return NULL ON PURPOSE** — the
+   object already present, or the end of the enumeration. The declarations were what was wrong, not the returns;
+   they are `_Nullable` now. *(And the annotation goes on the POINTER: `void * _Nullable f(...)`, not
+   `_Nullable void *f(...)` — that cost one build, and the compiler said so in one line.)*
+5. **`NSSocketPort`'s `if (listen && …)` tested THE LIBC FUNCTION.** The method's parameter is `shouldListen`; the
+   bare name in that scope is `listen(2)`, whose address is never null, so the condition was always true and **the
+   ephemeral-port path was taken even when the caller had NOT asked to listen.** The line below it used the
+   parameter correctly. This is the one change here that alters BEHAVIOUR, and it is why the guest case for that
+   family was run: `foundation_port` → **`ok=11 fail=0`**.
+6. **`NSXMLDTD` had a DEAD `case NSXMLNotationDeclarationKind:`** inside a switch over `_dtdKind` ("case value not
+   in enumerated type") — a notation declaration is a NODE kind, so the arm could never run and a notation node
+   never printed its own `<!NOTATION>` form. It is asked before the switch, against `[self kind]`.
+7. **`NSXMLParser` asked the same wrong question** in an `else if` chain (`kind == NSXMLNotationDeclarationKind`
+   where `kind` is a DTD kind) and now asks the node's kind.
+
+**VERIFIED.** Host: `make host-foundation-run` — **37 probes, every tally `fail=0`**. Guest: `make testimg` +
+`make test TESTS='foundation_collection,foundation_coder'` → **`TESTS-OK 2/2 case(s), 12/12 check(s) in 13s`**,
+plus **`foundation_port`** for the socket condition (**`ok=11 fail=0`**). `foundation-gate`: **OK — 543 files, 203
+of 207 public headers**; `--unimplemented`: **0 NEW**; sweep consistent.
+
+**WHAT IS LEFT — 72 warnings, and the three items among them that need a DECISION rather than a patch:**
+`-Wobjc-method-access` 29 + `-Wreceiver-forward-class` 11 (the mechanical pair: mostly a missing import, and the
+class that hid §62.69's selector typo) · `-Wincomplete-implementation` 11 + `-Wprotocol` 6 (the standing rule:
+declared without a definition — `NSProxy`'s five `NSObject` protocol methods, `NSXMLNode`'s five mutating doors,
+`NSString`'s five, `NSSocketPort`'s `sendBeforeDate:…`, and a download-delegate method) ·
+`-Wenum-conversion` 4 (the XML `-initWithKind:` call sites, where a DTD node's initializer and the node-level one
+carry DIFFERENT enums and the writer meant one of them — that needs a fidelity read, not a cast) ·
+`-Wobjc-protocol-method-implementation` 1 (**`NSString` has ONE implementation of
+`-enumerateSubstringsInRange:options:usingBlock:` and it lives in a category** while the interface declares it: a
+hazard rather than a bug today, and moving it is surgery in a 2600-line file) ·
+`-Wincompatible-pointer-types-discards-qualifiers` 1 (**`NSFileCoordinator`'s block captures a struct BY VALUE and
+mutates it through `&`** — the mutation is thrown away, which is a real bug, but the fix has to decide the struct's
+LIFETIME first: a captured pointer could dangle when the block runs after the function returns).
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else

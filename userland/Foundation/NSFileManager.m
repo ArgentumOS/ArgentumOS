@@ -1451,9 +1451,14 @@ static NSString *fn_link_target(NSString *path, int *outErrno)
 		return NO;		/* a link never equals the file it points at */
 	}
 	if (S_ISLNK(a.st_mode)) {
-		mine = fn_link_target(path1, NULL);
-		theirs = fn_link_target(path2, NULL);
-		return mine != nil && [mine isEqualToString:theirs];
+		/* STRINGS, NOT DATA, AND THAT IS WHAT THIS BRANCH IS ABOUT: a link's "contents" is its TARGET PATH, and
+		 * fn_link_target returns an NSString. The values were being assigned to the NSData slots the CONTENT
+		 * branch below uses - the kind of type confusion the compiler reports and a reader of either branch
+		 * would not notice. */
+		NSString *mineLink = fn_link_target(path1, NULL);
+		NSString *theirsLink = fn_link_target(path2, NULL);
+
+		return mineLink != nil && [mineLink isEqualToString:theirsLink];
 	}
 	if (S_ISDIR(a.st_mode) || S_ISDIR(b.st_mode)) {
 		if (!S_ISDIR(a.st_mode) || !S_ISDIR(b.st_mode)) {

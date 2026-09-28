@@ -112,7 +112,10 @@ typedef enum {
 - (void)setName:(nullable NSString *)name;
 - (nullable NSString *)stringValue;
 - (void)setStringValue:(nullable NSString *)stringValue;
-- (nullable NSString *)objectValue;			/* the node itself here: this tree holds no Cocoa objects */
+/* APPLE'S TYPE FOR THIS DOOR IS `id`, NOT NSString, and the difference is this class's answer: a node's object
+ * value IS the node when the node has no Cocoa object of its own - which is every node here, since this tree's
+ * XML classes hold strings. Declaring a narrow type made the return a lie the compiler reported. */
+- (nullable id)objectValue;
 - (nullable NSString *)URI;
 - (void)setURI:(nullable NSString *)URI;
 - (NSUInteger)index;

@@ -203,7 +203,7 @@ static NSString *fn_xml_escape_attribute(NSString *text, BOOL singleQuoted)
 	[_stringValue release];
 	_stringValue = [stringValue copy];
 }
-- (nullable NSString *)objectValue { return self; }
+- (nullable id)objectValue { return self; }
 - (nullable NSString *)URI { return _uri; }
 - (void)setURI:(nullable NSString *)URI { [_uri release]; _uri = [URI copy]; }
 

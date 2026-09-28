@@ -7,6 +7,7 @@
 
 #import <Foundation/NSHTTPCookie.h>
 #import <Foundation/NSDictionary.h>
+#import <Foundation/NSURL.h>
 #import <Foundation/NSNumber.h>
 #import <Foundation/NSDateFormatter.h>
 #import <Foundation/NSLocale.h>
@@ -149,7 +150,13 @@ static NSDate *fn_parse_expiry(NSString *text)
 - (BOOL)isHTTPOnly { return _httpOnly; }
 - (NSHTTPCookieStringPolicy)sameSitePolicy { return _sameSitePolicy; }
 - (NSString *)comment { return _comment; }
-- (NSURL *)commentURL { return _commentURL; }
+/* APPLE'S TYPE IS NSURL AND THE STORAGE IS THE ATTRIBUTE'S TEXT, so the getter CONVERTS: a Set-Cookie header
+ * carries a URL as characters, and a getter that promised an NSURL while handing back a string was a promise the
+ * return did not keep. */
+- (nullable NSURL *)commentURL
+{
+	return _commentURL != nil ? [NSURL URLWithString:_commentURL] : nil;
+}
 - (NSDictionary *)properties { return _properties; }
 
 /* A COOKIE WITH NO EXPIRY DIES WITH THE SESSION, and so does one carrying the old `Discard` attribute -

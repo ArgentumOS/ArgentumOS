@@ -96,7 +96,10 @@ static NSData *fn_sockaddr_data(NSSocketNativeHandle fd, BOOL peer)
 	/* SO_REUSEADDR, because a server that is restarted is not a failure — and because the probe would
 	 * otherwise be able to bind its port exactly once per guest boot. */
 	(void)setsockopt(_socket, SOL_SOCKET, SO_REUSEADDR, &reuse, (socklen_t)sizeof(reuse));
-	if (listen && storage.ss_family == AF_INET &&
+	/* `shouldListen`, NOT `listen`: the unqualified name in this scope is the LIBC FUNCTION, whose address is
+	 * never null, so this condition was always true and the ephemeral-port path was taken even when the caller
+	 * had NOT asked to listen. The line below used the parameter correctly; this one did not. */
+	if (shouldListen && storage.ss_family == AF_INET &&
 	    ((struct sockaddr_in *)&storage)->sin_port == 0) {
 		/* PORT 0 PLUS A LISTEN IS THE CASE THIS KERNEL CANNOT DO: see -fnBindEphemeral:. */
 		return [self fnBindEphemeral:(struct sockaddr_in *)&storage];

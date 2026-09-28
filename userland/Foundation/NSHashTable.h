@@ -144,13 +144,18 @@ BOOL NSCompareHashTables(NSHashTable *table1, NSHashTable *table2);
 void *NSHashGet(NSHashTable *table, const void *pointer);
 void NSHashInsert(NSHashTable *table, const void *pointer);
 void NSHashInsertKnownAbsent(NSHashTable *table, const void *pointer);
-void *NSHashInsertIfAbsent(NSHashTable *table, const void *pointer);
+/* NULL IS AN ANSWER, NOT AN ERROR: the function returns the object that was ALREADY present, or NULL when it
+ * inserted a new one (Apple's contract). The return was declared non-null, which made the honest NULL a lie the
+ * compiler reported. */
+void * _Nullable NSHashInsertIfAbsent(NSHashTable *table, const void *pointer);
 void NSHashRemove(NSHashTable *table, const void *pointer);
 NSUInteger NSCountHashTable(NSHashTable *table);
 NSString *NSStringFromHashTable(NSHashTable *table);
 NSArray *NSAllHashTableObjects(NSHashTable *table);
 NSHashEnumerator NSEnumerateHashTable(NSHashTable *table);
-void *NSNextHashEnumeratorItem(NSHashEnumerator *enumerator);
+/* NULL IS THE END OF THE ENUMERATION (Apple's contract), not an error: the return was
+ * declared non-null and the honest NULL was reported as a lie. */
+void * _Nullable NSNextHashEnumeratorItem(NSHashEnumerator *enumerator);
 void NSEndHashTableEnumeration(NSHashEnumerator *enumerator);
 
 NS_ASSUME_NONNULL_END

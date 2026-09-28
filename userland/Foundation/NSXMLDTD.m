@@ -389,6 +389,18 @@ NSArray *FNDTDDeclarationNodes(NSString *declaration)
 	if ([self kind] != NSXMLDTDKind) {
 		return [super fnXMLStringWithOptions:options depth:depth];
 	}
+	/* A NOTATION DECLARATION IS A NODE KIND, NOT A DTD KIND, and testing it here - inside a switch over
+	 * `_dtdKind` - made the arm DEAD: the compiler said "case value not in enumerated type 'NSXMLDTDNodeKind'",
+	 * and a notation declaration therefore never printed its own <!NOTATION> form. It is asked BEFORE the switch,
+	 * against the node's own kind. */
+	if ([self kind] == NSXMLNotationDeclarationKind) {
+		if (_publicID != nil) {
+			return [NSString stringWithFormat:@"<!NOTATION %@ PUBLIC \"%@\" \"%@\">", name, _publicID,
+				_systemID != nil ? _systemID : @""];
+		}
+		return [NSString stringWithFormat:@"<!NOTATION %@ SYSTEM \"%@\">", name,
+			_systemID != nil ? _systemID : @""];
+	}
 	switch (_dtdKind) {
 	case NSXMLElementDeclarationAnyKind:
 	case NSXMLElementDeclarationEmptyKind:
@@ -397,13 +409,6 @@ NSArray *FNDTDDeclarationNodes(NSString *declaration)
 	case NSXMLElementDeclarationUndefinedKind:
 		return [NSString stringWithFormat:@"<!ELEMENT %@ %@>", name,
 			[value length] > 0 ? value : @"ANY"];
-	case NSXMLNotationDeclarationKind:
-		if (_publicID != nil) {
-			return [NSString stringWithFormat:@"<!NOTATION %@ PUBLIC \"%@\" \"%@\">", name, _publicID,
-				_systemID != nil ? _systemID : @""];
-		}
-		return [NSString stringWithFormat:@"<!NOTATION %@ SYSTEM \"%@\">", name,
-			_systemID != nil ? _systemID : @""];
 	default: {
 		NSString *kindText = name;
 
