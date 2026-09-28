@@ -34,13 +34,13 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  217   open    8   struck   48
+#   class      shipped  218   open    7   struck   48
 #   protocol   shipped   36   open    4   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  147   open    4   struck    9
 #   case       shipped 1184   open   43   struck   75
 #   func       shipped  165   open   12   struck   12
-#   var        shipped  655   open   52   struck  207
+#   var        shipped  658   open   49   struck  207
 #   typealias  shipped   66   open    5   struck    5
 #   struct     shipped   13   open    0   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1359,7 +1359,7 @@ class	shipped	NSAutoreleasePool		Low-Level Utilities / Memory Management	-	objc
 class	shipped	NSBackgroundActivityScheduler		App Support / System Interaction	-	objc
 class	shipped	NSBlockOperation		App Support / Operations	-	objc
 class	shipped	NSBundle		App Support / Bundle Resources	-	objc
-class	open	NSBundleResourceRequest		App Support / On-Demand Resources	deprecated	objc
+class	shipped	NSBundleResourceRequest		App Support / On-Demand Resources	deprecated	objc
 class	shipped	NSByteCountFormatter		Fundamentals / Data sizes	-	objc
 class	shipped	NSCache		Fundamentals / Purgeable Collections	-	objc
 class	shipped	NSCachedURLResponse		Networking / Cache behavior	-	objc
@@ -2369,9 +2369,9 @@ var	shipped	NSAssertionHandlerKey	NSThread	Low-Level Utilities / Threads and Loc
 var	shipped	NSAverageKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSBuddhistCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSBundleDidLoadNotification	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
-var	open	NSBundleResourceRequestLoadingPriorityUrgent	NSBundleResourceRequest	App Support / On-Demand Resources / Setting the download priority	deprecated	objc
-var	open	NSBundleResourceRequestLowDiskSpaceNotification	NSBundleResourceRequest	App Support / On-Demand Resources / Working with notifications	deprecated	swift-page
-var	open	NSBundleResourceRequestLowDiskSpaceNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
+var	shipped	NSBundleResourceRequestLoadingPriorityUrgent	NSBundleResourceRequest	App Support / On-Demand Resources / Setting the download priority	deprecated	objc
+var	shipped	NSBundleResourceRequestLowDiskSpaceNotification	NSBundleResourceRequest	App Support / On-Demand Resources / Working with notifications	deprecated	swift-page
+var	shipped	NSBundleResourceRequestLowDiskSpaceNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
 var	shipped	NSCalendarDayChangedNotification	NSCalendar	Fundamentals / Calendrical Calculations / Recognizing Notifications	-	swift-page
 var	shipped	NSCalendarDayChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSCalendarIdentifierBangla	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc

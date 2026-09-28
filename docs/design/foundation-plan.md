@@ -3471,7 +3471,7 @@ vanishing.
 | **App Support / Notifications** | all classes shipped | — |
 | **App Support / Object Matching Tests** | ALL STRUCK: `NSLogicalTest`, `NSScriptWhoseTest`, `NSSpecifierTest` | — |
 | **App Support / Object Specifiers** | ALL STRUCK: `NSIndexSpecifier`, `NSMiddleSpecifier`, `NSNameSpecifier`, `NSPositionalSpecifier`, `NSPropertySpecifier`, `NSRandomSpecifier`, `NSRangeSpecifier`, `NSRelativeSpecifier`, `NSScriptObjectSpecifier`, `NSUniqueIDSpecifier`, `NSWhoseSpecifier` | — |
-| **App Support / On-Demand Resources** | 1 open | `NSBundleResourceRequest` |
+| **App Support / On-Demand Resources** | all classes shipped | — |
 | **App Support / Operations** | all classes shipped | — |
 | **App Support / Progress** | all classes shipped | — |
 | **App Support / Scheduling** | all classes shipped | — |
@@ -14790,6 +14790,54 @@ headers, 5 exempt by name); `foundation-sweep --refresh` + `--families --write` 
 question §62.81 stated), `NSBundleResourceRequest`, `Low-Level Utilities / Legacy` (`NSConnectionDelegate`,
 `NSDistantObjectRequest`, `NSGarbageCollector`), plus `NSExtensionContext` and `NSUserActivity` — and the markdown
 importer and run-loop observers owed as things to BUILD, with the spelling engine still open on language grounds.
+
+
+## §62.88 — ON-DEMAND RESOURCES WITHOUT ON-DEMAND RESOURCES: A SHORT ANSWER THAT IS TRUE (2026-09-26)
+
+**THREE ROWS: `NSBundleResourceRequest` and its two constant names** — so `App Support / On-Demand Resources` is
+COMPLETE. `class shipped` 217 → **218** (open 8 → **7**), `var` 655 → **658**. (The low-disk-space name is carried
+TWICE by the ledger — once as a member of the class, once as a member of `NSNotification` — so one declaration
+flips two rows, which is a fact about the ledger rather than about the class.)
+
+**THE ANSWER IS SHORT BECAUSE THE SYSTEM IS SHORT, AND THAT IS THE WHOLE DESIGN.** Apple's request exists to fetch
+tagged resources from the App Store when an app needs them; this system has no such service and no such store, so
+a bundle's resources are simply PRESENT OR ABSENT and there is nothing to download. That turns the doors' answers
+into FACTS rather than stubs: the conditional door answers **YES**, the begin door answers **nil**, and `-progress`
+is **COMPLETE** — a download that does not exist cannot be in progress, and a caller observing `fractionCompleted`
+should get 1.0 rather than a spinner that can never move. The probe asserts all three, AND asserts the stronger
+form of each: the completion handlers run **BEFORE THE DOORS RETURN**, because there is nothing to wait for.
+
+**WHAT THE CLASS DELIBERATELY DOES NOT CLAIM MATTERS MORE THAN WHAT IT DOES.** It does not pretend to know which
+resources a tag names: this system's bundles carry no tag manifest, so a request whose tags name nothing cannot be
+told from one whose resources are all present — and the header says so rather than inventing a lookup that would
+answer a question nobody can answer. The ONE tag rule that IS enforced is Apple's own: an EMPTY tag set is
+INVALID, and the two doors report it honestly — the conditional door answers NO (its handler has no error channel,
+so "not available" is the only truthful answer, and it sends the caller to the door that reports) and the begin
+door reports `NSBundleOnDemandResourceInvalidTagError`, an error code this library **already declared in
+NSError.h** before this unit existed.
+
+**THE LOW-DISK-SPACE NOTICE GOES THROUGH A NAMED SEAM** (`FNBundleResourceRequest.h`) — the third use of the device
+§62.85 introduced — so an app's registration (Apple's own example registers with `object:nil`) and its recovery
+path are exercisable instead of being a notification name nobody can post.
+
+**AND THE TRUTHFUL-NULLABILITY LESSON CAME BACK A THIRD TIME, WHICH IS WHY IT IS WORTH WRITING DOWN AGAIN.** The
+first compile produced four `-Wnonnull` warnings: the header declared four parameters nonnull that the
+implementation ACCEPTS as nil — two of them because they are REFUSED LOUDLY (a nil tag set or bundle raises) and
+two because they are TOLERATED (a nil completion handler makes the door do nothing rather than raising inside a
+caller's frame). The fix is the same one §62.85 and §62.86 needed: **the header says what the implementation
+accepts.** Three units, three times, the same annotation out of step with the code — which is now the strongest
+argument this thread has for annotating nullability while writing rather than afterwards.
+
+**VERIFIED.** Host: `make host-foundation-run` → **45 probes, no failure**. Guest: `make testimg` then
+`make test TESTS='foundation_resourcerequest'` → **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**, probe's own tally
+**`ok=15 fail=0`**. The library, the host probe and the guest probe all compile with **zero** warnings (the guest
+one under `-Werror=nullable-to-nonnull-conversion`). `foundation-gate`: **OK**; `foundation-sweep --refresh` +
+`--families --write` + `--check`: **consistent**; `--unimplemented`: **0 NEW**.
+
+**WHERE THE THREAD STANDS: 7 open classes** — `NSDistantObjectRequest`, `NSExtensionContext`, `NSGarbageCollector`,
+`NSKeyValueSharedObservers` + its snapshot, `NSSimpleCString` (the scope question §62.81 stated) and
+`NSUserActivity` — plus the markdown importer and run-loop observers owed as things to BUILD, and the spelling
+engine still open on language grounds.
 
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
