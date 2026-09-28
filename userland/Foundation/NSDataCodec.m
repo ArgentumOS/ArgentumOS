@@ -51,13 +51,26 @@ static NSString *fn_codec_name(NSDataCompressionAlgorithm algorithm)
 }
 
 /* The reason NAMES the algorithm: a caller has to be able to see WHICH one was refused. */
-static NSError *fn_codec_error(NSDataCompressionAlgorithm algorithm, NSString *why)
+static NSError *fn_codec_error(NSDataCompressionAlgorithm algorithm, NSString *why, NSInteger code)
 {
 	NSString *message = [NSString stringWithFormat:@"%@: %@", fn_codec_name(algorithm), why];
 
 	return [NSError errorWithDomain:@"NSCocoaErrorDomain"
-				   code:1
+				   code:code
 			       userInfo:@{ NSLocalizedDescriptionKey: message }];
+}
+
+/* ONE WRAPPER PER SIDE (§62.97), so a call site names WHICH failure it is instead of carrying a code argument
+ * at the end of a call that spans three lines. A compression path and a decompression path can then never
+ * disagree about the number a caller will switch on. */
+static NSError *fn_compression_error(NSDataCompressionAlgorithm algorithm, NSString *why)
+{
+	return fn_codec_error(algorithm, why, NSCompressionFailedError);
+}
+
+static NSError *fn_decompression_error(NSDataCompressionAlgorithm algorithm, NSString *why)
+{
+	return fn_codec_error(algorithm, why, NSDecompressionFailedError);
 }
 
 NSData *fn_compressed_data(NSData *data, NSDataCompressionAlgorithm algorithm,
@@ -70,7 +83,7 @@ NSData *fn_compressed_data(NSData *data, NSDataCompressionAlgorithm algorithm,
 
 	if (algorithm != NSDataCompressionAlgorithmZlib) {
 		if (errorPtr != NULL) {
-			*errorPtr = fn_codec_error(algorithm,
+			*errorPtr = fn_compression_error(algorithm,
 				@"no codec for this algorithm exists in this system");
 		}
 		return nil;
@@ -79,7 +92,7 @@ NSData *fn_compressed_data(NSData *data, NSDataCompressionAlgorithm algorithm,
 	out = (unsigned char *)malloc(bound == 0 ? 1 : (size_t)bound);
 	if (out == NULL) {
 		if (errorPtr != NULL) {
-			*errorPtr = fn_codec_error(algorithm,
+			*errorPtr = fn_compression_error(algorithm,
 				@"the output buffer could not be allocated");
 		}
 		return nil;
@@ -89,14 +102,14 @@ NSData *fn_compressed_data(NSData *data, NSDataCompressionAlgorithm algorithm,
 	if (status != Z_OK) {
 		free(out);
 		if (errorPtr != NULL) {
-			*errorPtr = fn_codec_error(algorithm, @"the codec failed");
+			*errorPtr = fn_compression_error(algorithm, @"the codec failed");
 		}
 		return nil;
 	}
 	result = [NSData dataWithBytes:out length:(size_t)bound];
 	free(out);
 	if (result == nil && errorPtr != NULL) {
-		*errorPtr = fn_codec_error(algorithm, @"the result could not be built");
+		*errorPtr = fn_compression_error(algorithm, @"the result could not be built");
 	}
 	return result;
 }
@@ -111,7 +124,7 @@ NSData *fn_decompressed_data(NSData *data, NSDataCompressionAlgorithm algorithm,
 
 	if (algorithm != NSDataCompressionAlgorithmZlib) {
 		if (errorPtr != NULL) {
-			*errorPtr = fn_codec_error(algorithm,
+			*errorPtr = fn_decompression_error(algorithm,
 				@"no codec for this algorithm exists in this system");
 		}
 		return nil;
@@ -120,7 +133,7 @@ NSData *fn_decompressed_data(NSData *data, NSDataCompressionAlgorithm algorithm,
 		/* An empty buffer is not a zlib stream. The codec would answer Z_DATA_ERROR; saying so
 		 * here gives the same answer with a better message. */
 		if (errorPtr != NULL) {
-			*errorPtr = fn_codec_error(algorithm, @"there is nothing to decompress");
+			*errorPtr = fn_decompression_error(algorithm, @"there is nothing to decompress");
 		}
 		return nil;
 	}
@@ -129,7 +142,7 @@ NSData *fn_decompressed_data(NSData *data, NSDataCompressionAlgorithm algorithm,
 		out = (unsigned char *)malloc((size_t)capacity);
 		if (out == NULL) {
 			if (errorPtr != NULL) {
-				*errorPtr = fn_codec_error(algorithm,
+				*errorPtr = fn_decompression_error(algorithm,
 					@"the output buffer could not be allocated");
 			}
 			return nil;
@@ -142,14 +155,14 @@ NSData *fn_decompressed_data(NSData *data, NSDataCompressionAlgorithm algorithm,
 		free(out);
 		if (status != Z_BUF_ERROR) {
 			if (errorPtr != NULL) {
-				*errorPtr = fn_codec_error(algorithm,
+				*errorPtr = fn_decompression_error(algorithm,
 					@"this is not a zlib stream, or it is damaged");
 			}
 			return nil;
 		}
 		if (capacity >= FN_CODEC_MAX_OUTPUT) {
 			if (errorPtr != NULL) {
-				*errorPtr = fn_codec_error(algorithm,
+				*errorPtr = fn_decompression_error(algorithm,
 					@"the stream wants more than this library will produce");
 			}
 			return nil;
@@ -159,7 +172,7 @@ NSData *fn_decompressed_data(NSData *data, NSDataCompressionAlgorithm algorithm,
 	result = [NSData dataWithBytes:out length:(size_t)capacity];
 	free(out);
 	if (result == nil && errorPtr != NULL) {
-		*errorPtr = fn_codec_error(algorithm, @"the result could not be built");
+		*errorPtr = fn_decompression_error(algorithm, @"the result could not be built");
 	}
 	return result;
 }

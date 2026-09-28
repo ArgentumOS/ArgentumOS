@@ -126,7 +126,14 @@ typedef struct {
 
 /* THE EIGHT PRE-BUILT SETS, and the legacy OPTION constant that came with them: `NSHashTableZeroingWeakMemory` was
  * a flag passed where the modern API takes `NSHashTableOptions`, and its value is ours (D2) — declared rather than
- * interpreted, because nothing here can honour a zeroing weak table that the modern options do not describe. */
+ * interpreted, because nothing here can honour a zeroing weak table that the modern options do not describe.
+ *
+ * THE FOUR NAMES BESIDE IT ARE MACROS, as Apple declares them and for the same reason NSMapTable.h gives: each is
+ * the NSPointerFunctions option it names, so `+hashTableWithOptions:` already understands every one of them. */
+#define NSHashTableStrongMemory			NSPointerFunctionsStrongMemory
+#define NSHashTableCopyIn			NSPointerFunctionsCopyIn
+#define NSHashTableObjectPointerPersonality	NSPointerFunctionsObjectPointerPersonality
+#define NSHashTableWeakMemory			NSPointerFunctionsWeakMemory
 extern const NSHashTableCallBacks NSIntHashCallBacks;
 extern const NSHashTableCallBacks NSIntegerHashCallBacks;
 extern const NSHashTableCallBacks NSNonOwnedPointerHashCallBacks;

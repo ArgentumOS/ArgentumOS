@@ -1405,6 +1405,37 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_jsonwrite.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_jsonwrite"
+	# foundation_tableoptions: §62.95's acceptance - the ten names Apple declares beside NSMapTable/NSHashTable
+	# (five and four, plus NSPointerFunctionsZeroingWeakMemory), which close the pointer-collections family.
+	# Each is a macro aliasing THIS library's NSPointerFunctions option, so the probe asserts the aliases AND
+	# the behaviour they select: CopyIn through a mutable key with its control, identity via an equal-but-distinct
+	# key with its control, and the four map-table convenience constructors.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_tableoptions.m -o .build/probe-foundation_tableoptions.o
+	$(MUSL64_OBJC) .build/probe-foundation_tableoptions.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_tableoptions"
+	# foundation_transformers: §62.96's acceptance - the five value-transformer names Apple registers
+	# (NSIsNil, NSIsNotNil, NSNegateBoolean, NSKeyedUnarchiveFromData, NSUnarchiveFromData), which close the
+	# value-transformer family. They are REGISTERED at load rather than named after their classes, because
+	# +valueTransformerNames is a documented door and the class-name fallback would leave it empty.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_transformers.m -o .build/probe-foundation_transformers.o
+	$(MUSL64_OBJC) .build/probe-foundation_transformers.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_transformers"
+	# foundation_dataoptions: §62.97's acceptance - NSData's three deprecated READING spellings and one WRITING
+	# one (NSMappedRead, NSDataReadingMapped, NSUncachedRead, NSAtomicWrite) plus the four compression error
+	# codes, which close the binary-data family. The codes are wired to the codec's error path, so a failed
+	# compression answers 5376 and a failed decompression 5377 instead of the undeclared "code 1".
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_dataoptions.m -o .build/probe-foundation_dataoptions.o
+	$(MUSL64_OBJC) .build/probe-foundation_dataoptions.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_dataoptions"
 	# foundation_downloadresume: §62.31's acceptance - RESUME end to end, WITH A REAL SERVER. The probe is
 	# the server: it sends half a body and then STALLS mid-transfer (which is what makes the cancel
 	# deterministic), resumes from the data its own cancel produced, and asserts the resumed request carries

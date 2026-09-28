@@ -46,15 +46,34 @@ typedef NSString *NSValueTransformerName;
 
 @end
 
-/* THE NAMES THIS LIBRARY REGISTERS. Only one so far, and it arrived with W9: the secure unarchiver, whose
- * NAME is what `-valueTransformerForName:` is asked for. Apple declares these beside the transformer class,
- * which is why this constant lives in this header rather than in NSSecureUnarchiveFromDataTransformer.h —
- * a caller that wants the transformer by name should not have to import the class to spell the name that
- * is used in an Interface Builder-style property list.
+/* THE NAMES THIS LIBRARY REGISTERS. The safe unarchiver arrived with W9, and §62.96 added Apple's other five:
+ * `NSIsNilTransformerName`, `NSIsNotNilTransformerName`, `NSNegateBooleanTransformerName`,
+ * `NSKeyedUnarchiveFromDataTransformerName` and `NSUnarchiveFromDataTransformerName`. Apple declares all six
+ * beside the transformer class, which is why these constants live in this header rather than in each class's
+ * own — a caller that wants a transformer by name should not have to import a class to spell a name that is
+ * used in an Interface Builder-style property list.
  *
- * (`NSKeyedUnarchiveFromDataTransformerName`, the deprecated spelling of the same thing, is NOT declared:
- * it is struck on the surface ledger, and this library ships no deprecated API.) */
+ * TWO SENTENCES THAT USED TO BE HERE WERE WRONG, AND ARE CORRECTED RATHER THAN DELETED (§62.96):
+ *
+ *   1. `NSKeyedUnarchiveFromDataTransformerName` was called "struck on the surface ledger". IT IS NOT — the
+ *      ledger lists it OPEN, so the sentence was a claim about a file rather than a reading of it, and the
+ *      name it dismissed is the one this unit owed.
+ *   2. The paragraph ended "this library ships no deprecated API". That stopped being true the moment §62.93
+ *      shipped `NSJSONReadingAllowFragments`, and the ground under it had already been RETIRED on 2026-09-26
+ *      (foundation-plan.md row D7, §62.24: deprecated API is IN SCOPE, because running programs written
+ *      against the old names is what this library is for). `NSUnarchiveFromDataTransformerName` and the
+ *      keyed one are both deprecated on Apple's side and both ship here.
+ *
+ * THE REGISTRATION HAPPENS AT LOAD, and `+valueTransformerNames` is where that shows: the five new names appear
+ * there, which is why they are REGISTERED rather than merely named after their classes — this registry resolves
+ * an unknown name by looking for a class of that name, which would make a transformer findable and leave the
+ * documented LIST empty. */
 extern NSValueTransformerName const NSSecureUnarchiveFromDataTransformerName;
+extern NSValueTransformerName const NSIsNilTransformerName;
+extern NSValueTransformerName const NSIsNotNilTransformerName;
+extern NSValueTransformerName const NSNegateBooleanTransformerName;
+extern NSValueTransformerName const NSKeyedUnarchiveFromDataTransformerName;
+extern NSValueTransformerName const NSUnarchiveFromDataTransformerName;
 
 NS_ASSUME_NONNULL_END
 #endif /* FOUNDATION_NSVALUETRANSFORMER_H */

@@ -9,6 +9,12 @@
 #import <Foundation/NSDictionary.h>	/* NSMutableDictionary lives here */
 #import <Foundation/NSException.h>
 #import <Foundation/NSObject.h>	/* NSStringFromClass */
+#import <Foundation/NSArray.h>
+#import <Foundation/NSNumber.h>
+#import <Foundation/NSData.h>
+#import <Foundation/NSKeyedArchiver.h>	/* and NSKeyedUnarchiver, which lives in the same header */
+#import <Foundation/NSArchiver.h>	/* and NSUnarchiver, likewise */
+#import <Foundation/NSAutoreleasePool.h>
 #import <objc/runtime.h>
 
 static NSMutableDictionary *fn_transformers(void)
@@ -93,3 +99,109 @@ static NSMutableDictionary *fn_transformers(void)
 }
 
 @end
+
+/* ------------------------------------------------------------------ THE FIVE NAMES APPLE REGISTERS (§62.96)
+ *
+ * WHY THEY ARE REGISTERED RATHER THAN NAMED AFTER THEIR CLASSES. This registry can already resolve a NAME by
+ * looking for a class of that name (see `+valueTransformerForName:`), and the one transformer that shipped
+ * before this unit uses exactly that trick. These five cannot: `+valueTransformerNames` is a documented door
+ * and Apple's answer INCLUDES them, so they have to be IN the registry — a class-name trick would make the
+ * transformer findable and the list still empty, which is the difference the probe checks first.
+ *
+ * ONE CLASS PER BEHAVIOUR, because the registry keeps INSTANCES: `+valueTransformerForName:` answers the object
+ * it holds, so a mode flag inside one class would work and would make the class's own name say nothing about
+ * what it does.
+ *
+ * AND NIL IS THE ANSWER FOR WHAT CANNOT BE TRANSFORMED, which is the base class's own contract rather than an
+ * invention: the two Boolean questions can answer about anything (that is their whole purpose), the negator
+ * refuses what is not a number, and the two unarchivers refuse what is not data.
+ */
+
+NSValueTransformerName const NSIsNilTransformerName = @"NSIsNil";
+NSValueTransformerName const NSIsNotNilTransformerName = @"NSIsNotNil";
+NSValueTransformerName const NSNegateBooleanTransformerName = @"NSNegateBoolean";
+NSValueTransformerName const NSKeyedUnarchiveFromDataTransformerName = @"NSKeyedUnarchiveFromData";
+NSValueTransformerName const NSUnarchiveFromDataTransformerName = @"NSUnarchiveFromData";
+
+/* THE CLASSES ARE PRIVATE TO THIS FILE: a caller asks for one of these by NAME (that is the API), so whom the
+ * registry holds is this library's business. */
+@interface FNIsNilTransformer : NSValueTransformer
+@end
+
+@interface FNIsNotNilTransformer : NSValueTransformer
+@end
+
+@interface FNNegateBooleanTransformer : NSValueTransformer
+@end
+
+@interface FNKeyedUnarchiveFromDataTransformer : NSValueTransformer
+@end
+
+@interface FNUnarchiveFromDataTransformer : NSValueTransformer
+@end
+
+@implementation FNIsNilTransformer
+- (id)transformedValue:(id)value
+{
+	return [NSNumber numberWithBool:(value == nil)];
+}
+@end
+
+@implementation FNIsNotNilTransformer
+- (id)transformedValue:(id)value
+{
+	return [NSNumber numberWithBool:(value != nil)];
+}
+@end
+
+@implementation FNNegateBooleanTransformer
+- (id)transformedValue:(id)value
+{
+	/* A BOOLEAN IS THE DOCUMENTED DOMAIN - the name says so - so anything that is not a number answers nil
+	 * rather than being coerced to a truth value, which would be answering a question nobody asked. */
+	if (![value isKindOfClass:[NSNumber class]]) {
+		return nil;
+	}
+	return [NSNumber numberWithBool:![value boolValue]];
+}
+@end
+
+@implementation FNKeyedUnarchiveFromDataTransformer
+- (id)transformedValue:(id)value
+{
+	if (![value isKindOfClass:[NSData class]]) {
+		return nil;
+	}
+	return [NSKeyedUnarchiver unarchiveObjectWithData:value];
+}
+@end
+
+@implementation FNUnarchiveFromDataTransformer
+- (id)transformedValue:(id)value
+{
+	if (![value isKindOfClass:[NSData class]]) {
+		return nil;
+	}
+	return [NSUnarchiver unarchiveObjectWithData:value];
+}
+@end
+
+/* THE REGISTRATION HAPPENS AT LOAD, the standing this library already gave its own URL transport (§62.83): a
+ * program that asks for one of these names by name never has to know that anything has to be set up first.
+ * The instances are owned by the registry, which is why nothing here releases them. */
+__attribute__((constructor))
+static void fn_register_standard_value_transformers(void)
+{
+	NSValueTransformer *each;
+
+	each = [[FNIsNilTransformer alloc] init];
+	[NSValueTransformer setValueTransformer:each forName:NSIsNilTransformerName];
+	each = [[FNIsNotNilTransformer alloc] init];
+	[NSValueTransformer setValueTransformer:each forName:NSIsNotNilTransformerName];
+	each = [[FNNegateBooleanTransformer alloc] init];
+	[NSValueTransformer setValueTransformer:each forName:NSNegateBooleanTransformerName];
+	each = [[FNKeyedUnarchiveFromDataTransformer alloc] init];
+	[NSValueTransformer setValueTransformer:each forName:NSKeyedUnarchiveFromDataTransformerName];
+	each = [[FNUnarchiveFromDataTransformer alloc] init];
+	[NSValueTransformer setValueTransformer:each forName:NSUnarchiveFromDataTransformerName];
+}

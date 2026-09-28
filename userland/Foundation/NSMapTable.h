@@ -37,6 +37,19 @@ NS_ASSUME_NONNULL_BEGIN
 /* As with NSHashTable, Apple's map-table options ARE NSPointerFunctions' options under a name of their own. */
 typedef NSPointerFunctionsOptions NSMapTableOptions;
 
+/* THE FIVE NAMES APPLE DECLARES BESIDE THE CLASS, and they are macros here as they are there: each one is the
+ * NSPointerFunctions option it names, so a caller who writes `NSMapTableWeakMemory` gets exactly the policy
+ * `+mapTableWithKeyOptions:valueOptions:` already understands - there is no second vocabulary to keep in step.
+ *
+ * `NSMapTableZeroingWeakMemory` IS THE DEPRECATED ONE and it aliases the flag NSPointerFunctions.h declares as
+ * declared-not-interpreted (see that comment): the name compiles, and the zeroing behaviour it asks for is the
+ * one this library's runtime cannot provide. */
+#define NSMapTableStrongMemory			NSPointerFunctionsStrongMemory
+#define NSMapTableZeroingWeakMemory		NSPointerFunctionsZeroingWeakMemory
+#define NSMapTableCopyIn			NSPointerFunctionsCopyIn
+#define NSMapTableObjectPointerPersonality	NSPointerFunctionsObjectPointerPersonality
+#define NSMapTableWeakMemory			NSPointerFunctionsWeakMemory
+
 @interface NSMapTable : NSObject <NSCopying, NSFastEnumeration, NSSecureCoding>
 {
 	FNPointerTable *_table;

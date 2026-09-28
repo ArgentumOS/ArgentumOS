@@ -54,6 +54,14 @@ typedef NSUInteger NSPointerFunctionsOptions;
 #define NSPointerFunctionsMachVirtualMemory	((NSUInteger)4 << 0)	/* Mach's memory — see the header */
 #define NSPointerFunctionsWeakMemory		((NSUInteger)5 << 0)	/* not owned, and NOT zeroed */
 
+/* THE LEGACY ZEROING-WEAK FLAG, DECLARED RATHER THAN INTERPRETED — the same standing `NSHashTableZeroingWeakMemory`
+ * already has, and for the same reason: Apple's flag asks for a table that REMOVES an entry when its object
+ * deallocates, and nothing in this library can honour that (the weak memory above does not zero, by design), so
+ * the constant exists for the source that names it and this comment is the record. Its bit is the one free value
+ * in the memory byte, and it carries the SAME value the shipped `NSHashTableZeroingWeakMemory` does, because the
+ * two names are Apple's two spellings of one flag. */
+#define NSPointerFunctionsZeroingWeakMemory	((NSUInteger)1 << 0)
+
 /* PERSONALITY: what the pointer means. */
 #define NSPointerFunctionsObjectPersonality		((NSUInteger)0 << 8)	/* an object, by -isEqual: */
 #define NSPointerFunctionsOpaquePersonality		((NSUInteger)1 << 8)	/* an address, by identity */

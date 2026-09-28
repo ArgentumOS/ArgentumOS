@@ -98,7 +98,15 @@ typedef enum {
 	NSDataReadingDefault = 0,
 	NSDataReadingMappedIfSafe = 1,
 	NSDataReadingUncached = 2,
-	NSDataReadingMappedAlways = 4
+	NSDataReadingMappedAlways = 4,
+
+	/* THE THREE DEPRECATED SPELLINGS, which are names for the values above rather than new options — so a
+	 * program written against the old ones reads exactly what a modern one reads (§62.97). Apple declares them
+	 * as deprecated aliases; this library's availability macros are inert (foundation-plan.md row D12), so the
+	 * record is this comment, and the deprecation ground itself was retired on 2026-09-26 (§62.24, row D7). */
+	NSMappedRead = NSDataReadingMappedIfSafe,
+	NSDataReadingMapped = NSDataReadingMappedIfSafe,
+	NSUncachedRead = NSDataReadingUncached
 } NSDataReadingOptions;
 
 typedef enum {
@@ -113,7 +121,10 @@ typedef enum {
 	NSDataWritingFileProtectionCompleteUntilFirstUserAuthentication = 3,
 	NSDataWritingFileProtectionCompleteWhenUserInactive = 4,
 	NSDataWritingFileProtectionMask = 0xff,
-	NSDataWritingWithoutOverwriting = 1 << 12
+	NSDataWritingWithoutOverwriting = 1 << 12,
+
+	/* THE DEPRECATED SPELLING OF Atomic, for the same reason the reading enum gives (§62.97). */
+	NSAtomicWrite = NSDataWritingAtomic
 } NSDataWritingOptions;
 
 /*
@@ -127,6 +138,20 @@ typedef enum {
 	NSDataCompressionAlgorithmLZMA,
 	NSDataCompressionAlgorithmZlib
 } NSDataCompressionAlgorithm;
+
+/* THE ERROR CODES THE COMPRESSION DOORS ANSWER WITH (§62.97) — Apple's numbers, from its own header, which is
+ * the same source the option bits above came from, and the reason they are declared rather than chosen: a
+ * caller that switches on an error's code is reading a number, not a name. THE RANGE IS THE DOCUMENTED
+ * CONTENT: the two failures sit inside [Minimum, Maximum], which is the window Apple reserves so that a
+ * compression failure can never be confused with another Cocoa error, and the probe asserts the bracketing
+ * as hard as the values. `NSDataCodec`'s error path uses them, so the codes are wired to behaviour rather
+ * than merely declared. */
+enum {
+	NSCompressionFailedError = 5376,	/* compressing failed - and also what an algorithm with no codec answers */
+	NSDecompressionFailedError = 5377,	/* decompressing failed */
+	NSCompressionErrorMinimum = 5376,
+	NSCompressionErrorMaximum = 5503
+};
 
 + (NSData *)data;
 + (NSData *)dataWithBytes:(const void * _Nullable)bytes length:(size_t)length;
