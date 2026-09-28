@@ -157,6 +157,7 @@
 #import <Foundation/NSValue.h>
 #import <Foundation/NSNotification.h>
 #import <Foundation/NSNotificationCenter.h>
+#import <Foundation/NSDistributedNotificationCenter.h>
 #import <Foundation/NSNotificationQueue.h>
 #import <Foundation/NSNull.h>
 #import <Foundation/NSKeyValueObserving.h>

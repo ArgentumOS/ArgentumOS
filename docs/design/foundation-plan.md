@@ -3464,7 +3464,7 @@ vanishing.
 | **App Support / Assertions** | all classes shipped | — |
 | **App Support / Attachments** | all classes shipped | — |
 | **App Support / Bundle Resources** | all classes shipped | — |
-| **App Support / Cross-Process Notifications** | 1 open | `NSDistributedNotificationCenter` |
+| **App Support / Cross-Process Notifications** | all classes shipped | — |
 | **App Support / Exceptions** | all classes shipped | — |
 | **App Support / Extension Support** | 2 open | `NSExtensionContext`, `NSExtensionRequestHandling` |
 | **App Support / NSObject Script Support** | ALL STRUCK: `NSScriptCoercionHandler`, `NSScriptExecutionContext` | — |
@@ -14332,6 +14332,52 @@ being `Reference / Classes` (4 mixed), the singletons (`NSUbiquitousKeyValueStor
 `NSDistributedNotificationCenter`, `NSURLDownload`, `NSSpellServer`, …) and the deprecated pair
 (`NSArchiver`/`NSUnarchiver`) — plus the two dependencies owed as things to BUILD: the markdown importer and the
 run-loop observers.
+
+## §62.80 — THE DISTRIBUTED NOTIFICATION CENTER: A DECISION REVERSED, AND A FAMILY CLOSED (2026-09-26)
+
+**ONE ROW: `NSDistributedNotificationCenter`.** `class shipped` went **210 → 211**, and
+**`App Support / Cross-Process Notifications` reads "all classes shipped"** — the **SIXTH family this session has
+closed**, after System Interaction's classes (§62.66), Deprecated (§62.67), User Notifications (§62.68), Attachments
+(§62.69) and Automatic grammar agreement (§62.79).
+
+**AND THE DECISION THAT KEPT THIS CLASS OUT IS REVERSED, WHICH IS THE POINT OF THE SECTION.** Its header said, in
+as many words: *"THE CLASS IS NOT HERE … So the suspension behaviours, the posting options, the center-type type and
+the names ship as the vocabulary a conforming caller compiles against, with the door absent rather than stubbed."*
+That reasoning is right about a DOOR and wrong about a CLASS — and this project had already made exactly this
+reversal once (§62.23's `NSItemProvider`, "the class that was absent by recorded decision is reversed"). **A class
+whose LOCAL half is real does not belong on the absent list**: everything a process can do with a notification
+centre on its own is real here, and the bus — the thing this system does not have — is the boundary rather than the
+whole subject.
+
+**WHAT IS REAL IS AN ENGINE, AND THE PROBE DRIVES ALL FOUR OF ITS STATES.** Each observing record carries a
+**suspension behaviour**, and while the centre is suspended:
+
+* **Drop** discards what arrives — the probe posts three and reads zero;
+* **Hold** queues it, and **the resume flushes it in arrival order** — three posted, three received, in order;
+* **Coalesce** keeps **one per name and observer** — three posted, one delivered;
+* **DeliverImmediately** receives it anyway — three posted, three delivered while suspended;
+
+and the same promise is honoured from the **poster's** side (`-…deliverImmediately:` and
+`NSDistributedNotificationDeliverImmediately`). One implementation decision is worth stating because it is what
+keeps the halves from disagreeing: **the class owns its REGISTRY and the superclass's is never populated** — every
+inherited observing and posting door is overridden to route into the one engine — and the resume **asks the registry
+whether the observer is still there**, so an observer removed while suspended receives nothing.
+
+**THE BUS IS THE BOUNDARY, AND TWO DOORS STATE IT BY NAME:** `+notificationCenterForType:` answers this process's
+centre for `NSLocalNotificationCenterType` and **refuses any other type** — this system's interprocess story is its
+own (a session pasteboard, not a notification bus) — and `NSDistributedNotificationPostToAllSessions` is refused for
+the same ground. Both refusals are asserted as refusals rather than described.
+
+**VERIFIED.** Host: `make host-foundation-run` — **40 probes, every tally `fail=0`** (the new probe read
+`ok=12 fail=0` on its first run). Guest: `make testimg` then
+`make test TESTS='foundation_distributednotification'` → **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**.
+`foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**, one row flipped, family table
+regenerated. `foundation-gate`: **OK**; `--unimplemented`: **0 NEW**.
+
+**WHERE THE THREAD STANDS: 14 open classes.** The remaining blocks are `Reference / Classes` (4 mixed), the
+singletons (`NSUbiquitousKeyValueStore`, `NSBundleResourceRequest`, `NSURLDownload` + its delegate, `NSSpellServer`
++ its delegate, …) and the deprecated pair (`NSArchiver`/`NSUnarchiver` + `NXReadNSObjectFromCoder`), plus the two
+dependencies owed as things to BUILD: the markdown importer and the run-loop observers.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 

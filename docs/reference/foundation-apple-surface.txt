@@ -34,7 +34,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  210   open   15   struck   48
+#   class      shipped  211   open   14   struck   48
 #   protocol   shipped   34   open    6   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  147   open    4   struck    9
@@ -1396,7 +1396,7 @@ class	shipped	NSDirectoryEnumerator		Files and Data Persistence / File system op
 class	shipped	NSDistantObject		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	open	NSDistantObjectRequest		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSDistributedLock		Low-Level Utilities / Threads and Locking	-	objc
-class	open	NSDistributedNotificationCenter		App Support / Cross-Process Notifications	-	objc
+class	shipped	NSDistributedNotificationCenter		App Support / Cross-Process Notifications	-	objc
 class	shipped	NSEnergyFormatter		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSEnumerator		Fundamentals / Iteration	-	objc
 class	shipped	NSError		App Support / User-Relevant Errors	-	objc
