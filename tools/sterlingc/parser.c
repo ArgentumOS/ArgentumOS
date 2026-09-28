@@ -1875,6 +1875,13 @@ parse_decl(st_parser *p, st_decl **out)
 			if (!parse_expr(p, &size)) {
 				return 0;
 			}
+			/*
+			 * COUNTED, not dropped: `d->array_rank` is what makes the
+			 * emitter refuse a sized declaration by name instead of
+			 * emitting the element type alone and silently losing the
+			 * storage (§7.64, emit.c).
+			 */
+			d->array_rank++;
 			if (!expect_punct(p, ']')) {
 				return 0;
 			}

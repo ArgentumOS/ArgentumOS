@@ -1,0 +1,53 @@
+/*
+ * EmitsOptional.ag — §4's `T?` in all three of its shapes, as emitted.
+ *
+ * Copyright © 2026 Kyle J. Cardoza. MIT licence (see docs/LICENSE).
+ *
+ * §4's `T?` is not one mechanism. It is three, and §4's table is what says
+ * which: a class takes `_Nullable` after the pointer, a value scalar takes
+ * §7.62's synthesised pair-struct, and a name the table does not cover cannot
+ * be classified at all — §9.5's header importer is what will, so that one
+ * still refuses by name (`tests/refuse/nullable-unknown.ag` holds it).
+ *
+ * All three are pinned here, because emitting any of them the wrong way round
+ * is silent rather than loud:
+ *
+ *   - the header opens `_Pragma("clang assume_nonnull begin")`, so a class's
+ *     `?` that came out as a bare `NSString *` would assert the OPPOSITE of
+ *     what was written — non-null — inside that region.
+ *   - `nickname: Holder?` is a name §4's table does not hold: its class rows
+ *     are the prelude's. A file's own class has to be recognised from the
+ *     file's own set, and before it was, this exact shape was reported as "a
+ *     name §4's table does not cover".
+ *   - `count`/`flag`/`ratio` are the pair-struct, and the typedefs appear once
+ *     each however many times the scalar is used — §7.62 synthesises one PER
+ *     SCALAR, not one per declaration or per class.
+ *   - `cname: CString?` is the boundary case and the reason `type_is_value_scalar`
+ *     is separate from `type_is_known_scalar`: a POINTER is already nullable
+ *     natively, so its `?` is §4's qualifier (`const char * _Nullable`) and NOT
+ *     a struct wrapping a pointer in a has-value flag. §4's own table draws the
+ *     same line — `((Int32) -> Void)?` is `void (^ _Nullable)(int32_t)`.
+ *
+ * `countOr` is here for the COLLECTION rather than the spelling: §7.62's
+ * typedefs have to be known before the first declaration that names one, and
+ * parameters and returns are declarations too. A collection that only walked
+ * properties would emit `SterlingOptional_int32_t` in a method signature with
+ * no typedef above it.
+ *
+ * Sending `nil` to a scalar optional is deliberately NOT here. §7.59's
+ * conversion table gains that row with §7.62's binding forms, and the
+ * pair-struct's zeroed form is what it emits; until then a local or an
+ * assignment is the thing that still refuses.
+ */
+class Holder: Object {
+    property name: String?
+    property nickname: Holder?
+    property count: Int32?
+    property flag: Bool?
+    property ratio: Float64?
+    property cname: CString?
+
+    method countOr(seed: Int32?) -> Int32? {
+        return seed;
+    }
+}

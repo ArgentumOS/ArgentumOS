@@ -244,6 +244,20 @@ typedef struct st_decl {
 	 */
 	st_expr *initial;
 	int has_initial;
+	/*
+	 * §7.64: the brackets of a sized declaration — `widths[4]`, `table[2][3]`
+	 * — counted and RECORDED rather than discarded. The parser read each
+	 * size into an expression and then let it die, so `property slots[8]:
+	 * Float32` emitted a scalar and said nothing, and the size is the whole
+	 * of what that declaration was about. A declaration whose storage is
+	 * silently not declared is exactly the class of bug that gets refused
+	 * here rather than compiled.
+	 *
+	 * A COUNT and not the sizes, because no emission needs them yet. §7.64's
+	 * emission needs the expressions; the count is the marker that says a
+	 * declaration has one to give.
+	 */
+	int array_rank;
 	st_type type;		/* both */
 	st_param *params;	/* ST_DECL_METHOD */
 	size_t param_count;

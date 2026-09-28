@@ -1,0 +1,6 @@
+/* §7.63: a lightweight-generic type has no emission — `Array<Int32>` *is*
+ * `int const *` and `Box<String>` is an erased `Box *`. Emitting the bare name
+ * would drop the argument, the fact that it had one, and the element type. */
+class RefuseGenericArgument: Object {
+    property items: Array<Int32>
+}

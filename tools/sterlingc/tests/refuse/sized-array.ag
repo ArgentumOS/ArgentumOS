@@ -1,0 +1,6 @@
+/* §7.64: `slots[8]` declares storage, and the size is the whole of what the
+ * declaration is about. Emitting the element type alone silently declares no
+ * storage at all, so the form is refused by name until §7.64's emission lands. */
+class RefuseSizedArray: Object {
+    property slots[8]: Int32
+}

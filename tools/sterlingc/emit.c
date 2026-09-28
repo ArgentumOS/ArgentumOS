@@ -241,6 +241,7 @@ map_type(const char *name)
  * §5's reference/value rule cannot be applied to it.
  */
 static int type_is_class(const char *mapped);
+static int type_name_is_class(const char *name);
 
 static int
 type_is_known_scalar(const char *mapped)
@@ -262,29 +263,162 @@ type_is_known_scalar(const char *mapped)
 }
 
 /*
+ * §7.62's pair-struct applies to a VALUE — the numeric scalars, `BOOL` and
+ * `char` — and NOT to every name in `type_is_known_scalar`. The two pointer
+ * pairs (`void *` / `void const *`, `const char *` / `char *`) are already
+ * nullable natively, so their `?` is §4's `_Nullable` qualifier, which is the
+ * treatment a class gets and not a struct wrapping a value: `CString?` is
+ * `const char * _Nullable`, never a `{ const char * value; BOOL hasValue; }`.
+ * §4's own table draws the same line — `((Int32) -> Void)?` is
+ * `void (^ _Nullable)(int32_t)`.
+ *
+ * This is the split that makes the pair-struct reachable at all: the prelude's
+ * pointer rows are what `type_is_class` already calls a class (their mapping
+ * ends in `*`), so they never reach this predicate.
+ */
+static int
+type_is_value_scalar(const char *mapped)
+{
+	static const char *const values[] = {
+		"BOOL", "char", "int8_t", "int16_t", "int32_t", "int64_t",
+		"uint8_t", "uint16_t", "uint32_t", "uint64_t",
+		"float", "double", "NSInteger", "NSUInteger",
+	};
+	size_t i;
+
+	for (i = 0; i < sizeof(values) / sizeof(values[0]); i++) {
+		if (strcmp(mapped, values[i]) == 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/*
+ * §4's pointer rows that are NOT objects: `void *`, `void const *`,
+ * `const char *`, `char *`.
+ *
+ * A `?` on one of these is §4's `_Nullable` qualifier, exactly as a class's is —
+ * but §7.52's ownership inference and §5's reference/value rule must NOT call it
+ * a class. `type_is_class`'s `*` test did, and the consequence was measured the
+ * first time a specimen named one: `property cname: CString?` emitted
+ * `@property (nonatomic, strong) const char * _Nullable cname;`, and `strong` on
+ * a C pointer is an error — clang rejects the header this compiler generated.
+ * The two questions are therefore separate predicates:
+ *
+ *   - "does this take `_Nullable`?"  → `type_is_class || type_is_pointer_scalar`
+ *   - "is this an object type?" (§7.52, §4's reference/value rule) → `type_is_class`
+ */
+static int
+type_is_pointer_scalar(const char *mapped)
+{
+	static const char *const pointers[] = {
+		"void *", "void const *", "const char *", "char *",
+	};
+	size_t i;
+
+	for (i = 0; i < sizeof(pointers) / sizeof(pointers[0]); i++) {
+		if (strcmp(mapped, pointers[i]) == 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/* The types §4 gives a `_Nullable` for a `?`: an object, `id`, or a pointer. */
+static int
+type_takes_nullable(const char *mapped)
+{
+	return type_is_class(mapped) || type_is_pointer_scalar(mapped);
+}
+
+/*
+ * §7.62's synthesised type name for a scalar optional: `{ T value; BOOL
+ * hasValue; }`, one per scalar the program uses. The spelling is the emitter's
+ * — the syntax document fixes the FIELDS (`value`, `hasValue`) and not the
+ * type's name — and it takes the `Sterling…` shape rather than the `STERLING_`
+ * a macro gets, because this is a type in generated code and the emitted text
+ * is meant to read like hand-written ObjC. The mapped C name is the tail
+ * (`SterlingOptional_int32_t`), which keeps the pair to one glance.
+ */
+static void
+optional_type_name(const char *mapped, char *buf, size_t size)
+{
+	size_t i, j;
+
+	j = (size_t)snprintf(buf, size, "SterlingOptional_");
+	for (i = 0; mapped[i] != '\0' && j + 1 < size; i++) {
+		char ch = mapped[i];
+
+		buf[j++] = (ch == ' ' || ch == '*') ? '_' : ch;
+	}
+	buf[j] = '\0';
+}
+
+/*
  * §4's `T?` on a CLASS type is `_Nullable` after the pointer, and the header's
  * `assume_nonnull begin` region is exactly why it must be written: without it
  * the declaration asserts non-null, the opposite of the source.
  *
- * The other two cases still refuse, for different reasons. A scalar's `?` is
- * §7.62's pair-struct — a value type carrying a has-value flag — which is a
- * different mechanism and not a qualifier. And a name §4's table does not cover
- * cannot be classified at all, so which of the two it needs is unknown.
+ * A name THIS FILE declares is a class for this purpose even though §4's table
+ * does not know it — the table's class rows are the prelude's — so a file's own
+ * `Node?` has to consult the file's own set. Not doing so was the bug:
+ * `property next: Node?`, in a file that declares `Node`, was reported as "a
+ * name §4's table does not cover".
+ *
+ * A VALUE SCALAR's `?` is §7.62's pair-struct — a synthesised struct carrying a
+ * has-value flag rather than a qualifier — and it is emitted, one per scalar the
+ * program uses.
+ *
+ * What still refuses is a name that is neither: a class or struct out of an
+ * IMPORTED header, which only §9.5's header importer can classify, and for which
+ * of the two mechanisms it needs is therefore unknown.
  */
 static int
 type_is_emittable(const st_type *t, const char **error)
 {
+	char plain[256];
 	const char *mapped;
 
-	if (t == NULL || !t->nullable) {
+	if (t == NULL) {
 		return 1;
 	}
-	mapped = map_type(t->name.text);
-	if (type_is_class(mapped)) {
+	/*
+	 * §7.63: a lightweight-generic TYPE has no emission — `Array<Int32>`
+	 * *is* `int const *` and `Box<String>` is an erased `Box *`, and neither
+	 * rule is here. Refused BY NAME rather than emitted with the argument
+	 * dropped, which is what happened: `Array<Float32?>` came out as the bare
+	 * identifier `Array`, losing the argument, the fact that it had one, and
+	 * the element type with it.
+	 *
+	 * This is why the check is HERE rather than in the nullable path below:
+	 * the outer type of `Array<Float32?>` is not itself nullable, so a
+	 * nullable-only gate never saw it.
+	 */
+	if (t->argument_count > 0) {
+		return refuse("a lightweight-generic type (§7.63)", error);
+	}
+	if (!t->nullable) {
 		return 1;
 	}
-	if (type_is_known_scalar(mapped)) {
-		return refuse("a nullable scalar (§7.62's pair-struct)", error);
+	if (type_name_is_class(t->name.text)) {
+		return 1;
+	}
+	/*
+	 * Through the mangling first: `Outer.Inner?` is written with a dot and
+	 * §4's table is keyed on the ObjC identifier — the order `type_text`
+	 * reads them in. Reading the table on the unmangled name made a nested
+	 * class a name "§4's table does not cover".
+	 */
+	mangle_name(t->name.text, plain, sizeof(plain));
+	mapped = map_type(plain);
+	/*
+	 * §4's pointer rows — `CString?`, `UnsafeMutablePointer?` — take
+	 * `_Nullable` on the same footing a class does, and they are NOT objects
+	 * (`type_is_class` says so), so they need naming here.
+	 */
+	if (type_takes_nullable(mapped) || type_is_value_scalar(mapped)) {
+		return 1;
 	}
 	return refuse("a nullable type on a name §4's table does not cover "
 		      "(`T?` is `_Nullable` for a class and §7.62's pair-struct "
@@ -326,6 +460,19 @@ type_text(const st_type *t, const char *fallback, char *buf, size_t size)
 	mapped = map_type(plain);
 	if (mapped == NULL) {
 		snprintf(buf, size, "void");
+		return;
+	}
+	/*
+	 * §7.62: a VALUE SCALAR's `?` replaces the whole type with a synthesised
+	 * pair-struct, and takes no pointer — what is absent is the value, not a
+	 * reference. §4's pointer rows never arrive here (`type_is_class`
+	 * answers for them first, their mapping ending in `*`), and neither does
+	 * a class, the prelude's or this file's.
+	 */
+	if (t != NULL && t->nullable && !type_is_class(mapped) &&
+	    !name_set_has(&declared_classes, plain) &&
+	    type_is_value_scalar(mapped)) {
+		optional_type_name(mapped, buf, size);
 		return;
 	}
 	/*
@@ -373,7 +520,14 @@ emit_type(FILE *out, const st_type *t)
 }
 
 /* §5's Local: which constness the type takes, and whether a float literal
- * under it is a `float` (with the `f` suffix) or a `double` (§2 shows `0.1f`). */
+ * under it is a `float` (with the `f` suffix) or a `double` (§2 shows `0.1f`).
+ *
+ * This answers the NARROW question — is this an OBJECT type — because that is
+ * what §7.52's ownership inference and §5's `const` placement need. Whether a
+ * `?` takes `_Nullable` is the wider one (`type_takes_nullable`), and the two
+ * came apart the first time a specimen named a C pointer: the `*` test below
+ * called `const char *` a class, so `CString?` was inferred `strong`.
+ */
 static int
 type_is_class(const char *mapped)
 {
@@ -381,6 +535,10 @@ type_is_class(const char *mapped)
 
 	if (strcmp(mapped, "NSObject") == 0 || strcmp(mapped, "id") == 0) {
 		return 1;
+	}
+	/* §4's pointer rows are values in the ownership sense, not objects. */
+	if (type_is_pointer_scalar(mapped)) {
+		return 0;
 	}
 	return len > 0 && mapped[len - 1] == '*';
 }
@@ -1014,6 +1172,15 @@ emit_property_line(FILE *out, const st_decl *d, int stored, const char **error)
 	if (!type_is_emittable(&d->type, error)) {
 		return 0;
 	}
+	/*
+	 * §7.64: the storage brackets are recorded on the declaration (§7.64's
+	 * `widths[4]`) and have no emission, so a sized declaration is refused BY
+	 * NAME. Emitting the element type alone is what used to happen, and it
+	 * silently declares no storage at all — the declaration's whole point.
+	 */
+	if (d->array_rank > 0) {
+		return refuse("a sized array declaration (§7.64)", error);
+	}
 	if (d->has_initial) {
 		/*
 		 * §9.16: a stored property's default is emitted as a synthesised
@@ -1555,6 +1722,106 @@ emit_trap_support(FILE *out)
 		     "\tif (!__sterling_v) sterlingc_trap_null(); __sterling_v; })\n\n");
 }
 
+/*
+ * §7.62's pair-structs, and WHICH ones the unit needs. One is synthesised per
+ * scalar the program actually uses, so the set has to be known before the first
+ * declaration that mentions one — which is why this is a walk rather than an
+ * emission at the point of use.
+ *
+ * The walk is `collect_class_type_refs`' shape: every declaration's type and
+ * every parameter's, at every nesting depth, plus §7.4's extensions. What it
+ * does NOT reach is a type written inside a method BODY — a local. A local whose
+ * type is a scalar optional therefore names a struct that was never defined,
+ * and that is a clang error rather than a silently wrong answer, which is the
+ * failure mode this project requires. It closes when §7.62's binding forms land
+ * (`if let` on a scalar), which is where a local's scalar optional actually
+ * appears.
+ */
+#define EMIT_MAX_OPTIONALS 16
+
+static void
+add_scalar_optional(const st_type *t, char names[][64], size_t *count)
+{
+	char plain[256];
+	const char *mapped;
+	size_t i;
+
+	if (t == NULL || !t->nullable || t->name.text == NULL) {
+		return;
+	}
+	mangle_name(t->name.text, plain, sizeof(plain));
+	mapped = map_type(plain);
+	if (type_is_class(mapped) || name_set_has(&declared_classes, plain) ||
+	    !type_is_value_scalar(mapped)) {
+		return;
+	}
+	for (i = 0; i < *count; i++) {
+		if (strcmp(names[i], mapped) == 0) {
+			return;
+		}
+	}
+	if (*count < EMIT_MAX_OPTIONALS) {
+		snprintf(names[*count], 64, "%s", mapped);
+		(*count)++;
+	}
+}
+
+static void
+collect_decl_scalar_optionals(const st_decl *decls, char names[][64],
+			      size_t *count)
+{
+	const st_decl *d;
+	size_t i;
+
+	for (d = decls; d != NULL; d = d->next) {
+		add_scalar_optional(&d->type, names, count);
+		for (i = 0; i < d->param_count; i++) {
+			add_scalar_optional(&d->params[i].type, names, count);
+		}
+	}
+}
+
+static void
+collect_class_scalar_optionals(const st_class *c, char names[][64],
+			       size_t *count)
+{
+	size_t i;
+
+	collect_decl_scalar_optionals(c->decls, names, count);
+	for (i = 0; i < c->nested_count; i++) {
+		collect_class_scalar_optionals(c->nested[i], names, count);
+	}
+}
+
+/*
+ * `{ T value; BOOL hasValue; }` per §7.62, emitted BEFORE the assumed-non-null
+ * region for the same reason the trap macro is: that region is what makes an
+ * unannotated POINTER a promise, and a value-and-a-flag struct has no business
+ * making one. Not emitted at all when the unit has none — §2's specimen is a
+ * byte-for-byte golden, so an unconditional block would change the one output
+ * the language is specified by (the trap's rule, unchanged).
+ */
+static void
+emit_scalar_optionals(FILE *out, char names[][64], size_t count)
+{
+	size_t i;
+
+	if (count == 0) {
+		return;
+	}
+	fprintf(out,
+		"/* §7.62: a scalar's `?` is a pair-struct, one per scalar used —\n"
+		"   `hasValue` is what `if let`, `x == nil` and `??` read. */\n");
+	for (i = 0; i < count; i++) {
+		char optional[64];
+
+		optional_type_name(names[i], optional, sizeof(optional));
+		fprintf(out, "typedef struct { %s value; BOOL hasValue; } %s;\n",
+			names[i], optional);
+	}
+	fprintf(out, "\n");
+}
+
 int
 st_emit_header(FILE *out, const st_program *program, const char *source_label,
 	       const char **error)
@@ -1618,6 +1885,29 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 	 */
 	if (program_uses_unwrap(program)) {
 		emit_trap_support(out);
+	}
+	/*
+	 * §7.62's pair-structs, one typedef per scalar the unit's DECLARATIONS
+	 * use. Before the region for the trap's reason, and collected per program
+	 * rather than per class because a later class may name a struct an
+	 * earlier one introduced.
+	 */
+	{
+		char optionals[EMIT_MAX_OPTIONALS][64];
+		size_t optional_count = 0;
+		size_t k;
+
+		for (k = 0; k < program->class_count; k++) {
+			collect_class_scalar_optionals(program->classes[k],
+						       optionals,
+						       &optional_count);
+		}
+		for (k = 0; k < program->extension_count; k++) {
+			collect_decl_scalar_optionals(program->extensions[k]->decls,
+						      optionals,
+						      &optional_count);
+		}
+		emit_scalar_optionals(out, optionals, optional_count);
 	}
 	fprintf(out, "_Pragma(\"clang assume_nonnull begin\")\n\n");
 

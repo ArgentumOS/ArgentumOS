@@ -1,6 +1,14 @@
-/* A `for-in` lowers to a cursor or an index; there is no C statement to map it to. */
+/* A `for-in` lowers to a cursor or an index; there is no C statement to map it to.
+ *
+ * The parameter is `Object` and not `Array<String>` on purpose. It used to be the
+ * generic, and the specimen passed — but only because the generic ARGUMENT was
+ * being dropped on the floor, so the signature "emitted" and the traversal
+ * reached the loop. Now that a lightweight-generic type is refused by name
+ * (§7.63, `generic-argument.ag`), that specimen would refuse for the wrong
+ * reason. One specimen, one construct: the iterated type is not what this file
+ * is about. */
 class RefuseForIn: Object {
-    method m(items: Array<String>) -> Void {
+    method m(items: Object) -> Void {
         for item in items {
             return;
         }
