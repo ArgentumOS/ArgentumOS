@@ -129,6 +129,62 @@ int main(void)
 			(int)(info != nil && [info isOperatingSystemAtLeastVersion:sky])]);
 	}
 
+	/* §62.98: THE VOCABULARY OF -operatingSystemName, and the thermal state beside it. The seven names are
+	 * Apple's, each valued as the name it is; THIS system answers a name outside the seven, which is the
+	 * deviation the header records and the reason the vocabulary is declared rather than borrowed. */
+	{
+		NSProcessInfo *info = [NSProcessInfo processInfo];
+		NSString *ours = info != nil ? [info operatingSystemName] : nil;
+		BOOL outsideTheSeven = ours != nil && [ours length] > 0 &&
+				       ![ours isEqualToString:NSMACHOperatingSystem] &&
+				       ![ours isEqualToString:NSWindowsNTOperatingSystem] &&
+				       ![ours isEqualToString:NSWindows95OperatingSystem] &&
+				       ![ours isEqualToString:NSHPUXOperatingSystem] &&
+				       ![ours isEqualToString:NSSolarisOperatingSystem] &&
+				       ![ours isEqualToString:NSSunOSOperatingSystem] &&
+				       ![ours isEqualToString:NSOSF1OperatingSystem];
+
+		check("proc-operating-system-names",
+		      [NSMACHOperatingSystem isEqualToString:@"NSMACHOperatingSystem"] &&
+		      [NSWindowsNTOperatingSystem isEqualToString:@"NSWindowsNTOperatingSystem"] &&
+		      [NSWindows95OperatingSystem isEqualToString:@"NSWindows95OperatingSystem"] &&
+		      [NSHPUXOperatingSystem isEqualToString:@"NSHPUXOperatingSystem"] &&
+		      [NSSolarisOperatingSystem isEqualToString:@"NSSolarisOperatingSystem"] &&
+		      [NSSunOSOperatingSystem isEqualToString:@"NSSunOSOperatingSystem"] &&
+		      [NSOSF1OperatingSystem isEqualToString:@"NSOSF1OperatingSystem"] &&
+		      outsideTheSeven,
+		      [NSString stringWithFormat:@"this system answers <%@>, which must not be one of the seven", ours]);
+	}
+
+	/* AND THE STATE WITH ITS NOTIFICATION (§62.98): the enum had NO door before this unit, so the door and the
+	 * name it pairs with are both asserted — the answer is one of the four documented states, and the
+	 * notification name is a usable name (a registrant receives a post through it). */
+	{
+		NSProcessInfo *info = [NSProcessInfo processInfo];
+		NSProcessInfoThermalState state = info != nil ? [info thermalState]
+							      : NSProcessInfoThermalStateCritical;
+		BOOL documented = (state == NSProcessInfoThermalStateNominal ||
+				   state == NSProcessInfoThermalStateFair ||
+				   state == NSProcessInfoThermalStateSerious ||
+				   state == NSProcessInfoThermalStateCritical);
+		__block int received = 0;
+		id observer;
+
+		observer = [[NSNotificationCenter defaultCenter]
+			    addObserverForName:NSProcessInfoThermalStateDidChangeNotification
+					object:nil queue:nil usingBlock:^(NSNotification *note) { received++; }];
+		[[NSNotificationCenter defaultCenter] postNotificationName:NSProcessInfoThermalStateDidChangeNotification
+								   object:nil];
+		[[NSNotificationCenter defaultCenter] removeObserver:observer];
+
+		check("proc-thermal-state-and-its-notification",
+		      documented && state == NSProcessInfoThermalStateNominal &&
+		      [NSProcessInfoThermalStateDidChangeNotification
+			 isEqualToString:@"NSProcessInfoThermalStateDidChangeNotification"] &&
+		      received == 1,
+		      [NSString stringWithFormat:@"state=%d received=%d", (int)state, received]);
+	}
+
 	printf("FOUNDATION-PROCESSINFO RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

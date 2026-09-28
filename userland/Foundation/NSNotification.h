@@ -73,6 +73,10 @@ extern NSNotificationName const NSMetadataQueryDidStartGatheringNotification;
 extern NSNotificationName const NSMetadataQueryDidUpdateNotification;
 extern NSNotificationName const NSMetadataQueryGatheringProgressNotification;
 extern NSNotificationName const NSProcessInfoPowerStateDidChangeNotification;
+/* §62.98: the notification that PAIRS WITH -thermalState, declared beside the power-state one because that is
+ * the company Apple keeps it in. Nothing in this library posts it - see NSProcessInfo.h's note on the state
+ * itself - so it is a name a caller can observe on and a seam a future thermal source would post through. */
+extern NSNotificationName const NSProcessInfoThermalStateDidChangeNotification;
 extern NSNotificationName const NSSystemClockDidChangeNotification;
 extern NSNotificationName const NSSystemTimeZoneDidChangeNotification;
 extern NSNotificationName const NSUbiquityIdentityDidChangeNotification;

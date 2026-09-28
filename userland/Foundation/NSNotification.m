@@ -23,6 +23,7 @@ NSNotificationName const NSMetadataQueryDidStartGatheringNotification = @"NSMeta
 NSNotificationName const NSMetadataQueryDidUpdateNotification = @"NSMetadataQueryDidUpdateNotification";
 NSNotificationName const NSMetadataQueryGatheringProgressNotification = @"NSMetadataQueryGatheringProgressNotification";
 NSNotificationName const NSProcessInfoPowerStateDidChangeNotification = @"NSProcessInfoPowerStateDidChangeNotification";
+NSNotificationName const NSProcessInfoThermalStateDidChangeNotification = @"NSProcessInfoThermalStateDidChangeNotification";
 NSNotificationName const NSSystemClockDidChangeNotification = @"NSSystemClockDidChangeNotification";
 NSNotificationName const NSSystemTimeZoneDidChangeNotification = @"NSSystemTimeZoneDidChangeNotification";
 NSNotificationName const NSUbiquityIdentityDidChangeNotification = @"NSUbiquityIdentityDidChangeNotification";

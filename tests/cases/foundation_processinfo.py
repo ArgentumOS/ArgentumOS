@@ -31,7 +31,9 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_processinfo"
 CHECKS = ("proc-shared-instance", "proc-identifier", "proc-name-and-arguments",
           "proc-environment", "proc-counts", "proc-host-and-uptime",
-          "proc-unique-strings", "proc-version")
+          "proc-unique-strings", "proc-version",
+          # §62.98: the vocabulary of -operatingSystemName and the thermal state that had no door.
+          "proc-operating-system-names", "proc-thermal-state-and-its-notification")
 
 
 class Case(BaseCase):

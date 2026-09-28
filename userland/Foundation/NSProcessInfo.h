@@ -24,6 +24,13 @@
  * `-isOperatingSystemAtLeastVersion:` compares against THIS system's version rather than a
  * simulated one.
  *
+ * AND APPLE'S SEVEN NAMES ARE DECLARED ANYWAY (§62.98), because they are the VOCABULARY OF THAT DOOR rather
+ * than claims about this system: a program that compares `-operatingSystemName` against
+ * `NSMACHOperatingSystem` or `NSWindowsNTOperatingSystem` has to be able to spell them, and each one's value is
+ * the string its own name is — which is what the door answers on the systems they name. NONE of them is ever
+ * this system's answer, and the probe asserts both halves: the seven values, and that this system answers a
+ * name outside the seven.
+ *
  * AN ENVIRONMENT ENTRY THAT IS NOT UTF-8 IS SKIPPED rather than answered as a nil inside a
  * dictionary, which is the one place a caller could not tell "absent" from "unrepresentable".
  */
@@ -50,6 +57,16 @@ typedef struct {
 	NSInteger patchVersion;
 } NSOperatingSystemVersion;
 
+/* THE THERMAL STATE BELONGS BEFORE THE CLASS, and it MOVED here in §62.98 for a reason worth keeping: the enum
+ * used to sit below the interface with no door that could name it, so `-thermalState` was unwritable — an enum
+ * whose only reader would have been a forward declaration. Apple declares it before the class too. */
+typedef enum {
+	NSProcessInfoThermalStateNominal = 0,
+	NSProcessInfoThermalStateFair = 1,
+	NSProcessInfoThermalStateSerious = 2,
+	NSProcessInfoThermalStateCritical = 3
+} NSProcessInfoThermalState;
+
 @interface NSProcessInfo : NSObject
 
 + (NSProcessInfo *)processInfo;
@@ -62,6 +79,12 @@ typedef struct {
 - (NSString *)globallyUniqueString;
 - (NSString *)hostName;
 - (NSString *)operatingSystemName;
+/* THE STATE THE ENUM ABOVE DESCRIBES HAD NO DOOR UNTIL §62.98, which is how the enum sat here orphaned.
+ * ANSWERED AS Nominal, and the boundary is stated rather than implied: no thermal sensor is plumbed into this
+ * library, so the state never changes and the notification that pairs with it is never posted by anything here.
+ * A caller that reads the property or observes the name compiles and gets a truthful answer - "nominal" is what
+ * a system with no thermal management is. */
+- (NSProcessInfoThermalState)thermalState;
 - (NSString *)operatingSystemVersionString;
 - (NSOperatingSystemVersion)operatingSystemVersion;
 - (BOOL)isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion)version;
@@ -90,12 +113,18 @@ typedef enum {
 	NSActivityTrackingEnabled = 1 << 10
 } NSActivityOptions;
 
-typedef enum {
-	NSProcessInfoThermalStateNominal = 0,
-	NSProcessInfoThermalStateFair = 1,
-	NSProcessInfoThermalStateSerious = 2,
-	NSProcessInfoThermalStateCritical = 3
-} NSProcessInfoThermalState;
+
+/* THE SEVEN NAMES OF `-operatingSystemName`'s VOCABULARY, in Apple's spelling and with the value each one has on
+ * the system its name describes. This system answers its own name (never one of these) — the note at the top of
+ * this header says why — so a program that knows about macOS, Windows or the other relatives can still write the
+ * comparison it was written to write. */
+extern NSString * const NSMACHOperatingSystem;
+extern NSString * const NSWindowsNTOperatingSystem;
+extern NSString * const NSWindows95OperatingSystem;
+extern NSString * const NSHPUXOperatingSystem;
+extern NSString * const NSSolarisOperatingSystem;
+extern NSString * const NSSunOSOperatingSystem;
+extern NSString * const NSOSF1OperatingSystem;
 
 NS_ASSUME_NONNULL_END
 

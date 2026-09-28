@@ -235,9 +235,28 @@ static NSString *fn_trimmed_process_string(const char *leaf)
 				 (long)now.tv_sec, (unsigned long)now.tv_usec, counter];
 }
 
+/* THE SEVEN NAMES OF THE DOOR'S OWN VOCABULARY (§62.98). Each one's value is the string its name is, which is
+ * what that door answers on the system the name describes; NONE of them is this system's answer, and the door
+ * below says so by returning a name that is not in this list. */
+NSString * const NSMACHOperatingSystem = @"NSMACHOperatingSystem";
+NSString * const NSWindowsNTOperatingSystem = @"NSWindowsNTOperatingSystem";
+NSString * const NSWindows95OperatingSystem = @"NSWindows95OperatingSystem";
+NSString * const NSHPUXOperatingSystem = @"NSHPUXOperatingSystem";
+NSString * const NSSolarisOperatingSystem = @"NSSolarisOperatingSystem";
+NSString * const NSSunOSOperatingSystem = @"NSSunOSOperatingSystem";
+NSString * const NSOSF1OperatingSystem = @"NSOSF1OperatingSystem";
+
 - (NSString *)operatingSystemName
 {
 	return @"NSArgentumOperatingSystem";
+}
+
+- (NSProcessInfoThermalState)thermalState
+{
+	/* NOTHING HERE MEASURES TEMPERATURE, and answering a changing number would be the lie this class already
+	 * refuses to tell about its own name. Nominal is what a system with no thermal management is, and the
+	 * notification's own comment records that nothing posts it. */
+	return NSProcessInfoThermalStateNominal;
 }
 
 - (NSOperatingSystemVersion)operatingSystemVersion
