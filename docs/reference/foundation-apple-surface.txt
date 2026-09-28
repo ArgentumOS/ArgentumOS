@@ -34,13 +34,13 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  216   open    9   struck   48
+#   class      shipped  217   open    8   struck   48
 #   protocol   shipped   36   open    4   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  147   open    4   struck    9
-#   case       shipped 1180   open   47   struck   75
+#   case       shipped 1184   open   43   struck   75
 #   func       shipped  165   open   12   struck   12
-#   var        shipped  652   open   55   struck  207
+#   var        shipped  655   open   52   struck  207
 #   typealias  shipped   66   open    5   struck    5
 #   struct     shipped   13   open    0   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1105,10 +1105,10 @@ case	shipped	NSUbiquitousFileUbiquityServerNotAvailable		Files and Data Persiste
 case	shipped	NSUbiquitousFileUbiquityServerNotAvailable	NSError	App Support / User-Relevant Errors / Error Codes / iCloud File Errors	-	objc
 case	shipped	NSUbiquitousFileUnavailableError		Files and Data Persistence / Errors / General iCloud File Errors	-	objc
 case	shipped	NSUbiquitousFileUnavailableError	NSError	App Support / User-Relevant Errors / Error Codes / iCloud File Errors	-	objc
-case	open	NSUbiquitousKeyValueStoreAccountChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
-case	open	NSUbiquitousKeyValueStoreInitialSyncChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
-case	open	NSUbiquitousKeyValueStoreQuotaViolationChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
-case	open	NSUbiquitousKeyValueStoreServerChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
+case	shipped	NSUbiquitousKeyValueStoreAccountChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
+case	shipped	NSUbiquitousKeyValueStoreInitialSyncChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
+case	shipped	NSUbiquitousKeyValueStoreQuotaViolationChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
+case	shipped	NSUbiquitousKeyValueStoreServerChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
 case	open	NSUncachedRead	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
 case	shipped	NSUndefinedDateComponent	NSDateComponents	Fundamentals / Calendrical Calculations / Validating a Date / Constants	deprecated	objc
 case	shipped	NSUnicodeStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1566,7 +1566,7 @@ class	shipped	NSURLSessionUploadTask		Networking / Essentials / Adding upload ta
 class	shipped	NSURLSessionWebSocketMessage		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 class	shipped	NSURLSessionWebSocketTask		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 class	shipped	NSUUID		Fundamentals / Unique Identifiers	-	objc
-class	open	NSUbiquitousKeyValueStore		Files and Data Persistence / iCloud key and value storage	-	objc
+class	shipped	NSUbiquitousKeyValueStore		Files and Data Persistence / iCloud key and value storage	-	objc
 class	shipped	NSUnarchiver		Files and Data Persistence / Deprecated	deprecated	objc
 class	shipped	NSUndoManager		App Support / Undo	-	objc
 class	struck	NSUniqueIDSpecifier		App Support / Object Specifiers	declined	objc
@@ -3223,9 +3223,9 @@ var	shipped	NSURLVolumeTypeNameKey	NSURL	Fundamentals / URLs / Accessing Resourc
 var	shipped	NSURLVolumeURLForRemountingKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	shipped	NSURLVolumeURLKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
 var	shipped	NSURLVolumeUUIDStringKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Volume support keys	-	objc
-var	open	NSUbiquitousKeyValueStoreChangeReasonKey	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
-var	open	NSUbiquitousKeyValueStoreChangedKeysKey	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
-var	open	NSUbiquitousKeyValueStoreDidChangeExternallyNotification	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
+var	shipped	NSUbiquitousKeyValueStoreChangeReasonKey	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
+var	shipped	NSUbiquitousKeyValueStoreChangedKeysKey	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
+var	shipped	NSUbiquitousKeyValueStoreDidChangeExternallyNotification	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
 var	shipped	NSUbiquitousUserDefaultsCompletedInitialSyncNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
 var	shipped	NSUbiquitousUserDefaultsDidChangeAccountsNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
 var	shipped	NSUbiquitousUserDefaultsNoCloudAccountNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc

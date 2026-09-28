@@ -3494,7 +3494,7 @@ vanishing.
 | **Files and Data Persistence / Property Lists** | all classes shipped | — |
 | **Files and Data Persistence / Queries** | ALL STRUCK: `NSMetadataQuery`, `NSMetadataQueryAttributeValueTuple`, `NSMetadataQueryDelegate`, `NSMetadataQueryResultGroup` | — |
 | **Files and Data Persistence / XML** | all classes shipped | — |
-| **Files and Data Persistence / iCloud key and value storage** | 1 open | `NSUbiquitousKeyValueStore` |
+| **Files and Data Persistence / iCloud key and value storage** | all classes shipped | — |
 | **Fundamentals / Automatic grammar agreement** | all classes shipped | — |
 | **Fundamentals / Basic Collections** | all classes shipped | — |
 | **Fundamentals / Binary Data** | all classes shipped | — |
@@ -14737,6 +14737,59 @@ family, which matters here because the unit changed the base class they share. G
 question §62.81 stated), the singletons (`NSUbiquitousKeyValueStore`, `NSBundleResourceRequest`), `Low-Level
 Utilities / Legacy` (`NSConnectionDelegate`, `NSDistantObjectRequest`, `NSGarbageCollector`) — plus the markdown
 importer and the run-loop observers owed as things to BUILD, and the spelling engine open on language grounds.
+
+
+## §62.87 — THE iCLOUD KEY/VALUE STORE, LOCALLY: SEVEN ROWS AND A FAMILY CLOSED (2026-09-26)
+
+**SEVEN ROWS: `NSUbiquitousKeyValueStore`, the change notice, its two `userInfo` keys and the four change
+reasons** — so `Files and Data Persistence / iCloud key and value storage` is COMPLETE. `class shipped` 216 →
+**217** (open 9 → **8**), `var` 652 → **655**, `case` 1180 → **1184**.
+
+**THE LOCAL HALF IS REAL AND THE REMOTE HALF IS ABSENT, WHICH IS §62.80'S SHAPE AND THE REASON THIS COULD LAND.**
+The store holds values, answers them through the typed doors, enforces Apple's three limits, and reports changes.
+What it does not have is iCloud — so **`-synchronize` ANSWERS NO, AND THAT IS ASSERTED RATHER THAN ASSUMED**: YES
+would claim a synchronization that never happened, and that is the one lie this class could tell. The store is
+also **IN MEMORY ONLY in v1**, because in Apple's design persistence belongs to the system service and not to this
+object.
+
+**THE THREE LIMITS ARE APPLE'S AND THEY ARE ENFORCED AT THE WRITE** — at most 1024 keys, at most 1 MB of values,
+and a key of at most 128 characters, where a longer KEY RAISES (Apple's behaviour) while a write that would break
+the quota is REFUSED **WHOLE**, because Apple's contract is that a store call is one atomic transaction. Two
+consequences are stated rather than left to be discovered: the 1 MB is enforced against an ESTIMATE (strings by
+UTF-16 length, data by bytes, numbers and dates at fixed sizes, collections recursively), and `NSNull` is not one
+of the property-list types the store accepts.
+
+**THE CHANGE NOTICE IS DRIVEN THROUGH A NAMED SEAM, WHICH IS THE §62.85 DEVICE REUSED.** A notice about data
+arriving from OUTSIDE would otherwise be a name nobody can post, so `FNSUbiquitousStore.h` performs what a
+service's delivery does — merge the incoming values, then post with the two documented keys — and the probe
+OBSERVES the notice's object, reason and keys. **AND THE RULE THAT IS EASIEST TO GET WRONG IS ASSERTED DIRECTLY:
+this app's own successful write posts NOTHING** (Apple says so in words, and a store that posted for its own
+writes would make every observer loop). The ONE local posting is a QUOTA VIOLATION, which is also how Apple's
+store reports it.
+
+**THE PROBE FOUND A REAL SEAM-DESIGN DEFECT, MAKING IT THREE UNITS IN A ROW WHERE MEASUREMENT CORRECTED A DESIGN
+RATHER THAN A TYPO.** The seam's contract said "a nil value in the dictionary REMOVES that key", which a caller
+cannot express — an `NSDictionary` does not hold a nil — so the check delivered `NSNull`, the store kept the key,
+and the CONTRACT was the thing that was wrong. `NSNull` is now the removal spelling, and it is free to mean that
+precisely because it is not a value this store accepts. (The class's own note points the reader at the seam's, so
+the two cannot drift.)
+
+**AND ONE MISTAKE THIS THREAD HAD ALREADY PAID FOR WAS NOT REPEATED:** the seam function needed to write into the
+store, and the first version reached in with `-valueForKey:` — repurposing a public door for a private purpose,
+which is exactly §62.79's recorded error. It is a PRIVATE METHOD the seam calls instead, declared in the class's
+own file, which is also what removed the compiler's "method not found" warning and the invented method.
+
+**VERIFIED.** Host: `make host-foundation-run` → **44 probes, no failure**. Guest: `make testimg` then
+`make test TESTS='foundation_ubiquitousstore'` → **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**, the probe's own
+tally **`ok=21 fail=0`**. The probe compiles under the tier's toolchain
+(`-Werror=nullable-to-nonnull-conversion`) with **zero** warnings. `foundation-gate`: **OK** (570 files, 212 of 217
+headers, 5 exempt by name); `foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**;
+`--unimplemented`: **0 NEW**.
+
+**WHERE THE THREAD STANDS: 8 open classes** — `Reference / Classes` at three (one is the `NSSimpleCString` scope
+question §62.81 stated), `NSBundleResourceRequest`, `Low-Level Utilities / Legacy` (`NSConnectionDelegate`,
+`NSDistantObjectRequest`, `NSGarbageCollector`), plus `NSExtensionContext` and `NSUserActivity` — and the markdown
+importer and run-loop observers owed as things to BUILD, with the spelling engine still open on language grounds.
 
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)

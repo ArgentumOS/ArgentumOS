@@ -272,6 +272,8 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSLinguisticTagger.h \
 	$(FOUNDATION_SRC)/NSSpellServer.h \
 	$(FOUNDATION_SRC)/NSArchiver.h \
+	$(FOUNDATION_SRC)/NSUbiquitousKeyValueStore.h \
+	$(FOUNDATION_SRC)/FNSUbiquitousStore.h \
 	$(FOUNDATION_SRC)/FNArchiverWire.h \
 	$(FOUNDATION_SRC)/FNSpellServerDispatch.h \
 	$(FOUNDATION_SRC)/FNTextBreaking.h \
@@ -1326,6 +1328,16 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_archiver.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_archiver"
+	# foundation_ubiquitousstore: §62.87's acceptance - the iCloud key/value store, closing
+	# `Files and Data Persistence / iCloud key and value storage`. ONE unit, Foundation only: the LOCAL half is
+	# real (typed doors, the property-list rule, Apple's three limits) and the remote half is absent, so what is
+	# asserted about it is the honest answer -synchronize gives and the change notice driven through the seam.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_ubiquitousstore.m -o .build/probe-foundation_ubiquitousstore.o
+	$(MUSL64_OBJC) .build/probe-foundation_ubiquitousstore.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_ubiquitousstore"
 	# foundation_downloadresume: §62.31's acceptance - RESUME end to end, WITH A REAL SERVER. The probe is
 	# the server: it sends half a body and then STALLS mid-transfer (which is what makes the cancel
 	# deterministic), resumes from the data its own cancel produced, and asserts the resumed request carries
