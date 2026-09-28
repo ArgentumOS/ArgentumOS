@@ -829,6 +829,75 @@ an `assign` property, and `EmitsOptional` gained it as the specimen's fourth sha
   default; `02`/`03`/`04`/`11`/`13` → §7.63; `05` → `unowned` (§7.53); `07` →
   `defer`; `09` → the `.case` shorthand; `12` → `if-binding`; `08`/`10` emit.
 
+**Landed (2026-09, seventh piece): §7.63's `Array<T>` — the VALUE family — plus
+the object family's measured blocker and a NEW owed item the golden turned up.**
+`Array<Int32>` now emits `int32_t const *`, and a struct or an enum element emits
+`EmitsArraySpan const *` / `EmitsArrayLevel const *` — §4's values, not names §4's
+table holds, so the classifier has to reach this file's own declarations.
+`EmitsArray` is the golden (14 now).
+
+- **THE OBJECT FAMILY DOES NOT SHIP, and the reason is the substrate, measured
+  by the compile gate rather than reasoned about.** §7.63 says an object
+  `Array<T>` IS `NSArray<T>`, and clang refuses to read it: *type arguments cannot
+  be applied to non-parameterized class 'NSArray'* — **no collection in this
+  tree's Foundation declares generic parameters** (`NSArray`, `NSMutableArray`,
+  `NSDictionary`, `NSSet` are plain). The only spelling that compiles today is
+  the ERASED `NSArray *`, which is a different choice than §7.63 records, so the
+  object form is refused BY NAME (`tests/refuse/array-object.ag`) rather than
+  erased silently.
+  - **USER DECISION (asked, 2026-09): Foundation's `NS*` classes are being
+    parameterized to match Apple's implementation, today.** So the flip is one
+    arm of `array_alias_kind`'s switch plus the `type_is_emittable` refusal
+    below it, and the golden's object rows come back then. The classification is
+    already written to that shape.
+- **The first spelling was wrong and the compile gate said so, not a reading.**
+  A type argument takes the FULL type, pointer included — `NSArray<NSString *> *`.
+  The stripped form `NSArray<NSString>` draws *type argument 'NSString' must be a
+  pointer (requires a '\*')*. `map_type` already produces `NSString *`, so the
+  object arm STRIPS NOTHING.
+- **§5's memory qualifier was the second silent loss, and it is an ARC bug rather
+  than a style point.** `Array<String>` is an OBJECT whose name is not a class, so
+  §7.52's inference — asked as "is the name a class" — answers no and emits
+  `@property (nonatomic, assign) NSArray<NSString *> *names;`, which compiles,
+  does not retain the array, and reads as an ordinary declaration. The question is
+  now `type_is_reference` (a class, or §7.63's object `Array<T>`), and it is
+  exercised by the value family staying `assign`. A GOLDEN is the only thing that
+  can catch this class of bug; no behaviour can.
+- **A nullable ELEMENT forced a new AST field, because the loss was about to
+  become invisible — and this slice is what would have caused it.** The parser's
+  `?>` is ONE token, so `Array<Float32?>`'s `?` is consumed inside the list and
+  was recorded nowhere: once the alias exists, that use would emit `float const *`
+  — the same bytes as the non-optional element. `st_type` gained
+  `argument_nullable`, set by `parse_generic_list` (which owns the `?` for the
+  same reason it owns `?>`), and `Array<T?>` refuses BY NAME
+  (`tests/refuse/array-nullable-argument.ag`): naming the pair-struct needs the
+  argument's TYPE, and the AST holds the argument's outermost NAME. The flag is
+  exact for `Array<T>` (one argument) and coarse for a two-argument name; stated.
+- **A bare `Array` was a pre-existing silent loss, and it is the same name.**
+  With no argument it is not a type at all — the argument is what says which of
+  the two it is — so it fell through to the ordinary path and emitted the
+  identifier `Array`, which no declaration knows. Refused by name now
+  (`tests/refuse/array-bare.ag`), as is an element outside §7.63's two families
+  (`Array<CString>`, a raw pointer — `tests/refuse/array-pointer-element.ag`).
+- **CORPUS: `02`, `03` and `11` all moved past §7.63.** `03` → `enum case`, `11`
+  → `switch`, `02` → §7.64's sized array declaration. The map is now `01`/`06` →
+  §9.16 (a struct field's default); `03`/`09` → the `.case` shorthand;
+  `02` → §7.64; `04` → §7.63's nullable argument; `05` → `unowned`; `07` →
+  `defer`; `11` → `switch`; `12` → `if-binding`; `13` → §7.63's `Box<String>`;
+  `08`/`10` emit. The largest single group is now TWO files, so no one construct
+  dominates — and §7.63 itself is no longer one of them for the value family.
+- **OWED, NEW, AND MEASURED: §7.1's selector composition is not implemented.**
+  §7.1 DECIDED that the first piece is the method name with the first parameter's
+  EXTERNAL name **capitalised** onto it, and §7.50 DECIDED that `_` suppresses the
+  label entirely. The emitter does neither, and one probe shows all three shapes:
+  `take(items:)` → `take:`, `take(_ items:)` → `take_:`, `take(from items:)` →
+  `takefrom:`. §7.1's own text calls the first of those "the default that stood
+  here" and says it "cannot be right — it would make `init(foo: Int32)` and
+  `init(bar: Float32)` both `init:`". Every golden's method rows encode it, so it
+  is a slice of its own; `EmitsArray` deliberately uses `func`s (no selector) so
+  it does not add a fourteenth place that has to change. Recorded rather than
+  fixed here, and NOT silently blessed by a new golden.
+
 - The type table (`sterling-syntax.md` §4) and its **reference/value rule** — a
   class type is a reference, a scalar and a **struct** are values; declared
   structs (`struct`), imported ones (`NSRange` and friends), struct literals (a

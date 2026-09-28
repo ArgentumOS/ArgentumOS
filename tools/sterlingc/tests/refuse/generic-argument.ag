@@ -1,6 +1,9 @@
-/* §7.63: a lightweight-generic type has no emission — `Array<Int32>` *is*
- * `int const *` and `Box<String>` is an erased `Box *`. Emitting the bare name
- * would drop the argument, the fact that it had one, and the element type. */
+/* §7.63: `Array<T>` is an ALIAS and now HAS an emission, but a generic name
+ * that is not `Array` still does not — and `Box<String>` is the one that
+ * matters. §7.63 says an object argument ERASES to the bare class (`Box *`) and
+ * a non-object one is MONOMORPHISED from the declaration; neither is written.
+ * Emitting the bare name would drop the argument, the fact that it had one, and
+ * the element type with it. */
 class RefuseGenericArgument: Object {
-    property items: Array<Int32>
+    property items: Box<String>
 }

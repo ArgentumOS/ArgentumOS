@@ -1,0 +1,9 @@
+/* §7.62 inside §7.63: `Array<Float32?>` would be an array of PAIR-STRUCTS, and
+ * naming the pair-struct needs the argument's TYPE — `SterlingOptional_float`.
+ * The AST records the argument's outermost NAME, so the typedef to collect
+ * cannot be named. Refused rather than emitted, because the alias is a pointer
+ * either way: a dropped `?` would produce `float const *` — the same bytes as
+ * the non-optional element — with nothing in the output to show it. */
+class RefuseArrayNullableArgument: Object {
+    property slots: Array<Float32?>
+}

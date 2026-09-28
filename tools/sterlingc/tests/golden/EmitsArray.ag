@@ -1,0 +1,65 @@
+/*
+ * EmitsArray.ag — §7.63's `Array<T>`, which is an ALIAS and not a construct.
+ *
+ * Copyright © 2026 Kyle J. Cardoza. MIT licence (see docs/LICENSE).
+ *
+ * The name resolves to one of TWO types by its *argument*, and the two differ
+ * in every way an author can observe — so pinning one of them pins nothing. The
+ * two are `Array<Int32>` = `int32_t const *` (a value view) and `Array<String>`
+ * = `NSArray<NSString *> *` (exactly the ObjC type).
+ *
+ * THE OBJECT FAMILY IS NOT PINNED HERE YET, and that is a measured state rather
+ * than an oversight: clang refuses `NSArray<NSString *>` outright today because
+ * no collection in this tree's Foundation declares generic parameters — "type
+ * arguments cannot be applied to non-parameterized class 'NSArray'". So the
+ * object form refuses BY NAME (tests/refuse/array-object.ag holds it), and this
+ * specimen pins the family that ships: the VALUE.
+ *
+ * The value family's other two members are here as well — a DECLARED STRUCT and
+ * a DECLARED ENUM, which are §4's values and not names §4's table holds, so the
+ * classifier has to reach this file's own declarations to see them. A struct's
+ * fields are never named: the element type is the outer name.
+ *
+ * §5's MEMORY QUALIFIER IS WHY A GOLDEN IS REQUIRED AND NOT A PROBE — for the
+ * object form, which is the one that will need it: `Array<String>` is an OBJECT
+ * whose name is not a class, so asking "is the name a class" answers no and
+ * emits `@property (nonatomic, assign) NSArray<NSString *> *names;`, which
+ * COMPILES, does not retain the array, and reads as an ordinary declaration.
+ * `type_is_reference` is the question that fixes it, and it is exercised here by
+ * the value family staying `assign`.
+ *
+ * The two `func`s carry the alias through a PARAMETER and a RESULT, which is a
+ * second code path (the declaration printer) and where a dropped argument would
+ * show. They are `func`s and not `method`s deliberately: §7.1 capitalises a
+ * first parameter's external name onto the method name (`take` + `items` reads
+ * `takeItems:`), §7.50 makes `_` suppress the label, and the emitter does
+ * neither yet — `take(items:)` comes out `take:`, `take(_ items:)` comes out
+ * `take_:`, and `take(from items:)` comes out `takefrom:`. Pinning a method here
+ * would assert a spelling already measured to contradict §7.1; a `func` has no
+ * selector at all and so asserts nothing about one. The selector gap is recorded
+ * in the plan rather than encoded in this golden.
+ */
+enum EmitsArrayLevel: Int32 {
+    case low = 1
+    case high
+}
+
+struct EmitsArraySpan {
+    var lo: Int32
+    var hi: Int32
+}
+
+func EmitsArrayTotal(values: Array<Int32>) -> Int32 {
+    return 0;
+}
+
+func EmitsArrayScale(factors: Array<Float64>) -> Array<Float64> {
+    return factors;
+}
+
+class EmitsArray: Object {
+    property numbers: Array<Int32>
+    property levels: Array<EmitsArrayLevel>
+    property spans: Array<EmitsArraySpan>
+    property maybeNumbers: Array<Int32>?
+}

@@ -44,6 +44,23 @@ typedef struct st_type {
 	st_name *arguments;
 	size_t argument_count;
 	/*
+	 * §7.63: whether an ARGUMENT was written `T?`. Recorded because dropping
+	 * it is not neutral, and less obviously so than a type's own `?`:
+	 * `Array<Int32>` *is* `int const *` (§7.63), so once that alias exists,
+	 * `Array<Float32?>` would emit the very same pointer from the same outer
+	 * name — the argument's `?` would be lost with nothing in the output to
+	 * show it. The parser's `?>` is a single token, so the `?` sits inside the
+	 * list where only this flag can see it.
+	 *
+	 * A FLAG rather than a per-argument type, which is what it really wants to
+	 * be: the AST records the outermost argument NAME per position (§7.26's
+	 * rules are about what an argument *is*), so there is nowhere to hang a
+	 * nested `?` yet. `Array<T>` takes one argument, so for the one generic
+	 * name §7.63 defines the flag is exact; for a two-argument name it would
+	 * only say that one of them is nullable. Stated rather than assumed.
+	 */
+	int argument_nullable;
+	/*
 	 * §4's `T?`. RECORDED because dropping it is not neutral: the generated
 	 * header opens with `_Pragma("clang assume_nonnull begin")`, so a `.ag`
 	 * that says `String?` and emits `NSString *` inside that region asserts

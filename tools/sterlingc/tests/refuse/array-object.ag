@@ -1,0 +1,8 @@
+/* §7.63's object use: `Array<String>` IS `NSArray<NSString *>`, and clang
+ * cannot read that until Foundation's collection classes declare their generic
+ * parameters — "type arguments cannot be applied to non-parameterized class
+ * 'NSArray'". Refused by name rather than ERASED to `NSArray *`, which is a
+ * different choice than §7.63 records, and not guessed silently. */
+class RefuseArrayObject: Object {
+    property names: Array<String>
+}

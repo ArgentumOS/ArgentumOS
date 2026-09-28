@@ -1,0 +1,8 @@
+/* §7.63's two families are the object and the value, and a raw POINTER element
+ * (`CString`, which is `const char *`) is neither: the object form would need
+ * it to be an object and the value form would spell `const char * const *`,
+ * which the section does not name. Refused rather than inventing a third
+ * spelling for it. */
+class RefuseArrayPointerElement: Object {
+    property names: Array<CString>
+}

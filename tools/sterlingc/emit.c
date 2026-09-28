@@ -736,6 +736,20 @@ type_takes_pair_struct(const char *mapped)
 }
 
 /*
+ * §7.63's `Array<T>` is an ALIAS, and which of its two spellings a use gets is
+ * decided by the ARGUMENT — so the classification has to be answerable before
+ * `type_is_emittable` (which gates the type) as well as before `type_text`
+ * (which prints it), and this forward declaration is that one answer used twice.
+ */
+#define ARRAY_ALIAS_NONE    0	/* not `Array<T>` at all */
+#define ARRAY_ALIAS_OBJECT  1	/* `Array<String>` is `NSArray<NSString> *` */
+#define ARRAY_ALIAS_VALUE   2	/* `Array<Int32>` is `int32_t const *` */
+#define ARRAY_ALIAS_REFUSED 3
+
+static int array_alias_kind(const st_type *t, char *element, size_t size,
+			    const char **error);
+
+/*
  * §7.62's synthesised type name for a scalar optional: `{ T value; BOOL
  * hasValue; }`, one per scalar the program uses. The spelling is the emitter's
  * — the syntax document fixes the FIELDS (`value`, `hasValue`) and not the
@@ -787,19 +801,50 @@ type_is_emittable(const st_type *t, const char **error)
 		return 1;
 	}
 	/*
-	 * §7.63: a lightweight-generic TYPE has no emission — `Array<Int32>`
-	 * *is* `int const *` and `Box<String>` is an erased `Box *`, and neither
-	 * rule is here. Refused BY NAME rather than emitted with the argument
-	 * dropped, which is what happened: `Array<Float32?>` came out as the bare
-	 * identifier `Array`, losing the argument, the fact that it had one, and
-	 * the element type with it.
+	 * §7.63: `Array<T>` is an ALIAS, and an alias has an emission — the
+	 * argument's family decides which of the two. Asked UNCONDITIONALLY, not
+	 * only for a type that carries an argument, because a bare `Array` is the
+	 * same name and is just as meaningless without one.
 	 *
-	 * This is why the check is HERE rather than in the nullable path below:
-	 * the outer type of `Array<Float32?>` is not itself nullable, so a
-	 * nullable-only gate never saw it.
+	 * THE VALUE FAMILY SHIPS AND THE OBJECT FAMILY DOES NOT, and the reason is
+	 * the SUBSTRATE rather than the rule. §7.63 says an object `Array<T>` IS
+	 * `NSArray<T>`, and clang then refuses to read it: "type arguments cannot
+	 * be applied to non-parameterized class 'NSArray'" — no collection in this
+	 * tree's Foundation declares generic parameters, so the element type is not
+	 * writable in the header at all, and the only spelling that compiles today
+	 * is the ERASED `NSArray *`, which is a different choice than the section
+	 * records. Refused by name rather than silently erased.
+	 *
+	 * Any OTHER generic name is refused too, and `Box<String>` is the one that
+	 * matters: §7.63 erases an object argument and MONOMORPHISES the rest, and
+	 * neither is written yet.
+	 *
+	 * The check is HERE rather than in the nullable path below because the
+	 * outer type of `Array<Float32?>` is not itself nullable: a nullable-only
+	 * gate never saw it, and the argument's `?` was what got dropped.
 	 */
+	{
+		char element[256];
+		int kind = array_alias_kind(t, element, sizeof(element), error);
+
+		if (kind == ARRAY_ALIAS_VALUE) {
+			return 1;
+		}
+		if (kind == ARRAY_ALIAS_OBJECT) {
+			return refuse("an object `Array<T>` (§7.63's `NSArray<T>` "
+				      "needs Foundation's collection classes to "
+				      "declare their generic parameters; until "
+				      "they do, clang refuses the type argument)",
+				      error);
+		}
+		if (kind == ARRAY_ALIAS_REFUSED) {
+			return 0;
+		}
+	}
 	if (t->argument_count > 0) {
-		return refuse("a lightweight-generic type (§7.63)", error);
+		return refuse("a lightweight-generic type on a name other than "
+			      "§7.63's `Array<T>` (§7.63 erases an object "
+			      "argument and monomorphises the rest)", error);
 	}
 	if (!t->nullable) {
 		return 1;
@@ -829,6 +874,132 @@ type_is_emittable(const st_type *t, const char **error)
 }
 
 /*
+ * §7.63's `Array<T>`, which is an ALIAS and not a construct: the name resolves
+ * to a C pointer or to an ObjC lightweight generic by the ARGUMENT's family, so
+ * nothing new is introduced and the feature's whole cost is the front-end
+ * classification below.
+ *
+ *   `Array<Int32>`   is `int32_t const *`      — a value view, and a VIEW: no
+ *                                                length, so it cannot be built,
+ *                                                grown or iterated (§7.63)
+ *   `Array<String>`  is `NSArray<NSString> *`  — exactly the ObjC type, erasure
+ *                                                and all, which is what lets it
+ *                                                be handed to an `NSArray`
+ *                                                parameter
+ *
+ * The distinction is the ARGUMENT, read per instantiation and not per
+ * declaration — §7.62's precedent, generalised to a user type instead of a
+ * built-in.
+ */
+static int
+array_alias_kind(const st_type *t, char *element, size_t size,
+		 const char **error)
+{
+	char plain[256];
+	const char *mapped;
+	const char *arg;
+	int argument_nullable;
+
+	if (t == NULL || t->name.text == NULL) {
+		return ARRAY_ALIAS_NONE;
+	}
+	mangle_name(t->name.text, plain, sizeof(plain));
+	if (strcmp(plain, "Array") != 0) {
+		return ARRAY_ALIAS_NONE;
+	}
+	if (t->argument_count != 1) {
+		/*
+		 * A bare `Array` is the same name with no argument, and it has no
+		 * meaning either: the argument is what says which of the two types
+		 * it is. It used to fall through to the ordinary path and emit the
+		 * identifier `Array`, which no C or ObjC declaration knows.
+		 */
+		refuse("an `Array` without §7.63's one type argument (§7.63)",
+		       error);
+		return ARRAY_ALIAS_REFUSED;
+	}
+	/*
+	 * §7.62 inside §7.63: a nullable ELEMENT would be an array of pair-structs,
+	 * which needs the argument's TYPE. The AST holds the argument's outermost
+	 * NAME, so the pair-struct to collect cannot be named — refused by name
+	 * rather than emitted as the same pointer the non-optional element gets,
+	 * which would drop the `?` with nothing in the output to show it.
+	 */
+	argument_nullable = t->argument_nullable;
+	if (argument_nullable) {
+		refuse("a nullable type argument (§7.63)", error);
+		return ARRAY_ALIAS_REFUSED;
+	}
+	arg = t->arguments[0].text;
+	if (arg == NULL) {
+		refuse("an `Array<T>` whose type argument is unreadable", error);
+		return ARRAY_ALIAS_REFUSED;
+	}
+	mangle_name(arg, plain, sizeof(plain));
+	mapped = map_type(plain);
+	if (mapped == NULL) {
+		refuse("an `Array<T>` whose type argument has no mapping", error);
+		return ARRAY_ALIAS_REFUSED;
+	}
+	if (type_name_is_class(arg) || type_is_class(mapped)) {
+		/*
+		 * A lightweight generic takes the FULL type, pointer included —
+		 * `NSArray<NSString *> *`, which is what clang means by "type
+		 * argument 'NSString' must be a pointer". `map_type` already
+		 * produces exactly that (`String` -> `NSString *`), so nothing is
+		 * stripped; the first attempt at this DID strip the pointer and the
+		 * compile gate refused it.
+		 */
+		snprintf(element, size, "%s", mapped);
+		return ARRAY_ALIAS_OBJECT;
+	}
+	/*
+	 * The value family is §7.63's "anything else": a scalar, a struct or an
+	 * enum — the three §4 calls values. A raw POINTER element (`Array<CString>`)
+	 * is none of them and falls through to the refusal below rather than
+	 * inventing a third spelling.
+	 */
+	if (type_is_value_scalar(mapped) ||
+	    (current_program != NULL &&
+	     (find_struct(current_program, mapped) != NULL ||
+	      find_enum(current_program, mapped) != NULL))) {
+		snprintf(element, size, "%s", mapped);
+		return ARRAY_ALIAS_VALUE;
+	}
+	refuse("an `Array<T>` element outside §7.63's two families", error);
+	return ARRAY_ALIAS_REFUSED;
+}
+
+/*
+ * §7.52's ONE question, and §7.63 is what makes it a different question from
+ * "is the type's NAME a class": `Array<String>` is an object whose name is not a
+ * class, and `Array<Int32>` is a pointer whose name is not a scalar. Getting it
+ * wrong is silent and it is an ARC hazard rather than a style point —
+ * `@property (nonatomic, assign) NSArray<NSString> *items;` compiles, does not
+ * retain the array, and reads as an ordinary declaration.
+ *
+ * A class type is a reference, and so is §7.63's object `Array<T>`; a scalar, a
+ * struct, and the value `Array<T>` are not.
+ */
+static int
+type_is_reference(const st_type *t)
+{
+	char element[256];
+
+	if (t == NULL || t->name.text == NULL) {
+		return 0;
+	}
+	if (type_name_is_class(t->name.text)) {
+		return 1;
+	}
+	if (t->argument_count > 0) {
+		return array_alias_kind(t, element, sizeof(element), NULL) ==
+		       ARRAY_ALIAS_OBJECT;
+	}
+	return 0;
+}
+
+/*
  * The type as written, `_Nullable` included. ONE implementation, because the
  * qualifier has to land after the pointer (`NSString * _Nullable`, not
  * `NSString _Nullable *`) and every position that prints a type would otherwise
@@ -851,6 +1022,48 @@ type_text(const st_type *t, const char *fallback, char *buf, size_t size)
 
 	if (name == NULL) {
 		snprintf(buf, size, "void");
+		return;
+	}
+	/*
+	 * §7.63's `Array<T>` FIRST, because the alias IS the type and nothing
+	 * below applies to it: not §7.62's pair-struct (an `Array<Int32>` is
+	 * already a pointer, so its own `?` is `_Nullable` natively) and not §4's
+	 * reference/value rule (the two families have already been told apart by
+	 * the argument). `type_is_emittable` has refused every other generic and
+	 * every refused argument before this point, so a NONE here can only be a
+	 * non-`Array` generic the caller did not gate — the fallback stands in.
+	 */
+	if (t != NULL && t->argument_count > 0) {
+		char element[256];
+		char base[512];
+
+		switch (array_alias_kind(t, element, sizeof(element), NULL)) {
+		case ARRAY_ALIAS_OBJECT:
+			snprintf(base, sizeof(base), "NSArray<%s> *", element);
+			break;
+		case ARRAY_ALIAS_VALUE:
+			snprintf(base, sizeof(base), "%s const *", element);
+			break;
+		default:
+			snprintf(buf, size, "%s",
+				 fallback == NULL ? "void" : fallback);
+			return;
+		}
+		if (!t->nullable) {
+			snprintf(buf, size, "%s", base);
+			return;
+		}
+		/*
+		 * Both spellings end in `*`, so `?` is §4's pointer qualifier and
+		 * lands where every other pointer's does.
+		 */
+		len = strlen(base);
+		if (len >= 2 && base[len - 1] == '*' && base[len - 2] == ' ') {
+			snprintf(buf, size, "%.*s* _Nullable", (int)(len - 1),
+				 base);
+		} else {
+			snprintf(buf, size, "%s _Nullable", base);
+		}
 		return;
 	}
 	/*
@@ -1694,9 +1907,11 @@ emit_property_line(FILE *out, const st_decl *d, int stored, const char **error)
 	 * ONE question, asked twice below: §7.52's inference needs to know whether
 	 * the property is a reference, and so does the class-type requirement. A
 	 * class this FILE declares counts — which is what makes
-	 * `property item: Outer.Inner` infer `strong` rather than `assign`.
+	 * `property item: Outer.Inner` infer `strong` rather than `assign` — and
+	 * since §7.63 an OBJECT `Array<T>` counts too, whose name is not a class.
+	 * `type_is_reference` is that question, and it is not "is the name a class".
 	 */
-	int is_class = type_name_is_class(d->type.name.text);
+	int is_class = type_is_reference(&d->type);
 
 	if (!type_is_emittable(&d->type, error)) {
 		return 0;

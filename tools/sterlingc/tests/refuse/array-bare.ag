@@ -1,0 +1,7 @@
+/* §7.63: a bare `Array` has no meaning — the type argument is what says which
+ * of the two types the name IS (`int const *` or `NSArray<Object>`), so the name
+ * alone is not a type. It used to fall through the ordinary path and emit the
+ * identifier `Array`, which no C or ObjC declaration knows. */
+class RefuseArrayBare: Object {
+    property items: Array
+}

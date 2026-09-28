@@ -230,9 +230,12 @@ name_clear(st_name *n)
  * segfault with no message — which is exactly what happened once already.
  *
  * Returns 1 on success, with *count left at 0 when there is no list at all.
+ * `*nullable` is §7.63's record of an argument written `T?`, and it belongs to
+ * this scan rather than to the caller for the same reason `?>` is a single
+ * token: the `?` is consumed here as an operator and is invisible above.
  */
 static int
-parse_generic_list(st_parser *p, st_name **out, size_t *count)
+parse_generic_list(st_parser *p, st_name **out, size_t *count, int *nullable)
 {
 	int depth = 1;
 	int want_name = 1;
@@ -240,6 +243,9 @@ parse_generic_list(st_parser *p, st_name **out, size_t *count)
 
 	*out = NULL;
 	*count = 0;
+	if (nullable != NULL) {
+		*nullable = 0;
+	}
 	if (p->tok.kind != ST_OPERATOR || p->tok.len != 1 ||
 	    p->tok.start[0] != '<') {
 		return 1;		/* no list, which is not an error */
@@ -254,6 +260,9 @@ parse_generic_list(st_parser *p, st_name **out, size_t *count)
 					depth++;
 				} else if (p->tok.start[k] == '>') {
 					depth--;
+				} else if (p->tok.start[k] == '?' && depth == 1 &&
+					   nullable != NULL) {
+					*nullable = 1;
 				}
 			}
 			/* Past the first `<` we are inside a nested argument. */
@@ -383,7 +392,8 @@ parse_type(st_parser *p, st_type *out)
 	 * see its comment for the character-wise counting and for why it owns the
 	 * initialisation of these two fields.
 	 */
-	if (!parse_generic_list(p, &out->arguments, &out->argument_count)) {
+	if (!parse_generic_list(p, &out->arguments, &out->argument_count,
+				&out->argument_nullable)) {
 		return 0;
 	}
 	/*
@@ -2091,8 +2101,13 @@ parse_class(st_parser *p, st_class **out, const char *prefix)
 	 * tidy waiting for a session with room for it" — true of their *shape* and
 	 * false of their *purpose*: this one only counted brackets while
 	 * parse_type's recorded names. Both record now, from one implementation.
+	 *
+	 * `NULL` for the nullability out-param: `class Box<T?>` would be a
+	 * parameter list, not an argument list, and §7.63's alias asks the
+	 * question only of an ARGUMENT. Nothing is dropped by passing NULL — a
+	 * generic parameter never carried a `?` to drop.
 	 */
-	if (!parse_generic_list(p, &c->parameters, &c->parameter_count)) {
+	if (!parse_generic_list(p, &c->parameters, &c->parameter_count, NULL)) {
 		return 0;
 	}
 	if (!expect_punct(p, ':')) {

@@ -2471,6 +2471,22 @@ that detail rather than leaving it to a reader to find.
       Nothing is introduced — the name resolves to the C type or to the ObjC type, chosen by the
       argument — so §0 is satisfied by an *alias* rather than by a construct, which is the strongest
       form this feature could have taken.
+      - **The lightweight-generic spelling takes the FULL type, pointer included** —
+        `NSArray<NSString *> *`, not `NSArray<NSString>`. clang's own error names the rule: *type
+        argument 'NSString' must be a pointer (requires a '\*')*.
+      - **The object form needs the ObjC class to be PARAMETERIZED, which is a Foundation fact and
+        not a language one.** clang refuses a type argument on a class that declares none — *type
+        arguments cannot be applied to non-parameterized class 'NSArray'* — so an object `Array<T>`
+        cannot be written until the collection classes carry their generic parameters
+        (`@interface NSArray<__covariant ObjectType>` and friends, as Apple's do). Until then
+        `sterlingc` refuses the object form BY NAME rather than emitting the ERASED `NSArray *`,
+        which is a *different* choice than this section records and not one to take silently.
+      - **A nullable ELEMENT is a named gap, not a dropped `?`.** `Array<Int32?>` is an array of
+        §7.62 pair-structs, so it needs the argument as a TYPE; the AST records its outermost NAME,
+        and the parser's `?>` is a single token, so the `?` is invisible above the list. Recorded in
+        the AST (`st_type.argument_nullable`) and refused until the pair-struct to collect can be
+        named — emitting the same `int32_t const *` the non-optional element gets would lose the `?`
+        with nothing in the output to show it.
     - **Ownership and length belong to C, because a pointer carries neither.** A scalar `Array<T>` is
       the *view* form — what a C function takes and returns — not a container: it cannot be built,
       cannot grow, and cannot be iterated, since there is no count to iterate against. Code needing
