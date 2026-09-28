@@ -13984,6 +13984,44 @@ hazard rather than a bug today, and moving it is surgery in a 2600-line file) ·
 mutates it through `&`** — the mutation is thrown away, which is a real bug, but the fix has to decide the struct's
 LIFETIME first: a captured pointer could dangle when the block runs after the function returns).
 
+## §62.72 — THE WARNING SWEEP, PHASE 3: `NSProxy`'S FIVE MISSING `NSObject` DOORS (2026-09-26)
+
+**72 → 67, and `-Wprotocol` 6 → 1.** `NSProxy` declares `<NSObject>` and implemented most of it, but was missing
+`-isKindOfClass:`, `-isMemberOfClass:`, `-performSelector:`, `-performSelector:withObject:` and
+`-performSelector:withObject:withObject:` — **a declared conformance with five holes is the standing rule's own
+case**, reported by the compiler rather than by a reader.
+
+**IMPLEMENTED IN THE STYLE THE CLASS ALREADY SET**, which is what makes them checkable rather than plausible:
+`-class`, `-superclass`, `-respondsToSelector:` and `-conformsToProtocol:` all answer from the DYNAMIC class
+(`object_getClass(self)`), so the two "is it one of these" doors read the same place — a proxy here is not "the
+object it stands for" but the object it IS, and the runtime is what knows. The three performers go through
+`-methodSignatureForSelector:` and `-forwardInvocation:`, Apple's documented flow and the one a concrete subclass
+fills in; the default still RAISES rather than inventing an answer, and the result is read only when the selector
+returns an object (a pointer read out of a scalar return is exactly the kind of wrong answer worth refusing).
+
+**AND ONE MEASUREMENT WORTH A LINE, because it cost a build:** the shared implementation is a FILE-STATIC
+function rather than a method. The argument vector is a multi-level pointer, and the nullability region has
+nothing sensible to say about one — `nullable` cannot be applied to `id *` — so it lives outside the class and
+takes the proxy explicitly.
+
+**VERIFIED.** Host: `make host-foundation-run` — **37 probes, every tally `fail=0`**. Guest: `make testimg` +
+`make test TESTS='foundation_collection,foundation_coder'` → **`TESTS-OK 2/2 case(s), 12/12 check(s) in 13s`**,
+plus **`foundation_protocolchecker`** — NSProxy's own subclass, and therefore this change's direct regression test
+— **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**. `foundation-gate`: **OK**; `--unimplemented`: **0 NEW**; sweep
+consistent.
+
+**WHAT IS LEFT — 67 warnings, and the four that are NOT mechanical:** `-Wobjc-method-access` 29 +
+`-Wreceiver-forward-class` 11 (the mechanical pair: mostly a missing import) · `-Wincomplete-implementation` 11 +
+`-Wprotocol` 1 (the standing rule — and the biggest piece is a REAL DESIGN CORRECTION rather than a shim: the XML
+mutating doors are DECLARED on `NSXMLElement` while IMPLEMENTED on the base `NSXMLNode`, so the implementations
+should move down the hierarchy, with `addChild:`/`removeChildAtIndex:`'s callers checked for which class they sit
+in) · `-Wenum-conversion` 4 (the XML `-initWithKind:` call sites, where a DTD node's initializer and the
+node-level one carry DIFFERENT enums and the writer meant one of them — a fidelity read, not a cast) ·
+`-Wobjc-protocol-method-implementation` 1 (`NSString`'s single implementation of
+`-enumerateSubstringsInRange:options:usingBlock:` lives in a category while the interface declares it) ·
+`-Wincompatible-pointer-types-discards-qualifiers` 1 (`NSFileCoordinator`'s block captures a struct BY VALUE and
+mutates it through `&`, throwing the mutation away — a real bug whose fix must decide the struct's LIFETIME first).
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else
