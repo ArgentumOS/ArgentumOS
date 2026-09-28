@@ -122,6 +122,7 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 {
 	[self dropKeySnapshot];
 	dict_entries_free(_buckets, _bucketCount);
+	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
 - (unsigned long)count

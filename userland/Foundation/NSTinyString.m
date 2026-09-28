@@ -48,7 +48,14 @@ static char tiny_character(id self, size_t index)
 - (id)retain { return self; }
 - (oneway void)release { }
 - (id)autorelease { return self; }
+/* AN EMPTY -dealloc THAT DOES NOT CALL SUPER, ON PURPOSE AND ON THE RECORD: a tagged pointer is not an
+ * allocated object — the runtime never sends it -dealloc, and NSObject's -dealloc would try to free memory that
+ * malloc never handed out. The compiler cannot know either of those things, so the diagnostic is silenced HERE
+ * with the reason, which is the difference between an exception and a warning nobody read. */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-missing-super-calls"
 - (void)dealloc { }
+#pragma clang diagnostic pop
 
 - (Class)class { return [NSTinyString class]; }
 

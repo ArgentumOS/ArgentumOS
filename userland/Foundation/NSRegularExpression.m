@@ -315,6 +315,7 @@ static NSString *fn_translate_named_groups(NSString *pattern, NSDictionary **out
 	 * of this class rather than a decision: `-init` assigns the caller's string. It is NAMED rather than fixed
 	 * quietly with them, because the same file's `-copy` recompiles from `_pattern` and a release here would
 	 * change when a dangling one is noticed. The URL unit's `-dealloc` debt (§60) was the same shape. */
+	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
 - (NSString *)pattern

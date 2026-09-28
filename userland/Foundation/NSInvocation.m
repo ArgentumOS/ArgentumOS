@@ -260,6 +260,7 @@ static void fn_install_forwarding_at_load(void)
 	}
 	free(_argumentStorage);
 	free(_returnValue);
+	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
 - (NSMethodSignature *)methodSignature

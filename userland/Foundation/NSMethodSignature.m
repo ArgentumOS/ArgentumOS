@@ -379,6 +379,7 @@ static char *fn_copy_type(const char *start, int *oneway)
 		free((void *)_argumentTypes[i]);
 	}
 	free(_argumentTypes);
+	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
 - (NSUInteger)numberOfArguments

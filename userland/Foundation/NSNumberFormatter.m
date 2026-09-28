@@ -160,6 +160,7 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 		unum_close((UNumberFormat *)_formatter);
 		_formatter = NULL;
 	}
+	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
 /* The one place a UNumberFormat is made, called by -init and by the three settings that are baked

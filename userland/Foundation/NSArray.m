@@ -93,6 +93,7 @@ static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
 		objc_release(_items[i]);
 	}
 	free(_items);
+	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
 - (unsigned long)count

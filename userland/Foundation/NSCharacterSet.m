@@ -108,6 +108,7 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 - (void)dealloc
 {
 	free(_ranges);
+	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
 - (BOOL)characterIsMember:(unichar)character

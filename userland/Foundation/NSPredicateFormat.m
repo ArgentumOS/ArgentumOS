@@ -110,6 +110,7 @@ static char fn_fold(char c)
 - (void)dealloc
 {
 	free((void *)_text);		/* the copy above: ARC does not own C pointers */
+	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
 /* ------------------------------------------------------------- the scanning */

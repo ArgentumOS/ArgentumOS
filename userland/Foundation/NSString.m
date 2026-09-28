@@ -1891,6 +1891,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 		free(_units);
 	}
 	free(_utf8);
+	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
 @end
@@ -2325,7 +2326,9 @@ static void fn_utf16_to_utf8(const unsigned char *data, size_t units, char *out)
 
 - (void)dealloc
 {
-	/* The characters are the compiler's, not ours: free nothing. */
+	/* The characters are the compiler's, not ours: free nothing of OURS - but the instance itself is still
+	 * NSObject's to free, and a -dealloc that returns without saying so leaks the whole allocation. */
+	[super dealloc];
 }
 
 

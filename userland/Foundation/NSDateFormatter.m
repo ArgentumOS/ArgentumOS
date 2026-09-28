@@ -141,6 +141,7 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 		udat_close((UDateFormat *)_formatter);
 		_formatter = NULL;
 	}
+	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
 /* The one place a UDateFormat is made. Called by -init and by every setter. */

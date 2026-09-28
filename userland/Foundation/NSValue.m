@@ -230,6 +230,7 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
 {
 	free(_bytes);
 	free((void *)_objCType);
+	[super dealloc];
 }
 
 - (const void *)fnBytes

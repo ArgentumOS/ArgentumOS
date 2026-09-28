@@ -585,6 +585,7 @@ static int base64Value(unsigned char c)
 - (void)dealloc
 {
 	free(_bytes);
+	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
 /*

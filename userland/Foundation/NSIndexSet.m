@@ -121,6 +121,7 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 - (void)dealloc
 {
 	free(_ranges);
+	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
 - (BOOL)containsIndex:(NSUInteger)value

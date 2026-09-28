@@ -68,6 +68,7 @@ static void fn_hold(NSIndexPath *path, const NSUInteger *indexes, NSUInteger len
 - (void)dealloc
 {
 	free(_indexes);
+	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
 - (NSUInteger)length
