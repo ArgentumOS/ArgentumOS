@@ -271,6 +271,8 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/FNAuthenticationChallengeSender.h \
 	$(FOUNDATION_SRC)/NSLinguisticTagger.h \
 	$(FOUNDATION_SRC)/NSSpellServer.h \
+	$(FOUNDATION_SRC)/NSArchiver.h \
+	$(FOUNDATION_SRC)/FNArchiverWire.h \
 	$(FOUNDATION_SRC)/FNSpellServerDispatch.h \
 	$(FOUNDATION_SRC)/FNTextBreaking.h \
 	$(FOUNDATION_SRC)/FNLegacyMapTable.h \
@@ -1314,6 +1316,16 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_spellserver.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_spellserver"
+	# foundation_archiver: §62.86's acceptance - THE CLASSIC SEQUENTIAL PAIR, which closes
+	# `Files and Data Persistence / Deprecated`. ONE unit, Foundation only: the wire is this library's own
+	# (Apple's classic `typedstream` is unpublished), so what is exercised is the contract — round-trip,
+	# order-and-type, shared and cyclic references, substitution on both sides — plus every refusal.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_archiver.m -o .build/probe-foundation_archiver.o
+	$(MUSL64_OBJC) .build/probe-foundation_archiver.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_archiver"
 	# foundation_downloadresume: §62.31's acceptance - RESUME end to end, WITH A REAL SERVER. The probe is
 	# the server: it sends half a body and then STALLS mid-transfer (which is what makes the cancel
 	# deterministic), resumes from the data its own cancel produced, and asserts the resumed request carries

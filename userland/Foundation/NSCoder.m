@@ -23,6 +23,15 @@ static void fn_abstract(Class cls, SEL door)
 			   "use NSKeyedArchiver or NSKeyedUnarchiver", cls, sel_getName(door)];
 }
 
+/* THE SEQUENTIAL FAMILY'S ADVICE IS THE OTHER ONE, and this message is the only place a caller in a
+ * sequential context is told where to go (§62.86). */
+static void fn_abstract_sequential(Class cls, SEL door)
+{
+	[NSException raise:NSInvalidArgumentException
+		    format:@"%@: -%s is a SEQUENTIAL door — use NSArchiver or NSUnarchiver; the keyed "
+			   "family answers keys, not order and type", cls, sel_getName(door)];
+}
+
 @implementation NSCoder
 
 - (void)encodeObject:(nullable id)object forKey:(NSString *)key
@@ -131,6 +140,65 @@ static void fn_abstract(Class cls, SEL door)
 	(void)key;
 	fn_abstract([self class], _cmd);
 	return NO;
+}
+
+- (void)encodeValueOfObjCType:(const char *)valueType at:(const void *)address
+{
+	(void)valueType;
+	(void)address;
+	fn_abstract_sequential([self class], _cmd);
+}
+
+- (void)decodeValueOfObjCType:(const char *)valueType at:(void *)data
+{
+	(void)valueType;
+	(void)data;
+	fn_abstract_sequential([self class], _cmd);
+}
+
+- (void)encodeObject:(nullable id)object
+{
+	(void)object;
+	fn_abstract_sequential([self class], _cmd);
+}
+
+- (nullable id)decodeObject
+{
+	fn_abstract_sequential([self class], _cmd);
+	return nil;
+}
+
+- (void)encodeDataObject:(NSData *)data
+{
+	(void)data;
+	fn_abstract_sequential([self class], _cmd);
+}
+
+- (nullable NSData *)decodeDataObject
+{
+	fn_abstract_sequential([self class], _cmd);
+	return nil;
+}
+
+- (void)encodeBytes:(nullable const void *)bytesp length:(NSUInteger)length
+{
+	(void)bytesp;
+	(void)length;
+	fn_abstract_sequential([self class], _cmd);
+}
+
+- (nullable const void *)decodeBytesWithReturnedLength:(NSUInteger *)lengthp
+{
+	(void)lengthp;
+	fn_abstract_sequential([self class], _cmd);
+	return NULL;
+}
+
+- (NSInteger)versionForClassName:(NSString *)className
+{
+	(void)className;
+	fn_abstract_sequential([self class], _cmd);
+	return 0;
 }
 
 @end

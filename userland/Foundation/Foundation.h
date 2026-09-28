@@ -75,6 +75,7 @@
 #import <Foundation/NSOrthography.h>
 #import <Foundation/NSLinguisticTagger.h>
 #import <Foundation/NSSpellServer.h>
+#import <Foundation/NSArchiver.h>
 #import <Foundation/NSIndexSet.h>
 #import <Foundation/NSIndexPath.h>
 #import <Foundation/NSLocale.h>

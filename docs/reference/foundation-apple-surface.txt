@@ -34,12 +34,12 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  214   open   11   struck   48
+#   class      shipped  216   open    9   struck   48
 #   protocol   shipped   36   open    4   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  147   open    4   struck    9
 #   case       shipped 1180   open   47   struck   75
-#   func       shipped  164   open   13   struck   12
+#   func       shipped  165   open   12   struck   12
 #   var        shipped  652   open   55   struck  207
 #   typealias  shipped   66   open    5   struck    5
 #   struct     shipped   13   open    0   struck    0
@@ -1349,7 +1349,7 @@ class	shipped	NSAffineTransform		Fundamentals / Geometry	-	objc
 class	struck	NSAppleEventDescriptor		App Support / Apple Event Handling	declined	objc
 class	struck	NSAppleEventManager		App Support / Apple Event Handling	declined	objc
 class	struck	NSAppleScript		App Support / Script Execution	declined	objc
-class	open	NSArchiver		Files and Data Persistence / Deprecated	deprecated	objc
+class	shipped	NSArchiver		Files and Data Persistence / Deprecated	deprecated	objc
 class	shipped	NSArray		Fundamentals / Basic Collections	-	objc
 class	shipped	NSAssertionHandler		App Support / Assertions	-	objc
 class	shipped	NSAttributedString		Fundamentals / Strings with Metadata	-	objc
@@ -1567,7 +1567,7 @@ class	shipped	NSURLSessionWebSocketMessage		Networking / Essentials / Adding Web
 class	shipped	NSURLSessionWebSocketTask		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 class	shipped	NSUUID		Fundamentals / Unique Identifiers	-	objc
 class	open	NSUbiquitousKeyValueStore		Files and Data Persistence / iCloud key and value storage	-	objc
-class	open	NSUnarchiver		Files and Data Persistence / Deprecated	deprecated	objc
+class	shipped	NSUnarchiver		Files and Data Persistence / Deprecated	deprecated	objc
 class	shipped	NSUndoManager		App Support / Undo	-	objc
 class	struck	NSUniqueIDSpecifier		App Support / Object Specifiers	declined	objc
 class	shipped	NSUnit		Fundamentals / Essentials	-	objc
@@ -1966,7 +1966,7 @@ func	struck	NSZoneFromPointer		Low-Level Utilities / Legacy / Managing Zones	32-
 func	struck	NSZoneMalloc		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	struck	NSZoneName		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	struck	NSZoneRealloc		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
-func	open	NXReadNSObjectFromCoder		Files and Data Persistence / Deprecated	deprecated	objc
+func	shipped	NXReadNSObjectFromCoder		Files and Data Persistence / Deprecated	deprecated	objc
 macro	shipped	ABS		Reference / Macros	-	objc
 macro	shipped	FOUNDATION_EXPORT		Reference / Macros	-	objc
 macro	shipped	FOUNDATION_EXTERN		Reference / Macros	-	objc

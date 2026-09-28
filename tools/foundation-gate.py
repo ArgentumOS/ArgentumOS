@@ -198,6 +198,8 @@ NULLABILITY_EXEMPT = {
     "NSInvocation.h": "private: the x86-64 argument image, shared by the library's own units",
     "NSMethodSignature.h": "private: a category declaration for the library's own units",
     "Foundation.h": "the umbrella: imports only, no declarations of its own",
+    "FNArchiverWire.h": "C only: a tag enum, the magic and static inline byte codecs — it declares no "
+                        "Objective-C pointer, so a region would annotate nothing",
 }
 # Anchored at the START of a line, so a PROSE mention (which begins with a comment
 # marker) cannot be mistaken for the directive, and a trailing comment is fine.

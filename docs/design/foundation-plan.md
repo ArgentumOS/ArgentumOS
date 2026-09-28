@@ -3485,7 +3485,7 @@ vanishing.
 | **Files and Data Persistence / Adopting Codability** | all classes shipped | — |
 | **Files and Data Persistence / App-specific settings** | all classes shipped | — |
 | **Files and Data Persistence / Coordinated file access** | all classes shipped | — |
-| **Files and Data Persistence / Deprecated** | 2 open | `NSArchiver`, `NSUnarchiver` |
+| **Files and Data Persistence / Deprecated** | all classes shipped | — |
 | **Files and Data Persistence / File system operations** | all classes shipped | — |
 | **Files and Data Persistence / Items** | ALL STRUCK: `NSMetadataItem` | — |
 | **Files and Data Persistence / JSON** | all classes shipped | — |
@@ -14676,6 +14676,67 @@ question §62.81 stated), the singletons (`NSUbiquitousKeyValueStore`, `NSBundle
 longer among them), the deprecated pair (`NSArchiver`/`NSUnarchiver` + `NXReadNSObjectFromCoder`), plus the markdown
 importer and the run-loop observers owed as things to BUILD — **and the engine question, now open on language
 grounds, waiting for a server to plug into (this section is that server).**
+
+
+## §62.86 — THE CLASSIC ARCHIVER PAIR: THREE ROWS, A FAMILY CLOSED, AND THE TWO DEFECTS THE PROBE FOUND (2026-09-26)
+
+**THREE ROWS: `NSArchiver`, `NSUnarchiver` and `NXReadNSObjectFromCoder`** — so `Files and Data Persistence /
+Deprecated` is COMPLETE. `class shipped` 214 → **216** (open 11 → **9**), `func` 164 → **165**.
+
+**THE UNIT BEGAN BY CORRECTING A NOTE IN THE LIBRARY, WHICH IS THE INTERESTING PART.** `NSCoder.h` said, in as many
+words, that "the non-keyed and byte doors are absent" — true of that header, false of the library once the classic
+pair exists, and exactly the class of stale note §62.83 and §62.84 were about. The nine sequential doors Apple
+declares on the base are now declared here and implemented by the pair, and the two families are **mutually
+exclusive by construction**: the keyed pair answers keys and raises in the sequential doors, the classic pair the
+reverse, and each raise NAMES the family that answers. A wrong-door call therefore says what to do instead, and a
+keyed archive and a sequential one cannot be confused by the compiler.
+
+**THE WIRE IS THIS LIBRARY'S, AND THAT IS STATED RATHER THAN IMPLIED.** Apple's classic archiver wrote
+`typedstream`, whose structure is unpublished; nothing here produces or consumes it, and nothing honestly could.
+What is honoured is the CONTRACT — a graph out and back, ONE root per archive, order-and-type as the protocol (no
+keys, no coercion), identity preserved (a container written twice decodes ONCE, and a self-containing container
+terminates) — plus the one interoperability rule Apple states in words: **a keyed archive is REFUSED by the
+sequential reader**, which the magic makes mechanical instead of hopeful.
+
+**THREE REFUSALS, EACH WITH A GROUND RATHER THAN A STUB:** the zone doors are ABSENT, because this library has no
+`NSZone` at all (NSObjCRuntime.h records the 2026-09-18 removal) and a door cannot be declared over a type that
+does not exist; class-name translation is ABSENT, which is the SAME refusal `NSKeyedArchiver.h` already records for
+its own equivalent — two archivers that both say no is a decision, one of each would be an accident; and
+`-versionForClassName:` IS declared (it is on the base) and RAISES, because this wire records no class versions and
+answering a number nobody wrote would be the one door in the pair that fabricates.
+
+**THE PROBE FOUND TWO REAL DEFECTS, BOTH IN THE READER, AND BOTH ARE RECORDED BECAUSE THE FIX IS A DESIGN NOTE:**
+
+1. **Substitution was an inner branch and missed the values that never enter the object table.** Apple's contract is
+   that a replacement applies "whenever it is found decoded" — and a STRING never reaches the table, so a string
+   replacement silently did nothing. The substitution is now ONE WRAPPER over the value reader, which is the shape
+   that cannot have a value-shaped hole in it.
+2. **The reading side must match by EQUALITY; the writing side matches by IDENTITY.** First run: the reading-side
+   check failed with the decoded value staring back at it. The reason is inherent and worth stating in the header:
+   outbound the caller holds the very instance it substitutes; inbound the object does not exist until it has been
+   decoded, so a caller can only name what it is equal to. Two matching rules, one class pair, both documented.
+
+**AND ONE PROBE-SIDE DEFECT CLASS, FOUND TWICE IN TWO UNITS:** the number of checks was written down a SECOND time,
+in the probe's own status line — 14 where there were 18 (§62.85), 21 where there were 23 (here). A duplicated count
+is a number that goes stale the first time a check is added, so **the STATUS line now reports failures only, and the
+case's `CHECKS` tuple is DERIVED from the probe's own names** rather than typed. The count lives in exactly one
+place again, and the place is the probe.
+
+**AND THE GATE EARNED ONE EXEMPTION, WITH ITS REASON.** `FNArchiverWire.h` is C only — a tag enum, the magic and
+`static inline` byte codecs — so it declares no Objective-C pointer and a nullability region would annotate nothing.
+It is in `NULLABILITY_EXEMPT` with that reason, which is the remedy the gate itself names.
+
+**VERIFIED.** Host: `make host-foundation-run` → **43 probes, no failure** — including the probes of the KEYED
+family, which matters here because the unit changed the base class they share. Guest: `make testimg` then
+`make test TESTS='foundation_archiver'` → **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**, the probe's own tally
+**`ok=23 fail=0`**. The probe compiles under the tier's toolchain (`-Werror=nullable-to-nonnull-conversion`) with
+**zero** warnings. `foundation-gate`: **OK** (566 files, 210 of 215 headers, 5 exempt by name);
+`foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**; `--unimplemented`: **0 NEW**.
+
+**WHERE THE THREAD STANDS: 9 open classes** — `Reference / Classes` at three (one is the `NSSimpleCString` scope
+question §62.81 stated), the singletons (`NSUbiquitousKeyValueStore`, `NSBundleResourceRequest`), `Low-Level
+Utilities / Legacy` (`NSConnectionDelegate`, `NSDistantObjectRequest`, `NSGarbageCollector`) — plus the markdown
+importer and the run-loop observers owed as things to BUILD, and the spelling engine open on language grounds.
 
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
