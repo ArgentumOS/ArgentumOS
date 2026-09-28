@@ -1414,6 +1414,91 @@ NULL
 		      "nothing to decode is not an error");
 	}
 
+	{
+		/* COMPOSED CHARACTER SEQUENCES. Two different things are pinned here: THIS door's own rule (a base
+		 * letter plus the combining characters that follow), and the divergence from the engine's UAX#29
+		 * clusters for -enumerateSubstringsInRange:options:, MEASURED rather than asserted in a comment. */
+		NSString *base = @"e\u0301";			/* e + COMBINING ACUTE ACCENT: a base and one mark */
+		NSString *astral = @"a\U0001D165";		/* a + a combining mark ABOVE U+FFFF */
+		NSString *crlf = @"\r\n";				/* UAX#29: ONE cluster. This door's rule: two. */
+		NSString *flag = @"\U0001F1FA\U0001F1F8";	/* a regional-indicator pair: UAX#29 one, here two */
+		NSRange r;
+		BOOL caughtIndex = NO;
+		BOOL caughtIndexRange = NO;
+
+		r = [@"abc" rangeOfComposedCharacterSequenceAtIndex:1];
+		check("composed-sequence-of-a-plain-character",
+		      NSEqualRanges(r, NSMakeRange(1, 1)),
+		      "a character with no marks is a sequence of itself");
+
+		r = [base rangeOfComposedCharacterSequenceAtIndex:1];
+		check("composed-sequence-from-the-mark-walks-back-to-the-base",
+		      NSEqualRanges(r, NSMakeRange(0, 2)),
+		      "the index names the MARK, and the page's rule is the base letter AT OR BEFORE it");
+
+		r = [base rangeOfComposedCharacterSequenceAtIndex:0];
+		check("composed-sequence-from-the-base-covers-its-marks",
+		      NSEqualRanges(r, NSMakeRange(0, 2)),
+		      "from the base forward over the combining characters that follow");
+
+		/* THE ASTRAL BOUNDARY, MEASURED RATHER THAN ASSUMED. U+1D165 IS a combining mark (general category
+		 * Mc) and the sequence still ends after the base — because +nonBaseCharacterSet is a BMP set in this
+		 * library. The door asks the set for the SCALAR, so it follows the set if the set ever grows; until
+		 * then this check pins the measured answer, and a change on either side goes red instead of quiet. */
+		r = [astral rangeOfComposedCharacterSequenceAtIndex:0];
+		check("composed-sequence-stops-at-a-bmp-set-boundary",
+		      NSEqualRanges(r, NSMakeRange(0, 1)),
+		      "U+1D165 is a combining mark and yet does not extend the sequence: the M* set holds no astral members");
+
+		r = [crlf rangeOfComposedCharacterSequenceAtIndex:0];
+		check("composed-sequence-splits-crlf",
+		      NSEqualRanges(r, NSMakeRange(0, 1)),
+		      "CR is not a mark, so CR and LF are TWO sequences here - UAX#29 clusters them as one");
+
+		r = [flag rangeOfComposedCharacterSequenceAtIndex:0];
+		check("composed-sequence-splits-a-flag-pair",
+		      NSEqualRanges(r, NSMakeRange(0, 2)),
+		      "one character and no marks: the second regional indicator is its own sequence, not part of a cluster");
+
+		r = [@"abc" rangeOfComposedCharacterSequenceAtIndex:3];
+		check("composed-sequence-at-the-end-is-empty",
+		      NSEqualRanges(r, NSMakeRange(3, 0)),
+		      "an index equal to the length is the end of the string, not past it");
+
+		r = [base rangeOfComposedCharacterSequencesForRange:NSMakeRange(1, 1)];
+		check("composed-sequences-range-grows-back-to-the-base",
+		      NSEqualRanges(r, NSMakeRange(0, 2)),
+		      "a range that is only the mark grows back over the base it belongs to");
+
+		r = [base rangeOfComposedCharacterSequencesForRange:NSMakeRange(0, 1)];
+		check("composed-sequences-range-grows-forward-over-the-marks",
+		      NSEqualRanges(r, NSMakeRange(0, 2)),
+		      "a range that is only the base grows forward over its marks");
+
+		r = [base rangeOfComposedCharacterSequencesForRange:NSMakeRange(1, 0)];
+		check("composed-sequences-empty-range-is-the-sequence-at-its-location",
+		      NSEqualRanges(r, NSMakeRange(0, 2)),
+		      "an empty range overlaps nothing, so this answers the containing sequence, as the index door does");
+
+		@try {
+			(void)[@"abc" rangeOfComposedCharacterSequenceAtIndex:99];
+		} @catch (NSException *exception) {
+			caughtIndex = [exception.name isEqualToString:NSRangeException];
+		}
+		check("composed-sequence-index-past-the-end-raises",
+		      caughtIndex,
+		      "the page says the index must not exceed the bounds, and an exception is what exceeding them gets");
+
+		@try {
+			(void)[@"abc" rangeOfComposedCharacterSequencesForRange:NSMakeRange(1, 99)];
+		} @catch (NSException *exception) {
+			caughtIndexRange = [exception.name isEqualToString:NSRangeException];
+		}
+		check("composed-sequences-range-past-the-end-raises",
+		      caughtIndexRange,
+		      "the same bounds rule as the index door, on the range this time");
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

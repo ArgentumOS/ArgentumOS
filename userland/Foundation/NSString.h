@@ -354,6 +354,43 @@ typedef enum {
 - (nullable NSString *)stringByAddingPercentEncodingWithAllowedCharacters:(nullable NSCharacterSet *)allowedCharacters;
 @property (readonly, nullable) NSString *stringByRemovingPercentEncoding;
 
+/* ===================================================================================================
+ * COMPOSED CHARACTER SEQUENCES: A BASE LETTER AND THE COMBINING CHARACTERS THAT FOLLOW IT.
+ *
+ * THIS DOOR'S OWN PAGE DEFINES THE TERM, AND THE DEFINITION IS NOT UAX#29: "the composed character
+ * sequence includes the first decomposed base letter found at or before `anIndex`, and its length includes
+ * the decomposed base letter and all combining characters that follow". So the rule is a BASE plus the
+ * MARKS THAT FOLLOW IT — and "combining characters" is this library's EXISTING notion of that,
+ * `+[NSCharacterSet nonBaseCharacterSet]`, the general categories M* (Mn, Me, Mc) that NSCharacterSet
+ * already ships and already probes. No second table, and no second notion of a mark.
+ *
+ * THE SET IS A BMP SET AND THE DOOR MEASURES ITS BOUNDARY RATHER THAN ASSUMING AROUND IT: NSCharacterSet's
+ * own `FN_MAX_CHARACTER` is 0xFFFF, so a real combining mark above U+FFFF (U+1D165, a musical combining
+ * stem) is INVISIBLE to `+nonBaseCharacterSet` and does not extend a sequence. The probe pins that measured
+ * answer, and the door asks the SET for the scalar rather than testing a code unit, so it follows the day
+ * the set gains astral coverage instead of having to be rediscovered.
+ *
+ * AND IT IS MEASURABLY NOT THE SET THIS LIBRARY'S ENGINE ANSWERS for
+ * `-enumerateSubstringsInRange:options:` with `NSStringEnumerationByComposedCharacterSequences`
+ * (FNTextBreaking's `FNTextUnitComposedCharacter`, which is ICU's `UBRK_CHARACTER`), where a unit is a
+ * UAX#29 grapheme cluster. Under the rule above CRLF is TWO sequences, and an emoji ZWJ sequence, a
+ * regional-indicator flag pair and conjoining Hangul jamo are several each; UAX#29 joins all four into one
+ * cluster. The probe MEASURES that divergence rather than leaving it to this comment, because the reader
+ * who assumed the two doors agree would be reasonable and wrong. Each door follows its own page.
+ *
+ * THE INDEX IS A CHARACTER'S, NOT A CODE UNIT'S: an index landing on a low surrogate still names the
+ * character that begins at its high surrogate. An `anIndex` equal to the length is the end of the string
+ * and answers an empty range; anything past that is out of bounds and raises NSRangeException.
+ *
+ * `-rangeOfComposedCharacterSequencesForRange:` is the page's "grow a range to include all composed
+ * character sequences it overlaps" — from the start of the first sequence it touches to the end of the
+ * last. AN EMPTY RANGE OVERLAPS NOTHING and the page publishes no answer for it: this door answers the
+ * sequence CONTAINING the location, which is what the index-taking door answers and therefore what a
+ * caller can predict, rather than handing the empty range back.
+ * =================================================================================================== */
+- (NSRange)rangeOfComposedCharacterSequenceAtIndex:(NSUInteger)index;
+- (NSRange)rangeOfComposedCharacterSequencesForRange:(NSRange)range;
+
 /* Conversions. */
 - (int)intValue;
 - (NSInteger)integerValue;

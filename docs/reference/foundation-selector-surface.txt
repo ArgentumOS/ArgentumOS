@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1783   open  902   struck  243
+#   method     shipped 1785   open  900   struck  243
 #   property   shipped 1026   open  464   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3127,8 +3127,8 @@ method	open	-propertyListFromStringsFileFormat	NSString	Fundamentals / Strings /
 method	shipped	-rangeOfCharacterFromSet:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-rangeOfCharacterFromSet:options:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-rangeOfCharacterFromSet:options:range:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
-method	open	-rangeOfComposedCharacterSequenceAtIndex:	NSString	Fundamentals / Strings / Determining Composed Character Sequences	-	objc
-method	open	-rangeOfComposedCharacterSequencesForRange:	NSString	Fundamentals / Strings / Determining Composed Character Sequences	-	objc
+method	shipped	-rangeOfComposedCharacterSequenceAtIndex:	NSString	Fundamentals / Strings / Determining Composed Character Sequences	-	objc
+method	shipped	-rangeOfComposedCharacterSequencesForRange:	NSString	Fundamentals / Strings / Determining Composed Character Sequences	-	objc
 method	shipped	-rangeOfString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-rangeOfString:options:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-rangeOfString:options:range:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc

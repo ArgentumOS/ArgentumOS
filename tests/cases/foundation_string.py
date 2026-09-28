@@ -65,6 +65,14 @@ CHECKS = (
           "percent-decode-nil-on-a-bad-digit", "percent-decode-nil-on-a-truncated-tail",
           "percent-decode-nil-on-non-utf8", "percent-decode-nil-on-an-overlong-form",
           "percent-decode-leaves-plain-text-alone",
+          "composed-sequence-of-a-plain-character", "composed-sequence-from-the-mark-walks-back-to-the-base",
+          "composed-sequence-from-the-base-covers-its-marks", "composed-sequence-stops-at-a-bmp-set-boundary",
+          "composed-sequence-splits-crlf", "composed-sequence-splits-a-flag-pair",
+          "composed-sequence-at-the-end-is-empty",
+          "composed-sequences-range-grows-back-to-the-base",
+          "composed-sequences-range-grows-forward-over-the-marks",
+          "composed-sequences-empty-range-is-the-sequence-at-its-location",
+          "composed-sequence-index-past-the-end-raises", "composed-sequences-range-past-the-end-raises",
           )
 
 

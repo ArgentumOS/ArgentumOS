@@ -15776,6 +15776,55 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.4 — COMPOSED CHARACTER SEQUENCES: THIS DOOR'S OWN DEFINITION, AND THE DIVERGENCE FROM UAX#29 MEASURED (2026-09-28)
+
+**WHAT SHIPPED: THE PAIR, AND IT IS TWO ROWS.** `-rangeOfComposedCharacterSequenceAtIndex:` and
+`-rangeOfComposedCharacterSequencesForRange:`. **`method shipped` 1783 → 1785, `method open` 902 → 900.**
+
+**THIS DOOR'S PAGE DEFINES THE TERM, AND THE DEFINITION IS NOT UAX#29**: "the composed character sequence
+includes the first decomposed base letter found at or before `anIndex`, and its length includes the
+decomposed base letter and all combining characters that follow". So the rule is a BASE plus the MARKS THAT
+FOLLOW IT — and "combining characters" is the library's **existing** notion of that,
+`+[NSCharacterSet nonBaseCharacterSet]` = the general categories M\* (Mn, Me, Mc), which NSCharacterSet
+already ships and already probes. **No second table and no second notion of a mark.** And the subject was
+already in the tree: `FNTextBreaking`'s `+fnUnitContaining:inString:atIndex:` answers the enumeration
+door's UNIT question, so this door is a different RULE over a subject the library has, and it is six units
+of arithmetic in NSString.m rather than a new engine.
+
+**AND THE DIVERGENCE FROM THE ENGINE IS MEASURED, NOT ASSERTED.** Under the page's rule **CRLF is two
+sequences** and **a regional-indicator flag pair is two**; the engine answers UAX#29 grapheme clusters for
+`-enumerateSubstringsInRange:options:` with `NSStringEnumerationByComposedCharacterSequences`, which joins
+each of those into one. **Two checks pin the measurement by name** (not by comment), so a future reader who
+assumes the two doors agree sees the answer. Each door follows its own page; silently substituting clusters
+would have been the "two doors, one notion" defect pointing the other way.
+
+**THREE THINGS THE PROBE FOUND, AND ALL THREE WERE REAL.**
+
+1. **The backward walk was INVERTED, and the probe caught it on its first run.** The loop tested the
+   character BEFORE the position instead of the character AT it, so it walked back only from a base and left
+   an index landing ON a mark answering itself. **Four checks failed and every one of them was a check that
+   starts at a mark** — a signature that named the cause at once. The rule is that a mark can never be a base
+   letter, so while the character at the position is a mark, the base lies earlier.
+2. **`+nonBaseCharacterSet` IS A BMP SET, AND THE FIRST VERSION OF THE PROBE ASSERTED OTHERWISE.** The check
+   expected a combining mark above U+FFFF (U+1D165, general category Mc) to extend the sequence. It does not:
+   `NSCharacterSet.m`'s own `#define FN_MAX_CHARACTER 0xFFFF` and its `-longCharacterIsMember:` say so, and
+   the real answer here is {0,1}. **The check was rewritten to pin the MEASURED boundary** (and renamed
+   `composed-sequence-stops-at-a-bmp-set-boundary`), the header states the boundary, and the door goes on
+   asking the SET for the scalar so it follows the day the set gains astral coverage. **An expectation is
+   part of the instrument — the third unit running where a check failed on its own assumption, not the code.**
+3. **An index equal to the length is the END of the string, not past it**: the page says the index "must not
+   exceed the bounds of the receiver", so `index == length` answers an empty range and anything beyond raises
+   `NSRangeException`. The range door reuses the refusal spelled once (§63/§63.1) rather than growing a second.
+
+**AN UNPUBLISHED CASE, CHOSEN AND SAID SO:** an EMPTY range overlaps nothing, and the page publishes no answer
+for "grow it to the sequences it overlaps". This door answers **the sequence containing the location** —
+which is what the index-taking door answers, so a caller can predict it — rather than handing the empty
+range back; a check pins the choice.
+
+**VERIFICATION.** Probe `foundation_string` **96/96** (was 84) and the guest case
+**`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**; `--check` consistent, `--unimplemented` **0 NEW**,
+`foundation-gate` **OK**.
+
 ## §63.3 — PERCENT-ENCODING BOTH WAYS: TWO RULES, AND THE ANNOTATION THAT HAD TO SAY WHAT THE CODE ACCEPTS (2026-09-28)
 
 **WHAT SHIPPED: THE TWO NON-DEPRECATED DOORS OF THE FAMILY.** `-stringByAddingPercentEncodingWithAllowedCharacters:`

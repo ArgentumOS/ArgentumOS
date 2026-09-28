@@ -1601,6 +1601,118 @@ NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySugges
 	return result;
 }
 
+/* ===================================================================================================
+ * COMPOSED CHARACTER SEQUENCES — a base letter and the combining characters that follow it. See
+ * NSString.h for the page's own definition and for the measured difference from UAX#29 clustering.
+ * =================================================================================================== */
+- (NSRange)rangeOfComposedCharacterSequenceAtIndex:(NSUInteger)index
+{
+	NSCharacterSet *marks = [NSCharacterSet nonBaseCharacterSet];
+	NSUInteger length = [self length];
+	NSUInteger start, end;
+
+	if (index > length) {
+		[NSException raise:NSRangeException
+		            format:@"-[NSString %@]: index %lu out of bounds for a string of length %lu",
+		                   NSStringFromSelector(_cmd), (unsigned long)index, (unsigned long)length];
+	}
+	if (index == length) {
+		return NSMakeRange(length, 0);
+	}
+
+	/* THE SCALAR AT A POSITION AND HOW MANY UNITS IT TAKES, as a block rather than a file static: it is the
+	 * one piece of arithmetic all three walks below share, and it is not a question any other file asks.
+	 * A lone surrogate half answers as itself, which is what an ill-formed string deserves. */
+	UTF32Char (^scalarAt)(NSUInteger, NSUInteger *) = ^UTF32Char(NSUInteger at, NSUInteger *units) {
+		unichar first = [self characterAtIndex:at];
+		unichar second;
+
+		*units = 1;
+		if (first < 0xD800 || first > 0xDBFF || at + 1 >= length) {
+			return (UTF32Char)first;
+		}
+		second = [self characterAtIndex:at + 1];
+		if (second < 0xDC00 || second > 0xDFFF) {
+			return (UTF32Char)first;
+		}
+		*units = 2;
+		return 0x10000 + (((UTF32Char)first - 0xD800) << 10) + ((UTF32Char)second - 0xDC00);
+	};
+
+	/* WHICH CHARACTER THE INDEX NAMES: one landing on a low surrogate belongs to the pair it ends. */
+	start = index;
+	if (index > 0) {
+		unichar unit = [self characterAtIndex:index];
+		unichar previous = [self characterAtIndex:index - 1];
+
+		if (unit >= 0xDC00 && unit <= 0xDFFF && previous >= 0xD800 && previous <= 0xDBFF) {
+			start = index - 1;
+		}
+	}
+	{
+		NSUInteger units;
+
+		(void)scalarAt(start, &units);
+		end = start + units;
+	}
+
+	/* BACK TO THE BASE LETTER, AND THE TEST IS ON THE CHARACTER **AT** `start` RATHER THAN THE ONE BEFORE IT —
+	 * which is the correction the probe forced on its first run: a MARK can never be a base letter, so while
+	 * the character at the position is a mark, the base lies earlier. The first version tested the character
+	 * BEFORE the position, so it walked back only from a base and left an index ON a mark answering itself:
+	 * four checks failed and every one of them was a check that starts at a mark. */
+	while (start > 0) {
+		NSUInteger units;
+		UTF32Char scalar = scalarAt(start, &units);
+		unichar low;
+
+		if (![marks longCharacterIsMember:scalar]) {
+			break;
+		}
+		start -= 1;
+		low = [self characterAtIndex:start];
+		if (low >= 0xDC00 && low <= 0xDFFF && start > 0) {
+			unichar high = [self characterAtIndex:start - 1];
+
+			if (high >= 0xD800 && high <= 0xDBFF) {
+				start -= 1;
+			}
+		}
+	}
+
+	/* FORWARD OVER THE MARKS THAT FOLLOW. The set test is `-longCharacterIsMember:`, which is the right call
+	 * for a SCALAR even though this library's `+nonBaseCharacterSet` is a BMP set — NSCharacterSet's own
+	 * `FN_MAX_CHARACTER` is 0xFFFF and its `-longCharacterIsMember:` says so — so a mark above U+FFFF is
+	 * invisible here and does NOT extend a sequence. That boundary belongs to NSCharacterSet and is measured
+	 * by this probe rather than hidden; asking for the scalar means this door follows the day the set gains
+	 * astral coverage instead of having to be rediscovered. */
+	while (end < length) {
+		NSUInteger units;
+		UTF32Char scalar = scalarAt(end, &units);
+
+		if (![marks longCharacterIsMember:scalar]) {
+			break;
+		}
+		end += units;
+	}
+	return NSMakeRange(start, end - start);
+}
+
+- (NSRange)rangeOfComposedCharacterSequencesForRange:(NSRange)range
+{
+	NSRange first, last;
+
+	/* THE REFUSAL IS THE ONE SPELLED ONCE above; its name carries its first user, and a range past the end
+	 * is the same out-of-bounds question whichever door asks it. */
+	fn_line_check_range(self, range, _cmd);
+	if (range.length == 0) {
+		return [self rangeOfComposedCharacterSequenceAtIndex:range.location];
+	}
+	first = [self rangeOfComposedCharacterSequenceAtIndex:range.location];
+	last = [self rangeOfComposedCharacterSequenceAtIndex:range.location + range.length - 1];
+	return NSMakeRange(first.location, NSMaxRange(last) - first.location);
+}
+
 - (NSArray *)componentsSeparatedByString:(NSString *)separator
 {
 	NSMutableArray *parts = [[NSMutableArray alloc] init];
