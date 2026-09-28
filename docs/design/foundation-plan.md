@@ -15693,6 +15693,47 @@ markdown**; that importer now exists, so §62.108 is the `NSBundle -localizedAtt
 door plus the four macros that call it — and then the ledger's open material is the one protocol left open by
 decision.
 
+## §62.108 — THE STRING-TABLE DOORS: FOUR ROWS CLOSED, AND A SHIPPED FAMILY THAT WAS HOLLOW (2026-09-28)
+
+**WHAT SHIPPED: THE FOUR `NSLocalizedAttributedString*` MACROS AND THE DOOR THEY CALL** —
+`-localizedAttributedStringForKey:value:table:`, which is the same lookup as the classic door with the localized
+value then **PARSED AS MARKDOWN** (which is why these four rows waited for §62.107), and the four macros defined
+beside the classic family they shadow. **THE LEDGER'S OPEN COUNT IS 5 → 1.** `macro` shipped **121**, open **0**; `class` 221, `func` 167, `case` 1224, `enum` 151, `var` 703, `typealias` 71, `protocol` 39 — every one 0 open but the last.
+
+**AND THE UNIT'S REAL RESULT IS A DEFECT IT FOUND: THE CLASSIC DOOR DID NOT EXIST.**
+`-localizedStringForKey:value:table:` was **declared in no header and defined nowhere**, while the four
+`NSLocalizedString*` macros have been *shipped rows* all along — macros are not compiled until used, so the gap
+was invisible until this unit needed the same lookup for its attributed sibling and went looking for it. A caller
+who used one of those four got a warning and an unrecognised selector at runtime. Both doors are implemented now,
+with Apple's contract for the classic one: the table's value, else `value` when it is non-empty, else **the key
+itself**; and the table is read with this library's own `NSPropertyListSerialization`, because a `.strings` file IS
+an old-style property list whose dictionary is the table.
+
+**THE LOOKUP'S ONE BOUNDARY, NAMED RATHER THAN IMPLIED: THIS LIBRARY PERFORMS NO LANGUAGE NEGOTIATION.** Apple's
+door consults the user's preferred languages against the bundle's `.lproj` directories; this one reads the table
+the bundle's own flat resource lookup finds. A `.lproj`-aware search is a later slice, and the header says so
+where a caller will read it. Likewise stated: **Apple publishes these four macro NAMES and their meanings and not
+their literal `#define` text**, so their shape is derived from the family they shadow — the one case where such a
+derivation is safe, because the sibling is in the same header and the probe holds each macro to the door's own
+behaviour.
+
+**ONE CONSEQUENCE WORTH KNOWING BEFORE USING THEM, ASSERTED RATHER THAN LEFT TO BE DISCOVERED**: an attributed
+string built by the door ends with "\n", because Full-syntax markdown emits one block per line and a block ends
+with "\n". That is §62.107's convention arriving through the door, and it is now a checked fact.
+
+**VERIFICATION.** Probe `foundation_markdown` **29/29 on the host** (25 from §62.107 plus these four) and the
+guest case **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**. Host suite: **54 probes, no failure**. Library **zero**
+warnings. `foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**; `--unimplemented`:
+**0 NEW**. (The code and the ledger landed in 00857416; this commit is the plan section for it, which the first
+commit's `git add` ran without because the section's anchor failed — the chain is `&&` now.)
+
+**WHERE THE THREAD STANDS: ONE OPEN ROW, AND IT IS A DECISION RATHER THAN WORK.** The ledger's remaining open
+material is `NSPredicateValidating` alone — a brand-new protocol (iOS 26.4+) with four visitor doors and a
+validation walk, which the user recorded as OPEN with its reason: Apple's own declaration of the four selectors is
+not citable from this tree, and shipping doors that nothing calls would be the stubs refusal in protocol form. So
+the porting thread's work list is now empty of everything except that one decision and whatever new Apple
+documentation surfaces.
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else
