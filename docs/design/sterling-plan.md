@@ -584,17 +584,31 @@ guessed** — this is the next unit of work, and the corpus file is the checklis
    a free function calls a struct method on its parameters;
 7. the inherited call's **upcast**
    (`p3.length()` → `Point_length((const Point *)&p3)`);
-8. **the struct initializer, and this one needs a decision before it can be
-   built.** §7.48/§7.49 read two ways and 08 contains both shapes: a struct's
-   *field list* is §6's literal (`Point(x: 1, y: 2)` → `(Point){ .x = 1, .y = 2 }`),
-   while a *declared* `init(start: Int32)` is §7.8's "an ordinary `method … ->
-   Self`, no special form" — a function returning the struct by value. 08's
-   `Counter` declares `init(start:)` and is written `Counter(start: 3)` — the
-   literal's *call form* carrying a declared initializer's labels — and the syntax
-   doc never spells out whether that declaration's emission takes `self` or
-   returns the struct with no receiver. **Pin this before implementing it**;
-   guessing picks a signature the caller cannot compile against, which is the
-   §7.49 initializer bug all over again.
+8. **the struct initializer — DECIDED (user, 2026-09): a declared `init` takes
+   `self` BY VALUE and returns the struct.** `init(start: Int32)` on `Counter`
+   emits `Counter Counter_init(Counter self, int32_t start)`, and the body's
+   `return self;` is the struct it hands back (the same append §7.49 already makes
+   unconditional for a class initializer). The reasoning is the doc taken
+   literally rather than harmonised: §7.8 says a value type's initializer is
+   "an ordinary `method … -> Self`, no special form", §7.25 says a
+   `method … -> Self` on a struct is a function returning the struct **by value**,
+   and 08's own comment already says "the emission passes `self` by value". The
+   out-parameter reading (`void Counter_init(Counter *self, …)`, the shape every
+   other mutating struct method takes) was rejected because it would make
+   `Counter(start: 3)` un-usable as an expression, and §6's literal reading
+   constructs inline.
+   - **The consequence this creates, recorded so it is not discovered: the CALL
+     site has to supply `self`.** `Counter(start: 3)` is not a free-standing
+     literal when a declared initializer exists — it becomes
+     `Counter_init(<some zeroed Counter>, 3)`, so the emitter needs a source for
+     that value (a zeroed compound literal is the obvious one). Corpus 08
+     declares `init` and never calls it, so this is not exercised yet and is
+     pinned the first time a call appears rather than guessed now.
+   - The two initialized forms therefore differ, and deliberately: with **no**
+     declared initializer, `Point(x: 1, y: 2)` is §6's literal
+     (`(Point){ .x = 1, .y = 2 }`, the memberwise set); **with** one, the same
+     syntax is a call to the declared function. Both are "construct", which is
+     the consistency §7.48 was reaching for.
 
 - The type table (`sterling-syntax.md` §4) and its **reference/value rule** — a
   class type is a reference, a scalar and a **struct** are values; declared
