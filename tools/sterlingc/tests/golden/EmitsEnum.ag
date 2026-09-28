@@ -1,0 +1,62 @@
+/*
+ * EmitsEnum.ag — §5's Enum kind, BOTH kinds, as emitted.
+ *
+ * Copyright © 2026 Kyle J. Cardoza. MIT licence (see docs/LICENSE).
+ *
+ * §5: which kind you get is decided by the MEMBERS, not by a keyword — an enum
+ * whose members carry no associated values is a plain C enum, and one with at
+ * least one payload is a §7.35 TAGGED UNION. This file has both, plus the two
+ * things a plain enum may carry beyond bare names (an underlying `: T` and a
+ * pre-set `= value`), because each is a separate rule:
+ *
+ *   - §7.14 DECIDED (2026-09): the emitted enumerator carries the TYPE-NAME
+ *     PREFIX — `Direction_north`, `Flags_none`, `Outcome_valueOne` — for BOTH
+ *     kinds, "so two plain enums cannot collide in the C even when they collide
+ *     in an author's head". §7.18 then makes the SOURCE's qualification
+ *     (`Seeded.a`) sugar the C never sees, which is the access in `pick`/`dir`
+ *     below: they emit the prefixed enumerator and nothing else.
+ *   - §5: a pre-set value seeds the ones after it and the values need not
+ *     ascend — `Seeded` is `a = 4, b = 2, c`, so `c` is **3**, not 5. C's own
+ *     rule, inherited whole rather than tightened, and the golden is what holds
+ *     it.
+ *   - §5: `: T` is the same `: T` an enum gets in C++ and C23, so no `NS_ENUM`
+ *     is needed. For a PLAIN enum it is the enum's own width; for a tagged union
+ *     it is the TAG's, leaving the union untouched.
+ *   - §5's tagged union is a tag plus ONE PAYLOAD STRUCT PER CASE, and a member
+ *     with no associated value contributes NO union arm — `Outcome` has no arm
+ *     for a payloadless case, because the union always has at least one arm and
+ *     C allows no empty `struct { }` anyway.
+ */
+enum Direction {
+    case north
+    case south
+}
+
+enum Seeded {
+    case a = 4
+    case b = 2
+    case c
+}
+
+enum Flags: UInt8 {
+    case none
+    case readable
+}
+
+enum Outcome {
+    case valueOne(associateValue: Int32) = 4
+    case valueTwo(associatedValue: Float64)
+    case valueThree(associatedValueOne: Bool, associatedValueTwo: Int64)
+}
+
+class Holder: Object {
+    /* §7.18: `Seeded.a` is a CASE, and the qualification is sugar the C does
+     * not see — it emits `Seeded_a`. */
+    method pick() -> Int32 {
+        return Seeded.a
+    }
+
+    method dir() -> Int32 {
+        return Direction.north
+    }
+}

@@ -431,7 +431,7 @@ static int parse_nested_type(st_parser *p, st_class *outer);
  * — nothing goes unchecked — and counted, for the emitter to refuse by name.
  */
 static int parse_struct(st_parser *p, st_struct **out);
-static int parse_enum(st_parser *p);
+static int parse_enum(st_parser *p, st_enum **out);
 
 /*
  * A call argument is `label: value`. The internal name follows the label
@@ -2208,10 +2208,18 @@ parse_nested_type(st_parser *p, st_class *outer)
 		return 1;
 	}
 	if (at_keyword(p, "enum")) {
-		if (!parse_enum(p)) {
+		st_enum *nested_enum = NULL;
+
+		if (!parse_enum(p, &nested_enum)) {
 			return 0;
 		}
+		/*
+		 * Read in full and COUNTED on the outer class, for §5's struct
+		 * reason: a nested value type's emission is a separate question, so
+		 * the emitter refuses by name rather than dropping it.
+		 */
 		outer->enum_count++;
+		(void)nested_enum;
 		return 1;
 	}
 	{
@@ -2375,13 +2383,19 @@ parse_func(st_parser *p, st_func **out)
  * to arrive is the next member's name.
  */
 static int
-parse_enum(st_parser *p)
+parse_enum(st_parser *p, st_enum **out)
 {
-	st_name name;
-	st_type underlying;
+	st_enum *e = st_arena_alloc(sizeof(st_enum));
+	st_enum_member *head = NULL;
+	st_enum_member **tail = &head;
+	st_decl *decl_head = NULL;
+	st_decl **decl_tail = &decl_head;
 
+	if (e == NULL) {
+		return fail(p, "out of memory");
+	}
 	bump(p);				/* `enum` */
-	if (!take_name(p, &name)) {
+	if (!take_name(p, &e->name)) {
 		return 0;
 	}
 	/*
@@ -2390,15 +2404,16 @@ parse_enum(st_parser *p)
 	 */
 	if (at_punct(p, ':')) {
 		bump(p);
-		if (!parse_type(p, &underlying)) {
+		if (!parse_type(p, &e->underlying)) {
 			return 0;
 		}
+		e->has_underlying = 1;
 	}
 	if (!expect_punct(p, '{')) {
 		return 0;
 	}
 	while (!at_punct(p, '}') && p->tok.kind != ST_EOF) {
-		st_name member;
+		st_enum_member *member;
 
 		/*
 		 * §5: an enum may declare methods — "the same rule covers an enum's
@@ -2414,6 +2429,8 @@ parse_enum(st_parser *p)
 			if (!parse_decl(p, &d)) {
 				return 0;
 			}
+			*decl_tail = d;
+			decl_tail = &d->next;
 			continue;
 		}
 		/*
@@ -2427,43 +2444,51 @@ parse_enum(st_parser *p)
 			return fail(p, "expected `case` before an enum member");
 		}
 		bump(p);
-		if (!take_name(p, &member)) {
+		member = st_arena_alloc(sizeof(st_enum_member));
+		if (member == NULL) {
+			return fail(p, "out of memory");
+		}
+		if (!take_name(p, &member->name)) {
 			return 0;
 		}
-		/* The associated-value list of a tagged-union case: `.case(a: T, …)`.
-		 * Scanned, because §5's emission is a payload struct per case and the
-		 * AST has no case node to hold them. */
+		/*
+		 * §5's associated-value list — `case valueOne(associateValue: Int32)`
+		 * — is a PARAMETER LIST, so it is PARSED with `parse_params` rather
+		 * than counted to its matching `)`. It was scanned and dropped; it is
+		 * now the data the emission is built from, because it is what makes the
+		 * enum a TAGGED UNION and what each union arm is declared from. Nothing
+		 * inside one goes unchecked either.
+		 */
 		if (at_punct(p, '(')) {
-			int depth = 1;
+			st_decl payload;
 
+			memset(&payload, 0, sizeof(payload));
 			bump(p);
-			while (p->tok.kind != ST_EOF && depth > 0) {
-				if (at_punct(p, '(')) {
-					depth++;
-				} else if (at_punct(p, ')')) {
-					depth--;
-				}
-				bump(p);
+			if (!parse_params(p, &payload)) {
+				return 0;
 			}
-			if (depth != 0) {
-				return fail(p, "unclosed `(` in an associated value");
-			}
+			member->payload = payload.params;
+			member->payload_count = payload.param_count;
 		}
 		/* §5: a member may pre-set its value, and C's seeding rule — an
 		 * explicit value seeds the ones after it — is inherited whole. */
 		if (p->tok.kind == ST_OPERATOR && p->tok.len == 1 &&
 		    p->tok.start[0] == '=') {
-			st_expr *value;
-
 			bump(p);
-			if (!parse_expr(p, &value)) {
+			if (!parse_expr(p, &member->value)) {
 				return 0;
 			}
+			member->has_value = 1;
 		}
+		*tail = member;
+		tail = &member->next;
 	}
 	if (!expect_punct(p, '}')) {
 		return 0;
 	}
+	e->members = head;
+	e->decls = decl_head;
+	*out = e;
 	return 1;
 }
 
@@ -2686,8 +2711,9 @@ st_parse(const char *src, const char **error)
 	 * declare none.
 	 */
 	size_t struct_capacity = 0;
-	/* §7.56's funcs, on the same terms. */
+	/* §7.56's funcs and §5's enums, on the same terms. */
 	size_t func_capacity = 0;
+	size_t enum_capacity = 0;
 
 	memset(&p, 0, sizeof(p));
 	st_lexer_init(&p.lx, src);
@@ -2816,13 +2842,38 @@ st_parse(const char *src, const char **error)
 			continue;
 		}
 		if (at_keyword(&p, "enum")) {
-			if (!parse_enum(&p)) {
+			st_enum *en = NULL;
+
+			if (!parse_enum(&p, &en)) {
 				*error = p.error != NULL ? p.error : "parse error";
 				st_arena_free();
 				return NULL;
 			}
-			/* Counted, for the same reason as `struct` above. */
-			program->enum_count++;
+			/*
+			 * RECORDED, like §5's structs: the members ARE the data the
+			 * emission is built from — they decide the kind — and the
+			 * associated values used to be counted to their matching `)`.
+			 */
+			if (program->enum_count == enum_capacity) {
+				size_t want = enum_capacity == 0 ? 4
+								: enum_capacity * 2;
+				st_enum **grown =
+					st_arena_alloc(want * sizeof(st_enum *));
+
+				if (grown == NULL) {
+					*error = "out of memory";
+					st_arena_free();
+					return NULL;
+				}
+				if (program->enum_count > 0) {
+					memcpy(grown, program->enums,
+					       program->enum_count *
+						       sizeof(st_enum *));
+				}
+				program->enums = grown;
+				enum_capacity = want;
+			}
+			program->enums[program->enum_count++] = en;
 			continue;
 		}
 		if (at_keyword(&p, "protocol")) {

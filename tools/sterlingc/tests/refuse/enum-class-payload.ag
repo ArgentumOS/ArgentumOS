@@ -1,0 +1,13 @@
+/* §4's value rule, for the FOURTH time: an associated value cannot be a class
+ * type — ARC forbids an ObjC object in a struct or union, and a tagged union's
+ * payload structs are inside the union inside the struct. */
+enum RefuseEnumClassPayload {
+    case holding(item: Object)
+    case empty
+}
+
+class RefuseEnumPayloadHost: Object {
+    method m() -> Void {
+        return;
+    }
+}

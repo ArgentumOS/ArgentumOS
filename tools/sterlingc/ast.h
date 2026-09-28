@@ -372,6 +372,50 @@ typedef struct st_struct {
 } st_struct;
 
 /*
+ * §5's Enum — and it is TWO kinds decided by the MEMBERS, not by a keyword: an
+ * enum whose members carry no associated values is a plain C ENUM, and one with
+ * at least one payload is a §7.35 TAGGED UNION (a tag plus one payload struct per
+ * case). `enum_is_tagged` asks the question once, at emission.
+ *
+ * RECORDED, not counted. `parse_enum` read the name, the underlying type and the
+ * members into locals and kept only a count, so the emitter could name what it
+ * could not write and nothing more — the same shape `parse_struct` had.
+ */
+typedef struct st_enum_member {
+	st_name name;
+	/*
+	 * The associated values. NULL/0 for a plain member, which is exactly what
+	 * makes the enum's KIND decidable from its members.
+	 */
+	st_param *payload;
+	size_t payload_count;
+	/*
+	 * §5: a member may PRE-SET its value (`case a = 4`), and for a tagged
+	 * union that 4 is the TAG's value and not a payload default — the two are
+	 * separate things that happen to share a spelling.
+	 */
+	st_expr *value;
+	int has_value;
+	struct st_enum_member *next;
+} st_enum_member;
+
+typedef struct st_enum {
+	st_name name;
+	/*
+	 * §5's `: T`. For a plain enum it is the enum's own width; for a tagged
+	 * union it is the TAG's, leaving the union untouched.
+	 */
+	st_type underlying;
+	int has_underlying;
+	st_enum_member *members;
+	/* §5: an enum may declare instance methods, lowered as a struct's are. */
+	st_decl *decls;
+	/* Nested types, counted on the outer class and refused by name. */
+	size_t struct_count;
+	size_t enum_count;
+} st_enum;
+
+/*
  * §7.56's `func` — a bare function, callable and not bound to a type.
  *
  * RECORDED, not dropped, and this one was a live SILENT LOSS: `parse_func` read
@@ -414,11 +458,9 @@ typedef struct {
 	st_struct **structs;
 	size_t struct_count;
 	/*
-	 * The one type with no emission ANYWHERE yet: a top-level enum. Parsed
-	 * and dropped with the parse reporting success — beside a class it
-	 * reported nothing at all. Counted so the emitter can name what it
-	 * cannot write.
+	 * §5's enums, RECORDED for the reason the struct is.
 	 */
+	st_enum **enums;
 	size_t enum_count;
 	/*
 	 * §7.56's bare functions, RECORDED for the reason the struct is — and this

@@ -733,6 +733,42 @@ calls it.
   defaults and no declared initializer is the language's rule and is not
   implemented; `resolve_constructions_in_program` is where it goes.
 
+**Landed (2026-09, fifth piece): §5's ENUMS — both kinds — declared.** An enum's
+kind is decided by its MEMBERS, not by a keyword: no payload is a plain C enum, at
+least one is a §7.35 tagged union. The declaration, the `: T`, the pre-set
+`= value` and §7.18's qualified access all emit; `EmitsEnum` is the golden.
+
+- **§7.14's decision was the one thing the documents contradicted each other on,
+  and the USER settled it: the emitted enumerator carries the type-name prefix for
+  BOTH kinds** (`Direction_north`, `Outcome_valueOne`). §7.14 DECIDED (2026-09)
+  that — "so two plain enums cannot collide in the C even when they collide in an
+  author's head" — and §5's tagged-union consequences say the same, while **§7.18
+  (also marked DECIDED, later in the document) says the OPPOSITE** for a plain
+  enum: "the bare C enumerator for a plain enum and to the prefixed one for a
+  tagged union". §5's own plain-enum example shows the bare form too. The conflict
+  is real and is recorded rather than silently resolved: **§7.18 needs a correction
+  so it stops contradicting §7.14.**
+- **The associated-value list is now PARSED, not scanned.** It was counted to its
+  matching `)` and dropped; it is what the union is built from AND what makes the
+  kind decidable, so `parse_params` reads it and nothing inside one goes unchecked.
+  That is §5's "a tag plus a union holding one payload struct per case", with no arm
+  for a payloadless member (the union always has at least one, and C allows no empty
+  `struct { }`).
+- **§4's value rule lands for the fourth time**: a class-typed associated value is
+  refused by name — ARC forbids an object in a struct or union, and the payload
+  structs are inside the union inside the struct.
+- **CORPUS: all four enum files moved past `an enum`.** `01` → §9.16 (a struct
+  field's default); `03` and `11` → an imported nullable name (§9.5's importer);
+  `09` → `enum case`, which is the **`.valueOne` SHORTHAND** §7.18 allows "wherever
+  the type is already known" — a PRE-EXISTING parser refusal, so it was already
+  named and is now the next piece of enum work rather than a new gap.
+- **OWED, in order:** (a) the `.case` shorthand (§7.18) where the type is known — a
+  `let`/`var` initializer, a `switch` case pattern, or an argument whose parameter
+  type is it; (b) an enum's METHODS, which §5 lowers "exactly as a struct's are"
+  (`EnumName_member`, `self` first) and which therefore belong beside the struct's
+  machinery rather than in a second copy of it — refused by name until then, and
+  `01`'s `Shape` is the corpus case.
+
 - The type table (`sterling-syntax.md` §4) and its **reference/value rule** — a
   class type is a reference, a scalar and a **struct** are values; declared
   structs (`struct`), imported ones (`NSRange` and friends), struct literals (a

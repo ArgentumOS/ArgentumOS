@@ -1,0 +1,17 @@
+/* §5: an enum carries instance methods, "lowered exactly as a struct's are" —
+ * §7.25's `EnumName_member` with `self` first — and that machinery belongs beside
+ * the struct's rather than here as a second copy of it, so it is refused BY NAME
+ * until it lands. The enum's DECLARATION (both kinds) is emitted. */
+enum RefuseEnumMethod {
+    case idle
+
+    method describe() -> Int32 {
+        return 0
+    }
+}
+
+class RefuseEnumMethodHost: Object {
+    method m() -> Void {
+        return;
+    }
+}

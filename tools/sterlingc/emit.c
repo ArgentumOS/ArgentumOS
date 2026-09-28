@@ -366,6 +366,48 @@ find_struct(const st_program *program, const char *name)
 	return NULL;
 }
 
+/*
+ * §5's enums, by name — and by MEMBER, which is what §7.18's qualified access
+ * needs: `MyEnumType.valueOne` is a CASE and not a member access, and the only
+ * thing that can tell them apart is whether the enum declares that member.
+ */
+static const st_enum *
+find_enum(const st_program *program, const char *name)
+{
+	size_t i;
+	char mangled[256];
+
+	if (name == NULL) {
+		return NULL;
+	}
+	mangle_name(name, mangled, sizeof(mangled));
+	for (i = 0; i < program->enum_count; i++) {
+		char have[256];
+
+		mangle_name(program->enums[i]->name.text, have, sizeof(have));
+		if (strcmp(have, mangled) == 0) {
+			return program->enums[i];
+		}
+	}
+	return NULL;
+}
+
+static int
+enum_has_member(const st_enum *e, const char *member)
+{
+	const st_enum_member *m;
+
+	if (e == NULL || member == NULL) {
+		return 0;
+	}
+	for (m = e->members; m != NULL; m = m->next) {
+		if (m->name.text != NULL && strcmp(m->name.text, member) == 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 static const st_decl *
 struct_find_method(const st_struct *s, const char *selector)
 {
@@ -1128,6 +1170,28 @@ emit_expr(FILE *out, const st_expr *e, const char *expected,
 		fprintf(out, "%s", e->text.text);
 		return 1;
 	case ST_EXPR_MEMBER:
+		/*
+		 * §7.18 FIRST, because the qualified CASE looks exactly like a member
+		 * access in the AST and must not emit as one: `MyEnumType.valueOne` is
+		 * sugar the C NEVER SEES, and it maps to the prefixed enumerator §7.14
+		 * emits — `MyEnumType_valueOne`. What tells the two apart is whether the
+		 * left side names a declared enum and the right side one of its
+		 * members.
+		 */
+		if (e->base != NULL && e->base->kind == ST_EXPR_IDENT &&
+		    current_program != NULL) {
+			const st_enum *en =
+				find_enum(current_program, e->base->text.text);
+
+			if (en != NULL && enum_has_member(en, e->text.text)) {
+				char enbuf[256];
+
+				mangle_name(en->name.text, enbuf,
+					    sizeof(enbuf));
+				fprintf(out, "%s_%s", enbuf, e->text.text);
+				return 1;
+			}
+		}
 		if (!emit_tight(out, e->base, error)) {
 			return 0;
 		}
@@ -2260,6 +2324,8 @@ emit_scalar_optionals(FILE *out, char names[][64], size_t count)
 static int emit_struct_decl(FILE *out, const st_struct *s, const char **error);
 static int emit_struct_definitions(FILE *out, const st_struct *s,
 				   const char **error);
+/* §5's enums, declared only: no definitions until an enum's methods land. */
+static int emit_enum_decl(FILE *out, const st_enum *e, const char **error);
 /* §7.56's bare functions, the same way: a declaration and a definition. */
 static int emit_func_signature(FILE *out, const st_func *f,
 			       const char *terminator, const char **error);
@@ -2274,15 +2340,12 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 	char stem[256];
 
 	/*
-	 * The one top-level type with no emission anywhere: an enum. It was parsed
-	 * and dropped with the parse reporting success — beside a class it
-	 * reported nothing at all — so it stays REFUSED BY NAME, and the file
-	 * that comes out is never quietly missing a type the source declared.
-	 * §5's structs are emitted just below instead.
+	 * §5's enums are EMITTED too — both kinds, decided by their members. What
+	 * an enum still refuses is its METHODS (refused by name inside
+	 * `emit_enum_decl`), which §5 lowers exactly as a struct's and which
+	 * therefore belong beside the struct's machinery rather than in a second
+	 * copy of it.
 	 */
-	if (program->enum_count > 0) {
-		return refuse("an enum", error);
-	}
 	/*
 	 * §7.56's `func` is EMITTED rather than refused — a plain C function,
 	 * declared in this header below and defined in the `.m`. It was dropped
@@ -2479,6 +2542,16 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 	 */
 	for (i = 0; i < program->struct_count; i++) {
 		if (!emit_struct_decl(out, program->structs[i], error)) {
+			return 0;
+		}
+	}
+
+	/*
+	 * §5's enums, after the structs: a case's payload may be a struct, and both
+	 * are emitted before the funcs and classes that may name either.
+	 */
+	for (i = 0; i < program->enum_count; i++) {
+		if (!emit_enum_decl(out, program->enums[i], error)) {
 			return 0;
 		}
 	}
@@ -3369,6 +3442,173 @@ emit_func_definition(FILE *out, const st_func *f, const char **error)
 }
 
 /*
+ * §5: which KIND an enum is, asked of its MEMBERS rather than of a keyword — no
+ * member carrying an associated value is a plain C enum, and at least one is a
+ * §7.35 tagged union.
+ */
+static int
+enum_is_tagged(const st_enum *e)
+{
+	const st_enum_member *m;
+
+	for (m = e->members; m != NULL; m = m->next) {
+		if (m->payload_count > 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/*
+ * The tag's enumerator list, shared by both kinds: the SAME spelling either way,
+ * because §7.14 DECIDED (2026-09) that the emitted enumerator carries the
+ * type-name prefix for BOTH — "so two plain enums cannot collide in the C even
+ * when they collide in an author's head". The source is written qualified anyway
+ * (§7.18), so only the emitted C changes.
+ *
+ * `indent` is the tag's one level deeper inside a union's struct. The COMMAS are
+ * the emitter's, exactly as a statement's `;` is — §5's members are one per line
+ * with no separators.
+ */
+static int
+emit_enum_members(FILE *out, const st_enum *e, const char *name,
+		  const char *indent, const char **error)
+{
+	const st_enum_member *m;
+
+	for (m = e->members; m != NULL; m = m->next) {
+		fprintf(out, "%s%s_%s", indent, name, m->name.text);
+		if (m->has_value) {
+			fprintf(out, " = ");
+			if (!emit_expr(out, m->value, NULL, error)) {
+				return 0;
+			}
+		}
+		fprintf(out, "%s\n", m->next != NULL ? "," : "");
+	}
+	return 1;
+}
+
+/* §5's `: T` — the enum's own width, or the tag's for a tagged union. */
+static void
+emit_enum_underlying(FILE *out, const st_enum *e)
+{
+	char under[256];
+
+	if (!e->has_underlying) {
+		return;
+	}
+	type_text(&e->underlying, NULL, under, sizeof(under));
+	fprintf(out, " : %s", under);
+}
+
+/*
+ * §5's PLAIN enum — `typedef enum Name { Name_a, Name_b = 4 } Name;`. The tag and
+ * the typedef share a name, which C allows because tags and ordinary identifiers
+ * are separate namespaces; C's own seeding rule (an explicit value seeds the ones
+ * after it, and the values need not ascend) is inherited whole rather than
+ * tightened.
+ */
+static int
+emit_plain_enum(FILE *out, const st_enum *e, const char *name,
+		const char **error)
+{
+	fprintf(out, "typedef enum %s", name);
+	emit_enum_underlying(out, e);
+	fprintf(out, " {\n");
+	if (!emit_enum_members(out, e, name, "\t", error)) {
+		return 0;
+	}
+	fprintf(out, "} %s;\n\n", name);
+	return 1;
+}
+
+/*
+ * §5's TAGGED UNION — a tag plus one payload struct per case, which is what an
+ * associated value IS.
+ *
+ * Three things the shape follows from, each measured or stated in §5: the tag is
+ * an ANONYMOUS enum (`enum { … } tag;`); a member with NO associated value
+ * contributes NO union arm, because a tagged union exists only because some
+ * member has a payload and C allows no empty `struct { }` anyway; and a payload
+ * may not be a class type — ARC forbids an object in a struct or union, and this
+ * union is inside a struct — which is §4's value rule for the fourth time.
+ */
+static int
+emit_tagged_union(FILE *out, const st_enum *e, const char *name,
+		  const char **error)
+{
+	const st_enum_member *m;
+
+	fprintf(out, "typedef struct %s {\n", name);
+	fprintf(out, "\tenum");
+	emit_enum_underlying(out, e);
+	fprintf(out, " {\n");
+	if (!emit_enum_members(out, e, name, "\t\t", error)) {
+		return 0;
+	}
+	fprintf(out, "\t} tag;\n");
+	fprintf(out, "\tunion {\n");
+	for (m = e->members; m != NULL; m = m->next) {
+		size_t i;
+
+		if (m->payload_count == 0) {
+			continue;
+		}
+		fprintf(out, "\t\tstruct {");
+		for (i = 0; i < m->payload_count; i++) {
+			const st_param *p = &m->payload[i];
+
+			if (type_name_is_class(p->type.name.text)) {
+				return refuse("a class-typed associated value "
+					      "(§4's value rule)", error);
+			}
+			if (!type_is_emittable(&p->type, error)) {
+				return 0;
+			}
+			fprintf(out, " ");
+			emit_type(out, &p->type);
+			fprintf(out, " %s;",
+				p->internal.text != NULL ? p->internal.text
+							 : p->external.text);
+		}
+		fprintf(out, " } %s;\n", m->name.text);
+	}
+	fprintf(out, "\t} value;\n");
+	fprintf(out, "} %s;\n\n", name);
+	return 1;
+}
+
+/*
+ * §5's Enum DECLARATION, in whichever kind its members make it.
+ *
+ * An enum's METHODS are still owed — §5 says an enum carries instance methods
+ * "lowered exactly as a struct's are", and the lowering is the same machinery
+ * (`EnumName_member`, `self` first), so it belongs beside the struct's rather than
+ * here as a second copy — so they are refused BY NAME until they land.
+ */
+static int
+emit_enum_decl(FILE *out, const st_enum *e, const char **error)
+{
+	char name[256];
+
+	if (e->decls != NULL) {
+		return refuse("a method on an enum (§5)", error);
+	}
+	if (e->struct_count > 0) {
+		return refuse("a nested struct", error);
+	}
+	if (e->enum_count > 0) {
+		return refuse("a nested enum", error);
+	}
+	mangle_name(e->name.text, name, sizeof(name));
+	if (!enum_is_tagged(e)) {
+		return emit_plain_enum(out, e, name, error);
+	}
+	return emit_tagged_union(out, e, name, error);
+}
+
+/*
  * One struct function's body, with §7.25's context installed: `current_struct`
  * is the struct a bare field name belongs to, and `current_locals` is what beats
  * it — the method's parameters and the body's own locals.
@@ -3602,12 +3842,10 @@ st_emit_implementation(FILE *out, const st_program *program,
 	char stem[256];
 
 	/*
-	 * The one top-level type with no emission anywhere: an enum. §5's structs
-	 * are emitted below, beside the classes whose methods may use them.
+	 * §5's enums have no DEFINITIONS yet — an enum's methods are the only thing
+	 * that would go here, and they are refused at the declaration by name. The
+	 * declarations themselves are in the header.
 	 */
-	if (program->enum_count > 0) {
-		return refuse("an enum", error);
-	}
 	if (program->class_count == 0 && program->struct_count == 0) {
 		return refuse("a program with no class or struct (the file's name "
 			      "comes from one)", error);
