@@ -15170,6 +15170,187 @@ warnings. `foundation-gate`: **OK** (588 files; 220 of 225 public headers open a
 one protocol (`NSPredicateValidating`), 36 cases, 47 vars — and the things owed as BUILD work are the markdown
 importer and the run-loop observers. The spelling engine is still open on language grounds.
 
+
+## §62.95 — THE TABLE PERSONALITIES: TEN NAMES THAT WERE ALREADY BEHAVIOUR (2026-09-28)
+
+**TEN ROWS SHIPPED**, which is the whole pointer-collections family: the five names Apple declares beside
+`NSMapTable` (`StrongMemory`, `WeakMemory`, `ZeroingWeakMemory`, `CopyIn`, `ObjectPointerPersonality`), the four
+beside `NSHashTable`, and `NSPointerFunctionsZeroingWeakMemory`.
+
+**THEY ARE MACROS ALIASING THIS LIBRARY'S NSPointerFunctions OPTIONS, which is what Apple declares too** — so
+there is no second vocabulary to keep in step, and the probe compares each name against the option it names
+rather than trusting the spelling: a macro pointing at a different bit would compile and silently change a
+table's policy.
+
+**AND THE PERSONALITIES ARE BEHAVIOUR, SO THE PROBE ASSERTS BEHAVIOUR — WITH A CONTROL EVERY TIME.** CopyIn is
+checked by inserting a MUTABLE string, mutating it, and reading the key back, with the SAME table without CopyIn
+beside it (`abc` versus `abc-changed`); the identity personality is checked with two equal-but-distinct strings
+against a default table. A one-sided check would have reported "the table stored something" as a pass.
+
+**THE ONE DECLARED-NOT-INTERPRETED FLAG SAYS SO IN TWO PLACES.** `NSPointerFunctionsZeroingWeakMemory` takes the
+one free bit in the memory byte and carries the SAME value as the `NSHashTableZeroingWeakMemory` that already
+shipped (`1`) — the two names are Apple's two spellings of one flag — and it is declared rather than honoured for
+the reason the shipped one already records: nothing in this library can remove an entry when its object
+deallocates. The probe pins the declaration (equal to its twin, distinct from weak memory).
+
+**VERIFIED.** Host: `make host-foundation-run` → **53 probes, no failure** (the batch's own, shared with §62.96 and
+§62.97 below). Library and probe: **zero** warnings. Guest: the batch's full-tier run, §62.100's note.
+
+
+## §62.96 — THE FIVE VALUE TRANSFORMERS APPLE REGISTERS (2026-09-28)
+
+**FIVE ROWS SHIPPED**: `NSIsNilTransformerName`, `NSIsNotNilTransformerName`, `NSNegateBooleanTransformerName`,
+`NSKeyedUnarchiveFromDataTransformerName` and `NSUnarchiveFromDataTransformerName` — with the two unarchivers
+round-tripping their own archiver's output (keyed through `NSKeyedArchiver`, sequential through `NSArchiver`) and
+the negator refusing what is not a number.
+
+**WHY THEY ARE REGISTERED RATHER THAN NAMED AFTER THEIR CLASSES**, which is the design decision this unit turned
+on: this registry resolves an unknown name by looking for a CLASS of that name (the trick the one transformer
+that shipped before them uses), and that would make these five findable while leaving `+valueTransformerNames`
+EMPTY — a documented door answering nothing. So they are registered at load, the standing §62.83 gave the URL
+transport, and the probe's first check asks the LIST.
+
+**AND THE HEADER THAT DISMISSED ONE OF THEM WAS WRONG TWICE, BOTH CORRECTED IN PLACE.** It said
+`NSKeyedUnarchiveFromDataTransformerName` "is struck on the surface ledger" — the ledger lists it OPEN, so the
+sentence was a claim about a file rather than a reading of it — and it ended "this library ships no deprecated
+API", which §62.93 falsified the day before and whose ground had already been retired (row D7, §62.24: deprecated
+API is IN SCOPE). Both deprecated spellings ship.
+
+**THE NEGATOR'S DOMAIN IS A BOUNDARY AND IT IS ASSERTED**: "NegateBoolean" promises a Boolean, so a string answers
+nil — the abstract class's own contract for a value it cannot transform, rather than a coercion. And the five
+name STRINGS are pinned by the probe, because a nib or a model spells `@"NSIsNil"` as a literal and no
+documentation publishes the value (D2).
+
+
+## §62.97 — NSDATA'S DEPRECATED SPELLINGS AND THE COMPRESSION ERROR CODES (2026-09-28)
+
+**EIGHT ROWS SHIPPED**: the three deprecated reading spellings (`NSMappedRead`, `NSDataReadingMapped`,
+`NSUncachedRead`), the writing one (`NSAtomicWrite`), and the four compression error codes
+(`NSCompressionFailedError`, `NSDecompressionFailedError`, `NSCompressionErrorMinimum`,
+`NSCompressionErrorMaximum`).
+
+**THE CODES ARE WIRED TO BEHAVIOUR RATHER THAN MERELY DECLARED, AND THAT IS THE HALF THAT MATTERS.** `NSDataCodec`
+answered `code:1` — a number nothing declares and no caller could recognise — for both a refused algorithm and a
+corrupt stream; a compression path and a decompression path now answer 5376 and 5377 respectively, through a
+named wrapper per side so the two can never disagree about the number a caller switches on. The probe asks for
+both, and asks as well that the fix did not cost the diagnostic that was already there: the error still NAMES the
+algorithm it refused.
+
+**THE RANGE IS THE DOCUMENTED CONTENT** — the two failures must sit inside `[Minimum, Maximum]` (5376…5503), the
+window Apple reserves so a codec failure cannot be mistaken for another Cocoa error — and the probe asserts the
+bracketing as hard as the values.
+
+**THE DEPRECATED SPELLINGS ARE COMPARED AND THEN USED**: a file written with `NSAtomicWrite` is read back byte for
+byte through all three deprecated reading spellings, because a value comparison alone cannot see whether an option
+reached the reading path.
+
+**AND THE PROBE FOUND A HOST/GUEST TRAP WHILE DOING IT, WHICH IS NOW RECORDED IN ITS OWN COMMENT:**
+`NSTemporaryDirectory()` answers the GUEST's FSH path (`/System/Temporary Files/`), which does not exist on the
+host, so the first draft's file round trip failed with "the file could not be written" — a failure that had
+nothing to do with the library. The probe now ASKS whether that directory exists and falls back to the directory
+it was started in. The trap is the same one `foundation_itemprovider`'s fixture comment records.
+
+
+## §62.98 — THE PROCESS-INFO VOCABULARY, AND THE ORPHANED THERMAL ENUM GETS ITS DOOR (2026-09-28)
+
+**EIGHT ROWS SHIPPED**: Apple's seven operating-system names (`NSMACHOperatingSystem`,
+`NSWindowsNTOperatingSystem`, `NSWindows95OperatingSystem`, `NSHPUXOperatingSystem`, `NSSolarisOperatingSystem`,
+`NSSunOSOperatingSystem`, `NSOSF1OperatingSystem`) and `NSProcessInfoThermalStateDidChangeNotification`.
+
+**THE SEVEN ARE THE VOCABULARY OF A DOOR, NOT CLAIMS ABOUT THIS SYSTEM.** `-operatingSystemName` here answers
+`NSArgentumOperatingSystem` — a recorded deviation with its reason already in the header — and the seven constants
+are what a program COMPARES that answer against; each one's value is the string its own name is, which is what the
+door answers on the system it describes. The probe asserts both halves: the seven values, and that this system's
+answer is outside them.
+
+**AND THE UNIT FOUND A HALF-SHIPPED SURFACE**: `NSProcessInfoThermalState`'s enum shipped with **no door that
+could name it** — `-thermalState` was unwritable, because the enum sat BELOW the interface. The enum MOVED above
+the class (where Apple declares it), the door was added and answers `Nominal` with the boundary stated in the
+header (no thermal sensor is plumbed into this library, so the state never changes and nothing here posts the
+notification), and the notification name was declared beside the power-state one it keeps company with. The probe
+checks the answer is one of the four documented states and that the notification name is USABLE — a registrant
+receives a post through it.
+
+**BOUNDED TOOLING: this unit EXTENDED the shipped `foundation_processinfo` probe and its case rather than adding a
+probe**, because the class already had one; the case's `CHECKS` tuple grew by the two names (the rule that a
+case's list is derived from the probe's own names is what made the count check catch the addition).
+
+
+## §62.99 — THE PROTOCOL PAIR, AND A HEADER THAT BECAME NULLABLE-AUDITED (2026-09-28)
+
+**TWO ROWS SHIPPED**: `NSStringFromProtocol` and `NSProtocolFromString`, declared in `NSObjCRuntime.h` where
+Apple declares them (a protocol is not an object and no class owns these), implemented beside the frame doors in
+`NSObject.m` (the runtime-adjacent file), and both are the runtime's own conversion — `objc_getProtocol` and
+`protocol_getName` — so nothing has to be kept in step by hand. **`func open` is now ZERO**: every function in the
+surface is either shipped or struck with a ground (§62.100).
+
+**A PROTOCOL HAS NO -copy, which is why the pair exists and why the probe checks the NAME AS A DICTIONARY KEY** —
+Apple's own use for it — alongside the round trip and the two refusals (a protocol that is not loaded has no
+object; nil has no name).
+
+**AND THE FIRST ANNOTATION TURNED THE HEADER'S NULLABILITY ON.** `NSObjCRuntime.h` had no annotated pointer before
+this unit; giving the pair `_Nullable` put the whole header into clang's AUDITED mode, so every other pointer in
+it warned — twelve declarations across `NSGetSizeAndAlignment`, `NSLog`, `NSRangeFromString`, the extra-ref-count
+trio, the two frame doors, the collector doors and `NSComparator`. All twelve are now annotated, and **the two new
+parameters are `_Nullable` because the implementation ACCEPTS nil** — the standing rule (§62.85/62.86/62.88/62.89)
+paying for the fifth time: the probe asserts nil in, nil out, and an annotation of `_Nonnull` would have made that
+assertion a warning instead of a test.
+
+**THE PROBE COMPILE CAUGHT THE OTHER HALF OF THE SAME LESSON**: `foundation_core`'s `check()` takes a C-string
+detail (unlike `foundation_processinfo`'s), so two diagnostics written as NSStrings warned — and would have
+printed garbage. Fixed at the call sites, zero warnings in the library and in every probe this batch touched.
+
+
+## §62.100 — TEN ROWS CLOSED BY GROUND, AND THE ZONE PATTERN IT TOOK TO SEE THEM (2026-09-28)
+
+**TEN ROWS ARE NOW STRUCK WITH A REASON, AND NONE OF THEM WAS WORK THIS LIBRARY COULD DO.** Seven take an
+`NSZone *` and cannot even be DECLARED, because the type is gone (`NSObjCRuntime.h`: "NO ZONES AT ALL");
+`CFBridgingRetain` and `CFBridgingRelease` bridge to a CoreFoundation this tree does not have (row D13's
+measurement); and `NSCountFrames` counts frames by WALKING them, which this build cannot promise (the header's own
+note, and `NSFrameAddress` answering NULL past level zero rather than reading a frame that may not be there).
+
+**THE ZONE GROUND WAS ALREADY THE PROJECT'S — THE PATTERN WAS TOO NARROW, AND THAT IS WHY SEVEN ROWS SAT OPEN.**
+The tool's rule matched names that SPELL the word first (`NSZoneMalloc`, `NSCreateZone`…), and the user's own
+amendment was "**NSZone and anything that needs it is REMOVED**". `NSCreateHashTableWithZone`,
+`NSCopyHashTableWithZone`, `NSCreateMapTableWithZone`, `NSCopyMapTableWithZone`, `NSSetZoneName`,
+`NSShouldRetainWithZone` and `NSCopyObject` (whose third parameter is a zone — measured against Apple's page, not
+recalled) all name it after a word, so the regex never saw them. The rule now catches every one of those forms, and
+`--check` keeps it honest the same way it keeps the shipped names honest: a struck row's name must be ABSENT from
+our headers.
+
+**AND TWO NEW GROUNDS JOINED THE TOOL'S TABLE** — `needs-corefoundation` and `frame-walk-unsupported` — each with
+the measurement that justifies it in the comment beside it. That table is where the tool warns that a reason not
+in `STRIKE_REASONS` is "a row that lies about where it stands", which is why both were added to the tuple in the
+same edit rather than only to the matcher: the 2026-09-18 episode (ten zone functions carrying a reason the status
+test did not recognise, `func struck` falling 52 → 42 while `func open` rose by the same ten) is what that warning
+costs when it is ignored.
+
+**THE BATCH'S NUMBERS, IN ONE PLACE BECAUSE THE LEDGER WAS REFRESHED ONCE FOR §62.95–§62.100.** The generated
+ledger is a single artifact and `--refresh` scans the whole tree, so six sections sharing one refresh is a
+deliberate batching (six refreshes would have cost six scans for the same answer) — and each section above states
+its OWN row count, which is the attribution that matters:
+
+    open rows        109 → 66     (43 closed: 33 shipped, 10 struck)
+    class             0 → 0 open    (221 shipped — the class list has been empty since §62.92)
+    protocol          1 → 1 open
+    case             36 → 20 open   (shipped 1189 → 1205)
+    var              47 → 32 open   (shipped  660 →  675)
+    func             12 → 0 open    (shipped  165 →  167, struck 12 → 22)
+    macro             5 → 5 open
+    enum              4 → 4 open
+    typealias         4 → 4 open
+
+**VERIFIED.** Host: `make host-foundation-run` → **53 probes, no failure**. Guest: `make testimg` then
+`make test TESTS='foundation_*'` → the whole Foundation tier (see the run's own tally in the commit that carries
+this section). `make foundation-gate` **OK**; `foundation-sweep --refresh` + `--families --write` + `--check`:
+**consistent**; `--unimplemented`: **0 NEW**.
+
+**WHERE THE THREAD STANDS.** 66 open rows remain: one protocol (`NSPredicateValidating`), 20 cases and 32 vars —
+almost all of them in the NETWORKING families (the URLSession multipath service type, the delayed-request
+disposition, the task priorities, the URL resource-property and credential constants) — plus 5 macros (the
+localized-attributed-string family, which needs the markdown importer the thread still owes), 4 enums and 4
+typealiases. The things owed as BUILD work are unchanged: the markdown importer and the run-loop observers.
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else

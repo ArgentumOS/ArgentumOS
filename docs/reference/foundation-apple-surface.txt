@@ -22,9 +22,9 @@
 # and its members keep their ObjC names; this file's first version excluded them
 # on the path marker, which hid real ObjC constants from the ledger.
 #
-# why the struck rows are struck: 32-bit-only 13, declined 354, os-version-constant 110, swift-only 22
+# why the struck rows are struck: 32-bit-only 20, declined 354, frame-walk-unsupported 1, needs-corefoundation 2, os-version-constant 110, swift-only 22
 #
-# AND 335 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# AND 329 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): to support porting older Mac applications, all items removed for being
 # deprecated are un-deprecated in Argentum Foundation and added to the work list. They carry
 # `deprecated` in this column, which says what KIND of work a row is - only the grounds §11.5
@@ -38,9 +38,9 @@
 #   protocol   shipped   39   open    1   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  147   open    4   struck    9
-#   case       shipped 1189   open   36   struck   77
-#   func       shipped  165   open   12   struck   12
-#   var        shipped  660   open   47   struck  207
+#   case       shipped 1205   open   20   struck   77
+#   func       shipped  167   open    0   struck   22
+#   var        shipped  675   open   32   struck  207
 #   typealias  shipped   67   open    4   struck    5
 #   struct     shipped   13   open    0   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -103,7 +103,7 @@ case	shipped	NSApplicationScriptsDirectory	NSFileManager	Files and Data Persiste
 case	shipped	NSApplicationSupportDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	struck	NSArgumentEvaluationScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSArgumentsWrongScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
-case	open	NSAtomicWrite	NSData	Fundamentals / Binary Data / Writing Data to a File / Legacy Constants	deprecated	objc
+case	shipped	NSAtomicWrite	NSData	Fundamentals / Binary Data / Writing Data to a File / Legacy Constants	deprecated	objc
 case	shipped	NSAttributedStringEnumerationLongestEffectiveRangeNotRequired	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text / Getting the enumeration options	-	objc
 case	shipped	NSAttributedStringEnumerationReverse	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text / Getting the enumeration options	-	objc
 case	shipped	NSAttributedStringFormattingApplyReplacementIndexAttribute	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string / Getting the formatting options	-	objc
@@ -244,9 +244,9 @@ case	shipped	NSCoderValueNotFoundError	NSError	App Support / User-Relevant Error
 case	shipped	NSCollectionChangeInsert	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Types of Ordered Collection Changes	-	objc
 case	shipped	NSCollectionChangeRemove	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Types of Ordered Collection Changes	-	objc
 case	struck	NSCollectorDisabledOption		Low-Level Utilities / Legacy / Legacy / Constants	declined	objc
-case	open	NSCompressionErrorMaximum	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
-case	open	NSCompressionErrorMinimum	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
-case	open	NSCompressionFailedError	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
+case	shipped	NSCompressionErrorMaximum	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
+case	shipped	NSCompressionErrorMinimum	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
+case	shipped	NSCompressionFailedError	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
 case	shipped	NSConditionalExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	shipped	NSConstantValueExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSContainerSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
@@ -267,7 +267,7 @@ case	shipped	NSDataCompressionAlgorithmLZMA	NSData	Fundamentals / Binary Data / 
 case	shipped	NSDataCompressionAlgorithmLZMA	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data / Algorithms	-	objc
 case	shipped	NSDataCompressionAlgorithmZlib	NSData	Fundamentals / Binary Data / Compressing and Decompressing Data / Algorithms	-	objc
 case	shipped	NSDataCompressionAlgorithmZlib	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data / Algorithms	-	objc
-case	open	NSDataReadingMapped	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
+case	shipped	NSDataReadingMapped	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
 case	shipped	NSDataReadingMappedAlways	NSData	Fundamentals / Binary Data / Reading Data from a File / Constants	-	objc
 case	shipped	NSDataReadingMappedIfSafe	NSData	Fundamentals / Binary Data / Reading Data from a File / Constants	-	objc
 case	shipped	NSDataReadingUncached	NSData	Fundamentals / Binary Data / Reading Data from a File / Constants	-	objc
@@ -312,7 +312,7 @@ case	shipped	NSDayCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculation
 case	shipped	NSDayCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSDecodingFailurePolicyRaiseException	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder / Failure Policies	-	swift-page
 case	shipped	NSDecodingFailurePolicySetErrorAndReturn	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder / Failure Policies	-	swift-page
-case	open	NSDecompressionFailedError	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
+case	shipped	NSDecompressionFailedError	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
 case	shipped	NSDemoApplicationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSDesktopDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSDeveloperApplicationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
@@ -504,7 +504,7 @@ case	struck	NSGreaterThanComparison	NSSpecifierTest	App Support / Object Matchin
 case	struck	NSGreaterThanOrEqualToComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	shipped	NSGreaterThanOrEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSGreaterThanPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	open	NSHPUXOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
+case	shipped	NSHPUXOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	shipped	NSHTTPCookieAcceptPolicyAlways	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies / Policies	-	objc
 case	shipped	NSHTTPCookieAcceptPolicyAlways	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy / Policies	-	objc
 case	shipped	NSHTTPCookieAcceptPolicyNever	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies / Policies	-	objc
@@ -611,12 +611,12 @@ case	shipped	NSLocaleLanguageDirectionLeftToRight	NSLocale	Fundamentals / Locali
 case	shipped	NSLocaleLanguageDirectionRightToLeft	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
 case	shipped	NSLocaleLanguageDirectionTopToBottom	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
 case	shipped	NSLocaleLanguageDirectionUnknown	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language / Constants	-	objc
-case	open	NSMACHOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
+case	shipped	NSMACHOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	shipped	NSMacOSRomanStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSMachPortDeallocateNone	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
 case	shipped	NSMachPortDeallocateReceiveRight	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
 case	shipped	NSMachPortDeallocateSendRight	NSMachPort	Low-Level Utilities / Legacy / Legacy / Constants / Constants	deprecated	objc
-case	open	NSMappedRead	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
+case	shipped	NSMappedRead	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
 case	shipped	NSMassFormatterUnitGram	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	shipped	NSMassFormatterUnitKilogram	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	shipped	NSMassFormatterUnitOunce	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
@@ -701,7 +701,7 @@ case	shipped	NSNumberFormatterRoundUp	NSNumberFormatter	Fundamentals / Numbers /
 case	shipped	NSNumberFormatterScientificStyle	NSNumberFormatter	Fundamentals / Numbers / Constants / Formatting Styles	-	objc
 case	shipped	NSNumberFormatterSpellOutStyle	NSNumberFormatter	Fundamentals / Numbers / Constants / Formatting Styles	-	objc
 case	shipped	NSNumericSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
-case	open	NSOSF1OperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
+case	shipped	NSOSF1OperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	open	NSOpenStepUnicodeReservedBase	NSCharacterSet	Fundamentals / Characters / Creating a Custom Character Set / Constants	-	objc
 case	struck	NSOperationNotSupportedForKeyScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSOperationNotSupportedForKeySpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
@@ -733,7 +733,7 @@ case	shipped	NSPointerFunctionsOpaquePersonality	NSPointerFunctions	Fundamentals
 case	shipped	NSPointerFunctionsStrongMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
 case	shipped	NSPointerFunctionsStructPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
 case	shipped	NSPointerFunctionsWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
-case	open	NSPointerFunctionsZeroingWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	deprecated	objc
+case	shipped	NSPointerFunctionsZeroingWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	deprecated	objc
 case	struck	NSPositionAfter	NSPositionalSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	struck	NSPositionBefore	NSPositionalSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	struck	NSPositionBeginning	NSPositionalSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
@@ -859,7 +859,7 @@ case	shipped	NSSecondCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculat
 case	shipped	NSSecondCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSSharedPublicDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSShiftJISStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSSolarisOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
+case	shipped	NSSolarisOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	open	NSSortConcurrent		Fundamentals / Iteration / Constants	-	objc
 case	open	NSSortStable		Fundamentals / Iteration / Constants	-	objc
 case	shipped	NSStreamEventEndEncountered	NSStream	Low-Level Utilities / Streams / Constants / Constants	-	objc
@@ -889,7 +889,7 @@ case	shipped	NSStringEnumerationLocalized	NSString	Fundamentals / Strings / Perf
 case	shipped	NSStringEnumerationReverse	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
 case	shipped	NSStringEnumerationSubstringNotRequired	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
 case	shipped	NSSubqueryExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
-case	open	NSSunOSOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
+case	shipped	NSSunOSOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	shipped	NSSymbolStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSSystemDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
 case	shipped	NSTaskTerminationReasonExit	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with constants / Constants	-	swift-page
@@ -1109,7 +1109,7 @@ case	shipped	NSUbiquitousKeyValueStoreAccountChange	NSUbiquitousKeyValueStore	Fi
 case	shipped	NSUbiquitousKeyValueStoreInitialSyncChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
 case	shipped	NSUbiquitousKeyValueStoreQuotaViolationChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
 case	shipped	NSUbiquitousKeyValueStoreServerChange	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Detecting changes to values	-	objc
-case	open	NSUncachedRead	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
+case	shipped	NSUncachedRead	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
 case	shipped	NSUndefinedDateComponent	NSDateComponents	Fundamentals / Calendrical Calculations / Validating a Date / Constants	deprecated	objc
 case	shipped	NSUnicodeStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSUnionSetExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
@@ -1151,13 +1151,13 @@ case	shipped	NSWeekdayCalendarUnit	NSDateComponents	Fundamentals / Calendrical C
 case	shipped	NSWeekdayOrdinalCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	shipped	NSWeekdayOrdinalCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSWidthInsensitiveSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
-case	open	NSWindows95OperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
+case	shipped	NSWindows95OperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	shipped	NSWindowsCP1250StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSWindowsCP1251StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSWindowsCP1252StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSWindowsCP1253StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSWindowsCP1254StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	open	NSWindowsNTOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
+case	shipped	NSWindowsNTOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	shipped	NSWrapCalendarComponents	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	deprecated	objc
 case	shipped	NSXMLAttributeCDATAKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	shipped	NSXMLAttributeDeclarationKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
@@ -1778,8 +1778,8 @@ enum	shipped	NSXMLNodeOptions	NSXMLNode	Files and Data Persistence / XML / Tree-
 enum	shipped	NSXMLParserError	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	objc
 enum	shipped	NSXMLParserExternalEntityResolvingPolicy	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	swift-page
 enum	struck	NSXPCConnectionOptions	NSXPCConnection	Low-Level Utilities / XPC Client / Creating a connection	declined	objc
-func	open	CFBridgingRelease		Low-Level Utilities / Memory Management / Core Foundation ARC Integration	-	objc
-func	open	CFBridgingRetain		Low-Level Utilities / Memory Management / Core Foundation ARC Integration	-	objc
+func	struck	CFBridgingRelease		Low-Level Utilities / Memory Management / Core Foundation ARC Integration	needs-corefoundation	objc
+func	struck	CFBridgingRetain		Low-Level Utilities / Memory Management / Core Foundation ARC Integration	needs-corefoundation	objc
 func	shipped	NSAllHashTableObjects	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSAllMapTableKeys	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSAllMapTableValues	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
@@ -1794,17 +1794,17 @@ func	shipped	NSConvertHostDoubleToSwapped		Low-Level Utilities / Byte Ordering /
 func	shipped	NSConvertHostFloatToSwapped		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	shipped	NSConvertSwappedDoubleToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
 func	shipped	NSConvertSwappedFloatToHost		Low-Level Utilities / Byte Ordering / Functions	-	objc
-func	open	NSCopyHashTableWithZone	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSCopyMapTableWithZone	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	struck	NSCopyHashTableWithZone	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	32-bit-only	objc
+func	struck	NSCopyMapTableWithZone	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	32-bit-only	objc
 func	shipped	NSCopyMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
-func	open	NSCopyObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	deprecated	objc
-func	open	NSCountFrames		Reference / Debugging	-	objc
+func	struck	NSCopyObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	32-bit-only	objc
+func	struck	NSCountFrames		Reference / Debugging	frame-walk-unsupported	objc
 func	shipped	NSCountHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSCountMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSCreateHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSCreateHashTableWithZone	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	struck	NSCreateHashTableWithZone	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	32-bit-only	objc
 func	shipped	NSCreateMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
-func	open	NSCreateMapTableWithZone	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
+func	struck	NSCreateMapTableWithZone	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	32-bit-only	objc
 func	struck	NSCreateZone		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
 func	shipped	NSDeallocateMemoryPages		Low-Level Utilities / Memory Management / Memory Management	-	objc
 func	struck	NSDeallocateObject		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	32-bit-only	objc
@@ -1894,7 +1894,7 @@ func	shipped	NSPointFromCGPoint		Fundamentals / Geometry / Managing Points	-	obj
 func	shipped	NSPointFromString		Fundamentals / Geometry / Managing Points	-	objc
 func	shipped	NSPointInRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSPointToCGPoint		Fundamentals / Geometry / Managing Points	-	objc
-func	open	NSProtocolFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
+func	shipped	NSProtocolFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	shipped	NSRangeFromString		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSRealMemoryAvailable		Low-Level Utilities / Memory Management / Memory Management	deprecated	objc
 func	shipped	NSReallocateCollectable		Low-Level Utilities / Legacy / Legacy	deprecated	objc
@@ -1911,8 +1911,8 @@ func	shipped	NSRoundUpToMultipleOfPageSize		Low-Level Utilities / Memory Managem
 func	shipped	NSSearchPathForDirectoriesInDomains	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
 func	shipped	NSSelectorFromString		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	shipped	NSSetUncaughtExceptionHandler	NSException	App Support / Exceptions / Functions	-	objc
-func	open	NSSetZoneName		Low-Level Utilities / Legacy / Managing Zones	deprecated	objc
-func	open	NSShouldRetainWithZone		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	-	objc
+func	struck	NSSetZoneName		Low-Level Utilities / Legacy / Managing Zones	32-bit-only	objc
+func	struck	NSShouldRetainWithZone		Low-Level Utilities / Objective-C Runtime / Object Allocation and Deallocation	32-bit-only	objc
 func	shipped	NSSizeFromCGSize		Fundamentals / Geometry / Managing Sizes	-	objc
 func	shipped	NSSizeFromString		Fundamentals / Geometry / Managing Sizes	-	objc
 func	shipped	NSSizeToCGSize		Fundamentals / Geometry / Managing Sizes	-	objc
@@ -1920,7 +1920,7 @@ func	shipped	NSStringFromClass		Low-Level Utilities / Objective-C Runtime / Type
 func	shipped	NSStringFromHashTable	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSStringFromMapTable	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Functions	deprecated	objc
 func	shipped	NSStringFromPoint		Fundamentals / Geometry / Managing Points	-	objc
-func	open	NSStringFromProtocol		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
+func	shipped	NSStringFromProtocol		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
 func	shipped	NSStringFromRange		Fundamentals / Ranges / Managing ranges	-	objc
 func	shipped	NSStringFromRect		Fundamentals / Geometry / Managing Rectangles	-	objc
 func	shipped	NSStringFromSelector		Low-Level Utilities / Objective-C Runtime / Type Lookup	-	objc
@@ -2542,10 +2542,10 @@ var	shipped	NSHTTPPropertyRedirectionHeadersKey	NSURLHandle	Networking / Legacy 
 var	shipped	NSHTTPPropertyServerHTTPVersionKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
 var	shipped	NSHTTPPropertyStatusCodeKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
 var	shipped	NSHTTPPropertyStatusReasonKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
-var	open	NSHashTableCopyIn	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
-var	open	NSHashTableObjectPointerPersonality	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
-var	open	NSHashTableStrongMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
-var	open	NSHashTableWeakMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
+var	shipped	NSHashTableCopyIn	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
+var	shipped	NSHashTableObjectPointerPersonality	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
+var	shipped	NSHashTableStrongMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
+var	shipped	NSHashTableWeakMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	-	objc
 var	shipped	NSHashTableZeroingWeakMemory	NSHashTable	Fundamentals / Pointer Collections / Constants / Constants	deprecated	objc
 var	shipped	NSHebrewCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSHelpAnchorErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
@@ -2581,8 +2581,8 @@ var	shipped	NSInvocationOperationCancelledException	NSException	App Support / Ex
 var	shipped	NSInvocationOperationCancelledException	NSInvocationOperation	App Support / Operations / Constants / Constants	-	objc
 var	shipped	NSInvocationOperationVoidResultException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSInvocationOperationVoidResultException	NSInvocationOperation	App Support / Operations / Constants / Constants	-	objc
-var	open	NSIsNilTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
-var	open	NSIsNotNilTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
+var	shipped	NSIsNilTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
+var	shipped	NSIsNotNilTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
 var	shipped	NSIslamicCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSIslamicCivilCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSItemProviderErrorDomain	NSItemProvider	App Support / Attachments / Constants	-	objc
@@ -2595,7 +2595,7 @@ var	shipped	NSKeyValueChangeNewKey		Reference / Type Aliases / Type Properties	-
 var	shipped	NSKeyValueChangeNotificationIsPriorKey		Reference / Type Aliases / Type Properties	-	objc
 var	shipped	NSKeyValueChangeOldKey		Reference / Type Aliases / Type Properties	-	objc
 var	open	NSKeyedArchiveRootObjectKey	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Constants / Constants	-	objc
-var	open	NSKeyedUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
+var	shipped	NSKeyedUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
 var	shipped	NSLanguageIdentifierAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSLaterTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSLinguisticTagAdjective	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
@@ -2666,11 +2666,11 @@ var	shipped	NSLocalizedRecoveryOptionsErrorKey	NSError	App Support / User-Releva
 var	shipped	NSLocalizedRecoverySuggestionErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSMachErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	shipped	NSMallocException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSMapTableCopyIn	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Copy Option	-	objc
-var	open	NSMapTableObjectPointerPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
-var	open	NSMapTableStrongMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
-var	open	NSMapTableWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
-var	open	NSMapTableZeroingWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	deprecated	objc
+var	shipped	NSMapTableCopyIn	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Copy Option	-	objc
+var	shipped	NSMapTableObjectPointerPersonality	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Personality Options	-	objc
+var	shipped	NSMapTableStrongMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
+var	shipped	NSMapTableWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
+var	shipped	NSMapTableZeroingWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	deprecated	objc
 var	shipped	NSMarkdownSourcePositionAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	shipped	NSMaximumKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSMetadataItemAcquisitionMakeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
@@ -2878,7 +2878,7 @@ var	shipped	NSMinimumKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSMorphologyAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSMultipleUnderlyingErrorsKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
-var	open	NSNegateBooleanTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
+var	shipped	NSNegateBooleanTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
 var	shipped	NSNegativeCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	struck	NSNetServicesErrorCode	NSNetService	Networking / Local Network Services / Constants / Constants	declined	swift-page
 var	struck	NSNetServicesErrorDomain	NSNetService	Networking / Local Network Services / Constants / Constants	declined	objc
@@ -2921,7 +2921,7 @@ var	shipped	NSPresentationIntentAttributeName	NSAttributedString	Fundamentals / 
 var	shipped	NSPriorDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSProcessInfoPowerStateDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSProcessInfoPowerStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	swift-page
-var	open	NSProcessInfoThermalStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	objc
+var	shipped	NSProcessInfoThermalStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	objc
 var	shipped	NSProgressEstimatedTimeRemainingKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using General Keys	-	objc
 var	shipped	NSProgressFileAnimationImageKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
 var	shipped	NSProgressFileAnimationImageOriginalRectKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
@@ -3231,7 +3231,7 @@ var	shipped	NSUbiquitousUserDefaultsDidChangeAccountsNotification	NSUserDefaults
 var	shipped	NSUbiquitousUserDefaultsNoCloudAccountNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
 var	shipped	NSUbiquityIdentityDidChangeNotification	NSFileManager	Files and Data Persistence / File system operations / Working with notifications	-	swift-page
 var	shipped	NSUbiquityIdentityDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
+var	shipped	NSUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
 var	shipped	NSUndefinedKeyException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSUnderlyingErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	open	NSUndoCloseGroupingRunLoopOrdering	NSUndoManager	App Support / Undo / Working with run loops	-	objc

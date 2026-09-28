@@ -199,12 +199,35 @@ def is_objc_shaped(name):
 # but NSAllocateObject and NSDeallocateObject sit under `Objective-C Runtime /
 # Object Allocation and Deallocation` and read OPEN — so the group signal alone
 # would have left two zone-taking functions in the work list.
+# THE ZONE GROUND, WIDENED TO EVERY NAME THAT TAKES ONE (§62.100). The user's amendment was "NSZone and
+# anything that needs it is REMOVED", and the first pattern only caught the names that SPELL it first
+# (NSZoneMalloc, NSCreateZone...). Seven rows were left open by that gap even though they take an `NSZone *`
+# parameter or are one of its doors: `NSCreateHashTableWithZone`, `NSCopyHashTableWithZone`,
+# `NSCreateMapTableWithZone`, `NSCopyMapTableWithZone`, `NSSetZoneName`, `NSShouldRetainWithZone` and
+# `NSCopyObject` (whose third parameter is a zone — measured against Apple's page on 2026-09-28, not recalled).
+# None of them can even be DECLARED here, because the type is gone (NSObjCRuntime.h: "NO ZONES AT ALL"), which
+# is what makes this the same ground rather than a new one. The pattern is checked by --check like every other:
+# a struck row's name must be ABSENT from our headers.
 ZONE_API_RE = re.compile(
-    r"^NS(Zone\w*|CreateZone|RecycleZone|DefaultMallocZone|AllocateObject|DeallocateObject|AllocateCollectable)$")
+    r"^NS(Zone\w*|CreateZone|RecycleZone|DefaultMallocZone|AllocateObject|DeallocateObject|AllocateCollectable"
+    r"|\w*WithZone|SetZoneName|CopyObject)$")
 
 
 def is_32bit_only(row):
     return bool(ZONE_API_RE.match(row["name"]))
+
+
+# TWO GROUNDS THAT ARE ABOUT THIS TREE'S OWN SUBSTRATE (§62.100), each verified rather than assumed:
+#
+#   * `CFBridgingRetain`/`CFBridgingRelease` bridge an Objective-C object to a CoreFoundation type. THIS TREE HAS
+#     NO COREFOUNDATION AT ALL (the plan's row D13 records the measurement: no CFFileSecurity, no CFUUID, no CF
+#     family), so their parameter and return types cannot be spelled. It is the "a dependency this system lacks"
+#     ground, and unlike a tolerated DEVIATION it cannot be work: there is nothing to declare.
+#   * `NSCountFrames` counts FRAMES BY WALKING THEM, and this build does not promise chained frame pointers —
+#     NSObjCRuntime.h's own note says so, and `NSFrameAddress`/`NSReturnAddress` answer NULL beyond the levels
+#     they can honour rather than reading a frame that may not be there. The door is absent rather than dangerous.
+NEEDS_COREFOUNDATION_RE = re.compile(r"^CFBridging(Retain|Release)$")
+FRAME_WALK_RE = re.compile(r"^NSCountFrames$")
 
 
 # §11.5's SIXTH EXCLUSION (user, 2026-09-19): the PER-RELEASE version constants.
@@ -238,6 +261,10 @@ def struck_reason(row):
         return "32-bit-only"
     if is_per_release_version_constant(row):
         return "os-version-constant"
+    if NEEDS_COREFOUNDATION_RE.match(row["name"]):
+        return "needs-corefoundation"
+    if FRAME_WALK_RE.match(row["name"]):
+        return "frame-walk-unsupported"
     if SWIFT_INTEROP_RE.search(row["name"]):
         return "swift-only"
     if row.get("swift") and not is_objc_shaped(row["name"]):
@@ -390,7 +417,8 @@ def why_of(row):
 # AND THE FIFTH REASON CAME OUT OF THIS TABLE (2026-09-26): `deprecated` is no longer a STRIKE but an
 # INFORMATIONAL `why`, so a row carrying it is judged SHIPPED or OPEN by its declaration like any other. That is
 # what the user's policy asks for - deprecated API is a PORTING TARGET, not something this library is spared.
-STRIKE_REASONS = ("32-bit-only", "swift-only", "os-version-constant", "declined")
+STRIKE_REASONS = ("32-bit-only", "swift-only", "os-version-constant", "declined",
+                  "needs-corefoundation", "frame-walk-unsupported")
 
 # THE INFORMATIONAL REASONS: a `why` that does NOT strike. `deprecated` is the only one today, and it is here so
 # that a reader can tell "this row is work because Apple deprecated it" from "this row is work".
