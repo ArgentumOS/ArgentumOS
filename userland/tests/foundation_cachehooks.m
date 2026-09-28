@@ -91,7 +91,7 @@ static NSURLSessionDataTask *fn_start(NSMutableURLRequest *request, NSURLSession
 		fn_lastBody = data;	/* a static global is strongly held under ARC */
 	}];
 
-	[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+	/* NO REGISTRATION: the library registers the transport at load (see the class's own note, plan §62.83) */
 	*sessionOut = session;
 	return task;
 }

@@ -14572,6 +14572,47 @@ not what exists).
 **WHERE THE THREAD STANDS: unchanged — 12 open classes** (this unit shipped nothing new; `§62.82`'s list stands).
 
 
+## §62.84 — §62.83'S OWN RESIDUAL, PAID: THIRTEEN REDUNDANT REGISTRATIONS, ONE STALE COMMENT, AND A MEASURING MISFIRE (2026-09-26)
+
+**§62.83 closed by STATING a residual rather than leaving it to be discovered: seven probes still called
+`+registerClass:`, and "still speak of filling an empty registry". THE SECOND HALF OF THAT WAS WRONG, AND THIS UNIT
+MEASURED IT: a grep for the claim finds it in ONE place — `foundation_urlsession_task.m`'s comment above its
+registration — plus the two probes §62.83 itself fixed. The other eleven sites were bare calls with no claim
+attached. A residual stated in prose is a claim like any other and deserves the same treatment.**
+
+**WHAT WAS PAID: THIRTEEN CALLS REMOVED ACROSS EIGHT PROBES** — `foundation_authloop`, `foundation_cachehooks`,
+`foundation_connectionauth`, `foundation_downloadresume`, `foundation_metricsdelivery`, `foundation_redirect`,
+`foundation_urlsession_task` (five sites) and `fn_receiver_probe`. Each now registers NOTHING, which is what turns
+every transfer it performs into a gate for the load-time registration rather than a rehearsal of it. **The ONE
+registration left anywhere in the probes is `foundation_urlhandle.m`'s own `FNProbeTransport`** — the seam being
+exercised, not a repeat of the library's, and it still outranks the shipped transport because the walk is
+most-recent-first.
+
+**AND THE RULE'S OTHER HALF IS WORTH SAYING OUT LOUD, because it looks like a check about registration:**
+`foundation_urlsession_task`'s `task-with-no-protocol-class-fails-rather-than-hanging` still pins `-1002` in a
+completely empty-registry world, and §62.83 left it untouched — it uses **`ftp://nowhere/x`, a scheme the transport
+does NOT claim**, so `+canInitWithRequest:` answers NO for it and nothing about the load-time registration can
+change that. The stale comment above that file's registration is replaced with the rule as it now stands, naming
+that check as the half that did not change.
+
+**A MEASURING MISFIRE OF MINE, RECORDED BECAUSE IT NEARLY BECAME A FALSE ALARM.** Compiling the edited probes with
+the Foundation tier's `-Werror=nullable-to-nonnull-conversion` produced errors in five of them, which read exactly
+like damage from this unit. It was not: **those files are not built with that flag** (`mk/20-userland.mk:1378-1379`
+and its siblings carry no such flag for them), the errors are pre-existing nullable→nonnull conversions in code this
+unit never touched, and compiling the same probes with the flags their own mk rules use gives the SAME warning
+counts as `HEAD` (authloop 2, cachehooks 1, redirect 1 — measured against `git show HEAD:…`). **The build's flags
+are part of the measurement; a stricter ad-hoc command invents regressions that nobody shipped.**
+
+**VERIFIED.** `make testimg` then `make test TESTS='foundation_*'` → **`TESTS-OK 122/122 case(s), 675/675 check(s) in
+192s`** — one guest, the whole Foundation selection, including every probe this unit touched. `foundation-gate`:
+**OK**; `foundation-sweep`: **consistent** (nothing declared changed, so no ledger row moved).
+
+**WHERE THE THREAD STANDS: unchanged — 12 open classes** (§62.82's list: `Reference / Classes` at three, the
+singletons `NSUbiquitousKeyValueStore` / `NSBundleResourceRequest` / `NSSpellServer` + its delegate, the deprecated
+pair `NSArchiver`/`NSUnarchiver` + `NXReadNSObjectFromCoder`), plus the markdown importer and the run-loop
+observers owed as things to BUILD.
+
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else

@@ -148,7 +148,7 @@ int main(void)
 	/* A SERVER PROBE WRITES TO SOCKETS THE CLIENT MAY HAVE CLOSED, and SIGPIPE's default action would kill it. */
 	signal(SIGPIPE, SIG_IGN);
 
-	[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+	/* NO REGISTRATION: the library registers the transport at load (see the class's own note, plan §62.83) */
 
 	listener = socket(AF_INET, SOCK_STREAM, 0);
 	memset(&addr, 0, sizeof(addr));

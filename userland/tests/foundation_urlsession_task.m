@@ -254,12 +254,12 @@ int main(void)
 	printf("FOUNDATION-URLSESSION-TASK-DIAG 0b) NSURLSession class = %s\n",
 		[NSURLSession class] != Nil ? "present" : "MISSING");
 	printf("FOUNDATION-URLSESSION-TASK-DIAG a) before the session\n");
-	/* THE BRIDGE MUST BE REGISTERED, EXACTLY AS A REAL CLIENT WOULD REGISTER ONE. A session consults the
-	 * configuration's protocolClasses and then slice 2a's registry, and NOTHING is in either unless the
-	 * process puts it there - so an unregistered bridge means every fetch ends with
-	 * NSURLErrorUnsupportedURL. (That is what this file's own no-protocol-class check pins, and it is why
-	 * the first run of this probe reported a handler that fired with zero bytes.) */
-	[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+	/* NO REGISTRATION HERE, AND THIS FILE IS ONE OF THE PLACES THAT PROVES IT IS NOT NEEDED: the library
+	 * registers its own transport at load (plan §62.83), so the transfers below run only if that happened. It
+	 * used to be the opposite - a session consulted an EMPTY registry, an unregistered bridge ended every fetch
+	 * with NSURLErrorUnsupportedURL, and this probe had to register one itself. The no-protocol-class check
+	 * further down still pins the other half of the rule, because it uses `ftp://` - a scheme the transport
+	 * does NOT claim - and its -1002 is unchanged by §62.83. */
 	NSURLSession *session = [NSURLSession sessionWithConfiguration:
 					[NSURLSessionConfiguration defaultSessionConfiguration]];
 
@@ -417,7 +417,7 @@ int main(void)
 		NSURLSessionDataTask *task;
 		int waited = 0;
 
-		[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+		/* NO REGISTRATION: the library registers the transport at load (see the class's own note, plan §62.83) */
 		task = [watched dataTaskWithRequest:[NSURLRequest requestWithURL:fn_file_url(@FIXTURE_PATH)]];
 		[task resume];
 		while ([delegate endings] == 0 && waited < 100) {
@@ -453,7 +453,7 @@ int main(void)
 		__block NSError *downloadError = nil;
 		__block BOOL downloadCalled = NO;
 
-		[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+		/* NO REGISTRATION: the library registers the transport at load (see the class's own note, plan §62.83) */
 		task = [downloading downloadTaskWithRequest:[NSURLRequest requestWithURL:fn_file_url(@FIXTURE_PATH)]
 					  completionHandler:^(NSURL *theLocation, NSURLResponse *response, NSError *error) {
 			(void)response;
@@ -501,7 +501,7 @@ int main(void)
 		int waited = 0;
 
 		[delegate setDisposition:NSURLSessionResponseCancel];
-		[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+		/* NO REGISTRATION: the library registers the transport at load (see the class's own note, plan §62.83) */
 		task = [session dataTaskWithRequest:[NSURLRequest requestWithURL:fn_file_url(@FIXTURE_PATH)]];
 		[task resume];
 		while ([delegate endings] == 0 && waited < 100) { usleep(100000); waited++; }
@@ -523,7 +523,7 @@ int main(void)
 		int waited = 0;
 
 		[delegate setDisposition:NSURLSessionResponseAllow];
-		[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+		/* NO REGISTRATION: the library registers the transport at load (see the class's own note, plan §62.83) */
 		task = [session dataTaskWithRequest:[NSURLRequest requestWithURL:fn_file_url(@FIXTURE_PATH)]];
 		[task resume];
 		while ([delegate endings] == 0 && waited < 100) { usleep(100000); waited++; }
@@ -573,7 +573,7 @@ int main(void)
 		check("receiver-listens", listen(listener, 1) == 0,
 		      @"the probe listens on its own socket");
 
-		[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+		/* NO REGISTRATION: the library registers the transport at load (see the class's own note, plan §62.83) */
 		task = [session uploadTaskWithRequest:request
 					     fromData:sent
 				    completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {

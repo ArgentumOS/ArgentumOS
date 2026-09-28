@@ -143,7 +143,7 @@ int main(void)
 						[NSURL URLWithString:@"http://127.0.0.1:46493/measure"]];
 
 		[request setTimeoutInterval:10.0];
-		[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+		/* NO REGISTRATION: the library registers the transport at load (see the class's own note, plan §62.83) */
 		session = [NSURLSession sessionWithConfiguration:configuration
 						       delegate:watcher
 						      delegateQueue:nil];

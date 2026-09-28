@@ -251,7 +251,7 @@ int main(void)
 	[NSThread detachNewThreadSelector:@selector(run) toTarget:server withObject:nil];
 	usleep(100000);	/* let the listener bind before the first transfer dials it */
 
-	[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+	/* NO REGISTRATION: the library registers the transport at load (see the class's own note, plan §62.83) */
 	session = [NSURLSession sessionWithConfiguration:configuration delegate:hopper delegateQueue:nil];
 
 	/* --- ONE: A 302 THAT IS FOLLOWED ---------------------------------------------------------------- */

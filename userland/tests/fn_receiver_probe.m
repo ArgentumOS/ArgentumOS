@@ -69,7 +69,7 @@ int main(void)
 		/* THE BODY IS ON THE REQUEST, so this needs no upload class: this probe is about the RECEIVER,
 		 * and the bridge sends any request's HTTPBody. */
 		[request setHTTPBody:[NSData dataWithBytes:"PROBE-BODY-0123456789" length:21]];
-		[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+		/* NO REGISTRATION: the library registers the transport at load (see the class's own note, plan §62.83) */
 		task = [session dataTaskWithRequest:request
 			    completionHandler:^(NSData *d, NSURLResponse *r, NSError *e) {
 			(void)d; (void)r; (void)e;

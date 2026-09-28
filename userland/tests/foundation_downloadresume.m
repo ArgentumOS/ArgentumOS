@@ -204,7 +204,7 @@ int main(void)
 
 	setvbuf(stdout, NULL, _IONBF, 0);
 
-	[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+	/* NO REGISTRATION: the library registers the transport at load (see the class's own note, plan §62.83) */
 
 	listener = socket(AF_INET, SOCK_STREAM, 0);
 	memset(&addr, 0, sizeof(addr));

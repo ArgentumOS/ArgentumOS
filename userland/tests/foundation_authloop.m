@@ -187,7 +187,7 @@ int main(void)
 		[request setHTTPBodyStream:[NSInputStream inputStreamWithData:streamedBody]];
 		answerer->bodyBytes = streamedBody;
 		[request setTimeoutInterval:10.0];
-		[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+		/* NO REGISTRATION: the library registers the transport at load (see the class's own note, plan §62.83) */
 		session = [NSURLSession sessionWithConfiguration:configuration
 						       delegate:answerer
 						      delegateQueue:nil];
