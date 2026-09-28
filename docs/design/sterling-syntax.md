@@ -2433,7 +2433,11 @@ that detail rather than leaving it to a reader to find.
     four ways out — `if let`, `guard let`, `!`, `??` — apply unchanged, because they are defined
     against `T?` and not against a representation.
     - **What is emitted is a per-type struct**, `{ T value; BOOL hasValue; }`, one for each scalar
-      and each imported C struct the program actually uses. Nothing generic is involved, which is
+      and each C struct the program actually uses — an IMPORTED one, and equally one **the program
+      declares itself**, since §4's reference/value rule is what draws the line and not the
+      provenance: a `struct Span` this file writes is a value exactly as `Int32` is, so its `?` is
+      this mechanism and not `_Nullable`. A pair-struct is emitted after the type it wraps, since its
+      `value` member names it.
       what makes it expressible at all: a generic enum is blocked by §7.26 (a type argument must be
       an object type) *and* by §7.35 (an associated value cannot be a class type) — two independent
       walls, so the enum spelling of `Optional` is not available even in principle.

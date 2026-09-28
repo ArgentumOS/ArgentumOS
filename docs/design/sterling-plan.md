@@ -727,8 +727,7 @@ calls it.
   inherit the base's `init` and apply none of `Sub`'s defaults), not on the
   declaration. So `02`/`05`/`06` — none of which declares an initializer — get a
   `__sterling_defaults` nothing calls, which is faithful to the decision and is
-  exactly the hole the doc acknowledges. `02` then stops at an imported nullable
-  name (§9.5's importer) and `05` at `unowned` (§7.53).
+  exactly the hole the doc acknowledges. `05` then stops at `unowned` (§7.53).
 - **OWED: the construction rule itself.** Refusing `Sub()` where `Sub` has
   defaults and no declared initializer is the language's rule and is not
   implemented; `resolve_constructions_in_program` is where it goes.
@@ -758,16 +757,77 @@ least one is a §7.35 tagged union. The declaration, the `: T`, the pre-set
   refused by name — ARC forbids an object in a struct or union, and the payload
   structs are inside the union inside the struct.
 - **CORPUS: all four enum files moved past `an enum`.** `01` → §9.16 (a struct
-  field's default); `03` and `11` → an imported nullable name (§9.5's importer);
-  `09` → `enum case`, which is the **`.valueOne` SHORTHAND** §7.18 allows "wherever
-  the type is already known" — a PRE-EXISTING parser refusal, so it was already
-  named and is now the next piece of enum work rather than a new gap.
+  field's default); `03` and `11` → the nullable-name refusal, **whose diagnosis
+  was WRONG and is corrected in the next block**; `09` → `enum case`, which is the
+  **`.valueOne` SHORTHAND** §7.18 allows "wherever the type is already known" — a
+  PRE-EXISTING parser refusal, so it was already named and is now the next piece
+  of enum work rather than a new gap.
 - **OWED, in order:** (a) the `.case` shorthand (§7.18) where the type is known — a
   `let`/`var` initializer, a `switch` case pattern, or an argument whose parameter
   type is it; (b) an enum's METHODS, which §5 lowers "exactly as a struct's are"
   (`EnumName_member`, `self` first) and which therefore belong beside the struct's
   machinery rather than in a second copy of it — refused by name until then, and
   `01`'s `Shape` is the corpus case.
+
+**Landed (2026-09, sixth piece): §7.62's pair-struct for a DECLARED STRUCT — and
+the retraction of a wrong diagnosis.** `Point?` (a struct this file declares) was
+refused as "a nullable type on a name §4's table does not cover". §7.62 says "a
+scalar **or C struct** may be optional, with a synthesised pair-struct as its
+representation", and §4's reference/value rule makes a declared struct a value
+exactly as `Int32` is — so the mechanism was always meant to cover it; the
+classifier knew the scalars and the classes and nothing in between. `Span?` now
+emits `typedef struct { Span value; BOOL hasValue; } SterlingOptional_Span;` with
+an `assign` property, and `EmitsOptional` gained it as the specimen's fourth shape.
+
+- **THE DIAGNOSIS I HAD RECORDED WAS WRONG, and the measurement is the point.**
+  The blocked name in `02`, `03` and `11` was `Point?`, and I had written down that
+  it was "an imported nullable name (§9.5's importer)". `Point` is **declared
+  nowhere** — not in the file, not in Foundation (which holds `NSRange`,
+  `NSEdgeInsets` and the rest, and no `Point`), and not in §4's table, whose only
+  struct row is `typedef struct { … } Foo;` ⇒ `struct Foo { … }`. So the refusal
+  had been **correct and loud**, and it was the refusal that said what was
+  missing: the specimen, not the compiler. All three files declared the
+  `struct Point` they were describing. §9.5's importer is a real and separate
+  item; it is not what these three were waiting for, and a corpus file standing in
+  for it would have hidden the difference.
+- **The ORDERING is load-bearing, and moving the whole block was the WRONG first
+  fix — measured, not reasoned.** §7.62's collection was emitted BEFORE the
+  declared types, from when every pair-struct wrapped a scalar; a pair-struct's
+  `value` member NAMES the type it wraps, so `SterlingOptional_Span` cannot
+  precede `Span`. Moving the block after the structs fixes that and BREAKS the
+  other half: a struct's own field `var n: Int32?` is inside a struct body that is
+  now written above the typedef, and clang says `unknown type name` at the field.
+  Probing it took one compile. **The fix is a KIND, not a position**: the scalar
+  set (which needs nothing declared) stays before the region exactly as it was,
+  and the struct set follows the declared types. A type's kind decides where its
+  typedef can be written at all.
+- **The scalar collection gained the struct bodies while it was open.** It walked
+  a class's declarations and an extension's and never a struct's, so a struct
+  field typed `Int32?` got no typedef from anywhere — it was masked in any file
+  that also used that scalar in a class, and loud otherwise. Struct declarations
+  are in the walk now.
+- **OWED, and named rather than left to bite: a STRUCT-typed optional in a STRUCT's
+  own field** (`struct Box { var s: Span? }`). That body is written above the
+  struct set, so the typedef cannot precede it; it stays LOUD (clang names the
+  unknown type) rather than silent, and closing it needs a forward-declared tag
+  (`struct Span;`, which the emitter does not write) so the pair-struct can sit
+  between the forward declarations and the bodies.
+- **The typedefs' region placement is inert, and that is checkable rather than
+  hoped.** The scalar set's comment claimed the assumed-non-null region must not
+  contain them because it "makes an unannotated POINTER a promise". That reason
+  does not survive a pair-struct's actual contents — `T value; BOOL hasValue;` —
+  which hold no pointer whatever `T` is, since `value` names the type and never
+  its fields. The struct set is inside the region for that reason, and the comment
+  now says so.
+- **The accept side and the refuse side now form a pair.** `EmitsOptional`'s
+  `Span?` is emitted, and `tests/refuse/nullable-unknown.ag`'s `Owner?` — a name
+  nowhere declared, and a CLASS name at that — still refuses by name. A rule that
+  accepted either would be indistinguishable from the other in the other direction.
+- **CORPUS: `02`, `03` and `11` all moved past it** — every one of them to §7.63's
+  lightweight-generic type, which is now the LARGEST single group (5 files: `02`,
+  `03`, `04`, `11`, `13`). The remaining map is `01`/`06` → §9.16's struct field
+  default; `02`/`03`/`04`/`11`/`13` → §7.63; `05` → `unowned` (§7.53); `07` →
+  `defer`; `09` → the `.case` shorthand; `12` → `if-binding`; `08`/`10` emit.
 
 - The type table (`sterling-syntax.md` §4) and its **reference/value rule** — a
   class type is a reference, a scalar and a **struct** are values; declared

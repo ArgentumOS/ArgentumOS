@@ -699,6 +699,43 @@ type_takes_nullable(const char *mapped)
 }
 
 /*
+ * §7.62's pair-struct, and it is NOT only the scalars: "a scalar **or C struct**
+ * may be optional, with a synthesised pair-struct as its representation", one per
+ * type the program uses. A struct this FILE declares is a value type exactly as
+ * `Int32` is — §4's reference/value rule — so its `?` is the same mechanism and
+ * not `_Nullable`. Measured: `property point: Point?` in three corpus files was
+ * reported as "a name §4's table does not cover", because the classifier knew the
+ * scalars and the classes and nothing in between.
+ *
+ * The KIND is not decoration: a pair-struct's `value` member NAMES the type it
+ * wraps, so the typedef has to follow that type's declaration — and a scalar
+ * needs nothing declared while a struct needs the struct. The two sets are
+ * therefore emitted at two different points in the header, and which set a type
+ * belongs to is what decides where its typedef can be written at all.
+ */
+#define PAIR_KIND_NONE   0
+#define PAIR_KIND_SCALAR 1
+#define PAIR_KIND_STRUCT 2
+
+static int
+pair_struct_kind(const char *mapped)
+{
+	if (type_is_value_scalar(mapped)) {
+		return PAIR_KIND_SCALAR;
+	}
+	if (find_struct(current_program, mapped) != NULL) {
+		return PAIR_KIND_STRUCT;
+	}
+	return PAIR_KIND_NONE;
+}
+
+static int
+type_takes_pair_struct(const char *mapped)
+{
+	return pair_struct_kind(mapped) != PAIR_KIND_NONE;
+}
+
+/*
  * §7.62's synthesised type name for a scalar optional: `{ T value; BOOL
  * hasValue; }`, one per scalar the program uses. The spelling is the emitter's
  * — the syntax document fixes the FIELDS (`value`, `hasValue`) and not the
@@ -783,7 +820,7 @@ type_is_emittable(const st_type *t, const char **error)
 	 * `_Nullable` on the same footing a class does, and they are NOT objects
 	 * (`type_is_class` says so), so they need naming here.
 	 */
-	if (type_takes_nullable(mapped) || type_is_value_scalar(mapped)) {
+	if (type_takes_nullable(mapped) || type_takes_pair_struct(mapped)) {
 		return 1;
 	}
 	return refuse("a nullable type on a name §4's table does not cover "
@@ -829,15 +866,16 @@ type_text(const st_type *t, const char *fallback, char *buf, size_t size)
 		return;
 	}
 	/*
-	 * §7.62: a VALUE SCALAR's `?` replaces the whole type with a synthesised
+	 * §7.62: a VALUE's `?` replaces the whole type with a synthesised
 	 * pair-struct, and takes no pointer — what is absent is the value, not a
-	 * reference. §4's pointer rows never arrive here (`type_is_class`
-	 * answers for them first, their mapping ending in `*`), and neither does
-	 * a class, the prelude's or this file's.
+	 * reference. §4's pointer rows never arrive here (`type_is_class` answers
+	 * for them first, their mapping ending in `*`), and neither does a class,
+	 * the prelude's or this file's. A struct THIS FILE declares arrives, and
+	 * that is §7.62's own words: "a scalar **or C struct** may be optional".
 	 */
 	if (t != NULL && t->nullable && !type_is_class(mapped) &&
 	    !name_set_has(&declared_classes, plain) &&
-	    type_is_value_scalar(mapped)) {
+	    type_takes_pair_struct(mapped)) {
 		optional_type_name(mapped, buf, size);
 		return;
 	}
@@ -2232,7 +2270,8 @@ emit_trap_support(FILE *out)
 #define EMIT_MAX_OPTIONALS 16
 
 static void
-add_scalar_optional(const st_type *t, char names[][64], size_t *count)
+add_scalar_optional(const st_type *t, char names[][64], size_t *count,
+		    int kind)
 {
 	char plain[256];
 	const char *mapped;
@@ -2244,7 +2283,7 @@ add_scalar_optional(const st_type *t, char names[][64], size_t *count)
 	mangle_name(t->name.text, plain, sizeof(plain));
 	mapped = map_type(plain);
 	if (type_is_class(mapped) || name_set_has(&declared_classes, plain) ||
-	    !type_is_value_scalar(mapped)) {
+	    pair_struct_kind(mapped) != kind) {
 		return;
 	}
 	for (i = 0; i < *count; i++) {
@@ -2260,50 +2299,61 @@ add_scalar_optional(const st_type *t, char names[][64], size_t *count)
 
 static void
 collect_decl_scalar_optionals(const st_decl *decls, char names[][64],
-			      size_t *count)
+			      size_t *count, int kind)
 {
 	const st_decl *d;
 	size_t i;
 
 	for (d = decls; d != NULL; d = d->next) {
-		add_scalar_optional(&d->type, names, count);
+		add_scalar_optional(&d->type, names, count, kind);
 		for (i = 0; i < d->param_count; i++) {
-			add_scalar_optional(&d->params[i].type, names, count);
+			add_scalar_optional(&d->params[i].type, names, count,
+					    kind);
 		}
 	}
 }
 
 static void
 collect_class_scalar_optionals(const st_class *c, char names[][64],
-			       size_t *count)
+			       size_t *count, int kind)
 {
 	size_t i;
 
-	collect_decl_scalar_optionals(c->decls, names, count);
+	collect_decl_scalar_optionals(c->decls, names, count, kind);
 	for (i = 0; i < c->nested_count; i++) {
-		collect_class_scalar_optionals(c->nested[i], names, count);
+		collect_class_scalar_optionals(c->nested[i], names, count, kind);
 	}
 }
 
 /*
- * `{ T value; BOOL hasValue; }` per §7.62, emitted BEFORE the assumed-non-null
- * region for the same reason the trap macro is: that region is what makes an
- * unannotated POINTER a promise, and a value-and-a-flag struct has no business
- * making one. Not emitted at all when the unit has none — §2's specimen is a
- * byte-for-byte golden, so an unconditional block would change the one output
- * the language is specified by (the trap's rule, unchanged).
+ * `{ T value; BOOL hasValue; }` per §7.62, emitted at the point the type it wraps
+ * allows. The SCALAR set goes BEFORE the assumed-non-null region, for the same
+ * reason the trap macro is: that region is what makes an unannotated POINTER a
+ * promise, and a value-and-a-flag struct has no business making one. The STRUCT
+ * set cannot go there — its `value` member names a struct this file declares, so
+ * it follows the declared types — and the region is inert for it, since a
+ * pair-struct holds no pointer and its members are already the file's own
+ * declarations. Not emitted at all when a set is empty: §2's specimen is a
+ * byte-for-byte golden, so an unconditional block would change the one output the
+ * language is specified by (the trap's rule, unchanged).
  */
 static void
-emit_scalar_optionals(FILE *out, char names[][64], size_t count)
+emit_scalar_optionals(FILE *out, char names[][64], size_t count, int kind)
 {
 	size_t i;
 
 	if (count == 0) {
 		return;
 	}
-	fprintf(out,
-		"/* §7.62: a scalar's `?` is a pair-struct, one per scalar used —\n"
-		"   `hasValue` is what `if let`, `x == nil` and `??` read. */\n");
+	if (kind == PAIR_KIND_SCALAR) {
+		fprintf(out,
+			"/* §7.62: a scalar's `?` is a pair-struct, one per scalar used —\n"
+			"   `hasValue` is what `if let`, `x == nil` and `??` read. */\n");
+	} else {
+		fprintf(out,
+			"/* §7.62: a struct's `?` is the same pair-struct, and it is written\n"
+			"   after the struct it wraps, because the member names it. */\n");
+	}
 	for (i = 0; i < count; i++) {
 		char optional[64];
 
@@ -2420,10 +2470,16 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 		emit_trap_support(out);
 	}
 	/*
-	 * §7.62's pair-structs, one typedef per scalar the unit's DECLARATIONS
-	 * use. Before the region for the trap's reason, and collected per program
-	 * rather than per class because a later class may name a struct an
+	 * §7.62's SCALAR pair-structs: one typedef per scalar the unit's
+	 * declarations use, before the assumed-non-null region for the trap
+	 * macro's reason (a value-and-a-flag struct has no pointer to promise
+	 * anything about), and before every declared type because a struct's own
+	 * field may be one and its body is emitted next. Collected per PROGRAM
+	 * rather than per class, because a later class may name a scalar an
 	 * earlier one introduced.
+	 *
+	 * The STRUCT set cannot be written here — see the block after §5's types
+	 * — and that split is the whole reason the kind exists.
 	 */
 	{
 		char optionals[EMIT_MAX_OPTIONALS][64];
@@ -2433,14 +2489,23 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 		for (k = 0; k < program->class_count; k++) {
 			collect_class_scalar_optionals(program->classes[k],
 						       optionals,
-						       &optional_count);
+						       &optional_count,
+						       PAIR_KIND_SCALAR);
 		}
 		for (k = 0; k < program->extension_count; k++) {
 			collect_decl_scalar_optionals(program->extensions[k]->decls,
 						      optionals,
-						      &optional_count);
+						      &optional_count,
+						      PAIR_KIND_SCALAR);
 		}
-		emit_scalar_optionals(out, optionals, optional_count);
+		for (k = 0; k < program->struct_count; k++) {
+			collect_decl_scalar_optionals(program->structs[k]->decls,
+						      optionals,
+						      &optional_count,
+						      PAIR_KIND_SCALAR);
+		}
+		emit_scalar_optionals(out, optionals, optional_count,
+				      PAIR_KIND_SCALAR);
 	}
 	fprintf(out, "_Pragma(\"clang assume_nonnull begin\")\n\n");
 
@@ -2544,6 +2609,40 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 		if (!emit_struct_decl(out, program->structs[i], error)) {
 			return 0;
 		}
+	}
+
+	/*
+	 * §7.62's STRUCT pair-structs, and they can only go here: a pair-struct's
+	 * `value` member NAMES the type it wraps, so `SterlingOptional_Point`
+	 * cannot precede `Point` — and it must precede the classes that name it,
+	 * so it sits between §5's types and everything else. Collected per program
+	 * rather than per class, because a later class may name a struct an
+	 * earlier one introduced.
+	 *
+	 * A STRUCT-typed optional inside a STRUCT's own field is the case this
+	 * placement cannot serve: that body was already written above. It stays
+	 * loud (clang names the unknown type) rather than silent, and closing it
+	 * needs a forward-declared tag the emitter does not write yet.
+	 */
+	{
+		char optionals[EMIT_MAX_OPTIONALS][64];
+		size_t optional_count = 0;
+		size_t k;
+
+		for (k = 0; k < program->class_count; k++) {
+			collect_class_scalar_optionals(program->classes[k],
+						       optionals,
+						       &optional_count,
+						       PAIR_KIND_STRUCT);
+		}
+		for (k = 0; k < program->extension_count; k++) {
+			collect_decl_scalar_optionals(program->extensions[k]->decls,
+						      optionals,
+						      &optional_count,
+						      PAIR_KIND_STRUCT);
+		}
+		emit_scalar_optionals(out, optionals, optional_count,
+				      PAIR_KIND_STRUCT);
 	}
 
 	/*

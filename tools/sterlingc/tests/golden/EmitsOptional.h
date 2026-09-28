@@ -11,6 +11,15 @@ _Pragma("clang assume_nonnull begin")
 
 @class Holder;
 
+typedef struct Span {
+	int32_t lo;
+	int32_t hi;
+} Span;
+
+/* §7.62: a struct's `?` is the same pair-struct, and it is written
+   after the struct it wraps, because the member names it. */
+typedef struct { Span value; BOOL hasValue; } SterlingOptional_Span;
+
 @interface Holder : NSObject
 
 @property (nonatomic, strong) NSString * _Nullable name;
@@ -19,6 +28,7 @@ _Pragma("clang assume_nonnull begin")
 @property (nonatomic, assign) SterlingOptional_BOOL flag;
 @property (nonatomic, assign) SterlingOptional_double ratio;
 @property (nonatomic, assign) const char * _Nullable cname;
+@property (nonatomic, assign) SterlingOptional_Span span;
 
 - (SterlingOptional_int32_t)countOr:(SterlingOptional_int32_t)seed;
 

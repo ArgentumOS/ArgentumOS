@@ -7,6 +7,14 @@
  */
 import Foundation
 
+/* §7.62 admits "a scalar **or C struct**" on the pair-struct mechanism.
+ * `Point` was UNDECLARED here, so `Point?` refused by name — correctly: a
+ * name that is nowhere declared has no type, and the refusal is what said so. */
+struct Point {
+    var x: Float32
+    var y: Float32
+}
+
 class Values: Object {
     /* §4: every declaration is non-null by default; `?` is the nullable form. */
     property name: String

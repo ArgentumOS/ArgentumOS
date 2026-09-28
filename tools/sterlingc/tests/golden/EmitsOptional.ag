@@ -27,6 +27,13 @@
  *     natively, so its `?` is §4's qualifier (`const char * _Nullable`) and NOT
  *     a struct wrapping a pointer in a has-value flag. §4's own table draws the
  *     same line — `((Int32) -> Void)?` is `void (^ _Nullable)(int32_t)`.
+ *   - `span: Span?` is the pair-struct again, for the type §7.62 names in its own
+ *     words: "a scalar **or C struct** may be optional". A struct THIS FILE
+ *     declares is a value exactly as `Int32` is (§4's reference/value rule), so
+ *     it is neither `_Nullable` nor a refusal — but it was a refusal, because the
+ *     classifier knew the scalars and the classes and nothing in between. Its
+ *     typedef must also follow the struct it wraps, which is why §7.62's
+ *     collection is emitted beside the declared types rather than ahead of them.
  *
  * `countOr` is here for the COLLECTION rather than the spelling: §7.62's
  * typedefs have to be known before the first declaration that names one, and
@@ -39,6 +46,11 @@
  * pair-struct's zeroed form is what it emits; until then a local or an
  * assignment is the thing that still refuses.
  */
+struct Span {
+    var lo: Int32
+    var hi: Int32
+}
+
 class Holder: Object {
     property name: String?
     property nickname: Holder?
@@ -46,6 +58,7 @@ class Holder: Object {
     property flag: Bool?
     property ratio: Float64?
     property cname: CString?
+    property span: Span?
 
     method countOr(seed: Int32?) -> Int32? {
         return seed;

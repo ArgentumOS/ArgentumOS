@@ -15444,6 +15444,67 @@ doors are a visitor family, of which one is measured), `NSOperationNotSupportedF
 NAME, which needs the raise-site audit) and `NSSortOptions`, whose rows also need the
 `-sortedArrayWithOptions:usingComparator:` doors that do not exist yet.
 
+
+## §62.103 — THE LONG TAIL OF SMALL CONSTANTS, AND TWO NOTIFICATIONS THAT REALLY FIRE (2026-09-28)
+
+**THIRTY-TWO ROWS SHIPPED, WHICH IS ALMOST ALL OF WHAT WAS LEFT.** The ledger goes from 44 open to **12**, and
+the shape of the change is exactly what a "long tail" is: twenty-odd names whose work is to be declared in the
+right header with the right value, plus **two notifications that needed a producer before declaring them meant
+anything at all**.
+
+**THE VALUES, AND WHERE EACH ONE COMES FROM — because the two kinds are kept apart on purpose:**
+
+| name | value | source |
+|---|---|---|
+| `NSCalendarUnitIsLeapMonth` / `IsRepeatedDay` | `1<<30` / `1<<31` | Apple's own bits (and no collision with the component units) |
+| `NSOpenStepUnicodeReservedBase` | `0xF400` | Apple publishes the number |
+| `NSMaximumStringLength` | `INT_MAX − 1` | Apple's macro — minus one for the terminator behind it |
+| `NSURLBookmarkCreationPreferFileIDResolution` | `1<<5` — Apple's is 256 | THIS library's enum scheme, and the header says so |
+| `NSXMLEntityPredefined` | `119` | this tree's enum numbering (D2), next after the four that were there |
+| `NSUndoCloseGroupingRunLoopOrdering` | `350000` | Apple's documented ordering |
+| `NSOperationQueueDefaultMaxConcurrentOperationCount` | `−1` | Apple's "let the queue decide" |
+| the two failing-URL string keys, the archive root key, the progress kind, the file-protection class, the stream service type, the discardable key, the cookie notice | their own names | which is what a plist or a log spells |
+
+**AND TWO NOTIFICATIONS SHIP WITH PRODUCERS RATHER THAN AS BARE NAMES.** `NSWillBecomeMultiThreadedNotification`
+is posted **once**, on the transition from one thread to two (which is the first `-start`, not every one), and
+`NSThreadWillExitNotification` is posted at the end of a thread's run with **the thread as its object** — because
+a watcher wants to know *which* thread is going away. `NSDidBecomeSingleThreadedNotification` is declared with
+Apple's own note that it is never posted: a process that has become multithreaded does not become single-threaded
+again. The probe asserts the first two **by making them happen** — a real thread, started and finished, with both
+notices arriving — which is the only way to tell a posted name from a declared one.
+
+**THE OTHER TWO REAL PIECES ARE SMALL AND WIRED:** `NSFileHandleNotificationMonitorModes` is now the ONE array the
+background monitor asks the run loop in (the constant and the behaviour are the same object, filled by a
+constructor at load — a global array cannot be built before the runtime exists, which is why it is not
+pointer-const), and `NSFileHandle`'s notification path reads it.
+
+**AND THE GUEST RUN FOUND WHAT THE HOST COULD NOT.** The thread check passed on the host and failed in the guest
+with `became=1 exited=0` — the exit notice was never *waited for*. The cause is a measured fact about this system
+that the plan already records elsewhere: **FNX's `usleep` is unreliable, and a wait built on it can return
+immediately.** The probe now waits with a bounded `sched_yield()` spin. This is the second unit in a row where
+the guest run was the instrument that mattered, and it is not a library fault in either case — a distinction
+worth keeping: `make testimg` proves the probe COMPILES and the guest run proves it MEANS something.
+
+**THE NUMBERS.** One refresh for §62.103: open **44 → 12**; `case` shipped 1222, open 20 → **2**; `var` shipped
+675 → **701**, open 28 → **2**; `macro` shipped 116 → **117**, open 5 → **4**; `enum` shipped 147 → **149**, open
+4 → **2**; `typealias` shipped 67 → **70**, open 4 → **1**; `func` 167 shipped / 0 open; `class` 221 / 0.
+
+**VERIFIED.** Host: `make host-foundation-run` → **54 probes, no failure** (the new one included, at 10/10), and
+the library builds with **zero** warnings. Guest: `make testimg` then `make test TESTS='foundation_constants*'` →
+**`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**. `foundation-sweep --refresh` + `--families --write` + `--check`:
+**consistent**; `--unimplemented`: **0 NEW**.
+
+**WHERE THE THREAD STANDS: TWELVE OPEN ROWS, IN THREE GROUPS.** (1) `NSSortOptions` with its two cases — the enum
+Apple declares in `NSObjCRuntime.h`, whose rows also need the `-sortedArrayWithOptions:usingComparator:` doors
+that do not exist yet; (2) `NSComparisonPredicateOptions`, the type of options this header already names as
+deprecated spellings; (3) **one cluster** — the four `NSLocalizedAttributedString*` macros with
+`NSAttributedStringFormattingContextKey` and `NSInflectionConceptsKey`, which is the attributed-string
+FORMATTING-CONTEXT surface and needs one lookup of the macro expansion before it can be written (and note what
+that lookup already corrected: `NSInflectionConceptsKey` is a **formatting-context** key, *not* an NSError key as
+its name suggests); plus the two singleton refusals-to-guess, `NSPredicateValidating` (a visitor family of which
+one door is measured) and `NSOperationNotSupportedForKeyException` (a KVC exception NAME that needs the
+raise-site audit).
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else

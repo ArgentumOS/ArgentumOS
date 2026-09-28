@@ -36,12 +36,12 @@
 # counts by kind:
 #   class      shipped  221   open    0   struck   52
 #   protocol   shipped   39   open    1   struck    5
-#   macro      shipped  116   open    5   struck  132
+#   macro      shipped  117   open    4   struck  132
 #   enum       shipped  149   open    2   struck    9
-#   case       shipped 1215   open    9   struck   78
+#   case       shipped 1222   open    2   struck   78
 #   func       shipped  167   open    0   struck   22
-#   var        shipped  680   open   23   struck  211
-#   typealias  shipped   67   open    4   struck    5
+#   var        shipped  701   open    2   struck  211
+#   typealias  shipped   70   open    1   struck    5
 #   struct     shipped   13   open    0   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -184,10 +184,10 @@ case	shipped	NSCalendarUnitEra	NSCalendar	Fundamentals / Calendrical Calculation
 case	shipped	NSCalendarUnitEra	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Years and Months	-	objc
 case	shipped	NSCalendarUnitHour	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Hours, Minutes, and Seconds	-	objc
 case	shipped	NSCalendarUnitHour	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Hours, Minutes, and Seconds	-	objc
-case	open	NSCalendarUnitIsLeapMonth	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Years and Months	-	objc
-case	open	NSCalendarUnitIsLeapMonth	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Years and Months	-	objc
-case	open	NSCalendarUnitIsRepeatedDay	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Weeks and Days	-	objc
-case	open	NSCalendarUnitIsRepeatedDay	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Weeks and Days	-	objc
+case	shipped	NSCalendarUnitIsLeapMonth	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Years and Months	-	objc
+case	shipped	NSCalendarUnitIsLeapMonth	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Years and Months	-	objc
+case	shipped	NSCalendarUnitIsRepeatedDay	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Weeks and Days	-	objc
+case	shipped	NSCalendarUnitIsRepeatedDay	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Weeks and Days	-	objc
 case	shipped	NSCalendarUnitMinute	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Hours, Minutes, and Seconds	-	objc
 case	shipped	NSCalendarUnitMinute	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Hours, Minutes, and Seconds	-	objc
 case	shipped	NSCalendarUnitMonth	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Specifying Years and Months	-	objc
@@ -702,7 +702,7 @@ case	shipped	NSNumberFormatterScientificStyle	NSNumberFormatter	Fundamentals / N
 case	shipped	NSNumberFormatterSpellOutStyle	NSNumberFormatter	Fundamentals / Numbers / Constants / Formatting Styles	-	objc
 case	shipped	NSNumericSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	shipped	NSOSF1OperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
-case	open	NSOpenStepUnicodeReservedBase	NSCharacterSet	Fundamentals / Characters / Creating a Custom Character Set / Constants	-	objc
+case	shipped	NSOpenStepUnicodeReservedBase	NSCharacterSet	Fundamentals / Characters / Creating a Custom Character Set / Constants	-	objc
 case	struck	NSOperationNotSupportedForKeyScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSOperationNotSupportedForKeySpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	shipped	NSOperationQueuePriorityHigh	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
@@ -920,7 +920,7 @@ case	shipped	NSTimeZoneNameStyleShortStandard	NSTimeZone	Fundamentals / Calendri
 case	shipped	NSTimeZoneNameStyleStandard	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information / Constants	-	objc
 case	shipped	NSTrashDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSURLBookmarkCreationMinimalBookmark	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
-case	open	NSURLBookmarkCreationPreferFileIDResolution	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	deprecated	objc
+case	shipped	NSURLBookmarkCreationPreferFileIDResolution	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	deprecated	objc
 case	shipped	NSURLBookmarkCreationSecurityScopeAllowOnlyReadAccess	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
 case	shipped	NSURLBookmarkCreationSuitableForBookmarkFile	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
 case	shipped	NSURLBookmarkCreationWithSecurityScope	NSURL	Fundamentals / URLs / Working with Bookmark Data / Options	-	objc
@@ -1199,7 +1199,7 @@ case	shipped	NSXMLEntityDeclarationKind	NSXMLNode	Files and Data Persistence / X
 case	shipped	NSXMLEntityGeneralKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	shipped	NSXMLEntityParameterKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	shipped	NSXMLEntityParsedKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
-case	open	NSXMLEntityPredefined	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
+case	shipped	NSXMLEntityPredefined	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	shipped	NSXMLEntityUnparsedKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Enumeration Cases	-	swift-page
 case	shipped	NSXMLInvalidKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
 case	shipped	NSXMLNamespaceKind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Constants / Constants	-	swift-page
@@ -2112,7 +2112,7 @@ macro	shipped	NSLocalizedString		Fundamentals / Localization	-	objc
 macro	shipped	NSLocalizedStringFromTable		Fundamentals / Localization	-	objc
 macro	shipped	NSLocalizedStringFromTableInBundle		Fundamentals / Localization	-	objc
 macro	shipped	NSLocalizedStringWithDefaultValue		Fundamentals / Localization	-	objc
-macro	open	NSMaximumStringLength	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+macro	shipped	NSMaximumStringLength	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 macro	shipped	NSNotAPointerMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 macro	shipped	NSNotAnIntMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 macro	shipped	NSNotAnIntegerMapKey	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
@@ -2286,7 +2286,7 @@ typealias	shipped	NSCalendarIdentifier	NSCalendar	Fundamentals / Calendrical Cal
 typealias	shipped	NSComparator	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
 typealias	shipped	NSDistributedNotificationCenterType	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants	-	objc
 typealias	shipped	NSErrorDomain	NSError	App Support / User-Relevant Errors / Supporting Types	-	objc
-typealias	open	NSErrorUserInfoKey	NSError	App Support / User-Relevant Errors / Providing Error User Info	-	objc
+typealias	shipped	NSErrorUserInfoKey	NSError	App Support / User-Relevant Errors / Providing Error User Info	-	objc
 typealias	shipped	NSExceptionName	NSException	App Support / Exceptions / Related Types	-	objc
 typealias	shipped	NSFileAttributeKey	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 typealias	shipped	NSFileAttributeType	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
@@ -2334,7 +2334,7 @@ typealias	shipped	NSStringTransform	NSString	Fundamentals / Strings / Transformi
 typealias	shipped	NSTextCheckingKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants	-	objc
 typealias	shipped	NSTextCheckingTypes	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants	-	objc
 typealias	shipped	NSTimeInterval		Fundamentals / Date Representations	-	objc
-typealias	open	NSURLBookmarkFileCreationOptions	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
+typealias	shipped	NSURLBookmarkFileCreationOptions	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
 typealias	shipped	NSURLFileProtectionType	NSFileManager	Files and Data Persistence / File system operations / Supporting Types	-	objc
 typealias	shipped	NSURLFileProtectionType	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 typealias	shipped	NSURLFileResourceType	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
@@ -2344,7 +2344,7 @@ typealias	shipped	NSURLUbiquitousItemDownloadingStatus	NSURL	Fundamentals / URLs
 typealias	shipped	NSURLUbiquitousSharedItemPermissions	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 typealias	shipped	NSURLUbiquitousSharedItemRole	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 typealias	shipped	NSUncaughtExceptionHandler	NSException	App Support / Exceptions / Related Types	-	objc
-typealias	open	NSUndoManagerUserInfoKey	NSUndoManager	App Support / Undo / Working with user info	-	objc
+typealias	shipped	NSUndoManagerUserInfoKey	NSUndoManager	App Support / Undo / Working with user info	-	objc
 typealias	shipped	NSUserActivityPersistentIdentifier	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
 typealias	struck	NSUserAppleScriptTaskCompletionHandler	NSUserAppleScriptTask	Low-Level Utilities / Scripts and External Tasks / Constants	declined	objc
 typealias	struck	NSUserAutomatorTaskCompletionHandler	NSUserAutomatorTask	Low-Level Utilities / Scripts and External Tasks / Constants	declined	objc
@@ -2430,14 +2430,14 @@ var	shipped	NSDecimalNumberUnderflowException	NSException	App Support / Exceptio
 var	shipped	NSDecimalSeparator	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
 var	shipped	NSDefaultRunLoopMode	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes / System Run Loop Modes	-	objc
 var	shipped	NSDestinationInvalidException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSDidBecomeSingleThreadedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
-var	open	NSDidBecomeSingleThreadedNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
+var	shipped	NSDidBecomeSingleThreadedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
+var	shipped	NSDidBecomeSingleThreadedNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
 var	shipped	NSDistinctUnionOfArraysKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSDistinctUnionOfObjectsKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSDistinctUnionOfSetsKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSEarlierTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSEdgeInsetsZero		Fundamentals / Geometry / Getting the zero constant	-	objc
-var	open	NSErrorFailingURLStringKey		Networking / Errors / Deprecated	deprecated	objc
+var	shipped	NSErrorFailingURLStringKey		Networking / Errors / Deprecated	deprecated	objc
 var	shipped	NSExtensionHostDidBecomeActiveNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
 var	shipped	NSExtensionHostDidBecomeActiveNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSExtensionHostDidEnterBackgroundNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
@@ -2473,7 +2473,7 @@ var	shipped	NSFileHandleDataAvailableNotification	NSFileHandle	Files and Data Pe
 var	shipped	NSFileHandleDataAvailableNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSFileHandleNotificationDataItem	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	-	objc
 var	shipped	NSFileHandleNotificationFileHandleItem	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	-	objc
-var	open	NSFileHandleNotificationMonitorModes	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	deprecated	objc
+var	shipped	NSFileHandleNotificationMonitorModes	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	deprecated	objc
 var	shipped	NSFileHandleOperationException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSFileHandleOperationException	NSFileHandle	Files and Data Persistence / Managed file access / Working with constants / Constants	-	objc
 var	shipped	NSFileHandleReadCompletionNotification	NSFileHandle	Files and Data Persistence / Managed file access / Working with notifications	-	objc
@@ -2489,7 +2489,7 @@ var	shipped	NSFilePosixPermissions	NSFileManager	Files and Data Persistence / Fi
 var	shipped	NSFileProtectionComplete	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Working with Protection Levels	-	objc
 var	shipped	NSFileProtectionCompleteUnlessOpen	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Working with Protection Levels	-	objc
 var	shipped	NSFileProtectionCompleteUntilFirstUserAuthentication	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Working with Protection Levels	-	objc
-var	open	NSFileProtectionCompleteWhenUserInactive		Reference / Constants	-	objc
+var	shipped	NSFileProtectionCompleteWhenUserInactive		Reference / Constants	-	objc
 var	shipped	NSFileProtectionKey	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
 var	shipped	NSFileProtectionNone	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Working with Protection Levels	-	objc
 var	shipped	NSFileReferenceCount	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Accessing File Attributes	-	objc
@@ -2520,8 +2520,8 @@ var	shipped	NSHTTPCookieCommentURL	NSHTTPCookie	Networking / Essentials / Creati
 var	shipped	NSHTTPCookieDiscard	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
 var	shipped	NSHTTPCookieDomain	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
 var	shipped	NSHTTPCookieExpires	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
-var	open	NSHTTPCookieManagerAcceptPolicyChangedNotification	NSHTTPCookieStorage	Networking / Cookies / Tracking cookie storage changes	deprecated	swift-page
-var	open	NSHTTPCookieManagerAcceptPolicyChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
+var	shipped	NSHTTPCookieManagerAcceptPolicyChangedNotification	NSHTTPCookieStorage	Networking / Cookies / Tracking cookie storage changes	deprecated	swift-page
+var	shipped	NSHTTPCookieManagerAcceptPolicyChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
 var	shipped	NSHTTPCookieManagerCookiesChangedNotification	NSHTTPCookieStorage	Networking / Cookies / Tracking cookie storage changes	-	swift-page
 var	shipped	NSHTTPCookieManagerCookiesChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSHTTPCookieMaximumAge	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs / Cookie property keys	-	objc
@@ -2594,7 +2594,7 @@ var	shipped	NSKeyValueChangeKindKey		Reference / Type Aliases / Type Properties	
 var	shipped	NSKeyValueChangeNewKey		Reference / Type Aliases / Type Properties	-	objc
 var	shipped	NSKeyValueChangeNotificationIsPriorKey		Reference / Type Aliases / Type Properties	-	objc
 var	shipped	NSKeyValueChangeOldKey		Reference / Type Aliases / Type Properties	-	objc
-var	open	NSKeyedArchiveRootObjectKey	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Constants / Constants	-	objc
+var	shipped	NSKeyedArchiveRootObjectKey	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Constants / Constants	-	objc
 var	shipped	NSKeyedUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
 var	shipped	NSLanguageIdentifierAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSLaterTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
@@ -2902,7 +2902,7 @@ var	shipped	NSObjectMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collecti
 var	shipped	NSObjectNotAvailableException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSOldStyleException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	open	NSOperationNotSupportedForKeyException		Reference / Constants	-	objc
-var	open	NSOperationQueueDefaultMaxConcurrentOperationCount	NSOperationQueue	App Support / Operations / Managing the Execution of Operations	-	objc
+var	shipped	NSOperationQueueDefaultMaxConcurrentOperationCount	NSOperationQueue	App Support / Operations / Managing the Execution of Operations	-	objc
 var	shipped	NSOwnedObjectIdentityHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSOwnedPointerHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSOwnedPointerMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
@@ -2930,7 +2930,7 @@ var	shipped	NSProgressFileIconKey	NSProgress	App Support / Progress / Inspecting
 var	shipped	NSProgressFileOperationKindCopying	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
 var	shipped	NSProgressFileOperationKindDecompressingAfterDownloading	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
 var	shipped	NSProgressFileOperationKindDownloading	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
-var	open	NSProgressFileOperationKindDuplicating		Reference / Constants	-	swift-page
+var	shipped	NSProgressFileOperationKindDuplicating		Reference / Constants	-	swift-page
 var	shipped	NSProgressFileOperationKindKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
 var	shipped	NSProgressFileOperationKindReceiving	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
 var	shipped	NSProgressFileOperationKindUploading	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
@@ -2955,7 +2955,7 @@ var	shipped	NSStreamNetworkServiceType	NSStream	Low-Level Utilities / Streams / 
 var	shipped	NSStreamNetworkServiceTypeBackground	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
 var	shipped	NSStreamNetworkServiceTypeCallSignaling	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
 var	shipped	NSStreamNetworkServiceTypeVideo	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
-var	open	NSStreamNetworkServiceTypeVoIP	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	deprecated	objc
+var	shipped	NSStreamNetworkServiceTypeVoIP	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	deprecated	objc
 var	shipped	NSStreamNetworkServiceTypeVoice	NSStream	Low-Level Utilities / Streams / Constants / Type Properties	-	objc
 var	shipped	NSStreamSOCKSErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	shipped	NSStreamSOCKSErrorDomain	NSStream	Low-Level Utilities / Streams / Constants	-	objc
@@ -3033,9 +3033,9 @@ var	shipped	NSTextCheckingStreetKey	NSTextCheckingResult	Fundamentals / Pattern 
 var	shipped	NSTextCheckingZIPKey	NSTextCheckingResult	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 var	shipped	NSThisDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSThousandsSeparator	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
-var	open	NSThreadWillExitNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
-var	open	NSThreadWillExitNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
-var	open	NSThumbnail1024x1024SizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys / Constants	deprecated	objc
+var	shipped	NSThreadWillExitNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
+var	shipped	NSThreadWillExitNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
+var	shipped	NSThumbnail1024x1024SizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys / Constants	deprecated	objc
 var	shipped	NSTimeDateFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSTimeFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSURLAddedToDirectoryDateKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
@@ -3066,7 +3066,7 @@ var	shipped	NSURLErrorBackgroundTaskCancelledReasonKey	NSURLSession	Networking /
 var	shipped	NSURLErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	shipped	NSURLErrorFailingURLErrorKey		Networking / Errors / Keys	-	objc
 var	shipped	NSURLErrorFailingURLPeerTrustErrorKey		Networking / Errors / Keys	-	objc
-var	open	NSURLErrorFailingURLStringErrorKey		Networking / Errors / Keys	deprecated	objc
+var	shipped	NSURLErrorFailingURLStringErrorKey		Networking / Errors / Keys	deprecated	objc
 var	shipped	NSURLErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSURLErrorNetworkUnavailableReasonKey		Networking / Errors / Keys	-	objc
 var	shipped	NSURLFileAllocatedSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
@@ -3094,7 +3094,7 @@ var	shipped	NSURLFileResourceTypeSocket	NSURL	Fundamentals / URLs / Accessing Re
 var	shipped	NSURLFileResourceTypeSymbolicLink	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys / Constants	-	objc
 var	shipped	NSURLFileResourceTypeUnknown	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys / Constants	-	objc
 var	shipped	NSURLFileScheme	NSURL	Fundamentals / URLs / Constants / Constants	-	objc
-var	open	NSURLFileSecurityKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
+var	shipped	NSURLFileSecurityKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLFileSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLGenerationIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLHasHiddenExtensionKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
@@ -3148,7 +3148,7 @@ var	shipped	NSURLThumbnailDictionaryKey	NSURL	Fundamentals / URLs / Accessing Re
 var	shipped	NSURLThumbnailKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys	deprecated	objc
 var	shipped	NSURLTotalFileAllocatedSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
 var	shipped	NSURLTotalFileSizeKey	NSURL	Fundamentals / URLs / Accessing Resource Values / File keys	-	objc
-var	open	NSURLTypeIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	deprecated	objc
+var	shipped	NSURLTypeIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	deprecated	objc
 var	shipped	NSURLUbiquitousItemContainerDisplayNameKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemDownloadRequestedKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
 var	shipped	NSURLUbiquitousItemDownloadingErrorKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Ubiquitous keys	-	objc
@@ -3234,7 +3234,7 @@ var	shipped	NSUbiquityIdentityDidChangeNotification	NSNotification	App Support /
 var	shipped	NSUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
 var	shipped	NSUndefinedKeyException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSUnderlyingErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
-var	open	NSUndoCloseGroupingRunLoopOrdering	NSUndoManager	App Support / Undo / Working with run loops	-	objc
+var	shipped	NSUndoCloseGroupingRunLoopOrdering	NSUndoManager	App Support / Undo / Working with run loops	-	objc
 var	shipped	NSUndoManagerCheckpointNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSUndoManagerCheckpointNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
 var	shipped	NSUndoManagerDidCloseUndoGroupNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
@@ -3245,7 +3245,7 @@ var	shipped	NSUndoManagerDidRedoChangeNotification	NSNotification	App Support / 
 var	shipped	NSUndoManagerDidRedoChangeNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
 var	shipped	NSUndoManagerDidUndoChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSUndoManagerDidUndoChangeNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
-var	open	NSUndoManagerGroupIsDiscardableKey	NSUndoManager	App Support / Undo / Working with notifications	-	objc
+var	shipped	NSUndoManagerGroupIsDiscardableKey	NSUndoManager	App Support / Undo / Working with notifications	-	objc
 var	shipped	NSUndoManagerWillCloseUndoGroupNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSUndoManagerWillCloseUndoGroupNotification	NSUndoManager	App Support / Undo / Working with notifications	-	swift-page
 var	shipped	NSUndoManagerWillRedoChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
@@ -3260,8 +3260,8 @@ var	shipped	NSUserDefaultsDidChangeNotification	NSUserDefaults	Files and Data Pe
 var	shipped	NSUserDefaultsSizeLimitExceededNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Monitoring settings changes and issues	-	objc
 var	shipped	NSUserNotificationDefaultSoundName	NSUserNotification	App Support / User Notifications / Constants	deprecated	objc
 var	shipped	NSWeekDayNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	open	NSWillBecomeMultiThreadedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
-var	open	NSWillBecomeMultiThreadedNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
+var	shipped	NSWillBecomeMultiThreadedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
+var	shipped	NSWillBecomeMultiThreadedNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page
 var	shipped	NSXMLParserErrorDomain	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Constants	-	objc
 var	shipped	NSYearMonthWeekDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSZeroPoint		Fundamentals / Geometry / Zero Constant	-	objc
