@@ -45,6 +45,11 @@ typedef unsigned int UTF32Char;
 
 NS_ASSUME_NONNULL_BEGIN
 
+/* THE LOWER BOUND OF THE RANGE APPLE RESERVED FOR ITS OWN USE — 0xF400, with 0xF8FF the top of it (§62.103).
+ * A number and not a set member: this library's sets are built from Unicode's OWN ranges, and this range is
+ * corporate allocation rather than a property of a character. */
+#define NSOpenStepUnicodeReservedBase 0xF400
+
 @interface NSCharacterSet : NSObject <NSCopying>
 {
 	unsigned int *_ranges;		/* pairs of (location, length) in code units */

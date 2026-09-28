@@ -215,6 +215,10 @@ static void fn_set_current_queue(NSOperationQueue *queue)
 
 @end
 
+/* §62.103: Apple's -1 — "the queue decides", which is what the property answers until a caller sets
+ * one. */
+const NSInteger NSOperationQueueDefaultMaxConcurrentOperationCount = -1;
+
 @implementation NSOperationQueue
 
 + (NSOperationQueue *)mainQueue

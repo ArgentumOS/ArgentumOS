@@ -42,6 +42,7 @@
 #include <math.h>		/* floor(3), for the nanoseconds of a date */
 
 NSString *const NSFileType = @"NSFileType";
+NSString *const NSFileProtectionCompleteWhenUserInactive = @"NSFileProtectionCompleteWhenUserInactive";
 NSString *const NSFileSize = @"NSFileSize";
 NSString *const NSFileModificationDate = @"NSFileModificationDate";
 NSString *const NSFilePosixPermissions = @"NSFilePosixPermissions";

@@ -52,6 +52,15 @@ extern void *_Block_copy(const void *aBlock);
 extern void _Block_release(const void *aBlock);
 
 NSString *const NSFileHandleConnectionAcceptedNotification = @"NSFileHandleConnectionAcceptedNotification";
+/* THE ONE ARRAY THE MONITOR'S MODES LIVE IN (§62.103): the constant below is what the notification half
+ * asks the run loop in, so a caller reading it reads the behaviour. */
+NSArray *NSFileHandleNotificationMonitorModes = nil;
+
+__attribute__((constructor))
+static void fn_init_file_handle_monitor_modes(void)
+{
+	NSFileHandleNotificationMonitorModes = [[NSArray alloc] initWithObjects:NSDefaultRunLoopMode, nil];
+}
 NSString *const NSFileHandleDataAvailableNotification = @"NSFileHandleDataAvailableNotification";
 NSString *const NSFileHandleReadCompletionNotification = @"NSFileHandleReadCompletionNotification";
 NSString *const NSFileHandleReadToEndOfFileCompletionNotification =
@@ -508,7 +517,8 @@ static void fn_make_standard_handles(void)
 {
 	NSArray *use = (modes != nil && [modes count] > 0)
 		? modes
-		: [NSArray arrayWithObject:NSDefaultRunLoopMode];
+		: (NSFileHandleNotificationMonitorModes != nil ? NSFileHandleNotificationMonitorModes
+							      : [NSArray arrayWithObject:NSDefaultRunLoopMode]);
 	NSRunLoop *loop = [NSRunLoop currentRunLoop];
 	FnFileHandleSource *operation;
 	NSUInteger i;

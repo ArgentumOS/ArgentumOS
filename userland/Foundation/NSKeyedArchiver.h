@@ -53,6 +53,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/* THE KEY THE ROOT OBJECT IS STORED UNDER (§62.103), for a caller that reads an archive's own plist. */
+extern NSString * const NSKeyedArchiveRootObjectKey;
+
 @interface NSKeyedArchiver : NSCoder
 {
 	NSMutableArray *_objects;	/* the $objects table */

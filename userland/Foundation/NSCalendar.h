@@ -75,6 +75,11 @@ typedef enum {
 	NSCalendarUnitQuarter			= (1UL << 11),
 	NSCalendarUnitWeekOfMonth		= (1UL << 12),
 	NSCalendarUnitWeekOfYear		= (1UL << 13),
+	/* THE TWO SENTINEL UNITS (§62.103): not components of a date but QUESTIONS a calendar can answer about
+	 * one — whether a month is a leap month, and whether a day repeats in a lunisolar calendar. Apple's
+	 * bits are the top two, so they cannot collide with the units above. */
+	NSCalendarUnitIsLeapMonth		= (1UL << 30),
+	NSCalendarUnitIsRepeatedDay		= (1UL << 31),
 	NSCalendarUnitYearForWeekOfYear		= (1UL << 14),
 	NSCalendarUnitNanosecond		= (1UL << 15),
 	NSCalendarUnitDayOfYear		= (1UL << 8),

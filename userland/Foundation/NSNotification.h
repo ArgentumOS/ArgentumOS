@@ -73,6 +73,13 @@ extern NSNotificationName const NSMetadataQueryDidStartGatheringNotification;
 extern NSNotificationName const NSMetadataQueryDidUpdateNotification;
 extern NSNotificationName const NSMetadataQueryGatheringProgressNotification;
 extern NSNotificationName const NSProcessInfoPowerStateDidChangeNotification;
+/* §62.103: the two the threading half really posts, and the one Apple documents as never posted because a
+ * process that has become multithreaded does not become single-threaded again. */
+extern NSNotificationName const NSWillBecomeMultiThreadedNotification;
+extern NSNotificationName const NSDidBecomeSingleThreadedNotification;
+extern NSNotificationName const NSThreadWillExitNotification;
+/* AND THE COOKIE POLICY'S, posted by NSHTTPCookieStorage when the accept policy changes. */
+extern NSNotificationName const NSHTTPCookieManagerAcceptPolicyChangedNotification;
 /* §62.98: the notification that PAIRS WITH -thermalState, declared beside the power-state one because that is
  * the company Apple keeps it in. Nothing in this library posts it - see NSProcessInfo.h's note on the state
  * itself - so it is a name a caller can observe on and a seam a future thermal source would post through. */

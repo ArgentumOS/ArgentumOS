@@ -73,6 +73,11 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/* APPLE'S LEGACY CEILING FOR A STRING (§62.103), and its value is INT_MAX - 1 rather than INT_MAX because the
+ * C representation behind it leaves room for a terminator. It was removed in macOS 10.5 and is in scope here
+ * for the reason every deprecated name is: a program written against it is exactly who this library is for. */
+#define NSMaximumStringLength (INT_MAX - 1)
+
 
 /* Cocoa's option set. The first two are the ones a UTF-8 byte comparison honours; the rest are named so a
  * conforming call compiles and the ones this library cannot honour are REFUSED rather than silently ignored -

@@ -24,6 +24,8 @@ NSString * const NSURLErrorDomain = @"NSURLErrorDomain";
 
 NSString * const NSURLErrorKey = @"NSURLErrorKey";
 NSString * const NSURLErrorFailingURLErrorKey = @"NSURLErrorFailingURLErrorKey";
+NSString * const NSURLErrorFailingURLStringErrorKey = @"NSURLErrorFailingURLStringErrorKey";
+NSString * const NSErrorFailingURLStringKey = @"NSErrorFailingURLStringKey";
 NSString * const NSURLErrorFailingURLPeerTrustErrorKey = @"NSURLErrorFailingURLPeerTrustErrorKey";
 NSString * const NSURLErrorNetworkUnavailableReasonKey = @"NSURLErrorNetworkUnavailableReasonKey";
 NSString * const NSURLErrorBackgroundTaskCancelledReasonKey = @"NSURLErrorBackgroundTaskCancelledReasonKey";

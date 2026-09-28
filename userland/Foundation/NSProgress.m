@@ -56,6 +56,7 @@ static NSMutableArray *fn_stack(void)
 
 NSProgressUserInfoKey const NSProgressEstimatedTimeRemainingKey = @"NSProgressEstimatedTimeRemainingKey";
 NSProgressUserInfoKey const NSProgressFileAnimationImageKey = @"NSProgressFileAnimationImageKey";
+NSProgressUserInfoKey const NSProgressFileOperationKindDuplicating = @"NSProgressFileOperationKindDuplicating";
 NSProgressUserInfoKey const NSProgressFileAnimationImageOriginalRectKey = @"NSProgressFileAnimationImageOriginalRectKey";
 NSProgressUserInfoKey const NSProgressFileCompletedCountKey = @"NSProgressFileCompletedCountKey";
 NSProgressUserInfoKey const NSProgressFileIconKey = @"NSProgressFileIconKey";

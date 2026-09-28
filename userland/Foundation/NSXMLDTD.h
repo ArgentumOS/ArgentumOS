@@ -60,6 +60,9 @@ typedef enum {
 	NSXMLEntityParameterKind = 116,
 	NSXMLEntityParsedKind = 117,
 	NSXMLEntityUnparsedKind = 118,
+	/* §62.103: the predefined entities (&amp; &lt; &gt; &quot; &apos;) are a KIND of entity node, and this enum's
+	 * numbering is its own (D2) — so the new case takes the next value after the four that were here. */
+	NSXMLEntityPredefined = 119,
 } NSXMLDTDNodeKind;
 
 /* "A node in a DTD": one declaration, of one of the kinds above. */

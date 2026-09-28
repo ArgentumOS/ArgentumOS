@@ -116,6 +116,10 @@ enum {
  * VALUES ARE OURS (D2) - a program compares against the constant, not against the string. */
 extern NSString * const NSURLErrorKey;
 extern NSString * const NSURLErrorFailingURLErrorKey;
+/* THE DEPRECATED STRING SPELLINGS (§62.103): the failing URL as a STRING rather than as an NSURL, kept for the
+ * programs that were written against them. Each value is its own name, which is what both keys are for. */
+extern NSString * const NSURLErrorFailingURLStringErrorKey;
+extern NSString * const NSErrorFailingURLStringKey;
 extern NSString * const NSURLErrorFailingURLPeerTrustErrorKey;
 
 /* WHY THE NETWORK COULD NOT BE USED, carried under -NSURLErrorNetworkUnavailableReasonKey. ORDERED BY WHAT A

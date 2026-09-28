@@ -19,6 +19,8 @@
 #import <Foundation/NSThread.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSNotificationCenter.h>
+#import <Foundation/NSNotification.h>	/* the names the two posts use live here */
 #include <pthread.h>
 #include <stdlib.h>
 #include <time.h>
@@ -205,6 +207,11 @@ static void *fn_thread_entry(void *context)
 	[thread release];
 }
 
+/* HOW MANY SECONDARY THREADS THIS PROCESS HAS STARTED (§62.103). The count is what makes the
+ * WILL-BECOME-MULTITHREADED notice mean something: it is posted ONCE, on the transition from a process with
+ * one thread (the one running) to one with two — which is the first -start, not every -start. */
+static int fn_thread_count = 0;
+
 - (void)start
 {
 	pthread_t id;
@@ -224,6 +231,12 @@ static void *fn_thread_entry(void *context)
 		return;
 	}
 	_threadID = (unsigned long)id;
+	/* AND THE NOTICE, ONCE, NOW THAT A SECOND THREAD EXISTS. Apple's contract is about the PROCESS, not about
+	 * this object, so the notification carries no object. */
+	if (++fn_thread_count == 1) {
+		[[NSNotificationCenter defaultCenter]
+			postNotificationName:NSWillBecomeMultiThreadedNotification object:nil];
+	}
 }
 
 - (void)fnRun
@@ -238,6 +251,10 @@ static void *fn_thread_entry(void *context)
 	[_argument release];
 	_argument = nil;
 	_executing = NO;
+	/* AND THE THREAD'S OWN ENDING (§62.103): the object IS the notification's object, because a watcher
+	 * wants to know WHICH thread is going away. */
+	[[NSNotificationCenter defaultCenter] postNotificationName:NSThreadWillExitNotification
+							    object:self];
 	_finished = YES;
 }
 

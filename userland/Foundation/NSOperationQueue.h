@@ -60,6 +60,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSInteger)maxConcurrentOperationCount;
 - (void)setMaxConcurrentOperationCount:(NSInteger)count;
 
+/* APPLE'S −1 (§62.103): 'let the queue decide', which is what `maxConcurrentOperationCount` answers until a
+ * caller sets one. */
+extern const NSInteger NSOperationQueueDefaultMaxConcurrentOperationCount;
+
 - (void)cancelAllOperations;
 - (void)waitUntilAllOperationsAreFinished;
 

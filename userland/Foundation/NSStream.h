@@ -114,6 +114,7 @@ extern NSStreamSOCKSProxyVersion const NSStreamSOCKSProxyVersion4;
 extern NSStreamSOCKSProxyVersion const NSStreamSOCKSProxyVersion5;
 
 extern NSStreamPropertyKey const NSStreamNetworkServiceType;
+extern NSStreamNetworkServiceTypeValue const NSStreamNetworkServiceTypeVoIP;
 extern NSStreamNetworkServiceTypeValue const NSStreamNetworkServiceTypeBackground;
 extern NSStreamNetworkServiceTypeValue const NSStreamNetworkServiceTypeVideo;
 extern NSStreamNetworkServiceTypeValue const NSStreamNetworkServiceTypeVoice;

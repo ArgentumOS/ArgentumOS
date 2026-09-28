@@ -211,6 +211,12 @@ extern NSURLResourceKey const NSURLContentModificationDateKey;
 extern NSURLResourceKey const NSURLContentAccessDateKey;
 extern NSURLResourceKey const NSURLAttributeModificationDateKey;
 extern NSURLResourceKey const NSURLFileIdentifierKey;
+/* §62.103: three more resource keys, each valued as its own name. The type identifier and the file security
+ * are facts about a LOCAL file (which is all this system has); the 1024x1024 thumbnail is a SIZE a snapshot can
+ * be asked for, declared because Apple declares it and a caller may spell it. */
+extern NSURLResourceKey const NSURLTypeIdentifierKey;
+extern NSURLResourceKey const NSURLFileSecurityKey;
+extern NSURLResourceKey const NSThumbnail1024x1024SizeKey;
 extern NSURLResourceKey const NSURLFileResourceIdentifierKey;
 extern NSURLResourceKey const NSURLFileResourceTypeKey;
 extern NSURLResourceKey const NSURLParentDirectoryURLKey;
@@ -458,12 +464,19 @@ extern NSURLUbiquitousSharedItemPermissions const NSURLUbiquitousSharedItemPermi
 extern NSURLUbiquitousSharedItemRole const NSURLUbiquitousSharedItemRoleOwner;
 extern NSURLUbiquitousSharedItemRole const NSURLUbiquitousSharedItemRoleParticipant;
 
+typedef NSUInteger NSURLBookmarkFileCreationOptions;
+
 typedef enum {
 	NSURLBookmarkCreationMinimalBookmark = 1 << 0,
 	NSURLBookmarkCreationSuitableForBookmarkFile = 1 << 1,
 	NSURLBookmarkCreationWithSecurityScope = 1 << 2,
 	NSURLBookmarkCreationSecurityScopeAllowOnlyReadAccess = 1 << 3,
 	NSURLBookmarkCreationWithoutImplicitSecurityScope = 1 << 4,
+	/* §62.103. APPLE'S NUMBER FOR THIS ONE IS 256 AND OURS IS SMALL: this enum's values are this tree's
+	 * (the scheme above is 1<<0 … 1<<4), so the new name takes the next free bit rather than the number
+	 * Apple happens to use — and a caller who compiles against this header gets a value the door here
+	 * understands, which is the property that matters. */
+	NSURLBookmarkCreationPreferFileIDResolution = 1 << 5,
 } NSURLBookmarkCreationOptions;
 
 typedef enum {

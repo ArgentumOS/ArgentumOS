@@ -140,6 +140,8 @@ extern NSProgressUserInfoKey const NSProgressFileCompletedCountKey;
 extern NSProgressUserInfoKey const NSProgressFileIconKey;
 extern NSProgressUserInfoKey const NSProgressFileOperationKindCopying;
 extern NSProgressUserInfoKey const NSProgressFileOperationKindDecompressingAfterDownloading;
+/* §62.103: the kind a copy answers with. Declared beside the two that were here, and valued as its name. */
+extern NSProgressUserInfoKey const NSProgressFileOperationKindDuplicating;
 extern NSProgressUserInfoKey const NSProgressFileOperationKindDownloading;
 extern NSProgressUserInfoKey const NSProgressFileOperationKindKey;
 extern NSProgressUserInfoKey const NSProgressFileOperationKindReceiving;

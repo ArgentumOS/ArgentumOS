@@ -46,6 +46,7 @@ NSStreamSOCKSProxyVersion const NSStreamSOCKSProxyVersion4 = @"NSStreamSOCKSProx
 NSStreamSOCKSProxyVersion const NSStreamSOCKSProxyVersion5 = @"NSStreamSOCKSProxyVersion5";
 
 NSStreamPropertyKey const NSStreamNetworkServiceType = @"NSStreamNetworkServiceType";
+NSStreamNetworkServiceTypeValue const NSStreamNetworkServiceTypeVoIP = @"NSStreamNetworkServiceTypeVoIP";
 NSStreamNetworkServiceTypeValue const NSStreamNetworkServiceTypeBackground =
 	@"NSStreamNetworkServiceTypeBackground";
 NSStreamNetworkServiceTypeValue const NSStreamNetworkServiceTypeVideo = @"NSStreamNetworkServiceTypeVideo";

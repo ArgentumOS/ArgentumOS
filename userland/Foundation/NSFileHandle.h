@@ -87,6 +87,12 @@ extern NSString *const NSFileHandleReadToEndOfFileCompletionNotification;
 /* THE USERINFO KEYS, and there are exactly two in Apple's documented surface: the data a read produced and
  * the handle an accept produced. (There is no documented error key, so there is not one here either.) */
 extern NSString *const NSFileHandleNotificationDataItem;
+/* THE RUN-LOOP MODES THE BACKGROUND MONITOR RUNS IN (§62.103). THE CONSTANT AND THE BEHAVIOUR ARE ONE: the
+ * notification half asks the run loop in THIS array, so a caller that wanted to know which modes would have
+ * to read the implementation before — now it can read the array. It is NOT pointer-const because a global
+ * array object cannot be built before the runtime exists: a constructor fills it at LOAD, the standing this
+ * library gave its own URL transport (§62.83). */
+extern NSArray *NSFileHandleNotificationMonitorModes;
 extern NSString *const NSFileHandleNotificationFileHandleItem;
 
 /* The name of the exception a file-handle operation RAISES when it cannot be performed AT ALL — Apple's

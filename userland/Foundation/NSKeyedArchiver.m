@@ -92,6 +92,9 @@ static BOOL fn_is_value_type(id object)
 	       [object isKindOfClass:[NSDate class]] || [object isKindOfClass:[NSData class]];
 }
 
+/* THE KEY THE ROOT OBJECT IS STORED UNDER (§62.103). */
+NSString * const NSKeyedArchiveRootObjectKey = @"NSKeyedArchiveRootObjectKey";
+
 @implementation NSKeyedArchiver
 
 + (nullable NSData *)archivedDataWithRootObject:(id)rootObject

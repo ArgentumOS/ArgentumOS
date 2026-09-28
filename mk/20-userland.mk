@@ -1436,6 +1436,16 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_dataoptions.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_dataoptions"
+	# foundation_constants: §62.103's acceptance - the long tail of small constants (the calendar sentinels, the
+	# OpenStep reserved base, the string ceiling, the bookmark option and its type, the XML entity kind, the
+	# resource keys, the archive/progress/file-protection/stream/undo keys) plus the two THREAD notifications,
+	# which ship with real producers and are checked by making them happen.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_constants.m -o .build/probe-foundation_constants.o
+	$(MUSL64_OBJC) .build/probe-foundation_constants.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_constants"
 	# foundation_downloadresume: §62.31's acceptance - RESUME end to end, WITH A REAL SERVER. The probe is
 	# the server: it sends half a body and then STALLS mid-transfer (which is what makes the cancel
 	# deterministic), resumes from the data its own cancel produced, and asserts the resumed request carries

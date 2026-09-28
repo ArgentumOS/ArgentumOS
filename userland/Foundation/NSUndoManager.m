@@ -32,6 +32,8 @@ extern void _Block_release(const void *aBlock);
 @end
 
 /* THE EIGHT NAMES, defined here and declared in the header (W4's centre carries them, §22). */
+const NSUInteger NSUndoCloseGroupingRunLoopOrdering = 350000;
+NSUndoManagerUserInfoKey const NSUndoManagerGroupIsDiscardableKey = @"NSUndoManagerGroupIsDiscardableKey";
 NSString *const NSUndoManagerCheckpointNotification = @"NSUndoManagerCheckpointNotification";
 NSString *const NSUndoManagerDidCloseUndoGroupNotification = @"NSUndoManagerDidCloseUndoGroupNotification";
 NSString *const NSUndoManagerDidOpenUndoGroupNotification = @"NSUndoManagerDidOpenUndoGroupNotification";

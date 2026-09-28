@@ -42,6 +42,10 @@
  * passes nil itself when it builds an exception from a format. */
 NS_ASSUME_NONNULL_BEGIN
 
+/* THE TYPE OF A userInfo KEY (§62.103): a name for `NSString *` that a caller can spell, which is what makes
+ * `NSErrorUserInfoKey key = ...` compile the way Cocoa-shaped code expects. */
+typedef NSString *NSErrorUserInfoKey;
+
 /* Cocoa's domain type is just a string. */
 typedef NSString *NSErrorDomain;
 

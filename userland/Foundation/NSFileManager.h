@@ -84,6 +84,10 @@ extern NSString *const NSFileProtectionComplete;
 extern NSString *const NSFileProtectionCompleteUnlessOpen;
 extern NSString *const NSFileProtectionCompleteUntilFirstUserAuthentication;
 extern NSString *const NSFileProtectionNone;
+/* §62.103: the fifth protection class, declared beside the four that were here. NOTHING ACTS ON FILE
+ * PROTECTION in this system (the same note the other four carry), so the value is the name — which is what
+ * a caller stores and compares. */
+extern NSString *const NSFileProtectionCompleteWhenUserInactive;
 
 /* AND THE THREE TYPED ALIASES Apple spells for these dictionaries, which are the reason its own
  * signatures read as typed dictionaries rather than as `NSDictionary *`. */

@@ -30,6 +30,19 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/* THE RUN-LOOP PRIORITY FOR CLOSING AN UNDO GROUP (§62.103): Apple's 350000, the `order` argument a caller
+ * passes to `-[NSRunLoop performSelector:target:argument:order:modes:]` — high enough that grouping closes
+ * after the event that opened it. */
+extern const NSUInteger NSUndoCloseGroupingRunLoopOrdering;
+
+/* THE TYPE OF A userInfo KEY (§62.103), which is what lets the key below be declared at all — and what a
+ * caller writes when it reads a group's userInfo. */
+typedef NSString *NSUndoManagerUserInfoKey;
+
+/* AND THE KEY A GROUP'S userInfo CARRIES TO SAY IT MAY BE DISCARDED, which this header's own note about the
+ * discardable-actions half already refers to. */
+extern NSUndoManagerUserInfoKey const NSUndoManagerGroupIsDiscardableKey;
+
 @interface NSUndoManager : NSObject
 {
 	NSMutableArray *_undoStack;		/* of groups; each group is an array of actions */
