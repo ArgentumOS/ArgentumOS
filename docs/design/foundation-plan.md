@@ -3495,7 +3495,7 @@ vanishing.
 | **Files and Data Persistence / Queries** | ALL STRUCK: `NSMetadataQuery`, `NSMetadataQueryAttributeValueTuple`, `NSMetadataQueryDelegate`, `NSMetadataQueryResultGroup` | — |
 | **Files and Data Persistence / XML** | all classes shipped | — |
 | **Files and Data Persistence / iCloud key and value storage** | 1 open | `NSUbiquitousKeyValueStore` |
-| **Fundamentals / Automatic grammar agreement** | 3 open | `NSInflectionRule`, `NSInflectionRuleExplicit`, `NSTermOfAddress` |
+| **Fundamentals / Automatic grammar agreement** | all classes shipped | — |
 | **Fundamentals / Basic Collections** | all classes shipped | — |
 | **Fundamentals / Binary Data** | all classes shipped | — |
 | **Fundamentals / Calendrical Calculations** | all classes shipped | — |
@@ -14286,6 +14286,52 @@ fail=2` before the `-init` and `ok=12 fail=0` after). Guest: `make testimg` then
 `make test TESTS='foundation_morphology'` → **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**.
 `foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**, 37 rows flipped, family table
 regenerated. `foundation-gate`: **OK — 545 files**; `--unimplemented`: **0 NEW**.
+
+## §62.79 — THE RULE AND THE TERM OF ADDRESS, AND THE FAMILY CLOSES (2026-09-26)
+
+**THREE ROWS: `NSInflectionRule`, `NSInflectionRuleExplicit` and `NSTermOfAddress`.** `class shipped` went
+**207 → 210**, and **`Fundamentals / Automatic grammar agreement` reads "all classes shipped"** — the **fifth family
+this session has closed**, after System Interaction's classes (§62.66), Deprecated (§62.67), User Notifications
+(§62.68) and Attachments (§62.69). §62.78 took the family from six open rows to three; this is the other three.
+
+**THE SAME SHAPE AS THE MORPHOLOGY HALF: REAL VALUES, AND THE ENGINE'S ABSENCE REPORTED AS A FACT.** What is real:
+an explicit rule that carries a **copy** of its morphology, a localized term that carries its language identifier
+and a **snapshot** of its pronouns, and for both — copying, field-wise equality and hashing, and secure coding both
+ways. What is absent: grammar agreement, which `+canInflectLanguage:` and `+canInflectPreferredLocalization` report
+by answering **NO** — because nothing here agrees a grammar, which is a fact about this system rather than an
+unimplemented door. `+automaticRule` and `+currentUser` ANSWER VALUES for the reason `+userMorphology` does: a
+system that can inflect no language still has such a rule as a thing to name, and a user who has stated no term of
+address has a term with nothing stated.
+
+**AND ONE CHECK ASSERTS THE STATE RATHER THAN A FLATTERING VERSION OF IT.**
+`the-predefined-terms-are-equal-because-the-pronoun-data-is-absent`: the three predefined terms differ **only** by
+the pronoun list, and this system carries no pronoun data — so `+feminine`, `+masculine` and `+neutral` are DISTINCT
+VALUE objects that are EQUAL, and the probe says so out loud rather than leaving the gap behind a check that would
+pass either way. The alternative — inventing pronoun strings — would mean building `NSMorphologyPronoun` values out
+of a page that gives "(e.g. she/her/hers in English)" as an EXAMPLE, which is exactly the kind of guess this
+project's look-it-up rule exists to prevent.
+
+**TWO MISTAKES OF MINE, caught before they landed and worth recording:**
+
+* **`NSTermOfAddress.m`'s first version wrote its private fields through `-setValue:forKey:`** — which SHADOWED
+  `NSObject`'s KVC on that class with different semantics. A value type must not repurpose a public protocol to
+  reach its own ivars; it now has a private initialiser, which is what the file should have had from the start;
+* **the probe's first draft had a placeholder check in it** (`... || NO, @"replaced below"`) — the recorded trap
+  where *a draft ships with its scaffolding still in it*. It was found before the build, and the replacement is a
+  real three-way assertion (equal when language and pronouns match, unequal against a predefined term and against
+  another language).
+
+**VERIFIED.** Host: `make host-foundation-run` — **39 probes, every tally `fail=0`**. Guest: `make testimg` then
+`make test TESTS='foundation_inflection,foundation_morphology'` → **`TESTS-OK 2/2 case(s), 12/12 check(s) in 13s`**
+— both halves of the family together. `foundation-sweep --refresh` + `--families --write` + `--check`:
+**consistent**, three rows flipped, family table regenerated. `foundation-gate`: **OK — 545 files**;
+`--unimplemented`: **0 NEW**.
+
+**WHERE THE THREAD STANDS: 15 open classes** (from 18 at the start of these two units), with the remaining blocks
+being `Reference / Classes` (4 mixed), the singletons (`NSUbiquitousKeyValueStore`, `NSBundleResourceRequest`,
+`NSDistributedNotificationCenter`, `NSURLDownload`, `NSSpellServer`, …) and the deprecated pair
+(`NSArchiver`/`NSUnarchiver`) — plus the two dependencies owed as things to BUILD: the markdown importer and the
+run-loop observers.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 

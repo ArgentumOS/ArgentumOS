@@ -34,7 +34,7 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  207   open   18   struck   48
+#   class      shipped  210   open   15   struck   48
 #   protocol   shipped   34   open    6   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  147   open    4   struck    9
@@ -1425,8 +1425,8 @@ class	shipped	NSISO8601DateFormatter		Fundamentals / Date Formatting	-	objc
 class	shipped	NSIndexPath		Fundamentals / Indexes	-	objc
 class	shipped	NSIndexSet		Fundamentals / Indexes	-	objc
 class	struck	NSIndexSpecifier		App Support / Object Specifiers	declined	objc
-class	open	NSInflectionRule		Fundamentals / Automatic grammar agreement	-	objc
-class	open	NSInflectionRuleExplicit		Fundamentals / Automatic grammar agreement	-	objc
+class	shipped	NSInflectionRule		Fundamentals / Automatic grammar agreement	-	objc
+class	shipped	NSInflectionRuleExplicit		Fundamentals / Automatic grammar agreement	-	objc
 class	shipped	NSInputStream		Low-Level Utilities / Streams	-	objc
 class	shipped	NSInvocation		Low-Level Utilities / Invocations	-	objc
 class	shipped	NSInvocationOperation		App Support / Operations	-	objc
@@ -1535,7 +1535,7 @@ class	open	NSSpellServer		Fundamentals / Spelling and Grammar	-	objc
 class	shipped	NSStream		Low-Level Utilities / Streams	-	objc
 class	shipped	NSString		Fundamentals / Strings	-	objc
 class	shipped	NSTask		Low-Level Utilities / Scripts and External Tasks	-	objc
-class	open	NSTermOfAddress		Fundamentals / Automatic grammar agreement	-	objc
+class	shipped	NSTermOfAddress		Fundamentals / Automatic grammar agreement	-	objc
 class	shipped	NSTextCheckingResult		Fundamentals / Pattern Matching	-	objc
 class	shipped	NSThread		Low-Level Utilities / Threads and Locking	-	objc
 class	shipped	NSTimeZone		Fundamentals / Calendrical Calculations	-	objc

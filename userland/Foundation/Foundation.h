@@ -182,6 +182,8 @@
 #import <Foundation/NSUserNotificationCenter.h>
 #import <Foundation/NSExtensionItem.h>
 #import <Foundation/NSMorphology.h>
+#import <Foundation/NSInflectionRule.h>
+#import <Foundation/NSTermOfAddress.h>
 #import <Foundation/NSOperation.h>
 #import <Foundation/NSBlockOperation.h>
 #import <Foundation/NSInvocationOperation.h>

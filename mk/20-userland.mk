@@ -1007,6 +1007,13 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_morphology.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_morphology"
+	# foundation_inflection: §62.79. ONE unit - the rule and term-of-address classes.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_inflection.m -o .build/probe-foundation_inflection.o
+	$(MUSL64_OBJC) .build/probe-foundation_inflection.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_inflection"
 	# foundation_substratekeys: W8p slice 6g (foundation-plan.md §60). The MEASUREMENT INSTRUMENT for the
 	# eighteen keys that need a substrate fact: it prints what the file system does.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
