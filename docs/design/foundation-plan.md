@@ -3559,7 +3559,7 @@ vanishing.
 | **Networking / Local Network Services** | ALL STRUCK: `NSNetService`, `NSNetServiceDelegate` | — |
 | **Networking / Requests and responses** | all classes shipped | — |
 | **Networking / Service Discovery** | ALL STRUCK: `NSNetServiceBrowser`, `NSNetServiceBrowserDelegate` | — |
-| **Protocols** | 1 open | `NSPredicateValidating` |
+| **Protocols** | ALL STRUCK: `NSPredicateValidating` | — |
 | **Reference / Classes** | 3 STRUCK: `NSKeyValueSharedObservers`, `NSKeyValueSharedObserversSnapshot`, `NSSimpleCString` | — |
 <!-- END GENERATED (families) -->
 
@@ -15733,6 +15733,45 @@ validation walk, which the user recorded as OPEN with its reason: Apple's own de
 not citable from this tree, and shipping doors that nothing calls would be the stubs refusal in protocol form. So
 the porting thread's work list is now empty of everything except that one decision and whatever new Apple
 documentation surfaces.
+
+## §62.109 — THE LEDGER CLOSES: THE LAST OPEN ROW IS DECLINED, WITH ITS REASON ON THE RECORD (2026-09-28)
+
+**THE DECISION AND WHY IT IS THE RIGHT SHAPE.** `NSPredicateValidating` — the ledger's one remaining open name —
+is **struck by the user's decision** (2026-09-28), and the reason lives in `tools/foundation-sweep.py`'s
+`DECLINED_SYMBOLS` list **beside the name**, which is where a future session will meet it: Apple introduced the
+protocol in **iOS/macOS 26.4**, days before the decision, and it is a whole visitor protocol whose four doors
+(`visitPredicate:error:`, `visitExpression:error:`, `visitKeyPathExpression:error:`,
+`visitComparisonPredicateOperatorType:error:`) exist to decide "which predicates and expressions are considered
+safe for evaluation" as a predicate tree is walked. **Two measured facts decide it**: the four selectors are
+citable only from **SDK-GENERATED BINDING METADATA** (.NET and Rust `icrate`) — code, not the documentation
+§11.3.1 admits as a secondary spec — and **the door that STARTS the walk is not published anywhere this tree
+can reach**, so implementing it would mean inventing the entry point; a protocol declared with four doors nothing
+calls is the stubs refusal in protocol form. The row is NAMED rather than silently dropped, so the decision
+reopens the moment a citable declaration exists.
+
+**THE LEDGER NOW HOLDS NO OPEN NAME**: **0 open**, class **221**, func **167**, case **1224**, enum **151**, var **703**, macro **121**, typealias **71**, protocol **39** — every one of them 0 open — with **515 struck**
+by a recorded ground. **WHAT THAT DOES AND DOES NOT SAY**, because the difference is §11.2's whole point: it says
+every name this ledger holds is either implemented or struck by a ground written down beside it. It does NOT say
+Foundation is complete: the ledger's own header records the dimensions it deliberately does not hold (Apple's
+method and property pages — §11.2 source 1's business — and the Swift-only remainder), and the plan carries
+BUILD work no ledger row can represent.
+
+**AND THE BUILD LIST'S FIRST ITEM IS PAID.** The plan's §12.6 named two dependencies "still owed as things to
+BUILD rather than things to PORT": **the markdown importer and the run-loop observers**. The markdown importer is
+built — §62.107, and §62.108 was blocked on precisely it — so **the run-loop observers are the one residual on
+that list**, and they are named here so that the ledger's emptiness is not read as the plan's.
+
+**THE FIVE STANDING POLICY FINDINGS ARE PRE-EXISTING AND DELIBERATE.** `--refresh` also reports five rows our
+headers declare while the ledger strikes them (`struck: declined`: four `NSMetadataQuery` gathering notifications
+and `NSClassDescriptionNeededForClassNotification`). They are the tool's reminder list, their reason is a ledger
+row's own `declined` ground, and the declarations stay because porting source compiles against them — recorded so
+that the next reader of a green `--check` knows what the other five lines mean.
+
+**VERIFICATION.** This unit changes NO library code, so its gate is the sweep's own: `--refresh` (which exits 1
+to say "the plan's family table is stale against the ledger", exactly what the next command fixes) →
+`--families --write` (rewrote the family table and the ledger) → `--check` **consistent** → `--unimplemented`
+**0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
+(probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 

@@ -389,6 +389,19 @@ DECLINED_SYMBOLS = frozenset((
     # THE GC-ERA OPTIONS of the declined `NSGarbageCollector`: they exist only to configure a collector, so
     # they go with it.
     "NSCollectorDisabledOption", "NSScannedOption",
+    # `NSPredicateValidating` (USER DECISION, 2026-09-28), which is the last name this ledger had open and is
+    # declined on a MEASURED ground rather than a convenient one. Apple introduced it in iOS/macOS 26.4 --
+    # days before this decision -- and it is a whole visitor protocol: four doors
+    # (`visitPredicate:error:`, `visitExpression:error:`, `visitKeyPathExpression:error:`,
+    # `visitComparisonPredicateOperatorType:error:`) whose documented purpose is to decide "which predicates
+    # and expressions are considered safe for evaluation" as a predicate tree is walked. TWO FACTS DECIDE IT:
+    # the four selectors are citable only from SDK-GENERATED BINDING METADATA (.NET and Rust icrate), which is
+    # code rather than the documentation this project admits as a secondary spec (§11.3.1), and the door that
+    # STARTS the walk is not a name Apple has published anywhere this tree can reach -- so implementing it
+    # would mean inventing the entry point, and a protocol declared with four doors that nothing calls is the
+    # stubs refusal in protocol form. The row is struck and NAMED rather than silently dropped: what a future
+    # session needs is written here, so the decision can be revisited the moment a citable declaration exists.
+    "NSPredicateValidating",
 ))
 
 

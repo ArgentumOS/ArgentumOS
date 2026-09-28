@@ -22,7 +22,7 @@
 # and its members keep their ObjC names; this file's first version excluded them
 # on the path marker, which hid real ObjC constants from the ledger.
 #
-# why the struck rows are struck: 32-bit-only 20, declined 359, frame-walk-unsupported 1, needs-corefoundation 2, os-version-constant 110, swift-only 22
+# why the struck rows are struck: 32-bit-only 20, declined 360, frame-walk-unsupported 1, needs-corefoundation 2, os-version-constant 110, swift-only 22
 #
 # AND 326 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): to support porting older Mac applications, all items removed for being
@@ -35,7 +35,7 @@
 #
 # counts by kind:
 #   class      shipped  221   open    0   struck   52
-#   protocol   shipped   39   open    1   struck    5
+#   protocol   shipped   39   open    0   struck    6
 #   macro      shipped  121   open    0   struck  132
 #   enum       shipped  151   open    0   struck    9
 #   case       shipped 1224   open    0   struck   78
@@ -2242,7 +2242,7 @@ protocol	struck	NSNetServiceBrowserDelegate		Networking / Service Discovery	decl
 protocol	struck	NSNetServiceDelegate		Networking / Local Network Services	declined	objc
 protocol	shipped	NSObject		Low-Level Utilities / Object Basics	-	objc
 protocol	shipped	NSPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
-protocol	open	NSPredicateValidating		Protocols	-	objc
+protocol	struck	NSPredicateValidating		Protocols	declined	objc
 protocol	shipped	NSProgressReporting		App Support / Progress	-	objc
 protocol	shipped	NSSecureCoding		Files and Data Persistence / Adopting Codability	-	objc
 protocol	shipped	NSSpellServerDelegate		Fundamentals / Spelling and Grammar	-	objc
