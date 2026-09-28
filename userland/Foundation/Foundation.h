@@ -217,6 +217,7 @@
 #import <Foundation/NSURLRequest.h>
 #import <Foundation/NSURLResponse.h>
 #import <Foundation/NSURLConnection.h>
+#import <Foundation/NSURLDownload.h>
 #import <Foundation/NSURLHandle.h>
 #import <Foundation/NSCachedURLResponse.h>
 #import <Foundation/NSURLCache.h>

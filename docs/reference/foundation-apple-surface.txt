@@ -34,8 +34,8 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  212   open   13   struck   48
-#   protocol   shipped   34   open    6   struck    5
+#   class      shipped  213   open   12   struck   48
+#   protocol   shipped   35   open    5   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  147   open    4   struck    9
 #   case       shipped 1180   open   47   struck   75
@@ -1547,7 +1547,7 @@ class	shipped	NSURLComponents		Fundamentals / URLs	-	objc
 class	shipped	NSURLConnection		Networking / Legacy / URL Connection	deprecated	objc
 class	shipped	NSURLCredential		Networking / Authentication and credentials	-	objc
 class	shipped	NSURLCredentialStorage		Networking / Authentication and credentials	-	objc
-class	open	NSURLDownload		Networking / Legacy / URL Download	deprecated	objc
+class	shipped	NSURLDownload		Networking / Legacy / URL Download	deprecated	objc
 class	shipped	NSURLHandle		Networking / Legacy / URL Handle	deprecated	objc
 class	shipped	NSURLProtectionSpace		Networking / Authentication and credentials	-	objc
 class	shipped	NSURLProtocol		Networking / Essentials / Creating a session / Supporting custom protocols	-	objc
@@ -2251,7 +2251,7 @@ protocol	shipped	NSURLAuthenticationChallengeSender		Networking / Legacy / URL A
 protocol	shipped	NSURLConnectionDataDelegate		Networking / Legacy / URL Connection	deprecated	objc
 protocol	shipped	NSURLConnectionDelegate		Networking / Legacy / URL Connection	deprecated	objc
 protocol	shipped	NSURLConnectionDownloadDelegate		Networking / Legacy / URL Connection	deprecated	objc
-protocol	open	NSURLDownloadDelegate		Networking / Legacy / URL Download	deprecated	objc
+protocol	shipped	NSURLDownloadDelegate		Networking / Legacy / URL Download	deprecated	objc
 protocol	shipped	NSURLHandleClient		Networking / Legacy / URL Handle	deprecated	objc
 protocol	shipped	NSURLProtocolClient		Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes	-	objc
 protocol	shipped	NSURLSessionDataDelegate		Networking / Essentials / Adding data tasks to a session	-	objc

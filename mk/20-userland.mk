@@ -1289,6 +1289,20 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_urlconnection.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlconnection"
+	# foundation_urldownload: §62.82's acceptance - the LEGACY download OBJECT (NSURLDownload + its
+	# delegate protocol), the last rows of `Networking / Legacy / URL Download`. ONE unit, and it links
+	# libcurl because it performs REAL downloads - through file://, so nothing has to be started first
+	# beyond the transport REGISTRATION this library requires (the registry ships empty; the probe
+	# registers FNCURLURLProtocol itself, which is the rule every sibling probe that exchanges follows).
+	# The three destination arrangements are each exercised: set before the bytes, answered by the
+	# delegate inside the decision door, and answered by nobody (the stated temporary-directory
+	# fallback, reported through the created-destination door).
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_urldownload.m -o .build/probe-foundation_urldownload.o
+	$(MUSL64_OBJC) .build/probe-foundation_urldownload.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urldownload"
 	# foundation_downloadresume: §62.31's acceptance - RESUME end to end, WITH A REAL SERVER. The probe is
 	# the server: it sends half a body and then STALLS mid-transfer (which is what makes the cancel
 	# deterministic), resumes from the data its own cancel produced, and asserts the resumed request carries

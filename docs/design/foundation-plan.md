@@ -3555,7 +3555,7 @@ vanishing.
 | **Networking / Cache behavior** | all classes shipped | — |
 | **Networking / Cookies** | all classes shipped | — |
 | **Networking / Essentials** | all classes shipped | — |
-| **Networking / Legacy** | 2 open | `NSURLDownload`, `NSURLDownloadDelegate` |
+| **Networking / Legacy** | all classes shipped | — |
 | **Networking / Local Network Services** | ALL STRUCK: `NSNetService`, `NSNetServiceDelegate` | — |
 | **Networking / Requests and responses** | all classes shipped | — |
 | **Networking / Service Discovery** | ALL STRUCK: `NSNetServiceBrowser`, `NSNetServiceBrowserDelegate` | — |
@@ -14429,6 +14429,77 @@ regenerated and landed separately (`37fc0e41` — the sweep writes that table in
 `NSURLDownload` + its delegate, `NSSpellServer` + its delegate) and the deprecated pair
 (`NSArchiver`/`NSUnarchiver` + `NXReadNSObjectFromCoder`) — plus the two dependencies owed as things to BUILD: the
 markdown importer and the run-loop observers.
+
+## §62.82 — THE LEGACY DOWNLOAD OBJECT: A FAMILY CLOSED, AND AN ERROR OF MINE I HAD RECORDED AS THE SUBSTRATE'S (2026-09-26)
+
+**TWO ROWS: `NSURLDownload` AND `NSURLDownloadDelegate`** — the last rows of `Networking / Legacy / URL Download`, so
+that family closes. `class shipped` went **212 → 213** and `class open` **13 → 12**.
+
+**THE ENGINE IS THE SESSION'S, AND THE DOOR IS THE ONE §62.76 PROVED.** This class owns an `NSURLSession` and drives
+`-[NSURLSession downloadTaskWithRequest:completionHandler:]`, whose block hands over the file the body landed in, and
+it turns that single ending into the legacy protocol's sequence: BEGIN, the destination decision, the destination
+created, FINISH or FAILURE. **THE DELEGATE-BASED FORM WAS MEASURED AND IS NOT DRIVEN**: with the session's own
+delegate handed `-[NSURLSession downloadTaskWithRequest:]`, thirty seconds passed with no progress, no finish and no
+failure, so this class does not build on it and the header says which form it uses.
+
+**THE UNIT WAS ATTEMPTED ONCE BEFORE AND REVERTED, AND WHAT BLOCKED IT WAS NOT THE SUBSTRATE — IT WAS MY OWN PROBE.**
+The earlier record said a session-driven `file:` download fails `NSURLErrorUnsupportedURL (-1002)` while the same
+fixture URL worked through `NSURLConnection`, and went looking for protocol wiring. The answer was already written in
+the tree: `NSURLConnection.h` states that `NSURLProtocol`'s registry **SHIPS EMPTY** ("a FRESH PROCESS answers NO even
+for `http` until a transport is registered"), and `foundation_urlconnection.m:540-545` says in as many words that every
+probe which performs a real exchange calls `[NSURLProtocol registerClass:[FNCURLURLProtocol class]]` FIRST — and
+`FNCURLURLProtocol` claims `file`, `http` AND `https`. **`-1002` was the empty registry's answer to a probe that never
+registered anything.** The lesson is wider than this unit: **before blaming a subsystem for a failure, check whether the
+caller performed that subsystem's own documented setup step** — and the record of the attempt has been corrected rather
+than left as a finding, because a wrong root cause in a note is worse than no note. The measured half of that record
+stands and is kept: the delegate-based download path delivers nothing, and a probe must `usleep` in a bounded loop,
+never `-runUntilDate:` (a run loop with no sources returns at once, which would make every wait vacuous).
+
+**AND THE PROBE'S FIRST GUEST RUN FOUND A REAL DEFECT OF THIS CLASS, WHICH IS WHY ITS FALLBACK IS NOW STATED IN TWO
+SENTENCES RATHER THAN ONE.** The first fallback destination this class ever chose was **the file being downloaded**: a
+`file:` source suggests its OWN name (`fn-ud-src.txt`), the fallback is `<temp>/<suggested name>`, and the move onto it
+failed with `NSPOSIXErrorDomain Code=17 "File exists"` — failing a download that had nothing wrong with it. The fallback
+is OUR choice, so it is ours to make room for: it now picks a free sibling (`name-1.txt`, `name-2.txt`) instead of
+replacing a file that is already there. **The delegate's own answer keeps Apple's semantics untouched** — there,
+`-allowOverwrite:` is the caller's decision and is honoured exactly as given. This is the second time a probe has
+changed a design of mine rather than confirming it (§62.81's nil arm was the first), which is what a probe is for.
+
+**THREE DESTINATION ARRANGEMENTS ARE EACH EXERCISED, BECAUSE THEY ARE THREE DIFFERENT PIECES OF THE CLASS:** a
+destination set BEFORE the bytes arrive wins outright; a delegate that answers inside
+`-download:decideDestinationWithSuggestedFilename:` by calling `-setDestination:allowOverwrite:` is honoured (Apple's
+ASYNCHRONOUS door, expressible because `-setDestination:` moves what is already there); and a delegate that answers
+NOTHING falls into the stated fallback above, reported through `-download:didCreateDestination:` so a caller still
+learns where the bytes are.
+
+**THE DOORS THE ENGINE DOES NOT DRIVE ARE NAMED RATHER THAN LEFT TO BE DISCOVERED**: the four authentication doors,
+`-download:didReceiveResponse:` (the session's download protocol has no response door),
+`-download:shouldDecodeSourceDataOfMIMEType:` (nothing here decodes),
+`-download:willSendRequest:redirectResponse:`, and the two the completion-handler door cannot feed —
+`-download:didReceiveDataOfLength:` and `-download:willResumeWithResponse:fromByte:` — because that door reports one
+ending and no per-chunk progress. The protocol declares them because Apple declares them; a delegate that implements
+one is compiled and never called, and the header says so rather than leaving a reader to find out. **RESUME IS
+BYTE-LEVEL ONLY**: `+canResumeDownloadDecodedWithEncodingMIMEType:` answers NO, `-cancel` asks the task for resume data
+and `-resumeData` answers it, and `-initWithResumeData:delegate:path:` consumes it.
+
+**ONE PRECONDITION CAME FROM THE REST OF THE LIBRARY** — the transport registration above, now said where it is met —
+**and one gap was found by the compiler rather than by reading:** `<Foundation/Foundation.h>` had no
+`NSURLDownload.h`, so the probe's first compile failed with `no type or protocol named 'NSURLDownloadDelegate'`. A
+class is not shipped until the umbrella names it; the import sits with the rest of the legacy loading family, directly
+after `NSURLConnection.h`.
+
+**VERIFIED.** Guest (this unit's one gate): `make testimg` then `make test TESTS='foundation_urldownload'` →
+**`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**, the probe's own tally **`ok=7 fail=0`** — and the first run of that
+same case FAILED one check (`ok=6 fail=1`) on the fallback defect above, which is how it was found. The probe also
+compiles under the tier's own toolchain (`tools/musl-clang-objc64.sh` with
+`-Werror=nullable-to-nonnull-conversion`) with zero warnings. `foundation-sweep --refresh` + `--families --write` +
+`--check`: **consistent**, two rows flipped. `foundation-gate`: **OK** (207 of 211 public headers open a nullability
+region, 4 exempt by name); `--unimplemented`: **0 NEW**.
+
+**WHERE THE THREAD STANDS: 12 open classes** — `Reference / Classes` at three (one of which is the `NSSimpleCString`
+scope question §62.81 stated), the singletons (`NSUbiquitousKeyValueStore`, `NSBundleResourceRequest`, `NSSpellServer`
++ its delegate) and the deprecated pair (`NSArchiver`/`NSUnarchiver` + `NXReadNSObjectFromCoder`) — plus the two
+dependencies owed as things to BUILD: the markdown importer and the run-loop observers.
+
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
