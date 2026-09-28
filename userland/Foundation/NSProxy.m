@@ -14,6 +14,11 @@
 #import <objc/runtime.h>
 #include <objc/objc-arc.h>	/* objc_retain/objc_release/objc_autorelease */
 
+/* THE THREE PERFORMERS' ONE IMPLEMENTATION: a file-static function rather than a method, because the argument
+ * vector is a multi-level pointer and the nullability region has nothing sensible to say about one ("nullable
+ * cannot be applied to multi-level pointer"). */
+static id fn_perform_selector(id proxy, SEL aSelector, id *arguments, NSUInteger count);
+
 @implementation NSProxy
 
 /* A ROOT CLASS ALLOCATES ITSELF: there is no superclass to ask, which is the whole reason this is
@@ -120,11 +125,80 @@
 }
 
 
+/* THE FIVE NSObject PROTOCOL DOORS THIS PROXY WAS MISSING, IN THE STYLE THE CLASS ALREADY SET: -class,
+ * -superclass, -respondsToSelector: and -conformsToProtocol: above all answer from the DYNAMIC class
+ * (object_getClass(self)), so the two "is it one of these" questions read the same place - a proxy here is not
+ * "the object it stands for" but the object it IS, and the runtime is what knows. The three performers go through
+ * -methodSignatureForSelector: and -forwardInvocation:, which is the flow Apple documents and the one a concrete
+ * subclass fills in; the default raises, exactly as it does below, rather than inventing an answer. */
+- (BOOL)isKindOfClass:(Class)aClass
+{
+	Class walking = object_getClass(self);
+
+	while (walking != Nil) {
+		if (walking == aClass) {
+			return YES;
+		}
+		walking = class_getSuperclass(walking);
+	}
+	return NO;
+}
+
+- (BOOL)isMemberOfClass:(Class)aClass
+{
+	return object_getClass(self) == aClass;
+}
+
+- (id)performSelector:(SEL)aSelector
+{
+	return fn_perform_selector(self, aSelector, NULL, 0);
+}
+
+- (id)performSelector:(SEL)aSelector withObject:(id)object
+{
+	id arguments[1];
+
+	arguments[0] = object;
+	return fn_perform_selector(self, aSelector, arguments, 1);
+}
+
+- (id)performSelector:(SEL)aSelector withObject:(id)object1 withObject:(id)object2
+{
+	id arguments[2];
+
+	arguments[0] = object1;
+	arguments[1] = object2;
+	return fn_perform_selector(self, aSelector, arguments, 2);
+}
+
 /*
  * THE DEFAULT IS TO RAISE, in both directions, and that is Apple's contract rather than a shortcut:
  * a proxy that has not been told what it stands for cannot invent a method signature, and answering
  * nil or a fabricated one would turn a programming error into a wrong result.
  */
+/* ONE ARITHMETIC FOR THE THREE PERFORMERS (the arguments start at index 2, past target and selector), and the
+ * result is read ONLY when the selector returns an object: -performSelector: is documented for object-returning
+ * selectors, and reading a pointer out of a scalar return would be the kind of wrong answer worth refusing. */
+static id fn_perform_selector(id proxy, SEL aSelector, id *arguments, NSUInteger count)
+{
+	NSMethodSignature *signature = [proxy methodSignatureForSelector:aSelector];
+	NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+	const char *returnType = [signature methodReturnType];
+	id result = nil;
+	NSUInteger i;
+
+	[invocation setTarget:proxy];
+	[invocation setSelector:aSelector];
+	for (i = 0; i < count; i++) {
+		[invocation setArgument:&arguments[i] atIndex:(NSInteger)(i + 2)];
+	}
+	[invocation invoke];
+	if (returnType != NULL && returnType[0] == '@') {
+		[invocation getReturnValue:&result];
+	}
+	return result;
+}
+
 - (void)forwardInvocation:(NSInvocation *)invocation
 {
 	[NSException raise:NSInvalidArgumentException
