@@ -24,7 +24,7 @@ PROBE = "/System/Shared/tests/foundation_enumerate_substrings"
 CHECKS = (
     "lines-come-back-whole-and-in-order",
     "words-and-composed-characters-come-from-the-same-breaker",
-    "a-line-is-enclosed-by-its-paragraph-and-a-paragraph-by-itself",
+    "a-line-is-enclosed-by-its-paragraph-and-a-blank-line-by-itself",
     "paragraphs-are-runs-of-lines",
     "stop-ends-the-walk-early",
     "reverse-is-the-same-units-in-the-other-order",

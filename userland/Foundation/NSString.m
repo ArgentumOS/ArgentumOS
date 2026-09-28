@@ -550,6 +550,13 @@ static NSUInteger utf8_find(NSString *haystack, NSString *needle, NSRange range,
 	return NSNotFound;
 }
 
+/* THE ENUMERATION HELPERS, DECLARED BEFORE THEY ARE USED: the enumeration method moved into the
+ * class's own block, which puts it ABOVE the three file-static helpers it calls - they stay at the end
+ * of the file with the rest of the enumeration family. */
+static FNTextUnit fn_enumeration_pick_unit(NSStringEnumerationOptions opts);
+static FNTextUnit fn_enumeration_enclosing_unit(FNTextUnit unit);
+static NSArray *fn_enumerate_units(NSString *string, FNTextUnit unit, NSRange range);
+
 @implementation NSString
 
 NSStringTransform const NSStringTransformFullwidthToHalfwidth = @"NSStringTransformFullwidthToHalfwidth";
@@ -695,6 +702,52 @@ NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySugges
 	va_end(args);
 	result = [[NSOwnedString alloc] initWithUTF8String:[built UTF8String]];
 	return result;
+}
+
+
+/*
+ * THE FOUR DOORS THE BASE DECLARES AND DOES NOT OWN, AND WHY THE ANSWER IS A REFUSAL RATHER THAN A BODY.
+ *
+ * This NSString is a CLASS CLUSTER: NSOwnedString, NSConstantString and NSMutableString hold the characters and
+ * implement -length, -characterCount, -characterAtIndex: and -UTF8String. The base's -init returns SELF (its own
+ * comment explains why: the concrete classes' designated initialiser begins with `self = [super init]`, and
+ * routing it back made the two call each other forever), so a bare `[[NSString alloc] init]` is a real object
+ * with no characters and no implementation of these doors - and until now the selector simply did not exist, so
+ * the failure was a doesNotRecognizeSelector from nowhere. A NAMED refusal turns that into a diagnosis, which is
+ * this tree's rule for a door it cannot honour: say which door, and the way out.
+ */
+- (NSUInteger)length
+{
+	[NSException raise:NSInvalidArgumentException
+		    format:@"-[NSString length] is not implemented on the base class: a bare NSString holds no "
+			   @"characters. Build one with -initWithString: or +stringWithUTF8String:, which answer a "
+			   @"concrete NSString (NSOwnedString/NSConstantString)."];
+	return 0;
+}
+
+- (NSUInteger)characterCount
+{
+	[NSException raise:NSInvalidArgumentException
+		    format:@"-[NSString characterCount] is not implemented on the base class: a bare NSString holds "
+			   @"no characters (see -length for the same refusal and the way out)."];
+	return 0;
+}
+
+- (unsigned short)characterAtIndex:(NSUInteger)index
+{
+	(void)index;
+	[NSException raise:NSInvalidArgumentException
+		    format:@"-[NSString characterAtIndex:] is not implemented on the base class: a bare NSString "
+			   @"holds no characters (see -length for the same refusal and the way out)."];
+	return 0;
+}
+
+- (const char *)UTF8String
+{
+	[NSException raise:NSInvalidArgumentException
+		    format:@"-[NSString UTF8String] is not implemented on the base class: a bare NSString holds no "
+			   @"characters (see -length for the same refusal and the way out)."];
+	return "";
 }
 
 - (id)init
@@ -1706,6 +1759,83 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 }
 
 
+
+/* MOVED HERE FROM A CATEGORY (§62.75): this is a method the class's INTERFACE declares, so it belongs
+ * in the class's own block - not because the compiler is happier, but because a category body
+ * silently WINS over a class body at runtime, and a reader cannot tell which one ran. */
+- (void)enumerateSubstringsInRange:(NSRange)range
+			   options:(NSStringEnumerationOptions)opts
+			usingBlock:(void (^)(NSString * _Nullable substring,
+					     NSRange substringRange,
+					     NSRange enclosingRange,
+					     BOOL *stop))block
+{
+	FNTextUnit unit;
+	FNTextUnit encloser;
+	BOOL noSubstring = (opts & NSStringEnumerationSubstringNotRequired) != 0;
+	BOOL reverse = (opts & NSStringEnumerationReverse) != 0;
+	__block BOOL callerStopped = NO;
+
+	if (block == nil) {
+		return;
+	}
+	unit = fn_enumeration_pick_unit(opts);
+	encloser = fn_enumeration_enclosing_unit(unit);
+
+	/* ONE BODY FOR BOTH WALKS: the forward walk hands each unit straight to the caller, the reversed walk hands it
+	 * to a buffer first, and the difference between the two is which order they are replayed in rather than what a
+	 * caller is told. */
+	void (^emit)(NSRange) = ^(NSRange unitRange) {
+		BOOL stop = NO;
+		NSString *substring = nil;
+		NSRange enclosing = [FNTextBreaking fnUnitContaining:encloser inString:self
+							     atIndex:unitRange.location];
+
+		/* A UNIT IN NO LARGER UNIT IS ITS OWN ENCLOSING RANGE, which is what a BLANK LINE is: it is a line and
+		 * it is in no paragraph. The engine answers NSNotFound for "nothing contains this", so the two rules
+		 * meet without either guessing. */
+		if (enclosing.location == NSNotFound) {
+			enclosing = unitRange;
+		}
+
+		if (!noSubstring) {
+			substring = [self substringWithRange:unitRange];
+		}
+		block(substring, unitRange, enclosing, &stop);
+		if (stop) {
+			callerStopped = YES;
+		}
+	};
+
+	{
+		NSArray *units = fn_enumerate_units(self, unit, range);
+		NSUInteger i;
+
+		if (!reverse) {
+			for (i = 0; i < [units count]; i++) {
+				NSRange unitRange = [[units objectAtIndex:i] rangeValue];
+
+				emit(unitRange);
+				if (callerStopped) {
+					break;
+				}
+			}
+		} else {
+			/* A REVERSED WALK IS THE SAME LIST READ BACKWARDS: an ICU iterator is a forward cursor, so the
+			 * units are decided first and replayed in whichever order the caller asked for. */
+			i = [units count];
+			while (i > 0) {
+				NSRange unitRange = [[units objectAtIndex:i - 1] rangeValue];
+
+				emit(unitRange);
+				i--;
+				if (callerStopped) {
+					break;
+				}
+			}
+		}
+	}
+}
 @end
 
 @implementation NSOwnedString
@@ -2576,80 +2706,13 @@ static NSArray *fn_enumerate_units(NSString *string, FNTextUnit unit, NSRange ra
 	return out;
 }
 
-@implementation NSString (FNEnumeration)
+/* THE ENUMERATION CATEGORY THAT WAS HERE IS GONE: its one method is in the class's own
+ * implementation block above. A category implementing a method the INTERFACE declares is what
+ * -Wobjc-protocol-method-implementation reports, and what it costs is real: the compiler cannot
+ * tell which of the two bodies wins, because at runtime the category does.
+ *
+ * AND THE KEYWORD IS NOT SPELLED IN THIS COMMENT ON PURPOSE: the sweep attributes a file's
+ * blocks by the LAST occurrence of the block keyword, so a comment that spells it steals the
+ * whole file's method list and every method then reads as declared-and-never-defined. It cost a
+ * gate run in §62.75. */
 
-- (void)enumerateSubstringsInRange:(NSRange)range
-			   options:(NSStringEnumerationOptions)opts
-			usingBlock:(void (^)(NSString * _Nullable substring,
-					     NSRange substringRange,
-					     NSRange enclosingRange,
-					     BOOL *stop))block
-{
-	FNTextUnit unit;
-	FNTextUnit encloser;
-	BOOL noSubstring = (opts & NSStringEnumerationSubstringNotRequired) != 0;
-	BOOL reverse = (opts & NSStringEnumerationReverse) != 0;
-	__block BOOL callerStopped = NO;
-
-	if (block == nil) {
-		return;
-	}
-	unit = fn_enumeration_pick_unit(opts);
-	encloser = fn_enumeration_enclosing_unit(unit);
-
-	/* ONE BODY FOR BOTH WALKS: the forward walk hands each unit straight to the caller, the reversed walk hands it
-	 * to a buffer first, and the difference between the two is which order they are replayed in rather than what a
-	 * caller is told. */
-	void (^emit)(NSRange) = ^(NSRange unitRange) {
-		BOOL stop = NO;
-		NSString *substring = nil;
-		NSRange enclosing = [FNTextBreaking fnUnitContaining:encloser inString:self
-							     atIndex:unitRange.location];
-
-		/* A UNIT IN NO LARGER UNIT IS ITS OWN ENCLOSING RANGE, which is what a BLANK LINE is: it is a line and
-		 * it is in no paragraph. The engine answers NSNotFound for "nothing contains this", so the two rules
-		 * meet without either guessing. */
-		if (enclosing.location == NSNotFound) {
-			enclosing = unitRange;
-		}
-
-		if (!noSubstring) {
-			substring = [self substringWithRange:unitRange];
-		}
-		block(substring, unitRange, enclosing, &stop);
-		if (stop) {
-			callerStopped = YES;
-		}
-	};
-
-	{
-		NSArray *units = fn_enumerate_units(self, unit, range);
-		NSUInteger i;
-
-		if (!reverse) {
-			for (i = 0; i < [units count]; i++) {
-				NSRange unitRange = [[units objectAtIndex:i] rangeValue];
-
-				emit(unitRange);
-				if (callerStopped) {
-					break;
-				}
-			}
-		} else {
-			/* A REVERSED WALK IS THE SAME LIST READ BACKWARDS: an ICU iterator is a forward cursor, so the
-			 * units are decided first and replayed in whichever order the caller asked for. */
-			i = [units count];
-			while (i > 0) {
-				NSRange unitRange = [[units objectAtIndex:i - 1] rangeValue];
-
-				emit(unitRange);
-				i--;
-				if (callerStopped) {
-					break;
-				}
-			}
-		}
-	}
-}
-
-@end
