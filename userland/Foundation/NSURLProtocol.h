@@ -35,6 +35,13 @@
  * what Apple does, and only a subclass may be registered — `+registerClass:` answers NO for the base
  * itself, which is what makes a registry of override points meaningful.
  *
+ * IT IS ALSO NOT EMPTY WHEN A CALLER ARRIVES (§62.83): this library registers its own transport
+ * (FNCURLURLProtocol - `file`, `http`, `https`) at load, as Apple's built-in protocols are always there. The
+ * registry is still the authority — a later caller outranks the load-time entry precisely because of the order
+ * above — and registering a class that is already in the registry is a successful NO-OP (YES, appended once),
+ * so a caller repeating the library's registration neither grows the table nor makes `-unregisterClass:` a
+ * partial operation.
+ *
  * THE AUTHENTICATION DOOR IS DECLARED HERE, AND UNTIL §50.3 IT WAS DECLARED NOWHERE. The bridge has been
  * messaging -URLProtocol:didReceiveAuthenticationChallenge:completionHandler: since slice 4, and the
  * selector existed in no header at all: `_client` is typed `id <NSURLProtocolClient>` and Objective-C

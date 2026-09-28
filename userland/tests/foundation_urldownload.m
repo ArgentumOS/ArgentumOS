@@ -5,12 +5,11 @@
 /*
  * foundation_urldownload.m — THE PROBE FOR NSURLDownload (§62.82).
  *
- * IT REGISTERS A TRANSPORT FIRST, AND THAT IS THE LIBRARY'S RULE RATHER THAN THIS PROBE'S HABIT: NSURLProtocol
- * ships an EMPTY registry (NSURLConnection.h states the deviation), so nothing - not even a `file:` URL - is
- * served until a class that claims the scheme is registered. FNCURLURLProtocol claims `file`, `http` and
- * `https`. A probe that skipped this line would watch a download fail with NSURLErrorUnsupportedURL and could
- * easily blame the download rather than its own missing call - which is exactly what happened to the first
- * attempt at this unit.
+ * IT REGISTERS NOTHING, AND THAT IS NOW A FACT WORTH ASSERTING RATHER THAN AN OMISSION: the library registers its
+ * own transport at load (§62.83), so EVERY TRANSFER BELOW RUNS ONLY IF THAT REGISTRATION HAPPENED - this probe
+ * never calls `+registerClass:`, and a `file:` URL with no transport would fail with NSURLErrorUnsupportedURL.
+ * The unit's first attempt did the opposite: it forgot the registration, read the registry's -1002 as a verdict
+ * about the URL, and was reverted over its own missing call.
  *
  * THE THREE DESTINATION ARRANGEMENTS ARE EACH EXERCISED, because they are three different pieces of this class:
  * a destination set before the bytes arrive, a delegate that answers inside the decision door (Apple's
@@ -23,7 +22,6 @@
  */
 
 #import <Foundation/Foundation.h>
-#import <Foundation/FNCURLURLProtocol.h>
 #import <objc/runtime.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -152,8 +150,8 @@ int main(void)
 {
 	setvbuf(stdout, NULL, _IONBF, 0);
 
-	/* REGISTER THE TRANSPORT FIRST (this library's rule - see the file's note). */
-	[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+	/* NO REGISTRATION HERE, ON PURPOSE - the library registered the transport at load (§62.83), so the transfers
+	 * below are the gate for that self-registration. See the file's note. */
 
 	/* --- 1. THE CLASS AND ITS PROTOCOL ------------------------------------------------------------ */
 	{

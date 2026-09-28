@@ -1291,9 +1291,8 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlconnection"
 	# foundation_urldownload: §62.82's acceptance - the LEGACY download OBJECT (NSURLDownload + its
 	# delegate protocol), the last rows of `Networking / Legacy / URL Download`. ONE unit, and it links
-	# libcurl because it performs REAL downloads - through file://, so nothing has to be started first
-	# beyond the transport REGISTRATION this library requires (the registry ships empty; the probe
-	# registers FNCURLURLProtocol itself, which is the rule every sibling probe that exchanges follows).
+	# libcurl because it performs REAL downloads - through file://. The probe registers NOTHING: since §62.83
+	# the LIBRARY registers its own transport at load, so these transfers are also that registration's gate.
 	# The three destination arrangements are each exercised: set before the bytes, answered by the
 	# delegate inside the decision door, and answered by nobody (the stated temporary-directory
 	# fallback, reported through the created-destination door).

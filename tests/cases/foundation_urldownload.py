@@ -9,14 +9,12 @@ drives an NSURLSessionDownloadTask through the session's completion-handler door
 round-trips a real body) and translates that one ending into the legacy protocol's sequence.
 
 The probe is `/System/Shared/tests/foundation_urldownload`, ONE unit, importing only
-`<Foundation/Foundation.h>` plus `<Foundation/FNCURLURLProtocol.h>` — the transport it must register.
+`<Foundation/Foundation.h>`.
 
-THE REGISTRATION IS THE LIBRARY'S OWN PRECONDITION, NOT THE PROBE'S FURNITURE: NSURLProtocol ships an
-EMPTY registry here (NSURLConnection.h records the deviation), so a download started without a transport
-fails with NSURLErrorUnsupportedURL before the class is reached. FNCURLURLProtocol claims `file`, `http`
-and `https`, and the transfers below are `file:` URLs, so they are real transfers with nothing to start
-first. The first attempt at this unit omitted that call and read the registry's answer as a substrate
-gap; the probe now records the rule where it is met.
+IT REGISTERS NOTHING, AND THAT IS THE POINT: the library registers its own transport (FNCURLURLProtocol — `file`,
+`http`, `https`) AT LOAD (§62.83), so the `file:` transfers below are real transfers that RUN ONLY IF that
+registration happened — this probe never calls `+registerClass:`. Its first attempt did the opposite, read the
+resulting NSURLErrorUnsupportedURL as a verdict about the URL, and was reverted over its own missing call.
 
   * `class-and-protocol-declared`   — the class exists, derives from NSObject, and the delegate protocol is
                                        declared;

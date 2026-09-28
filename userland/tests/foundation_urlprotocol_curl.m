@@ -206,12 +206,14 @@ int main(void)
 
 		/* AND IT IS A PROTOCOL THE REGISTRY CAN HOLD, which is what makes it a plug-in rather than a
 		 * class that happens to look like one. */
-		check("bridge-registers-as-a-protocol",
-		      [NSURLProtocol registerClass:[FNCURLURLProtocol class]] == YES &&
+		/* THE LIBRARY REGISTERED IT AT LOAD (§62.83), AND THIS PROBE REGISTERS NOTHING - which is what makes the
+		 * assertion a fact about the SHIPPED library rather than about this file. It must also NOT unregister:
+		 * the transfer further down needs the transport, and unregistering here would take the library's own
+		 * registration away with it (the registry holds a class at most once). */
+		check("bridge-is-in-the-registry-without-anyone-registering-it",
 		      [NSURLProtocol fnProtocolClassForRequest:https] == [FNCURLURLProtocol class] &&
 		      [NSURLProtocol fnProtocolClassForRequest:ftp] == Nil,
-		      @"the bridge registers with NSURLProtocol and is found for the schemes it claims");
-		[NSURLProtocol unregisterClass:[FNCURLURLProtocol class]];
+		      @"the bridge is in NSURLProtocol's registry at load and is found for the schemes it claims");
 	}
 
 	/* --- THE HAPPY PATH, AND ITS ORDER ----------------------------------------------------------- */

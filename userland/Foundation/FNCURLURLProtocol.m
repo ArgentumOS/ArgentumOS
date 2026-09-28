@@ -924,3 +924,26 @@ retry_transfer:
 }
 
 @end
+
+/* THE TRANSPORT REGISTERS ITSELF AT LOAD (§62.83 — the user's decision, 2026-09-26), and the reason is one
+ * sentence of Apple's own model: nobody on macOS registers `file`, `http` or `https` before loading, because the
+ * built-in protocols are always there. This library's transport is not optional either — FNCURLURLProtocol.m is
+ * part of `libfoundation` by the library's own wildcard rule (`FN_FOUNDATION_SRCS`, mk/20-userland.mk) and libcurl
+ * is already its dependency — so requiring every caller to perform a setup step bought no purity and cost a
+ * genuine confusion: a forgotten call surfaces as `NSURLErrorUnsupportedURL (-1002)`, which reads like a verdict
+ * about the URL rather than about the registry. (This thread's first attempt at NSURLDownload was reverted for
+ * exactly that misreading.)
+ *
+ * THE REGISTRY IS STILL THE AUTHORITY AND THE SEAM IS UNTOUCHED: this is an ordinary `+registerClass:`, the lookup
+ * still walks the registry, and because the walk resolves MOST-RECENTLY-REGISTERED FIRST (NSURLProtocol.m) a
+ * caller's later registration deliberately outranks this one — the ordering that exists for exactly this case. A
+ * caller that wants no transport at all can still `-unregisterClass:`.
+ *
+ * A CONSTRUCTOR RATHER THAN `+load`, FOR A REASON ABOUT ORDERING: the dynamic loader runs a dependency's
+ * initialisers before its dependents', so libobjc is up before this runs — which is what makes touching a class
+ * object here safe without relying on a runtime hook this tree's runtime may not implement. */
+__attribute__((constructor))
+static void fn_curl_protocol_register_at_load(void)
+{
+	(void)[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+}

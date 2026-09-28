@@ -10,11 +10,11 @@
  * body byte for byte — and translates that one ending into the legacy protocol's promises: BEGIN, the destination
  * decision, the destination created, FINISH and FAILURE.
  *
- * ONE PRECONDITION COMES FROM THE REST OF THIS LIBRARY AND IS STATED RATHER THAN DISCOVERED: `NSURLProtocol`'s
- * registry SHIPS EMPTY (NSURLConnection.h records the deviation), so NO download can run until a caller
- * registers a transport — `[NSURLProtocol registerClass:[FNCURLURLProtocol class]]`, which serves `file`, `http`
- * and `https`. A download started without one fails with `NSURLErrorUnsupportedURL`, and that is the registry's
- * answer rather than this class's.
+ * NOTHING HAS TO BE STARTED FIRST: this library's transport (`FNCURLURLProtocol`, which serves `file`, `http` and
+ * `https`) is registered AT LOAD, so a download runs out of the box. That is worth one sentence because it used to
+ * be the opposite — the registry shipped empty and a forgotten `+registerClass:` surfaced here as
+ * `NSURLErrorUnsupportedURL`, which reads like a verdict about the URL. §62.83 changed it; a caller may still
+ * register a transport of its own, which outranks this one.
  *
  * WHERE THE DESTINATION COMES FROM IS APPLE'S ASYNCHRONOUS PROTOCOL, HONOURED RATHER THAN SIMPLIFIED:
  * `-download:decideDestinationWithSuggestedFilename:` is sent, and the delegate ANSWERS BY CALLING

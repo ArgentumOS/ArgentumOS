@@ -14432,6 +14432,11 @@ markdown importer and the run-loop observers.
 
 ## §62.82 — THE LEGACY DOWNLOAD OBJECT: A FAMILY CLOSED, AND AN ERROR OF MINE I HAD RECORDED AS THE SUBSTRATE'S (2026-09-26)
 
+> **SUPERSEDED IN PART BY §62.83 (2026-09-26, the same day).** The *empty-registry precondition* recorded below — that a
+> caller must `+registerClass:` a transport before anything can load — IS GONE: the library registers its own transport
+> at load. Everything else below stands, including the two measured facts about the loading system and the class's
+> destination fallback.
+
 **TWO ROWS: `NSURLDownload` AND `NSURLDownloadDelegate`** — the last rows of `Networking / Legacy / URL Download`, so
 that family closes. `class shipped` went **212 → 213** and `class open` **13 → 12**.
 
@@ -14499,6 +14504,72 @@ region, 4 exempt by name); `--unimplemented`: **0 NEW**.
 scope question §62.81 stated), the singletons (`NSUbiquitousKeyValueStore`, `NSBundleResourceRequest`, `NSSpellServer`
 + its delegate) and the deprecated pair (`NSArchiver`/`NSUnarchiver` + `NXReadNSObjectFromCoder`) — plus the two
 dependencies owed as things to BUILD: the markdown importer and the run-loop observers.
+
+
+## §62.83 — THE TRANSPORT REGISTERS ITSELF: AN EMPTY REGISTRY WAS A DEVIATION WITH A BILL (2026-09-26)
+
+**THE USER'S QUESTION, AND IT DECIDED THE UNIT: "since `FNCURLURLProtocol` is the only supported transport for
+file/http/https, shouldn't it be registered automatically?"** Yes — and the tree's own facts are what made yes the
+answer rather than a preference:
+
+* **Auto-registration is NOT the alternative `NSURLConnection.h` had rejected.** The alternative that note rejected was
+  *a hardcoded list of schemes in the connection class*, which is a lie about capability — it would answer YES for a
+  scheme nothing can run. Registering the actual transport keeps the registry the single source of truth, and the
+  scheme knowledge where it already lives (`FNCURLURLProtocol.canInitWithRequest:`).
+* **It costs nothing and adds no dependency.** `FN_FOUNDATION_SRCS = $(notdir $(wildcard $(FOUNDATION_SRC)/*.m))`
+  (mk/20-userland.mk:310), so `FNCURLURLProtocol.m` is ALWAYS part of `libfoundation` — `FN_FOUNDATION_CURL` exists only
+  to add its `-I$(CURL_PREFIX)/include` — and libcurl is already the library's dependency. There is no build in which
+  the transport is absent, so "the caller decides" could not buy a smaller library.
+* **The override seam survives, by design.** The walk resolves MOST-RECENTLY-REGISTERED FIRST (NSURLProtocol.m), which
+  that file says exists so "the last word belongs to the most recent caller". A load-time registration is therefore
+  beatable, and a caller that wants no transport can still `-unregisterClass:`.
+
+**AND THE DEVIATION HAD ALREADY SENT A BILL.** Apple's model is that the built-in protocols are *always there* —
+`+registerClass:` is Apple's instruction for CUSTOM protocols, not for `file`/`http`/`https`, which nobody registers on
+macOS. Requiring the step turned a forgotten call into `NSURLErrorUnsupportedURL (-1002)`, **a verdict about a URL that
+was perfectly fine** — which is exactly the misreading that cost §62.82's unit its first attempt and a revert.
+
+**WHAT CHANGED, AND THE SECOND CHANGE IT FORCED:**
+
+* `FNCURLURLProtocol.m` registers itself with a `__attribute__((constructor))` (the idiom `NSInvocation.m` already
+  uses). **A CONSTRUCTOR RATHER THAN `+load`, FOR A REASON ABOUT ORDERING THAT WAS THEN VERIFIED RATHER THAN ASSUMED:**
+  the runtime is **libobjc2 as a SEPARATE shared object** — mk/20-userland.mk stages `libobjc.so.4.6` — so the dynamic
+  loader runs its initialisers before `libfoundation`'s, which is what makes touching a class object there safe.
+* **`+registerClass:` IS NOW IDEMPOTENT FOR A CLASS ALREADY IN THE REGISTRY** (YES, appended once). This is a
+  *consequence* of the decision, not a second one: nine probes still register the transport themselves, and without
+  dedupe each would append a duplicate — growing the table once per caller, making `-unregisterClass:` a partial
+  operation, and tying ORDER to how often something was named rather than to when.
+
+**THE RIPPLE WAS HANDLED HONESTLY, AND IT WAS TWO PROBES, NOT NONE — both of which ASSERTED the old world:**
+
+* `foundation_urlprotocol.m` built its "unclaimed" request as `https://example.com/none` and asserted it reached `Nil`.
+  An https request now reaches the library's transport, so the assertion had to move to a scheme NOTHING claims
+  (`fn-nothing://host/path`) — the check is about "nothing claims this", and `https` is not that any more.
+* `foundation_urlprotocol_curl.m` registered the transport and then **unregistered** it, and the transfer further down
+  *needs* it. It now registers nothing and asserts the library's registration is there (the check is renamed
+  `bridge-is-in-the-registry-without-anyone-registering-it`, and its case file follows).
+
+**AND THE TWO PROBES WHOSE COMMENTS STATED THE RULE NOW GATE THE NEW ONE:** `foundation_urldownload.m` and
+`foundation_urlconnection.m` no longer register anything, so every real transfer they perform — and
+`can-handle-request-asks-the-registry` asking whether `http` is handled — RUNS ONLY IF THE LIBRARY'S OWN REGISTRATION
+HAPPENED. The rule moved out of a comment and into the untransferable position: if the constructor stops working, those
+probes fail.
+
+**A STATED RESIDUAL, SO THE NEXT READER IS NOT MISLED:** seven further probes (`foundation_authloop`,
+`foundation_cachehooks`, `foundation_connectionauth`, `foundation_downloadresume`, `foundation_metricsdelivery`,
+`foundation_redirect`, `foundation_urlsession_task`) still call `+registerClass:` and still speak of filling an empty
+registry in their comments. The calls are now harmless NO-OPS and those probes were left alone deliberately — this unit
+touched only what the change made FALSE — but their comments are stale and a comment sweep owes them a trim.
+
+**VERIFIED.** Host: the library builds clean (0 warnings). Guest, four cases against one built image, each
+`TESTS-OK 1/1`: `foundation_urldownload` **7/7**, `foundation_urlconnection` **30/30** (its registry question is now the
+self-registration gate), `foundation_urlprotocol` **21/21** (with `unclaimed` moved off `https`),
+`foundation_urlprotocol_curl` **6/6** (with the renamed check). All four probes compile under the tier's own toolchain
+with `-Werror=nullable-to-nonnull-conversion`, zero warnings. `foundation-gate`: **OK** (557 files, 207 of 211 headers);
+`foundation-sweep`: **consistent** (no name was added or removed by this unit — it changes when a class is consulted,
+not what exists).
+
+**WHERE THE THREAD STANDS: unchanged — 12 open classes** (this unit shipped nothing new; `§62.82`'s list stands).
 
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)

@@ -224,7 +224,11 @@ int main(void)
 	/* --- THE REGISTRY, AND THE ORDER IT CONSULTS IN --------------------------------------------- */
 	{
 		NSURLRequest *claimed = [NSURLRequest requestWithURL:fn_url(@"fn-a://host/path")];
-		NSURLRequest *unclaimed = [NSURLRequest requestWithURL:fn_url(@"https://example.com/none")];
+		/* THE UNCLAIMED REQUEST NEEDS A SCHEME NOTHING CLAIMS, AND `https` IS NOT ONE ANY MORE (§62.83): the
+		 * library registers FNCURLURLProtocol at load and it claims file/http/https, so an https request reaches
+		 * a class. This probe asserts what happens when NOTHING claims a request, which needs a scheme outside
+		 * every registered protocol. */
+		NSURLRequest *unclaimed = [NSURLRequest requestWithURL:fn_url(@"fn-nothing://host/path")];
 
 		/* THE BASE REFUSES ITSELF BY NAME: if it could be registered, a class whose every override
 		 * point is the default would shadow every real protocol behind it. And a non-subclass is not a

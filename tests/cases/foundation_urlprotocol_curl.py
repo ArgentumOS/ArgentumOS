@@ -15,7 +15,7 @@ may edit.
 
   * `bridge-claims-its-schemes`                     — file/http/https, which IS curl's scheme list here,
                                                       and NOT anything else (ftp is left unclaimed);
-  * `bridge-registers-as-a-protocol`                — the registry finds it for the schemes it claims;
+  * `bridge-is-in-the-registry-without-anyone-registering-it` — the library put it in the registry at load;
   * `bridge-fetches-a-file-url`                     — the body arrives, byte for byte;
   * `bridge-reports-response-then-data-then-finish` — THE ORDER, which is the seam's contract;
   * `bridge-reports-the-response-length`            — the response's derived length matches the file;
@@ -31,7 +31,7 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_urlprotocol_curl"
-CHECKS = ("bridge-claims-its-schemes", "bridge-registers-as-a-protocol",
+CHECKS = ("bridge-claims-its-schemes", "bridge-is-in-the-registry-without-anyone-registering-it",
           "bridge-fetches-a-file-url", "bridge-reports-response-then-data-then-finish",
           "bridge-reports-the-response-length", "bridge-reports-a-missing-file-as-a-failure")
 

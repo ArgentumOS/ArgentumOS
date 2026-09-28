@@ -537,12 +537,11 @@ int main(void)
 {
 	setvbuf(stdout, NULL, _IONBF, 0);
 
-	/* REGISTER THE TRANSPORT FIRST - THIS LIBRARY'S RULE, NOT A HABIT OF THIS PROBE. NSURLProtocol ships
-	 * an EMPTY registry and Apple's own instruction is to fill it before any loading starts; every sibling
-	 * probe that performs a real exchange does this (foundation_cachehooks, foundation_authloop). It is
-	 * also what MAKES +canHandleRequest: answer YES below: that class asks the registry, so before this
-	 * line the honest answer for an http URL is NO. */
-	[NSURLProtocol registerClass:[FNCURLURLProtocol class]];
+	/* NO REGISTRATION HERE ANY MORE. This probe used to fill an EMPTY registry first, because `NSURLProtocol`
+	 * shipped empty and Apple's instruction is to register before any loading starts. Since §62.83 the LIBRARY
+	 * registers its own transport at load, so this line is gone - and the `can-handle-request-asks-the-registry`
+	 * check below is now the gate for THAT: it asks whether http is handled, and the honest answer is YES only if
+	 * the library's own registration happened. */
 
 	/* --- 1. THE CLASS AND ITS PROTOCOLS ------------------------------------------------------------ */
 	{

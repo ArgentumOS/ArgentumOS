@@ -119,9 +119,21 @@ static int fn_urlprotocol_property_slot(NSURLRequest *request)
  * real protocol behind it. */
 + (BOOL)registerClass:(Class)protocolClass
 {
+	int i;
+
 	if (protocolClass == nil || protocolClass == [NSURLProtocol class] ||
 	    ![protocolClass isSubclassOfClass:[NSURLProtocol class]]) {
 		return NO;
+	}
+	/* A CLASS IS IN THE REGISTRY AT MOST ONCE (§62.83). Since this library registers its own transport at load,
+	 * a caller's own `+registerClass:` for it is a REPEAT — and appending repeats would (a) grow the table once
+	 * per caller, (b) make `-unregisterClass:` a partial operation for a class named several times, and (c) tie
+	 * the ORDER to how often something was named rather than to when. Registering a class that is already there
+	 * is therefore a successful no-op: YES, because the caller's intent holds — the class is registered. */
+	for (i = 0; i < fn_urlprotocol_class_count; i++) {
+		if (fn_urlprotocol_classes[i] == protocolClass) {
+			return YES;
+		}
 	}
 	if (fn_urlprotocol_class_count >= FN_URLPROTOCOL_MAX_CLASSES) {
 		return NO;

@@ -259,12 +259,17 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;
 - (nullable instancetype)initWithRequest:(NSURLRequest *)request
 				delegate:(nullable id)delegate;
 
-/* WHETHER THE LOADING SYSTEM CAN RUN THIS REQUEST. THE ANSWER IS ABOUT WHAT IS REGISTERED: this library
- * ships an EMPTY NSURLProtocol registry (its own rule is Apple's, "+registerClass: before starting any
- * URL loading"), so a FRESH PROCESS answers NO even for `http` until a transport is registered - a
- * deviation from Apple, whose built-in protocols are always there, and one a caller meets here rather
- * than discovers. The alternative - a hardcoded list of schemes in this class - would be a second copy of
- * knowledge the registry already holds, and would answer YES for a scheme nothing can actually run. */
+/* WHETHER THE LOADING SYSTEM CAN RUN THIS REQUEST. THE ANSWER IS ABOUT WHAT IS REGISTERED, and the registry is
+ * filled before a caller is reached: this library registers its own transport (FNCURLURLProtocol - `file`, `http`,
+ * `https`) AT LOAD, so a fresh process answers YES for those schemes out of the box, as Apple's does, whose
+ * built-in protocols are always there. It shipped an EMPTY registry until §62.83 and required every caller to
+ * fill it, which turned a forgotten `+registerClass:` into NSURLErrorUnsupportedURL - a verdict about a URL that
+ * was perfectly fine.
+ *
+ * THE REGISTRY STAYS THE AUTHORITY AND THE SEAM STAYS OPEN: this class asks the registry, a caller's later
+ * `+registerClass:` deliberately outranks the one made at load (the walk resolves most-recently-registered
+ * first, NSURLProtocol.h), a caller that wants no transport can still `-unregisterClass:`, and a scheme no
+ * registered class claims still answers NO - which is what keeps this from being a hardcoded list of schemes. */
 + (BOOL)canHandleRequest:(NSURLRequest *)request;
 
 /* THE SYNCHRONOUS FORM, AND IT BLOCKS THE CALLING THREAD until the transfer ends — that is its whole
