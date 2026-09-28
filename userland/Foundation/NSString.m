@@ -34,6 +34,28 @@
 #import <Foundation/NSValue.h>
 #import <Foundation/NSException.h>
 
+/* A STRING COPY IS A COPY OF THE CHARACTERS, AND THE BUFFER IS BUILT IN ONE PLACE (§62.93).
+ *
+ * THE BUG THIS CLOSES WAS FOUND BY THE JSON PROBE, and it is worth stating plainly because the old
+ * body looked natural: three copy doors built a UTF-8 C STRING from the source and re-parsed it
+ * (`[self initWithUTF8String:[other UTF8String]]`), and `-UTF8String` answers a NUL-TERMINATED
+ * buffer - so a string holding an embedded NUL was TRUNCATED at it. Measured: a one-character
+ * U+0000 string copied with +stringWithString: answered length 0, while -initWithCharacters:length:
+ * answered 1. Apple's -initWithString: copies every character, and a NUL is a character a string may
+ * hold (JSON5's backslash-0 writes one), so the copy is now by characters.
+ */
+static unichar *fn_string_character_copy(NSString *other, NSUInteger *length)
+{
+	NSUInteger count = [other length];
+	unichar *buffer = (unichar *)malloc((count == 0 ? 1 : count) * sizeof(unichar));
+
+	if (count != 0) {
+		[other getCharacters:buffer range:NSMakeRange(0, count)];
+	}
+	*length = count;
+	return buffer;
+}
+
 /*
  * THE FORMAT ENGINE, and the one conversion it has to get right is the va_arg
  * TYPE: it must match the length modifier the caller wrote (C's own contract —
@@ -688,7 +710,14 @@ NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySugges
 
 + (id)stringWithString:(NSString *)other
 {
-	return [[NSOwnedString alloc] initWithUTF8String:[other UTF8String]];
+	unichar *buffer;
+	NSUInteger length;
+	id result;
+
+	buffer = fn_string_character_copy(other, &length);
+	result = [[NSOwnedString alloc] initWithCharacters:buffer length:length];
+	free(buffer);
+	return result;
 }
 
 + (id)stringWithFormat:(NSString *)format, ...
@@ -775,7 +804,14 @@ NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySugges
 
 - (id)initWithString:(NSString *)other
 {
-	return [self initWithUTF8String:[other UTF8String]];
+	unichar *buffer;
+	NSUInteger length;
+	id result;
+
+	buffer = fn_string_character_copy(other, &length);
+	result = [self initWithCharacters:buffer length:length];
+	free(buffer);
+	return result;
 }
 
 /* THE FOUR ...Characters: FORMS, declared and delegated the way the UTF-8 ones are:
@@ -2162,7 +2198,14 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 
 - (id)initWithString:(NSString *)other
 {
-	return [self initWithUTF8String:[other UTF8String]];
+	unichar *buffer;
+	NSUInteger length;
+	id result;
+
+	buffer = fn_string_character_copy(other, &length);
+	result = [self initWithCharacters:buffer length:length];
+	free(buffer);
+	return result;
 }
 
 - (id)initWithFormat:(NSString *)format, ...

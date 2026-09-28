@@ -15042,6 +15042,89 @@ members, and constants inside shipped families. Owed as things to BUILD: the mar
 observers. The spelling engine is still open on language grounds.
 
 
+## §62.93 — THE JSON OPTIONS APPLE PUBLISHES, AND THE TWO GRAMMARS FINALLY DIFFERING (2026-09-26)
+
+**THREE ROWS SHIPPED, all in one class: `NSJSONReadingJSON5Allowed`, `NSJSONReadingTopLevelDictionaryAssumed` and
+the DEPRECATED `NSJSONReadingAllowFragments`.** The JSON family has two rows left and they are the WRITING side
+(`NSJSONWritingFragmentsAllowed`, `NSJSONWritingWithoutEscapingSlashes`), deferred to their own unit because the
+second of them changes the DEFAULT output rather than adding a form.
+
+**AND THE UNIT BEGAN BY RETIRING TWO STALE GROUNDS RATHER THAN BY WRITING A PARSER.** `NSJSONSerialization.h` had
+refused `json5Allowed` and `topLevelDictionaryAssumed` "because a value invented for them would be a difference a
+program could see", and held the deprecated `allowFragments` spelling out "because §11.5's second exclusion says
+API Apple deprecates is out". **BOTH WERE WRONG, each for its own reason:**
+
+1. **THE VALUES ARE NOT INVENTED.** Apple's own `NSJSONSerialization.h` publishes every one of the bits -
+   `json5Allowed` 1<<3, `topLevelDictionaryAssumed` 1<<4, `allowFragments` = `fragmentsAllowed` 1<<2 - so the
+   ground for refusing was never about fidelity; it was a belief about a source. Measured against the published
+   header before a line was written.
+2. **THE DEPRECATION GROUND WAS RETIRED ON 2026-09-26** (plan row D7, §62.24: "*deprecated API is now IN SCOPE, so
+   every member below is OWED rather than tolerated*"). This library's purpose is to run programs written for the
+   old names, so `allowFragments` ships beside the modern spelling as Apple ships it.
+
+**THE REAL WORK WAS A PREREQUISITE THE ROWS DID NOT MENTION: THE STRICT PATH HAD TO BE MADE STRICT.** The shipped
+parser accepted a **MISSING COMMA** (`[1 2]`, `{"a":1"b":2}`), a **TRAILING COMMA** and **`+1`** - its member loop
+fell back to "read another member" whenever it saw neither a comma nor the closing brace, and the number scanner
+was `strtod` over a permissive character class. That is why the JSON5 work could not be skipped: **a trailing comma
+is UNOBSERVABLE against a parser that accepts commas nowhere**, so a probe that only tested JSON5 would have passed
+against the old parser for the wrong reason. Two spellings, one change:
+- a member that follows another WITHOUT a comma now fails **in both grammars**;
+- a trailing comma fails in strict JSON and is legal under `json5Allowed`.
+
+**THE SAME MEASUREMENT TIGHTENED THE NUMBERS**, and `strict-numbers-are-rfc-8259s` was written to fail against the
+old scanner: strict JSON is RFC 8259's grammar (`-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?`), so `+1`, `01`,
+`.5`, `5.`, `0x1F`, `Infinity`, `NaN`, `1e` and `1e+` are all refused, where the old loop accepted `+1`, `01` and
+`5.`. A LEADING ZERO IS REFUSED IN BOTH GRAMMARS, because ES5's `DecimalIntegerLiteral` - which JSON5's rule is
+written in terms of - has no room for one either; admitting it would have been OUR invention rather than JSON5's.
+And an integer that does not fit its `long long` is now a double rather than a wrapped int, because `strtoll` says
+so with `ERANGE` and the wrapped value is a difference a program could see.
+
+**THE TWO BEHAVIOURS BEHIND THE NEW BITS, since a declared option with no behaviour is a stub:** `json5Allowed`
+reads JSON5 - both comment forms, both quote characters, its four extra escapes (`\v`, `\0`, `\xNN`, the
+any-character escape) and the line continuation that REMOVES a newline, a leading `+`, a leading or trailing `.`,
+hexadecimal, `Infinity`/`-Infinity`/`NaN`, a trailing comma, and unquoted keys; `topLevelDictionaryAssumed` reads a
+document with no enclosing braces as an object body.
+
+**TWO BOUNDARIES ARE STATED RATHER THAN HIDDEN, and both are ASSERTED BY THE PROBE:**
+- **AN UNQUOTED KEY IS ASCII PLUS `\u` ESCAPES.** ES5's `IdentifierStart` is "any Unicode letter, `$` or `_`", and
+  this library has no ES5 identifier table - ICU can classify a code point, but the ES5 identifier classes are not
+  ICU's - so a key written with a NON-ASCII letter is REFUSED by name. Guessing which code points ES5 admits would
+  be inventing a grammar.
+- **`topLevelDictionaryAssumed` ONLY ADDS A FORM.** The option is applied to the FIRST TOKEN, so a document that
+  begins with `{` or `[` parses exactly as it did with or without it, and a bare scalar is still gated by
+  `fragmentsAllowed`. Apple documents this option in one sentence; the boundary is stated so that the rest is
+  checked rather than assumed.
+
+**AND THE PROBE FOUND A SECOND, UNRELATED DEFECT WHICH THIS UNIT ALSO FIXED: A STRING COPY TRUNCATED AT AN EMBEDDED
+NUL.** JSON5's `\0` writes a NUL character, and the parse answered a string of length ZERO. The measurement
+(`/tmp`, three lines) localised it in one run: `+stringWithCharacters:length:` and `-initWithCharacters:length:`
+were right (lengths 1 and 3 for NUL and `a-NUL-b`), while `+stringWithString:` and `-initWithString:` answered 0 -
+because **three copy doors built a UTF-8 C STRING from the source and re-parsed it**
+(`[self initWithUTF8String:[other UTF8String]]`), and `-UTF8String` answers a NUL-TERMINATED buffer. A NUL is a
+character a string may hold, so all three doors now copy by characters through one static helper, and the guest's
+shipped `foundation_string` case (42 checks) was re-run to prove nothing that depended on the old path moved.
+
+**THREE DEFECTS CAME FROM THE PROBE'S OWN DRAFT, and each was caught by the compiler or by a per-step diagnostic
+rather than by reading:** two `count` comparisons with a bracket too many (a parse error); a diagnostic string
+containing `\x` with no digits and a `\0` that would have TRUNCATED the message itself (an Objective-C literal, so
+the escapes had to be doubled); and one check whose text was misnamed - it called a CLOSED block comment "never
+closed", so it asserted the opposite of what it said. The last one is the reason the failing check printed its
+sub-conditions: `[1, /* here` is the genuinely unclosed text, and one diagnostic run separated the three failures
+into a real parser defect (`[5.]` accepted strictly, which the fraction rule now refuses), a real library defect
+(the NUL truncation) and a probe defect.
+
+**VERIFIED.** Host: `make host-foundation-run` → **49 probes, no failure** - which includes the shipped
+`foundation_string` and `foundation_core` probes, the two that exercise the code this unit changed. Guest:
+`make test TESTS='foundation_json*'` → **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`** (13/13 probe checks) and
+`make test TESTS='foundation_string*'` → **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`** (42/42). Library and probe
+compile with **zero** warnings. `foundation-gate`: **OK** (587 files; 220 of 225 public headers open a nullability
+region, 5 exempt). `foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**;
+`--unimplemented`: **0 NEW**.
+
+**AND THE SWEEP GATE CAUGHT THE UN-FLIPPED ROWS BY ITSELF**, which is worth recording as the mechanism working: the
+first `make testimg` after the implementation FAILED with "*PRESENT BUT LISTED OPEN — our headers now declare it;
+flip the row*" for the two reading options, so the ledger could not have been forgotten silently.
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else

@@ -1383,6 +1383,17 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_extensioncontext.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_extensioncontext"
+	# foundation_json: §62.93's acceptance - the JSON reading options Apple publishes and this library
+	# refused (`json5Allowed`, `topLevelDictionaryAssumed`) plus the deprecated `allowFragments`
+	# spelling, AND the two grammars they depend on finally differing: the strict path is RFC 8259's
+	# now (it used to accept a missing comma, a trailing comma and "+1", which made JSON5's rules
+	# unobservable). ONE unit, Foundation only.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_json.m -o .build/probe-foundation_json.o
+	$(MUSL64_OBJC) .build/probe-foundation_json.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_json"
 	# foundation_downloadresume: §62.31's acceptance - RESUME end to end, WITH A REAL SERVER. The probe is
 	# the server: it sends half a body and then STALLS mid-transfer (which is what makes the cancel
 	# deterministic), resumes from the data its own cancel produced, and asserts the resumed request carries

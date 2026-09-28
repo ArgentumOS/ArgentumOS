@@ -38,7 +38,7 @@
 #   protocol   shipped   39   open    1   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  147   open    4   struck    9
-#   case       shipped 1184   open   41   struck   77
+#   case       shipped 1187   open   38   struck   77
 #   func       shipped  165   open   12   struck   12
 #   var        shipped  660   open   47   struck  207
 #   typealias  shipped   67   open    4   struck    5
@@ -555,12 +555,12 @@ case	shipped	NSItemProviderUnavailableCoercionError	NSItemProvider	App Support /
 case	shipped	NSItemProviderUnexpectedValueClassError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 case	shipped	NSItemProviderUnknownError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 case	shipped	NSItemReplacementDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	open	NSJSONReadingAllowFragments	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	deprecated	objc
+case	shipped	NSJSONReadingAllowFragments	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	deprecated	objc
 case	shipped	NSJSONReadingFragmentsAllowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
-case	open	NSJSONReadingJSON5Allowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
+case	shipped	NSJSONReadingJSON5Allowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
 case	shipped	NSJSONReadingMutableContainers	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
 case	shipped	NSJSONReadingMutableLeaves	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
-case	open	NSJSONReadingTopLevelDictionaryAssumed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
+case	shipped	NSJSONReadingTopLevelDictionaryAssumed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
 case	open	NSJSONWritingFragmentsAllowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data / Formatting JSON	-	objc
 case	shipped	NSJSONWritingPrettyPrinted	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data / Formatting JSON	-	objc
 case	shipped	NSJSONWritingSortedKeys	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data / Formatting JSON	-	objc
