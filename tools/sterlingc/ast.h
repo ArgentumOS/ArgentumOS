@@ -371,6 +371,26 @@ typedef struct st_struct {
 	struct st_struct *next;
 } st_struct;
 
+/*
+ * §7.56's `func` — a bare function, callable and not bound to a type.
+ *
+ * RECORDED, not dropped, and this one was a live SILENT LOSS: `parse_func` read
+ * the name, the parameters, the return type and the body into locals that died at
+ * its closing brace, and the program kept not even a count — so a whole function
+ * definition left the tree with the parse reporting success. That was invisible
+ * while every file's substance was a class (a `func` was a helper beside one), and
+ * it became a hole the moment §5's structs could BE a file's substance:
+ * `tests/08-structs.ag` is structs plus `func total(a: Point, b: Point)`, and it
+ * EMITTED with `total` missing.
+ */
+typedef struct {
+	st_name name;
+	st_type result;
+	st_param *params;
+	size_t param_count;
+	st_stmt *body;
+} st_func;
+
 typedef struct {
 	st_class **classes;
 	size_t class_count;
@@ -400,6 +420,12 @@ typedef struct {
 	 * cannot write.
 	 */
 	size_t enum_count;
+	/*
+	 * §7.56's bare functions, RECORDED for the reason the struct is — and this
+	 * one had NO count either, so nothing could even name the loss.
+	 */
+	st_func **funcs;
+	size_t func_count;
 } st_program;
 
 /* ---- the arena --------------------------------------------------------- */

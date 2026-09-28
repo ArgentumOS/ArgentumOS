@@ -1,0 +1,6 @@
+/* §4's value rule: a struct is a VALUE and an object is a reference, so a
+ * class-typed struct field has no representation — there is no place in a C
+ * struct for an object that is not a pointer, and §5 excludes it twice over. */
+struct RefuseStructClassField {
+    var held: Object
+}

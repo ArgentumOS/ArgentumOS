@@ -1,0 +1,66 @@
+/*
+ * EmitsStruct.ag — §5's Struct kind and §7.16's inheritance, as emitted.
+ *
+ * Copyright © 2026 Kyle J. Cardoza. MIT licence (see docs/LICENSE).
+ *
+ * §4 makes a struct a VALUE, and every difference from a class follows from
+ * that one fact. What this specimen pins, in the order the file writes them:
+ *
+ *   - state is written `var`, because §5 gives a struct no `@property`
+ *     machinery to synthesise storage with — so the FIELD is the storage and
+ *     `var x: Float32` is `float x;`, with no accessor of any kind;
+ *   - §7.25's computed property is the other kind of property: a GETTER
+ *     FUNCTION over the fields beside it, `BOOL Point_isOrigin(const Point *)`;
+ *   - §7.25's method is a C FUNCTION with the receiver first, named after the
+ *     struct — `float Point_length(const Point *self)` — and §7.14's `const` is
+ *     INFERRED from the body: `length` only reads, so it takes `const Point *`,
+ *     while `moveTo` assigns and takes `Point *`. No keyword is read, because
+ *     `mutating method` is accepted and ignored;
+ *   - inside a method a field is reached through `self`, which is a POINTER:
+ *     `self.x` emits `self->x`, and a field named BARE — `return x + y` — gets
+ *     the same treatment, because a C struct has no implicit receiver;
+ *   - §7.16's base is an ANONYMOUS TAGGED MEMBER at offset 0, which is what
+ *     makes the inheritance real rather than a naming convention: the base's
+ *     fields are promoted, so `self.x` inside `Point3`'s method reaches
+ *     `Point`'s field through it. That is the case that was WRONG first —
+ *     `struct Point3: Point` emitted `self.x = x;` and only `self->z = z;` came
+ *     out right, because the field lookup stopped at the derived struct — and a
+ *     golden is the only place it shows.
+ *   - the enum is deliberately ABOVE the struct in the source, so the derived
+ *     struct follows its base: §7.16's anonymous member needs a COMPLETE base
+ *     type, and a base declared later is a clang error naming the type.
+ *
+ * Sending to a struct value (`total` in `08-structs.ag`) is NOT here: §7.25
+ * makes a struct's method a C function, so the call site needs a receiver ->
+ * struct-type environment the emitter does not have yet, and that is the next
+ * unit of this phase rather than a thing this specimen may assume.
+ */
+struct Point {
+    var x: Float32
+    var y: Float32
+
+    /* §5: a computed property over the `var` fields beside it. */
+    readonly property isOrigin: Bool { return x == 0 && y == 0 }
+
+    /* §7.25: emits as `float Point_length(const Point *self)`. */
+    method length() -> Float32 { return x + y }
+
+    /* Assigns, so §7.14 infers a MUTABLE receiver. */
+    method moveTo(x: Float32, y: Float32) { self.x = x; self.y = y }
+}
+
+struct Point3: Point {
+    var z: Float32
+
+    /* `self.x` and `self.y` are the BASE's fields, reached through the
+     * anonymous member — the promotion §7.16 exists for. */
+    method moveTo(x: Float32, y: Float32, z: Float32) {
+        self.x = x
+        self.y = y
+        self.z = z
+    }
+}
+
+class Holder: Object {
+    property origin: Point
+}

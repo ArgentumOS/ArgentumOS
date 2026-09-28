@@ -70,7 +70,9 @@ ln -sfn "$ROOT/userland/Foundation" "$INC/Foundation"
 compile_one() {
 	set +e
 	"$CLANG19" -fsyntax-only -fobjc-arc -fobjc-runtime=gnustep-2.0 \
-		-fblocks -x objective-c \
+		-fblocks \
+		-fms-extensions -Wno-microsoft-anon-tag \
+		-x objective-c \
 		-I"$INC" \
 		-I"$1" \
 		-I"$ROOT/userland" \

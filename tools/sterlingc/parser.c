@@ -2318,16 +2318,18 @@ parse_struct(st_parser *p, st_struct **out)
  * would accept anything at all.
  */
 static int
-parse_func(st_parser *p)
+parse_func(st_parser *p, st_func **out)
 {
-	st_name name;
-	st_type result;
+	st_func *f = st_arena_alloc(sizeof(st_func));
 	st_decl params;
-	st_stmt *body;
+	st_stmt *body = NULL;
 
+	if (f == NULL) {
+		return fail(p, "out of memory");
+	}
 	memset(&params, 0, sizeof(params));
 	bump(p);				/* `func` */
-	if (!take_name(p, &name)) {
+	if (!take_name(p, &f->name)) {
 		return 0;
 	}
 	if (!expect_punct(p, '(')) {
@@ -2336,14 +2338,28 @@ parse_func(st_parser *p)
 	if (!parse_params(p, &params)) {
 		return 0;
 	}
+	f->params = params.params;
+	f->param_count = params.param_count;
+	/*
+	 * §5: an omitted `-> T` means `-> Void`, and here that is the ZEROED type
+	 * the arena handed back — `type_text` reads a NULL name as `void`. The old
+	 * local `st_type` was never initialized at all, which was harmless while
+	 * `parse_func` discarded everything and is not now that the result is
+	 * RECORDED.
+	 */
 	if (p->tok.kind == ST_OPERATOR && p->tok.len == 2 &&
 	    memcmp(p->tok.start, "->", 2) == 0) {
 		bump(p);
-		if (!parse_type(p, &result)) {
+		if (!parse_type(p, &f->result)) {
 			return 0;
 		}
 	}
-	return parse_stmt_block(p, &body);
+	if (!parse_stmt_block(p, &body)) {
+		return 0;
+	}
+	f->body = body;
+	*out = f;
+	return 1;
 }
 
 /*
@@ -2670,6 +2686,8 @@ st_parse(const char *src, const char **error)
 	 * declare none.
 	 */
 	size_t struct_capacity = 0;
+	/* §7.56's funcs, on the same terms. */
+	size_t func_capacity = 0;
 
 	memset(&p, 0, sizeof(p));
 	st_lexer_init(&p.lx, src);
@@ -2725,11 +2743,39 @@ st_parse(const char *src, const char **error)
 		 * of these once read as "9 of 9" while their contents went unread.
 		 */
 		if (at_keyword(&p, "func")) {
-			if (!parse_func(&p)) {
+			st_func *f = NULL;
+
+			if (!parse_func(&p, &f)) {
 				*error = p.error != NULL ? p.error : "parse error";
 				st_arena_free();
 				return NULL;
 			}
+			/*
+			 * RECORDED, like §5's structs and for a sharper reason: a
+			 * `func` was dropped with NO count either, so nothing could
+			 * even name the loss. `08-structs.ag` — structs plus one
+			 * `func` — emitted with the function missing.
+			 */
+			if (program->func_count == func_capacity) {
+				size_t want = func_capacity == 0 ? 4
+								: func_capacity * 2;
+				st_func **grown =
+					st_arena_alloc(want * sizeof(st_func *));
+
+				if (grown == NULL) {
+					*error = "out of memory";
+					st_arena_free();
+					return NULL;
+				}
+				if (program->func_count > 0) {
+					memcpy(grown, program->funcs,
+					       program->func_count *
+						       sizeof(st_func *));
+				}
+				program->funcs = grown;
+				func_capacity = want;
+			}
+			program->funcs[program->func_count++] = f;
 			continue;
 		}
 		if (at_keyword(&p, "struct")) {

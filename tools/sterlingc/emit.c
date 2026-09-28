@@ -169,6 +169,194 @@ collect_declared_classes(const st_class *c, name_set *set)
 }
 
 /*
+ * §5/§7.25's STRUCT context, and the reason the emission is not a plain name
+ * lookup. Inside a struct's method `self` is a POINTER, so a field goes through
+ * it — `self.x` becomes `self->x` — and a field named BARE (`return x + y`, which
+ * `tests/08-structs.ag` writes) gets the same treatment, because a C struct has
+ * no implicit receiver.
+ *
+ * Three statics, for the reason `declared_classes` is one: one program is emitted
+ * at a time on one thread, and threading a context through every expression
+ * function to be read at two places is worse.
+ *
+ *   `current_struct`  the struct whose member is being emitted, or NULL
+ *   `current_locals`  the names IN SCOPE that beat a field of that name — the
+ *                     method's parameters and the body's locals. Without it a
+ *                     bare name would read as a field when the author meant the
+ *                     parameter beside it, which is the shadow §5's own example
+ *                     (`method moveTo(x:, y:) { self.x = x }`) writes `self.`
+ *                     to avoid.
+ *   `declared_structs` every struct name the FILE declares, so a receiver's type
+ *                     can be told from any other name.
+ */
+static const st_struct *current_struct;
+static name_set current_locals;
+static name_set declared_structs;
+/*
+ * The program being emitted. §7.25's call site has to tell a struct's method from
+ * an ObjC send, and that needs the file's own structs — their bases too, since
+ * §7.16's promotion reaches a method the derived struct does not declare. A static
+ * for the reason the other two are, and set once per file rather than threaded
+ * through every node.
+ */
+static const st_program *current_program;
+
+static void
+collect_declared_structs(const st_program *program, name_set *set)
+{
+	size_t i;
+
+	for (i = 0; i < program->struct_count; i++) {
+		char mangled[256];
+
+		mangle_name(program->structs[i]->name.text, mangled,
+			    sizeof(mangled));
+		name_set_add(set, mangled);
+	}
+}
+
+/*
+ * A FIELD of `s` — a `var` member, and NOT a computed property: §7.25 makes the
+ * computed form a getter FUNCTION, so `self.isOrigin` is a call rather than a
+ * member access and emitting `self->isOrigin` for it would name storage that
+ * does not exist.
+ *
+ * §7.16's promotion is part of the question, so this walks the BASE chain too —
+ * a derived struct's `self.x` reaches the base's field through the anonymous
+ * member. `find_struct` is forward-declared for that walk.
+ */
+static const st_struct *find_struct(const st_program *program,
+				    const char *name);
+
+static int
+struct_has_field(const st_struct *s, const char *name)
+{
+	const st_decl *d;
+
+	if (s == NULL || name == NULL) {
+		return 0;
+	}
+	for (d = s->decls; d != NULL; d = d->next) {
+		if (d->kind == ST_DECL_PROPERTY && d->body == NULL &&
+		    d->name.text != NULL && strcmp(d->name.text, name) == 0) {
+			return 1;
+		}
+	}
+	/*
+	 * §7.16: the base's fields are PROMOTED — `p3.x` reaches `Point`'s field
+	 * with no `.base.` in between — so a name this struct does not declare may
+	 * still be one of its fields, through the anonymous member. Without this
+	 * walk, `self.x` inside a DERIVED struct's method emitted `self.x`, which
+	 * is not a member access at all: measured on the first struct specimen,
+	 * `struct Point3: Point` wrote `self.x = x;` and only `self->z = z;` came
+	 * out right.
+	 */
+	if (s->has_base) {
+		return struct_has_field(
+			find_struct(current_program, s->base.text), name);
+	}
+	return 0;
+}
+
+/*
+ * §7.14: a method that assigns to a property takes `Point *self`; one that does
+ * not takes `const Point *self`. **The emitter infers which from the body**,
+ * because whether a method mutates is a fact the body already states — so this
+ * walk IS the rule, and there is no keyword to read (`mutating method` parses and
+ * is ignored).
+ *
+ * The assignment has to NAME a field to count (`self.x = 1`, or a bare `x = 1`):
+ * an assignment to a local says nothing about the receiver.
+ */
+static int expr_assigns_field(const st_expr *e);
+
+static int
+stmts_assign_field(const st_stmt *s)
+{
+	for (; s != NULL; s = s->next) {
+		if (expr_assigns_field(s->value) ||
+		    stmts_assign_field(s->body) ||
+		    stmts_assign_field(s->else_body)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int
+expr_assigns_field(const st_expr *e)
+{
+	size_t i;
+
+	if (e == NULL) {
+		return 0;
+	}
+	if (e->kind == ST_EXPR_ASSIGN) {
+		const st_expr *target = e->base;
+
+		if (target != NULL && target->kind == ST_EXPR_MEMBER &&
+		    target->base != NULL &&
+		    target->base->kind == ST_EXPR_SELF) {
+			return 1;
+		}
+		if (target != NULL && target->kind == ST_EXPR_IDENT &&
+		    struct_has_field(current_struct, target->text.text)) {
+			return 1;
+		}
+	}
+	if (expr_assigns_field(e->base)) {
+		return 1;
+	}
+	for (i = 0; i < e->arg_count; i++) {
+		if (expr_assigns_field(e->args[i].value)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/* The names a body declares, at any depth — the other half of the shadow. */
+static void
+collect_local_names(const st_stmt *s, name_set *set)
+{
+	for (; s != NULL; s = s->next) {
+		if ((s->kind == ST_STMT_LET || s->kind == ST_STMT_VAR) &&
+		    s->name.text != NULL) {
+			name_set_add(set, s->name.text);
+		}
+		collect_local_names(s->body, set);
+		collect_local_names(s->else_body, set);
+	}
+}
+
+/*
+ * §7.25: does THIS struct or one of its bases declare `name` as a method, and
+ * what does that method's emission look like? The base chain is followed through
+ * the file's own structs only — a base declared in another file is §9.5's header
+ * importer, and the caller refuses rather than guessing a prefix.
+ */
+static const st_struct *
+find_struct(const st_program *program, const char *name)
+{
+	size_t i;
+	char mangled[256];
+
+	if (name == NULL) {
+		return NULL;
+	}
+	mangle_name(name, mangled, sizeof(mangled));
+	for (i = 0; i < program->struct_count; i++) {
+		char have[256];
+
+		mangle_name(program->structs[i]->name.text, have, sizeof(have));
+		if (strcmp(have, mangled) == 0) {
+			return program->structs[i];
+		}
+	}
+	return NULL;
+}
+
+/*
  * The refusal message. One program is emitted at a time by a single-threaded
  * driver, so the buffer is a static and the caller reads it once before
  * exiting — see st_emit_header's contract in ast.h.
@@ -783,13 +971,40 @@ emit_expr(FILE *out, const st_expr *e, const char *expected,
 	case ST_EXPR_SELF:	fprintf(out, "self");	return 1;
 	case ST_EXPR_SUPER:	fprintf(out, "super");	return 1;
 	case ST_EXPR_IDENT:
+		/*
+		 * §7.25: inside a struct's method a field named BARE is reached
+		 * through `self` — `tests/08-structs.ag` writes `return x + y` —
+		 * because a C struct has no implicit receiver. A parameter or a
+		 * local of the same name wins (`current_locals`), which is the
+		 * shadow §5's own example writes `self.` to avoid; taking the
+		 * other reading would emit a C identifier that does not exist,
+		 * which clang then rejects.
+		 */
+		if (current_struct != NULL &&
+		    struct_has_field(current_struct, e->text.text) &&
+		    !name_set_has(&current_locals, e->text.text)) {
+			fprintf(out, "self->%s", e->text.text);
+			return 1;
+		}
 		fprintf(out, "%s", e->text.text);
 		return 1;
 	case ST_EXPR_MEMBER:
 		if (!emit_tight(out, e->base, error)) {
 			return 0;
 		}
-		fprintf(out, ".%s", e->text.text);
+		/*
+		 * §7.25: `self.x` is `self->x` — inside a struct's method `self`
+		 * is a POINTER, so the member operator is C's arrow. Only a FIELD
+		 * takes it: §7.25 makes a computed property a getter FUNCTION, so
+		 * `self.isOrigin` is not a member access, and giving it the arrow
+		 * would name storage that does not exist.
+		 */
+		fprintf(out, "%s%s",
+			(e->base != NULL && e->base->kind == ST_EXPR_SELF &&
+			 current_struct != NULL &&
+			 struct_has_field(current_struct, e->text.text)) ? "->"
+									: ".",
+			e->text.text);
 		return 1;
 	case ST_EXPR_CALL:
 		/*
@@ -1822,6 +2037,17 @@ emit_scalar_optionals(FILE *out, char names[][64], size_t count)
 	fprintf(out, "\n");
 }
 
+/*
+ * §5's structs, in two halves that have to agree: the declaration the header
+ * carries (the typedef, its fields, and the C functions its members become) and
+ * the definitions the `.m` does. Forward-declared because the header is written
+ * long before the definition file's half of this module, and one implementation
+ * writes both so the two cannot drift into two dialects.
+ */
+static int emit_struct_decl(FILE *out, const st_struct *s, const char **error);
+static int emit_struct_definitions(FILE *out, const st_struct *s,
+				   const char **error);
+
 int
 st_emit_header(FILE *out, const st_program *program, const char *source_label,
 	       const char **error)
@@ -1830,16 +2056,23 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 	char stem[256];
 
 	/*
-	 * A top-level struct or enum has no emission ANYWHERE yet, and the tree
-	 * does not even hold one — the parse reads the declaration and keeps
-	 * nothing. Refused by name, so the file that comes out is never quietly
-	 * missing a type the source declared.
+	 * The one top-level type with no emission anywhere: an enum. It was parsed
+	 * and dropped with the parse reporting success — beside a class it
+	 * reported nothing at all — so it stays REFUSED BY NAME, and the file
+	 * that comes out is never quietly missing a type the source declared.
+	 * §5's structs are emitted just below instead.
 	 */
-	if (program->struct_count > 0) {
-		return refuse("a struct", error);
-	}
 	if (program->enum_count > 0) {
 		return refuse("an enum", error);
+	}
+	/*
+	 * §7.56's `func`, refused BY NAME rather than dropped. Its body is a
+	 * statement block like any other, but its DEFINITION is a C function this
+	 * emitter does not write yet — and while it was dropped,
+	 * `tests/08-structs.ag` emitted with `total` missing and nothing said so.
+	 */
+	if (program->func_count > 0) {
+		return refuse("a func (§7.56)", error);
 	}
 	/*
 	 * A file may declare several classes — ordinary Sterling, and ONE
@@ -1847,12 +2080,14 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 	 * per-class/per-module/per-program question is about *modules*, which do
 	 * not exist yet; inside one file there is no choice to make.
 	 *
-	 * What is refused is a program with no class at all: the pair is named
-	 * after one, and there is nothing to name it after.
+	 * What is refused is a program with neither a class nor a struct: the
+	 * pair is named after one, and §5's struct is the other thing that can
+	 * name it — a unit of nothing but structs is ordinary, and
+	 * `tests/08-structs.ag` is exactly one.
 	 */
-	if (program->class_count == 0) {
-		return refuse("a program with no class (the header's name comes "
-			      "from one)", error);
+	if (program->class_count == 0 && program->struct_count == 0) {
+		return refuse("a program with no class or struct (the header's "
+			      "name comes from one)", error);
 	}
 	/*
 	 * Which class names this file declares, before anything reads a type: a
@@ -1863,6 +2098,15 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 	for (i = 0; i < program->class_count; i++) {
 		collect_declared_classes(program->classes[i], &declared_classes);
 	}
+	/*
+	 * The same for §5's structs. §7.25's call site has to tell a struct's
+	 * method from an ObjC send, and §7.16's base chain has to be walkable,
+	 * and both need the file's own structs — so the context is set here, once
+	 * per file, and the expression emitter reads it.
+	 */
+	current_program = program;
+	declared_structs.count = 0;
+	collect_declared_structs(program, &declared_structs);
 
 	if (source_label != NULL) {
 		st_source_stem(source_label, stem, sizeof(stem));
@@ -1871,11 +2115,17 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 	} else {
 		/*
 		 * The built-in specimen has no file, so §2's own pairing names
-		 * it: `MyClass.h` from `MyClass.ag`.
+		 * it: `MyClass.h` from `MyClass.ag`. A file that declares no
+		 * CLASS still has to be named, and §5's struct is the other
+		 * thing that can name one — a unit of nothing but structs is
+		 * ordinary (§08-structs.ag is one).
 		 */
+		const char *named = program->class_count > 0
+					    ? program->classes[0]->name.text
+					    : program->structs[0]->name.text;
+
 		fprintf(out, "/* %s.h — generated by sterlingc from %s.ag. Do not edit. */\n",
-			program->classes[0]->name.text,
-			program->classes[0]->name.text);
+			named, named);
 	}
 	fprintf(out, "#import <Foundation/Foundation.h>\n\n");
 	/*
@@ -1997,6 +2247,19 @@ st_emit_header(FILE *out, const st_program *program, const char *source_label,
 		}
 		if (printed > 0) {
 			fprintf(out, "\n");
+		}
+	}
+
+	/*
+	 * §5's structs, BEFORE the classes that may name one — a struct declared
+	 * after its first use is an incomplete type. §7.16's base inherits the
+	 * same requirement one level down, so a derived struct has to follow its
+	 * base in the source; one that does not is a clang error naming the type,
+	 * which is loud rather than silent.
+	 */
+	for (i = 0; i < program->struct_count; i++) {
+		if (!emit_struct_decl(out, program->structs[i], error)) {
+			return 0;
 		}
 	}
 
@@ -2469,6 +2732,274 @@ emit_definitions(FILE *out, const st_decl *decls, const char **error)
 }
 
 /*
+ * §5/§7.25: a struct's C name for one of its members — `Point_length`. The
+ * prefix is the struct that DECLARES the member, which is what makes §7.16's
+ * promotion a naming rule rather than a lookup: a method the derived struct does
+ * not declare keeps the BASE's prefix, and the call site's upcast has to name
+ * the same type this function names.
+ */
+static void
+struct_member_name(const st_struct *s, const char *member, char *buf,
+		   size_t size)
+{
+	char prefix[256];
+
+	mangle_name(s->name.text, prefix, sizeof(prefix));
+	snprintf(buf, size, "%s_%s", prefix, member);
+}
+
+/*
+ * The `self` parameter of a struct function. §7.14: a method that assigns to a
+ * field takes a mutable pointer and one that does not takes `const` — INFERRED
+ * from the body, never written, and the same inference in the header and in the
+ * `.m` because one function emits both and they cannot drift.
+ *
+ * An initializer is the exception the user's decision made (2026-09): §7.8/§7.49
+ * make it an ordinary `method … -> Self`, and §7.25 makes that a function
+ * returning the struct BY VALUE — so `self` is a value it starts from and hands
+ * back, not a pointer.
+ */
+static int
+emit_struct_signature(FILE *out, const st_struct *s, const st_decl *d,
+		      const char *terminator, const char **error)
+{
+	char prefix[256];
+	char name[512];
+	size_t i;
+
+	for (i = 0; i < d->param_count; i++) {
+		if (!type_is_emittable(&d->params[i].type, error)) {
+			return 0;
+		}
+	}
+	if (!type_is_emittable(&d->type, error)) {
+		return 0;
+	}
+	mangle_name(s->name.text, prefix, sizeof(prefix));
+	struct_member_name(s, d->name.text, name, sizeof(name));
+
+	if (is_initializer(d)) {
+		fprintf(out, "%s %s(%s self", prefix, name, prefix);
+	} else {
+		emit_type(out, &d->type);
+		fprintf(out, " %s(", name);
+		if (stmts_assign_field(d->body)) {
+			fprintf(out, "%s *self", prefix);
+		} else {
+			fprintf(out, "const %s *self", prefix);
+		}
+	}
+	for (i = 0; i < d->param_count; i++) {
+		const st_param *p = &d->params[i];
+
+		fprintf(out, ", ");
+		emit_type(out, &p->type);
+		fprintf(out, " %s",
+			p->internal.text != NULL ? p->internal.text
+						 : p->external.text);
+	}
+	fprintf(out, ")%s\n", terminator);
+	return 1;
+}
+
+/*
+ * §7.25's COMPUTED property: a getter FUNCTION over the fields beside it —
+ * `BOOL Point_isOrigin(const Point *self)`. There is no setter (§5: "on a
+ * *computed* struct property `(readonly)` is fine and means what it says"), and
+ * a getter never mutates, so `self` is `const`.
+ */
+static int
+emit_struct_property_signature(FILE *out, const st_struct *s,
+			       const st_decl *d, const char *terminator,
+			       const char **error)
+{
+	char prefix[256];
+	char name[512];
+
+	if (!type_is_emittable(&d->type, error)) {
+		return 0;
+	}
+	mangle_name(s->name.text, prefix, sizeof(prefix));
+	struct_member_name(s, d->name.text, name, sizeof(name));
+	emit_type(out, &d->type);
+	fprintf(out, " %s(const %s *self)%s\n", name, prefix, terminator);
+	return 1;
+}
+
+/*
+ * §5: "A struct's state is a `var` field — a plain C member, with no `@property`,
+ * no accessors and no auto-synthesis." So a stored member IS the storage and
+ * `var x: Float32` is `float x;`.
+ */
+static int
+emit_struct_field(FILE *out, const st_decl *d, const char **error)
+{
+	if (!type_is_emittable(&d->type, error)) {
+		return 0;
+	}
+	if (d->has_initial) {
+		return refuse("a stored property's default (§9.16)", error);
+	}
+	/*
+	 * §4's value rule: a struct is a value and an object is a reference, so a
+	 * class-typed MEMBER has no representation — §5 excludes it twice over
+	 * ("there is no stored struct property", and a class-typed property is
+	 * already excluded). Named rather than emitted as a bare pointer.
+	 */
+	if (type_name_is_class(d->type.name.text)) {
+		return refuse("a class-typed struct field (§4's value rule)",
+			      error);
+	}
+	/* §5's own emission shows the member indented inside the typedef. */
+	fprintf(out, "\t");
+	emit_type(out, &d->type);
+	fprintf(out, " %s;\n", d->name.text);
+	return 1;
+}
+/*
+ * The struct's declaration, as the header writes it: the typedef and its fields,
+ * then the C functions its computed properties and methods become.
+ *
+ * §7.16's base is emitted as an ANONYMOUS TAGGED MEMBER (`struct Point;`) and
+ * first, so it sits at offset 0 and the base's fields are promoted. A base this
+ * file does not declare is refused: the prefix and the upcast both need its
+ * declarations, and §9.5's header importer is what would supply them.
+ */
+static int
+emit_struct_decl(FILE *out, const st_struct *s, const char **error)
+{
+	char name[256];
+	const st_decl *d;
+	int any_function = 0;
+
+	if (s->has_base &&
+	    find_struct(current_program, s->base.text) == NULL) {
+		return refuse("a struct whose base this file does not declare "
+			      "(§9.5's header importer)", error);
+	}
+	mangle_name(s->name.text, name, sizeof(name));
+	fprintf(out, "typedef struct %s {\n", name);
+	if (s->has_base) {
+		char base[256];
+
+		mangle_name(s->base.text, base, sizeof(base));
+		fprintf(out, "\tstruct %s;\t/* §7.16: the base, at offset 0 */\n",
+			base);
+	}
+	for (d = s->decls; d != NULL; d = d->next) {
+		if (d->kind != ST_DECL_PROPERTY || d->body != NULL) {
+			continue;
+		}
+		if (!emit_struct_field(out, d, error)) {
+			return 0;
+		}
+	}
+	fprintf(out, "} %s;\n\n", name);
+
+	for (d = s->decls; d != NULL; d = d->next) {
+		if (d->kind == ST_DECL_PROPERTY && d->body != NULL) {
+			if (!emit_struct_property_signature(out, s, d, ";",
+							    error)) {
+				return 0;
+			}
+			any_function = 1;
+		}
+	}
+	for (d = s->decls; d != NULL; d = d->next) {
+		if (d->kind != ST_DECL_METHOD) {
+			continue;
+		}
+		if (!emit_struct_signature(out, s, d, ";", error)) {
+			return 0;
+		}
+		any_function = 1;
+	}
+	if (any_function) {
+		fprintf(out, "\n");
+	}
+	return 1;
+}
+
+/*
+ * One struct function's body, with §7.25's context installed: `current_struct`
+ * is the struct a bare field name belongs to, and `current_locals` is what beats
+ * it — the method's parameters and the body's own locals.
+ *
+ * Saved and restored rather than cleared, because a struct's function is emitted
+ * inside a file that may already be inside nothing and is certainly followed by
+ * one.
+ */
+static int
+emit_struct_body(FILE *out, const st_struct *s, const st_decl *d,
+		 const char **error)
+{
+	const st_struct *saved_struct = current_struct;
+	name_set saved_locals = current_locals;
+	size_t i;
+	int ok;
+
+	current_struct = s;
+	current_locals.count = 0;
+	for (i = 0; i < d->param_count; i++) {
+		if (d->params[i].internal.text != NULL) {
+			name_set_add(&current_locals,
+				     d->params[i].internal.text);
+		}
+	}
+	collect_local_names(d->body, &current_locals);
+
+	ok = emit_stmt_list(out, d->body, 1, map_type(d->type.name.text),
+			    error);
+	if (ok && is_initializer(d)) {
+		/*
+		 * §7.49 + the recorded decision of 2026-09: an initializer's body
+		 * ends in `return self;` whatever the author wrote — here `self`
+		 * is the by-value struct the signature took, so the statement
+		 * hands back the struct the caller gets.
+		 */
+		fprintf(out, "\treturn self;\n");
+	}
+
+	current_struct = saved_struct;
+	current_locals = saved_locals;
+	return ok;
+}
+
+static int
+emit_struct_definitions(FILE *out, const st_struct *s, const char **error)
+{
+	const st_decl *d;
+
+	for (d = s->decls; d != NULL; d = d->next) {
+		if (d->kind != ST_DECL_METHOD) {
+			continue;
+		}
+		if (!emit_struct_signature(out, s, d, "", error)) {
+			return 0;
+		}
+		fprintf(out, "{\n");
+		if (!emit_struct_body(out, s, d, error)) {
+			return 0;
+		}
+		fprintf(out, "}\n\n");
+	}
+	for (d = s->decls; d != NULL; d = d->next) {
+		if (d->kind != ST_DECL_PROPERTY || d->body == NULL) {
+			continue;
+		}
+		if (!emit_struct_property_signature(out, s, d, "", error)) {
+			return 0;
+		}
+		fprintf(out, "{\n");
+		if (!emit_struct_body(out, s, d, error)) {
+			return 0;
+		}
+		fprintf(out, "}\n\n");
+	}
+	return 1;
+}
+
+/*
  * One class's `@implementation`, preceded by the types declared inside it, for
  * the same reason the interface does it that way: a nested type is a class of
  * its own — Objective-C has no nesting — so it is emitted beside its outer class
@@ -2586,26 +3117,27 @@ st_emit_implementation(FILE *out, const st_program *program,
 	char stem[256];
 
 	/*
-	 * A top-level struct or enum has no emission ANYWHERE yet, and the tree
-	 * does not even hold one — the parse reads the declaration and keeps
-	 * nothing. Refused by name, so the file that comes out is never quietly
-	 * missing a type the source declared.
+	 * The one top-level type with no emission anywhere: an enum. §5's structs
+	 * are emitted below, beside the classes whose methods may use them.
 	 */
-	if (program->struct_count > 0) {
-		return refuse("a struct", error);
-	}
 	if (program->enum_count > 0) {
 		return refuse("an enum", error);
 	}
-	if (program->class_count == 0) {
-		return refuse("a program with no class (the file's name comes from "
-			      "one)", error);
+	if (program->func_count > 0) {
+		return refuse("a func (§7.56)", error);
+	}
+	if (program->class_count == 0 && program->struct_count == 0) {
+		return refuse("a program with no class or struct (the file's name "
+			      "comes from one)", error);
 	}
 	/* The declared-class set again: this function is called on its own. */
 	declared_classes.count = 0;
 	for (i = 0; i < program->class_count; i++) {
 		collect_declared_classes(program->classes[i], &declared_classes);
 	}
+	current_program = program;
+	declared_structs.count = 0;
+	collect_declared_structs(program, &declared_structs);
 	/*
 	 * §7.49's construction calls and chains, rewritten before a single line is
 	 * emitted — and specifically before `emit_implementation_of`, because that
@@ -2628,12 +3160,26 @@ st_emit_implementation(FILE *out, const st_program *program,
 		fprintf(out, "/* %s.m — generated by sterlingc from %s. Do not edit. */\n",
 			stem, source_label);
 	} else {
+		/* The same naming rule as the header's: a class, or §5's struct. */
 		snprintf(stem, sizeof(stem), "%s",
-			 program->classes[0]->name.text);
+			 program->class_count > 0
+				 ? program->classes[0]->name.text
+				 : program->structs[0]->name.text);
 		fprintf(out, "/* %s.m — generated by sterlingc from %s.ag. Do not edit. */\n",
 			stem, stem);
 	}
 	fprintf(out, "#import \"%s.h\"\n\n", stem);
+
+	/*
+	 * §5's struct definitions, before the classes: a class method that calls a
+	 * struct's function needs the definition to be visible, and the header
+	 * already carries the declarations — this is the other half.
+	 */
+	for (i = 0; i < program->struct_count; i++) {
+		if (!emit_struct_definitions(out, program->structs[i], error)) {
+			return 0;
+		}
+	}
 
 	for (i = 0; i < program->class_count; i++) {
 		if (!emit_implementation_of(out, program->classes[i], program,

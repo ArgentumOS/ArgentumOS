@@ -1,0 +1,13 @@
+/* §7.16's base is an anonymous tagged member whose `struct Base;` line and whose
+ * inherited calls both need the BASE's declarations. A base this file does not
+ * declare is §9.5's header importer's, so it is refused rather than emitted as a
+ * member of a type nothing describes. */
+struct RefuseUnknownBase: Absent {
+    var x: Float32
+}
+
+class RefuseStructUnknownBase: Object {
+    method m() -> Void {
+        return;
+    }
+}

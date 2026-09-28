@@ -563,8 +563,52 @@ whole-userland decision and it had to be measured before any of it was built:
   happens — protocol conformance on a value type is *out of scope*, not
   unemitted — so the comment on that path now says which of the two it is.
 
-**What the struct emitter still owes, read off `tests/08-structs.ag` rather than
-guessed** — this is the next unit of work, and the corpus file is the checklist:
+**Landed (2026-09, second half): §5's STRUCTS ARE EMITTED, and two more silent
+losses came out with them.** The emitter writes the typedef and its `var` fields,
+§7.16's anonymous base member, §7.25's computed properties as getter FUNCTIONS,
+its methods as `StructName_member` C functions with `self` first — §7.14's `const`
+inferred from the body, never written — and `self.x` → `self->x` inside a method
+**with a BARE field name reaching `self->` too** (08 writes `return x + y`).
+Measured: `GOLDEN-SPECIMENS-OK all 11` including the new `EmitsStruct`, and
+`COMPILE-OK EmitsStruct` under `-fobjc-arc` against libobjc2.
+
+- **The base's fields are PROMOTED, and getting that wrong was measured.** The
+  first struct specimen emitted `self.x = x;` inside `struct Point3: Point` and
+  only `self->z = z;` right, because the field lookup stopped at the derived
+  struct. §7.16's anonymous member is what makes `self.x` reach `Point`'s field,
+  so `struct_has_field` walks the BASE chain, and `EmitsStruct` holds it.
+- **`-fms-extensions` is needed by the compile leg too — §3.15's "not local"
+  warning coming true the first time.** `tools/sterlingc-compile.sh` invokes clang
+  DIRECTLY rather than through the wrapper, so it did not inherit the flag, and
+  the first struct golden failed with *"declaration does not declare anything"*
+  and *"no member named 'x'"*. The flag is now in that script as well. **Every
+  future direct-clang consumer of a generated header needs it**; on the wrapper
+  is not enough.
+- **§7.56's `func` was a SILENT LOSS, and closing it cost two false passes.**
+  `parse_func` read the name, the parameters, the result and the body into locals
+  that died at its brace, and the program kept **not even a count** — so a whole
+  function definition left the tree with the parse reporting success. Invisible
+  while every file's substance was a class; a hole the moment structs could BE a
+  file. `func` is now RECORDED (`st_func`) and REFUSED BY NAME, and **the corpus
+  count fell 1 of 13 → 0 of 13** because two of the "emitting" files
+  (`10-literals-and-types`, `13-generics-and-c`) had been emitting with their
+  functions missing. That is the K2b pattern again: the count fell because false
+  passes were removed.
+- **A class-less program emitted its header to STDOUT, never wrote a `.m`, and
+  exited 0.** `emit_main.c`'s gate was `class_count == 0` — written when the only
+  class-less program possible was one the emitter would refuse — so
+  `08-structs.ag`, which declares no class at all, took that branch. The gate now
+  tests `class_count == 0 && struct_count == 0`, and the pair's fallback NAME
+  comes from a struct when there is no class: a program's substance may be §5's
+  structs.
+- `tests/refuse/top-level-struct.ag` is **RETIRED** (its expectation is now the
+  thing that is emitted) and three specimens take its place: `func.ag`,
+  `struct-class-field.ag` (§4's value rule — a class-typed member has no
+  representation) and `struct-unknown-base.ag` (§7.16's base needs the base's
+  declarations, so a base this file does not declare is §9.5's importer's).
+
+**What remains of the struct emitter's checklist — items 1–5, 7 and 8 below are
+DONE; the ones marked OWED are not:**
 
 1. the `typedef struct Name { … } Name;` and its stored `var` fields;
 2. §7.16's anonymous base member (`struct Point;`, first, offset 0);
@@ -578,13 +622,17 @@ guessed** — this is the next unit of work, and the corpus file is the checklis
    body has to reach `self->` too, which needs the enclosing struct's fields (an
    inherited one needs the base's declarations, and a base in another file is
    §9.5's importer);
-6. the call site: `a.length()` → `Point_length(&a)`, which needs a
+6. **OWED — the call site:** `a.length()` → `Point_length(&a)`, which needs a
    **name → struct-type environment** (params, locals and fields) that the
    emitter does not have — 08's `func total(a: Point, b: Point)` forces it, since
-   a free function calls a struct method on its parameters;
-7. the inherited call's **upcast**
+   a free function calls a struct method on its parameters. The scaffolding was
+   built and then REMOVED rather than left dead: `struct_resolve_method` and
+   `struct_find_method` walked the base chain for exactly this, and
+   `declared_structs` is populated for the check that a receiver's type is one of
+   the file's own.
+7. **OWED with 6 — the inherited call's upcast**
    (`p3.length()` → `Point_length((const Point *)&p3)`);
-8. **the struct initializer — DECIDED (user, 2026-09): a declared `init` takes
+8. **OWED — the struct initializer. DECIDED (user, 2026-09): a declared `init`
    `self` BY VALUE and returns the struct.** `init(start: Int32)` on `Counter`
    emits `Counter Counter_init(Counter self, int32_t start)`, and the body's
    `return self;` is the struct it hands back (the same append §7.49 already makes

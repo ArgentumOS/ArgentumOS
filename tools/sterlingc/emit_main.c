@@ -163,11 +163,17 @@ main(int argc, char **argv)
 	 * output, with the built-in specimen falling back to its single class's
 	 * name (§2's `MyClass.h` from `MyClass.ag`).
 	 *
-	 * A program with no class at all has no name to be filed under, and the
-	 * emitter is the thing that refuses it — so it is asked, with stdout, for
-	 * the message. It refuses before writing anything.
+	 * A program with NEITHER a class nor a struct has no name to be filed
+	 * under, and the emitter is the thing that refuses it — so it is asked,
+	 * with stdout, for the message. It refuses before writing anything.
+	 *
+	 * `struct_count` is part of the test because §5's structs can BE a file's
+	 * substance: `tests/08-structs.ag` declares no class at all. While the
+	 * test was `class_count == 0` alone such a file took THIS branch — its
+	 * header went to stdout, its `.m` was never written, and the exit status
+	 * was 0, which is a silent loss dressed as a success.
 	 */
-	if (program->class_count == 0) {
+	if (program->class_count == 0 && program->struct_count == 0) {
 		const char *eerror = NULL;
 
 		if (!st_emit_header(stdout, program, source_label, &eerror)) {
