@@ -286,7 +286,7 @@ static NSString *fn_layout_for_path(NSString *path)
 	NSFileManager *fm = [NSFileManager defaultManager];
 	NSString *resources = [self resourcePath];
 	if (resources != nil) {
-		NSArray *listing = [fm directoryContentsAtPath:resources];
+		NSArray *listing = [fm contentsOfDirectoryAtPath:resources error:NULL];
 
 		/* A LISTING THAT COULD NOT BE READ IS AN EMPTY ANSWER, NOT A CRASH: the method contract is "the
 		 * localizations this bundle has", and a bundle whose Resources cannot be listed has none. */
@@ -347,7 +347,7 @@ static NSString *fn_layout_for_path(NSString *path)
 	if (subpath != nil && [subpath length] > 0) {
 		resources = [resources stringByAppendingPathComponent:subpath];
 	}
-	listing = [fm directoryContentsAtPath:resources];
+	listing = [fm contentsOfDirectoryAtPath:resources error:NULL];
 	if (listing == nil) {
 		return paths;
 	}

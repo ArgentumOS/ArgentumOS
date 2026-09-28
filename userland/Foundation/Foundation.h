@@ -180,6 +180,7 @@
 #import <Foundation/NSCalendarDate.h>
 #import <Foundation/NSUserNotification.h>
 #import <Foundation/NSUserNotificationCenter.h>
+#import <Foundation/NSExtensionItem.h>
 #import <Foundation/NSOperation.h>
 #import <Foundation/NSBlockOperation.h>
 #import <Foundation/NSInvocationOperation.h>

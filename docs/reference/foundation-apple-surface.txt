@@ -34,13 +34,13 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  203   open   22   struck   48
+#   class      shipped  204   open   21   struck   48
 #   protocol   shipped   34   open    6   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  142   open    9   struck    9
 #   case       shipped 1151   open   76   struck   75
 #   func       shipped  164   open   13   struck   12
-#   var        shipped  646   open   61   struck  207
+#   var        shipped  649   open   58   struck  207
 #   typealias  shipped   66   open    5   struck    5
 #   struct     shipped   13   open    0   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1404,7 +1404,7 @@ class	shipped	NSException		App Support / Exceptions	-	objc
 class	struck	NSExistsCommand		App Support / Script Commands	declined	objc
 class	shipped	NSExpression		Fundamentals / Filltering	-	objc
 class	open	NSExtensionContext		App Support / Extension Support	-	objc
-class	open	NSExtensionItem		App Support / Attachments	-	objc
+class	shipped	NSExtensionItem		App Support / Attachments	-	objc
 class	shipped	NSFileAccessIntent		Files and Data Persistence / Coordinated file access	-	objc
 class	shipped	NSFileCoordinator		Files and Data Persistence / Coordinated file access	-	objc
 class	shipped	NSFileHandle		Files and Data Persistence / Managed file access	-	objc
@@ -2446,9 +2446,9 @@ var	shipped	NSExtensionHostWillEnterForegroundNotification	NSExtensionContext	Ap
 var	shipped	NSExtensionHostWillEnterForegroundNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSExtensionHostWillResignActiveNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
 var	shipped	NSExtensionHostWillResignActiveNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	open	NSExtensionItemAttachmentsKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
-var	open	NSExtensionItemAttributedContentTextKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
-var	open	NSExtensionItemAttributedTitleKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
+var	shipped	NSExtensionItemAttachmentsKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
+var	shipped	NSExtensionItemAttributedContentTextKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
+var	shipped	NSExtensionItemAttributedTitleKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
 var	open	NSExtensionItemsAndErrorsKey	NSExtensionContext	App Support / Extension Support / Handling requests	-	objc
 var	shipped	NSExtensionJavaScriptFinalizeArgumentKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 var	shipped	NSExtensionJavaScriptPreprocessingResultsKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc

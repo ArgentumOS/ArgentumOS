@@ -3462,7 +3462,7 @@ vanishing.
 | **App Support / Activity Sharing** | 2 open | `NSUserActivity`, `NSUserActivityDelegate` |
 | **App Support / Apple Event Handling** | ALL STRUCK: `NSAppleEventDescriptor`, `NSAppleEventManager` | — |
 | **App Support / Assertions** | all classes shipped | — |
-| **App Support / Attachments** | 1 open | `NSExtensionItem` |
+| **App Support / Attachments** | all classes shipped | — |
 | **App Support / Bundle Resources** | all classes shipped | — |
 | **App Support / Cross-Process Notifications** | 1 open | `NSDistributedNotificationCenter` |
 | **App Support / Exceptions** | all classes shipped | — |
@@ -13828,6 +13828,73 @@ test). Guest: `make testimg` then `make test TESTS='foundation_usernotification'
 check(s) in 12s`**, the probe's own tally `ok=19 fail=0` in one run. `foundation-sweep --refresh` (exit 0) +
 `--families --write` + `--check`: **consistent**, eleven rows flipped, family table regenerated.
 `foundation-gate`: **OK — 540 files, 202 of 206 public headers**; `--unimplemented`: **0 NEW**.
+
+## §62.69 — `NSExtensionItem`, AND A CLUSTER OF DEFECTS IN THE CLASS IT CARRIES (2026-09-26)
+
+**WHAT SHIPPED: FOUR ROWS — the class and the three keys it travels under.** `NSExtensionItemAttachmentsKey`,
+`NSExtensionItemAttributedContentTextKey`, `NSExtensionItemAttributedTitleKey`. `class shipped` went **203 → 204**,
+`var 646 → 649`, and **`App Support / Attachments` is COMPLETE** — the fourth family this session has closed
+(§62.66's classes, §62.67's Deprecated, §62.68's User Notifications, and this one; §62.23 took this family from
+four rows to one and left the class).
+
+**THE CLASS IS A VALUE OBJECT WITH A WIRE FORM, which is the one thing about it worth stating:** four properties,
+every one copied, and three constants that are their NAMES ON THE WIRE. The constants are not decoration, and the
+probe checks what they are for — a payload dictionary keyed by them carries the item's fields, and a reader that
+has only the keys gets the values back. It conforms to `NSCopying` and `NSSecureCoding` (Apple's own list), and
+both are checked rather than assumed; the limit that follows is stated rather than hidden (`-attachments` holds
+`NSItemProvider` values on Apple's system, and that class is not codable here, so the ARCHIVER refuses such a
+payload on the sending side — §62.53's rule, not a silence in this class).
+
+**AND THE PROBE FOUND A CLUSTER OF FOUR DEFECTS — all in `NSAttributedString`'s coder path, which had never been
+exercised end to end, and all in code that was already shipped:**
+
+1. **The coder asked the property-list serializer for the BINARY format**, which this library NAMES AND REJECTS by
+   design ("a config file read with the wrong reader is worse than one that refuses to open"). So
+   `-encodeWithCoder:` raised for EVERY attributed string — and blamed the VALUES, which were innocent. XML is
+   the format the core speaks.
+2. **The decoder used `-decodeBytesForKey:returningLength:` while Apple and the rest of this tree spell it
+   `returnedLength:`** — a call to a selector nobody implements. `NSData.m` and `NSIndexPath.m` had it right; this
+   one file did not.
+3. **Both mistakes compiled because the file saw only a FORWARD DECLARATION of `NSCoder`:** clang reports an
+   unknown selector as a WARNING (`-Wobjc-method-access`) and assumes `id` — so a wrong label is a warning, not an
+   error. Adding the import is what makes a typo impossible, and it is this section's general lesson: **a forward
+   declaration turns a selector typo into a warning.**
+4. **AND THE DECODE THREW THE PAYLOAD'S WORK AWAY:** it seeded the store with `-initWithString:attributes:` (one
+   run covering the whole string, no attributes) and then APPENDED the payload's runs after it — two runs over the
+   same range, the empty one first, so `-attributesAtIndex:` answered `{}` for every index. The archive LOOKED
+   like it had lost the attributes.
+
+**THE MEASUREMENT IS THE PART WORTH KEEPING, because three plausible theories died against it.** Diagnostics at
+the WRITER (temporarily, in the encode and the decode) showed the payload was **correct on both sides**:
+`{string = abcd, runs = ({attributes = {A = 1}, …}, {attributes = {A = 1, B = 2}, …})}` written and read back
+unchanged. The wire was innocent, and so was the plist core (a direct test: nested dictionaries round-trip
+through XML perfectly) — which left the reader's own store. *Measure at the writer; a payload that is right on
+both sides points at the reader.*
+
+**THE WARNING SWEEP WAS ALREADY BEGGING TO BE READ, and this is what a full recompile gives: 108 warnings**, of
+which **31 are "a call to a selector the compiler cannot see"** — defect 3's class, tree-wide. Two of them were
+REAL and are fixed here: **`NSBundle` called `-directoryContentsAtPath:` twice, a selector that exists NOWHERE in
+this tree** (the real door is `-contentsOfDirectoryAtPath:error:`). The rest are a named work item with its numbers
+recorded, not a shrug: `-Wobjc-missing-super-calls` 16, `-Wincomplete-implementation` 14,
+`-Wreceiver-forward-class` 11, `-Wprotocol` 6, and one `-Wswitch` — several of which (`-fn…` initialisers called
+across files, an XML node door) are cross-file internal seams that work, and several of which are the same
+forward-declaration class this unit fixed twice. **A full recompile is the only honest way to see them** (§62.57's
+rule), and reading them is what found this unit's third defect.
+
+**A COMPILER FACT MEASURED RATHER THAN GUESSED, worth one line because it cost two builds:**
+`-Werror=nullable-to-nonnull-conversion` (the guest's) does NOT narrow an explicitly `_Nullable` local through a
+nil check — a ternary and an `if` both fail — while an unqualified local and an `id` do. The probe's nullable
+factory's answer is now bound to `id` with the nil check kept for the runtime.
+
+**VERIFIED.** Host: `make host-foundation-run` — **37 probes, every tally `fail=0`**, including
+`foundation_attributedstring` at **`ok=29 fail=0`** after its "the archiver does not yet carry a nested object"
+check was REPLACED by the round trip defect 4 makes possible (the old check asserted the empty archive that the
+unreachable doors produced — a check that documented a limitation which was really three bugs). Guest: `make
+testimg` then `make test TESTS='foundation_extensionitem,foundation_attributedstring,foundation_coder'` →
+**`TESTS-OK 3/3 case(s), 18/18 check(s) in 14s`** — three cases, because two of them cover the library code this
+unit fixed. `foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**, four rows flipped,
+family table regenerated. `foundation-gate`: **OK — 543 files, 203 of 207 public headers**; `--unimplemented`: **0
+NEW**.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 

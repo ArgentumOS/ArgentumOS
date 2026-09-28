@@ -601,15 +601,18 @@ int main(void)
 			printf("FOUNDATION-ATTRIBUTEDSTRING DIAG coding: unarchive raised %s: %s\n",
 				[[e name] UTF8String], [[e reason] UTF8String]);
 		}
-		/* A NAMED BOUNDARY, MEASURED RATHER THAN WISHED FOR: this tree's archiver records a ROOT object's own
-		 * primitive calls (an NSData root archives to 424 bytes) but does NOT carry what a root encodes as a
-		 * nested object reference - and this class's coding is reached (a marker proved it) and still leaves
-		 * the archive empty. So the check asserts what IS, and the gap is recorded in §61 beside the class
-		 * and in NSCoding.h, which already names the coder as the incomplete half. */
-		check("coding-the-archiver-does-not-yet-carry-a-nested-object",
-		      archive == nil || [archive length] == 0,
-		      [NSString stringWithFormat:@"archive=%lu bytes (the class's -encodeWithCoder: WAS called: a "
-			@"marker proves it), unarchived=%@", (unsigned long)[archive length], after]);
+		/* THE ROUND TRIP, WHICH WAS A MEASURED BOUNDARY AND IS NOW A MEASUREMENT. This tree's archiver does
+		 * not carry a nested object reference, so the class carries its payload as BYTES (a property list) and
+		 * the bytes travel - so the archive is non-empty and the unarchived object holds the same string AND
+		 * the same attributes. §62.69 found why the old check had an empty archive to assert: the coder doors
+		 * were UNREACHABLE (the class asked the property-list serializer for the BINARY format this library
+		 * rejects by name, and decoded with a misspelled selector label), and this round trip is exactly the
+		 * assertion that catches both. */
+		check("coding-round-trips-through-the-archiver",
+		      archive != nil && [archive length] > 0 && after != nil &&
+		      [after isEqualToAttributedString:before],
+		      [NSString stringWithFormat:@"archive=%lu bytes, unarchived=%@ (want the same string and "
+			@"attributes as %@)", (unsigned long)[archive length], after, [before string]]);
 
 		/* THE NAMED REFUSAL: an attribute value a property list cannot carry. Apple's -encodeWithCoder:
 		 * raises for state it cannot encode, and the message says WHY here rather than writing a

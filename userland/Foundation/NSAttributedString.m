@@ -19,6 +19,12 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSPropertyListSerialization.h>
 #import <Foundation/NSData.h>
+/* NSCoder, NOT A FORWARD DECLARATION OF IT: with only `@class NSCoder;` (which the header carries) in scope,
+ * clang reports an unknown selector as a WARNING (-Wobjc-method-access) and assumes the return type is `id` —
+ * so a call with the wrong argument label compiles and fails at runtime. That is exactly how this file reached
+ * §62.69 with `-decodeBytesForKey:returningLength:` (the tree and Apple both spell it `returnedLength:`): a
+ * typo that a forward declaration turned into a warning instead of an error. */
+#import <Foundation/NSCoder.h>
 #import <Foundation/NSError.h>
 #import <Foundation/NSDate.h>
 #import <Foundation/NSNumber.h>
@@ -793,13 +799,19 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 	}
 	[plist setObject:_string forKey:@"string"];
 	[plist setObject:runs forKey:@"runs"];
+	/* XML, WHICH IS THE ONLY FORMAT THIS LIBRARY'S PROPERTY-LIST CORE SPEAKS: OpenStep and BINARY are NAMED and
+	 * REJECTED there by design (NSPropertyListSerialization.h says why — "a config file read with the wrong
+	 * reader is worse than one that refuses to open"). Asking for the binary format was a REAL DEFECT, not a
+	 * style point: it made this method raise for EVERY attributed string, so the class Apple documents as
+	 * NSSecureCoding could not be archived at all — and the raise blamed the VALUES, which were innocent. Found
+	 * by §62.69's probe, which archives an NSExtensionItem holding an attributed string. */
 	payload = [NSPropertyListSerialization dataWithPropertyList:plist
-							    format:NSPropertyListBinaryFormat_v1_0
+							    format:NSPropertyListXMLFormat_v1_0
 							   options:0
 							      error:NULL];
 	if (payload == nil) {
-		/* THE NAMED REFUSAL: a run store holds something a property list cannot carry, and the honest
-		 * answer is to say so rather than write a half-archive. */
+		/* THE NAMED REFUSAL: with the format settled, a nil payload means a run store holds something a
+		 * property list cannot carry, and the honest answer is to say so rather than write a half-archive. */
 		{
 			NSString *offender = fn_plist_offender(plist);
 
@@ -820,7 +832,7 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 - (nullable instancetype)initWithCoder:(NSCoder *)coder
 {
 	NSUInteger byteCount = 0;
-	const void *bytes = [coder decodeBytesForKey:@"NSAttributedString" returningLength:&byteCount];
+	const void *bytes = [coder decodeBytesForKey:@"NSAttributedString" returnedLength:&byteCount];
 	id payload = bytes != NULL && byteCount > 0
 		? [NSData dataWithBytes:bytes length:byteCount] : nil;
 	id plist;
@@ -851,6 +863,14 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 		run.attrs = attrs != nil ? [[NSDictionary alloc] initWithDictionary:attrs] : nil;
 		[self fnInsertRun:run at:_runCount];
 	}
+	/* THE SEEDED RUN IS DROPPED, AND THIS ONE LINE IS THE WHOLE DIFFERENCE BETWEEN A ROUND TRIP THAT KEEPS THE
+	 * ATTRIBUTES AND ONE THAT APPEARS TO LOSE THEM. -initWithString:attributes: seeds a run covering the WHOLE
+	 * string (with no attributes), and the payload's runs were then appended AFTER it: two runs covering the same
+	 * range, the seeded one first, so -attributesAtIndex: answered from the empty one for every index. The
+	 * payload was right on BOTH sides - measured, not inferred: the encoder wrote `{attributes = {A = 1}}` and
+	 * the decoder read it back unchanged - which is what pointed at the reader's own store rather than at the
+	 * wire. Found by §62.69's probe. */
+	[self fnRemoveRunsFrom:0 count:1];
 	[self fnCoalesce];
 	return self;
 }
