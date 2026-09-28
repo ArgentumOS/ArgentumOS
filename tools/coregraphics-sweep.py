@@ -113,7 +113,7 @@ def public_header_text():
     return "\n".join(text)
 
 
-def declared(kind, name, text):
+def declared(kind, name, text, names=None):
     """Does our surface DECLARE this name?
 
     CoreGraphics has no classes and no protocols — it is a C API — so every kind
@@ -130,26 +130,66 @@ def declared(kind, name, text):
     says `typedef CGPoint NSPoint;` — a USE of our type, not a declaration of it.
     None of the alternatives match that line (`CGPoint` is not followed by `;`),
     which is why CGPoint's row is credited to CoreGraphics/CGGeometry.h alone.
+
+    AND SINCE §62.112 IT IS ONE PASS INSTEAD OF ONE PER ROW. `names` is the set
+    declared_names() builds; pass it in and the test costs a set lookup. Asked without
+    it — a one-off, a probe — this falls back to building it, which is the same answer
+    at the old price.
     """
-    n = re.escape(name)
-    any_form = (
-        r"#\s*define\s+" + n + r"\b"                       # a macro
-        r"|typedef[^;]*\b" + n + r"\s*;"                   # a typedef declarator
-        # A FUNCTION-POINTER TYPEDEF, WHICH THE ALTERNATIVE ABOVE DOES NOT REACH: the name sits
-        # inside the declarator `typedef void (*X)(void)`, so it is followed by `)` and not by `;`.
-        # MEASURED 2026-09-23 (C6.2): `CGDataProviderReleaseDataCallback` is DECLARED in
-        # CGDataProvider.h and its row had been `open` since C5, and C6.2's two CGFunction callbacks
-        # landed the same way — three shipped symbols the work list would have called unfinished
-        # forever. The tool's own contract is "declared as ANYTHING", and this is a declaration form.
-        r"|typedef[^;]*\(\s*\*\s*" + n + r"\s*\)"          # a function-pointer typedef
-        r"|NS_ENUM\s*\(\s*[^,]+,\s*" + n + r"\s*\)"        # an NS_ENUM
-        r"|NS_OPTIONS\s*\(\s*[^,]+,\s*" + n + r"\s*\)"     # an NS_OPTIONS
-        r"|\b" + n + r"\s*[=,}]"                           # an enum member
-        r"|struct\s+" + n + r"\b"                          # a struct tag
-        r"|^[A-Za-z_][\w \t\*]*\b" + n + r"\s*\([^;{]*\)\s*[;{]"  # prototype or definition
-        r"|\b" + n + r"\s*;"                               # a variable declarator
-    )
-    return re.search(any_form, text, re.M | re.S)
+    if names is None:
+        names = declared_names(text)
+    return name in names
+
+
+# THE DECLARATION FORMS, GENERALISED OVER THE NAME, SO ONE PASS ANSWERS FOR EVERY NAME (§62.112).
+#
+# `declared()` above used to build a per-name alternation and scan the whole comment-stripped header
+# text once FOR EACH ROW — measured 4.2 s for this ledger, and the same defect the Foundation sweep
+# fixed in §62.111: the forms that BEGIN with a `\b` assertion (`\bNAME\s*[=,}]`, `\bNAME\s*;`) defeat
+# Python's literal-prefix fast path, so each name re-scans the text from position 0.
+#
+# THE INVERSION IS EXACT: every alternative requires the literal NAME to occur, so the set of names the
+# alternation can bind is exactly the set these patterns CAPTURE.
+_CG_FORM_RX = (
+    re.compile(r"#\s*define\s+([A-Za-z_]\w*)"),                    # a macro
+    re.compile(r"NS_ENUM\s*\(\s*[^,]+,\s*([A-Za-z_]\w*)\s*\)"),    # an NS_ENUM
+    re.compile(r"NS_OPTIONS\s*\(\s*[^,]+,\s*([A-Za-z_]\w*)\s*\)"),  # an NS_OPTIONS
+    re.compile(r"\b([A-Za-z_]\w*)\s*[=,}]"),                       # an enum member
+    re.compile(r"struct\s+([A-Za-z_]\w*)"),                        # a struct tag
+    re.compile(r"^[A-Za-z_][\w \t\*]*\b([A-Za-z_]\w*)\s*\([^;{]*\)\s*[;{]", re.M | re.S),  # a prototype
+    re.compile(r"\b([A-Za-z_]\w*)\s*;"),                           # a variable declarator
+)
+
+# THE FUNCTION-POINTER TYPEDEF IS THE ONE FORM THAT NEEDS A SPAN — §62.111's comment explains the rule
+# and this is the same case: `typedef[^;]*\(\s*\*\s*NAME\s*\)` cannot cross a `;`, so the `(*NAME)` must
+# lie inside some `typedef`-to-`;` stretch. Matching `\(\s*\*\s*NAME\s*\)` globally would capture names
+# the per-name form never matches — a SUPERSET, which is the dangerous direction here: a name that
+# reads as declared but is not turns a real gap into a `shipped` row. This form is the one C6.2 needed
+# (three shipped symbols the work list would otherwise have called unfinished forever), so it is kept
+# deliberately rather than folded away.
+#
+# AND THE OTHER TYPEDEF FORM NEEDS NOTHING: `typedef[^;]*\bNAME\s*;` requires NAME immediately before a
+# `;`, so every match of it is also a match of the plain `\bNAME\s*;` form above — a STRICT SUBSET of a
+# form already present, and a set does not care how many ways a name can be found. (Foundation's could
+# not be folded that way: its form ends `[;)]`, and the `)` half is covered by nothing else.)
+_TYPEDEF_RX = re.compile(r"typedef")
+_TYPEDEF_FNPTR_RX = re.compile(r"\(\s*\*\s*([A-Za-z_]\w*)\s*\)")
+
+
+def declared_names(text):
+    """{name} — every identifier our CoreGraphics surface declares, in ONE pass over `text`.
+
+    The exact inverse of the per-name alternation `declared()` used to run for each row."""
+    out = set()
+    for rx in _CG_FORM_RX:
+        for m in rx.finditer(text):
+            out.add(m.group(1))
+    for td in _TYPEDEF_RX.finditer(text):
+        end = text.find(";", td.end())
+        span = text[td.end():] if end < 0 else text[td.end():end + 1]
+        for m in _TYPEDEF_FNPTR_RX.finditer(span):
+            out.add(m.group(1))
+    return out
 
 
 # A name Apple gives a Swift-interop annotation, and what a CoreGraphics name
@@ -183,10 +223,10 @@ def why_of(row):
     return struck_reason(row) or ("deprecated" if row.get("deprecated") else "-")
 
 
-def status_of(kind, name, why, text):
+def status_of(kind, name, why, text, names=None):
     if why in STRIKE_REASONS:
         return STATUS_STRUCK
-    return STATUS_SHIPPED if declared(kind, name, text) else STATUS_OPEN
+    return STATUS_SHIPPED if declared(kind, name, text, names) else STATUS_OPEN
 
 
 # --------------------------------------------------------------------------
@@ -289,6 +329,7 @@ def refresh():
             rows.setdefault(key, r)
             cf_kept += 1
     text = public_header_text()
+    declared_set = declared_names(text)     # ONE pass for every row (§62.112); see declared_names()
     out = []
     counts = {}
     reasons = {}
@@ -298,7 +339,7 @@ def refresh():
         why = why_of(r)
         if why == "deprecated":
             deprecated = deprecated + 1
-        st = status_of(r["kind"], r["name"], why, text)
+        st = status_of(r["kind"], r["name"], why, text, declared_set)
         counts[(r["kind"], st)] = counts.get((r["kind"], st), 0) + 1
         if st == STATUS_STRUCK:
             reasons[why] = reasons.get(why, 0) + 1
@@ -387,6 +428,7 @@ def check(strict=False):
     ground: see STRIKE_REASONS.)
     """
     text = public_header_text()
+    declared_set = declared_names(text)     # ONE pass, not one per row (§62.112)
     rows = read_surface()
     bad, policy, twin, counts = [], [], [], {}
     # A NAME CAN BE IN THIS LEDGER TWICE WITH OPPOSITE VERDICTS, and CoreGraphics has
@@ -401,7 +443,7 @@ def check(strict=False):
     live_names = {r[2] for r in rows if r[1] != STATUS_STRUCK}
     for kind, status, name, owner, family, why, src in rows:
         counts[(kind, status)] = counts.get((kind, status), 0) + 1
-        found = bool(declared(kind, name, text))
+        found = bool(declared(kind, name, text, declared_set))
         if status == STATUS_SHIPPED and not found:
             bad.append("STALE SHIPPED CLAIM    %-9s %s — the file says we ship it and our headers do not declare it" % (kind, name))
         elif status == STATUS_OPEN and found:

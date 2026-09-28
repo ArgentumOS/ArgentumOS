@@ -15776,6 +15776,49 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §62.112 — THE SAME INVERSION FOR THE TWO SIBLING SWEEPS: APPKIT 26.7 s → 0.10, COREGRAPHICS 4.2 s → 0.08 (2026-09-28)
+
+**WHAT SHIPPED: §62.111'S ONE-PASS `declared_names()`, IN `tools/appkit-sweep.py` AND
+`tools/coregraphics-sweep.py`.** Both carried their own copy of the per-name alternation and the same
+leading-`\b` forms, so both re-scanned their header text once per row. Measured, and each proved the
+same three ways: **AppKit's `check` 26.7 s → 0.103 s** (12,475 rows) and **CoreGraphics' 4.2 s →
+0.078 s** (1,598 rows). **Neither tool is in the build** — measured, nothing under `mk/` invokes them —
+so this is the cost of running them by hand, which is the only way they run.
+
+**EACH FORM THAT DIFFERS FROM FOUNDATION'S WAS DECIDED RATHER THAN COPIED**, and the three decisions
+are the whole content of this unit:
+
+* **BOTH SIBLINGS' PLAIN TYPEDEF NEEDS NOTHING AT ALL.** Their form is `typedef[^;]*\bNAME\s*;`, which
+  requires NAME immediately before a `;` — so every match of it is also a match of the plain
+  `\bNAME\s*;` form they already have. It is a **STRICT SUBSET**, and a set does not care how many ways
+  a name can be found, so it was dropped with that reason written down instead of re-implemented.
+  **Foundation's could NOT be folded that way**: its form ends `[;)]`, and the `)` half is covered by
+  nothing else — which is exactly why §62.111's typedef needed a span walk and these two do not.
+* **THE FUNCTION-POINTER TYPEDEF NEEDS A SPAN IN BOTH**, and it is the one form where a sloppy
+  generalisation would be a SUPERSET — the dangerous direction, since a name that reads as declared but
+  is not turns a real gap into a `shipped` row. `typedef[^;]*\(\s*\*\s*NAME\s*\)` cannot cross a `;`,
+  so `(*NAME)` is collected only inside some `typedef`-to-`;` stretch. **For CoreGraphics this is C6.2's
+  form** — the one that credits `CGDataProviderReleaseDataCallback` and the two CGFunction callbacks,
+  three shipped symbols the work list had called unfinished — so it is preserved deliberately.
+* **APPKIT'S `@class A, B;` CREDITS ONLY `A`, AND THAT IS CORRECT RATHER THAN A BUG.** The per-name form
+  is `@\s*class\s+NAME\b`, which matches only the name that directly follows the keyword; the
+  generalised capture takes that same first name and no other. Recorded because it looks like a
+  missing declaration and is not.
+
+**PROOF, THE SAME THREE INSTRUMENTS §62.111 USED.** (1) **Differential tests against HEAD's
+implementation** — the old per-name alternation and the new set, asked about **every ledger row and
+every header token**: AppKit **0 disagreements over 12,475 rows** plus all 358 unique header tokens and
+adversarial shapes; CoreGraphics **0 over 1,598 rows** plus all 623 unique tokens. (2) **The `check`
+transcript and exit code are byte-identical** to HEAD's for both tools. (3) **`--refresh` rewrites the
+ledger byte-identically** — AppKit's new ledger is byte-for-byte the committed one, and **CoreGraphics'
+differed in exactly ONE line: its measurement date (`2026-09-26` → today), with ZERO row changes.** That
+stamp was REVERTED so this commit is the performance change alone; the fact worth keeping is that
+re-measuring Apple's index today moved **no symbol in either ledger**, which is a second, independent
+confirmation that the inversions are not changing the answers.
+
+**VERIFICATION.** All three sweeps consistent after the change; `make foundation-sweep` still
+**0 NEW**; `--unimplemented` unchanged.
+
 ## §62.111 — THE SWEEP'S PER-NAME SCAN BECOMES ONE PASS: 51 SECONDS TO 1.5, PROVED BY DIFFERENTIAL TEST (2026-09-28)
 
 **WHAT SHIPPED: ONE INVERSION, IN `declared()`.** `tools/foundation-sweep.py` asked "does our surface

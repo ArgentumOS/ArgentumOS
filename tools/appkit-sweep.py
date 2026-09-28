@@ -94,7 +94,7 @@ def public_header_text():
     return "\n".join(text)
 
 
-def declared(kind, name, text):
+def declared(kind, name, text, names=None):
     """Does our surface DECLARE this name?
 
     "AS ANYTHING" RATHER THAN IN APPLE'S FORM, the same rule the other two sweeps
@@ -108,6 +108,11 @@ def declared(kind, name, text):
     a header declares it as that selector; a ledger row's `name` is therefore
     reduced to its FIRST component before the test, because that component plus a
     colon or a keyword is what actually appears in the declaration.
+
+    AND SINCE §62.112 IT IS ONE PASS INSTEAD OF ONE PER ROW. `names` is the set
+    declared_names() builds; pass it in and the test costs a set lookup. Asked
+    without it — a one-off, a probe — this falls back to building it, which is the
+    same answer at the old price (measured: 26.7 s for this ledger's 12,475 rows).
     """
     # THE SIGN IS STRIPPED FOR THE TEST AND KEPT IN THE ROW (see row_name): Apple indexes
     # `+saveGraphicsState` and `-saveGraphicsState` as separate members, and the class/instance
@@ -116,27 +121,70 @@ def declared(kind, name, text):
     # other is a fact `--check` cannot express yet, and saying so is better than a test that
     # silently requires both.
     name = re.sub(r"^[+-]\s*", "", name)
-    n = re.escape(name)
-    any_form = (
-        r"#\s*define\s+" + n + r"\b"                               # a macro
-        r"|@\s*interface\s+" + n + r"\b"                           # a class
-        r"|@\s*protocol\s+" + n + r"\b"                            # a protocol
-        r"|@\s*class\s+" + n + r"\b"                               # a forward declaration
-        r"|typedef[^;]*\b" + n + r"\s*;"                           # a typedef declarator
-        r"|typedef[^;]*\(\s*\*\s*" + n + r"\s*\)"                  # a function-pointer typedef
-        r"|NS_ENUM\s*\(\s*[^,]+,\s*" + n + r"\s*\)"                # an NS_ENUM
-        r"|NS_OPTIONS\s*\(\s*[^,]+,\s*" + n + r"\s*\)"             # an NS_OPTIONS
-        r"|\b" + n + r"\s*[=,}]"                                   # an enum member
-        r"|struct\s+" + n + r"\b"                                  # a struct tag
-        r"|[+-]\s*\([^)]*\)\s*" + n + r"\b"                        # an instance/class method
-        r"|\b" + n + r"\s*;"                                       # a property or variable
-        r"|\b" + n + r"\s*:"                                       # a selector keyword or property
-        r"|^[A-Za-z_][\w \t\*]*\b" + n + r"\s*\([^;{]*\)\s*[;{]"   # a C prototype (AppKit's funcs)
-    )
-    return re.search(any_form, text, re.M | re.S)
+    if names is None:
+        names = declared_names(text)
+    return name in names
 
 
-def declared_row(kind, name, owner, text):
+# THE DECLARATION FORMS, GENERALISED OVER THE NAME, SO ONE PASS ANSWERS FOR EVERY NAME (§62.112).
+#
+# `declared()` above used to build a per-name alternation and scan the whole comment-stripped header
+# text once FOR EACH ROW — 12,475 of them, measured 26.7 s. The cost concentrates in the forms that
+# BEGIN with a `\b` assertion or a character class (`\bNAME\s*[=,}]`, `\bNAME\s*;`, `\bNAME\s*:`,
+# `[+-]...`), because those defeat Python's literal-prefix fast path and re-scan the text from
+# position 0 every time. Same defect and same fix as the Foundation sweep's (§62.111).
+#
+# THE INVERSION IS EXACT, and the argument is the same one: every alternative requires the literal
+# NAME to occur, so the set of names the alternation can bind is exactly the set these patterns
+# CAPTURE — each writes the name's slot as a group and the maximal identifier run it takes is what
+# the per-name form's `\bNAME` would have had to match.
+_APK_FORM_RX = (
+    re.compile(r"#\s*define\s+([A-Za-z_]\w*)"),                    # a macro
+    re.compile(r"@\s*interface\s+([A-Za-z_]\w*)"),                 # a class
+    re.compile(r"@\s*protocol\s+([A-Za-z_]\w*)"),                  # a protocol
+    re.compile(r"@\s*class\s+([A-Za-z_]\w*)"),                     # a forward declaration
+    re.compile(r"NS_ENUM\s*\(\s*[^,]+,\s*([A-Za-z_]\w*)\s*\)"),    # an NS_ENUM
+    re.compile(r"NS_OPTIONS\s*\(\s*[^,]+,\s*([A-Za-z_]\w*)\s*\)"),  # an NS_OPTIONS
+    re.compile(r"\b([A-Za-z_]\w*)\s*[=,}]"),                       # an enum member
+    re.compile(r"struct\s+([A-Za-z_]\w*)"),                        # a struct tag
+    re.compile(r"[+-]\s*\([^)]*\)\s*([A-Za-z_]\w*)"),              # an instance/class method
+    re.compile(r"\b([A-Za-z_]\w*)\s*;"),                           # a property or variable
+    re.compile(r"\b([A-Za-z_]\w*)\s*:"),                           # a selector keyword or property
+    re.compile(r"^[A-Za-z_][\w \t\*]*\b([A-Za-z_]\w*)\s*\([^;{]*\)\s*[;{]", re.M | re.S),  # a C prototype
+)
+
+# THE FUNCTION-POINTER TYPEDEF IS THE ONE FORM THAT NEEDS A SPAN, and only because it is the one whose
+# per-name form is a property of a span: `typedef[^;]*\(\s*\*\s*NAME\s*\)` cannot cross a `;`, so the
+# `(*NAME)` must be inside some `typedef`-to-`;` stretch. Matching `\(\s*\*\s*NAME\s*\)` GLOBALLY would
+# capture names the per-name form never matches — a superset, which is the dangerous direction here:
+# a name that reads as declared but is not turns a real gap into a `shipped` row.
+#
+# AND THE OTHER TYPEDEF FORM NEEDS NOTHING AT ALL, which is worth saying rather than re-implementing:
+# `typedef[^;]*\bNAME\s*;` requires NAME to be immediately before a `;`, so every match of it is also
+# a match of the plain `\bNAME\s*;` form — it is a STRICT SUBSET of one form already above, and a set
+# does not care how many ways a name can be found. (The Foundation sweep's typedef could NOT be folded
+# that way: its form ends in `[;)]`, and the `)` half is not covered by any other form.)
+_TYPEDEF_RX = re.compile(r"typedef")
+_TYPEDEF_FNPTR_RX = re.compile(r"\(\s*\*\s*([A-Za-z_]\w*)\s*\)")
+
+
+def declared_names(text):
+    """{name} — every identifier our AppKit surface declares, in ONE pass over `text`.
+
+    The exact inverse of the per-name alternation `declared()` used to run for each row."""
+    out = set()
+    for rx in _APK_FORM_RX:
+        for m in rx.finditer(text):
+            out.add(m.group(1))
+    for td in _TYPEDEF_RX.finditer(text):
+        end = text.find(";", td.end())
+        span = text[td.end():] if end < 0 else text[td.end():end + 1]
+        for m in _TYPEDEF_FNPTR_RX.finditer(span):
+            out.add(m.group(1))
+    return out
+
+
+def declared_row(kind, name, owner, text, names=None):
     """Is this ROW declared — which is NOT the same question as `declared(name)`.
 
     A MEMBER IS CREDITED ONLY WHEN ITS OWNER IS DECLARED TOO, and the first version of this
@@ -154,9 +202,9 @@ def declared_row(kind, name, owner, text):
     ledger can over-credit, which is the safe direction for a work list (it never claims work that
     is not there, and `--check` still fails the two inconsistency classes).
     """
-    if not declared(kind, name, text):
+    if not declared(kind, name, text, names):
         return False
-    if owner and owner != "-" and not declared("class", owner, text):
+    if owner and owner != "-" and not declared("class", owner, text, names):
         return False
     return True
 
@@ -237,6 +285,7 @@ def refresh():
     index = fetch_index()
     rows, dropped = collect(index)
     text = public_header_text()
+    names = declared_names(text)        # ONE pass for every row (§62.112); see declared_names()
     out = []
     counts = {}
     reasons = {}
@@ -251,7 +300,7 @@ def refresh():
         # its declaration like any other, and `why` records `deprecated` as INFORMATION about what KIND of work it
         # is - its replacement may be a different shape, and a porting caller meets it by name.
         st = (STATUS_SHIPPED
-              if declared_row(r["kind"], r["name"], r["owner"], text) else STATUS_OPEN)
+              if declared_row(r["kind"], r["name"], r["owner"], text, names) else STATUS_OPEN)
         why = "deprecated" if r["deprecated"] else "-"
         if r["deprecated"]:
             deprecated = deprecated + 1
@@ -327,11 +376,12 @@ def check(strict=False):
     except FileNotFoundError:
         print("appkit-sweep: no %s yet — run --refresh" % os.path.relpath(SURFACE, ROOT))
         return 1
+    names = declared_names(text)        # ONE pass, not one per row (§62.112)
     bad, policy, counts = [], [], {}
     live = {r[2] for r in rows if r[1] != STATUS_STRUCK}
     for kind, status, name, owner, family, why, src in rows:
         counts[(kind, status)] = counts.get((kind, status), 0) + 1
-        found = declared_row(kind, name, owner, text)
+        found = declared_row(kind, name, owner, text, names)
         if status == STATUS_SHIPPED and not found:
             bad.append("STALE SHIPPED CLAIM    %-9s %s — the file says we ship it and our "
                        "headers do not declare it" % (kind, name))
