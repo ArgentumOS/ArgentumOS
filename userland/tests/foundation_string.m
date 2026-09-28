@@ -1098,6 +1098,119 @@ NULL
 		      "four locale keys read back as themselves and two stay distinct");
 	}
 
+	{
+		/* THE LINE DOORS, AND THE CHECKS SKIP THE ARITHMETIC IN FAVOUR OF THE TWO THINGS A READER WILL
+		 * DOUBT: (1) NEL (U+0085) is on Apple's terminator list and is the one easy to forget, so a
+		 * string carrying it must break the same way as one carrying \n; (2) CRLF IS ONE TERMINATOR, so
+		 * the line's `end` covers BOTH units while `contentsEnd` stops before them. */
+		NSString *crlf = @"one\r\ntwo";          /* o0 n1 e2 \r3 \n4 t5 w6 o7  (length 8) */
+		/* NEL CANNOT BE SPELLED AS `\u0085` — C refuses a universal character name that denotes a
+		 * CONTROL character, and clang says so ("universal character name refers to a control
+		 * character"). It is BUILT rather than written, which also makes the test unambiguous about
+		 * what it is testing: one U+0085 code unit between the words. */
+		unichar nelUnits[7] = { 'o', 'n', 'e', 0x0085, 't', 'w', 'o' };
+		NSString *nel = [NSString stringWithCharacters:nelUnits length:7];
+		NSString *mixed = @"a\u2028b\u2029c";    /* LS then PS, each one code unit */
+		NSUInteger s = 0, e = 0, c = 0;
+		NSRange r;
+
+		[crlf getLineStart:&s end:&e contentsEnd:&c forRange:NSMakeRange(0, 0)];
+		check("line-crlf-is-one-terminator",
+		      s == 0 && c == 3 && e == 5,
+		      "CRLF ends the text at contentsEnd 3 and the line itself at end 5 - one terminator, not two");
+
+		[crlf getLineStart:&s end:&e contentsEnd:&c forRange:NSMakeRange(5, 0)];
+		check("line-after-crlf-starts-past-both-units",
+		      s == 5 && c == 8 && e == 8,
+		      "the second line starts at 5, so the CRLF was consumed whole");
+
+		[nel getLineStart:&s end:&e contentsEnd:&c forRange:NSMakeRange(0, 0)];
+		check("line-nel-terminates",
+		      s == 0 && c == 3 && e == 4,
+		      "U+0085 ends a line: contentsEnd 3, end 4");
+
+		[nel getLineStart:&s end:&e contentsEnd:&c forRange:NSMakeRange(4, 0)];
+		check("line-starts-after-nel",
+		      s == 4 && c == 7,
+		      "the text after a NEL is its own line");
+
+		[mixed getLineStart:&s end:&e contentsEnd:&c forRange:NSMakeRange(3, 0)];
+		check("line-ls-and-ps-terminate",
+		      s == 2 && c == 3 && e == 4,
+		      "LS and PS break lines too: the middle line of \"a<LS>b<PS>c\" is b");
+
+		r = [crlf lineRangeForRange:NSMakeRange(0, 0)];
+		check("line-range-includes-the-terminator",
+		      r.location == 0 && r.length == 5,
+		      "the line RANGE covers the terminator while contentsEnd does not");
+
+		r = [crlf lineRangeForRange:NSMakeRange(1, 5)];
+		check("line-range-is-the-line-containing-the-range",
+		      r.location == 0 && r.length == 8,
+		      "a range reaching into the next line answers both lines, whole");
+
+		{
+			NSMutableArray *lines = [NSMutableArray array];
+
+			[@"a\nb" enumerateLinesUsingBlock:^(NSString *line, BOOL *stop) {
+				[lines addObject:line];
+			}];
+			check("line-enumerator-drops-the-terminator",
+			      [lines count] == 2 &&
+			      [[lines objectAtIndex:0] isEqualToString:@"a"] &&
+			      [[lines objectAtIndex:1] isEqualToString:@"b"],
+			      "two lines, neither carrying its terminator");
+
+			lines = [NSMutableArray array];
+			[@"a\n\nb" enumerateLinesUsingBlock:^(NSString *line, BOOL *stop) {
+				[lines addObject:line];
+			}];
+			check("line-enumerator-keeps-a-blank-line",
+			      [lines count] == 3 && [[lines objectAtIndex:1] length] == 0,
+			      "a blank line is a line; dropping it would change a caller's line count");
+
+			lines = [NSMutableArray array];
+			[@"one\n" enumerateLinesUsingBlock:^(NSString *line, BOOL *stop) {
+				[lines addObject:line];
+			}];
+			check("line-enumerator-has-no-trailing-empty-line",
+			      [lines count] == 1 && [[lines objectAtIndex:0] isEqualToString:@"one"],
+			      "a trailing terminator does not make a phantom final line");
+
+			lines = [NSMutableArray array];
+			[@"" enumerateLinesUsingBlock:^(NSString *line, BOOL *stop) {
+				[lines addObject:line];
+			}];
+			check("line-enumerator-of-an-empty-string-yields-nothing",
+			      [lines count] == 0,
+			      "no lines at all, rather than one empty one");
+
+			lines = [NSMutableArray array];
+			[@"a\nb\nc" enumerateLinesUsingBlock:^(NSString *line, BOOL *stop) {
+				[lines addObject:line];
+				if ([lines count] == 2) {
+					*stop = YES;
+				}
+			}];
+			check("line-enumerator-honours-stop",
+			      [lines count] == 2,
+			      "setting *stop ends the walk");
+		}
+
+		{
+			int caught = 0;
+
+			@try {
+				[crlf lineRangeForRange:NSMakeRange(1, 99)];
+			} @catch (NSException *exception) {
+				caught = [exception.name isEqualToString:NSRangeException];
+			}
+			check("line-invalid-range-raises",
+			      caught,
+			      "a range past the end raises NSRangeException, as Apple's page says it does");
+		}
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

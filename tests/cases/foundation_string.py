@@ -41,6 +41,13 @@ CHECKS = (
           "charset-punct-and-control", "locale-display-names",
           "locale-keys-are-their-own-names",
           "option-set-members-are-distinct-bits", "transforms-and-keys-are-their-own-names",
+          "line-crlf-is-one-terminator", "line-after-crlf-starts-past-both-units",
+          "line-nel-terminates", "line-starts-after-nel", "line-ls-and-ps-terminate",
+          "line-range-includes-the-terminator", "line-range-is-the-line-containing-the-range",
+          "line-enumerator-drops-the-terminator", "line-enumerator-keeps-a-blank-line",
+          "line-enumerator-has-no-trailing-empty-line",
+          "line-enumerator-of-an-empty-string-yields-nothing", "line-enumerator-honours-stop",
+          "line-invalid-range-raises",
           )
 
 

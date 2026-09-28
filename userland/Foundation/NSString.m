@@ -579,6 +579,55 @@ static FNTextUnit fn_enumeration_pick_unit(NSStringEnumerationOptions opts);
 static FNTextUnit fn_enumeration_enclosing_unit(FNTextUnit unit);
 static NSArray *fn_enumerate_units(NSString *string, FNTextUnit unit, NSRange range);
 
+/* --- A LINE, AND WHERE IT ENDS ----------------------------------------------------------------
+ *
+ * FIVE TERMINATORS, AND NEL IS THE ONE THAT IS EASY TO FORGET: U+000A (LF), U+000D (CR), U+0085
+ * (NEL), U+2028 (LS) and U+2029 (PS). The set is Apple's, from its published page for
+ * -getLineStart:end:contentsEnd:forRange:, and -enumerateLinesUsingBlock: defers to that same
+ * discussion — so there is ONE notion of a line behind three doors rather than three.
+ *
+ * THE ENGINE IN FNTextBreaking.m CARRIES THE SAME RULE FOR `-enumerateSubstringsInRange:options:`'s
+ * ByLines, and it had FOUR of the five: it never treated NEL as a terminator, so a string carrying
+ * U+0085 broke into lines by one door and not the other. That is fixed there in the same unit — the
+ * rule is one rule, and a library that answers "how many lines" differently depending on which door
+ * was used has two rules. */
+static BOOL fn_is_line_terminator(unichar c)
+{
+	return c == 0x000a || c == 0x000d || c == 0x0085 || c == 0x2028 || c == 0x2029;
+}
+
+/* HOW MANY CODE UNITS THE TERMINATOR AT `i` OCCUPIES, or 0 when there is none. `\r\n` IS ONE
+ * TERMINATOR AND NOT TWO, which is Apple's own sentence for it — "the longest possible sequence being
+ * preferred to any shorter" — and it is why this is a length rather than a flag. */
+static NSUInteger fn_line_terminator_length(NSString *string, NSUInteger i)
+{
+	NSUInteger length = [string length];
+
+	if (i >= length || !fn_is_line_terminator([string characterAtIndex:i])) {
+		return 0;
+	}
+	if ([string characterAtIndex:i] == 0x000d && (i + 1) < length &&
+	    [string characterAtIndex:i + 1] == 0x000a) {
+		return 2;
+	}
+	return 1;
+}
+
+/* THE RANGE REFUSAL, SPELLED ONCE. Compared as `location` then `length` rather than as
+ * `NSMaxRange`, because a range whose location is already past the end can have a length that
+ * overflows the sum — the comparison is the same and this one cannot wrap. */
+static void fn_line_check_range(NSString *string, NSRange range, SEL cmd)
+{
+	NSUInteger length = [string length];
+
+	if (range.location > length || range.length > (length - range.location)) {
+		[NSException raise:NSRangeException
+		            format:@"-[NSString %@]: range {%lu, %lu} out of bounds for a string of length %lu",
+		                   NSStringFromSelector(cmd), (unsigned long)range.location,
+		                   (unsigned long)range.length, (unsigned long)length];
+	}
+}
+
 @implementation NSString
 
 NSStringTransform const NSStringTransformFullwidthToHalfwidth = @"NSStringTransformFullwidthToHalfwidth";
@@ -1870,6 +1919,96 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 				}
 			}
 		}
+	}
+}
+
+/* ===================================================================================================
+ * THE LINE DOORS, ON THE RULE ABOVE.
+ *
+ * `contentsEnd` IS WHERE THE TEXT STOPS AND `end` IS WHERE THE TERMINATOR STOPS, which is the whole
+ * reason the three out-parameters exist rather than one: a caller building a range for the line wants
+ * `end` (the terminator belongs to the line it ends), and a caller that wants the line's TEXT wants
+ * `contentsEnd`. Both answers come from one walk.
+ *
+ * THE LINE IS THE ONE CONTAINING `range`, NOT THE ONE STARTING AT IT: a range that covers several
+ * characters of one line answers that whole line, and that is why the end is found from the range's
+ * LAST character rather than its first.
+ * =================================================================================================== */
+- (void)getLineStart:(NSUInteger *)startPtr
+		 end:(NSUInteger *)lineEndPtr
+	 contentsEnd:(NSUInteger *)contentsEndPtr
+	    forRange:(NSRange)range
+{
+	NSUInteger length = [self length];
+	NSUInteger start, contentsEnd, end, i;
+
+	fn_line_check_range(self, range, _cmd);
+
+	/* THE START IS FOUND BY WALKING BACK OVER THE TEXT AND NOT OVER A TERMINATOR RUN: the first
+	 * terminator BEFORE `range.location` ends the previous line, and whether that terminator was one
+	 * unit or a CRLF pair makes no difference here — either way this line starts just past it. */
+	start = range.location;
+	while (start > 0 && !fn_is_line_terminator([self characterAtIndex:start - 1])) {
+		start--;
+	}
+
+	/* AN EMPTY RANGE ASKS ABOUT THE LINE THAT BEGINS AT ITS LOCATION, so the walk starts there; a
+	 * non-empty one asks about the line its LAST character is in. */
+	i = (range.length == 0) ? range.location : NSMaxRange(range) - 1;
+	while (i < length && !fn_is_line_terminator([self characterAtIndex:i])) {
+		i++;
+	}
+	contentsEnd = i;
+	end = i + fn_line_terminator_length(self, i);
+
+	if (startPtr != NULL) {
+		*startPtr = start;
+	}
+	if (contentsEndPtr != NULL) {
+		*contentsEndPtr = contentsEnd;
+	}
+	if (lineEndPtr != NULL) {
+		*lineEndPtr = end;
+	}
+}
+
+- (NSRange)lineRangeForRange:(NSRange)range
+{
+	NSUInteger start = 0, end = 0, contentsEnd = 0;
+
+	[self getLineStart:&start end:&end contentsEnd:&contentsEnd forRange:range];
+	return NSMakeRange(start, end - start);
+}
+
+/* THE ENUMERATOR HANDS BACK THE TEXT WITHOUT ITS TERMINATOR — Apple's parameter page says so in as
+ * many words, "the line contains just the contents of the line, without the line terminators" — so
+ * each element is `contentsEnd - start` long even though the line it walked spans to `end`.
+ *
+ * A TRAILING TERMINATOR DOES NOT MAKE A TRAILING EMPTY LINE. "one\n" is ONE line, not two: the walk
+ * stops when it reaches the end, so the empty text after the last terminator is never handed over.
+ * A BLANK LINE IN THE MIDDLE IS A LINE, though, and is handed over as an empty string — dropping it
+ * would change a caller's line count, which is half of what the door is for. */
+- (void)enumerateLinesUsingBlock:(void (^)(NSString *line, BOOL *stop))block
+{
+	NSUInteger length = [self length];
+	NSUInteger at = 0;
+
+	if (block == nil) {
+		return;
+	}
+	while (at < length) {
+		NSUInteger start = 0, end = 0, contentsEnd = 0;
+		BOOL stop = NO;
+
+		[self getLineStart:&start end:&end contentsEnd:&contentsEnd forRange:NSMakeRange(at, 0)];
+		block([self substringWithRange:NSMakeRange(start, contentsEnd - start)], &stop);
+		if (stop) {
+			return;
+		}
+		if (end <= at) {
+			break;      /* no forward progress is possible; stopping beats spinning */
+		}
+		at = end;
 	}
 }
 @end

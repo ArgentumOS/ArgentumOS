@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1776   open  909   struck  243
+#   method     shipped 1779   open  906   struck  243
 #   property   shipped 1025   open  465   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3059,7 +3059,7 @@ method	open	-drawInRect:withFont:lineBreakMode:	NSString	Fundamentals / Strings 
 method	open	-drawInRect:withFont:lineBreakMode:alignment:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	open	-drawWithRect:options:attributes:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	open	-drawWithRect:options:attributes:context:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	-	objc
-method	open	-enumerateLinesUsingBlock:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
+method	shipped	-enumerateLinesUsingBlock:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	open	-enumerateLinguisticTagsInRange:scheme:options:orthography:usingBlock:	NSString	Fundamentals / Strings / Performing Linguistic Analysis	deprecated	objc
 method	shipped	-enumerateSubstringsInRange:options:usingBlock:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	open	-getBytes:maxLength:usedLength:encoding:options:range:remainingRange:	NSString	Fundamentals / Strings / Getting Characters and Bytes	-	objc
@@ -3070,7 +3070,7 @@ method	open	-getCString:maxLength:range:remainingRange:	NSString	Fundamentals / 
 method	open	-getCharacters:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-getCharacters:range:	NSString	Fundamentals / Strings / Getting Characters and Bytes	-	objc
 method	open	-getFileSystemRepresentation:maxLength:	NSString	Fundamentals / Strings / Working with Paths	-	objc
-method	open	-getLineStart:end:contentsEnd:forRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
+method	shipped	-getLineStart:end:contentsEnd:forRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
 method	open	-getParagraphStart:end:contentsEnd:forRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
 method	shipped	-hasPrefix:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-hasSuffix:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
@@ -3105,7 +3105,7 @@ method	open	-initWithValidatedFormat:validFormatSpecifiers:locale:arguments:erro
 method	open	-initWithValidatedFormat:validFormatSpecifiers:locale:error:	NSString	Fundamentals / Strings / Instance Methods	-	objc
 method	shipped	-isEqualToString:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-lengthOfBytesUsingEncoding:	NSString	Fundamentals / Strings / Getting a String’s Length	-	objc
-method	open	-lineRangeForRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
+method	shipped	-lineRangeForRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
 method	open	-linguisticTagsInRange:scheme:options:orthography:tokenRanges:	NSString	Fundamentals / Strings / Performing Linguistic Analysis	deprecated	objc
 method	shipped	-localizedCaseInsensitiveCompare:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	open	-localizedCaseInsensitiveContainsString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc

@@ -58,7 +58,14 @@ static int32_t fn_line_text_end(const UChar *buffer, int32_t from, int32_t lengt
 	while (i < length) {
 		UChar c = buffer[i];
 
-		if (c == 0x000a || c == 0x000d || c == 0x2028 || c == 0x2029) {
+		/* NEL (U+0085) IS A LINE TERMINATOR AND THIS PREDICATE DID NOT SAY SO (fixed §63, 2026-09-28).
+		 * The four below were here from the first version; the fifth is on Apple's published list for
+		 * -getLineStart:end:contentsEnd:forRange: — LF, CR, NEL, LS, PS — and it is the easy one to miss,
+		 * because a caller who has only ever typed \n will not notice until a string arrives from a
+		 * producer that uses it. WHAT MADE IT A DEFECT RATHER THAN A CHOICE is that NSString's own line
+		 * doors are documented against that list, so this engine and they answered "how many lines"
+		 * differently for the same string — two rules where the library promises one. */
+		if (c == 0x000a || c == 0x000d || c == 0x0085 || c == 0x2028 || c == 0x2029) {
 			return i;
 		}
 		i++;

@@ -15776,6 +15776,63 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63 — THE FIRST SLICE OF THE SELECTOR WORK LIST: `NSString`'S LINE DOORS, AND A TERMINATOR SET THAT WAS MISSING ONE (2026-09-28)
+
+**THE LEDGER FINALLY DRIVES WORK RATHER THAN DESCRIBING IT.** §62.110 put 1,374 open selectors on the
+table; this closes the first three of them, and the slice was CHOSEN rather than taken from the top.
+The 114 open rows on `NSString` cluster sharply, and most are not Foundation work at all: **30 are
+`Deprecated`** (the old text-drawing and C-string sets) and **6 are "Sizing and Drawing Strings"** —
+`-drawAtPoint:withAttributes:`, `-sizeWithAttributes:`, `-boundingRectWithSize:…` — which are **AppKit's
+`NSStringDrawing` category**, so they belong in `userland/AppKit/` (this tree's AppKit duplication) and
+implementing them in Foundation would be a layering mistake. What is left and coherent is **the line
+range family**, and all of it sits behind one mechanism.
+
+**WHAT SHIPPED: THREE DOORS, AND THE TERMINATOR RULE THEY SHARE.** `-getLineStart:end:contentsEnd:forRange:`,
+`-lineRangeForRange:` and `-enumerateLinesUsingBlock:`. **`method open` went 909 → 906.** The sets are
+Apple's, taken from its published pages (fetched, not recalled): a line is delimited by **LF, CR, NEL
+(U+0085), LS (U+2028) and PS (U+2029)**, *"the longest possible sequence being preferred to any shorter"*
+— Apple's own sentence, and the rule that makes **CRLF one terminator rather than two**. The three out-
+parameters exist because the terminator is not part of the line's TEXT: `contentsEnd` is where the text
+stops, `end` where the terminator stops. `-enumerateLinesUsingBlock:`'s page defers to that same
+discussion ("the line contains just the contents of the line, without the line terminators"), so it
+shares the rule rather than inventing a second one; an invalid range **raises `NSRangeException`**,
+which Apple's page states and which is what every other range door here does.
+
+**THE DOCUMENTATION FOUND A REAL BUG IN A SHIPPED ENGINE.** `FNTextBreaking.m`'s `fn_line_text_end`
+— the rule behind `-enumerateSubstringsInRange:options:`'s `ByLines` — carried **four of the five
+terminators and never NEL**. Since it and the new doors are documented against the same list, the
+library answered "how many lines" **differently depending on which door a caller used**: a string
+carrying U+0085 broke into lines by one and not the other. It is fixed here — one rule, three doors plus
+the enumeration option — because "two notions of a line" is exactly what the plan's one-arithmetic rule
+forbids. Nothing else in the engine changed, and the four old terminators behave as before.
+
+**AND TWO DOORS ARE REFUSED, WITH THE REASON WRITTEN DOWN RATHER THAN GUESSED AT.** Apple's page for
+`-getParagraphStart:end:contentsEnd:forRange:` defines a paragraph as text *"delimited by a carriage
+return, newline, or paragraph separator"* — three SINGLE characters. This library's own engine defines a
+paragraph as *"a run of lines with no blank line between them"* and records that as Apple's definition
+too. **They answer differently for a string holding a blank line**, so implementing `-getParagraphStart:`
+or `-paragraphRangeForRange:` today would be picking a winner by recall. Both are named in `NSString.h`
+where a caller meets them, and the choice waits for a decision — inventing semantics is the same failure
+as inventing an API, one level down. **NEL and LS end a LINE without ending a PARAGRAPH** either way, and
+that asymmetry is the family's sharpest testable fact.
+
+**VERIFICATION, INCLUDING TWO COSTS WORTH KEEPING.** Probe `foundation_string` **55/55** (the 13 new
+checks and the 42 that were there before) and the guest case **`TESTS-OK 1/1 case(s), 6/6 check(s) in
+12.3s`**, the ensemble tally printing `ok=55 fail=0` in the probe's own output. `foundation-gate` **OK**
+(592 files, 220 of 225 public headers open a nullability region), `--unimplemented` **0 NEW**, and
+`--check` green after the refresh that flipped the three rows — which the gate itself demanded first:
+it failed with **three `PRESENT BUT LISTED OPEN` findings naming exactly the new doors**, which is the
+mechanism working rather than a step to remember.
+* **THE TIER BOOTS ITS OWN IMAGE, AND THE COST IS A WHOLE GUEST RUN.** `make test` uses
+  `.build/rootagfs-test.img`, not the shipped `.build/rootagfs.img` (mk/50-tests.mk says so). Rebuilding
+  `rootagfs` and re-running the case therefore ran the OLD probe and reported **42 of 55 checks, every
+  new one missing** — a stale-artifact reading that looks like a failing implementation. `make testimg`
+  is the fix, and the lesson is §62.57's: **inspect the artifact the guest actually boots**, not the one
+  you just built.
+* **`\u0085` IS NOT SPELLABLE IN A C STRING LITERAL.** clang refuses a universal character name that
+  denotes a control character, so the NEL fixture is BUILT — `unichar nelUnits[7] = {…, 0x0085, …}` with
+  `+stringWithCharacters:length:` — which also makes the test say exactly what it means.
+
 ## §62.112 — THE SAME INVERSION FOR THE TWO SIBLING SWEEPS: APPKIT 26.7 s → 0.10, COREGRAPHICS 4.2 s → 0.08 (2026-09-28)
 
 **WHAT SHIPPED: §62.111'S ONE-PASS `declared_names()`, IN `tools/appkit-sweep.py` AND

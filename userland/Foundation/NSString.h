@@ -317,6 +317,36 @@ typedef enum {
 					     NSRange substringRange,
 					     NSRange enclosingRange,
 					     BOOL *stop))block;
+
+/* ===================================================================================================
+ * THE LINE RANGES — AND A LINE'S TERMINATOR SET IS APPLE'S, TAKEN FROM ITS PUBLISHED PAGE RATHER THAN
+ * INVENTED: a line is delimited by ANY of U+000A (LF), U+000D (CR), U+0085 (NEL), U+2028 (LS) and
+ * U+2029 (PS), "the longest possible sequence being preferred to any shorter" — Apple's own sentence,
+ * and the rule that makes CRLF ONE terminator rather than two. `-enumerateLinesUsingBlock:` defers to
+ * that same discussion on its own page, so it shares this rule instead of inventing a second one.
+ *
+ * THE TERMINATOR IS NOT PART OF THE LINE'S TEXT: `contentsEnd` is where the text stops and `end` where
+ * the terminator stops — the distinction the three out-parameters exist to carry — and
+ * `-enumerateLinesUsingBlock:` hands back the text WITHOUT the terminator.
+ *
+ * AN INVALID RANGE RAISES NSRangeException: Apple's page says the method "detects all invalid ranges
+ * (including those with negative lengths)" and that this "causes an exception", which is the same
+ * refusal every other range door in this library makes.
+ *
+ * (The PARAGRAPH doors, -getParagraphStart:end:contentsEnd:forRange: and -paragraphRangeForRange:, are
+ * NOT here yet, and the reason is a real disagreement rather than an omission: Apple's page defines a
+ * paragraph as text "delimited by a carriage return, newline, or paragraph separator" — three single
+ * characters — while this library's own breaking engine defines it as "a run of lines with no blank
+ * line between them" and records that as Apple's definition too. They answer differently for a string
+ * holding a blank line, so writing one would be picking a winner by guesswork. It stays a decision,
+ * recorded here so the next reader meets it rather than reinventing it.)
+ * =================================================================================================== */
+- (void)getLineStart:(NSUInteger *)startPtr
+		 end:(NSUInteger *)lineEndPtr
+	 contentsEnd:(NSUInteger *)contentsEndPtr
+	    forRange:(NSRange)range;
+- (NSRange)lineRangeForRange:(NSRange)range;
+- (void)enumerateLinesUsingBlock:(void (^)(NSString *line, BOOL *stop))block;
 @end
 
 @interface NSOwnedString : NSString
