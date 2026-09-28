@@ -13896,6 +13896,46 @@ unit fixed. `foundation-sweep --refresh` + `--families --write` + `--check`: **c
 family table regenerated. `foundation-gate`: **OK — 543 files, 203 of 207 public headers**; `--unimplemented`: **0
 NEW**.
 
+## §62.70 — THE WARNING SWEEP, PHASE 1: SIXTEEN `-dealloc`s THAT NEVER FREED THEIR OWN INSTANCE (2026-09-26)
+
+**WHAT THIS UNIT IS, AND WHY IT STARTED HERE.** §62.69's full recompile measured **100 warnings** and left the
+numbers on the table; this unit works through them class by class. It starts with `-Wobjc-missing-super-calls`
+(**16**) because that class is not style: in manual ownership a `-dealloc` that returns without calling
+`[super dealloc]` never frees the instance, so EVERY object of that class leaks its whole allocation. §62.60 had
+already found this exact defect in `NSLock.h/.m`; the sweep shows it was never a one-off.
+
+**SIXTEEN SITES, FIFTEEN OF THEM REAL, ONE A RECORDED EXCEPTION:** `NSArray`, `NSCharacterSet`, `NSData`,
+`NSDateFormatter`, `NSDictionary`, `NSIndexPath`, `NSIndexSet`, `NSInvocation`, `NSMethodSignature`,
+`NSNumberFormatter`, `NSPredicateFormat`, `NSRegularExpression`, `NSString` (twice) and `NSValue` now call
+`[super dealloc]`. The exception is `NSTinyString`'s **tagged pointer**, whose `-dealloc` is empty ON PURPOSE: the
+runtime never sends it `-dealloc`, and `NSObject`'s would try to free memory `malloc` never handed out. Rather
+than leave a warning nobody reads, the diagnostic is silenced AT THAT SITE with both reasons written down — the
+difference between an exception and an oversight.
+
+**MEASURED, NOT ESTIMATED: 100 → 84 warnings in a full recompile, with `-Wobjc-missing-super-calls` at ZERO.**
+Host: `make host-foundation-run` — **37 probes, every tally `fail=0`** (every probe exercises these deallocs, so
+the suite is this change's regression test). Guest: `make testimg` + `make test TESTS='foundation_collection'` →
+**`TESTS-OK 1/1 case(s), 6/6 check(s) in 12.3s`**, because the guest library got the same edits. `foundation-gate`:
+**OK — 543 files, 203 of 207 public headers**; `--unimplemented`: **0 NEW**; sweep consistent.
+
+**WHAT IS LEFT, MEASURED SO PHASE 2 STARTS FROM EVIDENCE RATHER THAN A FRESH SEARCH — 84 warnings:**
+`-Wobjc-method-access` 29 (a call the compiler cannot check — the class that hid §62.69's selector typo; mostly a
+missing import) · `-Wreceiver-forward-class` 11 (the same missing imports) · `-Wincomplete-implementation` 11 +
+`-Wprotocol` 6 (the standing rule: declared without a definition) · `-Wincompatible-pointer-types` 5 ·
+`-Wenum-conversion` 4 · `-Wnonnull` 3 · `-Wswitch` 1 · `-Wpointer-bool-conversion` 1 ·
+`-Wobjc-protocol-method-implementation` 1 · `-Wincompatible-pointer-types-discards-qualifiers` 1 ·
+`-Wenum-compare` 1.
+
+**AND THE REAL BUGS AMONG THEM ARE ALREADY NAMED BY THE COMPILER — this reading is done, not deferred:** an
+`NSString *` assigned to `NSData *` and back in `NSFileManager`'s link comparison (3); `NSHTTPCookie`'s
+`-commentURL` declaring `NSURL *` while holding a string; `NSXMLNode`'s `-objectValue` declaring `NSString *` where
+Apple's is `id`; `NSHashTable`/`NSMapTable` returning `NULL` from functions that promise non-null (3);
+`NSSocketPort`'s `if (listen && …)` — the libc FUNCTION, always true, so a condition meant to test a flag tests
+nothing; `NSString`'s category implementing a method its primary class also implements; and a systematic
+kind-enum confusion in the XML family (`NSXMLNodeKind` passed where `NSXMLDTDNodeKind` is expected, plus a `case`
+that can never match — 6 warnings across `NSXMLDocument`, `NSXMLDTD` and `NSXMLParser`). Each is a defect with its
+diagnosis attached; phase 2 executes them.
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else
