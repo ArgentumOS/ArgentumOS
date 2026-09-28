@@ -382,10 +382,39 @@ static pthread_cond_t fn_handshake_cond = PTHREAD_COND_INITIALIZER;
 		[coordinated release];
 		return;
 	}
-	[queue addOperationWithBlock:^{
-		accessor(coordinated, nil);
-		fnReacquire(&reacquirers);
-	}];
+	/* THE REACQUIRERS ARE HANDED TO THE BLOCK IN A HEAP BOX THE BLOCK OWNS, AND THAT BOX IS THE LIFETIME
+	 * DECISION the compiler's qualifier warning was asking for.
+	 *
+	 * WHAT THE ANATOMY IS: an OBJECT capture is RETAINED when a block is copied (which is why `coordinated` is
+	 * safe to release below - the queue's copy holds it), but a STRUCT capture is a BYTE COPY and nothing owns
+	 * it. So `fnReacquire(&reacquirers)` inside the block could only ever have mutated the BLOCK'S OWN COPY: it
+	 * appeared to work because the copy shares the `items` POINTER, which meant the array was still released
+	 * exactly once and the caller's dangling count was never read. Fragile, not broken - and the reason it was
+	 * never seen.
+	 *
+	 * THE BOX REMOVES THE SHARING: the block releases every reacquirer out of storage it owns and then frees the
+	 * box, the local is emptied here so no second owner can exist, and the mutation is legal because the captured
+	 * POINTER is passed by value (nothing takes the address of a block-captured variable). The assumption that
+	 * the block RUNS is the one this code already made - it was the block that released the reacquirers before
+	 * this change too. */
+	{
+		struct fn_reacquirers *pending = malloc(sizeof *pending);
+
+		if (pending == NULL) {
+			fnReacquire(&reacquirers);	/* nowhere to hand them on: release them here, as the failure path does */
+			[coordinated release];
+			return;
+		}
+		*pending = reacquirers;
+		reacquirers.items = NULL;
+		reacquirers.count = 0;
+		reacquirers.capacity = 0;
+		[queue addOperationWithBlock:^{
+			accessor(coordinated, nil);
+			fnReacquire(pending);
+			free(pending);
+		}];
+	}
 	[coordinated release];
 }
 

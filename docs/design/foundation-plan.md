@@ -14196,6 +14196,58 @@ leaking**, which is why it has never shown. The fix has to decide the struct's L
 the frame it was captured from may be gone, so a pointer is not the answer either), and the honest instrument is a
 probe that counts releases on the reacquirer path. That is its own unit.
 
+## §62.77 — THE WARNING SWEEP, PHASE 8: THE LIFETIME DECISION, AND ZERO (2026-09-26)
+
+**1 → 0 WARNINGS. THE SWEEP IS COMPLETE — 100 → 0 in a full recompile.**
+
+**THE LAST ONE WAS A DESIGN DECISION, AND THE ANATOMY IS THE POINT.** `NSFileCoordinator`'s
+`-accessWithIntents:queue:byAccessor:` filled a stack `struct fn_reacquirers` and then handed it to an operation
+block, which called the MUTATING `fnReacquire(&reacquirers)` from inside itself. Why that mattered is a difference
+between two kinds of capture:
+
+* **an OBJECT capture is RETAINED when a block is copied** — which is why `coordinated` is safe to release
+  immediately after the block is queued, and why no fix was needed there;
+* **a STRUCT capture is a BYTE COPY that nothing owns.** So the block's `fnReacquire` could only ever have mutated
+  the block's OWN COPY. It appeared to work because the copy shares the `items` POINTER, so every reacquirer was
+  still released and the array freed **exactly once**, and the caller's stale count was never read. **Fragile, not
+  broken — which is why eight phases of probing never surfaced it.**
+
+**THE FIX IS THE LIFETIME: the reacquirers travel in a HEAP BOX THE BLOCK OWNS.** The local is emptied as the box
+takes them, the block releases every reacquirer out of storage it owns and frees the box, and the mutation is legal
+because the captured POINTER is passed BY VALUE — nothing ever takes the address of a block-captured variable. If
+the allocation fails, they are released in place, exactly as the failure path does. The assumption that the block
+RUNS is the one this code already made: it was the block that released the reacquirers before the change too.
+
+**VERIFIED.** Full recompile: **0 warnings** — the number this unit set out from was 100. Host:
+`make host-foundation-run` — **37 probes, every tally `fail=0`**. Guest: `make testimg` then `make test
+TESTS='foundation_filecoordinator,foundation_collection'` → **`TESTS-OK 2/2 case(s), 12/12 check(s) in 13s`**,
+including the coordinator's own case. `foundation-gate`: **OK — 543 files, 203 of 207 public headers**;
+`--unimplemented`: **0 NEW**; sweep consistent.
+
+**THE SWEEP IN FULL, for whoever reads this next — seven phases, each committed with its own section:**
+
+* **§62.70** — 16 warnings: `-dealloc`s that never called `[super dealloc]`, i.e. **fifteen real leaks** of a whole
+  allocation each, plus one RECORDED EXCEPTION (`NSTinyString`'s tagged pointer, whose empty `-dealloc` is
+  correct and whose diagnostic is silenced at that site with both reasons);
+* **§62.71** — seven defects the compiler had already named: strings in `NSData` slots, an `NSURL`-typed getter
+  returning a string, `NSXMLNode`'s `-objectValue` typed too narrowly for its own answer, three declarations that
+  promised non-null and returned NULL, **`NSSocketPort`'s `if (listen && …)` testing the LIBC FUNCTION** (a real
+  behaviour bug, verified by its family's case), and a dead `case` plus a wrong comparison in the XML family;
+* **§62.72** — `NSProxy`'s five missing `NSObject` doors, implemented in the style the class had already set;
+* **§62.73** — doors DECLARED on one class and IMPLEMENTED on another (fifteen warnings from one placement);
+* **§62.74** — the enum warnings were **RIGHT ABOUT THE TYPES AND WRONG ABOUT THE CODE**, and "fixing" them broke
+  a probe until the question was asked of the stored value; this is also where the **bisect** that proved the cause
+  was mine lives;
+* **§62.75** — `NSString`'s misplaced method, four NAMED REFUSALS for a class cluster whose base answers no
+  characters, and **a case that could never pass** (its check name had never matched its probe's);
+* **§62.76** — a CONFORMANCE THAT DEMANDED A BUG: satisfying `NSURLSessionDownloadDelegate` double-reported the
+  download finish, so the fix was to remove the conformance.
+
+**AND THE TWO RULES THAT CAME OUT OF IT, both measured:** *a real behavioural break shows up in the PROBE'S OWN
+TALLY, while a case defect shows a green tally with a failing case-level check* — which separates "revert and
+bisect" from "fix the test"; and *a forward declaration turns a selector typo into a warning*, because clang
+assumes `id` and never checks the label.
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else
