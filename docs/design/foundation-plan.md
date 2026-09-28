@@ -3466,7 +3466,7 @@ vanishing.
 | **App Support / Bundle Resources** | all classes shipped | — |
 | **App Support / Cross-Process Notifications** | all classes shipped | — |
 | **App Support / Exceptions** | all classes shipped | — |
-| **App Support / Extension Support** | 2 open | `NSExtensionContext`, `NSExtensionRequestHandling` |
+| **App Support / Extension Support** | all classes shipped | — |
 | **App Support / NSObject Script Support** | ALL STRUCK: `NSScriptCoercionHandler`, `NSScriptExecutionContext` | — |
 | **App Support / Notifications** | all classes shipped | — |
 | **App Support / Object Matching Tests** | ALL STRUCK: `NSLogicalTest`, `NSScriptWhoseTest`, `NSSpecifierTest` | — |
@@ -14977,6 +14977,69 @@ library builds with **zero** warnings. `foundation-gate`: **OK**; `foundation-sw
 `NSExtensionItemsAndErrorsKey`, is all that is left of the ledger's class list — every other open name is a
 protocol member or a case inside a shipped family. The markdown importer and the run-loop observers remain owed as
 things to BUILD, and the spelling engine is still open on language grounds.
+
+
+## §62.92 — THE HOST'S REQUEST, AS THE EXTENSION SEES IT, AND THE LEDGER'S CLASS LIST GOES EMPTY (2026-09-26)
+
+**THREE ROWS SHIPPED: `NSExtensionContext`, `NSExtensionRequestHandling` and `NSExtensionItemsAndErrorsKey`** —
+the last open CLASS the ledger had. `class shipped` 220 → **221** and **`class open` 1 → 0**; `protocol` 38 →
+**39**; `var` 659 → **660**. `App Support / Extension Support` is CLOSED, and the four host-lifecycle notification
+names that family already shipped (`NSExtensionHost{Will,Did}…`, declared in `NSNotification.h`) finally belong to
+a class that exists.
+
+**THE SHAPE IS THE ONE §62.80 ESTABLISHED, AND HERE THE SPLIT IS UNUSUALLY SHARP.** A context IS the host's
+request, so the extension's half is the whole of it — and it is real: the host's items arrive COPIED, the two
+endings are enforced, and a refused call leaves the context untouched. What this system has no HOST for is the
+other end: nothing starts an extension, hands it a context, or receives its ending. So the host's half lives in
+the internal seam `FNExtensionContext.h`, whose three functions are exactly those three jobs — make the context,
+hand it to a principal object, read what came back. **Because the seam plays the host, the WHOLE FLOW RUNS IN ONE
+PROCESS**, and the probe's last check is the echo an Action extension performs: host sends an item, the extension
+returns its input, the host reads it back.
+
+**THREE RULES ARE ENFORCED RATHER THAN DESCRIBED, and each has a ground rather than a taste behind it:**
+
+1. **A REQUEST HAS ONE ENDING.** Completing an ended context, or cancelling one, RAISES — in all three orders.
+   Apple does not document the second call, and the reason to refuse it is the one §62.91 used for a distant
+   request's second reply: the host has already been told, and a second ending goes to nobody.
+2. **A CANCELLATION MUST SAY WHY** — a nil error RAISES. Apple's own documentation for that door is about the
+   error it carries; a cancellation nobody can explain is not a report.
+3. **THE COMPLETION HANDLER RUNS BEFORE THE DOOR RETURNS**, with `expired` = NO. Apple performs that block as a
+   background-priority task; with no host and no queue here, running it now is the honest local equivalent, and
+   the header says so rather than letting a caller assume asynchrony.
+
+Two more facts are represented rather than ignored: a context with no items holds an **EMPTY ARRAY, NOT NIL**
+("the host sent nothing" is a fact), and the items and the ending are **copies** — the probe mutates the array it
+handed over AFTER delivery, which is the only way to tell a copy from a reference.
+
+**THE ONE DELIBERATE ABSENCE IS CHECKED TOO: THERE IS NO PUBLIC CONSTRUCTOR.** `-init` raises, which is Apple's own
+description of where a context comes from — the seam's factory is the only way in. And because "a context comes
+from the host" is a claim a later commit could quietly break, **the probe walks the class's METHOD LIST** and
+asserts the public surface is exactly Apple's three doors (`inputItems`, `completeRequestReturningItems:
+completionHandler:`, `cancelRequestWithError:`), with every other method either the seam's (`fn`-prefixed) or the
+runtime's own dot-prefixed slots. That is what turns a sentence in a comment into a check.
+
+**AND THE ANNOTATION FOLLOWED THE IMPLEMENTATION, NOT THE OTHER WAY ROUND** (§62.85's rule, now the fourth time it
+has paid). Both nullable doors — the item list and the completion handler — are declared nullable because the
+implementation ACCEPTS nil, and the probe passes nil to both. `-cancelRequestWithError:`'s error is NON-NULL
+because that door REFUSES nil, and the probe proves the refusal by passing a nil held in an `id` local: a constant
+`nil` in a non-null parameter is a warning, and the point is not to suppress it but to keep the annotation and the
+refusal test in the same place.
+
+**THE FIRST DRAFT COST THREE MEASURED DEFECTS, ALL IN THE PROBE AND ALL FOUND BY THE COMPILER OR THE TALLY:** two
+checks had one bracket too many around a `count` comparison (a parse error, caught immediately); the ARC probe
+carried an `NSAutoreleasePool` the rest of the suite does not use; and the deliberate nil argument warned under
+`-Wnonnull`. The library itself built with ZERO warnings on the first try.
+
+**VERIFIED.** Host: `make host-foundation-run` → **48 probes, no failure**. Guest: `make test
+TESTS='foundation_extensioncontext'` → **`TESTS-OK 1/1 case(s), 6/6 check(s)`**. The library and the probe compile
+with **zero** warnings. `foundation-gate`: **OK** (586 files; 220 of 225 public headers open a nullability region,
+5 exempt by name). `foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**;
+`--unimplemented`: **0 NEW**.
+
+**WHERE THE THREAD STANDS: THE LEDGER HAS NO OPEN CLASS.** Every class in the Foundation surface this project
+enumerates is now declared AND implemented. What remains open is one protocol (`NSPredicateValidating`), its
+members, and constants inside shipped families. Owed as things to BUILD: the markdown importer and the run-loop
+observers. The spelling engine is still open on language grounds.
 
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)

@@ -1373,6 +1373,16 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_distantobjectrequest.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_distantobjectrequest"
+	# foundation_extensioncontext: §62.92's acceptance - `NSExtensionContext` + `NSExtensionRequestHandling`,
+	# closing `App Support / Extension Support`. ONE unit, Foundation only: the extension's half is real (the
+	# host's items arrive copied, the two endings are enforced) and the host's half is the internal seam, which
+	# plays a host - it makes a context, hands it to a principal object, and reads the ending back.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_extensioncontext.m -o .build/probe-foundation_extensioncontext.o
+	$(MUSL64_OBJC) .build/probe-foundation_extensioncontext.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_extensioncontext"
 	# foundation_downloadresume: §62.31's acceptance - RESUME end to end, WITH A REAL SERVER. The probe is
 	# the server: it sends half a body and then STALLS mid-transfer (which is what makes the cancel
 	# deterministic), resumes from the data its own cancel produced, and asserts the resumed request carries

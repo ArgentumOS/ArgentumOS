@@ -34,13 +34,13 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class      shipped  220   open    1   struck   52
-#   protocol   shipped   38   open    2   struck    5
+#   class      shipped  221   open    0   struck   52
+#   protocol   shipped   39   open    1   struck    5
 #   macro      shipped  116   open    5   struck  132
 #   enum       shipped  147   open    4   struck    9
 #   case       shipped 1184   open   41   struck   77
 #   func       shipped  165   open   12   struck   12
-#   var        shipped  659   open   48   struck  207
+#   var        shipped  660   open   47   struck  207
 #   typealias  shipped   67   open    4   struck    5
 #   struct     shipped   13   open    0   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1403,7 +1403,7 @@ class	shipped	NSError		App Support / User-Relevant Errors	-	objc
 class	shipped	NSException		App Support / Exceptions	-	objc
 class	struck	NSExistsCommand		App Support / Script Commands	declined	objc
 class	shipped	NSExpression		Fundamentals / Filltering	-	objc
-class	open	NSExtensionContext		App Support / Extension Support	-	objc
+class	shipped	NSExtensionContext		App Support / Extension Support	-	objc
 class	shipped	NSExtensionItem		App Support / Attachments	-	objc
 class	shipped	NSFileAccessIntent		Files and Data Persistence / Coordinated file access	-	objc
 class	shipped	NSFileCoordinator		Files and Data Persistence / Coordinated file access	-	objc
@@ -2226,7 +2226,7 @@ protocol	shipped	NSConnectionDelegate		Low-Level Utilities / Legacy / Legacy	dep
 protocol	shipped	NSCopying		Low-Level Utilities / Copying	-	objc
 protocol	shipped	NSDecimalNumberBehaviors		Fundamentals / Numbers / Using reference types / Managing Behavior	-	objc
 protocol	shipped	NSDiscardableContent		Fundamentals / Purgeable Collections / Managing Discardable Content	-	objc
-protocol	open	NSExtensionRequestHandling		App Support / Extension Support	-	objc
+protocol	shipped	NSExtensionRequestHandling		App Support / Extension Support	-	objc
 protocol	shipped	NSFastEnumeration		Fundamentals / Iteration	-	objc
 protocol	shipped	NSFileManagerDelegate		Files and Data Persistence / File system operations	-	objc
 protocol	shipped	NSFilePresenter		Files and Data Persistence / Coordinated file access	-	objc
@@ -2449,7 +2449,7 @@ var	shipped	NSExtensionHostWillResignActiveNotification	NSNotification	App Suppo
 var	shipped	NSExtensionItemAttachmentsKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
 var	shipped	NSExtensionItemAttributedContentTextKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
 var	shipped	NSExtensionItemAttributedTitleKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
-var	open	NSExtensionItemsAndErrorsKey	NSExtensionContext	App Support / Extension Support / Handling requests	-	objc
+var	shipped	NSExtensionItemsAndErrorsKey	NSExtensionContext	App Support / Extension Support / Handling requests	-	objc
 var	shipped	NSExtensionJavaScriptFinalizeArgumentKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 var	shipped	NSExtensionJavaScriptPreprocessingResultsKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 var	shipped	NSFTPPropertyActiveTransferModeKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
