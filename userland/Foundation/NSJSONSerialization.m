@@ -796,7 +796,16 @@ static void fn_json_write_string(fn_json_writer *writer, NSString *string)
 		switch (c) {
 		case '"': [writer->out appendString:@"\\\""]; continue;
 		case '\\': [writer->out appendString:@"\\\\"]; continue;
-		case '/': [writer->out appendString:@"\\/"]; continue;
+		case '/':
+			/* APPLE'S DEFAULT IS TO ESCAPE A SLASH, and this writer has always done it, so the
+			 * option turns an escape OFF rather than adding one - which is why a caller who does
+			 * not pass it sees byte-identical output to the day before this flag existed. */
+			if ((writer->options & NSJSONWritingWithoutEscapingSlashes) != 0) {
+				[writer->out appendString:@"/"];
+			} else {
+				[writer->out appendString:@"\\/"];
+			}
+			continue;
 		case 8: [writer->out appendString:@"\\b"]; continue;
 		case 12: [writer->out appendString:@"\\f"]; continue;
 		case 10: [writer->out appendString:@"\\n"]; continue;
@@ -973,13 +982,25 @@ static void fn_json_write(fn_json_writer *writer, id object)
 {
 	fn_json_writer writer;
 
-	if (![self isValidJSONObject:object]) {
+	BOOL valid = [self isValidJSONObject:object];
+
+	/* THE TOP-LEVEL FRAGMENT, WHEN THE CALLER SAYS SO. `+isValidJSONObject:` keeps answering NO for a
+	 * bare scalar, because that question has no options to consult and Apple's rule for it is "the top
+	 * level must be an array or a dictionary" - so the flag is a SECOND question asked here rather than
+	 * a change to the first one. `fn_json_value_is_valid` is the right one to ask: it is the nested
+	 * rule, which already knows a string, a number, a null and a collection of them, and already
+	 * refuses a date and a NaN. */
+	if (!valid && (options & NSJSONWritingFragmentsAllowed) != 0) {
+		valid = fn_json_value_is_valid(object);
+	}
+	if (!valid) {
 		/* APPLE THROWS HERE RATHER THAN ANSWERING AN ERROR, and this library follows: the object was
 		 * never representable, which is a programming error, and +isValidJSONObject: is the door a
 		 * caller uses to ask first. */
 		[NSException raise:NSInvalidArgumentException
 			    format:@"+[NSJSONSerialization dataWithJSONObject:options:error:]: the object is not "
-				   "valid JSON - ask +isValidJSONObject: first"];
+				   "valid JSON - ask +isValidJSONObject: first, or pass "
+				   "NSJSONWritingFragmentsAllowed to encode a top-level string, number or null"];
 		return nil;
 	}
 	writer.out = [[[NSMutableString alloc] init] autorelease];

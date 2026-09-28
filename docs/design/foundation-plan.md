@@ -15125,6 +15125,51 @@ region, 5 exempt). `foundation-sweep --refresh` + `--families --write` + `--chec
 first `make testimg` after the implementation FAILED with "*PRESENT BUT LISTED OPEN — our headers now declare it;
 flip the row*" for the two reading options, so the ledger could not have been forgotten silently.
 
+
+## §62.94 — THE JSON WRITING OPTIONS, AND THE FAMILY CLOSED (2026-09-26)
+
+**TWO ROWS SHIPPED — `NSJSONWritingFragmentsAllowed` and `NSJSONWritingWithoutEscapingSlashes` — AND THE JSON
+FAMILY NOW HAS NO OPEN ROW AT ALL** (13 rows, 0 open). `case` shipped 1187 → **1189**, `case` open 38 → **36**, and
+the ledger's total open count 111 → **109**. Both options shipped in ONE unit because they are the same door's two
+halves and because each turned out to be reachable without touching a shipped expectation.
+
+**BOTH WERE SMALLER THAN THE NOTE THAT DEFERRED THEM, AND EACH FOR THE SAME CLASS OF MISTAKE — A CONCLUSION
+DRAWN FROM A NAME RATHER THAN FROM THE BEHAVIOUR:**
+
+1. **`withoutEscapingSlashes` WAS NOT "A CHANGE TO THE DEFAULT OUTPUT".** §62.93's own header note said it was,
+   and this unit began by MEASURING instead of trusting that note: **the writer has answered `\/` for a slash
+   since it was written** (`case '/': appendString:@"\\/"`), which is Apple's default. So the option turns an
+   escape OFF, and a caller who does not pass it sees byte-identical output — the risk that had deferred the row
+   did not exist, and the flag is a real branch rather than a no-op only because the DEFAULT was already right.
+2. **`writingFragmentsAllowed` IS A SECOND QUESTION, NOT A CHANGE TO THE FIRST.** `+isValidJSONObject:` keeps
+   answering NO for a bare scalar, which is Apple's rule for that door ("the top level must be an array or a
+   dictionary"), so `+dataWithJSONObject:options:error:` now asks `fn_json_value_is_valid` — the NESTED rule —
+   when the flag is set. That is why the flag cannot be "fixed" by loosening `+isValidJSONObject:`: the two doors
+   answer different questions, and the probe pins both halves of that sentence.
+
+**AND THE FLAG DOES NOT BLESS AN INVALID OBJECT.** A date, and a NaN or infinite number, are still refused with
+it set, because the option opens the TOP LEVEL's question and not the nested rules'. That is a check of its own
+rather than an inference, because "the option that lets a fragment through" is exactly the kind of door that would
+be misread as "the option that lets anything through".
+
+**THE ESCAPE IS PINNED BY TEXT ON BOTH SIDES AND BY ROUND TRIP** — `http:\/\/a\/b` without the flag, `http://a/b`
+with it, and BOTH texts reading back to the same string, since an escape a reader cannot undo would make the
+default wrong rather than merely different. A THIRD check keeps the option from meaning "no escaping": a string
+carrying a quote, a backslash, a tab, a newline and a control character still escapes every one of them. And the
+two flags are exercised TOGETHER — a fragment whose text contains a slash answers `"a/b"` exactly — which is the
+one combination the reading side's single-purpose flag could not express.
+
+**VERIFIED.** Host: `make host-foundation-run` → **50 probes, no failure**, including the shipped `foundation_core`
+probe, which exercises the writer this unit changed. Guest: `make test TESTS='foundation_json*'` →
+**`TESTS-OK 2/2 case(s), 12/12 check(s) in 13s`** — BOTH JSON cases in one guest run, which is what the glob was
+chosen for and why the second case cost 1.0s (13/13 and 8/8 probe checks). Library and probe compile with **zero**
+warnings. `foundation-gate`: **OK** (588 files; 220 of 225 public headers open a nullability region, 5 exempt).
+`foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**; `--unimplemented`: **0 NEW**.
+
+**WHERE THE THREAD STANDS: THE JSON FAMILY IS CLOSED, AND THE LEDGER HAS NO OPEN CLASS.** 109 open rows remain —
+one protocol (`NSPredicateValidating`), 36 cases, 47 vars — and the things owed as BUILD work are the markdown
+importer and the run-loop observers. The spelling engine is still open on language grounds.
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else

@@ -44,11 +44,23 @@
  * JSON5's rules could not have been observed at all. Those inputs now fail, which is what Apple's
  * parser does.
  *
- * WHAT IS STILL NOT, named: the two WRITING options (`writingFragmentsAllowed` and
- * `withoutEscapingSlashes`, whose second is a change to the default output rather than an addition),
- * and the two STREAM forms (`+writeJSONObject:toStream:options:error:` and
+ * WHAT IS STILL NOT, named: the two STREAM forms (`+writeJSONObject:toStream:options:error:` and
  * `+JSONObjectWithStream:options:error:`), which need NSStream - a class this library does not have.
  * The data forms are the whole surface a program without streams can use.
+ *
+ * AND THE WRITING SIDE SHIPPED ON THE SAME DAY (§62.94), so that paragraph's other half is a record
+ * too: the two writing options are declared and implemented, and BOTH turned out to be smaller than
+ * the note feared, each for a reason worth keeping here.
+ *
+ *   - `withoutEscapingSlashes` was called "a change to the default output rather than an addition".
+ *     IT IS NOT A CHANGE: the writer has answered `\/` for a slash since it was written, which is
+ *     Apple's default, so the flag only turns that escape OFF and a caller who does not pass it sees
+ *     byte-identical output. The note was written from the option's NAME rather than from this
+ *     file's own behaviour - the same mistake the reading side made about a published value.
+ *   - `writingFragmentsAllowed` is what makes a top-level SCALAR encodable. `+isValidJSONObject:`
+ *     deliberately keeps answering NO for one (Apple's rule: the top level must be an array or a
+ *     dictionary), so the flag is the second question `+dataWithJSONObject:options:error:` asks -
+ *     not a change to the first one.
  */
 #ifndef FOUNDATION_NSJSONSERIALIZATION_H
 #define FOUNDATION_NSJSONSERIALIZATION_H
@@ -82,7 +94,15 @@ enum {
 
 enum {
 	NSJSONWritingPrettyPrinted = (1UL << 0),
-	NSJSONWritingSortedKeys = (1UL << 1)
+	NSJSONWritingSortedKeys = (1UL << 1),
+	/* A TOP-LEVEL SCALAR IS A DOCUMENT ONLY WHEN THE CALLER SAYS SO. `+isValidJSONObject:` keeps
+	 * answering NO for one (that question has no options to consult), so this flag is what opens the
+	 * door - and the probe pins both halves. */
+	NSJSONWritingFragmentsAllowed = (1UL << 2),
+	/* AND THE DEFAULT REALLY IS TO ESCAPE, which is why this flag had to be a real branch rather
+	 * than a no-op: the writer has ALWAYS answered `\/` for a slash (Apple's own default), so the
+	 * option turns an escape OFF and changes nothing for a caller who does not pass it. */
+	NSJSONWritingWithoutEscapingSlashes = (1UL << 3)
 };
 
 @interface NSJSONSerialization : NSObject

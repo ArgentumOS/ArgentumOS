@@ -1394,6 +1394,17 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_json.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_json"
+	# foundation_jsonwrite: §62.94's acceptance - the two JSON WRITING options, which close the JSON
+	# family. ONE unit, Foundation only, and both options turned out smaller than the note that had
+	# deferred them: the writer has ALWAYS escaped `/` (Apple's default), so withoutEscapingSlashes
+	# only turns that off, and writingFragmentsAllowed is the second question the writing door asks
+	# rather than a change to +isValidJSONObject:.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_jsonwrite.m -o .build/probe-foundation_jsonwrite.o
+	$(MUSL64_OBJC) .build/probe-foundation_jsonwrite.o \
+		-L$(FNXLIB) -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_jsonwrite"
 	# foundation_downloadresume: §62.31's acceptance - RESUME end to end, WITH A REAL SERVER. The probe is
 	# the server: it sends half a body and then STALLS mid-transfer (which is what makes the cancel
 	# deterministic), resumes from the data its own cancel produced, and asserts the resumed request carries
