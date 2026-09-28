@@ -430,7 +430,7 @@ static int parse_nested_type(st_parser *p, st_class *outer);
  * only CONSUMES: neither has an emission anywhere yet, so the declaration is read
  * — nothing goes unchecked — and counted, for the emitter to refuse by name.
  */
-static int parse_struct(st_parser *p);
+static int parse_struct(st_parser *p, st_struct **out);
 static int parse_enum(st_parser *p);
 
 /*
@@ -2191,10 +2191,20 @@ static int
 parse_nested_type(st_parser *p, st_class *outer)
 {
 	if (at_keyword(p, "struct")) {
-		if (!parse_struct(p)) {
+		st_struct *nested = NULL;
+
+		if (!parse_struct(p, &nested)) {
 			return 0;
 		}
+		/*
+		 * Read in full — nothing goes unchecked — and then COUNTED on the
+		 * outer class rather than recorded: a nested VALUE type's emission
+		 * is a separate question and this one has no answer for it yet,
+		 * so the emitter refuses by name. Dropping it silently would be
+		 * the bug this compiler has spent its length removing.
+		 */
 		outer->struct_count++;
+		(void)nested;
 		return 1;
 	}
 	if (at_keyword(p, "enum")) {
@@ -2237,24 +2247,38 @@ parse_nested_type(st_parser *p, st_class *outer)
  * all three differences to save forty lines.
  */
 static int
-parse_struct(st_parser *p)
+parse_struct(st_parser *p, st_struct **out)
 {
-	st_name name;
-	st_name superclass;
+	st_struct *s = st_arena_alloc(sizeof(st_struct));
+	st_decl *head = NULL;
+	st_decl **tail = &head;
 
+	if (s == NULL) {
+		return fail(p, "out of memory");
+	}
 	bump(p);				/* `struct` */
-	if (!take_name(p, &name)) {
+	if (!take_name(p, &s->name)) {
 		return 0;
 	}
 	/*
 	 * §5/§7.16: `struct Point3: Point` — the base is an anonymous member at
 	 * offset 0, so this is the class colon, optionally absent.
+	 *
+	 * RECORDED rather than resolved: the emission writes `struct Point;` as
+	 * an anonymous member, so nothing here has to know what `Point` holds.
 	 */
 	if (at_punct(p, ':')) {
 		bump(p);
-		if (!take_name(p, &superclass)) {
+		if (!take_name(p, &s->base)) {
 			return 0;
 		}
+		s->has_base = 1;
+		/*
+		 * §8 keeps protocol conformance out of value types entirely — a
+		 * dispatch table is a mechanism, not a re-spelling — so a
+		 * conformance written on a struct is out of scope rather than
+		 * "not yet emitted", and is consumed here.
+		 */
 		while (at_punct(p, ',')) {
 			st_name conformance;
 
@@ -2273,10 +2297,17 @@ parse_struct(st_parser *p)
 		if (!parse_decl(p, &d)) {
 			return 0;
 		}
+		/* RECORDED. These were read and dropped — the parse reported
+		 * success over a declaration list the tree never held, which
+		 * is the bug this compiler has spent its length removing. */
+		*tail = d;
+		tail = &d->next;
 	}
 	if (!expect_punct(p, '}')) {
 		return 0;
 	}
+	s->decls = head;
+	*out = s;
 	return 1;
 }
 
@@ -2634,6 +2665,11 @@ st_parse(const char *src, const char **error)
 	 * and an arena block nothing reads is still a block.
 	 */
 	size_t ext_capacity = 0;
+	/*
+	 * §5's structs grow the same way, and for the same reason: most units
+	 * declare none.
+	 */
+	size_t struct_capacity = 0;
 
 	memset(&p, 0, sizeof(p));
 	st_lexer_init(&p.lx, src);
@@ -2697,17 +2733,40 @@ st_parse(const char *src, const char **error)
 			continue;
 		}
 		if (at_keyword(&p, "struct")) {
-			if (!parse_struct(&p)) {
+			st_struct *s = NULL;
+
+			if (!parse_struct(&p, &s)) {
 				*error = p.error != NULL ? p.error : "parse error";
 				st_arena_free();
 				return NULL;
 			}
 			/*
-			 * COUNTED, not dropped: the tree holds no struct, so the
-			 * emitter has to be told one was here or it writes a file
-			 * missing it and says nothing.
+			 * RECORDED, and growing lazily like §7.4's extensions. The
+			 * tree used to hold nothing and keep a count, so the emitter
+			 * could only refuse; a struct is a type the file declares,
+			 * and a declaration the tree does not hold is one the
+			 * emitter writes no file for and says nothing about.
 			 */
-			program->struct_count++;
+			if (program->struct_count == struct_capacity) {
+				size_t want = struct_capacity == 0 ? 4
+								   : struct_capacity * 2;
+				st_struct **grown =
+					st_arena_alloc(want * sizeof(st_struct *));
+
+				if (grown == NULL) {
+					*error = "out of memory";
+					st_arena_free();
+					return NULL;
+				}
+				if (program->struct_count > 0) {
+					memcpy(grown, program->structs,
+					       program->struct_count *
+						       sizeof(st_struct *));
+				}
+				program->structs = grown;
+				struct_capacity = want;
+			}
+			program->structs[program->struct_count++] = s;
 			continue;
 		}
 		if (at_keyword(&p, "enum")) {

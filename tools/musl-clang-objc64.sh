@@ -65,7 +65,21 @@ done
 #                                say the same name, or constant strings end up
 #                                with two different classes (upstream warns about
 #                                exactly this mixing).
-OBJC_FLAGS="-fobjc-runtime=gnustep-2.0 -fblocks -fconstant-string-class=NSConstantString -I$OBJC/include"
+#   -fms-extensions
+#   -Wno-microsoft-anon-tag
+#                                Sterling's struct inheritance -- a derived
+#                                struct's anonymous tagged base member at offset
+#                                0 (docs/design/sterling-plan.md section 3.15,
+#                                sterling-syntax.md section 7.16). THIS IS A
+#                                WHOLE-USERLAND DIALECT CHANGE and it is
+#                                deliberate: the member lives in a GENERATED
+#                                HEADER, so the flag cannot be per-file -- every
+#                                TU that includes one needs it, the Foundation's
+#                                own sources included. The suppression rides with
+#                                it, because clang warns on the shape we generate
+#                                ON PURPOSE and a build treating warnings as errors
+#                                would stop on it.
+OBJC_FLAGS="-fobjc-runtime=gnustep-2.0 -fblocks -fconstant-string-class=NSConstantString -fms-extensions -Wno-microsoft-anon-tag -I$OBJC/include"
 
 if [ "$link" = 0 ]; then
 	exec "$ROOT/tools/musl-clang++64.sh" $OBJC_FLAGS "$@"

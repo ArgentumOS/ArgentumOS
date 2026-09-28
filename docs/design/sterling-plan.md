@@ -534,6 +534,68 @@ the nullable one (4 of 13). What landed:
   §7.62's own other half (`hasValue` tests, `x == nil`, `??`), so the pair-struct is
   declared but not yet *read*.
 
+**Landed (2026-09): §7.16's RISK GATE, PASSED — and the struct declaration
+RECORDED in the tree.** Two separate things, because the flag is a
+whole-userland decision and it had to be measured before any of it was built:
+
+- **`-fms-extensions -Wno-microsoft-anon-tag` is now in
+  `tools/musl-clang-objc64.sh`, and the obligation §3.15/§6 records is
+  DISCHARGED for the Foundation.** A from-scratch rebuild of **all 197
+  Foundation objects** is clean (`MAKE-RC=0`; the only diagnostic anywhere is the
+  pre-existing `argument unused during compilation: '-nostdinc++'` note from the
+  C++ wrapper, which has nothing to do with this flag), and an A/B compile of
+  `NSObject.m`, `NSString.m`, `NSArray.m` and `NSInvocation.m` **with and without
+  the flag gives byte-identical diagnostics** — so the flag is *inert* for
+  existing ObjC rather than merely tolerated. That was the condition the
+  named-first-member alternative was held against, and it is met. What is NOT
+  covered by it: the rest of the userland's ObjC (the probes, and anything else
+  compiled through the wrapper). The flag is on the wrapper, so they inherit it;
+  the full `userland64` build is the wider check and it is not claimed here.
+- **`struct` is RECORDED.** `parse_struct` reads the name, the base and every
+  member into an `st_struct` (AST) that the program now holds, growing the array
+  lazily the way §7.4's extensions do. The members were already *parsed* — a
+  nonsense member inside a struct was refused by the front end — so what changes
+  is that the declaration survives the parse instead of being counted, which is
+  the precondition for emitting it. A **nested** struct is still only counted, on
+  the class that contains it, and still refused by name: a nested value type's
+  emission is a different question and this one has no answer for it.
+  A struct's conformance list is consumed and dropped, which §8 already says
+  happens — protocol conformance on a value type is *out of scope*, not
+  unemitted — so the comment on that path now says which of the two it is.
+
+**What the struct emitter still owes, read off `tests/08-structs.ag` rather than
+guessed** — this is the next unit of work, and the corpus file is the checklist:
+
+1. the `typedef struct Name { … } Name;` and its stored `var` fields;
+2. §7.16's anonymous base member (`struct Point;`, first, offset 0);
+3. §7.25's computed property → a **getter function**, and its distinction from a
+   stored field (which has no accessor at all);
+4. §7.25's method → a C function prefixed `StructName_` whose first parameter is
+   `self`, with §7.14's inference deciding `Point *self` vs `const Point *self`
+   **from the body** — no keyword;
+5. `self.x` → `self->x`, **and a BARE field name inside a method** — 08 writes
+   `return x + y` as well as `return self.count`, so a field name in a method
+   body has to reach `self->` too, which needs the enclosing struct's fields (an
+   inherited one needs the base's declarations, and a base in another file is
+   §9.5's importer);
+6. the call site: `a.length()` → `Point_length(&a)`, which needs a
+   **name → struct-type environment** (params, locals and fields) that the
+   emitter does not have — 08's `func total(a: Point, b: Point)` forces it, since
+   a free function calls a struct method on its parameters;
+7. the inherited call's **upcast**
+   (`p3.length()` → `Point_length((const Point *)&p3)`);
+8. **the struct initializer, and this one needs a decision before it can be
+   built.** §7.48/§7.49 read two ways and 08 contains both shapes: a struct's
+   *field list* is §6's literal (`Point(x: 1, y: 2)` → `(Point){ .x = 1, .y = 2 }`),
+   while a *declared* `init(start: Int32)` is §7.8's "an ordinary `method … ->
+   Self`, no special form" — a function returning the struct by value. 08's
+   `Counter` declares `init(start:)` and is written `Counter(start: 3)` — the
+   literal's *call form* carrying a declared initializer's labels — and the syntax
+   doc never spells out whether that declaration's emission takes `self` or
+   returns the struct with no receiver. **Pin this before implementing it**;
+   guessing picks a signature the caller cannot compile against, which is the
+   §7.49 initializer bug all over again.
+
 - The type table (`sterling-syntax.md` §4) and its **reference/value rule** — a
   class type is a reference, a scalar and a **struct** are values; declared
   structs (`struct`), imported ones (`NSRange` and friends), struct literals (a

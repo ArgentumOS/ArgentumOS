@@ -344,6 +344,33 @@ typedef struct {
 	st_decl *decls;
 } st_extension;
 
+/*
+ * §5/§7.16: a declared struct — a VALUE type (§4's reference/value rule). Its
+ * state is a `var` field (a plain C member, with no `@property` and no
+ * accessors), its methods are C functions whose first parameter is `self`, and
+ * `struct Point3: Point` puts the base at **offset 0** as an anonymous tagged
+ * member, which is what makes the inheritance real rather than a naming
+ * convention.
+ *
+ * RECORDED, not counted. `parse_struct` read the name, the base and every
+ * member into locals that died at the closing brace and kept a count, so the
+ * emitter could only refuse — and `struct Point { … }` alone reported "a
+ * program with no class", which names the wrong loss entirely.
+ */
+typedef struct st_struct {
+	st_name name;
+	/*
+	 * The base, when there is one. `has_base` rather than a NULL test,
+	 * because "no base" is the common case and an empty name is not a
+	 * statement about inheritance.
+	 */
+	st_name base;
+	int has_base;
+	/* `var` fields, §7.25's accessor forms, and §7.25's struct methods. */
+	st_decl *decls;
+	struct st_struct *next;
+} st_struct;
+
 typedef struct {
 	st_class **classes;
 	size_t class_count;
@@ -359,13 +386,19 @@ typedef struct {
 	st_extension **extensions;
 	size_t extension_count;
 	/*
-	 * The two types with no emission ANYWHERE yet: a top-level struct and a
-	 * top-level enum. Both were parsed and dropped with the parse reporting
-	 * success — `struct Point { … }` alone reported "a program with no class",
-	 * which names the wrong loss, and beside a class it reported nothing at
-	 * all. Counted so the emitter can name what it cannot write.
+	 * §5's structs, RECORDED for the reason above. A *nested* struct is still
+	 * only counted — on the class that contains it — because the emission of
+	 * a nested value type is a separate question and this one has no answer
+	 * for it yet.
 	 */
+	st_struct **structs;
 	size_t struct_count;
+	/*
+	 * The one type with no emission ANYWHERE yet: a top-level enum. Parsed
+	 * and dropped with the parse reporting success — beside a class it
+	 * reported nothing at all. Counted so the emitter can name what it
+	 * cannot write.
+	 */
 	size_t enum_count;
 } st_program;
 
