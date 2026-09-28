@@ -234,6 +234,10 @@ static void fn_rtf_append_document_head(NSMutableString *out)
 	[out appendString:@"\\f0\\fs24 "];
 }
 
+/* §62.105: the one formatting-context key this library declares, valued as its own name — which is what a
+ * caller's context dictionary and any log of it spell. */
+NSAttributedStringFormattingContextKey const NSInflectionConceptsKey = @"NSInflectionConceptsKey";
+
 @implementation NSAttributedString
 
 /* ---- THE MODERN FAMILIES' CONSTANTS (W10 slice 4): names Apple publishes, values ours (§11.6.1 D2). */

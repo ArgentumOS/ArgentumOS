@@ -40,8 +40,8 @@
 #   enum       shipped  151   open    0   struck    9
 #   case       shipped 1224   open    0   struck   78
 #   func       shipped  167   open    0   struck   22
-#   var        shipped  701   open    2   struck  211
-#   typealias  shipped   70   open    1   struck    5
+#   var        shipped  702   open    1   struck  211
+#   typealias  shipped   71   open    0   struck    5
 #   struct     shipped   13   open    0   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -2279,7 +2279,7 @@ struct	shipped	NSRange		Fundamentals / Ranges	-	objc
 struct	shipped	NSSwappedDouble		Low-Level Utilities / Byte Ordering / Constants	-	objc
 struct	shipped	NSSwappedFloat		Low-Level Utilities / Byte Ordering / Constants	-	objc
 typealias	struck	NSAppleEventManagerSuspensionID	NSAppleEventManager	App Support / Apple Event Handling / Suspending and resuming Apple events	declined	objc
-typealias	open	NSAttributedStringFormattingContextKey		Reference / Type Aliases	-	objc
+typealias	shipped	NSAttributedStringFormattingContextKey		Reference / Type Aliases	-	objc
 typealias	shipped	NSAttributedStringKey	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes	-	objc
 typealias	shipped	NSBackgroundActivityCompletionHandler	NSBackgroundActivityScheduler	App Support / System Interaction / Scheduling Activity	-	objc
 typealias	shipped	NSCalendarIdentifier	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars	-	objc
@@ -2558,7 +2558,7 @@ var	shipped	NSIndianCalendar	NSLocale	Fundamentals / Localization / Getting Disp
 var	shipped	NSInflectionAgreementArgumentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSInflectionAgreementConceptAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSInflectionAlternativeAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
-var	open	NSInflectionConceptsKey		Reference / Constants	-	objc
+var	shipped	NSInflectionConceptsKey		Reference / Constants	-	objc
 var	shipped	NSInflectionReferentConceptAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSInflectionRuleAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSInlinePresentationIntentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc

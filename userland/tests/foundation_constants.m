@@ -229,6 +229,22 @@ int main(void)
 						  sorted, mutable]);
 	}
 
+	/* 10. THE FORMATTING-CONTEXT VOCABULARY (§62.105): the key TYPE and the one key this library declares. The
+	 * four localized-attributed-string MACROS do not ship, and the probe says which absence that is: they
+	 * build an attributed string from a localized value PARSED AS MARKDOWN, and this library has no markdown
+	 * importer yet (NSAttributedStringMarkdown.h ships the parsing OPTIONS and nothing that parses). */
+	{
+		NSAttributedStringFormattingContextKey key = NSInflectionConceptsKey;
+		NSDictionary *context = @{ key : @[ @"person" ] };
+
+		check("formatting-context-key-and-the-inflection-key",
+		      [NSInflectionConceptsKey isEqualToString:@"NSInflectionConceptsKey"] &&
+		      [[context objectForKey:NSInflectionConceptsKey] count] == 1 &&
+		      NSAttributedStringFormattingApplyReplacementIndexAttribute == (1 << 0) &&
+		      NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging == (1 << 1),
+		      @"the context key type, the key itself as a dictionary key, and the two option bits beside them");
+	}
+
 	printf("FOUNDATION-CONSTANTS RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-CONSTANTS-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-CONSTANTS DONE\n");

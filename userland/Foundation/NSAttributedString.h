@@ -76,6 +76,17 @@ typedef NSString *NSAttributedStringKey;
  * of their own, and this slice ships the vocabulary they are spoken with - the constants and the option bits
  * - so that a conforming program compiles and the absence is visible where it is asked for. */
 
+/* THE TYPE OF A FORMATTING-CONTEXT KEY (§62.105), and the ONE key this library declares for it. Together
+ * they are the vocabulary of the attributed-string FORMATTING CONTEXT — the dictionary a localized format
+ * is built with — which is the same kind of surface as the option bits below: names a conforming program
+ * compiles against, with the behaviour that consumes them named where it lives.
+ *
+ * AND THE NAME IS A TRAP WORTH RECORDING: `NSInflectionConceptsKey` sounds like an NSError userInfo key and
+ * is NOT one — it is a key in this context dictionary (measured on Apple's page, which files it under
+ * `NSAttributedStringFormattingContextKey`). A guess from the name would have put it in the wrong header. */
+typedef NSString *NSAttributedStringFormattingContextKey;
+extern NSAttributedStringFormattingContextKey const NSInflectionConceptsKey;
+
 typedef enum {
 	NSAttributedStringFormattingApplyReplacementIndexAttribute = 1 << 0,
 	NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging = 1 << 1,

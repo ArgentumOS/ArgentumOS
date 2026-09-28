@@ -15556,6 +15556,39 @@ One refresh for this unit: `enum` open 2 → 0 (shipped 149 → **151**), `case`
   which needs the audit of `NSKeyValueCoding.m`'s raise sites (all five raise `NSInvalidArgumentException`
   today) before it can be raised from the right one.
 
+## §62.105 — THE FORMATTING-CONTEXT VOCABULARY, AND A CORRECTION: THE MARKDOWN IMPORTER *IS* OWED (2026-09-28)
+
+**WHAT SHIPPED: TWO ROWS — `typealias NSAttributedStringFormattingContextKey` AND `var NSInflectionConceptsKey`,
+the vocabulary of the attributed-string FORMATTING CONTEXT.** They are the same kind of surface as the option
+bits shipped beside them in the same header: the names a conforming program compiles against, with the behaviour
+that consumes them named where it lives. The key is valued as its own name, which is what a caller's context
+dictionary and any log of it spell. `typealias` open 1 → 0 (shipped 70 → **71**), `var` open 2 → 1 (shipped 701
+→ **702**). **The open count is 8 → 6.**
+
+**AND THE UNIT'S REAL RESULT IS A CORRECTION.** The §62.104 note said the markdown importer was "NOT owed"
+because `NSAttributedStringMarkdown.{h,m}` exist. **That was wrong, and the file's existence is exactly what made
+it wrong** — the same lesson this thread keeps paying for, now from the other side: a file named after a
+subsystem is evidence of the subsystem only until you read it. Measured: `NSAttributedStringMarkdown.h` declares
+the parsing *options*, the *source position* and the failure *policy* — the vocabulary — and **no entry point
+that parses anything**; the 243-line `.m` implements those classes. So the four `NSLocalizedAttributedString*`
+macros are **not** a long-tail constant lookup: Apple's contract for them is that the localized value is
+interpreted **as markdown** before it becomes an attributed string. Declaring them without an importer would ship
+four macros that quietly return unparsed text — the stubs-of-implemented-classes refusal, in macro form.
+
+**WHAT THE 6 REMAINING ROWS ARE, NOW STATED AS WORK RATHER THAN AS TAIL:**
+- **4 MACROS BEHIND ONE BUILD PROJECT:** the `NSLocalizedAttributedString*` family needs the markdown importer
+  (CommonMark-ish parsing plus the presentation-intent mapping), and with it the `NSBundle` door
+  `-localizedAttributedStringForKey:value:table:` and the two `+localizedAttributedStringWithFormat:…` doors that
+  fill the format. That is a text subsystem, not a row.
+- **2 ROWS LEFT OPEN ON PURPOSE**, reasons recorded: `NSPredicateValidating` (a visitor family, one door
+  measured) and `NSOperationNotSupportedForKeyException` (needs the `NSKeyValueCoding.m` raise-site audit).
+
+**VERIFICATION.** Probe `foundation_constants.m` **13/13** on the host and the guest (the key type, the key as a
+real dictionary key, and the two option bits beside it). Host suite: **54 probes, no failure**. Library zero
+warnings. Guest: `make testimg` then `make test TESTS='foundation_constants*'` →
+**`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**. `foundation-sweep --refresh` + `--families --write` + `--check`:
+**consistent**; `--unimplemented`: **0 NEW**. One refresh for this unit.
+
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
 **WHAT SHIPPED: `NSProtocolChecker` AND `NSDistributedLock`, the two classes of this family that need nothing else

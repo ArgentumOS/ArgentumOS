@@ -40,6 +40,8 @@ CHECKS = (
     # MEASURED through both doors rather than declared.
     "comparison-predicate-options-type",
     "sort-options-and-the-stability-promise",
+    # §62.105: the formatting-context vocabulary (the key type and the inflection-concepts key).
+    "formatting-context-key-and-the-inflection-key",
 )
 
 
