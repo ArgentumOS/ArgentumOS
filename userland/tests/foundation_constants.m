@@ -245,6 +245,25 @@ int main(void)
 		      @"the context key type, the key itself as a dictionary key, and the two option bits beside them");
 	}
 
+	/* 11. THE KVC EXCEPTION NAME (§62.106), WHICH IS VOCABULARY AND NOT A RAISE SITE IN THIS LIBRARY: Apple's
+	 * contract is that a KVC *implementor* raises it to refuse a manipulation on purpose, so the probe asserts the
+	 * property that makes it usable — it names a real exception, with the reason it was raised for. */
+	{
+		int raised = 0;
+
+		@try {
+			[NSException raise:NSOperationNotSupportedForKeyException format:@"read-only key %@", @"title"];
+		} @catch (NSException *e) {
+			raised = [[e name] isEqualToString:NSOperationNotSupportedForKeyException] &&
+			         [[e reason] isEqualToString:@"read-only key title"];
+		}
+
+		check("kvc-exception-name-is-what-implementors-raise",
+		      [NSOperationNotSupportedForKeyException isEqualToString:@"NSOperationNotSupportedForKeyException"] &&
+		      raised,
+		      @"the name is its own string, and raising it yields an exception whose name and reason are the ones asked for");
+	}
+
 	printf("FOUNDATION-CONSTANTS RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-CONSTANTS-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-CONSTANTS DONE\n");

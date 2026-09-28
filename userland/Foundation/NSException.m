@@ -39,6 +39,7 @@ NSExceptionName const NSInvocationOperationVoidResultException = @"NSInvocationO
 NSExceptionName const NSObjectInaccessibleException = @"NSObjectInaccessibleException";
 NSExceptionName const NSObjectNotAvailableException = @"NSObjectNotAvailableException";
 NSExceptionName const NSOldStyleException = @"NSOldStyleException";
+NSExceptionName const NSOperationNotSupportedForKeyException = @"NSOperationNotSupportedForKeyException";
 NSExceptionName const NSPortReceiveException = @"NSPortReceiveException";
 NSExceptionName const NSPortSendException = @"NSPortSendException";
 NSExceptionName const NSPortTimeoutException = @"NSPortTimeoutException";

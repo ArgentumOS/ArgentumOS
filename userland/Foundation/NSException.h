@@ -109,6 +109,14 @@ extern NSExceptionName const NSInvocationOperationVoidResultException;
 extern NSExceptionName const NSObjectInaccessibleException;
 extern NSExceptionName const NSObjectNotAvailableException;
 extern NSExceptionName const NSOldStyleException;
+/* §62.106: APPLE DECLARES THIS ONE IN `NSScriptKeyValueCoding.h`, WHICH THIS TREE DOES NOT HAVE — its
+ * only scripting surface is absent, because the scripting/AppleScript half was declined whole — so the name
+ * lives with the other KVC exception name (`NSUndefinedKeyException`, below) rather than in a header invented
+ * to hold it. WHOSE CONTRACT IT IS: NOT OURS TO RAISE. Apple files it under "NSScriptKeyValueCoding Exception
+ * Names" as a name KVC *implementors* raise to refuse a manipulation deliberately — "a `setKey:` method for a
+ * read-only key can raise this exception" — so declaring the name IS the contract, and no raise site inside
+ * this library is owed for it. */
+extern NSExceptionName const NSOperationNotSupportedForKeyException;
 extern NSExceptionName const NSPortReceiveException;
 extern NSExceptionName const NSPortSendException;
 extern NSExceptionName const NSPortTimeoutException;

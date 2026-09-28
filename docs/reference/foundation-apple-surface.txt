@@ -40,7 +40,7 @@
 #   enum       shipped  151   open    0   struck    9
 #   case       shipped 1224   open    0   struck   78
 #   func       shipped  167   open    0   struck   22
-#   var        shipped  702   open    1   struck  211
+#   var        shipped  703   open    0   struck  211
 #   typealias  shipped   71   open    0   struck    5
 #   struct     shipped   13   open    0   struck    0
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -2901,7 +2901,7 @@ var	shipped	NSObjectMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collection
 var	shipped	NSObjectMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSObjectNotAvailableException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSOldStyleException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
-var	open	NSOperationNotSupportedForKeyException		Reference / Constants	-	objc
+var	shipped	NSOperationNotSupportedForKeyException		Reference / Constants	-	objc
 var	shipped	NSOperationQueueDefaultMaxConcurrentOperationCount	NSOperationQueue	App Support / Operations / Managing the Execution of Operations	-	objc
 var	shipped	NSOwnedObjectIdentityHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSOwnedPointerHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc

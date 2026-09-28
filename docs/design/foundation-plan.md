@@ -15580,14 +15580,53 @@ four macros that quietly return unparsed text — the stubs-of-implemented-class
   (CommonMark-ish parsing plus the presentation-intent mapping), and with it the `NSBundle` door
   `-localizedAttributedStringForKey:value:table:` and the two `+localizedAttributedStringWithFormat:…` doors that
   fill the format. That is a text subsystem, not a row.
-- **2 ROWS LEFT OPEN ON PURPOSE**, reasons recorded: `NSPredicateValidating` (a visitor family, one door
-  measured) and `NSOperationNotSupportedForKeyException` (needs the `NSKeyValueCoding.m` raise-site audit).
+- **2 ROWS LEFT OPEN ON PURPOSE**, reasons recorded: `NSPredicateValidating` (a visitor family) and
+  `NSOperationNotSupportedForKeyException` (then believed to need a raise-site audit — **§62.106 measured that
+  no audit was owed at all**, and closed it).
 
 **VERIFICATION.** Probe `foundation_constants.m` **13/13** on the host and the guest (the key type, the key as a
 real dictionary key, and the two option bits beside it). Host suite: **54 probes, no failure**. Library zero
 warnings. Guest: `make testimg` then `make test TESTS='foundation_constants*'` →
 **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**. `foundation-sweep --refresh` + `--families --write` + `--check`:
 **consistent**; `--unimplemented`: **0 NEW**. One refresh for this unit.
+
+## §62.106 — ONE ROW CLOSED BY LOOKING IT UP, AND A STEP THAT TURNED OUT NOT TO BE OWED (2026-09-28)
+
+**WHAT SHIPPED: `NSExceptionName const NSOperationNotSupportedForKeyException`, declared in `NSException.h`
+beside `NSUndefinedKeyException` and defined as its own name.** `var` open 1 → 0 (shipped 702 → **703**).
+**The open count is 6 → 5.**
+
+**WHERE IT LIVES, AND WHY NOT WHERE APPLE PUTS IT.** Apple declares this name in **`NSScriptKeyValueCoding.h`**
+— and this tree has **no scripting surface at all** (the scripting/AppleScript half was declined whole; the only
+`script` match among Foundation's headers is `NSSortDescriptor.h`). So the name goes with the other **KVC**
+exception name, `NSUndefinedKeyException`, which is already in `NSException.h`, and the header says so in a
+comment. That is a deliberate, recorded deviation: inventing a `NSScriptKeyValueCoding.h` to hold one constant
+would be a header that exists to be a location.
+
+**WHOSE CONTRACT IT IS — AND THE STEP THIS UNIT DELETED.** Apple files it under *NSScriptKeyValueCoding
+Exception Names* and gives it to **implementors**: "a `setKey:` method for a read-only key can raise this
+exception." So **the name IS the contract** and no raise site inside this library is owed — which retires the
+`NSKeyValueCoding.m` raise-site audit that §62.104 scheduled for this row. **A lookup removed a planned step
+rather than adding one** (all five of that file's raises are `NSInvalidArgumentException`, and by this contract
+they should be).
+
+**AND IT IS THE THIRD UNIT IN A ROW WHERE THE LOOKUP CONTRADICTED RECALL — THIS TIME TWICE, IN THE OTHER ROW.**
+The reconnaissance for `NSPredicateValidating` had it as *one* door named `validatePredicate:error:`. Measured:
+it is a **brand-new** protocol (iOS/macOS **26.4+**) with **FOUR** doors — `visitPredicate:error:`,
+`visitExpression:error:`, `visitKeyPathExpression:error:`, `visitComparisonPredicateOperatorType:error:` — all
+`BOOL (…, NSError **)`, all marked optional, whose documented purpose is to decide "which predicates and
+expressions are considered safe for evaluation" as a predicate tree is walked. **That row is not a constant and
+not a lookup: it needs a spec this tree can cite and a consumer that calls the doors.**
+
+**VERIFICATION.** Probe `foundation_constants.m` **14/14** on the host and the guest — and its eleventh check is
+a property, not a spelling: the name is raised through `+raise:format:`, caught, and its name and formatted
+reason are asserted. Host suite: **54 probes, no failure**. Library **zero** warnings. Guest: `make testimg`
+then `make test TESTS='foundation_constants*'` → **`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`**.
+`foundation-sweep --refresh` + `--families --write` + `--check`: **consistent**; `--unimplemented`: **0 NEW**.
+
+**WHERE THE THREAD STANDS: FIVE OPEN ROWS — ONE BUILD PROJECT AND ONE DECISION.**
+- **4 MACROS** (`NSLocalizedAttributedString*`) behind the **markdown importer**, a subsystem to build (§62.105).
+- **1 PROTOCOL** (`NSPredicateValidating`) — four visitor doors plus a validation walk; awaiting a decision.
 
 ## §62.55 — THE LAST TWO SELF-CONTAINED CLASSES: A FILTERED PROXY AND A LOCK THAT IS A FILE (2026-09-26)
 
