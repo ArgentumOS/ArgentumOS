@@ -170,20 +170,20 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 
 - (BOOL)containsIndexesInRange:(NSRange)range
 {
-	unsigned long i;
+	__block BOOL found = NO;
 
 	if (range.length == 0) {
 		return YES;
 	}
-	for (i = 0; i < _rangeCount; i++) {
-		unsigned long location = _ranges[i * 2];
-		unsigned long length = _ranges[i * 2 + 1];
-
-		if (range.location >= location && range.location + range.length <= location + length) {
-			return YES;
+	/* OVER THE RANGE PRIMITIVE (§C.3 item 5) - and -containsIndex: comes free, since it delegates here. */
+	[self enumerateRangesUsingBlock:^(NSRange mine, BOOL *stop) {
+		if (range.location >= mine.location &&
+		    range.location + range.length <= mine.location + mine.length) {
+			found = YES;
+			*stop = YES;
 		}
-	}
-	return NO;
+	}];
+	return found;
 }
 
 - (NSUInteger)count
@@ -257,42 +257,41 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 
 - (void)enumerateIndexesUsingBlock:(void (^)(NSUInteger index, BOOL *stop))block
 {
-	unsigned long i;
-	BOOL stop = NO;
+	/* OVER THE RANGE PRIMITIVE (§C.3 item 5): the same iteration, one range at a time. The audit that M3
+	 * taught caught THIS one - a public door still reading the ivar, which for a class with a different
+	 * layout answers "no indexes" instead of crashing. */
+	[self enumerateRangesUsingBlock:^(NSRange mine, BOOL *stop) {
+		NSUInteger k;
 
-	for (i = 0; i < _rangeCount && !stop; i++) {
-		unsigned long location = _ranges[i * 2];
-		unsigned long length = _ranges[i * 2 + 1];
-		unsigned long k;
-
-		for (k = 0; k < length && !stop; k++) {
-			block(location + k, &stop);
+		for (k = 0; k < mine.length && !*stop; k++) {
+			block(mine.location + k, stop);
 		}
-	}
+	}];
 }
 
 - (BOOL)isEqualToIndexSet:(NSIndexSet *)other
 {
+	__block unsigned long covered = 0;
+
+	/*
+	 * OVER THE RANGE PRIMITIVE, WITHOUT A PAIRED WALK: equal index counts plus "every one of MY ranges is
+	 * covered by the other" is equality - the counts are compared first, so a range the other lacks cannot be
+	 * compensated by one it has twice. O(ranges of self x ranges of other), which is small by construction.
+	 */
 	if (other == nil) {
 		return NO;
 	}
 	if (other == self) {
 		return YES;
 	}
-	if (_rangeCount != other->_rangeCount) {
+	if ([other count] != [self count]) {
 		return NO;
 	}
-	{
-		unsigned long i;
-
-		for (i = 0; i < _rangeCount; i++) {
-			if (_ranges[i * 2] != other->_ranges[i * 2] ||
-			    _ranges[i * 2 + 1] != other->_ranges[i * 2 + 1]) {
-				return NO;
-			}
-		}
-	}
-	return YES;
+	[self enumerateRangesUsingBlock:^(NSRange mine, BOOL *stop) {
+		covered += (unsigned long)[other countOfIndexesInRange:mine];
+		(void)stop;
+	}];
+	return covered == (unsigned long)[self count];
 }
 
 - (BOOL)isEqual:(id)other
@@ -308,22 +307,34 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 
 - (NSUInteger)hash
 {
-	unsigned long h = 2166136261UL;
-	unsigned long i;
+	__block unsigned long h = 2166136261UL;
 
-	for (i = 0; i < _rangeCount; i++) {
-		h ^= _ranges[i * 2];
+	/*
+	 * THE SAME FOLD, over the ranges the primitive reports - so the VALUE is unchanged, which is what keeps
+	 * -hash consistent with -isEqualToIndexSet: for index sets built in different orders. It stays O(ranges)
+	 * rather than O(indexes): hashing {0..1000000} must not visit a million indexes.
+	 */
+	[self enumerateRangesUsingBlock:^(NSRange mine, BOOL *stop) {
+		h ^= (unsigned long)mine.location;
 		h *= 16777619UL;
-		h ^= _ranges[i * 2 + 1];
+		h ^= (unsigned long)mine.length;
 		h *= 16777619UL;
-	}
-	return h;
+		(void)stop;
+	}];
+	return (NSUInteger)h;
 }
 
 - (NSString *)description
 {
+	__block unsigned long ranges = 0;
+
+	[self enumerateRangesUsingBlock:^(NSRange mine, BOOL *stop) {
+		(void)mine;
+		(void)stop;
+		ranges++;
+	}];
 	return [NSString stringWithFormat:@"<NSIndexSet: %lu index(es) in %lu range(s)>",
-					  [self count], _rangeCount];
+					  [self count], ranges];
 }
 
 - (id)copy
@@ -334,11 +345,11 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 - (id)mutableCopy
 {
 	NSMutableIndexSet *copy = [[NSMutableIndexSet alloc] init];
-	unsigned long i;
 
-	for (i = 0; i < _rangeCount; i++) {
-		fn_append(copy, _ranges[i * 2], _ranges[i * 2 + 1]);
-	}
+	[self enumerateRangesUsingBlock:^(NSRange mine, BOOL *stop) {
+		[copy addIndexesInRange:mine];
+		(void)stop;
+	}];
 	return copy;
 }
 
@@ -357,10 +368,9 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 		maxCount:(NSUInteger)bufferSize
 	    inIndexRange:(NSRangePointer)range
 {
-	NSUInteger written = 0;
+	__block NSUInteger written = 0;
 	NSUInteger low = 0;
 	NSUInteger high = NSUIntegerMax;
-	unsigned long i;
 
 	if (indexBuffer == NULL || bufferSize == 0) {
 		return 0;
@@ -369,20 +379,21 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 		low = range->location;
 		high = (range->length > NSUIntegerMax - low) ? NSUIntegerMax : low + range->length;
 	}
-	for (i = 0; i < _rangeCount && written < bufferSize; i++) {
-		NSUInteger location = (NSUInteger)_ranges[i * 2];
-		NSUInteger length = (NSUInteger)_ranges[i * 2 + 1];
+	[self enumerateRangesUsingBlock:^(NSRange mine, BOOL *stop) {
 		NSUInteger j;
 
-		for (j = 0; j < length && written < bufferSize; j++) {
-			NSUInteger index = location + j;
+		for (j = 0; j < mine.length && written < bufferSize; j++) {
+			NSUInteger index = mine.location + j;
 
 			if (index < low || index >= high) {
 				continue;
 			}
 			indexBuffer[written++] = index;
 		}
-	}
+		if (written >= bufferSize) {
+			*stop = YES;
+		}
+	}];
 	if (range != NULL) {
 		if (written == 0) {
 			/* NOTHING WAS COPIED, so nothing was consumed and the range stands as asked. */
@@ -452,20 +463,20 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 
 - (NSUInteger)countOfIndexesInRange:(NSRange)range
 {
-	unsigned long total = 0;
+	__block unsigned long total = 0;
 	unsigned long otherEnd = range.location + range.length;
-	unsigned long i;
 
-	for (i = 0; i < _rangeCount; i++) {
-		unsigned long loc = _ranges[i * 2];
-		unsigned long end = loc + _ranges[i * 2 + 1];
+	[self enumerateRangesUsingBlock:^(NSRange mine, BOOL *stop) {
+		unsigned long loc = mine.location;
+		unsigned long end = loc + mine.length;
 		unsigned long from = (loc > range.location) ? loc : range.location;
 		unsigned long to = (end < otherEnd) ? end : otherEnd;
 
+		(void)stop;
 		if (to > from) {
 			total += (to - from);
 		}
-	}
+	}];
 	return (NSUInteger)total;
 }
 

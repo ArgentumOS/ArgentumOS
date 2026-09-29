@@ -407,6 +407,27 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
 	return 1;
 }
 
+/* THE RANGE-LEVEL PRIMITIVE, and this is the family's answer to a real problem: the range-shaped doors cannot
+ * be derived over an INDEX iterator without turning O(ranges) into O(indexes). Apple's own
+ * -enumerateRangesUsingBlock: is the door a third party can implement instead. */
+- (void)enumerateRangesUsingBlock:(void (^)(NSRange range, BOOL *stop))block
+{
+	BOOL stop = NO;
+
+	/*
+	 * THE stop PARAMETER IS PART OF THE CONTRACT, and the first version of this probe passed NULL for it -
+	 * which crashed the guest, because every derived door dereferences it (`*stop = YES`). The library was
+	 * right and the probe was wrong; this is what the signature means.
+	 */
+	block(NSMakeRange(1, 3), &stop);
+	if (!stop) {
+		block(NSMakeRange(7, 1), &stop);
+	}
+	if (!stop) {
+		block(NSMakeRange(9, 1), &stop);
+	}
+}
+
 - (NSUInteger)indexGreaterThanIndex:(NSUInteger)value
 {
 	if (value < 1) {
@@ -1085,7 +1106,12 @@ int main(void)
 	{
 		/* THE PRIMITIVES ARE THE CONTRACT (§C.3 item 5), SCOPED TO WHAT HAS MOVED. */
 		ProbePrimitiveIndexSet *handmadeIndexes = [[ProbePrimitiveIndexSet alloc] init];
+		NSMutableIndexSet *expectedIndexes = [NSMutableIndexSet indexSet];
+		NSUInteger fetched[8];
 
+		[expectedIndexes addIndexesInRange:NSMakeRange(1, 3)];
+		[expectedIndexes addIndex:7];
+		[expectedIndexes addIndex:9];
 		check("nsindexset-primitives-drive-the-iterator-doors",
 		      [handmadeIndexes count] == 5 && [handmadeIndexes firstIndex] == 1 &&
 		      [handmadeIndexes lastIndex] == 9 &&
@@ -1097,11 +1123,24 @@ int main(void)
 		      [handmadeIndexes indexGreaterThanOrEqualToIndex:4] == 7 &&
 		      [handmadeIndexes indexGreaterThanOrEqualToIndex:9] == 9 &&
 		      [handmadeIndexes indexLessThanOrEqualToIndex:8] == 7 &&
-		      [handmadeIndexes indexLessThanOrEqualToIndex:0] == NSNotFound,
+		      [handmadeIndexes indexLessThanOrEqualToIndex:0] == NSNotFound &&
+		      [handmadeIndexes containsIndex:3] && ! [handmadeIndexes containsIndex:4] &&
+		      [handmadeIndexes countOfIndexesInRange:NSMakeRange(0, 5)] == 3 &&
+		      [handmadeIndexes hash] == [expectedIndexes hash] &&
+		      [handmadeIndexes isEqualToIndexSet:expectedIndexes] &&
+		      [expectedIndexes isEqualToIndexSet:handmadeIndexes] &&
+		      [[handmadeIndexes description] length] > 0 &&
+		      [handmadeIndexes indexGreaterThanIndex:4] == 7,
 		      "-lastIndex and the four index search doors must be written over the three primitives, on a "
-		      "class that has no range storage of its own. -containsIndex: IS NOT ASSERTED: this check found "
-		      "that it reaches the ranges through a helper, so it is range-shaped like -hash and belongs to "
-		      "the same remaining unit");
+		      "class whose ONLY storage is the range door: the iterator doors, the containment and count "
+		      "doors, equality in BOTH directions, hash and -description must all be written over the four "
+		      "primitives");
+		fetched[0] = 0;
+		check("nsindexset-primitives-drive-the-bulk-door",
+		      [handmadeIndexes getIndexes:fetched maxCount:8 inIndexRange:NULL] == 5 &&
+		      fetched[0] == 1 && fetched[4] == 9 &&
+		      fetched[1] == 2 && [[handmadeIndexes mutableCopy] count] == 5,
+		      "-getIndexes:maxCount:inIndexRange: and -mutableCopy must be written over the range primitive");
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");

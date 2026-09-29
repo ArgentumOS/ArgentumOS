@@ -165,6 +165,7 @@ CHECKS = (
           "nsindexset-empty-answers-every-read",
           "nsindexset-mutable-accumulates",
           "nsindexset-primitives-drive-the-iterator-doors",
+          "nsindexset-primitives-drive-the-bulk-door",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a
