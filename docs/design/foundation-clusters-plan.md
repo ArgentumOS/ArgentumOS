@@ -1,19 +1,26 @@
-# Foundation class clusters — reversing §4.2 item 1, and the milestones
+# Foundation class clusters and parameterization — ONE implementation plan
 
-**Status: plan, APPROVED 2026-09-28.** The user decided (D-C1/D-C2/D-C3 below); this document is the
-decision record, the measured inventory, and the milestone list. Nothing here is implemented yet except
-the inventory itself — each milestone lands with its own probe checks and gate.
+**Status: plan, APPROVED 2026-09-28.** This is a single plan for two changes that live in the same place:
+making the library MATCH Apple's class-cluster implementation (D-C1/D-C2), and PARAMETERIZING every class
+Apple parameterizes (D-C4). They are unified here rather than kept as two documents because both are
+edits to the same declarations — a family's header is where its private concrete classes AND its generic
+parameters are declared — so a milestone that does one without the other leaves the header in a state no
+Apple-compatible source can use.
+
+**The plan's shape, so a reader can find the evidence for any claim:** §C.2 and §C.7 are the two MEASUREMENT
+sections (what Apple's documentation says about clusters; what Apple's published headers declare about
+parameters). §C.3 is the runtime CONTRACT, §C.4 is the measured BLAST RADIUS, §C.5 is the one WORK LIST, and
+§C.6 states the boundaries.
 
 ## §C.1 The decision, and the item it reverses
 
-`docs/design/foundation-plan.md` §4.2 item 1 currently reads:
+`docs/design/foundation-plan.md` §4.2 item 1 read:
 
 > **No class clusters in v1.** Cocoa's `NSArray` is an abstract front for private subclasses; ours are
 > honest concrete classes with `NSString`/`NSMutableString`-style pairs. Fewer surprises, and the
 > mutable/immutable split still gets the Cocoa shape.
 
-**That item is REVERSED.** The library matches Apple's class-cluster implementation in the families below,
-at the fidelity in §C.3. Two reasons, and the second is the one that matters:
+**That item is REVERSED**, and §4.2 points here. Two reasons, and the second is the one that matters:
 
 * **Fidelity is the project's goal, and a cluster is not an implementation detail of Apple's — it is a
   PUBLISHED CONTRACT.** Apple's own pages state it: *"Any subclass must override the following primitive
@@ -26,62 +33,75 @@ at the fidelity in §C.3. Two reasons, and the second is the one that matters:
   is `-classForCoder`, which is what an archiver records, so archives (and `NSSecureCoding` name
   allow-lists) keep seeing the public name. Taking that mechanism seriously is the whole job (§C.3, §C.4).
 
-**D-C1 (scope) — 16 families**: NSArray, NSDictionary, NSSet, NSCountedSet, NSString, NSNumber,
-NSCharacterSet, NSValue, NSNotification, NSData, NSIndexSet, NSOrderedSet, NSAttributedString, NSMapTable,
-NSHashTable, NSPointerArray.
-**D-C2 (depth) — EXACT**: private concrete classes choose themselves; `-class` answers the concrete class;
-`-classForCoder`/`-classForArchiver` answer the PUBLIC class, so archiving and secure coding keep the
-abstract name.
-**D-C3 (order)** — this plan first, then the NSArray family as M1.
+**The four decisions this plan implements:**
 
-## §C.2 The set, and how it was measured (including the instrument failure)
+* **D-C1 (cluster scope) — 16 families**: NSArray, NSDictionary, NSSet, NSCountedSet, NSString, NSNumber,
+  NSCharacterSet, NSValue, NSNotification, NSData, NSIndexSet, NSOrderedSet, NSAttributedString, NSMapTable,
+  NSHashTable, NSPointerArray. Nine are documented as clusters by Apple's primitive-method sentence, seven
+  were chosen by decision.
+* **D-C2 (cluster depth) — EXACT**: private concrete classes choose themselves; `-class` answers the
+  concrete class; `-classForCoder`/`-classForArchiver` answer the PUBLIC class, so archiving and secure
+  coding keep the abstract name.
+* **D-C3 (order)** — this plan first, then the NSArray family as M1.
+* **D-C4 (parameterization) — EVERY CLASS APPLE PARAMETERIZES, from Apple's published headers**: 7 of the 16
+  families plus two targets outside them, which is 13 parameterized declarations in all (§C.2, §C.7).
+  Variance comes from the declaration, never from reasoning about it (§C.7 records the rule that got that
+  wrong and was retracted).
 
-**THE FIRST INSTRUMENT WAS WRONG, and the way it was wrong is worth keeping.** Searching each class's Apple
-page for the literal word *cluster* returned `NSDictionary cluster-mentions=0` — while Apple's own
+## §C.2 The two measured sets, in one table
+
+**HOW THE CLUSTER COLUMN WAS MEASURED, and the instrument failure worth keeping.** Scanning each class's
+Apple page for the literal word *cluster* returned `NSDictionary cluster-mentions=0` — while Apple's own
 class-cluster article, fetched in the same session, names NSDictionary as a cluster example. The pages were
-fine; the marker was wrong. Modern Apple pages often do not use the word at all and instead carry the
-substantive contract: **"primitive methods"**. Re-measured with that marker, the documented set is exactly
-nine:
+fine; **the marker was wrong**. Apple's modern pages often avoid the word and carry the substantive contract
+instead: **"primitive methods"**. Re-measured with that marker the documented set is nine, and the other
+seven come from D-C1.
 
-| # | class | Apple's page says | our shape today (measured) |
-|---|-------|-------------------|----------------------------|
-| 1 | `NSArray` | primitive-method contract | `NSArray`, `NSMutableArray : NSArray` |
-| 2 | `NSDictionary` | primitive-method contract | `NSDictionary`, `NSMutableDictionary : NSDictionary` |
-| 3 | `NSSet` | primitive-method contract | `NSSet`, `NSMutableSet : NSSet`, `NSCountedSet : NSMutableSet` |
-| 4 | `NSCountedSet` | primitive-method contract | `NSCountedSet : NSMutableSet` |
-| 5 | `NSString` | primitive-method contract | `NSOwnedString : NSString`, `NSMutableString : NSOwnedString`, `NSConstantString : NSString`, `NSTinyString : NSConstantString` |
-| 6 | `NSNumber` | primitive-method contract | `NSNumber`, `NSDecimalNumber : NSNumber` |
-| 7 | `NSCharacterSet` | primitive-method contract | `NSCharacterSet`, `NSMutableCharacterSet : NSCharacterSet` |
-| 8 | `NSValue` | primitive-method contract | `NSValue` alone |
-| 9 | `NSNotification` | primitive-method contract | `NSNotification` alone |
+**HOW THE PARAMETERIZATION COLUMN WAS MEASURED.** Apple's *documentation* publishes the parameter names only
+inside METHOD signatures (`- (ObjectType) objectAtIndex:`) and renders the class itself as
+`@interface NSArray : NSObject` with no angle brackets — so the class-level list is not in the documentation
+at all. It is read from Apple's **publicly published headers**, which the user granted on 2026-09-28 for
+compatibility, declarations only (§C.7 has the grant's exact scope and the primary sources for the model).
 
-and the seven the user added by decision, clusters in practice without that sentence in the modern page:
+| # | family | cluster evidence | Apple's PUBLISHED parameterization | our shape today (measured) |
+|---|--------|------------------|------------------------------------|----------------------------|
+| 1 | `NSArray` | primitive-method contract | `NSArray<__covariant ObjectType>`; `NSMutableArray<ObjectType> : NSArray<ObjectType>` + 4 + 4 categories | `NSArray`, `NSMutableArray : NSArray` |
+| 2 | `NSDictionary` | primitive-method contract | `NSDictionary<__covariant KeyType, __covariant ObjectType>`; mutable `<KeyType, ObjectType>` + 5 + 3 categories | `NSDictionary`, `NSMutableDictionary : NSDictionary` |
+| 3 | `NSSet` | primitive-method contract | `NSSet<__covariant ObjectType>`; `NSMutableSet<ObjectType>` + categories | `NSSet`, `NSMutableSet : NSSet`, `NSCountedSet : NSMutableSet` |
+| 4 | `NSCountedSet` | primitive-method contract | `NSCountedSet<ObjectType> : NSMutableSet<ObjectType>` | `NSCountedSet : NSMutableSet` |
+| 5 | `NSString` | primitive-method contract | **NOT parameterized** (measured) | `NSOwnedString : NSString`, `NSMutableString : NSOwnedString`, `NSConstantString : NSString`, `NSTinyString : NSConstantString` |
+| 6 | `NSNumber` | primitive-method contract | **NOT** | `NSNumber`, `NSDecimalNumber : NSNumber` |
+| 7 | `NSCharacterSet` | primitive-method contract | **NOT** | `NSCharacterSet`, `NSMutableCharacterSet : NSCharacterSet` |
+| 8 | `NSValue` | primitive-method contract | **NOT** | `NSValue` alone |
+| 9 | `NSNotification` | primitive-method contract | **NOT** | `NSNotification` alone |
+| 10 | `NSData` | D-C1 | **NOT** | `NSData`, `NSMutableData : NSData`, `NSPurgeableData : NSMutableData` |
+| 11 | `NSIndexSet` | D-C1 | **NOT** | `NSIndexSet`, `NSMutableIndexSet : NSIndexSet` |
+| 12 | `NSOrderedSet` | D-C1 | `NSOrderedSet<__covariant ObjectType>`; mutable `<ObjectType>` + 5 categories | `NSOrderedSet`, `NSMutableOrderedSet : NSOrderedSet` |
+| 13 | `NSAttributedString` | D-C1 | **NOT** | `NSAttributedString`, `NSMutableAttributedString : NSAttributedString` |
+| 14 | `NSMapTable` | D-C1 | `NSMapTable<KeyType, ObjectType>` — **invariant** | `NSMapTable`, `FNLegacyMapTable : NSMapTable` (public header) |
+| 15 | `NSHashTable` | D-C1 | `NSHashTable<ObjectType>` — **invariant** | `NSHashTable`, `FNLegacyHashTable : NSHashTable` (private) |
+| 16 | `NSPointerArray` | D-C1 | **NOT** | `NSPointerArray` alone |
+| 17 | *`NSEnumerator`* | not a cluster family | `NSEnumerator<ObjectType>` — **invariant** | `NSEnumerator` (+ public `NSDirectoryEnumerator`) |
+| 18 | *`NSCache`* | not a cluster family | `NSCache<KeyType, ObjectType>` — invariant | `NSCache` |
 
-| # | class | our shape today |
-|---|-------|-----------------|
-| 10 | `NSData` | `NSData`, `NSMutableData : NSData`, `NSPurgeableData : NSMutableData` |
-| 11 | `NSIndexSet` | `NSIndexSet`, `NSMutableIndexSet : NSIndexSet` |
-| 12 | `NSOrderedSet` | `NSOrderedSet`, `NSMutableOrderedSet : NSOrderedSet` |
-| 13 | `NSAttributedString` | `NSAttributedString`, `NSMutableAttributedString : NSAttributedString` |
-| 14 | `NSMapTable` | `NSMapTable`, `FNLegacyMapTable : NSMapTable` (public header) |
-| 15 | `NSHashTable` | `NSHashTable`, `FNLegacyHashTable : NSHashTable` (private) |
-| 16 | `NSPointerArray` | `NSPointerArray` alone |
+**Reading of the table: SEVEN of the sixteen families are parameterized** (rows 1, 2, 3, 4, 12, 14, 15), and
+**two parameterized targets are not families at all** (rows 17–18). Thirteen parameterized class
+declarations in all. *An earlier revision of §C.7 said "eight"; the count is seven — the arithmetic slip is
+corrected here rather than left to be re-derived.*
 
-**Reading of the table: NOT ONE of the sixteen has a private concrete class behind its front today.** Every
-subclass that exists is either the public mutable pair or a specialised public class (`NSCountedSet`,
-`NSDecimalNumber`, `NSPurgeableData`), except `FNLegacyHashTable` (private) and the four `NSString` classes.
-So the work in every family has the same shape: keep the public class as the front, add the private
-concrete classes the constructors will answer, and move the storage into them.
+**Reading of the cluster column: NOT ONE of the sixteen families has a private concrete class behind its
+front today.** Every subclass that exists is either the public mutable pair or a specialised public class
+(`NSCountedSet`, `NSDecimalNumber`, `NSPurgeableData`), except `FNLegacyHashTable` (private) and the four
+`NSString` classes. So the work in every family has one shape: keep the public class as the front, add the
+private concrete classes the constructors will answer, and move the storage into them.
 
 **The one family already split, and why it is not a cluster.** `NSString`'s storage lives in its subclasses
-because of an ABI constraint, and the plan already records the finding (§"Why NSString has no ivars"): the
-compiler emits `@"..."` with its fields at **fixed offsets** from the object pointer, so a subclass
-inheriting storage would read foreign words — *"not a cluster, but a family: the ABI requires the split"*.
-M5 aligns that family to the §C.3 contract rather than inventing a second notion of what `NSString` is.
+because of an ABI constraint, recorded in the Foundation plan (§"Why NSString has no ivars"): the compiler
+emits `@"..."` with its fields at **fixed offsets** from the object pointer, so a subclass inheriting storage
+would read foreign words — *"not a cluster, but a family: the ABI requires the split"*. M5 aligns that family
+to the §C.3 contract rather than inventing a second notion of what `NSString` is.
 
-## §C.3 The contract this library will match
-
-Each bullet is a behaviour to implement and, in M0/M1, to assert:
+## §C.3 The runtime contract this library will match
 
 1. **The public class is the front.** `+alloc` on it is legal and `-init` on the result answers an EMPTY
    instance, not a crash — `[[NSArray alloc] init]` is a legitimate, documented thing to write.
@@ -89,30 +109,27 @@ Each bullet is a behaviour to implement and, in M0/M1, to assert:
    small case and the general case may be different private classes, and a mutable constructor answers a
    mutable concrete class.
 3. **`-class` answers the CONCRETE class** — `[someArray class] != [NSArray class]` is the expected state,
-   which is what Apple's article means by *"You don't, and can't, choose the actual class of the
-   instance."*
+   which is what Apple's article means by *"You don't, and can't, choose the actual class of the instance."*
 4. **`-classForCoder` answers the PUBLIC class**, `-classForArchiver` defaults to it, and
    `-classForPortCoder` answers the public class too. This is the bullet that keeps the rest of the library
    working (§C.4).
 5. **The primitives are the contract**: the small set of methods a subclass must override, with every
-   non-primitive method written over them — and the set is DOCUMENTED in our header, because a third party
-   is entitled to the same sentence Apple publishes.
+   non-primitive method written over them — documented in our header, because a third party is entitled to
+   the same sentence Apple publishes.
 6. **`+class` on the front answers the front**; `-isKindOfClass:` against the front is YES for every
    instance.
 7. **`-copy` on an immutable instance may answer the receiver**; `-mutableCopy` answers a mutable concrete
    class. (Sharing behaviour varies by family; each milestone states its own.)
-8. **The concrete names are PRIVATE and ours.** Apple does not publish its (they are visible only in a
-   runtime dump), so ours are a free choice named in the family's header comment — and, per §C.4, they must
-   never appear in an archive.
+8. **The concrete names are PRIVATE and ours.** Apple does not publish its, so ours are a free choice named
+   in the family's header comment — and, per §C.4, they must never appear in an archive.
 
-**AN OWED LOOKUP, recorded rather than assumed.** The three `classFor*` doors' exact contracts must be
-looked up before they are written, and **our own Apple-derived surface carries no row for any of them** —
-measured: `classForCoder`, `classForArchiver` and `classForPortCoder` appear in NEITHER
-`docs/reference/foundation-selector-surface.txt` nor `docs/reference/foundation-apple-surface.txt`. M0 opens
-by establishing which of the two that is: a SWEEP GAP (the derivation missing a page) or a genuine absence
-from the published surface. (The fetch attempted here returned nothing because its URL id was malformed — an
-instrument error, not evidence.) Until that is settled the doors are owed, not defined, and no signature
-gets written from memory.
+**THE OWED LOOKUP IS PAID (M0), AND ONE DOOR IS STILL OWED.** The three `classFor*` contracts were looked up
+and two shipped: `-classForCoder` and `-classForArchiver`, with the contract quoted from GNUstep's published
+NSObject reference. The lookup also answered *why* our derived surface had no rows for them: it carries
+**ZERO NSObject rows** at all — a SWEEP GAP, not a docs absence (Apple's own `NSObject` page 404s from the
+documentation JSON endpoint while `nsarray.json` answers 200/177,351 bytes). **`-classForPortCoder` remains
+OWED and is deliberately NOT declared**: its contract text did not come through an admissible source and no
+code path needs it yet. Nothing is written from memory.
 
 ## §C.4 The blast radius, measured — this is why the plan exists
 
@@ -120,11 +137,11 @@ gets written from memory.
 |------|-------|--------------------|-----------------|
 | `isMemberOfClass:` in the library | **3** (2 are its definitions in `NSObject.m`/`NSProxy.m`) | — | nothing to the families |
 | `[x class] ==` in the library | **1** — `NSURLProtocol.m:124` | compares a protocol class | unaffected (not a cluster family) |
-| `NSKeyedArchiver.m:205` | **1** | records `fnClassIndexOf([object class])` | record `[object classForCoder]` — **the hinge** |
+| `NSKeyedArchiver.m:205` | **1** | records `fnClassIndexOf([object class])` | record `[object classForCoder]` — **the hinge** (DONE, M0) |
 | `NSKeyedUnarchiver.m:533` | 1 | `objc_getClass(className)` from the archive | unchanged, BECAUSE of the hinge |
 | `NSKeyedUnarchiver.m:580` | 1 | secure-coding class-name lookup | unchanged, BECAUSE of the hinge |
 | `NSKeyedUnarchiver.m:498-501` | 1 | compares the TEXT `"NSArray"`/`"NSMutableArray"`/`"NSDictionary"`/`"NSMutableDictionary"` | the archiver must keep emitting exactly these names |
-| `NSArchiver.m:80` | 1 | `NSStringFromClass([object class])` written into an archive | `-classForArchiver` — the same hinge, older coder |
+| `NSArchiver.m:80` | 1 | `NSStringFromClass([object class])` written into an archive | `-classForArchiver` — the same hinge (DONE, M0) |
 | class name used as a HASH | 2 — `NSInflectionRule.m:61`, `NSLocalizedNumberFormatRule.m:43` | `[NSStringFromClass([self class]) hash]` | unaffected (not cluster families); checked per milestone |
 | class name in ERROR TEXT | 4 — `NSUserDefaults.m:201/655`, `NSValueTransformer.m:84/92` | message wording | unaffected |
 | class comparisons in the probes | **6** — all in `userland/tests/foundation_core.m` | `isMemberOfClass:` on a probe-defined class, `NSStringFromClass(NSObject)` | updated deliberately if a family change reaches them, never silently |
@@ -134,58 +151,38 @@ gets written from memory.
 the identity it changes — PROVIDED the archiver's hinge moves in the same milestone.** The one place that
 would have been expensive is `NSKeyedArchiver`, and Apple's mechanism is exactly what makes it safe: the
 archive keeps the public name, so `objc_getClass` and the secure-coding allow-list keep working unchanged.
+**That was M0, and it is done.**
 
-## §C.5 Milestones
+## §C.5 THE WORK LIST — one milestone per family, both halves at once
 
-* **M0 — LANDED 2026-09-28. THE MECHANISM, AND NO SHIPPED CLASS CHANGED BEHAVIOUR.** What the bullets asked
-  for, and what the session measured while doing it:
-  * **The two doors with a citable contract shipped on `NSObject`**: `-classForCoder` (default `[self
-    class]`) and `-classForArchiver` (default `-classForCoder`), declared in `NSObject.h` with the contract
-    quoted from **GNUstep's published NSObject reference** — *"default implementation returns `[self class]`
-    (no substitution)"* and *"default implementation returns `-classForCoder`"*. **THE OWED LOOKUP IS
-    ANSWERED, AND IT IS A SWEEP GAP:** our derived selector surface carries **ZERO NSObject rows**
-    (measured: `awk -F'\t' '$4=="NSObject"'` over `docs/reference/foundation-selector-surface.txt` → 0), so
-    *every* Apple-documented NSObject selector is invisible to the ledger, not just these three. Apple's own
-    `NSObject` page also 404s from the documentation JSON endpoint used here (`http=404 bytes=15639`) while
-    the same endpoint answers `nsarray.json` with 200/177,351 bytes — so the gap is in the derivation's
-    coverage, and the third door, **`-classForPortCoder`, is still OWED**: its contract text did not come
-    through the admissible source in this session, and no code path here needs it yet. It is not declared,
-    which is the point — nothing is written from memory.
-  * **The hinge moved, in two places**: `NSKeyedArchiver.m:205` now records
-    `fnClassIndexOf([object classForCoder])`, and `NSArchiver.m:80` writes
-    `NSStringFromClass([object classForArchiver])`. Those are the two one-token changes §C.4 predicted, and
-    they are the whole of the blast radius.
-  * **The mechanism is proved by a new probe, `foundation_clusters`**, whose cluster is defined in the probe
-    itself: one public front, two private concrete classes, the primitive written over by everything else.
-    **12 checks, all green, and two of them are the ones nothing else can make**: the defaults substitute
-    nothing for a class that is not a cluster, and **the archive's own BYTES are searched** — the public
-    name must be present and *neither private name may appear anywhere in the archive*. The byte search is
-    deliberate: asking an object `-classForCoder` would have passed even if the archiver had gone on
-    recording `-class`, which is precisely the bug §C.4 is about.
-  * **A FAMILY THAT IS NOT ONE: `+allocWithZone:` DOES NOT EXIST HERE** (§4 of `NSObject.h`: the zone-taking
-    methods were removed, and *"THE SINGLETON DOOR IS +alloc — override THAT"*). So the door a cluster
-    overrides in this library is `+alloc`, and the probe's front shows the one subtlety: a concrete class
-    INHERITS that override, so the routing must be written so it happens exactly once, at the front
-    (`self != [Front class]` → `[super alloc]`, which in a class method starts the lookup at the front's
-    superclass with the receiver still being the class that was asked).
-  * **AND THE CASE'S OWN INSTRUMENT WAS WRONG FIRST, in the way this project keeps recording:** the probe
-    printed its check lines INDENTED (the sibling probes' style) while the new case anchored its regex at
-    `^FOUNDATION-CLUSTERS`, so it matched nothing and reported `0 of 12 ok` **while the probe's own tally
-    said `ok=12 fail=0`**. The tally line was the truth and the anchored pattern was the defect; the case
-    now matches unanchored, with a note saying why a `FAIL` line still cannot match it.
-  * **Gates:** probe `foundation_clusters` **12/12**, guest case **`TESTS-OK 1/1 case(s), 6/6 check(s) in
-    12s`**, `--check` consistent, `--unimplemented` **0 NEW**, `foundation-gate` **OK** (593 files scanned,
-    one more than before — this milestone's probe).
-* **M1 — `NSArray`/`NSMutableArray`**: the empty singleton, the one-element, the small and the general
-  concrete classes; the primitives documented; every constructor routed; `-class`/`-classForCoder` asserted
-  through M0's own machinery.
-* **M2 — `NSDictionary`/`NSMutableDictionary`.** **M3 — `NSSet`/`NSMutableSet`/`NSCountedSet`.**
-  **M4 — `NSNumber`.** **M5 — `NSString`** (align the existing ABI family to §C.3). **M6 — `NSData`,
-  `NSIndexSet`, `NSOrderedSet`.** **M7 — `NSAttributedString`, `NSMapTable`, `NSHashTable`,
-  `NSPointerArray`.** **M8 — `NSCharacterSet`, `NSValue`, `NSNotification`.** **M9 — the sweep/gate pass and
-  this document's completion record.**
-* Each milestone: the family's existing case stays green, new checks cover the §C.3 bullets that family can
-  exhibit, the concrete names are recorded in the family's header comment, and the ledger is refreshed.
+**EVERY MILESTONE HAS TWO HALVES AND LANDS BOTH IN ONE COMMIT**, because both are edits to the same header:
+the **RUNTIME half** (§C.3's contract, proved by a probe that RUNS) and the **COMPILE half** (§C.2's measured
+parameterization, proved by a probe that COMPILES). A milestone is done when both are green and the ledger
+is refreshed.
+
+**AND THE TWO HALVES INTERACT IN A WAY WORTH STATING, because it is the acceptance test for every milestone:
+type arguments are ERASED before IR generation, so parameterizing a header MUST NOT change one number in that
+family's runtime probe.** A moved tally means something other than the annotation changed, and the milestone
+stops until it is explained.
+
+| M | family (or target) | RUNTIME half | COMPILE half (from §C.2/§C.7) | acceptance |
+|---|--------------------|--------------|-------------------------------|------------|
+| **M0** | *the mechanism* | **LANDED 2026-09-28** — `-classForCoder`/`-classForArchiver` on `NSObject`; both archiver hinges moved; no shipped class changed behaviour | — (nothing to parameterize) | probe `foundation_clusters` **12/12**, incl. the archive BYTE search; guest `TESTS-OK 1/1, 6/6 checks`; `--check` consistent; `--unimplemented` 0 NEW; gate OK |
+| **M1** | `NSArray` / `NSMutableArray` | empty singleton, one-element, small and general private concrete classes; the primitive set documented; every constructor routed | `NSArray<__covariant ObjectType>`, `NSMutableArray<ObjectType> : NSArray<ObjectType>`, **and the 4 + 4 categories** | the array probe green + the compile probe: a covariant assignment compiles, unrelated specialized types are refused, every declaration exercised |
+| **M2** | `NSDictionary` / `NSMutableDictionary` | primitives `count`, `objectForKey:`, `keyEnumerator:` (+ the `init(objects:forKeys:count:)` shape), private concrete classes | `<__covariant KeyType, __covariant ObjectType>`, mutable `<KeyType, ObjectType>`, **5 + 3 categories** | as M1 |
+| **M3** | `NSSet` / `NSMutableSet` / `NSCountedSet` | primitives `count`, `member:`, `objectEnumerator:`; counted-set storage as its own concrete class | `<__covariant ObjectType>`; `NSMutableSet<ObjectType>`; `NSCountedSet<ObjectType> : NSMutableSet<ObjectType>`; 3 + 3 + 0 categories | as M1 |
+| **M4** | `NSNumber` | the value payload moves into concrete classes (int/long/double/bool/…) chosen by the constructor | **none** — measured NOT parameterized | the number probe green; the compile probe must NOT parameterize it (a negative assertion) |
+| **M5** | `NSString` | align the EXISTING ABI family to §C.3 (front, `-class`/`-classForCoder`, the string primitives) without touching the fixed-offset layout | **none** — measured NOT parameterized | probe `foundation_string` tally unchanged; `NSConstantString`/`NSTinyString` still answer `-classForCoder` = `NSString` |
+| **M6** | `NSData`, `NSIndexSet`, `NSOrderedSet` | three fronts + private concrete classes each (the empty/small/general shape) | `NSOrderedSet<__covariant ObjectType>` + mutable + **5 categories**; `NSData`/`NSIndexSet` **NOT** | the three families' probes green + the compile probe for NSOrderedSet only |
+| **M7** | `NSAttributedString`, `NSMapTable`, `NSHashTable`, `NSPointerArray` | four fronts; the two Tables keep their `FNLegacy*` subclasses public/private as they are today | `NSMapTable<KeyType, ObjectType>` **invariant**; `NSHashTable<ObjectType>` **invariant**; the other two **NOT** | as M1, with the invariant parameters exercised (no covariance line expected) |
+| **M8** | `NSCharacterSet`, `NSValue`, `NSNotification` | three fronts; `NSValue`'s payload into concrete classes | **none** — measured NOT parameterized (both) | the three families' probes green; the compile probe's negative half asserts none of them is parameterized |
+| **M9** | **the parameterization-only targets**: `NSEnumerator`, `NSCache` | none — neither is a cluster family | `NSEnumerator<ObjectType>` invariant; `NSCache<KeyType, ObjectType>` invariant | the compile probe only, plus a runtime smoke that both still behave |
+| **M10** | *the sweep and the record* | re-run the family gates; confirm no `-class`-comparison site moved silently | re-verify all 13 declarations against Apple's published headers one last time | `--check` + `--unimplemented` + `foundation-gate` + every touched case; this document's completion record |
+
+**EACH MILESTONE ALSO:** keeps its family's EXISTING case green (the M0 rule: nothing shipped may change
+behaviour by accident), records the private concrete class NAMES in the family's header comment, adds the
+§C.3 bullets that family can exhibit as named checks, and refreshes the ledger. Any family that cannot reach
+exact fidelity records the deviation, the reason and the cost — §C.6's rule.
 
 ## §C.6 Boundaries, stated up front
 
@@ -193,20 +190,30 @@ archive keeps the public name, so `objc_getClass` and the secure-coding allow-li
   matching an implementation detail in either library.
 * **Foundation only.** AppKit's clusters (`NSImage`, `NSColor`, `NSBezierPath`…) are not in this plan, and
   neither is the CoreFoundation toll-free-bridging half, which has no counterpart here.
+* **The generics grant is narrow, and the documentation is still primary.** Apple's publicly published
+  headers may be read **for compatibility, declarations only** (user, 2026-09-28). Implementation source
+  stays off limits — Apple's, ObjFW's and GNUstep's — and where Apple's published documentation speaks, it
+  outranks the header text.
+* **The compile probe is not a runtime check, and cannot be made into one.** Type arguments are erased
+  before IR generation, so nothing at runtime can observe a parameter; a probe that claimed to would be
+  lying.
 * **Tests that compare classes are updated one by one, deliberately.** The six probe sites in §C.4 are the
   whole list today; a milestone that changes one says so in its commit.
 * **No silent deviation.** If a family cannot reach exact fidelity without breaking something load-bearing,
   the milestone records the deviation, the reason, and what it costs — the rule §4.2's reversal itself had
   to follow.
 
-## §C.7 Parameterization: every class Apple parameterizes, and how we know which those are
+## §C.7 Parameterization: the evidence behind the compile column
 
-**THE REQUIREMENT (user, 2026-09-28): parameterize every class Apple's implementation parameterizes.** Our
-collections declare **no generic parameters at all** (measured: `grep -n "^@interface NS[A-Za-z]*<"
-userland/Foundation/*.h` → nothing), so `NSArray<NSString *> *` in Apple-compatible source has nowhere to
-land.
+This section is the EVIDENCE for §C.2's parameterization column and §C.5's compile half; the work itself is
+in §C.5 and nowhere else.
 
-**WHAT THE ADMISSIBLE SOURCES PUBLISH (all measured this session):**
+**THE REQUIREMENT (D-C4, user 2026-09-28): parameterize every class Apple's implementation parameterizes.**
+Our collections declared **no generic parameters at all** at that point (measured: `grep -n "^@interface
+NS[A-Za-z]*<" userland/Foundation/*.h` → nothing), so `NSArray<NSString *> *` in Apple-compatible source had
+nowhere to land.
+
+**THE SOURCES, AND WHAT EACH IS WORTH:**
 
 | fact | source | status |
 |------|--------|--------|
@@ -215,56 +222,27 @@ land.
 | the parameter names per METHOD: `- (ObjectType) objectAtIndex:`, `- (ObjectType) objectForKey:(KeyType)` | **Apple's documentation**, occ variant via `variantOverrides` | primary, measured |
 | arity preserved on import, every imported parameter gets a class constraint; examples `NSArray<NSDate *>`, `NSCache<NSObject *, id<NSDiscardableContent>>` | Apple's *"Using Imported Lightweight Generics in Swift"* | primary |
 | type erasure — *"completely erased by IR generation … no runtime or metadata changes"*; the beneficiaries are *"`NSArray`, `NSDictionary`, `NSSet`"* | clang's post + **Apple's SE-0057** | primary |
-| ~~the wider list (NSMutable*, NSOrderedSet, NSEnumerator, NSMapTable, NSHashTable) …~~ | ~~forums/blogs quoting the headers~~ | **SUPERSEDED — answered below, from the headers themselves** |
+| the class-level parameter lists and variance | **Apple's publicly published headers**, declarations only, under the user's grant | primary for compatibility; **secondary to Apple's documentation where the two differ** |
+| ~~the wider list, from forums/blogs quoting the headers~~ | ~~Stack Overflow, blogs~~ | **SUPERSEDED** — the headers themselves were read instead |
 
-**THE BLOCKER IS ANSWERED (2026-09-28): THE USER GRANTED READING APPLE'S PUBLICLY PUBLISHED HEADERS, "for the
-sole purpose of compatibility, as permitted by US and Canadian law."** With that grant the set stops being an
-inference. Everything below is read **from the public headers**, DECLARATIONS ONLY — no implementation source
-was read and none is needed, because a parameter list is an interface fact. Source: `Foundation.framework/
-Headers/*.h` in an Apple SDK as published (`theos/sdks`, iPhoneOS16.5.sdk).
+**WHAT THE DOCUMENTATION DOES *NOT* PUBLISH, and why the grant mattered.** The occ variant of the `NSArray`
+page declares `@interface NSArray : NSObject` — no angle brackets — while the METHODS on the same page carry
+`ObjectType`; and variance is published for no class at all. A scanner written to infer the set from
+method-level declarations produced **no data** (`scanned=0` for all 21 classes: its identifier filter matched
+nothing — recorded as a broken instrument, not as a result). So the grant was the difference between
+"inferred" and "read".
 
-| class | Apple's published declaration | variance |
-|-------|------------------------------|----------|
-| `NSArray` | `@interface NSArray<__covariant ObjectType>` | covariant |
-| `NSMutableArray` | `@interface NSMutableArray<ObjectType> : NSArray<ObjectType>` | inherited |
-| `NSDictionary` | `@interface NSDictionary<__covariant KeyType, __covariant ObjectType>` | **BOTH** covariant |
-| `NSMutableDictionary` | `<KeyType, ObjectType> : NSDictionary<KeyType, ObjectType>` | inherited |
-| `NSSet` | `@interface NSSet<__covariant ObjectType>` | covariant |
-| `NSMutableSet` | `<ObjectType> : NSSet<ObjectType>` | inherited |
-| `NSCountedSet` | `<ObjectType> : NSMutableSet<ObjectType>` | inherited |
-| `NSOrderedSet` | `@interface NSOrderedSet<__covariant ObjectType>` | covariant |
-| `NSMutableOrderedSet` | `<ObjectType> : NSOrderedSet<ObjectType>` | inherited |
-| `NSEnumerator` | `@interface NSEnumerator<ObjectType> : NSObject <NSFastEnumeration>` | **INVARIANT** |
-| `NSMapTable` | `@interface NSMapTable<KeyType, ObjectType>` | invariant |
-| `NSHashTable` | `@interface NSHashTable<ObjectType>` | invariant |
-| `NSCache` | `@interface NSCache <KeyType, ObjectType>` | invariant |
+**THE RULE THAT WAS WRONG, RETRACTED.** Before the grant this plan recorded a reason-based rule: *"covariant
+exactly where the collection is immutable"*. It predicts covariance for `NSEnumerator`, and Apple declares
+`<ObjectType>` with **no** variance. The inference reasoned about a property Apple never stated as the
+criterion; the declaration is the criterion. This is the second time in this plan that a plausible inference
+lost to a measurement (the first was the "cluster" word), and it is recorded so the next reader trusts §C.2's
+columns over any reasoning about them.
 
-**AND THESE ARE DELIBERATELY *NOT* PARAMETERIZED, so ours must stay unparameterized too** (measured the same
-way): `NSPointerArray`, `NSIndexSet`, `NSData`, `NSAttributedString`, `NSString`, `NSValue`,
-`NSPointerFunctions`. Of §C.2's sixteen families **eight are parameterized** — NSArray, NSDictionary, NSSet,
-NSCountedSet, NSOrderedSet, NSMapTable, NSHashTable — **plus `NSCache`, which is NOT one of the sixteen
-families** and is therefore a parameterization-only target. **And CATEGORIES carry the parameters as well**
-(`@interface NSArray<ObjectType> (NSExtendedArray)`), so a family's categories must be parameterized in the
-same edit as its class, or the header will not compile against Apple-shaped source that specializes them.
-
-**MY REASON-BASED RULE FROM BEFORE THE GRANT WAS WRONG, AND THE MEASUREMENT REPLACES IT.** The rule recorded
-here earlier — "covariant exactly where the collection is immutable" — predicts covariance for
-`NSEnumerator`, and Apple declares `<ObjectType>` with **no** variance at all. The inference reasoned about a
-property Apple never stated as the criterion; the declaration is the criterion. This is the second time in
-this plan that a plausible inference lost to a measurement, and it is recorded for the same reason as the
-first: the next reader should trust the second column of that table over any reasoning about it.
-
-**THE INSTRUMENT IS THE COMPILER, BECAUSE NOTHING ELSE CAN SEE THIS.** Type arguments are erased before IR
-generation, so no runtime probe can observe one and a `-class`-style check is impossible by construction.
-Verification is a **compile probe** under `-Werror`, the shape this project already uses for nullability: a
-file assigning `NSArray<NSMutableString *> *` to `NSArray<NSString *> *` **must compile** (covariance, measured
-above); a file assigning two unrelated specialized types **must be refused**; and every parameterized
-declaration in our headers must be exercised by at least one such line, so a silently dropped parameter fails
-the build instead of passing unnoticed.
-
-**WHERE IT GOES: parameterization rides with each family, not as its own milestone** — header-only work on the
-declarations that family's milestone is already rewriting, and it must not change behaviour (the annotation is
-erased, so a family's probe results must be identical before and after). §C.5's M1 gains "parameterize
-`NSArray`/`NSMutableArray` and the `NSArray` categories" plus the compile-probe acceptance; every later family
-does the same; **`NSCache` needs a home** and rides the first milestone that touches it, or a small milestone
-of its own if none does.
+**TWO MECHANICAL FACTS THAT DECIDE HOW A MILESTONE IS EDITED:**
+* **Categories carry the parameters as well** — `@interface NSArray<ObjectType> (NSExtendedArray)` — so a
+  family's categories must be parameterized in the SAME edit as its class, or the header will not compile
+  against Apple-shaped source that specializes them. The counts are in §C.2's table.
+* **The mutable counterpart re-declares the parameter** in its own `@interface`
+  (`NSMutableArray<ObjectType> : NSArray<ObjectType>`); it does not merely inherit the spelling, even though
+  that is where its variance comes from.
