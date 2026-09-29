@@ -703,6 +703,32 @@ static void fn_line_check_range(NSString *string, NSRange range, SEL cmd)
 
 @implementation NSString
 
+/* ===================================================================================================
+ * THE DOOR AND THE ARCHIVER'S ANSWER (§C.3 items 1 and 4), and the string family needs a NOTE because its
+ * shape is different from the array, dictionary, set and number families: the instances are NOT created by
+ * a cluster that chooses among several private classes. The compiler creates the LITERALS (NSConstantString,
+ * with the runtime's own fixed-offset layout, which this milestone must not disturb), the factories bind
+ * themselves to NSOwnedString when a string needs storage of its own, and NSMutableString is its own public
+ * subclass. What was missing was the two doors the contract names:
+ *
+ *   * `+alloc` - so `[[NSString alloc] init]` is a legitimate thing to write and answers an EMPTY instance
+ *     with storage, rather than an instance of the storage-less front;
+ *   * `-classForCoder` - so a LITERAL records as NSString. Without it the archiver asked the default
+ *     (`[self class]`) and wrote "NSConstantString" into every archive that contained a string.
+ * =================================================================================================== */
++ (id)alloc
+{
+	if (self != [NSString class]) {
+		return [super alloc];
+	}
+	return [NSOwnedString alloc];
+}
+
+- (Class)classForCoder
+{
+	return [NSString class];
+}
+
 NSStringTransform const NSStringTransformFullwidthToHalfwidth = @"NSStringTransformFullwidthToHalfwidth";
 NSStringTransform const NSStringTransformHiraganaToKatakana = @"NSStringTransformHiraganaToKatakana";
 NSStringTransform const NSStringTransformLatinToArabic = @"NSStringTransformLatinToArabic";
@@ -2582,6 +2608,13 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 @end
 
 @implementation NSMutableString
+
+/* §C.3 item 4, and the same shape NSDecimalNumber has in the number family: the front's answer is
+ * NSString, so a PUBLIC subclass must override it or its own name would never reach an archive. */
+- (Class)classForCoder
+{
+	return [NSMutableString class];
+}
 
 /* THE RECEIVER'S KIND IS KEPT, AND THIS IS WHERE IT WAS NOT. NSString's abstract -initWithUTF8String: (and
  * its -...Characters:length: sibling) SUBSTITUTES an NSOwnedString - "a SUBCLASS overrides this and never

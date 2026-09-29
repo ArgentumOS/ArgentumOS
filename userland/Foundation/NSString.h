@@ -157,6 +157,24 @@ typedef enum {
 
 
 
+/* ===================================================================================================
+ * THE STRING FAMILY AND §C.3 (2026-09-29, M5). The front is PUBLIC and has NO STORAGE of its own; the
+ * compiler's LITERALS are NSConstantString (the runtime's fixed-offset layout), a string that needs
+ * storage of its own is NSOwnedString, and NSMutableString is a public subclass of it.
+ *
+ * WHAT A CONCRETE CLASS MUST ANSWER, and what the front is written over:
+ *
+ *     - (size_t)length                            UTF-16 code units (Apple's contract)
+ *     - (unsigned short)characterAtIndex:(size_t) the unit at a unit index
+ *     - (const char *)UTF8String                  the bytes, NUL-terminated — this family's own fast
+ *                                                 path: -byteAtIndex: defaults to a read of THIS, so a
+ *                                                 subclass that answers these three is correct through
+ *                                                 the derived doors without any storage of its own.
+ *
+ * `[[NSString alloc] init]` is legitimate (the door routes to NSOwnedString) and `-classForCoder` answers
+ * the PUBLIC class, so a literal archives as NSString rather than as the compiler's class.
+ * =================================================================================================== */
+
 @interface NSString : NSObject <NSCopying>
 
 /* Creation. The `init` family returns +1, as ARC decides BY NAME. */
