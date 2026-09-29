@@ -480,6 +480,29 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
 
 @end
 
+/* THE THIRD-PARTY CASE FOR NSPOINTERARRAY: a class over ONLY the two primitives the header names -
+ * -count and -pointerAtIndex: - with no slot array of its own. Its pointers are real OBJECTS, because a fast
+ * enumeration readss the slots as objects. */
+@interface ProbePrimitivePointerArray : NSPointerArray
+@end
+
+@implementation ProbePrimitivePointerArray
+
+- (NSUInteger)count
+{
+	return 2;
+}
+
+- (nullable void *)pointerAtIndex:(NSUInteger)index
+{
+	if (index >= 2) {
+		[NSException raise:NSRangeException format:@"ProbePrimitivePointerArray: %lu", (unsigned long)index];
+	}
+	return (void *)(index == 0 ? (void *)@"p" : (void *)@"q");
+}
+
+@end
+
 int main(void)
 {
 	ProbeCluster *empty;
@@ -1208,6 +1231,42 @@ int main(void)
 		}
 		check("nshashtable-primitives-drive-fast-enumeration", tableSeen == 2,
 		      "fast enumeration must walk the primitives");
+	}
+
+	{
+		/*
+		 * M7: NSPointerArray — a FRONT, mutable by nature, with no cluster and no public subclass. Locals
+		 * declared HERE.
+		 */
+		NSPointerArray *pointers = [NSPointerArray strongObjectsPointerArray];
+		ProbePrimitivePointerArray *handmadePointers = [[ProbePrimitivePointerArray alloc] init];
+		NSUInteger pointerSeen = 0;
+		id pointerObject;
+
+		[pointers addPointer:(void *)@"one"];
+		[pointers addPointer:(void *)@"two"];
+		check("nspointerarray-archiver-answer-and-reads",
+		      [pointers classForCoder] == [NSPointerArray class] &&
+		      [pointers classForArchiver] == [NSPointerArray class] &&
+		      [pointers count] == 2 && [[pointers allObjects] count] == 2 &&
+		      [pointers pointerAtIndex:0] != NULL,
+		      "the archiver must be told the PUBLIC class, and the C-level reads must answer");
+		for (pointerObject in pointers) {
+			pointerSeen++;
+		}
+		check("nspointerarray-fast-enumeration-walks-the-slots", pointerSeen == 2,
+		      "fast enumeration must hand back both slots");
+		check("nspointerarray-primitives-drive-allobjects-and-enumeration",
+		      [handmadePointers count] == 2 && [[handmadePointers allObjects] count] == 2 &&
+		      [handmadePointers pointerAtIndex:1] != NULL &&
+		      [[[handmadePointers allObjects] objectAtIndex:1] isEqual:@"q"],
+		      "-allObjects must be written over the two primitives, on a class with no slot array of its own");
+		pointerSeen = 0;
+		for (pointerObject in handmadePointers) {
+			pointerSeen++;
+		}
+		check("nspointerarray-primitives-drive-fast-enumeration", pointerSeen == 2,
+		      "fast enumeration must walk the primitives through the caller's buffer");
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");

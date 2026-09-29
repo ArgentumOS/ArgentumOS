@@ -41,6 +41,24 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/* ===================================================================================================
+ * NSPOINTERARRAY AND §C.3 (2026-09-29, M7). A FRONT rather than a cluster: the front IS the concrete class,
+ * mutable by nature (there is no immutable variant to be), and it has no public subclass.
+ *
+ * THE PRIMITIVES, and the doors written over them:
+ *
+ *     -count      -pointerAtIndex:
+ *
+ * -allObjects and fast enumeration are over those two, so a class answering them is correct through both. THE
+ * MUTATORS ARE NOT, and that is a boundary rather than an omission: -addPointer:, -insertPointer:,
+ * -removePointerAtIndex:, -replacePointerAtIndex:, -setCount: and -compact ARE this class's storage
+ * implementation. -classForCoder answers NSPointerArray.
+ *
+ * AND A NOTE ABOUT THE OBJECT-ONLY VIEW, which the old fast-enumeration comment made and this one keeps: a
+ * fast enumeration reads the slots as OBJECTS, so it is meaningful for the object personalities and is a
+ * pointer read for the others.
+ * =================================================================================================== */
+
 @interface NSPointerArray : NSObject <NSCopying, NSFastEnumeration, NSSecureCoding>
 {
 	void **_items;			/* the slots */

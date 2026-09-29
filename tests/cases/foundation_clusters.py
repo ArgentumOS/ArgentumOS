@@ -170,6 +170,11 @@ CHECKS = (
           "nshashtable-archiver-answer-and-empty-instance",
           "nshashtable-primitives-drive-every-read",
           "nshashtable-primitives-drive-fast-enumeration",
+          # M7: NSPointerArray - a mutable front.
+          "nspointerarray-archiver-answer-and-reads",
+          "nspointerarray-fast-enumeration-walks-the-slots",
+          "nspointerarray-primitives-drive-allobjects-and-enumeration",
+          "nspointerarray-primitives-drive-fast-enumeration",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a

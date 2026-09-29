@@ -28,6 +28,13 @@
 
 @implementation NSPointerArray
 
+/* §C.3 item 4: an archiver asks for THIS, never for -class. UNCONDITIONAL, because this family has no public
+ * subclass: its own C-level storage is the whole of it. */
+- (Class)classForCoder
+{
+	return [NSPointerArray class];
+}
+
 - (instancetype)initWithOptions:(NSPointerFunctionsOptions)options
 {
 	return [self initWithPointerFunctions:
@@ -218,12 +225,15 @@
 
 - (NSArray *)allObjects
 {
-	NSMutableArray *objects = [NSMutableArray arrayWithCapacity:_count];
+	NSMutableArray *objects = [NSMutableArray arrayWithCapacity:[self count]];
 	NSUInteger i;
 
-	for (i = 0; i < _count; i++) {
-		if (_items[i] != NULL) {
-			[objects addObject:(id)_items[i]];
+	/* OVER THE PRIMITIVES (§C.3 item 5): the non-NULL slots, read through -pointerAtIndex:. */
+	for (i = 0; i < [self count]; i++) {
+		void *pointer = [self pointerAtIndex:i];
+
+		if (pointer != NULL) {
+			[objects addObject:(id)pointer];
 		}
 	}
 	return objects;
@@ -233,17 +243,27 @@
 				  objects:(id *)buffer
 				    count:(NSUInteger)length
 {
-	(void)buffer;
-	(void)length;
-	if (state->state >= _count) {
+	unsigned long n = [self count];
+	unsigned long cursor = state->state;
+	unsigned long produced = 0;
+
+	/*
+	 * OVER THE PRIMITIVES, THROUGH THE CALLER'S BUFFER (§C.3 item 5). The version this replaces handed out the
+	 * internal SLOT ARRAY in one batch, which a concrete class with a different layout does not have - its cost
+	 * was real, but so was its reach: it could only ever work for a class that keeps a contiguous slot array.
+	 * The mutation token is the COUNT, exactly as before.
+	 */
+	while (produced < length && cursor + produced < n) {
+		buffer[produced] = (id)[self pointerAtIndex:cursor + produced];
+		produced++;
+	}
+	if (produced == 0) {
 		return 0;
 	}
-	/* THE SLOTS ARE HANDED BACK DIRECTLY, which is what makes this cheap and also what makes it only
-	 * meaningful for the object personalities: a fast enumeration reads them as OBJECTS. */
-	state->itemsPtr = (id *)_items;
+	state->itemsPtr = buffer;
 	state->mutationsPtr = (unsigned long *)&_count;
-	state->state = _count;
-	return _count;
+	state->state = cursor + produced;
+	return produced;
 }
 
 /* `-copy`, not `-copyWithZone:`: see NSPointerFunctions.m and NSObject.h. */
