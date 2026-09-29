@@ -170,6 +170,14 @@ NSMutableSet	-	minusSet:	ObjectType
 NSMutableSet	-	removeObject:	ObjectType
 NSMutableSet	-	setSet:	ObjectType
 NSMutableSet	-	unionSet:	ObjectType
+NSOrderedCollectionChange	+	changeWithObject:	ObjectType
+NSOrderedCollectionChange	-	initWithObject:	ObjectType
+NSOrderedCollectionChange	-	object	ObjectType
+NSOrderedCollectionDifference	-	differenceByTransformingChangesWithBlock:	ObjectType
+NSOrderedCollectionDifference	-	initWithChanges:	ObjectType
+NSOrderedCollectionDifference	-	initWithInsertIndexes:	ObjectType
+NSOrderedCollectionDifference	-	insertions	ObjectType
+NSOrderedCollectionDifference	-	removals	ObjectType
 NSOrderedSet	+	orderedSetWithArray:	ObjectType
 NSOrderedSet	+	orderedSetWithObject:	ObjectType
 NSOrderedSet	+	orderedSetWithObjects:	ObjectType

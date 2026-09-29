@@ -54,7 +54,11 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class NSArray, NSString;
+/* THE FORWARD DECLARATION CARRIES THE TYPE PARAMETERS TOO, and it has to: a bare `@class NSArray;`
+ * makes NSArray a NON-PARAMETERIZED class for this translation unit, so every `NSArray<...>` below it
+ * is refused ('type arguments cannot be applied to non-parameterized class'). Apple's own
+ * NSOrderedCollectionDifference.h opens with exactly the parameterized form. */
+@class NSArray<ObjectType>, NSString;
 
 /* "The type of change" - Apple's two cases in the order Apple's page lists them; the NUMBERS are ours
  * (§11.6.1 D2). */
@@ -84,7 +88,7 @@ typedef enum {
 /* ONE HALF OF A CHANGE: an object, a type, an index, and — when it is half of a MOVE — the index of the other
  * half. Apple: "an object that represents an indexed change to an ordered collection and references the object
  * to be inserted or removed". */
-@interface NSOrderedCollectionChange : NSObject
+@interface NSOrderedCollectionChange<ObjectType> : NSObject
 {
 @protected
 	id _object;			/* nil when the change was built from indexes alone, or suppressed by an option */
@@ -111,7 +115,7 @@ typedef enum {
 
 /* "An object the change inserts or removes." NULLABLE, and nil has two ways to arise: a change built from an
  * index set with no parallel object array, and one whose objects an option suppressed. */
-@property (nullable, readonly, strong) id object;
+@property (nullable, readonly, strong) ObjectType object;
 /* "The type of change." */
 @property (readonly) NSCollectionChangeType changeType;
 /* "The index location of the change" - IN THE CHANGE'S OWN COLLECTION: the destination for an insertion and
@@ -127,11 +131,15 @@ typedef enum {
  * answers. It conforms to NSFastEnumeration: Apple publishes NO `-enumerateChanges…` door, so walking the
  * changes is a `for (NSOrderedCollectionChange *c in difference)` and nothing else. */
 /* PARAMETERIZED (2026-09-28) because Apple's own `NSArray.h` declares `<ObjectType>` on it —
- * `- (NSOrderedCollectionDifference<ObjectType> *)differenceFromArray:…` — which is how the compiler
- * found the gap: our `NSArray.h` was refused for applying type arguments to a non-parameterized class
- * while Apple writes exactly that there. ITS VARIANCE IS NOT STATED, because Apple's own declaration of
- * THIS class has not been read yet; invariant is the conservative reading, and the class is on
- * `docs/TODO-before-release.md` §2 for its row in the clause's list and for the variance. */
+ * `- (NSOrderedCollectionDifference<ObjectType> *)differenceFromArray:…` — which is how the compiler found
+ * the gap: our `NSArray.h` was refused for applying type arguments to a non-parameterized class while
+ * Apple writes exactly that there.
+ *
+ * AND IT IS INVARIANT, WHICH IS NOW READ RATHER THAN GUESSED (2026-09-29): Apple's own header declares
+ * `@interface NSOrderedCollectionDifference<ObjectType> : NSObject <NSFastEnumeration>` — NO `__covariant`
+ * — so the unstated form this comment used to apologise for was right, and that owed note is paid. The
+ * sibling `NSOrderedCollectionChange` is invariant in Apple's header too (`<ObjectType>`, no variance), and
+ * both classes are now in the clause's class list. */
 @interface NSOrderedCollectionDifference<ObjectType> : NSObject <NSFastEnumeration>
 {
 @protected
@@ -145,7 +153,7 @@ typedef enum {
  * counterpart of the opposite type pointing back at it. Apple states the second rule as an exception on
  * `-changeWithObject:type:index:associatedIndex:`: "initializing a NSOrderedCollectionDifference with broken
  * associations (or associations that aren't reflexive) will generate an exception". */
-- (instancetype)initWithChanges:(NSArray *)changes;
+- (instancetype)initWithChanges:(NSArray<NSOrderedCollectionChange<ObjectType> *> *)changes;
 
 /* The index-set form. THE OBJECT ARRAYS PAIR WITH THE INDEXES BY ASCENDING ORDER — index set {1,4} with
  * objects @[a,b] means "insert a at 1 and b at 4" — and a count that does not match raises rather than
@@ -167,8 +175,8 @@ typedef enum {
 /* "A Boolean value that indicates if the difference has changes." */
 @property (readonly) BOOL hasChanges;
 /* "A collection of insertion change objects" / "of removal change objects" — each ASCENDING BY INDEX. */
-@property (readonly, copy) NSArray *insertions;
-@property (readonly, copy) NSArray *removals;
+@property (readonly, copy) NSArray<NSOrderedCollectionChange<ObjectType> *> *insertions;
+@property (readonly, copy) NSArray<NSOrderedCollectionChange<ObjectType> *> *removals;
 
 /* "A copy of the receiver with all removals changed to insertions (and vice versa)" — and each half of a move
  * keeps its pairing by SWAPPING the two indexes, so applying a difference and then its inverse returns the
@@ -179,7 +187,7 @@ typedef enum {
  * objects with the block provided." The result is checked exactly as a member array is, so a block that breaks
  * an association raises rather than producing a difference that cannot be applied. */
 - (NSOrderedCollectionDifference *)differenceByTransformingChangesWithBlock:
-	(NSOrderedCollectionChange * (^)(NSOrderedCollectionChange *change))block;
+	(NSOrderedCollectionChange<ObjectType> * (^)(NSOrderedCollectionChange<ObjectType> *change))block;
 
 @end
 

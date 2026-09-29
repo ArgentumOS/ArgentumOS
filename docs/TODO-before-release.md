@@ -43,9 +43,16 @@ learned to read `@property` declarations — 221 rows, and the increase is Apple
 `firstObject`, `allKeys`, `allObjects`, `anyObject` and friends, each of which is a PROPERTY in Apple's
 header and a METHOD here, so the families owe the kind as well as the annotation**).
 
-* **`NSOrderedCollectionDifference` IS parameterized by Apple and is NOT in the clause's class list.** Our
-  compiler refused `NSOrderedCollectionDifference<ObjectType>` in `NSArray.h` while Apple's own `NSArray.h`
-  writes exactly that. The list must grow a row, and our class must gain the parameter.
+* **CLOSED 2026-09-29 (plan step sw2): the clause's class list was blind to classes that only appear inside
+  other classes' signatures, and it missed two.** Our compiler refused
+  `NSOrderedCollectionDifference<ObjectType>` in `NSArray.h` while Apple's own `NSArray.h` writes exactly
+  that; reading that class's header then exposed **`NSOrderedCollectionChange`**, which it declares its
+  changes as. **Both are now rows and both are INVARIANT** — READ from Apple's own declarations rather than
+  guessed: `@interface NSOrderedCollectionDifference<ObjectType>` and
+  `@interface NSOrderedCollectionChange<ObjectType>`, neither with `__covariant` — so our unstated form was
+  right and the variance question is answered, not owed. The set is therefore **15 classes, not 13** (the
+  number in §C.1/§C.2 was the measured one of 2026-09-28), the derived table went 221 → **229 rows**, and
+  the five findings these two classes produced in this tree are cleared (119 → **114**).
 * **`NSEnumerator`'s class line is parameterized as of 2026-09-28** (`<ObjectType>`); **its methods still owe
   theirs**, so the clause still reports it.
 * **AND M1 FOUND A THIRD SHAPE OF THE SAME GAP, worth knowing before M2:** Apple parameterizes the MUTABLE

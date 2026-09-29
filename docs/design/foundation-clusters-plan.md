@@ -306,6 +306,19 @@ check answer `PARAMETERIZED, BUT NOT`. **A KIND DIFFERENCE THIS SURFACED, and th
 Apple declares these as PROPERTIES while this tree declares METHODS, and §11.0 wants property for property,
 so each family's milestone owes the kind as well as the annotation.
 
+**AND THE SET ITSELF WAS BLIND TO A WHOLE SHAPE OF CLASS (2026-09-29).** The class list was built from what
+Apple's DOCUMENTED families look like, and it missed the classes that only ever appear as some other
+declaration's ARGUMENT: `NSOrderedCollectionDifference` (found by the COMPILER, which refused our
+`NSArray.h` for applying type arguments to a non-parameterized class) and then `NSOrderedCollectionChange`
+(found by reading the first one's own header, which declares its changes as that). Both are now in
+`PARAM_CLASSES`, and **both are INVARIANT, read from Apple's declarations rather than inferred**:
+`@interface NSOrderedCollectionDifference<ObjectType>` and `@interface NSOrderedCollectionChange<ObjectType>`
+carry no `__covariant`. The set is **15 classes, not 13**. Parameterizing our side cost one lesson worth
+keeping: a FORWARD DECLARATION MUST CARRY THE TYPE PARAMETERS TOO, or it wins — `@class NSArray;` makes
+NSArray non-parameterized for that translation unit and every later `NSArray<…>` is refused
+(`type arguments cannot be applied to non-parameterized class`), which is why Apple's own
+NSOrderedCollectionDifference.h opens with `@class NSArray<ObjectType>;`.
+
 **MEASURED, FIRST RUN: 207 parameterized methods in Apple's headers, and 139 findings** — methods we ship
 whose Apple declaration names a parameter. By class: NSArray 27, NSOrderedSet 17, NSSet 16, NSDictionary 15,
 NSHashTable 13, NSMutableOrderedSet 9, NSMutableArray 9, NSMapTable 9, NSMutableDictionary 8, NSMutableSet 7,

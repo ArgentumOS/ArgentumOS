@@ -906,7 +906,16 @@ PARAM_SOURCE = ("https://raw.githubusercontent.com/theos/sdks/master/iPhoneOS16.
                 "Library/Frameworks/Foundation.framework/Headers/%s.h")
 PARAM_CLASSES = ("NSArray", "NSMutableArray", "NSDictionary", "NSMutableDictionary", "NSSet",
                  "NSMutableSet", "NSCountedSet", "NSOrderedSet", "NSMutableOrderedSet",
-                 "NSEnumerator", "NSMapTable", "NSHashTable", "NSCache")
+                 "NSEnumerator", "NSMapTable", "NSHashTable", "NSCache",
+                 # ADDED 2026-09-29 (plan step sw2), and the reason is worth stating: this set was built
+                 # from what Apple's DOCUMENTED class families look like, and it missed the two classes
+                 # that only ever appear as some other declaration's ARGUMENT. The COMPILER found the first
+                 # one -- our own NSArray.h was refused for applying type arguments to a
+                 # non-parameterized NSOrderedCollectionDifference while Apple writes exactly that -- and
+                 # reading its header then exposed the second, since it declares its changes as
+                 # NSOrderedCollectionChange<ObjectType>. A set built by looking at classes is blind to
+                 # classes that live inside other classes' signatures.
+                 "NSOrderedCollectionDifference", "NSOrderedCollectionChange")
 PARAM_NAME_RE = re.compile(r"\b([A-Z][A-Za-z0-9]*Type)\b")
 PARAM_IFACE_RE = re.compile(r"@interface\s+([A-Za-z_]\w*)\s*(<[^>]*>)?")
 PARAM_DECL_RE = re.compile(r"^[ \t]*[-+]\s*\([^;]*?;", re.M)
