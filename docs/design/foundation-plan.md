@@ -3259,6 +3259,49 @@ Foundation implements, with the same functionality and the same API. Any differe
 and any difference in API, is a **FAILURE**. The word "boundary" appears throughout the older sections
 of this plan; where it does, it records history rather than a decision, and history is not an excuse.
 
+### 11.0 THE SURFACE RULE — the dimensions the bar ranges over (user, 2026-09-28)
+
+**MATCH APPLE CLASS FOR CLASS, PROPERTY FOR PROPERTY, AND METHOD SIGNATURE FOR METHOD SIGNATURE — except
+where a class, a method or a property is SPECIFICALLY STRUCK BY ANOTHER RULE of this document.** §11 says a
+difference is a failure; this says a difference *in what*, so that "we implement it" cannot mean "we
+implement something with the same name".
+
+**THE EXCEPTION IS A STRIKE, NOT A JUDGEMENT CALL, and it is mechanical:** `status_of()` returns `struck`
+exactly when the row's reason is in `STRIKE_REASONS` (§39 records the tuple's growth; §62.24 records
+deprecation being RETIRED from it — **a deprecated member is OWED, not struck**). Measured today, **the only
+strike reason in use across the selector ledger is `declined`, on 389 rows** — so the whole of "except where
+another rule strikes it" is, at this moment, 389 declined members and nothing else.
+
+**WHERE EACH DIMENSION STANDS, from the ledgers' own tallies (measured 2026-09-28):**
+
+| dimension | tracked as | state |
+|-----------|-----------|-------|
+| **class for class** | the symbol ledger (`foundation-apple-surface.txt`) + §62.92 | **221 classes shipped, 0 open** — this dimension is MET, modulo the struck rows |
+| **property for property** | selector-surface rows with `kind = property` | **1,026 shipped / 464 open / 146 struck** — tracked by NAME |
+| **method for method** | selector-surface rows with `kind = method` | **1,785 shipped / 900 open / 243 struck** — tracked by NAME |
+| **method SIGNATURE for method signature** | — | **NOT TRACKED AT ALL. This is the gap.** |
+| **property SIGNATURE** | — | **NOT TRACKED AT ALL**, same gap |
+
+**THE GAP, STATED PLAINLY BECAUSE IT IS THE POINT OF THIS SECTION: EVERY ROW OF THE SELECTOR LEDGER HAS
+SEVEN FIELDS AND NONE OF THEM IS A TYPE.** The fields are kind, state, name, owner, category, reason,
+language — so the ledger proves the NAME matches and can never prove the SIGNATURE does. Three other
+mechanisms cover parts of the space and none of them covers the whole: the nullability rule (§F6) gate-checks
+that a header OPENS a region, which is presence rather than per-declaration correctness; `D-C4`/`D-C5` in
+`docs/design/foundation-clusters-plan.md` cover the type ARGUMENTS of 13 parameterized class declarations and
+the methods that use them; and **nothing anywhere compares a declared parameter or return type against
+Apple's.**
+
+**THE INSTRUMENT THIS NEEDS, and it is ONE derivation serving BOTH checks.** Apple's published documentation
+carries each method's Objective-C declaration (the occ variant, reached through `variantOverrides` — the route
+is proved and the scanner's lowercase-filter bug is fixed and recorded in the clusters plan §C.7). From that,
+reduce each declaration to a **NORMALIZED TYPE FINGERPRINT** — not to Apple's text: the rule the deprecation
+list already follows is that only the DERIVED form ships, names and fingerprints in the tree, the generator in
+`tools/`, nothing copied out of a header. Our side of the comparison should come from the COMPILER, which is
+the only honest oracle for our own types — the encodings the runtime and the archiver already work in are
+exactly the right vocabulary for it. Two checks then fall out of the one derivation: the per-method
+type-parameter flag (`D-C5`) and the full signature comparison. It belongs with `tools/foundation-sweep.py`,
+which already owns both ledgers and already fails `--check` on drift.
+
 ### 11.1 The ledger, and why it is a table
 
 A gap written down as a LIST gets fixed; a gap written down as a PRINCIPLE gets admired. So every known

@@ -291,3 +291,11 @@ then fails on **both halves** — a flagged selector whose declaration in our he
 unflagged selector that names one. **Only the DERIVED form ships** (the rule the deprecation list already
 follows: names and flags in the tree, the generator in `tools/`, nothing copied out of a header), and Apple's
 published documentation remains the source, exactly as it is for the ledger's other columns.
+
+**AND THIS WORK IS THE FIRST SLICE OF A BIGGER RULE, so it should be built as one thing rather than two.**
+§11.0 of `docs/design/foundation-plan.md` (THE SURFACE RULE, user 2026-09-28) requires matching Apple
+**method signature for method signature**, and it records the measured gap: every row of the selector ledger
+has seven fields and **none of them is a type**, so the ledger proves names and can never prove signatures.
+The derivation this section asks for — Apple's declared type parameters per method — is a NARROW CUT of that
+same derivation, so whoever builds the type-parameter flag should build it as the normalized **signature
+fingerprint** the surface rule asks for, and let the flag fall out of it.
