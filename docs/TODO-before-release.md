@@ -410,3 +410,29 @@ what the toolchain mishandles, and the place to look is the patch/codegen step, 
 **AND THIS BLOCKS ONLY `NSMapTable`** - neither `NSAttributedString` nor `NSPointerArray` touches the legacy
 C API - so the other two families' runtime halves proceed and this stays a scoped puzzle.
 
+**THE NSMAPTABLE MYSTERY IS SOLVED TO THE TYPE ENCODING, AND IT IS NOT A LIBRARY BUG.** The recorded
+discriminator ran: the same SELECTOR with `id` arguments instead of `NSFastEnumerationState *` PASSES 3/3, while
+the correctly-typed door crashes 3/3. Five measurements now agree:
+
+| what `FNLegacyMapTable` was given | result |
+|---|---|
+| nothing | 3/3 PASS, 15/15 |
+| the fast-enumeration door, correct types | 3/3 CRASH |
+| a trivial unrelated method | 1/1 PASS |
+| the same NAME, trivial body | 3/3 CRASH |
+| **the same NAME, `id` arguments** | **3/3 PASS** |
+
+**SO THE CAUSE IS THE METHOD'S TYPE ENCODING** - a parameter that is a POINTER TO A STRUCT, whose encoding is
+`^{NSFastEnumerationState=...}` - and the method's body never runs. The class gaining a method with that encoding
+breaks its own teardown. **THE PLACE TO LOOK IS THE PATCH/CODEGEN STEP, NOT THE LIBRARY** - the same family as the
+recorded devpts case, where clang/PATCH_PIC codegen turned a conditional function address into a `cmov` that
+loaded the symbol's CONTENTS. The concrete next step is to instrument `tools/`' patch step over a class that has
+such a method, and to check whether the encoding's length or its brace-delimited shape is what it mishandles.
+
+**AND IT IS NARROW IN PRACTICE, which is why the tree is healthy:** NSArray, NSDictionary, NSSet, NSPointerArray
+and NSHashTable all declare `-countByEnumeratingWithState:objects:count:` with exactly that signature and all
+enumerate correctly in the probe suite. What breaks is ADDING one to THIS class - so the next attempt on
+NSMapTable should either (a) carry the toolchain finding to its cause first, or (b) give the legacy class an
+`id`-typed door that forwards, which the measurements say is safe, and record why the honest signature is
+impossible until the toolchain is fixed.
+
