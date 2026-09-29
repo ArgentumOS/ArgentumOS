@@ -140,6 +140,12 @@ CHECKS = (
           "nsnumber-class-for-coder-answers-the-front-but-not-for-a-public-subclass",
           "nsnumber-the-matrix-round-trips",
           "nsnumber-primitives-drive-conversions-equality-and-hash",
+          # M5: the string family - the two doors, and its primitives.
+          "nsstring-class-answers-a-concrete-class",
+          "nsstring-alloc-init-is-a-concrete-empty-string",
+          "nsstring-class-for-coder-answers-the-front-and-the-public-subclass",
+          "nsstring-empty-answers-every-read",
+          "nsstring-primitives-drive-equality-hash-and-search",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a

@@ -314,6 +314,32 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
 
 @end
 
+/* THE THIRD-PARTY CASE FOR THE STRING FAMILY: a class that overrides ONLY the three primitives the header
+ * documents - -length, -characterAtIndex: and -UTF8String - over a fixed literal, with NO storage of its
+ * own. The byte-level readers the front uses default to a read of -UTF8String, so if any derived door
+ * reached for storage instead, THIS class could not answer it. */
+@interface ProbePrimitiveString : NSString
+@end
+
+@implementation ProbePrimitiveString
+
+- (size_t)length
+{
+	return 5;			/* "hello", in UTF-16 code units */
+}
+
+- (unsigned short)characterAtIndex:(size_t)index
+{
+	return (unsigned short)"hello"[index];
+}
+
+- (const char *)UTF8String
+{
+	return "hello";
+}
+
+@end
+
 int main(void)
 {
 	ProbeCluster *empty;
@@ -744,6 +770,56 @@ int main(void)
 		      [handmadeNumber hash] == [expectedNumber hash] ,
 				      "the fifteen conversions, -objCType, -description, -isEqualToNumber: and -hash must all be "
 		      "written over the four primitives, on a class that has none of the front's fields");
+	}
+
+	{
+		/*
+		 * M5: THE STRING FAMILY — the front has no storage, the COMPILER creates the literals and the
+		 * factories bind to NSOwnedString, so this section asserts the two doors rather than a cluster of
+		 * private classes. Locals declared HERE.
+		 */
+		NSString *literal = @"literal";
+		NSString *empty = [[NSString alloc] init];
+		NSMutableString *mutableString = [[NSMutableString alloc] init];
+
+		check("nsstring-class-answers-a-concrete-class",
+		      [literal class] != [NSString class] && [[literal class] isSubclassOfClass:[NSString class]] &&
+		      [empty class] != [NSString class] && [[empty class] isSubclassOfClass:[NSString class]],
+		      "a literal and a constructed string must both answer a concrete SUBCLASS, never the storage-less front");
+		check("nsstring-alloc-init-is-a-concrete-empty-string",
+		      [empty class] != [literal class] && [empty length] == 0 && [empty isEqualToString:@""],
+		      "[[NSString alloc] init] is legitimate and answers an EMPTY instance WITH storage - a different "
+		      "concrete class from the compiler's literal");
+		check("nsstring-class-for-coder-answers-the-front-and-the-public-subclass",
+		      [literal classForCoder] == [NSString class] &&
+		      [empty classForCoder] == [NSString class] &&
+		      [literal classForArchiver] == [NSString class] &&
+		      [mutableString classForCoder] == [NSMutableString class],
+		      "a LITERAL must name NSString to an archiver (without the override it named the compiler's "
+		      "class), while a PUBLIC subclass names itself");
+		check("nsstring-empty-answers-every-read",
+		      [empty length] == 0 && [empty characterAtIndex:0] == 0 && strcmp([empty UTF8String], "") == 0 &&
+		      /* A STRING'S -description IS THE STRING, so an empty one describes itself as "" — the
+		       * `length > 0` clause the collection families can assert would be false here. */
+		      [[empty description] isEqualToString:@""] && [empty hash] == [@"" hash] &&
+		      [[NSMutableString string] length] == 0,
+		      "the empty concrete string answers the primitives and the derived doors over them");
+	}
+
+	{
+		/* THE PRIMITIVES ARE THE CONTRACT (§C.3 item 5): three methods, no storage, and every door above. */
+		ProbePrimitiveString *handmadeString = [[ProbePrimitiveString alloc] init];
+		NSString *expectedString = @"hello";
+
+		check("nsstring-primitives-drive-equality-hash-and-search",
+		      [handmadeString length] == 5 && [handmadeString characterAtIndex:1] == 'e' &&
+		      strcmp([handmadeString UTF8String], "hello") == 0 &&
+		      [handmadeString isEqualToString:expectedString] &&
+		      [handmadeString hash] == [expectedString hash] &&
+		      [[handmadeString description] length] > 0 &&
+		      [[handmadeString uppercaseString] isEqualToString:@"HELLO"],
+		      "equality, hash, -description and a derived transform must all be written over the three "
+		      "primitives, on a class that has no storage of its own");
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");
