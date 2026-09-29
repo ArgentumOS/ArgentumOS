@@ -319,6 +319,18 @@ NSArray non-parameterized for that translation unit and every later `NSArray<…
 (`type arguments cannot be applied to non-parameterized class`), which is why Apple's own
 NSOrderedCollectionDifference.h opens with `@class NSArray<ObjectType>;`.
 
+**AND THE CLAUSE'S OWN SELECTOR WALK WAS TRUNCATING — WHICH HID FINDINGS OUTRIGHT (found 2026-09-29, starting
+M2).** `_one_selector`, which turns ONE declaration into the clause's (sign, selector) key, used a shortcut:
+after a keyword it looked for a bare `:` and then read the next name, so any declaration whose argument type
+is PARENTHESIZED came back SHORT — `- (void)setObject:(id)value forKey:(id)key` gave `setObject:`. That
+would be cosmetic if both sides were built the same way, and they are NOT: the clause compares Apple's rows
+against THIS TREE'S DECLARED SELECTORS, which the ledger reads with the CORRECT walk (`_selectors_signed`,
+whose own docstring had said the two walks are "the same one"). So a truncated row matched nothing and its
+finding was **silently DROPPED** — invisible in exactly the way a missing row is. Measured, same headers,
+before and after: the derived table **229 → 272 rows**, the findings **114 → 151**. **37 findings were being
+hidden**, and the fix is that `_one_selector` now CALLS the ledger's walk (`_end_of_parens` and all)
+instead of imitating it, so the two cannot drift apart a third time.
+
 **MEASURED, FIRST RUN: 207 parameterized methods in Apple's headers, and 139 findings** — methods we ship
 whose Apple declaration names a parameter. By class: NSArray 27, NSOrderedSet 17, NSSet 16, NSDictionary 15,
 NSHashTable 13, NSMutableOrderedSet 9, NSMutableArray 9, NSMapTable 9, NSMutableDictionary 8, NSMutableSet 7,

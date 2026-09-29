@@ -38,10 +38,13 @@ exists is drift. Do it as ONE commit, when nothing else is in flight — it touc
 ## 2. The parameterization set: two gaps the compiler found
 
 The clause that measures this is `tools/foundation-sweep.py --parameterized` / `--check` (139 findings
-across 13 classes on 2026-09-28; **103 after M1's family reached 0, then 114 on 2026-09-29 once the clause
-learned to read `@property` declarations — 221 rows, and the increase is Apple's typed properties:
-`firstObject`, `allKeys`, `allObjects`, `anyObject` and friends, each of which is a PROPERTY in Apple's
-header and a METHOD here, so the families owe the kind as well as the annotation**).
+across 13 classes on 2026-09-28; the count has risen with the instrument three times since — **114** when
+the clause learned to read `@property` declarations (221 rows: `firstObject`, `allKeys`, `allObjects`,
+`anyObject` and friends, which are PROPERTIES in Apple's header and METHODS here, so the families owe the
+kind as well as the annotation), **114** after the class list grew the two classes it was blind to (229
+rows), and **151** (272 rows) when the clause's own selector walk stopped TRUNCATING multi-keyword
+selectors — that last one had been hiding 37 findings outright). The set is 15 classes, not the 13 measured
+on 2026-09-28.**).
 
 * **CLOSED 2026-09-29 (plan step sw2): the clause's class list was blind to classes that only appear inside
   other classes' signatures, and it missed two.** Our compiler refused

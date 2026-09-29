@@ -922,23 +922,44 @@ PARAM_DECL_RE = re.compile(r"^[ \t]*[-+]\s*\([^;]*?;", re.M)
 
 
 def _one_selector(chunk):
-    """(sign, selector) for one declaration, or None. The colon walk _selectors_signed uses, for one
-    declaration instead of a whole body: `insertChild:atIndex:` is one selector, not two."""
+    """(sign, selector) for one declaration, or None — THE SAME WALK `_selectors_signed` DOES, for one
+    declaration instead of a whole body.
+
+    IT MUST BE THE SAME WALK, AND IT WAS NOT. This function used a shortcut: after a keyword it looked for
+    a bare `:` and then read the next name, so ANY declaration whose argument type is PARENTHESIZED
+    (`- (void)setObject:(id)value forKey:(id)key`) came back as `setObject:` — the walk hit `(id)value` and
+    stopped. That would be cosmetic if both sides of the comparison were built the same way, and they are
+    NOT: the clause compares Apple's rows against THIS TREE'S DECLARED SELECTORS, which are read by the
+    correct walk (`_selectors_signed`, used by the ledger). So a truncated row matched nothing, and its
+    finding was SILENTLY DROPPED rather than reported wrongly.
+
+    MEASURED 2026-09-29: Apple's NSDictionary.h gave 37 rows of which every multi-keyword selector was
+    truncated — `+dictionaryWithObject:`, `-setObject:`, `-getObjects:`, `+dictionaryWithObjects:`. A
+    truncated row is invisible in exactly the way a missing row is, which is why the fix is to reuse the
+    walk that already worked rather than to patch the shortcut again."""
     head = _SEL_HEAD.search(chunk)
     if head is None:
         return None
-    sign, i, parts, first = head.group(1), head.end(), [], True
+    sign, i, parts = head.group(1), head.end(), []
     while True:
         m = re.match(r"\s*([A-Za-z_]\w*)", chunk[i:])
         if m is None:
             break
-        name, j = m.group(1), i + m.end()
-        if j < len(chunk) and chunk[j] == ":":
-            parts.append(name + ":")
-            i, first = j + 1, False
-        else:
-            if first:
+        name = m.group(1)
+        i += m.end()
+        colon = re.match(r"\s*:\s*\(", chunk[i:])
+        if colon is None:
+            if not parts:
                 parts.append(name)
+            break
+        parts.append(name + ":")
+        # THE TYPE IS SKIPPED BY COUNTING PARENTHESES, not by a regex — the same helper _selectors_signed
+        # uses, so the two cannot drift apart again.
+        i = _end_of_parens(chunk, i + colon.end() - 1)
+        param = re.match(r"\s*[A-Za-z_]\w*", chunk[i:])
+        if param is not None:
+            i += param.end()
+        if re.match(r"\s*([A-Za-z_]\w*)\s*:\s*\(", chunk[i:]) is None:
             break
     return (sign, "".join(parts)) if parts else None
 
