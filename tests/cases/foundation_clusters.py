@@ -23,11 +23,52 @@ nothing else in the suite can make:
     primitive set a contract rather than a claim.
 """
 
+import os
 import re
+import shutil
+import subprocess
+import tempfile
 
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_clusters"
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+OBJC = os.path.join(REPO, "tools", "musl-clang-objc64.sh")
+
+# THE COMPILE PROBE, WHICH IS M1'S THIRD ACCEPTANCE BULLET. The snippets are the assertion; the FLAGS are
+# the instrument, and both halves of the flag set were MEASURED before they were written down:
+#
+#   * WITHOUT -Werror=incompatible-pointer-types the "must be refused" snippet COMPILES, exit 0 - clang
+#     treats a generic-parameter mismatch as a WARNING. Written without that flag, the refusal check would
+#     have passed no matter what the header said: it would have been vacuous.
+#   * The NEGATIVE CONTROL has to mirror the include tree. Compiling the covariance snippet against a
+#     patched copy of Foundation/ ALONE fails on `CoreGraphics/CGGeometry.h` file not found - a compile
+#     failure with nothing to do with variance, which reads exactly like the instrument working.
+COVARIANT_SNIPPET = """\
+#import <Foundation/Foundation.h>
+
+/* NSArray is declared __covariant, so a mutable-specialized array IS a string-specialized one. */
+void ag_covariance(void)
+{
+	NSArray<NSMutableString *> *mutableStrings = nil;
+	NSArray<NSString *> *strings = mutableStrings;
+
+	(void)strings;
+}
+"""
+
+UNRELATED_SNIPPET = """\
+#import <Foundation/Foundation.h>
+
+/* UNRELATED specializations must NOT convert: covariance runs along the class hierarchy, not sideways. */
+void ag_unrelated(void)
+{
+	NSArray<NSString *> *strings = nil;
+	NSArray<NSNumber *> *numbers = strings;
+
+	(void)numbers;
+}
+"""
 CHECKS = (
           "the-front-is-allocatable-and-inits-empty",
           "class-answers-the-concrete-class",
@@ -54,6 +95,9 @@ CHECKS = (
           "nsarray-archive-names-the-public-class",
           "nsarray-archive-names-no-private-class",
           )
+# NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
+# is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a
+# host-side check reported through -check(), exactly like shell-ready and probe-ran.
 
 
 class Case(BaseCase):
@@ -115,3 +159,76 @@ class Case(BaseCase):
 
         self.check("exit-status", "FOUNDATION-CLUSTERS-STATUS=0" in out,
                    "the probe exited 0 (a non-zero status means a failed check)")
+
+        self._compile_probe()
+
+    # ---- THE COMPILE PROBE (M1's third acceptance bullet) -------------------------------------------
+    #
+    # A case that only RAN the guest could not see any of this: type arguments are ERASED before IR
+    # generation, so the variance of a header is invisible at runtime and only the COMPILER can testify.
+
+    def _objc_syntax_only(self, source, include_root):
+        """(exit status, output) for one snippet compiled against `include_root`."""
+        work = tempfile.mkdtemp(prefix="ag-compile-probe-")
+        try:
+            path = os.path.join(work, "snippet.m")
+            with open(path, "w") as handle:
+                handle.write(source)
+            result = subprocess.run(
+                [OBJC, "-fsyntax-only", "-fobjc-arc",
+                 "-Werror=incompatible-pointer-types",
+                 "-Wno-unused-command-line-argument",
+                 "-I", include_root, path],
+                cwd=REPO, capture_output=True, text=True)
+            return result.returncode, (result.stdout or "") + (result.stderr or "")
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+
+    def _variance_removed_tree(self):
+        """A MIRROR of userland/ in which Foundation/ is a COPY with its `__covariant` removed.
+
+        The mirror is built out of SYMLINKS to everything else, because the headers reach into sibling
+        trees (NSGeometry.h includes CoreGraphics/CGGeometry.h): a copy of Foundation/ alone cannot
+        compile at all, so it could not tell variance from a missing header. The real tree is untouched.
+        """
+        work = tempfile.mkdtemp(prefix="ag-compile-probe-neg-")
+        userland = os.path.join(REPO, "userland")
+        for name in os.listdir(userland):
+            os.symlink(os.path.join(userland, name), os.path.join(work, name))
+        os.remove(os.path.join(work, "Foundation"))
+        shutil.copytree(os.path.join(userland, "Foundation"), os.path.join(work, "Foundation"))
+        header = os.path.join(work, "Foundation", "NSArray.h")
+        with open(header) as handle:
+            text = handle.read()
+        with open(header, "w") as handle:
+            handle.write(text.replace("__covariant ", ""))
+        return work
+
+    def _compile_probe(self):
+        userland = os.path.join(REPO, "userland")
+
+        status, output = self._objc_syntax_only(COVARIANT_SNIPPET, userland)
+        self.check("covariant-assignment-compiles", status == 0,
+                   "a mutable-specialized array converts to a string-specialized one (__covariant)"
+                   if status == 0
+                   else "the covariant assignment did not compile: " + output.strip()[-300:])
+
+        status, output = self._objc_syntax_only(UNRELATED_SNIPPET, userland)
+        self.check("unrelated-specialization-is-refused", status != 0,
+                   "an unrelated specialization does not convert"
+                   if status != 0
+                   else "the unrelated assignment COMPILED, so this check asserts nothing - the flag that "
+                        "makes the refusal a failure is missing")
+
+        negative = self._variance_removed_tree()
+        try:
+            status, output = self._objc_syntax_only(COVARIANT_SNIPPET, negative)
+        finally:
+            shutil.rmtree(negative, ignore_errors=True)
+        self.check("the-instrument-is-not-vacuous",
+                   status != 0 and "incompatible" in output,
+                   "with __covariant removed from a COPY the same snippet fails for THAT reason, so the "
+                   "first check is measuring the header and not the compiler's goodwill"
+                   if status != 0 and "incompatible" in output
+                   else "removing __covariant changed nothing (status=%d): the covariance check proves "
+                        "nothing" % status)

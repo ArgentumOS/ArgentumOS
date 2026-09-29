@@ -69,7 +69,13 @@ said before, all measured:
   empty case fell through to the general class — `[NSArray array]` answered the general class instead of the
   shared empty instance, and "the four cases are four classes" failed with it.
 
-**STILL OWED: M1's compile probe** — a covariant assignment must compile and an unrelated specialized one
-must be REFUSED. It is the family's third acceptance bullet, no instrument for it exists in the tree yet,
-and it should be designed rather than improvised (where the snippets live, and which flag turns the refusal
-into a failure). **M2 (`NSDictionary` / `NSMutableDictionary`) is next**; §2's two gaps remain.
+**ALL THREE OF M1'S ACCEPTANCE BULLETS ARE GREEN.** The compile probe landed with the case:
+`tests/cases/foundation_clusters.py` compiles two snippets with `tools/musl-clang-objc64.sh` — a covariant
+assignment must COMPILE, an unrelated specialization must be REFUSED — plus a NEGATIVE CONTROL that strips
+`__covariant` from a MIRROR of the include tree and requires the same snippet to fail for THAT reason, so
+the first check cannot be passing on the compiler's goodwill. Two instrument facts were MEASURED, and each
+would have produced a vacuous check: **without `-Werror=incompatible-pointer-types` the refusal snippet
+compiles (exit 0)** — the flag IS the instrument; and the mirror must be SYMLINKS to the rest of `userland/`
+with only `Foundation/` copied, because a copy of `Foundation/` alone cannot compile at all
+(`CoreGraphics/CGGeometry.h`), and a failure for an unrelated reason reads exactly like the instrument
+working. **M2 (`NSDictionary` / `NSMutableDictionary`) is next**; §2's two gaps remain.
