@@ -272,6 +272,48 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
 
 @end
 
+/* THE THIRD-PARTY CASE FOR THE NUMBER FAMILY: a class that overrides ONLY the four primitives the header
+ * names - -agKind and the three payload accessors - holding one double of its own. If any derived read
+ * still reached for a union member of the front, THIS class could not answer it. */
+@interface ProbePrimitiveNumber : NSNumber
+{
+	double _held;
+}
+@end
+
+@implementation ProbePrimitiveNumber
+
+- (id)init
+{
+	self = [super init];
+	if (self != nil) {
+		_held = 2.5;
+	}
+	return self;
+}
+
+- (unsigned char)agKind
+{
+	return 'd';
+}
+
+- (long long)longLongValue
+{
+	return 2;
+}
+
+- (unsigned long long)unsignedLongLongValue
+{
+	return 2;
+}
+
+- (double)doubleValue
+{
+	return _held;
+}
+
+@end
+
 int main(void)
 {
 	ProbeCluster *empty;
@@ -655,6 +697,53 @@ int main(void)
 		      [[handmadeSet copy] isEqualToSet:expectedSet],
 		      "-mutableCopy must carry a THIRD-PARTY class's members; it built from the internal array, "
 		      "which that class does not have, so it silently produced an empty set");
+	}
+
+	{
+		/*
+		 * M4: THE NUMBER FAMILY — a concrete class per payload width, chosen BY THE CONSTRUCTOR, and the
+		 * front answering the archiver with the PUBLIC class. Locals declared HERE (nothing above is used).
+		 */
+		NSNumber *one = [NSNumber numberWithInt:1];
+		NSNumber *half = [NSNumber numberWithDouble:1.5];
+		NSNumber *yes = [NSNumber numberWithBool:YES];
+		NSDecimalNumber *decimal = [NSDecimalNumber decimalNumberWithString:@"1.5"];
+
+		check("nsnumber-class-answers-a-concrete-class",
+		      [one class] != [NSNumber class] && [[one class] isSubclassOfClass:[NSNumber class]] &&
+		      [one class] != [half class] && [half class] != [yes class],
+		      "-class must be a private concrete SUBCLASS of NSNumber, and the WIDTHS must be different classes");
+		check("nsnumber-class-for-coder-answers-the-front-but-not-for-a-public-subclass",
+		      [one classForCoder] == [NSNumber class] && [half classForCoder] == [NSNumber class] &&
+		      [yes classForCoder] == [NSNumber class] &&
+		      [decimal classForCoder] == [NSDecimalNumber class],
+		      "the private classes must name the PUBLIC class, while NSDecimalNumber — a public subclass — "
+		      "must still name ITSELF: an unconditional override rewrote its name in every archive");
+		check("nsnumber-the-matrix-round-trips",
+		      [one intValue] == 1 && [half doubleValue] == 1.5 && [yes boolValue] == YES &&
+		      [[NSNumber numberWithLongLong:-7] longLongValue] == -7 &&
+		      [[NSNumber numberWithUnsignedLongLong:18446744073709551615ULL] unsignedLongLongValue]
+			== 18446744073709551615ULL &&
+		      ([one objCType][0] == 'i') && ([half objCType][0] == 'd') &&
+		      strcmp([one objCType], "i") == 0,
+		      "each creation type must round-trip through its accessor and report itself from -objCType");
+	}
+
+	{
+		/* THE PRIMITIVES ARE THE CONTRACT (§C.3 item 5): four methods, and every read above them. */
+		ProbePrimitiveNumber *handmadeNumber = [[ProbePrimitiveNumber alloc] init];
+		NSNumber *expectedNumber = [NSNumber numberWithDouble:2.5];
+
+		check("nsnumber-primitives-drive-conversions-equality-and-hash",
+		      [handmadeNumber doubleValue] == 2.5 && [handmadeNumber intValue] == 2 &&
+		      [handmadeNumber longLongValue] == 2 && [handmadeNumber boolValue] == YES &&
+		      ([handmadeNumber objCType][0] == 'd') &&
+		      [[handmadeNumber stringValue] length] > 0 &&
+		      [[handmadeNumber description] length] > 0 &&
+		      [handmadeNumber isEqualToNumber:expectedNumber] &&
+		      [handmadeNumber hash] == [expectedNumber hash] ,
+				      "the fifteen conversions, -objCType, -description, -isEqualToNumber: and -hash must all be "
+		      "written over the four primitives, on a class that has none of the front's fields");
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");

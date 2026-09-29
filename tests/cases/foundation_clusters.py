@@ -135,6 +135,11 @@ CHECKS = (
           "nsset-primitives-drive-hash-and-description",
           "nsset-primitives-drive-fast-enumeration",
           "nsset-primitives-drive-copy-and-mutable-copy",
+          # M4: the number family, and its primitives.
+          "nsnumber-class-answers-a-concrete-class",
+          "nsnumber-class-for-coder-answers-the-front-but-not-for-a-public-subclass",
+          "nsnumber-the-matrix-round-trips",
+          "nsnumber-primitives-drive-conversions-equality-and-hash",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a
