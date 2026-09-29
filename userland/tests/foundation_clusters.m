@@ -167,6 +167,48 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
 @implementation ProbePlain
 @end
 
+/* THE THIRD-PARTY CASE, AND IT IS THE ONE THAT MAKES THE HEADER'S CLAIM TRUE RATHER THAN ASPIRATIONAL: a
+ * class that inherits NSArray and overrides ONLY the two primitives that header names. If any method in
+ * the family still reached into the front's own storage, THIS class would be reading whatever it keeps in
+ * those ivars - and every check below would fail. Its elements are LITERALS, so the class needs no dealloc
+ * and no retain in either memory mode: it is written the way a caller outside this library would. */
+@interface ProbePrimitiveArray : NSArray
+{
+	NSString *_mine[3];
+}
+@end
+
+@implementation ProbePrimitiveArray
+
+- (id)init
+{
+	self = [super init];
+	if (self != nil) {
+		_mine[0] = @"p";
+		_mine[1] = @"q";
+		_mine[2] = @"r";
+	}
+	return self;
+}
+
+/* THE TWO PRIMITIVES, AND NOTHING ELSE - there is deliberately no -dealloc, no -countByEnumerating… and no
+ * -isEqualToArray: in this class. */
+- (NSUInteger)count
+{
+	return 3;
+}
+
+- (id)objectAtIndex:(NSUInteger)index
+{
+	if (index >= 3) {
+		[NSException raise:NSRangeException
+		            format:@"ProbePrimitiveArray: index %lu beyond bounds", (unsigned long)index];
+	}
+	return _mine[index];
+}
+
+@end
+
 int main(void)
 {
 	ProbeCluster *empty;
@@ -241,6 +283,119 @@ int main(void)
 	      restored != nil && [restored isKindOfClass:[ProbeCluster class]] &&
 	      [(ProbeCluster *)restored probeCount] == 0,
 	      "unarchiving must give an instance of the cluster whose data survived");
+
+	/* ===============================================================================================
+	 * M1: THE SAME CONTRACT, ON THE SHIPPED FAMILY. Everything above proves the MECHANISM on a cluster
+	 * this probe defines itself; this section asserts the same rules on NSArray/NSMutableArray, whose
+	 * concrete classes are the library's own, and then on a class written over the primitives ALONE.
+	 * =============================================================================================== */
+	{
+		NSArray *e = [NSArray array];
+		NSArray *one = [NSArray arrayWithObject:@"one"];
+		NSArray *small = [NSArray arrayWithObjects:@"a", @"b", @"c", nil];
+		NSMutableArray *mutable = [NSMutableArray array];
+		NSArray *general;
+		NSArray *fromInit;
+		NSArray *slice;
+		NSMutableArray *mutableCopyOfOne;
+		ProbePrimitiveArray *handmade;
+		NSString *expectedItems[3];
+		NSString *seen[4];
+		NSUInteger seenCount = 0;
+		NSUInteger i;
+		NSNumber *want20[20];
+		id enumerated;
+
+		for (i = 0; i < 20; i++) {
+			want20[i] = [NSNumber numberWithInteger:(NSInteger)i];
+		}
+		general = [NSArray arrayWithObjects:want20 count:20];
+
+		check("nsarray-class-answers-a-concrete-class",
+		      [e class] != [NSArray class] && [[e class] isSubclassOfClass:[NSArray class]],
+		      "-class must be a private concrete SUBCLASS of NSArray, never NSArray itself");
+		check("nsarray-four-cases-are-distinct-classes",
+		      [e class] != [one class] && [e class] != [small class] &&
+		      [e class] != [general class] && [one class] != [small class] &&
+		      [one class] != [general class] && [small class] != [general class],
+		      "the empty, one-element, small and general cases must be FOUR DIFFERENT classes");
+
+		fromInit = [[NSArray alloc] init];
+		check("nsarray-alloc-init-is-the-empty-singleton",
+		      fromInit != nil && [fromInit count] == 0 && fromInit == e,
+		      "[[NSArray alloc] init] is legal, answers an EMPTY instance, and answers the SHARED one");
+
+		check("nsarray-mutable-construction-answers-a-mutable-class",
+		      [mutable class] != [NSMutableArray class] &&
+		      [[mutable class] isSubclassOfClass:[NSMutableArray class]] &&
+		      [mutable isKindOfClass:[NSArray class]],
+		      "a mutable constructor answers a private SUBCLASS of NSMutableArray");
+
+		check("nsarray-class-for-coder-answers-the-front",
+		      [e classForCoder] == [NSArray class] && [one classForCoder] == [NSArray class] &&
+		      [small classForCoder] == [NSArray class] && [general classForCoder] == [NSArray class] &&
+		      [mutable classForCoder] == [NSMutableArray class] &&
+		      [e classForArchiver] == [NSArray class],
+		      "every instance must name the PUBLIC class to an archiver, whatever -class answers");
+
+		mutableCopyOfOne = [one mutableCopy];
+		check("nsarray-copy-is-the-receiver-and-mutable-copy-is-mutable",
+		      [one copy] == one && mutableCopyOfOne != nil &&
+		      [mutableCopyOfOne class] != [NSMutableArray class] &&
+		      [[mutableCopyOfOne class] isSubclassOfClass:[NSMutableArray class]] &&
+		      [mutableCopyOfOne isEqualToArray:one],
+		      "-copy answers the receiver (immutable) and -mutableCopy a MUTABLE concrete class");
+
+		/* §C.3 item 5, AND THIS PAIR IS THE WHOLE REASON THE HEADER DOCUMENTS THE PRIMITIVES: a class that
+		 * overrides ONLY -count and -objectAtIndex: must be correct through every derived door. */
+		handmade = [[ProbePrimitiveArray alloc] init];
+		expectedItems[0] = @"p";
+		expectedItems[1] = @"q";
+		expectedItems[2] = @"r";
+		{
+			NSArray *expected = [NSArray arrayWithObjects:expectedItems count:3];
+
+			check("nsarray-primitives-drive-equality-and-hash",
+			      [handmade isEqualToArray:expected] && [handmade hash] == [expected hash] &&
+			      [[handmade description] isEqual:[expected description]] &&
+			      [handmade count] == 3 && [handmade firstObject] == expectedItems[0] &&
+			      [handmade lastObject] == expectedItems[2],
+			      "equality, hash and description must be written over the primitives, not over storage");
+
+			slice = [handmade subarrayWithRange:NSMakeRange(1, 2)];
+			check("nsarray-primitives-drive-slicing-and-search",
+			      slice != nil && [slice count] == 2 &&
+			      [handmade indexOfObject:expectedItems[2]] == 2 &&
+			      [handmade indexOfObjectIdenticalTo:expectedItems[1]] == 1 &&
+			      [handmade containsObject:expectedItems[0]],
+			      "slicing and the searches must work on a class with NO storage of its own");
+		}
+		for (enumerated in handmade) {
+			if (seenCount < 4) {
+				seen[seenCount] = enumerated;
+			}
+			seenCount++;
+		}
+		check("nsarray-primitives-drive-fast-enumeration",
+		      seenCount == 3 && seen[0] == expectedItems[0] &&
+		      seen[1] == expectedItems[1] && seen[2] == expectedItems[2],
+		      "fast enumeration must walk the primitives - the buffer is the CALLER's, not the storage");
+
+		/* §C.4's hinge, ON THE SHIPPED FAMILY: the archive carries the public name and no private one. */
+		{
+			NSData *familyArchive = [NSKeyedArchiver archivedDataWithRootObject:small];
+			const void *familyBytes = [familyArchive bytes];
+			size_t familyLength = [familyArchive length];
+
+			check("nsarray-archive-names-the-public-class",
+			      familyArchive != nil && familyLength > 0 &&
+			      contains(familyBytes, familyLength, "NSArray"),
+			      "a real array's archive must name the public class");
+			check("nsarray-archive-names-no-private-class",
+			      !contains(familyBytes, familyLength, "AGArray"),
+			      "no private concrete name may reach an archive - what -classForCoder buys");
+		}
+	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");
 	printf("FOUNDATION-CLUSTERS RESULT ok=%d fail=%d\n", okc, failc);

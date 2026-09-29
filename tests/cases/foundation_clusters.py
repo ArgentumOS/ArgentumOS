@@ -1,11 +1,13 @@
 # Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
 # SPDX-License-Identifier: MIT
-"""The class-cluster mechanism — M0 of docs/design/foundation-clusters-plan.md.
+"""The class-cluster mechanism — M0, and the shipped family's contract — M1.
 
 The plan's §C.3 lists the contract the library will match in sixteen families. M0
-lands the MECHANISM first and proves it on a cluster the probe defines ITSELF, so
-that no shipped class changes behaviour in this unit. Two of these checks are the
-ones nothing else in the suite can make:
+landed the MECHANISM first and proved it on a cluster the probe defines ITSELF, so
+that no shipped class changed behaviour in that unit. M1 then does the same to the
+first family, and the probe's second half asserts it ON NSArray/NSMutableArray and
+on a class written over the primitives ALONE. Three of these checks are the ones
+nothing else in the suite can make:
 
   * `an-ordinary-class-substitutes-nothing` — the new `-classForCoder` default must
     be inert for every class that is not a cluster, which is the whole library;
@@ -13,7 +15,12 @@ ones nothing else in the suite can make:
     PUBLIC class name and no private one. That is the hinge §C.4 is about, and it
     is measured by SEARCHING THE ARCHIVE'S OWN BYTES rather than by asking an object
     what it would answer: a check that only asked would pass even if the archiver
-    went on recording `-class`.
+    went on recording `-class`. `nsarray-archive-names-no-private-class` is the same
+    measurement on a REAL array;
+  * `nsarray-primitives-drive-*` — a subclass that overrides ONLY the two primitives
+    the header documents must be correct through equality, hash, description,
+    slicing, the searches and fast enumeration. That is what makes the documented
+    primitive set a contract rather than a claim.
 """
 
 import re
@@ -34,6 +41,18 @@ CHECKS = (
           "the-archive-names-the-public-class",
           "the-archive-names-no-private-class",
           "the-archive-round-trips-through-the-front",
+          # M1: the same contract, on the shipped family.
+          "nsarray-class-answers-a-concrete-class",
+          "nsarray-four-cases-are-distinct-classes",
+          "nsarray-alloc-init-is-the-empty-singleton",
+          "nsarray-mutable-construction-answers-a-mutable-class",
+          "nsarray-class-for-coder-answers-the-front",
+          "nsarray-copy-is-the-receiver-and-mutable-copy-is-mutable",
+          "nsarray-primitives-drive-equality-and-hash",
+          "nsarray-primitives-drive-slicing-and-search",
+          "nsarray-primitives-drive-fast-enumeration",
+          "nsarray-archive-names-the-public-class",
+          "nsarray-archive-names-no-private-class",
           )
 
 

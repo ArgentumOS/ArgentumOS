@@ -109,13 +109,27 @@ typedef NSUInteger NSPropertyListWriteOptions;
 - (nullable id)propertyList;
 @end
 
-@interface NSArray (NSPropertyListAdditions)
-+ (nullable instancetype)arrayWithContentsOfFile:(NSString *)path;
-+ (nullable instancetype)arrayWithContentsOfURL:(NSURL *)url;
-- (nullable id)initWithContentsOfFile:(NSString *)path;
-- (nullable id)initWithContentsOfURL:(NSURL *)url;
+@interface NSArray<ObjectType> (NSPropertyListAdditions)
++ (nullable NSArray<ObjectType> *)arrayWithContentsOfFile:(NSString *)path;
++ (nullable NSArray<ObjectType> *)arrayWithContentsOfURL:(NSURL *)url;
+- (nullable NSArray<ObjectType> *)initWithContentsOfFile:(NSString *)path;
+- (nullable NSArray<ObjectType> *)initWithContentsOfURL:(NSURL *)url;
 - (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile;
 - (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)useAuxiliaryFile;
+@end
+
+/* THE MUTABLE FOUR ARE DECLARED ON THE MUTABLE CLASS, WHICH IS APPLE'S OWN ARRANGEMENT: its NSArray.h
+ * carries this category as well, the four there answering NSMutableArray<ObjectType> * while NSArray's
+ * answer NSArray<ObjectType> *. That is what makes `[NSMutableArray arrayWithContentsOfFile:]` answer the
+ * MUTABLE type; under a single `instancetype` declaration on the immutable class it was right only by
+ * coincidence of instancetype's rule. THE IMPLEMENTATION IS STILL NSARRAY'S, ONCE, in
+ * NSPropertyListSerialization.m: a subclass inherits it, and that inherited definition is what the
+ * declared-not-implemented gate finds. */
+@interface NSMutableArray<ObjectType> (NSPropertyListAdditions)
++ (nullable NSMutableArray<ObjectType> *)arrayWithContentsOfFile:(NSString *)path;
++ (nullable NSMutableArray<ObjectType> *)arrayWithContentsOfURL:(NSURL *)url;
+- (nullable NSMutableArray<ObjectType> *)initWithContentsOfFile:(NSString *)path;
+- (nullable NSMutableArray<ObjectType> *)initWithContentsOfURL:(NSURL *)url;
 @end
 
 @interface NSDictionary (NSPropertyListAdditions)

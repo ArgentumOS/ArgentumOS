@@ -132,19 +132,26 @@ static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
 	 * THE CLASS IS CHOSEN BY THE DATA (§C.3 item 2), AND ONLY FOR THIS FAMILY'S GENERAL CLASS. The guard
 	 * is a MEMBERSHIP test rather than a kind test because a mutable receiver (AGArrayMutable, through
 	 * NSMutableArray's +alloc) inherits this very implementation and must keep it: its layout is the same
-	 * and its family chooses no class at all. `objects != NULL` is part of the guard because count 1 with
-	 * no storage is a caller error that must still reach the bounds check rather than a null dereference.
+	 * and its family chooses no class at all. `objects != NULL` guards the two NON-EMPTY cases only: a
+	 * nonzero count with no storage is a caller error that must still reach the bounds check rather than
+	 * become a null dereference.
 	 */
-	if (objects != NULL && [self isMemberOfClass:[AGArrayItems class]]) {
+	if ([self isMemberOfClass:[AGArrayItems class]]) {
 		if (count == 0) {
+			/*
+			 * THE EMPTY CASE IS FIRST AND IT EXPECTS NO STORAGE POINTER: `+array` calls this with NULL and
+			 * count 0. The probe caught the earlier version, whose guard read `objects != NULL && ...` -
+			 * which sent the empty case down the GENERAL path, so `[NSArray array]` answered the general
+			 * class instead of the shared empty instance and the four cases stopped being four.
+			 */
 			[self release];	/* never initialized: the storage was never built */
 			return [AGArrayEmpty emptyArray];
 		}
-		if (count == 1) {
+		if (objects != NULL && count == 1) {
 			[self release];
 			return [[AGArrayOne alloc] initWithObject:objects[0]];
 		}
-		if (count <= AG_ARRAY_SMALL_MAX) {
+		if (objects != NULL && count <= AG_ARRAY_SMALL_MAX) {
 			[self release];
 			return [[AGArraySmall alloc] initWithObjects:objects count:count];
 		}
@@ -1200,7 +1207,7 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 - (id)init
 {
 	[self release];	/* never initialized: the storage was never built */
-	return [AGArrayEmpty emptyArray];
+	return (id)[AGArrayEmpty emptyArray];
 }
 
 @end

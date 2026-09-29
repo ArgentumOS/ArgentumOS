@@ -35,6 +35,30 @@
 NS_ASSUME_NONNULL_BEGIN
 @class NSURL;
 
+/* ===================================================================================================
+ * NSARRAY IS A CLASS CLUSTER (2026-09-28; docs/design/foundation-clusters-plan.md §C.3).
+ *
+ * THE PRIMITIVE METHODS ARE THE CONTRACT, AND THERE ARE EXACTLY TWO:
+ *
+ *     - (NSUInteger)count
+ *     - (ObjectType)objectAtIndex:(NSUInteger)index     (RAISES NSRangeException out of range)
+ *
+ * A SUBCLASS THAT OVERRIDES THOSE TWO GETS THE WHOLE FAMILY. Every other method here — -firstObject,
+ * -indexOfObject:, -isEqualToArray:, -hash, -description, -subarrayWithRange:, the sorts, the filters,
+ * -getObjects:range: and fast enumeration — is written OVER them rather than over this class's storage.
+ * That is Apple's own sentence about primitive methods, and it is also mechanical need: a concrete class
+ * with a different LAYOUT (an inline one, say) has none of the ivars below, so anything reaching into
+ * `_items` would read whatever that class keeps there.
+ *
+ * THE FRONT IS PUBLIC AND ITS CONCRETE CLASSES ARE PRIVATE — in the implementation file and in no header.
+ * Apple does not publish its names ("You don't, and can't, choose the actual class of the instance"), so
+ * ours are a free choice: AGArrayEmpty (ONE shared instance, the empty case, and the answer to
+ * `[[NSArray alloc] init]`), AGArrayOne (the object IS the storage), AGArraySmall (inline storage up to
+ * eight elements), AGArrayItems (the general case, over these ivars), and AGArrayMutable (the mutable
+ * family's). `-class` answers one of them, which is what a cluster means; `-classForCoder` answers
+ * NSArray, so no private name can reach an archive.
+ * =================================================================================================== */
+
 @interface NSArray<__covariant ObjectType> : NSObject <NSCopying, NSFastEnumeration>
 {
 	id __unsafe_unretained *_items;	/* owned BY HAND: every slot is retained */

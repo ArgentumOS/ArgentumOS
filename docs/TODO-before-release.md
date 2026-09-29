@@ -38,24 +38,38 @@ exists is drift. Do it as ONE commit, when nothing else is in flight — it touc
 ## 2. The parameterization set: two gaps the compiler found
 
 The clause that measures this is `tools/foundation-sweep.py --parameterized` / `--check` (139 findings
-across 13 classes on 2026-09-28).
+across 13 classes on 2026-09-28; **103 as of 2026-09-29, because M1's family reached 0**).
 
 * **`NSOrderedCollectionDifference` IS parameterized by Apple and is NOT in the clause's class list.** Our
   compiler refused `NSOrderedCollectionDifference<ObjectType>` in `NSArray.h` while Apple's own `NSArray.h`
   writes exactly that. The list must grow a row, and our class must gain the parameter.
 * **`NSEnumerator`'s class line is parameterized as of 2026-09-28** (`<ObjectType>`); **its methods still owe
   theirs**, so the clause still reports it.
+* **AND M1 FOUND A THIRD SHAPE OF THE SAME GAP, worth knowing before M2:** Apple parameterizes the MUTABLE
+  class's own plist conveniences as a SEPARATE category in its `NSArray.h` (its lines 187-190), answering
+  `NSMutableArray<ObjectType> *`. So "which category declares what" is part of matching Apple, not just
+  "which declarations name a parameter".
 
-## 3. Foundation stacks: the class-cluster milestones (§C.5 of `foundation-clusters-plan.md`), M1 onward
+## 3. Foundation stacks: the class-cluster milestones (§C.5 of `foundation-clusters-plan.md`)
 
-M1's state, so a resumption does not have to re-measure:
+**M1 (`NSArray` / `NSMutableArray`) IS COMPLETE 2026-09-29** — the runtime half is `3baf993f`, and the
+compile half plus the probe's family section landed with this note. Three corrections to what this file
+said before, all measured:
 
-* **COMPILE half — landed for `NSArray`/`NSMutableArray`**: the clause went 139 → 111 findings (NSArray
-  27 → 4, NSMutableArray 12 → 4). The eight left are the plist conveniences Apple parameterizes on both
-  classes: `+arrayWithContentsOfFile:`, `+arrayWithContentsOfURL:`, `-initWithContentsOfFile:`,
-  `-initWithContentsOfURL:` × {NSArray, NSMutableArray}.
-* **CLUSTER half — NOT started.** 105 storage sites live in `NSArray` itself across ~24 methods (fast paths
-  in `hash`, `isEqualToArray:`, `countByEnumeratingWithState:`, `subarrayWithRange:`, `objectsAtIndexes:`,
-  `indexOfObject:`), and the mutable concrete class **cannot** inherit the immutable concrete's storage —
-  ivar offsets are fixed by the declaring class — so exactness needs the read side written over the
-  primitives (§C.3 item 5 of the clusters plan) or duplication of ~25 methods. That choice comes first.
+* **"The mutable concrete class cannot inherit the immutable concrete's storage" was WRONG.** The storage is
+  the FRONT's own ivars, so every concrete class — the mutable one included — inherits the same layout. The
+  real obstacle was different: **`NSMutableArray` defines NO initializers at all** (31 methods, no `-init`,
+  no `-initWithObjects:count:`, no `-initWithArray:`, no `-initWithObject:`; it inherits all four from the
+  front), so the class-choosing guard had to be a MEMBERSHIP test — a kind test would have sent every
+  mutable construction into the immutable family.
+* **The read-side rewrite was 71 sites over 26 methods, not 105 sites** — the larger number counted both
+  halves of the file.
+* **AND ONE THING ONLY THE PROBE COULD HAVE FOUND: the empty case must be chosen BEFORE the storage check.**
+  `+array` calls `-initWithObjects:NULL count:0`, and the first guard required `objects != NULL`, so the
+  empty case fell through to the general class — `[NSArray array]` answered the general class instead of the
+  shared empty instance, and "the four cases are four classes" failed with it.
+
+**STILL OWED: M1's compile probe** — a covariant assignment must compile and an unrelated specialized one
+must be REFUSED. It is the family's third acceptance bullet, no instrument for it exists in the tree yet,
+and it should be designed rather than improvised (where the snippets live, and which flag turns the refusal
+into a failure). **M2 (`NSDictionary` / `NSMutableDictionary`) is next**; §2's two gaps remain.
