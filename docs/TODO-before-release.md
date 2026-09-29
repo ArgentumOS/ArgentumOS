@@ -353,3 +353,16 @@ The tree is green; `foundation_legacymaptable` is back at 15/15. The attempt and
   storage (the array, dictionary and set families each implement that door in the concrete class) BEFORE moving
   the front's, then move the front's three doors, with `foundation_legacymaptable` as the gate at每一 step.
 
+**THE NSMAPTABLE LEAD WAS DISPROVED BY THE ORDER I RECORDED, WHICH IS WHY THE ORDER WAS WORTH FOLLOWING.** The
+first attempt blamed the FRONT's `-countByEnumeratingWithState:` for the teardown crash; the next attempt gave
+`FNLegacyMapTable` its OWN door over its own storage FIRST - and it crashed ANYWAY. So the fault is not the
+front's door at all: **the legacy class's own fast enumeration is broken, and it had never run before**, because
+the front's old door batched from `_table` (NULL for a legacy table) and therefore enumerated as EMPTY. Giving
+the class a real door EXERCISED that path for the first time and the guest SEGV'd.
+
+**WHAT THAT MEANS FOR THE NEXT ATTEMPT:** the work is to find what is wrong with fast-enumerating a legacy
+table - the wrapping (`[NSValue valueWithPointer:_legacyKeys[i]]`), the buffer contract, or something the
+teardown does afterwards - using a probe run and the last-check-reported method. The front's three doors are NOT
+implicated and should be moved AFTER this is understood, not before. Both attempts are reverted; the tree is
+green and `foundation_legacymaptable` is at 15/15.
+
