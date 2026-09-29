@@ -157,6 +157,7 @@ CHECKS = (
           "nsdata-empty-is-the-shared-singleton",
           "nsdata-mutable-and-class-for-coder",
           "nsdata-empty-answers-every-read",
+          "nsdata-primitives-drive-equality-hash-slicing-and-encoding",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a

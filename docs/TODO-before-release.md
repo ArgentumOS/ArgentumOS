@@ -271,8 +271,14 @@ those stores into the singleton, which is what broke three cases in the dictiona
 belongs to the COMPLETE constructions (`-initWithBytes:length:` with a zero length), and the probe asserts both
 halves so the distinction stays visible.
 
-**STILL OWED IN M6, both named rather than implied:** `NSData`'s PRIMITIVE MOVE — its eighty-four storage reads
-have not moved onto `-length`/`-bytes`, so its third-party subclass check is absent and the probe's own comment
-says why — and **`NSIndexSet`** entirely (34 methods, 48 storage reads, a mutable with NO initializers, so its
-guard will be a membership test). Then M7.
+**NSDATA IS COMPLETE (same day).** Its storage reads moved onto `-length`/`-bytes` — the MUTABLE class's own
+storage code stays, exactly as the array family's does, and the audit confirmed the survivors are the
+primitives, the constructions, `-dealloc` and the mutable's mutations — and a third-party
+`ProbePrimitiveData` over those two primitives alone is correct through equality (BOTH directions), hash,
+slicing, `-description` and base64. `foundation_clusters` is ok=64 with `foundation_dataoptions` 5/5,
+`foundation_collection` 46/46, `foundation_coder` 11/11, `foundation_string` 96/96 and `foundation_nsvalue` 7/7
+unmoved.
+
+**STILL OWED IN M6: `NSIndexSet`** entirely — 34 methods, 48 storage reads, and a mutable with NO initializers,
+so its guard will be a membership test. Then M7.
 

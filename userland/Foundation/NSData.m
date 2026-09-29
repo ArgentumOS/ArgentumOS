@@ -240,14 +240,14 @@
 	if (buffer == NULL) {
 		return;
 	}
-	if (range.location > _length) {
+	if (range.location > [self length]) {
 		return;
 	}
-	if (n > _length - range.location) {
-		n = _length - range.location;
+	if (n > [self length] - range.location) {
+		n = [self length] - range.location;
 	}
 	if (n > 0) {
-		memcpy(buffer, _bytes + range.location, n);
+		memcpy(buffer, [self bytes] + range.location, n);
 	}
 }
 
@@ -256,20 +256,20 @@
 	size_t start = range.location;
 	size_t n = range.length;
 
-	if (start > _length) {
-		start = _length;
+	if (start > [self length]) {
+		start = [self length];
 	}
-	if (n > _length - start) {
-		n = _length - start;
+	if (n > [self length] - start) {
+		n = [self length] - start;
 	}
-	return [[NSData alloc] initWithBytes:_bytes + start length:n];
+	return [[NSData alloc] initWithBytes:[self bytes] + start length:n];
 }
 
 - (NSRange)rangeOfData:(NSData *)other
 	       options:(NSDataSearchOptions)options
 		 range:(NSRange)range
 {
-	size_t haystack = _length;
+	size_t haystack = [self length];
 	size_t needle = [other length];
 	size_t start = range.location;
 	size_t end;
@@ -287,7 +287,7 @@
 		end = haystack;
 	}
 	for (i = start; i + needle <= end; i++) {
-		if (memcmp(_bytes + i, [other bytes], needle) == 0) {
+		if (memcmp([self bytes] + i, [other bytes], needle) == 0) {
 			return NSMakeRange(i, needle);
 		}
 	}
@@ -299,8 +299,8 @@ static const char base64Alphabet[] =
 
 - (NSString *)base64EncodedStringWithOptions:(NSDataBase64EncodingOptions)options
 {
-	const unsigned char *bytes = (const unsigned char *)_bytes;
-	size_t outSize = ((_length + 2) / 3) * 4;
+	const unsigned char *bytes = (const unsigned char *)[self bytes];
+	size_t outSize = (([self length] + 2) / 3) * 4;
 	char *out;
 	size_t i;
 	size_t o = 0;
@@ -311,7 +311,7 @@ static const char base64Alphabet[] =
 	if (out == NULL) {
 		return [[NSOwnedString alloc] initWithUTF8String:""];
 	}
-	for (i = 0; i + 2 < _length; i += 3) {
+	for (i = 0; i + 2 < [self length]; i += 3) {
 		unsigned long triple = ((unsigned long)bytes[i] << 16) |
 				       ((unsigned long)bytes[i + 1] << 8) |
 				       bytes[i + 2];
@@ -321,9 +321,9 @@ static const char base64Alphabet[] =
 		out[o++] = base64Alphabet[(triple >> 6) & 0x3F];
 		out[o++] = base64Alphabet[triple & 0x3F];
 	}
-	if (i < _length) {
+	if (i < [self length]) {
 		unsigned long triple = (unsigned long)bytes[i] << 16;
-		int remaining = (int)(_length - i);
+		int remaining = (int)([self length] - i);
 
 		if (remaining == 2) {
 			triple |= (unsigned long)bytes[i + 1] << 8;
@@ -430,7 +430,7 @@ static int base64Value(unsigned char c)
 			free(staging);
 			return NO;
 		}
-		if (_length > 0 && fwrite(_bytes, 1, _length, file) != _length) {
+		if ([self length] > 0 && fwrite([self bytes], 1, [self length], file) != [self length]) {
 			fclose(file);
 			remove(staging);
 			free(staging);
@@ -453,7 +453,7 @@ static int base64Value(unsigned char c)
 	if (file == NULL) {
 		return NO;
 	}
-	if (_length > 0 && fwrite(_bytes, 1, _length, file) != _length) {
+	if ([self length] > 0 && fwrite([self bytes], 1, [self length], file) != [self length]) {
 		fclose(file);
 		return NO;
 	}
@@ -536,7 +536,7 @@ static int base64Value(unsigned char c)
 	 * contiguous buffer, so there is nothing to split. `stop` is honoured by
 	 * simply not calling again.
 	 */
-	block(_bytes, NSMakeRange(0, _length), &stop);
+	block([self bytes], NSMakeRange(0, [self length]), &stop);
 }
 
 - (BOOL)isEqualToData:(NSData *)other
@@ -547,13 +547,13 @@ static int base64Value(unsigned char c)
 	if (other == self) {
 		return YES;
 	}
-	if ([other length] != _length) {
+	if ([other length] != [self length]) {
 		return NO;
 	}
-	if (_length == 0) {
+	if ([self length] == 0) {
 		return YES;
 	}
-	return memcmp([other bytes], _bytes, _length) == 0;
+	return memcmp([other bytes], [self bytes], [self length]) == 0;
 }
 
 - (BOOL)isEqual:(id)other
@@ -574,7 +574,7 @@ static int base64Value(unsigned char c)
 	unsigned long h = 2166136261UL;
 	size_t i;
 
-	for (i = 0; i < _length; i++) {
+	for (i = 0; i < [self length]; i++) {
 		h ^= bytes[i];
 		h *= 16777619UL;
 	}
@@ -594,9 +594,9 @@ static int base64Value(unsigned char c)
 
 - (id)mutableCopy
 {
-	NSMutableData *copy = [[NSMutableData alloc] initWithCapacity:_length];
+	NSMutableData *copy = [[NSMutableData alloc] initWithCapacity:[self length]];
 
-	[copy appendBytes:_bytes length:_length];
+	[copy appendBytes:[self bytes] length:[self length]];
 	return copy;
 }
 
@@ -610,17 +610,17 @@ static int base64Value(unsigned char c)
 	char *buffer;
 	NSString *result;
 
-	buffer = (char *)malloc(_length * 2 + 3);	/* "<" + 2/byte + ">" + NUL */
+	buffer = (char *)malloc([self length] * 2 + 3);	/* "<" + 2/byte + ">" + NUL */
 	if (buffer == NULL) {
 		return [NSString stringWithUTF8String:"<data>"];
 	}
 	buffer[0] = '<';
-	for (i = 0; i < _length; i++) {
+	for (i = 0; i < [self length]; i++) {
 		buffer[1 + i * 2] = hex[bytes[i] >> 4];
 		buffer[2 + i * 2] = hex[bytes[i] & 0xF];
 	}
-	buffer[1 + _length * 2] = '>';
-	buffer[2 + _length * 2] = '\0';
+	buffer[1 + [self length] * 2] = '>';
+	buffer[2 + [self length] * 2] = '\0';
 	result = [NSString stringWithUTF8String:buffer];
 	free(buffer);
 	return result;
@@ -702,8 +702,8 @@ static NSString *fn_path_for_url(NSURL *url, NSError **errorPtr)
  */
 - (void)encodeWithCoder:(NSCoder *)coder
 {
-	if (_length > 0) {
-		[coder encodeBytes:(const void *)_bytes length:_length forKey:@"NS.data"];
+	if ([self length] > 0) {
+		[coder encodeBytes:(const void *)[self bytes] length:[self length] forKey:@"NS.data"];
 	}
 }
 

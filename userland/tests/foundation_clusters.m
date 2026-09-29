@@ -367,6 +367,26 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
 
 @end
 
+/* THE THIRD-PARTY CASE FOR NSDATA: a class over ONLY the two primitives the header names - -length and
+ * -bytes - with no storage of its own. If any derived read still reached for the ivar, THIS class could not
+ * answer it. */
+@interface ProbePrimitiveData : NSData
+@end
+
+@implementation ProbePrimitiveData
+
+- (size_t)length
+{
+	return 4;
+}
+
+- (const void *)bytes
+{
+	return "wxyz";
+}
+
+@end
+
 int main(void)
 {
 	ProbeCluster *empty;
@@ -951,6 +971,25 @@ int main(void)
 		      [[emptyData description] length] > 0 &&
 		      [[NSMutableData data] length] == 0,
 		      "the empty concrete class answers the reads a caller makes of it");
+	}
+
+	{
+		/* THE PRIMITIVES ARE THE CONTRACT (§C.3 item 5): -length and -bytes, and every read above them. */
+		ProbePrimitiveData *handmadeData = [[ProbePrimitiveData alloc] init];
+		NSData *expectedData = [NSData dataWithBytes:"wxyz" length:4];
+
+		check("nsdata-primitives-drive-equality-hash-slicing-and-encoding",
+		      [handmadeData length] == 4 &&
+		      [handmadeData isEqualToData:expectedData] && [expectedData isEqualToData:handmadeData] &&
+		      [handmadeData hash] == [expectedData hash] &&
+		      [[handmadeData subdataWithRange:NSMakeRange(1, 2)]
+			isEqualToData:[NSData dataWithBytes:"xy" length:2]] &&
+		      [[handmadeData description] length] > 0 &&
+		      [[handmadeData base64EncodedStringWithOptions:0] length] > 0 &&
+		      [[[NSData dataWithData:handmadeData] base64EncodedStringWithOptions:0]
+			isEqualToString:[expectedData base64EncodedStringWithOptions:0]],
+		      "equality in BOTH directions, hash, slicing, -description and base64 must be written over the "
+		      "two primitives, on a class that has no storage of its own");
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");
