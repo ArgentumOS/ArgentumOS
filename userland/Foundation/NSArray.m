@@ -38,7 +38,73 @@ static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
 	return items;
 }
 
+/* ===================================================================================================
+ * THE PRIVATE CONCRETE CLASSES (plan §C.3, M1). Apple's article's sentence - "You don't, and can't,
+ * choose the actual class of the instance" - is the shape: the public class is the FRONT, and these are
+ * the classes it answers with. §C.3 item 8: Apple does not publish its names, so ours are a free choice,
+ * they are named HERE and in no header, and §C.4 is the reason none of them may ever reach an archive
+ * (-classForCoder answers the front, and an archiver asks for THAT).
+ *
+ * THE STORAGE IS THE FRONT'S OWN IVARS. §C.3 item 5 is about the METHODS, not the layout: every class
+ * below that wants the general layout inherits _items/_count/_capacity/_mutations from NSArray, which is
+ * why the mutable family declares no second copy of them.
+ * =================================================================================================== */
+
+/* THE SMALL-CASE BOUNDARY. Apple publishes no number (its own small case is a single-element class), so
+ * this is OURS, stated in one place, and the probe asserts the boundary from both sides. */
+#define AG_ARRAY_SMALL_MAX 8
+
+/* THE EMPTY CASE, AND IT IS A SINGLETON: one shared instance, immortal, and the answer to -init. */
+@interface AGArrayEmpty : NSArray
++ (AGArrayEmpty *)emptyArray;
+@end
+
+/* THE ONE-ELEMENT CASE: the object IS the storage, so there is no heap block and no capacity. */
+@interface AGArrayOne : NSArray
+{
+	id __unsafe_unretained _one;
+}
+- (id)initWithObject:(id)object;
+@end
+
+/* THE SMALL CASE: inline storage for AG_ARRAY_SMALL_MAX elements, beyond which the general class takes
+ * over. */
+@interface AGArraySmall : NSArray
+{
+	id __unsafe_unretained _small[AG_ARRAY_SMALL_MAX];
+	unsigned long _smallCount;
+}
+- (id)initWithObjects:(const id *)objects count:(unsigned long)count;
+@end
+
+/* THE GENERAL IMMUTABLE CASE. It adds no code: the front carries the general implementation over its own
+ * storage (see the note at the top of this file), and this class is the NAME that implementation answers
+ * to, so `[[NSArray array] class] != [NSArray class]` holds for the general case too (§C.3 item 3). */
+@interface AGArrayItems : NSArray
+@end
+
+/* THE MUTABLE CASE (§C.3 item 2: "a mutable constructor answers a mutable concrete class"). Also a name:
+ * NSMutableArray's own implementation is the mutable storage implementation. It is a SUBCLASS of
+ * NSMutableArray, so -isKindOfClass:, the mutable doors and the inherited layout all hold. */
+@interface AGArrayMutable : NSMutableArray
+@end
+
 @implementation NSArray
+
+/* THE DOOR IS `+alloc` (§C.3 item 1), AND THAT IS NOT A CHOICE HERE: this library has no `+allocWithZone:`
+ * (NSObject.h says so and says why), so `+alloc` is the one place a cluster can substitute a class.
+ *
+ * THE `self != [NSArray class]` TEST IS NOT A SMUGGLE. A concrete class INHERITS this method, and
+ * `[super alloc]` in a class method starts the lookup at NSArray's superclass with the receiver still
+ * being the class that was asked - so the routing happens exactly ONCE, at the front, and a concrete
+ * class asking for an instance gets one. */
++ (id)alloc
+{
+	if (self != [NSArray class]) {
+		return [super alloc];
+	}
+	return [AGArrayItems alloc];
+}
 
 + (NSArray *)array
 {
@@ -62,6 +128,27 @@ static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
 
 - (id)initWithObjects:(const id *)objects count:(unsigned long)count
 {
+	/*
+	 * THE CLASS IS CHOSEN BY THE DATA (§C.3 item 2), AND ONLY FOR THIS FAMILY'S GENERAL CLASS. The guard
+	 * is a MEMBERSHIP test rather than a kind test because a mutable receiver (AGArrayMutable, through
+	 * NSMutableArray's +alloc) inherits this very implementation and must keep it: its layout is the same
+	 * and its family chooses no class at all. `objects != NULL` is part of the guard because count 1 with
+	 * no storage is a caller error that must still reach the bounds check rather than a null dereference.
+	 */
+	if (objects != NULL && [self isMemberOfClass:[AGArrayItems class]]) {
+		if (count == 0) {
+			[self release];	/* never initialized: the storage was never built */
+			return [AGArrayEmpty emptyArray];
+		}
+		if (count == 1) {
+			[self release];
+			return [[AGArrayOne alloc] initWithObject:objects[0]];
+		}
+		if (count <= AG_ARRAY_SMALL_MAX) {
+			[self release];
+			return [[AGArraySmall alloc] initWithObjects:objects count:count];
+		}
+	}
 	self = [super init];
 	if (self == nil) {
 		return nil;
@@ -131,20 +218,27 @@ static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
 
 - (id)firstObject
 {
-	return (_count == 0) ? nil : _items[0];
+	return ([self count] == 0) ? nil : [self objectAtIndex:0];
 }
 
 - (id)lastObject
 {
-	return (_count == 0) ? nil : _items[_count - 1];
+	unsigned long n = [self count];
+
+	return (n == 0) ? nil : [self objectAtIndex:n - 1];
 }
 
 - (unsigned long)indexOfObject:(id)object
 {
+	unsigned long n = [self count];
 	unsigned long i;
 
-	for (i = 0; i < _count; i++) {
-		if (_items[i] == object || [_items[i] isEqual:object]) {
+	/* OVER THE PRIMITIVES (§C.3 item 5) - which is what makes a concrete class with INLINE storage, and
+	 * therefore none of this class's ivars, work through every door below. */
+	for (i = 0; i < n; i++) {
+		id element = [self objectAtIndex:i];
+
+		if (element == object || [element isEqual:object]) {
 			return i;
 		}
 	}
@@ -158,7 +252,7 @@ static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
 
 - (NSArray *)arrayByAddingObject:(id)object
 {
-	NSMutableArray *copy = [[NSMutableArray alloc] initWithObjects:_items count:_count];
+	NSMutableArray *copy = [[NSMutableArray alloc] initWithArray:self];
 
 	[copy addObject:object];
 	return copy;
@@ -259,7 +353,7 @@ static NSArray *array_from_varargs(Class cls, id firstObject, va_list args)
 
 - (NSArray *)arrayByAddingObjectsFromArray:(NSArray *)other
 {
-	NSMutableArray *copy = [[NSMutableArray alloc] initWithObjects:_items count:_count];
+	NSMutableArray *copy = [[NSMutableArray alloc] initWithArray:self];
 
 	[copy addObjectsFromArray:other];
 	return copy;
@@ -267,27 +361,38 @@ static NSArray *array_from_varargs(Class cls, id firstObject, va_list args)
 
 - (NSArray *)subarrayWithRange:(NSRange)range
 {
+	unsigned long n = [self count];
 	size_t start = range.location;
 	size_t length = range.length;
+	id __unsafe_unretained *objects;
+	NSArray *result;
 
-	if (start > _count) {
-		start = _count;
+	if (start > n) {
+		start = n;
 	}
-	if (length > _count - start) {
-		length = _count - start;
+	if (length > n - start) {
+		length = n - start;
 	}
-	return [[NSArray alloc] initWithObjects:_items + start count:length];
+	objects = (id __unsafe_unretained *)calloc(length + 1, sizeof(id));
+	if (objects == NULL) {
+		return nil;
+	}
+	[self getObjects:objects range:NSMakeRange(start, length)];
+	result = [[NSArray alloc] initWithObjects:objects count:length];
+	free(objects);
+	return result;
 }
 
 - (void)getObjects:(id __unsafe_unretained *)buffer range:(NSRange)range
 {
 	size_t i;
+	unsigned long n = [self count];
 
 	if (buffer == NULL) {
 		return;
 	}
 	for (i = 0; i < range.length; i++) {
-		buffer[i] = (range.location + i < _count) ? _items[range.location + i] : nil;
+		buffer[i] = (range.location + i < n) ? [self objectAtIndex:range.location + i] : nil;
 	}
 }
 
@@ -295,8 +400,10 @@ static NSArray *array_from_varargs(Class cls, id firstObject, va_list args)
 {
 	size_t i;
 
-	for (i = range.location; i < _count && i < range.location + range.length; i++) {
-		if (_items[i] == object || [_items[i] isEqual:object]) {
+	for (i = range.location; i < [self count] && i < range.location + range.length; i++) {
+		id element = [self objectAtIndex:i];
+
+		if (element == object || [element isEqual:object]) {
 			return i;
 		}
 	}
@@ -307,8 +414,8 @@ static NSArray *array_from_varargs(Class cls, id firstObject, va_list args)
 {
 	size_t i;
 
-	for (i = 0; i < _count; i++) {
-		if (_items[i] == object) {
+	for (i = 0; i < [self count]; i++) {
+		if ([self objectAtIndex:i] == object) {
 			return i;
 		}
 	}
@@ -407,9 +514,11 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 		[NSException raise:NSInvalidArgumentException
 			    format:@"-filteredArrayUsingPredicate: needs a predicate"];
 	}
-	for (i = 0; i < _count; i++) {
-		if ([predicate evaluateWithObject:_items[i]]) {
-			[kept addObject:_items[i]];
+	for (i = 0; i < [self count]; i++) {
+		id element = [self objectAtIndex:i];	/* ONE READ: the predicate must not be asked twice */
+
+		if ([predicate evaluateWithObject:element]) {
+			[kept addObject:element];
 		}
 	}
 	return kept;
@@ -423,8 +532,8 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	if (block == NULL) {
 		return;
 	}
-	for (i = 0; i < _count; i++) {
-		block(_items[i], i, &stop);
+	for (i = 0; i < [self count]; i++) {
+		block([self objectAtIndex:i], i, &stop);
 		if (stop) {
 			break;
 		}
@@ -437,14 +546,14 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	NSUInteger index = [indexes firstIndex];
 
 	while (index != NSNotFound) {
-		if (index >= _count) {
+		if (index >= [self count]) {
 			/* Cocoa RAISES here rather than returning a short array: the caller
 			 * asked for an element that is not there. */
 			[NSException raise:NSRangeException
 				    format:@"-[NSArray objectsAtIndexes:]: index %lu beyond bounds %lu",
-					   (unsigned long)index, (unsigned long)_count];
+					   (unsigned long)index, (unsigned long)[self count]];
 		}
-		[selected addObject:_items[index]];
+		[selected addObject:[self objectAtIndex:index]];
 		index = [indexes indexGreaterThanIndex:index];
 	}
 	return selected;
@@ -456,8 +565,8 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	NSUInteger i;
 	BOOL stop = NO;
 
-	for (i = 0; i < _count && !stop; i++) {
-		if (predicate(_items[i], i, &stop)) {
+	for (i = 0; i < [self count] && !stop; i++) {
+		if (predicate([self objectAtIndex:i], i, &stop)) {
 			[matches addIndex:i];
 		}
 	}
@@ -480,11 +589,11 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	NSUInteger first = NSNotFound;
 	NSUInteger last = NSNotFound;
 
-	if (end > _count) {
-		end = _count;
+	if (end > [self count]) {
+		end = [self count];
 	}
 	for (i = start; i < end; i++) {
-		NSComparisonResult order = comparator(_items[i], object);
+		NSComparisonResult order = comparator([self objectAtIndex:i], object);
 
 		if (order == NSOrderedSame) {
 			if (first == NSNotFound) {
@@ -513,11 +622,11 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	NSMutableString *out = [[NSMutableString alloc] initWithUTF8String:""];
 	size_t i;
 
-	for (i = 0; i < _count; i++) {
+	for (i = 0; i < [self count]; i++) {
 		if (i > 0) {
 			[out appendString:separator];
 		}
-		[out appendString:[_items[i] description]];
+		[out appendString:[[self objectAtIndex:i] description]];
 	}
 	return out;
 }
@@ -526,7 +635,7 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
  * selector answers). Quadratic, and honest about being a v1: correct first. */
 - (NSArray *)sortedArrayUsingSelector:(SEL)comparator
 {
-	NSMutableArray *sorted = [[NSMutableArray alloc] initWithObjects:_items count:_count];
+	NSMutableArray *sorted = [[NSMutableArray alloc] initWithArray:self];
 	size_t i;
 
 	for (i = 1; i < [sorted count]; i++) {
@@ -566,11 +675,11 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	if (other == self) {
 		return YES;
 	}
-	if ([other count] != _count) {
+	if ([other count] != [self count]) {
 		return NO;
 	}
-	for (i = 0; i < _count; i++) {
-		id a = _items[i];
+	for (i = 0; i < [self count]; i++) {
+		id a = [self objectAtIndex:i];
 		id b = [other objectAtIndex:i];
 
 		if (a == b) {
@@ -601,10 +710,10 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	unsigned long h = 2166136261UL;
 	unsigned long i;
 
-	h ^= _count;
+	h ^= [self count];
 	h *= 16777619UL;
-	for (i = 0; i < _count; i++) {
-		h ^= [_items[i] hash];
+	for (i = 0; i < [self count]; i++) {
+		h ^= [[self objectAtIndex:i] hash];
 		h *= 16777619UL;
 	}
 	return h;
@@ -617,14 +726,22 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 
 	/* One line, elements joined by ", " — not Cocoa's multi-line form, which
 	 * is a display convention rather than a contract. */
-	for (i = 0; i < _count; i++) {
+	for (i = 0; i < [self count]; i++) {
 		if (i > 0) {
 			[out appendString:@", "];
 		}
-		[out appendString:[_items[i] description]];
+		[out appendString:[[self objectAtIndex:i] description]];
 	}
 	[out appendString:@")"];
 	return out;
+}
+
+/* §C.3 item 4, AND THIS IS THE BULLET THAT KEEPS THE REST OF THE LIBRARY WORKING: an archiver asks for
+ * -classForCoder, never for -class, so the PUBLIC name is what an archive holds and none of the private
+ * concrete names above can appear in one (§C.4). -classForArchiver defaults to this (M0, NSObject's). */
+- (Class)classForCoder
+{
+	return [NSArray class];
 }
 
 - (id)copy
@@ -634,7 +751,7 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 
 - (id)mutableCopy
 {
-	return [[NSMutableArray alloc] initWithObjects:_items count:_count];
+	return [[NSMutableArray alloc] initWithArray:self];
 }
 
 /* NSCopying keeps Cocoa's SHAPE with the zone accepted and ignored (the plan's
@@ -644,22 +761,36 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
                                      objects:(id __unsafe_unretained *)buffer
                                        count:(unsigned long)length
 {
-	(void)buffer;
-	(void)length;
+	unsigned long n = [self count];
+	unsigned long cursor = state->state;
+	unsigned long batch;
+	unsigned long i;
 
 	/*
-	 * ONE BATCH, and the batch is our OWN storage: an array's elements are
-	 * stable for its lifetime (only a mutable array moves them, and that is
-	 * what the mutation word below is for), so there is nothing to copy and
-	 * nothing to keep in `buffer`.
+	 * OVER THE PRIMITIVES, THROUGH THE CALLER'S OWN BUFFER (§C.3 item 5). The version this replaces answered
+	 * `state->itemsPtr = _items` in ONE batch, which requires CONTIGUOUS storage - and the one-element and
+	 * small concrete classes HAVE NONE, so that version would have handed a fast-enumeration loop a pointer
+	 * into the front's ivars. `objects` IS caller-provided scratch that stays valid for the batch, which is
+	 * exactly what the protocol says it is for; `state->state` is the cursor, so a batch smaller than the
+	 * count is RESUMED rather than restarted.
 	 */
-	if (state->state != 0) {
+	if (cursor >= n) {
 		return 0;
 	}
-	state->itemsPtr = _items;
+	batch = n - cursor;
+	if (batch > length) {
+		batch = length;
+	}
+	if (batch == 0) {
+		return 0;	/* no scratch was offered this time round */
+	}
+	for (i = 0; i < batch; i++) {
+		buffer[i] = [self objectAtIndex:cursor + i];
+	}
+	state->itemsPtr = buffer;
 	state->mutationsPtr = &_mutations;
-	state->state = 1;
-	return _count;
+	state->state = cursor + batch;
+	return batch;
 }
 
 
@@ -667,6 +798,23 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 @end
 
 @implementation NSMutableArray
+
+/* THE SAME DOOR AS THE IMMUTABLE FRONT (§C.3 item 1), and it is what makes a mutable constructor answer a
+ * mutable concrete class: NSMutableArray's own implementation stays where it is and AGArrayMutable is the
+ * name a caller sees. */
++ (id)alloc
+{
+	if (self != [NSMutableArray class]) {
+		return [super alloc];
+	}
+	return [AGArrayMutable alloc];
+}
+
+/* AND THE MUTABLE FRONT ANSWERS ITSELF TO AN ARCHIVER, for the same reason as NSArray's. */
+- (Class)classForCoder
+{
+	return [NSMutableArray class];
+}
 
 /*
  * A MUTABLE ARRAY ENUMERATES BY COPYING, and that is the difference between an exception and a
@@ -1034,5 +1182,160 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 
 	[self setArray:[sorted sortedArrayUsingSelector:comparator]];
 }
+
+@end
+
+
+/* ===================================================================================================
+ * THE CONCRETE CLASSES (§C.3 items 2, 3 and 8): the four immutable cases and the mutable one.
+ * =================================================================================================== */
+
+@implementation AGArrayItems
+
+/* [[NSArray alloc] init] IS A LEGITIMATE THING TO WRITE (§C.3 item 1) AND IT IS THE EMPTY CASE: this is
+ * the class `+alloc` answers with, so this is where the empty answer belongs. It is implemented HERE and
+ * NOT on the front on purpose - a concrete class that inherited such an -init from the front could not say
+ * `[super init]` without becoming the singleton, which is how a one-element array would silently turn into
+ * an empty one. */
+- (id)init
+{
+	[self release];	/* never initialized: the storage was never built */
+	return [AGArrayEmpty emptyArray];
+}
+
+@end
+
+@implementation AGArrayEmpty
+
++ (AGArrayEmpty *)emptyArray
+{
+	static AGArrayEmpty *shared = nil;
+
+	if (shared == nil) {
+		shared = [[AGArrayEmpty alloc] init];
+	}
+	return shared;
+}
+
+/* IMMORTAL, AND THAT IS THE PRICE OF A SINGLETON IN A LIBRARY WITH NO `+allocWithZone:` AND NO COLLECTOR:
+ * a caller who retains or releases the shared instance must not be able to free it out from under every
+ * other caller. `-retainCount` is not a contract (NSObject.h says so); it answers unbounded rather than 1,
+ * because 1 is the one answer that invites a release. */
+- (id)retain { return self; }
+- (void)release { }
+- (id)autorelease { return self; }
+- (NSUInteger)retainCount { return NSUIntegerMax; }
+
+/* THE TWO PRIMITIVES (§C.3 item 5) AND NOTHING ELSE: every other read in this family is written over
+ * these, so an empty array answers -hash, -isEqualToArray:, -subarrayWithRange:, -description and fast
+ * enumeration correctly without a line of code here. */
+- (unsigned long)count
+{
+	return 0;
+}
+
+- (id)objectAtIndex:(unsigned long)index
+{
+	[NSException raise:NSRangeException
+	            format:@"-[NSArray objectAtIndex:]: index %lu beyond bounds for empty array", index];
+	return nil;
+}
+
+/* A FAST PATH, not a requirement: an empty collection enumerates nothing, so this skips the caller's
+ * buffer entirely. */
+- (unsigned long)countByEnumeratingWithState:(NSFastEnumerationState *)state
+                                     objects:(id __unsafe_unretained *)buffer
+                                       count:(unsigned long)length
+{
+	(void)buffer;
+	(void)length;
+	state->mutationsPtr = &state->extra[0];
+	return 0;
+}
+
+@end
+
+@implementation AGArrayOne
+
+- (id)initWithObject:(id)object
+{
+	self = [super init];
+	if (self != nil) {
+		_one = objc_retain(object);
+	}
+	return self;
+}
+
+- (void)dealloc
+{
+	objc_release(_one);
+	[super dealloc];
+}
+
+- (unsigned long)count
+{
+	return 1;
+}
+
+- (id)objectAtIndex:(unsigned long)index
+{
+	if (index != 0) {
+		[NSException raise:NSRangeException
+		            format:@"-[NSArray objectAtIndex:]: index %lu beyond bounds [0 .. 0]", index];
+	}
+	return _one;
+}
+
+@end
+
+@implementation AGArraySmall
+
+- (id)initWithObjects:(const id *)objects count:(unsigned long)count
+{
+	unsigned long i;
+
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	_smallCount = count;	/* <= AG_ARRAY_SMALL_MAX by construction: this class is chosen by that bound */
+	for (i = 0; i < count; i++) {
+		_small[i] = objc_retain(objects[i]);
+	}
+	return self;
+}
+
+- (void)dealloc
+{
+	unsigned long i;
+
+	for (i = 0; i < _smallCount; i++) {
+		objc_release(_small[i]);
+	}
+	[super dealloc];
+}
+
+- (unsigned long)count
+{
+	return _smallCount;
+}
+
+- (id)objectAtIndex:(unsigned long)index
+{
+	if (index >= _smallCount) {
+		[NSException raise:NSRangeException
+		            format:@"-[NSArray objectAtIndex:]: index %lu beyond bounds [0 .. %lu]",
+		                   index, _smallCount - 1];
+	}
+	return _small[index];
+}
+
+@end
+
+@implementation AGArrayMutable
+
+/* NOTHING TO IMPLEMENT, AND THAT IS THE POINT: NSMutableArray's own implementation IS the mutable storage
+ * implementation, this class inherits it, and what a caller gains is the NAME that -class answers (§C.3
+ * items 2 and 3). */
 
 @end
