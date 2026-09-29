@@ -992,6 +992,54 @@ int main(void)
 		      "two primitives, on a class that has no storage of its own");
 	}
 
+	{
+		/*
+		 * M6: NSIndexSet — the cluster core. -init MAY answer the singleton here (unlike the dictionary and
+		 * data families) because this family's constructions are COMPLETE: nothing allocates and then fills.
+		 * Locals declared HERE. NOTE: a third-party subclass over the primitives is NOT asserted yet, because
+		 * this family's range-based storage reads have not moved onto a primitive set.
+		 */
+		NSIndexSet *emptyIndexes = [NSIndexSet indexSet];
+		NSIndexSet *fromInit = [[NSIndexSet alloc] init];
+		NSIndexSet *oneIndex = [NSIndexSet indexSetWithIndex:3];
+		NSMutableIndexSet *mutableIndexes = [NSMutableIndexSet indexSet];
+
+		check("nsindexset-class-answers-a-concrete-class",
+		      [emptyIndexes class] != [NSIndexSet class] &&
+		      [[emptyIndexes class] isSubclassOfClass:[NSIndexSet class]] &&
+		      [oneIndex class] != [NSIndexSet class] && [oneIndex class] != [emptyIndexes class],
+		      "-class must be a private concrete SUBCLASS of NSIndexSet, and the empty case its own");
+		check("nsindexset-alloc-init-is-the-empty-singleton",
+		      fromInit != nil && fromInit == emptyIndexes && [fromInit count] == 0,
+		      "[[NSIndexSet alloc] init] is legal and answers the SHARED empty instance - safe HERE because "
+		      "this family's constructions are complete");
+		check("nsindexset-mutable-and-class-for-coder",
+		      [mutableIndexes class] != [NSMutableIndexSet class] &&
+		      [[mutableIndexes class] isSubclassOfClass:[NSMutableIndexSet class]] &&
+		      [emptyIndexes classForCoder] == [NSIndexSet class] &&
+		      [oneIndex classForCoder] == [NSIndexSet class] &&
+		      [mutableIndexes classForCoder] == [NSMutableIndexSet class] &&
+		      [emptyIndexes classForArchiver] == [NSIndexSet class],
+		      "a mutable constructor answers a mutable concrete class, and the archiver gets the PUBLIC class "
+		      "- the mutable one naming itself");
+		check("nsindexset-empty-answers-every-read",
+		      [emptyIndexes count] == 0 && [emptyIndexes firstIndex] == NSNotFound &&
+		      [emptyIndexes lastIndex] == NSNotFound && ! [emptyIndexes containsIndex:0] &&
+		      [emptyIndexes isEqualToIndexSet:[NSIndexSet indexSet]] &&
+		      [emptyIndexes hash] == [[NSIndexSet indexSet] hash] &&
+		      [[emptyIndexes description] length] > 0,
+		      "the empty concrete class answers the reads a caller makes of it");
+		[mutableIndexes addIndex:1];
+		[mutableIndexes addIndex:4];
+		check("nsindexset-mutable-accumulates",
+		      [mutableIndexes count] == 2 && [mutableIndexes containsIndex:4] &&
+		      ! [mutableIndexes containsIndex:2] && [mutableIndexes firstIndex] == 1 &&
+		      [mutableIndexes lastIndex] == 4 &&
+		      [emptyIndexes count] == 0,
+		      "the mutable concrete class accumulates - and the SHARED empty instance stayed empty, which is "
+		      "what the membership guard protects");
+	}
+
 	printf("FOUNDATION-CLUSTERS DONE\n");
 	printf("FOUNDATION-CLUSTERS RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output: after a probe the console can stop serving INPUT for

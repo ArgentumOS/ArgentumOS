@@ -279,6 +279,18 @@ slicing, `-description` and base64. `foundation_clusters` is ok=64 with `foundat
 `foundation_collection` 46/46, `foundation_coder` 11/11, `foundation_string` 96/96 and `foundation_nsvalue` 7/7
 unmoved.
 
-**STILL OWED IN M6: `NSIndexSet`** entirely — 34 methods, 48 storage reads, and a mutable with NO initializers,
-so its guard will be a membership test. Then M7.
+**`NSIndexSet`'S CLUSTER CORE LANDED (same day).** `AGIndexSetEmpty`/`AGIndexSetItems`/`AGIndexSetMutable`, the
+door on both fronts, `-classForCoder` with the mutable naming itself, and five probe checks — including one that
+adds indexes to a MUTABLE instance and then asserts the SHARED empty instance is still empty, which is what the
+membership guard buys. `foundation_clusters` is ok=69 with `foundation_difference` 22/22 (the case that uses
+index sets hardest), `foundation_collection` 46/46 and `foundation_coder` 11/11 unmoved.
+
+**IT IS ALSO THE ONE FAMILY WHERE `-init` MAY ANSWER THE SINGLETON, and that is a measurement rather than a
+choice:** its constructions are complete (`-initWithIndex:` and `-initWithIndexesInRange:` both start at
+`[super init]` and then append, with no allocate-then-fill anywhere), and its MUTABLE class is a SIBLING of the
+general class rather than a subclass — so it cannot inherit an `-init` that would hand a caller the shared
+instance.
+
+**STILL OWED IN M6: `NSIndexSet`'s PRIMITIVE MOVE** — its range-based storage reads (48 of them) have not moved
+onto a primitive set, so its third-party subclass check is absent and the probe's own comment says why. Then M7.
 

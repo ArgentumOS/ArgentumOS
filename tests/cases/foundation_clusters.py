@@ -158,6 +158,12 @@ CHECKS = (
           "nsdata-mutable-and-class-for-coder",
           "nsdata-empty-answers-every-read",
           "nsdata-primitives-drive-equality-hash-slicing-and-encoding",
+          # M6: NSIndexSet - the cluster core (its primitive move is owed).
+          "nsindexset-class-answers-a-concrete-class",
+          "nsindexset-alloc-init-is-the-empty-singleton",
+          "nsindexset-mutable-and-class-for-coder",
+          "nsindexset-empty-answers-every-read",
+          "nsindexset-mutable-accumulates",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a

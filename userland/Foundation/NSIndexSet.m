@@ -12,7 +12,46 @@
 #import <Foundation/NSString.h>
 #include <stdlib.h>
 
+/* ===================================================================================================
+ * THE PRIVATE CONCRETE CLASSES (plan §C.3, M6): the same shape as the other families. AGIndexSetEmpty is the
+ * SHARED empty instance, AGIndexSetItems the general case (the front's own ivars are its storage), and
+ * AGIndexSetMutable the mutable one.
+ *
+ * -init MAY ANSWER THE SINGLETON HERE, unlike the dictionary and data families, and the difference is
+ * MEASURED rather than stylistic: this family's constructions are COMPLETE - -initWithIndex: and
+ * -initWithIndexesInRange: both start with [super init] and then append, and nothing allocates and fills
+ * afterwards - so an -init that answers the shared empty instance cannot have a later store captured into it.
+ * The MUTABLE class is unaffected because it is a SIBLING of AGIndexSetItems, not a subclass: its own
+ * +indexSet reaches NSObject's -init and answers an empty mutable index set.
+ * =================================================================================================== */
+@interface AGIndexSetEmpty : NSIndexSet
++ (AGIndexSetEmpty *)emptyIndexSet;
+@end
+
+@interface AGIndexSetItems : NSIndexSet
+@end
+
+@interface AGIndexSetMutable : NSMutableIndexSet
+@end
+
 @implementation NSIndexSet
+
+/* THE DOOR (§C.3 item 1), routed exactly once at the front. */
++ (id)alloc
+{
+	if (self != [NSIndexSet class]) {
+		return [super alloc];
+	}
+	return [AGIndexSetItems alloc];
+}
+
+/* §C.3 item 4: an archiver asks for THIS, never for -class. NSMutableIndexSet answers ITSELF below, being a
+ * public subclass - the shape NSDecimalNumber, NSMutableString, NSMutableOrderedSet and NSMutableData all
+ * need. */
+- (Class)classForCoder
+{
+	return [NSIndexSet class];
+}
 
 /* ---- the range list, and its canonical order -------------------------------- */
 
@@ -467,6 +506,19 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 
 @implementation NSMutableIndexSet
 
++ (id)alloc
+{
+	if (self != [NSMutableIndexSet class]) {
+		return [super alloc];
+	}
+	return [AGIndexSetMutable alloc];
+}
+
+- (Class)classForCoder
+{
+	return [NSMutableIndexSet class];
+}
+
 + (NSMutableIndexSet *)indexSet
 {
 	return [[self alloc] init];
@@ -537,5 +589,51 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 	_rangeCount = 0;
 	_capacity = 0;
 }
+
+@end
+
+
+/* ===================================================================================================
+ * THE CONCRETE CLASSES (§C.3 items 2, 3 and 8).
+ * =================================================================================================== */
+
+@implementation AGIndexSetItems
+
+/* [[NSIndexSet alloc] init] IS A LEGITIMATE THING TO WRITE (§C.3 item 1) AND IT IS THE EMPTY CASE. */
+- (id)init
+{
+	[self release];	/* never initialized: the storage was never built */
+	return (id)[AGIndexSetEmpty emptyIndexSet];
+}
+
+@end
+
+@implementation AGIndexSetEmpty
+
++ (AGIndexSetEmpty *)emptyIndexSet
+{
+	static AGIndexSetEmpty *shared = nil;
+
+	if (shared == nil) {
+		shared = [[AGIndexSetEmpty alloc] init];
+	}
+	return shared;
+}
+
+/* IMMORTAL, the price of a singleton in a library with no `+allocWithZone:` and no collector. */
+- (id)retain { return self; }
+- (void)release { }
+- (id)autorelease { return self; }
+- (NSUInteger)retainCount { return NSUIntegerMax; }
+
+/* ITS STORAGE IS ALREADY THE EMPTY ANSWER: zero ranges, so the front's own reads answer "no indexes"
+ * without a line of code here - which is why this class needs no primitives of its own yet. */
+
+@end
+
+@implementation AGIndexSetMutable
+
+/* NOTHING TO IMPLEMENT: NSMutableIndexSet's implementation IS the mutable storage implementation, and what
+ * a caller gains is the NAME that -class answers. */
 
 @end
