@@ -230,3 +230,18 @@ measured, reverted".
   not another rewrite of the classes.
 
 **M5 onward follow**; §2's two gaps remain.
+
+**M6 IS IN PROGRESS 2026-09-29 — `NSOrderedSet`'s compile half has landed** (38 declarations: the class, its
+difference category and `NSMutableOrderedSet`). The family's 38 clause findings → **0** and the tree's total
+**86 → 48**. The erasure rule is measured for it: `FOUNDATION-ORDEREDSET RESULT ok=9 fail=0` WITH the
+parameterization and 9/9 without it. Still owed in M6: `NSOrderedSet`'s runtime half (its shape is measured —
+`NSArray *_members` + `-fnReplaceMembers:` like `NSSet`, and its mutable defines NO initializers, so the guard
+will be a membership test), and the concrete-class shape for `NSData` and `NSIndexSet`, which the clause flags
+ZERO times each and which therefore need no compile work at all.
+
+**A SCRIPT LESSON THIS UNIT COST, of the kind that produces a broken tree rather than a wrong number:** a
+rule-applying script that WRITES AS IT GOES is not atomic, so "it refused" does not mean "it changed nothing" —
+the refusal left sixteen of thirty-two rules applied and the build red. Every such script must match EVERY
+anchor in memory first and write ONCE per file. **And the findings list must be read WHOLE:** the first pass
+parameterized 26 of the family's 38 rows because I read a truncated list, and the second batch of twelve
+included BOTH `withOptions:` difference doors.
