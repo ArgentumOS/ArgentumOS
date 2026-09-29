@@ -37,47 +37,46 @@
 #import <Foundation/NSObject.h>
 #import <Foundation/NSFastEnumeration.h>
 
-@class NSArray;
-@class NSEnumerator;
+@class NSArray<ObjectType>, NSEnumerator<ObjectType>;
 @class NSPredicate;
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface NSSet : NSObject <NSCopying, NSMutableCopying, NSFastEnumeration>
+@interface NSSet<__covariant ObjectType> : NSObject <NSCopying, NSMutableCopying, NSFastEnumeration>
 {
 	NSArray *_members;		/* the members, once each; REPLACED by every mutation */
 	unsigned long _mutations;	/* the for-in consistency token */
 }
 
 + (instancetype)set;
-+ (instancetype)setWithObject:(id)object;
-+ (instancetype)setWithObjects:(const id _Nonnull * _Nullable)objects count:(NSUInteger)count;
-+ (instancetype)setWithArray:(NSArray *)array;
-+ (instancetype)setWithSet:(NSSet *)set;
++ (instancetype)setWithObject:(ObjectType)object;
++ (instancetype)setWithObjects:(const ObjectType _Nonnull * _Nullable)objects count:(NSUInteger)count;
++ (instancetype)setWithArray:(NSArray<ObjectType> *)array;
++ (instancetype)setWithSet:(NSSet<ObjectType> *)set;
 
-- (instancetype)initWithObjects:(const id _Nonnull * _Nullable)objects count:(NSUInteger)count;
-- (instancetype)initWithArray:(NSArray *)array;
-- (instancetype)initWithSet:(NSSet *)set;
+- (instancetype)initWithObjects:(const ObjectType _Nonnull * _Nullable)objects count:(NSUInteger)count;
+- (instancetype)initWithArray:(NSArray<ObjectType> *)array;
+- (instancetype)initWithSet:(NSSet<ObjectType> *)set;
 
 - (NSUInteger)count;
 /* BY VALUE: the member that is -isEqual: to `object`, or nil. This is the door that separates a set
  * from an array, and the probe measures exactly that (a distinguished object finds its twin). */
-- (nullable id)member:(id)object;
-- (BOOL)containsObject:(id)object;
-- (nullable id)anyObject;
-- (NSArray *)allObjects;
-- (NSEnumerator *)objectEnumerator;
-- (void)enumerateObjectsUsingBlock:(void (^)(id object, BOOL *stop))block;
+- (nullable ObjectType)member:(ObjectType)object;
+- (BOOL)containsObject:(ObjectType)object;
+- (nullable ObjectType)anyObject;
+- (NSArray<ObjectType> *)allObjects;
+- (NSEnumerator<ObjectType> *)objectEnumerator;
+- (void)enumerateObjectsUsingBlock:(void (^)(ObjectType object, BOOL *stop))block;
 
-- (BOOL)isEqualToSet:(NSSet *)other;
-- (BOOL)isSubsetOfSet:(NSSet *)other;
-- (BOOL)intersectsSet:(NSSet *)other;
+- (BOOL)isEqualToSet:(NSSet<ObjectType> *)other;
+- (BOOL)isSubsetOfSet:(NSSet<ObjectType> *)other;
+- (BOOL)intersectsSet:(NSSet<ObjectType> *)other;
 
 /* The three "adding" forms answer a NEW set (the receiver is immutable), which is why no addObject:
  * exists here at all. */
-- (instancetype)setByAddingObject:(id)object;
-- (instancetype)setByAddingObjectsFromSet:(NSSet *)other;
-- (instancetype)setByAddingObjectsFromArray:(NSArray *)other;
+- (instancetype)setByAddingObject:(ObjectType)object;
+- (instancetype)setByAddingObjectsFromSet:(NSSet<ObjectType> *)other;
+- (instancetype)setByAddingObjectsFromArray:(NSArray<ObjectType> *)other;
 
 - (NSArray *)sortedArrayUsingDescriptors:(NSArray *)descriptors;
 - (instancetype)filteredSetUsingPredicate:(NSPredicate *)predicate;
@@ -88,19 +87,19 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-@interface NSMutableSet : NSSet
+@interface NSMutableSet<ObjectType> : NSSet<ObjectType>
 
 + (instancetype)setWithCapacity:(NSUInteger)capacity;
 - (instancetype)initWithCapacity:(NSUInteger)capacity;
 
-- (void)addObject:(id)object;
-- (void)removeObject:(id)object;
+- (void)addObject:(ObjectType)object;
+- (void)removeObject:(ObjectType)object;
 - (void)removeAllObjects;
-- (void)addObjectsFromArray:(NSArray *)array;
-- (void)unionSet:(NSSet *)other;
-- (void)minusSet:(NSSet *)other;
-- (void)intersectSet:(NSSet *)other;
-- (void)setSet:(NSSet *)other;
+- (void)addObjectsFromArray:(NSArray<ObjectType> *)array;
+- (void)unionSet:(NSSet<ObjectType> *)other;
+- (void)minusSet:(NSSet<ObjectType> *)other;
+- (void)intersectSet:(NSSet<ObjectType> *)other;
+- (void)setSet:(NSSet<ObjectType> *)other;
 - (void)filterUsingPredicate:(NSPredicate *)predicate;
 
 @end

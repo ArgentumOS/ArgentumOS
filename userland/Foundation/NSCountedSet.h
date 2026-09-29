@@ -35,7 +35,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface NSCountedSet : NSMutableSet
+@interface NSCountedSet<ObjectType> : NSMutableSet<ObjectType>
 {
 	NSMutableArray *_counts;	/* index-aligned with the inherited member array */
 }
@@ -43,13 +43,17 @@ NS_ASSUME_NONNULL_BEGIN
 + (instancetype)setWithCapacity:(NSUInteger)capacity;
 - (instancetype)initWithCapacity:(NSUInteger)capacity;
 
-- (void)addObject:(id)object;
-- (void)removeObject:(id)object;
+- (void)addObject:(ObjectType)object;
+- (void)removeObject:(ObjectType)object;
 - (void)removeAllObjects;
+/* APPLE DECLARES THIS OVERRIDE WITHOUT THE PARAMETER, and the clause's negative half is what said so:
+ * giving it one produced `PARAMETERIZED, BUT NOT NSCountedSet -intersectSet:` - this tree names ObjectType
+ * where Apple's declaration does not. The mutable class's own -intersectSet: IS parameterized, so the two
+ * rungs of the ladder differ here, and matching Apple means keeping them different. */
 - (void)intersectSet:(NSSet *)other;
 - (void)filterUsingPredicate:(NSPredicate *)predicate;
 
-- (NSUInteger)countForObject:(id)object;
+- (NSUInteger)countForObject:(ObjectType)object;
 
 @end
 
