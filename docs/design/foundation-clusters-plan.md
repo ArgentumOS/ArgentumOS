@@ -283,14 +283,41 @@ this plan's third instrument failure and the same shape as the other two: **the 
 was wrong.** Each identifier is then fetched as a method page, the `occ` variant is applied through
 `variantOverrides`, and the declaration's text is searched for a type parameter (`\b[A-Z][A-Za-z0-9]*Type\b`).
 
-**WHERE THE LIST LIVES, AND WHY IT IS GENERATED RATHER THAN HAND-WRITTEN.**
-`tools/foundation-sweep.py` already OWNS the selector ledger — it writes all 4,564 rows of
-`docs/reference/foundation-selector-surface.txt` (line 850) — so it is the tool to extend: each row gains a
-flag recording whether Apple's published declaration for that selector names a type parameter, and `--check`
-then fails on **both halves** — a flagged selector whose declaration in our header names no parameter, and an
-unflagged selector that names one. **Only the DERIVED form ships** (the rule the deprecation list already
-follows: names and flags in the tree, the generator in `tools/`, nothing copied out of a header), and Apple's
-published documentation remains the source, exactly as it is for the ledger's other columns.
+**WHERE THE LIST LIVES, AND IT IS BUILT — the clause lives in `tools/foundation-sweep.py` and landed
+2026-09-28.** The promise above became code in one increment: a new mode, **`--parameterized`**, fetches
+Apple's public headers (declarations only, under the grant), extracts every declaration that names a type
+parameter, and writes the DERIVED rows to `docs/reference/foundation-parameterized.txt` — class, sign,
+selector and the parameter NAMES, never a declaration's text (the deprecation list's rule). **`--check` then
+reads that file offline** and compares it to our headers, BOTH WAYS: a method we ship without the parameter
+Apple's declaration names, and a method we parameterize where Apple's does not.
+
+**MEASURED, FIRST RUN: 207 parameterized methods in Apple's headers, and 139 findings** — methods we ship
+whose Apple declaration names a parameter. By class: NSArray 27, NSOrderedSet 17, NSSet 16, NSDictionary 15,
+NSHashTable 13, NSMutableOrderedSet 9, NSMutableArray 9, NSMapTable 9, NSMutableDictionary 8, NSMutableSet 7,
+NSCountedSet 6, NSCache 2, NSEnumerator 1. **That list is the work, class by class, and it is the input to
+M1–M9's COMPILE halves.**
+
+**AND IT REPORTS RATHER THAN FAILS, ON PURPOSE.** No family is parameterized yet, so a hard failure would
+block every build on planned work: the findings go in the **POLICY bucket** — printed, and fatal under
+`--strict`, which now exits 1 with all 139 — exactly as the ledger's struck-name findings do. **Promoting them
+to `bad` is M10's**, once M1–M9 have done the work. Verified: `make foundation-sweep` still exits 0.
+
+**TWO INSTRUMENT BUGS THIS COST, both the familiar shape — "the code was fine and the pattern was wrong".**
+1. **The writer emitted THREE fields and the reader expected FOUR** (`"%s\t%s%s\t%s"` collapsed sign and
+   selector into one column), so the file parsed as zero rows and the clause reported **no findings at all**:
+   an instrument that read clean because it was blind. It was caught only by asking the checker what it had
+   actually read — `read_parameterized()` answering `0` against a 221-line file. **A zero from a new check is
+   a claim to verify, not a result to believe**, and this is the third time this plan has recorded that
+   lesson in a different costume.
+2. The first `check_parameterized` compared `ours.get(...)` against Apple's rows and skipped `None`, which
+   read "we do not ship this" and "we ship it plain" as the same thing. Fixed by taking `members`/`parents`
+   from `_declared_types()` and asking that question first: a method we do not ship is the LEDGER's business,
+   while a method we ship without the parameter is THIS clause's finding.
+
+**AND ONE LIMIT, STATED RATHER THAN DISCOVERED LATER: PROPERTIES ARE NOT IN IT YET.** The scanner reads
+`- (`/`+ (` declarations, so a parameterized `@property` — Apple has them, e.g. a set's `allObjects` typed
+`NSArray<ObjectType> *` — is not flagged. Methods are the bulk; properties are the next increment of the same
+derivation, and until they land §C.2's class-level table is what records them.
 
 **AND THIS WORK IS THE FIRST SLICE OF A BIGGER RULE, so it should be built as one thing rather than two.**
 §11.0 of `docs/design/foundation-plan.md` (THE SURFACE RULE, user 2026-09-28) requires matching Apple

@@ -868,6 +868,189 @@ def selector_header_counts():
             for m in HEADER_COUNT_RE.finditer(text)}
 
 
+# ==================================================================================================
+# THE PARAMETERIZATION CLAUSE — the first slice of §11.0's surface rule, and the clusters plan's
+# D-C4/D-C5 (docs/design/foundation-clusters-plan.md §C.7).
+#
+# WHAT IT CHECKS, AND WHY IT NEEDS A FILE OF ITS OWN. §11.0 requires matching Apple METHOD SIGNATURE
+# for method signature, and records that the selector ledger cannot see that: every row has seven
+# fields and none of them is a type. This clause is the first, narrowest piece of that: for the classes
+# Apple parameterizes, WHICH METHODS NAME A TYPE PARAMETER — checked in both directions, because
+# `+dictionaryWithObjects:forKeys:count:` takes its keys as `(id<NSCopying> const[])` and NOT `KeyType`
+# while `-objectForKey:` takes `(KeyType)aKey`. So "a parameterized class uses its parameters
+# everywhere" is wrong both ways, and the rule has to be read off each declaration.
+#
+# WHERE THE APPLE SIDE COMES FROM. Apple's PUBLIC headers, read under the user's grant of 2026-09-28
+# ("public headers only … for the sole purpose of compatibility"): DECLARATIONS ONLY, and only the
+# DERIVED form ships — a class, a selector and the type-parameter NAMES it uses, never a declaration's
+# text. That is the same rule the deprecation list follows, and the reason this file exists rather than
+# a copy of anything Apple wrote.
+#
+# IT REPORTS RATHER THAN FAILS, FOR NOW, AND THAT IS DELIBERATE: no family is parameterized yet, so a
+# hard failure would block every build on work that is planned and not done. The findings go in the
+# POLICY bucket — printed, and fatal under `--strict` — exactly as the ledger's struck-name findings do.
+# THE DAY M1 LANDS THIS BECOMES A `bad` FINDING, and that promotion is M10's to make.
+# ==================================================================================================
+PARAM_SURFACE = os.path.join(ROOT, "docs/reference/foundation-parameterized.txt")
+PARAM_SOURCE = ("https://raw.githubusercontent.com/theos/sdks/master/iPhoneOS16.5.sdk/System/"
+                "Library/Frameworks/Foundation.framework/Headers/%s.h")
+PARAM_CLASSES = ("NSArray", "NSMutableArray", "NSDictionary", "NSMutableDictionary", "NSSet",
+                 "NSMutableSet", "NSCountedSet", "NSOrderedSet", "NSMutableOrderedSet",
+                 "NSEnumerator", "NSMapTable", "NSHashTable", "NSCache")
+PARAM_NAME_RE = re.compile(r"\b([A-Z][A-Za-z0-9]*Type)\b")
+PARAM_IFACE_RE = re.compile(r"@interface\s+([A-Za-z_]\w*)\s*(<[^>]*>)?")
+PARAM_DECL_RE = re.compile(r"^[ \t]*[-+]\s*\([^;]*?;", re.M)
+
+
+def _one_selector(chunk):
+    """(sign, selector) for one declaration, or None. The colon walk _selectors_signed uses, for one
+    declaration instead of a whole body: `insertChild:atIndex:` is one selector, not two."""
+    head = _SEL_HEAD.search(chunk)
+    if head is None:
+        return None
+    sign, i, parts, first = head.group(1), head.end(), [], True
+    while True:
+        m = re.match(r"\s*([A-Za-z_]\w*)", chunk[i:])
+        if m is None:
+            break
+        name, j = m.group(1), i + m.end()
+        if j < len(chunk) and chunk[j] == ":":
+            parts.append(name + ":")
+            i, first = j + 1, False
+        else:
+            if first:
+                parts.append(name)
+            break
+    return (sign, "".join(parts)) if parts else None
+
+
+def _parameterized_declarations(text):
+    """{(class, sign, selector): frozenset(type parameters used)} for declarations that NAME one.
+
+    The class a declaration belongs to is the nearest `@interface` before it — so a category's methods
+    are attributed to the CLASS the category extends, which is how the ledger names them too."""
+    contexts = [(m.start(), m.group(1), set(PARAM_NAME_RE.findall(m.group(2) or "")))
+                for m in PARAM_IFACE_RE.finditer(text)]
+    out = {}
+    for m in PARAM_DECL_RE.finditer(text):
+        owner = None
+        for start, cls, params in contexts:
+            if start < m.start():
+                owner = (cls, params)
+            else:
+                break
+        if owner is None or not owner[1]:
+            continue
+        used = set(PARAM_NAME_RE.findall(m.group(0))) & owner[1]
+        if not used:
+            continue
+        sel = _one_selector(m.group(0))
+        if sel is not None:
+            out[(owner[0], sel[0], sel[1])] = frozenset(used)
+    return out
+
+
+def read_parameterized():
+    """The derived rows: [(owner, sign, selector, params)]. Names only — no declaration text ships."""
+    rows = []
+    if not os.path.exists(PARAM_SURFACE):
+        return rows
+    for line in open(PARAM_SURFACE, encoding="utf-8"):
+        if line.startswith("#") or not line.strip():
+            continue
+        f = line.rstrip("\n").split("\t")
+        if len(f) == 4:
+            rows.append((f[0], f[1], f[2], frozenset(f[3].split(","))))
+    return rows
+
+
+def our_parameterized():
+    """{(owner, sign, selector): frozenset(params)} as THIS TREE declares it."""
+    out = {}
+    for path in sorted(glob.glob(HEADERS)):
+        text = open(path, encoding="utf-8", errors="replace").read()
+        out.update(_parameterized_declarations(text))
+    return out
+
+
+def derive_parameterized():
+    """Fetch Apple's PUBLIC headers — declarations only, for compatibility — and write the rows."""
+    rows, failed = [], []
+    for cls in PARAM_CLASSES:
+        try:
+            with urllib.request.urlopen(PARAM_SOURCE % cls, timeout=60) as fh:
+                text = fh.read().decode("utf-8", "replace")
+        except Exception as exc:                                # offline is a first-class outcome
+            failed.append("%s (%s)" % (cls, exc))
+            continue
+        for (owner, sign, sel), params in _parameterized_declarations(text).items():
+            rows.append((owner, sign, sel, params))
+    rows.sort()
+    if failed:
+        print("foundation-sweep: %d header(s) could NOT be fetched: %s" % (len(failed), ", ".join(failed)))
+        if not rows:
+            return 1
+    header = [
+        "# Foundation's TYPE PARAMETERS, against this tree.",
+        "# docs/design/foundation-plan.md §11.0 (the surface rule) and docs/design/foundation-clusters-plan.md",
+        "# §C.7 (D-C4/D-C5: classes, then methods).",
+        "# GENERATED by tools/foundation-sweep.py --parameterized — do not hand-edit.",
+        "#",
+        "# THE SOURCE IS APPLE'S PUBLICLY PUBLISHED HEADERS, read under the user's grant of 2026-09-28",
+        "# (\"public headers only … for the sole purpose of compatibility\"): DECLARATIONS ONLY, and only",
+        "# this DERIVED form ships — the class, the selector and the type-parameter NAMES, never a",
+        "# declaration's text. The same rule the deprecation list follows.",
+        "#",
+        "# one row per method whose Apple declaration names a type parameter. `class` is the @interface",
+        "# the declaration sits in, so a category's methods are attributed to the class it extends.",
+        "#",
+        "#   class\tsign\tselector\tparameters",
+    ]
+    open(PARAM_SURFACE, "w", encoding="utf-8").write(
+        "\n".join(header + ["%s\t%s\t%s\t%s" % (o, s, n, ",".join(sorted(p)))
+                            for o, s, n, p in rows]) + "\n")
+    print("sweep: wrote %s (%d parameterized methods)"
+          % (os.path.relpath(PARAM_SURFACE, ROOT), len(rows)))
+    return 0
+
+
+def check_parameterized(policy, members, parents):
+    """Both halves of the clause. Answers the number of findings; they land in the POLICY bucket.
+
+    `members`/`parents` come from _declared_types() and are what tells "we ship this method, plain"
+    apart from "we do not ship it at all" — the distinction the FIRST version of this function got
+    WRONG: it reported zero findings on a tree with nothing parameterized, because both cases looked
+    like `ours.get(...) is None`. A method we do not ship is the LEDGER's business (its row is open);
+    a method we ship WITHOUT Apple's parameter is this clause's finding, and that list is the work."""
+    rows = read_parameterized()
+    if not rows:
+        return 0
+    ours = our_parameterized()
+    listed = {(o, s, n) for o, s, n, _ in rows}
+    reach, findings = {}, 0
+    for owner, sign, sel, params in rows:
+        if owner not in reach:
+            reach[owner] = _reachable(parents, owner)
+        declared, have = False, frozenset()
+        for t in reach[owner]:
+            if ("-", sel) in members.get(t, set()) or ("+", sel) in members.get(t, set()):
+                declared = True
+            have |= ours.get((t, sign, sel), frozenset())
+        if not declared:
+            continue                        # not shipped at all — the ledger's open row already says so
+        if have != params:
+            policy.append("PARAMETERIZATION      %-18s %s%s  Apple declares %s; this tree declares %s"
+                          % (owner, sign, sel, ",".join(sorted(params)),
+                             ",".join(sorted(have)) if have else "NONE"))
+            findings += 1
+    for (owner, sign, sel), params in sorted(ours.items()):
+        if owner in PARAM_CLASSES and (owner, sign, sel) not in listed:
+            policy.append("PARAMETERIZED, BUT NOT %-18s %s%s  this tree names %s; Apple's declaration "
+                          "does not" % (owner, sign, sel, ",".join(sorted(params))))
+            findings += 1
+    return findings
+
+
 def check_selectors(strict=False):
     """Hold the SELECTOR ledger to this tree, offline — the symbol check's sibling, same two findings.
 
@@ -903,14 +1086,18 @@ def check_selectors(strict=False):
         if claimed != got:
             bad.append("STALE COUNT BLOCK     %-8s the header claims shipped/open/struck %s and the rows are "
                        "%s — fix: tools/foundation-sweep.py --refresh" % (hkind, claimed, got))
+    findings = check_parameterized(policy, members, parents)
     print("foundation-sweep: %d selectors in the ledger" % len(rows))
     for kind in sorted({k for k, _ in counts}):
         print("  %-10s shipped %4d   open %4d   struck %4d" % (
             kind, counts.get((kind, STATUS_SHIPPED), 0),
             counts.get((kind, STATUS_OPEN), 0), counts.get((kind, STATUS_STRUCK), 0)))
+    if findings:
+        print("  parameterization  %4d finding(s)   the surface rule §11.0 / D-C4-D-C5 — fatal under "
+              "--strict" % findings)
     if policy:
-        print("\n%d POLICY FINDING(S) in the selector ledger — API this ledger STRIKES that we declare"
-              % len(policy))
+        print("\n%d POLICY FINDING(S) in the selector ledger — API this ledger STRIKES that we declare, "
+              "or a signature that does not match Apple's" % len(policy))
         print("(each needs a ledger row; --strict is what fails on them):\n")
         for line in policy:
             print("  " + line)
@@ -1561,6 +1748,11 @@ def main(argv):
         return families(write="--write" in argv[2:])
     if mode == "--unimplemented":
         return unimplemented(write="--write" in argv[2:])
+    if mode == "--parameterized":
+        rc = derive_parameterized()
+        if rc == 0:
+            rc = check_all()
+        return rc
     if mode == "--work-list":
         return work_list(argv[2] if len(argv) > 2 else None)
     print(__doc__)
