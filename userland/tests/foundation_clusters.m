@@ -559,6 +559,38 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
 
 @end
 
+/* THE THIRD-PARTY CASE FOR NSCHARACTERSET: a class over ONLY the two primitives the header names -
+ * -characterIsMember: and -bitmapRepresentation - holding the ASCII digits, with no range array. */
+@interface ProbePrimitiveCharacterSet : NSCharacterSet
+@end
+
+@implementation ProbePrimitiveCharacterSet
+
+- (BOOL)characterIsMember:(unichar)character
+{
+	return character >= '0' && character <= '9';
+}
+
+- (NSData *)bitmapRepresentation
+{
+	/* The same layout the family uses: an 8-byte header, then one bit per member, plane 0 only. The header is
+	 * this class's own business - the doors that read a bitmap start after it. NSMutableData rather than a C
+	 * buffer: it zero-fills, which is what this layout wants, and needs no header of its own. */
+	NSMutableData *bitmap = [NSMutableData dataWithLength:8 + 8192];
+	unsigned char *bytes = [bitmap mutableBytes];
+	unsigned long c;
+
+	if (bytes == NULL) {
+		return [NSData data];
+	}
+	for (c = '0'; c <= '9'; c++) {
+		bytes[8 + (c / 8)] |= (unsigned char)(1u << (c % 8));
+	}
+	return bitmap;
+}
+
+@end
+
 int main(void)
 {
 	ProbeCluster *empty;
@@ -1404,6 +1436,40 @@ int main(void)
 		      [[notification name] isEqual:@"ag.note"] && [[notification object] isEqual:@"o"] &&
 		      [[[notification userInfo] objectForKey:@"k"] isEqual:@"v"],
 		      "the archiver must be told NSNotification, and the three carried values must read back");
+	}
+
+	{
+		/*
+		 * M8: NSCharacterSet — a front whose mutable subclass is PUBLIC. Locals declared HERE.
+		 */
+		NSCharacterSet *digits = [NSCharacterSet characterSetWithCharactersInString:@"0123456789"];
+		NSCharacterSet *digitsByRange = [NSCharacterSet characterSetWithRange:NSMakeRange('0', 10)];
+		NSCharacterSet *decimalDigits = [NSCharacterSet decimalDigitCharacterSet];
+		NSMutableCharacterSet *mutableChars = [NSMutableCharacterSet characterSet];
+		ProbePrimitiveCharacterSet *handmadeChars = [[ProbePrimitiveCharacterSet alloc] init];
+
+		[mutableChars addCharactersInString:@"a"];
+		check("nscharacterset-archiver-answer-for-front-and-public-subclass",
+		      [digits classForCoder] == [NSCharacterSet class] &&
+		      [digits classForArchiver] == [NSCharacterSet class] &&
+		      [mutableChars classForCoder] == [NSMutableCharacterSet class] &&
+		      [handmadeChars classForCoder] == [NSCharacterSet class],
+		      "the front must be named to an archiver while NSMutableCharacterSet - a PUBLIC subclass - names "
+		      "itself");
+		check("nscharacterset-equal-sets-hash-equal",
+		      [digits isEqualToCharacterSet:digitsByRange] && [digits isEqual:digitsByRange] &&
+		      [digits hash] == [digitsByRange hash],
+		      "two sets with the same members ARE equal, and the equality contract therefore requires one hash "
+		      "for both - which hashing the RANGES could not deliver");
+		check("nscharacterset-primitives-drive-supersets-and-equality",
+		      [handmadeChars characterIsMember:'5'] && ! [handmadeChars characterIsMember:'a'] &&
+		      [handmadeChars longCharacterIsMember:0x35] && ! [handmadeChars longCharacterIsMember:0x10005] &&
+		      [handmadeChars isEqualToCharacterSet:digits] && [handmadeChars isEqual:digits] &&
+		      [handmadeChars hash] == [digits hash] &&
+		      [decimalDigits isSupersetOfSet:handmadeChars] &&
+		      ! [handmadeChars isEqual:decimalDigits],
+		      "-isSupersetOfSet: (and so equality and the hash) must be written over the two primitives, on a class "
+		      "with no range array at all");
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");

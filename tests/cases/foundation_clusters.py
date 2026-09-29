@@ -231,6 +231,10 @@ CHECKS = (
           "nsmaptable-primitives-drive-fast-enumeration",
           # M8: NSNotification - not a cluster; item 4 and nothing else.
           "nsnotification-archiver-answer-and-payload",
+          # M8: NSCharacterSet - a front with a public mutable subclass.
+          "nscharacterset-archiver-answer-for-front-and-public-subclass",
+          "nscharacterset-equal-sets-hash-equal",
+          "nscharacterset-primitives-drive-supersets-and-equality",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a

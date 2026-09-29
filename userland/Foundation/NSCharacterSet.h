@@ -50,6 +50,24 @@ NS_ASSUME_NONNULL_BEGIN
  * corporate allocation rather than a property of a character. */
 #define NSOpenStepUnicodeReservedBase 0xF400
 
+/* ===================================================================================================
+ * NSCHARACTERSET AND §C.3 (2026-09-29, M8). A FRONT whose subclass NSMutableCharacterSet is PUBLIC, so the two
+ * answer the archiver differently.
+ *
+ * THE PRIMITIVES, and the doors written over them:
+ *
+ *     -characterIsMember:      -bitmapRepresentation
+ *
+ * -isSupersetOfSet: (and therefore -isEqualToCharacterSet: and -isEqual:) and -hash are over those two, so a
+ * class answering them is a character set as far as this family is concerned. THE RANGE STORAGE IS NOT: the
+ * mutators of NSMutableCharacterSet and the constructions (-invertedSet, -mutableCopy, the +characterSet...)
+ * ARE this implementation's storage, exactly as the array family's mutable class is.
+ *
+ * AND -bitmapRepresentation IS THE RIGHT PRIMITIVE FOR THE SET-LEVEL QUESTIONS rather than a convenience: a
+ * superset test and equality are member-wise questions, and a member predicate alone cannot answer them without
+ * something to enumerate.
+ * =================================================================================================== */
+
 @interface NSCharacterSet : NSObject <NSCopying>
 {
 	unsigned int *_ranges;		/* pairs of (location, length) in code units */

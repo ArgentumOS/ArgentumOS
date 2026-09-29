@@ -22,6 +22,12 @@
 
 @implementation NSCharacterSet
 
+/* §C.3 item 4: the archiver asks for THIS, never for -class. */
+- (Class)classForCoder
+{
+	return [NSCharacterSet class];
+}
+
 /* ---- the range list, which is the whole representation --------------------- */
 
 static void fn_add_range(NSCharacterSet *set, unsigned int location, unsigned int length)
@@ -140,17 +146,25 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 
 - (BOOL)isSupersetOfSet:(NSCharacterSet *)other
 {
-	unsigned long i;
+	NSData *mine = [self bitmapRepresentation];
+	NSData *theirs = [other bitmapRepresentation];
+	const unsigned char *a = [mine bytes];
+	const unsigned char *b = [theirs bytes];
+	NSUInteger n = [mine length];
+	NSUInteger i;
 
-	for (i = 0; i < other->_rangeCount; i++) {
-		unsigned int location = other->_ranges[i * 2];
-		unsigned int length = other->_ranges[i * 2 + 1];
-		unsigned int k;
-
-		for (k = 0; k < length; k++) {
-			if (!fn_contains(self, location + k)) {
-				return NO;
-			}
+	/*
+	 * OVER THE PRIMITIVES (§C.3 item 5): two bitmaps, compared byte-wise. The version this replaces walked
+	 * `other`'s PRIVATE range array, so it could only ever work for a class laid out as this one is - and a set
+	 * is exactly the kind of thing a caller might implement itself. The first 8 bytes are this implementation's
+	 * header (a magic and a range count), so the comparison starts after them.
+	 */
+	if ([theirs length] != n) {
+		return NO;
+	}
+	for (i = 8; i < n; i++) {
+		if ((b[i] & ~a[i]) != 0) {
+			return NO;
 		}
 	}
 	return YES;
@@ -182,13 +196,20 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 
 - (NSUInteger)hash
 {
-	unsigned long h = 2166136261UL;
-	unsigned long i;
+	NSData *bitmap = [self bitmapRepresentation];
+	const unsigned char *bytes = [bitmap bytes];
+	NSUInteger n = [bitmap length];
+	NSUInteger h = 2166136261UL;
+	NSUInteger i;
 
-	for (i = 0; i < _rangeCount; i++) {
-		h ^= _ranges[i * 2];
-		h *= 16777619UL;
-		h ^= _ranges[i * 2 + 1];
+	/*
+	 * OVER THE PRIMITIVE (§C.3 item 5), AND IT FIXES A REAL DEFECT RATHER THAN JUST MOVING A READ: hashing the
+	 * RANGES meant two sets that -isEqual: calls equal hashed differently whenever their ranges were written
+	 * down differently - which the equality contract forbids. The members are what matters, so the members are
+	 * what is hashed.
+	 */
+	for (i = 8; i < n; i++) {
+		h ^= bytes[i];
 		h *= 16777619UL;
 	}
 	return h;
@@ -648,6 +669,13 @@ static NSMutableCharacterSet *fn_set_by_property(const int *values, unsigned int
 @end
 
 @implementation NSMutableCharacterSet
+
+/* §C.3 item 4 FOR A PUBLIC SUBCLASS: NSMutableCharacterSet is public, so it names ITSELF - the
+ * NSMutableAttributedString/NSDecimalNumber shape, not the unconditional one. */
+- (Class)classForCoder
+{
+	return [NSMutableCharacterSet class];
+}
 
 + (NSMutableCharacterSet *)characterSet
 {
