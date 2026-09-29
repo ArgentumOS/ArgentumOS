@@ -27,9 +27,9 @@
 #import <Foundation/NSFastEnumeration.h>
 #import <Foundation/NSCoding.h>
 
-@class NSArray;
-@class NSDictionary;
-@class NSEnumerator;
+@class NSArray<ObjectType>;
+@class NSDictionary<KeyType, ObjectType>;
+@class NSEnumerator<ObjectType>;
 @class FNPointerTable;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -50,7 +50,7 @@ typedef NSPointerFunctionsOptions NSMapTableOptions;
 #define NSMapTableObjectPointerPersonality	NSPointerFunctionsObjectPointerPersonality
 #define NSMapTableWeakMemory			NSPointerFunctionsWeakMemory
 
-@interface NSMapTable : NSObject <NSCopying, NSFastEnumeration, NSSecureCoding>
+@interface NSMapTable<KeyType, ObjectType> : NSObject <NSCopying, NSFastEnumeration, NSSecureCoding>
 {
 	FNPointerTable *_table;
 	void **_snapshotKeys;	/* `void **` for the reason NSHashTable.h gives */
@@ -67,25 +67,25 @@ typedef NSPointerFunctionsOptions NSMapTableOptions;
 		     valuePointerFunctions:(NSPointerFunctions *)valueFunctions
 				  capacity:(NSUInteger)initialCapacity;
 
-+ (instancetype)mapTableWithKeyOptions:(NSMapTableOptions)keyOptions
++ (NSMapTable<KeyType, ObjectType> *)mapTableWithKeyOptions:(NSMapTableOptions)keyOptions
 			  valueOptions:(NSMapTableOptions)valueOptions;
-+ (instancetype)strongToStrongObjectsMapTable;
-+ (instancetype)weakToStrongObjectsMapTable;
-+ (instancetype)strongToWeakObjectsMapTable;
-+ (instancetype)weakToWeakObjectsMapTable;
++ (NSMapTable<KeyType, ObjectType> *)strongToStrongObjectsMapTable;
++ (NSMapTable<KeyType, ObjectType> *)weakToStrongObjectsMapTable;
++ (NSMapTable<KeyType, ObjectType> *)strongToWeakObjectsMapTable;
++ (NSMapTable<KeyType, ObjectType> *)weakToWeakObjectsMapTable;
 
 - (NSPointerFunctions *)keyPointerFunctions;
 - (NSPointerFunctions *)valuePointerFunctions;
 
-- (nullable id)objectForKey:(nullable id)aKey;
-- (void)setObject:(nullable id)anObject forKey:(nullable id)aKey;
-- (void)removeObjectForKey:(nullable id)aKey;
+- (nullable ObjectType)objectForKey:(nullable KeyType)aKey;
+- (void)setObject:(nullable ObjectType)anObject forKey:(nullable KeyType)aKey;
+- (void)removeObjectForKey:(nullable KeyType)aKey;
 - (void)removeAllObjects;
 
 - (NSUInteger)count;
-- (NSEnumerator *)keyEnumerator;
-- (NSEnumerator *)objectEnumerator;
-- (NSDictionary *)dictionaryRepresentation;
+- (NSEnumerator<KeyType> *)keyEnumerator;
+- (NSEnumerator<ObjectType> *)objectEnumerator;
+- (NSDictionary<KeyType, ObjectType> *)dictionaryRepresentation;
 
 @end
 

@@ -318,3 +318,19 @@ case's CHECKS tuple, which the case's own tally check caught.
 
 **M7 (`NSAttributedString`, `NSMapTable`, `NSHashTable`, `NSPointerArray`) is next** — and it carries the two
 INVARIANT parameterizations (`NSMapTable<KeyType, ObjectType>`, `NSHashTable<ObjectType>`).
+
+**M7'S COMPILE HALF LANDED 2026-09-29 — both invariant parameterizations.** `NSMapTable<KeyType, ObjectType>`
+and `NSHashTable<ObjectType>`, 27 declarations, the two families' findings **27 → 0** and the tree's total
+**48 → 21**. The erasure rule is measured: `foundation_legacymaptable` 15/15, `foundation_pointers` 14/14,
+`foundation_tableoptions` 6/6 and the fourth case all IDENTICAL with the parameterization and without it.
+
+**THE FORWARD-DECLARATION LESSON APPLIED ITSELF AGAIN, AND WAS PREDICTED:** the build refused
+`NSSet<ObjectType>` in `NSHashTable.h` because `@class NSSet;` wins for that translation unit. Both headers'
+forward declarations carry parameters now — the fourth time this has cost a build, and the first time the
+error was anticipated rather than explained afterwards.
+
+**STILL OWED IN M7:** the runtime shape for all four families (`NSAttributedString` with 66 methods,
+`NSMapTable` 40, `NSHashTable` 49, `NSPointerArray` 21 — the two Tables keeping their `FNLegacy*` subclasses,
+which is why their doors must route exactly once at the front), and the compile probe's NEGATIVE assertions for
+`NSAttributedString` and `NSPointerArray`.
+

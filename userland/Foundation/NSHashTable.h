@@ -33,9 +33,9 @@
 #import <Foundation/NSFastEnumeration.h>
 #import <Foundation/NSCoding.h>
 
-@class NSArray;
-@class NSSet;
-@class NSEnumerator;
+@class NSArray<ObjectType>;
+@class NSSet<ObjectType>;
+@class NSEnumerator<ObjectType>;
 @class FNPointerTable;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -44,7 +44,7 @@ NS_ASSUME_NONNULL_BEGIN
  * spelled the same way, because `NSHashTableOptions` says WHICH set of options it is. */
 typedef NSPointerFunctionsOptions NSHashTableOptions;
 
-@interface NSHashTable : NSObject <NSCopying, NSFastEnumeration, NSSecureCoding>
+@interface NSHashTable<ObjectType> : NSObject <NSCopying, NSFastEnumeration, NSSecureCoding>
 {
 	FNPointerTable *_table;
 	/* THE ENUMERATION SNAPSHOT: a compacted C array of the members, rebuilt whenever the table has changed.
@@ -59,30 +59,30 @@ typedef NSPointerFunctionsOptions NSHashTableOptions;
 - (instancetype)initWithPointerFunctions:(NSPointerFunctions *)functions
 				capacity:(NSUInteger)initialCapacity;
 
-+ (instancetype)weakObjectsHashTable;
-+ (instancetype)hashTableWithOptions:(NSHashTableOptions)options;
++ (NSHashTable<ObjectType> *)weakObjectsHashTable;
++ (NSHashTable<ObjectType> *)hashTableWithOptions:(NSHashTableOptions)options;
 
 - (NSPointerFunctions *)pointerFunctions;
 
 - (NSUInteger)count;
-- (nullable id)anyObject;
-- (NSArray *)allObjects;
-- (NSSet *)setRepresentation;
-- (BOOL)containsObject:(nullable id)anObject;
-- (nullable id)member:(nullable id)object;
-- (NSEnumerator *)objectEnumerator;
+- (nullable ObjectType)anyObject;
+- (NSArray<ObjectType> *)allObjects;
+- (NSSet<ObjectType> *)setRepresentation;
+- (BOOL)containsObject:(nullable ObjectType)anObject;
+- (nullable ObjectType)member:(nullable ObjectType)object;
+- (NSEnumerator<ObjectType> *)objectEnumerator;
 
-- (void)addObject:(nullable id)object;
-- (void)removeObject:(nullable id)object;
+- (void)addObject:(nullable ObjectType)object;
+- (void)removeObject:(nullable ObjectType)object;
 - (void)removeAllObjects;
 
 /* The set operations, each in place on the receiver. */
-- (void)intersectHashTable:(NSHashTable *)other;
-- (BOOL)intersectsHashTable:(NSHashTable *)other;
-- (BOOL)isSubsetOfHashTable:(NSHashTable *)other;
-- (BOOL)isEqualToHashTable:(NSHashTable *)other;
-- (void)minusHashTable:(NSHashTable *)other;
-- (void)unionHashTable:(NSHashTable *)other;
+- (void)intersectHashTable:(NSHashTable<ObjectType> *)other;
+- (BOOL)intersectsHashTable:(NSHashTable<ObjectType> *)other;
+- (BOOL)isSubsetOfHashTable:(NSHashTable<ObjectType> *)other;
+- (BOOL)isEqualToHashTable:(NSHashTable<ObjectType> *)other;
+- (void)minusHashTable:(NSHashTable<ObjectType> *)other;
+- (void)unionHashTable:(NSHashTable<ObjectType> *)other;
 
 @end
 
