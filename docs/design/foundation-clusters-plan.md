@@ -105,6 +105,13 @@ to the §C.3 contract rather than inventing a second notion of what `NSString` i
 
 1. **The public class is the front.** `+alloc` on it is legal and `-init` on the result answers an EMPTY
    instance, not a crash — `[[NSArray alloc] init]` is a legitimate, documented thing to write.
+   **IN THIS LIBRARY THE DOOR IS `+alloc`, AND THAT IS NOT A CHOICE**: `+allocWithZone:` was REMOVED, and
+   `NSObject.h` says so and says why (the zone-taking methods are gone; *"THE SINGLETON DOOR IS +alloc —
+   override THAT"*). One subtlety the M0 probe had to work out and every family inherits: a concrete class
+   INHERITS that override, so the routing must happen exactly ONCE, at the front — the shape that works is
+   `if (self != [Front class]) { return [super alloc]; } return [ConcreteClass alloc];`, because `[super
+   alloc]` in a class method starts the lookup at the front's superclass with the receiver still being the
+   class that was asked.
 2. **Every constructor chooses the concrete class** by the data: the empty case, the one-element case, the
    small case and the general case may be different private classes, and a mutable constructor answers a
    mutable concrete class.
