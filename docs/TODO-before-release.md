@@ -387,3 +387,26 @@ something else treats it - and the search moves to WHICH consumer takes that pat
 the body after all and the "never called" conclusion is wrong. Both outcomes are informative, and this is the
 step to run before any further NSMapTable work.
 
+**THE EXPERIMENT RAN, AND THE ANSWER IS THE SELECTOR.** `FNLegacyMapTable` given
+`-countByEnumeratingWithState:objects:count:` with a **TRIVIAL body** (`return 0;`) crashes the case **3/3**, so
+the cause is the method's NAME AND SIGNATURE, not its body - which was already known to be unreachable. The
+four measurements together:
+
+| what `FNLegacyMapTable` was given | result |
+|---|---|
+| nothing | 3/3 PASS, 15/15 |
+| the door over its own storage | 3/3 CRASH |
+| a trivial unrelated method | 1/1 PASS |
+| **the same NAME with a trivial body** | **3/3 CRASH** |
+
+**SO: A LEGACY MAP TABLE THAT RESPONDS TO THE FAST-ENUMERATION SELECTOR BREAKS ITS OWN TEARDOWN.** The class's
+fast-enumeration conformance is what changes; something treats it differently, and the guest dies in the frees.
+**THE NEXT DISCRIMINATOR, AND IT IS ONE BUILD AND ONE RUN:** give it the same SELECTOR with `id` arguments
+(`- (NSUInteger)countByEnumeratingWithState:(id)a objects:(id)b count:(NSUInteger)c`) - that keeps the selector
+and changes the type encoding. Crashing means the SELECTOR is the key and the search goes to which consumer takes
+a fast-enumeration path for such a table; passing means the TYPE ENCODING (the pointer-to-struct argument) is
+what the toolchain mishandles, and the place to look is the patch/codegen step, not the library.
+
+**AND THIS BLOCKS ONLY `NSMapTable`** - neither `NSAttributedString` nor `NSPointerArray` touches the legacy
+C API - so the other two families' runtime halves proceed and this stays a scoped puzzle.
+
