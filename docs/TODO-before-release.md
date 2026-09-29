@@ -153,4 +153,27 @@ move one type at a time: the union, the kind tag and both macros have to change 
 plist, JSON, decimalnumber and numberformatter all sit on. That is its own unit with its own verification
 (the plist, JSON and number cases as the gates), not a tail-end change.
 
+**M4's RUNTIME HALF WAS ATTEMPTED ON 2026-09-29 AND REVERTED, and the measurement is the valuable part.**
+The refactor was built in full: the front became PAYLOAD-FREE, four concrete classes took the payload
+(`AGNumberSigned`/`Unsigned`/`Floating`/`Boolean` plus `AGNumberItems` for the door), the two macros were
+reworked so the CONSTRUCTOR chooses the class by its type, and every derived read moved onto four new
+primitives (`-agKind` + the three payload accessors). It COMPILED, and it passed the cases I chose to gate
+it with — clusters, collection, decimalnumber, nsvalue, urlsession and websocket, 6/6.
+
+**THEN THE FULL TIER SAID NO: `foundation_value` CRASHES with the refactor and passes without it.** A/B on a
+stashed tree, three times, the same three cases: WITHOUT the change TESTS-OK 3/3 18/18 in 20s; WITH it,
+`foundation_value` (a probe that never finishes) and `foundation_urlsession_task`. So the refactor is
+reverted, the compile half (`43924de0`) stands, and this entry replaces "scoped, not started" with "attempted,
+measured, reverted".
+
+**TWO LESSONS, BOTH MINE:**
+
+* **THE GATE I CHOSE WAS TOO NARROW, and it failed exactly where I did not look.** For a change underneath the
+  whole library, "the cases I picked" is not a gate — the full tier is, and it found a crashing probe in a
+  family I never thought of (`NSValue`).
+* **`foundation_value` IS THE LEAD.** NSValue is not an NSNumber subclass, so the crash is an INTERACTION,
+  and the way to find it is the method that located the set-archive crash: rebuild the refactor, run that one
+  probe, and read the last check it reports before the fault. That is the first step of the next attempt —
+  not another rewrite of the classes.
+
 **M5 onward follow**; §2's two gaps remain.
