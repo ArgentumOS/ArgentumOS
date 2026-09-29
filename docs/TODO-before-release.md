@@ -141,4 +141,16 @@ copy paths was reading the surviving `_members` references rather than trusting 
 array or a dictionary encodes. `-classForCoder` answers the front correctly, so the contract is in place;
 the archiver's set support is itself owed work.
 
-**M4 (`NSNumber`) is next**; §2's two gaps remain.
+**M4 (`NSNumber`) IS IN PROGRESS (2026-09-29).** Compile half `43924de0`: the compile probe now asserts the
+measurement it has always rested on — a snippet applying type arguments to `NSNumber` must be REFUSED, and is
+— so "we did not parameterize it" can no longer be confused with "we never checked".
+
+**ITS RUNTIME HALF IS SCOPED AND NOT STARTED, and the reason is a measurement rather than caution:** our
+`NSNumber` is one concrete class over a tagged union (`long long _signedValue` / `unsigned long long
+_unsignedValue` / `double _doubleValue` + `unsigned char _kind`), and the whole fifteen-type matrix is
+instantiated by TWO MACROS that both read and write that payload. There is therefore **no per-kind seam** to
+move one type at a time: the union, the kind tag and both macros have to change together, in a class that
+plist, JSON, decimalnumber and numberformatter all sit on. That is its own unit with its own verification
+(the plist, JSON and number cases as the gates), not a tail-end change.
+
+**M5 onward follow**; §2's two gaps remain.
