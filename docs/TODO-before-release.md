@@ -366,3 +366,24 @@ teardown does afterwards - using a probe run and the last-check-reported method.
 implicated and should be moved AFTER this is understood, not before. Both attempts are reverted; the tree is
 green and `foundation_legacymaptable` is at 15/15.
 
+**NSMAPTABLE'S TEARDOWN CRASH, NARROWED BY THREE MEASUREMENTS (all on `foundation_legacymaptable`, each run
+repeated):**
+
+| what was added to `FNLegacyMapTable` | result |
+|---|---|
+| nothing (baseline) | **3/3 PASS**, 15/15 each |
+| `-countByEnumeratingWithState:objects:count:` over its own storage | **3/3 CRASH** (SEGV 139) |
+| a trivial unrelated `- (void)fnLayoutProbe { }` | **1/1 PASS**, 15/15 |
+
+**SO IT IS NOT `-allObjects`/`-enumerator` LOGIC AND NOT "any method added":** the door's BODY IS NEVER CALLED -
+the probe enumerates a legacy table with the legacy C API's own `NSEnumerateMapTable`/`NSNextMapEnumeratorPair`,
+not with `for-in` - and yet its mere PRESENCE crashes the teardown, while a trivial method does not. What the two
+differ in is the SIGNATURE (and therefore the class's conformance as the runtime sees it) and the body, and only
+the signature can matter when the body is unreachable.
+
+**THE NEXT EXPERIMENT, EXACTLY:** add the SAME NAME with a TRIVIAL body (`return 0;`) and run the case three
+times. If it crashes, the NAME/signature is the cause - the class gaining a fast-enumeration door changes how
+something else treats it - and the search moves to WHICH consumer takes that path. If it passes, the cause is in
+the body after all and the "never called" conclusion is wrong. Both outcomes are informative, and this is the
+step to run before any further NSMapTable work.
+
