@@ -387,6 +387,48 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
 
 @end
 
+/* THE THIRD-PARTY CASE FOR NSIndexSet, SCOPED TO THE DOORS THAT ARE MOVED: -count, -firstIndex and
+ * -indexGreaterThanIndex: are the primitives, and the four ITERATOR-shaped reads are now written over them.
+ * The RANGE-shaped ones (-hash, -getIndexes:…, -countOfIndexesInRange:, -isEqualToIndexSet:,
+ * -containsIndexesInRange:, -mutableCopy, -description) are NOT yet, so neither is their check - see the
+ * header for why that is a decision about cost rather than an oversight. */
+@interface ProbePrimitiveIndexSet : NSIndexSet
+@end
+
+@implementation ProbePrimitiveIndexSet
+
+- (NSUInteger)count
+{
+	return 5;			/* the indexes 1, 2, 3, 7 and 9 */
+}
+
+- (NSUInteger)firstIndex
+{
+	return 1;
+}
+
+- (NSUInteger)indexGreaterThanIndex:(NSUInteger)value
+{
+	if (value < 1) {
+		return 1;
+	}
+	if (value < 2) {
+		return 2;
+	}
+	if (value < 3) {
+		return 3;
+	}
+	if (value < 7) {
+		return 7;
+	}
+	if (value < 9) {
+		return 9;
+	}
+	return NSNotFound;
+}
+
+@end
+
 int main(void)
 {
 	ProbeCluster *empty;
@@ -1038,6 +1080,28 @@ int main(void)
 		      [emptyIndexes count] == 0,
 		      "the mutable concrete class accumulates - and the SHARED empty instance stayed empty, which is "
 		      "what the membership guard protects");
+	}
+
+	{
+		/* THE PRIMITIVES ARE THE CONTRACT (§C.3 item 5), SCOPED TO WHAT HAS MOVED. */
+		ProbePrimitiveIndexSet *handmadeIndexes = [[ProbePrimitiveIndexSet alloc] init];
+
+		check("nsindexset-primitives-drive-the-iterator-doors",
+		      [handmadeIndexes count] == 5 && [handmadeIndexes firstIndex] == 1 &&
+		      [handmadeIndexes lastIndex] == 9 &&
+		      [handmadeIndexes indexGreaterThanIndex:0] == 1 &&
+		      [handmadeIndexes indexGreaterThanIndex:3] == 7 &&
+		      [handmadeIndexes indexGreaterThanIndex:9] == NSNotFound &&
+		      [handmadeIndexes indexLessThanIndex:5] == 3 &&
+		      [handmadeIndexes indexLessThanIndex:1] == NSNotFound &&
+		      [handmadeIndexes indexGreaterThanOrEqualToIndex:4] == 7 &&
+		      [handmadeIndexes indexGreaterThanOrEqualToIndex:9] == 9 &&
+		      [handmadeIndexes indexLessThanOrEqualToIndex:8] == 7 &&
+		      [handmadeIndexes indexLessThanOrEqualToIndex:0] == NSNotFound,
+		      "-lastIndex and the four index search doors must be written over the three primitives, on a "
+		      "class that has no range storage of its own. -containsIndex: IS NOT ASSERTED: this check found "
+		      "that it reaches the ranges through a helper, so it is range-shaped like -hash and belongs to "
+		      "the same remaining unit");
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");

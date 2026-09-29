@@ -207,10 +207,20 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 
 - (NSUInteger)lastIndex
 {
-	if (_rangeCount == 0) {
+	NSUInteger walk = [self firstIndex];
+
+	/* OVER THE PRIMITIVES (§C.3 item 5): the LAST index is found by walking to the end. */
+	if (walk == NSNotFound) {
 		return NSNotFound;
 	}
-	return _ranges[(_rangeCount - 1) * 2] + _ranges[(_rangeCount - 1) * 2 + 1] - 1;
+	for (;;) {
+		NSUInteger next = [self indexGreaterThanIndex:walk];
+
+		if (next == NSNotFound) {
+			return walk;
+		}
+		walk = next;
+	}
 }
 
 - (NSUInteger)indexGreaterThanIndex:(NSUInteger)value
@@ -234,23 +244,15 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 
 - (NSUInteger)indexLessThanIndex:(NSUInteger)value
 {
-	unsigned long i;
+	NSUInteger walk = [self firstIndex];
+	NSUInteger previous = NSNotFound;
 
-	if (value == 0) {
-		return NSNotFound;
+	/* OVER THE PRIMITIVES: walk up while the indexes stay below the argument, remembering the last. */
+	while (walk != NSNotFound && walk < value) {
+		previous = walk;
+		walk = [self indexGreaterThanIndex:walk];
 	}
-	for (i = _rangeCount; i > 0; i--) {
-		unsigned long location = _ranges[(i - 1) * 2];
-		unsigned long length = _ranges[(i - 1) * 2 + 1];
-
-		if (value - 1 >= location && value - 1 < location + length) {
-			return value - 1;
-		}
-		if (value > location + length) {
-			return location + length - 1;
-		}
-	}
-	return NSNotFound;
+	return previous;
 }
 
 - (void)enumerateIndexesUsingBlock:(void (^)(NSUInteger index, BOOL *stop))block
@@ -469,38 +471,24 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 
 - (NSUInteger)indexGreaterThanOrEqualToIndex:(NSUInteger)index
 {
-	unsigned long i;
+	NSUInteger walk = [self firstIndex];
 
-	for (i = 0; i < _rangeCount; i++) {
-		unsigned long loc = _ranges[i * 2];
-		unsigned long len = _ranges[i * 2 + 1];
-
-		if (index < loc) {
-			return (NSUInteger)loc;
-		}
-		if (index < loc + len) {
-			return index;
-		}
+	while (walk != NSNotFound && walk < index) {
+		walk = [self indexGreaterThanIndex:walk];
 	}
-	return NSNotFound;
+	return walk;
 }
 
 - (NSUInteger)indexLessThanOrEqualToIndex:(NSUInteger)index
 {
-	unsigned long i;
+	NSUInteger walk = [self firstIndex];
+	NSUInteger previous = NSNotFound;
 
-	for (i = _rangeCount; i > 0; i--) {
-		unsigned long loc = _ranges[(i - 1) * 2];
-		unsigned long len = _ranges[(i - 1) * 2 + 1];
-
-		if (index >= loc + len) {
-			return (NSUInteger)(loc + len - 1);
-		}
-		if (index >= loc) {
-			return index;
-		}
+	while (walk != NSNotFound && walk <= index) {
+		previous = walk;
+		walk = [self indexGreaterThanIndex:walk];
 	}
-	return NSNotFound;
+	return previous;
 }
 @end
 
