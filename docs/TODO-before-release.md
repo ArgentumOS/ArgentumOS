@@ -185,8 +185,28 @@ expression; and removing the filler left a DANGLING `&&`, so the detail string b
 and `check()` was called with two arguments instead of three. A probe that does not compile fails loudly —
 the same slip inside a check's payload compiles and asserts nothing.
 
-**M5 (`NSString`) is next** — align the existing ABI family to §C.3 without touching its fixed-offset
-Constant/Tiny layout; measured NOT parameterized, so its compile half is the negative assertion kind.
+**M5 (`NSString`) IS COMPLETE 2026-09-29** — the doors `08f6cdd3`, the probe section `0f52fade`. Measured:
+the string probe's tally UNCHANGED both ways on a stashed tree (`FOUNDATION-STRING RESULT ok=96 fail=0` with
+the change and without it), cluster probe **ok=54** (was 49), `foundation_coder` and `foundation_collection`
+unmoved. Its compile half is the negative-assertion kind M4's sentence established (measured NOT
+parameterized).
+
+**TWO THINGS M5 SETTLED WORTH CARRYING:**
+
+* **THE FAMILY IS NOT A CLUSTER OF PRIVATE CLASSES, and saying so in the code is the milestone's real work.**
+  The compiler creates the literals, the factories bind to `NSOwnedString` when storage is needed, and
+  `NSMutableString` is a public subclass — so §C.3's "the constructor chooses a concrete class" arrives here
+  as "the two doors", not as a rewrite.
+* **THE DOCUMENTED PRIMITIVES ARE REAL, NOT ASPIRATIONAL, AND THE PROBE PROVED IT.** A third-party
+  `ProbePrimitiveString` over `-length`, `-characterAtIndex:` and `-UTF8String` alone — with NO storage — is
+  correct through equality, hash, `-description` and `-uppercaseString`, because the byte-level readers
+  default to a read of `-UTF8String`. That is the first family whose primitive set is a SUFFICIENT condition
+  rather than a description of what the front happens to do.
+* And one check of mine was wrong in an instructive way: I asserted `[[empty description] length] > 0`,
+  copied from the collection families. **A string's `-description` IS the string**, so an empty one describes
+  itself as `""`. The check now says what the property is.
+
+**M6 (`NSData`, `NSIndexSet`, `NSOrderedSet`) is next**; §2's two gaps remain.
 The refactor was built in full: the front became PAYLOAD-FREE, four concrete classes took the payload
 (`AGNumberSigned`/`Unsigned`/`Floating`/`Boolean` plus `AGNumberItems` for the door), the two macros were
 reworked so the CONSTRUCTOR chooses the class by its type, and every derived read moved onto four new
