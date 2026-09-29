@@ -436,3 +436,29 @@ NSMapTable should either (a) carry the toolchain finding to its cause first, or 
 `id`-typed door that forwards, which the measurements say is safe, and record why the honest signature is
 impossible until the toolchain is fixed.
 
+**THE `id`-TYPED DOOR IS NOT ENOUGH ON ITS OWN, WHICH NARROWS IT AGAIN.** Attempting NSMapTable's contract with
+the `id`-typed legacy door AND the front's three moves: BUILD=0, but `foundation_legacymaptable` CRASHES again.
+So the measurements now read:
+
+| variant | result |
+|---|---|
+| nothing | 3/3 PASS |
+| the door, correct types, REAL body | 3/3 CRASH |
+| the door, correct types, TRIVIAL body | 3/3 CRASH |
+| **the door, `id` types, TRIVIAL body** | **3/3 PASS** |
+| the door, `id` types, REAL body + the front's moves | CRASH (1 run) |
+
+**TWO VARIABLES CHANGED AT ONCE IN THE LAST ONE**, which is a mistake this file has recorded before in this area:
+the body went from trivial to real AND the front's three doors moved. **THE NEXT DISCRIMINATOR IS THEREFORE TWO
+RUNS APART:** (1) the `id`-typed door with the REAL body, front untouched - three runs; (2) if that passes, the
+front's three moves alone, three runs. Whichever crashes is the second cause, and the two are independent:
+`foundation_legacymaptable` is the gate for both.
+
+**AND THE HONEST NOTE FOR WHOEVER PICKS THIS UP:** most of these variants were decided by ONE run, and the ones
+repeated three times are the ones to trust. A diagnosis in this area is worth exactly the number of repeats behind
+it, and `foundation_legacymaptable` is a case that crashes at teardown rather than at a named check - so its
+failure says only "it crashed", never "here".
+
+**WHAT IS VERIFIED AFTER THE REVERT:** TESTS-OK 3/3 case(s) 24/24 check(s) - foundation_legacymaptable 15/15,
+foundation_clusters 80/80, foundation_collection 46/46. The parameterization (2d93437c) stands untouched.
+
