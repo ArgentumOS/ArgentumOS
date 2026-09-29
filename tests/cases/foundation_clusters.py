@@ -60,6 +60,33 @@ void ag_unparameterized(void)
 }
 """
 
+# THE SAME NEGATIVE ASSERTION FOR THE OTHER TWO FAMILIES M7 MEASURED AS UNPARAMETERIZED, and for the same
+# reason: "we did not parameterize it" and "we never checked" are indistinguishable in a tree. One snippet each,
+# because a single snippet naming two classes could not say WHICH one accepted the arguments.
+UNPARAMETERIZED_ATTRIBUTED_SNIPPET = """\
+#import <Foundation/Foundation.h>
+
+/* NSAttributedString is NOT parameterized (measured): type arguments must be REFUSED. */
+void ag_unparameterized_attributed(void)
+{
+\tNSAttributedString<NSString *> *wrong = nil;
+
+\t(void)wrong;
+}
+"""
+
+UNPARAMETERIZED_POINTERARRAY_SNIPPET = """\
+#import <Foundation/Foundation.h>
+
+/* NSPointerArray is NOT parameterized (measured): type arguments must be REFUSED. */
+void ag_unparameterized_pointerarray(void)
+{
+\tNSPointerArray<NSString *> *wrong = nil;
+
+\t(void)wrong;
+}
+"""
+
 COVARIANT_SNIPPET = """\
 #import <Foundation/Foundation.h>
 
@@ -311,6 +338,14 @@ class Case(BaseCase):
                    if status != 0
                    else "NSNumber ACCEPTED type arguments, so it is parameterized after all and the "
                         "parameterization clause has a blind spot")
+
+        for label, snippet in (("NSAttributedString", UNPARAMETERIZED_ATTRIBUTED_SNIPPET),
+                               ("NSPointerArray", UNPARAMETERIZED_POINTERARRAY_SNIPPET)):
+            status, output = self._objc_syntax_only(snippet, userland)
+            self.check("an-unparameterized-family-refuses-type-arguments-%s" % label.lower(), status != 0,
+                       "%s refuses type arguments, as measured" % label
+                       if status != 0
+                       else "%s ACCEPTED type arguments, so the parameterization clause has a blind spot" % label)
 
         negative = self._variance_removed_tree()
         try:
