@@ -1390,6 +1390,22 @@ int main(void)
 		      "fast enumeration must walk the KEY enumerator through the caller's buffer");
 	}
 
+	{
+		/*
+		 * M8: NSNotification — NOT a cluster (one implementation, the front), so §C.3 contributes the
+		 * archiver's answer and nothing else. Locals declared HERE.
+		 */
+		NSNotification *notification =
+			[NSNotification notificationWithName:@"ag.note" object:@"o" userInfo:[NSDictionary dictionaryWithObject:@"v" forKey:@"k"]];
+
+		check("nsnotification-archiver-answer-and-payload",
+		      [notification classForCoder] == [NSNotification class] &&
+		      [notification classForArchiver] == [NSNotification class] &&
+		      [[notification name] isEqual:@"ag.note"] && [[notification object] isEqual:@"o"] &&
+		      [[[notification userInfo] objectForKey:@"k"] isEqual:@"v"],
+		      "the archiver must be told NSNotification, and the three carried values must read back");
+	}
+
 	printf("FOUNDATION-CLUSTERS DONE\n");
 	printf("FOUNDATION-CLUSTERS RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output: after a probe the console can stop serving INPUT for

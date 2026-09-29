@@ -87,6 +87,24 @@ void ag_unparameterized_pointerarray(void)
 }
 """
 
+UNPARAMETERIZED_M8_SNIPPETS = (
+    ("NSCharacterSet", "NSCharacterSet", "NSCharacterSet<NSString *> *wrong = nil;"),
+    ("NSValue", "NSValue", "NSValue<NSString *> *wrong = nil;"),
+    ("NSNotification", "NSNotification", "NSNotification<NSString *> *wrong = nil;"),
+)
+
+UNPARAMETERIZED_M8_TEMPLATE = """\
+#import <Foundation/Foundation.h>
+
+/* %s is NOT parameterized (measured): type arguments must be REFUSED. */
+void ag_unparameterized_%s(void)
+{
+\t%s
+
+\t(void)wrong;
+}
+"""
+
 COVARIANT_SNIPPET = """\
 #import <Foundation/Foundation.h>
 
@@ -211,6 +229,8 @@ CHECKS = (
           "nsmaptable-primitives-drive-dictionaryrepresentation",
           "nsmaptable-primitives-drive-objectenumerator",
           "nsmaptable-primitives-drive-fast-enumeration",
+          # M8: NSNotification - not a cluster; item 4 and nothing else.
+          "nsnotification-archiver-answer-and-payload",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a
@@ -347,6 +367,14 @@ class Case(BaseCase):
 
         for label, snippet in (("NSAttributedString", UNPARAMETERIZED_ATTRIBUTED_SNIPPET),
                                ("NSPointerArray", UNPARAMETERIZED_POINTERARRAY_SNIPPET)):
+            status, output = self._objc_syntax_only(snippet, userland)
+            self.check("an-unparameterized-family-refuses-type-arguments-%s" % label.lower(), status != 0,
+                       "%s refuses type arguments, as measured" % label
+                       if status != 0
+                       else "%s ACCEPTED type arguments, so the parameterization clause has a blind spot" % label)
+
+        for label, ident, decl in UNPARAMETERIZED_M8_SNIPPETS:
+            snippet = UNPARAMETERIZED_M8_TEMPLATE % (label, ident.lower(), decl)
             status, output = self._objc_syntax_only(snippet, userland)
             self.check("an-unparameterized-family-refuses-type-arguments-%s" % label.lower(), status != 0,
                        "%s refuses type arguments, as measured" % label

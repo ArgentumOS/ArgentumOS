@@ -25,6 +25,13 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/* ===================================================================================================
+ * NSNOTIFICATION AND §C.3 (2026-09-29, M8). NOT a class cluster here, and the header says so rather than leaving
+ * it to be inferred: there is ONE implementation, it is the front, and -name, -object and -userInfo read the
+ * values it carries. So §C.3 contributes exactly one item - the archiver's answer, which is NSNotification
+ * unconditionally - and the rest of the contract has nothing to constrain.
+ * =================================================================================================== */
+
 @interface NSNotification : NSObject <NSCopying>
 {
 	NSString *_name;

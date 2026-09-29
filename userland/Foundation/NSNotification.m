@@ -12,6 +12,15 @@
 
 @implementation NSNotification
 
+/* §C.3 item 4 (M8, 2026-09-29). UNCONDITIONAL, because this family has NO concrete variants here: there is one
+ * class, it is the front, and no private subclass's name can leak. The other §C.3 items - a primitive set and the
+ * doors over it - have nothing to constrain when there is no second implementation.
+ */
+- (Class)classForCoder
+{
+	return [NSNotification class];
+}
+
 NSNotificationName const NSAppleEventManagerWillProcessFirstEventNotification = @"NSAppleEventManagerWillProcessFirstEventNotification";
 NSNotificationName const NSClassDescriptionNeededForClassNotification = @"NSClassDescriptionNeededForClassNotification";
 NSNotificationName const NSExtensionHostDidBecomeActiveNotification = @"NSExtensionHostDidBecomeActiveNotification";
