@@ -171,11 +171,22 @@ worth keeping, because both halves were measured:**
 * **THE METHOD THAT WORKED, TWICE:** run the failing case alone, and read the last check the probe reported
   before it stopped. That located the set-archive crash, and it is what turned this "crash" into a flake.
 
-**STILL OWED FOR M4:** the number cluster has no probe of its own — M1, M2 and M3 all have a section
-asserting their concrete classes, their door, `-classForCoder` and a THIRD-PARTY subclass over the
-primitives alone, and `NSNumber` should have the same. The acceptance it does satisfy is the number probe
-green: `foundation_value` 31/31 (three runs), `foundation_nsvalue`, `foundation_decimalnumber`,
-`foundation_numberformatter` and `foundation_clusters` all green.
+**M4 IS COMPLETE 2026-09-29**, probe section included (`3908b0e5`): the number cluster now asserts its own
+contract the way M1-M3 do — the widths are different concrete classes, `-classForCoder` names the public
+class for the private ones while **NSDecimalNumber still names itself**, the matrix round-trips (including
+ULLONG_MAX, where a double would have lost the value), and a THIRD-PARTY `ProbePrimitiveNumber` over the four
+primitives is correct through the fifteen conversions, `-objCType`, `-description`, `-isEqualToNumber:` and
+`-hash`. Measured: `foundation_clusters` **ok=49** (was 45), `foundation_value` 31/31, `foundation_nsvalue`
+7/7, `foundation_decimalnumber` 9/9, `foundation_collection` 46/46 — `TESTS-OK 5/5 34/34`.
+
+**AND THE PROBE ITSELF COST FOUR COMPILE ERRORS, each a way a probe lies:** `[[x objCType][0] == 'i']` has
+DOUBLE brackets and parses as a nested message rather than a comparison; one assertion carried a filler
+expression; and removing the filler left a DANGLING `&&`, so the detail string became part of the expression
+and `check()` was called with two arguments instead of three. A probe that does not compile fails loudly —
+the same slip inside a check's payload compiles and asserts nothing.
+
+**M5 (`NSString`) is next** — align the existing ABI family to §C.3 without touching its fixed-offset
+Constant/Tiny layout; measured NOT parameterized, so its compile half is the negative assertion kind.
 The refactor was built in full: the front became PAYLOAD-FREE, four concrete classes took the payload
 (`AGNumberSigned`/`Unsigned`/`Floating`/`Boolean` plus `AGNumberItems` for the door), the two macros were
 reworked so the CONSTRUCTOR chooses the class by its type, and every derived read moved onto four new
