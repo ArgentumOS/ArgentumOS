@@ -260,3 +260,19 @@ the audit is what closes the gap.
 **STILL OWED IN M6: the concrete-class shape for `NSData` and `NSIndexSet`** — the clause flags them ZERO
 times each, so they need no compile work, only the empty/small/general shape the other fronts have. Then M7.
 
+**M6 LATER THAT DAY: `NSData`'S CLUSTER CORE LANDED** (`a4ecffe6`) — `AGDataEmpty` (the shared empty instance),
+`AGDataItems`, `AGDataMutable`, the door and `-classForCoder` (the mutable naming itself, being a public
+subclass). `foundation_clusters` is ok=63 with `foundation_dataoptions` 5/5, `foundation_collection` 46/46 and
+`foundation_coder` 11/11 unmoved.
+
+**AND IT APPLIED THE DICTIONARY LESSON BEFORE IT COST ANYTHING:** `AGDataItems` does NOT override `-init`,
+because this family has ALLOCATE-THEN-FILL paths — an `-init` answering the shared empty instance would capture
+those stores into the singleton, which is what broke three cases in the dictionary family. The singleton
+belongs to the COMPLETE constructions (`-initWithBytes:length:` with a zero length), and the probe asserts both
+halves so the distinction stays visible.
+
+**STILL OWED IN M6, both named rather than implied:** `NSData`'s PRIMITIVE MOVE — its eighty-four storage reads
+have not moved onto `-length`/`-bytes`, so its third-party subclass check is absent and the probe's own comment
+says why — and **`NSIndexSet`** entirely (34 methods, 48 storage reads, a mutable with NO initializers, so its
+guard will be a membership test). Then M7.
+
