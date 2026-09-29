@@ -41,7 +41,7 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_legacymaptable"
-CHECKS = ("the-three-sentinels-are-pinned",
+CHECKS = ("the-archiver-is-told-the-public-class","the-three-sentinels-are-pinned",
           "the-thirteen-call-back-sets-promise-what-their-names-say",
           "the-table-exists-and-is-empty",
           "get-and-count-and-the-table-handed-to-a-call-back",

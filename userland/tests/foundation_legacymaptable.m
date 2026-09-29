@@ -256,6 +256,22 @@ int main(void)
 		NSFreeMapTable(table);
 	}
 
+	/* THE DIRECT QUESTION: is the class the archiver is told the RIGHT ONE? Printing both pointers is the
+	 * point - a mis-emitted class reference shows up as a value here, not as a crash two lines later. */
+	{
+		NSMapTable *forCoder = NSCreateMapTable(NSObjectMapKeyCallBacks, NSObjectMapValueCallBacks, 4);
+		Class answer = [forCoder classForCoder];
+
+		printf("FOUNDATION-LEGACYMAPTABLE archiver table-class=%s answer=%s answer-p=%p expected-p=%p\n",
+		       [NSStringFromClass([forCoder class]) UTF8String], [NSStringFromClass(answer) UTF8String],
+		       (__bridge void *)answer, (__bridge void *)[NSMapTable class]);
+		check("the-archiver-is-told-the-public-class", answer == [NSMapTable class],
+		      [NSString stringWithFormat:@"dispatched %@ (%p), not NSMapTable (%p)",
+		                                 NSStringFromClass(answer), (__bridge void *)answer,
+		                                 (__bridge void *)[NSMapTable class]]);
+		NSFreeMapTable(forCoder);
+	}
+
 	printf("FOUNDATION-LEGACYMAPTABLE RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-LEGACYMAPTABLE-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-LEGACYMAPTABLE DONE\n");

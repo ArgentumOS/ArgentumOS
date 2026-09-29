@@ -519,3 +519,29 @@ class that has such a method - rather than another library experiment, and it is
 **AND THIS FAMILY'S LEDGER ROW STAYS OPEN**, correctly: three of §C.3's items are done and the fourth cannot be,
 which is exactly the state a ledger row exists to record.
 
+**RETRACTION: THE "BLOCKER" WAS MY OWN PROBE'S ERROR, AND THE TYPE-ENCODING STORY IS UNVERIFIED.** Asking the
+question directly, instead of inferring it from crashes, answered it:
+
+    FOUNDATION-LEGACYMAPTABLE archiver table-class=FNLegacyMapTable answer=NSMapTable answer-p=0x400000267f48 expected-p=0x400000267f48
+    FOUNDATION-LEGACYMAPTABLE the-archiver-is-told-the-public-class ok
+    FOUNDATION-LEGACYMAPTABLE RESULT ok=16 fail=0          (3 runs, all green)
+
+`-classForCoder { return [NSMapTable class]; }` ON THE PRIVATE CLASS WORKS: the archiver is told NSMapTable, the
+pointer is the right one, and `foundation_legacymaptable` is green. **§C.3 item 4 was never blocked.**
+
+**AND THE CRASH THAT STARTED THIS WAS MINE:** the first diagnostic sent `[[forCoder class] UTF8String]` - a
+message to a CLASS object - and the guest said so plainly: `-[FNLegacyMapTable UTF8String] is not implemented`,
+`STATUS=134`. I had been reading "no ... DONE" plus a status as a library/toolchain failure; this one names its own
+cause, and it names my probe.
+
+**SO THE EARLIER BLOCKER ENTRIES BELOW ARE UNVERIFIED, NOT FINDINGS.** The five-and-ten-row tables record what each
+run PRINTED, and those readings are real, but the CONCLUSIONS drawn from them - a type-encoding cause, a
+patch/codegen work item - rest on crashes I never diagnosed to a cause. One of them is now positively disproved.
+**The honest status: item 4 works; whether the honest `NSFastEnumerationState *` signature also works is UNKNOWN and
+is the next measurement** - a re-test could not run this turn because the script reports no fast-enumeration door
+in the legacy class at all, so where the landed door actually is must be located first.
+
+**NEXT MEASUREMENT, ONE BUILD AND THREE RUNS:** locate the door in `NSMapTable.m`, then put the honest signature on
+a CLEAN edit and repeat. Passing means both deviations retract and the family is done; failing means one real
+library/toolchain fact survives, and the crash's own output - read, not inferred - will name it.
+

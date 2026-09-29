@@ -485,6 +485,11 @@
 
 
 
+- (Class)classForCoder
+{
+	return [NSMapTable class];
+}
+
 - (void)dealloc
 {
 	if (_keyCallBacks.release != NULL || _valueCallBacks.release != NULL) {
