@@ -649,6 +649,12 @@ int main(void)
 		}
 		check("nsset-primitives-drive-fast-enumeration", thirdPartySeen == 2,
 		      "fast enumeration must walk the primitives through the caller's buffer");
+		check("nsset-primitives-drive-copy-and-mutable-copy",
+		      [[handmadeSet mutableCopy] isEqualToSet:expectedSet] &&
+		      [[handmadeSet mutableCopy] isKindOfClass:[NSMutableSet class]] &&
+		      [[handmadeSet copy] isEqualToSet:expectedSet],
+		      "-mutableCopy must carry a THIRD-PARTY class's members; it built from the internal array, "
+		      "which that class does not have, so it silently produced an empty set");
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");

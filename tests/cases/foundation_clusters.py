@@ -118,6 +118,7 @@ CHECKS = (
           "nsset-primitives-drive-equality-subset-and-intersection",
           "nsset-primitives-drive-hash-and-description",
           "nsset-primitives-drive-fast-enumeration",
+          "nsset-primitives-drive-copy-and-mutable-copy",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a

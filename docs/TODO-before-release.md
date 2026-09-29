@@ -123,4 +123,22 @@ of the nine new set checks passing (`nsset-class-answers-a-concrete-class`,
   so the probe was reverted rather than left red; the nine set checks (including the third-party
   `ProbePrimitiveSet`) need to be re-added in one self-contained block, as M2's finally were.
 
-**M4 onward follow**; §2's two gaps remain.
+**M3 (`NSSet` / `NSMutableSet` / `NSCountedSet`) IS COMPLETE 2026-09-29** — compile half `8269866b`, runtime
+half `9c127553`, the probe section + the silent-wrong-answer fix `9f1f8acc` and the copy-path fix. Measured:
+the family's 31 findings → 0 (tree total 118 → 86), the probe ok=45, `foundation_collection` 46/46 and
+`foundation_coder` 11/11 unmoved.
+
+**THE LESSON THIS MILESTONE COST, and it generalises beyond it: A SUBSTITUTION THAT MATCHES ONE SPELLING OF
+AN EXPRESSION MISSES THE OTHERS.** Moving the derived reads onto the primitives was done by replacing
+`[_members count]` and `[_members objectAtIndex:i]`; `-anyObject` spells it `objectAtIndex:0`, and the copy
+paths spell it `initWithArray:_members` — so four call sites were left reading storage that a concrete class
+with a different layout does not have. **None of them crashed**: messaging nil answers nil, so the failure
+mode is a SILENTLY WRONG ANSWER, which is worse than a fault and is exactly what §C.3 item 5 exists to
+prevent. The third-party probe is the only thing that could see it, and it did — the audit that found the
+copy paths was reading the surviving `_members` references rather than trusting the rewrite.
+
+**STILL OPEN FROM M3 (not this family's):** NSKeyedArchiver has NO set path — archiving a set raises where an
+array or a dictionary encodes. `-classForCoder` answers the front correctly, so the contract is in place;
+the archiver's set support is itself owed work.
+
+**M4 (`NSNumber`) is next**; §2's two gaps remain.

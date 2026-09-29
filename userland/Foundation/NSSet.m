@@ -537,7 +537,7 @@
 	if (predicate == nil) {
 		return;
 	}
-	kept = [[NSSet alloc] initWithArray:_members];
+	kept = [[NSSet alloc] initWithArray:[self allObjects]];
 	[self fnReplaceMembers:[[kept filteredSetUsingPredicate:predicate] allObjects]];
 }
 
@@ -547,13 +547,13 @@
 {
 	NSSet *snapshot;
 
-	snapshot = [[NSSet alloc] initWithArray:_members];
+	snapshot = [[NSSet alloc] initWithArray:[self allObjects]];
 	return snapshot;
 }
 
 - (id)mutableCopy
 {
-	return [[NSMutableSet alloc] initWithArray:_members];
+	return [[NSMutableSet alloc] initWithArray:[self allObjects]];
 }
 
 @end
