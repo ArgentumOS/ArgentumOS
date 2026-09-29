@@ -24,7 +24,40 @@
 #import <Foundation/NSException.h>
 #import <Foundation/NSString.h>
 
+/* ===================================================================================================
+ * THE PRIVATE CONCRETE CLASSES (plan §C.3, M6): the same shape as the array, dictionary, set and number
+ * families. THE STORAGE IS THE FRONT'S OWN IVARS, and NSMutableOrderedSet defines NO initializers at all -
+ * it inherits every one from the front - so the class-choosing guard is a MEMBERSHIP test.
+ * =================================================================================================== */
+@interface AGOrderedSetEmpty : NSOrderedSet
++ (AGOrderedSetEmpty *)emptyOrderedSet;
+@end
+
+@interface AGOrderedSetItems : NSOrderedSet
+@end
+
+@interface AGOrderedSetMutable : NSMutableOrderedSet
+@end
+
+
 @implementation NSOrderedSet
+
+/* THE DOOR (§C.3 item 1), routed exactly once at the front. */
++ (id)alloc
+{
+	if (self != [NSOrderedSet class]) {
+		return [super alloc];
+	}
+	return [AGOrderedSetItems alloc];
+}
+
+/* §C.3 item 4: the private classes name the PUBLIC class. NSMutableOrderedSet answers ITSELF below, being a
+ * public subclass - the shape NSDecimalNumber needs in the number family. */
+- (Class)classForCoder
+{
+	return [NSOrderedSet class];
+}
+
 
 + (instancetype)orderedSet
 {
@@ -56,6 +89,14 @@
 	NSMutableArray *members;
 	NSUInteger i;
 
+	/* THE CLASS IS CHOSEN BY THE DATA (§C.3 item 2), for this family's general class only: a
+	 * mutable receiver inherits this implementation and must keep it. Both constructions are
+	 * COMPLETE - the member array is assigned at the END - which is what makes answering the
+	 * shared empty instance safe. */
+	if ([self isMemberOfClass:[AGOrderedSetItems class]] && count == 0) {
+		[self release];	/* never initialized: the storage was never built */
+		return (id)[AGOrderedSetEmpty emptyOrderedSet];
+	}
 	self = [super init];
 	if (self == nil) {
 		return nil;
@@ -91,6 +132,14 @@
 	NSMutableArray *members;
 	NSUInteger i;
 
+	/* THE CLASS IS CHOSEN BY THE DATA (§C.3 item 2), for this family's general class only: a
+	 * mutable receiver inherits this implementation and must keep it. Both constructions are
+	 * COMPLETE - the member array is assigned at the END - which is what makes answering the
+	 * shared empty instance safe. */
+	if ([self isMemberOfClass:[AGOrderedSetItems class]] && [array count] == 0) {
+		[self release];	/* never initialized: the storage was never built */
+		return (id)[AGOrderedSetEmpty emptyOrderedSet];
+	}
 	self = [super init];
 	if (self == nil) {
 		return nil;
@@ -153,8 +202,8 @@
 	if (object == nil) {
 		return NSNotFound;
 	}
-	for (i = 0; i < [_members count]; i++) {
-		if ([[_members objectAtIndex:i] isEqual:object]) {
+	for (i = 0; i < [self count]; i++) {
+		if ([[self objectAtIndex:i] isEqual:object]) {
 			return i;
 		}
 	}
@@ -168,22 +217,31 @@
 
 - (nullable id)firstObject
 {
-	return [_members count] > 0 ? [_members objectAtIndex:0] : nil;
+	return [self count] > 0 ? [self objectAtIndex:0] : nil;
 }
 
 - (nullable id)lastObject
 {
-	return [_members count] > 0 ? [_members objectAtIndex:[_members count] - 1] : nil;
+	return [self count] > 0 ? [self objectAtIndex:[self count] - 1] : nil;
 }
 
 - (NSArray *)array
 {
-	return _members;
+	NSMutableArray *out = [NSMutableArray arrayWithCapacity:[self count]];
+	NSEnumerator *enumerator = [self objectEnumerator];
+	id object;
+
+	/* OVER THE PRIMITIVES (§C.3 item 5). This used to hand back the internal member array, which a concrete
+	 * class with a different layout does not have - the empty one has none at all. */
+	while ((object = [enumerator nextObject]) != nil) {
+		[out addObject:object];
+	}
+	return out;
 }
 
 - (NSSet *)set
 {
-	return [NSSet setWithArray:_members];
+	return [NSSet setWithArray:[self array]];
 }
 
 - (NSEnumerator *)objectEnumerator
@@ -193,14 +251,14 @@
 
 - (NSEnumerator *)reverseObjectEnumerator
 {
-	NSMutableArray *reversed = [NSMutableArray arrayWithCapacity:[_members count]];
-	NSUInteger i = [_members count];
+	NSMutableArray *reversed = [NSMutableArray arrayWithCapacity:[self count]];
+	NSUInteger i = [self count];
 
 	/* Built by hand rather than borrowed from NSArray: this class promises the reversal, and
 	 * whether the array underneath offers one of its own is not part of this class's contract. */
 	while (i > 0) {
 		i--;
-		[reversed addObject:[_members objectAtIndex:i]];
+		[reversed addObject:[self objectAtIndex:i]];
 	}
 	return [reversed objectEnumerator];
 }
@@ -213,8 +271,8 @@
 	if (block == NULL) {
 		return;
 	}
-	for (i = 0; i < [_members count]; i++) {
-		block([_members objectAtIndex:i], &stop);
+	for (i = 0; i < [self count]; i++) {
+		block([self objectAtIndex:i], &stop);
 		if (stop) {
 			break;
 		}
@@ -223,13 +281,16 @@
 
 - (void)getObjects:(id __unsafe_unretained _Nonnull * _Nonnull)objects range:(NSRange)range
 {
-	if (range.location + range.length > [_members count]) {
+	if (range.location + range.length > [self count]) {
 		[NSException raise:NSRangeException
 			    format:@"NSOrderedSet: the range {%lu, %lu} is beyond the end (%lu members)",
 				   (unsigned long)range.location, (unsigned long)range.length,
-				   (unsigned long)[_members count]];
+				   (unsigned long)[self count]];
 	}
-	[_members getObjects:objects range:range];
+	/* OVER THE DERIVED -array, which is over the PRIMITIVES: reading the ivar here left a concrete class
+	 * with a different layout silently NOT filling the caller's buffer - the failure mode M3's audit
+	 * exists to catch, found by the same audit here. */
+	[[self array] getObjects:objects range:range];
 }
 
 /* ORDER IS PART OF THE VALUE, which is the whole reason this class exists: the same members in a
@@ -241,8 +302,8 @@
 	if (other == nil || [other count] != [self count]) {
 		return NO;
 	}
-	for (i = 0; i < [_members count]; i++) {
-		if (![[_members objectAtIndex:i] isEqual:[other objectAtIndex:i]]) {
+	for (i = 0; i < [self count]; i++) {
+		if (![[self objectAtIndex:i] isEqual:[other objectAtIndex:i]]) {
 			return NO;
 		}
 	}
@@ -256,8 +317,8 @@
 	if (other == nil) {
 		return NO;
 	}
-	for (i = 0; i < [_members count]; i++) {
-		if ([other containsObject:[_members objectAtIndex:i]]) {
+	for (i = 0; i < [self count]; i++) {
+		if ([other containsObject:[self objectAtIndex:i]]) {
 			return YES;
 		}
 	}
@@ -271,8 +332,8 @@
 	if (other == nil || [self count] > [other count]) {
 		return NO;
 	}
-	for (i = 0; i < [_members count]; i++) {
-		if (![other containsObject:[_members objectAtIndex:i]]) {
+	for (i = 0; i < [self count]; i++) {
+		if (![other containsObject:[self objectAtIndex:i]]) {
 			return NO;
 		}
 	}
@@ -287,8 +348,8 @@
 	if (predicate == nil) {
 		return self;
 	}
-	for (i = 0; i < [_members count]; i++) {
-		id object = [_members objectAtIndex:i];
+	for (i = 0; i < [self count]; i++) {
+		id object = [self objectAtIndex:i];
 
 		if ([predicate evaluateWithObject:object]) {
 			[kept addObject:object];
@@ -299,7 +360,7 @@
 
 - (NSArray *)sortedArrayUsingDescriptors:(NSArray *)descriptors
 {
-	return [_members sortedArrayUsingDescriptors:descriptors];
+	return [[self array] sortedArrayUsingDescriptors:descriptors];
 }
 
 - (BOOL)isEqual:(nullable id)other
@@ -320,10 +381,10 @@
 	NSUInteger hash = 5381;
 	NSUInteger i;
 
-	for (i = 0; i < [_members count]; i++) {
-		hash = ((hash << 5) + hash) ^ [[_members objectAtIndex:i] hash];
+	for (i = 0; i < [self count]; i++) {
+		hash = ((hash << 5) + hash) ^ [[self objectAtIndex:i] hash];
 	}
-	return hash ^ [_members count];
+	return hash ^ [self count];
 }
 
 - (NSString *)description
@@ -331,11 +392,11 @@
 	NSMutableString *out = [NSMutableString stringWithString:@"{("];
 	NSUInteger i;
 
-	for (i = 0; i < [_members count]; i++) {
+	for (i = 0; i < [self count]; i++) {
 		if (i > 0) {
 			[out appendString:@", "];
 		}
-		[out appendString:[[_members objectAtIndex:i] description]];
+		[out appendString:[[self objectAtIndex:i] description]];
 	}
 	[out appendString:@")}"];
 	return out;
@@ -355,31 +416,45 @@
 				     objects:(id __unsafe_unretained *)buffer
 				       count:(unsigned long)length
 {
-	NSUInteger start;
-	NSUInteger remaining;
-	NSUInteger batch;
+	unsigned long cursor = state->state;
+	unsigned long produced = 0;
+	unsigned long skip;
+	NSEnumerator *enumerator = [self objectEnumerator];
+	id object;
 
-	if (length == 0) {
+	/* OVER THE PRIMITIVES, THROUGH THE CALLER'S BUFFER: state->state is the cursor, so a short batch
+	 * RESUMES, and `objects` is caller-provided scratch that stays valid for the batch. */
+	for (skip = 0; skip < cursor && (object = [enumerator nextObject]) != nil; skip++) {
+	}
+	while (produced < length && (object = [enumerator nextObject]) != nil) {
+		buffer[produced++] = object;
+	}
+	state->mutationsPtr = &_mutations;
+	if (produced == 0) {
 		return 0;
 	}
-	start = (NSUInteger)state->state;
-	if (start >= [_members count]) {
-		return 0;
-	}
-	remaining = [_members count] - start;
-	batch = remaining < (NSUInteger)length ? remaining : (NSUInteger)length;
-	if (start == 0) {
-		state->mutationsPtr = &_mutations;
-	}
-	[_members getObjects:buffer range:NSMakeRange(start, batch)];
 	state->itemsPtr = buffer;
-	state->state = (unsigned long)(start + batch);
-	return (unsigned long)batch;
+	state->state = cursor + produced;
+	return produced;
 }
 
 @end
 
 @implementation NSMutableOrderedSet
+
++ (id)alloc
+{
+	if (self != [NSMutableOrderedSet class]) {
+		return [super alloc];
+	}
+	return [AGOrderedSetMutable alloc];
+}
+
+- (Class)classForCoder
+{
+	return [NSMutableOrderedSet class];
+}
+
 
 + (instancetype)orderedSetWithCapacity:(NSUInteger)capacity
 {
@@ -407,7 +482,7 @@
 		return;			/* a set holds each value once */
 	}
 	members = [NSMutableArray arrayWithCapacity:[self count] + 1];
-	[members addObjectsFromArray:_members];
+	[members addObjectsFromArray:[self array]];
 	[members addObject:object];
 	[self fnReplaceMembers:members];
 }
@@ -434,9 +509,9 @@
 				   (unsigned long)index, (unsigned long)[self count]];
 	}
 	members = [NSMutableArray arrayWithCapacity:[self count] + 1];
-	[members addObjectsFromArray:[_members subarrayWithRange:NSMakeRange(0, index)]];
+	[members addObjectsFromArray:[[self array] subarrayWithRange:NSMakeRange(0, index)]];
 	[members addObject:object];
-	[members addObjectsFromArray:[_members subarrayWithRange:
+	[members addObjectsFromArray:[[self array] subarrayWithRange:
 					NSMakeRange(index, [self count] - index)]];
 	[self fnReplaceMembers:members];
 }
@@ -461,7 +536,7 @@
 		return;
 	}
 	members = [NSMutableArray arrayWithCapacity:[self count]];
-	[members addObjectsFromArray:_members];
+	[members addObjectsFromArray:[self array]];
 	[members replaceObjectAtIndex:index withObject:object];
 	[self fnReplaceMembers:members];
 }
@@ -491,7 +566,7 @@
 				   (unsigned long)index, (unsigned long)[self count]];
 	}
 	members = [NSMutableArray arrayWithCapacity:[self count]];
-	[members addObjectsFromArray:_members];
+	[members addObjectsFromArray:[self array]];
 	[members removeObjectAtIndex:index];
 	[self fnReplaceMembers:members];
 }
@@ -507,7 +582,7 @@
 				   (unsigned long)[self count]];
 	}
 	members = [NSMutableArray arrayWithCapacity:[self count]];
-	[members addObjectsFromArray:_members];
+	[members addObjectsFromArray:[self array]];
 	[members removeObjectsInRange:range];
 	[self fnReplaceMembers:members];
 }
@@ -528,7 +603,7 @@
 				   (unsigned long)first, (unsigned long)second, (unsigned long)[self count]];
 	}
 	members = [NSMutableArray arrayWithCapacity:[self count]];
-	[members addObjectsFromArray:_members];
+	[members addObjectsFromArray:[self array]];
 	held = [members objectAtIndex:first];
 	[members replaceObjectAtIndex:first withObject:[members objectAtIndex:second]];
 	[members replaceObjectAtIndex:second withObject:held];
@@ -580,9 +655,9 @@
 	NSMutableArray *kept = [NSMutableArray array];
 	NSUInteger i;
 
-	for (i = 0; i < [_members count]; i++) {
-		if ([other containsObject:[_members objectAtIndex:i]]) {
-			[kept addObject:[_members objectAtIndex:i]];
+	for (i = 0; i < [self count]; i++) {
+		if ([other containsObject:[self objectAtIndex:i]]) {
+			[kept addObject:[self objectAtIndex:i]];
 		}
 	}
 	[self fnReplaceMembers:kept];
@@ -593,9 +668,9 @@
 	NSMutableArray *kept = [NSMutableArray array];
 	NSUInteger i;
 
-	for (i = 0; i < [_members count]; i++) {
-		if ([other containsObject:[_members objectAtIndex:i]]) {
-			[kept addObject:[_members objectAtIndex:i]];
+	for (i = 0; i < [self count]; i++) {
+		if ([other containsObject:[self objectAtIndex:i]]) {
+			[kept addObject:[self objectAtIndex:i]];
 		}
 	}
 	[self fnReplaceMembers:kept];
@@ -603,7 +678,7 @@
 
 - (void)sortUsingDescriptors:(NSArray *)descriptors
 {
-	[self fnReplaceMembers:[_members sortedArrayUsingDescriptors:descriptors]];
+	[self fnReplaceMembers:[[self array] sortedArrayUsingDescriptors:descriptors]];
 }
 
 - (void)filterUsingPredicate:(NSPredicate *)predicate
@@ -614,9 +689,9 @@
 	if (predicate == nil) {
 		return;
 	}
-	for (i = 0; i < [_members count]; i++) {
-		if ([predicate evaluateWithObject:[_members objectAtIndex:i]]) {
-			[kept addObject:[_members objectAtIndex:i]];
+	for (i = 0; i < [self count]; i++) {
+		if ([predicate evaluateWithObject:[self objectAtIndex:i]]) {
+			[kept addObject:[self objectAtIndex:i]];
 		}
 	}
 	[self fnReplaceMembers:kept];
@@ -626,12 +701,77 @@
  * rule asks for. */
 - (id)copy
 {
-	return [[NSOrderedSet alloc] initWithArray:_members];
+	return [[NSOrderedSet alloc] initWithArray:[self array]];
 }
 
 - (id)mutableCopy
 {
-	return [[NSMutableOrderedSet alloc] initWithArray:_members];
+	return [[NSMutableOrderedSet alloc] initWithArray:[self array]];
 }
+
+@end
+
+
+
+/* ===================================================================================================
+ * THE CONCRETE CLASSES (§C.3 items 2, 3 and 8).
+ * =================================================================================================== */
+
+@implementation AGOrderedSetItems
+
+/* [[NSOrderedSet alloc] init] IS A LEGITIMATE THING TO WRITE (§C.3 item 1) AND IT IS THE EMPTY CASE. */
+- (instancetype)init
+{
+	[self release];
+	return (id)[AGOrderedSetEmpty emptyOrderedSet];
+}
+
+@end
+
+@implementation AGOrderedSetEmpty
+
++ (AGOrderedSetEmpty *)emptyOrderedSet
+{
+	static AGOrderedSetEmpty *shared = nil;
+
+	if (shared == nil) {
+		shared = [[AGOrderedSetEmpty alloc] init];
+	}
+	return shared;
+}
+
+/* IMMORTAL, the price of a singleton in a library with no `+allocWithZone:` and no collector. */
+- (id)retain { return self; }
+- (void)release { }
+- (id)autorelease { return self; }
+- (NSUInteger)retainCount { return NSUIntegerMax; }
+
+/* THE PRIMITIVES (§C.3 item 5) AND NOTHING ELSE. */
+- (NSUInteger)count
+{
+	return 0;
+}
+
+- (nullable id)objectAtIndex:(NSUInteger)index
+{
+	/* An ordered set with nothing in it has no such index: Cocoa RAISES, and the probe's third-party case is
+	 * what keeps this honest for a subclass with the same shape. */
+	[NSException raise:NSRangeException
+		    format:@"-[NSOrderedSet objectAtIndex:]: index %lu beyond bounds for empty ordered set",
+			   (unsigned long)index];
+	return nil;
+}
+
+- (NSEnumerator *)objectEnumerator
+{
+	return [[NSArray array] objectEnumerator];
+}
+
+@end
+
+@implementation AGOrderedSetMutable
+
+/* NOTHING TO IMPLEMENT: NSMutableOrderedSet's implementation IS the mutable storage implementation, and
+ * what a caller gains is the NAME that -class answers. */
 
 @end

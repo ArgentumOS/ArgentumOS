@@ -146,6 +146,12 @@ CHECKS = (
           "nsstring-class-for-coder-answers-the-front-and-the-public-subclass",
           "nsstring-empty-answers-every-read",
           "nsstring-primitives-drive-equality-hash-and-search",
+          # M6: the ordered set - the cluster, and its primitives.
+          "nsorderedset-class-answers-a-concrete-class",
+          "nsorderedset-alloc-init-is-the-empty-singleton",
+          "nsorderedset-mutable-and-class-for-coder",
+          "nsorderedset-empty-answers-every-read",
+          "nsorderedset-primitives-drive-order-equality-and-hash",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a

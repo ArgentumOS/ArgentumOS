@@ -340,6 +340,33 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
 
 @end
 
+/* THE THIRD-PARTY CASE FOR THE ORDERED-SET FAMILY: a class over ONLY the primitives the header names -
+ * -count, -objectAtIndex: and -objectEnumerator - with no member array of its own. */
+@interface ProbePrimitiveOrderedSet : NSOrderedSet
+@end
+
+@implementation ProbePrimitiveOrderedSet
+
+- (NSUInteger)count
+{
+	return 3;
+}
+
+- (nullable id)objectAtIndex:(NSUInteger)index
+{
+	if (index >= 3) {
+		[NSException raise:NSRangeException format:@"ProbePrimitiveOrderedSet: %lu", (unsigned long)index];
+	}
+	return [NSArray arrayWithObjects:@"x", @"y", @"z", nil][index];
+}
+
+- (NSEnumerator *)objectEnumerator
+{
+	return [[NSArray arrayWithObjects:@"x", @"y", @"z", nil] objectEnumerator];
+}
+
+@end
+
 int main(void)
 {
 	ProbeCluster *empty;
@@ -820,6 +847,69 @@ int main(void)
 		      [[handmadeString uppercaseString] isEqualToString:@"HELLO"],
 		      "equality, hash, -description and a derived transform must all be written over the three "
 		      "primitives, on a class that has no storage of its own");
+	}
+
+	{
+		/*
+		 * M6: THE ORDERED SET — a concrete class, ONE shared empty instance chosen by the data, a mutable
+		 * concrete class, and the archiver answered with the public class. Locals declared HERE.
+		 */
+		NSOrderedSet *emptyOrdered = [NSOrderedSet orderedSet];
+		NSOrderedSet *fromInit = [[NSOrderedSet alloc] init];
+		NSOrderedSet *oneOrdered = [NSOrderedSet orderedSetWithObject:@"one"];
+		NSMutableOrderedSet *mutableOrdered = [NSMutableOrderedSet orderedSet];
+
+		check("nsorderedset-class-answers-a-concrete-class",
+		      [emptyOrdered class] != [NSOrderedSet class] &&
+		      [[emptyOrdered class] isSubclassOfClass:[NSOrderedSet class]] &&
+		      [oneOrdered class] != [emptyOrdered class],
+		      "-class must be a private concrete SUBCLASS, and the empty case its own");
+		check("nsorderedset-alloc-init-is-the-empty-singleton",
+		      fromInit != nil && [fromInit count] == 0 && fromInit == emptyOrdered,
+		      "[[NSOrderedSet alloc] init] is legal and answers the SHARED empty instance");
+		check("nsorderedset-mutable-and-class-for-coder",
+		      [mutableOrdered class] != [NSMutableOrderedSet class] &&
+		      [[mutableOrdered class] isSubclassOfClass:[NSMutableOrderedSet class]] &&
+		      [emptyOrdered classForCoder] == [NSOrderedSet class] &&
+		      [oneOrdered classForCoder] == [NSOrderedSet class] &&
+		      [mutableOrdered classForCoder] == [NSMutableOrderedSet class] &&
+		      [emptyOrdered classForArchiver] == [NSOrderedSet class],
+		      "a mutable constructor answers a mutable concrete class, and the archiver always gets the "
+		      "PUBLIC class - the mutable one included, since it is a public subclass");
+		check("nsorderedset-empty-answers-every-read",
+		      [emptyOrdered count] == 0 && [[emptyOrdered array] count] == 0 &&
+		      [[emptyOrdered set] count] == 0 && [emptyOrdered firstObject] == nil &&
+		      [emptyOrdered lastObject] == nil &&
+		      [[emptyOrdered objectEnumerator] nextObject] == nil &&
+		      [emptyOrdered indexOfObject:@"x"] == NSNotFound &&
+		      ! [emptyOrdered containsObject:@"x"] &&
+		      [emptyOrdered isEqualToOrderedSet:[NSOrderedSet orderedSet]] &&
+		      [emptyOrdered hash] == [[NSOrderedSet orderedSet] hash] &&
+		      [[emptyOrdered description] length] > 0,
+		      "the empty concrete class answers the primitives AND every derived read over them");
+	}
+	{
+		/* THE PRIMITIVES ARE THE CONTRACT (§C.3 item 5). */
+		ProbePrimitiveOrderedSet *handmadeOrdered = [[ProbePrimitiveOrderedSet alloc] init];
+		NSOrderedSet *expectedOrdered = [NSOrderedSet orderedSetWithArray:
+			[NSArray arrayWithObjects:@"x", @"y", @"z", nil]];
+		NSMutableArray *seen = [NSMutableArray array];
+		id enumerated;
+
+		for (enumerated in handmadeOrdered) {
+			[seen addObject:enumerated];
+		}
+		check("nsorderedset-primitives-drive-order-equality-and-hash",
+		      [[handmadeOrdered array] count] == 3 && [handmadeOrdered count] == 3 &&
+		      [[handmadeOrdered objectAtIndex:1] isEqual:@"y"] &&
+		      [handmadeOrdered indexOfObject:@"z"] == 2 && [handmadeOrdered containsObject:@"x"] &&
+		      [handmadeOrdered firstObject] != nil && [handmadeOrdered lastObject] != nil &&
+		      [seen count] == 3 && [handmadeOrdered isEqualToOrderedSet:expectedOrdered] &&
+		      [handmadeOrdered hash] == [expectedOrdered hash] &&
+		      [[handmadeOrdered description] length] > 0 &&
+		      [handmadeOrdered isSubsetOfOrderedSet:expectedOrdered],
+		      "the array view, the index searches, ORDERED equality, hash, -description and fast enumeration "
+		      "must be written over the primitives, on a class with no member array");
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");
