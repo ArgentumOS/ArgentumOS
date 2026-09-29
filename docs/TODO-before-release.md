@@ -302,11 +302,19 @@ alongside them and it FAILED — that method reaches the ranges through a helper
 helper's reads to the method before it, which is also why `-classForCoder` appeared to read fourteen lines). So
 `-containsIndex:` is range-shaped and joins the remaining unit.
 
-**STILL OWED IN M6 — AND IT IS A DECISION THE PLAN MUST MAKE, not a size limit:** the RANGE-SHAPED reads
-(`-hash`, `-getIndexes:maxCount:inIndexRange:`, `-countOfIndexesInRange:`, `-isEqualToIndexSet:`,
-`-containsIndexesInRange:`, `-containsIndex:`, `-mutableCopy`, `-description`). Deriving them over an index
-iterator turns O(ranges) into O(indexes), which is catastrophic for a dense set — hashing `{0..1000000}` would
-visit a million indexes. Either a RANGE-LEVEL primitive joins the contract (`-getIndexes:maxCount:inIndexRange:`
-is Apple's bulk door, and a third party could implement it) or these methods stay storage-based and the header
-says so. Then M7.
+**`NSIndexSet` IS COMPLETE (same day, `d6d8e2da`) — AND THE CONTRACT GREW INSTEAD OF EXEMPTING ANYTHING.**
+§C.3 item 5 as written says every non-primitive method is written over the primitives, so the range-shaped
+reads were made affordable by adding Apple's own RANGE-LEVEL DOOR (`-enumerateRangesUsingBlock:`) to the
+primitive set rather than by documenting an exception: `-hash` stays O(ranges), and a third party implementing
+`-count`, `-firstIndex`, `-indexGreaterThanIndex:` and that door gets every door. The probe proves it with a
+class whose ONLY storage IS that door. `foundation_clusters` is ok=71 with `foundation_difference` 22/22,
+`foundation_collection` 46/46, `foundation_coder` 11/11 and `foundation_string` 96/96 unmoved.
 
+**M6 IS THEREFORE COMPLETE: `NSData`, `NSIndexSet` and `NSOrderedSet` all have their cluster, their primitives
+and their third-party proof.** Three faults of mine were recorded on the way — the audit catching
+`-enumerateIndexesUsingBlock:` still reading the ivar; the probe passing NULL for a range door's `stop`
+parameter (the library was right, the probe wrong); and a check added to the probe without its name added to the
+case's CHECKS tuple, which the case's own tally check caught.
+
+**M7 (`NSAttributedString`, `NSMapTable`, `NSHashTable`, `NSPointerArray`) is next** — and it carries the two
+INVARIANT parameterizations (`NSMapTable<KeyType, ObjectType>`, `NSHashTable<ObjectType>`).
