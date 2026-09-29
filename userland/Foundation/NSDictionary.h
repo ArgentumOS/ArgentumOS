@@ -33,7 +33,7 @@
 #import <Foundation/NSFastEnumeration.h>
 #import <Foundation/NSEnumerator.h>
 
-@class NSArray;
+@class NSArray<ObjectType>, NSEnumerator<ObjectType>;
 
 /* NULLABILITY (F6): NONNULL by default. -objectForKey: and its subscript answer
  * nil for a key that is not there, and -setObject:forKeyedSubscript: takes nil
@@ -42,7 +42,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 struct FNDictEntry;			/* opaque; defined in NSDictionary.m */
 
-@interface NSDictionary : NSObject <NSCopying, NSFastEnumeration>
+@interface NSDictionary<__covariant KeyType, __covariant ObjectType> : NSObject <NSCopying, NSFastEnumeration>
 {
 	struct FNDictEntry **_buckets;	/* power-of-two count, so index = hash & (count-1) */
 	unsigned long _bucketCount;
@@ -53,58 +53,58 @@ struct FNDictEntry;			/* opaque; defined in NSDictionary.m */
 }
 
 + (NSDictionary *)dictionary;
-+ (NSDictionary *)dictionaryWithObject:(id)value forKey:(id)key;
-+ (NSDictionary *)dictionaryWithDictionary:(NSDictionary *)other;
-+ (NSDictionary *)dictionaryWithObjects:(const id _Nonnull * _Nonnull)values
-				 forKeys:(const id _Nonnull * _Nonnull)keys
++ (NSDictionary<KeyType, ObjectType> *)dictionaryWithObject:(ObjectType)value forKey:(KeyType <NSCopying>)key;
++ (NSDictionary<KeyType, ObjectType> *)dictionaryWithDictionary:(NSDictionary<KeyType, ObjectType> *)other;
++ (NSDictionary<KeyType, ObjectType> *)dictionaryWithObjects:(const ObjectType _Nonnull * _Nonnull)values
+				 forKeys:(const KeyType _Nonnull * _Nonnull)keys
 				   count:(NSUInteger)count;
 + (NSDictionary *)dictionaryWithObjectsAndKeys:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
-+ (NSDictionary *)dictionaryWithObjects:(NSArray *)objects forKeys:(NSArray *)keys;
++ (NSDictionary<KeyType, ObjectType> *)dictionaryWithObjects:(NSArray<ObjectType> *)objects forKeys:(NSArray<KeyType> *)keys;
 
 - (id)initWithObject:(id)value forKey:(id)key;
-- (id)initWithDictionary:(NSDictionary *)other;
-- (id)initWithObjects:(const id _Nonnull * _Nonnull)values
-	      forKeys:(const id _Nonnull * _Nonnull)keys
+- (id)initWithDictionary:(NSDictionary<KeyType, ObjectType> *)other;
+- (id)initWithObjects:(const ObjectType _Nonnull * _Nonnull)values
+	      forKeys:(const KeyType _Nonnull * _Nonnull)keys
 		count:(NSUInteger)count;
 - (id)initWithObjectsAndKeys:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 
 - (NSUInteger)count;
-- (nullable id)objectForKey:(id)key;
-- (NSArray *)allKeys;
-- (NSArray *)allValues;
-- (NSArray *)allKeysForObject:(id)object;
-- (NSArray *)objectsForKeys:(NSArray *)keys notFoundMarker:(id)marker;
-- (NSArray *)keysSortedByValueUsingSelector:(SEL)comparator;
-- (NSArray *)keysSortedByValueUsingComparator:(NSComparator)comparator;
-- (void)enumerateKeysAndObjectsUsingBlock:(void (^)(id key, id value, BOOL *stop))block;
-- (NSEnumerator *)keyEnumerator;
-- (NSEnumerator *)objectEnumerator;
-- (void)getObjects:(id __unsafe_unretained _Nonnull * _Nonnull)objects
-	   andKeys:(id __unsafe_unretained _Nonnull * _Nonnull)keys;
+- (nullable ObjectType)objectForKey:(KeyType)key;
+- (NSArray<KeyType> *)allKeys;
+- (NSArray<ObjectType> *)allValues;
+- (NSArray<KeyType> *)allKeysForObject:(ObjectType)object;
+- (NSArray<ObjectType> *)objectsForKeys:(NSArray<KeyType> *)keys notFoundMarker:(ObjectType)marker;
+- (NSArray<KeyType> *)keysSortedByValueUsingSelector:(SEL)comparator;
+- (NSArray<KeyType> *)keysSortedByValueUsingComparator:(NSComparator)comparator;
+- (void)enumerateKeysAndObjectsUsingBlock:(void (^)(KeyType key, ObjectType obj, BOOL *stop))block;
+- (NSEnumerator<KeyType> *)keyEnumerator;
+- (NSEnumerator<ObjectType> *)objectEnumerator;
+- (void)getObjects:(ObjectType __unsafe_unretained _Nonnull * _Nonnull)objects
+	   andKeys:(KeyType __unsafe_unretained _Nonnull * _Nonnull)keys;
 /* Cocoa's subscript: `dict[k]` lowers to this. */
-- (nullable id)objectForKeyedSubscript:(id)key;
+- (nullable ObjectType)objectForKeyedSubscript:(KeyType)key;
 
-- (BOOL)isEqualToDictionary:(NSDictionary *)other;
+- (BOOL)isEqualToDictionary:(NSDictionary<KeyType, ObjectType> *)other;
 
 @end
 
-@interface NSMutableDictionary : NSDictionary <NSMutableCopying>
+@interface NSMutableDictionary<KeyType, ObjectType> : NSDictionary<KeyType, ObjectType> <NSMutableCopying>
 
 + (NSMutableDictionary *)dictionary;
 + (NSMutableDictionary *)dictionaryWithCapacity:(NSUInteger)capacity;
 - (id)initWithCapacity:(NSUInteger)capacity;
 
-- (void)addEntriesFromDictionary:(NSDictionary *)other;
-- (void)setDictionary:(NSDictionary *)other;
-- (void)removeObjectsForKeys:(NSArray *)keys;
+- (void)addEntriesFromDictionary:(NSDictionary<KeyType, ObjectType> *)other;
+- (void)setDictionary:(NSDictionary<KeyType, ObjectType> *)other;
+- (void)removeObjectsForKeys:(NSArray<KeyType> *)keys;
 
-- (void)setObject:(id)value forKey:(id)key;
-- (void)removeObjectForKey:(id)key;
+- (void)setObject:(ObjectType)value forKey:(KeyType)key;
+- (void)removeObjectForKey:(KeyType)key;
 - (void)removeAllObjects;
 
 /* `dict[k] = v` lowers to this, and `dict[k] = nil` REMOVES the key (Cocoa's
  * rule) — which is why it cannot simply forward to -setObject:forKey:. */
-- (void)setObject:(nullable id)object forKeyedSubscript:(id)key;
+- (void)setObject:(nullable ObjectType)object forKeyedSubscript:(KeyType)key;
 
 NS_ASSUME_NONNULL_END
 

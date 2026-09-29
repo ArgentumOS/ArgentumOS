@@ -132,13 +132,23 @@ typedef NSUInteger NSPropertyListWriteOptions;
 - (nullable NSMutableArray<ObjectType> *)initWithContentsOfURL:(NSURL *)url;
 @end
 
-@interface NSDictionary (NSPropertyListAdditions)
-+ (nullable NSDictionary *)dictionaryWithContentsOfFile:(NSString *)path;
-+ (nullable NSDictionary *)dictionaryWithContentsOfURL:(NSURL *)url;
-- (nullable id)initWithContentsOfFile:(NSString *)path;
-- (nullable id)initWithContentsOfURL:(NSURL *)url;
+@interface NSDictionary<KeyType, ObjectType> (NSPropertyListAdditions)
++ (nullable NSDictionary<KeyType, ObjectType> *)dictionaryWithContentsOfFile:(NSString *)path;
++ (nullable NSDictionary<KeyType, ObjectType> *)dictionaryWithContentsOfURL:(NSURL *)url;
+- (nullable NSDictionary<KeyType, ObjectType> *)initWithContentsOfFile:(NSString *)path;
+- (nullable NSDictionary<KeyType, ObjectType> *)initWithContentsOfURL:(NSURL *)url;
 - (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile;
 - (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)useAuxiliaryFile;
+@end
+
+/* THE MUTABLE FOUR, DECLARED ON THE MUTABLE CLASS, for the same reason the array family's are: the answer
+ * must be the MUTABLE type. THE IMPLEMENTATION IS NSDICTIONARY'S, ONCE, in NSPropertyListSerialization.m,
+ * and a subclass inherits it. */
+@interface NSMutableDictionary<KeyType, ObjectType> (NSPropertyListAdditions)
++ (nullable NSMutableDictionary<KeyType, ObjectType> *)dictionaryWithContentsOfFile:(NSString *)path;
++ (nullable NSMutableDictionary<KeyType, ObjectType> *)dictionaryWithContentsOfURL:(NSURL *)url;
+- (nullable NSMutableDictionary<KeyType, ObjectType> *)initWithContentsOfFile:(NSString *)path;
+- (nullable NSMutableDictionary<KeyType, ObjectType> *)initWithContentsOfURL:(NSURL *)url;
 @end
 
 NS_ASSUME_NONNULL_END
