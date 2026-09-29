@@ -503,6 +503,32 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
 
 @end
 
+/* THE THIRD-PARTY CASE FOR NSATTRIBUTEDSTRING: a class over ONLY the two primitives the header names -
+ * -string and -attributesAtIndex:effectiveRange: - with no run store of its own. */
+@interface ProbePrimitiveAttributedString : NSAttributedString
+@end
+
+@implementation ProbePrimitiveAttributedString
+
+- (NSString *)string
+{
+	return @"hello";
+}
+
+- (NSDictionary *)attributesAtIndex:(NSUInteger)location effectiveRange:(NSRangePointer)range
+{
+	if (location >= 5) {
+		[NSException raise:NSRangeException format:@"ProbePrimitiveAttributedString: %lu",
+				   (unsigned long)location];
+	}
+	if (range != NULL) {
+		*range = NSMakeRange(0, 5);
+	}
+	return [NSDictionary dictionaryWithObject:@"v" forKey:@"k"];
+}
+
+@end
+
 int main(void)
 {
 	ProbeCluster *empty;
@@ -1267,6 +1293,32 @@ int main(void)
 		}
 		check("nspointerarray-primitives-drive-fast-enumeration", pointerSeen == 2,
 		      "fast enumeration must walk the primitives through the caller's buffer");
+	}
+
+	{
+		/*
+		 * M7: NSAttributedString — a FRONT whose mutable subclass is PUBLIC, so the two answer the archiver
+		 * differently. Locals declared HERE.
+		 */
+		NSAttributedString *plainAttr = [[NSAttributedString alloc] initWithString:@"hello"];
+		NSMutableAttributedString *mutableAttr = [[NSMutableAttributedString alloc] initWithString:@"hello"];
+		ProbePrimitiveAttributedString *handmadeAttr = [[ProbePrimitiveAttributedString alloc] init];
+
+		check("nsattributedstring-archiver-answer-for-front-and-public-subclass",
+		      [plainAttr classForCoder] == [NSAttributedString class] &&
+		      [plainAttr classForArchiver] == [NSAttributedString class] &&
+		      [mutableAttr classForCoder] == [NSMutableAttributedString class] &&
+		      [handmadeAttr classForCoder] == [NSAttributedString class],
+		      "the front must be named to an archiver while NSMutableAttributedString - a PUBLIC subclass - names "
+		      "itself");
+		check("nsattributedstring-primitives-drive-length-hash-and-attribute",
+		      [handmadeAttr length] == 5 && [handmadeAttr hash] == [@"hello" hash] &&
+		      [[handmadeAttr string] isEqualToString:@"hello"] &&
+		      [[handmadeAttr attribute:@"k" atIndex:0 effectiveRange:NULL] isEqual:@"v"] &&
+		      [handmadeAttr isEqualToAttributedString:handmadeAttr] &&
+		      ! [handmadeAttr isEqualToAttributedString:plainAttr],
+		      "-length, -hash, the effective-range attribute door and -isEqualToAttributedString: must be "
+		      "written over the two primitives, on a class with no run store at all");
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");

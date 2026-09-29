@@ -242,6 +242,13 @@ NSAttributedStringKey const NSLinkAttributeName = @"NSLinkAttributeName";
 
 @implementation NSAttributedString
 
+/* §C.3 item 4: an archiver asks for THIS, never for -class - and NSMutableAttributedString answers ITSELF
+ * below, being a public subclass (the NSDecimalNumber shape). */
+- (Class)classForCoder
+{
+	return [NSAttributedString class];
+}
+
 /* ---- THE MODERN FAMILIES' CONSTANTS (W10 slice 4): names Apple publishes, values ours (§11.6.1 D2). */
 NSAttributedStringKey const NSAlternateDescriptionAttributeName = @"NSAlternateDescriptionAttributeName";
 NSAttributedStringKey const NSImageURLAttributeName = @"NSImageURLAttributeName";
@@ -340,7 +347,7 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 
 - (NSUInteger)length
 {
-	return [_string length];
+	return [[self string] length];
 }
 
 /* ---- THE RUN STORE, AS PRIVATE METHODS --------------------------------------------------------------- */
@@ -558,23 +565,35 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 	NSRange runRange;
 	NSUInteger i, first, last;
 
+	/*
+	 * OVER THE PRIMITIVES (§C.3 item 5): the value comes from -attributesAtIndex:effectiveRange:, and the range
+	 * it is effective over is found by walking SUCCESSIVE EFFECTIVE RANGES rather than the internal run array -
+	 * so a concrete class with a different layout answers this too. The zero-length guard is load-bearing: a
+	 * class reporting an empty effective range would otherwise loop forever.
+	 */
 	value = [[self attributesAtIndex:location effectiveRange:&runRange] objectForKey:attrName];
 	first = last = NSNotFound;
-	for (i = 0; i < _runCount; i++) {
-		fn_run *run = [self fnRunAt:i];
-		id here = run->attrs != nil ? [run->attrs objectForKey:attrName] : nil;
+	i = 0;
+	while (i < [self length]) {
+		NSRange effective = NSMakeRange(0, 0);
+		id here = [[self attributesAtIndex:i effectiveRange:&effective] objectForKey:attrName];
 
 		if ((here == value) || (here != nil && value != nil && [here isEqual:value])) {
 			if (first == NSNotFound) {
-				first = run->range.location;
+				first = effective.location;
 			}
-			last = run->range.location + run->range.length;
+			last = effective.location + effective.length;
 		} else if (first != NSNotFound) {
 			break;
 		}
+		if (effective.length == 0) {
+			i++;
+		} else {
+			i = effective.location + effective.length;
+		}
 	}
 	if (range != NULL) {
-		*range = first != NSNotFound ? NSMakeRange(first, last - first) : runRange;
+		*range = (first == NSNotFound) ? runRange : NSMakeRange(first, last - first);
 	}
 	return value;
 }
@@ -626,15 +645,15 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 {
 	NSAttributedString *answer;
 
-	if (range.location + range.length > [_string length]) {
+	if (range.location + range.length > [[self string] length]) {
 		[NSException raise:NSRangeException format:@"range (%lu,%lu) exceeds a string of length %lu",
-			(unsigned long)range.location, (unsigned long)range.length, (unsigned long)[_string length]];
+			(unsigned long)range.location, (unsigned long)range.length, (unsigned long)[[self string] length]];
 	}
 	/* A MUTABLE ANSWER: the runs are copied onto it with -addAttributes:, and sending that to an
 	 * NSAttributedString instance (which is what a cast to the mutable class would have been) is an
 	 * UNRECOGNIZED SELECTOR - the abort this probe localized to this method. */
 	answer = [[NSMutableAttributedString alloc] initWithString:
-			[_string substringWithRange:range] attributes:nil];
+			[[self string] substringWithRange:range] attributes:nil];
 	{
 		NSUInteger i;
 
@@ -666,7 +685,7 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 	if (other == nil || ![other isKindOfClass:[NSAttributedString class]]) {
 		return NO;
 	}
-	if (![[other string] isEqualToString:_string]) {
+	if (![[other string] isEqualToString:[self string]]) {
 		return NO;
 	}
 	/* RUN-FOR-RUN, which is the same question as "the same attributes over the same ranges" ONLY because both
@@ -674,7 +693,7 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 	 * own runs, so the comparison does not depend on the two stores agreeing about run boundaries - only on
 	 * what an index would report. */
 	i = 0;
-	while (i < [_string length]) {
+	while (i < [[self string] length]) {
 		NSRange mine = NSMakeRange(0, 0), theirs = NSMakeRange(0, 0);
 		NSDictionary *da = [self attributesAtIndex:i effectiveRange:&mine];
 		NSDictionary *db = [other attributesAtIndex:i effectiveRange:&theirs];
@@ -703,7 +722,7 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 
 - (NSUInteger)hash
 {
-	return [_string hash];
+	return [[self string] hash];
 }
 
 - (void)enumerateAttributesInRange:(NSRange)enumerationRange
@@ -803,7 +822,7 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 		}
 		[runs addObject:entry];
 	}
-	[plist setObject:_string forKey:@"string"];
+	[plist setObject:[self string] forKey:@"string"];
 	[plist setObject:runs forKey:@"runs"];
 	/* XML, WHICH IS THE ONLY FORMAT THIS LIBRARY'S PROPERTY-LIST CORE SPEAKS: OpenStep and BINARY are NAMED and
 	 * REJECTED there by design (NSPropertyListSerialization.h says why — "a config file read with the wrong
@@ -924,7 +943,7 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 - (nullable NSData *)RTFFromRange:(NSRange)range documentAttributes:(nullable NSDictionary *)dict
 {
 	NSMutableString *out = [NSMutableString string];
-	NSUInteger length = [_string length];
+	NSUInteger length = [[self string] length];
 	NSUInteger cursor, stop;
 
 	(void)dict;
@@ -954,7 +973,7 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 		}
 		slice = NSMakeRange(cursor, limit - cursor);
 		fn_rtf_append_intent(out, run->attrs, YES);
-		fn_rtf_append_escaped(out, [_string substringWithRange:slice]);
+		fn_rtf_append_escaped(out, [[self string] substringWithRange:slice]);
 		fn_rtf_append_intent(out, run->attrs, NO);
 		cursor = limit;
 	}
@@ -1025,6 +1044,11 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 
 
 @implementation NSMutableAttributedString
+
+- (Class)classForCoder
+{
+	return [NSMutableAttributedString class];
+}
 
 - (instancetype)initWithString:(NSString *)str
 {

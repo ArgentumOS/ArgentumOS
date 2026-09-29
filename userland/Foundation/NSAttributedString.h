@@ -156,6 +156,21 @@ typedef enum {
  * PROPERTY LIST - see the .m for why that is the decision rather than a shortcut. THE ENFORCEMENT IS THE
  * CODER'S GAP, NAMED IN NSCoding.h: it has no -decodeObjectOfClass:, so +supportsSecureCoding answers YES
  * while the archiver does not yet check. */
+/* ===================================================================================================
+ * NSATTRIBUTEDSTRING AND §C.3 (2026-09-29, M7). A FRONT: the front IS the concrete class, and
+ * NSMutableAttributedString is its PUBLIC subclass - which is why the two answer the archiver differently.
+ *
+ * THE PRIMITIVES, and the doors written over them:
+ *
+ *     -string      -attributesAtIndex:effectiveRange:
+ *
+ * -length, -hash, -attribute:atIndex:effectiveRange:, -isEqualToAttributedString: and the other
+ * attribute-reading doors are over those two, so a class answering them is correct through the family. THE RUN
+ * MACHINERY IS NOT (fnRunAt, fnInsertRun, fnCoalesce and their neighbours ARE this class's storage), and
+ * neither are the mutators of the mutable subclass: those ARE the storage implementation, exactly as the array
+ * family's mutable class is.
+ * =================================================================================================== */
+
 @interface NSAttributedString : NSObject <NSCopying, NSMutableCopying, NSCoding, NSSecureCoding>
 {
 @protected		/* the mutable subclass works on the same store, which is the whole point of the split */

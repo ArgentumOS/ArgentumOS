@@ -175,6 +175,9 @@ CHECKS = (
           "nspointerarray-fast-enumeration-walks-the-slots",
           "nspointerarray-primitives-drive-allobjects-and-enumeration",
           "nspointerarray-primitives-drive-fast-enumeration",
+          # M7: NSAttributedString - a front with a public mutable subclass.
+          "nsattributedstring-archiver-answer-for-front-and-public-subclass",
+          "nsattributedstring-primitives-drive-length-hash-and-attribute",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a
