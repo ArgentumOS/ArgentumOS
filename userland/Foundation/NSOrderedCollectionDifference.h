@@ -126,7 +126,13 @@ typedef enum {
 /* A DIFFERENCE BETWEEN TWO ORDERED COLLECTIONS, as a list of changes that are also two index sets' worth of
  * answers. It conforms to NSFastEnumeration: Apple publishes NO `-enumerateChanges…` door, so walking the
  * changes is a `for (NSOrderedCollectionChange *c in difference)` and nothing else. */
-@interface NSOrderedCollectionDifference : NSObject <NSFastEnumeration>
+/* PARAMETERIZED (2026-09-28) because Apple's own `NSArray.h` declares `<ObjectType>` on it —
+ * `- (NSOrderedCollectionDifference<ObjectType> *)differenceFromArray:…` — which is how the compiler
+ * found the gap: our `NSArray.h` was refused for applying type arguments to a non-parameterized class
+ * while Apple writes exactly that there. ITS VARIANCE IS NOT STATED, because Apple's own declaration of
+ * THIS class has not been read yet; invariant is the conservative reading, and the class is on
+ * `docs/TODO-before-release.md` §2 for its row in the clause's list and for the variance. */
+@interface NSOrderedCollectionDifference<ObjectType> : NSObject <NSFastEnumeration>
 {
 @protected
 	NSArray *_insertions;		/* owned; NSOrderedCollectionChange *, ascending by index */

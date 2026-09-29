@@ -30,7 +30,7 @@
  * which answers nil once the cursor is exhausted. */
 NS_ASSUME_NONNULL_BEGIN
 
-@interface NSEnumerator : NSObject <NSFastEnumeration>
+@interface NSEnumerator<ObjectType> : NSObject <NSFastEnumeration>
 {
 	NSArray *_sequence;		/* the snapshot this cursor walks */
 	unsigned long _index;

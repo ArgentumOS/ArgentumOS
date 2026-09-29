@@ -35,7 +35,7 @@
 NS_ASSUME_NONNULL_BEGIN
 @class NSURL;
 
-@interface NSArray : NSObject <NSCopying, NSFastEnumeration>
+@interface NSArray<__covariant ObjectType> : NSObject <NSCopying, NSFastEnumeration>
 {
 	id __unsafe_unretained *_items;	/* owned BY HAND: every slot is retained */
 	unsigned long _count;
@@ -44,70 +44,70 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 + (instancetype)array;
-+ (instancetype)arrayWithObject:(id)object;
-+ (instancetype)arrayWithObjects:(const id _Nonnull * _Nullable)objects count:(NSUInteger)count;
-+ (instancetype)arrayWithArray:(NSArray *)other;
++ (instancetype)arrayWithObject:(ObjectType)object;
++ (instancetype)arrayWithObjects:(const ObjectType _Nonnull * _Nullable)objects count:(NSUInteger)count;
++ (instancetype)arrayWithArray:(NSArray<ObjectType> *)other;
 + (instancetype)arrayWithObjects:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 
 - (id)initWithObject:(id)object;
-- (id)initWithObjects:(const id _Nonnull * _Nullable)objects count:(NSUInteger)count;
-- (id)initWithArray:(NSArray *)other;
+- (id)initWithObjects:(const ObjectType _Nonnull * _Nullable)objects count:(NSUInteger)count;
+- (id)initWithArray:(NSArray<ObjectType> *)other;
 - (id)initWithObjects:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 
 - (NSUInteger)count;
-- (id)objectAtIndex:(NSUInteger)index;
+- (ObjectType)objectAtIndex:(NSUInteger)index;
 /* Cocoa's subscript: `array[0]` lowers to this. */
-- (id)objectAtIndexedSubscript:(NSUInteger)index;
+- (ObjectType)objectAtIndexedSubscript:(NSUInteger)index;
 
 - (nullable id)firstObject;
 - (nullable id)lastObject;
 /* NSNotFound for a missing element — NOT (NSUInteger)-1, which is what this
  * answered before the audit and which never equals NSNotFound. */
-- (NSUInteger)indexOfObject:(id)object;
-- (BOOL)containsObject:(id)object;
+- (NSUInteger)indexOfObject:(ObjectType)object;
+- (BOOL)containsObject:(ObjectType)object;
 
-- (NSArray *)arrayByAddingObject:(id)object;	/* a new array; self is untouched */
-- (NSArray *)arrayByAddingObjectsFromArray:(NSArray *)other;
-- (NSArray *)subarrayWithRange:(NSRange)range;
-- (void)getObjects:(id __unsafe_unretained _Nonnull * _Nonnull)buffer range:(NSRange)range;
+- (NSArray<ObjectType> *)arrayByAddingObject:(ObjectType)object;	/* a new array; self is untouched */
+- (NSArray<ObjectType> *)arrayByAddingObjectsFromArray:(NSArray<ObjectType> *)other;
+- (NSArray<ObjectType> *)subarrayWithRange:(NSRange)range;
+- (void)getObjects:(ObjectType __unsafe_unretained _Nonnull * _Nonnull)buffer range:(NSRange)range;
 
 - (NSUInteger)indexOfObject:(id)object inRange:(NSRange)range;
-- (NSUInteger)indexOfObjectIdenticalTo:(id)object;
+- (NSUInteger)indexOfObjectIdenticalTo:(ObjectType)object;
 - (NSUInteger)indexOfObject:(id)object
 		   inSortedRange:(NSRange)range
 			   options:(NSBinarySearchingOptions)options
 		   usingComparator:(NSComparator)comparator;
 
 - (NSString *)componentsJoinedByString:(NSString *)separator;
-- (NSArray *)sortedArrayUsingSelector:(SEL)comparator;
-- (NSArray *)sortedArrayUsingComparator:(NSComparator)comparator;
+- (NSArray<ObjectType> *)sortedArrayUsingSelector:(SEL)comparator;
+- (NSArray<ObjectType> *)sortedArrayUsingComparator:(NSComparator)comparator;
 /* THE OPTIONS FORM (§62.104). `NSSortStable` is honoured by the algorithm this library already sorts with
  * (NSObjCRuntime.h's note says which, and the probe MEASURES it); `NSSortConcurrent` is a hint nothing here
  * takes, so a caller who passes it gets a correct, sequential answer. */
-- (NSArray *)sortedArrayWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator;
+- (NSArray<ObjectType> *)sortedArrayWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator;
 /* THE DESCRIPTOR FORMS (F10). `sortDescriptors` is an ARRAY because a sort is a CHAIN: the first
  * descriptor decides, a tie falls to the second, and a tie that survives the whole chain keeps
  * the INPUT order — the sort is STABLE, which the probe measures directly. The C-function form
  * takes `NSInteger (*)(id, id, void *)` and passes `context` straight through. */
 - (NSArray *)sortedArrayUsingDescriptors:(NSArray *)sortDescriptors;
-- (NSArray *)sortedArrayUsingFunction:(NSInteger (*)(id, id, void *))comparator
+- (NSArray<ObjectType> *)sortedArrayUsingFunction:(NSInteger (*)(ObjectType, ObjectType, void *))comparator
 			      context:(nullable void *)context;
-- (void)enumerateObjectsUsingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block;
+- (void)enumerateObjectsUsingBlock:(void (^)(ObjectType object, NSUInteger index, BOOL *stop))block;
 
 /* The NSIndexSet forms. -objectsAtIndexes: RAISES NSRangeException for an index
  * past the end — the caller asked for something that is not there — while
  * -indexesOfObjectsPassingTest: hands back the indexes that passed. */
-- (NSArray *)objectsAtIndexes:(NSIndexSet *)indexes;
-- (NSIndexSet *)indexesOfObjectsPassingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate;
+- (NSArray<ObjectType> *)objectsAtIndexes:(NSIndexSet *)indexes;
+- (NSIndexSet *)indexesOfObjectsPassingTest:(BOOL (^)(ObjectType object, NSUInteger index, BOOL *stop))predicate;
 
 /* THE PREDICATE FILTER (F11a): the elements the predicate answers YES for, in order. The
  * returned array is NEW and the receiver is untouched — Cocoa's rule everywhere here. */
 - (NSArray *)filteredArrayUsingPredicate:(NSPredicate *)predicate;
 
-- (NSEnumerator *)objectEnumerator;
-- (NSEnumerator *)reverseObjectEnumerator;
+- (NSEnumerator<ObjectType> *)objectEnumerator;
+- (NSEnumerator<ObjectType> *)reverseObjectEnumerator;
 
-- (BOOL)isEqualToArray:(NSArray *)other;
+- (BOOL)isEqualToArray:(NSArray<ObjectType> *)other;
 
 @end
 
@@ -124,9 +124,9 @@ NS_ASSUME_NONNULL_BEGIN
  * differenceFromArray:B]` answers a difference that, APPLIED TO B, produces A. The receiver is the DESTINATION
  * and the argument is the SOURCE, so an INSERTION's `index` is in the receiver and a REMOVAL's is in the
  * argument. */
-@interface NSArray (NSOrderedCollectionDifferenceAdditions)
+@interface NSArray<ObjectType> (NSOrderedCollectionDifferenceAdditions)
 
-- (NSOrderedCollectionDifference *)differenceFromArray:(NSArray *)other;
+- (NSOrderedCollectionDifference<ObjectType> *)differenceFromArray:(NSArray<ObjectType> *)other;
 - (NSOrderedCollectionDifference *)differenceFromArray:(NSArray *)other
 					  withOptions:(NSOrderedCollectionDifferenceCalculationOptions)options;
 /* THE EQUIVALENCE-TEST FORM. Apple: "don't use the option inferMoves when providing a block for the equivalence
@@ -137,31 +137,31 @@ NS_ASSUME_NONNULL_BEGIN
 				  usingEquivalenceTest:(BOOL (^)(id obj1, id obj2))block;
 /* "Creates a new array by applying a difference object to an existing array." The RECEIVER IS THE SOURCE, so
  * `[b arrayByApplyingDifference:[a differenceFromArray:b]]` answers `a`. */
-- (NSArray *)arrayByApplyingDifference:(NSOrderedCollectionDifference *)difference;
+- (NSArray<ObjectType> *)arrayByApplyingDifference:(NSOrderedCollectionDifference<ObjectType> *)difference;
 
 @end
 
-@interface NSMutableArray : NSArray <NSMutableCopying>
+@interface NSMutableArray<ObjectType> : NSArray<ObjectType> <NSMutableCopying>
 
 + (instancetype)array;
 + (instancetype)arrayWithCapacity:(NSUInteger)capacity;
 - (id)initWithCapacity:(NSUInteger)capacity;
 
-- (void)addObject:(id)object;
-- (void)insertObject:(id)object atIndex:(NSUInteger)index;
+- (void)addObject:(ObjectType)object;
+- (void)insertObject:(ObjectType)object atIndex:(NSUInteger)index;
 - (void)removeObjectAtIndex:(NSUInteger)index;
 - (void)removeAllObjects;
-- (void)replaceObjectAtIndex:(NSUInteger)index withObject:(id)object;
-- (void)addObjectsFromArray:(NSArray *)other;
+- (void)replaceObjectAtIndex:(NSUInteger)index withObject:(ObjectType)object;
+- (void)addObjectsFromArray:(NSArray<ObjectType> *)other;
 - (void)removeLastObject;
-- (void)removeObject:(id)object;
-- (void)removeObjectIdenticalTo:(id)object;
+- (void)removeObject:(ObjectType)object;
+- (void)removeObjectIdenticalTo:(ObjectType)object;
 - (void)removeObjectIdenticalTo:(id)object inRange:(NSRange)range;
 - (void)removeObject:(id)object inRange:(NSRange)range;
 - (void)removeObjectsInRange:(NSRange)range;
-- (void)setArray:(NSArray *)other;
+- (void)setArray:(NSArray<ObjectType> *)other;
 - (void)exchangeObjectAtIndex:(NSUInteger)first withObjectAtIndex:(NSUInteger)second;
-- (void)replaceObjectsInRange:(NSRange)range withObjectsFromArray:(NSArray *)other;
+- (void)replaceObjectsInRange:(NSRange)range withObjectsFromArray:(NSArray<ObjectType> *)other;
 - (void)replaceObjectsInRange:(NSRange)range
 	 withObjectsFromArray:(NSArray *)other
 			  range:(NSRange)otherRange;
@@ -169,19 +169,19 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)sortWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator;
 - (void)sortUsingSelector:(SEL)comparator;
 - (void)sortUsingDescriptors:(NSArray *)sortDescriptors;
-- (void)sortUsingFunction:(NSInteger (*)(id, id, void *))comparator context:(nullable void *)context;
+- (void)sortUsingFunction:(NSInteger (*)(ObjectType, ObjectType, void *))comparator context:(nullable void *)context;
 /* Keeps only what the predicate answers YES for. In place, because that is what MUTABLE means. */
 - (void)filterUsingPredicate:(NSPredicate *)predicate;
 
 /* The NSIndexSet forms. The counts of objects and indexes must AGREE, and the
  * mismatches raise NSInvalidArgumentException because the message is the only
  * thing that makes the bug diagnosable. */
-- (void)insertObjects:(NSArray *)objects atIndexes:(NSIndexSet *)indexes;
+- (void)insertObjects:(NSArray<ObjectType> *)objects atIndexes:(NSIndexSet *)indexes;
 - (void)removeObjectsAtIndexes:(NSIndexSet *)indexes;
-- (void)replaceObjectsAtIndexes:(NSIndexSet *)indexes withObjects:(NSArray *)objects;
+- (void)replaceObjectsAtIndexes:(NSIndexSet *)indexes withObjects:(NSArray<ObjectType> *)objects;
 
 /* `array[i] = x`: replaces, and APPENDS when i == count (Cocoa's rule). */
-- (void)setObject:(id)object atIndexedSubscript:(NSUInteger)index;
+- (void)setObject:(ObjectType)object atIndexedSubscript:(NSUInteger)index;
 
 NS_ASSUME_NONNULL_END
 

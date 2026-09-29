@@ -677,6 +677,16 @@ def _typed_blocks(text, kind):
         if m is None:
             continue
         name, rest = m.group(1), head[m.end():]
+        # §11.0: A TYPE-PARAMETER LIST SITS BETWEEN THE NAME AND THE COLON — `@interface
+        # NAME<__covariant ObjectType> : SUPER <…>`. The first version of this parser read that list
+        # as ADOPTED PROTOCOLS and lost the superclass edge with it, so parameterizing one header made
+        # every row satisfied through inheritance read as a stale shipped claim (all of NSArray's and
+        # NSMutableArray's, including rows nothing had touched).
+        # AND ONLY WHEN A COLON FOLLOWS IT: a bare `@protocol X <Y>` has no type parameters at all and
+        # its `<Y>` is its ADOPTED PROTOCOL — stripping that blindly cost two rows their inheritance
+        # (NSFileWrapper and NSOrthography reaching -initWithCoder: through NSCoding), which the check
+        # itself reported. A type-parameter list is always followed by the superclass colon or `@end`.
+        rest = re.sub(r"^\s*<[^>]*>\s*(?=:)", "", rest)
         rel = []
         sup = re.match(r"\s*:\s*(\w+)", rest)
         if sup:
@@ -1582,6 +1592,16 @@ def _objc_blocks(text, kind):
         if m is None:
             continue
         name, rest = m.group(1), head[m.end():]
+        # §11.0: A TYPE-PARAMETER LIST SITS BETWEEN THE NAME AND THE COLON — `@interface
+        # NAME<__covariant ObjectType> : SUPER <…>`. The first version of this parser read that list
+        # as ADOPTED PROTOCOLS and lost the superclass edge with it, so parameterizing one header made
+        # every row satisfied through inheritance read as a stale shipped claim (all of NSArray's and
+        # NSMutableArray's, including rows nothing had touched).
+        # AND ONLY WHEN A COLON FOLLOWS IT: a bare `@protocol X <Y>` has no type parameters at all and
+        # its `<Y>` is its ADOPTED PROTOCOL — stripping that blindly cost two rows their inheritance
+        # (NSFileWrapper and NSOrthography reaching -initWithCoder: through NSCoding), which the check
+        # itself reported. A type-parameter list is always followed by the superclass colon or `@end`.
+        rest = re.sub(r"^\s*<[^>]*>\s*(?=:)", "", rest)
         sup = ""
         s = re.match(r"\s*:\s*(\w+)", rest)
         if s is not None:
