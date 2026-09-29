@@ -151,24 +151,33 @@
 
 - (NSEnumerator *)objectEnumerator
 {
-	return [[self fnValuesArray] objectEnumerator];
+	NSMutableArray *values = [NSMutableArray arrayWithCapacity:[self count]];
+	NSEnumerator *keys = [self keyEnumerator];
+	id key;
+
+	/* OVER THE PRIMITIVES (§C.3 item 5): the values, in key order, through -objectForKey:. */
+	while ((key = [keys nextObject]) != nil) {
+		id value = [self objectForKey:key];
+
+		[values addObject:(value != nil ? value : (id)[NSNull null])];
+	}
+	return [values objectEnumerator];
 }
 
 - (NSDictionary *)dictionaryRepresentation
 {
-	/* BUILT FROM THE PAIRS, so a key whose value is empty is represented by an NSNull rather than being
-	 * dropped — a dictionary cannot hold a nil value, and silently losing the entry would be worse. */
+	/*
+	 * OVER THE PRIMITIVES (§C.3 item 5), AND THE NSNull IS THE POINT: this family CAN hold an empty value for a
+	 * key, and a dictionary cannot hold nil, so representing it as NSNull beats losing the pair.
+	 */
 	NSMutableDictionary *representation = [NSMutableDictionary dictionary];
-	NSUInteger i;
-	NSUInteger slots = [_table slotCount];
+	NSEnumerator *keys = [self keyEnumerator];
+	id key;
 
-	for (i = 0; i < slots; i++) {
-		if ([_table fnStateAtSlot:i] == FN_SLOT_FULL) {
-			id key = (id)[_table fnKeyAtSlot:i];
-			id value = (id)[_table fnValueAtSlot:i];
+	while ((key = [keys nextObject]) != nil) {
+		id value = [self objectForKey:key];
 
-			[representation setObject:(value != nil ? value : (id)[NSNull null]) forKey:key];
-		}
+		[representation setObject:(value != nil ? value : (id)[NSNull null]) forKey:key];
 	}
 	return representation;
 }
@@ -225,38 +234,26 @@
 				  objects:(id *)buffer
 				    count:(NSUInteger)length
 {
-	(void)buffer;
-	(void)length;
-	if (_snapshotKeys == NULL || _snapshotGeneration != [_table generation]) {
-		NSUInteger i;
-		NSUInteger slots = [_table slotCount];
-		NSUInteger size = [_table count] > 0 ? [_table count] : 1;
+	unsigned long cursor = state->state;
+	unsigned long produced = 0;
+	unsigned long skip;
+	NSEnumerator *enumerator = [self keyEnumerator];
+	id object;
 
-		free(_snapshotKeys);
-		free(_snapshotValues);
-		_snapshotKeys = (void **)calloc(size, sizeof(void *));
-		_snapshotValues = (void **)calloc(size, sizeof(void *));
-		_snapshotCount = 0;
-		for (i = 0; i < slots; i++) {
-			if ([_table fnStateAtSlot:i] == FN_SLOT_FULL) {
-				id value = (id)[_table fnValueAtSlot:i];
-
-				_snapshotKeys[_snapshotCount] = (void *)[_table fnKeyAtSlot:i];
-				_snapshotValues[_snapshotCount] = value != nil ? (void *)value : (void *)[NSNull null];
-				_snapshotCount++;
-			}
-		}
-		_snapshotGeneration = [_table generation];
+	/* A MAP TABLE ENUMERATES ITS KEYS, over the primitives through the CALLER'S buffer: state->state is the
+	 * cursor, and the snapshot is what -keyEnumerator already hands out. */
+	for (skip = 0; skip < cursor && (object = [enumerator nextObject]) != nil; skip++) {
 	}
-	if (state->state != 0) {
+	while (produced < length && (object = [enumerator nextObject]) != nil) {
+		buffer[produced++] = object;
+	}
+	state->mutationsPtr = &_mutations;
+	if (produced == 0) {
 		return 0;
 	}
-	/* THE VALUES, with `mutationsPtr` shared with the keys' enumerator: a mutation during the walk is caught
-	 * whichever side is being enumerated. */
-	state->itemsPtr = (id *)_snapshotValues;
-	state->mutationsPtr = &_mutations;
-	state->state = 1;
-	return _snapshotCount;
+	state->itemsPtr = buffer;
+	state->state = cursor + produced;
+	return produced;
 }
 
 + (BOOL)supportsSecureCoding
@@ -485,6 +482,8 @@
 	}
 	return copy;
 }
+
+
 
 - (void)dealloc
 {

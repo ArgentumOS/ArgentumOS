@@ -488,3 +488,34 @@ reference is fine everywhere else, including in `-copy`, while this one is not.
 and 2 have now made it a green configuration rather than a hypothesis: the legacy class CAN carry that door, with
 `id` arguments, and the front's three doors CAN move. **What is left before this family can land is item 4 alone.**
 
+**NSMAPTABLE: TWO PIECES LANDED, ITEM 4 BLOCKED ON THE PATCH/CODEGEN STEP.** The complete measurement table, every
+row run three times unless noted:
+
+| what was added | result |
+|---|---|
+| nothing | 3/3 PASS |
+| the fast-enumeration door, CORRECT types, real body | 3/3 CRASH |
+| the fast-enumeration door, CORRECT types, trivial body | 3/3 CRASH |
+| the fast-enumeration door, `id` types, trivial body | 3/3 PASS |
+| **the fast-enumeration door, `id` types, real body** | **3/3 PASS -> LANDED** |
+| **the front's objectEnumerator/dictionaryRepresentation/fast enumeration over the primitives** | **3/3 PASS -> LANDED** |
+| `+` `-classForCoder` on the front, unconditional | 3/3 CRASH |
+| `+` `-classForCoder` on the PRIVATE class | 3/3 CRASH |
+| `+` `-classForCoder { return [super classForCoder]; }` on the private class | 3/3 PASS |
+| `+` `-classForCoder { return NSClassFromString(@"NSMapTable"); }` on the private class | 3/3 CRASH |
+
+**WHAT IS LANDED:** the legacy class carries an `id`-typed fast-enumeration door whose body is the honest one, and
+the front's three doors read the primitives. Guest: foundation_legacymaptable 15/15, foundation_tableoptions 6/6,
+foundation_clusters 80/80, foundation_collection 46/46.
+
+**WHAT IS BLOCKED, AND WHAT IS NOT KNOWN:** §C.3 item 4 - the archiver's answer - cannot be added to this family.
+`[super classForCoder]` is safe, `[NSMapTable class]` crashes, `NSClassFromString(@"NSMapTable")` ALSO crashes, and
+placement does not matter (front or private class). The measurements do NOT yet separate the candidates: on the
+fast-enumeration door the TYPES decided it (correct types crash, `id` types pass) with an IDENTICAL body, while
+here two bodies that both merely NAME the class crash and `[super ...]` does not. **THE MECHANISM IS UNKNOWN; THE
+TRIGGERS ARE MEASURED.** The next step is therefore the instrumentation named earlier - `tools/`' patch step over a
+class that has such a method - rather than another library experiment, and it is a work item in its own right.
+
+**AND THIS FAMILY'S LEDGER ROW STAYS OPEN**, correctly: three of §C.3's items are done and the fourth cannot be,
+which is exactly the state a ledger row exists to record.
+
