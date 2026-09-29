@@ -21,7 +21,36 @@
 #import <Foundation/NSPredicate.h>
 #import <Foundation/NSString.h>
 
+/* ===================================================================================================
+ * THE PRIVATE CONCRETE CLASSES (plan §C.3, M3) - the same shape the array and dictionary families use.
+ * THE STORAGE IS THE FRONT'S OWN IVARS, which is why the mutable and counted classes need no second copy
+ * of them: NSMutableSet defines no initializers of its own and inherits every one from the front, so the
+ * class-choosing guard is a MEMBERSHIP test.
+ * =================================================================================================== */
+@interface AGSetEmpty : NSSet
++ (AGSetEmpty *)emptySet;
+@end
+
+@interface AGSetItems : NSSet
+@end
+
+@interface AGSetMutable : NSMutableSet
+@end
+
+
 @implementation NSSet
+
+/* THE DOOR IS `+alloc` (§C.3 item 1): a concrete class INHERITS this, and `[super alloc]` starts the
+ * lookup at NSSet's superclass with the receiver still being the class that was asked, so the routing
+ * happens exactly ONCE, at the front. */
++ (id)alloc
+{
+	if (self != [NSSet class]) {
+		return [super alloc];
+	}
+	return [AGSetItems alloc];
+}
+
 
 + (instancetype)set
 {
@@ -53,6 +82,14 @@
 	NSMutableArray *members;
 	NSUInteger i;
 
+	/* THE CLASS IS CHOSEN BY THE DATA (§C.3 item 2), for this family's general class only - a
+	 * mutable receiver inherits this implementation and must keep it. Both constructions here are
+	 * COMPLETE (the member array is assigned at the end), which is what makes answering the shared
+	 * empty instance safe. */
+	if ([self isMemberOfClass:[AGSetItems class]] && count == 0) {
+		[self release];	/* never initialized: the storage was never built */
+		return (id)[AGSetEmpty emptySet];
+	}
 	self = [super init];
 	if (self == nil) {
 		return nil;
@@ -89,6 +126,14 @@
 	NSMutableArray *members;
 	NSUInteger i;
 
+	/* THE CLASS IS CHOSEN BY THE DATA (§C.3 item 2), for this family's general class only - a
+	 * mutable receiver inherits this implementation and must keep it. Both constructions here are
+	 * COMPLETE (the member array is assigned at the end), which is what makes answering the shared
+	 * empty instance safe. */
+	if ([self isMemberOfClass:[AGSetItems class]] && [array count] == 0) {
+		[self release];	/* never initialized: the storage was never built */
+		return (id)[AGSetEmpty emptySet];
+	}
 	self = [super init];
 	if (self == nil) {
 		return nil;
@@ -151,12 +196,21 @@
 
 - (nullable id)anyObject
 {
-	return [_members count] > 0 ? [_members objectAtIndex:0] : nil;
+	return [self count] > 0 ? [_members objectAtIndex:0] : nil;
 }
 
 - (NSArray *)allObjects
 {
-	return _members;
+	NSMutableArray *out = [NSMutableArray arrayWithCapacity:[self count]];
+	NSEnumerator *enumerator = [self objectEnumerator];
+	id object;
+
+	/* OVER THE PRIMITIVES (§C.3 item 5). This used to hand back the internal member array, which a concrete
+	 * class with a different layout does not have - the empty one has none at all. */
+	while ((object = [enumerator nextObject]) != nil) {
+		[out addObject:object];
+	}
+	return out;
 }
 
 - (NSEnumerator *)objectEnumerator
@@ -172,8 +226,8 @@
 	if (block == NULL) {
 		return;
 	}
-	for (i = 0; i < [_members count]; i++) {
-		block([_members objectAtIndex:i], &stop);
+	for (i = 0; i < [self count]; i++) {
+		block([[self allObjects] objectAtIndex:i], &stop);
 		if (stop) {
 			break;
 		}
@@ -187,8 +241,8 @@
 	if (other == nil || [other count] != [self count]) {
 		return NO;
 	}
-	for (i = 0; i < [_members count]; i++) {
-		if (![other containsObject:[_members objectAtIndex:i]]) {
+	for (i = 0; i < [self count]; i++) {
+		if (![other containsObject:[[self allObjects] objectAtIndex:i]]) {
 			return NO;
 		}
 	}
@@ -202,8 +256,8 @@
 	if (other == nil || [self count] > [other count]) {
 		return NO;
 	}
-	for (i = 0; i < [_members count]; i++) {
-		if (![other containsObject:[_members objectAtIndex:i]]) {
+	for (i = 0; i < [self count]; i++) {
+		if (![other containsObject:[[self allObjects] objectAtIndex:i]]) {
 			return NO;
 		}
 	}
@@ -217,8 +271,8 @@
 	if (other == nil) {
 		return NO;
 	}
-	for (i = 0; i < [_members count]; i++) {
-		if ([other containsObject:[_members objectAtIndex:i]]) {
+	for (i = 0; i < [self count]; i++) {
+		if ([other containsObject:[[self allObjects] objectAtIndex:i]]) {
 			return YES;
 		}
 	}
@@ -251,7 +305,7 @@
 
 - (NSArray *)sortedArrayUsingDescriptors:(NSArray *)descriptors
 {
-	return [_members sortedArrayUsingDescriptors:descriptors];
+	return [[self allObjects] sortedArrayUsingDescriptors:descriptors];
 }
 
 - (instancetype)filteredSetUsingPredicate:(NSPredicate *)predicate
@@ -262,8 +316,8 @@
 	if (predicate == nil) {
 		return self;
 	}
-	for (i = 0; i < [_members count]; i++) {
-		id object = [_members objectAtIndex:i];
+	for (i = 0; i < [self count]; i++) {
+		id object = [[self allObjects] objectAtIndex:i];
 
 		if ([predicate evaluateWithObject:object]) {
 			[kept addObject:object];
@@ -287,7 +341,7 @@
  * Counting is enough to be correct; it is not trying to be clever. */
 - (NSUInteger)hash
 {
-	return [_members count];
+	return [self count];
 }
 
 - (NSString *)description
@@ -295,17 +349,23 @@
 	NSMutableString *out = [NSMutableString stringWithString:@"{("];
 	NSUInteger i;
 
-	for (i = 0; i < [_members count]; i++) {
+	for (i = 0; i < [self count]; i++) {
 		if (i > 0) {
 			[out appendString:@", "];
 		}
-		[out appendString:[[_members objectAtIndex:i] description]];
+		[out appendString:[[[self allObjects] objectAtIndex:i] description]];
 	}
 	[out appendString:@")}"];
 	return out;
 }
 
 /* Immutable, so copying is itself and a mutable copy is a real one. */
+/* §C.3 item 4: an archiver asks for THIS, never for -class. */
+- (Class)classForCoder
+{
+	return [NSSet class];
+}
+
 - (id)copy
 {
 	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) */
@@ -320,33 +380,50 @@
 				     objects:(id __unsafe_unretained *)buffer
 				       count:(unsigned long)length
 {
-	NSUInteger start;
-	NSUInteger remaining;
-	NSUInteger batch;
+	unsigned long cursor = state->state;
+	unsigned long produced = 0;
+	unsigned long skip;
+	NSEnumerator *enumerator = [self objectEnumerator];
+	id object;
 
-	if (length == 0) {
+	/*
+	 * OVER THE PRIMITIVES, THROUGH THE CALLER'S BUFFER. It used to batch out of the internal member array,
+	 * which is storage a concrete class with a different layout does not have; `objects` is caller-provided
+	 * scratch that stays valid for the batch, and `state->state` is the cursor, so a short batch RESUMES.
+	 */
+	for (skip = 0; skip < cursor && (object = [enumerator nextObject]) != nil; skip++) {
+	}
+	while (produced < length && (object = [enumerator nextObject]) != nil) {
+		buffer[produced++] = object;
+	}
+	state->mutationsPtr = &_mutations;
+	if (produced == 0) {
 		return 0;
 	}
-	start = (NSUInteger)state->state;
-	if (start >= [_members count]) {
-		return 0;
-	}
-	remaining = [_members count] - start;
-	batch = remaining < (NSUInteger)length ? remaining : (NSUInteger)length;
-	if (start == 0) {
-		/* The consistency token, set once: the runtime compares it and raises if the set changed
-		 * while the loop was running. */
-		state->mutationsPtr = &_mutations;
-	}
-	[_members getObjects:buffer range:NSMakeRange(start, batch)];
 	state->itemsPtr = buffer;
-	state->state = (unsigned long)(start + batch);
-	return (unsigned long)batch;
+	state->state = cursor + produced;
+	return produced;
 }
 
 @end
 
 @implementation NSMutableSet
+
+/* THE SAME DOOR (§C.3 item 1), and the mutable front answers ITSELF to an archiver (§C.3 item 4) - the
+ * bullet that keeps the private concrete names out of every archive (§C.4). */
++ (id)alloc
+{
+	if (self != [NSMutableSet class]) {
+		return [super alloc];
+	}
+	return [AGSetMutable alloc];
+}
+
+- (Class)classForCoder
+{
+	return [NSMutableSet class];
+}
+
 
 + (instancetype)setWithCapacity:(NSUInteger)capacity
 {
@@ -375,7 +452,7 @@
 		return;			/* a set has no duplicates, and nil is not a member */
 	}
 	members = [NSMutableArray arrayWithCapacity:[self count] + 1];
-	[members addObjectsFromArray:_members];
+	[members addObjectsFromArray:[self allObjects]];
 	[members addObject:object];
 	[self fnReplaceMembers:members];
 }
@@ -389,8 +466,8 @@
 		return;
 	}
 	members = [NSMutableArray arrayWithCapacity:[self count]];
-	for (i = 0; i < [_members count]; i++) {
-		id candidate = [_members objectAtIndex:i];
+	for (i = 0; i < [self count]; i++) {
+		id candidate = [[self allObjects] objectAtIndex:i];
 
 		if (![candidate isEqual:object]) {
 			[members addObject:candidate];
@@ -434,8 +511,8 @@
 	NSUInteger i;
 
 	members = [NSMutableArray arrayWithCapacity:[self count]];
-	for (i = 0; i < [_members count]; i++) {
-		id candidate = [_members objectAtIndex:i];
+	for (i = 0; i < [self count]; i++) {
+		id candidate = [[self allObjects] objectAtIndex:i];
 
 		if ([other containsObject:candidate]) {
 			[members addObject:candidate];
@@ -474,5 +551,67 @@
 {
 	return [[NSMutableSet alloc] initWithArray:_members];
 }
+
+@end
+
+
+/* ===================================================================================================
+ * THE CONCRETE CLASSES (§C.3 items 2, 3 and 8).
+ * =================================================================================================== */
+
+@implementation AGSetItems
+
+/* [[NSSet alloc] init] IS A LEGITIMATE THING TO WRITE (§C.3 item 1) AND IT IS THE EMPTY CASE. Here, unlike
+ * the dictionary family, it is implemented on the concrete class rather than the front, because every
+ * constructor in this family is COMPLETE: none of them allocates and then fills. */
+- (instancetype)init
+{
+	[self release];
+	return (id)[AGSetEmpty emptySet];
+}
+
+@end
+
+@implementation AGSetEmpty
+
++ (AGSetEmpty *)emptySet
+{
+	static AGSetEmpty *shared = nil;
+
+	if (shared == nil) {
+		shared = [[AGSetEmpty alloc] init];
+	}
+	return shared;
+}
+
+/* IMMORTAL, the price of a singleton in a library with no `+allocWithZone:` and no collector. */
+- (id)retain { return self; }
+- (void)release { }
+- (id)autorelease { return self; }
+- (NSUInteger)retainCount { return NSUIntegerMax; }
+
+/* THE THREE PRIMITIVES (§C.3 item 5) AND NOTHING ELSE. */
+- (NSUInteger)count
+{
+	return 0;
+}
+
+- (nullable id)member:(id)object
+{
+	(void)object;
+	return nil;
+}
+
+- (NSEnumerator *)objectEnumerator
+{
+	return [[NSArray array] objectEnumerator];
+}
+
+@end
+
+@implementation AGSetMutable
+
+/* NOTHING TO IMPLEMENT: NSMutableSet's implementation IS the mutable storage implementation, and what a
+ * caller gains is the NAME that -class answers. */
 
 @end

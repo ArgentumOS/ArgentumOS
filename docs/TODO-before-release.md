@@ -104,4 +104,23 @@ not be implemented via a method that reads through it** — `-keyEnumerator` via
 reads through `-keyEnumerator` was MUTUAL RECURSION, measured as a guest stack overflow with an exit-135 map
 dump.
 
-**M3 (`NSSet` / `NSMutableSet` / `NSCountedSet`) is next**; §2's two gaps remain.
+**M3 IS IN PROGRESS (2026-09-29).** Compile half `8269866b` (34 declarations; the family's 31 findings → 0,
+the tree's total 118 → 86). Runtime half: the three-rung ladder with `AGSetEmpty`/`AGSetItems`/`AGSetMutable`
+and `AGCountedSet`, `+alloc` routed once per front, `-classForCoder` on all three, and the derived reads
+moved onto `-count`/`-member:`/`-objectEnumerator:` — §C.3 item 5. A probe run in this session reported FIVE
+of the nine new set checks passing (`nsset-class-answers-a-concrete-class`,
+`nsset-alloc-init-is-the-empty-singleton`, `nsset-mutable-and-counted-answer-their-own-concrete-classes`,
+`nsset-class-for-coder-answers-the-front`, `nsset-empty-answers-every-read`), with `foundation_collection`
+46/46 and `foundation_coder` 11/11 unmoved.
+
+**TWO THINGS OWED FOR M3, both found by that run rather than suspected:**
+
+* **`NSKeyedArchiver` HAS NO SET PATH.** The probe's archive check crashed the guest, and the cause is not the
+  cluster: grepping the archiver's source for `NSSet` finds NOTHING, so archiving a set RAISES where an array
+  or a dictionary is encoded. `-classForCoder` answers the front correctly (asserted), so the contract the
+  archiver will need is in place; the archiver's set support is itself the owed work.
+* **The probe's set section is not landed.** My repair of the archive check over-deleted and broke the build,
+  so the probe was reverted rather than left red; the nine set checks (including the third-party
+  `ProbePrimitiveSet`) need to be re-added in one self-contained block, as M2's finally were.
+
+**M4 onward follow**; §2's two gaps remain.

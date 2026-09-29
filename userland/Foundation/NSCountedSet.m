@@ -24,7 +24,29 @@
 #import <Foundation/NSNumber.h>
 #import <Foundation/NSPredicate.h>
 
+/* THE COUNTED SET'S OWN CONCRETE CLASS (plan §C.5, M3: "counted-set storage as its own concrete class").
+ * The storage is NSCountedSet's own ivar - a count array index-aligned with the inherited member array -
+ * so this class adds no code and is the NAME that -class answers. */
+@interface AGCountedSet : NSCountedSet
+@end
+
 @implementation NSCountedSet
+
+/* THE DOOR (§C.3 item 1), routed exactly once, and the counted class answers ITSELF to an archiver
+ * (§C.3 item 4). */
++ (id)alloc
+{
+	if (self != [NSCountedSet class]) {
+		return [super alloc];
+	}
+	return [AGCountedSet alloc];
+}
+
+- (Class)classForCoder
+{
+	return [NSCountedSet class];
+}
+
 
 + (instancetype)setWithCapacity:(NSUInteger)capacity
 {
@@ -176,5 +198,12 @@
 	[super filterUsingPredicate:predicate];
 	_counts = keptCounts;
 }
+
+@end
+
+@implementation AGCountedSet
+
+/* NOTHING TO IMPLEMENT: NSCountedSet's implementation IS the counted storage implementation, and what a
+ * caller gains is the NAME that -class answers. */
 
 @end
