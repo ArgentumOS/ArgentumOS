@@ -215,39 +215,56 @@ land.
 | the parameter names per METHOD: `- (ObjectType) objectAtIndex:`, `- (ObjectType) objectForKey:(KeyType)` | **Apple's documentation**, occ variant via `variantOverrides` | primary, measured |
 | arity preserved on import, every imported parameter gets a class constraint; examples `NSArray<NSDate *>`, `NSCache<NSObject *, id<NSDiscardableContent>>` | Apple's *"Using Imported Lightweight Generics in Swift"* | primary |
 | type erasure — *"completely erased by IR generation … no runtime or metadata changes"*; the beneficiaries are *"`NSArray`, `NSDictionary`, `NSSet`"* | clang's post + **Apple's SE-0057** | primary |
-| the wider list (NSMutable*, NSOrderedSet, NSEnumerator, NSMapTable, NSHashTable) and NSDictionary's `__covariant KeyType, __covariant ObjectType` | forums/blogs/SO **quoting the headers** | **SECONDARY — not admissible as specification** |
+| ~~the wider list (NSMutable*, NSOrderedSet, NSEnumerator, NSMapTable, NSHashTable) …~~ | ~~forums/blogs quoting the headers~~ | **SUPERSEDED — answered below, from the headers themselves** |
 
-**AND WHAT THEY DO NOT PUBLISH — two blockers, stated rather than papered over:**
+**THE BLOCKER IS ANSWERED (2026-09-28): THE USER GRANTED READING APPLE'S PUBLICLY PUBLISHED HEADERS, "for the
+sole purpose of compatibility, as permitted by US and Canadian law."** With that grant the set stops being an
+inference. Everything below is read **from the public headers**, DECLARATIONS ONLY — no implementation source
+was read and none is needed, because a parameter list is an interface fact. Source: `Foundation.framework/
+Headers/*.h` in an Apple SDK as published (`theos/sdks`, iPhoneOS16.5.sdk).
 
-1. **The class-level parameter list is not in Apple's documentation.** Measured: the occ variant of the
-   `NSArray` page declares `@interface NSArray : NSObject` — no angle brackets — while the *methods* on the
-   same page carry `ObjectType`. So "any and all" cannot be read off as a list; it can only be inferred from
-   which methods use an undeclared parameter. My scanner for that inference (walk each class page's
-   `topicSections`, read the parameter names out of its methods) **did not run**: it reported `scanned=0` for
-   all 21 classes, so its identifier filter matched nothing and it produced no data. **The instrument is
-   broken and that is recorded, not hidden**; fixing it is this section's first task.
-2. **Variance is published for no class except `NSArray`** (clang's post). The secondary sources claim both of
-   `NSDictionary`'s parameters are `__covariant`, but those are header quotes and this project does not treat
-   Apple's headers as admissible.
+| class | Apple's published declaration | variance |
+|-------|------------------------------|----------|
+| `NSArray` | `@interface NSArray<__covariant ObjectType>` | covariant |
+| `NSMutableArray` | `@interface NSMutableArray<ObjectType> : NSArray<ObjectType>` | inherited |
+| `NSDictionary` | `@interface NSDictionary<__covariant KeyType, __covariant ObjectType>` | **BOTH** covariant |
+| `NSMutableDictionary` | `<KeyType, ObjectType> : NSDictionary<KeyType, ObjectType>` | inherited |
+| `NSSet` | `@interface NSSet<__covariant ObjectType>` | covariant |
+| `NSMutableSet` | `<ObjectType> : NSSet<ObjectType>` | inherited |
+| `NSCountedSet` | `<ObjectType> : NSMutableSet<ObjectType>` | inherited |
+| `NSOrderedSet` | `@interface NSOrderedSet<__covariant ObjectType>` | covariant |
+| `NSMutableOrderedSet` | `<ObjectType> : NSOrderedSet<ObjectType>` | inherited |
+| `NSEnumerator` | `@interface NSEnumerator<ObjectType> : NSObject <NSFastEnumeration>` | **INVARIANT** |
+| `NSMapTable` | `@interface NSMapTable<KeyType, ObjectType>` | invariant |
+| `NSHashTable` | `@interface NSHashTable<ObjectType>` | invariant |
+| `NSCache` | `@interface NSCache <KeyType, ObjectType>` | invariant |
 
-**THE RULE ADOPTED HERE IS DERIVED FROM A PUBLISHED REASON, NOT A RECALLED LIST:** a parameter is
-`__covariant` **exactly where the collection is immutable**, that being the reason clang's post gives for
-`NSArray`; the mutable counterpart inherits its parameter's variance through the class it subclasses
-(`NSMutableArray : NSArray`), so it needs no second decision. Where a container is inherently mutable
-(`NSMapTable`, `NSHashTable`) the reason does not apply, so the parameter stays invariant **and the milestone
-says so**. Any variance we cannot cite is recorded as OURS — §C.6's rule applied to a compile-time feature.
+**AND THESE ARE DELIBERATELY *NOT* PARAMETERIZED, so ours must stay unparameterized too** (measured the same
+way): `NSPointerArray`, `NSIndexSet`, `NSData`, `NSAttributedString`, `NSString`, `NSValue`,
+`NSPointerFunctions`. Of §C.2's sixteen families **eight are parameterized** — NSArray, NSDictionary, NSSet,
+NSCountedSet, NSOrderedSet, NSMapTable, NSHashTable — **plus `NSCache`, which is NOT one of the sixteen
+families** and is therefore a parameterization-only target. **And CATEGORIES carry the parameters as well**
+(`@interface NSArray<ObjectType> (NSExtendedArray)`), so a family's categories must be parameterized in the
+same edit as its class, or the header will not compile against Apple-shaped source that specializes them.
+
+**MY REASON-BASED RULE FROM BEFORE THE GRANT WAS WRONG, AND THE MEASUREMENT REPLACES IT.** The rule recorded
+here earlier — "covariant exactly where the collection is immutable" — predicts covariance for
+`NSEnumerator`, and Apple declares `<ObjectType>` with **no** variance at all. The inference reasoned about a
+property Apple never stated as the criterion; the declaration is the criterion. This is the second time in
+this plan that a plausible inference lost to a measurement, and it is recorded for the same reason as the
+first: the next reader should trust the second column of that table over any reasoning about it.
 
 **THE INSTRUMENT IS THE COMPILER, BECAUSE NOTHING ELSE CAN SEE THIS.** Type arguments are erased before IR
 generation, so no runtime probe can observe one and a `-class`-style check is impossible by construction.
 Verification is a **compile probe** under `-Werror`, the shape this project already uses for nullability: a
-file assigning `NSArray<NSMutableString *> *` to `NSArray<NSString *> *` **must compile** (that is covariance,
-the one behaviour the published text names); a file assigning two unrelated specialized types **must be
-refused**; and every parameterized declaration in our headers must be exercised by at least one such line, so
-a silently dropped parameter fails the build instead of passing unnoticed.
+file assigning `NSArray<NSMutableString *> *` to `NSArray<NSString *> *` **must compile** (covariance, measured
+above); a file assigning two unrelated specialized types **must be refused**; and every parameterized
+declaration in our headers must be exercised by at least one such line, so a silently dropped parameter fails
+the build instead of passing unnoticed.
 
 **WHERE IT GOES: parameterization rides with each family, not as its own milestone** — header-only work on the
 declarations that family's milestone is already rewriting, and it must not change behaviour (the annotation is
 erased, so a family's probe results must be identical before and after). §C.5's M1 gains "parameterize
-`NSArray`/`NSMutableArray`" plus the compile-probe acceptance, and every later family does the same. **The two
-blockers above are all that stands between this and "any and all": one is a broken scanner, the other a
-source-of-truth decision that belongs to the user.**
+`NSArray`/`NSMutableArray` and the `NSArray` categories" plus the compile-probe acceptance; every later family
+does the same; **`NSCache` needs a home** and rides the first milestone that touches it, or a small milestone
+of its own if none does.
