@@ -230,10 +230,15 @@ import to RESOLVE to a header inside this tree.
 
 ### 4.2 Decisions this plan makes (stated, and correctable)
 
-1. **No class clusters in v1.** Cocoa's `NSArray` is an abstract front for
-   private subclasses; ours are honest concrete classes with
-   `NSString`/`NSMutableString`-style pairs. Fewer surprises, and the mutable/
-   immutable split still gets the Cocoa shape.
+1. **~~No class clusters in v1.~~ REVERSED 2026-09-28 (§C) — the library MATCHES Apple's class-cluster
+   implementation**, in the sixteen families the user chose (D-C1) at exact fidelity (D-C2). AS ORIGINALLY
+   WRITTEN this item read: "Cocoa's `NSArray` is an abstract front for private subclasses; ours are honest
+   concrete classes with `NSString`/`NSMutableString`-style pairs. Fewer surprises, and the mutable/
+   immutable split still gets the Cocoa shape." The reason it was written was "fewer surprises"; the reason
+   it is reversed is that a cluster is a PUBLISHED CONTRACT that third-party source compiles against, and
+   that Apple's own `-classForCoder` is what keeps a cluster from surprising anyone — including the
+   archiver, the one place here that would have paid for it. See
+   `docs/design/foundation-clusters-plan.md`.
 2. **Mutability is by paired class**, not a flag: an `NSString` is immutable;
    `NSMutableString` subclasses it and adds mutation.
 3. **The ownership contract is Cocoa's, by method family** (§3) — that is what

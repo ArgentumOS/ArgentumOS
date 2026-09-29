@@ -48,14 +48,14 @@ extern void _Block_release(const void *aBlock);
  * which it COPIED (a block literal is a stack object and this one outlives the call that made it), and
  * which it retains the notification through, because the delivery outlives the post.
  */
-@interface FnBlockOperation : NSOperation
+@interface FNNotificationBlockOperation : NSOperation
 {
 	void (^_body)(void);
 }
 - (instancetype)initWithBlock:(void (^)(void))body;
 @end
 
-@implementation FnBlockOperation
+@implementation FNNotificationBlockOperation
 
 - (instancetype)initWithBlock:(void (^)(void))body
 {
@@ -162,7 +162,7 @@ extern void _Block_release(const void *aBlock);
 			 * NOT: -addOperationWithBlock: is named as not-yet-shipped in NSOperation.h (it belongs
 			 * with the block operations, W17), and this family must not widen into that one to deliver
 			 * its own documented semantics — so a private block operation is the seam. */
-			FnBlockOperation *operation = [[FnBlockOperation alloc] initWithBlock:^(void) {
+			FNNotificationBlockOperation *operation = [[FNNotificationBlockOperation alloc] initWithBlock:^(void) {
 				_block(notification);
 			}];
 
