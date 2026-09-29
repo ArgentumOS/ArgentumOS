@@ -205,6 +205,12 @@ CHECKS = (
           # M7: NSAttributedString - a front with a public mutable subclass.
           "nsattributedstring-archiver-answer-for-front-and-public-subclass",
           "nsattributedstring-primitives-drive-length-hash-and-attribute",
+          # M7: NSMapTable - a front whose three doors landed over the primitives.
+          "nsmaptable-answer-and-own-reads",
+          "nsmaptable-primitives-drive-the-three-doors",
+          "nsmaptable-primitives-drive-dictionaryrepresentation",
+          "nsmaptable-primitives-drive-objectenumerator",
+          "nsmaptable-primitives-drive-fast-enumeration",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a

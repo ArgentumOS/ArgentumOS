@@ -529,6 +529,36 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
 
 @end
 
+/* THE THIRD-PARTY CASE FOR NSMAPTABLE: a class over ONLY the three primitives the header names - -count,
+ * -objectForKey: and -keyEnumerator - with no table of its own. */
+@interface ProbePrimitiveMapTable : NSMapTable
+@end
+
+@implementation ProbePrimitiveMapTable
+
+- (NSUInteger)count
+{
+	return 2;
+}
+
+- (nullable id)objectForKey:(id)key
+{
+	if ([key isEqual:@"k1"]) {
+		return @"v1";
+	}
+	if ([key isEqual:@"k2"]) {
+		return @"v2";
+	}
+	return nil;
+}
+
+- (NSEnumerator *)keyEnumerator
+{
+	return [[NSArray arrayWithObjects:@"k1", @"k2", nil] objectEnumerator];
+}
+
+@end
+
 int main(void)
 {
 	ProbeCluster *empty;
@@ -1319,6 +1349,45 @@ int main(void)
 		      ! [handmadeAttr isEqualToAttributedString:plainAttr],
 		      "-length, -hash, the effective-range attribute door and -isEqualToAttributedString: must be "
 		      "written over the two primitives, on a class with no run store at all");
+	}
+
+	{
+		/*
+		 * M7: NSMapTable — the doors landed this session have to be ASSERTED, not merely built. Locals
+		 * declared HERE.
+		 */
+		NSMapTable *table = [NSMapTable strongToStrongObjectsMapTable];
+		ProbePrimitiveMapTable *handmadeTable = [[ProbePrimitiveMapTable alloc] init];
+		NSDictionary *representation;
+		NSUInteger mapSeen = 0;
+		id mapKey;
+
+		[table setObject:@"v" forKey:@"k"];
+		check("nsmaptable-answer-and-own-reads",
+		      [table count] == 1 && [[table objectForKey:@"k"] isEqual:@"v"] &&
+		      [[table dictionaryRepresentation] objectForKey:@"k"] == [table objectForKey:@"k"] &&
+		      [[[table objectEnumerator] allObjects] count] == 1,
+		      "the object API must answer for a table this library made");
+		check("nsmaptable-primitives-drive-the-three-doors",
+		      [handmadeTable count] == 2 &&
+		      [[handmadeTable objectForKey:@"k1"] isEqual:@"v1"] &&
+		      [[handmadeTable objectForKey:@"k2"] isEqual:@"v2"] &&
+		      [handmadeTable objectForKey:@"absent"] == nil,
+		      "a class over the three primitives must answer them");
+		representation = [handmadeTable dictionaryRepresentation];
+		check("nsmaptable-primitives-drive-dictionaryrepresentation",
+		      [[representation objectForKey:@"k1"] isEqual:@"v1"] &&
+		      [[representation objectForKey:@"k2"] isEqual:@"v2"] && [representation count] == 2,
+		      "-dictionaryRepresentation must be written over -keyEnumerator and -objectForKey:, on a class with no "
+		      "table of its own");
+		check("nsmaptable-primitives-drive-objectenumerator",
+		      [[[handmadeTable objectEnumerator] allObjects] count] == 2,
+		      "-objectEnumerator must be written over the primitives");
+		for (mapKey in handmadeTable) {
+			mapSeen++;
+		}
+		check("nsmaptable-primitives-drive-fast-enumeration", mapSeen == 2,
+		      "fast enumeration must walk the KEY enumerator through the caller's buffer");
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");
