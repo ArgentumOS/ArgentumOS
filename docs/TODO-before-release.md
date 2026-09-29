@@ -334,3 +334,22 @@ error was anticipated rather than explained afterwards.
 which is why their doors must route exactly once at the front), and the compile probe's NEGATIVE assertions for
 `NSAttributedString` and `NSPointerArray`.
 
+**NSMAPTABLE'S RUNTIME HALF WAS ATTEMPTED 2026-09-29 AND REVERTED** (its parameterization stands: `2d93437c`).
+The tree is green; `foundation_legacymaptable` is back at 15/15. The attempt and the measurement:
+
+* **THE MEASUREMENT WORTH KEEPING: `FNLegacyMapTable` ALREADY IMPLEMENTS THE PRIMITIVES ITSELF** — it overrides
+  `-count`, `-objectForKey:`, `-keyEnumerator`, `-objectEnumerator`, `-dictionaryRepresentation` and `-copy`. So
+  the legacy subclass is ALREADY a §C.3 concrete class, and it is the model the modern front should be brought
+  to rather than a thing to route around. Its enumerators wrap each pointer in an `NSValue` and autorelease.
+* **WHAT BROKE:** moving the front's `-objectEnumerator`, `-dictionaryRepresentation` and
+  `-countByEnumeratingWithState:` onto the primitives made `foundation_legacymaptable` SEGV (status 139) at
+  teardown — the last check it reported was `reset-empties-it`, and the fault came in the `NSFreeMapTable` calls
+  that follow.
+* **THE LEAD, STATED AS A HYPOTHESIS RATHER THAN A FINDING:** the old `-countByEnumeratingWithState:` batched
+  from `_table`, and `_table` is NULL for a legacy table — so it yielded NOTHING for that class, while the new
+  one calls `[self keyEnumerator]` and yields the wrapped `NSValue`s. A door that changes from "no keys" to "the
+  keys" for the legacy class is a behaviour change the teardown then hit. The mechanism was NOT isolated.
+* **THE NEXT STEP, IN ORDER:** give `FNLegacyMapTable` its OWN `-countByEnumeratingWithState:` over its own
+  storage (the array, dictionary and set families each implement that door in the concrete class) BEFORE moving
+  the front's, then move the front's three doors, with `foundation_legacymaptable` as the gate at每一 step.
+
