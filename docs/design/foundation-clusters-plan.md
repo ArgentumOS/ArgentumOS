@@ -47,6 +47,12 @@ parameters). §C.3 is the runtime CONTRACT, §C.4 is the measured BLAST RADIUS, 
   families plus two targets outside them, which is 13 parameterized declarations in all (§C.2, §C.7).
   Variance comes from the declaration, never from reasoning about it (§C.7 records the rule that got that
   wrong and was retracted).
+* **D-C5 (method-level parameterization) — A METHOD THAT IS PARAMETERIZED IN APPLE'S IMPLEMENTATION IS
+  PARAMETERIZED IN OURS** (user, 2026-09-28). This is a PER-METHOD rule and not a per-class one, and the
+  measurement proves the distinction is real: on `NSDictionary`, `+dictionaryWithObjects:forKeys:count:` takes
+  its keys as `(id<NSCopying> const[])` — Apple does **not** use `KeyType` there — while `-objectForKey:`
+  takes `(KeyType)aKey`. So the work list is generated per SELECTOR (§C.7 says how, and where it lives), and
+  a family is not done until every method the list flags is parameterized AND no unlisted one is.
 
 ## §C.2 The two measured sets, in one table
 
@@ -188,8 +194,10 @@ stops until it is explained.
 
 **EACH MILESTONE ALSO:** keeps its family's EXISTING case green (the M0 rule: nothing shipped may change
 behaviour by accident), records the private concrete class NAMES in the family's header comment, adds the
-§C.3 bullets that family can exhibit as named checks, and refreshes the ledger. Any family that cannot reach
-exact fidelity records the deviation, the reason and the cost — §C.6's rule.
+§C.3 bullets that family can exhibit as named checks, and refreshes the ledger. **AND, since D-C5, its
+COMPILE half is not only the class and its categories: every METHOD the generated list flags for that family
+is parameterized, and no method it does not flag is** (§C.7 says how the list is produced and where it lives).
+Any family that cannot reach exact fidelity records the deviation, the reason and the cost — §C.6's rule.
 
 ## §C.6 Boundaries, stated up front
 
@@ -253,3 +261,33 @@ columns over any reasoning about them.
 * **The mutable counterpart re-declares the parameter** in its own `@interface`
   (`NSMutableArray<ObjectType> : NSArray<ObjectType>`); it does not merely inherit the spelling, even though
   that is where its variance comes from.
+
+### Method-level parameterization (D-C5): the measurement, and where its list lives
+
+**THE RULE IS PER METHOD, AND THE MEASUREMENT SHOWS WHY THAT IS NOT PEDANTRY.** On `NSDictionary`,
+`+dictionaryWithObjects:forKeys:count:` declares its keys as `(id<NSCopying> const[])` — **not** `KeyType` —
+while `-objectForKey:` takes `(KeyType)aKey`. So "a parameterized class uses its parameters everywhere" would
+be wrong in BOTH directions: some methods of a parameterized class name no parameter at all, and the rule has
+to be read off each declaration. Measured on two families, per method:
+
+| class | identifiers on its page | of the first N scanned, how many name a parameter | examples |
+|-------|-------------------------|---------------------------------------------------|----------|
+| `NSArray` | 83 across 20 topic sections | **5 of 12** | `+arrayWithObject:(ObjectType)`, `+arrayWithObjects:(ObjectType)`, `+arrayWithObjects:(ObjectType const[]) objects count:(NSUInteger)`, `-initWithObjects:(ObjectType)`, `-initWithObjects:(ObjectType const[]) objects count:` |
+| `NSDictionary` | 64 across 17 | **3 of 10** | `+dictionaryWithObjects:(ObjectType const[]) forKeys:(id<NSCopying> const[]) count:`, `-initWithObjects:forKeys:count:`, `+dictionaryWithObject:(ObjectType) forKey:(id<NSCopying>)` |
+
+**THE SCANNER, AND THE BUG THAT MADE IT REPORT NOTHING.** A class page's identifiers are spelled
+`doc://com.apple.foundation/documentation/Foundation/NSArray/array` — **the class name appears in its
+ORIGINAL capitalisation** — and the first version of the scanner filtered on a lowercased one, which is
+exactly why it reported `scanned=0` for all 21 classes in the earlier session. One filter fixed it. That is
+this plan's third instrument failure and the same shape as the other two: **the code was fine and the pattern
+was wrong.** Each identifier is then fetched as a method page, the `occ` variant is applied through
+`variantOverrides`, and the declaration's text is searched for a type parameter (`\b[A-Z][A-Za-z0-9]*Type\b`).
+
+**WHERE THE LIST LIVES, AND WHY IT IS GENERATED RATHER THAN HAND-WRITTEN.**
+`tools/foundation-sweep.py` already OWNS the selector ledger — it writes all 4,564 rows of
+`docs/reference/foundation-selector-surface.txt` (line 850) — so it is the tool to extend: each row gains a
+flag recording whether Apple's published declaration for that selector names a type parameter, and `--check`
+then fails on **both halves** — a flagged selector whose declaration in our header names no parameter, and an
+unflagged selector that names one. **Only the DERIVED form ships** (the rule the deprecation list already
+follows: names and flags in the tree, the generator in `tools/`, nothing copied out of a header), and Apple's
+published documentation remains the source, exactly as it is for the ledger's other columns.
