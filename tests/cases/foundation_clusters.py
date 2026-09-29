@@ -103,6 +103,9 @@ CHECKS = (
           "nsdictionary-empty-answers-every-read",
           "nsdictionary-archive-names-the-public-class",
           "nsdictionary-archive-names-no-private-class",
+          "nsdictionary-primitives-drive-keys-values-and-equality",
+          "nsdictionary-primitives-drive-getobjects-andkeys",
+          "nsdictionary-primitives-drive-fast-enumeration",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a

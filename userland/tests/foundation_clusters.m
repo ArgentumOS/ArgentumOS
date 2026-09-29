@@ -209,6 +209,38 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
 
 @end
 
+/* THE THIRD-PARTY CASE FOR THE DICTIONARY FAMILY, and it makes the same demand the array family's does: a
+ * class that inherits NSDictionary and overrides ONLY the three primitives the header names. If any derived
+ * door still read the bucket chains, THIS class would be reading whatever it keeps in those ivars. There is
+ * deliberately no -dealloc and no storage: the two keys are literals and the enumerator is a fresh array. */
+@interface ProbePrimitiveDictionary : NSDictionary
+@end
+
+@implementation ProbePrimitiveDictionary
+
+- (NSUInteger)count
+{
+	return 2;
+}
+
+- (id)objectForKey:(id)key
+{
+	if ([key isEqual:@"a"]) {
+		return @"1";
+	}
+	if ([key isEqual:@"b"]) {
+		return @"2";
+	}
+	return nil;
+}
+
+- (NSEnumerator *)keyEnumerator
+{
+	return [[NSArray arrayWithObjects:@"a", @"b", nil] objectEnumerator];
+}
+
+@end
+
 int main(void)
 {
 	ProbeCluster *empty;
@@ -460,6 +492,53 @@ int main(void)
 		check("nsdictionary-archive-names-no-private-class",
 		      !contains(dictBytes, dictLength, "AGDictionary"),
 		      "no private concrete name may reach an archive - what -classForCoder buys");
+		{
+			/* THE PRIMITIVES ARE THE CONTRACT (§C.3 item 5), proven the way the array family's is: a class
+			 * that overrides ONLY -count, -objectForKey: and -keyEnumerator must be correct through every
+			 * door. Its locals are declared HERE, so nothing below depends on the block above. */
+			ProbePrimitiveDictionary *handmadeDict = [[ProbePrimitiveDictionary alloc] init];
+			NSDictionary *expectedDict =
+				[NSDictionary dictionaryWithObjects:[NSArray arrayWithObjects:@"1", @"2", nil]
+							    forKeys:[NSArray arrayWithObjects:@"a", @"b", nil]];
+			NSUInteger thirdPartySeen = 0;
+			id thirdPartyKey;
+
+			check("nsdictionary-primitives-drive-keys-values-and-equality",
+			      [[handmadeDict allKeys] count] == 2 && [[handmadeDict allValues] count] == 2 &&
+			      [[handmadeDict allKeysForObject:@"1"] count] == 1 &&
+			      [handmadeDict isEqualToDictionary:expectedDict] &&
+			      [expectedDict isEqualToDictionary:handmadeDict] &&
+			      [handmadeDict hash] == [expectedDict hash] &&
+			      [[handmadeDict description] length] > 0 &&
+			      [handmadeDict objectForKeyedSubscript:@"a"] != nil,
+			      "keys, values, BOTH equality directions, hash and description must be written over the "
+			      "primitives, on a class that has neither buckets nor a snapshot");
+
+			{
+				id __unsafe_unretained seenObjects[2];
+				id __unsafe_unretained seenKeys[2];
+				NSUInteger seenIndex;
+				BOOL paired = YES;
+
+				[handmadeDict getObjects:seenObjects andKeys:seenKeys];
+				for (seenIndex = 0; seenIndex < 2; seenIndex++) {
+					id seenValue = [handmadeDict objectForKey:seenKeys[seenIndex]];
+
+					/* The value is read FIRST, so a nil one is never handed to a nonnull argument. */
+					if (seenValue == nil || ![seenObjects[seenIndex] isEqual:seenValue]) {
+						paired = NO;
+					}
+				}
+				check("nsdictionary-primitives-drive-getobjects-andkeys", paired,
+				      "-getObjects:andKeys: must keep each key paired with its own value");
+			}
+			for (thirdPartyKey in handmadeDict) {
+				thirdPartySeen++;
+			}
+			check("nsdictionary-primitives-drive-fast-enumeration", thirdPartySeen == 2,
+			      "fast enumeration must walk the primitives through the caller's buffer");
+		}
+
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");

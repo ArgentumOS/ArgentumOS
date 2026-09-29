@@ -91,4 +91,17 @@ would have produced a vacuous check: **without `-Werror=incompatible-pointer-typ
 compiles (exit 0)** — the flag IS the instrument; and the mirror must be SYMLINKS to the rest of `userland/`
 with only `Foundation/` copied, because a copy of `Foundation/` alone cannot compile at all
 (`CoreGraphics/CGGeometry.h`), and a failure for an unrelated reason reads exactly like the instrument
-working. **M2 (`NSDictionary` / `NSMutableDictionary`) is next**; §2's two gaps remain.
+working. **M1 AND M2 ARE COMPLETE (2026-09-29).** M2 is `0839b487` (compile half), `e363456f` (the cluster),
+`8bf0ab89` (the derived reads onto the primitives) and the third-party proof. Measured: the family's 32
+findings → 0, the tree's total 151 → 118, the probe ok=34, `foundation_collection` 46/46 and
+`foundation_coder` 11/11 unmoved.
+
+Two things M2 taught that the array family did not, both recorded in the code rather than in a commit
+message alone: **this family has ALLOCATE-THEN-FILL constructors**, so `-init` must NOT answer the shared
+singleton (doing what M1 does broke three existing checks — `dict-constructors`, `dictionary-plist-file`,
+`dictionary-plist-url`), and the singleton belongs to the two COMPLETE constructions; and **a primitive must
+not be implemented via a method that reads through it** — `-keyEnumerator` via `-allKeys` while `-allKeys`
+reads through `-keyEnumerator` was MUTUAL RECURSION, measured as a guest stack overflow with an exit-135 map
+dump.
+
+**M3 (`NSSet` / `NSMutableSet` / `NSCountedSet`) is next**; §2's two gaps remain.
