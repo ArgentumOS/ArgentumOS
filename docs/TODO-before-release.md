@@ -462,3 +462,29 @@ failure says only "it crashed", never "here".
 **WHAT IS VERIFIED AFTER THE REVERT:** TESTS-OK 3/3 case(s) 24/24 check(s) - foundation_legacymaptable 15/15,
 foundation_clusters 80/80, foundation_collection 46/46. The parameterization (2d93437c) stands untouched.
 
+**THE TWO-RUN DISCRIMINATOR RAN, AND IT MOVED THE BLOCKER ONE STEP: BOTH STAGES PASS, AND THE ARCHIVER'S
+ANSWER IS WHAT CRASHES.** In order:
+
+| variant | result |
+|---|---|
+| **stage 1:** the legacy class's `id`-typed door, REAL body, front untouched | **3/3 PASS**, 15/15 |
+| **stage 2:** the front's three doors over the primitives (on top of stage 1) | **3/3 PASS**, 15/15 |
+| stage 3: `-classForCoder` on the FRONT, unconditionally | 3/3 CRASH |
+| stage 4: `-classForCoder` on the PRIVATE class instead | 3/3 CRASH |
+
+**SO NEITHER OF MY TWO EARLIER ATTEMPTS WAS WRONG ABOUT ITS PIECES** - the door and the three moves are both
+sound, and both were verified three times each. **§C.3 item 4 IS THE REMAINING BLOCKER FOR THIS FAMILY**, and it
+is a sharper question than before, because M4's lesson ("put the archiver's answer on the private class, not on the
+front") does NOT rescue it here: the crash follows the METHOD, not its placement.
+
+**THE NEXT DISCRIMINATOR IS ONE BUILD AND THREE RUNS, AND IT SEPARATES METHOD FROM REFERENCE:** give
+`FNLegacyMapTable` a `-classForCoder` whose body is `return [super classForCoder];` - the same selector, no
+`[NSMapTable class]` reference. Crashing means the METHOD is the cause (and the search is back in the type-encoding
+territory that the fast-enumeration measurements explored); passing means the `[NSMapTable class]` REFERENCE inside
+that class's code is, which points at the patch/codegen step again - and would explain why NSMapTable's own class
+reference is fine everywhere else, including in `-copy`, while this one is not.
+
+**AND THE FIVE-MEASUREMENT TABLE ABOVE STANDS UNCHANGED** - it describes the fast-enumeration door, and stages 1
+and 2 have now made it a green configuration rather than a hypothesis: the legacy class CAN carry that door, with
+`id` arguments, and the front's three doors CAN move. **What is left before this family can land is item 4 alone.**
+
