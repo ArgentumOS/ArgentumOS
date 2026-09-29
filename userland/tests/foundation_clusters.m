@@ -397,6 +397,71 @@ int main(void)
 		}
 	}
 
+	/* ===============================================================================================
+	 * M2: THE SAME CONTRACT ON THE SHIPPED DICTIONARY FAMILY. M1's section above proves it on NSArray;
+	 * this one asserts what the dictionary cluster owes: a concrete class, the SHARED empty instance,
+	 * the copy-of-nothing case, the mutable class, and an archiver that only ever sees the front.
+	 * =============================================================================================== */
+	{
+		NSDictionary *emptyDict = [NSDictionary dictionary];
+		NSDictionary *oneDict = [NSDictionary dictionaryWithObject:@"v" forKey:@"k"];
+		NSDictionary *copyOfNothing = [[NSDictionary alloc] initWithDictionary:[NSDictionary dictionary]];
+		NSDictionary *zeroCountA, *zeroCountB;
+		NSMutableDictionary *mutableDict = [NSMutableDictionary dictionary];
+		NSDictionary *fromInit;
+		NSData *dictArchive;
+		const void *dictBytes;
+		size_t dictLength;
+
+		check("nsdictionary-class-answers-a-concrete-class",
+		      [emptyDict class] != [NSDictionary class] &&
+		      [[emptyDict class] isSubclassOfClass:[NSDictionary class]],
+		      "-class must be a private concrete SUBCLASS of NSDictionary, never NSDictionary itself");
+		fromInit = [[NSDictionary alloc] init];
+		zeroCountA = [[NSDictionary alloc] initWithObjects:NULL forKeys:NULL count:0];
+		zeroCountB = [[NSDictionary alloc] initWithObjects:NULL forKeys:NULL count:0];
+		check("nsdictionary-empty-instance-and-the-zero-count-singleton",
+		      fromInit != nil && [fromInit count] == 0 && [fromInit class] != [NSDictionary class] &&
+		      zeroCountA != nil && zeroCountA == zeroCountB && [zeroCountA count] == 0 &&
+		      zeroCountA != fromInit,
+		      "[[NSDictionary alloc] init] is EMPTY as a plain instance - this family has "
+		      "allocate-then-fill constructors - while the ZERO-COUNT construction answers ONE shared one");
+		check("nsdictionary-a-copy-of-nothing-is-the-empty-singleton",
+		      copyOfNothing == zeroCountA && [oneDict class] != [zeroCountA class],
+		      "copying nothing answers the shared empty instance, and a one-pair dictionary a different class");
+		check("nsdictionary-mutable-construction-answers-a-mutable-class",
+		      [mutableDict class] != [NSMutableDictionary class] &&
+		      [[mutableDict class] isSubclassOfClass:[NSMutableDictionary class]] &&
+		      [mutableDict isKindOfClass:[NSDictionary class]],
+		      "a mutable constructor answers a private SUBCLASS of NSMutableDictionary");
+		check("nsdictionary-class-for-coder-answers-the-front",
+		      [emptyDict classForCoder] == [NSDictionary class] &&
+		      [oneDict classForCoder] == [NSDictionary class] &&
+		      [mutableDict classForCoder] == [NSMutableDictionary class] &&
+		      [emptyDict classForArchiver] == [NSDictionary class],
+		      "every instance names the PUBLIC class to an archiver, whatever -class answers");
+		check("nsdictionary-empty-answers-every-read",
+		      [emptyDict count] == 0 && [emptyDict objectForKey:@"k"] == nil &&
+		      [[emptyDict allKeys] count] == 0 && [[emptyDict allValues] count] == 0 &&
+		      [[emptyDict keyEnumerator] nextObject] == nil &&
+		      [emptyDict isEqualToDictionary:[NSDictionary dictionary]] &&
+		      [[emptyDict description] length] > 0 &&
+		      [emptyDict objectForKeyedSubscript:@"k"] == nil,
+		      "the empty concrete class answers the primitives AND every derived read over them");
+
+		/* §C.4's hinge, on the dictionary: the archive carries the public name and no private one. */
+		dictArchive = [NSKeyedArchiver archivedDataWithRootObject:oneDict];
+		dictBytes = [dictArchive bytes];
+		dictLength = [dictArchive length];
+		check("nsdictionary-archive-names-the-public-class",
+		      dictArchive != nil && dictLength > 0 &&
+		      contains(dictBytes, dictLength, "NSDictionary"),
+		      "a real dictionary's archive must name the public class");
+		check("nsdictionary-archive-names-no-private-class",
+		      !contains(dictBytes, dictLength, "AGDictionary"),
+		      "no private concrete name may reach an archive - what -classForCoder buys");
+	}
+
 	printf("FOUNDATION-CLUSTERS DONE\n");
 	printf("FOUNDATION-CLUSTERS RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output: after a probe the console can stop serving INPUT for

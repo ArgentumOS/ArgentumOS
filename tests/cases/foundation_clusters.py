@@ -94,6 +94,15 @@ CHECKS = (
           "nsarray-primitives-drive-fast-enumeration",
           "nsarray-archive-names-the-public-class",
           "nsarray-archive-names-no-private-class",
+          # M2: the same contract, on the shipped dictionary family.
+          "nsdictionary-class-answers-a-concrete-class",
+          "nsdictionary-empty-instance-and-the-zero-count-singleton",
+          "nsdictionary-a-copy-of-nothing-is-the-empty-singleton",
+          "nsdictionary-mutable-construction-answers-a-mutable-class",
+          "nsdictionary-class-for-coder-answers-the-front",
+          "nsdictionary-empty-answers-every-read",
+          "nsdictionary-archive-names-the-public-class",
+          "nsdictionary-archive-names-no-private-class",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a

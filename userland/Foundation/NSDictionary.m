@@ -76,7 +76,46 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	free(buckets);
 }
 
+/* ===================================================================================================
+ * THE PRIVATE CONCRETE CLASSES (plan §C.3, M2). The same shape the array family uses, and for the same
+ * reasons: Apple's article's sentence ("You don't, and can't, choose the actual class of the instance")
+ * is the contract, §C.3 item 8 says the names are ours, and §C.4 is why none of them may reach an archive.
+ *
+ * THE STORAGE IS THE FRONT'S OWN IVARS (§C.3 item 5 is about the METHODS, not the layout), which is why
+ * the mutable family needs no second declaration of them - and why THIS family's general implementation
+ * stays where it is: NSMutableDictionary defines NO initializers at all and inherits every one of them
+ * from the front, so the class-choosing guard below is a MEMBERSHIP test. A kind test would send every
+ * mutable construction into the immutable family.
+ * =================================================================================================== */
+
+/* THE EMPTY CASE, AND IT IS A SINGLETON: one shared instance, immortal, and the answer to -init. */
+@interface AGDictionaryEmpty : NSDictionary
++ (AGDictionaryEmpty *)emptyDictionary;
+@end
+
+/* THE GENERAL IMMUTABLE CASE. It adds no code: the front carries the general implementation over its own
+ * storage, and this class is the NAME that implementation answers to (§C.3 item 3). */
+@interface AGDictionaryItems : NSDictionary
+@end
+
+/* THE MUTABLE CASE (§C.3 item 2: a mutable constructor answers a mutable concrete class). Also a name:
+ * NSMutableDictionary's own implementation is the mutable storage implementation. */
+@interface AGDictionaryMutable : NSMutableDictionary
+@end
+
 @implementation NSDictionary
+
+/* THE DOOR IS `+alloc` (§C.3 item 1), AND THERE IS NO `+allocWithZone:` IN THIS LIBRARY. A concrete class
+ * INHERITS this method, and `[super alloc]` in a class method starts the lookup at NSDictionary's
+ * superclass with the receiver still being the class that was asked - so the routing happens exactly ONCE,
+ * at the front, and a concrete class asking for an instance gets one. */
++ (id)alloc
+{
+	if (self != [NSDictionary class]) {
+		return [super alloc];
+	}
+	return [AGDictionaryItems alloc];
+}
 
 + (NSDictionary *)dictionary
 {
@@ -90,6 +129,11 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 
 - (id)initWithObject:(id)value forKey:(id)key
 {
+	/* The one-pair form with either half missing IS the empty case (the body below stores nothing). */
+	if ([self isMemberOfClass:[AGDictionaryItems class]] && (value == nil || key == nil)) {
+		[self release];
+		return (id)[AGDictionaryEmpty emptyDictionary];
+	}
 	self = [super init];
 	if (self == nil) {
 		return nil;
@@ -104,6 +148,13 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 {
 	unsigned long i;
 
+	/* THE CLASS IS CHOSEN BY THE DATA (§C.3 item 2), for this family's general class only - a mutable
+	 * receiver inherits this very implementation and must keep it. An EMPTY source copies to the shared
+	 * empty instance rather than to a general one with nothing in it. */
+	if ([self isMemberOfClass:[AGDictionaryItems class]] && [source count] == 0) {
+		[self release];	/* never initialized: the storage was never built */
+		return (id)[AGDictionaryEmpty emptyDictionary];
+	}
 	self = [super init];
 	if (self == nil) {
 		return nil;
@@ -351,6 +402,12 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 {
 	NSUInteger i;
 
+	/* THE CANONICAL CONSTRUCTOR, so this is where the empty case belongs: `[[NSDictionary alloc] init]`
+	 * reaches it through AGDictionaryItems' -init below, and a zero count is the shared empty instance. */
+	if ([self isMemberOfClass:[AGDictionaryItems class]] && count == 0) {
+		[self release];
+		return (id)[AGDictionaryEmpty emptyDictionary];
+	}
 	self = [super init];
 	if (self == nil) {
 		return nil;
@@ -637,6 +694,13 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	return out;
 }
 
+/* §C.3 item 4, on the immutable front: an archiver asks for THIS, never for -class, so the PUBLIC name
+ * is what an archive holds and no private concrete name can appear in one (§C.4). */
+- (Class)classForCoder
+{
+	return [NSDictionary class];
+}
+
 - (id)copy
 {
 	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) — immutable */
@@ -713,6 +777,22 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 @end
 
 @implementation NSMutableDictionary
+
+/* THE SAME DOOR (§C.3 item 1) - it is what makes a mutable constructor answer a mutable concrete class -
+ * and the mutable front answers ITSELF to an archiver, which is the bullet that keeps the private names
+ * out of every archive (§C.4). */
++ (id)alloc
+{
+	if (self != [NSMutableDictionary class]) {
+		return [super alloc];
+	}
+	return [AGDictionaryMutable alloc];
+}
+
+- (Class)classForCoder
+{
+	return [NSMutableDictionary class];
+}
 
 + (NSMutableDictionary *)dictionary
 {
@@ -809,5 +889,83 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	 * dictionary is to stop it changing. */
 	return [[NSDictionary alloc] initAsCopyOf:self];
 }
+
+@end
+
+
+/* ===================================================================================================
+ * THE CONCRETE CLASSES (§C.3 items 2, 3 and 8).
+ * =================================================================================================== */
+
+@implementation AGDictionaryItems
+
+/* THIS CLASS DELIBERATELY DOES NOT OVERRIDE -init, AND THE ARRAY FAMILY DOES - MEASURED DIFFERENCE, NOT AN
+ * OVERSIGHT. `[[NSDictionary alloc] init]` must answer an EMPTY instance (§C.3 item 1), and here that is a
+ * PLAIN one, because this family has ALLOCATE-THEN-FILL constructors: the nil-terminated pair form and the
+ * variadic core below allocate, call -init, and then store into the instance. An -init that answered the
+ * SHARED empty singleton would capture those stores into the singleton itself - the first such dictionary
+ * would fill it and every later one would inherit its contents. The probe caught exactly that: three
+ * existing dictionary checks failed (dict-constructors, dictionary-plist-file, dictionary-plist-url) while
+ * every new cluster check passed.
+ *
+ * SO THE SINGLETON BELONGS TO THE COMPLETE CONSTRUCTIONS, where the data is already known:
+ * -initWithObjects:forKeys:count: with a zero count, and -initAsCopyOf: with an empty source. Both are
+ * whole answers, so neither can be swept out from under a later store. */
+
+@end
+
+@implementation AGDictionaryEmpty
+
++ (AGDictionaryEmpty *)emptyDictionary
+{
+	static AGDictionaryEmpty *shared = nil;
+
+	if (shared == nil) {
+		shared = [[AGDictionaryEmpty alloc] init];
+	}
+	return shared;
+}
+
+/* IMMORTAL, the price of a singleton in a library with no `+allocWithZone:` and no collector. */
+- (id)retain { return self; }
+- (void)release { }
+- (id)autorelease { return self; }
+- (NSUInteger)retainCount { return NSUIntegerMax; }
+
+/* THE THREE PRIMITIVES (§C.3 item 5): -count, -objectForKey: and -keyEnumerator. Everything else in this
+ * family is written over them, so an empty dictionary answers -allKeys, -allValues, -hash, -description,
+ * -isEqualToDictionary;, -getObjects:andKeys: and fast enumeration correctly with no code here. */
+- (unsigned long)count
+{
+	return 0;
+}
+
+- (id)objectForKey:(id)key
+{
+	(void)key;
+	return nil;
+}
+
+- (NSEnumerator *)keyEnumerator
+{
+	return [[NSArray array] objectEnumerator];
+}
+
+- (unsigned long)countByEnumeratingWithState:(NSFastEnumerationState *)state
+                                     objects:(id __unsafe_unretained *)buffer
+                                       count:(unsigned long)length
+{
+	(void)buffer;
+	(void)length;
+	state->mutationsPtr = &state->extra[0];
+	return 0;
+}
+
+@end
+
+@implementation AGDictionaryMutable
+
+/* NOTHING TO IMPLEMENT, AND THAT IS THE POINT: NSMutableDictionary's own implementation IS the mutable
+ * storage implementation, and what a caller gains is the NAME that -class answers. */
 
 @end

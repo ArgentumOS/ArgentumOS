@@ -42,6 +42,26 @@ NS_ASSUME_NONNULL_BEGIN
 
 struct FNDictEntry;			/* opaque; defined in NSDictionary.m */
 
+/* ===================================================================================================
+ * NSDICTIONARY IS A CLASS CLUSTER (2026-09-29; docs/design/foundation-clusters-plan.md §C.3).
+ *
+ * THE PRIMITIVE METHODS ARE -count, -objectForKey: AND -keyEnumerator, and they are what the EMPTY
+ * concrete class implements: AGDictionaryEmpty answers those three over no storage at all, and every
+ * derived read this family publishes (-allKeys, -allValues, -hash, -description, -isEqualToDictionary:,
+ * -getObjects:andKeys:, fast enumeration) is correct for it because of them.
+ *
+ * §C.3 ITEM 5 IS NOT FINISHED FOR THIS FAMILY, and the header says so rather than implying otherwise: the
+ * general and mutable concrete classes still read the ivars below DIRECTLY in ten derived methods, so a
+ * THIRD PARTY subclassing NSDictionary with a different layout would not yet be correct through every
+ * door. That rewrite is this milestone's remaining piece; the array family (M1) shows the shape it takes.
+ *
+ * THE FRONT IS PUBLIC AND ITS CONCRETE CLASSES ARE PRIVATE: AGDictionaryEmpty (ONE shared instance, the
+ * empty case, and the answer to `[[NSDictionary alloc] init]`), AGDictionaryItems (the general case, over
+ * these ivars) and AGDictionaryMutable (the mutable family's, since a mutable constructor must answer a
+ * mutable concrete class). `-class` answers one of them; -classForCoder answers the PUBLIC class, so no
+ * private name can reach an archive.
+ * =================================================================================================== */
+
 @interface NSDictionary<__covariant KeyType, __covariant ObjectType> : NSObject <NSCopying, NSFastEnumeration>
 {
 	struct FNDictEntry **_buckets;	/* power-of-two count, so index = hash & (count-1) */
