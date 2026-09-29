@@ -20,29 +20,29 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface NSMutableOrderedSet : NSOrderedSet
+@interface NSMutableOrderedSet<ObjectType> : NSOrderedSet<ObjectType>
 
 + (instancetype)orderedSetWithCapacity:(NSUInteger)capacity;
 - (instancetype)initWithCapacity:(NSUInteger)capacity;
 
-- (void)addObject:(id)object;
-- (void)addObjectsFromArray:(NSArray *)array;
-- (void)insertObject:(id)object atIndex:(NSUInteger)index;
-- (void)replaceObjectAtIndex:(NSUInteger)index withObject:(id)object;
-- (void)setObject:(id)object atIndexedSubscript:(NSUInteger)index;
+- (void)addObject:(ObjectType)object;
+- (void)addObjectsFromArray:(NSArray<ObjectType> *)array;
+- (void)insertObject:(ObjectType)object atIndex:(NSUInteger)index;
+- (void)replaceObjectAtIndex:(NSUInteger)index withObject:(ObjectType)object;
+- (void)setObject:(ObjectType)object atIndexedSubscript:(NSUInteger)index;
 
-- (void)removeObject:(id)object;
+- (void)removeObject:(ObjectType)object;
 - (void)removeObjectAtIndex:(NSUInteger)index;
 - (void)removeObjectsInRange:(NSRange)range;
 - (void)removeAllObjects;
 - (void)exchangeObjectAtIndex:(NSUInteger)first withObjectAtIndex:(NSUInteger)second;
 
-- (void)unionOrderedSet:(NSOrderedSet *)other;
-- (void)unionSet:(NSSet *)other;
-- (void)minusOrderedSet:(NSOrderedSet *)other;
-- (void)minusSet:(NSSet *)other;
-- (void)intersectOrderedSet:(NSOrderedSet *)other;
-- (void)intersectSet:(NSSet *)other;
+- (void)unionOrderedSet:(NSOrderedSet<ObjectType> *)other;
+- (void)unionSet:(NSSet<ObjectType> *)other;
+- (void)minusOrderedSet:(NSOrderedSet<ObjectType> *)other;
+- (void)minusSet:(NSSet<ObjectType> *)other;
+- (void)intersectOrderedSet:(NSOrderedSet<ObjectType> *)other;
+- (void)intersectSet:(NSSet<ObjectType> *)other;
 
 - (void)sortUsingDescriptors:(NSArray *)descriptors;
 - (void)filterUsingPredicate:(NSPredicate *)predicate;

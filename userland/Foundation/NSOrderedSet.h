@@ -28,52 +28,50 @@
 #import <Foundation/NSFastEnumeration.h>
 #import <Foundation/NSOrderedCollectionDifference.h>
 
-@class NSArray;
-@class NSEnumerator;
-@class NSSet;
+@class NSArray<ObjectType>, NSEnumerator<ObjectType>, NSSet<ObjectType>;
 @class NSPredicate;
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface NSOrderedSet : NSObject <NSCopying, NSMutableCopying, NSFastEnumeration>
+@interface NSOrderedSet<__covariant ObjectType> : NSObject <NSCopying, NSMutableCopying, NSFastEnumeration>
 {
 	NSArray *_members;		/* insertion order, each value once; REPLACED by every mutation */
 	unsigned long _mutations;	/* the for-in consistency token */
 }
 
 + (instancetype)orderedSet;
-+ (instancetype)orderedSetWithObject:(id)object;
-+ (instancetype)orderedSetWithObjects:(const id _Nonnull * _Nullable)objects count:(NSUInteger)count;
-+ (instancetype)orderedSetWithArray:(NSArray *)array;
-+ (instancetype)orderedSetWithOrderedSet:(NSOrderedSet *)set;
++ (instancetype)orderedSetWithObject:(ObjectType)object;
++ (instancetype)orderedSetWithObjects:(const ObjectType _Nonnull * _Nullable)objects count:(NSUInteger)count;
++ (instancetype)orderedSetWithArray:(NSArray<ObjectType> *)array;
++ (instancetype)orderedSetWithOrderedSet:(NSOrderedSet<ObjectType> *)set;
 
-- (instancetype)initWithObjects:(const id _Nonnull * _Nullable)objects count:(NSUInteger)count;
-- (instancetype)initWithArray:(NSArray *)array;
-- (instancetype)initWithOrderedSet:(NSOrderedSet *)set;
+- (instancetype)initWithObjects:(const ObjectType _Nonnull * _Nullable)objects count:(NSUInteger)count;
+- (instancetype)initWithArray:(NSArray<ObjectType> *)array;
+- (instancetype)initWithOrderedSet:(NSOrderedSet<ObjectType> *)set;
 
 - (NSUInteger)count;
-- (nullable id)objectAtIndex:(NSUInteger)index;
-- (nullable id)objectAtIndexedSubscript:(NSUInteger)index;
-- (NSUInteger)indexOfObject:(id)object;
-- (BOOL)containsObject:(id)object;
-- (nullable id)firstObject;
-- (nullable id)lastObject;
+- (nullable ObjectType)objectAtIndex:(NSUInteger)index;
+- (nullable ObjectType)objectAtIndexedSubscript:(NSUInteger)index;
+- (NSUInteger)indexOfObject:(ObjectType)object;
+- (BOOL)containsObject:(ObjectType)object;
+- (nullable ObjectType)firstObject;
+- (nullable ObjectType)lastObject;
 
 /* The two views: the ORDER (an array) and the MEMBERSHIP (a set). */
-- (NSArray *)array;
-- (NSSet *)set;
+- (NSArray<ObjectType> *)array;
+- (NSSet<ObjectType> *)set;
 
-- (NSEnumerator *)objectEnumerator;
-- (NSEnumerator *)reverseObjectEnumerator;
-- (void)enumerateObjectsUsingBlock:(void (^)(id object, BOOL *stop))block;
+- (NSEnumerator<ObjectType> *)objectEnumerator;
+- (NSEnumerator<ObjectType> *)reverseObjectEnumerator;
+- (void)enumerateObjectsUsingBlock:(void (^)(ObjectType object, BOOL *stop))block;
 /* THE HOUSE'S OWN SPELLING for an out-parameter C array — the same one NSArray.h and NSDictionary.h
  * use, because a bare `__unsafe_unretained *` inside an NS_ASSUME_NONNULL region is a
  * nullability-completeness error rather than a warning. */
-- (void)getObjects:(id __unsafe_unretained _Nonnull * _Nonnull)objects range:(NSRange)range;
+- (void)getObjects:(ObjectType __unsafe_unretained _Nonnull * _Nonnull)objects range:(NSRange)range;
 
-- (BOOL)isEqualToOrderedSet:(NSOrderedSet *)other;
-- (BOOL)intersectsOrderedSet:(NSOrderedSet *)other;
-- (BOOL)isSubsetOfOrderedSet:(NSOrderedSet *)other;
+- (BOOL)isEqualToOrderedSet:(NSOrderedSet<ObjectType> *)other;
+- (BOOL)intersectsOrderedSet:(NSOrderedSet<ObjectType> *)other;
+- (BOOL)isSubsetOfOrderedSet:(NSOrderedSet<ObjectType> *)other;
 
 - (instancetype)filteredOrderedSetUsingPredicate:(NSPredicate *)predicate;
 - (NSArray *)sortedArrayUsingDescriptors:(NSArray *)descriptors;
@@ -94,17 +92,17 @@ NS_ASSUME_NONNULL_BEGIN
  * `[b orderedSetByApplyingDifference:[a differenceFromOrderedSet:b]]` answers `a`. The
  * `NSOrderedCollectionDifferenceCalculationOptions` the middle two take is declared in
  * NSOrderedCollectionDifference.h, which this header imports — Apple files it under BOTH classes' pages. */
-@interface NSOrderedSet (NSOrderedCollectionDifferenceAdditions)
+@interface NSOrderedSet<ObjectType> (NSOrderedCollectionDifferenceAdditions)
 
-- (NSOrderedCollectionDifference *)differenceFromOrderedSet:(NSOrderedSet *)other;
-- (NSOrderedCollectionDifference *)differenceFromOrderedSet:(NSOrderedSet *)other
+- (NSOrderedCollectionDifference *)differenceFromOrderedSet:(NSOrderedSet<ObjectType> *)other;
+- (NSOrderedCollectionDifference *)differenceFromOrderedSet:(NSOrderedSet<ObjectType> *)other
 						withOptions:(NSOrderedCollectionDifferenceCalculationOptions)options;
-- (NSOrderedCollectionDifference *)differenceFromOrderedSet:(NSOrderedSet *)other
+- (NSOrderedCollectionDifference *)differenceFromOrderedSet:(NSOrderedSet<ObjectType> *)other
 						withOptions:(NSOrderedCollectionDifferenceCalculationOptions)options
 					usingEquivalenceTest:(BOOL (^)(id obj1, id obj2))block;
 /* "Creates a new ordered set by applying a difference object to an existing ordered set." The receiver is the
  * SOURCE. */
-- (NSOrderedSet *)orderedSetByApplyingDifference:(NSOrderedCollectionDifference *)difference;
+- (NSOrderedSet<ObjectType> *)orderedSetByApplyingDifference:(NSOrderedCollectionDifference *)difference;
 
 @end
 
