@@ -472,14 +472,13 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 - (NSArray *)allKeys
 {
 	NSMutableArray *keys = [[NSMutableArray alloc] init];
-	unsigned long i;
+	NSEnumerator *enumerator = [self keyEnumerator];
+	id key;
 
-	for (i = 0; i < _bucketCount; i++) {
-		struct FNDictEntry *entry;
-
-		for (entry = _buckets[i]; entry != NULL; entry = entry->next) {
-			[keys addObject:entry->key];
-		}
+	/* OVER THE PRIMITIVES (§C.3 item 5), which is what lets a concrete class with a DIFFERENT LAYOUT - or
+	 * no storage at all, like the empty one - answer this correctly. */
+	while ((key = [enumerator nextObject]) != nil) {
+		[keys addObject:key];
 	}
 	return keys;
 }
@@ -487,13 +486,14 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 - (NSArray *)allValues
 {
 	NSMutableArray *values = [[NSMutableArray alloc] init];
-	unsigned long i;
+	NSEnumerator *enumerator = [self keyEnumerator];
+	id key;
 
-	for (i = 0; i < _bucketCount; i++) {
-		struct FNDictEntry *entry;
+	while ((key = [enumerator nextObject]) != nil) {
+		id value = [self objectForKey:key];
 
-		for (entry = _buckets[i]; entry != NULL; entry = entry->next) {
-			[values addObject:entry->value];
+		if (value != nil) {
+			[values addObject:value];
 		}
 	}
 	return values;
@@ -502,15 +502,14 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 - (NSArray *)allKeysForObject:(id)object
 {
 	NSMutableArray *keys = [[NSMutableArray alloc] init];
-	unsigned long i;
+	NSEnumerator *enumerator = [self keyEnumerator];
+	id key;
 
-	for (i = 0; i < _bucketCount; i++) {
-		struct FNDictEntry *entry;
+	while ((key = [enumerator nextObject]) != nil) {
+		id value = [self objectForKey:key];
 
-		for (entry = _buckets[i]; entry != NULL; entry = entry->next) {
-			if (entry->value == object || [entry->value isEqual:object]) {
-				[keys addObject:entry->key];
-			}
+		if (value == object || [value isEqual:object]) {
+			[keys addObject:key];
 		}
 	}
 	return keys;
@@ -577,29 +576,35 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 - (void)getObjects:(id __unsafe_unretained *)objects
 	   andKeys:(id __unsafe_unretained *)keys
 {
-	unsigned long i;
+	NSEnumerator *enumerator = [self keyEnumerator];
 	unsigned long n = 0;
+	id key;
 
-	for (i = 0; i < _bucketCount; i++) {
-		struct FNDictEntry *entry;
-
-		for (entry = _buckets[i]; entry != NULL; entry = entry->next) {
-			if (keys != NULL) {
-				keys[n] = entry->key;
-			}
-			if (objects != NULL) {
-				objects[n] = entry->value;
-			}
-			n++;
+	/* The PAIRING is the contract (Cocoa fixes no order), and it holds here because both sides are read
+	 * for the same key in the same step. */
+	while ((key = [enumerator nextObject]) != nil) {
+		if (keys != NULL) {
+			keys[n] = key;
 		}
+		if (objects != NULL) {
+			objects[n] = [self objectForKey:key];
+		}
+		n++;
 	}
 }
 
 - (NSEnumerator *)keyEnumerator
 {
-	/* The SNAPSHOT is built here, from the key array, so the enumerator needs no
-	 * knowledge of the table at all. */
-	return [[NSEnumerator alloc] initWithSequence:[self allKeys] reverse:NO];
+	/*
+	 * THE PRIMITIVE (§C.3 item 5), AND IT MUST NOT GO THROUGH -allKeys. -allKeys is now written OVER this
+	 * method, so asking it here was MUTUAL RECURSION - measured rather than feared: the guest overflowed
+	 * its stack inside dict-constructors and the kernel dumped the process maps, with [stack] in them.
+	 * A primitive is allowed to read the class's own storage, which is what this does; the enumerator then
+	 * holds a SNAPSHOT, so a loop is never handed storage that a mutation can free under it.
+	 */
+	[self keySnapshot];
+	return [[NSEnumerator alloc] initWithSequence:[NSArray arrayWithObjects:_keys count:_keyCount]
+					       reverse:NO];
 }
 
 - (NSEnumerator *)objectEnumerator
@@ -609,7 +614,8 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 
 - (BOOL)isEqualToDictionary:(NSDictionary *)other
 {
-	unsigned long i;
+	NSEnumerator *enumerator;
+	id key;
 
 	if (other == nil) {
 		return NO;
@@ -617,22 +623,19 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	if (other == self) {
 		return YES;
 	}
-	if ([other count] != _count) {
+	if ([other count] != [self count]) {
 		return NO;
 	}
-	for (i = 0; i < _bucketCount; i++) {
-		struct FNDictEntry *entry;
+	enumerator = [self keyEnumerator];
+	while ((key = [enumerator nextObject]) != nil) {
+		id mine = [self objectForKey:key];
+		id theirs = [other objectForKey:key];
 
-		for (entry = _buckets[i]; entry != NULL; entry = entry->next) {
-			id mine = entry->value;
-			id theirs = [other objectForKey:entry->key];
-
-			if (mine == theirs) {
-				continue;
-			}
-			if (theirs == nil || ![mine isEqual:theirs]) {
-				return NO;
-			}
+		if (mine == theirs) {
+			continue;
+		}
+		if (theirs == nil || ![mine isEqual:theirs]) {
+			return NO;
 		}
 	}
 	return YES;
@@ -657,16 +660,17 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	 * fold over bucket order would not.
 	 */
 	unsigned long h = 2166136261UL;
-	unsigned long i;
+	NSEnumerator *enumerator = [self keyEnumerator];
+	id key;
 
-	h ^= _count;
+	/* THE SUM IS COMMUTATIVE, so reading the pairs through the enumerator instead of the buckets cannot
+	 * change this value - which is what keeps -hash consistent with equality for every concrete class. */
+	h ^= [self count];
 	h *= 16777619UL;
-	for (i = 0; i < _bucketCount; i++) {
-		struct FNDictEntry *entry;
+	while ((key = [enumerator nextObject]) != nil) {
+		id value = [self objectForKey:key];
 
-		for (entry = _buckets[i]; entry != NULL; entry = entry->next) {
-			h += ([entry->key hash] ^ [entry->value hash]);
-		}
+		h += ([key hash] ^ [value hash]);
 	}
 	return h;
 }
@@ -674,21 +678,20 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 - (NSString *)description
 {
 	NSMutableString *out = [[NSMutableString alloc] initWithUTF8String:"{"];
-	unsigned long i;
+	NSEnumerator *enumerator = [self keyEnumerator];
+	id key;
 	int first = 1;
 
-	for (i = 0; i < _bucketCount; i++) {
-		struct FNDictEntry *entry;
+	while ((key = [enumerator nextObject]) != nil) {
+		id value = [self objectForKey:key];
 
-		for (entry = _buckets[i]; entry != NULL; entry = entry->next) {
-			if (!first) {
-				[out appendString:@", "];
-			}
-			first = 0;
-			[out appendString:[entry->key description]];
-			[out appendString:@" = "];
-			[out appendString:[entry->value description]];
+		if (!first) {
+			[out appendString:@", "];
 		}
+		first = 0;
+		[out appendString:[key description]];
+		[out appendString:@" = "];
+		[out appendString:[value description]];
 	}
 	[out appendString:@"}"];
 	return out;
@@ -756,22 +759,30 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
                                      objects:(id __unsafe_unretained *)buffer
                                        count:(unsigned long)length
 {
-	id __unsafe_unretained *keys;
+	unsigned long cursor = state->state;
+	unsigned long produced = 0;
+	unsigned long skip;
+	NSEnumerator *enumerator = [self keyEnumerator];
+	id key;
 
-	(void)buffer;
-	(void)length;
-
-	/* Enumerating a dictionary yields its KEYS (Cocoa's rule). The batch is a
-	 * snapshot, because the chains are rebuilt by any mutation and a loop must
-	 * not be handed storage that a mutation can free under it. */
-	if (state->state != 0) {
+	/* Enumerating a dictionary yields its KEYS (Cocoa's rule), AND THIS GOES OVER THE PRIMITIVES THROUGH
+	 * THE CALLER'S OWN BUFFER. It used to hand out the class's internal key snapshot in one batch, which
+	 * is storage a concrete class with a different layout does not have; `objects` is caller-provided
+	 * scratch that stays valid for the batch, which is what the protocol says it is for. `state->state` is
+	 * the cursor, so a batch smaller than the count is RESUMED: the enumerator is re-walked and the cursor
+	 * skipped. */
+	for (skip = 0; skip < cursor && (key = [enumerator nextObject]) != nil; skip++) {
+	}
+	while (produced < length && (key = [enumerator nextObject]) != nil) {
+		buffer[produced++] = key;
+	}
+	if (produced == 0) {
 		return 0;
 	}
-	keys = [self keySnapshot];
-	state->itemsPtr = keys;
+	state->itemsPtr = buffer;
 	state->mutationsPtr = &_mutations;
-	state->state = 1;
-	return _keyCount;
+	state->state = cursor + produced;
+	return produced;
 }
 
 @end

@@ -50,10 +50,11 @@ struct FNDictEntry;			/* opaque; defined in NSDictionary.m */
  * derived read this family publishes (-allKeys, -allValues, -hash, -description, -isEqualToDictionary:,
  * -getObjects:andKeys:, fast enumeration) is correct for it because of them.
  *
- * §C.3 ITEM 5 IS NOT FINISHED FOR THIS FAMILY, and the header says so rather than implying otherwise: the
- * general and mutable concrete classes still read the ivars below DIRECTLY in ten derived methods, so a
- * THIRD PARTY subclassing NSDictionary with a different layout would not yet be correct through every
- * door. That rewrite is this milestone's remaining piece; the array family (M1) shows the shape it takes.
+ * A SUBCLASS THAT OVERRIDES THOSE THREE GETS THE WHOLE FAMILY. -allKeys, -allValues, -allKeysForObject:,
+ * -objectsForKeys:notFoundMarker:, -getObjects:andKeys:, -isEqualToDictionary:, -hash, -description,
+ * -enumerateKeysAndObjectsUsingBlock: and fast enumeration are all written OVER them, so a concrete class
+ * with a DIFFERENT LAYOUT - the empty one has no storage at all - is correct through every door. The probe
+ * proves that with a subclass of its own that implements the three primitives and nothing else.
  *
  * THE FRONT IS PUBLIC AND ITS CONCRETE CLASSES ARE PRIVATE: AGDictionaryEmpty (ONE shared instance, the
  * empty case, and the answer to `[[NSDictionary alloc] init]`), AGDictionaryItems (the general case, over
