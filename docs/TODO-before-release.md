@@ -245,3 +245,18 @@ the refusal left sixteen of thirty-two rules applied and the build red. Every su
 anchor in memory first and write ONCE per file. **And the findings list must be read WHOLE:** the first pass
 parameterized 26 of the family's 38 rows because I read a truncated list, and the second batch of twelve
 included BOTH `withOptions:` difference doors.
+
+**`NSOrderedSet` IS COMPLETE 2026-09-29** (compile half `e0725baf`, runtime half `33994a35`). Its family's 38
+findings are 0, the tree's total is 48, and `foundation_clusters` is ok=59 — including a THIRD-PARTY
+`ProbePrimitiveOrderedSet` over `-count`/`-objectAtIndex:`/`-objectEnumerator:` alone, correct through the
+array view, the searches, ORDERED equality, hash, `-description` and fast enumeration.
+
+**AND ITS RUNTIME HALF RE-PROVED THE M3 LESSON ON PURPOSE: LIST THE SURVIVING STORAGE REFERENCES AND CHECK
+EACH ONE.** After moving 45 lines onto the primitives, the audit found `-getObjects:range:` still reading the
+ivar — which for a class with a different layout is not a crash but a SILENTLY WRONG ANSWER (the caller's
+buffer left untouched). Substituting one spelling of an expression is not the same as moving the reads, and
+the audit is what closes the gap.
+
+**STILL OWED IN M6: the concrete-class shape for `NSData` and `NSIndexSet`** — the clause flags them ZERO
+times each, so they need no compile work, only the empty/small/general shape the other fronts have. Then M7.
+
