@@ -912,6 +912,47 @@ int main(void)
 		      "must be written over the primitives, on a class with no member array");
 	}
 
+	{
+		/*
+		 * M6: NSData — the cluster the other families have, with the dictionary family's shape applied on
+		 * purpose: -init does NOT answer the singleton because this family has allocate-then-fill paths, so
+		 * the shared instance belongs to the COMPLETE zero-length construction. Locals declared HERE.
+		 * NOTE WHAT IS NOT ASSERTED YET: a third-party subclass over -length/-bytes. This family's eighty-four
+		 * storage reads have NOT moved onto primitives, so that check is owed rather than skipped.
+		 */
+		NSData *emptyData = [NSData data];
+		NSData *zeroFromInit = [[NSData alloc] initWithBytes:NULL length:0];
+		NSData *plainEmpty = [[NSData alloc] init];
+		NSData *someData = [NSData dataWithBytes:"ab" length:2];
+		NSMutableData *mutableData = [NSMutableData data];
+
+		check("nsdata-class-answers-a-concrete-class",
+		      [emptyData class] != [NSData class] && [[emptyData class] isSubclassOfClass:[NSData class]] &&
+		      [someData class] != [NSData class] && [someData class] != [emptyData class],
+		      "-class must be a private concrete SUBCLASS of NSData, and the empty case its own");
+		check("nsdata-empty-is-the-shared-singleton",
+		      zeroFromInit == emptyData && [emptyData length] == 0 &&
+		      plainEmpty != nil && [plainEmpty length] == 0 &&
+		      [plainEmpty isEqualToData:emptyData] && [plainEmpty hash] == [emptyData hash],
+		      "the zero-length construction answers ONE shared instance, while [[NSData alloc] init] is a "
+		      "plain EMPTY instance - this family has allocate-then-fill paths, so -init must not answer the "
+		      "singleton");
+		check("nsdata-mutable-and-class-for-coder",
+		      [mutableData class] != [NSMutableData class] &&
+		      [[mutableData class] isSubclassOfClass:[NSMutableData class]] &&
+		      [emptyData classForCoder] == [NSData class] && [someData classForCoder] == [NSData class] &&
+		      [mutableData classForCoder] == [NSMutableData class] &&
+		      [emptyData classForArchiver] == [NSData class],
+		      "a mutable constructor answers a mutable concrete class, and the archiver gets the PUBLIC class "
+		      "- the mutable one naming itself, being a public subclass");
+		check("nsdata-empty-answers-every-read",
+		      [emptyData length] == 0 && [emptyData bytes] == NULL &&
+		      [emptyData isEqualToData:[NSData data]] &&
+		      [[emptyData description] length] > 0 &&
+		      [[NSMutableData data] length] == 0,
+		      "the empty concrete class answers the reads a caller makes of it");
+	}
+
 	printf("FOUNDATION-CLUSTERS DONE\n");
 	printf("FOUNDATION-CLUSTERS RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output: after a probe the console can stop serving INPUT for

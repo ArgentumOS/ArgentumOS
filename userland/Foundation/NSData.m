@@ -21,7 +21,44 @@
 #include <string.h>
 #include <stdio.h>
 
+/* ===================================================================================================
+ * THE PRIVATE CONCRETE CLASSES (plan §C.3, M6): the same shape as the other families. AGDataEmpty is the
+ * SHARED empty instance, AGDataItems the general case (the front's own ivars are its storage), and
+ * AGDataMutable the mutable one.
+ *
+ * NOTE WHAT IS DELIBERATELY MISSING: AGDataItems does NOT override -init. An -init that answered the shared
+ * empty instance would capture every ALLOCATE-THEN-FILL path into the singleton itself - the failure the
+ * dictionary family measured (three cases broke) - so here, as there, the singleton belongs to the COMPLETE
+ * constructions: -initWithBytes:length: with a zero length. `[[NSData alloc] init]` answers a plain EMPTY
+ * instance, which is what §C.3 item 1 asks for.
+ * =================================================================================================== */
+@interface AGDataEmpty : NSData
++ (AGDataEmpty *)emptyData;
+@end
+
+@interface AGDataItems : NSData
+@end
+
+@interface AGDataMutable : NSMutableData
+@end
+
 @implementation NSData
+
+/* THE DOOR (§C.3 item 1), routed exactly once at the front. */
++ (id)alloc
+{
+	if (self != [NSData class]) {
+		return [super alloc];
+	}
+	return [AGDataItems alloc];
+}
+
+/* §C.3 item 4: an archiver asks for THIS, never for -class. NSMutableData answers ITSELF below, being a
+ * public subclass - the shape NSDecimalNumber, NSMutableString and NSMutableOrderedSet all need. */
+- (Class)classForCoder
+{
+	return [NSData class];
+}
 
 /* THE COMPRESSION DOORS (F12). The codec itself lives in NSDataCodec.m — the binding to the zlib this
  * system already ships — and these two are the API's shape over it: nil plus an error on a
@@ -45,6 +82,13 @@
 
 - (id)initWithBytes:(const void *)bytes length:(size_t)length
 {
+	/* THE CLASS IS CHOSEN BY THE DATA (§C.3 item 2), for this family's general class only: a mutable
+	 * receiver inherits this implementation and must keep it. A ZERO-LENGTH construction is a COMPLETE
+	 * answer, which is what makes handing back the shared instance safe. */
+	if ([self isMemberOfClass:[AGDataItems class]] && length == 0) {
+		[self release];	/* never initialized: the storage was never built */
+		return (id)[AGDataEmpty emptyData];
+	}
 	self = [super init];
 	if (self == nil) {
 		return nil;
@@ -683,6 +727,19 @@ static NSString *fn_path_for_url(NSURL *url, NSError **errorPtr)
 
 @implementation NSMutableData
 
++ (id)alloc
+{
+	if (self != [NSMutableData class]) {
+		return [super alloc];
+	}
+	return [AGDataMutable alloc];
+}
+
+- (Class)classForCoder
+{
+	return [NSMutableData class];
+}
+
 /* IN PLACE, and ONLY on success: the receiver becomes the result, or it is left exactly as it
  * was. A half-replaced buffer would be worse than a refusal, and the header promises this. */
 - (BOOL)compressUsingAlgorithm:(NSDataCompressionAlgorithm)algorithm
@@ -899,5 +956,46 @@ static NSString *fn_path_for_url(NSURL *url, NSError **errorPtr)
 }
 
 
+
+@end
+
+
+/* ===================================================================================================
+ * THE CONCRETE CLASSES (§C.3 items 2, 3 and 8).
+ * =================================================================================================== */
+
+@implementation AGDataItems
+
+/* NO -init OVERRIDE, ON PURPOSE - see the note at the top of this file. */
+
+@end
+
+@implementation AGDataEmpty
+
++ (AGDataEmpty *)emptyData
+{
+	static AGDataEmpty *shared = nil;
+
+	if (shared == nil) {
+		shared = [[AGDataEmpty alloc] init];
+	}
+	return shared;
+}
+
+/* IMMORTAL, the price of a singleton in a library with no `+allocWithZone:` and no collector. */
+- (id)retain { return self; }
+- (void)release { }
+- (id)autorelease { return self; }
+- (NSUInteger)retainCount { return NSUIntegerMax; }
+
+/* ITS STORAGE IS ALREADY THE EMPTY ANSWER: the front's ivars are zeroed, so -length is 0 and -bytes is NULL
+ * without a line of code here - which is exactly why this class needs no primitives of its own. */
+
+@end
+
+@implementation AGDataMutable
+
+/* NOTHING TO IMPLEMENT: NSMutableData's implementation IS the mutable storage implementation, and what a
+ * caller gains is the NAME that -class answers. */
 
 @end

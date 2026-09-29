@@ -152,6 +152,11 @@ CHECKS = (
           "nsorderedset-mutable-and-class-for-coder",
           "nsorderedset-empty-answers-every-read",
           "nsorderedset-primitives-drive-order-equality-and-hash",
+          # M6: NSData - the cluster core (its primitive move is owed).
+          "nsdata-class-answers-a-concrete-class",
+          "nsdata-empty-is-the-shared-singleton",
+          "nsdata-mutable-and-class-for-coder",
+          "nsdata-empty-answers-every-read",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a
