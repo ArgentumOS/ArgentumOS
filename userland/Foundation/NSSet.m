@@ -196,7 +196,11 @@
 
 - (nullable id)anyObject
 {
-	return [self count] > 0 ? [_members objectAtIndex:0] : nil;
+	/* OVER THE PRIMITIVE, and this one was MISSED by the substitution that moved its neighbours: it read
+	 * `[_members objectAtIndex:0]`, which the pattern `[_members objectAtIndex:i]` did not match. For a
+	 * concrete class with no member array that is not a crash - messaging nil answers nil - it is a
+	 * SILENTLY WRONG ANSWER, which is worse, and the probe's third-party check is what caught it. */
+	return [[self objectEnumerator] nextObject];
 }
 
 - (NSArray *)allObjects

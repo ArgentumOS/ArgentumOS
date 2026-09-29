@@ -241,6 +241,37 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
 
 @end
 
+/* THE THIRD-PARTY CASE FOR THE SET FAMILY: the same demand the array and dictionary families make. It
+ * overrides ONLY the three primitives the header names - -count, -member: and -objectEnumerator - with no
+ * member array, no snapshot and no -dealloc. */
+@interface ProbePrimitiveSet : NSSet
+@end
+
+@implementation ProbePrimitiveSet
+
+- (NSUInteger)count
+{
+	return 2;
+}
+
+- (nullable id)member:(id)object
+{
+	if ([object isEqual:@"p"]) {
+		return @"p";
+	}
+	if ([object isEqual:@"q"]) {
+		return @"q";
+	}
+	return nil;
+}
+
+- (NSEnumerator *)objectEnumerator
+{
+	return [[NSArray arrayWithObjects:@"p", @"q", nil] objectEnumerator];
+}
+
+@end
+
 int main(void)
 {
 	ProbeCluster *empty;
@@ -539,6 +570,85 @@ int main(void)
 			      "fast enumeration must walk the primitives through the caller's buffer");
 		}
 
+	}
+
+	{
+		/*
+		 * M3: THE SET LADDER - NSSet, NSMutableSet and NSCountedSet each answer a private concrete class, and
+		 * the empty case is ONE shared instance. Every local is declared HERE, so nothing depends on a block
+		 * above. NOTE WHAT IS NOT ASSERTED: nothing archives a set. NSKeyedArchiver has no set path at all
+		 * (its source names NSSet nowhere), so archiving one RAISES where an array or a dictionary encodes;
+		 * -classForCoder below is asserted because that is the contract the archiver will need when it gains
+		 * one, and the gap itself is recorded in docs/TODO-before-release.md rather than asserted here.
+		 */
+		NSSet *emptySet = [NSSet set];
+		NSSet *fromInit = [[NSSet alloc] init];
+		NSSet *oneSet = [NSSet setWithObject:@"one"];
+		NSMutableSet *mutableSet = [NSMutableSet set];
+		NSCountedSet *countedSet = [NSCountedSet set];
+
+		check("nsset-class-answers-a-concrete-class",
+		      [emptySet class] != [NSSet class] && [[emptySet class] isSubclassOfClass:[NSSet class]] &&
+		      [oneSet class] != [emptySet class],
+		      "-class must be a private concrete SUBCLASS of NSSet, and the empty case its own");
+		check("nsset-alloc-init-is-the-empty-singleton",
+		      fromInit != nil && [fromInit count] == 0 && fromInit == emptySet,
+		      "[[NSSet alloc] init] is legal and answers the SHARED empty instance");
+		check("nsset-mutable-and-counted-answer-their-own-concrete-classes",
+		      [mutableSet class] != [NSMutableSet class] &&
+		      [[mutableSet class] isSubclassOfClass:[NSMutableSet class]] &&
+		      [countedSet class] != [NSCountedSet class] &&
+		      [[countedSet class] isSubclassOfClass:[NSCountedSet class]] &&
+		      [countedSet isKindOfClass:[NSMutableSet class]],
+		      "each rung of the ladder answers its own concrete class");
+		check("nsset-class-for-coder-answers-the-front",
+		      [emptySet classForCoder] == [NSSet class] && [oneSet classForCoder] == [NSSet class] &&
+		      [mutableSet classForCoder] == [NSMutableSet class] &&
+		      [countedSet classForCoder] == [NSCountedSet class] &&
+		      [emptySet classForArchiver] == [NSSet class],
+		      "every instance names the PUBLIC class to an archiver, whatever -class answers");
+		check("nsset-empty-answers-every-read",
+		      [emptySet count] == 0 && [emptySet member:@"x"] == nil &&
+		      ! [emptySet containsObject:@"x"] && [emptySet anyObject] == nil &&
+		      [[emptySet allObjects] count] == 0 &&
+		      [[emptySet objectEnumerator] nextObject] == nil &&
+		      [emptySet isEqualToSet:[NSSet set]] && [emptySet isSubsetOfSet:oneSet] &&
+		      ! [emptySet intersectsSet:oneSet] && [[emptySet description] length] > 0,
+		      "the empty concrete class answers the primitives AND every derived read over them");
+		check("nsset-copy-is-the-receiver-and-mutable-copy-is-mutable",
+		      [oneSet copy] == oneSet &&
+		      [[oneSet mutableCopy] class] != [NSMutableSet class] &&
+		      [[[oneSet mutableCopy] class] isSubclassOfClass:[NSMutableSet class]] &&
+		      [[oneSet mutableCopy] isEqualToSet:[NSSet setWithObject:@"one"]],
+		      "-copy answers the receiver (immutable) and -mutableCopy a MUTABLE concrete class");
+	}
+	{
+		/* THE PRIMITIVES ARE THE CONTRACT (§C.3 item 5): a class over the three primitives alone must be
+		 * correct through every derived door. */
+		ProbePrimitiveSet *handmadeSet = [[ProbePrimitiveSet alloc] init];
+		NSSet *expectedSet = [NSSet setWithArray:[NSArray arrayWithObjects:@"p", @"q", nil]];
+		NSUInteger thirdPartySeen = 0;
+		id thirdPartyObject;
+
+		/* SPLIT INTO THREE, because a check that bundles ten assertions cannot say WHICH one is false -
+		 * the per-step named-check rule this project's probes follow. */
+		check("nsset-primitives-drive-objects-and-count",
+		      [[handmadeSet allObjects] count] == 2 && [handmadeSet count] == 2 &&
+		      [handmadeSet member:@"p"] != nil && [handmadeSet containsObject:@"q"] &&
+		      [handmadeSet anyObject] != nil,
+		      "allObjects, count, member:, containsObject: and anyObject must be over the primitives");
+		check("nsset-primitives-drive-equality-subset-and-intersection",
+		      [handmadeSet isEqualToSet:expectedSet] && [expectedSet isEqualToSet:handmadeSet] &&
+		      [handmadeSet isSubsetOfSet:expectedSet] && [handmadeSet intersectsSet:expectedSet],
+		      "equality in BOTH directions, subset and intersection must be over the primitives");
+		check("nsset-primitives-drive-hash-and-description",
+		      [handmadeSet hash] == [expectedSet hash] && [[handmadeSet description] length] > 0,
+		      "hash and description must be over the primitives");
+		for (thirdPartyObject in handmadeSet) {
+			thirdPartySeen++;
+		}
+		check("nsset-primitives-drive-fast-enumeration", thirdPartySeen == 2,
+		      "fast enumeration must walk the primitives through the caller's buffer");
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");

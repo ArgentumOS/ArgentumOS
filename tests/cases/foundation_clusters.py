@@ -106,6 +106,18 @@ CHECKS = (
           "nsdictionary-primitives-drive-keys-values-and-equality",
           "nsdictionary-primitives-drive-getobjects-andkeys",
           "nsdictionary-primitives-drive-fast-enumeration",
+          # M3: the set ladder, and the set family's primitives. Archiving a set is NOT asserted:
+          # NSKeyedArchiver has no set path (see docs/TODO-before-release.md §3).
+          "nsset-class-answers-a-concrete-class",
+          "nsset-alloc-init-is-the-empty-singleton",
+          "nsset-mutable-and-counted-answer-their-own-concrete-classes",
+          "nsset-class-for-coder-answers-the-front",
+          "nsset-empty-answers-every-read",
+          "nsset-copy-is-the-receiver-and-mutable-copy-is-mutable",
+          "nsset-primitives-drive-objects-and-count",
+          "nsset-primitives-drive-equality-subset-and-intersection",
+          "nsset-primitives-drive-hash-and-description",
+          "nsset-primitives-drive-fast-enumeration",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a
