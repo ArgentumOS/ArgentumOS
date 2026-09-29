@@ -198,3 +198,56 @@ archive keeps the public name, so `objc_getClass` and the secure-coding allow-li
 * **No silent deviation.** If a family cannot reach exact fidelity without breaking something load-bearing,
   the milestone records the deviation, the reason, and what it costs — the rule §4.2's reversal itself had
   to follow.
+
+## §C.7 Parameterization: every class Apple parameterizes, and how we know which those are
+
+**THE REQUIREMENT (user, 2026-09-28): parameterize every class Apple's implementation parameterizes.** Our
+collections declare **no generic parameters at all** (measured: `grep -n "^@interface NS[A-Za-z]*<"
+userland/Foundation/*.h` → nothing), so `NSArray<NSString *> *` in Apple-compatible source has nowhere to
+land.
+
+**WHAT THE ADMISSIBLE SOURCES PUBLISH (all measured this session):**
+
+| fact | source | status |
+|------|--------|--------|
+| `@interface NSArray<__covariant ObjectType> : NSObject` and `-(ObjectType)objectAtIndex:(NSInteger)index` | **clang's own design post** for lightweight generics | primary, verbatim |
+| **why** covariance: *"…because ObjectType is covariant (and NSArray is an immutable collection)"* | same post | primary, verbatim |
+| the parameter names per METHOD: `- (ObjectType) objectAtIndex:`, `- (ObjectType) objectForKey:(KeyType)` | **Apple's documentation**, occ variant via `variantOverrides` | primary, measured |
+| arity preserved on import, every imported parameter gets a class constraint; examples `NSArray<NSDate *>`, `NSCache<NSObject *, id<NSDiscardableContent>>` | Apple's *"Using Imported Lightweight Generics in Swift"* | primary |
+| type erasure — *"completely erased by IR generation … no runtime or metadata changes"*; the beneficiaries are *"`NSArray`, `NSDictionary`, `NSSet`"* | clang's post + **Apple's SE-0057** | primary |
+| the wider list (NSMutable*, NSOrderedSet, NSEnumerator, NSMapTable, NSHashTable) and NSDictionary's `__covariant KeyType, __covariant ObjectType` | forums/blogs/SO **quoting the headers** | **SECONDARY — not admissible as specification** |
+
+**AND WHAT THEY DO NOT PUBLISH — two blockers, stated rather than papered over:**
+
+1. **The class-level parameter list is not in Apple's documentation.** Measured: the occ variant of the
+   `NSArray` page declares `@interface NSArray : NSObject` — no angle brackets — while the *methods* on the
+   same page carry `ObjectType`. So "any and all" cannot be read off as a list; it can only be inferred from
+   which methods use an undeclared parameter. My scanner for that inference (walk each class page's
+   `topicSections`, read the parameter names out of its methods) **did not run**: it reported `scanned=0` for
+   all 21 classes, so its identifier filter matched nothing and it produced no data. **The instrument is
+   broken and that is recorded, not hidden**; fixing it is this section's first task.
+2. **Variance is published for no class except `NSArray`** (clang's post). The secondary sources claim both of
+   `NSDictionary`'s parameters are `__covariant`, but those are header quotes and this project does not treat
+   Apple's headers as admissible.
+
+**THE RULE ADOPTED HERE IS DERIVED FROM A PUBLISHED REASON, NOT A RECALLED LIST:** a parameter is
+`__covariant` **exactly where the collection is immutable**, that being the reason clang's post gives for
+`NSArray`; the mutable counterpart inherits its parameter's variance through the class it subclasses
+(`NSMutableArray : NSArray`), so it needs no second decision. Where a container is inherently mutable
+(`NSMapTable`, `NSHashTable`) the reason does not apply, so the parameter stays invariant **and the milestone
+says so**. Any variance we cannot cite is recorded as OURS — §C.6's rule applied to a compile-time feature.
+
+**THE INSTRUMENT IS THE COMPILER, BECAUSE NOTHING ELSE CAN SEE THIS.** Type arguments are erased before IR
+generation, so no runtime probe can observe one and a `-class`-style check is impossible by construction.
+Verification is a **compile probe** under `-Werror`, the shape this project already uses for nullability: a
+file assigning `NSArray<NSMutableString *> *` to `NSArray<NSString *> *` **must compile** (that is covariance,
+the one behaviour the published text names); a file assigning two unrelated specialized types **must be
+refused**; and every parameterized declaration in our headers must be exercised by at least one such line, so
+a silently dropped parameter fails the build instead of passing unnoticed.
+
+**WHERE IT GOES: parameterization rides with each family, not as its own milestone** — header-only work on the
+declarations that family's milestone is already rewriting, and it must not change behaviour (the annotation is
+erased, so a family's probe results must be identical before and after). §C.5's M1 gains "parameterize
+`NSArray`/`NSMutableArray`" plus the compile-probe acceptance, and every later family does the same. **The two
+blockers above are all that stands between this and "any and all": one is a broken scanner, the other a
+source-of-truth decision that belongs to the user.**
