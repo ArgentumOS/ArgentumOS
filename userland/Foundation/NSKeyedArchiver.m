@@ -202,7 +202,7 @@ NSString * const NSKeyedArchiveRootObjectKey = @"NSKeyedArchiveRootObjectKey";
 		[_memo addObject:memo];
 		/* RESERVED BEFORE ITS CONTENTS — rule 1 in the file comment. */
 		[_objects addObject:entry];
-		[entry setObject:fn_reference([self fnClassIndexOf:[object class]]) forKey:kClass];
+		[entry setObject:fn_reference([self fnClassIndexOf:[object classForCoder]]) forKey:kClass];
 		if ([object isKindOfClass:[NSArray class]]) {
 			NSArray *members = (NSArray *)object;
 			NSMutableArray *slots = [NSMutableArray array];

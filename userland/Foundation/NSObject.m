@@ -148,6 +148,19 @@ extern id object_dispose(id obj);
 	return object_getClass(self);
 }
 
+/* THE TWO ARCHIVER DOORS, and the defaults substitute nothing (§C.3 item 4): the class itself, and for
+ * the older archiver the same answer. A cluster's public front overrides `-classForCoder` to answer
+ * itself; its private concrete subclasses inherit, so an archive carries the public name. */
+- (Class)classForCoder
+{
+	return [self class];
+}
+
+- (Class)classForArchiver
+{
+	return [self classForCoder];
+}
+
 - (Class)superclass
 {
 	return class_getSuperclass(object_getClass(self));

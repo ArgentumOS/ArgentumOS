@@ -137,12 +137,45 @@ archive keeps the public name, so `objc_getClass` and the secure-coding allow-li
 
 ## §C.5 Milestones
 
-* **M0 — the mechanism, with no family changed.** Look up and implement the three `classFor*` doors on
-  `NSObject` (defaults: the class itself), move `NSKeyedArchiver.m:205`'s hinge and `NSArchiver.m:80` onto
-  them, and settle the owed lookup in §C.3. Prove the mechanism with a probe that defines its own tiny
-  cluster — one public front, three private concrete classes — and asserts every bullet of §C.3. **M0
-  changes no shipped class's behaviour and must leave every existing case green**; that is the point of
-  doing it first.
+* **M0 — LANDED 2026-09-28. THE MECHANISM, AND NO SHIPPED CLASS CHANGED BEHAVIOUR.** What the bullets asked
+  for, and what the session measured while doing it:
+  * **The two doors with a citable contract shipped on `NSObject`**: `-classForCoder` (default `[self
+    class]`) and `-classForArchiver` (default `-classForCoder`), declared in `NSObject.h` with the contract
+    quoted from **GNUstep's published NSObject reference** — *"default implementation returns `[self class]`
+    (no substitution)"* and *"default implementation returns `-classForCoder`"*. **THE OWED LOOKUP IS
+    ANSWERED, AND IT IS A SWEEP GAP:** our derived selector surface carries **ZERO NSObject rows**
+    (measured: `awk -F'\t' '$4=="NSObject"'` over `docs/reference/foundation-selector-surface.txt` → 0), so
+    *every* Apple-documented NSObject selector is invisible to the ledger, not just these three. Apple's own
+    `NSObject` page also 404s from the documentation JSON endpoint used here (`http=404 bytes=15639`) while
+    the same endpoint answers `nsarray.json` with 200/177,351 bytes — so the gap is in the derivation's
+    coverage, and the third door, **`-classForPortCoder`, is still OWED**: its contract text did not come
+    through the admissible source in this session, and no code path here needs it yet. It is not declared,
+    which is the point — nothing is written from memory.
+  * **The hinge moved, in two places**: `NSKeyedArchiver.m:205` now records
+    `fnClassIndexOf([object classForCoder])`, and `NSArchiver.m:80` writes
+    `NSStringFromClass([object classForArchiver])`. Those are the two one-token changes §C.4 predicted, and
+    they are the whole of the blast radius.
+  * **The mechanism is proved by a new probe, `foundation_clusters`**, whose cluster is defined in the probe
+    itself: one public front, two private concrete classes, the primitive written over by everything else.
+    **12 checks, all green, and two of them are the ones nothing else can make**: the defaults substitute
+    nothing for a class that is not a cluster, and **the archive's own BYTES are searched** — the public
+    name must be present and *neither private name may appear anywhere in the archive*. The byte search is
+    deliberate: asking an object `-classForCoder` would have passed even if the archiver had gone on
+    recording `-class`, which is precisely the bug §C.4 is about.
+  * **A FAMILY THAT IS NOT ONE: `+allocWithZone:` DOES NOT EXIST HERE** (§4 of `NSObject.h`: the zone-taking
+    methods were removed, and *"THE SINGLETON DOOR IS +alloc — override THAT"*). So the door a cluster
+    overrides in this library is `+alloc`, and the probe's front shows the one subtlety: a concrete class
+    INHERITS that override, so the routing must be written so it happens exactly once, at the front
+    (`self != [Front class]` → `[super alloc]`, which in a class method starts the lookup at the front's
+    superclass with the receiver still being the class that was asked).
+  * **AND THE CASE'S OWN INSTRUMENT WAS WRONG FIRST, in the way this project keeps recording:** the probe
+    printed its check lines INDENTED (the sibling probes' style) while the new case anchored its regex at
+    `^FOUNDATION-CLUSTERS`, so it matched nothing and reported `0 of 12 ok` **while the probe's own tally
+    said `ok=12 fail=0`**. The tally line was the truth and the anchored pattern was the defect; the case
+    now matches unanchored, with a note saying why a `FAIL` line still cannot match it.
+  * **Gates:** probe `foundation_clusters` **12/12**, guest case **`TESTS-OK 1/1 case(s), 6/6 check(s) in
+    12s`**, `--check` consistent, `--unimplemented` **0 NEW**, `foundation-gate` **OK** (593 files scanned,
+    one more than before — this milestone's probe).
 * **M1 — `NSArray`/`NSMutableArray`**: the empty singleton, the one-element, the small and the general
   concrete classes; the primitives documented; every constructor routed; `-class`/`-classForCoder` asserted
   through M0's own machinery.

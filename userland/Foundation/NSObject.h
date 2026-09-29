@@ -164,6 +164,29 @@ __attribute__((objc_root_class))
 - (BOOL)isMemberOfClass:(Class)aClass;
 - (BOOL)respondsToSelector:(SEL)aSelector;
 - (BOOL)conformsToProtocol:(Protocol *)aProtocol;
+
+/* ===================================================================================================
+ * WHAT AN ARCHIVER RECORDS, WHICH IS NOT ALWAYS `-class` — and this is the door a CLASS CLUSTER exists
+ * to answer (docs/design/foundation-clusters-plan.md §C.3, item 4).
+ *
+ * An instance of a cluster belongs to a PRIVATE CONCRETE class, so an archive that recorded `-class`
+ * would carry a name no caller ever wrote and no reader could look up. These answer the class to record
+ * instead, and THE DEFAULTS SUBSTITUTE NOTHING: `-classForCoder` answers `[self class]`, and
+ * `-classForArchiver` answers `-classForCoder`. A cluster's public front overrides them to answer
+ * ITSELF, and its concrete subclasses inherit that — which is what keeps an archive of a cluster
+ * carrying the public name.
+ *
+ * THE CONTRACT IS GNUstep's published NSObject reference, which is this project's admissible secondary
+ * spec for such things: "-classForCoder ... default implementation returns [self class] (no
+ * substitution)"; "-classForArchiver ... default implementation returns -classForCoder". Apple's own
+ * NSObject page did not resolve from the documentation endpoint when this was written (a 404 on that
+ * id), and THAT is also why our derived selector surface carries no NSObject rows at all: the doors are
+ * declared here from a citable source rather than from memory, and the sweep gap is recorded in the
+ * plan's §C.5 M0 entry.
+ * =================================================================================================== */
+- (Class)classForCoder;
+- (Class)classForArchiver;
+
 - (id)self;
 
 /*

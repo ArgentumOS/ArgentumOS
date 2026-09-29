@@ -77,7 +77,7 @@ static NSUInteger fn_index_of(NSArray *table, id object)
 
 - (void)fnWriteObjectOfClass:(id)object
 {
-	NSString *name = NSStringFromClass([object class]);
+	NSString *name = NSStringFromClass([object classForArchiver]);
 
 	[self fnWriteByte:FNARTagObject];
 	/* THE LENGTH IS BYTES, NOT CHARACTERS — the wire counts the same unit on both sides, and a class name is
