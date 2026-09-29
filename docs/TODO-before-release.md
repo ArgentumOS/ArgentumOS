@@ -153,7 +153,29 @@ move one type at a time: the union, the kind tag and both macros have to change 
 plist, JSON, decimalnumber and numberformatter all sit on. That is its own unit with its own verification
 (the plist, JSON and number cases as the gates), not a tail-end change.
 
-**M4's RUNTIME HALF WAS ATTEMPTED ON 2026-09-29 AND REVERTED, and the measurement is the valuable part.**
+**M4'S RUNTIME HALF LANDED 2026-09-29** (the front is payload-free; `AGNumberSigned`/`Unsigned`/`Floating`/
+`Boolean` hold the payload, `AGNumberItems` is what the door answers with, the constructor chooses by type,
+and every derived read moved onto `-agKind` + the three payload accessors). **Its round trip is the record
+worth keeping, because both halves were measured:**
+
+* **THE BUG THE FULL TIER FOUND WAS REAL:** `-classForCoder` answering `NSNumber` for EVERY subclass rewrote
+  **NSDecimalNumber**'s name in every archive — it broke `foundation_urlsession_task` and
+  `foundation_websockettask`, and hiding only this file's private classes fixed both.
+* **AND THE FULL TIER ALSO CRIED WOLF, WHICH IS WHY A FAILING RUN IS NOT A VERDICT.** With that fixed it
+  still reported `foundation_value` CRASHING; three repeated runs of that case alone passed 31/31 every time,
+  and the SAME run that "found" the crash had echoed the harness's own typed command back unexecuted — the
+  degraded-guest mode. Comparing the full tier in both directions settled it: **the failure sets differ in
+  BOTH directions between runs** (one run loses `urlsession_task`/`websockettask`, the next loses the XML
+  trio plus two libressl cases), so at this sample size the full tier discriminates a real regression only
+  when a TARGETED re-run agrees with it.
+* **THE METHOD THAT WORKED, TWICE:** run the failing case alone, and read the last check the probe reported
+  before it stopped. That located the set-archive crash, and it is what turned this "crash" into a flake.
+
+**STILL OWED FOR M4:** the number cluster has no probe of its own — M1, M2 and M3 all have a section
+asserting their concrete classes, their door, `-classForCoder` and a THIRD-PARTY subclass over the
+primitives alone, and `NSNumber` should have the same. The acceptance it does satisfy is the number probe
+green: `foundation_value` 31/31 (three runs), `foundation_nsvalue`, `foundation_decimalnumber`,
+`foundation_numberformatter` and `foundation_clusters` all green.
 The refactor was built in full: the front became PAYLOAD-FREE, four concrete classes took the payload
 (`AGNumberSigned`/`Unsigned`/`Floating`/`Boolean` plus `AGNumberItems` for the door), the two macros were
 reworked so the CONSTRUCTOR chooses the class by its type, and every derived read moved onto four new

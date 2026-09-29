@@ -35,15 +35,29 @@
  * `return nil` and no `return NULL` at all (measured, not assumed). */
 NS_ASSUME_NONNULL_BEGIN
 
+/* ===================================================================================================
+ * NSNUMBER IS A CLASS CLUSTER (2026-09-29; docs/design/foundation-clusters-plan.md §C.3, M4).
+ *
+ * THE PAYLOAD LIVES IN THE CONCRETE CLASSES, which is the whole of this milestone: the front is
+ * PAYLOAD-FREE, and each concrete class holds one field plus the @encode char it was built with —
+ * AGNumberSigned (long long), AGNumberUnsigned (unsigned long long), AGNumberFloating (double),
+ * AGNumberBoolean (BOOL), and AGNumberItems, the general instance `+alloc` answers with before a
+ * constructor chooses. The CONSTRUCTOR chooses, because the class follows the TYPE: a 44-byte decimal
+ * does not fit any of them and is served by NSDecimalNumber (which is why that subclass exists).
+ *
+ * THE PRIMITIVES ARE THESE FOUR, and everything else here is written over them:
+ *
+ *     - (unsigned char)agKind                  the @encode char of the type it was built as
+ *     - (long long)longLongValue               the payload, as the widest signed form
+ *     - (unsigned long long)unsignedLongLongValue
+ *     - (double)doubleValue
+ *
+ * -objCType, the fifteen conversion accessors, -isFloating, -isUnsigned, -boolValue, -isEqualToNumber:,
+ * -hash, -description and the decimal bridge are all derived from those, so a subclass that answers the
+ * four is correct through every door — which the probe proves with a class of its own.
+ * =================================================================================================== */
+
 @interface NSNumber : NSObject <NSCopying>
-{
-	union {
-		long long _signedValue;
-		unsigned long long _unsignedValue;
-		double _doubleValue;
-	} _value;
-	unsigned char _kind;		/* the @encode char of the type it was built as */
-}
 
 /* Creation and initialisation: the full 15-type matrix, Cocoa's names. */
 + (NSNumber *)numberWithBool:(BOOL)value;
