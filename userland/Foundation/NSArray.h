@@ -83,8 +83,8 @@ NS_ASSUME_NONNULL_BEGIN
 /* Cocoa's subscript: `array[0]` lowers to this. */
 - (ObjectType)objectAtIndexedSubscript:(NSUInteger)index;
 
-- (nullable id)firstObject;
-- (nullable id)lastObject;
+- (nullable ObjectType)firstObject;
+- (nullable ObjectType)lastObject;
 /* NSNotFound for a missing element — NOT (NSUInteger)-1, which is what this
  * answered before the audit and which never equals NSNotFound. */
 - (NSUInteger)indexOfObject:(ObjectType)object;

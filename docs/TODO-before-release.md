@@ -38,7 +38,10 @@ exists is drift. Do it as ONE commit, when nothing else is in flight — it touc
 ## 2. The parameterization set: two gaps the compiler found
 
 The clause that measures this is `tools/foundation-sweep.py --parameterized` / `--check` (139 findings
-across 13 classes on 2026-09-28; **103 as of 2026-09-29, because M1's family reached 0**).
+across 13 classes on 2026-09-28; **103 after M1's family reached 0, then 114 on 2026-09-29 once the clause
+learned to read `@property` declarations — 221 rows, and the increase is Apple's typed properties:
+`firstObject`, `allKeys`, `allObjects`, `anyObject` and friends, each of which is a PROPERTY in Apple's
+header and a METHOD here, so the families owe the kind as well as the annotation**).
 
 * **`NSOrderedCollectionDifference` IS parameterized by Apple and is NOT in the clause's class list.** Our
   compiler refused `NSOrderedCollectionDifference<ObjectType>` in `NSArray.h` while Apple's own `NSArray.h`

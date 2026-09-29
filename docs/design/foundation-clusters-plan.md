@@ -291,6 +291,21 @@ selector and the parameter NAMES, never a declaration's text (the deprecation li
 reads that file offline** and compares it to our headers, BOTH WAYS: a method we ship without the parameter
 Apple's declaration names, and a method we parameterize where Apple's does not.
 
+**AND A SECOND SHAPE WAS INVISIBLE UNTIL 2026-09-29: THE PROPERTY** (plan step sw1). The extractor
+matched `[-+]` declarations only, so a parameterized `@property` was not a row at all — and Apple
+publishes them: its own `NSArray.h` declares `firstObject` and `lastObject` exactly that way. A missing
+row is INVISIBLE, which is why the extension was measured the way the first one was: the derived table went
+**207 → 221 rows** and the findings **103 → 114** (M1's family fixed — see the M1 row), a property being
+keyed by its ACCESSOR SELECTORS because that is how the rest of this sweep already carries one. Two things
+it cost, both now in the code: a property name anchored at the END of a declaration **silently dropped**
+`firstObject` while keeping its neighbour `lastObject`, because Apple writes `… firstObject
+API_AVAILABLE(macos(10.6), ios(4.0), …)` — trailing annotations are stripped first; and **BOTH DIRECTIONS
+WERE PROVEN BY PLANTING A DIFFERENCE** rather than asserted: taking `ObjectType` off our `firstObject` makes
+the finding appear, and giving `-filteredArrayUsingPredicate:` a parameter Apple does not declare makes the
+check answer `PARAMETERIZED, BUT NOT`. **A KIND DIFFERENCE THIS SURFACED, and the families carry it:**
+Apple declares these as PROPERTIES while this tree declares METHODS, and §11.0 wants property for property,
+so each family's milestone owes the kind as well as the annotation.
+
 **MEASURED, FIRST RUN: 207 parameterized methods in Apple's headers, and 139 findings** — methods we ship
 whose Apple declaration names a parameter. By class: NSArray 27, NSOrderedSet 17, NSSet 16, NSDictionary 15,
 NSHashTable 13, NSMutableOrderedSet 9, NSMutableArray 9, NSMapTable 9, NSMutableDictionary 8, NSMutableSet 7,

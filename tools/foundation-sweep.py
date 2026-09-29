@@ -934,28 +934,79 @@ def _one_selector(chunk):
     return (sign, "".join(parts)) if parts else None
 
 
+PARAM_PROP_RE = re.compile(r"^[ \t]*@property\s*(?:\(([^)]*)\))?\s*([^;]*?);", re.M)
+
+
+def _property_selectors(chunk):
+    """[(sign, selector)] for one @property: the getter, plus the setter when it is not readonly.
+
+    A property is an ACCESSOR PAIR, and the rest of this sweep already carries it as those two selectors
+    (`_objc_blocks` puts exactly them into its members), so the parameter clause keys it the same way
+    rather than inventing a third kind of row. `getter=`/`setter=` in the attribute list are honoured."""
+    m = PARAM_PROP_RE.match(chunk)
+    if m is None:
+        return []
+    attrs, decl = m.group(1) or "", m.group(2)
+    # TRAILING ANNOTATIONS ARE STRIPPED FIRST, and this is not hypothetical: Apple writes
+    # `@property (...) ObjectType firstObject API_AVAILABLE(macos(10.6), ios(4.0), ...)`, and a name
+    # anchored at the END of the declaration silently DROPPED that property while keeping its neighbour
+    # `lastObject`, which has no suffix. A missing row is invisible; a present one is the whole check.
+    decl = re.sub(r"\s*\b(?:API_[A-Z_]+|NS_SWIFT_[A-Z_]+|NS_REFINED_FOR_SWIFT|SWIFT_[A-Z_]+"
+                  r"|__attribute__)\b.*$", "", decl, flags=re.S).strip()
+    name = re.search(r"([A-Za-z_]\w*)\s*$", decl)
+    if name is None:
+        return []
+    prop = name.group(1)
+    getter = re.search(r"\bgetter\s*=\s*([A-Za-z_]\w*)", attrs)
+    out = [("-", getter.group(1) if getter else prop)]
+    if "readonly" not in attrs:
+        setter = re.search(r"\bsetter\s*=\s*([A-Za-z_]\w*)", attrs)
+        out.append(("-", setter.group(1) if setter else "set" + prop[0].upper() + prop[1:] + ":"))
+    return out
+
+
 def _parameterized_declarations(text):
     """{(class, sign, selector): frozenset(type parameters used)} for declarations that NAME one.
 
     The class a declaration belongs to is the nearest `@interface` before it — so a category's methods
-    are attributed to the CLASS the category extends, which is how the ledger names them too."""
+    are attributed to the CLASS the category extends, which is how the ledger names them too.
+
+    TWO SHAPES OF DECLARATION NAME A PARAMETER, AND THE SECOND WAS MISSING UNTIL 2026-09-29: a METHOD
+    (`- (ObjectType)objectAtIndex:`) and a PROPERTY (`@property (readonly) ObjectType firstObject`). The
+    extractor matched only `[-+]`, so a parameterized PROPERTY was invisible to the clause — and Apple
+    publishes them: its own `NSArray.h` declares firstObject and lastObject exactly that way."""
     contexts = [(m.start(), m.group(1), set(PARAM_NAME_RE.findall(m.group(2) or "")))
                 for m in PARAM_IFACE_RE.finditer(text)]
     out = {}
-    for m in PARAM_DECL_RE.finditer(text):
+
+    def owner_of(position):
         owner = None
         for start, cls, params in contexts:
-            if start < m.start():
+            if start < position:
                 owner = (cls, params)
             else:
                 break
-        if owner is None or not owner[1]:
+        return None if owner is None or not owner[1] else owner
+
+    for m in PARAM_DECL_RE.finditer(text):
+        owner = owner_of(m.start())
+        if owner is None:
             continue
         used = set(PARAM_NAME_RE.findall(m.group(0))) & owner[1]
         if not used:
             continue
         sel = _one_selector(m.group(0))
         if sel is not None:
+            out[(owner[0], sel[0], sel[1])] = frozenset(used)
+
+    for m in PARAM_PROP_RE.finditer(text):
+        owner = owner_of(m.start())
+        if owner is None:
+            continue
+        used = set(PARAM_NAME_RE.findall(m.group(0))) & owner[1]
+        if not used:
+            continue
+        for sel in _property_selectors(m.group(0)):
             out[(owner[0], sel[0], sel[1])] = frozenset(used)
     return out
 
