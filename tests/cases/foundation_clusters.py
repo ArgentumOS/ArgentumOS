@@ -44,6 +44,22 @@ OBJC = os.path.join(REPO, "tools", "musl-clang-objc64.sh")
 #   * The NEGATIVE CONTROL has to mirror the include tree. Compiling the covariance snippet against a
 #     patched copy of Foundation/ ALONE fails on `CoreGraphics/CGGeometry.h` file not found - a compile
 #     failure with nothing to do with variance, which reads exactly like the instrument working.
+# THE NEGATIVE HALF OF THE COMPILE PROBE, and it is a first-class assertion rather than an omission:
+# Apple measured NSNumber as NOT parameterized (no `ObjectType` anywhere in its declaration), so a
+# declaration that applies type arguments to it MUST be refused. Without this, "we did not parameterize
+# NSNumber" would be indistinguishable from "we never checked", which is how a measurement rots.
+UNPARAMETERIZED_SNIPPET = """\
+#import <Foundation/Foundation.h>
+
+/* NSNumber is NOT parameterized: applying type arguments to it must be REFUSED. */
+void ag_unparameterized(void)
+{
+\tNSNumber<NSString *> *wrong = nil;
+
+\t(void)wrong;
+}
+"""
+
 COVARIANT_SNIPPET = """\
 #import <Foundation/Foundation.h>
 
@@ -244,6 +260,14 @@ class Case(BaseCase):
                    if status != 0
                    else "the unrelated assignment COMPILED, so this check asserts nothing - the flag that "
                         "makes the refusal a failure is missing")
+
+        status, output = self._objc_syntax_only(UNPARAMETERIZED_SNIPPET, userland)
+        self.check("an-unparameterized-class-refuses-type-arguments", status != 0,
+                   "a class Apple measured as NOT parameterized refuses type arguments (the measurement "
+                   "M4 rests on, asserted rather than assumed)"
+                   if status != 0
+                   else "NSNumber ACCEPTED type arguments, so it is parameterized after all and the "
+                        "parameterization clause has a blind spot")
 
         negative = self._variance_removed_tree()
         try:
