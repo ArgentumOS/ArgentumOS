@@ -291,6 +291,22 @@ choice:** its constructions are complete (`-initWithIndex:` and `-initWithIndexe
 general class rather than a subclass — so it cannot inherit an `-init` that would hand a caller the shared
 instance.
 
-**STILL OWED IN M6: `NSIndexSet`'s PRIMITIVE MOVE** — its range-based storage reads (48 of them) have not moved
-onto a primitive set, so its third-party subclass check is absent and the probe's own comment says why. Then M7.
+**`NSIndexSet`'S ITERATOR-SHAPED READS LANDED** (`90fb0197`): `-lastIndex`, `-indexLessThanIndex:`,
+`-indexGreaterThanOrEqualToIndex:` and `-indexLessThanOrEqualToIndex:` are now one forward walk over the
+primitives (`-count`, `-firstIndex`, `-indexGreaterThanIndex:`), proven by a third-party
+`ProbePrimitiveIndexSet` with no range storage. `foundation_clusters` is ok=70 with `foundation_difference` 22/22,
+`foundation_collection` 46/46 and `foundation_coder` 11/11 unmoved.
+
+**THE CHECK FOUND ITS OWN SCOPE, which is why a narrow one is worth writing:** I asserted `-containsIndex:`
+alongside them and it FAILED — that method reaches the ranges through a helper (and my first scan attributed the
+helper's reads to the method before it, which is also why `-classForCoder` appeared to read fourteen lines). So
+`-containsIndex:` is range-shaped and joins the remaining unit.
+
+**STILL OWED IN M6 — AND IT IS A DECISION THE PLAN MUST MAKE, not a size limit:** the RANGE-SHAPED reads
+(`-hash`, `-getIndexes:maxCount:inIndexRange:`, `-countOfIndexesInRange:`, `-isEqualToIndexSet:`,
+`-containsIndexesInRange:`, `-containsIndex:`, `-mutableCopy`, `-description`). Deriving them over an index
+iterator turns O(ranges) into O(indexes), which is catastrophic for a dense set — hashing `{0..1000000}` would
+visit a million indexes. Either a RANGE-LEVEL primitive joins the contract (`-getIndexes:maxCount:inIndexRange:`
+is Apple's bulk door, and a third party could implement it) or these methods stay storage-based and the header
+says so. Then M7.
 
