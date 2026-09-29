@@ -166,6 +166,10 @@ CHECKS = (
           "nsindexset-mutable-accumulates",
           "nsindexset-primitives-drive-the-iterator-doors",
           "nsindexset-primitives-drive-the-bulk-door",
+          # M7: NSHashTable - a front, not a cluster.
+          "nshashtable-archiver-answer-and-empty-instance",
+          "nshashtable-primitives-drive-every-read",
+          "nshashtable-primitives-drive-fast-enumeration",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a

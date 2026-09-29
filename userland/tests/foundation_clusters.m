@@ -450,6 +450,36 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
 
 @end
 
+/* THE THIRD-PARTY CASE FOR NSHASHTABLE: a class over ONLY the three primitives the header names -
+ * -count, -member: and -objectEnumerator - with no table of its own. */
+@interface ProbePrimitiveHashTable : NSHashTable
+@end
+
+@implementation ProbePrimitiveHashTable
+
+- (NSUInteger)count
+{
+	return 2;
+}
+
+- (nullable id)member:(nullable id)object
+{
+	if ([object isEqual:@"m"]) {
+		return @"m";
+	}
+	if ([object isEqual:@"n"]) {
+		return @"n";
+	}
+	return nil;
+}
+
+- (NSEnumerator *)objectEnumerator
+{
+	return [[NSArray arrayWithObjects:@"m", @"n", nil] objectEnumerator];
+}
+
+@end
+
 int main(void)
 {
 	ProbeCluster *empty;
@@ -1141,6 +1171,43 @@ int main(void)
 		      fetched[0] == 1 && fetched[4] == 9 &&
 		      fetched[1] == 2 && [[handmadeIndexes mutableCopy] count] == 5,
 		      "-getIndexes:maxCount:inIndexRange: and -mutableCopy must be written over the range primitive");
+	}
+
+	{
+		/*
+		 * M7: NSHashTable — a FRONT rather than a cluster (its one subclass, FNLegacyHashTable, is private and
+		 * what the legacy C API builds), so the checks are its contract: the archiver's answer, an empty
+		 * instance, and the three primitives carrying every other door. Locals declared HERE.
+		 */
+		NSHashTable *emptyTable = [[NSHashTable alloc] init];
+		NSHashTable *weakTable = [NSHashTable weakObjectsHashTable];
+		ProbePrimitiveHashTable *handmadeTable = [[ProbePrimitiveHashTable alloc] init];
+		NSUInteger tableSeen = 0;
+		id tableObject;
+
+		check("nshashtable-archiver-answer-and-empty-instance",
+		      [weakTable classForCoder] == [NSHashTable class] &&
+		      [weakTable classForArchiver] == [NSHashTable class] &&
+		      emptyTable != nil && [emptyTable count] == 0 && [emptyTable anyObject] == nil &&
+		      [[emptyTable allObjects] count] == 0 && [emptyTable member:@"x"] == nil &&
+		      ! [emptyTable containsObject:@"x"] &&
+		      [[emptyTable objectEnumerator] nextObject] == nil,
+		      "[[NSHashTable alloc] init] must answer an usable EMPTY table, and the archiver must be told the "
+		      "PUBLIC class - the private legacy subclass's name never reaches an archive");
+		check("nshashtable-primitives-drive-every-read",
+		      [handmadeTable count] == 2 && [handmadeTable member:@"m"] != nil &&
+		      [handmadeTable containsObject:@"n"] && [handmadeTable member:@"z"] == nil &&
+		      [[handmadeTable allObjects] count] == 2 && [handmadeTable anyObject] != nil &&
+		      [[handmadeTable setRepresentation] count] == 2 &&
+		      [handmadeTable isEqualToHashTable:handmadeTable] &&
+		      [handmadeTable isSubsetOfHashTable:handmadeTable],
+		      "-allObjects, -anyObject, -containsObject:, -setRepresentation and the comparison doors must be "
+		      "written over the three primitives, on a class with no table of its own");
+		for (tableObject in handmadeTable) {
+			tableSeen++;
+		}
+		check("nshashtable-primitives-drive-fast-enumeration", tableSeen == 2,
+		      "fast enumeration must walk the primitives");
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");

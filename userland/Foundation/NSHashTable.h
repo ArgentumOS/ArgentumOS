@@ -44,6 +44,19 @@ NS_ASSUME_NONNULL_BEGIN
  * spelled the same way, because `NSHashTableOptions` says WHICH set of options it is. */
 typedef NSPointerFunctionsOptions NSHashTableOptions;
 
+/* ===================================================================================================
+ * NSHASHTABLE AND §C.3 (2026-09-29, M7). This family is a FRONT rather than a cluster of private concrete
+ * classes — the same shape NSHashTable's neighbours have here — and it has ONE private subclass, FNLegacyHashTable,
+ * which the legacy C API builds. What the contract asks of it, and what it therefore has:
+ *
+ *     -count      -member:      -objectEnumerator:
+ *
+ * A class answering those three is correct through -anyObject, -allObjects, -containsObject:,
+ * THE MUTATORS ARE NOT OVER THEM, and that is a boundary rather than an omission: this family is MUTABLE,
+ * so its mutators ARE the storage implementation, exactly as the array family's mutable class is.
+ * -classForCoder answers NSHashTable, so the legacy subclass's name never reaches an archive.
+ * =================================================================================================== */
+
 @interface NSHashTable<ObjectType> : NSObject <NSCopying, NSFastEnumeration, NSSecureCoding>
 {
 	FNPointerTable *_table;

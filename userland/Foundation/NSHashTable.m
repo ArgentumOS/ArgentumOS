@@ -34,6 +34,14 @@
 
 @implementation NSHashTable
 
+/* §C.3 item 4: an archiver asks for THIS, never for -class - and here it is UNCONDITIONAL, unlike the number
+ * family's. NSHashTable's one subclass is PRIVATE (FNLegacyHashTable, which the legacy C API builds), so no
+ * public class's name can be rewritten by answering the front for every receiver. */
+- (Class)classForCoder
+{
+	return [NSHashTable class];
+}
+
 - (instancetype)initWithOptions:(NSHashTableOptions)options capacity:(NSUInteger)initialCapacity
 {
 	return [self initWithPointerFunctions:
@@ -88,27 +96,18 @@
 
 - (id)anyObject
 {
-	NSUInteger i;
-	NSUInteger slots = [_table slotCount];
-
-	for (i = 0; i < slots; i++) {
-		if ([_table fnStateAtSlot:i] == FN_SLOT_FULL) {
-			return (id)[_table fnKeyAtSlot:i];
-		}
-	}
-	return nil;
+	/* OVER THE PRIMITIVES (§C.3 item 5): any member, from the enumerator. */
+	return [[self objectEnumerator] nextObject];
 }
 
 - (NSArray *)allObjects
 {
-	NSMutableArray *objects = [NSMutableArray arrayWithCapacity:[_table count]];
-	NSUInteger i;
-	NSUInteger slots = [_table slotCount];
+	NSMutableArray *objects = [NSMutableArray arrayWithCapacity:[self count]];
+	NSEnumerator *enumerator = [self objectEnumerator];
+	id object;
 
-	for (i = 0; i < slots; i++) {
-		if ([_table fnStateAtSlot:i] == FN_SLOT_FULL) {
-			[objects addObject:(id)[_table fnKeyAtSlot:i]];
-		}
+	while ((object = [enumerator nextObject]) != nil) {
+		[objects addObject:object];
 	}
 	return objects;
 }
@@ -120,7 +119,7 @@
 
 - (BOOL)containsObject:(id)anObject
 {
-	return anObject != nil && [_table fnMember:(void *)anObject] != NULL;
+	return [self member:anObject] != nil;
 }
 
 - (id)member:(id)object
@@ -130,9 +129,23 @@
 
 - (NSEnumerator *)objectEnumerator
 {
-	/* A SNAPSHOT ENUMERATOR, built from the same list `-allObjects` answers: mutating while enumerating
-	 * therefore changes the TABLE but not the walk, which is the safe behaviour and the one to state. */
-	return [[self allObjects] objectEnumerator];
+	/*
+	 * THE PRIMITIVE (§C.3 item 5), AND IT MUST NOT GO THROUGH -allObjects: that method is written OVER this
+	 * one, so asking it here was MUTUAL RECURSION - and this is the SECOND time this session that trap has
+	 * fired (the dictionary family's -keyEnumerator had the same shape). A primitive reads the class's own
+	 * storage, which is what this does; the enumerator then holds the SNAPSHOT, so mutating while enumerating
+	 * changes the TABLE but not the walk, which is the behaviour to state.
+	 */
+	NSMutableArray *snapshot = [NSMutableArray arrayWithCapacity:[self count]];
+	NSUInteger i;
+	NSUInteger slots = [_table slotCount];
+
+	for (i = 0; i < slots; i++) {
+		if ([_table fnStateAtSlot:i] == FN_SLOT_FULL) {
+			[snapshot addObject:(id)[_table fnKeyAtSlot:i]];
+		}
+	}
+	return [snapshot objectEnumerator];
 }
 
 - (void)addObject:(id)object
@@ -256,30 +269,30 @@
 				  objects:(id *)buffer
 				    count:(NSUInteger)length
 {
-	(void)buffer;
-	(void)length;
-	/* THE SNAPSHOT IS REBUILT ONLY WHEN THE TABLE HAS CHANGED, keyed by its generation counter. */
-	if (_snapshot == NULL || _snapshotGeneration != [_table generation]) {
-		NSUInteger i;
-		NSUInteger slots = [_table slotCount];
+	unsigned long cursor = state->state;
+	unsigned long produced = 0;
+	unsigned long skip;
+	NSEnumerator *enumerator = [self objectEnumerator];
+	id object;
 
-		free(_snapshot);
-		_snapshot = (void **)calloc([_table count] > 0 ? [_table count] : 1, sizeof(void *));
-		_snapshotCount = 0;
-		for (i = 0; i < slots; i++) {
-			if ([_table fnStateAtSlot:i] == FN_SLOT_FULL) {
-				_snapshot[_snapshotCount++] = (void *)[_table fnKeyAtSlot:i];
-			}
-		}
-		_snapshotGeneration = [_table generation];
+	/*
+	 * OVER THE PRIMITIVES, THROUGH THE CALLER'S BUFFER (§C.3 item 5). The snapshot machinery this replaces
+	 * existed to be SAFE UNDER MUTATION - and it still is, for the same reason: -objectEnumerator hands out a
+	 * snapshot of its own, so a mutation during the walk changes the table and not the walk. What it no longer
+	 * does is cache that snapshot across calls, which is a cost the contract is worth.
+	 */
+	for (skip = 0; skip < cursor && (object = [enumerator nextObject]) != nil; skip++) {
 	}
-	if (state->state != 0) {
+	while (produced < length && (object = [enumerator nextObject]) != nil) {
+		buffer[produced++] = object;
+	}
+	state->mutationsPtr = &_mutations;
+	if (produced == 0) {
 		return 0;
 	}
-	state->itemsPtr = (id *)_snapshot;
-	state->mutationsPtr = &_mutations;
-	state->state = 1;
-	return _snapshotCount;
+	state->itemsPtr = buffer;
+	state->state = cursor + produced;
+	return produced;
 }
 
 + (BOOL)supportsSecureCoding
