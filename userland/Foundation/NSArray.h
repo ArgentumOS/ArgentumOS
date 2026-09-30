@@ -71,12 +71,12 @@ NS_ASSUME_NONNULL_BEGIN
 + (instancetype)arrayWithObject:(ObjectType)object;
 + (instancetype)arrayWithObjects:(const ObjectType _Nonnull * _Nullable)objects count:(NSUInteger)count;
 + (instancetype)arrayWithArray:(NSArray<ObjectType> *)other;
-+ (instancetype)arrayWithObjects:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
++ (instancetype)arrayWithObjects:(ObjectType)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 
 - (id)initWithObject:(id)object;
 - (id)initWithObjects:(const ObjectType _Nonnull * _Nullable)objects count:(NSUInteger)count;
 - (id)initWithArray:(NSArray<ObjectType> *)other;
-- (id)initWithObjects:(id)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
+- (id)initWithObjects:(ObjectType)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 
 - (NSUInteger)count;
 - (ObjectType)objectAtIndex:(NSUInteger)index;
@@ -95,9 +95,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSArray<ObjectType> *)subarrayWithRange:(NSRange)range;
 - (void)getObjects:(ObjectType __unsafe_unretained _Nonnull * _Nonnull)buffer range:(NSRange)range;
 
-- (NSUInteger)indexOfObject:(id)object inRange:(NSRange)range;
+- (NSUInteger)indexOfObject:(ObjectType)object inRange:(NSRange)range;
 - (NSUInteger)indexOfObjectIdenticalTo:(ObjectType)object;
-- (NSUInteger)indexOfObject:(id)object
+- (NSUInteger)indexOfObject:(ObjectType)object
 		   inSortedRange:(NSRange)range
 			   options:(NSBinarySearchingOptions)options
 		   usingComparator:(NSComparator)comparator;
@@ -151,12 +151,12 @@ NS_ASSUME_NONNULL_BEGIN
 @interface NSArray<ObjectType> (NSOrderedCollectionDifferenceAdditions)
 
 - (NSOrderedCollectionDifference<ObjectType> *)differenceFromArray:(NSArray<ObjectType> *)other;
-- (NSOrderedCollectionDifference *)differenceFromArray:(NSArray *)other
+- (NSOrderedCollectionDifference *)differenceFromArray:(NSArray<ObjectType> *)other
 					  withOptions:(NSOrderedCollectionDifferenceCalculationOptions)options;
 /* THE EQUIVALENCE-TEST FORM. Apple: "don't use the option inferMoves when providing a block for the equivalence
  * test. The changes returned in the difference object don't include valid values for associatedIndex" — so a
  * move option here is IGNORED and every associated index stays NSNotFound, which is what that page describes. */
-- (NSOrderedCollectionDifference *)differenceFromArray:(NSArray *)other
+- (NSOrderedCollectionDifference *)differenceFromArray:(NSArray<ObjectType> *)other
 					  withOptions:(NSOrderedCollectionDifferenceCalculationOptions)options
 				  usingEquivalenceTest:(BOOL (^)(id obj1, id obj2))block;
 /* "Creates a new array by applying a difference object to an existing array." The RECEIVER IS THE SOURCE, so
@@ -180,14 +180,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)removeLastObject;
 - (void)removeObject:(ObjectType)object;
 - (void)removeObjectIdenticalTo:(ObjectType)object;
-- (void)removeObjectIdenticalTo:(id)object inRange:(NSRange)range;
-- (void)removeObject:(id)object inRange:(NSRange)range;
+- (void)removeObjectIdenticalTo:(ObjectType)object inRange:(NSRange)range;
+- (void)removeObject:(ObjectType)object inRange:(NSRange)range;
 - (void)removeObjectsInRange:(NSRange)range;
 - (void)setArray:(NSArray<ObjectType> *)other;
 - (void)exchangeObjectAtIndex:(NSUInteger)first withObjectAtIndex:(NSUInteger)second;
 - (void)replaceObjectsInRange:(NSRange)range withObjectsFromArray:(NSArray<ObjectType> *)other;
 - (void)replaceObjectsInRange:(NSRange)range
-	 withObjectsFromArray:(NSArray *)other
+	 withObjectsFromArray:(NSArray<ObjectType> *)other
 			  range:(NSRange)otherRange;
 - (void)sortUsingComparator:(NSComparator)comparator;
 - (void)sortWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator;

@@ -97,18 +97,18 @@ typedef enum {
 	NSUInteger _associatedIndex;
 }
 
-+ (instancetype)changeWithObject:(nullable id)anObject
++ (instancetype)changeWithObject:(nullable ObjectType)anObject
 			    type:(NSCollectionChangeType)type
 			   index:(NSUInteger)index;
-+ (instancetype)changeWithObject:(nullable id)anObject
++ (instancetype)changeWithObject:(nullable ObjectType)anObject
 			    type:(NSCollectionChangeType)type
 			   index:(NSUInteger)index
 		 associatedIndex:(NSUInteger)associatedIndex;
 
-- (instancetype)initWithObject:(nullable id)anObject
+- (instancetype)initWithObject:(nullable ObjectType)anObject
 			  type:(NSCollectionChangeType)type
 			 index:(NSUInteger)index;
-- (instancetype)initWithObject:(nullable id)anObject
+- (instancetype)initWithObject:(nullable ObjectType)anObject
 			  type:(NSCollectionChangeType)type
 			 index:(NSUInteger)index
 	       associatedIndex:(NSUInteger)associatedIndex;
@@ -160,16 +160,16 @@ typedef enum {
  * silently dropping one side. Passing nil for an object array is allowed and leaves every `-object` nil, which
  * is what the suppression options would have produced anyway. */
 - (instancetype)initWithInsertIndexes:(NSIndexSet *)inserts
-		      insertedObjects:(nullable NSArray *)insertedObjects
+		      insertedObjects:(nullable NSArray<ObjectType> *)insertedObjects
 			removeIndexes:(NSIndexSet *)removes
-			removedObjects:(nullable NSArray *)removedObjects;
+			removedObjects:(nullable NSArray<ObjectType> *)removedObjects;
 
 /* THE SAME THING PLUS CHANGES THAT BELONG TO NEITHER SIDE, which is what a move PAIR is: an insertion and a
  * removal that already point at each other. They are counted in `-insertions`/`-removals` by their own type. */
 - (instancetype)initWithInsertIndexes:(NSIndexSet *)inserts
-		      insertedObjects:(nullable NSArray *)insertedObjects
+		      insertedObjects:(nullable NSArray<ObjectType> *)insertedObjects
 			removeIndexes:(NSIndexSet *)removes
-			removedObjects:(nullable NSArray *)removedObjects
+			removedObjects:(nullable NSArray<ObjectType> *)removedObjects
 		     additionalChanges:(NSArray *)changes;
 
 /* "A Boolean value that indicates if the difference has changes." */
