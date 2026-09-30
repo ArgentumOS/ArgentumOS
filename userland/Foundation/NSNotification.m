@@ -23,6 +23,7 @@
 }
 
 NSNotificationName const NSAppleEventManagerWillProcessFirstEventNotification = @"NSAppleEventManagerWillProcessFirstEventNotification";
+/* §63.23: these five were removed and restored in one unit — the declarations' comment has the whole reason. */
 NSNotificationName const NSClassDescriptionNeededForClassNotification = @"NSClassDescriptionNeededForClassNotification";
 NSNotificationName const NSExtensionHostDidBecomeActiveNotification = @"NSExtensionHostDidBecomeActiveNotification";
 NSNotificationName const NSExtensionHostDidEnterBackgroundNotification = @"NSExtensionHostDidEnterBackgroundNotification";

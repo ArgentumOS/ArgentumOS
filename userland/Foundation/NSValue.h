@@ -17,10 +17,16 @@
  *   -getValue:                 copies them back, and the caller is responsible for the buffer
  *                              being large enough — exactly as in Cocoa.
  *
- * THE SIZE COMES FROM THE ENCODING, which is the one piece of real work here: there is no
- * NSGetSizeAndAlignment in this library, so `fn_value_size` walks the encoding — scalars, pointers,
- * objects, C arrays and structs/unions, recursively — and RAISES on an encoding it cannot size
- * rather than guessing a length. Named limits: no bitfields, and no Objective-C++ encodings.
+ * THE SIZE COMES FROM THE ENCODING, which is the one piece of real work here: this library WALKS it —
+ * scalars, pointers, objects, C arrays and structs/unions, recursively — and RAISES on an encoding it
+ * cannot size rather than guessing a length. Named limits: no bitfields, and no Objective-C++ encodings.
+ *
+ * ⚠ AND IT WALKS IT AS `NSGetSizeAndAlignment` ITSELF, WHICH THIS COMMENT USED TO DENY (§63.23). The sentence
+ * here read "there is no NSGetSizeAndAlignment in this library, so `fn_value_size` walks the encoding", and
+ * that was wrong twice over: the function has existed since W2e — declared in NSObjCRuntime.h and DEFINED at
+ * the end of this header's implementation, on the very walker the size comes from, so the two cannot
+ * disagree — and `fn_value_size` was that walker's OLD NAME (it is `fn_measure` now). A header that denies a
+ * function its own implementation ships is exactly the kind of sentence a reader has no reason to doubt.
  *
  * THE GEOMETRY EXTENSIONS ARE ABSENT BY NAME: +valueWithPoint:/+valueWithSize:/+valueWithRect: are
  * declared in Cocoa's NSValue.h, and this library has no NSPoint/NSSize/NSRect to build them from

@@ -15824,6 +15824,47 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.23 — A STALE HEADER COMMENT, AND THE FIVE POLICY FINDINGS THAT WERE A SECOND LEDGER'S ROWS (2026-09-30)
+
+**TWO SMALL THINGS, AND THE SECOND ONE REVERSED ITSELF INSIDE THE UNIT — which is the part worth recording.**
+
+**ONE: `NSValue.h` DENIED A FUNCTION ITS OWN IMPLEMENTATION SHIPS.** Its opening comment said *"there is no
+`NSGetSizeAndAlignment` in this library, so `fn_value_size` walks the encoding"* — and that was wrong twice:
+`NSObjCRuntime.h:149` **declares** the function, `NSValue.m` **defines** it at the end of the file *on the very
+walker the size comes from* (`fn_measure`, so the two cannot disagree), and `fn_value_size` was that walker's
+**old name**. A comment that denies a function the tree ships is exactly the kind of sentence a reader has no
+reason to doubt, so it now says what is true — and it was the ONLY such claim in the headers (measured: a grep
+for the name finds `NSObjCRuntime.h`'s declaration and this one comment, nothing else).
+
+**TWO: THE FIVE "POLICY FINDINGS" WERE A CLASSIFIER ARTIFACT, NOT A VIOLATION — AND I ONLY LEARNED THAT AFTER
+ASKING FOR A DECISION ON THEM.** The finding read *"API this ledger STRIKES that we still declare"*:
+`NSClassDescriptionNeededForClassNotification` and four `NSMetadataQuery*Notification` names, whose owner
+classes this project declines by decision. The user chose to **remove the declarations** — the ledger's own
+doctrine ("a struck row is one we must NOT declare") — and **THE MEASUREMENT THEN CONTRADICTED IT**: `--check`
+answered five **`STALE SHIPPED CLAIM`** errors, because Apple's index files each of those names on **TWO** pages
+— under the declined owner *and* under **`NSNotification`**, whose page lists every notification name as its
+member, and **that row is `shipped`**. A `--refresh` cannot clear it: the shipped rows are regenerated from
+Apple's index. So the unit was re-asked with that evidence, and the decision became **revert + fix the tool**.
+
+**THE RULE THE TOOL NOW APPLIES, AND WHY IT IS THE HONEST ONE: A STRIKE IS JUDGED BY NAME.** A struck member is
+a policy finding only when **no row for that name is shipped** — because when one is, the name is API this tree
+ships (NSNotification's own surface says so), and a struck row on another page is that page's business. It keeps
+the teeth the check was written for: a struck name that *nothing* ships is still a finding.
+
+**AND THE UNIT COST A SECOND MIS-ATTRIBUTION, WHICH IS THE REAL LESSON.** My first patch went to the
+**selector** ledger's check — while the finding had come from the **symbol** ledger's, whose failure message is
+nearly identical (`POLICY FINDING(S) … API this ledger STRIKES`, one saying *"in the selector ledger"*, the other
+not). Measured: the name appears in `foundation-apple-surface.txt` and **not at all** in
+`foundation-selector-surface.txt`. Both checks carry the rule now, for symmetry; the symbol side is the one that
+fires. **A near-identical message in two places is a trap: identify a finding by the line that prints it, not by
+its wording** — and, more generally, **measure the LEDGER before proposing a change to the ledger**, which is what
+the first decision lacked.
+
+**VERIFICATION.** `tools/foundation-sweep.py --check` → **0 policy findings**, both ledgers reported consistent,
+exit status **0**; library **zero diagnostics** after a forced recompile of `NSNotification.m`; and the two files
+that were edited mid-unit are back to their original CODE — the diff is comments only (the five declarations and
+their five definitions are restored verbatim, in their original order).
+
 ## §63.22 — THE VALUE TYPES' `NSCoding` DOORS: IMPLEMENTED, WITH THE KEYS OURS AND SAID SO (2026-09-30)
 
 **WHAT LANDED: EIGHT DOORS ON FOUR CLASSES** — `NSString`, `NSNumber`, `NSValue` and `NSLocale` each gained

@@ -1187,6 +1187,18 @@ def check_selectors(strict=False):
     members, parents = _declared_types()
     rows = read_selectors()
     bad, policy, counts, reach = [], [], {}, {}
+    # A NAME CAN HAVE ROWS ON MORE THAN ONE OF APPLE'S PAGES, AND A SHIPPED ONE DECIDES (§63.23). Apple's
+    # NSNotification page lists every notification name as its member, so `NSMetadataQueryDidUpdateNotification`
+    # and its four siblings each have a row under their OWNER's page TOO — and for a class this project DECLINES
+    # that row is struck. The tree declares the names, which is right: NSNotification's own surface says they
+    # are shipped, and NSNotification.h is where every notification name lives.
+    #
+    # SO THE FINDING IS JUDGED BY NAME: a struck member is a violation only when NO row for that name is
+    # shipped. MEASURED BEFORE THIS RULE EXISTED: those five names were reported as POLICY FINDINGS on every
+    # run, and REMOVING the declarations to satisfy the tool broke --check the other way — five STALE SHIPPED
+    # CLAIMs, which no --refresh can clear, because the shipped rows come from Apple's index. The rule keeps
+    # its teeth for the case it was written for: a struck name that NOTHING ships.
+    shipped_names = {(k, n) for k, st, n, _o, _f, _w, _s in rows if st == STATUS_SHIPPED}
     for kind, status, name, owner, family, why, src in rows:
         counts[(kind, status)] = counts.get((kind, status), 0) + 1
         sign, sel = split_selector_name(kind, name)
@@ -1202,7 +1214,7 @@ def check_selectors(strict=False):
         elif status == STATUS_OPEN and found:
             bad.append("PRESENT BUT LISTED OPEN %-8s %s %s — the owner's block declares it now; flip the row"
                        % (kind, owner, name))
-        elif status == STATUS_STRUCK and found:
+        elif status == STATUS_STRUCK and found and (kind, name) not in shipped_names:
             policy.append("%-8s %s %s [struck: %s]" % (kind, owner, name, why))
     for hkind, claimed in sorted(selector_header_counts().items()):
         got = tuple(counts.get((hkind, s), 0) for s in (STATUS_SHIPPED, STATUS_OPEN, STATUS_STRUCK))
@@ -1495,7 +1507,17 @@ def check(strict=False):
             bad.append("STALE SHIPPED CLAIM    %-9s %s — the surface file says we ship it and our headers do not declare it" % (kind, name))
         elif status == STATUS_OPEN and found:
             bad.append("PRESENT BUT LISTED OPEN %-8s %s%s — our headers now declare it; flip the row" % (kind, name, (" (member of %s)" % owner) if owner else ""))
-        elif status == STATUS_STRUCK and found:
+        elif status == STATUS_STRUCK and found and not any(
+                st == STATUS_SHIPPED and n == name
+                for _k, st, n, _o, _f, _w, _s in rows):
+            # §63.23: A STRIKE IS JUDGED BY NAME — a struck member is a violation only when NO row for that
+            # name is shipped. `NSMetadataQueryDidUpdateNotification` and its four siblings have a struck row
+            # under their DECLINED owner's page and a SHIPPED one under `NSNotification`'s, because Apple's
+            # NSNotification page lists every notification name as its member; the tree declares them, rightly,
+            # and REMOVING them to satisfy this check broke it the other way (five STALE SHIPPED CLAIMs that no
+            # --refresh can clear). The check keeps its teeth where it was written for: a struck name that
+            # nothing ships. The nested scan runs ONLY for a struck-and-declared row, of which there are a
+            # handful out of thousands, so it costs nothing.
             policy.append("%-9s %s%s [struck: %s]" % (kind, name, (" (member of %s)" % owner) if owner else "", why))
     try:
         plan_text = open(PLAN, encoding="utf-8").read()

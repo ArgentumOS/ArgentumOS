@@ -88,6 +88,16 @@ typedef NSString *NSNotificationName;
  * that can be consistent before anything posts or observes them. NOTHING IN THIS SYSTEM POSTS THESE, so a
  * caller that observes one waits forever - which is why they are here as vocabulary with that said out loud. */
 extern NSNotificationName const NSAppleEventManagerWillProcessFirstEventNotification;
+/* THE FIVE NAMES BELOW WERE REMOVED AND PUT BACK WITHIN THIS ONE UNIT (§63.23), AND THE REASON IS WORTH MORE
+ * THAN THE CHURN. Each of them has a row under its OWNER's page — NSClassDescription and NSMetadataQuery are
+ * DECLINED by decision, so that row is struck — AND a row under `NSNotification`'s page, because Apple's own
+ * NSNotification page lists every notification name as its member, and THAT row is SHIPPED. Removing the
+ * declarations therefore contradicted a shipped row: `--check` answered five "STALE SHIPPED CLAIM" errors, and
+ * no `--refresh` can clear them, because those shipped rows are regenerated from Apple's index.
+ *
+ * SO THE DECLARATIONS STAY AND THE TOOL LEARNED THE RULE INSTEAD — a struck member is a policy finding only
+ * when NO row for that name is shipped (tools/foundation-sweep.py). The name is NSNotification vocabulary
+ * here, which is where this tree declares all of it, and it is inert either way: nothing posts it. */
 extern NSNotificationName const NSClassDescriptionNeededForClassNotification;
 extern NSNotificationName const NSExtensionHostDidBecomeActiveNotification;
 extern NSNotificationName const NSExtensionHostDidEnterBackgroundNotification;
