@@ -67,6 +67,43 @@ NSNotificationName const NSUbiquityIdentityDidChangeNotification = @"NSUbiquityI
 	return self;
 }
 
+/* ===================================================================================================
+ * THE NSCoding DOORS (§63.14). THE KEYS ARE DEFINED BESIDE THEIR ONLY WRITER AND READER, which is why they
+ * are here rather than at the top with the imports: unlike the collections' keys they are shared with nothing
+ * (see the header), so their scope IS this pair of methods.
+ * =================================================================================================== */
+static NSString *const kNameKey = @"NS.name";
+static NSString *const kObjectKey = @"NS.object";
+static NSString *const kUserInfoKey = @"NS.userInfo";
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	/* ALL THREE PARTS, INCLUDING THE TWO THAT MAY BE NIL: `-encodeObject:` writes a nil as the archive's
+	 * "nothing was here" and an absent value is exactly what a nil object or userInfo means, so the pair of
+	 * nils is information rather than an omission. */
+	[coder encodeObject:_name forKey:kNameKey];
+	[coder encodeObject:_object forKey:kObjectKey];
+	[coder encodeObject:_userInfo forKey:kUserInfoKey];
+}
+
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	NSString *name = [coder decodeObjectForKey:kNameKey];
+	id object = [coder decodeObjectForKey:kObjectKey];
+	NSDictionary *userInfo = [coder decodeObjectForKey:kUserInfoKey];
+
+	/* A MISSING NAME IS A CORRUPT ARCHIVE AND RAISES RATHER THAN ANSWERING A NAMELESS NOTIFICATION: the name
+	 * is what the class is FOR (`-name` is nonnull in the header), and a nil there would travel as a value no
+	 * observer could compare against. The other two are legitimately optional and pass through as nil. */
+	if (name == nil) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSNotification: the archive carries no name"];
+	}
+	/* THROUGH THE DESIGNATED DOOR, so the class's own ownership rules apply on the way back rather than being
+	 * trusted from the archive: the name and the userInfo are COPIED here, whatever the coder handed over. */
+	return [self initWithName:name object:object userInfo:userInfo];
+}
+
 - (NSString *)name
 {
 	return _name;

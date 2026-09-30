@@ -285,6 +285,61 @@ int main(void)
 		      "the five architecture codes are distinct and the two bundle names are their own names");
 	}
 
+	{
+		/* THE NSCoding DOORS (§63.14), AND HERE THEY ARE THE REAL PATH: a notification is not a kind the keyed
+		 * coder's structural branch recognises, so this goes through the ordinary
+		 * `+archivedDataWithRootObject:` API — unlike the collections, whose doors have to be driven directly
+		 * because the archiver never asks them. Three parts are asserted separately, because a pair that lost
+		 * one of them would still produce a notification.
+		 *
+		 * AND THE NIL SEMANTICS ARE MEASURED. `-object:` and `-userInfo` are legitimately nil, and the pair has
+		 * to bring "there was nothing here" back as nil rather than as NSNull — which the archiver keeps apart
+		 * on purpose, so this is the check that the difference survives a class's own doors. */
+		NSNotification *full = [NSNotification notificationWithName:@"NSCoderRoundTrip"
+								  object:@"sender"
+								userInfo:@{ @"k" : @"v" }];
+		NSNotification *bare = [NSNotification notificationWithName:@"NSCoderBare"
+								  object:nil
+								userInfo:nil];
+		/* THE TWO ARCHIVINGS ARE SEPARATED FROM THEIR UNARCHIVINGS, and that is not style: `+archivedDataWithRootObject:`
+		 * is NULLABLE (it can fail), while `-unarchiveObjectWithData:` takes a NONNULL argument — so chaining
+		 * them is a nullability error under the house flag, and it is the check's own job to say what a failed
+		 * archive MEANS here. It means nil, which is what the guard below answers. */
+		NSData *fullData = [NSKeyedArchiver archivedDataWithRootObject:full];
+		NSData *bareData = [NSKeyedArchiver archivedDataWithRootObject:bare];
+		NSNotification *backFull = fullData != nil
+			? [NSKeyedUnarchiver unarchiveObjectWithData:fullData] : nil;
+		NSNotification *backBare = bareData != nil
+			? [NSKeyedUnarchiver unarchiveObjectWithData:bareData] : nil;
+		BOOL refusedNameless = NO;
+
+		@try {
+			/* A HAND-BUILT ARCHIVE WITH NO NAME, which is the one shape the door refuses: it is written with
+			 * the same public door, over an empty dictionary, so nothing here depends on the door's keys. */
+			NSMutableData *buffer = [[NSMutableData alloc] init];
+			NSKeyedArchiver *writer = [[NSKeyedArchiver alloc]
+				initForWritingWithMutableData:buffer];
+
+			[writer encodeObject:nil forKey:@"NS.name"];
+			[writer finishEncoding];
+			(void)[[NSNotification alloc] initWithCoder:
+				[[NSKeyedUnarchiver alloc] initForReadingWithData:buffer]];
+		} @catch (NSException *e) {
+			refusedNameless = [[e name] isEqualToString:NSInvalidArgumentException];
+		}
+		check("notification-nscoding-round-trip",
+		      [full conformsToProtocol:@protocol(NSCoding)] &&
+		      backFull != nil && [backFull isKindOfClass:[NSNotification class]] &&
+		      [[backFull name] isEqualToString:@"NSCoderRoundTrip"] &&
+		      [[backFull object] isEqualToString:@"sender"] &&
+		      [[[backFull userInfo] objectForKey:@"k"] isEqualToString:@"v"] &&
+		      backBare != nil && [backBare name] != nil &&
+		      [[backBare name] isEqualToString:@"NSCoderBare"] &&
+		      [backBare object] == nil && [backBare userInfo] == nil &&
+		      refusedNameless,
+		      "the three parts each survive a real archive round trip (name, object, userInfo), a nil object and userInfo come back NIL rather than NSNull, and an archive with no name raises NSInvalidArgumentException");
+	}
+
 	printf("FOUNDATION-NOTIFICATION RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-NOTIFICATION-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-NOTIFICATION DONE\n");

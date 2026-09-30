@@ -10,15 +10,22 @@
  * dictionary. It is IMMUTABLE, so -copy answers the receiver and the centre can hand the same object to
  * every observer.
  *
- * WHAT IS NOT HERE, named: `-initWithCoder:` (the coder conformance work other classes register), and
- * the `NSNotificationName` TYPEDEF Apple declares beside it — a typealias with no behaviour, which the
- * ledger carries as its own row rather than as part of this class.
+ * WHAT IS NOT HERE, named: the `NSNotificationName` TYPEDEF Apple declares beside this class — a typealias
+ * with no behaviour, which the ledger carries as its own row rather than as part of this class.
+ *
+ * `-initWithCoder:` ARRIVED IN §63.14, and it is worth saying WHERE its pair is reached from, because this is
+ * NOT the collections' situation: **the ARCHIVER CALLS THESE DOORS.** A notification is not one of the kinds
+ * the keyed coder's structural branch recognises, so an archived one goes through `-encodeWithCoder:` here and
+ * comes back through `-initWithCoder:` — they are the real path an archive takes, not just a
+ * source-compatibility door.
  */
 
 #ifndef FOUNDATION_NSNOTIFICATION_H
 #define FOUNDATION_NSNOTIFICATION_H
 
 #import <Foundation/NSObject.h>
+/* FOR `NSCoding` AND THE `NSCoder` ITS TWO DOORS TAKE (§63.14). */
+#import <Foundation/NSCoding.h>
 
 @class NSDictionary;
 @class NSString;
@@ -32,12 +39,23 @@ NS_ASSUME_NONNULL_BEGIN
  * unconditionally - and the rest of the contract has nothing to constrain.
  * =================================================================================================== */
 
-@interface NSNotification : NSObject <NSCopying>
+@interface NSNotification : NSObject <NSCopying, NSCoding>
 {
 	NSString *_name;
 	id _object;
 	NSDictionary *_userInfo;
 }
+
+/* THE NSCoding DOORS (§63.14), and their KEYS ARE OURS — Apple publishes no name for them, the same ground
+ * §63.5's counted-set key stands on. They are NOT in FNKeyedWire.h, and that is deliberate rather than an
+ * omission: that header exists because TWO code paths write the COLLECTION keys (the class doors and the
+ * archiver's structural branch). A notification's keys have ONE writer — this class — so sharing them would
+ * share them with nobody.
+ *
+ * THREE KEYS, ONE PER PART, because a notification IS its three parts: the name (copied), the object
+ * (retained, and legitimately nil — the sender is optional) and the userInfo (copied, and legitimately nil). */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
+- (void)encodeWithCoder:(NSCoder *)coder;
 
 + (instancetype)notificationWithName:(NSString *)name object:(nullable id)object;
 + (instancetype)notificationWithName:(NSString *)name

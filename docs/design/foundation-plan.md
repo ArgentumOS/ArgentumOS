@@ -15824,6 +15824,68 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.14 — `NSNotification`'S `NSCoding` CONFORMANCE: THE FIRST FIELD-CARRYING CLASS, AND TWO PROBE DEFECTS THE BUILD FOUND (2026-09-30)
+
+**WHAT SHIPPED: ONE ROW, AND IT IS A DIFFERENT KIND OF UNIT.** `NSNotification` conforms to `NSCoding` — the
+first of the eight FIELD-CARRYING classes, whose state is its own three parts rather than a collection's
+members. **`method shipped` 1829 → 1830, `method open` 856 → 855.**
+
+**THESE DOORS ARE THE REAL PATH, WHICH IS THE OPPOSITE OF THE COLLECTIONS'.** A notification is not a kind the
+keyed coder's structural branch recognises, so an archive of one goes through `-encodeWithCoder:` here and
+comes back through `-initWithCoder:` — the probe can therefore use the ordinary
+`+archivedDataWithRootObject:` API instead of driving the doors directly, and it does. That difference is
+stated in the class's own header, because the collections' header says the opposite and a reader would take
+one for the other.
+
+**THREE KEYS, OURS, AND DELIBERATELY NOT IN THE SHARED WIRE.** `NS.name`, `NS.object`, `NS.userInfo` — Apple
+publishes no name for them (§11.6.1 D2's ground, as with §63.5's counted-set key). They live beside their ONLY
+writer and reader instead of in `FNKeyedWire.h`, and the reason is that header's own premise: it exists
+because TWO code paths write the COLLECTION keys. A notification's keys have one writer, so sharing them would
+share them with nobody. Both the header and the definition say so rather than leaving the asymmetry to be
+noticed.
+
+**TWO SHAPES ARE REFUSED RATHER THAN GUESSED AT.** A missing NAME raises `NSInvalidArgumentException` — the name
+is what the class is for and a nil there would travel as a value no observer could compare — while a missing
+object and userInfo are legitimately nil and pass through as nil. The probe measures BOTH: a full notification
+round-trips all three parts, and a bare one comes back with `-object` and `-userInfo` **nil rather than
+NSNull** — which is a real distinction the archiver keeps on purpose, so it is worth asserting that a class's
+own doors preserve it. The nil-object and nil-userInfo cases are the reason the encoder writes all three keys
+even when two are nil: an absent value is information.
+
+**AND THE BUILD FOUND TWO DEFECTS IN MY OWN PROBE, which is the part of this section worth keeping:**
+
+* **A NULLABLE-TO-NONNULL CONVERSION, and it was an ERROR, not a warning.** `+archivedDataWithRootObject:` is
+  declared NULLABLE (it can fail) while `-unarchiveObjectWithData:` takes a NONNULL argument, so chaining the
+  two — which reads perfectly naturally — is refused under the house flag
+  `-Werror=nullable-to-nonnull-conversion` that every probe is compiled with. The fix is not a cast: the
+  archive and the unarchive are separate statements and the check says what a failed archive MEANS (nil).
+  **A probe is code, and the same nullability discipline the library owes applies to it.**
+* **`[NSMutableData data]` IS NOT A `NSMutableData`.** `+data` is inherited from `NSData` and returns
+  `NSData *`, so assigning it to an `NSMutableData *` is an incompatible-pointer warning — and I had written
+  that line in FOUR probes today (§63.10's, §63.11's, §63.12's and this one). The house idiom beside them,
+  `[[NSMutableData alloc] init]`, was already in `foundation_coder.m`; all four are fixed. **The lesson is
+  that "it builds green" was not the same as "it builds clean", and only reading the build's output — not its
+  exit status — shows the difference.**
+* AND ONE MORE, from §63.7: this unit's stricter look at the probes turned up four `-Wnonnull` warnings in the
+  ordered set's relation check, where I had passed `nil` to `-intersectsSet:`/`-isSubsetOfSet:` to assert a
+  "nil-safe" answer that **no contract requires** (both parameters are nonnull in Apple's header). The
+  assertion is REMOVED rather than the annotation weakened: asserting behaviour for a contract violation is
+  not a check. The set probe's `[NSSet setWithObjects:nil]` is the opposite case — the runtime behaviour of an
+  immediately-terminated list IS the family's empty instance and worth asserting — so it goes through an `id`
+  variable instead, which measures the runtime case without the compiler reading a deliberate probe as a
+  caller error.
+
+**VERIFICATION.** Probe `foundation_notification` **12/12** on the host (was 11); guest `TESTS-OK 1/1 case(s),
+6/6 check(s)`; `foundation_set`, `foundation_collection` and `foundation_orderedset` all **6/6** unmoved;
+**and all four probes now compile with ZERO diagnostics under `-Werror=nullable-to-nonnull-conversion`**,
+which was not true before this unit. `make foundation-sweep` **exit 0**, `--unimplemented` **0 NEW**;
+`--check` named **exactly 1** row before the flip.
+
+**NEXT: THE OTHER SEVEN FIELD-CARRYING CLASSES** — `NSCharacterSet`, `NSDateInterval`, `NSSortDescriptor`,
+`NSExpression`, `NSComparisonPredicate`, `NSCompoundPredicate`, `NSDistantObject`. Each is this unit's shape:
+its own keys, both doors, a probe that drives the real archive path, and the same strict-flag compile check
+that earned its keep here.
+
 ## §63.13 — `NSDictionary`'S `NSCoding` CONFORMANCE: TWO PAYLOADS, AND A PAIRING THAT IS THE CONTRACT (2026-09-30)
 
 **WHAT SHIPPED: TWO ROWS, AND THE LAST OF THE THREE COLLECTION FAMILIES.** `NSDictionary` and

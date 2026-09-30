@@ -1199,7 +1199,7 @@ NULL
 		 * is used as the source so the ROUND TRIP also shows the class-choosing rule: the immutable front must
 		 * answer an immutable array and the mutable class a mutable one, from the same bytes. */
 		NSMutableArray *source = [NSMutableArray arrayWithObjects:@"a", @"b", @"c", nil];
-		NSMutableData *buffer = [NSMutableData data];
+		NSMutableData *buffer = [[NSMutableData alloc] init];
 		NSKeyedArchiver *writer = [[NSKeyedArchiver alloc] initForWritingWithMutableData:buffer];
 		NSArray *back;
 		NSMutableArray *mutableBack;
@@ -1228,7 +1228,7 @@ NULL
 		 * out, would keep every key and every value and still be wrong; `-objectForKey:` for each key is what
 		 * catches that. The source is a MUTABLE dictionary so the class-choosing rule is exercised too. */
 		NSMutableDictionary *source = [NSMutableDictionary dictionary];
-		NSMutableData *buffer = [NSMutableData data];
+		NSMutableData *buffer = [[NSMutableData alloc] init];
 		NSKeyedArchiver *writer;
 		NSDictionary *back;
 		NSMutableDictionary *mutableBack;

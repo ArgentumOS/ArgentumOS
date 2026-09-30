@@ -18,7 +18,7 @@ CHECKS = ("notification-value", "center-selector", "center-filters", "center-rem
           "notification-names-are-their-own-names",
           "distributed-notification-vocabulary",
           "notification-queue-vocabulary",
-          "bundle-vocabulary")
+          "bundle-vocabulary", "notification-nscoding-round-trip")
 
 
 class Case(BaseCase):

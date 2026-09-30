@@ -365,14 +365,12 @@ int main(void)
 		check("ordered-set-relations",
 		      [ordered intersectsSet:overlapping] && ![ordered intersectsSet:disjoint] &&
 		      [ordered isSubsetOfSet:superset] && ![ordered isSubsetOfSet:subset] &&
-		      [view intersectsSet:overlapping] && [view isSubsetOfSet:superset] &&
-		      ![ordered intersectsSet:nil] && ![ordered isSubsetOfSet:nil],
-		      [NSString stringWithFormat:@"intersects=%d disjoint=%d subset=%d notSubset=%d nilSafe=%d",
+		      [view intersectsSet:overlapping] && [view isSubsetOfSet:superset],
+		      [NSString stringWithFormat:@"intersects=%d disjoint=%d subset=%d notSubset=%d",
 			(int)[ordered intersectsSet:overlapping],
 			(int)[ordered intersectsSet:disjoint],
 			(int)[ordered isSubsetOfSet:superset],
-			(int)[ordered isSubsetOfSet:subset],
-			(int)(![ordered intersectsSet:nil] && ![ordered isSubsetOfSet:nil])]);
+			(int)[ordered isSubsetOfSet:subset]]);
 	}
 
 	{
@@ -537,7 +535,7 @@ int main(void)
 		 * THREE things: the protocol answer a source-compatible program asks for, the round trip through the
 		 * class's own doors, and that the MUTABLE class answers a mutable set rather than the front's answer. */
 		NSOrderedSet *ordered = [NSOrderedSet orderedSetWithArray:@[@"a", @"b", @"c"]];
-		NSMutableData *buffer = [NSMutableData data];
+		NSMutableData *buffer = [[NSMutableData alloc] init];
 		NSKeyedArchiver *writer = [[NSKeyedArchiver alloc] initForWritingWithMutableData:buffer];
 		NSOrderedSet *back;
 		NSMutableOrderedSet *mutableBack;

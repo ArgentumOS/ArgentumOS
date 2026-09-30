@@ -257,7 +257,14 @@ int main(void)
 		 * answers the SHARED EMPTY instance — asserted BY POINTER, because "an empty set" and "the
 		 * empty instance" are different claims and only the second is the family's contract. */
 		NSSet *three = [NSSet setWithObjects:@"one", @"two", @"three", nil];
-		NSSet *empty = [NSSet setWithObjects:nil];
+		/* THE EMPTY CALL GOES THROUGH A VARIABLE, and that is deliberate rather than evasive: the factory's
+		 * first parameter is annotated NONNULL (Apple's own shape, and `NS_REQUIRES_NIL_TERMINATION` says the
+		 * list ends with nil, not that it starts with one), so writing `nil` there is a compile-time warning
+		 * about a CALLER ERROR — while the RUNTIME behaviour of an immediately-terminated list is the empty
+		 * collection, which is the thing worth asserting. The variable lets the runtime case be measured
+		 * without the compiler reading it as the mistake it does not have to be. */
+		id noObjects = nil;
+		NSSet *empty = [NSSet setWithObjects:noObjects];
 		NSMutableSet *mutableFromVarargs = [NSMutableSet setWithObjects:@"a", @"b", nil];
 
 		check("set-variadic-factory",
@@ -279,7 +286,7 @@ int main(void)
 		 * protocol answer, the round trip, and that the MUTABLE class answers a mutable set. The member is a
 		 * FRESH string object per set, so equality is by VALUE and the check cannot pass on pointer identity. */
 		NSSet *set = [NSSet setWithArray:@[@"a", @"b", @"c"]];
-		NSMutableData *buffer = [NSMutableData data];
+		NSMutableData *buffer = [[NSMutableData alloc] init];
 		NSKeyedArchiver *writer = [[NSKeyedArchiver alloc] initForWritingWithMutableData:buffer];
 		NSSet *back;
 		NSMutableSet *mutableBack;
