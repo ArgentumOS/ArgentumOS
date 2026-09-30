@@ -177,6 +177,13 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
 
 @implementation NSValue
 
+/* §C.3 item 4: an archiver asks for THIS, never for -class. UNCONDITIONAL - this family has one class here (the
+ * payload kinds are not separate classes yet), so no private name can leak. */
+- (Class)classForCoder
+{
+	return [NSValue class];
+}
+
 + (NSValue *)valueWithBytes:(const void *)value objCType:(const char *)type
 {
 	return [[self alloc] fnInitWithBytes:value objCType:type];
@@ -238,12 +245,17 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
 	return _bytes;
 }
 
+- (NSUInteger)fnSize
+{
+	return _size;
+}
+
 - (void)getValue:(void *)value
 {
 	if (value == NULL) {
 		return;
 	}
-	memcpy(value, _bytes, _size);
+	memcpy(value, [self fnBytes], [self fnSize]);
 }
 
 - (void)getValue:(void *)value size:(NSUInteger)size
@@ -252,12 +264,12 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
 		return;
 	}
 	/* COCOA'S RULE: the encoding must fit in what the caller offered. */
-	if (size < _size) {
+	if (size < [self fnSize]) {
 		[NSException raise:NSInvalidArgumentException
 			    format:@"NSValue: the buffer is %lu bytes and the value is %lu",
-				   (unsigned long)size, (unsigned long)_size];
+				   (unsigned long)size, (unsigned long)[self fnSize]];
 	}
-	memcpy(value, _bytes, _size);
+	memcpy(value, [self fnBytes], [self fnSize]);
 }
 
 - (const char *)objCType
@@ -267,12 +279,12 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
 
 - (nullable void *)pointerValue
 {
-	return *((void **)_bytes);
+	return *((void **)[self fnBytes]);
 }
 
 - (NSRange)rangeValue
 {
-	return *((NSRange *)_bytes);
+	return *((NSRange *)[self fnBytes]);
 }
 
 - (BOOL)isEqualToValue:(NSValue *)value
@@ -280,10 +292,10 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
 	if (value == nil) {
 		return NO;
 	}
-	if (strcmp(_objCType, [value objCType]) != 0) {
+	if (strcmp([self objCType], [value objCType]) != 0) {
 		return NO;
 	}
-	return memcmp(_bytes, [value fnBytes], _size) == 0;
+	return memcmp([self fnBytes], [value fnBytes], [self fnSize]) == 0;
 }
 
 - (BOOL)isEqual:(nullable id)other
@@ -301,14 +313,14 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
  * otherwise equal values would land in different buckets of any container built on them. */
 - (NSUInteger)hash
 {
-	const unsigned char *bytes = _bytes;
+	const unsigned char *bytes = [self fnBytes];
 	NSUInteger hash = 5381;
 	NSUInteger i;
 
-	for (i = 0; i < _size; i++) {
+	for (i = 0; i < [self fnSize]; i++) {
 		hash = ((hash << 5) + hash) ^ (NSUInteger)bytes[i];
 	}
-	return hash ^ _size;
+	return hash ^ [self fnSize];
 }
 
 /* The bytes, in Cocoa's shape: the encoding, then the bytes. A RANGE is the one value Cocoa gives a
@@ -319,19 +331,19 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
 	NSMutableString *out;
 	NSUInteger i;
 
-	if (strcmp(_objCType, @encode(NSRange)) == 0) {
+	if (strcmp([self objCType], @encode(NSRange)) == 0) {
 		NSRange range = [self rangeValue];
 
 		return [NSString stringWithFormat:@"NSRange: {%lu, %lu}",
 				(unsigned long)range.location, (unsigned long)range.length];
 	}
-	out = [NSMutableString stringWithFormat:@"<%s: ", _objCType];
-	for (i = 0; i < _size; i++) {
+	out = [NSMutableString stringWithFormat:@"<%s: ", [self objCType]];
+	for (i = 0; i < [self fnSize]; i++) {
 		if (i > 0) {
 			[out appendString:@" "];
 		}
 		[out appendString:[NSString stringWithFormat:@"%02x",
-				   (unsigned)((const unsigned char *)_bytes)[i]]];
+				   (unsigned)((const unsigned char *)[self fnBytes])[i]]];
 	}
 	[out appendString:@">"];
 	return out;

@@ -235,6 +235,9 @@ CHECKS = (
           "nscharacterset-archiver-answer-for-front-and-public-subclass",
           "nscharacterset-equal-sets-hash-equal",
           "nscharacterset-primitives-drive-supersets-and-equality",
+          # M8: NSValue - a front over a documented payload seam.
+          "nsvalue-archiver-answer",
+          "nsvalue-primitives-drive-the-doors",
           )
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a

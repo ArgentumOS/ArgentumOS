@@ -591,6 +591,32 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
 
 @end
 
+/* THE THIRD-PARTY CASE FOR NSVALUE: a class over ONLY the three primitives the header names - -fnBytes,
+ * -fnSize and -objCType - holding an int it never copies anywhere. */
+static int ag_probe_value_payload = 4242;
+
+@interface ProbePrimitiveValue : NSValue
+@end
+
+@implementation ProbePrimitiveValue
+
+- (const void *)fnBytes
+{
+	return &ag_probe_value_payload;
+}
+
+- (NSUInteger)fnSize
+{
+	return sizeof(int);
+}
+
+- (const char *)objCType
+{
+	return @encode(int);
+}
+
+@end
+
 int main(void)
 {
 	ProbeCluster *empty;
@@ -1470,6 +1496,30 @@ int main(void)
 		      ! [handmadeChars isEqual:decimalDigits],
 		      "-isSupersetOfSet: (and so equality and the hash) must be written over the two primitives, on a class "
 		      "with no range array at all");
+	}
+
+	{
+		/*
+		 * M8: NSValue — a front holding a payload, with the doors over the three primitives. Locals declared
+		 * HERE.
+		 */
+		int scalar = 4242;
+		NSValue *realValue = [NSValue value:&scalar withObjCType:@encode(int)];
+		ProbePrimitiveValue *handmadeValue = [[ProbePrimitiveValue alloc] init];
+		int readBack = 0;
+
+		check("nsvalue-archiver-answer",
+		      [realValue classForCoder] == [NSValue class] &&
+		      [realValue classForArchiver] == [NSValue class] &&
+		      [handmadeValue classForCoder] == [NSValue class],
+		      "the archiver must be told NSValue");
+		[handmadeValue getValue:&readBack];
+		check("nsvalue-primitives-drive-the-doors",
+		      readBack == 4242 && [handmadeValue fnSize] == sizeof(int) &&
+		      [handmadeValue isEqualToValue:realValue] && [handmadeValue isEqual:realValue] &&
+		      [handmadeValue hash] == [realValue hash] && [handmadeValue description] != nil,
+		      "-getValue:, -isEqualToValue: (and so -isEqual:), -hash and -description must be written over the "
+		      "three primitives, on a class that copies its payload nowhere");
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");
