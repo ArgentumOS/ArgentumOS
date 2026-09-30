@@ -92,6 +92,25 @@ the day it was written, and it is the plan until the last row closes.
      read as "every open row is Foundation work". **⚠ AND THEY STAY `open`: A DEFERRAL IS NOT A DECLINE.** A
      decline claims the row is not ours; a deferral says it is ours and not yet — so striking them would put a
      false statement in the ledger, and the progress metric below is stated in two parts instead.
+   * **⚠ NSCoder'S ABSENT-SUBSTRATE GROUP — 17 ROWS, RECONNAISSANCE DONE, DECISION NEEDED.** Found by a READ-ONLY
+     SUBAGENT working that family under the user's grant of 2026-09-30 (*"for this plan only, you may use
+     subagents to handle each family of methods/properties"*) — the first use of that grant, and exactly the
+     shape this bullet exists for. Each ground is one of §11.5's, so each row is a decline **by name**:
+     **CoreMedia time structures (6 rows: `-decode/encodeCMTimeForKey:`, `…CMTimeRange…`, `…CMTimeMapping…`) — no
+     `CMTime` anywhere in `userland/`; UIKit insets (6: `…UIEdgeInsets…`, `…UIOffset…`,
+     `…DirectionalEdgeInsets…`) — those types are absent and `NSEdgeInsets` is a DIFFERENT type, so declaring the
+     door would mean inventing the struct; NX/NeXT (3: `-decodeNXColor`, `-decodeNXObject`, `-encodeNXObject:`) —
+     no `NXColor`/`NXObject` here, and AppKit's `NSColor` is another tier's class; and zones (2: `-objectZone`,
+     `-setObjectZone:`) — the 32-bit-only ground, since this tree has no `NSZone`, and `NSArchiver.h` already
+     says a door cannot be declared over a type the library does not have.** **THE OTHER 57 NSCoder ROWS ARE
+     IMPLEMENTABLE over machinery that already ships** (the recon's own grouping), so that family is one unit
+     plus one decision.
+   * **AND ONE FINDING FROM THE SAME RECON IS WORK, NOT A DECISION:** `NSValue.h` still denies
+     `+valueWithPoint:`/`+valueWithSize:`/`+valueWithRect:` on the ground that "this library has no
+     NSPoint/NSSize/NSRect" — **false since the CG value types landed** (`NSGeometry.h` aliases all three to
+     `CGPoint`/`CGSize`/`CGRect`). It is the defect class §63.23 fixed for `NSGetSizeAndAlignment` — a header
+     denying what the tree has — and it belongs to the **NSValue** unit, whose geometry boxing is also what
+     NSCoder's geometry rows need.
    * **the encoding cluster** (8 rows for NSString alone, and more elsewhere): blocked on a converter/repertoire
      table (§63.2). ICU is already linked, so it is a real unit rather than a refusal — **it needs its own
      session**, and it is the one place where "take the library that has the table" has to be argued rather than

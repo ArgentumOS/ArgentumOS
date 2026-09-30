@@ -211,6 +211,11 @@ typedef enum {
 + (nullable id)stringWithContentsOfFile:(NSString *)path
 		  usedEncoding:(NSStringEncoding *)encoding
 			 error:(NSError * _Nullable * _Nullable)errorPtr;
+/* CREATION FROM A C STRING WITH AN ENCODING (§63.28). THE ENCODINGS ARE THE ONES THIS LIBRARY STORES, which is
+ * the same rule `-cStringUsingEncoding:` already follows: UTF-8, ASCII, and NOTHING ELSE — a byte string in an
+ * encoding this library cannot name returns nil here rather than being reinterpreted as UTF-8, because that is
+ * what the same refusal means on the way out. */
++ (nullable id)stringWithCString:(const char *)cString encoding:(NSStringEncoding)encoding;
 + (id)stringWithFormat:(NSString *)format arguments:(va_list)arguments;
 /* THE VALIDATED FORMS (§63.27): a format that must use ONLY the specifiers the caller names, with the refusal
  * reported the way Apple reports it — nil and an NSError in NSCocoaErrorDomain with code NSFormattingError

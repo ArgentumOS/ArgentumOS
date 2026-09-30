@@ -2592,6 +2592,39 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return built;
 }
 
+/* CREATION FROM A C STRING WITH AN ENCODING (§63.28): THE MIRROR OF `-cStringUsingEncoding:` ABOVE, and it
+ * refuses in the same two places for the same two reasons — the encodings this library stores are UTF-8 and
+ * ASCII, and a byte string under any other name is NOT reinterpreted as UTF-8.
+ *
+ * ⚠ AND THE ASCII CASE CHECKS THE BYTES IT IS HANDED RATHER THAN TRUSTING THE LABEL: a C string with a high byte
+ * in it is not ASCII, and answering a string for it would be exactly the mistake the outbound door refuses in
+ * the other direction.
+ *
+ * ⚠ AND THIS DOOR RETURNS +0 (autoreleased) WHERE THE FILE DOORS BELOW RETURN +1: Apple's contract for a
+ * `+stringWith…` factory is +0, and this family's file/URL doors leak their string (measured, named in §63.24).
+ * Adding a fifth leak to keep the neighbours company is not consistency worth having — the fix belongs to them,
+ * and the plan's NSString unit carries it. */
++ (id)stringWithCString:(const char *)cString encoding:(NSStringEncoding)encoding
+{
+	size_t i, length;
+
+	if (cString == NULL) {
+		return nil;
+	}
+	if (encoding == NSUTF8StringEncoding) {
+		return [[[self alloc] initWithUTF8String:cString] autorelease];
+	}
+	if (encoding == NSASCIIStringEncoding) {
+		for (length = strlen(cString), i = 0; i < length; i++) {
+			if (((const unsigned char *)cString)[i] > 0x7F) {
+				return nil;
+			}
+		}
+		return [[[self alloc] initWithUTF8String:cString] autorelease];
+	}
+	return nil;			/* an encoding we do not store */
+}
+
 /* -------------------------------------------------------------------- the files
  *
  * Through NSData, which owns the byte-level file handling: this class only has to
