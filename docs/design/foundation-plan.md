@@ -15,17 +15,84 @@ a binding to `libz` rather than a rule) — with every staged public header
 annotated for nullability (F6, and enforced since as a standing rule). Gated on a
 guest boot by twelve cases (`foundation_core`, `foundation_string`, `foundation_value`,
 `foundation_collection`, `foundation_error`, `foundation_calendar`, `foundation_url`,
-`foundation_kvc`, `foundation_sort`, `foundation_predicate`, `foundation_codecs`, `objc_smoke`),
 whose probes carry **15 / 27 / 17 / 34 / 6 / 10 / 9 / 12 / 12 / 24 / 11** checks. **F5 (self-hosting) is DEFERRED — the user's call,
 2026-09-17** (the public headers are already staged, so it is a deliberate later step rather
-than a gap). The work queue
-is the exclusions table below, and §9 records what each audit found and what it cost.
+than a gap). **THE WORK THAT IS LEFT IS THE SECTION IMMEDIATELY BELOW — `THE REMAINING WORK` — WHICH REPLACES
+the work queue this sentence used to point at** (the exclusions table and the W-milestone table are kept as
+HISTORY; the state they carried is not), and §9 records what each audit found and what it cost.
 
 **AND THE BAR IS NOW 100% FIDELITY (§11, 2026-09-18): every refusal this document records — the
 "refused by name" lists, the declared deviations, and every entry in the probes' `excluded` arrays — is
 a DEFECT with a work item, not a boundary — UNLESS it passes §11's deviation rule (necessary for
 function on Argentum, and registered in §11.6). The inventories are closed AS DOCUMENTS and open as
 DEBT; §11.3 is the ledger, §11.6 is what the rule tolerates.**
+
+## THE REMAINING WORK — the plan to close every open row (2026-09-30; it REPLACES the work queue)
+
+**THIS SECTION SUPERSEDES THE WORK-QUEUE FRAMING ABOVE AND THE W-MILESTONE TABLE FURTHER DOWN.** Those
+described the work as it stood when the inventories were audited. This describes what is LEFT, it was measured on
+the day it was written, and it is the plan until the last row closes.
+
+### What is left, measured
+
+* **The selector ledger: 1,292 open rows — 836 methods and 456 properties — across 117 owners.** The SYMBOL
+  ledger has ZERO open rows: every symbol is either shipped or struck by a recorded ground.
+* **224 of those rows are `deprecated`.** §11.5 makes Apple-deprecated API a PORTING TARGET rather than an
+  exclusion, so they are work like the rest — with the one exception named under the decisions below.
+* **The largest thirteen owners carry 675 of the 1,292**: NSString 95, NSCoder 74, NSURL 59, NSAttributedString
+  55, NSBundle 53, NSCalendar 50, NSValue 49, NSNumberFormatter 42, NSFileManager 42, NSLocale 39, NSDictionary
+  30, NSMutableDictionary 25, NSArray 25. **Thirty-nine owners carry ten or more; the top twenty carry 780.** So
+  this is not one mountain: it is about thirty-nine units of real size and a long tail of small ones.
+
+### The plan, in the order the work is taken
+
+**The ORDER is a judgement — this section is the judgement. The STATE is the ledger — never this text.**
+
+1. **ONE OWNER, ONE UNIT, LARGEST FIRST.** A unit is *"close every open row of owner X"*: one context, one
+   refresh to measure it, and it ends with that owner's rows at zero. Walk NSString → NSCoder → NSURL →
+   NSAttributedString → NSBundle → NSCalendar → NSValue → NSFileManager/NSNumberFormatter → … and take the tail
+   once the big units are gone. Two exceptions, both of which this project has already paid for:
+   * **the small-first tail**: an owner with one to three open rows usually needs no new substrate and takes
+     minutes, so a batch of them is a good unit whenever a big one is blocked;
+   * **take the small unit when it UNBLOCKS a big one** — the NSObject protocol is the dependency
+     `NSProgressReporting` needed, and it is exactly that shape.
+2. **A UNIT'S ACCEPTANCE IS THE STANDING ONE, AND SIZE DOES NOT WEAKEN IT:** the host probe check(s) for every
+   door added, run on the HOST first because the loop is cheaper there, then the guest case; `--refresh` →
+   `--check` consistent in BOTH directions; `--unimplemented` 0 NEW; `make foundation-sweep` exit 0; the library
+   zero-diagnostic on a FULL recompile rather than an incremental one; and a `§63.x` record saying what was
+   decided, what was measured and what was learned — the mistakes included, because those are the part that
+   transfers.
+3. **A ROW THAT CANNOT BE HONESTLY IMPLEMENTED IS DECLINED BY NAME WITH ITS REASON, AND THAT IS A DECISION OF
+   YOURS, not a choice of mine.** The mechanism exists — `DECLINED_SELECTORS`, keyed by owner AND selector, so a
+   single row can be struck without striking a class or a name everywhere. Three shapes will need it, and they
+   are named here so they are not discovered one at a time:
+   * **the deprecated AppKit-drawing group** (`-drawAtPoint:withFont:`, `-sizeWithFont:`, `-drawInRect:`, …):
+     Foundation deprecations are porting targets, but the *drawing duplication* carries the opposite policy — no
+     Apple-deprecated APIs in the CG/AppKit duplication — and this group sits on the line between the two. **A
+     decision, not a lookup.**
+   * **the encoding cluster** (8 rows for NSString alone, and more elsewhere): blocked on a converter/repertoire
+     table (§63.2). ICU is already linked, so it is a real unit rather than a refusal — **it needs its own
+     session**, and it is the one place where "take the library that has the table" has to be argued rather than
+     assumed.
+   * **`+deferredLocalizedIntentsStringWithFormat:` (three rows)**: Apple's Intents deferred-localization
+     substrate is absent here — there is no table to defer into — which is precisely §11's "refused by name".
+4. **WHEN AN OWNER'S ROWS ARE GONE, THE OWNER LEAVES THE WORK LIST, AND THAT IS THE ONLY PROGRESS SIGNAL THAT
+   MATTERS.** `tools/foundation-sweep.py --work-list` prints the open rows per owner; an owner absent from it is
+   finished. Closing this ledger will look like that happening one owner at a time.
+
+### The definition of done
+
+`open 0` for methods and properties, with the symbol ledger still at zero; `--check` consistent in both
+directions; `--strict` reporting no policy findings and no parameterization findings; `--unimplemented` 0 NEW;
+the generated family table showing every family shipped or struck; and every deviation that remains registered
+in §11.6 with its reason.
+
+### What this section is NOT
+
+It is not a schedule, and it deliberately carries only the counts measured today — because a hand-written table
+goes stale in a way a generated one cannot, and this document has already paid for that lesson once (the family
+table had drifted in 13 of 83 rows and read as a stuck work queue). **THE INSTRUMENT IS
+`tools/foundation-sweep.py`; THIS SECTION IS THE ORDER OF OPERATIONS AND THE ACCEPTANCE BAR.**
 
 **THE BAR IS 100% FIDELITY, AND A DIFFERENCE IS A FAILURE (the user's direction, 2026-09-18, and it
 REPLACES the softer wording this paragraph used to carry).** The goal is to implement EVERYTHING
