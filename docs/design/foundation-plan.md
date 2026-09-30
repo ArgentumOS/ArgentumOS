@@ -15824,6 +15824,43 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.27 — THE VALIDATED-FORMAT PAIR: A FORMAT CHECKED AGAINST WHAT THE CALLER ALLOWS (2026-09-30)
+
+**WHAT LANDED:** `+stringWithValidatedFormat:validFormatSpecifiers:error:` and its localized sibling — two
+VARIADIC rows, and the fourth slice of the ledger tail. **`method shipped` 1846 → 1848, `method open` 838 →
+836**; `--check` named exactly those two rows before the refresh.
+
+**THE VALIDATION RULE, STATED WHERE IT IS IMPLEMENTED:** every DIRECTIVE in the format must be one the caller
+listed. A directive runs from a `%` to the conversion character that ends it; **`%%` is a literal percent and
+not a directive at all**; and an **unterminated trailing `%` is reported AS a directive rather than dropped**,
+because a format this door accepts is a format the caller hands straight to `-initWithFormat:`.
+
+**ONE RULE, TWO SPELLINGS, AND THE ARGUMENTS CROSS ONCE:** the variadic doors forward a `va_list` to a single
+private class method, so the localized spelling cannot drift from the plain one — and **"localized" is recorded
+as a DEVIATION rather than implied**: this library's formatting is locale-independent (there is no
+localized-format-string machinery to consult), so the localized door's only difference here is the name it is
+reached by.
+
+**AND IT USES THE TREE'S OWN VOCABULARY FOR THE REFUSAL:** nil plus an `NSError` in **`NSCocoaErrorDomain`** with
+code **`NSFormattingError`** — which this tree already pins to Apple's own value, **5546**, with its minimum and
+maximum beside it.
+
+**⚠ AND THE CHECK MEASURES THE PARSER, NOT THE EXAMPLE.** Three paths: a listed format renders ("%d and %@"
+against "%@ %d" gives "42 and text"); an unlisted specifier is refused with the domain and code above; and
+**`"100%% of %d"` must be ACCEPTED for the specifier set `"%d"`** — because a door that treated the literal
+escape as a directive would pass the first two assertions and fail this one. The localized spelling is asserted
+in the same check, with a NULL error pointer.
+
+**VERIFICATION.** Host probe: `validated-format-allows-only-the-listed-specifiers` green (`ok=100`, the single
+failure still §63.24's pre-existing host-only `charset-bitmap-and-planes`). Guest `TESTS-OK 1/1 case(s),
+6/6 check(s)`. Library zero diagnostics; `--unimplemented` 0 NEW (both doors declared AND defined);
+`make foundation-sweep` exit 0, `--check` consistent in both directions.
+
+**AND A PROCESS NOTE WORTH KEEPING: THE UNIT LANDED IN TWO COMMITS, DELIBERATELY.** The implementation went in
+with its verification named as OUTSTANDING in the commit message rather than implied complete — because that was
+true when it was written — and the check and the case followed once they existed. A commit that says what it has
+NOT done is worth more than one that lets its reader assume.
+
 ## §63.26 — THE LOCALISED SEARCH DOORS: WHAT §63.24 MADE EXPRESSIBLE, AND THE MAP THAT KEEPS THE RANGE HONEST (2026-09-30)
 
 **WHAT LANDED:** `-localizedStandardRangeOfString:`, `-localizedStandardContainsString:` and
