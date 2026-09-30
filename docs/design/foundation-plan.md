@@ -15824,6 +15824,56 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.13 — `NSDictionary`'S `NSCoding` CONFORMANCE: TWO PAYLOADS, AND A PAIRING THAT IS THE CONTRACT (2026-09-30)
+
+**WHAT SHIPPED: TWO ROWS, AND THE LAST OF THE THREE COLLECTION FAMILIES.** `NSDictionary` and
+`NSMutableDictionary` conform to `NSCoding`. **`method shipped` 1827 → 1829, `method open` 858 → 856.**
+
+**THIS FAMILY IS NOT THE ARRAY'S AND THE SETS' SUBSTITUTION, and the difference is the whole unit: it carries
+TWO payloads.** `NS.keys` (the key names) is paired **positionally** with `NS.objects` (the values), so the
+encoder writes both arrays FROM ONE ENUMERATION — which is what makes the pairing incapable of falling out of
+step — and the decoder pairs them back. The second key name was already waiting in the shared wire
+(`FNKeyedWire.h` declared `FNKeyedKeysKey` when §63.10 created it), which is why no third name had to be
+invented here.
+
+**THE DECODER BUILDS THROUGH THE PUBLIC DOORS, on purpose.** `-setObject:forKey:` into a mutable dictionary and
+then the funnel (`-initWithDictionary:`), rather than a C array and the count form: the PAIRING is the point of
+this family, and this way it is visible in the code instead of folded into two parallel `calloc`s. The funnel
+then applies the class-choosing rule exactly as every other construction does.
+
+**AND A LENGTH MISMATCH IS REFUSED RATHER THAN HALF-READ.** The two arrays are written from one enumeration, so
+a mismatch is a corrupt archive and not a case with an answer; the decoder answers the empty dictionary rather
+than zipping what it can. An absent payload takes the same path. Worth stating because the alternative — pair
+as far as the shorter array — is the silent-wrong-answer failure this project's collections have been bitten by
+before.
+
+**THE PROBE ASSERTS THE PAIRING, NOT THE CONTENTS — and that distinction is the check's design.** A decoder
+that rebuilt the dictionary from the two arrays in the wrong order, or zipped them one position out, would keep
+every key and every value and still be wrong; asserting `-count` or even the two arrays would pass. The check
+asks `-objectForKey:` for EACH key, which is what catches it. The source is a MUTABLE dictionary so the
+class-choosing rule is exercised in the same round trip (the immutable front answers an immutable dictionary,
+`NSMutableDictionary` a mutable one).
+
+**THE SHAPE DIFFERENCE BETWEEN THE TWO WRITERS IS NAMED IN THE CODE rather than glossed.** The archiver's
+structural branch recognises a dictionary by KIND and writes the same two KEYS with a different PAYLOAD SHAPE
+(an inline array of slots); the class doors write a second array entry. The names are shared so the spellings
+cannot drift; the shapes are each path's own, and neither path reads the other's — because the archiver never
+calls these doors for a dictionary.
+
+**VERIFICATION.** `foundation_collection` **1/1 case, 6/6 checks, probe 49/49** (was 48, with
+`dict-nscoding-doors`), compile-checked on the host first; `foundation_coder` **6/6** and `foundation_clusters`
+**17/17** unmoved; `make foundation-sweep` **exit 0**, `--unimplemented` **0 NEW**; `--check` named **exactly
+2** rows before the flip and the refresh's diff was **3 lines in ONE file**.
+
+**THE COLLECTION HALF OF NSCoding IS NOW COMPLETE.** Four families, eight rows, three sections — and the third
+and fourth applications of the recipe cost a fraction of the first, which is what writing it down three times
+bought. What remains is NOT more of the same, and it splits into the two groups §63.10 named: the VALUE TYPES
+(`NSString`, `NSNumber`, `NSValue`, `NSLocale`), whose doors have no entry to read because this library writes
+them INLINE and which therefore need a DECISION rather than a slice, and the EIGHT FIELD-CARRYING CLASSES
+(`NSNotification`, `NSCharacterSet`, `NSDateInterval`, `NSSortDescriptor`, `NSExpression`,
+`NSComparisonPredicate`, `NSCompoundPredicate`, `NSDistantObject`), each owing its own keys AND a paired
+encoder.
+
 ## §63.12 — `NSArray`'S `NSCoding` CONFORMANCE: THE RECIPE A THIRD TIME, AND THE CLUSTER SHOWS THROUGH (2026-09-30)
 
 **WHAT SHIPPED: TWO ROWS.** `NSArray` and `NSMutableArray` conform to `NSCoding`, with the protocol on the

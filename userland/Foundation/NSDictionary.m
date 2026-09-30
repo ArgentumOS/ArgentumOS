@@ -24,6 +24,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+/* THE KEYED ARCHIVE'S KEY NAMES, shared with NSKeyedArchiver's structural branch so the NSCoding doors below
+ * and that branch cannot spell the same key differently (§63.13). */
+#import <Foundation/FNKeyedWire.h>
 
 struct FNDictEntry {
 	struct FNDictEntry *next;
@@ -389,6 +392,54 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	[result fillWithFirstObject:firstObject arguments:args];
 	va_end(args);
 	return result;
+}
+
+/* ===================================================================================================
+ * THE NSCoding DOORS (§63.13), and this family's are the only pair that is NOT a substitution: TWO payloads,
+ * written and read as a PAIR. The decoder builds through the public doors (`-setObject:forKey:` into a mutable
+ * dictionary, then `-initWithDictionary:`) rather than through a C array, because the PAIRING is the point and
+ * this way it is visible in the code; the funnel then applies the class-choosing rule as it does for every
+ * other construction.
+ * =================================================================================================== */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	NSArray *keys = [coder decodeObjectForKey:FNKeyedKeysKey];
+	NSArray *values = [coder decodeObjectForKey:FNKeyedObjectsKey];
+	NSMutableDictionary *built;
+	NSUInteger n;
+	NSUInteger i;
+
+	if (keys == nil || values == nil || (n = [keys count]) != [values count]) {
+		/* NOTHING TO PAIR, and a MISMATCH is refused rather than half-read: a key with no value has no
+		 * meaning in a dictionary, and the two arrays are written from one enumeration so a mismatch is a
+		 * corrupt archive rather than a case with an answer. An empty (or absent) payload is the empty
+		 * dictionary, through the same canonical constructor every other construction uses. */
+		return [self initWithObjects:NULL forKeys:NULL count:0];
+	}
+	built = [NSMutableDictionary dictionaryWithCapacity:n];
+	for (i = 0; i < n; i++) {
+		id key = [keys objectAtIndex:i];
+
+		if (key != nil) {
+			[built setObject:[values objectAtIndex:i] forKey:key];
+		}
+	}
+	return [self initWithDictionary:built];
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	NSArray *keys = [self allKeys];
+	NSMutableArray *values = [NSMutableArray arrayWithCapacity:[keys count]];
+	NSUInteger i;
+
+	/* ONE ENUMERATION, TWO ARRAYS, SO THE PAIRING CANNOT FALL OUT OF STEP — which is also why the decoder
+	 * treats a length mismatch as a corrupt archive. */
+	for (i = 0; i < [keys count]; i++) {
+		[values addObject:[self objectForKey:[keys objectAtIndex:i]]];
+	}
+	[coder encodeObject:keys forKey:FNKeyedKeysKey];
+	[coder encodeObject:values forKey:FNKeyedObjectsKey];
 }
 
 - (id)initWithDictionary:(NSDictionary *)other
@@ -863,6 +914,16 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 {
 	(void)capacity;
 	return [super init];
+}
+
+/* THE SAME DOOR ON THE MUTABLE CLASS (§63.13), declared in its own block and therefore needing its own body:
+ * `--unimplemented` counts an implementation in the class or a SUBCLASS, so the front's does not satisfy it.
+ * `[super initWithCoder:]` reaches the front's, which funnels through `-initWithDictionary:` with `self` still
+ * the MUTABLE class — and the class-choosing rule sends only the immutable concrete class to the shared empty
+ * instance, so a mutable answer stays mutable. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	return [super initWithCoder:coder];
 }
 
 - (void)addEntriesFromDictionary:(NSDictionary *)other

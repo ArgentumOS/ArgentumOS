@@ -1222,6 +1222,42 @@ NULL
 	}
 
 	{
+		/* THE DICTIONARY'S NSCoding DOORS (§63.13), the pair that is NOT a substitution: TWO payloads, written
+		 * and read as a PAIR. The check asserts the PAIRING rather than the contents — a decoder that read the
+		 * two arrays and rebuilt a dictionary from them in the WRONG ORDER, or that zipped them one position
+		 * out, would keep every key and every value and still be wrong; `-objectForKey:` for each key is what
+		 * catches that. The source is a MUTABLE dictionary so the class-choosing rule is exercised too. */
+		NSMutableDictionary *source = [NSMutableDictionary dictionary];
+		NSMutableData *buffer = [NSMutableData data];
+		NSKeyedArchiver *writer;
+		NSDictionary *back;
+		NSMutableDictionary *mutableBack;
+
+		[source setObject:@"one" forKey:@"a"];
+		[source setObject:@"two" forKey:@"b"];
+		[source setObject:@"three" forKey:@"c"];
+		writer = [[NSKeyedArchiver alloc] initForWritingWithMutableData:buffer];
+		[source encodeWithCoder:writer];
+		[writer finishEncoding];
+		back = [[NSDictionary alloc] initWithCoder:
+			[[NSKeyedUnarchiver alloc] initForReadingWithData:buffer]];
+		mutableBack = [[NSMutableDictionary alloc] initWithCoder:
+			[[NSKeyedUnarchiver alloc] initForReadingWithData:buffer]];
+		check("dict-nscoding-doors",
+		      [source conformsToProtocol:@protocol(NSCoding)] &&
+		      [NSMutableDictionary conformsToProtocol:@protocol(NSCoding)] &&
+		      back != nil && [back count] == 3 &&
+		      [[back objectForKey:@"a"] isEqualToString:@"one"] &&
+		      [[back objectForKey:@"b"] isEqualToString:@"two"] &&
+		      [[back objectForKey:@"c"] isEqualToString:@"three"] &&
+		      ![back isKindOfClass:[NSMutableDictionary class]] &&
+		      mutableBack != nil && [mutableBack count] == 3 &&
+		      [[mutableBack objectForKey:@"c"] isEqualToString:@"three"] &&
+		      [mutableBack isKindOfClass:[NSMutableDictionary class]],
+		      "the key/value PAIRING survives the round trip (checked key by key, not by count), and the class-choosing rule survives it too");
+	}
+
+	{
 		/* The dictionary's block and keys-sorted-by-value forms, exercised. */
 		NSMutableDictionary *d = [NSMutableDictionary dictionary];
 		__block NSUInteger seen = 0;

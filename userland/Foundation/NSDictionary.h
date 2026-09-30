@@ -32,6 +32,9 @@
 #import <Foundation/NSObject.h>
 #import <Foundation/NSFastEnumeration.h>
 #import <Foundation/NSEnumerator.h>
+/* FOR `NSCoding` AND THE `NSCoder` ITS TWO DOORS TAKE (§63.13): this collection conforms on Apple's platform,
+ * so a class that declares the protocol here is one whose `-conformsToProtocol:` answers the same. */
+#import <Foundation/NSCoding.h>
 
 @class NSArray<ObjectType>, NSEnumerator<ObjectType>;
 
@@ -63,7 +66,7 @@ struct FNDictEntry;			/* opaque; defined in NSDictionary.m */
  * private name can reach an archive.
  * =================================================================================================== */
 
-@interface NSDictionary<__covariant KeyType, __covariant ObjectType> : NSObject <NSCopying, NSFastEnumeration>
+@interface NSDictionary<__covariant KeyType, __covariant ObjectType> : NSObject <NSCopying, NSFastEnumeration, NSCoding>
 {
 	struct FNDictEntry **_buckets;	/* power-of-two count, so index = hash & (count-1) */
 	unsigned long _bucketCount;
@@ -72,6 +75,18 @@ struct FNDictEntry;			/* opaque; defined in NSDictionary.m */
 	id __unsafe_unretained *_keys;	/* built lazily for enumeration; dropped on mutation */
 	unsigned long _keyCount;
 }
+
+/* THE NSCoding DOORS (§63.13), AND THIS FAMILY CARRIES *TWO* PAYLOADS — which is why it is NOT the array's and
+ * the sets' substitution: `NS.keys` (the key names) is paired POSITIONALLY with `NS.objects` (the values), so
+ * the encoder writes both arrays and the decoder pairs them on the way back. The second key name was already
+ * waiting in the shared wire (FNKeyedWire.h) for exactly this.
+ *
+ * THE ARCHIVER NEVER CALLS EITHER: its structural branch recognises a dictionary by KIND, and it writes the
+ * same two KEYS with a different PAYLOAD SHAPE — an inline array of slots rather than a second array entry.
+ * The names are shared so the two spellings cannot drift; the shapes are each path's own, and neither path
+ * reads the other's. They exist for a caller who names them, and for `-conformsToProtocol:`. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
+- (void)encodeWithCoder:(NSCoder *)coder;
 
 + (NSDictionary *)dictionary;
 + (NSDictionary<KeyType, ObjectType> *)dictionaryWithObject:(ObjectType)value forKey:(KeyType <NSCopying>)key;
@@ -114,6 +129,11 @@ struct FNDictEntry;			/* opaque; defined in NSDictionary.m */
 + (NSMutableDictionary *)dictionary;
 + (NSMutableDictionary *)dictionaryWithCapacity:(NSUInteger)capacity;
 - (id)initWithCapacity:(NSUInteger)capacity;
+/* APPLE DECLARES THIS ON THE MUTABLE CLASS TOO (§63.13), so it is redeclared here rather than left to
+ * inheritance — the ledger's shipped test is a declaration in the owner's own block — and its implementation
+ * lives in this class's own `@implementation`, because `--unimplemented` counts an implementation in the class
+ * or a SUBCLASS, so the front's body does not satisfy this. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
 
 - (void)addEntriesFromDictionary:(NSDictionary<KeyType, ObjectType> *)other;
 - (void)setDictionary:(NSDictionary<KeyType, ObjectType> *)other;

@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1827   open  858   struck  243
+#   method     shipped 1829   open  856   struck  243
 #   property   shipped 1027   open  463   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -1021,7 +1021,7 @@ method	open	-fileType	NSDictionary	Fundamentals / Basic Collections / Accessing 
 method	shipped	-getObjects:andKeys:	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	deprecated	objc
 method	open	-getObjects:andKeys:count:	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	-	objc
 method	shipped	-init	NSDictionary	Fundamentals / Basic Collections / Creating an Empty Dictionary	-	objc
-method	open	-initWithCoder:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from an NSCoder	-	objc
+method	shipped	-initWithCoder:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from an NSCoder	-	objc
 method	shipped	-initWithContentsOfFile:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from an External Source	deprecated	objc
 method	shipped	-initWithContentsOfURL:	NSDictionary	Fundamentals / Basic Collections / Instance Methods	deprecated	objc
 method	open	-initWithContentsOfURL:error:	NSDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
@@ -2089,7 +2089,7 @@ method	open	+dictionaryWithSharedKeySet:	NSMutableDictionary	Fundamentals / Basi
 method	open	-getHeaderBytes	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
 method	shipped	-init	NSMutableDictionary	Fundamentals / Basic Collections / Creating and Initializing a Mutable Dictionary	-	objc
 method	shipped	-initWithCapacity:	NSMutableDictionary	Fundamentals / Basic Collections / Creating and Initializing a Mutable Dictionary	-	objc
-method	open	-initWithCoder:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
+method	shipped	-initWithCoder:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
 method	shipped	-initWithContentsOfFile:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
 method	shipped	-initWithContentsOfURL:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
 method	shipped	-removeAllObjects	NSMutableDictionary	Fundamentals / Basic Collections / Removing Entries From a Mutable Dictionary	-	objc
