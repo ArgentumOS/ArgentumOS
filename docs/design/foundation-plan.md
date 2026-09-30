@@ -15824,6 +15824,56 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.18 — `NSCharacterSet`: THE PAYLOAD IS THE RANGES, AND A PROBE ERROR THAT LOOKED LIKE A LIBRARY CRASH (2026-09-30)
+
+**WHAT SHIPPED: ONE ROW.** `NSCharacterSet` conforms to `NSCoding`. **`method shipped` 1835 → 1836,
+`method open` 850 → 849.**
+
+**THE PAYLOAD IS THE RANGES, AND THAT IS FORCED RATHER THAN PREFERRED.** The obvious candidate was
+`-bitmapRepresentation` — the class's own published primitive — but **this class has no
+`-initWithBitmapRepresentation:`**, so a bitmap could be WRITTEN and never read back. Instead the pairs go out
+flattened (location, length, location, length …) in ONE array, and the decoder rebuilds through the SAME
+private `fn_add_range` helper every other construction uses. That flattening pays for itself in the refusal it
+allows: a range is two numbers, so an **odd-length array cannot be a set**, and the decoder NAMES that rather
+than rounding it down.
+
+**AND `NSMutableCharacterSet` INHERITS THE PAIR WITH NO DECLARATION AND NO BODY, WHICH IS CORRECT HERE AND WAS
+NOT FOR THE COLLECTIONS.** This family's mutable class has the SAME LAYOUT — `_ranges` is the FRONT's own ivar
+— rather than different storage behind a cluster, so a decoder building onto a mutable receiver produces a
+mutable set. The ledger carries no row for the mutable class for the same reason; the collections' mutables
+each needed their own declaration AND their own body (§63.10–§63.13).
+
+**AND TWO FINDINGS, both about the instruments rather than the code:**
+
+* **THE MISSING IMPORTS AGAIN, AND THIS TIME THEY WERE ERRORS RATHER THAN WARNINGS.** The file had never
+  needed `NSArray`/`NSNumber`, so the flattened pairs' `NSMutableArray` and `NSNumber` were undeclared — which
+  the compiler named at once (`unknown type name 'NSMutableArray'`), unlike §63.17's silent `-Wobjc-method-access`
+  class. **The same omission costs a build or costs nothing, depending on whether the compiler can still infer
+  a type**: a missing method is inferred, a missing CLASS is not.
+* **THE PROBE'S OWN ERROR LOOKED EXACTLY LIKE A LIBRARY CRASH, and the small-file technique is what separated
+  them.** `foundation_clusters` aborted after the ordered-set checks; the probe at HEAD ran to completion
+  (91/91), so the change was implicated. A twenty-line standalone program found it in two runs: the MUTABLE
+  case called `[[NSMutableCharacterSet alloc] initWithCoder:]` over an IMMUTABLE set's archive — whose `$top`
+  holds the key `root` and not `NS.ranges` — so `-decodeObjectForKey:` **RAISED, exactly as it should**, and the
+  uncaught exception aborted the probe. **`gdb -batch -ex run -ex bt` named the raise in three frames**
+  (`+[NSException raise:format:]` ← `-[NSKeyedUnarchiver decodeObjectForKey:]` ← `-[NSCharacterSet
+  initWithCoder:]`), which is what turned "a library crash" into "my probe fed it the wrong archive". The fix
+  is in the ARCHIVE, not the door: archive a MUTABLE set and let `-classForCoder` name it. **A class's
+  `-initWithCoder:` is only reachable through its OWN entry.**
+* **AND THE BUFFERED-OUTPUT TRAP BIT FOR THE FOURTH TIME** — the first standalone reproduction printed NOTHING
+  at all, so the crash could have been anywhere; switching the probes to `stderr` (unbuffered) located it at
+  step 3. This thread has now recorded that trap in §63.5, §63.14, §63.17 and here, and the practical rule is
+  one line: **when a probe dies silently, print to stderr.**
+
+**VERIFICATION.** `foundation_clusters` **92/92** on the host (was 91, with
+`nscharacterset-nscoding-round-trip` — a guest-only probe run on the host exactly as §63.17 described); guest
+`TESTS-OK 1/1 case(s), 6/6 check(s)`, with `foundation_sort`, `foundation_formatters` and
+`foundation_predicate` all **6/6** unmoved; the LIBRARY builds with **zero diagnostics**; `make
+foundation-sweep` **exit 0**, `--unimplemented` **0 NEW**; `--check` named **exactly 1** row before the flip.
+
+**ONE FIELD-CARRYING CLASS REMAINS: `NSDistantObject`** — plus the independent `NSExpression` ownership defect
+(§63.15) and the value-type design question (§63.10).
+
 ## §63.17 — `NSDateInterval` AND `NSSortDescriptor`: TWO ROWS, A FIELD THAT CANNOT BE ARCHIVED, AND FOUR FINDINGS (2026-09-30)
 
 **WHAT SHIPPED: TWO ROWS.** `NSDateInterval` and `NSSortDescriptor` conform to `NSCoding`.

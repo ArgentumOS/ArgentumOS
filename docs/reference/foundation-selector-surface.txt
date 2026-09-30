@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1835   open  850   struck  243
+#   method     shipped 1836   open  849   struck  243
 #   property   shipped 1027   open  463   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -541,7 +541,7 @@ method	shipped	+characterSetWithCharactersInString:	NSCharacterSet	Fundamentals 
 method	shipped	+characterSetWithContentsOfFile:	NSCharacterSet	Fundamentals / Characters / Creating and Managing Character Sets as Bitmap Representations	-	objc
 method	shipped	+characterSetWithRange:	NSCharacterSet	Fundamentals / Characters / Creating a Custom Character Set	-	objc
 method	shipped	-hasMemberInPlane:	NSCharacterSet	Fundamentals / Characters / Testing Set Membership	-	objc
-method	open	-initWithCoder:	NSCharacterSet	Fundamentals / Characters / Creating a Custom Character Set	-	objc
+method	shipped	-initWithCoder:	NSCharacterSet	Fundamentals / Characters / Creating a Custom Character Set	-	objc
 method	shipped	-isSupersetOfSet:	NSCharacterSet	Fundamentals / Characters / Testing Set Membership	-	objc
 method	shipped	-longCharacterIsMember:	NSCharacterSet	Fundamentals / Characters / Testing Set Membership	-	objc
 property	open	URLFragmentAllowedCharacterSet	NSCharacterSet	Fundamentals / Characters / Getting Character Sets for URL Encoding	-	objc

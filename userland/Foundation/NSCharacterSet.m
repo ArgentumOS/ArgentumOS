@@ -9,6 +9,9 @@
  */
 
 #import <Foundation/NSCharacterSet.h>
+#import <Foundation/NSCoder.h>	/* the NSCoding doors call the coder's methods, not just its type */
+#import <Foundation/NSArray.h>	/* the doors carry the ranges as one flattened array of numbers */
+#import <Foundation/NSNumber.h>
 #import <Foundation/NSData.h>
 #import <Foundation/NSString.h>
 #include <stdlib.h>
@@ -107,6 +110,59 @@ static BOOL fn_contains(NSCharacterSet *set, unsigned int character)
 			length = (unsigned int)(FN_MAX_CHARACTER + 1 - range.location);
 		}
 		fn_add_range(self, (unsigned int)range.location, length);
+	}
+	return self;
+}
+
+/* ===================================================================================================
+ * THE NSCoding DOORS (§63.18). KEYS OURS (Apple publishes no name for them, §11.6.1 D2's ground), defined
+ * beside their only writer and reader as this thread's other field-carrying classes have done.
+ *
+ * THE RANGES ARE THE PAYLOAD, FLATTENED (location, length, location, length …) into ONE array of numbers: a
+ * range is two numbers, so an odd-length array cannot be a set and the decoder NAMES that rather than rounding
+ * it down. The decoder rebuilds through the same private `fn_add_range` every construction uses, and applies
+ * the same CODE-UNIT clamp `-initWithRange:` applies — a set cannot hold what a unichar cannot say.
+ * =================================================================================================== */
+static NSString *const kRangesKey = @"NS.ranges";
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	NSMutableArray *pairs = [NSMutableArray arrayWithCapacity:_rangeCount * 2];
+	unsigned long i;
+
+	for (i = 0; i < _rangeCount; i++) {
+		[pairs addObject:[NSNumber numberWithUnsignedInt:_ranges[i * 2]]];
+		[pairs addObject:[NSNumber numberWithUnsignedInt:_ranges[i * 2 + 1]]];
+	}
+	[coder encodeObject:pairs forKey:kRangesKey];
+}
+
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	NSArray *pairs = [coder decodeObjectForKey:kRangesKey];
+	NSUInteger count = pairs != nil ? [pairs count] : 0;
+	NSUInteger i;
+
+	if ((count % 2) != 0) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSCharacterSet: the archive carries %lu range value(s), which is not a "
+				   "whole number of (location, length) pairs",
+				   (unsigned long)count];
+	}
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	for (i = 0; i + 1 < count; i += 2) {
+		unsigned int location = [[pairs objectAtIndex:i] unsignedIntValue];
+		unsigned int length = [[pairs objectAtIndex:i + 1] unsignedIntValue];
+
+		if (location <= FN_MAX_CHARACTER) {
+			if (location + length > FN_MAX_CHARACTER + 1) {
+				length = FN_MAX_CHARACTER + 1 - location;
+			}
+			fn_add_range(self, location, length);
+		}
 	}
 	return self;
 }

@@ -235,6 +235,7 @@ CHECKS = (
           "nscharacterset-archiver-answer-for-front-and-public-subclass",
           "nscharacterset-equal-sets-hash-equal",
           "nscharacterset-primitives-drive-supersets-and-equality",
+          "nscharacterset-nscoding-round-trip",
           # M8: NSValue - a front over a documented payload seam.
           "nsvalue-archiver-answer",
           "nsvalue-primitives-drive-the-doors",

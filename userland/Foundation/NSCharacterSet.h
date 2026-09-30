@@ -21,6 +21,8 @@
 #define FOUNDATION_NSCHARACTERSET_H
 
 #import <Foundation/NSObject.h>
+/* FOR `NSCoding` AND THE `NSCoder` ITS TWO DOORS TAKE (§63.18). */
+#import <Foundation/NSCoding.h>
 
 @class NSString;
 @class NSData;	/* the bitmap representation's type */
@@ -68,12 +70,29 @@ NS_ASSUME_NONNULL_BEGIN
  * something to enumerate.
  * =================================================================================================== */
 
-@interface NSCharacterSet : NSObject <NSCopying>
+@interface NSCharacterSet : NSObject <NSCopying, NSCoding>
 {
 	unsigned int *_ranges;		/* pairs of (location, length) in code units */
 	unsigned long _rangeCount;
 	unsigned long _capacity;
 }
+
+/* THE NSCoding DOORS (§63.18), AND THE PAYLOAD IS THE **RANGES** — the storage itself, not the bitmap
+ * `-bitmapRepresentation` hands out. That choice is forced rather than preferred: this class has NO
+ * `-initWithBitmapRepresentation:`, so a bitmap could be WRITTEN and never read back, and the decoder instead
+ * rebuilds through the SAME private `fn_add_range` helper every other construction uses (the anti-drift
+ * choice this thread has made five times now).
+ *
+ * THE PAIRS GO OUT FLATTENED (location, length, location, length …) IN ONE ARRAY, because a range is two
+ * numbers and an ODD-length array is then a corrupt archive the decoder can NAME rather than silently round
+ * down — which is what its refusal does.
+ *
+ * AND NSMutableCharacterSet INHERITS THIS PAIR WITHOUT A SECOND DECLARATION, which is CORRECT here and was
+ * NOT for the collections: this family's mutable class has the SAME LAYOUT (`_ranges` is the front's own ivar)
+ * rather than a different one behind a cluster, so a decoder building onto a mutable receiver produces a
+ * mutable set. The ledger carries no row for the mutable class for the same reason. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
+- (void)encodeWithCoder:(NSCoder *)coder;
 
 + (nullable NSCharacterSet *)characterSetWithCharactersInString:(NSString *)string;
 + (nullable NSCharacterSet *)characterSetWithRange:(NSRange)range;

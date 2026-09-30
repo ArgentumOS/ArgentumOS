@@ -1499,6 +1499,61 @@ int main(void)
 	}
 
 	{
+		/* THE CHARACTER SET'S NSCoding DOORS (§63.18), over the REAL archive path. Three things are asserted
+		 * that a round trip alone would not show: MEMBERSHIP survives (`-characterIsMember:` for a member and a
+		 * non-member, which is what the class is FOR), EQUALITY survives (the restored set is equal to the
+		 * original, so the ranges — not just the members — came back), and the PUBLIC MUTABLE SUBCLASS's
+		 * inherited door answers a MUTABLE set, which is the claim the header makes about this family's shared
+		 * layout.
+		 *
+		 * AND THE ODD-LENGTH REFUSAL IS MEASURED: a corrupt archive carrying three numbers cannot be a whole
+		 * number of (location, length) pairs, and the decoder NAMES that instead of rounding it down.
+		 *
+		 * AND A CORRECTION THIS CHECK COST, worth stating because the failure looked like a library crash: the
+		 * MUTABLE case must be reached by archiving a MUTABLE set and unarchiving it (its `-classForCoder`
+		 * answers `NSMutableCharacterSet`, so the root entry names it). The first version called
+		 * `[[NSMutableCharacterSet alloc] initWithCoder:]` over an IMMUTABLE set's archive — whose `$top` holds
+		 * the key `root` and not `NS.ranges` — so the decoder's `-decodeObjectForKey:` RAISED exactly as it
+		 * should, and the uncaught exception aborted the probe. **A class's `-initWithCoder:` is only reachable
+		 * through its OWN entry**, and the fix is the archive, not the door. */
+		NSCharacterSet *set = [NSCharacterSet characterSetWithCharactersInString:@"abcxyz"];
+		NSData *setData = [NSKeyedArchiver archivedDataWithRootObject:set];
+		NSCharacterSet *backSet = setData != nil
+			? [NSKeyedUnarchiver unarchiveObjectWithData:setData] : nil;
+		NSMutableCharacterSet *mutableSet = [NSMutableCharacterSet characterSet];
+		NSMutableData *oddBuffer = [[NSMutableData alloc] init];
+		NSKeyedArchiver *oddWriter = [[NSKeyedArchiver alloc]
+			initForWritingWithMutableData:oddBuffer];
+		NSData *mutableData;
+		NSMutableCharacterSet *mutableBack;
+		BOOL refusedOdd = NO;
+
+		[mutableSet addCharactersInString:@"xyz"];
+		mutableData = [NSKeyedArchiver archivedDataWithRootObject:mutableSet];
+		mutableBack = mutableData != nil
+			? [NSKeyedUnarchiver unarchiveObjectWithData:mutableData] : nil;
+		[oddWriter encodeObject:@[ @1, @2, @3 ] forKey:@"NS.ranges"];
+		[oddWriter finishEncoding];
+		@try {
+			(void)[[NSCharacterSet alloc] initWithCoder:
+				[[NSKeyedUnarchiver alloc] initForReadingWithData:oddBuffer]];
+		} @catch (NSException *e) {
+			refusedOdd = [[e name] isEqualToString:NSInvalidArgumentException];
+		}
+		check("nscharacterset-nscoding-round-trip",
+		      [set conformsToProtocol:@protocol(NSCoding)] &&
+		      backSet != nil &&
+		      [backSet characterIsMember:'a'] && [backSet characterIsMember:'z'] &&
+		      ![backSet characterIsMember:'1'] && ![backSet characterIsMember:'A'] &&
+		      [backSet isEqualToCharacterSet:set] && [backSet hash] == [set hash] &&
+		      mutableBack != nil &&
+		      [mutableBack isKindOfClass:[NSMutableCharacterSet class]] &&
+		      [mutableBack characterIsMember:'x'] &&
+		      refusedOdd,
+		      "membership, equality and the hash survive the round trip; the public mutable subclass's inherited door answers a MUTABLE set; and an archive whose ranges are not pairs is refused by name");
+	}
+
+	{
 		/*
 		 * M8: NSValue — a front holding a payload, with the doors over the three primitives. Locals declared
 		 * HERE.
