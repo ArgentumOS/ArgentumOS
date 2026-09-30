@@ -185,6 +185,112 @@ static NSRange fn_scheme_range(const char *bytes, size_t length)
 	return NSMakeRange(NSNotFound, 0);
 }
 
+/* ------------------------------------------------------- value-level helpers (2026-09-30)
+ *
+ * Three rules the "rest of the value" doors need and the parse did not yet hold. Each is a RULE with
+ * a stated choice, because Apple's page for each leaves something open and the choice has to be named.
+ */
+
+/* THE URL-CHARACTER SET, AND WHY A SECOND ENCODER EXISTS. `fn_encode` above is the PATH rule: it
+ * encodes '?' and '#', which is right for a path and wrong for a whole typed string. This is the URL
+ * rule for -initWithString:encodingInvalidCharacters:YES: it repairs what is illegal while LEAVING THE
+ * STRUCTURE ALONE - ':' '/' '?' '#' '[' ']' and '%' must survive or the string stops being a URL. */
+static int fn_is_url_char(unsigned char c)
+{
+	if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+		return 1;
+	}
+	return strchr("-._~!$&'()*+,;=:@/?#[]%", c) != NULL;
+}
+
+static NSString *fn_encode_url(NSString *input)
+{
+	const char *bytes = [input UTF8String];
+	size_t length, i;
+	char *out;
+	NSString *result;
+
+	if (bytes == NULL) {
+		return @"";
+	}
+	length = strlen(bytes);
+	out = (char *)malloc(length * 3 + 1);
+	if (out == NULL) {
+		return input;
+	}
+	{
+		size_t at = 0;
+
+		for (i = 0; i < length; i++) {
+			unsigned char c = (unsigned char)bytes[i];
+
+			if (fn_is_url_char(c)) {
+				out[at++] = (char)c;
+			} else {
+				static const char hex[] = "0123456789ABCDEF";
+
+				out[at++] = '%';
+				out[at++] = hex[(c >> 4) & 0xF];
+				out[at++] = hex[c & 0xF];
+			}
+		}
+		out[at] = '\0';
+	}
+	result = [[NSString alloc] initWithUTF8String:out];
+	free(out);
+	return result != nil ? [result autorelease] : input;
+}
+
+/* ENSURE A PATH SPELLS "directory" (a trailing slash). This is the one thing
+ * -fileURLWithPath:isDirectory:YES and -URLByAppendingPathComponent:isDirectory:YES add over their
+ * slash-less forms, and it is SYNTACTIC like Apple's: nothing is stat-ed. */
+static NSString *fn_ensure_trailing_slash(NSString *path)
+{
+	if (path == nil || [path length] == 0 || [path hasSuffix:@"/"]) {
+		return path;
+	}
+	return [path stringByAppendingString:@"/"];
+}
+
+/* REMOVE "." AND ".." SEGMENTS, the way -URLByStandardizingPath does. This system has no "~" to
+ * expand and no /private prefix to strip (the grounds are in the URL unit's comment), so those are the
+ * whole rule. ".." at or above the root is DROPPED rather than kept, which is what keeps an absolute
+ * path absolute; a single trailing slash survives so a directory stays spelled as one. */
+static NSString *fn_standardize_path(NSString *path)
+{
+	NSArray *components = [path componentsSeparatedByString:@"/"];
+	NSMutableArray *kept = [[NSMutableArray alloc] init];
+	NSMutableString *result;
+	BOOL absolute = [path hasPrefix:@"/"];
+	BOOL trailing = [path length] > 1 && [path hasSuffix:@"/"];
+	NSUInteger i;
+
+	for (i = 0; i < [components count]; i++) {
+		NSString *c = [components objectAtIndex:i];
+
+		if ([c length] == 0 || [c isEqual:@"."]) {
+			continue;
+		}
+		if ([c isEqual:@".."]) {
+			if ([kept count] > 0) {
+				[kept removeLastObject];
+			}
+			continue;
+		}
+		[kept addObject:c];
+	}
+	result = [[NSMutableString alloc] init];
+	if (absolute) {
+		[result appendString:@"/"];
+	}
+	[result appendString:[kept componentsJoinedByString:@"/"]];
+	if (trailing && [result length] > 1) {
+		[result appendString:@"/"];
+	}
+	[kept release];
+	return [result autorelease];
+}
+
 @implementation NSURL
 
 /* THE ONE KEY WHOSE VALUE IS NOT ITS OWN NAME: a scheme is a wire string ("file" in a file URL), not a
@@ -263,8 +369,20 @@ NSURLResourceKey NSURLVolumeUUIDStringKey = @"NSURLVolumeUUIDStringKey";
 				NSRange atSign = [authority rangeOfString:@"@"];
 
 				if (atSign.location != NSNotFound) {
-					_user = [[authority substringWithRange:
-						NSMakeRange(0, atSign.location)] copy];
+					/* THE USERINFO IS SPLIT AT THE FIRST ':' (RFC 3986 §3.2.1), so `user:secret@h`
+					 * answers user="user" and password="secret" rather than one string holding both.
+					 * The halves are kept in their ENCODED spelling, like `_user` always was. */
+					NSString *userinfo = [authority substringWithRange:
+						NSMakeRange(0, atSign.location)];
+					NSRange colon = [userinfo rangeOfString:@":"];
+
+					if (colon.location != NSNotFound) {
+						_user = [[userinfo substringWithRange:
+							NSMakeRange(0, colon.location)] copy];
+						_password = [[userinfo substringFromIndex:colon.location + 1] copy];
+					} else {
+						_user = [userinfo copy];
+					}
 					hostPart = NSMakeRange(atSign.location + 1,
 							       [authority length] - atSign.location - 1);
 				}
@@ -1444,6 +1562,351 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 	[[self fnCache] setObject:value forKey:key];
 }
 
+/* ---- THE REST OF THE URL AS A VALUE (2026-09-30) ------------------------------------------------ */
+
+- (nullable NSURL *)baseURL
+{
+	/* ALWAYS nil, AND IT IS A FACT ABOUT THIS CLASS RATHER THAN A REFUSAL: +URLWithString:relativeToURL:
+	 * DISSOLVES the base by resolving into an absolute URL (FNURLResolveRelative), so nothing this
+	 * library builds keeps one. Apple answers nil here for an absolute URL too, which every URL of ours
+	 * is. */
+	return nil;
+}
+
+- (nullable NSString *)password
+{
+	return _password;
+}
+
+- (nullable NSString *)relativePath
+{
+	/* THE PATH SPELT AS IT IS, plus the query and fragment - the "or the path if absolute" half of
+	 * Apple's contract, whose exact composition its own page leaves AMBIGUOUS (notably whether the
+	 * fragment is included). THIS LIBRARY INCLUDES the fragment, and the choice is stated here rather
+	 * than left implied. The path is the ENCODED spelling, like -resourceSpecifier below. */
+	NSMutableString *answer = [[NSMutableString alloc] initWithString:_path];
+
+	if (_query != nil) {
+		[answer appendString:@"?"];
+		[answer appendString:_query];
+	}
+	if (_fragment != nil) {
+		[answer appendString:@"#"];
+		[answer appendString:_fragment];
+	}
+	return [answer autorelease];
+}
+
+- (NSString *)resourceSpecifier
+{
+	/* EVERYTHING AFTER THE SCHEME'S COLON, exactly as it is spelt: "//host/path?q#f" for an authority
+	 * URL and "/path" for a file URL. The scheme is REQUIRED, so the colon is always there. */
+	NSRange colon = [_absoluteString rangeOfString:@":"];
+
+	if (colon.location == NSNotFound) {
+		return _absoluteString;
+	}
+	return [_absoluteString substringFromIndex:colon.location + 1];
+}
+
+- (nullable NSString *)lastPathComponent
+{
+	/* THE DECODED PATH'S last component, so a caller reads the NAME and not the spelling - the same
+	 * decoded path NSURLNameKey answers. */
+	return [[self path] lastPathComponent];
+}
+
+- (nullable NSString *)pathExtension
+{
+	return [[self path] pathExtension];
+}
+
+- (nullable NSArray *)pathComponents
+{
+	/* NULLABLE ON PURPOSE: NSString's -pathComponents answers nil for an empty path (measured, the same
+	 * fact the resource-value unit records), and this door passes that through rather than inventing an
+	 * empty array. */
+	return [[self path] pathComponents];
+}
+
+- (NSURL *)standardizedURL
+{
+	return [self fnURLWithPath:fn_standardize_path(_path)];
+}
+
+- (const char * _Nullable)fileSystemRepresentation
+{
+	/* THE FSH PATH AS BYTES, and NULL for anything that is not a file URL - Apple's own "cannot be
+	 * represented as a file system path". The pointer is the decoded path's UTF-8 buffer. */
+	if (![self isFileURL]) {
+		return NULL;
+	}
+	return [[self path] UTF8String];
+}
+
+- (BOOL)getFileSystemRepresentation:(char *)buffer maxLength:(NSUInteger)maxLength
+{
+	const char *rep;
+	size_t length;
+
+	if (![self isFileURL] || buffer == NULL) {
+		return NO;
+	}
+	rep = [[self path] UTF8String];
+	if (rep == NULL) {
+		return NO;
+	}
+	length = strlen(rep);
+	if (length + 1 > maxLength) {
+		return NO;
+	}
+	memcpy(buffer, rep, length + 1);
+	return YES;
+}
+
+/* ---- CREATING --------------------------------------------------------------------------------- */
+
+- (nullable id)initWithString:(NSString *)string relativeToURL:(nullable NSURL *)baseURL
+{
+	NSURL *resolved = FNURLResolveRelative(string, baseURL != nil ? [baseURL absoluteString] : nil);
+
+	if (resolved == nil) {
+		return nil;
+	}
+	/* RE-PARSE THE RESOLVED SPELLING so THIS object owns its parts (+1 for an init) rather than
+	 * borrowing the resolver's autoreleased answer, and so the object is an NSURL and not whatever the
+	 * resolver returned. */
+	return [self initWithPartsFromString:[resolved absoluteString]];
+}
+
+- (nullable id)initWithString:(NSString *)string encodingInvalidCharacters:(BOOL)encodingInvalidCharacters
+{
+	/* THE FLAG IS THE WHOLE DOOR: NO is the strict parse (parsing is the refusal, the class's rule);
+	 * YES REPAIRS a typed string by percent-encoding what is illegal while leaving the URL's structure
+	 * intact, so "http://h/a b" becomes "http://h/a%20b" and nothing else moves. */
+	return [self initWithPartsFromString:encodingInvalidCharacters ? fn_encode_url(string) : string];
+}
+
++ (nullable NSURL *)URLWithString:(NSString *)string encodingInvalidCharacters:(BOOL)encodingInvalidCharacters
+{
+	return [[self alloc] initWithString:string encodingInvalidCharacters:encodingInvalidCharacters];
+}
+
+- (nullable id)initWithDataRepresentation:(NSData *)data relativeToURL:(nullable NSURL *)baseURL
+{
+	/* THE DATA IS THE UTF-8 SPELLING OF THE URL'S STRING, which is what -dataRepresentation answers - a
+	 * round trip the probe asserts. Data that is not valid UTF-8 is REFUSED (nil), not repaired. */
+	NSString *string = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+	id answer;
+
+	if (string == nil) {
+		return nil;
+	}
+	answer = [self initWithString:string relativeToURL:baseURL];
+	[string release];
+	return answer;
+}
+
++ (nullable NSURL *)URLWithDataRepresentation:(NSData *)data relativeToURL:(nullable NSURL *)baseURL
+{
+	return [[self alloc] initWithDataRepresentation:data relativeToURL:baseURL];
+}
+
+- (nullable id)initAbsoluteURLWithDataRepresentation:(NSData *)data relativeToURL:(nullable NSURL *)baseURL
+{
+	/* The result of resolution is an ABSOLUTE URL (or nil), so the "absolute" spelling and the plain
+	 * one are the same door over the same algorithm; the name is Apple's and is honoured by delegation. */
+	return [self initWithDataRepresentation:data relativeToURL:baseURL];
+}
+
++ (nullable NSURL *)absoluteURLWithDataRepresentation:(NSData *)data relativeToURL:(nullable NSURL *)baseURL
+{
+	return [[self alloc] initAbsoluteURLWithDataRepresentation:data relativeToURL:baseURL];
+}
+
+- (nullable NSData *)dataRepresentation
+{
+	return [[self absoluteString] dataUsingEncoding:NSUTF8StringEncoding];
+}
+
+- (nullable id)initFileURLWithPath:(NSString *)path isDirectory:(BOOL)isDirectory
+{
+	return [self initFileURLWithPath:(isDirectory ? fn_ensure_trailing_slash(path) : path)];
+}
+
+- (nullable id)initFileURLWithPath:(NSString *)path relativeToURL:(nullable NSURL *)baseURL
+{
+	/* THE BASE IS IGNORED FOR AN ABSOLUTE PATH (Apple's own rule) AND A RELATIVE PATH IS REFUSED: the
+	 * FSH has no relative paths to resolve, which is this class's standing rule for file URLs (see the
+	 * header). So this door is the base-less one for every path this system can name. */
+	if (path == nil || ![path hasPrefix:@"/"]) {
+		return nil;
+	}
+	return [self initFileURLWithPath:path];
+}
+
+- (nullable id)initFileURLWithPath:(NSString *)path isDirectory:(BOOL)isDirectory relativeToURL:(nullable NSURL *)baseURL
+{
+	if (path == nil || ![path hasPrefix:@"/"]) {
+		return nil;
+	}
+	return [self initFileURLWithPath:path isDirectory:isDirectory];
+}
+
++ (nullable NSURL *)fileURLWithPath:(NSString *)path isDirectory:(BOOL)isDirectory
+{
+	return [[self alloc] initFileURLWithPath:path isDirectory:isDirectory];
+}
+
++ (nullable NSURL *)fileURLWithPath:(NSString *)path relativeToURL:(nullable NSURL *)baseURL
+{
+	return [[self alloc] initFileURLWithPath:path relativeToURL:baseURL];
+}
+
++ (nullable NSURL *)fileURLWithPath:(NSString *)path isDirectory:(BOOL)isDirectory relativeToURL:(nullable NSURL *)baseURL
+{
+	return [[self alloc] initFileURLWithPath:path isDirectory:isDirectory relativeToURL:baseURL];
+}
+
++ (nullable NSURL *)fileURLWithPathComponents:(NSArray *)components
+{
+	/* THE COMPONENTS ARE JOINED WITH '/' and a leading '/' is guaranteed, so [@"a",@"b"] and
+	 * [@"/a",@"b"] both name /a/b - the door is forgiving about the leading slash because a caller who
+	 * splits a path on ':' is the caller this exists for. */
+	NSString *joined = [components componentsJoinedByString:@"/"];
+	NSString *path = [joined hasPrefix:@"/"] ? joined : [@"/" stringByAppendingString:joined];
+
+	return [[self alloc] initFileURLWithPath:path];
+}
+
+- (nullable id)initFileURLWithFileSystemRepresentation:(const char *)path isDirectory:(BOOL)isDirectory relativeToURL:(nullable NSURL *)baseURL
+{
+	NSString *string;
+
+	if (path == NULL) {
+		return nil;
+	}
+	string = [NSString stringWithUTF8String:path];
+	if (string == nil) {
+		return nil;
+	}
+	return [self initFileURLWithPath:string isDirectory:isDirectory relativeToURL:baseURL];
+}
+
++ (nullable NSURL *)fileURLWithFileSystemRepresentation:(const char *)path isDirectory:(BOOL)isDirectory relativeToURL:(nullable NSURL *)baseURL
+{
+	return [[self alloc] initFileURLWithFileSystemRepresentation:path isDirectory:isDirectory relativeToURL:baseURL];
+}
+
+/* ---- MODIFYING AND CONVERTING ----------------------------------------------------------------- */
+
+- (NSURL *)URLByAppendingPathComponent:(NSString *)component isDirectory:(BOOL)isDirectory
+{
+	NSURL *appended = [self URLByAppendingPathComponent:component];
+
+	if (appended == nil) {
+		return appended;
+	}
+	/* isDirectory:YES ADDS the trailing slash that SPELLS "directory"; NO REMOVES any. Apple's rule is
+	 * SYNTACTIC, like -fileURLWithPath:isDirectory:, so nothing is stat-ed. */
+	if (isDirectory) {
+		return [appended fnURLWithPath:fn_ensure_trailing_slash(appended->_path)];
+	}
+	{
+		NSMutableString *path = [[[NSMutableString alloc] initWithString:appended->_path] autorelease];
+
+		while ([path hasSuffix:@"/"] && [path length] > 1) {
+			[path deleteCharactersInRange:NSMakeRange([path length] - 1, 1)];
+		}
+		return [appended fnURLWithPath:path];
+	}
+}
+
+- (nullable NSURL *)filePathURL
+{
+	/* THE PATH-BASED FILE URL. This system has NO file-REFERENCE URLs, so a file URL is already its own
+	 * path URL and anything else has none - Apple's own nil-for-a-non-file-URL answer. */
+	return [self isFileURL] ? self : nil;
+}
+
+- (BOOL)hasDirectoryPath
+{
+	/* PURELY SYNTACTIC, as Apple defines it: the PATH ends with a slash (which -fileURLWithPath:
+	 * isDirectory:YES and -URLByAppendingPathComponent:isDirectory:YES are how a caller produces). */
+	return [_path hasSuffix:@"/"];
+}
+
+- (NSURL *)URLByResolvingSymlinksInPath
+{
+	NSString *path = [self path];
+	char *resolved;
+
+	/* A SYMLINK NEEDS SOMETHING ON DISK TO RESOLVE, so realpath(3) is the door and a path that does not
+	 * exist comes back UNCHANGED - Apple's own "returns the original if it cannot be resolved". A
+	 * non-file URL is unchanged for the same reason. */
+	if (![self isFileURL] || path == nil) {
+		return self;
+	}
+	resolved = realpath([path UTF8String], NULL);
+	if (resolved == NULL) {
+		return self;
+	}
+	{
+		NSString *answer = [NSString stringWithUTF8String:resolved];
+
+		free(resolved);
+		if (answer == nil) {
+			return self;
+		}
+		return [NSURL fileURLWithPath:answer];
+	}
+}
+
+- (NSURL *)URLByStandardizingPath
+{
+	return [self fnURLWithPath:fn_standardize_path(_path)];
+}
+
+/* ---- QUERYING --------------------------------------------------------------------------------- */
+
+- (BOOL)isFileReferenceURL
+{
+	/* NO, AND IT IS A FACT ABOUT THIS SYSTEM RATHER THAN A STUB: Apple's file-reference URLs live in a
+	 * `file:/.file/id=…` namespace carrying a volume-and-inode identity; this system names files by
+	 * their FSH path ONLY, so no URL here can be one. A string that LOOKS like one parses as an ordinary
+	 * file URL whose path begins "/.file/", which is exactly what it is on this system. */
+	return NO;
+}
+
+- (nullable NSURL *)fileURL
+{
+	return [self isFileURL] ? self : nil;
+}
+
+/* ---- DEPRECATED (Apple 10.4) ------------------------------------------------------------------ */
+
+- (nullable id)initWithScheme:(NSString *)scheme host:(nullable NSString *)host path:(NSString *)path
+{
+	NSMutableString *spelling = [[NSMutableString alloc] init];
+	id made;
+
+	[spelling appendString:scheme];
+	[spelling appendString:@":"];
+	if (host != nil) {
+		[spelling appendString:@"//"];
+		[spelling appendString:host];
+	}
+	if (path != nil) {
+		[spelling appendString:path];
+	}
+	/* NOTHING IS ENCODED HERE, deliberately: this door is deprecated and Apple's own took the caller's
+	 * spelling literally, so a path with a space is the caller's to encode - a documented DIVERGENCE
+	 * from the file doors, which do encode. */
+	made = [self initWithPartsFromString:spelling];
+	[spelling release];
+	return made;
+}
+
 /* ONLY THE CACHE IS RELEASED HERE, AND THE REST IS A RECORDED DEBT RATHER THAN A SILENT FIX. This
  * object COPIES its parts and never released one of them (it had no -dealloc at all); one of them,
  * `_scheme`, is not even owned - it comes from `-lowercaseString`, which answers an autoreleased
@@ -1459,6 +1922,7 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 	[_absoluteString release];
 	[_scheme release];
 	[_user release];
+	[_password release];
 	[_host release];
 	[_port release];
 	[_path release];

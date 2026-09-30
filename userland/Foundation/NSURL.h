@@ -50,6 +50,7 @@
 #import <Foundation/NSObject.h>
 
 @class NSArray;
+@class NSData;
 @class NSMutableDictionary;
 @class NSDictionary;
 @class NSError;
@@ -73,6 +74,7 @@ typedef NSString *NSURLFileResourceType;
 	NSString *_scheme;		/* never nil: a scheme is required */
 	NSString *_host;		/* nil when there is no authority (a file URL) */
 	NSString *_user;
+	NSString *_password;	/* nil when absent: the half of the userinfo after the first ':' (2026-09-30) */
 	NSNumber *_port;		/* nil when absent */
 	NSString *_path;		/* never nil; empty for an opaque URL */
 	NSString *_query;		/* nil when absent */
@@ -121,6 +123,76 @@ typedef NSString *NSURLFileResourceType;
 - (nullable NSURL *)URLByAppendingPathExtension:(NSString *)extension;
 - (NSURL *)URLByDeletingLastPathComponent;
 - (NSURL *)URLByDeletingPathExtension;
+
+/* ---- THE REST OF THE URL AS A VALUE (2026-09-30) ------------------------------------------------
+ *
+ * These are the "Accessing the Parts", "Creating", "Converting", "Querying" and the one pure
+ * "Deprecated" doors WHOSE SUBSTRATE THIS TREE ALREADY HAS - a scheme, an authority, a path and an
+ * FSH file path all ship here - so they are answered FROM THE PARSE rather than refused. Where
+ * Apple's contract is ambiguous, or a value had to be chosen, the method's comment in NSURL.m says
+ * so by name. The rows this slice DID NOT close (bookmarks, aliases, promised items, pasteboards,
+ * the conformingToType/extensionForType pairs, file-REFERENCE URLs and the NSURLHandle-backed
+ * deprecated I/O doors) are named in the header's refusal list and in the unit's report.
+ *
+ * `-fileSystemRepresentation` is the one place a URL crosses back into the C world: the FSH path as
+ * bytes, NULL for anything that is not a file URL, exactly as Apple's page says.
+ */
+
+/* ACCESSING THE PARTS. `-baseURL` is ALWAYS nil here, and that is a FACT rather than a refusal:
+ * +URLWithString:relativeToURL: RESOLVES into an absolute URL (FNURLResolveRelative), so no URL this
+ * library builds remembers a base. `-user`/`-password` are the two halves of the userinfo, split at
+ * the FIRST ':' (the split RFC 3986 §3.2.1 defines). */
+- (nullable NSURL *)baseURL;
+- (nullable NSString *)password;
+- (nullable NSString *)relativePath;
+- (NSString *)resourceSpecifier;
+- (nullable NSString *)lastPathComponent;
+- (nullable NSString *)pathExtension;
+- (nullable NSArray *)pathComponents;
+- (NSURL *)standardizedURL;
+- (const char * _Nullable)fileSystemRepresentation;
+
+/* CREATING. The data doors carry the UTF-8 SPELLING of the string (what -dataRepresentation
+ * answers); the file doors add the FSH's directory slash and a C-string spelling. NONE of the
+ * relativeToURL: file doors RESOLVES a relative path, because the FSH has none - the base is ignored
+ * for an absolute path (Apple's own rule) and a relative one is refused (see NSURL.m). */
+- (nullable instancetype)initWithString:(NSString *)string relativeToURL:(nullable NSURL *)baseURL;
+- (nullable instancetype)initWithString:(NSString *)string encodingInvalidCharacters:(BOOL)encodingInvalidCharacters;
++ (nullable instancetype)URLWithString:(NSString *)string encodingInvalidCharacters:(BOOL)encodingInvalidCharacters;
+- (nullable instancetype)initWithDataRepresentation:(NSData *)data relativeToURL:(nullable NSURL *)baseURL;
++ (nullable instancetype)URLWithDataRepresentation:(NSData *)data relativeToURL:(nullable NSURL *)baseURL;
+- (nullable instancetype)initAbsoluteURLWithDataRepresentation:(NSData *)data relativeToURL:(nullable NSURL *)baseURL;
++ (nullable instancetype)absoluteURLWithDataRepresentation:(NSData *)data relativeToURL:(nullable NSURL *)baseURL;
+- (nullable NSData *)dataRepresentation;
+- (nullable instancetype)initFileURLWithPath:(NSString *)path isDirectory:(BOOL)isDirectory;
+- (nullable instancetype)initFileURLWithPath:(NSString *)path relativeToURL:(nullable NSURL *)baseURL;
+- (nullable instancetype)initFileURLWithPath:(NSString *)path isDirectory:(BOOL)isDirectory relativeToURL:(nullable NSURL *)baseURL;
++ (nullable instancetype)fileURLWithPath:(NSString *)path isDirectory:(BOOL)isDirectory;
++ (nullable instancetype)fileURLWithPath:(NSString *)path relativeToURL:(nullable NSURL *)baseURL;
++ (nullable instancetype)fileURLWithPath:(NSString *)path isDirectory:(BOOL)isDirectory relativeToURL:(nullable NSURL *)baseURL;
++ (nullable instancetype)fileURLWithPathComponents:(NSArray *)components;
+- (nullable instancetype)initFileURLWithFileSystemRepresentation:(const char *)path isDirectory:(BOOL)isDirectory relativeToURL:(nullable NSURL *)baseURL;
++ (nullable instancetype)fileURLWithFileSystemRepresentation:(const char *)path isDirectory:(BOOL)isDirectory relativeToURL:(nullable NSURL *)baseURL;
+- (BOOL)getFileSystemRepresentation:(char *)buffer maxLength:(NSUInteger)maxLength;
+
+/* MODIFYING AND CONVERTING. -URLByAppendingPathComponent:isDirectory: is the slash-aware form of the
+ * appending door above; the "file" doors below are the spellings a PATH URL has. */
+- (NSURL *)URLByAppendingPathComponent:(NSString *)component isDirectory:(BOOL)isDirectory;
+- (nullable NSURL *)filePathURL;
+- (BOOL)hasDirectoryPath;
+- (NSURL *)URLByResolvingSymlinksInPath;
+- (NSURL *)URLByStandardizingPath;
+
+/* QUERYING. This system has NO file-REFERENCE namespace (Apple's `file:/.file/id=…`), so a URL here is
+ * never one and -isFileReferenceURL answers NO rather than pretending (the ground is at NSURL.m). */
+- (BOOL)isFileReferenceURL;
+- (nullable NSURL *)fileURL;
+
+/* DEPRECATED (Apple 10.4). ONLY THE PURE ONE IS HERE: the others (-propertyForKey:, -setProperty:forKey:,
+ * -resourceDataUsingCache:, -loadResourceDataNotifyingClient:usingCache:, -URLHandleUsingCache:,
+ * -setResourceData:) go THROUGH NSURLHandle and PERFORM I/O, so they are left open rather than wired
+ * blind (their substrate ships, but a probe for them needs a live fetch - see the report). */
+- (nullable instancetype)initWithScheme:(NSString *)scheme host:(nullable NSString *)host path:(NSString *)path;
 
 - (BOOL)isEqual:(id)other;
 - (NSUInteger)hash;

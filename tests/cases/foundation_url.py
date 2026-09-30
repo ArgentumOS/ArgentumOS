@@ -32,7 +32,12 @@ CHECKS = ("url-parse", "url-refusals", "url-loading-system-absent", "url-request
           "urlprotocol-seam-shipped", "url-session-shipped", "url-shipped", "url-file", "url-file-refusals",
           "url-append-path", "url-delete-path", "url-equality", "url-identity",
           "urlconnection-shipped",
-          "cross-tu")
+          "cross-tu",
+          # THE REST OF THE VALUE SURFACE (2026-09-30): the "Accessing the Parts", "Creating",
+          # "Converting", "Querying" and pure "Deprecated" doors whose substrate this tree already had.
+          "url-parts-extra", "url-standardized", "url-file-system-representation",
+          "url-create-relative", "url-data-representation", "url-file-create", "url-file-fs-rep",
+          "url-convert", "url-append-component-dir", "url-resolve-symlinks", "url-init-with-parts")
 
 
 class Case(BaseCase):

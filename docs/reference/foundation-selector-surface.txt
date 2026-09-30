@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1889   open  795   struck  244
-#   property   shipped 1054   open  436   struck  146
+#   method     shipped 1909   open  775   struck  244
+#   property   shipped 1069   open  421   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -3356,45 +3356,45 @@ property	shipped	userInfo	NSTimer	App Support / Scheduling / Retrieving Timer In
 property	open	valid	NSTimer	App Support / Scheduling / Retrieving Timer Information	-	objc
 method	shipped	-URLByAppendingPathComponent:	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
 method	open	-URLByAppendingPathComponent:conformingToType:	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
-method	open	-URLByAppendingPathComponent:isDirectory:	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
+method	shipped	-URLByAppendingPathComponent:isDirectory:	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
 method	shipped	-URLByAppendingPathExtension:	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
 method	open	-URLByAppendingPathExtensionForType:	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
 method	open	+URLByResolvingAliasFileAtURL:options:error:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	open	+URLByResolvingBookmarkData:options:relativeToURL:bookmarkDataIsStale:error:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	open	+URLFromPasteboard:	NSURL	Fundamentals / URLs / Working with Pasteboards	-	objc
 method	open	-URLHandleUsingCache:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
-method	open	+URLWithDataRepresentation:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	+URLWithDataRepresentation:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	+URLWithString:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	+URLWithString:encodingInvalidCharacters:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	+URLWithString:encodingInvalidCharacters:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	+URLWithString:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	+absoluteURLWithDataRepresentation:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	+absoluteURLWithDataRepresentation:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	open	+bookmarkDataWithContentsOfURL:error:	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
 method	open	-bookmarkDataWithOptions:includingResourceValuesForKeys:relativeToURL:error:	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
 method	open	-checkPromisedItemIsReachableAndReturnError:	NSURL	Fundamentals / URLs / Working with Promised Items	-	objc
 method	shipped	-checkResourceIsReachableAndReturnError:	NSURL	Fundamentals / URLs / Querying an NSURL	-	objc
 method	open	-fileReferenceURL	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
-method	open	+fileURLWithFileSystemRepresentation:isDirectory:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	+fileURLWithFileSystemRepresentation:isDirectory:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	+fileURLWithPath:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	+fileURLWithPath:isDirectory:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	+fileURLWithPath:isDirectory:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	+fileURLWithPath:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	+fileURLWithPathComponents:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	-getFileSystemRepresentation:maxLength:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	+fileURLWithPath:isDirectory:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	+fileURLWithPath:isDirectory:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	+fileURLWithPath:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	+fileURLWithPathComponents:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	-getFileSystemRepresentation:maxLength:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	open	-getPromisedItemResourceValue:forKey:error:	NSURL	Fundamentals / URLs / Working with Promised Items	-	objc
 method	shipped	-getResourceValue:forKey:error:	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
-method	open	-initAbsoluteURLWithDataRepresentation:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	-initAbsoluteURLWithDataRepresentation:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	open	-initByResolvingBookmarkData:options:relativeToURL:bookmarkDataIsStale:error:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	-initFileURLWithFileSystemRepresentation:isDirectory:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	-initFileURLWithFileSystemRepresentation:isDirectory:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	-initFileURLWithPath:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	-initFileURLWithPath:isDirectory:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	-initFileURLWithPath:isDirectory:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	-initFileURLWithPath:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	-initWithDataRepresentation:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	-initWithScheme:host:path:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
+method	shipped	-initFileURLWithPath:isDirectory:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	-initFileURLWithPath:isDirectory:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	-initFileURLWithPath:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	-initWithDataRepresentation:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	-initWithScheme:host:path:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
 method	shipped	-initWithString:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	-initWithString:encodingInvalidCharacters:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	-initWithString:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	-isFileReferenceURL	NSURL	Fundamentals / URLs / Querying an NSURL	-	objc
+method	shipped	-initWithString:encodingInvalidCharacters:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	-initWithString:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	-isFileReferenceURL	NSURL	Fundamentals / URLs / Querying an NSURL	-	objc
 method	open	-loadResourceDataNotifyingClient:usingCache:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
 method	open	-promisedItemResourceValuesForKeys:error:	NSURL	Fundamentals / URLs / Working with Promised Items	-	objc
 method	open	-propertyForKey:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
@@ -3414,31 +3414,31 @@ method	open	+writeBookmarkData:toURL:options:error:	NSURL	Fundamentals / URLs / 
 method	open	-writeToPasteboard:	NSURL	Fundamentals / URLs / Working with Pasteboards	-	objc
 property	shipped	URLByDeletingLastPathComponent	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
 property	shipped	URLByDeletingPathExtension	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
-property	open	URLByResolvingSymlinksInPath	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
-property	open	URLByStandardizingPath	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
+property	shipped	URLByResolvingSymlinksInPath	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
+property	shipped	URLByStandardizingPath	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
 property	shipped	absoluteString	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
 property	shipped	absoluteURL	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
-property	open	baseURL	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
-property	open	dataRepresentation	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-property	open	filePathURL	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
-property	open	fileSystemRepresentation	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
-property	open	fileURL	NSURL	Fundamentals / URLs / Querying an NSURL	-	objc
+property	shipped	baseURL	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
+property	shipped	dataRepresentation	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+property	shipped	filePathURL	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
+property	shipped	fileSystemRepresentation	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
+property	shipped	fileURL	NSURL	Fundamentals / URLs / Querying an NSURL	-	objc
 property	shipped	fragment	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
-property	open	hasDirectoryPath	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
+property	shipped	hasDirectoryPath	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
 property	shipped	host	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
-property	open	lastPathComponent	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
+property	shipped	lastPathComponent	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
 property	open	parameterString	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	deprecated	objc
-property	open	password	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
+property	shipped	password	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
 property	shipped	path	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
-property	open	pathComponents	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
-property	open	pathExtension	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
+property	shipped	pathComponents	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
+property	shipped	pathExtension	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
 property	shipped	port	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
 property	shipped	query	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
-property	open	relativePath	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
+property	shipped	relativePath	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
 property	shipped	relativeString	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
-property	open	resourceSpecifier	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
+property	shipped	resourceSpecifier	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
 property	shipped	scheme	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
-property	open	standardizedURL	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
+property	shipped	standardizedURL	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
 property	shipped	user	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
 method	shipped	-initWithAuthenticationChallenge:sender:	NSURLAuthenticationChallenge	Networking / Authentication and credentials / Creating an authentication challenge instance	-	objc
 method	shipped	-initWithProtectionSpace:proposedCredential:previousFailureCount:failureResponse:error:sender:	NSURLAuthenticationChallenge	Networking / Authentication and credentials / Creating an authentication challenge instance	-	objc

@@ -18,6 +18,7 @@
 
 #import "foundation_url.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #import <objc/runtime.h>
 
@@ -274,6 +275,173 @@ int main(void)
 		      [theirs isEqual:expected] &&
 		      [[theirFile path] isEqualToString:@"/System/Temporary Files/probe.txt"],
 		      fn_why(theirFile));
+	}
+
+	/* ---- THE REST OF THE VALUE SURFACE (2026-09-30) -------------------------------------------
+	 *
+	 * These doors ride on the substrate this tree ALREADY HAD (the parse, the FSH rules, the relative
+	 * resolver), so each check is a VALUE fact. Nullable getters are BOUND before use - this probe's
+	 * standing rule, since a nullable in a nonnull position is a warning and this unit is built with
+	 * ZERO DIAGNOSTICS. */
+
+	{
+		NSURL *u = [NSURL URLWithString:@"http://user:secret@example.com:8080/a/b.txt?q=1#frag"];
+		NSString *user = u != nil ? [u user] : nil;
+		NSString *password = u != nil ? [u password] : nil;
+		NSString *last = u != nil ? [u lastPathComponent] : nil;
+		NSString *ext = u != nil ? [u pathExtension] : nil;
+		NSString *rel = u != nil ? [u relativePath] : nil;
+		NSString *spec = u != nil ? [u resourceSpecifier] : nil;
+		NSArray *pc = u != nil ? [u pathComponents] : nil;
+
+		check("url-parts-extra",
+		      u != nil &&
+		      [u baseURL] == nil &&
+		      user != nil && [user isEqualToString:@"user"] &&
+		      password != nil && [password isEqualToString:@"secret"] &&
+		      last != nil && [last isEqualToString:@"b.txt"] &&
+		      ext != nil && [ext isEqualToString:@"txt"] &&
+		      pc != nil && [pc count] >= 2 && [pc containsObject:@"a"] &&
+		      [pc containsObject:@"b.txt"] &&
+		      rel != nil && [rel isEqualToString:@"/a/b.txt?q=1#frag"] &&
+		      spec != nil && [spec isEqualToString:@"//user:secret@example.com:8080/a/b.txt?q=1#frag"],
+		      fn_why(u));
+	}
+
+	{
+		NSURL *http = [NSURL URLWithString:@"http://h/a/b/../c/./d"];
+		NSURL *file = [NSURL fileURLWithPath:@"/a/b/../c"];
+
+		check("url-standardized",
+		      http != nil && file != nil &&
+		      [[[http standardizedURL] absoluteString] isEqualToString:@"http://h/a/c/d"] &&
+		      [[[file standardizedURL] path] isEqualToString:@"/a/c"],
+		      fn_why(http));
+	}
+
+	{
+		NSURL *f = [NSURL fileURLWithPath:@"/System/Temporary Files/x"];
+		NSURL *h = [NSURL URLWithString:@"http://h/x"];
+		const char *rep = f != nil ? [f fileSystemRepresentation] : NULL;
+		char buf[1024];
+		char tiny[4];
+		BOOL got = f != nil && [f getFileSystemRepresentation:buf maxLength:sizeof buf];
+		BOOL toosmall = f != nil && [f getFileSystemRepresentation:tiny maxLength:sizeof tiny];
+
+		check("url-file-system-representation",
+		      f != nil && rep != NULL && strcmp(rep, "/System/Temporary Files/x") == 0 &&
+		      got && strcmp(buf, "/System/Temporary Files/x") == 0 &&
+		      !toosmall &&
+		      h != nil && [h fileSystemRepresentation] == NULL,
+		      fn_why(f));
+	}
+
+	{
+		NSURL *rel = [NSURL URLWithString:@"b" relativeToURL:[NSURL URLWithString:@"http://h/a/"]];
+		NSURL *abs2 = [[NSURL alloc] initWithString:@"http://h/x"
+					     relativeToURL:[NSURL URLWithString:@"http://other/"]];
+		NSURL *encoded = [NSURL URLWithString:@"http://h/a b" encodingInvalidCharacters:YES];
+		NSURL *strict = [NSURL URLWithString:@"http://h/a b" encodingInvalidCharacters:NO];
+
+		check("url-create-relative",
+		      rel != nil && [[rel absoluteString] isEqualToString:@"http://h/a/b"] &&
+		      abs2 != nil && [[abs2 absoluteString] isEqualToString:@"http://h/x"] &&
+		      encoded != nil && [[encoded absoluteString] isEqualToString:@"http://h/a%20b"] &&
+		      strict != nil && [[strict absoluteString] isEqualToString:@"http://h/a b"],
+		      fn_why(rel));
+	}
+
+	{
+		NSURL *base = [NSURL URLWithString:@"http://example.com/x"];
+		NSData *data = base != nil ? [base dataRepresentation] : nil;
+		NSURL *back = data != nil ? [NSURL URLWithDataRepresentation:data relativeToURL:nil] : nil;
+		NSURL *absBack = data != nil ? [NSURL absoluteURLWithDataRepresentation:data relativeToURL:nil] : nil;
+
+		check("url-data-representation",
+		      base != nil && data != nil && back != nil && absBack != nil &&
+		      [[back absoluteString] isEqualToString:@"http://example.com/x"] &&
+		      [[absBack absoluteString] isEqualToString:@"http://example.com/x"],
+		      fn_why(base));
+	}
+
+	{
+		NSURL *dir = [NSURL fileURLWithPath:@"/a/b" isDirectory:YES];
+		NSURL *comps = [NSURL fileURLWithPathComponents:
+			[NSArray arrayWithObjects:@"a", @"b", nil]];
+		NSURL *relf = [NSURL fileURLWithPath:@"rel/x"
+					 relativeToURL:[NSURL fileURLWithPath:@"/base"]];
+		NSURL *absf = [NSURL fileURLWithPath:@"/a b/c"
+					 relativeToURL:[NSURL fileURLWithPath:@"/base"]];
+
+		check("url-file-create",
+		      dir != nil && [[dir absoluteString] isEqualToString:@"file:///a/b/"] &&
+		      comps != nil && [[comps absoluteString] isEqualToString:@"file:///a/b"] &&
+		      relf == nil &&
+		      absf != nil && [[absf path] isEqualToString:@"/a b/c"],
+		      fn_why(dir));
+	}
+
+	{
+		NSURL *fromRep = [NSURL fileURLWithFileSystemRepresentation:"/a/b" isDirectory:NO relativeToURL:nil];
+		NSURL *fromRepDir = [NSURL fileURLWithFileSystemRepresentation:"/a/b" isDirectory:YES relativeToURL:nil];
+
+		check("url-file-fs-rep",
+		      fromRep != nil && [[fromRep absoluteString] isEqualToString:@"file:///a/b"] &&
+		      fromRepDir != nil && [[fromRepDir absoluteString] isEqualToString:@"file:///a/b/"],
+		      fn_why(fromRep));
+	}
+
+	{
+		NSURL *f = [NSURL fileURLWithPath:@"/a/b"];
+		NSURL *fd = [NSURL fileURLWithPath:@"/a/b/"];
+		NSURL *h = [NSURL URLWithString:@"http://h/x"];
+
+		check("url-convert",
+		      f != nil && fd != nil && h != nil &&
+		      [f fileURL] == f && [f filePathURL] == f &&
+		      [h fileURL] == nil && [h filePathURL] == nil &&
+		      ![f isFileReferenceURL] && ![h isFileReferenceURL] &&
+		      ![f hasDirectoryPath] && [fd hasDirectoryPath],
+		      fn_why(f));
+	}
+
+	{
+		NSURL *ap = [[NSURL fileURLWithPath:@"/a"] URLByAppendingPathComponent:@"b" isDirectory:YES];
+		NSURL *ap2 = [[NSURL fileURLWithPath:@"/a"] URLByAppendingPathComponent:@"b" isDirectory:NO];
+
+		check("url-append-component-dir",
+		      ap != nil && [[ap absoluteString] isEqualToString:@"file:///a/b/"] &&
+		      ap2 != nil && [[ap2 absoluteString] isEqualToString:@"file:///a/b"],
+		      fn_why(ap));
+	}
+
+	{
+		NSURL *sys = [NSURL fileURLWithPath:@"/System"];
+		NSURL *resolved = sys != nil ? [sys URLByResolvingSymlinksInPath] : nil;
+		char rb[1024];
+		const char *rp = realpath("/System", rb);
+		NSURL *up = [NSURL fileURLWithPath:@"/a/../b"];
+		NSURL *dot = [NSURL fileURLWithPath:@"/a/./b"];
+
+		check("url-resolve-symlinks",
+		      sys != nil && resolved != nil && rp != NULL &&
+		      strcmp([[resolved path] UTF8String], rp) == 0 &&
+		      up != nil && [[[up URLByStandardizingPath] path] isEqualToString:@"/b"] &&
+		      dot != nil && [[[dot URLByStandardizingPath] path] isEqualToString:@"/a/b"],
+		      fn_why(resolved));
+	}
+
+	{
+		NSURL *parts = [[NSURL alloc] initWithScheme:@"http" host:@"example.com" path:@"/a"];
+		NSString *host = parts != nil ? [parts host] : nil;
+
+		check("url-init-with-parts",
+		      parts != nil &&
+		      [[parts scheme] isEqualToString:@"http"] &&
+		      host != nil && [host isEqualToString:@"example.com"] &&
+		      [[parts path] isEqualToString:@"/a"] &&
+		      [[parts absoluteString] isEqualToString:@"http://example.com/a"],
+		      fn_why(parts));
 	}
 
 	printf("FOUNDATION-URL RESULT ok=%d fail=%d\n", okc, failc);
