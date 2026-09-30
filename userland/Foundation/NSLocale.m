@@ -12,6 +12,7 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
+#import <Foundation/NSCoder.h>		/* §63.22: the coder PRIMITIVES the doors are written over */
 /* ICU ANSWERS THE DISPLAY NAMES (see -displayNameForKey:value: below). This library already links
  * icuuc, and NSLocale.m joins the per-file ICU include table in the build for it. */
 #include <unicode/uloc.h>
@@ -159,6 +160,19 @@ static NSString *fn_region(NSArray *parts)
 }
 
 @implementation NSLocale
+
+/* THE NSCoding DOORS (§63.22). THE IDENTIFIER IS THE WHOLE VALUE — that is what the ivar already is — and an
+ * identifier the archive does not carry is passed THROUGH to -initWithLocaleIdentifier:, whose own declared
+ * answer for it is nil: the door does not invent a locale the archive never named. */
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	[coder encodeObject:_identifier forKey:@"NS.localeIdentifier"];
+}
+
+- (id)initWithCoder:(NSCoder *)coder
+{
+	return [self initWithLocaleIdentifier:[coder decodeObjectForKey:@"NS.localeIdentifier"]];
+}
 
 NSString *const NSCurrentLocaleDidChangeNotification = @"NSCurrentLocaleDidChangeNotification";
 NSString *const NSLocaleAlternateQuotationBeginDelimiterKey = @"NSLocaleAlternateQuotationBeginDelimiterKey";

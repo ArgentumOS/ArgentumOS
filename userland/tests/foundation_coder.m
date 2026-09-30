@@ -608,6 +608,79 @@ int main(void)
 			(int)([byName isKindOfClass:[NSSecureUnarchiveFromDataTransformer class]])]);
 	}
 
+	{
+		/* THE VALUE TYPES' OWN DOORS (§63.22), DRIVEN DIRECTLY — WHICH IS THE ONLY WAY TO REACH THEM, and the
+		 * reason is worth stating in the probe itself: `NSKeyedArchiver` writes these classes INLINE
+		 * (`fn_is_value_type`, Apple's own shape for them), so `-encodeObject:` never consults a door. A caller
+		 * holding a coder may; `-encodeWithCoder:`/`-initWithCoder:` ARE the NSCoding protocol's methods, and
+		 * that is what this block uses.
+		 *
+		 * ONE ARCHIVE PER VALUE, because a door's keys are FIXED — every string uses "NS.string" — so two values
+		 * through one archiver would collide on the very keys that make the pair work. */
+#define FN_CODER_DOOR_ROUND_TRIP(VALUE, CLS, VAR) \
+		do { \
+			NSMutableData *fnData = [[NSMutableData alloc] init]; \
+			NSKeyedArchiver *fnWriter = [[NSKeyedArchiver alloc] initForWritingWithMutableData:fnData]; \
+			[(VALUE) encodeWithCoder:fnWriter]; \
+			[fnWriter finishEncoding]; \
+			NSKeyedUnarchiver *fnReader = [[NSKeyedUnarchiver alloc] initForReadingWithData:fnData]; \
+			VAR = [[CLS alloc] initWithCoder:fnReader]; \
+		} while (0)
+
+		NSString *strBack;
+		NSNumber *numBack;
+		NSNumber *numBack2;		/* the second number is a FLOAT, which is what proves the type travels */
+		NSValue *valBack;
+		NSLocale *locBack;
+		NSDate *dateBack;
+		NSData *dataBack;
+
+		FN_CODER_DOOR_ROUND_TRIP(@"a string, with ✓ and 42", [NSString class], strBack);
+		FN_CODER_DOOR_ROUND_TRIP(@((long long)-9007199254740993LL), [NSNumber class], numBack);
+		FN_CODER_DOOR_ROUND_TRIP(@2.5f, [NSNumber class], numBack2);
+		FN_CODER_DOOR_ROUND_TRIP([NSValue valueWithRange:NSMakeRange(3, 4)], [NSValue class], valBack);
+		FN_CODER_DOOR_ROUND_TRIP([[NSLocale alloc] initWithLocaleIdentifier:@"tr_TR"],
+					 [NSLocale class], locBack);
+		FN_CODER_DOOR_ROUND_TRIP([NSDate dateWithTimeIntervalSince1970:1234.5], [NSDate class], dateBack);
+		FN_CODER_DOOR_ROUND_TRIP([NSData dataWithBytes:"bytes" length:5], [NSData class], dataBack);
+#undef FN_CODER_DOOR_ROUND_TRIP
+
+		check("the-four-value-type-doors-round-trip",
+		      strBack != nil && [strBack isEqualToString:@"a string, with ✓ and 42"] &&
+		      /* THE TYPE SURVIVES THE NUMBER, which is what the type key in the door is FOR: a 54-bit integer
+		       * and a float both come back as what they went in as, not as doubles. The encoding is compared by
+		       * ITS FIRST CHARACTER rather than with `strcmp`, so the probe needs no `<string.h>`. */
+		      numBack != nil && [numBack longLongValue] == -9007199254740993LL &&
+		      [numBack objCType][0] == 'q' &&
+		      numBack2 != nil && [numBack2 floatValue] == 2.5f &&
+		      [numBack2 objCType][0] == 'f' &&
+		      valBack != nil && [valBack isKindOfClass:[NSValue class]] &&
+		      [valBack rangeValue].location == 3 && [valBack rangeValue].length == 4 &&
+		      locBack != nil && [[locBack localeIdentifier] isEqualToString:@"tr_TR"],
+		      [NSString stringWithFormat:@"string=%@ int=%@(%s/%lld) float=%@(%s) value=%@ locale=%@",
+			strBack != nil ? strBack : @"(nil)",
+			numBack != nil ? numBack : @"(nil)",
+			numBack != nil ? [numBack objCType] : "?",
+			numBack != nil ? [numBack longLongValue] : 0LL,
+			numBack2 != nil ? numBack2 : @"(nil)",
+			numBack2 != nil ? [numBack2 objCType] : "?",
+			valBack != nil ? valBack : @"(nil)",
+			locBack != nil ? [locBack localeIdentifier] : @"(nil)"]);
+
+		/* AND THESE TWO WERE SHIPPED WITH NO CHECK AT ALL UNTIL NOW: NSDate and NSData have had coder doors
+		 * since their own sections, exercised by nothing, because the archive's inline path never reaches them.
+		 * They are not new work — they are new COVERAGE, and the same driver proves they were right. */
+		check("the-date-and-data-doors-round-trip",
+		      dateBack != nil && [dateBack timeIntervalSince1970] == 1234.5 &&
+		      dataBack != nil && [dataBack length] == 5 &&
+		      /* THE CLASS'S OWN EQUALITY, rather than memcmp: it is the same question and it keeps this probe
+		       * free of `<string.h>` (the first draft's memcmp was an implicit-declaration error). */
+		      [dataBack isEqualToData:[NSData dataWithBytes:"bytes" length:5]],
+		      [NSString stringWithFormat:@"date=%g dataLength=%lu",
+			dateBack != nil ? [dateBack timeIntervalSince1970] : -1.0,
+			(unsigned long)(dataBack != nil ? [dataBack length] : 0)]);
+	}
+
 	printf("FOUNDATION-CODER RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

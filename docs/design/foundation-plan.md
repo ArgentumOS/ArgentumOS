@@ -15824,6 +15824,81 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.22 — THE VALUE TYPES' `NSCoding` DOORS: IMPLEMENTED, WITH THE KEYS OURS AND SAID SO (2026-09-30)
+
+**WHAT LANDED: EIGHT DOORS ON FOUR CLASSES** — `NSString`, `NSNumber`, `NSValue` and `NSLocale` each gained
+`-encodeWithCoder:` and `-initWithCoder:`. **`method shipped` 1838 → 1842, `method open` 846 → 842**, and
+`--check` named exactly those four rows (`-initWithCoder:`; the surface carries no `-encodeWithCoder:` row for
+these classes) before the refresh.
+
+**THE DECISION WAS IMPLEMENT, NOT DECLINE, AND THREE THINGS IN THE TREE SETTLED IT — none of them a preference.**
+(1) **§11.0's SURFACE RULE**: match Apple method-for-method except where specifically struck, and the ledger's
+only strike reason is `declined`; Apple declares these doors, which is why the rows exist. (2) **THE SAME DESIGN
+ALREADY SHIPPED IN THIS TREE**: `NSDate` and `NSData` are **inline value types** (`fn_is_value_type`,
+NSKeyedArchiver.m) and they *still* carry real doors — `NS.time`/`encodeDouble:`, `NS.data`/`encodeBytes:`.
+(3) **THE F13.x RECORD SAYS THE INLINE TREATMENT IS DELIBERATE**: *"VALUE TYPES ARE WRITTEN INLINE … the same
+promise Cocoa makes about them"* — which is exactly Apple's shape: its keyed archive writes `<string>`/`<date>`/
+`<data>` as plist scalars while its classes implement `NSCoding`.
+
+**SO THE DOORS ARE THE CLASS'S OWN API SURFACE, NOT THIS ARCHIVER'S PATH — and that is what the probe had to
+respect.** `-encodeObject:` never consults them (the inline check wins first), so the new checks drive the
+**NSCoding protocol directly** (`[value encodeWithCoder:]` → `finishEncoding` → `[[Class alloc] initWithCoder:]`),
+which is a legitimate, public use of the protocol and the only reachable one. **AND IT CLOSED A COVERAGE HOLE
+ALREADY IN THE TREE: `NSDate`'s and `NSData`'s doors had been exercised by NOTHING since their own sections** —
+the new block drives those two as well, so they stop being unverified.
+
+**⚠ AND THE KEYS ARE OURS, WHICH EVERY HEADER SAYS RATHER THAN DRESSING THEM UP AS APPLE'S.** Measured:
+**`NS.string`, `NS.number`, `NS.value` and `NS.locale` appear NOWHERE in this tree**, unlike `NS.time`/`NS.data`,
+which are recorded here as Apple's. Each door's comment names the wire as ours and states what it actually owes:
+**the pair round-trips, and it is written over the coder's PRIMITIVES rather than nesting another value type.**
+
+**THE WIRES, EACH SHAPED BY AN API CONSTRAINT MEASURED RATHER THAN ASSUMED:**
+
+* **`NSString`** — the class's own UTF-8 bytes under `NS.string`, decoded through `-initWithBytes:length:`, whose
+  implementation **is** UTF-8 (`fn_utf8_to_utf16`) and treats a NULL buffer as the empty string; encode uses
+  `-UTF8String`, so the pair agrees about an embedded NUL by construction. The doors sit on the FRONT, where this
+  family's routing lives (`+alloc` → `NSOwnedString`, the `-initWithUTF8String:` re-route pattern), and the
+  concrete class inherits both.
+* **`NSNumber`** — the `-agKind` type char under `NS.numberType`, then `-encodeDouble:` for `f`/`d` and
+  `-encodeInteger:` otherwise. **THIS CODER HAS NO `-encodeInt64:`** (only `-encodeInteger:`, `-encodeBool:`,
+  `-encodeDouble:` and the bytes door) and NSInteger is 64-bit here. The type travels because the header says
+  `-objCType` "answers with the @encode of the type the number was CREATED as" — a box that dropped it would hand
+  back the integer 1 as a double — and every arm decodes through this class's OWN initialisers, so the
+  concrete-class routing stays in one place.
+* **`NSValue`** — the encoding under `NS.valueType`, then `_size` bytes under `NS.value`, sized on the way back by
+  **the file's own walker**: `NSValue.m` DOES define `NSGetSizeAndAlignment` (its header comment still says the
+  function is missing — **a stale comment, left for its own unit**), so decode and `+valueWithBytes:objCType:`
+  cannot disagree about the payload's size. A missing encoding, or a named size with no bytes, refuses by name.
+* **`NSLocale`** — the identifier under `NS.localeIdentifier`; a missing one is passed THROUGH to
+  `-initWithLocaleIdentifier:`, whose declared answer is nil, rather than the door inventing a locale.
+
+**⚠ AND THE UNIT EXPOSED A PRE-EXISTING WARNING THE BUILD CACHE WAS HIDING — measured, not guessed.** Touching
+`NSNumber.m` recompiled it for the first time since **2026-09-29** (`.build/foundation-NSNumber.o` carries that
+date, the class-cluster landing) and clang reported `-Wincomplete-implementation`: the class continuation declares
+`-agKind`, the front's own `-isFloating`/`-isUnsigned` are WRITTEN OVER IT ("a subclass answers them correctly
+for free"), and no `@implementation` in that file defines it for the front. Compiling **HEAD's own NSNumber.m**
+warns identically — the proof it was pre-existing rather than mine. **THE FIX IS THE ABSTRACT ANSWER**: `-agKind`
+on the front raises `doesNotRecognizeSelector:`, because a payload-free front has no kind and inventing one
+(`'q'`) would turn an unanswerable question into a wrong number; it changes no behaviour either, since before the
+definition the same call raised an unrecognised selector on those very classes. **THE GENERAL LESSON, THE BUILD
+TRAP IN A NEW COAT: a stale object file masks a warning exactly as it masks a change.**
+
+**TWO MISTAKES OF MINE WORTH KEEPING, BOTH INSTRUMENT-SHAPED.** (1) **A `#include` INSIDE A NULLABILITY REGION IS
+REFUSED** ("cannot #include files inside '#pragma clang assume_nonnull'") — the conformance import belongs ABOVE
+`NS_ASSUME_NONNULL_BEGIN`, which is where `NSArray.h` has had it all along; my first attempt put it at the
+`@interface`, and in two headers the declarations then landed BETWEEN the `@interface` line and the `{` ivar
+block, attaching the ivars to a method declaration. (2) **A BATCH MAY CONTAIN ONLY ONE EDIT PER FILE**: a second
+edit to the same file is invalidated by the first and everything after it in that batch is skipped — it cost two
+rounds here, and it silently skipped the import insertion for two headers, whose absence only surfaced at the
+next compile.
+
+**VERIFICATION.** Host probe `foundation_coder`: `the-four-value-type-doors-round-trip` and
+`the-date-and-data-doors-round-trip` green, with the doors carrying their NUMBERS — a string with non-ASCII bytes,
+a 54-bit integer whose `objCType` is still `q`, a float still `f`, a range, `tr_TR` — plus the two previously
+unexercised doors; library **zero diagnostics**; guest `foundation_coder` green; the ledger refreshed
+(1838 → 1842 shipped, 846 → 842 open) with `--check` consistent in both directions; `make foundation-sweep`
+exit 0.
+
 ## §63.21 — A DEAD OBJECT TAKES ITS ROWS WITH IT: THE KVO LEAK §63.20 NAMED, AND THE DEATH SEAM IT REQUIRED (2026-09-30)
 
 **THE DEFECT, LOCATED BY READING RATHER THAN BY THE EARLIER GREP — and the grep had pointed at the wrong

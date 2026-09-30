@@ -32,6 +32,10 @@
 
 #import <Foundation/NSObject.h>
 #import <Foundation/NSObjCRuntime.h>
+/* FOR `NSCoding`: ABOVE THE ASSUME-NONNULL REGION, which is where NSArray.h puts it too — a `#include` inside a
+ * nullability region is refused by the compiler, because the imported header's declarations would be dragged
+ * into somebody else's region. */
+#import <Foundation/NSCoding.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -54,12 +58,18 @@ NS_ASSUME_NONNULL_BEGIN
  * and needs its own reason.
  * =================================================================================================== */
 
-@interface NSValue : NSObject <NSCopying>
+@interface NSValue : NSObject <NSCopying, NSCoding>
 {
 	const char *_objCType;		/* OWNED: a copy of the caller's string */
 	void *_bytes;			/* OWNED: _size bytes, the caller's storage copied in */
 	NSUInteger _size;
 }
+
+/* THE NSCoding DOORS (§63.22). THE WIRE IS OURS (Apple's spelling for this class's coded form is not
+ * published in a source this project may read). THE ENCODING TRAVELS WITH THE BYTES, because the encoding is
+ * what says how many bytes there are — this class's own point, and the reason the pair cannot drop it. */
+- (void)encodeWithCoder:(NSCoder *)coder;
+- (instancetype)initWithCoder:(NSCoder *)coder;
 
 + (NSValue *)valueWithBytes:(const void *)value objCType:(const char *)type;
 /* The older spelling, still present in Cocoa's header, so it is here too. */

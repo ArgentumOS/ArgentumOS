@@ -46,7 +46,11 @@ CHECKS = ("coder-round-trip-scalars", "coder-round-trip-collections", "coder-rou
           "coder-cycle", "coder-null-and-nil", "coder-archive-shape", "coder-base-raises",
           # W9: the two delegates (through Cocoa's instance flow) and the secure transformer
           "coder-archiver-delegate", "coder-instance-flow", "coder-unarchiver-delegate",
-          "value-transformer-secure-unarchive")
+          "value-transformer-secure-unarchive",
+          # §63.22: the value types' OWN doors, driven directly with a coder (the archiver writes these
+          # classes inline, so -encodeObject: never calls them) — and the two doors that shipped with no
+          # check at all until this unit: NSDate's and NSData's.
+          "the-four-value-type-doors-round-trip", "the-date-and-data-doors-round-trip")
 
 
 class Case(BaseCase):

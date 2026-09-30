@@ -50,6 +50,11 @@
  *     header below has said all along.
  * +currentLocale is NOT: it reads LC_ALL then LANG and falls back to en_US_POSIX,
  * so it always answers a locale (that is the POSIX convention, not a guess). */
+/* FOR `NSCoding`: ABOVE THE ASSUME-NONNULL REGION, which is where NSArray.h puts it too — a `#include` inside a
+ * nullability region is refused by the compiler, because the imported header's declarations would be dragged
+ * into somebody else's region. */
+#import <Foundation/NSCoding.h>
+
 NS_ASSUME_NONNULL_BEGIN
 
 /* The keys -objectForKey: answers. Cocoa's other NSLocale… keys — the decimal
@@ -60,10 +65,17 @@ extern NSString *const NSLocaleLanguageCode;
 extern NSString *const NSLocaleScriptCode;
 extern NSString *const NSLocaleCountryCode;
 
-@interface NSLocale : NSObject <NSCopying>
+@interface NSLocale : NSObject <NSCopying, NSCoding>
 {
 	NSString *_identifier;		/* canonical, e.g. "tr_TR" */
 }
+
+/* THE NSCoding DOORS (§63.22). THE WIRE IS OURS (Apple's spelling for this class's coded form is not
+ * published in a source this project may read). THE IDENTIFIER IS THE WHOLE VALUE, which is what the ivar
+ * below already is — and an identifier the archive does not carry leaves -initWithLocaleIdentifier: free to
+ * answer nil, its own documented answer, rather than this door inventing a locale. */
+- (void)encodeWithCoder:(NSCoder *)coder;
+- (instancetype)initWithCoder:(NSCoder *)coder;
 
 + (instancetype)currentLocale;
 + (nullable instancetype)localeWithLocaleIdentifier:(NSString *)identifier;

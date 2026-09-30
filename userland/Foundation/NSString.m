@@ -20,6 +20,7 @@
  */
 
 #import <Foundation/NSString.h>
+#import <Foundation/NSCoder.h>		/* §63.22: the coder PRIMITIVES the string door is written over */
 #include <stdlib.h>
 #include <string.h>
 #include <objc/runtime.h>	/* class_getName, sel_getName, objc_getClass (W2a) */
@@ -702,6 +703,33 @@ static void fn_line_check_range(NSString *string, NSRange range, SEL cmd)
 }
 
 @implementation NSString
+
+/* THE NSCoding DOORS (§63.22). IMPLEMENTED ON THIS FRONT, because the front is where this family's routing
+ * lives and `NSOwnedString` — its subclass — inherits both. THE PAYLOAD IS THE CLASS'S OWN UTF-8 FORM, which is
+ * what `-UTF8String` answers, so encode and decode agree about an embedded NUL BY CONSTRUCTION (both stop
+ * there); the decode goes back through `-initWithBytes:length:`, whose own implementation is UTF-8 and treats a
+ * NULL buffer as the empty string, so an archive that carries nothing yields the empty string rather than a
+ * refusal — an empty string is a legitimate value, unlike a missing number type or type encoding. */
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	const char *utf8 = [self UTF8String];
+
+	if (utf8 != NULL && utf8[0] != '\0') {
+		[coder encodeBytes:(const void *)utf8 length:strlen(utf8) forKey:@"NS.string"];
+	}
+}
+
+- (id)initWithCoder:(NSCoder *)coder
+{
+	NSUInteger length = 0;
+	const void *bytes = [coder decodeBytesForKey:@"NS.string" returnedLength:&length];
+
+	/* RE-ROUTED LIKE EVERY OTHER DOOR ON THIS FRONT, with `-release` first so the abstract receiver does not
+	 * leak — the pattern NSNumber's constructors spell out (§C.3 item 1). The concrete class overrides
+	 * nothing here: it inherits this pair, so a string decoded as a mutable one stays mutable. */
+	[self release];
+	return [[NSOwnedString alloc] initWithBytes:(const char *)bytes length:length];
+}
 
 /* ===================================================================================================
  * THE DOOR AND THE ARCHIVER'S ANSWER (§C.3 items 1 and 4), and the string family needs a NOTE because its

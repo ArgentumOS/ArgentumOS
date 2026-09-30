@@ -21,6 +21,7 @@
 #import <Foundation/NSValue.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSException.h>
+#import <Foundation/NSCoder.h>		/* §63.22: the coder PRIMITIVES the doors are written over */
 #include <stdlib.h>
 #include <string.h>
 
@@ -176,6 +177,51 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
 }
 
 @implementation NSValue
+
+/* THE NSCoding DOORS (§63.22). THE ENCODING TRAVELS WITH THE BYTES, WHICH IS THIS CLASS'S OWN POINT: the box
+ * is bytes plus a type encoding, and the encoding is what says how many bytes there are. The size is read back
+ * with the SAME walker the rest of the file uses (`NSGetSizeAndAlignment`, defined below on `fn_measure`), so a
+ * box decoded here and one built by +valueWithBytes:objCType: cannot disagree about the payload's size. */
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	[coder encodeBytes:(const void *)_objCType length:strlen(_objCType) forKey:@"NS.valueType"];
+	if (_size > 0) {
+		[coder encodeBytes:_bytes length:_size forKey:@"NS.value"];
+	}
+}
+
+- (id)initWithCoder:(NSCoder *)coder
+{
+	NSUInteger typeLength = 0, storedLength = 0, size = 0, align = 0;
+	const void *typeBytes = [coder decodeBytesForKey:@"NS.valueType" returnedLength:&typeLength];
+	const void *stored;
+	char *type;
+	id value;
+
+	/* AN ENCODING THAT IS NOT THERE IS REFUSED BY NAME: without it the byte count is unknown, and a guessed
+	 * length is exactly what this file's opening comment says must never happen. */
+	if (typeBytes == NULL || typeLength == 0) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSValue: the archive carries no type encoding, so the byte count is unknown"];
+	}
+	type = (char *)malloc(typeLength + 1);
+	if (type == NULL) {
+		[NSException raise:NSMallocException format:@"NSValue: no room for the decoded type encoding"];
+	}
+	memcpy(type, typeBytes, typeLength);
+	type[typeLength] = '\0';
+	NSGetSizeAndAlignment(type, &size, &align);
+	stored = [coder decodeBytesForKey:@"NS.value" returnedLength:&storedLength];
+	if (stored == NULL && size > 0) {
+		free(type);
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSValue: the archive names a %lu-byte type but carries no bytes",
+				   (unsigned long)size];
+	}
+	value = [self fnInitWithBytes:(stored != NULL ? stored : (const void *)"") objCType:type];
+	free(type);
+	return value;
+}
 
 /* §C.3 item 4: an archiver asks for THIS, never for -class. UNCONDITIONAL - this family has one class here (the
  * payload kinds are not separate classes yet), so no private name can leak. */

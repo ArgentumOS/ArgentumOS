@@ -70,6 +70,10 @@
  * out-parameter is nullable at BOTH levels: the caller may pass NULL for
  * "no error report". */
 #import <Foundation/NSException.h>	/* NSExceptionName, which two constants below are spelled with */
+/* FOR `NSCoding`: ABOVE THE ASSUME-NONNULL REGION, which is where NSArray.h puts it too — a `#include` inside a
+ * nullability region is refused by the compiler, because the imported header's declarations would be dragged
+ * into somebody else's region. */
+#import <Foundation/NSCoding.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -175,7 +179,15 @@ typedef enum {
  * the PUBLIC class, so a literal archives as NSString rather than as the compiler's class.
  * =================================================================================================== */
 
-@interface NSString : NSObject <NSCopying>
+@interface NSString : NSObject <NSCopying, NSCoding>
+
+/* THE NSCoding DOORS (§63.22). THE WIRE IS OURS: Apple's spelling for this class's coded form is not published
+ * in a source this project may read, unlike NSDate's `NS.time` and NSData's `NS.data`, which are recorded here
+ * as Apple's. What the pair owes is that it ROUND-TRIPS and that it uses the coder's primitives rather than
+ * nesting another value type: the payload is the class's own UTF-8 form — which is also what `-UTF8String`
+ * answers, so the two agree about an embedded NUL by construction. */
+- (void)encodeWithCoder:(NSCoder *)coder;
+- (instancetype)initWithCoder:(NSCoder *)coder;
 
 /* Creation. The `init` family returns +1, as ARC decides BY NAME. */
 + (id)string;

@@ -23,6 +23,8 @@
 #include <string.h>
 #include <stdlib.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSException.h>	/* §63.22: the coder door refuses an archive with no number type */
+#import <Foundation/NSCoder.h>		/* §63.22: the coder PRIMITIVES the doors are written over */
 #include <stdio.h>
 
 /*
@@ -132,6 +134,73 @@ AG_NUMBER_DECL(Bool, BOOL)
 @end
 
 @implementation NSNumber
+
+/* THE FRONT'S OWN `-agKind`, WHICH THE CONTINUATION ABOVE DECLARES AND WHICH NOBODY HAD DEFINED (§63.22).
+ *
+ * THIS IS A PRE-EXISTING WARNING THAT THE BUILD CACHE HID, and it was EXPOSED, not caused, by this unit:
+ * compiling HEAD's own NSNumber.m warns identically, while `.build/foundation-NSNumber.o` is dated 2026-09-29 -
+ * the class-cluster landing - so the file had not been recompiled since the five concrete classes moved their
+ * `-agKind` definitions out of it (lines 499/530/561).
+ *
+ * AND IT IS WHERE THE FRONT'S OWN DERIVED DOORS MEET THE HOLE: `-isFloating` and `-isUnsigned` are defined
+ * above, on this class, and BOTH ARE WRITTEN OVER `-agKind` ("derived from the primitive kind, so a subclass
+ * answers them correctly for free"). That is the design working as intended for every concrete instance and an
+ * INCOMPLETE IMPLEMENTATION for the front itself, which is exactly what clang was saying.
+ *
+ * SO THE ABSTRACT ANSWER IS THE HONEST ONE: a payload-free front has no kind to report, and inventing one
+ * (`'q'`, say) would turn an unanswerable question into a wrong number. Raising keeps the promise the doc
+ * comment makes - the SUBCLASS answers - and it changes no behaviour: before this definition the same call
+ * raised an unrecognised selector on the very same classes. */
+- (unsigned char)agKind
+{
+	[self doesNotRecognizeSelector:_cmd];
+	return 0;
+}
+
+/* THE NSCoding DOORS (§63.22). THE PAIR IS THIS CLASS'S OWN, and every arm decodes back THROUGH this class's
+ * existing initialisers, so which concrete class a number becomes is decided by the routing that was already
+ * here (the front re-routes; a concrete class takes its own) rather than by a second copy of that rule. */
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	unsigned char kind = [self agKind];
+	char type[2];
+
+	/* THE TYPE TRAVELS WITH THE VALUE: `-objCType` "answers with the @encode of the type the number was
+	 * CREATED as" (this header), so a box that dropped it would hand back the integer 1 as a double. */
+	type[0] = (char)kind;
+	type[1] = '\0';
+	[coder encodeBytes:(const void *)type length:1 forKey:@"NS.numberType"];
+	if (kind == 'f' || kind == 'd') {
+		[coder encodeDouble:[self doubleValue] forKey:@"NS.number"];
+	} else {
+		/* NO `-encodeInt64:` IN THIS LIBRARY'S CODER — only -encodeInteger:, -encodeBool:, -encodeDouble:
+		 * and the bytes door — and NSInteger is 64-bit here, so it carries the widest signed payload. */
+		[coder encodeInteger:(NSInteger)[self longLongValue] forKey:@"NS.number"];
+	}
+}
+
+- (id)initWithCoder:(NSCoder *)coder
+{
+	NSUInteger length = 0;
+	const void *stored = [coder decodeBytesForKey:@"NS.numberType" returnedLength:&length];
+	char kind;
+
+	if (stored == NULL || length == 0) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSNumber: the archive carries no number type, so the value's own type is unknown"];
+	}
+	kind = ((const char *)stored)[0];
+	switch (kind) {
+	case 'f':
+		return [self initWithFloat:(float)[coder decodeDoubleForKey:@"NS.number"]];
+	case 'd':
+		return [self initWithDouble:[coder decodeDoubleForKey:@"NS.number"]];
+	case 'B': case 'c':
+		return [self initWithBool:(BOOL)[coder decodeIntegerForKey:@"NS.number"]];
+	default:
+		return [self initWithLongLong:(long long)[coder decodeIntegerForKey:@"NS.number"]];
+	}
+}
 
 /* THE DOOR (§C.3 item 1): a concrete class INHERITS this, and `[super alloc]` starts the lookup at
  * NSNumber's superclass with the receiver still being the class that was asked - so the routing happens

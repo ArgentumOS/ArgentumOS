@@ -33,6 +33,11 @@
  * locale parameter — the same rule as the strings: a nil locale means no
  * locale-sensitive rules. Every constructor here is total: the file has no
  * `return nil` and no `return NULL` at all (measured, not assumed). */
+/* FOR `NSCoding`: ABOVE THE ASSUME-NONNULL REGION, which is where NSArray.h puts it too — a `#include` inside a
+ * nullability region is refused by the compiler, because the imported header's declarations would be dragged
+ * into somebody else's region. */
+#import <Foundation/NSCoding.h>
+
 NS_ASSUME_NONNULL_BEGIN
 
 /* ===================================================================================================
@@ -57,7 +62,14 @@ NS_ASSUME_NONNULL_BEGIN
  * four is correct through every door — which the probe proves with a class of its own.
  * =================================================================================================== */
 
-@interface NSNumber : NSObject <NSCopying>
+@interface NSNumber : NSObject <NSCopying, NSCoding>
+
+/* THE NSCoding DOORS (§63.22). THE WIRE IS OURS (Apple's spelling for this class's coded form is not
+ * published in a source this project may read). THE TYPE TRAVELS WITH THE VALUE, because this header says in
+ * its own words that `-objCType` "answers with the @encode of the type the number was CREATED as" — a box
+ * that dropped it would decode the integer 1 as a double. */
+- (void)encodeWithCoder:(NSCoder *)coder;
+- (instancetype)initWithCoder:(NSCoder *)coder;
 
 /* Creation and initialisation: the full 15-type matrix, Cocoa's names. */
 + (NSNumber *)numberWithBool:(BOOL)value;

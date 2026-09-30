@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1838   open  846   struck  244
+#   method     shipped 1842   open  842   struck  244
 #   property   shipped 1027   open  463   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -1757,7 +1757,7 @@ method	shipped	+canonicalLocaleIdentifierFromString:	NSLocale	Fundamentals / Loc
 method	open	+characterDirectionForLanguage:	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language	-	objc
 method	shipped	+componentsFromLocaleIdentifier:	NSLocale	Fundamentals / Localization / Converting Between Identifiers	-	objc
 method	shipped	-displayNameForKey:value:	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key	-	objc
-method	open	-initWithCoder:	NSLocale	Fundamentals / Localization / Initializing a Locale	-	objc
+method	shipped	-initWithCoder:	NSLocale	Fundamentals / Localization / Initializing a Locale	-	objc
 method	shipped	-initWithLocaleIdentifier:	NSLocale	Fundamentals / Localization / Initializing a Locale	-	objc
 method	open	+lineDirectionForLanguage:	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language	-	objc
 method	shipped	+localeIdentifierFromComponents:	NSLocale	Fundamentals / Localization / Converting Between Identifiers	-	objc
@@ -2266,7 +2266,7 @@ method	shipped	-compare:	NSNumber	Fundamentals / Numbers / Comparing NSNumber Ob
 method	shipped	-descriptionWithLocale:	NSNumber	Fundamentals / Numbers / Retrieving String Representations	-	objc
 method	shipped	-initWithBool:	NSNumber	Fundamentals / Numbers / Initializing an NSNumber Object	-	objc
 method	shipped	-initWithChar:	NSNumber	Fundamentals / Numbers / Initializing an NSNumber Object	-	objc
-method	open	-initWithCoder:	NSNumber	Fundamentals / Numbers / Instance Methods	-	objc
+method	shipped	-initWithCoder:	NSNumber	Fundamentals / Numbers / Instance Methods	-	objc
 method	shipped	-initWithDouble:	NSNumber	Fundamentals / Numbers / Initializing an NSNumber Object	-	objc
 method	shipped	-initWithFloat:	NSNumber	Fundamentals / Numbers / Initializing an NSNumber Object	-	objc
 method	shipped	-initWithInt:	NSNumber	Fundamentals / Numbers / Initializing an NSNumber Object	-	objc
@@ -3085,7 +3085,7 @@ method	open	-initWithCStringNoCopy:length:freeWhenDone:	NSString	Fundamentals / 
 method	shipped	-initWithCharacters:length:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	open	-initWithCharactersNoCopy:length:deallocator:	NSString	Fundamentals / Strings / Instance Methods	-	objc
 method	shipped	-initWithCharactersNoCopy:length:freeWhenDone:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
-method	open	-initWithCoder:	NSString	Fundamentals / Strings / Instance Methods	-	objc
+method	shipped	-initWithCoder:	NSString	Fundamentals / Strings / Instance Methods	-	objc
 method	open	-initWithContentsOfFile:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	open	-initWithContentsOfFile:encoding:error:	NSString	Fundamentals / Strings / Creating and Initializing a String from a File	-	objc
 method	open	-initWithContentsOfFile:usedEncoding:error:	NSString	Fundamentals / Strings / Creating and Initializing a String from a File	-	objc
@@ -4319,7 +4319,7 @@ property	shipped	standardOutput	NSUserUnixTask	Low-Level Utilities / Scripts and
 method	shipped	-getValue:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Raw Values	deprecated	objc
 method	shipped	-getValue:size:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Instance Methods	-	objc
 method	open	-initWithBytes:objCType:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Raw Values	-	objc
-method	open	-initWithCoder:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Instance Methods	-	objc
+method	shipped	-initWithCoder:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Instance Methods	-	objc
 method	shipped	-isEqualToValue:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Comparing Value Objects	-	objc
 method	shipped	+value:withObjCType:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Raw Values	-	objc
 method	shipped	+valueWithBytes:objCType:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Raw Values	-	objc
