@@ -460,6 +460,99 @@ typedef enum {
 - (nullable NSString *)currentDirectoryPath;
 - (BOOL)changeCurrentDirectoryPath:(NSString *)path;
 
+/* ---- THE URL FORMS OF THE OPERATIONS ABOVE (the coverage slice) --------------------------------
+ *
+ * APPLE PREFERS THIS DOOR: "the file manager always prefers methods that take an NSURL object over
+ * those that take an NSString object". Each of these reduces its URL(s) to the FSH PATH that `-path`
+ * answers (refusing anything that is not a file URL), and then calls the path door above - so the two
+ * spellings cannot disagree about what an operation does, and the delegate is still asked the URL
+ * question through the path door's own preference rule. ONE EXCEPTION, and it is Apple's: the
+ * DESTINATION of -createSymbolicLinkAtURL:withDestinationURL:error: "may be a relative URL", so only
+ * the LINK's own URL must be a file URL; the target is taken as whatever path the destination answers.
+ */
+- (BOOL)removeItemAtURL:(NSURL *)URL error:(NSError ** _Nullable)error;
+- (BOOL)copyItemAtURL:(NSURL *)srcURL toURL:(NSURL *)dstURL error:(NSError ** _Nullable)error;
+- (BOOL)moveItemAtURL:(NSURL *)srcURL toURL:(NSURL *)dstURL error:(NSError ** _Nullable)error;
+- (BOOL)linkItemAtURL:(NSURL *)srcURL toURL:(NSURL *)dstURL error:(NSError ** _Nullable)error;
+- (BOOL)createSymbolicLinkAtURL:(NSURL *)url
+	     withDestinationURL:(NSURL *)destURL
+			   error:(NSError ** _Nullable)error;
+- (BOOL)createDirectoryAtURL:(NSURL *)url
+ withIntermediateDirectories:(BOOL)createIntermediates
+		  attributes:(nullable NSDictionary *)attributes
+		       error:(NSError ** _Nullable)error;
+
+/* THE SAME RELATIONSHIP QUESTION, ASKED OF TWO URLs - and, like the path form beside it, about
+ * LOCATIONS rather than inodes. */
+- (BOOL)getRelationship:(NSURLRelationship *)outRelationship
+      ofDirectoryAtURL:(NSURL *)directoryURL
+	    toItemAtURL:(NSURL *)url
+		   error:(NSError ** _Nullable)error;
+
+/* ---- WHERE A USER'S OWN DIRECTORIES ARE (the coverage slice) -----------------------------------
+ *
+ * ALL THREE ANSWER A URL, which is Apple's own spelling: `homeDirectoryForCurrentUser` and
+ * `temporaryDirectory` are URL properties and `homeDirectoryForUser:` is a URL that is nil for a user
+ * that does not exist. The PATH each URL names is the same one the FSH functions already answer - the
+ * account database's pw_dir for the two home doors and NSTemporaryDirectory() for the temporary one -
+ * so there is one source of truth and these are its URL spelling. `temporaryDirectory` drops the
+ * trailing separator NSTemporaryDirectory() carries, because a URL's path is the directory itself.
+ */
+- (nullable NSURL *)homeDirectoryForUser:(NSString *)userName;
+- (NSURL *)homeDirectoryForCurrentUser;
+- (NSURL *)temporaryDirectory;
+
+/* ---- FROM A PATH TO ITS BYTES, AND BACK ---------------------------------------------------------
+ *
+ * -fileSystemRepresentationWithPath: answers the path in the file-system encoding - UTF-8 here, the
+ * encoding this whole library spells a path in - and the pointer returned is the ARGUMENT's own bytes
+ * (this library's -UTF8String), so its validity follows the argument rather than a private buffer.
+ * -stringWithFileSystemRepresentation:length: is the inverse, over a count that NEED NOT be
+ * NUL-terminated - which is the only reason the length is a parameter at all.
+ */
+- (const char *)fileSystemRepresentationWithPath:(NSString *)path;
+- (NSString *)stringWithFileSystemRepresentation:(const char *)str length:(NSUInteger)len;
+
+/* ---- THE DEPRECATED DOORS (Apple-deprecated, a porting target, not struck) ----------------------
+ *
+ * EACH IS THIN BY DESIGN: the modern door is where the behaviour lives, and the legacy spelling is
+ * the same operation with the error channel removed (these predate NSError, so a failure is a bare
+ * NO). The ONE that carries a rule of its own is -fileAttributesAtPath:traverseLink:, whose flag
+ * CHOOSES BETWEEN lstat(2) AND stat(2): NO asks the LINK about itself, YES asks what the link NAMES -
+ * the distinction -attributesOfItemAtPath: (always lstat) does not offer. NOTE the signature of
+ * -createDirectoryAtPath:attributes:: it creates ONE directory, with no intermediate rule.
+ */
+- (BOOL)changeFileAttributes:(NSDictionary *)attributes atPath:(NSString *)path;
+- (BOOL)createDirectoryAtPath:(NSString *)path attributes:(nullable NSDictionary *)attributes;
+- (BOOL)createSymbolicLinkAtPath:(NSString *)path pathContent:(NSString *)otherpath;
+- (nullable NSDictionary *)fileAttributesAtPath:(NSString *)path traverseLink:(BOOL)flag;
+- (nullable NSDictionary *)fileSystemAttributesAtPath:(NSString *)path;
+- (nullable NSString *)pathContentOfSymbolicLinkAtPath:(NSString *)path;
+- (nullable NSArray *)directoryContentsAtPath:(NSString *)path;
+
+/* ---- THE iCLOUD- AND GROUP-CONTAINER DOORS (the coverage slice) --------------------------------
+ *
+ * THIS SYSTEM HAS NO iCLOUD AND NO APPLICATION-GROUP CONTAINERS, and rather than a half-built one of
+ * either, each door answers the POSTCONDITION that absence implies - the same ground
+ * -getFileProviderServicesForItemAtURL: stands on, and the same value this file's error channel
+ * already gives for "this substrate cannot": ENOTSUP. Nothing here is a promise it cannot keep: NO
+ * item is ubiquitous, there is no container URL and no identity token, and every door that would MOVE
+ * or EVICT a ubiquitous item answers NO with that error.
+ */
+- (BOOL)isUbiquitousItemAtURL:(NSURL *)url;
+- (nullable NSURL *)URLForUbiquityContainerIdentifier:(nullable NSString *)containerIdentifier;
+- (nullable NSURL *)URLForPublishingUbiquitousItemAtURL:(NSURL *)url
+					expirationDate:(NSDate * _Nullable * _Nullable)outDate
+						 error:(NSError ** _Nullable)error;
+- (BOOL)evictUbiquitousItemAtURL:(NSURL *)url error:(NSError ** _Nullable)error;
+- (BOOL)setUbiquitous:(BOOL)flag
+	   itemAtURL:(NSURL *)url
+      destinationURL:(NSURL *)destinationURL
+	       error:(NSError ** _Nullable)error;
+- (BOOL)startDownloadingUbiquitousItemAtURL:(NSURL *)url error:(NSError ** _Nullable)error;
+- (nullable id)ubiquityIdentityToken;
+- (nullable NSURL *)containerURLForSecurityApplicationGroupIdentifier:(NSString *)groupIdentifier;
+
 @end
 
 /*

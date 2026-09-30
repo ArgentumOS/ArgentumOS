@@ -135,6 +135,57 @@ static NSString *fn_type_of(mode_t mode)
 	return NSFileTypeUnknown;
 }
 
+/* THE ATTRIBUTE DICTIONARY, BUILT FROM ONE `struct stat`, IN ONE PLACE because TWO doors need the same
+ * mapping: -attributesOfItemAtPath: (which reaches it with lstat(2)) and the deprecated
+ * -fileAttributesAtPath:traverseLink: (which reaches it with lstat(2) OR stat(2), by its flag). The
+ * keys are Cocoa's names and the values are the stat fields Apple names field by field - so a caller
+ * asks ONE question and gets a description rather than decoding a bitfield.
+ */
+static NSDictionary *fn_attributes_from_stat(const struct stat *st)
+{
+	NSMutableDictionary *attributes = [NSMutableDictionary dictionary];
+
+	[attributes setObject:fn_type_of(st->st_mode) forKey:NSFileType];
+	[attributes setObject:[NSNumber numberWithLongLong:(long long)st->st_size] forKey:NSFileSize];
+	[attributes setObject:[NSDate dateWithTimeIntervalSince1970:(double)st->st_mtime]
+		       forKey:NSFileModificationDate];
+	[attributes setObject:[NSNumber numberWithUnsignedShort:(unsigned short)(st->st_mode & 07777)]
+		       forKey:NSFilePosixPermissions];
+	[attributes setObject:[NSNumber numberWithUnsignedInt:(unsigned int)st->st_uid]
+		       forKey:NSFileOwnerAccountID];
+	[attributes setObject:[NSNumber numberWithUnsignedInt:(unsigned int)st->st_gid]
+		       forKey:NSFileGroupOwnerAccountID];
+	/* AND THE THREE THAT ARE A stat(2) FIELD BY DEFINITION (W8 slice 3c), which is what Apple's own
+	 * pages say of them one by one. */
+	[attributes setObject:[NSNumber numberWithUnsignedLongLong:(unsigned long long)st->st_ino]
+		       forKey:NSFileSystemFileNumber];
+	[attributes setObject:[NSNumber numberWithUnsignedLong:(unsigned long)st->st_nlink]
+		       forKey:NSFileReferenceCount];
+	[attributes setObject:[NSNumber numberWithUnsignedLongLong:(unsigned long long)st->st_dev]
+		       forKey:NSFileDeviceIdentifier];
+	/* AND THE TWO ACCOUNT NAMES (W8 slice 3d), which are the same fact as the two IDs one line up -
+	 * the difference is that the NAME has to come from the account database, which this library
+	 * already reaches for other classes. An item whose uid has no account simply has no name entry,
+	 * which is the dictionary's own way of saying so. */
+	{
+		struct passwd *pw = getpwuid((uid_t)st->st_uid);
+
+		if (pw != NULL && pw->pw_name != NULL) {
+			[attributes setObject:[NSString stringWithUTF8String:pw->pw_name]
+				       forKey:NSFileOwnerAccountName];
+		}
+	}
+	{
+		struct group *gr = getgrgid((gid_t)st->st_gid);
+
+		if (gr != NULL && gr->gr_name != NULL) {
+			[attributes setObject:[NSString stringWithUTF8String:gr->gr_name]
+				       forKey:NSFileGroupOwnerAccountName];
+		}
+	}
+	return attributes;
+}
+
 /* THE NAMES IN A DIRECTORY, skipping the two that are not names. On a failure the directory is still
  * closed, because the only way out of the loop is through here. */
 static NSArray *fn_directory_names(const char *path, int *outErrno)
@@ -903,58 +954,19 @@ typedef enum {
 					    error:(NSError ** _Nullable)error
 {
 	struct stat st;
-	NSMutableDictionary *attributes;
 
 	if (path == nil) {
 		fn_failed(error, EINVAL);
 		return nil;
 	}
 	/* lstat, NOT stat: the attributes of a LINK are the link's, which is what a caller asking about
-	 * that path means. */
+	 * that path means. (The dictionary is built by the shared fn_attributes_from_stat, which the
+	 * deprecated -fileAttributesAtPath:traverseLink: also uses - reached there with stat(2).) */
 	if (lstat([path UTF8String], &st) != 0) {
 		fn_failed(error, errno);
 		return nil;
 	}
-	attributes = [NSMutableDictionary dictionary];
-	[attributes setObject:fn_type_of(st.st_mode) forKey:NSFileType];
-	[attributes setObject:[NSNumber numberWithLongLong:(long long)st.st_size] forKey:NSFileSize];
-	[attributes setObject:[NSDate dateWithTimeIntervalSince1970:(double)st.st_mtime]
-		       forKey:NSFileModificationDate];
-	[attributes setObject:[NSNumber numberWithUnsignedShort:(unsigned short)(st.st_mode & 07777)]
-		       forKey:NSFilePosixPermissions];
-	[attributes setObject:[NSNumber numberWithUnsignedInt:(unsigned int)st.st_uid]
-		       forKey:NSFileOwnerAccountID];
-	[attributes setObject:[NSNumber numberWithUnsignedInt:(unsigned int)st.st_gid]
-		       forKey:NSFileGroupOwnerAccountID];
-	/* AND THE THREE THAT ARE A stat(2) FIELD BY DEFINITION (W8 slice 3c), which is what Apple's own
-	 * pages say of them one by one. */
-	[attributes setObject:[NSNumber numberWithUnsignedLongLong:(unsigned long long)st.st_ino]
-		       forKey:NSFileSystemFileNumber];
-	[attributes setObject:[NSNumber numberWithUnsignedLong:(unsigned long)st.st_nlink]
-		       forKey:NSFileReferenceCount];
-	[attributes setObject:[NSNumber numberWithUnsignedLongLong:(unsigned long long)st.st_dev]
-		       forKey:NSFileDeviceIdentifier];
-	/* AND THE TWO ACCOUNT NAMES (W8 slice 3d), which are the same fact as the two IDs one line up -
-	 * the difference is that the NAME has to come from the account database, which this library
-	 * already reaches for other classes. An item whose uid has no account simply has no name entry,
-	 * which is the dictionary's own way of saying so. */
-	{
-		struct passwd *pw = getpwuid((uid_t)st.st_uid);
-
-		if (pw != NULL && pw->pw_name != NULL) {
-			[attributes setObject:[NSString stringWithUTF8String:pw->pw_name]
-				       forKey:NSFileOwnerAccountName];
-		}
-	}
-	{
-		struct group *gr = getgrgid((gid_t)st.st_gid);
-
-		if (gr != NULL && gr->gr_name != NULL) {
-			[attributes setObject:[NSString stringWithUTF8String:gr->gr_name]
-				       forKey:NSFileGroupOwnerAccountName];
-		}
-	}
-	return attributes;
+	return fn_attributes_from_stat(&st);
 }
 
 /* ---- SETTING THEM (W8 slice 3d), AND THREE OF APPLE'S SENTENCES ARE THE WHOLE DESIGN -------------
@@ -1577,6 +1589,300 @@ static NSString *fn_link_target(NSString *path, int *outErrno)
 - (BOOL)changeCurrentDirectoryPath:(NSString *)path
 {
 	return path != nil && chdir([path UTF8String]) == 0;
+}
+
+/* ---- THE URL FORMS (the coverage slice) ---------------------------------------------------------
+ *
+ * EACH REDUCES ITS URLs TO FSH PATHS AND CALLS THE PATH DOOR, so there is ONE implementation of every
+ * operation and the two spellings cannot drift apart. A URL that is not a file URL, or that answers no
+ * path, is refused the way every other door refuses a missing argument: EINVAL on the error channel.
+ * The delegate is still asked the URL question, because the path door's own preference rule reaches
+ * for the URL selector first - which is what makes this the spelling Apple says the manager "prefers".
+ *
+ * THE ONE EXCEPTION is -createSymbolicLinkAtURL:withDestinationURL:error:, whose DESTINATION "may be a
+ * relative URL" - so only the LINK's own URL must be a file URL, and the target is taken as whatever
+ * path the destination answers (a relative one answers a relative path, which symlink(2) accepts).
+ */
+- (BOOL)removeItemAtURL:(NSURL *)URL error:(NSError ** _Nullable)error
+{
+	NSString *path;
+
+	if (URL == nil || ![URL isFileURL] || (path = [URL path]) == nil) {
+		return fn_failed(error, EINVAL);
+	}
+	return [self removeItemAtPath:path error:error];
+}
+
+- (BOOL)copyItemAtURL:(NSURL *)srcURL toURL:(NSURL *)dstURL error:(NSError ** _Nullable)error
+{
+	NSString *src;
+	NSString *dst;
+
+	if (srcURL == nil || dstURL == nil || ![srcURL isFileURL] || ![dstURL isFileURL] ||
+	    (src = [srcURL path]) == nil || (dst = [dstURL path]) == nil) {
+		return fn_failed(error, EINVAL);
+	}
+	return [self copyItemAtPath:src toPath:dst error:error];
+}
+
+- (BOOL)moveItemAtURL:(NSURL *)srcURL toURL:(NSURL *)dstURL error:(NSError ** _Nullable)error
+{
+	NSString *src;
+	NSString *dst;
+
+	if (srcURL == nil || dstURL == nil || ![srcURL isFileURL] || ![dstURL isFileURL] ||
+	    (src = [srcURL path]) == nil || (dst = [dstURL path]) == nil) {
+		return fn_failed(error, EINVAL);
+	}
+	return [self moveItemAtPath:src toPath:dst error:error];
+}
+
+- (BOOL)linkItemAtURL:(NSURL *)srcURL toURL:(NSURL *)dstURL error:(NSError ** _Nullable)error
+{
+	NSString *src;
+	NSString *dst;
+
+	if (srcURL == nil || dstURL == nil || ![srcURL isFileURL] || ![dstURL isFileURL] ||
+	    (src = [srcURL path]) == nil || (dst = [dstURL path]) == nil) {
+		return fn_failed(error, EINVAL);
+	}
+	return [self linkItemAtPath:src toPath:dst error:error];
+}
+
+- (BOOL)createSymbolicLinkAtURL:(NSURL *)url
+	     withDestinationURL:(NSURL *)destURL
+			   error:(NSError ** _Nullable)error
+{
+	NSString *path;
+	NSString *dest;
+
+	if (url == nil || destURL == nil || ![url isFileURL] ||
+	    (path = [url path]) == nil || (dest = [destURL path]) == nil) {
+		return fn_failed(error, EINVAL);
+	}
+	return [self createSymbolicLinkAtPath:path withDestinationPath:dest error:error];
+}
+
+- (BOOL)createDirectoryAtURL:(NSURL *)url
+ withIntermediateDirectories:(BOOL)createIntermediates
+		  attributes:(nullable NSDictionary *)attributes
+		       error:(NSError ** _Nullable)error
+{
+	NSString *path;
+
+	if (url == nil || ![url isFileURL] || (path = [url path]) == nil) {
+		return fn_failed(error, EINVAL);
+	}
+	return [self createDirectoryAtPath:path
+	       withIntermediateDirectories:createIntermediates
+			    attributes:attributes
+				 error:error];
+}
+
+- (BOOL)getRelationship:(NSURLRelationship *)outRelationship
+      ofDirectoryAtURL:(NSURL *)directoryURL
+	    toItemAtURL:(NSURL *)url
+		   error:(NSError ** _Nullable)error
+{
+	NSString *directory;
+	NSString *other;
+
+	if (directoryURL == nil || url == nil || ![directoryURL isFileURL] || ![url isFileURL] ||
+	    (directory = [directoryURL path]) == nil || (other = [url path]) == nil) {
+		return fn_failed(error, EINVAL);
+	}
+	return [self getRelationship:outRelationship
+		   ofDirectoryAtPath:directory
+		     toItemAtPath:other
+			    error:error];
+}
+
+/* ---- THE USER-DIRECTORY URLS (the coverage slice) -----------------------------------------------
+ *
+ * EACH IS THE URL SPELLING OF A PATH THE FSH FUNCTIONS ALREADY ANSWER, so there is one source of truth
+ * (see NSHomeDirectory()/NSHomeDirectoryForUser()/NSTemporaryDirectory() below). -homeDirectoryForUser:
+ * is nil for a user the account database does not know, which is NSHomeDirectoryForUser()'s own
+ * contract; the other two cannot fail, which is why they answer a URL rather than nil.
+ */
+- (nullable NSURL *)homeDirectoryForUser:(NSString *)userName
+{
+	NSString *home = NSHomeDirectoryForUser(userName);
+
+	if (home == nil) {
+		return nil;
+	}
+	return [NSURL fileURLWithPath:home];
+}
+
+- (NSURL *)homeDirectoryForCurrentUser
+{
+	return [NSURL fileURLWithPath:NSHomeDirectory()];
+}
+
+- (NSURL *)temporaryDirectory
+{
+	NSString *path = NSTemporaryDirectory();
+
+	/* THE TRAILING SEPARATOR IS THE PATH SPELLING, NOT THE URL SPELLING: a URL's -path is the
+	 * directory itself, so "/System/Temporary Files/" becomes a URL whose path is "/System/Temporary
+	 * Files". Only a trailing slash is dropped; the root's lone "/" is left alone. */
+	if ([path length] > 1 && [path hasSuffix:@"/"]) {
+		path = [path substringToIndex:[path length] - 1];
+	}
+	return [NSURL fileURLWithPath:path];
+}
+
+/* ---- FROM A PATH TO ITS BYTES, AND BACK ---------------------------------------------------------
+ *
+ * THE POINTER -fileSystemRepresentationWithPath: answers is the ARGUMENT's own -UTF8String, so its
+ * lifetime follows the argument (this library's paths are UTF-8 throughout), and the caller must not
+ * free it - which is Apple's contract too ("do not free the returned C string").
+ */
+- (const char *)fileSystemRepresentationWithPath:(NSString *)path
+{
+	return [path UTF8String];
+}
+
+- (NSString *)stringWithFileSystemRepresentation:(const char *)str length:(NSUInteger)len
+{
+	char *buffer;
+	NSString *answer;
+
+	if (len == 0) {
+		return @"";
+	}
+	/* A COUNT, NOT A TERMINATOR, which is why the length is a parameter: the bytes are the same UTF-8
+	 * this library spells a path in, and a NUL-terminated copy is made so the string factory (the
+	 * idiom the rest of this file uses) can read exactly `len` bytes. Bytes that are not valid UTF-8
+	 * have no string answer ON THIS SYSTEM (whose paths are UTF-8), so the empty string stands in
+	 * rather than nil - the nonnull contract Apple's declaration carries. */
+	buffer = malloc(len + 1);
+	if (buffer == NULL) {
+		return @"";
+	}
+	memcpy(buffer, str, len);
+	buffer[len] = '\0';
+	answer = [NSString stringWithUTF8String:buffer];
+	free(buffer);
+	return answer != nil ? answer : @"";
+}
+
+/* ---- THE DEPRECATED DOORS (a porting target) ----------------------------------------------------
+ *
+ * EACH IS THE MODERN OPERATION WITH NO ERROR CHANNEL - these predate NSError, so a failure is a bare
+ * NO (and a nil dictionary/string where the door answers one). No behaviour is added here; the modern
+ * door is where it lives, and a legacy spelling that re-implemented it could drift from it.
+ */
+- (BOOL)changeFileAttributes:(NSDictionary *)attributes atPath:(NSString *)path
+{
+	return [self setAttributes:attributes ofItemAtPath:path error:NULL];
+}
+
+- (BOOL)createDirectoryAtPath:(NSString *)path attributes:(nullable NSDictionary *)attributes
+{
+	/* NO INTERMEDIATES: the legacy door made one directory and refused a missing parent, which is what
+	 * the modern door does with createIntermediates:NO. */
+	return [self createDirectoryAtPath:path
+	       withIntermediateDirectories:NO
+			    attributes:attributes
+				 error:NULL];
+}
+
+- (BOOL)createSymbolicLinkAtPath:(NSString *)path pathContent:(NSString *)otherpath
+{
+	return [self createSymbolicLinkAtPath:path withDestinationPath:otherpath error:NULL];
+}
+
+- (nullable NSDictionary *)fileAttributesAtPath:(NSString *)path traverseLink:(BOOL)flag
+{
+	struct stat st;
+
+	if (path == nil) {
+		return nil;
+	}
+	/* THE FLAG IS THE lstat/stat CHOICE, and it is the only rule this legacy door adds: NO asks the
+	 * LINK about itself, YES asks what the link NAMES (see the header). */
+	if ((flag ? stat([path UTF8String], &st) : lstat([path UTF8String], &st)) != 0) {
+		return nil;
+	}
+	return fn_attributes_from_stat(&st);
+}
+
+- (nullable NSDictionary *)fileSystemAttributesAtPath:(NSString *)path
+{
+	return [self attributesOfFileSystemForPath:path error:NULL];
+}
+
+- (nullable NSString *)pathContentOfSymbolicLinkAtPath:(NSString *)path
+{
+	return [self destinationOfSymbolicLinkAtPath:path error:NULL];
+}
+
+/* ---- iCLOUD AND GROUP CONTAINERS, ANSWERED BY THEIR ABSENCE (the coverage slice) ----------------
+ *
+ * THIS SYSTEM HAS NO iCLOUD AND NO APPLICATION-GROUP CONTAINERS. Rather than a half-built one of
+ * either, every door here answers the POSTCONDITION that absence implies - the same ground
+ * -getFileProviderServicesForItemAtURL: stands on. NO item is ubiquitous; there is no container URL
+ * and no identity token; and every door that would MOVE or EVICT a ubiquitous item answers NO with
+ * ENOTSUP, the same errno this file already uses for "this substrate cannot". Nothing here is a
+ * promise it cannot keep.
+ */
+- (BOOL)isUbiquitousItemAtURL:(NSURL *)url
+{
+	(void)url;
+	return NO;		/* no iCloud is configured, so no item is ubiquitous */
+}
+
+- (nullable NSURL *)URLForUbiquityContainerIdentifier:(nullable NSString *)containerIdentifier
+{
+	(void)containerIdentifier;
+	return nil;		/* there is no iCloud container to name */
+}
+
+- (nullable NSURL *)URLForPublishingUbiquitousItemAtURL:(NSURL *)url
+					expirationDate:(NSDate * _Nullable * _Nullable)outDate
+						 error:(NSError ** _Nullable)error
+{
+	(void)url;
+	if (outDate != NULL) {
+		*outDate = nil;
+	}
+	fn_failed(error, ENOTSUP);
+	return nil;
+}
+
+- (BOOL)evictUbiquitousItemAtURL:(NSURL *)url error:(NSError ** _Nullable)error
+{
+	(void)url;
+	return fn_failed(error, ENOTSUP);
+}
+
+- (BOOL)setUbiquitous:(BOOL)flag
+	   itemAtURL:(NSURL *)url
+      destinationURL:(NSURL *)destinationURL
+	       error:(NSError ** _Nullable)error
+{
+	(void)flag;
+	(void)url;
+	(void)destinationURL;
+	return fn_failed(error, ENOTSUP);
+}
+
+- (BOOL)startDownloadingUbiquitousItemAtURL:(NSURL *)url error:(NSError ** _Nullable)error
+{
+	(void)url;
+	return fn_failed(error, ENOTSUP);
+}
+
+- (nullable id)ubiquityIdentityToken
+{
+	return nil;		/* no iCloud account is signed in, so there is no identity token */
+}
+
+- (nullable NSURL *)containerURLForSecurityApplicationGroupIdentifier:(NSString *)groupIdentifier
+{
+	(void)groupIdentifier;
+	return nil;		/* this system has no application-group container subsystem */
 }
 
 @end

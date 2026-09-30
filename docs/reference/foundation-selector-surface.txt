@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1962   open  722   struck  244
-#   property   shipped 1106   open  384   struck  146
+#   method     shipped 1986   open  698   struck  244
+#   property   shipped 1109   open  381   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -1256,69 +1256,69 @@ property	open	offsetInFile	NSFileHandle	Files and Data Persistence / Managed fil
 property	open	readabilityHandler	NSFileHandle	Files and Data Persistence / Managed file access / Monitoring for readability and writability	-	objc
 property	open	writeabilityHandler	NSFileHandle	Files and Data Persistence / Managed file access / Monitoring for readability and writability	-	objc
 method	open	-URLForDirectory:inDomain:appropriateForURL:create:error:	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
-method	open	-URLForPublishingUbiquitousItemAtURL:expirationDate:error:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
-method	open	-URLForUbiquityContainerIdentifier:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
+method	shipped	-URLForPublishingUbiquitousItemAtURL:expirationDate:error:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
+method	shipped	-URLForUbiquityContainerIdentifier:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
 method	open	-URLsForDirectory:inDomains:	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
 method	shipped	-attributesOfFileSystemForPath:error:	NSFileManager	Files and Data Persistence / File system operations / Getting and setting attributes	-	objc
 method	shipped	-attributesOfItemAtPath:error:	NSFileManager	Files and Data Persistence / File system operations / Getting and setting attributes	-	objc
 method	shipped	-changeCurrentDirectoryPath:	NSFileManager	Files and Data Persistence / File system operations / Managing the current directory	-	objc
-method	open	-changeFileAttributes:atPath:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
+method	shipped	-changeFileAttributes:atPath:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
 method	shipped	-componentsToDisplayForPath:	NSFileManager	Files and Data Persistence / File system operations / Getting and setting attributes	-	objc
-method	open	-containerURLForSecurityApplicationGroupIdentifier:	NSFileManager	Files and Data Persistence / File system operations / Locating application group container directories	-	objc
+method	shipped	-containerURLForSecurityApplicationGroupIdentifier:	NSFileManager	Files and Data Persistence / File system operations / Locating application group container directories	-	objc
 method	shipped	-contentsAtPath:	NSFileManager	Files and Data Persistence / File system operations / Getting and comparing file contents	-	objc
 method	shipped	-contentsEqualAtPath:andPath:	NSFileManager	Files and Data Persistence / File system operations / Getting and comparing file contents	-	objc
 method	shipped	-contentsOfDirectoryAtPath:error:	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 method	shipped	-contentsOfDirectoryAtURL:includingPropertiesForKeys:options:error:	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 method	shipped	-copyItemAtPath:toPath:error:	NSFileManager	Files and Data Persistence / File system operations / Moving and copying items	-	objc
-method	open	-copyItemAtURL:toURL:error:	NSFileManager	Files and Data Persistence / File system operations / Moving and copying items	-	objc
+method	shipped	-copyItemAtURL:toURL:error:	NSFileManager	Files and Data Persistence / File system operations / Moving and copying items	-	objc
 method	open	-copyPath:toPath:handler:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
-method	open	-createDirectoryAtPath:attributes:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
+method	shipped	-createDirectoryAtPath:attributes:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
 method	shipped	-createDirectoryAtPath:withIntermediateDirectories:attributes:error:	NSFileManager	Files and Data Persistence / File system operations / Creating and deleting items	-	objc
-method	open	-createDirectoryAtURL:withIntermediateDirectories:attributes:error:	NSFileManager	Files and Data Persistence / File system operations / Creating and deleting items	-	objc
+method	shipped	-createDirectoryAtURL:withIntermediateDirectories:attributes:error:	NSFileManager	Files and Data Persistence / File system operations / Creating and deleting items	-	objc
 method	shipped	-createFileAtPath:contents:attributes:	NSFileManager	Files and Data Persistence / File system operations / Creating and deleting items	-	objc
-method	open	-createSymbolicLinkAtPath:pathContent:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
+method	shipped	-createSymbolicLinkAtPath:pathContent:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
 method	shipped	-createSymbolicLinkAtPath:withDestinationPath:error:	NSFileManager	Files and Data Persistence / File system operations / Creating symbolic and hard links	-	objc
-method	open	-createSymbolicLinkAtURL:withDestinationURL:error:	NSFileManager	Files and Data Persistence / File system operations / Creating symbolic and hard links	-	objc
+method	shipped	-createSymbolicLinkAtURL:withDestinationURL:error:	NSFileManager	Files and Data Persistence / File system operations / Creating symbolic and hard links	-	objc
 method	shipped	-destinationOfSymbolicLinkAtPath:error:	NSFileManager	Files and Data Persistence / File system operations / Creating symbolic and hard links	-	objc
-method	open	-directoryContentsAtPath:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
+method	shipped	-directoryContentsAtPath:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
 method	shipped	-displayNameAtPath:	NSFileManager	Files and Data Persistence / File system operations / Getting and setting attributes	-	objc
 method	shipped	-enumeratorAtPath:	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 method	shipped	-enumeratorAtURL:includingPropertiesForKeys:options:errorHandler:	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
-method	open	-evictUbiquitousItemAtURL:error:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
+method	shipped	-evictUbiquitousItemAtURL:error:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
 method	open	-fetchLatestRemoteVersionOfItemAtURL:completionHandler:	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
-method	open	-fileAttributesAtPath:traverseLink:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
+method	shipped	-fileAttributesAtPath:traverseLink:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
 method	shipped	-fileExistsAtPath:	NSFileManager	Files and Data Persistence / File system operations / Determining access to files	-	objc
 method	shipped	-fileExistsAtPath:isDirectory:	NSFileManager	Files and Data Persistence / File system operations / Determining access to files	-	objc
 method	open	+fileManagerWithAuthorization:	NSFileManager	Files and Data Persistence / File system operations / Creating a file manager	-	objc
-method	open	-fileSystemAttributesAtPath:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
-method	open	-fileSystemRepresentationWithPath:	NSFileManager	Files and Data Persistence / File system operations / Converting file paths to strings	-	objc
+method	shipped	-fileSystemAttributesAtPath:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
+method	shipped	-fileSystemRepresentationWithPath:	NSFileManager	Files and Data Persistence / File system operations / Converting file paths to strings	-	objc
 method	shipped	-getFileProviderServicesForItemAtURL:completionHandler:	NSFileManager	Files and Data Persistence / File system operations / Accessing file provider services	-	objc
 method	open	-getRelationship:ofDirectory:inDomain:toItemAtURL:error:	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items	-	objc
-method	open	-getRelationship:ofDirectoryAtURL:toItemAtURL:error:	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items	-	objc
-method	open	-homeDirectoryForUser:	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
+method	shipped	-getRelationship:ofDirectoryAtURL:toItemAtURL:error:	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items	-	objc
+method	shipped	-homeDirectoryForUser:	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 method	shipped	-isDeletableFileAtPath:	NSFileManager	Files and Data Persistence / File system operations / Determining access to files	-	objc
 method	shipped	-isExecutableFileAtPath:	NSFileManager	Files and Data Persistence / File system operations / Determining access to files	-	objc
 method	shipped	-isReadableFileAtPath:	NSFileManager	Files and Data Persistence / File system operations / Determining access to files	-	objc
-method	open	-isUbiquitousItemAtURL:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
+method	shipped	-isUbiquitousItemAtURL:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
 method	shipped	-isWritableFileAtPath:	NSFileManager	Files and Data Persistence / File system operations / Determining access to files	-	objc
 method	shipped	-linkItemAtPath:toPath:error:	NSFileManager	Files and Data Persistence / File system operations / Creating symbolic and hard links	-	objc
-method	open	-linkItemAtURL:toURL:error:	NSFileManager	Files and Data Persistence / File system operations / Creating symbolic and hard links	-	objc
+method	shipped	-linkItemAtURL:toURL:error:	NSFileManager	Files and Data Persistence / File system operations / Creating symbolic and hard links	-	objc
 method	open	-linkPath:toPath:handler:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
 method	shipped	-mountedVolumeURLsIncludingResourceValuesForKeys:options:	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 method	shipped	-moveItemAtPath:toPath:error:	NSFileManager	Files and Data Persistence / File system operations / Moving and copying items	-	objc
-method	open	-moveItemAtURL:toURL:error:	NSFileManager	Files and Data Persistence / File system operations / Moving and copying items	-	objc
+method	shipped	-moveItemAtURL:toURL:error:	NSFileManager	Files and Data Persistence / File system operations / Moving and copying items	-	objc
 method	open	-movePath:toPath:handler:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
-method	open	-pathContentOfSymbolicLinkAtPath:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
+method	shipped	-pathContentOfSymbolicLinkAtPath:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
 method	open	-pauseSyncForUbiquitousItemAtURL:completionHandler:	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
 method	open	-removeFileAtPath:handler:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
 method	shipped	-removeItemAtPath:error:	NSFileManager	Files and Data Persistence / File system operations / Creating and deleting items	-	objc
-method	open	-removeItemAtURL:error:	NSFileManager	Files and Data Persistence / File system operations / Creating and deleting items	-	objc
+method	shipped	-removeItemAtURL:error:	NSFileManager	Files and Data Persistence / File system operations / Creating and deleting items	-	objc
 method	open	-replaceItemAtURL:withItemAtURL:backupItemName:options:resultingItemURL:error:	NSFileManager	Files and Data Persistence / File system operations / Replacing items	-	objc
 method	open	-resumeSyncForUbiquitousItemAtURL:withBehavior:completionHandler:	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
 method	shipped	-setAttributes:ofItemAtPath:error:	NSFileManager	Files and Data Persistence / File system operations / Getting and setting attributes	-	objc
-method	open	-setUbiquitous:itemAtURL:destinationURL:error:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
-method	open	-startDownloadingUbiquitousItemAtURL:error:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
-method	open	-stringWithFileSystemRepresentation:length:	NSFileManager	Files and Data Persistence / File system operations / Converting file paths to strings	-	objc
+method	shipped	-setUbiquitous:itemAtURL:destinationURL:error:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
+method	shipped	-startDownloadingUbiquitousItemAtURL:error:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
+method	shipped	-stringWithFileSystemRepresentation:length:	NSFileManager	Files and Data Persistence / File system operations / Converting file paths to strings	-	objc
 method	shipped	-subpathsAtPath:	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 method	shipped	-subpathsOfDirectoryAtPath:error:	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 method	open	-trashItemAtURL:resultingItemURL:error:	NSFileManager	Files and Data Persistence / File system operations / Creating and deleting items	-	objc
@@ -1327,9 +1327,9 @@ method	open	-uploadLocalVersionOfUbiquitousItemAtURL:withConflictResolutionPolic
 property	shipped	currentDirectoryPath	NSFileManager	Files and Data Persistence / File system operations / Managing the current directory	-	objc
 property	shipped	defaultManager	NSFileManager	Files and Data Persistence / File system operations / Creating a file manager	-	objc
 property	shipped	delegate	NSFileManager	Files and Data Persistence / File system operations / Managing the delegate	-	objc
-property	open	homeDirectoryForCurrentUser	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
-property	open	temporaryDirectory	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
-property	open	ubiquityIdentityToken	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
+property	shipped	homeDirectoryForCurrentUser	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
+property	shipped	temporaryDirectory	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
+property	shipped	ubiquityIdentityToken	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
 method	shipped	-fileManager:shouldCopyItemAtPath:toPath:	NSFileManagerDelegate	Files and Data Persistence / File system operations / Copying  an Item	-	objc
 method	shipped	-fileManager:shouldCopyItemAtURL:toURL:	NSFileManagerDelegate	Files and Data Persistence / File system operations / Copying  an Item	-	objc
 method	shipped	-fileManager:shouldLinkItemAtPath:toPath:	NSFileManagerDelegate	Files and Data Persistence / File system operations / Linking an Item	-	objc

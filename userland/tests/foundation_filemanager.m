@@ -909,6 +909,165 @@ int main(void)
 		      @"the HFS pair round-trips; NSHFSTypeOfFile and the legacy path search both refuse");
 	}
 
+	{
+		/* FROM A PATH TO ITS BYTES AND BACK (the coverage slice). -fileSystemRepresentationWithPath:
+		 * answers the argument's own UTF-8 bytes; -stringWithFileSystemRepresentation:length: reads a
+		 * COUNT (not a terminator) back into a string. */
+		NSFileManager *m = [NSFileManager defaultManager];
+		NSString *sample = @"System/Temporary Files/a b.txt";
+		const char *bytes = [m fileSystemRepresentationWithPath:sample];
+		NSString *back = [m stringWithFileSystemRepresentation:bytes length:strlen(bytes)];
+
+		check("fs-file-system-representation",
+		      bytes != NULL && strcmp(bytes, [sample UTF8String]) == 0 &&
+		      back != nil && [back isEqualToString:sample],
+		      @"the path's bytes are its UTF-8 form and a counted read turns them back into the string");
+	}
+
+	{
+		/* THE URL DOORS (the coverage slice): each reduces to the same FSH path the path door uses.
+		 * URLs are made ONLY through +fileURLWithPath:, so no HOST path is ever hard-named. */
+		NSFileManager *m = [NSFileManager defaultManager];
+		NSError *urlError = nil;
+		NSString *base = @"/System/Temporary Files/nsfilemanager-probe-url";
+		NSURL *dirURL = [NSURL fileURLWithPath:base];
+		NSURL *aURL = [NSURL fileURLWithPath:[base stringByAppendingPathComponent:@"a.txt"]];
+		NSURL *bURL = [NSURL fileURLWithPath:[base stringByAppendingPathComponent:@"b.txt"]];
+		NSURL *cURL = [NSURL fileURLWithPath:[base stringByAppendingPathComponent:@"c.txt"]];
+		NSURL *hURL = [NSURL fileURLWithPath:[base stringByAppendingPathComponent:@"h.txt"]];
+		NSURL *lURL = [NSURL fileURLWithPath:[base stringByAppendingPathComponent:@"l.txt"]];
+		BOOL madeURL = YES;
+
+		[m removeItemAtPath:base error:NULL];
+		madeURL = madeURL && [m createDirectoryAtURL:dirURL
+					    withIntermediateDirectories:YES
+							 attributes:nil
+							      error:&urlError];
+		madeURL = madeURL && [m createFileAtPath:[aURL path]
+						contents:[@"url-forms" dataUsingEncoding:NSUTF8StringEncoding]
+					      attributes:nil];
+		madeURL = madeURL && [m copyItemAtURL:aURL toURL:bURL error:&urlError];
+		madeURL = madeURL && [m moveItemAtURL:bURL toURL:cURL error:&urlError];
+		madeURL = madeURL && [m linkItemAtURL:aURL toURL:hURL error:&urlError];
+		madeURL = madeURL && [m createSymbolicLinkAtURL:lURL
+				     withDestinationURL:aURL
+						  error:&urlError];
+		check("fs-url-file-forms",
+		      madeURL &&
+		      [m fileExistsAtPath:[cURL path]] && ![m fileExistsAtPath:[bURL path]] &&
+		      [m fileExistsAtPath:[hURL path]] &&
+		      [[m destinationOfSymbolicLinkAtPath:[lURL path] error:&urlError]
+			isEqualToString:[aURL path]] &&
+		      [m removeItemAtURL:dirURL error:&urlError] && ![m fileExistsAtPath:base],
+		      @"URL doors reduce to the path doors: create, copy, move, link, symlink, and a recursive remove");
+	}
+
+	{
+		/* THE RELATIONSHIP DOOR IN ITS URL SPELLING: Contains for a child, Same for the directory
+		 * itself - the same rule the path door beside it applies. */
+		NSFileManager *m = [NSFileManager defaultManager];
+		NSError *relError = nil;
+		NSString *base = @"/System/Temporary Files/nsfilemanager-probe-urlrel";
+		NSURL *dirURL = [NSURL fileURLWithPath:base];
+		NSURL *insideURL = [NSURL fileURLWithPath:[base stringByAppendingPathComponent:@"inside.txt"]];
+		NSURLRelationship contains = NSURLRelationshipOther;
+		NSURLRelationship same = NSURLRelationshipOther;
+		BOOL okRel;
+
+		[m removeItemAtPath:base error:NULL];
+		[m createDirectoryAtPath:base withIntermediateDirectories:YES attributes:nil error:NULL];
+		[m createFileAtPath:[insideURL path] contents:nil attributes:nil];
+		okRel = [m getRelationship:&contains ofDirectoryAtURL:dirURL toItemAtURL:insideURL error:&relError] &&
+			contains == NSURLRelationshipContains &&
+			[m getRelationship:&same ofDirectoryAtURL:dirURL toItemAtURL:dirURL error:&relError] &&
+			same == NSURLRelationshipSame;
+		[m removeItemAtPath:base error:NULL];
+		check("fs-url-relationship", okRel,
+		      @"the URL relationship door answers Contains for a child and Same for the directory itself");
+	}
+
+	{
+		/* THE USER-DIRECTORY URLS (the coverage slice): each names the same FSH path the C functions
+		 * answer. The temporary URL drops the separator NSTemporaryDirectory() carries, because a URL's
+		 * -path is the directory itself and not the separator after it. */
+		NSFileManager *m = [NSFileManager defaultManager];
+		NSString *userName = NSUserName();	/* a local, so the nullable C result meets a nonnull param cleanly */
+		NSURL *homeURL = [m homeDirectoryForCurrentUser];
+		NSURL *tempURL = [m temporaryDirectory];
+		NSURL *byNameURL = [m homeDirectoryForUser:userName];
+
+		check("fs-user-directory-urls",
+		      homeURL != nil && [homeURL isFileURL] && [[homeURL path] isEqualToString:NSHomeDirectory()] &&
+		      tempURL != nil && [tempURL isFileURL] &&
+		      [[tempURL path] isEqualToString:@"/System/Temporary Files"] &&
+		      byNameURL != nil && [[byNameURL path] isEqualToString:NSHomeDirectory()] &&
+		      [m homeDirectoryForUser:@"a-user-who-does-not-exist"] == nil,
+		      @"home/temporary/user directories answer URLs naming the FSH paths; an unknown user is nil");
+	}
+
+	{
+		/* THE DEPRECATED DOORS ANSWER THROUGH THE MODERN ONES. Their one rule of their own is the
+		 * traverseLink: flag, which chooses lstat(2) or stat(2) - NO asks the LINK about itself, YES
+		 * asks what the link NAMES. */
+		NSFileManager *m = [NSFileManager defaultManager];
+		NSString *base = @"/System/Temporary Files/nsfilemanager-probe-legacy";
+		NSString *file = [base stringByAppendingPathComponent:@"f.txt"];
+		NSString *link = [base stringByAppendingPathComponent:@"l"];
+		NSDictionary *asLink;
+		NSDictionary *asTarget;
+		NSDictionary *after;
+		NSArray *names;
+		BOOL okLegacy;
+
+		[m removeItemAtPath:base error:NULL];
+		okLegacy = [m createDirectoryAtPath:base attributes:nil];
+		[m createFileAtPath:file contents:[@"legacy" dataUsingEncoding:NSUTF8StringEncoding] attributes:nil];
+		[m createSymbolicLinkAtPath:link pathContent:@"f.txt"];
+		asLink = [m fileAttributesAtPath:link traverseLink:NO];
+		asTarget = [m fileAttributesAtPath:link traverseLink:YES];
+		okLegacy = okLegacy && [m changeFileAttributes:@{ NSFilePosixPermissions : @0640 } atPath:file];
+		after = [m fileAttributesAtPath:file traverseLink:NO];
+		names = [m directoryContentsAtPath:base];
+		okLegacy = okLegacy &&
+			asLink != nil && [[asLink objectForKey:NSFileType] isEqualToString:NSFileTypeSymbolicLink] &&
+			asTarget != nil && [[asTarget objectForKey:NSFileType] isEqualToString:NSFileTypeRegular] &&
+			after != nil && [[after objectForKey:NSFilePosixPermissions] unsignedShortValue] == 0640 &&
+			[after objectForKey:NSFileSize] != nil &&
+			[m fileSystemAttributesAtPath:base] != nil &&
+			[[m pathContentOfSymbolicLinkAtPath:link] isEqualToString:@"f.txt"] &&
+			[names containsObject:@"f.txt"] && [names containsObject:@"l"];
+		[m removeItemAtPath:base error:NULL];
+		check("fs-deprecated-doors", okLegacy,
+		      @"the legacy doors answer through the modern ones: attributes (with the traverseLink flag), changeFileAttributes, contents, symlink target, file-system numbers");
+	}
+
+	{
+		/* THE iCLOUD AND GROUP-CONTAINER DOORS, ANSWERED BY THEIR ABSENCE (the coverage slice): no item
+		 * is ubiquitous, no container and no token, and every door that would MOVE or EVICT one answers
+		 * NO with an error. The URL is made through +fileURLWithPath: so no HOST path is hard-named. */
+		NSFileManager *m = [NSFileManager defaultManager];
+		NSURL *anyURL = [NSURL fileURLWithPath:@"/System/Temporary Files"];
+		NSError *pubErr = nil;
+		NSError *downErr = nil;
+		NSError *evictErr = nil;
+		NSError *setErr = nil;
+		NSDate *expiration = nil;
+		BOOL okCloud;
+
+		okCloud = ![m isUbiquitousItemAtURL:anyURL] &&
+			[m URLForUbiquityContainerIdentifier:nil] == nil &&
+			[m URLForUbiquityContainerIdentifier:@"iCloud.com.example"] == nil &&
+			[m ubiquityIdentityToken] == nil &&
+			[m URLForPublishingUbiquitousItemAtURL:anyURL expirationDate:&expiration error:&pubErr] == nil &&
+			expiration == nil && pubErr != nil &&
+			![m startDownloadingUbiquitousItemAtURL:anyURL error:&downErr] && downErr != nil &&
+			![m evictUbiquitousItemAtURL:anyURL error:&evictErr] && evictErr != nil &&
+			![m setUbiquitous:YES itemAtURL:anyURL destinationURL:anyURL error:&setErr] && setErr != nil &&
+			[m containerURLForSecurityApplicationGroupIdentifier:@"group.example"] == nil;
+		check("fs-no-icloud-answers", okCloud,
+		      @"no iCloud here: nothing is ubiquitous, no container, no token, and every item operation answers NO with an error");
+	}
+
 	printf("FOUNDATION-FILEMANAGER RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

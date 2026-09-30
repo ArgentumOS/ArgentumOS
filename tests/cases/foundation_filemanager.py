@@ -60,7 +60,18 @@ The probe is `/System/Shared/tests/foundation_filemanager`, ONE unit, importing 
   * `fs-the-flag-keys-are-published-and-absent` — seven keys this kernel has no substrate for are
                           declared AND left out of the dictionary, because an absent entry is how a
                           file system says it has no such attribute;
-  * `fs-cleanup`         — the tree is gone, which is also the recursive remove's own exercise.
+  * `fs-cleanup`         — the tree is gone, which is also the recursive remove's own exercise;
+  * `fs-file-system-representation` — a path's bytes and the counted read that turns them back;
+  * `fs-url-file-forms`  — the URL doors reduce to the path doors: a directory, a file, a copy, a move,
+                          a hard link, a symlink (whose target reads back), and a recursive remove;
+  * `fs-url-relationship` — the relationship rule in its URL spelling: Contains for a child, Same for
+                          the directory itself;
+  * `fs-user-directory-urls` — `homeDirectoryForCurrentUser`/`temporaryDirectory`/`homeDirectoryForUser:`
+                          name the FSH paths as URLs, and an unknown user is nil;
+  * `fs-deprecated-doors` — the legacy doors answer through the modern ones, including the
+                          `traverseLink:` flag's choice between lstat and stat;
+  * `fs-no-icloud-answers` — no iCloud: nothing is ubiquitous, no container, no token, and every item
+                          operation answers NO with an error.
 
 IT WORKS IN A TREE OF ITS OWN MAKING under `/System/Temporary Files` — this system's temp directory,
 spelled the FSH way — and removes the whole tree at the end AND at the start, because a probe that
@@ -83,7 +94,9 @@ CHECKS = ("fs-default-manager", "fs-create-and-list", "fs-write-and-size", "fs-m
           "fs-display-name-is-the-items-own-name", "fs-components-to-display-are-the-components",
           "fs-the-flag-keys-are-published-and-absent", "fs-cleanup",
           "temporary-directory-is-the-fsh-path", "temporary-directory-exists",
-          "user-directory-functions", "hfs-type-code-round-trip-and-the-refusals")
+          "user-directory-functions", "hfs-type-code-round-trip-and-the-refusals",
+          "fs-file-system-representation", "fs-url-file-forms", "fs-url-relationship",
+          "fs-user-directory-urls", "fs-deprecated-doors", "fs-no-icloud-answers")
 
 
 class Case(BaseCase):
