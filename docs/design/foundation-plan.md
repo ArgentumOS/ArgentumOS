@@ -15824,6 +15824,54 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.24 — `NSString`'S FOUR NORMALIZATION FORMS: THE FIRST SLICE OF THE LEDGER TAIL, AND WHY §63.2 DID NOT BLOCK IT (2026-09-30)
+
+**WHAT LANDED:** `-precomposedStringWithCanonicalMapping`, `-decomposedStringWithCanonicalMapping` and the two
+compatibility forms — Apple's NFC/NFD/NFKC/NFKD. **`property shipped` 1027 → 1031, `property open` 463 → 459**:
+all four are `property` rows in this surface (the ledger files a zero-argument method there), which is why the
+`method` counts did not move — 1842 shipped / 842 open, unchanged.
+
+**THE FIRST SLICE OF THE TAIL WAS CHOSEN FROM A MEASUREMENT, NOT FROM THE FIRST NAME IN THE LIST.** `NSString`
+carries **108** open rows, and grouped by Apple's own doc sections they are 30 deprecated, 16 instance, 9 paths,
+8 encodings, 8 type methods, 6 sizing/drawing, 6 creating, **4 normalizing**, 4 case, 3 finding, 2 line and
+paragraph, 2 linguistic. Normalization was picked because it is **coherent (one Unicode property), small (four
+doors) and measurable** — and because **§63.2's block does not apply to it.** That reconnaissance stopped the
+ENCODING cluster on a converter/repertoire table; a normalizer is not that: `unorm2` is a self-contained
+algorithm over icuuc's data, which libfoundation has linked since F13.6. **THE LINE IS "A TABLE" (take the
+library that has it) VERSUS "A TABLE THIS SYSTEM HAS NO LIBRARY FOR" (refuse)** — and this slice is on the first
+side of it.
+
+**THE IMPLEMENTATION, AND THE THREE THINGS IT IS CAREFUL ABOUT.** (1) **The units are UTF-16, which is what this
+class already speaks**: the input is read with the class's own `-getCharacters:range:` and the answer built with
+its own `+stringWithCharacters:length:`, so nothing is transcoded and no private storage is touched — the FRONT
+cannot see `NSOwnedString`'s ivars and does not need to. (2) **ICU's TWO-CALL CONTRACT IS LOAD-BEARING HERE**:
+the first call measures into a NULL buffer and answers `U_BUFFER_OVERFLOW_ERROR`, which is its *expected* answer
+rather than a failure, because **a normalization can GROW a string** — one composed code point is two units in
+NFD — so a capacity guessed from `-length` would be a guess, and a short buffer is how a normalizer silently
+truncates. (3) **THE BUILD SIDE IS PER FILE**: `FN_FOUNDATION_ICU` is what puts ICU's headers on the include
+path, and it matters on the GUEST only (the host has them by default — the table's own comment says so), so
+`NSString.m` joined the guest list **and** the host list. **AND ITS NEIGHBOUR'S COUNT WAS REMOVED RATHER THAN
+BUMPED**: `mk/60-host.mk` said "six sources include `<unicode/...>`" over a list of seven. A hand-written count
+drifts, and this project has already paid for that lesson once (the family table).
+
+**⚠ AND WRITING IT NAMED A PRE-EXISTING DEFECT, WHICH IS NOT FIXED HERE.** `+stringWithCharacters:length:` — and
+its `+stringWith…` siblings — route with `return [[NSOwnedString alloc] initWithCharacters:…];`, which is **+1**,
+while Apple's contract for a factory whose name begins with neither `alloc`, `new` nor `copy` is **+0**. So every
+call leaks its string. The four doors release the +1 they receive (answering +0, as Apple's do); the router's
+leak belongs to its own unit — a different defect in a different place, and the checks pass either way.
+
+**VERIFICATION.** Host probe: both new checks green — `normalization-canonical-composes-and-decomposes` (U+00E9
+and `e`+U+0301 compose and decompose, each form is a fixed point of itself, ASCII is untouched by all four) and
+`normalization-compatibility-folds-what-canonical-keeps` (the ﬁ ligature folds to "fi" under NFKC/NFKD while
+NFC/NFD keep it — the pair of assertions that makes the answer about **compatibility** rather than about
+normalization in general). **AND THE RUN CARRIED A PRE-EXISTING HOST-ONLY FAILURE THAT IS NOT THIS UNIT'S**:
+`charset-bitmap-and-planes` fails on the host (`planes=1/0`) while **the guest run is clean** — measured rather
+than inferred, because the case asserts `no-fail-lines` and `fail=0` and passed 6/6. The mechanism is plausible
+and unproven (the host links the system ICU, the guest its staged data), so it is named as a host-side condition
+instead of explained. **GUEST:** `TESTS-OK 1/1 case(s), 6/6 check(s)`, and the image builds — which is also the
+proof that the per-file ICU include list reaches this file on the guest side. `make foundation-sweep` exit 0,
+`--check` consistent, `--unimplemented` 0 NEW.
+
 ## §63.23 — A STALE HEADER COMMENT, AND THE FIVE POLICY FINDINGS THAT WERE A SECOND LEDGER'S ROWS (2026-09-30)
 
 **TWO SMALL THINGS, AND THE SECOND ONE REVERSED ITSELF INSIDE THE UNIT — which is the part worth recording.**

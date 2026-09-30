@@ -90,11 +90,12 @@ HOST_RPATH       = -Wl,-rpath,$(CURDIR)/$(HOST_LIBDIR) -Wl,-rpath,$(CURDIR)/$(HO
 # as the host run uses the host's glibc and ICU rather than the guest's musl and staged prefixes.
 HOST_LDFLAGS     = -L$(HOST_LIBDIR) -L$(HOST_OBJCPFX)/lib -lobjc -lcurl -lssl -lcrypto
 
-# THE PER-FILE TABLES THAT STILL MATTER: six sources include <unicode/...>, one includes <zlib.h>,
-# and one is a root class. (The guest block's MRC list is NOT repeated - the whole library is MRC.)
+# THE PER-FILE TABLES THAT STILL MATTER: the sources that include <unicode/...>, one that includes <zlib.h>,
+# and one that is a root class. THE COUNT IS DELIBERATELY NOT WRITTEN HERE (§63.24): the line above said "six
+# sources" and there were already seven. (The guest block's MRC list is NOT repeated - the whole library is MRC.)
 FN_HOST_SRCS     = $(notdir $(wildcard $(FOUNDATION_SRC)/*.m))
 FN_HOST_ICU      = NSCalendar.m NSDateFormatter.m NSNumberFormatter.m NSPredicate.m NSTimeZone.m \
-                   NSCharacterSet.m NSLocale.m
+                   NSCharacterSet.m NSLocale.m NSString.m
 FN_HOST_X11      = NSDataCodec.m
 FN_HOST_ROOT     = NSProxy.m
 FN_HOST_OBJS     = $(addprefix $(HOST_OBJDIR)/,$(FN_HOST_SRCS:.m=.o)) $(HOST_OBJDIR)/plist.o \

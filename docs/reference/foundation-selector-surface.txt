@@ -36,7 +36,7 @@
 #
 # counts by kind:
 #   method     shipped 1842   open  842   struck  244
-#   property   shipped 1027   open  463   struck  146
+#   property   shipped 1031   open  459   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -3187,8 +3187,8 @@ property	open	absolutePath	NSString	Fundamentals / Strings / Working with Paths	
 property	open	availableStringEncodings	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 property	shipped	boolValue	NSString	Fundamentals / Strings / Getting Numeric Values	-	objc
 property	shipped	capitalizedString	NSString	Fundamentals / Strings / Changing Case	-	objc
-property	open	decomposedStringWithCanonicalMapping	NSString	Fundamentals / Strings / Normalizing Strings	-	objc
-property	open	decomposedStringWithCompatibilityMapping	NSString	Fundamentals / Strings / Normalizing Strings	-	objc
+property	shipped	decomposedStringWithCanonicalMapping	NSString	Fundamentals / Strings / Normalizing Strings	-	objc
+property	shipped	decomposedStringWithCompatibilityMapping	NSString	Fundamentals / Strings / Normalizing Strings	-	objc
 property	open	defaultCStringEncoding	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 property	shipped	description	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 property	shipped	doubleValue	NSString	Fundamentals / Strings / Getting Numeric Values	-	objc
@@ -3207,8 +3207,8 @@ property	shipped	longLongValue	NSString	Fundamentals / Strings / Getting Numeric
 property	shipped	lowercaseString	NSString	Fundamentals / Strings / Changing Case	-	objc
 property	shipped	pathComponents	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	pathExtension	NSString	Fundamentals / Strings / Working with Paths	-	objc
-property	open	precomposedStringWithCanonicalMapping	NSString	Fundamentals / Strings / Normalizing Strings	-	objc
-property	open	precomposedStringWithCompatibilityMapping	NSString	Fundamentals / Strings / Normalizing Strings	-	objc
+property	shipped	precomposedStringWithCanonicalMapping	NSString	Fundamentals / Strings / Normalizing Strings	-	objc
+property	shipped	precomposedStringWithCompatibilityMapping	NSString	Fundamentals / Strings / Normalizing Strings	-	objc
 property	open	smallestEncoding	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 property	open	stringByAbbreviatingWithTildeInPath	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	stringByDeletingLastPathComponent	NSString	Fundamentals / Strings / Working with Paths	-	objc

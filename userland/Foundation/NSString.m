@@ -32,6 +32,9 @@
 #import <Foundation/NSCharacterSet.h>
 #import <Foundation/NSLocale.h>
 #import <Foundation/FNTextBreaking.h>
+/* §63.24: THE NORMALIZER. This file joined `FN_FOUNDATION_ICU` because of the four normalization doors below,
+ * and on the GUEST that list is what puts ICU's headers on the include path (the host has them by default). */
+#include <unicode/unorm2.h>
 #import <Foundation/NSValue.h>
 #import <Foundation/NSException.h>
 
@@ -702,7 +705,111 @@ static void fn_line_check_range(NSString *string, NSRange range, SEL cmd)
 	}
 }
 
+/* UNICODE NORMALIZATION (§63.24): APPLE'S FOUR FORMS, AND THEY ARE WHAT PUTS ICU ON THIS FILE'S INCLUDE PATH.
+ *
+ * ICU IS THE ENGINE BECAUSE A NORMALIZER IS A TABLE, and this project's rule for a table is to take the library
+ * that has it. §63.2 drew that line for the ENCODING cluster, which stays blocked on a converter/repertoire
+ * table; NORMALIZATION is not the same case, because `unorm2` is a self-contained algorithm over icuuc's data,
+ * which libfoundation has linked since F13.6 — so the four doors below are real work rather than a refusal.
+ *
+ * THE UNITS ARE UTF-16, WHICH IS WHAT THIS CLASS ALREADY SPEAKS: `-length` and its index doors are code units,
+ * so the input is read with the class's own `-getCharacters:range:` and the answer is built with its own
+ * `+stringWithCharacters:length:`. Nothing is transcoded, and no private storage is touched — the front cannot
+ * see `NSOwnedString`'s ivars and does not need to. */
+typedef enum {
+	FNNormalFormNFC = 0,
+	FNNormalFormNFD,
+	FNNormalFormNFKC,
+	FNNormalFormNFKD
+} FNNormalForm;
+
+static const UNormalizer2 *fn_normalizer_for(FNNormalForm form)
+{
+	UErrorCode status = U_ZERO_ERROR;
+	const UNormalizer2 *normalizer;
+
+	switch (form) {
+	case FNNormalFormNFD:  normalizer = unorm2_getNFDInstance(&status); break;
+	case FNNormalFormNFKC: normalizer = unorm2_getNFKCInstance(&status); break;
+	case FNNormalFormNFKD: normalizer = unorm2_getNFKDInstance(&status); break;
+	default:               normalizer = unorm2_getNFCInstance(&status); break;
+	}
+	return U_SUCCESS(status) ? normalizer : NULL;
+}
+
+/* `FNNormalFormNFC` IS THE DEFAULT ARM above on purpose: NFC is the form a caller is most likely to want, and a
+ * typo in a caller would land there rather than on an undefined normalizer. */
+static NSString *fn_normalized(NSString *source, FNNormalForm form)
+{
+	NSUInteger length = [source length];
+	const UNormalizer2 *normalizer;
+	UErrorCode status = U_ZERO_ERROR;
+	unichar *in, *out;
+	int32_t needed;
+	NSString *result;
+
+	normalizer = fn_normalizer_for(form);
+	if (normalizer == NULL || length == 0) {
+		/* NOTHING TO DO, OR ICU CANNOT ANSWER AT ALL: a normalization that cannot run leaves the string as it
+		 * is. The empty string needs no walk and ICU would answer it one call later, so it short-circuits. */
+		return source;
+	}
+	in = (unichar *)malloc(length * sizeof(unichar));
+	if (in == NULL) {
+		return source;
+	}
+	[source getCharacters:in range:NSMakeRange(0, length)];
+	/* TWO CALLS, ICU'S OWN CONTRACT, BECAUSE A NORMALIZATION CAN GROW THE STRING: one composed code point is
+	 * two units in NFD, so a capacity guessed from `length` would be a guess — and a short buffer here is how a
+	 * normalizer silently truncates. The first call measures (into NULL) and U_BUFFER_OVERFLOW_ERROR is its
+	 * expected answer, not a failure. */
+	needed = unorm2_normalize(normalizer, (const UChar *)in, (int32_t)length, NULL, 0, &status);
+	if (status != U_BUFFER_OVERFLOW_ERROR && U_FAILURE(status)) {
+		free(in);
+		return source;
+	}
+	status = U_ZERO_ERROR;
+	out = (unichar *)malloc(((size_t)needed + 1) * sizeof(unichar));
+	if (out == NULL) {
+		free(in);
+		return source;
+	}
+	unorm2_normalize(normalizer, (const UChar *)in, (int32_t)length, (UChar *)out, needed + 1, &status);
+	free(in);
+	if (U_FAILURE(status)) {
+		free(out);
+		return source;
+	}
+	/* THE CONSTRUCTOR COPIES (which is why the NoCopy door exists), so the buffer is freed the moment it
+	 * returns; the +1 it hands back is released here, and these four answer +0 exactly as Apple's do. */
+	result = [NSString stringWithCharacters:out length:(NSUInteger)needed];
+	free(out);
+	return [result autorelease];
+}
+
 @implementation NSString
+
+/* UNICODE NORMALIZATION (§63.24). THE FOUR ARE TWO AXES — canonical vs COMPATIBILITY (which also folds the
+ * ligatures and the like) and composed vs DECOMPOSED — and each door is one line over the engine above. */
+- (NSString *)precomposedStringWithCanonicalMapping
+{
+	return fn_normalized(self, FNNormalFormNFC);
+}
+
+- (NSString *)decomposedStringWithCanonicalMapping
+{
+	return fn_normalized(self, FNNormalFormNFD);
+}
+
+- (NSString *)precomposedStringWithCompatibilityMapping
+{
+	return fn_normalized(self, FNNormalFormNFKC);
+}
+
+- (NSString *)decomposedStringWithCompatibilityMapping
+{
+	return fn_normalized(self, FNNormalFormNFKD);
+}
 
 /* THE NSCoding DOORS (§63.22). IMPLEMENTED ON THIS FRONT, because the front is where this family's routing
  * lives and `NSOwnedString` — its subclass — inherits both. THE PAYLOAD IS THE CLASS'S OWN UTF-8 FORM, which is

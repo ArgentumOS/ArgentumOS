@@ -1499,6 +1499,40 @@ NULL
 		      "the same bounds rule as the index door, on the range this time");
 	}
 
+	{
+		/* UNICODE NORMALIZATION (§63.24): THE TWO AXES, MEASURED ON MEANING RATHER THAN ON LENGTHS ALONE.
+		 * "café" is written twice below — `\u00e9` (ONE code point, composed) and `e`+`\u0301` (two,
+		 * decomposed) — because those are the SAME TEXT in different units. A door that did nothing would pass a
+		 * length test on either one and fail the equality between them, which is why the equality is here. */
+		NSString *composed = @"caf\u00e9";
+		NSString *decomposed = @"cafe\u0301";
+		NSString *ligature = @"\ufb01";			/* the ﬁ LIGATURE (U+FB01) */
+		NSString *nfc = [decomposed precomposedStringWithCanonicalMapping];
+		NSString *nfd = [composed decomposedStringWithCanonicalMapping];
+		NSString *nfkc = [ligature precomposedStringWithCompatibilityMapping];
+		NSString *nfkd = [ligature decomposedStringWithCompatibilityMapping];
+
+		check("normalization-canonical-composes-and-decomposes",
+		      [nfc isEqualToString:composed] && [nfc length] == 4 &&
+		      [nfd isEqualToString:decomposed] && [nfd length] == 5 &&
+		      /* A FIXED POINT IS THE PROPERTY, not a coincidence: normalizing an already-normal string is the
+		       * identity, and that is what puts the two forms in two equivalence classes. */
+		      [[nfc precomposedStringWithCanonicalMapping] isEqualToString:nfc] &&
+		      [[nfd decomposedStringWithCanonicalMapping] isEqualToString:nfd] &&
+		      /* ASCII IS A FIXED POINT OF ALL FOUR — the cheapest invariant there is. */
+		      [@"plain ASCII" isEqualToString:[@"plain ASCII" precomposedStringWithCanonicalMapping]] &&
+		      [@"plain ASCII" isEqualToString:[@"plain ASCII" decomposedStringWithCanonicalMapping]],
+		      "U+00E9 and e+U+0301 compose/decompose, a normalized string is a fixed point of its own form, and ASCII is untouched");
+
+		check("normalization-compatibility-folds-what-canonical-keeps",
+		      [nfkc isEqualToString:@"fi"] && [nfkd isEqualToString:@"fi"] && [nfkc length] == 2 &&
+		      /* AND THE CANONICAL PAIR LEAVES THE SAME LIGATURE ALONE: this pair of assertions is what makes the
+		       * answer about COMPATIBILITY rather than about normalization in general. */
+		      [[ligature precomposedStringWithCanonicalMapping] isEqualToString:ligature] &&
+		      [[ligature decomposedStringWithCanonicalMapping] isEqualToString:ligature],
+		      "the fi ligature folds to \"fi\" under NFKC/NFKD while NFC/NFD keep it — the axis that separates the two pairs");
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

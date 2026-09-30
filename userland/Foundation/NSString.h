@@ -189,6 +189,17 @@ typedef enum {
 - (void)encodeWithCoder:(NSCoder *)coder;
 - (instancetype)initWithCoder:(NSCoder *)coder;
 
+/* UNICODE NORMALIZATION (§63.24) — APPLE'S FOUR FORMS, AND THE REASON THIS CLASS NEEDS ICU. A normalizer is a
+ * TABLE, and this project's rule for a table is to take the library that has it: ICU is already linked (F13.6),
+ * and §63.2's line — the ENCODING cluster stays blocked on a converter/repertoire table — does not apply here,
+ * because `unorm2` is a self-contained algorithm over icuuc's data. THE FOUR ARE THE TWO AXES: canonical vs
+ * COMPATIBILITY (the second also folds the ligatures and the like, which is the difference a check can see),
+ * and composed vs DECOMPOSED. */
+- (NSString *)precomposedStringWithCanonicalMapping;		/* NFC */
+- (NSString *)decomposedStringWithCanonicalMapping;		/* NFD */
+- (NSString *)precomposedStringWithCompatibilityMapping;	/* NFKC */
+- (NSString *)decomposedStringWithCompatibilityMapping;		/* NFKD */
+
 /* Creation. The `init` family returns +1, as ARC decides BY NAME. */
 + (id)string;
 + (id)stringWithString:(NSString *)other;

@@ -73,6 +73,9 @@ CHECKS = (
           "composed-sequences-range-grows-forward-over-the-marks",
           "composed-sequences-empty-range-is-the-sequence-at-its-location",
           "composed-sequence-index-past-the-end-raises", "composed-sequences-range-past-the-end-raises",
+          # §63.24: Unicode normalization — Apple's four forms, measured on meaning rather than on lengths.
+          "normalization-canonical-composes-and-decomposes",
+          "normalization-compatibility-folds-what-canonical-keeps",
           )
 
 
