@@ -1106,7 +1106,12 @@ def derive_parameterized():
 
 
 def check_parameterized(policy, members, parents):
-    """Both halves of the clause. Answers the number of findings; they land in the POLICY bucket.
+    """Both halves of the clause. Answers the number of findings; they land in the FATAL bucket.
+
+    PROMOTED BY M10 (2026-09-29), and the promotion was earned rather than assumed: M1-M9 closed the clause's
+    findings to ZERO, and `make foundation-sweep` now fails on any NEW one. Before that the findings went to the
+    POLICY bucket, which prints and only fails under --strict, because a hard failure on planned work would have
+    blocked every build.
 
     `members`/`parents` come from _declared_types() and are what tells "we ship this method, plain"
     apart from "we do not ship it at all" — the distinction the FIRST version of this function got
@@ -1177,14 +1182,14 @@ def check_selectors(strict=False):
         if claimed != got:
             bad.append("STALE COUNT BLOCK     %-8s the header claims shipped/open/struck %s and the rows are "
                        "%s — fix: tools/foundation-sweep.py --refresh" % (hkind, claimed, got))
-    findings = check_parameterized(policy, members, parents)
+    findings = check_parameterized(bad, members, parents)   # M10: FATAL, not report-only
     print("foundation-sweep: %d selectors in the ledger" % len(rows))
     for kind in sorted({k for k, _ in counts}):
         print("  %-10s shipped %4d   open %4d   struck %4d" % (
             kind, counts.get((kind, STATUS_SHIPPED), 0),
             counts.get((kind, STATUS_OPEN), 0), counts.get((kind, STATUS_STRUCK), 0)))
     if findings:
-        print("  parameterization  %4d finding(s)   the surface rule §11.0 / D-C4-D-C5 — fatal under "
+        print("  parameterization  %4d finding(s)   the surface rule §11.0 / D-C4-D-C5 — FATAL since M10 "
               "--strict" % findings)
     if policy:
         print("\n%d POLICY FINDING(S) in the selector ledger — API this ledger STRIKES that we declare, "

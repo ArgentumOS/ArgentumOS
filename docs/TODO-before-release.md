@@ -565,3 +565,20 @@ never read the output of looks like one too. Both times the answer was already p
 `-[FNLegacyMapTable UTF8String] is not implemented`, once as a missing method in a grep. **Read what the guest
 says, and check the file after an edit script runs.**
 
+**M10 IS DONE AND THE CLUSTERS PLAN IS COMPLETE (M0-M10), 2026-09-29.** The last step was the promotion, and it is
+worth recording HOW it was made rather than only what changed: `check_parameterized` now appends to the `bad`
+bucket, so `make foundation-sweep` fails on a new parameterization finding instead of printing it. **THE GATE WAS
+PROVEN BY MAKING IT FAIL** - clean tree exits 0, one parameter stripped exits 1 naming
+`PARAMETERIZATION NSArray -indexOfObject:inRange: Apple declares ObjectType; this tree declares NONE`, restored
+exits 0. A gate never shown to fail is not yet a gate, and this plan has recorded enough instruments that read clean
+while blind to take that seriously.
+
+THE CLAUSE'S FINDINGS, END TO END: **48** when it was introduced, **151** after the instrument bugs were fixed and
+it could finally see, **21** when M7 began, and **0** now. The last 15 were closed by giving seventeen declarations
+across NSArray.h and NSOrderedCollectionDifference.h the parameters Apple's reference data names.
+
+AND M10'S OTHER ITEMS, EACH ANSWERED RATHER THAN ASSUMED: `--unimplemented` 0 NEW (1 baselined, unchanged); the
+`-class`-comparison sweep found nothing that moved silently - the only class-equality comparisons in the library are
+NSNumber's against its private concrete classes, correct by D-C2, and NSURLProtocol's against itself; and the
+declarations are re-verified mechanically, by the clause, against the reference data (zero findings).
+
