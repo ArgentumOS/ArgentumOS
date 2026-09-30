@@ -28,9 +28,14 @@
  * disagree — and `fn_value_size` was that walker's OLD NAME (it is `fn_measure` now). A header that denies a
  * function its own implementation ships is exactly the kind of sentence a reader has no reason to doubt.
  *
- * THE GEOMETRY EXTENSIONS ARE ABSENT BY NAME: +valueWithPoint:/+valueWithSize:/+valueWithRect: are
- * declared in Cocoa's NSValue.h, and this library has no NSPoint/NSSize/NSRect to build them from
- * (the UI layer's Point/Size/Rect are its own types). NSRange, which IS here, is supported.
+ * THE FOUNDATION-GEOMETRY DOORS SHIP HERE, AND THIS COMMENT USED TO DENY THEM. It read
+ * "+valueWithPoint:/+valueWithSize:/+valueWithRect: are declared in Cocoa's NSValue.h, and this library has no
+ * NSPoint/NSSize/NSRect to build them from" — and THAT was FALSE the day it was written: NSGeometry.h (W2b)
+ * has typedef'd NSPoint/NSSize/NSRect to the CG value types since the CG types landed (NSGeometry.h:40-42,
+ * with NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES at :44), so the types these three doors name are in the tree.
+ * It is the SAME defect corrected two paragraphs up for NSGetSizeAndAlignment (§63.23) — a header denying what
+ * the tree ships, in a sentence a reader has no reason to doubt — and the doors are declared below. NSRange,
+ * which was already here, stays supported.
  */
 
 #ifndef FOUNDATION_NSVALUE_H
@@ -42,6 +47,18 @@
  * nullability region is refused by the compiler, because the imported header's declarations would be dragged
  * into somebody else's region. */
 #import <Foundation/NSCoding.h>
+/* FOR THE SIX FOUNDATION-GEOMETRY DOORS (NSPoint/NSSize/NSRect), and ABOVE THE ASSUME-NONNULL REGION for the same
+ * reason as NSCoding just above: a `#import` inside a nullability region is refused by the compiler, because the
+ * imported header's own declarations would be dragged into this file's region. This is what makes the three
+ * +valueWith…: doors and their three readers declarable at all — the types they name are NSGeometry.h's, and
+ * (NSGeometry.h:44) those ARE the CG value types. */
+#import <Foundation/NSGeometry.h>
+/* FOR THE COREGRAPHICS-GEOMETRY DOORS (CGPoint/CGSize/CGRect/CGVector and CGAffineTransform), also ABOVE the
+ * region. CGGeometry.h is reached through NSGeometry.h already, but it is named here for the same reason the
+ * implementation names its imports: a reader should not have to follow a typedef to learn why a name is in
+ * scope. */
+#import <CoreGraphics/CGGeometry.h>
+#import <CoreGraphics/CGAffineTransform.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -77,11 +94,49 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)encodeWithCoder:(NSCoder *)coder;
 - (instancetype)initWithCoder:(NSCoder *)coder;
 
+/* THE INSTANCE SPELLING OF THE RAW-BYTES DOOR, beside its class twin below: Apple offers
+ * -initWithBytes:objCType: as the designated initializer, and both it and +valueWithBytes:objCType: funnel
+ * through the same private -fnInitWithBytes:, so the two cannot diverge. */
+- (instancetype)initWithBytes:(const void *)value objCType:(const char *)type;
+
 + (NSValue *)valueWithBytes:(const void *)value objCType:(const char *)type;
 /* The older spelling, still present in Cocoa's header, so it is here too. */
 + (NSValue *)value:(const void *)value withObjCType:(const char *)type;
 + (NSValue *)valueWithPointer:(nullable const void *)pointer;
+/* A BORROWED reference: Apple documents this door as equivalent to +value:withObjCType: over
+ * @encode(void *), so the box keeps NO claim on the object — it holds the address and neither retains nor
+ * releases (the implementation states the full contract). */
++ (NSValue *)valueWithNonretainedObject:(nullable id)anObject;
 + (NSValue *)valueWithRange:(NSRange)range;
+
+/* THE FOUNDATION-GEOMETRY DOORS, in Cocoa's shape: the type IS the encoding — @encode(NSPoint) is
+ * "{CGPoint=dd}" because NSGeometry.h makes NSPoint a typedef of CGPoint — so each door is +valueWithRange:'s
+ * shape over its struct, and each reader (below) is the range reader's shape over the same private primitive. */
++ (NSValue *)valueWithPoint:(NSPoint)point;
++ (NSValue *)valueWithSize:(NSSize)size;
++ (NSValue *)valueWithRect:(NSRect)rect;
+
+/* THE COREGRAPHICS-GEOMETRY DOORS, the same shape again: the CG structs are Apple's published value types
+ * (userland/CoreGraphics/), so each door is +valueWithRange:'s shape over its struct and each reader below is
+ * the range reader's shape. @encode(CGPoint) is "{CGPoint=dd}"; @encode(CGAffineTransform) is the six doubles
+ * of the 3x2 matrix. */
++ (NSValue *)valueWithCGPoint:(CGPoint)point;
++ (NSValue *)valueWithCGSize:(CGSize)size;
++ (NSValue *)valueWithCGRect:(CGRect)rect;
++ (NSValue *)valueWithCGVector:(CGVector)vector;
++ (NSValue *)valueWithCGAffineTransform:(CGAffineTransform)transform;
+
+/* THE EDGE-INSETS DOOR — the boxed type is `NSEdgeInsets`, NOT UIKit's `UIEdgeInsets`. Apple's own
+ * documentation gives the Swift spelling init(edgeInsets: NSEdgeInsets), and the UIKit spelling is a
+ * DIFFERENT selector (+valueWithUIEdgeInsets:); this tree is macOS-shaped, ships `NSEdgeInsets`
+ * (NSGeometry.h:48-53), and does not ship `UIEdgeInsets`.
+ *
+ *   ⚠ ENCODING DEVIATION, recorded where a reader meets it: @encode(NSEdgeInsets) HERE is
+ *   "{_NSEdgeInsets=dddd}" because NSGeometry.h tags the struct `_NSEdgeInsets`, while Apple's tag is
+ *   `NSEdgeInsets` — its encoding is "{NSEdgeInsets=dddd}". The LAYOUT is identical (four CGFloat, 32 bytes)
+ *   but -objCType EXPOSES the string, so a value boxed here differs from Apple's in that string and in
+ *   -isEqualToValue: against an Apple-built one. Retagging the struct is NSGeometry.h's, not this file's. */
++ (NSValue *)valueWithEdgeInsets:(NSEdgeInsets)insets;
 
 - (void)getValue:(void *)value;
 /* Copies at most `size` bytes, and the encoding must fit: Cocoa's own door, for a caller with a
@@ -90,7 +145,18 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (const char *)objCType;
 - (nullable void *)pointerValue;
+/* The BORROWED object back — a +0 reference, so ownership never moves to the caller. */
+- (nullable id)nonretainedObjectValue;
 - (NSRange)rangeValue;
+- (NSPoint)pointValue;
+- (NSSize)sizeValue;
+- (NSRect)rectValue;
+- (CGPoint)CGPointValue;
+- (CGSize)CGSizeValue;
+- (CGRect)CGRectValue;
+- (CGVector)CGVectorValue;
+- (CGAffineTransform)CGAffineTransformValue;
+- (NSEdgeInsets)edgeInsetsValue;
 
 - (BOOL)isEqualToValue:(NSValue *)value;
 - (BOOL)isEqual:(nullable id)other;

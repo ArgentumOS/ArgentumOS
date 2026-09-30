@@ -19,6 +19,20 @@ has to be checked against the suite first.
                                     apart, because `-getValue:` copies back what it was told;
   * `value-pointer`               — an address stored BY VALUE and handed back equal;
   * `value-range`                 — `NSRange` support and Cocoa's readable `NSRange: {2, 5}` text;
+  * `value-point` / `value-size` / `value-rect` — the three FOUNDATION-GEOMETRY boxes, each built by its own
+                                    door and read back by its own reader over the payload primitive; the point
+                                    is additionally compared against a box made with the CG spelling, because
+                                    `NSPoint` and `CGPoint` are one type here (`@encode` proves it);
+  * `value-cgpoint` / `value-cgsize` / `value-cgrect` / `value-cgvector` / `value-cgaffinetransform` — the
+                                    five COREGRAPHICS-geometry boxes, each read back through its own reader with
+                                    its encoding checked (the CGPoint also against the Foundation spelling);
+  * `value-edge-insets`           — `NSEdgeInsets` boxed and read back; the encoding asserted is this tree's
+                                    `@encode(NSEdgeInsets)` (`"{_NSEdgeInsets=dddd}"`, a struct-tag deviation
+                                    from Apple's `"{NSEdgeInsets=dddd}"` — same layout, different string);
+  * `value-nonretained-object`    — a BORROWED object: `-objCType` is `"^v"`, `-pointerValue` is the same
+                                    address, and `-nonretainedObjectValue` hands the SAME object back;
+  * `value-init-with-bytes`       — the instance spelling `-initWithBytes:objCType:` agrees with
+                                    `+valueWithBytes:objCType:`;
   * `value-in-a-container`        — two equal boxes collapse to ONE member of an `NSSet`, which is
                                     the `-hash`/`-isEqual:` contract working, plus `-copy` being
                                     the box itself;
@@ -33,7 +47,11 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_nsvalue"
 CHECKS = ("value-bytes-roundtrip", "value-copies-exactly-its-size", "value-pointer",
-          "value-range", "value-in-a-container", "null-is-one-object",
+          "value-range", "value-point", "value-size", "value-rect",
+          "value-cgpoint", "value-cgsize", "value-cgrect", "value-cgvector",
+          "value-cgaffinetransform", "value-edge-insets", "value-nonretained-object",
+          "value-init-with-bytes",
+          "value-in-a-container", "null-is-one-object",
           "null-holds-a-place-in-a-collection")
 
 

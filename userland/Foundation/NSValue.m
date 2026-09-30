@@ -7,8 +7,8 @@
  *
  * THE ONE PIECE OF REAL WORK IS THE SIZE. Cocoa's +valueWithBytes:objCType: takes a buffer and an
  * encoding and no length, because Foundation there can ask NSGetSizeAndAlignment — which THIS
- * library now answers too (the implementation is at the end of this file). This library has
- * no such function, so `fn_measure` WALKS the encoding — scalars, pointers, objects, C arrays and
+ * library answers too (the implementation is at the end of this file, on `fn_measure` itself). So
+ * `fn_measure` WALKS the encoding — scalars, pointers, objects, C arrays and
  * structs/unions, RECURSIVELY, with C's own alignment rules — and raises on anything it cannot size
  * rather than guessing a length. Guessing a length is how a box silently reads past a caller's
  * structure.
@@ -230,6 +230,15 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
 	return [NSValue class];
 }
 
+/* THE INSTANCE SPELLING OF THE RAW-BYTES DOOR. Apple offers -initWithBytes:objCType: as the designated
+ * initializer, so it is the door the class methods COULD be written over; here both go through the same private
+ * -fnInitWithBytes: (which performs -[super init] and owns the copied encoding), so the two spellings cannot
+ * diverge on size, alignment, or the ownership of the type string. */
+- (instancetype)initWithBytes:(const void *)value objCType:(const char *)type
+{
+	return [self fnInitWithBytes:value objCType:type];
+}
+
 + (NSValue *)valueWithBytes:(const void *)value objCType:(const char *)type
 {
 	return [[self alloc] fnInitWithBytes:value objCType:type];
@@ -249,9 +258,79 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
 	return [[self alloc] fnInitWithBytes:&held objCType:@encode(void *)];
 }
 
++ (NSValue *)valueWithNonretainedObject:(nullable id)anObject
+{
+	void *held = (void *)anObject;
+
+	/* BORROWED, BY CONTRACT — the name is the promise. Apple's own documentation defines this door as
+	 * EXACTLY `[NSValue value:&anObject withObjCType:@encode(void *)]`, so the box holds the object's
+	 * ADDRESS as a plain `void *` and keeps NO claim on the object: it does not retain it (nothing here
+	 * touches a reference), and it does not release it on -dealloc. That is why -objCType answers "^v"
+	 * and not "@", and why the object may be deallocated while the box still lives — the caller owns
+	 * that risk, which is what "nonretained" says. */
+	return [[self alloc] fnInitWithBytes:&held objCType:@encode(void *)];
+}
+
 + (NSValue *)valueWithRange:(NSRange)range
 {
 	return [[self alloc] fnInitWithBytes:&range objCType:@encode(NSRange)];
+}
+
+/* THE FOUNDATION-GEOMETRY BOXES, in the SAME shape as +valueWithRange: above: the struct is copied in
+ * by the private funnel, and its size and field layout come from the encoding. @encode(NSPoint) is the
+ * CG encoding "{CGPoint=dd}", because NSGeometry.h:44 makes NSPoint a typedef of CGPoint — one type,
+ * two spellings, which is why these boxes need nothing new here. */
++ (NSValue *)valueWithPoint:(NSPoint)point
+{
+	return [[self alloc] fnInitWithBytes:&point objCType:@encode(NSPoint)];
+}
+
++ (NSValue *)valueWithSize:(NSSize)size
+{
+	return [[self alloc] fnInitWithBytes:&size objCType:@encode(NSSize)];
+}
+
++ (NSValue *)valueWithRect:(NSRect)rect
+{
+	return [[self alloc] fnInitWithBytes:&rect objCType:@encode(NSRect)];
+}
+
+/* THE COREGRAPHICS-GEOMETRY BOXES, the same shape once more: the CG structs are the published value types
+ * (their encodings are "{CGPoint=dd}" … "{CGAffineTransform=dddddd}"), so each door copies the struct in
+ * through the private funnel and reads nothing out of it. */
++ (NSValue *)valueWithCGPoint:(CGPoint)point
+{
+	return [[self alloc] fnInitWithBytes:&point objCType:@encode(CGPoint)];
+}
+
++ (NSValue *)valueWithCGSize:(CGSize)size
+{
+	return [[self alloc] fnInitWithBytes:&size objCType:@encode(CGSize)];
+}
+
++ (NSValue *)valueWithCGRect:(CGRect)rect
+{
+	return [[self alloc] fnInitWithBytes:&rect objCType:@encode(CGRect)];
+}
+
++ (NSValue *)valueWithCGVector:(CGVector)vector
+{
+	return [[self alloc] fnInitWithBytes:&vector objCType:@encode(CGVector)];
+}
+
++ (NSValue *)valueWithCGAffineTransform:(CGAffineTransform)transform
+{
+	return [[self alloc] fnInitWithBytes:&transform objCType:@encode(CGAffineTransform)];
+}
+
+/* THE EDGE-INSETS BOX over `NSEdgeInsets` — the type this tree has (the UIKit spelling is a different
+ * SELECTOR, +valueWithUIEdgeInsets:). ⚠ THE ENCODING IT STORES IS "{_NSEdgeInsets=dddd}", NOT Apple's
+ * "{NSEdgeInsets=dddd}": the layout is identical (four CGFloat, 32 bytes) but NSGeometry.h tags the struct
+ * `_NSEdgeInsets`, and a caller reads that string back through -objCType (and compares it in -isEqualToValue:).
+ * Recorded here and left in place — retagging the struct is NSGeometry.h's, not this file's. */
++ (NSValue *)valueWithEdgeInsets:(NSEdgeInsets)insets
+{
+	return [[self alloc] fnInitWithBytes:&insets objCType:@encode(NSEdgeInsets)];
 }
 
 - (instancetype)fnInitWithBytes:(const void *)value objCType:(const char *)type
@@ -331,6 +410,65 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
 - (NSRange)rangeValue
 {
 	return *((NSRange *)[self fnBytes]);
+}
+
+/* THE THREE GEOMETRY READERS, over the SAME private primitive the range reader uses (-fnBytes), so a class
+ * that holds its payload differently is correct through these too (§C.3's contract, pinned by
+ * foundation_clusters.m:598). The cast names the struct the encoding describes; the bytes were copied in at
+ * full size by the funnel, so the dereference reads no more than was boxed. */
+- (NSPoint)pointValue
+{
+	return *((NSPoint *)[self fnBytes]);
+}
+
+- (NSSize)sizeValue
+{
+	return *((NSSize *)[self fnBytes]);
+}
+
+- (NSRect)rectValue
+{
+	return *((NSRect *)[self fnBytes]);
+}
+
+/* THE COREGRAPHICS-GEOMETRY READERS and the edge-insets reader, the same shape as the three above: each casts
+ * the private payload to the struct its door's encoding names. */
+- (CGPoint)CGPointValue
+{
+	return *((CGPoint *)[self fnBytes]);
+}
+
+- (CGSize)CGSizeValue
+{
+	return *((CGSize *)[self fnBytes]);
+}
+
+- (CGRect)CGRectValue
+{
+	return *((CGRect *)[self fnBytes]);
+}
+
+- (CGVector)CGVectorValue
+{
+	return *((CGVector *)[self fnBytes]);
+}
+
+- (CGAffineTransform)CGAffineTransformValue
+{
+	return *((CGAffineTransform *)[self fnBytes]);
+}
+
+- (NSEdgeInsets)edgeInsetsValue
+{
+	return *((NSEdgeInsets *)[self fnBytes]);
+}
+
+/* THE NON-RETAINED READER. The stored ADDRESS comes back as a +0 reference — no retain, no autorelease — so
+ * ownership of the object never moves to the caller, the other half of -valueWithNonretainedObject:'s
+ * contract. The bytes hold a plain pointer, so this is the object-id view of the same ^v the box stores. */
+- (nullable id)nonretainedObjectValue
+{
+	return *((id *)[self fnBytes]);
 }
 
 - (BOOL)isEqualToValue:(NSValue *)value
