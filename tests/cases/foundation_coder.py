@@ -27,11 +27,17 @@ importing only `<Foundation/Foundation.h>`.
   * `coder-base-raises`            — the abstract `NSCoder`'s doors raise rather than answering a zero
                                      that looks like data.
 
+THE LAST GROUP MEASURES THE DOORS THE SECURE-CODING WORK ADDED: the type-checked object doors
+(`-decodeObjectOfClass:forKey:` and its collection/dictionary siblings) and their refusal; the
+decode-error surface (`-decodingFailurePolicy`/`-error`, and the `-decodeTopLevelObject...error:`
+family); the enforced secure-coding gate (`-requiresSecureCoding`, which is what `NSCoding.h` used to
+say the unarchiver did not yet perform); the fixed-width integers; and the conditional door.
+
 THE ONE DEPARTURE FROM COCOA, named because it is the only one: a reference is `{"$ref": n}` rather
 than Cocoa's `UID` property-list type, which this library's plist reader and writer cannot express.
 The TABLE structure is Cocoa's. An archive written here is readable here and is NOT byte-compatible
-with Cocoa's. Also absent, and named in the headers: `NSSecureCoding`, class-name substitution,
-delegates, and the codec's non-keyed doors.
+with Cocoa's. Still absent, and named in the headers: class-name substitution and the codec's
+non-keyed (sequential) doors.
 """
 
 import re
@@ -50,7 +56,12 @@ CHECKS = ("coder-round-trip-scalars", "coder-round-trip-collections", "coder-rou
           # §63.22: the value types' OWN doors, driven directly with a coder (the archiver writes these
           # classes inline, so -encodeObject: never calls them) — and the two doors that shipped with no
           # check at all until this unit: NSDate's and NSData's.
-          "the-four-value-type-doors-round-trip", "the-date-and-data-doors-round-trip")
+          "the-four-value-type-doors-round-trip", "the-date-and-data-doors-round-trip",
+          # the type-checked object doors, the fixed-width integers, the decode-error surface, the
+          # secure-coding gate, and the conditional door
+          "coder-typed-object-doors", "coder-typed-object-door-refusal",
+          "coder-decode-failure-policy", "coder-top-level-error-door", "coder-top-level-root-door",
+          "coder-collection-class-doors", "coder-secure-coding-gate", "coder-conditional-object")
 
 
 class Case(BaseCase):

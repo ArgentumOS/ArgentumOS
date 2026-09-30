@@ -38,6 +38,7 @@
 #import <Foundation/NSDate.h>
 #import <Foundation/NSNumber.h>
 #import <Foundation/NSNull.h>
+#import <Foundation/NSError.h>
 #import <Foundation/NSException.h>
 #import <Foundation/FNKeyedWire.h>	/* the collection payload keys, shared with the collections (§63.10) */
 #import <objc/runtime.h>
@@ -108,6 +109,42 @@ static BOOL fn_is_value_type(id object)
 
 /* THE KEY THE ROOT OBJECT IS STORED UNDER (§62.103). */
 NSString * const NSKeyedArchiveRootObjectKey = @"NSKeyedArchiveRootObjectKey";
+
+/* THE ROOT'S ACTUAL KEY, which is a LITERAL and not `NSKeyedArchiveRootObjectKey` above: the class-method
+ * flow writes its root under "root" (`+archivedDataWithRootObject:`), and the reader's root door must
+ * read the same one. The fixed constant and this key do not agree, which is Cocoa's own inconsistency
+ * and not a mistake to paper over here. */
+static NSString *const kRootKey = @"root";
+
+/* An NSError for the top-level doors, in the domain Apple uses for coder failures. `description` is the
+ * human half; the code is one of this library's NSCoder* codes. */
+static NSError *fn_decode_error(NSInteger code, NSString *description)
+{
+	return [NSError errorWithDomain:NSCocoaErrorDomain
+				   code:code
+			       userInfo:description != nil
+				      ? @{ NSLocalizedDescriptionKey : description } : nil];
+}
+
+/* IS THE VALUE ONE OF THESE CLASSES? `classes == nil` is "no list was given", which this library reads
+ * as no restriction — a caller who wanted one named one. The list is walked rather than asked with
+ * `-containsObject:`, because a Class object is not equal to its instances. */
+static BOOL fn_value_is_allowed(id value, NSSet *classes)
+{
+	NSArray *list;
+	NSUInteger i;
+
+	if (classes == nil) {
+		return YES;
+	}
+	list = [classes allObjects];
+	for (i = 0; i < [list count]; i++) {
+		if ([value isKindOfClass:(Class)[list objectAtIndex:i]]) {
+			return YES;
+		}
+	}
+	return NO;
+}
 
 @implementation NSKeyedArchiver
 
@@ -391,6 +428,49 @@ NSString * const NSKeyedArchiveRootObjectKey = @"NSKeyedArchiveRootObjectKey";
 	[self encodeObject:data forKey:key];
 }
 
+- (BOOL)allowsKeyedCoding
+{
+	return YES;	/* this IS the keyed family */
+}
+
+- (void)encodeInt32:(int32_t)value forKey:(NSString *)key
+{
+	/* THE WIDTH TRAVELS AS THE NSNumber'S TYPE, which is what lets -decodeInt32ForKey: keep it. */
+	[self encodeObject:[NSNumber numberWithInt:(int)value] forKey:key];
+}
+
+- (void)encodeInt64:(int64_t)value forKey:(NSString *)key
+{
+	[self encodeObject:[NSNumber numberWithLongLong:(long long)value] forKey:key];
+}
+
+- (void)encodeConditionalObject:(nullable id)object forKey:(NSString *)key
+{
+	NSUInteger i;
+
+	/* CONDITIONAL MEANS "ONLY IF IT IS ALREADY HERE": the object is written as a reference when the memo
+	 * already holds it (someone else reached it first) and as nil when it does not — so a class may point
+	 * at its owner or delegate WITHOUT dragging it into the archive. A nil object is the ordinary nil,
+	 * which is a value here; a VALUE type has no identity to condition on and is written inline anyway. */
+	if (key == nil) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSKeyedArchiver: -encodeConditionalObject:forKey: needs a key"];
+	}
+	if (object == nil || fn_is_value_type(object)) {
+		[self encodeObject:object forKey:key];
+		return;
+	}
+	for (i = 0; i < [_memo count]; i++) {
+		FNMemo *held = [_memo objectAtIndex:i];
+
+		if (held->_object == object) {
+			[self encodeObject:object forKey:key];	/* a reference to the entry that exists */
+			return;
+		}
+	}
+	[self encodeObject:nil forKey:key];	/* not yet encoded: nothing is written */
+}
+
 - (void)finishEncoding
 {
 	/* THE TWO HALVES OF THE END: the delegate is told BEFORE the archive is closed — which is the window in
@@ -638,6 +718,19 @@ NSString * const NSKeyedArchiveRootObjectKey = @"NSKeyedArchiveRootObjectKey";
 			    format:@"NSKeyedUnarchiver: the archive names a class this process does not "
 				   "have (%@)", className];
 	}
+	/* SECURE CODING, WHEN IT WAS ASKED FOR. A class that does not claim `NSSecureCoding` — or, when an
+	 * allow-list was given, is not on it — is REFUSED before it is ever instantiated. Off by default
+	 * (`-requiresSecureCoding` is NO unless a caller turned it on), so an archive of this library's own
+	 * classes still reads; a reader of FOREIGN data is the caller who turns it on. This is the
+	 * enforcement `NSCoding.h` used to say was missing. */
+	if (_requiresSecureCoding &&
+	    (![cls conformsToProtocol:@protocol(NSSecureCoding)] ||
+	     (_allowedClasses != nil && ![_allowedClasses containsObject:cls]))) {
+		[self failWithError:fn_decode_error(NSCoderInvalidValueError,
+			[NSString stringWithFormat:@"NSKeyedUnarchiver: %@ is not allowed under secure coding",
+			 className])];
+		return nil;
+	}
 	object = [cls alloc];
 	if (![object respondsToSelector:@selector(initWithCoder:)]) {
 		[NSException raise:NSInvalidArgumentException
@@ -790,6 +883,317 @@ NSString * const NSKeyedArchiveRootObjectKey = @"NSKeyedArchiveRootObjectKey";
 		*lengthp = [(NSData *)value length];
 	}
 	return [(NSData *)value bytes];
+}
+
+- (BOOL)allowsKeyedCoding
+{
+	return YES;	/* this IS the keyed family */
+}
+
+- (int32_t)decodeInt32ForKey:(NSString *)key
+{
+	return (int32_t)[[self decodeObjectForKey:key] intValue];
+}
+
+- (int64_t)decodeInt64ForKey:(NSString *)key
+{
+	return (int64_t)[[self decodeObjectForKey:key] longLongValue];
+}
+
+/* THE DECODER'S FAILURE DOOR, AND THE POLICY IS THE WHOLE OF IT: under SetErrorAndReturn the error is
+ * RECORDED (and `-error` answers it), under RaiseException it is raised. The recorded error is retained,
+ * because `-error` may be read long after `-failWithError:` returned. */
+- (void)failWithError:(NSError *)error
+{
+	if (_decodingFailurePolicy == NSDecodingFailurePolicySetErrorAndReturn) {
+		if (_error != error) {
+			[_error release];
+			_error = [error retain];
+		}
+		return;
+	}
+	[NSException raise:NSInvalidArgumentException
+		    format:@"NSKeyedUnarchiver: %@", [error localizedDescription]];
+}
+
+/* --- THE CLASS GATES: `NSSecureCoding`'s READING HALF (NSCoder.h says why) --------------------------
+ *
+ * Each decodes normally and then REFUSES a value of the wrong class through `-failWithError:`, so the
+ * refusal is the decoder's policy decision (raise, or nil + `-error`) rather than a second rule. A nil
+ * value stays nil: an ABSENT key is not the wrong class. */
+- (nullable id)decodeObjectOfClass:(Class)aClass forKey:(NSString *)key
+{
+	id value = [self decodeObjectForKey:key];
+
+	if (value != nil && ![value isKindOfClass:aClass]) {
+		[self failWithError:fn_decode_error(NSCoderInvalidValueError,
+			[NSString stringWithFormat:@"NSKeyedUnarchiver: \"%@\" is a %@, not a %@",
+			 key, [value class], aClass])];
+		return nil;
+	}
+	return value;
+}
+
+- (nullable id)decodeObjectOfClasses:(nullable NSSet *)classes forKey:(NSString *)key
+{
+	id value = [self decodeObjectForKey:key];
+
+	if (value != nil && !fn_value_is_allowed(value, classes)) {
+		[self failWithError:fn_decode_error(NSCoderInvalidValueError,
+			[NSString stringWithFormat:@"NSKeyedUnarchiver: \"%@\" is a %@, which is not an "
+			 "allowed class", key, [value class]])];
+		return nil;
+	}
+	return value;
+}
+
+- (nullable NSArray *)decodeArrayOfObjectsOfClass:(Class)cls forKey:(NSString *)key
+{
+	id value = [self decodeObjectForKey:key];
+	NSUInteger i;
+
+	if (value == nil) {
+		return nil;
+	}
+	if (![value isKindOfClass:[NSArray class]]) {
+		[self failWithError:fn_decode_error(NSCoderInvalidValueError,
+			[NSString stringWithFormat:@"NSKeyedUnarchiver: \"%@\" is a %@, not an array",
+			 key, [value class]])];
+		return nil;
+	}
+	for (i = 0; i < [(NSArray *)value count]; i++) {
+		id element = [(NSArray *)value objectAtIndex:i];
+
+		if (element != nil && ![element isKindOfClass:cls]) {
+			[self failWithError:fn_decode_error(NSCoderInvalidValueError,
+				[NSString stringWithFormat:@"NSKeyedUnarchiver: \"%@\" holds a %@, not a %@",
+				 key, [element class], cls])];
+			return nil;
+		}
+	}
+	return value;
+}
+
+- (nullable NSArray *)decodeArrayOfObjectsOfClasses:(nullable NSSet *)classes forKey:(NSString *)key
+{
+	id value = [self decodeObjectForKey:key];
+	NSUInteger i;
+
+	if (value == nil) {
+		return nil;
+	}
+	if (![value isKindOfClass:[NSArray class]]) {
+		[self failWithError:fn_decode_error(NSCoderInvalidValueError,
+			[NSString stringWithFormat:@"NSKeyedUnarchiver: \"%@\" is a %@, not an array",
+			 key, [value class]])];
+		return nil;
+	}
+	for (i = 0; i < [(NSArray *)value count]; i++) {
+		id element = [(NSArray *)value objectAtIndex:i];
+
+		if (element != nil && !fn_value_is_allowed(element, classes)) {
+			[self failWithError:fn_decode_error(NSCoderInvalidValueError,
+				[NSString stringWithFormat:@"NSKeyedUnarchiver: \"%@\" holds a %@, which is not "
+				 "an allowed class", key, [element class]])];
+			return nil;
+		}
+	}
+	return value;
+}
+
+- (nullable NSDictionary *)decodeDictionaryWithKeysOfClass:(Class)keyClass
+						    objectsOfClass:(Class)objectClass
+							    forKey:(NSString *)key
+{
+	id value = [self decodeObjectForKey:key];
+	NSArray *keys;
+	NSUInteger i;
+
+	if (value == nil) {
+		return nil;
+	}
+	if (![value isKindOfClass:[NSDictionary class]]) {
+		[self failWithError:fn_decode_error(NSCoderInvalidValueError,
+			[NSString stringWithFormat:@"NSKeyedUnarchiver: \"%@\" is a %@, not a dictionary",
+			 key, [value class]])];
+		return nil;
+	}
+	keys = [(NSDictionary *)value allKeys];
+	for (i = 0; i < [keys count]; i++) {
+		id k = [keys objectAtIndex:i];
+		id v = [(NSDictionary *)value objectForKey:k];
+
+		if (![k isKindOfClass:keyClass] || (v != nil && ![v isKindOfClass:objectClass])) {
+			[self failWithError:fn_decode_error(NSCoderInvalidValueError,
+				[NSString stringWithFormat:@"NSKeyedUnarchiver: \"%@\" has a %@/%@ pair that "
+				 "is not a %@/%@ pair", key, [k class], [v class], keyClass, objectClass])];
+			return nil;
+		}
+	}
+	return value;
+}
+
+- (nullable NSDictionary *)decodeDictionaryWithKeysOfClasses:(nullable NSSet *)keyClasses
+						     objectsOfClasses:(nullable NSSet *)objectClasses
+							      forKey:(NSString *)key
+{
+	id value = [self decodeObjectForKey:key];
+	NSArray *keys;
+	NSUInteger i;
+
+	if (value == nil) {
+		return nil;
+	}
+	if (![value isKindOfClass:[NSDictionary class]]) {
+		[self failWithError:fn_decode_error(NSCoderInvalidValueError,
+			[NSString stringWithFormat:@"NSKeyedUnarchiver: \"%@\" is a %@, not a dictionary",
+			 key, [value class]])];
+		return nil;
+	}
+	keys = [(NSDictionary *)value allKeys];
+	for (i = 0; i < [keys count]; i++) {
+		id k = [keys objectAtIndex:i];
+		id v = [(NSDictionary *)value objectForKey:k];
+
+		if (!fn_value_is_allowed(k, keyClasses) ||
+		    (v != nil && !fn_value_is_allowed(v, objectClasses))) {
+			[self failWithError:fn_decode_error(NSCoderInvalidValueError,
+				[NSString stringWithFormat:@"NSKeyedUnarchiver: \"%@\" has a %@/%@ pair that "
+				 "is not allowed", key, [k class], [v class]])];
+			return nil;
+		}
+	}
+	return value;
+}
+
+- (nullable const void *)decodeBytesForKey:(NSString *)key minimumLength:(NSUInteger)minimumLength
+{
+	id value = [self decodeObjectForKey:key];
+
+	if (value == nil) {
+		return NULL;
+	}
+	if (![value isKindOfClass:[NSData class]]) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSKeyedUnarchiver: \"%@\" is not bytes but %@", key, [value class]];
+	}
+	if ([(NSData *)value length] < minimumLength) {
+		/* A SHORT RUN IS A CORRUPT ARCHIVE, not a shorter value: the writer promised a floor and the
+		 * bytes do not meet it. */
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSKeyedUnarchiver: \"%@\" holds %lu bytes, fewer than the %lu required",
+				   key, (unsigned long)[(NSData *)value length],
+				   (unsigned long)minimumLength];
+	}
+	return [(NSData *)value bytes];
+}
+
+- (nullable id)decodePropertyListForKey:(NSString *)key
+{
+	id value = [self decodeObjectForKey:key];
+
+	/* A PROPERTY LIST IS ONE OF THE PLIST'S OWN TYPES — the same set the serialiser carries. This is a
+	 * CHECK, not a coercion: an object that is not one of them is refused rather than described. */
+	if (value == nil || [value isKindOfClass:[NSString class]] ||
+	    [value isKindOfClass:[NSNumber class]] || [value isKindOfClass:[NSData class]] ||
+	    [value isKindOfClass:[NSDate class]] || [value isKindOfClass:[NSArray class]] ||
+	    [value isKindOfClass:[NSDictionary class]] || [value isKindOfClass:[NSNull class]]) {
+		return value;
+	}
+	[NSException raise:NSInvalidArgumentException
+		    format:@"NSKeyedUnarchiver: \"%@\" is not a property list but %@", key, [value class]];
+	return nil;
+}
+
+- (nullable id)decodeTopLevelObjectAndReturnError:(NSError * _Nullable * _Nullable)error
+{
+	/* THE ROOT, UNDER THE KEY THE CLASS-METHOD FLOW WRITES IT WITH (kRootKey). */
+	return [self decodeTopLevelObjectForKey:kRootKey error:error];
+}
+
+- (nullable id)decodeTopLevelObjectForKey:(NSString *)key
+				    error:(NSError * _Nullable * _Nullable)error
+{
+	id slot;
+
+	if (error != NULL) {
+		*error = nil;
+	}
+	if (key == nil) {
+		if (error != NULL) {
+			*error = fn_decode_error(NSCoderValueNotFoundError,
+				@"NSKeyedUnarchiver: a nil key names nothing");
+		}
+		return nil;
+	}
+	slot = [(NSDictionary *)_top objectForKey:key];
+	if (slot == nil) {
+		if (error != NULL) {
+			*error = fn_decode_error(NSCoderValueNotFoundError,
+				[NSString stringWithFormat:@"NSKeyedUnarchiver: the archive's $top names nothing "
+				 "for \"%@\"", key]);
+		}
+		return nil;
+	}
+	/* ANYTHING the decode raises becomes the ERROR VALUE instead of an exception — that is the whole
+	 * difference between this door family and -decodeObjectForKey: (and the reason a caller reading
+	 * someone else's archive reaches for these). */
+	@try {
+		return [self fnDecodeSlot:slot];
+	} @catch (NSException *exception) {
+		if (error != NULL) {
+			*error = fn_decode_error(NSCoderReadCorruptError, [exception reason]);
+		}
+		return nil;
+	}
+}
+
+- (nullable id)decodeTopLevelObjectOfClass:(Class)cls
+				    forKey:(NSString *)key
+				     error:(NSError * _Nullable * _Nullable)error
+{
+	NSError *inner = nil;
+	id value = [self decodeTopLevelObjectForKey:key error:&inner];
+
+	if (value == nil) {
+		if (error != NULL) {
+			*error = inner;
+		}
+		return nil;
+	}
+	if (![value isKindOfClass:cls]) {
+		if (error != NULL) {
+			*error = fn_decode_error(NSCoderInvalidValueError,
+				[NSString stringWithFormat:@"NSKeyedUnarchiver: \"%@\" is a %@, not a %@",
+				 key, [value class], cls]);
+		}
+		return nil;
+	}
+	return value;
+}
+
+- (nullable id)decodeTopLevelObjectOfClasses:(nullable NSSet *)classes
+				      forKey:(NSString *)key
+				       error:(NSError * _Nullable * _Nullable)error
+{
+	NSError *inner = nil;
+	id value = [self decodeTopLevelObjectForKey:key error:&inner];
+
+	if (value == nil) {
+		if (error != NULL) {
+			*error = inner;
+		}
+		return nil;
+	}
+	if (!fn_value_is_allowed(value, classes)) {
+		if (error != NULL) {
+			*error = fn_decode_error(NSCoderInvalidValueError,
+				[NSString stringWithFormat:@"NSKeyedUnarchiver: \"%@\" is a %@, which is not an "
+				 "allowed class", key, [value class]]);
+		}
+		return nil;
+	}
+	return value;
 }
 
 - (void)finishDecoding

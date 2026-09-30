@@ -17,19 +17,54 @@
  * raise in the SEQUENTIAL ones; `NSArchiver`/`NSUnarchiver` answer the SEQUENTIAL doors and raise in the
  * KEYED ones.** Each family's abstract doors raise `NSInvalidArgumentException` and name the family that
  * answers them, which is what makes a wrong-door call say what to do instead.
+ *
+ * THE THREE CONVENTIONS THAT ARE NOT A FAMILY'S OWN. `-encodeBycopyObject:`, `-encodeByrefObject:` and
+ * `-encodeConditionalObject:` are classic-archiver ANNOTATIONS whose whole contract is "equivalent to
+ * `-encodeObject:` on whatever coder you sent them to" (Apple says so in words). They are implemented
+ * ONCE, on this base, as exactly that equivalence — so they are correct for both families at the same
+ * time: to a keyed coder they reach its `-encodeObject:`, which raises (rightly — the keyed family has
+ * no such doors), and to a sequential coder they reach the real one. Implementing them here rather than
+ * in `NSArchiver` is the reason `NSArchiver` needs no edit to gain them.
  */
 
 #ifndef FOUNDATION_NSCODER_H
 #define FOUNDATION_NSCODER_H
 
+#include <stdint.h>
+
 #import <Foundation/NSObject.h>
 
 @class NSString;
 @class NSData;
+@class NSArray;
+@class NSDictionary;
+@class NSSet;
+@class NSError;
 
 NS_ASSUME_NONNULL_BEGIN
 
+/* How a decoder answers a failure it cannot report as a value (2026-09-20): raise,
+ * or hand the caller an NSError. Names from Apple's documentation index; values are
+ * ours — §11.6.1 D2, see the note in NSFileManager.h.
+ *
+ * MOVED ABOVE THE INTERFACE by the type-checked-doors work (2026): `-decodingFailurePolicy` is a
+ * property OF THIS TYPE, and the declaration could not name a type defined below it. */
+typedef enum {
+	NSDecodingFailurePolicyRaiseException = 0,
+	NSDecodingFailurePolicySetErrorAndReturn = 1
+} NSDecodingFailurePolicy;
+
 @interface NSCoder : NSObject
+{
+@protected
+	/* THE DECODE-ERROR STATE, on the base because the doors that read it (`-error`,
+	 * `-decodingFailurePolicy`) are the base's own and both families answer them. Zero-initialised to
+	 * the DEFAULTS the getters promise: raise-on-failure, no allow-list, no error recorded. */
+	NSDecodingFailurePolicy _decodingFailurePolicy;
+	BOOL _requiresSecureCoding;
+	NSSet *_allowedClasses;	/* retained; nil means "no list given" */
+	NSError *_error;	/* retained; the last failure, under SetErrorAndReturn */
+}
 
 /* Objects — nil is a VALUE here, not an absence: an archive records "there was nothing". */
 - (void)encodeObject:(nullable id)object forKey:(NSString *)key;
@@ -48,11 +83,91 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)encodeFloat:(float)value forKey:(NSString *)key;
 - (float)decodeFloatForKey:(NSString *)key;
 
+/* THE FIXED-WIDTH INTEGER PAIR, WHICH `-encodeInt:` IS NOT. A 32-bit value written as 32 bits and read
+ * back as 64 (or the reverse) is a silent coercion, and these doors are how a caller says "the width
+ * is part of the data". The width travels as the `NSNumber`'s own type, so the reader keeps it. */
+- (void)encodeInt32:(int32_t)value forKey:(NSString *)key;
+- (int32_t)decodeInt32ForKey:(NSString *)key;
+- (void)encodeInt64:(int64_t)value forKey:(NSString *)key;
+- (int64_t)decodeInt64ForKey:(NSString *)key;
+
 - (void)encodeBytes:(const void *)bytes length:(NSUInteger)length forKey:(NSString *)key;
 - (nullable const void *)decodeBytesForKey:(NSString *)key
 			    returnedLength:(nullable NSUInteger *)lengthp;
 
+/* THE SAME READING, WITH A FLOOR UNDER THE LENGTH: the byte run must be at least this long, and the
+ * door answers the pointer alone (the caller knows the length it asked for). A run that is present but
+ * SHORT is a corrupt archive, not a shorter value, so it raises. */
+- (nullable const void *)decodeBytesForKey:(NSString *)key minimumLength:(NSUInteger)minimumLength;
+
+/* A PROPERTY LIST, BY NAME. Apple spells this door for the values its own plist serialiser can carry,
+ * which is the reader's way of saying "this key held a plist, not an object". */
+- (nullable id)decodePropertyListForKey:(NSString *)key;
+
 - (BOOL)containsValueForKey:(NSString *)key;
+
+/* --- THE TYPE-CHECKED OBJECT DOORS: `NSSecureCoding`'s READING HALF ---------------------------------
+ *
+ * `-decodeObjectForKey:` answers whatever the archive NAMED, and an archive names its classes as
+ * STRINGS — which makes "read data somebody else supplied" the classic object-injection door. These
+ * doors answer an object only when it IS one of the classes the caller names, and report the refusal as
+ * the decoder's failure (`-failWithError:`). They are the point of `NSSecureCoding`, and they are why
+ * `NSCoding.h` could stop saying the enforcement was missing. The KEYED pair implements them; the
+ * abstract base raises, like every other keyed door. */
+- (nullable id)decodeObjectOfClass:(Class)aClass forKey:(NSString *)key;
+- (nullable id)decodeObjectOfClasses:(nullable NSSet *)classes forKey:(NSString *)key;
+- (nullable NSArray *)decodeArrayOfObjectsOfClass:(Class)cls forKey:(NSString *)key;
+- (nullable NSArray *)decodeArrayOfObjectsOfClasses:(nullable NSSet *)classes forKey:(NSString *)key;
+- (nullable NSDictionary *)decodeDictionaryWithKeysOfClass:(Class)keyClass
+					    objectsOfClass:(Class)objectClass
+						    forKey:(NSString *)key;
+- (nullable NSDictionary *)decodeDictionaryWithKeysOfClasses:(nullable NSSet *)keyClasses
+					     objectsOfClasses:(nullable NSSet *)objectClasses
+						      forKey:(NSString *)key;
+
+/* THE CONDITIONAL KEYED DOOR: it writes the reference only when the object is ALREADY in the archive,
+ * so a class may point at something (a delegate, an owner) without forcing it in. A nil object is the
+ * ordinary nil; an object not yet written writes nothing, so the graph is not dragged in by it. */
+- (void)encodeConditionalObject:(nullable id)object forKey:(NSString *)key;
+
+/* --- DECODING A TOP-LEVEL OBJECT, WITH THE FAILURE AS A VALUE --------------------------------------
+ *
+ * The doors a caller who reads SOMEONE ELSE'S archive uses: they answer nil and fill in an NSError
+ * instead of raising, so a corrupt or hostile archive is a VALUE to inspect rather than an exception to
+ * catch. The `-decodeObjectForKey:` family keeps its raising contract; these are the doors where "no"
+ * is data. `-decodeTopLevelObjectAndReturnError:` is the root-object spelling of the same idea. */
+- (nullable id)decodeTopLevelObjectAndReturnError:(NSError * _Nullable * _Nullable)error;
+- (nullable id)decodeTopLevelObjectForKey:(NSString *)key
+				    error:(NSError * _Nullable * _Nullable)error;
+- (nullable id)decodeTopLevelObjectOfClass:(Class)cls
+				    forKey:(NSString *)key
+				     error:(NSError * _Nullable * _Nullable)error;
+- (nullable id)decodeTopLevelObjectOfClasses:(nullable NSSet *)classes
+				      forKey:(NSString *)key
+				       error:(NSError * _Nullable * _Nullable)error;
+
+/* --- THE SEQUENTIAL OBJECT-CONVENTIONS, AT THE BASE (see the file note) ----------------------------- */
+- (void)encodeBycopyObject:(nullable id)object;
+- (void)encodeByrefObject:(nullable id)object;
+- (void)encodeConditionalObject:(nullable id)object;
+
+/* --- THE DECODE-ERROR AND INSPECTION SURFACE -------------------------------------------------------
+ *
+ * `-failWithError:` is how a decoder reports a failure it cannot return as a value; what it DOES is
+ * `-decodingFailurePolicy`'s business — raise, or record the error for `-error`. The base answers the
+ * DEFAULTS and stores them; the keyed unarchiver is where the policy is honoured. */
+- (void)failWithError:(NSError *)error;
+
+@property (readonly) BOOL allowsKeyedCoding;
+@property BOOL requiresSecureCoding;
+@property (copy, nullable) NSSet *allowedClasses;
+@property (readonly, copy, nullable) NSError *error;
+@property NSDecodingFailurePolicy decodingFailurePolicy;
+
+/* The system version the archive was written on. This library records none, so the base answers nil —
+ * the honest form of "unknown", which is not the same as a version. Apple publishes the door and not a
+ * value, so there is nothing to match (§11.6.1 D2). */
+- (nullable NSString *)systemVersion;
 
 /* --- THE SEQUENTIAL DOORS: ORDER AND TYPE ARE THE PROTOCOL (§62.86) --------------------------------
  *
@@ -79,14 +194,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSInteger)versionForClassName:(NSString *)className;
 
 @end
-
-/* How a decoder answers a failure it cannot report as a value (2026-09-20): raise,
- * or hand the caller an NSError. Names from Apple's documentation index; values are
- * ours — §11.6.1 D2, see the note in NSFileManager.h. */
-typedef enum {
-	NSDecodingFailurePolicyRaiseException = 0,
-	NSDecodingFailurePolicySetErrorAndReturn = 1
-} NSDecodingFailurePolicy;
 
 NS_ASSUME_NONNULL_END
 

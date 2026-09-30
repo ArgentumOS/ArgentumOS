@@ -14,6 +14,8 @@
 
 #import <Foundation/NSCoder.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSSet.h>
+#import <Foundation/NSError.h>
 #import <Foundation/NSException.h>
 
 static void fn_abstract(Class cls, SEL door)
@@ -33,6 +35,95 @@ static void fn_abstract_sequential(Class cls, SEL door)
 }
 
 @implementation NSCoder
+
+/* --- THE INSPECTION AND DECODE-ERROR SURFACE ------------------------------------------------------- */
+
+/* THESE ARE THE DEFAULTS, NOT STUBS, and the difference matters: a coder that has said nothing allows
+ * no keyed coding, requires no secure coding, has no allow-list, records no error, and raises on
+ * failure — which is exactly what this base's own doors do. `NSKeyedArchiver`/`NSKeyedUnarchiver`
+ * override the ones that are not the default for them. */
+- (BOOL)allowsKeyedCoding
+{
+	return NO;
+}
+
+- (BOOL)requiresSecureCoding
+{
+	return _requiresSecureCoding;
+}
+
+- (void)setRequiresSecureCoding:(BOOL)flag
+{
+	_requiresSecureCoding = flag;
+}
+
+- (nullable NSSet *)allowedClasses
+{
+	return _allowedClasses;
+}
+
+- (void)setAllowedClasses:(nullable NSSet *)classes
+{
+	/* COPY, not retain: the list is a policy SNAPSHOT. A caller that mutates its own set after handing
+	 * it over must not thereby widen what a decode already in flight will accept. */
+	if (classes != _allowedClasses) {
+		[_allowedClasses release];
+		_allowedClasses = [classes copy];
+	}
+}
+
+- (nullable NSError *)error
+{
+	return _error;
+}
+
+- (NSDecodingFailurePolicy)decodingFailurePolicy
+{
+	return _decodingFailurePolicy;
+}
+
+- (void)setDecodingFailurePolicy:(NSDecodingFailurePolicy)policy
+{
+	_decodingFailurePolicy = policy;
+}
+
+- (nullable NSString *)systemVersion
+{
+	return nil;	/* this library records none; nil is "unknown", which is not a version */
+}
+
+- (void)dealloc
+{
+	[_allowedClasses release];
+	[_error release];
+	[super dealloc];
+}
+
+/* `-failWithError:` IS THE DECODER'S "I CANNOT ANSWER", and the abstract base has no answer to give —
+ * so it raises, like the doors that would have called it. `NSKeyedUnarchiver` overrides it to honour
+ * `-decodingFailurePolicy`. */
+- (void)failWithError:(NSError *)error
+{
+	(void)error;
+	fn_abstract([self class], _cmd);
+}
+
+/* --- THE SEQUENTIAL OBJECT-CONVENTIONS, AS THEIR EQUIVALENCE (see the file note in NSCoder.h) ----- */
+
+- (void)encodeBycopyObject:(nullable id)object
+{
+	[self encodeObject:object];
+}
+
+- (void)encodeByrefObject:(nullable id)object
+{
+	[self encodeObject:object];
+}
+
+- (void)encodeConditionalObject:(nullable id)object
+{
+	[self encodeObject:object];
+}
 
 - (void)encodeObject:(nullable id)object forKey:(NSString *)key
 {
@@ -140,6 +231,156 @@ static void fn_abstract_sequential(Class cls, SEL door)
 	(void)key;
 	fn_abstract([self class], _cmd);
 	return NO;
+}
+
+- (void)encodeInt32:(int32_t)value forKey:(NSString *)key
+{
+	(void)value;
+	(void)key;
+	fn_abstract([self class], _cmd);
+}
+
+- (int32_t)decodeInt32ForKey:(NSString *)key
+{
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return 0;
+}
+
+- (void)encodeInt64:(int64_t)value forKey:(NSString *)key
+{
+	(void)value;
+	(void)key;
+	fn_abstract([self class], _cmd);
+}
+
+- (int64_t)decodeInt64ForKey:(NSString *)key
+{
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return 0;
+}
+
+- (nullable const void *)decodeBytesForKey:(NSString *)key minimumLength:(NSUInteger)minimumLength
+{
+	(void)key;
+	(void)minimumLength;
+	fn_abstract([self class], _cmd);
+	return NULL;
+}
+
+- (nullable id)decodePropertyListForKey:(NSString *)key
+{
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return nil;
+}
+
+- (nullable id)decodeObjectOfClass:(Class)aClass forKey:(NSString *)key
+{
+	(void)aClass;
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return nil;
+}
+
+- (nullable id)decodeObjectOfClasses:(nullable NSSet *)classes forKey:(NSString *)key
+{
+	(void)classes;
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return nil;
+}
+
+- (nullable NSArray *)decodeArrayOfObjectsOfClass:(Class)cls forKey:(NSString *)key
+{
+	(void)cls;
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return nil;
+}
+
+- (nullable NSArray *)decodeArrayOfObjectsOfClasses:(nullable NSSet *)classes forKey:(NSString *)key
+{
+	(void)classes;
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return nil;
+}
+
+- (nullable NSDictionary *)decodeDictionaryWithKeysOfClass:(Class)keyClass
+						    objectsOfClass:(Class)objectClass
+							    forKey:(NSString *)key
+{
+	(void)keyClass;
+	(void)objectClass;
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return nil;
+}
+
+- (nullable NSDictionary *)decodeDictionaryWithKeysOfClasses:(nullable NSSet *)keyClasses
+						     objectsOfClasses:(nullable NSSet *)objectClasses
+							      forKey:(NSString *)key
+{
+	(void)keyClasses;
+	(void)objectClasses;
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return nil;
+}
+
+- (void)encodeConditionalObject:(nullable id)object forKey:(NSString *)key
+{
+	(void)object;
+	(void)key;
+	fn_abstract([self class], _cmd);
+}
+
+- (nullable id)decodeTopLevelObjectAndReturnError:(NSError * _Nullable * _Nullable)error
+{
+	if (error != NULL) {
+		*error = nil;
+	}
+	fn_abstract([self class], _cmd);
+	return nil;
+}
+
+- (nullable id)decodeTopLevelObjectForKey:(NSString *)key
+				    error:(NSError * _Nullable * _Nullable)error
+{
+	(void)key;
+	if (error != NULL) {
+		*error = nil;
+	}
+	fn_abstract([self class], _cmd);
+	return nil;
+}
+
+- (nullable id)decodeTopLevelObjectOfClass:(Class)cls
+				    forKey:(NSString *)key
+				     error:(NSError * _Nullable * _Nullable)error
+{
+	(void)cls;
+	(void)key;
+	if (error != NULL) {
+		*error = nil;
+	}
+	fn_abstract([self class], _cmd);
+	return nil;
+}
+
+- (nullable id)decodeTopLevelObjectOfClasses:(nullable NSSet *)classes
+				      forKey:(NSString *)key
+				       error:(NSError * _Nullable * _Nullable)error
+{
+	(void)classes;
+	(void)key;
+	if (error != NULL) {
+		*error = nil;
+	}
+	fn_abstract([self class], _cmd);
+	return nil;
 }
 
 - (void)encodeValueOfObjCType:(const char *)valueType at:(const void *)address

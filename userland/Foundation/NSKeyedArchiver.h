@@ -52,6 +52,8 @@
 #ifndef FOUNDATION_NSKEYEDARCHIVER_H
 #define FOUNDATION_NSKEYEDARCHIVER_H
 
+#include <stdint.h>
+
 #import <Foundation/NSCoder.h>
 #import <Foundation/NSKeyedArchiverDelegate.h>
 #import <Foundation/NSKeyedUnarchiverDelegate.h>
@@ -98,6 +100,11 @@ extern NSString * const NSKeyedArchiveRootObjectKey;
 - (void)encodeDouble:(double)value forKey:(NSString *)key;
 - (void)encodeFloat:(float)value forKey:(NSString *)key;
 - (void)encodeBytes:(const void *)bytes length:(NSUInteger)length forKey:(NSString *)key;
+/* The fixed-width pair, and the conditional door (which writes a reference only when the object is
+ * already in the archive — see NSCoder.h). */
+- (void)encodeInt32:(int32_t)value forKey:(NSString *)key;
+- (void)encodeInt64:(int64_t)value forKey:(NSString *)key;
+- (void)encodeConditionalObject:(nullable id)object forKey:(NSString *)key;
 
 - (void)finishEncoding;
 
@@ -133,6 +140,34 @@ extern NSString * const NSKeyedArchiveRootObjectKey;
 
 - (BOOL)containsValueForKey:(NSString *)key;
 - (void)finishDecoding;
+
+/* THE READER'S HALF OF THE TYPE-CHECKED AND ERROR-REPORTING DOORS (NSCoder.h declares them on the base
+ * and says why). `-decodeInt32ForKey:`/`-decodeInt64ForKey:` keep the width; the `-decodeObjectOfClass:`
+ * family gates by class; the `-decodeTopLevelObject...error:` family answers an NSError instead of
+ * raising. */
+- (int32_t)decodeInt32ForKey:(NSString *)key;
+- (int64_t)decodeInt64ForKey:(NSString *)key;
+- (nullable id)decodeObjectOfClass:(Class)aClass forKey:(NSString *)key;
+- (nullable id)decodeObjectOfClasses:(nullable NSSet *)classes forKey:(NSString *)key;
+- (nullable NSArray *)decodeArrayOfObjectsOfClass:(Class)cls forKey:(NSString *)key;
+- (nullable NSArray *)decodeArrayOfObjectsOfClasses:(nullable NSSet *)classes forKey:(NSString *)key;
+- (nullable NSDictionary *)decodeDictionaryWithKeysOfClass:(Class)keyClass
+						    objectsOfClass:(Class)objectClass
+							    forKey:(NSString *)key;
+- (nullable NSDictionary *)decodeDictionaryWithKeysOfClasses:(nullable NSSet *)keyClasses
+						     objectsOfClasses:(nullable NSSet *)objectClasses
+							      forKey:(NSString *)key;
+- (nullable const void *)decodeBytesForKey:(NSString *)key minimumLength:(NSUInteger)minimumLength;
+- (nullable id)decodePropertyListForKey:(NSString *)key;
+- (nullable id)decodeTopLevelObjectAndReturnError:(NSError * _Nullable * _Nullable)error;
+- (nullable id)decodeTopLevelObjectForKey:(NSString *)key
+				    error:(NSError * _Nullable * _Nullable)error;
+- (nullable id)decodeTopLevelObjectOfClass:(Class)cls
+				    forKey:(NSString *)key
+				     error:(NSError * _Nullable * _Nullable)error;
+- (nullable id)decodeTopLevelObjectOfClasses:(nullable NSSet *)classes
+				      forKey:(NSString *)key
+				       error:(NSError * _Nullable * _Nullable)error;
 
 @end
 

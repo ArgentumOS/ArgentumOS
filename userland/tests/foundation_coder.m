@@ -681,6 +681,166 @@ int main(void)
 			(unsigned long)(dataBack != nil ? [dataBack length] : 0)]);
 	}
 
+	/* ---- THE TYPE-CHECKED OBJECT DOORS, THE DECODE-ERROR DOORS, AND THE SECURE GATE ---------------- */
+	{
+		/* ONE ARCHIVE, READ THROUGH THE INSTANCE FLOW, so the keys are the caller's: a top-level array,
+		 * a top-level string, and the two FIXED-WIDTH integers (whose width is the point — the same
+		 * 54-bit value that a double would round must come back exactly). */
+		NSMutableData *buffer = [[NSMutableData alloc] init];
+		NSKeyedArchiver *writer = [[NSKeyedArchiver alloc] initForWritingWithMutableData:buffer];
+		NSKeyedUnarchiver *reader;
+
+		[writer encodeObject:@[@"one", @"two"] forKey:@"arr"];
+		[writer encodeObject:@"hello" forKey:@"str"];
+		[writer encodeInt32:(int32_t)123456 forKey:@"i32"];
+		[writer encodeInt64:(int64_t)9007199254740993LL forKey:@"i64"];
+		[writer finishEncoding];
+
+		reader = [[NSKeyedUnarchiver alloc] initForReadingWithData:buffer];
+		{
+			NSArray *arr = [reader decodeObjectOfClass:[NSArray class] forKey:@"arr"];
+			NSString *str = [reader decodeObjectOfClass:[NSString class] forKey:@"str"];
+			int32_t i32 = [reader decodeInt32ForKey:@"i32"];
+			int64_t i64 = [reader decodeInt64ForKey:@"i64"];
+
+			check("coder-typed-object-doors",
+			      [arr isKindOfClass:[NSArray class]] && [arr count] == 2 &&
+			      [[arr objectAtIndex:0] isEqualToString:@"one"] &&
+			      [str isEqualToString:@"hello"] &&
+			      i32 == (int32_t)123456 && i64 == (int64_t)9007199254740993LL,
+			      [NSString stringWithFormat:@"arr=%@ str=%@ i32=%d i64=%lld",
+			       arr, str, (int) i32, (long long) i64]);
+		}
+
+		/* THE REFUSAL IS THE FEATURE: the array key is NOT a string, and under the DEFAULT policy
+		 * (raise) the door raises rather than answering the wrong class. */
+		{
+			BOOL raised = NO;
+
+			@try {
+				(void)[reader decodeObjectOfClass:[NSString class] forKey:@"arr"];
+			} @catch (NSException *e) {
+				(void)e;
+				raised = YES;
+			}
+			check("coder-typed-object-door-refusal", raised,
+			      raised ? @"raised" : @"a wrong-class decode was accepted");
+		}
+
+		/* THE POLICY DOOR: under SetErrorAndReturn the SAME refusal is a VALUE — nil, with -error set. */
+		{
+			id wrong;
+
+			[reader setDecodingFailurePolicy:NSDecodingFailurePolicySetErrorAndReturn];
+			wrong = [reader decodeObjectOfClass:[NSString class] forKey:@"arr"];
+			check("coder-decode-failure-policy",
+			      wrong == nil && [reader error] != nil,
+			      [NSString stringWithFormat:@"value=%@ error=%@", wrong, [reader error]]);
+		}
+
+		/* THE TOP-LEVEL ERROR DOORS: a key that names nothing is nil + NSError; a key that names
+		 * something decodes with no error. */
+		{
+			NSError *missing = nil;
+			NSError *present = nil;
+			id nothing = [reader decodeTopLevelObjectForKey:@"nope" error:&missing];
+			id something = [reader decodeTopLevelObjectForKey:@"str" error:&present];
+
+			check("coder-top-level-error-door",
+			      nothing == nil && missing != nil &&
+			      [something isEqualToString:@"hello"] && present == nil,
+			      [NSString stringWithFormat:@"missing=%@ present=%@", missing, something]);
+		}
+	}
+
+	{
+		/* -decodeTopLevelObjectAndReturnError: IS THE ROOT'S SPELLING, and the class method writes its
+		 * root under "root", so an archive from +archivedDataWithRootObject: reads back through it. */
+		NSData *data = [NSKeyedArchiver archivedDataWithRootObject:
+				[CoderNode nodeWithName:@"root-door" count:9]];
+		NSKeyedUnarchiver *reader = [[NSKeyedUnarchiver alloc] initForReadingWithData:data];
+		NSError *error = nil;
+		id root = [reader decodeTopLevelObjectAndReturnError:&error];
+
+		check("coder-top-level-root-door",
+		      root != nil && [root isKindOfClass:[CoderNode class]] &&
+		      [[root name] isEqualToString:@"root-door"] && [root count] == 9 && error == nil,
+		      [NSString stringWithFormat:@"root=%@ error=%@",
+		       [root isKindOfClass:[CoderNode class]] ? [root name] : @"(wrong class)", error]);
+	}
+
+	{
+		/* THE COLLECTION-CLASS DOORS: the array and the dictionary each checked element-by-element. */
+		NSMutableData *buffer = [[NSMutableData alloc] init];
+		NSKeyedArchiver *writer = [[NSKeyedArchiver alloc] initForWritingWithMutableData:buffer];
+		NSKeyedUnarchiver *reader;
+		NSArray *arr;
+		NSDictionary *dict;
+
+		[writer encodeObject:(@[@"a", @"b", @"c"]) forKey:@"arr"];
+		[writer encodeObject:(@{ @"k" : @"v" }) forKey:@"dict"];
+		[writer finishEncoding];
+
+		reader = [[NSKeyedUnarchiver alloc] initForReadingWithData:buffer];
+		arr = [reader decodeArrayOfObjectsOfClass:[NSString class] forKey:@"arr"];
+		dict = [reader decodeDictionaryWithKeysOfClass:[NSString class]
+					       objectsOfClass:[NSString class]
+						       forKey:@"dict"];
+
+		check("coder-collection-class-doors",
+		      [arr isKindOfClass:[NSArray class]] && [arr count] == 3 &&
+		      [dict isKindOfClass:[NSDictionary class]] && [dict count] == 1 &&
+		      [[dict objectForKey:@"k"] isEqualToString:@"v"],
+		      [NSString stringWithFormat:@"arr=%@ dict=%@", arr, dict]);
+	}
+
+	{
+		/* SECURE CODING, TURNED ON: an archive whose root class does not claim NSSecureCoding is
+		 * REFUSED. CoderNode adopts NSCoding only, so this is the refusal and not a contrived one — the
+		 * enforcement NSCoding.h used to say the unarchiver did not yet perform. */
+		NSData *data = [NSKeyedArchiver archivedDataWithRootObject:
+				[CoderNode nodeWithName:@"secure" count:1]];
+		NSKeyedUnarchiver *reader = [[NSKeyedUnarchiver alloc] initForReadingWithData:data];
+		BOOL raised = NO;
+
+		[reader setRequiresSecureCoding:YES];
+		@try {
+			(void)[reader decodeObjectForKey:@"root"];
+		} @catch (NSException *e) {
+			(void)e;
+			raised = YES;
+		}
+		check("coder-secure-coding-gate", raised,
+		      raised ? @"refused" : @"a non-NSSecureCoding class was decoded under secure coding");
+	}
+
+	{
+		/* -encodeConditionalObject:forKey: WRITES THE REFERENCE ONLY WHEN THE OBJECT IS ALREADY IN THE
+		 * ARCHIVE: "shared" is encoded normally first, so its conditional key gets it; "stranger" was
+		 * never encoded, so its conditional key writes nil. */
+		CoderNode *shared = [CoderNode nodeWithName:@"shared" count:1];
+		CoderNode *stranger = [CoderNode nodeWithName:@"stranger" count:2];
+		NSMutableData *buffer = [[NSMutableData alloc] init];
+		NSKeyedArchiver *writer = [[NSKeyedArchiver alloc] initForWritingWithMutableData:buffer];
+		NSKeyedUnarchiver *reader;
+		id again;
+
+		[writer encodeObject:shared forKey:@"first"];
+		[writer encodeConditionalObject:shared forKey:@"again"];
+		[writer encodeConditionalObject:stranger forKey:@"unseen"];
+		[writer finishEncoding];
+
+		reader = [[NSKeyedUnarchiver alloc] initForReadingWithData:buffer];
+		again = [reader decodeObjectForKey:@"again"];
+		check("coder-conditional-object",
+		      again != nil && [again isKindOfClass:[CoderNode class]] &&
+		      [[again name] isEqualToString:@"shared"] &&
+		      [reader decodeObjectForKey:@"unseen"] == nil,
+		      [NSString stringWithFormat:@"again=%@ unseenIsNil=%d",
+		       [again isKindOfClass:[CoderNode class]] ? [again name] : @"(nil)",
+		       (int)([reader decodeObjectForKey:@"unseen"] == nil)]);
+	}
+
 	printf("FOUNDATION-CODER RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

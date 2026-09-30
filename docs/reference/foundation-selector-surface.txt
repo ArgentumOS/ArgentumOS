@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1851   open  833   struck  244
-#   property   shipped 1034   open  456   struck  146
+#   method     shipped 1878   open  806   struck  244
+#   property   shipped 1044   open  446   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -138,7 +138,7 @@ method	shipped	+archiveRootObject:toFile:	NSArchiver	Files and Data Persistence 
 method	shipped	+archivedDataWithRootObject:	NSArchiver	Files and Data Persistence / Deprecated / Archiving data	deprecated	objc
 method	open	-classNameEncodedForTrueClassName:	NSArchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	objc
 method	open	-encodeClassName:intoClassName:	NSArchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	objc
-method	open	-encodeConditionalObject:	NSArchiver	Files and Data Persistence / Deprecated / Archiving data	deprecated	objc
+method	shipped	-encodeConditionalObject:	NSArchiver	Files and Data Persistence / Deprecated / Archiving data	deprecated	objc
 method	shipped	-encodeRootObject:	NSArchiver	Files and Data Persistence / Deprecated / Archiving data	deprecated	objc
 method	shipped	-initForWritingWithMutableData:	NSArchiver	Files and Data Persistence / Deprecated / Initializing an NSArchiver	deprecated	objc
 method	shipped	-replaceObject:withObject:	NSArchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	objc
@@ -579,10 +579,10 @@ property	struck	keySpecifier	NSCloneCommand	App Support / Script Commands / Work
 property	struck	saveOptions	NSCloseCommand	App Support / Script Commands / Accessing save options	declined	objc
 method	shipped	-containsValueForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder	-	objc
 method	open	-decodeArrayOfObjCType:count:at:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodeArrayOfObjectsOfClass:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Instance Methods	-	objc
-method	open	-decodeArrayOfObjectsOfClasses:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Instance Methods	-	objc
+method	shipped	-decodeArrayOfObjectsOfClass:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Instance Methods	-	objc
+method	shipped	-decodeArrayOfObjectsOfClasses:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Instance Methods	-	objc
 method	shipped	-decodeBoolForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodeBytesForKey:minimumLength:	NSCoder	Files and Data Persistence / Keyed Archivers / Instance Methods	-	objc
+method	shipped	-decodeBytesForKey:minimumLength:	NSCoder	Files and Data Persistence / Keyed Archivers / Instance Methods	-	objc
 method	shipped	-decodeBytesForKey:returnedLength:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodeBytesWithMinimumLength:	NSCoder	Files and Data Persistence / Keyed Archivers / Instance Methods	-	objc
 method	shipped	-decodeBytesWithReturnedLength:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
@@ -595,33 +595,33 @@ method	open	-decodeCMTimeForKey:	NSCoder	Files and Data Persistence / Keyed Arch
 method	open	-decodeCMTimeMappingForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Core Media Time Structures	-	objc
 method	open	-decodeCMTimeRangeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Core Media Time Structures	-	objc
 method	shipped	-decodeDataObject	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodeDictionaryWithKeysOfClass:objectsOfClass:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Instance Methods	-	objc
-method	open	-decodeDictionaryWithKeysOfClasses:objectsOfClasses:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Instance Methods	-	objc
+method	shipped	-decodeDictionaryWithKeysOfClass:objectsOfClass:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Instance Methods	-	objc
+method	shipped	-decodeDictionaryWithKeysOfClasses:objectsOfClasses:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Instance Methods	-	objc
 method	open	-decodeDirectionalEdgeInsetsForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
 method	shipped	-decodeDoubleForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeFloatForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodeInt32ForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodeInt64ForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
+method	shipped	-decodeInt32ForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
+method	shipped	-decodeInt64ForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeIntForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeIntegerForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodeNXColor	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Color Struct Data	deprecated	objc
 method	open	-decodeNXObject	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	deprecated	objc
 method	shipped	-decodeObject	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeObjectForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodeObjectOfClass:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodeObjectOfClasses:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
+method	shipped	-decodeObjectOfClass:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
+method	shipped	-decodeObjectOfClasses:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodePoint	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodePointForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodePropertyList	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodePropertyListForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
+method	shipped	-decodePropertyListForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodeRect	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodeRectForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodeSize	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodeSizeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodeTopLevelObjectAndReturnError:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Top-Level Objects	-	objc
-method	open	-decodeTopLevelObjectForKey:error:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Top-Level Objects	-	objc
-method	open	-decodeTopLevelObjectOfClass:forKey:error:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Top-Level Objects	-	objc
-method	open	-decodeTopLevelObjectOfClasses:forKey:error:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Top-Level Objects	-	objc
+method	shipped	-decodeTopLevelObjectAndReturnError:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Top-Level Objects	-	objc
+method	shipped	-decodeTopLevelObjectForKey:error:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Top-Level Objects	-	objc
+method	shipped	-decodeTopLevelObjectOfClass:forKey:error:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Top-Level Objects	-	objc
+method	shipped	-decodeTopLevelObjectOfClasses:forKey:error:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Top-Level Objects	-	objc
 method	open	-decodeUIEdgeInsetsForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
 method	open	-decodeUIOffsetForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
 method	shipped	-decodeValueOfObjCType:at:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	deprecated	objc
@@ -629,8 +629,8 @@ method	open	-decodeValueOfObjCType:at:size:	NSCoder	Files and Data Persistence /
 method	open	-decodeValuesOfObjCTypes:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-encodeArrayOfObjCType:count:at:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeBool:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	open	-encodeBycopyObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	open	-encodeByrefObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
+method	shipped	-encodeBycopyObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
+method	shipped	-encodeByrefObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeBytes:length:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeBytes:length:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	open	-encodeCGAffineTransform:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
@@ -641,14 +641,14 @@ method	open	-encodeCGVector:forKey:	NSCoder	Files and Data Persistence / Keyed A
 method	open	-encodeCMTime:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Core Media Time Structures	-	objc
 method	open	-encodeCMTimeMapping:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Core Media Time Structures	-	objc
 method	open	-encodeCMTimeRange:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Core Media Time Structures	-	objc
-method	open	-encodeConditionalObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	open	-encodeConditionalObject:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
+method	shipped	-encodeConditionalObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
+method	shipped	-encodeConditionalObject:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeDataObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	open	-encodeDirectionalEdgeInsets:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
 method	shipped	-encodeDouble:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeFloat:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	open	-encodeInt32:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	open	-encodeInt64:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
+method	shipped	-encodeInt32:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
+method	shipped	-encodeInt64:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeInt:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeInteger:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	open	-encodeNXObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	deprecated	objc
@@ -666,16 +666,16 @@ method	open	-encodeUIEdgeInsets:forKey:	NSCoder	Files and Data Persistence / Key
 method	open	-encodeUIOffset:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
 method	shipped	-encodeValueOfObjCType:at:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	open	-encodeValuesOfObjCTypes:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	open	-failWithError:	NSCoder	Files and Data Persistence / Keyed Archivers / Managing Decode Errors	-	objc
+method	shipped	-failWithError:	NSCoder	Files and Data Persistence / Keyed Archivers / Managing Decode Errors	-	objc
 method	open	-objectZone	NSCoder	Files and Data Persistence / Keyed Archivers / Managing Zones	-	objc
 method	open	-setObjectZone:	NSCoder	Files and Data Persistence / Keyed Archivers / Managing Zones	-	objc
 method	shipped	-versionForClassName:	NSCoder	Files and Data Persistence / Keyed Archivers / Getting Version Information	-	objc
-property	open	allowedClasses	NSCoder	Files and Data Persistence / Keyed Archivers / Secure Coding	-	objc
-property	open	allowsKeyedCoding	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder	-	objc
-property	open	decodingFailurePolicy	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder	-	swift-page
-property	open	error	NSCoder	Files and Data Persistence / Keyed Archivers / Managing Decode Errors	-	objc
-property	open	requiresSecureCoding	NSCoder	Files and Data Persistence / Keyed Archivers / Secure Coding	-	objc
-property	open	systemVersion	NSCoder	Files and Data Persistence / Keyed Archivers / Getting Version Information	-	objc
+property	shipped	allowedClasses	NSCoder	Files and Data Persistence / Keyed Archivers / Secure Coding	-	objc
+property	shipped	allowsKeyedCoding	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder	-	objc
+property	shipped	decodingFailurePolicy	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder	-	swift-page
+property	shipped	error	NSCoder	Files and Data Persistence / Keyed Archivers / Managing Decode Errors	-	objc
+property	shipped	requiresSecureCoding	NSCoder	Files and Data Persistence / Keyed Archivers / Secure Coding	-	objc
+property	shipped	systemVersion	NSCoder	Files and Data Persistence / Keyed Archivers / Getting Version Information	-	objc
 method	shipped	-encodeWithCoder:	NSCoding	Files and Data Persistence / Adopting Codability / Encoding with a coder	-	objc
 method	shipped	-initWithCoder:	NSCoding	Files and Data Persistence / Adopting Codability / Initializing with a coder	-	objc
 method	shipped	-initWithCoder:	NSComparisonPredicate	Fundamentals / Filltering / Creating Comparison Predicates	-	objc
@@ -1661,11 +1661,11 @@ method	open	+classNameForClass:	NSKeyedArchiver	Files and Data Persistence / Key
 method	open	-classNameForClass:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Managing Classes and Class Names	-	swift-page
 method	shipped	-encodeBool:forKey:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
 method	shipped	-encodeBytes:length:forKey:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
-method	open	-encodeConditionalObject:forKey:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
+method	shipped	-encodeConditionalObject:forKey:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
 method	shipped	-encodeDouble:forKey:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
 method	shipped	-encodeFloat:forKey:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
-method	open	-encodeInt32:forKey:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
-method	open	-encodeInt64:forKey:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
+method	shipped	-encodeInt32:forKey:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
+method	shipped	-encodeInt64:forKey:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
 method	shipped	-encodeInt:forKey:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
 method	shipped	-encodeObject:forKey:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
 method	shipped	-finishEncoding	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Archiving Data	-	objc
@@ -1677,7 +1677,7 @@ method	open	-setClassName:forClass:	NSKeyedArchiver	Files and Data Persistence /
 property	shipped	delegate	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Managing the Delegate	-	objc
 property	open	encodedData	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Archiving Data	-	objc
 property	open	outputFormat	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Archiving Data	-	objc
-property	open	requiresSecureCoding	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Archiving Data	-	objc
+property	shipped	requiresSecureCoding	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Archiving Data	-	objc
 method	shipped	-archiver:didEncodeObject:	NSKeyedArchiverDelegate	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
 method	shipped	-archiver:willEncodeObject:	NSKeyedArchiverDelegate	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
 method	shipped	-archiver:willReplaceObject:withObject:	NSKeyedArchiverDelegate	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
@@ -1690,8 +1690,8 @@ method	shipped	-decodeBoolForKey:	NSKeyedUnarchiver	Files and Data Persistence /
 method	shipped	-decodeBytesForKey:returnedLength:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
 method	shipped	-decodeDoubleForKey:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
 method	shipped	-decodeFloatForKey:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
-method	open	-decodeInt32ForKey:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
-method	open	-decodeInt64ForKey:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
+method	shipped	-decodeInt32ForKey:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
+method	shipped	-decodeInt64ForKey:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
 method	shipped	-decodeIntForKey:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
 method	shipped	-decodeObjectForKey:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
 method	shipped	-finishDecoding	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
@@ -1709,9 +1709,9 @@ method	open	+unarchivedDictionaryWithKeysOfClass:objectsOfClass:fromData:error:	
 method	open	+unarchivedDictionaryWithKeysOfClasses:objectsOfClasses:fromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Type Methods	-	objc
 method	open	+unarchivedObjectOfClass:fromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Unarchiving Data	-	objc
 method	open	+unarchivedObjectOfClasses:fromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Unarchiving Data	-	objc
-property	open	decodingFailurePolicy	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
+property	shipped	decodingFailurePolicy	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
 property	shipped	delegate	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Managing the Delegate	-	objc
-property	open	requiresSecureCoding	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Unarchiving Data	-	objc
+property	shipped	requiresSecureCoding	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Unarchiving Data	-	objc
 method	shipped	-unarchiver:cannotDecodeObjectOfClassName:originalClasses:	NSKeyedUnarchiverDelegate	Files and Data Persistence / Keyed Archivers / Decoding Objects	-	objc
 method	shipped	-unarchiver:didDecodeObject:	NSKeyedUnarchiverDelegate	Files and Data Persistence / Keyed Archivers / Decoding Objects	-	objc
 method	shipped	-unarchiver:willReplaceObject:withObject:	NSKeyedUnarchiverDelegate	Files and Data Persistence / Keyed Archivers / Decoding Objects	-	objc
@@ -3916,7 +3916,7 @@ method	open	-setObjectZone:	NSUnarchiver	Files and Data Persistence / Deprecated
 method	shipped	+unarchiveObjectWithData:	NSUnarchiver	Files and Data Persistence / Deprecated / Decoding objects	deprecated	objc
 method	shipped	+unarchiveObjectWithFile:	NSUnarchiver	Files and Data Persistence / Deprecated / Decoding objects	deprecated	objc
 property	open	atEnd	NSUnarchiver	Files and Data Persistence / Deprecated / Managing an NSUnarchiver	deprecated	objc
-property	open	systemVersion	NSUnarchiver	Files and Data Persistence / Deprecated / Managing an NSUnarchiver	deprecated	swift-page
+property	shipped	systemVersion	NSUnarchiver	Files and Data Persistence / Deprecated / Managing an NSUnarchiver	deprecated	swift-page
 method	shipped	-beginUndoGrouping	NSUndoManager	App Support / Undo / Creating undo groups	-	objc
 method	shipped	-disableUndoRegistration	NSUndoManager	App Support / Undo / Enabling and disabling undo	-	objc
 method	shipped	-enableUndoRegistration	NSUndoManager	App Support / Undo / Enabling and disabling undo	-	objc
