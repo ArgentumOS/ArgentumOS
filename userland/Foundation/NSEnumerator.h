@@ -24,7 +24,10 @@
 #import <Foundation/NSObject.h>
 #import <Foundation/NSFastEnumeration.h>
 
-@class NSArray;
+/* THE PARAMETERS MUST BE HERE TOO, and this is the M7 trap repeating: a BARE forward declaration wins over
+ * the real one, so `NSArray<ObjectType> *` below is refused with "type arguments cannot be applied to a
+ * non-parameterized class". A forward declaration of a parameterized class carries its parameters. */
+@class NSArray<ObjectType>;
 
 /* NULLABILITY (F6): NONNULL by default, and the ONE exception is -nextObject,
  * which answers nil once the cursor is exhausted. */
@@ -37,9 +40,8 @@ NS_ASSUME_NONNULL_BEGIN
 	unsigned long _mutations;	/* a stable address for fast enumeration */
 	BOOL _reverse;
 }
-
-- (nullable id)nextObject;
-- (NSArray *)allObjects;		/* what is LEFT, and the cursor is exhausted */
+- (nullable ObjectType)nextObject;
+- (NSArray<ObjectType> *)allObjects;		/* what is LEFT, and the cursor is exhausted */
 
 /* Ours, not Cocoa's: the collections are the ones that construct enumerators. */
 - (id)initWithSequence:(NSArray *)sequence reverse:(BOOL)reverse;

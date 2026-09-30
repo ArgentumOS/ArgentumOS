@@ -47,7 +47,15 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface NSCache : NSObject
+/* ===================================================================================================
+ * NSCACHE'S TYPE PARAMETERS (M9, 2026-09-29). NOT a cluster - there is one class - so this is the
+ * parameterization-only half of the plan: no §C.3 shape is owed, and what is owed is that the declarations
+ * carry the parameters Apple's do. The four doors below are the ones the reference data names
+ * (KeyType/ObjectType); the rest of this class's surface - the limits, the delegate, the name - is not
+ * parameterized by anything.
+ * =================================================================================================== */
+
+@interface NSCache<KeyType, ObjectType> : NSObject
 {
 	NSString *_name;
 	NSUInteger _countLimit;			/* 0 means no limit */
@@ -79,10 +87,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable id <NSCacheDelegate>)delegate;
 - (void)setDelegate:(nullable id <NSCacheDelegate>)value;
 
-- (nullable id)objectForKey:(id)key;
-- (void)setObject:(id)obj forKey:(id)key;
-- (void)setObject:(id)obj forKey:(id)key cost:(NSUInteger)cost;
-- (void)removeObjectForKey:(id)key;
+- (nullable ObjectType)objectForKey:(KeyType)key;
+- (void)setObject:(ObjectType)obj forKey:(KeyType)key;
+- (void)setObject:(ObjectType)obj forKey:(KeyType)key cost:(NSUInteger)cost;
+- (void)removeObjectForKey:(KeyType)key;
 - (void)removeAllObjects;
 
 @end

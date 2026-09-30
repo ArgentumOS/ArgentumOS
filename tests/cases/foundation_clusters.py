@@ -388,6 +388,18 @@ class Case(BaseCase):
                        if status != 0
                        else "%s ACCEPTED type arguments, so the parameterization clause has a blind spot" % label)
 
+                # M9: the parameterization-ONLY targets. These mirror the assertions above - a family we DID
+        # parameterize must ACCEPT type arguments, or "we parameterized it" and "we did not" are one claim.
+        for label, snippet in (
+            ("NSEnumerator", "#import <Foundation/Foundation.h>\n\nvoid ag_p_enumerator(void)\n{\n\tNSEnumerator<NSString *> *ok = nil;\n\n\t(void)ok;\n}\n"),
+            ("NSCache", "#import <Foundation/Foundation.h>\n\nvoid ag_p_cache(void)\n{\n\tNSCache<NSString *, NSNumber *> *ok = nil;\n\n\t(void)ok;\n}\n"),
+        ):
+            status, output = self._objc_syntax_only(snippet, userland)
+            self.check("a-parameterized-family-accepts-type-arguments-%s" % label.lower(), status == 0,
+                       "%s accepts type arguments, as its declarations promise" % label
+                       if status == 0
+                       else "%s REFUSED type arguments: %s" % (label, output.strip()[-200:]))
+
         negative = self._variance_removed_tree()
         try:
             status, output = self._objc_syntax_only(COVARIANT_SNIPPET, negative)
