@@ -37,7 +37,10 @@ CHECKS = ("tz-offset", "calendar-convert", "calendar-roundtrip",
           "calendar-add-months", "calendar-add-units", "calendar-ranges",
           "calendar-weeks", "calendar-timezone", "calendar-refusals",
           "calendar-non-gregorian", "calendar-difference", "tz-names-present",
-          "calendar-formatter-present", "cross-tu", "calendar-alias-and-wire-values")
+          "calendar-formatter-present", "cross-tu", "calendar-alias-and-wire-values",
+          "calendar-extraction", "calendar-date-with-week", "calendar-range-and-ordinality",
+          "calendar-setting-and-granularity", "calendar-today-and-weekend",
+          "calendar-symbols", "calendar-matches-and-comp-diff")
 
 
 class Case(BaseCase):

@@ -30,6 +30,9 @@
 @class NSDate;
 @class NSTimeZone;
 @class NSDateComponents;
+@class NSArray;
+@class NSNumber;
+@class NSLocale;
 
 /* NULLABILITY (F6's standing rule): the region opens here and closes at the foot
  * of the file, so every declaration below — the identifier constants, the two
@@ -170,6 +173,7 @@ typedef enum {
 {
 	NSString *_identifier;
 	NSTimeZone *_timeZone;
+	NSLocale *_locale;			/* nil = the current locale, as -locale reports */
 	NSUInteger _firstWeekday;		/* 1 = Sunday, ... 7 = Saturday */
 	NSUInteger _minimumDaysInFirstWeek;
 }
@@ -245,6 +249,149 @@ typedef enum {
 	    forDate:(NSDate *)date;
 
 - (BOOL)isDate:(NSDate *)date inSameDayAsDate:(NSDate *)other;
+
+/* =================================================================================================
+ * THE COMPARISON, EXTRACTION, CONSTRUCTION, SETTING, RANGE AND SYMBOL DOORS (F13.7c)
+ *
+ * Each is answered through the SAME ICU machinery the conversion above uses (NSCalendar.m's
+ * fn_cal_open): the granularity comparisons TRUNCATE with ucal_set and compare milliseconds, the
+ * range doors read ucal_getLimit, and the symbol doors read udat_getSymbols against the calendar's
+ * OWN locale keyword — which is what makes a Hebrew year's month names come from ICU's data rather
+ * than from a table this file would have to carry.
+ *
+ * WHERE A DOOR REFUSES, IT REFUSES BY NAME. The four SEARCH doors — the -nextDateAfterDate:…
+ * family and -enumerateDatesStartingAfterDate:… — are NOT declared here: each needs a candidate
+ * search under the NSCalendarMatchOptions policies, which ucal does not offer as a door, and this
+ * class answers by arithmetic rather than by scanning. Their rows stay open (see NSCalendar.m's
+ * note). The setting and comparison doors below take NSCalendarOptionsNone for the same reason and
+ * raise NSInvalidArgumentException for a search option.
+ * ================================================================================================= */
+
+/* COMPARISON AT A GRANULARITY. Both dates are TRUNCATED to `unit`, then compared:
+ * -isDate:…: answers whether the truncations are equal, -compareDate:…: their order. */
+- (NSComparisonResult)compareDate:(NSDate *)date
+			   toDate:(NSDate *)other
+		 toUnitGranularity:(NSCalendarUnit)unit;
+- (BOOL)isDate:(NSDate *)date
+   equalToDate:(NSDate *)other
+toUnitGranularity:(NSCalendarUnit)unit;
+
+- (BOOL)isDateInToday:(NSDate *)date;
+- (BOOL)isDateInTomorrow:(NSDate *)date;
+- (BOOL)isDateInYesterday:(NSDate *)date;
+- (BOOL)isDateInWeekend:(NSDate *)date;
+
+/* EXTRACTION. -component:fromDate: answers ONE field as an object (nil for a unit this door does
+ * not report); -componentsInTimeZone:fromDate: is -components:fromDate: read in ANOTHER zone. The
+ * -get…:fromDate: doors write through the pointers they are given and leave a NULL one alone. */
+- (nullable NSNumber *)component:(NSCalendarUnit)unit fromDate:(NSDate *)date;
+- (NSDateComponents *)componentsInTimeZone:(NSTimeZone *)timeZone fromDate:(NSDate *)date;
+- (void)getEra:(NSInteger *)eraValuePointer
+	  year:(NSInteger *)yearValuePointer
+	 month:(NSInteger *)monthValuePointer
+	   day:(NSInteger *)dayValuePointer
+      fromDate:(NSDate *)date;
+- (void)getEra:(NSInteger *)eraValuePointer
+yearForWeekOfYear:(NSInteger *)yearForWeekOfYearValuePointer
+      weekOfYear:(NSInteger *)weekOfYearValuePointer
+	 weekday:(NSInteger *)weekdayValuePointer
+	fromDate:(NSDate *)date;
+- (void)getHour:(NSInteger *)hourValuePointer
+	 minute:(NSInteger *)minuteValuePointer
+	 second:(NSInteger *)secondValuePointer
+     nanosecond:(NSInteger *)nanosecondValuePointer
+       fromDate:(NSDate *)date;
+
+/* CONSTRUCTION. An NSDateComponentUndefined field is OMITTED rather than set to its maximum. */
+- (nullable NSDate *)dateWithEra:(NSInteger)eraValue
+			    year:(NSInteger)yearValue
+			   month:(NSInteger)monthValue
+			     day:(NSInteger)dayValue
+			    hour:(NSInteger)hourValue
+			  minute:(NSInteger)minuteValue
+			  second:(NSInteger)secondValue
+		      nanosecond:(NSInteger)nanosecondValue;
+- (nullable NSDate *)dateWithEra:(NSInteger)eraValue
+	       yearForWeekOfYear:(NSInteger)yearForWeekOfYearValue
+		       weekOfYear:(NSInteger)weekOfYearValue
+			  weekday:(NSInteger)weekdayValue
+			     hour:(NSInteger)hourValue
+			   minute:(NSInteger)minuteValue
+			   second:(NSInteger)secondValue
+		       nanosecond:(NSInteger)nanosecondValue;
+
+/* SETTING ONE FIELD (or the time of day) on an existing date. NSCalendarOptionsNone is the only
+ * honoured value — the match policies name a search (see the note above). */
+- (nullable NSDate *)dateBySettingHour:(NSInteger)hour
+				minute:(NSInteger)minute
+				second:(NSInteger)second
+				ofDate:(NSDate *)date
+			       options:(NSCalendarOptions)options;
+- (nullable NSDate *)dateBySettingUnit:(NSCalendarUnit)unit
+				 value:(NSInteger)value
+				ofDate:(NSDate *)date
+			       options:(NSCalendarOptions)options;
+
+/* RANGES. -maximumRangeOfUnit: / -minimumRangeOfUnit: answer the WIDEST and the NARROWEST range a
+ * unit can take in this calendar — 1-31 and 1-28 for a Gregorian day, 1-12 both ways for its month. */
+- (NSRange)maximumRangeOfUnit:(NSCalendarUnit)unit;
+- (NSRange)minimumRangeOfUnit:(NSCalendarUnit)unit;
+/* The 1-based ordinal of `smaller` within `larger` for this date: the day within its month, the
+ * month within its year. */
+- (NSUInteger)ordinalityOfUnit:(NSCalendarUnit)smaller
+			inUnit:(NSCalendarUnit)larger
+		       forDate:(NSDate *)date;
+- (nullable NSDate *)startOfDayForDate:(NSDate *)date;
+
+/* THE WEEKEND, from the calendar's OWN rule: the locale's region decides which days count, and
+ * ucal_isWeekend answers it in the calendar's zone. -rangeOfWeekend… answers NO for a date that is
+ * not in a weekend (and leaves the out-parameters alone). */
+- (BOOL)rangeOfWeekendStartDate:(NSDate * _Nullable * _Nullable)datep
+		       interval:(double * _Nullable)tip
+		 containingDate:(NSDate *)date;
+- (BOOL)nextWeekendStartDate:(NSDate * _Nullable * _Nullable)datep
+		    interval:(double * _Nullable)tip
+		     options:(NSCalendarOptions)options
+		   afterDate:(NSDate *)date;
+
+/* MATCHING. YES when every field `components` SETS equals this date's own field. */
+- (BOOL)date:(NSDate *)date matchesComponents:(NSDateComponents *)components;
+
+/* THE FIELD-WISE DIFFERENCE between two COMPONENT sets (not two dates): each is turned into a date
+ * through -dateFromComponents: and the difference taken as above. A nil set means "now", as in Cocoa. */
+- (NSDateComponents *)components:(NSCalendarUnit)units
+	      fromDateComponents:(nullable NSDateComponents *)startingDateComp
+		toDateComponents:(nullable NSDateComponents *)resultDateComp
+			 options:(NSCalendarOptions)options;
+
+/* SYMBOLS AND IDENTITY. The symbol arrays are the LOCALE's names for this calendar's units, read
+ * from ICU against the calendar's own locale keyword (NSCalendar.m). They are nullable because a
+ * formatter ICU cannot open for the locale answers nil. */
+- (NSString *)calendarIdentifier;
+- (NSLocale *)locale;
+- (void)setLocale:(NSLocale *)locale;
++ (nullable NSCalendar *)autoupdatingCurrentCalendar;
+
+- (nullable NSString *)AMSymbol;
+- (nullable NSString *)PMSymbol;
+- (nullable NSArray *)eraSymbols;
+- (nullable NSArray *)longEraSymbols;
+- (nullable NSArray *)monthSymbols;
+- (nullable NSArray *)shortMonthSymbols;
+- (nullable NSArray *)veryShortMonthSymbols;
+- (nullable NSArray *)standaloneMonthSymbols;
+- (nullable NSArray *)shortStandaloneMonthSymbols;
+- (nullable NSArray *)veryShortStandaloneMonthSymbols;
+- (nullable NSArray *)weekdaySymbols;
+- (nullable NSArray *)shortWeekdaySymbols;
+- (nullable NSArray *)veryShortWeekdaySymbols;
+- (nullable NSArray *)standaloneWeekdaySymbols;
+- (nullable NSArray *)shortStandaloneWeekdaySymbols;
+- (nullable NSArray *)veryShortStandaloneWeekdaySymbols;
+- (nullable NSArray *)quarterSymbols;
+- (nullable NSArray *)shortQuarterSymbols;
+- (nullable NSArray *)standaloneQuarterSymbols;
+- (nullable NSArray *)shortStandaloneQuarterSymbols;
 
 - (BOOL)isEqualToCalendar:(NSCalendar *)other;
 - (BOOL)isEqual:(id)other;

@@ -464,6 +464,230 @@ int main(void)
 		      "the aliases equal their house names, DayOfYear is Apple's bit, and an identifier is its wire string");
 	}
 
+	{
+		/* F13.7c: EXTRACTION AND CONSTRUCTION. A fresh calendar in a FIXED zone and an explicit
+		 * locale, so every number is a fact about the calendar and not about the host's TZ or LANG. */
+		NSCalendar *c2 = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian];
+		NSDate *epoch = [NSDate dateWithTimeIntervalSince1970:0];
+		NSDate *when = [NSDate dateWithTimeIntervalSince1970:1700000000.0];	/* 2023-11-14T22:13:20Z */
+		NSInteger era = 0, year = 0, month = 0, day = 0;
+		NSInteger hour = 0, minute = 0, second = 0, nano = 0;
+		NSTimeZone *ist = [NSTimeZone timeZoneForSecondsFromGMT:19800];
+		NSTimeZone *utc = [NSTimeZone timeZoneForSecondsFromGMT:0];
+		NSLocale *en = [NSLocale localeWithLocaleIdentifier:@"en_US"];
+		NSDateComponents *inZone;
+
+		[c2 setTimeZone:utc];
+		[c2 setLocale:en];
+		[c2 getEra:&era year:&year month:&month day:&day fromDate:epoch];
+		[c2 getHour:&hour minute:&minute second:&second nanosecond:&nano fromDate:when];
+		inZone = [c2 componentsInTimeZone:ist fromDate:epoch];
+
+		check("calendar-extraction",
+		      [[c2 component:NSCalendarUnitDay fromDate:epoch] integerValue] == 1 &&
+		      [[c2 component:NSCalendarUnitWeekday fromDate:epoch] integerValue] == 5 &&
+		      [[c2 component:NSCalendarUnitYear fromDate:when] integerValue] == 2023 &&
+		      [c2 component:NSCalendarUnitCalendar fromDate:epoch] == nil &&
+		      era == 1 && year == 1970 && month == 1 && day == 1 &&
+		      hour == 22 && minute == 13 && second == 20 && nano == 0 &&
+		      [inZone hour] == 5 && [inZone minute] == 30,
+		      [[NSString stringWithFormat:
+				@"compDay=%ld compWd=%ld era=%ld y=%ld m=%ld d=%ld %02ld:%02ld:%02ld ns=%ld zone=%02ld:%02ld",
+			(long)[[c2 component:NSCalendarUnitDay fromDate:epoch] integerValue],
+			(long)[[c2 component:NSCalendarUnitWeekday fromDate:epoch] integerValue],
+			(long)era, (long)year, (long)month, (long)day,
+			(long)hour, (long)minute, (long)second, (long)nano,
+			(long)[inZone hour], (long)[inZone minute]] UTF8String]);
+	}
+
+	{
+		/* -dateWithEra:yearForWeekOfYear:weekOfYear:weekday:… — ISO week 1 of 2026 is Monday
+		 * 2025-12-29, resolved by ICU's UCAL_YEAR_WOY / UCAL_WEEK_OF_YEAR / UCAL_DAY_OF_WEEK. */
+		NSCalendar *iso = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierISO8601];
+		NSTimeZone *utc = [NSTimeZone timeZoneForSecondsFromGMT:0];
+		NSDate *d;
+		NSDateComponents *got;
+
+		[iso setTimeZone:utc];
+		[iso setFirstWeekday:2];		/* Monday */
+		[iso setMinimumDaysInFirstWeek:4];	/* ISO's week-1 rule */
+		d = [iso dateWithEra:1 yearForWeekOfYear:2026 weekOfYear:1 weekday:2
+				 hour:0 minute:0 second:0 nanosecond:0];
+		got = [iso components:(NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay)
+			       fromDate:d];
+
+		check("calendar-date-with-week",
+		      d != nil && [got year] == 2025 && [got month] == 12 && [got day] == 29,
+		      [[NSString stringWithFormat:@"week1of2026 -> %ld-%02ld-%02ld",
+			(long)[got year], (long)[got month], (long)[got day]] UTF8String]);
+	}
+
+	{
+		/* RANGES, ORDINALITY, START OF DAY. The limits come from the calendar itself. */
+		NSCalendar *c2 = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian];
+		NSTimeZone *utc = [NSTimeZone timeZoneForSecondsFromGMT:0];
+		NSDateComponents *feb = [[NSDateComponents alloc] init];
+		NSDate *d, *sod;
+
+		[c2 setTimeZone:utc];
+		[feb setYear:2026]; [feb setMonth:2]; [feb setDay:10];
+		[feb setHour:18]; [feb setMinute:45]; [feb setSecond:30];
+		d = [c2 dateFromComponents:feb];
+		sod = [c2 startOfDayForDate:d];
+		check("calendar-range-and-ordinality",
+		      [c2 maximumRangeOfUnit:NSCalendarUnitDay].location == 1 &&
+		      [c2 maximumRangeOfUnit:NSCalendarUnitDay].length == 31 &&
+		      [c2 minimumRangeOfUnit:NSCalendarUnitDay].location == 1 &&
+		      [c2 minimumRangeOfUnit:NSCalendarUnitDay].length == 28 &&
+		      [c2 maximumRangeOfUnit:NSCalendarUnitMonth].location == 1 &&
+		      [c2 maximumRangeOfUnit:NSCalendarUnitMonth].length == 12 &&
+		      [c2 ordinalityOfUnit:NSCalendarUnitDay inUnit:NSCalendarUnitMonth forDate:d] == 10 &&
+		      [c2 ordinalityOfUnit:NSCalendarUnitMonth inUnit:NSCalendarUnitYear forDate:d] == 2 &&
+		      sod != nil &&
+		      [[c2 component:NSCalendarUnitHour fromDate:sod] integerValue] == 0 &&
+		      [[c2 component:NSCalendarUnitMinute fromDate:sod] integerValue] == 0,
+		      [[NSString stringWithFormat:@"maxDay=%lu minDayLen=%lu ordDay=%lu ordMon=%lu sod=%02ld:%02ld",
+			(unsigned long)[c2 maximumRangeOfUnit:NSCalendarUnitDay].length,
+			(unsigned long)[c2 minimumRangeOfUnit:NSCalendarUnitDay].length,
+			(unsigned long)[c2 ordinalityOfUnit:NSCalendarUnitDay inUnit:NSCalendarUnitMonth forDate:d],
+			(unsigned long)[c2 ordinalityOfUnit:NSCalendarUnitMonth inUnit:NSCalendarUnitYear forDate:d],
+			(long)[[c2 component:NSCalendarUnitHour fromDate:sod] integerValue],
+			(long)[[c2 component:NSCalendarUnitMinute fromDate:sod] integerValue]] UTF8String]);
+	}
+
+	{
+		/* SETTING AND GRANULARITY. ucal_set keeps the day; granularity truncates then compares. */
+		NSCalendar *c2 = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian];
+		NSDateComponents *b1 = [[NSDateComponents alloc] init];
+		NSDateComponents *b2 = [[NSDateComponents alloc] init];
+		NSDate *base, *set, *later, *daySet;
+		NSTimeZone *utc = [NSTimeZone timeZoneForSecondsFromGMT:0];
+
+		[c2 setTimeZone:utc];
+		[b1 setYear:2023]; [b1 setMonth:11]; [b1 setDay:14];
+		[b1 setHour:22]; [b1 setMinute:13]; [b1 setSecond:20];
+		base = [c2 dateFromComponents:b1];
+		set = [c2 dateBySettingHour:9 minute:30 second:0 ofDate:base options:NSCalendarOptionsNone];
+		[b2 setYear:2023]; [b2 setMonth:11]; [b2 setDay:14];
+		[b2 setHour:23]; [b2 setMinute:0]; [b2 setSecond:0];
+		later = [c2 dateFromComponents:b2];
+		daySet = [c2 dateBySettingUnit:NSCalendarUnitDay value:20 ofDate:base options:NSCalendarOptionsNone];
+
+		check("calendar-setting-and-granularity",
+		      set != nil &&
+		      [[c2 component:NSCalendarUnitHour fromDate:set] integerValue] == 9 &&
+		      [[c2 component:NSCalendarUnitMinute fromDate:set] integerValue] == 30 &&
+		      [[c2 component:NSCalendarUnitDay fromDate:set] integerValue] == 14 &&
+		      [[c2 component:NSCalendarUnitDay fromDate:daySet] integerValue] == 20 &&
+		      [[c2 component:NSCalendarUnitMonth fromDate:daySet] integerValue] == 11 &&
+		      [c2 isDate:base equalToDate:later toUnitGranularity:NSCalendarUnitDay] &&
+		      ![c2 isDate:base equalToDate:later toUnitGranularity:NSCalendarUnitHour] &&
+		      [c2 compareDate:base toDate:later toUnitGranularity:NSCalendarUnitDay] == NSOrderedSame &&
+		      [c2 compareDate:base toDate:later toUnitGranularity:NSCalendarUnitMinute] == NSOrderedAscending,
+		      [[NSString stringWithFormat:@"setH=%ld setM=%ld setD=%ld unitDay=%ld",
+			(long)[[c2 component:NSCalendarUnitHour fromDate:set] integerValue],
+			(long)[[c2 component:NSCalendarUnitMinute fromDate:set] integerValue],
+			(long)[[c2 component:NSCalendarUnitDay fromDate:set] integerValue],
+			(long)[[c2 component:NSCalendarUnitDay fromDate:daySet] integerValue]] UTF8String]);
+	}
+
+	{
+		/* TODAY and THE WEEKEND. 2024-01-06 is a Saturday and 2024-01-03 a Wednesday, both at 12:00Z;
+		 * the calendar is pinned to GMT so "today" and the weekend boundary are host-independent. */
+		NSCalendar *c2 = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian];
+		NSDate *now = [NSDate date];
+		NSDateComponents *s = [[NSDateComponents alloc] init];
+		NSDate *sat, *wed, *ws = nil;
+		double wi = 0;
+		BOOL haveWs;
+		NSTimeZone *utc = [NSTimeZone timeZoneForSecondsFromGMT:0];
+
+		[c2 setTimeZone:utc];
+		[s setYear:2024]; [s setMonth:1]; [s setDay:6]; [s setHour:12];
+		sat = [c2 dateFromComponents:s];
+		[s setDay:3];
+		wed = [c2 dateFromComponents:s];
+		haveWs = [c2 rangeOfWeekendStartDate:&ws interval:&wi containingDate:sat];
+
+		check("calendar-today-and-weekend",
+		      [c2 isDateInToday:now] &&
+		      ![c2 isDateInToday:[now dateByAddingTimeInterval:-10 * 86400.0]] &&
+		      [c2 isDateInWeekend:sat] && ![c2 isDateInWeekend:wed] &&
+		      haveWs && ws != nil && ((long)(wi / 86400.0)) == 2 &&
+		      [[c2 component:NSCalendarUnitDay fromDate:ws] integerValue] == 6 &&
+		      [[c2 component:NSCalendarUnitHour fromDate:ws] integerValue] == 0,
+		      [[NSString stringWithFormat:@"today=%d wkendSat=%d wsDay=%ld wi=%.0f",
+			(int)[c2 isDateInToday:now], (int)[c2 isDateInWeekend:sat],
+			(long)[[c2 component:NSCalendarUnitDay fromDate:ws] integerValue], wi] UTF8String]);
+	}
+
+	{
+		/* SYMBOLS AND IDENTITY (F13.7c): the LOCALE's names, read from ICU against the calendar's
+		 * own keyword. */
+		NSCalendar *c2 = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian];
+		NSArray *wd, *mon, *eras;
+		NSLocale *en = [NSLocale localeWithLocaleIdentifier:@"en_US"];
+
+		[c2 setLocale:en];
+		wd = [c2 weekdaySymbols];
+		mon = [c2 monthSymbols];
+		eras = [c2 eraSymbols];
+
+		check("calendar-symbols",
+		      [[c2 calendarIdentifier] isEqualToString:NSCalendarIdentifierGregorian] &&
+		      [c2 locale] != nil &&
+		      [NSCalendar autoupdatingCurrentCalendar] != nil &&
+		      [c2 AMSymbol] != nil && [[c2 AMSymbol] isEqualToString:@"AM"] &&
+		      [[c2 PMSymbol] isEqualToString:@"PM"] &&
+		      wd != nil && [wd count] == 7 &&
+		      [[wd objectAtIndex:0] isEqualToString:@"Sunday"] &&
+		      [[wd objectAtIndex:1] isEqualToString:@"Monday"] &&
+		      mon != nil && [mon count] >= 12 && [[mon objectAtIndex:0] isEqualToString:@"January"] &&
+		      eras != nil && [eras count] == 2 && [[eras objectAtIndex:0] isEqualToString:@"BC"] &&
+		      [[c2 longEraSymbols] count] == 2 &&
+		      [[c2 shortWeekdaySymbols] count] == 7 &&
+		      [[c2 quarterSymbols] count] == 4 &&
+		      [[c2 standaloneMonthSymbols] count] >= 12,
+		      [[NSString stringWithFormat:@"wd0=%@ mon0=%@ am=%@ eras0=%@ id=%@",
+			[wd count] > 0 ? (NSString *)[wd objectAtIndex:0] : @"(none)",
+			[mon count] > 0 ? (NSString *)[mon objectAtIndex:0] : @"(none)",
+			[c2 AMSymbol] != nil ? [c2 AMSymbol] : @"(nil)",
+			[eras count] > 0 ? (NSString *)[eras objectAtIndex:0] : @"(none)",
+			[c2 calendarIdentifier]] UTF8String]);
+	}
+
+	{
+		/* MATCHING and THE COMPONENT DIFFERENCE (F13.7c). */
+		NSCalendar *c2 = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian];
+		NSDateComponents *d1 = [[NSDateComponents alloc] init];
+		NSDateComponents *match = [[NSDateComponents alloc] init];
+		NSDateComponents *nomatch = [[NSDateComponents alloc] init];
+		NSDateComponents *e1 = [[NSDateComponents alloc] init];
+		NSDateComponents *e2 = [[NSDateComponents alloc] init];
+		NSDate *d;
+		NSDateComponents *delta;
+		NSTimeZone *utc = [NSTimeZone timeZoneForSecondsFromGMT:0];
+
+		[c2 setTimeZone:utc];
+		[d1 setYear:2026]; [d1 setMonth:9]; [d1 setDay:17];
+		[match setMonth:9]; [match setDay:17];
+		[nomatch setMonth:10];
+		d = [c2 dateFromComponents:d1];
+		[e1 setYear:2026]; [e1 setMonth:1]; [e1 setDay:31];
+		[e2 setYear:2026]; [e2 setMonth:3]; [e2 setDay:1];
+		delta = [c2 components:(NSCalendarUnitMonth | NSCalendarUnitDay)
+		       fromDateComponents:e1 toDateComponents:e2 options:NSCalendarOptionsNone];
+
+		check("calendar-matches-and-comp-diff",
+		      [c2 date:d matchesComponents:match] &&
+		      ![c2 date:d matchesComponents:nomatch] &&
+		      [delta month] == 1 && [delta day] == 1,
+		      [[NSString stringWithFormat:@"match=%d nomatch=%d deltaM=%ld deltaD=%ld",
+			(int)[c2 date:d matchesComponents:match],
+			(int)[c2 date:d matchesComponents:nomatch],
+			(long)[delta month], (long)[delta day]] UTF8String]);
+	}
+
 	printf("FOUNDATION-CALENDAR RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

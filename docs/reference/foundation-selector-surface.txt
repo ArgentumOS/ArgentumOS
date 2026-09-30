@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1917   open  767   struck  244
-#   property   shipped 1069   open  421   struck  146
+#   method     shipped 1962   open  722   struck  244
+#   property   shipped 1106   open  384   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -330,26 +330,26 @@ property	shipped	tolerance	NSBackgroundActivityScheduler	App Support / System In
 method	shipped	-addExecutionBlock:	NSBlockOperation	App Support / Operations / Managing the Blocks in the Operation	-	objc
 method	shipped	+blockOperationWithBlock:	NSBlockOperation	App Support / Operations / Managing the Blocks in the Operation	-	objc
 property	shipped	executionBlocks	NSBlockOperation	App Support / Operations / Managing the Blocks in the Operation	-	objc
-method	open	-URLForAuxiliaryExecutable:	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
+method	shipped	-URLForAuxiliaryExecutable:	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 method	open	-URLForImageResource:	NSBundle	App Support / Bundle Resources / Finding image resources	-	objc
-method	open	-URLForResource:withExtension:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
-method	open	-URLForResource:withExtension:subdirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
-method	open	+URLForResource:withExtension:subdirectory:inBundleWithURL:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
-method	open	-URLForResource:withExtension:subdirectory:localization:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
-method	open	-URLsForResourcesWithExtension:subdirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
-method	open	+URLsForResourcesWithExtension:subdirectory:inBundleWithURL:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
-method	open	-URLsForResourcesWithExtension:subdirectory:localization:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
-method	open	+bundleForClass:	NSBundle	App Support / Bundle Resources / Creating and initializing a bundle	-	objc
+method	shipped	-URLForResource:withExtension:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
+method	shipped	-URLForResource:withExtension:subdirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
+method	shipped	+URLForResource:withExtension:subdirectory:inBundleWithURL:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
+method	shipped	-URLForResource:withExtension:subdirectory:localization:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
+method	shipped	-URLsForResourcesWithExtension:subdirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
+method	shipped	+URLsForResourcesWithExtension:subdirectory:inBundleWithURL:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
+method	shipped	-URLsForResourcesWithExtension:subdirectory:localization:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
+method	shipped	+bundleForClass:	NSBundle	App Support / Bundle Resources / Creating and initializing a bundle	-	objc
 method	shipped	+bundleWithIdentifier:	NSBundle	App Support / Bundle Resources / Creating and initializing a bundle	-	objc
 method	shipped	+bundleWithPath:	NSBundle	App Support / Bundle Resources / Creating and initializing a bundle	-	objc
-method	open	+bundleWithURL:	NSBundle	App Support / Bundle Resources / Creating and initializing a bundle	-	objc
-method	open	-classNamed:	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
+method	shipped	+bundleWithURL:	NSBundle	App Support / Bundle Resources / Creating and initializing a bundle	-	objc
+method	shipped	-classNamed:	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
 method	open	-contextHelpForKey:	NSBundle	App Support / Bundle Resources / Fetching context help resources	-	objc
 method	open	-imageForResource:	NSBundle	App Support / Bundle Resources / Finding image resources	-	objc
 method	shipped	-initWithPath:	NSBundle	App Support / Bundle Resources / Creating and initializing a bundle	-	objc
-method	open	-initWithURL:	NSBundle	App Support / Bundle Resources / Instance Methods	-	objc
+method	shipped	-initWithURL:	NSBundle	App Support / Bundle Resources / Instance Methods	-	objc
 method	shipped	-load	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
-method	open	-loadAndReturnError:	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
+method	shipped	-loadAndReturnError:	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
 method	open	-loadAppleScriptObjectiveCScripts	NSBundle	App Support / Bundle Resources / Instance Methods	-	objc
 method	open	+loadNibFile:externalNameTable:withZone:	NSBundle	App Support / Bundle Resources / Loading nib files	deprecated	objc
 method	open	-loadNibFile:externalNameTable:withZone:	NSBundle	App Support / Bundle Resources / Loading nib files	deprecated	objc
@@ -358,51 +358,51 @@ method	open	-loadNibNamed:owner:options:	NSBundle	App Support / Bundle Resources
 method	open	-loadNibNamed:owner:topLevelObjects:	NSBundle	App Support / Bundle Resources / Loading nib files	-	objc
 method	shipped	-localizedAttributedStringForKey:value:table:	NSBundle	App Support / Bundle Resources / Instance Methods	-	objc
 method	shipped	-localizedStringForKey:value:table:	NSBundle	App Support / Bundle Resources / Fetching localized strings	-	objc
-method	open	-localizedStringForKey:value:table:localizations:	NSBundle	App Support / Bundle Resources / Instance Methods	-	objc
+method	shipped	-localizedStringForKey:value:table:localizations:	NSBundle	App Support / Bundle Resources / Instance Methods	-	objc
 method	shipped	-objectForInfoDictionaryKey:	NSBundle	App Support / Bundle Resources / Getting bundle information	-	objc
-method	open	-pathForAuxiliaryExecutable:	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
+method	shipped	-pathForAuxiliaryExecutable:	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 method	open	-pathForImageResource:	NSBundle	App Support / Bundle Resources / Finding image resources	-	objc
 method	shipped	-pathForResource:ofType:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
 method	shipped	-pathForResource:ofType:inDirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	swift-page
-method	open	+pathForResource:ofType:inDirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	swift-page
-method	open	-pathForResource:ofType:inDirectory:forLocalization:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
+method	shipped	+pathForResource:ofType:inDirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	swift-page
+method	shipped	-pathForResource:ofType:inDirectory:forLocalization:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
 method	open	-pathForSoundResource:	NSBundle	App Support / Bundle Resources / Finding sound resources	-	objc
 method	shipped	-pathsForResourcesOfType:inDirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	swift-page
-method	open	+pathsForResourcesOfType:inDirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	swift-page
-method	open	-pathsForResourcesOfType:inDirectory:forLocalization:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
-method	open	+preferredLocalizationsFromArray:	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
-method	open	+preferredLocalizationsFromArray:forPreferences:	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
-method	open	-preflightAndReturnError:	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
+method	shipped	+pathsForResourcesOfType:inDirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	swift-page
+method	shipped	-pathsForResourcesOfType:inDirectory:forLocalization:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
+method	shipped	+preferredLocalizationsFromArray:	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
+method	shipped	+preferredLocalizationsFromArray:forPreferences:	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
+method	shipped	-preflightAndReturnError:	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
 method	open	-preservationPriorityForTag:	NSBundle	App Support / Bundle Resources / Managing preservation priority for on-demand resources	deprecated	objc
 method	open	-setPreservationPriority:forTags:	NSBundle	App Support / Bundle Resources / Managing preservation priority for on-demand resources	deprecated	objc
 method	shipped	-unload	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
 property	shipped	allBundles	NSBundle	App Support / Bundle Resources / Getting standard bundle objects	-	objc
 property	open	allFrameworks	NSBundle	App Support / Bundle Resources / Getting standard bundle objects	-	objc
 property	open	appStoreReceiptURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	deprecated	objc
-property	open	builtInPlugInsPath	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
-property	open	builtInPlugInsURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
+property	shipped	builtInPlugInsPath	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
+property	shipped	builtInPlugInsURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 property	shipped	bundleIdentifier	NSBundle	App Support / Bundle Resources / Getting bundle information	-	objc
 property	shipped	bundlePath	NSBundle	App Support / Bundle Resources / Getting bundle information	-	objc
-property	open	bundleURL	NSBundle	App Support / Bundle Resources / Getting bundle information	-	objc
-property	open	developmentLocalization	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
+property	shipped	bundleURL	NSBundle	App Support / Bundle Resources / Getting bundle information	-	objc
+property	shipped	developmentLocalization	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
 property	open	executableArchitectures	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
 property	shipped	executablePath	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
-property	open	executableURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
+property	shipped	executableURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 property	shipped	infoDictionary	NSBundle	App Support / Bundle Resources / Getting bundle information	-	objc
 property	open	loaded	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
 property	shipped	localizations	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
-property	open	localizedInfoDictionary	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
+property	shipped	localizedInfoDictionary	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
 property	shipped	mainBundle	NSBundle	App Support / Bundle Resources / Getting standard bundle objects	-	objc
-property	open	preferredLocalizations	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
+property	shipped	preferredLocalizations	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
 property	shipped	principalClass	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
-property	open	privateFrameworksPath	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
-property	open	privateFrameworksURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
+property	shipped	privateFrameworksPath	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
+property	shipped	privateFrameworksURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 property	shipped	resourcePath	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
-property	open	resourceURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
-property	open	sharedFrameworksPath	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
-property	open	sharedFrameworksURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
-property	open	sharedSupportPath	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
-property	open	sharedSupportURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
+property	shipped	resourceURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
+property	shipped	sharedFrameworksPath	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
+property	shipped	sharedFrameworksURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
+property	shipped	sharedSupportPath	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
+property	shipped	sharedSupportURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 method	shipped	-beginAccessingResourcesWithCompletionHandler:	NSBundleResourceRequest	App Support / On-Demand Resources / Requesting resources	deprecated	objc
 method	shipped	-conditionallyBeginAccessingResourcesWithCompletionHandler:	NSBundleResourceRequest	App Support / On-Demand Resources / Requesting resources	deprecated	objc
 method	shipped	-endAccessingResources	NSBundleResourceRequest	App Support / On-Demand Resources / Requesting resources	deprecated	objc
@@ -444,69 +444,69 @@ property	shipped	response	NSCachedURLResponse	Networking / Cache behavior / Gett
 property	shipped	storagePolicy	NSCachedURLResponse	Networking / Cache behavior / Getting cached URL response properties	-	objc
 property	shipped	userInfo	NSCachedURLResponse	Networking / Cache behavior / Getting cached URL response properties	-	objc
 method	shipped	+calendarWithIdentifier:	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars	-	objc
-method	open	-compareDate:toDate:toUnitGranularity:	NSCalendar	Fundamentals / Calendrical Calculations / Comparing Dates	-	objc
-method	open	-component:fromDate:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
+method	shipped	-compareDate:toDate:toUnitGranularity:	NSCalendar	Fundamentals / Calendrical Calculations / Comparing Dates	-	objc
+method	shipped	-component:fromDate:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
 method	shipped	-components:fromDate:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
 method	shipped	-components:fromDate:toDate:options:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
-method	open	-components:fromDateComponents:toDateComponents:options:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
-method	open	-componentsInTimeZone:fromDate:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
-method	open	-date:matchesComponents:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
+method	shipped	-components:fromDateComponents:toDateComponents:options:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
+method	shipped	-componentsInTimeZone:fromDate:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
+method	shipped	-date:matchesComponents:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
 method	shipped	-dateByAddingComponents:toDate:options:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
 method	shipped	-dateByAddingUnit:value:toDate:options:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
-method	open	-dateBySettingHour:minute:second:ofDate:options:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
-method	open	-dateBySettingUnit:value:ofDate:options:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
+method	shipped	-dateBySettingHour:minute:second:ofDate:options:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
+method	shipped	-dateBySettingUnit:value:ofDate:options:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
 method	shipped	-dateFromComponents:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
-method	open	-dateWithEra:year:month:day:hour:minute:second:nanosecond:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
-method	open	-dateWithEra:yearForWeekOfYear:weekOfYear:weekday:hour:minute:second:nanosecond:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
+method	shipped	-dateWithEra:year:month:day:hour:minute:second:nanosecond:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
+method	shipped	-dateWithEra:yearForWeekOfYear:weekOfYear:weekday:hour:minute:second:nanosecond:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
 method	open	-enumerateDatesStartingAfterDate:matchingComponents:options:usingBlock:	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
-method	open	-getEra:year:month:day:fromDate:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
-method	open	-getEra:yearForWeekOfYear:weekOfYear:weekday:fromDate:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
-method	open	-getHour:minute:second:nanosecond:fromDate:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
+method	shipped	-getEra:year:month:day:fromDate:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
+method	shipped	-getEra:yearForWeekOfYear:weekOfYear:weekday:fromDate:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
+method	shipped	-getHour:minute:second:nanosecond:fromDate:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
 method	shipped	-initWithCalendarIdentifier:	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars	-	objc
-method	open	-isDate:equalToDate:toUnitGranularity:	NSCalendar	Fundamentals / Calendrical Calculations / Comparing Dates	-	objc
+method	shipped	-isDate:equalToDate:toUnitGranularity:	NSCalendar	Fundamentals / Calendrical Calculations / Comparing Dates	-	objc
 method	shipped	-isDate:inSameDayAsDate:	NSCalendar	Fundamentals / Calendrical Calculations / Comparing Dates	-	objc
-method	open	-isDateInToday:	NSCalendar	Fundamentals / Calendrical Calculations / Comparing Dates	-	objc
-method	open	-isDateInTomorrow:	NSCalendar	Fundamentals / Calendrical Calculations / Comparing Dates	-	objc
-method	open	-isDateInWeekend:	NSCalendar	Fundamentals / Calendrical Calculations / Comparing Dates	-	objc
-method	open	-isDateInYesterday:	NSCalendar	Fundamentals / Calendrical Calculations / Comparing Dates	-	objc
-method	open	-maximumRangeOfUnit:	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
-method	open	-minimumRangeOfUnit:	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
+method	shipped	-isDateInToday:	NSCalendar	Fundamentals / Calendrical Calculations / Comparing Dates	-	objc
+method	shipped	-isDateInTomorrow:	NSCalendar	Fundamentals / Calendrical Calculations / Comparing Dates	-	objc
+method	shipped	-isDateInWeekend:	NSCalendar	Fundamentals / Calendrical Calculations / Comparing Dates	-	objc
+method	shipped	-isDateInYesterday:	NSCalendar	Fundamentals / Calendrical Calculations / Comparing Dates	-	objc
+method	shipped	-maximumRangeOfUnit:	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
+method	shipped	-minimumRangeOfUnit:	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
 method	open	-nextDateAfterDate:matchingComponents:options:	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
 method	open	-nextDateAfterDate:matchingHour:minute:second:options:	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
 method	open	-nextDateAfterDate:matchingUnit:value:options:	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
-method	open	-nextWeekendStartDate:interval:options:afterDate:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
-method	open	-ordinalityOfUnit:inUnit:forDate:	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
+method	shipped	-nextWeekendStartDate:interval:options:afterDate:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
+method	shipped	-ordinalityOfUnit:inUnit:forDate:	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
 method	shipped	-rangeOfUnit:inUnit:forDate:	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
 method	shipped	-rangeOfUnit:startDate:interval:forDate:	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
-method	open	-rangeOfWeekendStartDate:interval:containingDate:	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
-method	open	-startOfDayForDate:	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
-property	open	AMSymbol	NSCalendar	Fundamentals / Calendrical Calculations / Getting AM and PM Symbols	-	objc
-property	open	PMSymbol	NSCalendar	Fundamentals / Calendrical Calculations / Getting AM and PM Symbols	-	objc
-property	open	autoupdatingCurrentCalendar	NSCalendar	Fundamentals / Calendrical Calculations / Getting the User’s Calendar	-	objc
-property	open	calendarIdentifier	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
+method	shipped	-rangeOfWeekendStartDate:interval:containingDate:	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
+method	shipped	-startOfDayForDate:	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
+property	shipped	AMSymbol	NSCalendar	Fundamentals / Calendrical Calculations / Getting AM and PM Symbols	-	objc
+property	shipped	PMSymbol	NSCalendar	Fundamentals / Calendrical Calculations / Getting AM and PM Symbols	-	objc
+property	shipped	autoupdatingCurrentCalendar	NSCalendar	Fundamentals / Calendrical Calculations / Getting the User’s Calendar	-	objc
+property	shipped	calendarIdentifier	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
 property	shipped	currentCalendar	NSCalendar	Fundamentals / Calendrical Calculations / Getting the User’s Calendar	-	objc
-property	open	eraSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Era Symbols	-	objc
+property	shipped	eraSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Era Symbols	-	objc
 property	shipped	firstWeekday	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
-property	open	locale	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
-property	open	longEraSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Era Symbols	-	objc
+property	shipped	locale	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
+property	shipped	longEraSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Era Symbols	-	objc
 property	shipped	minimumDaysInFirstWeek	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
-property	open	monthSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Month Symbols	-	objc
-property	open	quarterSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Quarter Symbols	-	objc
-property	open	shortMonthSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Month Symbols	-	objc
-property	open	shortQuarterSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Quarter Symbols	-	objc
-property	open	shortStandaloneMonthSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Month Symbols	-	objc
-property	open	shortStandaloneQuarterSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Quarter Symbols	-	objc
-property	open	shortStandaloneWeekdaySymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Weekday Symbols	-	objc
-property	open	shortWeekdaySymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Weekday Symbols	-	objc
-property	open	standaloneMonthSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Month Symbols	-	objc
-property	open	standaloneQuarterSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Quarter Symbols	-	objc
-property	open	standaloneWeekdaySymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Weekday Symbols	-	objc
+property	shipped	monthSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Month Symbols	-	objc
+property	shipped	quarterSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Quarter Symbols	-	objc
+property	shipped	shortMonthSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Month Symbols	-	objc
+property	shipped	shortQuarterSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Quarter Symbols	-	objc
+property	shipped	shortStandaloneMonthSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Month Symbols	-	objc
+property	shipped	shortStandaloneQuarterSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Quarter Symbols	-	objc
+property	shipped	shortStandaloneWeekdaySymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Weekday Symbols	-	objc
+property	shipped	shortWeekdaySymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Weekday Symbols	-	objc
+property	shipped	standaloneMonthSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Month Symbols	-	objc
+property	shipped	standaloneQuarterSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Quarter Symbols	-	objc
+property	shipped	standaloneWeekdaySymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Weekday Symbols	-	objc
 property	shipped	timeZone	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
-property	open	veryShortMonthSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Month Symbols	-	objc
-property	open	veryShortStandaloneMonthSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Month Symbols	-	objc
-property	open	veryShortStandaloneWeekdaySymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Weekday Symbols	-	objc
-property	open	veryShortWeekdaySymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Weekday Symbols	-	objc
-property	open	weekdaySymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Weekday Symbols	-	objc
+property	shipped	veryShortMonthSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Month Symbols	-	objc
+property	shipped	veryShortStandaloneMonthSymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Month Symbols	-	objc
+property	shipped	veryShortStandaloneWeekdaySymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Weekday Symbols	-	objc
+property	shipped	veryShortWeekdaySymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Weekday Symbols	-	objc
+property	shipped	weekdaySymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Weekday Symbols	-	objc
 method	shipped	+calendarDate	NSCalendarDate	Fundamentals / Deprecated / Type Methods	deprecated	objc
 method	shipped	-calendarFormat	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
 method	shipped	-dateByAddingYears:months:days:hours:minutes:seconds:	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
