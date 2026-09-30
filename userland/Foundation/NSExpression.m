@@ -186,6 +186,44 @@ static id fn_set_operation(NSExpressionType type, id left, id right)
 	return [self fnWithType:NSConstantValueExpressionType constant:object operand:nil function:nil];
 }
 
+/* ===================================================================================================
+ * THE NSCoding DOORS (§63.15). THE KEYS ARE OURS (Apple publishes no name for them, §11.6.1 D2's ground) and
+ * they are defined beside their only writer and reader, as NSNotification's are (§63.14) and for the same
+ * reason: nothing else in the library writes them, so putting them in a wire header would share them with
+ * nobody.
+ * =================================================================================================== */
+static NSString *const kTypeKey = @"NS.expressionType";
+static NSString *const kConstantKey = @"NS.constant";
+static NSString *const kOperandKey = @"NS.operand";
+static NSString *const kFunctionKey = @"NS.function";
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	/* ALL FOUR, because the type decides what the slots MEAN — and all three slots are written even when the
+	 * type uses only one, so the decoder's shape is the encoder's shape rather than a per-type puzzle. */
+	[coder encodeInteger:(NSInteger)_type forKey:kTypeKey];
+	[coder encodeObject:_constant forKey:kConstantKey];
+	[coder encodeObject:_operand forKey:kOperandKey];
+	[coder encodeObject:_function forKey:kFunctionKey];
+}
+
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	/* THROUGH THE CLASS'S OWN CONSTRUCTOR, so this door follows EXACTLY the ownership regime every factory
+	 * above follows — it neither adds a retain nor quietly fixes one — and an expression built by a decoder is
+	 * indistinguishable from one built by `+expressionForConstantValue:`. That constructor is a CLASS method
+	 * that allocates its own instance, so the allocated receiver is released and the built one is the answer:
+	 * the same idiom the collections' shared-empty case uses (§C.3 item 1), and the only honest one when the
+	 * class's own door is the thing being reused. */
+	NSExpression *built = [[self class] fnWithType:(NSExpressionType)[coder decodeIntegerForKey:kTypeKey]
+					      constant:[coder decodeObjectForKey:kConstantKey]
+					       operand:[coder decodeObjectForKey:kOperandKey]
+					      function:[coder decodeObjectForKey:kFunctionKey]];
+
+	[self release];		/* never initialized: `built` is the answer */
+	return built;
+}
+
 + (NSExpression *)expressionForEvaluatedObject
 {
 	return [self fnWithType:NSEvaluatedObjectExpressionType constant:nil operand:nil function:nil];

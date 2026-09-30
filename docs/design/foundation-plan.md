@@ -15824,6 +15824,58 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.15 — `NSExpression`'S `NSCoding` CONFORMANCE: THE TYPE IS THE PAYLOAD, AND A DEPENDENCY THE PLAN HAD WRONG (2026-09-30)
+
+**WHAT SHIPPED: ONE ROW.** `NSExpression` conforms to `NSCoding`. **`method shipped` 1830 → 1831,
+`method open` 855 → 854.**
+
+**THE UNIT ORDER CHANGED BECAUSE A DEPENDENCY SHOWED UP IN RECONNAISSANCE, and it is worth recording as a
+lesson about slicing.** §63.14's plan named "`NSComparisonPredicate` + `NSCompoundPredicate`" as the next pair
+because they share the `NSPredicate` substrate and one probe. A one-command check said something else: **a
+comparison predicate HOLDS two expressions and a compound one holds subpredicates**, and NOT ONE of the three
+classes had an `-encodeWithCoder:` — so neither predicate can round-trip until an EXPRESSION can. The pair was
+a fiction; `NSExpression` is the prerequisite, and it went first. **The slice that reads as obvious from the
+class list is not always the slice the data supports, and the check that settles it costs one command.**
+
+**THIS CLASS'S STATE IS ONE TYPE AND THREE SLOTS, WHICH MAKES THE TYPE PART OF THE PAYLOAD.** `_constant` alone
+is a constant, a key path, a variable name, a left operand or an aggregate's members, depending on `_type` — so
+a decoder that reconstructed the slots and lost the tag would still answer an expression and answer the WRONG
+one. All four fields are written, even when the type uses only one, so the decoder's shape is the encoder's
+rather than a per-type puzzle. **And the tag's VALUES ARE COCOA'S** — the header pins the enum for exactly this
+reason ("a predicate serialized somewhere else must mean the same thing here"), so encoding it as an integer
+is not a private convention but the interoperable one.
+
+**THE DECODER GOES THROUGH THE CLASS'S OWN CONSTRUCTOR** (`+fnWithType:constant:operand:function:`), which is
+what every factory above it uses. That is the anti-drift choice this thread has made three times: an expression
+built by a decoder is indistinguishable from one built by `+expressionForConstantValue:`. Because that
+constructor is a CLASS method that allocates its own instance, the allocated receiver is released and the built
+one returned — the same idiom the collections' shared-empty case uses.
+
+**THE PROBE ROUND-TRIPS FOUR KINDS** (constant, key path, variable, function), each asserting **the type it came
+back as** and the slot that kind reads; the function expression also carries an ARGUMENTS ARRAY, so the round
+trip crosses a nested collection. A check that asserted only the values would pass a decoder that dropped the
+tag.
+
+**AND AN OBSERVATION ABOUT THIS CLASS'S OWNERSHIP, recorded rather than acted on because it is not this unit's
+and fixing it would touch every factory:** `NSExpression` has **no `-dealloc`** and
+`+fnWithType:constant:operand:function:` **assigns its slots without retaining them**, so an expression built
+over an autoreleased object holds it unreleased — `[NSExpression expressionForConstantValue:[NSMutableString
+stringWithString:@"x"]]` leaves `_constant` pointing at memory the pool will free. **It is PRE-EXISTING and
+independent of coding** (every factory has it), the decoder follows the SAME regime rather than adding a
+retain the rest of the class does not, and it belongs in its own unit with its own measurement. Named here so
+it is not lost.
+
+**VERIFICATION.** Probe `foundation_expression` **9/9** on the host (was 8, with `expr-nscoding-round-trip`),
+**zero diagnostics under the house flag**; guest `TESTS-OK 1/1 case(s), 6/6 check(s)`; `foundation_predicate`
+and `foundation_notification` **6/6** unmoved; `make foundation-sweep` **exit 0**, `--unimplemented` **0 NEW**;
+`--check` named **exactly 1** row before the flip and the refresh's diff was **2 lines in ONE file**.
+
+**NEXT: THE PREDICATE PAIR, now that its prerequisite is in place.** `NSComparisonPredicate` (two expressions,
+an operator type, a modifier and options) and `NSCompoundPredicate` (a type and subpredicates) are 2 rows in
+one probe (`foundation_predicate`), and a compound predicate of comparison predicates is the round trip that
+exercises both doors and `NSExpression`'s at once. `NSCharacterSet`, `NSDateInterval`, `NSSortDescriptor` and
+`NSDistantObject` remain after them.
+
 ## §63.14 — `NSNotification`'S `NSCoding` CONFORMANCE: THE FIRST FIELD-CARRYING CLASS, AND TWO PROBE DEFECTS THE BUILD FOUND (2026-09-30)
 
 **WHAT SHIPPED: ONE ROW, AND IT IS A DIFFERENT KIND OF UNIT.** `NSNotification` conforms to `NSCoding` — the

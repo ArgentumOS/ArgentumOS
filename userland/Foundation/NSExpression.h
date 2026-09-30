@@ -29,6 +29,8 @@
 #define FOUNDATION_NSEXPRESSION_H
 
 #import <Foundation/NSObject.h>
+/* FOR `NSCoding` AND THE `NSCoder` ITS TWO DOORS TAKE (§63.15). */
+#import <Foundation/NSCoding.h>
 
 @class NSArray;
 @class NSDictionary;
@@ -56,13 +58,26 @@ enum {
 	NSConditionalExpressionType = 12
 };
 
-@interface NSExpression : NSObject <NSCopying>
+@interface NSExpression : NSObject <NSCopying, NSCoding>
 {
 	NSExpressionType _type;
 	id _constant;		/* constant value, key path, variable name, left operand, collection */
 	id _operand;		/* the right operand of a set operation; the arguments of a function */
 	NSString *_function;
 }
+
+/* THE NSCoding DOORS (§63.15). THE TYPE IS PART OF THE PAYLOAD, not a hint: this class's state is ONE TYPE AND
+ * THREE SLOTS, and the slots' MEANING is the type (`_constant` alone is a constant, a key path, a variable
+ * name, a left operand or an aggregate's members). Reconstructing the slots without the tag would produce an
+ * expression nothing could evaluate — so the tag is written, and it is written as an INTEGER whose VALUES ARE
+ * COCOA'S (the enum above says why: the constants are pinned so a predicate serialized elsewhere means the
+ * same thing here).
+ *
+ * AND IT IS A PREREQUISITE RATHER THAN A PEER of the two predicate classes' doors: a comparison predicate
+ * HOLDS two expressions, and a compound one holds subpredicates, so neither can round-trip until an expression
+ * can. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
+- (void)encodeWithCoder:(NSCoder *)coder;
 
 + (NSExpression *)expressionForConstantValue:(nullable id)object;
 + (NSExpression *)expressionForEvaluatedObject;

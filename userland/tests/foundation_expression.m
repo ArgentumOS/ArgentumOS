@@ -219,6 +219,56 @@ int main(void)
 			(int)[one isEqual:two], [one description]]);
 	}
 
+	{
+		/* THE NSCoding DOORS (§63.15), over the REAL archive path — an expression is not a kind the keyed
+		 * coder's structural branch recognises, so `+archivedDataWithRootObject:` calls the doors (§63.14's
+		 * situation, not the collections').
+		 *
+		 * FOUR KINDS ARE ROUND-TRIPPED, and that is the check's design rather than thoroughness for its own
+		 * sake: this class's state is ONE TYPE AND THREE SLOTS, so a decoder that read the slots but lost the
+		 * TYPE would still answer an expression — the wrong one. Each kind asserts the TYPE it came back as and
+		 * the slot THAT KIND reads, which is what makes a dropped tag visible. The function expression also
+		 * carries an ARGUMENTS ARRAY, so the round trip crosses a nested collection on the way. */
+		NSExpression *constant = [NSExpression expressionForConstantValue:@"literal"];
+		NSExpression *keyPath = [NSExpression expressionForKeyPath:@"amount"];
+		NSExpression *variable = [NSExpression expressionForVariable:@"bound"];
+		NSExpression *call = [NSExpression expressionForFunction:@"sum:"
+							       arguments:@[ [NSExpression expressionForConstantValue:@1],
+									    [NSExpression expressionForConstantValue:@2] ]];
+		NSData *constantData = [NSKeyedArchiver archivedDataWithRootObject:constant];
+		NSData *keyPathData = [NSKeyedArchiver archivedDataWithRootObject:keyPath];
+		NSData *variableData = [NSKeyedArchiver archivedDataWithRootObject:variable];
+		NSData *callData = [NSKeyedArchiver archivedDataWithRootObject:call];
+		NSExpression *backConstant = constantData != nil
+			? [NSKeyedUnarchiver unarchiveObjectWithData:constantData] : nil;
+		NSExpression *backKeyPath = keyPathData != nil
+			? [NSKeyedUnarchiver unarchiveObjectWithData:keyPathData] : nil;
+		NSExpression *backVariable = variableData != nil
+			? [NSKeyedUnarchiver unarchiveObjectWithData:variableData] : nil;
+		NSExpression *backCall = callData != nil
+			? [NSKeyedUnarchiver unarchiveObjectWithData:callData] : nil;
+
+		check("expr-nscoding-round-trip",
+		      [constant conformsToProtocol:@protocol(NSCoding)] &&
+		      backConstant != nil &&
+		      [backConstant expressionType] == NSConstantValueExpressionType &&
+		      [[backConstant constantValue] isEqualToString:@"literal"] &&
+		      backKeyPath != nil && [backKeyPath expressionType] == NSKeyPathExpressionType &&
+		      [[backKeyPath keyPath] isEqualToString:@"amount"] &&
+		      backVariable != nil && [backVariable expressionType] == NSVariableExpressionType &&
+		      [[backVariable variable] isEqualToString:@"bound"] &&
+		      backCall != nil && [backCall expressionType] == NSFunctionExpressionType &&
+		      [[backCall function] isEqualToString:@"sum:"] &&
+		      [[backCall arguments] count] == 2 &&
+		      [[[backCall arguments] objectAtIndex:1] expressionType] ==
+			NSConstantValueExpressionType &&
+		      [[[[backCall arguments] objectAtIndex:1] constantValue] isEqual:@2],
+		      [NSString stringWithFormat:@"constant=%ld keyPath=%ld variable=%ld function=%ld args=%lu",
+			(long)[backConstant expressionType], (long)[backKeyPath expressionType],
+			(long)[backVariable expressionType], (long)[backCall expressionType],
+			(unsigned long)(backCall != nil ? [[backCall arguments] count] : 0)]);
+	}
+
 	printf("FOUNDATION-EXPRESSION RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

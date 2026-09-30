@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1830   open  855   struck  243
+#   method     shipped 1831   open  854   struck  243
 #   property   shipped 1027   open  463   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -1149,7 +1149,7 @@ method	shipped	-expressionValueWithObject:context:	NSExpression	Fundamentals / F
 method	open	+expressionWithFormat:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
 method	open	+expressionWithFormat:argumentArray:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
 method	open	+expressionWithFormat:arguments:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
-method	open	-initWithCoder:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
+method	shipped	-initWithCoder:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
 method	open	-initWithExpressionType:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
 property	shipped	arguments	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
 property	shipped	collection	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc

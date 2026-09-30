@@ -32,7 +32,7 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_expression"
 CHECKS = ("expr-constant", "expr-keypath", "expr-evaluated-object", "expr-variable-context",
           "expr-aggregate", "expr-set-operations", "expr-fold-functions",
-          "expr-equality-and-description")
+          "expr-equality-and-description", "expr-nscoding-round-trip")
 
 
 class Case(BaseCase):
