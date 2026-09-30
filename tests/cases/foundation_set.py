@@ -34,7 +34,7 @@ PROBE = "/System/Shared/tests/foundation_set"
 CHECKS = ("set-dedupes-by-value", "set-member-by-value", "set-algebra",
           "set-relations", "set-adding-forms", "set-enumeration",
           "set-order-independent", "set-predicate-filter", "set-sort-descriptors",
-          "set-copy-semantics", "set-counted", "set-variadic-factory")
+          "set-copy-semantics", "set-counted", "set-variadic-factory", "set-nscoding-doors")
 
 
 class Case(BaseCase):

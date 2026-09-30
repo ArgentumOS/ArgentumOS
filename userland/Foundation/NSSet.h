@@ -36,17 +36,28 @@
 
 #import <Foundation/NSObject.h>
 #import <Foundation/NSFastEnumeration.h>
+/* FOR `NSCoding` AND THE `NSCoder` ITS TWO DOORS TAKE (§63.11): these collections conform on Apple's platform,
+ * so a class that declares the protocol here is one whose `-conformsToProtocol:` answers the same. */
+#import <Foundation/NSCoding.h>
 
 @class NSArray<ObjectType>, NSEnumerator<ObjectType>;
 @class NSPredicate;
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface NSSet<__covariant ObjectType> : NSObject <NSCopying, NSMutableCopying, NSFastEnumeration>
+@interface NSSet<__covariant ObjectType> : NSObject <NSCopying, NSMutableCopying, NSFastEnumeration, NSCoding>
 {
 	NSArray *_members;		/* the members, once each; REPLACED by every mutation */
 	unsigned long _mutations;	/* the for-in consistency token */
 }
+
+/* THE NSCoding DOORS (§63.11), the same pair the ordered sets took in §63.10 and for the same reasons: the
+ * members go under the SHARED key (FNKeyedWire.h) that the archive's own structural branch uses, the decoder
+ * reads it back through `-initWithArray:` — so the dedup rule and the class-choosing rule stay the
+ * INITIALIZER's — and the ARCHIVER never calls either, because its structural branch recognises a set by
+ * KIND. They exist for a caller who names them, and for `-conformsToProtocol:`. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
+- (void)encodeWithCoder:(NSCoder *)coder;
 
 + (instancetype)set;
 + (instancetype)setWithObject:(ObjectType)object;
@@ -96,6 +107,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (instancetype)setWithCapacity:(NSUInteger)capacity;
 - (instancetype)initWithCapacity:(NSUInteger)capacity;
+/* APPLE DECLARES THIS ON THE MUTABLE CLASS TOO (§63.11), so it is redeclared here rather than left to
+ * inheritance: a source-compatible caller reading THIS header must find it, and the ledger's shipped test is
+ * a declaration in the owner's own block. Its implementation lives in this class's own `@implementation`
+ * for the same reason — `--unimplemented` counts an implementation in the class or a SUBCLASS, so the
+ * front's body does not satisfy this declaration. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
 
 - (void)addObject:(ObjectType)object;
 - (void)removeObject:(ObjectType)object;

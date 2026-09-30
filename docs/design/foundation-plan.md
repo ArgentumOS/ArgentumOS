@@ -15824,6 +15824,42 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.11 — `NSSet`'S `NSCoding` CONFORMANCE: THE RECIPE APPLIED A SECOND TIME (2026-09-30)
+
+**WHAT SHIPPED: TWO ROWS.** `NSSet` and `NSMutableSet` conform to `NSCoding`, with the protocol on the front,
+both doors on the front and `-initWithCoder:` on the mutable. **`method shipped` 1823 → 1825, `method open`
+862 → 860.**
+
+**THE SECOND FAMILY COSTS A FRACTION OF THE FIRST, WHICH IS THE POINT OF §63.10's RECORD.** Every decision was
+already made and written down: the SHARED key (now `FNKeyedWire.h`, imported rather than re-spelled), the
+funnel (`-initWithArray:`), the direct-drive probe pattern, the mutable's own implementation, and the
+`NSCountedSet` question answered by inheritance rather than by a second implementation. Applied here, the
+whole change was four edits per file and no new judgement — which is what a RECIPE is worth and what a
+one-off fix is not.
+
+**THE ONE THING THAT IS DIFFERENT ABOUT A SET, STATED BECAUSE IT IS THE ONLY DIFFERENCE:** its members have no
+order, so the pair is `-allObjects` out and `-initWithArray:` back — the dedup rule re-applies on the way in
+and is therefore the initializer's, not the encoder's. The ordered sets' §63.10 note about order does not
+arise; nothing else moved.
+
+**AND `NSCountedSet` NEEDS NOTHING.** It inherits both the conformance and the doors from `NSSet`, and its
+MULTIPLICITIES are a second payload the structural archiver branch already carries (§63.5, `NS.counts`) — so a
+counted set reached through its own `-initWithCoder:` comes back with its members, and the multiplicities are
+the one thing an explicit door does NOT carry, because they are not part of what `-allObjects` answers. That is
+a boundary of this pair and it is now NAMED rather than discovered: the note is in the header.
+
+**VERIFICATION.** Probe `foundation_set` **13/13** on the host (was 12, with `set-nscoding-doors` driving both
+classes' doors directly and asserting the mutable's own answer); guest `TESTS-OK 1/1 case(s), 6/6 check(s)`;
+`foundation_clusters` **17/17** and `foundation_collection` **6/6** unmoved; `make foundation-gate` **OK**;
+`make foundation-sweep` **exit 0**, `--unimplemented` **0 NEW**; `--check` named **exactly 2** rows before the
+flip and the refresh's diff was **3 lines in ONE file**.
+
+**WHAT REMAINS: TWO MORE COLLECTIONS AND THE TWO HARDER GROUPS.** `NSArray`/`NSMutableArray` and
+`NSDictionary`/`NSMutableDictionary` are this recipe — four rows — with ONE difference for the dictionary: it
+carries TWO payloads (`NS.keys` paired with `NS.objects`), so its encoder writes both and its decoder pairs
+them, which is the only place the recipe is not a substitution. Then the value types (a DESIGN decision, per
+§63.10) and the eight field-carrying classes.
+
 ## §63.10 — THE ORDERED SETS' `NSCoding` CONFORMANCE: TWO ROWS, AND A GATE THAT CAUGHT THE NEW HEADER (2026-09-30)
 
 **WHAT SHIPPED: TWO ROWS, AND THEY ARE THE `-initWithCoder:` HALF.** `NSOrderedSet` and `NSMutableOrderedSet`

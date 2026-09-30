@@ -21,6 +21,9 @@
 #import <Foundation/NSPredicate.h>
 #import <Foundation/NSString.h>
 #include <stdlib.h>		/* calloc/free: the variadic factory's exactly-sized list */
+/* THE KEYED ARCHIVE'S KEY NAMES, shared with NSKeyedArchiver's structural branch so the NSCoding doors below
+ * and that branch cannot spell the same key differently (§63.11). */
+#import <Foundation/FNKeyedWire.h>
 
 /* ===================================================================================================
  * THE PRIVATE CONCRETE CLASSES (plan §C.3, M3) - the same shape the array and dictionary families use.
@@ -204,6 +207,23 @@
 - (instancetype)initWithSet:(NSSet *)set
 {
 	return [self initWithArray:[set allObjects]];
+}
+
+/* ===================================================================================================
+ * THE NSCoding DOORS (§63.11). What they are FOR, since the archiver does not need them, is in the header.
+ * One key, and `-initWithArray:` is the funnel both ends meet at — so the dedup rule and the class-choosing
+ * rule stay the INITIALIZER's.
+ * =================================================================================================== */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	return [self initWithArray:[coder decodeObjectForKey:FNKeyedObjectsKey]];
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	/* A COPY, AND THAT IS THE POINT: encoding `self` under this key would ask the coder for the very object it
+	 * is in the middle of writing, and the archive would record the set referring to itself. */
+	[coder encodeObject:[NSArray arrayWithArray:[self allObjects]] forKey:FNKeyedObjectsKey];
 }
 
 - (NSUInteger)count
@@ -477,6 +497,17 @@
 {
 	(void)capacity;
 	return [self initWithObjects:NULL count:0];
+}
+
+/* THE SAME DOOR ON THE MUTABLE CLASS, which Apple declares here too and which therefore needs an
+ * implementation HERE: `--unimplemented` counts an implementation in the class or a SUBCLASS, so the front's
+ * body does not satisfy this declaration. `[super initWithCoder:]` reaches the front's, which funnels through
+ * `-initWithArray:` with `self` still the MUTABLE class — and the class-choosing rule sends only
+ * `AGSetItems` (the immutable concrete class) to the shared empty instance, so a mutable answer stays
+ * mutable. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	return [super initWithCoder:coder];
 }
 
 /* ONE PLACE REPLACES THE MEMBERS, so the mutation token is bumped exactly when the storage changes

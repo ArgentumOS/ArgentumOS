@@ -273,6 +273,37 @@ int main(void)
 			(unsigned long)(mutableFromVarargs != nil ? [mutableFromVarargs count] : 0)]);
 	}
 
+	{
+		/* THE NSCoding DOORS (§63.11), driven DIRECTLY — the only way to reach them, since the archiver's
+		 * structural branch recognises a set by KIND and never asks the class. Three things are asserted: the
+		 * protocol answer, the round trip, and that the MUTABLE class answers a mutable set. The member is a
+		 * FRESH string object per set, so equality is by VALUE and the check cannot pass on pointer identity. */
+		NSSet *set = [NSSet setWithArray:@[@"a", @"b", @"c"]];
+		NSMutableData *buffer = [NSMutableData data];
+		NSKeyedArchiver *writer = [[NSKeyedArchiver alloc] initForWritingWithMutableData:buffer];
+		NSSet *back;
+		NSMutableSet *mutableBack;
+
+		[set encodeWithCoder:writer];
+		[writer finishEncoding];
+		back = [[NSSet alloc] initWithCoder:
+			[[NSKeyedUnarchiver alloc] initForReadingWithData:buffer]];
+		mutableBack = [[NSMutableSet alloc] initWithCoder:
+			[[NSKeyedUnarchiver alloc] initForReadingWithData:buffer]];
+		check("set-nscoding-doors",
+		      [set conformsToProtocol:@protocol(NSCoding)] &&
+		      [NSMutableSet conformsToProtocol:@protocol(NSCoding)] &&
+		      back != nil && [back isKindOfClass:[NSSet class]] &&
+		      ![back isKindOfClass:[NSMutableSet class]] &&
+		      [back count] == 3 && [back containsObject:@"b"] &&
+		      mutableBack != nil && [mutableBack isKindOfClass:[NSMutableSet class]] &&
+		      [mutableBack count] == 3 && [mutableBack containsObject:@"c"],
+		      [NSString stringWithFormat:@"coding=%d back=%@ mutableBack=%@",
+			(int)[set conformsToProtocol:@protocol(NSCoding)],
+			back != nil ? back : @"(nil)",
+			mutableBack != nil ? mutableBack : @"(nil)"]);
+	}
+
 	printf("FOUNDATION-SET RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1823   open  862   struck  243
+#   method     shipped 1825   open  860   struck  243
 #   property   shipped 1027   open  463   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -2147,7 +2147,7 @@ method	shipped	-addObjectsFromArray:	NSMutableSet	Fundamentals / Basic Collectio
 method	shipped	-filterUsingPredicate:	NSMutableSet	Fundamentals / Basic Collections / Adding and removing entries	-	objc
 method	shipped	-init	NSMutableSet	Fundamentals / Basic Collections / Creating a mutable set	-	objc
 method	shipped	-initWithCapacity:	NSMutableSet	Fundamentals / Basic Collections / Creating a mutable set	-	objc
-method	open	-initWithCoder:	NSMutableSet	Fundamentals / Basic Collections / Instance Methods	-	objc
+method	shipped	-initWithCoder:	NSMutableSet	Fundamentals / Basic Collections / Instance Methods	-	objc
 method	shipped	-intersectSet:	NSMutableSet	Fundamentals / Basic Collections / Combining and recombining sets	-	objc
 method	shipped	-minusSet:	NSMutableSet	Fundamentals / Basic Collections / Combining and recombining sets	-	objc
 method	shipped	-removeAllObjects	NSMutableSet	Fundamentals / Basic Collections / Adding and removing entries	-	objc
@@ -2930,7 +2930,7 @@ method	open	-enumerateObjectsWithOptions:usingBlock:	NSSet	Fundamentals / Basic 
 method	shipped	-filteredSetUsingPredicate:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
 method	shipped	-init	NSSet	Fundamentals / Basic Collections / Initializing a Set	-	objc
 method	shipped	-initWithArray:	NSSet	Fundamentals / Basic Collections / Initializing a Set	-	objc
-method	open	-initWithCoder:	NSSet	Fundamentals / Basic Collections / Instance Methods	-	objc
+method	shipped	-initWithCoder:	NSSet	Fundamentals / Basic Collections / Instance Methods	-	objc
 method	open	-initWithObjects:	NSSet	Fundamentals / Basic Collections / Initializing a Set	-	objc
 method	shipped	-initWithObjects:count:	NSSet	Fundamentals / Basic Collections / Initializing a Set	-	objc
 method	shipped	-initWithSet:	NSSet	Fundamentals / Basic Collections / Initializing a Set	-	objc
