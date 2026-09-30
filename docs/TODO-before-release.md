@@ -35,7 +35,17 @@ statics (`fn_hex_value`, `fn_line_check_range`).
 a renamed identifier are corrected in the same commit**, because a plan naming a symbol that no longer
 exists is drift. Do it as ONE commit, when nothing else is in flight — it touches 300+ files.
 
-## 2. The parameterization set: two gaps the compiler found
+## 2. The parameterization set — **CLOSED, AND THE CLAUSE IS FATAL (2026-09-29)**
+
+**THE CLAUSE REPORTS ZERO FINDINGS AND `make foundation-sweep` FAILS ON A NEW ONE.** The counts below are the
+history, not the state: the clause went **48** when introduced, **151** once its own instrument bugs were fixed
+and it could finally see, **21** when M7's runtime halves began, and **0** when M10 closed the last fifteen and
+promoted it out of the report-only bucket. **The promotion was PROVEN by making the gate fail** — clean tree
+exits 0, one parameter stripped exits 1 naming that declaration, restored exits 0. Everything below is kept for
+the record of HOW the set was found; the two "gaps" it names are closed.
+
+### the original note, kept as the record of the search
+
 
 The clause that measures this is `tools/foundation-sweep.py --parameterized` / `--check` (139 findings
 across 13 classes on 2026-09-28; the count has risen with the instrument three times since — **114** when
@@ -56,8 +66,9 @@ on 2026-09-28.**).
   right and the variance question is answered, not owed. The set is therefore **15 classes, not 13** (the
   number in §C.1/§C.2 was the measured one of 2026-09-28), the derived table went 221 → **229 rows**, and
   the five findings these two classes produced in this tree are cleared (119 → **114**).
-* **`NSEnumerator`'s class line is parameterized as of 2026-09-28** (`<ObjectType>`); **its methods still owe
-  theirs**, so the clause still reports it.
+* **`NSEnumerator`: CLOSED 2026-09-29 (M9).** Its class line was parameterized on 2026-09-28; its two METHODS were
+  not, and now carry theirs (`-nextObject`, `-allObjects`). `NSCache` was parameterized in the same step, and the
+  clause's findings fell 21 → 15 → **0**.
 * **AND M1 FOUND A THIRD SHAPE OF THE SAME GAP, worth knowing before M2:** Apple parameterizes the MUTABLE
   class's own plist conveniences as a SEPARATE category in its `NSArray.h` (its lines 187-190), answering
   `NSMutableArray<ObjectType> *`. So "which category declares what" is part of matching Apple, not just
@@ -104,7 +115,10 @@ not be implemented via a method that reads through it** — `-keyEnumerator` via
 reads through `-keyEnumerator` was MUTUAL RECURSION, measured as a guest stack overflow with an exit-135 map
 dump.
 
-**M3 IS IN PROGRESS (2026-09-29).** Compile half `8269866b` (34 declarations; the family's 31 findings → 0,
+**M3 — SUPERSEDED LATER THE SAME DAY; see the M4–M10 entries below and the plan's own rows. The milestones are
+  COMPLETE (M0–M10) as of 2026-09-29.** The original note follows, kept for the record:
+
+**M3 WAS IN PROGRESS (2026-09-29).** Compile half `8269866b` (34 declarations; the family's 31 findings → 0,
 the tree's total 118 → 86). Runtime half: the three-rung ladder with `AGSetEmpty`/`AGSetItems`/`AGSetMutable`
 and `AGCountedSet`, `+alloc` routed once per front, `-classForCoder` on all three, and the derived reads
 moved onto `-count`/`-member:`/`-objectEnumerator:` — §C.3 item 5. A probe run in this session reported FIVE
