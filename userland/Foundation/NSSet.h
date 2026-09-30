@@ -50,6 +50,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (instancetype)set;
 + (instancetype)setWithObject:(ObjectType)object;
+/* THE NIL-TERMINATED VARIADIC FORM. It is Apple's, and this tree did not declare it until 2026-09-30: the
+ * selector ledger carried the row as `open`, which is how an absence that has a NAME stays visible rather
+ * than becoming an assumption. `NSArray` has had its counterpart all along, so the two families' factories
+ * now read the same way. */
++ (instancetype)setWithObjects:(ObjectType)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 + (instancetype)setWithObjects:(const ObjectType _Nonnull * _Nullable)objects count:(NSUInteger)count;
 + (instancetype)setWithArray:(NSArray<ObjectType> *)array;
 + (instancetype)setWithSet:(NSSet<ObjectType> *)set;

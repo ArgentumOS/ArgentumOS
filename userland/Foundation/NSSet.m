@@ -20,6 +20,7 @@
 #import <Foundation/NSEnumerator.h>
 #import <Foundation/NSPredicate.h>
 #import <Foundation/NSString.h>
+#include <stdlib.h>		/* calloc/free: the variadic factory's exactly-sized list */
 
 /* ===================================================================================================
  * THE PRIVATE CONCRETE CLASSES (plan §C.3, M3) - the same shape the array and dictionary families use.
@@ -65,6 +66,44 @@
 + (instancetype)setWithObjects:(const id _Nonnull * _Nullable)objects count:(NSUInteger)count
 {
 	return [[self alloc] initWithObjects:objects count:count];
+}
+
+/* THE VARIADIC FACTORY: the same door as the count form above, with the list terminated by nil. TWO PASSES
+ * over the list, exactly as `NSArray`'s variadic factory does it — the storage has to be exactly sized and a
+ * va_list cannot be rewound without a copy. The empty call answers the shared empty instance through the
+ * initializer's own rule rather than by a second path. */
++ (instancetype)setWithObjects:(id)firstObject, ...
+{
+	va_list args;
+	va_list counter;
+	id *objects;
+	size_t extra = 0;
+	size_t i;
+	id result;
+
+	if (firstObject == nil) {
+		return [[self alloc] initWithObjects:NULL count:0];
+	}
+	va_start(args, firstObject);
+	va_copy(counter, args);
+	while (va_arg(counter, id) != nil) {
+		extra++;
+	}
+	va_end(counter);
+	objects = (id *)calloc(extra + 2, sizeof(id));
+	if (objects == NULL) {
+		va_end(args);
+		return nil;
+	}
+	objects[0] = firstObject;
+	for (i = 0; i < extra; i++) {
+		objects[i + 1] = va_arg(args, id);
+	}
+	objects[extra + 1] = nil;
+	va_end(args);
+	result = [[self alloc] initWithObjects:objects count:extra + 1];
+	free(objects);
+	return result;
 }
 
 + (instancetype)setWithArray:(NSArray *)array

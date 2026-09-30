@@ -667,9 +667,13 @@ reverting ONLY `NSKeyedArchiver.m` to its previous commit (which already had the
 the probe unchanged, the binary still ABORTS (exit 134, no output) — so the ordered-set check measures the
 ordered-set branch and not the set path underneath it.
 
-**AND ONE THING FOUND ON THE WAY, out of this unit's scope and left alone:** writing a set in a probe needed
-`+setWithObjects:` (the variadic form `NSArray` has had all along) and `NSSet` does not declare it — the
-selector ledger already carries it as `method open +setWithObjects: NSSet`. The probe uses
-`+setWithArray:` instead rather than widening this unit into an API addition. The ledger row is the work
-item and it was already there.
+**AND THE THING FOUND ON THE WAY IS CLOSED TOO (2026-09-30, §63.5 of the plan).** Writing a set in a probe
+needed `+setWithObjects:` — the nil-terminated variadic form `NSArray` has had all along — and `NSSet` did not
+declare it; the selector ledger already carried it as `method open +setWithObjects: NSSet`. It is declared and
+implemented now, so **`method shipped` 1785 → 1786 and `method open` 900 → 899**, and the ledger's own
+`--check` is what proved the row was the fix: with the declaration in place and the row still `open` it exited
+**1** and printed `PRESENT BUT LISTED OPEN method NSSet +setWithObjects: — the owner's block declares it now;
+flip the row`. The flip was a `--refresh` whose diff was **2 lines in one file**. The coder probe still uses
+`+setWithArray:` because that is what it was written with and switching it would prove nothing new; the new
+coverage is `foundation_set`'s `set-variadic-factory`.
 

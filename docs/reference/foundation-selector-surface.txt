@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1785   open  900   struck  243
+#   method     shipped 1786   open  899   struck  243
 #   property   shipped 1026   open  464   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -2955,7 +2955,7 @@ method	shipped	+setWithArray:	NSSet	Fundamentals / Basic Collections / Creating 
 method	open	+setWithCollectionViewIndexPath:	NSSet	Fundamentals / Basic Collections / Type Methods	-	objc
 method	open	+setWithCollectionViewIndexPaths:	NSSet	Fundamentals / Basic Collections / Type Methods	-	objc
 method	shipped	+setWithObject:	NSSet	Fundamentals / Basic Collections / Creating a Set	-	objc
-method	open	+setWithObjects:	NSSet	Fundamentals / Basic Collections / Creating a Set	-	objc
+method	shipped	+setWithObjects:	NSSet	Fundamentals / Basic Collections / Creating a Set	-	objc
 method	shipped	+setWithObjects:count:	NSSet	Fundamentals / Basic Collections / Creating a Set	-	objc
 method	shipped	+setWithSet:	NSSet	Fundamentals / Basic Collections / Creating a Set	-	objc
 method	shipped	-sortedArrayUsingDescriptors:	NSSet	Fundamentals / Basic Collections / Creating a Sorted Array	-	objc

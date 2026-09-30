@@ -15824,6 +15824,41 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.5 — `+setWithObjects:`, FOUND BY WRITING A PROBE: ONE ROW, AND A LEDGER THAT NAMED ITS OWN FIX (2026-09-30)
+
+**WHAT SHIPPED: ONE ROW, AND IT WAS FOUND RATHER THAN SCHEDULED.** `NSSet`'s nil-terminated variadic factory
+`+setWithObjects:` — Apple's, and `NSArray`'s counterpart has been here all along. **`method shipped`
+1785 → **1786**, `method open` 900 → **899**.
+
+**HOW IT SURFACED, because the route is the reusable part.** Writing the coder probe's set section needed a
+way to BUILD a set in one expression, and `+setWithObjects:` is the obvious one; the build refused it, and the
+grep that followed found the row already in the selector ledger as `method open +setWithObjects: NSSet`. So the
+absence was not hidden — it was a named, tracked gap that a person only meets when they try to USE it. That is
+the argument for the ledger in one sentence, and it is why the row needed no research to close.
+
+**THE IMPLEMENTATION IS `NSArray`'S, DELIBERATELY.** Two passes over the list — the storage has to be exactly
+sized and a `va_list` cannot be rewound without a copy — then the count form, so dedup, first-occurrence order
+and the shared empty instance come from the initializer's own rules rather than from a second path.
+`[NSSet setWithObjects:nil]` therefore answers the SHARED empty instance through `-initWithObjects:count:`, and
+the probe asserts that **BY POINTER**, because "an empty set" and "the empty instance" are different claims and
+only the second is the family's contract.
+
+**THE LEDGER FLIP WAS A REFRESH, NOT A HAND EDIT, AND ITS SIZE WAS MEASURED.** `--refresh` re-reads Apple's
+index and rewrites both ledgers with the status derived FROM THE TREE: the diff was **2 lines in ONE file** —
+the row's `open` → `shipped` and the counts block — because Apple's index had not otherwise moved. Recorded
+because "regenerate the ledger" sounds unbounded and this time it was not.
+
+**AND THE GATE WAS SHOWN TO FAIL FIRST, which is what makes the flip a verification rather than a formality.**
+With the declaration in place and the row still `open`, `--check` exited **1** and printed
+`PRESENT BUT LISTED OPEN method NSSet +setWithObjects: — the owner's block declares it now; flip the row` — so
+the ledger is checked in BOTH directions (a `shipped` row whose declaration goes away, and an `open` row whose
+declaration arrives), and the failing message names its own fix.
+
+**VERIFICATION.** Probe `foundation_set` **12/12** on the host (the new `set-variadic-factory` asserts the
+terminator STOPS the walk, the members are the ones passed, and the empty call is the shared instance by
+pointer); guest `TESTS-OK 1/1 case(s), 6/6 check(s)`, probe tally `ok=12 fail=0`; `foundation_coder` unmoved at
+`ok=15 fail=0`; `make foundation-sweep` **exit 0** with `--unimplemented` **0 NEW**.
+
 ## §63.4 — COMPOSED CHARACTER SEQUENCES: THIS DOOR'S OWN DEFINITION, AND THE DIVERGENCE FROM UAX#29 MEASURED (2026-09-28)
 
 **WHAT SHIPPED: THE PAIR, AND IT IS TWO ROWS.** `-rangeOfComposedCharacterSequenceAtIndex:` and

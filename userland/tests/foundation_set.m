@@ -249,6 +249,30 @@ int main(void)
 			(unsigned long)(fromArray != nil ? [fromArray count] : 0)]);
 	}
 
+	{
+		/* THE NIL-TERMINATED VARIADIC FACTORY, which this tree declared only from 2026-09-30 (the
+		 * selector ledger carried `+setWithObjects:` as an open row until then). Three things are
+		 * asserted, and each is a way the list can go wrong: the terminator STOPS the walk (a fourth
+		 * member would show up if it did not), the members are the ones passed, and the empty call
+		 * answers the SHARED EMPTY instance — asserted BY POINTER, because "an empty set" and "the
+		 * empty instance" are different claims and only the second is the family's contract. */
+		NSSet *three = [NSSet setWithObjects:@"one", @"two", @"three", nil];
+		NSSet *empty = [NSSet setWithObjects:nil];
+		NSMutableSet *mutableFromVarargs = [NSMutableSet setWithObjects:@"a", @"b", nil];
+
+		check("set-variadic-factory",
+		      three != nil && [three count] == 3 &&
+		      [three containsObject:@"one"] && [three containsObject:@"three"] &&
+		      empty != nil && [empty count] == 0 &&
+		      empty == [NSSet set] &&
+		      mutableFromVarargs != nil && [mutableFromVarargs count] == 2 &&
+		      [mutableFromVarargs isKindOfClass:[NSMutableSet class]],
+		      [NSString stringWithFormat:@"three=%lu empty-is-shared=%d mutable=%lu",
+			(unsigned long)(three != nil ? [three count] : 0),
+			(int)(empty == [NSSet set]),
+			(unsigned long)(mutableFromVarargs != nil ? [mutableFromVarargs count] : 0)]);
+	}
+
 	printf("FOUNDATION-SET RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness
