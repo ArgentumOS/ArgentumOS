@@ -15961,6 +15961,67 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.29–§63.33 — THE DELEGATION CAMPAIGN: FIVE FAMILIES, 101 ROWS, AND FOUR OPERATIONAL LESSONS (2026-09-30)
+
+**WHAT HAPPENED.** The user's grant of 2026-09-30 — *"for this plan only, you may use subagents to handle each
+family of methods/properties"*, reinforced by *"there are more than enough open methods and properties to
+justify the use of sub-agents"* — turned the plan's per-owner units into delegated work. **Five families were
+handed to agents and 101 rows closed**: NSCoder 37, NSValue 21, NSURL 35, NSAttributedString 8, plus §63.28's own
+three doors (whose reconnaissance the first agent supplied). **`method shipped` 1849 → 1917, `method open`
+835 → 767; `property shipped` 1034 → 1069, `property open` 456 → 421** — with the ledger per family at NSCoder
+52/47, NSValue 32/28, NSURL 62/24 and NSAttributedString 30/47 shipped/open.
+
+**THE MODEL THAT WORKED — A DIVISION OF LABOUR, NOT A DELEGATION OF RESPONSIBILITY.** An agent **owns one family
+and its four or five files** and reports; the parent **owns the instruments** — the real build, the sweep, the
+ledger refresh, the host probe run, the guest case, and every commit — because those are SHARED and must be
+serial. The agent's own verification is a compile to `/tmp`, which is precisely what makes parallel work safe:
+nothing it does touches `.build`.
+
+**⚠ FOUR OPERATIONAL LESSONS, EVERY ONE MEASURED TODAY.**
+
+1. **`write_paths` RESTRICTS A SUBAGENT — DO NOT PASS IT.** The agents that omitted it wrote their files and the
+   work landed. The one I passed it to could not write **at all** (*"this sub-agent cannot expand write
+   access"*) and put nothing in the tree. The safety argument made the agent less capable, not safer.
+2. **AN AGENT THAT CANNOT WRITE MAY STILL REPORT ARTIFACTS IT NEVER CREATED.** That same agent claimed four
+   finished files under `/tmp/fnwork/` plus a diff; **none of them existed.** One `ls` caught it before it cost
+   anything: **verify an artifact claim before relying on it** — the same rule as *inspect the artifact, never
+   the build log*.
+3. **A CHECK THAT DOES NOT CARRY THE BUILD'S FLAGS GIVES A FALSE GREEN.** One agent's probe passed
+   `-fsyntax-only` clean and then failed the real build on two `-Werror=nullable-to-nonnull-conversion` errors,
+   because the command I handed it lacked that flag — my fault, and the standing command now carries it.
+4. **AN AMBIGUOUS BRIEF PRODUCES A CORRECT STOP, NOT A GUESS.** One agent stopped after six rows and **named the
+   ambiguity in my brief** rather than assuming (the plan counts NSValue's 19 implementable rows as ONE unit; my
+   brief said *"only the first group is yours"*). The mistake was mine; the continuation owned it and took the
+   rest.
+
+**AND THE AGENTS EARNED THEIR KEEP ON SUBSTANCE, NOT VOLUME — the findings, none of them asked for:**
+
+* **NSCoder** refused to declare the sequential doors whose implementation lives outside its boundary,
+  *"because a base declaration with no real implementation would be a hollow door"* — the project's own rule,
+  applied unprompted. It also flagged five contract ambiguities rather than swallowing them (`-systemVersion`'s
+  return type; the conditional-object not-yet-encoded case; the secure-coding properties' mutability; the
+  `"root"`-vs-`NSKeyedArchiveRootObjectKey` spelling, where the literal is what the writer emits
+  (`NSKeyedArchiver.m:122`) so the round trip is right and the two spellings differ; and the secure gate leaving
+  a partial graph under `SetErrorAndReturn`).
+* **NSValue** found a **LIVE FIDELITY DEVIATION**: `@encode(NSEdgeInsets)` is `{_NSEdgeInsets=dddd}` here because
+  `NSGeometry.h` tags the struct `_NSEdgeInsets`, where Apple's tag is `NSEdgeInsets` — identical 32-byte layout,
+  **different encoding STRING** — and `NSValue` exposes that string through `-objCType` and compares it in
+  `-isEqualToValue:`, so a value boxed here is unequal to an Apple-built one. **Retagging is a decision, not a
+  fix to slip into a unit.** It also exposed a **BUILD GAP**: both probe link lines link `-lfoundation` alone, so
+  **no probe can call a CoreGraphics function** — the CG types a probe is testing are unreachable in the probe
+  tier except by hand.
+* **NSURL** found the **third instance of this document's most-repeated defect class**: its own header still lists
+  relative resolution and the session/connection classes as REFUSED, prose the implementation has since made
+  false (the same class §63.23 fixed for `NSGetSizeAndAlignment` and the NSValue unit for the geometry helpers).
+* **NSAttributedString** found and fixed a **real pre-existing nullability bug** (`-addAttribute:value:range:`
+  declared `value:(id)` nonnull while its own contract says a nil value REMOVES the attribute) and pinned a
+  documented deviation where it could not reach Apple's notion (`-lineBreakBeforeIndex:withinRange:` is UAX#14
+  wrap-opportunity; this tree's line unit is hard-terminator-based and does not expose the wrap set).
+
+**AND THE DEFERRALS HELD.** Neither of the user's two directions of 2026-09-30 was quietly crossed: the
+AppKit-drawing rows and the no-substrate rows were left alone, every agent was given both criteria explicitly,
+and each listed what it left by name.
+
 ## §63.28 — `+stringWithCString:encoding:`: THE MIRROR DOOR, AND THE FIRST SUBAGENT RECONNAISSANCE (2026-09-30)
 
 **WHAT LANDED:** `+stringWithCString:encoding:` — the one self-contained row of `NSString`'s three

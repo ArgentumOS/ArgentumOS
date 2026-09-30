@@ -84,6 +84,8 @@ CHECKS = (
           "validated-format-allows-only-the-listed-specifiers",
           # §63.28: creation from a C string with an encoding — the mirror of -cStringUsingEncoding:.
           "cstring-with-encoding-refuses-what-it-cannot-store",
+          # §63.29: the two URL forms — a file URL round trip, and a scheme with nothing behind it refused.
+          "url-doors-round-trip-a-file-url-and-refuse-an-unreachable-scheme",
           )
 
 

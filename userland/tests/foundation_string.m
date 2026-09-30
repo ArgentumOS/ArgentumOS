@@ -1652,6 +1652,36 @@ NULL
 		      "UTF-8 and ASCII round-trip, a high byte labelled ASCII is refused, an unstored encoding is refused, NULL is nil, and real UTF-8 answers the string it names");
 	}
 
+	{
+		/* THE URL FORMS (§63.29): A FILE URL IS THE PATH DOOR, AND A SCHEME WITH NOTHING BEHIND IT IS REFUSED.
+		 * The file arm is measured as a ROUND TRIP through the two doors — written by the path door, read by
+		 * the URL door — so the assertion is about the URL arm rather than about the filesystem. */
+		NSString *path = @"/System/Temporary Files/fnstring-url-door";
+		NSString *marker = @"url door: café ✓";
+		/* ⚠ THE CASTS ARE THE HOUSE IDIOM FOR "this literal is known to parse": the doors' parameters are
+		 * nonnull as Apple declares them, and +URLWithString:/+fileURLWithPath: answer nullable. */
+		NSURL *fileURL = (NSURL * _Nonnull)[NSURL fileURLWithPath:path];
+		NSURL *nothingBehind = (NSURL * _Nonnull)[NSURL URLWithString:@"fnx-no-transport://nothing"];
+		NSError *fileError = nil;
+		NSError *transportError = nil;
+		NSString *back;
+		NSString *refused;
+
+		[marker writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:NULL];
+		back = [NSString stringWithContentsOfURL:fileURL encoding:NSUTF8StringEncoding error:&fileError];
+		refused = [NSString stringWithContentsOfURL:nothingBehind
+						  encoding:NSUTF8StringEncoding
+						     error:&transportError];
+
+		check("url-doors-round-trip-a-file-url-and-refuse-an-unreachable-scheme",
+		      /* THE FILE ARM: exactly the bytes the path door wrote, accents and all, through the URL door. */
+		      back != nil && [back isEqualToString:marker] && fileError == nil &&
+		      /* AND THE TRANSPORT ARM REFUSES: nil with the loader's own error, rather than a silent empty
+		       * string, which is what a door that swallowed its failure would answer. */
+		      refused == nil && transportError != nil,
+		      "a file URL round-trips through the two doors with its accent intact, and a scheme with nothing behind it answers nil with an error");
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness
