@@ -126,6 +126,45 @@ static NSString *fn_operator_text(NSPredicateOperatorType type)
 	return self;
 }
 
+/* ===================================================================================================
+ * THE NSCoding DOORS (§63.16). KEYS OURS (Apple publishes no name for them, §11.6.1 D2's ground), defined
+ * beside their only writer and reader as §63.14's and §63.15's are.
+ *
+ * THE TWO ENUMS RIDE AS INTEGERS, and their VALUES ARE COCOA'S (NSPredicate.h pins them), so this is the
+ * interoperable spelling rather than a private one — and it is WHY they are payload: the same two expressions
+ * with a different OPERATOR are a different predicate, and `ANY`/`ALL`/`NONE` ask a different question of the
+ * same values.
+ * =================================================================================================== */
+static NSString *const kLeftKey = @"NS.left";
+static NSString *const kRightKey = @"NS.right";
+static NSString *const kModifierKey = @"NS.modifier";
+static NSString *const kOperatorKey = @"NS.operatorType";
+static NSString *const kOptionsKey = @"NS.options";
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	[coder encodeObject:_left forKey:kLeftKey];
+	[coder encodeObject:_right forKey:kRightKey];
+	[coder encodeInteger:(NSInteger)_modifier forKey:kModifierKey];
+	[coder encodeInteger:(NSInteger)_operatorType forKey:kOperatorKey];
+	[coder encodeInteger:(NSInteger)_options forKey:kOptionsKey];
+}
+
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	NSExpression *left = [coder decodeObjectForKey:kLeftKey];
+	NSExpression *right = [coder decodeObjectForKey:kRightKey];
+
+	/* THROUGH THE DESIGNATED DOOR, which is also where the class's own rule lives: it RAISES for a comparison
+	 * missing one of its two expressions, so a corrupt archive is refused by the same line that refuses a
+	 * caller's half-built comparison rather than by a second check here. */
+	return [self initWithLeftExpression:left
+			    rightExpression:right
+				   modifier:(NSComparisonPredicateModifier)[coder decodeIntegerForKey:kModifierKey]
+				       type:(NSPredicateOperatorType)[coder decodeIntegerForKey:kOperatorKey]
+				    options:(NSPredicateOptions)[coder decodeIntegerForKey:kOptionsKey]];
+}
+
 - (NSExpression *)leftExpression
 {
 	return _left;

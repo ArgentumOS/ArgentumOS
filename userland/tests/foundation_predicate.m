@@ -710,6 +710,107 @@ int main(void)
 		      fn_format(parsed));
 	}
 
+	{
+		/* THE TWO PREDICATE DOORS (§63.16), over the REAL archive path, and with the DEEP TREE built on
+		 * purpose: a compound AND of two comparison predicates of expressions is §63.10-§63.15 in ONE archive —
+		 * the compound's door, the comparison's doors, the expression's doors and the array's, each reached
+		 * because the one below it asked. Round-tripping one comparison alone would have left the nesting
+		 * untested.
+		 *
+		 * AND THE ROUND TRIP IS MEASURED BY EVALUATING, not only by shape. Asserting the fields would pass a
+		 * decoder that restored every field and got the RULE wrong (`AND` that came back as `OR`, a `<` that
+		 * came back as `<=`); asking the restored predicate about VALUES is what makes the answer matter. Both
+		 * orders are asked, because a decoder that swapped the two expressions would satisfy one. */
+		NSExpression *age = [NSExpression expressionForKeyPath:@"age"];
+		NSExpression *thirty = [NSExpression expressionForConstantValue:@30];
+		NSExpression *name = [NSExpression expressionForKeyPath:@"name"];
+		NSExpression *alice = [NSExpression expressionForConstantValue:@"alice"];
+		NSComparisonPredicate *older =
+			[NSComparisonPredicate predicateWithLeftExpression:age
+						  rightExpression:thirty
+							 modifier:NSDirectPredicateModifier
+							     type:NSGreaterThanPredicateOperatorType
+							  options:0];
+		NSComparisonPredicate *named =
+			[NSComparisonPredicate predicateWithLeftExpression:name
+						  rightExpression:alice
+							 modifier:NSDirectPredicateModifier
+							     type:NSEqualToPredicateOperatorType
+							  options:NSCaseInsensitivePredicateOption];
+		NSCompoundPredicate *both =
+			[NSCompoundPredicate andPredicateWithSubpredicates:@[older, named]];
+		NSData *bothData = [NSKeyedArchiver archivedDataWithRootObject:both];
+		NSCompoundPredicate *backBoth = bothData != nil
+			? [NSKeyedUnarchiver unarchiveObjectWithData:bothData] : nil;
+		NSData *olderData = [NSKeyedArchiver archivedDataWithRootObject:older];
+		NSComparisonPredicate *backOlder = olderData != nil
+			? [NSKeyedUnarchiver unarchiveObjectWithData:olderData] : nil;
+		NSArray *passes = @[ @{ @"age" : @40, @"name" : @"ALICE" } ];
+		NSArray *tooYoung = @[ @{ @"age" : @20, @"name" : @"ALICE" } ];
+		NSArray *wrongName = @[ @{ @"age" : @40, @"name" : @"bob" } ];
+		BOOL refusedHalf = NO;
+
+		@try {
+			/* A COMPARISON MISSING ONE EXPRESSION, written over the same public door: the class's own
+			 * designated initializer refuses it, so the decoder's refusal is that line rather than a second
+			 * check — asserted here so the two cannot drift apart. */
+			NSMutableData *buffer = [[NSMutableData alloc] init];
+			NSKeyedArchiver *writer = [[NSKeyedArchiver alloc]
+				initForWritingWithMutableData:buffer];
+
+			[writer encodeObject:[NSExpression expressionForConstantValue:@1]
+				     forKey:@"NS.left"];
+			[writer encodeInteger:NSGreaterThanPredicateOperatorType forKey:@"NS.operatorType"];
+			[writer finishEncoding];
+			(void)[[NSComparisonPredicate alloc] initWithCoder:
+				[[NSKeyedUnarchiver alloc] initForReadingWithData:buffer]];
+		} @catch (NSException *e) {
+			refusedHalf = [[e name] isEqualToString:NSInvalidArgumentException];
+		}
+		/* A DIAGNOSTIC IN A C BUFFER, because THIS probe's check() takes a `const char *` — and because the
+		 * first version of this check passed a PROSE detail, which made its failure unreadable: a check that
+		 * cannot name the value it failed on is a check that costs a build to diagnose. */
+		{
+			char detail[320];
+
+			int tCoding = [older conformsToProtocol:@protocol(NSCoding)] &&
+				[both conformsToProtocol:@protocol(NSCoding)];
+			int tKind = backBoth != nil && [backBoth isKindOfClass:[NSCompoundPredicate class]] &&
+				[backBoth compoundPredicateType] == NSAndPredicateType &&
+				[[backBoth subpredicates] count] == 2;
+			int tChild0 = backBoth != nil &&
+				[[[backBoth subpredicates] objectAtIndex:0] isKindOfClass:
+					[NSComparisonPredicate class]];
+			int tOlder = backOlder != nil &&
+				[backOlder predicateOperatorType] == NSGreaterThanPredicateOperatorType &&
+				[backOlder comparisonPredicateModifier] == NSDirectPredicateModifier &&
+				[[[backOlder leftExpression] keyPath] isEqualToString:@"age"] &&
+				[[[[backOlder rightExpression] constantValue] description] isEqualToString:@"30"];
+			int tChild1 = backBoth != nil &&
+				([[[backBoth subpredicates] objectAtIndex:1] options] &
+				 (NSUInteger)NSCaseInsensitivePredicateOption) != 0 &&
+				[(NSPredicate *)[[backBoth subpredicates] objectAtIndex:1] evaluateWithObject:
+					[passes objectAtIndex:0]];
+			int tEvaluates = backBoth != nil &&
+				[backBoth evaluateWithObject:[passes objectAtIndex:0]] &&
+				![backBoth evaluateWithObject:[tooYoung objectAtIndex:0]] &&
+				![backBoth evaluateWithObject:[wrongName objectAtIndex:0]];
+
+			/* EVERY TERM BY NAME, so a failure names the one that failed: the first version of this check
+			 * passed a PROSE detail and cost builds to diagnose, which is the probe lesson this thread has now
+			 * learned more than once. */
+			snprintf(detail, sizeof detail,
+				 "coding=%d kind=%d child0=%d older=%d child1=%d evaluates=%d refused=%d type=%ld op=%ld options=%ld children=%lu",
+				 tCoding, tKind, tChild0, tOlder, tChild1, tEvaluates, (int)refusedHalf,
+				 (long)[backBoth compoundPredicateType], (long)[backOlder predicateOperatorType],
+				 (long)[backOlder options],
+				 (unsigned long)(backBoth != nil ? [[backBoth subpredicates] count] : 0));
+			check("predicate-nscoding-round-trip",
+			      tCoding && tKind && tChild0 && tOlder && tChild1 && tEvaluates && refusedHalf,
+			      detail);
+		}
+	}
+
 	printf("FOUNDATION-PREDICATE RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

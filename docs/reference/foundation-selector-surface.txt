@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1831   open  854   struck  243
+#   method     shipped 1833   open  852   struck  243
 #   property   shipped 1027   open  463   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -678,7 +678,7 @@ property	open	requiresSecureCoding	NSCoder	Files and Data Persistence / Keyed Ar
 property	open	systemVersion	NSCoder	Files and Data Persistence / Keyed Archivers / Getting Version Information	-	objc
 method	shipped	-encodeWithCoder:	NSCoding	Files and Data Persistence / Adopting Codability / Encoding with a coder	-	objc
 method	shipped	-initWithCoder:	NSCoding	Files and Data Persistence / Adopting Codability / Initializing with a coder	-	objc
-method	open	-initWithCoder:	NSComparisonPredicate	Fundamentals / Filltering / Creating Comparison Predicates	-	objc
+method	shipped	-initWithCoder:	NSComparisonPredicate	Fundamentals / Filltering / Creating Comparison Predicates	-	objc
 method	open	-initWithLeftExpression:rightExpression:customSelector:	NSComparisonPredicate	Fundamentals / Filltering / Creating Comparison Predicates	-	objc
 method	shipped	-initWithLeftExpression:rightExpression:modifier:type:options:	NSComparisonPredicate	Fundamentals / Filltering / Creating Comparison Predicates	-	objc
 method	open	+predicateWithLeftExpression:rightExpression:customSelector:	NSComparisonPredicate	Fundamentals / Filltering / Creating Comparison Predicates	-	objc
@@ -690,7 +690,7 @@ property	shipped	options	NSComparisonPredicate	Fundamentals / Filltering / Getti
 property	shipped	predicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	objc
 property	shipped	rightExpression	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	objc
 method	shipped	+andPredicateWithSubpredicates:	NSCompoundPredicate	Fundamentals / Filltering / Creating Compound Predicates	-	objc
-method	open	-initWithCoder:	NSCompoundPredicate	Fundamentals / Filltering / Creating Compound Predicates	-	objc
+method	shipped	-initWithCoder:	NSCompoundPredicate	Fundamentals / Filltering / Creating Compound Predicates	-	objc
 method	shipped	-initWithType:subpredicates:	NSCompoundPredicate	Fundamentals / Filltering / Creating Compound Predicates	-	objc
 method	shipped	+notPredicateWithSubpredicate:	NSCompoundPredicate	Fundamentals / Filltering / Creating Compound Predicates	-	objc
 method	shipped	+orPredicateWithSubpredicates:	NSCompoundPredicate	Fundamentals / Filltering / Creating Compound Predicates	-	objc

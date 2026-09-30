@@ -15824,6 +15824,52 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.16 — THE PREDICATE PAIR: TWO ROWS, A DEEP ROUND TRIP, AND THREE MISTAKES THE PROBE CAUGHT (2026-09-30)
+
+**WHAT SHIPPED: TWO ROWS.** `NSComparisonPredicate` and `NSCompoundPredicate` conform to `NSCoding`.
+**`method shipped` 1831 → 1833, `method open` 854 → 852.**
+
+**THE ENUMS ARE PAYLOAD, NOT DECORATION, in both classes.** A comparison with the right two expressions and the
+wrong OPERATOR is a different predicate; with the wrong MODIFIER (`ANY`/`ALL`/`NONE`) it is a different question
+about the same values; and `AND` of nothing is YES while `OR` of nothing is NO, so a compound with the same
+children under a different TYPE answers a different rule. Both doors decode through their classes' DESIGNATED
+constructors, so the class's own refusals apply on the way in — the comparison constructor raises for a missing
+expression, and the probe measures that the decoder inherits the refusal rather than restating it.
+
+**THE PROBE BUILDS A DEEP TREE ON PURPOSE**: a compound `AND` of two comparison predicates of expressions is
+§63.10–§63.15 in ONE archive — the compound's door, the comparison's doors, the expression's doors and the
+collection's, each reached because the one below it asked. And it measures the round trip BY EVALUATING, not
+only by shape: asserting the fields would pass a decoder that restored every field and got the RULE wrong
+(`AND` that came back as `OR`, a `<` that came back as `<=`), so the restored predicate is asked about VALUES —
+one passing row, and two that must fail it for two different reasons.
+
+**AND THREE MISTAKES WERE MINE, each caught by a different instrument — which is the part worth keeping:**
+
+* **THE PROTOCOL ADOPTION WAS MISSING.** I wrote both doors into the header and did NOT add `<NSCoding>` to the
+  two `@interface` lines. The class could therefore be coded and did not CLAIM to be — and the probe's
+  `-conformsToProtocol:` assertion is the only thing that can see the difference. **A declared door is not a
+  claimed conformance**, and ten of this thread's units had already put that assertion in place for exactly
+  this shape of error.
+* **AND THE FIX LOOKED INEFFECTIVE UNTIL THE BUILD WAS FORCED, which is this repository's KNOWN TRAP
+  re-encountered:** the library's object files have NO HEADER PREREQUISITES, so editing a header rebuilds
+  nothing that included it. The check still failed after the correction, and the reason was the BUILD, not the
+  code; `touch`ing the two `.m` files made the protocol take effect and the probe pass. **"It still fails after
+  the fix" is a statement about the build until the build is ruled out.**
+* **THE CHECK'S FIRST DETAIL WAS PROSE, so its failure could not be read**, and this probe's `check()` takes a
+  `const char *` (a slip already made once in §63.8). Rewritten with EVERY TERM AS A NAMED LOCAL and a formatted
+  C buffer, the first run named the failing term in one line: `coding=0 kind=1 child0=1 older=1 child1=1
+  evaluates=1 refused=1`. **A check that cannot name the value it failed on costs a build per hypothesis.**
+
+**VERIFICATION.** Probe `foundation_predicate` **29/29** on the host (was 28, with
+`predicate-nscoding-round-trip`), zero diagnostics under the house flag; guest `TESTS-OK 1/1 case(s), 6/6
+check(s)`; `foundation_expression`, `foundation_notification` and `foundation_set` all **6/6** unmoved;
+`make foundation-sweep` **exit 0**, `--unimplemented` **0 NEW**; `--check` named **exactly 2** rows before the
+flip.
+
+**WHAT REMAINS OF THE FIELD-CARRYING EIGHT: FOUR CLASSES** — `NSCharacterSet`, `NSDateInterval`,
+`NSSortDescriptor`, `NSDistantObject` — plus, still open and independent, the `NSExpression` ownership defect
+§63.15 recorded (no `-dealloc`, slots assigned without retaining).
+
 ## §63.15 — `NSExpression`'S `NSCoding` CONFORMANCE: THE TYPE IS THE PAYLOAD, AND A DEPENDENCY THE PLAN HAD WRONG (2026-09-30)
 
 **WHAT SHIPPED: ONE ROW.** `NSExpression` conforms to `NSCoding`. **`method shipped` 1830 → 1831,

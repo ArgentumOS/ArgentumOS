@@ -35,6 +35,8 @@
 #define FOUNDATION_NSPREDICATE_H
 
 #import <Foundation/NSObject.h>
+/* FOR `NSCoding` AND THE `NSCoder` THE PREDICATE DOORS TAKE (§63.16). */
+#import <Foundation/NSCoding.h>
 
 @class NSString;
 @class NSArray;
@@ -135,7 +137,7 @@ enum {
  * IT SHARES ITS COMPARISON RULE with the leaf the grammar produces rather than restating it, so the
  * two cannot answer differently about the same pair of values.
  */
-@interface NSComparisonPredicate : NSPredicate
+@interface NSComparisonPredicate : NSPredicate <NSCoding>
 {
 	NSExpression *_left;
 	NSExpression *_right;
@@ -143,6 +145,17 @@ enum {
 	NSPredicateOperatorType _operatorType;
 	NSPredicateOptions _options;
 }
+
+/* THE NSCoding DOORS (§63.16). FIVE FIELDS, and the two ENUMS are payload rather than decoration: a comparison
+ * with the right two expressions and the wrong OPERATOR is a different predicate, and one with the wrong
+ * MODIFIER (`ANY`/`ALL`/`NONE`, the quantifiers) is a different question about the same values. The
+ * expressions themselves cross through §63.15's doors, which is why this unit needed that one first.
+ *
+ * NO CUSTOM SELECTOR OR COMPARATOR STATE IS CARRIED, and that is a fact about this class rather than an
+ * omission here: its only constructor takes two expressions, a modifier, an operator and options — so the
+ * five ivars above ARE its whole state, and a `CUSTOM` operator has nothing extra to write. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
+- (void)encodeWithCoder:(NSCoder *)coder;
 
 + (instancetype)predicateWithLeftExpression:(NSExpression *)leftExpression
 			     rightExpression:(NSExpression *)rightExpression
@@ -167,7 +180,14 @@ enum {
 /* THE TREE NODE, and a rule in the plainest sense: ask the children, combine the booleans.
  * AND of nothing is YES and OR of nothing is NO — the identities, not special cases.
  */
-@interface NSCompoundPredicate : NSPredicate
+@interface NSCompoundPredicate : NSPredicate <NSCoding>
+
+/* THE NSCoding DOORS (§63.16). TWO FIELDS — the type and the children — and the type is the payload for the
+ * same reason a comparison's operator is: AND of nothing is YES while OR of nothing is NO, so a decoder that
+ * read the children and lost the type would answer a DIFFERENT RULE with the same inputs. The array crosses
+ * through the collection doors (§63.10-§63.13) and each child through its own class's. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
+- (void)encodeWithCoder:(NSCoder *)coder;
 
 + (instancetype)andPredicateWithSubpredicates:(NSArray *)subpredicates;
 + (instancetype)orPredicateWithSubpredicates:(NSArray *)subpredicates;

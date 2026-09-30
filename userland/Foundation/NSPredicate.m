@@ -203,6 +203,38 @@
 	return self;
 }
 
+/* ===================================================================================================
+ * THE NSCoding DOORS (§63.16). TWO FIELDS, AND THE TYPE IS PAYLOAD: `AND` of nothing is YES and `OR` of
+ * nothing is NO, so the same children under a different type answer a DIFFERENT RULE — a decoder that read the
+ * array and lost the type would look correct and be wrong. The keys are OURS (Apple publishes no name for
+ * them, §11.6.1 D2's ground), defined here beside their only writer and reader, and the type rides as an
+ * integer whose VALUES ARE COCOA'S (NSPredicate.h pins that enum).
+ *
+ * THE CHILDREN CROSS THROUGH THE COLLECTION DOORS and each child through its own class's, so this is the door
+ * that exercises §63.10-§63.15 at once — a compound of comparison predicates of expressions is the whole chain
+ * in one archive, which is what the probe builds.
+ * =================================================================================================== */
+static NSString *const kCompoundTypeKey = @"NS.compoundType";
+static NSString *const kSubpredicatesKey = @"NS.subpredicates";
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	[coder encodeInteger:(NSInteger)_type forKey:kCompoundTypeKey];
+	[coder encodeObject:_subpredicates forKey:kSubpredicatesKey];
+}
+
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	NSArray *children = [coder decodeObjectForKey:kSubpredicatesKey];
+
+	/* THROUGH THE DESIGNATED DOOR, so a decoded compound predicate and a caller-built one are the same object
+	 * shape — and an absent children array becomes the EMPTY one rather than nil, because the identities above
+	 * (AND of nothing is YES) are defined FOR the empty case and a nil array would take `-evaluateWithObject:`
+	 * down a path the class never intended. */
+	return [self initWithType:(NSCompoundPredicateType)[coder decodeIntegerForKey:kCompoundTypeKey]
+		     subpredicates:children != nil ? children : @[]];
+}
+
 - (NSCompoundPredicateType)compoundPredicateType { return _type; }
 - (NSArray *)subpredicates { return _subpredicates; }
 
