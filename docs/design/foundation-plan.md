@@ -15824,6 +15824,64 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.10 — THE ORDERED SETS' `NSCoding` CONFORMANCE: TWO ROWS, AND A GATE THAT CAUGHT THE NEW HEADER (2026-09-30)
+
+**WHAT SHIPPED: TWO ROWS, AND THEY ARE THE `-initWithCoder:` HALF.** `NSOrderedSet` and `NSMutableOrderedSet`
+now conform to `NSCoding`. **`method shipped` 1821 → 1823, `method open` 864 → 862.**
+
+**THE LEDGER ONLY TRACKS HALF OF WHAT CONFORMANCE MEANS, which is why this unit shipped three times as much
+work as its rows.** `-encodeWithCoder:` has exactly ONE row in the whole selector ledger — on the `NSCoding`
+protocol itself — so a class adopting the protocol owes a door the ledger never names. Declaring the protocol
+and implementing only `-initWithCoder:` would be a class that can be read and never written, which is the
+thing NSCoding.h's own comment calls out as the reason the pair IS the protocol. All three doors shipped
+here: the protocol on the front, `-initWithCoder:` and `-encodeWithCoder:` on the front, and
+`-initWithCoder:` on the mutable.
+
+**WHEN THESE DOORS ARE REACHABLE, stated because the obvious answer is wrong:** the ARCHIVER never calls them.
+Its structural branch recognises an ordered set by KIND and writes it directly, so these doors exist for a
+caller who names them and for the `-conformsToProtocol:` answer a source-compatible program asks for. The
+probe drives them DIRECTLY for that reason — building the archive through the instance flow and calling the
+doors itself — and asserts three things: the protocol answer, the round trip, and that the MUTABLE class
+answers a mutable set.
+
+**THE TWO ENDS MEET AT ONE FUNNEL AND ONE KEY.** The encoder writes the members under the SAME key the
+archive's structural branch uses, and the decoder reads it back through `-initWithArray:` — so the order, the
+dedup rule and the class-choosing rule are the INITIALIZER's rather than a second copy of them. The key name
+now lives in ONE place, a new internal header (`FNKeyedWire.h`, following `FNArchiverWire.h`'s precedent),
+because two independent code paths write it: a literal typed twice is how a wire stops being a wire.
+
+**THE MUTABLE'S DECLARATION NEEDS THE MUTABLE'S OWN IMPLEMENTATION.** `--unimplemented` counts an
+implementation in the class **or in a SUBCLASS of the class that declares it** — so a superclass
+implementation does not satisfy a subclass's declaration, and `-initWithCoder:` on `NSMutableOrderedSet` has
+its own body (`[super initWithCoder:]`, which still answers a MUTABLE set because the class-choosing rule
+sends only the immutable concrete class to the shared empty instance).
+
+**AND THE PROJECT'S OWN NULLABILITY GATE CAUGHT THE NEW HEADER, WHICH IS THE PART WORTH KEEPING.** The build
+FAILED — not the library, the `userland64` prerequisite:
+
+    FOUNDATION-GATE: FAIL - a public header does not open a nullability region
+      userland/Foundation/FNKeyedWire.h: no NS_ASSUME_NONNULL_BEGIN
+
+**F6's rule is "annotate the class WHILE you write it", and a wire header is not an exception unless it is a
+NAMED one.** `FNKeyedWire.h` is now exempt by name, with its reason, exactly as `FNArchiverWire.h` is: it
+declares C constants whose non-nullness comes from their initializers, so a region would annotate nothing.
+The gate's tally moved 220 of 226 headers opening a region, **6 exempt by name**.
+
+**VERIFICATION.** Probe `foundation_orderedset` **18/18** on the host (was 17, with
+`ordered-nscoding-doors` measuring both the round trip and the mutable's answer); guest `TESTS-OK 1/1 case(s),
+6/6 check(s)`; `foundation_coder` **6/6** and `foundation_clusters` **17/17** unmoved; `make foundation-gate`
+**OK**; `make foundation-sweep` **exit 0**, `--unimplemented` **0 NEW**; `--check` named **exactly 2** rows
+before the flip.
+
+**WHAT REMAINS FOR NSCoding: EIGHTEEN CLASSES, IN THREE GROUPS.** The other three collections
+(`NSArray`/`NSMutableArray`, `NSDictionary`/`NSMutableDictionary`, `NSSet`/`NSMutableSet`) are this unit's
+shape exactly — same shared keys, same funnel — so they are mechanical; the value types (`NSString`,
+`NSNumber`, `NSValue`, `NSLocale`) are NOT, because this library writes them INLINE as value types and an
+explicit `-initWithCoder:` has no entry to read; and the remaining eight (`NSNotification`,
+`NSCharacterSet`, `NSDateInterval`, `NSSortDescriptor`, `NSExpression`, `NSComparisonPredicate`,
+`NSCompoundPredicate`, `NSDistantObject`) each need their own fields' keys AND a paired encoder. The middle
+group is the one that needs a DESIGN decision rather than a slice.
+
 ## §63.9 — `NSMutableOrderedSet`'S INDEX-SET AND COUNT MUTATORS: EIGHT ROWS, TWO RULES, ONE DOOR (2026-09-30)
 
 **WHAT SHIPPED: EIGHT ROWS.** `-addObjects:count:`, `-insertObjects:atIndexes:`,

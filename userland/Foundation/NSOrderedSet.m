@@ -24,6 +24,9 @@
 #import <Foundation/NSException.h>
 #import <Foundation/NSString.h>
 #include <stdarg.h>		/* the nil-terminated construction doors walk a va_list */
+/* THE KEYED ARCHIVE'S KEY NAMES, shared with NSKeyedArchiver's structural branch so the NSCoding doors below
+ * and that branch cannot spell the same key differently (§63.10). */
+#import <Foundation/FNKeyedWire.h>
 
 /* ===================================================================================================
  * THE PRIVATE CONCRETE CLASSES (plan §C.3, M6): the same shape as the array, dictionary, set and number
@@ -385,6 +388,24 @@ static NSArray *fn_from_varargs(id firstObject, va_list args)
 		[out addObject:object];
 	}
 	return out;
+}
+
+/* ===================================================================================================
+ * THE NSCoding DOORS (§63.10). What they are FOR, since the archiver does not need them, is in the header.
+ * The pair is symmetric through ONE key, and `-initWithArray:` is the funnel both ends meet at, so the
+ * order, the dedup rule and the class-choosing rule stay the INITIALIZER's.
+ * =================================================================================================== */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	return [self initWithArray:[coder decodeObjectForKey:FNKeyedObjectsKey]];
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	/* A COPY, AND THAT IS THE POINT: encoding `self` under this key would ask the coder for the very object it
+	 * is in the middle of writing, and the archive would record the ordered set referring to itself. The copy
+	 * is a distinct array holding the same members, which is exactly the payload `NS.objects` names. */
+	[coder encodeObject:[NSArray arrayWithArray:[self array]] forKey:FNKeyedObjectsKey];
 }
 
 - (NSSet *)set
@@ -800,6 +821,17 @@ static NSArray *fn_from_varargs(id firstObject, va_list args)
 {
 	(void)capacity;
 	return [self initWithObjects:NULL count:0];
+}
+
+/* THE SAME DOOR ON THE MUTABLE CLASS, which Apple declares here too and which therefore needs an
+ * implementation HERE - a declaration satisfied only by a SUPERCLASS's implementation is what
+ * `--unimplemented` calls a declared-but-undefined selector, and it is right to: this class is the one a
+ * caller named. `[super initWithCoder:]` reaches the front's, which funnels through `-initWithArray:` with
+ * `self` still being the MUTABLE class - so the class-choosing rule (which sends only the immutable concrete
+ * class to the shared empty instance) leaves a mutable answer mutable. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	return [super initWithCoder:coder];
 }
 
 /* ONE PLACE REPLACES THE MEMBERS, so the mutation token moves exactly when the storage does. */

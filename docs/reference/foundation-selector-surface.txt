@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1821   open  864   struck  243
+#   method     shipped 1823   open  862   struck  243
 #   property   shipped 1027   open  463   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -2116,7 +2116,7 @@ method	shipped	-exchangeObjectAtIndex:withObjectAtIndex:	NSMutableOrderedSet	Fun
 method	shipped	-filterUsingPredicate:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
 method	shipped	-init	NSMutableOrderedSet	Fundamentals / Specialized Sets / Creating a Mutable Ordered Set	-	objc
 method	shipped	-initWithCapacity:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Creating a Mutable Ordered Set	-	objc
-method	open	-initWithCoder:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Instance Methods	-	objc
+method	shipped	-initWithCoder:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Instance Methods	-	objc
 method	shipped	-insertObject:atIndex:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
 method	shipped	-insertObjects:atIndexes:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
 method	shipped	-intersectOrderedSet:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Combining and Recombining Entries	-	objc
@@ -2459,7 +2459,7 @@ method	shipped	-init	NSOrderedSet	Fundamentals / Specialized Sets / Initializing
 method	shipped	-initWithArray:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
 method	shipped	-initWithArray:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
 method	shipped	-initWithArray:range:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	open	-initWithCoder:	NSOrderedSet	Fundamentals / Specialized Sets / Instance Methods	-	objc
+method	shipped	-initWithCoder:	NSOrderedSet	Fundamentals / Specialized Sets / Instance Methods	-	objc
 method	shipped	-initWithObject:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
 method	shipped	-initWithObjects:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
 method	shipped	-initWithObjects:count:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc

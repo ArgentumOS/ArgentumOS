@@ -200,6 +200,11 @@ NULLABILITY_EXEMPT = {
     "Foundation.h": "the umbrella: imports only, no declarations of its own",
     "FNArchiverWire.h": "C only: a tag enum, the magic and static inline byte codecs — it declares no "
                         "Objective-C pointer, so a region would annotate nothing",
+    "FNKeyedWire.h": "C only: the two keyed-archive key names, shared by the archiver and by the collections' "
+                     "NSCoding doors (§63.10) so they cannot drift. Like FNArchiverWire.h it is a WIRE, and "
+                     "the two constants it declares are non-null by their initializers — a region would "
+                     "annotate nothing, and an `_Nonnull` on a `static const` is not where the constraint is "
+                     "enforced anyway: the callers' parameters are, in the headers that take them",
 }
 # Anchored at the START of a line, so a PROSE mention (which begins with a comment
 # marker) cannot be mistaken for the directive, and a trailing comment is fine.

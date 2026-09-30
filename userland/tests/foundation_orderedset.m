@@ -530,6 +530,40 @@ int main(void)
 			(int)refusedMismatch, (int)refusedIndex]);
 	}
 
+	{
+		/* THE NSCoding DOORS (§63.10), driven DIRECTLY - which is the only way to reach them, since the
+		 * archiver's structural branch recognises an ordered set by kind and never asks the class. The check
+		 * therefore builds the archive through the instance flow and calls the doors itself, and then asserts
+		 * THREE things: the protocol answer a source-compatible program asks for, the round trip through the
+		 * class's own doors, and that the MUTABLE class answers a mutable set rather than the front's answer. */
+		NSOrderedSet *ordered = [NSOrderedSet orderedSetWithArray:@[@"a", @"b", @"c"]];
+		NSMutableData *buffer = [NSMutableData data];
+		NSKeyedArchiver *writer = [[NSKeyedArchiver alloc] initForWritingWithMutableData:buffer];
+		NSOrderedSet *back;
+		NSMutableOrderedSet *mutableBack;
+
+		[ordered encodeWithCoder:writer];
+		[writer finishEncoding];
+		back = [[NSOrderedSet alloc] initWithCoder:
+			[[NSKeyedUnarchiver alloc] initForReadingWithData:buffer]];
+		mutableBack = [[NSMutableOrderedSet alloc] initWithCoder:
+			[[NSKeyedUnarchiver alloc] initForReadingWithData:buffer]];
+		check("ordered-nscoding-doors",
+		      [ordered conformsToProtocol:@protocol(NSCoding)] &&
+		      [NSMutableOrderedSet conformsToProtocol:@protocol(NSCoding)] &&
+		      back != nil && [back isKindOfClass:[NSOrderedSet class]] &&
+		      ![back isKindOfClass:[NSMutableOrderedSet class]] &&
+		      [[back array] isEqualToArray:@[@"a", @"b", @"c"]] &&
+		      mutableBack != nil &&
+		      [mutableBack isKindOfClass:[NSMutableOrderedSet class]] &&
+		      [[mutableBack array] isEqualToArray:@[@"a", @"b", @"c"]] &&
+		      [[[NSOrderedSet orderedSet] reversedOrderedSet] count] == 0,
+		      [NSString stringWithFormat:@"coding=%d back=%@ mutableBack=%@",
+			(int)[ordered conformsToProtocol:@protocol(NSCoding)],
+			back != nil ? [back array] : @"(nil)",
+			mutableBack != nil ? [mutableBack array] : @"(nil)"]);
+	}
+
 	printf("FOUNDATION-ORDEREDSET RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

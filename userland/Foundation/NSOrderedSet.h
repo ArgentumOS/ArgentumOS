@@ -31,17 +31,31 @@
  * NSIndexSet.h (with Apple's published values), so the enumeration doors cannot be declared without it.
  * Apple's own header imports the same. */
 #import <Foundation/NSIndexSet.h>
+/* FOR `NSCoding` AND THE `NSCoder` ITS TWO DOORS TAKE (§63.10): these collections conform on Apple's platform,
+ * so a class that declares the protocol here is one whose `-conformsToProtocol:` answers the same. */
+#import <Foundation/NSCoding.h>
 
 @class NSArray<ObjectType>, NSEnumerator<ObjectType>, NSSet<ObjectType>;
 @class NSPredicate;
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface NSOrderedSet<__covariant ObjectType> : NSObject <NSCopying, NSMutableCopying, NSFastEnumeration>
+@interface NSOrderedSet<__covariant ObjectType> : NSObject <NSCopying, NSMutableCopying, NSFastEnumeration, NSCoding>
 {
 	NSArray *_members;		/* insertion order, each value once; REPLACED by every mutation */
 	unsigned long _mutations;	/* the for-in consistency token */
 }
+
+/* THE NSCoding DOORS (§63.10). The pair is SYMMETRIC: the encoder writes the members under the SAME key the
+ * archive's own structural branch uses (`NS.objects`, shared through FNKeyedWire.h so the two cannot spell it
+ * differently), and the decoder reads that key back through `-initWithArray:` — so the order, the dedup rule
+ * and the class-choosing rule are the INITIALIZER's rather than a second copy of them.
+ *
+ * WHEN EACH IS REACHED, stated because it is not obvious: the ARCHIVER never calls these for an ordered set —
+ * its structural branch recognises one by kind and writes it directly — so these doors exist for a caller who
+ * names them, and for the `-conformsToProtocol:` answer a source-compatible program can ask for. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
+- (void)encodeWithCoder:(NSCoder *)coder;
 
 + (instancetype)orderedSet;
 + (instancetype)orderedSetWithObject:(ObjectType)object;

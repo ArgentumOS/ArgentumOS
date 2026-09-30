@@ -39,14 +39,18 @@
 #import <Foundation/NSNumber.h>
 #import <Foundation/NSNull.h>
 #import <Foundation/NSException.h>
+#import <Foundation/FNKeyedWire.h>	/* the collection payload keys, shared with the collections (§63.10) */
 #import <objc/runtime.h>
 
 static NSString *const kRef = @"$ref";
 static NSString *const kClass = @"$class";
 static NSString *const kClassname = @"$classname";
 static NSString *const kClasses = @"$classes";
-static NSString *const kObjects = @"NS.objects";
-static NSString *const kKeys = @"NS.keys";
+/* THE TWO COLLECTION KEYS ARE SHARED, NOT SPELLED TWICE (§63.10): the collections' own NSCoding doors write
+ * and read these same two names, and the header is where the single definition lives. The `#define` keeps
+ * every use below unchanged rather than renaming eleven call sites for no gain. */
+#define kObjects FNKeyedObjectsKey
+#define kKeys FNKeyedKeysKey
 /* THE COUNTED SET'S SECOND PAYLOAD. `-allObjects` on an NSCountedSet deliberately answers each distinct
  * member ONCE — that is the class's own documented reading of itself, and it agrees with `-count` — so the
  * multiplicities live beside the members rather than inside them, and this is the key they live under. It
