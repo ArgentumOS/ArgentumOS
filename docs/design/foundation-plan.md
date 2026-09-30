@@ -15824,6 +15824,59 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.7 — THE ORDERED SET'S READ DOORS: SIX ROWS, AND A SIGNATURE THE LEDGER COULD NOT SEE (2026-09-30)
+
+**WHAT SHIPPED: SIX ROWS.** `-objectsAtIndexes:`, `-enumerateObjectsWithOptions:usingBlock:`,
+`-enumerateObjectsAtIndexes:options:usingBlock:`, `-intersectsSet:`, `-isSubsetOfSet:`, and the
+`reversedOrderedSet` property. **`method shipped` 1799 → 1804, `method open` 886 → 881; `property shipped`
+1026 → 1027, `property open` 464 → 463.**
+
+**AND A REAL DEFECT WAS FOUND ON THE WAY, WHICH THE LEDGER COULD NOT HAVE REPORTED.**
+`-enumerateObjectsUsingBlock:` was declared here with a **TWO-PARAMETER** block —
+`(ObjectType object, BOOL *stop)` — where Apple's takes **THREE**: the object, its **INDEX**, and the stop
+flag. A caller written against Apple's header could not compile against ours. **The ledger row said
+`shipped` throughout, because the selector ledger has NO TYPE FIELD**: it holds existence, and a wrong
+signature is invisible to it. That is a limit worth stating rather than rediscovering — every row in that
+file records that a NAME is declared, never that its shape is Apple's.
+
+**THE CORRECTION COST NO CALL SITE, MEASURED BEFORE IT WAS MADE:** a grep for the two-parameter form found
+ZERO callers of this class's door (the tree's `-enumerateObjectsUsingBlock:` sites are `NSSet`'s, which IS
+two-parameter in Apple's header, and `NSArray`'s, which was already three). Had there been one, the change
+would have been an API break and would have belonged in its own unit.
+
+**THREE CHOICES MADE DELIBERATELY, each because the obvious alternative is wrong:**
+
+* **THE REVERSE WALK CARRIES THE SAME INDEX the forward one would.** A caller asking *where* an object sits
+  cannot reconstruct the index afterwards, so an enumerator that renumbered the reverse walk would answer a
+  question nobody asked. The probe asserts both sequences AND both index sequences.
+* **`-enumerateObjectsAtIndexes:options:usingBlock:` RAISES on an index past the end**, exactly as
+  `-objectsAtIndexes:` does, rather than skipping it — an enumerator that silently ignored one would report a
+  shorter visit than the caller asked for, which is a wrong answer rather than a refusal.
+* **`reversedOrderedSet` ANSWERS AN IMMUTABLE SET.** The property is declared `copy`, so a caller may hold
+  the value while the receiver changes; a mutable answer would break that promise. Building it through
+  `+orderedSetWithArray:` ALSO routes the empty case to the shared empty instance, which a hand-built
+  mutable version did not.
+
+**AND THE LEDGER'S PROPERTY SPELLING WAS CONFIRMED RATHER THAN ASSUMED.** `reversedOrderedSet` is a
+`property` row, and the open question was whether a `@property` declaration in the owner's block satisfies
+it — this is the first property row to move in this session, and `--check` named it as `PRESENT BUT LISTED
+OPEN property NSOrderedSet reversedOrderedSet` before the refresh flipped it. So the ledger's shipped test
+for a property IS the declaration, which is what the sibling ledger's own header claims.
+
+**VERIFICATION.** Probe `foundation_orderedset` **14/14** on the host (was 11); guest `TESTS-OK 1/1 case(s),
+6/6 check(s)`, probe tally `ok=14 fail=0`; the family's contract unmoved (`foundation_clusters` **17/17**,
+`foundation_collection` **6/6**); `make foundation-sweep` **exit 0**, `--unimplemented` **0 NEW**; `--check`
+named **exactly 6** rows before the flip and the refresh's diff was **8 lines in ONE file**.
+
+**WHAT REMAINS IN THIS FAMILY: 12 open rows, and two of them are other units' business.** The searching and
+sorting doors (`-indexOfObjectPassingTest:`, its options/AtIndexes siblings, the `indexesOf` trio,
+`-sortedArrayUsingComparator:`, `-sortedArrayWithOptions:usingComparator:`,
+`-indexOfObject:inSortedRange:options:usingComparator:`) are measured to be **MISSING ON `NSArray` TOO** — the
+same doors, the same shapes, on both classes — so they are a FAMILY-WIDE unit and not this one's.
+`-descriptionWithLocale:` (×2) needs the collection family's property-list description contract settled first
+(`NSArray` does not implement it either). And `-initWithCoder:` (×2 here, plus `NSMutableOrderedSet`'s
+thirteen mutation and sort rows) belongs with `NSCoding` conformance.
+
 ## §63.6 — `NSOrderedSet`'S CONSTRUCTION FAMILY: THIRTEEN ROWS, AND A SLICE THE GATE CONFIRMED (2026-09-30)
 
 **WHAT SHIPPED: THIRTEEN ROWS, AND THE LEDGER NAMED EXACTLY THEM.** `NSOrderedSet`'s construction doors — the

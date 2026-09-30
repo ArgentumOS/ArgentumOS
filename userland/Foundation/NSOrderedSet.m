@@ -392,6 +392,48 @@ static NSArray *fn_from_varargs(id firstObject, va_list args)
 	return [NSSet setWithArray:[self array]];
 }
 
+/* THE POSITIONAL SUBSET, mirroring `NSArray -objectsAtIndexes:` INCLUDING its refusal: an index that is not
+ * there is an exception rather than a short answer, because the caller asked for an element. The walk goes
+ * through the INDEX SET's own order (ascending), which for a position subset of an ordered set IS the
+ * receiver's order - so the result needs no sorting and the two cannot disagree. */
+- (NSArray *)objectsAtIndexes:(NSIndexSet *)indexes
+{
+	NSMutableArray *selected = [NSMutableArray array];
+	NSUInteger index;
+
+	if (indexes == nil) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSOrderedSet: -objectsAtIndexes: needs an index set"];
+	}
+	index = [indexes firstIndex];
+	while (index != NSNotFound) {
+		if (index >= [self count]) {
+			[NSException raise:NSRangeException
+				    format:@"NSOrderedSet: index %lu is beyond bounds %lu",
+					   (unsigned long)index, (unsigned long)[self count]];
+		}
+		[selected addObject:[self objectAtIndex:index]];
+		index = [indexes indexGreaterThanIndex:index];
+	}
+	return selected;
+}
+
+/* THE REVERSAL. It answers an IMMUTABLE ordered set on purpose, which the `copy` attribute on the property
+ * promises and a mutable answer would break: a caller may hold this value while the receiver is mutated, and
+ * the reversal must not change with it. Building it through `+orderedSetWithArray:` ALSO routes the empty
+ * case to the shared empty instance, which the hand-built mutable version did not. */
+- (NSOrderedSet *)reversedOrderedSet
+{
+	NSMutableArray *reversed = [NSMutableArray arrayWithCapacity:[self count]];
+	NSUInteger i = [self count];
+
+	while (i > 0) {
+		i--;
+		[reversed addObject:[self objectAtIndex:i]];
+	}
+	return [NSOrderedSet orderedSetWithArray:reversed];
+}
+
 - (NSEnumerator *)objectEnumerator
 {
 	return [_members objectEnumerator];
@@ -411,7 +453,18 @@ static NSArray *fn_from_varargs(id firstObject, va_list args)
 	return [reversed objectEnumerator];
 }
 
-- (void)enumerateObjectsUsingBlock:(void (^)(id object, BOOL *stop))block
+- (void)enumerateObjectsUsingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block
+{
+	[self enumerateObjectsWithOptions:0 usingBlock:block];
+}
+
+/* ONE WALK, TWO DOORS, AND THE OPTIONS ARE THE ONLY DIFFERENCE - which is why the plain form above is one
+ * line. `NSEnumerationConcurrent` is a HINT (`NSIndexSet.h` records that this library does not take it), so
+ * the only option with meaning here is `NSEnumerationReverse`, and the REVERSE WALK CARRIES THE SAME INDEX
+ * the forward one would: a caller asking where an object sits must not have to know which way it was
+ * enumerated. `stop` is one shared flag, so a block that stops the walk stops THIS walk. */
+- (void)enumerateObjectsWithOptions:(NSEnumerationOptions)options
+			 usingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block
 {
 	NSUInteger i;
 	BOOL stop = NO;
@@ -419,11 +472,69 @@ static NSArray *fn_from_varargs(id firstObject, va_list args)
 	if (block == NULL) {
 		return;
 	}
+	if ((options & NSEnumerationReverse) != 0) {
+		for (i = [self count]; i > 0; i--) {
+			block([self objectAtIndex:i - 1], i - 1, &stop);
+			if (stop) {
+				break;
+			}
+		}
+		return;
+	}
 	for (i = 0; i < [self count]; i++) {
-		block([self objectAtIndex:i], &stop);
+		block([self objectAtIndex:i], i, &stop);
 		if (stop) {
 			break;
 		}
+	}
+}
+
+/* THE SAME WALK RESTRICTED TO A POSITION SET, over the two bounds rules `-objectsAtIndexes:` uses: a nil
+ * index set is a caller error, and an index past the end RAISES rather than being skipped - an enumerator
+ * that silently ignored one would report a shorter visit than the caller asked for. The reverse walk starts
+ * at the index set's LAST index, so `NSEnumerationReverse` means the same thing here as it does above. */
+- (void)enumerateObjectsAtIndexes:(NSIndexSet *)indexes
+			  options:(NSEnumerationOptions)options
+		       usingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block
+{
+	NSUInteger index;
+	BOOL stop = NO;
+
+	if (block == NULL) {
+		return;
+	}
+	if (indexes == nil) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSOrderedSet: -enumerateObjectsAtIndexes: needs an index set"];
+	}
+	if ((options & NSEnumerationReverse) != 0) {
+		index = [indexes lastIndex];
+		while (index != NSNotFound) {
+			if (index >= [self count]) {
+				[NSException raise:NSRangeException
+					    format:@"NSOrderedSet: index %lu is beyond bounds %lu",
+						   (unsigned long)index, (unsigned long)[self count]];
+			}
+			block([self objectAtIndex:index], index, &stop);
+			if (stop) {
+				return;
+			}
+			index = [indexes indexLessThanIndex:index];
+		}
+		return;
+	}
+	index = [indexes firstIndex];
+	while (index != NSNotFound) {
+		if (index >= [self count]) {
+			[NSException raise:NSRangeException
+				    format:@"NSOrderedSet: index %lu is beyond bounds %lu",
+					   (unsigned long)index, (unsigned long)[self count]];
+		}
+		block([self objectAtIndex:index], index, &stop);
+		if (stop) {
+			return;
+		}
+		index = [indexes indexGreaterThanIndex:index];
 	}
 }
 
@@ -486,6 +597,19 @@ static NSArray *fn_from_varargs(id firstObject, va_list args)
 		}
 	}
 	return YES;
+}
+
+/* THE TWO SET QUESTIONS, answered by the SET VIEW rather than by a second walk: the question is about
+ * membership, the ordered-ness is not part of it, and NSSet already answers both over its own -hash/-isEqual:
+ * rules. Written this way, the ordered set and a set of the same members cannot disagree about either. */
+- (BOOL)intersectsSet:(NSSet *)set
+{
+	return [[self set] intersectsSet:set];
+}
+
+- (BOOL)isSubsetOfSet:(NSSet *)set
+{
+	return [[self set] isSubsetOfSet:set];
 }
 
 - (instancetype)filteredOrderedSetUsingPredicate:(NSPredicate *)predicate

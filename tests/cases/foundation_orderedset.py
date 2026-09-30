@@ -34,7 +34,8 @@ CHECKS = ("ordered-keeps-the-order-it-was-given", "ordered-index-and-lookup",
           "ordered-relations", "ordered-mutation-keeps-the-order",
           "ordered-enumeration-both-ways", "ordered-predicate-and-sort",
           "ordered-copy-semantics", "ordered-construction-doors",
-          "ordered-construction-copies-when-asked")
+          "ordered-construction-copies-when-asked", "ordered-enumeration-doors",
+          "ordered-positional-and-reversal", "ordered-set-relations")
 
 
 class Case(BaseCase):

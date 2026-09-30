@@ -270,6 +270,111 @@ int main(void)
 			      ![copiedMember isKindOfClass:[NSMutableString class]])]);
 	}
 
+	{
+		/* THE ENUMERATION DOORS, including the SIGNATURE that was wrong until §63.7: Apple's block takes the
+		 * object, its INDEX and the stop flag. Two properties matter and neither is free: the REVERSE walk
+		 * must report the SAME index the forward one would (a caller cannot reconstruct it afterwards), and
+		 * the stop flag must stop the walk. */
+		NSOrderedSet *ordered = [NSOrderedSet orderedSetWithArray:@[@"a", @"b", @"c", @"d"]];
+		NSMutableArray *forward = [NSMutableArray array];
+		NSMutableArray *forwardIndexes = [NSMutableArray array];
+		NSMutableArray *reverse = [NSMutableArray array];
+		NSMutableArray *reverseIndexes = [NSMutableArray array];
+		NSMutableArray *subset = [NSMutableArray array];
+		NSMutableArray *reverseSubset = [NSMutableArray array];
+		__block NSUInteger stops = 0;
+
+		[ordered enumerateObjectsUsingBlock:^(id object, NSUInteger index, BOOL *stop) {
+			[forward addObject:object];
+			[forwardIndexes addObject:[NSNumber numberWithUnsignedInteger:index]];
+		}];
+		[ordered enumerateObjectsWithOptions:NSEnumerationReverse
+				  usingBlock:^(id object, NSUInteger index, BOOL *stop) {
+			[reverse addObject:object];
+			[reverseIndexes addObject:[NSNumber numberWithUnsignedInteger:index]];
+		}];
+		[ordered enumerateObjectsAtIndexes:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(1, 2)]
+					   options:0
+					usingBlock:^(id object, NSUInteger index, BOOL *stop) {
+			[subset addObject:[NSString stringWithFormat:@"%lu:%@",
+				(unsigned long)index, object]];
+		}];
+		[ordered enumerateObjectsAtIndexes:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(1, 2)]
+					   options:NSEnumerationReverse
+					usingBlock:^(id object, NSUInteger index, BOOL *stop) {
+			[reverseSubset addObject:[NSString stringWithFormat:@"%lu:%@",
+				(unsigned long)index, object]];
+		}];
+		[ordered enumerateObjectsUsingBlock:^(id object, NSUInteger index, BOOL *stop) {
+			stops++;
+			*stop = YES;	/* one visit, and the walk must end here */
+		}];
+		check("ordered-enumeration-doors",
+		      [forward isEqualToArray:@[@"a", @"b", @"c", @"d"]] &&
+		      [forwardIndexes isEqualToArray:@[@0, @1, @2, @3]] &&
+		      [reverse isEqualToArray:@[@"d", @"c", @"b", @"a"]] &&
+		      [reverseIndexes isEqualToArray:@[@3, @2, @1, @0]] &&
+		      [subset isEqualToArray:@[@"1:b", @"2:c"]] &&
+		      [reverseSubset isEqualToArray:@[@"2:c", @"1:b"]] &&
+		      stops == 1,
+		      [NSString stringWithFormat:@"fwd=%@ fwdIdx=%@ rev=%@ revIdx=%@ sub=%@ subRev=%@ stops=%lu",
+			forward, forwardIndexes, reverse, reverseIndexes, subset, reverseSubset,
+			(unsigned long)stops]);
+	}
+
+	{
+		/* THE POSITIONAL SUBSET AND THE REVERSAL. The first mirrors NSArray's refusal (an index that is not
+		 * there RAISES rather than shortening the answer); the second must answer an IMMUTABLE set, because
+		 * the property is declared `copy` and a caller may hold it while the receiver changes. */
+		NSOrderedSet *ordered = [NSOrderedSet orderedSetWithArray:@[@"a", @"b", @"c", @"d"]];
+		NSArray *chosen = [ordered objectsAtIndexes:
+			[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(1, 2)]];
+		NSOrderedSet *reversed = [ordered reversedOrderedSet];
+		NSOrderedSet *reversedEmpty = [[NSOrderedSet orderedSet] reversedOrderedSet];
+		BOOL refused = NO;
+
+		@try {
+			(void)[ordered objectsAtIndexes:[NSIndexSet indexSetWithIndex:9]];
+		} @catch (NSException *e) {
+			refused = [[e name] isEqualToString:NSRangeException];
+		}
+		check("ordered-positional-and-reversal",
+		      chosen != nil && [chosen isEqualToArray:@[@"b", @"c"]] &&
+		      reversed != nil && [[reversed array] isEqualToArray:@[@"d", @"c", @"b", @"a"]] &&
+		      ![reversed isKindOfClass:[NSMutableOrderedSet class]] &&
+		      reversedEmpty == [NSOrderedSet orderedSet] &&
+		      refused,
+		      [NSString stringWithFormat:@"chosen=%@ reversed=%@ mutable=%d emptyIsShared=%d refused=%d",
+			chosen != nil ? chosen : @"(nil)",
+			reversed != nil ? [reversed array] : @"(nil)",
+			(int)(reversed != nil && [reversed isKindOfClass:[NSMutableOrderedSet class]]),
+			(int)(reversedEmpty == [NSOrderedSet orderedSet]), (int)refused]);
+	}
+
+	{
+		/* THE TWO SET QUESTIONS. They are asked of the SET VIEW, so the answers must agree with what NSSet
+		 * itself says about the same members - which is the point of answering them there rather than by a
+		 * second walk that could drift. */
+		NSOrderedSet *ordered = [NSOrderedSet orderedSetWithArray:@[@"a", @"b", @"c"]];
+		NSSet *overlapping = [NSSet setWithArray:@[@"c", @"z"]];
+		NSSet *disjoint = [NSSet setWithArray:@[@"x", @"y"]];
+		NSSet *subset = [NSSet setWithArray:@[@"a", @"c", @"extra"]];
+		NSSet *superset = [NSSet setWithArray:@[@"a", @"b", @"c", @"d"]];
+		NSSet *view = [ordered set];
+
+		check("ordered-set-relations",
+		      [ordered intersectsSet:overlapping] && ![ordered intersectsSet:disjoint] &&
+		      [ordered isSubsetOfSet:superset] && ![ordered isSubsetOfSet:subset] &&
+		      [view intersectsSet:overlapping] && [view isSubsetOfSet:superset] &&
+		      ![ordered intersectsSet:nil] && ![ordered isSubsetOfSet:nil],
+		      [NSString stringWithFormat:@"intersects=%d disjoint=%d subset=%d notSubset=%d nilSafe=%d",
+			(int)[ordered intersectsSet:overlapping],
+			(int)[ordered intersectsSet:disjoint],
+			(int)[ordered isSubsetOfSet:superset],
+			(int)[ordered isSubsetOfSet:subset],
+			(int)(![ordered intersectsSet:nil] && ![ordered isSubsetOfSet:nil])]);
+	}
+
 	printf("FOUNDATION-ORDEREDSET RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

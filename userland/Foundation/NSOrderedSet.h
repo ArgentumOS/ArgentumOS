@@ -27,6 +27,10 @@
 #import <Foundation/NSObject.h>
 #import <Foundation/NSFastEnumeration.h>
 #import <Foundation/NSOrderedCollectionDifference.h>
+/* FOR `NSEnumerationOptions` AND THE INDEX SET `-objectsAtIndexes:` TAKES: the option type lives in
+ * NSIndexSet.h (with Apple's published values), so the enumeration doors cannot be declared without it.
+ * Apple's own header imports the same. */
+#import <Foundation/NSIndexSet.h>
 
 @class NSArray<ObjectType>, NSEnumerator<ObjectType>, NSSet<ObjectType>;
 @class NSPredicate;
@@ -82,18 +86,34 @@ NS_ASSUME_NONNULL_BEGIN
 /* The two views: the ORDER (an array) and the MEMBERSHIP (a set). */
 - (NSArray<ObjectType> *)array;
 - (NSSet<ObjectType> *)set;
+/* THE FIFTH VIEW: a SUBSET by position, and the REVERSAL — Apple declares the second as a property, and so
+ * does this header, whose getter is implemented by hand (as NSAttributedString's `string` is). */
+- (NSArray<ObjectType> *)objectsAtIndexes:(NSIndexSet *)indexes;
+@property (readonly, copy) NSOrderedSet<ObjectType> *reversedOrderedSet;
 
 - (NSEnumerator<ObjectType> *)objectEnumerator;
 - (NSEnumerator<ObjectType> *)reverseObjectEnumerator;
-- (void)enumerateObjectsUsingBlock:(void (^)(ObjectType object, BOOL *stop))block;
-/* THE HOUSE'S OWN SPELLING for an out-parameter C array — the same one NSArray.h and NSDictionary.h
- * use, because a bare `__unsafe_unretained *` inside an NS_ASSUME_NONNULL region is a
- * nullability-completeness error rather than a warning. */
 - (void)getObjects:(ObjectType __unsafe_unretained _Nonnull * _Nonnull)objects range:(NSRange)range;
+/* THE ENUMERATION DOORS, AND THE FIRST ONE'S SIGNATURE WAS WRONG UNTIL §63.7. Apple's block takes THREE
+ * parameters — the object, its INDEX and the stop flag — and this tree declared two, so a caller written
+ * against Apple's header could not compile here. Measured before the change: ZERO callers in the tree used
+ * the two-parameter form (the suite's `-enumerateObjectsUsingBlock:` sites are NSSet's, which IS
+ * two-parameter in Apple's header, and NSArray's, which was already three), so the correction costs no
+ * call site. `NSEnumerationConcurrent` is a hint this library does not take (NSIndexSet.h says why). */
+- (void)enumerateObjectsUsingBlock:(void (^)(ObjectType object, NSUInteger index, BOOL *stop))block;
+- (void)enumerateObjectsWithOptions:(NSEnumerationOptions)options
+			 usingBlock:(void (^)(ObjectType object, NSUInteger index, BOOL *stop))block;
+- (void)enumerateObjectsAtIndexes:(NSIndexSet *)indexes
+			  options:(NSEnumerationOptions)options
+		       usingBlock:(void (^)(ObjectType object, NSUInteger index, BOOL *stop))block;
 
 - (BOOL)isEqualToOrderedSet:(NSOrderedSet<ObjectType> *)other;
 - (BOOL)intersectsOrderedSet:(NSOrderedSet<ObjectType> *)other;
 - (BOOL)isSubsetOfOrderedSet:(NSOrderedSet<ObjectType> *)other;
+/* THE SAME TWO QUESTIONS ASKED OF AN NSSet, which is the shape a caller holding one of each needs. Each is one
+ * line over the `set` view above — the ordered-ness is not part of either question. */
+- (BOOL)intersectsSet:(NSSet<ObjectType> *)set;
+- (BOOL)isSubsetOfSet:(NSSet<ObjectType> *)set;
 
 - (instancetype)filteredOrderedSetUsingPredicate:(NSPredicate *)predicate;
 - (NSArray *)sortedArrayUsingDescriptors:(NSArray *)descriptors;

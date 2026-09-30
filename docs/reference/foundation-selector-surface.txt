@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1799   open  886   struck  243
-#   property   shipped 1026   open  464   struck  146
+#   method     shipped 1804   open  881   struck  243
+#   property   shipped 1027   open  463   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -2442,9 +2442,9 @@ method	open	-descriptionWithLocale:indent:	NSOrderedSet	Fundamentals / Specializ
 method	shipped	-differenceFromOrderedSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set	-	objc
 method	shipped	-differenceFromOrderedSet:withOptions:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set	-	objc
 method	shipped	-differenceFromOrderedSet:withOptions:usingEquivalenceTest:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set	-	objc
-method	open	-enumerateObjectsAtIndexes:options:usingBlock:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
+method	shipped	-enumerateObjectsAtIndexes:options:usingBlock:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 method	shipped	-enumerateObjectsUsingBlock:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	open	-enumerateObjectsWithOptions:usingBlock:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
+method	shipped	-enumerateObjectsWithOptions:usingBlock:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 method	shipped	-filteredOrderedSetUsingPredicate:	NSOrderedSet	Fundamentals / Specialized Sets / Filtering Ordered Sets	-	objc
 method	shipped	-getObjects:range:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 method	shipped	-indexOfObject:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
@@ -2469,14 +2469,14 @@ method	shipped	-initWithOrderedSet:range:copyItems:	NSOrderedSet	Fundamentals / 
 method	shipped	-initWithSet:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
 method	shipped	-initWithSet:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
 method	shipped	-intersectsOrderedSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing Sets	-	objc
-method	open	-intersectsSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing Sets	-	objc
+method	shipped	-intersectsSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing Sets	-	objc
 method	shipped	-isEqualToOrderedSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing Sets	-	objc
 method	shipped	-isSubsetOfOrderedSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing Sets	-	objc
-method	open	-isSubsetOfSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing Sets	-	objc
+method	shipped	-isSubsetOfSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing Sets	-	objc
 method	shipped	-objectAtIndex:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 method	shipped	-objectAtIndexedSubscript:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 method	shipped	-objectEnumerator	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	open	-objectsAtIndexes:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
+method	shipped	-objectsAtIndexes:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 method	shipped	+orderedSet	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
 method	shipped	-orderedSetByApplyingDifference:	NSOrderedSet	Fundamentals / Specialized Sets / Instance Methods	-	objc
 method	shipped	+orderedSetWithArray:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
@@ -2501,7 +2501,7 @@ property	shipped	count	NSOrderedSet	Fundamentals / Specialized Sets / Counting E
 property	shipped	description	NSOrderedSet	Fundamentals / Specialized Sets / Describing a Set	-	objc
 property	shipped	firstObject	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 property	shipped	lastObject	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-property	open	reversedOrderedSet	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
+property	shipped	reversedOrderedSet	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 property	shipped	set	NSOrderedSet	Fundamentals / Specialized Sets / Converting Other Collections	-	objc
 method	shipped	+defaultOrthographyForLanguage:	NSOrthography	Fundamentals / Localization / Creating Orthography Objects	-	objc
 method	shipped	-dominantLanguageForScript:	NSOrthography	Fundamentals / Localization / Determining Correspondences Between Languages and Scripts	-	objc
