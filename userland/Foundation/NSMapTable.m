@@ -299,6 +299,34 @@
 
 @implementation FNLegacyMapTable
 
+/*
+ * §C.3 item 5: this class's own fast enumeration, over its OWN storage - the call-backs' pairs, wrapped the way
+ * its own -keyEnumerator wraps them. THE SIGNATURE IS APPLE'S AND NOTHING IS DEVIATED FROM. A note for whoever
+ * reads the older history: this session recorded an `id`-typed door here because the correct types were believed
+ * to crash this class's teardown. Re-measured, the correct types are fine - the case is green three times - and
+ * the belief came from edit scripts of mine that corrupted the class rather than from the library.
+ */
+- (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state
+				  objects:(id *)buffer
+				    count:(NSUInteger)length
+{
+	unsigned long cursor = state->state;
+	unsigned long produced = 0;
+
+	while (produced < length && cursor + produced < _legacyCount) {
+		buffer[produced] = (id)[NSValue valueWithPointer:_legacyKeys[cursor + produced]];
+		produced++;
+	}
+	if (produced == 0) {
+		return 0;
+	}
+	state->itemsPtr = buffer;
+	state->mutationsPtr = &_mutations;
+	state->state = cursor + produced;
+	return produced;
+}
+
+
 - (instancetype)fnInitWithKeyCallBacks:(NSMapTableKeyCallBacks)keyCallBacks
 			valueCallBacks:(NSMapTableValueCallBacks)valueCallBacks
 			     capacity:(NSUInteger)capacity

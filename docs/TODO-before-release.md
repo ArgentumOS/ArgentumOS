@@ -545,3 +545,23 @@ in the legacy class at all, so where the landed door actually is must be located
 a CLEAN edit and repeat. Passing means both deviations retract and the family is done; failing means one real
 library/toolchain fact survives, and the crash's own output - read, not inferred - will name it.
 
+**AND THE NEXT MEASUREMENT RAN: THE HONEST SIGNATURE IS GREEN, SO NOTHING IS DEVIATED FROM.** The door the legacy
+class was supposed to have was not in the file at all - my cleanup script's backward comment-scan had silently
+deleted it, which is a bug in MY tooling and the likely shape of the others. Re-applied at a clean method boundary
+with Apple's own signature:
+
+    - (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state objects:(id *)buffer count:(NSUInteger)length
+
+`foundation_legacymaptable` is green **three runs**, RESULT ok=16 fail=0, DONE. So both retractions stand:
+
+  * §C.3 item 4 works (`-classForCoder` on the private class, probe-asserted, the pointer compared);
+  * the honest `NSFastEnumerationState *` signature works (this run);
+  * **NSMapTable's §C.3 is COMPLETE with NO deviation**, and the "type encoding" and "patch/codegen work item"
+    entries above are withdrawn rather than left standing.
+
+**THE LESSON WORTH KEEPING FROM THIS PAIR OF MIS-DIAGNOSES, and it is about my tooling rather than the library:** an
+edit script that "succeeds" while corrupting the file produces a crash that LOOKS like a library bug, and a crash I
+never read the output of looks like one too. Both times the answer was already printed - once as
+`-[FNLegacyMapTable UTF8String] is not implemented`, once as a missing method in a grep. **Read what the guest
+says, and check the file after an edit script runs.**
+
