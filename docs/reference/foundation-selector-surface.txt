@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1842   open  842   struck  244
-#   property   shipped 1031   open  459   struck  146
+#   method     shipped 1843   open  841   struck  244
+#   property   shipped 1034   open  456   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -3031,7 +3031,7 @@ method	open	-cString	NSString	Fundamentals / Strings / Deprecated	deprecated	obj
 method	open	-cStringLength	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-cStringUsingEncoding:	NSString	Fundamentals / Strings / Getting C Strings	-	objc
 method	open	-canBeConvertedToEncoding:	NSString	Fundamentals / Strings / Working with Encodings	-	objc
-method	open	-capitalizedStringWithLocale:	NSString	Fundamentals / Strings / Changing Case	-	objc
+method	shipped	-capitalizedStringWithLocale:	NSString	Fundamentals / Strings / Changing Case	-	objc
 method	shipped	-caseInsensitiveCompare:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-characterAtIndex:	NSString	Fundamentals / Strings / Getting Characters and Bytes	-	objc
 method	shipped	-commonPrefixWithString:options:	NSString	Fundamentals / Strings / Getting a Shared Prefix	-	objc
@@ -3200,9 +3200,9 @@ property	shipped	intValue	NSString	Fundamentals / Strings / Getting Numeric Valu
 property	shipped	integerValue	NSString	Fundamentals / Strings / Getting Numeric Values	-	objc
 property	shipped	lastPathComponent	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	length	NSString	Fundamentals / Strings / Getting a String’s Length	-	objc
-property	open	localizedCapitalizedString	NSString	Fundamentals / Strings / Changing Case	-	objc
-property	open	localizedLowercaseString	NSString	Fundamentals / Strings / Changing Case	-	objc
-property	open	localizedUppercaseString	NSString	Fundamentals / Strings / Changing Case	-	objc
+property	shipped	localizedCapitalizedString	NSString	Fundamentals / Strings / Changing Case	-	objc
+property	shipped	localizedLowercaseString	NSString	Fundamentals / Strings / Changing Case	-	objc
+property	shipped	localizedUppercaseString	NSString	Fundamentals / Strings / Changing Case	-	objc
 property	shipped	longLongValue	NSString	Fundamentals / Strings / Getting Numeric Values	-	objc
 property	shipped	lowercaseString	NSString	Fundamentals / Strings / Changing Case	-	objc
 property	shipped	pathComponents	NSString	Fundamentals / Strings / Working with Paths	-	objc

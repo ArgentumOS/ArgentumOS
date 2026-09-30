@@ -76,6 +76,8 @@ CHECKS = (
           # §63.24: Unicode normalization — Apple's four forms, measured on meaning rather than on lengths.
           "normalization-canonical-composes-and-decomposes",
           "normalization-compatibility-folds-what-canonical-keeps",
+          # §63.25: the locale-aware case doors — one live door and three deprecated spellings.
+          "case-capitalization-is-locale-aware",
           )
 
 

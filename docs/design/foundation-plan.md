@@ -15824,6 +15824,36 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.25 — THE LOCALE-AWARE CASE DOORS: ONE LIVE DOOR, THREE DEPRECATED SPELLINGS, AND A FOLD THAT NEEDS UNITS (2026-09-30)
+
+**WHAT LANDED:** `-capitalizedStringWithLocale:` (the live door) and the three `localized…` spellings Apple
+deprecated — un-deprecated here under §11.5's porting-target policy. **`method shipped` 1842 → 1843, `property
+shipped` 1031 → 1034, `open` 842/459 → 841/456**; `--check` named exactly those four rows before the refresh.
+The second slice of the ledger tail: four rows, coherent, and measurable.
+
+**THE FAMILY'S OTHER FIVE DOORS WERE ALREADY HERE** — `-uppercaseString`, `-lowercaseString`,
+`-uppercaseStringWithLocale:`, `-lowercaseStringWithLocale:` and `-capitalizedString` — so this slice is the
+bottom of the family, and the interesting part is the ONE rule the locale changes.
+
+**⚠ AND THAT RULE FORCED THE UNIT'S ONE REAL DECISION: THE FOLD IS COMPUTED IN UNITS, NOT BYTES.**
+`-capitalizedString` walks UTF-8 **bytes** through a fixed-size buffer, and the Turkic uppercase of "i" is "İ" —
+**one byte becoming two** — so that door cannot express the answer at all. The word rule (a word starts after a
+space, a tab, a hyphen or an underscore) is therefore **restated** over units in the new door rather than called:
+a call could not have carried the longer letter. **THE SAME REASONING EXPLAINS THE THREE DEPRECATED SPELLINGS
+DELEGATING** to the locale-taking doors with `[NSLocale currentLocale]` — one rule, and no second copy of it that
+can drift.
+
+**THE CHECK MEASURES WHERE THE LOCALE CHANGES THE ANSWER, WITH ITS CONTROL BESIDE IT.** `"istanbul"` through the
+Turkish locale answers **İstanbul** while `-capitalizedString` answers **Istanbul** — the same string, two
+languages — and a NON-Turkic locale must agree with the plain door exactly, which is what makes the Turkish
+answer about the locale rather than about the word rule. `"ISIK"` covers the dotless half *inside* a word (its
+second "I" folds to "ı"), `"two-words here"` shows the separator set surviving the locale, and the three
+deprecated spellings are each compared against their locale-taking counterpart with the current locale.
+
+**VERIFICATION.** Host probe: `case-capitalization-is-locale-aware` green (`ok=98`, the single failure still
+§63.24's **pre-existing host-only** `charset-bitmap-and-planes`). Guest `TESTS-OK 1/1 case(s), 6/6 check(s)`.
+`make foundation-sweep` exit 0, `--check` consistent in both directions, `--unimplemented` 0 NEW.
+
 ## §63.24 — `NSString`'S FOUR NORMALIZATION FORMS: THE FIRST SLICE OF THE LEDGER TAIL, AND WHY §63.2 DID NOT BLOCK IT (2026-09-30)
 
 **WHAT LANDED:** `-precomposedStringWithCanonicalMapping`, `-decomposedStringWithCanonicalMapping` and the two

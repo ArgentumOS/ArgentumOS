@@ -1533,6 +1533,37 @@ NULL
 		      "the fi ligature folds to \"fi\" under NFKC/NFKD while NFC/NFD keep it — the axis that separates the two pairs");
 	}
 
+	{
+		/* THE LOCALE-AWARE CASE DOORS (§63.25): ONE LIVE DOOR AND THREE DEPRECATED SPELLINGS, MEASURED WHERE THE
+		 * LOCALE ACTUALLY CHANGES THE ANSWER. This library's case mapping is ASCII except for the one localised
+		 * rule it ships (the Turkic i/İ and I/ı pairing, which the NSLocale checks above already prove), so the
+		 * interesting case is exactly the one where the two doors must DIFFER. */
+		NSLocale *turkish = [[NSLocale alloc] initWithLocaleIdentifier:@"tr_TR"];
+		NSLocale *posix = [[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"];
+
+		check("case-capitalization-is-locale-aware",
+		      /* THE TURKISH ANSWER, and the plain door's answer beside it: "istanbul" capitalizes with a DOTTED
+		       * İ here, while `-capitalizedString` gives "Istanbul" — the same string, two languages. */
+		      [[@"istanbul" capitalizedStringWithLocale:turkish] isEqualToString:@"İstanbul"] &&
+		      [[@"istanbul" capitalizedString] isEqualToString:@"Istanbul"] &&
+		      /* AND THE DOTLESS PAIR INSIDE A WORD: "ISIK" keeps its word-initial "I" and folds the second one to
+		       * "ı", which is the Turkic lowercase of "I". */
+		      [[@"ISIK" capitalizedStringWithLocale:turkish] isEqualToString:@"Isık"] &&
+		      /* THE CONTROL FOR THE FIRST LINE: a NON-Turkic locale must agree with the plain door exactly, which
+		       * is what makes the Turkish answer about the LOCALE rather than about the word rule. */
+		      [[@"istanbul" capitalizedStringWithLocale:posix] isEqualToString:[@"istanbul" capitalizedString]] &&
+		      /* AND THE WORD RULE SURVIVES THE LOCALE: the separator set is the plain door's own. */
+		      [[@"two-words here" capitalizedStringWithLocale:turkish] isEqualToString:@"Two-Words Here"] &&
+		      /* THE DEPRECATED SPELLINGS DELEGATE TO THE CURRENT LOCALE — one rule, not two. */
+		      [[@"istanbul" localizedCapitalizedString]
+			isEqualToString:[@"istanbul" capitalizedStringWithLocale:[NSLocale currentLocale]]] &&
+		      [[@"ISTANBUL" localizedLowercaseString]
+			isEqualToString:[@"ISTANBUL" lowercaseStringWithLocale:[NSLocale currentLocale]]] &&
+		      [[@"istanbul" localizedUppercaseString]
+			isEqualToString:[@"istanbul" uppercaseStringWithLocale:[NSLocale currentLocale]]],
+		      "the Turkish locale capitalizes istanbul as İstanbul where the plain door gives Istanbul, the dotless pair folds inside a word, a non-Turkic locale matches the plain door, and the three deprecated spellings delegate to the current locale");
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

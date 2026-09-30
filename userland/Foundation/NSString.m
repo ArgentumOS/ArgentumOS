@@ -2186,6 +2186,69 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return [self lowercaseString];
 }
 
+/* THE CAPITALIZATION RULE IS THE EXISTING ONE — `-capitalizedString`'s: a word starts after a space, a tab, a
+ * hyphen or an underscore — AND THE LOCALE CHANGES ONLY THE FOLD APPLIED TO IT. In this library that means
+ * exactly one language family, the Turkic i/İ and I/ı pairing, which is the same rule the two doors above use.
+ *
+ * ⚠ THE FOLD IS COMPUTED IN UNITS, NOT BYTES, AND THAT IS NOT A STYLE CHOICE: `-capitalizedString` walks UTF-8
+ * BYTES, and the Turkic uppercase of "i" is "İ" — ONE byte becoming TWO — so that door's fixed-size byte buffer
+ * cannot express the answer at all. The word rule is therefore restated here over units, which is also why it is
+ * spelled as the same four separators rather than as a call into that door. */
+- (NSString *)capitalizedStringWithLocale:(id)locale
+{
+	NSUInteger i, length;
+	NSMutableString *out;
+	int start = 1;
+
+	if (!fn_language_is_turkic(fn_locale_language(locale))) {
+		return [self capitalizedString];	/* THE WHOLE ANSWER FOR EVERY OTHER LOCALE */
+	}
+	length = [self length];
+	out = [NSMutableString string];
+	for (i = 0; i < length; i++) {
+		unichar c = [self characterAtIndex:i];
+		unichar mapped;
+		NSString *one;
+
+		if (c == ' ' || c == '\t' || c == '-' || c == '_') {
+			start = 1;
+			mapped = c;
+		} else if (c > 0x7F) {
+			/* THE BASE MAPPING MAKES NO GENERAL UNICODE CASE CLAIMS (the header says so), so a letter outside
+			 * ASCII passes through — except the one Turkic form that a word-internal position must lower. */
+			mapped = (c == 0x0130 && !start) ? 'i' : c;
+			start = 0;
+		} else if (start) {
+			mapped = (c == 'i') ? 0x0130 : (unichar)utf8_upper((unsigned char)c);
+			start = 0;
+		} else {
+			mapped = (c == 'I') ? 0x0131 : (unichar)utf8_lower((unsigned char)c);
+		}
+		/* THE ROUTER HANDS BACK +1 (see §63.24: `+stringWith…` leaks its string), so the +1 is released here
+		 * rather than left to accumulate one per character. */
+		one = [[NSString stringWithCharacters:&mapped length:1] autorelease];
+		[out appendString:one];
+	}
+	return out;
+}
+
+/* THE THREE DEPRECATED SPELLINGS: ONE DELEGATION EACH TO THE LOCALE-TAKING DOOR, with the CURRENT locale, which
+ * is what Apple's names mean — and no second copy of any rule. */
+- (NSString *)localizedUppercaseString
+{
+	return [self uppercaseStringWithLocale:[NSLocale currentLocale]];
+}
+
+- (NSString *)localizedLowercaseString
+{
+	return [self lowercaseStringWithLocale:[NSLocale currentLocale]];
+}
+
+- (NSString *)localizedCapitalizedString
+{
+	return [self capitalizedStringWithLocale:[NSLocale currentLocale]];
+}
+
 - (const char *)cStringUsingEncoding:(NSStringEncoding)encoding
 {
 	size_t i;

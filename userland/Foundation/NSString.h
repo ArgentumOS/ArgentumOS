@@ -295,6 +295,14 @@ typedef enum {
 - (NSString *)uppercaseStringWithLocale:(nullable id)locale;
 - (NSString *)lowercaseStringWithLocale:(nullable id)locale;
 - (NSString *)capitalizedString;
+/* THE BOTTOM OF THE SAME FAMILY (§63.25). `-capitalizedStringWithLocale:` is the one LIVE door of the four; the
+ * three `localized…` spellings are Apple's DEPRECATED names for the same three operations with the CURRENT
+ * locale — un-deprecated here under §11.5's porting-target policy, and answered by DELEGATING to the
+ * locale-taking door, so there is one rule rather than two that can drift. */
+- (NSString *)capitalizedStringWithLocale:(nullable id)locale;
+- (NSString *)localizedUppercaseString;
+- (NSString *)localizedLowercaseString;
+- (NSString *)localizedCapitalizedString;
 - (NSString *)substringFromIndex:(NSUInteger)index;
 - (NSString *)substringToIndex:(NSUInteger)index;
 - (NSString *)substringWithRange:(NSRange)range;
