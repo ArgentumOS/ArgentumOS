@@ -82,6 +82,8 @@ CHECKS = (
           "localized-search-folds-case-and-diacritics",
           # §63.27: the validated-format pair — a format checked against the specifiers the caller names.
           "validated-format-allows-only-the-listed-specifiers",
+          # §63.28: creation from a C string with an encoding — the mirror of -cStringUsingEncoding:.
+          "cstring-with-encoding-refuses-what-it-cannot-store",
           )
 
 

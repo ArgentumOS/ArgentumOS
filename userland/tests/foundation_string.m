@@ -1626,6 +1626,32 @@ NULL
 		      "a listed format renders with no error, an unlisted specifier is refused with NSCocoaErrorDomain/NSFormattingError, %% is not a directive, and the localized spelling shares the rule");
 	}
 
+	{
+		/* CREATION FROM A C STRING WITH AN ENCODING (§63.28): THE MIRROR OF `-cStringUsingEncoding:`, SO THE
+		 * ASSERTION THAT MATTERS IS WHERE THE TWO REFUSALS LAND — a byte string is not reinterpreted, and a
+		 * label is not believed. */
+		NSString *utf8 = [NSString stringWithCString:"plain ASCII" encoding:NSUTF8StringEncoding];
+		NSString *ascii = [NSString stringWithCString:"plain ASCII" encoding:NSASCIIStringEncoding];
+		NSString *utf8BytesAsASCII = [NSString stringWithCString:"caf\xc3\xa9" encoding:NSASCIIStringEncoding];
+		NSString *unstored = [NSString stringWithCString:"caf\xe9" encoding:NSISOLatin1StringEncoding];
+		NSString *nul = [NSString stringWithCString:NULL encoding:NSUTF8StringEncoding];
+
+		check("cstring-with-encoding-refuses-what-it-cannot-store",
+		      utf8 != nil && [utf8 isEqualToString:@"plain ASCII"] &&
+		      ascii != nil && [ascii isEqualToString:@"plain ASCII"] &&
+		      /* ⚠ THE HIGH BYTE IS NOT ASCII WHATEVER THE LABEL SAYS, and this is the assertion that separates a
+		       * real refusal from a label-trusting one: the same bytes are legal UTF-8, so a door that trusted the
+		       * argument would answer a string here. */
+		      utf8BytesAsASCII == nil &&
+		      /* AND AN ENCODING THIS LIBRARY DOES NOT STORE IS REFUSED RATHER THAN REINTERPRETED AS UTF-8. */
+		      unstored == nil &&
+		      nul == nil &&
+		      /* AND THE POSITIVE CASE IN THE ENCODING IT WAS WRITTEN IN COMES BACK INTACT, accents and all. */
+		      [[NSString stringWithCString:"caf\xc3\xa9" encoding:NSUTF8StringEncoding]
+			isEqualToString:@"café"],
+		      "UTF-8 and ASCII round-trip, a high byte labelled ASCII is refused, an unstored encoding is refused, NULL is nil, and real UTF-8 answers the string it names");
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness
