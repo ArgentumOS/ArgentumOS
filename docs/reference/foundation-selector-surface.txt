@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1986   open  698   struck  244
-#   property   shipped 1109   open  381   struck  146
+#   method     shipped 1998   open  686   struck  244
+#   property   shipped 1134   open  356   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -1754,55 +1754,55 @@ property	shipped	itemFormatter	NSListFormatter	Fundamentals / Lists / Configurin
 property	shipped	locale	NSListFormatter	Fundamentals / Lists / Configuring Formatter Options	-	objc
 method	shipped	+canonicalLanguageIdentifierFromString:	NSLocale	Fundamentals / Localization / Converting Between Identifiers	-	objc
 method	shipped	+canonicalLocaleIdentifierFromString:	NSLocale	Fundamentals / Localization / Converting Between Identifiers	-	objc
-method	open	+characterDirectionForLanguage:	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language	-	objc
+method	shipped	+characterDirectionForLanguage:	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language	-	objc
 method	shipped	+componentsFromLocaleIdentifier:	NSLocale	Fundamentals / Localization / Converting Between Identifiers	-	objc
 method	shipped	-displayNameForKey:value:	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key	-	objc
 method	shipped	-initWithCoder:	NSLocale	Fundamentals / Localization / Initializing a Locale	-	objc
 method	shipped	-initWithLocaleIdentifier:	NSLocale	Fundamentals / Localization / Initializing a Locale	-	objc
-method	open	+lineDirectionForLanguage:	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language	-	objc
+method	shipped	+lineDirectionForLanguage:	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language	-	objc
 method	shipped	+localeIdentifierFromComponents:	NSLocale	Fundamentals / Localization / Converting Between Identifiers	-	objc
-method	open	+localeIdentifierFromWindowsLocaleCode:	NSLocale	Fundamentals / Localization / Converting Between Identifiers	-	objc
+method	shipped	+localeIdentifierFromWindowsLocaleCode:	NSLocale	Fundamentals / Localization / Converting Between Identifiers	-	objc
 method	shipped	+localeWithLocaleIdentifier:	NSLocale	Fundamentals / Localization / Initializing a Locale	-	objc
-method	open	-localizedStringForCalendarIdentifier:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
-method	open	-localizedStringForCollationIdentifier:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
-method	open	-localizedStringForCollatorIdentifier:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
-method	open	-localizedStringForCountryCode:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
-method	open	-localizedStringForCurrencyCode:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
-method	open	-localizedStringForLanguageCode:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
-method	open	-localizedStringForLocaleIdentifier:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
-method	open	-localizedStringForScriptCode:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
+method	shipped	-localizedStringForCalendarIdentifier:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
+method	shipped	-localizedStringForCollationIdentifier:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
+method	shipped	-localizedStringForCollatorIdentifier:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
+method	shipped	-localizedStringForCountryCode:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
+method	shipped	-localizedStringForCurrencyCode:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
+method	shipped	-localizedStringForLanguageCode:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
+method	shipped	-localizedStringForLocaleIdentifier:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
+method	shipped	-localizedStringForScriptCode:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
 method	open	-localizedStringForVariantCode:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
 method	shipped	-objectForKey:	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key	-	objc
-method	open	+windowsLocaleCodeFromLocaleIdentifier:	NSLocale	Fundamentals / Localization / Converting Between Identifiers	-	objc
-property	open	ISOCountryCodes	NSLocale	Fundamentals / Localization / Getting Known Identifiers and Codes	-	objc
-property	open	ISOCurrencyCodes	NSLocale	Fundamentals / Localization / Getting Known Identifiers and Codes	-	objc
-property	open	ISOLanguageCodes	NSLocale	Fundamentals / Localization / Getting Known Identifiers and Codes	-	objc
-property	open	alternateQuotationBeginDelimiter	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-property	open	alternateQuotationEndDelimiter	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-property	open	autoupdatingCurrentLocale	NSLocale	Fundamentals / Localization / Getting the User’s Locale	-	objc
+method	shipped	+windowsLocaleCodeFromLocaleIdentifier:	NSLocale	Fundamentals / Localization / Converting Between Identifiers	-	objc
+property	shipped	ISOCountryCodes	NSLocale	Fundamentals / Localization / Getting Known Identifiers and Codes	-	objc
+property	shipped	ISOCurrencyCodes	NSLocale	Fundamentals / Localization / Getting Known Identifiers and Codes	-	objc
+property	shipped	ISOLanguageCodes	NSLocale	Fundamentals / Localization / Getting Known Identifiers and Codes	-	objc
+property	shipped	alternateQuotationBeginDelimiter	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	alternateQuotationEndDelimiter	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	autoupdatingCurrentLocale	NSLocale	Fundamentals / Localization / Getting the User’s Locale	-	objc
 property	shipped	availableLocaleIdentifiers	NSLocale	Fundamentals / Localization / Getting Known Identifiers and Codes	-	objc
-property	open	calendarIdentifier	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-property	open	collationIdentifier	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-property	open	collatorIdentifier	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-property	open	commonISOCurrencyCodes	NSLocale	Fundamentals / Localization / Getting Known Identifiers and Codes	-	objc
-property	open	countryCode	NSLocale	Fundamentals / Localization / Getting Information About a Locale	deprecated	objc
-property	open	currencyCode	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-property	open	currencySymbol	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	calendarIdentifier	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	collationIdentifier	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	collatorIdentifier	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	commonISOCurrencyCodes	NSLocale	Fundamentals / Localization / Getting Known Identifiers and Codes	-	objc
+property	shipped	countryCode	NSLocale	Fundamentals / Localization / Getting Information About a Locale	deprecated	objc
+property	shipped	currencyCode	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	currencySymbol	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
 property	shipped	currentLocale	NSLocale	Fundamentals / Localization / Getting the User’s Locale	-	objc
-property	open	decimalSeparator	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-property	open	exemplarCharacterSet	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-property	open	groupingSeparator	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-property	open	languageCode	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-property	open	languageIdentifier	NSLocale	Fundamentals / Localization / Instance Properties	-	objc
+property	shipped	decimalSeparator	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	exemplarCharacterSet	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	groupingSeparator	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	languageCode	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	languageIdentifier	NSLocale	Fundamentals / Localization / Instance Properties	-	objc
 property	shipped	localeIdentifier	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
 property	open	preferredLanguages	NSLocale	Fundamentals / Localization / Getting the User’s Preferred Languages	-	objc
-property	open	quotationBeginDelimiter	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-property	open	quotationEndDelimiter	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-property	open	regionCode	NSLocale	Fundamentals / Localization / Instance Properties	-	objc
-property	open	scriptCode	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-property	open	systemLocale	NSLocale	Fundamentals / Localization / Getting the User’s Locale	-	objc
-property	open	usesMetricSystem	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-property	open	variantCode	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	quotationBeginDelimiter	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	quotationEndDelimiter	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	regionCode	NSLocale	Fundamentals / Localization / Instance Properties	-	objc
+property	shipped	scriptCode	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	systemLocale	NSLocale	Fundamentals / Localization / Getting the User’s Locale	-	objc
+property	shipped	usesMetricSystem	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
+property	shipped	variantCode	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
 method	shipped	+automatic	NSLocalizedNumberFormatRule	Reference / Classes / Type Methods	-	objc
 method	shipped	-lockBeforeDate:	NSLock	Low-Level Utilities / Threads and Locking / Acquiring a Lock	-	objc
 method	shipped	-tryLock	NSLock	Low-Level Utilities / Threads and Locking / Acquiring a Lock	-	objc

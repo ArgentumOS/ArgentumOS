@@ -774,28 +774,54 @@ NULL
 		 * absent — the data-driven half, which needs the locale database. */
 		static const char *classSelectors[] = {
 			"currentLocale", "localeWithLocaleIdentifier:",
+			/* §62.24 retired the "no data" boundary the exclusion below once drew: ICU ships these,
+			 * so they SHIP (moved out of classExcluded in the 2026-09-30 locale slice). */
+			"autoupdatingCurrentLocale", "systemLocale",
+			"ISOLanguageCodes", "ISOCountryCodes", "ISOCurrencyCodes", "commonISOCurrencyCodes",
+			"localeIdentifierFromWindowsLocaleCode:", "windowsLocaleCodeFromLocaleIdentifier:",
+			"characterDirectionForLanguage:", "lineDirectionForLanguage:",
 			"availableLocaleIdentifiers",
 			"componentsFromLocaleIdentifier:", "localeIdentifierFromComponents:",
 			"canonicalLanguageIdentifierFromString:",
 			"canonicalLocaleIdentifierFromString:", NULL
 		};
 		static const char *classExcluded[] = {
-			/* The database: a separate system locale, change-notified locales, the
-			 * identifier catalogues and the ISO code registries. */
-			"autoupdatingCurrentLocale", "systemLocale", "preferredLanguages",
-			"ISOLanguageCodes", "ISOCountryCodes", NULL
+			/* The ONE class-side row the data still does NOT reach: a user's ordered
+			 * PREFERRED-LANGUAGE LIST is a PREFERENCE, not locale data (Apple backs it with
+			 * AppleLanguages in the global defaults, and nothing here writes that), and ICU has no
+			 * API for it. It stays asserted ABSENT. */
+			"preferredLanguages", NULL
 		};
 		static const char *instanceSelectors[] = {
 			"initWithLocaleIdentifier:", "localeIdentifier", "objectForKey:",
 			"displayNameForKey:value:",
+			/* THE -localizedStringFor…: DOORS ARE INSTANCE METHODS: Apple declares them on NSLocale
+			 * (the receiver is the display locale), so they belong HERE, not in the class array — the
+			 * class array is asked with [NSLocale respondsToSelector:], and these are not class doors. */
+			"localizedStringForLocaleIdentifier:", "localizedStringForLanguageCode:",
+			"localizedStringForCountryCode:", "localizedStringForScriptCode:",
+			"localizedStringForCalendarIdentifier:", "localizedStringForCollationIdentifier:",
+			"localizedStringForCollatorIdentifier:", "localizedStringForCurrencyCode:",
+			/* The deprecated subtag spellings (§62.24 says they are OWED, and they moved out of the
+			 * exclusion below), then the subtag doors and the keys ICU now answers. */
+			"languageCode", "scriptCode", "countryCode", "variantCode", "regionCode",
+			"languageIdentifier",
+			"calendarIdentifier", "collationIdentifier", "collatorIdentifier",
+			"currencyCode", "currencySymbol", "decimalSeparator", "groupingSeparator",
+			"quotationBeginDelimiter", "quotationEndDelimiter",
+			"alternateQuotationBeginDelimiter", "alternateQuotationEndDelimiter",
+			"exemplarCharacterSet", "usesMetricSystem",
 			"isEqual:", "hash", "description", "copy", NULL
 		};
 		static const char *excluded[] = {
 			/* -displayNameForKey:value: USED TO BE LISTED HERE as needing "the locale's name
 			 * tables". It is DEMANDED above now: the tables are ICU's and this library already
 			 * links them (§18). */
-			/* Deprecated in Cocoa in favour of -objectForKey: with a key. */
-			"languageCode", "countryCode", NULL
+			/* -localizedStringForVariantCode: IS the one locale row that stays out: ICU's variant
+			 * display table answers EMPTY on this data (measured: uloc_getDisplayVariant returns
+			 * length 0 for 1901/POSIX/BOONT/VALENCIA/SAAHO/AREVELA/BISKE/POLYTONI in en_US and de_DE),
+			 * so a door for it could never open. Asserted ABSENT. */
+			"localizedStringForVariantCode:", NULL
 		};
 		NSLocale *probe = [NSLocale localeWithLocaleIdentifier:@"en_US"];
 		int complete = 1;
@@ -1043,6 +1069,157 @@ NULL
 			[british displayNameForKey:NSLocaleLanguageCode value:@"fr"],
 			[british displayNameForKey:NSLocaleCountryCode value:@"GB"],
 			[british displayNameForKey:NSLocaleScriptCode value:@"Latn"]] UTF8String]);
+	}
+
+	{
+		/* ---- THE DATA HALF, NOW THAT ICU IS BOUND (the 2026-09-30 locale slice) --------------------------
+		 *
+		 * The two checks above are the SPEC and stay green: -objectForKey: answers the SUBTAG keys and
+		 * nils every DATA key, and -displayNameForKey:value: names the SUBTAG keys and nils the rest.
+		 * THESE checks open the NEW doors - the property family and -localizedStringFor…: - which read
+		 * ICU DIRECTLY, deliberately NOT through those two narrow doors. Every number was measured on
+		 * the host against ICU 76.1 (the version the guest stages) before the check was written, so a
+		 * method that returned a constant compiled into the library would fail here. */
+		NSLocale *us = [NSLocale localeWithLocaleIdentifier:@"en_US"];
+		NSLocale *fr = [NSLocale localeWithLocaleIdentifier:@"fr_FR"];
+		NSLocale *gb = [NSLocale localeWithLocaleIdentifier:@"en_GB"];
+
+		{
+			NSLocaleLanguageDirection rtl = [NSLocale characterDirectionForLanguage:@"ar"];
+			NSLocaleLanguageDirection ltr = [NSLocale characterDirectionForLanguage:@"en"];
+			NSLocaleLanguageDirection line = [NSLocale lineDirectionForLanguage:@"en"];
+
+			check("locale-direction-follows-the-script",
+			      rtl == NSLocaleLanguageDirectionRightToLeft &&
+			      ltr == NSLocaleLanguageDirectionLeftToRight &&
+			      line == NSLocaleLanguageDirectionTopToBottom,
+			      [[NSString stringWithFormat:@"ar=%d en=%d line=%d (RTL=2 LTR=1 TTB=3)",
+				(int)rtl, (int)ltr, (int)line] UTF8String]);
+		}
+		{
+			uint32_t lcidUs = [NSLocale windowsLocaleCodeFromLocaleIdentifier:@"en_US"];
+			uint32_t lcidFr = [NSLocale windowsLocaleCodeFromLocaleIdentifier:@"fr_FR"];
+			NSString *back = [NSLocale localeIdentifierFromWindowsLocaleCode:1033];
+
+			check("locale-windows-locale-code-round-trips",
+			      lcidUs == 1033 && lcidFr == 1036 && [back isEqualToString:@"en_US"],
+			      [[NSString stringWithFormat:@"en_US=%u fr_FR=%u 1033=%@", (unsigned)lcidUs,
+				(unsigned)lcidFr, back] UTF8String]);
+		}
+		check("locale-localized-string-names-a-language",
+		      [[gb localizedStringForLanguageCode:@"fr"] isEqualToString:@"French"] &&
+		      [[fr localizedStringForLanguageCode:@"fr"] isEqualToString:@"français"],
+		      [[NSString stringWithFormat:@"en_GB=%@ fr_FR=%@",
+			[gb localizedStringForLanguageCode:@"fr"],
+			[fr localizedStringForLanguageCode:@"fr"]] UTF8String]);
+		check("locale-localized-string-names-a-country",
+		      [[gb localizedStringForCountryCode:@"GB"] isEqualToString:@"United Kingdom"] &&
+		      [[fr localizedStringForCountryCode:@"GB"] isEqualToString:@"Royaume-Uni"],
+		      [[NSString stringWithFormat:@"en_GB=%@ fr_FR=%@",
+			[gb localizedStringForCountryCode:@"GB"],
+			[fr localizedStringForCountryCode:@"GB"]] UTF8String]);
+		check("locale-localized-string-names-a-currency",
+		      [[us localizedStringForCurrencyCode:@"EUR"] isEqualToString:@"Euro"],
+		      [[NSString stringWithFormat:@"en_US EUR=%@",
+			[us localizedStringForCurrencyCode:@"EUR"]] UTF8String]);
+		check("locale-localized-string-names-a-calendar",
+		      [[us localizedStringForCalendarIdentifier:@"hebrew"] isEqualToString:@"Hebrew Calendar"],
+		      [[NSString stringWithFormat:@"en_US hebrew=%@",
+			[us localizedStringForCalendarIdentifier:@"hebrew"]] UTF8String]);
+		check("locale-separators-come-from-the-locale",
+		      [[us decimalSeparator] isEqualToString:@"."] &&
+		      [[us groupingSeparator] isEqualToString:@","] &&
+		      [[fr decimalSeparator] isEqualToString:@","] &&
+		      [[fr groupingSeparator] isEqualToString:[NSString stringWithFormat:@"%C", (unichar)0x202F]],
+		      [[NSString stringWithFormat:@"en_US '%@'/'%@' fr_FR '%@'/U+%04X",
+			[us decimalSeparator], [us groupingSeparator], [fr decimalSeparator],
+			(unsigned)[[fr groupingSeparator] length] > 0 ?
+				(unsigned)[[fr groupingSeparator] characterAtIndex:0] : 0] UTF8String]);
+		check("locale-quotation-delimiters-are-the-locales",
+		      [[us quotationBeginDelimiter] isEqualToString:[NSString stringWithFormat:@"%C", (unichar)0x201C]] &&
+		      [[us quotationEndDelimiter] isEqualToString:[NSString stringWithFormat:@"%C", (unichar)0x201D]] &&
+		      [[fr quotationBeginDelimiter] isEqualToString:[NSString stringWithFormat:@"%C", (unichar)0x00AB]] &&
+		      [[fr quotationEndDelimiter] isEqualToString:[NSString stringWithFormat:@"%C", (unichar)0x00BB]],
+		      "en_US U+201C/U+201D and fr_FR U+00AB/U+00BB");
+		check("locale-currency-code-and-symbol-are-the-locales",
+		      [[us currencyCode] isEqualToString:@"USD"] &&
+		      [[us currencySymbol] isEqualToString:@"$"] &&
+		      [[fr currencyCode] isEqualToString:@"EUR"],
+		      [[NSString stringWithFormat:@"en_US %@/%@ fr_FR %@", [us currencyCode],
+			[us currencySymbol], [fr currencyCode]] UTF8String]);
+		check("locale-calendar-and-collation-come-from-the-locale",
+		      [[us calendarIdentifier] isEqualToString:@"gregorian"] &&
+		      [[us collationIdentifier] isEqualToString:@"standard"],
+		      [[NSString stringWithFormat:@"calendar=%@ collation=%@", [us calendarIdentifier],
+			[us collationIdentifier]] UTF8String]);
+		{
+			NSCharacterSet *exemplar = [us exemplarCharacterSet];
+
+			check("locale-exemplar-set-is-the-locales-alphabet",
+			      exemplar != nil && [exemplar characterIsMember:(unichar)'a'] &&
+			      [exemplar characterIsMember:(unichar)'z'] &&
+			      ![exemplar characterIsMember:(unichar)'0'],
+			      [[NSString stringWithFormat:@"a=%d z=%d 0=%d",
+				(int)[exemplar characterIsMember:(unichar)'a'],
+				(int)[exemplar characterIsMember:(unichar)'z'],
+				(int)[exemplar characterIsMember:(unichar)'0']] UTF8String]);
+		}
+		check("locale-measurement-system-is-the-locales",
+		      ![us usesMetricSystem] && [fr usesMetricSystem] && [gb usesMetricSystem],
+		      [[NSString stringWithFormat:@"en_US=%d fr_FR=%d en_GB=%d", (int)[us usesMetricSystem],
+			(int)[fr usesMetricSystem], (int)[gb usesMetricSystem]] UTF8String]);
+		{
+			NSArray *langs = [NSLocale ISOLanguageCodes];
+			NSArray *ctries = [NSLocale ISOCountryCodes];
+			NSArray *curs = [NSLocale ISOCurrencyCodes];
+			NSArray *common = [NSLocale commonISOCurrencyCodes];
+
+			check("locale-iso-catalogues-are-populated",
+			      [langs count] > 100 && [langs containsObject:@"en"] &&
+			      [ctries count] > 100 && [ctries containsObject:@"US"] &&
+			      [curs containsObject:@"USD"] && [common count] > 100,
+			      [[NSString stringWithFormat:@"langs=%lu(en=%d) countries=%lu(US=%d) USD=%d common=%lu",
+				(unsigned long)[langs count], (int)[langs containsObject:@"en"],
+				(unsigned long)[ctries count], (int)[ctries containsObject:@"US"],
+				(int)[curs containsObject:@"USD"], (unsigned long)[common count]] UTF8String]);
+		}
+		{
+			NSLocale *sys = [NSLocale systemLocale];
+			NSLocale *automatic = [NSLocale autoupdatingCurrentLocale];
+
+			check("locale-sources-answer",
+			      sys != nil && [[sys localeIdentifier] length] > 0 && automatic != nil,
+			      [[NSString stringWithFormat:@"system=%@ autoupdating=%@", [sys localeIdentifier],
+				[automatic localeIdentifier]] UTF8String]);
+		}
+		{
+			NSLocale *zh = [NSLocale localeWithLocaleIdentifier:@"zh_Hans_CN"];
+			NSLocale *ca = [NSLocale localeWithLocaleIdentifier:@"ca_ES_VALENCIA"];
+
+			check("locale-subtags-are-the-identifiers-own",
+			      [[zh languageCode] isEqualToString:@"zh"] &&
+			      [[zh scriptCode] isEqualToString:@"Hans"] &&
+			      [[zh regionCode] isEqualToString:@"CN"] &&
+			      [[zh languageIdentifier] isEqualToString:@"zh-Hans"] &&
+			      [[ca variantCode] isEqualToString:@"VALENCIA"],
+			      [[NSString stringWithFormat:@"zh %@/%@/%@=>%@ ca variant=%@",
+				[zh languageCode], [zh scriptCode], [zh regionCode], [zh languageIdentifier],
+				[ca variantCode]] UTF8String]);
+		}
+		/* THE REGRESSION GUARDS: the two narrow doors above must keep nilling the DATA keys, or the
+		 * locale-basics and locale-display-names checks go red again (which is exactly what an earlier
+		 * version of this work did). */
+		check("locale-data-keys-stay-nil-through-the-two-narrow-doors",
+		      [us objectForKey:NSLocaleDecimalSeparator] == nil &&
+		      [gb displayNameForKey:NSLocaleCurrencyCode value:@"EUR"] == nil &&
+		      [gb displayNameForKey:NSLocaleLanguageCode value:[NSNumber numberWithInt:7]] == nil,
+		      [[NSString stringWithFormat:@"objectForKey:decimal=%@ currencyName=%@ nonStringName=%@",
+			[us objectForKey:NSLocaleDecimalSeparator],
+			[gb displayNameForKey:NSLocaleCurrencyCode value:@"EUR"],
+			[gb displayNameForKey:NSLocaleLanguageCode value:[NSNumber numberWithInt:7]]] UTF8String]);
+		check("locale-variant-display-stays-open",
+		      ![us respondsToSelector:sel_registerName("localizedStringForVariantCode:")],
+		      "-localizedStringForVariantCode: is absent (ICU's variant display table answers empty)");
 	}
 
 	{

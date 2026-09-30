@@ -86,6 +86,25 @@ CHECKS = (
           "cstring-with-encoding-refuses-what-it-cannot-store",
           # §63.29: the two URL forms — a file URL round trip, and a scheme with nothing behind it refused.
           "url-doors-round-trip-a-file-url-and-refuse-an-unreachable-scheme",
+          # the 2026-09-30 locale slice: NSLocale reads ICU's data (its own probe checks live in
+          # foundation_string.m, in the locale area next to locale-basics and locale-display-names).
+          "locale-direction-follows-the-script",
+          "locale-windows-locale-code-round-trips",
+          "locale-localized-string-names-a-language",
+          "locale-localized-string-names-a-country",
+          "locale-localized-string-names-a-currency",
+          "locale-localized-string-names-a-calendar",
+          "locale-separators-come-from-the-locale",
+          "locale-quotation-delimiters-are-the-locales",
+          "locale-currency-code-and-symbol-are-the-locales",
+          "locale-calendar-and-collation-come-from-the-locale",
+          "locale-exemplar-set-is-the-locales-alphabet",
+          "locale-measurement-system-is-the-locales",
+          "locale-iso-catalogues-are-populated",
+          "locale-sources-answer",
+          "locale-subtags-are-the-identifiers-own",
+          "locale-data-keys-stay-nil-through-the-two-narrow-doors",
+          "locale-variant-display-stays-open",
           )
 
 
