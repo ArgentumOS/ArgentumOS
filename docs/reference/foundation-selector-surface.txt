@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1813   open  872   struck  243
+#   method     shipped 1821   open  864   struck  243
 #   property   shipped 1027   open  463   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -2109,7 +2109,7 @@ method	open	-removeIndexes:	NSMutableIndexSet	Fundamentals / Indexes / Removing 
 method	shipped	-removeIndexesInRange:	NSMutableIndexSet	Fundamentals / Indexes / Removing Indexes	-	objc
 method	open	-shiftIndexesStartingAtIndex:by:	NSMutableIndexSet	Fundamentals / Indexes / Shifting Index Groups	-	objc
 method	shipped	-addObject:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	open	-addObjects:count:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
+method	shipped	-addObjects:count:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
 method	shipped	-addObjectsFromArray:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
 method	open	-applyDifference:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Instance Methods	-	objc
 method	shipped	-exchangeObjectAtIndex:withObjectAtIndex:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
@@ -2118,23 +2118,23 @@ method	shipped	-init	NSMutableOrderedSet	Fundamentals / Specialized Sets / Creat
 method	shipped	-initWithCapacity:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Creating a Mutable Ordered Set	-	objc
 method	open	-initWithCoder:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Instance Methods	-	objc
 method	shipped	-insertObject:atIndex:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	open	-insertObjects:atIndexes:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
+method	shipped	-insertObjects:atIndexes:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
 method	shipped	-intersectOrderedSet:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Combining and Recombining Entries	-	objc
 method	shipped	-intersectSet:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Combining and Recombining Entries	-	objc
 method	shipped	-minusOrderedSet:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Combining and Recombining Entries	-	objc
 method	shipped	-minusSet:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Combining and Recombining Entries	-	objc
-method	open	-moveObjectsAtIndexes:toIndex:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
+method	shipped	-moveObjectsAtIndexes:toIndex:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
 method	shipped	+orderedSetWithCapacity:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Creating a Mutable Ordered Set	-	objc
 method	shipped	-removeAllObjects	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
 method	shipped	-removeObject:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
 method	shipped	-removeObjectAtIndex:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	open	-removeObjectsAtIndexes:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	open	-removeObjectsInArray:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
+method	shipped	-removeObjectsAtIndexes:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
+method	shipped	-removeObjectsInArray:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
 method	shipped	-removeObjectsInRange:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
 method	shipped	-replaceObjectAtIndex:withObject:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	open	-replaceObjectsAtIndexes:withObjects:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	open	-replaceObjectsInRange:withObjects:count:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	open	-setObject:atIndex:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
+method	shipped	-replaceObjectsAtIndexes:withObjects:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
+method	shipped	-replaceObjectsInRange:withObjects:count:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
+method	shipped	-setObject:atIndex:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
 method	shipped	-setObject:atIndexedSubscript:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
 method	shipped	-sortRange:options:usingComparator:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Sorting Entries	-	objc
 method	shipped	-sortUsingComparator:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Sorting Entries	-	objc

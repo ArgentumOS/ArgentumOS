@@ -31,6 +31,21 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)replaceObjectAtIndex:(NSUInteger)index withObject:(ObjectType)object;
 - (void)setObject:(ObjectType)object atIndexedSubscript:(NSUInteger)index;
 
+/* THE INDEX-SET AND COUNT MUTATORS (§63.9). Apple declares the position forms in its
+ * `NSExtendedMutableOrderedSet` category and the count forms beside the array ones; they are declared here in
+ * one block because they share TWO RULES — an index or range outside the receiver RAISES, before anything is
+ * touched, and the SET rule holds throughout (a member appears in the result once). */
+- (void)addObjects:(const ObjectType _Nonnull * _Nullable)objects count:(NSUInteger)count;
+- (void)insertObjects:(NSArray<ObjectType> *)objects atIndexes:(NSIndexSet *)indexes;
+- (void)moveObjectsAtIndexes:(NSIndexSet *)indexes toIndex:(NSUInteger)index;
+- (void)setObject:(ObjectType)object atIndex:(NSUInteger)index;
+- (void)replaceObjectsInRange:(NSRange)range
+		  withObjects:(const ObjectType _Nonnull * _Nullable)objects
+			count:(NSUInteger)count;
+- (void)replaceObjectsAtIndexes:(NSIndexSet *)indexes withObjects:(NSArray<ObjectType> *)objects;
+- (void)removeObjectsAtIndexes:(NSIndexSet *)indexes;
+- (void)removeObjectsInArray:(NSArray<ObjectType> *)array;
+
 - (void)removeObject:(ObjectType)object;
 - (void)removeObjectAtIndex:(NSUInteger)index;
 - (void)removeObjectsInRange:(NSRange)range;

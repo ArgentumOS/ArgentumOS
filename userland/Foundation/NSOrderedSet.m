@@ -1082,6 +1082,245 @@ static NSArray *fn_from_varargs(id firstObject, va_list args)
 	[self fnReplaceMembers:kept];
 }
 
+/* ===================================================================================================
+ * THE INDEX-SET AND COUNT MUTATORS (§63.9). Every one of them REBUILDS the member array and hands it to
+ * `-fnReplaceMembers:`, which is the single door every mutation in this class uses - so the for-in
+ * consistency token moves exactly once per call, however many members moved.
+ *
+ * TWO RULES ARE SHARED AND THEREFORE STATED ONCE HERE RATHER THAN IN EACH METHOD:
+ *   * A RANGE OR AN INDEX OUTSIDE THE RECEIVER RAISES NSRangeException - the same contract the construction
+ *     family's range doors (§63.6) and `-sortRange:options:usingComparator:` (§63.8) took. Index sets are
+ *     VALIDATED UP FRONT, before a single member is touched, so a refused call changes nothing.
+ *   * THE SET RULE HOLDS THROUGH EVERY ONE OF THEM: a member is in the result once, and an operation that
+ *     would introduce a second copy of one already present does not.
+ * =================================================================================================== */
+
+- (void)addObjects:(const id _Nonnull * _Nullable)objects count:(NSUInteger)count
+{
+	NSMutableArray *out = [NSMutableArray arrayWithArray:[self array]];
+	NSUInteger i;
+
+	for (i = 0; i < count; i++) {
+		if (objects[i] != nil && ![out containsObject:objects[i]]) {
+			[out addObject:objects[i]];
+		}
+	}
+	[self fnReplaceMembers:out];
+}
+
+- (void)removeObjectsInArray:(NSArray *)array
+{
+	NSArray *all = [self array];
+	NSMutableArray *out = [NSMutableArray arrayWithCapacity:[all count]];
+	NSUInteger i;
+
+	for (i = 0; i < [all count]; i++) {
+		if (![array containsObject:[all objectAtIndex:i]]) {
+			[out addObject:[all objectAtIndex:i]];
+		}
+	}
+	[self fnReplaceMembers:out];
+}
+
+/* REMOVING BY POSITION IS THE ONE THAT CANNOT BE DONE ASCENDING, which is why it is written as "the members
+ * whose position is NOT in the set": walking the index set upward while removing would shift every later
+ * position out from under itself. */
+- (void)removeObjectsAtIndexes:(NSIndexSet *)indexes
+{
+	NSArray *all;
+	NSMutableArray *out;
+	NSUInteger index;
+	NSUInteger i;
+
+	if (indexes == nil) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSMutableOrderedSet: -removeObjectsAtIndexes: needs an index set"];
+	}
+	for (index = [indexes firstIndex]; index != NSNotFound;
+	     index = [indexes indexGreaterThanIndex:index]) {
+		if (index >= [self count]) {
+			[NSException raise:NSRangeException
+				    format:@"NSMutableOrderedSet: index %lu is beyond bounds %lu",
+					   (unsigned long)index, (unsigned long)[self count]];
+		}
+	}
+	all = [self array];
+	out = [NSMutableArray arrayWithCapacity:[all count]];
+	for (i = 0; i < [all count]; i++) {
+		if (![indexes containsIndex:i]) {
+			[out addObject:[all objectAtIndex:i]];
+		}
+	}
+	[self fnReplaceMembers:out];
+}
+
+/* ONE INDEX PER OBJECT, AND THE INDEXES ARE POSITIONS IN THE RESULT - which is what makes the ascending walk
+ * correct: each insertion shifts what follows, and the next index is already stated in terms of the shifted
+ * set. A count mismatch is a caller error and raises rather than silently inserting what it can. */
+- (void)insertObjects:(NSArray *)objects atIndexes:(NSIndexSet *)indexes
+{
+	NSMutableArray *out;
+	NSUInteger index;
+	NSUInteger i = 0;
+
+	if (indexes == nil || [objects count] != [indexes count]) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSMutableOrderedSet: -insertObjects:atIndexes: needs one index per object "
+				   "(%lu object(s), %lu index(es))",
+				   (unsigned long)[objects count], (unsigned long)[indexes count]];
+	}
+	out = [NSMutableArray arrayWithArray:[self array]];
+	for (index = [indexes firstIndex]; index != NSNotFound;
+	     index = [indexes indexGreaterThanIndex:index]) {
+		id object = [objects objectAtIndex:i++];
+
+		if (index > [out count]) {
+			[NSException raise:NSRangeException
+				    format:@"NSMutableOrderedSet: insertion index %lu is beyond bounds %lu",
+					   (unsigned long)index, (unsigned long)[out count]];
+		}
+		if (object != nil && ![out containsObject:object]) {
+			[out insertObject:object atIndex:index];
+		}
+	}
+	[self fnReplaceMembers:out];
+}
+
+/* `-setObject:atIndex:` IS `-replaceObjectAtIndex:withObject:` in Apple's header too, so it DELEGATES rather
+ * than being a second implementation of the same rule - the anti-drift choice this class's read doors made
+ * (§63.7), for the same reason. */
+- (void)setObject:(id)object atIndex:(NSUInteger)index
+{
+	[self replaceObjectAtIndex:index withObject:object];
+}
+
+/* THE RANGE FORM MAY CHANGE THE COUNT, which is why it is not a swap: the members in the range are replaced
+ * by `count` NEW ones, so the set can grow or shrink. The tail is deduplicated AGAINST THE RESULT, because a
+ * set cannot hold a member twice and the replacement may already contain one that is also in the tail. */
+- (void)replaceObjectsInRange:(NSRange)range
+		  withObjects:(const id _Nonnull * _Nullable)objects
+			count:(NSUInteger)count
+{
+	NSArray *all = [self array];
+	NSMutableArray *out = [NSMutableArray arrayWithCapacity:[all count] + count];
+	NSUInteger i;
+
+	if (range.location > [all count] || range.length > [all count] - range.location) {
+		[NSException raise:NSRangeException
+			    format:@"NSMutableOrderedSet: the range {%lu, %lu} is beyond the end (%lu members)",
+				   (unsigned long)range.location, (unsigned long)range.length,
+				   (unsigned long)[all count]];
+	}
+	for (i = 0; i < range.location; i++) {
+		[out addObject:[all objectAtIndex:i]];
+	}
+	for (i = 0; i < count; i++) {
+		if (objects[i] != nil && ![out containsObject:objects[i]]) {
+			[out addObject:objects[i]];
+		}
+	}
+	for (i = range.location + range.length; i < [all count]; i++) {
+		if (![out containsObject:[all objectAtIndex:i]]) {
+			[out addObject:[all objectAtIndex:i]];
+		}
+	}
+	[self fnReplaceMembers:out];
+}
+
+/* THE INDEX-SET FORM OF THE SAME IDEA, one replacement per position, walked ASCENDING with the objects
+ * cursor kept in step - so the pairing is "the nth index gets the nth object", which is what "one per
+ * position" means when both sides are in ascending order. */
+- (void)replaceObjectsAtIndexes:(NSIndexSet *)indexes withObjects:(NSArray *)objects
+{
+	NSArray *all;
+	NSMutableArray *out;
+	NSUInteger index;
+	NSUInteger cursor = 0;
+	NSUInteger i;
+
+	if (indexes == nil || [objects count] != [indexes count]) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSMutableOrderedSet: -replaceObjectsAtIndexes:withObjects: needs one object "
+				   "per index (%lu index(es), %lu object(s))",
+				   (unsigned long)[indexes count], (unsigned long)[objects count]];
+	}
+	for (index = [indexes firstIndex]; index != NSNotFound;
+	     index = [indexes indexGreaterThanIndex:index]) {
+		if (index >= [self count]) {
+			[NSException raise:NSRangeException
+				    format:@"NSMutableOrderedSet: index %lu is beyond bounds %lu",
+					   (unsigned long)index, (unsigned long)[self count]];
+		}
+	}
+	all = [self array];
+	out = [NSMutableArray arrayWithCapacity:[all count]];
+	index = [indexes firstIndex];
+	for (i = 0; i < [all count]; i++) {
+		id member;
+
+		if (index == i) {
+			member = [objects objectAtIndex:cursor++];
+			index = [indexes indexGreaterThanIndex:index];
+		} else {
+			member = [all objectAtIndex:i];
+		}
+		if (member != nil && ![out containsObject:member]) {
+			[out addObject:member];
+		}
+	}
+	[self fnReplaceMembers:out];
+}
+
+/* MOVING BY POSITION: the members at the given indexes are removed and re-inserted together at `destination`,
+ * which is an index IN THE RESULT AFTER THE REMOVAL - so a destination past what is left is clamped to the
+ * end rather than raising, because "move them to the end" is what a caller means by a large number. */
+- (void)moveObjectsAtIndexes:(NSIndexSet *)indexes toIndex:(NSUInteger)destination
+{
+	NSArray *all;
+	NSMutableArray *moving = [NSMutableArray array];
+	NSMutableArray *out;
+	NSUInteger index;
+	NSUInteger placed = 0;
+	NSUInteger i;
+
+	if (indexes == nil) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSMutableOrderedSet: -moveObjectsAtIndexes:toIndex: needs an index set"];
+	}
+	for (index = [indexes firstIndex]; index != NSNotFound;
+	     index = [indexes indexGreaterThanIndex:index]) {
+		if (index >= [self count]) {
+			[NSException raise:NSRangeException
+				    format:@"NSMutableOrderedSet: index %lu is beyond bounds %lu",
+					   (unsigned long)index, (unsigned long)[self count]];
+		}
+	}
+	all = [self array];
+	for (index = [indexes firstIndex]; index != NSNotFound;
+	     index = [indexes indexGreaterThanIndex:index]) {
+		[moving addObject:[all objectAtIndex:index]];
+	}
+	if (destination > [all count] - [moving count]) {
+		destination = [all count] - [moving count];
+	}
+	out = [NSMutableArray arrayWithCapacity:[all count]];
+	for (i = 0; i < [all count]; i++) {
+		if ([indexes containsIndex:i]) {
+			continue;
+		}
+		if (placed == destination) {
+			[out addObjectsFromArray:moving];
+			placed += [moving count];
+		}
+		[out addObject:[all objectAtIndex:i]];
+		placed++;
+	}
+	if (placed <= destination) {
+		[out addObjectsFromArray:moving];
+	}
+	[self fnReplaceMembers:out];
+}
+
 /* A MUTABLE ORDERED SET COPIES BY VALUE, and a copy of one is the immutable snapshot the house's
  * rule asks for. */
 - (id)copy

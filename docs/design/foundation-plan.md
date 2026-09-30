@@ -15824,6 +15824,57 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.9 — `NSMutableOrderedSet`'S INDEX-SET AND COUNT MUTATORS: EIGHT ROWS, TWO RULES, ONE DOOR (2026-09-30)
+
+**WHAT SHIPPED: EIGHT ROWS.** `-addObjects:count:`, `-insertObjects:atIndexes:`,
+`-moveObjectsAtIndexes:toIndex:`, `-setObject:atIndex:`, `-replaceObjectsInRange:withObjects:count:`,
+`-replaceObjectsAtIndexes:withObjects:`, `-removeObjectsAtIndexes:`, `-removeObjectsInArray:`.
+**`method shipped` 1813 → 1821, `method open` 872 → 864.**
+
+**TWO RULES AND ONE DOOR, WHICH IS THE WHOLE SHAPE OF THIS UNIT.** Every one of the eight REBUILDS the member
+array and hands it to `-fnReplaceMembers:` — the single private door every mutation in this class uses — so
+the for-in consistency token moves exactly once per call however many members moved. And two rules are stated
+once rather than eight times:
+
+* **AN INDEX OR RANGE OUTSIDE THE RECEIVER RAISES, BEFORE ANYTHING IS TOUCHED.** Index sets are validated
+  UP FRONT, so a refused call changes nothing; the probe asserts that by checking the receiver's CONTENTS
+  after the refusal, not merely that an exception arrived.
+* **THE SET RULE HOLDS THROUGHOUT** — a member appears in the result once, and an operation that would
+  introduce a second copy of one already present does not.
+
+**THREE OF THE EIGHT CANNOT BE WRITTEN THE OBVIOUS WAY, and each is worth naming:**
+
+* **`-removeObjectsAtIndexes:` CANNOT WALK ASCENDING.** Removing by position shifts every later position out
+  from under the walk, so it is written as "keep the members whose position is NOT in the set" — one pass,
+  no shifting.
+* **`-insertObjects:atIndexes:` MUST WALK ASCENDING, for the mirror-image reason:** each index is stated in
+  terms of the set ALREADY SHIFTED by the insertions before it. One index per object, and a count mismatch
+  RAISES rather than inserting what it can.
+* **`-moveObjectsAtIndexes:toIndex:` CLAMPS A LARGE DESTINATION** instead of raising, because "move them to
+  the end" is what a caller means by a number past the end. Its destination is an index in the RESULT AFTER
+  the removal, which is why the clamp is against `count - moved` rather than `count`.
+
+**AND ONE DELEGATES ON PURPOSE:** `-setObject:atIndex:` IS `-replaceObjectAtIndex:withObject:` in Apple's own
+header, so it calls it rather than being a second implementation of the same rule — the anti-drift choice
+§63.7's read doors made, for the same reason.
+
+**THE PROBE CAUGHT MY ARITHMETIC, for the second time in this thread.** I wrote `removeObjectsAtIndexes:` a
+`NSMakeRange(0, 2)` index set and expected `[b, d]` — as if the range were {0, 2}. It is **{0, 1}**, the
+measured answer `[c, d]` was right, and the check failed until the EXPECTATION was corrected. §63.8's failure
+was the same shape from the other side (a precondition of the code under test written down wrong). **The
+lesson both times: an expectation that is written down gets corrected; one derived from the same assumption
+as the input never does.**
+
+**VERIFICATION.** Probe `foundation_orderedset` **17/17** on the host (was 16); guest `TESTS-OK 1/1 case(s),
+6/6 check(s)`; the family's contract unmoved (`foundation_clusters` **17/17**, `foundation_collection`
+**6/6**); `make foundation-sweep` **exit 0**, `--unimplemented` **0 NEW**; `--check` named **exactly 8** rows
+before the flip and the refresh's diff was **9 lines in ONE file**.
+
+**WHAT THIS FAMILY HAS LEFT: THREE ROWS, AND ALL THREE ARE OTHER UNITS'.** `NSMutableOrderedSet
+-applyDifference:` belongs with `NSOrderedCollectionDifference` (Apple files it in a diffing category that is
+10.15+), and `-initWithCoder:` here and on `NSOrderedSet` belong with `NSCoding` conformance. Nothing else in
+either class is open.
+
 ## §63.8 — THE SEARCHING AND SORTING DOORS: NINE ROWS ACROSS THREE CLASSES, AND TWO INSTRUMENTS THAT LIED (2026-09-30)
 
 **WHAT SHIPPED: NINE ROWS.** `NSArray -indexOfObjectPassingTest:`; `NSOrderedSet`'s `-indexOfObjectPassingTest:`,

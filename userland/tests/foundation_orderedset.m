@@ -472,6 +472,64 @@ int main(void)
 			[mutable array], [straight array], (int)refused]);
 	}
 
+	{
+		/* THE INDEX-SET AND COUNT MUTATORS (§63.9). EACH GETS ITS OWN RECEIVER, because these operations
+		 * interfere by design and a shared set would make a failure hard to attribute. Two rules are asserted
+		 * ACROSS all of them: THE SET RULE HOLDS (a member added twice stays once), and A REFUSED CALL
+		 * CHANGES NOTHING - which the last two assertions check by asserting the receiver's contents AFTER
+		 * the refusal, not merely that an exception arrived. */
+		id two[2] = { @"new1", @"new2" };
+		id one[1] = { @"y" };
+		NSMutableOrderedSet *added = [NSMutableOrderedSet orderedSetWithArray:@[@"a", @"b"]];
+		NSMutableOrderedSet *inserted = [NSMutableOrderedSet orderedSetWithArray:@[@"a", @"d"]];
+		NSMutableOrderedSet *moved = [NSMutableOrderedSet orderedSetWithArray:@[@"a", @"b", @"c", @"d"]];
+		NSMutableOrderedSet *setByIndex = [NSMutableOrderedSet orderedSetWithArray:@[@"a", @"b", @"c", @"d"]];
+		NSMutableOrderedSet *byRange = [NSMutableOrderedSet orderedSetWithArray:@[@"a", @"b", @"c", @"d"]];
+		NSMutableOrderedSet *byIndexes = [NSMutableOrderedSet orderedSetWithArray:@[@"a", @"b", @"c", @"d"]];
+		NSMutableOrderedSet *removed = [NSMutableOrderedSet orderedSetWithArray:@[@"a", @"b", @"c", @"d"]];
+		NSMutableOrderedSet *byArray = [NSMutableOrderedSet orderedSetWithArray:@[@"a", @"b", @"c"]];
+		BOOL refusedMismatch = NO;
+		BOOL refusedIndex = NO;
+
+		[added addObjects:two count:2];
+		[added addObjects:two count:2];		/* again: the set rule must keep it at four */
+		[inserted insertObjects:@[@"b", @"c"]
+				 atIndexes:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(1, 2)]];
+		[moved moveObjectsAtIndexes:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, 2)]
+				     toIndex:2];
+		[setByIndex setObject:@"z" atIndex:2];
+		[byRange replaceObjectsInRange:NSMakeRange(1, 2) withObjects:one count:1];
+		[byIndexes replaceObjectsAtIndexes:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, 2)]
+					withObjects:@[@"p", @"q"]];
+		[removed removeObjectsAtIndexes:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, 2)]];
+		[byArray removeObjectsInArray:@[@"b"]];
+		@try {
+			[inserted insertObjects:@[@"x", @"w"]
+					 atIndexes:[NSIndexSet indexSetWithIndex:0]];
+		} @catch (NSException *e) {
+			refusedMismatch = [[e name] isEqualToString:NSInvalidArgumentException];
+		}
+		@try {
+			[removed removeObjectsAtIndexes:[NSIndexSet indexSetWithIndex:9]];
+		} @catch (NSException *e) {
+			refusedIndex = [[e name] isEqualToString:NSRangeException];
+		}
+		check("ordered-set-and-count-mutators",
+		      [[added array] isEqualToArray:@[@"a", @"b", @"new1", @"new2"]] &&
+		      [[inserted array] isEqualToArray:@[@"a", @"b", @"c", @"d"]] &&
+		      [[moved array] isEqualToArray:@[@"c", @"d", @"a", @"b"]] &&
+		      [[setByIndex array] isEqualToArray:@[@"a", @"b", @"z", @"d"]] &&
+		      [[byRange array] isEqualToArray:@[@"a", @"y", @"d"]] &&
+		      [[byIndexes array] isEqualToArray:@[@"p", @"q", @"c", @"d"]] &&
+		      [[removed array] isEqualToArray:@[@"c", @"d"]] &&
+		      [[byArray array] isEqualToArray:@[@"a", @"c"]] &&
+		      refusedMismatch && refusedIndex,
+		      [NSString stringWithFormat:@"added=%@ inserted=%@ moved=%@ set=%@ range=%@ idx=%@ removed=%@ byArray=%@ mismatch=%d index=%d",
+			[added array], [inserted array], [moved array], [setByIndex array], [byRange array],
+			[byIndexes array], [removed array], [byArray array],
+			(int)refusedMismatch, (int)refusedIndex]);
+	}
+
 	printf("FOUNDATION-ORDEREDSET RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness
