@@ -64,12 +64,16 @@ the day it was written, and it is the plan until the last row closes.
    transfers.
 3. **A ROW THAT CANNOT BE HONESTLY IMPLEMENTED IS DECLINED BY NAME WITH ITS REASON, AND THAT IS A DECISION OF
    YOURS, not a choice of mine.** The mechanism exists — `DECLINED_SELECTORS`, keyed by owner AND selector, so a
-   single row can be struck without striking a class or a name everywhere. Three shapes will need it, and they
-   are named here so they are not discovered one at a time:
-   * **the deprecated AppKit-drawing group** (`-drawAtPoint:withFont:`, `-sizeWithFont:`, `-drawInRect:`, …):
-     Foundation deprecations are porting targets, but the *drawing duplication* carries the opposite policy — no
-     Apple-deprecated APIs in the CG/AppKit duplication — and this group sits on the line between the two. **A
-     decision, not a lookup.**
+   single row can be struck without striking a class or a name everywhere. Two shapes will need it, and they are
+   named here so they are not discovered one at a time — and one group is now SETTLED rather than pending:
+   * **THE APPKIT-DRAWING GROUP — DECIDED (the user, 2026-09-30): DEFERRED, NOT DECLINED.** *"AppKit-specific
+     work is deferred until we begin implementing AppKit."* **MEASURED: 22 open rows** — the **6** in the live
+     `Fundamentals / Strings / Sizing and Drawing Strings` section (the NSStringDrawing category, all NSString's)
+     plus the **16** `deprecated` rows whose names are drawing- or font-shaped (14 NSString's, 2
+     NSAttributedString's). These are where this ledger holds AppKit work, and they are the reason it cannot be
+     read as "every open row is Foundation work". **⚠ AND THEY STAY `open`: A DEFERRAL IS NOT A DECLINE.** A
+     decline claims the row is not ours; a deferral says it is ours and not yet — so striking them would put a
+     false statement in the ledger, and the progress metric below is stated in two parts instead.
    * **the encoding cluster** (8 rows for NSString alone, and more elsewhere): blocked on a converter/repertoire
      table (§63.2). ICU is already linked, so it is a real unit rather than a refusal — **it needs its own
      session**, and it is the one place where "take the library that has the table" has to be argued rather than
@@ -82,10 +86,17 @@ the day it was written, and it is the plan until the last row closes.
 
 ### The definition of done
 
-`open 0` for methods and properties, with the symbol ledger still at zero; `--check` consistent in both
-directions; `--strict` reporting no policy findings and no parameterization findings; `--unimplemented` 0 NEW;
-the generated family table showing every family shipped or struck; and every deviation that remains registered
-in §11.6 with its reason.
+**IN TWO PARTS, BECAUSE ONE GROUP IS DEFERRED BY DECISION — and the deferral is countable, so it can never
+become a place to hide a row that simply has not been done.**
+
+* **Foundation-scoped work:** `open 0` for methods and properties **after subtracting the 22 deferred
+  AppKit-drawing rows** — countable by the two criteria above (the drawing section, and the deprecated
+  drawing/font name shapes), which is what makes the subtraction a measurement rather than a claim; the symbol
+  ledger still at zero; `--check` consistent in both directions; `--strict` reporting no policy findings and no
+  parameterization findings; `--unimplemented` 0 NEW; the generated family table showing every family shipped or
+  struck; and every remaining deviation registered in §11.6 with its reason.
+* **The deferred group:** unchanged and `open` until the AppKit work begins, at which point these 22 rows are
+  its starting list rather than a footnote.
 
 ### What this section is NOT
 
