@@ -16,6 +16,7 @@
  */
 
 #import <Foundation/NSSet.h>
+#import <Foundation/NSCoder.h>	/* the NSCoding doors call the coder's methods, not just its type */
 #import <Foundation/NSArray.h>
 #import <Foundation/NSEnumerator.h>
 #import <Foundation/NSPredicate.h>

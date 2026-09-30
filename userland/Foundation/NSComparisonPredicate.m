@@ -20,6 +20,7 @@
  */
 
 #import <Foundation/NSPredicate.h>
+#import <Foundation/NSCoder.h>	/* the NSCoding doors call the coder's methods, not just its type */
 #import <Foundation/NSExpression.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSSet.h>	/* the ANY/ALL modifiers ask whether the left side is a collection */

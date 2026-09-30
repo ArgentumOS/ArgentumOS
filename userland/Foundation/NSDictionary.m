@@ -16,6 +16,7 @@
  */
 
 #import <Foundation/NSException.h>
+#import <Foundation/NSCoder.h>	/* the NSCoding doors call the coder's methods, not just its type */
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSArray.h>	/* the allKeys/allValues family returns one */
@@ -409,12 +410,18 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	NSUInteger n;
 	NSUInteger i;
 
+	id nothing[1] = { nil };		/* a REAL pointer with nothing in it: count is what says so */
+
 	if (keys == nil || values == nil || (n = [keys count]) != [values count]) {
 		/* NOTHING TO PAIR, and a MISMATCH is refused rather than half-read: a key with no value has no
 		 * meaning in a dictionary, and the two arrays are written from one enumeration so a mismatch is a
 		 * corrupt archive rather than a case with an answer. An empty (or absent) payload is the empty
-		 * dictionary, through the same canonical constructor every other construction uses. */
-		return [self initWithObjects:NULL forKeys:NULL count:0];
+		 * dictionary, through the same canonical constructor every other construction uses — and the
+		 * constructor's two pointers are annotated NONNULL, so an EMPTY ARRAY is passed rather than NULL: at
+		 * count zero neither is ever dereferenced, and the annotation means what it says for every count that
+		 * is not zero. */
+		(void)nothing;
+		return [self initWithObjects:nothing forKeys:nothing count:0];
 	}
 	built = [NSMutableDictionary dictionaryWithCapacity:n];
 	for (i = 0; i < n; i++) {

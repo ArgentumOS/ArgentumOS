@@ -32,7 +32,8 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_sort"
 CHECKS = ("sort-descriptor", "sort-reversed", "sort-array", "sort-chain",
           "sort-stable", "sort-selector", "sort-comparator", "sort-function",
-          "sort-mutable", "sort-nil-value", "sort-refusals", "cross-tu")
+          "sort-mutable", "sort-nil-value", "sort-refusals", "cross-tu",
+          "sortdescriptor-nscoding-round-trip")
 
 
 class Case(BaseCase):

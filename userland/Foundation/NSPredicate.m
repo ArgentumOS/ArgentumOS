@@ -18,6 +18,7 @@
  */
 
 #import <Foundation/NSPredicate.h>
+#import <Foundation/NSCoder.h>	/* the NSCoding doors call the coder's methods, not just its type */
 #import <Foundation/NSString.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSSet.h>	/* F13.11: IN takes a collection */

@@ -15824,6 +15824,64 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.17 — `NSDateInterval` AND `NSSortDescriptor`: TWO ROWS, A FIELD THAT CANNOT BE ARCHIVED, AND FOUR FINDINGS (2026-09-30)
+
+**WHAT SHIPPED: TWO ROWS.** `NSDateInterval` and `NSSortDescriptor` conform to `NSCoding`.
+**`method shipped` 1833 → 1835, `method open` 852 → 850.**
+
+**`NSDateInterval`: THE ENDS ARE THE STATE AND THE DURATION IS DERIVED.** The canonical constructor computes
+`endDate` from `start` + `duration`, so the pair writes the two ends and the decoder goes through
+`-initWithStartDate:endDate:` — which is also where the class's INVARIANT lives (an end before the start
+raises). A corrupt archive is therefore refused by the same line that refuses a caller. The probe asserts the
+ends AND the derived duration, because either alone can be restored by a decoder that got the other wrong.
+
+**`NSSortDescriptor`: ONE OF ITS FOUR FIELDS CANNOT CROSS AN ARCHIVE, and that is the unit's real content.** A
+descriptor built with a COMPARATOR holds a BLOCK, and a block is not an object this archive can carry — so the
+ENCODER REFUSES it BY NAME rather than writing the other three fields, because a descriptor that came back
+without its rule would sort by a key it also did not have: a silently wrong ORDER. The other three cross, and
+the SELECTOR crosses as its NAME (`NSStringFromSelector` / `NSSelectorFromString`). Both halves are asserted:
+two descriptors round-trip and the comparator one raises.
+
+**FOUR FINDINGS, each from a different instrument:**
+
+* **THE LIBRARY BUILD HAD BEEN EMITTING `-Wobjc-method-access` WARNINGS IN TEN FILES**, and this unit is where
+  one of them became an ERROR: none of the files my `NSCoding` thread touched imports `NSCoder.h` — they see
+  `@class NSCoder` through `NSCoding.h`, which is a TYPE and not the methods — so every `[coder …]` call was
+  compiled against an unknown method with an inferred `id` return. It stayed invisible because an inferred
+  `id` is harmless until a `BOOL` is involved: `-encodeBool:forKey:` and `-decodeBoolForKey:` made it fatal.
+  **All ten now import the header and the library builds with ZERO diagnostics** — and "zero warnings" had
+  been asserted about the PROBES while the LIBRARY was never read that way.
+* **A PRE-EXISTING PROBE ASSERTED THE ABSENCE OF THE DOORS I WAS ADDING** (`sort-refusals` checked
+  `!instancesRespondToSelector:@"initWithCoder:"`). This is the bug class §11.2's source 1 hid for months —
+  *a probe asserting an ABSENCE asserts a fact about the tree, and landing the code does not update it* — and
+  it is the SECOND time this thread has met it. The two assertions are INVERTED rather than deleted, with the
+  evaluation sandbox's absence left asserted because it is a different question.
+* **SEL POINTER EQUALITY IS NOT THE CONTRACT IN THIS RUNTIME, and the probe was wrong rather than the
+  library.** `NSSelectorFromString(NSStringFromSelector(@selector(compare:))) == @selector(compare:)` is
+  **FALSE** while the restored selector's NAME is `compare:` — a typed and an untyped selector for one name
+  are different objects here. The assertion now compares NAMES (`sel_getName`) and the `sel_isEqual` term
+  beside it names the trap. **A comparison I chose without checking the runtime's semantics is a wrong
+  expectation, not a defect** — the third time in this thread that a check's failure was my expectation.
+* **AND THE `-Wnonnull` CLASS RECURRED** in §63.13's dictionary decoder (`NULL` passed where the header says
+  nonnull). It is fixed with a REAL empty-array pointer, which is what the annotation means: at count zero
+  neither pointer is dereferenced, and for every other count they are nonnull.
+
+**AND ONE WORKFLOW FINDING WORTH KEEPING: A GUEST-ONLY PROBE CAN USUALLY BE RUN ON THE HOST.** `foundation_sort`
+is not in `HOST_PROBES`, so its two failures arrived one guest run at a time — until the probe was COMPILED
+AND LINKED THE WAY THE HOST RULE DOES (host flags, its `_support` half, `-lfoundation -lobjc …`). It then
+failed identically in **two seconds** on the host, and every hypothesis after that cost a compile instead of a
+12-second QEMU boot. **Being outside the host list is a statement about a probe's DEPENDENCIES, not about
+whether it can be built and run for diagnosis.**
+
+**VERIFICATION.** `foundation_formatters` **86/86** on the host (with `dateinterval-nscoding-round-trip`);
+`foundation_sort` **13/13** (with `sortdescriptor-nscoding-round-trip`); guest `TESTS-OK 1/1 case(s), 6/6
+check(s)` for sort and formatters, with `foundation_set` and `foundation_orderedset` **6/6** unmoved;
+`make foundation-sweep` **exit 0**, `--unimplemented` **0 NEW**; `--check` named **exactly 2** rows before the
+flip.
+
+**TWO FIELD-CARRYING CLASSES REMAIN: `NSCharacterSet` and `NSDistantObject`** — plus the independent
+`NSExpression` ownership defect §63.15 recorded and the value-type design question §63.10 raised.
+
 ## §63.16 — THE PREDICATE PAIR: TWO ROWS, A DEEP ROUND TRIP, AND THREE MISTAKES THE PROBE CAUGHT (2026-09-30)
 
 **WHAT SHIPPED: TWO ROWS.** `NSComparisonPredicate` and `NSCompoundPredicate` conform to `NSCoding`.

@@ -115,6 +115,40 @@ static NSInteger fn_rank_comparator(id left, id right, void *context)
 	return NSOrderedSame;
 }
 
+/* A DIAGNOSTIC IN A C BUFFER, because THIS probe's check() takes a `const char *` — and every value the
+ * descriptor check rests on is named in it, so a failure names the term that failed instead of costing a guest
+ * run per hypothesis (§63.16's lesson, applied before it could bite a second time). */
+static const char *fn_sort_coding_detail(NSSortDescriptor *plain, NSSortDescriptor *backPlain,
+					 NSSortDescriptor *withSelector, NSSortDescriptor *backSelector,
+					 int refusedComparator)
+{
+	static char detail[320];
+
+	snprintf(detail, sizeof detail,
+		 "coding=%d plainKey=%s plainAsc=%d plainSel=%d backKey=%s backAsc=%d selByName=%d origSel=%d refused=%d fnPair=%d backSelName=%s",
+		 (int)[plain conformsToProtocol:@protocol(NSCoding)],
+		 backPlain != nil && [backPlain key] != nil
+			? [[backPlain key] UTF8String] : "(nil)",
+		 (int)(backPlain != nil && [backPlain ascending]),
+		 (int)(backPlain != nil && [backPlain selector] != NULL),
+		 backSelector != nil && [backSelector key] != nil
+			? [[backSelector key] UTF8String] : "(nil)",
+		 (int)(backSelector != nil && [backSelector ascending]),
+		 (int)(backSelector != nil && [backSelector selector] == @selector(compare:)),
+		 (int)([withSelector selector] == @selector(compare:)),
+		 refusedComparator,
+		 /* THE FUNCTION PAIR ITSELF, tested with `sel_isEqual` AND NOT `==`: in this runtime a selector's
+		  * POINTER is not the contract — a typed and an untyped selector for the same name are different
+		  * objects — which is why this term read 0 when it was written as `==` while the NAME beside it read
+		  * "compare:". The NAME is what both functions promise; `sel_isEqual` is what the runtime provides to
+		  * compare them. */
+		 (int)sel_isEqual(NSSelectorFromString(NSStringFromSelector(@selector(compare:))),
+				  @selector(compare:)),
+		 backSelector != nil && [backSelector selector] != NULL
+			? sel_getName([backSelector selector]) : "(null)");
+	return detail;
+}
+
 int main(void)
 {
 	{
@@ -302,20 +336,28 @@ int main(void)
 	}
 
 	{
+		/* THE CODER FORMS ARRIVED IN §63.17, so the two NEGATIVE assertions that used to stand here are
+		 * INVERTED rather than deleted. A check that a class does NOT respond to a door it now implements is
+		 * the bug class §11.2's source 1 hid for months ("a probe asserting an ABSENCE asserts a fact about
+		 * the tree, and landing the code does not update it") — this check is the SECOND time this thread has
+		 * met it, and the assertion is now the positive one it should have become.
+		 *
+		 * THE EVALUATION SANDBOX IS STILL ABSENT and is still asserted so: `-allowEvaluation` and
+		 * `-isEvaluationAllowed` are a different question from coding, and that half is unchanged. */
 		check("sort-refusals",
 		      ![NSSortDescriptor instancesRespondToSelector:
 			sel_registerName("allowEvaluation")] &&
 		      ![NSSortDescriptor instancesRespondToSelector:
 			sel_registerName("isEvaluationAllowed")] &&
-		      ![NSSortDescriptor instancesRespondToSelector:
+		      [NSSortDescriptor instancesRespondToSelector:
 			sel_registerName("initWithCoder:")] &&
-		      ![NSSortDescriptor instancesRespondToSelector:
+		      [NSSortDescriptor instancesRespondToSelector:
 			sel_registerName("encodeWithCoder:")] &&
 		      [NSSortDescriptor instancesRespondToSelector:
 			sel_registerName("compareObject:toObject:")] &&
 		      [NSSortDescriptor instancesRespondToSelector:
 			sel_registerName("reversedSortDescriptor")],
-		      "the evaluation sandbox and the coder forms are absent");
+		      "the evaluation sandbox is still absent; the CODER forms are PRESENT since §63.17 (this half is INVERTED from the version that landed with the class)");
 	}
 
 	{
@@ -328,6 +370,54 @@ int main(void)
 		check("cross-tu",
 		      sorted != nil && [names isEqualToString:@"annannbobcid"],
 		      names == nil ? "(nil)" : [names UTF8String]);
+	}
+
+	{
+		/* THE DESCRIPTOR'S NSCoding DOORS (§63.17), over the REAL archive path. TWO descriptors round-trip —
+		 * with and without a selector — and the COMPARATOR one is REFUSED, because its fourth field is a BLOCK
+		 * and a block cannot cross an archive. The refusal is asserted rather than assumed: the alternative
+		 * (writing the other three fields) would produce a descriptor that came back with no rule at all,
+		 * which is a silently wrong ORDER.
+		 *
+		 * AND THE SELECTOR IS THE POINT OF THE SECOND ROUND TRIP: it is written as its NAME and read back
+		 * through `NSSelectorFromString`, so the assertion is that the restored descriptor's selector is the
+		 * SAME selector — a comparison of SELs, not of strings. */
+		NSSortDescriptor *plain = [NSSortDescriptor sortDescriptorWithKey:@"age" ascending:YES];
+		NSSortDescriptor *withSelector =
+			[NSSortDescriptor sortDescriptorWithKey:@"name"
+						    ascending:NO
+						     selector:@selector(compare:)];
+		NSSortDescriptor *withComparator =
+			[NSSortDescriptor sortDescriptorWithKey:@"name"
+						    ascending:NO
+						   comparator:^NSComparisonResult(id a, id b) {
+			return NSOrderedSame;
+		}];
+		NSData *plainData = [NSKeyedArchiver archivedDataWithRootObject:plain];
+		NSData *selectorData = [NSKeyedArchiver archivedDataWithRootObject:withSelector];
+		NSSortDescriptor *backPlain = plainData != nil
+			? [NSKeyedUnarchiver unarchiveObjectWithData:plainData] : nil;
+		NSSortDescriptor *backSelector = selectorData != nil
+			? [NSKeyedUnarchiver unarchiveObjectWithData:selectorData] : nil;
+		BOOL refusedComparator = NO;
+
+		@try {
+			(void)[NSKeyedArchiver archivedDataWithRootObject:withComparator];
+		} @catch (NSException *e) {
+			refusedComparator = [[e name] isEqualToString:NSInvalidArgumentException];
+		}
+		check("sortdescriptor-nscoding-round-trip",
+		      [plain conformsToProtocol:@protocol(NSCoding)] &&
+		      backPlain != nil && [[backPlain key] isEqualToString:@"age"] &&
+		      [backPlain ascending] && [backPlain selector] == NULL &&
+		      backSelector != nil && [[backSelector key] isEqualToString:@"name"] &&
+		      ![backSelector ascending] &&
+		      /* THE NAME IS THE CONTRACT, not the pointer: see the note in the diagnostic below. */
+		      backSelector != nil && [backSelector selector] != NULL &&
+		      strcmp(sel_getName([backSelector selector]), "compare:") == 0 &&
+		      refusedComparator,
+		      fn_sort_coding_detail(plain, backPlain, withSelector, backSelector,
+					    refusedComparator));
 	}
 
 	printf("FOUNDATION-SORT RESULT ok=%d fail=%d\n", okc, failc);

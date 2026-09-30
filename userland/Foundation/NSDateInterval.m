@@ -6,6 +6,7 @@
  * NSDateInterval.m — the implementation (W2h).
  */
 #import <Foundation/NSDateInterval.h>
+#import <Foundation/NSCoder.h>	/* the NSCoding doors call the coder's methods, not just its type */
 #import <Foundation/NSException.h>
 #import <Foundation/NSString.h>
 
@@ -41,6 +42,39 @@
 		return nil;
 	}
 	return [self initWithStartDate:startDate duration:span];
+}
+
+/* ===================================================================================================
+ * THE NSCoding DOORS (§63.17). KEYS OURS (Apple publishes no name for them, §11.6.1 D2's ground), defined
+ * beside their only writer and reader as this thread's other field-carrying classes have done.
+ *
+ * THE ENDS ARE THE STATE and the DURATION IS DERIVED, so only the ends are written — and the decoder goes
+ * through the constructor that validates the invariant, which is what refuses a corrupt archive (an end before
+ * its start) with the same line that refuses a caller.
+ * =================================================================================================== */
+static NSString *const kStartDateKey = @"NS.startDate";
+static NSString *const kEndDateKey = @"NS.endDate";
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	[coder encodeObject:_startDate forKey:kStartDateKey];
+	[coder encodeObject:_endDate forKey:kEndDateKey];
+}
+
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	NSDate *start = [coder decodeObjectForKey:kStartDateKey];
+	NSDate *end = [coder decodeObjectForKey:kEndDateKey];
+
+	/* BOTH ENDS ARE REQUIRED, so a missing one RAISES rather than reaching the constructor with a nil it is not
+	 * annotated for: the same choice NSNotification's name took (§63.14), and for the same reason — an interval
+	 * missing an end is a corrupt archive, not an interval. */
+	if (start == nil || end == nil) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSDateInterval: the archive is missing %s",
+				   start == nil ? "its start" : "its end"];
+	}
+	return [self initWithStartDate:start endDate:end];
 }
 
 - (NSDate *)startDate

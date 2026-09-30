@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1833   open  852   struck  243
+#   method     shipped 1835   open  850   struck  243
 #   property   shipped 1027   open  463   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -930,7 +930,7 @@ property	shipped	weekdaySymbols	NSDateFormatter	Fundamentals / Date Formatting /
 method	shipped	-compare:	NSDateInterval	Fundamentals / Date Representations / Comparing Date Intervals	-	objc
 method	shipped	-containsDate:	NSDateInterval	Fundamentals / Date Representations / Determining Whether a Date Occurs Within a Date Interval	-	objc
 method	shipped	-init	NSDateInterval	Fundamentals / Date Representations / Creating Date Intervals	-	objc
-method	open	-initWithCoder:	NSDateInterval	Fundamentals / Date Representations / Creating Date Intervals	-	objc
+method	shipped	-initWithCoder:	NSDateInterval	Fundamentals / Date Representations / Creating Date Intervals	-	objc
 method	shipped	-initWithStartDate:duration:	NSDateInterval	Fundamentals / Date Representations / Creating Date Intervals	-	objc
 method	shipped	-initWithStartDate:endDate:	NSDateInterval	Fundamentals / Date Representations / Creating Date Intervals	-	objc
 method	shipped	-intersectionWithDateInterval:	NSDateInterval	Fundamentals / Date Representations / Determining Intersections	-	objc
@@ -2986,7 +2986,7 @@ method	shipped	+sharedInstance	NSSocketPortNameServer	Low-Level Utilities / Lega
 property	open	defaultNameServerPortNumber	NSSocketPortNameServer	Low-Level Utilities / Legacy / Legacy / Configuring the Default Port Number	deprecated	objc
 method	open	-allowEvaluation	NSSortDescriptor	Fundamentals / Sorting / Using Sort Descriptors	-	objc
 method	shipped	-compareObject:toObject:	NSSortDescriptor	Fundamentals / Sorting / Using Sort Descriptors	-	objc
-method	open	-initWithCoder:	NSSortDescriptor	Fundamentals / Sorting / Creating a Sort Descriptor	-	objc
+method	shipped	-initWithCoder:	NSSortDescriptor	Fundamentals / Sorting / Creating a Sort Descriptor	-	objc
 method	shipped	-initWithKey:ascending:	NSSortDescriptor	Fundamentals / Sorting / Creating a Sort Descriptor	-	objc
 method	shipped	-initWithKey:ascending:comparator:	NSSortDescriptor	Fundamentals / Sorting / Creating a Sort Descriptor	-	objc
 method	shipped	-initWithKey:ascending:selector:	NSSortDescriptor	Fundamentals / Sorting / Creating a Sort Descriptor	-	objc

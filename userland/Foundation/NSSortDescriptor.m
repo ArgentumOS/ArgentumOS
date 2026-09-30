@@ -24,6 +24,7 @@
  */
 
 #import <Foundation/NSSortDescriptor.h>
+#import <Foundation/NSCoder.h>	/* the NSCoding doors call the coder's methods, not just its type */
 #import <Foundation/NSKeyValueCoding.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSException.h>
@@ -78,6 +79,46 @@
 		_selector = selector;
 	}
 	return self;
+}
+
+/* ===================================================================================================
+ * THE NSCoding DOORS (§63.17). THE FOURTH FIELD IS A BLOCK AND CANNOT CROSS AN ARCHIVE, so the encoder REFUSES
+ * a comparator descriptor BY NAME rather than writing three of its four fields: a descriptor that came back
+ * without its comparator would sort by the key it also did not have — a silently wrong ORDER, which is the
+ * failure mode this library refuses rather than accepts.
+ *
+ * THE SELECTOR IS WRITTEN AS ITS NAME (`NSStringFromSelector`, read back with `NSSelectorFromString`, which
+ * registers a selector that does not exist yet — NSObject.h says so). That is the one spelling a selector has
+ * that survives an archive, and it is why a descriptor built with `-initWithKey:ascending:selector:` round
+ * trips while the comparator one does not.
+ * =================================================================================================== */
+static NSString *const kDescriptorKeyKey = @"NS.key";
+static NSString *const kDescriptorAscendingKey = @"NS.ascending";
+static NSString *const kDescriptorSelectorKey = @"NS.selector";
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	if (_comparator != NULL) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSSortDescriptor: a descriptor built with a comparator holds a BLOCK and "
+				   "cannot cross an archive"];
+	}
+	[coder encodeObject:_key forKey:kDescriptorKeyKey];
+	[coder encodeBool:_ascending forKey:kDescriptorAscendingKey];
+	[coder encodeObject:_selector != NULL ? NSStringFromSelector(_selector) : nil
+		     forKey:kDescriptorSelectorKey];
+}
+
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	NSString *selectorName = [coder decodeObjectForKey:kDescriptorSelectorKey];
+
+	/* THROUGH THE FUNNEL, which is `-initWithKey:ascending:selector:` for every descriptor that CAN be
+	 * archived — the comparator case never reaches here because the WRITER refused it. A key of nil is legal
+	 * (the header says why: it compares the objects themselves), so nothing here refuses it. */
+	return [self initWithKey:[coder decodeObjectForKey:kDescriptorKeyKey]
+		       ascending:[coder decodeBoolForKey:kDescriptorAscendingKey]
+			selector:selectorName != nil ? NSSelectorFromString(selectorName) : NULL];
 }
 
 - (instancetype)initWithKey:(nullable NSString *)key

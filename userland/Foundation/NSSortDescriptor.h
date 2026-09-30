@@ -36,6 +36,8 @@
 
 #import <Foundation/NSObject.h>
 #import <Foundation/NSObjCRuntime.h>
+/* FOR `NSCoding` AND THE `NSCoder` ITS TWO DOORS TAKE (§63.17). */
+#import <Foundation/NSCoding.h>
 
 @class NSString;
 @class NSArray;
@@ -44,7 +46,15 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface NSSortDescriptor : NSObject <NSCopying>
+@interface NSSortDescriptor : NSObject <NSCopying, NSCoding>
+
+/* THE NSCoding DOORS (§63.17), AND ONE OF THE FOUR FIELDS CANNOT CROSS AN ARCHIVE. A descriptor built with a
+ * COMPARATOR holds a BLOCK, and a block is not an object this archive can carry — so the ENCODER REFUSES it by
+ * name rather than writing a descriptor that would come back without its rule (a silently wrong sort). The
+ * other three cross: the key as a string, the ascending flag, and the SELECTOR as its NAME
+ * (`NSStringFromSelector`/`NSSelectorFromString`), which is the one way a selector can be written down. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
+- (void)encodeWithCoder:(NSCoder *)coder;
 
 /*
  * The key is nullable because `nil` is a real answer in Cocoa: a descriptor with no key

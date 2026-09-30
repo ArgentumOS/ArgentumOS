@@ -7,6 +7,7 @@
  */
 
 #import <Foundation/NSNotification.h>
+#import <Foundation/NSCoder.h>	/* the NSCoding doors call the coder's methods, not just its type */
 #import <Foundation/NSString.h>
 #import <Foundation/NSDictionary.h>
 

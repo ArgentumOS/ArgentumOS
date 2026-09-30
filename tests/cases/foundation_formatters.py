@@ -32,7 +32,7 @@ PROBE = "/System/Shared/tests/foundation_formatters"
 CHECKS = (
     # the NSFormatter debt folded in
     "fmt-attributed-default", "fmt-editing-invokes", "fmt-partial-delegates",
-    "fmt-partial-nil-string", "fmt-nscoding",
+    "fmt-partial-nil-string", "fmt-nscoding", "dateinterval-nscoding-round-trip",
     # NSPersonNameComponents
     "pnc-absent", "pnc-bag", "pnc-setter-copies", "pnc-copy-deep", "pnc-securecoding",
     # NSListFormatter

@@ -18,15 +18,25 @@
 
 #import <Foundation/NSDate.h>
 #import <Foundation/NSObject.h>
+/* FOR `NSCoding` AND THE `NSCoder` ITS TWO DOORS TAKE (§63.17). */
+#import <Foundation/NSCoding.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface NSDateInterval : NSObject <NSCopying>
+@interface NSDateInterval : NSObject <NSCopying, NSCoding>
 {
 	NSDate *_startDate;
 	NSDate *_endDate;
 	NSTimeInterval _duration;
 }
+
+/* THE NSCoding DOORS (§63.17). THE TWO ENDS ARE THE STATE and the duration is DERIVED — the canonical
+ * constructor computes `endDate` from `start` + `duration` — so the pair writes the ends and the decoder goes
+ * through `-initWithStartDate:endDate:`, which is also where the class's INVARIANT lives (an end before the
+ * start raises). A corrupt archive is therefore refused by the same line that refuses a caller, rather than by
+ * a second check that could drift from it. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
+- (void)encodeWithCoder:(NSCoder *)coder;
 
 /* BOTH ARE EXACT, and both RAISE for an interval that cannot exist: a negative duration, or an end
  * before the start. An interval whose ends are out of order is not an interval, and answering one

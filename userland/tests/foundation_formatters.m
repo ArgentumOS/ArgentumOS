@@ -2106,6 +2106,60 @@ int main(void)
 			 withoutUnit == nil ? @"(nil)" : withoutUnit, naturalScaleImplemented]);
 	}
 
+	{
+		/* THE DATE INTERVAL'S NSCoding DOORS (§63.17). Its state is the TWO ENDS and the duration is derived,
+		 * so the round trip asserts the ends AND the derived duration — a decoder that restored the dates and
+		 * recomputed the span would pass the ends alone, and one that restored a WRONG span would pass both
+		 * dates. The start is pinned to a fixed reference date so the comparison is exact rather than
+		 * "close enough", which is the same reason the class exists.
+		 *
+		 * AND THE INVARIANT IS ASSERTED THROUGH THE DECODER: an archive whose end precedes its start is
+		 * refused by the CONSTRUCTOR the decoder reuses (the class's one rule), not by a second check. */
+		NSDate *start = [NSDate dateWithTimeIntervalSinceReferenceDate:1000.0];
+		NSDate *later = [NSDate dateWithTimeIntervalSinceReferenceDate:5000.0];
+		NSDateInterval *interval = [[NSDateInterval alloc] initWithStartDate:start duration:250.0];
+		NSData *data = [NSKeyedArchiver archivedDataWithRootObject:interval];
+		NSDateInterval *back = data != nil
+			? [NSKeyedUnarchiver unarchiveObjectWithData:data] : nil;
+		BOOL refusedInvariant = NO;
+
+		@try {
+			NSMutableData *buffer = [[NSMutableData alloc] init];
+			NSKeyedArchiver *writer = [[NSKeyedArchiver alloc]
+				initForWritingWithMutableData:buffer];
+
+			[writer encodeObject:start forKey:@"NS.startDate"];
+			[writer encodeObject:later forKey:@"NS.endDate"];	/* end AFTER start: fine */
+			[writer finishEncoding];
+			(void)[[NSDateInterval alloc] initWithCoder:
+				[[NSKeyedUnarchiver alloc] initForReadingWithData:buffer]];
+			/* THE SAME ARCHIVE WITH THE ENDS SWAPPED is the corrupt case, written through the same door. */
+			NSMutableData *reversedBuffer = [[NSMutableData alloc] init];
+			NSKeyedArchiver *reversedWriter = [[NSKeyedArchiver alloc]
+				initForWritingWithMutableData:reversedBuffer];
+
+			[reversedWriter encodeObject:later forKey:@"NS.startDate"];
+			[reversedWriter encodeObject:start forKey:@"NS.endDate"];
+			[reversedWriter finishEncoding];
+			(void)[[NSDateInterval alloc] initWithCoder:
+				[[NSKeyedUnarchiver alloc] initForReadingWithData:reversedBuffer]];
+		} @catch (NSException *e) {
+			refusedInvariant = [[e name] isEqualToString:NSInvalidArgumentException];
+		}
+		check("dateinterval-nscoding-round-trip",
+		      [interval conformsToProtocol:@protocol(NSCoding)] &&
+		      back != nil && [back isKindOfClass:[NSDateInterval class]] &&
+		      [[back startDate] isEqualToDate:start] &&
+		      [[back endDate] isEqualToDate:
+			[NSDate dateWithTimeIntervalSinceReferenceDate:1250.0]] &&
+		      [back duration] == 250.0 &&
+		      refusedInvariant,
+		      [NSString stringWithFormat:@"start=%@ end=%@ duration=%g refusedInvariant=%d",
+			back != nil ? [back startDate] : @"(nil)",
+			back != nil ? [back endDate] : @"(nil)",
+			back != nil ? [back duration] : -1.0, (int)refusedInvariant]);
+	}
+
 	printf("FOUNDATION-FORMATTERS RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-FORMATTERS-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-FORMATTERS DONE\n");
