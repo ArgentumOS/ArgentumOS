@@ -26,6 +26,8 @@
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSNotification.h>
 
+@class NSURL;	/* only named here; NSBundle.m imports NSURL.h, and a forward declaration keeps the two headers from importing each other */
+
 NS_ASSUME_NONNULL_BEGIN
 
 /* Five codes, distinct from each other; the 64-bit marker Apple puts in its high word is NOT reproduced, because
@@ -131,6 +133,120 @@ extern NSString *const NSLoadedClasses;
 - (BOOL)isLoaded;
 - (_Nullable Class)principalClass;
 - (BOOL)unload;
+
+/* ---- CREATING A BUNDLE FROM A CLASS OR A URL ------------------------------------------------------
+ *
+ * +bundleForClass: is Apple's "the bundle that provided this class". libobjc2 exposes `objc_getClassList`
+ * but not `class_getImageName`, so the class's IMAGE is found with `dladdr` on the class object (ELF resolves
+ * it to the shared object the linker put the class in), and the open bundle whose path is a prefix of that
+ * image is the answer; a bundle that NAMES the class as its NSPrincipalClass is matched first, without an
+ * image walk. A class whose image lies under no open bundle answers nil, and NO bundle is opened to find one:
+ * Apple's door returns an already-associated bundle, which is what this one does.
+ *
+ * +bundleWithURL: and -initWithURL: are the URL spellings of the path doors: the URL's `-path` is the path,
+ * so a URL that is not a file URL (its `-path` is nil) answers nil. */
++ (NSBundle * _Nullable)bundleForClass:(Class)aClass;
++ (NSBundle * _Nullable)bundleWithURL:(NSURL *)url;
+- (instancetype _Nullable)initWithURL:(NSURL *)url;
+
+/* ---- THE STANDARD BUNDLE DIRECTORIES AND THEIR URLS --------------------------------------------------
+ *
+ * Each names a directory the bundle layout defines, relative to the LAYOUT directory (the bundle itself for a
+ * flat bundle, its Contents/ for a Contents bundle). ONE RULE IS SHARED AND IS A CHOICE: a directory door
+ * answers its path ONLY WHEN THAT DIRECTORY EXISTS, and nil otherwise -- Apple's "the bundle's X directory" is
+ * nil for a bundle that has none, rather than a path to a directory that is not there. The exceptions are
+ * -bundleURL and -resourceURL, whose paths are the bundle's own and always answer, and -executableURL, which
+ * follows the manifest's CFBundleExecutable whether or not the file is present (the manifest, not the disk, is
+ * its source) -- the same split -executablePath already uses. */
+- (NSURL *)bundleURL;
+- (NSURL * _Nullable)executableURL;
+- (NSURL *)resourceURL;
+- (NSString * _Nullable)pathForAuxiliaryExecutable:(NSString *)executableName;
+- (NSURL * _Nullable)URLForAuxiliaryExecutable:(NSString *)executableName;
+- (NSString * _Nullable)builtInPlugInsPath;
+- (NSURL * _Nullable)builtInPlugInsURL;
+- (NSString * _Nullable)privateFrameworksPath;
+- (NSURL * _Nullable)privateFrameworksURL;
+- (NSString * _Nullable)sharedFrameworksPath;
+- (NSURL * _Nullable)sharedFrameworksURL;
+- (NSString * _Nullable)sharedSupportPath;
+- (NSURL * _Nullable)sharedSupportURL;
+
+/* ---- THE CLASS-METHOD RESOURCE DOORS, WHICH SEARCH THE MAIN BUNDLE -----------------------------------
+ *
+ * Apple's `+pathForResource:ofType:inDirectory:` and `+pathsForResourcesOfType:inDirectory:` are the class
+ * spelling of the instance doors and search the MAIN bundle. The two `...inBundleWithURL:` doors take the
+ * bundle to search as a URL: its path is read through this class's own bundle definition, so a URL that is not
+ * a bundle answers nil (or an empty array) rather than a lookup into nothing. */
++ (NSString * _Nullable)pathForResource:(NSString * _Nullable)name
+				ofType:(NSString * _Nullable)ext
+			   inDirectory:(NSString * _Nullable)subpath;
++ (NSArray *)pathsForResourcesOfType:(NSString * _Nullable)ext
+			 inDirectory:(NSString * _Nullable)subpath;
++ (NSURL * _Nullable)URLForResource:(NSString * _Nullable)name
+		      withExtension:(NSString * _Nullable)ext
+		       subdirectory:(NSString * _Nullable)subpath
+		  inBundleWithURL:(NSURL *)bundleURL;
++ (NSArray *)URLsForResourcesWithExtension:(NSString * _Nullable)ext
+			      subdirectory:(NSString * _Nullable)subpath
+			 inBundleWithURL:(NSURL *)bundleURL;
+
+/* ---- THE LOCALIZATION-AWARE RESOURCE DOORS -----------------------------------------------------------
+ *
+ * These take an explicit LOCALIZATION and search that localization's `.lproj` directory first, falling back to
+ * the flat lookup when it holds no such file. THE BOUNDARY IS THE ONE -localizedStringForKey:...: NAMES: this
+ * library performs no NEGOTIATION, so a caller that wants "the language the user wants" asks
+ * +preferredLocalizationsFromArray: and passes the answer here. */
+- (NSString * _Nullable)pathForResource:(NSString * _Nullable)name
+				ofType:(NSString * _Nullable)ext
+			   inDirectory:(NSString * _Nullable)subpath
+		       forLocalization:(NSString * _Nullable)localization;
+- (NSArray *)pathsForResourcesOfType:(NSString * _Nullable)ext
+			 inDirectory:(NSString * _Nullable)subpath
+		     forLocalization:(NSString * _Nullable)localization;
+- (NSURL * _Nullable)URLForResource:(NSString * _Nullable)name
+		      withExtension:(NSString * _Nullable)ext
+		       subdirectory:(NSString * _Nullable)subpath
+		       localization:(NSString * _Nullable)localization;
+- (NSArray *)URLsForResourcesWithExtension:(NSString * _Nullable)ext
+			      subdirectory:(NSString * _Nullable)subpath
+			      localization:(NSString * _Nullable)localization;
+- (NSURL * _Nullable)URLForResource:(NSString * _Nullable)name
+		      withExtension:(NSString * _Nullable)ext;
+- (NSURL * _Nullable)URLForResource:(NSString * _Nullable)name
+		      withExtension:(NSString * _Nullable)ext
+		       subdirectory:(NSString * _Nullable)subpath;
+- (NSArray *)URLsForResourcesWithExtension:(NSString * _Nullable)ext
+			      subdirectory:(NSString * _Nullable)subpath;
+
+/* ---- LOCALIZATION INFORMATION, AND A LOCALIZED STRING OVER AN EXPLICIT LIST --------------------------
+ *
+ * +preferredLocalizationsFromArray: answers which of the given localizations this system would use, matching
+ * them against the current locale's identifier and language; with NO match it answers the array unchanged,
+ * which is Apple's best-effort fallback. The `forPreferences:` door does the same over an explicit list. The
+ * source of "the user's languages" is the ONE this library has -- NSLocale's current identifier -- and the
+ * header names that rather than implying a full preferred-languages list. */
++ (NSArray *)preferredLocalizationsFromArray:(NSArray *)localizationsArray;
++ (NSArray *)preferredLocalizationsFromArray:(NSArray *)localizationsArray
+			      forPreferences:(nullable NSArray *)preferencesArray;
+- (NSString * _Nullable)developmentLocalization;
+- (NSDictionary * _Nullable)localizedInfoDictionary;
+- (NSArray *)preferredLocalizations;
+- (NSString *)localizedStringForKey:(NSString *)key
+			     value:(nullable NSString *)value
+			     table:(nullable NSString *)tableName
+		     localizations:(nullable NSArray *)localizations;
+
+/* ---- CLASS LOOKUP, AND CODE LOADING THAT REPORTS ITS ERROR -------------------------------------------
+ *
+ * -classNamed: answers a class THE BUNDLE PROVIDES: the runtime is asked for the name, and the class is
+ * answered only when dladdr places its image under this bundle's path (when dladdr cannot place it the class
+ * is answered, which is as much as this system can say). -loadAndReturnError: and -preflightAndReturnError:
+ * are the error-reporting forms of -load: a bundle that names no loadable executable fills `error` with an
+ * NSCocoaErrorDomain / NSFileNoSuchFileError and answers NO. */
+- (_Nullable Class)classNamed:(NSString *)className;
+- (BOOL)loadAndReturnError:(NSError **)error;
+- (BOOL)preflightAndReturnError:(NSError **)error;
 
 @end
 

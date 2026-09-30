@@ -15,7 +15,20 @@ format exists in the image.
   * `bundle-resource-lookup`                     — a hit, a miss answered nil, and resourcePath;
   * `bundle-localizations-come-from-lproj-directories` — en and fr from *.lproj;
   * `main-bundle-exists-even-for-a-plain-tool`   — the executable's directory, per Apple;
-  * `bundle-by-identifier-searches-the-opened-ones` — the registry, and nil for an unknown one.
+  * `bundle-by-identifier-searches-the-opened-ones` — the registry, and nil for an unknown one;
+  * `bundle-urls-follow-their-paths`                — bundleURL/resourceURL/executableURL mirror their paths;
+  * `resource-urls-mirror-the-path-lookups`         — URLForResource and URLsForResources over the paths;
+  * `resource-url-in-bundle-with-url`               — the class door over a bundle URL, nil for a non-bundle;
+  * `bundle-from-url-and-init-with-url`             — bundleWithURL: and initWithURL:;
+  * `standard-bundle-directories-are-existence-gated` — PlugIns/Frameworks present, SharedSupport nil;
+  * `auxiliary-executable-path-and-url`             — an auxiliary executable found, a miss nil, URL mirrors;
+  * `class-resource-door-searches-the-main-bundle`  — the class resource doors over the main bundle;
+  * `localization-aware-resource-lookup`            — a .lproj hit, a fallback, and the plural door;
+  * `localized-string-over-explicit-localizations`  — the explicit-localization string door, hit and fallback;
+  * `preferred-localizations-match-preferences`     — a match, and the unchanged no-match answer;
+  * `development-localization-and-localized-info`   — CFBundleDevelopmentRegion and localizedInfoDictionary;
+  * `class-lookup-and-bundle-for-class`             — classNamed: and bundleForClass:;
+  * `loading-doors-report-their-error`              — loadAndReturnError:/preflightAndReturnError: and NSError.
 """
 
 import re
@@ -26,11 +39,16 @@ PROBE = "/System/Shared/tests/foundation_bundle"
 CHECKS = ("bundle-rejects-a-directory-with-no-manifest", "bundle-accepts-both-layouts",
           "bundle-reads-its-plist-manifest", "bundle-finds-its-executable", "bundle-resource-lookup",
           "bundle-localizations-come-from-lproj-directories", "main-bundle-exists-even-for-a-plain-tool",
-          "bundle-by-identifier-searches-the-opened-ones", "bundle-load-brings-in-real-code",
+          "bundle-by-identifier-searches-the-opened-ones", "bundle-urls-follow-their-paths",
+          "resource-urls-mirror-the-path-lookups", "resource-url-in-bundle-with-url",
+          "bundle-from-url-and-init-with-url", "standard-bundle-directories-are-existence-gated",
+          "auxiliary-executable-path-and-url", "class-resource-door-searches-the-main-bundle",
+          "localization-aware-resource-lookup", "localized-string-over-explicit-localizations",
+          "preferred-localizations-match-preferences", "development-localization-and-localized-info",
+          "bundle-load-refuses-a-payload-that-is-not-code", "bundle-load-brings-in-real-code",
           "bundle-principal-class-comes-from-the-manifest", "bundle-loaded-class-is-usable",
-          "bundle-load-posts-its-notification-with-the-classes",
-          "bundle-load-refuses-a-payload-that-is-not-code",
-          "bundle-unload-answers-no-when-nothing-was-loaded")
+          "class-lookup-and-bundle-for-class", "bundle-load-posts-its-notification-with-the-classes",
+          "loading-doors-report-their-error", "bundle-unload-answers-no-when-nothing-was-loaded")
 
 
 class Case(BaseCase):

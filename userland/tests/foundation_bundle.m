@@ -78,12 +78,33 @@ static const char *FN_CONTENTS_PLIST =
 	"\t<key>CFBundleName</key>\n\t<string>Bundle Fixture</string>\n"
 	"\t<key>CFBundleExecutable</key>\n\t<string>foundation_bundle_payload.so</string>\n"
 	"\t<key>NSPrincipalClass</key>\n\t<string>BundleFixturePrincipal</string>\n"
+	"\t<key>CFBundleDevelopmentRegion</key>\n\t<string>en</string>\n"
 	"</dict>\n</plist>\n";
 
 static const char *FN_FLAT_PLIST =
 	"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<plist version=\"1.0\">\n<dict>\n"
 	"\t<key>CFBundleIdentifier</key>\n\t<string>org.argentum.probe.flat</string>\n"
 	"\t<key>CFBundleExecutable</key>\n\t<string>bundle_fixture</string>\n"
+	"</dict>\n</plist>\n";
+
+/* A BUNDLE WHOSE EXECUTABLE IS NOT THERE: the error-reporting loading doors must fail on it and say why. */
+static const char *FN_MISSING_PLIST =
+	"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<plist version=\"1.0\">\n<dict>\n"
+	"\t<key>CFBundleIdentifier</key>\n\t<string>org.argentum.probe.missing</string>\n"
+	"\t<key>CFBundleExecutable</key>\n\t<string>not-here</string>\n"
+	"</dict>\n</plist>\n";
+
+/* THE TWO STRING TABLES the explicit-localization string door reads: one inside en.lproj, one at the resource
+ * root, both real property lists (the reader this library ships is proved on that form). Two DIFFERENT values
+ * for one key is what makes the localization hit and the flat fallback distinguishable. */
+static const char *FN_EN_TABLE =
+	"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<plist version=\"1.0\">\n<dict>\n"
+	"\t<key>k</key>\n\t<string>en-value</string>\n"
+	"</dict>\n</plist>\n";
+
+static const char *FN_FLAT_TABLE =
+	"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<plist version=\"1.0\">\n<dict>\n"
+	"\t<key>k</key>\n\t<string>flat-value</string>\n"
 	"</dict>\n</plist>\n";
 
 static void fn_build_fixtures(void)
@@ -106,6 +127,19 @@ static void fn_build_fixtures(void)
 	/* the flat bundle's EXECUTABLE is that text file: what "a payload that is not code" means here. */
 	snprintf(path, sizeof path, "%s/FlatFixture.app/bundle_fixture", FN_ROOT); fn_write(path, "this is a text file, not an object file\n");
 	snprintf(path, sizeof path, "%s/NotABundle", FN_ROOT); fn_mkdirs(path);
+	/* THE STANDARD SUBDIRECTORIES the directory doors name: PlugIns and Frameworks exist, SharedSupport does
+	 * not, so the existence gate is exercised on both sides of one check. */
+	snprintf(path, sizeof path, "%s/BundleFixture.app/Contents/PlugIns", FN_ROOT); fn_mkdirs(path);
+	snprintf(path, sizeof path, "%s/BundleFixture.app/Contents/Frameworks", FN_ROOT); fn_mkdirs(path);
+	/* A RESOURCE INSIDE en.lproj, so the localization-aware lookup has a hit in one localization and none in
+	 * the other (fr), which is what makes the fallback observable. */
+	snprintf(path, sizeof path, "%s/BundleFixture.app/Contents/Resources/en.lproj/hello.txt", FN_ROOT); fn_write(path, "the english fixture resource\n");
+	/* TWO STRING TABLES for the explicit-localization string door: one inside en.lproj, one at the root. */
+	snprintf(path, sizeof path, "%s/BundleFixture.app/Contents/Resources/en.lproj/T.strings", FN_ROOT); fn_write(path, FN_EN_TABLE);
+	snprintf(path, sizeof path, "%s/BundleFixture.app/Contents/Resources/T.strings", FN_ROOT); fn_write(path, FN_FLAT_TABLE);
+	/* A BUNDLE WHOSE EXECUTABLE IS ABSENT: the error-reporting loading doors must fail and say why. */
+	snprintf(path, sizeof path, "%s/MissingExe.app", FN_ROOT); fn_mkdirs(path);
+	snprintf(path, sizeof path, "%s/MissingExe.app/Info.plist", FN_ROOT); fn_write(path, FN_MISSING_PLIST);
 }
 
 static int okc, failc;
@@ -204,6 +238,105 @@ int main(void)
 	      [NSBundle bundleWithIdentifier:@"org.argentum.no.such.bundle"] == nil,
 	      "the identifier answers the opened bundle, and an unknown identifier answers nil");
 
+	/* ---- THE URL AND STANDARD-DIRECTORY DOORS. Each is built on the path vocabulary the checks above proved,
+	 * so a pass here is a pass of the URL/directory half in particular. ---- */
+	{
+		NSURL *contentsURL = [NSURL fileURLWithPath:@FIXTURES "BundleFixture.app"];
+		NSURL *notBundleURL = [NSURL fileURLWithPath:@FIXTURES "NotABundle"];
+		NSURL *helloURL = [contents URLForResource:@"hello" withExtension:@"txt"];
+		NSArray *helloURLs = [contents URLsForResourcesWithExtension:@"txt" subdirectory:nil];
+		NSURL *byBundleURL = [NSBundle URLForResource:@"hello" withExtension:@"txt"
+						subdirectory:nil inBundleWithURL:contentsURL];
+		/* The nullable path doors come back into LOCALS whose types carry no nullability: isEqualToString:
+		 * wants a nonnull string and these doors may answer nil, so binding them first keeps both honest. */
+		NSString *bundlePath = [contents bundlePath];
+		NSString *resourcePath = [contents resourcePath];
+		NSString *executablePath = [contents executablePath];
+		NSString *flatHello = [contents pathForResource:@"hello" ofType:@"txt"];
+
+		check("bundle-urls-follow-their-paths",
+		      [[[contents bundleURL] path] isEqualToString:bundlePath] &&
+		      [[[contents resourceURL] path] isEqualToString:resourcePath] &&
+		      [[[contents executableURL] path] isEqualToString:executablePath],
+		      "3 URLs (bundle, resource, executable) each equal their path");
+
+		check("resource-urls-mirror-the-path-lookups",
+		      [[helloURL path] isEqualToString:flatHello] &&
+		      [helloURLs count] == 1 &&
+		      [[[helloURLs objectAtIndex:0] path] isEqualToString:[helloURL path]],
+		      "1 URL equals its 1 path, and the plural door returns 1 of 1 file");
+
+		check("resource-url-in-bundle-with-url",
+		      byBundleURL != nil && [[byBundleURL path] hasSuffix:@"Resources/hello.txt"] &&
+		      [NSBundle URLForResource:@"hello" withExtension:@"txt" subdirectory:nil
+				      inBundleWithURL:notBundleURL] == nil,
+		      "1 of 2 bundle URLs finds the resource; the non-bundle finds 0");
+
+		check("bundle-from-url-and-init-with-url",
+		      [[[NSBundle bundleWithURL:contentsURL] bundlePath] isEqualToString:[contents bundlePath]] &&
+		      [[[[NSBundle alloc] initWithURL:contentsURL] bundlePath] isEqualToString:[contents bundlePath]] &&
+		      [NSBundle bundleWithURL:notBundleURL] == nil,
+		      "2 of 3 URLs open a bundle (bundleWithURL:, initWithURL:); 1 is not a bundle");
+	}
+
+	{
+		NSString *plugInsPath = [contents builtInPlugInsPath];
+
+		check("standard-bundle-directories-are-existence-gated",
+		      [plugInsPath hasSuffix:@"Contents/PlugIns"] &&
+		      [[contents privateFrameworksPath] hasSuffix:@"Contents/Frameworks"] &&
+		      [contents sharedSupportPath] == nil &&
+		      [[[contents builtInPlugInsURL] path] isEqualToString:plugInsPath],
+		      "2 of 3 directories present (PlugIns, Frameworks), 1 absent (SharedSupport)");
+	}
+
+	{
+		NSString *auxPath = [contents pathForAuxiliaryExecutable:@"foundation_bundle_payload.so"];
+
+		check("auxiliary-executable-path-and-url",
+		      [auxPath hasSuffix:@"Contents/MacOS/foundation_bundle_payload.so"] &&
+		      [contents pathForAuxiliaryExecutable:@"nope"] == nil &&
+		      [[[contents URLForAuxiliaryExecutable:@"foundation_bundle_payload.so"] path]
+			isEqualToString:auxPath],
+		      "1 executable found, 1 missing answers nil, and its 1 URL mirrors the path");
+	}
+
+	check("class-resource-door-searches-the-main-bundle",
+	      [contents pathForResource:@"hello" ofType:@"txt"] != nil &&
+	      [NSBundle pathForResource:@"hello" ofType:@"txt" inDirectory:nil] ==
+		[[NSBundle mainBundle] pathForResource:@"hello" ofType:@"txt" inDirectory:nil] &&
+	      [[NSBundle pathsForResourcesOfType:@"txt" inDirectory:nil] count] ==
+		[[[NSBundle mainBundle] pathsForResourcesOfType:@"txt" inDirectory:nil] count],
+	      "the 2 class doors answer their mainBundle; the fixture holds the 1 file");
+
+	check("localization-aware-resource-lookup",
+	      [[contents pathForResource:@"hello" ofType:@"txt" inDirectory:nil forLocalization:@"en"]
+		hasSuffix:@"en.lproj/hello.txt"] &&
+	      [[contents pathForResource:@"hello" ofType:@"txt" inDirectory:nil forLocalization:@"fr"]
+		hasSuffix:@"Resources/hello.txt"] &&
+	      [[contents pathsForResourcesOfType:@"txt" inDirectory:nil forLocalization:@"en"] count] == 1,
+	      "en finds 1 in en.lproj; fr falls back to the 1 flat file; the plural door returns 1");
+
+	check("localized-string-over-explicit-localizations",
+	      [[contents localizedStringForKey:@"k" value:nil table:@"T" localizations:@[@"en"]]
+		isEqualToString:@"en-value"] &&
+	      [[contents localizedStringForKey:@"k" value:nil table:@"T" localizations:@[@"de"]]
+		isEqualToString:@"flat-value"],
+	      "1 of 2 localizations picks its own table (en), the other falls back (de) to 1 flat value");
+
+	check("preferred-localizations-match-preferences",
+	      [[NSBundle preferredLocalizationsFromArray:@[@"en", @"fr", @"de"] forPreferences:@[@"fr"]]
+		isEqualToArray:@[@"fr"]] &&
+	      [[NSBundle preferredLocalizationsFromArray:@[@"en", @"fr"] forPreferences:@[@"es"]]
+		isEqualToArray:@[@"en", @"fr"]],
+	      "1 of 3 available matches 1 preference; 0 matches leaves the 2-element list unchanged");
+
+	check("development-localization-and-localized-info",
+	      [[contents developmentLocalization] isEqualToString:@"en"] &&
+	      [[[contents localizedInfoDictionary] objectForKey:@"CFBundleName"] isEqualToString:@"Bundle Fixture"] &&
+	      [[contents preferredLocalizations] count] >= 1,
+	      "1 development region, 1 manifest value, and >=1 preferred localization");
+
 	/* THE CODE-LOADING HALF, HONESTLY: the fixture's payload is a TEXT FILE, so dlopen must FAIL - and the
 	 * check requires exactly that, plus that a bundle which was never loaded reports so and that asking for a
 	 * principal class answers nil rather than crashing. THE POSITIVE PATH IS NOT ASSERTED HERE: proving -load
@@ -240,10 +373,35 @@ int main(void)
 		check("bundle-loaded-class-is-usable",
 		      answer != nil && [answer isEqualToString:@"the payload answered"],
 		      "an instance of the loaded class answers through the library's own code");
+		/* -classNamed: MUST ANSWER A CLASS THE BUNDLE PROVIDES, and +bundleForClass: the bundle that provided
+		 * it: the class the manifest named comes back, a name the runtime does not know comes back nil, and a
+		 * class OUTSIDE the bundle (NSObject, in the library's own image) has no providing fixture bundle. */
+		check("class-lookup-and-bundle-for-class",
+		      [contents classNamed:@"BundleFixturePrincipal"] == principal &&
+		      [contents classNamed:@"no.such.Class"] == nil &&
+		      [NSBundle bundleForClass:principal] == contents &&
+		      [NSBundle bundleForClass:[NSObject class]] == nil,
+		      "1 of 2 names answered by -classNamed:, and the providing bundle is 1 of 1");
 		check("bundle-load-posts-its-notification-with-the-classes",
 		      fn_loaded_notification_seen && fn_loaded_classes != nil &&
 		      [fn_loaded_classes containsObject:@"BundleFixturePrincipal"],
 		      "NSBundleDidLoadNotification carried NSLoadedClasses naming the principal class");
+	}
+
+	/* THE ERROR-REPORTING LOADING DOORS. flat's executable is a text file that EXISTS, so -preflightAndReturnError:
+	 * is YES (a readable file) while -loadAndReturnError: is NO with an NSError (dlopen refuses it); a bundle
+	 * whose executable is ABSENT fails BOTH, each still carrying an NSError. */
+	{
+		NSBundle *missing = [NSBundle bundleWithPath:@FIXTURES "MissingExe.app"];
+		NSError *err = nil;
+		BOOL preflight = [flat preflightAndReturnError:&err];
+		BOOL loaded = [flat loadAndReturnError:&err];
+
+		check("loading-doors-report-their-error",
+		      missing != nil && preflight && !loaded && err != nil &&
+		      ![missing preflightAndReturnError:&err] && err != nil &&
+		      ![missing loadAndReturnError:&err] && err != nil,
+		      "3 error paths (flat preflight read-yes, flat load-no, missing exe) each carry 1 NSError");
 	}
 
 	{
