@@ -232,6 +232,69 @@ int main(void)
 		      [NSString stringWithFormat:@"info=%p want=%p", back, (void *)payload]);
 	}
 
+	{
+		/* A DEAD OBJECT TAKES ITS REGISTRATIONS WITH IT (§63.21). THE OBSERVED OBJECT HERE DIES WITHOUT
+		 * -removeObserver: ON PURPOSE: that is the abandon path, and the only one where the registry has to act
+		 * on its own.
+		 *
+		 * THE INSTRUMENT IS AN ADDRESS, and it is the reason this check can be deterministic at all. The
+		 * registry is keyed by POINTER IDENTITY (a global table, where Apple's is per-object), so the defect is
+		 * not "an entry leaks" in the abstract - it is that a FRESH object allocated at the dead object's
+		 * recycled address INHERITS the dead object's registrations. So: let the object die, allocate the same
+		 * class until one lands on that address, and ask it to remove an observer it never had.
+		 *
+		 *   * WITH THE DEFECT (the abandoned registration still in the table) the removal MATCHES the stale
+		 *     entry and SUCCEEDS - both a wrong-observer hazard and proof the entry survived;
+		 *   * WITH THE FIX the fresh object has no registration, so the removal RAISES (the file's own rule:
+		 *     "removing something that was never registered is a programming error").
+		 *
+		 * AND THE RECYCLE IS ASSERTED, NOT ASSUMED: if no allocation landed on the address the check FAILS
+		 * rather than passing vacuously, because "the removal raised" is meaningless for an object that was
+		 * never the same object. 64 same-size allocations is far more than a free-list needs.
+		 *
+		 * ⚠ AND THE ADDRESS MUST BE CAPTURED WITHOUT RETAINING IT. A plain `id deadAddress` is a STRONG local
+		 * under ARC, so `deadAddress = watched` RETAINS the object this check needs to die - the measurement
+		 * then reports recycled=0 and reads like an allocator that never recycles. `__unsafe_unretained` is the
+		 * point: the probe wants the ADDRESS and nothing else. */
+		__unsafe_unretained id deadAddress = nil;
+		KVOProbe *watcher = [[KVOProbe alloc] init];
+		KVOThing *fresh = nil;
+		BOOL recycled = NO, staleMatched = NO;
+		int i;
+
+		{
+			KVOThing *watched = [[KVOThing alloc] init];
+
+			[watched addObserver:watcher forKeyPath:@"amount"
+				     options:NSKeyValueObservingOptionNew context:NULL];
+			deadAddress = watched;
+		}	/* ARC releases it here: it dies WITH the registration still in the table */
+
+		for (i = 0; i < 64 && !recycled; i++) {
+			fresh = [[KVOThing alloc] init];
+			if ((id)fresh == deadAddress) {
+				recycled = YES;
+			} else {
+				fresh = nil;	/* ARC releases it on the next assignment */
+			}
+		}
+		if (recycled) {
+			@try {
+				[fresh removeObserver:watcher forKeyPath:@"amount"];
+				staleMatched = YES;
+			} @catch (NSException *e) {
+				staleMatched = NO;
+			}
+		}
+		check("a-dead-object-takes-its-registrations-with-it",
+		      recycled && !staleMatched,
+		      [NSString stringWithFormat:@"the dead object's address was recycled=%d (asserted, so this cannot "
+			@"pass vacuously) and a fresh object at that address found its registration=%d (0 means the entry "
+			@"died with the object; 1 means the stale entry matched, which is the leak)",
+			(int)recycled, (int)staleMatched]);
+		fresh = nil;
+	}
+
 	printf("FOUNDATION-KVO RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

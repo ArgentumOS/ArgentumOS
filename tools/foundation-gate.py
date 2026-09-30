@@ -197,6 +197,10 @@ NULLABILITY_EXEMPT = {
     "NSObjCRuntime.h": "it DEFINES the two macros; a region there would be circular",
     "NSInvocation.h": "private: the x86-64 argument image, shared by the library's own units",
     "NSMethodSignature.h": "private: a category declaration for the library's own units",
+    "FNObjectDeath.h": "private: a C-only death seam — one function-pointer type and one variable. The "
+                       "parameter is an `NSObject *` that a subscriber compares by ADDRESS only (§63.21); "
+                       "there is no Objective-C declaration in the header for a region to annotate, and an "
+                       "`_Nonnull` on the slot's contents would be wrong because NULL is its initial state",
     "Foundation.h": "the umbrella: imports only, no declarations of its own",
     "FNArchiverWire.h": "C only: a tag enum, the magic and static inline byte codecs — it declares no "
                         "Objective-C pointer, so a region would annotate nothing",

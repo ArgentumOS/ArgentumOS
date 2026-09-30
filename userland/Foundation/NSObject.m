@@ -24,6 +24,7 @@
 #import <Foundation/NSMethodSignature.h>	/* stage F: the selector's types */
 #import <Foundation/NSInvocation.h>	/* stage F: what forwarding is handed */
 #include <objc/objc-arc.h>
+#import "FNObjectDeath.h"	/* §63.21: the identity-table cleanup seam */
 
 /*
  * The runtime's ownership entry points. The reference count is kept in a word
@@ -34,6 +35,10 @@ extern id objc_retain(id obj);
 extern void objc_release(id obj);
 extern id objc_autorelease(id obj);
 extern id object_dispose(id obj);
+
+/* §63.21: THE DEATH SEAM. Defined HERE, where it is called, so the call site is never an unresolved
+ * symbol; NULL until a subsystem that keys a table by object identity installs one (KVO does, lazily). */
+FNObjectDeathHook fn_object_death_hook = NULL;
 
 @implementation NSObject
 
@@ -117,7 +122,15 @@ extern id object_dispose(id obj);
 	 * an ARC-compiled subclass does automatically, since clang emits
 	 * objc_msg_lookup_super(dealloc) even though ARC forbids *writing*
 	 * `[super dealloc]`.
+	 *
+	 * AND THIS IS WHERE AN IDENTITY TABLE IS TOLD ITS KEY IS GOING AWAY (§63.21). The hook runs BEFORE the
+	 * dispose, while `self` is still the object's address, because the address is all a subscriber compares
+	 * against — and it is skipped entirely (one pointer test) when nobody has installed one, which is every
+	 * program that never registers a KVO observer.
 	 */
+	if (fn_object_death_hook != NULL) {
+		fn_object_death_hook(self);
+	}
 	object_dispose(self);
 }
 

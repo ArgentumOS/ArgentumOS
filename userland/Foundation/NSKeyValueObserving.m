@@ -29,6 +29,7 @@
 #import <Foundation/NSValue.h>
 #import <Foundation/NSNull.h>
 #import <Foundation/NSException.h>
+#import "FNObjectDeath.h"	/* §63.21: told when an object's address is going away */
 
 NSString *const NSKeyValueChangeKindKey = @"NSKeyValueChangeKindKey";
 NSString *const NSKeyValueChangeNewKey = @"NSKeyValueChangeNewKey";
@@ -81,12 +82,60 @@ static NSMutableArray *fn_registrations = nil;
 static NSMutableArray *fn_pendings = nil;
 static NSMutableArray *fn_infos = nil;
 
+/* §63.21: AN OBJECT'S DEATH TAKES ITS ROWS WITH IT — what this file could NOT do before the death seam
+ * existed. THE PROBLEM IS STRUCTURAL, NOT AN OVERSIGHT: Apple's registry is per-object, so it dies with the
+ * object for free; OURS IS A PROCESS-GLOBAL TABLE KEYED BY POINTER IDENTITY, so an entry whose object has
+ * died is not merely a leak — a NEW object allocated at the recycled address INHERITS the dead object's
+ * registrations, and `-removeObserver:forKeyPath:` then SUCCEEDS for an observer it never had. Measured
+ * before this hook existed: the fresh object matched the stale entry and the removal did not raise.
+ *
+ * ALL THREE TABLES ARE KEYED THE SAME WAY, so all three are swept here: registrations (`_observed`), pending
+ * records (`_observed` — a `-willChangeValueForKey:` whose object died before the matching `-did` would
+ * otherwise sit in the table forever), and `-observationInfo` entries (`_object`).
+ *
+ * THE CONTRACT, from FNObjectDeath.h: this runs for EVERY dying object, mid-death, and uses only the
+ * ADDRESS. It is bounded by the tables' own size, which is why the seam is installed LAZILY (below) and why
+ * a program that never registers an observer never reaches this function at all. */
+static void fn_object_died(NSObject *object)
+{
+	NSUInteger i;
+
+	if (fn_registrations == nil) {
+		return;
+	}
+	/* BACKWARDS, because a removal shifts the tail; these tables are small by nature. */
+	for (i = [fn_registrations count]; i > 0; i--) {
+		FNKVORegistration *held = [fn_registrations objectAtIndex:i - 1];
+
+		if (held->_observed == object) {
+			[fn_registrations removeObjectAtIndex:i - 1];
+		}
+	}
+	for (i = [fn_pendings count]; i > 0; i--) {
+		FNKVOPending *held = [fn_pendings objectAtIndex:i - 1];
+
+		if (held->_observed == object) {
+			[fn_pendings removeObjectAtIndex:i - 1];
+		}
+	}
+	for (i = [fn_infos count]; i > 0; i--) {
+		FNKVOInfo *held = [fn_infos objectAtIndex:i - 1];
+
+		if (held->_object == object) {
+			[fn_infos removeObjectAtIndex:i - 1];
+		}
+	}
+}
+
 static void fn_kvo_init(void)
 {
 	if (fn_registrations == nil) {
 		fn_registrations = [[NSMutableArray alloc] init];
 		fn_pendings = [[NSMutableArray alloc] init];
 		fn_infos = [[NSMutableArray alloc] init];
+		/* INSTALLED HERE, NOT AT `+load` TIME: the tables exist from this moment, so the hook is needed
+		 * from this moment — and a program that never calls KVO never installs one. */
+		fn_object_death_hook = fn_object_died;
 	}
 }
 

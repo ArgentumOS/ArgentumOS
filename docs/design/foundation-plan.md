@@ -15824,6 +15824,73 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.21 — A DEAD OBJECT TAKES ITS ROWS WITH IT: THE KVO LEAK §63.20 NAMED, AND THE DEATH SEAM IT REQUIRED (2026-09-30)
+
+**THE DEFECT, LOCATED BY READING RATHER THAN BY THE EARLIER GREP — and the grep had pointed at the wrong
+mechanism.** §63.20's sweep found `NSKeyValueObserving.m` as *"a file with borrowed-slot assignments and no
+`-dealloc`"*, and the first thing this unit established is that **the borrowing is NOT the bug**: `_observed`
+and `_observer` are `__unsafe_unretained` with *"NOT retained"* comments, which is **Apple's own KVO
+contract**, and the leak is elsewhere entirely. Reading the file ruled two suspects OUT:
+
+* **explicit removal is clean** — both `-removeObserver:forKeyPath:` and the `…context:` form end in
+  `[fn_registrations removeObjectAtIndex:i]`, which releases the registration;
+* **pending records are clean** — `-didChangeValueForKey:` ends in
+  `[fn_pendings removeObjectIdenticalTo:pending]`, and `-willChangeValueForKey:` returns early when nobody is
+  watching, so no record is created for an unobserved key.
+
+**THE REAL DEFECT IS STRUCTURAL, AND IT IS THE DIFFERENCE FROM APPLE'S DESIGN.** The three tables
+(`fn_registrations`, `fn_pendings`, `fn_infos`) are **process-global arrays keyed by POINTER IDENTITY**, and
+**nothing tells them an object died** — so a registration outlives its observed object. That is not only a leak
+of the registration and its copied key path: because the lookup is by address, **a NEW object allocated at the
+recycled address INHERITS the dead object's registrations** — a wrong-observer notification, and a
+`-removeObserver:forKeyPath:` that **succeeds for an observer the object never had**, defeating the file's own
+rule (*"removing something that was never registered is a programming error"*). Apple gets this for free: its
+registry is **per-object**, so it dies with the object.
+
+**THE INSTRUMENT IS AN ADDRESS, AND THE MEASUREMENT REPRODUCED BEFORE THE FIX.** The check lets an observed
+object die **without** removal, allocates its class until one lands on that address, and asks the fresh object
+to remove an observer it never had. Against the unfixed library:
+
+```
+FOUNDATION-KVO a-dead-object-takes-its-registrations-with-it FAIL the dead object's address was recycled=1
+    (asserted, so this cannot pass vacuously) and a fresh object at that address found its registration=1
+    (0 means the entry died with the object; 1 means the stale entry matched, which is the leak)
+FOUNDATION-KVO RESULT ok=8 fail=1
+```
+
+**⚠ AND THE FIRST RUN OF THAT CHECK MEASURED MY OWN PROBE, NOT THE LIBRARY** — a misfire worth recording,
+because it read exactly like a fact about the allocator: it reported **`recycled=0`**. The cause was ARC:
+`id deadAddress = nil; … deadAddress = watched;` is a **STRONG** local, so the assignment **RETAINED the very
+object whose death the check needed**, it never died, and there was nothing there to recycle. `__unsafe_unretained`
+is the fix — the probe wants the ADDRESS and nothing else — and **asserting `recycled`** is what turned a
+vacuous pass into a loud failure rather than a silent one.
+
+**THE FIX IS A DEATH SEAM, and it is the only clean one available.** New private header **`FNObjectDeath.h`**
+(the established `FN*.h` pattern) declaring one function-pointer slot, **defined in `NSObject.m`** where it is
+called, called from **`-[NSObject dealloc]` before `object_dispose(self)`** — the single point every object in
+this library passes through, reached while `self` is still the object's address. KVO installs it **lazily in
+`fn_kvo_init()`**, deliberately *not* at `+load` time: the tables exist from that moment, so the hook is needed
+from that moment, and a program that never registers an observer pays **one pointer test per dealloc** and
+never reaches the sweeper. The sweeper drops that address's rows from **all three** tables — registrations and
+pending records by `_observed`, info entries by `_object` — **backwards**, because a removal shifts the tail.
+
+**THE ALTERNATIVES WERE CONSIDERED AND ARE BOTH WORSE.** Retaining `_observed` in the registration would make a
+registered object **undieable** (a leak loop, and it contradicts the documented contract). Pruning inside the
+lookups is impossible: **an array scan cannot know whether a pointer is still live — that is the entire problem
+the seam solves.**
+
+**THE SEAM'S OWN LIMITS, STATED WHERE THE NEXT READER MEETS THEM:** it runs for **every** dying object
+(including objects the subscriber has never heard of), uses only the address, must not resurrect the object,
+and is a **single-consumer** slot — a second subscriber would have to chain. That is written in
+`FNObjectDeath.h` rather than left to be discovered.
+
+**VERIFICATION.** Host probe `foundation_kvo` **9/9** (was 8 ok + 1 FAIL on the unfixed library), with all eight
+pre-existing KVO checks unmoved; guest `TESTS-OK 1/1 case(s), 6/6 check(s)`; and because the hook now runs on
+**every object dealloc** the regression was chosen for object churn rather than for KVO —
+**`foundation_clusters` 17/17** and **`foundation_coder` 6/6** green; library **zero diagnostics**;
+`foundation-gate` OK with `FNObjectDeath.h` a **named exemption** (a C-only seam: one type, one variable, no
+Objective-C declaration to annotate); `make foundation-sweep` exit 0.
+
 ## §63.20 — `NSExpression` OWNS WHAT IT HOLDS: THE DEFECT §63.15 RECORDED, FIXED AND MEASURED (2026-09-30)
 
 **THE DEFECT (recorded in §63.15 when the coder door landed): the class BORROWED its three slots.** The single

@@ -34,7 +34,8 @@ PROBE = "/System/Shared/tests/foundation_kvo"
 CHECKS = ("kvo-notifies-on-a-kvc-write", "kvo-old-and-new-cross-the-change",
           "kvo-context-comes-back-untouched", "kvo-initial-option", "kvo-prior-option",
           "kvo-manual-pair-notifies", "kvo-remove-stops-it",
-          "kvo-observation-info-round-trips")
+          "kvo-observation-info-round-trips",
+          "a-dead-object-takes-its-registrations-with-it")
 
 
 class Case(BaseCase):
