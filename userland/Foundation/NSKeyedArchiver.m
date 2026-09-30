@@ -31,6 +31,8 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
+#import <Foundation/NSSet.h>
+#import <Foundation/NSCountedSet.h>
 #import <Foundation/NSDate.h>
 #import <Foundation/NSNumber.h>
 #import <Foundation/NSNull.h>
@@ -43,6 +45,12 @@ static NSString *const kClassname = @"$classname";
 static NSString *const kClasses = @"$classes";
 static NSString *const kObjects = @"NS.objects";
 static NSString *const kKeys = @"NS.keys";
+/* THE COUNTED SET'S SECOND PAYLOAD. `-allObjects` on an NSCountedSet deliberately answers each distinct
+ * member ONCE — that is the class's own documented reading of itself, and it agrees with `-count` — so the
+ * multiplicities live beside the members rather than inside them, and this is the key they live under. It
+ * is OURS: Apple publishes no key name for the counts, so there is no value to match (§11.6.1 D2's
+ * ground), and writing the members alone would silently lose the one thing the class exists to carry. */
+static NSString *const kCounts = @"NS.counts";
 
 /* ONE MEMO ENTRY, matched BY IDENTITY: two distinct but equal objects are two objects. */
 @interface FNMemo : NSObject
@@ -227,6 +235,35 @@ NSString * const NSKeyedArchiveRootObjectKey = @"NSKeyedArchiveRootObjectKey";
 			}
 			[entry setObject:keySlots forKey:kKeys];
 			[entry setObject:valueSlots forKey:kObjects];
+		} else if ([object isKindOfClass:[NSSet class]]) {
+			/* A SET, AND IT IS A COLLECTION THE ARCHIVER ITSELF KNOWS — like an array or a
+			 * dictionary, and for the same reason: the members go under `NS.objects`, which is the
+			 * key a reader already knows, and the class entry names the PUBLIC class because
+			 * `-classForCoder` answers it (§C.3 item 4). `-allObjects` is the door that answers the
+			 * members, which is what keeps this branch off a private concrete class's storage.
+			 *
+			 * AN NSCountedSet CARRIES A SECOND PAYLOAD (see kCounts): its members are written once
+			 * each, exactly as `-allObjects` and `-count` describe them, and the multiplicities ride
+			 * beside them. */
+			NSSet *members = (NSSet *)object;
+			NSArray *all = [members allObjects];
+			NSMutableArray *slots = [NSMutableArray array];
+			NSUInteger j;
+
+			for (j = 0; j < [all count]; j++) {
+				[slots addObject:[self fnSlotFor:[all objectAtIndex:j]]];
+			}
+			[entry setObject:slots forKey:kObjects];
+			if ([object isKindOfClass:[NSCountedSet class]]) {
+				NSMutableArray *counts = [NSMutableArray array];
+
+				for (j = 0; j < [all count]; j++) {
+					[counts addObject:[NSNumber numberWithUnsignedInteger:
+						[(NSCountedSet *)object
+							countForObject:[all objectAtIndex:j]]]];
+				}
+				[entry setObject:counts forKey:kCounts];
+			}
 		} else if ([object isKindOfClass:[NSNull class]]) {
 			/* AN EMPTY OBJECT ENTRY: NSNull has no state to write, and its CLASS is the whole
 			 * message. */
@@ -499,19 +536,47 @@ NSString * const NSKeyedArchiveRootObjectKey = @"NSKeyedArchiveRootObjectKey";
 			       [className isEqualToString:@"NSMutableArray"];
 		BOOL isDictionary = [className isEqualToString:@"NSDictionary"] ||
 				    [className isEqualToString:@"NSMutableDictionary"];
+		/* THE SET FAMILY, ALL THREE SPELLINGS — a plain set, a mutable one, and the COUNTED set
+		 * whose multiplicities arrive beside its members under kCounts. */
+		BOOL isCountedSet = [className isEqualToString:@"NSCountedSet"];
+		BOOL isSet = isCountedSet ||
+			     [className isEqualToString:@"NSSet"] ||
+			     [className isEqualToString:@"NSMutableSet"];
 
-		if (isArray || isDictionary) {
-			id collection = isArray
-				      ? (id)[NSMutableArray array] : (id)[NSMutableDictionary dictionary];
+		if (isArray || isDictionary || isSet) {
+			id collection = isArray ? (id)[NSMutableArray array]
+				      : isDictionary ? (id)[NSMutableDictionary dictionary]
+				      : isCountedSet ? (id)[NSCountedSet set]
+				      : (id)[NSMutableSet set];
 			NSArray *slots;
 
 			/* REGISTERED BEFORE ITS MEMBERS ARE DECODED, so a collection that contains itself — or
 			 * that two parents share — is built once. */
 			[_memo replaceObjectAtIndex:index withObject:collection];
-			if (isArray) {
+			if (isArray || isSet) {
 				slots = [(NSDictionary *)entry objectForKey:kObjects];
-				for (NSUInteger i = 0; slots != nil && i < [slots count]; i++) {
-					[collection addObject:[self fnDecodeSlot:[slots objectAtIndex:i]]];
+				if (isCountedSet) {
+					/* THE COUNTS GO BACK AS ADDITIONS, because that is what a count IS: a
+					 * member's multiplicity rises by one every time `-addObject:` sees it again.
+					 * A member ADDED ONCE is what a plain set means, which is why the same loop
+					 * serves both — and a missing counts array falls back to one rather than
+					 * dropping the member. */
+					NSArray *counts = [(NSDictionary *)entry objectForKey:kCounts];
+
+					for (NSUInteger i = 0; slots != nil && i < [slots count]; i++) {
+						id member = [self fnDecodeSlot:[slots objectAtIndex:i]];
+						NSUInteger n = counts != nil && i < [counts count]
+							     ? [[counts objectAtIndex:i] unsignedIntegerValue] : 1;
+
+						for (NSUInteger c = 0; c < n; c++) {
+							[collection addObject:member];
+						}
+					}
+				} else {
+					for (NSUInteger i = 0; slots != nil && i < [slots count]; i++) {
+						[collection addObject:[self fnDecodeSlot:
+							[slots objectAtIndex:i]]];
+					}
 				}
 			} else {
 				NSArray *keys = [(NSDictionary *)entry objectForKey:kKeys];

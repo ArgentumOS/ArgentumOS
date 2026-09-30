@@ -9,6 +9,10 @@ importing only `<Foundation/Foundation.h>`.
 
   * `coder-round-trip-scalars`     — a name, an integer, a double and a bool across one archive;
   * `coder-round-trip-collections` — an array of strings and a dictionary of mixed values;
+  * `coder-round-trip-sets`        — a set and a mutable set, deduplicated BY VALUE, with the archive
+                                     naming the PUBLIC class, and a counted set's multiplicities
+                                     surviving (they are a SECOND payload: `-allObjects` answers each
+                                     distinct member once and cannot carry them);
   * `coder-shared-objects`         — the SAME object referenced twice comes back as ONE object,
                                      asserted BY POINTER (the memo table's whole purpose);
   * `coder-cycle`                  — an object whose link points back at its parent, which does not
@@ -32,7 +36,9 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_coder"
-CHECKS = ("coder-round-trip-scalars", "coder-round-trip-collections", "coder-shared-objects",
+CHECKS = ("coder-round-trip-scalars", "coder-round-trip-collections", "coder-round-trip-sets",
+          "the-set-archive-names-the-public-class", "coder-round-trip-counted-set",
+          "coder-shared-objects",
           "coder-cycle", "coder-null-and-nil", "coder-archive-shape", "coder-base-raises",
           # W9: the two delegates (through Cocoa's instance flow) and the secure transformer
           "coder-archiver-delegate", "coder-instance-flow", "coder-unarchiver-delegate",

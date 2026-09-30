@@ -11,6 +11,9 @@
  * WHAT IT MEASURES, with the numbers in the details:
  *   coder-round-trip-scalars    a name, an integer, a double and a bool across one archive;
  *   coder-round-trip-collections  an array of strings and a dictionary of mixed values;
+ *   coder-round-trip-sets       a set and a mutable set, deduplicated BY VALUE, and the archive
+ *                               naming the PUBLIC class — plus a counted set's multiplicity counts,
+ *                               which ride BESIDE the members because -allObjects does not carry them;
  *   coder-shared-objects        the SAME object referenced twice comes back as ONE object — the
  *                               memo table's whole purpose, asserted by POINTER;
  *   coder-cycle                 an object whose link points back at its parent fails to terminate
@@ -229,6 +232,35 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 	}
 }
 
+/* A BYTE-RUN SEARCH, spelled out rather than reaching for `memmem`, so the probe depends on nothing the
+ * guest's libc may or may not declare. The archive is plist TEXT and a class name is ASCII, so this is the
+ * whole instrument the "which class did the archive name" checks need. */
+static int fn_contains(const unsigned char *haystack, unsigned long length, const char *needle)
+{
+	unsigned long n = 0;
+	unsigned long i;
+
+	while (needle[n] != '\0') {
+		n++;
+	}
+	if (n == 0 || length < n) {
+		return 0;
+	}
+	for (i = 0; i + n <= length; i++) {
+		unsigned long j;
+
+		for (j = 0; j < n; j++) {
+			if (haystack[i + j] != (unsigned char)needle[j]) {
+				break;
+			}
+		}
+		if (j == n) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 /* A ROUND TRIP, in one place: archive the object and bring it back. */
 static id fn_round_trip(id object)
 {
@@ -272,6 +304,59 @@ int main(void)
 		      [NSString stringWithFormat:@"tags=%@ meta=%@",
 			back != nil ? [back tags] : @"(nil)",
 			back != nil ? [back meta] : @"(nil)"]);
+	}
+
+	{
+		/* A SET AND A MUTABLE SET. A set is a collection the archiver knows by KIND, like an array
+		 * or a dictionary — which is why its members ride under the same `NS.objects` key — and the
+		 * two things this check is for are the members surviving BY VALUE (the duplicate "two" is
+		 * one member) and the archive carrying the PUBLIC class name, which is §C.4's hinge
+		 * measured on this family's own bytes. */
+		NSSet *plain = [NSSet setWithArray:@[@"one", @"two", @"three"]];
+		NSSet *withDuplicate = [NSSet setWithArray:@[@"one", @"two", @"three", @"two"]];
+		NSMutableSet *mutableSet = [NSMutableSet setWithArray:@[@"a", @"b"]];
+		NSSet *backPlain = fn_round_trip(plain);
+		NSMutableSet *backMutable = fn_round_trip(mutableSet);
+		NSData *setArchive = [NSKeyedArchiver archivedDataWithRootObject:withDuplicate];
+
+		check("coder-round-trip-sets",
+		      backPlain != nil && [backPlain isKindOfClass:[NSSet class]] &&
+		      [backPlain count] == 3 && [backPlain containsObject:@"two"] &&
+		      [backPlain member:@"three"] != nil &&
+		      backMutable != nil && [backMutable isKindOfClass:[NSMutableSet class]] &&
+		      [backMutable count] == 2 && [backMutable containsObject:@"a"],
+		      [NSString stringWithFormat:@"set=%@ mutable=%@",
+			backPlain != nil ? backPlain : @"(nil)",
+			backMutable != nil ? backMutable : @"(nil)"]);
+		check("the-set-archive-names-the-public-class",
+		      setArchive != nil &&
+		      fn_contains([setArchive bytes], [setArchive length], "NSSet") &&
+		      !fn_contains([setArchive bytes], [setArchive length], "AGSet"),
+		      @"a set's archive must name NSSet and no private concrete class");
+	}
+
+	{
+		/* AN NSCountedSet IS THE ONE SET WHOSE MEMBERS ALONE ARE NOT ITS STATE: `-allObjects` and
+		 * `-count` describe it by DISTINCT members, so the multiplicities are a SECOND payload and
+		 * this is the check that they make the round trip rather than being silently dropped. */
+		NSCountedSet *counted = [NSCountedSet set];
+
+		[counted addObject:@"x"];
+		[counted addObject:@"x"];
+		[counted addObject:@"x"];
+		[counted addObject:@"y"];
+		{
+			NSCountedSet *back = fn_round_trip(counted);
+
+			check("coder-round-trip-counted-set",
+			      back != nil && [back isKindOfClass:[NSCountedSet class]] &&
+			      [back count] == 2 && [back countForObject:@"x"] == 3 &&
+			      [back countForObject:@"y"] == 1 && [back countForObject:@"z"] == 0,
+			      [NSString stringWithFormat:@"distinct=%lu x=%lu y=%lu",
+				(unsigned long)(back != nil ? [back count] : 0),
+				(unsigned long)(back != nil ? [back countForObject:@"x"] : 0),
+				(unsigned long)(back != nil ? [back countForObject:@"y"] : 0)]);
+		}
 	}
 
 	{

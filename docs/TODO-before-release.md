@@ -617,3 +617,44 @@ parameterization work is compile-time only, and this case's missing check is a h
 **WHAT THE TIER DOES NOT COVER, SAID PLAINLY:** it is `make test`'s fast tier, not `test-all`, and it does not
 include the host-side runs (`make host-foundation`). The plan's own cases are in it and green.
 
+## 4. `NSKeyedArchiver`'s set path — LANDED 2026-09-30, and ONE collection still raises
+
+**THE GAP M3 RECORDED IS CLOSED.** The clusters plan's M3 row carried it as "STILL OPEN FROM M3 (not this
+family's): `NSKeyedArchiver` has NO set path — archiving a set RAISES where an array or a dictionary
+encodes", and `grep -c NSSet userland/Foundation/NSKeyedArchiver.m` answered **0**. Both halves are in now:
+
+* **the WRITER** treats a set as a collection it knows by KIND, like an array or a dictionary: the members
+  go under `NS.objects` and the class entry names the PUBLIC class, which `-classForCoder` already answered
+  on all three rungs (M3's own contract, probe-asserted then);
+* **the READER** knows all three spellings — `NSSet`, `NSMutableSet`, `NSCountedSet` — and builds a MUTABLE
+  container either way, registered in the memo before its members are decoded, exactly as the array and
+  dictionary arms do.
+
+**THE COUNTED SET IS THE ONE WITH A SECOND PAYLOAD, and it is not a detail.** `-allObjects` and `-count`
+describe an `NSCountedSet` by DISTINCT members — adding `"x"` three times leaves ONE member — so the
+multiplicities cannot ride inside the members. They are written beside them under `NS.counts`, index-aligned
+with `NS.objects`, and the reader restores them by ADDING each member n times, because that is what a count
+IS. **The key is OURS:** Apple publishes no name for it, so there is no value to match (§11.6.1 D2's ground,
+permitted variation and not a difference) — and the alternative, writing the members alone, would silently
+lose the one thing the class exists to carry. Both the header and the file say so where a reader meets it.
+
+**MEASURED.** `make host-foundation-run`'s `foundation_coder` went **11 → 14 checks, ok=14 fail=0**; the three
+new ones are `coder-round-trip-sets`, `the-set-archive-names-the-public-class` (the §C.4 hinge on this
+family's own bytes: `NSSet` present, no `AGSet*` name) and `coder-round-trip-counted-set` (2 distinct, x=3,
+y=1, and a never-added member answers 0). **AND THE GATE WAS SHOWN TO FAIL:** with the library reverted and
+the probe unchanged, the same binary ABORTS (exit 134, no output — the buffer does not flush through
+`abort`) instead of reporting, which is the raise M3 measured. Restored, it is green again.
+
+**STILL OPEN, measured rather than assumed: `NSOrderedSet` RAISES.** It is a set by name but not by kind —
+it is neither an `NSArray` nor an `NSSet` — so `archivedDataWithRootObject:` on one still falls through to
+the `-encodeWithCoder:` branch and raises, and `grep -c encodeWithCoder userland/Foundation/NSOrderedSet.m`
+is 0. That is the SAME shape as the gap just closed and it is deliberately not done in the same unit: it is
+`NSOrderedSet`'s own family (M6), its order is part of its state, and no probe asserts it today. It is a work
+item, not a boundary.
+
+**AND ONE THING FOUND ON THE WAY, out of this unit's scope and left alone:** writing a set in a probe needed
+`+setWithObjects:` (the variadic form `NSArray` has had all along) and `NSSet` does not declare it — the
+selector ledger already carries it as `method open +setWithObjects: NSSet`. The probe uses
+`+setWithArray:` instead rather than widening this unit into an API addition. The ledger row is the work
+item and it was already there.
+

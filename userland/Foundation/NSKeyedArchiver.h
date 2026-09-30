@@ -16,6 +16,16 @@
  * (`{"$class": {"$ref": n}, "key": value, ...}` — what `-encodeWithCoder:` filled in), or a
  * COLLECTION (`{"$class": ..., "NS.objects": [...]}` or `"NS.keys"` with `"NS.objects"`).
  *
+ * THE COLLECTIONS THE CODEC ITSELF KNOWS are the arrays, the dictionaries and the SETS — `NSSet`,
+ * `NSMutableSet` and `NSCountedSet`, whose class entry names the public class because
+ * `-classForCoder` answers it. A set's members ride under `NS.objects`, the same key an array uses,
+ * because the members ARE what a set is. A COUNTED set is the one exception, and it is a second
+ * payload rather than a second shape: `-allObjects` and `-count` describe it by DISTINCT members
+ * (adding `"x"` twice is ONE member), so the multiplicities are written beside them under
+ * `"NS.counts"`, index-aligned with `"NS.objects"`. That key is OURS — Apple publishes no name for
+ * it, so there is no value to match (§11.6.1 D2's ground) — and writing the members alone would
+ * silently lose the one thing the class exists to carry.
+ *
  * ONE DEPARTURE FROM COCOA, named because it is the only one: a REFERENCE is `{"$ref": n}` rather
  * than Cocoa's `UID` property-list type, which this library's plist reader and writer cannot
  * express. Everything else is Cocoa's design — the objects table, `$null` at index 0, `$class` with
