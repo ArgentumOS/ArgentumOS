@@ -303,6 +303,15 @@ typedef enum {
 - (NSString *)localizedUppercaseString;
 - (NSString *)localizedLowercaseString;
 - (NSString *)localizedCapitalizedString;
+/* THE LOCALISED SEARCH DOORS (§63.26). Apple's two "standard" ones fold CASE **and** DIACRITICS under the
+ * current locale — which is what §63.24's normalization finally makes expressible here: diacritic-insensitivity
+ * IS canonical decomposition plus dropping the combining marks. `-localizedCaseInsensitiveContainsString:`
+ * folds case only, because that is what its name says. */
+/* AN `NSRange` IS A STRUCT AND CANNOT CARRY A NULLABILITY SPECIFIER — its "not found" is a VALUE
+ * (`NSNotFound`), not a null, which is why Apple's own declaration of this door has none either. */
+- (NSRange)localizedStandardRangeOfString:(NSString *)string;
+- (BOOL)localizedStandardContainsString:(NSString *)string;
+- (BOOL)localizedCaseInsensitiveContainsString:(NSString *)string;
 - (NSString *)substringFromIndex:(NSUInteger)index;
 - (NSString *)substringToIndex:(NSUInteger)index;
 - (NSString *)substringWithRange:(NSRange)range;

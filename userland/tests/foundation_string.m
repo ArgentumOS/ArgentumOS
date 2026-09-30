@@ -1564,6 +1564,37 @@ NULL
 		      "the Turkish locale capitalizes istanbul as İstanbul where the plain door gives Istanbul, the dotless pair folds inside a word, a non-Turkic locale matches the plain door, and the three deprecated spellings delegate to the current locale");
 	}
 
+	{
+		/* THE LOCALISED SEARCH DOORS (§63.26): CASE AND DIACRITICS, AND WHERE THE TWO DOORS DIFFER. */
+		NSRange found = [@"café au lait" localizedStandardRangeOfString:@"CAFE"];
+		NSRange missing = [@"plain" localizedStandardRangeOfString:@"xyz"];
+
+		check("localized-search-folds-case-and-diacritics",
+		      /* ⚠ THE ANSWER IS IN THE RECEIVER'S UNITS, WHICH IS THE WHOLE POINT OF THE MAP: the match is the
+		       * first FOUR units of "café au lait" — "café" WITH its accent — not four units of some folded string
+		       * the caller never held, which is what a folded-index answer would have said. */
+		      found.location == 0 && found.length == 4 &&
+		      [[@"café au lait" substringWithRange:found] isEqualToString:@"café"] &&
+		      /* AND THE FOLD IS SYMMETRIC: an ACCENTED needle finds an unaccented haystack too. */
+		      [@"cafe au lait" localizedStandardRangeOfString:@"café"].length == 4 &&
+		      /* NO MATCH IS NSNotFound, and the contains door answers in its own vocabulary. */
+		      missing.location == NSNotFound &&
+		      [@"café" localizedStandardContainsString:@"CAFE"] &&
+		      ![@"plain" localizedStandardContainsString:@"xyz"] &&
+		      /* THE PAIR THAT MAKES THE TWO DOORS DIFFERENT RATHER THAN REDUNDANT: the case-insensitive door
+		       * folds case ONLY, so an accent must still match an accent there — and A NON-ASCII CASE PAIR IS NOT
+		       * A FOLD THIS LIBRARY MAKES, which the first draft of this check got wrong: the case mapping here is
+		       * ASCII-only (the header says so, and the locale adds only the Turkic pair), so "CAFÉ" does NOT
+		       * case-fold to "café" and an assertion that it does is a claim about Unicode, not about this door. */
+		      [@"CAFE" localizedCaseInsensitiveContainsString:@"cafe"] &&
+		      [@"cafe" localizedCaseInsensitiveContainsString:@"CAFE"] &&
+		      ![@"cafe" localizedCaseInsensitiveContainsString:@"café"] &&
+		      [@"café" localizedStandardContainsString:@"cafe"] &&
+		      /* AND A NEEDLE THAT IS NOT THERE IS STILL NOT THERE, whatever the fold. */
+		      ![@"café" localizedCaseInsensitiveContainsString:@"tea"],
+		      "the standard doors fold case and diacritics (the match lands on the receiver's own \"café\"), the case-insensitive door folds case only, and a miss stays NSNotFound/NO");
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

@@ -15824,6 +15824,38 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.26 — THE LOCALISED SEARCH DOORS: WHAT §63.24 MADE EXPRESSIBLE, AND THE MAP THAT KEEPS THE RANGE HONEST (2026-09-30)
+
+**WHAT LANDED:** `-localizedStandardRangeOfString:`, `-localizedStandardContainsString:` and
+`-localizedCaseInsensitiveContainsString:` — three rows, and the third slice of the ledger tail.
+
+**⚠ THE UNIT EXISTS BECAUSE OF THE PREVIOUS ONE: DIACRITIC-INSENSITIVITY IS DECOMPOSITION PLUS MARK-STRIPPING.**
+"Find me this text, ignoring case and accents" is expressible the moment a string can be canonically decomposed
+(§63.24's door) and the combining marks dropped (`NSCharacterSet`'s non-base set) — which is exactly what the
+standard doors do, with the locale supplying the case rule. `-localizedCaseInsensitiveContainsString:` folds
+case ONLY, because that is what its name says, and the check measures the difference between the two rather than
+treating them as one door.
+
+**⚠ AND THE PART THAT IS REAL WORK: A FOLD DOES NOT PRESERVE LENGTH, SO THE RANGE HAD TO BE MAPPED BACK.** A
+range found in a folded string points into a string the caller never held — speak it back and "café" searched as
+"cafe" would answer a range into a folded copy. Apple's contract is the RECEIVER's units, so the fold is built
+**one receiver unit at a time** and records, for each unit, the folded index its contribution begins at; the
+range door then walks that map back (the first unit whose entry starts the match, the first one after it whose
+entry reaches the end). **AND THE CHECK MEASURES EXACTLY THAT**: the match on "café au lait" for "CAFE" must be
+four RECEIVER units whose substring is **"café" — with its accent** — which a folded-index answer could not
+produce. The needles fold with a NULL map, since nothing needs a way back from them.
+
+**⚠ AND THE FIRST DRAFT OF THAT CHECK WAS WRONG, IN A WAY WORTH KEEPING: IT ASSUMED A UNICODE CASE FOLD THIS
+LIBRARY DOES NOT MAKE.** It asserted `[@"CAFÉ" localizedCaseInsensitiveContainsString:@"café"]` — but the case
+mapping here is **ASCII-only** by documented decision (the locale adds the Turkic pair and nothing else), so
+`É` never folds to `é` and the assertion was a claim about Unicode rather than about the door. The ASCII pair
+(`"CAFE"`/`"cafe"`, and the discriminating `![@"cafe" localizedCaseInsensitiveContainsString:@"café"]`) measures
+the same distinction and is true of THIS library. **A locale-aware door is not a licence to assert
+locale-aware Unicode.**
+
+**VERIFICATION.** Host probe: `localized-search-folds-case-and-diacritics`. Guest `TESTS-OK 1/1 case(s),
+6/6 check(s)`; `make foundation-sweep` exit 0, `--check` consistent in both directions, `--unimplemented` 0 NEW.
+
 ## §63.25 — THE LOCALE-AWARE CASE DOORS: ONE LIVE DOOR, THREE DEPRECATED SPELLINGS, AND A FOLD THAT NEEDS UNITS (2026-09-30)
 
 **WHAT LANDED:** `-capitalizedStringWithLocale:` (the live door) and the three `localized…` spellings Apple

@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1843   open  841   struck  244
+#   method     shipped 1846   open  838   struck  244
 #   property   shipped 1034   open  456   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3108,12 +3108,12 @@ method	shipped	-lengthOfBytesUsingEncoding:	NSString	Fundamentals / Strings / Ge
 method	shipped	-lineRangeForRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
 method	open	-linguisticTagsInRange:scheme:options:orthography:tokenRanges:	NSString	Fundamentals / Strings / Performing Linguistic Analysis	deprecated	objc
 method	shipped	-localizedCaseInsensitiveCompare:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
-method	open	-localizedCaseInsensitiveContainsString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
+method	shipped	-localizedCaseInsensitiveContainsString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-localizedCompare:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	open	+localizedNameOfStringEncoding:	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 method	open	-localizedStandardCompare:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
-method	open	-localizedStandardContainsString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
-method	open	-localizedStandardRangeOfString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
+method	shipped	-localizedStandardContainsString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
+method	shipped	-localizedStandardRangeOfString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	open	+localizedStringWithFormat:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	open	+localizedStringWithValidatedFormat:validFormatSpecifiers:error:	NSString	Fundamentals / Strings / Type Methods	-	objc
 method	open	+localizedUserNotificationStringForKey:arguments:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc

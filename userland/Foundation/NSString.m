@@ -2249,6 +2249,122 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return [self capitalizedStringWithLocale:[NSLocale currentLocale]];
 }
 
+/* ================================ the localised search fold (§63.26) ================================
+ *
+ * WHAT THE FOLD IS: the receiver's own case rule (the locale's, so the Turkic pair applies) and, for the
+ * "standard" doors, canonical decomposition with the combining marks dropped — which is exactly what
+ * diacritic-insensitivity means, and why §63.24's door is what made these expressible at all.
+ *
+ * ⚠ AND THE MAP IS THE POINT OF THE WHOLE METHOD. A fold does not preserve length ("é" is one unit and folds to
+ * one, but "İ" lower-cases to one and a ligature's decomposition may not be one), so a range found in the
+ * folded string is NOT a range in the receiver — and Apple's contract is the receiver's units. `-capitalizedString`
+ * walks bytes; THIS DOOR IS A LOCALISED SEARCH, so it is built ONE RECEIVER UNIT AT A TIME and remembers, for
+ * each unit, the folded index its contribution begins at (`markMap[i]`, with `markMap[length]` the folded
+ * length). The range door then walks that map back.
+ *
+ * `markMap` MAY BE NULL (the contains doors need no way back), and the needles' folds pass NULL for that reason. */
+- (NSString *)fn_foldForSearchWithLocale:(id)locale
+			  foldDiacritics:(BOOL)foldDiacritics
+				  markMap:(NSUInteger *)markMap
+{
+	NSMutableString *out = [NSMutableString string];
+	NSCharacterSet *marks = foldDiacritics ? [NSCharacterSet nonBaseCharacterSet] : nil;
+	NSUInteger i, length = [self length];
+
+	for (i = 0; i < length; i++) {
+		unichar c = [self characterAtIndex:i];
+		NSString *folded = [[NSString stringWithCharacters:&c length:1] autorelease];
+
+		if (markMap != NULL) {
+			markMap[i] = [out length];
+		}
+		folded = [folded lowercaseStringWithLocale:locale];	/* THE LOCALE'S CASE RULE, the Turkic pair included */
+		if (foldDiacritics) {
+			folded = [folded decomposedStringWithCanonicalMapping];	/* §63.24: "é" becomes "e" + a mark */
+		}
+		if (marks != nil) {
+			/* THE MARKS COME OFF, AND THE MAP DOES NOT MOVE: dropping a mark takes no folded index with it, so
+			 * the next unit's entry still points at where the caller's own unit begins. */
+			NSUInteger j, pieceLength = [folded length];
+
+			for (j = 0; j < pieceLength; j++) {
+				unichar f = [folded characterAtIndex:j];
+
+				if (![marks characterIsMember:f]) {
+					[out appendString:[[NSString stringWithCharacters:&f length:1] autorelease]];
+				}
+			}
+		} else {
+			[out appendString:folded];
+		}
+	}
+	if (markMap != NULL) {
+		markMap[length] = [out length];
+	}
+	return out;
+}
+
+- (NSRange)localizedStandardRangeOfString:(NSString *)string
+{
+	id locale = [NSLocale currentLocale];
+	NSUInteger length = [self length];
+	NSUInteger *markMap;
+	NSString *haystack, *needle;
+	NSRange found, answer = NSMakeRange(NSNotFound, 0);
+	NSUInteger i;
+
+	if (string == nil) {
+		return answer;
+	}
+	markMap = (NSUInteger *)malloc((length + 1) * sizeof(NSUInteger));
+	if (markMap == NULL) {
+		return [self rangeOfString:string];
+	}
+	haystack = [self fn_foldForSearchWithLocale:locale foldDiacritics:YES markMap:markMap];
+	needle = [string fn_foldForSearchWithLocale:locale foldDiacritics:YES markMap:NULL];
+	found = [haystack rangeOfString:needle];
+	if (found.location == NSNotFound) {
+		free(markMap);
+		return found;			/* NSNotFound, and a length of 0 */
+	}
+	/* BACK INTO THE RECEIVER'S UNITS: the first receiver index whose folded entry starts the match, and the
+	 * first one after it whose entry reaches its end. THIS IS WHAT MAKES THE ANSWER THE CALLER'S: with the
+	 * folded range alone, searching "café" for "cafe" would answer a range into a string nobody holds. */
+	for (i = 0; i <= length; i++) {
+		if (markMap[i] == found.location) {
+			answer.location = i;
+			break;
+		}
+	}
+	for (i = answer.location; i <= length; i++) {
+		if (markMap[i] >= found.location + found.length) {
+			answer.length = i - answer.location;
+			break;
+		}
+	}
+	free(markMap);
+	return answer;
+}
+
+- (BOOL)localizedStandardContainsString:(NSString *)string
+{
+	return [self localizedStandardRangeOfString:string].location != NSNotFound;
+}
+
+- (BOOL)localizedCaseInsensitiveContainsString:(NSString *)string
+{
+	/* CASE, NOT DIACRITICS: the name says which fold, and the locale still supplies the CASE rule — which is
+	 * why this is not `-rangeOfString:options:NSCaseInsensitiveSearch` on the raw string. */
+	id locale = [NSLocale currentLocale];
+	NSString *folded = [self fn_foldForSearchWithLocale:locale foldDiacritics:NO markMap:NULL];
+
+	if (string == nil) {
+		return NO;
+	}
+	return [folded rangeOfString:
+		[string fn_foldForSearchWithLocale:locale foldDiacritics:NO markMap:NULL]].location != NSNotFound;
+}
+
 - (const char *)cStringUsingEncoding:(NSStringEncoding)encoding
 {
 	size_t i;

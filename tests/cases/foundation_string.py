@@ -78,6 +78,8 @@ CHECKS = (
           "normalization-compatibility-folds-what-canonical-keeps",
           # §63.25: the locale-aware case doors — one live door and three deprecated spellings.
           "case-capitalization-is-locale-aware",
+          # §63.26: the localised search doors — case AND diacritics, and where the two doors differ.
+          "localized-search-folds-case-and-diacritics",
           )
 
 
