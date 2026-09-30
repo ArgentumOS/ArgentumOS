@@ -55,7 +55,13 @@ NS_ASSUME_NONNULL_BEGIN
  * members go under the SHARED key (FNKeyedWire.h) that the archive's own structural branch uses, the decoder
  * reads it back through `-initWithArray:` — so the dedup rule and the class-choosing rule stay the
  * INITIALIZER's — and the ARCHIVER never calls either, because its structural branch recognises a set by
- * KIND. They exist for a caller who names them, and for `-conformsToProtocol:`. */
+ * KIND. They exist for a caller who names them, and for `-conformsToProtocol:`.
+ *
+ * AND NSCountedSet INHERITS THIS PAIR WITHOUT A SECOND IMPLEMENTATION, which is a BOUNDARY rather than a
+ * convenience: its MULTIPLICITIES are not part of what `-allObjects` answers, so they are not part of what
+ * these doors carry. They survive the ARCHIVE (the structural branch writes them under `NS.counts`, §63.5)
+ * and they do not survive a direct `-initWithCoder:` — use `-countForObject:` after either to see the
+ * difference. Stated so the gap is a known edge of the pair and not a later surprise. */
 - (nullable instancetype)initWithCoder:(NSCoder *)coder;
 - (void)encodeWithCoder:(NSCoder *)coder;
 
