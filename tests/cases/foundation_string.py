@@ -80,6 +80,8 @@ CHECKS = (
           "case-capitalization-is-locale-aware",
           # §63.26: the localised search doors — case AND diacritics, and where the two doors differ.
           "localized-search-folds-case-and-diacritics",
+          # §63.27: the validated-format pair — a format checked against the specifiers the caller names.
+          "validated-format-allows-only-the-listed-specifiers",
           )
 
 

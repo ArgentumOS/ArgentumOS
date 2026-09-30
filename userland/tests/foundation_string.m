@@ -1595,6 +1595,37 @@ NULL
 		      "the standard doors fold case and diacritics (the match lands on the receiver's own \"café\"), the case-insensitive door folds case only, and a miss stays NSNotFound/NO");
 	}
 
+	{
+		/* THE VALIDATED FORMATS (§63.27): A FORMAT CHECKED AGAINST WHAT THE CALLER ALLOWS, AND A REFUSAL THAT
+		 * SAYS WHAT WENT WRONG IN APPLE'S OWN VOCABULARY. */
+		NSError *error = nil;
+		NSError *refusedError = nil;
+		NSError *escapeError = nil;
+		NSString *ok = [NSString stringWithValidatedFormat:@"%d and %@" validFormatSpecifiers:@"%@ %d"
+							     error:&error, 42, @"text"];
+		NSString *refused = [NSString stringWithValidatedFormat:@"%d" validFormatSpecifiers:@"%@"
+								  error:&refusedError, 42];
+		NSString *escaped = [NSString stringWithValidatedFormat:@"100%% of %d" validFormatSpecifiers:@"%d"
+								  error:&escapeError, 5];
+
+		check("validated-format-allows-only-the-listed-specifiers",
+		      /* THE HAPPY PATH: both specifiers listed, both rendered, and NO error reported. */
+		      ok != nil && [ok isEqualToString:@"42 and text"] && error == nil &&
+		      /* THE REFUSAL: nil, an error, the Cocoa domain and the formatting code — which is the whole point
+		       * of the door existing rather than the caller scanning the format itself. */
+		      refused == nil && refusedError != nil &&
+		      [[refusedError domain] isEqualToString:NSCocoaErrorDomain] &&
+		      [refusedError code] == NSFormattingError &&
+		      /* ⚠ AND `%%` IS NOT A DIRECTIVE, which is the assertion that measures the PARSER rather than the
+		       * happy path: a format whose only other percent is the literal escape must be accepted for the
+		       * specifier set "%d". */
+		      escaped != nil && [escaped isEqualToString:@"100% of 5"] && escapeError == nil &&
+		      /* AND THE LOCALIZED SPELLING IS THE SAME RULE, including its NULL error pointer. */
+		      [NSString localizedStringWithValidatedFormat:@"%@" validFormatSpecifiers:@"%@" error:NULL,
+			   @"x"] != nil,
+		      "a listed format renders with no error, an unlisted specifier is refused with NSCocoaErrorDomain/NSFormattingError, %% is not a directive, and the localized spelling shares the rule");
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness
