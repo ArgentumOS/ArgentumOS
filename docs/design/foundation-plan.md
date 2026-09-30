@@ -120,20 +120,42 @@ the day it was written, and it is the plan until the last row closes.
 4. **WHEN AN OWNER'S ROWS ARE GONE, THE OWNER LEAVES THE WORK LIST, AND THAT IS THE ONLY PROGRESS SIGNAL THAT
    MATTERS.** `tools/foundation-sweep.py --work-list` prints the open rows per owner; an owner absent from it is
    finished. Closing this ledger will look like that happening one owner at a time.
+5. **⚠ AND THE ROWS WHOSE WORK HAS NO SUBSTRATE ARE DEFERRED, NOT DECLINED — the user's direction of
+   2026-09-30: *"Defer all work which lacks substrate."*** It is the same distinction the AppKit group got, for a
+   different reason: **AppKit is deferred by SCOPE** (that work has not begun), **these are deferred by
+   SUBSTRATE** (§11.6's own ground (ii): the API needs a dependency this system does not have). **SO THE ROWS
+   STAY `open`** — a decline claims a row is not ours, and these are ours and waiting on a type or a framework
+   that may arrive. **A DEFERRED ROW IS NOT HIDDEN EITHER:** `--work-list` keeps printing it, so the deferral's
+   only effect is that it stops being counted as unfinished FOUNDATION work.
+   * **MEASURED 2026-09-30: 44 rows** — **NSValue 27, NSCoder 16, NSUnarchiver 1** — and **the criterion is
+     RE-RUNNABLE**: an open row whose NAME carries one of these type tokens is deferred until that type exists.
+     `CMTime CMTimeRange CMTimeMapping CMVideoDimensions` (CoreMedia) · `UIEdgeInsets UIOffset
+     NSDirectionalEdgeInsets` (UIKit — **`NSEdgeInsets` DOES ship and is a DIFFERENT type**, which is exactly why
+     the token has to be the absent one) · `SCNMatrix4 SCNVector3 SCNVector4` (SceneKit) · `MKCoordinate
+     MKCoordinateSpan` (MapKit) · `GCPoint2` (GameController) · `CATransform3D` (QuartzCore) · `NXColor NXObject`
+     (NeXT) · `NSZone` (the 32-bit-only ground, §11.5). **EACH WAS VERIFIED ABSENT, not assumed** — the token
+     has zero declarations anywhere in `userland/`.
+   * **AND THE LIST GROWS BY RECONNAISSANCE, WHICH IS THE POINT OF READING IT THIS WAY:** the two read-only
+     subagent recons under the user's grant found these, the next family's recon extends it, and each addition is
+     a MEASUREMENT (the type has no declarations in the tree) rather than an opinion. Two rows are explicitly
+     NOT in it yet because their type question is unresolved rather than answered: `+valueWithEdgeInsets:` and
+     `edgeInsetsValue` need one documentation lookup (`NSEdgeInsets`, which ships, or UIKit's `UIEdgeInsets`,
+     which does not) before they can be classified at all.
 
 ### The definition of done
 
-**IN TWO PARTS, BECAUSE ONE GROUP IS DEFERRED BY DECISION — and the deferral is countable, so it can never
+**IN TWO PARTS, BECAUSE TWO GROUPS ARE DEFERRED BY DECISION — AND BOTH DEFERRALS ARE COUNTABLE, so neither can
 become a place to hide a row that simply has not been done.**
 
-* **Foundation-scoped work:** `open 0` for methods and properties **after subtracting the 22 deferred
-  AppKit-drawing rows** — countable by the two criteria above (the drawing section, and the deprecated
-  drawing/font name shapes), which is what makes the subtraction a measurement rather than a claim; the symbol
-  ledger still at zero; `--check` consistent in both directions; `--strict` reporting no policy findings and no
-  parameterization findings; `--unimplemented` 0 NEW; the generated family table showing every family shipped or
-  struck; and every remaining deviation registered in §11.6 with its reason.
-* **The deferred group:** unchanged and `open` until the AppKit work begins, at which point these 22 rows are
-  its starting list rather than a footnote.
+* **Foundation-scoped work:** `open 0` for methods and properties **after subtracting the deferred rows** —
+  countable by the criteria named above: the **AppKit-drawing group** (the `Sizing and Drawing Strings` section
+  plus the `deprecated` drawing/font name shapes — **22 rows today**) and the **no-substrate group** (names
+  carrying an absent type token — **44 rows today**). The subtraction is a measurement rather than a claim; the
+  symbol ledger stays at zero; `--check` consistent in both directions; `--strict` reporting no policy findings
+  and no parameterization findings; `--unimplemented` 0 NEW; the generated family table showing every family
+  shipped or struck; and every remaining deviation registered in §11.6 with its reason.
+* **The deferred groups:** unchanged and `open` until their reason ends — the AppKit work begins, or the missing
+  substrate arrives — at which point those rows are the starting list of that work rather than a footnote.
 
 ### What this section is NOT
 
