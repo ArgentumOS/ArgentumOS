@@ -54,6 +54,7 @@
 @class NSArray;
 @class NSError;
 @class NSCharacterSet;
+@class NSURL;	/* §63.29: the two string-with-contents-of-URL doors take one */
 
 /* NULLABILITY (F6, slice 2): NONNULL by default, and the exceptions are MEASURED —
  * every one below is a method NSString.m actually answers nil or NULL from (awk
@@ -211,6 +212,15 @@ typedef enum {
 + (nullable id)stringWithContentsOfFile:(NSString *)path
 		  usedEncoding:(NSStringEncoding *)encoding
 			 error:(NSError * _Nullable * _Nullable)errorPtr;
+/* THE URL FORMS (§63.29): THE SAME TWO DOORS OVER A URL RATHER THAN A PATH. A FILE url goes through the path
+ * doors above — one implementation of "read the bytes, then decide what they mean" — and any other scheme
+ * through the one synchronous loader this library has. */
++ (nullable id)stringWithContentsOfURL:(NSURL *)url
+			      encoding:(NSStringEncoding)encoding
+				 error:(NSError * _Nullable * _Nullable)errorPtr;
++ (nullable id)stringWithContentsOfURL:(NSURL *)url
+			  usedEncoding:(NSStringEncoding *)encoding
+				 error:(NSError * _Nullable * _Nullable)errorPtr;
 /* CREATION FROM A C STRING WITH AN ENCODING (§63.28). THE ENCODINGS ARE THE ONES THIS LIBRARY STORES, which is
  * the same rule `-cStringUsingEncoding:` already follows: UTF-8, ASCII, and NOTHING ELSE — a byte string in an
  * encoding this library cannot name returns nil here rather than being reinterpreted as UTF-8, because that is

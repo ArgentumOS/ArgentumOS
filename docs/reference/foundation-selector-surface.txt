@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1849   open  835   struck  244
+#   method     shipped 1851   open  833   struck  244
 #   property   shipped 1034   open  456   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3166,8 +3166,8 @@ method	open	+stringWithContentsOfFile:	NSString	Fundamentals / Strings / Depreca
 method	shipped	+stringWithContentsOfFile:encoding:error:	NSString	Fundamentals / Strings / Creating and Initializing a String from a File	-	objc
 method	shipped	+stringWithContentsOfFile:usedEncoding:error:	NSString	Fundamentals / Strings / Creating and Initializing a String from a File	-	objc
 method	open	+stringWithContentsOfURL:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	+stringWithContentsOfURL:encoding:error:	NSString	Fundamentals / Strings / Type Methods	-	objc
-method	open	+stringWithContentsOfURL:usedEncoding:error:	NSString	Fundamentals / Strings / Type Methods	-	objc
+method	shipped	+stringWithContentsOfURL:encoding:error:	NSString	Fundamentals / Strings / Type Methods	-	objc
+method	shipped	+stringWithContentsOfURL:usedEncoding:error:	NSString	Fundamentals / Strings / Type Methods	-	objc
 method	shipped	+stringWithFormat:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	+stringWithString:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	+stringWithUTF8String:	NSString	Fundamentals / Strings / Type Methods	-	objc

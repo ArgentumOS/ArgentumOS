@@ -37,6 +37,11 @@
 #include <unicode/unorm2.h>
 #import <Foundation/NSValue.h>
 #import <Foundation/NSException.h>
+/* §63.29: THE URL DOORS read a URL as bytes. A FILE url is handed to the path doors above, and any other scheme
+ * goes through the one synchronous loader this library has — so both headers belong here. */
+#import <Foundation/NSURL.h>
+#import <Foundation/NSURLConnection.h>
+#import <Foundation/NSURLRequest.h>
 
 /* A STRING COPY IS A COPY OF THE CHARACTERS, AND THE BUFFER IS BUILT IN ONE PLACE (§62.93).
  *
@@ -2664,6 +2669,63 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	}
 	/* One encoding is stored, so that is what was used. */
 	result = [[self alloc] initWithData:data encoding:NSUTF8StringEncoding];
+	if (result != nil && encoding != NULL) {
+		*encoding = NSUTF8StringEncoding;
+	}
+	return result;
+}
+
+/* -------------------------------------------------------------------- the URLs (§63.29)
+ *
+ * THE SAME TWO DOORS OVER A URL RATHER THAN A PATH, and the split is the URL's own: a FILE url is handed
+ * straight to the path doors above — one implementation of "read the bytes, then decide what they mean" — while
+ * any other scheme goes through the ONE synchronous loader this library has,
+ * `+[NSURLConnection sendSynchronousRequest:returningResponse:error:]`, which is what Apple's contract means by
+ * reading a URL.
+ *
+ * ⚠ AND WHAT THE CALLER SEES IS WHAT WENT WRONG: the transport's error, or the decoder's, is passed through
+ * unchanged, so a missing file, a refused scheme and a bad encoding stay three different answers. */
++ (id)stringWithContentsOfURL:(NSURL *)url encoding:(NSStringEncoding)encoding error:(NSError **)errorPtr
+{
+	NSData *data;
+
+	if (url == nil) {
+		return nil;
+	}
+	if ([url isFileURL]) {
+		/* +0 OUT, as this door's contract has it, even though the file door hands back +1 (its leak, §63.24). */
+		return [[self stringWithContentsOfFile:[url path] encoding:encoding error:errorPtr] autorelease];
+	}
+	data = [NSURLConnection sendSynchronousRequest:[NSURLRequest requestWithURL:url]
+				     returningResponse:NULL
+						 error:errorPtr];
+	if (data == nil) {
+		return nil;
+	}
+	return [[[self alloc] initWithData:data encoding:encoding] autorelease];
+}
+
++ (id)stringWithContentsOfURL:(NSURL *)url
+		 usedEncoding:(NSStringEncoding *)encoding
+			error:(NSError **)errorPtr
+{
+	NSData *data;
+	id result;
+
+	if (url == nil) {
+		return nil;
+	}
+	if ([url isFileURL]) {
+		return [[self stringWithContentsOfFile:[url path] usedEncoding:encoding error:errorPtr] autorelease];
+	}
+	data = [NSURLConnection sendSynchronousRequest:[NSURLRequest requestWithURL:url]
+				     returningResponse:NULL
+						 error:errorPtr];
+	if (data == nil) {
+		return nil;
+	}
+	/* ONE ENCODING IS STORED, so that is what was used — the same sentence the file door above makes. */
+	result = [[[self alloc] initWithData:data encoding:NSUTF8StringEncoding] autorelease];
 	if (result != nil && encoding != NULL) {
 		*encoding = NSUTF8StringEncoding;
 	}
