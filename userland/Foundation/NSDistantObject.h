@@ -40,7 +40,11 @@ NS_ASSUME_NONNULL_BEGIN
 @interface NSDistantObject : NSProxy
 {
 	NSObject *_target;		/* the LOCAL object this stands for, or nil when it stands for the far one */
-	NSConnection *_connection;	/* not retained: a proxy does not keep its connection alive */
+	/* RETAINED, WHICH THIS COMMENT GOT WRONG UNTIL §63.19: it said "not retained: a proxy does not keep its
+	 * connection alive", while both initializers retain it and NSConnection's own -dealloc says "the proxy
+	 * holds it (NSDistantObject.h says so)". A proxy without its transport is a proxy that cannot call, so the
+	 * RETAIN is the code's answer and the comment is now the code's too. */
+	NSConnection *_connection;
 	Protocol *_protocol;		/* not retained — protocol objects belong to the runtime */
 }
 
@@ -49,6 +53,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 /* The other shape: `target` nil means "the connection's root object on the far side", and calls travel. */
 - (instancetype)initWithTarget:(nullable id)target connection:(NSConnection *)connection;
+
+/* THE TWO CLASS-SIDE FACTORIES (§63.19), which are the initializers above with Apple's own spelling: each
+ * answers an AUTORELEASED proxy, which is the house rule for a factory whose name begins with neither `alloc`,
+ * `new` nor `copy`. They were the class's last two open rows beyond its coder door. */
++ (nullable id)proxyWithLocal:(nullable id)object connection:(NSConnection *)connection;
++ (nullable id)proxyWithTarget:(nullable id)target connection:(NSConnection *)connection;
 
 - (nullable NSConnection *)connectionForProxy;
 - (void)setProtocolForProxy:(nullable Protocol *)aProtocol;

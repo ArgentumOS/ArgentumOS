@@ -25,9 +25,9 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: declined 389
+# why the struck rows are struck: declined 390
 #
-# AND 586 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# AND 585 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
 # row is, never that it is excluded.
 #
@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1836   open  849   struck  243
+#   method     shipped 1838   open  846   struck  244
 #   property   shipped 1027   open  463   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -1064,11 +1064,11 @@ method	shipped	-beginContentAccess	NSDiscardableContent	Fundamentals / Purgeable
 method	shipped	-discardContentIfPossible	NSDiscardableContent	Fundamentals / Purgeable Collections / Managing Discardable Content / Discarding Content	-	objc
 method	shipped	-endContentAccess	NSDiscardableContent	Fundamentals / Purgeable Collections / Managing Discardable Content / Accessing Content	-	objc
 method	shipped	-isContentDiscarded	NSDiscardableContent	Fundamentals / Purgeable Collections / Managing Discardable Content / Discarding Content	-	objc
-method	open	-initWithCoder:	NSDistantObject	Low-Level Utilities / Legacy / Legacy / Instance Methods	deprecated	objc
+method	struck	-initWithCoder:	NSDistantObject	Low-Level Utilities / Legacy / Legacy / Instance Methods	declined	objc
 method	shipped	-initWithLocal:connection:	NSDistantObject	Low-Level Utilities / Legacy / Legacy / Creating a Local Proxy	deprecated	objc
 method	shipped	-initWithTarget:connection:	NSDistantObject	Low-Level Utilities / Legacy / Legacy / Creating a Remote Proxy	deprecated	objc
-method	open	+proxyWithLocal:connection:	NSDistantObject	Low-Level Utilities / Legacy / Legacy / Creating a Local Proxy	deprecated	objc
-method	open	+proxyWithTarget:connection:	NSDistantObject	Low-Level Utilities / Legacy / Legacy / Creating a Remote Proxy	deprecated	objc
+method	shipped	+proxyWithLocal:connection:	NSDistantObject	Low-Level Utilities / Legacy / Legacy / Creating a Local Proxy	deprecated	objc
+method	shipped	+proxyWithTarget:connection:	NSDistantObject	Low-Level Utilities / Legacy / Legacy / Creating a Remote Proxy	deprecated	objc
 method	shipped	-setProtocolForProxy:	NSDistantObject	Low-Level Utilities / Legacy / Legacy / Setting a Proxy’s Protocol	deprecated	objc
 property	shipped	connectionForProxy	NSDistantObject	Low-Level Utilities / Legacy / Legacy / Getting a Proxy’s NSConnection	deprecated	objc
 method	shipped	-replyWithException:	NSDistantObjectRequest	Low-Level Utilities / Legacy / Legacy / Raising a Remote Exception	deprecated	objc

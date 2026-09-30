@@ -15824,6 +15824,69 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.19 — `NSDistantObject`: THE EIGHT'S LAST ROW IS A DECLINE, AND THE LEDGER GAINS A MECHANISM (2026-09-30)
+
+**WHAT SHIPPED: THREE ROWS, AND THEY ARE NOT ALL THE SAME KIND.** `+proxyWithLocal:connection:` and
+`+proxyWithTarget:connection:` are **LANDED** (the class-side spelling of the two initializers, autoreleased as
+the house rule for a name that begins with neither `alloc`, `new` nor `copy`); `-initWithCoder:` is
+**STRUCK-DECLINED**. **`method shipped` 1836 → 1838, `method open` 849 → 846, `method struck` 243 → 244** —
+and `NSDistantObject` now has **ZERO open rows**.
+
+**THE DECLINE IS THE CLASS'S OWN RECORDED DECISION, NOT A CONVENIENCE.** `NSDistantObject.h` has said since
+§62.56: *"A PROXY IS NOT ARCHIVABLE HERE … there is nothing in those bytes that could re-establish a
+connection: the name server is per-process (§62.54) … The door is NOT DECLARED rather than declared and
+hollow."* A proxy's state is a **live connection plus a local target pointer**, so there is no case of it a
+keyed archive could carry — and the *other* two dispositions are both wrong: declaring a door that always
+raises contradicts the header's own sentence, and leaving the row open records a debt that is not owed.
+
+**AND THE LEDGER COULD NOT EXPRESS THAT, SO THE TOOL GAINED THE MECHANISM — the user's decision, taken as a
+tool change rather than a guess.** `DECLINED_SYMBOLS` and `DECLINED_ROOTS` are keyed by **name** or by
+**owner**, and both over-strike here: `"initWithCoder:"` in the name set would strike that selector on ALL
+TWENTY classes, including the twelve this thread implemented, and `"NSDistantObject"` in the owner set would
+strike the class's own shipped initializers. `DECLINED_SELECTORS` is a set of `(owner, selector)` pairs,
+consulted by `is_declined()` — one row, named, with its reason written where the next reader will find it.
+
+**TWO TRAPS THE MECHANISM COST, both recorded where they will be met again:**
+
+* **THE SELECTOR'S NAME CARRIES NO SIGN.** A selector row's `name` is the selector WITH its colons and WITHOUT
+  its `+`/`-` — the sign rides `row["sign"]` and is joined only when the line is PRINTED (`selectors_status`).
+  So `("-", "NSDistantObject", "-initWithCoder:")` matches NOTHING while `"initWithCoder:"` matches the row:
+  **the entry looks right in the ledger's own spelling and is invisible to the tool**, which is the worst way
+  for an exclusion to be wrong. It cost one build and is now a comment in the set.
+* **AND THE ORDER OF THE TWO REASON FUNCTIONS DIFFERS BY DESIGN, which is why this works at all.**
+  `_selector_why()` asks `is_declined()` FIRST, while the SYMBOL side's `why_of()` asks Apple's grounds first
+  (deliberately: a declined family's deprecated class keeps Apple's specific reason). Had the selector side
+  copied the symbol side's order, a declined-and-deprecated selector would have been labelled `deprecated` —
+  which does NOT strike — and the row would have stayed open with the decline silently ignored.
+
+**THE PROBE ASSERTS THE ABSENCE — with POSITIVE CONTROLS, and for a reason that distinguishes it from §63.17's
+inverted check.** §63.17's `sort-refusals` asserted an absence that was only an artifact of work not yet done;
+THIS absence IS the decision. So the check asserts the coder doors are absent **and** that the class answers
+`connectionForProxy`, `setProtocolForProxy:`, `initWithTarget:connection:` and the two factories — the controls
+that stop it passing on a class that is merely missing. **If someone later declares the coder door, this check
+FAILS and forces the decision to be revisited**, which is exactly what a declined row should do.
+
+**AND ONE MORE FINDING, from the check's own compilation: `+instancesRespondToSelector:` IS NOT AVAILABLE ON A
+PROXY.** `NSDistantObject` is an `NSProxy` subclass and this library's `NSProxy` is a root class without that
+class method, so the compiler refused it by name; the check asks the runtime instead
+(`class_getInstanceMethod`/`class_getClassMethod`, the same question in the spelling that works for a proxy).
+
+**AND A DOCUMENTATION DEFECT THE UNIT PASSED, fixed while it was in hand:** `NSDistantObject.h`'s ivar comment
+said `_connection` is *"not retained"* while BOTH initializers retain it and `NSConnection`'s own `-dealloc`
+says *"the proxy holds it (NSDistantObject.h says so)"* — so the header was the one wrong, and it now says what
+the code does.
+
+**VERIFICATION.** `foundation_dobjects` **11/11** on the host (with
+`a-proxy-declines-to-be-archived-and-answers-its-own-doors`, the guest-only probe built and run the way
+§63.17 described); guest `TESTS-OK 1/1 case(s), 6/6 check(s)`; `foundation_clusters` **17/17** and
+`foundation_orderedset` **6/6** unmoved; `make foundation-sweep` **exit 0**, `--unimplemented` **0 NEW**,
+`--check` consistent, and the policy bucket still carries its five pre-existing struck-but-declared names (this
+decline adds none, because a struck row is one we must NOT declare).
+
+**AND WITH THAT THE EIGHT FIELD-CARRYING CLASSES ARE COMPLETE** — twelve rows across six sections (§63.14–
+§63.19), every one of them recorded with what it cost. Still open and independent: the **`NSExpression`
+ownership defect** (§63.15) and the **value-type design question** (§63.10).
+
 ## §63.18 — `NSCharacterSet`: THE PAYLOAD IS THE RANGES, AND A PROBE ERROR THAT LOOKED LIKE A LIBRARY CRASH (2026-09-30)
 
 **WHAT SHIPPED: ONE ROW.** `NSCharacterSet` conforms to `NSCoding`. **`method shipped` 1835 → 1836,

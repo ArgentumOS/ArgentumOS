@@ -476,6 +476,29 @@ DECLINED_SYMBOLS = frozenset((
     "NSPredicateValidating",
 ))
 
+# DECLINES THAT BELONG TO ONE SELECTOR OF ONE CLASS (§63.19), which the two sets above CANNOT express: they
+# are keyed by NAME or by OWNER, so a name here would strike that selector on EVERY class and an owner would
+# strike the class's shipped members too. THIS SET EXISTS BECAUSE THE NEED WAS MEASURED: `NSDistantObject`'s
+# `-initWithCoder:` is a row the header itself refuses - "A PROXY IS NOT ARCHIVABLE HERE ... the name server is
+# per-process (§62.54), so a connection cannot be rebuilt in another process from a message. The door is NOT
+# DECLARED rather than declared and hollow" (NSDistantObject.h) - and the other two ways to close it are both
+# wrong: `"-initWithCoder:"` in DECLINED_SYMBOLS would strike every other class's coder door, including the
+# sixteen this project implements, and `"NSDistantObject"` in DECLINED_ROOTS would strike the class's own
+# shipped initializers.
+#
+# AND THE HEADER'S SENTENCE IS WHY THE DOOR IS NOT SIMPLY DECLARED AND LEFT RAISING: a proxy's state is a LIVE
+# CONNECTION plus a local target pointer, so there is no case of it that a keyed archive could carry. The
+# decline is recorded where a reader meets the class, and this row is struck-and-NAMED rather than dropped.
+#
+# **AND THE NAME HERE CARRIES NO SIGN, WHICH COST A BUILD TO LEARN.** A selector row's `name` is the selector
+# WITH its colons and WITHOUT its `+`/`-` — the sign rides `row["sign"]` and is joined only when the ledger
+# line is PRINTED (`selectors_status`, "the owner's ground comes first"). So `"-initWithCoder:"` matches
+# NOTHING here while `"initWithCoder:"` matches the row — the entry looks right in the ledger's own spelling
+# and is invisible to the tool, which is the worst way for it to be wrong.
+DECLINED_SELECTORS = frozenset((
+    ("NSDistantObject", "initWithCoder:"),
+))
+
 
 def is_declined(row):
     """Is this row out by the project's SCOPE DECISION rather than by an Apple fact?
@@ -487,6 +510,10 @@ def is_declined(row):
     if name in DECLINED_SYMBOLS or owner in DECLINED_SYMBOLS:
         return True
     if name in DECLINED_ROOTS or owner in DECLINED_ROOTS:
+        return True
+    # THE PER-OWNER SELECTOR FORM (§63.19): a decline that belongs to ONE selector of ONE class, which the
+    # name-keyed and owner-keyed sets above cannot express without over-striking.
+    if (owner, name) in DECLINED_SELECTORS:
         return True
     # THE XPC ERROR CODES live under "User-Relevant Errors" rather than in the XPC family.
     if "XPC" in (row.get("family") or ""):

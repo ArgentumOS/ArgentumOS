@@ -34,6 +34,19 @@
 	return self;
 }
 
+/* THE TWO CLASS-SIDE FACTORIES (§63.19): the initializers above, with Apple's own spelling and the house's
+ * AUTORELEASED answer for a name that begins with neither `alloc`, `new` nor `copy`. They delegate rather than
+ * restating the construction, so a proxy built either way is the same object. */
++ (id)proxyWithLocal:(id)object connection:(NSConnection *)connection
+{
+	return [[[self alloc] initWithLocal:object connection:connection] autorelease];
+}
+
++ (id)proxyWithTarget:(id)target connection:(NSConnection *)connection
+{
+	return [[[self alloc] initWithTarget:target connection:connection] autorelease];
+}
+
 - (instancetype)initWithTarget:(id)target connection:(NSConnection *)connection
 {
 	_target = [target retain];		/* nil means "the far side's root object" */

@@ -39,6 +39,7 @@ CHECKS = (
     "a-scalar-argument-is-refused-by-the-proxy-and-nothing-is-called",
     "an-unregistered-name-answers-no-proxy",
     "invalidating-a-connection-posts-its-notification-and-withdraws-its-name",
+    "a-proxy-declines-to-be-archived-and-answers-its-own-doors",
 )
 
 

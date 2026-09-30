@@ -347,6 +347,35 @@ int main(void)
 			@"resolves to nothing", (int)[serving isValid], [watcher died]]);
 	}
 
+	{
+		/* A PROXY DECLINES TO BE ARCHIVED, AND THE DECLINE IS A LEDGER ROW NOW (§63.19). This is an ABSENCE
+		 * assertion, which this thread has twice caught as a bug — so it carries its own POSITIVE CONTROLS and
+		 * the reason it is legitimate here: §63.17's `sort-refusals` asserted an absence that was only an
+		 * artifact of work not yet done, while THIS absence IS the decision (NSDistantObject.h: a proxy's state
+		 * is a live, per-process connection, so "the door is NOT DECLARED rather than declared and hollow"). If
+		 * someone later declares it, this check FAILS and forces the decision to be revisited — which is
+		 * exactly what a declined row should do.
+		 *
+		 * THE CONTROLS: the class must answer the doors it DOES have (so the absence cannot come from a class
+		 * that is simply missing), and the two factories §63.19 landed must answer their own names.
+		 *
+		 * AND THE QUESTION GOES TO THE RUNTIME RATHER THAN TO `+instancesRespondToSelector:`, because
+		 * `NSDistantObject` is an `NSProxy` SUBCLASS and this library's `NSProxy` is a root class WITHOUT that
+		 * class method — the compiler refused it by name. `class_getInstanceMethod`/`class_getClassMethod` ask
+		 * the same question and are the spelling that works for a proxy. */
+		Class proxyClass = [NSDistantObject class];
+
+		check("a-proxy-declines-to-be-archived-and-answers-its-own-doors",
+		      class_getInstanceMethod(proxyClass, sel_registerName("initWithCoder:")) == NULL &&
+		      class_getInstanceMethod(proxyClass, sel_registerName("encodeWithCoder:")) == NULL &&
+		      class_getInstanceMethod(proxyClass, sel_registerName("connectionForProxy")) != NULL &&
+		      class_getInstanceMethod(proxyClass, sel_registerName("setProtocolForProxy:")) != NULL &&
+		      class_getInstanceMethod(proxyClass, sel_registerName("initWithTarget:connection:")) != NULL &&
+		      class_getClassMethod(proxyClass, sel_registerName("proxyWithLocal:connection:")) != NULL &&
+		      class_getClassMethod(proxyClass, sel_registerName("proxyWithTarget:connection:")) != NULL,
+		      @"the coder doors are ABSENT by decision (a proxy's state is a live connection) while the class's own doors and the two factories §63.19 landed are all present");
+	}
+
 	printf("FOUNDATION-DOBJECTS RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-DOBJECTS-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-DOBJECTS DONE\n");
