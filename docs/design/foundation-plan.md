@@ -15824,6 +15824,63 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.20 — `NSExpression` OWNS WHAT IT HOLDS: THE DEFECT §63.15 RECORDED, FIXED AND MEASURED (2026-09-30)
+
+**THE DEFECT (recorded in §63.15 when the coder door landed): the class BORROWED its three slots.** The single
+construction funnel, `+fnWithType:constant:operand:function:`, assigned `_constant`/`_operand`/`_function`
+**without retaining**, and the file had **no `-dealloc` at all** — a pair that is self-consistent and still
+wrong, because it makes every value an expression hands back (`-constantValue`, `-operand`, `-function`) valid
+only for as long as the CALLER's reference happened to live. An expression is a value:
+`[NSExpression expressionForConstantValue:[NSMutableString stringWithString:@"x"]]` built an expression whose
+one constant died with the pool.
+
+**THE FIX IS THE PAIR: retain in the funnel, release in a new `-dealloc`.** The one fact that makes it exact
+rather than hopeful was **measured, not assumed**: `+fnWithType:` is the **only** place any slot is assigned —
+`-initWithCoder:` comes through it too (12 call sites, all enumerated) — so one retain and one dealloc are a
+mirror with no seam for a leak. I also checked what those 12 sites pass: **objects or nil, never a raw pointer
+or a boxed scalar**, which is what makes releasing safe.
+
+**⚠ AND THE OBVIOUS ASSERTION WAS THE WRONG INSTRUMENT — which is the whole reason this unit needed one.**
+Reading `-constantValue` after the caller lets go is exactly the check that CANNOT be trusted: a use-after-free
+is the defect class this project has already measured to behave differently on the two libcs (**musl leaves
+freed memory readable, glibc reuses it**), so on the guest a dangling read reads as correct. The instrument is
+therefore a **DEATH COUNT**: a probe-owned class `FNDeathMarker` that increments a counter in `-dealloc`; the
+caller drops its strong reference (`marker = nil`), so a count of 0 means the expression's own retain is the only
+thing holding the object. The check's second half reads the value, and **the `&&` short-circuit is load-bearing**:
+in a failing run the value is never read, and the diagnostic says so by name (*"NO — reading it would be a
+dangling read"*).
+
+**AND THE ORDER OF THE BUILD MATTERED, WHICH IS WHAT MAKES THIS A REAL BEFORE/AFTER RATHER THAN A CLAIM.** The
+check was written and run while `.build/host/lib/libfoundation.so` was still built from the OLD source, so the
+defect reproduced **first**:
+
+```
+FOUNDATION-EXPRESSION an-expression-owns-what-it-holds FAIL the constant's object died 1 time(s)
+    after the caller released it (0 = the expression owns it ...) and the expression answers its own value:
+    NO — reading it would be a dangling read
+FOUNDATION-EXPRESSION RESULT ok=9 fail=1
+```
+
+and then, after `make .build/host/lib/libfoundation.so` rebuilt the file:
+
+```
+FOUNDATION-EXPRESSION an-expression-owns-what-it-holds ok
+FOUNDATION-EXPRESSION RESULT ok=10 fail=0
+```
+
+**THE SAME DEFECT CLASS, MEASURED LIBRARY-WIDE — and it found ONE neighbour that is a DIFFERENT class.** A sweep
+for the shape *"a file with a direct `->_ivar = <lowercase>` assignment and no `- (void)dealloc`"* answers exactly
+one other file: **`NSKeyValueObserving.m`**, whose `FNKVORegistration` and `FNKVOPending` objects take their ivars
+straight from parameters. **IT IS A LEAK, NOT A DANGLING READ** — the measurement that separates them is that
+**nothing anywhere releases one** (zero `release` call sites for either name), so nothing dangles and the cost is
+bounded by `-addObserver:forKeyPath:…` calls. Named here as a residual rather than fixed inside a unit that is
+about a use-after-free: **the two defects look identical in a grep and are not the same thing.**
+
+**VERIFICATION.** Host probe `foundation_expression` **10/10** (was 9 ok + 1 fail on the old library; the probe is
+clean under `-Werror=nullable-to-nonnull-conversion`); guest `TESTS-OK 1/1 case(s), 6/6 check(s)`; and the two
+suites that hold expressions as data — **`foundation_predicate` 6/6 and `foundation_kvc` 6/6** — unmoved; library
+**zero diagnostics**; `make foundation-sweep` **exit 0** (no header changed, so the ledgers do not move).
+
 ## §63.19 — `NSDistantObject`: THE EIGHT'S LAST ROW IS A DECLINE, AND THE LEDGER GAINS A MECHANISM (2026-09-30)
 
 **WHAT SHIPPED: THREE ROWS, AND THEY ARE NOT ALL THE SAME KIND.** `+proxyWithLocal:connection:` and

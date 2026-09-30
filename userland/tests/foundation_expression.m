@@ -61,6 +61,23 @@
 
 static int okc, failc;
 
+/* §63.20's INSTRUMENT: a probe-owned class that COUNTS ITS OWN DEATHS, so "does the expression own what it
+ * holds?" is answered by a NUMBER rather than by a dangling read. That distinction matters here: a
+ * use-after-free is exactly the defect class this project measured to behave differently on the two libcs
+ * (musl leaves freed memory readable, glibc reuses it), so the count is the instrument and the still-readable
+ * value is the second half of the same check. */
+static int deaths;
+
+@interface FNDeathMarker : NSObject
+@end
+
+@implementation FNDeathMarker
+- (void)dealloc
+{
+	deaths++;
+}
+@end
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
 	if (ok) {
@@ -267,6 +284,29 @@ int main(void)
 			(long)[backConstant expressionType], (long)[backKeyPath expressionType],
 			(long)[backVariable expressionType], (long)[backCall expressionType],
 			(unsigned long)(backCall != nil ? [[backCall arguments] count] : 0)]);
+	}
+
+	{
+		/* AN EXPRESSION OWNS WHAT IT HOLDS (§63.20). THE MEASUREMENT IS A DEATH COUNT, because the obvious
+		 * assertion - read `-constantValue` after the caller lets go - is precisely the one that CANNOT be
+		 * trusted here: on the guest a freed block keeps its bytes, so a use-after-free reads as correct.
+		 *
+		 * THE SETUP: the caller's strong reference is dropped (`marker = nil`, ARC's release), so from that
+		 * moment the ONLY thing that can keep the object alive is the expression's own retain. A death count of
+		 * 0 therefore means ownership, and it is the fix that makes it 0 — before §63.20 the slot was assigned
+		 * without a retain and the class had no -dealloc at all. */
+		FNDeathMarker *marker = [[FNDeathMarker alloc] init];
+		NSExpression *holder = [NSExpression expressionForConstantValue:marker];
+
+		marker = nil;			/* THE CALLER LETS GO: only the expression's retain can hold it now */
+
+		check("an-expression-owns-what-it-holds",
+		      deaths == 0 && [holder constantValue] != nil &&
+		      [[holder constantValue] isKindOfClass:[FNDeathMarker class]],
+		      [NSString stringWithFormat:@"the constant's object died %d time(s) after the caller released it "
+			@"(0 = the expression owns it, which is what the fix made true) and the expression answers its own "
+			@"value: %@", deaths,
+			(deaths == 0 && [holder constantValue] != nil) ? @"yes" : @"NO — reading it would be a dangling read"]);
 	}
 
 	printf("FOUNDATION-EXPRESSION RESULT ok=%d fail=%d\n", okc, failc);

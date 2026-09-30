@@ -175,11 +175,31 @@ static id fn_set_operation(NSExpressionType type, id left, id right)
 {
 	NSExpression *expression = [[self alloc] init];
 
+	/* THE EXPRESSION OWNS WHAT IT HOLDS (§63.20). These three assignments used to BORROW their arguments - no
+	 * retain here and no -dealloc anywhere in the file - so every value an expression handed back
+	 * (`-constantValue`, `-operand`, `-function`) was valid only as long as the CALLER's reference happened to
+	 * live. An expression is a VALUE: `[NSExpression expressionForConstantValue:[NSMutableString stringWithString:@"x"]]`
+	 * built an expression whose only constant died with the pool - the defect class that hides on the guest
+	 * (musl leaves freed memory readable) and is fatal on the host (glibc reuses it).
+	 *
+	 * THE PAIR IS THE FIX: retain here, release in the -dealloc below. THIS FUNNEL IS THE ONLY PLACE ANY SLOT IS
+	 * ASSIGNED - `-initWithCoder:` comes through it too - which is what makes one retain and one dealloc an
+	 * exact mirror rather than a place a leak can hide. */
 	expression->_type = type;
-	expression->_constant = constant;
-	expression->_operand = operand;
-	expression->_function = name;
+	expression->_constant = [constant retain];
+	expression->_operand = [operand retain];
+	expression->_function = [name retain];
 	return expression;
+}
+
+- (void)dealloc
+{
+	/* THE MIRROR OF `+fnWithType:` AND NOTHING ELSE, for the reason written there: the funnel is the only
+	 * writer of these three slots, so these releases are the whole of the ownership this class has. */
+	[_constant release];
+	[_operand release];
+	[_function release];
+	[super dealloc];
 }
 
 + (NSExpression *)expressionForConstantValue:(nullable id)object
