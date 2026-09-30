@@ -25,6 +25,9 @@
 #import <Foundation/NSFastEnumeration.h>
 #import <Foundation/NSEnumerator.h>
 #import <Foundation/NSOrderedCollectionDifference.h>
+/* FOR `NSCoding` AND THE `NSCoder` ITS TWO DOORS TAKE (§63.12): this collection conforms on Apple's platform,
+ * so a class that declares the protocol here is one whose `-conformsToProtocol:` answers the same. */
+#import <Foundation/NSCoding.h>
 
 @class NSString;
 @class NSIndexSet;
@@ -59,13 +62,21 @@ NS_ASSUME_NONNULL_BEGIN
  * NSArray, so no private name can reach an archive.
  * =================================================================================================== */
 
-@interface NSArray<__covariant ObjectType> : NSObject <NSCopying, NSFastEnumeration>
+@interface NSArray<__covariant ObjectType> : NSObject <NSCopying, NSFastEnumeration, NSCoding>
 {
 	id __unsafe_unretained *_items;	/* owned BY HAND: every slot is retained */
 	unsigned long _count;
 	unsigned long _capacity;
 	unsigned long _mutations;	/* bumped by every mutation, for fast enumeration */
 }
+
+/* THE NSCoding DOORS (§63.12), the same pair the ordered sets and sets took in §63.10/§63.11: the members go
+ * under the SHARED key (FNKeyedWire.h) that the archive's structural branch uses, the decoder reads it back
+ * through `-initWithArray:` — so the class-choosing rule and the layout stay the INITIALIZER's — and the
+ * ARCHIVER never calls either, because its structural branch recognises an array by KIND. They exist for a
+ * caller who names them, and for `-conformsToProtocol:`. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
+- (void)encodeWithCoder:(NSCoder *)coder;
 
 + (instancetype)array;
 + (instancetype)arrayWithObject:(ObjectType)object;
@@ -174,6 +185,11 @@ NS_ASSUME_NONNULL_BEGIN
 + (instancetype)array;
 + (instancetype)arrayWithCapacity:(NSUInteger)capacity;
 - (id)initWithCapacity:(NSUInteger)capacity;
+/* APPLE DECLARES THIS ON THE MUTABLE CLASS TOO (§63.12), so it is redeclared here rather than left to
+ * inheritance — the ledger's shipped test is a declaration in the owner's own block — and its implementation
+ * lives in this class's own `@implementation`, because `--unimplemented` counts an implementation in the class
+ * or a SUBCLASS, so the front's body does not satisfy this. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder;
 
 - (void)addObject:(ObjectType)object;
 - (void)insertObject:(ObjectType)object atIndex:(NSUInteger)index;

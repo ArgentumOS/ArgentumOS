@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1825   open  860   struck  243
+#   method     shipped 1827   open  858   struck  243
 #   property   shipped 1027   open  463   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -184,7 +184,7 @@ method	open	-indexesOfObjectsWithOptions:passingTest:	NSArray	Fundamentals / Bas
 method	shipped	-init	NSArray	Fundamentals / Basic Collections / Initializing an Array	-	objc
 method	shipped	-initWithArray:	NSArray	Fundamentals / Basic Collections / Initializing an Array	-	objc
 method	open	-initWithArray:copyItems:	NSArray	Fundamentals / Basic Collections / Initializing an Array	-	objc
-method	open	-initWithCoder:	NSArray	Fundamentals / Basic Collections / New Methods	-	objc
+method	shipped	-initWithCoder:	NSArray	Fundamentals / Basic Collections / New Methods	-	objc
 method	shipped	-initWithContentsOfFile:	NSArray	Fundamentals / Basic Collections / Initializing an Array	deprecated	objc
 method	shipped	-initWithContentsOfURL:	NSArray	Fundamentals / Basic Collections / Instance Methods	deprecated	objc
 method	open	-initWithContentsOfURL:error:	NSArray	Fundamentals / Basic Collections / Instance Methods	-	objc
@@ -1960,7 +1960,7 @@ method	shipped	-exchangeObjectAtIndex:withObjectAtIndex:	NSMutableArray	Fundamen
 method	shipped	-filterUsingPredicate:	NSMutableArray	Fundamentals / Basic Collections / Filtering Content	-	objc
 method	shipped	-init	NSMutableArray	Fundamentals / Basic Collections / Creating and Initializing a Mutable Array	-	objc
 method	shipped	-initWithCapacity:	NSMutableArray	Fundamentals / Basic Collections / Creating and Initializing a Mutable Array	-	objc
-method	open	-initWithCoder:	NSMutableArray	Fundamentals / Basic Collections / Instance Methods	-	objc
+method	shipped	-initWithCoder:	NSMutableArray	Fundamentals / Basic Collections / Instance Methods	-	objc
 method	shipped	-initWithContentsOfFile:	NSMutableArray	Fundamentals / Basic Collections / Creating and Initializing a Mutable Array	-	objc
 method	shipped	-initWithContentsOfURL:	NSMutableArray	Fundamentals / Basic Collections / Creating and Initializing a Mutable Array	-	objc
 method	shipped	-insertObject:atIndex:	NSMutableArray	Fundamentals / Basic Collections / Adding Objects	-	objc

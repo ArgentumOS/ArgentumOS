@@ -15824,6 +15824,41 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.12 — `NSArray`'S `NSCoding` CONFORMANCE: THE RECIPE A THIRD TIME, AND THE CLUSTER SHOWS THROUGH (2026-09-30)
+
+**WHAT SHIPPED: TWO ROWS.** `NSArray` and `NSMutableArray` conform to `NSCoding`, with the protocol on the
+front, both doors on the front and `-initWithCoder:` on the mutable. **`method shipped` 1825 → 1827,
+`method open` 860 → 858.**
+
+**THE THIRD TIME IS A SUBSTITUTION, WHICH IS THE MEASURE OF §63.10's RECORD.** Same shared key, same funnel,
+same direct-drive probe pattern, same mutable-needs-its-own-body rule. The edits were: two imports, two
+`@interface` adoptions, six declarations and five method bodies — with no new judgement anywhere, because the
+judgement had already been written down twice.
+
+**WHAT THE ARRAY ADDS THAT THE SETS COULD NOT, and it is why this family was worth doing separately rather
+than folding into the previous one:** `NSArray` is a CLUSTER with a choice of concrete classes, so its round
+trip also exercises the CLASS-CHOOSING RULE — and the probe drives BOTH classes' doors over the SAME BYTES,
+asserting that the immutable front answers an immutable array and `NSMutableArray` a mutable one. A single
+round trip through `-initWithCoder:` alone would not have shown that the rule survived; two against one
+archive does.
+
+**AND THE ENCODER COPIES ITS OWN CONTENTS, for the reason the sets' did:** `[NSArray arrayWithArray:self]`
+rather than `self`, because encoding `self` under the key would ask the coder for the object it is in the
+middle of writing and the archive would record the array referring to itself.
+
+**VERIFICATION.** `foundation_collection` — the array family's own case, and a GUEST-ONLY probe — is
+**1/1 case, 6/6 checks with the probe at 48/48** (was 47, with `array-nscoding-doors`); it was
+COMPILE-CHECKED on the host first, which is the cheap half of §63.8's lesson and the only half available for a
+probe this one runs in the guest. `foundation_set` **6/6** and `foundation_orderedset` **6/6** unmoved;
+`make foundation-sweep` **exit 0**, `--unimplemented` **0 NEW**; `--check` named **exactly 2** rows before the
+flip and the refresh's diff was **3 lines in ONE file**.
+
+**NEXT, AND IT IS THE ONE FAMILY THAT IS NOT A SUBSTITUTION:** `NSDictionary`/`NSMutableDictionary`. It
+carries **TWO** payloads — `NS.keys` paired positionally with `NS.objects` — so its encoder writes both and its
+decoder pairs them, and the shared wire already has the second key name waiting (`FNKeyedWire.h` declares
+`FNKeyedKeysKey` for exactly this). That is a real difference rather than a repetition, which is why it is a
+unit of its own rather than the tail of this one.
+
 ## §63.11 — `NSSet`'S `NSCoding` CONFORMANCE: THE RECIPE APPLIED A SECOND TIME (2026-09-30)
 
 **WHAT SHIPPED: TWO ROWS.** `NSSet` and `NSMutableSet` conform to `NSCoding`, with the protocol on the front,

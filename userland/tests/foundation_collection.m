@@ -1194,6 +1194,34 @@ NULL
 	}
 
 	{
+		/* THE ARRAY'S NSCoding DOORS (§63.12), driven DIRECTLY — the only way to reach them, since the
+		 * archiver's structural branch recognises an array by KIND and never asks the class. A mutable array
+		 * is used as the source so the ROUND TRIP also shows the class-choosing rule: the immutable front must
+		 * answer an immutable array and the mutable class a mutable one, from the same bytes. */
+		NSMutableArray *source = [NSMutableArray arrayWithObjects:@"a", @"b", @"c", nil];
+		NSMutableData *buffer = [NSMutableData data];
+		NSKeyedArchiver *writer = [[NSKeyedArchiver alloc] initForWritingWithMutableData:buffer];
+		NSArray *back;
+		NSMutableArray *mutableBack;
+
+		[source encodeWithCoder:writer];
+		[writer finishEncoding];
+		back = [[NSArray alloc] initWithCoder:
+			[[NSKeyedUnarchiver alloc] initForReadingWithData:buffer]];
+		mutableBack = [[NSMutableArray alloc] initWithCoder:
+			[[NSKeyedUnarchiver alloc] initForReadingWithData:buffer]];
+		check("array-nscoding-doors",
+		      [source conformsToProtocol:@protocol(NSCoding)] &&
+		      [NSMutableArray conformsToProtocol:@protocol(NSCoding)] &&
+		      back != nil && [back count] == 3 &&
+		      [[back objectAtIndex:1] isEqualToString:@"b"] &&
+		      ![back isKindOfClass:[NSMutableArray class]] &&
+		      mutableBack != nil && [mutableBack count] == 3 &&
+		      [mutableBack isKindOfClass:[NSMutableArray class]],
+		      "the pair round-trips through the class's own doors, and the class-choosing rule survives it (an immutable front answers an immutable array, the mutable class a mutable one)");
+	}
+
+	{
 		/* The dictionary's block and keys-sorted-by-value forms, exercised. */
 		NSMutableDictionary *d = [NSMutableDictionary dictionary];
 		__block NSUInteger seen = 0;

@@ -21,6 +21,9 @@
 #import <objc/runtime.h>
 #include <objc/objc-arc.h>	/* objc_retain/objc_release: the C slots are not ARC-managed */
 #include <stdlib.h>
+/* THE KEYED ARCHIVE'S KEY NAMES, shared with NSKeyedArchiver's structural branch so the NSCoding doors below
+ * and that branch cannot spell the same key differently (§63.12). */
+#import <Foundation/FNKeyedWire.h>
 
 /* Grow to hold at least `needed`, never shrinking. */
 static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
@@ -320,6 +323,23 @@ static NSArray *array_from_varargs(Class cls, id firstObject, va_list args)
 	result = array_from_varargs(self, firstObject, args);
 	va_end(args);
 	return result;
+}
+
+/* ===================================================================================================
+ * THE NSCoding DOORS (§63.12). What they are FOR, since the archiver does not need them, is in the header.
+ * One key, and `-initWithArray:` is the funnel both ends meet at — so the class-choosing rule stays the
+ * INITIALIZER's.
+ * =================================================================================================== */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	return [self initWithArray:[coder decodeObjectForKey:FNKeyedObjectsKey]];
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	/* A COPY, AND THAT IS THE POINT: encoding `self` under this key would ask the coder for the very object it
+	 * is in the middle of writing, and the archive would record the array referring to itself. */
+	[coder encodeObject:[NSArray arrayWithArray:self] forKey:FNKeyedObjectsKey];
 }
 
 - (id)initWithArray:(NSArray *)other
@@ -890,6 +910,16 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 		_capacity = capacity;
 	}
 	return self;
+}
+
+/* THE SAME DOOR ON THE MUTABLE CLASS (§63.12), declared in its own block and therefore needing its own body:
+ * `--unimplemented` counts an implementation in the class or a SUBCLASS, so the front's does not satisfy it.
+ * `[super initWithCoder:]` reaches the front's, which funnels through `-initWithArray:` with `self` still the
+ * MUTABLE class — and the class-choosing rule sends only the immutable concrete class to the shared empty
+ * instance, so a mutable answer stays mutable. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	return [super initWithCoder:coder];
 }
 
 - (void)addObject:(id)object
