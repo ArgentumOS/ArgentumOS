@@ -566,6 +566,27 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	return selected;
 }
 
+/* THE FIRST MATCH, AND IT STOPS THERE. `-indexesOfObjectsPassingTest:` below is the EXHAUSTIVE form and is
+ * deliberately a different walk: implementing this one as `[[self indexesOf…] firstIndex]` would answer the
+ * same index while calling a caller's predicate for every element after the match - and a predicate may have
+ * side effects, so "the same answer" is not the same behaviour. A nil predicate and no match both answer
+ * NSNotFound, which is Cocoa's "there is no such index". */
+- (NSUInteger)indexOfObjectPassingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate
+{
+	NSUInteger i;
+	BOOL stop = NO;
+
+	if (predicate == NULL) {
+		return NSNotFound;
+	}
+	for (i = 0; i < [self count] && !stop; i++) {
+		if (predicate([self objectAtIndex:i], i, &stop)) {
+			return i;
+		}
+	}
+	return NSNotFound;
+}
+
 - (NSIndexSet *)indexesOfObjectsPassingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate
 {
 	NSMutableIndexSet *matches = [[NSMutableIndexSet alloc] init];

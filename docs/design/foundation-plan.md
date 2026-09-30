@@ -15824,6 +15824,61 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.8 — THE SEARCHING AND SORTING DOORS: NINE ROWS ACROSS THREE CLASSES, AND TWO INSTRUMENTS THAT LIED (2026-09-30)
+
+**WHAT SHIPPED: NINE ROWS.** `NSArray -indexOfObjectPassingTest:`; `NSOrderedSet`'s `-indexOfObjectPassingTest:`,
+`-indexesOfObjectsPassingTest:`, `-sortedArrayUsingComparator:`, `-sortedArrayWithOptions:usingComparator:`,
+`-indexOfObject:inSortedRange:options:usingComparator:`; and `NSMutableOrderedSet`'s `-sortUsingComparator:`,
+`-sortWithOptions:usingComparator:`, `-sortRange:options:usingComparator:`. **`method shipped` 1804 → 1813,
+`method open` 881 → 872.**
+
+**THE SLICE WAS MEASURED, AND THE MEASUREMENT CORRECTED IT TWICE.** §63.7 predicted "a family-wide unit, ~16
+rows across `NSArray` and `NSOrderedSet`". The ledger's answer was **9 rows across THREE classes** — `NSArray`
+was missing exactly ONE of them, and the third class had three. **AND THE FIRST ESTIMATE CAME FROM A BROKEN
+INSTRUMENT, which is the part worth keeping:** a `grep` for a SELECTOR STRING in a header returns zero even
+when the declaration is right there, because a declaration INTERLEAVES ITS ARGUMENT TYPES —
+`sortedArrayWithOptions:usingComparator:` never appears as that literal text in
+`sortedArrayWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator`. Every conclusion
+drawn that way was wrong, in the direction of "we are missing more than we are". **The ledger is the
+instrument; the grep is not.**
+
+**DELEGATION IS THE ANTI-DRIFT CHOICE FOR FOUR OF THE NINE.** The two comparator sorts, the options sort and
+the binary search all DELEGATE to `[self array]`, exactly as `-sortedArrayUsingDescriptors:` already did: the
+array view IS the same sequence — same members, same order, same indexes — so one implementation cannot drift
+from itself. The binary search is the sharpest case, because its answer is an INDEX and an index into the
+ordered set and into its array view are the same number; re-deriving it would create a second place the
+first-equal / last-equal / insertion rules live, for no gain.
+
+**THE TWO PREDICATE SEARCHES ARE NOT DELEGATED, BECAUSE THE WALK IS THE CONTRACT** — and the first-match door
+STOPS at its match. That is asserted by **CALL COUNT, not by the index**: `[[self indexesOfObjectsPassingTest:]
+firstIndex]` would answer the same number while calling a caller's predicate for every element AFTER the
+match, and a predicate may have side effects, so "the same answer" is not the same behaviour. An index-only
+assertion would have passed for a full scan.
+
+**AND A RANGE SORT'S ENDS ARE THE INSTRUMENT.** `-sortRange:options:usingComparator:` must move only the
+members INSIDE the range, so the check sorts the MIDDLE of a five-member set and asserts BOTH ENDS are exactly
+where they were — the obvious "the middle is sorted now" assertion passes for a full sort. It also asserts the
+refusal for a range past the end (the same contract the construction family's range doors took, §63.6).
+
+**TWO INSTRUMENTS LIED, AND EACH IS RECORDED RATHER THAN QUIETLY FIXED:**
+
+* **THE BINARY SEARCH'S PRECONDITION IS PART OF ITS TEST.** The check's first version searched
+  `["one", "two", "three", "four"]` — which is **NOT sorted** ("three" < "two") — so the search's answers were
+  meaningless and the check FAILED with `ins=1` where 3 was expected. The probe caught it because the
+  expectation was written down; had the expectation been derived from the same wrong assumption as the input,
+  the check would have "passed" and measured nothing. The order is alphabetical now, and the absent-value case
+  is asserted too, because it takes the OTHER branch (`end`).
+* **A GUEST-ONLY PROBE NEEDS A COMPILE, at least.** `foundation_collection` is not host-clean, so the new
+  `NSArray` check could not be run on the host — but it COMPILES there, and that is enough to catch the class
+  of error this one had: that probe's `check()` takes a `const char *` detail, not an `NSString`, and the
+  mistake appeared as `implicit conversion of an Objective-C pointer to 'const char *'` rather than as a
+  drifted tally. A guest-only probe whose only gate is a QEMU run should be compiled on the host first.
+
+**VERIFICATION.** Probe `foundation_orderedset` **16/16** on the host (was 14); guest `foundation_collection`
+**1/1 case, 6/6 checks**, `foundation_orderedset` **1/1, 6/6**, and the family's contract unmoved
+(`foundation_clusters` **1/1, 17/17**); `make foundation-sweep` **exit 0**, `--unimplemented` **0 NEW**;
+`--check` named **exactly 9** rows before the flip and the refresh's diff was **10 lines in ONE file**.
+
 ## §63.7 — THE ORDERED SET'S READ DOORS: SIX ROWS, AND A SIGNATURE THE LEDGER COULD NOT SEE (2026-09-30)
 
 **WHAT SHIPPED: SIX ROWS.** `-objectsAtIndexes:`, `-enumerateObjectsWithOptions:usingBlock:`,

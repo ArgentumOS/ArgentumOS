@@ -375,6 +375,103 @@ int main(void)
 			(int)(![ordered intersectsSet:nil] && ![ordered isSubsetOfSet:nil])]);
 	}
 
+	{
+		/* THE PREDICATE AND COMPARATOR DOORS. The first-match walk's CALL COUNT is asserted, not just its
+		 * answer: the walk must STOP at the match (a predicate may have side effects), and an index alone
+		 * would pass for a full scan that happened to find the right element first. The two sorts and the
+		 * binary search DELEGATE to the array view, so this also measures that the two agree: the sorted
+		 * answer is compared against the array's own, and the binary search's answer is the same number the
+		 * array reports for the same range and options. */
+		NSOrderedSet *ordered = [NSOrderedSet orderedSetWithArray:@[@"four", @"one", @"three", @"two"]];
+		__block NSUInteger calls = 0;
+		NSUInteger found = [ordered indexOfObjectPassingTest:^BOOL(id object, NSUInteger index, BOOL *stop) {
+			calls++;
+			return [object isEqualToString:@"three"];
+		}];
+		NSIndexSet *matched = [ordered indexesOfObjectsPassingTest:
+			^BOOL(id object, NSUInteger index, BOOL *stop) {
+			return index != 1;
+		}];
+		NSArray *sortedDescending = [ordered sortedArrayWithOptions:NSSortStable
+							   usingComparator:^NSComparisonResult(id left, id right) {
+			return [right compare:left];
+		}];
+		/* THE SORTED ARRAY IS A PRECONDITION OF THE BINARY SEARCH, and this check's first version used
+		 * ["one", "two", "three", "four"], which is NOT sorted ("three" < "two") - so the search's answers
+		 * were meaningless and the check failed for the right reason. The order above IS alphabetical. */
+		NSUInteger insertion = [ordered indexOfObject:@"three"
+						 inSortedRange:NSMakeRange(0, 4)
+						     options:NSBinarySearchingInsertionIndex
+					     usingComparator:^NSComparisonResult(id left, id right) {
+			return [left compare:right];
+		}];
+		/* AN ABSENT VALUE TAKES THE OTHER BRANCH (`end`), so these two answers together cover both. */
+		NSUInteger absentInsertion = [ordered indexOfObject:@"zero"
+							   inSortedRange:NSMakeRange(0, 4)
+							       options:NSBinarySearchingInsertionIndex
+						   usingComparator:^NSComparisonResult(id left, id right) {
+			return [left compare:right];
+		}];
+		NSUInteger firstEqual = [ordered indexOfObject:@"two"
+						  inSortedRange:NSMakeRange(0, 4)
+						      options:NSBinarySearchingFirstEqual
+					      usingComparator:^NSComparisonResult(id left, id right) {
+			return [left compare:right];
+		}];
+
+		check("ordered-predicate-and-comparator-doors",
+		      found == 2 && calls == 3 &&
+		      matched != nil && [matched count] == 3 && ![matched containsIndex:1] &&
+		      sortedDescending != nil && [sortedDescending count] == 4 &&
+		      [[sortedDescending objectAtIndex:0] isEqualToString:@"two"] &&
+		      insertion == 3 && absentInsertion == 4 && firstEqual == 3,
+		      [NSString stringWithFormat:@"found=%lu calls=%lu matched=%lu desc=%@ ins=%lu absentIns=%lu first=%lu",
+			(unsigned long)found, (unsigned long)calls,
+			(unsigned long)(matched != nil ? [matched count] : 0),
+			sortedDescending != nil ? sortedDescending : @"(nil)",
+			(unsigned long)insertion, (unsigned long)absentInsertion,
+			(unsigned long)firstEqual]);
+	}
+
+	{
+		/* THE MUTABLE SORTS, and the RANGE one is the only one with an interesting contract: only the members
+		 * INSIDE the range may move. The check sorts the MIDDLE of a five-member set and asserts BOTH ENDS are
+		 * exactly where they were - a full sort would pass a "the middle is sorted" assertion, so the
+		 * untouched ends are the instrument. It also asserts the refusal for a range past the end, and then
+		 * the whole-set sort, which must reach the same order as if the middle step had never happened. */
+		NSMutableOrderedSet *mutable = [NSMutableOrderedSet orderedSetWithArray:
+			@[@"z", @"d", @"b", @"a", @"y"]];
+		NSMutableOrderedSet *straight = [NSMutableOrderedSet orderedSetWithArray:
+			@[@"z", @"d", @"b", @"a", @"y"]];
+		BOOL refused = NO;
+
+		[mutable sortRange:NSMakeRange(1, 3)
+			   options:0
+		   usingComparator:^NSComparisonResult(id left, id right) {
+			return [left compare:right];
+		}];
+		@try {
+			[mutable sortRange:NSMakeRange(4, 9) options:0
+			   usingComparator:^NSComparisonResult(id left, id right) {
+				return [left compare:right];
+			}];
+		} @catch (NSException *e) {
+			refused = [[e name] isEqualToString:NSRangeException];
+		}
+		[mutable sortUsingComparator:^NSComparisonResult(id left, id right) {
+			return [left compare:right];
+		}];
+		[straight sortWithOptions:NSSortStable usingComparator:^NSComparisonResult(id left, id right) {
+			return [left compare:right];
+		}];
+		check("ordered-mutable-sorts",
+		      [[mutable array] isEqualToArray:@[@"a", @"b", @"d", @"y", @"z"]] &&
+		      [[straight array] isEqualToArray:[mutable array]] &&
+		      refused,
+		      [NSString stringWithFormat:@"rangeThenWhole=%@ wholeStraight=%@ refused=%d",
+			[mutable array], [straight array], (int)refused]);
+	}
+
 	printf("FOUNDATION-ORDEREDSET RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

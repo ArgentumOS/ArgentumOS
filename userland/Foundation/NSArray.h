@@ -122,6 +122,10 @@ NS_ASSUME_NONNULL_BEGIN
  * past the end — the caller asked for something that is not there — while
  * -indexesOfObjectsPassingTest: hands back the indexes that passed. */
 - (NSArray<ObjectType> *)objectsAtIndexes:(NSIndexSet *)indexes;
+/* THE FIRST MATCH, and it STOPS at it (§63.8): the walk must not keep calling a caller's predicate after the
+ * answer is known, because a predicate may have side effects and Apple's contract is the lowest matching
+ * index rather than a survey of them. The indexes form below is the exhaustive one on purpose. */
+- (NSUInteger)indexOfObjectPassingTest:(BOOL (^)(ObjectType object, NSUInteger index, BOOL *stop))predicate;
 - (NSIndexSet *)indexesOfObjectsPassingTest:(BOOL (^)(ObjectType object, NSUInteger index, BOOL *stop))predicate;
 
 /* THE PREDICATE FILTER (F11a): the elements the predicate answers YES for, in order. The

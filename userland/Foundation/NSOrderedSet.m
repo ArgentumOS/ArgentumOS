@@ -635,6 +635,69 @@ static NSArray *fn_from_varargs(id firstObject, va_list args)
 	return [[self array] sortedArrayUsingDescriptors:descriptors];
 }
 
+/* THE PREDICATE SEARCHES, over this class's own primitives - the walk is the contract, so it is not delegated.
+ * `-indexOfObjectPassingTest:` STOPS at the first match: a predicate may have side effects, and Apple's
+ * contract is the LOWEST matching index rather than a survey of them, so implementing it as
+ * `[[self indexesOfObjectsPassingTest:] firstIndex]` would answer the same number while calling the caller's
+ * predicate for every element after the match. The indexes form is the exhaustive one, on purpose. */
+- (NSUInteger)indexOfObjectPassingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate
+{
+	NSUInteger i;
+	BOOL stop = NO;
+
+	if (predicate == NULL) {
+		return NSNotFound;
+	}
+	for (i = 0; i < [self count] && !stop; i++) {
+		if (predicate([self objectAtIndex:i], i, &stop)) {
+			return i;
+		}
+	}
+	return NSNotFound;
+}
+
+- (NSIndexSet *)indexesOfObjectsPassingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate
+{
+	NSMutableIndexSet *matches = [NSMutableIndexSet indexSet];
+	NSUInteger i;
+	BOOL stop = NO;
+
+	if (predicate == NULL) {
+		return matches;
+	}
+	for (i = 0; i < [self count] && !stop; i++) {
+		if (predicate([self objectAtIndex:i], i, &stop)) {
+			[matches addIndex:i];
+		}
+	}
+	return matches;
+}
+
+/* THE TWO COMPARATOR SORTS DELEGATE, exactly as `-sortedArrayUsingDescriptors:` above does: the array view IS
+ * the same sequence - same members, same order, same indexes - so there is one sort implementation and it
+ * cannot drift from itself. A nil comparator is the array family's own answer (a copy, unchanged). */
+- (NSArray *)sortedArrayUsingComparator:(NSComparator)comparator
+{
+	return [[self array] sortedArrayUsingComparator:comparator];
+}
+
+- (NSArray *)sortedArrayWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator
+{
+	return [[self array] sortedArrayWithOptions:options usingComparator:comparator];
+}
+
+/* THE BINARY SEARCH BY COMPARATOR, and it delegates for a reason that is specific to THIS door: its answer is
+ * an INDEX, and an index into the ordered set and into its array view are the same number. Re-deriving it
+ * here would create a second place the first-equal / last-equal / insertion rules live, for no gain. */
+- (NSUInteger)indexOfObject:(id)object
+	      inSortedRange:(NSRange)range
+		  options:(NSBinarySearchingOptions)options
+	      usingComparator:(NSComparator)comparator
+{
+	return [[self array] indexOfObject:object inSortedRange:range options:options
+			     usingComparator:comparator];
+}
+
 - (BOOL)isEqual:(nullable id)other
 {
 	if (other == self) {
@@ -951,6 +1014,56 @@ static NSArray *fn_from_varargs(id firstObject, va_list args)
 - (void)sortUsingDescriptors:(NSArray *)descriptors
 {
 	[self fnReplaceMembers:[[self array] sortedArrayUsingDescriptors:descriptors]];
+}
+
+/* THE COMPARATOR SORTS, and the plain one IS the options one: `NSSortConcurrent` is a hint this library does
+ * not take (`NSObjCRuntime.h` says why) and stability is a property of the algorithm rather than a branch, so
+ * there is nothing for the options form to do differently. -sortRange:options:usingComparator: is the one with
+ * a contract of its own: only the members INSIDE the range move. It is built as prefix + sorted slice + suffix
+ * and handed to the same private door every mutation uses, so the consistency token moves exactly once. */
+- (void)sortUsingComparator:(NSComparator)comparator
+{
+	[self sortWithOptions:0 usingComparator:comparator];
+}
+
+- (void)sortWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator
+{
+	if (comparator == NULL) {
+		return;
+	}
+	[self fnReplaceMembers:[[self array] sortedArrayWithOptions:options
+						   usingComparator:comparator]];
+}
+
+- (void)sortRange:(NSRange)range options:(NSSortOptions)options usingComparator:(NSComparator)comparator
+{
+	NSArray *all;
+	NSMutableArray *out;
+	NSUInteger i;
+
+	if (comparator == NULL) {
+		return;
+	}
+	/* THE RANGE IS VALIDATED HERE rather than left to `-subarrayWithRange:`, which CLAMPS: a caller who asked
+	 * for a range that is not there is making an error, and silently sorting a shorter one would answer a
+	 * question they did not ask. Same contract as the construction family's range doors (§63.6). */
+	if (range.location > [self count] || range.length > [self count] - range.location) {
+		[NSException raise:NSRangeException
+			    format:@"NSMutableOrderedSet: the range {%lu, %lu} is beyond the end (%lu members)",
+				   (unsigned long)range.location, (unsigned long)range.length,
+				   (unsigned long)[self count]];
+	}
+	all = [self array];
+	out = [NSMutableArray arrayWithCapacity:[all count]];
+	for (i = 0; i < range.location; i++) {
+		[out addObject:[all objectAtIndex:i]];
+	}
+	[out addObjectsFromArray:[[all subarrayWithRange:range] sortedArrayWithOptions:options
+								     usingComparator:comparator]];
+	for (i = range.location + range.length; i < [all count]; i++) {
+		[out addObject:[all objectAtIndex:i]];
+	}
+	[self fnReplaceMembers:out];
 }
 
 - (void)filterUsingPredicate:(NSPredicate *)predicate

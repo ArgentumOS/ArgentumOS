@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1804   open  881   struck  243
+#   method     shipped 1813   open  872   struck  243
 #   property   shipped 1027   open  463   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -176,7 +176,7 @@ method	shipped	-indexOfObject:inSortedRange:options:usingComparator:	NSArray	Fun
 method	open	-indexOfObjectAtIndexes:options:passingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
 method	shipped	-indexOfObjectIdenticalTo:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
 method	open	-indexOfObjectIdenticalTo:inRange:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
-method	open	-indexOfObjectPassingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
+method	shipped	-indexOfObjectPassingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
 method	open	-indexOfObjectWithOptions:passingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
 method	open	-indexesOfObjectsAtIndexes:options:passingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
 method	shipped	-indexesOfObjectsPassingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
@@ -2136,10 +2136,10 @@ method	open	-replaceObjectsAtIndexes:withObjects:	NSMutableOrderedSet	Fundamenta
 method	open	-replaceObjectsInRange:withObjects:count:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
 method	open	-setObject:atIndex:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
 method	shipped	-setObject:atIndexedSubscript:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	open	-sortRange:options:usingComparator:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Sorting Entries	-	objc
-method	open	-sortUsingComparator:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Sorting Entries	-	objc
+method	shipped	-sortRange:options:usingComparator:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Sorting Entries	-	objc
+method	shipped	-sortUsingComparator:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Sorting Entries	-	objc
 method	shipped	-sortUsingDescriptors:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Sorting Entries	-	objc
-method	open	-sortWithOptions:usingComparator:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Sorting Entries	-	objc
+method	shipped	-sortWithOptions:usingComparator:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Sorting Entries	-	objc
 method	shipped	-unionOrderedSet:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Combining and Recombining Entries	-	objc
 method	shipped	-unionSet:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Combining and Recombining Entries	-	objc
 method	shipped	-addObject:	NSMutableSet	Fundamentals / Basic Collections / Adding and removing entries	-	objc
@@ -2448,12 +2448,12 @@ method	shipped	-enumerateObjectsWithOptions:usingBlock:	NSOrderedSet	Fundamental
 method	shipped	-filteredOrderedSetUsingPredicate:	NSOrderedSet	Fundamentals / Specialized Sets / Filtering Ordered Sets	-	objc
 method	shipped	-getObjects:range:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 method	shipped	-indexOfObject:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	open	-indexOfObject:inSortedRange:options:usingComparator:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
+method	shipped	-indexOfObject:inSortedRange:options:usingComparator:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 method	open	-indexOfObjectAtIndexes:options:passingTest:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	open	-indexOfObjectPassingTest:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
+method	shipped	-indexOfObjectPassingTest:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 method	open	-indexOfObjectWithOptions:passingTest:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 method	open	-indexesOfObjectsAtIndexes:options:passingTest:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	open	-indexesOfObjectsPassingTest:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
+method	shipped	-indexesOfObjectsPassingTest:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 method	open	-indexesOfObjectsWithOptions:passingTest:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 method	shipped	-init	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
 method	shipped	-initWithArray:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
@@ -2492,9 +2492,9 @@ method	shipped	-removeObserver:forKeyPath:	NSOrderedSet	Fundamentals / Specializ
 method	shipped	-removeObserver:forKeyPath:context:	NSOrderedSet	Fundamentals / Specialized Sets / Key-Value Observing Support	-	objc
 method	shipped	-reverseObjectEnumerator	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 method	shipped	-setValue:forKey:	NSOrderedSet	Fundamentals / Specialized Sets / Key-Value Coding Support	-	objc
-method	open	-sortedArrayUsingComparator:	NSOrderedSet	Fundamentals / Specialized Sets / Creating a Sorted Array	-	objc
+method	shipped	-sortedArrayUsingComparator:	NSOrderedSet	Fundamentals / Specialized Sets / Creating a Sorted Array	-	objc
 method	shipped	-sortedArrayUsingDescriptors:	NSOrderedSet	Fundamentals / Specialized Sets / Creating a Sorted Array	-	objc
-method	open	-sortedArrayWithOptions:usingComparator:	NSOrderedSet	Fundamentals / Specialized Sets / Creating a Sorted Array	-	objc
+method	shipped	-sortedArrayWithOptions:usingComparator:	NSOrderedSet	Fundamentals / Specialized Sets / Creating a Sorted Array	-	objc
 method	shipped	-valueForKey:	NSOrderedSet	Fundamentals / Specialized Sets / Key-Value Coding Support	-	objc
 property	shipped	array	NSOrderedSet	Fundamentals / Specialized Sets / Converting Other Collections	-	objc
 property	shipped	count	NSOrderedSet	Fundamentals / Specialized Sets / Counting Entries	-	objc

@@ -117,6 +117,20 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)filteredOrderedSetUsingPredicate:(NSPredicate *)predicate;
 - (NSArray *)sortedArrayUsingDescriptors:(NSArray *)descriptors;
+/* THE PREDICATE AND COMPARATOR DOORS (§63.8). The two SORTS DELEGATE to the array view, exactly as
+ * `-sortedArrayUsingDescriptors:` above does and for the same reason: the array view IS the same sequence —
+ * same members, same order, same indexes — so one implementation cannot drift from itself. The two
+ * PREDICATE searches walk this class's own primitives, because the walk is the contract. */
+- (NSUInteger)indexOfObjectPassingTest:(BOOL (^)(ObjectType object, NSUInteger index, BOOL *stop))predicate;
+- (NSIndexSet *)indexesOfObjectsPassingTest:(BOOL (^)(ObjectType object, NSUInteger index, BOOL *stop))predicate;
+- (NSArray<ObjectType> *)sortedArrayUsingComparator:(NSComparator)comparator;
+- (NSArray<ObjectType> *)sortedArrayWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator;
+/* The BINARY SEARCH BY COMPARATOR, which is the one door whose answer is an INDEX — and an index into this
+ * set and into its array view are the same number, so it delegates too. */
+- (NSUInteger)indexOfObject:(ObjectType)object
+	      inSortedRange:(NSRange)range
+		  options:(NSBinarySearchingOptions)options
+	      usingComparator:(NSComparator)comparator;
 
 - (BOOL)isEqual:(nullable id)other;
 - (NSUInteger)hash;

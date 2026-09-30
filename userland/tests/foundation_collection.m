@@ -1164,6 +1164,36 @@ NULL
 	}
 
 	{
+		/* THE FIRST-MATCH SEARCH (§63.8), and the property that separates it from the exhaustive
+		 * -indexesOfObjectsPassingTest: is HOW MANY TIMES the predicate runs: the walk must STOP at the
+		 * match, because a predicate may have side effects. The CALL COUNT is asserted rather than the index
+		 * alone, which would pass for a full scan that happened to find the right element first. */
+		NSArray *items = [NSArray arrayWithObjects:@"one", @"two", @"three", @"four", nil];
+		__block NSUInteger calls = 0;
+		__block NSUInteger exhaustiveCalls = 0;
+		NSUInteger found = [items indexOfObjectPassingTest:^BOOL(id object, NSUInteger index, BOOL *stop) {
+			calls++;
+			return [object isEqualToString:@"two"];
+		}];
+		NSIndexSet *matched = [items indexesOfObjectsPassingTest:
+			^BOOL(id object, NSUInteger index, BOOL *stop) {
+			exhaustiveCalls++;
+			return index >= 2;
+		}];
+		NSUInteger missing = [items indexOfObjectPassingTest:
+			^BOOL(id object, NSUInteger index, BOOL *stop) {
+			return [object isEqualToString:@"absent"];
+		}];
+
+		check("array-first-match-search",
+		      found == 1 && calls == 2 &&
+		      matched != nil && [matched count] == 2 &&
+		      [matched containsIndex:2] && [matched containsIndex:3] &&
+		      exhaustiveCalls == 4 && missing == NSNotFound,
+		      "the first-match walk STOPS at the match (2 predicate calls for a match at index 1), the indexes form visits all four, and an absent value answers NSNotFound");
+	}
+
+	{
 		/* The dictionary's block and keys-sorted-by-value forms, exercised. */
 		NSMutableDictionary *d = [NSMutableDictionary dictionary];
 		__block NSUInteger seen = 0;

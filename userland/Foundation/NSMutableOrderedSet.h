@@ -45,6 +45,12 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)intersectSet:(NSSet<ObjectType> *)other;
 
 - (void)sortUsingDescriptors:(NSArray *)descriptors;
+/* THE COMPARATOR SORTS (§63.8), Apple's three: the whole set, the whole set with options, and a RANGE. Each
+ * replaces the members through the one private door every mutation uses, so the for-in consistency token
+ * moves with the storage exactly as it does for `-addObject:`. */
+- (void)sortUsingComparator:(NSComparator)comparator;
+- (void)sortWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator;
+- (void)sortRange:(NSRange)range options:(NSSortOptions)options usingComparator:(NSComparator)comparator;
 - (void)filterUsingPredicate:(NSPredicate *)predicate;
 
 @end
