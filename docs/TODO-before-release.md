@@ -582,3 +582,24 @@ AND M10'S OTHER ITEMS, EACH ANSWERED RATHER THAN ASSUMED: `--unimplemented` 0 NE
 NSNumber's against its private concrete classes, correct by D-C2, and NSURLProtocol's against itself; and the
 declarations are re-verified mechanically, by the clause, against the reference data (zero findings).
 
+**THE PLAN'S ACCEPTANCE, MEASURED AFTER M10 (2026-09-29).** The whole Foundation tier in one pass:
+
+    TESTS-FAIL 132/136 case(s), 760/766 check(s) in 317s
+
+with four failures, and the method that matters here is the DISCRIMINATION rather than the tally - this tier's
+failure set differs between runs in both directions, so a tier-level failure is a lead, not a verdict. Each one run
+ALONE:
+
+    foundation_urldownload       OK 1/1, 6/6      <- passed alone
+    foundation_urlsession_task   OK 1/1, 6/6      <- passed alone
+    foundation_websockettask     OK 1/1, 3/3      <- passed alone
+    foundation_taskmetrics       FAIL 0/1, 2/3    <- fails alone: PRE-EXISTING
+
+So three of the four were the shared-session flakiness this tier is known for, and `foundation_taskmetrics` is the
+one the record already carried as pre-existing BEFORE this plan began (it and `libressl_l1` were the two that failed
+in both directions then). **NO REGRESSION FROM M1-M10, and the one failure is unrelated to it** - the
+parameterization work is compile-time only, and this case's missing check is a host-side one.
+
+**WHAT THE TIER DOES NOT COVER, SAID PLAINLY:** it is `make test`'s fast tier, not `test-all`, and it does not
+include the host-side runs (`make host-foundation`). The plan's own cases are in it and green.
+
