@@ -212,6 +212,16 @@ typedef enum {
 		  usedEncoding:(NSStringEncoding *)encoding
 			 error:(NSError * _Nullable * _Nullable)errorPtr;
 + (id)stringWithFormat:(NSString *)format arguments:(va_list)arguments;
+/* THE VALIDATED FORMS (§63.27): a format that must use ONLY the specifiers the caller names, with the refusal
+ * reported the way Apple reports it — nil and an NSError in NSCocoaErrorDomain with code NSFormattingError
+ * (5546 here, because that is Apple's own value). They are VARIADIC, so a caller writes them exactly as Apple's
+ * documentation does; the two differ only in the name, and the header says why below. */
++ (nullable id)stringWithValidatedFormat:(NSString *)format
+			 validFormatSpecifiers:(NSString *)validFormatSpecifiers
+					 error:(NSError * _Nullable * _Nullable)errorPtr, ...;
++ (nullable id)localizedStringWithValidatedFormat:(NSString *)format
+			      validFormatSpecifiers:(NSString *)validFormatSpecifiers
+					      error:(NSError * _Nullable * _Nullable)errorPtr, ...;
 
 - (id)init;
 - (id)initWithString:(NSString *)other;

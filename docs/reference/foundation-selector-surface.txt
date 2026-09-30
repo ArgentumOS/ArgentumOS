@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1846   open  838   struck  244
+#   method     shipped 1848   open  836   struck  244
 #   property   shipped 1034   open  456   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3115,7 +3115,7 @@ method	open	-localizedStandardCompare:	NSString	Fundamentals / Strings / Identif
 method	shipped	-localizedStandardContainsString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-localizedStandardRangeOfString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	open	+localizedStringWithFormat:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
-method	open	+localizedStringWithValidatedFormat:validFormatSpecifiers:error:	NSString	Fundamentals / Strings / Type Methods	-	objc
+method	shipped	+localizedStringWithValidatedFormat:validFormatSpecifiers:error:	NSString	Fundamentals / Strings / Type Methods	-	objc
 method	open	+localizedUserNotificationStringForKey:arguments:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	open	-lossyCString	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-lowercaseStringWithLocale:	NSString	Fundamentals / Strings / Changing Case	-	objc
@@ -3171,7 +3171,7 @@ method	open	+stringWithContentsOfURL:usedEncoding:error:	NSString	Fundamentals /
 method	shipped	+stringWithFormat:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	+stringWithString:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	+stringWithUTF8String:	NSString	Fundamentals / Strings / Type Methods	-	objc
-method	open	+stringWithValidatedFormat:validFormatSpecifiers:error:	NSString	Fundamentals / Strings / Type Methods	-	objc
+method	shipped	+stringWithValidatedFormat:validFormatSpecifiers:error:	NSString	Fundamentals / Strings / Type Methods	-	objc
 method	open	-stringsByAppendingPaths:	NSString	Fundamentals / Strings / Working with Paths	-	objc
 method	shipped	-substringFromIndex:	NSString	Fundamentals / Strings / Dividing Strings	-	objc
 method	shipped	-substringToIndex:	NSString	Fundamentals / Strings / Dividing Strings	-	objc

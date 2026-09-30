@@ -1169,6 +1169,102 @@ NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySugges
 	return [self initWithUTF8String:[built UTF8String]];
 }
 
+/* ============================ validated formats (§63.27) ============================
+ *
+ * WHAT IS VALIDATED: that every DIRECTIVE in the format is one the caller listed. A directive runs from a `%` to
+ * the conversion character that ends it; `%%` is a literal percent and not a directive at all; and an
+ * unterminated trailing `%` is reported AS a directive rather than dropped — because a format this door accepts
+ * is a format the caller will hand straight to `-initWithFormat:`. */
+- (NSArray *)fn_formatSpecifiers
+{
+	NSUInteger i, length = [self length];
+	NSMutableArray *specifiers = [NSMutableArray array];
+	NSMutableString *current = nil;
+
+	for (i = 0; i < length; i++) {
+		unichar c = [self characterAtIndex:i];
+
+		if (current == nil) {
+			if (c == '%') {
+				current = [NSMutableString stringWithString:@"%"];
+			}
+			continue;
+		}
+		[current appendString:[[NSString stringWithCharacters:&c length:1] autorelease]];
+		if (c == '%') {
+			current = nil;			/* `%%` — A LITERAL PERCENT, not a specifier */
+		} else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '@') {
+			[specifiers addObject:current];
+			current = nil;
+		}
+	}
+	if (current != nil) {
+		[specifiers addObject:current];	/* AN UNTERMINATED DIRECTIVE IS STILL A DIRECTIVE */
+	}
+	return specifiers;
+}
+
+/* THE VALIDATION ITSELF, TAKING A `va_list` RATHER THAN A `...`: both public doors share one rule, and the
+ * variadic spellings have a single place to forward from. */
++ (nullable id)fn_stringWithValidatedFormat:(NSString *)format
+		      validFormatSpecifiers:(NSString *)validFormatSpecifiers
+				      error:(NSError **)errorPtr
+				  arguments:(va_list)arguments
+{
+	NSArray *specifiers = [format fn_formatSpecifiers];
+	NSUInteger i;
+
+	for (i = 0; i < [specifiers count]; i++) {
+		NSString *specifier = [specifiers objectAtIndex:i];
+
+		if ([validFormatSpecifiers rangeOfString:specifier].location == NSNotFound) {
+			if (errorPtr != NULL) {
+				*errorPtr = [NSError errorWithDomain:NSCocoaErrorDomain
+							       code:NSFormattingError
+							   userInfo:[NSDictionary dictionaryWithObject:specifier
+										  forKey:NSLocalizedDescriptionKey]];
+			}
+			return nil;
+		}
+	}
+	return [self stringWithFormat:format arguments:arguments];
+}
+
++ (id)stringWithValidatedFormat:(NSString *)format
+	 validFormatSpecifiers:(NSString *)validFormatSpecifiers
+			  error:(NSError **)errorPtr, ...
+{
+	va_list arguments;
+	id result;
+
+	va_start(arguments, errorPtr);
+	result = [self fn_stringWithValidatedFormat:format
+			      validFormatSpecifiers:validFormatSpecifiers
+					      error:errorPtr
+					  arguments:arguments];
+	va_end(arguments);
+	return result;
+}
+
++ (id)localizedStringWithValidatedFormat:(NSString *)format
+		      validFormatSpecifiers:(NSString *)validFormatSpecifiers
+				      error:(NSError **)errorPtr, ...
+{
+	/* DELEGATING, AND SAYING WHAT "LOCALIZED" CAN MEAN HERE: this library's formatting is locale-independent —
+	 * there is no localized-format-string machinery to consult — so this door's only difference is the name it
+	 * is reached by. A deviation recorded rather than implied. */
+	va_list arguments;
+	id result;
+
+	va_start(arguments, errorPtr);
+	result = [self fn_stringWithValidatedFormat:format
+			      validFormatSpecifiers:validFormatSpecifiers
+					      error:errorPtr
+					  arguments:arguments];
+	va_end(arguments);
+	return result;
+}
+
 - (id)initWithData:(NSData *)data encoding:(NSStringEncoding)encoding
 {
 	size_t n;
