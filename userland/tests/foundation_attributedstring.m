@@ -179,10 +179,14 @@ int main(void)
 			@"encodeWithCoder:", @"initWithCoder:",
 			@"dataFromRange:documentAttributes:error:", @"RTFFromRange:documentAttributes:",
 			@"RTFDFromRange:documentAttributes:", @"RTFDFileWrapperFromRange:documentAttributes:",
-			@"docFormatFromRange:documentAttributes:", @"fileWrapperFromRange:documentAttributes:error:" ];
+			@"docFormatFromRange:documentAttributes:", @"fileWrapperFromRange:documentAttributes:error:",
+			/* the 2026-09-30 pass closed the "Calculating linguistic units" group (over FNTextBreaking), the
+			 * deprecated URL door, and the markdown baseURL: file door - so they are SHIPPED and checked here. */
+			@"doubleClickAtIndex:", @"nextWordFromIndex:forward:", @"lineBreakBeforeIndex:withinRange:",
+			@"URLAtIndex:effectiveRange:", @"initWithContentsOfMarkdownFileAtURL:options:baseURL:error:" ];
 		NSArray *absent = @[ @"drawInRect:", @"drawAtPoint:", @"drawWithRect:options:context:", @"size",
-			@"boundingRectWithSize:options:context:", @"doubleClickAtIndex:",
-			@"nextWordFromIndex:forward:", @"lineBreakBeforeIndex:withinRange:",
+			@"boundingRectWithSize:options:context:",
+			/* the HYPHENATING break stays ABSENT: it needs a hyphenation resource this system lacks. */
 			@"lineBreakByHyphenatingBeforeIndex:withinRange:", @"containsAttachmentsInRange:",
 			@"fontAttributesInRange:", @"rulerAttributesInRange:", @"itemNumberInTextList:atIndex:",
 			@"rangeOfTextBlock:atIndex:", @"rangeOfTextList:atIndex:", @"rangeOfTextTable:atIndex:",
@@ -218,6 +222,15 @@ int main(void)
 		if (![NSAttributedString respondsToSelector:
 				NSSelectorFromString(@"loadFromHTMLWithRequest:options:completionHandler:")]) {
 			[missing addObject:@"+loadFromHTMLWithRequest:options:completionHandler:"];
+		}
+		/* THE THREE SIBLINGS the 2026-09-30 pass added, each a class method with its own spelling. */
+		if (![NSAttributedString respondsToSelector:
+				NSSelectorFromString(@"loadFromHTMLWithData:options:completionHandler:")] ||
+		    ![NSAttributedString respondsToSelector:
+				NSSelectorFromString(@"loadFromHTMLWithFileURL:options:completionHandler:")] ||
+		    ![NSAttributedString respondsToSelector:
+				NSSelectorFromString(@"loadFromHTMLWithString:options:completionHandler:")]) {
+			[missing addObject:@"+loadFromHTMLWith{Data,FileURL,String}:options:completionHandler:"];
 		}
 		check("inventory-the-shipped-selectors-exist", [missing count] == 0,
 		      [NSString stringWithFormat:@"missing: %@", [missing componentsJoinedByString:@", "]]);
@@ -748,6 +761,117 @@ int main(void)
 		check("morphology-vocabulary-is-distinct-and-carried",
 		      distinct && kept != nil && [kept intValue] == (int)NSGrammaticalNumberPlural,
 		      @"the three sets have distinct cases and the store keeps a morphology value untouched");
+	}
+
+	{
+		/* ---- THE WORD AND LINE-BREAK DOORS (2026-09-30) ---------------------------------------------
+		 *
+		 * The "Calculating linguistic units" group, answered over FNTextBreaking - the substrate the probe
+		 * otherwise never touches. Each check pins ONE reading of an Apple phrase this library had to choose;
+		 * the choices are named in the methods' own comments. */
+		NSAttributedString *s = [[NSAttributedString alloc] initWithString:@"hello world foo"];
+		NSRange word = [s doubleClickAtIndex:1];
+		NSUInteger forward = [s nextWordFromIndex:1 forward:YES];
+		NSUInteger backward = [s nextWordFromIndex:8 forward:NO];
+		NSUInteger stuck = [s nextWordFromIndex:15 forward:YES];	/* == length: the walk passes the end */
+
+		printf("FOUNDATION-ATTRIBUTEDSTRING DIAG words forward=%lu backward=%lu stuck=%lu\n",
+		       (unsigned long)forward, (unsigned long)backward, (unsigned long)stuck);
+		check("double-click-answers-the-word-at-an-index",
+		      word.location == 0 && word.length == 5,
+		      [NSString stringWithFormat:@"doubleClick(1)=%@ (want the first word (0,5))", fn_r(word)]);
+
+		/* forward from inside the first word -> the NEXT word's start (6); backward from inside the last
+		 * word -> the PREVIOUS word's start (6); at the string's end when nothing is after, UNCHANGED (15). */
+		check("next-word-walks-to-word-starts",
+		      forward == 6 && backward == 6 && stuck == 15,
+		      [NSString stringWithFormat:@"forward(1)=%lu backward(8)=%lu stuck(15)=%lu (want 6, 6, 15)",
+		      (unsigned long)forward, (unsigned long)backward, (unsigned long)stuck]);
+	}
+
+	{
+		/* lineBreakBeforeIndex:withinRange: answers where the enclosing line begins (3 for the middle line
+		 * of "aa\nbb\ncc"), the line start itself for index 0, and NSNotFound when the range holds no line
+		 * start at or before the index. */
+		NSAttributedString *twoLines = [[NSAttributedString alloc] initWithString:@"aa\nbb\ncc"];
+		NSUInteger mid = [twoLines lineBreakBeforeIndex:4 withinRange:NSMakeRange(0, 8)];
+		NSUInteger start = [twoLines lineBreakBeforeIndex:0 withinRange:NSMakeRange(0, 8)];
+		NSUInteger none = [twoLines lineBreakBeforeIndex:2 withinRange:NSMakeRange(4, 4)];
+
+		printf("FOUNDATION-ATTRIBUTEDSTRING DIAG linebreak mid=%lu start=%lu none=%lu\n",
+		       (unsigned long)mid, (unsigned long)start, (unsigned long)none);
+		check("line-break-before-index-answers-the-enclosing-lines-start",
+		      mid == 3 && start == 0 && none == NSNotFound,
+		      [NSString stringWithFormat:@"mid=%lu start=%lu none=%lu (want 3, 0, not-found)",
+		      (unsigned long)mid, (unsigned long)start, (unsigned long)none]);
+	}
+
+	{
+		/* ---- THE DEPRECATED URL DOOR (2026-09-30) --------------------------------------------------- */
+		NSAttributedString *s = [[NSAttributedString alloc] initWithString:@"go to <http://example.com/a> now"];
+		NSRange r = NSMakeRange(0, 0);
+		NSURL *url = [s URLAtIndex:10 effectiveRange:&r];
+		NSRange plain = NSMakeRange(0, 0);
+		NSAttributedString *words = [[NSAttributedString alloc] initWithString:@"just words"];
+		NSURL *none = [words URLAtIndex:1 effectiveRange:&plain];
+
+		printf("FOUNDATION-ATTRIBUTEDSTRING DIAG url=%s range=%s none=%s\n",
+		       url != nil ? [[url absoluteString] UTF8String] : "(nil)", fn_r(r).UTF8String,
+		       none != nil ? "yes" : "(nil)");
+		check("url-at-index-answers-the-url-that-covers-it",
+		      url != nil && r.location == 7 && r.length == 20 &&
+		      [[url absoluteString] isEqual:@"http://example.com/a"] && none == nil,
+		      [NSString stringWithFormat:@"url=%@ range=%@ none=%@", url, fn_r(r), none]);
+	}
+
+	{
+		/* ---- THE THREE HTML SIBLINGS REFUSE THROUGH THEIR HANDLER (2026-09-30) ---------------------- */
+		__block int calls = 0;
+		__block NSString *reason = nil;
+		void (^handler)(NSAttributedString *, NSDictionary *, NSError *) =
+			^(NSAttributedString *made, NSDictionary *attrs, NSError *err) {
+				(void)made;
+				(void)attrs;
+				calls++;
+				reason = [err localizedDescription];
+			};
+
+		[NSAttributedString loadFromHTMLWithData:[[NSData alloc] init] options:nil completionHandler:handler];
+		[NSAttributedString loadFromHTMLWithString:@"<p>x</p>" options:nil completionHandler:handler];
+		/* fileURL: IS NONNULL (Apple's declaration), so the call site states that this literal is known to
+		 * parse to a non-nil URL rather than weakening the API; the cast hides no nil here, because
+		 * `file:///x` is a well-formed file URL that +URLWithString: answers non-nil for. */
+		[NSAttributedString loadFromHTMLWithFileURL:(NSURL * _Nonnull)[NSURL URLWithString:@"file:///x"]
+						   options:nil completionHandler:handler];
+		printf("FOUNDATION-ATTRIBUTEDSTRING DIAG html-siblings calls=%d\n", calls);
+		check("the-html-siblings-refuse-through-their-handler",
+		      calls == 3 && reason != nil &&
+		      [reason rangeOfString:@"not implemented"].location != NSNotFound,
+		      [NSString stringWithFormat:@"calls=%d reason=%@", calls, reason]);
+	}
+
+	{
+		/* ---- THE MARKDOWN FILE DOOR TAKES A baseURL (2026-09-30) ------------------------------------ */
+		/* The file does not exist, so the door reads no data and answers nil (or an empty string, should this
+		 * tree's reader report a missing file that way) - the half of its contract that needs no file system:
+		 * it carries Apple's FOUR-argument spelling and threads baseURL through. The check is written to hold
+		 * whichever nil-or-empty shape the reader gives, because the SPELLING is what this pass adds. */
+		NSError *err = nil;
+		/* url: IS NONNULL (Apple's declaration): the cast states that `file:///no/such/file.md` is a
+		 * well-formed file URL +URLWithString: answers non-nil for - it hides no nil (a nil url would still be
+		 * handled below as an unreadable file). baseURL: is nullable, so it needs no cast. */
+		id made = [[NSAttributedString alloc] initWithContentsOfMarkdownFileAtURL:
+				   (NSURL * _Nonnull)[NSURL URLWithString:@"file:///no/such/file.md"]
+			       options:nil baseURL:[NSURL URLWithString:@"https://base.example/"] error:&err];
+		BOOL spelled = [NSAttributedString instancesRespondToSelector:
+				NSSelectorFromString(@"initWithContentsOfMarkdownFileAtURL:options:baseURL:error:")];
+
+		printf("FOUNDATION-ATTRIBUTEDSTRING DIAG markdown-base spelled=%d made=%s len=%lu\n",
+		       (int)spelled, made != nil ? "yes" : "(nil)",
+		       made != nil ? (unsigned long)[made length] : 0UL);
+		check("the-markdown-file-door-takes-a-base-url",
+		      spelled && (made == nil || [made length] == 0),
+		      [NSString stringWithFormat:@"spelled=%d made=%@", (int)spelled, made]);
 	}
 
 	printf("FOUNDATION-ATTRIBUTEDSTRING RESULT ok=%d fail=%d\n", okc, failc);

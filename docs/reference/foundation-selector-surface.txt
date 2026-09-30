@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1909   open  775   struck  244
+#   method     shipped 1917   open  767   struck  244
 #   property   shipped 1069   open  421   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -228,7 +228,7 @@ property	shipped	currentHandler	NSAssertionHandler	App Support / Assertions / Ha
 method	shipped	-RTFDFileWrapperFromRange:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Exporting the string as data	-	objc
 method	shipped	-RTFDFromRange:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Exporting the string as data	-	objc
 method	shipped	-RTFFromRange:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Exporting the string as data	-	objc
-method	open	-URLAtIndex:effectiveRange:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Instance Methods	deprecated	objc
+method	shipped	-URLAtIndex:effectiveRange:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Instance Methods	deprecated	objc
 method	shipped	-attribute:atIndex:effectiveRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
 method	shipped	-attribute:atIndex:longestEffectiveRange:inRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
 method	open	-attributedStringByInflectingString	NSAttributedString	Fundamentals / Strings with Metadata / Performing automatic grammar agreement	-	objc
@@ -243,7 +243,7 @@ method	open	-boundingRectWithSize:options:context:	NSAttributedString	Fundamenta
 method	open	-containsAttachmentsInRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting metrics for the string	-	objc
 method	shipped	-dataFromRange:documentAttributes:error:	NSAttributedString	Fundamentals / Strings with Metadata / Exporting the string as data	-	objc
 method	shipped	-docFormatFromRange:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Exporting the string as data	-	objc
-method	open	-doubleClickAtIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating linguistic units	-	objc
+method	shipped	-doubleClickAtIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating linguistic units	-	objc
 method	open	-drawAtPoint:	NSAttributedString	Fundamentals / Strings with Metadata / Drawing the attributed string	-	objc
 method	open	-drawInRect:	NSAttributedString	Fundamentals / Strings with Metadata / Drawing the attributed string	-	objc
 method	open	-drawWithRect:options:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Instance Methods	deprecated	objc
@@ -253,7 +253,7 @@ method	shipped	-enumerateAttributesInRange:options:usingBlock:	NSAttributedStrin
 method	shipped	-fileWrapperFromRange:documentAttributes:error:	NSAttributedString	Fundamentals / Strings with Metadata / Exporting the string as data	-	objc
 method	open	-fontAttributesInRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting font attribute information	-	objc
 method	shipped	-initWithAttributedString:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from another string	-	objc
-method	open	-initWithContentsOfMarkdownFileAtURL:options:baseURL:error:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown	-	objc
+method	shipped	-initWithContentsOfMarkdownFileAtURL:options:baseURL:error:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown	-	objc
 method	open	-initWithData:options:documentAttributes:error:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from a data file	-	objc
 method	open	-initWithDocFormat:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from a data file	-	objc
 method	open	-initWithFileURL:options:documentAttributes:error:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Initializers	deprecated	objc
@@ -276,17 +276,17 @@ method	open	-initWithURL:documentAttributes:	NSAttributedString	Fundamentals / S
 method	open	-initWithURL:options:documentAttributes:error:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from a data file	-	objc
 method	shipped	-isEqualToAttributedString:	NSAttributedString	Fundamentals / Strings with Metadata / Comparing strings	-	objc
 method	open	-itemNumberInTextList:atIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating ranges for common elements	-	objc
-method	open	-lineBreakBeforeIndex:withinRange:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating linguistic units	-	objc
+method	shipped	-lineBreakBeforeIndex:withinRange:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating linguistic units	-	objc
 method	open	-lineBreakByHyphenatingBeforeIndex:withinRange:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating linguistic units	-	objc
-method	open	+loadFromHTMLWithData:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
-method	open	+loadFromHTMLWithFileURL:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
+method	shipped	+loadFromHTMLWithData:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
+method	shipped	+loadFromHTMLWithFileURL:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
 method	shipped	+loadFromHTMLWithRequest:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
-method	open	+loadFromHTMLWithString:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
+method	shipped	+loadFromHTMLWithString:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
 method	open	+localizedAttributedStringWithFormat:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 method	open	+localizedAttributedStringWithFormat:context:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 method	open	+localizedAttributedStringWithFormat:options:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 method	open	+localizedAttributedStringWithFormat:options:context:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
-method	open	-nextWordFromIndex:forward:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating linguistic units	-	objc
+method	shipped	-nextWordFromIndex:forward:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating linguistic units	-	objc
 method	open	-prefersRTFDInRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting the supported text-file formats	-	objc
 method	open	-rangeOfTextBlock:atIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating ranges for common elements	-	objc
 method	open	-rangeOfTextList:atIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating ranges for common elements	-	objc

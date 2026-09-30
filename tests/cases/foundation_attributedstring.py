@@ -16,6 +16,15 @@ writes a line feed as a paragraph break — while the doors that still cannot do
 format) are still required to REFUSE BY NAME, because a silent nil is indistinguishable from an empty
 document.
 
+(2026-09-30) THE "Calculating linguistic units" GROUP SHIPPED, so six checks were added and three selectors
+left the absent list: `-doubleClickAtIndex:`, `-nextWordFromIndex:forward:` and `-lineBreakBeforeIndex:` are
+answered over `FNTextBreaking` (the word/line-break substrate, §62.42) and are no longer "the excluded AppKit
+half"; the deprecated `-URLAtIndex:effectiveRange:` now has this library's own documented tokenizer; the three
+`+loadFromHTMLWith{Data,FileURL,String}:options:completionHandler:` siblings refuse through their handler like
+`+loadFromHTMLWithRequest:`; and `-initWithContentsOfMarkdownFileAtURL:options:baseURL:error:` adds Apple's
+four-argument spelling beside the shorter markdown door. `-lineBreakByHyphenatingBeforeIndex:withinRange:`
+stays ABSENT: it needs a hyphenation resource this system does not carry.
+
 The probe is `/System/Shared/tests/foundation_attributedstring`, ONE unit, importing only
 `<Foundation/Foundation.h>`. NO FIXTURE: an attributed string is built from a string, and the RTF checks read
 the produced BYTES rather than a decoded string.
@@ -51,7 +60,15 @@ CHECKS = ("morphology-vocabulary-is-distinct-and-carried",
           "delete-and-set-keep-text-and-runs-together",
           "a-nil-value-removes-and-removal-shows-in-the-runs",
           "enumeration-tiles-the-range-and-reverses", "an-out-of-range-index-raises",
-          "a-copy-is-independent-and-an-immutable-copy-is-a-snapshot")
+          "a-copy-is-independent-and-an-immutable-copy-is-a-snapshot",
+          # 2026-09-30: the "Calculating linguistic units" group (over FNTextBreaking), the deprecated URL
+          # door, the three +loadFromHTMLWith* siblings, and the markdown baseURL: file door.
+          "double-click-answers-the-word-at-an-index",
+          "next-word-walks-to-word-starts",
+          "line-break-before-index-answers-the-enclosing-lines-start",
+          "url-at-index-answers-the-url-that-covers-it",
+          "the-html-siblings-refuse-through-their-handler",
+          "the-markdown-file-door-takes-a-base-url")
 
 
 class Case(BaseCase):

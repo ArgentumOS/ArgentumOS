@@ -28,6 +28,14 @@
 #import <Foundation/NSError.h>
 #import <Foundation/NSDate.h>
 #import <Foundation/NSNumber.h>
+#import <Foundation/NSURL.h>
+/* FNTextBreaking IS THE WORD/LINE-BREAK SUBSTRATE these doors answer over (§62.42); the 2026-09-30 pass made
+ * the "Calculating linguistic units" group in-scope, and one truth about where a word or a line ends is the
+ * reason these are wrappers over it rather than a second breaker. */
+#import <Foundation/FNTextBreaking.h>
+/* THE MARKDOWN IMPORTER, FOR THE baseURL: FILE DOOR this file adds (its category is declared in this class's
+ * header, its body lives in NSAttributedStringMarkdown.m - so the import is what lets this file CALL it). */
+#import <Foundation/NSAttributedStringMarkdown.h>
 
 #include <stdint.h>
 
@@ -240,6 +248,140 @@ NSAttributedStringFormattingContextKey const NSInflectionConceptsKey = @"NSInfle
 
 NSAttributedStringKey const NSLinkAttributeName = @"NSLinkAttributeName";
 
+/* ---- THE WORD AND LINE-BREAK DOORS (2026-09-30, plan §61) -------------------------------------------
+ *
+ * THE SUBSTRATE IS FNTextBreaking, THE SAME WORD/LINE ENGINE `-enumerateSubstringsInRange:options:` and
+ * `NSLinguisticTagger` sit on (§62.42), so these doors add BOUNDARY QUESTIONS to one breaker rather than a
+ * second implementation of where a word or a line ends. TWO FACTS ABOUT THAT ENGINE SHAPE EVERY CHOICE:
+ * its word enumeration hands on ICU's tokens AS THEY ARE - whitespace and punctuation included - so an index
+ * inside a space is inside a token too, which is what -doubleClickAtIndex: wants (a double-click on a space
+ * selects the space) but NOT what a WORD-START question wants; and its LINE unit is this tree's own, defined
+ * by the line TERMINATORS it recognizes (LF, CR, NEL, LS, PS) rather than by UAX#14 wrapping.
+ *
+ * THE PREDICATE THAT TELLS A WORD FROM A SEPARATOR IS OURS AND IS WRITTEN DOWN (§11.6.1 D2): a token is a
+ * WORD when it holds an ASCII letter or digit, or any character >= U+0080 (the non-ASCII alphabets). It is
+ * deliberately generous - it never calls an ASCII space or comma a word, and it never drops a word written
+ * in a non-Latin script. */
+static BOOL fn_is_word_char(unichar c)
+{
+	return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c >= 0x0080;
+}
+
+static BOOL fn_token_is_word(NSString *text, NSRange range)
+{
+	NSUInteger i;
+
+	for (i = 0; i < range.length; i++) {
+		if (fn_is_word_char([text characterAtIndex:range.location + i])) {
+			return YES;
+		}
+	}
+	return NO;
+}
+
+/* ---- THE DEPRECATED URL DOOR'S TOKENIZER (2026-09-30) -----------------------------------------------
+ *
+ * APPLE DEPRECATED -URLAtIndex:effectiveRange: IN 10.11 and published the SHAPE, not the tokenizer, so the
+ * tokenizer here is this library's own and is written down where it lives (§11.6.1 D2). A TOKEN is a
+ * maximal run of non-whitespace characters with the sentence punctuation a URL is wrapped in trimmed from
+ * its edges (so `<http://x>.` yields `http://x`). A TOKEN IS A URL when what stands before a `://` is a
+ * valid scheme (`[A-Za-z]` then `[A-Za-z0-9+.-]*`, reaching back to the token start) or when it opens with
+ * `www.` and holds a dot after it. THE RULE IS A DETECTOR, NOT A PARSER: it deliberately does not accept a
+ * bare `example.com`, because telling a hostname from a sentence is the case Apple's page never pinned. */
+static BOOL fn_url_is_space(unichar c)
+{
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == 0x0085 || c == 0x2028 || c == 0x2029;
+}
+
+static BOOL fn_url_is_scheme_char(unichar c)
+{
+	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+	       c == '+' || c == '-' || c == '.';
+}
+
+static BOOL fn_url_is_leading_wrapper(unichar c)
+{
+	return c == '<' || c == '(' || c == '[' || c == '{' || c == '"' || c == '\'' ||
+	       c == 0x2018 || c == 0x201C;
+}
+
+static BOOL fn_url_is_trailing_wrapper(unichar c)
+{
+	return c == '>' || c == ')' || c == ']' || c == '}' || c == '"' || c == '\'' ||
+	       c == '.' || c == ',' || c == ';' || c == '!';
+}
+
+static BOOL fn_url_token_qualifies(NSString *text, NSRange token)
+{
+	NSUInteger i;
+
+	if (token.length == 0) {
+		return NO;
+	}
+	for (i = token.location; i + 2 < token.location + token.length; i++) {
+		if ([text characterAtIndex:i] == ':' && [text characterAtIndex:i + 1] == '/' &&
+		    [text characterAtIndex:i + 2] == '/') {
+			NSUInteger scheme = i;
+			unichar first;
+
+			while (scheme > token.location &&
+			       fn_url_is_scheme_char([text characterAtIndex:scheme - 1])) {
+				scheme--;
+			}
+			/* the scheme must begin at the token start, with a letter */
+			if (scheme != token.location || scheme == i) {
+				return NO;
+			}
+			first = [text characterAtIndex:scheme];
+			return (first >= 'A' && first <= 'Z') || (first >= 'a' && first <= 'z');
+		}
+	}
+	if (token.length > 4) {
+		unichar c0 = [text characterAtIndex:token.location];
+		unichar c1 = [text characterAtIndex:token.location + 1];
+		unichar c2 = [text characterAtIndex:token.location + 2];
+		unichar c3 = [text characterAtIndex:token.location + 3];
+
+		if ((c0 == 'w' || c0 == 'W') && (c1 == 'w' || c1 == 'W') && (c2 == 'w' || c2 == 'W') &&
+		    c3 == '.') {
+			for (i = token.location + 4; i < token.location + token.length; i++) {
+				if ([text characterAtIndex:i] == '.') {
+					return YES;
+				}
+			}
+		}
+	}
+	return NO;
+}
+
+/* THE URL TOKEN SURROUNDING `index`: its trimmed range, and `*found` set when that range covers `index`. */
+static NSRange fn_url_token_range(NSString *text, NSUInteger index, BOOL *found)
+{
+	NSUInteger length = [text length];
+	NSUInteger start, end;
+
+	*found = NO;
+	start = index;
+	while (start > 0 && !fn_url_is_space([text characterAtIndex:start - 1])) {
+		start--;
+	}
+	end = index;
+	while (end < length && !fn_url_is_space([text characterAtIndex:end])) {
+		end++;
+	}
+	while (start < end && fn_url_is_leading_wrapper([text characterAtIndex:start])) {
+		start++;
+	}
+	while (end > start && fn_url_is_trailing_wrapper([text characterAtIndex:end - 1])) {
+		end--;
+	}
+	if (index >= start && index < end &&
+	    fn_url_token_qualifies(text, NSMakeRange(start, end - start))) {
+		*found = YES;
+	}
+	return NSMakeRange(start, end - start);
+}
+
 @implementation NSAttributedString
 
 /* §C.3 item 4: an archiver asks for THIS, never for -class - and NSMutableAttributedString answers ITSELF
@@ -348,6 +490,117 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 - (NSUInteger)length
 {
 	return [[self string] length];
+}
+
+/* ---- THE WORD AND LINE-BREAK DOORS (2026-09-30, plan §61) -------------------------------------------
+ *
+ * CONTRACTS ARE APPLE'S (AppKit's NSAttributedString additions, "Calculating linguistic units"); each body
+ * says which reading of an Apple phrase this library took, because a probe has to assert something. */
+
+- (NSRange)doubleClickAtIndex:(NSUInteger)location
+{
+	/* THE WHOLE TOKEN, a space or a punctuation run included - "the word or other linguistic unit" Apple's
+	 * page names, and exactly the unit the substrate's word iterator reports. An out-of-range index is
+	 * Apple's stated precondition, so it RAISES rather than leaking the NSNotFound sentinel the substrate
+	 * would answer, which a caller could not tell from "no unit here". */
+	if (location >= [self length]) {
+		[NSException raise:NSRangeException format:@"doubleClickAtIndex: %lu is out of range for a string "
+			@"of length %lu", (unsigned long)location, (unsigned long)[self length]];
+	}
+	return [FNTextBreaking fnUnitContaining:FNTextUnitWord inString:[self string] atIndex:location];
+}
+
+- (NSUInteger)nextWordFromIndex:(NSUInteger)location forward:(BOOL)isForward
+{
+	NSUInteger length = [self length];
+	NSString *text = [self string];
+	__block NSUInteger answer = location;
+
+	if (location > length) {
+		[NSException raise:NSRangeException format:@"nextWordFromIndex: %lu is out of range for a string "
+			@"of length %lu", (unsigned long)location, (unsigned long)length];
+	}
+	/* WALK THE WORD TOKENS IN ORDER AND KEEP THE NEAREST WORD START ON THE ASKED-FOR SIDE. Forward takes
+	 * the FIRST start after the index and stops; backward overwrites with every start below the index, so
+	 * the LAST one kept is the nearest. NOTHING FOUND LEAVES `answer` AT THE INDEX - Apple's "returned
+	 * unchanged when the walk would pass either end". The index need not be inside a word: the question is
+	 * about word STARTS on either side of it. */
+	[FNTextBreaking fnEnumerate:FNTextUnitWord
+			   inString:text
+			      range:NSMakeRange(0, length)
+			 usingBlock:^(NSRange unitRange, BOOL *stop) {
+		if (!fn_token_is_word(text, unitRange)) {
+			return;
+		}
+		if (isForward) {
+			if (unitRange.location > location) {
+				answer = unitRange.location;
+				*stop = YES;
+			}
+		} else if (unitRange.location < location) {
+			answer = unitRange.location;
+		}
+	}];
+	return answer;
+}
+
+- (NSUInteger)lineBreakBeforeIndex:(NSUInteger)index withinRange:(NSRange)aRange
+{
+	NSUInteger length = [self length];
+	NSString *text = [self string];
+	__block NSUInteger answer = NSNotFound;
+
+	if (index > length || aRange.location > length || aRange.length > length - aRange.location) {
+		[NSException raise:NSRangeException format:@"lineBreakBeforeIndex: index %lu range (%lu,%lu) is "
+			@"out of range for a string of length %lu", (unsigned long)index, (unsigned long)aRange.location,
+			(unsigned long)aRange.length, (unsigned long)length];
+	}
+	/* THE LINES ARE ENUMERATED OVER THE WHOLE STRING AND THE RANGE FILTERS THE ANSWER: enumerating over
+	 * `aRange` would let the engine CLAMP a mid-line range start into a line start, which would then be
+	 * reported as a break that is not there. THE ANSWER is the greatest LINE START at or before `index`
+	 * that lies inside `aRange`; when `index` itself stands at a line start, that index is the answer - the
+	 * reading "the character at index begins a line". Apple names the result "the closest character before
+	 * index that can be placed on a new line" and does not pin whether that break is a WRAP opportunity or
+	 * a hard line: THIS TREE HAS ONLY THE HARD LINE (FNTextBreaking's line unit is defined by LF/CR/NEL/LS/
+	 * PS), and that is the boundary this door carries - named here rather than hidden. */
+	[FNTextBreaking fnEnumerate:FNTextUnitLine
+			   inString:text
+			      range:NSMakeRange(0, length)
+			 usingBlock:^(NSRange unitRange, BOOL *stop) {
+		NSUInteger start = unitRange.location;
+
+		(void)stop;
+		if (start > index || start < aRange.location ||
+		    start >= aRange.location + aRange.length) {
+			return;
+		}
+		if (answer == NSNotFound || start > answer) {
+			answer = start;
+		}
+	}];
+	return answer;
+}
+
+- (nullable NSURL *)URLAtIndex:(NSUInteger)index effectiveRange:(NSRangePointer)effectiveRange
+{
+	NSString *text = [self string];
+	BOOL found = NO;
+	NSRange token;
+
+	/* LENIENT, WHERE THE THREE DOORS ABOVE ARE STRICT: "is there a URL at this position" has a plain "no"
+	 * answer, so an index at or past the end answers nil with an empty range rather than raising (Apple's
+	 * deprecated page says nothing either way; §11.6.1 D2 records the choice). */
+	if (index >= [self length]) {
+		if (effectiveRange != NULL) {
+			*effectiveRange = NSMakeRange(index, 0);
+		}
+		return nil;
+	}
+	token = fn_url_token_range(text, index, &found);
+	if (effectiveRange != NULL) {
+		*effectiveRange = found ? token : NSMakeRange(index, 0);
+	}
+	return found ? [NSURL URLWithString:[text substringWithRange:token]] : nil;
 }
 
 /* ---- THE RUN STORE, AS PRIVATE METHODS --------------------------------------------------------------- */
@@ -1038,6 +1291,73 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 			fn_format_refusal(@"+loadFromHTMLWithRequest:options:completionHandler:",
 					  @"HTML import needs a parser and a network fetch, neither of which exists here"));
 	}
+}
+
++ (void)loadFromHTMLWithData:(NSData *)data
+		     options:(nullable NSDictionary *)options
+	   completionHandler:(void (^)(NSAttributedString *, NSDictionary *, NSError *))completionHandler
+{
+	/* THE SAME SHAPE AS +loadFromHTMLWithRequest:...: the handler runs ONCE with the refusal, which is what
+	 * Apple documents for a load that cannot happen. The three siblings let a caller hand the source DIRECTLY
+	 * - bytes, a file URL or a string - instead of wrapping it in a request first, and each names itself. */
+	(void)data;
+	(void)options;
+	if (completionHandler != NULL) {
+		completionHandler(nil, nil, fn_format_refusal(@"+loadFromHTMLWithData:options:completionHandler:",
+			@"HTML import needs a parser, which this system does not carry"));
+	}
+}
+
++ (void)loadFromHTMLWithFileURL:(NSURL *)fileURL
+			options:(nullable NSDictionary *)options
+	      completionHandler:(void (^)(NSAttributedString *, NSDictionary *, NSError *))completionHandler
+{
+	(void)fileURL;
+	(void)options;
+	if (completionHandler != NULL) {
+		completionHandler(nil, nil,
+			fn_format_refusal(@"+loadFromHTMLWithFileURL:options:completionHandler:",
+			@"HTML import needs a parser and a file fetch, neither of which this system carries"));
+	}
+}
+
++ (void)loadFromHTMLWithString:(NSString *)string
+		       options:(nullable NSDictionary *)options
+	     completionHandler:(void (^)(NSAttributedString *, NSDictionary *, NSError *))completionHandler
+{
+	(void)string;
+	(void)options;
+	if (completionHandler != NULL) {
+		completionHandler(nil, nil,
+			fn_format_refusal(@"+loadFromHTMLWithString:options:completionHandler:",
+			@"HTML import needs a parser, which this system does not carry"));
+	}
+}
+
+@end
+
+/* ---- THE MARKDOWN FILE DOOR WITH A baseURL (2026-09-30) ---------------------------------------------
+ *
+ * THE FORM APPLE DECLARES, ADDED BESIDE THE SHORTER DOOR THE TREE ALREADY HAD. The shorter
+ * -initWithContentsOfMarkdownFileAtURL:options:error: (declared and defined in NSAttributedStringMarkdown)
+ * passes the FILE'S OWN URL as the base, which is what a relative link inside the file means; this one takes
+ * the base from the caller and threads it through the same importer, so the two differ by ONE argument and
+ * nothing else. Both are kept because the surface rule (§11.0) is method-signature-for-method-signature with
+ * Apple, who declares THIS one, and a caller written against Apple must compile against it. */
+@implementation NSAttributedString (FNMarkdownFileURL)
+
+- (nullable instancetype)initWithContentsOfMarkdownFileAtURL:(NSURL *)url
+						     options:(nullable NSAttributedStringMarkdownParsingOptions *)options
+						     baseURL:(nullable NSURL *)baseURL
+						       error:(NSError * _Nullable * _Nullable)error
+{
+	NSData *data = [NSData dataWithContentsOfURL:url options:0 error:error];
+
+	if (data == nil) {
+		[self release];
+		return nil;
+	}
+	return [self initWithMarkdown:data options:options baseURL:baseURL error:error];
 }
 
 @end

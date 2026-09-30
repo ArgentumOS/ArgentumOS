@@ -26,11 +26,18 @@
  * WHAT W10 SLICE 1 DOES NOT CARRY, EACH WITH ITS GROUND, SO A CONFORMING PROGRAM STILL COMPILES: three of the
  * four file formats (RTFD, HTML and the doc format - §62.58 made the FOURTH, RTF, a real writer, so the doors
  * are DECLARED with bodies that either write the format or REFUSE BY NAME rather than doing nothing); the
- * AppKit/UIKit/TextKit half (`size`,
- * the `draw…` family, `boundingRectWithSize:`, text lists, rulers, attachments, word and line-break
- * questions) which belongs to the drawing frameworks and is EXCLUDED here - the probe asserts their ABSENCE;
- * -mutableString (a LIVE proxy over the store, not a copy, and a slice of its own); and the two coding
- * protocols, which Apple's page lists and slice 3 owes.
+ * AppKit/UIKit/TextKit half (`size`, the `draw…` family, `boundingRectWithSize:`, text lists, rulers and
+ * attachments) which belongs to the drawing frameworks and is EXCLUDED here - the probe asserts their
+ * ABSENCE; -mutableString (a LIVE proxy over the store, not a copy, and a slice of its own); and the two
+ * coding protocols, which Apple's page lists and slice 3 owes.
+ *
+ * AND THE WORD AND LINE-BREAK QUESTIONS ARE FOUNDATION'S OWN AND SHIP HERE (2026-09-30). An earlier draft of
+ * this prose filed `doubleClickAtIndex:`, `nextWordFromIndex:forward:` and `lineBreakBeforeIndex:withinRange:`
+ * under "the excluded AppKit half", which was STALE: those are the "Calculating linguistic units" group,
+ * they are answered over `FNTextBreaking` - the word/line-break substrate this library already ships (§62.42,
+ * the engine `-enumerateSubstringsInRange:options:` and `NSLinguisticTagger` sit on) - and the ledger owns
+ * them. Only the HYPHENATING break (`lineBreakByHyphenatingBeforeIndex:withinRange:`) stays deferred, because
+ * it needs a hyphenation resource this system does not carry.
  */
 
 #import <Foundation/NSObject.h>
@@ -236,6 +243,24 @@ typedef enum {
 	      completionHandler:(void (^)(NSAttributedString * _Nullable, NSDictionary * _Nullable,
 					  NSError * _Nullable))completionHandler;
 
+/* THE THREE SIBLINGS OF THE REQUEST DOOR (2026-09-30), EACH WITH THE SAME ERROR-CHANNEL CONTRACT: a caller
+ * that has the HTML as bytes, as a file URL or as a string hands it over directly instead of wrapping it in
+ * an NSURLRequest, and each door runs the completion handler ONCE with the refusal - exactly as
+ * +loadFromHTMLWithRequest:options:completionHandler: does - because HTML import needs a parser this system
+ * does not carry, and Apple's own guidance is that the handler always runs. */
++ (void)loadFromHTMLWithData:(NSData *)data
+                     options:(nullable NSDictionary *)options
+           completionHandler:(void (^)(NSAttributedString * _Nullable, NSDictionary * _Nullable,
+				      NSError * _Nullable))completionHandler;
++ (void)loadFromHTMLWithFileURL:(NSURL *)fileURL
+                        options:(nullable NSDictionary *)options
+              completionHandler:(void (^)(NSAttributedString * _Nullable, NSDictionary * _Nullable,
+					NSError * _Nullable))completionHandler;
++ (void)loadFromHTMLWithString:(NSString *)string
+                       options:(nullable NSDictionary *)options
+             completionHandler:(void (^)(NSAttributedString * _Nullable, NSDictionary * _Nullable,
+					NSError * _Nullable))completionHandler;
+
 - (void)encodeWithCoder:(NSCoder *)coder;
 - (nullable instancetype)initWithCoder:(NSCoder *)coder;
 + (BOOL)supportsSecureCoding;
@@ -251,6 +276,56 @@ typedef enum {
 		   options:(NSAttributedStringEnumerationOptions)opts
 		usingBlock:(void (^)(_Nullable id value, NSRange range, BOOL *stop))block;
 
+/* ---- THE WORD AND LINE-BREAK QUESTIONS (2026-09-30, plan §61) --------------------------------------
+ *
+ * THESE ARE THE "Calculating linguistic units" GROUP, AND THEY ARE FOUNDATION'S OWN API HERE RATHER THAN THE
+ * EXCLUDED APPKIT HALF the header's opening once called them: the questions "which word is at this index",
+ * "where does the next word start" and "where does this line begin" are answered over `FNTextBreaking`, the
+ * word/line-break substrate this library already ships (§62.42), exactly as `-enumerateSubstringsInRange:`
+ * and `NSLinguisticTagger` are. The ledger files them under `NSAttributedString`, so they belong here.
+ *
+ * THE CONTRACTS ARE APPLE'S (AppKit's NSAttributedString additions, measured 2026-09-30), and each body says
+ * which reading of an Apple phrase this library took, because a probe has to assert something:
+ *   - `-doubleClickAtIndex:` answers the RANGE of the word (or other linguistic unit) the index sits in -
+ *     the range a text system selects on a double-click;
+ *   - `-nextWordFromIndex:forward:` answers the index of the next word's first character when `forward` is
+ *     YES and of the nearest previous word's first character otherwise, WITHOUT regard to whether the index
+ *     is inside a word, and it answers the index UNCHANGED when the walk would pass either end;
+ *   - `-lineBreakBeforeIndex:withinRange:` answers the index where the line containing `index` begins (the
+ *     nearest character at or before `index`, within the range, that stands at the start of a line), or
+ *     `NSNotFound` when the range holds no such index.
+ * ALL THREE RAISE NSRangeException for an out-of-bounds index, which is Apple's own precondition. */
+- (NSRange)doubleClickAtIndex:(NSUInteger)location;
+- (NSUInteger)nextWordFromIndex:(NSUInteger)location forward:(BOOL)isForward;
+- (NSUInteger)lineBreakBeforeIndex:(NSUInteger)index withinRange:(NSRange)aRange;
+
+/* THE DEPRECATED URL DOOR, AND THE ONE ROW OF ITS GROUP THAT NEEDS NO DRAWING LAYER: Apple deprecated it in
+ * 10.11 (there is no replacement; `NSDataDetector` is suggested) and published the SHAPE and not the
+ * tokenizer, so the tokenizer here is this library's own and is written down where it lives (§11.6.1 D2):
+ * a URL is a whitespace-delimited token carrying a `scheme://`, after sentence punctuation at its edges is
+ * trimmed. The door answers the URL and its range when `index` falls inside such a token, and nil with an
+ * empty range otherwise. */
+- (nullable NSURL *)URLAtIndex:(NSUInteger)index effectiveRange:(nullable NSRangePointer)effectiveRange;
+
+@end
+
+/* ---- THE MARKDOWN FILE DOOR, IN APPLE'S FOUR-ARGUMENT SPELLING (2026-09-30) -------------------------
+ *
+ * APPLE DECLARES THIS INITIALISER WITH a `baseURL:` argument, and the tree shipped the SHORTER
+ * `-initWithContentsOfMarkdownFileAtURL:options:error:` (declared in NSAttributedStringMarkdown.h) without
+ * it. The surface rule (§11.0) is method-signature-for-method-signature, so the Apple form is ADDED here
+ * and the shorter door KEEPS WORKING: this method differs from it only by threading `baseURL` through to the
+ * importer, where the shorter one passes the file's own URL as the base. Both parse the same way; the
+ * importer is in NSAttributedStringMarkdown.m.
+ *
+ * IT LIVES IN THIS HEADER RATHER THAN THE MARKDOWN ONE because the owning ledger row is NSAttributedString's
+ * and this file is where that class's surface is declared; the options type it takes is forward-declared. */
+@class NSAttributedStringMarkdownParsingOptions;
+@interface NSAttributedString (FNMarkdownFileURL)
+- (nullable instancetype)initWithContentsOfMarkdownFileAtURL:(NSURL *)url
+                                                     options:(nullable NSAttributedStringMarkdownParsingOptions *)options
+                                                     baseURL:(nullable NSURL *)baseURL
+                                                       error:(NSError * _Nullable * _Nullable)error;
 @end
 
 @interface NSMutableAttributedString : NSAttributedString
@@ -265,7 +340,10 @@ typedef enum {
 - (void)deleteCharactersInRange:(NSRange)range;
 - (void)setAttributedString:(NSAttributedString *)attrString;
 
-- (void)addAttribute:(NSAttributedStringKey)name value:(id)value range:(NSRange)range;
+/* NULLABLE value, WHICH THE DOCUMENTED CONTRACT REQUIRES: the opening comment records that a nil value
+ * REMOVES the attribute, so the parameter is nullable - a nonnull spelling here made every caller that
+ * passes nil (the documented removal, exercised by the probe) warn under -Wnonnull. */
+- (void)addAttribute:(NSAttributedStringKey)name value:(nullable id)value range:(NSRange)range;
 - (void)addAttributes:(NSDictionary *)attrs range:(NSRange)range;
 - (void)removeAttribute:(NSAttributedStringKey)name range:(NSRange)range;
 - (void)setAttributes:(nullable NSDictionary *)attrs range:(NSRange)range;
