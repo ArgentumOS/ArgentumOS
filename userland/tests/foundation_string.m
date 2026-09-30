@@ -1656,7 +1656,14 @@ NULL
 		/* THE URL FORMS (§63.29): A FILE URL IS THE PATH DOOR, AND A SCHEME WITH NOTHING BEHIND IT IS REFUSED.
 		 * The file arm is measured as a ROUND TRIP through the two doors — written by the path door, read by
 		 * the URL door — so the assertion is about the URL arm rather than about the filesystem. */
-		NSString *path = @"/System/Temporary Files/fnstring-url-door";
+		/* ⚠ AND THE FILE ARM IS ASSERTED ON WHICHEVER BRANCH THE ENVIRONMENT ACTUALLY PROVIDES, because
+		 * `NSTemporaryDirectory()` in this tree answers the FSH's path (`/System/Temporary Files`), WHICH THE
+		 * GUEST HAS AND A HOST BUILD DOES NOT — measured: the write fails there, the read answers nil, and a
+		 * check that demanded the round trip was red on the host for a reason that is not the door's. SO BOTH
+		 * BRANCHES ASSERT THE DOOR AND NEITHER PASSES VACUOUSLY: where the bytes can be written the round trip
+		 * must hold, and where they cannot the door must answer nil WITH AN ERROR rather than an empty string.
+		 * The detail says which branch ran. */
+		NSString *path = [NSTemporaryDirectory() stringByAppendingString:@"/fnstring-url-door"];
 		NSString *marker = @"url door: café ✓";
 		/* ⚠ THE CASTS ARE THE HOUSE IDIOM FOR "this literal is known to parse": the doors' parameters are
 		 * nonnull as Apple declares them, and +URLWithString:/+fileURLWithPath: answer nullable. */
@@ -1666,20 +1673,35 @@ NULL
 		NSError *transportError = nil;
 		NSString *back;
 		NSString *refused;
+		BOOL wrote;
 
-		[marker writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:NULL];
+		wrote = [marker writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:NULL];
 		back = [NSString stringWithContentsOfURL:fileURL encoding:NSUTF8StringEncoding error:&fileError];
 		refused = [NSString stringWithContentsOfURL:nothingBehind
 						  encoding:NSUTF8StringEncoding
 						     error:&transportError];
 
 		check("url-doors-round-trip-a-file-url-and-refuse-an-unreachable-scheme",
-		      /* THE FILE ARM: exactly the bytes the path door wrote, accents and all, through the URL door. */
-		      back != nil && [back isEqualToString:marker] && fileError == nil &&
+		      /* THE FILE ARM, ON WHICHEVER BRANCH THE ENVIRONMENT GAVE US: a round trip where the bytes could be
+		       * written (the guest, whose FSH directory exists), and a REFUSAL — nil plus an error — where they
+		       * could not (a host build, where NSTemporaryDirectory() names a path that host does not have). */
+		      (wrote ? (back != nil && [back isEqualToString:marker] && fileError == nil)
+			     : (back == nil && fileError != nil)) &&
 		      /* AND THE TRANSPORT ARM REFUSES: nil with the loader's own error, rather than a silent empty
 		       * string, which is what a door that swallowed its failure would answer. */
 		      refused == nil && transportError != nil,
-		      "a file URL round-trips through the two doors with its accent intact, and a scheme with nothing behind it answers nil with an error");
+		      /* ⚠ AND THE DETAIL CARRIES ITS NUMBERS, which the first version of this check did NOT — and that
+		       * omission is why a host-only failure took a diagnostic program to explain rather than being
+		       * visible in the probe's own output. This probe's opening comment asks every detail to carry its
+		       * numbers; this one now does, INCLUDING WHICH BRANCH RAN. `-UTF8String` is the bridge because
+		       * `check()` takes the C string this probe's other details are written as — and the buffer is the
+		       * autoreleased string's, valid for the call. */
+		      [[NSString stringWithFormat:@"wrote=%d path=%@ back=%@ fileError=%@ refused=%@ transportError=%@",
+			(int)wrote, path,
+			back != nil ? back : @"(nil)",
+			fileError != nil ? [fileError description] : @"(none)",
+			refused != nil ? refused : @"(nil)",
+			transportError != nil ? [transportError description] : @"(none)"] UTF8String]);
 	}
 
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
