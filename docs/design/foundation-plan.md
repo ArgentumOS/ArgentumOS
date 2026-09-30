@@ -37,8 +37,26 @@ the day it was written, and it is the plan until the last row closes.
 
 * **The selector ledger: 1,292 open rows — 836 methods and 456 properties — across 117 owners.** The SYMBOL
   ledger has ZERO open rows: every symbol is either shipped or struck by a recorded ground.
-* **224 of those rows are `deprecated`.** §11.5 makes Apple-deprecated API a PORTING TARGET rather than an
-  exclusion, so they are work like the rest — with the one exception named under the decisions below.
+* **⚠ THE PROPERTIES ARE NOT A TAIL AT THE END OF THE QUEUE — FOR SEVERAL OF THE BIGGEST OWNERS THEY ARE THE
+  UNIT, AND THE WALK MUST BE PLANNED FOR THAT.** 456 rows, and they are not spread evenly. Measured as
+  methods/properties: **NSNumberFormatter 3/39, NSValue 25/24, NSCalendar 27/23, NSLocale 13/26, NSBundle 35/18,
+  NSURL 43/16** — against **NSString 86/9, NSCoder 68/6, NSAttributedString 52/3, NSFileManager 39/3,
+  NSDictionary 29/1**. **EIGHTEEN OWNERS' OPEN ROWS ARE PROPERTIES AND NOTHING ELSE** (NSNumberFormatter, NSLocale,
+  NSValue, NSCalendar, NSUserActivity, NSURLSessionConfiguration, NSBundle, NSURL, NSProgress, NSDateFormatter,
+  …). So a unit whose owner is property-heavy — NSNumberFormatter, three methods and thirty-nine properties — is a
+  different shape of work from NSString's: **the doors ARE the work** (a formatter's configuration, a value
+  type's accessors) rather than an algorithm behind them, and it is measured by the same refresh.
+* **AND HOW A PROPERTY ROW CLOSES IS PART OF THIS PLAN, NOT AN IMPLEMENTATION DETAIL.** `selectors_status` calls a
+  property row SHIPPED when the owner's block declares `-name` or `+name`: **the ACCESSOR, declared and
+  implemented.** ⚠ **WHAT THE LEDGER CANNOT SEE IS THE HEADER'S SPELLING** — its rows carry no type field
+  (measured; that is why §11.0's "property for property" is tracked BY NAME here) — so an accessor written as a
+  method closes a property row exactly as an `@property` would. §63.24 is the precedent in this document's own
+  history: four `property` rows, closed by four doors declared as methods. **The fidelity question — whether
+  Apple declares a property where this header declares a method — is therefore NOT measured by this ledger, and
+  must not be read as settled from it.**
+* **224 of those open rows are `deprecated`** (39 of them properties). §11.5 makes Apple-deprecated API a PORTING
+  TARGET rather than an exclusion, so they are work like the rest — with the one exception named under the
+  decisions below.
 * **The largest thirteen owners carry 675 of the 1,292**: NSString 95, NSCoder 74, NSURL 59, NSAttributedString
   55, NSBundle 53, NSCalendar 50, NSValue 49, NSNumberFormatter 42, NSFileManager 42, NSLocale 39, NSDictionary
   30, NSMutableDictionary 25, NSArray 25. **Thirty-nine owners carry ten or more; the top twenty carry 780.** So
