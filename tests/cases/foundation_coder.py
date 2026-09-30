@@ -13,6 +13,9 @@ importing only `<Foundation/Foundation.h>`.
                                      naming the PUBLIC class, and a counted set's multiplicities
                                      surviving (they are a SECOND payload: `-allObjects` answers each
                                      distinct member once and cannot carry them);
+  * `coder-round-trip-ordered-set` — an ordered set: unique members WITH AN ORDER, which the entry
+                                     carries as the `NS.objects` sequence, so the reader re-adds in
+                                     order and `-array` comes back equal element for element;
   * `coder-shared-objects`         — the SAME object referenced twice comes back as ONE object,
                                      asserted BY POINTER (the memo table's whole purpose);
   * `coder-cycle`                  — an object whose link points back at its parent, which does not
@@ -38,6 +41,7 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_coder"
 CHECKS = ("coder-round-trip-scalars", "coder-round-trip-collections", "coder-round-trip-sets",
           "the-set-archive-names-the-public-class", "coder-round-trip-counted-set",
+          "coder-round-trip-ordered-set",
           "coder-shared-objects",
           "coder-cycle", "coder-null-and-nil", "coder-archive-shape", "coder-base-raises",
           # W9: the two delegates (through Cocoa's instance flow) and the secure transformer

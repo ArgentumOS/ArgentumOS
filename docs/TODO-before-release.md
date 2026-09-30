@@ -617,7 +617,7 @@ parameterization work is compile-time only, and this case's missing check is a h
 **WHAT THE TIER DOES NOT COVER, SAID PLAINLY:** it is `make test`'s fast tier, not `test-all`, and it does not
 include the host-side runs (`make host-foundation`). The plan's own cases are in it and green.
 
-## 4. `NSKeyedArchiver`'s set path — LANDED 2026-09-30, and ONE collection still raises
+## 4. `NSKeyedArchiver`'s set path — LANDED 2026-09-30, and NO collection raises any more
 
 **THE GAP M3 RECORDED IS CLOSED.** The clusters plan's M3 row carried it as "STILL OPEN FROM M3 (not this
 family's): `NSKeyedArchiver` has NO set path — archiving a set RAISES where an array or a dictionary
@@ -645,12 +645,27 @@ y=1, and a never-added member answers 0). **AND THE GATE WAS SHOWN TO FAIL:** wi
 the probe unchanged, the same binary ABORTS (exit 134, no output — the buffer does not flush through
 `abort`) instead of reporting, which is the raise M3 measured. Restored, it is green again.
 
-**STILL OPEN, measured rather than assumed: `NSOrderedSet` RAISES.** It is a set by name but not by kind —
-it is neither an `NSArray` nor an `NSSet` — so `archivedDataWithRootObject:` on one still falls through to
-the `-encodeWithCoder:` branch and raises, and `grep -c encodeWithCoder userland/Foundation/NSOrderedSet.m`
-is 0. That is the SAME shape as the gap just closed and it is deliberately not done in the same unit: it is
-`NSOrderedSet`'s own family (M6), its order is part of its state, and no probe asserts it today. It is a work
-item, not a boundary.
+**AND `NSOrderedSet` CLOSED IN THE SAME SESSION, because the residual it left was the same shape.** Measured
+first: it is a set by NAME but not by kind — neither an `NSArray` nor an `NSSet` — so
+`archivedDataWithRootObject:` on one still fell through to the `-encodeWithCoder:` branch and raised, and
+`grep -c encodeWithCoder userland/Foundation/NSOrderedSet.m` was **0**. **Both halves are in now**, and the
+thing that makes it a different case from `NSSet` is the one it turned on:
+
+* **the WRITER** takes the members from `-array` — the door that answers them IN ORDER, walking the
+  primitives rather than handing out storage — and writes them under `NS.objects`, exactly as an array's
+  are written. There is nothing extra to write, because **for an ordered set that sequence IS the order**;
+* **the READER** knows `NSOrderedSet` and `NSMutableOrderedSet` and re-adds each member **in that order**
+  into a mutable ordered set (whose `-addObject:` APPENDS — it is `containsObject:` plus an append, so the
+  sequence the reader walks is the sequence it produces).
+
+**MEASURED:** `foundation_coder` went **14 → 15 checks, ok=15 fail=0** on the host; the new one is
+`coder-round-trip-ordered-set`, which asserts the distinguishing property rather than mere membership —
+`[[back array] isEqualToArray:@[@"charlie", @"alpha", @"bravo"]]`, an array whose order is NOT sorted and
+NOT insertion-by-comparison, so a reader that reordered or re-hashed the members would fail it — plus the
+archive naming `NSOrderedSet` and no `AGOrderedSet`. **AND THIS HALF'S OWN GATE WAS SHOWN TO FAIL TOO:**
+reverting ONLY `NSKeyedArchiver.m` to its previous commit (which already had the whole `NSSet` path) with
+the probe unchanged, the binary still ABORTS (exit 134, no output) — so the ordered-set check measures the
+ordered-set branch and not the set path underneath it.
 
 **AND ONE THING FOUND ON THE WAY, out of this unit's scope and left alone:** writing a set in a probe needed
 `+setWithObjects:` (the variadic form `NSArray` has had all along) and `NSSet` does not declare it — the

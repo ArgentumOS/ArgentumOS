@@ -360,6 +360,27 @@ int main(void)
 	}
 
 	{
+		/* AN ORDERED SET: the members are UNIQUE like a set's and they have an ORDER unlike one's —
+		 * which is the property this check exists for, and the reason it asserts the member ARRAY
+		 * rather than membership. The entry is array-shaped (`NS.objects`), so the order IS the
+		 * `NS.objects` sequence, and the reader must re-add in exactly that order. */
+		NSOrderedSet *ordered = [NSOrderedSet orderedSetWithArray:@[@"charlie", @"alpha", @"bravo"]];
+		NSOrderedSet *back = fn_round_trip(ordered);
+		NSData *orderedArchive = [NSKeyedArchiver archivedDataWithRootObject:ordered];
+
+		check("coder-round-trip-ordered-set",
+		      back != nil && [back isKindOfClass:[NSOrderedSet class]] && [back count] == 3 &&
+		      [[back array] isEqualToArray:@[@"charlie", @"alpha", @"bravo"]] &&
+		      orderedArchive != nil &&
+		      fn_contains([orderedArchive bytes], [orderedArchive length], "NSOrderedSet") &&
+		      !fn_contains([orderedArchive bytes], [orderedArchive length], "AGOrderedSet"),
+		      [NSString stringWithFormat:@"array=%@ namesPublic=%d",
+			back != nil ? [back array] : @"(nil)",
+			(orderedArchive != nil &&
+			 fn_contains([orderedArchive bytes], [orderedArchive length], "NSOrderedSet"))]);
+	}
+
+	{
 		CoderNode *shared = [CoderNode nodeWithName:@"shared" count:7];
 		CoderNode *left = [CoderNode nodeWithName:@"left" count:1];
 		CoderNode *right = [CoderNode nodeWithName:@"right" count:2];

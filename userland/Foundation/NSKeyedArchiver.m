@@ -33,6 +33,8 @@
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSSet.h>
 #import <Foundation/NSCountedSet.h>
+#import <Foundation/NSOrderedSet.h>
+#import <Foundation/NSMutableOrderedSet.h>
 #import <Foundation/NSDate.h>
 #import <Foundation/NSNumber.h>
 #import <Foundation/NSNull.h>
@@ -264,6 +266,20 @@ NSString * const NSKeyedArchiveRootObjectKey = @"NSKeyedArchiveRootObjectKey";
 				}
 				[entry setObject:counts forKey:kCounts];
 			}
+		} else if ([object isKindOfClass:[NSOrderedSet class]]) {
+			/* AN ORDERED SET IS A COLLECTION THE ARCHIVER KNOWS BY KIND TOO, and its ORDER IS PART
+			 * OF ITS STATE — the whole difference from the `NSSet` branch above, whose members have
+			 * no order to lose. `-array` is the door that answers the members IN ORDER (it walks the
+			 * primitives rather than handing out storage), and the reader re-adds them in exactly
+			 * that order, so there is nothing extra to write: `NS.objects` IS the order. */
+			NSArray *all = [(NSOrderedSet *)object array];
+			NSMutableArray *slots = [NSMutableArray array];
+			NSUInteger j;
+
+			for (j = 0; j < [all count]; j++) {
+				[slots addObject:[self fnSlotFor:[all objectAtIndex:j]]];
+			}
+			[entry setObject:slots forKey:kObjects];
 		} else if ([object isKindOfClass:[NSNull class]]) {
 			/* AN EMPTY OBJECT ENTRY: NSNull has no state to write, and its CLASS is the whole
 			 * message. */
@@ -542,18 +558,24 @@ NSString * const NSKeyedArchiveRootObjectKey = @"NSKeyedArchiveRootObjectKey";
 		BOOL isSet = isCountedSet ||
 			     [className isEqualToString:@"NSSet"] ||
 			     [className isEqualToString:@"NSMutableSet"];
+		/* AND THE ORDERED SET, WHOSE MEMBERS ARRIVE IN ORDER — an array-shaped entry, decoded into a
+		 * MUTABLE ordered set, because a decoded collection is built mutable either way and that is
+		 * what lets the archive be filled in as it is read. */
+		BOOL isOrderedSet = [className isEqualToString:@"NSOrderedSet"] ||
+				    [className isEqualToString:@"NSMutableOrderedSet"];
 
-		if (isArray || isDictionary || isSet) {
+		if (isArray || isDictionary || isSet || isOrderedSet) {
 			id collection = isArray ? (id)[NSMutableArray array]
 				      : isDictionary ? (id)[NSMutableDictionary dictionary]
 				      : isCountedSet ? (id)[NSCountedSet set]
+				      : isOrderedSet ? (id)[NSMutableOrderedSet orderedSet]
 				      : (id)[NSMutableSet set];
 			NSArray *slots;
 
 			/* REGISTERED BEFORE ITS MEMBERS ARE DECODED, so a collection that contains itself — or
 			 * that two parents share — is built once. */
 			[_memo replaceObjectAtIndex:index withObject:collection];
-			if (isArray || isSet) {
+			if (isArray || isSet || isOrderedSet) {
 				slots = [(NSDictionary *)entry objectForKey:kObjects];
 				if (isCountedSet) {
 					/* THE COUNTS GO BACK AS ADDITIONS, because that is what a count IS: a
