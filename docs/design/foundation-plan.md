@@ -15939,6 +15939,50 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.28 — `+stringWithCString:encoding:`: THE MIRROR DOOR, AND THE FIRST SUBAGENT RECONNAISSANCE (2026-09-30)
+
+**WHAT LANDED:** `+stringWithCString:encoding:` — the one self-contained row of `NSString`'s three
+source-reading Type Methods. **`method shipped` 1848 → 1849, `method open` 836 → 835**; `--check` named it
+before the refresh.
+
+**IT IS THE MIRROR OF `-cStringUsingEncoding:`, WHICH IS TWENTY LINES ABOVE IT IN THE SAME FILE**, and it refuses
+in the same two places for the same two reasons: the encodings this library stores are **UTF-8 and ASCII**, and
+a byte string under any other name is **not reinterpreted as UTF-8**. ⚠ **AND THE ASCII CASE CHECKS THE BYTES
+RATHER THAN TRUSTING THE LABEL** — a C string with a high byte in it is not ASCII — which is the same refusal the
+outbound door makes in the other direction, and the check measures exactly that: the same bytes that are legal
+UTF-8 must be **refused** when labelled ASCII, because a label-trusting door would answer a string there.
+
+**⚠ AND IT RETURNS +0 WHERE ITS NEIGHBOURS RETURN +1.** Apple's contract for a `+stringWith…` factory is
+autoreleased; the file and URL doors below it leak their string (**measured, named in §63.24**). Adding a fifth
+leak to keep the neighbours company is not consistency worth having — the fix belongs to them, and this plan's
+`NSString` unit carries it.
+
+**AND THE UNIT USED THE USER'S SUBAGENT GRANT (2026-09-30: *"for this plan only, you may use subagents to handle
+each family of methods/properties"*) — TWICE, BOTH READ-ONLY, AND IT EARNED ITS KEEP:**
+
+* **NSCoder (74 rows)** → **17 rows have no substrate** (CoreMedia 6, UIKit insets 6, NX/NeXT 3, zones 2 — each
+  ground one of §11.5's, each a decline **by name**), **57 are implementable over machinery that already ships**,
+  and one finding is **work rather than a decision**: `NSValue.h` denies `+valueWithPoint:`/`+valueWithSize:`/
+  `+valueWithRect:` because "this library has no NSPoint/NSSize/NSRect" — **false since the CG value types
+  landed** (`NSGeometry.h` aliases all three). All of that is in the plan's decisions list.
+* **NSValue (49 rows)** → **19 implementable now** (Foundation geometry 6 + CoreGraphics geometry 10 + raw/object
+  3), **~28 with no substrate** (Media time 8, SceneKit 6, MapKit 4, GameController 2, CoreAnimation 2, UIKit/
+  directional 6), and **2 that need a documentation lookup first** (`+valueWithEdgeInsets:`/`edgeInsetsValue`: is
+  the boxed type `NSEdgeInsets`, which ships, or UIKit's `UIEdgeInsets`, which does not). It also found the probe
+  and case (`foundation_nsvalue`, 7 checks, **already in `HOST_PROBES`**), the behaviours already pinned by
+  existing checks, and **a stale comment in `mk/60-host.mk` from 2026-09-19 claiming that probe CRASHES** — true
+  then, superseded by its presence in the host list.
+
+**⚠ AND ONE APPARENT IMPOSSIBILITY IN THIS UNIT WAS MY OWN INSTRUMENT ERROR, WORTH RECORDING BECAUSE IT COST A
+ROUND:** a five-pattern `grep … | head -12` returned only `byteAtIndex:` hits, and I concluded the
+contents-of family was not in `NSString.m`. It is — **the window filled and truncated the rest**. The family of
+the trap is the one this document keeps meeting: **a truncated window is not an absence.**
+
+**VERIFICATION.** Host probe: `cstring-with-encoding-refuses-what-it-cannot-store` green (`ok=101`, the single
+failure still §63.24's **pre-existing host-only** `charset-bitmap-and-planes`). Guest `TESTS-OK 1/1 case(s),
+6/6 check(s)`. Library zero diagnostics; `--unimplemented` 0 NEW; `make foundation-sweep` exit 0 with `--check`
+consistent in both directions. **STILL OPEN IN THIS UNIT:** the two `+stringWithContentsOfURL:` rows.
+
 ## §63.27 — THE VALIDATED-FORMAT PAIR: A FORMAT CHECKED AGAINST WHAT THE CALLER ALLOWS (2026-09-30)
 
 **WHAT LANDED:** `+stringWithValidatedFormat:validFormatSpecifiers:error:` and its localized sibling — two
