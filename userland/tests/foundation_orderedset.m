@@ -207,6 +207,69 @@ int main(void)
 			(unsigned long)[mutable count]]);
 	}
 
+	{
+		/* THE CONSTRUCTION FAMILY (§63.6), all of it: the nil-terminated forms, the NSSet source, and the
+		 * RANGE door. The members are asserted as an ARRAY, because order is what this family is for and
+		 * a check on membership alone would pass for a reader that reordered them. */
+		NSOrderedSet *variadic = [NSOrderedSet orderedSetWithObjects:@"one", @"two", @"three", nil];
+		NSOrderedSet *fromVarargsInit = [[NSOrderedSet alloc] initWithObjects:@"x", @"y", nil];
+		NSOrderedSet *single = [[NSOrderedSet alloc] initWithObject:@"solo"];
+		NSOrderedSet *fromSet = [NSOrderedSet orderedSetWithSet:[NSSet setWithArray:@[@"p", @"q"]]];
+		NSOrderedSet *sliced = [NSOrderedSet orderedSetWithArray:@[@"a", @"b", @"c", @"d"]
+								  range:NSMakeRange(1, 2)
+							      copyItems:NO];
+		BOOL refusedRange = NO;
+
+		@try {
+			(void)[NSOrderedSet orderedSetWithArray:@[@"a", @"b"]
+							  range:NSMakeRange(1, 5)
+						      copyItems:NO];
+		} @catch (NSException *e) {
+			refusedRange = [[e name] isEqualToString:NSRangeException];
+		}
+		check("ordered-construction-doors",
+		      variadic != nil && [variadic count] == 3 &&
+		      [[variadic array] isEqualToArray:@[@"one", @"two", @"three"]] &&
+		      fromVarargsInit != nil && [[fromVarargsInit array] isEqualToArray:@[@"x", @"y"]] &&
+		      single != nil && [[single array] isEqualToArray:@[@"solo"]] &&
+		      fromSet != nil && [fromSet count] == 2 && [fromSet containsObject:@"p"] &&
+		      sliced != nil && [[sliced array] isEqualToArray:@[@"b", @"c"]] &&
+		      refusedRange,
+		      [NSString stringWithFormat:@"variadic=%@ slice=%@ set=%@ refusedRange=%d",
+			variadic != nil ? [variadic array] : @"(nil)",
+			sliced != nil ? [sliced array] : @"(nil)",
+			fromSet != nil ? [fromSet array] : @"(nil)", (int)refusedRange]);
+	}
+
+	{
+		/* `copyItems:YES` IS MEASURABLE, AND ONLY WITH A MEMBER THAT ACTUALLY COPIES: an NSString's `-copy`
+		 * answers the RECEIVER, so a set of literals cannot tell the two flags apart. An NSMutableString's
+		 * copy is a REAL copy (and an immutable one), so the pair is asserted BY POINTER — the same member,
+		 * not merely an equal one — plus the class change, which a mere retain cannot produce. */
+		NSMutableString *member = [[NSMutableString alloc] initWithString:@"mutable"];
+		NSArray *source = @[member];
+		NSOrderedSet *shared = [[NSOrderedSet alloc] initWithArray:source copyItems:NO];
+		NSOrderedSet *copied = [[NSOrderedSet alloc] initWithArray:source copyItems:YES];
+		NSOrderedSet *copiedSlice = [NSOrderedSet orderedSetWithArray:source
+								       range:NSMakeRange(0, 1)
+								   copyItems:YES];
+		id sharedMember = shared != nil ? [shared firstObject] : nil;
+		id copiedMember = copied != nil ? [copied firstObject] : nil;
+		id copiedSliceMember = copiedSlice != nil ? [copiedSlice firstObject] : nil;
+
+		check("ordered-construction-copies-when-asked",
+		      sharedMember == member &&
+		      copiedMember != nil && copiedMember != member &&
+		      [copiedMember isEqual:member] &&
+		      ![copiedMember isKindOfClass:[NSMutableString class]] &&
+		      copiedSliceMember != nil && copiedSliceMember != member,
+		      [NSString stringWithFormat:@"samePointer=%d equal=%d immutableCopy=%d",
+			(int)(sharedMember == member),
+			(int)(copiedMember != nil && [copiedMember isEqual:member]),
+			(int)(copiedMember != nil &&
+			      ![copiedMember isKindOfClass:[NSMutableString class]])]);
+	}
+
 	printf("FOUNDATION-ORDEREDSET RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

@@ -42,12 +42,34 @@ NS_ASSUME_NONNULL_BEGIN
 + (instancetype)orderedSet;
 + (instancetype)orderedSetWithObject:(ObjectType)object;
 + (instancetype)orderedSetWithObjects:(const ObjectType _Nonnull * _Nullable)objects count:(NSUInteger)count;
+/* THE NIL-TERMINATED VARIADIC FORM, and the two that take a SOURCE, a RANGE and a COPY flag. Apple declares
+ * all of them; this tree shipped the count and whole-source forms only, and the ledger carried the rest as
+ * open rows until §63.6. */
++ (instancetype)orderedSetWithObjects:(ObjectType)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 + (instancetype)orderedSetWithArray:(NSArray<ObjectType> *)array;
++ (instancetype)orderedSetWithArray:(NSArray<ObjectType> *)array
+			      range:(NSRange)range
+			  copyItems:(BOOL)flag;
 + (instancetype)orderedSetWithOrderedSet:(NSOrderedSet<ObjectType> *)set;
++ (instancetype)orderedSetWithOrderedSet:(NSOrderedSet<ObjectType> *)set
+				   range:(NSRange)range
+			       copyItems:(BOOL)flag;
++ (instancetype)orderedSetWithSet:(NSSet<ObjectType> *)set;
++ (instancetype)orderedSetWithSet:(NSSet<ObjectType> *)set copyItems:(BOOL)flag;
 
+- (instancetype)initWithObject:(ObjectType)object;
 - (instancetype)initWithObjects:(const ObjectType _Nonnull * _Nullable)objects count:(NSUInteger)count;
+- (instancetype)initWithObjects:(ObjectType)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 - (instancetype)initWithArray:(NSArray<ObjectType> *)array;
+- (instancetype)initWithArray:(NSArray<ObjectType> *)array copyItems:(BOOL)flag;
+- (instancetype)initWithArray:(NSArray<ObjectType> *)array range:(NSRange)range copyItems:(BOOL)flag;
 - (instancetype)initWithOrderedSet:(NSOrderedSet<ObjectType> *)set;
+- (instancetype)initWithOrderedSet:(NSOrderedSet<ObjectType> *)set copyItems:(BOOL)flag;
+- (instancetype)initWithOrderedSet:(NSOrderedSet<ObjectType> *)set
+			     range:(NSRange)range
+			 copyItems:(BOOL)flag;
+- (instancetype)initWithSet:(NSSet<ObjectType> *)set;
+- (instancetype)initWithSet:(NSSet<ObjectType> *)set copyItems:(BOOL)flag;
 
 - (NSUInteger)count;
 - (nullable ObjectType)objectAtIndex:(NSUInteger)index;

@@ -15824,6 +15824,55 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.6 — `NSOrderedSet`'S CONSTRUCTION FAMILY: THIRTEEN ROWS, AND A SLICE THE GATE CONFIRMED (2026-09-30)
+
+**WHAT SHIPPED: THIRTEEN ROWS, AND THE LEDGER NAMED EXACTLY THEM.** `NSOrderedSet`'s construction doors — the
+nil-terminated forms, the `NSSet` source, and the `range:`/`copyItems:` pair for each source:
+`+orderedSetWithObjects:`, `+orderedSetWithSet:`, `+orderedSetWithSet:copyItems:`,
+`+orderedSetWithArray:range:copyItems:`, `+orderedSetWithOrderedSet:range:copyItems:`, `-initWithObject:`,
+`-initWithObjects:`, `-initWithArray:copyItems:`, `-initWithArray:range:copyItems:`,
+`-initWithOrderedSet:copyItems:`, `-initWithOrderedSet:range:copyItems:`, `-initWithSet:`,
+`-initWithSet:copyItems:`. **`method shipped` 1786 → 1799, `method open` 899 → 886.**
+
+**WHY THIS SLICE, AND HOW IT WAS CONFIRMED RATHER THAN ASSUMED.** The family had 31 open methods and they are
+not one thing; the construction doors are. The count is not a judgement call: with the declarations in place
+and the rows still `open`, `--check` printed **13** `PRESENT BUT LISTED OPEN` findings and they were EXACTLY
+the thirteen above — no more. That is the ledger doing the slice's bookkeeping, and it is why this section can
+state the boundary instead of gesturing at it.
+
+**THE SHAPE: ONE FUNNEL AND TWO HELPERS.** Every door funnels through `-initWithArray:`, where the
+class-choosing rule and the shared empty instance already live, so each door is one line and there is ONE
+place each of the two new RULES can be wrong:
+
+* **THE RANGE RAISES, AND APPLE SAYS SO** — "If range is not within array's bounds, this method raises an
+  NSRangeException." It is deliberately NOT what this tree's `NSArray -subarrayWithRange:` does (that one
+  CLAMPS, §13, its own recorded behaviour), and the difference is stated in the code rather than quietly
+  matched, because clamping would answer a set the caller never asked for. **The bounds test is also written
+  so it cannot overflow**: `location + length` on a caller's unsigned range WRAPS, and a wrapped sum compares
+  SMALLER — which is how the obvious spelling of this check passes exactly the case it exists for.
+* **`copyItems:YES` COPIES, AND THE COPY IS AN OWNED `+1`** that the array's retain takes over — balanced at
+  the door rather than left to an autorelease pool that may not exist (§15.2's owned families).
+
+**AND THE PROBE'S OWN INSTRUMENT HAD TO BE CHOSEN, because the obvious one is BLIND.** A set of string
+literals cannot tell `copyItems:` apart: `-copy` on an `NSString` answers the RECEIVER, so both flags produce
+the same pointer. The check uses an **`NSMutableString`** member, whose copy is a real one and an immutable
+one, so the pair is asserted **BY POINTER** (the same member, not merely an equal one) plus the CLASS change —
+which a mere retain cannot produce.
+
+**VERIFICATION.** Probe `foundation_orderedset` **11/11** on the host (was 9); guest `TESTS-OK 1/1 case(s),
+6/6 check(s)`, probe tally `ok=11 fail=0`; `make foundation-sweep` **exit 0**, `--unimplemented` **0 NEW**; the
+`--check` gate shown failing with **13** named rows BEFORE the flip, and the flip's `--refresh` diff was
+**14 lines in ONE file** (thirteen statuses and the counts block).
+
+**WHAT THIS SLICE DELIBERATELY LEAVES, so the family's distance to zero is a number rather than an
+impression.** `NSOrderedSet` still has **18** open rows: the searching and sorting doors
+(`-indexOfObjectPassingTest:` and its options/AtIndexes/`indexesOf` siblings,
+`-sortedArrayUsingComparator:`, `-sortedArrayWithOptions:usingComparator:`,
+`-indexOfObject:inSortedRange:options:usingComparator:`), the options-taking enumerators, `-objectsAtIndexes:`,
+`-descriptionWithLocale:` (×2), `-intersectsSet:`, `-isSubsetOfSet:`, the `reversedOrderedSet` property — and
+**`-initWithCoder:`**, which is NOT construction but `NSCoding` conformance, and belongs with the question it
+raises rather than here.
+
 ## §63.5 — `+setWithObjects:`, FOUND BY WRITING A PROBE: ONE ROW, AND A LEDGER THAT NAMED ITS OWN FIX (2026-09-30)
 
 **WHAT SHIPPED: ONE ROW, AND IT WAS FOUND RATHER THAN SCHEDULED.** `NSSet`'s nil-terminated variadic factory

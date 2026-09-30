@@ -23,6 +23,7 @@
 #import <Foundation/NSPredicate.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSString.h>
+#include <stdarg.h>		/* the nil-terminated construction doors walk a va_list */
 
 /* ===================================================================================================
  * THE PRIVATE CONCRETE CLASSES (plan §C.3, M6): the same shape as the array, dictionary, set and number
@@ -171,6 +172,153 @@
 - (instancetype)initWithOrderedSet:(NSOrderedSet *)set
 {
 	return [self initWithArray:[set array]];
+}
+
+/* ===================================================================================================
+ * THE CONSTRUCTION FAMILY COMPLETE (§63.6). Apple's doors take a SOURCE, a RANGE and a COPY flag, and the
+ * whole family funnels through `-initWithArray:` above - which is where the class-choosing rule and the
+ * shared empty instance already live - so each door below is ONE LINE and there is ONE place the range
+ * contract and the copying rule can be wrong. TWO SMALL HELPERS carry those two rules:
+ * =================================================================================================== */
+
+/* THE RANGE, AND APPLE'S CONTRACT IS A RAISE RATHER THAN A CLAMP: "If range is not within array's bounds,
+ * this method raises an NSRangeException." That is NOT what `NSArray -subarrayWithRange:` does in this tree
+ * (it CLAMPS, §13, its own recorded behaviour) - the difference is real and deliberate here, and it is
+ * stated rather than quietly matched, because clamping would answer a set the caller never asked for. The
+ * bounds test is written so it cannot overflow: `location + length` on a caller's unsigned range WRAPS, and
+ * a wrapped sum compares SMALLER, which is how a bounds check passes exactly the case it exists for. */
+static NSArray *fn_slice(NSArray *array, NSRange range)
+{
+	NSMutableArray *out;
+	NSUInteger count = [array count];
+	NSUInteger i;
+
+	if (range.location > count || range.length > count - range.location) {
+		[NSException raise:NSRangeException
+			    format:@"NSOrderedSet: the range {%lu, %lu} is not within an array of %lu",
+				   (unsigned long)range.location, (unsigned long)range.length,
+				   (unsigned long)count];
+	}
+	out = [NSMutableArray arrayWithCapacity:range.length];
+	for (i = 0; i < range.length; i++) {
+		[out addObject:[array objectAtIndex:range.location + i]];
+	}
+	return out;
+}
+
+/* `copyItems:YES` COPIES EACH MEMBER, and the copy is an OWNED `+1` that the array's own retain takes over -
+ * balanced here rather than left to an autorelease pool that may not exist (§15.2's owned families). A
+ * member that cannot copy raises `-doesNotRecognizeSelector:`, the same answer Cocoa gives. */
+static NSArray *fn_copies(NSArray *array)
+{
+	NSMutableArray *out = [NSMutableArray arrayWithCapacity:[array count]];
+	NSUInteger i;
+
+	for (i = 0; i < [array count]; i++) {
+		id copied = [[array objectAtIndex:i] copy];
+
+		[out addObject:copied];
+		[copied release];
+	}
+	return out;
+}
+
+/* THE NIL-TERMINATED LIST AS AN ARRAY, in ONE pass and shared by the two variadic doors. `NSArray`'s own
+ * variadic factory counts first because it sizes a `calloc` exactly; a mutable array needs no count, so the
+ * copy-of-the-va_list that the two-pass form exists for is not needed here. */
+static NSArray *fn_from_varargs(id firstObject, va_list args)
+{
+	NSMutableArray *out;
+	id object;
+
+	if (firstObject == nil) {
+		return @[];
+	}
+	out = [NSMutableArray array];
+	[out addObject:firstObject];
+	while ((object = va_arg(args, id)) != nil) {
+		[out addObject:object];
+	}
+	return out;
+}
+
+- (instancetype)initWithObject:(id)object
+{
+	return [self initWithObjects:&object count:1];
+}
+
+- (instancetype)initWithObjects:(id)firstObject, ...
+{
+	va_list args;
+	NSArray *members;
+
+	va_start(args, firstObject);
+	members = fn_from_varargs(firstObject, args);
+	va_end(args);
+	return [self initWithArray:members];
+}
+
+- (instancetype)initWithArray:(NSArray *)array copyItems:(BOOL)flag
+{
+	return [self initWithArray:flag ? fn_copies(array) : array];
+}
+
+- (instancetype)initWithArray:(NSArray *)array range:(NSRange)range copyItems:(BOOL)flag
+{
+	NSArray *slice = fn_slice(array, range);
+
+	return [self initWithArray:flag ? fn_copies(slice) : slice];
+}
+
+- (instancetype)initWithOrderedSet:(NSOrderedSet *)set copyItems:(BOOL)flag
+{
+	return [self initWithArray:[set array] copyItems:flag];
+}
+
+- (instancetype)initWithOrderedSet:(NSOrderedSet *)set range:(NSRange)range copyItems:(BOOL)flag
+{
+	return [self initWithArray:[set array] range:range copyItems:flag];
+}
+
+- (instancetype)initWithSet:(NSSet *)set
+{
+	return [self initWithArray:[set allObjects]];
+}
+
+- (instancetype)initWithSet:(NSSet *)set copyItems:(BOOL)flag
+{
+	return [self initWithArray:[set allObjects] copyItems:flag];
+}
+
++ (instancetype)orderedSetWithObjects:(id)firstObject, ...
+{
+	va_list args;
+	NSArray *members;
+
+	va_start(args, firstObject);
+	members = fn_from_varargs(firstObject, args);
+	va_end(args);
+	return [[self alloc] initWithArray:members];
+}
+
++ (instancetype)orderedSetWithArray:(NSArray *)array range:(NSRange)range copyItems:(BOOL)flag
+{
+	return [[self alloc] initWithArray:array range:range copyItems:flag];
+}
+
++ (instancetype)orderedSetWithOrderedSet:(NSOrderedSet *)set range:(NSRange)range copyItems:(BOOL)flag
+{
+	return [[self alloc] initWithOrderedSet:set range:range copyItems:flag];
+}
+
++ (instancetype)orderedSetWithSet:(NSSet *)set
+{
+	return [[self alloc] initWithSet:set];
+}
+
++ (instancetype)orderedSetWithSet:(NSSet *)set copyItems:(BOOL)flag
+{
+	return [[self alloc] initWithSet:set copyItems:flag];
 }
 
 - (NSUInteger)count

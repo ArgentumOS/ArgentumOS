@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1786   open  899   struck  243
+#   method     shipped 1799   open  886   struck  243
 #   property   shipped 1026   open  464   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -2457,17 +2457,17 @@ method	open	-indexesOfObjectsPassingTest:	NSOrderedSet	Fundamentals / Specialize
 method	open	-indexesOfObjectsWithOptions:passingTest:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
 method	shipped	-init	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
 method	shipped	-initWithArray:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	open	-initWithArray:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	open	-initWithArray:range:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
+method	shipped	-initWithArray:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
+method	shipped	-initWithArray:range:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
 method	open	-initWithCoder:	NSOrderedSet	Fundamentals / Specialized Sets / Instance Methods	-	objc
-method	open	-initWithObject:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	open	-initWithObjects:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
+method	shipped	-initWithObject:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
+method	shipped	-initWithObjects:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
 method	shipped	-initWithObjects:count:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
 method	shipped	-initWithOrderedSet:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	open	-initWithOrderedSet:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	open	-initWithOrderedSet:range:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	open	-initWithSet:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	open	-initWithSet:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
+method	shipped	-initWithOrderedSet:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
+method	shipped	-initWithOrderedSet:range:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
+method	shipped	-initWithSet:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
+method	shipped	-initWithSet:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
 method	shipped	-intersectsOrderedSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing Sets	-	objc
 method	open	-intersectsSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing Sets	-	objc
 method	shipped	-isEqualToOrderedSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing Sets	-	objc
@@ -2480,14 +2480,14 @@ method	open	-objectsAtIndexes:	NSOrderedSet	Fundamentals / Specialized Sets / Ac
 method	shipped	+orderedSet	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
 method	shipped	-orderedSetByApplyingDifference:	NSOrderedSet	Fundamentals / Specialized Sets / Instance Methods	-	objc
 method	shipped	+orderedSetWithArray:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
-method	open	+orderedSetWithArray:range:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
+method	shipped	+orderedSetWithArray:range:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
 method	shipped	+orderedSetWithObject:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
-method	open	+orderedSetWithObjects:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
+method	shipped	+orderedSetWithObjects:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
 method	shipped	+orderedSetWithObjects:count:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
 method	shipped	+orderedSetWithOrderedSet:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
-method	open	+orderedSetWithOrderedSet:range:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
-method	open	+orderedSetWithSet:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
-method	open	+orderedSetWithSet:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
+method	shipped	+orderedSetWithOrderedSet:range:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
+method	shipped	+orderedSetWithSet:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
+method	shipped	+orderedSetWithSet:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
 method	shipped	-removeObserver:forKeyPath:	NSOrderedSet	Fundamentals / Specialized Sets / Key-Value Observing Support	-	objc
 method	shipped	-removeObserver:forKeyPath:context:	NSOrderedSet	Fundamentals / Specialized Sets / Key-Value Observing Support	-	objc
 method	shipped	-reverseObjectEnumerator	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
