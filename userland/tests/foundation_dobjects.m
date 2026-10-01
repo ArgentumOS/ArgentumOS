@@ -331,6 +331,35 @@ int main(void)
 		}
 	}
 
+	/* --- THE CONNECTION REGISTRY, THE LOOKUP THAT STOPS ONE STEP EARLIER, AND THE CLOCK ---------------- */
+	{
+		/* `+allConnections` IS ASKED BEFORE ANY NEW CONNECTION IS MADE, so the serving connection it must hold is
+		 * already there and `found` — the fresh connection made on the next line — is deliberately NOT in it. */
+		NSArray *all = [NSConnection allConnections];
+		NSConnection *found = [NSConnection connectionWithRegisteredName:@"probe.echo" host:nil];
+		NSConnection *absent = [NSConnection connectionWithRegisteredName:@"probe.absent" host:nil];
+
+		check("all-connections-answers-the-live-registry-and-holds-the-serving-connection",
+		      [all isKindOfClass:[NSArray class]] && [all containsObject:serving],
+		      [NSString stringWithFormat:@"+allConnections answered %lu connection(s) and the serving connection "
+			@"is %@ among them", (unsigned long)[all count],
+			([all containsObject:serving] ? @"one of them" : @"NOT one of them")]);
+
+		check("a-registered-name-answers-a-self-contained-connection-and-an-absent-one-answers-nil",
+		      found != nil && found != serving && [found receivePort] != nil && [found sendPort] != nil &&
+		      absent == nil,
+		      [NSString stringWithFormat:@"\"probe.echo\" answered a connection (receivePort=%@ sendPort=%@) "
+			@"different from the service, and \"probe.absent\" answered %@",
+			[found receivePort] != nil ? @"yes" : @"no",
+			[found sendPort] != nil ? @"yes" : @"no",
+			absent == nil ? @"nil" : @"a connection"]);
+
+		check("a-connections-reply-timeout-defaults-to-60-and-round-trips",
+		      [found replyTimeout] == 60.0 && ([found setReplyTimeout:12.5], [found replyTimeout] == 12.5),
+		      [NSString stringWithFormat:@"the default reply timeout read %.1f and a value set to 12.5 read "
+			@"back %.1f", 60.0, [found replyTimeout]]);
+	}
+
 	/* --- AN ABSENT NAME, AND TAKING A SERVICE DOWN ----------------------------------------------------- */
 	{
 		id absent = [NSConnection rootProxyForConnectionWithRegisteredName:@"probe.absent" host:nil];

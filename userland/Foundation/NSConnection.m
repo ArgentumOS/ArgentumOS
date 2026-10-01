@@ -30,6 +30,7 @@
 #import <Foundation/NSSet.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSArray.h>
+#import <Foundation/NSValue.h>	/* the live-connection registry boxes raw addresses */
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSNull.h>
 #import <Foundation/NSDate.h>
@@ -61,11 +62,61 @@ static NSString *fn_next_reply_name(void)
 	return [NSString stringWithFormat:@"NSConnectionReply-%d-%lu", (int)getpid(), (unsigned long)gReplyCounter];
 }
 
+/* ---- EVERY LIVE CONNECTION, AND THE REGISTRY IS NON-OWNING (see the header) ----------------------- */
+
+static NSMutableArray *gAllConnections = nil;
+
+static NSMutableArray *fn_all_connections(void)
+{
+	if (gAllConnections == nil) {
+		gAllConnections = [[NSMutableArray alloc] init];
+	}
+	return gAllConnections;
+}
+
+/* THE MEMBER IS A BOXED ADDRESS, not the object: a box owns nothing, so the registry never keeps a connection
+ * alive and every connection can still reach `-dealloc`. */
+static void fn_register_connection(NSConnection *connection)
+{
+	[fn_all_connections() addObject:[NSValue valueWithPointer:connection]];
+}
+
+static void fn_unregister_connection(NSConnection *connection)
+{
+	NSMutableArray *all = fn_all_connections();
+	NSUInteger i;
+
+	for (i = 0; i < [all count]; i++) {
+		if ([(NSValue *)[all objectAtIndex:i] pointerValue] == (void *)connection) {
+			[all removeObjectAtIndex:i];
+			return;
+		}
+	}
+}
+
 @implementation NSConnection
 
 + (NSConnection *)connectionWithReceivePort:(NSPort *)receivePort sendPort:(NSPort *)sendPort
 {
 	return [[[self alloc] initWithReceivePort:receivePort sendPort:sendPort] autorelease];
+}
+
++ (NSArray *)allConnections
+{
+	NSMutableArray *all = fn_all_connections();
+	NSMutableArray *answer = [[NSMutableArray alloc] init];
+	NSUInteger i;
+
+	/* ONLY THE STILL-VALID ONES, which is Apple's contract and also what keeps a connection that was invalidated
+	 * but not yet released out of the answer. */
+	for (i = 0; i < [all count]; i++) {
+		NSConnection *connection = (NSConnection *)[(NSValue *)[all objectAtIndex:i] pointerValue];
+
+		if ([connection isValid]) {
+			[answer addObject:connection];
+		}
+	}
+	return [answer autorelease];
 }
 
 - (instancetype)initWithReceivePort:(NSPort *)receivePort sendPort:(NSPort *)sendPort
@@ -85,6 +136,8 @@ static NSString *fn_next_reply_name(void)
 	_sendPort = [sendPort retain];
 	_valid = _receivePort != nil;
 	[_receivePort setDelegate:self];
+	_replyTimeout = 60.0;		/* the finite default the header documents */
+	fn_register_connection(self);
 	[[NSNotificationCenter defaultCenter] postNotificationName:NSConnectionDidInitializeNotification object:self];
 	return self;
 }
@@ -92,6 +145,9 @@ static NSString *fn_next_reply_name(void)
 - (NSPort *)receivePort { return _receivePort; }
 - (NSPort *)sendPort { return _sendPort; }
 - (BOOL)isValid { return _valid; }
+
+- (NSTimeInterval)replyTimeout { return _replyTimeout; }
+- (void)setReplyTimeout:(NSTimeInterval)timeout { _replyTimeout = timeout; }
 
 - (id)rootObject { return _rootObject; }
 
@@ -186,13 +242,12 @@ static NSString *fn_next_reply_name(void)
 			       usingNameServer:[NSPortNameServer defaultPortNameServer]];
 }
 
-+ (id)rootProxyForConnectionWithRegisteredName:(NSString *)name
++ (NSConnection *)connectionWithRegisteredName:(NSString *)name
 					  host:(NSString *)hostName
 			       usingNameServer:(NSPortNameServer *)server
 {
 	NSPort *servicePort;
 	NSConnection *connection;
-	id proxy;
 
 	if (server != [NSPortNameServer defaultPortNameServer] && server != [NSMessagePortNameServer sharedInstance]) {
 		return nil;
@@ -205,12 +260,26 @@ static NSString *fn_next_reply_name(void)
 	if (connection == nil) {
 		return nil;
 	}
-	/* THE CLIENT'S RECEIVE PORT IS WATCHED IN REPLY MODE, because a reply is the only thing it will ever receive
-	 * while it waits — which is what `NSConnectionReplyMode` is for. */
+	/* THE CLIENT'S RECEIVE PORT IS WATCHED IN REPLY MODE (see `-addRunLoop:`), because a reply is the only thing
+	 * a caller of this connection will ever wait for. */
 	[connection->_receivePort scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSConnectionReplyMode];
-	proxy = [connection rootProxy];
-	[connection release];		/* the proxy holds it (NSDistantObject.h says so) */
-	return proxy;
+	return [connection autorelease];
+}
+
++ (NSConnection *)connectionWithRegisteredName:(NSString *)name host:(NSString *)hostName
+{
+	return [self connectionWithRegisteredName:name
+					    host:hostName
+				 usingNameServer:[NSPortNameServer defaultPortNameServer]];
+}
+
++ (id)rootProxyForConnectionWithRegisteredName:(NSString *)name
+					  host:(NSString *)hostName
+			       usingNameServer:(NSPortNameServer *)server
+{
+	/* ONE STEP FURTHER THAN THE DOOR ABOVE: the connection it answers is asked for its proxy, and the proxy holds
+	 * that connection (NSDistantObject.h says so), so the autorelease it carries is settled by the proxy's retain. */
+	return [[self connectionWithRegisteredName:name host:hostName usingNameServer:server] rootProxy];
 }
 
 + (id)rootProxyForConnectionWithRegisteredName:(NSString *)name host:(NSString *)hostName
@@ -428,11 +497,18 @@ static NSString *fn_next_reply_name(void)
 	[coder release];
 
 	/* WAITING IS RUNNING THE LOOP IN REPLY MODE: the receive port was scheduled in it by the class method that
-	 * made this connection, so a reply arrives while the caller waits. Bounded, because a service that never
-	 * answers must not hang the caller for ever. */
-	for (i = 0; i < 250 && _waitingForReply; i++) {
-		[[NSRunLoop currentRunLoop] runMode:NSConnectionReplyMode
-					 beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.02]];
+	 * made this connection, so a reply arrives while the caller waits. BOUNDED BY `-replyTimeout`, which is the
+	 * connection's own clock and the reason the door above is not hollow; a non-positive value keeps the 60-second
+	 * default, and the 0.02 step keeps the pump responsive. */
+	{
+		NSTimeInterval limit = _replyTimeout > 0.0 ? _replyTimeout : 60.0;
+		NSTimeInterval waited = 0.0;
+
+		while (_waitingForReply && waited < limit) {
+			[[NSRunLoop currentRunLoop] runMode:NSConnectionReplyMode
+						 beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.02]];
+			waited += 0.02;
+		}
 	}
 	if (_waitingForReply) {
 		_waitingForReply = NO;
@@ -475,12 +551,14 @@ static NSString *fn_next_reply_name(void)
 		return;
 	}
 	_valid = NO;
+	fn_unregister_connection(self);
 	[_receivePort invalidate];
 	[[NSNotificationCenter defaultCenter] postNotificationName:NSConnectionDidDieNotification object:self];
 }
 
 - (void)dealloc
 {
+	fn_unregister_connection(self);
 	[_receivePort setDelegate:nil];
 	[_receivePort release];
 	[_sendPort release];

@@ -35,6 +35,7 @@
 
 #import <Foundation/NSObject.h>
 #import <Foundation/NSPort.h>
+#import <Foundation/NSDate.h>	/* NSTimeInterval, for -replyTimeout */
 
 @class NSPort, NSPortNameServer, NSDistantObject, NSDistantObjectRequest, NSRunLoop, NSString;
 @class NSConnection;	/* the protocol below names it, and the class comes after */
@@ -86,10 +87,17 @@ extern NSString *const NSFailedAuthenticationException;
 	id _replyValue;
 	id _delegate;			/* NOT retained: the delegate owns the connection, as Apple's does */
 	id _conversation;		/* made once, lazily, when a request first arrives */
+	NSTimeInterval _replyTimeout;	/* seconds a call waits for an answer; read by the sender, see -replyTimeout */
 }
 
 + (nullable NSConnection *)connectionWithReceivePort:(nullable NSPort *)receivePort
 					    sendPort:(nullable NSPort *)sendPort;
+
+/* EVERY LIVE CONNECTION — Apple's `+allConnections`. THE REGISTRY IS NON-OWNING, and that is a decision rather
+ * than an oversight: a registry that retained its members would be a leak this class created, because a live
+ * connection could never reach `-dealloc` while the registry held it. Each connection withdraws its own entry
+ * when it is invalidated or deallocated, and the answer keeps only the entries still `-isValid`. */
++ (NSArray *)allConnections;
 
 /* THE DELEGATE, NOT RETAINED — the connection is the thing a delegate usually owns, so keeping it alive would
  * be the cycle Apple's `weak` delegate exists to avoid. */
@@ -107,6 +115,18 @@ extern NSString *const NSFailedAuthenticationException;
 						   host:(nullable NSString *)hostName
 					usingNameServer:(NSPortNameServer *)server;
 + (nullable id)rootProxyForConnectionWithRegisteredName:(NSString *)name
+						   host:(nullable NSString *)hostName;
+
+/* THE CLIENT'S CONNECTION ITSELF — where `-rootProxyForConnectionWithRegisteredName:` answers the PROXY, this
+ * stops one step earlier and answers the connection the proxy travels over. Apple's doors, and a name nobody
+ * published answers nil. THE ONE DIFFERENCE FROM APPLE IS STATED rather than left to be found: Apple's connection
+ * here is a CHILD of the current thread's default connection and shares its receive port, and this library has no
+ * parent and child connections (see the delegate note above; §62.56), so the connection is self-contained — a
+ * send port to the service and its own receive port, watched in the reply mode. */
++ (nullable NSConnection *)connectionWithRegisteredName:(NSString *)name
+						   host:(nullable NSString *)hostName
+					usingNameServer:(NSPortNameServer *)server;
++ (nullable NSConnection *)connectionWithRegisteredName:(NSString *)name
 						   host:(nullable NSString *)hostName;
 
 - (instancetype)initWithReceivePort:(nullable NSPort *)receivePort sendPort:(nullable NSPort *)sendPort;
@@ -128,6 +148,13 @@ extern NSString *const NSFailedAuthenticationException;
 
 - (void)invalidate;
 - (BOOL)isValid;
+
+/* HOW LONG A CALL WAITS FOR AN ANSWER — Apple's `replyTimeout`, in seconds, and this library READS it: it bounds
+ * the run-loop wait the sender below runs, so the door is used rather than merely stored. THE DEFAULT IS 60.0,
+ * because Apple's "the maximum delay" is not expressible as a bounded run-loop pump; a non-positive value means
+ * the same default. */
+- (NSTimeInterval)replyTimeout;
+- (void)setReplyTimeout:(NSTimeInterval)timeout;
 
 @end
 
