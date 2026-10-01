@@ -37,6 +37,7 @@
 #import <Foundation/NSMutableOrderedSet.h>
 #import <Foundation/NSDate.h>
 #import <Foundation/NSNumber.h>
+#import <Foundation/NSValue.h>	/* the geometry doors box their struct in one of these */
 #import <Foundation/NSNull.h>
 #import <Foundation/NSError.h>
 #import <Foundation/NSException.h>
@@ -469,6 +470,50 @@ static BOOL fn_value_is_allowed(id value, NSSet *classes)
 		}
 	}
 	[self encodeObject:nil forKey:key];	/* not yet encoded: nothing is written */
+}
+
+/* --- THE KEYED GEOMETRY DOORS: box the structure in an `NSValue` under the key (NSCoder.h says why) ------- */
+- (void)encodeCGPoint:(CGPoint)point forKey:(NSString *)key
+{
+	[self encodeObject:[NSValue valueWithCGPoint:point] forKey:key];
+}
+
+- (void)encodeCGSize:(CGSize)size forKey:(NSString *)key
+{
+	[self encodeObject:[NSValue valueWithCGSize:size] forKey:key];
+}
+
+- (void)encodeCGRect:(CGRect)rect forKey:(NSString *)key
+{
+	[self encodeObject:[NSValue valueWithCGRect:rect] forKey:key];
+}
+
+- (void)encodeCGVector:(CGVector)vector forKey:(NSString *)key
+{
+	[self encodeObject:[NSValue valueWithCGVector:vector] forKey:key];
+}
+
+- (void)encodeCGAffineTransform:(CGAffineTransform)transform forKey:(NSString *)key
+{
+	[self encodeObject:[NSValue valueWithCGAffineTransform:transform] forKey:key];
+}
+
+/* The Foundation spellings (NSPoint/NSSize/NSRect) are the SAME boxes as the CG ones above, because this
+ * tree's typedefs make the types identical (NSGeometry.h) — the door differs only in the name a caller
+ * speaks, and both names are doors Apple declares. */
+- (void)encodePoint:(NSPoint)point forKey:(NSString *)key
+{
+	[self encodeObject:[NSValue valueWithPoint:point] forKey:key];
+}
+
+- (void)encodeSize:(NSSize)size forKey:(NSString *)key
+{
+	[self encodeObject:[NSValue valueWithSize:size] forKey:key];
+}
+
+- (void)encodeRect:(NSRect)rect forKey:(NSString *)key
+{
+	[self encodeObject:[NSValue valueWithRect:rect] forKey:key];
 }
 
 - (void)finishEncoding
@@ -1103,6 +1148,64 @@ static BOOL fn_value_is_allowed(id value, NSSet *classes)
 	[NSException raise:NSInvalidArgumentException
 		    format:@"NSKeyedUnarchiver: \"%@\" is not a property list but %@", key, [value class]];
 	return nil;
+}
+
+/* --- THE KEYED GEOMETRY DOORS' READING HALF (NSCoder.h says why they box an `NSValue`) --------------------
+ *
+ * The shared reading: the key names a boxed structure, and anything that is not an `NSValue` is a corrupt
+ * archive — refused the same way `-decodeBytesForKey:minimumLength:` refuses a non-bytes value rather than
+ * answering a zeroed structure that looks like data. A missing key still raises through
+ * `-decodeObjectForKey:`, exactly as the scalar doors do. */
+- (NSValue *)fnDecodeGeometryValueForKey:(NSString *)key
+{
+	id value = [self decodeObjectForKey:key];
+
+	if (![value isKindOfClass:[NSValue class]]) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSKeyedUnarchiver: \"%@\" is not a geometry value but %@",
+				   key, [value class]];
+	}
+	return value;
+}
+
+- (CGPoint)decodeCGPointForKey:(NSString *)key
+{
+	return [[self fnDecodeGeometryValueForKey:key] CGPointValue];
+}
+
+- (CGSize)decodeCGSizeForKey:(NSString *)key
+{
+	return [[self fnDecodeGeometryValueForKey:key] CGSizeValue];
+}
+
+- (CGRect)decodeCGRectForKey:(NSString *)key
+{
+	return [[self fnDecodeGeometryValueForKey:key] CGRectValue];
+}
+
+- (CGVector)decodeCGVectorForKey:(NSString *)key
+{
+	return [[self fnDecodeGeometryValueForKey:key] CGVectorValue];
+}
+
+- (CGAffineTransform)decodeCGAffineTransformForKey:(NSString *)key
+{
+	return [[self fnDecodeGeometryValueForKey:key] CGAffineTransformValue];
+}
+
+- (NSPoint)decodePointForKey:(NSString *)key
+{
+	return [[self fnDecodeGeometryValueForKey:key] pointValue];
+}
+
+- (NSSize)decodeSizeForKey:(NSString *)key
+{
+	return [[self fnDecodeGeometryValueForKey:key] sizeValue];
+}
+
+- (NSRect)decodeRectForKey:(NSString *)key
+{
+	return [[self fnDecodeGeometryValueForKey:key] rectValue];
 }
 
 - (nullable id)decodeTopLevelObjectAndReturnError:(NSError * _Nullable * _Nullable)error

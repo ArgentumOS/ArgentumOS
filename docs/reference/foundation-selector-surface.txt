@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 1998   open  686   struck  244
+#   method     shipped 2025   open  659   struck  244
 #   property   shipped 1134   open  356   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -586,11 +586,11 @@ method	shipped	-decodeBytesForKey:minimumLength:	NSCoder	Files and Data Persiste
 method	shipped	-decodeBytesForKey:returnedLength:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodeBytesWithMinimumLength:	NSCoder	Files and Data Persistence / Keyed Archivers / Instance Methods	-	objc
 method	shipped	-decodeBytesWithReturnedLength:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodeCGAffineTransformForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
-method	open	-decodeCGPointForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
-method	open	-decodeCGRectForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
-method	open	-decodeCGSizeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
-method	open	-decodeCGVectorForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
+method	shipped	-decodeCGAffineTransformForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
+method	shipped	-decodeCGPointForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
+method	shipped	-decodeCGRectForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
+method	shipped	-decodeCGSizeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
+method	shipped	-decodeCGVectorForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
 method	open	-decodeCMTimeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Core Media Time Structures	-	objc
 method	open	-decodeCMTimeMappingForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Core Media Time Structures	-	objc
 method	open	-decodeCMTimeRangeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Core Media Time Structures	-	objc
@@ -611,13 +611,13 @@ method	shipped	-decodeObjectForKey:	NSCoder	Files and Data Persistence / Keyed A
 method	shipped	-decodeObjectOfClass:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeObjectOfClasses:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodePoint	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodePointForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
+method	shipped	-decodePointForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodePropertyList	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodePropertyListForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodeRect	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodeRectForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
+method	shipped	-decodeRectForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodeSize	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodeSizeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
+method	shipped	-decodeSizeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeTopLevelObjectAndReturnError:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Top-Level Objects	-	objc
 method	shipped	-decodeTopLevelObjectForKey:error:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Top-Level Objects	-	objc
 method	shipped	-decodeTopLevelObjectOfClass:forKey:error:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Top-Level Objects	-	objc
@@ -633,11 +633,11 @@ method	shipped	-encodeBycopyObject:	NSCoder	Files and Data Persistence / Keyed A
 method	shipped	-encodeByrefObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeBytes:length:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeBytes:length:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	open	-encodeCGAffineTransform:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
-method	open	-encodeCGPoint:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
-method	open	-encodeCGRect:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
-method	open	-encodeCGSize:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
-method	open	-encodeCGVector:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
+method	shipped	-encodeCGAffineTransform:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
+method	shipped	-encodeCGPoint:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
+method	shipped	-encodeCGRect:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
+method	shipped	-encodeCGSize:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
+method	shipped	-encodeCGVector:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
 method	open	-encodeCMTime:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Core Media Time Structures	-	objc
 method	open	-encodeCMTimeMapping:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Core Media Time Structures	-	objc
 method	open	-encodeCMTimeRange:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Core Media Time Structures	-	objc
@@ -655,13 +655,13 @@ method	open	-encodeNXObject:	NSCoder	Files and Data Persistence / Keyed Archiver
 method	shipped	-encodeObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeObject:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	open	-encodePoint:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	open	-encodePoint:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
+method	shipped	-encodePoint:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	open	-encodePropertyList:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	open	-encodeRect:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	open	-encodeRect:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
+method	shipped	-encodeRect:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeRootObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	open	-encodeSize:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	open	-encodeSize:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
+method	shipped	-encodeSize:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	open	-encodeUIEdgeInsets:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
 method	open	-encodeUIOffset:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
 method	shipped	-encodeValueOfObjCType:at:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
@@ -3027,10 +3027,10 @@ property	shipped	streamStatus	NSStream	Low-Level Utilities / Streams / Getting S
 method	shipped	-stream:handleEvent:	NSStreamDelegate	Low-Level Utilities / Streams / Using Streams	-	objc
 method	open	-boundingRectWithSize:options:attributes:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	open	-boundingRectWithSize:options:attributes:context:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	-	objc
-method	open	-cString	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-cStringLength	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	-cString	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	-cStringLength	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-cStringUsingEncoding:	NSString	Fundamentals / Strings / Getting C Strings	-	objc
-method	open	-canBeConvertedToEncoding:	NSString	Fundamentals / Strings / Working with Encodings	-	objc
+method	shipped	-canBeConvertedToEncoding:	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 method	shipped	-capitalizedStringWithLocale:	NSString	Fundamentals / Strings / Changing Case	-	objc
 method	shipped	-caseInsensitiveCompare:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-characterAtIndex:	NSString	Fundamentals / Strings / Getting Characters and Bytes	-	objc
@@ -3063,11 +3063,11 @@ method	shipped	-enumerateLinesUsingBlock:	NSString	Fundamentals / Strings / Find
 method	open	-enumerateLinguisticTagsInRange:scheme:options:orthography:usingBlock:	NSString	Fundamentals / Strings / Performing Linguistic Analysis	deprecated	objc
 method	shipped	-enumerateSubstringsInRange:options:usingBlock:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	open	-getBytes:maxLength:usedLength:encoding:options:range:remainingRange:	NSString	Fundamentals / Strings / Getting Characters and Bytes	-	objc
-method	open	-getCString:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-getCString:maxLength:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-getCString:maxLength:encoding:	NSString	Fundamentals / Strings / Getting C Strings	-	objc
+method	shipped	-getCString:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	-getCString:maxLength:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	-getCString:maxLength:encoding:	NSString	Fundamentals / Strings / Getting C Strings	-	objc
 method	open	-getCString:maxLength:range:remainingRange:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-getCharacters:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	-getCharacters:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-getCharacters:range:	NSString	Fundamentals / Strings / Getting Characters and Bytes	-	objc
 method	open	-getFileSystemRepresentation:maxLength:	NSString	Fundamentals / Strings / Working with Paths	-	objc
 method	shipped	-getLineStart:end:contentsEnd:forRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
@@ -3117,9 +3117,9 @@ method	shipped	-localizedStandardRangeOfString:	NSString	Fundamentals / Strings 
 method	open	+localizedStringWithFormat:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	+localizedStringWithValidatedFormat:validFormatSpecifiers:error:	NSString	Fundamentals / Strings / Type Methods	-	objc
 method	open	+localizedUserNotificationStringForKey:arguments:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
-method	open	-lossyCString	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	-lossyCString	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-lowercaseStringWithLocale:	NSString	Fundamentals / Strings / Changing Case	-	objc
-method	open	-maximumLengthOfBytesUsingEncoding:	NSString	Fundamentals / Strings / Getting a String’s Length	-	objc
+method	shipped	-maximumLengthOfBytesUsingEncoding:	NSString	Fundamentals / Strings / Getting a String’s Length	-	objc
 method	open	-paragraphRangeForRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
 method	open	+pathWithComponents:	NSString	Fundamentals / Strings / Working with Paths	-	objc
 method	shipped	-propertyList	NSString	Fundamentals / Strings / Converting String Contents Into a Property List	-	objc
@@ -3158,9 +3158,9 @@ method	shipped	-stringByReplacingOccurrencesOfString:withString:options:range:	N
 method	open	-stringByReplacingPercentEscapesUsingEncoding:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-stringByTrimmingCharactersInSet:	NSString	Fundamentals / Strings / Dividing Strings	-	objc
 method	open	+stringEncodingForData:encodingOptions:convertedString:usedLossyConversion:	NSString	Fundamentals / Strings / Working with Encodings	-	objc
-method	open	+stringWithCString:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	+stringWithCString:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	+stringWithCString:encoding:	NSString	Fundamentals / Strings / Type Methods	-	objc
-method	open	+stringWithCString:length:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	+stringWithCString:length:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	+stringWithCharacters:length:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	open	+stringWithContentsOfFile:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	+stringWithContentsOfFile:encoding:error:	NSString	Fundamentals / Strings / Creating and Initializing a String from a File	-	objc

@@ -61,7 +61,9 @@ CHECKS = ("coder-round-trip-scalars", "coder-round-trip-collections", "coder-rou
           # secure-coding gate, and the conditional door
           "coder-typed-object-doors", "coder-typed-object-door-refusal",
           "coder-decode-failure-policy", "coder-top-level-error-door", "coder-top-level-root-door",
-          "coder-collection-class-doors", "coder-secure-coding-gate", "coder-conditional-object")
+          "coder-collection-class-doors", "coder-secure-coding-gate", "coder-conditional-object",
+          # the keyed geometry doors (a struct boxed in an NSValue) and their class refusal
+          "coder-geometry-doors", "coder-geometry-door-refusal")
 
 
 class Case(BaseCase):

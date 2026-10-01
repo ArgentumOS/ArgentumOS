@@ -276,6 +276,126 @@ static void fn_abstract_sequential(Class cls, SEL door)
 	return nil;
 }
 
+/* --- THE KEYED GEOMETRY DOORS (see the note in NSCoder.h): the keyed family answers them, so the abstract
+ * base raises like every other keyed door. ----------------------------------------------------------------- */
+- (void)encodeCGPoint:(CGPoint)point forKey:(NSString *)key
+{
+	(void)point;
+	(void)key;
+	fn_abstract([self class], _cmd);
+}
+
+- (CGPoint)decodeCGPointForKey:(NSString *)key
+{
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return (CGPoint){ 0, 0 };
+}
+
+- (void)encodeCGSize:(CGSize)size forKey:(NSString *)key
+{
+	(void)size;
+	(void)key;
+	fn_abstract([self class], _cmd);
+}
+
+- (CGSize)decodeCGSizeForKey:(NSString *)key
+{
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return (CGSize){ 0, 0 };
+}
+
+- (void)encodeCGRect:(CGRect)rect forKey:(NSString *)key
+{
+	(void)rect;
+	(void)key;
+	fn_abstract([self class], _cmd);
+}
+
+- (CGRect)decodeCGRectForKey:(NSString *)key
+{
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return (CGRect){ { 0, 0 }, { 0, 0 } };
+}
+
+- (void)encodeCGVector:(CGVector)vector forKey:(NSString *)key
+{
+	(void)vector;
+	(void)key;
+	fn_abstract([self class], _cmd);
+}
+
+- (CGVector)decodeCGVectorForKey:(NSString *)key
+{
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return (CGVector){ 0, 0 };
+}
+
+- (void)encodeCGAffineTransform:(CGAffineTransform)transform forKey:(NSString *)key
+{
+	(void)transform;
+	(void)key;
+	fn_abstract([self class], _cmd);
+}
+
+- (CGAffineTransform)decodeCGAffineTransformForKey:(NSString *)key
+{
+	(void)key;
+	fn_abstract([self class], _cmd);
+	/* ⚠ THE IDENTITY'S VALUE, WRITTEN OUT — NOT `CGAffineTransformIdentity`. That constant is a SYMBOL IN
+	 * libcoregraphics, and THIS library does not link the drawing library (mk/20-userland.mk stages it as its
+	 * own library precisely so the dependency does not exist): naming it here left `libfoundation.so` with an
+	 * undefined reference that broke the guest tool link - measured, `make testimg` exit 2. A constant is a
+	 * VALUE; writing it out costs one line and keeps Foundation free of a drawing library it has no business
+	 * needing. The same reasoning the probe's geometry checks follow when they build CG structs by hand. */
+	return (CGAffineTransform){1.0, 0.0, 0.0, 1.0, 0.0, 0.0};
+}
+
+- (void)encodePoint:(NSPoint)point forKey:(NSString *)key
+{
+	(void)point;
+	(void)key;
+	fn_abstract([self class], _cmd);
+}
+
+- (NSPoint)decodePointForKey:(NSString *)key
+{
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return (NSPoint){ 0, 0 };
+}
+
+- (void)encodeSize:(NSSize)size forKey:(NSString *)key
+{
+	(void)size;
+	(void)key;
+	fn_abstract([self class], _cmd);
+}
+
+- (NSSize)decodeSizeForKey:(NSString *)key
+{
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return (NSSize){ 0, 0 };
+}
+
+- (void)encodeRect:(NSRect)rect forKey:(NSString *)key
+{
+	(void)rect;
+	(void)key;
+	fn_abstract([self class], _cmd);
+}
+
+- (NSRect)decodeRectForKey:(NSString *)key
+{
+	(void)key;
+	fn_abstract([self class], _cmd);
+	return (NSRect){ { 0, 0 }, { 0, 0 } };
+}
+
 - (nullable id)decodeObjectOfClass:(Class)aClass forKey:(NSString *)key
 {
 	(void)aClass;

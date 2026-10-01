@@ -33,6 +33,12 @@
 #include <stdint.h>
 
 #import <Foundation/NSObject.h>
+/* THE GEOMETRY TYPES ARE THIS HEADER'S OWN, because the keyed geometry doors below NAME them: NSGeometry.h
+ * brings NSPoint/NSSize/NSRect AND the CG value types (CGPoint/CGSize/CGRect/CGVector), and the transform
+ * has its own CoreGraphics header. Imported ABOVE the nullability region, which is where every other
+ * `#import` in this tree lives — a `#import` inside `NS_ASSUME_NONNULL_BEGIN` is refused by the compiler. */
+#import <Foundation/NSGeometry.h>
+#import <CoreGraphics/CGAffineTransform.h>
 
 @class NSString;
 @class NSData;
@@ -103,6 +109,40 @@ typedef enum {
 /* A PROPERTY LIST, BY NAME. Apple spells this door for the values its own plist serialiser can carry,
  * which is the reader's way of saying "this key held a plist, not an object". */
 - (nullable id)decodePropertyListForKey:(NSString *)key;
+
+/* --- THE KEYED GEOMETRY DOORS: A C STRUCT BOXED AS AN `NSValue` ------------------------------------
+ *
+ * A keyed archive carries objects, not C structures, so each door here writes its structure WRAPPED IN AN
+ * `NSValue` under the key and reads the box back out — the spelling Apple's own keyed archive uses, and
+ * the reason these are KEYED doors: the value travels BY NAME like every other keyed value. The CG
+ * spellings and the Foundation spellings are both present because this tree's `NSPoint`/`NSSize`/`NSRect`
+ * ARE the CG types (NSGeometry.h typedefs them), so `-encodePoint:forKey:` and `-encodeCGPoint:forKey:`
+ * box the same bytes under `@encode(CGPoint)`. This is why they are implementable while the type-checked
+ * tree has no `UIEdgeInsets`/`CMTime`/`SCN` substrate: the boxes they need exist (`NSValue`'s geometry
+ * value-with doors and value readers landed with NSValue itself).
+ *
+ * THE UNKEYED COUNTERPARTS (`-encodePoint:`, `-decodePoint`, …) BELONG TO THE OTHER FAMILY (the sequential
+ * one): Apple's own note is that they "invoke -encodeValueOfObjCType:at: and must be matched by a
+ * -decodePoint in order", which is the sequential contract, and this library's sequential wire has no
+ * struct spelling at all (NSArchiver's `-encodeValueOfObjCType:at:` raises for `{…}`). They are therefore
+ * NOT declared here; the keyed family raises in them and the sequential family raises in these, exactly
+ * as the two families do everywhere else. */
+- (void)encodeCGPoint:(CGPoint)point forKey:(NSString *)key;
+- (CGPoint)decodeCGPointForKey:(NSString *)key;
+- (void)encodeCGSize:(CGSize)size forKey:(NSString *)key;
+- (CGSize)decodeCGSizeForKey:(NSString *)key;
+- (void)encodeCGRect:(CGRect)rect forKey:(NSString *)key;
+- (CGRect)decodeCGRectForKey:(NSString *)key;
+- (void)encodeCGVector:(CGVector)vector forKey:(NSString *)key;
+- (CGVector)decodeCGVectorForKey:(NSString *)key;
+- (void)encodeCGAffineTransform:(CGAffineTransform)transform forKey:(NSString *)key;
+- (CGAffineTransform)decodeCGAffineTransformForKey:(NSString *)key;
+- (void)encodePoint:(NSPoint)point forKey:(NSString *)key;
+- (NSPoint)decodePointForKey:(NSString *)key;
+- (void)encodeSize:(NSSize)size forKey:(NSString *)key;
+- (NSSize)decodeSizeForKey:(NSString *)key;
+- (void)encodeRect:(NSRect)rect forKey:(NSString *)key;
+- (NSRect)decodeRectForKey:(NSString *)key;
 
 - (BOOL)containsValueForKey:(NSString *)key;
 

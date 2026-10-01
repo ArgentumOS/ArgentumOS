@@ -841,6 +841,78 @@ int main(void)
 		       (int)([reader decodeObjectForKey:@"unseen"] == nil)]);
 	}
 
+	{
+		/* THE KEYED GEOMETRY DOORS (NSCoder.h's note): each boxes its structure in an NSValue under the
+		 * key, and the CG and Foundation spellings are the SAME box here because this tree's typedefs make
+		 * the types identical (NSGeometry.h). ONE archive, read back through the instance flow. */
+		NSMutableData *buffer = [[NSMutableData alloc] init];
+		NSKeyedArchiver *writer = [[NSKeyedArchiver alloc] initForWritingWithMutableData:buffer];
+		NSKeyedUnarchiver *reader;
+		/* THE STRUCTURES ARE BUILT DIRECTLY, NOT WITH `CGPointMake` AND ITS SIBLINGS. Those constructors are
+		 * FUNCTIONS in libcoregraphics, and a probe links only -lfoundation, so calling one is an undefined
+		 * reference at link time (the CG TYPES come from the headers and need no link, but the MAKERS do not).
+		 * These are Apple's own field-for-field spellings, in declaration order, so the values are identical:
+		 * CGPoint{x,y}, CGSize{width,height}, CGRect{origin,size}, CGVector{dx,dy}, CGAffineTransform{a,b,c,d,tx,ty}. */
+		CGPoint p = { 3.5, -2.25 };
+		CGSize  s = { 10.0, 4.0 };
+		CGRect  r = { { 1.0, 2.0 }, { 3.0, 4.0 } };
+		CGVector v = { 0.5, -0.5 };
+		CGAffineTransform tr = { 1.0, 0.0, 0.0, 1.0, 5.0, 6.0 };
+
+		[writer encodeCGPoint:p forKey:@"cgp"];
+		[writer encodeCGSize:s forKey:@"cgs"];
+		[writer encodeCGRect:r forKey:@"cgr"];
+		[writer encodeCGVector:v forKey:@"cgv"];
+		[writer encodeCGAffineTransform:tr forKey:@"cgt"];
+		[writer encodePoint:NSMakePoint(7.0, 8.0) forKey:@"np"];
+		[writer encodeSize:NSMakeSize(9.0, 10.0) forKey:@"ns"];
+		[writer encodeRect:NSMakeRect(11.0, 12.0, 13.0, 14.0) forKey:@"nr"];
+		[writer encodeObject:@"not-geometry" forKey:@"bad"];	/* for the refusal below */
+		[writer finishEncoding];
+
+		reader = [[NSKeyedUnarchiver alloc] initForReadingWithData:buffer];
+		{
+			CGPoint cgp = [reader decodeCGPointForKey:@"cgp"];
+			CGSize cgs = [reader decodeCGSizeForKey:@"cgs"];
+			CGRect cgr = [reader decodeCGRectForKey:@"cgr"];
+			CGVector cgv = [reader decodeCGVectorForKey:@"cgv"];
+			CGAffineTransform cgt = [reader decodeCGAffineTransformForKey:@"cgt"];
+			NSPoint np = [reader decodePointForKey:@"np"];
+			NSSize ns = [reader decodeSizeForKey:@"ns"];
+			NSRect nr = [reader decodeRectForKey:@"nr"];
+
+			check("coder-geometry-doors",
+			      cgp.x == 3.5 && cgp.y == -2.25 &&
+			      cgs.width == 10.0 && cgs.height == 4.0 &&
+			      cgr.origin.x == 1.0 && cgr.origin.y == 2.0 &&
+			      cgr.size.width == 3.0 && cgr.size.height == 4.0 &&
+			      cgv.dx == 0.5 && cgv.dy == -0.5 &&
+			      cgt.a == 1.0 && cgt.d == 1.0 && cgt.tx == 5.0 && cgt.ty == 6.0 &&
+			      np.x == 7.0 && np.y == 8.0 &&
+			      ns.width == 9.0 && ns.height == 10.0 &&
+			      nr.origin.x == 11.0 && nr.origin.y == 12.0 &&
+			      nr.size.width == 13.0 && nr.size.height == 14.0,
+			      [NSString stringWithFormat:@"cgp=(%g,%g) cgr=(%g,%g,%g,%g) tr=(%g,%g)",
+			       cgp.x, cgp.y, cgr.origin.x, cgr.origin.y,
+			       cgr.size.width, cgr.size.height, cgt.tx, cgt.ty]);
+
+			/* A VALUE THE ARCHIVE DID NOT WRITE AS A BOX IS REFUSED: the door checks the class rather
+			 * than reading the wrong bytes as a structure. */
+			{
+				BOOL raised = NO;
+
+				@try {
+					(void)[reader decodeCGPointForKey:@"bad"];
+				} @catch (NSException *e) {
+					(void)e;
+					raised = YES;
+				}
+				check("coder-geometry-door-refusal", raised,
+				      raised ? @"refused" : @"a non-NSValue was accepted as a CGPoint");
+			}
+		}
+	}
+
 	printf("FOUNDATION-CODER RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

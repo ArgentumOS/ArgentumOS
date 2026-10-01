@@ -106,6 +106,16 @@ extern NSString * const NSKeyedArchiveRootObjectKey;
 - (void)encodeInt64:(int64_t)value forKey:(NSString *)key;
 - (void)encodeConditionalObject:(nullable id)object forKey:(NSString *)key;
 
+/* THE KEYED GEOMETRY DOORS: each boxes its structure in an `NSValue` under the key (NSCoder.h says why). */
+- (void)encodeCGPoint:(CGPoint)point forKey:(NSString *)key;
+- (void)encodeCGSize:(CGSize)size forKey:(NSString *)key;
+- (void)encodeCGRect:(CGRect)rect forKey:(NSString *)key;
+- (void)encodeCGVector:(CGVector)vector forKey:(NSString *)key;
+- (void)encodeCGAffineTransform:(CGAffineTransform)transform forKey:(NSString *)key;
+- (void)encodePoint:(NSPoint)point forKey:(NSString *)key;
+- (void)encodeSize:(NSSize)size forKey:(NSString *)key;
+- (void)encodeRect:(NSRect)rect forKey:(NSString *)key;
+
 - (void)finishEncoding;
 
 @end
@@ -159,6 +169,15 @@ extern NSString * const NSKeyedArchiveRootObjectKey;
 							      forKey:(NSString *)key;
 - (nullable const void *)decodeBytesForKey:(NSString *)key minimumLength:(NSUInteger)minimumLength;
 - (nullable id)decodePropertyListForKey:(NSString *)key;
+/* THE KEYED GEOMETRY DOORS' READING HALF (NSCoder.h says why they box an `NSValue`). */
+- (CGPoint)decodeCGPointForKey:(NSString *)key;
+- (CGSize)decodeCGSizeForKey:(NSString *)key;
+- (CGRect)decodeCGRectForKey:(NSString *)key;
+- (CGVector)decodeCGVectorForKey:(NSString *)key;
+- (CGAffineTransform)decodeCGAffineTransformForKey:(NSString *)key;
+- (NSPoint)decodePointForKey:(NSString *)key;
+- (NSSize)decodeSizeForKey:(NSString *)key;
+- (NSRect)decodeRectForKey:(NSString *)key;
 - (nullable id)decodeTopLevelObjectAndReturnError:(NSError * _Nullable * _Nullable)error;
 - (nullable id)decodeTopLevelObjectForKey:(NSString *)key
 				    error:(NSError * _Nullable * _Nullable)error;
