@@ -54,7 +54,7 @@
  *
  * ERRORS ARE `NSPOSIXErrorDomain` WITH THE `errno` THAT CAUSED THEM, which is this tree's existing answer
  * for the file family (NSFileManager.m does the same) rather than a Cocoa error code this tree does not
- * carry. `+nullDevice` answers a handle on `/dev/null`.
+ * carry. `+fileHandleWithNullDevice` answers a handle on `/dev/null`.
  */
 
 #ifndef FOUNDATION_NSFILEHANDLE_H
@@ -135,7 +135,14 @@ extern NSString *const NSFileHandleOperationException;
 + (NSFileHandle *)standardInput;
 + (NSFileHandle *)standardOutput;
 + (NSFileHandle *)standardError;
-+ (NSFileHandle *)nullDevice;
+/* ⚠ THE SPELLING WAS `+nullDevice` AND APPLE'S IS `+fileHandleWithNullDevice` — corrected 2026-10-01
+ * (§63.50). `nullDevice` is the SWIFT name (Apple's index carries `class var nullDevice: FileHandle`, because
+ * Swift drops the `fileHandleWith` prefix), and this header had taken the Swift spelling. MEASURED against the
+ * macOS 14.5 SDK headers, which is the only corpus that can settle it: `NSFileHandle.h` declares
+ * `fileHandleWithNullDevice` and contains NO occurrence of `nullDevice`. A header that takes the Swift name
+ * compiles, passes every ledger check — the ledger has no row either way — and is WRONG, which is exactly the
+ * defect class `tools/foundation-sdk-subset.py` exists to find. */
++ (NSFileHandle *)fileHandleWithNullDevice;
 
 /* --- the descriptor ------------------------------------------------------ */
 

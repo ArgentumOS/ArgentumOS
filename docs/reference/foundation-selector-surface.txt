@@ -36,7 +36,7 @@
 #
 # counts by kind:
 #   method     shipped 2180   open  480   struck  268
-#   property   shipped 1268   open  222   struck  146
+#   property   shipped 1269   open  221   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -1248,7 +1248,7 @@ method	open	-writeData:	NSFileHandle	Files and Data Persistence / Managed file a
 method	shipped	-writeData:error:	NSFileHandle	Files and Data Persistence / Managed file access / Writing to a file handle	-	objc
 property	open	availableData	NSFileHandle	Files and Data Persistence / Managed file access / Reading from a file handle synchronously	-	objc
 property	shipped	fileDescriptor	NSFileHandle	Files and Data Persistence / Managed file access / Getting a file descriptor	-	objc
-property	open	fileHandleWithNullDevice	NSFileHandle	Files and Data Persistence / Managed file access / Getting a file handle	-	objc
+property	shipped	fileHandleWithNullDevice	NSFileHandle	Files and Data Persistence / Managed file access / Getting a file handle	-	objc
 property	open	fileHandleWithStandardError	NSFileHandle	Files and Data Persistence / Managed file access / Getting a file handle	-	objc
 property	open	fileHandleWithStandardInput	NSFileHandle	Files and Data Persistence / Managed file access / Getting a file handle	-	objc
 property	open	fileHandleWithStandardOutput	NSFileHandle	Files and Data Persistence / Managed file access / Getting a file handle	-	objc

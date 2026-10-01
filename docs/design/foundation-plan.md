@@ -15979,6 +15979,57 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.50 — THE SUBSET RULE, MADE MECHANICAL: WE DECLARE WHAT APPLE DECLARES, AND TWO INSTRUMENTS THAT COULD NOT SEE IT (2026-10-01)
+
+**THE RULE (the user, 2026-10-01): *"we should only be implementing selectors and classes which are declared in
+Foundation headers."*** That is a claim about our SURFACE against a real SDK, and it is checkable — so it is now
+a tool: **`tools/foundation-sdk-subset.py`**, which reads an SDK's HEADERS and buckets every selector we declare
+into `documented` (Apple's ledger has it, this SDK does not — a NEWER release), `other-framework` (another
+framework of the same SDK declares it), `ours` (the `-fn…` helpers, the `FN*` classes, the libobjc2 pool
+marker, named one by one) and **`NOT-IN-ANY-SDK` — the residue, which is where a misspelling shows up.** It
+REPORTS by default and fails only under `--strict`, which is the shape the parameterization clause took before
+its promotion (§11.0/M10): a new instrument should not turn a build red on its first run.
+
+**AND IT IMMEDIATELY FOUND A REAL DEFECT, IN A SHAPE NO EXISTING CHECK COULD SEE.** Our `NSFileHandle` declared
+**`+nullDevice`**, which is the **SWIFT** name — Apple's index carries `class var nullDevice: FileHandle`, and
+Swift drops the `fileHandleWith` prefix. **Apple's Objective-C selector is `+fileHandleWithNullDevice`**, and the
+macOS 14.5 SDK settles it: `NSFileHandle.h` declares that name and contains **no occurrence of `nullDevice`**.
+Fixed in the header, the implementation and the probe; **guest case `foundation_filehandle` 6/6 with the probe's
+own tally `ok=22 fail=0`.**
+
+**⚠ AND THE FIX CLOSED A WORK-LIST ROW THAT HAD BEEN SITTING THERE THE WHOLE TIME. `--refresh` then showed:
+`property open → shipped fileHandleWithNullDevice NSFileHandle`, ledger properties shipped 1268 → 1269 and open
+222 → 221.** The row was **Apple's own**, in the ledger, **OPEN** — asking for a door we had *already
+implemented under the wrong name*. Nothing in the tree was missing; one name was spelled with the Swift label,
+so the declaration and the row never met. **That is the defect class this tool exists for: a name the ledger
+HAD, that no check could match, and that a reader would never doubt.**
+
+**TWO INSTRUMENTS FAILED BEFORE THIS ONE WORKED, AND BOTH FAILURES ARE RECORDED BECAUSE THEY ARE THE REASON IT
+READS HEADERS.**
+ * **APPLE'S DOCUMENTATION INDEX IS INCOMPLETE AT METHOD LEVEL.** `-willChangeValueForKey:` — certainly current
+   API, and implemented here — has **no node at all** in the 6.8 MB index (`grep` → 0). So the selector ledger's
+   shipped rows are a LOWER BOUND on Apple's surface, and **a name's absence from the ledger is not evidence of
+   removal**.
+ * **AND THE INDEX'S OWNER MAP DROPS SWIFT-NAMED NODES**: `+fileHandleWithNullDevice` is documented at
+   `/documentation/foundation/**filehandle**/nulldevice`, so the ledger saw only the Swift spelling. That is why
+   `+nullDevice` survived every gate — the one ledgers both hold it and neither can say which name is the ObjC
+   one.
+
+**⚠ THE CORPUS IS A PUBLISHED MIRROR AND IT IS INCOMPLETE, SO THE TOOL NOW GUARDS ITSELF.** MEASURED: the
+`alexey-lysiuk/macos-sdk` MacOSX14.5.sdk Foundation headers are **missing `NSMachPort.h` and
+`NSUserUnixTask.h` entirely**, and files that are present are TRIMMED (`NSValue.h` is 4,967 bytes, and neither
+`+valueWithCGPoint:` nor any `CGPoint` appears in the whole Framework headers directory — those live in
+**CoreGraphics**, which the SDK carries as a separate subtree, and in `usr/include/objc` for the NSObject
+protocol). **An incomplete corpus turns "we misspelled it" into "Apple does not have it", which is the one way
+this tool can lie.** So it now checks a `CORPUS_MUST_DECLARE` list and a minimum header count at startup, prints
+**THE CORPUS IS INCOMPLETE** with the missing names, and refuses to fail under `--strict` when the corpus is the
+problem. **THE FIRST RUN'S RESIDUE IS THEREFORE PROVISIONAL AND IS SAID TO BE: 30 names**, of which
+`+nullDevice` is fixed, `+dataWithBase64EncodedString:` and `:options:` are Apple's own REMOVALS (compatibility
+doors under §62.24), and the rest need the corpus completed before they are called defects.
+
+**AND THE CORPUS IS NOT IN THE TREE AND MUST NOT BE** — Apple's SDK headers are not redistributable, exactly as
+the deprecation-vintage policy already records: derive the list, ship the NAMES, keep the generator.
+
 ## §63.49 — THE DEPRECATED LINGUISTIC PAIR: TWO DECLARATIONS THAT TOOK TWO SOURCES, AND A PARAMETER THAT IS ACCEPTED AND UNREAD (2026-10-01)
 
 **WHAT LANDED: TWO ROWS, AND THEY ARE ONE WALK OF A TAGGER THIS LIBRARY ALREADY SHIPS.**

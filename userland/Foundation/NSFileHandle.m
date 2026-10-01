@@ -311,7 +311,7 @@ static void fn_make_standard_handles(void)
 	return fn_standard_handles[2];
 }
 
-+ (NSFileHandle *)nullDevice
++ (NSFileHandle *)fileHandleWithNullDevice
 {
 	[self fnPrepareStandardHandles];
 	if (fn_null_device == nil) {

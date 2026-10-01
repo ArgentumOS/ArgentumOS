@@ -374,7 +374,7 @@ int main(void)
 		NSFileHandle *out = [NSFileHandle standardOutput];
 		NSFileHandle *err = [NSFileHandle standardError];
 		NSFileHandle *in = [NSFileHandle standardInput];
-		NSFileHandle *null = [NSFileHandle nullDevice];
+		NSFileHandle *null = [NSFileHandle fileHandleWithNullDevice];
 		NSData *byte = [@"x" dataUsingEncoding:NSUTF8StringEncoding];
 
 		check("standard-handles",
