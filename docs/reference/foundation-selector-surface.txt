@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2116   open  544   struck  268
+#   method     shipped 2129   open  531   struck  268
 #   property   shipped 1252   open  238   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3685,18 +3685,18 @@ method	shipped	-dataTaskWithRequest:	NSURLSession	Networking / Essentials / Addi
 method	shipped	-dataTaskWithRequest:completionHandler:	NSURLSession	Networking / Essentials / Adding data tasks to a session	-	objc
 method	shipped	-dataTaskWithURL:	NSURLSession	Networking / Essentials / Adding data tasks to a session	-	objc
 method	shipped	-dataTaskWithURL:completionHandler:	NSURLSession	Networking / Essentials / Adding data tasks to a session	-	objc
-method	open	-downloadTaskWithRequest:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
-method	open	-downloadTaskWithRequest:completionHandler:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
-method	open	-downloadTaskWithResumeData:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
-method	open	-downloadTaskWithResumeData:completionHandler:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
-method	open	-downloadTaskWithURL:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
-method	open	-downloadTaskWithURL:completionHandler:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
-method	open	-finishTasksAndInvalidate	NSURLSession	Networking / Essentials / Managing the session	-	objc
+method	shipped	-downloadTaskWithRequest:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
+method	shipped	-downloadTaskWithRequest:completionHandler:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
+method	shipped	-downloadTaskWithResumeData:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
+method	shipped	-downloadTaskWithResumeData:completionHandler:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
+method	shipped	-downloadTaskWithURL:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
+method	shipped	-downloadTaskWithURL:completionHandler:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
+method	shipped	-finishTasksAndInvalidate	NSURLSession	Networking / Essentials / Managing the session	-	objc
 method	open	-flushWithCompletionHandler:	NSURLSession	Networking / Essentials / Managing the session	-	objc
-method	open	-getAllTasksWithCompletionHandler:	NSURLSession	Networking / Essentials / Managing the session	-	objc
-method	open	-getTasksWithCompletionHandler:	NSURLSession	Networking / Essentials / Managing the session	-	objc
+method	shipped	-getAllTasksWithCompletionHandler:	NSURLSession	Networking / Essentials / Managing the session	-	objc
+method	shipped	-getTasksWithCompletionHandler:	NSURLSession	Networking / Essentials / Managing the session	-	objc
 method	shipped	-init	NSURLSession	Networking / Essentials / Deprecated	deprecated	objc
-method	open	-invalidateAndCancel	NSURLSession	Networking / Essentials / Managing the session	-	objc
+method	shipped	-invalidateAndCancel	NSURLSession	Networking / Essentials / Managing the session	-	objc
 method	shipped	+new	NSURLSession	Networking / Essentials / Deprecated	deprecated	objc
 method	open	-resetWithCompletionHandler:	NSURLSession	Networking / Essentials / Managing the session	-	objc
 method	shipped	+sessionWithConfiguration:	NSURLSession	Networking / Essentials / Creating a session	-	objc
@@ -3710,9 +3710,9 @@ method	open	-uploadTaskWithRequest:fromFile:completionHandler:	NSURLSession	Netw
 method	open	-uploadTaskWithResumeData:	NSURLSession	Networking / Essentials / Adding upload tasks to a session	-	objc
 method	open	-uploadTaskWithResumeData:completionHandler:	NSURLSession	Networking / Essentials / Adding upload tasks to a session	-	objc
 method	open	-uploadTaskWithStreamedRequest:	NSURLSession	Networking / Essentials / Adding upload tasks to a session	-	objc
-method	open	-webSocketTaskWithRequest:	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
-method	open	-webSocketTaskWithURL:	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
-method	open	-webSocketTaskWithURL:protocols:	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
+method	shipped	-webSocketTaskWithRequest:	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
+method	shipped	-webSocketTaskWithURL:	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
+method	shipped	-webSocketTaskWithURL:protocols:	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 property	shipped	configuration	NSURLSession	Networking / Essentials / Creating a session	-	objc
 property	shipped	delegate	NSURLSession	Networking / Essentials / Working with a delegate	-	objc
 property	shipped	delegateQueue	NSURLSession	Networking / Essentials / Working with a delegate	-	objc

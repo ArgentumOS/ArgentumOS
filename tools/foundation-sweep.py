@@ -757,7 +757,19 @@ def _typed_blocks(text, kind):
     protocols — ONE list, because they are the same edge here: a class that adopts a protocol answers
     its doors, and a subclass inherits its superclass's. This is the `--unimplemented` scanner's split
     (@end) and its rfind, kept identical on purpose so the two cannot disagree about which block a
-    selector belongs to."""
+    selector belongs to.
+
+    ⚠ AND COMMENTS ARE STRIPPED HERE NOW, WHICH IS THE FIX FOR A TRAP THAT COST TWICE (§62.57 and
+    §63.44). THE SPLIT IS ON RAW TEXT, so a COMMENT that spells `@end` — or `@implementation`, on the
+    other path — was treated as a real block terminator. §62.57 lost a build to that and the rule
+    written down then was a FILE-side one, "never spell the keyword in a comment". THAT RULE WAS NOT
+    ENOUGH: in §63.44 an in-comment `@end` INSIDE NSURLSession.h's own main @interface made everything
+    declared after it INVISIBLE, so TEN SHIPPED SELECTORS READ AS OWED in the ledger — a phantom-open
+    family, invisible in every report because the instrument simply could not see them. A workaround
+    that depends on every future comment in every header is not a fix; stripping the comments is.
+    `public_header_text()` already did this for the SYMBOL path, which is why the two disagreed."""
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
+    text = re.sub(r"//[^\n]*", " ", text)
     for part in text.split("@end"):
         at = part.rfind("@" + kind)
         if at < 0:
@@ -1818,7 +1830,14 @@ _SETTER = re.compile(r"setter\s*=\s*(\w+)")
 
 
 def _objc_blocks(text, kind):
-    """(name, superclass, selectors) for every @<kind> block in one file."""
+    """(name, superclass, selectors) for every @<kind> block in one file.
+
+    ⚠ COMMENTS ARE STRIPPED HERE TOO, IDENTICALLY TO `_typed_blocks` — the two are "kept identical on
+    purpose so they cannot disagree", and this half is the `--unimplemented` scanner. An in-comment
+    `@implementation` (or `@end`) token otherwise moves or ends a block; the file-side rule that said
+    "never spell the keyword in a comment" was not enough, and §63.44 is the second time it cost."""
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
+    text = re.sub(r"//[^\n]*", " ", text)
     for part in text.split("@end"):
         at = part.rfind("@" + kind)
         if at < 0:
