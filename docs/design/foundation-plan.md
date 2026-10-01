@@ -15982,6 +15982,62 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.61 — THE MAKE PRIVATE GROUP IS RESOLVED BY NAME, AND THE RESIDUE'S JUDGEABLE SET REACHES ZERO (2026-10-01)
+
+**WHAT LANDED (user decision `dec-7588b3d19402d5a4`, "name them in the tool's `ours` bucket with their
+grounds"): the seventeen names of §63.56's MAKE PRIVATE group are NAMED in `tools/foundation-sdk-subset.py`,
+one by one with their ground, and the two Apple-REMOVED base64 doors plus `-mutableCopy` are NAMED in a new
+`ACCEPTED_BY_GROUND` bucket — because "not ours" and "not a finding" are DIFFERENT STATEMENTS, and collapsing
+them would put a false ownership claim on the record.** The tool now prints every named entry's ground, so the
+reason travels with the run and not only with the source.
+
+**MEASURED: `ours` 112 → 129, `accepted-by-ground` 4 (new bucket), `NOT-IN-ANY-SDK` 29 → 8 — and all eight are
+the unjudgeable `NSObject` rows — so the tool reports `0 JUDGEABLE name(s)` and `--strict` EXITS 0 for the first
+time.** `py_compile` clean; exit 0 without `--strict`; and the only line of code removed by the rewrite is the
+docstring's "THE FOUR BUCKETS" heading, which is five now.
+
+**WHY THIS MECHANISM AND NOT A CLASS EXTENSION: §63.60 MEASURED IT, AND THE MEASUREMENT IS THE RECORD.** Of the
+seventeen, **nine have callers in another Foundation file**, so a per-file class extension cannot declare them;
+**five have probe callers**, so making them private would DELETE the only assertions they have, because a probe
+compiles against the public headers; and **one is not a leak at all** — `-portDidBecomeReadable` is the
+port-DELEGATE callback `NSPort.h` documents as "the stand-in for the struck `-handlePortMessage:`", implemented
+by OTHER CLASSES. Each alternative needed a new mechanism (an internal header the tool's own non-recursive glob
+would still read; probe-side white-box declarations that the compiler cannot check against the implementation;
+splitting an accessor pair), and the user took the fourth: **name them**.
+
+**⚠ AND THE OWNERSHIP CLAIM IS CHECKED AGAINST A SECOND, INDEPENDENT MIRROR, BECAUSE OWNERSHIP IS THE ONE THING
+THIS TOOL CANNOT SELF-VERIFY.** Absence from one corpus is worth little — the tool's own docstring names a
+present-but-TRIMMED file as its first blind spot. So all seventeen were re-measured against `theos/sdks`'
+iPhoneOS16.5 Foundation headers as well: **sixteen occur in NEITHER mirror, and the seventeenth (`mutableCopy`)
+occurs in BOTH — which is precisely why it went into `ACCEPTED_BY_GROUND` instead of `OURS_BY_NAME`.** And for
+eleven of them the reading is not a trimmed file's silence, because the file that WOULD declare the name is
+present in at least one mirror and does not hold it (`NSFileWrapper.h`, `NSPort.h`, `NSPortNameServer.h`,
+`NSXMLDTD.h`, `NSUserScriptTask.h`, `NSString.h`, `NSEnumerator.h`, `NSTextCheckingResult.h`, `NSTimeZone.h`,
+`NSRunLoop.h`, `NSRegularExpression.h`, `NSValue.h`). **The one entry that rests on weaker ground says so in
+its own text** — `NSSocketPort`'s two initializers, because `NSSocketPort.h` exists in NEITHER mirror (the
+class is declared in `NSPort.h`) — rather than borrowing the other entries' confidence.
+
+**AND THE GROUNDS ARE THE TREE'S OWN WORDS WHERE THE TREE HAS THEM, NOT AN INFERENCE OF MINE.** `-peerPort`:
+"NSMachPort.h states it in the header itself"; `-portDidBecomeReadable`: "NSPort.h states it"; `-byteAtIndex:`:
+"a UTF-8 BYTE, the house door"; `-initWithSequence:reverse:`: `NSDirectoryEnumerator.h`'s "OURS, NOT COCOA'S";
+`-indexOfCaptureGroupNamed:`: `NSRegularExpression.h`'s "AN ADDITION"; `-initWithSecondsFromGMT:`: §63.59's own
+measurement that it is `+timeZoneForSecondsFromGMT:`'s callee. **A ground that is a header comment can be
+re-checked by reading that header; a ground that is my judgement cannot** — which is the whole difference
+between this bucket and a note saying "these are probably fine".
+
+**⚠ AND WHAT THIS DOES NOT DO, SAID OUT LOUD BECAUSE THE BUCKET'S NAME COULD MISLEAD.** It does not remove the
+seventeen from the public headers, and it does not make the library more Apple-shaped: **it makes the TOOL stop
+calling this library's own substrate a misspelling, and puts the reason in a file that ships.** If the directive
+ever becomes "these must leave the public headers", what stands in the way is §63.60's measured obstacles — nine
+cross-file callers, five probe callers, one delegate contract — **not this bucket.** The honest reading is "we
+know these are ours, and here is why"; never "these are fine".
+
+**AND THE RESIDUE NOW READS: 8 rows, all `NSObject`, all unjudgeable**, from the root `@protocol NSObject` in
+the SDK's `usr/include/objc/`. **⚠ SO A GREEN `--strict` MUST NOT BE READ AS "the surface is clean"** — it means
+"nothing in this bucket is BOTH a finding AND judgeable on this corpus", which is a statement about the CORPUS
+as much as about the tree. Passing `usr/include/objc` as another `--headers` is what would actually test those
+eight, and `-initWithDecimal:` — §63.59's wrong-owner case — is still measured by none of this.
+
 ## §63.60 — THE SUBSET GATE LEARNS TO SAY WHAT IT CANNOT JUDGE, AND ITS OWN RE-RUN FALSIFIED §63.59's CLAIM (2026-10-01)
 
 **WHAT LANDED (user decision `dec-e5eab960ebc35848`, "fix the instrument first — make the corpus guard

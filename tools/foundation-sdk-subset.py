@@ -22,7 +22,7 @@ headers are not in this tree and may not be; the tool takes a DIRECTORY, the dir
 what ships is this file plus the FINDINGS. (Same arrangement the deprecation-vintage policy already records:
 derive the list from an SDK, ship the list, keep the generator.)
 
-THE FOUR BUCKETS, and only the last one is a defect:
+THE FIVE BUCKETS, and only the last one is a defect:
 
   documented      the name IS in Apple's selector ledger, but not in THIS SDK's headers — a NEWER release, or one
                   moved elsewhere. ⚠ A GATE KEYED TO ONE VINTAGE MUST NOT CALL THIS A DEFECT: `-shuffledArray`
@@ -31,9 +31,14 @@ THE FOUR BUCKETS, and only the last one is a defect:
   other-framework the name is declared by a header in ANOTHER framework of the same SDK (CoreGraphics, AppKit,
                   …). This tree ships CoreGraphics and AppKit first-party, so those categories are ours on
                   purpose; `+valueWithCGPoint:` is Apple's, just not FOUNDATION's.
-  ours            a name this tree owns rather than Apple: the private `-fn…` helpers, the `FN*` classes, and
-                  the libobjc2 pool marker (`-_ARCCompatibleAutoreleasePool`, a RUNTIME CONTRACT the plan
-                  documents). Named here rather than pattern-guessed where a pattern would be too broad.
+  ours            a name this tree owns rather than Apple: the private `-fn…` helpers, the `FN*` classes, the
+                  libobjc2 pool marker, and — §63.61 — the MAKE PRIVATE group, which is this library's own
+                  substrate. Every entry is NAMED with its ground rather than pattern-guessed, because a
+                  pattern would be too broad.
+  accepted-by-ground  a name that IS Apple's, IS absent from this corpus, and is declared here on purpose: the
+                  two REMOVED base64 doors §62.24 keeps for source compatibility, and `-mutableCopy`, which
+                  Apple declares in a root protocol this corpus does not carry. "Not ours" and "not a finding"
+                  are different statements, so they get different buckets.
   NOT-IN-ANY-SDK the residue. Apple declares it nowhere in this SDK and its documentation does not hold it
                   either, so the spelling is probably OUR MISTAKE — which is what this tool is for. It found
                   `+nullDevice` this way: the SDK says `+fileHandleWithNullDevice`, and `nullDevice` is the
@@ -48,18 +53,24 @@ THE FOUR BUCKETS, and only the last one is a defect:
    there.
  * **FETCH WITH `curl -f`**: WITHOUT IT A 404 BODY IS WRITTEN AS THE HEADER, a 14-byte "404: Not Found" becomes
    a `.h` file, and the corpus looks complete while several of its files are garbage.
- * **AND A MISSING *FILE* IS NOT A MISSING *NAME*, NOW MEASURED IN BOTH DIRECTIONS.** The mirror carries no
-   `NSMachPort.h`, `NSMessagePort.h`, `NSSocketPort.h`, `NSUserUnixTask.h` or `NSDirectoryEnumerator.h` — and
-   all five classes ARE declared, in `NSPort.h` (three of them), `NSUserScriptTask.h` and `NSFileManager.h`.
-   So the file list is a claim about Apple's LAYOUT, and the question this tool must ask is always "does the
-   corpus declare this name", never "does this file exist". (Five names were wrongly read as missing from this
-   corpus, twice, for exactly that reason.)
+ * **AND A MISSING *FILE* IS NOT A MISSING *NAME* NOR A MISSING *OWNER*, NOW MEASURED IN ALL THREE DIRECTIONS.**
+   The macOS mirror carries no `NSMachPort.h`, `NSMessagePort.h`, `NSSocketPort.h`, `NSUserUnixTask.h` or
+   `NSDirectoryEnumerator.h` — and all five classes ARE declared, in `NSPort.h` (three of them),
+   `NSUserScriptTask.h` and `NSFileManager.h`. It carries no `NSNumber.h` either, and `NSNumber` was judgeable
+   anyway, because `NSValue.h:42` declares `@interface NSNumber : NSValue`. So the file list is a claim about
+   Apple's LAYOUT, and the question this tool asks is always "does the corpus declare this name", never "does
+   this file exist". (Five names were wrongly read as missing from this corpus, and one owner was wrongly
+   called unjudgeable, for exactly that reason — §63.56 and §63.59.)
 
-⚠ THE GUARD'S TWO BLIND SPOTS, stated because a gate that overstates itself is worse than none.
+⚠ THE GUARD'S THREE BLIND SPOTS, stated because a gate that overstates itself is worse than none.
  * **A FILE THAT IS PRESENT AND TRIMMED.** `CORPUS_MUST_DECLARE` and the header count catch a corpus that is
    MISSING FILES or missing whole areas. Measured on the mirror above, the headers are real (`NSCalendar.h` is
    37 KB with 43 methods), so its residue is trustworthy — but a corpus whose `NSDecimalNumber.h` had been cut
-   down would produce false "we misspelled it" findings and this tool would not say so.
+   down would produce false "we misspelled it" findings and this tool would not say so. **The defence against a
+   trimmed file is a SECOND MIRROR**: every name in `OURS_BY_NAME` was checked against macOS 14.5 AND theos'
+   iOS 16.5, and sixteen of the seventeen occur in NEITHER (the seventeenth is `mutableCopy`, which is in both
+   precisely because it is genuinely Apple's). For eleven of them the file that WOULD declare the name is
+   present in at least one mirror and does not hold it, so the reading is not a trimmed file's silence.
  * ⚠⚠ **AN OWNER WHOSE ROOT BLOCK THE CORPUS DOES NOT CARRY — and this one is REAL, not hypothetical.** A row
    whose owner has no ROOT block in the class framework — `@interface Owner` (not a category) or
    `@protocol Owner` (not a forward declaration) — cannot be judged at all, because Apple's methods for that
@@ -67,22 +78,14 @@ THE FOUR BUCKETS, and only the last one is a defect:
    rule.** The mirror's `NSObject.h` carries only `@interface NSObject (NSCoderMethods)` and its two sibling
    categories, so the ROOT `@protocol NSObject` — `-retainCount`, `-conformsToProtocol:`,
    `-isMemberOfClass:`, `+instancesRespondToSelector:` … — is in the SDK's `usr/include/objc/NSObject.h` and is
-   INVISIBLE here; nine rows of the residue came from that one missing block and NOT ONE of them is a
-   misspelling. **These rows are therefore printed with a marker, are named by owner in a ⚠ block, and are NOT
-   counted as findings; `--strict` does not fail on them.** The fix is a bigger corpus (pass the SDK's
+   INVISIBLE here. **These rows are printed with a marker, are named by owner in a ⚠ block, and are NOT counted
+   as findings; `--strict` does not fail on them.** The fix is a bigger corpus (pass the SDK's
    `usr/include/objc` as another `--headers`), not a deletion.
-   ⚠ **AND A MISSING FILE IS NOT A MISSING OWNER — MEASURED, AND IT CORRECTED MY OWN FIRST READING.** This
-   mirror carries no `NSNumber.h`, and `NSNumber` was ALREADY judgeable, because `NSValue.h:42` declares
-   `@interface NSNumber : NSValue`. So an absent header is not by itself a reason to call a row unjudgeable:
-   ASK THIS CHECK, never the file list. (The plan's §63.59 recorded the opposite from the file list alone;
-   §63.60 carries the correction.)
-   ⚠ **AND THE CHECK ANSWERS FOR THE OWNER, NOT FOR WHAT THE OWNER INHERITS — a third, NARROWER blind spot,
-   measured on this run rather than imagined.** `NSNumber -mutableCopy` comes out JUDGEABLE, because
-   `NSValue.h` carries NSNumber's root block — yet `-mutableCopy` is declared in the same INVISIBLE root
-   `@protocol NSObject` the first blind spot is about, and on no Apple NSNumber header. So a row can be judged
-   against an owner block that IS present while its METHOD lives in a superclass this corpus does not carry.
-   ONE row, named and left un-mechanized on purpose: a fix would have to walk the superclass chain, and a wrong
-   chain INVENTS findings, which is worse than a marked one.
+   ⚠ **AND THE CHECK ANSWERS FOR THE OWNER, NOT FOR WHAT THE OWNER INHERITS — a third, NARROWER blind spot.** A
+   row can be judged against an owner block that IS present while its METHOD lives in a superclass this corpus
+   does not carry. `NSNumber -mutableCopy` is the measured case, and it is handled **by NAME, in
+   `ACCEPTED_BY_GROUND`, not by walking the superclass chain**: a wrong chain INVENTS findings, which is worse
+   than a named one.
 
 USAGE
 
@@ -110,7 +113,91 @@ OURS_BY_NAME = {
     "_ARCCompatibleAutoreleasePool":
         "the libobjc2 ARC pool marker: the runtime looks the class up BY NAME (plan §W2h), so this selector "
         "is a contract with the RUNTIME, not with Apple",
+
+    # --- THE MAKE PRIVATE GROUP (§63.56's list, resolved by §63.61 on the user's decision
+    # dec-7588b3d19402d5a4, "name them in the tool's ours bucket with their grounds"). These are this library's
+    # OWN substrate — the plan already calls -byteAtIndex: and -appendUTF8String: "Names that are OURS rather
+    # than the contract". §63.56 classified them as PRIVATE IMPLEMENTATION THAT LEAKED, and §63.60 measured that
+    # the class-extension fix does NOT work for them: nine have callers in another Foundation file, five have
+    # probe callers (so making them private would DELETE the only assertions they have), and one is a delegate
+    # contract rather than a leak at all. EVERY ONE is absent from BOTH mirrors.
+    "byteAtIndex:":
+        "the STRING CORE's own UTF-8 byte accessor: NSString.h calls it 'a UTF-8 BYTE - the house door', every "
+        "primitive in NSString.m is built on it, and NSData.m reads it. Apple's -UTF8String is the nearest "
+        "public door and cannot answer one byte at a time",
+    "appendUTF8String:":
+        "the house PRIMITIVE for building a string from a C string: eleven uses inside NSString.m including "
+        "the format engine, plus NSIndexPath.m and NSData.m - it is how this library BUILDS strings",
+    "initWithSequence:reverse:":
+        "NSEnumerator's constructor for a collection's enumerator: NSArray.m and NSDictionary.m call it to "
+        "answer -objectEnumerator, and NSDirectoryEnumerator.h records the same asymmetry for its own class. "
+        "Apple builds an enumerator inside NSArray rather than through a public initializer",
+    "resultWithRanges:count:":
+        "NSTextCheckingResult's bare ranges constructor, created at F13.16 and still how a match with no "
+        "declared kind arrives; §62.18 added Apple's "
+        "+regularExpressionCheckingResultWithRanges:count:regularExpression: BESIDE it",
+    "addSourceForFileDescriptor:mode:readable:target:selector:":
+        "the RUN LOOP's fd source door (W6a): NSStream.m, NSSocketPort.m and NSFileHandle.m all schedule "
+        "through it, and Apple has no fd source at all - its -addPort:forMode:/ -addTimer:forMode: cannot "
+        "carry a descriptor",
+    "removeSourceForTarget:":
+        "the counterpart of that door, and the reason those three classes can un-schedule without a port "
+        "object to hand back",
+    "keyForChildFileWrapper:":
+        "this tree's door for finding a child's key. Absent from BOTH mirrors AND NSFileWrapper.h is PRESENT "
+        "in both, so this is not a trimmed file's silence",
+    "peerPort":
+        "NSMachPort.h states it in the header itself ('-peerPort IS OURS'): the stand-in for what Mach called "
+        "a port namespace. With no rights to name, the far end is a socket pair this process hands over "
+        "exactly once (§62.53)",
+    "portDidBecomeReadable":
+        "NSPort.h states it ('WHICH IS OURS'): the stand-in for the struck -handlePortMessage:, i.e. this "
+        "tree's port-DELEGATE callback. The ONE name in this group that is a CONTRACT other classes implement "
+        "rather than a leak, which is why §63.56's class (1) does not fit it",
+    "defaultPortNameServer":
+        "NSPortNameServer's registry door on a system whose default transport is the in-process message port; "
+        "NSMessagePort.m and NSConnection.m register through it. Absent from both mirrors, with "
+        "NSPortNameServer.h present in the macOS one",
+    "initWithRemoteWithProtocolFamily:socketType:protocol:address:":
+        "NSSocketPort's CONNECT-to-a-given-address initializer (NSSocketPort.h:24). NSSocketPort.h exists in "
+        "NEITHER mirror - the class is declared in NSPort.h - so this one rests on the macOS NSPort.h, which "
+        "declares the class and not this selector",
+    "initWithRemoteWithTCPPort:host:":
+        "the TCP half of that pair; NSSocketPort.h:48 records that it touches no network for 127.0.0.1",
+    "initWithScriptURL:error:":
+        "NSUserUnixTask's only initializer, and the whole class is declared here. NSUserScriptTask.h in the "
+        "macOS mirror declares NSUserUnixTask and holds no such selector; the iOS mirror has no "
+        "NSUserScriptTask.h at all",
+    "internalSubset":
+        "NSXMLDTD's internal subset accessor; NSXMLDocument.m reads it to serialize a document's DTD. Absent "
+        "from both mirrors with NSXMLDTD.h present in the macOS one",
+    "setInternalSubset:":
+        "its setter, parsed by FNDTDDeclarationNodesFromSubset",
+    "initWithSecondsFromGMT:":
+        "the INITIALIZER BEHIND Apple's +timeZoneForSecondsFromGMT: - §63.59 measured that it is that class "
+        "method's own callee. Apple declares the factory, never the initializer",
+    "indexOfCaptureGroupNamed:":
+        "NSRegularExpression.h records it as 'AN ADDITION, and it is the one seam named groups needed': this "
+        "library compiles with POSIX ERE, which has no (?<name>...) at all, so the name-to-index map lives on "
+        "the pattern and -[NSTextCheckingResult rangeWithName:] comes through it",
 }
+
+# AND THE NAMES THAT ARE APPLE'S AND ARE NOT FINDINGS EITHER — each with its own ground, because "not ours" and
+# "not a finding" are DIFFERENT STATEMENTS, and collapsing them would put a false ownership claim on the record.
+ACCEPTED_BY_GROUND = {
+    "dataWithBase64EncodedString:":
+        "Apple's own REMOVED API, kept as a compatibility door (§62.24); -base64EncodedDataWithOptions: "
+        "replaced it, which is why it is absent from both corpora — Apple took it out, this tree did not "
+        "invent it",
+    "dataWithBase64EncodedString:options:":
+        "the options form of that same removed pair (§62.24)",
+    "mutableCopy":
+        "Apple's, declared in the ROOT @protocol NSObject, which lives in the SDK's usr/include/objc/ "
+        "NSObject.h and is invisible to this run (the first blind spot). It occurs in BOTH mirrors precisely "
+        "because it is genuinely Apple's; NSNumber ANSWERING it is what the declared override is for, so the "
+        "row is a false positive of the corpus's SHAPE, named rather than mechanized",
+}
+
 OURS_PREFIXES = ("fn",)
 OURS_CLASS_PREFIXES = ("FN",)
 
@@ -208,7 +295,12 @@ def read_dir(d):
 def declared_anywhere(sel, corpus):
     """Is `sel` declared by ANY header in the corpus? THE SPELLING FAMILY IS ALLOWED, because Apple declares an
     accessor as a `@property` — so our `-isFoo` may be Apple's property `foo` and our `-setFoo:` Apple's
-    `@property foo`. Without this the tool reports every accessor we spell out as a mistake."""
+    `@property foo`. Without this the tool reports every accessor we spell out as a mistake.
+
+    ⚠ WHAT THIS CANNOT SEE, measured both ways: it takes NO SIGN and NO OWNER, so a name Apple declares on a
+    DIFFERENT class reads as present — which is why `-initWithDecimal:` on NSNumber, Apple's on NSDecimalNumber,
+    is reported nowhere at all (§63.59), while `+numberWithDecimal:` WAS reported because no
+    `numberWithDecimal` exists anywhere."""
     core = sel.lstrip("+-")
     first = core.split(":")[0]
     cands = {first}
@@ -275,13 +367,17 @@ def main(argv):
 
     ours = our_surface()
     ledger = ledger_names()
-    buckets = {"documented": [], "other-framework": [], "ours": [], "NOT-IN-ANY-SDK": []}
+    buckets = {"documented": [], "other-framework": [], "ours": [], "accepted-by-ground": [],
+               "NOT-IN-ANY-SDK": []}
 
     for owner in sorted(ours):
         for sel in sorted(ours[owner]):
             bare = sel.lstrip("+-")
             if bare in OURS_BY_NAME or bare.startswith(OURS_PREFIXES) or owner.startswith(OURS_CLASS_PREFIXES):
                 buckets["ours"].append((owner, sel))
+                continue
+            if bare in ACCEPTED_BY_GROUND:
+                buckets["accepted-by-ground"].append((owner, sel))
                 continue
             if declared_anywhere(sel, class_corpus):
                 continue
@@ -293,17 +389,28 @@ def main(argv):
                 buckets["NOT-IN-ANY-SDK"].append((owner, sel))
 
     # ⚠⚠ THE SECOND BLIND SPOT: A ROW WHOSE OWNER HAS NO ROOT BLOCK IN THIS CORPUS CANNOT BE JUDGED. Measured
-    # 2026-10-01, NSObject is the case that named it (nine rows, from a root @protocol that lives in the SDK's
-    # usr/include/objc/NSObject.h), and the same check independently caught NSNumber, whose header this mirror
-    # does not carry at all. Those rows are marked, named, and NOT counted as findings.
+    # 2026-10-01, NSObject is the case that named it (the root @protocol NSObject lives in the SDK's
+    # usr/include/objc/NSObject.h). Those rows are marked, named, and NOT counted as findings.
     roots = root_block_owners(class_corpus)
     residue = buckets["NOT-IN-ANY-SDK"]
     unjudgeable = [(o, s) for o, s in residue if o not in roots]
     judgeable = [(o, s) for o, s in residue if o in roots]
 
-    for name in ("documented", "other-framework", "ours", "NOT-IN-ANY-SDK"):
+    for name in ("documented", "other-framework", "ours", "accepted-by-ground", "NOT-IN-ANY-SDK"):
         rows = buckets[name]
-        print("\n  %-16s %d" % (name, len(rows)))
+        print("\n  %-18s %d" % (name, len(rows)))
+        # THE GROUNDS ARE PRINTED FOR THE NAMED ENTRIES, which is the whole point of naming them: the `-fn…`
+        # and `FN*` pattern rows are counted and not listed, but every entry in the two dictionaries shows the
+        # reason it was written down.
+        if name == "ours":
+            for o, s in rows:
+                if s.lstrip("+-") in OURS_BY_NAME:
+                    print("       %-30s %s" % (o, s))
+                    print("           %s" % OURS_BY_NAME[s.lstrip("+-")])
+        if name == "accepted-by-ground":
+            for o, s in rows:
+                print("       %-30s %s" % (o, s))
+                print("           %s" % ACCEPTED_BY_GROUND[s.lstrip("+-")])
         if name == "NOT-IN-ANY-SDK":
             for o, s in rows:
                 print("       %-30s %s%s" % (o, s, "" if o in roots else "   ⚠ unjudgeable"))
@@ -319,18 +426,13 @@ def main(argv):
         print("     (NSCoderMethods)`, `(NSDeprecatedMethods)` and `(NSDiscardableContentProxy)`, so the ROOT")
         print("     `@protocol NSObject` (retainCount, conformsToProtocol:, isMemberOfClass:, …) is in the")
         print("     SDK's usr/include/objc/NSObject.h and is INVISIBLE to this run — pass that directory as")
-        print("     another --headers to answer for it. A corpus that lacks an OWNER'S HEADER shows up the same")
-        print("     way, and is how `NSNumber` was caught: this mirror has NSNumberFormatter.h and no")
-        print("     NSNumber.h, so `-initWithDecimal:` (Apple's on NSDecimalNumber, ours on NSNumber) is")
-        print("     reported nowhere at all.")
-        print("     THESE ROWS ARE NOT FINDINGS and --strict does not fail on them. AND A MISSING FILE IS NOT A")
-        print("     MISSING NAME: this mirror carries no NSMachPort.h / NSMessagePort.h / NSSocketPort.h /")
-        print("     NSUserUnixTask.h / NSDirectoryEnumerator.h, yet all five classes ARE declared — in NSPort.h,")
-        print("     NSUserScriptTask.h and NSFileManager.h — and every one of them is judgeable above.")
+        print("     another --headers to answer for it. AND A MISSING FILE IS NOT A MISSING OWNER: this mirror")
+        print("     carries no NSNumber.h, and NSNumber was judgeable anyway, because NSValue.h:42 declares")
+        print("     `@interface NSNumber : NSValue` — so ask THIS CHECK, never the file list.")
+        print("     THESE ROWS ARE NOT FINDINGS and --strict does not fail on them.")
 
     bad = judgeable
-    print("\nfoundation-sdk-subset: %d name(s) Apple declares nowhere in this SDK and its documentation does "
-          "not hold either — spellings to check." % len(residue))
+    print("\nfoundation-sdk-subset: %d name(s) in the NOT-IN-ANY-SDK bucket." % len(residue))
     if unjudgeable:
         print("foundation-sdk-subset: of those, %d sit on owner(s) this corpus cannot judge (%s) and are NOT "
               "counted as findings — fix the CORPUS, not the library."
