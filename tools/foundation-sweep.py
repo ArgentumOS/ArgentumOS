@@ -513,6 +513,48 @@ DECLINED_SYMBOLS = frozenset((
 # and is invisible to the tool, which is the worst way for it to be wrong.
 DECLINED_SELECTORS = frozenset((
     ("NSDistantObject", "initWithCoder:"),
+    # ⚠ THE OBEX CATEGORY IS NOT FOUNDATION AT ALL (USER DECISION, 2026-10-01). These 24 selector rows are
+    # owned by NSMutableDictionary in this ledger because THE SWEEP ATTRIBUTES A CATEGORY'S METHODS TO THE CLASS
+    # IT EXTENDS — and the category in question is `NSDictionaryOBEXExtensions`, declared in IOBluetooth's
+    # OBEX.h, whose doors RETURN `OBEXError` and wrap the IOBluetooth C functions (OBEXAddWhoHeader,
+    # OBEXAddBodyHeader, OBEXAddCountHeader, ...). MEASURED: this tree has no OBEXError, no OBEX* and no
+    # getHeaderBytes anywhere in userland/ or include/ (grep -> empty), so implementing them would mean shipping
+    # a FOREIGN FRAMEWORK's category against absent C API and an absent return type — a stub, and a clean-room
+    # violation. THEY CANNOT BE STRUCK BY OWNER: `"NSMutableDictionary"` in DECLINED_ROOTS would strike the
+    # class's own shipped members, which is exactly the over-striking this set exists to avoid (§63.19). They
+    # are therefore named one by one, in the ledger's own spelling: THE SIGN IS NOT PART OF A SELECTOR ROW'S
+    # NAME (see the note above), so these are colon-bearing names with no `+`/`-`.
+    #
+    # AND THEY WERE FOUND THE HONEST WAY, WHICH IS WORTH KEEPING: a pass was sent to close "NSMutableDictionary
+    # 25 open" and came back with ZERO rows landed, because every GENUINE Foundation NSMutableDictionary
+    # selector is already shipped — the residual was this foreign category plus `dictionaryWithSharedKeySet:`,
+    # which stays OPEN (it is real Foundation, blocked behind an absent NSSharedKeySet and its own still-open
+    # producer +sharedKeySetForKeys:). A family that reads as 25 rows of work and is not one is a LEDGER
+    # ATTRIBUTION error, and the fix belongs here rather than in a header.
+    ("NSMutableDictionary", "addApplicationParameterHeader:length:"),
+    ("NSMutableDictionary", "addAuthorizationChallengeHeader:length:"),
+    ("NSMutableDictionary", "addAuthorizationResponseHeader:length:"),
+    ("NSMutableDictionary", "addBodyHeader:length:endOfBody:"),
+    ("NSMutableDictionary", "addByteSequenceHeader:length:"),
+    ("NSMutableDictionary", "addConnectionIDHeader:length:"),
+    ("NSMutableDictionary", "addCountHeader:"),
+    ("NSMutableDictionary", "addDescriptionHeader:"),
+    ("NSMutableDictionary", "addHTTPHeader:length:"),
+    ("NSMutableDictionary", "addImageDescriptorHeader:length:"),
+    ("NSMutableDictionary", "addImageHandleHeader:length:"),
+    ("NSMutableDictionary", "addLengthHeader:"),
+    ("NSMutableDictionary", "addNameHeader:"),
+    ("NSMutableDictionary", "addObjectClassHeader:length:"),
+    ("NSMutableDictionary", "addTargetHeader:length:"),
+    ("NSMutableDictionary", "addTime4ByteHeader:"),
+    ("NSMutableDictionary", "addTimeISOHeader:length:"),
+    ("NSMutableDictionary", "addTypeHeader:"),
+    ("NSMutableDictionary", "addUserDefinedHeader:length:"),
+    ("NSMutableDictionary", "addWhoHeader:length:"),
+    ("NSMutableDictionary", "dictionaryWithOBEXHeadersData:"),
+    ("NSMutableDictionary", "dictionaryWithOBEXHeadersData:headersDataSize:"),
+    ("NSMutableDictionary", "getHeaderBytes"),
+    ("NSMutableDictionary", "withOBEXHeadersData:headersDataSize:"),
 ))
 
 

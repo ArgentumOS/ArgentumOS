@@ -25,9 +25,9 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: declined 390
+# why the struck rows are struck: declined 413
 #
-# AND 585 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# AND 584 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
 # row is, never that it is excluded.
 #
@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2098   open  586   struck  244
-#   property   shipped 1221   open  269   struck  146
+#   method     shipped 2100   open  561   struck  267
+#   property   shipped 1227   open  263   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -2059,34 +2059,34 @@ method	shipped	-resetBytesInRange:	NSMutableData	Fundamentals / Binary Data / Mo
 method	shipped	-setData:	NSMutableData	Fundamentals / Binary Data / Modifying Bytes	-	objc
 property	shipped	length	NSMutableData	Fundamentals / Binary Data / Counting Bytes	-	objc
 property	shipped	mutableBytes	NSMutableData	Fundamentals / Binary Data / Accessing Raw Bytes	-	objc
-method	open	-addApplicationParameterHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addAuthorizationChallengeHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addAuthorizationResponseHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addBodyHeader:length:endOfBody:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addByteSequenceHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addConnectionIDHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addCountHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addDescriptionHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
+method	struck	-addApplicationParameterHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addAuthorizationChallengeHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addAuthorizationResponseHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addBodyHeader:length:endOfBody:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addByteSequenceHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addConnectionIDHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addCountHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addDescriptionHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
 method	shipped	-addEntriesFromDictionary:	NSMutableDictionary	Fundamentals / Basic Collections / Adding Entries to a Mutable Dictionary	-	objc
-method	open	-addHTTPHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addImageDescriptorHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
+method	struck	-addHTTPHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addImageDescriptorHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
 method	open	-addImageHandleHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addLengthHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addNameHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addObjectClassHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addTargetHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addTime4ByteHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addTimeISOHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addTypeHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addUserDefinedHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-addWhoHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
+method	struck	-addLengthHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addNameHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addObjectClassHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addTargetHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addTime4ByteHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addTimeISOHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addTypeHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addUserDefinedHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
+method	struck	-addWhoHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
 method	shipped	+dictionaryWithCapacity:	NSMutableDictionary	Fundamentals / Basic Collections / Creating and Initializing a Mutable Dictionary	-	objc
 method	shipped	+dictionaryWithContentsOfFile:	NSMutableDictionary	Fundamentals / Basic Collections / Type Methods	-	objc
 method	shipped	+dictionaryWithContentsOfURL:	NSMutableDictionary	Fundamentals / Basic Collections / Type Methods	-	objc
-method	open	+dictionaryWithOBEXHeadersData:	NSMutableDictionary	Fundamentals / Basic Collections / Type Methods	-	objc
-method	open	+dictionaryWithOBEXHeadersData:headersDataSize:	NSMutableDictionary	Fundamentals / Basic Collections / Type Methods	-	objc
+method	struck	+dictionaryWithOBEXHeadersData:	NSMutableDictionary	Fundamentals / Basic Collections / Type Methods	declined	objc
+method	struck	+dictionaryWithOBEXHeadersData:headersDataSize:	NSMutableDictionary	Fundamentals / Basic Collections / Type Methods	declined	objc
 method	open	+dictionaryWithSharedKeySet:	NSMutableDictionary	Fundamentals / Basic Collections / Creating and Initializing a Mutable Dictionary	-	objc
-method	open	-getHeaderBytes	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
+method	struck	-getHeaderBytes	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
 method	shipped	-init	NSMutableDictionary	Fundamentals / Basic Collections / Creating and Initializing a Mutable Dictionary	-	objc
 method	shipped	-initWithCapacity:	NSMutableDictionary	Fundamentals / Basic Collections / Creating and Initializing a Mutable Dictionary	-	objc
 method	shipped	-initWithCoder:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
@@ -2099,7 +2099,7 @@ method	shipped	-setDictionary:	NSMutableDictionary	Fundamentals / Basic Collecti
 method	shipped	-setObject:forKey:	NSMutableDictionary	Fundamentals / Basic Collections / Adding Entries to a Mutable Dictionary	-	objc
 method	shipped	-setObject:forKeyedSubscript:	NSMutableDictionary	Fundamentals / Basic Collections / Adding Entries to a Mutable Dictionary	-	objc
 method	shipped	-setValue:forKey:	NSMutableDictionary	Fundamentals / Basic Collections / Adding Entries to a Mutable Dictionary	-	objc
-method	open	+withOBEXHeadersData:headersDataSize:	NSMutableDictionary	Fundamentals / Basic Collections / Type Methods	deprecated	objc
+method	struck	+withOBEXHeadersData:headersDataSize:	NSMutableDictionary	Fundamentals / Basic Collections / Type Methods	declined	objc
 method	shipped	-addIndex:	NSMutableIndexSet	Fundamentals / Indexes / Adding Indexes	-	objc
 method	open	-addIndexes:	NSMutableIndexSet	Fundamentals / Indexes / Adding Indexes	-	objc
 method	shipped	-addIndexesInRange:	NSMutableIndexSet	Fundamentals / Indexes / Adding Indexes	-	objc
@@ -2313,11 +2313,11 @@ property	shipped	unsignedIntegerValue	NSNumber	Fundamentals / Numbers / Accessin
 property	shipped	unsignedLongLongValue	NSNumber	Fundamentals / Numbers / Accessing Numeric Values	-	objc
 property	shipped	unsignedLongValue	NSNumber	Fundamentals / Numbers / Accessing Numeric Values	-	objc
 property	shipped	unsignedShortValue	NSNumber	Fundamentals / Numbers / Accessing Numeric Values	-	objc
-method	open	+defaultFormatterBehavior	NSNumberFormatter	Fundamentals / Numbers / Configuring Formatter Behavior and Style	-	objc
+method	shipped	+defaultFormatterBehavior	NSNumberFormatter	Fundamentals / Numbers / Configuring Formatter Behavior and Style	-	objc
 method	open	-getObjectValue:forString:range:error:	NSNumberFormatter	Fundamentals / Numbers / Converting Between Numbers and Strings	-	objc
 method	shipped	+localizedStringFromNumber:numberStyle:	NSNumberFormatter	Fundamentals / Numbers / Converting Between Numbers and Strings	-	objc
 method	shipped	-numberFromString:	NSNumberFormatter	Fundamentals / Numbers / Converting Between Numbers and Strings	-	objc
-method	open	+setDefaultFormatterBehavior:	NSNumberFormatter	Fundamentals / Numbers / Configuring Formatter Behavior and Style	-	objc
+method	shipped	+setDefaultFormatterBehavior:	NSNumberFormatter	Fundamentals / Numbers / Configuring Formatter Behavior and Style	-	objc
 method	shipped	-stringFromNumber:	NSNumberFormatter	Fundamentals / Numbers / Converting Between Numbers and Strings	-	objc
 property	shipped	allowsFloats	NSNumberFormatter	Fundamentals / Numbers / Managing Input and Output Attributes	-	objc
 property	shipped	alwaysShowsDecimalSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
@@ -2332,9 +2332,9 @@ property	shipped	decimalSeparator	NSNumberFormatter	Fundamentals / Numbers / Con
 property	shipped	exponentSymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	format	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
 property	shipped	formatWidth	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
-property	open	formatterBehavior	NSNumberFormatter	Fundamentals / Numbers / Configuring Formatter Behavior and Style	-	objc
+property	shipped	formatterBehavior	NSNumberFormatter	Fundamentals / Numbers / Configuring Formatter Behavior and Style	-	objc
 property	open	formattingContext	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
-property	open	generatesDecimalNumbers	NSNumberFormatter	Fundamentals / Numbers / Configuring Formatter Behavior and Style	-	objc
+property	shipped	generatesDecimalNumbers	NSNumberFormatter	Fundamentals / Numbers / Configuring Formatter Behavior and Style	-	objc
 property	shipped	groupingSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
 property	shipped	groupingSize	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
 property	shipped	hasThousandSeparators	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
@@ -2342,18 +2342,18 @@ property	shipped	internationalCurrencySymbol	NSNumberFormatter	Fundamentals / Nu
 property	shipped	lenient	NSNumberFormatter	Fundamentals / Numbers / Managing Leniency Behavior	-	objc
 property	shipped	locale	NSNumberFormatter	Fundamentals / Numbers / Managing Localization of Numbers	-	objc
 property	open	localizesFormat	NSNumberFormatter	Fundamentals / Numbers / Managing Localization of Numbers	-	objc
-property	open	maximum	NSNumberFormatter	Fundamentals / Numbers / Managing Input and Output Attributes	-	objc
+property	shipped	maximum	NSNumberFormatter	Fundamentals / Numbers / Managing Input and Output Attributes	-	objc
 property	shipped	maximumFractionDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Integer and Fraction Digits	-	objc
 property	shipped	maximumIntegerDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Integer and Fraction Digits	-	objc
 property	shipped	maximumSignificantDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Significant Digits	-	objc
-property	open	minimum	NSNumberFormatter	Fundamentals / Numbers / Managing Input and Output Attributes	-	objc
+property	shipped	minimum	NSNumberFormatter	Fundamentals / Numbers / Managing Input and Output Attributes	-	objc
 property	shipped	minimumFractionDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Integer and Fraction Digits	-	objc
 property	shipped	minimumGroupingDigits	NSNumberFormatter	Fundamentals / Numbers / Instance Properties	-	objc
 property	shipped	minimumIntegerDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Integer and Fraction Digits	-	objc
 property	shipped	minimumSignificantDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Significant Digits	-	objc
 property	shipped	minusSign	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	multiplier	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
-property	open	negativeFormat	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
+property	shipped	negativeFormat	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
 property	open	negativeInfinitySymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	negativePrefix	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Prefixes and Suffixes	-	objc
 property	shipped	negativeSuffix	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Prefixes and Suffixes	-	objc
@@ -2366,7 +2366,7 @@ property	open	partialStringValidationEnabled	NSNumberFormatter	Fundamentals / Nu
 property	shipped	perMillSymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	percentSymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	plusSign	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
-property	open	positiveFormat	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
+property	shipped	positiveFormat	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
 property	open	positiveInfinitySymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	positivePrefix	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Prefixes and Suffixes	-	objc
 property	shipped	positiveSuffix	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Prefixes and Suffixes	-	objc
