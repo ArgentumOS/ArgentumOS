@@ -560,6 +560,16 @@ DECLINED_SELECTORS = frozenset((
     ("NSMutableDictionary", "dictionaryWithOBEXHeadersData:headersDataSize:"),
     ("NSMutableDictionary", "getHeaderBytes"),
     ("NSMutableDictionary", "withOBEXHeadersData:headersDataSize:"),
+    # ⚠ THE NSITEMPROVIDER DRAG-GEOMETRY TRIO IS UIKit's, AND THIS TREE HAS NO UIKit (USER DECISION,
+    # 2026-10-01, §63.51). Same shape as the OBEX group above: the ledger attributes a FOREIGN FRAMEWORK'S
+    # CATEGORY to the class it extends. MEASURED: `containerFrame`, `preferredPresentationSize` and
+    # `sourceFrame` are UIKit's `NSItemProvider` category — a drag's source window and container — and they
+    # appear in NEITHER the macOS 14.5 Foundation headers NOR the iOS 16.5 ones. Our headers shipped them
+    # answering ZERO with the boundary stated, which is a stub by §62.57's rule. Removed from the class and
+    # struck here, rather than left as three rows of work no Foundation door could ever satisfy.
+    ("NSItemProvider", "containerFrame"),
+    ("NSItemProvider", "preferredPresentationSize"),
+    ("NSItemProvider", "sourceFrame"),
 ))
 
 

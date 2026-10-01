@@ -119,7 +119,6 @@ static NSProgress *fn_finished_progress(void)
 		return nil;
 	}
 	_representations = [[NSMutableArray alloc] init];
-	_preferredPresentationSize = NSMakeSize(0, 0);
 	return self;
 }
 
@@ -282,25 +281,11 @@ static NSProgress *fn_finished_progress(void)
 	[old release];
 }
 
-- (NSSize)preferredPresentationSize
-{
-	return _preferredPresentationSize;
-}
-
-- (void)setPreferredPresentationSize:(NSSize)size
-{
-	_preferredPresentationSize = size;
-}
-
-- (NSRect)sourceFrame
-{
-	return NSMakeRect(0, 0, 0, 0);	/* nothing in this system positions a drag: see the header */
-}
-
-- (NSRect)containerFrame
-{
-	return NSMakeRect(0, 0, 0, 0);
-}
+/* §63.51: THE UIKit DRAG-GEOMETRY TRIO IS GONE FROM THIS CLASS, and its own comment is why: `sourceFrame` and
+ * `containerFrame` answered `NSMakeRect(0, 0, 0, 0)` because "nothing in this system positions a drag", and
+ * `preferredPresentationSize` was a stored value nothing consumed. **A door that can only answer zero is a stub
+ * by §62.57's rule, and the three belong to UIKit's `NSItemProvider` category, not to Foundation** — see the
+ * header for the full ground and `tools/foundation-sweep.py` for the by-name decline. */
 
 - (nullable NSItemProviderLoadHandler)previewImageHandler
 {
@@ -872,7 +857,6 @@ static NSURL *fn_write_copy(NSString *suggestedName, NSString *typeIdentifier, N
 	copy->_representations = [_representations mutableCopy];
 	copy->_suggestedName = [_suggestedName copy];
 	copy->_teamData = [_teamData copy];
-	copy->_preferredPresentationSize = _preferredPresentationSize;
 	if (_previewImageHandler != nil) {
 		copy->_previewImageHandler = Block_copy(_previewImageHandler);
 	}

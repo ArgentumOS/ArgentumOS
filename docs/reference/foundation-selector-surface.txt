@@ -25,7 +25,7 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: declined 414
+# why the struck rows are struck: declined 417
 #
 # AND 584 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
@@ -36,7 +36,7 @@
 #
 # counts by kind:
 #   method     shipped 2180   open  480   struck  268
-#   property   shipped 1269   open  221   struck  146
+#   property   shipped 1266   open  221   struck  149
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -1630,14 +1630,14 @@ method	shipped	-registerObject:visibility:	NSItemProvider	App Support / Attachme
 method	shipped	-registerObjectOfClass:visibility:loadHandler:	NSItemProvider	App Support / Attachments / Registering objects	-	objc
 method	open	-registeredContentTypesConformingToContentType:	NSItemProvider	App Support / Attachments / Registering content types	-	objc
 method	shipped	-registeredTypeIdentifiersWithFileOptions:	NSItemProvider	App Support / Attachments / Querying the provider’s contents	-	objc
-property	shipped	containerFrame	NSItemProvider	App Support / Attachments / Getting the provider’s frame	-	objc
-property	shipped	preferredPresentationSize	NSItemProvider	App Support / Attachments / Configuring the provider	-	objc
+property	struck	containerFrame	NSItemProvider	App Support / Attachments / Getting the provider’s frame	declined	objc
+property	struck	preferredPresentationSize	NSItemProvider	App Support / Attachments / Configuring the provider	declined	objc
 property	open	preferredPresentationStyle	NSItemProvider	App Support / Attachments / Configuring the provider	-	swift-page
 property	shipped	previewImageHandler	NSItemProvider	App Support / Attachments / Loading a preview image	-	objc
 property	open	registeredContentTypes	NSItemProvider	App Support / Attachments / Registering content types	-	objc
 property	open	registeredContentTypesForOpenInPlace	NSItemProvider	App Support / Attachments / Registering content types	-	objc
 property	shipped	registeredTypeIdentifiers	NSItemProvider	App Support / Attachments / Querying the provider’s contents	-	objc
-property	shipped	sourceFrame	NSItemProvider	App Support / Attachments / Getting the provider’s frame	-	objc
+property	struck	sourceFrame	NSItemProvider	App Support / Attachments / Getting the provider’s frame	declined	objc
 property	shipped	suggestedName	NSItemProvider	App Support / Attachments / Configuring the provider	-	objc
 property	shipped	teamData	NSItemProvider	App Support / Attachments / Configuring the provider	-	objc
 method	shipped	+objectWithItemProviderData:typeIdentifier:error:	NSItemProviderReading	App Support / Attachments / Constants / Creating an object from a pasted or dropped item	-	objc

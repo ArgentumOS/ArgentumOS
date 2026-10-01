@@ -15979,6 +15979,47 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.51 — WHAT IS NOT FOUNDATION COMES OUT: THE UIKit DRAG TRIO DECLINED, AND THE TIER MOVES PLANNED (2026-10-01)
+
+**THE DIRECTIVE (the user, 2026-10-01): *"removing from our Foundation implementation anything which does not
+belong in Foundation — the private stuff is fine, but CoreGraphics or the like are not."*** Two decisions came
+with it, and both are recorded because the split matters: **non-Foundation API is MOVED to the tier that owns
+it** (this tree ships first-party `CoreGraphics` and `AppKit`), **and the CG-typed doors move out too** — the
+question was put because Apple documents `-encodeCGPoint:forKey:` as Foundation API on iOS while the macOS 14.5
+headers do not carry it, and the user chose the macOS reading.
+
+**WHAT LANDED: THE UIKit DRAG-GEOMETRY TRIO IS GONE AND DECLINED BY NAME.** `containerFrame`,
+`preferredPresentationSize` and `sourceFrame` were `NSItemProvider`'s, declared here, implemented here, and
+**answering their ZERO values with the boundary stated in the header** — *"nothing in this system positions a
+drag, so nothing ever sets them"*. **A door that can only answer zero is the stub §62.57 forbids**, and the three
+belong to **UIKit's `NSItemProvider` category**. MEASURED: they appear in **neither** the macOS 14.5 Foundation
+headers **nor** the iOS 16.5 ones. This tree has no UIKit, so there is no tier to move them to — which is why
+they take **§63.42's OBEX route: `DECLINED_SELECTORS`, keyed by owner AND selector**, with the ground written at
+the mechanism. **MEASURED: ledger properties shipped 1269 → 1266 and struck 146 → 149** — exactly three rows,
+and `--work-list` no longer shows them as work.
+
+**AND THE SPLIT THE DIRECTIVE NEEDS IS NOW MEASURED, GROUP BY GROUP, WHICH IS THE PART THAT TRANSFERS.**
+
+| our name | Apple declares it in | ledger row | consequence |
+|---|---|---|---|
+| `containerFrame`, `preferredPresentationSize`, `sourceFrame` | **UIKit**'s `NSItemProvider` category | yes | **DONE** — declined by name (no UIKit tier exists) |
+| `+textFileTypes`, `-fixAttributesInRange:` | **AppKit**'s `NSAttributedString.h` | yes / no | MOVE to the AppKit tier |
+| `-pathForImageResource:`, `-pathForSoundResource:`, `-URLForImageResource:` | **AppKit**'s `NSImage.h` | **no rows at all** | MOVE — and nothing in the ledger even asks for them |
+| `+valueWithCGPoint:` … `-CGAffineTransformValue` (NSValue), `-encodeCGPoint:forKey:` … (NSCoder, NSKeyedArchiver) | **CoreGraphics**, absent from macOS Foundation | yes (documented on iOS) | MOVE to the CoreGraphics tier as categories |
+
+**⚠ AND THE MOVES HAVE A DEPENDENCY PROBLEM THAT MUST BE SOLVED BEFORE THEY ARE SLICES, NOT DURING.** Two of the
+groups are exercised by **Foundation probes** (`foundation_attributedstring` calls `+textFileTypes`,
+`foundation_bundle` calls the image/sound trio). **A Foundation probe cannot link AppKit or CoreGraphics** — that
+is the wall the tiers exist for — so each move has to carry its checks into a probe that may link the owning
+library, or drop them and say so. **That is a build-graph decision before it is a code move**, and it is named
+here so the next unit starts from it rather than discovering it at the link line.
+
+**AND ONE MISTAKE, CAUGHT BY THE GATES RATHER THAN BY ME.** My first edit replaced the three implementations with
+a comment that **never closed** (`/*` with no `*/`), so it swallowed the two accessors that followed:
+`-Wcomment` fired on the next block comment, and `--unimplemented` reported `previewImageHandler` and
+`setPreviewImageHandler:` as **declared and implemented nowhere** — which is exactly the report that rule exists
+to produce. **A COMMENT IS CODE'S NEIGHBOUR, and an unclosed one is a deletion nobody reviewed.**
+
 ## §63.50 — THE SUBSET RULE, MADE MECHANICAL: WE DECLARE WHAT APPLE DECLARES, AND TWO INSTRUMENTS THAT COULD NOT SEE IT (2026-10-01)
 
 **THE RULE (the user, 2026-10-01): *"we should only be implementing selectors and classes which are declared in

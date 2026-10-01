@@ -182,7 +182,7 @@ extern NSString *const NSExtensionJavaScriptFinalizeArgumentKey;
 	NSItemProviderLoadHandler _previewImageHandler;
 	NSString *_suggestedName;
 	NSData *_teamData;
-	NSSize _preferredPresentationSize;
+	/* §63.51: `_preferredPresentationSize` is gone with its door — UIKit's property, not Foundation's. */
 }
 
 - (instancetype)init;
@@ -203,14 +203,14 @@ extern NSString *const NSExtensionJavaScriptFinalizeArgumentKey;
 
 @property (atomic, copy, nullable) NSString *suggestedName;
 @property (atomic, copy, nullable) NSData *teamData;
-@property NSSize preferredPresentationSize;
-
-/* THE FRAME DOORS ARE PRESENT AND ANSWER THEIR ZERO VALUE, and the boundary is stated rather than implied:
- * `sourceFrame` and `containerFrame` are where the DRAG-AND-DROP SYSTEM records what an item occupies in the
- * source window, and nothing in this system positions a drag, so nothing ever sets them. A caller that needs them
- * set has the presentational half of drag and drop to build first. */
-@property (readonly) NSRect sourceFrame;
-@property (readonly) NSRect containerFrame;
+/* ⚠ THE DRAG-GEOMETRY TRIO CAME OUT (the user's decision, 2026-10-01, §63.51): `preferredPresentationSize`,
+ * `sourceFrame` and `containerFrame` are **UIKit's** — `NSItemProvider`'s UIKit category, where a DRAG has a
+ * source window and a container — and this tree has no UIKit at all. They were declared here and answered
+ * their ZERO values, with the boundary stated rather than implied: "nothing in this system positions a drag,
+ * so nothing ever sets them". **A door that can only answer zero is the shape §62.57 calls a stub, and the
+ * ledger asked for these three because it attributes a FOREIGN FRAMEWORK'S CATEGORY to the class it extends —
+ * the same attribution that put the OBEX family under NSMutableDictionary (§63.42).** They are declined by
+ * name in `tools/foundation-sweep.py` rather than left as work, which is the mechanism that ruling created. */
 
 @property (atomic, copy, nullable) NSItemProviderLoadHandler previewImageHandler;
 
