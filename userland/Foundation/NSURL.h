@@ -56,6 +56,7 @@
 @class NSError;
 @class NSString;
 @class NSNumber;
+@class NSURLHandle;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -188,11 +189,20 @@ typedef NSString *NSURLFileResourceType;
 - (BOOL)isFileReferenceURL;
 - (nullable NSURL *)fileURL;
 
-/* DEPRECATED (Apple 10.4). ONLY THE PURE ONE IS HERE: the others (-propertyForKey:, -setProperty:forKey:,
- * -resourceDataUsingCache:, -loadResourceDataNotifyingClient:usingCache:, -URLHandleUsingCache:,
- * -setResourceData:) go THROUGH NSURLHandle and PERFORM I/O, so they are left open rather than wired
- * blind (their substrate ships, but a probe for them needs a live fetch - see the report). */
+/* DEPRECATED (Apple 10.4). `-initWithScheme:host:path:` is PURE - it builds a spelling and parses it,
+ * touching nothing. The NSURLHandle-backed family is SPLIT rather than left wholly open: the three doors
+ * below are closed as the DELEGATIONS they are (one transport, two spellings, NSURLHandle.m's own words),
+ * because each is a VALUE fact that asks for NO fetch - a handle is CONSTRUCTED without one, and a property
+ * that was SET reads back from the bag BEFORE NSURLHandle would load. `-resourceDataUsingCache:`,
+ * `-loadResourceDataNotifyingClient:usingCache:` and `-setResourceData:` stay OPEN: observing the first two
+ * needs a load (a live fetch), and the third writes a body no door of this class reads back. */
 - (nullable instancetype)initWithScheme:(NSString *)scheme host:(nullable NSString *)host path:(NSString *)path;
+- (nullable NSURLHandle *)URLHandleUsingCache:(BOOL)shouldUseCache;
+- (nullable id)propertyForKey:(NSString *)propertyKey;
+- (void)setProperty:(nullable id)propertyValue forKey:(NSString *)propertyKey;
+/* DEPRECATED (Apple 10.4), AND PURE: the path's `;`-separated parameter string (RFC 2396 §3.3's `segment`
+ * tail), taken RAW from the parse exactly as -query/-fragment take theirs. nil when the path has no ';'. */
+- (nullable NSString *)parameterString;
 
 - (BOOL)isEqual:(id)other;
 - (NSUInteger)hash;

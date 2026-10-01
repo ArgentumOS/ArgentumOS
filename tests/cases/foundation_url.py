@@ -37,7 +37,11 @@ CHECKS = ("url-parse", "url-refusals", "url-loading-system-absent", "url-request
           # "Converting", "Querying" and pure "Deprecated" doors whose substrate this tree already had.
           "url-parts-extra", "url-standardized", "url-file-system-representation",
           "url-create-relative", "url-data-representation", "url-file-create", "url-file-fs-rep",
-          "url-convert", "url-append-component-dir", "url-resolve-symlinks", "url-init-with-parts")
+          "url-convert", "url-append-component-dir", "url-resolve-symlinks", "url-init-with-parts",
+          # THE NSURLHandle-BACKED DEPRECATED DOORS AND THE PARAMETER STRING (2026-10-01): the three handle
+          # doors are DELEGATIONS that ask for no fetch (a handle is constructed without one, a set property
+          # reads back before any load), and the parameter string is a pure parse of the path's ';' tail.
+          "url-handle-deprecated", "url-parameter-string")
 
 
 class Case(BaseCase):

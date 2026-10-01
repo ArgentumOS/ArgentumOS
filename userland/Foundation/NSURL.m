@@ -41,6 +41,7 @@
 #import <Foundation/NSNull.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSNumber.h>
+#import <Foundation/NSURLHandle.h>
 #include "NSURL.h"		/* RFC 3986 §5.2: the resolution NSURL's relative door is FOR */
 #include <stdlib.h>
 #include <string.h>
@@ -1905,6 +1906,52 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 	made = [self initWithPartsFromString:spelling];
 	[spelling release];
 	return made;
+}
+
+/* ---- THE NSURLHandle-BACKED DEPRECATED DOORS (Apple 10.4) -----------------------------------------
+ *
+ * ONE TRANSPORT, TWO SPELLINGS (NSURLHandle.m's own words): these are DELEGATIONS to the NSURLHandle this
+ * library already ships, not a second URL path. `-URLHandleUsingCache:` constructs the handle and touches
+ * NOTHING on the network; the property bag it carries is consulted BEFORE any load (NSURLHandle's
+ * -propertyForKey: checks its dictionary first), so a property that was SET reads back WITHOUT a fetch.
+ * That is what makes these three a VALUE fact a probe can stand on, and why they are closed here while the
+ * three that need a load stay open (named in the header).
+ */
+- (nullable NSURLHandle *)URLHandleUsingCache:(BOOL)shouldUseCache
+{
+	NSURLHandle *handle = shouldUseCache ? [NSURLHandle cachedHandleForURL:self] : nil;
+
+	if (handle == nil) {
+		/* A CACHED HANDLE IS RETAINED BY THE PROCESS-WIDE CACHE, so it must not be owned by whoever asked
+		 * for it; an UNCACHED one is the caller's only reference, so it is autoreleased like every other
+		 * convenience return. */
+		handle = [[[NSURLHandle alloc] initWithURL:self cached:shouldUseCache] autorelease];
+	}
+	return handle;
+}
+
+- (nullable id)propertyForKey:(NSString *)propertyKey
+{
+	return [[self URLHandleUsingCache:YES] propertyForKey:propertyKey];
+}
+
+- (void)setProperty:(nullable id)propertyValue forKey:(NSString *)propertyKey
+{
+	[[self URLHandleUsingCache:YES] writeProperty:propertyValue forKey:propertyKey];
+}
+
+- (nullable NSString *)parameterString
+{
+	/* THE PARAMETER STRING IS THE TAIL OF THE PATH AFTER ITS FIRST ';' (RFC 2396 §3.3's `segment`),
+	 * taken RAW from `_path` exactly as -query/-fragment take theirs - and NIL when the path carries no
+	 * ';'. This is the form RFC 3986 dropped; the parse keeps the ';' in `_path`, so it is read back here
+	 * rather than re-parsed. */
+	NSRange semi = [_path rangeOfString:@";"];
+
+	if (semi.location == NSNotFound) {
+		return nil;
+	}
+	return [_path substringFromIndex:semi.location + 1];
 }
 
 /* ONLY THE CACHE IS RELEASED HERE, AND THE REST IS A RECORDED DEBT RATHER THAN A SILENT FIX. This

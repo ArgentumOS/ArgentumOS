@@ -444,6 +444,48 @@ int main(void)
 		      fn_why(parts));
 	}
 
+	{
+		/* THE NSURLHandle-BACKED DEPRECATED DOORS (2026-10-01): the three the header now closes are
+		 * DELEGATIONS to the handle this library already ships, and each is a VALUE fact that asks for NO
+		 * fetch - the handle is CONSTRUCTED without one, and a property that was SET reads back from the
+		 * bag BEFORE NSURLHandle would load (its -propertyForKey: checks the dictionary first). So this
+		 * probe never opens a socket. Nullable getters are BOUND before use, this probe's standing rule. */
+		NSURL *u = [NSURL URLWithString:@"http://example.com/handle"];
+		NSURLHandle *h = u != nil ? [u URLHandleUsingCache:YES] : nil;
+		NSURLHandle *h2 = u != nil ? [u URLHandleUsingCache:YES] : nil;
+		BOOL roundtrip = NO;
+
+		if (u != nil) {
+			[u setProperty:@"seven" forKey:@"probe-key"];
+			roundtrip = [[u propertyForKey:@"probe-key"] isEqual:@"seven"];
+		}
+
+		check("url-handle-deprecated",
+		      u != nil && h != nil && h2 != nil && h == h2 &&
+		      [[h URL] isEqual:u] &&
+		      roundtrip &&
+		      [[u propertyForKey:@"probe-key"] isEqual:@"seven"],
+		      "the two cached YES calls answer ONE handle, and a set property round-trips");
+	}
+
+	{
+		/* THE PARAMETER STRING (Apple 10.4, deprecated and PURE): the path's tail after its FIRST ';',
+		 * taken raw from the parse exactly as -query/-fragment are, and nil when the path has none. */
+		NSURL *p = [NSURL URLWithString:@"http://example.com/a;v=1;w=2?q=1#f"];
+		NSURL *n = [NSURL URLWithString:@"http://example.com/a/b"];
+		NSString *ps = p != nil ? [p parameterString] : nil;
+		NSString *ns = n != nil ? [n parameterString] : nil;
+
+		check("url-parameter-string",
+		      p != nil && n != nil &&
+		      ps != nil && [ps isEqualToString:@"v=1;w=2"] &&
+		      ns == nil,
+		      /* REASONED, NOT MEASURED: that the tail is taken WITHOUT the leading ';' (RFC 2396's
+		       * `segment` puts the ';' in the grammar, not the value) and that a path with none answers
+		       * NIL - Apple's page for this deprecated door is terse, so the guest run settles it. */
+		      ps == nil ? "(nil parameterString)" : [ps UTF8String]);
+	}
+
 	printf("FOUNDATION-URL RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness
