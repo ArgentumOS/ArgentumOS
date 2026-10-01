@@ -15961,6 +15961,100 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.41 — SEVEN MORE FAMILIES, 55 ROWS, AND THE BRIEF THAT FIXED ITSELF (2026-10-01)
+
+**WHAT LANDED.** NSProcessInfo 9, NSURL 4, NSCoder 4, NSAttributedString 6, NSArray 6, NSString 18, and
+NSNumberFormatter 8 — **55 rows**, each verified by its own family probe in the guest
+(`foundation_processinfo` 13/0, `foundation_url` 28/0, `foundation_coder` 29/0, `foundation_attributedstring`
+37/0, `foundation_collection` 54/0 across its six families, `foundation_string` 141/0,
+`foundation_numberformatter` 26/0). Ledger at this section's end: **method 2100 shipped / 560 open, property 1227
+/ 263 open** — total open **823**, from 900 at the section's start.
+
+**⚠ THE METHOD LESSON: THREE ATTEMPTS AT NSString LANDED NOTHING, AND THE FOURTH LANDED 18 ROWS.** The first
+three spent their entire agent budget on reconnaissance. The fourth was given its reconnaissance **pre-done and
+pasted into the brief** — the probe's helper takes a C-string detail, the inventory's `excluded[]` is empty, the
+substrate (`NSStringTransform`, the detection keys, the UTF-16↔UTF-8 helpers, the ICU normalizer, the
+validated-format machinery) already exists so the work is door BODIES — plus the sentence *"a landed group of 4
+rows beats a perfect plan for 40."* **Every brief since opens with LAND-FIRST, NOT RECON-FIRST**, and every one
+since has landed rows.
+
+**⚠ AND THE RULE FOR EXPECTATIONS, WHICH PAID IN BOTH DIRECTIONS.** Every agent is told to MARK an expectation that
+is reasoned rather than measured, because the parent runs the guest and checks those first. Across this stretch
+**every flagged expectation passed** (`url-parameter-string`, both `coder-sequential-*`, `nf-format-halves`,
+`nf-behavior`, the attributed-string format list) — and in the *preceding* section one had failed while the
+IMPLEMENTATION was right (`1,234.` not `1,234.0`). Flagged checks are cheap to check and expensive to misread.
+
+**⚠ AND THE FOURTH WRITTEN-DOWN REASON THIS SESSION TO BE WRONG — THIS TIME BY MEASUREMENT.** NSNumberFormatter
+inherited a deferral: `positiveFormat`/`negativeFormat` "need a format pattern language ICU does not expose".
+**FALSE.** ICU's decimal pattern language spells the negative subpattern after `;` and `unum_toPattern` round-trips
+it — measured on host ICU (`"#,##0.00;(#,##0.00)"` renders −1234.5 as `(1,234.50)`). The pair is implemented as
+views of the single `-format` pattern (split to read, recombine to write) and **the header's comment was
+corrected**. The lesson generalises into every brief: *"deferred" is a claim about substrate, and a claim about
+substrate is checkable — if a deferral reason you inherit looks wrong, MEASURE it and fix the comment.*
+
+**⚠ AND THE INVENTORY RULE HAS BECOME ARCHITECTURE RATHER THAN A TRAP: TWO AGENTS INDEPENDENTLY STOPPED AT ROWS A
+PROBE ASSERTS ABSENT.** NSURL declined `+URLByResolvingBookmarkData:…` because the passing `url-loading-system-
+absent` check names it; NSCoder declined `-objectZone:`/`-setObjectZone:` because `foundation_archiver.m:126-129`
+asserts them absent on `NSArchiver`/`NSUnarchiver` — and declaring them on the BASE class would INHERIT into those
+two and break that check. Both read the arrays BEFORE writing. NSAttributedString did the same and declined the
+three attachment-shaped rows for the same reason. This is the rule that once cost a family a revert, now working
+as a design constraint.
+
+**AND THE HONEST REFUSALS ARE THE OTHER HALF OF THE WORK.** NSString's
+`-getCString:maxLength:range:remainingRange:` was **declined by two different passes** — a wrong `remainingRange`
+accounting is a hollow door, and two independent refusals is what a wall looks like rather than a gap. NSCoder
+declined ten with structural reasons: the struct doors would raise on EVERY coder here (this tree's wire raises for
+struct type codes, and `NSCoder.h` already declined them); the array doors' count-on-the-wire framing is
+ambiguous; `-decodeValueOfObjCType:at:size:` would silently drop a bounds check. NSProcessInfo left
+`-operatingSystem` open because Apple's value is `NSMACHOperating` and returning Mach's value would be the exact
+lie `-operatingSystemName` already refuses — and it left the 11 activity/termination rows open rather than shipping
+stored flags with no engine. NSURL chose its four by an honest criterion: **the only rows observable without a
+load.**
+
+**AND ONE AGENT DISCLOSED A CLEAN-ROOM RISK ABOUT ITSELF**, reasoning about another implementation's wire
+behaviour. The conclusion was right (leave the row open rather than guess) but the provenance is off-limits, so
+**every brief now carries the wall**: Apple's public headers may be read (declarations only), Apple's documentation
+is the PRIMARY spec, GNUstep *documentation* is an admissible secondary spec, and **GNUstep's or anyone else's
+SOURCE is off limits** — if another implementation's code is the only basis for a decision, the row stays open.
+
+## §63.42 — THE OBEX ROWS ARE NOT FOUNDATION: 24 DECLINES, AND THE MISS THAT PROVED THE RULE (2026-10-01)
+
+**THE USER'S DECISION, recorded where the ledger is GENERATED rather than in a header.** A pass was sent to close
+"NSMutableDictionary ~25 open" and came back with **zero rows landed** and a structural finding: the 24 rows named
+`addApplicationParameterHeader:length:`, `addWhoHeader:length:`, `getHeaderBytes`,
+`dictionaryWithOBEXHeadersData:` and the rest are **the IOBluetooth OBEX category, not Foundation**. The sweep
+attributes a category's methods to the class it extends, which is why they appear under NSMutableDictionary — the
+category is `NSDictionaryOBEXExtensions`, declared in IOBluetooth's `OBEX.h`, its doors return `OBEXError`, and
+they wrap the IOBluetooth C functions. This tree has **no `OBEXError`, no `OBEX*` and no `getHeaderBytes`** (grep →
+empty), so implementing them would mean a foreign framework's category against absent C API and an absent return
+TYPE — a stub, and a clean-room violation. **Every genuine Foundation NSMutableDictionary selector is already
+shipped**; the family that read as 25 rows of work was one row of work plus a LEDGER ATTRIBUTION ERROR.
+
+**⚠ AND THEY COULD NOT BE STRUCK BY OWNER, WHICH IS THE MECHANISM WORTH REMEMBERING:** `"NSMutableDictionary"` in
+`DECLINED_ROOTS` would strike the class's OWN 16 SHIPPED MEMBERS. So they are named one by one in
+`DECLINED_SELECTORS` (the per-owner set §63.19 added for exactly this shape), in the ledger's own spelling — and
+**the sign is not part of a selector row's name**, so these are colon-bearing names with no `+`/`-`.
+
+**⚠ AND THE FIRST ATTEMPT GOT ONE NAME WRONG, IN THE WAY THE FILE'S OWN COMMENT WARNS ABOUT.** The entry read
+`addImageHandleHeader:length:` while the LEDGER'S ROW is `addImageHandleHeader:` — no `length:` tail. It came from a
+source report that spelled the selector with the tail, so the entry looked correct in the ledger's own spelling and
+matched NOTHING. **`--refresh` still exited 0 and still printed a normal summary.** The only visible symptom was
+arithmetic: `struck` moved by **23 where 24 names were written**. It was caught by counting the ledger's own rows,
+and the fix is a corrected entry plus a recorded rule: **A DECLINE LIST IS NOT VERIFIED BY THE TOOL EXITING 0 — it
+is verified by counting the ledger's rows against the number of names written.** This is the SECOND occurrence of
+this exact failure in that set, and the comment now records both.
+
+**AND `+dictionaryWithSharedKeySet:` STAYS OPEN, deliberately:** it is real Foundation, blocked behind an absent
+`NSSharedKeySet` and its own still-open producer `+sharedKeySetForKeys:`. It is a WORK ITEM, not an attribution
+error — the distinction the whole section turns on.
+
+**AND THE PASS REFUSED TO FABRICATE FILES, WHICH WAS RIGHT AND WAS MY ERROR.** The brief named
+`NSMutableDictionary.h`/`.m` as write targets; **those files do not exist in this tree** (the class is declared in
+`NSDictionary.h:169` and implemented in `NSDictionary.m:1054` — the plan records it at `:12310`/`:12944`). The
+agent said so instead of creating them, and creating them would have duplicated the declaration and been rejected
+by the clean-room gate anyway. **A brief is not evidence about the tree** — that is the second time this session a
+brief's own assumption was the defect (§63.41's NSString reconnaissance is the first).
+
 ## §63.39 — FOUR MORE FAMILIES: NSString 18, NSNumberFormatter 16, NSDictionary 26, NSProgress 7 (2026-10-01)
 
 **WHAT LANDED.** 67 rows across four families, each verified by its own family probe in the guest: **NSString**
