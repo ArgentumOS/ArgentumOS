@@ -1881,6 +1881,135 @@ NULL
 			transportError != nil ? [transportError description] : @"(none)"] UTF8String]);
 	}
 
+	{
+		/* THE C-STRING AND CHARACTER-COPY DOORS (§63.30). The default C-string encoding here is UTF-8 —
+		 * the storage itself — so -cString, -lossyCString and -cStringLength answer the storage's own
+		 * bytes, and the NUL-terminated copy door is asserted byte for byte INCLUDING the terminator.
+		 * "café" is chosen because it is 4 units but 5 bytes, so a byte/unit confusion cannot pass. */
+		NSString *s = [NSString stringWithUTF8String:"caf\xc3\xa9"];
+		char buf[16];
+		BOOL copied;
+
+		memset(buf, 'Z', sizeof(buf));
+		copied = [s getCString:buf maxLength:sizeof(buf) encoding:NSUTF8StringEncoding];
+
+		check("cstring-doors-copy-byte-for-byte",
+		      strcmp([s UTF8String], "caf\xc3\xa9") == 0 &&
+		      strcmp([s cString], "caf\xc3\xa9") == 0 &&
+		      strcmp([s lossyCString], "caf\xc3\xa9") == 0 &&
+		      [s cStringLength] == 5 &&
+		      [s lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 5 &&
+		      [s length] == 4 &&
+		      copied == YES && strcmp(buf, "caf\xc3\xa9") == 0 &&
+		      (unsigned char)buf[5] == 0,	/* the terminator was written, not left as the fill */
+		      [[NSString stringWithFormat:@"cString=%s lossy=%s cStringLength=%lu bytes=%lu copied=%d buf=%s",
+			[s cString], [s lossyCString], (unsigned long)[s cStringLength],
+			(unsigned long)[s lengthOfBytesUsingEncoding:NSUTF8StringEncoding], (int)copied, buf] UTF8String]);
+	}
+
+	{
+		/* THE THREE REFUSALS OF THE COPY-OUT DOOR, each for its own reason: the string plus its NUL does
+		 * not fit (a 5-byte buffer for a 5-byte string + NUL), the encoding is one this library does not
+		 * store, and the bytes are not ASCII whatever the ASCII label says. */
+		NSString *s = [NSString stringWithUTF8String:"caf\xc3\xa9"];
+		char small[5];		/* one short of the 5 bytes + NUL */
+		char room[8];
+		BOOL fits = [s getCString:small maxLength:sizeof(small) encoding:NSUTF8StringEncoding];
+		BOOL unstored = [s getCString:room maxLength:sizeof(room) encoding:NSUTF16StringEncoding];
+		BOOL labelledAscii = [s getCString:room maxLength:sizeof(room) encoding:NSASCIIStringEncoding];
+
+		check("cstring-doors-refuse-what-cannot-fit",
+		      fits == NO && unstored == NO && labelledAscii == NO,
+		      [[NSString stringWithFormat:@"fits=%d (maxLength=5, need 6) unstored=%d labelledAscii=%d",
+			(int)fits, (int)unstored, (int)labelledAscii] UTF8String]);
+	}
+
+	{
+		/* THE TWO DEPRECATED INCOMING DOORS. +stringWithCString: takes a NUL-terminated C string; the
+		 * length-taking form must read EXACTLY its length and NOT run on to a NUL, so the buffer's tail is
+		 * poisoned with bytes that would lengthen the answer if the door overran. */
+		static const char notTerminated[] = { 'a', 'b', 'c', '!', '!', '!' };
+		NSString *nulTerminated = [NSString stringWithCString:"caf\xc3\xa9"];
+		NSString *bounded = [NSString stringWithCString:notTerminated length:3];
+		NSString *emptyLen = [NSString stringWithCString:notTerminated length:0];
+		/* ⚠ THE NULL IS PASSED THROUGH A VARIABLE, not as a literal: -Wnonnull fires on a null LITERAL at a
+		 * nonnull parameter, and this unit adds no new diagnostic (the §63.28 check's own NULL literal
+		 * predates it and is left exactly as it shipped). */
+		const char *missing = NULL;
+		NSString *nul = [NSString stringWithCString:missing];
+
+		check("cstring-without-encoding-round-trips",
+		      nulTerminated != nil && [nulTerminated isEqualToString:@"caf\xc3\xa9"] &&
+		      bounded != nil && [bounded isEqualToString:@"abc"] &&
+		      emptyLen != nil && [emptyLen length] == 0 &&
+		      nul == nil,
+		      [[NSString stringWithFormat:@"nulTerminated=%@ bounded=%@ emptyLen=%lu nul=%@",
+			nulTerminated, bounded, (unsigned long)[emptyLen length],
+			nul != nil ? nul : @"(nil)"] UTF8String]);
+	}
+
+	{
+		/* -getCharacters: (the deprecated no-range form) copies EVERY unit and adds no terminator — it is
+		 * the range form over the whole extent, so every unit must equal -characterAtIndex:. */
+		NSString *s = [NSString stringWithUTF8String:"caf\xc3\xa9"];
+		unichar units[8];
+		int allEqual = 1;
+		NSUInteger i;
+
+		memset(units, 0, sizeof(units));
+		[s getCharacters:units];
+		for (i = 0; i < [s length]; i++) {
+			if (units[i] != [s characterAtIndex:i]) {
+				allEqual = 0;
+			}
+		}
+		check("getcharacters-copies-every-unit",
+		      [s length] == 4 && allEqual &&
+		      units[0] == 'c' && units[1] == 'a' && units[2] == 'f' && units[3] == 0xE9,
+		      [[NSString stringWithFormat:@"length=%lu allEqual=%d units=%04x/%04x/%04x/%04x",
+			(unsigned long)[s length], allEqual,
+			(unsigned)units[0], (unsigned)units[1], (unsigned)units[2], (unsigned)units[3]] UTF8String]);
+	}
+
+	{
+		/* ENCODING INTROSPECTION over the storage. -canBeConvertedToEncoding: is YES exactly when the
+		 * storage IS the encoding (UTF-8) or every byte is 7-bit (ASCII); -maximumLengthOfBytesUsingEncoding:
+		 * is the UTF-8 byte count for a possible conversion and 0 for an impossible one. */
+		NSString *ascii = [NSString stringWithUTF8String:"plain"];
+		NSString *accents = [NSString stringWithUTF8String:"caf\xc3\xa9"];
+
+		check("can-be-converted-follows-the-storage",
+		      [ascii canBeConvertedToEncoding:NSUTF8StringEncoding] &&
+		      [ascii canBeConvertedToEncoding:NSASCIIStringEncoding] &&
+		      [accents canBeConvertedToEncoding:NSUTF8StringEncoding] &&
+		      ![accents canBeConvertedToEncoding:NSASCIIStringEncoding] &&
+		      ![accents canBeConvertedToEncoding:NSUTF16StringEncoding],
+		      [[NSString stringWithFormat:@"ascii -> utf8=%d ascii=%d ; accents -> utf8=%d ascii=%d utf16=%d",
+			(int)[ascii canBeConvertedToEncoding:NSUTF8StringEncoding],
+			(int)[ascii canBeConvertedToEncoding:NSASCIIStringEncoding],
+			(int)[accents canBeConvertedToEncoding:NSUTF8StringEncoding],
+			(int)[accents canBeConvertedToEncoding:NSASCIIStringEncoding],
+			(int)[accents canBeConvertedToEncoding:NSUTF16StringEncoding]] UTF8String]);
+	}
+
+	{
+		NSString *ascii = [NSString stringWithUTF8String:"plain"];
+		NSString *accents = [NSString stringWithUTF8String:"caf\xc3\xa9"];
+
+		check("maximum-length-follows-the-storage",
+		      [ascii maximumLengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 5 &&
+		      [ascii maximumLengthOfBytesUsingEncoding:NSASCIIStringEncoding] == 5 &&
+		      [accents maximumLengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 5 &&
+		      [accents maximumLengthOfBytesUsingEncoding:NSASCIIStringEncoding] == 0 &&
+		      [accents maximumLengthOfBytesUsingEncoding:NSUTF16StringEncoding] == 0,
+		      [[NSString stringWithFormat:@"ascii -> utf8=%lu ascii=%lu ; accents -> utf8=%lu ascii=%lu utf16=%lu",
+			(unsigned long)[ascii maximumLengthOfBytesUsingEncoding:NSUTF8StringEncoding],
+			(unsigned long)[ascii maximumLengthOfBytesUsingEncoding:NSASCIIStringEncoding],
+			(unsigned long)[accents maximumLengthOfBytesUsingEncoding:NSUTF8StringEncoding],
+			(unsigned long)[accents maximumLengthOfBytesUsingEncoding:NSASCIIStringEncoding],
+			(unsigned long)[accents maximumLengthOfBytesUsingEncoding:NSUTF16StringEncoding]] UTF8String]);
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

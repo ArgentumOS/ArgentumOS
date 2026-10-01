@@ -86,6 +86,13 @@ CHECKS = (
           "cstring-with-encoding-refuses-what-it-cannot-store",
           # §63.29: the two URL forms — a file URL round trip, and a scheme with nothing behind it refused.
           "url-doors-round-trip-a-file-url-and-refuse-an-unreachable-scheme",
+          # §63.30: the C-string/characters copy doors, and encoding introspection over the UTF-8 storage.
+          "cstring-doors-copy-byte-for-byte",
+          "cstring-doors-refuse-what-cannot-fit",
+          "cstring-without-encoding-round-trips",
+          "getcharacters-copies-every-unit",
+          "can-be-converted-follows-the-storage",
+          "maximum-length-follows-the-storage",
           # the 2026-09-30 locale slice: NSLocale reads ICU's data (its own probe checks live in
           # foundation_string.m, in the locale area next to locale-basics and locale-display-names).
           "locale-direction-follows-the-script",

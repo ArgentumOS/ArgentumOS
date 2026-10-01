@@ -270,6 +270,33 @@ typedef enum {
 - (size_t)lengthOfBytesUsingEncoding:(NSStringEncoding)encoding;
 - (nullable NSData *)dataUsingEncoding:(NSStringEncoding)encoding;
 - (nullable const char *)cStringUsingEncoding:(NSStringEncoding)encoding;
+
+/* ===================================================================================================
+ * THE C-STRING AND CHARACTER-COPY DOORS, AND ENCODING INTROSPECTION (§63.30).
+ *
+ * THE DEFAULT C-STRING ENCODING HERE IS UTF-8, AND THAT IS A DECISION RATHER THAN A COINCIDENCE: this
+ * library STORES UTF-8 and ASCII and nothing else (§63.2's converter/repertoire line), so the "default
+ * C-string encoding" the deprecated doors below take has exactly one honest value, and it is the storage.
+ * A deprecated name here therefore answers what its encoding-taking sibling answers for UTF-8.
+ *
+ * THE DEPRECATED NAMES ARE IN SCOPE FOR THE REASON EVERY DEPRECATED NAME IS (§62.24): a program written
+ * against them is exactly who this library is for. -getCString:maxLength:encoding: is the modern door and
+ * the others delegate to it rather than keeping a second copy of the copy-out rule.
+ * =================================================================================================== */
+- (const char *)cString;
+- (NSUInteger)cStringLength;
+- (const char *)lossyCString;
+- (void)getCString:(char *)buffer;
+- (void)getCString:(char *)buffer maxLength:(NSUInteger)maxLength;
+- (BOOL)getCString:(char *)buffer maxLength:(NSUInteger)maxLength encoding:(NSStringEncoding)encoding;
+- (void)getCharacters:(unichar *)buffer;
++ (nullable id)stringWithCString:(const char *)cString;
++ (nullable id)stringWithCString:(const char *)cString length:(NSUInteger)length;
+/* INTROSPECTION over the same storage fact: a conversion is possible exactly when the storage IS the
+ * encoding or when every byte is 7-bit ASCII, and the maximum length is the UTF-8 byte count — or 0 when
+ * the conversion cannot happen at all, which is Apple's own answer for an impossible conversion. */
+- (BOOL)canBeConvertedToEncoding:(NSStringEncoding)encoding;
+- (NSUInteger)maximumLengthOfBytesUsingEncoding:(NSStringEncoding)encoding;
 - (BOOL)writeToFile:(NSString *)path
 	 atomically:(BOOL)useAuxiliaryFile
 	   encoding:(NSStringEncoding)encoding

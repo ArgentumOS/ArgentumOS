@@ -2490,6 +2490,138 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return NULL;		/* an encoding we do not store */
 }
 
+/* ===================================================================================================
+ * THE C-STRING AND CHARACTER-COPY DOORS, AND ENCODING INTROSPECTION (§63.30).
+ *
+ * ALL OF THESE GO THROUGH ONE STORAGE FACT: this library's C-string encoding is UTF-8, and UTF-8 IS the
+ * storage, so nothing here transcodes. The deprecated names take "the default C-string encoding", whose
+ * one honest value here is UTF-8 (it is the only encoding this library stores, and §62.24 keeps deprecated
+ * API in scope as a porting target); the modern -getCString:maxLength:encoding: is the door they delegate
+ * to, so the copy-out rule is spelled once.
+ * =================================================================================================== */
+- (const char *)cString
+{
+	/* Apple frees the answer with the receiver's autorelease pool and tells a caller to copy it if the
+	 * string must outlive that. Here it is NSOwnedString's OWN materialised cache, which lives as long as
+	 * the receiver — a STRONGER guarantee than Apple's, and the pointer stays valid for that whole life. */
+	return [self UTF8String];
+}
+
+- (const char *)lossyCString
+{
+	/* Lossiness matters only where a character has no byte in the target encoding; UTF-8 has a byte for
+	 * every character, so the lossy answer is the lossless one. */
+	return [self UTF8String];
+}
+
+- (NSUInteger)cStringLength
+{
+	/* BYTES, NOT UNITS: the length of the C-string representation, excluding the terminating NUL. */
+	return [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+}
+
+- (void)getCString:(char *)buffer
+{
+	/* THE OLDEST AND MOST DANGEROUS FORM: no length is passed, so Apple's contract is "buffer is large
+	 * enough". This library follows that contract rather than inventing a bound only it could know. */
+	size_t bytes = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+
+	if (buffer == NULL) {
+		return;
+	}
+	memcpy(buffer, [self UTF8String], bytes);
+	buffer[bytes] = '\0';
+}
+
+- (void)getCString:(char *)buffer maxLength:(NSUInteger)maxLength
+{
+	/* Apple: "Invokes -getCString:maxLength:encoding: with the default encoding", and the receiver "does
+	 * nothing" when the conversion fails — so the BOOL is dropped and a failure leaves the buffer alone. */
+	if (buffer == NULL) {
+		return;
+	}
+	(void)[self getCString:buffer maxLength:maxLength encoding:NSUTF8StringEncoding];
+}
+
+- (BOOL)getCString:(char *)buffer maxLength:(NSUInteger)maxLength encoding:(NSStringEncoding)encoding
+{
+	/* -cStringUsingEncoding: answers NULL for an unstored encoding AND for ASCII content carrying a high
+	 * byte, so one guard refuses both — the same refusal as the outgoing door, spelled where it lives. */
+	const char *bytes = [self cStringUsingEncoding:encoding];
+	size_t n;
+
+	if (buffer == NULL || bytes == NULL) {
+		return NO;
+	}
+	/* `bytes` was non-NULL, so the encoding is UTF-8 or ASCII and BOTH store the SAME bytes here (an
+	 * ASCII string's UTF-8 form is its ASCII form); the byte count is this class's UTF-8 one. */
+	n = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+	if (n + 1 > maxLength) {
+		return NO;		/* the string AND its terminating NUL do not fit */
+	}
+	memcpy(buffer, bytes, n);
+	buffer[n] = '\0';
+	return YES;
+}
+
+- (void)getCharacters:(unichar *)buffer
+{
+	/* The deprecated no-range form copies EVERY unit and adds no terminator — which Apple's page says is
+	 * exactly the range form over the whole extent, so this is a delegation rather than a second walk. */
+	[self getCharacters:buffer range:NSMakeRange(0, [self length])];
+}
+
++ (id)stringWithCString:(const char *)cString
+{
+	/* The default encoding is UTF-8, so this is the §63.28 door with that encoding named — one refusal
+	 * rule rather than two, and a NULL answers nil through it. */
+	return [self stringWithCString:cString encoding:NSUTF8StringEncoding];
+}
+
++ (id)stringWithCString:(const char *)cString length:(NSUInteger)length
+{
+	/* ⚠ THE LENGTH IS HONOURED AND THE NUL IS NOT: the bytes need not be NUL-terminated, so this reads
+	 * EXACTLY `length` of them through -initWithBytes:length:, the constructor that takes a count. */
+	if (cString == NULL) {
+		return nil;
+	}
+	return [[[self alloc] initWithBytes:cString length:length] autorelease];
+}
+
+- (BOOL)canBeConvertedToEncoding:(NSStringEncoding)encoding
+{
+	size_t i, n;
+
+	if (encoding == NSUTF8StringEncoding) {
+		return YES;			/* the storage IS UTF-8 */
+	}
+	if (encoding != NSASCIIStringEncoding) {
+		return NO;			/* an encoding this library does not store */
+	}
+	n = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+	for (i = 0; i < n; i++) {
+		if ([self byteAtIndex:i] > 0x7F) {
+			return NO;		/* a high byte has no 7-bit ASCII representation */
+		}
+	}
+	return YES;
+}
+
+- (NSUInteger)maximumLengthOfBytesUsingEncoding:(NSStringEncoding)encoding
+{
+	/* Apple answers the MAXIMUM byte count a conversion could take, and 0 when the encoding "cannot be
+	 * used" to convert the receiver. This library stores UTF-8 and ASCII, so the maximum is the UTF-8 byte
+	 * count for a UTF-8 conversion and for an ASCII one that is possible; an ASCII conversion of a
+	 * high-byte string, and any unstored encoding, answer 0. */
+	if (encoding == NSUTF8StringEncoding) {
+		return [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+	}
+	if (encoding == NSASCIIStringEncoding && [self canBeConvertedToEncoding:NSASCIIStringEncoding]) {
+		return [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+	}
+	return 0;
+}
+
 /* ------------------------------------------------------------------ composition */
 - (NSString *)stringByAppendingPathExtension:(NSString *)extension
 {
