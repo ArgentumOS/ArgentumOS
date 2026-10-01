@@ -236,6 +236,7 @@ and both the header and this document carry it.
 
 | **D15** | asking `NSDataDetector` for **`NSTextCheckingTypeAddress`** is REFUSED: the door answers nil with an `NSError` in `NSDataDetectorErrorDomain` carrying code `NSDataDetectorTypeNeedsSubstrateCode` | **(ii) a dependency this system lacks** — Apple's address detector is a locale-dependent POSTAL-ADDRESS GRAMMAR over per-country data (which words are street suffixes, where an address ENDS, what a postal code looks like, which region names are regions), and this system has neither the grammar nor the data. The one piece that would come free - the nine component keys - shipped in §62.19 and is what a caller would read an address OUT of, which is exactly why the absence of the thing that WRITES one has to be visible | `NSDataDetector.h` (the class comment, and the two code constants), this plan §62.19, and `foundation_datadetector`'s `address-and-transit-refuse-by-name` check | **BOUNDARY, AND IT IS APPLE'S OWN MECHANISM RATHER THAN AN INVENTION**: `+dataDetectorWithTypes:error:` is documented to answer nil WITH an error ("if an error was encountered, returns nil, and error contains the error"), so refusing here is the contract's error path rather than a silent omission - and the check reads the DOMAIN and the CODE, so a change that stopped refusing would fail the gate rather than merely change a return value |
 | **D16** | asking `NSDataDetector` for **`NSTextCheckingTypeTransitInformation`** is REFUSED the same way, with the same code | **(ii) a dependency this system lacks** — a transit result is a FLIGHT and an AIRLINE (`NSTextCheckingAirlineKey`, `NSTextCheckingFlightKey`), so the detector needs an airline code table and enough schedule data to know what a flight number looks like; there is no such data on this system and no service to ask | `NSDataDetector.h` (the class comment and the two code constants), this plan §62.19, the same check | **BOUNDARY** — and the FOURTH CATEGORY DOES NOT EXIST, which is why only two rows were needed: asking a data detector for Spelling, Orthography, Grammar, Correction, Quote, Dash, Replacement or RegularExpression is an ERROR ON APPLE'S OWN PAGE (those are what `NSSpellChecker` and `NSRegularExpression` produce), so refusing them is the CONTRACT rather than a deviation, and a deviation row for them would inflate the debt by eight |
+| **D17** | **(a) A DEVIATION THAT IS GONE, RECORDED SO THE CATEGORY IS NOT PERMANENT:** `NSString`'s path doors were **lexical-only** — `-stringByResolvingSymlinksInPath` was absent, on the stated ground that "resolving a symlink is a FILESYSTEM LOOKUP, and this library's string path doors are deliberately lexical". **(b) A DEFECT THE SAME UNIT EXPOSED, NOT A BOUNDARY:** `-localizedStandardCompare:` is spelled over `NSCaseInsensitiveSearch \| NSNumericSearch`, and **`NSNumericSearch` IS A DECLARED OPTION THAT NOTHING HONOURS** — `-compare:options:` is a byte walk that never looks at it, so "abc2" still sorts AFTER "abc100" where Apple's own note says it sorts before | **(a) NONE, AND THAT IS THE FINDING:** (i) did not apply (nothing is excluded) and (ii) is a claim about the PLATFORM, which was simply false — `realpath` is here and `NSFileManager` has always read the disk. The door is implemented, so nothing is left to tolerate. **(b) also NONE:** Apple publishes the rule for the option, and a byte walk is not a dependency this system lacks | (a) `NSString.h` (the corrected note at the path doors), `NSString.m` (the door, and `-stringByStandardizingPath`'s corrected note), `foundation_string` (`symlink-resolution-follows-a-real-link`, `unresolvable-path-resolves-to-itself`). (b) the option's own declaration, and `foundation_string`'s `localized-standard-compare-folds-case-and-reports-its-numeric-gap`, **which asserts the byte-order answer it actually gets** so the gap is visible in the probe rather than assumed | **(a) RESOLVED 2026-10-01 (the user's decision, §63.48)** — the string path doors stop being lexical-only, and the DOCUMENTED FAILURE keeps them safe: an unresolvable path comes back UNMODIFIED, which IS the lexical answer, so a caller that read these doors as strings does not start getting lookups by accident. **(b) A WORK ITEM, and it is a DEFECT rather than a boundary** because the option is Apple's and the behaviour is specified: `NSNumericSearch` is owed an implementation. ONE RESIDUAL IS NAMED RATHER THAN OMITTED: Apple's `/private` stripping rule in (a) is vacuous here — there is no `/private` on this system — so it is stated in the door's note instead of implemented against a path that cannot occur |
 
 **HOW THIS REGISTER STAYS TRUE.** It is prose, not a gate: no tooling reads it. The standing rule is
 that **a deviation lands WITH its row** (the same rule nullability has, and that one has a gate); the
@@ -15975,6 +15976,54 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 `--families --write` (rewrote the family table and the ledger) → `--check` **consistent** → `--unimplemented`
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
+
+## §63.48 — THE PATH DOORS' LEXICAL BOUNDARY IS GONE, AND A DECLARED OPTION THAT DID NOTHING (2026-10-01)
+
+**WHAT LANDED: THREE ROWS, AND ONE OF THEM WAS A BOUNDARY RATHER THAN A GAP.**
+`-stringByResolvingSymlinksInPath` (a property, Apple's own spelling), `-localizedStandardCompare:`, and
+`-completePathIntoString:caseSensitive:matchesIntoArray:filterTypes:`. **MEASURED: guest case
+`foundation_string` 6/6 checks with the probe's own tally `ok=153 fail=0` (was 149); `make testimg` exit 0
+BEFORE `make test` was believed; `make foundation-sweep` exit 0; `--check` consistent; `--unimplemented`
+0 NEW; ledger methods 2176 → 2178 and properties 1267 → 1268.**
+
+**⚠ THE HEADER'S GROUND WAS "A FILESYSTEM LOOKUP", AND §11 ASKS A DIFFERENT QUESTION.** `NSString.h` said
+`-stringByResolvingSymlinksInPath` "is NOT here: resolving a symlink is a FILESYSTEM LOOKUP, and this library's
+string path doors are deliberately lexical". **§11.6's necessity test is a claim about the PLATFORM — that
+Argentum CANNOT have Apple's behaviour — and this platform can:** `realpath` is here, and `NSFileManager` has
+always read the disk, which makes the sentence *"there is no filesystem in this library to look anything up
+in"* (at `-stringByStandardizingPath`) simply FALSE. **The user decided (2026-10-01) that fidelity wins**, so the
+door exists, the boundary change is registered as **§11.6.1 D17**, and both stale notes are corrected rather
+than kept. **The safety is the documented half:** a path whose links cannot be resolved returns an UNMODIFIED
+copy, which IS the lexical answer, so nothing that read these doors as strings starts getting lookups by
+accident.
+
+**⚠ AND THE UNIT EXPOSED A SECOND DEFECT, IN A DOOR IT DID NOT SET OUT TO TOUCH: `NSNumericSearch` IS A
+DECLARED OPTION THAT NOTHING HONOURS.** `-localizedStandardCompare:` is spelled over
+`NSCaseInsensitiveSearch | NSNumericSearch` — Apple's own note names both — and the probe FAILED, which is how
+it was found: `-compare:options:` is a byte walk and never looks at the numeric bit, so `"abc2"` sorts AFTER
+`"abc100"` where Apple's note says it sorts before. **THAT IS REGISTERED AS A DEFECT (D17b), NOT A BOUNDARY**,
+because the option is Apple's and its behaviour is specified; and **the probe now ASSERTS THE BYTE-ORDER ANSWER
+IT ACTUALLY GETS**, so the gap is visible in the check rather than assumed away. It is owed its own unit — the
+byte-loop shape cannot carry numeric runs (two indexes are needed, since leading zeros make the runs different
+lengths), so it is not a one-line fix.
+
+**AND THE DECLARATIONS CAME FROM A CITABLE SOURCE, WHICH TOOK THREE ATTEMPTS AND IS WORTH RECORDING.**
+`-completePathIntoString:…` and `-stringByResolvingSymlinksInPath` are macOS-only, ABSENT from the iOS SDK
+header, and their Apple doc pages carry NO declaration fragments at all — the `variantOverrides` door that works
+for `NSArray` returns nothing here. So their shapes come from **GNUstep's published reference**, which §2
+admits as a secondary spec, and which settled both (and corroborated the percent pair's parameter type).
+
+**AND A COMPILE ERROR THAT IS THE HOUSE'S OWN RULE RATHER THAN AN OVERSIGHT:** `-completePathIntoString:…` is
+declared with **plain `NSArray *`**, because `NSArray` is only FORWARD-DECLARED in `NSString.h` — a type
+argument there is *"type arguments cannot be applied to non-parameterized class"* — and the sibling
+`+pathWithComponents:` in the same header is spelled that way for the same reason.
+
+**WHAT IS LEFT OF STRING'S CLOSEABLE SET, AND IT IS NOT WHAT THE SLICE LIST SAID.** Of the ten rows that
+looked closeable, **three are not**: the percent-escape pair STAY OPEN on §63.3's recorded ground ("they await a
+citable set" — writing a URL allowed-set from memory would be inventing a specification), and
+`-propertyListFromStringsFileFormat` is **BLOCKED ON THE PLIST READER**, whose own note (NSString.m) records
+that a `.strings` body is brace-less and the old-style reader answers nil for one: *"That is a defect in the
+reader, and it is owed its own unit."* **The seven that remain can close.**
 
 ## §63.47 — THE BORROWED-BUFFER FAMILY: SIX DOORS, ONE CONTRACT, AND THE HINT HONOURED WHERE IT MATTERS (2026-10-01)
 

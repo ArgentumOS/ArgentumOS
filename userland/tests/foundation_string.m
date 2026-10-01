@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdlib.h>		/* malloc, for the ...Characters: ownership check below */
 #include <stdarg.h>		/* va_list, for the locale-format-arguments case below */
+#include <unistd.h>		/* symlink, for §63.48's real-link resolution check */
 
 static int okc, failc;
 
@@ -2482,6 +2483,92 @@ NULL
 						@"leftover at %lu with length %lu",
 						buffer, (unsigned long)leftover.location,
 						(unsigned long)leftover.length] UTF8String]);
+		}
+	}
+
+	/* --- §63.48: THE TWO FILESYSTEM DOORS, AND THE FINDER COMPARISON --------------------------------- */
+	{
+		NSString *tmp = @"/System/Temporary Files";
+		NSString *target = [tmp stringByAppendingPathComponent:@"link-63-48-target.txt"];
+		NSString *link = [tmp stringByAppendingPathComponent:@"link-63-48.txt"];
+		NSFileManager *fm = [NSFileManager defaultManager];
+
+		[fm createFileAtPath:target contents:[NSData dataWithBytes:"x" length:1] attributes:nil];
+
+		/* ⚠ A REAL SYMLINK, MADE AND RESOLVED — the door is a FILESYSTEM LOOKUP now, so the check that
+		 * proves it is one is a check that would answer DIFFERENTLY under the lexical rule this class used to
+		 * have. `removeItemAtPath:` first, so a leftover from an earlier run cannot turn the second pass into
+		 * a no-op that passes. */
+		[fm removeItemAtPath:link error:NULL];
+		if (symlink([target fileSystemRepresentation], [link fileSystemRepresentation]) == 0) {
+			NSString *resolved = [[link stringByResolvingSymlinksInPath] lastPathComponent];
+
+			check("symlink-resolution-follows-a-real-link",
+			      [resolved isEqualToString:@"link-63-48-target.txt"],
+			      [[NSString stringWithFormat:@"a symlink resolves to its REFERENT (got %@) — the lexical "
+						@"rule would have answered link-63-48.txt", resolved] UTF8String]);
+		} else {
+			check("symlink-resolution-follows-a-real-link", 0,
+			      "could not create the symlink this check needs");
+		}
+
+		/* AND THE UNRESOLVABLE PATH IS THE DOCUMENTED FAILURE: UNCHANGED, which is the lexical answer. */
+		{
+			NSString *absent = [tmp stringByAppendingPathComponent:@"no-such-63-48/deeper"];
+			NSString *answer = [absent stringByResolvingSymlinksInPath];
+
+			check("unresolvable-path-resolves-to-itself",
+			      [answer isEqualToString:absent],
+			      [[NSString stringWithFormat:@"a path that does not exist comes back UNMODIFIED (%@)",
+						answer] UTF8String]);
+		}
+
+		/* THE FINDER ORDERING IS CASE-INSENSITIVE AND NUMERIC, which is the half Apple's own note names:
+		 * "abc2" before "abc100" is that note's example, and BYTE order would put "abc100" first. */
+		/* ⚠ WHAT THIS DOOR CAN HONOUR HERE IS THE CASE HALF; THE NUMERIC HALF IS A RECORDED DEFECT RATHER
+		 * THAN A CLAIM. `-localizedStandardCompare:` is spelled over `NSCaseInsensitiveSearch |
+		 * NSNumericSearch` — Apple's own note names both — but **`NSNumericSearch` IS A DECLARED OPTION THAT
+		 * NOTHING HONOURS**: `-compare:options:` is a byte walk and never looks at it. So the check asserts
+		 * the case half AND ASSERTS THE NUMERIC HALF AS THE BYTE-ORDER ANSWER IT ACTUALLY GETS, which is what
+		 * makes the gap visible in the probe instead of assumed away. §63.48 records it with its own unit. */
+		check("localized-standard-compare-folds-case-and-reports-its-numeric-gap",
+		      [@"ABC" localizedStandardCompare:@"abc"] == NSOrderedSame &&
+		      [@"b" localizedStandardCompare:@"a"] == NSOrderedDescending &&
+		      [@"abc2" localizedStandardCompare:@"abc100"] == NSOrderedDescending,
+		      "case does not decide - and \"abc2\" still compares AFTER \"abc100\", which is the "
+		      "NSNumericSearch gap SS63.48 records rather than a claim about Apple's ordering");
+
+		/* THE COMPLETION DOOR: a UNIQUE prefix is NAMED, every match is listed, and filterTypes narrows by
+		 * extension. The fixtures are made here so the check does not depend on the image's own contents. */
+		{
+			NSString *unique = [tmp stringByAppendingPathComponent:@"cmp-63-48-uniq.plist"];
+			NSString *other1 = [tmp stringByAppendingPathComponent:@"cmp-63-48-a.md"];
+			NSString *other2 = [tmp stringByAppendingPathComponent:@"cmp-63-48-b.md"];
+			NSString *partial = [tmp stringByAppendingPathComponent:@"cmp-63-48-uniq"];
+			NSString *prefix = [tmp stringByAppendingPathComponent:@"cmp-63-48-"];
+			NSString *completed = nil;
+			NSArray *matches = nil;
+			NSArray *filtered = nil;
+			NSUInteger uniqueCount;
+			NSUInteger filteredCount;
+
+			[fm createFileAtPath:unique contents:[NSData dataWithBytes:"u" length:1] attributes:nil];
+			[fm createFileAtPath:other1 contents:[NSData dataWithBytes:"a" length:1] attributes:nil];
+			[fm createFileAtPath:other2 contents:[NSData dataWithBytes:"b" length:1] attributes:nil];
+
+			uniqueCount = [partial completePathIntoString:&completed caseSensitive:YES
+					     matchesIntoArray:&matches filterTypes:nil];
+			filteredCount = [prefix completePathIntoString:NULL caseSensitive:YES
+					       matchesIntoArray:&filtered
+						    filterTypes:[NSArray arrayWithObject:@"md"]];
+
+			check("completepathintostring-completes-and-filters",
+			      uniqueCount == 1 && [completed isEqualToString:unique] && [matches count] == 1 &&
+			      filteredCount == 2 && [filtered count] == 2,
+			      [[NSString stringWithFormat:@"a unique prefix is NAMED (%@) and listed once, and the "
+						@"shared prefix with a filter answers the %lu .md matches",
+						[completed lastPathComponent],
+						(unsigned long)filteredCount] UTF8String]);
 		}
 	}
 

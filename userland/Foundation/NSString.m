@@ -3239,8 +3239,127 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return self;			/* not under the home directory: unchanged */
 }
 
+/* ===================================================================================================
+ * §63.48: THE TWO FILESYSTEM DOORS, AND THE BOUNDARY THEY MOVE.
+ *
+ * **THE STRING PATH DOORS WERE LEXICAL-ONLY BY A NOTE, NOT BY NECESSITY** — the header said
+ * `-stringByResolvingSymlinksInPath` "is NOT here: resolving a symlink is a FILESYSTEM LOOKUP, and this
+ * library's string path doors are deliberately lexical". §11's rule is that a difference from Apple is a
+ * FAILURE unless Argentum cannot have Apple's behaviour, which is a claim about the PLATFORM — and this one
+ * can (`realpath` is here). The user decided (2026-10-01) that fidelity wins, so the door exists, the
+ * boundary change is registered in §11.6, and the header note is corrected rather than kept.
+ *
+ * AND WHAT KEEPS IT SAFE IS THE DOCUMENTED FAILURE: a path whose links cannot be resolved comes back
+ * UNMODIFIED — which is exactly the lexical answer this class gave before — so nothing that read these doors
+ * as strings starts reading them as lookups by accident.
+ * =================================================================================================== */
+- (NSString *)stringByResolvingSymlinksInPath
+{
+	NSString *expanded = [self stringByExpandingTildeInPath];
+	const char *fs = [expanded fileSystemRepresentation];
+	char *resolved;
+
+	if (fs == NULL) {
+		return [expanded copy];
+	}
+	/* ONE CALL DOES THE WHOLE WALK — every component, links and all — which is the answer Apple's door
+	 * describes ("path components representing symbolic links have been replaced by their referents"). The
+	 * NULL second argument is POSIX.1-2008's "allocate the buffer for me", so no PATH_MAX buffer is guessed
+	 * at here. */
+	resolved = realpath(fs, NULL);
+	if (resolved == NULL) {
+		return [expanded copy];
+	}
+	{
+		NSString *answer = [NSString stringWithUTF8String:resolved];
+
+		free(resolved);
+		return (answer != nil) ? answer : [expanded copy];
+	}
+}
+
+- (NSComparisonResult)localizedStandardCompare:(NSString *)string
+{
+	/* APPLE'S OWN HEADER NOTE IS MOSTLY A WARNING, AND IT IS WORTH REPEATING VERBATIM: this door "should be
+	 * used whenever file names or other strings are presented in lists and tables where Finder-like sorting
+	 * is appropriate. The exact behavior of this method may be tweaked in future releases, and will be
+	 * different under different localizations, so clients should not depend on the exact sorting order."
+	 *
+	 * WHAT THIS LIBRARY CAN HONOUR EXACTLY IS THE PART THE SAME NOTE NAMES: case-insensitive, and NUMERIC —
+	 * "abc2" sorts before "abc100". Both are options this class already implements, so the door is that
+	 * comparison rather than a second ordering rule.
+	 *
+	 * AND THE LOCALISATION-DEPENDENT HALF IS STATED RATHER THAN FAKED: `-localizedCompare:` here compares by
+	 * BYTE (its own header says so), so there is no collation table to consult and none is invented. A caller
+	 * who needs Apple's exact ordering under a particular locale does not get it, and this is where that is
+	 * written down. */
+	return [self compare:string options:(NSCaseInsensitiveSearch | NSNumericSearch)];
+}
+
+- (NSUInteger)completePathIntoString:(NSString * _Nullable * _Nullable)outputName
+		       caseSensitive:(BOOL)flag
+		    matchesIntoArray:(NSArray * _Nullable * _Nullable)outputArray
+			 filterTypes:(nullable NSArray *)filterTypes
+{
+	NSString *directory = [self stringByDeletingLastPathComponent];
+	NSString *partial = [self lastPathComponent];
+	NSError *ignored = nil;
+	NSArray *entries;
+	NSMutableArray *matches = [[NSMutableArray alloc] init];
+	NSUInteger i;
+
+	if (outputName != NULL) {
+		*outputName = nil;
+	}
+	if (outputArray != NULL) {
+		*outputArray = nil;
+	}
+	/* THE DIRECTORY LISTING IS `NSFileManager`'S, not a second `opendir` walk: one reader for "what is in this
+	 * directory" is the rule every other door here follows. An unreadable directory completes NOTHING and
+	 * says so with a zero — the honest answer rather than an exception. */
+	entries = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:directory error:&ignored];
+	if (entries == nil) {
+		return 0;
+	}
+	for (i = 0; i < [entries count]; i++) {
+		NSString *name = [entries objectAtIndex:i];
+		BOOL hit;
+
+		if (flag) {
+			hit = [name hasPrefix:partial];
+		} else {
+			hit = [name rangeOfString:partial
+					  options:NSCaseInsensitiveSearch].location == 0;
+		}
+		if (hit && filterTypes != nil && [filterTypes count] > 0 &&
+		    ![filterTypes containsObject:[name pathExtension]]) {
+			hit = NO;
+		}
+		if (hit) {
+			[matches addObject:[directory stringByAppendingPathComponent:name]];
+		}
+	}
+	/* APPLE'S TWO ANSWERS TO TWO QUESTIONS: a UNIQUE completion is the one the door hands back by name, and
+	 * every match is handed back in the array — which is how a caller learns there was more than one. */
+	if ([matches count] == 1 && outputName != NULL) {
+		*outputName = [matches objectAtIndex:0];
+	}
+	if (outputArray != NULL) {
+		*outputArray = matches;
+	}
+	return [matches count];
+}
+
 - (NSString *)stringByStandardizingPath
 {
+	/*
+	 * LEXICAL, WHICH IS WHAT THIS NAME PROMISES — and the sentence that used to follow it, "there is no
+	 * filesystem in this library to look anything up in", was simply FALSE: NSFileManager has always read the
+	 * disk, and §63.48 gave this class a door that resolves links. WHAT REMAINS TRUE IS THE BOUNDARY ITSELF:
+	 * collapsing repeated slashes, dropping "." components and resolving ".." by POPPING are LEXICAL
+	 * operations, and following a symlink is not one — so they stay two doors, and this is the one that never
+	 * touches the disk.
+	 */
 	/*
 	 * LEXICAL AND FILESYSTEM-FREE, which is what the name promises here: collapse
 	 * repeated slashes, drop "." components, and resolve ".." by popping the last

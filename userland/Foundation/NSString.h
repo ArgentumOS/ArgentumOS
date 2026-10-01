@@ -680,14 +680,39 @@ typedef enum {
  *                                   directory back to `~`. A path with no leading `~`, and a path whose `~user`
  *                                   is unknown, are answered UNCHANGED — Apple's own behaviour for both.
  *
- * -stringByResolvingSymlinksInPath is NOT here: resolving a symlink is a FILESYSTEM LOOKUP, and this library's
- * string path doors are deliberately lexical (see -stringByStandardizingPath's own note). It stays open. */
+ * ⚠ AND `-stringByResolvingSymlinksInPath` IS HERE NOW, WHICH IS A CORRECTION OF THIS NOTE (the user's
+ * decision, 2026-10-01, §63.48). It read: "resolving a symlink is a FILESYSTEM LOOKUP, and this library's
+ * string path doors are deliberately lexical (see -stringByStandardizingPath's own note). It stays open."
+ * **THAT WAS A DESIGN PREFERENCE, NOT A NECESSITY**, and §11's rule is that a difference from Apple is a
+ * failure unless Argentum CANNOT have Apple's behaviour — which is a claim about the PLATFORM, and this
+ * platform can: `lstat`/`readlink` are here. So the door is implemented, **THE STRING PATH DOORS STOP BEING
+ * LEXICAL-ONLY**, and that boundary change is registered in §11.6. What keeps it safe is the documented half:
+ * a path whose links cannot be resolved is returned UNMODIFIED, which is the lexical answer. */
 + (NSString *)pathWithComponents:(NSArray *)components;
 - (NSArray *)stringsByAppendingPaths:(NSArray *)paths;
 - (const char *)fileSystemRepresentation;
 - (BOOL)getFileSystemRepresentation:(char *)buffer maxLength:(NSUInteger)maxLength;
 - (NSString *)stringByExpandingTildeInPath;
 - (NSString *)stringByAbbreviatingWithTildeInPath;
+/* Apple declares this as a PROPERTY — the ledger's row is a `property` row and §11.0 says match the
+ * declaration — and its behaviour is the filesystem walk the note above used to refuse. */
+@property (readonly, copy) NSString *stringByResolvingSymlinksInPath;
+
+/* THE OTHER TWO §63.48 ROWS, beside the path doors they belong to. `-localizedStandardCompare:` is the
+ * Finder-style ordering Apple documents for file names in lists and tables; `-completePathIntoString:…`
+ * completes a partial path against the filesystem and reports how many candidates it found. Both take their
+ * shapes from a citable source rather than from memory: the first from Apple's own header, the second from
+ * GNUstep's published reference, which §2 admits as a secondary spec. */
+- (NSComparisonResult)localizedStandardCompare:(NSString *)string;
+/* ⚠ THE TYPES ARE WRITTEN PLAIN `NSArray *`, WHICH IS THIS HEADER'S OWN RULE RATHER THAN AN OVERSIGHT: NSArray
+ * is only FORWARD-DECLARED here, so a type argument is a compile error ("type arguments cannot be applied to
+ * non-parameterized class") — and the sibling door above (`+pathWithComponents:`) is spelled the same way for
+ * the same reason. Importing NSArray.h to buy the decoration would put the collections family on this
+ * header's include path. */
+- (NSUInteger)completePathIntoString:(NSString * _Nullable * _Nullable)outputName
+		       caseSensitive:(BOOL)flag
+		    matchesIntoArray:(NSArray * _Nullable * _Nullable)outputArray
+			 filterTypes:(nullable NSArray *)filterTypes;
 
 
 /* ===================================================================================================

@@ -125,6 +125,11 @@ CHECKS = (
           "no-copy-deallocator-runs-once-with-the-length",
           "getbytes-size-form-and-refusal",
           "getcstring-range-form-converts-the-range",
+          # §63.48: the two filesystem doors (a real symlink, an unresolvable path) and the Finder compare.
+          "symlink-resolution-follows-a-real-link",
+          "unresolvable-path-resolves-to-itself",
+          "localized-standard-compare-folds-case-and-reports-its-numeric-gap",
+          "completepathintostring-completes-and-filters",
 )
 
 
