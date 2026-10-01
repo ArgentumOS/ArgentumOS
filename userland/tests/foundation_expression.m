@@ -19,6 +19,13 @@
  *   expr-set-operations    union/intersect/minus, including the rule that TWO SETS answer a SET and
  *                          anything else answers an ARRAY;
  *   expr-fold-functions    sum/count/min/max over a key path's collection;
+ *   expr-set-left-right    the LEFT and RIGHT sides of a set expression (Apple's header names them
+ *                          exactly that), and nil on a kind that has no sides;
+ *   expr-conditional       a conditional expression: an NSPredicate picks a branch, and BOTH branches
+ *                          are reached by evaluating the SAME tree against objects that flip it;
+ *   expr-subquery          a subquery expression reads its parts back, and its EVALUATION refuses by
+ *                          name — the predicate evaluator threads no iterator-variable bindings;
+ *   expr-init-with-type    Apple's designated initializer, a bare node of a chosen type;
  *   expr-equality          two separately-built trees that are equal, and their descriptions.
  */
 
@@ -307,6 +314,101 @@ int main(void)
 			@"(0 = the expression owns it, which is what the fix made true) and the expression answers its own "
 			@"value: %@", deaths,
 			(deaths == 0 && [holder constantValue] != nil) ? @"yes" : @"NO — reading it would be a dangling read"]);
+	}
+
+	{
+		/* THE TWO SIDES OF A SET EXPRESSION (Apple's header calls them exactly that). The left and right
+		 * are READ BACK from the operands the set factory stored, and a NON-set expression answers nil for
+		 * both — Cocoa's accessors "raise if not applicable"; nil is this library's spelling of that. */
+		NSExpression *left = [NSExpression expressionForConstantValue:@[@1, @2]];
+		NSExpression *right = [NSExpression expressionForConstantValue:@[@2, @3]];
+		NSExpression *unioned = [NSExpression expressionForUnionSet:left with:right];
+		NSExpression *constant = [NSExpression expressionForConstantValue:@42];
+
+		check("expr-set-left-right",
+		      [[unioned leftExpression] isEqual:left] &&
+		      [[unioned rightExpression] isEqual:right] &&
+		      [constant leftExpression] == nil && [constant rightExpression] == nil,
+		      [NSString stringWithFormat:@"left=%@ right=%@ nonSetLeft=%@",
+			[unioned leftExpression], [unioned rightExpression], [constant leftExpression]]);
+	}
+
+	{
+		/* A CONDITIONAL EXPRESSION: an NSPredicate picks a branch, and BOTH branches are reachable — the
+		 * SAME tree is evaluated against objects that flip the condition. This is the kind the predicate
+		 * substrate makes honest: the condition is asked through -evaluateWithObject:, which is the whole
+		 * of the predicate protocol. */
+		ExprThing *big = [[ExprThing alloc] initWithAmount:7 values:@[]];
+		ExprThing *small = [[ExprThing alloc] initWithAmount:3 values:@[]];
+		NSPredicate *overFive =
+			[NSComparisonPredicate predicateWithLeftExpression:[NSExpression expressionForKeyPath:@"amount"]
+							rightExpression:[NSExpression expressionForConstantValue:@5]
+							       modifier:NSDirectPredicateModifier
+								   type:NSGreaterThanPredicateOperatorType
+								options:0];
+		NSExpression *yes = [NSExpression expressionForConstantValue:@"big"];
+		NSExpression *no = [NSExpression expressionForConstantValue:@"small"];
+		NSExpression *conditional = [NSExpression expressionForConditional:overFive
+									   trueExpression:yes
+									  falseExpression:no];
+
+		check("expr-conditional",
+		      conditional != nil &&
+		      [conditional expressionType] == NSConditionalExpressionType &&
+		      [[conditional predicate] isEqual:overFive] &&
+		      [[conditional trueExpression] isEqual:yes] &&
+		      [[conditional falseExpression] isEqual:no] &&
+		      [[conditional evaluateWithObject:big] isEqualToString:@"big"] &&
+		      [[conditional evaluateWithObject:small] isEqualToString:@"small"],
+		      [NSString stringWithFormat:@"type=%lu big=%@ small=%@ true=%@ false=%@",
+			(unsigned long)[conditional expressionType],
+			[conditional evaluateWithObject:big], [conditional evaluateWithObject:small],
+			[conditional trueExpression], [conditional falseExpression]]);
+	}
+
+	{
+		/* A SUBQUERY EXPRESSION reads its parts back, and its EVALUATION refuses by name: filtering needs
+		 * the iterator variable bound WHILE the predicate runs, and this library's predicate evaluator
+		 * threads no bindings into -evaluateWithObject:. The refusal is the assertion, and the exception
+		 * NAME is what says the refusal is the deliberate one. ITS LEFT SIDE IS THE COLLECTION is a
+		 * REASONED expectation, from Apple's own SUBQUERY(collection, ...) shape. */
+		NSExpression *collection = [NSExpression expressionForKeyPath:@"values"];
+		NSPredicate *overOne =
+			[NSComparisonPredicate predicateWithLeftExpression:[NSExpression expressionForVariable:@"x"]
+							rightExpression:[NSExpression expressionForConstantValue:@1]
+							       modifier:NSDirectPredicateModifier
+								   type:NSGreaterThanPredicateOperatorType
+								options:0];
+		NSExpression *subquery = [NSExpression expressionForSubquery:collection
+								     usingIteratorVariable:@"x"
+										 predicate:overOne];
+		BOOL refused = NO;
+
+		@try {
+			[subquery evaluateWithObject:nil];
+		} @catch (NSException *exception) {
+			refused = [[exception name] isEqualToString:NSInvalidArgumentException];
+		}
+		check("expr-subquery",
+		      subquery != nil &&
+		      [subquery expressionType] == NSSubqueryExpressionType &&
+		      [[subquery predicate] isEqual:overOne] &&
+		      [[subquery leftExpression] isEqual:collection] &&
+		      refused,
+		      [NSString stringWithFormat:@"type=%lu predicate=%@ left=%@ refused=%d",
+			(unsigned long)[subquery expressionType], [subquery predicate],
+			[subquery leftExpression], (int)refused]);
+	}
+
+	{
+		/* APPLE'S DESIGNATED INITIALIZER: a bare node of a chosen type, its slots empty. */
+		NSExpression *bare = [[NSExpression alloc] initWithExpressionType:NSKeyPathExpressionType];
+
+		check("expr-init-with-type",
+		      bare != nil && [bare expressionType] == NSKeyPathExpressionType &&
+		      [bare keyPath] == nil && [bare constantValue] == nil,
+		      [NSString stringWithFormat:@"type=%lu keyPath=%@",
+			(unsigned long)[bare expressionType], [bare keyPath]]);
 	}
 
 	printf("FOUNDATION-EXPRESSION RESULT ok=%d fail=%d\n", okc, failc);

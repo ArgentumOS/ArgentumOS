@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2130   open  530   struck  268
-#   property   shipped 1261   open  229   struck  146
+#   method     shipped 2141   open  519   struck  268
+#   property   shipped 1266   open  224   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -1134,7 +1134,7 @@ method	open	-allowEvaluation	NSExpression	Fundamentals / Filltering / Evaluating
 method	shipped	+expressionForAggregate:	NSExpression	Fundamentals / Filltering / Creating a Collection Expression	-	objc
 method	shipped	+expressionForAnyKey	NSExpression	Fundamentals / Filltering / Creating an Expression for a Value	-	objc
 method	open	+expressionForBlock:arguments:	NSExpression	Fundamentals / Filltering / Creating an Expression Using Blocks	-	objc
-method	open	+expressionForConditional:trueExpression:falseExpression:	NSExpression	Fundamentals / Filltering / Creating a Conditional Expression	-	objc
+method	shipped	+expressionForConditional:trueExpression:falseExpression:	NSExpression	Fundamentals / Filltering / Creating a Conditional Expression	-	objc
 method	shipped	+expressionForConstantValue:	NSExpression	Fundamentals / Filltering / Creating an Expression for a Value	-	objc
 method	shipped	+expressionForEvaluatedObject	NSExpression	Fundamentals / Filltering / Creating an Expression for a Value	-	objc
 method	shipped	+expressionForFunction:arguments:	NSExpression	Fundamentals / Filltering / Creating an Expression for a Function	-	objc
@@ -1142,7 +1142,7 @@ method	shipped	+expressionForFunction:selectorName:arguments:	NSExpression	Funda
 method	shipped	+expressionForIntersectSet:with:	NSExpression	Fundamentals / Filltering / Creating a Collection Expression	-	objc
 method	shipped	+expressionForKeyPath:	NSExpression	Fundamentals / Filltering / Creating an Expression for a Value	-	objc
 method	shipped	+expressionForMinusSet:with:	NSExpression	Fundamentals / Filltering / Creating a Collection Expression	-	objc
-method	open	+expressionForSubquery:usingIteratorVariable:predicate:	NSExpression	Fundamentals / Filltering / Creating a Subquery	-	objc
+method	shipped	+expressionForSubquery:usingIteratorVariable:predicate:	NSExpression	Fundamentals / Filltering / Creating a Subquery	-	objc
 method	shipped	+expressionForUnionSet:with:	NSExpression	Fundamentals / Filltering / Creating a Collection Expression	-	objc
 method	shipped	+expressionForVariable:	NSExpression	Fundamentals / Filltering / Creating an Expression for a Value	-	objc
 method	shipped	-expressionValueWithObject:context:	NSExpression	Fundamentals / Filltering / Evaluating an Expression	-	objc
@@ -1150,20 +1150,20 @@ method	open	+expressionWithFormat:	NSExpression	Fundamentals / Filltering / Crea
 method	open	+expressionWithFormat:argumentArray:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
 method	open	+expressionWithFormat:arguments:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
 method	shipped	-initWithCoder:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
-method	open	-initWithExpressionType:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
+method	shipped	-initWithExpressionType:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
 property	shipped	arguments	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
 property	shipped	collection	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
 property	shipped	constantValue	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
 property	open	expressionBlock	NSExpression	Fundamentals / Filltering / Accessing the Expression Block	-	objc
 property	shipped	expressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	swift-page
-property	open	falseExpression	NSExpression	Fundamentals / Filltering / Evaluating an Expression	-	objc
+property	shipped	falseExpression	NSExpression	Fundamentals / Filltering / Evaluating an Expression	-	objc
 property	shipped	function	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
 property	shipped	keyPath	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
-property	open	leftExpression	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
+property	shipped	leftExpression	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
 property	shipped	operand	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
-property	open	predicate	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
-property	open	rightExpression	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
-property	open	trueExpression	NSExpression	Fundamentals / Filltering / Evaluating an Expression	-	objc
+property	shipped	predicate	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
+property	shipped	rightExpression	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
+property	shipped	trueExpression	NSExpression	Fundamentals / Filltering / Evaluating an Expression	-	objc
 property	shipped	variable	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
 method	shipped	-cancelRequestWithError:	NSExtensionContext	App Support / Extension Support / Handling requests	-	objc
 method	shipped	-completeRequestReturningItems:completionHandler:	NSExtensionContext	App Support / Extension Support / Handling requests	-	objc
@@ -1255,10 +1255,10 @@ property	open	fileHandleWithStandardOutput	NSFileHandle	Files and Data Persisten
 property	open	offsetInFile	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
 property	open	readabilityHandler	NSFileHandle	Files and Data Persistence / Managed file access / Monitoring for readability and writability	-	objc
 property	open	writeabilityHandler	NSFileHandle	Files and Data Persistence / Managed file access / Monitoring for readability and writability	-	objc
-method	open	-URLForDirectory:inDomain:appropriateForURL:create:error:	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
+method	shipped	-URLForDirectory:inDomain:appropriateForURL:create:error:	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
 method	shipped	-URLForPublishingUbiquitousItemAtURL:expirationDate:error:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
 method	shipped	-URLForUbiquityContainerIdentifier:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
-method	open	-URLsForDirectory:inDomains:	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
+method	shipped	-URLsForDirectory:inDomains:	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
 method	shipped	-attributesOfFileSystemForPath:error:	NSFileManager	Files and Data Persistence / File system operations / Getting and setting attributes	-	objc
 method	shipped	-attributesOfItemAtPath:error:	NSFileManager	Files and Data Persistence / File system operations / Getting and setting attributes	-	objc
 method	shipped	-changeCurrentDirectoryPath:	NSFileManager	Files and Data Persistence / File system operations / Managing the current directory	-	objc
@@ -1285,7 +1285,7 @@ method	shipped	-displayNameAtPath:	NSFileManager	Files and Data Persistence / Fi
 method	shipped	-enumeratorAtPath:	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 method	shipped	-enumeratorAtURL:includingPropertiesForKeys:options:errorHandler:	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 method	shipped	-evictUbiquitousItemAtURL:error:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
-method	open	-fetchLatestRemoteVersionOfItemAtURL:completionHandler:	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
+method	shipped	-fetchLatestRemoteVersionOfItemAtURL:completionHandler:	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
 method	shipped	-fileAttributesAtPath:traverseLink:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
 method	shipped	-fileExistsAtPath:	NSFileManager	Files and Data Persistence / File system operations / Determining access to files	-	objc
 method	shipped	-fileExistsAtPath:isDirectory:	NSFileManager	Files and Data Persistence / File system operations / Determining access to files	-	objc
@@ -1309,21 +1309,21 @@ method	shipped	-moveItemAtPath:toPath:error:	NSFileManager	Files and Data Persis
 method	shipped	-moveItemAtURL:toURL:error:	NSFileManager	Files and Data Persistence / File system operations / Moving and copying items	-	objc
 method	open	-movePath:toPath:handler:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
 method	shipped	-pathContentOfSymbolicLinkAtPath:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
-method	open	-pauseSyncForUbiquitousItemAtURL:completionHandler:	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
+method	shipped	-pauseSyncForUbiquitousItemAtURL:completionHandler:	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
 method	open	-removeFileAtPath:handler:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
 method	shipped	-removeItemAtPath:error:	NSFileManager	Files and Data Persistence / File system operations / Creating and deleting items	-	objc
 method	shipped	-removeItemAtURL:error:	NSFileManager	Files and Data Persistence / File system operations / Creating and deleting items	-	objc
 method	open	-replaceItemAtURL:withItemAtURL:backupItemName:options:resultingItemURL:error:	NSFileManager	Files and Data Persistence / File system operations / Replacing items	-	objc
-method	open	-resumeSyncForUbiquitousItemAtURL:withBehavior:completionHandler:	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
+method	shipped	-resumeSyncForUbiquitousItemAtURL:withBehavior:completionHandler:	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
 method	shipped	-setAttributes:ofItemAtPath:error:	NSFileManager	Files and Data Persistence / File system operations / Getting and setting attributes	-	objc
 method	shipped	-setUbiquitous:itemAtURL:destinationURL:error:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
 method	shipped	-startDownloadingUbiquitousItemAtURL:error:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
 method	shipped	-stringWithFileSystemRepresentation:length:	NSFileManager	Files and Data Persistence / File system operations / Converting file paths to strings	-	objc
 method	shipped	-subpathsAtPath:	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 method	shipped	-subpathsOfDirectoryAtPath:error:	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
-method	open	-trashItemAtURL:resultingItemURL:error:	NSFileManager	Files and Data Persistence / File system operations / Creating and deleting items	-	objc
-method	open	-unmountVolumeAtURL:options:completionHandler:	NSFileManager	Files and Data Persistence / File system operations / Unmounting volumes	-	objc
-method	open	-uploadLocalVersionOfUbiquitousItemAtURL:withConflictResolutionPolicy:completionHandler:	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
+method	shipped	-trashItemAtURL:resultingItemURL:error:	NSFileManager	Files and Data Persistence / File system operations / Creating and deleting items	-	objc
+method	shipped	-unmountVolumeAtURL:options:completionHandler:	NSFileManager	Files and Data Persistence / File system operations / Unmounting volumes	-	objc
+method	shipped	-uploadLocalVersionOfUbiquitousItemAtURL:withConflictResolutionPolicy:completionHandler:	NSFileManager	Files and Data Persistence / File system operations / Controlling file provider synchronization	-	objc
 property	shipped	currentDirectoryPath	NSFileManager	Files and Data Persistence / File system operations / Managing the current directory	-	objc
 property	shipped	defaultManager	NSFileManager	Files and Data Persistence / File system operations / Creating a file manager	-	objc
 property	shipped	delegate	NSFileManager	Files and Data Persistence / File system operations / Managing the delegate	-	objc

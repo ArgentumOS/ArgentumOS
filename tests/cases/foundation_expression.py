@@ -16,13 +16,20 @@ compare and evaluate — and `NSComparisonPredicate` is what puts two of them to
   * `expr-set-operations`   — union/intersect/minus, including the rule that TWO SETS answer a SET
                               while anything else answers an ARRAY;
   * `expr-fold-functions`   — sum/count/min/max over a key path's collection;
+  * `expr-set-left-right`   — the LEFT/RIGHT sides of a set expression, and nil on a kind
+                              that has no sides;
+  * `expr-conditional`      — an `NSPredicate` picks a branch, and BOTH branches are reached;
+  * `expr-subquery`         — its parts read back, and its evaluation REFUSES by name (the
+                              predicate evaluator threads no iterator-variable bindings);
+  * `expr-init-with-type`   — Apple's designated initializer, a bare node;
   * `expr-equality`         — two separately-built trees that are equal, plus `-copy` being the
                               expression itself and `-description`.
 
-NAMED LIMITS, asserted nowhere because they are not implemented: `+expressionForBlock:` and the
-conditional/block types, `NSSubqueryExpressionType`, the two-argument functions
-(`castObject:toType:`), and `@anyKey` — which exists as a TYPE but evaluates to nil, as Cocoa's own
-documentation says its value is undefined.
+NAMED LIMITS, asserted nowhere because they are not implemented: `+expressionForBlock:` (and the
+block kind, which a coder here could not carry either), the three `+expressionWithFormat:` forms (an
+expression-format PARSER is a family of its own), the two-argument functions (`castObject:toType:`),
+and `@anyKey` — which exists as a TYPE but evaluates to nil, as Cocoa's own documentation says its
+value is undefined.
 """
 
 import re
@@ -32,6 +39,7 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_expression"
 CHECKS = ("expr-constant", "expr-keypath", "expr-evaluated-object", "expr-variable-context",
           "expr-aggregate", "expr-set-operations", "expr-fold-functions",
+          "expr-set-left-right", "expr-conditional", "expr-subquery", "expr-init-with-type",
           "expr-equality-and-description", "expr-nscoding-round-trip",
           "an-expression-owns-what-it-holds")
 

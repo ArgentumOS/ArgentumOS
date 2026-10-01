@@ -29,12 +29,21 @@
  * than a convenience. */
 #import <Foundation/NSKeyValueCoding.h>
 #import <Foundation/NSException.h>
+/* A CONDITIONAL AND A SUBQUERY BOTH HOLD ONE OF THESE, and the conditional's evaluation asks it
+ * directly — so the predicate's own header is a dependency of this file, not a convenience. */
+#import <Foundation/NSPredicate.h>
 
 @interface NSExpression (FNPrivate)
 + (NSExpression *)fnWithType:(NSExpressionType)type
 		    constant:(nullable id)constant
 		     operand:(nullable id)operand
 		    function:(nullable NSString *)name;
++ (NSExpression *)fnWithType:(NSExpressionType)type
+		    constant:(nullable id)constant
+		     operand:(nullable id)operand
+		    function:(nullable NSString *)name
+		   predicate:(nullable NSPredicate *)predicate
+		    iterator:(nullable NSString *)iterator;
 @end
 
 /* WHAT A COLLECTION MEANS HERE: either kind of collection, as a list of members. */
@@ -173,7 +182,7 @@ static id fn_set_operation(NSExpressionType type, id left, id right)
 		     operand:(nullable id)operand
 		    function:(nullable NSString *)name
 {
-	NSExpression *expression = [[self alloc] init];
+	NSExpression *expression = [[self alloc] initWithExpressionType:type];
 
 	/* THE EXPRESSION OWNS WHAT IT HOLDS (§63.20). These three assignments used to BORROW their arguments - no
 	 * retain here and no -dealloc anywhere in the file - so every value an expression handed back
@@ -182,14 +191,40 @@ static id fn_set_operation(NSExpressionType type, id left, id right)
 	 * built an expression whose only constant died with the pool - the defect class that hides on the guest
 	 * (musl leaves freed memory readable) and is fatal on the host (glibc reuses it).
 	 *
-	 * THE PAIR IS THE FIX: retain here, release in the -dealloc below. THIS FUNNEL IS THE ONLY PLACE ANY SLOT IS
-	 * ASSIGNED - `-initWithCoder:` comes through it too - which is what makes one retain and one dealloc an
-	 * exact mirror rather than a place a leak can hide. */
-	expression->_type = type;
+	 * THE PAIR IS THE FIX: retain here, release in the -dealloc below. THESE FUNNELS ARE THE ONLY PLACES THE
+	 * SLOTS ARE ASSIGNED - `-initWithCoder:` comes through them too - which is what makes one retain and one
+	 * dealloc an exact mirror rather than a place a leak can hide. */
 	expression->_constant = [constant retain];
 	expression->_operand = [operand retain];
 	expression->_function = [name retain];
 	return expression;
+}
+
+/* THE RICHER FUNNEL: the conditional and subquery kinds carry two more slots than the three above, and
+ * they are retained and released by the same rule - set here, released in -dealloc below, so one retain
+ * balances one release. */
++ (NSExpression *)fnWithType:(NSExpressionType)type
+		    constant:(nullable id)constant
+		     operand:(nullable id)operand
+		    function:(nullable NSString *)name
+		   predicate:(nullable NSPredicate *)predicate
+		    iterator:(nullable NSString *)iterator
+{
+	NSExpression *expression = [self fnWithType:type constant:constant operand:operand function:name];
+
+	expression->_subpredicate = [predicate retain];
+	expression->_iterator = [iterator retain];
+	return expression;
+}
+
+- (instancetype)initWithExpressionType:(NSExpressionType)type
+{
+	/* APPLE'S DESIGNATED INITIALIZER: a bare node. The slots' MEANING is the type (the header says why),
+	 * so a node is born with its type and nothing else; the funnels above route here. */
+	if ((self = [super init]) != nil) {
+		_type = type;
+	}
+	return self;
 }
 
 - (void)dealloc
@@ -199,6 +234,8 @@ static id fn_set_operation(NSExpressionType type, id left, id right)
 	[_constant release];
 	[_operand release];
 	[_function release];
+	[_subpredicate release];
+	[_iterator release];
 	[super dealloc];
 }
 
@@ -217,15 +254,19 @@ static NSString *const kTypeKey = @"NS.expressionType";
 static NSString *const kConstantKey = @"NS.constant";
 static NSString *const kOperandKey = @"NS.operand";
 static NSString *const kFunctionKey = @"NS.function";
+static NSString *const kPredicateKey = @"NS.predicate";
+static NSString *const kIteratorKey = @"NS.iterator";
 
 - (void)encodeWithCoder:(NSCoder *)coder
 {
-	/* ALL FOUR, because the type decides what the slots MEAN — and all three slots are written even when the
-	 * type uses only one, so the decoder's shape is the encoder's shape rather than a per-type puzzle. */
+	/* ALL SIX, because the type decides what the slots MEAN — and every slot is written even when the type
+	 * uses only some, so the decoder's shape is the encoder's shape rather than a per-type puzzle. */
 	[coder encodeInteger:(NSInteger)_type forKey:kTypeKey];
 	[coder encodeObject:_constant forKey:kConstantKey];
 	[coder encodeObject:_operand forKey:kOperandKey];
 	[coder encodeObject:_function forKey:kFunctionKey];
+	[coder encodeObject:_subpredicate forKey:kPredicateKey];
+	[coder encodeObject:_iterator forKey:kIteratorKey];
 }
 
 - (nullable instancetype)initWithCoder:(NSCoder *)coder
@@ -239,7 +280,9 @@ static NSString *const kFunctionKey = @"NS.function";
 	NSExpression *built = [[self class] fnWithType:(NSExpressionType)[coder decodeIntegerForKey:kTypeKey]
 					      constant:[coder decodeObjectForKey:kConstantKey]
 					       operand:[coder decodeObjectForKey:kOperandKey]
-					      function:[coder decodeObjectForKey:kFunctionKey]];
+					      function:[coder decodeObjectForKey:kFunctionKey]
+					     predicate:[coder decodeObjectForKey:kPredicateKey]
+					      iterator:[coder decodeObjectForKey:kIteratorKey]];
 
 	[self release];		/* never initialized: `built` is the answer */
 	return built;
@@ -313,6 +356,41 @@ static NSString *const kFunctionKey = @"NS.function";
 	return [self fnWithType:NSMinusSetExpressionType constant:left operand:right function:nil];
 }
 
++ (NSExpression *)expressionForSubquery:(NSExpression *)expression
+		  usingIteratorVariable:(NSString *)variable
+			      predicate:(NSPredicate *)predicate
+{
+	if (expression == nil || variable == nil || predicate == nil) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSExpression: a subquery needs a collection, an iterator-variable name and "
+				   "a predicate"];
+	}
+	/* THE COLLECTION IS THE NODE'S LEFT SIDE and the predicate its `-predicate`; the iterator-variable
+	 * name is the one part no Apple accessor exposes, so it lives in its own slot. */
+	return [self fnWithType:NSSubqueryExpressionType
+		       constant:expression
+			operand:nil
+		       function:nil
+		      predicate:predicate
+		       iterator:variable];
+}
+
++ (NSExpression *)expressionForConditional:(NSPredicate *)predicate
+			   trueExpression:(NSExpression *)trueExpression
+			  falseExpression:(NSExpression *)falseExpression
+{
+	if (predicate == nil || trueExpression == nil || falseExpression == nil) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSExpression: a conditional needs a predicate and two branches"];
+	}
+	return [self fnWithType:NSConditionalExpressionType
+		       constant:trueExpression
+			operand:falseExpression
+		       function:nil
+		      predicate:predicate
+		       iterator:nil];
+}
+
 - (NSExpressionType)expressionType
 {
 	return _type;
@@ -358,6 +436,52 @@ static NSString *const kFunctionKey = @"NS.function";
 - (nullable id)collection
 {
 	return _type == NSAggregateExpressionType ? _constant : nil;
+}
+
+- (nullable NSExpression *)leftExpression
+{
+	switch (_type) {
+	case NSUnionSetExpressionType:
+	case NSIntersectSetExpressionType:
+	case NSMinusSetExpressionType:
+	case NSSubqueryExpressionType:
+		return _constant;
+	default:
+		return nil;
+	}
+}
+
+- (nullable NSExpression *)rightExpression
+{
+	switch (_type) {
+	case NSUnionSetExpressionType:
+	case NSIntersectSetExpressionType:
+	case NSMinusSetExpressionType:
+		return _operand;
+	default:
+		return nil;
+	}
+}
+
+- (nullable NSPredicate *)predicate
+{
+	switch (_type) {
+	case NSSubqueryExpressionType:
+	case NSConditionalExpressionType:
+		return _subpredicate;
+	default:
+		return nil;
+	}
+}
+
+- (nullable NSExpression *)trueExpression
+{
+	return _type == NSConditionalExpressionType ? _constant : nil;
+}
+
+- (nullable NSExpression *)falseExpression
+{
+	return _type == NSConditionalExpressionType ? _operand : nil;
 }
 
 - (nullable id)evaluateWithObject:(nullable id)object
@@ -413,6 +537,24 @@ static NSString *const kFunctionKey = @"NS.function";
 					[left expressionValueWithObject:object context:context],
 					[right expressionValueWithObject:object context:context]);
 	}
+	case NSConditionalExpressionType: {
+		/* THE CONDITION IS A PREDICATE, asked the question a predicate is always asked - does THIS
+		 * object satisfy it? - and the chosen branch is then evaluated normally. */
+		BOOL condition = [_subpredicate evaluateWithObject:object];
+		NSExpression *branch = condition ? (NSExpression *)_constant : (NSExpression *)_operand;
+
+		return [branch expressionValueWithObject:object context:context];
+	}
+	case NSSubqueryExpressionType:
+		/* A REFUSAL BY NAME rather than a wrong collection: filtering needs the iterator variable
+		 * BOUND WHILE THE PREDICATE RUNS, and this library's predicate evaluator threads no bindings
+		 * into -evaluateWithObject:. */
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSExpression: a subquery filters a collection by binding its iterator "
+				   "variable \"%@\" while the predicate is evaluated, and this library's "
+				   "predicate evaluator threads no bindings into -evaluateWithObject:",
+				   _iterator];
+		return nil;
 	case NSAnyKeyExpressionType:
 		/* COCOA'S OWN ANSWER IS UNDEFINED for a value; nil is this library's. */
 		return nil;
@@ -443,6 +585,14 @@ static NSString *const kFunctionKey = @"NS.function";
 	    !(_operand != nil && [(id)_operand isEqual:them->_operand])) {
 		return NO;
 	}
+	if (_subpredicate != them->_subpredicate &&
+	    !(_subpredicate != nil && [_subpredicate isEqual:them->_subpredicate])) {
+		return NO;
+	}
+	if (_iterator != them->_iterator &&
+	    !(_iterator != nil && [_iterator isEqualToString:them->_iterator])) {
+		return NO;
+	}
 	return _function == them->_function ||
 	       (_function != nil && [_function isEqualToString:them->_function]);
 }
@@ -459,6 +609,12 @@ static NSString *const kFunctionKey = @"NS.function";
 	}
 	if (_function != nil) {
 		hash ^= [_function hash];
+	}
+	if (_subpredicate != nil) {
+		hash ^= [_subpredicate hash];
+	}
+	if (_iterator != nil) {
+		hash ^= [_iterator hash];
 	}
 	return hash;
 }
@@ -486,6 +642,11 @@ static NSString *const kFunctionKey = @"NS.function";
 		return [NSString stringWithFormat:@"%@ INTERSECT %@", _constant, _operand];
 	case NSMinusSetExpressionType:
 		return [NSString stringWithFormat:@"%@ MINUS %@", _constant, _operand];
+	case NSConditionalExpressionType:
+		return [NSString stringWithFormat:@"TERNARY(%@, %@, %@)", _subpredicate, _constant, _operand];
+	case NSSubqueryExpressionType:
+		return [NSString stringWithFormat:@"SUBQUERY(%@, $%@, %@)",
+			   _constant, _iterator, _subpredicate];
 	default:
 		return @"<expression>";
 	}

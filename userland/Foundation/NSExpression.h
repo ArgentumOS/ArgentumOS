@@ -19,10 +19,18 @@
  * `-function`, `-arguments`, `-operand`, `-collection`), `-evaluateWithObject:`, the
  * context-taking form that resolves VARIABLES, and equality that compares the tree.
  *
- * WHAT IS NOT, named: `+expressionForBlock:` and the conditional/block types (this library has no
- * blocks in its public headers), `NSSubqueryExpressionType`, and the two-argument functions
- * (`castObject:toType:`). `@anyKey` exists as a TYPE but evaluates to nil, as Apple's own
- * documentation says its value is undefined.
+ * WHAT IS NOT, named: `+expressionForBlock:` (a block leaf whose block no coder here can carry),
+ * and the `+expressionWithFormat:` family (an expression-format PARSER is a family of its own, and
+ * the predicate grammar builds predicates rather than expression trees). The two-argument
+ * functions (`castObject:toType:`) are likewise unwritten. `@anyKey` exists as a TYPE but
+ * evaluates to nil, as Apple's own documentation says its value is undefined.
+ *
+ * THE CONDITIONAL AND SUBQUERY KINDS ARE THE PREDICATE FAMILY'S THIRD LEG — the two predicate
+ * classes hold expressions, and these two expression kinds hold an `NSPredicate`. A CONDITIONAL
+ * carries two branches and evaluates through the predicate's own `-evaluateWithObject:` (so it
+ * WORKS on this substrate). A SUBQUERY carries a collection expression, an iterator-variable NAME
+ * and a predicate, and its EVALUATION REFUSES BY NAME: the predicate evaluator threads no bindings
+ * for the iterator variable, and a wrong collection is worse than a loud refusal.
  */
 
 #ifndef FOUNDATION_NSEXPRESSION_H
@@ -36,6 +44,7 @@
 @class NSDictionary;
 @class NSMutableDictionary;
 @class NSString;
+@class NSPredicate;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -51,11 +60,11 @@ enum {
 	NSUnionSetExpressionType = 5,
 	NSIntersectSetExpressionType = 6,
 	NSMinusSetExpressionType = 7,
-	NSSubqueryExpressionType = 8,
-	NSAggregateExpressionType = 9,
-	NSAnyKeyExpressionType = 10,
-	NSBlockExpressionType = 11,
-	NSConditionalExpressionType = 12
+	NSSubqueryExpressionType = 13,
+	NSAggregateExpressionType = 14,
+	NSAnyKeyExpressionType = 15,
+	NSBlockExpressionType = 19,
+	NSConditionalExpressionType = 20
 };
 
 @interface NSExpression : NSObject <NSCopying, NSCoding>
@@ -64,6 +73,8 @@ enum {
 	id _constant;		/* constant value, key path, variable name, left operand, collection */
 	id _operand;		/* the right operand of a set operation; the arguments of a function */
 	NSString *_function;
+	NSPredicate *_subpredicate;	/* a conditional's condition, or a subquery's predicate */
+	NSString *_iterator;		/* a subquery's iterator-variable name */
 }
 
 /* THE NSCoding DOORS (§63.15). THE TYPE IS PART OF THE PAYLOAD, not a hint: this class's state is ONE TYPE AND
@@ -95,6 +106,18 @@ enum {
 + (NSExpression *)expressionForIntersectSet:(NSExpression *)left with:(NSExpression *)right;
 + (NSExpression *)expressionForMinusSet:(NSExpression *)left with:(NSExpression *)right;
 
+/* THE CONDITIONAL AND SUBQUERY KINDS, in Apple's exact spelling. A conditional's condition, and a
+ * subquery's filter, are an `NSPredicate` — the predicate family's own type. */
++ (NSExpression *)expressionForSubquery:(NSExpression *)expression
+		  usingIteratorVariable:(NSString *)variable
+			      predicate:(NSPredicate *)predicate;
++ (NSExpression *)expressionForConditional:(NSPredicate *)predicate
+			   trueExpression:(NSExpression *)trueExpression
+			  falseExpression:(NSExpression *)falseExpression;
+
+/* Apple's designated initializer: a bare node of a chosen type, its slots empty. */
+- (instancetype)initWithExpressionType:(NSExpressionType)type;
+
 - (NSExpressionType)expressionType;
 - (nullable id)constantValue;
 - (nullable NSString *)keyPath;
@@ -103,6 +126,16 @@ enum {
 - (nullable NSArray *)arguments;
 - (nullable id)operand;
 - (nullable id)collection;
+
+/* THE TWO SIDES OF A SET EXPRESSION (Apple's header says exactly that; a subquery's collection is
+ * its left side too). */
+- (nullable NSExpression *)leftExpression;
+- (nullable NSExpression *)rightExpression;
+/* A subquery's or a conditional's predicate. */
+- (nullable NSPredicate *)predicate;
+/* A conditional's two branches. */
+- (nullable NSExpression *)trueExpression;
+- (nullable NSExpression *)falseExpression;
 
 - (nullable id)evaluateWithObject:(nullable id)object;
 - (nullable id)expressionValueWithObject:(nullable id)object
