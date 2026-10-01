@@ -1286,6 +1286,134 @@ int main(void)
 			[log componentsJoinedByString:@" "]] UTF8String]);
 	}
 
+	{
+		/* THE COUNTS AND THE DEPTH (§62.103). One closed group IS one undo, so the counts are the number
+		 * of times the caller can still act; the OPEN group is deliberately not counted, the same line
+		 * -canUndo draws. `levelsOfUndo` is a cap the setter applies AT ONCE (Apple: setting a limit below
+		 * the current one drops old groups) and 0 means NO LIMIT. */
+		NSUndoManager *undo = [[NSUndoManager alloc] init];
+		FNUndoBox *box = [[FNUndoBox alloc] initWithManager:undo];
+		BOOL fresh, counted, trimmed, unlimited, redoSide;
+
+		fresh = [undo undoCount] == 0 && [undo redoCount] == 0 && [undo levelsOfUndo] == 0;
+
+		[box addItem:@"a"]; [undo endUndoGrouping];
+		[box addItem:@"b"]; [undo endUndoGrouping];
+		[box addItem:@"c"]; [undo endUndoGrouping];
+		counted = [undo undoCount] == 3 && [undo redoCount] == 0;
+
+		[undo setLevelsOfUndo:2];
+		trimmed = [undo undoCount] == 2 && [undo levelsOfUndo] == 2;
+
+		[undo setLevelsOfUndo:0];
+		unlimited = [undo undoCount] == 2 && [undo levelsOfUndo] == 0;
+
+		[undo undo];
+		redoSide = [undo undoCount] == 1 && [undo redoCount] == 1;
+
+		check("undo-counts-and-depth",
+		      fresh && counted && trimmed && unlimited && redoSide,
+		      [[NSString stringWithFormat:@"fresh=%d counted=%d trimmed=%d unlimited=%d redo=%d u=%lu r=%lu",
+			(int)fresh, (int)counted, (int)trimmed, (int)unlimited, (int)redoSide,
+			(unsigned long)[undo undoCount], (unsigned long)[undo redoCount]] UTF8String]);
+	}
+
+	{
+		/* -removeAllActionsWithTarget: IS NOT -removeAllActions: it clears ONLY the operations whose
+		 * TARGET is the given object, out of both stacks, and a group left empty by the removal is
+		 * dropped so the counts stay honest. */
+		NSUndoManager *undo = [[NSUndoManager alloc] init];
+		FNUndoBox *boxA = [[FNUndoBox alloc] initWithManager:undo];
+		FNUndoBox *boxB = [[FNUndoBox alloc] initWithManager:undo];
+		BOOL removed, kept, otherIntact;
+
+		[boxA addItem:@"a"]; [undo endUndoGrouping];
+		[boxB addItem:@"b"]; [undo endUndoGrouping];
+		removed = [undo undoCount] == 2;
+
+		[undo removeAllActionsWithTarget:boxA];
+		kept = [undo undoCount] == 1;
+
+		[undo undo];
+		otherIntact = [[boxA items] count] == 1 && [[boxB items] count] == 0;
+
+		check("undo-remove-actions-with-target",
+		      removed && kept && otherIntact,
+		      [[NSString stringWithFormat:@"removed=%d kept=%d otherIntact=%d u=%lu",
+			(int)removed, (int)kept, (int)otherIntact, (unsigned long)[undo undoCount]] UTF8String]);
+	}
+
+	{
+		/* -undoNestedGroup CLOSES NOTHING BUT UNDOES THE LAST GROUP the way -undo does, recording it on
+		 * the redo stack as one group - so with the top-level group already closed it takes the same group
+		 * -undo would. */
+		NSUndoManager *undo = [[NSUndoManager alloc] init];
+		FNUndoBox *box = [[FNUndoBox alloc] initWithManager:undo];
+		NSArray *items;
+		BOOL nested;
+
+		[box addItem:@"a"]; [undo endUndoGrouping];
+		[box addItem:@"b"]; [undo endUndoGrouping];
+
+		[undo undoNestedGroup];
+		items = [box items];
+		nested = [undo undoCount] == 1 && [undo redoCount] == 1 &&
+			 [items count] == 1 && [[items objectAtIndex:0] isEqualToString:@"a"];
+
+		check("undo-nested-group",
+		      nested,
+		      [[NSString stringWithFormat:@"u=%lu r=%lu items=%lu",
+			(unsigned long)[undo undoCount], (unsigned long)[undo redoCount],
+			(unsigned long)[items count]] UTF8String]);
+	}
+
+	{
+		/* THE PER-GROUP USER INFO (§62.103). The value is set on the CURRENT group and read back from the
+		 * group at the TOP of the undo stack - the group the next -undo would replay - so the storage is
+		 * ON THE GROUP, not on the manager, which is the whole point. A key never set answers nil from
+		 * either stack. */
+		NSUndoManager *undo = [[NSUndoManager alloc] init];
+		FNUndoBox *box = [[FNUndoBox alloc] initWithManager:undo];
+		BOOL onUndo, absent;
+
+		[undo setActionUserInfoValue:@"icon-a" forKey:@"com.example.icon"];
+		[box addItem:@"a"];
+		[undo endUndoGrouping];
+		onUndo = [[undo undoActionUserInfoValueForKey:@"com.example.icon"] isEqualToString:@"icon-a"];
+		absent = [undo undoActionUserInfoValueForKey:@"com.example.absent"] == nil &&
+			 [undo redoActionUserInfoValueForKey:@"com.example.absent"] == nil;
+
+		check("undo-action-user-info",
+		      onUndo && absent,
+		      [[NSString stringWithFormat:@"onUndo=%d absent=%d",
+			(int)onUndo, (int)absent] UTF8String]);
+	}
+
+	{
+		/* THE DISCARDABLE-ACTIONS SURFACE (§62.103). -setActionIsDiscardable: marks the group being built;
+		 * the two questions read the group at the top of their stack. A fresh manager answers NO for both,
+		 * a marked-but-not-yet-undone group answers YES for undo and NO for redo, and after the undo the
+		 * undo stack is empty (NO) and the fresh redo group carries no mark (NO). */
+		NSUndoManager *undo = [[NSUndoManager alloc] init];
+		FNUndoBox *box = [[FNUndoBox alloc] initWithManager:undo];
+		BOOL defaultNo, marked, afterUndo;
+
+		defaultNo = ![undo undoActionIsDiscardable] && ![undo redoActionIsDiscardable];
+
+		[undo setActionIsDiscardable:YES];
+		[box addItem:@"a"];
+		[undo endUndoGrouping];
+		marked = [undo undoActionIsDiscardable] && ![undo redoActionIsDiscardable];
+
+		[undo undo];
+		afterUndo = ![undo undoActionIsDiscardable] && ![undo redoActionIsDiscardable];
+
+		check("undo-action-discardable",
+		      defaultNo && marked && afterUndo,
+		      [[NSString stringWithFormat:@"defaultNo=%d marked=%d afterUndo=%d",
+			(int)defaultNo, (int)marked, (int)afterUndo] UTF8String]);
+	}
+
 	/* §62.99: THE PROTOCOL PAIR. A protocol is a runtime object, so the two doors are the runtime's own
 	 * conversion — and the check that matters is the ROUND TRIP, because a name that did not come back to the
 	 * same protocol would still look right one way. The refusals get equal weight: a protocol that is not

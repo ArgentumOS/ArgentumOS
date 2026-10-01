@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2103   open  557   struck  268
-#   property   shipped 1240   open  250   struck  146
+#   method     shipped 2112   open  548   struck  268
+#   property   shipped 1246   open  244   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -331,7 +331,7 @@ method	shipped	-addExecutionBlock:	NSBlockOperation	App Support / Operations / M
 method	shipped	+blockOperationWithBlock:	NSBlockOperation	App Support / Operations / Managing the Blocks in the Operation	-	objc
 property	shipped	executionBlocks	NSBlockOperation	App Support / Operations / Managing the Blocks in the Operation	-	objc
 method	shipped	-URLForAuxiliaryExecutable:	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
-method	open	-URLForImageResource:	NSBundle	App Support / Bundle Resources / Finding image resources	-	objc
+method	shipped	-URLForImageResource:	NSBundle	App Support / Bundle Resources / Finding image resources	-	objc
 method	shipped	-URLForResource:withExtension:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
 method	shipped	-URLForResource:withExtension:subdirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
 method	shipped	+URLForResource:withExtension:subdirectory:inBundleWithURL:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
@@ -361,12 +361,12 @@ method	shipped	-localizedStringForKey:value:table:	NSBundle	App Support / Bundle
 method	shipped	-localizedStringForKey:value:table:localizations:	NSBundle	App Support / Bundle Resources / Instance Methods	-	objc
 method	shipped	-objectForInfoDictionaryKey:	NSBundle	App Support / Bundle Resources / Getting bundle information	-	objc
 method	shipped	-pathForAuxiliaryExecutable:	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
-method	open	-pathForImageResource:	NSBundle	App Support / Bundle Resources / Finding image resources	-	objc
+method	shipped	-pathForImageResource:	NSBundle	App Support / Bundle Resources / Finding image resources	-	objc
 method	shipped	-pathForResource:ofType:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
 method	shipped	-pathForResource:ofType:inDirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	swift-page
 method	shipped	+pathForResource:ofType:inDirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	swift-page
 method	shipped	-pathForResource:ofType:inDirectory:forLocalization:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
-method	open	-pathForSoundResource:	NSBundle	App Support / Bundle Resources / Finding sound resources	-	objc
+method	shipped	-pathForSoundResource:	NSBundle	App Support / Bundle Resources / Finding sound resources	-	objc
 method	shipped	-pathsForResourcesOfType:inDirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	swift-page
 method	shipped	+pathsForResourcesOfType:inDirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	swift-page
 method	shipped	-pathsForResourcesOfType:inDirectory:forLocalization:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
@@ -385,7 +385,7 @@ property	shipped	bundleIdentifier	NSBundle	App Support / Bundle Resources / Gett
 property	shipped	bundlePath	NSBundle	App Support / Bundle Resources / Getting bundle information	-	objc
 property	shipped	bundleURL	NSBundle	App Support / Bundle Resources / Getting bundle information	-	objc
 property	shipped	developmentLocalization	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
-property	open	executableArchitectures	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
+property	shipped	executableArchitectures	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
 property	shipped	executablePath	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 property	shipped	executableURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 property	shipped	infoDictionary	NSBundle	App Support / Bundle Resources / Getting bundle information	-	objc
@@ -3923,33 +3923,33 @@ method	shipped	-enableUndoRegistration	NSUndoManager	App Support / Undo / Enabli
 method	shipped	-endUndoGrouping	NSUndoManager	App Support / Undo / Creating undo groups	-	objc
 method	shipped	-prepareWithInvocationTarget:	NSUndoManager	App Support / Undo / Registering undo operations	-	objc
 method	shipped	-redo	NSUndoManager	App Support / Undo / Performing undo and redo	-	objc
-method	open	-redoActionUserInfoValueForKey:	NSUndoManager	App Support / Undo / Working with user info	-	objc
+method	shipped	-redoActionUserInfoValueForKey:	NSUndoManager	App Support / Undo / Working with user info	-	objc
 method	open	-redoMenuTitleForUndoActionName:	NSUndoManager	App Support / Undo / Getting and localizing the menu item title	-	objc
 method	shipped	-registerUndoWithTarget:handler:	NSUndoManager	App Support / Undo / Registering undo operations	-	objc
 method	shipped	-registerUndoWithTarget:selector:object:	NSUndoManager	App Support / Undo / Registering undo operations	-	objc
 method	shipped	-removeAllActions	NSUndoManager	App Support / Undo / Clearing undo operations	-	objc
-method	open	-removeAllActionsWithTarget:	NSUndoManager	App Support / Undo / Clearing undo operations	-	objc
-method	open	-setActionIsDiscardable:	NSUndoManager	App Support / Undo / Using discardable undo and redo actions	-	objc
+method	shipped	-removeAllActionsWithTarget:	NSUndoManager	App Support / Undo / Clearing undo operations	-	objc
+method	shipped	-setActionIsDiscardable:	NSUndoManager	App Support / Undo / Using discardable undo and redo actions	-	objc
 method	shipped	-setActionName:	NSUndoManager	App Support / Undo / Managing the action name	-	objc
-method	open	-setActionUserInfoValue:forKey:	NSUndoManager	App Support / Undo / Working with user info	-	objc
+method	shipped	-setActionUserInfoValue:forKey:	NSUndoManager	App Support / Undo / Working with user info	-	objc
 method	shipped	-undo	NSUndoManager	App Support / Undo / Performing undo and redo	-	objc
-method	open	-undoActionUserInfoValueForKey:	NSUndoManager	App Support / Undo / Working with user info	-	objc
+method	shipped	-undoActionUserInfoValueForKey:	NSUndoManager	App Support / Undo / Working with user info	-	objc
 method	open	-undoMenuTitleForUndoActionName:	NSUndoManager	App Support / Undo / Getting and localizing the menu item title	-	objc
-method	open	-undoNestedGroup	NSUndoManager	App Support / Undo / Performing undo and redo	-	objc
+method	shipped	-undoNestedGroup	NSUndoManager	App Support / Undo / Performing undo and redo	-	objc
 property	shipped	canRedo	NSUndoManager	App Support / Undo / Checking undo ability	-	objc
 property	shipped	canUndo	NSUndoManager	App Support / Undo / Checking undo ability	-	objc
 property	shipped	groupingLevel	NSUndoManager	App Support / Undo / Creating undo groups	-	objc
 property	open	groupsByEvent	NSUndoManager	App Support / Undo / Creating undo groups	-	objc
-property	open	levelsOfUndo	NSUndoManager	App Support / Undo / Managing undo and redo stack depth	-	objc
-property	open	redoActionIsDiscardable	NSUndoManager	App Support / Undo / Using discardable undo and redo actions	-	objc
+property	shipped	levelsOfUndo	NSUndoManager	App Support / Undo / Managing undo and redo stack depth	-	objc
+property	shipped	redoActionIsDiscardable	NSUndoManager	App Support / Undo / Using discardable undo and redo actions	-	objc
 property	shipped	redoActionName	NSUndoManager	App Support / Undo / Managing the action name	-	objc
-property	open	redoCount	NSUndoManager	App Support / Undo / Managing undo and redo stack depth	-	objc
+property	shipped	redoCount	NSUndoManager	App Support / Undo / Managing undo and redo stack depth	-	objc
 property	open	redoMenuItemTitle	NSUndoManager	App Support / Undo / Getting and localizing the menu item title	-	objc
 property	shipped	redoing	NSUndoManager	App Support / Undo / Checking whether undo or redo is in process	-	objc
 property	open	runLoopModes	NSUndoManager	App Support / Undo / Working with run loops	-	objc
-property	open	undoActionIsDiscardable	NSUndoManager	App Support / Undo / Using discardable undo and redo actions	-	objc
+property	shipped	undoActionIsDiscardable	NSUndoManager	App Support / Undo / Using discardable undo and redo actions	-	objc
 property	shipped	undoActionName	NSUndoManager	App Support / Undo / Managing the action name	-	objc
-property	open	undoCount	NSUndoManager	App Support / Undo / Managing undo and redo stack depth	-	objc
+property	shipped	undoCount	NSUndoManager	App Support / Undo / Managing undo and redo stack depth	-	objc
 property	open	undoMenuItemTitle	NSUndoManager	App Support / Undo / Getting and localizing the menu item title	-	objc
 property	shipped	undoRegistrationEnabled	NSUndoManager	App Support / Undo / Enabling and disabling undo	-	objc
 property	shipped	undoing	NSUndoManager	App Support / Undo / Checking whether undo or redo is in process	-	objc

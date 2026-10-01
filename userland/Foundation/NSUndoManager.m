@@ -12,6 +12,7 @@
 #import <Foundation/NSProxy.h>
 #import <Foundation/NSNotification.h>
 #import <Foundation/NSNotificationCenter.h>
+#import <Foundation/NSDictionary.h>	/* NSMutableDictionary, for a group's userInfo */
 #import <objc/runtime.h>
 
 /*
@@ -238,6 +239,115 @@ NSString *const NSUndoManagerWillUndoChangeNotification = @"NSUndoManagerWillUnd
 
 @end
 
+/*
+ * ONE UNDO GROUP. It used to be a bare NSMutableArray, and that is precisely why the DISCARDABLE-ACTIONS
+ * half and the per-group USER INFO were impossible here: there was nowhere to hang either. A group is a
+ * LIST OF ACTIONS plus the two per-group facts Apple records against it — the userInfo a caller sets with
+ * `-setActionUserInfoValue:forKey:` and the discardable flag `-setActionIsDiscardable:` marks — so the
+ * group becomes an object of its own. THE ACTIONS ARE RETAINED (as the array retained them before) and the
+ * userInfo is CREATED ONLY WHEN A CALLER SETS SOMETHING, so a manager that never touches it allocates none.
+ */
+@interface FnUndoGroup : NSObject
+{
+	NSMutableArray *_actions;	/* retained actions */
+	NSMutableDictionary *_userInfo;	/* lazily created, retained */
+	BOOL _discardable;
+}
+- (void)addAction:(id)action;
+- (NSUInteger)count;
+- (id)actionAtIndex:(NSUInteger)index;
+- (void)removeActionsWithTarget:(id)target;
+- (void)setUserInfoValue:(id)value forKey:(id)key;
+- (id)userInfoValueForKey:(id)key;
+- (void)setDiscardable:(BOOL)flag;
+- (BOOL)isDiscardable;
+@end
+
+@implementation FnUndoGroup
+
+- (instancetype)init
+{
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	_actions = [[NSMutableArray alloc] init];
+	return self;
+}
+
+- (void)dealloc
+{
+	[_actions release];
+	[_userInfo release];
+	[super dealloc];
+}
+
+- (void)addAction:(id)action
+{
+	[_actions addObject:action];
+}
+
+- (NSUInteger)count
+{
+	return [_actions count];
+}
+
+- (id)actionAtIndex:(NSUInteger)index
+{
+	return [_actions objectAtIndex:index];
+}
+
+/* REMOVAL IS BY TARGET IDENTITY, which is what "the operations associated with the specified target"
+ * means: two equal-but-distinct objects are different undo targets here. */
+- (void)removeActionsWithTarget:(id)target
+{
+	NSUInteger j = 0;
+
+	while (j < [_actions count]) {
+		id action = [_actions objectAtIndex:j];
+
+		if ([action target] == target) {
+			[_actions removeObjectAtIndex:j];
+		} else {
+			j++;
+		}
+	}
+}
+
+- (void)setUserInfoValue:(id)value forKey:(id)key
+{
+	if (key == nil) {
+		return;
+	}
+	/* A NIL VALUE REMOVES, which is the dictionary's own meaning of setObject:nil and the reason this
+	 * goes through removeObjectForKey: rather than raising. The dictionary is built on first use. */
+	if (value == nil) {
+		[_userInfo removeObjectForKey:key];
+		return;
+	}
+	if (_userInfo == nil) {
+		_userInfo = [[NSMutableDictionary alloc] init];
+	}
+	[_userInfo setObject:value forKey:key];
+}
+
+- (id)userInfoValueForKey:(id)key
+{
+	return key != nil ? [_userInfo objectForKey:key] : nil;
+}
+
+- (void)setDiscardable:(BOOL)flag
+{
+	_discardable = flag;
+}
+
+- (BOOL)isDiscardable
+{
+	return _discardable;
+}
+
+@end
+
 @implementation NSUndoManager
 
 - (instancetype)init
@@ -250,6 +360,7 @@ NSString *const NSUndoManagerWillUndoChangeNotification = @"NSUndoManagerWillUnd
 	_redoStack = [[NSMutableArray alloc] init];
 	_group = nil;
 	_groupingLevel = 0;
+	_levelsOfUndo = 0;
 	return self;
 }
 
@@ -276,7 +387,7 @@ NSString *const NSUndoManagerWillUndoChangeNotification = @"NSUndoManagerWillUnd
 	if (_group == nil) {
 		[self beginUndoGrouping];
 	}
-	[_group addObject:action];
+	[_group addAction:action];
 	/* CLEARING THE REDO STACK IS WHAT MAKES REDO MEAN THE FUTURE OF THE CHANGE JUST MADE, and it must
 	 * not happen while an undo or a redo is itself registering: those registrations ARE that stack. */
 	if (!_redoing && !_undoing) {
@@ -339,7 +450,7 @@ NSString *const NSUndoManagerWillUndoChangeNotification = @"NSUndoManagerWillUnd
 		[self fnPost:NSUndoManagerCheckpointNotification];
 		return;
 	}
-	_group = [[NSMutableArray alloc] init];
+	_group = [[FnUndoGroup alloc] init];
 	_groupingLevel = 1;
 	[self fnPost:NSUndoManagerDidOpenUndoGroupNotification];
 }
@@ -407,8 +518,8 @@ NSString *const NSUndoManagerWillUndoChangeNotification = @"NSUndoManagerWillUnd
  */
 - (void)performFromStack:(NSMutableArray *)from toStack:(NSMutableArray *)to
 {
-	NSMutableArray *group;
-	NSMutableArray *inverse = [[NSMutableArray alloc] init];
+	FnUndoGroup *group;
+	FnUndoGroup *inverse = [[FnUndoGroup alloc] init];
 	NSInteger i;
 
 	if ([from count] == 0) {
@@ -421,7 +532,7 @@ NSString *const NSUndoManagerWillUndoChangeNotification = @"NSUndoManagerWillUnd
 	_group = inverse;	/* what the actions register lands here */
 	_groupingLevel = 1;
 	for (i = (NSInteger)[group count] - 1; i >= 0; i--) {
-		[[group objectAtIndex:(NSUInteger)i] invoke];
+		[[group actionAtIndex:(NSUInteger)i] invoke];
 	}
 	_groupingLevel = 0;
 	[group release];
@@ -444,10 +555,19 @@ NSString *const NSUndoManagerWillUndoChangeNotification = @"NSUndoManagerWillUnd
 {
 	/* CLOSE AN OPEN GROUP FIRST, which is Apple's stated behaviour and the reason an ungrouped caller
 	 * works at all: without it, the actions registered since the last begin sit in a group the stacks
-	 * have never seen, and an undo of nothing is what a caller would get. */
+	 * have never seen, and an undo of nothing is what a caller would get. -undo IS "close, then
+	 * -undoNestedGroup", which is why the work itself lives in the one method below. */
 	if (_groupingLevel == 1) {
 		[self endUndoGrouping];
 	}
+	[self undoNestedGroup];
+}
+
+/* THE SAME WORK, WITHOUT CLOSING A TOP-LEVEL GROUP: it undoes the LAST group on the undo stack (in this
+ * model a CLOSED group, since only closed groups reach the stack), recording its actions on the redo stack
+ * as one group. An empty stack is the same quiet no-op -undo has. */
+- (void)undoNestedGroup
+{
 	if ([_undoStack count] == 0) {
 		return;
 	}
@@ -517,6 +637,112 @@ NSString *const NSUndoManagerWillUndoChangeNotification = @"NSUndoManagerWillUnd
 - (BOOL)isUndoRegistrationEnabled
 {
 	return !_registrationDisabled;
+}
+
+/* THE COUNTS ARE GROUPS, which is what an undo IS here: one entry on the undo stack is one invocation of
+ * -undo, so the count of entries is the number of times the caller can still undo. THE OPEN GROUP IS NOT
+ * COUNTED (it is not yet an action), exactly as -canUndo distinguishes it. */
+- (NSUInteger)undoCount
+{
+	return [_undoStack count];
+}
+
+- (NSUInteger)redoCount
+{
+	return [_redoStack count];
+}
+
+- (NSUInteger)levelsOfUndo
+{
+	return _levelsOfUndo;
+}
+
+/* SETTING A LIMIT TRIMS THE STACK AT ONCE, which is Apple's "setting a limit below the prior one
+ * immediately drops old undo groups": the OLDEST groups are at the BOTTOM, so index 0 goes first. A limit
+ * of 0 is no limit, so the loop never runs and the stack is left whole. */
+- (void)setLevelsOfUndo:(NSUInteger)levels
+{
+	_levelsOfUndo = levels;
+	if (levels > 0) {
+		while ([_undoStack count] > levels) {
+			[_undoStack removeObjectAtIndex:0];
+		}
+	}
+}
+
+- (void)fnRemoveActionsWithTarget:(id)target fromStack:(NSMutableArray *)stack
+{
+	NSUInteger i = 0;
+
+	while (i < [stack count]) {
+		FnUndoGroup *group = [stack objectAtIndex:i];
+
+		[group removeActionsWithTarget:target];
+		/* AN EMPTY GROUP IS AN UNDO OF NOTHING and would leave -canUndo answering yes, so it is dropped. */
+		if ([group count] == 0) {
+			[stack removeObjectAtIndex:i];
+		} else {
+			i++;
+		}
+	}
+}
+
+- (void)removeAllActionsWithTarget:(id)target
+{
+	[self fnRemoveActionsWithTarget:target fromStack:_undoStack];
+	[self fnRemoveActionsWithTarget:target fromStack:_redoStack];
+	/* THE OPEN GROUP IS A STACK TOO, exactly as -removeAllActions says: a caller clearing a target's
+	 * operations means the one being built as well, or that target's next undo would still be there. */
+	if (_group != nil) {
+		[_group removeActionsWithTarget:target];
+	}
+}
+
+/* THE PER-GROUP USER INFO. THE SETTER ATTACHES TO THE CURRENT GROUP, opening one if a caller sets a value
+ * before registering anything - the same auto-open -fnRegisterAction: performs - so the value lands on the
+ * group the next action joins. The dictionaries are read back from the group at the TOP of either stack,
+ * which is the group the next undo (or redo) would replay. */
+- (void)setActionUserInfoValue:(id)value forKey:(NSUndoManagerUserInfoKey)key
+{
+	if (key == nil) {
+		return;
+	}
+	if (_group == nil) {
+		[self beginUndoGrouping];
+	}
+	[_group setUserInfoValue:value forKey:key];
+}
+
+- (id)undoActionUserInfoValueForKey:(NSUndoManagerUserInfoKey)key
+{
+	return [[_undoStack lastObject] userInfoValueForKey:key];
+}
+
+- (id)redoActionUserInfoValueForKey:(NSUndoManagerUserInfoKey)key
+{
+	return [[_redoStack lastObject] userInfoValueForKey:key];
+}
+
+/* AND WHETHER THE GROUP MAY BE DISCARDED, the surface the discardable-actions half names: the setter marks
+ * the current group (auto-opening one, as the user-info setter does), the two questions read the group at
+ * the top of their stack. A nil group answers NO, which is the safe default Apple's "can this be thrown
+ * away?" wants. */
+- (void)setActionIsDiscardable:(BOOL)discardable
+{
+	if (_group == nil) {
+		[self beginUndoGrouping];
+	}
+	[_group setDiscardable:discardable];
+}
+
+- (BOOL)undoActionIsDiscardable
+{
+	return [[_undoStack lastObject] isDiscardable];
+}
+
+- (BOOL)redoActionIsDiscardable
+{
+	return [[_redoStack lastObject] isDiscardable];
 }
 
 - (NSString *)description

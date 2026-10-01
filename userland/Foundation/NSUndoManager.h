@@ -11,15 +11,17 @@
  * redo is the same machinery run the other way, which is why registering anything clears redo.
  *
  * WHAT IS NOT, named rather than discovered, AND ONE OF THESE REASONS WAS WRONG HERE: the
- * NOTIFICATIONS (five of them) cannot be posted because THIS LIBRARY HAS NO NOTIFICATION CENTRE -
- * the notifications family is §12's W4 and is not built - so their absence is a DEPENDENCY rather
- * than an omission, which is the opposite of what this line used to claim ("this library has the
- * notification centre to carry them") SHIP NOW that the centre exists (§21): the eight names are
- * declared below and posted at the points Apple documents. `-undoMenuTitleForUndoActionName:` (menu
- * strings) remains named - its titles are per-locale TEMPLATES, which is data this library does not
- * have - and so does the DISCARDABLE-ACTIONS half (the `NSUndoManagerGroupIsDiscardableKey` userInfo
- * and the two `-undo/redoActionIsDiscardable` questions behind it), which is a surface this class does
- * not have rather than a notification it cannot post.
+ * NOTIFICATIONS ship (the centre exists, §21) - the eight names are declared below and posted at the
+ * points Apple documents. `-undoMenuTitleForUndoActionName:`/`-redoMenuTitleForUndoActionName:` and the
+ * `-undo/redoMenuItemTitle` properties remain named: their titles are per-locale TEMPLATES (the words
+ * "Undo"/"Redo" are the application's LOCALIZED resources), and a hard-coded English string would answer
+ * the SHAPE while being wrong in every other locale - a fidelity deviation rather than an implementation.
+ *
+ * AND THIS ONE WAS MEASURED WRONG AND IS SHIPPING NOW: the DISCARDABLE-ACTIONS half used to be named here
+ * as "a surface this class does not have". It is not a missing surface - the group existed as a bare
+ * NSMutableArray with nowhere to hang per-group state; giving the group an object of its own (FnUndoGroup)
+ * is exactly the move that creates the surface, so `-setActionIsDiscardable:` and the two questions behind
+ * it are implemented below (§62.103's discardable half).
  */
 #ifndef FOUNDATION_NSUNDOMANAGER_H
 #define FOUNDATION_NSUNDOMANAGER_H
@@ -43,13 +45,18 @@ typedef NSString *NSUndoManagerUserInfoKey;
  * discardable-actions half already refers to. */
 extern NSUndoManagerUserInfoKey const NSUndoManagerGroupIsDiscardableKey;
 
+/* THE GROUP OBJECT: a list of actions PLUS the per-group state (userInfo and the discardable flag). It is
+ * named here only so the ivar below can be typed; its definition is private to the implementation. */
+@class FnUndoGroup;
+
 @interface NSUndoManager : NSObject
 {
-	NSMutableArray *_undoStack;		/* of groups; each group is an array of actions */
+	NSMutableArray *_undoStack;		/* of FnUndoGroup objects */
 	NSMutableArray *_redoStack;
-	NSMutableArray *_group;			/* the group being built, when one is open */
+	FnUndoGroup *_group;			/* the group being built, when one is open */
 	NSString *_actionName;
 	unsigned long _groupingLevel;
+	NSUInteger _levelsOfUndo;		/* 0 means no limit, Apple's default */
 	BOOL _undoing;
 	BOOL _redoing;
 	BOOL _registrationDisabled;
@@ -97,10 +104,37 @@ extern NSUndoManagerUserInfoKey const NSUndoManagerGroupIsDiscardableKey;
 
 - (void)removeAllActions;
 
+/* THE DEPTH AND THE COUNTS (§62.103): how deep the undo stack may grow, and how many top-level groups sit
+ * on each stack - the number of times -undo/-redo can be invoked before there is nothing left to do. A
+ * `levelsOfUndo` of 0 is NO LIMIT, Apple's default, so the setter only trims when given a positive one. */
+@property NSUInteger levelsOfUndo;
+@property (readonly) NSUInteger undoCount;
+@property (readonly) NSUInteger redoCount;
+
+- (void)removeAllActionsWithTarget:(id)target;
+
+/* A PER-GROUP MESSAGE SENT LATER, like -undo but of the LAST group rather than the top-level close: -undo
+ * closes an open top-level group first and then does this, so the two share one body. */
+- (void)undoNestedGroup;
+
+/* THE PER-GROUP USER INFO (§62.103): a caller hangs arbitrary values on the group it is building, keyed by
+ * an NSUndoManagerUserInfoKey, and reads them back from the group at the top of either stack. */
+- (void)setActionUserInfoValue:(nullable id)value forKey:(NSUndoManagerUserInfoKey)key;
+- (nullable id)undoActionUserInfoValueForKey:(NSUndoManagerUserInfoKey)key;
+- (nullable id)redoActionUserInfoValueForKey:(NSUndoManagerUserInfoKey)key;
+
+/* AND WHETHER THE GROUP MAY BE DISCARDED, which is the surface the discardable-actions half names: mark
+ * the group being built, and ask about the group at the top of either stack. */
+- (void)setActionIsDiscardable:(BOOL)discardable;
+@property (readonly) BOOL undoActionIsDiscardable;
+@property (readonly) BOOL redoActionIsDiscardable;
+
 /*
  * THE EIGHT NOTIFICATIONS (W4's centre, §22). THEY GO TO THE DEFAULT CENTRE, their OBJECT IS THE
- * MANAGER, and none carries a userInfo — the one documented key belongs to the discardable-actions
- * surface named above, which this class does not have. WHERE EACH IS POSTED is Apple's own wording,
+ * MANAGER, and none carries a userInfo — the one documented key, `NSUndoManagerGroupIsDiscardableKey`,
+ * is read from a WillClose notification's userInfo on systems old enough to carry one; Apple's current
+ * notifications carry none, so this manager queries discardability through the two questions above rather
+ * than through a posted dictionary. WHERE EACH IS POSTED is Apple's own wording,
  * and the wording is narrower than it is usually taken for: DidOpenUndoGroup is the OPEN, WillClose/
  * DidClose surround a CLOSE, and CHECKPOINT is posted when a group is deferred (a nested open), when a
  * group closes, and when the REDO STACK IS CHECKED — which is why a checkpoint observer that calls
