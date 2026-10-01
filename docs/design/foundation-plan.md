@@ -15961,6 +15961,71 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.34–§63.38 — THE CAMPAIGN'S SECOND WAVE: FIVE MORE FAMILIES, 173 ROWS, AND THE WALL BETWEEN THE LIBRARIES (2026-09-30)
+
+**WHAT LANDED.** Five more families went to agents: **NSBundle 36, NSFileManager 27, NSCalendar 46, NSLocale 37,
+and NSString+NSCoder's remaining doors 27** — **173 rows**, taking the session from `method open` 900 to **659**
+and `property open` 464 to **356** (shipped 1821 → 2025 and 1026 → 1134).
+
+**AND THREE OF THOSE FIVE COULD NOT BE COMMITTED AS DELIVERED, WHICH IS THE ONLY PART WORTH READING.**
+
+1. **NSLocale WAS REVERTED AND REBUILT.** Its first pass closed 37 rows and REGRESSED TWO PRE-EXISTING CHECKS —
+   `locale-basics` and `locale-display-names` — which the agent could not see because they live INSIDE
+   `foundation_string.m` rather than in a probe of its own. **The cause, named by the agent on the retry: IT HAD
+   WIDENED THE TWO SPEC DOORS.** `-objectForKey:` had been extended to answer the sixteen data keys, so
+   `NSLocaleDecimalSeparator` returned `"."` where this library's documented deviation says the database keys
+   answer **nil**; and `-displayNameForKey:value:` had gained a currency branch, so `NSLocaleCurrencyCode`/`EUR`
+   returned `"Euro"`. Those two checks exist precisely to pin that deviation. Both doors are byte-for-byte the
+   originals now, the data is reached only from the property methods and the `-localizedStringFor…:` family, and a
+   GUARD CHECK (`locale-data-keys-stay-nil-through-the-two-narrow-doors`) makes the regression impossible to repeat
+   silently. A third pass fixed a PLACEMENT error (eight `localizedStringFor…:` names listed as CLASS doors where
+   Apple declares them on instances) — and that agent read BOTH inventory loops before moving a single name.
+
+2. **NSCalendar'S FIRST AGENT REFUSED TO PROCEED, CORRECTLY.** My brief's premise (*"this family shipped as a rule,
+   not a table"*) is contradicted by the disk — `NSCalendar.m` is an ICU binding, and the probe already asserts
+   non-Gregorian calendars and the zone database — and its apparent *"ledger contradiction"* was MY ERROR too:
+   there are TWO ledgers and I named the wrong one. It stopped without editing a byte; its replacement closed 46
+   rows over that same ICU machinery and de-risked the uncertain parts with scratch C programs in `/tmp` against
+   the host ICU rather than the shared probe.
+
+3. **THE LAST BATCH WAS BLOCKED BY A WALL BETWEEN TWO LIBRARIES, AND BOTH HALVES OF IT HAD TO BE PAID.**
+   `NSCoder.m` returned `CGAffineTransformIdentity`, a **SYMBOL IN libcoregraphics**, and Foundation deliberately
+   does not link the drawing library — `libfoundation.so` was left with an undefined reference and the guest tool
+   link failed. The fix is the constant's **VALUE** (`(CGAffineTransform){1,0,0,1,0,0}`): a constant is a value,
+   and writing it out costs a line and keeps Foundation free of a drawing library it has no business needing. Then
+   the **PROBE** called `CGPointMake`/`CGSizeMake`/`CGAffineTransformMake` — functions in that same library, while
+   the probe link lines carry `-lfoundation` alone. Repaired by building the structs with aggregate initializers
+   (identical values, every assertion and check name unchanged), after which the agent swept all four of its
+   library objects with `nm -u` and **PROVED no other out-of-library symbol remained**. **SO: A PROBE MAY NOT CALL
+   A CG FUNCTION, AND THE LIBRARY MAY NOT NAME A CG CONSTANT.**
+
+**⚠ AND THE PROBE-LINK GAP IS NOW A MEASURED WORK ITEM RATHER THAN A PLANNED FIX.** It has cost three units time.
+The tempting fix is *"add `-lcoregraphics`"*, and the measurement says otherwise: `mk/20-userland.mk` carries
+**140** occurrences of `-lfoundation`, because the probe link lines are written out per probe — the one-line fix is
+a 140-line refactor. **THE PROPORTIONATE ANSWER IS THE ONE THAT WORKS: every probe that wants a CG value BUILDS IT
+BY HAND** (proven three times), the rule is in every agent brief, and the build change waits for a unit that is
+about the build. (`CG_LIB` already lives in the same directory as the foundation library, so each site would need
+only `-lcoregraphics` on the day someone takes it.)
+
+**AND FOUR MORE OPERATIONAL LESSONS, ALL OF THEM MINE:**
+* **The compile command must carry the flags of the side being compiled.** I gave three agents the PROBE's flag set
+  for the LIBRARY (`-Werror=nullable-to-nonnull-conversion` belongs to the probe rules; the library's own flags
+  carry `-Werror=nullability-completeness`), so the command failed on every shipped `.m` — and an obedient agent
+  would have chased pre-existing diagnostics it was never asked to touch.
+* **Name the RIGHT ledger** when briefing a family: `foundation-selector-surface.txt` holds SELECTOR rows,
+  `foundation-apple-surface.txt` holds SYMBOL rows, and the plan's older figures are symbol statements.
+* **Audit the checks that already cover your family, wherever they live** — the rule that would have prevented the
+  NSLocale revert. NSString's checks are ALL inside `foundation_string.m`; NSCoder's are split across
+  `foundation_coder.m` AND `foundation_archiver.m`.
+* **A stale image reads as a failing implementation.** Two cases reported "missing" checks that were simply not in
+  the booted image, because `make testimg` had failed earlier in the chain. `make testimg` before `make test`, and
+  read the probe's own `RESULT` line rather than the case's wrapper.
+
+**VERIFICATION, COLLECTIVELY.** Every family above ends with: library ZERO DIAGNOSTICS on the real build;
+`--unimplemented` 0 NEW; `--refresh` → `--check` consistent in BOTH directions; the test image building; and the
+guest case passing — plus, for NSCoder, **`foundation_archiver` as well as `foundation_coder`**, because that
+probe's checks pin the classic archiver's contract and the agent was forbidden to edit it.
+
 ## §63.29–§63.33 — THE DELEGATION CAMPAIGN: FIVE FAMILIES, 101 ROWS, AND FOUR OPERATIONAL LESSONS (2026-09-30)
 
 **WHAT HAPPENED.** The user's grant of 2026-09-30 — *"for this plan only, you may use subagents to handle each
