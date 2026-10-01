@@ -25,7 +25,7 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: declined 420
+# why the struck rows are struck: declined 430
 #
 # AND 584 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2177   open  480   struck  271
-#   property   shipped 1266   open  221   struck  149
+#   method     shipped 2172   open  480   struck  276
+#   property   shipped 1261   open  221   struck  154
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -4324,11 +4324,11 @@ method	shipped	-isEqualToValue:	NSValue	Low-Level Utilities / Value Wrappers and
 method	shipped	+value:withObjCType:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Raw Values	-	objc
 method	shipped	+valueWithBytes:objCType:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Raw Values	-	objc
 method	open	+valueWithCATransform3D:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreAnimation Transform Values	-	objc
-method	shipped	+valueWithCGAffineTransform:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	-	objc
-method	shipped	+valueWithCGPoint:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	-	objc
-method	shipped	+valueWithCGRect:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	-	objc
-method	shipped	+valueWithCGSize:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	-	objc
-method	shipped	+valueWithCGVector:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	-	objc
+method	struck	+valueWithCGAffineTransform:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
+method	struck	+valueWithCGPoint:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
+method	struck	+valueWithCGRect:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
+method	struck	+valueWithCGSize:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
+method	struck	+valueWithCGVector:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
 method	open	+valueWithCMTime:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	-	objc
 method	open	+valueWithCMTimeMapping:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	-	objc
 method	open	+valueWithCMTimeRange:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	-	objc
@@ -4350,11 +4350,11 @@ method	shipped	+valueWithSize:	NSValue	Low-Level Utilities / Value Wrappers and 
 method	open	+valueWithUIEdgeInsets:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with UIKit Geometry Values	-	objc
 method	open	+valueWithUIOffset:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with UIKit Geometry Values	-	objc
 property	open	CATransform3DValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreAnimation Transform Values	-	objc
-property	shipped	CGAffineTransformValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	-	objc
-property	shipped	CGPointValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	-	objc
-property	shipped	CGRectValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	-	objc
-property	shipped	CGSizeValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	-	objc
-property	shipped	CGVectorValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	-	objc
+property	struck	CGAffineTransformValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
+property	struck	CGPointValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
+property	struck	CGRectValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
+property	struck	CGSizeValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
+property	struck	CGVectorValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
 property	open	CMTimeMappingValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	-	objc
 property	open	CMTimeRangeValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	-	objc
 property	open	CMTimeValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	-	objc

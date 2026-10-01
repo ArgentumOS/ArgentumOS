@@ -295,33 +295,10 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
 	return [[self alloc] fnInitWithBytes:&rect objCType:@encode(NSRect)];
 }
 
-/* THE COREGRAPHICS-GEOMETRY BOXES, the same shape once more: the CG structs are the published value types
- * (their encodings are "{CGPoint=dd}" … "{CGAffineTransform=dddddd}"), so each door copies the struct in
- * through the private funnel and reads nothing out of it. */
-+ (NSValue *)valueWithCGPoint:(CGPoint)point
-{
-	return [[self alloc] fnInitWithBytes:&point objCType:@encode(CGPoint)];
-}
-
-+ (NSValue *)valueWithCGSize:(CGSize)size
-{
-	return [[self alloc] fnInitWithBytes:&size objCType:@encode(CGSize)];
-}
-
-+ (NSValue *)valueWithCGRect:(CGRect)rect
-{
-	return [[self alloc] fnInitWithBytes:&rect objCType:@encode(CGRect)];
-}
-
-+ (NSValue *)valueWithCGVector:(CGVector)vector
-{
-	return [[self alloc] fnInitWithBytes:&vector objCType:@encode(CGVector)];
-}
-
-+ (NSValue *)valueWithCGAffineTransform:(CGAffineTransform)transform
-{
-	return [[self alloc] fnInitWithBytes:&transform objCType:@encode(CGAffineTransform)];
-}
+/* ⚠ THE `CG`-SPELLED BOXES MOVED TO THE COREGRAPHICS TIER (§63.53) — `userland/CoreGraphics/
+ * NSValueCGGeometry.m`, over this class's PUBLIC `+valueWithBytes:objCType:` rather than the private funnel
+ * below, which is the whole point of the move. The `NS`-spelled pair stays: `+valueWithPoint:` is Foundation's
+ * (macOS's `NSGeometry.h` declares it), while `+valueWithCGPoint:` is in no Foundation header of either SDK. */
 
 /* THE EDGE-INSETS BOX over `NSEdgeInsets` — the type this tree has (the UIKit spelling is a different
  * SELECTOR, +valueWithUIEdgeInsets:). ⚠ THE ENCODING IT STORES IS "{_NSEdgeInsets=dddd}", NOT Apple's
@@ -431,32 +408,9 @@ static const char *fn_measure(const char *type, NSUInteger *outSize, NSUInteger 
 	return *((NSRect *)[self fnBytes]);
 }
 
-/* THE COREGRAPHICS-GEOMETRY READERS and the edge-insets reader, the same shape as the three above: each casts
- * the private payload to the struct its door's encoding names. */
-- (CGPoint)CGPointValue
-{
-	return *((CGPoint *)[self fnBytes]);
-}
-
-- (CGSize)CGSizeValue
-{
-	return *((CGSize *)[self fnBytes]);
-}
-
-- (CGRect)CGRectValue
-{
-	return *((CGRect *)[self fnBytes]);
-}
-
-- (CGVector)CGVectorValue
-{
-	return *((CGVector *)[self fnBytes]);
-}
-
-- (CGAffineTransform)CGAffineTransformValue
-{
-	return *((CGAffineTransform *)[self fnBytes]);
-}
+/* ⚠ THE `CG`-SPELLED READERS MOVED WITH THEIR BOXES (§63.53) — `userland/CoreGraphics/NSValueCGGeometry.m`.
+ * The edge-insets reader below stays: `NSEdgeInsets` is THIS header's own struct (NSGeometry.h), which is why
+ * it was never CoreGraphics' business. */
 
 - (NSEdgeInsets)edgeInsetsValue
 {

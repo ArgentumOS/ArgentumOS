@@ -116,15 +116,16 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSValue *)valueWithSize:(NSSize)size;
 + (NSValue *)valueWithRect:(NSRect)rect;
 
-/* THE COREGRAPHICS-GEOMETRY DOORS, the same shape again: the CG structs are Apple's published value types
- * (userland/CoreGraphics/), so each door is +valueWithRange:'s shape over its struct and each reader below is
- * the range reader's shape. @encode(CGPoint) is "{CGPoint=dd}"; @encode(CGAffineTransform) is the six doubles
- * of the 3x2 matrix. */
-+ (NSValue *)valueWithCGPoint:(CGPoint)point;
-+ (NSValue *)valueWithCGSize:(CGSize)size;
-+ (NSValue *)valueWithCGRect:(CGRect)rect;
-+ (NSValue *)valueWithCGVector:(CGVector)vector;
-+ (NSValue *)valueWithCGAffineTransform:(CGAffineTransform)transform;
+/* ⚠ THE `CG`-SPELLED GEOMETRY DOORS ARE NOT HERE — THEY MOVED TO THE COREGRAPHICS TIER (§63.53, the user's
+ * directive of 2026-10-01). The five `+valueWithCG…:` doors and the five `…Value` readers now live in
+ * `userland/CoreGraphics/NSValueCGGeometry.h`, implemented over this class's PUBLIC doors
+ * (`+valueWithBytes:objCType:` and `-getValue:`).
+ *
+ * **THE MEASUREMENT THAT PUT THEM THERE, because the two spellings of one idea had to be told apart:**
+ * macOS's `Foundation/NSGeometry.h` declares `+valueWithPoint:`/`-pointValue` — THE `NS`-SPELLED DOORS ARE
+ * FOUNDATION'S and stay declared right above — while `+valueWithCGPoint:` and `-CGPointValue` appear in **no
+ * Foundation header of either SDK** (not macOS 14.5, not iOS 16.5; on iOS they are UIKit's `UIGeometry.h`).
+ * This tree has no UIKit, so the CG types' own tier takes them. */
 
 /* THE EDGE-INSETS DOOR — the boxed type is `NSEdgeInsets`, NOT UIKit's `UIEdgeInsets`. Apple's own
  * documentation gives the Swift spelling init(edgeInsets: NSEdgeInsets), and the UIKit spelling is a
@@ -151,11 +152,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSPoint)pointValue;
 - (NSSize)sizeValue;
 - (NSRect)rectValue;
-- (CGPoint)CGPointValue;
-- (CGSize)CGSizeValue;
-- (CGRect)CGRectValue;
-- (CGVector)CGVectorValue;
-- (CGAffineTransform)CGAffineTransformValue;
 - (NSEdgeInsets)edgeInsetsValue;
 
 - (BOOL)isEqualToValue:(NSValue *)value;

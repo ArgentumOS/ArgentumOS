@@ -581,6 +581,23 @@ DECLINED_SELECTORS = frozenset((
     ("NSBundle", "pathForImageResource:"),
     ("NSBundle", "URLForImageResource:"),
     ("NSBundle", "pathForSoundResource:"),
+    # ⚠ AND THESE TEN ARE THE COREGRAPHICS TIER's, MOVED THERE RATHER THAN DELETED (§63.53, the same user
+    # directive). THE MEASUREMENT THAT SEPARATED THE TWO SPELLINGS OF ONE IDEA: macOS's
+    # `Foundation/NSGeometry.h` declares `+valueWithPoint:`/`-pointValue`, while `+valueWithCGPoint:` and
+    # `-CGPointValue` appear in NO Foundation header of either SDK — not macOS 14.5, not iOS 16.5, where they
+    # are UIKit's `UIGeometry.h`. This tree has no UIKit, so the CG spellings went to the tier that owns the CG
+    # types: `userland/CoreGraphics/NSValueCGGeometry.{h,m}`, implemented over NSValue's PUBLIC doors. Struck
+    # here for the same reason the AppKit three are: this ledger is FOUNDATION's and these are not.
+    ("NSValue", "valueWithCGPoint:"),
+    ("NSValue", "valueWithCGSize:"),
+    ("NSValue", "valueWithCGRect:"),
+    ("NSValue", "valueWithCGVector:"),
+    ("NSValue", "valueWithCGAffineTransform:"),
+    ("NSValue", "CGPointValue"),
+    ("NSValue", "CGSizeValue"),
+    ("NSValue", "CGRectValue"),
+    ("NSValue", "CGVectorValue"),
+    ("NSValue", "CGAffineTransformValue"),
 ))
 
 

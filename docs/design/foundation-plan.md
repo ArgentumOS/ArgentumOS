@@ -15979,6 +15979,46 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.53 — THE COREGRAPHICS MOVE: TEN DOORS, AND THE MEASUREMENT THAT SEPARATED TWO SPELLINGS OF ONE IDEA (2026-10-01)
+
+**WHAT LANDED: `NSValue`'S TEN `CG`-SPELLED GEOMETRY DOORS MOVED TO THE COREGRAPHICS TIER** —
+`+valueWithCGPoint:`, `+valueWithCGSize:`, `+valueWithCGRect:`, `+valueWithCGVector:`,
+`+valueWithCGAffineTransform:` and the five `…Value` readers — into
+`userland/CoreGraphics/NSValueCGGeometry.{h,m}`. **MEASURED: host probe `coregraphics_nsvalue` 6/6 checks green
+(a NEW probe); guest case `foundation_nsvalue` 6/6 with the probe's own tally `ok=14 fail=0`; `make testimg`
+exit 0; `make foundation-sweep` exit 0; `--check` consistent; `--unimplemented` 0 NEW; ledger methods shipped
+2177 → 2172, properties 1266 → 1261, struck 271 → 276 and 149 → 154 — ten rows, split five and five.**
+
+**⚠⚠ AND THE UNIT TURNED ON TELLING TWO SPELLINGS OF ONE IDEA APART, WHICH NO VALUE COULD DO.** `NSPoint` IS
+`CGPoint` in this tree (NSGeometry.h aliases them), so a `CG`-spelled box and an `NS`-spelled one carry the
+SAME encoding and compare EQUAL — `foundation_nsvalue` asserted exactly that, and still does. **Only the SDK
+headers can say which spelling is whose, and they say it cleanly:**
+ * **`+valueWithPoint:`/`-pointValue` ARE FOUNDATION'S** — macOS's `Foundation/NSGeometry.h` declares them.
+ * **`+valueWithCGPoint:`/`-CGPointValue` ARE IN NO FOUNDATION HEADER OF EITHER SDK** — not macOS 14.5, not
+   iOS 16.5, where they are **UIKit's** (`UIGeometry.h`). This tree has no UIKit, so the tier that owns the
+   `CG` types takes them. **A probe could not have found this; a header could, and did.**
+
+**AND THE IMPLEMENTATION IS OVER PUBLIC API, WHICH IS THE POINT OF THE MOVE.** Foundation's box keeps its
+payload behind `-fnBytes`/`-fnInitWithBytes:`, which are PRIVATE to that library, so every moved door goes
+through `+valueWithBytes:objCType:` and `-getValue:` — the class's own published doors, and exactly what a
+caller of these would use. **FOUNDATION NOW NEEDS NO COREGRAPHICS FOR THIS FAMILY, and the build proved it
+another way: after the removal, the ONLY compilation failure in the whole tree was the PROBE that had used
+them** — no library file in Foundation referenced a single one.
+
+**AND THE CHECKS SPLIT THE WAY §63.52 ESTABLISHED, because the wall is the same one.** A Foundation probe cannot
+link CoreGraphics, so the five POSITIVE checks moved into a NEW CoreGraphics probe (`coregraphics_nsvalue`,
+which is HOST-ONLY — this tree has no `tests/cases/coregraphics_*.py`), and `foundation_nsvalue` keeps the half
+its tier can hold: **`cg-spelled-geometry-doors-are-not-on-foundation-s-nsvalue` asks `-respondsToSelector:`
+and `-instancesRespondToSelector:` for all ten with `NSSelectorFromString`, so a regression that put them back
+turns the GUEST red.** Between them the pair states the whole fact, and the guest — the verification of record
+— is not left with nothing.
+
+**WHAT IS LEFT OF THIS DIRECTIVE, NAMED SO IT IS NOT REDISCOVERED:** `NSCoder`'s ten `CG`-spelled doors
+(`-encodeCGPoint:forKey:` … `-decodeCGAffineTransformForKey:`) are the same shape, with ONE complication the
+NSValue half did not have: **`NSKeyedArchiver`/`NSKeyedUnarchiver` implement them, so the move has to decide
+where the keyed family's half lives** — that is a design question about the coder seam, not a mechanical pass,
+and it is the next unit.
+
 ## §63.52 — THE APPKIT MOVE: THREE DOORS LEAVE FOUNDATION, AND THE PROBE THAT CANNOT OBSERVE THEM YET (2026-10-01)
 
 **WHAT LANDED: `-pathForImageResource:`, `-URLForImageResource:` and `-pathForSoundResource:` LEFT FOUNDATION AND

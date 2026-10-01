@@ -46,10 +46,12 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_nsvalue"
-CHECKS = ("value-bytes-roundtrip", "value-copies-exactly-its-size", "value-pointer",
+CHECKS = (
+          # §63.53: the CG-spelled doors moved to CoreGraphics; this is the negative half.
+          "cg-spelled-geometry-doors-are-not-on-foundation-s-nsvalue","value-bytes-roundtrip", "value-copies-exactly-its-size", "value-pointer",
           "value-range", "value-point", "value-size", "value-rect",
-          "value-cgpoint", "value-cgsize", "value-cgrect", "value-cgvector",
-          "value-cgaffinetransform", "value-edge-insets", "value-nonretained-object",
+             
+           "value-edge-insets", "value-nonretained-object",
           "value-init-with-bytes",
           "value-in-a-container", "null-is-one-object",
           "null-holds-a-place-in-a-collection")

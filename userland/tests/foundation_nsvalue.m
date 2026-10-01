@@ -192,79 +192,30 @@ int main(void)
 	}
 
 	{
-		/* THE COREGRAPHICS-GEOMETRY BOXES, each checked on its OWN so a failure names the struct. Each door
-		 * is read back through its own reader AND its encoding is compared; the CGPoint is additionally
-		 * compared against the Foundation spelling, because NSPoint and CGPoint are one type here. */
-		/* CONSTRUCTED DIRECTLY, NOT VIA CGPointMake &c: those constructors live in libcoregraphics, and a
-		 * probe links only -lfoundation (mk/60-host.mk) — calling them leaves the probe UNLINKED
-		 * (`undefined reference to CGRectMake`, measured). The CG TYPES are header-only and need no link;
-		 * a brace-initializer builds the same struct, field for field, so the values the checks assert are
-		 * exactly the ones named here. */
-		CGPoint cgPoint = {1.5, -2.5};
-		CGSize cgSize = {6.0, 7.5};
-		CGRect cgRect = {{1.0, 2.0}, {3.0, 4.0}};
-		CGVector cgVector = {-1.0, 0.5};
-		CGAffineTransform xform = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-		NSValue *bPoint = [NSValue valueWithCGPoint:cgPoint];
-		NSValue *bSize = [NSValue valueWithCGSize:cgSize];
-		NSValue *bRect = [NSValue valueWithCGRect:cgRect];
-		NSValue *bVector = [NSValue valueWithCGVector:cgVector];
-		NSValue *bXform = [NSValue valueWithCGAffineTransform:xform];
-		CGPoint pBack = {0, 0};
-		CGSize sBack = {0, 0};
-		CGRect rBack = {{0, 0}, {0, 0}};
-		CGVector vBack = {0, 0};
-		CGAffineTransform xBack = {0, 0, 0, 0, 0, 0};
-
-		if (bPoint != nil) {
-			pBack = [bPoint CGPointValue];
-		}
-		if (bSize != nil) {
-			sBack = [bSize CGSizeValue];
-		}
-		if (bRect != nil) {
-			rBack = [bRect CGRectValue];
-		}
-		if (bVector != nil) {
-			vBack = [bVector CGVectorValue];
-		}
-		if (bXform != nil) {
-			xBack = [bXform CGAffineTransformValue];
-		}
-
-		check("value-cgpoint",
-		      bPoint != nil && pBack.x == 1.5 && pBack.y == -2.5 &&
-		      strcmp([bPoint objCType], @encode(CGPoint)) == 0 &&
-		      [bPoint isEqualToValue:[NSValue valueWithPoint:NSMakePoint(1.5, -2.5)]],
-		      [NSString stringWithFormat:@"got={%g, %g} enc=%s",
-			pBack.x, pBack.y, [bPoint objCType]]);
-
-		check("value-cgsize",
-		      bSize != nil && sBack.width == 6.0 && sBack.height == 7.5 &&
-		      strcmp([bSize objCType], @encode(CGSize)) == 0,
-		      [NSString stringWithFormat:@"got={%g, %g} enc=%s",
-			sBack.width, sBack.height, [bSize objCType]]);
-
-		check("value-cgrect",
-		      bRect != nil && rBack.origin.x == 1.0 && rBack.origin.y == 2.0 &&
-		      rBack.size.width == 3.0 && rBack.size.height == 4.0 &&
-		      strcmp([bRect objCType], @encode(CGRect)) == 0,
-		      [NSString stringWithFormat:@"got={{%g, %g}, {%g, %g}} enc=%s",
-			rBack.origin.x, rBack.origin.y, rBack.size.width, rBack.size.height,
-			[bRect objCType]]);
-
-		check("value-cgvector",
-		      bVector != nil && vBack.dx == -1.0 && vBack.dy == 0.5 &&
-		      strcmp([bVector objCType], @encode(CGVector)) == 0,
-		      [NSString stringWithFormat:@"got={%g, %g} enc=%s",
-			vBack.dx, vBack.dy, [bVector objCType]]);
-
-		check("value-cgaffinetransform",
-		      bXform != nil && xBack.a == 1.0 && xBack.b == 2.0 && xBack.c == 3.0 &&
-		      xBack.d == 4.0 && xBack.tx == 5.0 && xBack.ty == 6.0 &&
-		      strcmp([bXform objCType], @encode(CGAffineTransform)) == 0,
-		      [NSString stringWithFormat:@"got=[%g %g %g %g %g %g] enc=%s",
-			xBack.a, xBack.b, xBack.c, xBack.d, xBack.tx, xBack.ty, [bXform objCType]]);
+		/* ⚠ THE `CG`-SPELLED BOXES ARE NOT FOUNDATION'S ANY MORE (§63.53). They moved to the COREGRAPHICS tier
+		 * (`userland/CoreGraphics/NSValueCGGeometry.{h,m}`), because the measurement that settles the two
+		 * spellings of one idea is: `+valueWithCGPoint:` and `-CGPointValue` appear in **NO Foundation header
+		 * of either SDK**, while `+valueWithPoint:`/`-pointValue` DO (macOS's `NSGeometry.h`) — and the
+		 * `NS`-spelled pair is still asserted just above.
+		 *
+		 * THEIR POSITIVE CHECKS MOVED WITH THEM, to `coregraphics_nsvalue`, a CoreGraphics probe which can link
+		 * the tier that owns them. WHAT THIS PROBE HOLDS IS THE OTHER HALF, and it is the half that catches a
+		 * regression: `NSSelectorFromString` rather than `@selector(…)` because NO DECLARATION IS IN SCOPE
+		 * HERE, which is exactly the fact being asserted. */
+		check("cg-spelled-geometry-doors-are-not-on-foundation-s-nsvalue",
+		      ![NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGPoint:")] &&
+		      ![NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGSize:")] &&
+		      ![NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGRect:")] &&
+		      ![NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGVector:")] &&
+		      ![NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGAffineTransform:")] &&
+		      ![NSValue instancesRespondToSelector:NSSelectorFromString(@"CGPointValue")] &&
+		      ![NSValue instancesRespondToSelector:NSSelectorFromString(@"CGSizeValue")] &&
+		      ![NSValue instancesRespondToSelector:NSSelectorFromString(@"CGRectValue")] &&
+		      ![NSValue instancesRespondToSelector:NSSelectorFromString(@"CGVectorValue")] &&
+		      ![NSValue instancesRespondToSelector:NSSelectorFromString(@"CGAffineTransformValue")],
+		      [NSString stringWithFormat:@"Foundation's NSValue carries none of the five CG-spelled boxes or "
+						@"readers: they are the CoreGraphics tier's, and their positive checks live in "
+						@"coregraphics_nsvalue"]);
 	}
 
 	{
