@@ -15979,6 +15979,53 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.54 — THE KEYED CODER DOORS MOVE, AND A FULL REBUILD FINDS THREE LATENT BREAKS (2026-10-01)
+
+**WHAT LANDED: `NSCoder`'S TEN `CG`-SPELLED KEYED DOORS MOVED TO THE COREGRAPHICS TIER** —
+`-encodeCGPoint:forKey:` … `-decodeCGAffineTransformForKey:` — into
+`userland/CoreGraphics/NSCoderCGGeometry.{h,m}`, **a category on `NSCoder` over the PUBLIC keyed doors**
+(`-encodeObject:forKey:` / `-decodeObjectForKey:` plus `NSValue`'s `+valueWithBytes:objCType:`), so Foundation
+keeps neither the declarations nor the bodies. **MEASURED: `make testimg` exit 0 and guest case
+`foundation_coder` 6/6 with the probe's own tally `ok=29 fail=0`; `make foundation-sweep` exit 0; `--check`
+consistent; `--unimplemented` 0 NEW; ledger methods shipped 2172 → 2162 and struck 276 → 286.**
+
+**⚠⚠ AND THE UNIT IS MOSTLY A REPAIR, BECAUSE A FULL REBUILD FOUND THREE BREAKS THAT EVERY INCREMENTAL BUILD HAD
+HIDDEN — TWO OF THEM MINE, FROM THE TWO UNITS IMMEDIATELY BEFORE THIS ONE.**
+ * **§63.53'S OWN MOVE LEFT TEN CALL SITES IN FOUNDATION POINTING AT SELECTORS THAT NO LONGER EXISTED.**
+   `NSKeyedArchiver` implemented the ten doors by calling the `CG`-spelled `NSValue` doors, and moving THOSE out
+   made its implementations dangle. **THE LINKER COULD NOT SEE IT: AN OBJECTIVE-C MESSAGE SEND EMITS NO
+   UNDEFINED SYMBOL** — it is a selector reference, not an import — and the build passed because that file's
+   object was **STALE**. Forcing the rebuild showed five warnings (the class-method boxes) and five ERRORS (the
+   readers: *"returning 'id' from a function with incompatible result type 'CGPoint'"*).
+ * **AND TWO HEADERS WERE STRUCTURALLY WRONG, EACH SINCE ITS OWN UNIT.** `NSKeyValueObserving.h` (added §63.45)
+   and `NSLinguisticTagger.h` (added §63.49) each declare a CATEGORY on a class they only forward-declare, and
+   **`@class Foo;` names a class but cannot carry a category on it** — clang answers *"cannot define category for
+   undefined class"* (and *"cannot find interface declaration"* for the first form tried). Both compiled for
+   their whole lives because no incremental build ever recompiled a translation unit that saw the header first.
+ * **A THIRD WAS THE SAME SHAPE IN A DIFFERENT PLACE**: §63.45's three `…error:` doors were declared in
+   `NSPropertyListSerialization.h`'s `NSArray` CATEGORY and implemented on the CLASS in `NSArray.m`, which is
+   `-Wincomplete-implementation` — a declaration and its body in two different blocks, in two different files.
+
+**⚠ AND THE FIX OF THAT LAST ONE CORRECTED THE PLACEMENT RATHER THAN THE WARNING: the three `…error:` doors went
+ONTO `NSArray` ITSELF, because THAT IS WHERE APPLE DECLARES THEM** — the modern constructors are the class's own
+methods, not the property-list category's. **A WARNING WHOSE HONEST FIX IS A MOVE MEANS THE PLACEMENT WAS THE
+BUG**, and the category was chosen in §63.45 for a reason that turned out to be about the OLD four doors only.
+
+**⚠ AND ONE CLAIM THIS CAMPAIGN MADE TWICE IS NOW CORRECTED: *"a Foundation probe cannot link AppKit or
+CoreGraphics"* WAS MY ASSUMPTION, NOT A RULE.** §63.52 and §63.53 both used it to justify splitting a check
+across two probes. **THE TIER RULE IS ABOUT LIBRARIES — `libfoundation` must not depend on a drawing library,
+which is real and measured — BUT A PROBE IS A SEPARATE BINARY WHOSE JOB IS TO TEST BEHAVIOUR, and behaviour that
+spans two tiers is tested by linking both.** What the earlier splits actually showed was narrower: that a check
+had to leave a probe that could not *see the API*. So `foundation_coder`, which tests the ten doors **together
+with** the `NS`-spelled ones in ONE archive, now imports `NSCoderCGGeometry.h` and links `-lcoregraphics`
+(`mk/20-userland.mk` and `mk/60-host.mk`), and no check had to be split at all.
+
+**THE ACCEPTANCE RULE THIS UNIT PROVES, and it generalises past warnings: A SURFACE CHANGE IS ACCEPTED BY A FULL
+REBUILD, NOT AN INCREMENTAL ONE.** The plan already required a full recompile for the ZERO-WARNING bar; what
+this unit adds is that the same trap hides **ERRORS**, and it hides them in a way no linker can catch, because
+Objective-C sends carry no symbol. `rm -rf .build/host/obj` before believing a green build is now the shape of
+the check — and it is what turned three silent breaks into a repair in one pass.
+
 ## §63.53 — THE COREGRAPHICS MOVE: TEN DOORS, AND THE MEASUREMENT THAT SEPARATED TWO SPELLINGS OF ONE IDEA (2026-10-01)
 
 **WHAT LANDED: `NSValue`'S TEN `CG`-SPELLED GEOMETRY DOORS MOVED TO THE COREGRAPHICS TIER** —

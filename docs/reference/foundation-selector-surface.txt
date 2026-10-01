@@ -25,7 +25,7 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: declined 430
+# why the struck rows are struck: declined 440
 #
 # AND 584 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2172   open  480   struck  276
+#   method     shipped 2162   open  480   struck  286
 #   property   shipped 1261   open  221   struck  154
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -586,11 +586,11 @@ method	shipped	-decodeBytesForKey:minimumLength:	NSCoder	Files and Data Persiste
 method	shipped	-decodeBytesForKey:returnedLength:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeBytesWithMinimumLength:	NSCoder	Files and Data Persistence / Keyed Archivers / Instance Methods	-	objc
 method	shipped	-decodeBytesWithReturnedLength:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	shipped	-decodeCGAffineTransformForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
-method	shipped	-decodeCGPointForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
-method	shipped	-decodeCGRectForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
-method	shipped	-decodeCGSizeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
-method	shipped	-decodeCGVectorForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
+method	struck	-decodeCGAffineTransformForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	declined	objc
+method	struck	-decodeCGPointForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	declined	objc
+method	struck	-decodeCGRectForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	declined	objc
+method	struck	-decodeCGSizeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	declined	objc
+method	struck	-decodeCGVectorForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	declined	objc
 method	open	-decodeCMTimeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Core Media Time Structures	-	objc
 method	open	-decodeCMTimeMappingForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Core Media Time Structures	-	objc
 method	open	-decodeCMTimeRangeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Core Media Time Structures	-	objc
@@ -633,11 +633,11 @@ method	shipped	-encodeBycopyObject:	NSCoder	Files and Data Persistence / Keyed A
 method	shipped	-encodeByrefObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeBytes:length:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeBytes:length:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	shipped	-encodeCGAffineTransform:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
-method	shipped	-encodeCGPoint:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
-method	shipped	-encodeCGRect:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
-method	shipped	-encodeCGSize:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
-method	shipped	-encodeCGVector:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
+method	struck	-encodeCGAffineTransform:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	declined	objc
+method	struck	-encodeCGPoint:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	declined	objc
+method	struck	-encodeCGRect:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	declined	objc
+method	struck	-encodeCGSize:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	declined	objc
+method	struck	-encodeCGVector:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	declined	objc
 method	open	-encodeCMTime:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Core Media Time Structures	-	objc
 method	open	-encodeCMTimeMapping:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Core Media Time Structures	-	objc
 method	open	-encodeCMTimeRange:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Core Media Time Structures	-	objc

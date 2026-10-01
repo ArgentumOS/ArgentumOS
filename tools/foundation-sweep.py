@@ -598,6 +598,23 @@ DECLINED_SELECTORS = frozenset((
     ("NSValue", "CGRectValue"),
     ("NSValue", "CGVectorValue"),
     ("NSValue", "CGAffineTransformValue"),
+    # ⚠ AND THESE TEN ARE THE SAME MOVE, FOR `NSCoder`'S KEYED DOORS (§63.54). They went to the CoreGraphics
+    # tier as a category on `NSCoder` (`NSCoderCGGeometry.{h,m}`), implemented over the PUBLIC keyed doors.
+    # THE COMPLICATION THE NSVALUE HALF DID NOT HAVE, and the reason this was a design question before it was
+    # a patch: `NSKeyedArchiver`/`NSKeyedUnarchiver` IMPLEMENTED these, and they implemented them by calling
+    # the `CG`-spelled `NSValue` doors — so §63.53 had left TEN CALL SITES IN FOUNDATION pointing at selectors
+    # that no longer existed, invisible to the linker (an Objective-C message send emits no undefined symbol)
+    # and hidden because the object was STALE. Implementations and call sites left together.
+    ("NSCoder", "encodeCGPoint:forKey:"),
+    ("NSCoder", "decodeCGPointForKey:"),
+    ("NSCoder", "encodeCGSize:forKey:"),
+    ("NSCoder", "decodeCGSizeForKey:"),
+    ("NSCoder", "encodeCGRect:forKey:"),
+    ("NSCoder", "decodeCGRectForKey:"),
+    ("NSCoder", "encodeCGVector:forKey:"),
+    ("NSCoder", "decodeCGVectorForKey:"),
+    ("NSCoder", "encodeCGAffineTransform:forKey:"),
+    ("NSCoder", "decodeCGAffineTransformForKey:"),
 ))
 
 

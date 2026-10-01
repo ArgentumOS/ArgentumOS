@@ -472,31 +472,18 @@ static BOOL fn_value_is_allowed(id value, NSSet *classes)
 	[self encodeObject:nil forKey:key];	/* not yet encoded: nothing is written */
 }
 
-/* --- THE KEYED GEOMETRY DOORS: box the structure in an `NSValue` under the key (NSCoder.h says why) ------- */
-- (void)encodeCGPoint:(CGPoint)point forKey:(NSString *)key
-{
-	[self encodeObject:[NSValue valueWithCGPoint:point] forKey:key];
-}
-
-- (void)encodeCGSize:(CGSize)size forKey:(NSString *)key
-{
-	[self encodeObject:[NSValue valueWithCGSize:size] forKey:key];
-}
-
-- (void)encodeCGRect:(CGRect)rect forKey:(NSString *)key
-{
-	[self encodeObject:[NSValue valueWithCGRect:rect] forKey:key];
-}
-
-- (void)encodeCGVector:(CGVector)vector forKey:(NSString *)key
-{
-	[self encodeObject:[NSValue valueWithCGVector:vector] forKey:key];
-}
-
-- (void)encodeCGAffineTransform:(CGAffineTransform)transform forKey:(NSString *)key
-{
-	[self encodeObject:[NSValue valueWithCGAffineTransform:transform] forKey:key];
-}
+/* ⚠ THE `CG`-SPELLED KEYED GEOMETRY DOORS ARE NOT FOUNDATION'S ANY MORE (§63.54): they are the CoreGraphics
+ * tier's — `userland/CoreGraphics/NSCoderCGGeometry.{h,m}`, a category on `NSCoder` over the PUBLIC keyed
+ * doors. The `NS`-spelled pair (`-encodePoint:forKey:`) stays, because macOS's `NSGeometry.h` declares it.
+ *
+ * ⚠⚠ AND THIS FILE IS WHERE A SILENT BREAK LIVED FOR ONE COMMIT: these ten implementations built their boxes
+ * with the `CG`-spelled `NSValue` doors, so moving THOSE out (§63.53) left ten call sites here pointing at
+ * selectors that no longer existed — and **an Objective-C message send emits NO UNDEFINED SYMBOL, so the linker
+ * cannot see it, and the build passed only because this file's object was STALE** (its dependency is its own
+ * `.m`, never a header). A forced rebuild is what showed it: five warnings for the class-method boxes and five
+ * ERRORS for the readers ("returning 'id' from a function with incompatible result type 'CGPoint'"). The ten
+ * implementations and their ten call sites left Foundation TOGETHER, which is why the fix and the move are one
+ * change. */
 
 /* The Foundation spellings (NSPoint/NSSize/NSRect) are the SAME boxes as the CG ones above, because this
  * tree's typedefs make the types identical (NSGeometry.h) — the door differs only in the name a caller
@@ -1166,31 +1153,6 @@ static BOOL fn_value_is_allowed(id value, NSSet *classes)
 				   key, [value class]];
 	}
 	return value;
-}
-
-- (CGPoint)decodeCGPointForKey:(NSString *)key
-{
-	return [[self fnDecodeGeometryValueForKey:key] CGPointValue];
-}
-
-- (CGSize)decodeCGSizeForKey:(NSString *)key
-{
-	return [[self fnDecodeGeometryValueForKey:key] CGSizeValue];
-}
-
-- (CGRect)decodeCGRectForKey:(NSString *)key
-{
-	return [[self fnDecodeGeometryValueForKey:key] CGRectValue];
-}
-
-- (CGVector)decodeCGVectorForKey:(NSString *)key
-{
-	return [[self fnDecodeGeometryValueForKey:key] CGVectorValue];
-}
-
-- (CGAffineTransform)decodeCGAffineTransformForKey:(NSString *)key
-{
-	return [[self fnDecodeGeometryValueForKey:key] CGAffineTransformValue];
 }
 
 - (NSPoint)decodePointForKey:(NSString *)key

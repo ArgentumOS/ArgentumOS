@@ -168,7 +168,7 @@ $(HOST_BINDIR)/$(1): $(HOST_FOUNDATION_LIB) $(wildcard userland/tests/$(1).m) $(
 # `$support`, whose `$s` is an empty make variable, leaving the literal `upport` as an argument.
 	$$(HOST_CC) $$(HOST_RPATH) $$(HOST_LDFLAGS) -o $$@ $(HOST_OBJDIR)/probe-$(1).o \
 		$(if $(wildcard userland/tests/$(1)_support.m),$(HOST_OBJDIR)/probe-$(1)-support.o) \
-		-lfoundation $$(HOST_ICU_LIBS) -lz -lm
+		-lfoundation -lcoregraphics $$(HOST_ICU_LIBS) -lz -lm
 # `-lm` IS HERE FOR THE PROBES THAT COMPUTE A TRIG-OR-ROOT RELATION rather than quoting a decimal:
 # foundation_formatters takes `sqrt` for the crossing NSUnitFuelEfficiency is anchored at, and glibc keeps
 # libm SEPARATE from libc, so the link failed with "DSO missing from command line" while the same probe is

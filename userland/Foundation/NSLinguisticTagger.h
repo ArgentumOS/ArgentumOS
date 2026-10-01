@@ -48,12 +48,16 @@
 #define FOUNDATION_NSLINGUISTICTAGGER_H
 
 #import <Foundation/NSObject.h>
+/* ⚠ `NSString` IS IMPORTED, NOT FORWARD-DECLARED, for the reason §63.54 had to find twice: `@class NSString;`
+ * names the class but cannot carry the `NSString(NSLinguisticAnalysis)` CATEGORY at the bottom of this file —
+ * clang answers "cannot define category for undefined class". The import is cycle-free: `NSString.h` does not
+ * import this header (it only POINTS at it, which is what the note there says). */
+#import <Foundation/NSString.h>
 
 @class NSArray;
 @class NSMutableArray;
 @class NSMutableDictionary;
 @class NSOrthography;
-@class NSString;
 
 NS_ASSUME_NONNULL_BEGIN
 

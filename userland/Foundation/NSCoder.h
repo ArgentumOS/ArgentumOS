@@ -135,16 +135,6 @@ typedef enum {
  * spelling at all". THE SECOND HALF WAS TRUE AND THE CONCLUSION DID NOT FOLLOW — a wire that cannot
  * spell a struct is a wire to EXTEND, not a door to omit, and the doors were owed the whole time. The
  * wire now carries `{…}`, `(…)` and `[…]` (FNArchiverWire.h), so the six are real sequential doors. */
-- (void)encodeCGPoint:(CGPoint)point forKey:(NSString *)key;
-- (CGPoint)decodeCGPointForKey:(NSString *)key;
-- (void)encodeCGSize:(CGSize)size forKey:(NSString *)key;
-- (CGSize)decodeCGSizeForKey:(NSString *)key;
-- (void)encodeCGRect:(CGRect)rect forKey:(NSString *)key;
-- (CGRect)decodeCGRectForKey:(NSString *)key;
-- (void)encodeCGVector:(CGVector)vector forKey:(NSString *)key;
-- (CGVector)decodeCGVectorForKey:(NSString *)key;
-- (void)encodeCGAffineTransform:(CGAffineTransform)transform forKey:(NSString *)key;
-- (CGAffineTransform)decodeCGAffineTransformForKey:(NSString *)key;
 - (void)encodePoint:(NSPoint)point forKey:(NSString *)key;
 - (NSPoint)decodePointForKey:(NSString *)key;
 - (void)encodeSize:(NSSize)size forKey:(NSString *)key;

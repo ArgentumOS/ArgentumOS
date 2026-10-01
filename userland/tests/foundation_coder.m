@@ -26,6 +26,17 @@
  */
 
 #import <Foundation/Foundation.h>
+/* §63.54: the `CG`-SPELLED keyed geometry doors are the COREGRAPHICS tier's now (`NSCoderCGGeometry.h`), and
+ * this probe tests them TOGETHER with the `NS`-spelled ones in one archive — so it imports the tier's header
+ * and LINKS it (mk/20-userland.mk and mk/60-host.mk pass `-lcoregraphics` here).
+ *
+ * ⚠ AND THAT CORRECTS A CLAIM THIS CAMPAIGN MADE TWICE (§63.52, §63.53): "a Foundation probe cannot link
+ * AppKit or CoreGraphics". **THE TIER RULE IS ABOUT LIBRARIES, NOT PROBES.** `libfoundation` must not depend on
+ * a drawing library — that is real and measured — but a PROBE is a separate binary whose job is to test
+ * behaviour, and behaviour that spans two tiers is tested by linking both. What the earlier splits actually
+ * showed was narrower: that the CHECKS had to leave the probes that could not see the API, not that no probe
+ * may ever link two libraries. */
+#import <CoreGraphics/NSCoderCGGeometry.h>
 
 #include <stdio.h>
 

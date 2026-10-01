@@ -32,6 +32,12 @@
 #define FOUNDATION_NSKEYVALUEOBSERVING_H
 
 #import <Foundation/NSObject.h>
+/* ⚠ `NSArray` IS IMPORTED, NOT FORWARD-DECLARED, AND THAT IS A LANGUAGE RULE RATHER THAN A PREFERENCE (§63.54):
+ * `@class NSArray;` is enough to NAME the class but NOT to DEFINE A CATEGORY on it — clang answers "cannot
+ * define category for undefined class". The category at the bottom of this file is Apple's arrangement (its own
+ * `NSKeyValueObserving.h` carries `NSArray(NSKeyValueObserverRegistration)`), so the class it extends has to be
+ * in scope, and the import is cycle-free: `NSArray.h` never imports this header. */
+#import <Foundation/NSArray.h>
 
 @class NSDictionary;
 @class NSString;
@@ -113,7 +119,14 @@ typedef NSUInteger NSKeyValueSetMutationKind;
  * Apple's header RECOMMENDS ("use -removeObserver:fromObjectsAtIndexes:forKeyPath:context: instead of
  * -removeObserver:fromObjectsAtIndexes:forKeyPath: whenever possible"), for the same reason its NSObject
  * twin is preferred: a context is what makes an observation uniquely removable. */
+/* ⚠ `NSArray` IS FORWARD-DECLARED HERE BY THIS LINE, AND ITS ABSENCE WAS A LATENT BREAK (found 2026-10-01,
+ * §63.54): the category below is declared in THIS header, which does not import NSArray.h, so
+ * `@interface NSArray (…)` needs at least a forward declaration or clang answers "cannot find interface
+ * declaration for 'NSArray'". IT SURVIVED EVERY INCREMENTAL BUILD because the object that includes this header
+ * was never recompiled — the same stale-object effect that hid §63.54's own break, and the reason this unit's
+ * acceptance is a FULL rebuild. */
 @class NSIndexSet;
+/* §63.54: NSArray.h is imported above; a forward declaration cannot carry a category. */
 
 @interface NSArray (NSKeyValueObserverRegistration)
 

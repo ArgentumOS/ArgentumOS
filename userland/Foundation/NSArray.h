@@ -40,6 +40,10 @@ NS_ASSUME_NONNULL_BEGIN
 /* §63.45: the sort-hint property and its `hint:` parameter name NSData, so the type has to be visible — the
  * same reason NSURL is named here rather than imported. */
 @class NSData;
+/* §63.54: the three `…error:` doors' out-parameter names NSError, and NAME IT IS ALL THAT IS NEEDED — this is
+ * a POINTER to a pointer, not a call on the class, so a forward declaration is enough where `NSKeyValueObserving.h`
+ * needed an import for its category. */
+@class NSError;
 
 /* ===================================================================================================
  * NSARRAY IS A CLASS CLUSTER (2026-09-28; docs/design/foundation-clusters-plan.md §C.3).
@@ -204,6 +208,25 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSArray<ObjectType> *)sortedArrayUsingFunction:(NSInteger (*)(ObjectType, ObjectType, void *))comparator
 			      context:(nullable void *)context
 				 hint:(nullable NSData *)hint;
+
+/* --- §63.54: THE ERROR-CARRYING FILE DOORS, ON THE CLASS WHERE APPLE DECLARES THEM -------------------
+ *
+ * They were §63.45's, declared in `NSPropertyListSerialization.h`'s `NSArray (NSPropertyListAdditions)`
+ * category. **MOVED HERE BY A FULL REBUILD, WHICH IS THE ONLY THING THAT COULD SEE IT:** a category's
+ * `@implementation` that does not define a method the category declares is `-Wincomplete-implementation`, and
+ * these three are implemented on the CLASS in `NSArray.m` — a declaration and its body living in two different
+ * blocks, in two different files. An incremental build never recompiled `NSPropertyListSerialization.m`, so the
+ * warning never appeared. **AND THEY ARE ALSO SIMPLY APPLE'S ARRANGEMENT:** the modern `…error:` constructors
+ * are `NSArray`'s own methods, not the property-list category's — so `NSArray.h` is the right home rather than
+ * merely the quiet one.
+ *
+ * THE CONTRACT IS THE POINT: `-error:` answers "no" as a VALUE — nil (or NO) plus a filled-in `NSError` — where
+ * the older spellings can only say nil and leave the caller with no reason. */
++ (nullable NSArray<ObjectType> *)arrayWithContentsOfURL:(NSURL *)url
+						  error:(NSError * _Nullable * _Nullable)errorPtr;
+- (nullable NSArray<ObjectType> *)initWithContentsOfURL:(NSURL *)url
+						 error:(NSError * _Nullable * _Nullable)errorPtr;
+- (BOOL)writeToURL:(NSURL *)url error:(NSError * _Nullable * _Nullable)errorPtr;
 
 - (NSEnumerator<ObjectType> *)objectEnumerator;
 - (NSEnumerator<ObjectType> *)reverseObjectEnumerator;
