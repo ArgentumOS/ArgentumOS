@@ -36,8 +36,10 @@ say the unarchiver did not yet perform); the fixed-width integers; and the condi
 THE ONE DEPARTURE FROM COCOA, named because it is the only one: a reference is `{"$ref": n}` rather
 than Cocoa's `UID` property-list type, which this library's plist reader and writer cannot express.
 The TABLE structure is Cocoa's. An archive written here is readable here and is NOT byte-compatible
-with Cocoa's. Still absent, and named in the headers: class-name substitution and the codec's
-non-keyed (sequential) doors.
+with Cocoa's. Still absent, and named in the headers: class-name substitution and the keyed codec's
+non-keyed (sequential) doors — which the base now answers for the SEQUENTIAL family in two more places,
+`-encodePropertyList:`/`-decodePropertyList` (checked by `coder-sequential-plist-doors`) and
+`-encodeValuesOfObjCTypes:`/`-decodeValuesOfObjCTypes:` (checked by `coder-sequential-bulk-doors`).
 """
 
 import re
@@ -63,7 +65,11 @@ CHECKS = ("coder-round-trip-scalars", "coder-round-trip-collections", "coder-rou
           "coder-decode-failure-policy", "coder-top-level-error-door", "coder-top-level-root-door",
           "coder-collection-class-doors", "coder-secure-coding-gate", "coder-conditional-object",
           # the keyed geometry doors (a struct boxed in an NSValue) and their class refusal
-          "coder-geometry-doors", "coder-geometry-door-refusal")
+          "coder-geometry-doors", "coder-geometry-door-refusal",
+          # the LEGACY SEQUENTIAL doors on NSCoder, driven through the classic NSArchiver/NSUnarchiver
+          # pair (the only coders that answer them): a property list through the object door, and a
+          # run of values through the concatenated-type-code door
+          "coder-sequential-plist-doors", "coder-sequential-bulk-doors")
 
 
 class Case(BaseCase):

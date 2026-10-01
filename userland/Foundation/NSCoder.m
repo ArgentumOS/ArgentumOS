@@ -17,6 +17,7 @@
 #import <Foundation/NSSet.h>
 #import <Foundation/NSError.h>
 #import <Foundation/NSException.h>
+#include <stdarg.h>
 
 static void fn_abstract(Class cls, SEL door)
 {
@@ -553,6 +554,62 @@ static void fn_abstract_sequential(Class cls, SEL door)
 	(void)lengthp;
 	fn_abstract_sequential([self class], _cmd);
 	return NULL;
+}
+
+/* --- THE LEGACY SEQUENTIAL PLIST AND BULK DOORS (see the note in NSCoder.h) ------------------------- */
+
+/* A property list IS an object, so the door is the object door — which is why these two doors are NOT
+ * abstract: they are the same equivalence the bycopy/byref doors express, and they reach whichever
+ * `-encodeObject:`/`-decodeObject` the receiver's family supplies. */
+- (void)encodePropertyList:(nullable id)aPropertyList
+{
+	[self encodeObject:aPropertyList];
+}
+
+- (nullable id)decodePropertyList
+{
+	return [self decodeObject];
+}
+
+/* A RUN OF VALUES, LEFT TO RIGHT: each code in `types` names one argument, every argument is the ADDRESS
+ * of its value, and the code that follows is where `NSGetSizeAndAlignment` stops reading. A code that does
+ * not advance would spin forever, so that one case is broken out rather than looped. */
+- (void)encodeValuesOfObjCTypes:(const char *)types, ...
+{
+	va_list ap;
+
+	va_start(ap, types);
+	while (types != NULL && types[0] != '\0') {
+		const char *next;
+		const void *address = va_arg(ap, const void *);
+
+		[self encodeValueOfObjCType:types at:address];
+		next = NSGetSizeAndAlignment(types, NULL, NULL);
+		if (next == types) {
+			break;
+		}
+		types = next;
+	}
+	va_end(ap);
+}
+
+- (void)decodeValuesOfObjCTypes:(const char *)types, ...
+{
+	va_list ap;
+
+	va_start(ap, types);
+	while (types != NULL && types[0] != '\0') {
+		const char *next;
+		void *address = va_arg(ap, void *);
+
+		[self decodeValueOfObjCType:types at:address];
+		next = NSGetSizeAndAlignment(types, NULL, NULL);
+		if (next == types) {
+			break;
+		}
+		types = next;
+	}
+	va_end(ap);
 }
 
 - (NSInteger)versionForClassName:(NSString *)className

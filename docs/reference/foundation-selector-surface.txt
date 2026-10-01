@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2081   open  603   struck  244
-#   property   shipped 1218   open  272   struck  146
+#   method     shipped 2088   open  596   struck  244
+#   property   shipped 1219   open  271   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -612,7 +612,7 @@ method	shipped	-decodeObjectOfClass:forKey:	NSCoder	Files and Data Persistence /
 method	shipped	-decodeObjectOfClasses:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodePoint	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodePointForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodePropertyList	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
+method	shipped	-decodePropertyList	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodePropertyListForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-decodeRect	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeRectForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
@@ -626,7 +626,7 @@ method	open	-decodeUIEdgeInsetsForKey:	NSCoder	Files and Data Persistence / Keye
 method	open	-decodeUIOffsetForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
 method	shipped	-decodeValueOfObjCType:at:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	deprecated	objc
 method	open	-decodeValueOfObjCType:at:size:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodeValuesOfObjCTypes:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
+method	shipped	-decodeValuesOfObjCTypes:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	open	-encodeArrayOfObjCType:count:at:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeBool:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeBycopyObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
@@ -656,7 +656,7 @@ method	shipped	-encodeObject:	NSCoder	Files and Data Persistence / Keyed Archive
 method	shipped	-encodeObject:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	open	-encodePoint:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodePoint:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	open	-encodePropertyList:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
+method	shipped	-encodePropertyList:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	open	-encodeRect:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeRect:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeRootObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
@@ -665,7 +665,7 @@ method	shipped	-encodeSize:forKey:	NSCoder	Files and Data Persistence / Keyed Ar
 method	open	-encodeUIEdgeInsets:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
 method	open	-encodeUIOffset:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
 method	shipped	-encodeValueOfObjCType:at:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	open	-encodeValuesOfObjCTypes:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
+method	shipped	-encodeValuesOfObjCTypes:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-failWithError:	NSCoder	Files and Data Persistence / Keyed Archivers / Managing Decode Errors	-	objc
 method	open	-objectZone	NSCoder	Files and Data Persistence / Keyed Archivers / Managing Zones	-	objc
 method	open	-setObjectZone:	NSCoder	Files and Data Persistence / Keyed Archivers / Managing Zones	-	objc
@@ -3362,7 +3362,7 @@ method	open	-URLByAppendingPathExtensionForType:	NSURL	Fundamentals / URLs / Mod
 method	open	+URLByResolvingAliasFileAtURL:options:error:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	open	+URLByResolvingBookmarkData:options:relativeToURL:bookmarkDataIsStale:error:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	open	+URLFromPasteboard:	NSURL	Fundamentals / URLs / Working with Pasteboards	-	objc
-method	open	-URLHandleUsingCache:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
+method	shipped	-URLHandleUsingCache:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
 method	shipped	+URLWithDataRepresentation:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	+URLWithString:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	+URLWithString:encodingInvalidCharacters:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
@@ -3397,13 +3397,13 @@ method	shipped	-initWithString:relativeToURL:	NSURL	Fundamentals / URLs / Creati
 method	shipped	-isFileReferenceURL	NSURL	Fundamentals / URLs / Querying an NSURL	-	objc
 method	open	-loadResourceDataNotifyingClient:usingCache:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
 method	open	-promisedItemResourceValuesForKeys:error:	NSURL	Fundamentals / URLs / Working with Promised Items	-	objc
-method	open	-propertyForKey:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
+method	shipped	-propertyForKey:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
 method	shipped	-removeAllCachedResourceValues	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
 method	shipped	-removeCachedResourceValueForKey:	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
 method	open	-resourceDataUsingCache:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
 method	shipped	-resourceValuesForKeys:error:	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
 method	open	+resourceValuesForKeys:fromBookmarkData:	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
-method	open	-setProperty:forKey:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
+method	shipped	-setProperty:forKey:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
 method	open	-setResourceData:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
 method	shipped	-setResourceValue:forKey:error:	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
 method	shipped	-setResourceValues:error:	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
@@ -3427,7 +3427,7 @@ property	shipped	fragment	NSURL	Fundamentals / URLs / Accessing the Parts of the
 property	shipped	hasDirectoryPath	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
 property	shipped	host	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
 property	shipped	lastPathComponent	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
-property	open	parameterString	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	deprecated	objc
+property	shipped	parameterString	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	deprecated	objc
 property	shipped	password	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
 property	shipped	path	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc
 property	shipped	pathComponents	NSURL	Fundamentals / URLs / Accessing the Parts of the URL	-	objc

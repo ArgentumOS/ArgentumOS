@@ -913,6 +913,49 @@ int main(void)
 		}
 	}
 
+	{
+		/* THE LEGACY SEQUENTIAL DOORS, exercised through the classic pair — the only coders here that
+		 * answer them. `-encodePropertyList:` IS the object door for a plist, and
+		 * `-encodeValuesOfObjCTypes:` walks its concatenated type codes left to right, so a run of an
+		 * int and a double goes out and comes back in the same order. Every value is set HERE and
+		 * asserted against the reader's output, so a door that dropped or reordered a value fails.
+		 *
+		 * ⚠ REASONED, NOT MEASURED: this expectation is argued from the wire (FNArchiverWire.h — the
+		 * int32 and double tags round trip, the array tag carries the plist) and has NOT been observed
+		 * on a boot; the parent runs the guest. */
+		NSMutableData *plistData = [[NSMutableData alloc] init];
+		NSArchiver *plistWriter = [[NSArchiver alloc] initForWritingWithMutableData:plistData];
+		NSArray *plist = @[@"plist-entry", @21];
+		NSUnarchiver *plistReader;
+		id plistBack;
+
+		[plistWriter encodePropertyList:plist];
+		plistReader = [[NSUnarchiver alloc] initForReadingWithData:plistData];
+		plistBack = [plistReader decodePropertyList];
+		check("coder-sequential-plist-doors",
+		      [plistBack isKindOfClass:[NSArray class]] && [plistBack count] == 2 &&
+		      [[plistBack objectAtIndex:0] isEqualToString:@"plist-entry"] &&
+		      [[plistBack objectAtIndex:1] intValue] == 21,
+		      [NSString stringWithFormat:@"plistBack=%@", plistBack]);
+
+		/* `"id"` IS `@encode(int) @encode(double)` CONCATENATED — the door takes ONE string of codes,
+		 * and each code names the address that follows it in the varargs. */
+		NSMutableData *bulkData = [[NSMutableData alloc] init];
+		NSArchiver *bulkWriter = [[NSArchiver alloc] initForWritingWithMutableData:bulkData];
+		NSUnarchiver *bulkReader;
+		int bi = -7;
+		double bd = 1.25;
+		int biBack = 0;
+		double bdBack = 0.0;
+
+		[bulkWriter encodeValuesOfObjCTypes:"id", &bi, &bd];
+		bulkReader = [[NSUnarchiver alloc] initForReadingWithData:bulkData];
+		[bulkReader decodeValuesOfObjCTypes:"id", &biBack, &bdBack];
+		check("coder-sequential-bulk-doors",
+		      biBack == -7 && bdBack == 1.25,
+		      [NSString stringWithFormat:@"int=%d double=%g", biBack, bdBack]);
+	}
+
 	printf("FOUNDATION-CODER RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

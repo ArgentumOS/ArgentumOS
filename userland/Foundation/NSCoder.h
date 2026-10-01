@@ -227,6 +227,26 @@ typedef enum {
 - (void)encodeBytes:(nullable const void *)bytesp length:(NSUInteger)length;
 - (nullable const void *)decodeBytesWithReturnedLength:(NSUInteger *)lengthp;
 
+/* --- THE LEGACY SEQUENTIAL PLIST AND BULK DOORS -----------------------------------------------------
+ *
+ * `-encodePropertyList:`/`-decodePropertyList` are the OLD name for "this value is a property list", and a
+ * property list IS an object graph of strings, numbers, data and the collections — so they are implemented
+ * ONCE here as exactly that equivalence (Apple's own contract), which is what makes them correct for BOTH
+ * families at the same time: to a sequential coder they reach the real `-encodeObject:`/`-decodeObject`,
+ * and to a keyed coder they reach the keyed family's no-key `-encodeObject:`, which raises, as every
+ * sequential door does there.
+ *
+ * `-encodeValuesOfObjCTypes:`/`-decodeValuesOfObjCTypes:` write and read a RUN of values whose type codes
+ * are concatenated into ONE string — the caller's adjacent string literals `@encode(int) @encode(double)`
+ * spell `"id"` — so each code names one argument and every argument is the ADDRESS of its value. The door
+ * is therefore exactly `-encodeValueOfObjCType:at:` applied left to right, with `NSGetSizeAndAlignment` (the
+ * type-code reader NSValue uses) stepping from one code to the next; a code this library cannot spell
+ * raises in the underlying door rather than being silently skipped. */
+- (void)encodePropertyList:(nullable id)aPropertyList;
+- (nullable id)decodePropertyList;
+- (void)encodeValuesOfObjCTypes:(const char *)types, ...;
+- (void)decodeValuesOfObjCTypes:(const char *)types, ...;
+
 /* THE VERSION DOOR IS THE ONE SEQUENTIAL DOOR THIS LIBRARY DOES NOT ANSWER, and the ground is in the
  * wire: our stream records no class versions (Apple's classic stream did), so `NSUnarchiver` raises
  * rather than answering a number that was never written. Declared because Apple declares it on the
