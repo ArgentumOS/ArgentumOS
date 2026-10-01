@@ -15979,6 +15979,64 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.56 — THE FIRST THREE OF THE RESIDUE'S THIRTY LEAVE, AND THE METHOD THAT SORTS THEM (2026-10-01)
+
+**WHAT LANDED: `NSCharacterSet`'S TWO INTERNAL CONSTRUCTORS ARE NO LONGER PUBLIC API.** `-initWithCharactersInString:`
+and `-initWithRange:` are this library's own path — `+characterSetWithCharactersInString:` and
+`+characterSetWithRange:` are `[[self alloc] initWith…]` and **the ten cached built-ins build through
+`-initWithRange:`** — and Apple declares **neither**, so they were never part of this class's surface. They are
+declared in `NSCharacterSet.m`'s **class extension** now, so no caller outside that file can see them and no
+body, caller or cached-set shape changed. **MEASURED: `rm -rf .build/host/obj && make host-foundation` exit 0 with
+ZERO errors and ZERO new warnings; `make foundation-sweep` exit 0 and `--check` consistent; `--unimplemented`
+0 NEW; `make testimg` exit 0 and guest case `foundation_clusters` 6/6 with 17/17 checks.**
+
+**⚠⚠ AND THE UNIT'S REAL CONTENT IS THE METHOD, BECAUSE THE OBVIOUS READING OF THE RESIDUE IS WRONG. A NAME
+APPLE DECLARES NOWHERE IS ONE OF THREE THINGS, AND ONLY READING THE FILE TELLS THEM APART:**
+ 1. **PRIVATE IMPLEMENTATION THAT LEAKED INTO THE PUBLIC HEADER** — ours, internal, and the FIX IS A CLASS
+    EXTENSION, NOT A DELETION. **THIS IS THE TRAP `-initWith…` NAMES SET**: they LOOK like stray spellings of
+    Apple's `+characterSetWith…` and are their CALLEES. Deleting them would have broken Apple's own door. **The
+    user's "the private stuff is fine" is the rule that decides this case.**
+ 2. **OUR PUBLIC CONVENIENCE, WHERE APPLE HAS A NEAR-NEIGHBOUR** — delete it, and fix its callers. `-characterCount`
+    against `-length`, `-isEqualToCharacterSet:` against `-isEqual:`, `+numberWithDecimal:` against NSDecimalNumber's
+    `+decimalNumberWithDecimal:`, `-indexOfCaptureGroupNamed:` against `NSTextCheckingResult`'s `-rangeWithName:`.
+ 3. **APPLE'S OWN REMOVAL** — keep the door for compatibility, with the removal recorded. `+dataWithBase64EncodedString:`
+    and `…:options:` are the two known ones (`-base64EncodedDataWithOptions:` replaced them).
+
+**AND WHEN IN DOUBT THE DISCRIMINATOR IS A NEAR-NEIGHBOUR GREP, NOT A JUDGEMENT CALL: a name whose whole FAMILY
+is in the corpus while the name is not is OURS; a name whose family is ALSO absent is Apple's removal.** Measured,
+from a complete corpus: `-isEqualToCalendar:` is absent while `-isEqualToTimeZone:` and `-isEqualToDate:` are
+present; `-indexOfCaptureGroupNamed:` is absent while `-rangeWithName:` is present; `+numberWithDecimal:` is
+absent while `+decimalNumberWithDecimal:` is present. **These are this tree's own spellings.**
+
+⚠ **AND ONE CORPUS FACT THAT MUST BE ASKED CORRECTLY, because a file's ABSENCE is not a name's absence: macOS
+Foundation has NO `NSSocketPort.h` and NO `NSMachPort.h` — `NSSocketPort` and `NSMachPort` are declared in
+`NSPort.h` — and NO `NSUserUnixTask.h`, which is in `NSUserScriptTask.h`.** So the question is always "does the
+corpus TEXT hold this selector", never "does this file exist". **Three of this session's findings were false
+positives of that mistake, mine.**
+
+**⚠ AND A MEASUREMENT OF MY OWN WAS WRONG IN THE SAME WAY, RECORDED BECAUSE IT NEARLY UNDID §63.55:** testing
+`+characterSet` with `re.search(r"\bcharacterSet\b", …)` against `NSCharacterSet.h` answers **0 matches in a
+file that contains EIGHT `characterSet` occurrences** — `\b` cannot match inside `characterSetWithRange`. **The
+alarm it raised ("the corpus is trimmed") was the check's bug, not the corpus's**, and the file is real
+(3,951 bytes, 35 declarations, with `+characterSetWithRange:` and `+characterSetWithCharactersInString:` right
+there). The audit's `declared_anywhere` is right precisely because it asks that question of the whole corpus
+with the variant forms the SDK uses.
+
+**THE REMAINING WORK LIST, classified and with its evidence, so the next unit is a table and not a search:**
+ * **MAKE PRIVATE (class extension, callers unchanged):** `NSString -byteAtIndex:` (16 internal uses — the
+   largest leak), `-appendUTF8String:`, `-initWithSequence:reverse:`, `+resultWithRanges:count:`,
+   `-addSourceForFileDescriptor:mode:readable:target:selector:` and `-removeSourceForTarget:` (this run loop's
+   own sources), `-keyForChildFileWrapper:`, `-peerPort`, `-portDidBecomeReadable`, `+defaultPortNameServer`,
+   `-initWithRemoteWithProtocolFamily:socketType:protocol:address:`, `-initWithRemoteWithTCPPort:host:`,
+   `-initWithScriptURL:error:`, `-internalSubset` / `-setInternalSubset:`.
+ * **DELETE, FIXING CALLERS (probes only, measured):** `-isEqualToCharacterSet:` (2 probes),
+   `NSMutableCharacterSet +characterSet` (1 probe), `-isEqualToCalendar:` (1 probe), `-characterCount`,
+   `-characterSet`'s neighbours in `NSMutableString`, `NSCharacterSet -initWith…` **already done as private**.
+ * **KEEP AS A COMPAT DOOR, REMOVAL RECORDED:** `NSData +dataWithBase64EncodedString:` and `…:options:`.
+ * **AND ONE TO SETTLE FIRST:** `NSNumberFormatter -setMinimumGroupingDigits:` and `NSUserActivity`'s
+   `-setExternal…`/`-setSuggestedInvocationPhrase:` are SETTERS of properties whose getters the corpus may hold —
+   if so the audit's variant table owes a case, and the doors are Apple's after all. **Check before deleting.**
+
 ## §63.54 — THE KEYED CODER DOORS MOVE, AND A FULL REBUILD FINDS THREE LATENT BREAKS (2026-10-01)
 
 **WHAT LANDED: `NSCoder`'S TEN `CG`-SPELLED KEYED DOORS MOVED TO THE COREGRAPHICS TIER** —

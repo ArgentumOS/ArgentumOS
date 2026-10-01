@@ -27,10 +27,17 @@
 @class NSString;
 @class NSData;	/* the bitmap representation's type */
 
+/* ⚠ THESE TWO ARE **NOT PUBLIC API** ANY MORE (§63.56): they are this library's INTERNAL constructor path —
+ * `+characterSetWithCharactersInString:` and `+characterSetWithRange:` are `[[self alloc] initWith…]`, and the
+ * ten cached built-ins build through `-initWithRange:` — and they were DECLARED HERE until a full-corpus audit
+ * (tools/foundation-sdk-subset.py) showed Apple declares NEITHER. **THE FIX IS THE "private stuff is fine" HALF
+ * OF THE USER'S DIRECTIVE, NOT A DELETION:** the doors stay and their callers do not change; what changes is
+ * that they are declared in NSCharacterSet.m's class extension, so they are no longer part of the public
+ * surface a caller can see. Deleting them would have broken `+characterSetWithCharactersInString:`, which is
+ * Apple's — the audit's job is to find names that do not belong, and this pair belonged INSIDE. */
 /* NULLABILITY (F6, the last slice): NONNULL by default, and the exceptions are
  * MEASURED or inherited by PROPAGATION:
- *   - -initWithCharactersInString: and -initWithRange: are the two `return nil;`
- *     sites in NSCharacterSet.m;
+ *   - the two internal constructors named above are the two `return nil;` sites in NSCharacterSet.m;
  *   - +characterSetWithCharactersInString:/+characterSetWithRange: are
  *     `return [[self alloc] initWith...]`, so they inherit that;
  *   - so do the TEN BUILT-INS, and that is worth stating because the shape is easy
@@ -120,9 +127,6 @@ NS_ASSUME_NONNULL_BEGIN
 + (nullable NSCharacterSet *)controlCharacterSet;
 + (nullable NSCharacterSet *)lowercaseLetterCharacterSet;
 + (nullable NSCharacterSet *)uppercaseLetterCharacterSet;
-
-- (nullable id)initWithCharactersInString:(NSString *)string;
-- (nullable id)initWithRange:(NSRange)range;
 
 - (BOOL)characterIsMember:(unichar)character;
 - (NSCharacterSet *)invertedSet;

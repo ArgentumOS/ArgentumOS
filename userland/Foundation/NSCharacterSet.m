@@ -23,6 +23,16 @@
 
 #define FN_MAX_CHARACTER	0xFFFF
 
+/* §63.56: THE TWO INTERNAL CONSTRUCTORS, DECLARED HERE AND NO LONGER IN THE HEADER. They are this library's
+ * own path — `+characterSetWithCharactersInString:` and `+characterSetWithRange:` are `[[self alloc] initWith…]`
+ * and the ten cached built-ins go through `-initWithRange:` — and Apple declares neither, so they were never
+ * part of this class's PUBLIC surface. A class extension is the whole fix: the bodies, the callers and the
+ * cached-set shape are untouched, and a caller outside this file can no longer see them. */
+@interface NSCharacterSet ()
+- (nullable id)initWithCharactersInString:(NSString *)string;
+- (nullable id)initWithRange:(NSRange)range;
+@end
+
 @implementation NSCharacterSet
 
 /* §C.3 item 4: the archiver asks for THIS, never for -class. */
