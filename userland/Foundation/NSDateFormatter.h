@@ -39,6 +39,7 @@
 @class NSTimeZone;
 @class NSCalendar;
 @class NSArray;
+@class NSError;
 
 /* Apple's styles, and the raw values are APPLE'S so a stored integer still means the same thing. */
 typedef enum {
@@ -61,6 +62,9 @@ NS_ASSUME_NONNULL_BEGIN
 	NSLocale *_locale;			/* nil = +[NSLocale currentLocale] at build time */
 	NSTimeZone *_timeZone;			/* nil = the system zone */
 	NSCalendar *_calendar;			/* nil = the system calendar (Gregorian) */
+	NSFormattingContext _formattingContext;	/* where the text will appear: ICU's capitalization */
+	NSDate *_twoDigitStartDate;		/* nil = ICU's own two-digit-year pivot */
+	NSDate *_gregorianStartDate;		/* nil = the calendar's own Julian->Gregorian cutover */
 }
 
 - (instancetype)init;
@@ -115,18 +119,25 @@ NS_ASSUME_NONNULL_BEGIN
  * names and AM/PM, in the locale's spellings and its own COUNT — a thirteen-month Hebrew year has
  * thirteen month symbols, which is the kind of thing a hand-written table gets wrong. */
 - (nullable NSArray *)eraSymbols;
+- (nullable NSArray *)longEraSymbols;
 - (nullable NSArray *)monthSymbols;
 - (nullable NSArray *)shortMonthSymbols;
 - (nullable NSArray *)veryShortMonthSymbols;
 - (nullable NSArray *)standaloneMonthSymbols;
+- (nullable NSArray *)shortStandaloneMonthSymbols;
+- (nullable NSArray *)veryShortStandaloneMonthSymbols;
 - (nullable NSArray *)weekdaySymbols;
 - (nullable NSArray *)shortWeekdaySymbols;
 - (nullable NSArray *)veryShortWeekdaySymbols;
 - (nullable NSArray *)standaloneWeekdaySymbols;
+- (nullable NSArray *)shortStandaloneWeekdaySymbols;
+- (nullable NSArray *)veryShortStandaloneWeekdaySymbols;
 - (nullable NSArray *)quarterSymbols;
 - (nullable NSArray *)shortQuarterSymbols;
-- (nullable NSString *)amSymbol;
-- (nullable NSString *)pmSymbol;
+- (nullable NSArray *)standaloneQuarterSymbols;
+- (nullable NSArray *)shortStandaloneQuarterSymbols;
+- (nullable NSString *)AMSymbol;
+- (nullable NSString *)PMSymbol;
 
 /* CLDR'S SKELETON, APPLIED: the same question +dateFormatFromTemplate:options:locale: answers, but
  * asked of THIS formatter, so its locale, calendar and zone decide the pattern. */
@@ -141,10 +152,38 @@ typedef enum {
 	NSDateFormatterBehavior10_4 = 1040
 } NSDateFormatterBehavior;
 
++ (NSDateFormatterBehavior)defaultFormatterBehavior;
 - (NSDateFormatterBehavior)formatterBehavior;
 - (void)setFormatterBehavior:(NSDateFormatterBehavior)behavior;
 /* NO, always: this class answers NSDate values and nothing else. */
 - (BOOL)generatesCalendarDates;
+
+/* WHERE THE TEXT WILL APPEAR. ICU spells this as its capitalization context, and standalone is the
+ * one that changes a name's case in the locales whose data says so. */
+- (NSFormattingContext)formattingContext;
+- (void)setFormattingContext:(NSFormattingContext)context;
+
+/* TWO-DIGIT YEARS AND THE GREGORIAN CUTOVER, both carried straight into ICU: the first is the
+ * pivot a two-digit year resolves against (udat_set2DigitYearStart), the second the calendar's
+ * Julian->Gregorian change (ucal_setGregorianChange, on the formatter's OWN calendar). nil means
+ * "ICU's own". */
+- (nullable NSDate *)twoDigitStartDate;
+- (void)setTwoDigitStartDate:(nullable NSDate *)date;
+- (nullable NSDate *)gregorianStartDate;
+- (void)setGregorianStartDate:(nullable NSDate *)date;
+
+/* THE DEPRECATED PAIR, kept as DOORS rather than stubs. This class parses with ICU and never
+ * guesses a natural-language phrase, so -allowsNaturalLanguage is NO; the deprecated initializer
+ * sets the pattern, because its flag only ever PERMITTED a fuzzy parse this class does not do. */
+- (instancetype)initWithDateFormat:(NSString *)format allowNaturalLanguage:(BOOL)flag;
+- (BOOL)allowsNaturalLanguage;
+
+/* THE RANGE DOOR. NSFormatter's base RAISES here; this class has a parser, so it ANSWERS — over
+ * the substring `rangep` names when it is non-empty, and the whole string otherwise. */
+- (BOOL)getObjectValue:(out id _Nullable * _Nullable)obj
+	     forString:(NSString *)string
+		 range:(inout NSRange * _Nullable)rangep
+		 error:(out NSError * _Nullable * _Nullable)error;
 
 @end
 

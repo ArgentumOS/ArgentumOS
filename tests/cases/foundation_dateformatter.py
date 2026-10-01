@@ -35,7 +35,9 @@ CHECKS = ("df-style-medium-en", "df-style-long-locale", "df-pattern-format",
           "df-round-trip", "df-parse", "df-timezone-offset", "df-template-order",
           "df-no-fields", "df-parse-refusal", "df-strict-parse",
           "df-base-raises", "df-copy-independent", "df-named-zone-dst",
-          "df-symbols", "df-calendar-hebrew", "df-template-set")
+          "df-symbols", "df-calendar-hebrew", "df-template-set",
+          "df-symbols-standalone", "df-long-era", "df-ampm", "df-behavior-default",
+          "df-natural-language", "df-get-object-value", "df-knobs")
 
 
 class Case(BaseCase):

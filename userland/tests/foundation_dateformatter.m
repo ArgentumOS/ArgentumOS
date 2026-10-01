@@ -358,6 +358,152 @@ int main(void)
 		      [NSString stringWithFormat:@"pattern=%@ rendered=%@", pattern, rendered]);
 	}
 
+	{
+		/* F13.7e: THE STANDALONE AND LONG ARRAYS — the same data question, asked in the context a
+		 * name is read OUT of a sentence. ICU's standalone month/weekday/quarter symbol types are
+		 * the whole of it, and the COUNT is the data's. (REASONED where a spelling is named:
+		 * en_US's standalone wide month is "January", its abbreviated one "Jan".) */
+		NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+		NSArray *months;
+		NSArray *shortMonths;
+		NSArray *weekdays;
+		NSArray *quarters;
+
+		[formatter setLocale:en];
+		months = [formatter standaloneMonthSymbols];
+		shortMonths = [formatter shortStandaloneMonthSymbols];
+		weekdays = [formatter shortStandaloneWeekdaySymbols];
+		quarters = [formatter standaloneQuarterSymbols];
+
+		check("df-symbols-standalone",
+		      months != nil && [months count] >= 12 &&
+		      [[months objectAtIndex:0] isEqualToString:@"January"] &&
+		      shortMonths != nil && [shortMonths count] >= 12 &&
+		      [[shortMonths objectAtIndex:0] isEqualToString:@"Jan"] &&
+		      weekdays != nil && [weekdays count] >= 7 &&
+		      quarters != nil && [quarters count] >= 4 &&
+		      [formatter veryShortStandaloneMonthSymbols] != nil &&
+		      [formatter veryShortStandaloneWeekdaySymbols] != nil &&
+		      [formatter shortStandaloneQuarterSymbols] != nil,
+		      [NSString stringWithFormat:@"mon0=%@ short0=%@ wd=%lu q=%lu",
+			[months count] > 0 ? (NSString *)[months objectAtIndex:0] : @"(nil)",
+			[shortMonths count] > 0 ? (NSString *)[shortMonths objectAtIndex:0] : @"(nil)",
+			(unsigned long)(weekdays != nil ? [weekdays count] : 0),
+			(unsigned long)(quarters != nil ? [quarters count] : 0)]);
+	}
+
+	{
+		/* THE LONG ERA NAMES are a DIFFERENT symbol type from the abbreviated ones (ICU's
+		 * UDAT_ERA_NAMES against UDAT_ERAS) — which is exactly why the row needed the data. The
+		 * check asserts a PROPERTY, not the spelling: whatever the locale says, the long form is
+		 * the longer one. REASONED: "Before Christ"/"Anno Domini" against "BC"/"AD". */
+		NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+		NSArray *longEras;
+		NSArray *shortEras;
+
+		[formatter setLocale:en];
+		longEras = [formatter longEraSymbols];
+		shortEras = [formatter eraSymbols];
+
+		check("df-long-era",
+		      longEras != nil && [longEras count] >= 2 &&
+		      [[longEras objectAtIndex:0] length] > 0 &&
+		      shortEras != nil && [shortEras count] >= 2 &&
+		      [[longEras objectAtIndex:0] length] > [[shortEras objectAtIndex:0] length],
+		      [NSString stringWithFormat:@"long0=%@ short0=%@",
+			[longEras count] > 0 ? (NSString *)[longEras objectAtIndex:0] : @"(nil)",
+			[shortEras count] > 0 ? (NSString *)[shortEras objectAtIndex:0] : @"(nil)"]);
+	}
+
+	{
+		/* AM/PM ARE THE FORMATTER'S OWN DATA, read under Apple's OWN capitalised spelling. */
+		NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+
+		[formatter setLocale:en];
+		check("df-ampm",
+		      [[formatter AMSymbol] isEqualToString:@"AM"] &&
+		      [[formatter PMSymbol] isEqualToString:@"PM"],
+		      [NSString stringWithFormat:@"AM=%@ PM=%@",
+			[formatter AMSymbol] != nil ? [formatter AMSymbol] : @"(nil)",
+			[formatter PMSymbol] != nil ? [formatter PMSymbol] : @"(nil)"]);
+	}
+
+	{
+		/* THE BEHAVIOUR DOORS: Apple's class default is the MODERN formatter, and the instance's own
+		 * reading agrees with it (NSDateFormatterBehaviorDefault MEANS 10_4 here). */
+		NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+
+		check("df-behavior-default",
+		      [NSDateFormatter defaultFormatterBehavior] == NSDateFormatterBehavior10_4 &&
+		      [formatter formatterBehavior] == NSDateFormatterBehavior10_4,
+		      [NSString stringWithFormat:@"default=%d instance=%d",
+			(int)[NSDateFormatter defaultFormatterBehavior],
+			(int)[formatter formatterBehavior]]);
+	}
+
+	{
+		/* THE DEPRECATED PAIR. Natural-language parsing is not something ICU's field parser does,
+		 * so -allowsNaturalLanguage is NO — and the deprecated initializer still does the part that
+		 * means something: it sets the pattern. */
+		NSDateFormatter *formatter = [[NSDateFormatter alloc] initWithDateFormat:@"yyyy-MM-dd"
+								allowNaturalLanguage:YES];
+		NSString *pattern = [formatter dateFormat];
+		NSString *text = [formatter stringFromDate:when];
+
+		check("df-natural-language",
+		      ![formatter allowsNaturalLanguage] &&
+		      pattern != nil && [pattern containsString:@"yyyy"] &&
+		      [pattern containsString:@"MM"] && [pattern containsString:@"dd"] &&
+		      text != nil && [text length] > 0,
+		      [NSString stringWithFormat:@"allowsNL=%d pattern=%@ text=%@",
+			(int)[formatter allowsNaturalLanguage], pattern, text]);
+	}
+
+	{
+		/* THE RANGE DOOR. NSFormatter's base RAISES here; this class has a parser, so it ANSWERS —
+		 * and a non-empty range reads the SUBSTRING out of a longer string. */
+		NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+		id out = nil;
+		id outRange = nil;
+		NSRange whole = NSMakeRange(0, 0);
+		NSRange sub = NSMakeRange(2, 10);	/* "2021-03-04" out of "xx2021-03-04yy" */
+
+		[formatter setLocale:en];
+		[formatter setTimeZone:utc];
+		[formatter setDateFormat:@"yyyy-MM-dd"];
+		check("df-get-object-value",
+		      [formatter getObjectValue:&out forString:@"2021-03-04" range:&whole error:NULL] &&
+		      out != nil && [(NSDate *)out timeIntervalSince1970] == WHEN &&
+		      [formatter getObjectValue:&outRange forString:@"xx2021-03-04yy"
+					  range:&sub error:NULL] &&
+		      outRange != nil && [(NSDate *)outRange timeIntervalSince1970] == WHEN,
+		      [NSString stringWithFormat:@"out=%@ sub=%@",
+			out != nil ? [out description] : @"(nil)",
+			outRange != nil ? [outRange description] : @"(nil)"]);
+	}
+
+	{
+		/* THE KNOBS: formatting context, the two-digit pivot and the Gregorian cutover — each a
+		 * door into ICU, asserted as a PROPERTY (the value set is the value read back). */
+		NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+		NSDate *pivot = [NSDate dateWithTimeIntervalSince1970:946684800.0];	/* 2000-01-01 */
+		NSDate *cutover = [NSDate dateWithTimeIntervalSince1970:0.0];
+
+		[formatter setFormattingContext:NSFormattingContextStandalone];
+		[formatter setTwoDigitStartDate:pivot];
+		[formatter setGregorianStartDate:cutover];
+		check("df-knobs",
+		      [formatter formattingContext] == NSFormattingContextStandalone &&
+		      [formatter twoDigitStartDate] != nil &&
+		      [[formatter twoDigitStartDate] timeIntervalSince1970] == 946684800.0 &&
+		      [formatter gregorianStartDate] != nil &&
+		      [[formatter gregorianStartDate] timeIntervalSince1970] == 0.0,
+		      [NSString stringWithFormat:@"ctx=%d pivot=%f cut=%f",
+			(int)[formatter formattingContext],
+			[[formatter twoDigitStartDate] timeIntervalSince1970],
+			[[formatter gregorianStartDate] timeIntervalSince1970]]);
+	}
+
 	printf("FOUNDATION-DATEFORMATTER RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

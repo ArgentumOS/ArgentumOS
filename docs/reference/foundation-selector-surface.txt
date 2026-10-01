@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2100   open  560   struck  268
-#   property   shipped 1227   open  263   struck  146
+#   method     shipped 2103   open  557   struck  268
+#   property   shipped 1240   open  250   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -884,47 +884,47 @@ property	shipped	maximumUnitCount	NSDateComponentsFormatter	Fundamentals / Date 
 property	shipped	referenceDate	NSDateComponentsFormatter	Fundamentals / Date Formatting / Instance Properties	-	objc
 property	shipped	unitsStyle	NSDateComponentsFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	swift-page
 property	shipped	zeroFormattingBehavior	NSDateComponentsFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	swift-page
-method	open	-allowsNaturalLanguage	NSDateFormatter	Fundamentals / Date Formatting / Managing Natural Language Support	deprecated	objc
+method	shipped	-allowsNaturalLanguage	NSDateFormatter	Fundamentals / Date Formatting / Managing Natural Language Support	deprecated	objc
 method	shipped	+dateFormatFromTemplate:options:locale:	NSDateFormatter	Fundamentals / Date Formatting / Managing Formats and Styles	-	objc
 method	shipped	-dateFromString:	NSDateFormatter	Fundamentals / Date Formatting / Converting Objects	-	objc
-method	open	-getObjectValue:forString:range:error:	NSDateFormatter	Fundamentals / Date Formatting / Converting Objects	-	objc
-method	open	-initWithDateFormat:allowNaturalLanguage:	NSDateFormatter	Fundamentals / Date Formatting / Deprecated	deprecated	objc
+method	shipped	-getObjectValue:forString:range:error:	NSDateFormatter	Fundamentals / Date Formatting / Converting Objects	-	objc
+method	shipped	-initWithDateFormat:allowNaturalLanguage:	NSDateFormatter	Fundamentals / Date Formatting / Deprecated	deprecated	objc
 method	shipped	+localizedStringFromDate:dateStyle:timeStyle:	NSDateFormatter	Fundamentals / Date Formatting / Converting Objects	-	objc
 method	shipped	-setLocalizedDateFormatFromTemplate:	NSDateFormatter	Fundamentals / Date Formatting / Managing Formats and Styles	-	objc
 method	shipped	-stringFromDate:	NSDateFormatter	Fundamentals / Date Formatting / Converting Objects	-	objc
-property	open	AMSymbol	NSDateFormatter	Fundamentals / Date Formatting / Managing AM and PM Symbols	-	objc
-property	open	PMSymbol	NSDateFormatter	Fundamentals / Date Formatting / Managing AM and PM Symbols	-	objc
+property	shipped	AMSymbol	NSDateFormatter	Fundamentals / Date Formatting / Managing AM and PM Symbols	-	objc
+property	shipped	PMSymbol	NSDateFormatter	Fundamentals / Date Formatting / Managing AM and PM Symbols	-	objc
 property	shipped	calendar	NSDateFormatter	Fundamentals / Date Formatting / Managing Attributes	-	objc
 property	shipped	dateFormat	NSDateFormatter	Fundamentals / Date Formatting / Managing Formats and Styles	-	objc
 property	shipped	dateStyle	NSDateFormatter	Fundamentals / Date Formatting / Managing Formats and Styles	-	objc
 property	open	defaultDate	NSDateFormatter	Fundamentals / Date Formatting / Managing Attributes	-	objc
-property	open	defaultFormatterBehavior	NSDateFormatter	Fundamentals / Date Formatting / Managing Behavior Version	-	objc
+property	shipped	defaultFormatterBehavior	NSDateFormatter	Fundamentals / Date Formatting / Managing Behavior Version	-	objc
 property	open	doesRelativeDateFormatting	NSDateFormatter	Fundamentals / Date Formatting / Managing Natural Language Support	-	objc
 property	shipped	eraSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Era Symbols	-	objc
 property	shipped	formatterBehavior	NSDateFormatter	Fundamentals / Date Formatting / Managing Behavior Version	-	objc
-property	open	formattingContext	NSDateFormatter	Fundamentals / Date Formatting / Managing Formats and Styles	-	objc
+property	shipped	formattingContext	NSDateFormatter	Fundamentals / Date Formatting / Managing Formats and Styles	-	objc
 property	shipped	generatesCalendarDates	NSDateFormatter	Fundamentals / Date Formatting / Deprecated	deprecated	objc
-property	open	gregorianStartDate	NSDateFormatter	Fundamentals / Date Formatting / Managing Attributes	-	objc
+property	shipped	gregorianStartDate	NSDateFormatter	Fundamentals / Date Formatting / Managing Attributes	-	objc
 property	shipped	lenient	NSDateFormatter	Fundamentals / Date Formatting / Managing Natural Language Support	-	objc
 property	shipped	locale	NSDateFormatter	Fundamentals / Date Formatting / Managing Attributes	-	objc
-property	open	longEraSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Era Symbols	-	objc
+property	shipped	longEraSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Era Symbols	-	objc
 property	shipped	monthSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Month Symbols	-	objc
 property	shipped	quarterSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Quarter Symbols	-	objc
 property	shipped	shortMonthSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Month Symbols	-	objc
 property	shipped	shortQuarterSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Quarter Symbols	-	objc
-property	open	shortStandaloneMonthSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Month Symbols	-	objc
-property	open	shortStandaloneQuarterSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Quarter Symbols	-	objc
-property	open	shortStandaloneWeekdaySymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Weekday Symbols	-	objc
+property	shipped	shortStandaloneMonthSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Month Symbols	-	objc
+property	shipped	shortStandaloneQuarterSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Quarter Symbols	-	objc
+property	shipped	shortStandaloneWeekdaySymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Weekday Symbols	-	objc
 property	shipped	shortWeekdaySymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Weekday Symbols	-	objc
 property	shipped	standaloneMonthSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Month Symbols	-	objc
-property	open	standaloneQuarterSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Quarter Symbols	-	objc
+property	shipped	standaloneQuarterSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Quarter Symbols	-	objc
 property	shipped	standaloneWeekdaySymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Weekday Symbols	-	objc
 property	shipped	timeStyle	NSDateFormatter	Fundamentals / Date Formatting / Managing Formats and Styles	-	objc
 property	shipped	timeZone	NSDateFormatter	Fundamentals / Date Formatting / Managing Attributes	-	objc
-property	open	twoDigitStartDate	NSDateFormatter	Fundamentals / Date Formatting / Managing Attributes	-	objc
+property	shipped	twoDigitStartDate	NSDateFormatter	Fundamentals / Date Formatting / Managing Attributes	-	objc
 property	shipped	veryShortMonthSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Month Symbols	-	objc
-property	open	veryShortStandaloneMonthSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Month Symbols	-	objc
-property	open	veryShortStandaloneWeekdaySymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Weekday Symbols	-	objc
+property	shipped	veryShortStandaloneMonthSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Month Symbols	-	objc
+property	shipped	veryShortStandaloneWeekdaySymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Weekday Symbols	-	objc
 property	shipped	veryShortWeekdaySymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Weekday Symbols	-	objc
 property	shipped	weekdaySymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Weekday Symbols	-	objc
 method	shipped	-compare:	NSDateInterval	Fundamentals / Date Representations / Comparing Date Intervals	-	objc

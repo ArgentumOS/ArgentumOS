@@ -31,6 +31,8 @@
 
 #include <unicode/udat.h>
 #include <unicode/udatpg.h>
+#include <unicode/ucal.h>
+#include <unicode/udisplaycontext.h>
 #include <unicode/ustring.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,6 +60,25 @@ static UDateFormatStyle fn_df_style(NSDateFormatterStyle style)
 		return UDAT_FULL;
 	}
 	return UDAT_NONE;
+}
+
+/* Apple's formatting context -> ICU's capitalization context. This IS the whole of what such a knob
+ * means on this substrate: "where the text will appear", which ICU spells as a display context. */
+static UDisplayContext fn_df_context(NSFormattingContext context)
+{
+	if (context == NSFormattingContextStandalone) {
+		return UDISPCTX_CAPITALIZATION_FOR_STANDALONE;
+	}
+	if (context == NSFormattingContextListItem) {
+		return UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU;
+	}
+	if (context == NSFormattingContextBeginningOfSentence) {
+		return UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE;
+	}
+	if (context == NSFormattingContextMiddleOfSentence) {
+		return UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE;
+	}
+	return UDISPCTX_CAPITALIZATION_NONE;
 }
 
 /* THE ZONE CROSSES BY NAME WHEN IT HAS ONE, and by OFFSET when it does not. F7's NSTimeZone could
@@ -130,6 +151,9 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 		_locale = nil;
 		_timeZone = nil;
 		_calendar = nil;
+		_formattingContext = NSFormattingContextUnknown;
+		_twoDigitStartDate = nil;
+		_gregorianStartDate = nil;
 		[self fnRebuild];
 	}
 	return self;
@@ -218,6 +242,32 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 	/* ICU 76 REMOVED the old TRUE/FALSE macros (they were deprecated for years), so the UBool
 	 * here is spelled the long way rather than with a macro that no longer exists. */
 	udat_setLenient((UDateFormat *)_formatter, (UBool)(_lenient ? 1 : 0));
+	/* AND THE THREE KNOBS THAT ARE ICU'S OWN, applied where ICU bakes them in. The display context
+	 * is its capitalization; the two-digit pivot and the Gregorian cutover are set on the formatter
+	 * and on its own calendar (borrowed, not owned — udat_getCalendar hands back the internal one). */
+	{
+		UErrorCode knob = U_ZERO_ERROR;
+
+		udat_setContext((UDateFormat *)_formatter, fn_df_context(_formattingContext), &knob);
+		if (_twoDigitStartDate != nil) {
+			knob = U_ZERO_ERROR;
+			udat_set2DigitYearStart((UDateFormat *)_formatter,
+						(UDate)([_twoDigitStartDate timeIntervalSince1970] * 1000.0),
+						&knob);
+		}
+		if (_gregorianStartDate != nil) {
+			/* udat_getCalendar hands back a CONST calendar, but it is the formatter's OWN
+			 * mutable one; the setter below is the documented reason to cast. */
+			UCalendar *calendar = (UCalendar *)udat_getCalendar((UDateFormat *)_formatter);
+
+			if (calendar != NULL) {
+				knob = U_ZERO_ERROR;
+				ucal_setGregorianChange(calendar,
+							(UDate)([_gregorianStartDate timeIntervalSince1970] * 1000.0),
+							&knob);
+			}
+		}
+	}
 }
 
 - (nullable NSString *)stringFromDate:(NSDate *)date
@@ -437,6 +487,9 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 	copy->_dateStyle = _dateStyle;
 	copy->_timeStyle = _timeStyle;
 	copy->_lenient = _lenient;
+	copy->_formattingContext = _formattingContext;
+	copy->_twoDigitStartDate = _twoDigitStartDate;
+	copy->_gregorianStartDate = _gregorianStartDate;
 	[copy fnRebuild];
 	return copy;
 }
@@ -505,6 +558,11 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 	return [self fnSymbols:UDAT_ERAS first:0 count:2];
 }
 
+- (nullable NSArray *)longEraSymbols
+{
+	return [self fnSymbols:UDAT_ERA_NAMES first:0 count:2];
+}
+
 - (nullable NSArray *)monthSymbols
 {
 	return [self fnSymbols:UDAT_MONTHS first:0 count:13];
@@ -523,6 +581,16 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 - (nullable NSArray *)standaloneMonthSymbols
 {
 	return [self fnSymbols:UDAT_STANDALONE_MONTHS first:0 count:13];
+}
+
+- (nullable NSArray *)shortStandaloneMonthSymbols
+{
+	return [self fnSymbols:UDAT_STANDALONE_SHORT_MONTHS first:0 count:13];
+}
+
+- (nullable NSArray *)veryShortStandaloneMonthSymbols
+{
+	return [self fnSymbols:UDAT_STANDALONE_NARROW_MONTHS first:0 count:13];
 }
 
 - (nullable NSArray *)weekdaySymbols
@@ -545,6 +613,16 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 	return [self fnSymbols:UDAT_STANDALONE_WEEKDAYS first:UCAL_SUNDAY count:7];
 }
 
+- (nullable NSArray *)shortStandaloneWeekdaySymbols
+{
+	return [self fnSymbols:UDAT_STANDALONE_SHORT_WEEKDAYS first:UCAL_SUNDAY count:7];
+}
+
+- (nullable NSArray *)veryShortStandaloneWeekdaySymbols
+{
+	return [self fnSymbols:UDAT_STANDALONE_NARROW_WEEKDAYS first:UCAL_SUNDAY count:7];
+}
+
 - (nullable NSArray *)quarterSymbols
 {
 	return [self fnSymbols:UDAT_QUARTERS first:0 count:4];
@@ -555,7 +633,17 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 	return [self fnSymbols:UDAT_SHORT_QUARTERS first:0 count:4];
 }
 
-- (nullable NSString *)amSymbol
+- (nullable NSArray *)standaloneQuarterSymbols
+{
+	return [self fnSymbols:UDAT_STANDALONE_QUARTERS first:0 count:4];
+}
+
+- (nullable NSArray *)shortStandaloneQuarterSymbols
+{
+	return [self fnSymbols:UDAT_STANDALONE_SHORT_QUARTERS first:0 count:4];
+}
+
+- (nullable NSString *)AMSymbol
 {
 	UChar symbol[64];
 	UErrorCode status = U_ZERO_ERROR;
@@ -571,7 +659,7 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 	return fn_df_string(symbol, length);
 }
 
-- (nullable NSString *)pmSymbol
+- (nullable NSString *)PMSymbol
 {
 	UChar symbol[64];
 	UErrorCode status = U_ZERO_ERROR;
@@ -628,6 +716,11 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 	_pattern = fn_df_string(pattern, patternLen);
 }
 
++ (NSDateFormatterBehavior)defaultFormatterBehavior
+{
+	return NSDateFormatterBehavior10_4;
+}
+
 - (NSDateFormatterBehavior)formatterBehavior
 {
 	return NSDateFormatterBehavior10_4;
@@ -647,6 +740,93 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 - (BOOL)generatesCalendarDates
 {
 	return NO;
+}
+
+- (NSFormattingContext)formattingContext
+{
+	return _formattingContext;
+}
+
+- (void)setFormattingContext:(NSFormattingContext)context
+{
+	if (context == _formattingContext) {
+		return;
+	}
+	_formattingContext = context;
+	[self fnRebuild];
+}
+
+- (nullable NSDate *)twoDigitStartDate
+{
+	return _twoDigitStartDate;
+}
+
+- (void)setTwoDigitStartDate:(nullable NSDate *)date
+{
+	if (date == _twoDigitStartDate) {
+		return;
+	}
+	_twoDigitStartDate = date;
+	[self fnRebuild];
+}
+
+- (nullable NSDate *)gregorianStartDate
+{
+	return _gregorianStartDate;
+}
+
+- (void)setGregorianStartDate:(nullable NSDate *)date
+{
+	if (date == _gregorianStartDate) {
+		return;
+	}
+	_gregorianStartDate = date;
+	[self fnRebuild];
+}
+
+- (BOOL)allowsNaturalLanguage
+{
+	/* ICU parses the fields a pattern names; a natural-language phrase ("next Tuesday") is not one,
+	 * and this class never guesses at one. */
+	return NO;
+}
+
+- (instancetype)initWithDateFormat:(NSString *)format allowNaturalLanguage:(BOOL)flag
+{
+	self = [self init];
+	if (self != nil) {
+		/* The deprecated flag only ever PERMITTED a fuzzy parse this class does not do; the part of
+		 * the door that means something — the pattern — is honoured. */
+		(void)flag;
+		[self setDateFormat:format];
+	}
+	return self;
+}
+
+- (BOOL)getObjectValue:(id _Nullable * _Nullable)obj
+	     forString:(NSString *)string
+		 range:(inout NSRange *)rangep
+		 error:(out NSError * _Nullable * _Nullable)error
+{
+	NSDate *date;
+	NSString *text = string;
+
+	if (obj == NULL) {
+		return NO;
+	}
+	(void)error;	/* NO means "not a date"; the door carries no reason to report */
+	/* A non-empty range names the SUBSTRING to read, exactly as Apple's contract says; an empty or
+	 * absent one reads the whole string. */
+	if (rangep != NULL && rangep->length > 0
+	    && rangep->location + rangep->length <= [string length]) {
+		text = [string substringWithRange:*rangep];
+	}
+	date = [self dateFromString:text];
+	if (date == nil) {
+		return NO;
+	}
+	*obj = date;
+	return YES;
 }
 
 @end
