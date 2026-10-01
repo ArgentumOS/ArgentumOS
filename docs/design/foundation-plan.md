@@ -15976,6 +15976,42 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.47 — THE BORROWED-BUFFER FAMILY: SIX DOORS, ONE CONTRACT, AND THE HINT HONOURED WHERE IT MATTERS (2026-10-01)
+
+**WHAT LANDED: SIX ROWS, TAKEN TOGETHER BECAUSE THEY ARE ONE CONTRACT RATHER THAN SIX SMALL ONES.**
+`-initWithBytesNoCopy:length:encoding:freeWhenDone:`, `…encoding:deallocator:`,
+`-initWithCharactersNoCopy:length:deallocator:`, the deprecated `-initWithCStringNoCopy:length:freeWhenDone:`,
+`-getBytes:maxLength:usedLength:encoding:options:range:remainingRange:` and the deprecated
+`-getCString:maxLength:range:remainingRange:`. **MEASURED: guest case `foundation_string` 6/6 checks with the
+probe's own tally `ok=149 fail=0` (was 145); `make testimg` exit 0 BEFORE `make test` was believed;
+`make foundation-sweep` exit 0; `--check` consistent; `--unimplemented` 0 NEW; ledger methods 2170 → 2176.**
+
+**⚠ "NoCopy" IS A HINT, APPLE'S HEADER SAYS SO, AND WHAT THIS LIBRARY DOES WITH IT IS NOW WRITTEN DOWN RATHER
+THAN IMPLIED.** The storage here is UTF-16 units and the payload is owned whichever concrete class answers, so
+the receiver COPIES — and every OWNERSHIP clause the door promises is honoured anyway: `freeWhenDone:YES`
+disposes of the caller's buffer exactly once, and the `deallocator:` spelling runs the caller's own block
+instead of freeing, which is the whole reason Apple added the block form. **A caller gets exactly what the door
+says about ownership; what it does not get is the optimisation the NAME advertises — and the header says so in
+as many words now, instead of leaving a reader to discover it.**
+
+**AND THE CHECK THAT MATTERS IS THE ONE THAT WOULD FAIL IF THE COPY WERE NOT MADE: THE CALLER'S BUFFER IS FREED
+OUT FROM UNDER THE STRING.** With `freeWhenDone:YES` the buffer is disposed of by the receiver, so BORROWED
+storage would make every read afterwards a read of freed memory. The probe reads the string AFTER the call and
+asserts its contents — a check whose passing IS the copy. The block spelling is asserted on what is observable:
+the block ran exactly ONCE and was handed the buffer's LENGTH.
+
+**AND THE ONE DOOR OF THE FAMILY THAT TAKES ANY ENCODING REFUSES WHAT THIS LIBRARY CANNOT STORE.**
+`-getBytes:…` is declared for every encoding; here it answers for UTF-8 and ASCII and REFUSES the rest — NO,
+with the whole range reported unconverted — rather than approximating, which is the rule `-dataUsingEncoding:`
+and `-cStringUsingEncoding:` already follow at one more pair of doors. Apple's NULL-buffer form ("tell me how
+many bytes the conversion needs") IS answered, because that question has an exact answer here.
+
+**AND ONE MEASURED CORRECTION TO THIS UNIT'S OWN SCOPE, FOUND BEFORE ANY CODE MOVED:** the slice list said seven
+rows. **`-initWithCharactersNoCopy:length:freeWhenDone:` IS ALREADY SHIPPED** — `NSString.h` declares it and the
+ledger agrees — so the family is SIX, and the row that looked like work had been done for months. **A work list
+read by NAME cannot tell "not written" from "written and not counted"; what tells them apart is the LEDGER, so
+the unit began by reading that rather than by counting the prose.**
+
 ## §63.46 — THE PARAGRAPH DOORS, AND THE ENGINE THAT HAD TO MOVE: A DECISION RESOLVED BY THE DOOR'S OWN PAGE (2026-10-01)
 
 **WHAT LANDED: THREE THINGS THAT ARE REALLY ONE — the two paragraph doors, the ENGINE ALIGNED TO THEM, and the

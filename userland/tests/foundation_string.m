@@ -2394,6 +2394,97 @@ NULL
 		}
 	}
 
+	/* --- §63.47: THE BORROWED-BUFFER FAMILY ---------------------------------------------------------- */
+	{
+		/* ⚠ THE OWNERSHIP CLAUSE IS THE POINT, AND IT IS TESTED BY FREEING THE CALLER'S BUFFER OUT FROM
+		 * UNDER THE STRING: if the receiver had BORROWED the storage rather than copying it, the reads below
+		 * would be reads of freed memory. `freeWhenDone:YES` means the buffer is disposed of exactly once —
+		 * by the receiver — and the string it built must survive that. */
+		char *bytes = (char *)malloc(6);
+		id owned = nil;
+
+		memcpy(bytes, "hello", 5);
+		owned = [[NSString alloc] initWithBytesNoCopy:bytes length:5 encoding:NSUTF8StringEncoding
+						 freeWhenDone:YES];
+		check("borrowed-bytes-are-copied-so-freeing-the-buffer-is-safe",
+		      owned != nil && [owned isEqualToString:@"hello"] && [owned length] == 5,
+		      [[NSString stringWithFormat:@"a freeWhenDone:YES string still reads as \"%@\" after the "
+						@"caller's buffer was disposed of — which is what proves the copy",
+						owned] UTF8String]);
+
+		/* THE BLOCK SPELLING RUNS THE CALLER'S BLOCK INSTEAD OF FREEING, and the two arguments it receives
+		 * are the buffer and its LENGTH — observable, so it is asserted rather than assumed. */
+		{
+			unichar *units = (unichar *)malloc(sizeof(unichar) * 3);
+			__block NSUInteger ran = 0;
+			__block NSUInteger ranLength = 0;
+			id blockOwned = nil;
+
+			units[0] = 'a';
+			units[1] = 'b';
+			units[2] = 'c';
+			blockOwned = [[NSString alloc] initWithCharactersNoCopy:units
+									length:3
+								   deallocator:^(unichar *buffer, NSUInteger length) {
+				ran++;
+				ranLength = length;
+				free(buffer);
+			}];
+			check("no-copy-deallocator-runs-once-with-the-length",
+			      blockOwned != nil && [blockOwned isEqualToString:@"abc"] &&
+			      ran == 1 && ranLength == 3,
+			      [[NSString stringWithFormat:@"the caller's block ran %lu time(s) with length %lu, and the "
+						@"string it built reads as \"%@\"",
+						(unsigned long)ran, (unsigned long)ranLength, blockOwned] UTF8String]);
+		}
+
+		/* `-getBytes:…`: A NULL BUFFER IS THE SIZE FORM, and an encoding this library cannot store is
+		 * REFUSED with the whole range reported unconverted rather than approximated. */
+		{
+			NSString *text = @"abc";
+			NSUInteger needed = 0;
+			NSRange leftover = NSMakeRange(0, 0);
+			char buffer[8];
+			NSUInteger used = 0;
+			NSRange range = NSMakeRange(0, 3);
+			BOOL refused;
+
+			BOOL asked = [text getBytes:NULL maxLength:0 usedLength:&needed encoding:NSUTF8StringEncoding
+					      options:0 range:range remainingRange:&leftover];
+			BOOL wrote = [text getBytes:buffer maxLength:sizeof(buffer) usedLength:&used
+					   encoding:NSUTF8StringEncoding options:0 range:range
+				     remainingRange:&leftover];
+			refused = ![text getBytes:buffer maxLength:sizeof(buffer) usedLength:&used
+					 encoding:NSUTF16StringEncoding options:0 range:range
+				       remainingRange:&leftover];
+			check("getbytes-size-form-and-refusal",
+			      asked && needed == 3 && wrote && used == 3 &&
+			      memcmp(buffer, "abc", 3) == 0 && refused && leftover.length == 3,
+			      [[NSString stringWithFormat:@"the NULL-buffer form answers 3 bytes needed, the write "
+						@"form writes 3, and an unstored encoding is REFUSED with the whole range (%lu) "
+						@"left unconverted",
+						(unsigned long)leftover.length] UTF8String]);
+		}
+
+		/* THE DEPRECATED RANGE FORM converts the RANGE and reports what it could not convert. */
+		{
+			NSString *text = @"abcdef";
+			char buffer[8];
+			NSRange leftover = NSMakeRange(99, 99);
+			BOOL fits;
+
+			[text getCString:buffer maxLength:sizeof(buffer) range:NSMakeRange(1, 3)
+			   remainingRange:&leftover];
+			fits = (strcmp(buffer, "bcd") == 0);
+			check("getcstring-range-form-converts-the-range",
+			      fits && leftover.location == 4 && leftover.length == 0,
+			      [[NSString stringWithFormat:@"the range form converts 1..4 to \"%s\" and reports the "
+						@"leftover at %lu with length %lu",
+						buffer, (unsigned long)leftover.location,
+						(unsigned long)leftover.length] UTF8String]);
+		}
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

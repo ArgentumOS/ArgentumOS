@@ -120,6 +120,11 @@ CHECKS = (
           "paragraph-blank-line-is-an-empty-paragraph",
           "nel-and-ls-end-a-line-but-not-a-paragraph",
           "paragraphs-via-enumeration-match-the-door",
+          # §63.47: the borrowed-buffer family — ownership, the block spelling, and the two getters.
+          "borrowed-bytes-are-copied-so-freeing-the-buffer-is-safe",
+          "no-copy-deallocator-runs-once-with-the-length",
+          "getbytes-size-form-and-refusal",
+          "getcstring-range-form-converts-the-range",
 )
 
 

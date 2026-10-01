@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2170   open  490   struck  268
+#   method     shipped 2176   open  484   struck  268
 #   property   shipped 1267   open  223   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3062,11 +3062,11 @@ method	open	-drawWithRect:options:attributes:context:	NSString	Fundamentals / St
 method	shipped	-enumerateLinesUsingBlock:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	open	-enumerateLinguisticTagsInRange:scheme:options:orthography:usingBlock:	NSString	Fundamentals / Strings / Performing Linguistic Analysis	deprecated	objc
 method	shipped	-enumerateSubstringsInRange:options:usingBlock:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
-method	open	-getBytes:maxLength:usedLength:encoding:options:range:remainingRange:	NSString	Fundamentals / Strings / Getting Characters and Bytes	-	objc
+method	shipped	-getBytes:maxLength:usedLength:encoding:options:range:remainingRange:	NSString	Fundamentals / Strings / Getting Characters and Bytes	-	objc
 method	shipped	-getCString:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-getCString:maxLength:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-getCString:maxLength:encoding:	NSString	Fundamentals / Strings / Getting C Strings	-	objc
-method	open	-getCString:maxLength:range:remainingRange:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	-getCString:maxLength:range:remainingRange:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-getCharacters:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-getCharacters:range:	NSString	Fundamentals / Strings / Getting Characters and Bytes	-	objc
 method	shipped	-getFileSystemRepresentation:maxLength:	NSString	Fundamentals / Strings / Working with Paths	-	objc
@@ -3076,14 +3076,14 @@ method	shipped	-hasPrefix:	NSString	Fundamentals / Strings / Identifying and Com
 method	shipped	-hasSuffix:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-init	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	-initWithBytes:length:encoding:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
-method	open	-initWithBytesNoCopy:length:encoding:deallocator:	NSString	Fundamentals / Strings / Instance Methods	-	objc
-method	open	-initWithBytesNoCopy:length:encoding:freeWhenDone:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
+method	shipped	-initWithBytesNoCopy:length:encoding:deallocator:	NSString	Fundamentals / Strings / Instance Methods	-	objc
+method	shipped	-initWithBytesNoCopy:length:encoding:freeWhenDone:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	-initWithCString:	NSString	Fundamentals / Strings / Instance Methods	deprecated	objc
 method	shipped	-initWithCString:encoding:	NSString	Fundamentals / Strings / Instance Methods	-	objc
 method	shipped	-initWithCString:length:	NSString	Fundamentals / Strings / Instance Methods	deprecated	objc
-method	open	-initWithCStringNoCopy:length:freeWhenDone:	NSString	Fundamentals / Strings / Instance Methods	deprecated	objc
+method	shipped	-initWithCStringNoCopy:length:freeWhenDone:	NSString	Fundamentals / Strings / Instance Methods	deprecated	objc
 method	shipped	-initWithCharacters:length:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
-method	open	-initWithCharactersNoCopy:length:deallocator:	NSString	Fundamentals / Strings / Instance Methods	-	objc
+method	shipped	-initWithCharactersNoCopy:length:deallocator:	NSString	Fundamentals / Strings / Instance Methods	-	objc
 method	shipped	-initWithCharactersNoCopy:length:freeWhenDone:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	-initWithCoder:	NSString	Fundamentals / Strings / Instance Methods	-	objc
 method	shipped	-initWithContentsOfFile:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc

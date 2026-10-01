@@ -303,6 +303,47 @@ typedef enum {
 - (nullable NSData *)dataUsingEncoding:(NSStringEncoding)encoding;
 - (nullable const char *)cStringUsingEncoding:(NSStringEncoding)encoding;
 
+/* --- §63.47: THE BORROWED-BUFFER FAMILY -------------------------------------------------------------
+ *
+ * "NoCopy" IS A HINT, and Apple's own header says so at each of these declarations. WHAT THIS LIBRARY DOES
+ * WITH THE HINT IS STATED RATHER THAN IMPLIED: it COPIES — the storage here is UTF-16 units and the payload
+ * is owned whichever concrete class answers — and every ownership clause the door promises is honoured
+ * anyway. `freeWhenDone:YES` disposes of the caller's buffer exactly once; the `deallocator:` spelling runs
+ * the caller's own block instead of freeing, which is what separates the two spellings and why Apple added
+ * the block form.
+ *
+ * AND THE TWO ENCODING-TAKING DOORS refuse what this library cannot STORE (UTF-8 and ASCII) rather than
+ * approximating it: `-initWithBytesNoCopy:…` answers nil, and `-getBytes:…` answers NO while reporting the
+ * whole range unconverted. That is the rule `-dataUsingEncoding:` and `-cStringUsingEncoding:` already
+ * follow, at one more pair of doors. */
+- (nullable id)initWithBytesNoCopy:(void *)bytes length:(NSUInteger)len
+			  encoding:(NSStringEncoding)encoding freeWhenDone:(BOOL)freeBuffer;
+- (nullable id)initWithBytesNoCopy:(void *)bytes length:(NSUInteger)len
+			  encoding:(NSStringEncoding)encoding
+		       deallocator:(void (^ _Nullable)(void *, NSUInteger))deallocator;
+- (id)initWithCharactersNoCopy:(unichar * _Nullable)characters length:(NSUInteger)length
+		   deallocator:(void (^ _Nullable)(unichar *, NSUInteger))deallocator;
+/* Deprecated by Apple in favour of -initWithCString:encoding:; in scope under §62.24 like every other
+ * deprecated name here, and it takes the one honest default C-string encoding (UTF-8) for the reason
+ * §63.30's note gives. */
+- (nullable id)initWithCStringNoCopy:(char *)bytes length:(NSUInteger)length freeWhenDone:(BOOL)freeBuffer;
+/* `-getBytes:…` is the one door of this family that takes ANY encoding in Apple's header. A NULL buffer is
+ * Apple's "tell me the size the conversion needs" form and is answered; `options` carries the
+ * lossy/external-representation hints, and no lossy converter exists here. */
+- (BOOL)getBytes:(nullable void *)buffer
+       maxLength:(NSUInteger)maxBufferCount
+      usedLength:(nullable NSUInteger *)usedBufferCount
+	 encoding:(NSStringEncoding)encoding
+	  options:(NSStringEncodingConversionOptions)options
+	    range:(NSRange)range
+   remainingRange:(nullable NSRangePointer)leftover;
+/* The deprecated range form of -getCString:maxLength: (§63.47): it converts a RANGE rather than the whole
+ * receiver, and `remainingRange` reports what it could not convert. */
+- (void)getCString:(char *)buffer
+	 maxLength:(NSUInteger)maxLength
+	     range:(NSRange)range
+    remainingRange:(nullable NSRangePointer)leftoverRange;
+
 /* ===================================================================================================
  * THE C-STRING AND CHARACTER-COPY DOORS, AND ENCODING INTROSPECTION (§63.30).
  *

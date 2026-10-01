@@ -2780,6 +2780,142 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	[self getCharacters:buffer range:NSMakeRange(0, [self length])];
 }
 
+/* ===================================================================================================
+ * §63.47: THE BORROWED-BUFFER FAMILY — SIX DOORS THAT ARE ONE CONTRACT, SO THEY LAND TOGETHER.
+ *
+ * "NoCopy" IS A HINT, which Apple's own header says in as many words. This library COPIES (it has to: its
+ * storage is UTF-16 units and a payload is owned whichever class answers), and the hint is honoured where it
+ * MATTERS TO THE CALLER — the buffer is still released by whoever took it, through `free` or through the
+ * caller's own block, which is what the two spellings mean. A caller that passes `freeWhenDone:YES` is
+ * handing over ownership and gets it disposed of exactly once, whether or not the copy happened.
+ *
+ * AND THE TWO ENCODING DOORS REFUSE WHAT THIS LIBRARY CANNOT STORE, which is the same rule the outgoing
+ * doors already follow (UTF-8 and ASCII, and nothing else) — named at the door rather than answered with a
+ * lossy approximation invented here.
+ * =================================================================================================== */
+
+- (nullable id)initWithBytesNoCopy:(void *)bytes length:(NSUInteger)length encoding:(NSStringEncoding)encoding freeWhenDone:(BOOL)freeBuffer
+{
+	id string = [self initWithBytes:bytes length:length encoding:encoding];
+
+	if (freeBuffer && bytes != NULL) {
+		free(bytes);
+	}
+	return string;
+}
+
+- (nullable id)initWithBytesNoCopy:(void *)bytes length:(NSUInteger)length encoding:(NSStringEncoding)encoding deallocator:(void (^)(void *, NSUInteger))deallocator
+{
+	id string = [self initWithBytes:bytes length:length encoding:encoding];
+
+	if (deallocator != NULL) {
+		deallocator(bytes, length);
+	}
+	return string;
+}
+
+/* THE DEPRECATED NO-ENCODING FORM: Apple's replacement note names `-initWithCString:encoding:`, and the
+ * encoding to use in its absence is the one every other encoding-less C-string door here uses — this
+ * library's UTF-8 rule — so it is that door with the encoding fixed, not a second decoder. */
+- (nullable id)initWithCStringNoCopy:(char *)bytes length:(NSUInteger)length freeWhenDone:(BOOL)freeBuffer
+{
+	id string = [self initWithBytes:bytes length:length encoding:NSUTF8StringEncoding];
+
+	if (freeBuffer && bytes != NULL) {
+		free(bytes);
+	}
+	return string;
+}
+
+- (id)initWithCharactersNoCopy:(unichar *)characters length:(NSUInteger)length deallocator:(void (^)(unichar *, NSUInteger))deallocator
+{
+	/* THE COPY IS THE ONE THE freeWhenDone: FORM ALREADY MAKES, with ownership explicitly NOT taken — this
+	 * door's caller says what to do with the buffer instead, and it is called even when the buffer is
+	 * NULL, because a block that was handed over is a block that runs. */
+	id string = [self initWithCharactersNoCopy:characters length:length freeWhenDone:NO];
+
+	if (deallocator != NULL) {
+		deallocator(characters, length);
+	}
+	return string;
+}
+
+/* `-getBytes:…` IS THE ONE DOOR HERE THAT TAKES ANY ENCODING IN APPLE'S HEADER, and this library answers it
+ * for the encodings it can STORE and refuses the rest rather than approximating them: a NULL buffer is
+ * Apple's "tell me the size" form and is answered, and `options` carries the lossy/external-representation
+ * hints nothing here takes. */
+- (BOOL)getBytes:(nullable void *)buffer
+       maxLength:(NSUInteger)maxBufferCount
+      usedLength:(nullable NSUInteger *)usedBufferCount
+	 encoding:(NSStringEncoding)encoding
+	  options:(NSStringEncodingConversionOptions)options
+	    range:(NSRange)range
+   remainingRange:(nullable NSRangePointer)leftover
+{
+	NSString *piece = [self substringWithRange:range];
+	const char *bytes = [piece cStringUsingEncoding:encoding];
+	NSUInteger n;
+
+	(void)options;		/* no lossy converter exists here; a caller wanting one gets the exact refusal below */
+
+	if (buffer == NULL) {
+		/* THE SIZE FORM. Apple: "If buffer is NULL, the method returns the number of bytes required" — this
+		 * library answers the question it can answer exactly and reports the whole range consumed. */
+		if (usedBufferCount != NULL) {
+			*usedBufferCount = [piece lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+		}
+		if (leftover != NULL) {
+			*leftover = NSMakeRange(NSMaxRange(range), 0);
+		}
+		return YES;
+	}
+	if (bytes == NULL) {
+		if (leftover != NULL) {
+			*leftover = range;	/* nothing was converted */
+		}
+		return NO;
+	}
+	n = [piece lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+	if (n > maxBufferCount) {
+		if (leftover != NULL) {
+			*leftover = range;
+		}
+		return NO;
+	}
+	memcpy(buffer, bytes, n);
+	if (usedBufferCount != NULL) {
+		*usedBufferCount = n;
+	}
+	if (leftover != NULL) {
+		*leftover = NSMakeRange(NSMaxRange(range), 0);
+	}
+	return YES;
+}
+
+/* THE DEPRECATED RANGE FORM of -getCString:maxLength:, and it differs from that door in the two ways its
+ * name says: it converts a RANGE rather than the whole receiver, and it REPORTS what it could not convert.
+ * The conversion itself is the modern door's over the substring, so a failure leaves the buffer alone. */
+- (void)getCString:(char *)buffer
+	 maxLength:(NSUInteger)maxLength
+	     range:(NSRange)range
+    remainingRange:(nullable NSRangePointer)leftoverRange
+{
+	NSString *piece = [self substringWithRange:range];
+
+	if (buffer == NULL) {
+		return;
+	}
+	if (![piece getCString:buffer maxLength:maxLength encoding:NSUTF8StringEncoding]) {
+		if (leftoverRange != NULL) {
+			*leftoverRange = range;
+		}
+		return;
+	}
+	if (leftoverRange != NULL) {
+		*leftoverRange = NSMakeRange(NSMaxRange(range), 0);
+	}
+}
+
 + (id)stringWithCString:(const char *)cString
 {
 	/* The default encoding is UTF-8, so this is the §63.28 door with that encoding named — one refusal
