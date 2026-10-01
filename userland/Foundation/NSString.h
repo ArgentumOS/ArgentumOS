@@ -715,6 +715,14 @@ typedef enum {
 			 filterTypes:(nullable NSArray *)filterTypes;
 
 
+/* §63.49's TWO DEPRECATED LINGUISTIC DOORS ARE DECLARED — in `NSLinguisticTagger.h`'s
+ * `NSString (NSLinguisticAnalysis)` category, WHICH IS APPLE'S OWN HOME FOR THEM and the only arrangement
+ * whose types are in scope: their parameters name `NSLinguisticTagScheme` and `NSLinguisticTaggerOptions`,
+ * which are that header's own types, so declaring them here would put the linguistics family on this header's
+ * include path to buy two deprecated doors. A caller cannot tell: the umbrella header includes both, so
+ * `[string linguisticTagsInRange:…]` is the same call either way. */
+
+
 /* ===================================================================================================
  * THE DOOR THAT CONSUMES THE OPTIONS ABOVE (§62.48)
  *

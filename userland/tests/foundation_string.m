@@ -2572,6 +2572,75 @@ NULL
 		}
 	}
 
+	/* --- §63.49: THE DEPRECATED LINGUISTIC PAIR ---------------------------------------------------- */
+	{
+		NSString *sentence = @"Tom runs. He is fast.";
+		NSArray *tags;
+		NSArray *tokenRanges = nil;
+		NSMutableArray *blockTags = [[NSMutableArray alloc] init];
+		NSMutableArray *blockRanges = [[NSMutableArray alloc] init];
+		NSRange whole = NSMakeRange(0, [sentence length]);
+
+		/* ⚠ THE TWO DOORS ARE ONE WALK, WHICH IS THE ONLY THING THEY PROMISE EACH OTHER: the array form
+		 * collects where the block form calls, so the tags and the token ranges must come out IDENTICAL. */
+		tags = [sentence linguisticTagsInRange:whole
+						scheme:NSLinguisticTagSchemeTokenType
+					       options:0
+					   orthography:nil
+					  tokenRanges:&tokenRanges];
+		[sentence enumerateLinguisticTagsInRange:whole
+						  scheme:NSLinguisticTagSchemeTokenType
+						 options:0
+					     orthography:nil
+					      usingBlock:^(NSLinguisticTag tag, NSRange tokenRange,
+							   NSRange sentenceRange, BOOL *stop) {
+			(void)sentenceRange;
+			(void)stop;
+			if (tag != nil) {
+				[blockTags addObject:tag];
+			}
+			[blockRanges addObject:[NSValue valueWithRange:tokenRange]];
+		}];
+		check("linguistic-tags-pair-agree",
+		      [tags count] > 0 && tokenRanges != nil &&
+		      [tags isEqualToArray:blockTags] && [tokenRanges isEqualToArray:blockRanges],
+		      [[NSString stringWithFormat:@"the array door and the block door answer the SAME %lu tags and "
+						@"the same %lu token ranges",
+						(unsigned long)[tags count],
+						(unsigned long)[tokenRanges count]] UTF8String]);
+
+		/* AND THE `sentenceRange` THE BLOCK CARRIES IS THE TAGGER'S OWN DOOR, not a second notion of a
+		 * sentence: the check re-asks the tagger and compares. */
+		{
+			NSLinguisticTagger *tagger = [[NSLinguisticTagger alloc]
+				initWithTagSchemes:[NSArray arrayWithObject:NSLinguisticTagSchemeTokenType]
+					   options:0];
+			NSRange firstToken = [[tokenRanges objectAtIndex:0] rangeValue];
+			__block NSRange seen = NSMakeRange(NSNotFound, 0);
+
+			[tagger setString:sentence];
+			[sentence enumerateLinguisticTagsInRange:whole
+							  scheme:NSLinguisticTagSchemeTokenType
+							 options:0
+						     orthography:nil
+						      usingBlock:^(NSLinguisticTag tag, NSRange tokenRange,
+								   NSRange sentenceRange, BOOL *stop) {
+				(void)tag;
+				(void)stop;
+				if (tokenRange.location == firstToken.location) {
+					seen = sentenceRange;
+				}
+			}];
+			check("linguistic-sentence-range-is-the-taggers-own",
+			      seen.location != NSNotFound &&
+			      NSEqualRanges(seen, [tagger sentenceRangeForRange:firstToken]),
+			      [[NSString stringWithFormat:@"the block's sentenceRange for the first token (%lu,%lu) is "
+						@"what the tagger's own -sentenceRangeForRange: answers",
+						(unsigned long)seen.location,
+						(unsigned long)seen.length] UTF8String]);
+		}
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

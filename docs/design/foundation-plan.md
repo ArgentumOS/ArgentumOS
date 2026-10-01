@@ -238,6 +238,8 @@ and both the header and this document carry it.
 | **D16** | asking `NSDataDetector` for **`NSTextCheckingTypeTransitInformation`** is REFUSED the same way, with the same code | **(ii) a dependency this system lacks** — a transit result is a FLIGHT and an AIRLINE (`NSTextCheckingAirlineKey`, `NSTextCheckingFlightKey`), so the detector needs an airline code table and enough schedule data to know what a flight number looks like; there is no such data on this system and no service to ask | `NSDataDetector.h` (the class comment and the two code constants), this plan §62.19, the same check | **BOUNDARY** — and the FOURTH CATEGORY DOES NOT EXIST, which is why only two rows were needed: asking a data detector for Spelling, Orthography, Grammar, Correction, Quote, Dash, Replacement or RegularExpression is an ERROR ON APPLE'S OWN PAGE (those are what `NSSpellChecker` and `NSRegularExpression` produce), so refusing them is the CONTRACT rather than a deviation, and a deviation row for them would inflate the debt by eight |
 | **D17** | **(a) A DEVIATION THAT IS GONE, RECORDED SO THE CATEGORY IS NOT PERMANENT:** `NSString`'s path doors were **lexical-only** — `-stringByResolvingSymlinksInPath` was absent, on the stated ground that "resolving a symlink is a FILESYSTEM LOOKUP, and this library's string path doors are deliberately lexical". **(b) A DEFECT THE SAME UNIT EXPOSED, NOT A BOUNDARY:** `-localizedStandardCompare:` is spelled over `NSCaseInsensitiveSearch \| NSNumericSearch`, and **`NSNumericSearch` IS A DECLARED OPTION THAT NOTHING HONOURS** — `-compare:options:` is a byte walk that never looks at it, so "abc2" still sorts AFTER "abc100" where Apple's own note says it sorts before | **(a) NONE, AND THAT IS THE FINDING:** (i) did not apply (nothing is excluded) and (ii) is a claim about the PLATFORM, which was simply false — `realpath` is here and `NSFileManager` has always read the disk. The door is implemented, so nothing is left to tolerate. **(b) also NONE:** Apple publishes the rule for the option, and a byte walk is not a dependency this system lacks | (a) `NSString.h` (the corrected note at the path doors), `NSString.m` (the door, and `-stringByStandardizingPath`'s corrected note), `foundation_string` (`symlink-resolution-follows-a-real-link`, `unresolvable-path-resolves-to-itself`). (b) the option's own declaration, and `foundation_string`'s `localized-standard-compare-folds-case-and-reports-its-numeric-gap`, **which asserts the byte-order answer it actually gets** so the gap is visible in the probe rather than assumed | **(a) RESOLVED 2026-10-01 (the user's decision, §63.48)** — the string path doors stop being lexical-only, and the DOCUMENTED FAILURE keeps them safe: an unresolvable path comes back UNMODIFIED, which IS the lexical answer, so a caller that read these doors as strings does not start getting lookups by accident. **(b) A WORK ITEM, and it is a DEFECT rather than a boundary** because the option is Apple's and the behaviour is specified: `NSNumericSearch` is owed an implementation. ONE RESIDUAL IS NAMED RATHER THAN OMITTED: Apple's `/private` stripping rule in (a) is vacuous here — there is no `/private` on this system — so it is stated in the door's note instead of implemented against a path that cannot occur |
 
+| **D18** | `NSString`'s two deprecated linguistic doors ACCEPT an `orthography:` argument and DO NOT USE IT | **(ii) a dependency this system lacks** — the argument's only consumer would be the tagger, and `NSLinguisticTagger` here has NO DOOR THAT TAKES ONE: `-initWithTagSchemes:options:` determines the orthography itself, so there is nothing to hand a caller's copy to. Turning it into a no-op is a REFUSAL we choose, and it is named at the declaration rather than left to be discovered | `NSLinguisticTagger.h` (at the category, where the parameter is declared), `NSString.m` (the `(void)orthography;` and its comment), and this plan §63.49 | **BOUNDARY, AND THE DIFFERENCE IS ONE-WAY:** Apple's contract has a caller-supplied orthography OVERRIDE the tagger's own determination; here the determination always wins. A caller that passes one loses nothing it had — the tagger still answers — but it does not get its own copy applied, and that is the sentence the header carries |
+
 **HOW THIS REGISTER STAYS TRUE.** It is prose, not a gate: no tooling reads it. The standing rule is
 that **a deviation lands WITH its row** (the same rule nullability has, and that one has a gate); the
 cross-check that the rows correspond to real claims in the headers is a reading, done when the family is
@@ -15976,6 +15978,54 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 `--families --write` (rewrote the family table and the ledger) → `--check` **consistent** → `--unimplemented`
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
+
+## §63.49 — THE DEPRECATED LINGUISTIC PAIR: TWO DECLARATIONS THAT TOOK TWO SOURCES, AND A PARAMETER THAT IS ACCEPTED AND UNREAD (2026-10-01)
+
+**WHAT LANDED: TWO ROWS, AND THEY ARE ONE WALK OF A TAGGER THIS LIBRARY ALREADY SHIPS.**
+`-enumerateLinguisticTagsInRange:scheme:options:orthography:usingBlock:` and
+`-linguisticTagsInRange:scheme:options:orthography:tokenRanges:`. **MEASURED: guest case `foundation_string` 6/6
+checks with the probe's own tally `ok=155 fail=0` (was 153); `make testimg` exit 0 BEFORE `make test` was believed;
+`make foundation-sweep` exit 0; `--check` consistent; `--unimplemented` 0 NEW; ledger methods 2178 → 2180.**
+
+**⚠ THEIR SHAPES ARE CITABLE, AND IT TOOK TWO SOURCES RATHER THAN ONE — recorded because the SEARCH is the expensive
+part, not the writing.** The ARRAY door's Apple page resolves and publishes its Swift declaration. The ENUMERATE
+door's page **404s**, and so does the tagger's own `enumerateTags` page — but **Apple's documentation INDEX carries
+the Swift spelling**, `using: (NSLinguisticTag?, NSRange, NSRange, UnsafeMutablePointer<ObjCBool>)`. **That is the
+piece that mattered: the block carries a `sentenceRange` that this library's own
+`-enumerateTagsInRange:scheme:options:usingBlock:` does NOT** (`(tag, tokenRange, stop)`), so the shape was **not
+derivable from the sibling in this tree** — it had to be read, and the previous attempt to write it from the sibling
+would have been wrong.
+
+**⚠ AND THE DECLARATION'S HOME IS APPLE'S, WHICH IS ALSO THE ONLY ONE THAT COMPILES.** The pair is a CATEGORY ON
+`NSString` **in `NSLinguisticTagger.h`** — Apple's own arrangement (`NSString(NSLinguisticAnalysis)`) — and the first
+attempt put them in `NSString.h` and FAILED TO BUILD: their parameters name `NSLinguisticTagScheme` and
+`NSLinguisticTaggerOptions`, which are that header's own types, so declaring them on `NSString` would have put the
+whole linguistics family on `NSString.h`'s include path to buy two deprecated doors. **The compiler said "unknown
+type name" four times, which is the instrument telling you the home is wrong rather than the spelling.**
+
+**AND ONE PARAMETER IS ACCEPTED AND UNREAD, REGISTERED RATHER THAN HIDDEN (§11.6.1 D18).** Apple lets a caller pass
+`orthography:`; this tagger has **no door that takes one**, so the determination always wins. A caller loses nothing
+it had — the tagger still answers — but it does not get its own copy applied. The detail is carried at the
+declaration, at the `(void)orthography;`, and in the register, because a parameter that LOOKS honoured is the
+cheapest kind of lie to leave in a signature.
+
+**AND TWO CLASSIFICATION CORRECTIONS THAT CAME OUT OF THIS UNIT, BOTH WORTH MORE THAN THE ROWS.**
+ * **`-variantFittingPresentationWidth:` IS NOT A CLOSEABLE ROW — IT IS THE SIXTH OF THE SIX LIVE ROWS IN THE
+   APPKIT-DRAWING GROUP.** Its ledger family is "Sizing and Drawing Strings", which is exactly the family the plan's
+   AppKit deferral names. **So NSString's AppKit group is 20, not 19** — a correction to this campaign's OWN count
+   from one turn earlier, made by reading the ledger rather than by trusting the prose.
+ * **AND THE PLAN'S DEFERRAL CRITERION CANNOT SEE TWO MORE OF THESE ROWS.** `-stringByAppendingPathComponent:conformingToType:`
+   and `-stringByAppendingPathExtensionForType:` take **`UTType`**, and **`+localizedUserNotificationStringForKey:arguments:`
+   belongs to the UserNotifications framework — which this tree does not contain at all** (`UNUserNotificationCenter`
+   and `UNNotification` are absent; the tree ships the OLDER `NSUserNotification`). **All three are substrate deferrals
+   whose NAMES carry no type token**, so the re-runnable criterion of §63.45 — which is a name-token test — is blind to
+   every one of them. That is three instances now (with `GKRandomSource`), which makes it a shape the criterion needs
+   rather than an accident.
+
+**WHAT IS LEFT OF STRING'S CLOSEABLE SET: NOTHING THAT IS ONLY WORK.** The remaining rows are 20 AppKit-drawing
+(deferred by scope), 7 substrate (deferred by dependency, three of them invisible to the name-token criterion), 2
+awaiting a citable specification (the percent pair, §63.3), and 1 blocked on the PLIST READER
+(`-propertyListFromStringsFileFormat`, whose dependency is named in `NSString.m` and owed its own unit).
 
 ## §63.48 — THE PATH DOORS' LEXICAL BOUNDARY IS GONE, AND A DECLARED OPTION THAT DID NOTHING (2026-10-01)
 

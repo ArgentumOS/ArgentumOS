@@ -46,6 +46,10 @@
  * NSHomeDirectoryForUser() live in NSFileManager.h, and the two are Apple's own spelling (there is no separate
  * NSPathUtilities.h here). */
 #import <Foundation/NSFileManager.h>
+/* §63.49's deprecated linguistic pair delegates to the tagger this library already ships, so the class and
+ * the two doors it drives have to be visible here. */
+#import <Foundation/NSLinguisticTagger.h>
+#import <Foundation/NSOrthography.h>
 
 /* A STRING COPY IS A COPY OF THE CHARACTERS, AND THE BUFFER IS BUILT IN ONE PLACE (§62.93).
  *
@@ -3711,6 +3715,76 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 }
 
 
+
+/* ===================================================================================================
+ * §63.49: THE DEPRECATED LINGUISTIC PAIR. Both are ONE WALK of the tagger this library already ships, and
+ * the `sentenceRange` the enumerate block carries is the tagger's own `-sentenceRangeForRange:` — the same
+ * answer its `-tagAtIndex:scheme:tokenRange:sentenceRange:` door gives, so the two spellings of "which
+ * sentence is this token in" cannot disagree.
+ *
+ * ⚠ `orthography` IS ACCEPTED AND NOT USED, and the header says why at the declaration: this tagger has no
+ * door that takes a caller's orthography (it determines one itself), so the difference is registered
+ * (§11.6.1 D18) rather than hidden behind a parameter that looks honoured.
+ * =================================================================================================== */
+- (void)enumerateLinguisticTagsInRange:(NSRange)range
+				scheme:(NSLinguisticTagScheme)tagScheme
+			       options:(NSLinguisticTaggerOptions)opts
+			   orthography:(nullable NSOrthography *)orthography
+			   usingBlock:(void (^)(NSLinguisticTag _Nullable tag,
+						NSRange tokenRange,
+						NSRange sentenceRange,
+						BOOL *stop))block
+{
+	NSLinguisticTagger *tagger;
+	NSArray *schemes;
+
+	(void)orthography;	/* D18: no door on the tagger takes one */
+	if (block == NULL) {
+		return;
+	}
+	schemes = [NSArray arrayWithObject:tagScheme];
+	tagger = [[NSLinguisticTagger alloc] initWithTagSchemes:schemes options:opts];
+	[tagger setString:self];
+	[tagger enumerateTagsInRange:range
+			      scheme:tagScheme
+			     options:opts
+			  usingBlock:^(NSLinguisticTag tag, NSRange tokenRange, BOOL *stop) {
+		block(tag, tokenRange, [tagger sentenceRangeForRange:tokenRange], stop);
+	}];
+}
+
+- (NSArray *)linguisticTagsInRange:(NSRange)range
+			    scheme:(NSLinguisticTagScheme)tagScheme
+			   options:(NSLinguisticTaggerOptions)opts
+		       orthography:(nullable NSOrthography *)orthography
+		      tokenRanges:(NSArray * _Nullable * _Nullable)tokenRanges
+{
+	NSMutableArray *tags = [[NSMutableArray alloc] init];
+	NSMutableArray *ranges = [[NSMutableArray alloc] init];
+
+	if (tokenRanges != NULL) {
+		*tokenRanges = nil;
+	}
+	/* THE SAME WALK THE BLOCK FORM MAKES, so the two doors cannot answer differently — this one collects
+	 * where the other calls, which is the whole difference between them. */
+	[self enumerateLinguisticTagsInRange:range
+				      scheme:tagScheme
+				     options:opts
+				 orthography:orthography
+				  usingBlock:^(NSLinguisticTag tag, NSRange tokenRange,
+					       NSRange sentenceRange, BOOL *stop) {
+		(void)sentenceRange;
+		(void)stop;
+		if (tag != nil) {
+			[tags addObject:tag];
+		}
+		[ranges addObject:[NSValue valueWithRange:tokenRange]];
+	}];
+	if (tokenRanges != NULL) {
+		*tokenRanges = ranges;
+	}
+	return tags;
+}
 
 /* MOVED HERE FROM A CATEGORY (§62.75): this is a method the class's INTERFACE declares, so it belongs
  * in the class's own block - not because the compiler is happier, but because a category body

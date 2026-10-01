@@ -130,6 +130,8 @@ CHECKS = (
           "unresolvable-path-resolves-to-itself",
           "localized-standard-compare-folds-case-and-reports-its-numeric-gap",
           "completepathintostring-completes-and-filters",
+          "linguistic-tags-pair-agree",
+          "linguistic-sentence-range-is-the-taggers-own",
 )
 
 

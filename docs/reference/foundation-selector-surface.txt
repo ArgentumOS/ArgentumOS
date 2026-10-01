@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2178   open  482   struck  268
+#   method     shipped 2180   open  480   struck  268
 #   property   shipped 1268   open  222   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3060,7 +3060,7 @@ method	open	-drawInRect:withFont:lineBreakMode:alignment:	NSString	Fundamentals 
 method	open	-drawWithRect:options:attributes:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	open	-drawWithRect:options:attributes:context:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	-	objc
 method	shipped	-enumerateLinesUsingBlock:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
-method	open	-enumerateLinguisticTagsInRange:scheme:options:orthography:usingBlock:	NSString	Fundamentals / Strings / Performing Linguistic Analysis	deprecated	objc
+method	shipped	-enumerateLinguisticTagsInRange:scheme:options:orthography:usingBlock:	NSString	Fundamentals / Strings / Performing Linguistic Analysis	deprecated	objc
 method	shipped	-enumerateSubstringsInRange:options:usingBlock:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-getBytes:maxLength:usedLength:encoding:options:range:remainingRange:	NSString	Fundamentals / Strings / Getting Characters and Bytes	-	objc
 method	shipped	-getCString:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
@@ -3106,7 +3106,7 @@ method	shipped	-initWithValidatedFormat:validFormatSpecifiers:locale:error:	NSSt
 method	shipped	-isEqualToString:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-lengthOfBytesUsingEncoding:	NSString	Fundamentals / Strings / Getting a String’s Length	-	objc
 method	shipped	-lineRangeForRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
-method	open	-linguisticTagsInRange:scheme:options:orthography:tokenRanges:	NSString	Fundamentals / Strings / Performing Linguistic Analysis	deprecated	objc
+method	shipped	-linguisticTagsInRange:scheme:options:orthography:tokenRanges:	NSString	Fundamentals / Strings / Performing Linguistic Analysis	deprecated	objc
 method	shipped	-localizedCaseInsensitiveCompare:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-localizedCaseInsensitiveContainsString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-localizedCompare:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc

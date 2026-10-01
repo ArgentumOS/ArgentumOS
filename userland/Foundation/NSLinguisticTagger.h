@@ -207,6 +207,45 @@ extern NSLinguisticTag const NSLinguisticTagOrganizationName;
 
 @end
 
+/* ===================================================================================================
+ * §63.49: THE DEPRECATED LINGUISTIC PAIR, IN APPLE'S OWN HOME FOR THEM.
+ *
+ * THEY ARE A CATEGORY ON `NSString` DECLARED IN *THIS* HEADER, which is Apple's arrangement — its
+ * `NSLinguisticTagger.h` carries `NSString(NSLinguisticAnalysis)` — AND IT IS ALSO THE ONLY ARRANGEMENT THAT
+ * COMPILES: their parameters name `NSLinguisticTagScheme` and `NSLinguisticTaggerOptions`, which are THIS
+ * header's own types, so declaring them on `NSString` would have put the whole linguistics family on
+ * `NSString.h`'s include path to buy two deprecated doors.
+ *
+ * **AND THEIR SHAPES ARE CITABLE, WHICH IS WHY THEY COULD LAND AT ALL — and it took TWO SOURCES:** the array
+ * door's Apple page publishes its Swift declaration, and the enumerate door's page 404s while **Apple's own
+ * documentation INDEX carries its Swift spelling**, `using: (NSLinguisticTag?, NSRange, NSRange,
+ * UnsafeMutablePointer<ObjCBool>)`. That last is the piece that mattered: **the block carries a
+ * `sentenceRange` that this library's own `-enumerateTagsInRange:scheme:options:usingBlock:` does NOT**
+ * (`(tag, tokenRange, stop)`), so the shape was NOT derivable from the sibling in this tree.
+ *
+ * ⚠ `orthography` IS ACCEPTED AND NOT USED (registered as §11.6.1 D18): Apple lets a caller pass one, but THE
+ * TAGGER BELOW HAS NO DOOR THAT TAKES ONE — `-initWithTagSchemes:options:` determines the orthography itself —
+ * so a caller's copy comes back unread rather than being quietly treated as if it had been applied.
+ * =================================================================================================== */
+@interface NSString (NSLinguisticAnalysis)
+
+- (void)enumerateLinguisticTagsInRange:(NSRange)range
+				scheme:(NSLinguisticTagScheme)tagScheme
+			       options:(NSLinguisticTaggerOptions)opts
+			   orthography:(nullable NSOrthography *)orthography
+			   usingBlock:(void (^)(NSLinguisticTag _Nullable tag,
+						NSRange tokenRange,
+						NSRange sentenceRange,
+						BOOL *stop))block;
+
+- (NSArray *)linguisticTagsInRange:(NSRange)range
+			    scheme:(NSLinguisticTagScheme)tagScheme
+			   options:(NSLinguisticTaggerOptions)opts
+		       orthography:(nullable NSOrthography *)orthography
+		      tokenRanges:(NSArray * _Nullable * _Nullable)tokenRanges;
+
+@end
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSLINGUISTICTAGGER_H */
