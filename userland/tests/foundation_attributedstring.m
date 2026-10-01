@@ -239,6 +239,52 @@ int main(void)
 			[present componentsJoinedByString:@", "]]);
 	}
 
+	/* ---- THE MUTABLE-ONLY FORMAT DOOR (macOS 12+, ledger row NSMutableAttributedString/-appendLocalizedFormat:)
+	 *
+	 * APPLE'S OWN CURRENT-LOCALE FORMAT APPEND: "Formats the specified string and arguments with the current
+	 * locale, then appends the result to the receiver." It is declared ONLY on the mutable subclass, so the
+	 * two-class inventory rule above cannot carry it (that rule needs BOTH classes to answer) - it is checked
+	 * here against the mutable class, and the immutable base is required NOT to answer it. The expectations
+	 * are Apple's and are MEASURED: the formatted TEXT reaches the receiver unchanged, the length grows by
+	 * exactly the formatted length, and the appended run carries NO attribute (a plain format append installs
+	 * no formatting of its own). NOTE: this library's locale doors render the LOCALE-FREE answer (a locale is
+	 * honoured for case only, NSString.h records), so this run is NOT a check of locale-sensitive rendering. */
+	{
+		NSMutableAttributedString *m = [[NSMutableAttributedString alloc] initWithString:@"head:"];
+		NSAttributedString *imm = [[NSAttributedString alloc] initWithString:@"head:"];
+		NSUInteger before = [m length];
+		NSRange eff = NSMakeRange(0, 0);
+		BOOL isMutableOnly = [m respondsToSelector:@selector(appendLocalizedFormat:)] &&
+				     ![imm respondsToSelector:@selector(appendLocalizedFormat:)];
+
+		[m appendLocalizedFormat:@"%@-%d", @"x", 42];
+		{
+			NSDictionary *appended = [m attributesAtIndex:before effectiveRange:&eff];
+			NSUInteger after = [m length];
+			BOOL textOK = [[m string] isEqualToString:@"head:x-42"];
+			/* ⚠ AND "x-42" IS FOUR UNITS, NOT FIVE — CORRECTED AGAINST THE GUEST, NOT REASONED A SECOND TIME.
+			 * The first version of this check expected before + 5 (its own comment even said "five"), the guest
+			 * answered 9 for a 5-unit base, and the detail line carried the evidence: string="head:x-42"
+			 * after=9(expect 10). THE IMPLEMENTATION WAS RIGHT AND THE EXPECTATION WAS WRONG — the same shape as
+			 * the number formatter's nf-always-decimal — and this check had been MARKED as reasoned rather than
+			 * measured, which is exactly why the failure was one line to find rather than a hunt. */
+			BOOL lenOK = after == before + 4;
+			BOOL noAttr = [appended count] == 0;
+
+			printf("FOUNDATION-ATTRIBUTEDSTRING DIAG appendLocalizedFormat before=%lu after=%lu "
+			       "string=\"%s\" appended-attrs=%lu eff=(%lu,%lu)\n",
+			       (unsigned long)before, (unsigned long)after, [[m string] UTF8String],
+			       (unsigned long)[appended count],
+			       (unsigned long)eff.location, (unsigned long)eff.length);
+			check("append-localized-format-appends-the-formatted-string",
+			      isMutableOnly && textOK && lenOK && noAttr,
+			      [NSString stringWithFormat:@"mutableOnly=%d string=\"%@\" after=%lu(expect %lu) "
+				"appended-attrs=%lu",
+				(int)isMutableOnly, [m string], (unsigned long)after,
+				(unsigned long)(before + 4), (unsigned long)[appended count]]);
+		}
+	}
+
 	/* ---- THE SUPPORTED-TEXT-FORMAT DOORS (2026-10-01, plan §61) ---------------------------------------
 	 *
 	 * SIX CLASS MEMBERS. THE FIRST CHECK MEASURES WHAT IS MEASURABLE: that all six answer, that each answers

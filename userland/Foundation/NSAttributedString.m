@@ -29,6 +29,7 @@
 #import <Foundation/NSDate.h>
 #import <Foundation/NSNumber.h>
 #import <Foundation/NSURL.h>
+#import <Foundation/NSLocale.h>
 /* FNTextBreaking IS THE WORD/LINE-BREAK SUBSTRATE these doors answer over (§62.42); the 2026-09-30 pass made
  * the "Calculating linguistic units" group in-scope, and one truth about where a word or a line ends is the
  * reason these are wrappers over it rather than a second breaker. */
@@ -1570,6 +1571,35 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 - (void)appendAttributedString:(NSAttributedString *)attrString
 {
 	[self replaceCharactersInRange:NSMakeRange([self length], 0) withAttributedString:attrString];
+}
+
+/* APPLE'S CURRENT-LOCALE FORMAT DOOR (macOS 12+, ledger row NSMutableAttributedString/-appendLocalizedFormat:).
+ *
+ * "Formats the specified string and arguments with the current locale, then appends the result to the
+ * receiver." The FORMAT is delegated to this library's own variadic machinery - -initWithFormat:locale:
+ * arguments:, which the base class DOCUMENTS to accept a locale and render the locale-free answer (a locale
+ * is honoured for case only in this library), so no second rendering rule is invented here and the two doors
+ * cannot drift. The RESULT is appended as a PLAIN, attribute-free string through -appendAttributedString:,
+ * which routes into the same run-splicing mutator every other append uses - so text and runs stay together.
+ * MEASURED: the appended run carries no attribute (the probe asserts an empty attribute dictionary and a
+ * length that grew by exactly the formatted length). MRC: `rendered` and `formatted` are each +1, released
+ * once after the append; -appendAttributedString: does not retain its argument past the call. */
+- (void)appendLocalizedFormat:(NSString *)format, ...
+{
+	va_list args;
+	NSString *rendered;
+	NSAttributedString *formatted;
+
+	va_start(args, format);
+	rendered = [[NSString alloc] initWithFormat:format locale:[NSLocale currentLocale] arguments:args];
+	va_end(args);
+	if (rendered == nil) {
+		return;
+	}
+	formatted = [[NSAttributedString alloc] initWithString:rendered];
+	[self appendAttributedString:formatted];
+	[formatted release];
+	[rendered release];
 }
 
 - (void)setAttributedString:(NSAttributedString *)attrString

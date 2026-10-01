@@ -358,6 +358,13 @@ typedef enum {
 - (void)replaceCharactersInRange:(NSRange)range withAttributedString:(NSAttributedString *)attrString;
 - (void)insertAttributedString:(NSAttributedString *)attrString atIndex:(NSUInteger)loc;
 - (void)appendAttributedString:(NSAttributedString *)attrString;
+/* APPLE'S CURRENT-LOCALE FORMAT DOOR (macOS 12+, ledger row NSMutableAttributedString/-appendLocalizedFormat:).
+ * Apple's spelling is variadic, exactly like +stringWithFormat:: "Formats the specified string and arguments
+ * with the current locale, then appends the result to the receiver." It is built over this library's own
+ * -initWithFormat:locale:arguments:, whose locale door is DOCUMENTED to accept the locale and render the
+ * locale-free answer (a locale is honoured for case only here, NSString.h says so) - so no second rendering
+ * rule is invented. MUTABLE-ONLY: the immutable base does not answer it. */
+- (void)appendLocalizedFormat:(NSString *)format, ...;
 - (void)deleteCharactersInRange:(NSRange)range;
 - (void)setAttributedString:(NSAttributedString *)attrString;
 

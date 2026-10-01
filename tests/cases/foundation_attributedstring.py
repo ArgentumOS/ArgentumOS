@@ -50,6 +50,8 @@ CHECKS = ("morphology-vocabulary-is-distinct-and-carried",
           "primitives-dictionaries-behave-as-the-store-assumes",
           "primitives-constructors-do-not-alias-their-source",
           "inventory-the-shipped-selectors-exist", "inventory-the-boundaries-are-absent",
+          # 2026-10-01: the mutable-only current-locale format door (NSMutableAttributedString/appendLocalizedFormat:).
+          "append-localized-format-appends-the-formatted-string",
           "string-and-length-are-the-initialisers", "the-coalescing-contract-holds-whatever-built-it",
           "the-attribute-range-can-be-longer-than-the-dictionary-run",
           "the-longest-effective-range-form-clips-to-its-range",

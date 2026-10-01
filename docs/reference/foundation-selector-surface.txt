@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2129   open  531   struck  268
-#   property   shipped 1252   open  238   struck  146
+#   method     shipped 2130   open  530   struck  268
+#   property   shipped 1261   open  229   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -1990,7 +1990,7 @@ method	shipped	-sortWithOptions:usingComparator:	NSMutableArray	Fundamentals / B
 method	shipped	-addAttribute:value:range:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	-	objc
 method	shipped	-addAttributes:range:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	-	objc
 method	shipped	-appendAttributedString:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Characters and Attributes	-	objc
-method	open	-appendLocalizedFormat:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Characters and Attributes	-	objc
+method	shipped	-appendLocalizedFormat:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Characters and Attributes	-	objc
 method	open	-applyFontTraits:range:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	-	objc
 method	shipped	-beginEditing	NSMutableAttributedString	Fundamentals / Strings with Metadata / Grouping Changes	-	objc
 method	shipped	-deleteCharactersInRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Characters	-	objc
@@ -4205,25 +4205,25 @@ property	open	contentAttributeSet	NSUserActivity	App Support / Activity Sharing 
 property	open	contextIdentifierPath	NSUserActivity	App Support / Activity Sharing / Accessing feature-specific data	-	objc
 property	shipped	delegate	NSUserActivity	App Support / Activity Sharing / Monitoring activity-related behaviors	-	objc
 property	open	detectedBarcodeDescriptor	NSUserActivity	App Support / Activity Sharing / Accessing feature-specific data	-	objc
-property	open	eligibleForHandoff	NSUserActivity	App Support / Activity Sharing / Enabling system behaviors	-	objc
-property	open	eligibleForPrediction	NSUserActivity	App Support / Activity Sharing / Enabling system behaviors	-	objc
-property	open	eligibleForPublicIndexing	NSUserActivity	App Support / Activity Sharing / Enabling system behaviors	-	objc
-property	open	eligibleForSearch	NSUserActivity	App Support / Activity Sharing / Enabling system behaviors	-	objc
+property	shipped	eligibleForHandoff	NSUserActivity	App Support / Activity Sharing / Enabling system behaviors	-	objc
+property	shipped	eligibleForPrediction	NSUserActivity	App Support / Activity Sharing / Enabling system behaviors	-	objc
+property	shipped	eligibleForPublicIndexing	NSUserActivity	App Support / Activity Sharing / Enabling system behaviors	-	objc
+property	shipped	eligibleForSearch	NSUserActivity	App Support / Activity Sharing / Enabling system behaviors	-	objc
 property	shipped	expirationDate	NSUserActivity	App Support / Activity Sharing / Enabling system behaviors	-	objc
-property	open	externalMediaContentIdentifier	NSUserActivity	App Support / Activity Sharing / Specifying app identifiers	-	objc
+property	shipped	externalMediaContentIdentifier	NSUserActivity	App Support / Activity Sharing / Specifying app identifiers	-	objc
 property	open	interaction	NSUserActivity	App Support / Activity Sharing / Providing SiriKit with activity details	-	objc
 property	open	isClassKitDeepLink	NSUserActivity	App Support / Activity Sharing / Accessing feature-specific data	-	objc
-property	open	keywords	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
+property	shipped	keywords	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
 property	open	mapItem	NSUserActivity	App Support / Activity Sharing / Accessing feature-specific data	-	objc
 property	open	ndefMessagePayload	NSUserActivity	App Support / Activity Sharing / Accessing feature-specific data	-	objc
 property	shipped	needsSave	NSUserActivity	App Support / Activity Sharing / Registering and invalidating activities	-	objc
-property	open	persistentIdentifier	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
+property	shipped	persistentIdentifier	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
 property	shipped	referrerURL	NSUserActivity	App Support / Activity Sharing / Browsing the web	-	objc
 property	shipped	requiredUserInfoKeys	NSUserActivity	App Support / Activity Sharing / Specifying activity-related data	-	objc
 property	open	shortcutAvailability	NSUserActivity	App Support / Activity Sharing / Providing SiriKit with activity details	-	objc
-property	open	suggestedInvocationPhrase	NSUserActivity	App Support / Activity Sharing / Providing SiriKit with activity details	-	objc
+property	shipped	suggestedInvocationPhrase	NSUserActivity	App Support / Activity Sharing / Providing SiriKit with activity details	-	objc
 property	shipped	supportsContinuationStreams	NSUserActivity	App Support / Activity Sharing / Working with continuation streams	-	objc
-property	open	targetContentIdentifier	NSUserActivity	App Support / Activity Sharing / Specifying app identifiers	-	objc
+property	shipped	targetContentIdentifier	NSUserActivity	App Support / Activity Sharing / Specifying app identifiers	-	objc
 property	shipped	title	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
 property	shipped	userInfo	NSUserActivity	App Support / Activity Sharing / Specifying activity-related data	-	objc
 property	shipped	webpageURL	NSUserActivity	App Support / Activity Sharing / Browsing the web	-	objc
