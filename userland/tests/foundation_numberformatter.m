@@ -365,6 +365,103 @@ int main(void)
 				[copy stringFromNumber:[NSNumber numberWithInt:1234]]]);
 	}
 
+	{
+		/* positiveFormat/negativeFormat ARE THE TWO HALVES OF ONE ICU PATTERN: the decimal pattern
+		 * language spells the negative subpattern after a ';'. Both halves are set and read back —
+		 * the JUSTIFIED part, because the pattern language round-trips (MEASURED on ICU) — and the
+		 * negative subpattern's affixes are confirmed to REACH THE OUTPUT. */
+		NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+		NSString *pos;
+		NSString *neg;
+		NSString *out;
+
+		[formatter setLocale:en];
+		[formatter setNumberStyle:NSNumberFormatterDecimalStyle];
+		[formatter setPositiveFormat:@"#,##0.00"];
+		[formatter setNegativeFormat:@"(#,##0.00)"];
+		pos = [formatter positiveFormat];
+		neg = [formatter negativeFormat];
+		out = [formatter stringFromNumber:[NSNumber numberWithDouble:-1234.5]];
+		/* The recombined pattern "#,##0.00;(#,##0.00)" renders -1234.5 as "(1,234.50)": that exact
+		 * string is MEASURED on host ICU but REASONED guest-side, so the check asserts the negative
+		 * subpattern's AFFIXES rather than the whole rendering. */
+		check("nf-format-halves",
+		      pos != nil && neg != nil && [pos isEqualToString:@"#,##0.00"] &&
+		      [neg isEqualToString:@"(#,##0.00)"] &&
+		      out != nil && [out containsString:@"("] && [out containsString:@")"],
+		      [NSString stringWithFormat:@"pos=%@ neg=%@ out=%@", pos, neg, out]);
+	}
+
+	{
+		/* THE RANGE OVER THE INPUT: Apple's -minimum/-maximum are the lowest/highest number allowed
+		 * as INPUT (Apple's own wording), so a parse outside the range is REFUSED and one inside it
+		 * is answered. */
+		NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+		NSNumber *inRange;
+		NSNumber *tooLow;
+		NSNumber *tooHigh;
+
+		[formatter setLocale:en];
+		[formatter setNumberStyle:NSNumberFormatterDecimalStyle];
+		[formatter setMinimum:[NSNumber numberWithInt:100]];
+		[formatter setMaximum:[NSNumber numberWithInt:1000]];
+		inRange = [formatter numberFromString:@"500"];
+		tooLow = [formatter numberFromString:@"50"];
+		tooHigh = [formatter numberFromString:@"5000"];
+		check("nf-min-max",
+		      inRange != nil && [inRange intValue] == 500 && tooLow == nil && tooHigh == nil,
+		      [NSString stringWithFormat:@"in=%@ low=%@ high=%@",
+			inRange, tooLow != nil ? [tooLow stringValue] : @"(nil)",
+			tooHigh != nil ? [tooHigh stringValue] : @"(nil)"]);
+	}
+
+	{
+		/* -generatesDecimalNumbers: with it YES the parse answers an NSDecimalNumber (which IS an
+		 * NSNumber, so the discriminating test is isKindOfClass:), and with it NO (the default) a
+		 * plain NSNumber. */
+		NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+		NSNumber *plain;
+		NSNumber *decimal;
+
+		[formatter setLocale:en];
+		[formatter setNumberStyle:NSNumberFormatterDecimalStyle];
+		plain = [formatter numberFromString:@"1234.5"];
+		[formatter setGeneratesDecimalNumbers:YES];
+		decimal = [formatter numberFromString:@"1234.5"];
+		check("nf-generates-decimal",
+		      plain != nil && ![plain isKindOfClass:[NSDecimalNumber class]] &&
+		      decimal != nil && [decimal isKindOfClass:[NSDecimalNumber class]] &&
+		      [decimal doubleValue] > 1234.4 && [decimal doubleValue] < 1234.6,
+		      [NSString stringWithFormat:@"plain=%@(%@) decimal=%@(%@)",
+			plain, [plain class], decimal, [decimal class]]);
+	}
+
+	{
+		/* THE FORMATTER BEHAVIOR trio. Apple's modern default is the 10.4 behavior (REASONED — the
+		 * documented default, not something a guest can be asked); the class default SEEDS a new
+		 * instance through its getter; and a value set on an instance reads back. */
+		NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+		NSNumberFormatterBehavior dflt = [NSNumberFormatter defaultFormatterBehavior];
+		NSNumberFormatterBehavior got;
+		NSNumberFormatter *seeded;
+		NSNumberFormatterBehavior fromDefault;
+
+		[formatter setFormatterBehavior:NSNumberFormatterBehavior10_0];
+		got = [formatter formatterBehavior];
+		/* Change the class default, seed a fresh instance from it, then RESTORE the default so no
+		 * later check can observe the change. */
+		[NSNumberFormatter setDefaultFormatterBehavior:NSNumberFormatterBehavior10_0];
+		seeded = [[NSNumberFormatter alloc] init];
+		fromDefault = [seeded formatterBehavior];
+		[NSNumberFormatter setDefaultFormatterBehavior:dflt];
+		check("nf-behavior",
+		      dflt == NSNumberFormatterBehavior10_4 &&
+		      got == NSNumberFormatterBehavior10_0 &&
+		      fromDefault == NSNumberFormatterBehavior10_0,
+		      [NSString stringWithFormat:@"default=%d got=%d seeded=%d",
+			(int)dflt, (int)got, (int)fromDefault]);
+	}
+
 	printf("FOUNDATION-NUMBERFORMATTER RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

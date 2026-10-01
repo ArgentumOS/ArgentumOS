@@ -19,24 +19,29 @@
  *   * the ATTRIBUTED-string doors (`-attributedStringForZero`, `-attributedStringForNil`,
  *     `-attributedStringForNotANumber`, and the seven `-textAttributesFor…` dictionaries), which
  *     belong to the attributed-string family and are AppKit-DRAWING shaped;
- *   * `-generatesDecimalNumbers`, which changes not WHAT ICU formats but what TYPE the parse answers:
- *     `-numberFromString:` answers an NSNumber (which is also Apple's answer when the flag is off),
- *     and a decimal-typed answer is NSDecimalNumber's own surface;
- *   * `-roundingBehavior`, whose Apple type is NSDecimalNumberHandler — a rounding POLICY object, not
- *     an ICU attribute; the increment and -roundingMode below are what ICU carries;
- *   * `-positiveFormat`/`-negativeFormat`, the second half of the FORMAT PATTERN LANGUAGE: ICU exposes
- *     ONE pattern through unum_* (which `-format` sets), and the positive/negative split is not a
- *     door unum_* offers — implementing it means writing a pattern splitter, which is the substrate
- *     question, so it is NAMED here and not invented;
- *   * `-maximum`/`-minimum`, whose behaviour is a range CHECK over the parse that Apple documents only
- *     for a control's cell;
+ *   * `-roundingBehavior`, whose Apple type is NSDecimalNumberHandler — a rounding POLICY object whose
+ *     effect is not separable from the `-roundingMode`/`-roundingIncrement` ICU already carries, so
+ *     it is named here rather than stored as a value that would change nothing;
  *   * `-formattingContext` (a capitalization hint whose only consumer would be the spell-out style),
  *     `-localizesFormat` and `-partialStringValidationEnabled` (deprecated flags with no distinct
- *     door), and the deprecated `-formatterBehavior` pair, whose only surviving value is the modern
- *     behaviour this class already implements;
+ *     door);
  *   * `-positiveInfinitySymbol`/`-negativeInfinitySymbol`, because ICU carries ONE infinity symbol
  *     (`UNUM_INFINITY_SYMBOL`) and spells a negative infinity with the minus sign — there is no
  *     substrate for two distinct settable symbols;
+ *
+ * WHAT A LATER PASS LANDED, EACH ON A DEFERRAL REASON THAT MEASURED FALSE:
+ *   * `-positiveFormat`/`-negativeFormat`. The old note claimed ICU exposes ONE pattern with no
+ *     positive/negative split. FALSE: the DECIMAL PATTERN LANGUAGE spells the negative subpattern
+ *     after a ';', and `unum_toPattern` returns it verbatim — MEASURED: opening
+ *     "#,##0.00;(#,##0.00)" formats -1234.5 as "(1,234.50)". The two doors are VIEWS of the one
+ *     pattern `-format` holds, not separate storage;
+ *   * `-generatesDecimalNumbers`. The old note filed the decimal-typed answer under "NSDecimalNumber's
+ *     own surface" as if this library had none; `NSDecimalNumber.h` EXISTS, so the flag is honoured
+ *     by answering the parse with an NSDecimalNumber;
+ *   * `-minimum`/`-maximum`: Apple's documented RANGE over the INPUT (the parse), now a real check;
+ *   * the `-formatterBehavior` trio (`+defaultFormatterBehavior`, `+setDefaultFormatterBehavior:` and
+ *     the instance `-formatterBehavior`), now a stored, reported, seedable value — see the
+ *     declaration for the ONE deviation (only the 10.4 behavior selects a rendering).
  *
  * STORAGE: the ICU handle is an opaque `void *` for the same reason it is in NSDateFormatter — this
  * header is staged for an ON-GUEST Objective-C rebuild, and including <unicode/unum.h> here would
@@ -106,6 +111,10 @@ NS_ASSUME_NONNULL_BEGIN
 	BOOL _allowsFloats;		/* OURS: a rule over the parse, not an ICU attribute */
 	NSString *_zeroSymbol;		/* OURS: ICU has no symbol for a zero VALUE */
 	NSString *_nilSymbol;		/* OURS: ICU has no symbol for "no value at all" */
+	NSNumberFormatterBehavior _behavior;	/* reported, seeded from the class default */
+	NSNumber *_minimum;		/* OURS: the range over the parse (see the declaration) */
+	NSNumber *_maximum;
+	BOOL _generatesDecimalNumbers;	/* OURS: whether the parse answers an NSDecimalNumber */
 }
 
 - (instancetype)init;
@@ -121,10 +130,28 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (NSNumberFormatterStyle)numberStyle;
 - (void)setNumberStyle:(NSNumberFormatterStyle)style;
+
+/* THE FORMATTER BEHAVIOR. Apple's only surviving behavior is the modern NSNumberFormatterBehavior10_4,
+ * which IS what this class implements: the class default seeds each new instance and the value is
+ * reported. ONE DEVIATION, DECLARED: the legacy NSNumberFormatterBehavior10_0 is accepted and
+ * reported but does NOT select a distinct rendering, because only the modern behavior is implemented
+ * here. */
++ (NSNumberFormatterBehavior)defaultFormatterBehavior;
++ (void)setDefaultFormatterBehavior:(NSNumberFormatterBehavior)behavior;
+- (NSNumberFormatterBehavior)formatterBehavior;
+- (void)setFormatterBehavior:(NSNumberFormatterBehavior)behavior;
 - (nullable NSString *)format;
 - (void)setFormat:(nullable NSString *)pattern;
 - (nullable NSLocale *)locale;
 - (void)setLocale:(nullable NSLocale *)locale;
+
+/* THE TWO HALVES OF THE ONE PATTERN. Apple's -positiveFormat/-negativeFormat are the positive and
+ * negative SUBPATTERNS of `-format`: ICU's decimal pattern language spells the negative one after a
+ * ';', so these two doors are VIEWS of the single pattern rather than separate storage. */
+- (nullable NSString *)positiveFormat;
+- (void)setPositiveFormat:(nullable NSString *)format;
+- (nullable NSString *)negativeFormat;
+- (void)setNegativeFormat:(nullable NSString *)format;
 
 /* LENIENCY is about PARSING, as in NSDateFormatter. ALLOWS FLOATS is the other half of it: with
  * NO, a string with a fraction is refused rather than rounded into an integer. */
@@ -132,6 +159,19 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setLenient:(BOOL)flag;
 - (BOOL)allowsFloats;
 - (void)setAllowsFloats:(BOOL)flag;
+
+/* THE RANGE OVER THE INPUT: Apple's -minimum/-maximum are the lowest/highest number allowed as
+ * INPUT, so a value the parse falls outside of is REFUSED (nil). They constrain the PARSE; the
+ * spelling (grouping, digits) stays the style's business. */
+- (nullable NSNumber *)minimum;
+- (void)setMinimum:(nullable NSNumber *)number;
+- (nullable NSNumber *)maximum;
+- (void)setMaximum:(nullable NSNumber *)number;
+
+/* -generatesDecimalNumbers: YES makes the parse answer an NSDecimalNumber rather than a plain
+ * NSNumber (Apple's rule); NO, the default, answers a plain NSNumber. */
+- (BOOL)generatesDecimalNumbers;
+- (void)setGeneratesDecimalNumbers:(BOOL)flag;
 
 - (NSUInteger)minimumIntegerDigits;
 - (void)setMinimumIntegerDigits:(NSUInteger)digits;

@@ -27,6 +27,7 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSNumber.h>
 #import <Foundation/NSLocale.h>
+#import <Foundation/NSDecimalNumber.h>
 
 #include <unicode/unum.h>
 #include <unicode/ustring.h>
@@ -34,6 +35,10 @@
 #include <string.h>
 
 #define FN_NF_MAX 256
+
+/* The CLASS default behavior a new instance is seeded from. Apple's modern default is 10.4 (the only
+ * behavior this class implements); +setDefaultFormatterBehavior: changes it for later instances. */
+static NSNumberFormatterBehavior fn_nf_default_behavior = NSNumberFormatterBehavior10_4;
 
 /* Apple's style -> ICU's. if/ELSE rather than a switch: an exhaustive switch makes the fall-through
  * unreachable, and a bad value then becomes an undiagnosable illegal instruction (F11a's lesson).
@@ -180,6 +185,10 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 		_allowsFloats = YES;		/* Cocoa's default */
 		_zeroSymbol = nil;
 		_nilSymbol = nil;
+		_behavior = [NSNumberFormatter defaultFormatterBehavior];
+		_minimum = nil;
+		_maximum = nil;
+		_generatesDecimalNumbers = NO;
 		[self fnRebuild];
 	}
 	return self;
@@ -420,6 +429,23 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 	/* `parsed == 0` is ICU's "nothing was consumed", which is a failure even without an error. */
 	if (U_FAILURE(status) || parsed == 0) {
 		return nil;
+	}
+	/* THE RANGE OVER THE INPUT (Apple's -minimum/-maximum; see the header). Checked over the parsed
+	 * double, exact for any boundary a caller states as an integer and close enough at a ragged edge. */
+	if (_minimum != nil && value < [_minimum doubleValue]) {
+		return nil;
+	}
+	if (_maximum != nil && value > [_maximum doubleValue]) {
+		return nil;
+	}
+	/* -generatesDecimalNumbers: the parse answers an NSDecimalNumber, built from the TEXT so the
+	 * decimal is EXACT — passing the value through the double above would already have rounded it. */
+	if (_generatesDecimalNumbers) {
+		NSDecimalNumber *decimal = [NSDecimalNumber decimalNumberWithString:string locale:_locale];
+
+		if (decimal != nil) {
+			return decimal;
+		}
 	}
 	if (floor(value) == value && value >= -9.0e18 && value <= 9.0e18) {
 		return [NSNumber numberWithLongLong:(long long)value];
@@ -982,6 +1008,132 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 	[self fnSetSymbol:UNUM_PAD_ESCAPE_SYMBOL fromString:string];
 }
 
+/* --- the two halves of the one pattern ------------------------------------ */
+/* Apple's -positiveFormat/-negativeFormat are the two halves of the ONE pattern -format holds: the
+ * decimal pattern language spells the negative subpattern after a ';' (see the header note, MEASURED).
+ * So each door is a VIEW — read by splitting, written by recombining. */
+
+- (nullable NSString *)positiveFormat
+{
+	NSString *pattern = [self format];
+	NSRange semi;
+
+	if (pattern == nil) {
+		return nil;
+	}
+	semi = [pattern rangeOfString:@";"];
+	if (semi.location == NSNotFound) {
+		return pattern;
+	}
+	return [pattern substringToIndex:semi.location];
+}
+
+- (nullable NSString *)negativeFormat
+{
+	NSString *pattern = [self format];
+	NSRange semi;
+
+	if (pattern == nil) {
+		return nil;
+	}
+	semi = [pattern rangeOfString:@";"];
+	/* NO EXPLICIT NEGATIVE SUBPATTERN is not "no negative format": the language makes the negative
+	 * IMPLICIT (a leading minus). This door answers the EXPLICIT subpattern and nil when the pattern
+	 * carries none — a RECORDED limitation, because inventing the implicit spelling would be guessing
+	 * at ICU's rule rather than reading it. */
+	if (semi.location == NSNotFound) {
+		return nil;
+	}
+	return [pattern substringFromIndex:semi.location + 1];
+}
+
+- (void)setPositiveFormat:(nullable NSString *)format
+{
+	[self fnSetFormatHalf:format negative:NO];
+}
+
+- (void)setNegativeFormat:(nullable NSString *)format
+{
+	[self fnSetFormatHalf:format negative:YES];
+}
+
+/* Recombine the two halves into the one pattern and hand it to -setFormat:. The combined string is
+ * COPIED, because it is one this method BUILT rather than one a caller owns and keeps alive —
+ * -setFormat: stores what it is given. */
+- (void)fnSetFormatHalf:(nullable NSString *)half negative:(BOOL)negative
+{
+	NSString *positive = negative ? [self positiveFormat] : half;
+	NSString *negativePart = negative ? half : [self negativeFormat];
+	NSString *combined;
+
+	if (positive == nil && negativePart == nil) {
+		[self setFormat:nil];		/* both cleared: let the STYLE rule again */
+		return;
+	}
+	if (positive == nil) {
+		positive = negativePart;	/* only a negative was given; let it stand alone */
+		negativePart = nil;
+	}
+	if (negativePart != nil) {
+		combined = [NSString stringWithFormat:@"%@;%@", positive, negativePart];
+	} else {
+		combined = [NSString stringWithFormat:@"%@", positive];
+	}
+	[self setFormat:[combined copy]];
+}
+
+/* --- the range over the input, the generated-decimal policy, the behavior ---- */
+
+- (nullable NSNumber *)minimum
+{
+	return _minimum;
+}
+
+- (void)setMinimum:(nullable NSNumber *)number
+{
+	_minimum = [number copy];
+}
+
+- (nullable NSNumber *)maximum
+{
+	return _maximum;
+}
+
+- (void)setMaximum:(nullable NSNumber *)number
+{
+	_maximum = [number copy];
+}
+
+- (BOOL)generatesDecimalNumbers
+{
+	return _generatesDecimalNumbers;
+}
+
+- (void)setGeneratesDecimalNumbers:(BOOL)flag
+{
+	_generatesDecimalNumbers = flag;
+}
+
++ (NSNumberFormatterBehavior)defaultFormatterBehavior
+{
+	return fn_nf_default_behavior;
+}
+
++ (void)setDefaultFormatterBehavior:(NSNumberFormatterBehavior)behavior
+{
+	fn_nf_default_behavior = behavior;
+}
+
+- (NSNumberFormatterBehavior)formatterBehavior
+{
+	return _behavior;
+}
+
+- (void)setFormatterBehavior:(NSNumberFormatterBehavior)behavior
+{
+	_behavior = behavior;
+}
+
 /* --- identity ------------------------------------------------------------- */
 
 - (id)copy
@@ -1028,6 +1180,13 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 	/* OURS, and free of ICU's sharp edge: two ivars, no pattern involved. */
 	[copy setZeroSymbol:[self zeroSymbol]];
 	[copy setNilSymbol:[self nilSymbol]];
+	/* THE RANGE, THE DECIMAL POLICY AND THE BEHAVIOR are core settings too. The FORMAT HALVES are NOT
+	 * copied here because -setFormat: above already carries the WHOLE pattern, of which they are the
+	 * two views. */
+	[copy setMinimum:[self minimum]];
+	[copy setMaximum:[self maximum]];
+	[copy setGeneratesDecimalNumbers:[self generatesDecimalNumbers]];
+	[copy setFormatterBehavior:[self formatterBehavior]];
 	return copy;
 }
 

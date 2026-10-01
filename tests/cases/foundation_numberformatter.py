@@ -24,7 +24,14 @@ cross-translation-unit boundary), importing only `<Foundation/Foundation.h>`.
   * `nf-allowsfloats-off` — a fraction is refused when -allowsFloats is NO;
   * `nf-zero-and-nil`     — the two symbols that are OURS (ICU has neither);
   * `nf-formatter-door`   — NSNumberFormatter answers the NSFormatter door too;
-  * `nf-copy-independent` — a copy is independent of its original.
+  * `nf-copy-independent` — a copy is independent of its original;
+  * `nf-format-halves`    — positiveFormat/negativeFormat are the TWO HALVES OF ONE ICU PATTERN (the
+                            negative subpattern after a ';'): both round-trip and the negative affixes
+                            reach the output;
+  * `nf-min-max`          — -minimum/-maximum refuse a parse outside the range and answer one inside;
+  * `nf-generates-decimal`— -generatesDecimalNumbers makes the parse answer an NSDecimalNumber;
+  * `nf-behavior`         — the -formatterBehavior trio: a class default that seeds a new instance and
+                            a value that reads back.
 """
 
 import re
@@ -39,7 +46,8 @@ CHECKS = ("nf-de", "nf-en", "nf-currency-locale", "nf-spellout", "nf-ordinal",
           "nf-rounding-increment", "nf-symbol-doors", "nf-thousand-alias",
           "nf-padding-trio",
           "nf-allowsfloats-off",
-          "nf-zero-and-nil", "nf-formatter-door", "nf-copy-independent")
+          "nf-zero-and-nil", "nf-formatter-door", "nf-copy-independent",
+          "nf-format-halves", "nf-min-max", "nf-generates-decimal", "nf-behavior")
 
 
 class Case(BaseCase):
