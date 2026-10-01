@@ -25,7 +25,7 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: declined 417
+# why the struck rows are struck: declined 420
 #
 # AND 584 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2180   open  480   struck  268
+#   method     shipped 2177   open  480   struck  271
 #   property   shipped 1266   open  221   struck  149
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -331,7 +331,7 @@ method	shipped	-addExecutionBlock:	NSBlockOperation	App Support / Operations / M
 method	shipped	+blockOperationWithBlock:	NSBlockOperation	App Support / Operations / Managing the Blocks in the Operation	-	objc
 property	shipped	executionBlocks	NSBlockOperation	App Support / Operations / Managing the Blocks in the Operation	-	objc
 method	shipped	-URLForAuxiliaryExecutable:	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
-method	shipped	-URLForImageResource:	NSBundle	App Support / Bundle Resources / Finding image resources	-	objc
+method	struck	-URLForImageResource:	NSBundle	App Support / Bundle Resources / Finding image resources	declined	objc
 method	shipped	-URLForResource:withExtension:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
 method	shipped	-URLForResource:withExtension:subdirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
 method	shipped	+URLForResource:withExtension:subdirectory:inBundleWithURL:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
@@ -361,12 +361,12 @@ method	shipped	-localizedStringForKey:value:table:	NSBundle	App Support / Bundle
 method	shipped	-localizedStringForKey:value:table:localizations:	NSBundle	App Support / Bundle Resources / Instance Methods	-	objc
 method	shipped	-objectForInfoDictionaryKey:	NSBundle	App Support / Bundle Resources / Getting bundle information	-	objc
 method	shipped	-pathForAuxiliaryExecutable:	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
-method	shipped	-pathForImageResource:	NSBundle	App Support / Bundle Resources / Finding image resources	-	objc
+method	struck	-pathForImageResource:	NSBundle	App Support / Bundle Resources / Finding image resources	declined	objc
 method	shipped	-pathForResource:ofType:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
 method	shipped	-pathForResource:ofType:inDirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	swift-page
 method	shipped	+pathForResource:ofType:inDirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	swift-page
 method	shipped	-pathForResource:ofType:inDirectory:forLocalization:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
-method	shipped	-pathForSoundResource:	NSBundle	App Support / Bundle Resources / Finding sound resources	-	objc
+method	struck	-pathForSoundResource:	NSBundle	App Support / Bundle Resources / Finding sound resources	declined	objc
 method	shipped	-pathsForResourcesOfType:inDirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	swift-page
 method	shipped	+pathsForResourcesOfType:inDirectory:	NSBundle	App Support / Bundle Resources / Finding resource files	-	swift-page
 method	shipped	-pathsForResourcesOfType:inDirectory:forLocalization:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc

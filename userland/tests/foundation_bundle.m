@@ -344,22 +344,22 @@ int main(void)
 	      "1 development region, 1 manifest value, and >=1 preferred localization");
 
 	{
-		/* THE IMAGE AND SOUND DOORS. The name's extension is OPTIONAL: "pic" finds pic.png (the extension is
-		 * appended), and "logo.png" finds itself (the literal name wins). A miss is nil. The URL door mirrors
-		 * the path door, the way every other URL door in this file does. */
-		NSString *byStem = [contents pathForImageResource:@"pic"];
-		NSString *byFullName = [contents pathForImageResource:@"logo.png"];
-		NSString *sound = [contents pathForSoundResource:@"beep"];
-		NSURL *imageURL = [contents URLForImageResource:@"pic"];
-
-		check("bundle-finds-image-and-sound-resources-by-name",
-		      byStem != nil && [byStem hasSuffix:@"Resources/pic.png"] &&
-		      byFullName != nil && [byFullName hasSuffix:@"Resources/logo.png"] &&
-		      sound != nil && [sound hasSuffix:@"Resources/beep.wav"] &&
-		      [contents pathForImageResource:@"no-such-image"] == nil &&
-		      [[imageURL path] isEqualToString:byStem],
-		      "2 of 3 image lookups hit (stem pic.png, full name logo.png), 1 sound (beep.wav), 1 miss nil, "
-		      "and 1 URL == its path");
+		/* ⚠ THE IMAGE AND SOUND DOORS ARE **NOT** FOUNDATION'S ANY MORE (§63.52), AND THIS IS THE HALF THAT
+		 * BELONGS HERE. They are AppKit's — AppKit's `NSImage.h` declares the image pair and `NSSound.h` the
+		 * sound door — and their POSITIVE check moved with them to `appkit_image`, an AppKit-tier probe, which
+		 * a Foundation probe cannot link: that wall is the reason the tiers exist. What this probe can hold is
+		 * the other half, and it is the half that CATCHES A REGRESSION — if anybody puts them back on
+		 * Foundation's NSBundle, this fails. `NSSelectorFromString` rather than `@selector(...)` because the
+		 * whole point is that no declaration of them is in scope here. */
+		check("appkits-resource-doors-are-not-on-foundation-s-nsbundle",
+		      ![[NSBundle class] instancesRespondToSelector:
+			  NSSelectorFromString(@"pathForImageResource:")] &&
+		      ![[NSBundle class] instancesRespondToSelector:
+			  NSSelectorFromString(@"URLForImageResource:")] &&
+		      ![[NSBundle class] instancesRespondToSelector:
+			  NSSelectorFromString(@"pathForSoundResource:")],
+		      "Foundation's NSBundle carries no image or sound resource door: they are AppKit's, and the "
+		      "positive check lives in appkit_image, which can link the tier that owns them");
 	}
 
 	{

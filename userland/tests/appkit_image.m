@@ -19,6 +19,11 @@
 #import <AppKit/NSImage.h>
 #import <AppKit/NSBitmapImageRep.h>
 #import <AppKit/NSGraphicsContext.h>
+/* §63.52: the resource doors MOVED from Foundation into an AppKit category, so this probe imports the tier
+ * that now owns them — and the two Foundation classes its fixture is built with. */
+#import <AppKit/NSBundleAdditions.h>
+#import <Foundation/NSFileManager.h>
+#import <Foundation/NSURL.h>
 
 #import <CoreGraphics/CGBitmapContext.h>
 #import <CoreGraphics/CGContext.h>
@@ -316,6 +321,46 @@ int main(void)
 			check("...and a size with no pixels is refused too",
 			      [NSImage imageWithSize:NSMakeSize(0.0, 0.0) flipped:NO
 				      drawingHandler:^BOOL(NSRect dst) { (void)dst; return YES; }] == nil);
+	}
+
+	/* --- §63.52: THE RESOURCE DOORS THAT MOVED HERE FROM FOUNDATION --------------------------------- */
+	{
+		/* A MINIMAL BUNDLE, BUILT BY THIS CHECK: `ResFixture.app/Contents/` with an Info.plist and three
+		 * resource files. **THE FIXTURE IS BUILT HERE RATHER THAN REACHED FOR** because the doors are this
+		 * tier's now, and a check that depends on the Foundation probe's fixture would put the dependency
+		 * back. What is asserted is the behaviour Foundation used to assert — an optional extension, a
+		 * literal name winning, a miss answering nil — reached through the CATEGORY this tier declares. */
+		NSString *root = @"/tmp/appkit-6352-fixture";
+		NSString *app = [root stringByAppendingPathComponent:@"ResFixture.app"];
+		NSString *contents = [app stringByAppendingPathComponent:@"Contents"];
+		NSString *resources = [contents stringByAppendingPathComponent:@"Resources"];
+		NSFileManager *fm = [NSFileManager defaultManager];
+		NSData *one = [@"x" dataUsingEncoding:NSUTF8StringEncoding];
+		NSBundle *bundle;
+
+		[fm removeItemAtPath:root error:NULL];
+		[fm createDirectoryAtPath:resources withIntermediateDirectories:YES attributes:nil error:NULL];
+		[fm createFileAtPath:[contents stringByAppendingPathComponent:@"Info.plist"]
+			    contents:[@"{ CFBundleIdentifier = \"org.argentum.probe.resfixture\"; }"
+				      dataUsingEncoding:NSUTF8StringEncoding] attributes:nil];
+		[fm createFileAtPath:[resources stringByAppendingPathComponent:@"pic.png"] contents:one attributes:nil];
+		[fm createFileAtPath:[resources stringByAppendingPathComponent:@"logo.png"] contents:one attributes:nil];
+		[fm createFileAtPath:[resources stringByAppendingPathComponent:@"beep.wav"] contents:one attributes:nil];
+
+		bundle = [NSBundle bundleWithPath:app];
+		{
+			NSString *byStem = [bundle pathForImageResource:@"pic"];
+			NSString *byFullName = [bundle pathForImageResource:@"logo.png"];
+			NSString *sound = [bundle pathForSoundResource:@"beep"];
+			NSURL *imageURL = [bundle URLForImageResource:@"pic"];
+
+			check("bundle-finds-image-and-sound-resources-by-name",
+			      byStem != nil && [byStem hasSuffix:@"Resources/pic.png"] &&
+			      byFullName != nil && [byFullName hasSuffix:@"Resources/logo.png"] &&
+			      sound != nil && [sound hasSuffix:@"Resources/beep.wav"] &&
+			      [bundle pathForImageResource:@"no-such-image"] == nil &&
+			      [[imageURL path] isEqualToString:byStem]);
+		}
 	}
 
 	printf("APPKIT-IMAGE: %s\n", failures == 0 ? "all checks passed" : "FAILURES");

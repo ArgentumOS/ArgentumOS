@@ -228,17 +228,15 @@ extern NSString *const NSLoadedClasses;
 - (NSArray *)URLsForResourcesWithExtension:(NSString * _Nullable)ext
 			      subdirectory:(NSString * _Nullable)subpath;
 
-/* ---- THE IMAGE AND SOUND RESOURCE DOORS -------------------------------------------------------------
+/* ---- THE IMAGE AND SOUND RESOURCE DOORS ARE NOT HERE (MOVED 2026-10-01, §63.52) --------------------
  *
- * Apple's -pathForImageResource: and -pathForSoundResource: are -pathForResource:ofType: with the extension
- * made OPTIONAL and the type drawn from what NSImage / NSSound recognise. THIS LIBRARY HAS NEITHER CLASS, so
- * the recognised-type sets are THIS LIBRARY'S, named in the implementation so the choice is visible. The
- * lookup itself is the bundle's own resource directory -- the same one every other resource door uses, so a
- * hit follows THIS system's layout. The name parameter is Apple's `NSImageName` / `NSSoundName`, both of which
- * are `typedef`s of NSString, so it is spelled NSString here rather than importing an AppKit typedef. */
-- (NSString * _Nullable)pathForImageResource:(NSString *)name;
-- (NSURL * _Nullable)URLForImageResource:(NSString *)name;
-- (NSString * _Nullable)pathForSoundResource:(NSString *)name;
+ * They were `-pathForImageResource:`, `-URLForImageResource:` and `-pathForSoundResource:`, and the user's
+ * directive — *"removing from our Foundation implementation anything which does not belong in Foundation"* —
+ * is why they are gone: **AppKit's `NSImage.h` declares the image pair and AppKit's `NSSound.h` declares the
+ * sound door** (measured against the macOS 14.5 SDK headers), because what counts as an image or a sound
+ * resource is decided by classes that are not Foundation's. **Apple's documentation index has NO ROWS for any
+ * of the three**, which is why the ledger never asked for them and why they sat here unchallenged. They now
+ * live in `userland/AppKit/NSBundleAdditions.h`. */
 
 /* ---- LOCALIZATION INFORMATION, AND A LOCALIZED STRING OVER AN EXPLICIT LIST --------------------------
  *

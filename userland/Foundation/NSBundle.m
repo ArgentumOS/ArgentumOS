@@ -521,64 +521,14 @@ static NSArray *fn_urls_for_paths(NSArray *paths)
 						       forLocalization:localization]);
 }
 
-/* ---- THE IMAGE AND SOUND RESOURCE DOORS -------------------------------------------------------------
+/* ---- THE IMAGE AND SOUND RESOURCE DOORS MOVED TO APPKIT (2026-10-01, §63.52) -----------------------
  *
- * THE TYPE SETS ARE THIS LIBRARY'S, and they have to be: Apple's -pathForImageResource: answers files
- * "recognized by the NSImage class" and -pathForSoundResource: files "recognized by the NSSound class", and
- * THIS LIBRARY HAS NEITHER CLASS to ask. The lists below stand in for that test, named here so the choice is
- * visible rather than buried. THE LOOKUP ITSELF FOLLOWS THE SYSTEM: the bundle's OWN resource directory (the
- * same one every other resource door uses), so a hit obeys THIS tree's layout. */
-static NSArray *fn_image_resource_extensions(void)
-{
-	return [NSArray arrayWithObjects:@"tiff", @"tif", @"jpg", @"jpeg", @"gif", @"png", @"bmp",
-					 @"ico", @"pict", @"pct", @"pdf", @"eps", @"xbm", @"heic", nil];
-}
-
-static NSArray *fn_sound_resource_extensions(void)
-{
-	return [NSArray arrayWithObjects:@"aiff", @"aif", @"aifc", @"au", @"snd", @"wav", @"wave",
-					 @"caf", @"mp3", @"m4a", @"aac", @"adts", @"flac", nil];
-}
-
-/* THE LOOKUP the two doors share. The name is tried AS GIVEN first (its extension is optional, and when one is
- * present the literal file wins), then as name.<ext> for each extension in the set -- so both "logo.png" and
- * "logo" find Resources/logo.png, while "logo" alone would not find a .png without this step. */
-static NSString *fn_find_named_resource(NSBundle *bundle, NSString *name, NSArray *extensions)
-{
-	NSString *dir = [bundle resourcePath];
-	NSString *found;
-	NSUInteger i;
-
-	if (dir == nil || name == nil || [name length] == 0) {
-		return nil;
-	}
-	found = fn_find_in_dir(dir, name, nil, nil);
-	if (found != nil) {
-		return found;
-	}
-	for (i = 0; i < [extensions count]; i++) {
-		found = fn_find_in_dir(dir, name, [extensions objectAtIndex:i], nil);
-		if (found != nil) {
-			return found;
-		}
-	}
-	return nil;
-}
-
-- (NSString * _Nullable)pathForImageResource:(NSString *)name
-{
-	return fn_find_named_resource(self, name, fn_image_resource_extensions());
-}
-
-- (NSURL * _Nullable)URLForImageResource:(NSString *)name
-{
-	return fn_url_for_path([self pathForImageResource:name]);
-}
-
-- (NSString * _Nullable)pathForSoundResource:(NSString *)name
-{
-	return fn_find_named_resource(self, name, fn_sound_resource_extensions());
-}
+ * `-pathForImageResource:`, `-URLForImageResource:` and `-pathForSoundResource:` are **AppKit's** — the image
+ * pair is declared by AppKit's `NSImage.h` and the sound door by AppKit's `NSSound.h` (measured against the
+ * macOS 14.5 SDK headers), because what counts as an image or a sound resource is decided by classes that are
+ * not Foundation's. THE TYPE SETS AND THE LOOKUP MOVED WITH THEM, unchanged: `userland/AppKit/
+ * NSBundleAdditions.m`. This file no longer knows about images or sounds.
+ */
 
 /* The two CLASS doors that search the MAIN bundle (Apple's contract), and the two that search a bundle named
  * by URL. The URL doors read the URL's path as a bundle and answer nil for one that is not -- WITHOUT creating

@@ -15979,6 +15979,50 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.52 — THE APPKIT MOVE: THREE DOORS LEAVE FOUNDATION, AND THE PROBE THAT CANNOT OBSERVE THEM YET (2026-10-01)
+
+**WHAT LANDED: `-pathForImageResource:`, `-URLForImageResource:` and `-pathForSoundResource:` LEFT FOUNDATION AND
+MOVED TO THE APPKIT TIER** — `userland/AppKit/NSBundleAdditions.{h,m}`, as a category on `NSBundle`, with their
+type sets and lookup moved UNCHANGED. **MEASURED: guest case `foundation_bundle` 6/6 checks with the probe's own
+tally `ok=29 fail=0`; `make testimg` exit 0 (checked BEFORE `make test` was believed); `make foundation-sweep`
+exit 0; `--check` consistent; `--unimplemented` 0 NEW; ledger methods shipped 2180 → 2177 and struck 268 → 271.**
+
+**AND THEY MOVED RATHER THAN DYING, WHICH IS THE USER'S DECISION OF 2026-10-01 APPLIED:** *"removing from our
+Foundation implementation anything which does not belong in Foundation"* — but this tree HAS a first-party AppKit
+tier, so the doors belong IN IT. **The evidence is one line of a real header: AppKit's `NSImage.h` declares the
+image pair and AppKit's `NSSound.h` declares the sound door.** Apple's own documentation index has rows for them
+attributed to `NSBundle` — the SAME FOREIGN-CATEGORY ATTRIBUTION that put OBEX under `NSMutableDictionary`
+(§63.42) and the drag geometry under `NSItemProvider` (§63.51) — **but a DIFFERENT ANSWER, and that is the point
+of having measured all three: the UIKit rows had no tier to move to and were DECLINED; these have one and were
+MOVED.** They are still struck in this ledger (`shipped` → `struck`, `declined`), because this ledger is
+FOUNDATION's and leaving them open would put three rows of AppKit work in Foundation's work list forever.
+
+**⚠ AND THE CHECK HAD TO SPLIT, BECAUSE A FOUNDATION PROBE CANNOT LINK APPKIT — which is the wall the tiers
+exist for, and the build-graph question §63.51 named as needing an answer BEFORE the move.**
+ * **THE POSITIVE CHECK MOVED WITH THE DOORS** (an optional extension, a literal name winning, a miss answering
+   nil) into `appkit_image`, the AppKit probe for images, with **its own minimal fixture** — a `.app` the check
+   BUILDS, rather than reaching for the Foundation probe's fixture, which would put the dependency straight back.
+ * **THE NEGATIVE CHECK STAYS IN `foundation_bundle` AND IS THE HALF THE GUEST CAN HOLD**:
+   `appkits-resource-doors-are-not-on-foundation-s-nsbundle` asks `-instancesRespondToSelector:` for all three
+   with `NSSelectorFromString` (there is no declaration in scope, which is the point) — **so if anybody puts them
+   back on Foundation's `NSBundle`, the guest turns red.** The Foundation case therefore keeps a real check
+   rather than losing one, and the pair together says the whole fact from both sides.
+
+**⚠⚠ AND THE MOVED CHECK CANNOT BE OBSERVED YET, BECAUSE `appkit_image` SEGFAULTS — A PRE-EXISTING DEFECT, AND
+THIS IS HOW THAT WAS ESTABLISHED RATHER THAN ASSUMED.** The probe prints one line from **libappkit itself**
+(`APPKIT-REFUSE: +imageRepWithData: decodes PNG and JPEG only…`) and dies with SIGSEGV **before reaching any of
+its own checks**. Two tests settled whose it is: **`appkit_color` and `appkit_bezierpath` BOTH pass** (the tier is
+healthy), and **`git stash` of this whole unit followed by a rebuild reproduces the SAME crash on the committed
+baseline**. So it is not the move's, and it is recorded here as a work item with its repro: *run
+`.build/host/bin/appkit_image` on the committed tree and it exits 139 after that one line.* **Until it is fixed,
+the positive half of this unit's evidence is the CODE and the negative half is the GATE — and saying which is
+which is better than a check that looks green because nobody ran it.**
+
+**AND ONE NAMED DEVIATION, AT THE CATEGORY: APPLE SPLITS THESE ACROSS TWO HEADERS AND THIS IS ONE.** Apple puts
+the image pair in `NSImage.h` and the sound door in `NSSound.h`; **this tier has no `NSSound`**, and inventing a
+class to hold a one-line delegation would be inventing a class. The intended split and its reason are written at
+the header, so a real `NSSound` can take it.
+
 ## §63.51 — WHAT IS NOT FOUNDATION COMES OUT: THE UIKit DRAG TRIO DECLINED, AND THE TIER MOVES PLANNED (2026-10-01)
 
 **THE DIRECTIVE (the user, 2026-10-01): *"removing from our Foundation implementation anything which does not

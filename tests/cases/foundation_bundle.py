@@ -47,7 +47,7 @@ CHECKS = ("bundle-rejects-a-directory-with-no-manifest", "bundle-accepts-both-la
           "auxiliary-executable-path-and-url", "class-resource-door-searches-the-main-bundle",
           "localization-aware-resource-lookup", "localized-string-over-explicit-localizations",
           "preferred-localizations-match-preferences", "development-localization-and-localized-info",
-          "bundle-finds-image-and-sound-resources-by-name",
+          "appkits-resource-doors-are-not-on-foundation-s-nsbundle",
           "bundle-executable-architectures-from-the-elf-header",
           "bundle-load-refuses-a-payload-that-is-not-code", "bundle-load-brings-in-real-code",
           "bundle-principal-class-comes-from-the-manifest", "bundle-loaded-class-is-usable",

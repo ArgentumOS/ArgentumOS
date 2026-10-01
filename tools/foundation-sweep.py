@@ -570,6 +570,17 @@ DECLINED_SELECTORS = frozenset((
     ("NSItemProvider", "containerFrame"),
     ("NSItemProvider", "preferredPresentationSize"),
     ("NSItemProvider", "sourceFrame"),
+    # ⚠ AND THESE THREE ARE APPKIT's, MOVED TO THE APPKIT TIER RATHER THAN DELETED (§63.52, the user's
+    # directive of 2026-10-01). Same ATTRIBUTION shape as the two groups above — the ledger attributes
+    # AppKit's category on NSBundle to the class it extends — but a DIFFERENT ANSWER, because this tree HAS an
+    # AppKit tier: `-pathForImageResource:` and `-URLForImageResource:` are declared by AppKit's `NSImage.h`
+    # and `-pathForSoundResource:` by AppKit's `NSSound.h` (measured against the macOS 14.5 SDK headers), so
+    # the doors AND their type sets moved to `userland/AppKit/NSBundleAdditions.{h,m}` unchanged. They are
+    # struck HERE because this ledger is FOUNDATION's and the doors are no longer Foundation's: leaving them
+    # open would put three rows of AppKit work in Foundation's work list forever.
+    ("NSBundle", "pathForImageResource:"),
+    ("NSBundle", "URLForImageResource:"),
+    ("NSBundle", "pathForSoundResource:"),
 ))
 
 
