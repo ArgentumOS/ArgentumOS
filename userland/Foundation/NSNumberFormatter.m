@@ -120,6 +120,37 @@ static NSNumberFormatterRoundingMode fn_nf_rounding_back(int32_t mode)
 	return NSNumberFormatterRoundHalfEven;
 }
 
+/* Apple's pad position -> ICU's. The two enums happen to share their order, but the mapping is
+ * spelled out rather than cast so the dependence is visible and a reordering on either side is a
+ * compile-time name error instead of a silent behaviour change. */
+static UNumberFormatPadPosition fn_nf_pad(NSNumberFormatterPadPosition position)
+{
+	if (position == NSNumberFormatterPadAfterPrefix) {
+		return UNUM_PAD_AFTER_PREFIX;
+	}
+	if (position == NSNumberFormatterPadBeforeSuffix) {
+		return UNUM_PAD_BEFORE_SUFFIX;
+	}
+	if (position == NSNumberFormatterPadAfterSuffix) {
+		return UNUM_PAD_AFTER_SUFFIX;
+	}
+	return UNUM_PAD_BEFORE_PREFIX;
+}
+
+static NSNumberFormatterPadPosition fn_nf_pad_back(UNumberFormatPadPosition position)
+{
+	if (position == UNUM_PAD_AFTER_PREFIX) {
+		return NSNumberFormatterPadAfterPrefix;
+	}
+	if (position == UNUM_PAD_BEFORE_SUFFIX) {
+		return NSNumberFormatterPadBeforeSuffix;
+	}
+	if (position == UNUM_PAD_AFTER_SUFFIX) {
+		return NSNumberFormatterPadAfterSuffix;
+	}
+	return NSNumberFormatterPadBeforePrefix;
+}
+
 /* UTF-16 out of ICU, an NSString in. */
 static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 {
@@ -221,6 +252,24 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 {
 	if (_formatter != NULL) {
 		unum_setAttribute((UNumberFormat *)_formatter, attribute, value);
+	}
+}
+
+/* ROUNDING INCREMENT is the ONE number attribute ICU carries as a DOUBLE, so it needs its own pair
+ * (unum_getDoubleAttribute/unum_setDoubleAttribute). Kept beside the int pair so the divergence is
+ * visible rather than a cast that would silently truncate 0.05 to 0. */
+- (double)fnDoubleAttribute:(UNumberFormatAttribute)attribute fallback:(double)fallback
+{
+	if (_formatter == NULL) {
+		return fallback;
+	}
+	return unum_getDoubleAttribute((UNumberFormat *)_formatter, attribute);
+}
+
+- (void)fnSetDoubleAttribute:(UNumberFormatAttribute)attribute to:(double)value
+{
+	if (_formatter != NULL) {
+		unum_setDoubleAttribute((UNumberFormat *)_formatter, attribute, value);
 	}
 }
 
@@ -751,6 +800,186 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 - (void)setNegativeSuffix:(nullable NSString *)string
 {
 	[self fnSetTextAttribute:UNUM_NEGATIVE_SUFFIX fromString:string];
+}
+
+/* --- grouping, significant digits, rounding increment --------------------- */
+/* The INT attributes, all through the one pair of helpers. The fallbacks are ICU's documented
+ * defaults for a plain decimal formatter, so a formatter-less read answers something sane rather
+ * than zero. */
+
+- (BOOL)alwaysShowsDecimalSeparator
+{
+	return [self fnAttribute:UNUM_DECIMAL_ALWAYS_SHOWN fallback:0] != 0;
+}
+
+- (void)setAlwaysShowsDecimalSeparator:(BOOL)flag
+{
+	[self fnSetAttribute:UNUM_DECIMAL_ALWAYS_SHOWN to:(flag ? 1 : 0)];
+}
+
+- (NSInteger)groupingSize
+{
+	return (NSInteger)[self fnAttribute:UNUM_GROUPING_SIZE fallback:3];
+}
+
+- (void)setGroupingSize:(NSInteger)size
+{
+	[self fnSetAttribute:UNUM_GROUPING_SIZE to:(int32_t)size];
+}
+
+- (NSInteger)secondaryGroupingSize
+{
+	return (NSInteger)[self fnAttribute:UNUM_SECONDARY_GROUPING_SIZE fallback:3];
+}
+
+- (void)setSecondaryGroupingSize:(NSInteger)size
+{
+	[self fnSetAttribute:UNUM_SECONDARY_GROUPING_SIZE to:(int32_t)size];
+}
+
+- (NSInteger)minimumGroupingDigits
+{
+	return (NSInteger)[self fnAttribute:UNUM_MINIMUM_GROUPING_DIGITS fallback:0];
+}
+
+- (void)setMinimumGroupingDigits:(NSInteger)digits
+{
+	[self fnSetAttribute:UNUM_MINIMUM_GROUPING_DIGITS to:(int32_t)digits];
+}
+
+- (BOOL)usesSignificantDigits
+{
+	return [self fnAttribute:UNUM_SIGNIFICANT_DIGITS_USED fallback:0] != 0;
+}
+
+- (void)setUsesSignificantDigits:(BOOL)flag
+{
+	[self fnSetAttribute:UNUM_SIGNIFICANT_DIGITS_USED to:(flag ? 1 : 0)];
+}
+
+- (NSUInteger)minimumSignificantDigits
+{
+	return (NSUInteger)[self fnAttribute:UNUM_MIN_SIGNIFICANT_DIGITS fallback:1];
+}
+
+- (void)setMinimumSignificantDigits:(NSUInteger)digits
+{
+	[self fnSetAttribute:UNUM_MIN_SIGNIFICANT_DIGITS to:(int32_t)digits];
+}
+
+- (NSUInteger)maximumSignificantDigits
+{
+	return (NSUInteger)[self fnAttribute:UNUM_MAX_SIGNIFICANT_DIGITS fallback:40];
+}
+
+- (void)setMaximumSignificantDigits:(NSUInteger)digits
+{
+	[self fnSetAttribute:UNUM_MAX_SIGNIFICANT_DIGITS to:(int32_t)digits];
+}
+
+/* THE DOUBLE ATTRIBUTE. A zero increment is ICU's "none", and Cocoa's default, so it is answered as
+ * an NSNumber (0), not nil — the getter reports what the data says. */
+- (nullable NSNumber *)roundingIncrement
+{
+	return [NSNumber numberWithDouble:[self fnDoubleAttribute:UNUM_ROUNDING_INCREMENT fallback:0.0]];
+}
+
+- (void)setRoundingIncrement:(nullable NSNumber *)increment
+{
+	[self fnSetDoubleAttribute:UNUM_ROUNDING_INCREMENT
+			      to:(increment != nil ? [increment doubleValue] : 0.0)];
+}
+
+/* --- the monetary and per-mill symbols ------------------------------------ */
+
+- (nullable NSString *)perMillSymbol
+{
+	return [self fnSymbol:UNUM_PERMILL_SYMBOL];
+}
+
+- (void)setPerMillSymbol:(nullable NSString *)string
+{
+	[self fnSetSymbol:UNUM_PERMILL_SYMBOL fromString:string];
+}
+
+- (nullable NSString *)currencyDecimalSeparator
+{
+	return [self fnSymbol:UNUM_MONETARY_SEPARATOR_SYMBOL];
+}
+
+- (void)setCurrencyDecimalSeparator:(nullable NSString *)string
+{
+	[self fnSetSymbol:UNUM_MONETARY_SEPARATOR_SYMBOL fromString:string];
+}
+
+- (nullable NSString *)currencyGroupingSeparator
+{
+	return [self fnSymbol:UNUM_MONETARY_GROUPING_SEPARATOR_SYMBOL];
+}
+
+- (void)setCurrencyGroupingSeparator:(nullable NSString *)string
+{
+	[self fnSetSymbol:UNUM_MONETARY_GROUPING_SEPARATOR_SYMBOL fromString:string];
+}
+
+/* --- the deprecated aliases ----------------------------------------------- */
+/* NOT storage: each forwards to the modern door, so a caller that reads one after writing the other
+ * sees the change — the one behaviour a deprecated alias must have. */
+
+- (BOOL)hasThousandSeparators
+{
+	return [self usesGroupingSeparator];
+}
+
+- (void)setHasThousandSeparators:(BOOL)flag
+{
+	[self setUsesGroupingSeparator:flag];
+}
+
+- (nullable NSString *)thousandSeparator
+{
+	return [self groupingSeparator];
+}
+
+- (void)setThousandSeparator:(nullable NSString *)string
+{
+	[self setGroupingSeparator:string];
+}
+
+/* --- the padding trio ----------------------------------------------------- */
+/* ICU's UNUM_FORMAT_WIDTH (how wide), UNUM_PADDING_POSITION (where the pad goes, relative to the
+ * prefix/suffix) and UNUM_PAD_ESCAPE_SYMBOL (the fill character). All three are attributes/symbols
+ * the formatter already reads, so no state is added here. */
+
+- (NSUInteger)formatWidth
+{
+	return (NSUInteger)[self fnAttribute:UNUM_FORMAT_WIDTH fallback:0];
+}
+
+- (void)setFormatWidth:(NSUInteger)width
+{
+	[self fnSetAttribute:UNUM_FORMAT_WIDTH to:(int32_t)width];
+}
+
+- (NSNumberFormatterPadPosition)paddingPosition
+{
+	return fn_nf_pad_back((UNumberFormatPadPosition)
+			      [self fnAttribute:UNUM_PADDING_POSITION fallback:UNUM_PAD_BEFORE_PREFIX]);
+}
+
+- (void)setPaddingPosition:(NSNumberFormatterPadPosition)position
+{
+	[self fnSetAttribute:UNUM_PADDING_POSITION to:(int32_t)fn_nf_pad(position)];
+}
+
+- (nullable NSString *)paddingCharacter
+{
+	return [self fnSymbol:UNUM_PAD_ESCAPE_SYMBOL];
+}
+
+- (void)setPaddingCharacter:(nullable NSString *)string
+{
+	[self fnSetSymbol:UNUM_PAD_ESCAPE_SYMBOL fromString:string];
 }
 
 /* --- identity ------------------------------------------------------------- */

@@ -15,14 +15,28 @@
  * and the three currency variants (ISO code, plural, accounting). This is one of the places where
  * binding ICU buys fidelity that a hand-written formatter could not reach at all.
  *
- * WHAT IS DEFERRED, named here rather than discovered later: the `NSDecimalNumber` doors
- * (`-generatesDecimalNumbers` and the `-numberFromString:` answer's type) — this library has no
- * NSDecimalNumber, so a parse answers an NSNumber, which is also what Apple does when the flag is
- * off; the ATTRIBUTED-string doors (`-attributedStringForZero`, `-attributedStringForString:` and
- * friends), which belong to the attributed-string family; the padding trio
- * (`-formatWidth`/`-paddingCharacter`/`-paddingPosition`); and the deprecated
- * `-formatterBehavior` pair, whose only surviving value is the modern behaviour this class already
- * implements.
+ * WHAT IS DEFERRED, named here rather than discovered later:
+ *   * the ATTRIBUTED-string doors (`-attributedStringForZero`, `-attributedStringForNil`,
+ *     `-attributedStringForNotANumber`, and the seven `-textAttributesFor…` dictionaries), which
+ *     belong to the attributed-string family and are AppKit-DRAWING shaped;
+ *   * `-generatesDecimalNumbers`, which changes not WHAT ICU formats but what TYPE the parse answers:
+ *     `-numberFromString:` answers an NSNumber (which is also Apple's answer when the flag is off),
+ *     and a decimal-typed answer is NSDecimalNumber's own surface;
+ *   * `-roundingBehavior`, whose Apple type is NSDecimalNumberHandler — a rounding POLICY object, not
+ *     an ICU attribute; the increment and -roundingMode below are what ICU carries;
+ *   * `-positiveFormat`/`-negativeFormat`, the second half of the FORMAT PATTERN LANGUAGE: ICU exposes
+ *     ONE pattern through unum_* (which `-format` sets), and the positive/negative split is not a
+ *     door unum_* offers — implementing it means writing a pattern splitter, which is the substrate
+ *     question, so it is NAMED here and not invented;
+ *   * `-maximum`/`-minimum`, whose behaviour is a range CHECK over the parse that Apple documents only
+ *     for a control's cell;
+ *   * `-formattingContext` (a capitalization hint whose only consumer would be the spell-out style),
+ *     `-localizesFormat` and `-partialStringValidationEnabled` (deprecated flags with no distinct
+ *     door), and the deprecated `-formatterBehavior` pair, whose only surviving value is the modern
+ *     behaviour this class already implements;
+ *   * `-positiveInfinitySymbol`/`-negativeInfinitySymbol`, because ICU carries ONE infinity symbol
+ *     (`UNUM_INFINITY_SYMBOL`) and spells a negative infinity with the minus sign — there is no
+ *     substrate for two distinct settable symbols;
  *
  * STORAGE: the ICU handle is an opaque `void *` for the same reason it is in NSDateFormatter — this
  * header is staged for an ON-GUEST Objective-C rebuild, and including <unicode/unum.h> here would
@@ -172,6 +186,61 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setNegativePrefix:(nullable NSString *)string;
 - (nullable NSString *)negativeSuffix;
 - (void)setNegativeSuffix:(nullable NSString *)string;
+
+/* GROUPING AND THE DECIMAL POINT. Every one of these is an ICU FORMAT ATTRIBUTE written straight
+ * through and read straight back — there is no state here to drift out of step. The values are the
+ * ones the style's DATA carries until a caller overrides them. */
+- (BOOL)alwaysShowsDecimalSeparator;
+- (void)setAlwaysShowsDecimalSeparator:(BOOL)flag;
+- (NSInteger)groupingSize;
+- (void)setGroupingSize:(NSInteger)size;
+- (NSInteger)secondaryGroupingSize;
+- (void)setSecondaryGroupingSize:(NSInteger)size;
+- (NSInteger)minimumGroupingDigits;
+- (void)setMinimumGroupingDigits:(NSInteger)digits;
+
+/* SIGNIFICANT DIGITS. `usesSignificantDigits` switches ICU's digit policy from the fraction-digit
+ * limits above to the significant-digit limits below; the two limits are the min/max count. */
+- (BOOL)usesSignificantDigits;
+- (void)setUsesSignificantDigits:(BOOL)flag;
+- (NSUInteger)minimumSignificantDigits;
+- (void)setMinimumSignificantDigits:(NSUInteger)digits;
+- (NSUInteger)maximumSignificantDigits;
+- (void)setMaximumSignificantDigits:(NSUInteger)digits;
+
+/* ROUNDING INCREMENT is ICU's only DOUBLE-valued number attribute, so it goes through the
+ * double-attribute door rather than the int one the rest of this file's attributes use. A nil (or
+ * zero) increment means "round to the fraction digits" — the ordinary behaviour. */
+- (nullable NSNumber *)roundingIncrement;
+- (void)setRoundingIncrement:(nullable NSNumber *)increment;
+
+/* THE MONETARY AND PER-MILL SYMBOLS: ICU symbol attributes like the ones above. The two "currency"
+ * separators are ICU's MONETARY separator pair — the separators a currency style uses — which is why
+ * they are separate from -decimalSeparator/-groupingSeparator rather than aliases of them. */
+- (nullable NSString *)perMillSymbol;
+- (void)setPerMillSymbol:(nullable NSString *)string;
+- (nullable NSString *)currencyDecimalSeparator;
+- (void)setCurrencyDecimalSeparator:(nullable NSString *)string;
+- (nullable NSString *)currencyGroupingSeparator;
+- (void)setCurrencyGroupingSeparator:(nullable NSString *)string;
+
+/* THE DEPRECATED SPELLINGS Cocoa kept. Each is an ALIAS of the modern door beside it — setting one is
+ * seen by the other, which is exactly how a deprecated alias has to behave. */
+- (BOOL)hasThousandSeparators;
+- (void)setHasThousandSeparators:(BOOL)flag;
+- (nullable NSString *)thousandSeparator;
+- (void)setThousandSeparator:(nullable NSString *)string;
+
+/* THE PADDING TRIO: how a number too short is padded out to -formatWidth. ICU carries all three (the
+ * width, the pad position and the pad escape character), and Apple's NSNumberFormatterPadPosition
+ * values ARE ICU's UNumberFormatPadPosition values, so the enum maps by identity through a named
+ * helper rather than a cast that would hide the dependence. */
+- (NSUInteger)formatWidth;
+- (void)setFormatWidth:(NSUInteger)width;
+- (NSNumberFormatterPadPosition)paddingPosition;
+- (void)setPaddingPosition:(NSNumberFormatterPadPosition)position;
+- (nullable NSString *)paddingCharacter;
+- (void)setPaddingCharacter:(nullable NSString *)string;
 
 @end
 

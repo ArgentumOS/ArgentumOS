@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2025   open  659   struck  244
-#   property   shipped 1134   open  356   struck  146
+#   method     shipped 2039   open  645   struck  244
+#   property   shipped 1154   open  336   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -2320,24 +2320,24 @@ method	shipped	-numberFromString:	NSNumberFormatter	Fundamentals / Numbers / Con
 method	open	+setDefaultFormatterBehavior:	NSNumberFormatter	Fundamentals / Numbers / Configuring Formatter Behavior and Style	-	objc
 method	shipped	-stringFromNumber:	NSNumberFormatter	Fundamentals / Numbers / Converting Between Numbers and Strings	-	objc
 property	shipped	allowsFloats	NSNumberFormatter	Fundamentals / Numbers / Managing Input and Output Attributes	-	objc
-property	open	alwaysShowsDecimalSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
+property	shipped	alwaysShowsDecimalSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
 property	open	attributedStringForNil	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
 property	open	attributedStringForNotANumber	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
 property	open	attributedStringForZero	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
 property	shipped	currencyCode	NSNumberFormatter	Fundamentals / Numbers / Configuring the Format of Currency	-	objc
-property	open	currencyDecimalSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
-property	open	currencyGroupingSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring the Format of Currency	-	objc
+property	shipped	currencyDecimalSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
+property	shipped	currencyGroupingSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring the Format of Currency	-	objc
 property	shipped	currencySymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring the Format of Currency	-	objc
 property	shipped	decimalSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
 property	shipped	exponentSymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	format	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
-property	open	formatWidth	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
+property	shipped	formatWidth	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
 property	open	formatterBehavior	NSNumberFormatter	Fundamentals / Numbers / Configuring Formatter Behavior and Style	-	objc
 property	open	formattingContext	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
 property	open	generatesDecimalNumbers	NSNumberFormatter	Fundamentals / Numbers / Configuring Formatter Behavior and Style	-	objc
 property	shipped	groupingSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
-property	open	groupingSize	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
-property	open	hasThousandSeparators	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
+property	shipped	groupingSize	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
+property	shipped	hasThousandSeparators	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
 property	shipped	internationalCurrencySymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring the Format of Currency	-	objc
 property	open	lenient	NSNumberFormatter	Fundamentals / Numbers / Managing Leniency Behavior	-	objc
 property	shipped	locale	NSNumberFormatter	Fundamentals / Numbers / Managing Localization of Numbers	-	objc
@@ -2345,12 +2345,12 @@ property	open	localizesFormat	NSNumberFormatter	Fundamentals / Numbers / Managin
 property	open	maximum	NSNumberFormatter	Fundamentals / Numbers / Managing Input and Output Attributes	-	objc
 property	shipped	maximumFractionDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Integer and Fraction Digits	-	objc
 property	shipped	maximumIntegerDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Integer and Fraction Digits	-	objc
-property	open	maximumSignificantDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Significant Digits	-	objc
+property	shipped	maximumSignificantDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Significant Digits	-	objc
 property	open	minimum	NSNumberFormatter	Fundamentals / Numbers / Managing Input and Output Attributes	-	objc
 property	shipped	minimumFractionDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Integer and Fraction Digits	-	objc
-property	open	minimumGroupingDigits	NSNumberFormatter	Fundamentals / Numbers / Instance Properties	-	objc
+property	shipped	minimumGroupingDigits	NSNumberFormatter	Fundamentals / Numbers / Instance Properties	-	objc
 property	shipped	minimumIntegerDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Integer and Fraction Digits	-	objc
-property	open	minimumSignificantDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Significant Digits	-	objc
+property	shipped	minimumSignificantDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Significant Digits	-	objc
 property	shipped	minusSign	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	multiplier	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
 property	open	negativeFormat	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
@@ -2360,10 +2360,10 @@ property	shipped	negativeSuffix	NSNumberFormatter	Fundamentals / Numbers / Confi
 property	shipped	nilSymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	notANumberSymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	numberStyle	NSNumberFormatter	Fundamentals / Numbers / Configuring Formatter Behavior and Style	-	objc
-property	open	paddingCharacter	NSNumberFormatter	Fundamentals / Numbers / Managing the Padding of Numbers	-	objc
-property	open	paddingPosition	NSNumberFormatter	Fundamentals / Numbers / Managing the Padding of Numbers	-	objc
+property	shipped	paddingCharacter	NSNumberFormatter	Fundamentals / Numbers / Managing the Padding of Numbers	-	objc
+property	shipped	paddingPosition	NSNumberFormatter	Fundamentals / Numbers / Managing the Padding of Numbers	-	objc
 property	open	partialStringValidationEnabled	NSNumberFormatter	Fundamentals / Numbers / Managing the Validation of Partial Numeric Strings	-	objc
-property	open	perMillSymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
+property	shipped	perMillSymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	percentSymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	plusSign	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	open	positiveFormat	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
@@ -2371,9 +2371,9 @@ property	open	positiveInfinitySymbol	NSNumberFormatter	Fundamentals / Numbers / 
 property	shipped	positivePrefix	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Prefixes and Suffixes	-	objc
 property	shipped	positiveSuffix	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Prefixes and Suffixes	-	objc
 property	open	roundingBehavior	NSNumberFormatter	Fundamentals / Numbers / Configuring Rounding Behavior	-	objc
-property	open	roundingIncrement	NSNumberFormatter	Fundamentals / Numbers / Configuring Rounding Behavior	-	objc
+property	shipped	roundingIncrement	NSNumberFormatter	Fundamentals / Numbers / Configuring Rounding Behavior	-	objc
 property	shipped	roundingMode	NSNumberFormatter	Fundamentals / Numbers / Configuring Rounding Behavior	-	swift-page
-property	open	secondaryGroupingSize	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
+property	shipped	secondaryGroupingSize	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
 property	open	textAttributesForNegativeInfinity	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
 property	open	textAttributesForNegativeValues	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
 property	open	textAttributesForNil	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
@@ -2381,9 +2381,9 @@ property	open	textAttributesForNotANumber	NSNumberFormatter	Fundamentals / Numbe
 property	open	textAttributesForPositiveInfinity	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
 property	open	textAttributesForPositiveValues	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
 property	open	textAttributesForZero	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
-property	open	thousandSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
+property	shipped	thousandSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
 property	shipped	usesGroupingSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
-property	open	usesSignificantDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Significant Digits	-	objc
+property	shipped	usesSignificantDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Significant Digits	-	objc
 property	shipped	zeroSymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 method	shipped	-addDependency:	NSOperation	App Support / Operations / Managing Dependencies	-	objc
 method	shipped	-cancel	NSOperation	App Support / Operations / Canceling Operations	-	objc
@@ -3086,17 +3086,17 @@ method	shipped	-initWithCharacters:length:	NSString	Fundamentals / Strings / Cre
 method	open	-initWithCharactersNoCopy:length:deallocator:	NSString	Fundamentals / Strings / Instance Methods	-	objc
 method	shipped	-initWithCharactersNoCopy:length:freeWhenDone:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	-initWithCoder:	NSString	Fundamentals / Strings / Instance Methods	-	objc
-method	open	-initWithContentsOfFile:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-initWithContentsOfFile:encoding:error:	NSString	Fundamentals / Strings / Creating and Initializing a String from a File	-	objc
-method	open	-initWithContentsOfFile:usedEncoding:error:	NSString	Fundamentals / Strings / Creating and Initializing a String from a File	-	objc
-method	open	-initWithContentsOfURL:	NSString	Fundamentals / Strings / Instance Methods	deprecated	objc
-method	open	-initWithContentsOfURL:encoding:error:	NSString	Fundamentals / Strings / Instance Methods	-	objc
-method	open	-initWithContentsOfURL:usedEncoding:error:	NSString	Fundamentals / Strings / Instance Methods	-	objc
+method	shipped	-initWithContentsOfFile:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	-initWithContentsOfFile:encoding:error:	NSString	Fundamentals / Strings / Creating and Initializing a String from a File	-	objc
+method	shipped	-initWithContentsOfFile:usedEncoding:error:	NSString	Fundamentals / Strings / Creating and Initializing a String from a File	-	objc
+method	shipped	-initWithContentsOfURL:	NSString	Fundamentals / Strings / Instance Methods	deprecated	objc
+method	shipped	-initWithContentsOfURL:encoding:error:	NSString	Fundamentals / Strings / Instance Methods	-	objc
+method	shipped	-initWithContentsOfURL:usedEncoding:error:	NSString	Fundamentals / Strings / Instance Methods	-	objc
 method	shipped	-initWithData:encoding:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	-initWithFormat:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	-initWithFormat:arguments:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
-method	open	-initWithFormat:locale:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
-method	open	-initWithFormat:locale:arguments:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
+method	shipped	-initWithFormat:locale:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
+method	shipped	-initWithFormat:locale:arguments:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	-initWithString:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	-initWithUTF8String:	NSString	Fundamentals / Strings / Instance Methods	-	objc
 method	open	-initWithValidatedFormat:validFormatSpecifiers:arguments:error:	NSString	Fundamentals / Strings / Instance Methods	-	objc
@@ -3114,7 +3114,7 @@ method	open	+localizedNameOfStringEncoding:	NSString	Fundamentals / Strings / Wo
 method	open	-localizedStandardCompare:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-localizedStandardContainsString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-localizedStandardRangeOfString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
-method	open	+localizedStringWithFormat:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
+method	shipped	+localizedStringWithFormat:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	+localizedStringWithValidatedFormat:validFormatSpecifiers:error:	NSString	Fundamentals / Strings / Type Methods	-	objc
 method	open	+localizedUserNotificationStringForKey:arguments:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	-lossyCString	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
@@ -3162,10 +3162,10 @@ method	shipped	+stringWithCString:	NSString	Fundamentals / Strings / Deprecated	
 method	shipped	+stringWithCString:encoding:	NSString	Fundamentals / Strings / Type Methods	-	objc
 method	shipped	+stringWithCString:length:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	+stringWithCharacters:length:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
-method	open	+stringWithContentsOfFile:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	+stringWithContentsOfFile:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	+stringWithContentsOfFile:encoding:error:	NSString	Fundamentals / Strings / Creating and Initializing a String from a File	-	objc
 method	shipped	+stringWithContentsOfFile:usedEncoding:error:	NSString	Fundamentals / Strings / Creating and Initializing a String from a File	-	objc
-method	open	+stringWithContentsOfURL:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	+stringWithContentsOfURL:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	+stringWithContentsOfURL:encoding:error:	NSString	Fundamentals / Strings / Type Methods	-	objc
 method	shipped	+stringWithContentsOfURL:usedEncoding:error:	NSString	Fundamentals / Strings / Type Methods	-	objc
 method	shipped	+stringWithFormat:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
@@ -3178,21 +3178,21 @@ method	shipped	-substringToIndex:	NSString	Fundamentals / Strings / Dividing Str
 method	shipped	-substringWithRange:	NSString	Fundamentals / Strings / Dividing Strings	-	objc
 method	shipped	-uppercaseStringWithLocale:	NSString	Fundamentals / Strings / Changing Case	-	objc
 method	open	-variantFittingPresentationWidth:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	-	objc
-method	open	-writeToFile:atomically:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	-writeToFile:atomically:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-writeToFile:atomically:encoding:error:	NSString	Fundamentals / Strings / Writing to a File or URL	-	objc
-method	open	-writeToURL:atomically:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-writeToURL:atomically:encoding:error:	NSString	Fundamentals / Strings / Writing to a File or URL	-	objc
+method	shipped	-writeToURL:atomically:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	-writeToURL:atomically:encoding:error:	NSString	Fundamentals / Strings / Writing to a File or URL	-	objc
 property	shipped	UTF8String	NSString	Fundamentals / Strings / Getting C Strings	-	objc
 property	open	absolutePath	NSString	Fundamentals / Strings / Working with Paths	-	objc
-property	open	availableStringEncodings	NSString	Fundamentals / Strings / Working with Encodings	-	objc
+property	shipped	availableStringEncodings	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 property	shipped	boolValue	NSString	Fundamentals / Strings / Getting Numeric Values	-	objc
 property	shipped	capitalizedString	NSString	Fundamentals / Strings / Changing Case	-	objc
 property	shipped	decomposedStringWithCanonicalMapping	NSString	Fundamentals / Strings / Normalizing Strings	-	objc
 property	shipped	decomposedStringWithCompatibilityMapping	NSString	Fundamentals / Strings / Normalizing Strings	-	objc
-property	open	defaultCStringEncoding	NSString	Fundamentals / Strings / Working with Encodings	-	objc
+property	shipped	defaultCStringEncoding	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 property	shipped	description	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 property	shipped	doubleValue	NSString	Fundamentals / Strings / Getting Numeric Values	-	objc
-property	open	fastestEncoding	NSString	Fundamentals / Strings / Working with Encodings	-	objc
+property	shipped	fastestEncoding	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 property	open	fileSystemRepresentation	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	floatValue	NSString	Fundamentals / Strings / Getting Numeric Values	-	objc
 property	shipped	hash	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
@@ -3209,7 +3209,7 @@ property	shipped	pathComponents	NSString	Fundamentals / Strings / Working with P
 property	shipped	pathExtension	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	precomposedStringWithCanonicalMapping	NSString	Fundamentals / Strings / Normalizing Strings	-	objc
 property	shipped	precomposedStringWithCompatibilityMapping	NSString	Fundamentals / Strings / Normalizing Strings	-	objc
-property	open	smallestEncoding	NSString	Fundamentals / Strings / Working with Encodings	-	objc
+property	shipped	smallestEncoding	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 property	open	stringByAbbreviatingWithTildeInPath	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	stringByDeletingLastPathComponent	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	stringByDeletingPathExtension	NSString	Fundamentals / Strings / Working with Paths	-	objc

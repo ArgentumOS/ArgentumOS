@@ -173,6 +173,125 @@ int main(void)
 	}
 
 	{
+		/* THE CONFIGURATION DOORS — the properties that set a formatting POLICY. Each is an ICU
+		 * attribute written through the door and read back, and the first one is also measured at
+		 * the OUTPUT: -alwaysShowsDecimalSeparator forces the decimal point onto an integer. */
+		NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+		NSString *text;
+
+		[formatter setLocale:en];
+		[formatter setNumberStyle:NSNumberFormatterDecimalStyle];
+		[formatter setAlwaysShowsDecimalSeparator:YES];
+		text = [formatter stringFromNumber:[NSNumber numberWithInt:1234]];
+		check("nf-always-decimal", text != nil && [text isEqualToString:@"1,234.0"], text);
+
+		[formatter setAlwaysShowsDecimalSeparator:NO];
+		[formatter setNumberStyle:NSNumberFormatterDecimalStyle];
+		[formatter setGroupingSize:2];
+		[formatter setSecondaryGroupingSize:4];
+		[formatter setMinimumGroupingDigits:1];
+		check("nf-grouping-size",
+		      [formatter groupingSize] == 2 && [formatter secondaryGroupingSize] == 4 &&
+		      [formatter minimumGroupingDigits] == 1,
+		      [NSString stringWithFormat:@"grouping=%ld secondary=%ld minGrouping=%ld",
+			(long)[formatter groupingSize], (long)[formatter secondaryGroupingSize],
+			(long)[formatter minimumGroupingDigits]]);
+
+		[formatter setNumberStyle:NSNumberFormatterDecimalStyle];
+		[formatter setUsesSignificantDigits:YES];
+		[formatter setMinimumSignificantDigits:3];
+		[formatter setMaximumSignificantDigits:3];
+		text = [formatter stringFromNumber:[NSNumber numberWithInt:1234]];
+		/* 1234 has four significant digits; three of them round the last up to 1230. */
+		check("nf-significant-digits",
+		      [formatter usesSignificantDigits] && [formatter minimumSignificantDigits] == 3 &&
+		      [formatter maximumSignificantDigits] == 3 &&
+		      text != nil && [text isEqualToString:@"1,230"],
+		      [NSString stringWithFormat:@"uses=%d min=%lu max=%lu text=%@",
+			(int)[formatter usesSignificantDigits],
+			(unsigned long)[formatter minimumSignificantDigits],
+			(unsigned long)[formatter maximumSignificantDigits], text]);
+	}
+
+	{
+		/* ROUNDING INCREMENT goes through ICU's DOUBLE-attribute door, so 0.05 has to survive
+		 * without the truncation an int-attribute cast would cause. */
+		NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+		NSNumber *increment;
+
+		[formatter setLocale:en];
+		[formatter setNumberStyle:NSNumberFormatterDecimalStyle];
+		[formatter setRoundingIncrement:[NSNumber numberWithDouble:0.05]];
+		increment = [formatter roundingIncrement];
+		check("nf-rounding-increment",
+		      increment != nil && [increment doubleValue] > 0.049 && [increment doubleValue] < 0.051,
+		      increment != nil ? [increment stringValue] : @"(nil)");
+	}
+
+	{
+		/* THE MONETARY AND PER-MILL SYMBOL DOORS, and the two deprecated ALIASES: a value written
+		 * through one spelling has to be read back through the other, because that is what makes a
+		 * deprecated alias an alias. */
+		NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+		NSString *grouping;
+		NSString *plain;
+		NSString *noGrouping;
+		BOOL separatorFlag;
+		NSString *perMill;
+		NSString *currencyDecimal;
+		NSString *currencyGrouping;
+
+		[formatter setLocale:en];
+		[formatter setNumberStyle:NSNumberFormatterDecimalStyle];
+		[formatter setPerMillSymbol:@"pm"];
+		perMill = [formatter perMillSymbol];
+		[formatter setCurrencyDecimalSeparator:@"."];
+		currencyDecimal = [formatter currencyDecimalSeparator];
+		[formatter setCurrencyGroupingSeparator:@"'"];
+		currencyGrouping = [formatter currencyGroupingSeparator];
+		check("nf-symbol-doors",
+		      [perMill isEqualToString:@"pm"] && [currencyDecimal isEqualToString:@"."] &&
+		      [currencyGrouping isEqualToString:@"'"],
+		      [NSString stringWithFormat:@"perMill=%@ curDec=%@ curGrp=%@",
+			perMill, currencyDecimal, currencyGrouping]);
+
+		[formatter setThousandSeparator:@"_"];
+		grouping = [formatter groupingSeparator];
+		plain = [formatter stringFromNumber:[NSNumber numberWithInt:1234567]];
+		[formatter setHasThousandSeparators:NO];
+		separatorFlag = [formatter usesGroupingSeparator];
+		noGrouping = [formatter stringFromNumber:[NSNumber numberWithInt:1234567]];
+		check("nf-thousand-alias",
+		      [grouping isEqualToString:@"_"] &&
+		      plain != nil && [plain isEqualToString:@"1_234_567"] &&
+		      separatorFlag == NO &&
+		      noGrouping != nil && [noGrouping isEqualToString:@"1234567"],
+		      [NSString stringWithFormat:@"grouping=%@ plain=%@ hasThousand=%d off=%@",
+			grouping, plain, (int)separatorFlag, noGrouping]);
+	}
+
+	{
+		/* THE PADDING TRIO — three more ICU doors (the width, the fill character and where the pad
+		 * goes relative to the affixes). */
+		NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+		NSString *pad;
+		NSNumberFormatterPadPosition position;
+
+		[formatter setLocale:en];
+		[formatter setNumberStyle:NSNumberFormatterDecimalStyle];
+		[formatter setFormatWidth:8];
+		[formatter setPaddingCharacter:@"0"];
+		[formatter setPaddingPosition:NSNumberFormatterPadAfterPrefix];
+		pad = [formatter paddingCharacter];
+		position = [formatter paddingPosition];
+		check("nf-padding-trio",
+		      [formatter formatWidth] == 8 && pad != nil && [pad isEqualToString:@"0"] &&
+		      position == NSNumberFormatterPadAfterPrefix,
+		      [NSString stringWithFormat:@"width=%lu pad=%@ position=%d",
+			(unsigned long)[formatter formatWidth], pad, (int)position]);
+	}
+
+	{
 		NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
 		NSNumber *refused;
 

@@ -34,7 +34,11 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_numberformatter"
 CHECKS = ("nf-de", "nf-en", "nf-currency-locale", "nf-spellout", "nf-ordinal",
           "nf-percent", "nf-scientific", "nf-parse", "nf-round-trip",
-          "nf-int64-exact", "nf-symbols-custom", "nf-allowsfloats-off",
+          "nf-int64-exact", "nf-symbols-custom",
+          "nf-always-decimal", "nf-grouping-size", "nf-significant-digits",
+          "nf-rounding-increment", "nf-symbol-doors", "nf-thousand-alias",
+          "nf-padding-trio",
+          "nf-allowsfloats-off",
           "nf-zero-and-nil", "nf-formatter-door", "nf-copy-independent")
 
 
