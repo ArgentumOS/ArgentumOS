@@ -35,7 +35,7 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_string"
 CHECKS = (
-          "tiny", "owned", "mixed", "utf8", "mutable", "description", "characters-family", "characters-family-ownership", "cross-tu", "string-api-complete", "string-format", "string-format-tagged-object", "class-format-arguments", "string-compare", "string-transform", "string-convert", "string-path", "string-encoding", "string-smallest-encoding", "string-fastest-encoding", "string-default-cstring-encoding", "string-available-encodings", "string-file-contents-doors", "string-url-contents-doors", "string-write-refuses-unstored-encoding", "string-init-format-locale", "string-init-format-locale-arguments", "string-localized-string-with-format", "string-mutable", "characterset-api-complete", "locale-basics", "locale-turkic-upper", "locale-turkic-lower", "locale-turkic-neutral", "locale-literal-high-byte", "locale-turkic-compare", "locale-boundaries", "locale-current", "locale-api-complete", "charset-bitmap-and-planes", "charset-illegal",
+          "tiny", "owned", "mixed", "utf8", "mutable", "description", "characters-family", "characters-family-ownership", "cross-tu", "string-api-complete", "string-format", "string-format-tagged-object", "class-format-arguments", "string-compare", "string-transform", "string-convert", "string-path", "string-path-doors", "string-encoding", "string-smallest-encoding", "string-fastest-encoding", "string-default-cstring-encoding", "string-available-encodings", "string-encoding-introspection", "string-file-contents-doors", "string-url-contents-doors", "string-write-refuses-unstored-encoding", "string-init-format-locale", "string-init-format-locale-arguments", "string-localized-string-with-format", "string-mutable", "characterset-api-complete", "locale-basics", "locale-turkic-upper", "locale-turkic-lower", "locale-turkic-neutral", "locale-literal-high-byte", "locale-turkic-compare", "locale-boundaries", "locale-current", "locale-api-complete", "charset-bitmap-and-planes", "charset-illegal",
           "charset-symbols", "charset-titled", "charset-non-base", "charset-decomposable",
           "charset-whitespace-family", "charset-letter-family",
           "charset-punct-and-control", "locale-display-names",
@@ -76,14 +76,17 @@ CHECKS = (
           # §63.24: Unicode normalization — Apple's four forms, measured on meaning rather than on lengths.
           "normalization-canonical-composes-and-decomposes",
           "normalization-compatibility-folds-what-canonical-keeps",
+          "string-transform-and-folding",
           # §63.25: the locale-aware case doors — one live door and three deprecated spellings.
           "case-capitalization-is-locale-aware",
           # §63.26: the localised search doors — case AND diacritics, and where the two doors differ.
           "localized-search-folds-case-and-diacritics",
           # §63.27: the validated-format pair — a format checked against the specifiers the caller names.
           "validated-format-allows-only-the-listed-specifiers",
+          "validated-format-instance-doors",
           # §63.28: creation from a C string with an encoding — the mirror of -cStringUsingEncoding:.
           "cstring-with-encoding-refuses-what-it-cannot-store",
+          "cstring-init-doors",
           # §63.29: the two URL forms — a file URL round trip, and a scheme with nothing behind it refused.
           "url-doors-round-trip-a-file-url-and-refuse-an-unreachable-scheme",
           # §63.30: the C-string/characters copy doors, and encoding introspection over the UTF-8 storage.

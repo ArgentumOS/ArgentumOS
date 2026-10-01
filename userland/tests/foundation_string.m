@@ -335,6 +335,32 @@ int main(void)
 		      "+availableStringEncodings is exactly {ASCII(1), UTF-8(4), 0} — the two the storage can represent");
 	}
 
+	{
+		/* THE ENCODING INTROSPECTION DOORS §63.30 was still missing: the localized NAME of an encoding (ours,
+		 * naming only what this library can store) and the lossy-flag form of -dataUsingEncoding:, whose flag
+		 * can never change the answer here because the stored encodings are the lossless ones. Numbers carry. */
+		NSString *utf8Name = [NSString localizedNameOfStringEncoding:NSUTF8StringEncoding];
+		NSString *asciiName = [NSString localizedNameOfStringEncoding:NSASCIIStringEncoding];
+		NSString *latinName = [NSString localizedNameOfStringEncoding:NSISOLatin1StringEncoding];
+		NSData *wide = [@"café" dataUsingEncoding:NSUTF8StringEncoding];
+		NSData *wideLossy = [@"café" dataUsingEncoding:NSUTF8StringEncoding allowLossyConversion:YES];
+		NSData *wideLossless = [@"café" dataUsingEncoding:NSUTF8StringEncoding allowLossyConversion:NO];
+		NSData *unstored = [@"x" dataUsingEncoding:NSUTF16StringEncoding allowLossyConversion:YES];
+
+		check("string-encoding-introspection",
+		      /* the names are ours and name the two stored encodings; an unknown one is nil */
+		      utf8Name != nil && [utf8Name isEqualToString:@"UTF-8"] && [utf8Name length] == 5 &&
+		      asciiName != nil && [asciiName isEqualToString:@"ASCII"] && [asciiName length] == 5 &&
+		      latinName == nil &&
+		      /* the lossy flag can never change the answer: all three forms of "café" agree at 5 UTF-8 bytes */
+		      wide != nil && [wide length] == 5 &&
+		      wideLossy != nil && [wideLossy length] == 5 && [wideLossy isEqualToData:wide] &&
+		      wideLossless != nil && [wideLossless isEqualToData:wide] &&
+		      /* an encoding this library does not store is refused whatever the flag says */
+		      unstored == nil,
+		      "+localizedNameOfStringEncoding: is \"UTF-8\" (5) and \"ASCII\" (5) and nil for the unstored Latin-1 (103), and -dataUsingEncoding:allowLossyConversion: answers the same 5 UTF-8 bytes for \"café\" whether the flag is YES or NO, and nil for the unstored UTF-16 (114)");
+	}
+
 
 	{
 		/*
@@ -549,6 +575,50 @@ int main(void)
 		      [components count] == 4 &&
 		      [[components objectAtIndex:3] isEqualToString:@"ATA"],
 		      "last component, extension, deleting, appending, components");
+	}
+
+	{
+		/* THE PATH DOORS THE LEDGER STILL HAD OPEN: joining, mapping, the filesystem representation, and the
+		 * two tilde forms. ⚠ THE TILDE ASSERTIONS ARE MEASURED AGAINST NSHomeDirectory() — the same door the
+		 * implementation reads — so they carry NO hard-named system path and hold wherever HOME is. The
+		 * abbreviating direction is asserted as the EXACT INVERSE of expansion (expand then abbreviate), which
+		 * is robust whether HOME ends in a slash or not, rather than assuming a particular home layout. */
+		NSArray *joins = [NSArray arrayWithObjects:@"a", @"b", @"c", nil];
+		NSArray *absoluteJoins = [NSArray arrayWithObjects:@"/", @"a", @"b", nil];
+		NSArray *mapComponents = [NSArray arrayWithObjects:@"b", @"c", nil];
+		NSString *joined = [NSString pathWithComponents:joins];
+		NSString *absolute = [NSString pathWithComponents:absoluteJoins];
+		NSArray *appended = [@"a" stringsByAppendingPaths:mapComponents];
+		NSString *home = NSHomeDirectory();
+		NSString *expanded = [@"~/dir/file" stringByExpandingTildeInPath];
+		NSString *roundTrip = [expanded stringByAbbreviatingWithTildeInPath];
+		char fsbuf[64];
+		char tiny[2];
+
+		check("string-path-doors",
+		      /* joining: "a/b/c", and a leading "/" component makes it absolute rather than doubled */
+		      joined != nil && [joined isEqualToString:@"a/b/c"] &&
+		      absolute != nil && [absolute isEqualToString:@"/a/b"] &&
+		      /* mapping: two elements, each the component-appended form */
+		      appended != nil && [appended count] == 2 &&
+		      [[appended objectAtIndex:0] isEqualToString:@"a/b"] &&
+		      [[appended objectAtIndex:1] isEqualToString:@"a/c"] &&
+		      /* the filesystem representation is the UTF-8 bytes, byte for byte */
+		      strcmp([@"/a/b" fileSystemRepresentation], "/a/b") == 0 &&
+		      /* the length-taking form copies when it fits (5 bytes with the NUL <= 64) and refuses a 2-byte
+		       * buffer (5 > 2), leaving the small buffer alone */
+		      [@"/a/b" getFileSystemRepresentation:fsbuf maxLength:sizeof fsbuf] == YES &&
+		      strcmp(fsbuf, "/a/b") == 0 &&
+		      [@"/a/b" getFileSystemRepresentation:tiny maxLength:sizeof tiny] == NO &&
+		      /* `~` expands through the account database: the answer CHANGES, and it begins with HOME */
+		      [home length] > 0 && expanded != nil &&
+		      ![expanded isEqualToString:@"~/dir/file"] && [expanded hasPrefix:home] &&
+		      /* and abbreviating is the inverse: the round trip is "~/dir/file" (10 units) */
+		      [roundTrip isEqualToString:@"~/dir/file"] && [roundTrip length] == 10 &&
+		      /* a path with no leading `~` is answered unchanged by both doors */
+		      [[@"rel/path" stringByExpandingTildeInPath] isEqualToString:@"rel/path"] &&
+		      [[@"rel/path" stringByAbbreviatingWithTildeInPath] isEqualToString:@"rel/path"],
+		      "+pathWithComponents: joins \"a/b/c\" and \"/a/b\" (leading slash not doubled), -stringsByAppendingPaths: maps two elements to a/b and a/c, fileSystemRepresentation is \"/a/b\" byte for byte, getFileSystemRepresentation:maxLength: copies 5 bytes into a 64-byte buffer and refuses a 2-byte one, ~ expands to HOME and abbreviates back to \"~/dir/file\" (10 units), and a tilde-free path is unchanged");
 	}
 
 	{
@@ -1839,6 +1909,44 @@ NULL
 	}
 
 	{
+		/* THE TRANSFORM AND FOLDING DOORS. The strip transform is NFD + dropping the combining marks, so a
+		 * "café" folds to "cafe"; the folding door folds case and/or diacritics and REFUSES an option it cannot
+		 * fold. Numbers carry, and the diacritic cases are BMP marks (é = e + U+0301). */
+		NSString *accented = [NSString stringWithUTF8String:"caf\xc3\xa9"];	/* café, precomposed */
+		NSString *stripped = [accented stringByApplyingTransform:NSStringTransformStripCombiningMarks reverse:NO];
+		NSString *strippedDiacritics = [accented stringByApplyingTransform:NSStringTransformStripDiacritics reverse:NO];
+		NSString *unknownTransform = [@"x" stringByApplyingTransform:@"NoSuchTransformer" reverse:NO];
+		NSString *caseFolded = [@"HELLO" stringByFoldingWithOptions:NSCaseInsensitiveSearch locale:nil];
+		NSString *markFolded = [accented stringByFoldingWithOptions:NSDiacriticInsensitiveSearch locale:nil];
+		NSString *bothFolded = [accented stringByFoldingWithOptions:(NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch) locale:nil];
+		NSString *unchanged = [@"MiXeD" stringByFoldingWithOptions:0 locale:nil];
+		BOOL widthRefused = NO;
+
+		@try {
+			(void)[@"x" stringByFoldingWithOptions:NSWidthInsensitiveSearch locale:nil];
+		} @catch (NSException *exception) {
+			widthRefused = [exception.name isEqualToString:NSInvalidArgumentException];
+		}
+
+		check("string-transform-and-folding",
+		      /* both strip transforms turn "café" (4 units) into "cafe" (4 units) */
+		      stripped != nil && [stripped isEqualToString:@"cafe"] && [stripped length] == 4 &&
+		      strippedDiacritics != nil && [strippedDiacritics isEqualToString:@"cafe"] &&
+		      /* a transform this library does not implement answers nil, not the input */
+		      unknownTransform == nil &&
+		      /* case folding is the ASCII rule: "HELLO" -> "hello" (5 units) */
+		      caseFolded != nil && [caseFolded isEqualToString:@"hello"] && [caseFolded length] == 5 &&
+		      /* diacritic folding drops the mark from "café" -> "cafe", with or without case folding */
+		      markFolded != nil && [markFolded isEqualToString:@"cafe"] &&
+		      bothFolded != nil && [bothFolded isEqualToString:@"cafe"] &&
+		      /* no options folds nothing: the string comes back unchanged (5 units) */
+		      unchanged != nil && [unchanged isEqualToString:@"MiXeD"] && [unchanged length] == 5 &&
+		      /* an option the library cannot fold RAISES rather than silently doing nothing */
+		      widthRefused,
+		      "the strip transforms give \"cafe\" (4 units) from \"café\", an unimplemented transform is nil, folding \"HELLO\" gives \"hello\" (5) and folding \"café\" gives \"cafe\", no options leaves \"MiXeD\" (5) unchanged, and NSWidthInsensitiveSearch raises NSInvalidArgumentException");
+	}
+
+	{
 		/* THE LOCALE-AWARE CASE DOORS (§63.25): ONE LIVE DOOR AND THREE DEPRECATED SPELLINGS, MEASURED WHERE THE
 		 * LOCALE ACTUALLY CHANGES THE ANSWER. This library's case mapping is ASCII except for the one localised
 		 * rule it ships (the Turkic i/İ and I/ı pairing, which the NSLocale checks above already prove), so the
@@ -1932,6 +2040,38 @@ NULL
 	}
 
 	{
+		/* THE INSTANCE VALIDATED-FORMAT DOORS (§63.27's siblings): the SAME rule the class doors apply, reached
+		 * through -init. The assertion MEASURES the shared rule rather than re-testing it: the same format that
+		 * renders through the class door renders here, and the same unlisted specifier is refused with the SAME
+		 * error vocabulary. The locale form ACCEPTS a locale and IGNORES it, so it renders the locale-free
+		 * answer. Both variadic doors are exercised; they forward to their `arguments:` twin, which is the one
+		 * place the validation lives. */
+		NSError *initErr = nil;
+		NSError *initBadErr = nil;
+		NSString *ok = [[NSString alloc] initWithValidatedFormat:@"%d and %@"
+						       validFormatSpecifiers:@"%@ %d"
+								   error:&initErr, 42, @"text"];
+		NSString *bad = [[NSString alloc] initWithValidatedFormat:@"%d"
+							validFormatSpecifiers:@"%@"
+								    error:&initBadErr, 42];
+		NSString *loc = [[NSString alloc] initWithValidatedFormat:@"%d-%@"
+							validFormatSpecifiers:@"%d %@"
+								    locale:nil
+								     error:NULL, 7, @"x"];
+
+		check("validated-format-instance-doors",
+		      /* the happy path: both listed, both rendered, 11 UTF-16 units, no error reported */
+		      ok != nil && [ok isEqualToString:@"42 and text"] && [ok length] == 11 && initErr == nil &&
+		      /* the refusal is the class rule's: nil, error, Cocoa domain, the formatting code */
+		      bad == nil && initBadErr != nil &&
+		      [[initBadErr domain] isEqualToString:NSCocoaErrorDomain] &&
+		      [initBadErr code] == NSFormattingError &&
+		      /* the locale form renders the locale-free answer: "7-x", 3 units */
+		      loc != nil && [loc isEqualToString:@"7-x"] && [loc length] == 3,
+		      "the -init validated-format doors share the + rule: \"%d and %@\" with (42, \"text\") renders 11 units with no error, an unlisted \"%d\" is refused NSCocoaErrorDomain/NSFormattingError, and the locale form renders \"7-x\" (3 units)");
+	}
+
+	{
 		/* CREATION FROM A C STRING WITH AN ENCODING (§63.28): THE MIRROR OF `-cStringUsingEncoding:`, SO THE
 		 * ASSERTION THAT MATTERS IS WHERE THE TWO REFUSALS LAND — a byte string is not reinterpreted, and a
 		 * label is not believed. */
@@ -1956,6 +2096,39 @@ NULL
 		      [[NSString stringWithCString:"caf\xc3\xa9" encoding:NSUTF8StringEncoding]
 			isEqualToString:@"café"],
 		      "UTF-8 and ASCII round-trip, a high byte labelled ASCII is refused, an unstored encoding is refused, NULL is nil, and real UTF-8 answers the string it names");
+	}
+
+	{
+		/* THE INSTANCE C-STRING / BYTE DOORS (§63.30's C-string family): the -init mirrors of the class doors
+		 * above, so the SAME two refusals are asserted through the other door and neither can pass on one side
+		 * alone. Every length is the UTF-16 UNIT count and carries its number. */
+		NSString *ascii = [[NSString alloc] initWithCString:"plain ASCII" encoding:NSASCIIStringEncoding];
+		NSString *utf8 = [[NSString alloc] initWithCString:"caf\xc3\xa9" encoding:NSUTF8StringEncoding];
+		NSString *highAsAscii = [[NSString alloc] initWithCString:"caf\xc3\xa9" encoding:NSASCIIStringEncoding];
+		NSString *unstored = [[NSString alloc] initWithCString:"caf\xe9" encoding:NSISOLatin1StringEncoding];
+		NSString *deprecated = [[NSString alloc] initWithCString:"plain ASCII"];
+		NSString *deprecatedLen = [[NSString alloc] initWithCString:"abcdef" length:3];
+		NSString *bytesLen = [[NSString alloc] initWithBytes:"xyz\0abc" length:3 encoding:NSUTF8StringEncoding];
+		NSString *bytesUtf8 = [[NSString alloc] initWithBytes:"caf\xc3\xa9" length:5 encoding:NSUTF8StringEncoding];
+		NSString *bytesAsAscii = [[NSString alloc] initWithBytes:"caf\xc3\xa9" length:5 encoding:NSASCIIStringEncoding];
+		NSString *bytesUnstored = [[NSString alloc] initWithBytes:"abc" length:3 encoding:NSUTF16StringEncoding];
+
+		check("cstring-init-doors",
+		      /* the -init mirrors of the class doors: the same positive answers, 11 and 4 UTF-16 units */
+		      ascii != nil && [ascii isEqualToString:@"plain ASCII"] && [ascii length] == 11 &&
+		      utf8 != nil && [utf8 isEqualToString:@"café"] && [utf8 length] == 4 &&
+		      /* and the SAME two refusals: a high byte under the ASCII label, and an unstored encoding */
+		      highAsAscii == nil && unstored == nil &&
+		      /* the deprecated no-encoding name uses UTF-8, so it round-trips the same bytes */
+		      deprecated != nil && [deprecated isEqualToString:@"plain ASCII"] &&
+		      /* the length-taking deprecated name reads EXACTLY 3 bytes and needs no terminating NUL */
+		      deprecatedLen != nil && [deprecatedLen isEqualToString:@"abc"] && [deprecatedLen length] == 3 &&
+		      /* -initWithBytes:length:encoding: honours length (the buffer holds "xyz\0abc") and reads UTF-8 */
+		      bytesLen != nil && [bytesLen isEqualToString:@"xyz"] && [bytesLen length] == 3 &&
+		      bytesUtf8 != nil && [bytesUtf8 isEqualToString:@"café"] &&
+		      /* and the byte door refuses an unstored encoding and a high byte under ASCII, like its C-string twin */
+		      bytesAsAscii == nil && bytesUnstored == nil,
+		      "the -init C-string/byte doors mirror the class doors: UTF-8 and ASCII round-trip (4 and 11 units), the deprecated no-encoding name uses UTF-8, a length of 3 reads \"abc\" and \"xyz\" (3 units) without a NUL, and a high byte labelled ASCII and an unstored encoding are both refused");
 	}
 
 	{

@@ -42,6 +42,10 @@
 #import <Foundation/NSURL.h>
 #import <Foundation/NSURLConnection.h>
 #import <Foundation/NSURLRequest.h>
+/* THE PATH DOORS' tilde forms expand `~` through the account database: NSHomeDirectory() and
+ * NSHomeDirectoryForUser() live in NSFileManager.h, and the two are Apple's own spelling (there is no separate
+ * NSPathUtilities.h here). */
+#import <Foundation/NSFileManager.h>
 
 /* A STRING COPY IS A COPY OF THE CHARACTERS, AND THE BUFFER IS BUILT IN ONE PLACE (§62.93).
  *
@@ -816,6 +820,81 @@ static NSString *fn_normalized(NSString *source, FNNormalForm form)
 	return fn_normalized(self, FNNormalFormNFKD);
 }
 
+/* THE TRANSFORM AND FOLDING DOORS (the transforms/folding slice). Both are written over machinery this file
+ * already trusts: the ICU normalizer behind the four -…Mapping doors, and +[NSCharacterSet nonBaseCharacterSet],
+ * whose categories Mn/Mc/Me are this family's one notion of a combining mark (the same set, and the same BMP
+ * boundary, the composed-sequence door uses). */
+- (NSString *)stringByApplyingTransform:(NSString *)transform reverse:(BOOL)reverse
+{
+	if ([transform isEqualToString:NSStringTransformStripCombiningMarks] ||
+	    [transform isEqualToString:NSStringTransformStripDiacritics]) {
+		/* NFD, then every mark comes off. `reverse` is meaningless for a strip and is ignored, which is also
+		 * Apple's behaviour for these two. THE MARK SET IS BMP-BOUNDED (+nonBaseCharacterSet stops at U+FFFF),
+		 * so a real combining mark ABOVE the BMP survives — the SAME measured boundary the composed-sequence
+		 * door records, asserted there rather than hidden here. */
+		NSString *decomposed = [self decomposedStringWithCanonicalMapping];
+		NSCharacterSet *marks = [NSCharacterSet nonBaseCharacterSet];
+		NSMutableString *out = [NSMutableString string];
+		NSUInteger i, length = [decomposed length];
+
+		(void)reverse;
+		for (i = 0; i < length; i++) {
+			unichar c = [decomposed characterAtIndex:i];
+
+			if (![marks characterIsMember:c]) {
+				[out appendString:[[NSString stringWithCharacters:&c length:1] autorelease]];
+			}
+		}
+		return out;
+	}
+	/* A TRANSFORM THIS LIBRARY DOES NOT IMPLEMENT IS REFUSED, not silently ignored: the other fourteen names
+	 * answer nil, which is Apple's own contract for a transform that cannot be applied. */
+	return nil;
+}
+
+- (NSString *)stringByFoldingWithOptions:(NSStringCompareOptions)options locale:(id)locale
+{
+	BOOL foldCase = (options & NSCaseInsensitiveSearch) != 0;
+	BOOL foldMarks = (options & NSDiacriticInsensitiveSearch) != 0;
+	NSStringCompareOptions refused = options & ~(NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch);
+	NSCharacterSet *marks = foldMarks ? [NSCharacterSet nonBaseCharacterSet] : nil;
+	NSMutableString *out = [NSMutableString string];
+	NSUInteger i, length = [self length];
+
+	if (refused != 0) {
+		/* WIDTH AND NUMERIC FOLDING ARE REFUSED RATHER THAN IGNORED: this library ships no width or numeric
+		 * tables, so a fold that silently left them unfolded would answer a different question — the same
+		 * refusal the option-taking comparisons make. */
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-%s: an option this library cannot fold was passed (%lu)",
+				   sel_getName(_cmd), (unsigned long)refused];
+	}
+	for (i = 0; i < length; i++) {
+		unichar c = [self characterAtIndex:i];
+		NSString *piece = [[NSString stringWithCharacters:&c length:1] autorelease];
+
+		if (foldCase) {
+			piece = [piece lowercaseStringWithLocale:locale];	/* THE ASCII CASE RULE this family states */
+		}
+		if (foldMarks) {
+			NSUInteger j, pieceLength;
+
+			piece = [piece decomposedStringWithCanonicalMapping];	/* §63.24: "é" becomes "e" + a mark */
+			pieceLength = [piece length];
+			for (j = 0; j < pieceLength; j++) {
+				unichar f = [piece characterAtIndex:j];
+
+				if (![marks characterIsMember:f]) {
+					[out appendString:[[NSString stringWithCharacters:&f length:1] autorelease]];
+				}
+			}
+		} else {
+			[out appendString:piece];
+		}
+	}
+	return out;
+}
+
 /* THE NSCoding DOORS (§63.22). IMPLEMENTED ON THIS FRONT, because the front is where this family's routing
  * lives and `NSOwnedString` — its subclass — inherits both. THE PAYLOAD IS THE CLASS'S OWN UTF-8 FORM, which is
  * what `-UTF8String` answers, so encode and decode agree about an embedded NUL BY CONSTRUCTION (both stop
@@ -1244,12 +1323,11 @@ NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySugges
 	return specifiers;
 }
 
-/* THE VALIDATION ITSELF, TAKING A `va_list` RATHER THAN A `...`: both public doors share one rule, and the
- * variadic spellings have a single place to forward from. */
-+ (nullable id)fn_stringWithValidatedFormat:(NSString *)format
-		      validFormatSpecifiers:(NSString *)validFormatSpecifiers
-				      error:(NSError **)errorPtr
-				  arguments:(va_list)arguments
+/* THE VALIDATION RULE ITSELF, shared by the CLASS and the INSTANCE doors: every DIRECTIVE in the format must be
+ * one the caller listed, and a refusal is an NSError in Apple's own vocabulary. Extracted so the four
+ * -initWithValidatedFormat: doors (§63.27's siblings) apply ONE rule with the class doors rather than keeping a
+ * second copy that could drift. */
+static BOOL fn_format_is_allowed(NSString *format, NSString *validFormatSpecifiers, NSError **errorPtr)
 {
 	NSArray *specifiers = [format fn_formatSpecifiers];
 	NSUInteger i;
@@ -1264,8 +1342,21 @@ NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySugges
 							   userInfo:[NSDictionary dictionaryWithObject:specifier
 										  forKey:NSLocalizedDescriptionKey]];
 			}
-			return nil;
+			return NO;
 		}
+	}
+	return YES;
+}
+
+/* THE VALIDATION ITSELF, TAKING A `va_list` RATHER THAN A `...`: both public doors share one rule, and the
+ * variadic spellings have a single place to forward from. */
++ (nullable id)fn_stringWithValidatedFormat:(NSString *)format
+		      validFormatSpecifiers:(NSString *)validFormatSpecifiers
+				      error:(NSError **)errorPtr
+				  arguments:(va_list)arguments
+{
+	if (!fn_format_is_allowed(format, validFormatSpecifiers, errorPtr)) {
+		return nil;
 	}
 	return [self stringWithFormat:format arguments:arguments];
 }
@@ -1303,6 +1394,80 @@ NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySugges
 					  arguments:arguments];
 	va_end(arguments);
 	return result;
+}
+
+/* ============================ validated formats, the INSTANCE doors (§63.27's siblings) ============================
+ *
+ * THE SAME RULE the class doors above apply, reached through -init. The two variadic doors forward to their
+ * `arguments:` twin, which is the one place the validation lives; the locale-taking pair ACCEPTS a locale and
+ * IGNORES it, exactly as -initWithFormat:locale:arguments: does, so the locale form renders the locale-free
+ * answer rather than a second rendering rule that could drift. */
+- (nullable id)fn_initWithValidatedFormat:(NSString *)format
+		    validFormatSpecifiers:(NSString *)validFormatSpecifiers
+				    error:(NSError **)errorPtr
+				arguments:(va_list)arguments
+{
+	if (!fn_format_is_allowed(format, validFormatSpecifiers, errorPtr)) {
+		return nil;
+	}
+	return [self initWithFormat:format arguments:arguments];
+}
+
+- (id)initWithValidatedFormat:(NSString *)format
+	validFormatSpecifiers:(NSString *)validFormatSpecifiers
+			error:(NSError **)errorPtr, ...
+{
+	va_list arguments;
+	id result;
+
+	va_start(arguments, errorPtr);
+	result = [self fn_initWithValidatedFormat:format
+			    validFormatSpecifiers:validFormatSpecifiers
+					    error:errorPtr
+					arguments:arguments];
+	va_end(arguments);
+	return result;
+}
+
+- (id)initWithValidatedFormat:(NSString *)format
+	validFormatSpecifiers:(NSString *)validFormatSpecifiers
+		    arguments:(va_list)arguments
+			error:(NSError **)errorPtr
+{
+	return [self fn_initWithValidatedFormat:format
+			  validFormatSpecifiers:validFormatSpecifiers
+				  error:errorPtr
+			      arguments:arguments];
+}
+
+- (id)initWithValidatedFormat:(NSString *)format
+	validFormatSpecifiers:(NSString *)validFormatSpecifiers
+		       locale:(id)locale
+			error:(NSError **)errorPtr, ...
+{
+	/* the locale is accepted and IGNORED — the stance -initWithFormat:locale:arguments: records */
+	va_list arguments;
+	id result;
+
+	va_start(arguments, errorPtr);
+	result = [self fn_initWithValidatedFormat:format
+			    validFormatSpecifiers:validFormatSpecifiers
+					    error:errorPtr
+					arguments:arguments];
+	va_end(arguments);
+	return result;
+}
+
+- (id)initWithValidatedFormat:(NSString *)format
+	validFormatSpecifiers:(NSString *)validFormatSpecifiers
+		       locale:(id)locale
+		    arguments:(va_list)arguments
+			error:(NSError **)errorPtr
+{
+	return [self fn_initWithValidatedFormat:format
+			  validFormatSpecifiers:validFormatSpecifiers
+				  error:errorPtr
+			      arguments:arguments];
 }
 
 - (id)initWithData:(NSData *)data encoding:(NSStringEncoding)encoding
@@ -1362,6 +1527,15 @@ NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySugges
 		return nil;
 	}
 	return [[NSData alloc] initWithBytes:[self UTF8String] length:[self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]];
+}
+
+- (NSData *)dataUsingEncoding:(NSStringEncoding)encoding allowLossyConversion:(BOOL)lossy
+{
+	/* THE LOSSY FLAG IS ACCEPTED AND CAN NEVER BE NEEDED: this library stores exactly the encodings it can
+	 * represent losslessly (UTF-8 and 7-bit ASCII), so no character is ever replaced — the answer is the
+	 * lossless one whatever the flag says. `lossy` is named so it is not mistaken for threaded-through state. */
+	(void)lossy;
+	return [self dataUsingEncoding:encoding];
 }
 
 /* ------------------------------------------------------------- value semantics */
@@ -2623,6 +2797,74 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return [[[self alloc] initWithBytes:cString length:length] autorelease];
 }
 
+/* THE INSTANCE FORMS OF THE SAME TWO CREATION DOORS (§63.30's C-string family). Each is the -init mirror of a
+ * `+stringWithCString:…` above, so the two refusals live in the same two places: an encoding this library does
+ * not store, and a high byte under the ASCII label. The deprecated no-encoding pair takes the one honest default
+ * C-string encoding here, UTF-8 — the same value its class twin names by hand. */
+- (id)initWithCString:(const char *)nullTerminatedCString encoding:(NSStringEncoding)encoding
+{
+	size_t i, length;
+
+	if (nullTerminatedCString == NULL) {
+		return nil;
+	}
+	if (encoding == NSUTF8StringEncoding) {
+		return [self initWithUTF8String:nullTerminatedCString];
+	}
+	if (encoding == NSASCIIStringEncoding) {
+		/* ⚠ THE BYTES ARE CHECKED, NOT THE LABEL: a high byte under the ASCII name is refused rather than
+		 * reinterpreted, exactly as +stringWithCString:encoding: refuses it. */
+		for (length = strlen(nullTerminatedCString), i = 0; i < length; i++) {
+			if (((const unsigned char *)nullTerminatedCString)[i] > 0x7F) {
+				return nil;
+			}
+		}
+		return [self initWithUTF8String:nullTerminatedCString];
+	}
+	return nil;			/* an encoding we do not store */
+}
+
+- (id)initWithCString:(const char *)nullTerminatedCString
+{
+	/* the deprecated no-encoding name: the default C-string encoding is UTF-8 */
+	return [self initWithCString:nullTerminatedCString encoding:NSUTF8StringEncoding];
+}
+
+- (id)initWithBytes:(const void *)bytes length:(NSUInteger)len encoding:(NSStringEncoding)encoding
+{
+	/* THE MODERN LENGTH-TAKING BYTE DOOR. Only the stored encodings are accepted, and the ASCII case checks the
+	 * BYTES rather than the label, the same rule the C-string doors apply. */
+	if (encoding != NSUTF8StringEncoding && encoding != NSASCIIStringEncoding) {
+		return nil;
+	}
+	if (encoding == NSASCIIStringEncoding) {
+		const unsigned char *b = (const unsigned char *)bytes;
+		NSUInteger i;
+
+		for (i = 0; i < len; i++) {
+			if (b[i] > 0x7F) {
+				return nil;
+			}
+		}
+	}
+	/* Re-routed like the other doors on this front: the storage is the concrete subclass's, so the abstract
+	 * receiver is released and the length-taking UTF-8 constructor is used (it treats the bytes as UTF-8 and a
+	 * NULL buffer as the empty string). `[self release]` first, so the front does not leak. */
+	[self release];
+	return [[NSOwnedString alloc] initWithBytes:(const char *)bytes length:(size_t)len];
+}
+
+- (id)initWithCString:(const char *)bytes length:(NSUInteger)length
+{
+	/* ⚠ THE LENGTH IS HONOURED AND THE NUL IS NOT, the same rule +stringWithCString:length: records: the bytes
+	 * need not be NUL-terminated, so exactly `length` of them are read. Deprecated name; default encoding UTF-8. */
+	if (bytes == NULL) {
+		return nil;
+	}
+	[self release];
+	return [[NSOwnedString alloc] initWithBytes:(const char *)bytes length:(size_t)length];
+}
+
 - (BOOL)canBeConvertedToEncoding:(NSStringEncoding)encoding
 {
 	size_t i, n;
@@ -2696,6 +2938,21 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return encodings;
 }
 
++ (NSString *)localizedNameOfStringEncoding:(NSStringEncoding)encoding
+{
+	/* THE NAMES ARE OURS (§11.6.1 D2 — Apple publishes the method and not a name table this library may copy),
+	 * and they name the TWO encodings this library can store rather than the whole enumerated list: naming an
+	 * encoding it would refuse to convert would contradict +availableStringEncodings. An unknown encoding is
+	 * answered nil, which is Apple's own contract for one it does not know. */
+	if (encoding == NSASCIIStringEncoding) {
+		return @"ASCII";
+	}
+	if (encoding == NSUTF8StringEncoding) {
+		return @"UTF-8";
+	}
+	return nil;
+}
+
 /* ------------------------------------------------------------------ composition */
 - (NSString *)stringByAppendingPathExtension:(NSString *)extension
 {
@@ -2757,6 +3014,93 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 - (BOOL)isAbsolutePath
 {
 	return ([self lengthOfBytesUsingEncoding:NSUTF8StringEncoding] > 0 && [self byteAtIndex:0] == '/') ? YES : NO;
+}
+
++ (NSString *)pathWithComponents:(NSArray *)components
+{
+	/* APPLE'S JOINING RULE: the components are joined with "/", and a leading "/" component makes the result
+	 * absolute rather than doubled — the slash is already there, so none is inserted before the next one. */
+	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
+	NSUInteger i;
+
+	for (i = 0; i < [components count]; i++) {
+		NSString *component = [components objectAtIndex:i];
+
+		if (i == 0 || [built hasSuffix:@"/"]) {
+			[built appendString:component];
+		} else {
+			[built appendFormat:@"/%@", component];
+		}
+	}
+	return built;
+}
+
+- (NSArray *)stringsByAppendingPaths:(NSArray *)paths
+{
+	/* ONE JOINING RULE: each answer is -stringByAppendingPathComponent: for the matching element, so this door
+	 * and that one cannot disagree about where the slash goes. */
+	NSMutableArray *result = [[NSMutableArray alloc] init];
+	NSUInteger i;
+
+	for (i = 0; i < [paths count]; i++) {
+		[result addObject:[self stringByAppendingPathComponent:[paths objectAtIndex:i]]];
+	}
+	return result;
+}
+
+- (const char *)fileSystemRepresentation
+{
+	/* THIS FILESYSTEM'S PATH FORM IS UTF-8 — the storage itself (§63.30) — so the representation is the storage,
+	 * and the pointer has NSOwnedString's own lifetime. */
+	return [self UTF8String];
+}
+
+- (BOOL)getFileSystemRepresentation:(char *)buffer maxLength:(NSUInteger)maxLength
+{
+	/* THE -getCString:maxLength:encoding: RULE with the encoding fixed to the one this filesystem uses. */
+	return [self getCString:buffer maxLength:maxLength encoding:NSUTF8StringEncoding];
+}
+
+- (NSString *)stringByExpandingTildeInPath
+{
+	NSRange slash;
+	NSString *head, *tail, *home;
+
+	if ([self length] == 0 || [self characterAtIndex:0] != '~') {
+		return self;			/* no leading tilde: unchanged */
+	}
+	slash = [self rangeOfString:@"/"];
+	if (slash.location == NSNotFound) {
+		head = [self substringFromIndex:1];
+		tail = @"";
+	} else {
+		head = [self substringWithRange:NSMakeRange(1, slash.location - 1)];
+		tail = [self substringFromIndex:slash.location];
+	}
+	if ([head length] == 0) {
+		home = NSHomeDirectory();
+	} else {
+		home = NSHomeDirectoryForUser(head);
+		if (home == nil) {
+			return self;		/* an unknown ~user is left unchanged (Apple's own behaviour) */
+		}
+	}
+	return [home stringByAppendingString:tail];
+}
+
+- (NSString *)stringByAbbreviatingWithTildeInPath
+{
+	NSString *home = NSHomeDirectory();
+	NSUInteger homeLen = [home length];
+
+	if ([self isEqualToString:home]) {
+		return @"~";
+	}
+	if ([self length] > homeLen && [self hasPrefix:home] &&
+	    [self characterAtIndex:homeLen] == '/') {
+		return [@"~" stringByAppendingString:[self substringFromIndex:homeLen]];
+	}
+	return self;			/* not under the home directory: unchanged */
 }
 
 - (NSString *)stringByStandardizingPath

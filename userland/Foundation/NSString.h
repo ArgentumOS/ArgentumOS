@@ -255,6 +255,28 @@ typedef enum {
 - (id)initWithFormat:(NSString *)format locale:(nullable id)locale arguments:(va_list)argList;
 + (id)localizedStringWithFormat:(NSString *)format, ...;
 
+/* THE INSTANCE VALIDATED-FORMAT DOORS (§63.27's siblings). The SAME rule the class doors above apply, reached
+ * through -init: every directive in `format` must be one named in `validFormatSpecifiers`, and a refusal is nil
+ * with an NSError in NSCocoaErrorDomain/NSFormattingError (Apple's own reporting). The locale-taking pair
+ * accepts a locale and IGNORES it, exactly as -initWithFormat:locale:arguments: does (a locale is honoured for
+ * case only in this library), so the locale form renders the locale-free answer rather than a second rule. */
+- (nullable id)initWithValidatedFormat:(NSString *)format
+		  validFormatSpecifiers:(NSString *)validFormatSpecifiers
+				  error:(NSError * _Nullable * _Nullable)errorPtr, ...;
+- (nullable id)initWithValidatedFormat:(NSString *)format
+		  validFormatSpecifiers:(NSString *)validFormatSpecifiers
+			      arguments:(va_list)arguments
+				  error:(NSError * _Nullable * _Nullable)errorPtr;
+- (nullable id)initWithValidatedFormat:(NSString *)format
+		  validFormatSpecifiers:(NSString *)validFormatSpecifiers
+			       locale:(nullable id)locale
+				  error:(NSError * _Nullable * _Nullable)errorPtr, ...;
+- (nullable id)initWithValidatedFormat:(NSString *)format
+		  validFormatSpecifiers:(NSString *)validFormatSpecifiers
+			       locale:(nullable id)locale
+			    arguments:(va_list)arguments
+				  error:(NSError * _Nullable * _Nullable)errorPtr;
+
 /* The primitives every concrete subclass implements. */
 - (const char *)UTF8String;
 - (size_t)length;		/* UTF-16 CODE UNITS — Apple's contract (W1 slice 3) */
@@ -302,6 +324,15 @@ typedef enum {
 - (void)getCharacters:(unichar *)buffer;
 + (nullable id)stringWithCString:(const char *)cString;
 + (nullable id)stringWithCString:(const char *)cString length:(NSUInteger)length;
+/* THE INSTANCE FORMS OF THE C-STRING AND BYTE DOORS (§63.30's C-string family). They are the -init mirrors of
+ * `+stringWithCString:…` and `+stringWithCString:encoding:` above — the same two refusals in the same two places
+ * (an encoding this library does not store, and a high byte under the ASCII label) — and the deprecated
+ * no-encoding pair takes the one honest default C-string encoding here, UTF-8. `-initWithBytes:length:encoding:`
+ * is the modern length-taking byte door and honours `length` rather than a terminating NUL. */
+- (nullable id)initWithBytes:(const void *)bytes length:(NSUInteger)len encoding:(NSStringEncoding)encoding;
+- (nullable id)initWithCString:(const char *)nullTerminatedCString encoding:(NSStringEncoding)encoding;
+- (nullable id)initWithCString:(const char *)nullTerminatedCString;
+- (nullable id)initWithCString:(const char *)bytes length:(NSUInteger)length;
 /* INTROSPECTION over the same storage fact: a conversion is possible exactly when the storage IS the
  * encoding or when every byte is 7-bit ASCII, and the maximum length is the UTF-8 byte count — or 0 when
  * the conversion cannot happen at all, which is Apple's own answer for an impossible conversion. */
@@ -323,6 +354,14 @@ typedef enum {
 @property (readonly) NSStringEncoding smallestEncoding;
 + (NSStringEncoding)defaultCStringEncoding;
 + (const NSStringEncoding *)availableStringEncodings;
+/* THE TWO DOORS §63.30's introspection family was still missing. +localizedNameOfStringEncoding: NAMES the
+ * encodings this library can actually store — ASCII and UTF-8, the two +availableStringEncodings lists — and
+ * answers nil for anything else, which is Apple's own nil-for-unknown contract and the honest answer for an
+ * encoding this library would refuse to convert. -dataUsingEncoding:allowLossyConversion: ACCEPTS the lossy flag
+ * and, because this library stores exactly the encodings it can represent losslessly, never invokes a lossy
+ * conversion: the door answers what -dataUsingEncoding: answers for the same encoding. */
++ (nullable NSString *)localizedNameOfStringEncoding:(NSStringEncoding)encoding;
+- (nullable NSData *)dataUsingEncoding:(NSStringEncoding)encoding allowLossyConversion:(BOOL)lossy;
 - (BOOL)writeToFile:(NSString *)path
 	 atomically:(BOOL)useAuxiliaryFile
 	   encoding:(NSStringEncoding)encoding
@@ -489,6 +528,17 @@ typedef enum {
 			     range:(NSRange)range;
 - (NSString *)commonPrefixWithString:(NSString *)other options:(NSStringCompareOptions)mask;
 
+/* THE TRANSFORM AND FOLDING DOORS. -stringByApplyingTransform:reverse: honours the TWO strip transforms this
+ * library can perform — NSStringTransformStripCombiningMarks and NSStringTransformStripDiacritics, i.e. NFD
+ * followed by dropping the combining marks — and answers nil for the other names, which is Apple's own contract
+ * for a transform that cannot be applied (a refusal, not a silent no-op). Its parameter is spelled `NSString *`
+ * rather than `NSStringTransform` because the typedef sits BELOW this interface, as it does in Apple's header.
+ * -stringByFoldingWithOptions: folds case and/or diacritics (the same ASCII case rule and the same BMP
+ * non-base-character set the rest of this family uses) and RAISES NSInvalidArgumentException for an option it
+ * cannot fold — width or numeric — rather than silently leaving it unfolded. */
+- (nullable NSString *)stringByApplyingTransform:(NSString *)transform reverse:(BOOL)reverse;
+- (NSString *)stringByFoldingWithOptions:(NSStringCompareOptions)options locale:(nullable id)locale;
+
 /* ===================================================================================================
  * PERCENT-ENCODING, IN BOTH DIRECTIONS, ON APPLE'S OWN RULES.
  *
@@ -574,6 +624,29 @@ typedef enum {
 - (nullable NSArray *)pathComponents;
 - (NSString *)stringByStandardizingPath;
 - (BOOL)isAbsolutePath;
+
+/* THE PATH DOORS THE LEDGER STILL HAD OPEN, each a pure string operation over FSH's slash-separated shape:
+ *
+ *   +pathWithComponents:            JOINS components with "/", and a leading "/" component makes the result
+ *                                   absolute rather than doubled (Apple's own joining rule);
+ *   -stringsByAppendingPaths:       MAPS -stringByAppendingPathComponent: over an array, so the two doors share
+ *                                   one joining rule rather than keeping a second;
+ *   -fileSystemRepresentation and   THE C-STRING FORM THIS FILESYSTEM ACTUALLY USES, which here is UTF-8 — the
+ *   -getFileSystemRepresentation:   storage itself (§63.30), so neither door transcodes; the length-taking form
+ *                                   is the -getCString:maxLength:encoding: rule with the encoding fixed;
+ *   -stringByExpandingTildeInPath   EXPAND `~` and `~user` through the account database (NSHomeDirectory /
+ *   and …Abbreviating…              NSHomeDirectoryForUser), and the reverse abbreviates a path under the home
+ *                                   directory back to `~`. A path with no leading `~`, and a path whose `~user`
+ *                                   is unknown, are answered UNCHANGED — Apple's own behaviour for both.
+ *
+ * -stringByResolvingSymlinksInPath is NOT here: resolving a symlink is a FILESYSTEM LOOKUP, and this library's
+ * string path doors are deliberately lexical (see -stringByStandardizingPath's own note). It stays open. */
++ (NSString *)pathWithComponents:(NSArray *)components;
+- (NSArray *)stringsByAppendingPaths:(NSArray *)paths;
+- (const char *)fileSystemRepresentation;
+- (BOOL)getFileSystemRepresentation:(char *)buffer maxLength:(NSUInteger)maxLength;
+- (NSString *)stringByExpandingTildeInPath;
+- (NSString *)stringByAbbreviatingWithTildeInPath;
 
 
 /* ===================================================================================================

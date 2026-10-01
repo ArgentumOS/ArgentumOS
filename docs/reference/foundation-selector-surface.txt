@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2066   open  618   struck  244
-#   property   shipped 1215   open  275   struck  146
+#   method     shipped 2081   open  603   struck  244
+#   property   shipped 1218   open  272   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -3044,7 +3044,7 @@ method	shipped	-componentsSeparatedByCharactersInSet:	NSString	Fundamentals / St
 method	shipped	-componentsSeparatedByString:	NSString	Fundamentals / Strings / Dividing Strings	-	objc
 method	shipped	-containsString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-dataUsingEncoding:	NSString	Fundamentals / Strings / Working with Encodings	-	objc
-method	open	-dataUsingEncoding:allowLossyConversion:	NSString	Fundamentals / Strings / Working with Encodings	-	objc
+method	shipped	-dataUsingEncoding:allowLossyConversion:	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 method	open	+deferredLocalizedIntentsStringWithFormat:	NSString	Fundamentals / Strings / Type Methods	-	objc
 method	open	+deferredLocalizedIntentsStringWithFormat:fromTable:	NSString	Fundamentals / Strings / Type Methods	-	objc
 method	open	+deferredLocalizedIntentsStringWithFormat:fromTable:arguments:	NSString	Fundamentals / Strings / Type Methods	-	objc
@@ -3069,18 +3069,18 @@ method	shipped	-getCString:maxLength:encoding:	NSString	Fundamentals / Strings /
 method	open	-getCString:maxLength:range:remainingRange:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-getCharacters:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-getCharacters:range:	NSString	Fundamentals / Strings / Getting Characters and Bytes	-	objc
-method	open	-getFileSystemRepresentation:maxLength:	NSString	Fundamentals / Strings / Working with Paths	-	objc
+method	shipped	-getFileSystemRepresentation:maxLength:	NSString	Fundamentals / Strings / Working with Paths	-	objc
 method	shipped	-getLineStart:end:contentsEnd:forRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
 method	open	-getParagraphStart:end:contentsEnd:forRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
 method	shipped	-hasPrefix:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-hasSuffix:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-init	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
-method	open	-initWithBytes:length:encoding:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
+method	shipped	-initWithBytes:length:encoding:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	open	-initWithBytesNoCopy:length:encoding:deallocator:	NSString	Fundamentals / Strings / Instance Methods	-	objc
 method	open	-initWithBytesNoCopy:length:encoding:freeWhenDone:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
-method	open	-initWithCString:	NSString	Fundamentals / Strings / Instance Methods	deprecated	objc
-method	open	-initWithCString:encoding:	NSString	Fundamentals / Strings / Instance Methods	-	objc
-method	open	-initWithCString:length:	NSString	Fundamentals / Strings / Instance Methods	deprecated	objc
+method	shipped	-initWithCString:	NSString	Fundamentals / Strings / Instance Methods	deprecated	objc
+method	shipped	-initWithCString:encoding:	NSString	Fundamentals / Strings / Instance Methods	-	objc
+method	shipped	-initWithCString:length:	NSString	Fundamentals / Strings / Instance Methods	deprecated	objc
 method	open	-initWithCStringNoCopy:length:freeWhenDone:	NSString	Fundamentals / Strings / Instance Methods	deprecated	objc
 method	shipped	-initWithCharacters:length:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	open	-initWithCharactersNoCopy:length:deallocator:	NSString	Fundamentals / Strings / Instance Methods	-	objc
@@ -3099,10 +3099,10 @@ method	shipped	-initWithFormat:locale:	NSString	Fundamentals / Strings / Creatin
 method	shipped	-initWithFormat:locale:arguments:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	-initWithString:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	-initWithUTF8String:	NSString	Fundamentals / Strings / Instance Methods	-	objc
-method	open	-initWithValidatedFormat:validFormatSpecifiers:arguments:error:	NSString	Fundamentals / Strings / Instance Methods	-	objc
-method	open	-initWithValidatedFormat:validFormatSpecifiers:error:	NSString	Fundamentals / Strings / Instance Methods	-	objc
-method	open	-initWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:	NSString	Fundamentals / Strings / Instance Methods	-	objc
-method	open	-initWithValidatedFormat:validFormatSpecifiers:locale:error:	NSString	Fundamentals / Strings / Instance Methods	-	objc
+method	shipped	-initWithValidatedFormat:validFormatSpecifiers:arguments:error:	NSString	Fundamentals / Strings / Instance Methods	-	objc
+method	shipped	-initWithValidatedFormat:validFormatSpecifiers:error:	NSString	Fundamentals / Strings / Instance Methods	-	objc
+method	shipped	-initWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:	NSString	Fundamentals / Strings / Instance Methods	-	objc
+method	shipped	-initWithValidatedFormat:validFormatSpecifiers:locale:error:	NSString	Fundamentals / Strings / Instance Methods	-	objc
 method	shipped	-isEqualToString:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-lengthOfBytesUsingEncoding:	NSString	Fundamentals / Strings / Getting a String’s Length	-	objc
 method	shipped	-lineRangeForRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
@@ -3110,7 +3110,7 @@ method	open	-linguisticTagsInRange:scheme:options:orthography:tokenRanges:	NSStr
 method	shipped	-localizedCaseInsensitiveCompare:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-localizedCaseInsensitiveContainsString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-localizedCompare:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
-method	open	+localizedNameOfStringEncoding:	NSString	Fundamentals / Strings / Working with Encodings	-	objc
+method	shipped	+localizedNameOfStringEncoding:	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 method	open	-localizedStandardCompare:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-localizedStandardContainsString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-localizedStandardRangeOfString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
@@ -3121,7 +3121,7 @@ method	shipped	-lossyCString	NSString	Fundamentals / Strings / Deprecated	deprec
 method	shipped	-lowercaseStringWithLocale:	NSString	Fundamentals / Strings / Changing Case	-	objc
 method	shipped	-maximumLengthOfBytesUsingEncoding:	NSString	Fundamentals / Strings / Getting a String’s Length	-	objc
 method	open	-paragraphRangeForRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
-method	open	+pathWithComponents:	NSString	Fundamentals / Strings / Working with Paths	-	objc
+method	shipped	+pathWithComponents:	NSString	Fundamentals / Strings / Working with Paths	-	objc
 method	shipped	-propertyList	NSString	Fundamentals / Strings / Converting String Contents Into a Property List	-	objc
 method	open	-propertyListFromStringsFileFormat	NSString	Fundamentals / Strings / Converting String Contents Into a Property List	-	objc
 method	shipped	-rangeOfCharacterFromSet:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
@@ -3149,8 +3149,8 @@ method	open	-stringByAppendingPathComponent:conformingToType:	NSString	Fundament
 method	shipped	-stringByAppendingPathExtension:	NSString	Fundamentals / Strings / Working with Paths	-	objc
 method	open	-stringByAppendingPathExtensionForType:	NSString	Fundamentals / Strings / Instance Methods	-	objc
 method	shipped	-stringByAppendingString:	NSString	Fundamentals / Strings / Combining Strings	-	objc
-method	open	-stringByApplyingTransform:reverse:	NSString	Fundamentals / Strings / Transforming Strings	-	objc
-method	open	-stringByFoldingWithOptions:locale:	NSString	Fundamentals / Strings / Folding Strings	-	objc
+method	shipped	-stringByApplyingTransform:reverse:	NSString	Fundamentals / Strings / Transforming Strings	-	objc
+method	shipped	-stringByFoldingWithOptions:locale:	NSString	Fundamentals / Strings / Folding Strings	-	objc
 method	shipped	-stringByPaddingToLength:withString:startingAtIndex:	NSString	Fundamentals / Strings / Combining Strings	-	objc
 method	shipped	-stringByReplacingCharactersInRange:withString:	NSString	Fundamentals / Strings / Replacing Substrings	-	objc
 method	shipped	-stringByReplacingOccurrencesOfString:withString:	NSString	Fundamentals / Strings / Replacing Substrings	-	objc
@@ -3172,7 +3172,7 @@ method	shipped	+stringWithFormat:	NSString	Fundamentals / Strings / Creating and
 method	shipped	+stringWithString:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	+stringWithUTF8String:	NSString	Fundamentals / Strings / Type Methods	-	objc
 method	shipped	+stringWithValidatedFormat:validFormatSpecifiers:error:	NSString	Fundamentals / Strings / Type Methods	-	objc
-method	open	-stringsByAppendingPaths:	NSString	Fundamentals / Strings / Working with Paths	-	objc
+method	shipped	-stringsByAppendingPaths:	NSString	Fundamentals / Strings / Working with Paths	-	objc
 method	shipped	-substringFromIndex:	NSString	Fundamentals / Strings / Dividing Strings	-	objc
 method	shipped	-substringToIndex:	NSString	Fundamentals / Strings / Dividing Strings	-	objc
 method	shipped	-substringWithRange:	NSString	Fundamentals / Strings / Dividing Strings	-	objc
@@ -3193,7 +3193,7 @@ property	shipped	defaultCStringEncoding	NSString	Fundamentals / Strings / Workin
 property	shipped	description	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 property	shipped	doubleValue	NSString	Fundamentals / Strings / Getting Numeric Values	-	objc
 property	shipped	fastestEncoding	NSString	Fundamentals / Strings / Working with Encodings	-	objc
-property	open	fileSystemRepresentation	NSString	Fundamentals / Strings / Working with Paths	-	objc
+property	shipped	fileSystemRepresentation	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	floatValue	NSString	Fundamentals / Strings / Getting Numeric Values	-	objc
 property	shipped	hash	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 property	shipped	intValue	NSString	Fundamentals / Strings / Getting Numeric Values	-	objc
@@ -3210,10 +3210,10 @@ property	shipped	pathExtension	NSString	Fundamentals / Strings / Working with Pa
 property	shipped	precomposedStringWithCanonicalMapping	NSString	Fundamentals / Strings / Normalizing Strings	-	objc
 property	shipped	precomposedStringWithCompatibilityMapping	NSString	Fundamentals / Strings / Normalizing Strings	-	objc
 property	shipped	smallestEncoding	NSString	Fundamentals / Strings / Working with Encodings	-	objc
-property	open	stringByAbbreviatingWithTildeInPath	NSString	Fundamentals / Strings / Working with Paths	-	objc
+property	shipped	stringByAbbreviatingWithTildeInPath	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	stringByDeletingLastPathComponent	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	stringByDeletingPathExtension	NSString	Fundamentals / Strings / Working with Paths	-	objc
-property	open	stringByExpandingTildeInPath	NSString	Fundamentals / Strings / Working with Paths	-	objc
+property	shipped	stringByExpandingTildeInPath	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	stringByRemovingPercentEncoding	NSString	Fundamentals / Strings / Working with URL Strings	-	objc
 property	open	stringByResolvingSymlinksInPath	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	stringByStandardizingPath	NSString	Fundamentals / Strings / Working with Paths	-	objc
