@@ -36,7 +36,7 @@
 #
 # counts by kind:
 #   method     shipped 2066   open  618   struck  244
-#   property   shipped 1206   open  284   struck  146
+#   property   shipped 1215   open  275   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -2659,18 +2659,18 @@ property	shipped	activeProcessorCount	NSProcessInfo	App Support / System Interac
 property	shipped	arguments	NSProcessInfo	App Support / System Interaction / Accessing process information	-	objc
 property	open	automaticTerminationSupportEnabled	NSProcessInfo	App Support / System Interaction / Controlling automatic termination	-	objc
 property	shipped	environment	NSProcessInfo	App Support / System Interaction / Accessing process information	-	objc
-property	open	fullUserName	NSProcessInfo	App Support / System Interaction / Accessing user information	-	objc
+property	shipped	fullUserName	NSProcessInfo	App Support / System Interaction / Accessing user information	-	objc
 property	shipped	globallyUniqueString	NSProcessInfo	App Support / System Interaction / Accessing process information	-	objc
 property	shipped	hostName	NSProcessInfo	App Support / System Interaction / Getting host information	-	objc
-property	open	iOSAppOnMac	NSProcessInfo	App Support / System Interaction / Accessing process information	-	objc
-property	open	iOSAppOnVision	NSProcessInfo	App Support / System Interaction / Accessing process information	-	objc
-property	open	lowPowerModeEnabled	NSProcessInfo	App Support / System Interaction / Determining whether low power mode is enabled	-	objc
-property	open	macCatalystApp	NSProcessInfo	App Support / System Interaction / Accessing process information	-	objc
-property	open	majorVersion	NSProcessInfo	App Support / System Interaction / Getting host information / Version Components	-	objc
-property	open	minorVersion	NSProcessInfo	App Support / System Interaction / Getting host information / Version Components	-	objc
+property	shipped	iOSAppOnMac	NSProcessInfo	App Support / System Interaction / Accessing process information	-	objc
+property	shipped	iOSAppOnVision	NSProcessInfo	App Support / System Interaction / Accessing process information	-	objc
+property	shipped	lowPowerModeEnabled	NSProcessInfo	App Support / System Interaction / Determining whether low power mode is enabled	-	objc
+property	shipped	macCatalystApp	NSProcessInfo	App Support / System Interaction / Accessing process information	-	objc
+property	shipped	majorVersion	NSProcessInfo	App Support / System Interaction / Getting host information / Version Components	-	objc
+property	shipped	minorVersion	NSProcessInfo	App Support / System Interaction / Getting host information / Version Components	-	objc
 property	shipped	operatingSystemVersion	NSProcessInfo	App Support / System Interaction / Getting host information	-	objc
 property	shipped	operatingSystemVersionString	NSProcessInfo	App Support / System Interaction / Getting host information	-	objc
-property	open	patchVersion	NSProcessInfo	App Support / System Interaction / Getting host information / Version Components	-	objc
+property	shipped	patchVersion	NSProcessInfo	App Support / System Interaction / Getting host information / Version Components	-	objc
 property	shipped	physicalMemory	NSProcessInfo	App Support / System Interaction / Getting computer information	-	objc
 property	shipped	processIdentifier	NSProcessInfo	App Support / System Interaction / Accessing process information	-	objc
 property	shipped	processInfo	NSProcessInfo	App Support / System Interaction / Getting the process-information agent	-	objc
@@ -2678,7 +2678,7 @@ property	shipped	processName	NSProcessInfo	App Support / System Interaction / Ac
 property	shipped	processorCount	NSProcessInfo	App Support / System Interaction / Getting computer information	-	objc
 property	shipped	systemUptime	NSProcessInfo	App Support / System Interaction / Getting computer information	-	objc
 property	shipped	thermalState	NSProcessInfo	App Support / System Interaction / Getting the thermal state	-	swift-page
-property	open	userName	NSProcessInfo	App Support / System Interaction / Accessing user information	-	objc
+property	shipped	userName	NSProcessInfo	App Support / System Interaction / Accessing user information	-	objc
 method	shipped	-addChild:withPendingUnitCount:	NSProgress	App Support / Progress / Instance Methods	-	objc
 method	open	+addSubscriberForFileURL:withPublishingHandler:	NSProgress	App Support / Progress / Observing and Controlling File Progress by Other Processes	-	objc
 method	shipped	-becomeCurrentWithPendingUnitCount:	NSProgress	App Support / Progress / Accessing the Current Progress Object	-	objc

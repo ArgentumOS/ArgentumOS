@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <pwd.h>		/* getpwuid(3): the account NAMES, the same source NSFileManager's NSUserName() reads */
 
 /* THIS SYSTEM'S VERSION, in one place, so the string and the comparison cannot disagree. */
 #define FN_OS_MAJOR 1
@@ -139,6 +140,38 @@ static NSString *fn_trimmed_process_string(const char *leaf)
 - (void)setProcessName:(NSString *)name
 {
 	[self fnSetStoredName:name];
+}
+
+/* THE ACCOUNT DATABASE ANSWERS, through the SAME getpwuid(3) NSFileManager's NSUserName()/NSFullUserName()
+ * already read - so the two doors cannot disagree. A uid with no entry, or an entry with no full name,
+ * answers the EMPTY string rather than nil: the header promises a nonnull string, and "" is how "unknown"
+ * is spelled there. */
+- (NSString *)userName
+{
+	struct passwd *pw = getpwuid(getuid());
+
+	if (pw != NULL && pw->pw_name != NULL) {
+		NSString *name = [NSString stringWithUTF8String:pw->pw_name];
+
+		if (name != nil) {
+			return name;
+		}
+	}
+	return @"";
+}
+
+- (NSString *)fullUserName
+{
+	struct passwd *pw = getpwuid(getuid());
+
+	if (pw != NULL && pw->pw_gecos != NULL && pw->pw_gecos[0] != '\0') {
+		NSString *name = [NSString stringWithUTF8String:pw->pw_gecos];
+
+		if (name != nil) {
+			return name;
+		}
+	}
+	return @"";
 }
 
 - (NSArray *)arguments
@@ -259,6 +292,31 @@ NSString * const NSOSF1OperatingSystem = @"NSOSF1OperatingSystem";
 	return NSProcessInfoThermalStateNominal;
 }
 
+/* THE PLATFORM-COMPATIBILITY FLAGS, and each one answers NO because none of the modes EXISTS here - this is a
+ * native Argentum process, not a Mac Catalyst app and not an iOS app running on a Mac or a Vision device, and
+ * this system has no low-power mode to be in. NO is not a placeholder: it is the true answer to "is this
+ * process that kind of app" and "is low-power mode on" on a system where the answer must be no, the same way
+ * -thermalState answers Nominal for a system with no thermal management. */
+- (BOOL)lowPowerModeEnabled
+{
+	return NO;
+}
+
+- (BOOL)macCatalystApp
+{
+	return NO;
+}
+
+- (BOOL)iOSAppOnMac
+{
+	return NO;
+}
+
+- (BOOL)iOSAppOnVision
+{
+	return NO;
+}
+
 - (NSOperatingSystemVersion)operatingSystemVersion
 {
 	NSOperatingSystemVersion version;
@@ -267,6 +325,22 @@ NSString * const NSOSF1OperatingSystem = @"NSOSF1OperatingSystem";
 	version.minorVersion = FN_OS_MINOR;
 	version.patchVersion = FN_OS_PATCH;
 	return version;
+}
+
+/* THE THREE FIELDS OF THE VERSION, each taken from the ONE struct so the parts and the whole cannot drift. */
+- (NSInteger)majorVersion
+{
+	return [self operatingSystemVersion].majorVersion;
+}
+
+- (NSInteger)minorVersion
+{
+	return [self operatingSystemVersion].minorVersion;
+}
+
+- (NSInteger)patchVersion
+{
+	return [self operatingSystemVersion].patchVersion;
 }
 
 - (NSString *)operatingSystemVersionString

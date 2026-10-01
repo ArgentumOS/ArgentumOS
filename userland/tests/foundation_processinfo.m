@@ -22,6 +22,9 @@
  *   proc-unique-strings     TWO globally unique strings, which must DIFFER;
  *   proc-version            this system's own name and version, and the comparison against it —
  *                           including the case that must answer NO.
+ *   proc-user-names         the account database's own names, cross-checked against NSUserName();
+ *   proc-version-components major/minor/patch, cross-checked against -operatingSystemVersion's fields;
+ *   proc-platform-flags     the four compatibility flags, each NO (REASONED — see the block).
  */
 
 #import <Foundation/Foundation.h>
@@ -183,6 +186,55 @@ int main(void)
 			 isEqualToString:@"NSProcessInfoThermalStateDidChangeNotification"] &&
 		      received == 1,
 		      [NSString stringWithFormat:@"state=%d received=%d", (int)state, received]);
+	}
+
+	/* THE USER NAMES, MEASURED against NSFileManager's OWN door for the same account database - so the two
+	 * cannot drift. NSUserName() is nil only when the guest has no account entry, and this header answers the
+	 * empty string there, which the check allows for. */
+	{
+		NSString *user = info != nil ? [info userName] : nil;
+		NSString *full = info != nil ? [info fullUserName] : nil;
+		NSString *accountUser = NSUserName();
+		BOOL agree = (accountUser != nil) ? [user isEqualToString:accountUser]
+						  : (user != nil && [user length] == 0);
+
+		check("proc-user-names",
+		      user != nil && full != nil && agree,
+		      [NSString stringWithFormat:@"user=<%@> userLen=%lu fullLen=%lu NSUserName=<%@>",
+			user, (unsigned long)(user != nil ? [user length] : 0),
+			(unsigned long)(full != nil ? [full length] : 0), accountUser]);
+	}
+
+	/* THE VERSION COMPONENTS against the struct -processInfo itself answers, so the parts and the whole are
+	 * cross-checked rather than a number written twice. */
+	{
+		NSOperatingSystemVersion v = info != nil ? [info operatingSystemVersion]
+						  : (NSOperatingSystemVersion){ 0, 0, 0 };
+		NSInteger major = info != nil ? [info majorVersion] : -1;
+		NSInteger minor = info != nil ? [info minorVersion] : -1;
+		NSInteger patch = info != nil ? [info patchVersion] : -1;
+
+		check("proc-version-components",
+		      info != nil && major == v.majorVersion && minor == v.minorVersion &&
+		      patch == v.patchVersion && major >= 1,
+		      [NSString stringWithFormat:@"major=%ld minor=%ld patch=%ld vs struct %ld.%ld.%ld",
+			(long)major, (long)minor, (long)patch,
+			(long)v.majorVersion, (long)v.minorVersion, (long)v.patchVersion]);
+	}
+
+	/* THE PLATFORM-COMPATIBILITY FLAGS. REASONED, NOT MEASURED: this is a native Argentum process, so it is
+	 * NOT a Catalyst app, NOT an iOS app on a Mac or a Vision device, and this system has no low-power mode -
+	 * every flag is NO, the truthful state rather than a placeholder. */
+	{
+		BOOL lowPower = [info lowPowerModeEnabled];
+		BOOL catalyst = [info macCatalystApp];
+		BOOL onMac = [info iOSAppOnMac];
+		BOOL onVision = [info iOSAppOnVision];
+
+		check("proc-platform-flags",
+		      info != nil && !lowPower && !catalyst && !onMac && !onVision,
+		      [NSString stringWithFormat:@"lowPower=%d catalyst=%d onMac=%d onVision=%d",
+			(int)lowPower, (int)catalyst, (int)onMac, (int)onVision]);
 	}
 
 	printf("FOUNDATION-PROCESSINFO RESULT ok=%d fail=%d\n", okc, failc);

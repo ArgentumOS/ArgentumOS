@@ -76,6 +76,12 @@ typedef enum {
 - (int)processIdentifier;
 - (NSString *)processName;
 - (void)setProcessName:(NSString *)name;
+/* THE USER THE PROCESS RUNS AS: the account database's own answers, which NSFileManager's NSUserName() and
+ * NSFullUserName() already read through getpwuid(3). The SAME entries, so the two doors cannot disagree. A
+ * uid the database does not know, or an entry with no full name, leaves the name empty rather than nil —
+ * the nonnull shape this header promises for a string property. */
+- (NSString *)userName;
+- (NSString *)fullUserName;
 - (NSString *)globallyUniqueString;
 - (NSString *)hostName;
 - (NSString *)operatingSystemName;
@@ -85,8 +91,23 @@ typedef enum {
  * A caller that reads the property or observes the name compiles and gets a truthful answer - "nominal" is what
  * a system with no thermal management is. */
 - (NSProcessInfoThermalState)thermalState;
+/* THE PLATFORM-COMPATIBILITY FLAGS, and NONE of them names a mode this OS HAS: the process is a native
+ * Argentum process, not a Mac Catalyst app and not an iOS app running on a Mac or a Vision device, and this
+ * system has no low-power mode to be in. So each answers its own NO — the honest state of a system that never
+ * enters the mode, the same choice -thermalState makes for a system with no thermal management. Apple spells
+ * the accessors with an `is` prefix (isLowPowerModeEnabled, isMacCatalystApp, isiOSAppOnMac, isiOSAppOnVision);
+ * each door here is named by its PROPERTY name, which is the selector the ledger records. */
+- (BOOL)lowPowerModeEnabled;
+- (BOOL)macCatalystApp;
+- (BOOL)iOSAppOnMac;
+- (BOOL)iOSAppOnVision;
 - (NSString *)operatingSystemVersionString;
 - (NSOperatingSystemVersion)operatingSystemVersion;
+/* THE VERSION COMPONENTS, one field each, so a caller need not take the struct apart. They are the SAME three
+ * numbers -operatingSystemVersion answers, read from the one place this file keeps them. */
+- (NSInteger)majorVersion;
+- (NSInteger)minorVersion;
+- (NSInteger)patchVersion;
 - (BOOL)isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion)version;
 - (NSUInteger)processorCount;
 - (NSUInteger)activeProcessorCount;

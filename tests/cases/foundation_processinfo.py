@@ -33,7 +33,9 @@ CHECKS = ("proc-shared-instance", "proc-identifier", "proc-name-and-arguments",
           "proc-environment", "proc-counts", "proc-host-and-uptime",
           "proc-unique-strings", "proc-version",
           # §62.98: the vocabulary of -operatingSystemName and the thermal state that had no door.
-          "proc-operating-system-names", "proc-thermal-state-and-its-notification")
+          "proc-operating-system-names", "proc-thermal-state-and-its-notification",
+          # §65: the account names, the version components, and the four platform-compatibility flags.
+          "proc-user-names", "proc-version-components", "proc-platform-flags")
 
 
 class Case(BaseCase):
