@@ -183,7 +183,14 @@ int main(void)
 		[formatter setNumberStyle:NSNumberFormatterDecimalStyle];
 		[formatter setAlwaysShowsDecimalSeparator:YES];
 		text = [formatter stringFromNumber:[NSNumber numberWithInt:1234]];
-		check("nf-always-decimal", text != nil && [text isEqualToString:@"1,234.0"], text);
+		/* ⚠ THE EXPECTED VALUE IS THE GUEST'S, MEASURED — NOT REASONED, WHICH IS WHAT THE FIRST VERSION DID. ICU
+		 * renders the decimal separator and NOTHING after it when alwaysShowsDecimalSeparator is set and no minimum
+		 * fraction digit is — which is Apple's own wording for this property ("the separator is always shown, even
+		 * when there are no digits after it"). The first version expected "1,234.0" and the guest answered "1,234.";
+		 * the agent's report had flagged that expectation as reasoned rather than observed, and the guest settled it.
+		 * The FRACTION-DIGIT count is a different property and is deliberately not set here, so this check measures
+		 * the separator rule alone. */
+		check("nf-always-decimal", text != nil && [text isEqualToString:@"1,234."], text);
 
 		[formatter setAlwaysShowsDecimalSeparator:NO];
 		[formatter setNumberStyle:NSNumberFormatterDecimalStyle];
