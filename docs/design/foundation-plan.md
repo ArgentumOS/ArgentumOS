@@ -309,7 +309,15 @@ opened. The mechanical half of that (no such header is ever imported, and
 **Out of bounds:**
 
 - any source file of GNUstep (`libs-base`, `libs-gui`), ObjFW, or Apple's
-  swift-corelibs-foundation. Not "copied with attribution" — **not read**;
+  swift-corelibs-foundation. Not "copied with attribution" — **not read**.
+  **⚠ AMENDED 2026-10-01 (the user's grant): the published DOCUMENTATION of OBJFW is now in bounds**,
+  joining GNUstep's (recorded in §63.41) at the same secondary-spec status Apple's documentation has
+  always had. **THE PROSE, NOT THE REPRODUCED DEFINITION:** where a page merely reproduces a header's
+  text, read the description and cite the page that was used. **WHAT DID NOT MOVE: the source trees and
+  the headers themselves** (`.h`/`.m` in `libs-base`, `libs-gui`, and ObjFW's — including ObjFW's
+  source VIEWER, which is a header and not a documentation page), which stay unread; the enforcement
+  below is unchanged, because a documentation page is not an imported header. The amendment was made
+  for a COVERAGE measurement (§63.44) and licenses no behaviour taken from either project's code;
 - **`objc/Object.h`** from the very runtime we ship. It declares a legacy root
   class named `Object`, which is why our root class cannot be declared in a
   translation unit that sees it (measured: `duplicate interface definition for
@@ -15967,6 +15975,93 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 `--families --write` (rewrote the family table and the ledger) → `--check` **consistent** → `--unimplemented`
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
+
+## §63.44 — HOW WE STAND AGAINST OTHER FOUNDATIONS: GNUSTEP MEASURED, OBJFW READ, AND ONE AMENDMENT (2026-10-01)
+
+**THE QUESTION WAS "HOW ARE WE FARING", AND IT PRODUCED A MEASUREMENT, AN AMENDMENT, AND A CORRECTION.**
+The comparison target has never been ambiguous — §11's bar is 100% fidelity to **Apple's** documented surface,
+and that is the ledger (`--check` today: symbols 3,225 rows / **0 open**; selectors 4,564 rows / methods 2151
+shipped · 509 open · 268 struck, properties 1266 · 224 · 146 → **733 open**). **GNUstep and ObjFW are not the
+bar; they are the only two independent implementations of the same idea that can be looked at, and looking at
+them answers exactly one useful question: what does the world consider Foundation that Apple's index does not
+lead us to.**
+
+**⚠ THE AMENDMENT, RECORDED IN §2 BEFORE ANYTHING WAS READ.** The wall said *"any source file of … ObjFW … not
+read"*, and the grant that opened **GNUstep's documentation** (§63.41) had closed by naming ObjFW with the things
+that stay out. **The user's grant of 2026-10-01 widens the DOCUMENTATION half to ObjFW** — its Doxygen API
+reference, secondary-spec status, **prose preferred over a reproduced declaration** — and **moves nothing else**:
+ObjFW's source tree, its headers, and **its source VIEWER** (`/doc/…/src/…`, `/file?name=src/…`) stay unread,
+which is why §2 spells the viewer out as a header rather than a documentation page.
+
+**GNUstep Base, measured (its published autogsdoc reference — 151 class pages fetched):**
+
+| | GNUstep documents | we declare |
+|---|---|---|
+| classes | **222** | **221** |
+| protocols | 36 | 39 |
+| GNUstep has, we don't | **32** | — |
+| we have, GNUstep doesn't document | — | **31** |
+
+**Nineteen of the 32 are THIS PLAN'S OWN DECLINES rather than gaps** — AppleScript/Scripting 9
+(`NSAppleEventDescriptor`/`Manager`, `NSAppleScript`, `NSObjectScripting`, the seven `NSScript*`), XPC 4,
+Spotlight metadata 4, Bonjour 2 — which is §62.90's scope decision arriving from a second direction and
+confirming it. Of the remaining 13, **`NSPersonNameComponentsFormatter` is the one real lead** (we ship
+`NSPersonNameComponents` and not its formatter); the rest are GNUstep-internal (`NSTimeZoneDetail`,
+`NXConstantString` vs our `NSConstantString`), Apple-obsolete (`NSGarbageCollector`, `NSDeserializer`/
+`NSSerializer`), or substrate we do not have (`NSClassDescription`, `NSUserScriptTask`,
+`NSItemProviderReadingWriting`). **The 31 in the other direction are the newer Apple API GNUstep never
+implemented** (`NSURLSessionWebSocketTask`/`Message`, `NSURLSessionTaskMetrics`, `NSUnitInformationStorage`,
+`NSMorphology`(+pronouns), `NSTermOfAddress`, `NSDataDetector`, `NSFileProviderService`, `NSFileSecurity`,
+`NSOrderedCollectionDifference`/`Change`, `NSPresentationIntent`, `NSRelativeDateTimeFormatter`,
+`NSListFormatter`, `NSInflectionRule`, `NSPurgeableData`, `NSSecureUnarchiveFromDataTransformer`) — the half a
+GNUstep comparison cannot see at all.
+
+**⚠ AND THE SELECTOR-LEVEL NUMBER IS A LOWER BOUND, NOT A GAP — SAID SO RATHER THAN QUOTED.** The same
+measurement extracts **2,898 documented selector names** from those pages and finds **1,279 of them declared and
+shipped by us (44.1 %)**, with **251** already on our work list as open. The remaining **1,368** are names our
+ledger does not contain — **and that bucket is not trustworthy**, because it contains names Apple certainly
+documents (`+archivedDataWithRootObject:requiringSecureCoding:error:`, `+attributeWithName:URI:stringValue:`)
+while the join demonstrably works for others (`+URLByResolvingAliasFileAtURL:options:error:`, which is our own
+open NSURL row). **Until a normalization pass reconciles autogsdoc's owner attribution and `$`/`,` spelling
+against Apple's index path, the honest sentence is "we ship AT LEAST 44 % of GNUstep Base's documented selector
+names", not "we are missing 56 %".**
+
+**ObjFW, read (its published Doxygen reference — documentation pages only):**
+ * **VERIFIED FROM ITS OWN DOCUMENTATION: ObjFW IS NOT A COCOA REIMPLEMENTATION.** Its API is a separate,
+   `OF`-prefixed framework — `OFObject` as the root class, `OFString`, `OFNumber` — with an explicit **NS→OF
+   bridging layer** rather than name-for-name compatibility, and `OFIRI` in place of `NSURL`. **THAT IS WHY THE
+   USER'S SECOND DECISION — SEMANTIC COVERAGE, NOT NAME MATCHING — IS THE ONLY MEANINGFUL SHAPE:** a
+   name-for-name join against ObjFW would be near-empty and would say nothing.
+ * **Its documented type count is ~323 (≈243 interfaces, 46 protocols, 17 categories, 17 structs)** against our
+   221 Foundation classes.
+ * **Subsystems it documents that we have NO Foundation API for:** raw sockets/addresses, DNS resolution, TLS
+   and X.509, cryptographic **hashing/HMAC/PBKDF2/Scrypt**, **ZIP/TAR/LHA/Zoo archives**, a 2-D graphics and PDF
+   layer, and game controllers.
+ * **⚠ BUT THREE OF THOSE ARE TIER ARTEFACTS, NOT GAPS, AND THE CORRECTION IS THE POINT:** ObjFW is ONE
+   framework spanning what this project deliberately SPLITS — `userland/CoreGraphics/` (22 headers) and
+   `userland/AppKit/` (7 headers) are where our drawing lives, and `-lz` backs `NSData`'s F12 compression
+   codecs (`-compressedDataUsingAlgorithm:`, `NSCompressionFailedError`). **So "ObjFW has 2-D graphics" and "we
+   lack Deflate/GZIP" are both false as stated**; the true residue is narrower: **no ZIP/TAR container support,
+   no crypto/hash surface, no raw socket or DNS API *in Foundation*, and no game-controller layer anywhere.**
+   *(Verified in the tree by grep, not by header filename — the subagent that measured this flagged that its own
+   our-side negatives rested on filenames, and that caveat is what this bullet discharges.)*
+ * **And the direction it cannot see is the same one GNUstep could not:** formatters/units/measurement, regular
+   expressions, predicates and expressions, distributed objects and the port family, KVO, the XML tree, and
+   decimal arithmetic are ours and have no ObjFW counterpart.
+ * **Documented divergences:** the ObjFW docs show a retain/release model of its own, an exception model that
+   carries its own base class rather than an NSError bridge, and its own naming for the primitives
+   (`OFConstantString`, `OFBlock`, `OFNumber`, `OFIRI`).
+ * **NOT DETERMINABLE from documentation alone, and therefore not claimed:** ObjFW's exact ARC stance, its
+   literal/boxing syntax, and the precise behavioural semantics behind several members.
+
+**WHAT THIS CHANGES ABOUT THE WORK: NOTHING, AND THAT IS THE ANSWER TO "HOW ARE WE FARING".** The two
+independent implementations agree with us far more than they differ — GNUstep's disagreements are 19 of its own
+leads arriving as our recorded declines and 1 real gap; ObjFW's are three tier artefacts, four genuinely absent
+subsystems, and a naming philosophy. **Neither moves the work list, because the work list is Apple's surface and
+the open count is 733 selectors — and both comparisons are structurally blind to the half where we are ahead**
+(the 31 classes GNUstep lacks, the whole NSURLSession/formatter/predicate/KVO mass ObjFW lacks). **AND ONE LEAD
+CAME OUT OF IT: `NSPersonNameComponentsFormatter`, the single class two implementations both name and we do not
+ship.**
 
 ## §63.43 — NSCoder'S TEN SEQUENTIAL DOORS: THE WIRE LEARNS TO SPELL A STRUCT, AND A REASON THAT WAS ONCE A FACT (2026-10-01)
 
