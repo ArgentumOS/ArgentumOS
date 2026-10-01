@@ -15,9 +15,8 @@ literal:
   * `owned`       — a long literal is a real object, and equals an owned string;
   * `mixed`       — a tagged string and an owned one are the SAME value (equal
                     and equal-hashing), which is what makes them interchangeable;
-  * `utf8`        — `-length` counts BYTES and `-characterCount` counts
-                    characters (the user's decision), with `-characterAtIndex:`
-                    indexing characters;
+  * `utf8`        — `-length` counts UTF-16 CODE UNITS (the byte count has its
+                    own door), with `-characterAtIndex:` indexing units;
   * `mutable`     — `NSMutableString` mutation, and `-copy` returning a snapshot;
   * `description` — the root class's names its class, an override wins, and a
                     string describes itself;

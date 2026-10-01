@@ -316,7 +316,7 @@ int main(void)
 		      [c hour] == 5 && [c minute] == 30 && [c day] == 1 &&
 		      [[cal timeZone] isEqualToTimeZone:ist] &&
 		      [[cal description] length] > 0 &&
-		      [[cal copy] isEqualToCalendar:cal],
+		      [[cal copy] isEqual:cal],
 		      "the same instant is 05:30 in +05:30, and the zone is the calendar's");
 		{
 			/* Bound and guarded: -setTimeZone: RAISES on nil (a calendar always
@@ -426,13 +426,13 @@ int main(void)
 		NSCalendar *twin = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian];
 
 		check("cross-tu",
-		      [theirCal isEqualToCalendar:twin] &&
+		      [theirCal isEqual:twin] &&
 		      /* AND THE ZONE IS PART OF A CALENDAR'S IDENTITY: `cal` was set to the FIXED-offset
 		       * UTC zone (whose name is "GMT"), the twin sits in the NAMED zone the system
 		       * reports, and Cocoa compares zones by NAME — so these are two different
 		       * calendars even though the offsets agree. That was already Apple's rule; F13.7a
 		       * is what made it true here (before the database, both names were "GMT"). */
-		      ![theirCal isEqualToCalendar:cal] &&
+		      ![theirCal isEqual:cal] &&
 		      [theirZone secondsFromGMT] == 19800 &&
 		      [c year] == 2023 && [c month] == 11 && [c day] == 14 &&
 		      [c hour] == 22 && [c minute] == 13 && [c second] == 20,
@@ -442,8 +442,8 @@ int main(void)
 		      [[NSString stringWithFormat:
 				@"twinEqual=%d calDiffers=%d twinZone=%@ calZone=%@ zoneOffset=%ld "
 				 "fields=%ld-%02ld-%02ld %02ld:%02ld:%02ld",
-				(int)[theirCal isEqualToCalendar:twin],
-				(int)![theirCal isEqualToCalendar:cal],
+				(int)[theirCal isEqual:twin],
+				(int)![theirCal isEqual:cal],
 				[[twin timeZone] name], [[cal timeZone] name],
 				(long)[theirZone secondsFromGMT],
 				(long)[c year], (long)[c month], (long)[c day],

@@ -61,8 +61,11 @@ NS_ASSUME_NONNULL_BEGIN
 + (nullable id)proxyWithTarget:(nullable id)target connection:(NSConnection *)connection;
 
 - (nullable NSConnection *)connectionForProxy;
+/* ONLY THE SETTER IS APPLE'S (§63.59): the macOS 14.5 SDK's NSDistantObject.h declares
+ * `-setProtocolForProxy:` and no getter, so `-protocolForProxy` was this library's own name and is gone.
+ * Nothing is lost - this file's own readers (the -respondsToSelector: and method-signature doors) take the
+ * ivar directly, and a caller that wants the protocol is the caller that set it. */
 - (void)setProtocolForProxy:(nullable Protocol *)aProtocol;
-- (nullable Protocol *)protocolForProxy;
 
 @end
 

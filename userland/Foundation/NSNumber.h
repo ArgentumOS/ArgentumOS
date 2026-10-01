@@ -128,8 +128,9 @@ NS_ASSUME_NONNULL_BEGIN
 /* THE DECIMAL CASE (W3). NSDecimal is 44 bytes and this class's store is an 8-byte scalar union, so the
  * CREATION side is served by NSDecimalNumber — which is what Cocoa does, and what -initWithDecimal: says
  * in the implementation. -decimalValue converts from whatever scalar was stored; the rule is documented
- * there too. */
-+ (NSNumber *)numberWithDecimal:(NSDecimal)decimal;
+ * there too. +numberWithDecimal: STOOD HERE and is GONE (§63.59): it was a second spelling of
+ * NSDecimalNumber's +decimalNumberWithDecimal:, answered the same class, and Apple declares no decimal
+ * factory on NSNumber at all. */
 - (id)initWithDecimal:(NSDecimal)decimal;
 - (NSDecimal)decimalValue;
 

@@ -1240,12 +1240,14 @@ instead of `(NSUInteger)-1`, which never equalled it. `-compare:` returns
 `+allocWithZone:` (the no-zones decision) and `-isProxy`.
 
 **Deviations that stay deliberate** (they were before the audit too): `-length`
-counts BYTES and `-characterCount`/`-characterAtIndex:` count CHARACTERS (the
-user's decision; Cocoa's `-length` is UTF-16 code units); `-objectAtIndex:` out
+⚠ **CORRECTED, §63.59 — this sentence said `-length` counts BYTES, and that has been FALSE since
+W1 slice 3: `-length` counts UTF-16 CODE UNITS (Apple's contract, `NSString.h:281`), and the
+`-characterCount` it paired with — this library's own addition, whose nearest Apple name is `-length` —
+has been DELETED.** `-objectAtIndex:` out
 of range returns nil where Cocoa raises `NSRangeException` (F4 revisits);
 `-description` shapes are one-line. **Names that are ours, not the contract:**
-`NSOwnedString`, `NSTinyString`, `-byteAtIndex:`, `-characterCount`,
-`-appendUTF8String:`.
+`NSOwnedString`, `NSTinyString`, `-byteAtIndex:`,
+`-appendUTF8String:` — and `-characterCount`, which stood in this list, is DELETED (§63.59).
 
 ## The hard rule (2026-09-17): a class passes only when its public API is complete
 
@@ -1271,12 +1273,13 @@ file variants wait on `NSError` (F4), and forwarding — `-forwardInvocation:` a
 `-forwardingTargetForSelector:` — now waits only on `NSInvocation` and the x86-64
 marshalling it needs, since `NSMethodSignature` landed at stage F's first half.
 
-**Declared deviations stay allowed, but are stated:** `-length` counts BYTES and
-`-characterCount` counts CHARACTERS (the user's decision; Cocoa's `-length` is
-UTF-16 code units); NO ZONES (`NSZone` is an incomplete type, `-zone` answers
+**Declared deviations stay allowed, but are stated:** ⚠ **CORRECTED, §63.59 — `-length` counts
+UTF-16 CODE UNITS (Apple's contract, and it has since W1 slice 3); the "counts BYTES" claim this line carried
+was false, and §63.58 wrote it into a record as a GROUND. `-characterCount` has been DELETED.** NO ZONES (`NSZone` is an incomplete type, `-zone` answers
 NULL, `+allocWithZone:` ignores its argument); `-description` shapes are
 one-line. Names that are OURS rather than the contract: `NSOwnedString`,
-`NSTinyString`, `-byteAtIndex:`, `-characterCount`, `-appendUTF8String:`.
+`NSTinyString`, `-byteAtIndex:`, `-appendUTF8String:` — and `-characterCount`, which stood in this
+list, is DELETED (§63.59).
 
 **Order of work:** COMPLETE. `NSObject`, `NSNumber`, `NSString`/`NSMutableString`,
 both collection families and `NSData`/`NSDate` all pass their api-complete gates.
@@ -15978,6 +15981,101 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 `--families --write` (rewrote the family table and the ledger) → `--check` **consistent** → `--unimplemented`
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
+
+## §63.59 — FOUR CONVENIENCE SPELLINGS LEAVE, AND THE GROUND UNDER ONE OF THEM WAS FALSE (2026-10-01)
+
+**WHAT LANDED (user decision `dec-d2dfbe0c080f14c2`, "delete outright and rewrite every caller, probes
+included"; the unit chosen by `dec-bf2fa8dfb0e2f17d`): FOUR of this library's own names are gone** —
+`NSCalendar -isEqualToCalendar:`, `NSNumber +numberWithDecimal:`, `NSDistantObject -protocolForProxy` and
+`NSString -characterCount` — and **the fourth one's recorded ground was WRONG, which this unit corrects in
+place rather than inherit.**
+
+**MEASURED: `rm -rf .build/host/obj && make host-foundation` exit 0, ZERO errors and ZERO new warnings.** Six
+warnings are emitted and every one is pre-existing, proved rather than asserted: `NSOrderedCollectionDifference.m`
+(the library's only one, a generics-parameterization warning) and `foundation_core_support.m` are byte-identical
+to HEAD under `git diff --quiet`, and `foundation_calendar.m`'s two come from lines 459-460 while its diff is a
+pure line-for-line replacement of five single lines. **`make host-foundation-run`: 54 probes, one red** —
+`foundation_nsvalue`'s `cg-spelled-geometry-doors-are-not-on-foundation-s-nsvalue` (see below). **`make testimg`
+exit 0; `make test TESTS='foundation_string,foundation_calendar,foundation_decimalnumber,foundation_value,
+foundation_nsvalue'` → `TESTS-OK 5/5 case(s), 30/30 check(s) in 18s`,** the probes' own tallies
+`FOUNDATION-STRING 155/155`, `FOUNDATION-CALENDAR 22/22`, `FOUNDATION-DECIMALNUMBER 9/9`,
+`FOUNDATION-NSVALUE 14/14`, `FOUNDATION-VALUE 31/31`. The ledger is unmoved — none of the four names was ever
+Apple's — which is again the quiet shape of a deletion that removes an EXTRA rather than a shipment.
+
+**THE FOUR DELETIONS, AND WHY EACH IS A SPELLING RATHER THAN A CAPABILITY** (each settled by asking the corpus
+for **the selector**, not for the word, against `/tmp/mac145` + `/tmp/sdk`):
+ * **`NSCalendar -isEqualToCalendar:`** — absent, while `isEqualToDate` and `isEqualToTimeZone` are present. Its
+   whole body was the comparison and **`-isEqual:` was its ONLY caller**, so the body MOVED into `-isEqual:`
+   and the name is gone. The typed local in the folded version is load-bearing: on an `id` receiver,
+   `[other firstWeekday] == _firstWeekday` compares a POINTER with an INTEGER, i.e. `-Wint-conversion` on a
+   header the campaign requires to be warning-free.
+ * **`NSNumber +numberWithDecimal:`** — absent (`decimalNumberWithDecimal` present, `NSDecimalNumber.h:59`).
+   It answered `[[NSDecimalNumber alloc] initWithDecimal:]`, so the class it returned was already
+   NSDecimalNumber — and the probe had been ASSERTING that (`isKindOfClass:`), which is the same redundancy
+   report §63.58's equality pair was. The call site now names Apple's factory directly.
+ * **`NSDistantObject -protocolForProxy`** — absent; the SDK's `NSDistantObject.h` declares
+   **`-setProtocolForProxy:` and no getter**, so only the setter is Apple's. Nothing is lost: the ivar is read
+   by this file's own `-respondsToSelector:` and method-signature doors.
+ * **`NSString -characterCount`** — `characterCount` is 0 occurrences in both corpora.
+
+**⚠⚠ AND THE UNIT'S REAL CONTENT IS A CORRECTION, BECAUSE §63.58 RECORDED A FALSE GROUND AND TWO PLAN
+SENTENCES BACKED IT.** §63.58 wrote that `-characterCount` "is the workaround for THIS LIBRARY'S OWN
+DEVIATION — `-length` counts BYTES here, where Apple's counts UTF-16 units". **`-length` has counted UTF-16
+CODE UNITS since W1 slice 3** — `NSString.h:281` says so in the declaration itself — and `NSOwnedString
+-length` returns `_length`, the unit count, while `-characterCount` was the one walking `_units` to fold
+surrogate pairs. So it was never a workaround for a deviation: **the deviation it supposedly worked around had
+already been RETIRED**, and what remained was an addition with no Apple equivalent whose nearest Apple name is
+`-length`. **The three sentences carrying the false claim are corrected IN PLACE with a §63.59 marker** — §9's
+"deviations that stay deliberate", §11's "declared deviations", and `NSString.m`'s index-space comment — the
+treatment §63.44 gave §2. **THE LESSON IS §63.43's, PAID AGAIN: a stale "current state" sentence in the plan is
+not inert, it is *reusable*, and here it was reused as a GROUND in a record that then shaped a decision.**
+
+**AND THE DELETION COSTS NO CAPABILITY, WHICH IS THE MEASUREMENT THAT MAKES IT SAFE.**
+`-enumerateSubstringsInRange:options:usingBlock:` IS implemented (`NSString.m:3792`), and
+`NSStringEnumerationByComposedCharacterSequences` is the option Apple documents for exactly this — so a caller
+that wants a character count iterates composed sequences through **Apple's own door**. And the tree had NO
+internal caller of `-characterCount` anywhere (measured, unfiltered grep across `userland/`): the only sites
+were the two concrete subclasses, the base's named refusal, and the probes.
+
+**⚠ AND THE SWEEP FOUND A FOURTH PLACE, WHICH §63.58 HAD NAMED BUT THIS UNIT CONFIRMED THE HARD WAY.**
+Deleting a door means its declarations and bodies, its CALL SITES, and the probes' INVENTORY LISTS (§63.58's
+trap) — and the fourth: **A FILE-STATIC THAT ONLY THE DELETED DOOR USED.** `NSConstantString -characterCount`
+was `utf8_count_characters()`'s ONLY caller, so leaving the static behind is `-Wunused-function`, i.e. a NEW
+warning on the rebuild the campaign treats as a failure. It is deleted with the door. **The control case is
+`NSTinyString`, whose `-characterCount` used `tiny_length` — which `-length` ALSO uses — so that helper stays.**
+A deletion's blast radius is not "the names it mentions" but "what only it reached".
+
+**AND ONE INSTRUMENT FINDING, WHICH CHANGES WHAT THE NEXT RESIDUES UNIT MAY TRUST: THE CORPUS HAS NO
+`NSNumber.h`.** `/tmp/mac145` and `/tmp/sdk` both carry `NSNumberFormatter.h` and no `NSNumber.h`, so that
+owner's bucket comes from `declared_anywhere`'s whole-corpus text search rather than from its own header — and
+that search is **sign-blind and owner-blind**. MEASURED CONSEQUENCE: this header declares
+`- (id)initWithDecimal:(NSDecimal)` on `NSNumber`, Apple declares it only on `NSDecimalNumber`, and the tool
+does NOT report it, because the bare token `initWithDecimal` occurs in `NSDecimalNumber.h`. `+numberWithDecimal:`
+was reported only because no `numberWithDecimal` exists anywhere. **So `-initWithDecimal:` is OUTSTANDING and is
+NOT touched here** — it is the instrument's blind spot, not a settled row, and settling it means asking the
+corpus the per-class question ("is this selector Apple's on THIS class?") rather than the token question.
+
+**⚠ AND THE ONE HOST RED, WHICH IS THE GUEST'S GREEN: `cg-spelled-geometry-doors-are-not-on-foundation-s-nsvalue`
+FAILS on the host and PASSES in the guest** (`FOUNDATION-NSVALUE RESULT ok=14 fail=0`). It is not this unit's:
+the probe is byte-identical to HEAD, the ten doors it denies are defined by
+`userland/CoreGraphics/NSValueCGGeometry.m`, and the host probe links `-lcoregraphics` — so the category is
+registered at load and `-respondsToSelector:` answers YES. §63.53's own record already says this check "turns
+the GUEST red", so the host half was never the one being asserted; recorded here because a host suite with one
+red is easy to misread as a regression.
+
+**WHAT ALSO CAME OUT OF THE RECON, AND WHY TWO OF THE RESIDUE'S NAMES ARE NOT DELETIONS.** `NSTimeZone
+-initWithSecondsFromGMT:` and `NSRegularExpression -indexOfCaptureGroupNamed:` sit in the same bucket and are
+NOT convenience spellings: each is the INTERNAL SEAM behind an Apple door — the first is
+`+timeZoneForSecondsFromGMT:`'s own callee (four internal call sites), the second is what
+`-[NSTextCheckingResult rangeWithName:]` calls FROM ANOTHER FILE, because our POSIX ERE engine has no named
+groups and the name→index map belongs to the pattern. Deleting either breaks Apple's door. **They belong to
+§63.56's MAKE PRIVATE group, and the cross-file one needs an internal header (the `FNKeyedWire.h` pattern)
+rather than a class extension** — a build-graph decision, named here so the make-private unit starts from it
+instead of discovering it at the link line.
+
+**WHAT IS LEFT OF THE RESIDUE: 29 names**, and the user's decision governs all of them. The make-private group
+is next (§63.56's list, with the two seams above folded into it), then the settled-but-unwritten
+`-initWithDecimal:` question.
 
 ## §63.58 — TWO CONVENIENCE SPELLINGS LEAVE, AND ONE OF THEM WAS IN A PROBE'S INVENTORY LIST (2026-10-01)
 

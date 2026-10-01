@@ -9,7 +9,7 @@
  *   tiny        a SHORT literal is a tagged pointer, decoded from the tag
  *   owned       a LONG literal and an owned string are the same value
  *   mixed       a TAGGED string and an owned one are the same value (and hash)
- *   utf8        -length counts BYTES, -characterCount characters
+ *   utf8        -length counts UTF-16 CODE UNITS, and the byte count has its own door
  *   mutable     mutation works, and -copy is a snapshot
  *   description the root class's, an override, and a string's own
  *   cross-tu    a constant string that came from the other unit
@@ -57,7 +57,7 @@ int main(void)
 	{
 		NSString *c = @"hello";
 
-		check("tiny", [c length] == 5 && [c characterCount] == 5 &&
+		check("tiny", [c length] == 5 &&
 		      strcmp([c UTF8String], "hello") == 0 &&
 		      [c isKindOfClass:[NSString class]],
 		      "a 5-character literal decodes from its tag");
@@ -85,24 +85,24 @@ int main(void)
 		      "a TAGGED string and an owned one are one value");
 	}
 
-	/* The documented UTF-8 contract: bytes for -length, characters for
-	 * -characterCount, and -characterAtIndex: indexing CHARACTERS. Built from
+	/* The documented contract: -length counts UTF-16 CODE UNITS, the byte count has its own door, and
+	 * -characterAtIndex: indexing UNITS. Built from
 	 * explicit bytes so no source-escape ambiguity is involved. */
 	{
 		static const char bytes[] = { 'h', (char)0xC3, (char)0xA9, 'l', 'l', 'o', 0 };
 		NSString *u = [NSString stringWithUTF8String:bytes];
 
-		/* -length IS UTF-16 CODE UNITS NOW (W1 slice 3, Apple's contract), and the
+		/* -length IS UTF-16 CODE UNITS (W1 slice 3, Apple's contract), and the
 		 * BYTE count has its own door. Both are asserted, because the difference
 		 * between them is the whole point of the unit. */
-		check("utf8", [u length] == 5 && [u characterCount] == 5 &&
+		check("utf8", [u length] == 5 &&
 		      [u lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 6 &&
 		      [u characterAtIndex:1] == 0xE9 &&
 		      [[u substringWithRange:NSMakeRange(1, 1)] isEqualToString:@"\xC3\xA9"] &&
 		      [[u substringFromIndex:1] isEqualToString:@"\xC3\xA9llo"] &&
 		      [u rangeOfString:@"llo"].location == 2 &&
 		      strcmp([u UTF8String], bytes) == 0,
-		      "-length 5 UNITS (6 BYTES), -characterCount 5 CHARACTERS, and the ranges index units");
+		      "-length 5 UNITS (6 BYTES), and the ranges index units");
 	}
 
 	/* Mutation, and the snapshot rule for -copy of a mutable string. */
@@ -175,7 +175,6 @@ int main(void)
 			"initWithFormat:arguments:",
 			"initWithData:encoding:",
 			"length",
-			"characterCount",
 			"byteAtIndex:",
 			"characterAtIndex:",
 			"UTF8String",
@@ -525,7 +524,7 @@ int main(void)
 		      [[@"MiXeD" uppercaseString] isEqualToString:@"MIXED"] &&
 		      [[@"MiXeD" lowercaseString] isEqualToString:@"mixed"] &&
 		      [[@"hello world" capitalizedString] isEqualToString:@"Hello World"] &&
-		      [accented length] == 5 && [accented characterCount] == 5 &&
+		      [accented length] == 5 &&
 		      [accented lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 6 &&
 		      [[@"abcdef" substringFromIndex:3] isEqualToString:@"def"] &&
 		      [[@"abcdef" substringToIndex:2] isEqualToString:@"ab"] &&
@@ -657,7 +656,7 @@ int main(void)
 							     freeWhenDone:NO];
 		[borrowed appendString:@"!"];
 		check("characters-family",
-		      s != nil && [s length] == 4 && [s characterCount] == 3 &&
+		      s != nil && [s length] == 4 &&
 		      [s characterAtIndex:1] == 0xD83D && [s characterAtIndex:2] == 0xDE00 &&
 		      [s lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 6 &&
 		      strcmp([s UTF8String], "h\xF0\x9F\x98\x80i") == 0 &&
@@ -882,7 +881,7 @@ NULL
 		 * answer the SURROGATE HALVES, which the old scalar space could not (it
 		 * answered 0xFFFD). Every literal here asserts all three numbers. */
 		check("locale-literal-high-byte",
-		      [@"\xC4\xB0" length] == 1 && [@"\xC4\xB0" characterCount] == 1 &&
+		      [@"\xC4\xB0" length] == 1 &&
 		      [@"\xC4\xB0" lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 2 &&
 		      [@"\xC4\xB0" byteAtIndex:0] == 0xC4 && [@"\xC4\xB0" byteAtIndex:1] == 0xB0 &&
 		      [@"\xC4\xB0" characterAtIndex:0] == 0x0130 &&
@@ -896,7 +895,6 @@ NULL
 		      [@"\xE2\x82\xAC" byteAtIndex:2] == 0xAC &&
 		      [@"\xE2\x82\xAC" characterAtIndex:0] == 0x20AC &&
 		      [@"\xF0\x9F\x98\x80" length] == 2 &&
-		      [@"\xF0\x9F\x98\x80" characterCount] == 1 &&
 		      [@"\xF0\x9F\x98\x80" lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 4 &&
 		      [@"\xF0\x9F\x98\x80" byteAtIndex:0] == 0xF0 && [@"\xF0\x9F\x98\x80" byteAtIndex:3] == 0x80 &&
 		      [@"\xF0\x9F\x98\x80" characterAtIndex:0] == 0xD83D &&

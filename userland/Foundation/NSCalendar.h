@@ -393,7 +393,6 @@ yearForWeekOfYear:(NSInteger *)yearForWeekOfYearValuePointer
 - (nullable NSArray *)standaloneQuarterSymbols;
 - (nullable NSArray *)shortStandaloneQuarterSymbols;
 
-- (BOOL)isEqualToCalendar:(NSCalendar *)other;
 - (BOOL)isEqual:(id)other;
 - (NSUInteger)hash;
 - (NSString *)description;

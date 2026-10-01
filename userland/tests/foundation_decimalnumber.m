@@ -222,7 +222,7 @@ int main(void)
 	 * which is the whole reason 0.1 comes back as 0.1 and not as its full binary expansion — and the hash
 	 * has to agree with equality ACROSS the class boundary. */
 	{
-		NSNumber *fromDecimal = [NSNumber numberWithDecimal:fn_num(@"1.25").decimalValue];
+		NSDecimalNumber *fromDecimal = [NSDecimalNumber decimalNumberWithDecimal:fn_num(@"1.25").decimalValue];
 		NSNumber *doubleHalf = [NSNumber numberWithDouble:1.5];
 		NSNumber *doubleTenth = [NSNumber numberWithDouble:0.1];
 		NSNumber *bigInteger = [NSNumber numberWithLongLong:9007199254740993LL];

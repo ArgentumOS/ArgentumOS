@@ -797,23 +797,25 @@ NSCalendarIdentifier const NSCalendarIdentifierVikram = @"vikram";
 
 /* --- identity ------------------------------------------------------------- */
 
-- (BOOL)isEqualToCalendar:(NSCalendar *)other
-{
-	return other != nil && [[other identifier] isEqualToString:_identifier]
-	    && [[other timeZone] isEqualToTimeZone:_timeZone]
-	    && [other firstWeekday] == _firstWeekday
-	    && [other minimumDaysInFirstWeek] == _minimumDaysInFirstWeek;
-}
-
 - (BOOL)isEqual:(id)other
 {
+	NSCalendar *calendar;
+
 	if (other == self) {
 		return YES;
 	}
 	if (other == nil || ![other isKindOfClass:[NSCalendar class]]) {
 		return NO;
 	}
-	return [self isEqualToCalendar:(NSCalendar *)other];
+	/* THE COMPARISON THAT USED TO BE -isEqualToCalendar:'S (§63.59): that name was this library's own -
+	 * Apple declares no such door - and -isEqual: was its only caller. `calendar` is typed so every
+	 * accessor below keeps its declared return type: on an `id` receiver, `[other firstWeekday] ==
+	 * _firstWeekday` would compare a pointer with an integer. */
+	calendar = (NSCalendar *)other;
+	return [[calendar identifier] isEqualToString:_identifier]
+	    && [[calendar timeZone] isEqualToTimeZone:_timeZone]
+	    && [calendar firstWeekday] == _firstWeekday
+	    && [calendar minimumDaysInFirstWeek] == _minimumDaysInFirstWeek;
 }
 
 - (NSUInteger)hash

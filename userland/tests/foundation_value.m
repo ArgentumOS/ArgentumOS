@@ -214,7 +214,8 @@ int main(void)
 		};
 		static const char *excluded[] = {
 			/* THE THREE DECIMAL ENTRIES THAT STOOD HERE ARE GONE (W3b): decimalValue,
-			 * numberWithDecimal: and initWithDecimal: are implemented on NSNumber now, and
+			 * initWithDecimal: are implemented on NSNumber now (+numberWithDecimal: went in §63.59,
+			 * being a second spelling of NSDecimalNumber's factory), and
 			 * NSDecimalNumber carries the type — so the inventory below REQUIRES them, which is the
 			 * point of removing an exclusion rather than decorating it. */
 			/* THE REASON THIS CARRIED WAS STALE: it said "NSValue is not shipped", and

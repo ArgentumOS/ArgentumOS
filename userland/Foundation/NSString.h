@@ -35,7 +35,7 @@
  *   NSConstantString    the compiler's layout, filled in by the runtime
  *
  * EVERY METHOD IS BUILT ON THE ACCESSORS (-length, -byteAtIndex:,
- * -characterCount, -characterAtIndex:, -UTF8String), never on a field: an
+ * -characterAtIndex:, -UTF8String), never on a field: an
  * NSConstantString's storage is the runtime's, so a method that read
  * NSOwnedString's offsets on one would read foreign memory.
  */
@@ -280,7 +280,6 @@ typedef enum {
 /* The primitives every concrete subclass implements. */
 - (const char *)UTF8String;
 - (size_t)length;		/* UTF-16 CODE UNITS — Apple's contract (W1 slice 3) */
-- (size_t)characterCount;	/* Unicode characters — an ADDITION: Cocoa has no such method */
 - (unsigned char)byteAtIndex:(size_t)index;		/* a UTF-8 BYTE — the house door */
 - (unsigned short)characterAtIndex:(size_t)index;	/* the UNIT at a unit index */
 

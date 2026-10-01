@@ -57,7 +57,8 @@
 - (NSConnection *)connectionForProxy { return _connection; }
 
 - (void)setProtocolForProxy:(Protocol *)aProtocol { _protocol = aProtocol; }
-- (Protocol *)protocolForProxy { return _protocol; }
+/* `-protocolForProxy` stood here and is GONE (§63.59): Apple declares the setter only, and every reader
+ * of the protocol in this file (the two doors below) takes `_protocol` directly. */
 
 /* THE BOUNDARY, IN ONE PLACE. `index` 0 and 1 are the receiver and the selector; every argument after them must be
  * an OBJECT, because that is what the coder can carry — and a method that takes a number is REFUSED with its own

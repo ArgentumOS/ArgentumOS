@@ -274,17 +274,6 @@ static size_t utf8_seq_length(unsigned char lead)
 	return 1;
 }
 
-static size_t utf8_count_characters(const char *bytes, size_t size)
-{
-	size_t i = 0, n = 0;
-
-	while (i < size) {
-		i += utf8_seq_length((unsigned char)bytes[i]);
-		n++;
-	}
-	return n;
-}
-
 /* The `index`-th CHARACTER as one UTF-16 code unit (0xFFFD outside the BMP,
  * because one unichar cannot say it). */
 static unsigned short utf8_character_at(const char *bytes, size_t size, size_t index)
@@ -317,9 +306,8 @@ static unsigned short utf8_character_at(const char *bytes, size_t size, size_t i
  * THE UTF-16 INDEX SPACE (W1, docs/design/foundation-plan.md §13).
  *
  * APPLE'S NSString INDEXES UTF-16 CODE UNITS, and this library used to index
- * bytes (-length, the ranges) and scalars (-characterCount, -characterAtIndex:)
- * in the SAME CLASS — two spaces, so an NSRange from one API could not be handed
- * to the other. These four functions are the unit space's whole arithmetic: what
+ * bytes (-length, the ranges) and scalars (-characterAtIndex:) in the SAME
+ * CLASS — two spaces, so an NSRange from one API could not be handed to the other. These four functions are the unit space's whole arithmetic: what
  * a unit count is, which byte a unit starts at, which unit a byte falls in, and
  * what the unit AT an index is. Every public method in slice 3 is a call into
  * one of them, and the byte-indexed internals never learn about units at all.
@@ -1109,7 +1097,7 @@ NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySugges
  * THE FOUR DOORS THE BASE DECLARES AND DOES NOT OWN, AND WHY THE ANSWER IS A REFUSAL RATHER THAN A BODY.
  *
  * This NSString is a CLASS CLUSTER: NSOwnedString, NSConstantString and NSMutableString hold the characters and
- * implement -length, -characterCount, -characterAtIndex: and -UTF8String. The base's -init returns SELF (its own
+ * implement -length, -characterAtIndex: and -UTF8String. The base's -init returns SELF (its own
  * comment explains why: the concrete classes' designated initialiser begins with `self = [super init]`, and
  * routing it back made the two call each other forever), so a bare `[[NSString alloc] init]` is a real object
  * with no characters and no implementation of these doors - and until now the selector simply did not exist, so
@@ -1122,14 +1110,6 @@ NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySugges
 		    format:@"-[NSString length] is not implemented on the base class: a bare NSString holds no "
 			   @"characters. Build one with -initWithString: or +stringWithUTF8String:, which answer a "
 			   @"concrete NSString (NSOwnedString/NSConstantString)."];
-	return 0;
-}
-
-- (NSUInteger)characterCount
-{
-	[NSException raise:NSInvalidArgumentException
-		    format:@"-[NSString characterCount] is not implemented on the base class: a bare NSString holds "
-			   @"no characters (see -length for the same refusal and the way out)."];
 	return 0;
 }
 
@@ -4152,22 +4132,6 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 }
 
 
-- (size_t)characterCount
-{
-	size_t i = 0, n = 0;
-
-	while (i < _length) {
-		if (_units[i] >= 0xD800 && _units[i] <= 0xDBFF && i + 1 < _length &&
-		    _units[i + 1] >= 0xDC00 && _units[i + 1] <= 0xDFFF) {
-			i += 2;
-		} else {
-			i += 1;
-		}
-		n++;
-	}
-	return n;
-}
-
 /* THE UNIT AT A UNIT INDEX, O(1) — and SURROGATE HALVES ARE ANSWERED AS THEMSELVES,
  * because that is what a unichar is and what Apple's contract says. The scalar space
  * this used to speak answered 0xFFFD for a character above U+FFFF; that limit is gone
@@ -4610,11 +4574,6 @@ static void fn_utf16_to_utf8(const unsigned char *data, size_t units, char *out)
 	[NSException raise:NSInvalidArgumentException
 		    format:@"NSConstantString: unsupported encoding %u", encoding];
 	return 0;
-}
-
-- (size_t)characterCount
-{
-	return utf8_count_characters([self UTF8String], [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]);
 }
 
 - (unsigned short)characterAtIndex:(size_t)index

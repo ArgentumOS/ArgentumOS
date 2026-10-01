@@ -396,15 +396,12 @@ FN_NUMBER_GET(double, double)
 
 /* THE DECIMAL CASE IS SERVED BY THE SUBCLASS, and the alloc'd receiver is released here: a 44-byte decimal
  * does not fit the scalar union above, and the documented surface is NSNumber's own. Replacing the receiver
- * inside -init is what makes `[[NSNumber alloc] initWithDecimal:d]` and `+numberWithDecimal:` agree. */
+ * inside -init is what makes `[[NSNumber alloc] initWithDecimal:d]` answer an NSDecimalNumber - and the factory
+ * that used to stand beside it, +numberWithDecimal:, is GONE (§63.59): Apple's way to build one from an
+ * NSDecimal is NSDecimalNumber's +decimalNumberWithDecimal:, which answers the same object. */
 - (id)initWithDecimal:(NSDecimal)decimal
 {
 	[self release];
-	return [[NSDecimalNumber alloc] initWithDecimal:decimal];
-}
-
-+ (NSNumber *)numberWithDecimal:(NSDecimal)decimal
-{
 	return [[NSDecimalNumber alloc] initWithDecimal:decimal];
 }
 

@@ -61,9 +61,6 @@ static char tiny_character(id self, size_t index)
 
 - (size_t)length { return tiny_length(self); }
 
-/* 7-bit ASCII, so one byte is one character. */
-- (size_t)characterCount { return tiny_length(self); }
-
 - (unsigned short)characterAtIndex:(size_t)index
 {
 	if (index >= tiny_length(self)) {
