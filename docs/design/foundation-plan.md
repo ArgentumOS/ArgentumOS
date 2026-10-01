@@ -15976,6 +15976,56 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.46 — THE PARAGRAPH DOORS, AND THE ENGINE THAT HAD TO MOVE: A DECISION RESOLVED BY THE DOOR'S OWN PAGE (2026-10-01)
+
+**WHAT LANDED: THREE THINGS THAT ARE REALLY ONE — the two paragraph doors, the ENGINE ALIGNED TO THEM, and the
+end of a refusal this document had carried for months.** `-getParagraphStart:end:contentsEnd:forRange:` and
+`-paragraphRangeForRange:` are declared and implemented; `FNTextBreaking`'s paragraph walk now uses the same rule
+the doors do; and the header paragraph that said they were "NOT here yet" is corrected rather than kept.
+**MEASURED: guest case `foundation_string` 6/6 checks with the probe's own tally `ok=145 fail=0` (was 141);
+`make foundation-sweep` exit 0; `--check` consistent; `--unimplemented` 0 NEW; ledger methods 2168 → 2170.**
+
+**THE REFUSAL WAS RECORDED AS A TIE, AND IT WAS NOT A TIE.** `NSString.h` said: Apple's page defines a paragraph
+as text "delimited by a carriage return, newline, or paragraph separator" — three single characters — "while this
+library's own breaking engine defines it as 'a run of lines with no blank line between them' and records that as
+Apple's definition too. They answer differently for a string holding a blank line, so writing one would be
+picking a winner by guesswork."
+ * **THE TWO SIDES WERE NOT EQUAL: ONE IS A DOOR WITH A PUBLISHED RULE AND THE OTHER IS OUR ENGINE.** Apple
+   publishes the rule for THIS door in its own page, and **Apple's own header says
+   `NSStringEnumerationByParagraphs` is "Equivalent to paragraphRangeForRange:"** — so the engine was the side
+   that disagreed with Apple, not the side that disagreed with the door. **THE USER DECIDED (2026-10-01) that
+   the three-character rule wins and the engine moves to it**, which is what makes the door and the enumeration
+   one rule instead of two.
+ * **AND THAT IS WHY THIS UNIT TOUCHED A BREAKING ENGINE.** `fn_line_is_blank` and the merge loop are GONE; the
+   paragraph arm is now the line arm's shape over a narrower terminator set, so `+fnUnitContaining:` — which the
+   doors call — cannot answer differently from the enumeration.
+
+**TWO OBSERVABLE CONSEQUENCES, BOTH ASSERTED RATHER THAN DESCRIBED.**
+ * **A BLANK LINE IS NOW AN EMPTY PARAGRAPH.** "a\n\nb" was TWO paragraphs under the old rule, which skipped the
+   blank line as a separator; it is THREE now — "a\n", "\n", "b" — and the middle one has `contentsEnd == start`.
+   That is the visible half of the decision and the check that would fail if the engine were left alone.
+ * **NEL AND LINE SEPARATOR END A LINE AND NOT A PARAGRAPH.** The two rules differ in TWO ways, not one: a line
+   ends at LF, CR, NEL, LS or PS; a paragraph at LF, CR or PS. So a paragraph may CONTAIN a NEL, and the check
+   pins both directions on one string.
+ * **AND THE DOOR/ENGINE EQUIVALENCE IS ITSELF A CHECK**: every range
+   `-enumerateSubstringsInRange:options:NSStringEnumerationByParagraphs` hands over is compared with
+   `-paragraphRangeForRange:` at that location, because that equality IS Apple's claim and the reason the engine
+   moved.
+
+**THREE OPERATIONAL FINDINGS, EACH WORTH THE LINE.**
+ * **`\u0085` IS NOT SPELLABLE IN A LITERAL AT ALL.** clang refuses it — "universal character name refers to a
+   control character" — so the NEL check builds its string from CODE UNITS (`+stringWithCharacters:length:`). A
+   rule about what the language will even let you write is not a style preference.
+ * **⚠ AND THE STALE-IMAGE TRAP SPRANG A THIRD TIME, WHICH MEANS MY OWN RECORD OF IT WAS NOT ENOUGH.** The run
+   reported **141 of 141** — the OLD count — because `make testimg` had failed and `make test` reads an image it
+   does not rebuild. **What made it findable this time was the NUMBER**, because the case asserts the count and
+   145 was expected; a probe whose count did not move would have read as green. The fix on the command line is
+   not a note: **check `make testimg`'s exit status BEFORE believing `make test`**, which is now the shape of
+   every run in this thread.
+ * **AND THE REASON `make testimg` FAILED WAS THE LEDGER, NOT THE PROBE:** it runs `foundation-sweep` as a
+   prerequisite, and `--check` refuses a tree where a selector is declared and its row still says `open`. **A
+   DECLARATION WITHOUT A `--refresh` IS A RED BUILD**, which is §11.2's instrument working exactly as intended.
+
 ## §63.45 — NSArray'S NINETEEN ROWS: A WHOLE OWNER CLOSED, AND THE HOST PROBE THAT CANNOT RUN (2026-10-01)
 
 **WHAT LANDED: EIGHTEEN ROWS, AND THE OWNER LEFT THE WORK LIST — nineteen open down to ONE, and that one is a

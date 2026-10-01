@@ -115,7 +115,12 @@ CHECKS = (
           "locale-subtags-are-the-identifiers-own",
           "locale-data-keys-stay-nil-through-the-two-narrow-doors",
           "locale-variant-display-stays-open",
-          )
+                    # §63.46: the paragraph pair, and the engine ALIGNED to Apple's three-character rule.
+          "paragraph-door-three-out-parameters",
+          "paragraph-blank-line-is-an-empty-paragraph",
+          "nel-and-ls-end-a-line-but-not-a-paragraph",
+          "paragraphs-via-enumeration-match-the-door",
+)
 
 
 class Case(BaseCase):

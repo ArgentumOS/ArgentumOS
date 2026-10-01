@@ -3592,6 +3592,55 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return NSMakeRange(start, end - start);
 }
 
+/* ===================================================================================================
+ * THE PARAGRAPH PAIR (§63.46). THE RULE IS THE ENGINE'S, NOT A SECOND COPY OF IT: the extent comes from
+ * `FNTextBreaking`'s paragraph walk — the SAME walk `-enumerateSubstringsInRange:options:` answers
+ * `NSStringEnumerationByParagraphs` with — so the door and the enumeration cannot disagree, which is exactly
+ * what Apple's header claims for them ("Equivalent to paragraphRangeForRange:").
+ *
+ * AND THE RULE ITSELF IS APPLE'S THREE CHARACTERS — CR, LF, PS — which the engine was ALIGNED to in the same
+ * unit (it used to read a paragraph as a run of lines with no blank line between them, and SKIP blank lines).
+ * The consequences a caller can see, both asserted by the probe: a blank line is now an EMPTY PARAGRAPH, and
+ * NEL (U+0085) / LINE SEPARATOR (U+2028) end a LINE without ending a paragraph.
+ * =================================================================================================== */
+- (NSRange)paragraphRangeForRange:(NSRange)range
+{
+	fn_line_check_range(self, range, _cmd);
+	return [FNTextBreaking fnUnitContaining:FNTextUnitParagraph inString:self atIndex:range.location];
+}
+
+- (void)getParagraphStart:(nullable NSUInteger *)startPtr
+		      end:(nullable NSUInteger *)paragraphEndPtr
+	      contentsEnd:(nullable NSUInteger *)contentsEndPtr
+		 forRange:(NSRange)range
+{
+	NSRange paragraph = [self paragraphRangeForRange:range];
+	NSUInteger contentsEnd = NSMaxRange(paragraph);
+
+	/* `end` IS WHERE THE TERMINATOR STOPS — a paragraph owns the break it ends with — and `contentsEnd` is
+	 * where its TEXT stops, so the one terminator at the end is stripped here. CRLF IS ONE TERMINATOR and is
+	 * stripped as one, which is the same rule the line door applies through `fn_line_terminator_length`. */
+	if (contentsEnd > paragraph.location) {
+		unichar last = [self characterAtIndex:contentsEnd - 1];
+
+		if (last == 0x000a && (contentsEnd - 2) >= paragraph.location &&
+		    [self characterAtIndex:contentsEnd - 2] == 0x000d) {
+			contentsEnd -= 2;
+		} else if (last == 0x000a || last == 0x000d || last == 0x2029) {
+			contentsEnd -= 1;
+		}
+	}
+	if (startPtr != NULL) {
+		*startPtr = paragraph.location;
+	}
+	if (contentsEndPtr != NULL) {
+		*contentsEndPtr = contentsEnd;
+	}
+	if (paragraphEndPtr != NULL) {
+		*paragraphEndPtr = NSMaxRange(paragraph);
+	}
+}
+
 /* THE ENUMERATOR HANDS BACK THE TEXT WITHOUT ITS TERMINATOR — Apple's parameter page says so in as
  * many words, "the line contains just the contents of the line, without the line terminators" — so
  * each element is `contentsEnd - start` long even though the line it walked spans to `end`.

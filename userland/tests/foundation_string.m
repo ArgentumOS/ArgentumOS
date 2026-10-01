@@ -2312,6 +2312,88 @@ NULL
 			(unsigned long)[accents maximumLengthOfBytesUsingEncoding:NSUTF16StringEncoding]] UTF8String]);
 	}
 
+	/* --- §63.46: THE PARAGRAPH DOORS, AND THE ENGINE ALIGNED TO THEM -------------------------------- */
+	{
+		NSString *text = @"a\n\nb";
+		NSUInteger start = 99, end = 99, contentsEnd = 99;
+
+		/* THE FIRST PARAGRAPH OWNS ITS TERMINATOR: `end` is past the break, `contentsEnd` is where the TEXT
+		 * stops. The three out-parameters are the whole reason the door has three. */
+		[text getParagraphStart:&start end:&end contentsEnd:&contentsEnd forRange:NSMakeRange(0, 0)];
+		check("paragraph-door-three-out-parameters",
+		      start == 0 && end == 2 && contentsEnd == 1 &&
+		      NSEqualRanges([text paragraphRangeForRange:NSMakeRange(0, 0)], NSMakeRange(0, 2)),
+		      [[NSString stringWithFormat:@"\"a\\n\\nb\" paragraph 0 is 0..2 with its text ending at 1 "
+						@"(got %lu/%lu/%lu) and -paragraphRangeForRange: agrees",
+						(unsigned long)start, (unsigned long)end,
+						(unsigned long)contentsEnd] UTF8String]);
+
+		/* ⚠ A BLANK LINE IS AN EMPTY PARAGRAPH — the observable half of the decision. The engine used to
+		 * SKIP a blank line as a separator and merge the non-blank lines around it, so this string had TWO
+		 * paragraphs; Apple's three-character rule makes it THREE, and the middle one has no text at all. */
+		[text getParagraphStart:&start end:&end contentsEnd:&contentsEnd forRange:NSMakeRange(2, 0)];
+		check("paragraph-blank-line-is-an-empty-paragraph",
+		      start == 2 && end == 3 && contentsEnd == 2 &&
+		      NSEqualRanges([text paragraphRangeForRange:NSMakeRange(3, 0)], NSMakeRange(3, 1)),
+		      [[NSString stringWithFormat:@"the blank line is its own EMPTY paragraph (start %lu, end %lu, "
+						@"contentsEnd %lu) and the text after it is the third",
+						(unsigned long)start, (unsigned long)end,
+						(unsigned long)contentsEnd] UTF8String]);
+
+		/* AND THE PARAGRAPH'S TERMINATOR SET IS NARROWER THAN A LINE'S: NEL (U+0085) and LINE SEPARATOR
+		 * (U+2028) end a LINE and NOT a paragraph, so this string is ONE paragraph and TWO lines. That
+		 * difference is the reason the engine has two walks where it used to have one. */
+		{
+			/* ⚠ BUILT FROM CODE UNITS RATHER THAN WRITTEN AS ESCAPES, AND THAT IS A LANGUAGE RULE RATHER THAN A
+			 * STYLE: clang REFUSES `\u0085` with "universal character name refers to a control character", so a
+			 * string literal cannot spell NEL at all. The same escape for LS/PS is legal, but one constructor for
+			 * both is the one rule. */
+			unichar nelUnits[3] = { 'a', 0x0085, 'b' };
+			unichar psUnits[3] = { 'a', 0x2029, 'b' };
+			NSString *nel = [NSString stringWithCharacters:nelUnits length:3];
+			NSString *ps = [NSString stringWithCharacters:psUnits length:3];
+			NSRange paragraph = [nel paragraphRangeForRange:NSMakeRange(0, 0)];
+			NSRange line = [nel lineRangeForRange:NSMakeRange(0, 0)];
+			NSRange psParagraph = [ps paragraphRangeForRange:NSMakeRange(0, 0)];
+
+			check("nel-and-ls-end-a-line-but-not-a-paragraph",
+			      nel.length == 3 &&
+			      NSEqualRanges(paragraph, NSMakeRange(0, 3)) &&
+			      NSEqualRanges(line, NSMakeRange(0, 2)) &&
+			      NSEqualRanges(psParagraph, NSMakeRange(0, 2)),
+			      [[NSString stringWithFormat:@"NEL is one paragraph (0..%lu) but two lines (0..%lu), while "
+						@"PARAGRAPH SEPARATOR ends a paragraph (0..%lu)",
+						(unsigned long)paragraph.length, (unsigned long)line.length,
+						(unsigned long)psParagraph.length] UTF8String]);
+		}
+
+		/* THE DOOR AND THE ENUMERATION ARE ONE RULE, which is Apple's own claim about them ("Equivalent to
+		 * paragraphRangeForRange:") and the reason the ENGINE was changed rather than only the door. */
+		{
+			__block NSUInteger seen = 0;
+			__block BOOL same = YES;
+
+			[text enumerateSubstringsInRange:NSMakeRange(0, [text length])
+						 options:NSStringEnumerationByParagraphs
+					      usingBlock:^(NSString *substring, NSRange substringRange,
+							   NSRange enclosingRange, BOOL *stop) {
+				(void)substring;
+				(void)enclosingRange;
+				(void)stop;
+				if (!NSEqualRanges(substringRange,
+						   [text paragraphRangeForRange:NSMakeRange(substringRange.location, 0)])) {
+					same = NO;
+				}
+				seen++;
+			}];
+			check("paragraphs-via-enumeration-match-the-door",
+			      same && seen == 3,
+			      [[NSString stringWithFormat:@"-enumerateSubstringsInRange:options:ByParagraphs answers "
+						@"%lu ranges and every one is its own -paragraphRangeForRange: (%@)",
+						(unsigned long)seen, same ? @"yes" : @"NO"] UTF8String]);
+		}
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

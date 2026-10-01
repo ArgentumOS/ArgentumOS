@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2168   open  492   struck  268
+#   method     shipped 2170   open  490   struck  268
 #   property   shipped 1267   open  223   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3071,7 +3071,7 @@ method	shipped	-getCharacters:	NSString	Fundamentals / Strings / Deprecated	depr
 method	shipped	-getCharacters:range:	NSString	Fundamentals / Strings / Getting Characters and Bytes	-	objc
 method	shipped	-getFileSystemRepresentation:maxLength:	NSString	Fundamentals / Strings / Working with Paths	-	objc
 method	shipped	-getLineStart:end:contentsEnd:forRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
-method	open	-getParagraphStart:end:contentsEnd:forRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
+method	shipped	-getParagraphStart:end:contentsEnd:forRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
 method	shipped	-hasPrefix:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-hasSuffix:	NSString	Fundamentals / Strings / Identifying and Comparing Strings	-	objc
 method	shipped	-init	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
@@ -3120,7 +3120,7 @@ method	open	+localizedUserNotificationStringForKey:arguments:	NSString	Fundament
 method	shipped	-lossyCString	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-lowercaseStringWithLocale:	NSString	Fundamentals / Strings / Changing Case	-	objc
 method	shipped	-maximumLengthOfBytesUsingEncoding:	NSString	Fundamentals / Strings / Getting a String’s Length	-	objc
-method	open	-paragraphRangeForRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
+method	shipped	-paragraphRangeForRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
 method	shipped	+pathWithComponents:	NSString	Fundamentals / Strings / Working with Paths	-	objc
 method	shipped	-propertyList	NSString	Fundamentals / Strings / Converting String Contents Into a Property List	-	objc
 method	open	-propertyListFromStringsFileFormat	NSString	Fundamentals / Strings / Converting String Contents Into a Property List	-	objc

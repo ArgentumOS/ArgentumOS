@@ -688,13 +688,24 @@ typedef enum {
  * (including those with negative lengths)" and that this "causes an exception", which is the same
  * refusal every other range door in this library makes.
  *
- * (The PARAGRAPH doors, -getParagraphStart:end:contentsEnd:forRange: and -paragraphRangeForRange:, are
- * NOT here yet, and the reason is a real disagreement rather than an omission: Apple's page defines a
- * paragraph as text "delimited by a carriage return, newline, or paragraph separator" — three single
- * characters — while this library's own breaking engine defines it as "a run of lines with no blank
- * line between them" and records that as Apple's definition too. They answer differently for a string
- * holding a blank line, so writing one would be picking a winner by guesswork. It stays a decision,
- * recorded here so the next reader meets it rather than reinventing it.)
+ * ⚠ AND THE PARAGRAPH DOORS THAT USED TO BE REFUSED HERE ARE DECLARED BELOW, WHICH IS A CORRECTION OF THIS
+ * COMMENT (the user's decision, 2026-10-01, §63.46). It read: they are "NOT here yet, and the reason is a real
+ * disagreement rather than an omission: Apple's page defines a paragraph as text 'delimited by a carriage
+ * return, newline, or paragraph separator' — three single characters — while this library's own breaking engine
+ * defines it as 'a run of lines with no blank line between them' and records that as Apple's definition too.
+ * They answer differently for a string holding a blank line, so writing one would be picking a winner by
+ * guesswork."
+ *
+ * **THE DISAGREEMENT WAS NEVER BETWEEN TWO EQUAL READINGS — IT WAS BETWEEN A DOOR AND AN ENGINE, and Apple
+ * settles it.** The door's rule is published in its own page, and Apple's own header says
+ * `NSStringEnumerationByParagraphs` is "Equivalent to paragraphRangeForRange:" — so the ENGINE was the side
+ * that had to move, and it did: FNTextBreaking's paragraph walk now uses the same three-character rule. **A
+ * BLANK LINE IS THEREFORE AN EMPTY PARAGRAPH rather than a skipped separator**, which is the observable half
+ * of the decision and the half the probe asserts.
+ *
+ * AND THE PARAGRAPH'S TERMINATOR SET IS NARROWER THAN A LINE'S: a line ends at LF, CR, NEL, LS or PS; a
+ * paragraph at LF, CR or PS. NEL (U+0085) and LINE SEPARATOR (U+2028) end a LINE and NOT a paragraph — a
+ * difference only a pair of doors with two published rules can have.
  * =================================================================================================== */
 - (void)getLineStart:(NSUInteger *)startPtr
 		 end:(NSUInteger *)lineEndPtr
@@ -702,6 +713,15 @@ typedef enum {
 	    forRange:(NSRange)range;
 - (NSRange)lineRangeForRange:(NSRange)range;
 - (void)enumerateLinesUsingBlock:(void (^)(NSString *line, BOOL *stop))block;
+
+/* THE PARAGRAPH PAIR, the same shape as the line pair above and for the same reason the three out-parameters
+ * exist: `end` is where the TERMINATOR stops (a paragraph owns the break it ends with), `contentsEnd` is where
+ * its TEXT stops. CRLF counts once. */
+- (void)getParagraphStart:(nullable NSUInteger *)startPtr
+		      end:(nullable NSUInteger *)paragraphEndPtr
+	      contentsEnd:(nullable NSUInteger *)contentsEndPtr
+		 forRange:(NSRange)range;
+- (NSRange)paragraphRangeForRange:(NSRange)range;
 @end
 
 @interface NSOwnedString : NSString

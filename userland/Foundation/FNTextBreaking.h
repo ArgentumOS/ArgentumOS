@@ -35,10 +35,12 @@ typedef NS_ENUM(NSInteger, FNTextUnit) {
 	FNTextUnitSentence = 1,
 	FNTextUnitParagraph = 2,
 	FNTextUnitComposedCharacter = 3,
-	/* LINES ARE THE UNIT THE OTHERS ARE BUILT FROM: ICU's default iterator IS a line breaker, and this engine's
-	 * paragraph is a RUN of lines that does not start after a blank one. Asking for lines is therefore the same
-	 * iterator WITHOUT the merge, and giving it a name of its own is what lets `-enumerateSubstringsInRange:`
-	 * answer `NSStringEnumerationByLines` without a second implementation of where a line ends. */
+	/* LINES AND PARAGRAPHS ARE ONE WALK OVER TWO TERMINATOR SETS (the decision of 2026-10-01, §63.46). A LINE
+	 * ends at LF, CR, NEL, LS or PS; A PARAGRAPH ENDS AT APPLE'S THREE — LF, CR or PS — which is the rule
+	 * `NSString`'s own paragraph door publishes, and Apple's header says `NSStringEnumerationByParagraphs` is
+	 * "Equivalent to paragraphRangeForRange:". ⚠ SO A PARAGRAPH IS NOT "A RUN OF LINES WITH NO BLANK LINE
+	 * BETWEEN THEM" ANY MORE, which is what this comment used to say: a blank line is now an EMPTY PARAGRAPH,
+	 * and NEL/LS end a line without ending a paragraph. */
 	FNTextUnitLine = 4
 };
 

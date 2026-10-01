@@ -85,20 +85,20 @@ static int32_t fn_line_next(const UChar *buffer, int32_t textEnd, int32_t length
 	return textEnd + 1;
 }
 
-/* IS THE LINE WHOSE TEXT IS `from..textEnd` BLANK? Other whitespace counts as blank too: a line holding only
- * spaces separates two paragraphs to a reader, and this rule says so. */
-static BOOL fn_line_is_blank(const UChar *buffer, int32_t from, int32_t textEnd)
+/* IS THIS UNIT A PARAGRAPH TERMINATOR? **THE SET IS APPLE'S OWN FOR THIS DOOR AND IT IS THREE CHARACTERS —
+ * CARRIAGE RETURN, NEWLINE, PARAGRAPH SEPARATOR** — which is NARROWER than the LINE rule above, and the
+ * difference is why this helper exists instead of reusing `fn_is_line_terminator`: NEL (U+0085) and LINE
+ * SEPARATOR (U+2028) end a LINE and NOT a paragraph, so a paragraph may contain them.
+ *
+ * AND THE BLANK-LINE RULE THIS FILE USED TO CARRY IS GONE (the user's decision, 2026-10-01, §63.46). It read a
+ * paragraph as "a run of lines with no blank line between them" and SKIPPED blank lines as separators; Apple
+ * documents THIS door as text "delimited by a carriage return, newline, or paragraph separator", and Apple's
+ * own header says `NSStringEnumerationByParagraphs` is "Equivalent to paragraphRangeForRange:". So the two
+ * notions were never two doors' business: THIS is the paragraph rule, and a blank line is now an EMPTY
+ * PARAGRAPH rather than a skipped separator — an observable change, asserted by the probe. */
+static BOOL fn_is_paragraph_terminator(UChar c)
 {
-	int32_t i;
-
-	for (i = from; i < textEnd; i++) {
-		UChar c = buffer[i];
-
-		if (c != 0x0020 && c != 0x0009) {
-			return NO;
-		}
-	}
-	return YES;
+	return c == 0x000d || c == 0x000a || c == 0x2029;
 }
 
 @implementation FNTextBreaking
@@ -140,52 +140,59 @@ static BOOL fn_line_is_blank(const UChar *buffer, int32_t from, int32_t textEnd)
 		free(buffer);
 		return;
 	}
-	/* LINES AND PARAGRAPHS ARE BUILT FROM THE LINE RULE RATHER THAN FROM AN ITERATOR, and they are built HERE so
-	 * that `+fnUnitContaining:` — which delegates to this method — cannot answer differently from this walk. */
-	if (unit == FNTextUnitLine || unit == FNTextUnitParagraph) {
+	/* LINES AND PARAGRAPHS ARE BUILT FROM THIS FILE'S OWN WALKS RATHER THAN FROM AN ITERATOR, and they are built
+	 * HERE so that `+fnUnitContaining:` — which delegates to this method — cannot answer differently from this
+	 * walk. THE TWO ARE ONE LOOP SHAPE OVER TWO TERMINATOR SETS, which is the decision of 2026-10-01 (§63.46):
+	 * a LINE ends at any of the five, a PARAGRAPH at Apple's three. */
+	if (unit == FNTextUnitParagraph) {
 		int32_t at = (int32_t)from;
 
+		/* A PARAGRAPH IS TEXT DELIMITED BY CARRIAGE RETURN, NEWLINE OR PARAGRAPH SEPARATOR — Apple's own
+		 * sentence for this door — AND IT INCLUDES ITS TERMINATOR, because Apple's header says
+		 * `NSStringEnumerationByParagraphs` is "Equivalent to paragraphRangeForRange:", and that door answers
+		 * `end` past the terminator. CRLF COUNTS ONCE, as it does for a line.
+		 *
+		 * ⚠ A BLANK LINE IS THEREFORE AN EMPTY PARAGRAPH AND NOT A SKIPPED SEPARATOR: "a\n\nb" is THREE
+		 * paragraphs — "a\n", "\n", "b" — where this file used to hand over two. The probe asserts that,
+		 * because it is the visible half of the decision. */
 		while (at < (int32_t)to) {
-			int32_t textEnd = fn_line_text_end(buffer, at, (int32_t)length);
-			int32_t unitEnd = textEnd;
+			int32_t i = at;
+			int32_t unitEnd;
 			BOOL stop = NO;
 
-			if (unit == FNTextUnitParagraph) {
-				int32_t lineStart;
-				int32_t lastTextEnd;
-
-				if (fn_line_is_blank(buffer, at, textEnd)) {
-					/* A BLANK LINE IS THE SEPARATOR AND BELONGS TO NO PARAGRAPH. */
-					at = fn_line_next(buffer, textEnd, (int32_t)length);
-					continue;
-				}
-				/* WALK FORWARD WHILE THE NEXT LINE EXISTS AND IS NOT BLANK, KEEPING WHERE THE LAST ONE'S TEXT
-				 * ENDS: the paragraph runs to there, so it includes its own line breaks and not a separator's. */
-				lineStart = at;
-				lastTextEnd = textEnd;
-				while (1) {
-					int32_t nextStart = fn_line_next(buffer,
-						fn_line_text_end(buffer, lineStart, (int32_t)length),
-						(int32_t)length);
-					int32_t nextTextEnd;
-
-					if (nextStart >= (int32_t)to) {
-						break;
-					}
-					nextTextEnd = fn_line_text_end(buffer, nextStart, (int32_t)length);
-					if (fn_line_is_blank(buffer, nextStart, nextTextEnd)) {
-						break;
-					}
-					lineStart = nextStart;
-					lastTextEnd = nextTextEnd;
-				}
-				unitEnd = lastTextEnd;
+			while (i < (int32_t)length && !fn_is_paragraph_terminator(buffer[i])) {
+				i++;
+			}
+			if (i >= (int32_t)length) {
+				unitEnd = i;
+			} else if (buffer[i] == 0x000d && (i + 1) < (int32_t)length &&
+				   buffer[i + 1] == 0x000a) {
+				unitEnd = i + 2;
+			} else {
+				unitEnd = i + 1;
 			}
 			block(NSMakeRange((NSUInteger)at, (NSUInteger)(unitEnd - at)), &stop);
 			if (stop) {
 				break;
 			}
-			at = (unit == FNTextUnitParagraph) ? unitEnd : fn_line_next(buffer, textEnd, (int32_t)length);
+			at = unitEnd;
+		}
+		free(buffer);
+		return;
+	}
+
+	if (unit == FNTextUnitLine) {
+		int32_t at = (int32_t)from;
+
+		while (at < (int32_t)to) {
+			int32_t textEnd = fn_line_text_end(buffer, at, (int32_t)length);
+			BOOL stop = NO;
+
+			block(NSMakeRange((NSUInteger)at, (NSUInteger)(textEnd - at)), &stop);
+			if (stop) {
+				break;
+			}
+			at = fn_line_next(buffer, textEnd, (int32_t)length);
 		}
 		free(buffer);
 		return;
