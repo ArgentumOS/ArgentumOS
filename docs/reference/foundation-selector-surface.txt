@@ -25,7 +25,7 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: declined 413
+# why the struck rows are struck: declined 414
 #
 # AND 584 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2100   open  561   struck  267
+#   method     shipped 2100   open  560   struck  268
 #   property   shipped 1227   open  263   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -2070,7 +2070,7 @@ method	struck	-addDescriptionHeader:	NSMutableDictionary	Fundamentals / Basic Co
 method	shipped	-addEntriesFromDictionary:	NSMutableDictionary	Fundamentals / Basic Collections / Adding Entries to a Mutable Dictionary	-	objc
 method	struck	-addHTTPHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
 method	struck	-addImageDescriptorHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
-method	open	-addImageHandleHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
+method	struck	-addImageHandleHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
 method	struck	-addLengthHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
 method	struck	-addNameHeader:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
 method	struck	-addObjectClassHeader:length:	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc

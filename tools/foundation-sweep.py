@@ -541,7 +541,12 @@ DECLINED_SELECTORS = frozenset((
     ("NSMutableDictionary", "addDescriptionHeader:"),
     ("NSMutableDictionary", "addHTTPHeader:length:"),
     ("NSMutableDictionary", "addImageDescriptorHeader:length:"),
-    ("NSMutableDictionary", "addImageHandleHeader:length:"),
+    # ⚠ AND THIS ENTRY WAS WRONG ON THE FIRST PASS, WHICH IS THE WARNING ABOVE HAPPENING AGAIN: the ledger's row
+    # is `addImageHandleHeader:` WITH NO `length:` TAIL (the source report listed it as `…:length:`), so the entry
+    # looked right in the ledger's own spelling and matched NOTHING. The struck count came out 23 where 24 names
+    # were written, and ONLY COUNTING THE LEDGER'S OWN ROWS FOUND IT — a decline list one short is invisible from
+    # the tool's output, which is why the parent counts rows instead of trusting that a refresh "worked".
+    ("NSMutableDictionary", "addImageHandleHeader:"),
     ("NSMutableDictionary", "addLengthHeader:"),
     ("NSMutableDictionary", "addNameHeader:"),
     ("NSMutableDictionary", "addObjectClassHeader:length:"),
