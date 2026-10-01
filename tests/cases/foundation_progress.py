@@ -21,11 +21,18 @@ work plus a SHARE of each child's, where the share is what the child was given w
   * `progress-pause-resume`              — the pause flags, with pausability alongside;
   * `progress-kind-and-userinfo`         — kind, description, and user info that can be REMOVED by
                                          setting nil for a key;
-  * `progress-zero-total`                — a total of zero is never finished and never divides.
+  * `progress-zero-total`                — a total of zero is never finished and never divides;
+  * `progress-file-properties`           — the file URL, kind and the two file counts are userInfo views a
+                                         caller sets and reads back;
+  * `progress-throughput-and-time-remaining` — the two readonly numbers answer from their userInfo keys;
+  * `progress-perform-as-current`        — the scoped current form runs its block, attaches the child, and
+                                         has resigned by the time it returns;
+  * `progress-indeterminate-and-old`     — the two observing states: indeterminate with no total, and never
+                                         old (REASONED: no coordinator supersedes a progress).
 
 NAMED ABSENT, in the header: `-publish`/`-unpublish` and the subscriber doors (they need a reporting
-coordinator), `-cancellationHandler` (no blocks in this library's public headers), and
-`-estimatedTimeRemaining`/`-throughput`.
+coordinator), the three block handler properties (`-cancellationHandler`/`-pausingHandler`/
+`-resumingHandler`), and `-initWithParent:userInfo:`.
 """
 
 import re
@@ -35,7 +42,9 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_progress"
 CHECKS = (
           "progress-fraction", "progress-finished", "progress-child-attaches-to-current", "progress-child-scales-into-parent", "progress-child-completed-share", "progress-share-is-the-ceiling", "progress-cancel-propagates", "progress-pause-resume", "progress-kind-and-userinfo", "progress-zero-total", "nsprogressreporting",
-          "progress-file-keys-are-their-own-names")
+          "progress-file-keys-are-their-own-names", "progress-file-properties",
+          "progress-throughput-and-time-remaining", "progress-perform-as-current",
+          "progress-indeterminate-and-old")
 
 
 class Case(BaseCase):

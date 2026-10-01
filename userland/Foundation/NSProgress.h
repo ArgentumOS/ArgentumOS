@@ -23,9 +23,12 @@
  * the reported count has reached the total, with a total of zero never finished.
  *
  * WHAT IS NOT HERE, named: `-publish`/`-unpublish` and the subscriber doors (they need a reporting
- * coordinator this library has no home for), `-cancellationHandler` (no blocks), `-estimatedTimeRemaining`
- * and `-throughput`, and `NSProgress`'s KVO announcements for its own published properties beyond what
- * F13.9's registry would need wired here.
+ * coordinator this library has no home for), the three block handler properties (`-cancellationHandler`,
+ * `-pausingHandler`, `-resumingHandler` - stored-and-copied blocks, §11.3's W17), `-initWithParent:userInfo:`
+ * (whose parent linkage the tree's explicit `-addChild:withPendingUnitCount:` already covers), and
+ * `NSProgress`'s KVO announcements for its own published properties beyond what F13.9's registry would need
+ * wired here. THE FILE-OPERATION VOCABULARY IS HERE NOW: `-estimatedTimeRemaining`/`-throughput` read their
+ * userInfo keys, as do `-fileURL`/`-fileOperationKind`/`-fileCompletedCount`/`-fileTotalCount`.
  */
 
 #ifndef FOUNDATION_NSPROGRESS_H
@@ -37,7 +40,9 @@
 @class NSArray;
 @class NSMutableArray;		/* the ivar needs the NAME, and NSArray is not NSMutableArray */
 @class NSDictionary;
+@class NSNumber;
 @class NSString;
+@class NSURL;			/* -fileURL's type, answered from userInfo */
 
 @class NSProgress;
 
@@ -83,11 +88,22 @@ typedef void (^NSProgressUnpublishingHandler)(void);
 - (double)fractionCompleted;
 - (BOOL)isFinished;
 
+/* INDETERMINATE IS "NO TOTAL TO DIVIDE BY", and OLD is the one state a coordinator would set: a
+ * progress superseded by a newer one for the same file URL. Nothing here publishes progress, so OLD
+ * is NO by construction - stated rather than implied. */
+@property (readonly, getter=isIndeterminate) BOOL indeterminate;
+@property (readonly, getter=isOld) BOOL old;
+
 /* THE TREE. */
 - (void)becomeCurrentWithPendingUnitCount:(int64_t)unitCount;
 - (void)addChild:(NSProgress *)child withPendingUnitCount:(int64_t)unitCount;
 - (void)resignCurrent;
 + (nullable NSProgress *)currentProgress;
+
+/* RUN A BLOCK WITH THIS PROGRESS CURRENT, so work created inside it attaches HERE without being handed
+ * a parent - the scoped form of -becomeCurrentWithPendingUnitCount:, and one that cannot forget to
+ * resign. */
+- (void)performAsCurrentWithPendingUnitCount:(int64_t)unitCount usingBlock:(void (^)(void))work;
 
 - (void)cancel;
 - (BOOL)isCancelled;
@@ -105,6 +121,16 @@ typedef void (^NSProgressUnpublishingHandler)(void);
 - (void)setLocalizedDescription:(NSString *)description;
 - (NSString *)localizedAdditionalDescription;
 - (void)setLocalizedAdditionalDescription:(NSString *)description;
+
+/* THE FILE-OPERATION VOCABULARY, LIVE: the properties Apple stores in userInfo and reads back. A
+ * caller sets a file URL or a kind here, and -estimatedTimeRemaining/-throughput answer from the same
+ * dictionary by their keys. */
+@property (nullable, readonly, copy) NSNumber *estimatedTimeRemaining;
+@property (nullable, readonly, copy) NSNumber *throughput;
+@property (nullable, readonly, copy) NSNumber *fileCompletedCount;
+@property (nullable, readonly, copy) NSNumber *fileTotalCount;
+@property (nullable, copy) NSURL *fileURL;
+@property (nullable, copy) NSProgressFileOperationKind fileOperationKind;
 
 - (NSDictionary *)userInfo;
 - (void)setUserInfoObject:(nullable id)object forKey:(NSString *)key;

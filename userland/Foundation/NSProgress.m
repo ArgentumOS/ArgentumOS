@@ -175,6 +175,19 @@ NSProgressUserInfoKey const NSProgressThroughputKey = @"NSProgressThroughputKey"
 	return _totalUnitCount > 0 && [self fnCompletedIncludingChildren] >= _totalUnitCount;
 }
 
+- (BOOL)isIndeterminate
+{
+	/* NO TOTAL TO DIVIDE BY: the count is unknown, which is what "indeterminate" means here. */
+	return _totalUnitCount <= 0;
+}
+
+- (BOOL)isOld
+{
+	/* NOTHING IN THIS SYSTEM SUPERSEDES A PROGRESS (there is no coordinator - see the header), so a
+	 * progress is never old. REASONED: there is no second progress object here to supersede one. */
+	return NO;
+}
+
 - (void)addChild:(NSProgress *)child withPendingUnitCount:(int64_t)unitCount
 {
 	if (child == nil) {
@@ -225,6 +238,16 @@ NSProgressUserInfoKey const NSProgressThroughputKey = @"NSProgressThroughputKey"
 		[stack removeLastObject];
 		[stack removeLastObject];
 	}
+}
+
+- (void)performAsCurrentWithPendingUnitCount:(int64_t)unitCount usingBlock:(void (^)(void))work
+{
+	if (work == nil) {
+		return;
+	}
+	[self becomeCurrentWithPendingUnitCount:unitCount];
+	work();
+	[self resignCurrent];
 }
 
 + (nullable NSProgress *)currentProgress
@@ -313,6 +336,48 @@ NSProgressUserInfoKey const NSProgressThroughputKey = @"NSProgressThroughputKey"
 - (void)setLocalizedAdditionalDescription:(NSString *)description
 {
 	_localizedAdditionalDescription = description;
+}
+
+/* THE FILE-OPERATION PROPERTIES ARE userInfo VIEWS: Apple stores them under the keys this header
+ * already declares, and the two WRITABLE ones are the doorway to that store. */
+- (NSNumber *)estimatedTimeRemaining
+{
+	return [_userInfo objectForKey:NSProgressEstimatedTimeRemainingKey];
+}
+
+- (NSNumber *)throughput
+{
+	return [_userInfo objectForKey:NSProgressThroughputKey];
+}
+
+- (NSNumber *)fileCompletedCount
+{
+	return [_userInfo objectForKey:NSProgressFileCompletedCountKey];
+}
+
+- (NSNumber *)fileTotalCount
+{
+	return [_userInfo objectForKey:NSProgressFileTotalCountKey];
+}
+
+- (NSURL *)fileURL
+{
+	return [_userInfo objectForKey:NSProgressFileURLKey];
+}
+
+- (void)setFileURL:(NSURL *)fileURL
+{
+	[self setUserInfoObject:fileURL forKey:NSProgressFileURLKey];
+}
+
+- (NSProgressFileOperationKind)fileOperationKind
+{
+	return [_userInfo objectForKey:NSProgressFileOperationKindKey];
+}
+
+- (void)setFileOperationKind:(NSProgressFileOperationKind)fileOperationKind
+{
+	[self setUserInfoObject:fileOperationKind forKey:NSProgressFileOperationKindKey];
 }
 
 - (NSDictionary *)userInfo

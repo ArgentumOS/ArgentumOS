@@ -15,6 +15,12 @@
  *
  * AND THE SECOND IS THE CEILING: a child that over-reports contributes its SHARE and no more, so a
  * parent cannot be pushed past what it was told to expect.
+ *
+ * THE FILE-OPERATION VOCABULARY IS LIVE (F13.20's coverage slice): `-fileURL`/`-fileOperationKind` are
+ * settable and read back, and `-fileCompletedCount`/`-fileTotalCount`/`-estimatedTimeRemaining`/
+ * `-throughput` are the userInfo keys they are stored under - so the property and its key cannot drift
+ * apart. `-performAsCurrentWithPendingUnitCount:usingBlock:` is the scoped form of becoming current, and
+ * `-isIndeterminate`/`-isOld` are the two observing states.
  */
 
 #import <Foundation/Foundation.h>
@@ -191,6 +197,72 @@ int main(void)
 		      [NSProgressThroughputKey isEqualToString:@"NSProgressThroughputKey"] &&
 		      [NSProgressFileOperationKindKey isEqualToString:NSProgressFileOperationKindDownloading] == 0,
 		      @"every file-progress key and kind equals its own name, and the key is distinct from the kind it is asked with");
+	}
+
+	{
+		/* THE FILE-OPERATION PROPERTIES ARE userInfo VIEWS: a caller sets a URL and a kind through the
+		 * writable doors, and the readonly count properties answer from the keys they are stored
+		 * under - so the property and its key can never disagree. */
+		NSProgress *progress = [NSProgress discreteProgressWithTotalUnitCount:1];
+		NSURL *url = [NSURL fileURLWithPath:@"/probe-progress-file"];
+
+		[progress setFileURL:url];
+		[progress setFileOperationKind:NSProgressFileOperationKindDownloading];
+		[progress setUserInfoObject:@7 forKey:NSProgressFileCompletedCountKey];
+		[progress setUserInfoObject:@9 forKey:NSProgressFileTotalCountKey];
+		check("progress-file-properties",
+		      url != nil && [[progress fileURL] isEqual:url] &&
+		      [[progress fileOperationKind] isEqualToString:NSProgressFileOperationKindDownloading] &&
+		      [[progress fileCompletedCount] isEqual:@7] &&
+		      [[progress fileTotalCount] isEqual:@9],
+		      [NSString stringWithFormat:@"url=%@ kind=%@ done=%@ total=%@", [progress fileURL],
+			[progress fileOperationKind], [progress fileCompletedCount],
+			[progress fileTotalCount]]);
+	}
+
+	{
+		/* estimatedTimeRemaining AND throughput ARE NOT WRITABLE PROPERTIES: they are stored under their
+		 * userInfo keys and read back through the property, which is the whole of their contract. */
+		NSProgress *progress = [NSProgress discreteProgressWithTotalUnitCount:1];
+
+		[progress setUserInfoObject:@250 forKey:NSProgressEstimatedTimeRemainingKey];
+		[progress setUserInfoObject:@1000 forKey:NSProgressThroughputKey];
+		check("progress-throughput-and-time-remaining",
+		      [[progress estimatedTimeRemaining] isEqual:@250] &&
+		      [[progress throughput] isEqual:@1000],
+		      [NSString stringWithFormat:@"remaining=%@ throughput=%@",
+			[progress estimatedTimeRemaining], [progress throughput]]);
+	}
+
+	{
+		/* THE SCOPED CURRENT FORM: the block runs with this progress current, its child attaches with the
+		 * pending count, and -resignCurrent has ALREADY happened when the method returns. */
+		NSProgress *parent = [NSProgress discreteProgressWithTotalUnitCount:100];
+		__block NSProgress *child = nil;
+
+		[parent setCompletedUnitCount:10];
+		[parent performAsCurrentWithPendingUnitCount:50 usingBlock:^{
+			child = [NSProgress progressWithTotalUnitCount:4];
+		}];
+		[child setCompletedUnitCount:2];
+		check("progress-perform-as-current",
+		      child != nil && [parent completedUnitCount] == 35 &&
+		      [NSProgress currentProgress] == nil,
+		      [NSString stringWithFormat:@"parent=%lld current=%@",
+			(long long)[parent completedUnitCount], [NSProgress currentProgress]]);
+	}
+
+	{
+		/* INDETERMINATE IS "NO TOTAL TO DIVIDE BY"; OLD is always NO here (no coordinator supersedes a
+		 * progress). REASONED for -isOld: there is no second progress object to supersede this one. */
+		NSProgress *empty = [NSProgress discreteProgressWithTotalUnitCount:0];
+		NSProgress *sized = [NSProgress discreteProgressWithTotalUnitCount:5];
+
+		check("progress-indeterminate-and-old",
+		      [empty isIndeterminate] && ![sized isIndeterminate] &&
+		      ![sized isOld] && ![empty isOld],
+		      [NSString stringWithFormat:@"emptyIndeterminate=%d sizedIndeterminate=%d old=%d",
+			(int)[empty isIndeterminate], (int)[sized isIndeterminate], (int)[sized isOld]]);
 	}
 
 	printf("FOUNDATION-PROGRESS RESULT ok=%d fail=%d\n", okc, failc);
