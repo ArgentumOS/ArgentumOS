@@ -13,15 +13,21 @@
 #import <Foundation/NSCoder.h>	/* the NSCoding doors call the coder's methods, not just its type */
 #import <Foundation/NSURL.h>
 #import <Foundation/NSData.h>
+#import <Foundation/NSError.h>	/* the file-form doors answer a failure as a VALUE */
 #import <Foundation/NSPropertyListSerialization.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSIndexSet.h>
 #import <Foundation/NSSortDescriptor.h>
 #import <Foundation/NSPredicate.h>
+/* FOR THE ARRAY-WIDE KVO DOORS (§63.45): they send the NSObject category's own doors, so the declarations
+ * have to be visible here or the compiler reports the send as an unknown selector. */
+#import <Foundation/NSKeyValueObserving.h>
 #import <objc/runtime.h>
 #include <objc/objc-arc.h>	/* objc_retain/objc_release: the C slots are not ARC-managed */
 #include <stdlib.h>
+#include <string.h>		/* memcpy, for -shuffledArray's draw out of the entropy source */
+#include <unistd.h>		/* getentropy: the same door NSUUID draws its bytes from */
 /* THE KEYED ARCHIVE'S KEY NAMES, shared with NSKeyedArchiver's structural branch so the NSCoding doors below
  * and that branch cannot spell the same key differently (§63.12). */
 #import <Foundation/FNKeyedWire.h>
@@ -927,7 +933,391 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	return batch;
 }
 
+/* --- THE LOCALE DESCRIPTION DOORS (§63.45) ----------------------------------------------------------
+ *
+ * BOTH ARE DOCUMENTED AS "a string that represents the contents of the array, formatted as a property
+ * list" — i.e. the MULTI-LINE, INDENTED layout, which is the whole difference from -description here. THE
+ * ELEMENT RENDERER IS SHARED WITH -description's RULE, so the two spellings of a member cannot disagree:
+ * an element that answers -descriptionWithLocale:indent: is asked, anything else answers -description.
+ *
+ * ⚠ A NAMED DEVIATION, WRITTEN AT THE DOOR: a real property list would QUOTE string elements, and this
+ * does not — because -description here does not either, and one rendering rule for a member is worth more
+ * than a second quotation rule invented for one door. The LAYOUT is Apple's; the element text is this
+ * library's documented form. */
+/* ⚠ AND THE RENDERER IS A METHOD, NOT A FILE-SCOPE C FUNCTION, for a reason worth a line: C functions
+ * cannot be DEFINED inside an `@implementation` (clang: "function definition is not allowed here"), and
+ * this file's other helper (`array_grow`) sits at file scope for exactly that reason. A private `-fn…`
+ * method is the house's own idiom for a helper that belongs to the class's own body — NSArchiver spells
+ * its writers `-fnWriteByte:`/`-fnWriteBytes:length:` the same way. */
+- (void)fnAppendElement:(id)element to:(NSMutableString *)out locale:(nullable id)locale level:(NSUInteger)level
+{
+	NSUInteger i;
 
+	for (i = 0; i < level; i++) {
+		[out appendString:@"    "];
+	}
+	if (element == nil) {
+		[out appendString:@"<nil>"];	/* -description on nil answers an empty string, which reads as a
+						 * missing element rather than as one that is not there */
+		return;
+	}
+	if ([element respondsToSelector:@selector(descriptionWithLocale:indent:)]) {
+		[out appendString:[element descriptionWithLocale:locale indent:level]];
+		return;
+	}
+	[out appendString:[element description]];
+}
+
+- (NSString *)descriptionWithLocale:(nullable id)locale indent:(NSUInteger)level
+{
+	NSMutableString *out = [[NSMutableString alloc] initWithUTF8String:"(\n"];
+	NSUInteger i, n = [self count];
+
+	for (i = 0; i < n; i++) {
+		[self fnAppendElement:[self objectAtIndex:i] to:out locale:locale level:level + 1];
+		if (i + 1 < n) {
+			[out appendString:@","];
+		}
+		[out appendString:@"\n"];
+	}
+	for (i = 0; i < level; i++) {
+		[out appendString:@"    "];
+	}
+	[out appendString:@")"];
+	return out;
+}
+
+- (NSString *)descriptionWithLocale:(nullable id)locale
+{
+	return [self descriptionWithLocale:locale indent:0];
+}
+
+/* --- THE OPTIONS FORMS OF THE ENUMERATION AND TEST DOORS (§63.45) -----------------------------------
+ *
+ * THE OPTIONS ARE THE WHOLE OF IT AND THEY ARE TWO: `NSEnumerationReverse` changes the DIRECTION of the
+ * walk, and `NSEnumerationConcurrent` is a hint nothing here takes — so a caller who passes it gets a
+ * correct, SEQUENTIAL answer, which is the same stance `-sortedArrayWithOptions:` already records for
+ * `NSSortConcurrent`. What is NOT a formality is `-indexOfObjectWithOptions:passingTest:` STOPPING at the
+ * first match: the pre-existing `-indexOfObjectPassingTest:` documents why (a predicate may have side
+ * effects, so "the same answer" is not the same behaviour), and these forms follow that rule exactly. */
+
+- (void)enumerateObjectsWithOptions:(NSEnumerationOptions)options
+			 usingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block
+{
+	if (block == NULL) {
+		return;
+	}
+	if ((options & NSEnumerationReverse) == 0) {
+		[self enumerateObjectsUsingBlock:block];
+		return;
+	}
+	{
+		NSUInteger i = [self count];
+		BOOL stop = NO;
+
+		while (i > 0 && !stop) {
+			i--;
+			block([self objectAtIndex:i], i, &stop);
+		}
+	}
+}
+
+- (void)enumerateObjectsAtIndexes:(NSIndexSet *)indexes
+			  options:(NSEnumerationOptions)options
+		       usingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block
+{
+	NSUInteger index;
+	BOOL stop = NO;
+
+	if (block == NULL) {
+		return;
+	}
+	if ((options & NSEnumerationReverse) != 0) {
+		for (index = [indexes lastIndex]; index != NSNotFound && !stop;
+		     index = [indexes indexLessThanIndex:index]) {
+			block([self objectAtIndex:index], index, &stop);
+		}
+		return;
+	}
+	for (index = [indexes firstIndex]; index != NSNotFound && !stop;
+	     index = [indexes indexGreaterThanIndex:index]) {
+		block([self objectAtIndex:index], index, &stop);
+	}
+}
+
+- (NSUInteger)indexOfObjectWithOptions:(NSEnumerationOptions)options
+			   passingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate
+{
+	__block NSUInteger found = NSNotFound;
+
+	if (predicate == NULL) {
+		return NSNotFound;
+	}
+	[self enumerateObjectsWithOptions:options
+			       usingBlock:^(id object, NSUInteger index, BOOL *stop) {
+		if (predicate(object, index, stop)) {
+			found = index;
+			*stop = YES;
+		}
+	}];
+	return found;
+}
+
+- (NSUInteger)indexOfObjectAtIndexes:(NSIndexSet *)indexes
+			     options:(NSEnumerationOptions)options
+			 passingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate
+{
+	__block NSUInteger found = NSNotFound;
+
+	if (predicate == NULL) {
+		return NSNotFound;
+	}
+	[self enumerateObjectsAtIndexes:indexes
+				options:options
+			     usingBlock:^(id object, NSUInteger index, BOOL *stop) {
+		if (predicate(object, index, stop)) {
+			found = index;
+			*stop = YES;
+		}
+	}];
+	return found;
+}
+
+- (NSIndexSet *)indexesOfObjectsWithOptions:(NSEnumerationOptions)options
+				passingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate
+{
+	NSMutableIndexSet *matches = [[NSMutableIndexSet alloc] init];
+
+	if (predicate == NULL) {
+		return matches;
+	}
+	[self enumerateObjectsWithOptions:options
+			       usingBlock:^(id object, NSUInteger index, BOOL *stop) {
+		if (predicate(object, index, stop)) {
+			[matches addIndex:index];
+		}
+	}];
+	return matches;
+}
+
+- (NSIndexSet *)indexesOfObjectsAtIndexes:(NSIndexSet *)indexes
+				  options:(NSEnumerationOptions)options
+			      passingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate
+{
+	NSMutableIndexSet *matches = [[NSMutableIndexSet alloc] init];
+
+	if (predicate == NULL) {
+		return matches;
+	}
+	[self enumerateObjectsAtIndexes:indexes
+				options:options
+			     usingBlock:^(id object, NSUInteger index, BOOL *stop) {
+		if (predicate(object, index, stop)) {
+			[matches addIndex:index];
+		}
+	}];
+	return matches;
+}
+
+/* THE PATHNAME FILTER: those elements whose EXTENSION is one of the named ones, in order, by the same
+ * `-pathExtension` every other path decision in this library uses. A non-string element raises through
+ * the message, which is the honest answer — this door is about pathnames. */
+- (NSArray<NSString *> *)pathsMatchingExtensions:(NSArray<NSString *> *)filterTypes
+{
+	NSMutableArray *matched = [[NSMutableArray alloc] init];
+	NSUInteger i, n = [self count];
+
+	for (i = 0; i < n; i++) {
+		NSString *path = [self objectAtIndex:i];
+
+		if ([filterTypes containsObject:[path pathExtension]]) {
+			[matched addObject:path];
+		}
+	}
+	return matched;
+}
+
+/* THE SHUFFLE IS FISHER-YATES, and its ENTROPY IS `getentropy`'s — the door musl provides and NSUUID
+ * already draws from — rather than `rand()`, which is a seeded reproducible sequence and not a source of
+ * randomness at all. The zero-biased modulo is stated rather than hidden: a 64-bit draw modulo a small
+ * count is biased by less than one part in 2^58, and the alternative (rejection sampling) would change
+ * the number of draws a caller cannot observe anyway. */
+- (NSArray<id> *)shuffledArray
+{
+	NSMutableArray *shuffled = [[NSMutableArray alloc] initWithArray:self];
+	NSUInteger i = [shuffled count];
+
+	while (i > 1) {
+		unsigned char bytes[8];
+		uint64_t draw;
+		NSUInteger j;
+
+		if (getentropy(bytes, sizeof(bytes)) != 0) {
+			[NSException raise:NSInternalInconsistencyException
+				    format:@"-shuffledArray: the system entropy source is unavailable"];
+		}
+		memcpy(&draw, bytes, sizeof(draw));
+		i--;
+		j = (NSUInteger)(draw % i);
+		[shuffled exchangeObjectAtIndex:i withObjectAtIndex:j];
+	}
+	return shuffled;
+}
+
+/* --- THE SORT HINT PAIR (§63.45) --------------------------------------------------------------------
+ *
+ * **THE HINT IS CARRIED AS THE RECEIVER'S COUNT, AND THAT IS DELIBERATE: A HINT IS A SPEED DEVICE, SO
+ * NOTHING IN IT MAY BE ABLE TO MAKE AN ANSWER WRONG.** A count is what makes a stale or foreign hint
+ * DETECTABLE, and the count is the only thing this implementation puts in.
+ *
+ * WHAT IT BUYS: `-sortedArrayUsingFunction:context:hint:` runs a LINEAR already-sorted check under the
+ * caller's OWN comparator before sorting, so an array that is already in order costs n comparisons instead
+ * of an O(n^2) insertion sort's — and THAT CHECK IS SELF-VERIFYING, which is the property that matters: a
+ * hint reused on a different array can only cost a failed check, never a wrong answer. Apple publishes a
+ * hint as opaque ("speeds the sorting"); it publishes no FORMAT, so this one is ours and says so. */
+- (NSData *)sortedArrayHint
+{
+	uint64_t count = (uint64_t)[self count];
+
+	return [NSData dataWithBytes:&count length:sizeof(count)];
+}
+
+- (NSArray<id> *)sortedArrayUsingFunction:(NSInteger (*)(id, id, void *))comparator
+			      context:(nullable void *)context
+				 hint:(nullable NSData *)hint
+{
+	if (comparator != NULL && hint != nil && [hint length] == sizeof(uint64_t)) {
+		uint64_t count = 0;
+		NSUInteger i;
+		BOOL ordered = YES;
+
+		[hint getBytes:&count length:sizeof(count)];
+		if (count == (uint64_t)[self count]) {
+			for (i = 1; i < [self count]; i++) {
+				if (comparator([self objectAtIndex:i - 1], [self objectAtIndex:i],
+					       context) == NSOrderedDescending) {
+					ordered = NO;
+					break;
+				}
+			}
+			if (ordered) {
+				return [[NSArray alloc] initWithArray:self];
+			}
+		}
+	}
+	return [self sortedArrayUsingFunction:comparator context:context];
+}
+
+/* --- THE ARRAY-WIDE KVO DOORS (§63.45) --------------------------------------------------------------
+ *
+ * Apple's own note says these exist because invoking them "is potentially much faster than repeatedly
+ * invoking NSObject(NSKeyValueObservingRegistration) methods" — A PERFORMANCE CLAIM, NOT A DIFFERENT
+ * SEMANTICS, so the faithful implementation IS the walk, and it says so here rather than implying that a
+ * batch registration happens somewhere. The context-bearing form is the one Apple's header recommends for
+ * the remove side, for the reason its own comment gives; all three are here together so a caller who has
+ * the index set in hand never needs the loop. */
+- (void)addObserver:(NSObject *)observer
+ toObjectsAtIndexes:(NSIndexSet *)indexes
+	 forKeyPath:(NSString *)keyPath
+	    options:(NSKeyValueObservingOptions)options
+	    context:(nullable void *)context
+{
+	NSUInteger index;
+
+	for (index = [indexes firstIndex]; index != NSNotFound;
+	     index = [indexes indexGreaterThanIndex:index]) {
+		[[self objectAtIndex:index] addObserver:observer
+					     forKeyPath:keyPath
+						options:options
+						context:context];
+	}
+}
+
+- (void)removeObserver:(NSObject *)observer
+ fromObjectsAtIndexes:(NSIndexSet *)indexes
+	    forKeyPath:(NSString *)keyPath
+	       context:(nullable void *)context
+{
+	NSUInteger index;
+
+	for (index = [indexes firstIndex]; index != NSNotFound;
+	     index = [indexes indexGreaterThanIndex:index]) {
+		[[self objectAtIndex:index] removeObserver:observer forKeyPath:keyPath context:context];
+	}
+}
+
+- (void)removeObserver:(NSObject *)observer
+ fromObjectsAtIndexes:(NSIndexSet *)indexes
+	    forKeyPath:(NSString *)keyPath
+{
+	NSUInteger index;
+
+	for (index = [indexes firstIndex]; index != NSNotFound;
+	     index = [indexes indexGreaterThanIndex:index]) {
+		[[self objectAtIndex:index] removeObserver:observer forKeyPath:keyPath];
+	}
+}
+
+/* --- THE FILE-FORM DOORS (§63.45) -------------------------------------------------------------------
+ *
+ * A property list IS this family's file format (NSArray.h's own note says the plist conveniences are
+ * declared as a category), so `-writeToURL:error:` and its reading twin are the plist serialiser with the
+ * array's kind CHECKED on the way in: a plist that is a dictionary is not an array, and saying so is the
+ * difference between a diagnosable failure and a silently wrong type. -initWithContentsOfURL:error: keeps
+ * Apple's "no" is a VALUE contract — nil plus a filled-in NSError, never a raise. */
+- (nullable NSArray *)initWithContentsOfURL:(NSURL *)url error:(NSError * _Nullable * _Nullable)error
+{
+	NSData *data;
+	id plist;
+
+	if (error != NULL) {
+		*error = nil;
+	}
+	data = [NSData dataWithContentsOfURL:url options:0 error:error];
+	if (data == nil) {
+		return nil;	/* the reading door has already filled `error` in */
+	}
+	plist = [NSPropertyListSerialization propertyListWithData:data
+							  options:NSPropertyListImmutable
+							   format:NULL
+							    error:error];
+	if (plist == nil) {
+		return nil;
+	}
+	if (![plist isKindOfClass:[NSArray class]]) {
+		if (error != NULL) {
+			*error = [NSError errorWithDomain:NSCocoaErrorDomain
+						     code:NSPropertyListReadCorruptError
+					       userInfo:@{ NSLocalizedDescriptionKey :
+				[NSString stringWithFormat:@"%@ does not hold an ARRAY but a %@",
+					url, [plist class]] }];
+		}
+		return nil;
+	}
+	return [self initWithArray:plist];
+}
+
++ (nullable NSArray *)arrayWithContentsOfURL:(NSURL *)url error:(NSError * _Nullable * _Nullable)error
+{
+	return [[self alloc] initWithContentsOfURL:url error:error];
+}
+
+- (BOOL)writeToURL:(NSURL *)url error:(NSError * _Nullable * _Nullable)error
+{
+	NSData *data;
+
+	if (error != NULL) {
+		*error = nil;
+	}
+	data = [NSPropertyListSerialization dataWithPropertyList:self
+							  format:NSPropertyListXMLFormat_v1_0
+							 options:0
+							   error:error];
+	if (data == nil) {
+		return NO;
+	}
+	return [data writeToURL:url options:0 error:error];
+}
 
 @end
 

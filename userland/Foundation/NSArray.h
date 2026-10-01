@@ -37,6 +37,9 @@
  * are -firstObject and -lastObject, because an EMPTY array has neither. */
 NS_ASSUME_NONNULL_BEGIN
 @class NSURL;
+/* §63.45: the sort-hint property and its `hint:` parameter name NSData, so the type has to be visible — the
+ * same reason NSURL is named here rather than imported. */
+@class NSData;
 
 /* ===================================================================================================
  * NSARRAY IS A CLASS CLUSTER (2026-09-28; docs/design/foundation-clusters-plan.md §C.3).
@@ -156,6 +159,51 @@ NS_ASSUME_NONNULL_BEGIN
 /* THE PREDICATE FILTER (F11a): the elements the predicate answers YES for, in order. The
  * returned array is NEW and the receiver is untouched — Cocoa's rule everywhere here. */
 - (NSArray *)filteredArrayUsingPredicate:(NSPredicate *)predicate;
+
+/* --- §63.45: THE OPTIONS FORMS OF THE ENUMERATION AND TEST DOORS ------------------------------------
+ *
+ * THE OPTIONS ARE TWO AND ONLY ONE OF THEM DOES ANYTHING HERE: `NSEnumerationReverse` reverses the
+ * DIRECTION of the walk, and `NSEnumerationConcurrent` is a hint this library does not take (the same
+ * stance `-sortedArrayWithOptions:` records for `NSSortConcurrent`), so a caller who passes it gets a
+ * correct SEQUENTIAL answer. The `-…WithOptions:passingTest:` forms STOP at the first match exactly as
+ * their non-options twins do, and for the reason those document: a predicate may have side effects. */
+- (void)enumerateObjectsWithOptions:(NSEnumerationOptions)opts
+			 usingBlock:(void (^)(ObjectType object, NSUInteger index, BOOL *stop))block;
+- (void)enumerateObjectsAtIndexes:(NSIndexSet *)indexes
+			  options:(NSEnumerationOptions)opts
+		       usingBlock:(void (^)(ObjectType object, NSUInteger index, BOOL *stop))block;
+- (NSUInteger)indexOfObjectWithOptions:(NSEnumerationOptions)opts
+			   passingTest:(BOOL (^)(ObjectType object, NSUInteger index, BOOL *stop))predicate;
+- (NSUInteger)indexOfObjectAtIndexes:(NSIndexSet *)indexes
+			     options:(NSEnumerationOptions)opts
+			 passingTest:(BOOL (^)(ObjectType object, NSUInteger index, BOOL *stop))predicate;
+- (NSIndexSet *)indexesOfObjectsWithOptions:(NSEnumerationOptions)opts
+				passingTest:(BOOL (^)(ObjectType object, NSUInteger index, BOOL *stop))predicate;
+- (NSIndexSet *)indexesOfObjectsAtIndexes:(NSIndexSet *)indexes
+				  options:(NSEnumerationOptions)opts
+			      passingTest:(BOOL (^)(ObjectType object, NSUInteger index, BOOL *stop))predicate;
+
+/* --- §63.45: THE DESCRIPTION, PATHNAME, SHUFFLE AND HINT DOORS --------------------------------------
+ *
+ * `-descriptionWithLocale:` and its `indent:` form are documented as "a string that represents the contents
+ * of the array, formatted as a property list" — the MULTI-LINE layout, which is the whole of what they add
+ * to `-description`; the element rendering is SHARED with it, so the two cannot disagree about a member.
+ *
+ * `-sortedArrayHint` returns a value whose FORMAT Apple does not publish ("a 'hint' that speeds the
+ * sorting"), so the format is OURS and is stated at the door: the receiver's count, which is what makes a
+ * stale hint DETECTABLE, and nothing that could make an answer wrong if it is reused on another array. */
+- (NSString *)descriptionWithLocale:(nullable id)locale;
+- (NSString *)descriptionWithLocale:(nullable id)locale indent:(NSUInteger)level;
+- (NSArray<NSString *> *)pathsMatchingExtensions:(NSArray<NSString *> *)filterTypes;
+/* ⚠ `-shuffledArray` IS DECLARED `NSArray<id> *`, WHICH IS APPLE'S OWN SPELLING AND NOT THIS FILE'S
+ * HABIT — the parameterization instrument (§11.0) caught the difference: Apple's declaration for this door
+ * names NO type parameter, so writing `NSArray<ObjectType> *` here was a signature that did not match the
+ * one it claims to implement. It is the only door in this family where Apple writes the bare wildcard. */
+- (NSArray<id> *)shuffledArray;
+@property (readonly, copy) NSData *sortedArrayHint;
+- (NSArray<ObjectType> *)sortedArrayUsingFunction:(NSInteger (*)(ObjectType, ObjectType, void *))comparator
+			      context:(nullable void *)context
+				 hint:(nullable NSData *)hint;
 
 - (NSEnumerator<ObjectType> *)objectEnumerator;
 - (NSEnumerator<ObjectType> *)reverseObjectEnumerator;

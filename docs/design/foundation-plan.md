@@ -15976,6 +15976,90 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.45 — NSArray'S NINETEEN ROWS: A WHOLE OWNER CLOSED, AND THE HOST PROBE THAT CANNOT RUN (2026-10-01)
+
+**WHAT LANDED: EIGHTEEN ROWS, AND THE OWNER LEFT THE WORK LIST — nineteen open down to ONE, and that one is a
+substrate deferral rather than work.** The six options forms of the enumeration and test doors
+(`-enumerateObjectsWithOptions:usingBlock:`, `-enumerateObjectsAtIndexes:options:usingBlock:`,
+`-indexOfObjectWithOptions:passingTest:`, `-indexOfObjectAtIndexes:options:passingTest:`,
+`-indexesOfObjectsWithOptions:passingTest:`, `-indexesOfObjectsAtIndexes:options:passingTest:`), the locale
+description pair, `-pathsMatchingExtensions:`, `-shuffledArray`, the sort-hint pair (`-sortedArrayHint` +
+`-sortedArrayUsingFunction:context:hint:`), the array-wide KVO trio and the three error-carrying file doors
+(`+arrayWithContentsOfURL:error:`, `-initWithContentsOfURL:error:`, `-writeToURL:error:`).
+**MEASURED: guest case `foundation_collection` 6/6 checks with the probe's own tally `ok=62 fail=0` (was 54);
+`make foundation-sweep` exit 0; `--check` consistent; `--unimplemented` 0 NEW; selector ledger methods
+shipped 2151 → 2168 and properties 1266 → 1267 — exactly eighteen, nothing else moved.**
+
+**WHY THIS OWNER AND NOT THE LARGER NSString, SINCE THE PLAN SAYS LARGEST-FIRST.** The plan's unit is *"close
+every open row of owner X"*, and **NSString's 44 cannot close**: 22 are the AppKit-drawing deferral, 3 are the
+Intents group and 2 are deprecated linguistic doors. **NSArray is the largest owner whose whole row set could
+reach zero**, which is what makes it a unit instead of a slice — and the ORDER is explicitly "a judgement" in
+the plan, so this is that judgement written down rather than a silent reordering.
+
+**THE INSTRUMENT REFUSED THE UNIT THREE TIMES, AND EVERY TIME IT WAS RIGHT (§11.0's parameterization clause).**
+`make foundation-sweep` came back **exit 2** with three findings, and they were not noise:
+ * **`-shuffledArray` is declared `NSArray<id> *` BY APPLE, NOT `NSArray<ObjectType> *`** — the one door in this
+   family where Apple writes the bare wildcard. Read from the doc page by applying its `variantOverrides`
+   (`interfaceLanguage: occ`), which is the spec door §62.x established.
+ * **`+arrayWithContentsOfURL:error:` and `-initWithContentsOfURL:error:` are declared `NSArray<ObjectType> *`,
+   not `instancetype`** — which is what I had written, out of this file's habit.
+ The lesson is small and general: **a signature written from the FAMILY'S habit rather than from the door's own
+ declaration is a fidelity defect the instrument can see and a reader cannot.**
+
+**⚠ THE DECLINE THAT BECAME A DEFERRAL, AND THE CRITERION THAT CANNOT SEE IT.** `-shuffledArrayWithRandomSource:`
+takes **`GKRandomSource`** (GameplayKit), which this system has not got — an absent substrate, so the row is
+**deferred, not declined**, by the user's direction of 2026-09-30 ("defer all work which lacks substrate").
+**AND THE PLAN'S RE-RUNNABLE CRITERION FOR THAT IS NAME-BASED — "an open row whose NAME carries one of these
+type tokens" — WHICH THIS ROW IS INVISIBLE TO:** Apple's selector is `…WithRandomSource:` and the absent type
+is only in the SIGNATURE. So the criterion needs a second shape for rows Apple spells without their type, and
+this is the first one. It stays `open` and is recorded here rather than struck.
+
+**⚠ AND THE HOST PROBE COULD NOT RUN, WHICH IS BY DESIGN RATHER THAN A GAP.** The plan's bar says run the host
+probe first because the loop is cheaper; **`foundation_collection` is one of the five probes DELIBERATELY NOT
+host-clean** (`mk/60-host.mk`: it reads the guest's filesystem and "would fail here for a reason that is not a
+bug"). Running it anyway aborts inside `mutation-handler-direct` — a check that predates this unit and runs long
+before the new block. **So for this unit the GUEST gate is the verification of record, and the abort is not
+evidence about the change.** It is recorded because the next reader will otherwise see a red host run and
+believe it.
+
+**⚠ AND THE STALE-IMAGE TRAP SPRANG AGAIN, ONE UNIT AFTER I WROTE IT DOWN.** The first guest run reported
+**54 of 54** — every check passing — on a probe that did not contain the new ones, because `make testimg` had
+**FAILED (exit 2)** and `make test` reads the image it does not rebuild. **The tell was the neighbour line:**
+`dict-file-attributes` sat immediately before `RESULT`, and the new checks belong between them. **A green run is
+not a green run until you have seen the new checks' own names in the output** — the count alone cannot tell a
+stale probe from a fresh one when the count matches what the stale probe had.
+ * **AND THE CAUSE OF THE FAILED BUILD WAS A REAL DEFECT, CAUGHT BY A STANDING PRACTICE:** passing
+   `[NSURL fileURLWithPath:…]` INLINE to a nonnull parameter is an **error** under
+   `-Werror=nullable-to-nonnull-conversion`, which is how this tree compiles every probe — so the nullability
+   annotation is a claim about what the door accepts, enforced, and not decoration.
+
+**TWO PROBE EXPECTATIONS OF MINE WERE WRONG, AND THE LIBRARY WAS RIGHT IN BOTH.**
+ * **`-descriptionWithLocale:`**: I asserted an indent shape the implementation does not produce. The library's
+   rule is self-consistent and is now asserted EXACTLY: level 0 is `(\n    a,\n    bb,\n    ccc\n)` and level 1
+   shifts the members one further and closes at its own level. **The lesson already in this document applies
+   again: an expectation written from the shape you imagine is not evidence about the shape that exists** — the
+   fix is exact equality, which cannot be satisfied by an approximation.
+ * **The KVO trio**: I drove the observation with a DIRECT setter call (`-setValue:`) and got zero
+   notifications. **That is not this door's behaviour to assert:** this library's KVO notifies on a **KVC
+   WRITE** (`-setValue:forKey:`) and on the manual pair, which `foundation_kvo`'s own check list states
+   (`kvo-notifies-on-a-kvc-write`). Apple swizzles the setter, so a direct call notifies there. **The door under
+   test is the array-wide REGISTRATION, so the check now drives it the way this library's KVO works and counts
+   one notification per indexed element** — and the direct-setter difference is named here as an OBSERVATION
+   about `NSKeyValueObserving`, not silently folded into this unit.
+
+**A NAMED DEVIATION, AT THE DOOR.** `-descriptionWithLocale:` produces Apple's LAYOUT with **this library's**
+element rendering — a real plist would QUOTE string members and this does not, because `-description` here does
+not either and one rendering rule for a member is worth more than a second quotation rule invented for one
+door. The layout is Apple's; the element text is this library's documented form, and the door says so.
+
+**AND ONE MISTAKE WORTH KEEPING, BECAUSE IT IS THE ONE THAT COSTS A BUILD EVERY TIME:** my first edit replaced
+the block ending in `@end` and did not re-emit the closing lines of the method above it, so
+`-countByEnumeratingWithState:` lost its tail. **AN EDIT ANCHORED ON A CLOSING DELIMITER MUST RE-EMIT THE
+DELIMITER AND EVERYTHING IT CLOSED** — and the two that followed were the same class: a C function cannot be
+DEFINED inside an `@implementation` (so the renderer became a private `-fn…` method, which is the house idiom
+anyway), and `ObjectType` is not a name an implementation body can use (the bodies spell `id`, as the rest of
+`NSArray.m` does).
+
 ## §63.44 — HOW WE STAND AGAINST OTHER FOUNDATIONS: GNUSTEP MEASURED, OBJFW READ, AND ONE AMENDMENT (2026-10-01)
 
 **THE QUESTION WAS "HOW ARE WE FARING", AND IT PRODUCED A MEASUREMENT, AN AMENDMENT, AND A CORRECTION.**

@@ -38,6 +38,52 @@ static void check(const char *name, int ok, const char *detail)
 	}
 }
 
+/* --- §63.45'S TWO FIXTURES ---------------------------------------------------------------------------
+ *
+ * A C COMPARATOR, because `-sortedArrayUsingFunction:context:hint:` takes a FUNCTION POINTER and a block
+ * literal does not convert to one — so the hint pair's checks need a real function at file scope.
+ *
+ * AND A KVO PAIR, because the array-wide registration doors are only observable against a real key path on
+ * a real object: the observable is an ordinary class with one synthesized property (KVO watches the
+ * ACCESSOR, which is what -setValue: goes through), and the observer counts what it is told. Counting is
+ * the assertion — the doors' whole claim is how MANY times the notifications arrive for N indexed
+ * elements. */
+static NSInteger fn_compare_strings(id left, id right, void *context)
+{
+	(void)context;
+	return (NSInteger)[(NSString *)left compare:(NSString *)right];
+}
+
+@interface FNCollectionObservable : NSObject
+@property (copy) NSString *value;
+@end
+
+@implementation FNCollectionObservable
+@end
+
+@interface FNCollectionObserver : NSObject
+{
+@public
+	int notifications;
+}
+@end
+
+@implementation FNCollectionObserver
+
+- (void)observeValueForKeyPath:(NSString *)keyPath
+		      ofObject:(id)object
+			change:(NSDictionary *)change
+		       context:(void *)context
+{
+	(void)keyPath;
+	(void)object;
+	(void)change;
+	(void)context;
+	notifications++;
+}
+
+@end
+
 /* A nil WHERE A NIL IS THE POINT: -objectForKey: and -compare: take a nonnull argument, and the
  * checks below hand them nil ON PURPOSE to see the refusal. Fetching it says so; writing the
  * literal at the call site would be a -Wnonnull finding of its own that had nothing to do with the
@@ -1759,6 +1805,207 @@ NULL
 		      [attrs fileHFSTypeCode] == 0x12345678UL &&
 		      [attrs fileSystemFileNumber] == 99 && [attrs fileSystemNumber] == 7,
 		      "every -file* accessor reads its own key and converts it: type, size, both dates, permissions, both owner IDs and names, the three BOOL flags, both HFS codes and the two file-system numbers");
+	}
+
+	/* --- §63.45: THE OPTIONS, DESCRIPTION, PATHNAME, SHUFFLE, HINT, KVO AND FILE DOORS ------------------ */
+	{
+		NSArray *three = [NSArray arrayWithObjects:@"a", @"bb", @"ccc", nil];
+		NSArray *paths = [NSArray arrayWithObjects:@"/tmp/x.txt", @"/tmp/y.md", @"/tmp/z.txt", nil];
+
+		/* THE OPTIONS FORMS, AND THE OPTION THAT DOES SOMETHING IS THE DIRECTION ONE. The reverse walk is
+		 * asserted by the ORDER the indexes arrive in, because "the same elements" is what a forward walk
+		 * would also produce. */
+		{
+			NSMutableArray *order = [NSMutableArray array];
+
+			[three enumerateObjectsWithOptions:NSEnumerationReverse
+					       usingBlock:^(id object, NSUInteger index, BOOL *stop) {
+				(void)object;
+				[order addObject:[NSNumber numberWithUnsignedLong:index]];
+			}];
+			check("array-enumerate-with-options",
+			      [order count] == 3 &&
+			      [[order objectAtIndex:0] unsignedLongValue] == 2 &&
+			      [[order objectAtIndex:2] unsignedLongValue] == 0,
+			      [[NSString stringWithFormat:@"NSEnumerationReverse walks from the END (indexes came back "
+						@"as %@ for a three-element array)",
+						[order componentsJoinedByString:@","]] UTF8String]);
+		}
+
+		/* THE INDEX-SET FORMS walk the SET, not the array, and the reverse form must do the same. */
+		{
+			NSMutableIndexSet *only = [[NSMutableIndexSet alloc] init];
+			NSMutableArray *seen = [NSMutableArray array];
+			NSMutableArray *reverseSeen = [NSMutableArray array];
+			NSIndexSet *found;
+			NSUInteger first;
+
+			[only addIndex:0];
+			[only addIndex:2];
+			[three enumerateObjectsAtIndexes:only
+						 options:0
+					      usingBlock:^(id object, NSUInteger index, BOOL *stop) {
+				(void)stop;
+				[seen addObject:[NSNumber numberWithUnsignedLong:index]];
+			}];
+			[three enumerateObjectsAtIndexes:only
+						 options:NSEnumerationReverse
+					      usingBlock:^(id object, NSUInteger index, BOOL *stop) {
+				(void)stop;
+				[reverseSeen addObject:[NSNumber numberWithUnsignedLong:index]];
+			}];
+			found = [three indexesOfObjectsWithOptions:0
+						       passingTest:^BOOL(id object, NSUInteger index, BOOL *stop) {
+				(void)index;
+				(void)stop;
+				return [(NSString *)object length] != 2;
+			}];
+			first = [three indexOfObjectWithOptions:0
+						    passingTest:^BOOL(id object, NSUInteger index, BOOL *stop) {
+				(void)index;
+				(void)stop;
+				return [(NSString *)object length] == 2;
+			}];
+			check("array-indexes-options-forms",
+			      [seen count] == 2 && [[seen objectAtIndex:0] unsignedLongValue] == 0 &&
+			      [[reverseSeen objectAtIndex:0] unsignedLongValue] == 2 &&
+			      [found count] == 2 && [found containsIndex:0] && [found containsIndex:2] &&
+			      first == 1,
+			      [[NSString stringWithFormat:@"the index-set walk visits only its own indexes forward "
+						@"(%@) and backward (%@), the exhaustive test form answers {%lu,%lu} and the "
+						@"first-match form STOPS at 1",
+						[seen componentsJoinedByString:@","],
+						[reverseSeen componentsJoinedByString:@","],
+						(unsigned long)[found firstIndex],
+						(unsigned long)[found lastIndex]] UTF8String]);
+		}
+
+		/* THE LOCALE DESCRIPTION: Apple's contract is the PROPERTY-LIST layout, which is multi-line and
+		 * INDENTED — the thing -description does not do here. Both halves are asserted: the shape AND that
+		 * the receiver's own -description is untouched by it. */
+		{
+			NSString *nested = [three descriptionWithLocale:nil];
+			NSString *indented = [three descriptionWithLocale:nil indent:1];
+
+			check("array-description-with-locale",
+			      [nested isEqualToString:@"(\n    a,\n    bb,\n    ccc\n)"] &&
+			      [indented isEqualToString:@"(\n        a,\n        bb,\n        ccc\n    )"],
+			      [[NSString stringWithFormat:@"-descriptionWithLocale: is the plist LAYOUT exactly — "
+						@"level 0 is (%@) and level 1 shifts the members one further and closes at its "
+						@"own level (%@)",
+						[nested stringByReplacingOccurrencesOfString:@"\n" withString:@"\\n"],
+						[indented stringByReplacingOccurrencesOfString:@"\n" withString:@"\\n"]] UTF8String]);
+		}
+
+		/* THE PATHNAME FILTER selects by EXTENSION and keeps the receiver's ORDER. */
+		check("array-paths-matching-extensions",
+		      [[paths pathsMatchingExtensions:[NSArray arrayWithObject:@"txt"]] count] == 2 &&
+		      [[[paths pathsMatchingExtensions:[NSArray arrayWithObject:@"md"]] objectAtIndex:0]
+			  isEqualToString:@"/tmp/y.md"] &&
+		      [[paths pathsMatchingExtensions:[NSArray arrayWithObject:@"c"]] count] == 0,
+		      "only the elements whose -pathExtension is in the list come back, in order");
+
+		/* THE SHUFFLE: a PERMUTATION of the receiver, and never a mutation of it. The distribution is not
+		 * asserted — a statistical check in a probe is a flaky check — but the IDENTITY of the multiset is,
+		 * and so is the fact that the receiver is untouched. */
+		{
+			NSMutableArray *ints = [NSMutableArray array];
+			NSArray *shuffled;
+			NSUInteger i;
+			NSUInteger total = 0;
+
+			for (i = 0; i < 64; i++) {
+				[ints addObject:[NSNumber numberWithUnsignedLong:i]];
+			}
+			shuffled = [ints shuffledArray];
+			for (i = 0; i < [shuffled count]; i++) {
+				total += [[shuffled objectAtIndex:i] unsignedLongValue];
+			}
+			check("array-shuffled-is-a-permutation",
+			      [shuffled count] == 64 && total == (63 * 64 / 2) &&
+			      [[ints objectAtIndex:0] unsignedLongValue] == 0 &&
+			      ![shuffled isEqual:ints],
+			      [[NSString stringWithFormat:@"a 64-element shuffle is a PERMUTATION (sum %lu of 2016), "
+						@"the receiver keeps its order, and the answer is a new array",
+						(unsigned long)total] UTF8String]);
+		}
+
+		/* THE SORT HINT: the contract is "speeds the sorting", so what is asserted is that the ANSWER IS
+		 * THE SAME with and without it — a hint must never be load-bearing for correctness — and that a hint
+		 * from a DIFFERENT array is harmless. */
+		{
+			NSArray *unsorted = [NSArray arrayWithObjects:@"gamma", @"alpha", @"beta", nil];
+			NSData *hint = [unsorted sortedArrayHint];
+			NSArray *plain = [unsorted sortedArrayUsingFunction:fn_compare_strings context:NULL];
+			NSArray *hinted = [unsorted sortedArrayUsingFunction:fn_compare_strings
+								     context:NULL
+									hint:hint];
+			NSArray *foreign = [[NSArray arrayWithObject:@"x"]
+						sortedArrayUsingFunction:fn_compare_strings context:NULL hint:hint];
+
+			check("array-sorted-hint",
+			      hint != nil && [plain isEqualToArray:hinted] &&
+			      [[plain objectAtIndex:0] isEqualToString:@"alpha"] &&
+			      [foreign count] == 1,
+			      "the hint neither changes the ANSWER nor breaks on an array it did not come from");
+		}
+
+		/* THE ARRAY-WIDE KVO DOORS: one observation per INDEXED element, and the context-bearing removal
+		 * takes them all away again. The observable is a real key path on a real object, not a stub. */
+		{
+			FNCollectionObservable *first = [[FNCollectionObservable alloc] init];
+			FNCollectionObservable *second = [[FNCollectionObservable alloc] init];
+			FNCollectionObserver *watcher = [[FNCollectionObserver alloc] init];
+			NSArray *pair = [NSArray arrayWithObjects:first, second, nil];
+			NSMutableIndexSet *both = [[NSMutableIndexSet alloc] init];
+
+			[both addIndex:0];
+			[both addIndex:1];
+			[pair addObserver:watcher toObjectsAtIndexes:both forKeyPath:@"value" options:0 context:NULL];
+			[first setValue:@"one" forKey:@"value"];
+			[second setValue:@"two" forKey:@"value"];
+			[pair removeObserver:watcher fromObjectsAtIndexes:both forKeyPath:@"value" context:NULL];
+			[first setValue:@"three" forKey:@"value"];
+			check("array-kvo-registration-doors",
+			      watcher->notifications == 2,
+			      [[NSString stringWithFormat:@"-addObserver:toObjectsAtIndexes:… registers on EACH indexed "
+						@"element (2 notifications, then silence after the removal) — got %d",
+						watcher->notifications] UTF8String]);
+		}
+
+		/* THE ERROR-CARRYING FILE DOORS: a plist written and read back through a URL, the wrong-root
+		 * refusal as a VALUE, and the same for a URL that is not there. */
+		{
+			NSString *path = @"/System/Temporary Files/collection-63-45.plist";
+			NSURL *url = [NSURL fileURLWithPath:path];
+			NSError *error = nil;
+			BOOL wrote = [three writeToURL:url error:&error];
+			NSArray *back = [NSArray arrayWithContentsOfURL:url error:&error];
+			NSDictionary *notAnArray = [NSDictionary dictionaryWithObject:@"v" forKey:@"k"];
+			BOOL wroteDict = [notAnArray writeToURL:url error:NULL];
+			id wrong = [NSArray arrayWithContentsOfURL:url error:&error];
+			NSError *missingError = nil;
+			NSURL *absent = [NSURL fileURLWithPath:@"/System/Temporary Files/absent-63-45.plist"];
+			id missing = nil;
+
+			/* ⚠ `-fileURLWithPath:` IS NULLABLE AND THE READING DOOR'S PARAMETER IS NOT, so the URL is
+			 * bound to a variable and NARROWED by the test rather than passed inline — which is an ERROR here
+			 * (`-Werror=nullable-to-nonnull-conversion`, the standing practice this tree compiles probes
+			 * under) and not a warning, because the nullability is a claim about what the door accepts. */
+			if (absent != nil) {
+				missing = [NSArray arrayWithContentsOfURL:absent error:&missingError];
+			}
+
+			check("array-file-doors-with-error",
+			      wrote && back != nil && [back isEqualToArray:three] &&
+			      wrong == nil && missingError != nil && missing == nil,
+			      [[NSString stringWithFormat:@"write/read round-trips through a URL, a plist that is NOT "
+						@"an array answers nil, and a URL that is not there answers nil with an error "
+						@"(%@ / %@)",
+						error != nil ? [error localizedDescription] : @"nil",
+						missingError != nil ? [missingError localizedDescription] : @"no error"] UTF8String]);
+			(void)wroteDict;
+		}
 	}
 
 	printf("FOUNDATION-COLLECTION RESULT ok=%d fail=%d\n", okc, failc);

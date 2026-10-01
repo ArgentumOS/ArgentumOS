@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2151   open  509   struck  268
-#   property   shipped 1266   open  224   struck  146
+#   method     shipped 2168   open  492   struck  268
+#   property   shipped 1267   open  223   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -144,7 +144,7 @@ method	shipped	-initForWritingWithMutableData:	NSArchiver	Files and Data Persist
 method	shipped	-replaceObject:withObject:	NSArchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	objc
 property	shipped	archiverData	NSArchiver	Files and Data Persistence / Deprecated / Getting the archived data	deprecated	objc
 method	shipped	-addObserver:forKeyPath:options:context:	NSArray	Fundamentals / Basic Collections / Key-Value Observing	-	objc
-method	open	-addObserver:toObjectsAtIndexes:forKeyPath:options:context:	NSArray	Fundamentals / Basic Collections / Key-Value Observing	-	objc
+method	shipped	-addObserver:toObjectsAtIndexes:forKeyPath:options:context:	NSArray	Fundamentals / Basic Collections / Key-Value Observing	-	objc
 method	shipped	+array	NSArray	Fundamentals / Basic Collections / Creating an Array	-	objc
 method	shipped	-arrayByAddingObject:	NSArray	Fundamentals / Basic Collections / Deriving New Arrays	-	objc
 method	shipped	-arrayByAddingObjectsFromArray:	NSArray	Fundamentals / Basic Collections / Deriving New Arrays	-	objc
@@ -152,20 +152,20 @@ method	shipped	-arrayByApplyingDifference:	NSArray	Fundamentals / Basic Collecti
 method	shipped	+arrayWithArray:	NSArray	Fundamentals / Basic Collections / Creating an Array	-	objc
 method	shipped	+arrayWithContentsOfFile:	NSArray	Fundamentals / Basic Collections / Creating an Array	deprecated	objc
 method	shipped	+arrayWithContentsOfURL:	NSArray	Fundamentals / Basic Collections / Type Methods	deprecated	objc
-method	open	+arrayWithContentsOfURL:error:	NSArray	Fundamentals / Basic Collections / Type Methods	-	objc
+method	shipped	+arrayWithContentsOfURL:error:	NSArray	Fundamentals / Basic Collections / Type Methods	-	objc
 method	shipped	+arrayWithObject:	NSArray	Fundamentals / Basic Collections / Creating an Array	-	objc
 method	shipped	+arrayWithObjects:	NSArray	Fundamentals / Basic Collections / Creating an Array	-	objc
 method	shipped	+arrayWithObjects:count:	NSArray	Fundamentals / Basic Collections / Creating an Array	-	objc
 method	shipped	-componentsJoinedByString:	NSArray	Fundamentals / Basic Collections / Working with String Elements	-	objc
 method	shipped	-containsObject:	NSArray	Fundamentals / Basic Collections / Querying an Array	-	objc
-method	open	-descriptionWithLocale:	NSArray	Fundamentals / Basic Collections / Creating a Description	-	objc
-method	open	-descriptionWithLocale:indent:	NSArray	Fundamentals / Basic Collections / Creating a Description	-	objc
+method	shipped	-descriptionWithLocale:	NSArray	Fundamentals / Basic Collections / Creating a Description	-	objc
+method	shipped	-descriptionWithLocale:indent:	NSArray	Fundamentals / Basic Collections / Creating a Description	-	objc
 method	shipped	-differenceFromArray:	NSArray	Fundamentals / Basic Collections / Comparing with Another Array	-	objc
 method	shipped	-differenceFromArray:withOptions:	NSArray	Fundamentals / Basic Collections / Comparing with Another Array	-	objc
 method	shipped	-differenceFromArray:withOptions:usingEquivalenceTest:	NSArray	Fundamentals / Basic Collections / Comparing with Another Array	-	objc
-method	open	-enumerateObjectsAtIndexes:options:usingBlock:	NSArray	Fundamentals / Basic Collections / Sending Messages to Elements	-	objc
+method	shipped	-enumerateObjectsAtIndexes:options:usingBlock:	NSArray	Fundamentals / Basic Collections / Sending Messages to Elements	-	objc
 method	shipped	-enumerateObjectsUsingBlock:	NSArray	Fundamentals / Basic Collections / Sending Messages to Elements	-	objc
-method	open	-enumerateObjectsWithOptions:usingBlock:	NSArray	Fundamentals / Basic Collections / Sending Messages to Elements	-	objc
+method	shipped	-enumerateObjectsWithOptions:usingBlock:	NSArray	Fundamentals / Basic Collections / Sending Messages to Elements	-	objc
 method	shipped	-filteredArrayUsingPredicate:	NSArray	Fundamentals / Basic Collections / Deriving New Arrays	-	objc
 method	shipped	-firstObjectCommonWithArray:	NSArray	Fundamentals / Basic Collections / Comparing Arrays	-	objc
 method	shipped	-getObjects:	NSArray	Fundamentals / Basic Collections / Querying an Array	deprecated	objc
@@ -173,21 +173,21 @@ method	shipped	-getObjects:range:	NSArray	Fundamentals / Basic Collections / Que
 method	shipped	-indexOfObject:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
 method	shipped	-indexOfObject:inRange:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
 method	shipped	-indexOfObject:inSortedRange:options:usingComparator:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
-method	open	-indexOfObjectAtIndexes:options:passingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
+method	shipped	-indexOfObjectAtIndexes:options:passingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
 method	shipped	-indexOfObjectIdenticalTo:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
 method	shipped	-indexOfObjectIdenticalTo:inRange:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
 method	shipped	-indexOfObjectPassingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
-method	open	-indexOfObjectWithOptions:passingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
-method	open	-indexesOfObjectsAtIndexes:options:passingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
+method	shipped	-indexOfObjectWithOptions:passingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
+method	shipped	-indexesOfObjectsAtIndexes:options:passingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
 method	shipped	-indexesOfObjectsPassingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
-method	open	-indexesOfObjectsWithOptions:passingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
+method	shipped	-indexesOfObjectsWithOptions:passingTest:	NSArray	Fundamentals / Basic Collections / Finding Objects in an Array	-	objc
 method	shipped	-init	NSArray	Fundamentals / Basic Collections / Initializing an Array	-	objc
 method	shipped	-initWithArray:	NSArray	Fundamentals / Basic Collections / Initializing an Array	-	objc
 method	shipped	-initWithArray:copyItems:	NSArray	Fundamentals / Basic Collections / Initializing an Array	-	objc
 method	shipped	-initWithCoder:	NSArray	Fundamentals / Basic Collections / New Methods	-	objc
 method	shipped	-initWithContentsOfFile:	NSArray	Fundamentals / Basic Collections / Initializing an Array	deprecated	objc
 method	shipped	-initWithContentsOfURL:	NSArray	Fundamentals / Basic Collections / Instance Methods	deprecated	objc
-method	open	-initWithContentsOfURL:error:	NSArray	Fundamentals / Basic Collections / Instance Methods	-	objc
+method	shipped	-initWithContentsOfURL:error:	NSArray	Fundamentals / Basic Collections / Instance Methods	-	objc
 method	shipped	-initWithObjects:	NSArray	Fundamentals / Basic Collections / Initializing an Array	-	objc
 method	shipped	-initWithObjects:count:	NSArray	Fundamentals / Basic Collections / Initializing an Array	-	objc
 method	shipped	-isEqualToArray:	NSArray	Fundamentals / Basic Collections / Comparing Arrays	-	objc
@@ -197,31 +197,31 @@ method	shipped	-objectAtIndex:	NSArray	Fundamentals / Basic Collections / Queryi
 method	shipped	-objectAtIndexedSubscript:	NSArray	Fundamentals / Basic Collections / Querying an Array	-	objc
 method	shipped	-objectEnumerator	NSArray	Fundamentals / Basic Collections / Querying an Array	-	objc
 method	shipped	-objectsAtIndexes:	NSArray	Fundamentals / Basic Collections / Querying an Array	-	objc
-method	open	-pathsMatchingExtensions:	NSArray	Fundamentals / Basic Collections / Collecting Paths	-	objc
+method	shipped	-pathsMatchingExtensions:	NSArray	Fundamentals / Basic Collections / Collecting Paths	-	objc
 method	shipped	-removeObserver:forKeyPath:	NSArray	Fundamentals / Basic Collections / Key-Value Observing	-	objc
 method	shipped	-removeObserver:forKeyPath:context:	NSArray	Fundamentals / Basic Collections / Key-Value Observing	-	objc
-method	open	-removeObserver:fromObjectsAtIndexes:forKeyPath:	NSArray	Fundamentals / Basic Collections / Key-Value Observing	-	objc
-method	open	-removeObserver:fromObjectsAtIndexes:forKeyPath:context:	NSArray	Fundamentals / Basic Collections / Key-Value Observing	-	objc
+method	shipped	-removeObserver:fromObjectsAtIndexes:forKeyPath:	NSArray	Fundamentals / Basic Collections / Key-Value Observing	-	objc
+method	shipped	-removeObserver:fromObjectsAtIndexes:forKeyPath:context:	NSArray	Fundamentals / Basic Collections / Key-Value Observing	-	objc
 method	shipped	-reverseObjectEnumerator	NSArray	Fundamentals / Basic Collections / Querying an Array	-	objc
 method	shipped	-setValue:forKey:	NSArray	Fundamentals / Basic Collections / Key-Value Coding	-	objc
-method	open	-shuffledArray	NSArray	Fundamentals / Basic Collections / Randomly Shuffling an Array	-	objc
+method	shipped	-shuffledArray	NSArray	Fundamentals / Basic Collections / Randomly Shuffling an Array	-	objc
 method	open	-shuffledArrayWithRandomSource:	NSArray	Fundamentals / Basic Collections / Randomly Shuffling an Array	-	objc
 method	shipped	-sortedArrayUsingComparator:	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
 method	shipped	-sortedArrayUsingDescriptors:	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
 method	shipped	-sortedArrayUsingFunction:context:	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
-method	open	-sortedArrayUsingFunction:context:hint:	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
+method	shipped	-sortedArrayUsingFunction:context:hint:	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
 method	shipped	-sortedArrayUsingSelector:	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
 method	shipped	-sortedArrayWithOptions:usingComparator:	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
 method	shipped	-subarrayWithRange:	NSArray	Fundamentals / Basic Collections / Deriving New Arrays	-	objc
 method	shipped	-valueForKey:	NSArray	Fundamentals / Basic Collections / Key-Value Coding	-	objc
 method	shipped	-writeToFile:atomically:	NSArray	Fundamentals / Basic Collections / Storing Arrays	deprecated	objc
 method	shipped	-writeToURL:atomically:	NSArray	Fundamentals / Basic Collections / Storing Arrays	deprecated	objc
-method	open	-writeToURL:error:	NSArray	Fundamentals / Basic Collections / Instance Methods	-	objc
+method	shipped	-writeToURL:error:	NSArray	Fundamentals / Basic Collections / Instance Methods	-	objc
 property	shipped	count	NSArray	Fundamentals / Basic Collections / Querying an Array	-	objc
 property	shipped	description	NSArray	Fundamentals / Basic Collections / Creating a Description	-	objc
 property	shipped	firstObject	NSArray	Fundamentals / Basic Collections / Querying an Array	-	objc
 property	shipped	lastObject	NSArray	Fundamentals / Basic Collections / Querying an Array	-	objc
-property	open	sortedArrayHint	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
+property	shipped	sortedArrayHint	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
 method	shipped	-handleFailureInFunction:file:lineNumber:description:	NSAssertionHandler	App Support / Assertions / Handling Assertion Failures	-	objc
 method	shipped	-handleFailureInMethod:object:file:lineNumber:description:	NSAssertionHandler	App Support / Assertions / Handling Assertion Failures	-	objc
 property	shipped	currentHandler	NSAssertionHandler	App Support / Assertions / Handling Assertion Failures	-	objc

@@ -116,6 +116,19 @@ typedef NSUInteger NSPropertyListWriteOptions;
 - (nullable NSArray<ObjectType> *)initWithContentsOfURL:(NSURL *)url;
 - (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile;
 - (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)useAuxiliaryFile;
+
+/* §63.45: THE ERROR-CARRYING FORMS, which are the MODERN spelling of the four above — Apple's, and the
+ * reason they are here rather than in NSArray.h is the same reason the four above are: this IS the array
+ * family's property-list surface, and a second home for it would be a second list to keep in step.
+ *
+ * THE DIFFERENCE FROM THE FOUR ABOVE IS THE CONTRACT, NOT THE PARAMETER: `-error:` answers "no" as a VALUE
+ * — nil (or NO) plus a filled-in NSError — where the older spellings can only say nil and leave the caller
+ * with no reason. That is why both belong: they answer different questions about the same failure. */
++ (nullable NSArray<ObjectType> *)arrayWithContentsOfURL:(NSURL *)url
+						  error:(NSError * _Nullable * _Nullable)errorPtr;
+- (nullable NSArray<ObjectType> *)initWithContentsOfURL:(NSURL *)url
+						 error:(NSError * _Nullable * _Nullable)errorPtr;
+- (BOOL)writeToURL:(NSURL *)url error:(NSError * _Nullable * _Nullable)errorPtr;
 @end
 
 /* THE MUTABLE FOUR ARE DECLARED ON THE MUTABLE CLASS, WHICH IS APPLE'S OWN ARRANGEMENT: its NSArray.h

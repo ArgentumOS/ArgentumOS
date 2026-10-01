@@ -100,6 +100,38 @@ typedef NSUInteger NSKeyValueSetMutationKind;
 
 @end
 
+/* ---- §63.45: THE ARRAY-WIDE REGISTRATION DOORS -----------------------------------------------------
+ *
+ * THEY BELONG HERE, IN THE KVO HEADER, WHICH IS ALSO APPLE'S OWN ARRANGEMENT: the SDK declares them in
+ * NSKeyValueObserving.h as a category on NSArray, because they are KVO's surface that happens to be spelled
+ * on a collection — not NSArray's business.
+ *
+ * APPLE'S NOTE SAYS WHAT THEY ARE FOR, AND IT IS SPEED: invoking them "is potentially much faster than
+ * repeatedly invoking NSObject(NSKeyValueObserverRegistration) methods". A PERFORMANCE CLAIM, NOT A
+ * DIFFERENT SEMANTICS — so this library's implementation IS the walk over the index set, and says so at the
+ * body rather than implying a batch registration happens somewhere. The context-bearing removal is the one
+ * Apple's header RECOMMENDS ("use -removeObserver:fromObjectsAtIndexes:forKeyPath:context: instead of
+ * -removeObserver:fromObjectsAtIndexes:forKeyPath: whenever possible"), for the same reason its NSObject
+ * twin is preferred: a context is what makes an observation uniquely removable. */
+@class NSIndexSet;
+
+@interface NSArray (NSKeyValueObserverRegistration)
+
+- (void)addObserver:(NSObject *)observer
+ toObjectsAtIndexes:(NSIndexSet *)indexes
+	 forKeyPath:(NSString *)keyPath
+	    options:(NSKeyValueObservingOptions)options
+	    context:(nullable void *)context;
+- (void)removeObserver:(NSObject *)observer
+ fromObjectsAtIndexes:(NSIndexSet *)indexes
+	    forKeyPath:(NSString *)keyPath
+	       context:(nullable void *)context;
+- (void)removeObserver:(NSObject *)observer
+ fromObjectsAtIndexes:(NSIndexSet *)indexes
+	    forKeyPath:(NSString *)keyPath;
+
+@end
+
 @interface NSObject (NSKeyValueObservingObserver)
 
 /* What an OBSERVER implements. It is declared here rather than in NSObject.h because it is the other
