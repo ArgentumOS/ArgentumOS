@@ -90,8 +90,17 @@ FOUNDATION_EXPORT NSString * const NSUserActivityTypeBrowsingWeb;
 	id _webpageURL;
 	id _referrerURL;
 	id _expirationDate;
+	id _persistentIdentifier;	/* retained: the cross-device identity, a string */
+	id _targetContentIdentifier;
+	id _externalMediaContentIdentifier;
+	id _suggestedInvocationPhrase;
+	id _keywords;			/* retained: a copied NSSet of NSString keywords */
 	BOOL _needsSave;
 	BOOL _supportsContinuationStreams;
+	BOOL _eligibleForHandoff;
+	BOOL _eligibleForSearch;
+	BOOL _eligibleForPublicIndexing;
+	BOOL _eligibleForPrediction;
 	BOOL _invalidated;
 	BOOL _current;
 }
@@ -147,6 +156,47 @@ FOUNDATION_EXPORT NSString * const NSUserActivityTypeBrowsingWeb;
  * `-getContinuationStreamsWithCompletionHandler:` for what asking actually gets here. */
 - (BOOL)supportsContinuationStreams;
 - (void)setSupportsContinuationStreams:(BOOL)flag;
+
+/* --- THE REST OF THE VALUE MODEL: identifiers, keywords and the eligibility flags -------------------- */
+/* EVERY DOOR BELOW STORES AND ANSWERS A VALUE THE ACTIVITY ITSELF OWNS, exactly as the title and the URLs
+ * above do, and every value is COPIED on the way in. What none of them have here is the ENGINE that Apple
+ * reads them with: there is no handoff daemon, no Spotlight index and no Siri prediction service in this
+ * system, so the flags describe the activity truthfully and stop there rather than pretending to steer a
+ * service that does not exist. The engines an engine-door would need are named at the doors that need them. */
+
+/* A STABLE IDENTITY that survives across devices and launches — Apple's `NSUserActivityPersistentIdentifier`,
+ * which this header's typealias makes an `NSString`. Copied. */
+- (nullable NSUserActivityPersistentIdentifier)persistentIdentifier;
+- (void)setPersistentIdentifier:(nullable NSUserActivityPersistentIdentifier)anIdentifier;
+
+/* WHAT ON-SCREEN CONTENT THE ACTIVITY POINTS AT, and which external media item it names. Both are stored
+ * strings the activity owns; nothing here resolves either to anything. Copied. */
+- (nullable NSString *)targetContentIdentifier;
+- (void)setTargetContentIdentifier:(nullable NSString *)aString;
+- (nullable NSString *)externalMediaContentIdentifier;
+- (void)setExternalMediaContentIdentifier:(nullable NSString *)anIdentifier;
+
+/* THE PHRASE A USER COULD SAY TO INVOKE THE ACTIVITY. Stored and answered; there is no speech/Siri service
+ * in this system to hear it. Copied. */
+- (nullable NSString *)suggestedInvocationPhrase;
+- (void)setSuggestedInvocationPhrase:(nullable NSString *)aPhrase;
+
+/* THE KEYWORDS DESCRIBING THE ACTIVITY'S CONTENT, which Apple joins into the searchable text. A copied set;
+ * there is no index here to put them in. */
+- (nullable NSSet *)keywords;
+- (void)setKeywords:(nullable NSSet *)aSet;
+
+/* WHICH SYSTEM BEHAVIORS THE ACTIVITY MAY TAKE PART IN. Stored and answered — the activity owns these flags —
+ * but the three engines that would READ them are absent here, and named where they are missed: the handoff
+ * daemon (a second device), the CoreSpotlight index, and Siri's prediction/Shortcuts service. */
+- (BOOL)eligibleForHandoff;
+- (void)setEligibleForHandoff:(BOOL)flag;
+- (BOOL)eligibleForSearch;
+- (void)setEligibleForSearch:(BOOL)flag;
+- (BOOL)eligibleForPublicIndexing;
+- (void)setEligibleForPublicIndexing:(BOOL)flag;
+- (BOOL)eligibleForPrediction;
+- (void)setEligibleForPrediction:(BOOL)flag;
 
 /* THE LIFECYCLE, with Apple's two rules enforced: only one activity is current at a time (becoming current
  * resigns the previous one), and an INVALIDATED activity can never become current again. */

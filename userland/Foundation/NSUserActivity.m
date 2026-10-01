@@ -80,6 +80,11 @@ static id fn_current_activity = nil;
 	[(id)_webpageURL release];
 	[(id)_referrerURL release];
 	[(id)_expirationDate release];
+	[(id)_persistentIdentifier release];
+	[(id)_targetContentIdentifier release];
+	[(id)_externalMediaContentIdentifier release];
+	[(id)_suggestedInvocationPhrase release];
+	[(id)_keywords release];
 	[super dealloc];
 }
 
@@ -173,6 +178,72 @@ static id fn_current_activity = nil;
 - (BOOL)supportsContinuationStreams { return _supportsContinuationStreams; }
 
 - (void)setSupportsContinuationStreams:(BOOL)flag { _supportsContinuationStreams = flag; }
+
+/* --- the rest of the value model: identifiers, keywords and the eligibility flags ------------------- */
+/* EACH STRING AND THE KEYWORD SET IS COPIED IN, exactly as the title and the URLs above are: a caller's
+ * later mutation is not the activity's business. THE FLAGS ARE PLAIN BOOLEANS the activity owns; the engines
+ * that would read them (the handoff daemon, the CoreSpotlight index, Siri) do not exist in this system, so a
+ * flag is state the activity answers and nothing else acts on — the same footing `supportsContinuationStreams`
+ * already stands on. */
+
+- (nullable NSUserActivityPersistentIdentifier)persistentIdentifier { return _persistentIdentifier; }
+
+- (void)setPersistentIdentifier:(nullable NSUserActivityPersistentIdentifier)anIdentifier
+{
+	id kept = [anIdentifier copy];
+
+	[(id)_persistentIdentifier release];
+	_persistentIdentifier = kept;
+}
+
+- (nullable NSString *)targetContentIdentifier { return _targetContentIdentifier; }
+
+- (void)setTargetContentIdentifier:(nullable NSString *)aString
+{
+	id kept = [aString copy];
+
+	[(id)_targetContentIdentifier release];
+	_targetContentIdentifier = kept;
+}
+
+- (nullable NSString *)externalMediaContentIdentifier { return _externalMediaContentIdentifier; }
+
+- (void)setExternalMediaContentIdentifier:(nullable NSString *)anIdentifier
+{
+	id kept = [anIdentifier copy];
+
+	[(id)_externalMediaContentIdentifier release];
+	_externalMediaContentIdentifier = kept;
+}
+
+- (nullable NSString *)suggestedInvocationPhrase { return _suggestedInvocationPhrase; }
+
+- (void)setSuggestedInvocationPhrase:(nullable NSString *)aPhrase
+{
+	id kept = [aPhrase copy];
+
+	[(id)_suggestedInvocationPhrase release];
+	_suggestedInvocationPhrase = kept;
+}
+
+- (nullable NSSet *)keywords { return _keywords; }
+
+- (void)setKeywords:(nullable NSSet *)aSet
+{
+	id kept = [aSet copy];
+
+	[(id)_keywords release];
+	_keywords = kept;
+}
+
+- (BOOL)eligibleForHandoff { return _eligibleForHandoff; }
+- (void)setEligibleForHandoff:(BOOL)flag { _eligibleForHandoff = flag; }
+- (BOOL)eligibleForSearch { return _eligibleForSearch; }
+- (void)setEligibleForSearch:(BOOL)flag { _eligibleForSearch = flag; }
+- (BOOL)eligibleForPublicIndexing { return _eligibleForPublicIndexing; }
+- (void)setEligibleForPublicIndexing:(BOOL)flag { _eligibleForPublicIndexing = flag; }
+- (BOOL)eligibleForPrediction { return _eligibleForPrediction; }
+- (void)setEligibleForPrediction:(BOOL)flag { _eligibleForPrediction = flag; }
 
 /* --- the delegate and the one save ----------------------------------------------------------------- */
 

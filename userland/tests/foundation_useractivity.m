@@ -278,6 +278,49 @@ int main(void)
 		      @"a door with nothing to answer into does nothing rather than raising in the caller's frame");
 	}
 
+	/* --- 7. THE REST OF THE VALUE MODEL: identifiers, keywords and the eligibility flags -------------- */
+	{
+		NSUserActivity *activity = [[NSUserActivity alloc] initWithActivityType:@"com.example.view"];
+		NSMutableString *target = [NSMutableString stringWithString:@"item-1"];
+		NSMutableSet *kw = [NSMutableSet setWithObject:@"reading"];
+
+		check("a-fresh-activity-answers-empty-identifiers-and-off-flags",
+		      [activity persistentIdentifier] == nil && [activity targetContentIdentifier] == nil &&
+		      [activity externalMediaContentIdentifier] == nil &&
+		      [activity suggestedInvocationPhrase] == nil && [activity keywords] == nil &&
+		      ![activity eligibleForHandoff] && ![activity eligibleForSearch] &&
+		      ![activity eligibleForPublicIndexing] && ![activity eligibleForPrediction],
+		      @"nothing has been set, so every stored value is nil and every eligibility flag is off");
+
+		[activity setPersistentIdentifier:@"com.example.item"];
+		[activity setTargetContentIdentifier:target];
+		[activity setExternalMediaContentIdentifier:@"media-9"];
+		[activity setSuggestedInvocationPhrase:@"read this"];
+		[activity setKeywords:kw];
+		[target appendString:@"-changed"];
+		[kw addObject:@"later"];
+		check("the-string-doors-and-the-keyword-set-round-trip-and-are-copied",
+		      [[activity persistentIdentifier] isEqualToString:@"com.example.item"] &&
+		      [[activity targetContentIdentifier] isEqualToString:@"item-1"] &&
+		      [[activity externalMediaContentIdentifier] isEqualToString:@"media-9"] &&
+		      [[activity suggestedInvocationPhrase] isEqualToString:@"read this"] &&
+		      [[activity keywords] count] == 1,
+		      @"the cross-device identity, the on-screen content identifier, the external media identifier, "
+		      @"the invocation phrase and the keyword set are all stored and all copied, so a caller's later "
+		      @"mutation is not the activity's business");
+
+		[activity setEligibleForHandoff:YES];
+		[activity setEligibleForSearch:YES];
+		[activity setEligibleForPublicIndexing:YES];
+		[activity setEligibleForPrediction:YES];
+		check("the-four-eligibility-flags-store-and-answer",
+		      [activity eligibleForHandoff] && [activity eligibleForSearch] &&
+		      [activity eligibleForPublicIndexing] && [activity eligibleForPrediction],
+		      @"the flags are VALUES THE ACTIVITY OWNS and answers, even though the three engines Apple "
+		      @"would read them with — the handoff daemon, the CoreSpotlight index and Siri — do not exist "
+		      @"in this system");
+	}
+
 	printf("FOUNDATION-USERACTIVITY RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-USERACTIVITY-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-USERACTIVITY DONE\n");

@@ -48,6 +48,9 @@ CHECKS = (
     "an-invalidated-activity-is-no-longer-eligible-for-continuation",
     "the-streams-door-reports-that-there-is-no-connection",
     "the-streams-door-tolerates-a-missing-handler",
+    "a-fresh-activity-answers-empty-identifiers-and-off-flags",
+    "the-string-doors-and-the-keyword-set-round-trip-and-are-copied",
+    "the-four-eligibility-flags-store-and-answer",
 )
 
 
