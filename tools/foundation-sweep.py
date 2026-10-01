@@ -490,6 +490,19 @@ DECLINED_SYMBOLS = frozenset((
     # stubs refusal in protocol form. The row is struck and NAMED rather than silently dropped: what a future
     # session needs is written here, so the decision can be revisited the moment a citable declaration exists.
     "NSPredicateValidating",
+    # THREE PROPERTIES APPLE DECLARES ON iOS ONLY (§63.57, user decision dec-d2dfbe0c080f14c2: "the macOS
+    # surface is the target, so an iOS-only door does not belong"). They were SHIPPED here — implemented,
+    # declared and exercised by probes — and the audit (tools/foundation-sdk-subset.py) showed Apple's macOS
+    # 14.5 headers declare NONE of them, so the implementations are gone, their probe checks are rewritten, and
+    # the rows are STRUCK rather than left open. **THE GROUND IS SCOPE AND IT IS MEASURED, NOT ASSUMED:**
+    # `NSUserActivity.h` in the corpus is COMPLETE (9,625 bytes, 17 properties, ends at `NS_HEADER_AUDIT_END`)
+    # and holds neither activity name, and `NSNumberFormatter.h` holds `groupingSize`,
+    # `secondaryGroupingSize`, `usesGroupingSeparator` and `currencyGroupingSeparator` while holding no
+    # `minimumGroupingDigits` — the near-neighbour test, where the FAMILY is present and the NAME is not.
+    # NOT DEPRECATION and not a spelling error: the names are Apple's, on the other platform.
+    "minimumGroupingDigits",
+    "externalMediaContentIdentifier",
+    "suggestedInvocationPhrase",
 ))
 
 # DECLINES THAT BELONG TO ONE SELECTOR OF ONE CLASS (§63.19), which the two sets above CANNOT express: they

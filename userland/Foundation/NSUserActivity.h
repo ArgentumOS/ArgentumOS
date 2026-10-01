@@ -92,8 +92,6 @@ FOUNDATION_EXPORT NSString * const NSUserActivityTypeBrowsingWeb;
 	id _expirationDate;
 	id _persistentIdentifier;	/* retained: the cross-device identity, a string */
 	id _targetContentIdentifier;
-	id _externalMediaContentIdentifier;
-	id _suggestedInvocationPhrase;
 	id _keywords;			/* retained: a copied NSSet of NSString keywords */
 	BOOL _needsSave;
 	BOOL _supportsContinuationStreams;
@@ -173,13 +171,20 @@ FOUNDATION_EXPORT NSString * const NSUserActivityTypeBrowsingWeb;
  * strings the activity owns; nothing here resolves either to anything. Copied. */
 - (nullable NSString *)targetContentIdentifier;
 - (void)setTargetContentIdentifier:(nullable NSString *)aString;
-- (nullable NSString *)externalMediaContentIdentifier;
-- (void)setExternalMediaContentIdentifier:(nullable NSString *)anIdentifier;
 
-/* THE PHRASE A USER COULD SAY TO INVOKE THE ACTIVITY. Stored and answered; there is no speech/Siri service
- * in this system to hear it. Copied. */
-- (nullable NSString *)suggestedInvocationPhrase;
-- (void)setSuggestedInvocationPhrase:(nullable NSString *)aPhrase;
+/* ⚠ `-externalMediaContentIdentifier` / `-setExternalMediaContentIdentifier:` AND
+ * `-suggestedInvocationPhrase` / `-setSuggestedInvocationPhrase:` WERE HERE AND ARE GONE (§63.57, user decision
+ * dec-d2dfbe0c080f14c2). **MEASURED, AND THE MEASUREMENT IS THE WHOLE CASE: macOS 14.5's `NSUserActivity.h` in
+ * the corpus is COMPLETE — 9,625 bytes, 17 properties, ending at `NS_HEADER_AUDIT_END` — and holds NEITHER
+ * name.** They are Apple's API on iOS, which is not the platform this library declares, so they fail the
+ * fidelity bar (§11) here. The failure mode this guards against is worth naming: the header is not TRUNCATED,
+ * so "the file looks short" is not what proves the absence — THE ENDING is what proves it.
+ *
+ * WHAT THE CLASS KEEPS IS WHAT IT ACTUALLY OWNS: the activity type, title, userInfo, the cross-device identity
+ * and the on-screen content identifier, expiration, the keyword set, the eligibility flags and the delegate.
+ * The two removed pairs stored a string and answered it, and nothing in this system resolves either to a media
+ * item or to a spoken phrase — their only content was "a stored string", which the keyword set and the content
+ * identifier already demonstrate. */
 
 /* THE KEYWORDS DESCRIBING THE ACTIVITY'S CONTENT, which Apple joins into the searchable text. A copied set;
  * there is no index here to put them in. */

@@ -236,8 +236,12 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setGroupingSize:(NSInteger)size;
 - (NSInteger)secondaryGroupingSize;
 - (void)setSecondaryGroupingSize:(NSInteger)size;
-- (NSInteger)minimumGroupingDigits;
-- (void)setMinimumGroupingDigits:(NSInteger)digits;
+/* ⚠ `-minimumGroupingDigits` / `-setMinimumGroupingDigits:` WERE HERE AND ARE GONE (§63.57, user decision
+ * dec-d2dfbe0c080f14c2). Measured against the complete macOS 14.5 corpus: `NSNumberFormatter.h` holds
+ * `groupingSize`, `secondaryGroupingSize`, `usesGroupingSeparator` and `currencyGroupingSeparator`, and holds
+ * NO `minimumGroupingDigits` — the name exists in the iOS surface only, so it fails the fidelity bar (§11) on
+ * the platform this library declares. A near-neighbour grep is what settles it: the FAMILY is present and the
+ * NAME is not, which is the signature of an extra rather than a removal. */
 
 /* SIGNIFICANT DIGITS. `usesSignificantDigits` switches ICU's digit policy from the fraction-digit
  * limits above to the significant-digit limits below; the two limits are the min/max count. */

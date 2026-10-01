@@ -863,16 +863,9 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 	[self fnSetAttribute:UNUM_SECONDARY_GROUPING_SIZE to:(int32_t)size];
 }
 
-- (NSInteger)minimumGroupingDigits
-{
-	return (NSInteger)[self fnAttribute:UNUM_MINIMUM_GROUPING_DIGITS fallback:0];
-}
-
-- (void)setMinimumGroupingDigits:(NSInteger)digits
-{
-	[self fnSetAttribute:UNUM_MINIMUM_GROUPING_DIGITS to:(int32_t)digits];
-}
-
+/* §63.57: `-minimumGroupingDigits` / `-setMinimumGroupingDigits:` were this pair, over ICU's
+ * UNUM_MINIMUM_GROUPING_DIGITS. They are gone with their declarations — Apple declares the name on iOS only,
+ * and the macOS corpus holds the rest of the grouping family without it. */
 - (BOOL)usesSignificantDigits
 {
 	return [self fnAttribute:UNUM_SIGNIFICANT_DIGITS_USED fallback:0] != 0;

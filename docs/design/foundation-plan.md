@@ -15979,6 +15979,56 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.57 — THE THREE iOS-ONLY SHAPES LEAVE, AND THE RESIDUE LEARNS A FOURTH CLASSIFICATION (2026-10-01)
+
+**WHAT LANDED, ON THE USER'S DECISION `dec-d2dfbe0c080f14c2` ("delete them — the macOS surface is the target, so
+an iOS-only door does not belong"): three doors Apple declares on iOS ONLY are gone from Foundation.**
+`NSNumberFormatter`'s `-minimumGroupingDigits` / `-setMinimumGroupingDigits:` and `NSUserActivity`'s
+`-externalMediaContentIdentifier` / `-setExternalMediaContentIdentifier:` and `-suggestedInvocationPhrase` /
+`-setSuggestedInvocationPhrase:`. Declarations, implementations, the two backing ivars and their `dealloc`
+releases all removed; the probes that exercised them rewritten. **MEASURED: `make host-foundation` exit 0 with
+ZERO errors and ZERO new warnings; `make foundation-sweep` exit 0 and `--check` consistent; `--unimplemented`
+0 NEW; `make testimg` exit 0 and guest cases `foundation_numberformatter` + `foundation_useractivity` 2/2 with
+12/12 checks (the useractivity probe's own tally 22/22).**
+
+⚠ **AND THE LEDGER'S REACTION IS THE MEASUREMENT WORTH KEEPING: property shipped 1261 → 1258 and OPEN 221 → 224
+— the three rows became UNCLOSABLE WORK, because the ledger's property list carries these names as Apple's.**
+They were then **STRUCK, not left open**: `DECLINED_SYMBOLS` in `tools/foundation-sweep.py` gained all three on a
+**SCOPE ground** (the precedent is `NSPredicateValidating`, declined for being newer than the target platform),
+and the ledger settled at **shipped 1258 / open 221 / struck 157** — open back to its prior value, struck +3.
+**A DELETION THAT MOVES A ROW FROM shipped TO open HAS NOT FINISHED: it has turned a door into a chore unless
+the row is struck with its ground.** That is the step this unit had to add after the deletions passed.
+
+**⚠⚠ THE RESIDUE'S CLASSIFICATION IS FOUR-WAY, NOT THREE-WAY, AND THIS UNIT IS THE FOURTH CASE.** §63.56 named
+three readings of "Apple declares this nowhere": (1) private implementation leaked into a public header, (2) our
+public convenience where Apple has a near-neighbour, (3) Apple's own removal. **The fourth is PLATFORM SCOPE:
+the name is Apple's, on a platform this library does not declare.** It is the one reading whose fix is a
+deletion with NO replacement anywhere — and its evidence is also different, which is why it is worth its own
+row: readings (1) and (2) are settled by READING THE FILE (are we its callee? does the family exist?), while
+(4) is settled by asking WHERE ELSE the name lives.
+
+**AND THE MEASUREMENT THAT SETTLES (4) IS THE ONE THAT LOOKS LIKE A CORPUS BUG: "the header is complete, and it
+still has neither name."** `NSUserActivity.h` in the macOS 14.5 corpus is **9,625 bytes, 17 properties, and ends
+at `NS_HEADER_AUDIT_END`** — not truncated, not a stub — and holds neither activity name;
+`NSNumberFormatter.h` holds `groupingSize`, `secondaryGroupingSize`, `usesGroupingSeparator` and
+`currencyGroupingSeparator` and holds no `minimumGroupingDigits`. **THE ENDING IS WHAT PROVES IT, NOT THE
+LENGTH:** a bare byte count cannot separate "short because it is old" from "short because it was cut", and this
+session earlier mistook the second for the first (see §63.56's `\b` regex error, which was mine).
+
+⚠ **AND A TRAP THAT COST A REBUILD, WORTH NAMING BECAUSE IT IS THE THIRD TIME IN THIS CAMPAIGN: DELETING A DOOR
+IS NOT FINISHED WHEN THE DECLARATION AND THE BODY ARE GONE — THE CALL SITES HAVE TO BE FOUND BY NAME.**
+`grep` for the removed names showed the probe sites I had already located, and the forced rebuild then failed on
+**two more references in the same file** (`[activity externalMediaContentIdentifier] == nil` inside a
+"nothing-has-been-set" check, which the first grep's filter had eaten). **The lesson is to grep the NAME across
+the tree with no filter at all, and to treat a filtered grep as a hypothesis rather than a proof** — the same
+shape as the selector-reference trap in §63.54, where the linker could not see the dangling calls either.
+
+**WHAT IS LEFT OF THE RESIDUE: 27 names, and the user's decision governs all of them** — delete outright and
+rewrite every caller, probes included. The make-private group is next (the `-byteAtIndex:` family, whose 44
+internal + 13 probe + 3 cross-file uses make it the largest), then the convenience deletions, then the two
+base64 doors, which STAY as compatibility doors because they are Apple's own REMOVED API rather than ours
+(§62.24), not because the policy exempts them.
+
 ## §63.56 — THE FIRST THREE OF THE RESIDUE'S THIRTY LEAVE, AND THE METHOD THAT SORTS THEM (2026-10-01)
 
 **WHAT LANDED: `NSCharacterSet`'S TWO INTERNAL CONSTRUCTORS ARE NO LONGER PUBLIC API.** `-initWithCharactersInString:`

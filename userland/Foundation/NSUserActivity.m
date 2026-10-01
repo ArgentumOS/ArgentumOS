@@ -82,8 +82,6 @@ static id fn_current_activity = nil;
 	[(id)_expirationDate release];
 	[(id)_persistentIdentifier release];
 	[(id)_targetContentIdentifier release];
-	[(id)_externalMediaContentIdentifier release];
-	[(id)_suggestedInvocationPhrase release];
 	[(id)_keywords release];
 	[super dealloc];
 }
@@ -206,25 +204,11 @@ static id fn_current_activity = nil;
 	_targetContentIdentifier = kept;
 }
 
-- (nullable NSString *)externalMediaContentIdentifier { return _externalMediaContentIdentifier; }
-
-- (void)setExternalMediaContentIdentifier:(nullable NSString *)anIdentifier
-{
-	id kept = [anIdentifier copy];
-
-	[(id)_externalMediaContentIdentifier release];
-	_externalMediaContentIdentifier = kept;
-}
-
-- (nullable NSString *)suggestedInvocationPhrase { return _suggestedInvocationPhrase; }
-
-- (void)setSuggestedInvocationPhrase:(nullable NSString *)aPhrase
-{
-	id kept = [aPhrase copy];
-
-	[(id)_suggestedInvocationPhrase release];
-	_suggestedInvocationPhrase = kept;
-}
+/* §63.57: the `externalMediaContentIdentifier` and `suggestedInvocationPhrase` accessor pairs were here. Both
+ * are Apple's on iOS ONLY, which is not the platform this library declares, so both the methods and their
+ * ivars are gone rather than made private — the user's decision dec-d2dfbe0c080f14c2 is that the macOS surface
+ * is the target. Measured on a COMPLETE macOS 14.5 NSUserActivity.h (9,625 bytes, 17 properties, ends at
+ * NS_HEADER_AUDIT_END): neither name is there. */
 
 - (nullable NSSet *)keywords { return _keywords; }
 

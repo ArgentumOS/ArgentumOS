@@ -196,13 +196,10 @@ int main(void)
 		[formatter setNumberStyle:NSNumberFormatterDecimalStyle];
 		[formatter setGroupingSize:2];
 		[formatter setSecondaryGroupingSize:4];
-		[formatter setMinimumGroupingDigits:1];
 		check("nf-grouping-size",
-		      [formatter groupingSize] == 2 && [formatter secondaryGroupingSize] == 4 &&
-		      [formatter minimumGroupingDigits] == 1,
-		      [NSString stringWithFormat:@"grouping=%ld secondary=%ld minGrouping=%ld",
-			(long)[formatter groupingSize], (long)[formatter secondaryGroupingSize],
-			(long)[formatter minimumGroupingDigits]]);
+		      [formatter groupingSize] == 2 && [formatter secondaryGroupingSize] == 4,
+		      [NSString stringWithFormat:@"grouping=%ld secondary=%ld",
+			(long)[formatter groupingSize], (long)[formatter secondaryGroupingSize]]);
 
 		[formatter setNumberStyle:NSNumberFormatterDecimalStyle];
 		[formatter setUsesSignificantDigits:YES];

@@ -286,28 +286,22 @@ int main(void)
 
 		check("a-fresh-activity-answers-empty-identifiers-and-off-flags",
 		      [activity persistentIdentifier] == nil && [activity targetContentIdentifier] == nil &&
-		      [activity externalMediaContentIdentifier] == nil &&
-		      [activity suggestedInvocationPhrase] == nil && [activity keywords] == nil &&
+		      [activity keywords] == nil &&
 		      ![activity eligibleForHandoff] && ![activity eligibleForSearch] &&
 		      ![activity eligibleForPublicIndexing] && ![activity eligibleForPrediction],
 		      @"nothing has been set, so every stored value is nil and every eligibility flag is off");
 
 		[activity setPersistentIdentifier:@"com.example.item"];
 		[activity setTargetContentIdentifier:target];
-		[activity setExternalMediaContentIdentifier:@"media-9"];
-		[activity setSuggestedInvocationPhrase:@"read this"];
 		[activity setKeywords:kw];
 		[target appendString:@"-changed"];
 		[kw addObject:@"later"];
 		check("the-string-doors-and-the-keyword-set-round-trip-and-are-copied",
 		      [[activity persistentIdentifier] isEqualToString:@"com.example.item"] &&
 		      [[activity targetContentIdentifier] isEqualToString:@"item-1"] &&
-		      [[activity externalMediaContentIdentifier] isEqualToString:@"media-9"] &&
-		      [[activity suggestedInvocationPhrase] isEqualToString:@"read this"] &&
 		      [[activity keywords] count] == 1,
-		      @"the cross-device identity, the on-screen content identifier, the external media identifier, "
-		      @"the invocation phrase and the keyword set are all stored and all copied, so a caller's later "
-		      @"mutation is not the activity's business");
+		      @"the cross-device identity, the on-screen content identifier and the keyword set are all "
+		      @"stored and all copied, so a caller's later mutation is not the activity's business");
 
 		[activity setEligibleForHandoff:YES];
 		[activity setEligibleForSearch:YES];
