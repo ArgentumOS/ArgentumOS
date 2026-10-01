@@ -39,6 +39,27 @@ THE FOUR BUCKETS, and only the last one is a defect:
                   `+nullDevice` this way: the SDK says `+fileHandleWithNullDevice`, and `nullDevice` is the
                   Swift name the doc index had.
 
+⚠⚠ HOW TO GET A CORPUS, AND THE THREE WAYS THAT WASTED TIME FINDING ONE (measured 2026-10-01).
+ * **THE MIRROR**: `github.com/alexey-lysiuk/macos-sdk` carries MacOSX10.1.5 → 14.5, 15.5, 26.5 — and 14.5 is the
+   vintage the deprecation policy pins. `theos/sdks` carries only iOS/tvOS, so it cannot answer a macOS
+   question at all.
+ * **THE PATH IS `Versions/C/Headers`, NOT `Headers`**: in a macOS framework `Headers` is a SYMLINK, so both the
+   contents API and the raw URL return the link itself (or a 404) and the framework looks absent when it is
+   there.
+ * **FETCH WITH `curl -f`**: WITHOUT IT A 404 BODY IS WRITTEN AS THE HEADER, a 14-byte "404: Not Found" becomes
+   a `.h` file, and the corpus looks complete while several of its files are garbage.
+ * **AND TWO USEFUL NAMES ARE NOT MISSING WHEN THEY ARE NOT FOUND**: Apple does NOT split `NSMachPort.h` or
+   `NSUserUnixTask.h` out of macOS Foundation — `NSMachPort` is declared in `NSPort.h` and `NSUserUnixTask` in
+   `NSUserScriptTask.h`. A "missing file" is a claim about the LAYOUT and wants its own check before it is a
+   finding. (Both were wrongly reported as missing from this corpus once; the guard below did not, and could
+   not, catch that.)
+
+⚠ THE GUARD'S BLIND SPOT, stated because a gate that overstates itself is worse than none: `CORPUS_MUST_DECLARE`
+and the header count catch a corpus that is MISSING FILES or missing whole areas. **THEY CANNOT DETECT A FILE
+THAT IS PRESENT AND TRIMMED.** Measured on the mirror above, the headers are real (NSCalendar.h is 37 KB with
+43 methods), so its residue is trustworthy — but a future corpus whose `NSDecimalNumber.h` had been cut down
+would produce false "we misspelled it" findings and this tool would not say so.
+
 USAGE
 
   tools/foundation-sdk-subset.py --headers DIR [--headers DIR …] [--strict]
