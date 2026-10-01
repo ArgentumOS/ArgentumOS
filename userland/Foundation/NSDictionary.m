@@ -28,6 +28,15 @@
 /* THE KEYED ARCHIVE'S KEY NAMES, shared with NSKeyedArchiver's structural branch so the NSCoding doors below
  * and that branch cannot spell the same key differently (§63.13). */
 #import <Foundation/FNKeyedWire.h>
+/* THE F3 AUDIT'S ADDED DOORS lean on neighbours that already ship: the file-attribute KEY NAMES and the
+ * numeric conversions they read THROUGH, and the plist/file/URL machinery the URL/error doors delegate to. */
+#import <Foundation/NSFileManager.h>
+#import <Foundation/NSNumber.h>
+#import <Foundation/NSDate.h>
+#import <Foundation/NSData.h>
+#import <Foundation/NSURL.h>
+#import <Foundation/NSError.h>
+#import <Foundation/NSPropertyListSerialization.h>
 
 struct FNDictEntry {
 	struct FNDictEntry *next;
@@ -843,6 +852,203 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	return produced;
 }
 
+/* ===================================================================================================
+ * THE TWO-ARRAY AND COPY-ITEMS CONSTRUCTORS (F3 audit). Both funnel through -setObjectInternal:forKey:, so
+ * the key-copy and the nil refusals are the table's OWN and cannot be spelled differently here.
+ * =================================================================================================== */
+- (id)initWithObjects:(NSArray *)objects forKeys:(NSArray *)keys
+{
+	NSUInteger n = [objects count];
+	NSUInteger i;
+
+	if ([keys count] < n) {
+		n = [keys count];	/* clamped to the shorter, as the class factory above is */
+	}
+	self = [self init];
+	if (self == nil) {
+		return nil;
+	}
+	for (i = 0; i < n; i++) {
+		[self setObjectInternal:[objects objectAtIndex:i] forKey:[keys objectAtIndex:i]];
+	}
+	return self;
+}
+
+- (id)initWithDictionary:(NSDictionary *)other copyItems:(BOOL)flag
+{
+	NSArray *keys = [other allKeys];
+	NSUInteger i;
+
+	self = [self init];
+	if (self == nil) {
+		return nil;
+	}
+	for (i = 0; i < [keys count]; i++) {
+		id key = [keys objectAtIndex:i];
+		id value = [other objectForKey:key];
+		id copied = flag ? [value copy] : nil;
+
+		/* A value that does not answer -copy (answers nil in this runtime) is held BY REFERENCE rather
+		 * than filed as the copy that never came — the same refusal of a phantom the key path makes. The
+		 * copy's +1 is balanced here; the table keeps its own retain. */
+		[self setObjectInternal:(copied != nil ? copied : value) forKey:key];
+		if (copied != nil) {
+			objc_release(copied);
+		}
+	}
+	return self;
+}
+
+- (void)getObjects:(id __unsafe_unretained *)objects andKeys:(id __unsafe_unretained *)keys count:(NSUInteger)count
+{
+	/* Bounded by `count`: a caller sizes its buffers from -count, and this walk writes at most that many
+	 * pairs over the same key primitive the unbounded form uses. */
+	NSEnumerator *enumerator = [self keyEnumerator];
+	unsigned long n = 0;
+	id key;
+
+	while (n < count && (key = [enumerator nextObject]) != nil) {
+		if (keys != NULL) {
+			keys[n] = key;
+		}
+		if (objects != NULL) {
+			objects[n] = [self objectForKey:key];
+		}
+		n++;
+	}
+}
+
+/* ===================================================================================================
+ * THE OPTIONS-ENUMERATION AND ENTRY-FILTER DOORS (F3 audit), over the SAME key snapshot the plain block
+ * form uses so a mutating block is never handed storage that is freed under it.
+ * =================================================================================================== */
+- (void)enumerateKeysAndObjectsWithOptions:(NSEnumerationOptions)opts
+				usingBlock:(void (^)(id key, id value, BOOL *stop))block
+{
+	NSArray *keys = [self allKeys];
+	BOOL stop = NO;
+	NSUInteger i;
+
+	if (block == NULL) {
+		return;
+	}
+	/* NSEnumerationConcurrent is a hint Apple's page says a caller must not rely on; this library ignores it
+	 * and walks serially, which is what NSEnumerationReverse does NOT relax. */
+	if (opts & NSEnumerationReverse) {
+		for (i = [keys count]; i > 0 && !stop; i--) {
+			id key = [keys objectAtIndex:i - 1];
+
+			block(key, [self objectForKey:key], &stop);
+		}
+		return;
+	}
+	for (i = 0; i < [keys count] && !stop; i++) {
+		id key = [keys objectAtIndex:i];
+
+		block(key, [self objectForKey:key], &stop);
+	}
+}
+
+- (NSArray *)keysOfEntriesPassingTest:(BOOL (^)(id key, id value, BOOL *stop))predicate
+{
+	return [self keysOfEntriesWithOptions:0 passingTest:predicate];
+}
+
+- (NSArray *)keysOfEntriesWithOptions:(NSEnumerationOptions)opts passingTest:(BOOL (^)(id key, id value, BOOL *stop))predicate
+{
+	NSMutableArray *matched = [[NSMutableArray alloc] init];
+	NSArray *keys = [self allKeys];
+	BOOL stop = NO;
+	NSUInteger i;
+
+	if (predicate == NULL) {
+		return matched;
+	}
+	if (opts & NSEnumerationReverse) {
+		for (i = [keys count]; i > 0 && !stop; i--) {
+			id key = [keys objectAtIndex:i - 1];
+
+			if (predicate(key, [self objectForKey:key], &stop)) {
+				[matched addObject:key];
+			}
+		}
+		return matched;
+	}
+	for (i = 0; i < [keys count] && !stop; i++) {
+		id key = [keys objectAtIndex:i];
+
+		if (predicate(key, [self objectForKey:key], &stop)) {
+			[matched addObject:key];
+		}
+	}
+	return matched;
+}
+
+- (NSArray *)keysSortedByValueWithOptions:(NSSortOptions)opts usingComparator:(NSComparator)comparator
+{
+	/* The sort the called-through method already uses KEEPS NSSortStable (NSObjCRuntime.h's note), so the
+	 * only option Apple defines a meaning for here is already honoured; NSSortConcurrent is a hint nothing
+	 * in this library takes. */
+	(void)opts;
+	return [self keysSortedByValueUsingComparator:comparator];
+}
+
+/* ===================================================================================================
+ * THE URL/ERROR DOORS (F3 audit). The path forms live in the plist skin; these take an NSError so a caller
+ * can see WHY, and they delegate to the same NSPropertyListSerialization endpoints and the same root-class
+ * refusal (D7's kind (D)) the skin uses.
+ * =================================================================================================== */
+- (nullable instancetype)initWithContentsOfURL:(NSURL *)url error:(NSError **)error
+{
+	NSData *data = [NSData dataWithContentsOfURL:url];
+	id plist;
+
+	if (data == nil) {
+		if (error != NULL) {
+			*error = [NSError errorWithDomain:NSCocoaErrorDomain
+						     code:NSFileReadNoSuchFileError
+						 userInfo:nil];
+		}
+		return nil;
+	}
+	plist = [NSPropertyListSerialization propertyListWithData:data
+							  options:NSPropertyListImmutable
+							   format:NULL
+							    error:error];
+	if (plist == nil) {
+		return nil;	/* the parse error is already in *error */
+	}
+	if (![plist isKindOfClass:[NSDictionary class]]) {
+		/* THE ROOT-CLASS REFUSAL: a valid plist whose root is another kind is not this constructor's answer,
+		 * and it is REPORTED rather than coerced or half-read. */
+		if (error != NULL) {
+			*error = [NSError errorWithDomain:NSCocoaErrorDomain
+						     code:NSFileReadCorruptFileError
+						 userInfo:nil];
+		}
+		return nil;
+	}
+	return [self initWithDictionary:plist];
+}
+
++ (NSDictionary *)dictionaryWithContentsOfURL:(NSURL *)url error:(NSError **)error
+{
+	return [[self alloc] initWithContentsOfURL:url error:error];
+}
+
+- (BOOL)writeToURL:(NSURL *)url error:(NSError **)error
+{
+	NSData *data = [NSPropertyListSerialization dataWithPropertyList:self
+								  format:NSPropertyListXMLFormat_v1_0
+								 options:0
+								   error:error];
+
+	if (data == nil) {
+		return NO;
+	}
+	return [data writeToURL:url options:NSDataWritingAtomic error:error];
+}
+
 @end
 
 @implementation NSMutableDictionary
@@ -1046,5 +1252,94 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 
 /* NOTHING TO IMPLEMENT, AND THAT IS THE POINT: NSMutableDictionary's own implementation IS the mutable
  * storage implementation, and what a caller gains is the NAME that -class answers. */
+
+@end
+
+/* ===================================================================================================
+ * NSFileAttributes (F3 audit): each accessor reads ONE key of a file-attributes dictionary and converts it.
+ * An ABSENT key reads as 0 / NO / nil through the same nil-tolerant -objectForKey:, which is exactly what a
+ * file system that has no such attribute (this kernel's has no HFS creator code) reports.
+ * =================================================================================================== */
+@implementation NSDictionary (NSFileAttributes)
+
+- (NSDate *)fileCreationDate
+{
+	return [self objectForKey:NSFileCreationDate];
+}
+
+- (BOOL)fileExtensionHidden
+{
+	return [[self objectForKey:NSFileExtensionHidden] boolValue];
+}
+
+- (NSNumber *)fileGroupOwnerAccountID
+{
+	return [self objectForKey:NSFileGroupOwnerAccountID];
+}
+
+- (NSString *)fileGroupOwnerAccountName
+{
+	return [self objectForKey:NSFileGroupOwnerAccountName];
+}
+
+- (unsigned int)fileHFSCreatorCode
+{
+	return [[self objectForKey:NSFileHFSCreatorCode] unsignedIntValue];
+}
+
+- (unsigned int)fileHFSTypeCode
+{
+	return [[self objectForKey:NSFileHFSTypeCode] unsignedIntValue];
+}
+
+- (BOOL)fileIsAppendOnly
+{
+	return [[self objectForKey:NSFileAppendOnly] boolValue];
+}
+
+- (BOOL)fileIsImmutable
+{
+	return [[self objectForKey:NSFileImmutable] boolValue];
+}
+
+- (NSDate *)fileModificationDate
+{
+	return [self objectForKey:NSFileModificationDate];
+}
+
+- (NSNumber *)fileOwnerAccountID
+{
+	return [self objectForKey:NSFileOwnerAccountID];
+}
+
+- (NSString *)fileOwnerAccountName
+{
+	return [self objectForKey:NSFileOwnerAccountName];
+}
+
+- (NSUInteger)filePosixPermissions
+{
+	return [[self objectForKey:NSFilePosixPermissions] unsignedLongValue];
+}
+
+- (unsigned long long)fileSize
+{
+	return [[self objectForKey:NSFileSize] unsignedLongLongValue];
+}
+
+- (NSInteger)fileSystemFileNumber
+{
+	return [[self objectForKey:NSFileSystemFileNumber] integerValue];
+}
+
+- (NSInteger)fileSystemNumber
+{
+	return [[self objectForKey:NSFileSystemNumber] integerValue];
+}
+
+- (NSString *)fileType
+{
+	return [self objectForKey:NSFileType];
+}
 
 @end

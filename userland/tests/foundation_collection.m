@@ -1557,6 +1557,160 @@ NULL
 			(unsigned long)[set indexLessThanOrEqualToIndex:9]] UTF8String]);
 	}
 
+	{
+		/* THE TWO-ARRAY AND COPY-ITEMS CONSTRUCTORS AND THE COUNTED BUFFER FORM (F3 audit): the shapes
+		 * Cocoa publishes beside the pair constructor. copyItems:NO shares the value, copyItems:YES copies
+		 * it, and the counted buffer fills both parallel arrays.
+		 * NOT RUN IN A GUEST HERE: every expectation below is REASONED from the implementation. */
+		NSArray *vals = [NSArray arrayWithObjects:@"a", @"b", nil];
+		NSArray *names = [NSArray arrayWithObjects:@"x", @"y", nil];
+		NSMutableString *held = [[NSMutableString alloc] initWithUTF8String:"x"];
+		NSMutableDictionary *source = [NSMutableDictionary dictionary];
+		NSDictionary *two = [[NSDictionary alloc] initWithObjects:vals forKeys:names];
+		NSDictionary *plain;
+		NSDictionary *copied;
+		id __unsafe_unretained gotValues[2];
+		id __unsafe_unretained gotKeys[2];
+
+		[source setObject:held forKey:@"k"];
+		plain = [[NSDictionary alloc] initWithDictionary:source copyItems:NO];
+		copied = [[NSDictionary alloc] initWithDictionary:source copyItems:YES];
+		gotValues[0] = nil; gotKeys[0] = nil;
+		gotValues[1] = nil; gotKeys[1] = nil;
+		[two getObjects:gotValues andKeys:gotKeys count:2];
+
+		check("dict-constructors-2",
+		      [two count] == 2 && [[two objectForKey:@"x"] isEqualToString:@"a"] &&
+		      [[two objectForKey:@"y"] isEqualToString:@"b"] &&
+		      [plain objectForKey:@"k"] == held &&
+		      [copied objectForKey:@"k"] != held &&
+		      [[copied objectForKey:@"k"] isEqualToString:@"x"] &&
+		      gotValues[0] != nil && gotKeys[0] != nil &&
+		      gotValues[1] != nil && gotKeys[1] != nil,
+		      "the two-array constructor; copyItems:NO sharing the value and copyItems:YES copying it; the counted buffer filling both arrays");
+	}
+
+	{
+		/* THE OPTIONS ENUMERATION, THE ENTRY FILTER AND THE OPTIONS SORT (F3 audit). The reverse order is
+		 * measured against the forward one, the filter's CALL COUNT catches a full scan that happened to
+		 * find the right key first, and the options sort orders by VALUE.
+		 * NOT RUN IN A GUEST HERE: every expectation below is REASONED (the key-identity comparison rests on
+		 * both walks reading the SAME stored key objects, which is why it is stated as identity, not equality). */
+		NSMutableDictionary *d = [NSMutableDictionary dictionary];
+		NSMutableArray *forward = [[NSMutableArray alloc] init];
+		NSMutableArray *backward = [[NSMutableArray alloc] init];
+		__block NSUInteger calls = 0;
+		NSArray *filtered;
+		NSArray *allReversed;
+		NSArray *sorted;
+
+		[d setObject:[NSNumber numberWithInt:2] forKey:@"b"];
+		[d setObject:[NSNumber numberWithInt:1] forKey:@"a"];
+		[d setObject:[NSNumber numberWithInt:3] forKey:@"c"];
+		[d enumerateKeysAndObjectsWithOptions:0 usingBlock:^(id key, id value, BOOL *stop) {
+			(void)value; (void)stop;
+			[forward addObject:key];
+		}];
+		[d enumerateKeysAndObjectsWithOptions:NSEnumerationReverse usingBlock:^(id key, id value, BOOL *stop) {
+			(void)value; (void)stop;
+			[backward addObject:key];
+		}];
+		filtered = [d keysOfEntriesPassingTest:^BOOL(id key, id value, BOOL *stop) {
+			(void)key; (void)stop;
+			calls++;
+			return [value intValue] >= 2;
+		}];
+		allReversed = [d keysOfEntriesWithOptions:NSEnumerationReverse
+					       passingTest:^BOOL(id key, id value, BOOL *stop) {
+			(void)key; (void)value; (void)stop;
+			return YES;
+		}];
+		sorted = [d keysSortedByValueWithOptions:NSSortStable
+				      usingComparator:^NSComparisonResult(id left, id right) {
+			return [left compare:right];
+		}];
+
+		check("dict-options-blocks",
+		      [forward count] == 3 && [backward count] == 3 &&
+		      [forward objectAtIndex:0] == [backward objectAtIndex:2] &&
+		      [filtered count] == 2 && calls == 3 &&
+		      [allReversed count] == 3 &&
+		      [sorted count] == 3 && [[sorted objectAtIndex:0] isEqualToString:@"a"] &&
+		      [[sorted objectAtIndex:2] isEqualToString:@"c"],
+		      "both options walks visit all three keys (reverse the mirror of forward); the entry filter visits all three and keeps the two whose value >= 2; the reverse filter keeps all three; the options sort orders by value");
+	}
+
+	{
+		/* THE URL/ERROR DOORS (F3 audit): a real round trip through -writeToURL:error: and
+		 * +dictionaryWithContentsOfURL:error:, and the REFUSAL with an NSError for a URL that is not
+		 * there. NSTemporaryDirectory() answers the FSH path, so no host-imageless system path is named.
+		 * NOT RUN IN A GUEST HERE: every expectation below is REASONED — it rests on the guest FSH accepting
+		 * a write to its own temporary directory, which this agent could not execute. */
+		NSDictionary *out = [NSDictionary dictionaryWithObjectsAndKeys:@"v", @"k", nil];
+		NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"fndict-url-error"];
+		NSURL *url = [NSURL fileURLWithPath:path];
+		NSError *err = nil;
+		BOOL wrote;
+		NSDictionary *back = nil;
+		NSURL *missing = [NSURL fileURLWithPath:[path stringByAppendingString:@".absent"]];
+		NSError *missingErr = nil;
+		id absent;
+
+		wrote = [out writeToURL:url error:&err];
+		back = wrote ? [NSDictionary dictionaryWithContentsOfURL:url error:NULL] : nil;
+		absent = [NSDictionary dictionaryWithContentsOfURL:missing error:&missingErr];
+
+		check("dict-url-error",
+		      wrote && back != nil && [back isEqualToDictionary:out] &&
+		      absent == nil && missingErr != nil,
+		      [[NSString stringWithFormat:@"wrote=%d back=%lu absentNil=%d errSet=%d",
+			(int)wrote, (unsigned long)(back != nil ? [back count] : 0),
+			(int)(absent == nil), (int)(missingErr != nil)] UTF8String]);
+		remove([path UTF8String]);
+	}
+
+	{
+		/* THE FILE-ATTRIBUTE ACCESSORS (F3 audit): each reads ONE key of a file-attributes dictionary and
+		 * converts it. The dictionary is hand-built so the value behind every door is known; NSFileTypeRegular
+		 * is the constant a real -attributesOfItemAtPath:... would file under NSFileType.
+		 * NOT RUN IN A GUEST HERE: every expectation below is REASONED from the accessors' bodies (each is a
+		 * one-key read plus a -NSNumber conversion), not measured. */
+		NSDate *when = [NSDate dateWithTimeIntervalSince1970:1234567890];
+		NSMutableDictionary *attrs = [NSMutableDictionary dictionary];
+
+		[attrs setObject:NSFileTypeRegular forKey:NSFileType];
+		[attrs setObject:[NSNumber numberWithUnsignedLongLong:4096ULL] forKey:NSFileSize];
+		[attrs setObject:when forKey:NSFileCreationDate];
+		[attrs setObject:when forKey:NSFileModificationDate];
+		[attrs setObject:[NSNumber numberWithUnsignedLong:0644UL] forKey:NSFilePosixPermissions];
+		[attrs setObject:[NSNumber numberWithLong:42] forKey:NSFileOwnerAccountID];
+		[attrs setObject:[NSNumber numberWithLong:43] forKey:NSFileGroupOwnerAccountID];
+		[attrs setObject:@"kyle" forKey:NSFileOwnerAccountName];
+		[attrs setObject:@"wheel" forKey:NSFileGroupOwnerAccountName];
+		[attrs setObject:[NSNumber numberWithBool:YES] forKey:NSFileExtensionHidden];
+		[attrs setObject:[NSNumber numberWithBool:YES] forKey:NSFileImmutable];
+		[attrs setObject:[NSNumber numberWithBool:YES] forKey:NSFileAppendOnly];
+		[attrs setObject:[NSNumber numberWithUnsignedInt:0x3F3F3F3FUL] forKey:NSFileHFSCreatorCode];
+		[attrs setObject:[NSNumber numberWithUnsignedInt:0x12345678UL] forKey:NSFileHFSTypeCode];
+		[attrs setObject:[NSNumber numberWithLong:99] forKey:NSFileSystemFileNumber];
+		[attrs setObject:[NSNumber numberWithLong:7] forKey:NSFileSystemNumber];
+
+		check("dict-file-attributes",
+		      [[attrs fileType] isEqualToString:NSFileTypeRegular] &&
+		      [attrs fileSize] == 4096ULL &&
+		      [attrs fileCreationDate] == when && [attrs fileModificationDate] == when &&
+		      [attrs filePosixPermissions] == 0644UL &&
+		      [[attrs fileOwnerAccountID] longValue] == 42 &&
+		      [[attrs fileGroupOwnerAccountID] longValue] == 43 &&
+		      [[attrs fileOwnerAccountName] isEqualToString:@"kyle"] &&
+		      [[attrs fileGroupOwnerAccountName] isEqualToString:@"wheel"] &&
+		      [attrs fileExtensionHidden] && [attrs fileIsImmutable] && [attrs fileIsAppendOnly] &&
+		      [attrs fileHFSCreatorCode] == 0x3F3F3F3FUL &&
+		      [attrs fileHFSTypeCode] == 0x12345678UL &&
+		      [attrs fileSystemFileNumber] == 99 && [attrs fileSystemNumber] == 7,
+		      "every -file* accessor reads its own key and converts it: type, size, both dates, permissions, both owner IDs and names, the three BOOL flags, both HFS codes and the two file-system numbers");
+	}
+
 	printf("FOUNDATION-COLLECTION RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

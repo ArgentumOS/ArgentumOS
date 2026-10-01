@@ -35,8 +35,12 @@
 /* FOR `NSCoding` AND THE `NSCoder` ITS TWO DOORS TAKE (§63.13): this collection conforms on Apple's platform,
  * so a class that declares the protocol here is one whose `-conformsToProtocol:` answers the same. */
 #import <Foundation/NSCoding.h>
+/* FOR `NSEnumerationOptions`, WHICH THE OPTIONS DOORS BELOW TAKE: the option type is published by NSIndexSet
+ * (its own enumerators use it first), and that header imports only NSObject.h, so there is no cycle. */
+#import <Foundation/NSIndexSet.h>
 
 @class NSArray<ObjectType>, NSEnumerator<ObjectType>;
+@class NSString, NSNumber, NSDate, NSError, NSURL;
 
 /* NULLABILITY (F6): NONNULL by default. -objectForKey: and its subscript answer
  * nil for a key that is not there, and -setObject:forKeyedSubscript: takes nil
@@ -120,6 +124,44 @@ struct FNDictEntry;			/* opaque; defined in NSDictionary.m */
 /* Cocoa's subscript: `dict[k]` lowers to this. */
 - (nullable ObjectType)objectForKeyedSubscript:(KeyType)key;
 
+/* THE TWO-ARRAY AND COPY-ITEMS CONSTRUCTORS (F3 audit), and the COUNTED buffer form. */
+- (id)initWithObjects:(NSArray<ObjectType> *)objects forKeys:(NSArray<KeyType> *)keys;
+- (id)initWithDictionary:(NSDictionary<KeyType, ObjectType> *)other copyItems:(BOOL)flag;
+
+- (void)getObjects:(ObjectType __unsafe_unretained _Nonnull * _Nonnull)objects
+	   andKeys:(KeyType __unsafe_unretained _Nonnull * _Nonnull)keys
+	     count:(NSUInteger)count;
+
+/* THE OPTIONS-ENUMERATION AND ENTRY-FILTER DOORS (F3 audit): the reverse walk, the stop flag, the
+ * predicate filter and the options sort. */
+- (void)enumerateKeysAndObjectsWithOptions:(NSEnumerationOptions)opts
+				usingBlock:(void (^)(KeyType key, ObjectType obj, BOOL *stop))block;
+- (NSArray<KeyType> *)keysOfEntriesPassingTest:(BOOL (^)(KeyType key, ObjectType obj, BOOL *stop))predicate;
+- (NSArray<KeyType> *)keysOfEntriesWithOptions:(NSEnumerationOptions)opts
+				    passingTest:(BOOL (^)(KeyType key, ObjectType obj, BOOL *stop))predicate;
+- (NSArray<KeyType> *)keysSortedByValueWithOptions:(NSSortOptions)opts
+				   usingComparator:(NSComparator)comparator;
+
+/* THE URL/ERROR DOORS (F3 audit): the plist forms with an NSError out-parameter, beside the path forms the
+ * skin already publishes. Declared here, implemented here, so the ledger's owner (NSDictionary) matches.
+ *
+ * ⚠ AND THE GENERIC PARAMETERS ARE APPLE'S EXACT SPELLING — READ OFF THE SDK, NOT REASONED. The sweep's own
+ * source URL (tools/foundation-sweep.py:932) fetches the iPhoneOS16.5 SDK's Foundation header, which declares
+ * `NSDictionary<NSString *, ObjectType>` for BOTH of these doors: KEYTYPE IS REPLACED BY THE CONCRETE
+ * `NSString *`, because a plist read from a URL always has string keys, while the VALUE parameter stays
+ * ObjectType. The deprecated non-error spellings beside them keep KeyType, ObjectType.
+ *
+ * ⚠ AND THE FIRST VERSION OF THESE DOORS COPIED THE CLASS'S PAIR — A DEVIATION FROM APPLE — while my first
+ * repair annotated them with the single parameter the tool's per-METHOD parameter list shows, and that is NOT
+ * WRITABLE: measured, a method cannot introduce a type parameter ("error: expected a type") and a subset of the
+ * class's own is not expressible either ("too few type arguments"). The tool records the parameter NAMES a
+ * declaration uses; the declaration itself must spell the WHOLE list, concretely where Apple fixed one.
+ * THIS SPELLING IS THE ONE THAT BOTH MATCHES APPLE AND COMPILES. */
++ (nullable NSDictionary<NSString *, ObjectType> *)dictionaryWithContentsOfURL:(NSURL *)url
+								     error:(NSError * _Nullable * _Nullable)error;
+- (nullable NSDictionary<NSString *, ObjectType> *)initWithContentsOfURL:(NSURL *)url error:(NSError * _Nullable * _Nullable)error;
+- (BOOL)writeToURL:(NSURL *)url error:(NSError * _Nullable * _Nullable)error;
+
 - (BOOL)isEqualToDictionary:(NSDictionary<KeyType, ObjectType> *)other;
 
 @end
@@ -150,5 +192,31 @@ struct FNDictEntry;			/* opaque; defined in NSDictionary.m */
 NS_ASSUME_NONNULL_END
 
 @end
+
+/* ===================================================================================================
+ * NSFileAttributes (F3 audit): the accessors that read ONE key of a file-attributes dictionary and convert
+ * it. Cocoa publishes these as a category on NSDictionary, so they are one here too — the keys are
+ * NSFileManager.h's, and the VALUES are the shapes -[NSFileManager attributesOfItemAtPath:error:] hands out.
+ * =================================================================================================== */
+NS_ASSUME_NONNULL_BEGIN
+@interface NSDictionary (NSFileAttributes)
+- (nullable NSDate *)fileCreationDate;
+- (BOOL)fileExtensionHidden;
+- (nullable NSNumber *)fileGroupOwnerAccountID;
+- (nullable NSString *)fileGroupOwnerAccountName;
+- (unsigned int)fileHFSCreatorCode;
+- (unsigned int)fileHFSTypeCode;
+- (BOOL)fileIsAppendOnly;
+- (BOOL)fileIsImmutable;
+- (nullable NSDate *)fileModificationDate;
+- (nullable NSNumber *)fileOwnerAccountID;
+- (nullable NSString *)fileOwnerAccountName;
+- (NSUInteger)filePosixPermissions;
+- (unsigned long long)fileSize;
+- (NSInteger)fileSystemFileNumber;
+- (NSInteger)fileSystemNumber;
+- (nullable NSString *)fileType;
+@end
+NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSDICTIONARY_H */
