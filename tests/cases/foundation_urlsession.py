@@ -43,6 +43,8 @@ CHECKS = ("shared-session-is-a-singleton", "session-snapshots-its-configuration"
           "task-identifiers-are-unique-and-in-order", "task-carries-its-request-and-description",
           "task-description-round-trips", "session-reports-its-tasks",
           "invalidate-and-cancel-cancels-the-tasks", "session-api-inventory",
+          # the download URL doors and the class-grouped task enumeration (the grouping correction).
+          "download-url-factories-and-class-grouped-enumeration",
           "response-disposition-values",
           # §62.101: the delayed-request door (with its control), the carried values and the published ones.
           "delayed-request-door-is-asked-and-a-cancel-stops-the-task",

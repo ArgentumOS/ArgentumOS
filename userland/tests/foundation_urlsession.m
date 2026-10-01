@@ -243,6 +243,37 @@ int main(void)
 		      @"invalidation cancels the tasks and refuses new ones rather than handing back a dead task");
 	}
 
+	/* --- THE URL DOWNLOAD DOORS AND THE CLASS-GROUPED ENUMERATION ------------------------------------ */
+	{
+		NSURLSession *session =
+			[NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
+		NSURLSessionDownloadTask *download = [session downloadTaskWithURL:fn_url(@"https://example.com/d")];
+		NSURLSessionDataTask *data =
+			[session dataTaskWithRequest:[NSURLRequest requestWithURL:fn_url(@"https://example.com/e")]];
+		__block NSUInteger all = 0;
+		__block NSUInteger uploads = 0;
+		__block NSUInteger downloadCount = 0;
+
+		[session getAllTasksWithCompletionHandler:^(NSArray *tasks) {
+			all = [tasks count];
+		}];
+		[session getTasksWithCompletionHandler:^(NSArray *d, NSArray *u, NSArray *dl) {
+			(void)d;
+			uploads = [u count];
+			downloadCount = [dl count];
+		}];
+
+		check("download-url-factories-and-class-grouped-enumeration",
+		      download != nil &&
+		      [download isKindOfClass:[NSURLSessionDownloadTask class]] &&
+		      [[[download originalRequest] URL] isEqual:fn_url(@"https://example.com/d")] &&
+		      data != nil &&
+		      all == 2 && uploads == 0 && downloadCount == 1,
+		      [NSString stringWithFormat:@"all=%lu uploads=%lu downloads=%lu",
+					  (unsigned long)all, (unsigned long)uploads,
+					  (unsigned long)downloadCount]);
+	}
+
 	/* --- THE AUDITED INVENTORY -------------------------------------------------------------------- */
 	{
 		static const char *classSelectors[] = {
@@ -263,7 +294,9 @@ int main(void)
 			 * refusal list is a fact about the tree, and so is the half of the audit that says where a
 			 * name lives. */
 			"webSocketTaskWithURL:", "webSocketTaskWithURL:protocols:",
-			"webSocketTaskWithRequest:", NULL
+			"webSocketTaskWithRequest:",
+			"downloadTaskWithURL:", "downloadTaskWithURL:completionHandler:",
+			"getAllTasksWithCompletionHandler:", NULL
 		};
 		static const char *taskSelectors[] = {
 			"taskIdentifier", "originalRequest", "currentRequest", "response", "error",

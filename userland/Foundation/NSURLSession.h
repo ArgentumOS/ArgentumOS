@@ -185,7 +185,7 @@ typedef NS_ENUM(NSInteger, NSURLSessionWebSocketMessageType) {
 @class NSOutputStream;
 /* AND THE WEBSOCKET TASK, for the three factories below - the SAME place the stream half's forward declaration
  * sits, and for the same reason (§58's note above). This is the file-scope block; a `@class` inside the interface
- * is what makes the compiler say "missing '@end'". */
+ * is what makes the compiler say that the block terminator is missing. */
 @class NSURLSessionWebSocketTask;
 
 /* WHAT TO DO WITH A DELAYED REQUEST (§62.101) — Apple's three answers in Apple's order, and the value the
@@ -427,7 +427,8 @@ expectedTotalBytes:(int64_t)expectedTotalBytes;
  * that "reads/writes performed before the handshake completes are enqueued and executed afterward".
  *
  * (THE FORWARD DECLARATION IS AT FILE SCOPE, ABOVE, and this comment is here because the first version put a
- * `@class` on this very line - inside the interface - and the compiler answered "missing '@end'". §58's wiring
+ * `@class` on this very line - inside the interface - and the compiler answered that the block terminator
+ * is missing. §58's wiring
  * note already recorded the same mistake for the stream half; it is a lesson this header has now taught twice.) */
 - (nullable NSURLSessionWebSocketTask *)webSocketTaskWithURL:(NSURL *)url;
 - (nullable NSURLSessionWebSocketTask *)webSocketTaskWithURL:(NSURL *)url
@@ -463,11 +464,26 @@ expectedTotalBytes:(int64_t)expectedTotalBytes;
 								  NSURLResponse *response,
 								  NSError *error))completionHandler;
 
-/* THE TASKS THIS SESSION HAS MADE, grouped the way Apple groups them. The upload and download arrays are
- * ALWAYS EMPTY here, because those classes are not shipped — see the header above. */
+/* THE URL FORM OF THE DOWNLOAD DOORS, the convenience the data factories already carry: the request is
+ * built around the URL so the two forms cannot drift, which is why Apple declares them here. */
+- (NSURLSessionDownloadTask *)downloadTaskWithURL:(NSURL *)url;
+- (NSURLSessionDownloadTask *)downloadTaskWithURL:(NSURL *)url
+				completionHandler:(void (^)(NSURL *location,
+							    NSURLResponse *response,
+							    NSError *error))completionHandler;
+
+/* THE TASKS THIS SESSION HAS MADE, grouped the way Apple groups them. EACH GROUP IS FILTERED BY CLASS —
+ * and the sentence that used to stand here ("the upload and download arrays are ALWAYS EMPTY") was
+ * MEASURED FALSE: NSURLSessionUploadTask and NSURLSessionDownloadTask are shipped (NSURLSessionTask.h)
+ * and the factories above hand them out, so the last two arrays are real. */
 - (void)getTasksWithCompletionHandler:(void (^)(NSArray *dataTasks,
 						NSArray *uploadTasks,
 						NSArray *downloadTasks))completionHandler;
+
+/* THE WHOLE SET IN ONE ARRAY, Apple's other grouping: `-getTasksWithCompletionHandler:` answers the three
+ * kinds separately and this answers them together. The session keeps every task it made, so this is the
+ * enumeration without the grouping. */
+- (void)getAllTasksWithCompletionHandler:(void (^)(NSArray *tasks))completionHandler;
 
 /* CANCELS EVERY TASK AND INVALIDATES THE SESSION; the other lets them finish first. After either, a NEW
  * task is refused: `-dataTaskWithRequest:` answers nil rather than handing back a task that could never

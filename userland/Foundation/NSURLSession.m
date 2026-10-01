@@ -458,8 +458,16 @@ totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
 				}
 			}
 			if (cached != nil) {
-				[[NSURLCache sharedURLCache] storeCachedResponse:cached
-								      forRequest:[_task originalRequest]];
+				/* THE CONFIGURATION'S URLCache, AND THIS IS THE CONSUMER THE SETTING WAS WAITING FOR: it is
+				 * the override the store facility takes, its own default IS `[NSURLCache sharedURLCache]`
+				 * (NSURLSessionConfiguration.m:42), and the session's snapshot is where a caller's choice
+				 * lives. So a session stores into the cache IT was configured with, and the default is
+				 * unchanged. READ SIDE CAVEAT, STATED: the LOOKUP still goes to the shared cache because it
+				 * lives in FNCURLURLProtocol (not this file), so a caller who sets a DIFFERENT cache has
+				 * their writes honoured and their reads answered from the shared one. */
+				NSURLCache *store = [[_session configuration] URLCache];
+
+				[store storeCachedResponse:cached forRequest:[_task originalRequest]];
 			}
 			[cached release];
 		}
@@ -935,6 +943,20 @@ NSString * const NSURLSessionUploadTaskResumeData = @"NSURLSessionUploadTaskResu
 	return [task autorelease];
 }
 
+/* THE URL FORM OF THE DOWNLOAD DOORS: the request is built around the URL, so the two forms cannot drift -
+ * the same convenience `-dataTaskWithURL:` already carries. */
+- (NSURLSessionDownloadTask *)downloadTaskWithURL:(NSURL *)url
+{
+	return [self downloadTaskWithRequest:[NSURLRequest requestWithURL:url]];
+}
+
+- (NSURLSessionDownloadTask *)downloadTaskWithURL:(NSURL *)url
+				completionHandler:(void (^)(NSURL *, NSURLResponse *, NSError *))completionHandler
+{
+	return [self downloadTaskWithRequest:[NSURLRequest requestWithURL:url]
+			   completionHandler:completionHandler];
+}
+
 /* THE UPLOAD FACTORIES PUT THE BODY ON THE REQUEST, because NSURLRequest is immutable and a caller holding
  * one cannot add a body to it. Everything else is the data task's own model. */
 - (NSURLSessionUploadTask *)fnUploadTaskWithRequest:(NSURLRequest *)request
@@ -1175,14 +1197,41 @@ NSString * const NSURLSessionUploadTaskResumeData = @"NSURLSessionUploadTaskResu
 
 - (void)getTasksWithCompletionHandler:(void (^)(NSArray *, NSArray *, NSArray *))completionHandler
 {
+	NSMutableArray *data = [NSMutableArray array];
+	NSMutableArray *uploads = [NSMutableArray array];
+	NSMutableArray *downloads = [NSMutableArray array];
+	NSUInteger i;
+
 	if (completionHandler == nil) {
 		return;
 	}
-	/* ONE ARRAY IS REAL AND TWO ARE ALWAYS EMPTY: the upload and download task classes are not shipped,
-	 * so no session here can be holding one. Said in the header, asserted by the probe. */
-	completionHandler([NSArray arrayWithArray:_tasks],
-			  [NSArray array],
-			  [NSArray array]);
+	/* THE THREE GROUPS, EACH FILTERED BY CLASS - and the comment that used to say the last two are
+	 * "ALWAYS EMPTY" was MEASURED FALSE: NSURLSessionUploadTask and NSURLSessionDownloadTask are shipped
+	 * (NSURLSessionTask.h) and the factories above hand them out, so a session CAN be holding one. An
+	 * upload task IS a data task by Apple's hierarchy, so it is tested FIRST or it would be counted twice. */
+	for (i = 0; i < [_tasks count]; i++) {
+		NSURLSessionTask *task = [_tasks objectAtIndex:i];
+
+		if ([task isKindOfClass:[NSURLSessionUploadTask class]]) {
+			[uploads addObject:task];
+		} else if ([task isKindOfClass:[NSURLSessionDownloadTask class]]) {
+			[downloads addObject:task];
+		} else if ([task isKindOfClass:[NSURLSessionDataTask class]]) {
+			[data addObject:task];
+		}
+	}
+	completionHandler([NSArray arrayWithArray:data],
+			  [NSArray arrayWithArray:uploads],
+			  [NSArray arrayWithArray:downloads]);
+}
+
+/* AND THE WHOLE SET IN ONE ARRAY (Apple's other grouping): every task the session made, ungrouped. */
+- (void)getAllTasksWithCompletionHandler:(void (^)(NSArray *))completionHandler
+{
+	if (completionHandler == nil) {
+		return;
+	}
+	completionHandler([NSArray arrayWithArray:_tasks]);
 }
 
 - (void)invalidateAndCancel
