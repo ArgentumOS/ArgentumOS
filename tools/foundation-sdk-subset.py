@@ -48,25 +48,49 @@ THE FOUR BUCKETS, and only the last one is a defect:
    there.
  * **FETCH WITH `curl -f`**: WITHOUT IT A 404 BODY IS WRITTEN AS THE HEADER, a 14-byte "404: Not Found" becomes
    a `.h` file, and the corpus looks complete while several of its files are garbage.
- * **AND TWO USEFUL NAMES ARE NOT MISSING WHEN THEY ARE NOT FOUND**: Apple does NOT split `NSMachPort.h` or
-   `NSUserUnixTask.h` out of macOS Foundation — `NSMachPort` is declared in `NSPort.h` and `NSUserUnixTask` in
-   `NSUserScriptTask.h`. A "missing file" is a claim about the LAYOUT and wants its own check before it is a
-   finding. (Both were wrongly reported as missing from this corpus once; the guard below did not, and could
-   not, catch that.)
+ * **AND A MISSING *FILE* IS NOT A MISSING *NAME*, NOW MEASURED IN BOTH DIRECTIONS.** The mirror carries no
+   `NSMachPort.h`, `NSMessagePort.h`, `NSSocketPort.h`, `NSUserUnixTask.h` or `NSDirectoryEnumerator.h` — and
+   all five classes ARE declared, in `NSPort.h` (three of them), `NSUserScriptTask.h` and `NSFileManager.h`.
+   So the file list is a claim about Apple's LAYOUT, and the question this tool must ask is always "does the
+   corpus declare this name", never "does this file exist". (Five names were wrongly read as missing from this
+   corpus, twice, for exactly that reason.)
 
-⚠ THE GUARD'S BLIND SPOT, stated because a gate that overstates itself is worse than none: `CORPUS_MUST_DECLARE`
-and the header count catch a corpus that is MISSING FILES or missing whole areas. **THEY CANNOT DETECT A FILE
-THAT IS PRESENT AND TRIMMED.** Measured on the mirror above, the headers are real (NSCalendar.h is 37 KB with
-43 methods), so its residue is trustworthy — but a future corpus whose `NSDecimalNumber.h` had been cut down
-would produce false "we misspelled it" findings and this tool would not say so.
+⚠ THE GUARD'S TWO BLIND SPOTS, stated because a gate that overstates itself is worse than none.
+ * **A FILE THAT IS PRESENT AND TRIMMED.** `CORPUS_MUST_DECLARE` and the header count catch a corpus that is
+   MISSING FILES or missing whole areas. Measured on the mirror above, the headers are real (`NSCalendar.h` is
+   37 KB with 43 methods), so its residue is trustworthy — but a corpus whose `NSDecimalNumber.h` had been cut
+   down would produce false "we misspelled it" findings and this tool would not say so.
+ * ⚠⚠ **AN OWNER WHOSE ROOT BLOCK THE CORPUS DOES NOT CARRY — and this one is REAL, not hypothetical.** A row
+   whose owner has no ROOT block in the class framework — `@interface Owner` (not a category) or
+   `@protocol Owner` (not a forward declaration) — cannot be judged at all, because Apple's methods for that
+   class live in a header this run does not hold. MEASURED 2026-10-01: **`NSObject` is the case that named the
+   rule.** The mirror's `NSObject.h` carries only `@interface NSObject (NSCoderMethods)` and its two sibling
+   categories, so the ROOT `@protocol NSObject` — `-retainCount`, `-conformsToProtocol:`,
+   `-isMemberOfClass:`, `+instancesRespondToSelector:` … — is in the SDK's `usr/include/objc/NSObject.h` and is
+   INVISIBLE here; nine rows of the residue came from that one missing block and NOT ONE of them is a
+   misspelling. **These rows are therefore printed with a marker, are named by owner in a ⚠ block, and are NOT
+   counted as findings; `--strict` does not fail on them.** The fix is a bigger corpus (pass the SDK's
+   `usr/include/objc` as another `--headers`), not a deletion.
+   ⚠ **AND A MISSING FILE IS NOT A MISSING OWNER — MEASURED, AND IT CORRECTED MY OWN FIRST READING.** This
+   mirror carries no `NSNumber.h`, and `NSNumber` was ALREADY judgeable, because `NSValue.h:42` declares
+   `@interface NSNumber : NSValue`. So an absent header is not by itself a reason to call a row unjudgeable:
+   ASK THIS CHECK, never the file list. (The plan's §63.59 recorded the opposite from the file list alone;
+   §63.60 carries the correction.)
+   ⚠ **AND THE CHECK ANSWERS FOR THE OWNER, NOT FOR WHAT THE OWNER INHERITS — a third, NARROWER blind spot,
+   measured on this run rather than imagined.** `NSNumber -mutableCopy` comes out JUDGEABLE, because
+   `NSValue.h` carries NSNumber's root block — yet `-mutableCopy` is declared in the same INVISIBLE root
+   `@protocol NSObject` the first blind spot is about, and on no Apple NSNumber header. So a row can be judged
+   against an owner block that IS present while its METHOD lives in a superclass this corpus does not carry.
+   ONE row, named and left un-mechanized on purpose: a fix would have to walk the superclass chain, and a wrong
+   chain INVENTS findings, which is worse than a marked one.
 
 USAGE
 
   tools/foundation-sdk-subset.py --headers DIR [--headers DIR …] [--strict]
 
-`--strict` exits 1 when the NOT-IN-ANY-SDK bucket is non-empty. WITHOUT IT THE TOOL REPORTS AND EXITS 0, which
-is the same shape the parameterization clause took before its promotion (§11.0/M10): a new instrument should
-not turn a build red on its first run.
+`--strict` exits 1 when the NOT-IN-ANY-SDK bucket holds a JUDGEABLE row. WITHOUT IT THE TOOL REPORTS AND EXITS
+0, which is the same shape the parameterization clause took before its promotion (§11.0/M10): a new instrument
+should not turn a build red on its first run.
 """
 
 import argparse
@@ -111,6 +135,31 @@ def blocks(text):
         end = text.find("@end", m.end())
         if end >= 0:
             yield m.group(1), text[m.end():end]
+
+
+def root_block_owners(corpus):
+    """The owners the corpus declares a ROOT block for, as opposed to only a CATEGORY on them.
+
+    A row is UNJUDGEABLE when its owner has no root block here, because Apple's own methods for that class are
+    then in a header this run does not hold — see the module docstring's second blind spot. The three shapes
+    that do NOT count, and why each had to be excluded by measurement rather than by taste:
+      * `@interface NSObject (NSCoderMethods)` — a CATEGORY. Its members belong to NSObject as OUR sweep
+        attributes them, but Apple's root protocol is not declared here, so nothing is learned from its absence.
+      * `@protocol NSPortDelegate, NSMachPortDelegate;` — a FORWARD DECLARATION of two names in one line. It
+        declares neither.
+      * a name that only appears as a superclass (`@interface NSDecimalNumber : NSNumber`) — which is why the
+        question is asked of `@interface`/`@protocol` blocks and never of the text."""
+    out = set()
+    for _, text in corpus:
+        text = strip_comments(text)
+        for m in re.finditer(r"(?m)^[ \t]*@(interface|protocol)\s+(\w+)([^\n]*)", text):
+            kind, owner, rest = m.group(1), m.group(2), m.group(3)
+            if rest.lstrip().startswith("("):
+                continue
+            if kind == "protocol" and rest.strip().endswith(";"):
+                continue
+            out.add(owner)
+    return out
 
 
 def selectors(body):
@@ -209,10 +258,11 @@ def main(argv):
     print("  ⚠ the corpus is a PUBLISHED SDK MIRROR, not Apple's own distribution, and it stays out of the tree")
 
     # ⚠⚠ A COMPLETENESS CHECK, BECAUSE AN INCOMPLETE CORPUS TURNS "WE MISSPELLED IT" INTO "APPLE DOES NOT HAVE
-    # IT" — the one way this tool can lie. MEASURED 2026-10-01 on the mirror this was first run against:
-    # `NSMachPort.h` and `NSUserUnixTask.h` are MISSING from its Foundation headers, and files that ARE present
-    # are trimmed (`NSValue.h` is 4,967 bytes where Apple's is several times that). Every name below is API that
-    # MUST exist in any real Foundation SDK, so its absence is a fact about the CORPUS and not about our tree.
+    # IT" — the one way this tool can lie. MEASURED 2026-10-01 on the mirror this was first run against: files
+    # that ARE present are trimmed (`NSValue.h` is 4,967 bytes where Apple's is several times that). Every name
+    # below is API that MUST exist in any real Foundation SDK, so its absence is a fact about the CORPUS and not
+    # about our tree. (⚠ The five headers this mirror does not carry are NOT a finding: see the docstring's
+    # "a missing FILE is not a missing NAME" — all five classes are declared elsewhere in the same framework.)
     missing = [n for n in CORPUS_MUST_DECLARE
                if not any(re.search(r"\b" + re.escape(n) + r"\b", t) for _, t in class_corpus)]
     if len(class_corpus) < CORPUS_MIN_HEADERS or missing:
@@ -242,16 +292,50 @@ def main(argv):
             else:
                 buckets["NOT-IN-ANY-SDK"].append((owner, sel))
 
+    # ⚠⚠ THE SECOND BLIND SPOT: A ROW WHOSE OWNER HAS NO ROOT BLOCK IN THIS CORPUS CANNOT BE JUDGED. Measured
+    # 2026-10-01, NSObject is the case that named it (nine rows, from a root @protocol that lives in the SDK's
+    # usr/include/objc/NSObject.h), and the same check independently caught NSNumber, whose header this mirror
+    # does not carry at all. Those rows are marked, named, and NOT counted as findings.
+    roots = root_block_owners(class_corpus)
+    residue = buckets["NOT-IN-ANY-SDK"]
+    unjudgeable = [(o, s) for o, s in residue if o not in roots]
+    judgeable = [(o, s) for o, s in residue if o in roots]
+
     for name in ("documented", "other-framework", "ours", "NOT-IN-ANY-SDK"):
         rows = buckets[name]
         print("\n  %-16s %d" % (name, len(rows)))
         if name == "NOT-IN-ANY-SDK":
             for o, s in rows:
-                print("       %-30s %s" % (o, s))
+                print("       %-30s %s%s" % (o, s, "" if o in roots else "   ⚠ unjudgeable"))
 
-    bad = buckets["NOT-IN-ANY-SDK"]
+    if unjudgeable:
+        owners = sorted({o for o, _ in unjudgeable})
+        print("\n  ⚠⚠ %d of those %d row(s) sit on %d OWNER(S) THIS CORPUS CANNOT JUDGE: %s"
+              % (len(unjudgeable), len(residue), len(owners), ", ".join(owners)))
+        print("     A row is unjudgeable when the class framework declares NO ROOT BLOCK for its owner —")
+        print("     `@interface Owner` (not a category) or `@protocol Owner` (not a forward declaration) —")
+        print("     because Apple's methods for that class live in a header this run does not hold.")
+        print("     THE CASE THAT NAMED THE RULE: `NSObject.h` here carries only `@interface NSObject")
+        print("     (NSCoderMethods)`, `(NSDeprecatedMethods)` and `(NSDiscardableContentProxy)`, so the ROOT")
+        print("     `@protocol NSObject` (retainCount, conformsToProtocol:, isMemberOfClass:, …) is in the")
+        print("     SDK's usr/include/objc/NSObject.h and is INVISIBLE to this run — pass that directory as")
+        print("     another --headers to answer for it. A corpus that lacks an OWNER'S HEADER shows up the same")
+        print("     way, and is how `NSNumber` was caught: this mirror has NSNumberFormatter.h and no")
+        print("     NSNumber.h, so `-initWithDecimal:` (Apple's on NSDecimalNumber, ours on NSNumber) is")
+        print("     reported nowhere at all.")
+        print("     THESE ROWS ARE NOT FINDINGS and --strict does not fail on them. AND A MISSING FILE IS NOT A")
+        print("     MISSING NAME: this mirror carries no NSMachPort.h / NSMessagePort.h / NSSocketPort.h /")
+        print("     NSUserUnixTask.h / NSDirectoryEnumerator.h, yet all five classes ARE declared — in NSPort.h,")
+        print("     NSUserScriptTask.h and NSFileManager.h — and every one of them is judgeable above.")
+
+    bad = judgeable
     print("\nfoundation-sdk-subset: %d name(s) Apple declares nowhere in this SDK and its documentation does "
-          "not hold either — spellings to check." % len(bad))
+          "not hold either — spellings to check." % len(residue))
+    if unjudgeable:
+        print("foundation-sdk-subset: of those, %d sit on owner(s) this corpus cannot judge (%s) and are NOT "
+              "counted as findings — fix the CORPUS, not the library."
+              % (len(unjudgeable), ", ".join(sorted({o for o, _ in unjudgeable}))))
+    print("foundation-sdk-subset: %d JUDGEABLE name(s)." % len(bad))
     if bad and args.strict:
         print("foundation-sdk-subset: FAILING (--strict)")
         return 1

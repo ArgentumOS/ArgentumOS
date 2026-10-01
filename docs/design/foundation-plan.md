@@ -15982,6 +15982,79 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.60 — THE SUBSET GATE LEARNS TO SAY WHAT IT CANNOT JUDGE, AND ITS OWN RE-RUN FALSIFIED §63.59's CLAIM (2026-10-01)
+
+**WHAT LANDED (user decision `dec-e5eab960ebc35848`, "fix the instrument first — make the corpus guard
+per-owner, then re-derive the work list"): `tools/foundation-sdk-subset.py` gained a SECOND blind-spot guard.**
+A residue row whose OWNER has no ROOT BLOCK in the class framework — `@interface Owner` that is not a category,
+or `@protocol Owner` that is not a forward declaration — cannot be judged at all, because Apple's methods for
+that class are then in a header this run does not hold. Such rows are now **marked in the listing, named by
+owner in a ⚠ block, excluded from `--strict`'s failure, and counted separately.**
+
+**MEASURED, same corpus, after the change: the residue is 29 rows and the tool now says so precisely — `9`
+unjudgeable (owner `NSObject`), `20 JUDGEABLE name(s)`, exit 0**, with `--strict` failing only on the 20. And
+`make foundation-sweep` is unaffected — it runs `foundation-sweep.py`, not this tool.
+
+**WHY THIS UNIT EXISTED AT ALL: §63.56'S STATED FIX FOR THE MAKE-PRIVATE GROUP DOES NOT WORK, AND THE RECON
+MEASURED THREE REASONS FOR IT.**
+ * **A class extension is PER-FILE, and the callers are not.** `-byteAtIndex:` is called from `NSData.m`;
+   `-appendUTF8String:` from `NSIndexPath.m` and `NSData.m`; `-addSourceForFileDescriptor:…` and
+   `-removeSourceForTarget:` from `NSStream.m`, `NSSocketPort.m` **and** `NSFileHandle.m`; `-peerPort` and
+   `+defaultPortNameServer` from `NSMessagePort.m` and `NSConnection.m`. **"Callers unchanged" holds for three
+   of the seventeen names**, not for the group.
+ * **A declaration in an internal header UNDER `userland/Foundation/` WOULD NOT EVEN CLEAR THE RESIDUE**:
+   `our_surface()` globs `*.h` in that directory non-recursively, so an `FNStringPrivate.h` sitting beside the
+   public headers is read and its block parsed exactly like a public one. The mechanism that works is a
+   declaration inside a `.m` — which is precisely what a cross-file caller cannot see.
+ * **A PROBE CANNOT SEE A PRIVATE DECLARATION, AND EVERY ONE OF THESE DOORS HAS PROBE CALLERS**: `-byteAtIndex:`
+   13 uses, `-addSourceForFileDescriptor:…` 5, `-portDidBecomeReadable` implemented BY the probes as their own
+   port delegate, and `+defaultPortNameServer` the only way `foundation_portnames`/`foundation_dobjects` reach
+   the registry at all. So "make private" does not merely move a name — **it deletes the only assertions those
+   doors have**, against a campaign whose rule is that every door is checked. **THE MAKE-PRIVATE GROUP IS
+   THEREFORE NOT LANDED**; it is deferred behind this instrument, and its three obstacles are now facts on the
+   record instead of a hypothesis for the next reader to rediscover.
+
+**⚠⚠ AND THE UNIT'S SHARPEST RESULT IS THAT ITS OWN NEW CHECK FALSIFIED A CLAIM §63.59 HAD JUST COMMITTED.**
+§63.59 recorded that `NSNumber`'s bucket "comes from `declared_anywhere`'s whole-corpus text search rather than
+from its own header", because the corpus has no `NSNumber.h`. **The check says otherwise, and the check is
+right: `NSValue.h:42` declares `@interface NSNumber : NSValue`.** The owner was JUDGEABLE all along, the file
+list was never the question, and **§63.59's paragraph is corrected in place and marked.** This is the same
+error §63.56 made and recorded — asking the corpus the wrong question — and it is now the second time this
+campaign has paid for it, in the OPPOSITE direction: §63.56 asked for a WORD where it needed a SELECTOR, and
+this asked about a FILE where it needed a BLOCK. The real blind spot is narrower, and §63.59 measured it
+correctly: `declared_anywhere` matches the bare TOKEN with **no sign and no owner**, so a name of ours that
+Apple declares on ANOTHER class stays invisible (`-initWithDecimal:` on `NSNumber`, Apple's on
+`NSDecimalNumber`) — still OUTSTANDING, still not a settled row.
+
+**⚠ AND A MISSING *FILE* IS NOT A MISSING *NAME* EITHER, NOW MEASURED ACROSS ALL FIVE CASES.** The mirror
+carries no `NSMachPort.h`, `NSMessagePort.h`, `NSSocketPort.h`, `NSUserUnixTask.h` or `NSDirectoryEnumerator.h`
+— and **all five classes ARE declared**: `NSPort.h` declares `NSMachPort`, `NSMessagePort` and `NSSocketPort`
+(lines 82, 123 and 136), `NSUserScriptTask.h` declares `NSUserUnixTask`, and `NSFileManager.h` declares
+`NSDirectoryEnumerator`. So those five owners are judgeable and the five absent files are Apple's real LAYOUT,
+not a corpus gap — **§63.56's measurement stands, now confirmed from the other side.** And the corpus guard's
+silence was CORRECT rather than a miss: `CORPUS_MUST_DECLARE` and the header count are about missing NAMES and
+AREAS, and no name was missing. **The hypothesis this unit was going to record — "five owner headers are
+missing from the corpus, so their residue is provisional" — was WRONG, and the measurement is what killed it.**
+
+**AND A THIRD BLIND SPOT, MEASURED AND DELIBERATELY NOT MECHANIZED.** The new check answers for the OWNER, not
+for what the owner INHERITS: `NSNumber -mutableCopy` comes out judgeable, because `NSValue.h` carries NSNumber's
+root block — while `-mutableCopy` is declared in the same invisible root `@protocol NSObject` and on no Apple
+NSNumber header. ONE row. A fix would have to walk the superclass chain, and a wrong chain INVENTS findings,
+which is worse than a marked one; so it is named in the tool's docstring and left un-mechanized.
+
+**THE RE-DERIVED WORK LIST, WHICH IS WHAT THIS UNIT WAS ASKED FOR: 29 residue rows, 20 judgeable.**
+ * **20 JUDGEABLE**, and they fall into exactly the three shapes §63.56 named: **the MAKE PRIVATE group (15** —
+   `-byteAtIndex:`, `-appendUTF8String:`, `-initWithSequence:reverse:`, `+resultWithRanges:count:`, the two
+   `NSRunLoop` source doors, `-keyForChildFileWrapper:`, `-peerPort`, `-portDidBecomeReadable`,
+   `+defaultPortNameServer`, the two `NSSocketPort` inits, `-initWithScriptURL:error:` and
+   `-internalSubset`/`-setInternalSubset:` — **now blocked behind the three obstacles above, and wanting a
+   decision rather than a mechanical pass**), **the two compatibility doors that STAY**
+   (`+dataWithBase64EncodedString:` and `…:options:`, §62.24), and **`-mutableCopy`**, which is the third blind
+   spot's single row.
+ * **9 UNJUDGEABLE, all `NSObject`**, from the root `@protocol NSObject` in the SDK's `usr/include/objc/`.
+   **Not one of them is a misspelling and `--strict` no longer fails on them**; the way to answer for them is
+   to pass that directory as another `--headers`.
+
 ## §63.59 — FOUR CONVENIENCE SPELLINGS LEAVE, AND THE GROUND UNDER ONE OF THEM WAS FALSE (2026-10-01)
 
 **WHAT LANDED (user decision `dec-d2dfbe0c080f14c2`, "delete outright and rewrite every caller, probes
@@ -16045,15 +16118,18 @@ warning on the rebuild the campaign treats as a failure. It is deleted with the 
 `NSTinyString`, whose `-characterCount` used `tiny_length` — which `-length` ALSO uses — so that helper stays.**
 A deletion's blast radius is not "the names it mentions" but "what only it reached".
 
-**AND ONE INSTRUMENT FINDING, WHICH CHANGES WHAT THE NEXT RESIDUES UNIT MAY TRUST: THE CORPUS HAS NO
-`NSNumber.h`.** `/tmp/mac145` and `/tmp/sdk` both carry `NSNumberFormatter.h` and no `NSNumber.h`, so that
-owner's bucket comes from `declared_anywhere`'s whole-corpus text search rather than from its own header — and
-that search is **sign-blind and owner-blind**. MEASURED CONSEQUENCE: this header declares
-`- (id)initWithDecimal:(NSDecimal)` on `NSNumber`, Apple declares it only on `NSDecimalNumber`, and the tool
-does NOT report it, because the bare token `initWithDecimal` occurs in `NSDecimalNumber.h`. `+numberWithDecimal:`
-was reported only because no `numberWithDecimal` exists anywhere. **So `-initWithDecimal:` is OUTSTANDING and is
-NOT touched here** — it is the instrument's blind spot, not a settled row, and settling it means asking the
-corpus the per-class question ("is this selector Apple's on THIS class?") rather than the token question.
+**AND ONE INSTRUMENT FINDING, WHICH CHANGES WHAT THE NEXT RESIDUES UNIT MAY TRUST: `declared_anywhere` IS
+SIGN-BLIND AND OWNER-BLIND — AND THE OBVIOUS READING OF A MISSING HEADER IS WRONG.** `/tmp/mac145` and
+`/tmp/sdk` both carry `NSNumberFormatter.h` and **no `NSNumber.h`**. **This section's first draft read that as
+"the owner is therefore unjudgeable", and THAT WAS WRONG: §63.60's new root-block check found that
+`NSValue.h:42` declares `@interface NSNumber : NSValue`, so the corpus judges `NSNumber` perfectly well.** The
+file list was never the question — a lesson this campaign has now paid for in BOTH directions (§63.56's `\b`
+error, and this one). What IS real, and is what this unit actually measured: `declared_anywhere` matches the
+bare TOKEN anywhere in the corpus with **no sign and no owner**, so this header's
+`- (id)initWithDecimal:(NSDecimal)` on `NSNumber` — Apple's on `NSDecimalNumber` — is reported NOWHERE,
+because the token occurs in `NSDecimalNumber.h`. **So `-initWithDecimal:` is OUTSTANDING, and it is the
+instrument's blind spot rather than a settled row:** settling it needs the per-OWNER question ("does THIS class
+declare it?"), which §63.60 added for the unjudgeable case and does not yet answer for the wrong-owner case.
 
 **⚠ AND THE ONE HOST RED, WHICH IS THE GUEST'S GREEN: `cg-spelled-geometry-doors-are-not-on-foundation-s-nsvalue`
 FAILS on the host and PASSES in the guest** (`FOUNDATION-NSVALUE RESULT ok=14 fail=0`). It is not this unit's:
