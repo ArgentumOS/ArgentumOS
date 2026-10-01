@@ -325,6 +325,11 @@ int main(void)
 			"filteredArrayUsingPredicate:",		/* NSPredicate — F11a */
 			"isEqualToArray:", "isEqual:", "hash", "description", "copy", "mutableCopy",
 			"countByEnumeratingWithState:objects:count:",
+			/* THE ELEMENT-SENDING AND COMMON-MEMBER DOORS (this pass): Apple's documented surface, so the
+			 * inventory now demands them too. */
+			"makeObjectsPerformSelector:", "makeObjectsPerformSelector:withObject:",
+			"firstObjectCommonWithArray:", "getObjects:", "indexOfObjectIdenticalTo:inRange:",
+			"initWithArray:copyItems:",
 			NULL
 		};
 		static const char *mutableClassSelectors[] = {
@@ -885,6 +890,51 @@ NULL
 		      [numbers indexOfObjectIdenticalTo:distinct] == NSNotFound &&
 		      [numbers indexOfObjectIdenticalTo:[numbers objectAtIndex:1]] == 1,
 		      "equality finds it where identity does not (a tagged literal is not the owned copy)");
+	}
+
+	{
+		/* THE ELEMENT-SENDING AND COMMON-MEMBER DOORS, EXERCISED — a declared method that never runs
+		 * proves nothing. Two MUTABLE arrays stand in as targets so each -makeObjectsPerformSelector:
+		 * form has an observable effect on its receiver; the searches are asserted by INDEX, and a
+		 * MUTABLE member (not a literal, whose identity the compiler may fold) anchors copyItems:. */
+		NSMutableArray *t1 = [NSMutableArray arrayWithObjects:@"a", @"b", nil];
+		NSMutableArray *t2 = [NSMutableArray arrayWithObjects:@"c", @"d", nil];
+		NSArray *targets = [NSArray arrayWithObjects:t1, t2, nil];
+		NSArray *meta = [NSArray arrayWithObjects:@"a", @"b", @"c", nil];
+		NSArray *common = [NSArray arrayWithObjects:@"x", @"b", @"y", nil];
+		NSArray *none = [NSArray arrayWithObjects:@"p", @"q", nil];
+		NSMutableString *member = [[NSMutableString alloc] initWithUTF8String:"orig"];
+		NSArray *source = [NSArray arrayWithObject:member];
+		NSArray *copied = [[NSArray alloc] initWithArray:source copyItems:YES];
+		NSArray *shared = [[NSArray alloc] initWithArray:source copyItems:NO];
+		NSArray *numbers = [NSArray arrayWithObjects:@"1", @"2", @"3", @"4", nil];
+		NSMutableString *distinct = [[NSMutableString alloc] initWithUTF8String:"2"];
+		id __unsafe_unretained held[4];
+		int sending = 1;
+
+		[targets makeObjectsPerformSelector:@selector(removeLastObject)];
+		sending = sending && [t1 count] == 1 && [[t1 objectAtIndex:0] isEqualToString:@"a"] &&
+			  [t2 count] == 1 && [[t2 objectAtIndex:0] isEqualToString:@"c"];
+		[targets makeObjectsPerformSelector:@selector(addObject:) withObject:@"z"];
+		sending = sending && [t1 count] == 2 && [[t1 objectAtIndex:1] isEqualToString:@"z"] &&
+			  [t2 count] == 2 && [[t2 objectAtIndex:1] isEqualToString:@"z"];
+
+		[member appendString:@"-changed"];
+		held[0] = nil; held[1] = nil; held[2] = nil; held[3] = nil;
+		[numbers getObjects:held];
+
+		check("array-perform-and-common",
+		      sending &&
+		      [[meta firstObjectCommonWithArray:common] isEqualToString:@"b"] &&
+		      [meta firstObjectCommonWithArray:none] == nil &&
+		      [numbers indexOfObjectIdenticalTo:[numbers objectAtIndex:2] inRange:NSMakeRange(0, 4)] == 2 &&
+		      [numbers indexOfObjectIdenticalTo:[numbers objectAtIndex:2] inRange:NSMakeRange(0, 2)] == NSNotFound &&
+		      [numbers indexOfObjectIdenticalTo:distinct inRange:NSMakeRange(0, 4)] == NSNotFound &&
+		      [copied count] == 1 && [[copied objectAtIndex:0] isEqualToString:@"orig"] &&
+		      [shared count] == 1 && [shared objectAtIndex:0] == member &&
+		      held[0] != nil && [held[0] isEqualToString:@"1"] &&
+		      held[3] != nil && [held[3] isEqualToString:@"4"],
+		      "makeObjectsPerformSelector: both forms (removeLastObject then addObject: z, so t1/t2 each go 2->1->2), firstObjectCommonWithArray: (the first SHARED member b, nil when none), indexOfObjectIdenticalTo:inRange: (index 2 in {0,4}, NSNotFound in {0,2}, and a same-valued copy is not identical), getObjects: (the whole array: held[0]=1, held[3]=4), initWithArray:copyItems:YES copies the mutable member (still orig after the source changed), copyItems:NO shares it (same pointer)");
 	}
 
 

@@ -368,6 +368,32 @@ static NSArray *array_from_varargs(Class cls, id firstObject, va_list args)
 	return result;
 }
 
+/* `copyItems`: each member is COPIED (`-copyWithZone:`), so the new array does not share it with `array`;
+ * NO leaves the member RETAINED by the new array like any other element. The copied/retained set is then
+ * handed to `-initWithArray:` so the class-choosing rule stays in the one funnel initializer. */
+- (instancetype)initWithArray:(NSArray *)array copyItems:(BOOL)flag
+{
+	NSMutableArray *copy = [[NSMutableArray alloc] init];
+	NSUInteger i;
+
+	for (i = 0; i < [array count]; i++) {
+		id element = [array objectAtIndex:i];
+
+		if (flag) {
+			/* REASONED (not measured): Apple's page says copyItems:YES sends -copyWithZone:. This
+			 * tree REMOVED the zone API and its NSCopying member is -copy, whose entry point IS the
+			 * override point (NSObject.h), so -copy is the faithful equivalent here. An element that
+			 * cannot be copied hits NSObject's loud-failure default rather than answering nil. */
+			id copied = [element copy];
+
+			[copy addObject:copied];
+		} else {
+			[copy addObject:element];
+		}
+	}
+	return [self initWithArray:copy];
+}
+
 - (id)initWithObjects:(id)firstObject, ...
 {
 	va_list args;
@@ -424,6 +450,15 @@ static NSArray *array_from_varargs(Class cls, id firstObject, va_list args)
 	}
 }
 
+/* THE WHOLE ARRAY: -getObjects:range: over the full bounds. Deprecated by Apple but still documented. */
+- (void)getObjects:(id __unsafe_unretained *)objects
+{
+	if (objects == NULL) {
+		return;
+	}
+	[self getObjects:objects range:NSMakeRange(0, [self count])];
+}
+
 - (NSUInteger)indexOfObject:(id)object inRange:(NSRange)range
 {
 	size_t i;
@@ -448,6 +483,56 @@ static NSArray *array_from_varargs(Class cls, id firstObject, va_list args)
 		}
 	}
 	return NSNotFound;
+}
+
+/* Identity within a range: the same walk as above, bounded by `range`. A range past the end is CLAMPED to
+ * the array's length, mirroring -indexOfObject:inRange: rather than raising. */
+- (NSUInteger)indexOfObjectIdenticalTo:(id)object inRange:(NSRange)range
+{
+	size_t i;
+
+	for (i = range.location; i < [self count] && i < range.location + range.length; i++) {
+		if ([self objectAtIndex:i] == object) {
+			return i;
+		}
+	}
+	return NSNotFound;
+}
+
+/* SEND A MESSAGE TO EVERY ELEMENT, in order, first to last. Nothing is skipped and no array is mutated:
+ * -performSelector: answers nil for an object that does not implement the selector rather than raising. */
+- (void)makeObjectsPerformSelector:(SEL)selector
+{
+	NSUInteger i;
+
+	for (i = 0; i < [self count]; i++) {
+		[[self objectAtIndex:i] performSelector:selector];
+	}
+}
+
+- (void)makeObjectsPerformSelector:(SEL)selector withObject:(id)argument
+{
+	NSUInteger i;
+
+	for (i = 0; i < [self count]; i++) {
+		[[self objectAtIndex:i] performSelector:selector withObject:argument];
+	}
+}
+
+/* THE FIRST SHARED MEMBER: the first element of the receiver that is -isEqual: to an element of `other`,
+ * or nil when they have none in common. The receiver's ORDER decides which common member is answered. */
+- (id)firstObjectCommonWithArray:(NSArray *)other
+{
+	NSUInteger i;
+
+	for (i = 0; i < [self count]; i++) {
+		id element = [self objectAtIndex:i];
+
+		if ([other containsObject:element]) {
+			return element;
+		}
+	}
+	return nil;
 }
 
 /* The comparator sort, shared by the immutable and mutable forms. */

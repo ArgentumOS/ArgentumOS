@@ -87,6 +87,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (id)initWithObject:(id)object;
 - (id)initWithObjects:(const ObjectType _Nonnull * _Nullable)objects count:(NSUInteger)count;
 - (id)initWithArray:(NSArray<ObjectType> *)other;
+/* `copyItems` COPIES each member (`-copy` — this tree's NSCopying member, the zone API having been
+ * removed; see NSObject.h), so the new array does not share them with `array`; NO means the members are
+ * RETAINED like any other element. */
+- (instancetype)initWithArray:(NSArray<ObjectType> *)array copyItems:(BOOL)flag;
 - (id)initWithObjects:(ObjectType)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
 
 - (NSUInteger)count;
@@ -105,9 +109,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSArray<ObjectType> *)arrayByAddingObjectsFromArray:(NSArray<ObjectType> *)other;
 - (NSArray<ObjectType> *)subarrayWithRange:(NSRange)range;
 - (void)getObjects:(ObjectType __unsafe_unretained _Nonnull * _Nonnull)buffer range:(NSRange)range;
+/* THE WHOLE ARRAY, no range: fills `objects`, which must hold at least -count elements. Deprecated by
+ * Apple in favour of -getObjects:range:; kept because it is still the documented surface. */
+- (void)getObjects:(ObjectType __unsafe_unretained _Nonnull * _Nonnull)objects;
 
 - (NSUInteger)indexOfObject:(ObjectType)object inRange:(NSRange)range;
 - (NSUInteger)indexOfObjectIdenticalTo:(ObjectType)object;
+/* Identity within a range: the lowest index in `range` holding THE SAME object, NSNotFound if none. */
+- (NSUInteger)indexOfObjectIdenticalTo:(ObjectType)object inRange:(NSRange)range;
 - (NSUInteger)indexOfObject:(ObjectType)object
 		   inSortedRange:(NSRange)range
 			   options:(NSBinarySearchingOptions)options
@@ -129,6 +138,11 @@ NS_ASSUME_NONNULL_BEGIN
 			      context:(nullable void *)context;
 - (void)enumerateObjectsUsingBlock:(void (^)(ObjectType object, NSUInteger index, BOOL *stop))block;
 
+/* SEND A MESSAGE TO EVERY ELEMENT, in order, starting with the first. The one-argument form sends a
+ * no-argument message; the other passes `argument` to each (nullable, as Apple declares it). */
+- (void)makeObjectsPerformSelector:(SEL)aSelector;
+- (void)makeObjectsPerformSelector:(SEL)aSelector withObject:(nullable id)argument;
+
 /* The NSIndexSet forms. -objectsAtIndexes: RAISES NSRangeException for an index
  * past the end — the caller asked for something that is not there — while
  * -indexesOfObjectsPassingTest: hands back the indexes that passed. */
@@ -147,6 +161,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSEnumerator<ObjectType> *)reverseObjectEnumerator;
 
 - (BOOL)isEqualToArray:(NSArray<ObjectType> *)other;
+/* THE FIRST SHARED MEMBER: the first element of the receiver that is -isEqual: to an element of `other`,
+ * or nil when the two arrays have none in common. */
+- (nullable ObjectType)firstObjectCommonWithArray:(NSArray<ObjectType> *)other;
 
 @end
 
