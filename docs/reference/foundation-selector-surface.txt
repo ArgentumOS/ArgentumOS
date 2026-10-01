@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2039   open  645   struck  244
-#   property   shipped 1154   open  336   struck  146
+#   method     shipped 2066   open  618   struck  244
+#   property   shipped 1206   open  284   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -389,7 +389,7 @@ property	open	executableArchitectures	NSBundle	App Support / Bundle Resources / 
 property	shipped	executablePath	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 property	shipped	executableURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 property	shipped	infoDictionary	NSBundle	App Support / Bundle Resources / Getting bundle information	-	objc
-property	open	loaded	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
+property	shipped	loaded	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
 property	shipped	localizations	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
 property	shipped	localizedInfoDictionary	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
 property	shipped	mainBundle	NSBundle	App Support / Bundle Resources / Getting standard bundle objects	-	objc
@@ -417,7 +417,7 @@ method	shipped	-stringFromByteCount:	NSByteCountFormatter	Fundamentals / Data si
 method	shipped	+stringFromByteCount:countStyle:	NSByteCountFormatter	Fundamentals / Data sizes / Creating Strings from Byte Count	-	objc
 method	shipped	-stringFromMeasurement:	NSByteCountFormatter	Fundamentals / Data sizes / Instance Methods	-	objc
 method	shipped	+stringFromMeasurement:countStyle:	NSByteCountFormatter	Fundamentals / Data sizes / Type Methods	-	objc
-property	open	adaptive	NSByteCountFormatter	Fundamentals / Data sizes / Setting Formatting Styles	-	objc
+property	shipped	adaptive	NSByteCountFormatter	Fundamentals / Data sizes / Setting Formatting Styles	-	objc
 property	shipped	allowedUnits	NSByteCountFormatter	Fundamentals / Data sizes / Setting Formatting Styles	-	objc
 property	shipped	allowsNonnumericFormatting	NSByteCountFormatter	Fundamentals / Data sizes / Setting Formatting Styles	-	objc
 property	shipped	countStyle	NSByteCountFormatter	Fundamentals / Data sizes / Setting Formatting Styles	-	swift-page
@@ -744,7 +744,7 @@ property	shipped	rootObject	NSConnection	Low-Level Utilities / Legacy / Legacy /
 property	shipped	rootProxy	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Remote Object	deprecated	objc
 property	shipped	sendPort	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting Ports	deprecated	objc
 property	open	statistics	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting Statistics	deprecated	objc
-property	open	valid	NSConnection	Low-Level Utilities / Legacy / Legacy / Configuring Instances	deprecated	objc
+property	shipped	valid	NSConnection	Low-Level Utilities / Legacy / Legacy / Configuring Instances	deprecated	objc
 method	open	-authenticateComponents:withData:	NSConnectionDelegate	Low-Level Utilities / Legacy / Legacy / Authenticating	deprecated	objc
 method	open	-authenticationDataForComponents:	NSConnectionDelegate	Low-Level Utilities / Legacy / Legacy / Authenticating	deprecated	objc
 method	shipped	-connection:handleRequest:	NSConnectionDelegate	Low-Level Utilities / Legacy / Legacy / Responding to a Connection	deprecated	objc
@@ -905,7 +905,7 @@ property	shipped	formatterBehavior	NSDateFormatter	Fundamentals / Date Formattin
 property	open	formattingContext	NSDateFormatter	Fundamentals / Date Formatting / Managing Formats and Styles	-	objc
 property	shipped	generatesCalendarDates	NSDateFormatter	Fundamentals / Date Formatting / Deprecated	deprecated	objc
 property	open	gregorianStartDate	NSDateFormatter	Fundamentals / Date Formatting / Managing Attributes	-	objc
-property	open	lenient	NSDateFormatter	Fundamentals / Date Formatting / Managing Natural Language Support	-	objc
+property	shipped	lenient	NSDateFormatter	Fundamentals / Date Formatting / Managing Natural Language Support	-	objc
 property	shipped	locale	NSDateFormatter	Fundamentals / Date Formatting / Managing Attributes	-	objc
 property	open	longEraSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Era Symbols	-	objc
 property	shipped	monthSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Month Symbols	-	objc
@@ -994,49 +994,49 @@ method	open	-descriptionWithLocale:indent:	NSDictionary	Fundamentals / Basic Col
 method	shipped	+dictionary	NSDictionary	Fundamentals / Basic Collections / Creating an Empty Dictionary	-	objc
 method	shipped	+dictionaryWithContentsOfFile:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from an External Source	deprecated	objc
 method	shipped	+dictionaryWithContentsOfURL:	NSDictionary	Fundamentals / Basic Collections / Type Methods	deprecated	objc
-method	open	+dictionaryWithContentsOfURL:error:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from an External Source	-	objc
+method	shipped	+dictionaryWithContentsOfURL:error:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from an External Source	-	objc
 method	shipped	+dictionaryWithDictionary:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from Another Dictionary	-	objc
 method	shipped	+dictionaryWithObject:forKey:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from Objects and Keys	-	objc
 method	shipped	+dictionaryWithObjects:forKeys:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from Objects and Keys	-	objc
 method	shipped	+dictionaryWithObjects:forKeys:count:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from Objects and Keys	-	objc
 method	shipped	+dictionaryWithObjectsAndKeys:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from Objects and Keys	-	objc
 method	shipped	-enumerateKeysAndObjectsUsingBlock:	NSDictionary	Fundamentals / Basic Collections / Enumerating Dictionaries	-	objc
-method	open	-enumerateKeysAndObjectsWithOptions:usingBlock:	NSDictionary	Fundamentals / Basic Collections / Enumerating Dictionaries	-	objc
-method	open	-fileCreationDate	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
-method	open	-fileExtensionHidden	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
-method	open	-fileGroupOwnerAccountID	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
-method	open	-fileGroupOwnerAccountName	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
-method	open	-fileHFSCreatorCode	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
-method	open	-fileHFSTypeCode	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
-method	open	-fileIsAppendOnly	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
-method	open	-fileIsImmutable	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
-method	open	-fileModificationDate	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
-method	open	-fileOwnerAccountID	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
-method	open	-fileOwnerAccountName	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
-method	open	-filePosixPermissions	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
-method	open	-fileSize	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
-method	open	-fileSystemFileNumber	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
-method	open	-fileSystemNumber	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
-method	open	-fileType	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-enumerateKeysAndObjectsWithOptions:usingBlock:	NSDictionary	Fundamentals / Basic Collections / Enumerating Dictionaries	-	objc
+method	shipped	-fileCreationDate	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-fileExtensionHidden	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-fileGroupOwnerAccountID	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-fileGroupOwnerAccountName	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-fileHFSCreatorCode	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-fileHFSTypeCode	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-fileIsAppendOnly	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-fileIsImmutable	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-fileModificationDate	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-fileOwnerAccountID	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-fileOwnerAccountName	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-filePosixPermissions	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-fileSize	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-fileSystemFileNumber	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-fileSystemNumber	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
+method	shipped	-fileType	NSDictionary	Fundamentals / Basic Collections / Accessing File Attributes	-	objc
 method	shipped	-getObjects:andKeys:	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	deprecated	objc
-method	open	-getObjects:andKeys:count:	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	-	objc
+method	shipped	-getObjects:andKeys:count:	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	-	objc
 method	shipped	-init	NSDictionary	Fundamentals / Basic Collections / Creating an Empty Dictionary	-	objc
 method	shipped	-initWithCoder:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from an NSCoder	-	objc
 method	shipped	-initWithContentsOfFile:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from an External Source	deprecated	objc
 method	shipped	-initWithContentsOfURL:	NSDictionary	Fundamentals / Basic Collections / Instance Methods	deprecated	objc
-method	open	-initWithContentsOfURL:error:	NSDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
+method	shipped	-initWithContentsOfURL:error:	NSDictionary	Fundamentals / Basic Collections / Instance Methods	-	objc
 method	shipped	-initWithDictionary:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from Another Dictionary	-	objc
-method	open	-initWithDictionary:copyItems:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from Another Dictionary	-	objc
-method	open	-initWithObjects:forKeys:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from Objects and Keys	-	objc
+method	shipped	-initWithDictionary:copyItems:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from Another Dictionary	-	objc
+method	shipped	-initWithObjects:forKeys:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from Objects and Keys	-	objc
 method	shipped	-initWithObjects:forKeys:count:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from Objects and Keys	-	objc
 method	shipped	-initWithObjectsAndKeys:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from Objects and Keys	-	objc
 method	shipped	-isEqualToDictionary:	NSDictionary	Fundamentals / Basic Collections / Comparing Dictionaries	-	objc
 method	shipped	-keyEnumerator	NSDictionary	Fundamentals / Basic Collections / Enumerating Dictionaries	-	objc
-method	open	-keysOfEntriesPassingTest:	NSDictionary	Fundamentals / Basic Collections / Filtering Dictionaries	-	objc
-method	open	-keysOfEntriesWithOptions:passingTest:	NSDictionary	Fundamentals / Basic Collections / Filtering Dictionaries	-	objc
+method	shipped	-keysOfEntriesPassingTest:	NSDictionary	Fundamentals / Basic Collections / Filtering Dictionaries	-	objc
+method	shipped	-keysOfEntriesWithOptions:passingTest:	NSDictionary	Fundamentals / Basic Collections / Filtering Dictionaries	-	objc
 method	shipped	-keysSortedByValueUsingComparator:	NSDictionary	Fundamentals / Basic Collections / Sorting Dictionaries	-	objc
 method	shipped	-keysSortedByValueUsingSelector:	NSDictionary	Fundamentals / Basic Collections / Sorting Dictionaries	-	objc
-method	open	-keysSortedByValueWithOptions:usingComparator:	NSDictionary	Fundamentals / Basic Collections / Sorting Dictionaries	-	objc
+method	shipped	-keysSortedByValueWithOptions:usingComparator:	NSDictionary	Fundamentals / Basic Collections / Sorting Dictionaries	-	objc
 method	shipped	-objectEnumerator	NSDictionary	Fundamentals / Basic Collections / Enumerating Dictionaries	-	objc
 method	shipped	-objectForKey:	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	-	objc
 method	shipped	-objectForKeyedSubscript:	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	-	objc
@@ -1045,7 +1045,7 @@ method	open	+sharedKeySetForKeys:	NSDictionary	Fundamentals / Basic Collections 
 method	shipped	-valueForKey:	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	-	objc
 method	shipped	-writeToFile:atomically:	NSDictionary	Fundamentals / Basic Collections / Storing Dictionaries	deprecated	objc
 method	shipped	-writeToURL:atomically:	NSDictionary	Fundamentals / Basic Collections / Storing Dictionaries	deprecated	objc
-method	open	-writeToURL:error:	NSDictionary	Fundamentals / Basic Collections / Storing Dictionaries	-	objc
+method	shipped	-writeToURL:error:	NSDictionary	Fundamentals / Basic Collections / Storing Dictionaries	-	objc
 property	shipped	allKeys	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	-	objc
 property	shipped	allValues	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	-	objc
 property	shipped	count	NSDictionary	Fundamentals / Basic Collections / Counting Entries	-	objc
@@ -1096,7 +1096,7 @@ method	shipped	-stringFromJoules:	NSEnergyFormatter	Fundamentals / Deprecated / 
 method	shipped	-stringFromValue:unit:	NSEnergyFormatter	Fundamentals / Deprecated / Formatting Energy Strings	deprecated	objc
 method	shipped	-unitStringFromJoules:usedUnit:	NSEnergyFormatter	Fundamentals / Deprecated / Formatting Energy Strings	deprecated	objc
 method	shipped	-unitStringFromValue:unit:	NSEnergyFormatter	Fundamentals / Deprecated / Formatting Energy Strings	deprecated	objc
-property	open	forFoodEnergyUse	NSEnergyFormatter	Fundamentals / Deprecated / Formatting Energy Strings	deprecated	objc
+property	shipped	forFoodEnergyUse	NSEnergyFormatter	Fundamentals / Deprecated / Formatting Energy Strings	deprecated	objc
 property	shipped	numberFormatter	NSEnergyFormatter	Fundamentals / Deprecated / Formatting Energy Strings	deprecated	objc
 property	open	unitStyle	NSEnergyFormatter	Fundamentals / Deprecated / Formatting Energy Strings	deprecated	objc
 method	shipped	-nextObject	NSEnumerator	Fundamentals / Iteration / Getting the Enumerated Objects	-	objc
@@ -1382,7 +1382,7 @@ method	shipped	+temporaryDirectoryURLForNewVersionOfItemAtURL:	NSFileVersion	Fil
 method	shipped	+unresolvedConflictVersionsOfItemAtURL:	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Handling Version Conflicts	-	objc
 method	shipped	+versionOfItemAtURL:forPersistentIdentifier:	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Getting the Version of a File	-	objc
 property	shipped	URL	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Accessing the Version Information	-	objc
-property	open	conflict	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Handling Version Conflicts	-	objc
+property	shipped	conflict	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Handling Version Conflicts	-	objc
 property	open	discardable	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Accessing the Version Information	-	objc
 property	shipped	hasLocalContents	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Instance Properties	-	objc
 property	shipped	hasThumbnail	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Instance Properties	-	objc
@@ -1413,16 +1413,16 @@ method	shipped	-symbolicLinkDestination	NSFileWrapper	Files and Data Persistence
 method	shipped	-updateFromPath:	NSFileWrapper	Files and Data Persistence / Managed file access / Updating File Wrappers	deprecated	objc
 method	open	-writeToFile:atomically:updateFilenames:	NSFileWrapper	Files and Data Persistence / Managed file access / Writing Files	deprecated	objc
 method	shipped	-writeToURL:options:originalContentsURL:error:	NSFileWrapper	Files and Data Persistence / Managed file access / Writing Files	-	objc
-property	open	directory	NSFileWrapper	Files and Data Persistence / Managed file access / Querying File Wrappers	-	objc
+property	shipped	directory	NSFileWrapper	Files and Data Persistence / Managed file access / Querying File Wrappers	-	objc
 property	shipped	fileAttributes	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing Files	-	objc
 property	shipped	fileWrappers	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing File-Wrapper Information	-	objc
 property	shipped	filename	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing Files	-	objc
 property	open	icon	NSFileWrapper	Files and Data Persistence / Managed file access / Working with Icons	-	objc
 property	shipped	preferredFilename	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing Files	-	objc
-property	open	regularFile	NSFileWrapper	Files and Data Persistence / Managed file access / Querying File Wrappers	-	objc
+property	shipped	regularFile	NSFileWrapper	Files and Data Persistence / Managed file access / Querying File Wrappers	-	objc
 property	shipped	regularFileContents	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing Files	-	objc
 property	shipped	serializedRepresentation	NSFileWrapper	Files and Data Persistence / Managed file access / Serializing	-	objc
-property	open	symbolicLink	NSFileWrapper	Files and Data Persistence / Managed file access / Querying File Wrappers	-	objc
+property	shipped	symbolicLink	NSFileWrapper	Files and Data Persistence / Managed file access / Querying File Wrappers	-	objc
 property	shipped	symbolicLinkDestinationURL	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing File-Wrapper Information	-	objc
 method	shipped	-attributedStringForObjectValue:withDefaultAttributes:	NSFormatter	Fundamentals / Custom formatters / Getting Textual Representations of Object Values	-	objc
 method	shipped	-editingStringForObjectValue:	NSFormatter	Fundamentals / Custom formatters / Getting Textual Representations of Object Values	-	objc
@@ -1444,7 +1444,7 @@ method	shipped	+cookieWithProperties:	NSHTTPCookie	Networking / Essentials / Cre
 method	shipped	+cookiesWithResponseHeaderFields:forURL:	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Creating cookies	-	objc
 method	shipped	-initWithProperties:	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Creating cookies	-	objc
 method	shipped	+requestHeaderFieldsWithCookies:	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Converting cookies to request headers	-	objc
-property	open	HTTPOnly	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Securing cookies	-	objc
+property	shipped	HTTPOnly	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Securing cookies	-	objc
 property	shipped	comment	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Getting user-readable cookie metadata	-	objc
 property	shipped	commentURL	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Getting user-readable cookie metadata	-	objc
 property	shipped	domain	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Getting cookie host properties	-	objc
@@ -1454,8 +1454,8 @@ property	shipped	path	NSHTTPCookie	Networking / Essentials / Creating a session 
 property	shipped	portList	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Getting cookie host properties	-	objc
 property	shipped	properties	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs	-	objc
 property	shipped	sameSitePolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Securing cookies	-	objc
-property	open	secure	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Securing cookies	-	objc
-property	open	sessionOnly	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Determining cookie lifespan	-	objc
+property	shipped	secure	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Securing cookies	-	objc
+property	shipped	sessionOnly	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Determining cookie lifespan	-	objc
 property	shipped	value	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Getting cookie metadata	-	objc
 property	shipped	version	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Getting cookie metadata	-	objc
 method	shipped	-cookiesForURL:	NSHTTPCookieStorage	Networking / Cookies / Retrieving cookies	-	objc
@@ -1722,7 +1722,7 @@ method	shipped	-stringFromMeters:	NSLengthFormatter	Fundamentals / Deprecated / 
 method	shipped	-stringFromValue:unit:	NSLengthFormatter	Fundamentals / Deprecated / Formatting Length Strings	deprecated	objc
 method	shipped	-unitStringFromMeters:usedUnit:	NSLengthFormatter	Fundamentals / Deprecated / Formatting Length Strings	deprecated	objc
 method	shipped	-unitStringFromValue:unit:	NSLengthFormatter	Fundamentals / Deprecated / Formatting Length Strings	deprecated	objc
-property	open	forPersonHeightUse	NSLengthFormatter	Fundamentals / Deprecated / Formatting Length Strings	deprecated	objc
+property	shipped	forPersonHeightUse	NSLengthFormatter	Fundamentals / Deprecated / Formatting Length Strings	deprecated	objc
 property	shipped	numberFormatter	NSLengthFormatter	Fundamentals / Deprecated / Formatting Length Strings	deprecated	objc
 property	open	unitStyle	NSLengthFormatter	Fundamentals / Deprecated / Formatting Length Strings	deprecated	objc
 method	open	+availableTagSchemesForLanguage:	NSLinguisticTagger	Fundamentals / Deprecated / Getting the Tag Schemes	deprecated	objc
@@ -1859,7 +1859,7 @@ method	shipped	-stringFromKilograms:	NSMassFormatter	Fundamentals / Deprecated /
 method	shipped	-stringFromValue:unit:	NSMassFormatter	Fundamentals / Deprecated / Formatting Mass Strings	deprecated	objc
 method	shipped	-unitStringFromKilograms:usedUnit:	NSMassFormatter	Fundamentals / Deprecated / Formatting Mass Strings	deprecated	objc
 method	shipped	-unitStringFromValue:unit:	NSMassFormatter	Fundamentals / Deprecated / Formatting Mass Strings	deprecated	objc
-property	open	forPersonMassUse	NSMassFormatter	Fundamentals / Deprecated / Formatting Mass Strings	deprecated	objc
+property	shipped	forPersonMassUse	NSMassFormatter	Fundamentals / Deprecated / Formatting Mass Strings	deprecated	objc
 property	shipped	numberFormatter	NSMassFormatter	Fundamentals / Deprecated / Formatting Mass Strings	deprecated	objc
 property	open	unitStyle	NSMassFormatter	Fundamentals / Deprecated / Formatting Mass Strings	deprecated	objc
 method	shipped	-canBeConvertedToUnit:	NSMeasurement	Fundamentals / Essentials / Converting to Other Units	-	objc
@@ -1935,7 +1935,7 @@ property	shipped	grammaticalPerson	NSMorphology	Fundamentals / Automatic grammar
 property	shipped	number	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
 property	shipped	partOfSpeech	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
 property	shipped	pronounType	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Instance Properties	-	objc
-property	open	unspecified	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
+property	shipped	unspecified	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
 property	shipped	userMorphology	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing the User’s Morphology	-	objc
 method	shipped	+isSupportedForLanguage:	NSMorphologyCustomPronoun	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features / Assessing Custom Pronoun Support	deprecated	objc
 method	shipped	+requiredKeysForLanguage:	NSMorphologyCustomPronoun	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features / Assessing Custom Pronoun Support	deprecated	objc
@@ -2339,7 +2339,7 @@ property	shipped	groupingSeparator	NSNumberFormatter	Fundamentals / Numbers / Co
 property	shipped	groupingSize	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
 property	shipped	hasThousandSeparators	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
 property	shipped	internationalCurrencySymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring the Format of Currency	-	objc
-property	open	lenient	NSNumberFormatter	Fundamentals / Numbers / Managing Leniency Behavior	-	objc
+property	shipped	lenient	NSNumberFormatter	Fundamentals / Numbers / Managing Leniency Behavior	-	objc
 property	shipped	locale	NSNumberFormatter	Fundamentals / Numbers / Managing Localization of Numbers	-	objc
 property	open	localizesFormat	NSNumberFormatter	Fundamentals / Numbers / Managing Localization of Numbers	-	objc
 property	open	maximum	NSNumberFormatter	Fundamentals / Numbers / Managing Input and Output Attributes	-	objc
@@ -2392,16 +2392,16 @@ method	shipped	-removeDependency:	NSOperation	App Support / Operations / Managin
 method	shipped	-start	NSOperation	App Support / Operations / Executing the Operation	-	objc
 method	shipped	-waitUntilFinished	NSOperation	App Support / Operations / Waiting on an Operation Object	-	objc
 property	open	asynchronous	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
-property	open	cancelled	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
+property	shipped	cancelled	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
 property	open	completionBlock	NSOperation	App Support / Operations / Executing the Operation	-	objc
 property	open	concurrent	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
 property	shipped	dependencies	NSOperation	App Support / Operations / Managing Dependencies	-	objc
-property	open	executing	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
-property	open	finished	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
+property	shipped	executing	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
+property	shipped	finished	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
 property	open	name	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
 property	open	qualityOfService	NSOperation	App Support / Operations / Configuring the Execution Priority	-	objc
 property	open	queuePriority	NSOperation	App Support / Operations / Configuring the Execution Priority	-	swift-page
-property	open	ready	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
+property	shipped	ready	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
 property	open	threadPriority	NSOperation	App Support / Operations / Configuring the Execution Priority	deprecated	objc
 method	open	-addBarrierBlock:	NSOperationQueue	App Support / Operations / Managing Operations in the Queue	-	objc
 method	shipped	-addOperation:	NSOperationQueue	App Support / Operations / Managing Operations in the Queue	-	objc
@@ -2417,7 +2417,7 @@ property	shipped	operationCount	NSOperationQueue	App Support / Operations / Mana
 property	shipped	operations	NSOperationQueue	App Support / Operations / Managing Operations in the Queue	deprecated	objc
 property	open	progress	NSOperationQueue	App Support / Operations / Monitoring Progress of Operations	-	objc
 property	open	qualityOfService	NSOperationQueue	App Support / Operations / Managing the Execution of Operations	-	objc
-property	open	suspended	NSOperationQueue	App Support / Operations / Suspending Execution	-	objc
+property	shipped	suspended	NSOperationQueue	App Support / Operations / Suspending Execution	-	objc
 property	open	underlyingQueue	NSOperationQueue	App Support / Operations / Configuring the Queue	-	objc
 method	shipped	+changeWithObject:type:index:	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Creating a Change	-	objc
 method	shipped	+changeWithObject:type:index:associatedIndex:	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Creating a Change	-	objc
@@ -2572,7 +2572,7 @@ method	shipped	-sendBeforeDate:components:from:reserved:	NSPort	Low-Level Utilit
 method	shipped	-sendBeforeDate:msgid:components:from:reserved:	NSPort	Low-Level Utilities / Sockets / Setting information	-	objc
 method	shipped	-setDelegate:	NSPort	Low-Level Utilities / Sockets / Working with the delegate	-	objc
 property	shipped	reservedSpaceLength	NSPort	Low-Level Utilities / Sockets / Setting information	-	objc
-property	open	valid	NSPort	Low-Level Utilities / Sockets / Validation	-	objc
+property	shipped	valid	NSPort	Low-Level Utilities / Sockets / Validation	-	objc
 method	open	-connection	NSPortCoder	Low-Level Utilities / Legacy / Legacy / Getting the Connection	deprecated	objc
 method	shipped	-decodePortObject	NSPortCoder	Low-Level Utilities / Legacy / Legacy / Encoding NSPort Objects	deprecated	objc
 method	shipped	-dispatch	NSPortCoder	Low-Level Utilities / Legacy / Legacy / Dispatching	deprecated	objc
@@ -2687,7 +2687,7 @@ method	shipped	+currentProgress	NSProgress	App Support / Progress / Accessing th
 method	shipped	+discreteProgressWithTotalUnitCount:	NSProgress	App Support / Progress / Creating Progress Objects	-	objc
 method	open	-initWithParent:userInfo:	NSProgress	App Support / Progress / Creating Progress Objects	-	objc
 method	shipped	-pause	NSProgress	App Support / Progress / Controlling Progress	-	objc
-method	open	-performAsCurrentWithPendingUnitCount:usingBlock:	NSProgress	App Support / Progress / Accessing the Current Progress Object	-	objc
+method	shipped	-performAsCurrentWithPendingUnitCount:usingBlock:	NSProgress	App Support / Progress / Accessing the Current Progress Object	-	objc
 method	shipped	+progressWithTotalUnitCount:	NSProgress	App Support / Progress / Creating Progress Objects	-	objc
 method	shipped	+progressWithTotalUnitCount:parent:pendingUnitCount:	NSProgress	App Support / Progress / Creating Progress Objects	-	objc
 method	open	-publish	NSProgress	App Support / Progress / Reporting Progress to Other Processes	-	objc
@@ -2696,27 +2696,27 @@ method	shipped	-resignCurrent	NSProgress	App Support / Progress / Accessing the 
 method	shipped	-resume	NSProgress	App Support / Progress / Controlling Progress	-	objc
 method	shipped	-setUserInfoObject:forKey:	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
 method	open	-unpublish	NSProgress	App Support / Progress / Reporting Progress to Other Processes	-	objc
-property	open	cancellable	NSProgress	App Support / Progress / Reporting Progress	-	objc
+property	shipped	cancellable	NSProgress	App Support / Progress / Reporting Progress	-	objc
 property	open	cancellationHandler	NSProgress	App Support / Progress / Reporting Progress	-	objc
-property	open	cancelled	NSProgress	App Support / Progress / Reporting Progress	-	objc
+property	shipped	cancelled	NSProgress	App Support / Progress / Reporting Progress	-	objc
 property	shipped	completedUnitCount	NSProgress	App Support / Progress / Reporting Progress	-	objc
-property	open	estimatedTimeRemaining	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
-property	open	fileCompletedCount	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	objc
-property	open	fileOperationKind	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	swift-page
-property	open	fileTotalCount	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	objc
-property	open	fileURL	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	objc
-property	open	finished	NSProgress	App Support / Progress / Observing Progress	-	objc
+property	shipped	estimatedTimeRemaining	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
+property	shipped	fileCompletedCount	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	objc
+property	shipped	fileOperationKind	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	swift-page
+property	shipped	fileTotalCount	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	objc
+property	shipped	fileURL	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	objc
+property	shipped	finished	NSProgress	App Support / Progress / Observing Progress	-	objc
 property	shipped	fractionCompleted	NSProgress	App Support / Progress / Observing Progress	-	objc
-property	open	indeterminate	NSProgress	App Support / Progress / Observing Progress	-	objc
+property	shipped	indeterminate	NSProgress	App Support / Progress / Observing Progress	-	objc
 property	shipped	kind	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
 property	shipped	localizedAdditionalDescription	NSProgress	App Support / Progress / Reporting Progress	-	objc
 property	shipped	localizedDescription	NSProgress	App Support / Progress / Reporting Progress	-	objc
-property	open	old	NSProgress	App Support / Progress / Observing and Controlling File Progress by Other Processes	-	objc
-property	open	pausable	NSProgress	App Support / Progress / Reporting Progress	-	objc
-property	open	paused	NSProgress	App Support / Progress / Reporting Progress	-	objc
+property	shipped	old	NSProgress	App Support / Progress / Observing and Controlling File Progress by Other Processes	-	objc
+property	shipped	pausable	NSProgress	App Support / Progress / Reporting Progress	-	objc
+property	shipped	paused	NSProgress	App Support / Progress / Reporting Progress	-	objc
 property	open	pausingHandler	NSProgress	App Support / Progress / Reporting Progress	-	objc
 property	open	resumingHandler	NSProgress	App Support / Progress / Controlling Progress	-	objc
-property	open	throughput	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
+property	shipped	throughput	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
 property	shipped	totalUnitCount	NSProgress	App Support / Progress / Reporting Progress	-	objc
 property	shipped	userInfo	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
 property	shipped	progress	NSProgressReporting	App Support / Progress / Custom Class Progress	-	objc
@@ -2815,7 +2815,7 @@ method	shipped	-scanUnsignedLongLong:	NSScanner	Fundamentals / Pattern Matching 
 method	shipped	-scanUpToCharactersFromSet:intoString:	NSScanner	Fundamentals / Pattern Matching / Scanning Characters and Strings	deprecated	objc
 method	shipped	-scanUpToString:intoString:	NSScanner	Fundamentals / Pattern Matching / Scanning Characters and Strings	deprecated	objc
 method	shipped	+scannerWithString:	NSScanner	Fundamentals / Pattern Matching / Creating a Scanner	-	objc
-property	open	atEnd	NSScanner	Fundamentals / Pattern Matching / Monitoring Scanner Progress	-	objc
+property	shipped	atEnd	NSScanner	Fundamentals / Pattern Matching / Monitoring Scanner Progress	-	objc
 property	shipped	caseSensitive	NSScanner	Fundamentals / Pattern Matching / Configuring a Scanner	-	objc
 property	shipped	charactersToBeSkipped	NSScanner	Fundamentals / Pattern Matching / Configuring a Scanner	-	objc
 property	shipped	locale	NSScanner	Fundamentals / Pattern Matching / Configuring a Scanner	-	objc
@@ -3183,7 +3183,7 @@ method	shipped	-writeToFile:atomically:encoding:error:	NSString	Fundamentals / S
 method	shipped	-writeToURL:atomically:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-writeToURL:atomically:encoding:error:	NSString	Fundamentals / Strings / Writing to a File or URL	-	objc
 property	shipped	UTF8String	NSString	Fundamentals / Strings / Getting C Strings	-	objc
-property	open	absolutePath	NSString	Fundamentals / Strings / Working with Paths	-	objc
+property	shipped	absolutePath	NSString	Fundamentals / Strings / Working with Paths	-	objc
 property	shipped	availableStringEncodings	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 property	shipped	boolValue	NSString	Fundamentals / Strings / Getting Numeric Values	-	objc
 property	shipped	capitalizedString	NSString	Fundamentals / Strings / Changing Case	-	objc
@@ -3237,7 +3237,7 @@ property	open	launchPath	NSTask	Low-Level Utilities / Scripts and External Tasks
 property	open	launchRequirementData	NSTask	Low-Level Utilities / Scripts and External Tasks / Instance Properties	-	objc
 property	shipped	processIdentifier	NSTask	Low-Level Utilities / Scripts and External Tasks / Returning information	-	objc
 property	shipped	qualityOfService	NSTask	Low-Level Utilities / Scripts and External Tasks / Configuring a process	-	objc
-property	open	running	NSTask	Low-Level Utilities / Scripts and External Tasks / Querying the process state	-	objc
+property	shipped	running	NSTask	Low-Level Utilities / Scripts and External Tasks / Querying the process state	-	objc
 property	shipped	standardError	NSTask	Low-Level Utilities / Scripts and External Tasks / Configuring a process	-	objc
 property	shipped	standardInput	NSTask	Low-Level Utilities / Scripts and External Tasks / Configuring a process	-	objc
 property	shipped	standardOutput	NSTask	Low-Level Utilities / Scripts and External Tasks / Configuring a process	-	objc
@@ -3300,10 +3300,10 @@ method	shipped	-start	NSThread	Low-Level Utilities / Threads and Locking / Start
 method	open	+threadPriority	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work	-	objc
 property	open	callStackReturnAddresses	NSThread	Low-Level Utilities / Threads and Locking / Querying the Environment	-	objc
 property	open	callStackSymbols	NSThread	Low-Level Utilities / Threads and Locking / Querying the Environment	-	objc
-property	open	cancelled	NSThread	Low-Level Utilities / Threads and Locking / Determining the Thread’s Execution State	-	objc
+property	shipped	cancelled	NSThread	Low-Level Utilities / Threads and Locking / Determining the Thread’s Execution State	-	objc
 property	shipped	currentThread	NSThread	Low-Level Utilities / Threads and Locking / Querying the Environment	-	objc
-property	open	executing	NSThread	Low-Level Utilities / Threads and Locking / Determining the Thread’s Execution State	-	objc
-property	open	finished	NSThread	Low-Level Utilities / Threads and Locking / Determining the Thread’s Execution State	-	objc
+property	shipped	executing	NSThread	Low-Level Utilities / Threads and Locking / Determining the Thread’s Execution State	-	objc
+property	shipped	finished	NSThread	Low-Level Utilities / Threads and Locking / Determining the Thread’s Execution State	-	objc
 property	shipped	isMainThread	NSThread	Low-Level Utilities / Threads and Locking / Working with the Main Thread	-	swift-page
 property	shipped	mainThread	NSThread	Low-Level Utilities / Threads and Locking / Working with the Main Thread	-	objc
 property	shipped	name	NSThread	Low-Level Utilities / Threads and Locking / Working with Thread Properties	-	objc
@@ -3328,7 +3328,7 @@ method	open	+timeZoneWithName:data:	NSTimeZone	Fundamentals / Calendrical Calcul
 property	open	abbreviation	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
 property	open	abbreviationDictionary	NSTimeZone	Fundamentals / Calendrical Calculations / Creating Time Zones	-	objc
 property	open	data	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
-property	open	daylightSavingTime	NSTimeZone	Fundamentals / Calendrical Calculations / Working with Daylight Savings	-	objc
+property	shipped	daylightSavingTime	NSTimeZone	Fundamentals / Calendrical Calculations / Working with Daylight Savings	-	objc
 property	open	daylightSavingTimeOffset	NSTimeZone	Fundamentals / Calendrical Calculations / Working with Daylight Savings	-	objc
 property	open	defaultTimeZone	NSTimeZone	Fundamentals / Calendrical Calculations / Working with System Time Zones	-	objc
 property	shipped	description	NSTimeZone	Fundamentals / Calendrical Calculations / Describing Time Zones	-	objc
@@ -3353,7 +3353,7 @@ property	shipped	fireDate	NSTimer	App Support / Scheduling / Retrieving Timer In
 property	shipped	timeInterval	NSTimer	App Support / Scheduling / Retrieving Timer Information	-	objc
 property	open	tolerance	NSTimer	App Support / Scheduling / Configuring Firing Tolerance	-	objc
 property	shipped	userInfo	NSTimer	App Support / Scheduling / Retrieving Timer Information	-	objc
-property	open	valid	NSTimer	App Support / Scheduling / Retrieving Timer Information	-	objc
+property	shipped	valid	NSTimer	App Support / Scheduling / Retrieving Timer Information	-	objc
 method	shipped	-URLByAppendingPathComponent:	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
 method	open	-URLByAppendingPathComponent:conformingToType:	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
 method	shipped	-URLByAppendingPathComponent:isDirectory:	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
@@ -3848,7 +3848,7 @@ property	shipped	multipath	NSURLSessionTaskTransactionMetrics	Networking / Essen
 property	open	negotiatedTLSCipherSuite	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
 property	open	negotiatedTLSProtocolVersion	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
 property	shipped	networkProtocolName	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	open	proxyConnection	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
+property	shipped	proxyConnection	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
 property	shipped	remoteAddress	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
 property	open	remotePort	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
 property	shipped	request	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing request and response	-	objc
@@ -3858,7 +3858,7 @@ property	shipped	resourceFetchType	NSURLSessionTaskTransactionMetrics	Networking
 property	shipped	response	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing request and response	-	objc
 property	shipped	responseEndDate	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing temporal metrics	-	objc
 property	shipped	responseStartDate	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing temporal metrics	-	objc
-property	open	reusedConnection	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
+property	shipped	reusedConnection	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
 property	shipped	secureConnectionEndDate	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing temporal metrics	-	objc
 property	shipped	secureConnectionStartDate	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing temporal metrics	-	objc
 method	open	-cancelByProducingResumeData:	NSURLSessionUploadTask	Networking / Essentials / Adding upload tasks to a session / Instance Methods	-	objc
@@ -3915,7 +3915,7 @@ method	shipped	-replaceObject:withObject:	NSUnarchiver	Files and Data Persistenc
 method	open	-setObjectZone:	NSUnarchiver	Files and Data Persistence / Deprecated / Managing an NSUnarchiver	deprecated	objc
 method	shipped	+unarchiveObjectWithData:	NSUnarchiver	Files and Data Persistence / Deprecated / Decoding objects	deprecated	objc
 method	shipped	+unarchiveObjectWithFile:	NSUnarchiver	Files and Data Persistence / Deprecated / Decoding objects	deprecated	objc
-property	open	atEnd	NSUnarchiver	Files and Data Persistence / Deprecated / Managing an NSUnarchiver	deprecated	objc
+property	shipped	atEnd	NSUnarchiver	Files and Data Persistence / Deprecated / Managing an NSUnarchiver	deprecated	objc
 property	shipped	systemVersion	NSUnarchiver	Files and Data Persistence / Deprecated / Managing an NSUnarchiver	deprecated	swift-page
 method	shipped	-beginUndoGrouping	NSUndoManager	App Support / Undo / Creating undo groups	-	objc
 method	shipped	-disableUndoRegistration	NSUndoManager	App Support / Undo / Enabling and disabling undo	-	objc
@@ -3945,14 +3945,14 @@ property	open	redoActionIsDiscardable	NSUndoManager	App Support / Undo / Using d
 property	shipped	redoActionName	NSUndoManager	App Support / Undo / Managing the action name	-	objc
 property	open	redoCount	NSUndoManager	App Support / Undo / Managing undo and redo stack depth	-	objc
 property	open	redoMenuItemTitle	NSUndoManager	App Support / Undo / Getting and localizing the menu item title	-	objc
-property	open	redoing	NSUndoManager	App Support / Undo / Checking whether undo or redo is in process	-	objc
+property	shipped	redoing	NSUndoManager	App Support / Undo / Checking whether undo or redo is in process	-	objc
 property	open	runLoopModes	NSUndoManager	App Support / Undo / Working with run loops	-	objc
 property	open	undoActionIsDiscardable	NSUndoManager	App Support / Undo / Using discardable undo and redo actions	-	objc
 property	shipped	undoActionName	NSUndoManager	App Support / Undo / Managing the action name	-	objc
 property	open	undoCount	NSUndoManager	App Support / Undo / Managing undo and redo stack depth	-	objc
 property	open	undoMenuItemTitle	NSUndoManager	App Support / Undo / Getting and localizing the menu item title	-	objc
-property	open	undoRegistrationEnabled	NSUndoManager	App Support / Undo / Enabling and disabling undo	-	objc
-property	open	undoing	NSUndoManager	App Support / Undo / Checking whether undo or redo is in process	-	objc
+property	shipped	undoRegistrationEnabled	NSUndoManager	App Support / Undo / Enabling and disabling undo	-	objc
+property	shipped	undoing	NSUndoManager	App Support / Undo / Checking whether undo or redo is in process	-	objc
 method	struck	-initWithCoder:	NSUniqueIDSpecifier	App Support / Object Specifiers / Instance Methods	declined	objc
 method	struck	-initWithContainerClassDescription:containerSpecifier:key:uniqueID:	NSUniqueIDSpecifier	App Support / Object Specifiers / Initializing a unique ID specifier	declined	objc
 property	struck	uniqueID	NSUniqueIDSpecifier	App Support / Object Specifiers / Accessing unique ID information	declined	objc
@@ -4286,8 +4286,8 @@ property	shipped	hasReplyButton	NSUserNotification	App Support / User Notificati
 property	shipped	identifier	NSUserNotification	App Support / User Notifications / Display Information	deprecated	objc
 property	shipped	informativeText	NSUserNotification	App Support / User Notifications / Display Information	deprecated	objc
 property	shipped	otherButtonTitle	NSUserNotification	App Support / User Notifications / Displayed Notification Buttons	deprecated	objc
-property	open	presented	NSUserNotification	App Support / User Notifications / Delivery Information	deprecated	objc
-property	open	remote	NSUserNotification	App Support / User Notifications / Delivery Information	deprecated	objc
+property	shipped	presented	NSUserNotification	App Support / User Notifications / Delivery Information	deprecated	objc
+property	shipped	remote	NSUserNotification	App Support / User Notifications / Delivery Information	deprecated	objc
 property	shipped	response	NSUserNotification	App Support / User Notifications / Display Information	deprecated	objc
 property	shipped	responsePlaceholder	NSUserNotification	App Support / User Notifications / Display Information	deprecated	objc
 property	shipped	soundName	NSUserNotification	App Support / User Notifications / Delivery Information	deprecated	objc
@@ -4439,7 +4439,7 @@ property	shipped	MIMEType	NSXMLDocument	Files and Data Persistence / XML / Tree-
 property	shipped	XMLData	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Writing a Document as XML Data	-	objc
 property	shipped	characterEncoding	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Managing Document Attributes	-	objc
 property	shipped	documentContentKind	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Managing Document Attributes	-	objc
-property	open	standalone	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Managing Document Attributes	-	objc
+property	shipped	standalone	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Managing Document Attributes	-	objc
 property	shipped	version	NSXMLDocument	Files and Data Persistence / XML / Tree-Based Processing / Managing Document Attributes	-	objc
 method	shipped	-addAttribute:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Handling Attributes	-	objc
 method	shipped	-addChild:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Manipulating Child Elements	-	objc

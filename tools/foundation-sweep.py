@@ -175,7 +175,23 @@ def declared(kind, name, text, names=None):
         return re.search(r"@protocol\s+" + re.escape(name) + r"\b", text)
     if names is None:
         names = declared_names(text)
-    return name in names
+    if name in names:
+        return True
+    # ⚠ A PROPERTY ROW CAN BE ANSWERED BY A GETTER-NAMED ACCESSOR (the user's decision, 2026-10-01: "the
+    # instrument learns"). Apple DOCUMENTS a boolean property as `finished` while the class DECLARES
+    # `@property (getter=isFinished)`, so the selector that exists is `isFinished` and a test looking for the NAME
+    # `finished` can never find it. THAT IS WHY A WHOLE CLASS OF ROWS READ "open" WHILE THEIR DOORS SHIP — measured
+    # across ~20 classes once this rule landed: NSOperation (finished, ready, executing, cancelled), NSProgress
+    # (indeterminate, old, cancellable, pausable, paused, finished, cancelled), NSThread, NSHTTPCookie
+    # (sessionOnly, secure, HTTPOnly), NSUserNotification (presented, remote), NSUndoManager (undoing, redoing),
+    # NSTimer/NSPort/NSConnection (valid), NSScanner/NSUnarchiver (atEnd), NSString (absolutePath), NSFileWrapper
+    # (regularFile, directory, symbolicLink), NSTask, NSTimeZone, NSFileVersion, NSPort, NSBundle, NSMorphology,
+    # NSXMLDocument, the formatters (lenient, adaptive, forPersonHeightUse, ...). The fallback is Apple's own
+    # getter convention: `is` + the property's name with its first letter upper-cased. IT CANNOT FLATTER A ROW:
+    # the only way to match is for the tree to DECLARE that accessor.
+    if kind == "property":
+        return ("is" + name[:1].upper() + name[1:]) in names
+    return False
 
 
 # THE DECLARATION FORMS, GENERALISED OVER THE NAME, SO ONE PASS ANSWERS FOR EVERY NAME (§62.111).
@@ -819,7 +835,18 @@ def selectors_status(selectors):
                 for t in reach[owner]:
                     have |= members.get(t, set())
                 if r["kind"] == "property":
-                    shipped = ("-", r["name"]) in have or ("+", r["name"]) in have
+                    # ⚠ AND A PROPERTY ROW IS ANSWERED BY A GETTER-NAMED ACCESSOR TOO (the user's decision,
+                    # 2026-10-01: "the instrument learns"). Apple DOCUMENTS `finished` while the class DECLARES
+                    # `@property (getter=isFinished)`, so the selector that exists is `isFinished` — and a writer
+                    # that looks only for a selector NAMED `finished` records that row "open" FOREVER while its
+                    # door ships. MEASURED: 46 property rows across ~20 classes read open for exactly this reason
+                    # (NSOperation, NSProgress, NSThread, NSHTTPCookie, NSUserNotification, NSUndoManager, NSTimer,
+                    # NSPort, NSScanner, NSString, NSFileWrapper, NSTask, NSTimeZone, NSBundle, the formatters,
+                    # ...). The fallback is Apple's own getter convention — `is` + the property's name with its
+                    # first letter upper-cased — and IT CANNOT FLATTER A ROW: the tree must DECLARE that accessor.
+                    getter = "is" + r["name"][:1].upper() + r["name"][1:]
+                    shipped = (("-", r["name"]) in have or ("+", r["name"]) in have
+                               or ("-", getter) in have)
                 else:
                     shipped = (r["sign"], r["name"]) in have
                 st = STATUS_SHIPPED if shipped else STATUS_OPEN
@@ -1161,6 +1188,20 @@ def check_parameterized(policy, members, parents):
             have |= ours.get((t, sign, sel), frozenset())
         if not declared:
             continue                        # not shipped at all — the ledger's open row already says so
+        # ⚠ THE COMPARISON IS AN EQUALITY, AND THAT IS NOW MEASURED RATHER THAN REASONED. This list comes from the
+        # SDK HEADER TEXT the tool fetches (PARAM_SOURCE, tools/foundation-sweep.py:932) and records the parameter
+        # NAMES a declaration USES — which is why +dictionaryWithContentsOfURL:error: reads `ObjectType` while the
+        # deprecated +dictionaryWithContentsOfURL: reads `KeyType,ObjectType`. THE DECLARATIONS THEMSELVES, verbatim
+        # from that header:
+        #     + (nullable NSDictionary<NSString *, ObjectType> *)dictionaryWithContentsOfURL:... error:...;
+        #     - (nullable NSDictionary<NSString *, ObjectType> *)initWithContentsOfURL:... error:...;
+        # — KeyType REPLACED BY THE CONCRETE NSString *, because a plist read from a URL always has string keys.
+        # SO A TREE DECLARING KeyType,ObjectType THERE IS A DEVIATION FROM APPLE, and a version of this check
+        # briefly compared SUBSETS to excuse it: that would have PASSED the deviation, because `KeyType` was simply
+        # never looked for. It was tempting because the doc-rendered list looks unwritable — and it is, for the
+        # wrong reason: A METHOD CANNOT INTRODUCE A PARAMETER, and a SUBSET of the class's own is not expressible
+        # either (both measured: "error: expected a type" and "too few type arguments ... have 1, expected 2").
+        # THE HEADER WAS WHAT NEEDED TO CHANGE. The gate was right all along.
         if have != params:
             policy.append("PARAMETERIZATION      %-18s %s%s  Apple declares %s; this tree declares %s"
                           % (owner, sign, sel, ",".join(sorted(params)),
@@ -1207,7 +1248,20 @@ def check_selectors(strict=False):
         have = set()
         for t in reach[owner]:
             have |= members.get(t, set())
-        found = (("-", sel) in have or ("+", sel) in have) if kind == "property" else ((sign, sel) in have)
+        # ⚠ A PROPERTY ROW CAN BE ANSWERED BY A GETTER-NAMED ACCESSOR (the user's decision, 2026-10-01: "the
+        # instrument learns"). Apple DOCUMENTS a boolean property as `finished` while the class DECLARES
+        # `@property (getter=isFinished)`, so the selector that exists is `isFinished` and a test looking for a
+        # selector NAMED `sel` can never find it. THAT IS WHY A WHOLE CLASS OF ROWS READ OPEN WHILE THEIR DOORS
+        # SHIP - measured on NSProgress (`indeterminate`, `old`), NSUserNotification (`presented`, `remote`) and
+        # NSHTTPCookie (`sessionOnly`, `secure`, `HTTPOnly`) - and it was proved by an agent that replayed this
+        # very test over a header it had just edited.
+        #
+        # THE FALLBACK IS APPLE'S OWN GETTER CONVENTION: `is` + the property's name with its first letter
+        # upper-cased. IT CANNOT FLATTER A ROW: the only way to match is to DECLARE that accessor, so a row still
+        # flips only when the tree answers for it.
+        getter = "is" + sel[:1].upper() + sel[1:]
+        found = (("-", sel) in have or ("+", sel) in have or ("-", getter) in have) if kind == "property" \
+            else ((sign, sel) in have)
         if status == STATUS_SHIPPED and not found:
             bad.append("STALE SHIPPED CLAIM    %-8s %s %s — the ledger says the owner's block declares it "
                        "and it does not" % (kind, owner, name))
