@@ -18,9 +18,9 @@
  *   configuration-copy-is-a-snapshot  every property here is READWRITE, so -copy must be a REAL copy:
  *        mutating the copy must leave the original alone, which is the one thing that distinguishes it
  *        from the -retain the immutable classes in this library answer with;
- *   configuration-api-inventory  the audited inventory: every owed selector exists and every one this
- *        slice REFUSES (the storage-valued properties, whose classes are their own ledger rows, and the
- *        coder doors) is absent.
+ *   configuration-api-inventory  the audited inventory: every owed selector exists — including the four
+ *        storage/header doors whose classes are shipped today (see the class header) — and every one this
+ *        slice still REFUSES (the coder doors) is absent.
  */
 
 #import <Foundation/Foundation.h>
@@ -59,6 +59,13 @@ int main(void)
 		      [configuration HTTPShouldSetCookies] == YES &&
 		      [configuration HTTPMaximumConnectionsPerHost] == 6 &&
 		      [configuration discretionary] == NO &&
+		      [configuration HTTPAdditionalHeaders] != nil &&
+		      [[configuration HTTPAdditionalHeaders] count] == 0 &&
+		      [configuration HTTPCookieAcceptPolicy] ==
+			      NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain &&
+		      [configuration HTTPCookieStorage] == [NSHTTPCookieStorage sharedHTTPCookieStorage] &&
+		      [configuration URLCache] == [NSURLCache sharedURLCache] &&
+		      [configuration URLCredentialStorage] == [NSURLCredentialStorage sharedCredentialStorage] &&
 		      [configuration protocolClasses] == nil,
 		      @"the default door answers Apple's documented values, in one place");
 
@@ -90,14 +97,27 @@ int main(void)
 		check("background-configuration-carries-its-identifier",
 		      background != nil &&
 		      [[background identifier] isEqual:@"com.example.bg"] &&
-		      [background timeoutIntervalForRequest] == 60.0,
-		      @"the background door stores the identifier and starts from the same defaults");
+		      [background timeoutIntervalForRequest] == 60.0 &&
+		      [[NSURLSessionConfiguration backgroundSessionConfiguration:@"com.example.bg.old"] identifier]
+			      != nil &&
+		      [[[NSURLSessionConfiguration backgroundSessionConfiguration:@"com.example.bg.old"] identifier]
+			      isEqual:@"com.example.bg.old"],
+		      @"the background door stores the identifier and starts from the same defaults; the DEPRECATED "
+		      @"spelling answers the same object");
 	}
 
 	/* --- EVERY SETTER ROUND-TRIPS ---------------------------------------------------------------- */
 	{
 		NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
 		NSArray *classes = [NSArray arrayWithObject:[NSURLProtocol class]];
+		NSURLCache *probeCache = [[NSURLCache alloc] initWithMemoryCapacity:512
+								  diskCapacity:0
+								  directoryURL:nil];
+		NSHTTPCookieStorage *probeStore = [[NSHTTPCookieStorage alloc] init];
+		NSURLCredentialStorage *probeCredentials = [[NSURLCredentialStorage alloc] init];
+		NSMutableDictionary *probeHeaders = [[NSMutableDictionary alloc] init];
+
+		[probeHeaders setObject:@"1" forKey:@"X-Probe"];
 
 		[configuration setRequestCachePolicy:NSURLRequestReloadIgnoringLocalCacheData];
 		[configuration setTimeoutIntervalForRequest:12.5];
@@ -112,6 +132,14 @@ int main(void)
 		[configuration setHTTPMaximumConnectionsPerHost:2];
 		[configuration setDiscretionary:YES];
 		[configuration setProtocolClasses:classes];
+		[configuration setHTTPAdditionalHeaders:probeHeaders];
+		[configuration setHTTPCookieAcceptPolicy:NSHTTPCookieAcceptPolicyNever];
+		[configuration setURLCache:probeCache];
+		[configuration setHTTPCookieStorage:probeStore];
+		[configuration setURLCredentialStorage:probeCredentials];
+		/* AND THE HEADER BAG IS SNAPSHOTTED: the config keeps the one-entry copy it took, so this mutation
+		 * cannot reach it - which the isEqual below proves, because the comparison is against the ORIGINAL. */
+		[probeHeaders setObject:@"2" forKey:@"Y"];
 
 		check("configuration-setters-round-trip",
 		      [configuration requestCachePolicy] == NSURLRequestReloadIgnoringLocalCacheData &&
@@ -126,6 +154,12 @@ int main(void)
 		      [configuration HTTPShouldSetCookies] == NO &&
 		      [configuration HTTPMaximumConnectionsPerHost] == 2 &&
 		      [configuration discretionary] == YES &&
+		      [[configuration HTTPAdditionalHeaders] isEqual:
+			      [NSDictionary dictionaryWithObject:@"1" forKey:@"X-Probe"]] &&
+		      [configuration HTTPCookieAcceptPolicy] == NSHTTPCookieAcceptPolicyNever &&
+		      [configuration URLCache] == probeCache &&
+		      [configuration HTTPCookieStorage] == probeStore &&
+		      [configuration URLCredentialStorage] == probeCredentials &&
 		      [[configuration protocolClasses] count] == 1,
 		      @"every property is readwrite and reads back what was set");
 
@@ -159,7 +193,7 @@ int main(void)
 	{
 		static const char *classSelectors[] = {
 			"defaultSessionConfiguration", "ephemeralSessionConfiguration",
-			"backgroundSessionConfigurationWithIdentifier:", NULL
+			"backgroundSessionConfigurationWithIdentifier:", "backgroundSessionConfiguration:", NULL
 		};
 		static const char *instanceSelectors[] = {
 			"identifier", "requestCachePolicy", "setRequestCachePolicy:",
@@ -174,15 +208,17 @@ int main(void)
 			"HTTPShouldSetCookies", "setHTTPShouldSetCookies:",
 			"HTTPMaximumConnectionsPerHost", "setHTTPMaximumConnectionsPerHost:",
 			"discretionary", "setDiscretionary:",
+			"HTTPAdditionalHeaders", "setHTTPAdditionalHeaders:",
+			"HTTPCookieAcceptPolicy", "setHTTPCookieAcceptPolicy:",
+			"HTTPCookieStorage", "setHTTPCookieStorage:",
+			"URLCache", "setURLCache:",
+			"URLCredentialStorage", "setURLCredentialStorage:",
 			"protocolClasses", "setProtocolClasses:", NULL
 		};
-		/* REFUSED, EACH BECAUSE THE CLASS BEHIND IT IS ITS OWN LEDGER ROW AND NOT SHIPPED: the store,
-		 * the cookie storage and the credential storage, plus the cookie family's own enum and the coder
-		 * doors that every class in this library refuses. */
+		/* REFUSED: the coder doors every class in this library refuses. The four storage/header doors that
+		 * used to be refused HERE have MOVED UP into instanceSelectors - their classes are shipped today
+		 * (the class header records the measurement), so the names are asserted PRESENT, not absent. */
 		static const char *excluded[] = {
-			"URLCache", "setURLCache:", "HTTPCookieStorage", "setHTTPCookieStorage:",
-			"URLCredentialStorage", "setURLCredentialStorage:",
-			"HTTPCookieAcceptPolicy", "setHTTPCookieAcceptPolicy:",
 			"initWithCoder:", "encodeWithCoder:", NULL
 		};
 		NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];

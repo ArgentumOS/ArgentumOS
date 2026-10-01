@@ -8,6 +8,9 @@
 #import <Foundation/NSURLSessionConfiguration.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSArray.h>
+#import <Foundation/NSDictionary.h>
+#import <Foundation/NSURLCache.h>
+#import <Foundation/NSURLCredentialStorage.h>
 
 @implementation NSURLSessionConfiguration
 
@@ -30,6 +33,14 @@
 		_HTTPShouldSetCookies = YES;
 		_HTTPMaximumConnectionsPerHost = 6;
 		_discretionary = NO;
+		/* THE FOUR STORAGE/HEADER DEFAULTS ARE APPLE'S DOCUMENTED ONES: an empty header dictionary, the
+		 * OnlyFromMainDocumentDomain cookie policy, and the SHARED cache, cookie and credential stores (the
+		 * classes whose facilities the transfer already exercises — see the header). */
+		_HTTPAdditionalHeaders = [[NSDictionary alloc] init];
+		_HTTPCookieAcceptPolicy = NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain;
+		_HTTPCookieStorage = [[NSHTTPCookieStorage sharedHTTPCookieStorage] retain];
+		_URLCache = [[NSURLCache sharedURLCache] retain];
+		_URLCredentialStorage = [[NSURLCredentialStorage sharedCredentialStorage] retain];
 		_protocolClasses = nil;
 	}
 	return self;
@@ -51,6 +62,12 @@
 
 	configuration->_identifier = [identifier copy];
 	return configuration;
+}
+
+/* THE DEPRECATED OLD SPELLING IS THE SAME OBJECT: it delegates to the current name, so the two cannot drift. */
++ (NSURLSessionConfiguration *)backgroundSessionConfiguration:(NSString *)identifier
+{
+	return [self backgroundSessionConfigurationWithIdentifier:identifier];
 }
 
 - (NSString *)identifier { return _identifier; }
@@ -80,6 +97,40 @@
 - (void)setHTTPMaximumConnectionsPerHost:(NSInteger)count { _HTTPMaximumConnectionsPerHost = count; }
 - (BOOL)discretionary { return _discretionary; }
 - (void)setDiscretionary:(BOOL)flag { _discretionary = flag; }
+- (NSDictionary *)HTTPAdditionalHeaders { return _HTTPAdditionalHeaders; }
+- (void)setHTTPAdditionalHeaders:(NSDictionary *)headers
+{
+	NSDictionary *old = _HTTPAdditionalHeaders;
+
+	_HTTPAdditionalHeaders = [headers copy];	/* a snapshot, like every header bag in this library */
+	[old release];
+}
+- (NSHTTPCookieAcceptPolicy)HTTPCookieAcceptPolicy { return _HTTPCookieAcceptPolicy; }
+- (void)setHTTPCookieAcceptPolicy:(NSHTTPCookieAcceptPolicy)policy { _HTTPCookieAcceptPolicy = policy; }
+- (NSHTTPCookieStorage *)HTTPCookieStorage { return _HTTPCookieStorage; }
+- (void)setHTTPCookieStorage:(NSHTTPCookieStorage *)storage
+{
+	NSHTTPCookieStorage *old = _HTTPCookieStorage;
+
+	_HTTPCookieStorage = [storage retain];
+	[old release];
+}
+- (NSURLCache *)URLCache { return _URLCache; }
+- (void)setURLCache:(NSURLCache *)cache
+{
+	NSURLCache *old = _URLCache;
+
+	_URLCache = [cache retain];
+	[old release];
+}
+- (NSURLCredentialStorage *)URLCredentialStorage { return _URLCredentialStorage; }
+- (void)setURLCredentialStorage:(NSURLCredentialStorage *)storage
+{
+	NSURLCredentialStorage *old = _URLCredentialStorage;
+
+	_URLCredentialStorage = [storage retain];
+	[old release];
+}
 - (NSArray *)protocolClasses { return _protocolClasses; }
 - (void)setProtocolClasses:(NSArray *)classes { NSArray *old = _protocolClasses;
 	_protocolClasses = [classes copy]; [old release]; }
@@ -106,6 +157,11 @@
 	copy->_HTTPShouldSetCookies = _HTTPShouldSetCookies;
 	copy->_HTTPMaximumConnectionsPerHost = _HTTPMaximumConnectionsPerHost;
 	copy->_discretionary = _discretionary;
+	copy->_HTTPAdditionalHeaders = [_HTTPAdditionalHeaders copy];
+	copy->_HTTPCookieAcceptPolicy = _HTTPCookieAcceptPolicy;
+	copy->_HTTPCookieStorage = [_HTTPCookieStorage retain];
+	copy->_URLCache = [_URLCache retain];
+	copy->_URLCredentialStorage = [_URLCredentialStorage retain];
 	copy->_protocolClasses = [_protocolClasses copy];
 	return copy;
 }
@@ -113,6 +169,10 @@
 - (void)dealloc
 {
 	[_identifier release];
+	[_HTTPAdditionalHeaders release];
+	[_HTTPCookieStorage release];
+	[_URLCache release];
+	[_URLCredentialStorage release];
 	[_protocolClasses release];
 	[super dealloc];
 }

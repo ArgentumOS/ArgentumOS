@@ -12,17 +12,17 @@ The probe is `/System/Shared/tests/foundation_urlsession_config`, ONE unit, impo
 
   * `session-configuration-defaults`                   — Apple's documented values, in one place;
   * `ephemeral-configuration-differs-only-by-identity` — the honest statement of what the ephemeral door
-                                                         can differ by HERE (no cache/cookie/credential
-                                                         class is shipped yet), pinned rather than
-                                                         assumed;
+                                                         can differ by HERE (no persistent cache/cookie/
+                                                         credential state), pinned rather than assumed;
   * `background-configuration-carries-its-identifier`  — the third door;
   * `configuration-setters-round-trip`                 — every property is readwrite;
   * `protocol-classes-are-snapshotted`                 — the caller's array is copied in (and this is the
                                                          property that reaches slice 2a's registry);
   * `configuration-copy-is-a-snapshot`                 — a REAL copy, which is what distinguishes it from
                                                          the `-retain` the immutable classes answer with;
-  * `configuration-api-inventory`                      — owed selectors exist; the storage-valued
-                                                         properties and the coder doors are ABSENT.
+  * `configuration-api-inventory`                      — owed selectors exist, INCLUDING the four
+                                                         storage/header doors (their classes are shipped
+                                                         today); the coder doors are ABSENT.
 
 `ephemeral-configuration-differs-only-by-identity` AND `configuration-copy-is-a-snapshot` ARE THE POINT:
 the first refuses to let a door imply behaviour this tree cannot have, and the second pins the one

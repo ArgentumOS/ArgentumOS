@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2112   open  548   struck  268
-#   property   shipped 1246   open  244   struck  146
+#   method     shipped 2116   open  544   struck  268
+#   property   shipped 1252   open  238   struck  146
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -712,10 +712,10 @@ property	shipped	condition	NSConditionLock	Low-Level Utilities / Threads and Loc
 property	shipped	name	NSConditionLock	Low-Level Utilities / Threads and Locking / Identifying the Condition Lock	-	objc
 method	open	-addRequestMode:	NSConnection	Low-Level Utilities / Legacy / Legacy / Configuring Instances	deprecated	objc
 method	shipped	-addRunLoop:	NSConnection	Low-Level Utilities / Legacy / Legacy / Running the Connection in a New Thread	deprecated	objc
-method	open	+allConnections	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting All NSConnection Objects	deprecated	objc
+method	shipped	+allConnections	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting All NSConnection Objects	deprecated	objc
 method	shipped	+connectionWithReceivePort:sendPort:	NSConnection	Low-Level Utilities / Legacy / Legacy / Creating Instances	deprecated	objc
-method	open	+connectionWithRegisteredName:host:	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Remote Object	deprecated	objc
-method	open	+connectionWithRegisteredName:host:usingNameServer:	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Remote Object	deprecated	objc
+method	shipped	+connectionWithRegisteredName:host:	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Remote Object	deprecated	objc
+method	shipped	+connectionWithRegisteredName:host:usingNameServer:	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Remote Object	deprecated	objc
 method	open	+currentConversation	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Conversation	deprecated	objc
 method	open	+defaultConnection	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting the Default Instance	deprecated	objc
 method	open	-dispatchWithComponents:	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting Ports	deprecated	objc
@@ -737,7 +737,7 @@ property	open	localObjects	NSConnection	Low-Level Utilities / Legacy / Legacy / 
 property	open	multipleThreadsEnabled	NSConnection	Low-Level Utilities / Legacy / Legacy / Running the Connection in a New Thread	deprecated	objc
 property	shipped	receivePort	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting Ports	deprecated	objc
 property	open	remoteObjects	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Remote Object	deprecated	objc
-property	open	replyTimeout	NSConnection	Low-Level Utilities / Legacy / Legacy / Configuring Instances	deprecated	objc
+property	shipped	replyTimeout	NSConnection	Low-Level Utilities / Legacy / Legacy / Configuring Instances	deprecated	objc
 property	open	requestModes	NSConnection	Low-Level Utilities / Legacy / Legacy / Configuring Instances	deprecated	objc
 property	open	requestTimeout	NSConnection	Low-Level Utilities / Legacy / Legacy / Configuring Instances	deprecated	objc
 property	shipped	rootObject	NSConnection	Low-Level Utilities / Legacy / Legacy / Vending a Service	deprecated	objc
@@ -3718,13 +3718,13 @@ property	shipped	delegate	NSURLSession	Networking / Essentials / Working with a 
 property	shipped	delegateQueue	NSURLSession	Networking / Essentials / Working with a delegate	-	objc
 property	shipped	sessionDescription	NSURLSession	Networking / Essentials / Managing the session	-	objc
 property	shipped	sharedSession	NSURLSession	Networking / Essentials / Using the shared session	-	objc
-method	open	+backgroundSessionConfiguration:	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Deprecated methods	deprecated	objc
+method	shipped	+backgroundSessionConfiguration:	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Deprecated methods	deprecated	objc
 method	shipped	+backgroundSessionConfigurationWithIdentifier:	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Creating a session configuration object	-	objc
 method	shipped	-init	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Creating a session configuration object	deprecated	objc
 method	shipped	+new	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Creating a session configuration object	deprecated	objc
-property	open	HTTPAdditionalHeaders	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
-property	open	HTTPCookieAcceptPolicy	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting cookie policies	-	objc
-property	open	HTTPCookieStorage	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting cookie policies	-	objc
+property	shipped	HTTPAdditionalHeaders	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
+property	shipped	HTTPCookieAcceptPolicy	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting cookie policies	-	objc
+property	shipped	HTTPCookieStorage	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting cookie policies	-	objc
 property	shipped	HTTPMaximumConnectionsPerHost	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting HTTP policy and proxy properties	-	objc
 property	shipped	HTTPShouldSetCookies	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting cookie policies	-	objc
 property	shipped	HTTPShouldUsePipelining	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting HTTP policy and proxy properties	deprecated	objc
@@ -3732,8 +3732,8 @@ property	open	TLSMaximumSupportedProtocol	NSURLSessionConfiguration	Networking /
 property	open	TLSMaximumSupportedProtocolVersion	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	-	objc
 property	open	TLSMinimumSupportedProtocol	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	deprecated	objc
 property	open	TLSMinimumSupportedProtocolVersion	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	-	objc
-property	open	URLCache	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting caching policies	-	objc
-property	open	URLCredentialStorage	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	-	objc
+property	shipped	URLCache	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting caching policies	-	objc
+property	shipped	URLCredentialStorage	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	-	objc
 property	shipped	allowsCellularAccess	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
 property	shipped	allowsConstrainedNetworkAccess	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting limited modes	-	objc
 property	shipped	allowsExpensiveNetworkAccess	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting limited modes	-	objc
