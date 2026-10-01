@@ -17,6 +17,16 @@
  * A value is one tag byte and its payload. Integers are LITTLE-ENDIAN and fixed-width: a sequential
  * format whose numbers changed width with the machine would break the "architecture-independent"
  * promise the class is named for. Lengths are unsigned 32-bit for the same reason.
+ *
+ * ⚠ AND A C STRUCT/UNION/ARRAY IS THE ONE VALUE WHOSE BYTES ARE NOT RE-ENCODED (2026-10-01, §63.43). It
+ * travels as `FNARTagValue` + a length + the value's OWN in-memory bytes, length from
+ * `NSGetSizeAndAlignment` on the caller's type code — the same walker NSValue's box and this reader use,
+ * so the writer and the reader cannot disagree about how big the value is. The alternative, encoding a
+ * struct FIELD BY FIELD through each field's own type code, needs each field's OFFSET, which is C struct
+ * layout computed from the fields' alignments — a second copy of a decision this file exists to keep in
+ * one place, and a silent corruption the day it drifts. WHAT THAT COSTS, stated rather than discovered:
+ * a struct's padding is the compiler's, so its payload is little-endian and padded as this target lays
+ * it out, where every scalar above keeps a fixed little-endian width. This system has one architecture.
  */
 
 #ifndef FOUNDATION_FNARCHIVERWIRE_H
@@ -46,7 +56,8 @@ enum {
 	FNARTagSet = 0x0B,
 	FNARTagObjectRef = 0x0C,	/* an index into the object table: the SAME object again */
 	FNARTagObject = 0x0D,		/* first sight of an object: class name, then its payload */
-	FNARTagBytes = 0x0E		/* the raw-bytes door, length-delimited and type-less */
+	FNARTagBytes = 0x0E,		/* the raw-bytes door, length-delimited and type-less */
+	FNARTagValue = 0x0F		/* a C struct/union/array through -encodeValueOfObjCType:at: */
 };
 
 /* --- the byte codec, header-only so the writer and the reader cannot drift apart ----------------- */

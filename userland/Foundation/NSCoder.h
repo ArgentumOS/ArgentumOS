@@ -121,12 +121,20 @@ typedef enum {
  * tree has no `UIEdgeInsets`/`CMTime`/`SCN` substrate: the boxes they need exist (`NSValue`'s geometry
  * value-with doors and value readers landed with NSValue itself).
  *
- * THE UNKEYED COUNTERPARTS (`-encodePoint:`, `-decodePoint`, …) BELONG TO THE OTHER FAMILY (the sequential
- * one): Apple's own note is that they "invoke -encodeValueOfObjCType:at: and must be matched by a
- * -decodePoint in order", which is the sequential contract, and this library's sequential wire has no
- * struct spelling at all (NSArchiver's `-encodeValueOfObjCType:at:` raises for `{…}`). They are therefore
- * NOT declared here; the keyed family raises in them and the sequential family raises in these, exactly
- * as the two families do everywhere else. */
+ * THE UNKEYED COUNTERPARTS (`-encodePoint:`/`-decodePoint`, `-encodeSize:`/`-decodeSize`,
+ * `-encodeRect:`/`-decodeRect`, `-encodeValueOfObjCType:at:`/`-decodeValueOfObjCType:at:size:`,
+ * `-encodeArrayOfObjCType:count:at:`/`-decodeArrayOfObjCType:count:at:`) BELONG TO THE OTHER FAMILY
+ * (the sequential one), and they are declared below: Apple's own note is that they "invoke
+ * -encodeValueOfObjCType:at: and must be matched by a -decodePoint in order", which is the sequential
+ * contract. Each one is a BASE implementation expressed over the type-code door, so the keyed family
+ * reaches its abstract `-encodeValueOfObjCType:at:` and raises the sequential refusal, exactly as the
+ * two families do everywhere else.
+ *
+ * ⚠ THE SENTENCE THIS PARAGRAPH USED TO CARRY WAS A REASON, NOT A FACT (§63.43, 2026-10-01): it said
+ * the six geometry doors were "NOT declared here" because "this library's sequential wire has no struct
+ * spelling at all". THE SECOND HALF WAS TRUE AND THE CONCLUSION DID NOT FOLLOW — a wire that cannot
+ * spell a struct is a wire to EXTEND, not a door to omit, and the doors were owed the whole time. The
+ * wire now carries `{…}`, `(…)` and `[…]` (FNArchiverWire.h), so the six are real sequential doors. */
 - (void)encodeCGPoint:(CGPoint)point forKey:(NSString *)key;
 - (CGPoint)decodeCGPointForKey:(NSString *)key;
 - (void)encodeCGSize:(CGSize)size forKey:(NSString *)key;
@@ -213,9 +221,36 @@ typedef enum {
  *
  * A value written with `-encodeValueOfObjCType:at:` must be READ with the same type code, in the same
  * order — there are no names to look up and no coercion, which is the whole difference from the keyed
- * doors above. `NSArchiver`/`NSUnarchiver` answer these; the keyed pair raises here. */
+ * doors above. `NSArchiver`/`NSUnarchiver` answer these; the keyed pair raises here.
+ *
+ * ⚠ AND THERE ARE TWO SPELLINGS OF THE READING DOOR, WHICH IS APPLE'S OWN ARRANGEMENT (§63.43):
+ * `-decodeValueOfObjCType:at:size:` is the MODERN one — it tells the reader how big the caller's buffer
+ * is — and Apple's header marks `-decodeValueOfObjCType:at:` `API_DEPRECATED_WITH_REPLACEMENT` for it,
+ * "unsafe because it could potentially cause buffer overruns". Here the un-sized door is a BASE
+ * implementation that SIZES THE TYPE CODE ITSELF (`NSGetSizeAndAlignment`) and funnels into the sized
+ * one — which is exactly the shape Apple deprecates, with the overrun turned into a named refusal. */
 - (void)encodeValueOfObjCType:(const char *)valueType at:(const void *)address;
+- (void)decodeValueOfObjCType:(const char *)valueType at:(void *)data size:(NSUInteger)size;
 - (void)decodeValueOfObjCType:(const char *)valueType at:(void *)data;
+
+/* THE ARRAY DOORS, and they are BASE implementations for a stated reason: Apple's own documentation says
+ * "NSCoder's implementation invokes -encodeValueOfObjCType:at: to encode the entire array of items" and
+ * "subclasses that implement the -encodeValueOfObjCType:at: method do not need to override this method".
+ * So they are a loop over the type-code door, `NSGetSizeAndAlignment`'s size being the stride an array of
+ * the type has in memory — which is what makes `-encodeValuesOfObjCTypes:` above and these two the same
+ * rule applied to a buffer instead of to arguments. */
+- (void)encodeArrayOfObjCType:(const char *)type count:(NSUInteger)count at:(const void *)array;
+- (void)decodeArrayOfObjCType:(const char *)itemType count:(NSUInteger)count at:(void *)array;
+
+/* THE UNKEYED GEOMETRY DOORS (see the note above the keyed ones): the type IS the encoding, and each of
+ * the six is the type-code door applied to its struct — `@encode(NSPoint)` is `"{CGPoint=dd}"` here
+ * because NSGeometry.h makes NSPoint a typedef of the CG type. */
+- (void)encodePoint:(NSPoint)point;
+- (NSPoint)decodePoint;
+- (void)encodeSize:(NSSize)size;
+- (NSSize)decodeSize;
+- (void)encodeRect:(NSRect)rect;
+- (NSRect)decodeRect;
 
 /* The TYPE-less object doors, in order: the sequential counterpart of `-encodeObject:forKey:`. */
 - (void)encodeObject:(nullable id)object;
@@ -226,6 +261,13 @@ typedef enum {
 - (nullable NSData *)decodeDataObject;
 - (void)encodeBytes:(nullable const void *)bytesp length:(NSUInteger)length;
 - (nullable const void *)decodeBytesWithReturnedLength:(NSUInteger *)lengthp;
+/* THE SEQUENTIAL TWIN OF `-decodeBytesForKey:minimumLength:` — Apple documents both, one per family —
+ * and it is the ONE door here whose refusal goes through `-failWithError:` rather than raising directly,
+ * which is what Apple's own text says: "If the result exists, but is of insufficient length, then the
+ * decoder uses -failWithError: to fail the entire decode operation. The result of that is configurable on
+ * a per-NSCoder basis using -decodingFailurePolicy." A nil answer means the same as it does everywhere
+ * else here: under SetErrorAndReturn the failure is a VALUE, and `-error` carries it. */
+- (nullable const void *)decodeBytesWithMinimumLength:(NSUInteger)minimumLength;
 
 /* --- THE LEGACY SEQUENTIAL PLIST AND BULK DOORS -----------------------------------------------------
  *

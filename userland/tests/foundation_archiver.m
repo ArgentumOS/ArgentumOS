@@ -401,6 +401,163 @@ int main(void)
 		      @"the legacy free function reads one object and does nothing else");
 	}
 
+	/* --- 10. THE SEQUENTIAL VALUE, ARRAY AND GEOMETRY DOORS (§63.43) ------------------------------------ */
+	{
+		/* A STRUCT THROUGH THE TYPE-CODE DOOR, which is what the wire could not do before: `{…}` has no
+		 * scalar spelling, and a wire that cannot carry a struct cannot carry a point. */
+		{
+			NSPoint in = { 3.5, -7.25 };
+			NSPoint out = { 0, 0 };
+			NSMutableData *data = [[NSMutableData alloc] init];
+			NSArchiver *writer = [[NSArchiver alloc] initForWritingWithMutableData:data];
+			NSUnarchiver *reader;
+
+			[writer encodeValueOfObjCType:@encode(NSPoint) at:&in];
+			reader = [[NSUnarchiver alloc] initForReadingWithData:data];
+			[reader decodeValueOfObjCType:@encode(NSPoint) at:&out];
+			check("a-struct-round-trips-through-the-type-code-door",
+			      out.x == in.x && out.y == in.y,
+			      [NSString stringWithFormat:@"a struct written as its type code comes back as itself "
+						@"(wrote {%.2f, %.2f}, read {%.2f, %.2f})",
+						in.x, in.y, out.x, out.y]);
+		}
+
+		/* THE SIX UNKEYED GEOMETRY DOORS, in ONE archive and in the order a sequential format requires. */
+		{
+			NSPoint point = { 1.5, 2.5 };
+			NSSize size = { 30.0, 40.0 };
+			NSRect rect = { { 1.0, 2.0 }, { 3.0, 4.0 } };
+			NSMutableData *data = [[NSMutableData alloc] init];
+			NSArchiver *writer = [[NSArchiver alloc] initForWritingWithMutableData:data];
+			NSUnarchiver *reader;
+			NSPoint pointBack;
+			NSSize sizeBack;
+			NSRect rectBack;
+
+			[writer encodePoint:point];
+			[writer encodeSize:size];
+			[writer encodeRect:rect];
+			reader = [[NSUnarchiver alloc] initForReadingWithData:data];
+			pointBack = [reader decodePoint];
+			sizeBack = [reader decodeSize];
+			rectBack = [reader decodeRect];
+			check("the-unkeyed-geometry-doors-round-trip",
+			      pointBack.x == point.x && pointBack.y == point.y &&
+			      sizeBack.width == size.width && sizeBack.height == size.height &&
+			      NSEqualRects(rectBack, rect),
+			      [NSString stringWithFormat:@"a point {%.1f,%.1f}, a size {%.1f,%.1f} and a rect "
+						@"{{%.1f,%.1f},{%.1f,%.1f}} come back unchanged",
+						pointBack.x, pointBack.y, sizeBack.width, sizeBack.height,
+						rectBack.origin.x, rectBack.origin.y,
+						rectBack.size.width, rectBack.size.height]);
+		}
+
+		/* THE ARRAY DOORS: a RUN of values whose stride is the type's own size. */
+		{
+			int values[3] = { 11, -22, 33 };
+			int back[3] = { 0, 0, 0 };
+			NSMutableData *data = [[NSMutableData alloc] init];
+			NSArchiver *writer = [[NSArchiver alloc] initForWritingWithMutableData:data];
+			NSUnarchiver *reader;
+
+			[writer encodeArrayOfObjCType:@encode(int) count:3 at:values];
+			reader = [[NSUnarchiver alloc] initForReadingWithData:data];
+			[reader decodeArrayOfObjCType:@encode(int) count:3 at:back];
+			check("the-array-doors-round-trip",
+			      back[0] == 11 && back[1] == -22 && back[2] == 33,
+			      [NSString stringWithFormat:@"three ints written as one array come back as %d, %d, %d",
+						back[0], back[1], back[2]]);
+		}
+
+		/* THE SIZED READING DOOR HONOURS THE SIZE THE CALLER DECLARED — that is what it is FOR, and it is
+		 * the whole reason Apple's deprecated the un-sized spelling. */
+		{
+			int written = 7;
+			NSMutableData *data = [[NSMutableData alloc] init];
+			NSArchiver *writer = [[NSArchiver alloc] initForWritingWithMutableData:data];
+			NSUnarchiver *reader;
+			NSString *name;
+
+			[writer encodeValueOfObjCType:@encode(int) at:&written];
+			reader = [[NSUnarchiver alloc] initForReadingWithData:data];
+			name = fn_raised(NSInconsistentArchiveException, ^{
+				int into = 0;
+
+				[reader decodeValueOfObjCType:@encode(int) at:&into size:1];
+			});
+			check("the-sized-reading-door-refuses-a-buffer-that-is-too-small",
+			      [name isEqualToString:NSInconsistentArchiveException],
+			      @"a 4-byte value read into a 1-byte buffer is a NAMED refusal rather than the overrun "
+			      @"Apple deprecates the old spelling for");
+		}
+
+		/* AND THE UN-SIZED DOOR IS THE SIZED ONE'S FUNNEL, so a caller that still sends the old selector
+		 * decodes on the same path. */
+		{
+			int written = 4207;
+			int back = 0;
+			NSMutableData *data = [[NSMutableData alloc] init];
+			NSArchiver *writer = [[NSArchiver alloc] initForWritingWithMutableData:data];
+			NSUnarchiver *reader;
+
+			[writer encodeValueOfObjCType:@encode(int) at:&written];
+			reader = [[NSUnarchiver alloc] initForReadingWithData:data];
+			[reader decodeValueOfObjCType:@encode(int) at:&back];
+			check("the-un-sized-reading-door-still-reads",
+			      back == 4207,
+			      @"the deprecated spelling sizes the type code itself and reads the same value");
+		}
+
+		/* THE BYTES DOOR WITH A FLOOR UNDER IT: met, it answers; short, it fails THROUGH -failWithError:. */
+		{
+			NSMutableData *data = [[NSMutableData alloc] init];
+			NSArchiver *writer = [[NSArchiver alloc] initForWritingWithMutableData:data];
+			NSUnarchiver *reader;
+			const char *bytes;
+
+			[writer encodeBytes:"abcd" length:4];
+			reader = [[NSUnarchiver alloc] initForReadingWithData:data];
+			bytes = (const char *)[reader decodeBytesWithMinimumLength:4];
+			check("decodebyteswithminimumlength-reads-a-long-enough-run",
+			      bytes != NULL && bytes[0] == 'a' && bytes[1] == 'b' && bytes[2] == 'c' &&
+			      bytes[3] == 'd',
+			      @"a run that MEETS the floor is handed back unchanged");
+		}
+		{
+			NSMutableData *data = [[NSMutableData alloc] init];
+			NSArchiver *writer = [[NSArchiver alloc] initForWritingWithMutableData:data];
+			NSUnarchiver *reader;
+			NSString *name;
+
+			[writer encodeBytes:"ab" length:2];
+			reader = [[NSUnarchiver alloc] initForReadingWithData:data];
+			name = fn_raised(NSInvalidArgumentException, ^{
+				(void)[reader decodeBytesWithMinimumLength:4];
+			});
+			check("decodebyteswithminimumlength-refuses-a-short-run",
+			      [name isEqualToString:NSInvalidArgumentException],
+			      @"a run SHORTER than the floor is a corrupt archive, not a shorter value — and the "
+			      @"refusal goes through -failWithError:, exactly as Apple's own text says");
+		}
+
+		/* AND THE MUTUAL EXCLUSION, ONE DOOR FURTHER OUT: a geometry door is the SEQUENTIAL family's, so a
+		 * keyed archiver refuses it and names the family that answers — the same rule every other door on
+		 * this base follows, now reaching the six new ones. */
+		{
+			NSMutableData *data = [[NSMutableData alloc] init];
+			NSKeyedArchiver *keyed = [[NSKeyedArchiver alloc] initForWritingWithMutableData:data];
+			NSPoint point = { 0, 0 };
+			NSString *name = fn_raised(NSInvalidArgumentException, ^{
+				[keyed encodePoint:point];
+			});
+
+			check("a-sequential-geometry-door-on-the-keyed-archiver-raises",
+			      [name isEqualToString:NSInvalidArgumentException],
+			      @"-encodePoint: reaches -encodeValueOfObjCType:at:, which the keyed family refuses with "
+			      @"the sequential message");
+		}
+	}
+
 	/* THE STATUS REPORTS FAILURES AND NOT A COUNT. A second copy of "how many checks are there" is a number
 	 * that goes stale the first time a check is added — twice in this thread (§62.85 and this unit) — and the
 	 * case file already asserts the count, from the probe's OWN names. */

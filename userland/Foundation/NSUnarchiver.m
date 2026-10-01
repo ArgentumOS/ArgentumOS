@@ -319,12 +319,23 @@
 	return [self fnReadPayloadOfLength:lengthp];
 }
 
-- (void)decodeValueOfObjCType:(const char *)valueType at:(void *)data
+- (void)decodeValueOfObjCType:(const char *)valueType at:(void *)data size:(NSUInteger)size
 {
 	uint8_t tag;
+	NSUInteger need = 0;
 
 	if (valueType == NULL) {
 		[NSException raise:NSInconsistentArchiveException format:@"a nil type code has no type"];
+	}
+	/* THE CALLER'S BUFFER SIZE IS HONOURED, which is the whole reason Apple's header deprecates the
+	 * un-sized spelling: that one has to GUESS the size from the type code and can overrun a caller's
+	 * variable. Here the guess is checked before a byte is written, so a caller who under-declares gets a
+	 * named refusal instead of a corrupt stack. */
+	NSGetSizeAndAlignment(valueType, &need, NULL);
+	if (size < need) {
+		[NSException raise:NSInconsistentArchiveException
+			    format:@"the caller's buffer is %lu bytes but the value of type \"%s\" needs %lu",
+				   (unsigned long)size, valueType, (unsigned long)need];
 	}
 	tag = [self fnReadByte];
 	switch (valueType[0]) {
@@ -385,6 +396,28 @@
 			memcpy(data, &bits, 8);
 		}
 		return;
+	case '{': case '(': case '[': {
+		/* A STRUCT, A UNION OR A C ARRAY: its own bytes, under its own tag (FNArchiverWire.h's layout note).
+		 * The TAG is checked and the length must be EXACTLY the size the caller's own type code implies —
+		 * a wire carrying a different number of bytes for a value the reader sized itself is corrupt, not a
+		 * shorter value. */
+		NSUInteger n;
+		const void *p;
+
+		if (tag != FNARTagValue) {
+			[NSException raise:NSInconsistentArchiveException
+				    format:@"the archive holds %u where a struct/array value was asked for",
+					   (unsigned)tag];
+		}
+		p = [self fnReadPayloadOfLength:&n];
+		if (n != need) {
+			[NSException raise:NSInconsistentArchiveException
+				    format:@"the archive holds %lu bytes for a %lu-byte value of type \"%s\"",
+					   (unsigned long)n, (unsigned long)need, valueType];
+		}
+		memcpy(data, p, need);
+		return;
+	}
 	default:
 		[NSException raise:NSInconsistentArchiveException
 			    format:@"type code '%c' has no sequential spelling in this wire", valueType[0]];

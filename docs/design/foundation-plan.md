@@ -105,12 +105,19 @@ the day it was written, and it is the plan until the last row closes.
      says a door cannot be declared over a type the library does not have.** **THE OTHER 57 NSCoder ROWS ARE
      IMPLEMENTABLE over machinery that already ships** (the recon's own grouping), so that family is one unit
      plus one decision.
-   * **AND ONE FINDING FROM THE SAME RECON IS WORK, NOT A DECISION:** `NSValue.h` still denies
-     `+valueWithPoint:`/`+valueWithSize:`/`+valueWithRect:` on the ground that "this library has no
-     NSPoint/NSSize/NSRect" — **false since the CG value types landed** (`NSGeometry.h` aliases all three to
-     `CGPoint`/`CGSize`/`CGRect`). It is the defect class §63.23 fixed for `NSGetSizeAndAlignment` — a header
-     denying what the tree has — and it belongs to the **NSValue** unit, whose geometry boxing is also what
-     NSCoder's geometry rows need.
+   * **⚠ AND ONE FINDING FROM THE SAME RECON IS NOW CLOSED, WHICH IS WHY IT IS KEPT HERE RATHER THAN DELETED:**
+     the recon found that `NSValue.h` "still denies `+valueWithPoint:`/`+valueWithSize:`/`+valueWithRect:` on
+     the ground that this library has no NSPoint/NSSize/NSRect" — the defect class §63.23 fixed for
+     `NSGetSizeAndAlignment`, a header denying what the tree has. **THAT DENIAL IS GONE: the doors, the four
+     CG ones, the five readers and `+valueWithEdgeInsets:` shipped in `059f83d6`** (NSValue: 21 rows closed by a
+     subagent), and **NSValue's remaining 28 open rows are ALL absent-substrate** (CATransform3D, CMTime\*,
+     CMVideoDimensions, DirectionalEdgeInsets, GCPoint2, MKCoordinate\*, SCN\*, UIEdgeInsets, UIOffset) — i.e.
+     NSValue is now a DEFERRAL and not a unit. **The lesson this line cost is in §63.43:** this paragraph was
+     read as a standing fact at the start of that unit, and it had been false for days.
+   * **⚠ AND NSCoder'S IMPLEMENTABLE ROWS ARE NOW DONE (§63.43):** ten of its rows landed (the four array/type
+     doors, the six unkeyed geometry doors, and `-decodeBytesWithMinimumLength:`), which required the sequential
+     wire to learn a struct spelling. **What is left of that family is exactly the DECISION named above — 17
+     rows whose ground is an absent type or the 32-bit-only zone rule — not more doors.**
    * **the encoding cluster** (8 rows for NSString alone, and more elsewhere): blocked on a converter/repertoire
      table (§63.2). ICU is already linked, so it is a real unit rather than a refusal — **it needs its own
      session**, and it is the one place where "take the library that has the table" has to be argued rather than
@@ -15961,7 +15968,82 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
-## §63.41 — SEVEN MORE FAMILIES, 55 ROWS, AND THE BRIEF THAT FIXED ITSELF (2026-10-01)
+## §63.43 — NSCoder'S TEN SEQUENTIAL DOORS: THE WIRE LEARNS TO SPELL A STRUCT, AND A REASON THAT WAS ONCE A FACT (2026-10-01)
+
+**WHAT LANDED: TEN ROWS, AND THEY ARE ONE UNIT RATHER THAN TEN SMALL ONES — because six of them could not be
+honest until the seventh thing existed.** `-encodeArrayOfObjCType:count:at:` / `-decodeArrayOfObjCType:count:at:`,
+`-decodeValueOfObjCType:at:size:`, the six unkeyed geometry doors (`-encodePoint:`/`-decodePoint`,
+`-encodeSize:`/`-decodeSize`, `-encodeRect:`/`-decodeRect`), and `-decodeBytesWithMinimumLength:`.
+**MEASURED: host probe `foundation_archiver` 31/0 (was 23), guest case 6/6 checks in 12s, ledger methods
+shipped 2141 → 2151 and open 519 → 509** — exactly ten, no other row moved. The symbol ledger stays at 0 open.
+
+**AND ONE OF THEM WAS BLOCKED BY A SENTENCE THAT WAS A REASON, NOT A FACT.** `NSCoder.h` said the unkeyed
+counterparts were "**NOT declared here**; the keyed family raises in them and the sequential family raises in
+these", and its ground was true as far as it went: *this library's sequential wire has no struct spelling at all*
+(`NSArchiver`'s `-encodeValueOfObjCType:at:` raised on `default` for `{…}`). **THE SECOND HALF WAS TRUE AND THE
+CONCLUSION DID NOT FOLLOW** — a wire that cannot spell a struct is a wire to EXTEND, not a door to omit, and
+Apple's own documentation says exactly that these doors exist and what they are built from ("invoke
+-encodeValueOfObjCType:at: and must be matched by a -decodePoint in order"). This is the same defect class as
+§63.23's `NSGetSizeAndAlignment` and §63.24's four normalization rows: **a header denying what the tree does not
+have YET, in a sentence a reader has no reason to doubt.**
+
+**THE DECISION THAT MADE THEM REAL, AND THE ONE THAT WAS REJECTED.** A struct travels as `FNARTagValue` (a new
+wire tag) + a length + **the value's own in-memory bytes**, where the length is `NSGetSizeAndAlignment` on the
+caller's type code — the SAME walker `NSValue`'s box and this reader already use, so the writer and the reader
+cannot disagree about how big a value is. **The alternative was encoding a struct FIELD BY FIELD through each
+field's own type code**, which is closer to what Apple's classic `typedstream` did — and it needs each field's
+OFFSET, i.e. C struct layout recomputed from the fields' alignments. `NSValue.m`'s walker computes that layout
+once, and a second copy of it is exactly the "second copy of a decision" `FNArchiverWire.h`'s own header exists
+to forbid, with silent corruption as the failure mode. **WHAT THE CHOSEN FORM COSTS, stated in the wire's layout
+note rather than discovered:** a struct's padding and byte order are the COMPILER's, where every scalar keeps a
+fixed little-endian width. This system has one architecture; if that ever stops being true, this is the line.
+
+**AND TWO KNOCK-ONS, NEITHER OF THEM COSMETIC.**
+ * **`-decodeValueOfObjCType:at:size:` IS THE MODERN SPELLING AND APPLE SAYS SO ITSELF** — its SDK header marks
+   the un-sized `-decodeValueOfObjCType:at:` `API_DEPRECATED_WITH_REPLACEMENT(…:size:)`, "unsafe because it could
+   potentially cause buffer overruns". So the SIZED door is where the abstract base says "a subclass must supply
+   this" (Apple's own words), **and the UN-SIZED door is now a BASE IMPLEMENTATION that sizes the type code and
+   funnels in** — the deprecated shape exactly, with its overrun turned into a named refusal, since the declared
+   size is checked before a byte is written. `NSUnarchiver`'s body moved to the sized door; a caller still
+   sending the old selector reaches it through the funnel, which is asserted.
+ * **`-failWithError:`'S MESSAGE WAS WRONG, AND ONLY A SEQUENTIAL CALLER COULD HAVE FOUND IT.** The base raised
+   *"the abstract NSCoder does not implement -failWithError:"* — which was already a lie about a door the base
+   *implements*, and became a MISDIAGNOSIS the moment `-decodeBytesWithMinimumLength:` needed it: Apple's text
+   for that door is "the decoder uses -failWithError: to fail the entire decode operation… configurable… using
+   -decodingFailurePolicy", and `NSUnarchiver` overrides nothing there, so a short byte run would have blamed an
+   abstract class instead of naming the short run. **The base now raises carrying the ERROR'S OWN description.**
+   The raise itself is the default policy, which is why `NSKeyedUnarchiver`'s override is unchanged.
+
+**⚠ AND A STALE PARAGRAPH THE PLAN ITSELF WAS CARRYING, CORRECTED RATHER THAN OBEYED (the §63.23 class again).**
+This section's own order-of-work text said *"`NSValue.h` still denies `+valueWithPoint:`/`+valueWithSize:`/
+`+valueWithRect:` on the ground that 'this library has no NSPoint/NSSize/NSRect'"* and made that the NSValue
+half of this unit. **IT WAS ALREADY FALSE WHEN THE READER REACHED IT:** those doors, the four CG ones, the five
+readers and `+valueWithEdgeInsets:` all shipped in `059f83d6` ("NSValue: 21 rows closed by a subagent in three
+exchanges"), and NSValue's remaining 28 open rows are ALL absent-substrate (CATransform3D, CMTime\*,
+CMVideoDimensions, DirectionalEdgeInsets, GCPoint2, MKCoordinate\*, SCN\*, UIEdgeInsets, UIOffset). **So the
+NSValue half of this unit cost nothing, and the lesson is the one this document keeps paying for: the ledger is
+the state and this prose is the order of operations — a sentence in the plan is a measurement with a DATE, not a
+standing fact.**
+
+**⚠ THE MISTAKE, RECORDED BECAUSE IT COST A FULL BOOT AND WILL COST ANOTHER.** The first guest run reported
+**23 of 31 checks** — the probe's own name list, without a single new check — and passed `probe-ran`,
+`no-fail-lines` and `exit-status` while failing `every-check-passed` and `result-line`. **THE GUEST WAS RUNNING
+THE OLD PROBE, AND THAT IS BY DESIGN:** `make test` deliberately does NOT rebuild the root image ("including the
+root image, deliberately: building it is `make testimg`"), so the run was against a stale `.build/rootagfs-test.img`
+and the four PASSes were real checks of a real binary that simply predated the change. **`make testimg` is the
+missing step, and the harness names it when the image is ABSENT — never when it is merely OLD, which is the gap.**
+The count-based checks the case derives from the probe's own names are what caught it; without them this would
+have read as a pass.
+
+**WHAT REMAINS OPEN, NAMED RATHER THAN LEFT TO BE REDISCOVERED.**
+ * **NSCoder's 17 absent-substrate and zone rows** (CMTime 6, UIKit insets 6, NX 3, `-objectZone:`/
+   `-setObjectZone:` 2) — still the DECISION the plan records, not this unit's work: each ground is §11.5's own,
+   and the zone pair is the 32-bit-only ground.
+ * **`^…` (a pointer type code) is still refused by name** in the wire, with the ground stated at the refusal:
+   the value a caller means is the POINTEE, and that is spelled by naming the pointee's own type code. Apple's
+   classic encoder is wider here, so this is a named residual rather than a claimed fidelity.
+ * **The AppKit-drawing group and the encoding cluster** are untouched, as the plan's deferral says.
+
 
 **WHAT LANDED.** NSProcessInfo 9, NSURL 4, NSCoder 4, NSAttributedString 6, NSArray 6, NSString 18, and
 NSNumberFormatter 8 — **55 rows**, each verified by its own family probe in the guest

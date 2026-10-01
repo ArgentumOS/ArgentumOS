@@ -299,9 +299,21 @@ static NSUInteger fn_index_of(NSArray *table, id object)
 		[_data appendBytes:buf length:8];
 		return;
 	}
+	case '{': case '(': case '[': {
+		/* A STRUCT, A UNION OR A C ARRAY: ITS OWN BYTES, UNDER ITS OWN TAG, SIZED BY THE CALLER'S TYPE
+		 * CODE. See FNArchiverWire.h's layout note — the size comes from `NSGetSizeAndAlignment`, the same
+		 * walker the reader uses, so this tree holds no second implementation of C struct layout. */
+		NSUInteger size = 0;
+
+		NSGetSizeAndAlignment(valueType, &size, NULL);
+		[self fnWriteByte:FNARTagValue];
+		[self fnWriteBytes:(size > 0 ? address : (const void *)"") length:size];
+		return;
+	}
 	default:
-		/* NAMED RATHER THAN GUESSED: a structure, a C array or a pointer has no sequential spelling here,
-		 * and inventing one would be a wire no reader could be written against. */
+		/* NAMED RATHER THAN GUESSED: a POINTER has no sequential spelling here (its pointee is the value
+		 * a caller means, and that is spelled by naming the pointee's own type code), and inventing one
+		 * would be a wire no reader could be written against. */
 		[NSException raise:NSInconsistentArchiveException
 			    format:@"type code '%c' has no sequential spelling in this wire", valueType[0]];
 	}

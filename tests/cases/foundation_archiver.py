@@ -52,6 +52,17 @@ CHECKS = (
     "isatend-is-true-once-the-whole-archive-has-been-decoded",
     "the-version-door-raises-rather-than-fabricating",
     "nxreadnsobjectfromcoder-is-the-object-door",
+    # §63.43: the SEQUENTIAL VALUE AND GEOMETRY doors, which the wire could not spell until a struct had a
+    # tag of its own. `-encodePoint:`/`-decodePoint` and their four siblings are the doors Apple describes
+    # as "invoke -encodeValueOfObjCType:at: and must be matched by a -decodePoint in order".
+    "a-struct-round-trips-through-the-type-code-door",
+    "the-unkeyed-geometry-doors-round-trip",
+    "the-array-doors-round-trip",
+    "the-sized-reading-door-refuses-a-buffer-that-is-too-small",
+    "the-un-sized-reading-door-still-reads",
+    "decodebyteswithminimumlength-reads-a-long-enough-run",
+    "decodebyteswithminimumlength-refuses-a-short-run",
+    "a-sequential-geometry-door-on-the-keyed-archiver-raises",
 )
 
 
