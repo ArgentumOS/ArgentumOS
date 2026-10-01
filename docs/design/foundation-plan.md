@@ -15961,6 +15961,76 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.39 — FOUR MORE FAMILIES: NSString 18, NSNumberFormatter 16, NSDictionary 26, NSProgress 7 (2026-10-01)
+
+**WHAT LANDED.** 67 rows across four families, each verified by its own family probe in the guest: **NSString**
+(the encoding-introspection doors, the file/URL contents family with its deprecated spellings, and the
+locale-format pair) — `foundation_string` guest 6/6; **NSNumberFormatter** (the format-policy properties, the
+rounding increment through a double-attribute helper, the symbols, the padding trio) —
+`foundation_numberformatter` 22/22 after one correction; **NSDictionary** (the constructors, the
+options/enumeration/filter/sort doors, the URL/error trio, and the 16 file-attribute accessors as a category) —
+`foundation_collection` 53/53; **NSProgress** (the userInfo-backed file/throughput properties and
+`-performAsCurrentWithPendingUnitCount:usingBlock:`) — `foundation_progress` 16/16. Ledger at this section's end:
+**method 2066 shipped / 618 open, property 1206 / 284 open**.
+
+**FOUR LESSONS THIS STRETCH PAID FOR, ALL NOW RULES IN EVERY BRIEF.**
+
+1. **NEVER PUT A FILTER BETWEEN A TEST AND ITS COMMIT.** A chain written `(make test … | tail -3) && git commit
+   …` committed a **failing** case, because a pipeline's exit status is the LAST command's. Gate on the probe's
+   own `RESULT` line, or redirect to a file so the test's own status survives. This is the same root cause as the
+   campaign's earlier "a grep matched the FAIL line" mistake, in a new disguise.
+2. **WHEN AN AGENT MARKS AN EXPECTATION "reasoned rather than measured", THAT IS THE FIRST CHECK TO RUN.** The
+   numberformatter agent flagged three; the guest settled one — `nf-always-decimal` renders **"1,234."**, not
+   "1,234.0", which *is* Apple's own wording for the property ("the separator is always shown, even when there are
+   no digits after it"). The IMPLEMENTATION was right and only the probe was wrong.
+3. **ONE FILE PER BATCH, AND RE-READ BEFORE EDITING.** A stale `source_token` silently rejected an entire prepared
+   patch and cost an agent its attempt; the retry took the recovery and landed 18 rows.
+4. **THE 46 GETTER ROWS ARE NOT NEW WORK** (see §63.40): they were implemented all along, and the instrument
+   could not see it. A ledger jump is not a delivery figure until it is read.
+
+## §63.40 — THE INSTRUMENT LEARNS TWICE, AND BOTH TIMES THE GATE WAS RIGHT (2026-10-01)
+
+**FIRST: A PROPERTY ROW CAN BE ANSWERED BY A GETTER-NAMED ACCESSOR.** Apple *documents* a boolean property as
+`finished` while the class *declares* `@property (getter=isFinished)`, so the selector that exists is `isFinished`
+— and a test looking for a selector NAMED `finished` can never find it. That is not a family problem: it is an
+**instrument rule**, and it was holding **46 property rows across ~20 classes** at `open` while their doors
+shipped (NSOperation, NSProgress, NSThread, NSHTTPCookie, NSUserNotification, NSUndoManager, NSTimer, NSPort,
+NSConnection, NSScanner, NSUnarchiver, NSString, NSFileWrapper, NSTask, NSTimeZone, NSBundle, NSFileVersion,
+NSMorphology, NSXMLDocument, the formatters). It was found by an NSProgress agent that **replayed the sweep's own
+test over a header it had just edited**, and repaired on the user's decision — *"the instrument learns"* — in
+**both** places that need it: the status WRITER (`selectors_status`) and the consistency CHECKER. Teaching only
+the checker makes `--check` demand a flip the refresh never performs; teaching only the writer silences the
+complaint without a record. `--refresh` → `--check` then reported **ZERO inconsistencies for the first time**. The
+convention is Apple's own — `is` + the property's name with its first letter upper-cased — and it **cannot
+flatter a row**: the only way to match is for the tree to DECLARE that accessor.
+
+**SECOND: THE PARAMETERIZATION COMPARISON IS AN EQUALITY, AND THE HEADER WAS WHAT HAD TO CHANGE.** §63.39's two
+new NSDictionary URL doors copied the class's pair (`NSDictionary<KeyType, ObjectType>`) — a **REAL deviation**,
+which the user's rule (*"any deviation from how apple parameterizes classes and methods is unacceptable"*) caught.
+Apple's header, read from the SDK the sweep itself fetches (`tools/foundation-sweep.py:932`), declares
+**`NSDictionary<NSString *, ObjectType>`**: KeyType is **replaced by the concrete `NSString *`**, because a plist
+read from a URL always has string keys, while the value parameter stays ObjectType. **TWO REPAIRS OF MINE WERE
+WRONG BEFORE THE RIGHT ONE:** the first annotated the doors with the single parameter the tool's per-METHOD list
+shows — which does not compile — and the second made the checker compare **SUBSETS**, which would have *licensed*
+the very deviation, because `KeyType` would simply never be looked for. Both are reverted. The general question is
+settled by measurement, and the measurements now live in the code: **a method cannot introduce a type parameter**
+(`error: expected a type`), a **category**'s `<U>` parses as a protocol list (`cannot find protocol declaration for
+'U'`), and a **subset** of the class's own parameters is not writable (`too few type arguments … have 1, expected
+2`). Lightweight generics are **class-scoped** in Objective-C. The tool's per-method list records the parameter
+NAMES a declaration *uses*; the declaration itself must spell the WHOLE list, concretely where Apple fixed one.
+
+**AND THE METHOD THAT BROKE THE DEADLOCK IS THE CAMPAIGN'S OWN, TURNED ON ITSELF: READ THE SOURCE.** The standing
+grant permits reading Apple's public headers for compatibility, and the sweep already fetches one. An instrument
+finding is not a header fix, and a header change is not an instrument fix — decide which side is wrong by
+**measuring**, never by reasoning about what a compiler "must" do.
+
+**VERIFICATION.** `make testimg` + the four family cases in the guest; library **ZERO DIAGNOSTICS** on a rebuild;
+`--unimplemented` **0 NEW**; `--refresh` → `--check` **consistent** (the first green of that pair); image builds.
+Commits: `8ffbee7a` (NSString), `18516afd` + `bdc10da7` (NSNumberFormatter), `46f775b6` (NSDictionary),
+`04863d0b` (NSProgress), `f1d3f61b` (the instrument). ⚠ **AND ONE COMMIT LANDED EARLY:** `18516afd` was committed
+with a failing guest case, for the reason in §63.39 lesson 1; `bdc10da7` is its correction, and the pair is the
+only place in this campaign where a case was known-red at commit time.
+
 ## §63.34–§63.38 — THE CAMPAIGN'S SECOND WAVE: FIVE MORE FAMILIES, 173 ROWS, AND THE WALL BETWEEN THE LIBRARIES (2026-09-30)
 
 **WHAT LANDED.** Five more families went to agents: **NSBundle 36, NSFileManager 27, NSCalendar 46, NSLocale 37,
