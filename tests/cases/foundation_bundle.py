@@ -27,6 +27,8 @@ format exists in the image.
   * `localized-string-over-explicit-localizations`  — the explicit-localization string door, hit and fallback;
   * `preferred-localizations-match-preferences`     — a match, and the unchanged no-match answer;
   * `development-localization-and-localized-info`   — CFBundleDevelopmentRegion and localizedInfoDictionary;
+  * `bundle-finds-image-and-sound-resources-by-name` — pathForImageResource:/URLForImageResource:/pathForSoundResource:, extension optional;
+  * `bundle-executable-architectures-from-the-elf-header` — executableArchitectures reads e_machine; a non-ELF answers nil;
   * `class-lookup-and-bundle-for-class`             — classNamed: and bundleForClass:;
   * `loading-doors-report-their-error`              — loadAndReturnError:/preflightAndReturnError: and NSError.
 """
@@ -45,6 +47,8 @@ CHECKS = ("bundle-rejects-a-directory-with-no-manifest", "bundle-accepts-both-la
           "auxiliary-executable-path-and-url", "class-resource-door-searches-the-main-bundle",
           "localization-aware-resource-lookup", "localized-string-over-explicit-localizations",
           "preferred-localizations-match-preferences", "development-localization-and-localized-info",
+          "bundle-finds-image-and-sound-resources-by-name",
+          "bundle-executable-architectures-from-the-elf-header",
           "bundle-load-refuses-a-payload-that-is-not-code", "bundle-load-brings-in-real-code",
           "bundle-principal-class-comes-from-the-manifest", "bundle-loaded-class-is-usable",
           "class-lookup-and-bundle-for-class", "bundle-load-posts-its-notification-with-the-classes",

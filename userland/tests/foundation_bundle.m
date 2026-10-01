@@ -137,6 +137,12 @@ static void fn_build_fixtures(void)
 	/* TWO STRING TABLES for the explicit-localization string door: one inside en.lproj, one at the root. */
 	snprintf(path, sizeof path, "%s/BundleFixture.app/Contents/Resources/en.lproj/T.strings", FN_ROOT); fn_write(path, FN_EN_TABLE);
 	snprintf(path, sizeof path, "%s/BundleFixture.app/Contents/Resources/T.strings", FN_ROOT); fn_write(path, FN_FLAT_TABLE);
+	/* THE IMAGE AND SOUND RESOURCES the name-with-optional-extension doors look for: a .png asked for by its
+	 * STEM ("pic"), a .png asked for by its FULL NAME ("logo.png"), and a .wav. The CONTENT is irrelevant --
+	 * the doors answer PATHS, not decoded images -- so a tiny placeholder stands in for the bytes. */
+	snprintf(path, sizeof path, "%s/BundleFixture.app/Contents/Resources/pic.png", FN_ROOT); fn_write(path, "png bytes\n");
+	snprintf(path, sizeof path, "%s/BundleFixture.app/Contents/Resources/logo.png", FN_ROOT); fn_write(path, "png bytes\n");
+	snprintf(path, sizeof path, "%s/BundleFixture.app/Contents/Resources/beep.wav", FN_ROOT); fn_write(path, "wav bytes\n");
 	/* A BUNDLE WHOSE EXECUTABLE IS ABSENT: the error-reporting loading doors must fail and say why. */
 	snprintf(path, sizeof path, "%s/MissingExe.app", FN_ROOT); fn_mkdirs(path);
 	snprintf(path, sizeof path, "%s/MissingExe.app/Info.plist", FN_ROOT); fn_write(path, FN_MISSING_PLIST);
@@ -336,6 +342,42 @@ int main(void)
 	      [[[contents localizedInfoDictionary] objectForKey:@"CFBundleName"] isEqualToString:@"Bundle Fixture"] &&
 	      [[contents preferredLocalizations] count] >= 1,
 	      "1 development region, 1 manifest value, and >=1 preferred localization");
+
+	{
+		/* THE IMAGE AND SOUND DOORS. The name's extension is OPTIONAL: "pic" finds pic.png (the extension is
+		 * appended), and "logo.png" finds itself (the literal name wins). A miss is nil. The URL door mirrors
+		 * the path door, the way every other URL door in this file does. */
+		NSString *byStem = [contents pathForImageResource:@"pic"];
+		NSString *byFullName = [contents pathForImageResource:@"logo.png"];
+		NSString *sound = [contents pathForSoundResource:@"beep"];
+		NSURL *imageURL = [contents URLForImageResource:@"pic"];
+
+		check("bundle-finds-image-and-sound-resources-by-name",
+		      byStem != nil && [byStem hasSuffix:@"Resources/pic.png"] &&
+		      byFullName != nil && [byFullName hasSuffix:@"Resources/logo.png"] &&
+		      sound != nil && [sound hasSuffix:@"Resources/beep.wav"] &&
+		      [contents pathForImageResource:@"no-such-image"] == nil &&
+		      [[imageURL path] isEqualToString:byStem],
+		      "2 of 3 image lookups hit (stem pic.png, full name logo.png), 1 sound (beep.wav), 1 miss nil, "
+		      "and 1 URL == its path");
+	}
+
+	{
+		/* THE EXECUTABLE'S ARCHITECTURE, read from the ELF header of the bundle's executable. The Contents
+		 * bundle's executable is a REAL shared object (an x86-64 ELF, whose e_machine is EM_X86_64 == 62),
+		 * so it answers exactly one code; the flat bundle's executable is a TEXT file, so it is not an ELF and
+		 * answers nil -- Apple's "no Mach-O executable" case. */
+		NSArray *arch = [contents executableArchitectures];
+		NSArray *flatArch = [flat executableArchitectures];
+
+		check("bundle-executable-architectures-from-the-elf-header",
+		      arch != nil && [arch count] == 1 &&
+		      [[arch objectAtIndex:0] isKindOfClass:[NSNumber class]] &&
+		      [(NSNumber *)[arch objectAtIndex:0] intValue] == NSBundleExecutableArchitectureX86_64 &&
+		      flatArch == nil,
+		      "1 architecture code read from the payload's ELF header (EM_X86_64), and the text-file "
+		      "executable answers nil (0 codes)");
+	}
 
 	/* THE CODE-LOADING HALF, HONESTLY: the fixture's payload is a TEXT FILE, so dlopen must FAIL - and the
 	 * check requires exactly that, plus that a bundle which was never loaded reports so and that asking for a

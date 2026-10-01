@@ -31,6 +31,7 @@
 #import <Foundation/NSError.h>
 #import <Foundation/NSURL.h>
 #import <Foundation/NSLocale.h>
+#import <Foundation/NSNumber.h>
 #include <objc/runtime.h>
 #include <dlfcn.h>
 #include <stdlib.h>
@@ -520,6 +521,65 @@ static NSArray *fn_urls_for_paths(NSArray *paths)
 						       forLocalization:localization]);
 }
 
+/* ---- THE IMAGE AND SOUND RESOURCE DOORS -------------------------------------------------------------
+ *
+ * THE TYPE SETS ARE THIS LIBRARY'S, and they have to be: Apple's -pathForImageResource: answers files
+ * "recognized by the NSImage class" and -pathForSoundResource: files "recognized by the NSSound class", and
+ * THIS LIBRARY HAS NEITHER CLASS to ask. The lists below stand in for that test, named here so the choice is
+ * visible rather than buried. THE LOOKUP ITSELF FOLLOWS THE SYSTEM: the bundle's OWN resource directory (the
+ * same one every other resource door uses), so a hit obeys THIS tree's layout. */
+static NSArray *fn_image_resource_extensions(void)
+{
+	return [NSArray arrayWithObjects:@"tiff", @"tif", @"jpg", @"jpeg", @"gif", @"png", @"bmp",
+					 @"ico", @"pict", @"pct", @"pdf", @"eps", @"xbm", @"heic", nil];
+}
+
+static NSArray *fn_sound_resource_extensions(void)
+{
+	return [NSArray arrayWithObjects:@"aiff", @"aif", @"aifc", @"au", @"snd", @"wav", @"wave",
+					 @"caf", @"mp3", @"m4a", @"aac", @"adts", @"flac", nil];
+}
+
+/* THE LOOKUP the two doors share. The name is tried AS GIVEN first (its extension is optional, and when one is
+ * present the literal file wins), then as name.<ext> for each extension in the set -- so both "logo.png" and
+ * "logo" find Resources/logo.png, while "logo" alone would not find a .png without this step. */
+static NSString *fn_find_named_resource(NSBundle *bundle, NSString *name, NSArray *extensions)
+{
+	NSString *dir = [bundle resourcePath];
+	NSString *found;
+	NSUInteger i;
+
+	if (dir == nil || name == nil || [name length] == 0) {
+		return nil;
+	}
+	found = fn_find_in_dir(dir, name, nil, nil);
+	if (found != nil) {
+		return found;
+	}
+	for (i = 0; i < [extensions count]; i++) {
+		found = fn_find_in_dir(dir, name, [extensions objectAtIndex:i], nil);
+		if (found != nil) {
+			return found;
+		}
+	}
+	return nil;
+}
+
+- (NSString * _Nullable)pathForImageResource:(NSString *)name
+{
+	return fn_find_named_resource(self, name, fn_image_resource_extensions());
+}
+
+- (NSURL * _Nullable)URLForImageResource:(NSString *)name
+{
+	return fn_url_for_path([self pathForImageResource:name]);
+}
+
+- (NSString * _Nullable)pathForSoundResource:(NSString *)name
+{
+	return fn_find_named_resource(self, name, fn_sound_resource_extensions());
+}
+
 /* The two CLASS doors that search the MAIN bundle (Apple's contract), and the two that search a bundle named
  * by URL. The URL doors read the URL's path as a bundle and answer nil for one that is not -- WITHOUT creating
  * an NSBundle, so +allBundles is not grown by a lookup. */
@@ -928,6 +988,52 @@ static NSArray *fn_urls_for_paths(NSArray *paths)
 	}
 	_handle = NULL;
 	return YES;
+}
+
+/* THE EXECUTABLE'S ARCHITECTURE. Apple scans a Mach-O executable's headers and answers each cputype it finds;
+ * THIS SYSTEM'S EXECUTABLES ARE ELF, so this reads the ELF header instead -- 0x7f "ELF", then e_machine at
+ * offset 18 in the byte order e_ident[EI_DATA] names -- and maps the ELF machine onto the codes the header
+ * declares. A bundle whose executable is absent, unreadable, not ELF, or an ELF machine this library has no
+ * code for answers nil: that is Apple's "no Mach-O executable" case, answered the way THIS format says it. The
+ * ANSWERED values are THIS LIBRARY'S enum values (NSBundle.h says the values are ours), so a caller comparing
+ * against a header maps an ELF e_machine the same way rather than against a Mach-O cputype. */
+- (NSArray * _Nullable)executableArchitectures
+{
+	NSString *path = [self executablePath];
+	NSData *data;
+	const unsigned char *bytes;
+	unsigned short machine;
+	int code = 0;
+
+	if (path == nil) {
+		return nil;
+	}
+	data = [NSData dataWithContentsOfFile:path];
+	if (data == nil || [data length] < 20) {
+		return nil;
+	}
+	bytes = [data bytes];
+	if (bytes[0] != 0x7f || bytes[1] != 'E' || bytes[2] != 'L' || bytes[3] != 'F') {
+		return nil;	/* not ELF: no architecture this system can name */
+	}
+	/* e_machine, 2 bytes at offset 18, in e_ident[EI_DATA]'s byte order (1 little, 2 big). */
+	if (bytes[5] == 2) {
+		machine = (unsigned short)((bytes[18] << 8) | bytes[19]);
+	} else {
+		machine = (unsigned short)((bytes[19] << 8) | bytes[18]);
+	}
+	switch (machine) {
+	case 3:		code = NSBundleExecutableArchitectureI386;	break;	/* EM_386 */
+	case 20:	code = NSBundleExecutableArchitecturePPC;	break;	/* EM_PPC */
+	case 21:	code = NSBundleExecutableArchitecturePPC64;	break;	/* EM_PPC64 */
+	case 62:	code = NSBundleExecutableArchitectureX86_64;	break;	/* EM_X86_64 */
+	case 183:	code = NSBundleExecutableArchitectureARM64;	break;	/* EM_AARCH64 */
+	default:	code = 0;					break;
+	}
+	if (code == 0) {
+		return nil;	/* an ELF machine this library has no code for */
+	}
+	return [NSArray arrayWithObject:[NSNumber numberWithInt:code]];
 }
 
 - (void)dealloc

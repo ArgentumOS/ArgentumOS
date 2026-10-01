@@ -3,18 +3,20 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * NSBundle.h — the vocabulary around a bundle whose EXECUTABLE architecture a caller can ask about.
+ * NSBundle.h — a bundle this system defines, and the vocabulary around its executable architecture.
  *
- * THE CLASS IS NOT HERE, AND THE REASON IS SPECIFIC RATHER THAN GENERAL: this system's bundles are AGFS
- * directories with a libconfig manifest (the toolkit and the window manager read them that way), so there is no
- * NSBundle to hang -executableArchitectures off. What ships is the vocabulary a conforming caller compiles
- * against: the five architecture codes and the two notification names.
+ * THE CLASS IS HERE, AND AN EARLIER REVISION OF THIS COMMENT WAS WRONG TO SAY OTHERWISE: it claimed this
+ * system's bundles are "AGFS directories with a libconfig manifest ... so there is no NSBundle to hang
+ * -executableArchitectures off." That stopped being true the moment the class below landed; what a bundle IS
+ * is stated at the class (a directory containing an Info.plist, in either layout Apple documents). The five
+ * architecture codes and the two notification names remain part of the vocabulary.
  *
  * AND THE ARCHITECTURE CODES CARRY A WARNING WORTH READING: Apple's five values ARE the Mach-O cputype numbers,
- * because a program compares them against a Mach-O header. THIS SYSTEM'S EXECUTABLES ARE ELF, so a caller that
- * compares one of these against a header it read itself is comparing against nothing - the names are here so the
- * calls compile, the values are ours (§11.6.1 D2), and the comparison they were designed for has no counterpart
- * here. That is stated rather than left to be discovered.
+ * because a program compares them against a Mach-O header. THIS SYSTEM'S EXECUTABLES ARE ELF, so the names are
+ * here with THIS LIBRARY'S values (§11.6.1 D2) rather than Mach-O numbers. But the comparison they were
+ * designed for NO LONGER has "no counterpart here": -executableArchitectures reads the ELF header's e_machine
+ * and answers one of these codes, so a caller maps an ELF header the same way this door does rather than
+ * comparing a Mach-O cputype. That is stated rather than left to be discovered.
  */
 
 #ifndef FOUNDATION_NSBUNDLE_H
@@ -30,8 +32,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/* Five codes, distinct from each other; the 64-bit marker Apple puts in its high word is NOT reproduced, because
- * nothing here reads the headers these would be compared against. */
+/* Five codes, distinct from each other; the 64-bit marker Apple puts in its high word is NOT reproduced, so
+ * these are THIS LIBRARY'S values rather than Mach-O cputype numbers (-executableArchitectures maps an ELF
+ * e_machine onto them, which is the one place a header IS read here). */
 typedef enum {
 	NSBundleExecutableArchitectureI386 = 1,
 	NSBundleExecutableArchitecturePPC = 2,
@@ -41,8 +44,8 @@ typedef enum {
 } NSBundleExecutableArchitecture;
 
 /* The notification a bundle posts when its code loads, and the userInfo key it carries (value == name, this
- * library's convention for these constants - see NSNotification.h). NOTHING IN THIS SYSTEM POSTS IT: there is no
- * NSBundle to load code, so an observer waits forever, which is why the names ship with that said. */
+ * library's convention for these constants - see NSNotification.h). -load POSTS IT: when dlopen brings the
+ * bundle's executable in, the classes it names under NSLoadedClasses arrive with this notification. */
 extern NSNotificationName const NSBundleDidLoadNotification;
 extern NSString *const NSLoadedClasses;
 
@@ -134,6 +137,12 @@ extern NSString *const NSLoadedClasses;
 - (_Nullable Class)principalClass;
 - (BOOL)unload;
 
+/* THE EXECUTABLE'S ARCHITECTURE, read from the file its own format puts it in: Apple scans a Mach-O, this
+ * system's executables are ELF, so the door reads the ELF header's e_machine and answers the matching code.
+ * nil for a bundle whose executable is absent, unreadable, or not an ELF - Apple's "no Mach-O executable"
+ * case, answered the way THIS format says it. */
+- (NSArray * _Nullable)executableArchitectures;
+
 /* ---- CREATING A BUNDLE FROM A CLASS OR A URL ------------------------------------------------------
  *
  * +bundleForClass: is Apple's "the bundle that provided this class". libobjc2 exposes `objc_getClassList`
@@ -218,6 +227,18 @@ extern NSString *const NSLoadedClasses;
 		       subdirectory:(NSString * _Nullable)subpath;
 - (NSArray *)URLsForResourcesWithExtension:(NSString * _Nullable)ext
 			      subdirectory:(NSString * _Nullable)subpath;
+
+/* ---- THE IMAGE AND SOUND RESOURCE DOORS -------------------------------------------------------------
+ *
+ * Apple's -pathForImageResource: and -pathForSoundResource: are -pathForResource:ofType: with the extension
+ * made OPTIONAL and the type drawn from what NSImage / NSSound recognise. THIS LIBRARY HAS NEITHER CLASS, so
+ * the recognised-type sets are THIS LIBRARY'S, named in the implementation so the choice is visible. The
+ * lookup itself is the bundle's own resource directory -- the same one every other resource door uses, so a
+ * hit follows THIS system's layout. The name parameter is Apple's `NSImageName` / `NSSoundName`, both of which
+ * are `typedef`s of NSString, so it is spelled NSString here rather than importing an AppKit typedef. */
+- (NSString * _Nullable)pathForImageResource:(NSString *)name;
+- (NSURL * _Nullable)URLForImageResource:(NSString *)name;
+- (NSString * _Nullable)pathForSoundResource:(NSString *)name;
 
 /* ---- LOCALIZATION INFORMATION, AND A LOCALIZED STRING OVER AN EXPLICIT LIST --------------------------
  *
