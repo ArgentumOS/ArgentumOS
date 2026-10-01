@@ -1163,6 +1163,51 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 
 
 
+/* ---- THE SUPPORTED-TEXT-FORMAT DOORS (2026-10-01, plan §61) ----------------------------------------
+ *
+ * SIX CLASS MEMBERS OVER TWO VOCABULARIES, and the split is the honest part: Apple's LEGACY doors speak in
+ * FILE EXTENSIONS and PASTEBOARD TYPES, its MODERN doors in UTI strings. This system carries no filter
+ * service, so a filtered list equals its UNFILTERED twin and each pair answers ONE shared array. Every list
+ * is built fresh on each call and never handed out live, so a caller that mutates what it got cannot reach a
+ * later caller - the same ownership rule the rest of this class follows. */
++ (NSArray *)textUnfilteredFileTypes
+{
+	/* APPLE'S PUBLISHED DEFAULT EXTENSIONS, listed as what a TEXT CLASS supports rather than what one binary
+	 * happens to implement: RTFD and HTML are named though this slice does not import them. */
+	return [NSArray arrayWithObjects:@"txt", @"rtf", @"rtfd", @"html", nil];
+}
+
++ (NSArray *)textFileTypes
+{
+	/* NO FILTER SERVICE EXISTS HERE, so the filtered list is the unfiltered one (the header records it). */
+	return [self textUnfilteredFileTypes];
+}
+
++ (NSArray *)textUnfilteredPasteboardTypes
+{
+	/* THE PASTEBOARD VOCABULARY IS APPKIT'S, whose type constants have no home in this tree; the strings are
+	 * therefore this library's own spelling of the four types Apple publishes as its defaults. */
+	return [NSArray arrayWithObjects:@"NSHTMLPboardType", @"NSRTFPboardType",
+					 @"NSRTFDPboardType", @"NSStringPboardType", nil];
+}
+
++ (NSArray *)textPasteboardTypes
+{
+	return [self textUnfilteredPasteboardTypes];
+}
+
++ (NSArray *)textUnfilteredTypes
+{
+	/* UTIs, Apple's modern vocabulary: plain text, the two rich formats and HTML. */
+	return [NSArray arrayWithObjects:@"public.plain-text", @"public.rtf", @"com.apple.rtfd",
+					 @"public.html", nil];
+}
+
++ (NSArray *)textTypes
+{
+	return [self textUnfilteredTypes];
+}
+
 /* ---- THE FILE-FORMAT DOORS (W10 slice 4) -----------------------------------------------------------
  *
  * RTF WRITES AND THE REST REFUSE, EACH BY NAME: -RTFFromRange:documentAttributes: is a real RTF writer

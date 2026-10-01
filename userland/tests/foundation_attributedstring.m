@@ -239,6 +239,68 @@ int main(void)
 			[present componentsJoinedByString:@", "]]);
 	}
 
+	/* ---- THE SUPPORTED-TEXT-FORMAT DOORS (2026-10-01, plan §61) ---------------------------------------
+	 *
+	 * SIX CLASS MEMBERS. THE FIRST CHECK MEASURES WHAT IS MEASURABLE: that all six answer, that each answers
+	 * a NON-EMPTY array of strings, that a caller mutating what it got cannot reach a later caller (each call
+	 * builds a fresh array), that the mutable subclass answers them through inheritance, and that - because
+	 * no filter service exists here - each FILTERED list equals its UNFILTERED twin. THE SECOND CHECK PINS
+	 * THE CHOICE: the CONTENTS are this library's own (§11.6.1 D2), so it asserts the values Apple PUBLISHES
+	 * as this group's defaults rather than a measurement of this run. */
+	{
+		NSArray *fileTypes = [NSAttributedString textFileTypes];
+		NSArray *unfilteredFileTypes = [NSAttributedString textUnfilteredFileTypes];
+		NSArray *pasteTypes = [NSAttributedString textPasteboardTypes];
+		NSArray *unfilteredPasteTypes = [NSAttributedString textUnfilteredPasteboardTypes];
+		NSArray *types = [NSAttributedString textTypes];
+		NSArray *unfilteredTypes = [NSAttributedString textUnfilteredTypes];
+		NSArray *six = [NSArray arrayWithObjects:fileTypes, unfilteredFileTypes, pasteTypes,
+				 unfilteredPasteTypes, types, unfilteredTypes, nil];
+		NSMutableArray *bad = [NSMutableArray array];
+		NSUInteger j, k;
+
+		for (j = 0; j < [six count]; j++) {
+			NSArray *arr = [six objectAtIndex:j];
+
+			if ([arr count] == 0) {
+				[bad addObject:@"an empty list"];
+			}
+			for (k = 0; k < [arr count]; k++) {
+				if (![[arr objectAtIndex:k] isKindOfClass:[NSString class]]) {
+					[bad addObject:@"a non-string element"];
+				}
+			}
+		}
+		/* NO FILTER SERVICE EXISTS HERE, so a filtered list is its unfiltered twin (the header records why). */
+		if (![fileTypes isEqualToArray:unfilteredFileTypes]) {
+			[bad addObject:@"file types filtered!=unfiltered"];
+		}
+		if (![pasteTypes isEqualToArray:unfilteredPasteTypes]) {
+			[bad addObject:@"pasteboard filtered!=unfiltered"];
+		}
+		if (![types isEqualToArray:unfilteredTypes]) {
+			[bad addObject:@"UTI filtered!=unfiltered"];
+		}
+		/* THE MUTABLE SUBCLASS ANSWERS THEM THROUGH INHERITANCE, as Apple's does. */
+		if (![[NSMutableAttributedString textTypes] isEqualToArray:types]) {
+			[bad addObject:@"subclass does not inherit"];
+		}
+		/* A FRESH ARRAY EACH CALL: this is the ownership rule, measured by identity. */
+		if ([NSAttributedString textFileTypes] == fileTypes) {
+			[bad addObject:@"the same array was handed out twice"];
+		}
+		check("the-supported-text-format-doors-answer-their-vocabularies", [bad count] == 0,
+		      [NSString stringWithFormat:@"bad: %@", [bad componentsJoinedByString:@", "]]);
+
+		/* REASONED, NOT MEASURED: these four strings are the extensions Apple PUBLISHES as this group's
+		 * default file types, which this library adopts; the measurement happened in the check above, so if
+		 * this one disagrees the ARRAY this library chose (§11.6.1 D2) is what to read, not a number. */
+		check("the-format-doors-list-the-published-file-types",
+		      [unfilteredFileTypes containsObject:@"txt"] && [unfilteredFileTypes containsObject:@"rtf"] &&
+		      [unfilteredFileTypes containsObject:@"rtfd"] && [unfilteredFileTypes containsObject:@"html"],
+		      [NSString stringWithFormat:@"file types: %@", unfilteredFileTypes]);
+	}
+
 	/* ---- THE STRING, IN UTF-16 UNITS ----------------------------------------------------------------- */
 	{
 		NSAttributedString *plain = [[NSAttributedString alloc] initWithString:@"hello"];

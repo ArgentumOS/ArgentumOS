@@ -68,7 +68,12 @@ CHECKS = ("morphology-vocabulary-is-distinct-and-carried",
           "line-break-before-index-answers-the-enclosing-lines-start",
           "url-at-index-answers-the-url-that-covers-it",
           "the-html-siblings-refuse-through-their-handler",
-          "the-markdown-file-door-takes-a-base-url")
+          "the-markdown-file-door-takes-a-base-url",
+          # 2026-10-01: the "Getting the supported text-file formats" group's six implementable members
+          # (the four deprecated class methods and the two modern class properties); -prefersRTFDInRange:
+          # stays absent (it asks about attachments, which have no class here).
+          "the-supported-text-format-doors-answer-their-vocabularies",
+          "the-format-doors-list-the-published-file-types")
 
 
 class Case(BaseCase):

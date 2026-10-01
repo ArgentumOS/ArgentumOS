@@ -307,6 +307,27 @@ typedef enum {
  * empty range otherwise. */
 - (nullable NSURL *)URLAtIndex:(NSUInteger)index effectiveRange:(nullable NSRangePointer)effectiveRange;
 
+/* ---- THE SUPPORTED-TEXT-FORMAT DOORS (2026-10-01, plan §61) ----------------------------------------
+ *
+ * THE ONE GROUP OF THIS CLASS'S OPEN LEDGER ROWS THAT NEEDS NEITHER A DRAWING LAYER NOR A TYPE THIS SYSTEM
+ * LACKS. Apple's "Getting the supported text-file formats" group holds SEVEN members; SIX ship here and the
+ * seventh, -prefersRTFDInRange:, stays ABSENT because it answers a question about ATTACHMENTS, which have no
+ * class in this tree. The two modern members are CLASS PROPERTIES - Apple's role is "Type Property"
+ * (`class var … { get }`) and its header spells them `(cpy)` - and the four legacy members are CLASS METHODS
+ * Apple deprecated in 10.5; BOTH SHAPES ARE REPRODUCED EXACTLY (§11.0, the surface rule).
+ *
+ * THE VALUES ARE THIS LIBRARY'S, as §11.6.1 D2 records for every constant surface: Apple PUBLISHES the
+ * legacy doors' defaults ("txt", "rtf", "rtfd", "html" and the four pasteboard types) and the modern doors'
+ * INTENT (UTI strings), and this system carries no user-installed filter service, so a FILTERED list is its
+ * UNFILTERED twin and each answers the vocabulary recorded in the .m rather than another platform's. All six
+ * are CLASS members, so the mutable subclass answers them through inheritance, exactly as Apple's do. */
++ (NSArray *)textFileTypes;			/* DEPRECATED 10.5 */
++ (NSArray *)textUnfilteredFileTypes;		/* DEPRECATED 10.5 */
++ (NSArray *)textPasteboardTypes;		/* DEPRECATED 10.5 */
++ (NSArray *)textUnfilteredPasteboardTypes;	/* DEPRECATED 10.5 */
+@property (class, readonly, copy) NSArray *textTypes;
+@property (class, readonly, copy) NSArray *textUnfilteredTypes;
+
 @end
 
 /* ---- THE MARKDOWN FILE DOOR, IN APPLE'S FOUR-ARGUMENT SPELLING (2026-09-30) -------------------------
