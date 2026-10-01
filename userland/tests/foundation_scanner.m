@@ -82,7 +82,7 @@ int main(void)
 		      [[made string] isEqualToString:text] &&
 		      [[initialized string] isEqualToString:text] &&
 		      [made scanLocation] == 0 && [made caseSensitive] &&
-		      [skip isEqualToCharacterSet:whitespace] &&
+		      [skip isEqual:whitespace] &&
 			![made isAtEnd] && [empty isAtEnd],
 		      [[NSString stringWithFormat:@"string=%@ location=%lu caseSensitive=%d atEnd=%d emptyAtEnd=%d",
 			[made string], (unsigned long)[made scanLocation], (int)[made caseSensitive],

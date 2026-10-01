@@ -67,10 +67,11 @@ NS_ASSUME_NONNULL_BEGIN
  *
  *     -characterIsMember:      -bitmapRepresentation
  *
- * -isSupersetOfSet: (and therefore -isEqualToCharacterSet: and -isEqual:) and -hash are over those two, so a
- * class answering them is a character set as far as this family is concerned. THE RANGE STORAGE IS NOT: the
- * mutators of NSMutableCharacterSet and the constructions (-invertedSet, -mutableCopy, the +characterSet...)
- * ARE this implementation's storage, exactly as the array family's mutable class is.
+ * -isSupersetOfSet: (and therefore -isEqual:, which is written over it in both directions) and -hash are over
+ * those two, so a class answering them is a character set as far as this family is concerned. THE RANGE
+ * STORAGE IS NOT: the mutators of NSMutableCharacterSet and the constructions (-invertedSet, -mutableCopy, the
+ * +characterSetWith... family) ARE this implementation's storage, exactly as the array family's mutable class
+ * is.
  *
  * AND -bitmapRepresentation IS THE RIGHT PRIMITIVE FOR THE SET-LEVEL QUESTIONS rather than a convenience: a
  * superset test and equality are member-wise questions, and a member predicate alone cannot answer them without
@@ -131,7 +132,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)characterIsMember:(unichar)character;
 - (NSCharacterSet *)invertedSet;
 - (BOOL)isSupersetOfSet:(NSCharacterSet *)other;
-- (BOOL)isEqualToCharacterSet:(NSCharacterSet *)other;
+/* ⚠ `-isEqualToCharacterSet:` WAS DECLARED HERE AND IS GONE (§63.58, user decision dec-d2dfbe0c080f14c2).
+ * A near-neighbour grep settled it before any code moved: the corpus's `NSCharacterSet.h` declares
+ * `-isSupersetOfSet:` and no `-isEqualToCharacterSet:`, and the family test says the same thing — Apple answers
+ * set equality with `-isEqual:`, which is INHERITED and which this class already implements over the two
+ * superset tests. WHAT MADE THIS ONE EASY AND WORTH RECORDING: the probe had been asserting the two AGREE
+ * (`[digits isEqualToCharacterSet:x] && [digits isEqual:x]`), so the door was already known to be redundant in
+ * the tree's own tests — a check that says "these two doors answer the same thing" is a check that one of them
+ * does not need to exist. */
 
 
 /* FIVE MORE (D7's kind (D), the table group's non-table half). The class stores a BMP range list, so
@@ -148,7 +156,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface NSMutableCharacterSet : NSCharacterSet
 
-+ (NSMutableCharacterSet *)characterSet;
+/* ⚠ `+ (NSMutableCharacterSet *)characterSet` WAS DECLARED HERE AND IS GONE (§63.58, user decision
+ * dec-d2dfbe0c080f14c2). Its whole body was `return [[self alloc] init];` — a shorthand, not a door — and
+ * Apple's macOS headers declare no bare `characterSet` in either class (measured: the corpus's
+ * `NSCharacterSet.h` offers the `characterSetWith…` family and nothing bare, and `+characterSet` is exactly the
+ * kind of name a near-neighbour grep would have wrongly ACCEPTED, since `characterSet` appears eight times
+ * there as a substring — the audit is right to ask the corpus for the SELECTOR, which is why `\\b` cannot be
+ * used to answer it). Callers write `[[NSMutableCharacterSet alloc] init]`, which is what the body did. */
 
 - (void)addCharactersInString:(NSString *)string;
 - (void)addCharactersInRange:(NSRange)range;

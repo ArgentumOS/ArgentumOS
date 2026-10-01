@@ -15979,6 +15979,51 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.58 — TWO CONVENIENCE SPELLINGS LEAVE, AND ONE OF THEM WAS IN A PROBE'S INVENTORY LIST (2026-10-01)
+
+**WHAT LANDED (user decision `dec-d2dfbe0c080f14c2`, "delete outright and rewrite every caller"): `NSCharacterSet`'s
+`-isEqualToCharacterSet:` and `NSMutableCharacterSet`'s `+characterSet` are gone.** The first had a body worth
+keeping — `-isSupersetOfSet:` in both directions — so it moved INTO `-isEqual:`, where the receiver's own
+comparison belongs; the second's whole body was `return [[self alloc] init];`, a shorthand, and every former
+caller now writes that. **MEASURED: `rm -rf .build/host/obj && make host-foundation` exit 0 with ZERO errors and
+ZERO new warnings; `make foundation-sweep` exit 0 and `--check` consistent; `--unimplemented` 0 NEW; `make
+testimg` exit 0 and guest cases `foundation_clusters` + `foundation_scanner` + `foundation_string` 3/3 with 29/29
+checks (the string probe's own tally 155/155).** The ledger is unmoved — neither name was ever Apple's, so no
+row changed — which is the quiet shape of a deletion that removes an EXTRA rather than a shipment.
+
+**⚠⚠ THE TRAP, AND IT IS A NEW ONE: A DELETION ALSO BREAKS THE PROBE'S OWN *INVENTORY LIST*, WHICH IS DATA
+ABOUT THE SURFACE RATHER THAN A CALL SITE.** `foundation_string.m` holds a literal, audited list of the Cocoa
+selectors each class must answer (`classSelectors` / `mutableClassSelectors` / `instanceSelectors`) and asserts
+`respondsToSelector:` over it. The first run after the deletion failed exactly there — **`characterset-api-complete`,
+154 of 155** — because `+characterSet` was still IN that array. **A GREP FOR CALL SITES DOES NOT FIND IT: the
+array is a string literal, so there is no `[…]` send to match.** The rule this adds to §63.54's and §63.57's
+selector-reference traps: **when a door leaves the surface, three places must be swept — its declarations and
+bodies, its CALL SITES, and the probes' INVENTORY LISTS.** The empty array was kept (with the reason) rather
+than deleted, so the audit line still names the class it covered.
+
+**AND ONE OF THE TWO WAS ALREADY KNOWN TO BE REDUNDANT BY THIS TREE'S OWN TESTS, WHICH IS THE CLEANEST SIGNAL
+THIS CAMPAIGN HAS FOUND: the probe had been asserting `[digits isEqualToCharacterSet:x] && [digits isEqual:x]`
+— THAT TWO DOORS ANSWER THE SAME THING — which is a check that one of them does not need to exist.** A test
+whose claim is "these agree" is a redundancy report that nobody had read as one; the same shape appears in
+`nscharacterset-equal-sets-hash-equal` and in the round-trip check, so three assertions pointed at it at once.
+
+**⚠ AND `+characterSet` SHOWS THE NEAR-NEIGHBOUR TEST'S LIMIT, IN THE OTHER DIRECTION FROM §63.56's ERROR:** it
+is exactly the name a `\b`-anchored grep would WRONGLY ACCEPT, because `characterSet` occurs EIGHT times in the
+corpus's `NSCharacterSet.h` as a substring of `characterSetWithRange` and its siblings. **So the audit must ask
+the corpus for the SELECTOR, not for the word** — a lesson this session has now paid for twice, once in each
+direction.
+
+**WHAT SLICE A STILL OWES, and why the two left are NOT the same kind of thing as the two that just went:**
+ * `NSString -characterCount` is the workaround for THIS LIBRARY'S OWN DEVIATION — `-length` counts BYTES here,
+   where Apple's counts UTF-16 units — so deleting it removes the only character-count accessor and its
+   ten-odd probe assertions have to be rewritten onto a byte count. It is a deletion that touches the
+   deviation, not merely a spelling.
+ * `NSMutableString -appendUTF8String:` is a house PRIMITIVE, not a door: eleven call sites inside `NSString.m`
+   alone, including the format engine, plus `NSIndexPath.m` and `NSData.m`. Deleting it means rewriting those
+   onto `-appendString:` plus a conversion, i.e. changing how this library BUILDS strings.
+ * **BOTH ARE STILL GOVERNED BY THE SAME DECISION AND WILL GO; the note is here so the next unit does not
+   mistake either for a two-line deletion like this one.**
+
 ## §63.57 — THE THREE iOS-ONLY SHAPES LEAVE, AND THE RESIDUE LEARNS A FOURTH CLASSIFICATION (2026-10-01)
 
 **WHAT LANDED, ON THE USER'S DECISION `dec-d2dfbe0c080f14c2` ("delete them — the macOS surface is the target, so

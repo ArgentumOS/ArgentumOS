@@ -723,11 +723,17 @@ int main(void)
 NULL
 		};
 		static const char *mutableClassSelectors[] = {
-			"characterSet", NULL
+			/* §63.58: `characterSet` was listed here and is GONE — it was this tree's shorthand for
+			 * `[[NSMutableCharacterSet alloc] init]` and Apple declares no bare `characterSet` on either
+			 * class. The list is now EMPTY and that is the honest statement: the public mutable subclass adds
+			 * mutators, not class constructors, so there is nothing of its own for the inventory to demand.
+			 * KEPT AS AN EMPTY ARRAY rather than deleted so the audit line below still says which class it
+			 * covered. */
+NULL
 		};
 		static const char *instanceSelectors[] = {
 			"initWithCharactersInString:", "initWithRange:", "characterIsMember:",
-			"invertedSet", "isSupersetOfSet:", "isEqualToCharacterSet:",
+			"invertedSet", "isSupersetOfSet:",
 			"isEqual:", "hash", "description", "copy", "mutableCopy", 			"longCharacterIsMember:", "hasMemberInPlane:", "bitmapRepresentation",
 NULL
 		};

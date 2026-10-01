@@ -236,19 +236,13 @@ static NSString *const kRangesKey = @"NS.ranges";
 	return YES;
 }
 
-- (BOOL)isEqualToCharacterSet:(NSCharacterSet *)other
-{
-	if (other == nil) {
-		return NO;
-	}
-	if (other == self) {
-		return YES;
-	}
-	/* Equal when each is a superset of the other, which is true however the
-	 * ranges were written down. */
-	return [self isSupersetOfSet:other] && [other isSupersetOfSet:self];
-}
-
+/* §63.58: `-isEqualToCharacterSet:` was here and is GONE (user decision dec-d2dfbe0c080f14c2 — delete our own
+ * doors outright and rewrite every caller). It was a convenience: Apple answers set equality with `-isEqual:`,
+ * which this class implements just below, and the probe had already been asserting the two AGREE —
+ * `[digits isEqualToCharacterSet:x] && [digits isEqual:x]` — which is the strongest possible evidence that one
+ * of them was redundant. The body moved INTO `-isEqual:`, where the receiver's own comparison lives, so nothing
+ * is lost: `-isSupersetOfSet:` in both directions is still exactly what makes two differently-written range
+ * lists compare equal. */
 - (BOOL)isEqual:(id)other
 {
 	if (other == self) {
@@ -257,7 +251,8 @@ static NSString *const kRangesKey = @"NS.ranges";
 	if (other == nil || ![other isKindOfClass:[NSCharacterSet class]]) {
 		return NO;
 	}
-	return [self isEqualToCharacterSet:(NSCharacterSet *)other];
+	/* Equal when each is a superset of the other, which is true however the ranges were written down. */
+	return [self isSupersetOfSet:(NSCharacterSet *)other] && [(NSCharacterSet *)other isSupersetOfSet:self];
 }
 
 - (NSUInteger)hash
@@ -743,11 +738,9 @@ static NSMutableCharacterSet *fn_set_by_property(const int *values, unsigned int
 	return [NSMutableCharacterSet class];
 }
 
-+ (NSMutableCharacterSet *)characterSet
-{
-	return [[self alloc] init];
-}
-
+/* §63.58: `+ (NSMutableCharacterSet *)characterSet` was here; its body was `[[self alloc] init]`, which is now
+ * what every former caller writes. Gone on the user's decision (dec-d2dfbe0c080f14c2) because Apple's macOS
+ * headers declare no bare `characterSet` on either class. */
 - (void)addCharactersInString:(NSString *)string
 {
 	size_t i;

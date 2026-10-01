@@ -1471,7 +1471,7 @@ int main(void)
 		NSCharacterSet *digits = [NSCharacterSet characterSetWithCharactersInString:@"0123456789"];
 		NSCharacterSet *digitsByRange = [NSCharacterSet characterSetWithRange:NSMakeRange('0', 10)];
 		NSCharacterSet *decimalDigits = [NSCharacterSet decimalDigitCharacterSet];
-		NSMutableCharacterSet *mutableChars = [NSMutableCharacterSet characterSet];
+		NSMutableCharacterSet *mutableChars = [[NSMutableCharacterSet alloc] init];
 		ProbePrimitiveCharacterSet *handmadeChars = [[ProbePrimitiveCharacterSet alloc] init];
 
 		[mutableChars addCharactersInString:@"a"];
@@ -1483,14 +1483,14 @@ int main(void)
 		      "the front must be named to an archiver while NSMutableCharacterSet - a PUBLIC subclass - names "
 		      "itself");
 		check("nscharacterset-equal-sets-hash-equal",
-		      [digits isEqualToCharacterSet:digitsByRange] && [digits isEqual:digitsByRange] &&
+		      [digits isEqual:digitsByRange] &&
 		      [digits hash] == [digitsByRange hash],
 		      "two sets with the same members ARE equal, and the equality contract therefore requires one hash "
 		      "for both - which hashing the RANGES could not deliver");
 		check("nscharacterset-primitives-drive-supersets-and-equality",
 		      [handmadeChars characterIsMember:'5'] && ! [handmadeChars characterIsMember:'a'] &&
 		      [handmadeChars longCharacterIsMember:0x35] && ! [handmadeChars longCharacterIsMember:0x10005] &&
-		      [handmadeChars isEqualToCharacterSet:digits] && [handmadeChars isEqual:digits] &&
+		      [handmadeChars isEqual:digits] &&
 		      [handmadeChars hash] == [digits hash] &&
 		      [decimalDigits isSupersetOfSet:handmadeChars] &&
 		      ! [handmadeChars isEqual:decimalDigits],
@@ -1520,7 +1520,7 @@ int main(void)
 		NSData *setData = [NSKeyedArchiver archivedDataWithRootObject:set];
 		NSCharacterSet *backSet = setData != nil
 			? [NSKeyedUnarchiver unarchiveObjectWithData:setData] : nil;
-		NSMutableCharacterSet *mutableSet = [NSMutableCharacterSet characterSet];
+		NSMutableCharacterSet *mutableSet = [[NSMutableCharacterSet alloc] init];
 		NSMutableData *oddBuffer = [[NSMutableData alloc] init];
 		NSKeyedArchiver *oddWriter = [[NSKeyedArchiver alloc]
 			initForWritingWithMutableData:oddBuffer];
@@ -1545,7 +1545,7 @@ int main(void)
 		      backSet != nil &&
 		      [backSet characterIsMember:'a'] && [backSet characterIsMember:'z'] &&
 		      ![backSet characterIsMember:'1'] && ![backSet characterIsMember:'A'] &&
-		      [backSet isEqualToCharacterSet:set] && [backSet hash] == [set hash] &&
+		      [backSet isEqual:set] && [backSet hash] == [set hash] &&
 		      mutableBack != nil &&
 		      [mutableBack isKindOfClass:[NSMutableCharacterSet class]] &&
 		      [mutableBack characterIsMember:'x'] &&
