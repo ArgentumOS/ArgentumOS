@@ -21,6 +21,7 @@
 #import <objc/runtime.h>
 #include <string.h>
 #include <stdlib.h>		/* malloc, for the ...Characters: ownership check below */
+#include <stdarg.h>		/* va_list, for the locale-format-arguments case below */
 
 static int okc, failc;
 
@@ -33,6 +34,19 @@ static void check(const char *name, int ok, const char *detail)
 		failc++;
 		printf("FOUNDATION-STRING %s FAIL %s\n", name, detail ? detail : "");
 	}
+}
+
+/* A va_list a caller owns, for -initWithFormat:locale:arguments: — the counterpart of the probe's own
+ * -initWithFormat:arguments: check. */
+static NSString *fn_render_locale_arguments(NSString *format, ...)
+{
+	va_list args;
+	NSString *result;
+
+	va_start(args, format);
+	result = [[NSString alloc] initWithFormat:format locale:nil arguments:args];
+	va_end(args);
+	return result;
 }
 
 int main(void)
@@ -288,6 +302,118 @@ int main(void)
 		      "the audited Cocoa inventory: every implemented selector exists, and nothing listed as excluded does");
 	}
 
+
+	{
+		/*
+		 * ENCODING INTROSPECTION, WHICH IS NOT THE BLOCKED CONVERSION CLUSTER (§63.2): each answer
+		 * below is a fact about THIS library's storage rather than a conversion through a repertoire
+		 * table, and each is asserted with its NUMBER. The two strings are a pure-7-bit one and one
+		 * holding a single UTF-8 high byte (U+00E9), so -smallestEncoding is measured rather than
+		 * guessed for both branches.
+		 */
+		const NSStringEncoding *available = [NSString availableStringEncodings];
+		NSString *ascii = @"plain ascii";
+		NSString *wide = [NSString stringWithUTF8String:"caf\xC3\xA9"];
+
+		check("string-smallest-encoding",
+		      [ascii smallestEncoding] == NSASCIIStringEncoding &&
+		      [wide smallestEncoding] == NSUTF8StringEncoding,
+		      "-smallestEncoding is ASCII (1) for a 7-bit string, UTF-8 (4) once a high byte is present");
+
+		check("string-fastest-encoding",
+		      [ascii fastestEncoding] == NSUTF8StringEncoding &&
+		      [wide fastestEncoding] == NSUTF8StringEncoding,
+		      "-fastestEncoding is the storage, UTF-8 (4), for both");
+
+		check("string-default-cstring-encoding",
+		      [NSString defaultCStringEncoding] == NSUTF8StringEncoding,
+		      "+defaultCStringEncoding is UTF-8 (4), the one honest default C-string encoding here");
+
+		check("string-available-encodings",
+		      available != NULL && available[0] == NSASCIIStringEncoding &&
+		      available[1] == NSUTF8StringEncoding && available[2] == 0,
+		      "+availableStringEncodings is exactly {ASCII(1), UTF-8(4), 0} — the two the storage can represent");
+	}
+
+
+	{
+		/*
+		 * THE FILE/URL CONTENTS DOORS (§63.29's neighbours), EXERCISED AS A ROUND TRIP. The path is
+		 * built from NSTemporaryDirectory() — this tree's own door, NOT a hard-named system path — so
+		 * the write and the read meet the same bytes, and every assertion carries its NUMBER.
+		 */
+		NSString *dir = NSTemporaryDirectory();
+		NSString *path = [dir stringByAppendingPathComponent:@"foundation-string-probe.txt"];
+		NSString *body = @"foundation string file probe";	/* 28 bytes, all ASCII */
+		NSString *readBack, *viaClass, *viaNoEnc, *viaDeprecated;
+		NSError *err = nil;
+		BOOL wrote = [body writeToFile:path atomically:NO encoding:NSUTF8StringEncoding error:&err];
+
+		readBack = [[NSString alloc] initWithContentsOfFile:path encoding:NSUTF8StringEncoding error:NULL];
+		viaClass = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:NULL];
+		viaNoEnc = [[NSString alloc] initWithContentsOfFile:path];	/* the deprecated no-encoding door */
+		viaDeprecated = [NSString stringWithContentsOfFile:path];	/* its class twin */
+
+		check("string-file-contents-doors",
+		      wrote == YES && err == nil &&
+		      [readBack isEqualToString:body] &&
+		      [readBack lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 28 &&
+		      [viaClass isEqualToString:body] && [viaNoEnc isEqualToString:body] &&
+		      [viaDeprecated isEqualToString:body],
+		      "writeToFile:atomically:encoding:error: writes 28 bytes and all four file read doors round-trip them");
+
+		NSURL *url = [NSURL fileURLWithPath:path];
+		NSString *body2 = @"url round trip 9";		/* 16 bytes, all ASCII */
+		NSStringEncoding used = 0;
+		NSString *urlRead, *urlUsed, *urlDeprecated;
+
+		err = nil;
+		wrote = [body2 writeToURL:url atomically:NO encoding:NSUTF8StringEncoding error:&err];
+		urlRead = [[NSString alloc] initWithContentsOfURL:url encoding:NSUTF8StringEncoding error:NULL];
+		urlUsed = [[NSString alloc] initWithContentsOfURL:url usedEncoding:&used error:NULL];
+		urlDeprecated = [NSString stringWithContentsOfURL:url];
+
+		check("string-url-contents-doors",
+		      wrote == YES && err == nil &&
+		      [urlRead isEqualToString:body2] &&
+		      [urlRead lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 16 &&
+		      [urlUsed isEqualToString:body2] && used == NSUTF8StringEncoding &&
+		      [urlDeprecated isEqualToString:body2],
+		      "writeToURL:atomically:encoding:error: writes 16 bytes and the URL read doors round-trip them, reporting UTF-8 (4)");
+
+		NSURL *remote = [NSURL URLWithString:@"https://foundation.invalid/probe"];
+		NSError *refused = nil;
+		BOOL encOk = [@"x" writeToURL:remote atomically:NO encoding:NSUTF16StringEncoding error:&refused];
+
+		check("string-write-refuses-unstored-encoding",
+		      encOk == NO && refused != nil &&
+		      [refused code] == 517 && [[refused domain] isEqualToString:@"NSCocoaErrorDomain"],
+		      "-writeToURL:…:encoding:…: answers NO with NSCocoaErrorDomain 517 for the unstored UTF-16 encoding (114)");
+	}
+
+
+	{
+		/*
+		 * THE LOCALE-TAKING FORMAT DOORS (§63.27's neighbours). The locale is IGNORED — a locale is
+		 * honoured for CASE only in this library — so each answer is the locale-free one, and every
+		 * assertion carries its NUMBER: -length in UTF-16 units.
+		 */
+		NSString *loc = [[NSString alloc] initWithFormat:@"%d-%@" locale:nil, 7, @"x"];
+		NSString *viaList = fn_render_locale_arguments(@"%d+%d", 2, 3);
+		NSString *localized = [NSString localizedStringWithFormat:@"%d items", 5];
+
+		check("string-init-format-locale",
+		      [loc isEqualToString:@"7-x"] && [loc length] == 3,
+		      "-initWithFormat:locale: renders \"%d-%@\" with 7 and \"x\" as \"7-x\" (3 units)");
+
+		check("string-init-format-locale-arguments",
+		      [viaList isEqualToString:@"2+3"] && [viaList length] == 3,
+		      "-initWithFormat:locale:arguments: renders \"%d+%d\" with 2 and 3 as \"2+3\" (3 units)");
+
+		check("string-localized-string-with-format",
+		      [localized isEqualToString:@"5 items"] && [localized length] == 7,
+		      "+localizedStringWithFormat: renders \"%d items\" with 5 as \"5 items\" (7 units)");
+	}
 
 	{
 		/* The format engine: conversions, width/precision, and Cocoa's (null). */
@@ -1452,9 +1578,10 @@ NULL
 
 		{
 			int caughtInvalid = 0, caughtRange = 0;
+			NSCharacterSet *noSet = nil;	/* a VARIABLE null: -Wnonnull only fires on a null constant */
 
 			@try {
-				[s rangeOfCharacterFromSet:nil];
+				[s rangeOfCharacterFromSet:noSet];
 			} @catch (NSException *exception) {
 				caughtInvalid = [exception.name isEqualToString:NSInvalidArgumentException];
 			}
@@ -1496,7 +1623,8 @@ NULL
 			      [prefix length] == 0,
 			      "nothing in common is an empty prefix, not nil");
 
-			prefix = [@"abc" commonPrefixWithString:nil options:0];
+			NSString *noString = nil;	/* a VARIABLE null, so no -Wnonnull constant */
+			prefix = [@"abc" commonPrefixWithString:noString options:0];
 			check("common-prefix-nil-argument-is-empty",
 			      prefix != nil && [prefix length] == 0,
 			      "a nil argument has nothing in common, and the door still answers a string");
@@ -1811,7 +1939,8 @@ NULL
 		NSString *ascii = [NSString stringWithCString:"plain ASCII" encoding:NSASCIIStringEncoding];
 		NSString *utf8BytesAsASCII = [NSString stringWithCString:"caf\xc3\xa9" encoding:NSASCIIStringEncoding];
 		NSString *unstored = [NSString stringWithCString:"caf\xe9" encoding:NSISOLatin1StringEncoding];
-		NSString *nul = [NSString stringWithCString:NULL encoding:NSUTF8StringEncoding];
+		const char *noBytes = NULL;	/* a VARIABLE null, so no -Wnonnull constant */
+		NSString *nul = [NSString stringWithCString:noBytes encoding:NSUTF8StringEncoding];
 
 		check("cstring-with-encoding-refuses-what-it-cannot-store",
 		      utf8 != nil && [utf8 isEqualToString:@"plain ASCII"] &&

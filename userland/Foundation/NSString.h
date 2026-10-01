@@ -245,6 +245,16 @@ typedef enum {
 - (id)initWithFormat:(NSString *)format arguments:(va_list)arguments;
 - (nullable id)initWithData:(NSData *)data encoding:(NSStringEncoding)encoding;
 
+/* THE LOCALE-TAKING FORMAT DOORS (§63.27's neighbours). A locale is HONOURED FOR CASE AND NOTHING ELSE in
+ * this library (the header's own stance at the compare:…locale: block), so both doors DELEGATE to the
+ * locale-free -initWithFormat:… above rather than keeping a second rendering rule that could drift — the
+ * locale is accepted and recorded as ignored, not silently threaded into formatting that does not exist.
+ * +localizedStringWithFormat: is Apple's current-locale spelling of +stringWithFormat: and shares it for
+ * the same reason. */
+- (id)initWithFormat:(NSString *)format locale:(nullable id)locale, ...;
+- (id)initWithFormat:(NSString *)format locale:(nullable id)locale arguments:(va_list)argList;
++ (id)localizedStringWithFormat:(NSString *)format, ...;
+
 /* The primitives every concrete subclass implements. */
 - (const char *)UTF8String;
 - (size_t)length;		/* UTF-16 CODE UNITS — Apple's contract (W1 slice 3) */
@@ -297,8 +307,54 @@ typedef enum {
  * the conversion cannot happen at all, which is Apple's own answer for an impossible conversion. */
 - (BOOL)canBeConvertedToEncoding:(NSStringEncoding)encoding;
 - (NSUInteger)maximumLengthOfBytesUsingEncoding:(NSStringEncoding)encoding;
+
+/* ===================================================================================================
+ * ENCODING INTROSPECTION (§63.30's sibling), AND IT IS NOT THE BLOCKED CONVERSION CLUSTER (§63.2).
+ * Every answer here is a fact about THIS library's storage rather than a conversion through a
+ * converter/repertoire table, which is exactly why the `dataUsingEncoding:`/`-initWithData:encoding:`
+ * line does not reach them: `-fastestEncoding` is the storage (UTF-8), `-smallestEncoding` is ASCII
+ * exactly when every byte is 7-bit (the same test -canBeConvertedToEncoding: already makes, so the two
+ * doors cannot disagree), `+defaultCStringEncoding` is the one honest default C-string encoding here
+ * (§63.30 states it for the deprecated C-string doors), and `+availableStringEncodings` is the TWO the
+ * storage can represent — ASCII and UTF-8 — zero-terminated, because naming an encoding this library
+ * cannot honour would be the opposite of the refusal every other encoding door makes.
+ * =================================================================================================== */
+@property (readonly) NSStringEncoding fastestEncoding;
+@property (readonly) NSStringEncoding smallestEncoding;
++ (NSStringEncoding)defaultCStringEncoding;
++ (const NSStringEncoding *)availableStringEncodings;
 - (BOOL)writeToFile:(NSString *)path
 	 atomically:(BOOL)useAuxiliaryFile
+	   encoding:(NSStringEncoding)encoding
+	      error:(NSError * _Nullable * _Nullable)errorPtr;
+
+/* ===================================================================================================
+ * THE FILE/URL CONTENTS DOORS, AND THE DEPRECATED READ/WRITE NAMES (§63.29's neighbours). The
+ * ENCODING-TAKING instance doors mirror the class doors above; the DEPRECATED pair of read names carries
+ * no encoding, so it uses the one honest default C-string encoding here (§63.30), exactly as -cString
+ * and friends do. Every one of these DELEGATES rather than keeping a second copy of the read/write rule.
+ * =================================================================================================== */
+- (nullable id)initWithContentsOfFile:(NSString *)path
+			     encoding:(NSStringEncoding)encoding
+				error:(NSError * _Nullable * _Nullable)errorPtr;
+- (nullable id)initWithContentsOfFile:(NSString *)path
+			 usedEncoding:(NSStringEncoding *)encoding
+				error:(NSError * _Nullable * _Nullable)errorPtr;
+- (nullable id)initWithContentsOfURL:(NSURL *)url
+			    encoding:(NSStringEncoding)encoding
+			       error:(NSError * _Nullable * _Nullable)errorPtr;
+- (nullable id)initWithContentsOfURL:(NSURL *)url
+			usedEncoding:(NSStringEncoding *)encoding
+			       error:(NSError * _Nullable * _Nullable)errorPtr;
+/* THE DEPRECATED NO-ENCODING NAMES: their default is the storage, i.e. -defaultCStringEncoding. */
+- (nullable id)initWithContentsOfFile:(NSString *)path;
+- (nullable id)initWithContentsOfURL:(NSURL *)url;
++ (nullable id)stringWithContentsOfFile:(NSString *)path;
++ (nullable id)stringWithContentsOfURL:(NSURL *)url;
+- (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile;
+- (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)atomically;
+- (BOOL)writeToURL:(NSURL *)url
+	 atomically:(BOOL)atomically
 	   encoding:(NSStringEncoding)encoding
 	      error:(NSError * _Nullable * _Nullable)errorPtr;
 

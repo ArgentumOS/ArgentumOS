@@ -1174,6 +1174,41 @@ NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySugges
 	return [self initWithUTF8String:[built UTF8String]];
 }
 
+/* THE LOCALE-TAKING FORMAT DOORS. A locale is HONOURED FOR CASE AND NOTHING ELSE here, so both doors
+ * DELEGATE to the locale-free -initWithFormat:… above: there is no locale-directed number, date or
+ * measurement formatting in this library, and threading a locale into the renderer would be inventing a
+ * rule. The locale is accepted and deliberately ignored (the header says so at the declaration). */
+- (id)initWithFormat:(NSString *)format locale:(id)locale, ...
+{
+	va_list args;
+	id result;
+
+	va_start(args, locale);
+	result = [self initWithFormat:format locale:locale arguments:args];
+	va_end(args);
+	return result;
+}
+
+- (id)initWithFormat:(NSString *)format locale:(id)locale arguments:(va_list)argList
+{
+	(void)locale;		/* accepted and ignored: no locale-directed formatting ships */
+	return [self initWithFormat:format arguments:argList];
+}
+
++ (id)localizedStringWithFormat:(NSString *)format, ...
+{
+	va_list args;
+	id result;
+
+	va_start(args, format);
+	result = [self stringWithFormat:format arguments:args];
+	va_end(args);
+	/* +stringWithFormat:arguments: returns +1 (an init), so ONE autorelease gives Apple's +0 factory
+	 * contract — the ownership this door's name promises; the sibling file/URL doors' known leak is not
+	 * copied here. */
+	return [result autorelease];
+}
+
 /* ============================ validated formats (§63.27) ============================
  *
  * WHAT IS VALIDATED: that every DIRECTIVE in the format is one the caller listed. A directive runs from a `%` to
@@ -2622,6 +2657,45 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return 0;
 }
 
+/* ===================================================================================================
+ * ENCODING INTROSPECTION (§63.30's sibling). Four facts about this library's storage, and NOTHING here
+ * needs a converter or a repertoire table — which is exactly why these rows are not the blocked
+ * conversion cluster (§63.2). The values follow the header's note: the storage is UTF-8, so the fastest
+ * encoding is UTF-8; the smallest is ASCII exactly when every byte is 7-bit (the same test
+ * -canBeConvertedToEncoding: makes, so the two doors cannot disagree); the default C-string encoding is
+ * the storage (§63.30 already states it for the deprecated C-string doors); and the available list is
+ * the TWO the storage can represent, terminated by a zero, because naming an encoding this library
+ * cannot honour would be the opposite of the refusal every other encoding door here makes.
+ * =================================================================================================== */
+- (NSStringEncoding)fastestEncoding
+{
+	return NSUTF8StringEncoding;		/* the storage IS UTF-8 */
+}
+
+- (NSStringEncoding)smallestEncoding
+{
+	return [self canBeConvertedToEncoding:NSASCIIStringEncoding]
+		? NSASCIIStringEncoding : NSUTF8StringEncoding;
+}
+
++ (NSStringEncoding)defaultCStringEncoding
+{
+	return NSUTF8StringEncoding;		/* §63.30: the one honest default, since the storage is UTF-8 */
+}
+
++ (const NSStringEncoding *)availableStringEncodings
+{
+	/* A zero-terminated list (Apple's own shape). The terminator is a ZERO, not NSASCIIStringEncoding,
+	 * because that value is 1 and would otherwise read as a third member. */
+	static const NSStringEncoding encodings[] = {
+		NSASCIIStringEncoding,
+		NSUTF8StringEncoding,
+		0
+	};
+
+	return encodings;
+}
+
 /* ------------------------------------------------------------------ composition */
 - (NSString *)stringByAppendingPathExtension:(NSString *)extension
 {
@@ -2862,6 +2936,157 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 		*encoding = NSUTF8StringEncoding;
 	}
 	return result;
+}
+
+/* ===================================================================================================
+ * THE FILE/URL CONTENTS DOORS, AND THE DEPRECATED READ/WRITE NAMES (§63.29's neighbours).
+ *
+ * THE ENCODING-TAKING INSTANCE DOORS MIRROR THE CLASS DOORS ABOVE and keep ONE implementation of "read
+ * the bytes, then decide what they mean": a file through NSData, a URL split on -isFileURL with the
+ * transport door for any other scheme — the same division +stringWithContentsOfURL:…: makes.
+ *
+ * THE DEPRECATED NO-ENCODING NAMES (read, and write) take the one honest default C-string encoding here,
+ * -defaultCStringEncoding (the storage, §63.30), exactly as -cString and friends do, and they DELEGATE
+ * rather than keeping a second copy of the rule. They are +1 for the -init… forms (an init consumes and
+ * returns +1) and +0 for the +stringWith… factories, which is Apple's own ownership for each.
+ *
+ * ⚠ -writeToURL:atomically:encoding:error: ENCODES THROUGH -dataUsingEncoding: EXACTLY AS ITS FILE
+ * SIBLING DOES, so the same two refusals (an unstored encoding, and a string that will not convert)
+ * answer NO with the same NSCocoaErrorDomain code (517) rather than a second, drifting rule.
+ * =================================================================================================== */
+- (id)initWithContentsOfFile:(NSString *)path
+		    encoding:(NSStringEncoding)encoding
+		       error:(NSError **)errorPtr
+{
+	NSData *data = [NSData dataWithContentsOfFile:path options:NSDataReadingDefault error:errorPtr];
+
+	if (data == nil) {
+		return nil;
+	}
+	return [self initWithData:data encoding:encoding];
+}
+
+- (id)initWithContentsOfFile:(NSString *)path
+		usedEncoding:(NSStringEncoding *)encoding
+		       error:(NSError **)errorPtr
+{
+	NSData *data = [NSData dataWithContentsOfFile:path options:NSDataReadingDefault error:errorPtr];
+
+	if (data == nil) {
+		return nil;
+	}
+	/* One encoding is stored, so that is what was used — the same sentence the class door makes. */
+	if (encoding != NULL) {
+		*encoding = NSUTF8StringEncoding;
+	}
+	return [self initWithData:data encoding:NSUTF8StringEncoding];
+}
+
+- (id)initWithContentsOfURL:(NSURL *)url
+		   encoding:(NSStringEncoding)encoding
+		      error:(NSError **)errorPtr
+{
+	NSData *data;
+
+	if (url == nil) {
+		return nil;
+	}
+	if ([url isFileURL]) {
+		return [self initWithContentsOfFile:[url path] encoding:encoding error:errorPtr];
+	}
+	data = [NSURLConnection sendSynchronousRequest:[NSURLRequest requestWithURL:url]
+				     returningResponse:NULL
+					     error:errorPtr];
+	if (data == nil) {
+		return nil;
+	}
+	return [self initWithData:data encoding:encoding];
+}
+
+- (id)initWithContentsOfURL:(NSURL *)url
+	       usedEncoding:(NSStringEncoding *)encoding
+		      error:(NSError **)errorPtr
+{
+	NSData *data;
+
+	if (url == nil) {
+		return nil;
+	}
+	if ([url isFileURL]) {
+		return [self initWithContentsOfFile:[url path] usedEncoding:encoding error:errorPtr];
+	}
+	data = [NSURLConnection sendSynchronousRequest:[NSURLRequest requestWithURL:url]
+				     returningResponse:NULL
+					     error:errorPtr];
+	if (data == nil) {
+		return nil;
+	}
+	if (encoding != NULL) {
+		*encoding = NSUTF8StringEncoding;
+	}
+	return [self initWithData:data encoding:NSUTF8StringEncoding];
+}
+
+- (id)initWithContentsOfFile:(NSString *)path
+{
+	return [self initWithContentsOfFile:path
+				   encoding:[NSString defaultCStringEncoding]
+				      error:NULL];
+}
+
+- (id)initWithContentsOfURL:(NSURL *)url
+{
+	return [self initWithContentsOfURL:url
+				  encoding:[NSString defaultCStringEncoding]
+				     error:NULL];
+}
+
++ (id)stringWithContentsOfFile:(NSString *)path
+{
+	return [[[self alloc] initWithContentsOfFile:path] autorelease];
+}
+
++ (id)stringWithContentsOfURL:(NSURL *)url
+{
+	return [[[self alloc] initWithContentsOfURL:url] autorelease];
+}
+
+- (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile
+{
+	return [self writeToFile:path
+		      atomically:useAuxiliaryFile
+			encoding:[NSString defaultCStringEncoding]
+			   error:NULL];
+}
+
+- (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)atomically
+{
+	return [self writeToURL:url
+		     atomically:atomically
+		       encoding:[NSString defaultCStringEncoding]
+			  error:NULL];
+}
+
+- (BOOL)writeToURL:(NSURL *)url
+	atomically:(BOOL)atomically
+	  encoding:(NSStringEncoding)encoding
+	     error:(NSError **)errorPtr
+{
+	NSData *encoded = [self dataUsingEncoding:encoding];
+
+	if (encoded == nil) {
+		if (errorPtr != NULL) {
+			*errorPtr = [NSError errorWithDomain:@"NSCocoaErrorDomain"
+							code:517
+						    userInfo:[NSDictionary dictionaryWithObject:
+								@"The string cannot be represented in that encoding."
+									  forKey:NSLocalizedDescriptionKey]];
+		}
+		return NO;
+	}
+	return [encoded writeToURL:url
+			   options:(atomically ? NSDataWritingAtomic : NSDataWritingDefault)
+			     error:errorPtr];
 }
 
 - (BOOL)writeToFile:(NSString *)path
