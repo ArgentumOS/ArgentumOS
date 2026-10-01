@@ -29,6 +29,7 @@
 #import <Foundation/NSNumber.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
+#include <sys/mount.h>		/* umount2(2): the volume door at the end of this file */
 #include <sys/types.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -1883,6 +1884,137 @@ static NSString *fn_link_target(NSString *path, int *outErrno)
 {
 	(void)groupIdentifier;
 	return nil;		/* this system has no application-group container subsystem */
+}
+
+/* ---- THE FILE-PROVIDER SYNC-CONTROL DOORS (the coverage slice) ----------------------------------
+ *
+ * EACH IS A QUESTION ABOUT A UBIQUITOUS ITEM, and this system has no iCloud, no file provider and no
+ * sync engine - the ground the iCloud block above stands on. So each answers the POSTCONDITION that
+ * absence implies AND THE HANDLER IS CALLED, so the caller LEARNS the answer rather than waiting for a
+ * callback that would never come: -fetchLatestRemoteVersionOfItemAtURL: answers no version and an
+ * ENOTSUP error, and the other three answer their ENOTSUP error through the one-argument handler. The
+ * errno is the same one this file already uses for "this substrate cannot".
+ */
+- (void)fetchLatestRemoteVersionOfItemAtURL:(NSURL *)url
+			  completionHandler:(void (^)(NSFileVersion * _Nullable, NSError * _Nullable))completionHandler
+{
+	(void)url;
+	if (completionHandler != NULL) {
+		completionHandler(nil, fn_error_from_errno(ENOTSUP));
+	}
+}
+
+- (void)pauseSyncForUbiquitousItemAtURL:(NSURL *)url
+		      completionHandler:(void (^)(NSError * _Nullable))completionHandler
+{
+	(void)url;
+	if (completionHandler != NULL) {
+		completionHandler(fn_error_from_errno(ENOTSUP));
+	}
+}
+
+- (void)resumeSyncForUbiquitousItemAtURL:(NSURL *)url
+			    withBehavior:(NSFileManagerResumeSyncBehavior)behavior
+		       completionHandler:(void (^)(NSError * _Nullable))completionHandler
+{
+	(void)url;
+	(void)behavior;		/* no sync is paused here, so no resume behavior can take effect */
+	if (completionHandler != NULL) {
+		completionHandler(fn_error_from_errno(ENOTSUP));
+	}
+}
+
+- (void)uploadLocalVersionOfUbiquitousItemAtURL:(NSURL *)url
+		       withConflictResolutionPolicy:(NSFileManagerUploadLocalVersionConflictPolicy)policy
+			     completionHandler:(void (^)(NSError * _Nullable))completionHandler
+{
+	(void)url;
+	(void)policy;		/* nothing is uploaded, so no conflict policy is consulted */
+	if (completionHandler != NULL) {
+		completionHandler(fn_error_from_errno(ENOTSUP));
+	}
+}
+
+/* ---- LOCATING SYSTEM DIRECTORIES (the coverage slice) -------------------------------------------
+ *
+ * ONE SOURCE OF TRUTH: this is the URL spelling of NSSearchPathForDirectoriesInDomains(), whose own
+ * function below the class already states the boundary - this system's directories are NAMED, not
+ * searched, so that function refuses (on the log) and answers an EMPTY array. -URLsForDirectory:
+ * therefore wraps that empty list - an empty list of URLs, and no lie: there is no (directory-type,
+ * domain) search on this system to name a directory for. -URLForDirectory: asks the SAME question for
+ * ONE directory (via the method above, so the two cannot disagree) and is nil with an error, because a
+ * directory the search cannot locate is one that is not there - and `create:` cannot help, since a
+ * directory cannot be created at a location the search has no answer for.
+ */
+- (NSArray *)URLsForDirectory:(NSSearchPathDirectory)directory
+		    inDomains:(NSSearchPathDomainMask)domainMask
+{
+	NSArray *paths = NSSearchPathForDirectoriesInDomains(directory, domainMask, NO);
+	NSMutableArray *urls = [NSMutableArray array];
+
+	if (paths != nil) {
+		NSUInteger i;
+
+		for (i = 0; i < [paths count]; i++) {
+			[urls addObject:[NSURL fileURLWithPath:[paths objectAtIndex:i]]];
+		}
+	}
+	return urls;
+}
+
+- (nullable NSURL *)URLForDirectory:(NSSearchPathDirectory)directory
+			   inDomain:(NSSearchPathDomainMask)domain
+		  appropriateForURL:(nullable NSURL *)url
+			     create:(BOOL)shouldCreate
+			      error:(NSError ** _Nullable)error
+{
+	NSArray *urls = [self URLsForDirectory:directory inDomains:domain];
+
+	(void)url;		/* a hint for the search, and there is no search here for it to guide */
+	(void)shouldCreate;	/* a directory with no located location cannot be created at one either */
+	if ([urls count] > 0) {
+		return [urls objectAtIndex:0];
+	}
+	fn_failed(error, ENOENT);
+	return nil;
+}
+
+/* ---- THE TRASH AND VOLUME DOORS (the coverage slice) --------------------------------------------
+ *
+ * -trashItemAtURL: answers the postcondition this system's hierarchy implies - there is no trash on
+ * this system - and the handler-side door -unmountVolumeAtURL: reduces its URL to the FSH path of the
+ * mount point and calls this kernel's own umount2(2). See the notes in the header for both.
+ */
+- (BOOL)trashItemAtURL:(NSURL *)url
+      resultingItemURL:(NSURL * _Nullable * _Nullable)outResultingURL
+		 error:(NSError ** _Nullable)error
+{
+	(void)url;
+	if (outResultingURL != NULL) {
+		*outResultingURL = nil;   /* no trash, so no resulting URL */
+	}
+	return fn_failed(error, ENOTSUP);
+}
+
+- (void)unmountVolumeAtURL:(NSURL *)url
+		  options:(NSFileManagerUnmountOptions)optionsMask
+	completionHandler:(void (^)(NSError * _Nullable))completionHandler
+{
+	NSString *path;
+
+	(void)optionsMask;   /* UI eject hints a single-volume umount has no meaning to attach to */
+	if (completionHandler == NULL) {
+		return;
+	}
+	if (url == nil || ![url isFileURL] || (path = [url path]) == nil) {
+		completionHandler(fn_error_from_errno(EINVAL));
+		return;
+	}
+	if (umount2([path UTF8String], 0) != 0) {
+		completionHandler(fn_error_from_errno(errno));
+		return;
+	}
+	completionHandler(nil);   /* the file system was unmounted */
 }
 
 @end

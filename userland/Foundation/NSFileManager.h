@@ -46,6 +46,7 @@
 @class NSError;
 @class NSString;
 @class NSURL;
+@class NSFileVersion;
 
 /* SAID BEFORE THE PROTOCOL, because that protocol's methods take the manager as their first argument
  * and the @interface further down has not been read yet at that point. */
@@ -238,6 +239,74 @@ typedef enum {
 	NSVolumeEnumerationProduceFileReferenceURLs = 1 << 1
 } NSVolumeEnumerationOptions;
 
+/* THESE TWO MOVED ABOVE THE INTERFACE (the coverage slice): the sync-control doors below TAKE them, and
+ * a declaration used before it is declared is a compile error - the THIRD time in this family that a
+ * declaration's PLACE was the bug. */
+/* What happens to LOCAL changes when a synced item is resumed — a choice, not a set. */
+typedef enum {
+	NSFileManagerResumeSyncBehaviorPreserveLocalChanges = 0,
+	NSFileManagerResumeSyncBehaviorAfterUploadWithFailOnConflict = 1,
+	NSFileManagerResumeSyncBehaviorDropLocalChanges = 2
+} NSFileManagerResumeSyncBehavior;
+
+typedef enum {
+	NSFileManagerUploadConflictPolicyDefault = 0,
+	NSFileManagerUploadConflictPolicyFailOnConflict = 1
+} NSFileManagerUploadLocalVersionConflictPolicy;
+
+/* THESE TWO MOVED ABOVE THE INTERFACE (the coverage slice): -URLsForDirectory:inDomains: and
+ * -URLForDirectory:inDomain:appropriateForURL:create:error: TAKE them. Same rule as the sync enums. */
+/*
+ * THE SEARCH PATH TYPES, and the one place where Apple's own value choices are
+ * visible in the API's shape rather than in a header: -URLsForDirectory:inDomains:
+ * takes the domain mask and ORs the bits together, so NSSearchPathDomainMask is a
+ * bit set even though its cases do not say "Options".
+ */
+typedef enum {
+	NSApplicationDirectory = 0,
+	NSDemoApplicationDirectory,
+	NSDeveloperApplicationDirectory,
+	NSAdminApplicationDirectory,
+	NSLibraryDirectory,
+	NSDeveloperDirectory,
+	NSUserDirectory,
+	NSDocumentationDirectory,
+	NSDocumentDirectory,
+	NSCoreServiceDirectory,
+	NSAutosavedInformationDirectory,
+	NSDesktopDirectory,
+	NSCachesDirectory,
+	NSApplicationSupportDirectory,
+	NSDownloadsDirectory,
+	NSInputMethodsDirectory,
+	NSMoviesDirectory,
+	NSMusicDirectory,
+	NSPicturesDirectory,
+	NSPrinterDescriptionDirectory,
+	NSSharedPublicDirectory,
+	NSPreferencePanesDirectory,
+	NSApplicationScriptsDirectory,
+	NSItemReplacementDirectory,
+	NSAllApplicationsDirectory,
+	NSAllLibrariesDirectory,
+	NSTrashDirectory
+} NSSearchPathDirectory;
+
+typedef enum {
+	NSUserDomainMask = 1 << 0,
+	NSLocalDomainMask = 1 << 1,
+	NSNetworkDomainMask = 1 << 2,
+	NSSystemDomainMask = 1 << 3,
+	NSAllDomainsMask = 0xFFFF	/* every bit, as its name says */
+} NSSearchPathDomainMask;
+
+/* Unmounting: eject everything, or leave the user interface alone. (MOVED ABOVE the interface: the
+ * volume door below takes it.) */
+typedef enum {
+	NSFileManagerUnmountAllPartitionsAndEjectDisk = 1 << 0,
+	NSFileManagerUnmountWithoutUI = 1 << 1
+} NSFileManagerUnmountOptions;
+
 @interface NSFileManager : NSObject
 {
 	/* ASSIGN, NOT WEAK, and that is MEASURED rather than chosen: Apple's own declaration comes back
@@ -254,6 +323,51 @@ typedef enum {
  * process. The default value is nil. */
 - (nullable id <NSFileManagerDelegate>)delegate;
 - (void)setDelegate:(nullable id <NSFileManagerDelegate>)delegate;
+
+/* ---- LOCATING SYSTEM DIRECTORIES (the coverage slice) -------------------------------------------
+ *
+ * THE URL SPELLING OF THE SEARCH-PATH QUESTION, and BOTH ARE THIN OVER THE ONE FUNCTION THAT ALREADY
+ * ANSWERS IT: NSSearchPathForDirectoriesInDomains() is this system's NAMED REFUSAL (see its own note
+ * below the interface) - the FSH's directories are reached BY NAME (System/Libraries, System/Temporary
+ * Files, ...) and there is no (directory-type, domain-mask) search behind them. So -URLsForDirectory:
+ * inDomains: wraps each path that function answers in a file URL (which is the EMPTY array here), and
+ * -URLForDirectory:inDomain:appropriateForURL:create:error: asks the same question for ONE directory
+ * and is therefore nil with an error - there is no such directory in an empty search space, and a
+ * `create:` cannot create a directory the search cannot locate. One source of truth, so the two cannot
+ * disagree with the function that already states the boundary.
+ */
+- (nullable NSURL *)URLForDirectory:(NSSearchPathDirectory)directory
+			   inDomain:(NSSearchPathDomainMask)domain
+		  appropriateForURL:(nullable NSURL *)url
+			     create:(BOOL)shouldCreate
+			      error:(NSError ** _Nullable)error;
+- (NSArray *)URLsForDirectory:(NSSearchPathDirectory)directory
+		    inDomains:(NSSearchPathDomainMask)domainMask;
+
+/* ---- THE TRASH AND VOLUME DOORS (the coverage slice) --------------------------------------------
+ *
+ * -trashItemAtURL: ANSWERS THE POSTCONDITION THIS SYSTEM'S HIERARCHY IMPLIES: THERE IS NO TRASH here -
+ * the FSH has no wastebasket directory (docs/reference/fsh-notes.txt: the root holds /Applications,
+ * /System, /Users, /Volumes and nothing the Finder would call a Trash), so the door answers NO with
+ * ENOTSUP and a nil resulting URL, the same ground the iCloud block stands on. Nothing is a promise
+ * the substrate cannot keep.
+ *
+ * -unmountVolumeAtURL: IS BACKED BY THIS KERNEL'S OWN umount2 (syscall 166, kernel/syscalls/umount2.c),
+ * so the URL is reduced to the FSH path of the mount point and umount2(2) IS the operation. The
+ * NSFileManagerUnmountOptions are UI EJECT HINTS ("eject the disk", "leave the interface alone") that a
+ * single-volume umount has no meaning to attach to, so they are CARRIED AND IGNORED - the same treatment
+ * the volume-listing option already gets above. The completion handler is CALLED with nil on success, or
+ * an error whose code is the errno umount2(2) reported (EPERM for a caller that is not superuser, EINVAL
+ * for a path that is not a mount point, EBUSY for a busy file system). The dissenting-process error key
+ * is published and UNUSED here, because this kernel reports a busy file system as EBUSY rather than
+ * naming a process.
+ */
+- (BOOL)trashItemAtURL:(NSURL *)url
+      resultingItemURL:(NSURL * _Nullable * _Nullable)outResultingURL
+		 error:(NSError ** _Nullable)error;
+- (void)unmountVolumeAtURL:(NSURL *)url
+		  options:(NSFileManagerUnmountOptions)optionsMask
+	completionHandler:(void (^)(NSError * _Nullable error))completionHandler;
 
 /* EXISTENCE, and the second door answers the question a caller usually means by it. */
 - (BOOL)fileExistsAtPath:(NSString *)path;
@@ -553,6 +667,29 @@ typedef enum {
 - (nullable id)ubiquityIdentityToken;
 - (nullable NSURL *)containerURLForSecurityApplicationGroupIdentifier:(NSString *)groupIdentifier;
 
+/* ---- THE FILE-PROVIDER SYNC-CONTROL DOORS (the coverage slice) ----------------------------------
+ *
+ * FOUR DOORS Apple added WITH the file-provider sync controls (macOS 26 / iOS 26), and every one of
+ * them is a question ABOUT A UBIQUITOUS ITEM - "fetch the latest remote version", "pause sync",
+ * "resume sync", "upload the local version". THIS SYSTEM HAS NO iCLOUD, NO FILE PROVIDER AND NO SYNC
+ * ENGINE, which is the same ground -getFileProviderServicesForItemAtURL: and the whole iCloud block
+ * above stand on. So each is the POSTCONDITION that absence implies AND ITS HANDLER IS CALLED - the
+ * caller LEARNS the answer, which is the difference between a refusal and silence. Each is the
+ * SYNCHRONOUS form of an asynchronous door (the handler runs once, on the calling turn), which is all
+ * this substrate can honestly answer.
+ */
+- (void)fetchLatestRemoteVersionOfItemAtURL:(NSURL *)url
+			  completionHandler:(void (^)(NSFileVersion * _Nullable latestRemoteVersion,
+						      NSError * _Nullable error))completionHandler;
+- (void)pauseSyncForUbiquitousItemAtURL:(NSURL *)url
+		      completionHandler:(void (^)(NSError * _Nullable error))completionHandler;
+- (void)resumeSyncForUbiquitousItemAtURL:(NSURL *)url
+			    withBehavior:(NSFileManagerResumeSyncBehavior)behavior
+		       completionHandler:(void (^)(NSError * _Nullable error))completionHandler;
+- (void)uploadLocalVersionOfUbiquitousItemAtURL:(NSURL *)url
+		       withConflictResolutionPolicy:(NSFileManagerUploadLocalVersionConflictPolicy)policy
+			     completionHandler:(void (^)(NSError * _Nullable error))completionHandler;
+
 @end
 
 /*
@@ -591,72 +728,18 @@ typedef enum {
 	NSFileManagerItemReplacementWithoutDeletingBackupItem = 1 << 1
 } NSFileManagerItemReplacementOptions;
 
-/* What happens to LOCAL changes when a synced item is resumed — a choice, not a set. */
-typedef enum {
-	NSFileManagerResumeSyncBehaviorPreserveLocalChanges = 0,
-	NSFileManagerResumeSyncBehaviorAfterUploadWithFailOnConflict = 1,
-	NSFileManagerResumeSyncBehaviorDropLocalChanges = 2
-} NSFileManagerResumeSyncBehavior;
-
+/* (NSFileManagerResumeSyncBehavior and NSFileManagerUploadLocalVersionConflictPolicy were HERE and are
+ * now ABOVE the interface, where the sync-control doors that take them can see them.) */
 typedef enum {
 	NSFileManagerSupportedSyncControlsPauseSync = 1 << 0,
 	NSFileManagerSupportedSyncControlsFailUploadOnConflict = 1 << 1
 } NSFileManagerSupportedSyncControls;
 
-typedef enum {
-	NSFileManagerUploadConflictPolicyDefault = 0,
-	NSFileManagerUploadConflictPolicyFailOnConflict = 1
-} NSFileManagerUploadLocalVersionConflictPolicy;
+/* (NSFileManagerUnmountOptions moved ABOVE the interface: -unmountVolumeAtURL:options:... takes it.) */
 
-/* Unmounting: eject everything, or leave the user interface alone. */
-typedef enum {
-	NSFileManagerUnmountAllPartitionsAndEjectDisk = 1 << 0,
-	NSFileManagerUnmountWithoutUI = 1 << 1
-} NSFileManagerUnmountOptions;
-
-/*
- * THE SEARCH PATH TYPES, and the one place where Apple's own value choices are
- * visible in the API's shape rather than in a header: -URLsForDirectory:inDomains:
- * takes the domain mask and ORs the bits together, so NSSearchPathDomainMask is a
- * bit set even though its cases do not say "Options".
- */
-typedef enum {
-	NSApplicationDirectory = 0,
-	NSDemoApplicationDirectory,
-	NSDeveloperApplicationDirectory,
-	NSAdminApplicationDirectory,
-	NSLibraryDirectory,
-	NSDeveloperDirectory,
-	NSUserDirectory,
-	NSDocumentationDirectory,
-	NSDocumentDirectory,
-	NSCoreServiceDirectory,
-	NSAutosavedInformationDirectory,
-	NSDesktopDirectory,
-	NSCachesDirectory,
-	NSApplicationSupportDirectory,
-	NSDownloadsDirectory,
-	NSInputMethodsDirectory,
-	NSMoviesDirectory,
-	NSMusicDirectory,
-	NSPicturesDirectory,
-	NSPrinterDescriptionDirectory,
-	NSSharedPublicDirectory,
-	NSPreferencePanesDirectory,
-	NSApplicationScriptsDirectory,
-	NSItemReplacementDirectory,
-	NSAllApplicationsDirectory,
-	NSAllLibrariesDirectory,
-	NSTrashDirectory
-} NSSearchPathDirectory;
-
-typedef enum {
-	NSUserDomainMask = 1 << 0,
-	NSLocalDomainMask = 1 << 1,
-	NSNetworkDomainMask = 1 << 2,
-	NSSystemDomainMask = 1 << 3,
-	NSAllDomainsMask = 0xFFFF	/* every bit, as its name says */
-} NSSearchPathDomainMask;
+/* (the SEARCH PATH TYPES moved ABOVE the interface: -URLsForDirectory:inDomains: and
+ * -URLForDirectory:inDomain:...:error: take them, and a declaration used before it is declared is a
+ * compile error - the FOURTH time in this family that a declaration's PLACE was the bug.) */
 
 /* WHERE TEMPORARY FILES GO, as a FUNCTION rather than a method because that is how Apple declares it (the
  * ledger files it under NSFileManager's "Accessing user directories"). The trailing separator is Apple's

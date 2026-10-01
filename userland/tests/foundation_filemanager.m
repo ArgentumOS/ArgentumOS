@@ -1068,6 +1068,98 @@ int main(void)
 		      @"no iCloud here: nothing is ubiquitous, no container, no token, and every item operation answers NO with an error");
 	}
 
+	{
+		/* THE FILE-PROVIDER SYNC-CONTROL DOORS (the coverage slice): every one is a question about a
+		 * UBIQUITOUS item, and there is no iCloud here, so each CALLS its handler with an ENOTSUP
+		 * error rather than staying silent. The URL is made through +fileURLWithPath: so no HOST path
+		 * is touched, exactly as the iCloud check above does. fetch must also CLEAR the version (nil)
+		 * rather than leave whatever the caller had in its variable. */
+		NSFileManager *m = [NSFileManager defaultManager];
+		NSURL *anyURL = [NSURL fileURLWithPath:@"/System/Temporary Files"];
+		__block int fetchCalls = 0, pauseCalls = 0, resumeCalls = 0, uploadCalls = 0;
+		__block NSError *fetchErr = nil, *pauseErr = nil, *resumeErr = nil, *uploadErr = nil;
+		__block id fetched = @"sentinel";	/* non-nil: the door must clear it to nil */
+		BOOL okSync;
+
+		[m fetchLatestRemoteVersionOfItemAtURL:anyURL
+			     completionHandler:^(NSFileVersion *v, NSError *e) {
+			fetchCalls++; fetched = (id)v; fetchErr = e;
+		}];
+		[m pauseSyncForUbiquitousItemAtURL:anyURL completionHandler:^(NSError *e) {
+			pauseCalls++; pauseErr = e;
+		}];
+		[m resumeSyncForUbiquitousItemAtURL:anyURL
+				       withBehavior:NSFileManagerResumeSyncBehaviorPreserveLocalChanges
+				  completionHandler:^(NSError *e) {
+			resumeCalls++; resumeErr = e;
+		}];
+		[m uploadLocalVersionOfUbiquitousItemAtURL:anyURL
+			  withConflictResolutionPolicy:NSFileManagerUploadConflictPolicyDefault
+				     completionHandler:^(NSError *e) {
+			uploadCalls++; uploadErr = e;
+		}];
+
+		okSync = fetchCalls == 1 && fetched == nil && fetchErr != nil &&
+			pauseCalls == 1 && pauseErr != nil &&
+			resumeCalls == 1 && resumeErr != nil &&
+			uploadCalls == 1 && uploadErr != nil;
+		check("fs-sync-controls-answer-unsupported", okSync,
+		      [NSString stringWithFormat:@"calls %d/%d/%d/%d version=%@ errors %d/%d/%d/%d",
+			fetchCalls, pauseCalls, resumeCalls, uploadCalls, fetched,
+			fetchErr != nil, pauseErr != nil, resumeErr != nil, uploadErr != nil]);
+	}
+
+	{
+		/* LOCATING A SYSTEM DIRECTORY (the coverage slice): -URLsForDirectory:inDomains: is the URL
+		 * spelling of the NAMED REFUSAL this system already gives for the search-path question, so it
+		 * answers an EMPTY list of URLs (NOT nil - an empty answer, and readable as one), and
+		 * -URLForDirectory:...:error: is nil with an error for the SAME directory - including with
+		 * create:YES, because a directory the search cannot locate has no location to be created at. */
+		NSFileManager *m = [NSFileManager defaultManager];
+		NSArray *urls = [m URLsForDirectory:NSLibraryDirectory inDomains:NSUserDomainMask];
+		NSError *dirErr = nil;
+		NSError *createErr = nil;
+		NSURL *dirURL = [m URLForDirectory:NSLibraryDirectory inDomain:NSUserDomainMask
+			  appropriateForURL:nil create:NO error:&dirErr];
+		NSURL *createURL = [m URLForDirectory:NSDocumentDirectory inDomain:NSAllDomainsMask
+			    appropriateForURL:nil create:YES error:&createErr];
+
+		check("fs-url-directory-forms-are-the-named-refusal",
+		      urls != nil && [urls count] == 0 &&
+		      dirURL == nil && dirErr != nil &&
+		      createURL == nil && createErr != nil,
+		      [NSString stringWithFormat:@"urls=%lu dirURL=%@ err=%d createURL=%@ createErr=%d",
+			(unsigned long)[urls count], dirURL, dirErr != nil, createURL, createErr != nil]);
+	}
+
+	{
+		/* THE TRASH AND VOLUME DOORS (the coverage slice): there is NO TRASH on this system, so
+		 * -trashItemAtURL: answers NO with an error and a nil resulting URL; -unmountVolumeAtURL: is
+		 * backed by this kernel's umount2(2), so a path that is NOT a mount point answers an error
+		 * through its handler (ENOENT/EINVAL/EPERM - non-nil on both host and guest), and a URL that
+		 * is not a file URL is refused before umount2 is even reached. */
+		NSFileManager *m = [NSFileManager defaultManager];
+		NSURL *anyURL = [NSURL fileURLWithPath:@"/System/Temporary Files"];
+		NSURL *resulting = (id)@"sentinel";	/* non-nil: the door must clear it to nil */
+		NSError *trashErr = nil;
+		__block int unmountCalls = 0, badCalls = 0;
+		__block NSError *unmountErr = nil, *badErr = nil;
+		BOOL trashed = [m trashItemAtURL:anyURL resultingItemURL:&resulting error:&trashErr];
+
+		[m unmountVolumeAtURL:anyURL options:NSFileManagerUnmountAllPartitionsAndEjectDisk
+		    completionHandler:^(NSError *e) { unmountCalls++; unmountErr = e; }];
+		[m unmountVolumeAtURL:(NSURL *)[NSURL URLWithString:@"http://example.test/x"] options:0
+		    completionHandler:^(NSError *e) { badCalls++; badErr = e; }];
+
+		check("fs-trash-refuses-and-unmount-answers",
+		      !trashed && trashErr != nil && resulting == nil &&
+		      unmountCalls == 1 && unmountErr != nil &&
+		      badCalls == 1 && badErr != nil,
+		      [NSString stringWithFormat:@"trashed=%d trashErr=%d resulting=%@ unmount=%d err=%d bad=%d/%d",
+			(int)trashed, trashErr != nil, resulting,
+			unmountCalls, unmountErr != nil, badCalls, badErr != nil]);
+	}
+
 	printf("FOUNDATION-FILEMANAGER RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

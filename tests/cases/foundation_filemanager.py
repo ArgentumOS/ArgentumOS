@@ -96,7 +96,9 @@ CHECKS = ("fs-default-manager", "fs-create-and-list", "fs-write-and-size", "fs-m
           "temporary-directory-is-the-fsh-path", "temporary-directory-exists",
           "user-directory-functions", "hfs-type-code-round-trip-and-the-refusals",
           "fs-file-system-representation", "fs-url-file-forms", "fs-url-relationship",
-          "fs-user-directory-urls", "fs-deprecated-doors", "fs-no-icloud-answers")
+          "fs-user-directory-urls", "fs-deprecated-doors", "fs-no-icloud-answers",
+          "fs-sync-controls-answer-unsupported", "fs-url-directory-forms-are-the-named-refusal",
+          "fs-trash-refuses-and-unmount-answers")
 
 
 class Case(BaseCase):
