@@ -342,6 +342,92 @@ def is_per_release_version_constant(row):
     return bool(VERSION_CONST_RE.match(row["name"]))
 
 
+
+# ============================================================================
+# §63.84 — A SIXTH GROUND: THE DECLARATION IS ANOTHER FRAMEWORK'S.
+#
+# WHY IT EXISTS: the derived surface groups a class's EXTENSIONS under the class,
+# so AppKit's and UIKit's declarations ON a Foundation class arrive as rows owned
+# by that class. §63.81 met it on the attachments; §63.83 measured the whole owner.
+#
+# ⚠⚠ THE NAMES ARE UNSIGNED BECAUSE A SELECTOR ROW'S `name` IS UNSIGNED. The sign is
+# a DISPLAY artifact (`selectors_status` builds the printed name as
+# `r["sign"] + r["name"]` for a method). The first version of this ground used the
+# SIGNED spelling read off the work list, and exactly ONE row struck —
+# `containsAttachments`, a PROPERTY, which has no sign to get wrong. MEASURED:
+# property open 202→201 / struck 157→158 while method open stayed at 474.
+#
+# THE EVIDENCE IS ABSENCE, AND IT IS A MEASUREMENT: every name below was tested for
+# a DECLARATION in the macOS 14.5 Foundation corpus (170 headers) AND the iOS 16.5
+# Foundation corpus (125), and appears in NEITHER. BOTH CORPORA DO CARRY
+# `NSAttributedString.h`, so this is an ABSENCE AND NOT A MISSING FILE.
+#
+# ⚠ AND THE TEST IS THE DECLARATION AND NOT THE KEYWORD, WHICH COST TWO CORRECTIONS:
+# a pass that grepped the leading keyword reported `-size` as OURS (the word "size"
+# occurs in prose and in type names across 2.9 MB); a pass requiring a
+# method-declaration line then reported `-mutableString`, because A PROPERTY IS
+# SPELLED `@property … name;` AND NEVER ON A METHOD LINE.
+#
+# ⚠ AND THE CAVEAT TRAVELS WITH THE GROUND: neither corpus carries AppKit or UIKit,
+# so the POSITIVE half — finding these declared THERE — was not available in this
+# tree and IS NOT CLAIMED. What is asserted is the absence, at a recorded date,
+# from named corpora.
+#
+# ⚠⚠ AND A GROUND HAS TO BE SPELLED IN THREE PLACES, WHICH COST THREE MEASUREMENTS:
+# `struck_reason()` is the REASON, `STRIKE_REASONS` is what makes it ACT, and
+# `_selector_why()` is the path a SELECTOR row actually takes — it does not reach
+# `struck_reason()` at all. Three refreshes said "nothing changed" while the ground
+# was correct in two of the three places.
+#
+# DO NOT RE-CHASE. A name here is neither `open` (we do not owe it) nor `shipped`
+# (we do not declare it). Adding one to our headers FAILS --check, which is what
+# keeps this ground a rule rather than a hole.
+# ============================================================================
+OTHER_FRAMEWORK = frozenset((
+    "applyFontTraits:range:",
+    "attributedStringWithAdaptiveImageGlyph:attributes:",
+    "attributedStringWithAttachment:",
+    "attributedStringWithAttachment:attributes:",
+    "boundingRectWithSize:options:",
+    "boundingRectWithSize:options:context:",
+    "containsAttachments",
+    "containsAttachmentsInRange:",
+    "drawAtPoint:",
+    "drawInRect:",
+    "drawWithRect:options:",
+    "drawWithRect:options:context:",
+    "fixAttachmentAttributeInRange:",
+    "fixFontAttributeInRange:",
+    "fixParagraphStyleAttributeInRange:",
+    "fontAttributesInRange:",
+    "initWithDocFormat:documentAttributes:",
+    "initWithFileURL:options:documentAttributes:error:",
+    "initWithHTML:baseURL:documentAttributes:",
+    "initWithHTML:documentAttributes:",
+    "initWithHTML:options:documentAttributes:",
+    "initWithRTF:documentAttributes:",
+    "initWithRTFD:documentAttributes:",
+    "initWithRTFDFileWrapper:documentAttributes:",
+    "itemNumberInTextList:atIndex:",
+    "lineBreakByHyphenatingBeforeIndex:withinRange:",
+    "prefersRTFDInRange:",
+    "rangeOfTextBlock:atIndex:",
+    "rangeOfTextList:atIndex:",
+    "rangeOfTextTable:atIndex:",
+    "readFromData:options:documentAttributes:",
+    "readFromData:options:documentAttributes:error:",
+    "readFromFileURL:options:documentAttributes:error:",
+    "rulerAttributesInRange:",
+    "setAlignment:range:",
+    "setBaseWritingDirection:range:",
+    "size",
+    "subscriptRange:",
+    "superscriptRange:",
+    "unscriptRange:",
+    "updateAttachmentsFromPath:",
+))
+
+
 def struck_reason(row):
     """Why this symbol is OUT, or None. Three exclusions, and the reason travels
     with the row so a struck line can be argued with."""
@@ -357,6 +443,8 @@ def struck_reason(row):
         return "swift-only"
     if row.get("swift") and not is_objc_shaped(row["name"]):
         return "swift-only"
+    if row["name"] in OTHER_FRAMEWORK:
+        return "other-framework"
     # THE DEPRECATION GROUND IS RETIRED (the user's policy, 2026-09-26): "to support porting older Mac
     # applications, all items removed for being deprecated are un-deprecated in Argentum Foundation, and added to
     # the work list." SO `apple_says_deprecated` NO LONGER STRIKES A ROW - IT MARKS ONE. The reason still travels
@@ -683,8 +771,9 @@ def why_of(row):
 # AND THE FIFTH REASON CAME OUT OF THIS TABLE (2026-09-26): `deprecated` is no longer a STRIKE but an
 # INFORMATIONAL `why`, so a row carrying it is judged SHIPPED or OPEN by its declaration like any other. That is
 # what the user's policy asks for - deprecated API is a PORTING TARGET, not something this library is spared.
+# ⚠ A REASON IS NOT A STRIKE HERE: `struck_reason()` ANSWERS and THIS TUPLE ACTS.
 STRIKE_REASONS = ("32-bit-only", "swift-only", "os-version-constant", "declined",
-                  "needs-corefoundation", "frame-walk-unsupported")
+                  "needs-corefoundation", "frame-walk-unsupported", "other-framework")
 
 # THE INFORMATIONAL REASONS: a `why` that does NOT strike. `deprecated` is the only one today, and it is here so
 # that a reader can tell "this row is work because Apple deprecated it" from "this row is work".
@@ -939,6 +1028,9 @@ def _selector_why(row):
         return struck_reason(row)
     if SWIFT_INTEROP_RE.search(row["name"]):
         return "swift-only"
+    # §63.84: THE THIRD PLACE, AND THE ONE A SELECTOR ROW ACTUALLY TAKES.
+    if row["name"] in OTHER_FRAMEWORK:
+        return "other-framework"
     return "deprecated" if apple_says_deprecated(row) else "-"
 
 

@@ -25,9 +25,9 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: declined 443
+# why the struck rows are struck: declined 443, other-framework 41
 #
-# AND 584 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# AND 578 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
 # row is, never that it is excluded.
 #
@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2168   open  474   struck  286
-#   property   shipped 1277   open  202   struck  157
+#   method     shipped 2168   open  434   struck  326
+#   property   shipped 1277   open  201   struck  158
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -232,52 +232,52 @@ method	shipped	-URLAtIndex:effectiveRange:	NSAttributedString	Fundamentals / Str
 method	shipped	-attribute:atIndex:effectiveRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
 method	shipped	-attribute:atIndex:longestEffectiveRange:inRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
 method	open	-attributedStringByInflectingString	NSAttributedString	Fundamentals / Strings with Metadata / Performing automatic grammar agreement	-	objc
-method	open	+attributedStringWithAdaptiveImageGlyph:attributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a string with an attachment	-	objc
-method	open	+attributedStringWithAttachment:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a string with an attachment	-	objc
-method	open	+attributedStringWithAttachment:attributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a string with an attachment	-	objc
+method	struck	+attributedStringWithAdaptiveImageGlyph:attributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a string with an attachment	other-framework	objc
+method	struck	+attributedStringWithAttachment:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a string with an attachment	other-framework	objc
+method	struck	+attributedStringWithAttachment:attributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a string with an attachment	other-framework	objc
 method	shipped	-attributedSubstringFromRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting the characters	-	objc
 method	shipped	-attributesAtIndex:effectiveRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
 method	shipped	-attributesAtIndex:longestEffectiveRange:inRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
-method	open	-boundingRectWithSize:options:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Instance Methods	deprecated	objc
-method	open	-boundingRectWithSize:options:context:	NSAttributedString	Fundamentals / Strings with Metadata / Getting metrics for the string	-	objc
-method	open	-containsAttachmentsInRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting metrics for the string	-	objc
+method	struck	-boundingRectWithSize:options:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Instance Methods	other-framework	objc
+method	struck	-boundingRectWithSize:options:context:	NSAttributedString	Fundamentals / Strings with Metadata / Getting metrics for the string	other-framework	objc
+method	struck	-containsAttachmentsInRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting metrics for the string	other-framework	objc
 method	shipped	-dataFromRange:documentAttributes:error:	NSAttributedString	Fundamentals / Strings with Metadata / Exporting the string as data	-	objc
 method	shipped	-docFormatFromRange:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Exporting the string as data	-	objc
 method	shipped	-doubleClickAtIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating linguistic units	-	objc
-method	open	-drawAtPoint:	NSAttributedString	Fundamentals / Strings with Metadata / Drawing the attributed string	-	objc
-method	open	-drawInRect:	NSAttributedString	Fundamentals / Strings with Metadata / Drawing the attributed string	-	objc
-method	open	-drawWithRect:options:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Instance Methods	deprecated	objc
-method	open	-drawWithRect:options:context:	NSAttributedString	Fundamentals / Strings with Metadata / Drawing the attributed string	-	objc
+method	struck	-drawAtPoint:	NSAttributedString	Fundamentals / Strings with Metadata / Drawing the attributed string	other-framework	objc
+method	struck	-drawInRect:	NSAttributedString	Fundamentals / Strings with Metadata / Drawing the attributed string	other-framework	objc
+method	struck	-drawWithRect:options:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Instance Methods	other-framework	objc
+method	struck	-drawWithRect:options:context:	NSAttributedString	Fundamentals / Strings with Metadata / Drawing the attributed string	other-framework	objc
 method	shipped	-enumerateAttribute:inRange:options:usingBlock:	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
 method	shipped	-enumerateAttributesInRange:options:usingBlock:	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
 method	shipped	-fileWrapperFromRange:documentAttributes:error:	NSAttributedString	Fundamentals / Strings with Metadata / Exporting the string as data	-	objc
-method	open	-fontAttributesInRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting font attribute information	-	objc
+method	struck	-fontAttributesInRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting font attribute information	other-framework	objc
 method	shipped	-initWithAttributedString:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from another string	-	objc
 method	shipped	-initWithContentsOfMarkdownFileAtURL:options:baseURL:error:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown	-	objc
 method	open	-initWithData:options:documentAttributes:error:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from a data file	-	objc
-method	open	-initWithDocFormat:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from a data file	-	objc
-method	open	-initWithFileURL:options:documentAttributes:error:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Initializers	deprecated	objc
+method	struck	-initWithDocFormat:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from a data file	other-framework	objc
+method	struck	-initWithFileURL:options:documentAttributes:error:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Initializers	other-framework	objc
 method	open	-initWithFormat:options:locale:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 method	open	-initWithFormat:options:locale:arguments:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 method	open	-initWithFormat:options:locale:context:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 method	open	-initWithFormat:options:locale:context:arguments:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
-method	open	-initWithHTML:baseURL:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
-method	open	-initWithHTML:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
-method	open	-initWithHTML:options:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
+method	struck	-initWithHTML:baseURL:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	other-framework	objc
+method	struck	-initWithHTML:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	other-framework	objc
+method	struck	-initWithHTML:options:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	other-framework	objc
 method	shipped	-initWithMarkdown:options:baseURL:error:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown	-	objc
 method	shipped	-initWithMarkdownString:options:baseURL:error:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown	-	objc
 method	open	-initWithPath:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Initializers	deprecated	objc
-method	open	-initWithRTF:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from RTF	-	objc
-method	open	-initWithRTFD:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from RTF	-	objc
-method	open	-initWithRTFDFileWrapper:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from RTF	-	objc
+method	struck	-initWithRTF:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from RTF	other-framework	objc
+method	struck	-initWithRTFD:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from RTF	other-framework	objc
+method	struck	-initWithRTFDFileWrapper:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from RTF	other-framework	objc
 method	shipped	-initWithString:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from another string	-	objc
 method	shipped	-initWithString:attributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from another string	-	objc
 method	open	-initWithURL:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Initializers	deprecated	objc
 method	open	-initWithURL:options:documentAttributes:error:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from a data file	-	objc
 method	shipped	-isEqualToAttributedString:	NSAttributedString	Fundamentals / Strings with Metadata / Comparing strings	-	objc
-method	open	-itemNumberInTextList:atIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating ranges for common elements	-	objc
+method	struck	-itemNumberInTextList:atIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating ranges for common elements	other-framework	objc
 method	shipped	-lineBreakBeforeIndex:withinRange:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating linguistic units	-	objc
-method	open	-lineBreakByHyphenatingBeforeIndex:withinRange:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating linguistic units	-	objc
+method	struck	-lineBreakByHyphenatingBeforeIndex:withinRange:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating linguistic units	other-framework	objc
 method	shipped	+loadFromHTMLWithData:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
 method	shipped	+loadFromHTMLWithFileURL:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
 method	shipped	+loadFromHTMLWithRequest:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
@@ -287,17 +287,17 @@ method	open	+localizedAttributedStringWithFormat:context:	NSAttributedString	Fun
 method	open	+localizedAttributedStringWithFormat:options:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 method	open	+localizedAttributedStringWithFormat:options:context:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 method	shipped	-nextWordFromIndex:forward:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating linguistic units	-	objc
-method	open	-prefersRTFDInRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting the supported text-file formats	-	objc
-method	open	-rangeOfTextBlock:atIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating ranges for common elements	-	objc
-method	open	-rangeOfTextList:atIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating ranges for common elements	-	objc
-method	open	-rangeOfTextTable:atIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating ranges for common elements	-	objc
-method	open	-rulerAttributesInRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting font attribute information	-	objc
-method	open	-size	NSAttributedString	Fundamentals / Strings with Metadata / Getting metrics for the string	-	objc
+method	struck	-prefersRTFDInRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting the supported text-file formats	other-framework	objc
+method	struck	-rangeOfTextBlock:atIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating ranges for common elements	other-framework	objc
+method	struck	-rangeOfTextList:atIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating ranges for common elements	other-framework	objc
+method	struck	-rangeOfTextTable:atIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating ranges for common elements	other-framework	objc
+method	struck	-rulerAttributesInRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting font attribute information	other-framework	objc
+method	struck	-size	NSAttributedString	Fundamentals / Strings with Metadata / Getting metrics for the string	other-framework	objc
 method	shipped	+textFileTypes	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Properties	deprecated	objc
 method	shipped	+textPasteboardTypes	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Properties	deprecated	objc
 method	shipped	+textUnfilteredFileTypes	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Properties	deprecated	objc
 method	shipped	+textUnfilteredPasteboardTypes	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Properties	deprecated	objc
-property	open	containsAttachments	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Properties	deprecated	objc
+property	struck	containsAttachments	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Properties	other-framework	objc
 property	shipped	length	NSAttributedString	Fundamentals / Strings with Metadata / Getting the characters	-	objc
 property	shipped	string	NSAttributedString	Fundamentals / Strings with Metadata / Getting the characters	-	objc
 property	shipped	textTypes	NSAttributedString	Fundamentals / Strings with Metadata / Getting the supported text-file formats	-	objc
@@ -1991,31 +1991,31 @@ method	shipped	-addAttribute:value:range:	NSMutableAttributedString	Fundamentals
 method	shipped	-addAttributes:range:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	-	objc
 method	shipped	-appendAttributedString:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Characters and Attributes	-	objc
 method	shipped	-appendLocalizedFormat:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Characters and Attributes	-	objc
-method	open	-applyFontTraits:range:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	-	objc
+method	struck	-applyFontTraits:range:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	other-framework	objc
 method	shipped	-beginEditing	NSMutableAttributedString	Fundamentals / Strings with Metadata / Grouping Changes	-	objc
 method	shipped	-deleteCharactersInRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Characters	-	objc
 method	shipped	-endEditing	NSMutableAttributedString	Fundamentals / Strings with Metadata / Grouping Changes	-	objc
-method	open	-fixAttachmentAttributeInRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Fixing Attributes After Changes	-	objc
+method	struck	-fixAttachmentAttributeInRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Fixing Attributes After Changes	other-framework	objc
 method	shipped	-fixAttributesInRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Fixing Attributes After Changes	-	objc
-method	open	-fixFontAttributeInRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Fixing Attributes After Changes	-	objc
-method	open	-fixParagraphStyleAttributeInRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Fixing Attributes After Changes	-	objc
+method	struck	-fixFontAttributeInRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Fixing Attributes After Changes	other-framework	objc
+method	struck	-fixParagraphStyleAttributeInRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Fixing Attributes After Changes	other-framework	objc
 method	shipped	-insertAttributedString:atIndex:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Characters and Attributes	-	objc
-method	open	-readFromData:options:documentAttributes:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Deprecated	deprecated	objc
-method	open	-readFromData:options:documentAttributes:error:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Reading Content	-	objc
-method	open	-readFromFileURL:options:documentAttributes:error:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Deprecated	deprecated	objc
+method	struck	-readFromData:options:documentAttributes:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Deprecated	other-framework	objc
+method	struck	-readFromData:options:documentAttributes:error:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Reading Content	other-framework	objc
+method	struck	-readFromFileURL:options:documentAttributes:error:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Deprecated	other-framework	objc
 method	open	-readFromURL:options:documentAttributes:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Deprecated	deprecated	objc
 method	open	-readFromURL:options:documentAttributes:error:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Reading Content	-	objc
 method	shipped	-removeAttribute:range:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	-	objc
 method	shipped	-replaceCharactersInRange:withAttributedString:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Characters and Attributes	-	objc
 method	shipped	-replaceCharactersInRange:withString:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Characters	-	objc
-method	open	-setAlignment:range:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	-	objc
+method	struck	-setAlignment:range:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	other-framework	objc
 method	shipped	-setAttributedString:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Characters and Attributes	-	objc
 method	shipped	-setAttributes:range:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	-	objc
-method	open	-setBaseWritingDirection:range:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	-	objc
-method	open	-subscriptRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	-	objc
-method	open	-superscriptRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	-	objc
-method	open	-unscriptRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	-	objc
-method	open	-updateAttachmentsFromPath:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Updating Attachment Contents	-	objc
+method	struck	-setBaseWritingDirection:range:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	other-framework	objc
+method	struck	-subscriptRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	other-framework	objc
+method	struck	-superscriptRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	other-framework	objc
+method	struck	-unscriptRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	other-framework	objc
+method	struck	-updateAttachmentsFromPath:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Updating Attachment Contents	other-framework	objc
 property	open	mutableString	NSMutableAttributedString	Fundamentals / Strings with Metadata / Retrieving Character Information	-	objc
 method	shipped	-addCharactersInRange:	NSMutableCharacterSet	Fundamentals / Characters / Adding and Removing Characters	-	objc
 method	shipped	-addCharactersInString:	NSMutableCharacterSet	Fundamentals / Characters / Adding and Removing Characters	-	objc

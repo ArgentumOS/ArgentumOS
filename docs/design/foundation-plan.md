@@ -15982,6 +15982,58 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.84 — THE WORK LIST GETS TRUER BY 41 ROWS: A SIXTH GROUND, AND THE FOUR THINGS THAT MADE IT LAND (2026-10-01)
+
+**WHAT LANDED: the `other-framework` ground — forty-one names, each measured as ABSENT from Foundation's own
+headers — and the ledger refreshed so those rows are `struck` instead of `open`. NO LIBRARY CODE CHANGED.**
+
+**MEASURED: `method open 474 → 434`, `struck 286 → 326`; `property open 202 → 201`, `struck 157 → 158` —
+FORTY-ONE ROWS, which is every row §63.83 classified as the drawing frameworks'. `--check` consistent. ⚠⚠ AND THE
+OWNER LANDED EXACTLY WHERE §63.83 SAID IT WOULD: `NSAttributedString` `(41) → (13)` and
+`NSMutableAttributedString` `(16) → (3)`, so SIXTEEN REMAIN — the fifteen methods and one property that unit
+measured as actually Foundation's, counted by a different instrument and matching to the row.**
+
+**⚠⚠ AND FOUR THINGS HAD TO BE RIGHT, EACH FOUND BY A MEASUREMENT THAT BEAT A THEORY — WHICH IS THE WHOLE OF WHAT
+THIS UNIT IS WORTH RECORDING:**
+ 1. **`struck_reason()` IS THE REASON.** Adding the ground here returned `other-framework` for every name, which
+    calling the function DIRECTLY confirmed. **AND THE LEDGER DID NOT MOVE.**
+ 2. **`STRIKE_REASONS` IS WHAT MAKES A REASON ACT.** `status_of()` strikes on `why in STRIKE_REASONS`, so a reason
+    not listed there is a comment with a return value. **A REASON AND A STRIKE ARE TWO THINGS IN THIS TOOL.**
+ 3. **`_selector_why()` IS THE PATH A SELECTOR ROW TAKES, AND IT NEVER REACHES `struck_reason()`** — an OWNER row's
+    reason comes from `why_of` → `struck_reason`, a SELECTOR row's from `_selector_why`, which consults
+    `struck_reason` only for four name-shaped grounds. **A GROUND HAS TO BE SPELLED IN THE PATH THE ROW ACTUALLY
+    TAKES.**
+ 4. **⚠⚠ AND THE NAMES MUST BE UNSIGNED, WHICH THE THIRD FIX STILL GOT WRONG.** With all three spellings in place
+    the ledger STILL barely moved: `property open 202 → 201` and `struck 157 → 158`, while `method open` stayed at
+    **474**. **THE ONE ROW THAT STRUCK WAS A PROPERTY — which has no sign to get wrong.** A SELECTOR row's
+    `row["name"]` CARRIES NO SIGN: it is a DISPLAY artifact, added later by `selectors_status` as
+    `r["sign"] + r["name"]` for a method. The ground had been built from the **SIGNED spelling read off the work
+    list**, so every method name in it missed by exactly one character. **A PARTIAL RESULT THAT MOVES IN THE
+    DIRECTION YOU EXPECTED IS THE MOST DANGEROUS KIND: one row struck, which reads as "the fix works".**
+
+**AND THREE REFRESHES REPORTED ONLY "nothing changed" WHILE THE GROUND WAS CORRECT IN TWO OF THE THREE PLACES, AND
+A FOURTH MOVED BY ONE ROW WHILE BEING WRONG IN A FOURTH WAY. WHAT RESOLVED IT EVERY TIME WAS FOLLOWING THE
+DATA — reading `selectors_status()` to see which function a selector row's `why` comes from, and re-reading the
+ledger's DELTA rather than its verdict — AND NOT RE-READING THE GROUND.** The losing theories were all about the
+words in the code rather than the path the data takes.
+
+**⚠ AND MY OWN GUARD'S ARITHMETIC WAS WRONG TOO, WHICH IS WHY THE FIRST ATTEMPT REVERTED ITSELF CLEANLY: it
+expected `open 433` and the truth is `434`, because it subtracted all forty-one rows from the METHOD total when
+the forty-first is a PROPERTY. The guard did its job — it refused to commit a state that did not match its
+expectation, and the mismatch was the clue.**
+
+**AND THE MECHANISM KEEPS THE GROUND HONEST RATHER THAN MAKING IT A HOLE:** `--check` REQUIRES a struck name to be
+ABSENT from our headers, so adding any of the forty-one to the tree FAILS THE GATE. **An entry is a claim about the
+tree, and a claim about the tree is checkable** — the same property the file's EXCEPTIONS list is built on, in the
+opposite direction. ⚠ AND THE CAVEAT TRAVELS WITH THE GROUND, IN THE TOOL'S OWN COMMENT: what is asserted is the
+ABSENCE, at a recorded date, from the macOS 14.5 and iOS 16.5 FOUNDATION corpora; NEITHER CARRIES APPKIT OR UIKIT,
+so the POSITIVE half was not available in this tree and IS NOT CLAIMED.
+
+**WHAT THIS BUYS THE CAMPAIGN: the work list is TRUER by forty-one rows without a line of library code. §30's
+metric is not "fewer rows" — it is "fewer rows that are OURS", and this is the first unit that moved it without
+shipping anything.** What remains on the owner is the sixteen: the nine formatting rows (§63.82's unit — one
+engine, one substrate), the document readers, and `-mutableString`.
+
 ## §63.83 — THE WORK LIST'S TOP OWNER IS MOSTLY NOT OURS: 57 ROWS MEASURED AGAINST FOUNDATION'S OWN HEADERS (2026-10-01)
 
 **NO ROWS CLOSED, AND THE MEASUREMENT CHANGES THE PLAN RATHER THAN ANSWERING A QUESTION IN IT.** §63.81 found
