@@ -15982,6 +15982,49 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.96 — APPLE'S OWN DOC COMMENTS SAY THE "LOCALIZED" DOORS DO NOT LOCALIZE: THEY FORMAT (2026-10-01)
+
+**NO ROWS CLOSED. THE UNIT WAS STOPPED ONE STEP BEFORE A WRONG IMPLEMENTATION, BY READING A DECLARATION'S TRAILING
+COMMENT — AN INSTRUMENT THIS SESSION HAD NOT BEEN USING.**
+
+**⚠⚠ THE MEASUREMENT, FROM THE macOS 14.5 CORPUS, WHERE EVERY DECLARATION CARRIES ITS DOC COMMENT:**
+```
++ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format, ...
+/// Formats the string using the current locale and the specified options.
++ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format
+                                            options:(NSAttributedStringFormattingOptions)options, ...
+/// Formats the string using the specified locale (or the canonical one, if nil).
+- (instancetype)initWithFormat:(NSAttributedString *)format ... locale: ... context: ...
+```
+**THE FOUR `localizedAttributedStringWithFormat:` SHAPES FORMAT THE GIVEN STRING WITH THE CURRENT LOCALE. THEY DO NOT
+LOOK ANYTHING UP.** The NAME says "localized" and means a localization-table lookup, **and that is what this unit
+was about to build** — the tree even HAS the lookup door (`-localizedStringForKey:`, plus the four `NSLocalizedString`
+macros), **which is exactly what made the wrong reading comfortable.** **§63.82'S LESSON FOR THE THIRD TIME: A ROW'S
+NAME IS NOT ITS BEHAVIOUR.** §63.82 found it in an enum's values, §63.91 in a grep for a literal, and here in a
+declaration's own comment.
+
+**⚠ AND THE INSTRUMENT IS THE FINDING WORTH KEEPING: THE CORPUS'S DECLARATIONS CARRY THEIR DOC COMMENTS, AND THIS
+TREE HAD ONLY EVER READ THEM FOR SIGNATURES.** A `sed` of the declaration answers "what does Apple say this door
+does" — the question every deferral ground in this campaign is really asking — and it costs one command. **The
+grounds in this library's headers are this campaign's own prose; the corpus's comments are APPLE'S, and where the two
+disagree the second wins.**
+
+**AND THE `context:` SHAPES' EFFECT IS UNPUBLISHED EVEN THERE** — their comments say only the same sentence about the
+locale — **so under §11.6.1 D2 the behaviour is OURS and is written down: the dictionary is ACCEPTED WITH NO
+EFFECT, because this library's substitutions are C's conversions and it wires no inflection to this door. The two
+`-initWithFormat:…context:…` doors, where it would ACT, remain open rows.**
+
+**AND THE PLUMBING FAILED TWICE, BOTH TIMES MINE AND NEITHER ABOUT THE LIBRARY:** the first attempt wrote a header
+note OUTSIDE a comment — **the §63.79 trap, second occurrence in this session** — and the second's splice for the
+`.m` skipped the category's `@end` (`am[j+1+len("\n@end"):]` deletes it) while a header prototype lost its `;`. **The
+four wrappers and their four checks are written and understood; what stands between them and the ledger is my own
+string surgery, and the tree is GREEN with the ledger unchanged.**
+
+**AND THE SHAPE OF THE UNIT IS NOW FULLY MEASURED: four one-line-ish wrappers over the doors §63.95 landed**
+(`[self initWithFormat:… locale:[NSLocale currentLocale] arguments:…]`), **four checks asserting the formatted
+string**, and nothing else — which is small, and is the point: **the correct implementation was small and the WRONG
+one would have been large.**
+
 ## §63.95 — THE ATTRIBUTED-FORMAT DOORS LAND, AND THE ASSERTIONS ARE PROVED BY TEXT (2026-10-01)
 
 **WHAT LANDED: `-initWithFormat:options:locale:` and `-initWithFormat:options:locale:arguments:` — the attributed
