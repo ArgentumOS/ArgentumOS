@@ -95,6 +95,50 @@ static id fn_no_object(void)
 
 int main(void)
 {
+
+	{
+		/* §63.78: THE SHARED-KEY-SET PAIR, WHOSE TOKEN IS OPAQUE. Apple declares no class for it, so what is
+		 * asserted is the CONTRACT the two doors state and nothing else: a key set is accepted only by the door
+		 * that made it, nil RAISES at both ends, and a key OUTSIDE the set still works exactly as Apple's page
+		 * says it must ("can still be set into the dictionary, but that usage is not optimal"). */
+		NSArray *keys = [NSArray arrayWithObjects:@"one", @"two", @"two", nil];
+		id keySet = [NSDictionary sharedKeySetForKeys:keys];
+		NSMutableDictionary *d = nil;
+		BOOL raisedNilKeys = NO, raisedForeign = NO, raisedNilSet = NO;
+
+		if (keySet != nil) {
+			d = [NSMutableDictionary dictionaryWithSharedKeySet:keySet];
+		}
+		if (d != nil) {
+			[d setObject:@"1" forKey:@"one"];
+			[d setObject:@"9" forKey:@"not-in-the-set"];
+		}
+		@try {
+			(void)[NSDictionary sharedKeySetForKeys:nil];
+		} @catch (NSException *e) {
+			raisedNilKeys = [[e name] isEqualToString:NSInvalidArgumentException];
+		}
+		@try {
+			(void)[NSMutableDictionary dictionaryWithSharedKeySet:@"not a key set"];
+		} @catch (NSException *e) {
+			raisedForeign = [[e name] isEqualToString:NSInvalidArgumentException];
+		}
+		@try {
+			(void)[NSMutableDictionary dictionaryWithSharedKeySet:nil];
+		} @catch (NSException *e) {
+			raisedNilSet = [[e name] isEqualToString:NSInvalidArgumentException];
+		}
+		check("shared-key-set-pair",
+		      keySet != nil && d != nil && [d count] == 2 &&
+		      [[d objectForKey:@"one"] isEqualToString:@"1"] &&
+		      [[d objectForKey:@"not-in-the-set"] isEqualToString:@"9"] &&
+		      [NSDictionary sharedKeySetForKeys:[NSArray array]] != nil &&
+		      raisedNilKeys && raisedForeign && raisedNilSet,
+		      [[NSString stringWithFormat:@"keySet=%d dictCount=%lu nilKeys=%d foreign=%d nilSet=%d",
+			(int)(keySet != nil), (unsigned long)[d count],
+			(int)raisedNilKeys, (int)raisedForeign, (int)raisedNilSet] UTF8String]);
+	}
+
 	{
 		id __unsafe_unretained objects[3];
 		NSArray *a;

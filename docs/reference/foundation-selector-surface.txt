@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2165   open  477   struck  286
+#   method     shipped 2167   open  475   struck  286
 #   property   shipped 1261   open  218   struck  157
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -1041,7 +1041,7 @@ method	shipped	-objectEnumerator	NSDictionary	Fundamentals / Basic Collections /
 method	shipped	-objectForKey:	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	-	objc
 method	shipped	-objectForKeyedSubscript:	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	-	objc
 method	shipped	-objectsForKeys:notFoundMarker:	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	-	objc
-method	open	+sharedKeySetForKeys:	NSDictionary	Fundamentals / Basic Collections / Creating Key Sets for Shared-Key Optimized Dictionaries	-	objc
+method	shipped	+sharedKeySetForKeys:	NSDictionary	Fundamentals / Basic Collections / Creating Key Sets for Shared-Key Optimized Dictionaries	-	objc
 method	shipped	-valueForKey:	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	-	objc
 method	shipped	-writeToFile:atomically:	NSDictionary	Fundamentals / Basic Collections / Storing Dictionaries	deprecated	objc
 method	shipped	-writeToURL:atomically:	NSDictionary	Fundamentals / Basic Collections / Storing Dictionaries	deprecated	objc
@@ -2085,7 +2085,7 @@ method	shipped	+dictionaryWithContentsOfFile:	NSMutableDictionary	Fundamentals /
 method	shipped	+dictionaryWithContentsOfURL:	NSMutableDictionary	Fundamentals / Basic Collections / Type Methods	-	objc
 method	struck	+dictionaryWithOBEXHeadersData:	NSMutableDictionary	Fundamentals / Basic Collections / Type Methods	declined	objc
 method	struck	+dictionaryWithOBEXHeadersData:headersDataSize:	NSMutableDictionary	Fundamentals / Basic Collections / Type Methods	declined	objc
-method	open	+dictionaryWithSharedKeySet:	NSMutableDictionary	Fundamentals / Basic Collections / Creating and Initializing a Mutable Dictionary	-	objc
+method	shipped	+dictionaryWithSharedKeySet:	NSMutableDictionary	Fundamentals / Basic Collections / Creating and Initializing a Mutable Dictionary	-	objc
 method	struck	-getHeaderBytes	NSMutableDictionary	Fundamentals / Basic Collections / Instance Methods	declined	objc
 method	shipped	-init	NSMutableDictionary	Fundamentals / Basic Collections / Creating and Initializing a Mutable Dictionary	-	objc
 method	shipped	-initWithCapacity:	NSMutableDictionary	Fundamentals / Basic Collections / Creating and Initializing a Mutable Dictionary	-	objc

@@ -15982,6 +15982,52 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.78 — THE SHARED-KEY-SET PAIR LANDS, AND THE LEDGER MOVES BY TWO (2026-10-01)
+
+**WHAT LANDED: both doors, with the token a PRIVATE class of this library's own — which is exactly what Apple's
+is.** `+[NSDictionary sharedKeySetForKeys:]` and `+[NSMutableDictionary dictionaryWithSharedKeySet:]`, declared
+as the two categories Apple puts them in (`NSSharedKeySetDictionary`), implemented over a file-private
+`FNSharedKeySet` that **COPIES the keys and forgets the duplicates** (Apple: "the keys are copied from the array
+and must be copyable … may contain duplicates, which are ignored") and **is named in no public header**, because
+§63.77 measured that Apple declares no such class in either SDK's headers OR in its documentation index.
+
+**MEASURED, AND THE LEDGER MOVED BY TWO — which corrected a count I had given one unit earlier.** The refresh
+diff is explicit:
+
+    method  open → shipped   +sharedKeySetForKeys:            NSDictionary
+    method  open → shipped   +dictionaryWithSharedKeySet:     NSMutableDictionary
+
+so **`method shipped 2165 → 2167`, `open 477 → 475`**, `--check` consistent. §63.77 said "the only row anywhere
+is `+sharedKeySetForKeys:`" — **IT WAS TWO ROWS**: the second sits in "Creating and Initializing a Mutable
+Dictionary", a section the earlier search never reached, and the REFRESH is what said so. **A ledger read by
+grepping for the feature's own name found one row; the ledger read by comparing statuses found two** — the
+instrument that owns the fact, again (§63.72, §63.76, §63.77 all paid for the same lesson).
+
+**AND THE CONTRACT IS IMPLEMENTED CLAUSE BY CLAUSE, because on an opaqUE token the contract is the whole of the
+API**: nil or not-an-array RAISES (Apple: "an exception is thrown"), duplicates are ignored, an EMPTY array
+answers an EMPTY KEY SET rather than an error, and the second door RAISES for nil — and for anything that is not
+what the first door answered, which is Apple's own stated ground ("If keyset is not an object returned by
++sharedKeySetForKeys:").
+
+**⚠ AND THE ONE THING NOT IMPLEMENTED IS A PERFORMANCE PROPERTY, STATED RATHER THAN DISCOVERED (§11.6).** Apple's
+dictionary is "optimized for dealing with a known set of keys"; THIS ONE IS AN ORDINARY `NSMutableDictionary`
+WHOSE CAPACITY IS RESERVED FROM THE KEY SET, which is behaviourally identical — Apple's own page promises nothing
+else, and says outright that "keys that are not in the key set can still be set into the dictionary, but that
+usage is not optimal". **A property with no observable behaviour is the one kind of gap a caller cannot trip
+over, and the header says so where a caller meets it rather than leaving it to be found.** The probe therefore
+asserts the CONTRACT and not the optimisation — including the case Apple's page names explicitly, a key OUTSIDE
+the set.
+
+**MEASURED, ACCEPTANCE ALL GREEN: `rm -rf .build/host/obj && make host-foundation` exit 0 with EXACTLY the six
+known warnings; `make foundation-sweep` consistent after `--refresh`; `make testimg` EXIT 0; `make test
+TESTS='foundation_collection'` → `TESTS-OK 1/1 case(s), 6/6 check(s) in 13s`, the probe's tally
+`FOUNDATION-COLLECTION 63/63`.**
+
+**AND IT IS THE FIRST OF THESE UNITS IN MANY THAT NEEDED NO SECOND CYCLE**: one edit pass, one refresh, one run.
+The difference is not care — it is that the RECONNAISSANCE was done first (the anchors, the probe that covers the
+family, and the ledger's own reported counts), and that the four units before it had already paid for the traps
+this one could have hit.
+
 ## §63.77 — WHY THERE IS NO `NSSharedKeySet`: APPLE DOES NOT DECLARE ONE (2026-10-01)
 
 **THE QUESTION: "why do we not have `NSSharedKeySet`? We should have every class Apple declares." THE ANSWER IS

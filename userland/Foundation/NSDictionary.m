@@ -1343,3 +1343,85 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 }
 
 @end
+
+
+/* ================== THE SHARED-KEY-SET PAIR (§63.78) ==================
+ * See the note in the header: Apple declares no such CLASS, the token is opaque, and the only stated contract is
+ * that the second door throws unless it is handed what the first door answered. THIS TOKEN IS THE MINIMUM THAT
+ * SATISFIES THAT CONTRACT — it COPIES the keys (Apple: "the keys are copied from the array and must be
+ * copyable") and forgets the duplicates (Apple: "may contain duplicates, which are ignored"). */
+@interface FNSharedKeySet : NSObject
+{
+	NSArray *_keys;		/* retained: the copied, de-duplicated key set */
+}
+- (id)initWithKeys:(NSArray *)keys;
+- (NSUInteger)fnKeyCount;
+@end
+
+@implementation FNSharedKeySet
+
+- (id)initWithKeys:(NSArray *)keys
+{
+	self = [super init];
+	if (self != nil) {
+		_keys = [keys copy];
+	}
+	return self;
+}
+
+- (NSUInteger)fnKeyCount
+{
+	return [_keys count];
+}
+
+- (void)dealloc
+{
+	[_keys release];
+	[super dealloc];
+}
+
+@end
+
+@implementation NSDictionary (NSSharedKeySetDictionary)
+
++ (id)sharedKeySetForKeys:(NSArray *)keys
+{
+	NSMutableArray *unique;
+	NSUInteger i;
+
+	/* APPLE'S CONTRACT CLAUSE BY CLAUSE: nil or not-an-array RAISES, duplicates are IGNORED, and an empty array
+	 * answers an EMPTY KEY SET rather than an error. */
+	if (keys == nil || ![keys isKindOfClass:[NSArray class]]) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"+[NSDictionary sharedKeySetForKeys:] needs an NSArray of keys"];
+		return nil;
+	}
+	unique = [NSMutableArray array];
+	for (i = 0; i < [keys count]; i++) {
+		id key = [keys objectAtIndex:i];
+
+		if ([unique indexOfObject:key] == NSNotFound) {
+			[unique addObject:key];
+		}
+	}
+	return [[[FNSharedKeySet alloc] initWithKeys:unique] autorelease];
+}
+
+@end
+
+@implementation NSMutableDictionary (NSSharedKeySetDictionary)
+
++ (NSMutableDictionary *)dictionaryWithSharedKeySet:(id)keyset
+{
+	/* BOTH OF APPLE'S REFUSALS ARE HERE, AND THEY ARE THE WHOLE OF THIS DOOR'S CONTRACT: nil raises, and so
+	 * does anything that is not what `+sharedKeySetForKeys:` answers. */
+	if (keyset == nil || ![keyset isKindOfClass:[FNSharedKeySet class]]) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"+[NSMutableDictionary dictionaryWithSharedKeySet:] needs an object answered by "
+				   @"+[NSDictionary sharedKeySetForKeys:]"];
+		return nil;
+	}
+	return [[[NSMutableDictionary alloc] initWithCapacity:[(FNSharedKeySet *)keyset fnKeyCount]] autorelease];
+}
+
+@end

@@ -199,6 +199,27 @@ NS_ASSUME_NONNULL_END
  * NSFileManager.h's, and the VALUES are the shapes -[NSFileManager attributesOfItemAtPath:error:] hands out.
  * =================================================================================================== */
 NS_ASSUME_NONNULL_BEGIN
+/* ================== THE SHARED-KEY-SET PAIR (§63.78) ==================
+ * APPLE DECLARES NO `NSSharedKeySet` CLASS — measured in the macOS and iOS headers AND in Apple's own
+ * documentation index (§63.77) — and what the two doors traffic in is AN OPAQUE `id`, whose only stated
+ * contract is Apple's own: `+dictionaryWithSharedKeySet:` throws "If keyset is not an object returned by
+ * +sharedKeySetForKeys:". **SO THE TOKEN IS A CLASS OF OURS, PRIVATE, AND UNNAMED IN ANY PUBLIC HEADER** —
+ * exactly as Apple's is invisible.
+ * ⚠ AND THE OPTIMISATION IS A STATED DEVIATION (§11.6): Apple's dictionary is "optimized for dealing with a
+ * known set of keys". THIS ONE IS AN ORDINARY NSMutableDictionary WHOSE CAPACITY IS RESERVED FROM THE KEY SET,
+ * which is BEHAVIOURALLY IDENTICAL — Apple's own page promises nothing else, and says outright that "keys that
+ * are not in the key set can still be set into the dictionary, but that usage is not optimal". A performance
+ * property with no observable behaviour is the one kind of gap a caller cannot trip over, and it is stated here
+ * rather than left to be discovered. */
+
+@interface NSDictionary<KeyType, ObjectType> (NSSharedKeySetDictionary)
++ (id)sharedKeySetForKeys:(NSArray<KeyType <NSCopying>> *)keys;
+@end
+
+@interface NSMutableDictionary<KeyType, ObjectType> (NSSharedKeySetDictionary)
++ (NSMutableDictionary<KeyType, ObjectType> *)dictionaryWithSharedKeySet:(id)keyset;
+@end
+
 @interface NSDictionary (NSFileAttributes)
 - (nullable NSDate *)fileCreationDate;
 - (BOOL)fileExtensionHidden;
