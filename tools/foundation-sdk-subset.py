@@ -321,7 +321,13 @@ def property_name(decl):
     annotation made it find the WRONG one on 12 more (`NS_RETURNS_INNER_POINTER` and `NS_REFINED_FOR_SWIFT` as
     property names). A BLOCK property is asked first, because its name lives inside `(^name)` and the rest of
     the declarator is the block's own type."""
-    m = re.search(r"\(\s*\^\s*(\w+)\s*\)", decl)
+    # A BLOCK OR A FUNCTION-POINTER PROPERTY: the name lives INSIDE the parentheses, after the `^` (a block)
+    # or the `*` (a function pointer). ⚠ AND THE RULE CANNOT BE "a `^` right after the `(`", which is what it
+    # was until §63.66: the corpus writes `void *(*acquireFunction)(…)` — the pointer form, which the caret
+    # rule missed entirely — and `void (NS_SWIFT_SENDABLE ^terminationHandler)(NSTask *)`, where a MACRO sits
+    # before the caret. Both were measured; the corpus's whole NSPointerFunctions block parsed to FOUR
+    # selectors because of the first. What matters is the `^` or the `*` before the NAME, not its position.
+    m = re.search(r"\(\s*[^()]*?[\^*]\s*([A-Za-z_]\w*)\s*\)", decl)
     if m:
         return m.group(1)
     m = re.search(r"([A-Za-z_]\w*)\s*$", strip_trailing_annotations(decl))
@@ -515,6 +521,31 @@ def parse_corpus(files):
                     if p:
                         psupers.setdefault(name, []).append(p)
     return blocks_, file_of, supers, adopted, pblocks, psupers
+
+
+def declared_by(sel, idx):
+    """WHICH OWNERS the corpus declares `sel` on — every class and protocol, not one owner's chain.
+
+    ⚠ WHY THE REPORT NEEDS THIS (§63.66): a row the owner-aware pass could not place has THREE readings and the
+    row's own text cannot tell them apart — the name is Apple's on ANOTHER CLASS (`-initWithDecimal:`, Apple's on
+    NSDecimalNumber), the name is Apple's on NOBODY (`-identifier` on NSCalendar, whose Apple property is called
+    `calendarIdentifier`), or the name belongs to a class APPLE DOES NOT DECLARE. Printing the owners that DO
+    declare it turns the middle one into a name you can act on and the third into one you cannot, and those are
+    the two cases that must not be mixed."""
+    blocks_, file_of, supers, adopted, pblocks, psupers = idx
+    cands = spelling_candidates(sel)
+    our_sign = sel[0] if sel[0] in "+-" else ""
+    out = []
+    for pool_map, tag in ((blocks_, ""), (pblocks, " (protocol)")):
+        for name, pool in pool_map.items():
+            for cs in pool:
+                sign, core = (cs[0], cs[1:]) if cs[0] in "+-" else ("", cs)
+                if core.split(":")[0] not in cands:
+                    continue
+                if our_sign == "" or sign == "" or our_sign == sign:
+                    out.append(name + tag)
+                    break
+    return sorted(out)
 
 
 def spelling_candidates(sel):
@@ -719,7 +750,11 @@ def main(argv):
         print("\n  ⚠⚠ §63.63 OWNER-AWARE PASS: %d name(s) the text search calls PRESENT but that NO BLOCK FOR "
               "THEIR OWN OWNER DECLARES (nor a superclass's, nor an adopted protocol's):" % len(foreign))
         for o, s, w in foreign:
+            who = declared_by(s, idx)
             print("       %-30s %-46s  text search answered from %s" % (o, s, os.path.basename(w)))
+            print("           %s" % ("DECLARED ON: " + ", ".join(who) if who else
+                                     "DECLARED ON NOTHING in this corpus — Apple has no such name here, so "
+                                     "this is either an addition of ours or a class Apple does not declare"))
         print("     THIS IS A REPORT, NOT A DEFECT LIST. Two readings, and the row itself does not say which:")
         print("       * a name of OURS that Apple declares on ANOTHER CLASS — §63.59's -initWithDecimal: on")
         print("         NSNumber, which Apple declares on NSDecimalNumber, is the case that named the question;")

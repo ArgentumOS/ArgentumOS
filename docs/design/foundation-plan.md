@@ -15982,6 +15982,62 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.66 — THE LAST TWO PARSER CASES, THE YIELD 49 → 34, AND THE REPORT LEARNS TO SAY WHO DECLARES A NAME (2026-10-01)
+
+**WHAT LANDED (continuing `dec-733391f6e71e4415`), two things and the second is the one that matters.**
+ * **The last two confirmed parser cases are fixed, and they are ONE case.** `property_name`'s block rule was
+   "a `^` right after the `(`"; it is now "a `^` **or a `*`** before the NAME", because the corpus writes
+   `void *(*acquireFunction)(const void *src, …)` (a FUNCTION POINTER, which the caret rule missed entirely)
+   and `void (NS_SWIFT_SENDABLE ^terminationHandler)(NSTask *)` (a block whose caret is PRECEDED BY A MACRO).
+   **MEASURED: `NSPointerFunctions`' block parses to 10 selectors, up from 4, and twelve unit cases pass** —
+   including the two real declarations above and a NAMELESS block property, where `None` is correct.
+ * **`declared_by(sel, idx)` — the report now says WHO declares a name**, scanning every class and protocol
+   rather than one owner's chain. **A row the pass could not place has three readings that its own text cannot
+   tell apart:** Apple has it on ANOTHER CLASS (`-initWithDecimal:`), Apple has NO such name (`-identifier`),
+   or the class is one Apple does not declare at all. The first is actable, the third is not, and mixing them
+   is how a report becomes a rumour.
+
+**MEASURED: the buckets did not move** (`documented 33`, `other-framework 8`, `ours 129`,
+`accepted-by-ground 4`, `NOT-IN-ANY-SDK 0`, `0 JUDGEABLE`) and **the yield fell 49 → 34**, the fifteen being
+exactly the function-pointer and macro-caret rows. **And the 34 split 25 / 9: twenty-five are DECLARED ON
+ANOTHER CLASS OR PROTOCOL and nine are DECLARED ON NOTHING in this corpus.**
+
+**AND THREE FAMILIES IN THE 25 ARE NOW NAMED, BECAUSE THEY LOOK LIKE THE TREE RATHER THAN THE TOOL:**
+ * **`NSXMLNode` carries SIX methods Apple puts on its SUBCLASSES** — `-addChild:`, `-insertChild:atIndex:`,
+   `-insertChildren:atIndex:`, `-removeChildAtIndex:`, `-replaceChildAtIndex:withNode:` and
+   `-initWithXMLString:` are declared, per the corpus, on `NSXMLElement`/`NSXMLDocument`/`NSXMLDTD`. **That is
+   the opposite direction from everything this campaign has looked at so far:** not a name of ours with no
+   Apple counterpart, but a name Apple DOES have, on a class we did not put it on. The walk goes UP the
+   chain, so a method that belongs DOWN it is exactly the case an owner-aware pass can see and a text search
+   cannot. **It is a candidate, not a verdict** — Apple also declares some of these on NSXMLNode in other
+   versions, and only the corpus in front of us is being read.
+ * **`NSFileHandle`'s three `+standard…` CLASS methods** are declared on `NSTask` and `NSUserUnixTask` as
+   INSTANCE properties. This is the SIGN rule doing its job on a row a text search cannot distinguish from
+   `-standardInput` — and it is also the one family where the rule may be over-strict, since a class-method
+   factory and a class property are the same thing spelled two ways in Apple's own headers.
+ * **`NSCalendar -identifier`**, from §63.65, resolves to `NSBackgroundActivityScheduler`,
+   `NSURLSessionConfiguration`, `NSUserNotification`, `NSUserNotificationAction` — **every class EXCEPT the one
+   that has the property**, whose Apple name is `calendarIdentifier`. A common property name declared on
+   unrelated classes is exactly what the old text search could not tell apart from a declaration on ours.
+
+**AND THE NINE "ON NOTHING" ARE A DIFFERENT LIST, WHICH IS WHY THE SPLIT MATTERS.** Four of them
+(`-majorVersion`, `-minorVersion`, `-patchVersion` on `NSProcessInfo`, and `-dtd` on `NSXMLDocument`) are names
+whose TOKEN is in the owner's own header for a reason that is not a declaration — `NSOperatingSystemVersion`'s
+struct FIELDS, measured at `NSProcessInfo.h:22`. The rest (`+automatic`, `proxy`, `location`, `+pounds`,
+`+methodSignatureForSelector:`) have no Apple name at all in this corpus, so they are either additions of ours
+or classes Apple does not declare — **the same question §63.61 answered with the `ours` bucket, asked of a much
+smaller list.** ⚠ AND `NSObject +methodSignatureForSelector:` MAY BE THE SIGN RULE RATHER THAN THE TREE: Apple
+declares the INSTANCE method on NSObject, our row is the CLASS method, and `declared_by` enforces the sign.
+**It is recorded as a question about the instrument, not a finding about the tree.**
+
+**NOTHING HERE IS SETTLED, AND THE NEXT UNIT IS A DIFFERENT KIND OF WORK.** The instrument has now been
+repaired four times in a row (§63.63 report → §63.64 declarator → §63.65 taxonomy → §63.66 the pointer/caret
+pair) and each repair has been worth roughly a third of the yield: 376 → 59 → 49 → 34. **What is left is NOT
+another parser case that anyone has measured** — it is the SETTLING: take the three families above, check each
+name against Apple's own published documentation (the tool's header reads a corpus; a naming difference needs
+a second source), and decide one at a time. **The campaign should expect the next unit to end with a handful of
+names settled and a smaller report, not with a clean one.**
+
 ## §63.65 — THE TAXONOMY PARSE, THE YIELD 59 → 49, AND THE FIRST ROW ABOUT THE TREE RATHER THAN THE TOOL (2026-10-01)
 
 **WHAT LANDED (continuing `dec-733391f6e71e4415`): the corpus's class taxonomy is parsed properly.**
