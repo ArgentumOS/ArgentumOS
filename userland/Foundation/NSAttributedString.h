@@ -28,7 +28,16 @@
  * are DECLARED with bodies that either write the format or REFUSE BY NAME rather than doing nothing); the
  * AppKit/UIKit/TextKit half (`size`, the `draw…` family, `boundingRectWithSize:`, text lists, rulers and
  * attachments) which belongs to the drawing frameworks and is EXCLUDED here - the probe asserts their
- * ABSENCE; -mutableString (a LIVE proxy over the store, not a copy, and a slice of its own); and the two
+ * ABSENCE; ⚠⚠ AND THE ATTACHMENTS HALF OF THAT SENTENCE IS **MEASURED, DO NOT RE-CHASE IT** (§63.81):
+ * `+attributedStringWithAttachment:`, `+attributedStringWithAttachment:attributes:`, `-containsAttachmentsInRange:`,
+ * `-containsAttachments` and the two constants `NSAttachmentAttributeName`/`NSAttachmentCharacter` appear
+ * NOWHERE in the macOS 14.5 Foundation corpus (170 headers) **or** the iOS 16.5 Foundation corpus (125) — they
+ * are declared by AppKit/UIKit, in `NSTextAttachment.h`, which neither corpus carries. **A LEDGER ROW'S OWNER IS
+ * NOT ITS DECLARER:** the derived surface groups a class's EXTENSIONS under the class, so these sit under
+ * `NSAttributedString` while being the drawing frameworks' declarations. **AND THE TEST THAT SEPARATES THE TWO
+ * CASES IS NOT THE PARAMETER'S CLASS** — `NSNumberFormatter`'s `-roundingBehavior` takes an
+ * `NSDecimalNumberHandler` and is Foundation's (§63.80) — **IT IS WHETHER THE DECLARATION IS ABSENT FROM
+ * FOUNDATION'S OWN HEADERS**, and here it is absent from both; -mutableString (a LIVE proxy over the store, not a copy, and a slice of its own); and the two
  * coding protocols, which Apple's page lists and slice 3 owes.
  *
  * AND THE WORD AND LINE-BREAK QUESTIONS ARE FOUNDATION'S OWN AND SHIP HERE (2026-09-30). An earlier draft of

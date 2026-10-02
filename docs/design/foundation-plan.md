@@ -15982,6 +15982,47 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.81 — RECONNAISSANCE: A LEDGER ROW'S OWNER IS NOT ITS DECLARER, AND THE ATTACHMENT ROWS ARE APPKIT'S (2026-10-01)
+
+**NO ROWS CLOSED. THIS UNIT IS A MEASUREMENT, AND ITS VALUE IS THE ONE IT PREVENTED — I WAS ONE COMMAND FROM
+IMPLEMENTING APPKIT'S DOORS INTO FOUNDATION.**
+
+**THE FRONT CHOSEN: `NSAttributedString`, the work list's top owner at 41 rows** (with `NSMutableAttributedString`
+at 16). Its header carries this campaign's now-familiar shape — **a ground written down for every deferral** —
+including an entry that itself records an earlier exclusion being **STALE** (the "Calculating linguistic units"
+group, wrongly filed under AppKit, and since landed).
+
+**⚠⚠ AND ONE ENTRY LOOKED LIKE §63.79's MISREADING ALL OVER AGAIN:** *"attachments … belongs to the drawing
+frameworks and is EXCLUDED"*. `+attributedStringWithAttachment:` reads exactly like §63.80's `-roundingBehavior`
+— **a door whose PARAMETER'S CLASS lives in another tier while the door itself is Foundation's** — so the plan was
+to test the ground the same way and store the attachment under `NSAttachmentAttributeName`.
+
+**THE MEASUREMENT SAID NO, AND IT SAID IT TWICE:**
+ * `+attributedStringWithAttachment:`, `+attributedStringWithAttachment:attributes:`, `-containsAttachmentsInRange:`,
+   `-containsAttachments`, and the constants `NSAttachmentAttributeName` and `NSAttachmentCharacter` appear
+   **NOWHERE in the macOS 14.5 Foundation corpus (170 headers)** — and the corpus DOES carry
+   `NSAttributedString.h`, so this is an absence and not a missing file (§63.56's distinction, which this tree has
+   paid for before);
+ * **AND NOWHERE in the iOS 16.5 Foundation corpus (125 headers) EITHER.**
+
+**SO THE GROUND IS RIGHT, AND THE SHAPE I WAS MATCHING IT AGAINST WAS THE WRONG SHAPE.** These are declared by
+AppKit/UIKit in `NSTextAttachment.h` — a header neither corpus carries, so this tree can confirm the ABSENCE and
+**cannot** confirm the location; that is recorded as an absence and NOT as a claim about where they live.
+
+**⚠⚠ AND THE GENERAL FINDING, WHICH IS WHAT MAKES THE UNIT WORTH ITS RECORD: A LEDGER ROW'S OWNER IS NOT ITS
+DECLARER.** The derived surface groups a class's EXTENSIONS under the class, so these rows sit under
+`NSAttributedString` while being **the drawing frameworks' declarations on it**. **AND THE TEST THAT SEPARATES THE
+TWO CASES IS NOT THE PARAMETER'S CLASS** — §63.80's `-roundingBehavior` takes an `NSDecimalNumberHandler` and is
+Foundation's (§63.79 had already taught that a property's CONSUMER living elsewhere does not make it not ours) —
+**IT IS WHETHER THE DECLARATION IS ABSENT FROM FOUNDATION'S OWN HEADERS.** A parameter's class is about who CALLS a
+door; the declaration's home is about who OWES it. The header's note now carries the measurement so the question
+is not re-opened, and the test is written in it for the next unit that has to tell the two apart.
+
+**WHAT REMAINS ON THIS OWNER, FOR THE NEXT UNIT:** the format/localization doors (nine rows —
+`+localizedAttributedStringWithFormat:` in four shapes and `-initWithFormat:options:locale:[context:][arguments:]`)
+**which the ground list does not mention at all**, which is precisely the condition §63.80's `-getObjectValue:…`
+had; and the document-reader family (RTF/RTFD/HTML/doc-format, where §62.58 already made RTF a real writer).
+
 ## §63.80 — THE LAST TWO DOORS, AND THREE DIAGNOSES THAT WERE NONE OF THEM THE FIRST THEORY (2026-10-01)
 
 **WHAT LANDED: the last two of `NSNumberFormatter`'s seventeen open rows — `-roundingBehavior` (which STORES a
