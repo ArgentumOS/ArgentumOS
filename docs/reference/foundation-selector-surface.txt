@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2170   open  432   struck  326
+#   method     shipped 2174   open  428   struck  326
 #   property   shipped 1277   open  201   struck  158
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -282,10 +282,10 @@ method	shipped	+loadFromHTMLWithData:options:completionHandler:	NSAttributedStri
 method	shipped	+loadFromHTMLWithFileURL:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
 method	shipped	+loadFromHTMLWithRequest:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
 method	shipped	+loadFromHTMLWithString:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
-method	open	+localizedAttributedStringWithFormat:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
-method	open	+localizedAttributedStringWithFormat:context:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
-method	open	+localizedAttributedStringWithFormat:options:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
-method	open	+localizedAttributedStringWithFormat:options:context:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
+method	shipped	+localizedAttributedStringWithFormat:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
+method	shipped	+localizedAttributedStringWithFormat:context:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
+method	shipped	+localizedAttributedStringWithFormat:options:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
+method	shipped	+localizedAttributedStringWithFormat:options:context:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 method	shipped	-nextWordFromIndex:forward:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating linguistic units	-	objc
 method	struck	-prefersRTFDInRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting the supported text-file formats	other-framework	objc
 method	struck	-rangeOfTextBlock:atIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating ranges for common elements	other-framework	objc

@@ -36,6 +36,10 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_attributedstring"
 CHECKS = (
+    "attributedstring-localized-format-options-context",
+    "attributedstring-localized-format-context",
+    "attributedstring-localized-format-options",
+    "attributedstring-localized-format",
     "attributedstring-option-argument-attributes-unmerged",
     "attributedstring-option-replacement-index",
     "attributedstring-format-attributes-reach-the-substitution",

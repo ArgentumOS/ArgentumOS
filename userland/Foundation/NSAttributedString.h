@@ -357,6 +357,16 @@ typedef enum {
  * (\u00a763.82, from Apple's declaration: the ledger lists selectors and cannot tell). \u26a0 `locale:` is
  * ACCEPTED AND NOT USED, stated rather than hidden \u2014 this engine's conversions are C's and C's are
  * locale-free. */
+/* ⚠⚠ THE FOUR `localizedAttributedStringWithFormat:` SHAPES ARE WRAPPERS OVER THE TWO DOORS ABOVE, WITH THE
+ * CURRENT LOCALE — WHICH APPLE'S OWN DOC COMMENTS IN THE CORPUS SAY OUTRIGHT: "Formats the string using the current
+ * locale and the specified options." **THE NAME SAYS "LOCALIZED" AND MEANS A LOCALIZATION-TABLE LOOKUP; THE
+ * DOCUMENTED BEHAVIOUR IS FORMATTING THE GIVEN STRING — and this unit was one step from implementing the name, with
+ * the tree's OWN `-localizedStringForKey:` making the wrong reading comfortable (§63.96).**
+ *
+ * ⚠ AND THE `context:` SHAPES ACCEPT THE DICTIONARY WITH NO EFFECT, A CHOICE WRITTEN DOWN RATHER THAN AN OVERSIGHT:
+ * Apple's comments for those doors say only the same sentence about the locale, so what the dictionary DOES is
+ * unpublished, and this library's substitutions are C's conversions with no inflection wired here (§11.6.1 D2). The
+ * two `-initWithFormat:…context:…` doors, where it would ACT, remain open rows. */
 @interface NSAttributedString (NSAttributedStringFormatting)
 - (instancetype)initWithFormat:(NSAttributedString *)format
 		       options:(NSAttributedStringFormattingOptions)options
@@ -365,6 +375,14 @@ typedef enum {
 		       options:(NSAttributedStringFormattingOptions)options
 			locale:(nullable NSLocale *)locale
 		     arguments:(va_list)arguments;
++ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format, ...;
++ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format
+					    options:(NSAttributedStringFormattingOptions)options, ...;
++ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format
+					    context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context, ...;
++ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format
+					    options:(NSAttributedStringFormattingOptions)options
+					    context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context, ...;
 @end
 /* ---- THE MARKDOWN FILE DOOR, IN APPLE'S FOUR-ARGUMENT SPELLING (2026-09-30) -------------------------
  *

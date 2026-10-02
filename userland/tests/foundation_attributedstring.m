@@ -74,6 +74,34 @@ int main(void)
 {
 
 	{
+		/* §63.97: THE LOCALIZED FAMILY, one check per shape. ⚠ APPLE'S OWN DOC COMMENT (in the corpus, not the
+		 * ledger) SAYS THESE FORMAT THE STRING WITH THE CURRENT LOCALE — NOT that they look anything up. */
+		NSMutableAttributedString *lf = [[NSMutableAttributedString alloc] initWithString:@"L=%@ M=%@"];
+		NSAttributedString *l1 = [[NSAttributedString alloc] initWithString:@"one"];
+		NSAttributedString *l2 = [[NSAttributedString alloc] initWithString:@"two"];
+		NSDictionary *ctx = [NSDictionary dictionary];
+		NSAttributedString *a1 = [NSAttributedString localizedAttributedStringWithFormat:lf, l1, l2];
+		NSAttributedString *a2 = [NSAttributedString localizedAttributedStringWithFormat:lf options:0, l1, l2];
+		NSAttributedString *a3 = [NSAttributedString localizedAttributedStringWithFormat:lf context:ctx, l1, l2];
+		NSAttributedString *a4 = [NSAttributedString localizedAttributedStringWithFormat:lf options:0
+									context:ctx, l1, l2];
+
+		check("attributedstring-localized-format",
+		      [[a1 string] isEqualToString:@"L=one M=two"],
+		      [NSString stringWithFormat:@"string=%@", [a1 string]]);
+		check("attributedstring-localized-format-options",
+		      [[a2 string] isEqualToString:@"L=one M=two"],
+		      [NSString stringWithFormat:@"string=%@", [a2 string]]);
+		check("attributedstring-localized-format-context",
+		      [[a3 string] isEqualToString:@"L=one M=two"],
+		      [NSString stringWithFormat:@"string=%@", [a3 string]]);
+		check("attributedstring-localized-format-options-context",
+		      [[a4 string] isEqualToString:@"L=one M=two"],
+		      [NSString stringWithFormat:@"string=%@", [a4 string]]);
+	}
+
+
+	{
 		/* §63.95: the attributed-format doors. ⚠ THE PROBE IS ARC and NSForegroundColorAttributeName IS APPKIT'S. */
 		NSString *marker = @"FNProbeMarker";
 		NSString *own = @"FNProbeOwn";

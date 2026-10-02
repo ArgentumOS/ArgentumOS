@@ -15982,6 +15982,38 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.97 — THE FOUR "LOCALIZED" SHAPES LAND, AND THE THIRD APPLY WAS MADE SAFE BY READING THE LINE IT SPLIT (2026-10-01)
+
+**WHAT LANDED: `+localizedAttributedStringWithFormat:` in its four shapes — wrappers over §63.95's door with
+`[NSLocale currentLocale]`, which is exactly what Apple's own doc comments describe.**
+
+**MEASURED: `method shipped 2170 → 2174`, `open 432 → 428`; `--check` consistent; `make host-foundation` EXIT 0 with
+exactly the standing SIX warnings; `make testimg` EXIT 0; `make test TESTS='foundation_attributedstring'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with **`FOUNDATION-ATTRIBUTEDSTRING 49/49`**.**
+
+**⚠⚠ AND THE APPLY FAILED TWICE BEFORE IT LANDED, BOTH TIMES ON PLUMBING AND NEITHER TIME ON THE LIBRARY — AND THE
+THIRD ATTEMPT'S FIX IS THE PART WORTH KEEPING.** The first wrote a header note OUTSIDE a comment (the §63.79 trap,
+second occurrence); the second's splice for the .m **skipped the category's `@end`** (slicing past it rather than
+inserting before it) and a header prototype lost its `;`. **BOTH WERE TEXT SUBSTITUTIONS WHOSE ANCHORS WERE ASSUMED
+RATHER THAN READ.** The third reads the file into lines, **ASSERTS THAT THE LINE IT IS ABOUT TO SPLIT ON CONTAINS
+WHAT IT EXPECTS, and refuses if it does not** — and it landed on the first try. **THE CAMPAIGN'S "MEASURE, DON'T
+ASSUME" APPLIED TO THE EDITOR RATHER THAN TO THE CODE**, which is where three of this session's eight instrument
+defects lived.
+
+**AND THE MEASUREMENT OF §63.96 MADE THE IMPLEMENTATION SMALL, WHICH IS WHY IT WAS WORTH A ROUND OF ITS OWN:** because
+the doors FORMAT rather than look up, each of the four is one call to §63.95's door with the current locale —
+**four wrappers, four checks asserting the formatted string, and nothing else.** The WRONG implementation (a
+localization-table lookup) would have been large, would have needed the `.strings` machinery, and would have been
+wrong in a way no probe of this shape would have caught.
+
+**AND WHAT REMAINS ON THIS OWNER IS THREE ROWS: the two `-initWithFormat:options:locale:context:[arguments:]` shapes
+— where the `context:` dictionary would ACT, since they are the doors that could carry it to a substitution — and
+`-attributedStringByInflectingString`, which needs the inflection substrate.** The engine, the seam, the formatting
+doors and now the localized family are all in place for them.
+
+**AND THE FAMILY'S TALLY IS WORTH RECORDING BECAUSE IT IS THE SESSION'S ONLY CLEAN STRETCH: of the nine-row formatting
+family, SIX ARE LANDED** (§63.85's sink, §63.95's two doors, §63.97's four shapes) **and three remain.**
+
 ## §63.96 — APPLE'S OWN DOC COMMENTS SAY THE "LOCALIZED" DOORS DO NOT LOCALIZE: THEY FORMAT (2026-10-01)
 
 **NO ROWS CLOSED. THE UNIT WAS STOPPED ONE STEP BEFORE A WRONG IMPLEMENTATION, BY READING A DECLARATION'S TRAILING

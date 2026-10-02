@@ -505,6 +505,61 @@ static NSRange fn_url_token_range(NSString *text, NSUInteger index, BOOL *found)
 	return result;
 }
 
+
++ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format, ...
+{
+	va_list arguments;
+	id result;
+
+	va_start(arguments, format);
+	result = [[[self alloc] initWithFormat:format options:0 locale:[NSLocale currentLocale]
+				     arguments:arguments] autorelease];
+	va_end(arguments);
+	return result;
+}
+
++ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format
+					    options:(NSAttributedStringFormattingOptions)options, ...
+{
+	va_list arguments;
+	id result;
+
+	va_start(arguments, options);
+	result = [[[self alloc] initWithFormat:format options:options locale:[NSLocale currentLocale]
+				     arguments:arguments] autorelease];
+	va_end(arguments);
+	return result;
+}
+
++ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format
+					    context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context, ...
+{
+	va_list arguments;
+	id result;
+
+	(void)context;		/* accepted with no effect: see the header's note and §11.6.1 D2 */
+	va_start(arguments, context);
+	result = [[[self alloc] initWithFormat:format options:0 locale:[NSLocale currentLocale]
+				     arguments:arguments] autorelease];
+	va_end(arguments);
+	return result;
+}
+
++ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format
+					    options:(NSAttributedStringFormattingOptions)options
+					    context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context, ...
+{
+	va_list arguments;
+	id result;
+
+	(void)context;
+	va_start(arguments, context);
+	result = [[[self alloc] initWithFormat:format options:options locale:[NSLocale currentLocale]
+				     arguments:arguments] autorelease];
+	va_end(arguments);
+	return result;
+}
+
 @end
 
 @implementation NSAttributedString
