@@ -383,6 +383,22 @@ typedef enum {
 + (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format
 					    options:(NSAttributedStringFormattingOptions)options
 					    context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context, ...;
+/* ⚠⚠ THE TWO `context:` DOORS, AND THE `context:` DICTIONARY IS ACCEPTED WITH NO EFFECT — WHICH IS NOW A
+ * MEASURED POSITION RATHER THAN A CONVENIENT ONE (§63.98). Apple's comment for these declarations is THE SAME
+ * SENTENCE as the context-free pair's ("Formats the string using the specified locale (or the canonical one, if
+ * nil)"); the context's ONLY PUBLISHED KEY is `NSInflectionConceptsKey`; and THIS LIBRARY'S `NSInflectionRule`
+ * DESCRIBES a rule while NOTHING IN IT INFLECTS — the door that would consume inflection,
+ * `-attributedStringByInflectingString`, is itself still an open row. **SO THE CONTEXT CANNOT YET CHANGE ANYTHING, and
+ * §11.6.1 D2 makes saying that the right answer rather than inventing an inflection rule from a key's name.** */
+- (instancetype)initWithFormat:(NSAttributedString *)format
+		       options:(NSAttributedStringFormattingOptions)options
+			locale:(nullable NSLocale *)locale
+		       context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context, ...;
+- (instancetype)initWithFormat:(NSAttributedString *)format
+		       options:(NSAttributedStringFormattingOptions)options
+			locale:(nullable NSLocale *)locale
+		       context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context
+		     arguments:(va_list)arguments;
 @end
 /* ---- THE MARKDOWN FILE DOOR, IN APPLE'S FOUR-ARGUMENT SPELLING (2026-09-30) -------------------------
  *

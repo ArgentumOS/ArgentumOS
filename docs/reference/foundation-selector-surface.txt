@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2174   open  428   struck  326
+#   method     shipped 2176   open  426   struck  326
 #   property   shipped 1277   open  201   struck  158
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -259,8 +259,8 @@ method	struck	-initWithDocFormat:documentAttributes:	NSAttributedString	Fundamen
 method	struck	-initWithFileURL:options:documentAttributes:error:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Initializers	other-framework	objc
 method	shipped	-initWithFormat:options:locale:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 method	shipped	-initWithFormat:options:locale:arguments:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
-method	open	-initWithFormat:options:locale:context:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
-method	open	-initWithFormat:options:locale:context:arguments:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
+method	shipped	-initWithFormat:options:locale:context:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
+method	shipped	-initWithFormat:options:locale:context:arguments:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 method	struck	-initWithHTML:baseURL:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	other-framework	objc
 method	struck	-initWithHTML:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	other-framework	objc
 method	struck	-initWithHTML:options:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	other-framework	objc

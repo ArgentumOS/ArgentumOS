@@ -15982,6 +15982,46 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.98 — THE `context:` DOORS LAND, AND THE CONTEXT'S POSITION IS NOW MEASURED RATHER THAN CONVENIENT (2026-10-01)
+
+**WHAT LANDED: `-initWithFormat:options:locale:context:` and `-initWithFormat:options:locale:context:arguments:` —
+the two doors where the `context:` dictionary is the LAST thing in this family with anywhere to go.**
+
+**MEASURED: `method shipped 2174 → 2176`, `open 428 → 426`; `--check` consistent; `make host-foundation` EXIT 0 with
+exactly the standing SIX warnings; `make testimg` EXIT 0; `make test TESTS='foundation_attributedstring'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with **`FOUNDATION-ATTRIBUTEDSTRING 51/51`**.**
+
+**⚠⚠ AND THE `context:` IS ACCEPTED WITH NO EFFECT, WHICH IS NOW A MEASURED POSITION AND NOT A CONVENIENT ONE —
+THREE MEASUREMENTS, ALL TAKEN BEFORE ANY CODE:**
+ 1. **Apple's comment for these declarations is THE SAME SENTENCE as the context-free pair's** ("Formats the string
+    using the specified locale (or the canonical one, if nil)") — so the SDK says this door FORMATS, and says
+    nothing about the dictionary;
+ 2. **the context's ONLY PUBLISHED KEY is `NSInflectionConceptsKey`** — and the corpus gives that key no comment of
+    its own, so the dictionary's meaning is carried entirely by the word "inflection";
+ 3. **THIS LIBRARY'S `NSInflectionRule` DESCRIBES A RULE AND NOTHING IN THE LIBRARY INFLECTS** (measured: the only
+    occurrence of the word in the .m files is the rule's own comment), **and the door that would consume inflection
+    — `-attributedStringByInflectingString` — IS ITSELF STILL AN OPEN ROW.**
+**So the context CANNOT YET CHANGE ANYTHING, and §11.6.1 D2 makes SAYING SO the right answer rather than inventing an
+inflection rule from a key's name.** That is the third time this session that a door's behaviour was decided by
+reading rather than by naming (§63.82, §63.96, here), and the first where the reading is what let a door LAND
+instead of merely stopping one.
+
+**⚠ AND THE APPLY FAILED ONCE FIRST, IN A SHAPE THAT IS NOW THE SIXTH OF ITS KIND: MY GUARD FOR "IS THIS ALREADY
+IMPLEMENTED?" MATCHED THE *LOCALIZED* DOOR'S SIGNATURE**, which carries the same parameter text — so the insert was
+SKIPPED, the declarations landed WITHOUT their implementations, and the build grew exactly two warnings while the
+guest (on a stale image, because `testimg` then failed) reported the old check count. **THE FIX WAS A GUARD THAT
+CANNOT MATCH ANYTHING ELSE.** *A guard is a search, and every search in this session that matched TEXT rather than
+the THING has cost a round: a keyword for a declaration (§63.83), a comment for an import (§63.79), a selector for
+its arguments (§63.82), a sign the rows do not carry (§63.84), a declaration for a definition (§63.88), and now
+a SIBLING DOOR for THIS one.*
+
+**AND THE FAMILY STANDS AT EIGHT OF ITS NINE ROWS: the sink (§63.85, not a row), the two formatting doors
+(§63.95), the four localized shapes (§63.97) and these two context doors.** ONE REMAINS —
+`-attributedStringByInflectingString` — **and it is the one whose substrate this library does not have: the
+measurement above IS its ground, taken as a side effect of these two doors.** The attributed formatter is otherwise
+COMPLETE: it formats, it localizes, it applies the format's attributes at the right offsets, it honours both option
+bits, it reports its range from the same parse as its value, and it accepts a context it cannot yet use.
+
 ## §63.97 — THE FOUR "LOCALIZED" SHAPES LAND, AND THE THIRD APPLY WAS MADE SAFE BY READING THE LINE IT SPLIT (2026-10-01)
 
 **WHAT LANDED: `+localizedAttributedStringWithFormat:` in its four shapes — wrappers over §63.95's door with

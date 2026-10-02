@@ -74,6 +74,27 @@ int main(void)
 {
 
 	{
+		/* §63.98: THE TWO `context:` DOORS. They format (Apple's own comment for them is the same sentence as
+		 * the context-free pair's) and the dictionary is accepted with no effect, because its only published key is
+		 * for inflection and this library has no engine — the door that would consume it is still open. Calling
+		 * THE VARIARGS DOOR exercises BOTH, since it delegates to the `arguments:` one. */
+		NSMutableAttributedString *cf = [[NSMutableAttributedString alloc] initWithString:@"C=%@ D=%@"];
+		NSAttributedString *c1 = [[NSAttributedString alloc] initWithString:@"one"];
+		NSAttributedString *c2 = [[NSAttributedString alloc] initWithString:@"two"];
+		NSDictionary *cctx = [NSDictionary dictionaryWithObject:@"concepts" forKey:NSInflectionConceptsKey];
+		NSAttributedString *b1 = [[NSAttributedString alloc] initWithFormat:cf options:0 locale:nil
+									  context:cctx, c1, c2];
+
+		check("attributedstring-format-context",
+		      [[b1 string] isEqualToString:@"C=one D=two"],
+		      [NSString stringWithFormat:@"string=%@", [b1 string]]);
+		check("attributedstring-format-context-keeps-the-format-attributes",
+		      [b1 length] == 11 && [b1 attribute:NSReplacementIndexAttributeName atIndex:0 effectiveRange:NULL] == nil,
+		      [NSString stringWithFormat:@"length=%lu", (unsigned long)[b1 length]]);
+	}
+
+
+	{
 		/* §63.97: THE LOCALIZED FAMILY, one check per shape. ⚠ APPLE'S OWN DOC COMMENT (in the corpus, not the
 		 * ledger) SAYS THESE FORMAT THE STRING WITH THE CURRENT LOCALE — NOT that they look anything up. */
 		NSMutableAttributedString *lf = [[NSMutableAttributedString alloc] initWithString:@"L=%@ M=%@"];

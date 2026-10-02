@@ -560,6 +560,35 @@ static NSRange fn_url_token_range(NSString *text, NSUInteger index, BOOL *found)
 	return result;
 }
 
+
+- (instancetype)initWithFormat:(NSAttributedString *)format
+		       options:(NSAttributedStringFormattingOptions)options
+			locale:(NSLocale *)locale
+		       context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context, ...
+{
+	va_list arguments;
+	id result;
+
+	/* THE CONTEXT IS ACCEPTED AND THE FORMATTING IS THE SAME AS THE CONTEXT-FREE DOOR'S, which is the whole of what
+	 * Apple's own comment says this door does; the dictionary's only published key is for inflection and this
+	 * library has no engine for it yet (§63.98's measurement). */
+	(void)context;
+	va_start(arguments, context);
+	result = [self initWithFormat:format options:options locale:locale arguments:arguments];
+	va_end(arguments);
+	return result;
+}
+
+- (instancetype)initWithFormat:(NSAttributedString *)format
+		       options:(NSAttributedStringFormattingOptions)options
+			locale:(NSLocale *)locale
+		       context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context
+		     arguments:(va_list)arguments
+{
+	(void)context;		/* see above, and §11.6.1 D2 */
+	return [self initWithFormat:format options:options locale:locale arguments:arguments];
+}
+
 @end
 
 @implementation NSAttributedString
