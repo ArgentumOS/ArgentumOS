@@ -28,9 +28,12 @@ THE FIVE BUCKETS, and only the last one is a defect:
                   moved elsewhere. ⚠ A GATE KEYED TO ONE VINTAGE MUST NOT CALL THIS A DEFECT: `-shuffledArray`
                   is absent from macOS 14.5 AND from iOS 16.5 because it postdates both, and calling that a
                   spelling error would delete perfectly good forward API.
-  other-framework the name is declared by a header in ANOTHER framework of the same SDK (CoreGraphics, AppKit,
-                  …). This tree ships CoreGraphics and AppKit first-party, so those categories are ours on
-                  purpose; `+valueWithCGPoint:` is Apple's, just not FOUNDATION's.
+  other-framework the name is declared by a header OUTSIDE the class framework: another framework of the same
+                  SDK (CoreGraphics, AppKit, …) OR the SDK's own `usr/include`, where the RUNTIME lives. This
+                  tree ships CoreGraphics and AppKit first-party, so those categories are ours on purpose;
+                  `+valueWithCGPoint:` is Apple's, just not FOUNDATION's. ⚠ EVERY ROW PRINTS THE DIRECTORY THAT
+                  ANSWERED, because "the root `@protocol NSObject` in `usr/include/objc`" and "CoreGraphics"
+                  are different statements, and the bucket's name must not blur them (§63.62).
   ours            a name this tree owns rather than Apple: the private `-fn…` helpers, the `FN*` classes, the
                   libobjc2 pool marker, and — §63.61 — the MAKE PRIVATE group, which is this library's own
                   substrate. Every entry is NAMED with its ground rather than pattern-guessed, because a
@@ -79,8 +82,11 @@ THE FIVE BUCKETS, and only the last one is a defect:
    categories, so the ROOT `@protocol NSObject` — `-retainCount`, `-conformsToProtocol:`,
    `-isMemberOfClass:`, `+instancesRespondToSelector:` … — is in the SDK's `usr/include/objc/NSObject.h` and is
    INVISIBLE here. **These rows are printed with a marker, are named by owner in a ⚠ block, and are NOT counted
-   as findings; `--strict` does not fail on them.** The fix is a bigger corpus (pass the SDK's
-   `usr/include/objc` as another `--headers`), not a deletion.
+   as findings; `--strict` does not fail on them.** The fix is a bigger corpus, not a deletion.
+   **MEASURED 2026-10-01 — IT WORKS.** With `MacOSX14.5.sdk/usr/include/objc` passed as another `--headers`
+   (17 headers, fetched with `curl -f`), all eight move into `other-framework` and the bucket reaches **0**;
+   NOT ONE of the eight was a misspelling, which is what the marker said all along. The directory that
+   answered is printed on every `other-framework` row, which is this unit's other half.
    ⚠ **AND THE CHECK ANSWERS FOR THE OWNER, NOT FOR WHAT THE OWNER INHERITS — a third, NARROWER blind spot.** A
    row can be judged against an owner block that IS present while its METHOD lives in a superclass this corpus
    does not carry. `NSNumber -mutableCopy` is the measured case, and it is handled **by NAME, in
@@ -192,10 +198,11 @@ ACCEPTED_BY_GROUND = {
     "dataWithBase64EncodedString:options:":
         "the options form of that same removed pair (§62.24)",
     "mutableCopy":
-        "Apple's, declared in the ROOT @protocol NSObject, which lives in the SDK's usr/include/objc/ "
-        "NSObject.h and is invisible to this run (the first blind spot). It occurs in BOTH mirrors precisely "
-        "because it is genuinely Apple's; NSNumber ANSWERING it is what the declared override is for, so the "
-        "row is a false positive of the corpus's SHAPE, named rather than mechanized",
+        "Apple's, declared in the ROOT @protocol NSObject. It is NAMED here rather than mechanized so that "
+        "the answer does NOT DEPEND ON WHICH CORPUS WAS PASSED: usr/include/objc/NSObject.h answers for it "
+        "when the runtime headers are supplied, and the answer must be the same when they are not. It occurs "
+        "in BOTH mirrors precisely because it is genuinely Apple's, and NSNumber ANSWERING it is what the "
+        "declared override is for",
 }
 
 OURS_PREFIXES = ("fn",)
@@ -292,15 +299,19 @@ def read_dir(d):
     return out
 
 
-def declared_anywhere(sel, corpus):
-    """Is `sel` declared by ANY header in the corpus? THE SPELLING FAMILY IS ALLOWED, because Apple declares an
+def declared_where(sel, corpus):
+    """WHICH HEADER declares `sel`, or None — the PATH, not a bool, so the caller can SAY WHERE a name was
+    found (§63.62: the SDK's `usr/include/objc` is the RUNTIME's headers, and a bucket named
+    "other-framework" must not read as if that answer were CoreGraphics).
+
+    THE SPELLING FAMILY IS ALLOWED, because Apple declares an
     accessor as a `@property` — so our `-isFoo` may be Apple's property `foo` and our `-setFoo:` Apple's
     `@property foo`. Without this the tool reports every accessor we spell out as a mistake.
 
     ⚠ WHAT THIS CANNOT SEE, measured both ways: it takes NO SIGN and NO OWNER, so a name Apple declares on a
     DIFFERENT class reads as present — which is why `-initWithDecimal:` on NSNumber, Apple's on NSDecimalNumber,
     is reported nowhere at all (§63.59), while `+numberWithDecimal:` WAS reported because no
-    `numberWithDecimal` exists anywhere."""
+    `numberWithDecimal` exists anywhere. The unit that makes this question OWNER-aware is §63.63."""
     core = sel.lstrip("+-")
     first = core.split(":")[0]
     cands = {first}
@@ -314,10 +325,10 @@ def declared_anywhere(sel, corpus):
         if len(c) < 3:
             continue
         pat = re.compile(r"\b" + re.escape(c) + r"\b")
-        for _, text in corpus:
+        for path, text in corpus:
             if pat.search(text):
-                return True
-    return False
+                return path
+    return None
 
 
 def main(argv):
@@ -379,14 +390,18 @@ def main(argv):
             if bare in ACCEPTED_BY_GROUND:
                 buckets["accepted-by-ground"].append((owner, sel))
                 continue
-            if declared_anywhere(sel, class_corpus):
+            if declared_where(sel, class_corpus):
                 continue
             if bare in ledger:
                 buckets["documented"].append((owner, sel))
-            elif declared_anywhere(sel, all_corpus):
-                buckets["other-framework"].append((owner, sel))
             else:
-                buckets["NOT-IN-ANY-SDK"].append((owner, sel))
+                where = declared_where(sel, all_corpus)
+                if where:
+                    # THE ANSWERING DIRECTORY TRAVELS WITH THE ROW: "another framework" and "the SDK's own
+                    # usr/include, where the runtime lives" are DIFFERENT STATEMENTS (§63.62).
+                    buckets["other-framework"].append((owner, sel, os.path.dirname(where)))
+                else:
+                    buckets["NOT-IN-ANY-SDK"].append((owner, sel))
 
     # ⚠⚠ THE SECOND BLIND SPOT: A ROW WHOSE OWNER HAS NO ROOT BLOCK IN THIS CORPUS CANNOT BE JUDGED. Measured
     # 2026-10-01, NSObject is the case that named it (the root @protocol NSObject lives in the SDK's
@@ -407,6 +422,9 @@ def main(argv):
                 if s.lstrip("+-") in OURS_BY_NAME:
                     print("       %-30s %s" % (o, s))
                     print("           %s" % OURS_BY_NAME[s.lstrip("+-")])
+        if name == "other-framework":
+            for o, s, d in rows:
+                print("       %-30s %-46s <- %s" % (o, s, d))
         if name == "accepted-by-ground":
             for o, s in rows:
                 print("       %-30s %s" % (o, s))

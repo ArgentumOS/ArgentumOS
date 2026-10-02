@@ -15982,6 +15982,45 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.62 — THE RUNTIME'S OWN HEADERS ENTER THE CORPUS, AND THE TOOL LEARNS TO SAY WHERE IT FOUND A NAME (2026-10-01)
+
+**WHAT LANDED (user decision `dec-733391f6e71e4415`, first of the three: "fetch the SDK's `usr/include/objc`
+headers and judge them"): `MacOSX14.5.sdk/usr/include/objc` is now part of this tool's corpus, and
+`declared_anywhere` became `declared_where` — returning the PATH of the header that answered, and printing its
+DIRECTORY on every `other-framework` row.**
+
+**MEASURED, and it empties the bucket: with the runtime headers passed, `other-framework` 0 → 8,
+`NOT-IN-ANY-SDK` 8 → 0, `0 JUDGEABLE name(s)`, `--strict` exits 0. WITHOUT them the same run reports the same
+eight as ⚠ unjudgeable — THE TWO CORPORA GIVE THE SAME VERDICT, which is the property that makes §63.61's
+naming safe rather than merely convenient.** And **not one of the eight was a misspelling**: the fetched
+`usr/include/objc/NSObject.h` (3,447 bytes, 115 lines) carries `@protocol NSObject` and declares
+`-conformsToProtocol:`, `-retainCount` and `+conformsToProtocol:` among them.
+
+**AND THE FIX THE TOOL HAD ITSELF NAMED IS NOW MEASURED RATHER THAN ASSUMED.** §63.60's second blind spot ended
+with "the fix is a bigger corpus (pass the SDK's `usr/include/objc` as another `--headers`), not a deletion" — a
+sentence written from the SHAPE of the problem. It works exactly as written; the docstring now carries the
+measurement instead of the prediction.
+
+**⚠ AND THE USER FOUND A SECOND DEFECT IN THE SAME BREATH, WHICH IS WHY THIS UNIT IS NOT ONLY A RE-RUN: A BUCKET
+CALLED `other-framework` WOULD HAVE MISLABELLED THE ANSWER.** `usr/include/objc` is the RUNTIME's headers, not
+a framework of the SDK, and "Apple declares it in CoreGraphics" and "Apple declares it in the root protocol the
+runtime ships" are different statements that a reader must be able to tell apart. So the tool stopped answering
+with a BOOLEAN: `declared_where` returns the path, the row prints the directory that answered (`<- /tmp/objc`),
+and the bucket's own description now states both cases. **An instrument that reports an answer without its
+source is one step from an instrument whose answer cannot be checked** — §63.59's lesson, one level up.
+
+**⚠ AND A COST, MEASURED SO THE NEXT READER DOES NOT MISTAKE THIS TOOL FOR A GATE: ONE RUN IS 65 SECONDS**
+(170 headers in the class framework, 312 across the corpus, ~4,500 of our selectors, and a text search per
+selector per spelling candidate). That is why `--strict` is wired into no build target — and it is a design
+CONSTRAINT on §63.63's owner-aware rewrite, not an implementation detail: a version that walked the corpus per
+row could be far worse.
+
+**AND THE CORPUS RULES HELD: nothing from `/tmp/objc` came near the tree.** The fetch is a scratch download
+through the GitHub contents API, with every request raising rather than writing a 404 body (the `curl -f`
+lesson, kept); the headers stay out; what ships is still the generator plus the findings. And the directory was
+found by LISTING `usr/include` first — assuming `objc/` would have been right, but the listing is what turns
+"it must be there" into "17 headers are there".
+
 ## §63.61 — THE MAKE PRIVATE GROUP IS RESOLVED BY NAME, AND THE RESIDUE'S JUDGEABLE SET REACHES ZERO (2026-10-01)
 
 **WHAT LANDED (user decision `dec-7588b3d19402d5a4`, "name them in the tool's `ours` bucket with their
