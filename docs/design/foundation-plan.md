@@ -15982,6 +15982,51 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.80 — THE LAST TWO DOORS, AND THREE DIAGNOSES THAT WERE NONE OF THEM THE FIRST THEORY (2026-10-01)
+
+**WHAT LANDED: the last two of `NSNumberFormatter`'s seventeen open rows — `-roundingBehavior` (which STORES a
+policy and APPLIES it: mode → `UNUM_ROUNDING_MODE`, scale → `UNUM_MAX_FRACTION_DIGITS`) and
+`-getObjectValue:forString:range:error:`. ⚠ AND A THIRD THING THE PROBE FOUND: see the copy gap below.
+`NSNumberFormatter` LEAVES THE WORK LIST — 17 open rows at the start of this pair of units, 0 now.**
+
+**MEASURED: `method shipped 2167 → 2168`, `property 1276 → 1277`**, `--check` consistent; `make testimg` EXIT
+0; `make test TESTS='foundation_numberformatter'` → `TESTS-OK 1/1 case(s), 6/6 check(s) in 13s` with the probe's
+tally **`FOUNDATION-NUMBERFORMATTER 32/32`**.
+
+**⚠⚠ AND THIS UNIT COST THREE WRONG DIAGNOSES, EACH CORRECTED BY AN INSTRUMENT RATHER THAN BY REASONING — WHICH IS
+THE WHOLE OF WHAT IT IS WORTH RECORDING:**
+ 1. **THREE COMPILE ERRORS WERE ONE MISSING IMPORT.** The compiler said *"expected a type"* — **at COLUMN 49**,
+    which is where `NSError **error` sits and NOT where the range parameter does. **A ROUND WENT INTO THEORISING
+    ABOUT `NSRangePointer` BECAUSE THE MESSAGE WAS READ AND THE COLUMN WAS NOT.** The header needed `NSError.h`
+    and `NSDecimalNumber.h`; the same gap also made `NSCocoaErrorDomain` and `NSLocalizedDescriptionKey`
+    undeclared in the .m. **A COLUMN NUMBER IS PART OF THE DIAGNOSIS.**
+ 2. **THE PROBE ABORTED WITH NO OUTPUT AT ALL (SIGABRT, status 134)** — and the fix was **THIS CAMPAIGN'S OWN
+    RECORDED LESSON, APPLIED LATE**: split the check into **per-step named checks with markers**, which named the
+    fault one call after step 2's marker instead of leaving a whole block to bisect. It is recorded in this plan
+    and in the memory index, and it was not reached for until after a round was lost.
+ 3. **AND THE CAUSE WAS A CONFORMANCE, NOT A BUG IN THE NEW CODE:** `[handler copy]` raised
+    `doesNotRecognizeSelector:` — Apple declares `-roundingBehavior` as `copy`, and `NSDecimalNumberHandler`
+    conforms to `NSDecimalNumberBehaviors` and `NSCoding` — **NOT `NSCopying`.** ⚠ **AND THE FIRST FIX ATTEMPTED
+    (implementing `-copyWithZone:`) RAN INTO A RECORDED DECISION OF THIS TREE:** `NSObjCRuntime.h` says *"NO ZONES
+    AT ALL (2026-09-18). `NSZone` IS NO LONGER DECLARED HERE."* **The handler is IMMUTABLE — mode, scale and four
+    raise flags set once at construction with no setters — SO `-retain` IS THE SAME CONTRACT AS `-copy`**, and
+    the property stays declared `copy` per Apple's surface. That is a stated deviation and not a shortcut.
+
+**⚠⚠ AND THE PROBE THEN EARNED ITS KEEP: WITH THE ABORT GONE, 31 OF 32 PASSED AND STEP 4 FAILED — `copied
+policy=LOST`.** `-copyWithZone:` carried the rounding MODE and carried neither the new rounding POLICY nor **the
+FIFTEEN STORED DOORS §63.79 had added**: a formatter copied after being told anything silently lost it.
+**A PROPERTY THAT DOES NOT SURVIVE `-copy` IS A PROPERTY WITH A SHORTER LIFE THAN THE CLASS SAYS IT HAS** — and
+§63.79's own probe could not have seen it, because it asserted the setters round-tripping and not a copy. All
+sixteen are carried now, and the tally went 31/32 → 32/32.
+
+**AND THE DEVIATIONS OF THE PAIR, STATED: `NSRoundPlain` → `UNUM_ROUND_HALFUP`** — Apple's `NSRoundPlain` means
+"half AWAY FROM ZERO" and ICU's `UNUM_ROUND_HALFUP` means "half toward +infinity"; they agree on every positive
+value and differ on a negative half-way one, which is the reading Apple's own sentence leaves open. And the
+`copy`-declared-property-with-a-`retain`-body above.
+
+**AND THE ONE ROUND THAT PRODUCED NOTHING WAS THE ONLY ONE SPENT REASONING.** The column number, the marker and
+the assertion each found their fault in a single run; the `NSRangePointer` theory did not find one at all.
+
 ## §63.79 — `NSNumberFormatter`'S FIFTEEN STORED DOORS, AND TWO DEFERRAL REASONS THAT MEASURED FALSE (2026-10-01)
 
 **WHAT LANDED: fifteen of `NSNumberFormatter`'s seventeen open rows — the ten ATTRIBUTED-STRING doors, the two

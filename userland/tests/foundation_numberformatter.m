@@ -53,6 +53,60 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 int main(void)
 {
 
+	/* §63.80: THE TWO DOORS, AS PER-STEP CHECKS WITH MARKERS RATHER THAN ONE BLOCK. The first attempt at this
+	 * unit aborted with NO output at all — so the step that faulted could not be named, and a whole round went
+	 * into reading a diagnostic instead of into the code. §62 already recorded the fix (split a faulting check
+	 * into per-step named checks with markers); THIS IS THAT LESSON APPLIED BEFORE THE FAILURE. */
+	printf("NUMBERFORMATTER-DOOR-STEP-1\n"); fflush(stdout);
+	NSDecimalNumberHandler *policy =
+		[NSDecimalNumberHandler decimalNumberHandlerWithRoundingMode:NSRoundBankers scale:2
+								    raiseOnExactness:NO raiseOnOverflow:NO
+								   raiseOnUnderflow:NO raiseOnDivideByZero:NO];
+	check("numberformatter-door-1-handler",
+	      policy != nil && [policy scale] == 2 && [policy roundingMode] == NSRoundBankers,
+	      [NSString stringWithFormat:@"policy=%@ scale=%d mode=%ld", policy != nil ? @"built" : @"NIL",
+			(int)[policy scale], (long)[policy roundingMode]]);
+
+	printf("NUMBERFORMATTER-DOOR-STEP-2\n"); fflush(stdout);
+	NSNumberFormatter *rf = [[NSNumberFormatter alloc] init];
+	printf("NUMBERFORMATTER-DOOR-STEP-2A-INIT\n"); fflush(stdout);
+	[rf setNumberStyle:NSNumberFormatterDecimalStyle];
+	printf("NUMBERFORMATTER-DOOR-STEP-2B-STYLE\n"); fflush(stdout);
+	[rf setRoundingBehavior:policy];
+	printf("NUMBERFORMATTER-DOOR-STEP-2C-SET\n"); fflush(stdout);
+	check("numberformatter-door-2-setter-stores",
+	      [rf roundingBehavior] == policy,
+	      [NSString stringWithFormat:@"roundingBehavior=%@", [rf roundingBehavior] != nil ? @"stored" : @"NIL"]);
+
+	printf("NUMBERFORMATTER-DOOR-STEP-3\n"); fflush(stdout);
+	check("numberformatter-door-3-policy-applied",
+	      [rf maximumFractionDigits] == 2,
+	      [NSString stringWithFormat:@"maxFractionDigits=%ld", (long)[rf maximumFractionDigits]]);
+
+	printf("NUMBERFORMATTER-DOOR-STEP-4\n"); fflush(stdout);
+	NSNumberFormatter *rf2 = [rf copy];
+	check("numberformatter-door-4-copy-carries-policy",
+	      [rf2 roundingBehavior] != nil,
+	      [NSString stringWithFormat:@"copied policy=%@", [rf2 roundingBehavior] != nil ? @"carried" : @"LOST"]);
+
+	printf("NUMBERFORMATTER-DOOR-STEP-5\n"); fflush(stdout);
+	NSNumberFormatter *pf = [[NSNumberFormatter alloc] init];
+	id parsed = nil;
+	NSRange range = NSMakeRange(NSNotFound, 0);
+	BOOL got = [pf getObjectValue:&parsed forString:@"12abc" range:&range error:NULL];
+	id refusedObj = (id)@"not-nil";
+	NSError *err = nil;
+	NSRange refusedRange = NSMakeRange(99, 99);
+	BOOL refused = [pf getObjectValue:&refusedObj forString:@"abc" range:&refusedRange error:&err];
+	check("numberformatter-door-5-parse-range",
+	      got && parsed != nil && [parsed intValue] == 12 && range.location == 0 && range.length == 2 &&
+	      !refused && refusedObj == nil && err != nil && refusedRange.location == NSNotFound,
+	      [NSString stringWithFormat:@"parsed=%@ range={%lu,%lu} refused=%d err=%@", parsed,
+			(unsigned long)range.location, (unsigned long)range.length,
+			(int)refused, err != nil ? @"raised" : @"NIL"]);
+	printf("NUMBERFORMATTER-DOOR-STEP-6-ALL-MARKERS-PASSED\n"); fflush(stdout);
+
+
 	{
 		/* §63.79: THE FIFTEEN STORED DOORS. What is asserted is what a stored property can get wrong: the value
 		 * must SURVIVE its own setter, and the `copy` families must be COPIES — proved by handing in a MUTABLE

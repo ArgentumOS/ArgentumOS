@@ -28,6 +28,7 @@
 #import <Foundation/NSNumber.h>
 #import <Foundation/NSLocale.h>
 #import <Foundation/NSDecimalNumber.h>
+#import <Foundation/NSError.h>
 
 #include <unicode/unum.h>
 #include <unicode/ustring.h>
@@ -224,6 +225,7 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 	[_textAttributesForNegativeInfinity release];
 	[_positiveInfinitySymbol release];
 	[_negativeInfinitySymbol release];
+	[_roundingBehavior release];
 	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
@@ -423,7 +425,9 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 	return fn_nf_utf8_string(text, length);
 }
 
-- (nullable NSNumber *)numberFromString:(NSString *)string
+/* THE ONE PARSE (§63.80): the out-parameter door needs the position `unum_parseDouble` already fills, and a
+ * second parse of the same string would be a second answer waiting to disagree with this one. */
+- (nullable NSNumber *)fnParse:(NSString *)string consumed:(NSUInteger *)consumed
 {
 	UChar text[FN_NF_MAX];
 	UErrorCode status = U_ZERO_ERROR;
@@ -432,6 +436,9 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 	double value;
 	NSString *separator;
 
+	if (consumed != NULL) {
+		*consumed = 0;
+	}
 	if (string == nil || _formatter == NULL) {
 		return nil;
 	}
@@ -454,6 +461,9 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 	if (U_FAILURE(status) || parsed == 0) {
 		return nil;
 	}
+	if (consumed != NULL) {
+		*consumed = (NSUInteger)parsed;		/* UTF-16 units, which is what a range is measured in */
+	}
 	/* THE RANGE OVER THE INPUT (Apple's -minimum/-maximum; see the header). Checked over the parsed
 	 * double, exact for any boundary a caller states as an integer and close enough at a ragged edge. */
 	if (_minimum != nil && value < [_minimum doubleValue]) {
@@ -475,6 +485,11 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 		return [NSNumber numberWithLongLong:(long long)value];
 	}
 	return [NSNumber numberWithDouble:value];
+}
+
+- (nullable NSNumber *)numberFromString:(NSString *)string
+{
+	return [self fnParse:string consumed:NULL];
 }
 
 + (nullable NSString *)localizedStringFromNumber:(NSNumber *)number
@@ -1208,6 +1223,29 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 	[copy setMaximum:[self maximum]];
 	[copy setGeneratesDecimalNumbers:[self generatesDecimalNumbers]];
 	[copy setFormatterBehavior:[self formatterBehavior]];
+	/* ⚠⚠ AND THE SIXTEEN DOORS ADDED IN §63.79/§63.80 HAVE TO SURVIVE A COPY TOO — WHICH THIS METHOD DID NOT DO,
+	 * AND THE PROBE'S OWN STEP 4 IS WHAT CAUGHT IT: 31 of 32 checks passed, and the one that FAILED said
+	 * `copied policy=LOST`. `-copyWithZone:` carried the rounding MODE and did not carry the rounding POLICY, and
+	 * it had never carried the fifteen STORED doors either: a formatter copied after `-setRoundingBehavior:` (or
+	 * after any of them) silently lost what it had been told. **A PROPERTY THAT DOES NOT SURVIVE `-copy` IS A
+	 * PROPERTY WITH A SHORTER LIFE THAN THE CLASS SAYS IT HAS**, and `-numberFromString:` is the door that reads
+	 * `_locale` and the range back through the copy. */
+	[copy setRoundingBehavior:[self roundingBehavior]];
+	[copy setAttributedStringForZero:[self attributedStringForZero]];
+	[copy setAttributedStringForNil:[self attributedStringForNil]];
+	[copy setAttributedStringForNotANumber:[self attributedStringForNotANumber]];
+	[copy setTextAttributesForZero:[self textAttributesForZero]];
+	[copy setTextAttributesForNegativeValues:[self textAttributesForNegativeValues]];
+	[copy setTextAttributesForPositiveValues:[self textAttributesForPositiveValues]];
+	[copy setTextAttributesForNil:[self textAttributesForNil]];
+	[copy setTextAttributesForNotANumber:[self textAttributesForNotANumber]];
+	[copy setTextAttributesForPositiveInfinity:[self textAttributesForPositiveInfinity]];
+	[copy setTextAttributesForNegativeInfinity:[self textAttributesForNegativeInfinity]];
+	[copy setPositiveInfinitySymbol:[self positiveInfinitySymbol]];
+	[copy setNegativeInfinitySymbol:[self negativeInfinitySymbol]];
+	[copy setLocalizesFormat:[self localizesFormat]];
+	[copy setPartialStringValidationEnabled:[self isPartialStringValidationEnabled]];
+	[copy setFormattingContext:[self formattingContext]];
 	return copy;
 }
 
@@ -1267,6 +1305,85 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 - (void)setPartialStringValidationEnabled:(BOOL)flag { _partialStringValidationEnabled = flag; }
 - (NSFormattingContext)formattingContext { return _formattingContext; }
 - (void)setFormattingContext:(NSFormattingContext)context { _formattingContext = context; }
+
+
+/* ================== THE LAST TWO DOORS (§63.80) ================== */
+
+/* NSRoundingMode → ICU, AND WHY IT IS A SECOND TABLE RATHER THAN A DELEGATION: Apple's
+ * NSNumberFormatterRoundingMode has SIX cases and NSRoundingMode has FOUR, and the two are not in
+ * correspondence — THERE IS NO `NSNumberFormatterRoundHalfUp` for `NSRoundPlain` to become. So this is the one
+ * place NSRoundingMode reaches ICU, and the half-way reading is the deviation the header states. */
+static int32_t fn_icu_rounding_for_ns_rounding(NSRoundingMode mode)
+{
+	switch (mode) {
+	case NSRoundDown:
+		return UNUM_ROUND_DOWN;
+	case NSRoundUp:
+		return UNUM_ROUND_UP;
+	case NSRoundBankers:
+		return UNUM_ROUND_HALFEVEN;
+	case NSRoundPlain:
+	default:
+		return UNUM_ROUND_HALFUP;
+	}
+}
+
+- (NSDecimalNumberHandler *)roundingBehavior
+{
+	return _roundingBehavior;
+}
+
+- (void)setRoundingBehavior:(NSDecimalNumberHandler *)handler
+{
+	[_roundingBehavior release];
+	/* ⚠ `-retain` AND NOT `-copy`, WITH THE REASON MEASURED (§63.80): Apple declares this property `copy`, and
+	 * NSDecimalNumberHandler conforms to `NSDecimalNumberBehaviors` and `NSCoding` — **NOT `NSCopying`** — so
+	 * `[handler copy]` found no `-copyWithZone:` and raised `doesNotRecognizeSelector:`, a SIGABRT the probe's
+	 * per-step markers put exactly here. AND THE HANDLER IS IMMUTABLE (its mode, scale and four raise flags are
+	 * set once at construction and have no setters), **SO A COPY OF IT IS ITSELF AND `-retain` IS THE SAME
+	 * CONTRACT**. Implementing `-copyWithZone:` here instead would mean spelling `NSZone`, a type THIS TREE
+	 * ABOLISHED BY RECORDED DECISION (NSObjCRuntime.h: "NO ZONES AT ALL"), which is a larger thing to undo than
+	 * the one word it would buy. */
+	_roundingBehavior = [handler retain];
+	if (handler != nil && _formatter != NULL) {
+		unum_setAttribute((UNumberFormat *)_formatter, UNUM_ROUNDING_MODE,
+				  fn_icu_rounding_for_ns_rounding([handler roundingMode]));
+		unum_setAttribute((UNumberFormat *)_formatter, UNUM_MAX_FRACTION_DIGITS, [handler scale]);
+	}
+}
+
+- (BOOL)getObjectValue:(id *)obj forString:(NSString *)string range:(NSRangePointer)rangep error:(NSError **)error
+{
+	NSUInteger consumed = 0;
+	NSNumber *number;
+
+	if (error != NULL) {
+		*error = nil;
+	}
+	if (obj != NULL) {
+		*obj = nil;
+	}
+	if (rangep != NULL) {
+		*rangep = NSMakeRange(NSNotFound, 0);
+	}
+	number = [self fnParse:string consumed:&consumed];
+	if (number == nil) {
+		if (error != NULL) {
+			*error = [NSError errorWithDomain:NSCocoaErrorDomain code:2048 userInfo:
+				  [NSDictionary dictionaryWithObject:
+					[NSString stringWithFormat:@"The string is not a number in the format %@",
+							  [self format]] forKey:NSLocalizedDescriptionKey]];
+		}
+		return NO;
+	}
+	if (obj != NULL) {
+		*obj = number;
+	}
+	if (rangep != NULL) {
+		*rangep = NSMakeRange(0, consumed);
+	}
+	return YES;
+}
 
 
 @end

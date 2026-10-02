@@ -15,13 +15,14 @@
  * and the three currency variants (ISO code, plural, accounting). This is one of the places where
  * binding ICU buys fidelity that a hand-written formatter could not reach at all.
  *
- * WHAT IS STILL DEFERRED, and only these two now:
- *   * `-roundingBehavior`, whose Apple type is NSDecimalNumberHandler — a rounding POLICY object. Its
- *     `-roundingMode` and `-scale` DO map onto ICU's `UNUM_ROUNDING_MODE` and `UNUM_MAX_FRACTION_DIGITS`, so
- *     the ground that it "is not separable" is at best half-true; it is left for its own slice because wiring
- *     a policy object through `fnRebuild` is behaviour and not storage;
- *   * `-getObjectValue:forString:range:error:`, which is the PARSE's out-parameter form and belongs with the
- *     parse rather than with the stored surface;
+ * AND THE LAST TWO LANDED IN §63.80, ON GROUNDS THIS FILE HAD RECORDED AND BOTH OF WHICH MEASURED PARTLY
+ * FALSE — they are declared at the foot of this interface rather than deferred here:
+ *   * `-roundingBehavior`: its ground was "not separable from the `-roundingMode`/`-roundingIncrement` ICU
+ *     already carries". **HALF TRUE** — the handler's `-roundingMode` and `-scale` DO reach
+ *     `UNUM_ROUNDING_MODE` and `UNUM_MAX_FRACTION_DIGITS`, so the door both STORES and APPLIES;
+ *   * `-getObjectValue:forString:range:error:`: the parse's out-parameter form. The information was never
+ *     missing — `unum_parseDouble` already fills its position — so the door and `-numberFromString:` are
+ *     ONE private parse with an optional out-parameter;
  *
  * WHAT A LATER PASS LANDED, EACH ON A DEFERRAL REASON THAT MEASURED FALSE:
  *   * `-positiveFormat`/`-negativeFormat`. The old note claimed ICU exposes ONE pattern with no
@@ -47,6 +48,14 @@
 
 #import <Foundation/NSFormatter.h>
 #import <Foundation/NSObjCRuntime.h>
+/* ⚠⚠ THREE IMPORTS THIS HEADER NEEDED AND DID NOT HAVE, AND THE ERROR THAT SAID SO POINTED ELSEWHERE
+ * (§63.80). `NSNumberFormatter.h` declared its failure-reporting door with `NSError` in the signature and its
+ * rounding policy with `NSDecimalNumberHandler`, and imported neither. THE COMPILER SAID "expected a type" AT
+ * COLUMN 49 — which is where `NSError **error` sits, NOT where the range parameter is — and one round went
+ * into theorising about `NSRangePointer` because of it. **A COLUMN NUMBER IS PART OF THE DIAGNOSIS**: the same
+ * missing import is what made `NSCocoaErrorDomain` and `NSLocalizedDescriptionKey` undeclared in the .m. */
+#import <Foundation/NSError.h>
+#import <Foundation/NSDecimalNumber.h>
 
 @class NSString;
 @class NSNumber;
@@ -124,6 +133,7 @@ NS_ASSUME_NONNULL_BEGIN
 	BOOL _localizesFormat;
 	BOOL _partialStringValidationEnabled;
 	NSFormattingContext _formattingContext;
+	NSDecimalNumberHandler *_roundingBehavior;	/* copied: the rounding policy, applied on set */
 }
 
 - (instancetype)init;
@@ -338,6 +348,18 @@ NS_ASSUME_NONNULL_BEGIN
 @property BOOL localizesFormat;
 @property (getter=isPartialStringValidationEnabled) BOOL partialStringValidationEnabled;
 @property NSFormattingContext formattingContext;
+/* ================== THE LAST TWO DOORS (§63.80) ==================
+ * ⚠ `-roundingBehavior` IS MORE THAN STORAGE, which is what its deferral doubted: an NSDecimalNumberHandler's
+ * `-roundingMode` and `-scale` ARE ICU's `UNUM_ROUNDING_MODE` and `UNUM_MAX_FRACTION_DIGITS`, so a policy set
+ * here changes what the formatter PRINTS. ⚠ ONE DEVIATION IS STATED: `NSRoundPlain` means "half AWAY FROM ZERO"
+ * and ICU's `UNUM_ROUND_HALFUP` means "half toward +infinity" — they agree on every positive value and differ
+ * on a negative half-way one, which is the reading Apple's own sentence leaves open.
+ *
+ * AND `-getObjectValue:forString:range:error:` ANSWERS THE RANGE FROM THE SAME PARSE THE VALUE COMES FROM,
+ * because two parses are two answers waiting to disagree. */
+@property (copy) NSDecimalNumberHandler *roundingBehavior;
+- (BOOL)getObjectValue:(id _Nullable * _Nullable)obj forString:(NSString *)string
+		 range:(nullable NSRangePointer)rangep error:(NSError **)error;
 
 @end
 
