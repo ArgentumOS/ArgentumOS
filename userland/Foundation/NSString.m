@@ -872,11 +872,26 @@ static struct { NSStringEncoding encoding; UConverter *cnv; } fn_ucnv_cache[FN_U
 static UConverter *fn_ucnv_for(NSStringEncoding encoding)
 {
 	const FnEncodingEntry *e = fn_encoding_entry(encoding);
+	const char *name;
 	size_t i, slot = FN_UCNV_CACHE;
 	UErrorCode st = U_ZERO_ERROR;
 
-	if (e == NULL) {
-		return NULL;
+	/* ⚠⚠ THE TWO STORAGE ENCODINGS HAVE CONVERTERS TOO, AND THE ENGINE MUST BE ABLE TO SERVE ANY
+	 * ENCODING THIS LIBRARY CLAIMS TOO. They are absent from the TABLE because no DOOR routes them through the
+	 * engine — UTF-8 and ASCII are the storage, and every door has a tested fast path for them — BUT A DOOR
+	 * THAT FORGETS THAT IS TWO BUGS OLD: §63.73's detection fallback asked for UTF-8 and got NULL, and §63.74's
+	 * escape door asked for UTF-8 and got NULL, each reading as "the string cannot be converted". **THE FIX
+	 * BELONGS AT THE ENGINE, NOT AT EACH DOOR: a NULL from here must mean "this library has no converter for
+	 * that encoding", never "that encoding is handled somewhere else".** */
+	if (encoding == NSUTF8StringEncoding) {
+		name = "UTF-8";
+	} else if (encoding == NSASCIIStringEncoding) {
+		name = "US-ASCII";
+	} else {
+		if (e == NULL) {
+			return NULL;
+		}
+		name = e->icu;
 	}
 	for (i = 0; i < FN_UCNV_CACHE; i++) {
 		if (fn_ucnv_cache[i].cnv != NULL && fn_ucnv_cache[i].encoding == encoding) {
@@ -889,7 +904,7 @@ static UConverter *fn_ucnv_for(NSStringEncoding encoding)
 	if (slot == FN_UCNV_CACHE) {
 		return NULL;			/* full: refuse rather than grow a global */
 	}
-	fn_ucnv_cache[slot].cnv = ucnv_open(e->icu, &st);
+	fn_ucnv_cache[slot].cnv = ucnv_open(name, &st);
 	if (fn_ucnv_cache[slot].cnv == NULL) {
 		return NULL;
 	}
@@ -2283,6 +2298,103 @@ static BOOL fn_format_is_allowed(NSString *format, NSString *validFormatSpecifie
  * PERCENT-ENCODING, BOTH DIRECTIONS. See NSString.h for the rules and for why the deprecated pair is
  * not here at all.
  * =================================================================================================== */
+/* ---- THE LEGACY PERCENT-ESCAPE PAIR, AND ITS SET IS CITED RATHER THAN REMEMBERED (§63.74) ----------------
+ * WHAT THE HEADER RECORDED: the pair stayed OPEN "until that set can be cited", because Apple does not publish
+ * which characters the legacy call considers legal and writing the set from memory would be inventing a
+ * specification. **IT CAN BE CITED, FROM TWO PUBLISHED SOURCES:**
+ *   * Apple's own discussion of `CFURLCreateStringByAddingPercentEscapes` — the function this door wraps —
+ *     says the escaped set is "all characters that are not legal URL characters (BASED ON RFC 2396)";
+ *   * RFC 2396 §2.3 is the one that ENUMERATES it:
+ *         unreserved  = alphanum | mark
+ *         mark        = "-" | "_" | "." | "!" | "~" | "*" | "'" | "(" | ")"
+ * ⚠ AND THE RULE IS THE OBSOLETE RFC'S ON PURPOSE: RFC 3986 dropped `! * ' ( )` from unreserved, and a door
+ * that is deprecated BECAUSE its rule is stale must still behave like the thing being ported — a porting target
+ * that quietly upgraded its specification would not be a porting target. */
+static int fn_is_url_unreserved(unsigned char c)
+{
+	if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+		return 1;
+	}
+	return c == '-' || c == '_' || c == '.' || c == '!' || c == '~' || c == '*' || c == '\'' || c == '(' || c == ')';
+}
+
+/* THE BYTES ARE THE ENCODING'S, AND THE ESCAPING IS BYTE-WISE — which is what makes this door depend on the
+ * ENCODING it is passed rather than on the storage: `é` in Latin-1 escapes as `%E9` and in UTF-8 as `%C3%A9`,
+ * and both are correct for the caller who asked. */
+- (nullable NSString *)stringByAddingPercentEscapesUsingEncoding:(NSStringEncoding)encoding
+{
+	static const char hex[] = "0123456789ABCDEF";
+	unsigned char *bytes = NULL;
+	size_t n = 0, i, w = 0;
+	char *out;
+	NSString *result;
+
+	bytes = fn_bytes_in_encoding(self, encoding, NO, &n);
+	if (bytes == NULL) {
+		return nil;		/* the same refusal the other encoding-taking doors make */
+	}
+	out = (char *)malloc(n * 3 + 1);
+	if (out == NULL) {
+		free(bytes);
+		return nil;
+	}
+	for (i = 0; i < n; i++) {
+		if (fn_is_url_unreserved(bytes[i])) {
+			out[w++] = (char)bytes[i];
+		} else {
+			out[w++] = '%';
+			out[w++] = hex[bytes[i] >> 4];
+			out[w++] = hex[bytes[i] & 0x0F];
+		}
+	}
+	free(bytes);
+	out[w] = '\0';
+	result = [[NSString alloc] initWithBytes:out length:w encoding:NSUTF8StringEncoding];
+	free(out);
+	return [result autorelease];
+}
+
+/* THE MIRROR, AND IT REFUSES WHAT §63.3'S DECODER REFUSES: a `%` not followed by two hex digits is nil rather
+ * than a literal per cent, because a decoder that accepts a malformed sequence answers a string the encoder
+ * could not have produced. THE BYTES ARE THEN READ IN THE SAME ENCODING, which is what makes the pair a round
+ * trip for any encoding the engine can decode. */
+- (nullable NSString *)stringByReplacingPercentEscapesUsingEncoding:(NSStringEncoding)encoding
+{
+	unsigned char *bytes = NULL, *out = NULL;
+	size_t n = 0, i, w = 0;
+	NSString *result;
+
+	bytes = fn_bytes_in_encoding(self, encoding, NO, &n);
+	if (bytes == NULL) {
+		return nil;
+	}
+	out = (unsigned char *)malloc(n + 1);
+	if (out == NULL) {
+		free(bytes);
+		return nil;
+	}
+	for (i = 0; i < n; i++) {
+		if (bytes[i] == '%') {
+			int hi = (i + 2 < n) ? fn_hex_value(bytes[i + 1]) : -1;
+			int lo = (i + 2 < n) ? fn_hex_value(bytes[i + 2]) : -1;
+
+			if (hi < 0 || lo < 0) {
+				free(bytes);
+				free(out);
+				return nil;
+			}
+			out[w++] = (unsigned char)((hi << 4) | lo);
+			i += 2;
+		} else {
+			out[w++] = bytes[i];
+		}
+	}
+	free(bytes);
+	result = fn_string_from_bytes_lossy(out, w, encoding, NO);
+	free(out);
+	return [result autorelease];
+}
+
 - (nullable NSString *)stringByAddingPercentEncodingWithAllowedCharacters:(NSCharacterSet *)allowedCharacters
 {
 	NSMutableString *out = [[NSMutableString alloc] init];

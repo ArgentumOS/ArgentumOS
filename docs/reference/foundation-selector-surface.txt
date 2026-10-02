@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2163   open  479   struck  286
+#   method     shipped 2165   open  477   struck  286
 #   property   shipped 1261   open  218   struck  157
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3142,7 +3142,7 @@ method	open	-sizeWithFont:minFontSize:actualFontSize:forWidth:lineBreakMode:	NSS
 method	open	-sr_sensorForDeletionRecordsFromSensor	NSString	Fundamentals / Strings / Instance Methods	deprecated	objc
 method	shipped	+string	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	-stringByAddingPercentEncodingWithAllowedCharacters:	NSString	Fundamentals / Strings / Working with URL Strings	-	objc
-method	open	-stringByAddingPercentEscapesUsingEncoding:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	-stringByAddingPercentEscapesUsingEncoding:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-stringByAppendingFormat:	NSString	Fundamentals / Strings / Combining Strings	-	objc
 method	shipped	-stringByAppendingPathComponent:	NSString	Fundamentals / Strings / Working with Paths	-	objc
 method	open	-stringByAppendingPathComponent:conformingToType:	NSString	Fundamentals / Strings / Instance Methods	-	objc
@@ -3155,7 +3155,7 @@ method	shipped	-stringByPaddingToLength:withString:startingAtIndex:	NSString	Fun
 method	shipped	-stringByReplacingCharactersInRange:withString:	NSString	Fundamentals / Strings / Replacing Substrings	-	objc
 method	shipped	-stringByReplacingOccurrencesOfString:withString:	NSString	Fundamentals / Strings / Replacing Substrings	-	objc
 method	shipped	-stringByReplacingOccurrencesOfString:withString:options:range:	NSString	Fundamentals / Strings / Replacing Substrings	-	objc
-method	open	-stringByReplacingPercentEscapesUsingEncoding:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
+method	shipped	-stringByReplacingPercentEscapesUsingEncoding:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-stringByTrimmingCharactersInSet:	NSString	Fundamentals / Strings / Dividing Strings	-	objc
 method	shipped	+stringEncodingForData:encodingOptions:convertedString:usedLossyConversion:	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 method	shipped	+stringWithCString:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc

@@ -627,12 +627,16 @@ typedef enum {
  * well-formed UTF-8 once decoded (overlong forms, surrogate code points and beyond-U+10FFFF leads
  * included, so every answer is a string some encoder could have produced).
  *
- * THE DEPRECATED PAIR — `-stringByAddingPercentEscapesUsingEncoding:` and
- * `-stringByReplacingPercentEscapesUsingEncoding:` — is NOT here, and the reason is not the deprecation
- * (§62.24 makes deprecated API a porting target): their contract is "escape the characters that are not
- * legal in a URL", and **Apple does not publish WHICH characters those are** for the legacy call. Writing
- * the set from memory would be inventing a specification, and a set chosen for a URL component is exactly
- * the argument the modern door takes. They stay open in the ledger until that set can be cited.
+ * ⚠⚠ THE DEPRECATED PAIR IS HERE NOW, AND THE SENTENCE THAT KEPT IT OUT WAS "they stay open until that set
+ * can be cited" (§63.74). **THE SET CAN BE CITED, FROM TWO PUBLISHED SOURCES:** Apple's own discussion of
+ * `CFURLCreateStringByAddingPercentEscapes` — the function this door wraps — says the escaped set is "all
+ * characters that are not legal URL characters (**based on RFC 2396**)", and **RFC 2396 §2.3** enumerates it:
+ * `unreserved = alphanum | mark` and `mark = "-" | "_" | "." | "!" | "~" | "*" | "'" | "(" | ")"`.
+ * **AND THE RULE IS THE OBSOLETE RFC'S ON PURPOSE:** RFC 3986 dropped `! * ' ( )` from unreserved, and this
+ * door is deprecated BECAUSE its rule is stale — **a porting target that quietly upgraded its specification
+ * would not be a porting target.** The ENCODING argument is honoured byte-wise, so `é` escapes as `%E9` in
+ * Latin-1 and `%C3%A9` in UTF-8, and the mirror door refuses a malformed sequence rather than answering a
+ * string the encoder could not have produced.
  *
  * The declaring form is Apple's: `stringByRemovingPercentEncoding` is a READONLY PROPERTY there.
  * =================================================================================================== */
@@ -640,6 +644,11 @@ typedef enum {
  * exactly that, and it is the annotate-what-the-implementation-accepts rule doing its job: the first
  * version of this declaration said non-null and the probe, compiled under
  * -Werror=nullable-to-nonnull-conversion, refused to build. */
+/* THE DEPRECATED PAIR (§63.74), declared where this library keeps its percent-encoding family. Apple declares
+ * them in NSURL.h; the OWNER is NSString either way, which is what the ledger row says. */
+- (nullable NSString *)stringByAddingPercentEscapesUsingEncoding:(NSStringEncoding)encoding;
+- (nullable NSString *)stringByReplacingPercentEscapesUsingEncoding:(NSStringEncoding)encoding;
+
 - (nullable NSString *)stringByAddingPercentEncodingWithAllowedCharacters:(nullable NSCharacterSet *)allowedCharacters;
 @property (readonly, nullable) NSString *stringByRemovingPercentEncoding;
 

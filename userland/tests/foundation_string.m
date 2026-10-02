@@ -53,6 +53,38 @@ static NSString *fn_render_locale_arguments(NSString *format, ...)
 int main(void)
 {
 	{
+		/* §63.74: THE LEGACY PERCENT PAIR, WHOSE SET IS RFC 2396's. The assertions carry the SET rather than a
+		 * round trip alone, because the set is the whole content of the door: `~!*'()` must SURVIVE (`! * ' ( )`
+		 * were dropped by RFC 3986, so a door that used the modern rule would escape them) and space and `/` must
+		 * be ESCAPED. AND THE ENCODING ARGUMENT IS ASSERTED BYTE-WISE, which is what separates this door from
+		 * the UTF-8-always modern one. */
+		NSString *src = [NSString stringWithUTF8String:"a b/c~d!e*f'g(h)i\xC3\xA9"];
+		NSString *esc = [src stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+		NSString *back = [esc stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+		NSString *latin = [[NSString stringWithUTF8String:"caf\xC3\xA9"] stringByAddingPercentEscapesUsingEncoding:NSISOLatin1StringEncoding];
+
+		check("legacy-percent-pair",
+		      esc != nil && back != nil && [back isEqualToString:src] &&
+		      [esc rangeOfString:@"%20"].location != NSNotFound &&
+		      [esc rangeOfString:@"%2F"].location != NSNotFound &&
+		      [esc rangeOfString:@"~"].location != NSNotFound &&
+		      /* ⚠ THE SET IS ASSERTED BY WHAT IS **ABSENT**, WHICH IS HOW IT IS ACTUALLY OBSERVABLE:
+		       * the first version asked for the contiguous substring `!*'()` and that is a bug in the CHECK —
+		       * the four characters are separate in the input, so the substring never exists. What identifies the
+		       * RFC 2396 rule is that a MODERN door would have escaped them: `%21 %2A %27 %28 %29` must NOT
+		       * appear, while `~ ! * ' ( )` must. */
+		      [esc rangeOfString:@"%21"].location == NSNotFound &&
+		      [esc rangeOfString:@"%2A"].location == NSNotFound &&
+		      [esc rangeOfString:@"%27"].location == NSNotFound &&
+		      [esc rangeOfString:@"%28"].location == NSNotFound &&
+		      [esc rangeOfString:@"%29"].location == NSNotFound &&
+		      [esc rangeOfString:@"%C3%A9"].location != NSNotFound &&
+		      latin != nil && [latin isEqualToString:@"caf%E9"] &&
+		      [@"%2" stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding] == nil,
+		      [[NSString stringWithFormat:@"esc=%@ back=%@ latin=%@", esc, back, latin] UTF8String]);
+	}
+
+	{
 		/* §63.73: APPLE'S DETECTION DOOR, ICU'S DETECTOR BEHIND IT. Two assertions, and the second is the
 		 * one that carries the option keys: the FIRST asks the DETECTOR (which is a guess, and a good one on a
 		 * long sample), and the SECOND asks for ONE SUGGESTED ENCODING ONLY, which is deterministic whatever

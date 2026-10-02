@@ -15982,6 +15982,50 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.74 — THE LEGACY PERCENT PAIR SHIPS, BECAUSE THE CITATION EXISTS — AND THE ENGINE'S NULL MEANT TWO THINGS (2026-10-01)
+
+**WHAT LANDED: the deprecated percent pair, which the header had kept out with a CONDITION rather than a
+refusal.** Its recorded reason was *"they stay open in the ledger until that set can be cited"*. **THE CONDITION
+IS MET, FROM TWO PUBLISHED SOURCES:** Apple's own discussion of `CFURLCreateStringByAddingPercentEscapes` — the
+function this door wraps — says the escaped set is "all characters that are not legal URL characters (**based
+on RFC 2396**)", and **RFC 2396 §2.3** is the source that ENUMERATES it:
+
+    unreserved  = alphanum | mark
+    mark        = "-" | "_" | "." | "!" | "~" | "*" | "'" | "(" | ")"
+
+**AND THE RULE IS THE OBSOLETE RFC'S ON PURPOSE:** RFC 3986 dropped `! * ' ( )` from unreserved, so a door using
+the modern rule would escape four characters this one must leave alone — **a porting target that quietly
+upgraded its specification would not be a porting target.** The probe asserts the set BY WHAT IS ABSENT
+(`%21 %2A %27 %28 %29` must NOT appear), because that is how the distinction is observable at all.
+
+**MEASURED, AND THE LEDGER MOVED TWICE IN TWO UNITS: `method shipped 2163 → 2165`, `open 479 → 477`**,
+`--check` consistent after `--refresh` — and once more the SWEEP demanded the flip ("PRESENT BUT LISTED OPEN …
+flip the row"). `make testimg` exit 0; `make test TESTS='foundation_string'` → `TESTS-OK 1/1 case(s), 6/6
+check(s) in 13s`; the probe's tally `FOUNDATION-STRING 158/158`; host build exit 0 with EXACTLY the six known
+warnings. The measured output is the whole claim: `esc=a%20b%2Fc~d!e*f'g(h)i%C3%A9`, `back` round-trips, and
+`latin=caf%E9` — **space and `/` escaped, `~ ! * ' ( )` untouched, `é` as `%C3%A9` in UTF-8 and `%E9` in
+Latin-1**, which is the ENCODING argument doing its work.
+
+**⚠⚠ AND THE UNIT'S REAL FINDING IS THAT THE ENGINE'S NULL MEANT TWO DIFFERENT THINGS — WHICH §63.73 HAD
+ALREADY PAID FOR ONCE.** The escape door asked the engine for UTF-8 and got NULL, the SAME bug §63.73's detection
+fallback hit, because `fn_ucnv_for` answered NULL for the two STORAGE encodings "by design". **BUT THAT DESIGN
+WAS ABOUT THE DOORS' FAST PATHS, NOT ABOUT THE ENGINE'S ABILITY:** the table holds the encodings no door routes
+through the engine, and a NULL from `fn_ucnv_for` was being read as "this library cannot convert that" when it
+sometimes meant "that encoding is handled somewhere else". **THE FIX WENT TO THE ENGINE, NOT TO A THIRD DOOR: a
+NULL from there must mean ONE thing — no converter here — and never two. A HAZARD THAT HAS NOW PRODUCED TWO
+BUGS IN TWO UNITS WAS REMOVED AT ITS SOURCE RATHER THAN PATCHED TWICE.**
+
+**⚠ AND TWO MORE MISTAKES OF MINE, BOTH FAMILIAR.** (1) **The edit script wrote per replacement AGAIN** — the
+third unit running — and one anchor missed (`nullable` in the signature), leaving the header declaring what the
+`.m` did not implement. (2) **The check asserted the contiguous substring `"!*'()"`**, which cannot exist in an
+input where those characters are separated: **an assertion about a SET must be written as the set's observable
+consequence, not as a string that happens to spell it.** The measured output was CORRECT the whole time — the
+CHECK was the thing that was wrong, and the failure's own detail string is what said so.
+
+**AND THE CLUSTER'S REMAINING OPEN ROWS ARE NOW NONE OF ITS OWN.** What is left of the encoding work is
+elsewhere: the three keys with no API (§63.73's owed rows), the parameterized `NSDictionary` the detection
+declaration cannot spell (§63.73), and the transform constants the same header note still describes.
+
 ## §63.73 — THE DETECTION DOOR: A ROW CLOSED, AND A FALLBACK THAT COULD NOT WORK (2026-10-01)
 
 **WHAT LANDED: `+stringEncodingForData:encodingOptions:convertedString:usedLossyConversion:` — Apple's detection
