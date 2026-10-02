@@ -36,7 +36,7 @@
 #
 # counts by kind:
 #   method     shipped 2167   open  475   struck  286
-#   property   shipped 1261   open  218   struck  157
+#   property   shipped 1276   open  203   struck  157
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -2321,9 +2321,9 @@ method	shipped	+setDefaultFormatterBehavior:	NSNumberFormatter	Fundamentals / Nu
 method	shipped	-stringFromNumber:	NSNumberFormatter	Fundamentals / Numbers / Converting Between Numbers and Strings	-	objc
 property	shipped	allowsFloats	NSNumberFormatter	Fundamentals / Numbers / Managing Input and Output Attributes	-	objc
 property	shipped	alwaysShowsDecimalSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
-property	open	attributedStringForNil	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
-property	open	attributedStringForNotANumber	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
-property	open	attributedStringForZero	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
+property	shipped	attributedStringForNil	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
+property	shipped	attributedStringForNotANumber	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
+property	shipped	attributedStringForZero	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
 property	shipped	currencyCode	NSNumberFormatter	Fundamentals / Numbers / Configuring the Format of Currency	-	objc
 property	shipped	currencyDecimalSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
 property	shipped	currencyGroupingSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring the Format of Currency	-	objc
@@ -2333,7 +2333,7 @@ property	shipped	exponentSymbol	NSNumberFormatter	Fundamentals / Numbers / Confi
 property	shipped	format	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
 property	shipped	formatWidth	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
 property	shipped	formatterBehavior	NSNumberFormatter	Fundamentals / Numbers / Configuring Formatter Behavior and Style	-	objc
-property	open	formattingContext	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
+property	shipped	formattingContext	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
 property	shipped	generatesDecimalNumbers	NSNumberFormatter	Fundamentals / Numbers / Configuring Formatter Behavior and Style	-	objc
 property	shipped	groupingSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
 property	shipped	groupingSize	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
@@ -2341,7 +2341,7 @@ property	shipped	hasThousandSeparators	NSNumberFormatter	Fundamentals / Numbers 
 property	shipped	internationalCurrencySymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring the Format of Currency	-	objc
 property	shipped	lenient	NSNumberFormatter	Fundamentals / Numbers / Managing Leniency Behavior	-	objc
 property	shipped	locale	NSNumberFormatter	Fundamentals / Numbers / Managing Localization of Numbers	-	objc
-property	open	localizesFormat	NSNumberFormatter	Fundamentals / Numbers / Managing Localization of Numbers	-	objc
+property	shipped	localizesFormat	NSNumberFormatter	Fundamentals / Numbers / Managing Localization of Numbers	-	objc
 property	shipped	maximum	NSNumberFormatter	Fundamentals / Numbers / Managing Input and Output Attributes	-	objc
 property	shipped	maximumFractionDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Integer and Fraction Digits	-	objc
 property	shipped	maximumIntegerDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Integer and Fraction Digits	-	objc
@@ -2354,7 +2354,7 @@ property	shipped	minimumSignificantDigits	NSNumberFormatter	Fundamentals / Numbe
 property	shipped	minusSign	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	multiplier	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
 property	shipped	negativeFormat	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
-property	open	negativeInfinitySymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
+property	shipped	negativeInfinitySymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	negativePrefix	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Prefixes and Suffixes	-	objc
 property	shipped	negativeSuffix	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Prefixes and Suffixes	-	objc
 property	shipped	nilSymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
@@ -2362,25 +2362,25 @@ property	shipped	notANumberSymbol	NSNumberFormatter	Fundamentals / Numbers / Con
 property	shipped	numberStyle	NSNumberFormatter	Fundamentals / Numbers / Configuring Formatter Behavior and Style	-	objc
 property	shipped	paddingCharacter	NSNumberFormatter	Fundamentals / Numbers / Managing the Padding of Numbers	-	objc
 property	shipped	paddingPosition	NSNumberFormatter	Fundamentals / Numbers / Managing the Padding of Numbers	-	objc
-property	open	partialStringValidationEnabled	NSNumberFormatter	Fundamentals / Numbers / Managing the Validation of Partial Numeric Strings	-	objc
+property	shipped	partialStringValidationEnabled	NSNumberFormatter	Fundamentals / Numbers / Managing the Validation of Partial Numeric Strings	-	objc
 property	shipped	perMillSymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	percentSymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	plusSign	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	positiveFormat	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Formats	-	objc
-property	open	positiveInfinitySymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
+property	shipped	positiveInfinitySymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
 property	shipped	positivePrefix	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Prefixes and Suffixes	-	objc
 property	shipped	positiveSuffix	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Prefixes and Suffixes	-	objc
 property	open	roundingBehavior	NSNumberFormatter	Fundamentals / Numbers / Configuring Rounding Behavior	-	objc
 property	shipped	roundingIncrement	NSNumberFormatter	Fundamentals / Numbers / Configuring Rounding Behavior	-	objc
 property	shipped	roundingMode	NSNumberFormatter	Fundamentals / Numbers / Configuring Rounding Behavior	-	swift-page
 property	shipped	secondaryGroupingSize	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
-property	open	textAttributesForNegativeInfinity	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
-property	open	textAttributesForNegativeValues	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
-property	open	textAttributesForNil	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
-property	open	textAttributesForNotANumber	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
-property	open	textAttributesForPositiveInfinity	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
-property	open	textAttributesForPositiveValues	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
-property	open	textAttributesForZero	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
+property	shipped	textAttributesForNegativeInfinity	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
+property	shipped	textAttributesForNegativeValues	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
+property	shipped	textAttributesForNil	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
+property	shipped	textAttributesForNotANumber	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
+property	shipped	textAttributesForPositiveInfinity	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
+property	shipped	textAttributesForPositiveValues	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
+property	shipped	textAttributesForZero	NSNumberFormatter	Fundamentals / Numbers / Configuring the Display of Numeric Values	-	objc
 property	shipped	thousandSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
 property	shipped	usesGroupingSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
 property	shipped	usesSignificantDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Significant Digits	-	objc

@@ -52,6 +52,54 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 
 int main(void)
 {
+
+	{
+		/* §63.79: THE FIFTEEN STORED DOORS. What is asserted is what a stored property can get wrong: the value
+		 * must SURVIVE its own setter, and the `copy` families must be COPIES — proved by handing in a MUTABLE
+		 * and then mutating it, which is the contract Apple declares and the defect this unit fixed beside them. */
+		NSNumberFormatter *f = [[NSNumberFormatter alloc] init];
+		NSMutableString *symbol = [NSMutableString stringWithString:@"pos"];
+		NSAttributedString *attr = [[NSAttributedString alloc] initWithString:@"zero"];
+		NSDictionary *attrs = [NSDictionary dictionaryWithObject:@"v" forKey:@"k"];
+
+		[f setAttributedStringForZero:attr];
+		[f setAttributedStringForNil:attr];
+		[f setAttributedStringForNotANumber:attr];
+		[f setTextAttributesForZero:attrs];
+		[f setTextAttributesForNegativeValues:attrs];
+		[f setTextAttributesForPositiveValues:attrs];
+		[f setTextAttributesForNil:attrs];
+		[f setTextAttributesForNotANumber:attrs];
+		[f setTextAttributesForPositiveInfinity:attrs];
+		[f setTextAttributesForNegativeInfinity:attrs];
+		[f setPositiveInfinitySymbol:symbol];
+		[f setNegativeInfinitySymbol:@"neg"];
+		[f setLocalizesFormat:YES];
+		[f setPartialStringValidationEnabled:YES];
+		[f setFormattingContext:NSFormattingContextBeginningOfSentence];
+
+		[symbol appendString:@"MUTATED"];
+
+		check("numberformatter-stored-text-doors",
+		      [[f positiveInfinitySymbol] isEqualToString:@"pos"] &&
+		      [[f negativeInfinitySymbol] isEqualToString:@"neg"] &&
+		      [[f attributedStringForZero] isEqualToAttributedString:attr] &&
+		      [[f attributedStringForNil] isEqualToAttributedString:attr] &&
+		      [[f attributedStringForNotANumber] isEqualToAttributedString:attr] &&
+		      [[f textAttributesForZero] isEqualToDictionary:attrs] &&
+		      [[f textAttributesForNegativeValues] isEqualToDictionary:attrs] &&
+		      [[f textAttributesForPositiveValues] isEqualToDictionary:attrs] &&
+		      [[f textAttributesForNil] isEqualToDictionary:attrs] &&
+		      [[f textAttributesForNotANumber] isEqualToDictionary:attrs] &&
+		      [[f textAttributesForPositiveInfinity] isEqualToDictionary:attrs] &&
+		      [[f textAttributesForNegativeInfinity] isEqualToDictionary:attrs] &&
+		      [f localizesFormat] && [f isPartialStringValidationEnabled] &&
+		      [f formattingContext] == NSFormattingContextBeginningOfSentence,
+		      [NSString stringWithFormat:@"symbol=%@/%@ zero=%@ ctx=%lu",
+			[f positiveInfinitySymbol], [f negativeInfinitySymbol],
+			[[f attributedStringForZero] string], (unsigned long)[f formattingContext]]);
+	}
+
 	NSLocale *en = [NSLocale localeWithLocaleIdentifier:@"en_US"];
 	NSLocale *de = [NSLocale localeWithLocaleIdentifier:@"de_DE"];
 	NSNumber *value = [NSNumber numberWithDouble:1234567.89];

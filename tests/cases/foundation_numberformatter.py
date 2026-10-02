@@ -39,7 +39,8 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_numberformatter"
-CHECKS = ("nf-de", "nf-en", "nf-currency-locale", "nf-spellout", "nf-ordinal",
+CHECKS = (
+    "numberformatter-stored-text-doors","nf-de", "nf-en", "nf-currency-locale", "nf-spellout", "nf-ordinal",
           "nf-percent", "nf-scientific", "nf-parse", "nf-round-trip",
           "nf-int64-exact", "nf-symbols-custom",
           "nf-always-decimal", "nf-grouping-size", "nf-significant-digits",

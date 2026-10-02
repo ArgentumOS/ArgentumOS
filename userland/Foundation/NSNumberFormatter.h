@@ -15,19 +15,13 @@
  * and the three currency variants (ISO code, plural, accounting). This is one of the places where
  * binding ICU buys fidelity that a hand-written formatter could not reach at all.
  *
- * WHAT IS DEFERRED, named here rather than discovered later:
- *   * the ATTRIBUTED-string doors (`-attributedStringForZero`, `-attributedStringForNil`,
- *     `-attributedStringForNotANumber`, and the seven `-textAttributesFor…` dictionaries), which
- *     belong to the attributed-string family and are AppKit-DRAWING shaped;
- *   * `-roundingBehavior`, whose Apple type is NSDecimalNumberHandler — a rounding POLICY object whose
- *     effect is not separable from the `-roundingMode`/`-roundingIncrement` ICU already carries, so
- *     it is named here rather than stored as a value that would change nothing;
- *   * `-formattingContext` (a capitalization hint whose only consumer would be the spell-out style),
- *     `-localizesFormat` and `-partialStringValidationEnabled` (deprecated flags with no distinct
- *     door);
- *   * `-positiveInfinitySymbol`/`-negativeInfinitySymbol`, because ICU carries ONE infinity symbol
- *     (`UNUM_INFINITY_SYMBOL`) and spells a negative infinity with the minus sign — there is no
- *     substrate for two distinct settable symbols;
+ * WHAT IS STILL DEFERRED, and only these two now:
+ *   * `-roundingBehavior`, whose Apple type is NSDecimalNumberHandler — a rounding POLICY object. Its
+ *     `-roundingMode` and `-scale` DO map onto ICU's `UNUM_ROUNDING_MODE` and `UNUM_MAX_FRACTION_DIGITS`, so
+ *     the ground that it "is not separable" is at best half-true; it is left for its own slice because wiring
+ *     a policy object through `fnRebuild` is behaviour and not storage;
+ *   * `-getObjectValue:forString:range:error:`, which is the PARSE's out-parameter form and belongs with the
+ *     parse rather than with the stored surface;
  *
  * WHAT A LATER PASS LANDED, EACH ON A DEFERRAL REASON THAT MEASURED FALSE:
  *   * `-positiveFormat`/`-negativeFormat`. The old note claimed ICU exposes ONE pattern with no
@@ -115,6 +109,21 @@ NS_ASSUME_NONNULL_BEGIN
 	NSNumber *_minimum;		/* OURS: the range over the parse (see the declaration) */
 	NSNumber *_maximum;
 	BOOL _generatesDecimalNumbers;	/* OURS: whether the parse answers an NSDecimalNumber */
+	NSAttributedString *_attributedStringForZero;	/* copied: Apple declares these `copy` */
+	NSAttributedString *_attributedStringForNil;
+	NSAttributedString *_attributedStringForNotANumber;
+	NSDictionary *_textAttributesForZero;
+	NSDictionary *_textAttributesForNegativeValues;
+	NSDictionary *_textAttributesForPositiveValues;
+	NSDictionary *_textAttributesForNil;
+	NSDictionary *_textAttributesForNotANumber;
+	NSDictionary *_textAttributesForPositiveInfinity;
+	NSDictionary *_textAttributesForNegativeInfinity;
+	NSString *_positiveInfinitySymbol;
+	NSString *_negativeInfinitySymbol;
+	BOOL _localizesFormat;
+	BOOL _partialStringValidationEnabled;
+	NSFormattingContext _formattingContext;
 }
 
 - (instancetype)init;
@@ -285,6 +294,50 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setPaddingPosition:(NSNumberFormatterPadPosition)position;
 - (nullable NSString *)paddingCharacter;
 - (void)setPaddingCharacter:(nullable NSString *)string;
+
+/* ================== THE STORED TEXT DOORS (§63.79) ==================
+ * FIFTEEN DOORS STOOD IN THE DEFERRAL LIST ABOVE, EACH WITH A REASON — AND THIS UNIT TESTED THE REASONS RATHER
+ * THAN REPEATING THEM. What held and what did not:
+ *   * THE TEN ATTRIBUTED-STRING DOORS were deferred as "AppKit-DRAWING shaped". **THEY ARE STORED PROPERTIES**:
+ *     Apple declares them `copy` on a FOUNDATION class, and AppKit only READS them. **A property whose consumer
+ *     lives in another tier is still this class's property** (§11.0's surface rule).
+ *   * THE TWO INFINITY SYMBOLS were deferred because "ICU carries ONE infinity symbol". **THAT IS TRUE AND IT IS
+ *     NOT THE WHOLE QUESTION:** the positive one maps onto `UNUM_INFINITY_SYMBOL` and the negative one is what
+ *     ICU already spells with a minus sign, so **THE PAIR IS STORED** and the negative symbol reaches the
+ *     formatted output by SUBSTITUTION. **A substrate limit on the WRITE side is not a limit on the DOOR** —
+ *     ⚠ and the SUBSTITUTION ITSELF is not in this slice, because it is behaviour and not storage: it goes with
+ *     the two doors named below rather than being claimed here. THE DOORS LAND, THE EFFECT IS OWED, AND THE TWO
+ *     ARE SAID SEPARATELY.
+ *   * ⚠⚠ `-localizesFormat` AND `-partialStringValidationEnabled` were deferred as "DEPRECATED flags", AND THEY
+ *     ARE NOT DEPRECATED: the macOS 14.5 header declares both with no `API_DEPRECATED`, the second with
+ *     `API_AVAILABLE(macos(10.5), ios(2.0), …)`. The claim is corrected here, and the doors are stored flags,
+ *     which is everything Apple's own contract says they are.
+ *   * `-formattingContext` was deferred as "a capitalization hint whose only consumer would be the spell-out
+ *     style" — **TRUE, and the spell-out style IS SHIPPED HERE.** The door is STORED, and APPLYING the hint to
+ *     that style's output is behaviour rather than storage, so it goes with `-roundingBehavior` in the slice
+ *     named below rather than being claimed here.
+ *
+ * ⚠ AND ALL FIFTEEN ARE STORED WITH APPLE'S OWN `copy` CONTRACT AND RELEASED IN -dealloc, WHICH IS A FIX AS
+ * MUCH AS AN ADDITION: the ivars already here ASSIGNED four of theirs (`_zeroSymbol`, `_nilSymbol`, `_pattern`,
+ * `_locale` — a dangling-pointer contract Apple spells `copy`) and LEAKED two (`_minimum`, `_maximum`, which are
+ * `copy`d and never released). **That is §15's ownership-contract defect, which this file escaped — and the
+ * setters above are corrected with the new ones rather than beside them.**
+ */
+@property (nullable, copy) NSAttributedString *attributedStringForZero;
+@property (nullable, copy) NSAttributedString *attributedStringForNil;
+@property (nullable, copy) NSAttributedString *attributedStringForNotANumber;
+@property (nullable, copy) NSDictionary *textAttributesForZero;
+@property (nullable, copy) NSDictionary *textAttributesForNegativeValues;
+@property (nullable, copy) NSDictionary *textAttributesForPositiveValues;
+@property (nullable, copy) NSDictionary *textAttributesForNil;
+@property (nullable, copy) NSDictionary *textAttributesForNotANumber;
+@property (nullable, copy) NSDictionary *textAttributesForPositiveInfinity;
+@property (nullable, copy) NSDictionary *textAttributesForNegativeInfinity;
+@property (copy) NSString *positiveInfinitySymbol;
+@property (copy) NSString *negativeInfinitySymbol;
+@property BOOL localizesFormat;
+@property (getter=isPartialStringValidationEnabled) BOOL partialStringValidationEnabled;
+@property NSFormattingContext formattingContext;
 
 @end
 

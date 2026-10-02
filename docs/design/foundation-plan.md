@@ -15982,6 +15982,52 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.79 — `NSNumberFormatter`'S FIFTEEN STORED DOORS, AND TWO DEFERRAL REASONS THAT MEASURED FALSE (2026-10-01)
+
+**WHAT LANDED: fifteen of `NSNumberFormatter`'s seventeen open rows — the ten ATTRIBUTED-STRING doors, the two
+INFINITY SYMBOLS, `-localizesFormat`, `-partialStringValidationEnabled` and `-formattingContext`, all STORED with
+Apple's `copy` contract.**
+
+**MEASURED, AND THE LEDGER MOVED BY FIFTEEN: `property shipped 1261 → 1276`, `open 218 → 203`**,
+`--check` consistent after `--refresh`; `make testimg` EXIT 0; `make test TESTS='foundation_numberformatter'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 13s` with the probe's tally `FOUNDATION-NUMBERFORMATTER 27/27` (one more
+check than before). **`NSNumberFormatter`'s open rows are now TWO.**
+
+**⚠⚠ AND THE UNIT'S METHOD CAME FROM THE FILE ITSELF: THE HEADER HAD ALREADY RECORDED EVERY DEFERRAL WITH ITS
+REASON — and it contains a section titled "WHAT A LATER PASS LANDED, EACH ON A DEFERRAL REASON THAT MEASURED
+FALSE".** So this unit TESTED THE REASONS rather than repeating them, and TWO ARE FALSE:
+ * **"DEPRECATED FLAGS" — THEY ARE NOT DEPRECATED.** `-localizesFormat` and `-partialStringValidationEnabled`
+  were deferred as such, and the macOS 14.5 header declares **neither** with `API_DEPRECATED` (the second with
+  `API_AVAILABLE(macos(10.5), ios(2.0), …)`). **A word in a reason can be the whole reason, and it was
+  wrong.**
+ * **"AppKit-DRAWING shaped" — THE TEN ATTRIBUTED-STRING DOORS ARE STORED PROPERTIES.** Apple declares them
+  `copy` on a FOUNDATION class and AppKit only READS them. **A property whose CONSUMER lives in another tier is
+  still this class's property** (§11.0's surface rule) — the deferral confused who uses a value with where
+  it lives.
+ * **AND ONE REASON WAS HALF-TRUE, WHICH IS THE SHAPE WORTH NAMING:** "ICU carries ONE infinity symbol" is
+  correct — and it answers a question about the WRITE side, not about the DOOR. The pair is STORED; the
+  SUBSTITUTION that makes the negative symbol reach the output is behaviour and is OWED with the two doors
+  below. **THE DOORS LAND, THE EFFECT IS OWED, AND THE RECORD SAYS THE TWO SEPARATELY** — including a
+  correction made to the header's own note in this unit, because the first version of it claimed the
+  substitution was done.
+
+**⚠⚠ AND THE SECOND HALF OF THE UNIT IS A DEFECT THE FILE HAD BEEN CARRYING: §15's OWNERSHIP CONTRACT, WHICH
+THIS FILE ESCAPED.** Reading the setters before adding fifteen more (the choice was between following the local
+pattern and adding fifteen known leaks) measured TWO defects in the six ivars already there:
+ * **`_zeroSymbol`, `_nilSymbol`, `_pattern` and `_locale` were ASSIGNED** where Apple declares those properties
+  `copy` — the class held pointers it did not own;
+ * **`_minimum` and `_maximum` were `copy`d and NEVER RELEASED** — a leak, because `-dealloc` closed the ICU
+  formatter and nothing else.
+**Both are fixed**, the setters are `copy`, `-dealloc` releases every owned ivar, and the fifteen new doors are
+`copy` from the start. §15 fixed this class of defect across the copy family in 2026-09-20; **this file was not in
+that sweep, and nothing in the tree would have said so.**
+
+**AND THE TWO REMAINING ROWS ARE BOTH BEHAVIOUR AND BOTH NAMED RATHER THAN LEFT OPEN-ENDED**: `-roundingBehavior`,
+whose recorded ground ("not separable from the rounding mode ICU already carries") is **at best half true** —
+an `NSDecimalNumberHandler`'s `-roundingMode` and `-scale` DO map onto ICU's `UNUM_ROUNDING_MODE` and
+`UNUM_MAX_FRACTION_DIGITS` — and `-getObjectValue:forString:range:error:`, which is the parse's out-parameter
+form and belongs with the parse.
+
 ## §63.78 — THE SHARED-KEY-SET PAIR LANDS, AND THE LEDGER MOVES BY TWO (2026-10-01)
 
 **WHAT LANDED: both doors, with the token a PRIVATE class of this library's own — which is exactly what Apple's

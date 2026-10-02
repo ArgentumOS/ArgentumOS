@@ -200,6 +200,30 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 		unum_close((UNumberFormat *)_formatter);
 		_formatter = NULL;
 	}
+	/* ⚠⚠ §15's OWNERSHIP CONTRACT, APPLIED TO A FILE THAT HAD ESCAPED IT (§63.79). TWO DEFECTS WERE HERE:
+	 * `_minimum` and `_maximum` are `copy`d by their setters and were NEVER RELEASED — a leak — and
+	 * `_zeroSymbol`, `_nilSymbol`, `_pattern` and `_locale` were ASSIGNED where Apple declares those properties
+	 * `copy`, so the class held pointers it did not own. Both are fixed here, and the fifteen stored doors above
+	 * are `copy` from the start. §15 fixed this class of defect across the copy family in 2026-09-20; this file
+	 * was not in that sweep. */
+	[_minimum release];
+	[_maximum release];
+	[_zeroSymbol release];
+	[_nilSymbol release];
+	[_pattern release];
+	[_locale release];
+	[_attributedStringForZero release];
+	[_attributedStringForNil release];
+	[_attributedStringForNotANumber release];
+	[_textAttributesForZero release];
+	[_textAttributesForNegativeValues release];
+	[_textAttributesForPositiveValues release];
+	[_textAttributesForNil release];
+	[_textAttributesForNotANumber release];
+	[_textAttributesForPositiveInfinity release];
+	[_textAttributesForNegativeInfinity release];
+	[_positiveInfinitySymbol release];
+	[_negativeInfinitySymbol release];
 	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
@@ -539,7 +563,8 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 	if (pattern == _pattern) {
 		return;
 	}
-	_pattern = pattern;
+	[_pattern release];	/* §63.79: Apple declares this `copy`; it was an ASSIGN. */
+	_pattern = [pattern copy];
 	[self fnRebuild];
 }
 
@@ -553,7 +578,8 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 	if (locale == _locale) {
 		return;
 	}
-	_locale = locale;
+	[_locale release];	/* §63.79: Apple declares this `copy`; it was an ASSIGN. */
+	_locale = [locale copy];
 	[self fnRebuild];
 }
 
@@ -760,7 +786,8 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 	if (string == _zeroSymbol) {
 		return;
 	}
-	_zeroSymbol = string;
+	[_zeroSymbol release];	/* §63.79: Apple declares this `copy`; it was an ASSIGN. */
+	_zeroSymbol = [string copy];
 }
 
 - (nullable NSString *)notANumberSymbol
@@ -783,7 +810,8 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 	if (string == _nilSymbol) {
 		return;
 	}
-	_nilSymbol = string;
+	[_nilSymbol release];	/* §63.79: Apple declares this `copy`; it was an ASSIGN. */
+	_nilSymbol = [string copy];
 }
 
 /* --- the affixes ---------------------------------------------------------- */
@@ -1192,5 +1220,53 @@ static NSString *fn_nf_utf8_string(const UChar *text, int32_t length)
 					  pattern != nil ? pattern : @"(from the style)",
 					  _locale != nil ? [_locale localeIdentifier] : @"(current)"];
 }
+
+
+/* ================== THE FIFTEEN STORED DOORS (§63.79) ==================
+ * `copy` per Apple's declarations, `release`d in -dealloc. THE FOUR THAT WERE ALREADY HERE ARE FIXED IN THE SAME
+ * PASS (see -dealloc): this file ASSIGNED where Apple declares `copy` and leaked where it copied. */
+- (NSAttributedString *)attributedStringForZero { return _attributedStringForZero; }
+- (void)setAttributedStringForZero:(NSAttributedString *)value
+{ [_attributedStringForZero release]; _attributedStringForZero = [value copy]; }
+- (NSAttributedString *)attributedStringForNil { return _attributedStringForNil; }
+- (void)setAttributedStringForNil:(NSAttributedString *)value
+{ [_attributedStringForNil release]; _attributedStringForNil = [value copy]; }
+- (NSAttributedString *)attributedStringForNotANumber { return _attributedStringForNotANumber; }
+- (void)setAttributedStringForNotANumber:(NSAttributedString *)value
+{ [_attributedStringForNotANumber release]; _attributedStringForNotANumber = [value copy]; }
+- (NSDictionary *)textAttributesForZero { return _textAttributesForZero; }
+- (void)setTextAttributesForZero:(NSDictionary *)value
+{ [_textAttributesForZero release]; _textAttributesForZero = [value copy]; }
+- (NSDictionary *)textAttributesForNegativeValues { return _textAttributesForNegativeValues; }
+- (void)setTextAttributesForNegativeValues:(NSDictionary *)value
+{ [_textAttributesForNegativeValues release]; _textAttributesForNegativeValues = [value copy]; }
+- (NSDictionary *)textAttributesForPositiveValues { return _textAttributesForPositiveValues; }
+- (void)setTextAttributesForPositiveValues:(NSDictionary *)value
+{ [_textAttributesForPositiveValues release]; _textAttributesForPositiveValues = [value copy]; }
+- (NSDictionary *)textAttributesForNil { return _textAttributesForNil; }
+- (void)setTextAttributesForNil:(NSDictionary *)value
+{ [_textAttributesForNil release]; _textAttributesForNil = [value copy]; }
+- (NSDictionary *)textAttributesForNotANumber { return _textAttributesForNotANumber; }
+- (void)setTextAttributesForNotANumber:(NSDictionary *)value
+{ [_textAttributesForNotANumber release]; _textAttributesForNotANumber = [value copy]; }
+- (NSDictionary *)textAttributesForPositiveInfinity { return _textAttributesForPositiveInfinity; }
+- (void)setTextAttributesForPositiveInfinity:(NSDictionary *)value
+{ [_textAttributesForPositiveInfinity release]; _textAttributesForPositiveInfinity = [value copy]; }
+- (NSDictionary *)textAttributesForNegativeInfinity { return _textAttributesForNegativeInfinity; }
+- (void)setTextAttributesForNegativeInfinity:(NSDictionary *)value
+{ [_textAttributesForNegativeInfinity release]; _textAttributesForNegativeInfinity = [value copy]; }
+- (NSString *)positiveInfinitySymbol { return _positiveInfinitySymbol; }
+- (void)setPositiveInfinitySymbol:(NSString *)value
+{ [_positiveInfinitySymbol release]; _positiveInfinitySymbol = [value copy]; }
+- (NSString *)negativeInfinitySymbol { return _negativeInfinitySymbol; }
+- (void)setNegativeInfinitySymbol:(NSString *)value
+{ [_negativeInfinitySymbol release]; _negativeInfinitySymbol = [value copy]; }
+- (BOOL)localizesFormat { return _localizesFormat; }
+- (void)setLocalizesFormat:(BOOL)flag { _localizesFormat = flag; }
+- (BOOL)isPartialStringValidationEnabled { return _partialStringValidationEnabled; }
+- (void)setPartialStringValidationEnabled:(BOOL)flag { _partialStringValidationEnabled = flag; }
+- (NSFormattingContext)formattingContext { return _formattingContext; }
+- (void)setFormattingContext:(NSFormattingContext)context { _formattingContext = context; }
+
 
 @end
