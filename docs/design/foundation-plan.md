@@ -15982,6 +15982,58 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.67 — THE SETTLING BEGINS: THREE FAMILIES RESOLVED BY TWO SOURCES, AND ONE ROW THAT NEITHER CAN RESOLVE (2026-10-01)
+
+**WHAT LANDED: the report's rows are settled against a SECOND SOURCE — and the second source was already in
+the tree.** `docs/reference/foundation-selector-surface.txt` is generated from **APPLE'S DOCUMENTATION INDEX**,
+and unlike the corpus it carries the OWNER (`kind · status · name · OWNER · section · - · objc`). So a row can
+be asked of two independent artefacts, and §63.66's three families are settled.
+
+**(1) `NSXMLNode`'S SIX ARE APPLE'S — ON ITS SUBCLASSES. BOTH SOURCES AGREE, AND THIS IS THE FIRST FINDING THAT
+IS ABOUT THE TREE.** The doc index puts `-addChild:`, `-insertChild:atIndex:`, `-insertChildren:atIndex:`,
+`-removeChildAtIndex:` and `-replaceChildAtIndex:withNode:` on **NSXMLDTD, NSXMLDocument and NSXMLElement** —
+three rows each — and `-initWithXMLString:` on **NSXMLDTDNode**, **NSXMLDocument** (`…:options:error:`) and
+**NSXMLElement** (`…:error:`), **with NO NSXMLNode row for any of them**; the corpus says the same. Our
+`NSXMLNode.h` declares all six (lines 144-148 and 80/83). **⚠ AND THE DIRECTION IS NEW FOR THIS CAMPAIGN: not a
+name of ours that Apple lacks, but a name Apple HAS that we put on a class Apple does not.** Our SUPERCLASS is
+WIDER than Apple's. **A caller written against Apple writes `[element addChild:node]` and ours answers anyway —
+which is exactly why no test, probe or ledger row could ever have caught it: the call SUCCEEDS, and only an
+owner-aware reading of the surface shows that the surface is too big.**
+
+**(2) `NSFileHandle`'S THREE `+standard…` ARE A NEAR-NEIGHBOUR SPELLING.** Apple's own names on that class are
+`+fileHandleWithStandardInput/Output/Error` — measured earlier, IN the corpus's NSFileHandle pool, which is also
+why the text search never reported them — and `standardInput`/`standardOutput`/`standardError` are Apple's
+PROPERTIES on **NSTask** and **NSUserUnixTask**, per BOTH sources. So `NSFileHandle.h`'s three class methods are
+this tree's convenience beside Apple's `fileHandleWithStandard…`: §63.56's class (2), the same shape as
+`-characterCount` and `-isEqualToCalendar:`.
+
+**(3) `NSCalendar -identifier` IS OUR OWN SPELLING, AND WE ALREADY SHIP APPLE'S.** The doc index carries
+`property calendarIdentifier` on NSCalendar; our header declares `- (NSString *)calendarIdentifier;` at **line
+370**, so that row is satisfied; and `- (NSString *)identifier;` sits at **line 193**, which NEITHER source
+attributes to NSCalendar — both put `identifier` on unrelated classes (NSBackgroundActivityScheduler,
+NSURLSessionConfiguration, NSUserNotification on the index side; NSXMLNode, NSTask … on the corpus side).
+**Class (2) again, and the cheapest kind: Apple's door is already there, so the callers have somewhere to go.**
+
+**⚠⚠ AND ONE ROW NEITHER SOURCE CAN SETTLE, WHICH MATTERS AS MUCH AS THE THREE THAT WERE:
+`NSObject +methodSignatureForSelector:`.** The doc index holds exactly ONE row for that selector —
+`-methodSignatureForSelector:` on **NSProxy** — and this campaign's own §63.50 measured why the index cannot be
+trusted for it: **the index is INCOMPLETE at method level** (`-willChangeValueForKey:` has no node at all in the
+whole 6.8 MB index). Our header declares BOTH the instance and the class method (`NSObject.h:219-220`). So the
+question this row poses — *does Apple declare the CLASS method on NSObject, or is this the SIGN rule rather than
+the tree?* — **has no measured answer, and writing one would be precisely the absence-read-as-proof this whole
+thread is about.**
+
+**AND THE METHOD THAT SETTLED THEM IS THE REUSABLE PART: TWO SOURCES, ASKED DIFFERENT QUESTIONS.** The corpus
+(headers) answers *"does a declaration exist, and ON WHOM"*; the doc index answers *"does it exist at all, and
+on whom, AS APPLE PUBLISHES IT"*. **One alone is enough to state an ABSENCE and not enough to state a
+DIFFERENCE.** §63.50 proved the index incomplete at method level; §63.63–§63.66 proved the corpus parser
+unreliable four times running: **a naming difference needs both, and the rows that survive both are the ones to
+act on.**
+
+**NOTHING IS DELETED, RENAMED OR MOVED BY THIS UNIT.** The three families are recorded with their class and
+their evidence. **And for (1) there is no default at all** — moving six methods DOWN a hierarchy is not the
+same operation as deleting three spellings, and it changes what every existing caller inherits.
+
 ## §63.66 — THE LAST TWO PARSER CASES, THE YIELD 49 → 34, AND THE REPORT LEARNS TO SAY WHO DECLARES A NAME (2026-10-01)
 
 **WHAT LANDED (continuing `dec-733391f6e71e4415`), two things and the second is the one that matters.**
