@@ -20,6 +20,7 @@
  */
 
 #import <Foundation/NSString.h>
+#import "FNStringFormat.h"
 #import <Foundation/NSCoder.h>		/* §63.22: the coder PRIMITIVES the string door is written over */
 #include <stdlib.h>
 #include <string.h>
@@ -83,8 +84,31 @@ static unichar *fn_string_character_copy(NSString *other, NSUInteger *length)
  * caps how wide a %f can be. An unsupported conversion is copied LITERALLY
  * rather than guessed at.
  */
+
+/* ==================== THE FORMAT SINK (§63.85) ====================
+ * The engine emits through a sink so the ATTRIBUTED formatter walks the SAME spec grammar and the SAME va_arg
+ * table instead of growing a second, divergent copy of them. With `recorder` nil the two emitters call EXACTLY
+ * the messages the engine called before, so this seam changes no behaviour on the plain path. */
+static void fn_format_emit_bytes(fn_format_sink *sink, const char *utf8, NSUInteger pos)
+{
+	if (sink->recorder != nil) {
+		[sink->recorder fnFormatEmittedUTF8String:utf8 at:pos];
+	} else {
+		[(NSMutableString *)sink->out appendUTF8String:utf8];
+	}
+}
+
+static void fn_format_emit_text(fn_format_sink *sink, NSString *text, NSUInteger pos, id object)
+{
+	if (sink->recorder != nil) {
+		[sink->recorder fnFormatEmittedText:text at:pos object:object];
+	} else {
+		[(NSMutableString *)sink->out appendString:text];
+	}
+}
+
 /* One measured render: snprintf twice, so width and precision are unbounded. */
-static void string_append_rendered(NSMutableString *out, const char *spec, ...)
+static void string_append_rendered(fn_format_sink *sink, NSUInteger pos, const char *spec, ...)
 {
 	va_list probe;
 	va_list fill;
@@ -104,26 +128,26 @@ static void string_append_rendered(NSMutableString *out, const char *spec, ...)
 	va_start(fill, spec);
 	vsnprintf(buffer, (size_t)needed + 1, spec, fill);
 	va_end(fill);
-	[out appendUTF8String:buffer];
+	fn_format_emit_bytes(sink, buffer, pos);
 	free(buffer);
 }
 
-static void string_append_conversion(NSMutableString *out, const char *spec, long long value)
+static void string_append_conversion(fn_format_sink *sink, NSUInteger pos, const char *spec, long long value)
 {
-	string_append_rendered(out, spec, value);
+	string_append_rendered(sink, pos, spec, value);
 }
 
-static void string_append_double(NSMutableString *out, const char *spec, double value)
+static void string_append_double(fn_format_sink *sink, NSUInteger pos, const char *spec, double value)
 {
-	string_append_rendered(out, spec, value);
+	string_append_rendered(sink, pos, spec, value);
 }
 
-static void string_append_pointer(NSMutableString *out, const char *spec, void *value)
+static void string_append_pointer(fn_format_sink *sink, NSUInteger pos, const char *spec, void *value)
 {
-	string_append_rendered(out, spec, value);
+	string_append_rendered(sink, pos, spec, value);
 }
 
-static void string_append_format(NSMutableString *out, NSString *format, va_list args)
+void fn_string_append_format_sink(fn_format_sink *sink, NSString *format, va_list args)
 {
 	size_t size = [format lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	size_t i = 0;
@@ -139,7 +163,7 @@ static void string_append_format(NSMutableString *out, NSString *format, va_list
 
 			one[0] = (char)c;
 			one[1] = '\0';
-			[out appendUTF8String:one];
+			fn_format_emit_bytes(sink, one, i);
 			i++;
 			continue;
 		}
@@ -148,7 +172,7 @@ static void string_append_format(NSMutableString *out, NSString *format, va_list
 		specLen = 0;
 		spec[specLen++] = '%';
 		if (j < size && [format byteAtIndex:j] == '%') {
-			[out appendUTF8String:"%"];	/* %% is a literal per cent */
+			fn_format_emit_bytes(sink, "%", start);	/* %% is a literal per cent */
 			i = j + 1;
 			continue;
 		}
@@ -174,7 +198,7 @@ static void string_append_format(NSMutableString *out, NSString *format, va_list
 			break;
 		}
 		if (j >= size) {
-			[out appendUTF8String:"%"];	/* a trailing % is literal */
+			fn_format_emit_bytes(sink, "%", start);	/* a trailing % is literal */
 			i = start + 1;
 			continue;
 		}
@@ -187,7 +211,7 @@ static void string_append_format(NSMutableString *out, NSString *format, va_list
 			id object = va_arg(args, id);
 
 			/* Cocoa renders nil as (null), and every object describes itself. */
-			[out appendString:(object == nil) ? @"(null)" : [object description]];
+			fn_format_emit_text(sink, (object == nil) ? @"(null)" : [object description], start, object);
 			continue;
 		}
 		if (conv == 'd' || conv == 'i' || conv == 'u' || conv == 'x' ||
@@ -207,12 +231,12 @@ static void string_append_format(NSMutableString *out, NSString *format, va_list
 					? va_arg(args, int)
 					: (long long)va_arg(args, unsigned int);
 			}
-			string_append_conversion(out, spec, value);
+			string_append_conversion(sink, start, spec, value);
 			continue;
 		}
 		if (conv == 'f' || conv == 'g' || conv == 'e' || conv == 'F' ||
 		    conv == 'G' || conv == 'E') {
-			string_append_double(out, spec, va_arg(args, double));
+			string_append_double(sink, start, spec, va_arg(args, double));
 			continue;
 		}
 		if (conv == 'C') {
@@ -241,7 +265,7 @@ static void string_append_format(NSMutableString *out, NSString *format, va_list
 			utf8[n] = '\0';
 			memcpy(asString, spec, (size_t)specLen + 1);
 			asString[specLen - 1] = 's';
-			string_append_rendered(out, asString, utf8);
+			string_append_rendered(sink, start, asString, utf8);
 			continue;
 		}
 		if (conv == 's') {
@@ -252,16 +276,29 @@ static void string_append_format(NSMutableString *out, NSString *format, va_list
 			 * so [%8s] came out as [ab]. The string check caught it - which is
 			 * what the checks are for.
 			 */
-			string_append_rendered(out, spec, (text == NULL) ? "(null)" : text);
+			string_append_rendered(sink, start, spec, (text == NULL) ? "(null)" : text);
 			continue;
 		}
 		if (conv == 'p') {
-			string_append_pointer(out, spec, va_arg(args, void *));
+			string_append_pointer(sink, start, spec, va_arg(args, void *));
 			continue;
 		}
-		[out appendUTF8String:spec];	/* unsupported: literal, not a guess */
+		fn_format_emit_bytes(sink, spec, start);	/* unsupported: literal, not a guess */
 	}
 }
+
+/* §63.85: THE ONE-LINE BRIDGE THAT KEEPS FIVE EXISTING CALLERS COMPILING AND BEHAVING EXACTLY AS THEY DID.
+ * ⚠ IT IS NOT OPTIONAL: the engine became the sink entry point, and every caller of `string_append_format` —
+ * `+stringWithFormat:`, the localized pair, `-initWithFormat:arguments:` and one more — still calls THIS. */
+static void string_append_format(NSMutableString *out, NSString *format, va_list args)
+{
+	fn_format_sink sink;
+
+	sink.out = out;
+	sink.recorder = nil;
+	fn_string_append_format_sink(&sink, format, args);
+}
+
 
 /* The UTF-8 sequence length of a lead byte; an invalid byte counts as one and
  * the scan moves on (a broken string is not this class's problem to reject). */

@@ -15982,6 +15982,53 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.85 — THE FORMAT ENGINE EMITS THROUGH A SINK, AND THE PROOF IS THE PROBE THAT ALREADY EXISTED (2026-10-01)
+
+**WHAT LANDED: `userland/Foundation/FNStringFormat.h` and the seam it names — the format walk in NSString.m now
+emits through a `fn_format_sink`, with `fn_string_append_format_sink()` as its entry point and a one-line bridge
+(`static void string_append_format()`) that keeps the FIVE EXISTING CALLERS compiling and behaving exactly as they
+did. NO BEHAVIOUR CHANGE IS INTENDED, AND NONE IS MEASURED.**
+
+**MEASURED: `make host-foundation` EXIT 0 with exactly the standing SIX warnings; `make testimg` EXIT 0; `make test
+TESTS='foundation_string'` → `TESTS-OK 1/1 case(s), 6/6 check(s) in 13s` with `FOUNDATION-STRING 158/158`.**
+**AND THE PROOF IS THE PROBE THAT ALREADY EXISTED, UNCHANGED — WHICH IS THE POINT: a refactor that needs a NEW test
+to pass is a refactor that changed behaviour.**
+
+**⚠⚠ AND THE FIRST RUN'S 158/158 WAS WORTHLESS, WHICH THE GATE DISCIPLINE CAUGHT: `testimg` FAILED on the two new
+warnings' first fix, so the tier ran the PREVIOUS image and the probe was reporting on the old binary. A passing
+probe over a stale image is a fake proof, and the image's exit status is the only thing that distinguishes it.**
+
+**WHY THIS REFACTOR IS A UNIT OF ITS OWN: THE ATTRIBUTED FORMATTER CANNOT BE WRITTEN FAITHFULLY WITHOUT `(pos,
+object)`.** The engine now reports **the byte offset in the format each emission came from** and **the argument
+object when the conversion was `%@`** — the first is what lets an attributed sink take the format's attributes at
+the RIGHT position rather than the whole format's, and the second is what lets it honour
+`NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging`, whose entire subject is an argument that
+carries its own attributes. **So the seam lands FIRST, alone, proved by the untouched probe, and the doors ride on
+it next.**
+
+**⚠⚠ AND F6'S OWN GATE REFUSED THE NEW HEADER — `no NS_ASSUME_NONNULL_BEGIN` — AND ANNOTATING IT SURFACED TWO
+REAL FACTS THE DRAFT HAD NOT: `out` and `recorder` are EACH NIL ON EXACTLY ONE OF THE TWO PATHS**, so both are
+`_Nullable`, and an implicit nonnull on either would have been a promise the design breaks the moment the other
+sink is used. **The rule found something the draft had not, which is what a gate is for** (§F6, the standing rule
+that a class is annotated WHILE it is written).
+
+**⚠ AND THE HEADER'S FIRST DRAFT ARGUED ITS WAY INTO TWO COMPILER WARNINGS: it said the recorder's messages must
+NOT be a protocol "because a protocol in a header is a promise to a reader of the public surface". That is a good
+rule about a PUBLIC header and the wrong rule about this one.** Without the protocol the build grew two
+`-Wobjc-method-access` warnings and **still worked BY ACCIDENT**: a message the compiler cannot see has its return
+type default to `id`, which is right until the day it is not. It is a protocol now, and the recorder conforms.
+
+**⚠ AND THE EDIT ITSELF WENT WRONG IN THE RECORDED WAY: one `string_append_pointer` body had been ASSUMED rather
+than READ, the script matched nothing, and — because it writes per edit — it left the file HALF-REFACTORED with
+twelve of thirteen changes in.** Also recorded: **a no-op edit that looked like the wrapper's insertion.** The
+recovery was to read the function and match it loosely, and the file is whole.
+
+**NEXT, ON THIS SEAM: the recorder class and the two non-context doors** (`-initWithFormat:options:locale:` and
+`-initWithFormat:options:locale:arguments:`, the latter taking a **`va_list`**, which §63.82 learned by reading
+Apple's declaration rather than the ledger's row), **with both options honoured, and `NSReplacementIndexAttributeName`
+added — a constant Apple PUBLISHES and which therefore must be spelled Apple's way, the check that §63.82's lesson
+says costs nothing.**
+
 ## §63.84 — THE WORK LIST GETS TRUER BY 41 ROWS: A SIXTH GROUND, AND THE FOUR THINGS THAT MADE IT LAND (2026-10-01)
 
 **WHAT LANDED: the `other-framework` ground — forty-one names, each measured as ABSENT from Foundation's own
