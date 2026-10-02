@@ -788,6 +788,230 @@ static NSString *fn_normalized(NSString *source, FNNormalForm form)
 	return [result autorelease];
 }
 
+
+#include <unicode/ucnv.h>
+
+/* ============================ THE CONVERTER ENGINE (§63.71) ============================
+ * WHY THIS EXISTS: `-dataUsingEncoding:` and its family knew exactly TWO encodings, because this library stored
+ * exactly two — UTF-8 and 7-bit ASCII — and refused everything else by name. The refusal was honest and it was
+ * also a LIMIT: `converter/repertoire table` was the phrase the header used for what stood in the way (§63.2).
+ * THE TABLE IS ICU'S, and it was already linked (since F13.6): `ucnv_countAvailable()` answers 232 converters
+ * here, all fifteen this table names among them. And NO INTERMEDIATE FORM IS NEEDED, because this library's
+ * storage is UTF-16 code units — exactly what `ucnv_fromUChars`/`ucnv_toUChars` take and give.
+ *
+ * ⚠ THE TWO STORAGE ENCODINGS KEEP THEIR OWN PATHS. UTF-8 and ASCII are what this library STORES; their
+ * implementations are byte-exact and covered by the string probe, so routing them through a converter would
+ * trade a tested path for an untested one. `fn_is_storage_encoding` is the line between the two. */
+typedef struct {
+	NSStringEncoding encoding;
+	const char *icu;
+	const char *display;
+} FnEncodingEntry;
+
+/* THE VALUES ARE APPLE'S (§63.70 fixed them), and the ICU names are the ones the converter was OPENED with and
+ * found present. NSNEXTSTEP, Symbol, NonLossyASCII and ISO-2022-JP are absent because no converter here claims
+ * them: those encodings are still refused, which is the honest answer rather than a wrong conversion. */
+static const FnEncodingEntry fn_encoding_table[] = {
+	{ NSISOLatin1StringEncoding,         "ISO-8859-1",   "Western (ISO Latin 1)" },
+	{ NSISOLatin2StringEncoding,         "ISO-8859-2",   "Central European (ISO Latin 2)" },
+	{ NSShiftJISStringEncoding,          "Shift_JIS",    "Japanese (Shift JIS)" },
+	{ NSJapaneseEUCStringEncoding,       "EUC-JP",       "Japanese (EUC)" },
+	{ NSMacOSRomanStringEncoding,        "x-mac-roman",  "Western (Mac OS Roman)" },
+	{ NSWindowsCP1250StringEncoding,     "windows-1250", "Central European (Windows Latin 2)" },
+	{ NSWindowsCP1251StringEncoding,     "windows-1251", "Cyrillic (Windows)" },
+	{ NSWindowsCP1252StringEncoding,     "windows-1252", "Western (Windows Latin 1)" },
+	{ NSWindowsCP1253StringEncoding,     "windows-1253", "Greek (Windows)" },
+	{ NSWindowsCP1254StringEncoding,     "windows-1254", "Turkish (Windows)" },
+	{ NSUnicodeStringEncoding,           "UTF-16",       "Unicode (UTF-16)" },
+	{ NSUTF16BigEndianStringEncoding,    "UTF-16BE",     "Unicode (UTF-16BE)" },
+	{ NSUTF16LittleEndianStringEncoding, "UTF-16LE",     "Unicode (UTF-16LE)" },
+	{ NSUTF32StringEncoding,             "UTF-32",       "Unicode (UTF-32)" },
+	{ NSUTF32BigEndianStringEncoding,    "UTF-32BE",     "Unicode (UTF-32BE)" },
+	{ NSUTF32LittleEndianStringEncoding, "UTF-32LE",     "Unicode (UTF-32LE)" },
+};
+
+static size_t fn_encoding_count(void)
+{
+	return sizeof(fn_encoding_table) / sizeof(fn_encoding_table[0]);
+}
+
+static const FnEncodingEntry *fn_encoding_entry(NSStringEncoding encoding)
+{
+	size_t i;
+
+	for (i = 0; i < fn_encoding_count(); i++) {
+		if (fn_encoding_table[i].encoding == encoding) {
+			return &fn_encoding_table[i];
+		}
+	}
+	return NULL;
+}
+
+static int fn_is_storage_encoding(NSStringEncoding encoding)
+{
+	return encoding == NSUTF8StringEncoding || encoding == NSASCIIStringEncoding;
+}
+
+/* THE CONVERTERS ARE CACHED BY HAND: ucnv_open is not free, and the same handful of encodings is asked for
+ * repeatedly. A NULL answer means this encoding has no converter HERE, which every door turns into its
+ * documented refusal — so the cache changes speed and not meaning.
+ * ⚠⚠ AND IT MUST BE ABLE TO HOLD EVERY ENCODING THE TABLE NAMES, WHICH IS THE ONE THING THIS CACHE GOT WRONG:
+ * with eight slots and sixteen entries, `+availableStringEncodings` — which OPENS EACH ONE TO SEE WHAT IS
+ * REALLY AVAILABLE — filled the cache and then starved itself, so UTF-16 (the eleventh entry) answered NULL
+ * and EVERY UTF-16 CONVERSION WAS REFUSED. The engine's own introspection door poisoned its cache, and the
+ * only symptom was a `canBeConvertedToEncoding:` that said NO for a string that can be converted. THE SIZE IS
+ * THE TABLE'S, so growing the table can never repeat it. */
+#define FN_UCNV_CACHE (sizeof(fn_encoding_table) / sizeof(fn_encoding_table[0]))
+static struct { NSStringEncoding encoding; UConverter *cnv; } fn_ucnv_cache[FN_UCNV_CACHE];
+
+static UConverter *fn_ucnv_for(NSStringEncoding encoding)
+{
+	const FnEncodingEntry *e = fn_encoding_entry(encoding);
+	size_t i, slot = FN_UCNV_CACHE;
+	UErrorCode st = U_ZERO_ERROR;
+
+	if (e == NULL) {
+		return NULL;
+	}
+	for (i = 0; i < FN_UCNV_CACHE; i++) {
+		if (fn_ucnv_cache[i].cnv != NULL && fn_ucnv_cache[i].encoding == encoding) {
+			return fn_ucnv_cache[i].cnv;
+		}
+		if (fn_ucnv_cache[i].cnv == NULL && slot == FN_UCNV_CACHE) {
+			slot = i;
+		}
+	}
+	if (slot == FN_UCNV_CACHE) {
+		return NULL;			/* full: refuse rather than grow a global */
+	}
+	fn_ucnv_cache[slot].cnv = ucnv_open(e->icu, &st);
+	if (fn_ucnv_cache[slot].cnv == NULL) {
+		return NULL;
+	}
+	fn_ucnv_cache[slot].encoding = encoding;
+	return fn_ucnv_cache[slot].cnv;
+}
+
+static unichar *fn_units_copy(NSString *s, NSUInteger *outLen)
+{
+	NSUInteger n = [s length];
+	unichar *buf = (unichar *)malloc(sizeof(unichar) * (n == 0 ? 1 : n));
+
+	if (buf == NULL) {
+		*outLen = 0;
+		return NULL;
+	}
+	if (n > 0) {
+		[s getCharacters:buf range:NSMakeRange(0, n)];
+	}
+	*outLen = n;
+	return buf;
+}
+
+/* BYTES IN AN ENCODING, or NULL when the text does not fit it. `lossy` picks ICU's SUBSTITUTE callback instead
+ * of its STOP callback — WHICH IS EXACTLY THE `allowLossyConversion:` CONTRACT, and it is why that flag stops
+ * being a no-op here: before this, the library stored only encodings in which nothing could be lost. */
+static unsigned char *fn_bytes_in_encoding(NSString *s, NSStringEncoding encoding, BOOL lossy, size_t *outLen)
+{
+	UConverter *cnv = fn_ucnv_for(encoding);
+	UErrorCode st = U_ZERO_ERROR;
+	unichar *src;
+	NSUInteger len = 0;
+	unsigned char *out;
+	int32_t need, got;
+
+	*outLen = 0;
+	if (cnv == NULL) {
+		return NULL;
+	}
+	src = fn_units_copy(s, &len);
+	if (src == NULL) {
+		return NULL;
+	}
+	ucnv_setFromUCallBack(cnv, lossy ? UCNV_FROM_U_CALLBACK_SUBSTITUTE : UCNV_FROM_U_CALLBACK_STOP,
+			      NULL, NULL, NULL, &st);
+	st = U_ZERO_ERROR;
+	need = ucnv_fromUChars(cnv, NULL, 0, src, (int32_t)len, &st);
+	if (U_FAILURE(st) && st != U_BUFFER_OVERFLOW_ERROR) {
+		free(src);
+		return NULL;
+	}
+	need += 1;				/* room for the NUL the C-string doors want, and not a byte more */
+	out = (unsigned char *)malloc((size_t)need);
+	if (out == NULL) {
+		free(src);
+		return NULL;
+	}
+	st = U_ZERO_ERROR;
+	got = ucnv_fromUChars(cnv, (char *)out, need, src, (int32_t)len, &st);
+	free(src);
+	if (U_FAILURE(st)) {
+		free(out);
+		return NULL;
+	}
+	out[got] = '\0';
+	*outLen = (size_t)got;
+	return out;
+}
+
+static size_t fn_length_in_encoding(NSString *s, NSStringEncoding encoding)
+{
+	size_t n = 0;
+	unsigned char *b = fn_bytes_in_encoding(s, encoding, NO, &n);
+
+	if (b == NULL) {
+		return 0;
+	}
+	free(b);
+	return n;
+}
+
+static NSData *fn_data_in_encoding(NSString *s, NSStringEncoding encoding, BOOL lossy)
+{
+	size_t n = 0;
+	unsigned char *b = fn_bytes_in_encoding(s, encoding, lossy, &n);
+	NSData *d;
+
+	if (b == NULL) {
+		return nil;
+	}
+	d = [[NSData alloc] initWithBytes:b length:n];
+	free(b);
+	return d;
+}
+
+/* THE MIRROR: bytes in some encoding become a string. The answer is OWNED, so every door releases it. */
+static NSString *fn_string_from_bytes(const void *bytes, size_t n, NSStringEncoding encoding)
+{
+	UConverter *cnv = fn_ucnv_for(encoding);
+	UErrorCode st = U_ZERO_ERROR;
+	int32_t need, got;
+	unichar *units;
+	NSString *result;
+
+	if (cnv == NULL || (bytes == NULL && n > 0)) {
+		return nil;
+	}
+	need = ucnv_toUChars(cnv, NULL, 0, (const char *)bytes, (int32_t)n, &st);
+	if (U_FAILURE(st) && st != U_BUFFER_OVERFLOW_ERROR) {
+		return nil;
+	}
+	need += 1;
+	units = (unichar *)malloc(sizeof(unichar) * (size_t)need);
+	if (units == NULL) {
+		return nil;
+	}
+	st = U_ZERO_ERROR;
+	got = ucnv_toUChars(cnv, units, need, (const char *)bytes, (int32_t)n, &st);
+	if (U_FAILURE(st)) {
+		free(units);
+		return nil;
+	}
+	result = [[NSString alloc] initWithCharacters:units length:(NSUInteger)got];
+	free(units);
+	return result;
+}
+
 @implementation NSString
 
 /* UNICODE NORMALIZATION (§63.24). THE FOUR ARE TWO AXES — canonical vs COMPATIBILITY (which also folds the
@@ -1456,6 +1680,16 @@ static BOOL fn_format_is_allowed(NSString *format, NSString *validFormatSpecifie
 
 - (id)initWithData:(NSData *)data encoding:(NSStringEncoding)encoding
 {
+	if (!fn_is_storage_encoding(encoding)) {
+		NSString *converted = fn_string_from_bytes([data bytes], (size_t)[data length], encoding);
+		id result = nil;
+
+		if (converted != nil) {
+			result = [self initWithString:converted];
+		}
+		[converted release];
+		return result;
+	}
 	size_t n;
 	char *buffer;
 	id result;
@@ -1484,6 +1718,9 @@ static BOOL fn_format_is_allowed(NSString *format, NSString *validFormatSpecifie
  * one. */
 - (size_t)lengthOfBytesUsingEncoding:(NSStringEncoding)encoding
 {
+	if (!fn_is_storage_encoding(encoding)) {
+		return fn_length_in_encoding(self, encoding);
+	}
 	const char *utf8;
 
 	if (encoding != NSUTF8StringEncoding && encoding != NSASCIIStringEncoding) {
@@ -1507,6 +1744,9 @@ static BOOL fn_format_is_allowed(NSString *format, NSString *validFormatSpecifie
 
 - (NSData *)dataUsingEncoding:(NSStringEncoding)encoding
 {
+	if (!fn_is_storage_encoding(encoding)) {
+		return fn_data_in_encoding(self, encoding, NO);
+	}
 	if (encoding != NSUTF8StringEncoding && encoding != NSASCIIStringEncoding) {
 		return nil;
 	}
@@ -1515,6 +1755,9 @@ static BOOL fn_format_is_allowed(NSString *format, NSString *validFormatSpecifie
 
 - (NSData *)dataUsingEncoding:(NSStringEncoding)encoding allowLossyConversion:(BOOL)lossy
 {
+	if (!fn_is_storage_encoding(encoding)) {
+		return fn_data_in_encoding(self, encoding, lossy);
+	}
 	/* THE LOSSY FLAG IS ACCEPTED AND CAN NEVER BE NEEDED: this library stores exactly the encodings it can
 	 * represent losslessly (UTF-8 and 7-bit ASCII), so no character is ever replaced — the answer is the
 	 * lossless one whatever the flag says. `lossy` is named so it is not mistaken for threaded-through state. */
@@ -2923,6 +3166,18 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
  * C-string encoding here, UTF-8 — the same value its class twin names by hand. */
 - (id)initWithCString:(const char *)nullTerminatedCString encoding:(NSStringEncoding)encoding
 {
+	if (!fn_is_storage_encoding(encoding)) {
+		NSString *converted = (nullTerminatedCString != NULL)
+			? fn_string_from_bytes(nullTerminatedCString, strlen(nullTerminatedCString), encoding)
+			: nil;
+		id result = nil;
+
+		if (converted != nil) {
+			result = [self initWithString:converted];
+		}
+		[converted release];
+		return result;
+	}
 	size_t i, length;
 
 	if (nullTerminatedCString == NULL) {
@@ -2952,6 +3207,16 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 
 - (id)initWithBytes:(const void *)bytes length:(NSUInteger)len encoding:(NSStringEncoding)encoding
 {
+	if (!fn_is_storage_encoding(encoding)) {
+		NSString *converted = fn_string_from_bytes(bytes, (size_t)len, encoding);
+		id result = nil;
+
+		if (converted != nil) {
+			result = [self initWithString:converted];
+		}
+		[converted release];
+		return result;
+	}
 	/* THE MODERN LENGTH-TAKING BYTE DOOR. Only the stored encodings are accepted, and the ASCII case checks the
 	 * BYTES rather than the label, the same rule the C-string doors apply. */
 	if (encoding != NSUTF8StringEncoding && encoding != NSASCIIStringEncoding) {
@@ -2987,6 +3252,18 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 
 - (BOOL)canBeConvertedToEncoding:(NSStringEncoding)encoding
 {
+	if (!fn_is_storage_encoding(encoding)) {
+		/* A CONVERSION THAT WOULD LOSE SOMETHING IS NOT ONE THIS DOOR CALLS POSSIBLE, which is why it
+		 * asks for the LOSSLESS answer: the same call `-dataUsingEncoding:` makes. */
+		size_t n = 0;
+		unsigned char *b = fn_bytes_in_encoding(self, encoding, NO, &n);
+
+		if (b == NULL) {
+			return NO;
+		}
+		free(b);
+		return YES;
+	}
 	size_t i, n;
 
 	if (encoding == NSUTF8StringEncoding) {
@@ -3006,6 +3283,11 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 
 - (NSUInteger)maximumLengthOfBytesUsingEncoding:(NSStringEncoding)encoding
 {
+	if (!fn_is_storage_encoding(encoding)) {
+		/* THE EXACT LENGTH IS A VALID UPPER BOUND, which is what this door promises: the conversion is
+		 * done once here rather than estimated, so the answer is never a guess. */
+		return (NSUInteger)fn_length_in_encoding(self, encoding);
+	}
 	/* Apple answers the MAXIMUM byte count a conversion could take, and 0 when the encoding "cannot be
 	 * used" to convert the receiver. This library stores UTF-8 and ASCII, so the maximum is the UTF-8 byte
 	 * count for a UTF-8 conversion and for an ASCII one that is possible; an ASCII conversion of a
@@ -3047,28 +3329,47 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 
 + (const NSStringEncoding *)availableStringEncodings
 {
-	/* A zero-terminated list (Apple's own shape). The terminator is a ZERO, not NSASCIIStringEncoding,
-	 * because that value is 1 and would otherwise read as a third member. */
-	static const NSStringEncoding encodings[] = {
-		NSASCIIStringEncoding,
-		NSUTF8StringEncoding,
-		0
-	};
+	/* A zero-terminated list (Apple's own shape). The terminator is a ZERO, not NSASCIIStringEncoding, because
+	 * that value is 1. ⚠§63.71: THE LIST IS BUILT FROM THE TABLE AND FROM WHAT THE CONVERTERS ACTUALLY OPEN,
+	 * so it names what this library can CONVERT — a list that named an encoding `-dataUsingEncoding:` refuses
+	 * would be the same lie in the other direction. */
+	static NSStringEncoding encodings[FN_UCNV_CACHE * 4 + 4];
+	static int built = 0;
 
+	if (!built) {
+		size_t i, n = 0;
+
+		encodings[n++] = NSASCIIStringEncoding;
+		encodings[n++] = NSUTF8StringEncoding;
+		for (i = 0; i < fn_encoding_count() && n < (FN_UCNV_CACHE * 4 + 3); i++) {
+			if (fn_ucnv_for(fn_encoding_table[i].encoding) != NULL) {
+				encodings[n++] = fn_encoding_table[i].encoding;
+			}
+		}
+		encodings[n] = 0;
+		built = 1;
+	}
 	return encodings;
 }
 
 + (NSString *)localizedNameOfStringEncoding:(NSStringEncoding)encoding
 {
 	/* THE NAMES ARE OURS (§11.6.1 D2 — Apple publishes the method and not a name table this library may copy),
-	 * and they name the TWO encodings this library can store rather than the whole enumerated list: naming an
-	 * encoding it would refuse to convert would contradict +availableStringEncodings. An unknown encoding is
-	 * answered nil, which is Apple's own contract for one it does not know. */
+	 * and they now name EVERY encoding this library can convert, which is what `+availableStringEncodings`
+	 * answers: ⚠§63.71 — THE TWO MUST AGREE OR ONE OF THEM LIES, and that is why the table carries a display
+	 * name beside the converter name. An encoding with no converter, and an unknown one, are answered nil,
+	 * which is Apple's contract for one it does not know. */
+	const FnEncodingEntry *e;
+
 	if (encoding == NSASCIIStringEncoding) {
 		return @"ASCII";
 	}
 	if (encoding == NSUTF8StringEncoding) {
 		return @"UTF-8";
+	}
+	e = fn_encoding_entry(encoding);
+	if (e != NULL && fn_ucnv_for(encoding) != NULL) {
+		return [NSString stringWithUTF8String:e->display];
 	}
 	return nil;
 }
@@ -3404,6 +3705,13 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 
 	if (cString == NULL) {
 		return nil;
+	}
+	if (!fn_is_storage_encoding(encoding)) {
+		/* §63.71: THE ENGINE, and +0 like every other answer from this door (see the note above). This
+		 * was the THIRD place the conversion had to be taught: the class factory does not go through
+		 * `-initWithCString:encoding:`, so teaching the initializer left this door refusing Latin-1 while the
+		 * instance door converted it. */
+		return [fn_string_from_bytes(cString, strlen(cString), encoding) autorelease];
 	}
 	if (encoding == NSUTF8StringEncoding) {
 		return [[[self alloc] initWithUTF8String:cString] autorelease];
@@ -4058,6 +4366,13 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 /* THE BYTE DOOR, O(1): the materialised size, and the ASCII test walks it. */
 - (size_t)lengthOfBytesUsingEncoding:(NSStringEncoding)encoding
 {
+	/* ⚠ §63.71: THE OVERRIDE NEEDS THE ENGINE TOO. This class answers the storage encodings
+	 * in O(1) — that is why it overrides at all — but a CONVERTED encoding has no stored count, so it
+	 * must go through the same converter `-dataUsingEncoding:` uses, or the two doors would disagree
+	 * about the same string. */
+	if (!fn_is_storage_encoding(encoding)) {
+		return fn_length_in_encoding(self, encoding);
+	}
 	if (encoding != NSUTF8StringEncoding && encoding != NSASCIIStringEncoding) {
 		return 0;
 	}

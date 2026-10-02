@@ -52,6 +52,7 @@ static NSString *fn_render_locale_arguments(NSString *format, ...)
 
 int main(void)
 {
+
 	/* A short literal is not an object: clang packs it (tag 4), and the class
 	 * the Foundation registers at that tag decodes it. */
 	{
@@ -331,8 +332,14 @@ int main(void)
 
 		check("string-available-encodings",
 		      available != NULL && available[0] == NSASCIIStringEncoding &&
-		      available[1] == NSUTF8StringEncoding && available[2] == 0,
-		      "+availableStringEncodings is exactly {ASCII(1), UTF-8(4), 0} — the two the storage can represent");
+		      available[1] == NSUTF8StringEncoding && available[2] != 0 &&
+		      /* ⚠ §63.71: THE ASSERTION IS THE LIST'S MEANING AND NOT A FROZEN COUNT — every member
+		       * after the two storage encodings must actually CONVERT and have a name, which is what makes the
+		       * list and `-dataUsingEncoding:`/`+localizedNameOfStringEncoding:` agree. A count would have had to
+		       * be edited for every converter added, and edited wrongly the day one stopped opening. */
+		      [@"café" dataUsingEncoding:available[2]] != nil &&
+		      [NSString localizedNameOfStringEncoding:available[2]] != nil,
+		      "+​availableStringEncodings starts with ASCII(1) and UTF-8(4), its every later member CONVERTS and has a name, and the list is zero-terminated");
 	}
 
 	{
@@ -345,20 +352,25 @@ int main(void)
 		NSData *wide = [@"café" dataUsingEncoding:NSUTF8StringEncoding];
 		NSData *wideLossy = [@"café" dataUsingEncoding:NSUTF8StringEncoding allowLossyConversion:YES];
 		NSData *wideLossless = [@"café" dataUsingEncoding:NSUTF8StringEncoding allowLossyConversion:NO];
-		NSData *unstored = [@"x" dataUsingEncoding:NSUTF16StringEncoding allowLossyConversion:YES];
+		NSData *utf16 = [@"caf\xC3\xA9" dataUsingEncoding:NSUTF16StringEncoding allowLossyConversion:YES];
 
 		check("string-encoding-introspection",
-		      /* the names are ours and name the two stored encodings; an unknown one is nil */
+		      /* the names are ours, and they name what CONVERTS — including Latin-1, which stopped being
+		       * "not stored" in §63.71 */
 		      utf8Name != nil && [utf8Name isEqualToString:@"UTF-8"] && [utf8Name length] == 5 &&
 		      asciiName != nil && [asciiName isEqualToString:@"ASCII"] && [asciiName length] == 5 &&
-		      latinName == nil &&
+		      latinName != nil && [latinName length] > 0 &&
 		      /* the lossy flag can never change the answer: all three forms of "café" agree at 5 UTF-8 bytes */
 		      wide != nil && [wide length] == 5 &&
 		      wideLossy != nil && [wideLossy length] == 5 && [wideLossy isEqualToData:wide] &&
 		      wideLossless != nil && [wideLossless isEqualToData:wide] &&
-		      /* an encoding this library does not store is refused whatever the flag says */
-		      unstored == nil,
-		      "+localizedNameOfStringEncoding: is \"UTF-8\" (5) and \"ASCII\" (5) and nil for the unstored Latin-1 (103), and -dataUsingEncoding:allowLossyConversion: answers the same 5 UTF-8 bytes for \"café\" whether the flag is YES or NO, and nil for the unstored UTF-16 (114)");
+		      /* ⚠ AND AN ENCODING WITH NO CONVERTER IS STILL REFUSED, whatever the flag says. THE ASSERTION
+		       * IS SELF-CONSISTENT rather than a byte count this file would have to guess: the converted bytes
+		       * and the door that counts them must agree. NeXTSTEP is the encoding no converter here claims. */
+		      utf16 != nil &&
+		      [utf16 length] == [@"caf\xC3\xA9" lengthOfBytesUsingEncoding:NSUTF16StringEncoding] &&
+		      [@"caf\xC3\xA9" dataUsingEncoding:NSNEXTSTEPStringEncoding] == nil,
+		      "+localizedNameOfStringEncoding: answers \"UTF-8\" (5), \"ASCII\" (5) and a name for Latin-1, which now CONVERTS; -dataUsingEncoding:allowLossyConversion: answers the same 5 UTF-8 bytes for \"café\" whether the flag is YES or NO; UTF-16's bytes agree with its own byte count; and NeXTSTEP — no converter here — is refused");
 	}
 
 
@@ -409,7 +421,10 @@ int main(void)
 
 		NSURL *remote = [NSURL URLWithString:@"https://foundation.invalid/probe"];
 		NSError *refused = nil;
-		BOOL encOk = [@"x" writeToURL:remote atomically:NO encoding:NSUTF16StringEncoding error:&refused];
+		/*	§63.71: THIS USED UTF-16, WHICH NOW CONVERTS. The refusal this check is about is a REAL one,
+		 * so it asks for an encoding no converter here claims — NeXTSTEP, which §63.70 gave its Apple
+		 * value and which this library still cannot store. */
+		BOOL encOk = [@"x" writeToURL:remote atomically:NO encoding:NSNEXTSTEPStringEncoding error:&refused];
 
 		check("string-write-refuses-unstored-encoding",
 		      encOk == NO && refused != nil &&
@@ -636,7 +651,13 @@ int main(void)
 		      [accented lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 6 &&
 		      [accented lengthOfBytesUsingEncoding:NSASCIIStringEncoding] == 0 &&
 		      [@"abc" lengthOfBytesUsingEncoding:NSASCIIStringEncoding] == 3 &&
-		      [@"x" dataUsingEncoding:NSUnicodeStringEncoding] == nil,
+		      /*	§63.71: UNICODE IS A STORED... no — it is CONVERTED now, so the assertion is the
+		       * SELF-CONSISTENT one instead of a refusal: the bytes and the byte COUNT are the same
+		       * conversion. That is the assertion that stays true whatever the converter's BOM is. */
+		      [@"x" dataUsingEncoding:NSUnicodeStringEncoding] != nil &&
+		      [[@"x" dataUsingEncoding:NSUnicodeStringEncoding] length] ==
+			[@"x" lengthOfBytesUsingEncoding:NSUnicodeStringEncoding] &&
+		      [@"x" dataUsingEncoding:NSNEXTSTEPStringEncoding] == nil,
 		      "the UTF-8 round trip, and honest answers for the encodings we do not store");
 	}
 
@@ -2088,7 +2109,10 @@ NULL
 		NSString *utf8 = [NSString stringWithCString:"plain ASCII" encoding:NSUTF8StringEncoding];
 		NSString *ascii = [NSString stringWithCString:"plain ASCII" encoding:NSASCIIStringEncoding];
 		NSString *utf8BytesAsASCII = [NSString stringWithCString:"caf\xc3\xa9" encoding:NSASCIIStringEncoding];
-		NSString *unstored = [NSString stringWithCString:"caf\xe9" encoding:NSISOLatin1StringEncoding];
+		/*	§63.71: LATIN-1 CONVERTS NOW, so this is the POSITIVE case in that encoding — and the
+		 * refusals it used to stand for are still asserted, one line down, by name. */
+		NSString *latin1 = [NSString stringWithCString:"caf\xe9" encoding:NSISOLatin1StringEncoding];
+		NSString *unstored = [NSString stringWithCString:"x" encoding:NSNEXTSTEPStringEncoding];
 		const char *noBytes = NULL;	/* a VARIABLE null, so no -Wnonnull constant */
 		NSString *nul = [NSString stringWithCString:noBytes encoding:NSUTF8StringEncoding];
 
@@ -2100,6 +2124,7 @@ NULL
 		       * argument would answer a string here. */
 		      utf8BytesAsASCII == nil &&
 		      /* AND AN ENCODING THIS LIBRARY DOES NOT STORE IS REFUSED RATHER THAN REINTERPRETED AS UTF-8. */
+		      latin1 != nil && [latin1 isEqualToString:@"caf\xC3\xA9"] &&
 		      unstored == nil &&
 		      nul == nil &&
 		      /* AND THE POSITIVE CASE IN THE ENCODING IT WAS WRITTEN IN COMES BACK INTACT, accents and all. */
@@ -2115,13 +2140,16 @@ NULL
 		NSString *ascii = [[NSString alloc] initWithCString:"plain ASCII" encoding:NSASCIIStringEncoding];
 		NSString *utf8 = [[NSString alloc] initWithCString:"caf\xc3\xa9" encoding:NSUTF8StringEncoding];
 		NSString *highAsAscii = [[NSString alloc] initWithCString:"caf\xc3\xa9" encoding:NSASCIIStringEncoding];
-		NSString *unstored = [[NSString alloc] initWithCString:"caf\xe9" encoding:NSISOLatin1StringEncoding];
+		NSString *latin1 = [[NSString alloc] initWithCString:"caf\xe9" encoding:NSISOLatin1StringEncoding];
+		NSString *unstored = [[NSString alloc] initWithCString:"x" encoding:NSNEXTSTEPStringEncoding];
 		NSString *deprecated = [[NSString alloc] initWithCString:"plain ASCII"];
 		NSString *deprecatedLen = [[NSString alloc] initWithCString:"abcdef" length:3];
 		NSString *bytesLen = [[NSString alloc] initWithBytes:"xyz\0abc" length:3 encoding:NSUTF8StringEncoding];
 		NSString *bytesUtf8 = [[NSString alloc] initWithBytes:"caf\xc3\xa9" length:5 encoding:NSUTF8StringEncoding];
 		NSString *bytesAsAscii = [[NSString alloc] initWithBytes:"caf\xc3\xa9" length:5 encoding:NSASCIIStringEncoding];
-		NSString *bytesUnstored = [[NSString alloc] initWithBytes:"abc" length:3 encoding:NSUTF16StringEncoding];
+		/*	§63.71: THIS USED UTF-16, WHICH NOW CONVERTS. `unstored` must stay a REAL refusal, so it asks
+		 * for NeXTSTEP — the encoding no converter here claims. */
+		NSString *bytesUnstored = [[NSString alloc] initWithBytes:"abc" length:3 encoding:NSNEXTSTEPStringEncoding];
 
 		check("cstring-init-doors",
 		      /* the -init mirrors of the class doors: the same positive answers, 11 and 4 UTF-16 units */
@@ -2295,7 +2323,10 @@ NULL
 		      [ascii canBeConvertedToEncoding:NSASCIIStringEncoding] &&
 		      [accents canBeConvertedToEncoding:NSUTF8StringEncoding] &&
 		      ![accents canBeConvertedToEncoding:NSASCIIStringEncoding] &&
-		      ![accents canBeConvertedToEncoding:NSUTF16StringEncoding],
+		      /*	§63.71: IT CAN NOW, and that is the point of the engine — UTF-16 is a converter this
+		       * library has, so the ASCII boundary is the ONLY one left on this string. */
+		      [accents canBeConvertedToEncoding:NSUTF16StringEncoding] &&
+		      [accents canBeConvertedToEncoding:NSISOLatin1StringEncoding],
 		      [[NSString stringWithFormat:@"ascii -> utf8=%d ascii=%d ; accents -> utf8=%d ascii=%d utf16=%d",
 			(int)[ascii canBeConvertedToEncoding:NSUTF8StringEncoding],
 			(int)[ascii canBeConvertedToEncoding:NSASCIIStringEncoding],
@@ -2313,7 +2344,11 @@ NULL
 		      [ascii maximumLengthOfBytesUsingEncoding:NSASCIIStringEncoding] == 5 &&
 		      [accents maximumLengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 5 &&
 		      [accents maximumLengthOfBytesUsingEncoding:NSASCIIStringEncoding] == 0 &&
-		      [accents maximumLengthOfBytesUsingEncoding:NSUTF16StringEncoding] == 0,
+		      /*	§63.71: and the maximum is now the CONVERSION'S OWN length, asserted against the
+		       * byte count rather than a number this file would have to guess. */
+		      [accents maximumLengthOfBytesUsingEncoding:NSUTF16StringEncoding] ==
+			[accents lengthOfBytesUsingEncoding:NSUTF16StringEncoding] &&
+		      [accents maximumLengthOfBytesUsingEncoding:NSUTF16StringEncoding] > 0,
 		      [[NSString stringWithFormat:@"ascii -> utf8=%lu ascii=%lu ; accents -> utf8=%lu ascii=%lu utf16=%lu",
 			(unsigned long)[ascii maximumLengthOfBytesUsingEncoding:NSUTF8StringEncoding],
 			(unsigned long)[ascii maximumLengthOfBytesUsingEncoding:NSASCIIStringEncoding],

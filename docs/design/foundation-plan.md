@@ -15982,6 +15982,69 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.71 — THE CONVERTER ENGINE LANDS, AND THE ENGINE'S OWN INTROSPECTION DOOR POISONED ITS CACHE (2026-10-01)
+
+**WHAT LANDED (the rest of the cluster, `dec-733391f6e71e4415`): the table §63.2 said was missing is ICU'S, and
+the doors use it.** A table of SIXTEEN encodings — ISO-8859-1/2, Shift_JIS, EUC-JP, x-mac-roman,
+windows-1250…1254, UTF-16/BE/LE, UTF-32/BE/LE — a converter opened and cached per encoding, and five helpers
+(`fn_bytes_in_encoding`, `fn_length_in_encoding`, `fn_data_in_encoding`, `fn_string_from_bytes`,
+`fn_units_copy`). **THE TWO STORAGE ENCODINGS KEEP THEIR OWN PATHS**: UTF-8 and ASCII are what this library
+stores, their implementations are byte-exact and covered by the probe, so `fn_is_storage_encoding` is the line
+and every existing fast path is byte-identical — which is why this unit could land on a 155-check probe without
+touching one of those checks' semantics.
+
+**EVERY DOOR WAS TAUGHT THE SAME WAY — AN INSERTION AT ITS OPENING BRACE, so no existing statement moved**:
+`-dataUsingEncoding:`, `-dataUsingEncoding:allowLossyConversion:`, `-lengthOfBytesUsingEncoding:` (the base AND
+`NSOwnedString`'s override), `-initWithData:encoding:`, `-initWithBytes:length:encoding:`,
+`-initWithCString:encoding:`, `-canBeConvertedToEncoding:`, `-maximumLengthOfBytesUsingEncoding:`,
+`+stringWithCString:encoding:` — plus the two introspection doors, whose BODIES had to change precisely because
+they state what converts.
+
+**AND `allowLossyConversion:` STOPS BEING A NO-OP, WHICH IS THE CONTRACT IT ALWAYS DOCUMENTED.** ICU's STOP
+callback is what "this text does not fit that encoding" MEANS and its SUBSTITUTE callback is what the flag
+means; the flag now chooses between them. The old comment — "the flag can never be needed, because this library
+stores only encodings in which nothing can be lost" — was TRUE until this unit and is now false by construction.
+
+**MEASURED, ACCEPTANCE ALL GREEN: `rm -rf .build/host/obj && make host-foundation` exit 0 with EXACTLY the six
+known warnings; `make testimg` EXIT 0; `make test TESTS='foundation_string'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 13s` with the probe's own tally `FOUNDATION-STRING 155/155`.**
+`+availableStringEncodings` now answers ASCII, UTF-8 and every table encoding whose converter OPENS — and the
+probe asserts that each later member CONVERTS and HAS A NAME rather than a count, because a count would need
+editing for every converter added and would be edited wrongly the day one stopped opening.
+
+**⚠⚠ AND THE UNIT'S BEST FINDING IS A BUG THE ENGINE GAVE ITSELF: THE INTROSPECTION DOOR POISONED THE CACHE.**
+`fn_ucnv_for` cached EIGHT converters by hand, and `+availableStringEncodings` **opens every table entry to see
+what is really available** — so the cache filled after eight and UTF-16, the ELEVENTH entry, answered NULL for
+the rest of the process. **EVERY UTF-16 CONVERSION WAS REFUSED**, and the only symptom was
+`-canBeConvertedToEncoding:NSUTF16StringEncoding` answering NO for a string that converts — a check whose own
+detail string (`accents -> utf8=1 ascii=0 utf16=0`) was the whole diagnosis. The size is now THE TABLE'S
+(`sizeof(fn_encoding_table) / sizeof(fn_encoding_table[0])`), so growing the table cannot repeat it.
+**THE LESSON GENERALISES: AN INTROSPECTION DOOR THAT EXERCISES WHAT IT REPORTS IS A CONSUMER, and a cache that
+bounds CORRECTNESS will be poisoned by the first caller that asks about everything.**
+
+**⚠ AND THREE THINGS I GOT WRONG, EACH COSTING A CYCLE.** (1) The engine has **THREE** places, not one: the base
+doors, `NSOwnedString`'s override, and **`+stringWithCString:encoding:`, which has its own path and does not go
+through the initializer** — teaching the initializers left that door refusing Latin-1 while its instance twin
+converted it. (2) **`make testimg` FAILED and I read the guest's `155/155` as proof**: a failed image build means
+the tier ran the PREVIOUS image, so that green verified NOTHING. It took two more cycles to notice, and the
+harness says so in its own header — *a green run after a failed image build is not a green run*. (3) An edit
+script of mine wrote each replacement as it went instead of accumulating, which is how §63.69's duplicate
+landed; the anchors held this time, but the habit is the one to break.
+
+**⚠ AND A HARNESS FACT FOUND ON THE WAY, WORTH KNOWING BEFORE ANY STRING WORK: `foundation_string` IS NOT IN
+`HOST_PROBES`.** `make host-foundation` never rebuilds it, so `.build/host/bin/foundation_string` is a leftover —
+and it aborted with `-[NSTinyString characterCount] is not implemented`, **a message §63.59 deleted from the
+source.** THE CHEAP HOST LOOP IS UNAVAILABLE FOR THIS PROBE, and a stale host binary will run happily and lie.
+`ls -l .build/host/bin` before trusting a host probe is the check.
+
+**WHAT IS STILL NOT DONE IN THE CLUSTER, AND WHY ONE PART WAS LEFT ALONE ON PURPOSE:** the ledger's own encoding
+rows are untouched by this — `+stringEncodingForData:encodingOptions:convertedString:usedLossyConversion:`,
+`-stringByAddingPercentEscapesUsingEncoding:`, `-stringByReplacingPercentEscapesUsingEncoding:` — the fence does
+not move because no NAME moved; what changed is that the doors behind them now have a table to stand on. And
+`-cStringUsingEncoding:` / `-getCString:maxLength:encoding:` were deliberately NOT taught: they hand back a
+`const char *` whose LIFETIME is the open question, and guessing it is exactly how the borrowed-buffer family
+(§63.47) got its bug. **That decision is the next slice's first task, not an oversight.**
+
 ## §63.70 — THE ENCODING CLUSTER, FIRST SLICE: THE VALUES WERE OURS AND 21 OF 24 WERE WRONG (2026-10-01)
 
 **WHAT LANDED (the front chosen in `dec-733391f6e71e4415`): `NSStringEncoding`'s values are now APPLE'S.** 21 of
