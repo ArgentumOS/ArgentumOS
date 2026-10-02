@@ -13,6 +13,7 @@
  */
 
 #import <Foundation/NSAttributedString.h>
+#import <Foundation/NSInflectionRule.h>
 #import "FNStringFormat.h"
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
@@ -590,6 +591,27 @@ static NSRange fn_url_token_range(NSString *text, NSUInteger index, BOOL *found)
 }
 
 @end
+
+
+/* ================== THE INFLECTION DOOR (§63.99) ==================
+ * ⚠ THE REFUSAL IS BY NAME AND IT AGREES WITH WHAT THIS LIBRARY ALREADY ANSWERS: `+[NSInflectionRule
+ * canInflectLanguage:]` returns NO for EVERY language, with the ground "the absence of an agreement model". A door
+ * that silently returned the string unchanged would be the one thing this tree's refusals exist to avoid — **a
+ * caller could not tell "nothing needed inflecting" from "nothing here can inflect".** */
+@implementation NSAttributedString (NSMorphology)
+
+- (NSAttributedString *)attributedStringByInflectingString
+{
+	[NSException raise:NSInvalidArgumentException
+		    format:@"-[NSAttributedString attributedStringByInflectingString]: "
+			   @"inflection is a per-language capability and this system carries no agreement model "
+			   @"for any language (%@ answers NO for every one of them).",
+			   NSStringFromClass([NSInflectionRule class])];
+	return nil;
+}
+
+@end
+
 
 @implementation NSAttributedString
 

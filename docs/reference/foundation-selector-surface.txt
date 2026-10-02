@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2176   open  426   struck  326
+#   method     shipped 2177   open  425   struck  326
 #   property   shipped 1277   open  201   struck  158
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -231,7 +231,7 @@ method	shipped	-RTFFromRange:documentAttributes:	NSAttributedString	Fundamentals
 method	shipped	-URLAtIndex:effectiveRange:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Instance Methods	deprecated	objc
 method	shipped	-attribute:atIndex:effectiveRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
 method	shipped	-attribute:atIndex:longestEffectiveRange:inRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
-method	open	-attributedStringByInflectingString	NSAttributedString	Fundamentals / Strings with Metadata / Performing automatic grammar agreement	-	objc
+method	shipped	-attributedStringByInflectingString	NSAttributedString	Fundamentals / Strings with Metadata / Performing automatic grammar agreement	-	objc
 method	struck	+attributedStringWithAdaptiveImageGlyph:attributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a string with an attachment	other-framework	objc
 method	struck	+attributedStringWithAttachment:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a string with an attachment	other-framework	objc
 method	struck	+attributedStringWithAttachment:attributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a string with an attachment	other-framework	objc

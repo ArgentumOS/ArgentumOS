@@ -400,6 +400,21 @@ typedef enum {
 		       context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context
 		     arguments:(va_list)arguments;
 @end
+
+/* ⚠⚠ THE INFLECTION DOOR IS IN **APPLE'S OWN CATEGORY NAME** — `NSAttributedString (NSMorphology)`, read from
+ * the corpus — AND IT **REFUSES BY NAME**, THIS LIBRARY'S ESTABLISHED PATTERN FOR A CAPABILITY IT DOES NOT CARRY
+ * (the RTF and HTML readers refuse rather than silently doing nothing).
+ *
+ * §§ AND THE GROUND IS APPLE'S OWN API SHAPE AND NOT AN ASSUMPTION (§63.99): the corpus's comment for the method
+ * reads "If the string has portions tagged with NSInflectionRuleAttributeName that have no format specifiers, create
+ * a new string with those portions inflected by following the rule in the attribute" — **AND ITS SIBLING CLASS
+ * PUBLISHES `+canInflectLanguage:`, "Whether inflection will work in the specified language code"** — so inflection
+ * is a PER-LANGUAGE CAPABILITY THAT CAN BE ABSENT, and this system carries no agreement model for any language.
+ * **THIS LIBRARY ALREADY SAYS SO: `+[NSInflectionRule canInflectLanguage:]` answers NO for every language, with the
+ * ground "the absence of an agreement model". THE REFUSAL HERE IS THAT SAME ANSWER, ONE LEVEL DOWN.** */
+@interface NSAttributedString (NSMorphology)
+- (NSAttributedString *)attributedStringByInflectingString;
+@end
 /* ---- THE MARKDOWN FILE DOOR, IN APPLE'S FOUR-ARGUMENT SPELLING (2026-09-30) -------------------------
  *
  * APPLE DECLARES THIS INITIALISER WITH a `baseURL:` argument, and the tree shipped the SHORTER

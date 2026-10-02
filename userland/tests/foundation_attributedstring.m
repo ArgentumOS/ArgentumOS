@@ -74,6 +74,29 @@ int main(void)
 {
 
 	{
+		/* §63.99: THE INFLECTION DOOR REFUSES BY NAME, AND THE CHECK ASSERTS **THE CONSISTENCY** RATHER THAN JUST
+		 * THAT SOMETHING RAISED: the refusal and `+[NSInflectionRule canInflectLanguage:]`'s answer are the same fact
+		 * seen from two levels, so an engine that began inflecting a language would fail THIS check until the refusal
+		 * was removed — which is what makes the pair checkable rather than decorative. */
+		BOOL raised = NO;
+		NSAttributedString *tagged = [[NSAttributedString alloc]
+					      initWithString:@"a table"
+						      attributes:[NSDictionary dictionaryWithObject:[NSInflectionRule automaticRule]
+												     forKey:NSInflectionRuleAttributeName]];
+		@try {
+			(void)[tagged attributedStringByInflectingString];
+		} @catch (NSException *e) {
+			raised = [e isKindOfClass:[NSException class]];
+		}
+		check("attributedstring-inflecting-refuses-by-name",
+		      raised && ![NSInflectionRule canInflectLanguage:@"en"] &&
+		      ![NSInflectionRule canInflectPreferredLocalization],
+		      [NSString stringWithFormat:@"raised=%d canInflect(en)=%d", (int)raised,
+			(int)[NSInflectionRule canInflectLanguage:@"en"]]);
+	}
+
+
+	{
 		/* §63.98: THE TWO `context:` DOORS. They format (Apple's own comment for them is the same sentence as
 		 * the context-free pair's) and the dictionary is accepted with no effect, because its only published key is
 		 * for inflection and this library has no engine — the door that would consume it is still open. Calling

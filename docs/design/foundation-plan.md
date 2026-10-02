@@ -15982,6 +15982,50 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.99 — THE INFLECTION DOOR LANDS AS A REFUSAL, AND THE ATTRIBUTED FORMATTER'S NINE-ROW FAMILY IS COMPLETE (2026-10-01)
+
+**WHAT LANDED: `-attributedStringByInflectingString`, DECLARED IN APPLE'S OWN CATEGORY NAME (`NSAttributedString
+(NSMorphology)`) AND REFUSING BY NAME.** With it, **the nine-row formatting family that began at §63.85 IS
+COMPLETE.**
+
+**MEASURED: `method shipped 2176 → 2177`; `--check` consistent; `make host-foundation` EXIT 0 with exactly the standing
+SIX warnings; `make testimg` EXIT 0; `make test TESTS='foundation_attributedstring'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with **`FOUNDATION-ATTRIBUTEDSTRING 52/52`**.**
+
+**⚠⚠ AND THE GROUND IS APPLE'S OWN API SHAPE RATHER THAN AN ASSUMPTION — TWO READINGS, BOTH FROM THE CORPUS:** the
+method's own comment ("If the string has portions tagged with NSInflectionRuleAttributeName that have no format
+specifiers, create a new string with those portions inflected by following the rule in the attribute") **AND ITS
+SIBLING CLASS'S PUBLISHED DOOR: `+canInflectLanguage:`, "WHETHER INFLECTION WILL WORK IN THE SPECIFIED LANGUAGE
+CODE"** — **so inflection is a PER-LANGUAGE CAPABILITY THAT CAN BE ABSENT**, and this system carries no agreement
+model for any language. **AND THE LIBRARY ALREADY SAID SO BEFORE THIS UNIT: `+[NSInflectionRule canInflectLanguage:]`
+answers NO for every language, with the ground "the absence of an agreement model". THE REFUSAL IS THAT SAME ANSWER,
+ONE LEVEL DOWN** — which is why this unit is one door and not an engine.
+
+**⚠ AND THE REFUSAL IS MADE CHECKABLE BY BEING CONSISTENT:** the probe asserts the RAISE, **and** that
+`+canInflectLanguage:@"en"` is NO, **and** that `+canInflectPreferredLocalization` is NO. **An engine that began
+inflecting one language would FAIL THIS CHECK until the refusal was removed**, so the pair cannot drift apart —
+which is what separates a refusal from a decoration.
+
+**AND WHY A REFUSAL RATHER THAN "RETURN THE STRING UNCHANGED": a door that quietly returned its input would leave a
+caller unable to tell "nothing needed inflecting" from "NOTHING HERE CAN INFLECT"** — and **this tree's readers
+already refuse for exactly that reason** (the RTF and HTML doors). The pattern was in the library before this row
+existed.
+
+**⚠ AND THE APPLY FAILED ONCE, IN THE SEVENTH SHAPE OF THIS SESSION'S EDITOR FAMILY: I INSERTED THE BLOCK BEFORE THE
+CATEGORY'S `@end` INSTEAD OF AFTER IT**, which put a second `@interface` INSIDE the first category and left one of the
+two `@end`s orphaned — **and the .m needed `NSInflectionRule.h` imported before the code that names the class
+(§63.75/§63.80's lesson, paid a third time).** The fix: **insert AFTER, with the block carrying its own `@end`, and
+check the import BEFORE writing the code that needs it.** Three of this session's apply failures have been about
+where a block lands relative to a delimiter — inside a comment, inside a method body, inside an @interface — and
+ALL THREE are the same mistake: **A DELIMITER THAT MARKS A BOUNDARY IS NOT A PLACE TO INSERT BEFORE.***
+
+**⚠⚠ AND THE FAMILY, COMPLETE: THE ATTRIBUTED FORMATTER NOW DOES EVERYTHING APPLE'S HEADERS DESCRIBE — it formats
+(§63.95), it localizes (§63.97), it applies the format's attributes AT THE OFFSETS THE EMISSIONS CAME FROM (the sink,
+§63.85), it honours both option bits, it reports its range from the SAME parse as its value, it accepts a context
+(measured not to be usable yet, §63.98) — AND IT REFUSES THE ONE THING THIS SYSTEM CANNOT DO, BY NAME, FROM THE SAME
+PLACE THE CAPABILITY IS DENIED.** Its work on this owner is done; what remains there is the document readers
+(`-initWithData:`, `-initWithURL:`, `-initWithPath:`, `-readFromURL:`) and `-mutableString`.
+
 ## §63.98 — THE `context:` DOORS LAND, AND THE CONTEXT'S POSITION IS NOW MEASURED RATHER THAN CONVENIENT (2026-10-01)
 
 **WHAT LANDED: `-initWithFormat:options:locale:context:` and `-initWithFormat:options:locale:context:arguments:` —
