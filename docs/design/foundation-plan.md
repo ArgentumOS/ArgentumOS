@@ -15982,6 +15982,48 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.100 — SIX ROWS LEAVE ON A RETRACTION OF §63.83'S OWN CLASSIFIER, AND `NSAttributedString` LEAVES THE WORK LIST (2026-10-01)
+
+**WHAT LANDED: the six document readers moved to the `other-framework` ground — `-initWithData:options:documentAttributes:error:`,
+`-initWithPath:documentAttributes:`, `-initWithURL:documentAttributes:`, `-initWithURL:options:documentAttributes:error:`,
+`-readFromURL:options:documentAttributes:` and `-readFromURL:options:documentAttributes:error:`. AND THE GROUND IS A
+RETRACTION OF THIS CAMPAIGN'S OWN MEASUREMENT, NOT A NEW FINDING.**
+
+**MEASURED: `method open 425 → 419`, `struck 326 → 332`; `--check` consistent; AND `NSAttributedString` HAS LEFT THE
+WORK LIST** — its heading is gone from `--work-list`, and the owner's single surviving row, `-mutableString`, sits on
+`NSMutableAttributedString` (§30's metric, on the owner this session has spent ten units on).
+
+**⚠⚠ THE RETRACTION, IN ONE SENTENCE: §63.83'S CLASSIFIER TESTED **ONLY THE FIRST KEYWORD** OF A SELECTOR.** So
+`-initWithData:options:documentAttributes:error:` was called OURS because `initWithData` IS declared in Foundation —
+**WITH A DIFFERENT CONTINUATION.** Requiring EVERY PART of the selector, in order, each followed by its colon, changes
+the owner's answer from SIXTEEN OURS to **ONE**: `documentAttributes:` APPEARS NOWHERE IN EITHER FOUNDATION CORPUS, and
+the six are AppKit's document readers.
+
+**⚠ AND THE LANDED WORK IS UNAFFECTED, WHICH IS THE THING TO CHECK FIRST WHEN AN INSTRUMENT IS FOUND WRONG: the NINE
+formatting rows §63.83 also called ours were GENUINELY ours, each verified independently as it landed** (§63.95–§63.99
+read their full signatures out of the corpus, and §63.96–§63.99 turned on exactly that reading). **The retraction is
+narrow: it touches the six rows that never landed and nothing that did.**
+
+**⚠⚠ AND THE INSTRUMENT HAS NOW BEEN CORRECTED THREE TIMES, EVERY TIME BY ITS OWN OUTPUT CONTRADICTING SOMETHING KNOWN:**
+ 1. the first pass matched **SUBSTRINGS** — it called `-size` ours because the word occurs in prose and in type names
+    across 2.9 MB of headers;
+ 2. the second could not see a **PROPERTY** — a property is spelled `@property … name;`, never on a method line;
+ 3. **the third tested only the FIRST KEYWORD of a SELECTOR.**
+**THREE BUGS IN ONE CLASSIFIER, AND NOT ONE WAS FOUND BY RE-READING THE CODE — each surfaced as a NUMBER THAT DID NOT
+MAKE SENSE** (a plausible-looking 16; a property reported absent; a keyword declared with a continuation nobody had
+looked at).
+
+**⚠⚠ AND THE UNIT WAS ITSELF BROKEN BY §63.84'S TRAP ON ITS FIRST ATTEMPT: I PASTED THE SIX NAMES OFF THE WORK LIST
+WITH THEIR SIGNS, AND THE REFRESH CHANGED NOTHING AT ALL** — a selector row's `name` carries no sign, which is exactly
+what §63.84 recorded when the SAME THING happened there. **A UNIT ABOUT AN INSTRUMENT BUG WAS BROKEN BY A TRAP THE UNIT
+THAT FOUND THAT BUG HAD ALREADY WRITTEN DOWN — THE RECORD IS NOT THE MEMORY.** What caught it was the ledger's own
+delta: six names added, zero rows moved.
+
+**AND WHAT REMAINS ON THIS OWNER IS ONE ROW — `-mutableString`** — which the header's own note describes as "a LIVE
+proxy over the store, not a copy, and a slice of its own". **Everything else that the derived surface files under
+`NSAttributedString` is either landed (the nine-row formatter, from §63.85 to §63.99) or is the drawing frameworks'
+declaration on a Foundation class.**
+
 ## §63.99 — THE INFLECTION DOOR LANDS AS A REFUSAL, AND THE ATTRIBUTED FORMATTER'S NINE-ROW FAMILY IS COMPLETE (2026-10-01)
 
 **WHAT LANDED: `-attributedStringByInflectingString`, DECLARED IN APPLE'S OWN CATEGORY NAME (`NSAttributedString

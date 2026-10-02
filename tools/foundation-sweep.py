@@ -425,6 +425,20 @@ OTHER_FRAMEWORK = frozenset((
     "superscriptRange:",
     "unscriptRange:",
     "updateAttachmentsFromPath:",
+    # §63.100 — AND THE SAME GROUND NOW COVERS SIX MORE ROWS, ON A RETRACTION: §63.83'S CLASSIFIER TESTED ONLY THE
+    # FIRST KEYWORD OF A SELECTOR, so a row whose first keyword is declared WITH A DIFFERENT CONTINUATION was called
+    # OURS. `documentAttributes:` APPEARS NOWHERE IN EITHER FOUNDATION CORPUS — these are the document readers, and
+    # they are AppKit's — while the ONE remaining row of that owner, `-mutableString`, survives the whole-selector
+    # test and stays ours.
+    # ⚠⚠ AND THE NAMES ARE UNSIGNED, WHICH I GOT WRONG ON THE FIRST TRY OF THIS VERY UNIT: a SELECTOR row's
+    # `name` carries no sign (the sign is a DISPLAY artifact — §63.84 measured that, and this unit re-learned it by
+    # pasting the SIGNED spelling off the work list and watching the refresh change nothing at all).
+    "initWithData:options:documentAttributes:error:",
+    "initWithPath:documentAttributes:",
+    "initWithURL:documentAttributes:",
+    "initWithURL:options:documentAttributes:error:",
+    "readFromURL:options:documentAttributes:",
+    "readFromURL:options:documentAttributes:error:",
 ))
 
 
