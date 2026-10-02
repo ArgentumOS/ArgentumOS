@@ -410,6 +410,72 @@ def declared_where(sel, corpus):
     return None
 
 
+def skip_angle(text, i):
+    """`i` is just past a `<`; return the index just past its MATCHING `>`, or -1.
+    ⚠ DEPTH STARTS AT 1, NOT 0 (§63.65): the caller is handing over a position that is already INSIDE the
+    group, and starting at 0 makes the first `>` look like an unbalanced close and the whole scan fail — which
+    is exactly what the first version of this function did, and the unit cases caught it."""
+    depth = 1
+    while i < len(text):
+        if text[i] == "<":
+            depth += 1
+        elif text[i] == ">":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return -1
+
+
+def class_taxonomy(rest):
+    """`(superclass, [adopted protocols])` from the text that FOLLOWS a class name.
+
+    ⚠ WHY THIS IS NOT TWO `re.search` CALLS (§63.65, measured): `@interface NSArray<ObjectType> : NSObject
+    <NSCopying, …>` carries TWO angle groups — the generic PARAMETERS first and the adopted PROTOCOL list
+    second — and the old rule took the FIRST for the protocols and lost the superclass entirely, because
+    `: NSObject` does not start what follows the name. Measured: 65 of the corpus's 452 `@interface`
+    declarations look like that, across 18 classes, and the walk could reach NO inherited API for any of them
+    (`NSArray super=None adopted=['__covariant ObjectType', 'ObjectType', …]`).
+
+    THE DISCRIMINATOR, and it is the whole trick: a leading `<…>` is GENERICS exactly when a `:` OR a `(`
+    FOLLOWS it. Without that question, `@interface NSObject <NSObject>` — no generics, no superclass — would
+    lose its protocol list to the generics rule; and without the `(` half, a CATEGORY written the modern way
+    (`@interface NSArray<ObjectType> (NSArrayCreation)`) slips past the category guard because what follows the
+    name is `<`, not `(`, and its GENERIC PARAMETERS get recorded as protocols this class adopts. Measured:
+    that is where NSArray's twelve phantom `ObjectType` adoptions came from. Harmless to the walk — a name
+    that is no protocol contributes no selectors — but recorded as fact about Apple's headers, which it is not."""
+    i = re.match(r"\s*", rest).end()
+    if i < len(rest) and rest[i] == "<":
+        j = skip_angle(rest, i + 1)
+        if j > 0 and rest[j:].lstrip()[:1] in (":", "("):
+            i = j                       # generics: a superclass clause or a category follows
+    sup = None
+    m = re.match(r"\s*:\s*([A-Za-z_]\w*)", rest[i:])
+    if m:
+        sup = m.group(1)
+        i += m.end()
+        # ⚠ THE SUPERCLASS HAS GENERIC ARGUMENTS OF ITS OWN, and they are NOT protocols we adopt: in
+        # `@interface NSMutableSet<ObjectType> : NSSet<ObjectType>` the third angle group belongs to `NSSet`.
+        # Measured: that is where NSMutableSet's and NSCountedSet's phantom `ObjectType` adoption came from.
+        # THE DISCRIMINATOR IS ADJACENCY, because that is Apple's own convention and the two are otherwise
+        # indistinguishable: generic arguments are written WITHOUT a space (`NSSet<ObjectType>`) and a protocol
+        # list WITH one (`NSObject <NSCopying, …>`).
+        if i < len(rest) and rest[i] == "<":
+            j = skip_angle(rest, i + 1)
+            if j > 0:
+                i = j
+    protos = []
+    k = rest.find("<", i)
+    if k >= 0:
+        j = skip_angle(rest, k + 1)
+        if j > 0:
+            for p in rest[k + 1:j - 1].split(","):
+                p = p.strip()
+                if p:
+                    protos.append(p)
+    return sup, protos
+
+
 def parse_corpus(files):
     """The corpus's OWN structure — (blocks, file_of, supers, adopted, pblocks, psupers) — so that a question
     about a name can be asked OF A CLASS rather than of all the text.
@@ -429,15 +495,11 @@ def parse_corpus(files):
             blocks_.setdefault(owner, set()).update(selectors(body))
             file_of.setdefault(owner, path)
             if not rest.lstrip().startswith("("):
-                sc = re.match(r"\s*:\s*(\w+)", rest)
-                if sc:
-                    supers.setdefault(owner, sc.group(1))
-                pr = re.search(r"<\s*([^>]*)>", rest)
-                if pr:
-                    for p in pr.group(1).split(","):
-                        p = p.strip()
-                        if p:
-                            adopted.setdefault(owner, []).append(p)
+                sup, protos = class_taxonomy(rest)
+                if sup:
+                    supers.setdefault(owner, sup)
+                if protos:
+                    adopted.setdefault(owner, []).extend(protos)
         for m in re.finditer(r"(?m)^[ \t]*@protocol\s+(\w+)([^\n]*)", text):
             name, rest = m.group(1), m.group(2)
             if rest.strip().endswith(";"):

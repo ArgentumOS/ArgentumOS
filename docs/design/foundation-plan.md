@@ -15982,6 +15982,64 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.65 — THE TAXONOMY PARSE, THE YIELD 59 → 49, AND THE FIRST ROW ABOUT THE TREE RATHER THAN THE TOOL (2026-10-01)
+
+**WHAT LANDED (continuing `dec-733391f6e71e4415`): the corpus's class taxonomy is parsed properly.**
+`class_taxonomy` reads a superclass and an adopted-protocol list from the text after a class name, and it needed
+**TWO discriminations the old rule could not make, both measured**:
+ * a **leading** `<…>` group is GENERICS exactly when a `:` **or a `(`** follows it. Without the `(`, a category
+   written the modern way — `@interface NSArray<ObjectType> (NSArrayCreation)` — slips past the category guard
+   (what follows the name is `<`, not `(`) and its generic parameters are recorded as protocols NSArray adopts;
+   that is where its twelve phantom `ObjectType`s came from.
+ * the **superclass has generic arguments of its own**, and they are not protocols we adopt: in
+   `@interface NSMutableSet<ObjectType> : NSSet<ObjectType>` the third angle group belongs to `NSSet`. The
+   discriminator is **ADJACENCY**, because that is Apple's own convention and the two are otherwise identical:
+   generic arguments are written WITHOUT a space (`NSSet<ObjectType>`) and a protocol list WITH one
+   (`NSObject <NSCopying, …>`).
+
+**MEASURED: the buckets did not move** — `documented 33`, `other-framework 8`, `ours 129`,
+`accepted-by-ground 4`, `NOT-IN-ANY-SDK 0`, `0 JUDGEABLE` — and **the owner-aware yield fell 59 → 49**. The
+taxonomy is now right where it was wrong: `NSArray super='NSObject' adopted=['NSCopying','NSMutableCopying',
+'NSSecureCoding','NSFastEnumeration']`, `NSMutableSet super='NSSet' adopted=None`,
+`NSCountedSet super='NSMutableSet'`. Eight unit cases were written and **ALL EIGHT PASS — after the first
+version failed seven of them**, and the reason is worth keeping: `skip_angle` was handed a position already
+INSIDE a `<…>` group and started its depth at 0, so the first `>` looked like an unbalanced close and every
+angle group failed to parse. **A one-off in a helper is invisible in the tool's output and obvious in a unit
+case; that is the whole argument for writing them.**
+
+**AND THE REMAINING 49 WERE CLASSIFIED BY A STATED TEST, WHOSE LIMIT IS NAMED WITH ITS RESULT.** The test is
+"does the OWNER'S OWN HEADER carry the token": **12** yes (a parser gap), **24** no (a wrong owner, or our own
+class), **13** no owner header in the corpus at all (our classes). ⚠ **AND THE TEST IS TOO GENEROUS IN ONE
+DIRECTION: a STRUCT FIELD satisfies it.** `NSProcessInfo -majorVersion` is counted a parser gap because the
+token is in `NSProcessInfo.h` — at **line 22, as a field of `NSOperatingSystemVersion`**, not as a property. So
+"the token is in the header" is a question about TEXT, and three of the twelve are answered by a struct.
+
+**AND TWO MORE PARSER CASES ARE CONFIRMED RATHER THAN SUSPECTED, both by calling the function:**
+ * **A FUNCTION-POINTER PROPERTY.** `@property (nullable) void *(*acquireFunction)(const void *src, …)` — the
+   declarator ends in the function's own parameter list, and `property_name` returns **None** (measured). That
+   is 7 of the 12 and 6 of the 24 (the setters of the same properties); the corpus's whole `NSPointerFunctions`
+   block parses to **4 selectors**.
+ * **A BLOCK PROPERTY WHOSE CARET IS PRECEDED BY A MACRO.** The `(^name)` rule requires `^` right after the
+   `(`, and the real declaration is
+   `@property (nullable, copy) void (NS_SWIFT_SENDABLE ^terminationHandler)(NSTask *) API_AVAILABLE(macos(10.7)) …`
+   — so `NSTask -setTerminationHandler:` is reported even though the property IS parsed as
+   `terminationHandler`, because the *source* spelling hides the caret.
+
+**⚠⚠ AND THE FIRST ROW THIS WHOLE CHAIN HAS PRODUCED THAT IS ABOUT THE TREE RATHER THAN THE TOOL:
+`NSCalendar -identifier`.** Its owner's parsed pool carries `calendarIdentifier`, `+calendarWithIdentifier:`
+and `-initWithCalendarIdentifier:` — **and no `identifier`.** Apple's name for that property is
+`calendarIdentifier`; this tree declares `-identifier`. That is not a regex artefact and it is not an absence:
+it is a **naming difference of exactly the kind §63.50 exists for**, found the way §63.50 found `+nullDevice` —
+by asking a corpus a question no ledger could answer. **IT IS NOT SETTLED HERE** (the row may still be a
+superclass or category away from being right), but it is the first candidate after four units of instrument
+repair, and it is recorded so the settling starts from a name rather than from a list.
+
+**WHAT IS NOT DONE.** The 49 are still not settled and nothing is authorised by them. The next two parser cases
+are the function-pointer property and the macro-before-caret block; after those, the wrong-owner rows get
+settled ONE AT A TIME against the owner's own header — and the test for that must ask the owner's block, never
+the header's text, because this unit's own classifier has just shown what a struct field can do to a text
+question.
+
 ## §63.64 — THE PARSER READS THE DECLARATOR, THE YIELD FALLS 376 → 59, AND `-initWithDecimal:` IS AT LAST VISIBLE (2026-10-01)
 
 **WHAT LANDED (continuing `dec-733391f6e71e4415`): a declaration's name is now read from its DECLARATOR.**
