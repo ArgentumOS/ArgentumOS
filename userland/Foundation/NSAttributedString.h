@@ -103,9 +103,17 @@ typedef NSString *NSAttributedStringKey;
 typedef NSString *NSAttributedStringFormattingContextKey;
 extern NSAttributedStringFormattingContextKey const NSInflectionConceptsKey;
 
+/* ⚠⚠ THESE TWO VALUES WERE THE WRONG WAY ROUND UNTIL §63.82, AND THE CORPUS PUBLISHES THEM (§63.81's test
+ * applied first: all nine of the formatting family's rows ARE in Foundation's own headers, unlike the attachments).
+ * Apple's macOS 14.5 declaration reads InsertArgumentAttributesWithoutMerging = 1 << 0 and
+ * ApplyReplacementIndexAttribute = 1 << 1; this header had them SWAPPED. **THE BUG THAT MAKES IS AN ABI ONE AND
+ * NOT A COSMETIC ONE:** a caller compiled against Apple's header passes `1 << 0` meaning "insert the argument's
+ * attributes without merging" and this library would read it as "apply the replacement index" — the OPPOSITE
+ * request, silently. AND THE ORIGINAL ASSERTION OF THE VALUES HAD STOOD IN A PROBE, which is why it survived:
+ * **a check can preserve a defect exactly as faithfully as it can preserve a contract.** */
 typedef enum {
-	NSAttributedStringFormattingApplyReplacementIndexAttribute = 1 << 0,
-	NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging = 1 << 1,
+	NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging = 1 << 0,
+	NSAttributedStringFormattingApplyReplacementIndexAttribute = 1 << 1,
 } NSAttributedStringFormattingOptions;
 typedef enum {
 	NSInlinePresentationIntentBlockHTML = 1 << 0,

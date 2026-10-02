@@ -15982,6 +15982,48 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.82 — `NSAttributedStringFormattingOptions`'S TWO VALUES WERE SWAPPED, AND A PROBE HAD PINNED THEM (2026-10-01)
+
+**WHAT LANDED: the two values corrected to Apple's — `InsertArgumentAttributesWithoutMerging = 1 << 0`,
+`ApplyReplacementIndexAttribute = 1 << 1`.** This header had them **SWAPPED**. There was no row to close here: the
+ledger tracks SELECTORS, and these are VALUES.
+
+**MEASURED: `make host-foundation` EXIT 0** with exactly the six pre-existing warnings; **`make testimg` EXIT 0**;
+`make test TESTS='foundation_constants'` green, which is the case that owns the assertion below.
+
+**HOW IT WAS FOUND, AND IT WAS §63.81's TEST APPLIED FIRST RATHER THAN LAST:** the front chosen was
+`NSAttributedString` (the work list's top owner, 41 rows); the nine formatting-family rows were checked against
+**Foundation's own corpus BEFORE anything was planned — and they ARE there** (`/tmp/mac145/NSAttributedString.h`
+lines 232–311), unlike the attachments §63.81 stopped. So they are this library's rows, and reading Apple's
+declarations for them is what surfaced the enum: **the corpus PUBLISHES these two values.**
+
+**⚠⚠ AND THE ORIGINAL ASSERTION OF THE VALUES HAD STOOD IN A PROBE — `foundation_constants.m:243-244` asserted
+OUR swapped pair — WHICH IS WHY IT SURVIVED.** **A check can preserve a defect exactly as faithfully as it can
+preserve a contract**, and this one did. It is corrected with the header, and the probe's own comment now says
+what it used to be. **AND THE SWAP WAS INERT UNTIL NOW (measured: the two constants have NO other users in the
+tree), so this is a compatibility fix and not a behaviour change** — which is also why nothing else failed.
+
+**⚠⚠ AND TWO THINGS THE LEDGER STRUCTURALLY COULD NOT SHOW, BOTH FOUND BY READING APPLE'S DECLARATION RATHER THAN
+THE DERIVED SURFACE:**
+ 1. **the VALUES** — a value is invisible to a selector ledger;
+ 2. **THE SIGNATURE'S ARGUMENT KIND: `-initWithFormat:options:locale:arguments:` takes a `va_list`, NOT an
+    `NSDictionary`.** The ledger's row for it reads `-initWithFormat:options:locale:arguments:` — the selector is
+    IDENTICAL either way — **so the plan's own row NAME would have had me write a dictionary and a caller would
+    have had a memory error.** That is the second time in two units that the derived surface was silent about
+    something Apple's header states plainly.
+
+**⚠ AND THE STANDING CLAIM "enum values are published by NOBODY" IS FALSIFIED AGAIN, which is worth one line
+because it is a note this tree works under.** It was already falsified for `NSStringEncoding` (§63.70); this
+corpus publishes these two as well. **DO NOT RE-CHASE IS A NOTE ABOUT THE DEFAULT, NOT A LICENCE** — the check
+that costs nothing is to LOOK in the corpus for the enum in hand before writing a value down.
+
+**WHAT REMAINS ON THIS OWNER, NOW WITH AN ACCURATE PLAN: the nine formatting rows are ONE UNIT WITH ONE SUBSTRATE**
+— an attributed-format engine that walks the FORMAT's runs and substitutes into them (reusing
+`string_append_format`, the engine `+stringWithFormat:` already ships). **AND THE TWO OPTIONS' BEHAVIOUR NEEDS A
+CITATION**, so their readings will be OURS and written down under §11.6.1 D2 — naming §62.94's lesson, where a
+header refusal had been written **from an option's NAME rather than from its behaviour.** Implementing these two
+from their names alone would be that same mistake running forwards.
+
 ## §63.81 — RECONNAISSANCE: A LEDGER ROW'S OWNER IS NOT ITS DECLARER, AND THE ATTACHMENT ROWS ARE APPKIT'S (2026-10-01)
 
 **NO ROWS CLOSED. THIS UNIT IS A MEASUREMENT, AND ITS VALUE IS THE ONE IT PREVENTED — I WAS ONE COMMAND FROM

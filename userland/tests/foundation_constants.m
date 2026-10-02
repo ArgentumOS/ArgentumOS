@@ -240,8 +240,11 @@ int main(void)
 		check("formatting-context-key-and-the-inflection-key",
 		      [NSInflectionConceptsKey isEqualToString:@"NSInflectionConceptsKey"] &&
 		      [[context objectForKey:NSInflectionConceptsKey] count] == 1 &&
-		      NSAttributedStringFormattingApplyReplacementIndexAttribute == (1 << 0) &&
-		      NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging == (1 << 1),
+		      /* §63.82: THESE TWO ASSERTIONS HAD THE VALUES THE WRONG WAY ROUND, AND THE SWAP IS
+		 * CORRECTED HERE WITH THE HEADER. They were not "a probe catching nothing" — they were a
+		 * probe PINNING the defect, which is the more dangerous of the two. */
+		      NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging == (1 << 0) &&
+		      NSAttributedStringFormattingApplyReplacementIndexAttribute == (1 << 1),
 		      @"the context key type, the key itself as a dictionary key, and the two option bits beside them");
 	}
 
