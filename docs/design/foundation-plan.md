@@ -15982,6 +15982,50 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.87/§63.88 — THE MARKERS EXONERATED FOUR LAYERS AT ONCE, AND THE CAUSE WAS A MISSING `-description` (2026-10-01)
+
+**NO ROWS CLOSED. WHAT LANDED IS A ROOT CAUSE, MEASURED, PLUS THE REASON IT WAS INVISIBLE FOR A ROUND.**
+
+**THE SYMPTOM WAS REPRODUCIBLE AND PRECISE**, from two independent attempts with the identical signature: formatting
+`n=%@ m=%@` against two arguments answered **`(null)n(null)=NSAttributedString m=NSAttributedString`** — four
+substitutions where there are two conversions, the first two `(null)`, the rest **the class name**.
+
+**⚠⚠ AND THE FIRST ROUND WAS LOST TO A MEASUREMENT READ FROM THE WRONG PLACE, WHICH IS A GENERAL LESSON:
+`make test`'s transcript is a FILTERED VIEW. A library-side marker written with `write(2)` on fd 1 — this tree's
+own recorded recipe — lands in the RAW per-case artifact `.build/tests/<case>/guest.log`. Checked with one marker
+on a path the existing 158-check probe already walks: THE FILTERED TRANSCRIPT SHOWED ZERO, THE RAW LOG SHOWED IT.
+**AN INSTRUMENT READ FROM THE WRONG PLACE IS INDISTINGUISHABLE FROM AN INSTRUMENT THAT DID NOT FIRE** — and the
+§63.87 markers were emitting the whole time.
+
+**READ FROM THE RIGHT FILE, THE MARKERS EXONERATED FOUR LAYERS IN ONE RUN, WITH ARITHMETIC AND NOT ARGUMENT:**
+ * **THE `va_list` AND BOTH FORWARDING LAYERS.** The varargs door and the `arguments:` door printed THE SAME first
+   argument — `a=70368750295432`, which is **0x40000005D5988** — and the second door's other word was the format's
+   length, `9`. **Every theory about the two-layer forward and `va_copy` was wrong**, and that is the FOURTH time
+   this session that reasoning lost to a measurement.
+ * **§63.85'S SEAM.** The sink printed `pos` values **0, 1, 2, 4, 5, 6, 7** — which is EXACTLY right for
+   `n=%@ m=%@` (`n`(0) `=`(1) spec(2) ` `(4) `m`(5) `=`(6) spec(7)) — and its two `%@` emissions carried
+   **0x40000005D5988** and **0x40000005D5848**, the two argument objects. **THE SEAM WORKS.**
+
+**⚠⚠ AND THE CAUSE IS ONE MISSING METHOD: `NSAttributedString` HAD NO `-description`.** So `%@` rendered an
+attributed string through `NSObject`'s, **WHICH PRINTS THE CLASS NAME** — and four failing checks that looked like
+a corrupt `va_list` were a formatting fallback. **THE FIX IS OWED AND IT IS ONE METHOD: `-description` returns
+`[self string]`.** The choice is OURS under §11.6.1 D2 — Apple's NSAttributedString.h does not redeclare the
+override, so there is no published signature to match — and it is grounded in Apple's own contract for
+`-description`, "a string that describes the contents of the receiver": **AN ATTRIBUTED STRING'S CONTENTS ARE ITS
+CHARACTERS; THE ATTRIBUTES ARE HOW THEY ARE PRESENTED.** It is also what makes `%@` mean one thing for every
+string-like object, which is the property the attributed-format doors depend on.
+
+**⚠ AND THE APPLY WENT WRONG ONE MORE TIME, IN A CLASS THAT NOW HAS FOUR MEMBERS: the anchor `- (NSString
+*)string` matched a PRIVATE @interface DECLARATION in the .m and not the implementation, so the method body landed
+in an interface — `expected method body`. AN ANCHOR THAT MATCHES THE DECLARATION IS NOT AN ANCHOR THAT MATCHES THE
+DEFINITION**, which is the same shape as §63.76's "missing FILE is not missing NAME", §63.79's import check that
+matched a COMMENT, §63.82's ledger row that names a selector and not its arguments, and §63.84's ground whose
+names carried a sign the rows do not. **FIVE TIMES: THE THING SEARCHED FOR IS NOT THE THING THAT MATTERS.**
+
+**AND THE UNIT IS STILL UNLANDED, DELIBERATELY:** the doors compile and substitute garbage, so they do not ship,
+and the two rows are back to `open`. What is now known is exactly the one method that stands between them and
+green, plus four checks that already exist and already fail informatively.
+
 ## §63.85 — THE FORMAT ENGINE EMITS THROUGH A SINK, AND THE PROOF IS THE PROBE THAT ALREADY EXISTED (2026-10-01)
 
 **WHAT LANDED: `userland/Foundation/FNStringFormat.h` and the seam it names — the format walk in NSString.m now
