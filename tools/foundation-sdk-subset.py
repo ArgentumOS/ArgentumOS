@@ -101,6 +101,13 @@ classes that Apple does not declare (`NSOwnedString`, `NSTinyString`, the `FN*` 
 so a bucket would convert a fact about the two trees into a defect of this one. What it is FOR is the other
 reading — a name of ours that Apple declares on another class, which is §63.59's `-initWithDecimal:`.
 
+⚠ AND THE PARSER ITSELF WAS REPAIRED IN §63.64, BECAUSE §63.63 MEASURED THAT IT WAS THE LIMIT. A declaration's
+name is now read from its DECLARATOR: the balanced `IDENT ( … )` calls that follow it are stripped, and so are
+the bare names in `ANNOTATION_TAILS`. Before that, "the last identifier before the `;`" found **no** name at
+all for 348 of the corpus's 1,571 property declarations (they end in `API_AVAILABLE(…)`) and the **wrong** name
+for 12 more (they end in `NS_RETURNS_INNER_POINTER` or `NS_REFINED_FOR_SWIFT`). **The lesson is not the regex:
+it is that an instrument which cannot parse what it is looking at reports ABSENCE, and absence is read as proof.**
+
 USAGE
 
   tools/foundation-sdk-subset.py --headers DIR [--headers DIR …] [--strict]
@@ -264,20 +271,84 @@ def root_block_owners(corpus):
     return out
 
 
+# THE ANNOTATION TAILS THAT COME WITH NO PARENTHESES, NAMED FROM A MEASUREMENT RATHER THAN PATTERN-GUESSED
+# (§63.64): the corpus's Foundation headers put a bare annotation AFTER the declarator on 12 properties and on
+# 220 method declarations, and "the last identifier before the `;`" therefore reads the ANNOTATION as the name.
+# A pattern would be wrong here: `URL` and `UUID` are legitimate all-caps property NAMES, so "all caps means
+# macro" would rename real API.
+ANNOTATION_TAILS = ("NS_RETURNS_INNER_POINTER", "NS_REFINED_FOR_SWIFT", "NS_DESIGNATED_INITIALIZER",
+                    "NS_UNAVAILABLE", "NS_REQUIRES_NIL_TERMINATION", "NS_AUTOMATED_REFCOUNT_UNAVAILABLE",
+                    "NS_SWIFT_DISABLE_ASYNC", "NS_RETURNS_RETAINED", "NS_REPLACES_RECEIVER",
+                    "CF_RETURNS_NOT_RETAINED")
+
+
+def strip_trailing_annotations(decl):
+    """`decl` with the annotations that FOLLOW its declarator removed: the balanced `IDENT ( … )` calls first,
+    then any bare name in ANNOTATION_TAILS. What is left ends at the declaration's own last token."""
+    d = decl.rstrip()
+    while True:
+        s = d.rstrip()
+        if s.endswith(")"):
+            depth, i = 0, len(s) - 1
+            while i >= 0:
+                if s[i] == ")":
+                    depth += 1
+                elif s[i] == "(":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                i -= 1
+            j = i
+            while j > 0 and (s[j - 1].isalnum() or s[j - 1] == "_"):
+                j -= 1
+            # only when a NAME precedes the `(` — a bare `(type)` is a declarator, not a call
+            if i > 0 and j < i:
+                d = s[:j].rstrip()
+                continue
+        m = re.search(r"(?:\s+)([A-Za-z_]\w*)$", s)
+        if m and m.group(1) in ANNOTATION_TAILS:
+            d = s[:m.start()].rstrip()
+            continue
+        return s
+
+
+def property_name(decl):
+    """The NAME of a `@property` declaration, read from its DECLARATOR.
+
+    ⚠ WHY NOT "the last identifier before the `;`" (§63.64, measured): the modern SDK annotates availability with
+    a MACRO, so `@property (…) ObjectType firstObject API_AVAILABLE(macos(10.6), …);` ends in `)` and the old
+    rule found NO name at all — 348 of the corpus's 1,571 property declarations — while a BARE trailing
+    annotation made it find the WRONG one on 12 more (`NS_RETURNS_INNER_POINTER` and `NS_REFINED_FOR_SWIFT` as
+    property names). A BLOCK property is asked first, because its name lives inside `(^name)` and the rest of
+    the declarator is the block's own type."""
+    m = re.search(r"\(\s*\^\s*(\w+)\s*\)", decl)
+    if m:
+        return m.group(1)
+    m = re.search(r"([A-Za-z_]\w*)\s*$", strip_trailing_annotations(decl))
+    return m.group(1) if m else None
+
+
 def selectors(body):
-    """The selectors ONE block declares, sign included for methods and bare for properties."""
+    """The selectors ONE block declares, sign included for methods and bare for properties.
+
+    ⚠ BOTH LOOPS NOW READ THE DECLARATOR, NOT THE LINE'S LAST TOKEN (§63.64): a trailing annotation is stripped
+    before the keywords are taken and before the property's name is read. The method loop needed it least and
+    still needs it — four `NS_SWIFT_NAME(…)` calls in the corpus DO contain a colon, which would have added a
+    keyword that is not there."""
     out = set()
     for m in re.finditer(r"(?m)^[ \t]*([-+])\s*\([^)]*\)\s*([^;{@]+);", body):
         sign, rest = m.group(1), m.group(2)
-        kws = re.findall(r"([A-Za-z_]\w*)\s*:", rest)
+        kws = re.findall(r"([A-Za-z_]\w*)\s*:", strip_trailing_annotations(rest))
         if kws:
             out.add(sign + "".join(k + ":" for k in kws))
         else:
             nm = re.match(r"\s*([A-Za-z_]\w*)", rest)
             if nm:
                 out.add(sign + nm.group(1))
-    for m in re.finditer(r"@property\s*(?:\([^)]*\))?\s*[^;]*?([A-Za-z_]\w*)\s*;", body):
-        out.add(m.group(1))
+    for m in re.finditer(r"@property\s*([^;]*);", body):
+        nm = property_name(m.group(1))
+        if nm:
+            out.add(nm)
     return {x for x in out if x not in ("-", "+")}
 
 

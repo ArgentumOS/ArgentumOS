@@ -15982,6 +15982,64 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.64 — THE PARSER READS THE DECLARATOR, THE YIELD FALLS 376 → 59, AND `-initWithDecimal:` IS AT LAST VISIBLE (2026-10-01)
+
+**WHAT LANDED (continuing `dec-733391f6e71e4415`): a declaration's name is now read from its DECLARATOR.**
+`strip_trailing_annotations` removes the balanced `IDENT ( … )` calls that follow a declarator and then any
+bare name in **`ANNOTATION_TAILS`**, and `property_name` reads a property's name from what is left — or from
+`(^name)` when the property is a BLOCK, because there the name is inside the declaration's first parentheses.
+Both loops in `selectors()` use it. **`ANNOTATION_TAILS` IS A NAMED LIST BECAUSE A PATTERN WOULD BE WRONG:**
+measured over the corpus, a bare trailing annotation appears on 12 properties and 220 method declarations —
+`NS_RETURNS_INNER_POINTER` (8+5), `NS_REFINED_FOR_SWIFT` (4+12), `NS_DESIGNATED_INITIALIZER` (176),
+`NS_UNAVAILABLE` (9), `NS_REQUIRES_NIL_TERMINATION` (7), `NS_AUTOMATED_REFCOUNT_UNAVAILABLE` (5),
+`NS_SWIFT_DISABLE_ASYNC` (4), `NS_RETURNS_RETAINED`, `NS_REPLACES_RECEIVER`, `CF_RETURNS_NOT_RETAINED` — and
+"all caps means macro" would rename `URL` and `UUID`, which are legitimate all-caps property NAMES.
+
+**MEASURED. THE BUCKETS DID NOT MOVE — `documented 33`, `other-framework 8`, `ours 129`,
+`accepted-by-ground 4`, `NOT-IN-ANY-SDK 0`, `0 JUDGEABLE name(s)` — which is the acceptance this unit needed:
+the repair changed what the parser can SEE and moved no verdict.** The corpus parse grew **3,760 → 4,133
+selectors**, which corroborates §63.63's numbers from the other side (348 properties that had no name at all,
+12 that had the wrong one, plus the method tails). Twelve unit cases were written for the declarator read and
+**eleven pass; the twelfth is a NAMELESS block property** (`void (^)(id)`), where `None` is the honest answer
+and the old rule's `id` was the bug. One run is 119 seconds.
+
+**⚠⚠ AND THE UNIT'S PURPOSE IS ACHIEVED, ONE UNIT LATE: `-initWithDecimal:` IS NOW IN THE REPORT.** The row
+reads **`NSNumber -initWithDecimal: … text search answered from NSDecimalNumber.h`** — Apple declares it on
+`NSDecimalNumber`, this tree declares it on `NSNumber`, and until the parser could read `NSValue.h`'s
+`@interface NSNumber : NSValue` the row reached neither a bucket nor the pass. §63.59 recorded the defect,
+§63.63 was asked to surface it and could not, and this is what finally does.
+
+**⚠ AND THE YIELD FELL 376 → 59, WHICH IS THE MEASUREMENT §63.63 ASKED FOR: most of its "findings" were its own
+instrument.** But the 59 are NOT settled either, and the reason is a SECOND defect of the same family, now
+measured: **65 of the corpus's 452 `@interface` declarations carry GENERICS right after the name**, and the
+taxonomy parse reads `@interface NSArray<ObjectType> : NSObject <NSCopying, NSSecureCoding, …>` as a class with
+**no superclass at all** and with **the generic parameters as its adopted protocols** — measured:
+`NSArray super=None adopted=['__covariant ObjectType', 'ObjectType', …]`, `NSDictionary` likewise,
+`NSMutableSet`/`NSMutableArray`/`NSCountedSet` likewise. So for exactly those classes the walk cannot reach
+INHERITED API. **MEASURED: the corpus declares 18 classes that way, and 14 OF THE 59 ROWS SIT ON THOSE NAMED
+CLASSES** — `NSArray -encodeWithCoder:` (adopted `NSSecureCoding`), `NSCountedSet -removeAllObjects`
+(superclass `NSMutableSet`), `NSDictionary -initWithObject:forKey:`, `NSOrderedSet -encodeWithCoder:` among the
+visible ones. ⚠ AND THE COUNT IS STATED AS A LIST OF CLASSES RATHER THAN AS "owners with no recorded
+superclass", WHICH WOULD HAVE BEEN 21: **`NSObject` correctly has none (it is the root) and `NSOwnedString` and
+`NSLocalizedNumberFormatRule` correctly have none (both are OURS and absent from the corpus)** — so an absence
+count would have blamed this defect for three owners it has nothing to do with, which is the same
+absence-read-as-proof mistake this unit is about, one paragraph after naming it.
+
+**⚠⚠ AND THE LESSON IS NOW THREE UNITS OLD, WHICH IS WHY IT IS WRITTEN HERE RATHER THAN IN EITHER: §63.62,
+§63.63 AND §63.64 EACH TURNED OUT TO BE "THE INSTRUMENT CANNOT PARSE WHAT IT IS LOOKING AT, AND REPORTS
+ABSENCE".** A token search that passes an owner-less question to a text grep; a property rule that cannot see
+`API_AVAILABLE(…)` and calls the annotation a name; a taxonomy rule that reads generics as protocols. **Each
+one produced a confident statement about Apple's surface that was really a statement about this file's
+regexes** — which is §63.56's `\b` error and §63.59's file list for the third and fourth time. **The rule that
+actually catches it is the one this campaign keeps re-learning: ask the artefact for what it CANNOT see, and
+treat a "0" or an "absent" as a question before it is an answer.**
+
+**WHAT THE NEXT UNIT IS, precisely: fix the ATTRIBUTE/GENERICS PREFIX in the taxonomy parse** — a superclass is
+the first `\w+` after the FIRST colon that is outside `<…>`, and the adopted protocols are the `<…>` group that
+follows the SUPERCLASS rather than the one that follows the name — and then **re-measure the 59 before a single
+one of them is settled.** Nothing in this unit authorises a deletion, a rename or a naming: the report is still
+the only thing that is trustworthy, and it is not yet trustworthy.
+
 ## §63.63 — THE OWNER-AWARE PASS LANDED AND ITS YIELD IS AN ARTEFACT OF THE PARSER, MEASURED (2026-10-01)
 
 **WHAT LANDED (user decision `dec-733391f6e71e4415`, second of the three: "make the tool owner-aware and
