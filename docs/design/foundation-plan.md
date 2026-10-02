@@ -15982,6 +15982,51 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.69 — THE NSXMLNODE SIX: A RECORDED DEVIATION, FALSIFIED BY THE BUILD, AND THE REPORT LEARNS TO ACCEPT ONE (2026-10-01)
+
+**THE UNIT'S ANSWER IS THAT NO CODE MOVED, AND IT TOOK TWO MEASUREMENTS TO GET THERE.**
+
+**FIRST: THE FINDING IS ALREADY ON THE RECORD. `NSXMLNode.h:137-143` declares this tree's own PLACEMENT
+DEVIATION, under §11.6 — Apple declares the child-mutation doors on the three classes that MUTATE, this tree
+has ONE implementation on the node all three inherit from, and the reason is written down: the subclasses'
+declarations "did not resolve", which is the `-Wobjc-method-access` class that once hid a selector typo.
+(`NSXMLElement` exists too, `NSXMLNode.h:159`.) So §63.67's observation — "our superclass is wider than
+Apple's" — is TRUE and NOT NEWS: the tree knew, said so, and gave its reason.**
+
+**⚠⚠ SECOND, AND IT FALSIFIED MY OWN CHANGE: I DID THE NARROWING, AND THE BUILD THREW IT OUT.** The
+declarations moved to `NSXMLElement`/`NSXMLDocument`/`NSXMLDTD` with a class extension in `NSXMLNode.m` for its
+own internal calls — and the full rebuild measured **`method definition for 'addChild:' not found
+[-Wincomplete-implementation]`, six of them, plus five more for the other doors and
+`'NSXMLNode' may not respond to 'addChild:'`.** clang requires a DECLARATION ON A CLASS TO BE ANSWERED BY A
+DEFINITION OR A FORWARDER IN THAT CLASS, so **Apple's placement costs six forwarders in each of the three
+subclasses.** THE DEVIATION IS NECESSARY, NOT STALE, and the tree's trade — one implementation, one
+declaration, no boilerplate — is the better one. Reverted with `git checkout`; the rebuild is back to **exactly
+the six pre-existing warnings.** ⚠ **AND THE HEADER COMMENT I WROTE FOR THE CHANGE SAID "A deviation that is no
+longer NECESSARY is not a deviation worth keeping" — the build showed it IS necessary, and the comment went
+with the revert. That is what the acceptance gate is FOR.**
+
+**⚠ AND A SECOND MISTAKE OF MINE, RECORDED BECAUSE IT IS A TOOL-SHAPED LESSON.** My edit script wrote EACH
+replacement as it went instead of accumulating them — the earlier scripts in this thread accumulated and wrote
+once — so when one anchor turned out to be ambiguous (`publicID` is declared on both `NSXMLDTDNode` and
+`NSXMLDTD`) the other four had ALREADY landed; re-running then DUPLICATED two blocks, which is how the build
+came to report a doubled `@interface NSXMLNode ()`. **AN ALL-OR-NOTHING EDIT SCRIPT IS ONLY ALL-OR-NOTHING IF
+IT ACCUMULATES: "check each, write each" is neither atomic nor idempotent**, and the only reason this was
+cheap to undo is that the four files were touched and nothing else.
+
+**WHAT THE UNIT DID INSTEAD, WHICH IS THE GENERALISABLE PART: the six are NAMED IN `ACCEPTED_BY_GROUND` — not
+in `OURS_BY_NAME`, because they ARE Apple's — with the §11.6 ground and the §63.69 measurement, so the
+owner-aware pass stops reporting a decision this tree already recorded.** MEASURED: **`accepted-by-ground`
+4 → 11** (the six, plus `NSXMLDTDNode`'s `-initWithXMLString:`, which shares the key), **the owner-aware yield
+34 → 24**, the buckets otherwise unmoved, `0 JUDGEABLE name(s)`. The host build is exit 0 with the six known
+warnings and `py_compile` is clean.
+
+**AND THE LINE WORTH CARRYING OUT OF THIS UNIT: A CORPUS CAN SEE THAT A NAME IS ON A DIFFERENT CLASS; IT
+CANNOT SEE WHY.** §63.63's pass asks a question no ledger could ask and no test could notice — a surface that
+is too WIDE breaks nothing — and its answer is a FACT, not a verdict: sometimes the answer is "we put Apple's
+name on a class Apple does not", and sometimes it is "we put it there on purpose, for a reason §11.6 wrote
+down". **A report with room for only the first reading would have deleted a working tree's deliberate trade.**
+That room is `ACCEPTED_BY_GROUND`, built at §63.61 and first used for real here.
+
 ## §63.68 — THE FOUR SPELLINGS GO, AND THE CAMPAIGN'S FIRST CLOSED ROWS IN THIS THREAD (2026-10-01)
 
 **WHAT LANDED (user decision `dec-47e849d13091f009`, "apply the standing class-(2) policy to the four spellings;

@@ -218,6 +218,29 @@ ACCEPTED_BY_GROUND = {
         "when the runtime headers are supplied, and the answer must be the same when they are not. It occurs "
         "in BOTH mirrors precisely because it is genuinely Apple's, and NSNumber ANSWERING it is what the "
         "declared override is for",
+
+    # ⚠⚠ THE NSXMLNode CHILD-MUTATION FAMILY, WHICH IS A RECORDED DEVIATION AND NOT A MISSPELLING (§63.69). Apple
+    # declares these on the three classes that MUTATE; this tree declares them on the shared base because the
+    # IMPLEMENTATION is there, one copy. §11.6 recorded that as a placement deviation with its reason on the
+    # record, and §63.69 MEASURED THAT APPLE'S PLACEMENT IS NOT FREE: take the declarations off the base and each
+    # of the three classes reports `-Wincomplete-implementation` for all six (clang requires a definition or a
+    # forwarder per class), and one receiver in the tree stops resolving. So the deviation is NECESSARY, is
+    # documented in NSXMLNode.h, and is named here so that the owner-aware pass stops reporting a decision this
+    # tree already recorded. **A corpus can see that a name is on a different class; it cannot see WHY.**
+    "addChild:":
+        "Apple's, on the three classes that MUTATE (NSXMLElement, NSXMLDocument, NSXMLDTD); declared here on "
+        "the shared base because that is where the ONE implementation is — a PLACEMENT DEVIATION recorded at "
+        "§11.6 and measured as necessary in §63.69 (Apple's placement costs six -Wincomplete-implementation "
+        "warnings per class, or six forwarders)",
+    "insertChild:atIndex:": "the same recorded placement deviation (§11.6, measured §63.69) — ONE implementation, on the base",
+    "insertChildren:atIndex:": "the same recorded placement deviation (§11.6, measured §63.69)",
+    "removeChildAtIndex:": "the same recorded placement deviation (§11.6, measured §63.69)",
+    "replaceChildAtIndex:withNode:": "the same recorded placement deviation (§11.6, measured §63.69)",
+    "initWithXMLString:":
+        "the same kind of recorded deviation, stated at NSXMLNode.h:199: the designated initializer and the "
+        "XML-string door are declared on the base so the compiler can CHECK them, since NSXMLDocument and "
+        "NSXMLDTD reach them through `[super initWithKind:name:value:]` — calls that were unchecked when no "
+        "declaration existed",
 }
 
 OURS_PREFIXES = ("fn",)
