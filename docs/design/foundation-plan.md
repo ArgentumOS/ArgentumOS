@@ -15982,6 +15982,52 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.76 — `NSDictionary`'S METHODS ARE ALREADY PARAMETERIZED, VERIFIED THREE WAYS — AND BOTH INSTRUMENTS THAT SAID OTHERWISE WERE MINE (2026-10-01)
+
+**THE QUESTION WAS "make sure the methods are parameterized, matching Apple's declarations". THE ANSWER IS THAT
+THEY ALREADY ARE, MEASURED RATHER THAN ASSUMED — and the unit's only real content is that BOTH TIMES I MEASURED
+IT, THE INSTRUMENT WAS THE THING THAT WAS WRONG.**
+
+**1. THE LEDGER'S OWN CLAUSE, WHICH IS NOW FATAL.** `tools/foundation-sweep.py`'s `check_parameterized` compares
+every Apple-declared parameterized method against our declaration and reports **BOTH DIRECTIONS** — a method we
+ship without Apple's parameters, and a method we parameterize that Apple does not. It is called at
+`M10: FATAL, not report-only` (§11.0/M10), so **`make foundation-sweep` EXITING 0 IS THE PROOF: it does, with
+ZERO findings and 272 Apple methods in the derived list.** And the vacuity this had to rule out — "the clause
+reports zero on a tree with nothing parameterized" — is recorded in that function's OWN docstring as a bug that
+was found and fixed before this question was asked.
+
+**2. THE CLASS'S OWN FILE, spot-checked**: `- (nullable ObjectType)objectForKey:(KeyType)key;`,
+`- (NSArray<KeyType> *)allKeys;`, `- (NSArray<ObjectType> *)allValues;`, `- (NSEnumerator<KeyType> *)keyEnumerator;`,
+`- (NSEnumerator<ObjectType> *)objectEnumerator;`, `- (BOOL)isEqualToDictionary:(NSDictionary<KeyType, ObjectType> *)other;`
+— and the parameters reach INSIDE the block:
+`enumerateKeysAndObjectsUsingBlock:(void (^)(KeyType key, ObjectType obj, BOOL *stop))block`.
+
+**3. ⚠ AND THE CATEGORIES, WHICH IS WHERE THE ANSWER ACTUALLY LIVED.** `NSDictionary`'s file-based factories
+and initializers are declared in `NSPropertyListSerialization.h` AS A CATEGORY —
+`+ (nullable NSDictionary<KeyType, ObjectType> *)dictionaryWithContentsOfFile:` and
+`- (nullable NSDictionary<KeyType, ObjectType> *)initWithContentsOfFile:` — **and a CATEGORY'S MEMBERS BELONG TO
+THE CLASS IT EXTENDS, which is why the ledger's owner is `NSDictionary` and why the fatal clause is satisfied for
+them. A CLASS'S PARAMETERIZATION IS NOT IN ONE FILE, and a check that read one file would have reported three
+false gaps.**
+
+**⚠⚠ AND BOTH OF MY OWN INSTRUMENTS LIED, WHICH IS THE UNIT'S WHOLE CONTENT.**
+ * **FIRST: an ad-hoc comparator I wrote DISCARDED each declaration's RETURN TYPE**, so every method returning
+   `NSArray<KeyType>` reported "absent: KeyType" — **a table of seventeen confident findings about a header
+   that had displayed the parameter in front of me one command earlier.** The fix was one field. **A comparator
+   that AGREES with a suspicion is the LAST place to look and the FIRST place it should be**: this is §63.75's
+   lesson, one hour old, wearing the same clothes.
+ * **SECOND: I grepped `NSDictionary.h` for three names, found nothing, and started reasoning about a ledger
+   contradiction — because the methods live in a CATEGORY in ANOTHER HEADER. A SEARCH THAT ASSUMES A FILE IS
+   ASSERTING A LAYOUT.** §63.56 recorded exactly this for `NSPort.h`/`NSMachPort.h` ("a 'missing file' is a claim
+   about the LAYOUT"); this is its twin one level down — **a "missing method" is a claim about a FILE.**
+
+**AND THE ONE GENUINELY OWED ROW THIS TOUCHED IS NOT A PARAMETERIZATION GAP: `+sharedKeySetForKeys:` is OPEN in
+the ledger** — a method this tree does not declare AT ALL — and it answers Apple's `NSSharedKeySet`, a class this
+library does not have. **That is an ABSENT-SUBSTRATE row (a deferral candidate), not an unparameterized one**, and
+its Apple parameters are recorded in the derived list (`KeyType`) for whoever takes it. **THE LEDGER'S CLAUSE
+CHECKS METHODS WE DECLARE; A MISSING METHOD IS THE WORK-LIST'S BUSINESS AND IS NOT HIDDEN BY A GREEN CLAUSE —
+which is why both checks exist and why neither is enough alone.**
+
 ## §63.75 — THE DETECTION DOOR'S DICTIONARY IS PARAMETERIZED, AND THE REASON IT COULD NOT BE WAS NOT THE ONE RECORDED (2026-10-01)
 
 **WHAT LANDED: `encodingOptions:` is Apple's parameterized type —
