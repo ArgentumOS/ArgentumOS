@@ -15982,6 +15982,47 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.92 — THE PIECES ARE PERFECT AND THE STORE IS NOT: THE DEFECT IS IN THE MUTATION PATH, NAMED (2026-10-01)
+
+**NO ROWS CLOSED. THE DEFECT IS LOCALIZED TO ONE CALL AND THE INSTRUMENT THAT COULD NOT SEE IT NOW CARRIES THE TEXT.**
+
+**THE MARKERS, CARRYING THE TEXT ITSELF (§63.91's fix — a BOOLEAN COULD NOT TELL A LITERAL FROM A NIL `%@`), READ FROM
+`.build/tests/foundation_attributedstring/guest.log`:**
+```
+FMT-EMIT [n] pos=0  -> PIECE [n]   len 1
+FMT-EMIT [=] pos=1  -> PIECE [=]   len 1
+FMT-EMIT [one] pos=2-> PIECE [one] len 3     <- the FIRST substitution, correct
+FMT-EMIT [ ] pos=4  -> PIECE [ ]   len 1
+FMT-EMIT [m] pos=5  -> PIECE [m]   len 1
+FMT-EMIT [=] pos=6  -> PIECE [=]   len 1
+FMT-EMIT [two] pos=7-> PIECE [two] len 3     <- the SECOND substitution, correct
+FMT-RESULT string [(null)n(null)=one m=two]  a=23  b=9
+```
+**SEVEN EMISSIONS, THE CORRECT TEXTS, AT THE CORRECT OFFSETS, AND THE PIECES TOTAL ELEVEN CHARACTERS — WHICH IS
+`n=one m=two` TO THE CHARACTER. AND THE RESULT'S OWN STRING IS TWENTY-THREE, WITH TWO `(null)` IN IT.**
+
+**⚠⚠ SO THE DEFECT IS NOW BOUNDED EXACTLY: IT IS BETWEEN "APPEND THESE SEVEN PIECES" AND "WHAT `-string` THEN
+REPORTS".** Nothing the formatter produced is wrong; the STORE is wrong. **AND `(null)` HAS EXACTLY ONE PRODUCER IN
+THIS LIBRARY — the format engine's nil-`%@` path (§63.91's grep) — SO SOMETHING RUNS A FORMAT OF ITS OWN DURING THE
+MUTATION**, twice, and the result reads as if `n` and `=` each came with a `(null)` in front of them.
+
+**⚠ AND THE ONE METHOD IN THAT PATH I HAVE NOT READ IS NAMED: `-replaceCharactersInRange:withString:` (line 1452),
+which the attributed splice calls FIRST** — `-replaceCharactersInRange:withAttributedString:` was read in full, head
+and tail, and contains no `%@` and no format call; its delegate is the next thing to read, and it is the only
+unread code between the pieces and the store.
+
+**AND THE FIVE ROUNDS THIS BUG HAS COST PRODUCED THIS, EACH BY MEASUREMENT AND NONE BY ARGUMENT:** the `va_list` and
+both forwarding layers are correct; the engine is correct; §63.85's seam is correct; the recorder's pieces are
+correct; the attributed splice (`withAttributedString:`) is correct; **and the defect is a STORE mutation that adds
+text nobody appended.** Four theories died along the way (the two-layer `va_copy`, a stale list, a double-emitting
+recorder, an engine walking the wrong format) **and three instrument defects were found** — markers read from the
+filtered transcript, a marker that counted emissions but not their kind, and a head/tail read that cut a method in
+half twice. **EVERY ONE OF THE SEVEN WAS FOUND BY OUTPUT CONTRADICTING A VERDICT, NEVER BY READING THE CODE AND
+REASONING.**
+
+**STILL UNLANDED, AND THE TREE IS GREEN.** `-description` (confirmed as the first cause, absent from the tree) and
+this mutation defect are what stand between the doors and green, and the second is now one read away.
+
 ## §63.91 — ONE GREP KILLED THE SPLICE THEORY, AND SHOWED THE MARKER COULD NOT TELL A LITERAL FROM A NIL `%@` (2026-10-01)
 
 **NO ROWS CLOSED. §63.90'S CONCLUSION IS RETRACTED IN PART, AND THE REASON IS A PROPERTY OF THE INSTRUMENT.**
