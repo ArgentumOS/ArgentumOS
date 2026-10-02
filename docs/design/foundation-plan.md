@@ -15982,6 +15982,65 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.63 — THE OWNER-AWARE PASS LANDED AND ITS YIELD IS AN ARTEFACT OF THE PARSER, MEASURED (2026-10-01)
+
+**WHAT LANDED (user decision `dec-733391f6e71e4415`, second of the three: "make the tool owner-aware and
+re-derive — the real fix, unknown yield"): the instrument can now ask the narrow question.** Three functions —
+`parse_corpus` (the corpus parsed into its OWN structure: blocks, superclasses, adopted protocols, protocol
+parents, and the header each block came from), `spelling_candidates` (kept IDENTICAL to `declared_where`'s
+allowance, so the delta is owner and sign and nothing else) and `owner_declares` (does the corpus declare
+`sel` FOR this owner, on it, on a superclass, or in an adopted protocol — **sign-aware**, with
+`NSObject`/`NSProxy` as universal roots). It feeds a **REPORT, not a bucket**, and the reason is in the third
+finding below.
+
+**MEASURED: the pass reports 376 names, and the run costs 116 SECONDS (was 65).** The buckets are unmoved
+(`documented 33`, `other-framework 8`, `ours 129`, `accepted-by-ground 4`, `NOT-IN-ANY-SDK 0`,
+`0 JUDGEABLE`), which is the point: the pass ADDS a reading without changing a verdict.
+
+**⚠⚠ AND THE YIELD IS AN ARTEFACT OF THIS TOOL'S OWN PARSER — MEASURED, NOT SUSPECTED.** The parser's property
+rule needs an identifier immediately before the `;`, and the modern SDK annotates availability with a MACRO, so
+the last token before the `;` is `)` and the declaration is **invisible**. `NSArray.h:43` is the proof line,
+and it is on the RIGHT owner with the RIGHT spelling:
+
+    @property (nullable, nonatomic, readonly) ObjectType firstObject API_AVAILABLE(macos(10.6), ios(4.0), watchos(2.0), tvos(9.0));
+
+`NSArray -firstObject` is reported as "no block for its own owner declares it". It is declared there. **And the
+quantities agree: the corpus's Foundation headers carry 1,571 `@property` declarations and 348 of them end in a
+macro call — against a yield of 376.** A sample checked by hand (`-firstObject`, `-bundleURL`,
+`-formattingContext`, `+newlineCharacterSet`) is EXPLAINED BY THIS ALONE, and every one is a property with
+`API_AVAILABLE`.
+
+**⚠ WHICH IS EXACTLY WHY IT REPORTS RATHER THAN BUCKETS, AND THAT CHOICE IS NOW VINDICATED BY MEASUREMENT
+RATHER THAN BY TASTE.** The error's SIGN is known: the pass is STRICTER than the truth, so a bucket built on it
+would have called real Apple API foreign — the same class of mistake as §63.56's `` regex and §63.59's file
+list, which both produced confident wrong statements about the corpus. **A pass that is known to be wrong in
+one direction must not be the thing that fails a build**; §11.0/M10's "a new instrument should not turn a build
+red on its first run" was written for a new instrument, and this is the same rule one step further: not even
+when the instrument has RUN.
+
+**AND ONE ASYMMETRY THAT EXPLAINS WHY THE BUCKETS ARE UNAFFECTED, MEASURED: the blind spot is CORPUS-SIDE
+ONLY.** Our own headers carry **zero** declarations of that shape (the line count for `^[+-] (…)[^;]*);` over
+`userland/Foundation/*.h` is 0), so `our_surface()` sees our whole surface; and the buckets are computed by the
+TEXT search, which finds the token whether or not the parser can parse its declaration. **So the damage is
+confined to the new pass — and it is confined precisely because the older mechanism was left in place rather
+than replaced.**
+
+**WHAT IS THEREFORE NOT DONE, AND WHAT THE NEXT UNIT IS.** The 376 are NOT settled, and not one of them should
+be deleted, renamed or named on today's evidence: they must be RE-MEASURED after the parser is repaired. The
+repair is the next unit's first step — a declaration's name must be read from its DECLARATOR rather than by
+"the last identifier before the `;`", so that `API_AVAILABLE(...)`, `NS_SWIFT_NAME(...)` and every other
+trailing annotation stop hiding a name. **AND THE REPAIR IS WORTH DOING FOR ITS OWN SAKE, NOT ONLY FOR THIS
+PASS: a parser that under-sees Apple's surface is an instrument that reports PRESENT when it cannot tell** —
+the same overstatement the tool's docstring already warns about for a trimmed file, one layer down.
+
+**AND §63.59's `-initWithDecimal:` WAS NOT OBSERVED IN THE YIELD, WHICH IS ITSELF A MEASUREMENT.** It should
+have appeared — Apple declares it on NSDecimalNumber and this tree on NSNumber — but it reaches neither the
+report nor a bucket, because `declared_where` finds the token in the class framework FIRST and the row is
+skipped before any owner is asked. **So the report cannot see it either, and the wrong-owner case that NAMED
+this unit is still invisible until the parser is repaired and the pass can be trusted on rows the text search
+also rejects.** That is recorded as the honest state of the question: the unit was asked for, it was built, its
+premise held (the tool WAS owner-blind) and its instrument does not yet work.
+
 ## §63.62 — THE RUNTIME'S OWN HEADERS ENTER THE CORPUS, AND THE TOOL LEARNS TO SAY WHERE IT FOUND A NAME (2026-10-01)
 
 **WHAT LANDED (user decision `dec-733391f6e71e4415`, first of the three: "fetch the SDK's `usr/include/objc`

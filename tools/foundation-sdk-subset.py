@@ -93,6 +93,14 @@ THE FIVE BUCKETS, and only the last one is a defect:
    `ACCEPTED_BY_GROUND`, not by walking the superclass chain**: a wrong chain INVENTS findings, which is worse
    than a named one.
 
+⚠ AND A FIFTH, REPORTED RATHER THAN BUCKETED: THE OWNER-AWARE PASS (§63.63). The buckets above are computed by
+`declared_where`, which asks whether a token occurs ANYWHERE in the class framework — with no sign and no owner.
+So a name this tree declares on class A and Apple declares on class B reads as present, and no bucket sees it.
+The pass asks the narrower question and prints the difference. **IT IS A REPORT AND NOT A FAILURE:** our own
+classes that Apple does not declare (`NSOwnedString`, `NSTinyString`, the `FN*` family) have no corpus ancestry,
+so a bucket would convert a fact about the two trees into a defect of this one. What it is FOR is the other
+reading — a name of ours that Apple declares on another class, which is §63.59's `-initWithDecimal:`.
+
 USAGE
 
   tools/foundation-sdk-subset.py --headers DIR [--headers DIR …] [--strict]
@@ -331,6 +339,109 @@ def declared_where(sel, corpus):
     return None
 
 
+def parse_corpus(files):
+    """The corpus's OWN structure — (blocks, file_of, supers, adopted, pblocks, psupers) — so that a question
+    about a name can be asked OF A CLASS rather than of all the text.
+
+    ⚠ WHY THIS EXISTS (§63.63): `declared_where` answers "does this token occur anywhere?" — with no sign and
+    no owner. That is exactly what keeps `-initWithDecimal:` invisible: Apple declares `initWithDecimal` on
+    NSDecimalNumber and this tree declares it on NSNumber, so the token search says PRESENT and no bucket ever
+    sees the row. This is the same parse `our_surface()` does for our side, applied to the corpus."""
+    blocks_, file_of, supers, adopted = {}, {}, {}, {}
+    pblocks, psupers = {}, {}
+    for path, text in files:
+        text = strip_comments(text)
+        for m in re.finditer(r"(?m)^[ \t]*@interface\s+(\w+)([^\n]*)", text):
+            owner, rest = m.group(1), m.group(2)
+            end = text.find("@end", m.end())
+            body = text[m.end():end] if end >= 0 else ""
+            blocks_.setdefault(owner, set()).update(selectors(body))
+            file_of.setdefault(owner, path)
+            if not rest.lstrip().startswith("("):
+                sc = re.match(r"\s*:\s*(\w+)", rest)
+                if sc:
+                    supers.setdefault(owner, sc.group(1))
+                pr = re.search(r"<\s*([^>]*)>", rest)
+                if pr:
+                    for p in pr.group(1).split(","):
+                        p = p.strip()
+                        if p:
+                            adopted.setdefault(owner, []).append(p)
+        for m in re.finditer(r"(?m)^[ \t]*@protocol\s+(\w+)([^\n]*)", text):
+            name, rest = m.group(1), m.group(2)
+            if rest.strip().endswith(";"):
+                continue
+            end = text.find("@end", m.end())
+            body = text[m.end():end] if end >= 0 else ""
+            pblocks.setdefault(name, set()).update(selectors(body))
+            file_of.setdefault(name, path)
+            pr = re.search(r"<\s*([^>]*)>", rest)
+            if pr:
+                for p in pr.group(1).split(","):
+                    p = p.strip()
+                    if p:
+                        psupers.setdefault(name, []).append(p)
+    return blocks_, file_of, supers, adopted, pblocks, psupers
+
+
+def spelling_candidates(sel):
+    """The bare names the corpus may use for OUR `sel`: its first keyword, plus the accessor spelling when ours
+    is an `is`/`set` pair. KEPT IDENTICAL to the allowance `declared_where` makes, so that this unit's delta is
+    the OWNER and the SIGN and nothing else — a looser or tighter spelling rule here would mix two changes into
+    one yield and make neither attributable."""
+    core = sel.lstrip("+-")
+    first = core.split(":")[0]
+    cands = {first}
+    if first.startswith("set") and len(first) > 3:
+        st = first[3:]
+        cands |= {st, st[0].lower() + st[1:]}
+    if first.startswith("is") and len(first) > 2:
+        st = first[2:]
+        cands |= {st, st[0].lower() + st[1:]}
+    return {c for c in cands if len(c) >= 3}
+
+
+def owner_declares(sel, owner, idx):
+    """THE OWNER-AWARE QUESTION: does the corpus declare `sel` FOR `owner` — on the class itself, on a
+    superclass of it, or in a protocol it adopts? Returns the header that answered, or None.
+
+    TWO RULES, both measured rather than chosen:
+      * **SIGN.** Our `+foo` does not match Apple's `-foo`. A BARE name on either side (an `@property`) matches
+        either sign, because Apple declares an accessor as a property — that is the allowance `declared_where`
+        has always made and it is kept.
+      * **`NSObject` AND `NSProxy` ARE UNIVERSAL ROOTS.** Every ObjC class inherits them, so their corpus blocks
+        join every owner's chain. Without that, `-copy`, `-hash` and `-class` would look foreign on every class
+        in the tree, which is a statement about the walk and not about the library.
+    ⚠ AND WHAT IT CANNOT DO, which is why it feeds a REPORT and not a bucket: OUR classes that Apple does not
+    declare — `NSOwnedString`, `NSTinyString`, the whole `FN*` family — have no corpus ancestry AT ALL, so every
+    inherited name of theirs looks foreign. That is a fact about the two trees, not a defect of this one."""
+    blocks_, file_of, supers, adopted, pblocks, psupers = idx
+    cands = spelling_candidates(sel)
+    our_sign = sel[0] if sel[0] in "+-" else ""
+    seen, stack = set(), [owner, "NSObject", "NSProxy"]
+    while stack:
+        name = stack.pop()
+        if name in seen:
+            continue
+        seen.add(name)
+        for pool in (blocks_.get(name), pblocks.get(name)):
+            if not pool:
+                continue
+            for cs in pool:
+                sign, core = (cs[0], cs[1:]) if cs[0] in "+-" else ("", cs)
+                if core.split(":")[0] not in cands:
+                    continue
+                if our_sign == "" or sign == "" or our_sign == sign:
+                    return file_of.get(name, "?")
+        if name in supers:
+            stack.append(supers[name])
+        for p in adopted.get(name, ()):
+            stack.append(p)
+        for p in psupers.get(name, ()):
+            stack.append(p)
+    return None
+
+
 def main(argv):
     ap = argparse.ArgumentParser(add_help=True)
     ap.add_argument("--headers", action="append", default=[],
@@ -448,6 +559,44 @@ def main(argv):
         print("     carries no NSNumber.h, and NSNumber was judgeable anyway, because NSValue.h:42 declares")
         print("     `@interface NSNumber : NSValue` — so ask THIS CHECK, never the file list.")
         print("     THESE ROWS ARE NOT FINDINGS and --strict does not fail on them.")
+
+    # ⚠⚠ §63.63 — THE OWNER-AWARE RE-DERIVATION, AND IT REPORTS RATHER THAN BUCKETS. `declared_where` answers
+    # "does this token occur anywhere", with no sign and no owner, which is how a name of ours that Apple
+    # declares on ANOTHER CLASS stays invisible (-initWithDecimal: on NSNumber is Apple's on NSDecimalNumber).
+    # This pass asks the narrower question of every name the text search called PRESENT and lists the ones whose
+    # only answer comes from a DIFFERENT owner. It is deliberately NOT a bucket: our own classes that Apple does
+    # not declare (NSOwnedString, NSTinyString, FN*) have no corpus ancestry, so a bucket would call a FACT about
+    # the two trees a defect of this one — and §11.0/M10's precedent is that a new instrument reports before it
+    # turns anything red.
+    idx = parse_corpus(all_corpus)
+    foreign = []
+    for owner in sorted(ours):
+        for sel in sorted(ours[owner]):
+            bare = sel.lstrip("+-")
+            if (bare in OURS_BY_NAME or bare in ACCEPTED_BY_GROUND or bare.startswith(OURS_PREFIXES)
+                    or owner.startswith(OURS_CLASS_PREFIXES)):
+                continue
+            present_at = declared_where(sel, class_corpus)
+            if not present_at:
+                continue
+            if owner_declares(sel, owner, idx) is None:
+                foreign.append((owner, sel, present_at))
+
+    if foreign:
+        print("\n  ⚠⚠ §63.63 OWNER-AWARE PASS: %d name(s) the text search calls PRESENT but that NO BLOCK FOR "
+              "THEIR OWN OWNER DECLARES (nor a superclass's, nor an adopted protocol's):" % len(foreign))
+        for o, s, w in foreign:
+            print("       %-30s %-46s  text search answered from %s" % (o, s, os.path.basename(w)))
+        print("     THIS IS A REPORT, NOT A DEFECT LIST. Two readings, and the row itself does not say which:")
+        print("       * a name of OURS that Apple declares on ANOTHER CLASS — §63.59's -initWithDecimal: on")
+        print("         NSNumber, which Apple declares on NSDecimalNumber, is the case that named the question;")
+        print("       * a name of a class APPLE DOES NOT DECLARE (NSOwnedString, NSTinyString, FN*), whose")
+        print("         inherited names have no corpus ancestry to be found in.")
+        print("     An empty list is the interesting result, because it says the text search was not being")
+        print("     carried by a different owner's block for any name in the tree.")
+    else:
+        print("\n  ⚠ §63.63 OWNER-AWARE PASS: 0 name(s) — every name the text search calls PRESENT is declared "
+              "for its own owner, a superclass or an adopted protocol.")
 
     bad = judgeable
     print("\nfoundation-sdk-subset: %d name(s) in the NOT-IN-ANY-SDK bucket." % len(residue))
