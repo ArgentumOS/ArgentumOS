@@ -15982,6 +15982,64 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.73 — THE DETECTION DOOR: A ROW CLOSED, AND A FALLBACK THAT COULD NOT WORK (2026-10-01)
+
+**WHAT LANDED: `+stringEncodingForData:encodingOptions:convertedString:usedLossyConversion:` — Apple's detection
+door, backed by ICU's `ucsdet_*` detector and DECODED through the same converter table every other door uses.**
+**THE LEDGER MOVED: `method shipped 2162 → 2163`, `open 480 → 479`** — and the SWEEP is what demanded it:
+`make testimg` failed with *"PRESENT BUT LISTED OPEN method NSString
++stringEncodingForData:encodingOptions:convertedString:usedLossyConversion: — the owner's block declares it now;
+flip the row"*. **A gate that says exactly what to run is the shape to want**, and the refresh that follows is
+now the routine end of a row instead of a discovery.
+
+**AND THE HEADER'S OWN NOTE *WAS* THE ROW.** It said "the door that would use it is refused rather than
+silently ignored" about the detection keys — TRUE of the transform constants, which still have no implementation,
+and FALSE of these keys from the moment the door landed. **THE KEYS AND THEIR DOOR ARE ONE ROW, and a declared
+key with no door is a promise with nothing behind it.**
+
+**⚠⚠ AND THE GUEST FOUND A BUG WHOSE SYMPTOM READ AS A DETECTION FAILURE: THE FALLBACK COULD NOT WORK.** The
+candidate order is suggested → detected → **UTF-8**, and the first version sent EVERY candidate through the
+engine — **but `fn_ucnv_for(NSUTF8StringEncoding)` answers NULL BY DESIGN**, because UTF-8 and ASCII are what this
+library STORES and are deliberately absent from the converter table. So the one candidate that should always
+succeed failed too, and the door answered 0 for data that is plainly UTF-8. **A FALLBACK THAT CANNOT WORK IS
+WORSE THAN NO FALLBACK, BECAUSE IT READS AS A DETECTION FAILURE** — and the measurement that separated the two
+(`latin1 chosen=5 back=café` beside `utf8 detected=0 back=(nil)`) is what identified it: **the SUGGESTED path
+worked, so the DOOR worked, and only the fallback was dead.**
+
+**AND THREE OF APPLE'S SEVEN KEYS HAVE NO API HERE, MEASURED RATHER THAN ASSUMED**: `LikelyLanguageKey` — **ICU 76
+HAS NO LANGUAGE SETTER AT ALL** (`ucsdet_setLanguage` is not in the installed header, removed rather than hidden);
+`FromWindowsKey` and `LossySubstitutionKey` are weighting and substitution hints the detector exposes no knob
+for. **They are OWED ROWS, not silent drops.** Honoured and asserted: `SuggestedEncodings`,
+`DisallowedEncodings`, `UseOnlySuggestedEncodings` and `AllowLossy` — with `AllowLossy`'s documented default of
+**YES** read by PRESENCE, since `[nil boolValue]` is NO and reading it unconditionally would invert the default.
+
+**⚠ AND A DECLARATION THAT CANNOT BE APPLE'S, MEASURED BY WRITING IT: APPLE PARAMETERIZES THAT DICTIONARY AND
+THIS LIBRARY'S `NSDictionary` IS NOT DECLARED WITH TYPE PARAMETERS**, so the generic form does not compile here.
+That is the PARAMETERIZATION LEDGER'S OWN OWED ROW, named at the declaration rather than worked around silently.
+
+**AND A NEW TRAP FOR THE LIST: A C HEX ESCAPE IS GREEDY.** `"fa\xC3\xA7ade"` parses `\xA7a` as ONE escape (0x7A7)
+and `"\xC3\x9Cber"` parses `\x9Cb` — both out of range for a `char`, which is how the probe's own test DATA
+failed to compile. Ending the literal at the escape is the fix. **THE COMPILER SAYS "out of range", NOT "your
+text says something else", so the message points at the escape and not at the string it was building.**
+
+**MEASURED, ACCEPTANCE ALL GREEN: `rm -rf .build/host/obj && make host-foundation` exit 0 with EXACTLY the six
+known warnings; `make foundation-sweep` consistent after `--refresh`; `make testimg` EXIT 0;
+`make test TESTS='foundation_string'` → `TESTS-OK 1/1 case(s), 6/6 check(s) in 13s`, the probe's tally
+`FOUNDATION-STRING 157/157`.**
+
+**⚠ AND FOUR MORE MISTAKES OF MINE IN ONE UNIT, NAMED BECAUSE EACH COST A CYCLE — AND THE FIRST ONE COST TWO.**
+(1) **The edit script wrote per replacement instead of accumulating, AGAIN** — twice in this unit, once leaving
+`fn_string_from_bytes` calling a function that did not exist yet. **THE HABIT IS THE DEFECT: a script that
+writes as it goes is neither atomic nor idempotent, and this thread has paid for it three times.** (2) A
+declaration anchored in the file-scope `extern` region landed **outside every `@interface`**. (3) The generic
+dictionary type. (4) The greedy hex escape. **FIVE OF THE SIX WERE CAUGHT BY A COMPILER OR A RUN AND NONE BY
+RE-READING**, which is the argument for the gate rather than for more care.
+
+**AND WHAT IS STILL OPEN IN THE CLUSTER, DELIBERATELY:** the deprecated percent pair, whose absence is a RECORDED
+decision this unit did not overturn — Apple does not publish which characters the legacy call considers legal,
+and the header says they stay open "until that set can be cited". **A recorded decision with a stated condition
+for reversal is not a gap to close; it is a CITATION TO FIND.**
+
 ## §63.72 — THE C-STRING FAMILY: THE LIFETIME ANSWER, AND A SILENT CORRUPTION THE ENGINE UNCOVERED (2026-10-01)
 
 **WHAT LANDED (the slice §63.71 named as its successor): the three C-string doors convert** —

@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2162   open  480   struck  286
+#   method     shipped 2163   open  479   struck  286
 #   property   shipped 1261   open  218   struck  157
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3157,7 +3157,7 @@ method	shipped	-stringByReplacingOccurrencesOfString:withString:	NSString	Fundam
 method	shipped	-stringByReplacingOccurrencesOfString:withString:options:range:	NSString	Fundamentals / Strings / Replacing Substrings	-	objc
 method	open	-stringByReplacingPercentEscapesUsingEncoding:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-stringByTrimmingCharactersInSet:	NSString	Fundamentals / Strings / Dividing Strings	-	objc
-method	open	+stringEncodingForData:encodingOptions:convertedString:usedLossyConversion:	NSString	Fundamentals / Strings / Working with Encodings	-	objc
+method	shipped	+stringEncodingForData:encodingOptions:convertedString:usedLossyConversion:	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 method	shipped	+stringWithCString:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	+stringWithCString:encoding:	NSString	Fundamentals / Strings / Type Methods	-	objc
 method	shipped	+stringWithCString:length:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc

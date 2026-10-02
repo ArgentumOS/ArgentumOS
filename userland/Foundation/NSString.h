@@ -419,6 +419,20 @@ typedef enum {
  * encoding this library would refuse to convert. -dataUsingEncoding:allowLossyConversion: ACCEPTS the lossy flag
  * and, because this library stores exactly the encodings it can represent losslessly, never invokes a lossy
  * conversion: the door answers what -dataUsingEncoding: answers for the same encoding. */
+/* APPLE'S DETECTION DOOR (§63.73), declared from the SDK's own signature. It answers the encoding it DECODED
+ * with — 0 when none of our converters fits — and hands the string back through `convertedString`, so a
+ * caller who only wants to know passes NULL for both out-parameters. THE DETECTION IS ICU'S `ucsdet_*`; the
+ * DECODING is the same converter table every other door uses, which is why the answer can only ever be an
+ * encoding this library can actually decode. */
+/* ⚠ APPLE'S SIGNATURE PARAMETERIZES THIS DICTIONARY — `NSDictionary<NSStringEncodingDetectionOptionsKey, id> *`
+ * — AND THIS LIBRARY'S `NSDictionary` IS NOT DECLARED WITH TYPE PARAMETERS, so the generic form does not
+ * compile here. Measured, by writing it and reading the compiler. **THAT IS THE PARAMETERIZATION LEDGER'S OWN
+ * OWED ROW, not a decision of this unit**: the door is declared with the plain type so that it can ship, and the
+ * generic is what a later pass over the parameterized surface adds. */
++ (NSStringEncoding)stringEncodingForData:(NSData *)data
+			  encodingOptions:(nullable NSDictionary *)opts
+			  convertedString:(NSString * _Nullable * _Nullable)string
+		      usedLossyConversion:(nullable BOOL *)usedLossyConversion;
 + (nullable NSString *)localizedNameOfStringEncoding:(NSStringEncoding)encoding;
 - (nullable NSData *)dataUsingEncoding:(NSStringEncoding)encoding allowLossyConversion:(BOOL)lossy;
 - (BOOL)writeToFile:(NSString *)path
@@ -884,7 +898,13 @@ typedef enum {
  * call takes, and this library implements NONE of them, so each constant is declared and the door that would use
  * it is refused rather than silently ignored; the detection keys are the option keys of a similar door. Names
  * Apple's, values ours (§11.6.1 D2), and the two types come with them because no caller can name a transform
- * without them. */
+ * without them.
+ *
+ * ⚠ §63.73 CLOSED THE OWED HALF OF THIS NOTE. It used to end "...and the door that would use it is refused
+ * rather than silently ignored" — TRUE of the TRANSFORM constants, which still have no implementation, and
+ * FALSE of the detection keys from the moment `+stringEncodingForData:encodingOptions:convertedString:
+ * usedLossyConversion:` landed below, which is the door they are the options OF. **THE KEYS AND THEIR DOOR ARE
+ * THE SAME ROW, and a declared key with no door is a promise with nothing behind it.** */
 typedef NSString *NSStringTransform;
 typedef NSString *NSStringEncodingDetectionOptionsKey;
 
@@ -912,6 +932,8 @@ extern NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionLikely
 extern NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionLossySubstitutionKey;
 extern NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionSuggestedEncodingsKey;
 extern NSStringEncodingDetectionOptionsKey const NSStringEncodingDetectionUseOnlySuggestedEncodingsKey;
+
+
 
 /* Apple declares these two in THIS header, which is why they are here rather than in NSException.h. */
 extern NSExceptionName const NSCharacterConversionException;

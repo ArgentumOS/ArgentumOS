@@ -790,6 +790,11 @@ static NSString *fn_normalized(NSString *source, FNNormalForm form)
 
 
 #include <unicode/ucnv.h>
+#include <unicode/ucsdet.h>
+/* ⚠ THE DETECTION DOOR READS `-unsignedLongLongValue` OUT OF THE OPTION ARRAYS, AND AN `id` CAST IS NOT ENOUGH
+ * FOR THE COMPILER TO FIND IT — measured: two `-Wobjc-method-access` warnings and two pointer-to-enum casts,
+ * all four from one missing import. The element is an NSNumber and is typed as one at the use site. */
+#import <Foundation/NSNumber.h>
 
 /* ============================ THE CONVERTER ENGINE (§63.71) ============================
  * WHY THIS EXISTS: `-dataUsingEncoding:` and its family knew exactly TWO encodings, because this library stored
@@ -980,8 +985,71 @@ static NSData *fn_data_in_encoding(NSString *s, NSStringEncoding encoding, BOOL 
 	return d;
 }
 
-/* THE MIRROR: bytes in some encoding become a string. The answer is OWNED, so every door releases it. */
-static NSString *fn_string_from_bytes(const void *bytes, size_t n, NSStringEncoding encoding)
+/* ---- THE DETECTION ENGINE (§63.73) ---------------------------------------------------------------
+ * APPLE'S DOOR IS `+stringEncodingForData:encodingOptions:convertedString:usedLossyConversion:`, and the
+ * comment this library wrote beside the option keys said "the door that would use it is refused rather than
+ * silently ignored". The keys were declared and the door was not, which is the shape of an owed row — and the
+ * ICU piece that closes it is the DETECTOR (`ucsdet_*`), measured present with its models. */
+
+/* ⚠ AND THREE OF APPLE'S SEVEN KEYS HAVE NO API TO HONOUR THEM HERE, MEASURED RATHER THAN ASSUMED:
+ * `LikelyLanguageKey` — **ICU 76 HAS NO LANGUAGE SETTER AT ALL** (`ucsdet_setLanguage` is not in the installed
+ * header, removed rather than hidden), so the hint is accepted and NOT used; `FromWindowsKey` and
+ * `LossySubstitutionKey` are weighting and substitution hints the detector exposes no knob for. THEY ARE OWED
+ * ROWS, not silent drops, and the probe asserts only what IS honoured: SuggestedEncodings, DisallowedEncodings,
+ * UseOnlySuggestedEncodings and AllowLossy. `DisallowedEncodings` is honoured in the DOOR's own candidate loop
+ * rather than through `ucsdet_setDetectableCharset`, because the loop is the one place every candidate passes
+ * whatever its source — suggested or detected — and a filter that missed one of the two would be a hole. */
+
+/* THE REVERSE OF THE TABLE: an ICU converter name back to an NSStringEncoding, so what the DETECTOR answers is
+ * decoded through the same engine every other door uses. 0 means "no encoding of ours has that name" — the
+ * detector knows 118 charsets and this library declares 24, and a name in between is answered by REFUSING
+ * rather than by inventing a constant. */
+static NSStringEncoding fn_encoding_for_icu_name(const char *name)
+{
+	size_t i;
+
+	if (name == NULL) {
+		return 0;
+	}
+	for (i = 0; i < fn_encoding_count(); i++) {
+		if (strcmp(fn_encoding_table[i].icu, name) == 0) {
+			return fn_encoding_table[i].encoding;
+		}
+	}
+	return 0;
+}
+
+static NSStringEncoding fn_detect_encoding(const void *bytes, size_t length)
+{
+	UErrorCode st = U_ZERO_ERROR;
+	UCharsetDetector *det;
+	const UCharsetMatch *match;
+	NSStringEncoding answer = 0;
+
+	if (bytes == NULL || length == 0) {
+		return 0;
+	}
+	det = ucsdet_open(&st);
+	if (det == NULL || U_FAILURE(st)) {
+		return 0;
+	}
+	st = U_ZERO_ERROR;
+	ucsdet_setText(det, (const char *)bytes, (int32_t)length, &st);
+	if (U_SUCCESS(st)) {
+		match = ucsdet_detect(det, &st);
+		if (match != NULL && U_SUCCESS(st)) {
+			answer = fn_encoding_for_icu_name(ucsdet_getName(match, &st));
+		}
+	}
+	ucsdet_close(det);
+	return answer;
+}
+
+/* A CONVERSION THAT REPLACES CHARACTERS IS A DIFFERENT ANSWER FROM ONE THAT DOES NOT, so the reader says which
+ * it wants: STOP is the lossless decode, SUBSTITUTE the lossy one. EVERY DOOR THAT DECODES NOW SAYS STOP —
+ * which is what `-initWithData:encoding:`'s own documentation already promised ("data that is not valid in that
+ * encoding" answers nil) and what the substitute-by-default callback quietly did not do. */
+static NSString *fn_string_from_bytes_lossy(const void *bytes, size_t n, NSStringEncoding encoding, BOOL lossy)
 {
 	UConverter *cnv = fn_ucnv_for(encoding);
 	UErrorCode st = U_ZERO_ERROR;
@@ -992,6 +1060,9 @@ static NSString *fn_string_from_bytes(const void *bytes, size_t n, NSStringEncod
 	if (cnv == NULL || (bytes == NULL && n > 0)) {
 		return nil;
 	}
+	ucnv_setToUCallBack(cnv, lossy ? UCNV_TO_U_CALLBACK_SUBSTITUTE : UCNV_TO_U_CALLBACK_STOP,
+			    NULL, NULL, NULL, &st);
+	st = U_ZERO_ERROR;
 	need = ucnv_toUChars(cnv, NULL, 0, (const char *)bytes, (int32_t)n, &st);
 	if (U_FAILURE(st) && st != U_BUFFER_OVERFLOW_ERROR) {
 		return nil;
@@ -1010,6 +1081,13 @@ static NSString *fn_string_from_bytes(const void *bytes, size_t n, NSStringEncod
 	result = [[NSString alloc] initWithCharacters:units length:(NSUInteger)got];
 	free(units);
 	return result;
+}
+
+/* THE MIRROR: bytes in some encoding become a string. The answer is OWNED, so every door releases it — and
+ * it is the LOSSLESS decode, because that is what every caller here means (§63.73). */
+static NSString *fn_string_from_bytes(const void *bytes, size_t n, NSStringEncoding encoding)
+{
+	return fn_string_from_bytes_lossy(bytes, n, encoding, NO);
 }
 
 @implementation NSString
@@ -3422,6 +3500,105 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 		built = 1;
 	}
 	return encodings;
+}
+
++ (NSStringEncoding)stringEncodingForData:(NSData *)data
+			  encodingOptions:(NSDictionary *)opts
+			  convertedString:(NSString **)converted
+		     usedLossyConversion:(BOOL *)usedLossy
+{
+	const void *bytes = (data != nil) ? [data bytes] : NULL;
+	size_t length = (data != nil) ? (size_t)[data length] : 0;
+	NSArray *suggested = [opts objectForKey:NSStringEncodingDetectionSuggestedEncodingsKey];
+	NSArray *disallowed = [opts objectForKey:NSStringEncodingDetectionDisallowedEncodingsKey];
+	BOOL onlySuggested = [[opts objectForKey:NSStringEncodingDetectionUseOnlySuggestedEncodingsKey] boolValue];
+	BOOL allowLossy = YES;
+	NSStringEncoding order[72];
+	size_t n = 0;
+	NSUInteger i;
+	int pass;
+
+	if (converted != NULL) {
+		*converted = nil;
+	}
+	if (usedLossy != NULL) {
+		*usedLossy = NO;
+	}
+	if (bytes == NULL) {
+		return 0;
+	}
+	/* APPLE'S OWN DEFAULT IS YES, which is why the key is tested for PRESENCE here: `[nil boolValue]` is NO, so
+	 * reading it unconditionally would invert the documented default. */
+	if (opts != nil && [opts objectForKey:NSStringEncodingDetectionAllowLossyKey] != nil) {
+		allowLossy = [[opts objectForKey:NSStringEncodingDetectionAllowLossyKey] boolValue];
+	}
+	/* THE ORDER: WHAT THE CALLER SUGGESTED FIRST — the whole point of that key — then what the DETECTOR
+	 * answers, then UTF-8, which is this library's own encoding and what an unlabelled modern file is. */
+	if (suggested != nil) {
+		for (i = 0; i < [suggested count] && n < 64; i++) {
+			order[n++] = (NSStringEncoding)[(NSNumber *)[suggested objectAtIndex:i] unsignedLongLongValue];
+		}
+	}
+	if (!onlySuggested) {
+		NSStringEncoding detected = fn_detect_encoding(bytes, length);
+
+		if (detected != 0) {
+			order[n++] = detected;
+		}
+		order[n++] = NSUTF8StringEncoding;
+	}
+
+	/* TWO PASSES, LOSSLESS THEN LOSSY, AND THE SECOND ONLY IF THE FLAG ALLOWS IT: a decode that replaces
+	 * characters is a different answer from one that does not, and `usedLossyConversion` is how the caller
+	 * learns which it got. */
+	for (pass = 0; pass < 2; pass++) {
+		BOOL lossy = (pass == 1);
+
+		if (lossy && !allowLossy) {
+			break;
+		}
+		for (i = 0; i < n; i++) {
+			NSStringEncoding e = order[i];
+			NSUInteger d;
+			BOOL skip = NO;
+			NSString *s;
+
+			for (d = 0; disallowed != nil && d < [disallowed count]; d++) {
+				if ((NSStringEncoding)[(NSNumber *)[disallowed objectAtIndex:d] unsignedLongLongValue] == e) {
+					skip = YES;
+					break;
+				}
+			}
+			if (skip) {
+				continue;
+			}
+			/* ⚠⚠ THE STORAGE ENCODINGS GO THROUGH THE INITIALIZER, NOT THE ENGINE, AND THIS IS THE BUG
+			 * THE GUEST FOUND: `fn_ucnv_for(NSUTF8StringEncoding)` ANSWERS NULL BY DESIGN — UTF-8 and ASCII
+			 * are what this library STORES, so they are deliberately absent from the converter table and are
+			 * handled by the string classes. The first version of this door asked the engine for every
+			 * candidate, so the UTF-8 FALLBACK — the one entry that should always be tried — failed too,
+			 * and the door answered 0 for data that is plainly UTF-8. **A fallback that cannot work is worse
+			 * than no fallback, because it reads as a detection failure.** */
+			if (fn_is_storage_encoding(e)) {
+				s = [[NSString alloc] initWithData:data encoding:e];
+			} else {
+				s = fn_string_from_bytes_lossy(bytes, length, e, lossy);
+			}
+			if (s != nil) {
+				if (converted != NULL) {
+					*converted = [s autorelease];
+				} else {
+					[s release];
+				}
+				if (usedLossy != NULL) {
+					*usedLossy = lossy;
+				}
+				return e;
+			}
+			[s release];
+		}
+	}
+	return 0;
 }
 
 + (NSString *)localizedNameOfStringEncoding:(NSStringEncoding)encoding

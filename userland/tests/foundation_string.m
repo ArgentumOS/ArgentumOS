@@ -53,6 +53,38 @@ static NSString *fn_render_locale_arguments(NSString *format, ...)
 int main(void)
 {
 	{
+		/* §63.73: APPLE'S DETECTION DOOR, ICU'S DETECTOR BEHIND IT. Two assertions, and the second is the
+		 * one that carries the option keys: the FIRST asks the DETECTOR (which is a guess, and a good one on a
+		 * long sample), and the SECOND asks for ONE SUGGESTED ENCODING ONLY, which is deterministic whatever
+		 * the detector would have said. */
+		/* ⚠ SPLIT LITERALS, AND NOT FOR STYLE: A C HEX ESCAPE IS GREEDY, so `"fa\xC3\xA7ade"` parses
+		 * `\xA7a` as ONE escape (0x7A7) and `"\xC3\x9Cber"` parses `\x9Cb` — both out of range for a
+		 * char, which is how this line failed to compile. Ending the literal at the escape is the fix. */
+		NSString *src = [NSString stringWithUTF8String:"caf\xC3\xA9 na\xC3\xAFve fa\xC3\xA7" "ade \xC3\x9C" "ber"];
+		NSData *data = [src dataUsingEncoding:NSUTF8StringEncoding];
+		NSString *back = nil;
+		BOOL lossy = YES;
+		NSStringEncoding detected = [NSString stringEncodingForData:data encodingOptions:nil
+							 convertedString:&back usedLossyConversion:&lossy];
+		NSData *latin = [[NSString stringWithUTF8String:"caf\xC3\xA9"] dataUsingEncoding:NSISOLatin1StringEncoding];
+		NSString *latinBack = nil;
+		NSDictionary *only = [NSDictionary dictionaryWithObjectsAndKeys:
+			[NSArray arrayWithObject:[NSNumber numberWithUnsignedLongLong:NSISOLatin1StringEncoding]],
+			NSStringEncodingDetectionSuggestedEncodingsKey,
+			[NSNumber numberWithBool:YES], NSStringEncodingDetectionUseOnlySuggestedEncodingsKey, nil];
+		NSStringEncoding chosen = [NSString stringEncodingForData:latin encodingOptions:only
+							    convertedString:&latinBack usedLossyConversion:NULL];
+
+		check("detect-encoding-for-data",
+		      detected == NSUTF8StringEncoding && back != nil && [back isEqualToString:src] && lossy == NO &&
+		      chosen == NSISOLatin1StringEncoding && latinBack != nil &&
+		      [latinBack isEqualToString:@"caf\xC3\xA9"],
+		      [[NSString stringWithFormat:@"utf8 detected=%lu back=%@ lossy=%d ; latin1 chosen=%lu back=%@",
+			(unsigned long)detected, (back != nil) ? back : @"(nil)", (int)lossy,
+			(unsigned long)chosen, (latinBack != nil) ? latinBack : @"(nil)"] UTF8String]);
+	}
+
+	{
 		/* §63.72: THE CONVERTED ENCODINGS THROUGH THE C-STRING DOORS. `-getCString:…` COPIES, so a converted
 		 * encoding is a plain conversion; `-cStringUsingEncoding:` BORROWS, and for a converted encoding the
 		 * buffer is the POOL's. ⚠ EVERY NUMBER IS ASSERTED AGAINST THE BYTE DOOR, so the two agree by
