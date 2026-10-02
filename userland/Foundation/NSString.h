@@ -75,6 +75,16 @@
  * nullability region is refused by the compiler, because the imported header's declarations would be dragged
  * into somebody else's region. */
 #import <Foundation/NSCoding.h>
+/* ⚠ THE CLASS IS IMPORTED, NOT FORWARD-DECLARED, BECAUSE THIS HEADER USES IT WITH TYPE ARGUMENTS (§63.75):
+ * a FORWARD-declared class cannot take them — the compiler says "type arguments cannot be applied to
+ * non-parameterized class", which is about VISIBILITY and not about whether the class is parameterized at all.
+ * NSDictionary.h does not import this header, so there is no cycle, and the house pattern is the one
+ * NSPropertyListSerialization.h already follows. */
+#import <Foundation/NSDictionary.h>
+
+/* DECLARED HERE BECAUSE A DECLARATION ABOVE ITS OLD HOME USES IT (§63.75): the detection door's options
+ * dictionary is typed with it, and the key constants that go with it keep their own section further down. */
+typedef NSString *NSStringEncodingDetectionOptionsKey;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -424,13 +434,18 @@ typedef enum {
  * caller who only wants to know passes NULL for both out-parameters. THE DETECTION IS ICU'S `ucsdet_*`; the
  * DECODING is the same converter table every other door uses, which is why the answer can only ever be an
  * encoding this library can actually decode. */
-/* ⚠ APPLE'S SIGNATURE PARAMETERIZES THIS DICTIONARY — `NSDictionary<NSStringEncodingDetectionOptionsKey, id> *`
- * — AND THIS LIBRARY'S `NSDictionary` IS NOT DECLARED WITH TYPE PARAMETERS, so the generic form does not
- * compile here. Measured, by writing it and reading the compiler. **THAT IS THE PARAMETERIZATION LEDGER'S OWN
- * OWED ROW, not a decision of this unit**: the door is declared with the plain type so that it can ship, and the
- * generic is what a later pass over the parameterized surface adds. */
+/* ⚠⚠ THE PLAIN TYPE STOOD HERE FOR ONE UNIT AND THE REASON RECORDED FOR IT WAS FALSE (§63.75). It said "this
+ * library's `NSDictionary` is not declared with type parameters". **IT IS, AND EXACTLY AS APPLE'S** —
+ * `@interface NSDictionary<__covariant KeyType, __covariant ObjectType>` in NSDictionary.h:73, covariant on both
+ * parameters, and `NSMutableDictionary<KeyType, ObjectType> : NSDictionary<KeyType, ObjectType>` below it.
+ * THE REAL CAUSE WAS **VISIBILITY**: this header forward-references its classes (`@class NSArray;` above), and
+ * **A FORWARD-DECLARED CLASS CANNOT TAKE TYPE ARGUMENTS**. `NSDictionary.h` DOES NOT IMPORT THIS HEADER, so
+ * there is no cycle, and the house pattern applies — the header that USES a parameterized class IMPORTS it,
+ * which NSPropertyListSerialization.h already does. **THE LESSON IS THE ONE THIS CAMPAIGN KEEPS PAYING FOR: a
+ * compiler message about a DECLARATION was read as a fact about the CLASS, and a claim was written down from
+ * it.** */
 + (NSStringEncoding)stringEncodingForData:(NSData *)data
-			  encodingOptions:(nullable NSDictionary *)opts
+			  encodingOptions:(nullable NSDictionary<NSStringEncodingDetectionOptionsKey, id> *)opts
 			  convertedString:(NSString * _Nullable * _Nullable)string
 		      usedLossyConversion:(nullable BOOL *)usedLossyConversion;
 + (nullable NSString *)localizedNameOfStringEncoding:(NSStringEncoding)encoding;
@@ -915,7 +930,9 @@ typedef enum {
  * usedLossyConversion:` landed below, which is the door they are the options OF. **THE KEYS AND THEIR DOOR ARE
  * THE SAME ROW, and a declared key with no door is a promise with nothing behind it.** */
 typedef NSString *NSStringTransform;
-typedef NSString *NSStringEncodingDetectionOptionsKey;
+/* ⚠ THE TYPEDEF MOVED ABOVE ITS FIRST USE (§63.75) — it stood here, three hundred lines BELOW the
+ * declaration that names it, and a typedef must be visible before the declaration that uses it. THE KEY
+ * CONSTANTS STAY HERE, with the section they belong to. */
 
 extern NSStringTransform const NSStringTransformFullwidthToHalfwidth;
 extern NSStringTransform const NSStringTransformHiraganaToKatakana;

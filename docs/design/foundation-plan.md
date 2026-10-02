@@ -15982,6 +15982,46 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.75 — THE DETECTION DOOR'S DICTIONARY IS PARAMETERIZED, AND THE REASON IT COULD NOT BE WAS NOT THE ONE RECORDED (2026-10-01)
+
+**WHAT LANDED: `encodingOptions:` is Apple's parameterized type —
+`NSDictionary<NSStringEncodingDetectionOptionsKey, id> *` — and the typedef it names was moved ABOVE its first
+use.** `NSString.h` now `#import`s `NSDictionary.h` rather than leaning on a forward reference, which is the
+house pattern `NSPropertyListSerialization.h` already follows.
+
+**⚠⚠ AND THE TASK'S PREMISE WAS FALSE, MEASURED BEFORE ANYTHING WAS CHANGED: THIS LIBRARY'S `NSDictionary` IS
+ALREADY PARAMETERIZED, AND EXACTLY AS APPLE'S.** `NSDictionary.h:73` declares
+`<__covariant KeyType, __covariant ObjectType>` — covariant on BOTH parameters, the same names in the same
+order — and `NSMutableDictionary<KeyType, ObjectType> : NSDictionary<KeyType, ObjectType>` below it. Both
+mirrors agree. So there was no parameterization to add, and §63.73's own sentence — *"this library's
+`NSDictionary` IS NOT DECLARED WITH TYPE PARAMETERS, so the generic form does not compile here"* — **WAS WRONG,
+AND IT IS CORRECTED IN PLACE.**
+
+**⚠⚠ THE REAL CAUSE WAS VISIBILITY, AND THE WAY THE WRONG CAUSE WAS REACHED IS THE LESSON.** The compiler said
+`type arguments cannot be applied to non-parameterized class 'NSDictionary'`. **THAT IS A STATEMENT ABOUT A
+DECLARATION IN SCOPE, AND IT WAS READ AS A STATEMENT ABOUT THE CLASS.** This header forward-references its
+classes (`@class NSArray;` at line 54), and **A FORWARD-DECLARED CLASS CANNOT TAKE TYPE ARGUMENTS** — so the
+message was true, precise, and about the wrong thing. **A NAMING DIFFERENCE NEEDS TWO SOURCES (§63.67) AND SO
+DOES A COMPILER MESSAGE: the claim wanted the header read, not the error** — which is the same
+absence-read-as-proof failure as §63.56's `\b` regex, §63.59's file list, §63.63's property rule and §63.64's
+taxonomy, **now in its fifth costume: an ERROR MESSAGE treated as a MEASUREMENT.**
+
+**AND THE FIX IS THE HOUSE PATTERN, CHECKED RATHER THAN ASSUMED: `NSDictionary.h` DOES NOT IMPORT `NSString.h`**
+(it imports NSObject, NSFastEnumeration, NSEnumerator, NSCoding and NSIndexSet), so there is no cycle — and the
+one other header that uses a parameterized `NSDictionary` already imports the header that declares it.
+
+**⚠ AND A SECOND, SMALLER FINDING THE COMPILER HANDED OVER AFTERWARDS: A TYPEDEF MUST BE VISIBLE BEFORE THE
+DECLARATION THAT NAMES IT.** `NSStringEncodingDetectionOptionsKey` stood THREE HUNDRED LINES BELOW the door that
+uses it, in the section its key constants belong to. **THE TYPEDEF MOVED AND THE CONSTANTS STAYED**, because a
+type and its constants are not the same kind of thing: one is needed by the declaration, the other by the
+reader.
+
+**MEASURED, ACCEPTANCE ALL GREEN: `rm -rf .build/host/obj && make host-foundation` exit 0 with EXACTLY the six
+known warnings; `make foundation-sweep` consistent with `--unimplemented` 0 NEW; `--parameterized --check`
+consistent; `make testimg` EXIT 0; `make test TESTS='foundation_string'` → `TESTS-OK 1/1 case(s), 6/6
+check(s) in 13s`, the probe's tally `FOUNDATION-STRING 158/158`.** And the tree's derived parameterization list
+is UNCHANGED, which is its own confirmation that the class was never the problem.
+
 ## §63.74 — THE LEGACY PERCENT PAIR SHIPS, BECAUSE THE CITATION EXISTS — AND THE ENGINE'S NULL MEANT TWO THINGS (2026-10-01)
 
 **WHAT LANDED: the deprecated percent pair, which the header had kept out with a CONDITION rather than a
@@ -16057,9 +16097,13 @@ for. **They are OWED ROWS, not silent drops.** Honoured and asserted: `Suggested
 `DisallowedEncodings`, `UseOnlySuggestedEncodings` and `AllowLossy` — with `AllowLossy`'s documented default of
 **YES** read by PRESENCE, since `[nil boolValue]` is NO and reading it unconditionally would invert the default.
 
-**⚠ AND A DECLARATION THAT CANNOT BE APPLE'S, MEASURED BY WRITING IT: APPLE PARAMETERIZES THAT DICTIONARY AND
-THIS LIBRARY'S `NSDictionary` IS NOT DECLARED WITH TYPE PARAMETERS**, so the generic form does not compile here.
-That is the PARAMETERIZATION LEDGER'S OWN OWED ROW, named at the declaration rather than worked around silently.
+**⚠ AND A DECLARATION THAT COULD NOT BE APPLE'S — WITH A REASON THAT WAS WRONG, CORRECTED IN §63.75.** This
+unit recorded that "Apple parameterizes that dictionary and THIS LIBRARY'S `NSDictionary` IS NOT DECLARED WITH
+TYPE PARAMETERS", inferred from `type arguments cannot be applied to non-parameterized class`. **MEASURED: the
+class IS parameterized, exactly as Apple's — `<__covariant KeyType, __covariant ObjectType>` — and the message
+was about a FORWARD-DECLARED class in this header's scope, which cannot take type arguments at all.** The
+declaration shipped plain for one unit and is Apple's generic form from §63.75, which also imports the header
+that owns the class.
 
 **AND A NEW TRAP FOR THE LIST: A C HEX ESCAPE IS GREEDY.** `"fa\xC3\xA7ade"` parses `\xA7a` as ONE escape (0x7A7)
 and `"\xC3\x9Cber"` parses `\x9Cb` — both out of range for a `char`, which is how the probe's own test DATA
