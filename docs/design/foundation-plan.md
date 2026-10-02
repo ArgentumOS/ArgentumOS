@@ -15982,6 +15982,40 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.91 — ONE GREP KILLED THE SPLICE THEORY, AND SHOWED THE MARKER COULD NOT TELL A LITERAL FROM A NIL `%@` (2026-10-01)
+
+**NO ROWS CLOSED. §63.90'S CONCLUSION IS RETRACTED IN PART, AND THE REASON IS A PROPERTY OF THE INSTRUMENT.**
+
+**THE MEASUREMENT: THE LITERAL `@"(null)"` HAS EXACTLY ONE PRODUCER IN FOUNDATION, AND IT IS THE FORMAT ENGINE'S
+`%@` PATH** (`NSString.m:214`, beside three unrelated uses — an `NSError` description, a `%s` fallback and a
+`NSFileManager` message). **AND THE SPLICE — `-replaceCharactersInRange:withAttributedString:` READ IN FULL, HEAD AND
+TAIL, AND ITS `-replaceCharactersInRange:withString:` DELEGATE — CONTAINS NO `%@`, NO FORMAT CALL AND NO `(null)`.**
+
+**⚠⚠ SO §63.90's "THE EXTRA CHARACTERS ARE INSERTED BY THE MUTATION PATH" IS NOT SUPPORTED, AND THE REASON IT
+LOOKED SUPPORTED IS THE REAL FINDING HERE: MY EMISSION MARKER PRINTED `(object != nil)` — AND A LITERAL AND A
+NIL-`%@` ARE INDISTINGUISHABLE UNDER IT.** The engine emits a literal through
+`-fnFormatEmittedUTF8String:at:` and a nil `%@` through `-fnFormatEmittedText:at:object:` with `object` nil, and the
+recorder funnels BOTH into the same method. **Six of the seven emissions printed `b=0` and I read them as "the five
+literals plus one more" when they could equally be "four literals and two nil-`%@`s".** The arithmetic — eleven
+characters of pieces against a twenty-three-character result — was sound; **THE ATTRIBUTION OF THE MISSING TWELVE
+WAS NOT, AND THE MARKER COULD NOT HAVE TOLD ME.**
+
+**⚠ AND THIS IS THE THIRD INSTRUMENT DEFECT IN THIS ONE BUG** (§63.87's markers were fine but read from the filtered
+transcript; §63.90's counted emissions correctly but not their KIND; and the head/tail read that cut a method in
+half twice). **EACH WAS FOUND BY THE INSTRUMENT'S OWN OUTPUT BEING INCONSISTENT WITH ITS VERDICT, NEVER BY REASONING
+ABOUT THE CODE.**
+
+**THE NEXT MEASUREMENT, AND IT DISCRIMINATES DIRECTLY: THE MARKER MUST PASS THE TEXT'S FIRST BYTE OR A QUOTED
+PREFIX, NOT A BOOLEAN.** `text=%@` on the emission — or simply printing the piece's FIRST CHARACTER — separates
+`n`/`=`/` ` from `(`, and THAT is the fact the last two rounds needed. And because the engine can emit `(null)`,
+**the count of `%@` in the FORMAT is the other half: the format is known to hold exactly two, and if the engine
+emits four, the extra two have an origin INSIDE the walk.**
+
+**STILL UNLANDED AND THE TREE IS GREEN.** §63.89's `-description` remains confirmed as the first cause — it is the
+only change that moved the ARGUMENTS from the class name to `one`/`two` — and it is not in the tree. What is now
+established is a negative worth as much as a positive: **the attributed-string splice is EXONERATED, so the defect
+is upstream of it, in the one function whose marker cannot see the difference it needs to see.**
+
 ## §63.90 — THE OUTPUT-SIDE MARKERS PUT THE DEFECT IN THE ATTRIBUTED-STRING SPLICE, NOT IN THE FORMATTER (2026-10-01)
 
 **NO ROWS CLOSED. FOUR LAYERS ARE NOW EXONERATED BY MEASUREMENT AND THE FIFTH IS LOCATED.**
