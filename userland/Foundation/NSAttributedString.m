@@ -613,6 +613,77 @@ static NSRange fn_url_token_range(NSString *text, NSUInteger index, BOOL *found)
 @end
 
 
+/* ================== THE LIVE PROXY (§63.101) ==================
+ * ⚠ IT DOES NOT NEED AN IVAR ON THE STORE, AND THAT IS DELIBERATE: `NSMutableAttributedString` is a CLASS CLUSTER
+ * whose concrete subclass owns the storage, so a proxy kept in an ivar here would be kept in the wrong place. **A
+ * FRESH PROXY PER CALL SATISFIES THE CONTRACT JUST AS WELL** — each one is a live view, which is all Apple
+ * promises — and it costs one allocation for a getter that is not on a hot path.
+ *
+ * ⚠ AND IT RETAINS THE STORE, WHILE THE STORE DOES NOT RETAIN IT: no cycle, and a proxy that outlives its owner
+ * cannot dangle. */
+@interface FNAttributedStringBridge : NSMutableString
+{
+	NSMutableAttributedString *_owner;
+}
+- (id)initWithAttributedString:(NSMutableAttributedString *)owner;
+@end
+
+@implementation FNAttributedStringBridge
+
+- (id)initWithAttributedString:(NSMutableAttributedString *)owner
+{
+	self = [super init];
+	if (self != nil) {
+		_owner = [owner retain];
+	}
+	return self;
+}
+
+- (void)dealloc
+{
+	[_owner release];
+	[super dealloc];
+}
+
+/* THE READ PRIMITIVES: Apple names `-string` on the class, and the two below are what `NSMutableString` itself asks
+ * for. `-characterAtIndex:` goes through the store's STRING rather than through the run table, because a character
+ * is a character. */
+- (NSUInteger)length
+{
+	return [_owner length];
+}
+
+- (unichar)characterAtIndex:(NSUInteger)index
+{
+	return [[_owner string] characterAtIndex:index];
+}
+
+- (void)getCharacters:(unichar *)buffer range:(NSRange)range
+{
+	[[_owner string] getCharacters:buffer range:range];
+}
+
+/* THE WRITE PRIMITIVE, AND IT IS APPLE'S OWN NAMED ONE — `-replaceCharactersInRange:withString:` — SO EVERY RULE THE
+ * STORE APPLIES TO A SUBSTITUTION APPLIES TO A WRITE THROUGH THIS PROXY: the attributes in force, the coalescing,
+ * and §63.93's nil-proof join. */
+- (void)replaceCharactersInRange:(NSRange)range withString:(NSString *)str
+{
+	[_owner replaceCharactersInRange:range withString:str];
+}
+
+@end
+
+@implementation NSMutableAttributedString (NSExtendedMutableAttributedString)
+
+- (NSMutableString *)mutableString
+{
+	return [[[FNAttributedStringBridge alloc] initWithAttributedString:self] autorelease];
+}
+
+@end
+
+
+
 @implementation NSAttributedString
 
 /* §C.3 item 4: an archiver asks for THIS, never for -class - and NSMutableAttributedString answers ITSELF

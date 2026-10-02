@@ -36,6 +36,8 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_attributedstring"
 CHECKS = (
+    "attributedstring-mutablestring-length-agrees-with-the-store",
+    "attributedstring-mutablestring-is-live",
     "attributedstring-inflecting-refuses-by-name",
     "attributedstring-format-context-keeps-the-format-attributes",
     "attributedstring-format-context",

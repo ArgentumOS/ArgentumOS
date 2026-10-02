@@ -15982,6 +15982,45 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.101 — `-mutableString` LANDS AS A LIVE PROXY, AND THE OWNER IS DONE (2026-10-01)
+
+**WHAT LANDED: `-mutableString`, in Apple's own category `NSMutableAttributedString (NSExtendedMutableAttributedString)`
+— **THE LAST ROW ON `NSAttributedString`/`NSMutableAttributedString`, so the owner is COMPLETE**: nine formatting
+rows (§63.85–§63.99), six struck as the drawing frameworks' (§63.100), and this one.**
+
+**MEASURED: `property shipped 1277 → 1278`, `open 201 → 200`; `--check` consistent; `make host-foundation` EXIT 0 with
+exactly the standing SIX warnings; `make testimg` EXIT 0; `make test TESTS='foundation_attributedstring'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with **`FOUNDATION-ATTRIBUTEDSTRING 54/54`**.**
+
+**⚠⚠ AND APPLE'S CONTRACT IS WHAT MADE THE DESIGN POSSIBLE, READ FROM THE CORPUS FIRST (§63.96's instrument):
+`@property (readonly, retain) NSMutableString *mutableString;` — **`retain` AND NOT `copy`, WHICH IS THE WHOLE
+CONTRACT: a copy would be a SNAPSHOT, and what the class comment promises is the opposite** — "if you have a
+mutableString backing store for the characters, overriding NSMutableAttributedString's mutableString can be
+useful". **AND THE SAME COMMENT PUBLISHES WHAT A PROXY MUST ANSWER: the "primitive" methods — for the mutable class,
+`-replaceCharactersInRange:withString:` and `-setAttributes:range:` — WHICH IS THIS LIBRARY'S OWN §63.93 METHOD, so
+a write through the proxy inherits every rule the store applies to a substitution.**
+
+**AND THE DESIGN FELL OUT OF A CLASS-CLUSTER FACT THIS CAMPAIGN HAD ALREADY FOUND: `NSMutableAttributedString` is a
+CLUSTER whose concrete subclass owns the storage, so a proxy kept in an ivar here would be kept in the WRONG PLACE.
+A FRESH PROXY PER CALL SATISFIES THE CONTRACT JUST AS WELL** — each one is a live view, which is all Apple promises
+— and it retains the store while the store does not retain it, so there is no cycle and no dangling proxy.
+
+**⚠⚠ AND A DEFECT FOUND IN THE STORE, RECORDED AS ITS OWN ITEM RATHER THAN FAILING THIS ROW'S CHECK:** the store's
+own comment says a substitution takes "the attributes in force at the start of the range", **and MEASURED, IT TAKES
+NONE — MID-STRING AS WELL AS AT THE END.** So `-replaceCharactersInRange:withString:` writes UNATTRIBUTED text, and
+the comment describing it is wrong. **THE THIRD COMMENT-VS-BEHAVIOUR DISCREPANCY THIS SESSION AFTER §63.93'S `%@%@%@`
+JOIN, AND THE SECOND WHERE THE COMMENT WAS THE CAMPAIGN'S OWN** — which is why the row's check asserts LIVENESS (its
+contract, measured) and the store's defect is named instead of being asserted where it does not belong.
+
+**⚠ AND THE SLICE'S OWN BOUNDARY CHECK CAUGHT THE CHANGE, WITHOUT BEING ASKED TO:** `inventory-the-boundaries-are-absent`
+failed with "shipped although this slice does not carry them: mutableString" — **because it no longer did not.** *A
+BOUNDARY THAT IS NOT UPDATED WHEN IT MOVES IS A CHECK THAT FAILS FOR BEING RIGHT*, and it took one line to move.
+
+**AND THE APPLY FAILED TWICE MORE, IN THE IMPORT/PLACEMENT FAMILY THIS SESSION HAS NOW PAID FIVE TIMES: the category had
+to come AFTER the class it extends ("cannot find interface declaration for NSMutableAttributedString") and
+`NSMutableString` had to be imported ("unknown type name").** Both were checked for on the third attempt rather than
+assumed, and both are the same lesson: **A DECLARATION'S TYPES AND ITS POSITION ARE NOT OPTIONAL DETAILS.**
+
 ## §63.100 — SIX ROWS LEAVE ON A RETRACTION OF §63.83'S OWN CLASSIFIER, AND `NSAttributedString` LEAVES THE WORK LIST (2026-10-01)
 
 **WHAT LANDED: the six document readers moved to the `other-framework` ground — `-initWithData:options:documentAttributes:error:`,

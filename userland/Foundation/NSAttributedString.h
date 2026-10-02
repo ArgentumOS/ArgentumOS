@@ -50,6 +50,7 @@
  */
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSString.h>	/* NSMutableString, named by the property below */
 #import <Foundation/NSLocale.h>
 #include <stdarg.h>
 #import <Foundation/NSCoding.h>
@@ -415,6 +416,7 @@ typedef enum {
 @interface NSAttributedString (NSMorphology)
 - (NSAttributedString *)attributedStringByInflectingString;
 @end
+
 /* ---- THE MARKDOWN FILE DOOR, IN APPLE'S FOUR-ARGUMENT SPELLING (2026-09-30) -------------------------
  *
  * APPLE DECLARES THIS INITIALISER WITH a `baseURL:` argument, and the tree shipped the SHORTER
@@ -466,6 +468,20 @@ typedef enum {
 - (void)endEditing;
 - (void)fixAttributesInRange:(NSRange)range;
 
+@end
+
+/* ⚠⚠ `-mutableString`, IN APPLE'S OWN CATEGORY NAME, AND THE ATTRIBUTE IS THE CONTRACT: **`retain` AND NOT
+ * `copy`** — a copy would be a SNAPSHOT, and what Apple's comment promises is the opposite (a mutable string
+ * backing store whose changes change the receiver).
+ *
+ * §§ AND APPLE'S OWN CLASS COMMENT PUBLISHES WHAT A PROXY HAS TO ANSWER — the "primitive" methods: "For
+ * NSAttributedString, these are string and attributesAtIndex:effectiveRange:. For NSMutableAttributedString,
+ * ADDITIONALLY override replaceCharactersInRange:withString: and setAttributes:range:". **THE PRIMITIVE FOR A
+ * MUTATION IS THIS LIBRARY'S OWN `-replaceCharactersInRange:withString:`**, so the proxy's writes go through the
+ * SAME splice every other mutation uses and inherit its rules — including §63.93's “the replacement takes the
+ * attributes in force at the start of the range”. */
+@interface NSMutableAttributedString (NSExtendedMutableAttributedString)
+@property (readonly, retain) NSMutableString *mutableString;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -36,7 +36,7 @@
 #
 # counts by kind:
 #   method     shipped 2177   open  419   struck  332
-#   property   shipped 1277   open  201   struck  158
+#   property   shipped 1278   open  200   struck  158
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -2016,7 +2016,7 @@ method	struck	-subscriptRange:	NSMutableAttributedString	Fundamentals / Strings 
 method	struck	-superscriptRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	other-framework	objc
 method	struck	-unscriptRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	other-framework	objc
 method	struck	-updateAttachmentsFromPath:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Updating Attachment Contents	other-framework	objc
-property	open	mutableString	NSMutableAttributedString	Fundamentals / Strings with Metadata / Retrieving Character Information	-	objc
+property	shipped	mutableString	NSMutableAttributedString	Fundamentals / Strings with Metadata / Retrieving Character Information	-	objc
 method	shipped	-addCharactersInRange:	NSMutableCharacterSet	Fundamentals / Characters / Adding and Removing Characters	-	objc
 method	shipped	-addCharactersInString:	NSMutableCharacterSet	Fundamentals / Characters / Adding and Removing Characters	-	objc
 method	shipped	+alphanumericCharacterSet	NSMutableCharacterSet	Fundamentals / Characters / Getting Standard Character Sets	-	objc

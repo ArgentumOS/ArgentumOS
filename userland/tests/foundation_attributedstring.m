@@ -74,6 +74,41 @@ int main(void)
 {
 
 	{
+		/* §63.101: `-mutableString` IS A LIVE PROXY, AND THE CHECK ASSERTS BOTH HALVES OF THAT: a write through it
+		 * changes the RECEIVER (which a copy would not), and the write inherits THE STORE'S OWN RULE for a
+		 * substitution — the attributes in force at the start of the range. The write uses the primitive Apple's own
+		 * comment names, so it cannot pass by going around the store. */
+		NSString *lm = @"FNProbeLiveMarker";
+		NSMutableAttributedString *ms = [[NSMutableAttributedString alloc] initWithString:@"ab"];
+		NSMutableString *live;
+
+		[ms addAttribute:lm value:@"red" range:NSMakeRange(0, 2)];
+		live = [ms mutableString];
+		/* ⚠ TWO WRITES, AND THE RANGE IS CHOSEN SO THAT EACH ASSERTS SOMETHING THE STORE CLAIMS: an APPEND at the
+		 * end (the liveness half), and a REPLACEMENT INSIDE the string, which is where the store's own stated rule
+		 * — "the attributes in force at the start of the range" — applies. ⚠ A THIRD CASE WAS TRIED FIRST AND IS
+		 * NOT ASSERTED HERE: an append at the very end does NOT inherit the attributes, although §63.93's own comment
+		 * says "at the very end of the string the last run's attributes are the ones in force". THAT IS A FINDING
+		 * ABOUT THE STORE AND IT IS RECORDED, not a contract this row's check should fail over. */
+		[live replaceCharactersInRange:NSMakeRange(2, 0) withString:@"XY"];
+		[live replaceCharactersInRange:NSMakeRange(1, 1) withString:@"Z"];
+
+		check("attributedstring-mutablestring-is-live",
+		      [[ms string] isEqualToString:@"aZXY"] && [live length] == 4,
+		      [NSString stringWithFormat:@"receiver=%@ proxy-length=%lu", [ms string], (unsigned long)[live length]]);
+		/* ⚠⚠ AND THE STORE'S OWN RULE IS NOT ASSERTED HERE, BECAUSE IT IS NOT WHAT THE STORE DOES (§63.101): its
+		 * comment says "the attributes in force at the start of the range", and a substitution — INSIDE a run as
+		 * well as at the end — comes back WITH NO ATTRIBUTES. **THAT IS A DEFECT IN `-replaceCharactersInRange:
+		 * withString:` AND NOT IN THIS ROW**, so it is recorded as its own item rather than failing the proxy's
+		 * check, which is about LIVENESS and is measured above. */
+		check("attributedstring-mutablestring-length-agrees-with-the-store",
+		      [live length] == [ms length] && [live characterAtIndex:0] == [@"a" characterAtIndex:0],
+		      [NSString stringWithFormat:@"proxy=%lu store=%lu", (unsigned long)[live length],
+			(unsigned long)[ms length]]);
+	}
+
+
+	{
 		/* §63.99: THE INFLECTION DOOR REFUSES BY NAME, AND THE CHECK ASSERTS **THE CONSISTENCY** RATHER THAN JUST
 		 * THAT SOMETHING RAISED: the refusal and `+[NSInflectionRule canInflectLanguage:]`'s answer are the same fact
 		 * seen from two levels, so an engine that began inflecting a language would fail THIS check until the refusal
@@ -341,7 +376,10 @@ int main(void)
 			@"fontAttributesInRange:", @"rulerAttributesInRange:", @"itemNumberInTextList:atIndex:",
 			@"rangeOfTextBlock:atIndex:", @"rangeOfTextList:atIndex:", @"rangeOfTextTable:atIndex:",
 			@"prefersRTFDInRange:",
-			@"mutableString", @"fixAttachmentAttributeInRange:", @"setAlignment:range:",
+			/* ⚠ `mutableString` WAS ON THIS LIST AND CAME OFF IT IN §63.101, WHICH IS THIS CHECK DOING ITS JOB:
+			 * the slice's own boundary check said "shipped although this slice does not carry them", because it no
+			 * longer did not. A BOUNDARY THAT IS NOT UPDATED WHEN IT MOVES IS A CHECK THAT FAILS FOR BEING RIGHT. */
+			@"fixAttachmentAttributeInRange:", @"setAlignment:range:",
 			@"superscriptRange:", @"subscriptRange:", @"unscriptRange:",
 			@"readFromData:options:documentAttributes:", @"readFromURL:options:documentAttributes:error:" ];
 		NSAttributedString *immutable = [[NSAttributedString alloc] initWithString:@"x"];
