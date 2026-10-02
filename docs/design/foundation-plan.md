@@ -15982,6 +15982,53 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.90 — THE OUTPUT-SIDE MARKERS PUT THE DEFECT IN THE ATTRIBUTED-STRING SPLICE, NOT IN THE FORMATTER (2026-10-01)
+
+**NO ROWS CLOSED. FOUR LAYERS ARE NOW EXONERATED BY MEASUREMENT AND THE FIFTH IS LOCATED.**
+
+**THE MARKERS, ONE LINE PER EMISSION, FROM `.build/tests/foundation_attributedstring/guest.log` (the RAW artifact —
+§63.88's lesson applied to the marker itself):**
+```
+FMT-EMIT 1 (pos 0, no object)  piece len 1     n
+FMT-EMIT 2 (pos 1, no object)  piece len 1     =
+FMT-EMIT 3 (pos 2, WITH object) piece len 3    one
+FMT-EMIT 4 (pos 4, no object)  piece len 1     (space)
+FMT-EMIT 5 (pos 5, no object)  piece len 1     m
+FMT-EMIT 6 (pos 6, no object)  piece len 1     =
+FMT-EMIT 7 (pos 7, WITH object) piece len 3    two
+FMT-RESULT formatlen=9  resultlen=23
+```
+**SEVEN EMISSIONS — exactly the format's five literal runs plus its two conversions — at exactly the right offsets,
+with the two `%@` emissions carrying objects, and the pieces totalling ELEVEN CHARACTERS, which IS `n=one m=two`.
+THE ENGINE, THE TWO DOORS, THE `va_list`, §63.85'S SEAM AND THE RECORDER ARE ALL CORRECT, BY MEASUREMENT AND NOT BY
+ARGUMENT.**
+
+**⚠⚠ AND THE RESULT IS TWENTY-THREE CHARACTERS. THE DIFFERENCE IS TWELVE, AND TWELVE IS TWO `(null)`.**
+`(null)` is **exactly what a format engine emits for a `%@` THAT GOT NIL** — so the extra characters are not
+produced by anything the formatter did: **THEY ARE INSERTED BY THE ATTRIBUTED-STRING MUTATION PATH.**
+`-appendAttributedString:` is a ONE-LINER here (measured), delegating to
+`-replaceCharactersInRange:withAttributedString:`; **so the `%@`-with-a-nil is INSIDE THE SPLICE, or in a helper it
+calls.**
+
+**AND THIS IS THE SAME FAMILY AS THE HALF OF THE BUG §63.89 FIXED:** an attributed string reaching a `%@` while the
+class has nothing sensible to say about itself. There the `%@` was the CALLER's and the answer was `-description`;
+here it is the SPLICE's own, and the answer is whatever the splice formats **while it is nil**.
+
+**THE NEXT MEASUREMENT IS DECIDED AND IT IS ONE READ: `-replaceCharactersInRange:withAttributedString:` — its body
+should name the `%@` outright.** No marker is needed for it; the defect is now narrowed to a single method whose text
+has not been read.
+
+**⚠ AND THE SHAPE OF THIS PAIR OF ROUNDS IS WORTH RECORDING BECAUSE IT WAS EXPENSIVE AND IT WAS NOT WASTED: each
+attempt moved the diagnosis ONE LAYER DEEPER WITHOUT LANDING A DOOR — `va_list`, then the arguments, then the
+emission count, then the splice — and EVERY LAYER IT LEFT BEHIND IS EXONERATED BY A MEASUREMENT RATHER THAN BY AN
+ASSUMPTION.** Four theories died that way (the two-layer `va_copy`, a stale list, a double-emitting recorder, an
+engine walking the wrong format), and the surviving explanation is the one the arithmetic *forces*: eleven in,
+twenty-three out, twelve missing, twelve is two `(null)`.
+
+**STILL UNLANDED, DELIBERATELY:** the doors substitute a string carrying two spurious `(null)` renditions, so they do
+not ship and the two rows are back to `open`. `-description` is confirmed as the first cause and the splice is
+located as the second, with the method to read named.
+
 ## §63.89 — `-description` FIXED THE ARGUMENTS, AND THE REMAINING DEFECT IS TWO EXTRA `(null)` PIECES (2026-10-01)
 
 **NO ROWS CLOSED. THE FIRST CAUSE IS CONFIRMED AND THE SECOND IS NARROWED TO A MAPPING THAT CAN BE READ OFF.**
