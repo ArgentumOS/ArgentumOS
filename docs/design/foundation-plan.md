@@ -15982,6 +15982,47 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.93 — ROOT CAUSE: THE ATTRIBUTED STORE REBUILDS ITS STRING WITH A `%@%@%@` FORMAT, UNDER A COMMENT THAT SAYS IT DOES NOT (2026-10-01)
+
+**NO ROWS CLOSED — BUT THE BUG IS FOUND, AND IT IS IN THIS TREE AND NOT IN THE NEW CODE.**
+
+**THE LINE, FROM `-replaceCharactersInRange:withString:` (NSAttributedString.m:1489):**
+```objc
+NSString *joined = [NSString stringWithFormat:@"%@%@%@", head, replacement, tail];
+```
+**AND THE COMMENT DIRECTLY ABOVE IT READS: "CONCATENATED, NOT FORMATTED: the formatter's path reaches -copy on a bare
+NSObject… Three appends need no formatter, and this is the only place in the store that built a string from
+others."** **A COMMENT THAT STATES THE OPPOSITE OF THE LINE IT DESCRIBES — and the line is the one that runs.**
+
+**⚠⚠ WHY THAT PRODUCES EXACTLY THE TWO `(null)`S §63.92 MEASURED: `head` and `tail` are `-substringToIndex:` and
+`-substringFromIndex:` results, and `%@` RENDERS A NIL AS `(null)`.** The pieces the recorder appends are correct and
+total eleven characters; the STORE comes back twenty-three, with `(null)` where `head` was nil — **which is the
+whole of §63.90's unexplained "twelve missing characters, and twelve is two `(null)`", now with an author.** The
+extra characters appear at the FIRST TWO mutations, which is exactly where an empty `head`/`tail` sits.
+
+**AND THE CONSEQUENCE IS WIDER THAN THESE TWO DOORS: *ANY* `-replaceCharactersInRange:withString:` ON AN ATTRIBUTED
+STRING CAN WRITE `(null)` INTO THE STORE**, because the join is a format whose arguments can come back nil. **The
+attributed-format doors were simply the first caller to make it visible**, and they made it visible because they
+append one short piece at a time to a growing store — seven mutations, two of them at an empty edge.**
+
+**THE FIX IS ONE LINE AND IT IS THE LINE THE COMMENT ALREADY DESCRIBES: BUILD THE JOIN WITHOUT A FORMAT** — a
+concatenation that cannot render a nil as text. `%@%@%@` is a FORMATTER, and a store mutation is not a place a
+formatter belongs.
+
+**AND THE FIVE-ROUND PATH TO THIS LINE IS THE PART WORTH KEEPING: the `va_list`, both forwarding layers, the engine,
+§63.85's seam, the recorder's pieces and the attributed splice were EACH EXONERATED BY A MEASUREMENT, so when the
+line was finally read it was read as THE only candidate left rather than as a guess.** Four theories died (the
+two-layer `va_copy`, a stale list, a double-emitting recorder, an engine walking the wrong format) and three
+instrument defects surfaced — **and every one of those seven was found by output contradicting a verdict, never by
+reading code and reasoning about it.**
+
+**AND ONE OF THIS BUG'S LESSONS IS OLDER THAN THE BUG: §63.83's "a ledger row's owner is not its declarer" has a
+sibling here — A COMMENT'S CLAIM IS NOT ITS CODE'S BEHAVIOUR, and this is the second time in this session that a
+comment was read as a description of the line beneath it.**
+
+**STILL UNLANDED, AND THE TREE IS GREEN.** Three things now stand between the doors and green, all named: the
+one-line join fix, `-description` (confirmed, written, and one anchor away), and nothing else.
+
 ## §63.92 — THE PIECES ARE PERFECT AND THE STORE IS NOT: THE DEFECT IS IN THE MUTATION PATH, NAMED (2026-10-01)
 
 **NO ROWS CLOSED. THE DEFECT IS LOCALIZED TO ONE CALL AND THE INSTRUMENT THAT COULD NOT SEE IT NOW CARRIES THE TEXT.**
