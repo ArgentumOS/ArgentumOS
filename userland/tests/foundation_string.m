@@ -1451,8 +1451,13 @@ NULL
 		check("option-set-members-are-distinct-bits",
 		      distinct && NSLiteralSearch == 0 && NSCaseInsensitiveSearch == 1 &&
 		      (NSBackwardsSearch & NSCaseInsensitiveSearch) == 0 &&
-		      NSASCIIStringEncoding == 1 && NSUTF8StringEncoding == 4 && NSUnicodeStringEncoding == 10,
-		      "options are distinct powers of two; the legacy members keep their old values");
+		      NSASCIIStringEncoding == 1 && NSUTF8StringEncoding == 4 &&
+		      NSUnicodeStringEncoding == 10 && NSUTF16StringEncoding == NSUnicodeStringEncoding &&
+		      NSISOLatin1StringEncoding == 5 && NSShiftJISStringEncoding == 8 &&
+		      NSWindowsCP1252StringEncoding == 12 && NSMacOSRomanStringEncoding == 30 &&
+		      NSUTF16LittleEndianStringEncoding == 0x94000100 && NSUTF32BigEndianStringEncoding == 0x98000100,
+		      "the values are APPLE'S, not a private block: measured against NSString.h in the SDK \u2014 three "
+		      "were right and twenty-one were not before \u00a763.70");
 		check("transforms-and-keys-are-their-own-names",
 		      [NSStringTransformLatinToCyrillic isEqualToString:@"NSStringTransformLatinToCyrillic"] &&
 		      [NSStringTransformStripDiacritics isEqualToString:@"NSStringTransformStripDiacritics"] &&

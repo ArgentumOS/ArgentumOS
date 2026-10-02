@@ -109,31 +109,42 @@ typedef enum {
  * honestly rather than silently mis-encoded.
  */
 typedef enum {
-	NSASCIIStringEncoding = 1,
+	/* ⚠⚠ THESE VALUES ARE APPLE'S, AND 21 OF THESE 24 WERE **NOT** (§63.70). This enum used a
+	 * PRIVATE BLOCK (100..119) for everything but ASCII, UTF-8 and Unicode — so a caller who passed Apple's
+	 * own number, whether compiled against the SDK's header or read from a wire or a plist, asked for a
+	 * DIFFERENT encoding or for nothing at all: Apple's 5 (ISO Latin-1) was unassigned here, and this
+	 * header's 103 meant Latin-1 only to this library. MEASURED against `NSString.h` in the macOS 14.5 SDK,
+	 * which publishes every value EXPLICITLY — so the standing D2 ground ("nobody publishes enum values, so
+	 * they are ours") DOES NOT COVER THIS ENUM, and a private numbering was carried where Apple's is public.
+	 * The three that were already right are the three the library ever compared against. */
+	NSASCIIStringEncoding = 1,		/* 0..127 only */
+	NSNEXTSTEPStringEncoding = 2,
+	NSJapaneseEUCStringEncoding = 3,
 	NSUTF8StringEncoding = 4,
+	NSISOLatin1StringEncoding = 5,
+	NSSymbolStringEncoding = 6,
+	NSNonLossyASCIIStringEncoding = 7,
+	NSShiftJISStringEncoding = 8,
+	NSISOLatin2StringEncoding = 9,
 	NSUnicodeStringEncoding = 10,
-	NSNEXTSTEPStringEncoding = 100,
-	NSJapaneseEUCStringEncoding = 101,
-	NSShiftJISStringEncoding = 102,
-	NSISOLatin1StringEncoding = 103,
-	NSISOLatin2StringEncoding = 104,
-	NSSymbolStringEncoding = 105,
-	NSNonLossyASCIIStringEncoding = 106,
-	NSISO2022JPStringEncoding = 107,
-	NSMacOSRomanStringEncoding = 108,
-	NSWindowsCP1250StringEncoding = 109,
-	NSWindowsCP1251StringEncoding = 110,
-	NSWindowsCP1252StringEncoding = 111,
-	NSWindowsCP1253StringEncoding = 112,
-	NSWindowsCP1254StringEncoding = 113,
-	NSUTF16StringEncoding = 114,
-	NSUTF16BigEndianStringEncoding = 115,
-	NSUTF16LittleEndianStringEncoding = 116,
-	NSUTF32StringEncoding = 117,
-	NSUTF32BigEndianStringEncoding = 118,
-	NSUTF32LittleEndianStringEncoding = 119,
-	/* THE DEPRECATED ENCODING, which §62.24 keeps in scope: Apple publishes the name and no value, so the
-	 * value is ours (§11.6.1 D2) and 2^16 leaves the enumerated values above it alone. */
+	NSWindowsCP1251StringEncoding = 11,
+	NSWindowsCP1252StringEncoding = 12,
+	NSWindowsCP1253StringEncoding = 13,
+	NSWindowsCP1254StringEncoding = 14,
+	NSWindowsCP1250StringEncoding = 15,
+	NSISO2022JPStringEncoding = 21,
+	NSMacOSRomanStringEncoding = 30,
+
+	/* AN ALIAS, NOT A SECOND VALUE: Apple's own line is `NSUTF16StringEncoding = NSUnicodeStringEncoding`. */
+	NSUTF16StringEncoding = NSUnicodeStringEncoding,
+
+	NSUTF16BigEndianStringEncoding = 0x90000100,
+	NSUTF16LittleEndianStringEncoding = 0x94000100,
+
+	NSUTF32StringEncoding = 0x8c000100,
+	NSUTF32BigEndianStringEncoding = 0x98000100,
+	NSUTF32LittleEndianStringEncoding = 0x9c000100,
+
 	NSProprietaryStringEncoding = 65536
 } NSStringEncoding;
 

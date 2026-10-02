@@ -15982,6 +15982,51 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.70 — THE ENCODING CLUSTER, FIRST SLICE: THE VALUES WERE OURS AND 21 OF 24 WERE WRONG (2026-10-01)
+
+**WHAT LANDED (the front chosen in `dec-733391f6e71e4415`): `NSStringEncoding`'s values are now APPLE'S.** 21 of
+the 24 were this library's own PRIVATE BLOCK (100..119); the three that were right — ASCII 1, UTF-8 4, Unicode
+10 — are exactly the three the library ever compared against. And `NSUTF16StringEncoding` is now an **ALIAS** of
+`NSUnicodeStringEncoding`, as Apple's own line has it, instead of a twenty-fifth value.
+
+**⚠ AND IT IS A DEFECT RATHER THAN A STYLE CHOICE, MEASURED: a caller who passes APPLE'S NUMBER — compiled
+against the SDK's header, or read from a wire or a plist — asked for a DIFFERENT encoding or for nothing.**
+Apple's 5 (ISO Latin-1) was unassigned here; this header's 103 meant Latin-1 to this library and nothing to
+Apple; Apple's 8 (ShiftJIS) and this header's 102 were two different numbers for one thing. **THE VALUES ARE PART
+OF THE DECLARATION AND APPLE PUBLISHES EVERY ONE OF THEM** in the SDK's `NSString.h` — so the standing D2 ground
+("nobody publishes enum values, so they are ours; do not re-chase") **DOES NOT COVER THIS ENUM**, and a private
+numbering was carried where Apple's is public. ⚠ **That ground is recorded as a standing project fact and this
+unit is the measurement that falsifies it for this enum; it must not be re-applied to `NSStringEncoding`.**
+
+**AND IT HAD TO COME FIRST, WHICH IS WHY IT IS THE CLUSTER'S FIRST SLICE: the ICU-backed converter table is
+keyed on these constants, so building it on a private numbering would have baked the error one layer deeper.**
+
+**⚠⚠ AND THE PART WORTH REMEMBERING: THE PROBE HAD BEEN ASSERTING THE WRONG CLAIM.** `foundation_string`'s value
+check read `NSASCIIStringEncoding == 1 && NSUTF8StringEncoding == 4 && NSUnicodeStringEncoding == 10` under the
+detail **"the legacy members keep their old values"** — three values that were RIGHT, standing in for twenty-one
+that were not, under a sentence that called the defect deliberate. **A check that samples the cases where the
+answer is already correct cannot see a systematic error, and a detail string that calls a defect "legacy" is how
+it survives three years of green runs.** The check now asserts Apple's values THIRTEEN ways, including the alias
+and both `0x…0100` families.
+
+**MEASURED, ACCEPTANCE ALL GREEN: `rm -rf .build/host/obj && make host-foundation` exit 0 with EXACTLY the six
+known warnings; `make foundation-sweep` consistent with `--unimplemented` 0 NEW — the values are not ledger rows,
+the NAMES are unchanged, so no row moves; `make testimg` exit 0; `make test TESTS='foundation_string'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 13s` with the probe's own tally `FOUNDATION-STRING 155/155`.** And the
+library was SAFE TO CHANGE FOR A MEASURED REASON rather than by inspection: it only ever compares against
+`NSUTF8StringEncoding` and `NSASCIIStringEncoding`, both already correct, so every other value was INERT in the
+implementation and load-bearing only for a caller.
+
+**AND THE REST OF THE CLUSTER IS NOW UNBLOCKED, WITH ITS FEASIBILITY MEASURED RATHER THAN ASSUMED:**
+ICU 76.1 is already linked (since F13.6) and **`ucnv_countAvailable()` is 232, with ALL 29 candidate converters
+present** — `US-ASCII`, `UTF-8`, `ISO-8859-1/2/5/15`, `windows-1250…1254`, `UTF-16/32` and their endian forms,
+`Shift_JIS`, `EUC-JP`, `EUC-KR`, `Big5`, `GBK`, `gb18030`, `x-mac-roman`, `KOI8-R`, `IBM437/850`,
+`x-mac-cyrillic`. The doors to widen are `-dataUsingEncoding:`, `-dataUsingEncoding:allowLossyConversion:`,
+`-lengthOfBytesUsingEncoding:`, `-initWithData:encoding:`, `-cStringUsingEncoding:`,
+`+availableStringEncodings` and `+localizedNameOfStringEncoding:` — **and the storage is UTF-16 code units, which
+is exactly what `ucnv_fromUChars`/`ucnv_toUChars` take and give, so no intermediate representation is needed.**
+§63.2's blocker is therefore a TABLE to write, not a dependency to acquire.
+
 ## §63.69 — THE NSXMLNODE SIX: A RECORDED DEVIATION, FALSIFIED BY THE BUILD, AND THE REPORT LEARNS TO ACCEPT ONE (2026-10-01)
 
 **THE UNIT'S ANSWER IS THAT NO CODE MOVED, AND IT TOOK TWO MEASUREMENTS TO GET THERE.**
