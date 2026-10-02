@@ -15982,6 +15982,45 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.89 — `-description` FIXED THE ARGUMENTS, AND THE REMAINING DEFECT IS TWO EXTRA `(null)` PIECES (2026-10-01)
+
+**NO ROWS CLOSED. THE FIRST CAUSE IS CONFIRMED AND THE SECOND IS NARROWED TO A MAPPING THAT CAN BE READ OFF.**
+
+**MEASURED: the substituted ARGUMENTS ARE NOW CORRECT.** With `-description` implemented as `[self string]`, the same
+format answers **`(null)n(null)=one m=two`** — **`one` and `two` render**, where the previous round gave
+`NSAttributedString` twice. `attributedstring-description-is-the-string` PASSES, the tally moved `38 → 39`, and the
+NEIGHBOURING case `foundation_string` stayed **158/158**, so the new `-description` breaks nothing it touches — which
+is the check that mattered, because `-description` changes what EVERY `%@`-of-an-attributed-string says.
+
+**⚠⚠ AND THE REMAINING DEFECT HAS AN EXACT MAPPING, WHICH IS WHAT THIS ROUND BOUGHT:**
+**`(null)n(null)=one m=two` IS EXACTLY WHAT `%@n%@=%@ m=%@` PRODUCES FOR `(nil, nil, "one", "two")`.** The format is
+`n=%@ m=%@` and the probe passes two arguments, so **TWO EXTRA SUBSTITUTIONS ARE BEING MADE, EACH RENDERING
+`(null)`, AND THE FOUR VALUES LINE UP AS TWO NILs FOLLOWED BY THE TWO REAL ARGUMENTS.**
+
+**TWO HYPOTHESES FIT THAT EXACTLY, AND THEY ARE DISTINGUISHABLE IN ONE RUN:**
+ 1. **THE ARGUMENTS ARE READ TWO POSITIONS EARLY** — a `va_list` consumed before the engine sees it, which would put
+    `(nil, nil, one, two)` in front of four conversions... except the format has only TWO conversions, so this needs
+    the extra `(null)`s to come from somewhere else as well.
+ 2. **THE RECORDER IS EMITTING TWICE PER `%@`** — its own piece plus the engine's text **and** the object — which
+    would make each conversion contribute `(null)`-and-the-argument where the argument is nil. **THE MARKERS OF
+    §63.87 SPOKE TO THE ENGINE'S INPUT AND NOT TO THE SINK'S OUTPUT**, so nothing yet distinguishes input from
+    emission — and that is the gap.
+
+**AND THE NEXT MARKER GOES ON THE SINK'S OUTPUT SIDE**, counting emissions per conversion and printing the piece's
+length, because the two hypotheses differ exactly there. §63.87's lesson applies to the marker itself this time: it
+must be read from `.build/tests/<case>/guest.log`, the RAW artifact, and not from `make test`'s filtered transcript.
+
+**AND THE APPLY ITSELF COST TWO ROUNDS IN A CLASS THAT NOW HAS SEVEN MEMBERS — BOTH MINE AND BOTH ABOUT WHAT AN
+ANCHOR BOUNDS:** the first anchored `- (NSString *)string` and matched a PRIVATE @interface DECLARATION
+("expected method body"); the second anchored `…string\n{\n` — THE DEFINITION'S OPENING BRACE — and inserted
+AFTER it, **PUTTING THE NEW METHOD INSIDE `-string`'s BODY** ("use of undeclared identifier 'description'"). **AN
+ANCHOR ENDS WHERE IT ENDS: MATCHING THE RIGHT DEFINITION IS NOT ENOUGH IF THE TEXT GOES ON THE WRONG SIDE OF IT.**
+The fix was one word — insert BEFORE — and the lesson is the eighth of its family in this session.
+
+**STILL UNLANDED, DELIBERATELY:** the doors substitute a string with two extra `(null)` pieces, so they do not ship
+and the two rows are back to `open`. **BUT THE DISTANCE IS NOW MEASURED RATHER THAN ESTIMATED:** one confirmed cause
+fixed (`-description`), one narrowed defect with an exact mapping, and a marker whose placement is already decided.
+
 ## §63.87/§63.88 — THE MARKERS EXONERATED FOUR LAYERS AT ONCE, AND THE CAUSE WAS A MISSING `-description` (2026-10-01)
 
 **NO ROWS CLOSED. WHAT LANDED IS A ROOT CAUSE, MEASURED, PLUS THE REASON IT WAS INVISIBLE FOR A ROUND.**
