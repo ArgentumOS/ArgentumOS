@@ -541,9 +541,20 @@ DECLINED_SELECTORS = frozenset((
     # AND THEY WERE FOUND THE HONEST WAY, WHICH IS WORTH KEEPING: a pass was sent to close "NSMutableDictionary
     # 25 open" and came back with ZERO rows landed, because every GENUINE Foundation NSMutableDictionary
     # selector is already shipped — the residual was this foreign category plus `dictionaryWithSharedKeySet:`,
-    # which stays OPEN (it is real Foundation, blocked behind an absent NSSharedKeySet and its own still-open
-    # producer +sharedKeySetForKeys:). A family that reads as 25 rows of work and is not one is a LEDGER
-    # ATTRIBUTION error, and the fix belongs here rather than in a header.
+    # which stays OPEN (it is real Foundation, and its own still-open producer is +sharedKeySetForKeys:).
+    # A family that reads as 25 rows of work and is not one is a LEDGER ATTRIBUTION error, and the fix belongs
+    # here rather than in a header.
+    #
+    # ⚠⚠ AND THE BLOCKER THIS COMMENT USED TO NAME WAS IMAGINARY, MEASURED (§63.77): it said the pair was "blocked
+    # behind an absent NSSharedKeySet" — **AND APPLE DECLARES NO SUCH CLASS.** Neither the macOS 14.5 nor the
+    # iOS 16.5 Foundation headers contain `@interface NSSharedKeySet` (only the CATEGORY NAME
+    # `NSSharedKeySetDictionary`), and **APPLE'S DOCUMENTATION INDEX HAS NO SUCH CLASS EITHER** — the symbol
+    # ledger carries no row for it. What the two doors actually traffic in is AN OPAQUE `id`: Apple declares
+    # `+ (id)sharedKeySetForKeys:` and `+ (NSMutableDictionary<KeyType, ObjectType> *)dictionaryWithSharedKeySet:(id)keyset`,
+    # whose only contract is Apple's own — the second throws "if keyset is not an object returned by
+    # +sharedKeySetForKeys:". **NOTHING IN EITHER DOOR NEEDS THE CLASS, SO THE ROW WAS PARKED BEHIND ONE THAT
+    # DOES NOT EXIST** — which is the same failure as naming a missing FILE as a missing NAME (§63.56) and a
+    # missing method as a missing FILE (§63.76): an ABSENCE in one place read as a fact about another.
     ("NSMutableDictionary", "addApplicationParameterHeader:length:"),
     ("NSMutableDictionary", "addAuthorizationChallengeHeader:length:"),
     ("NSMutableDictionary", "addAuthorizationResponseHeader:length:"),

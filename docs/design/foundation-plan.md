@@ -15982,6 +15982,41 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.77 — WHY THERE IS NO `NSSharedKeySet`: APPLE DOES NOT DECLARE ONE (2026-10-01)
+
+**THE QUESTION: "why do we not have `NSSharedKeySet`? We should have every class Apple declares." THE ANSWER IS
+THAT APPLE DOES NOT DECLARE THIS ONE, AND IT IS MEASURED IN THREE PLACES.**
+
+* **THE macOS 14.5 FOUNDATION HEADERS: no `@interface NSSharedKeySet`.** Its only trace in `NSDictionary.h` is a
+  CATEGORY NAME — `@interface NSDictionary<KeyType, ObjectType> (NSSharedKeySetDictionary)` and its
+  `NSMutableDictionary` twin.
+* **THE iOS 16.5 HEADERS: the same**, character for character, so this is not a vintage artefact.
+* **APPLE'S DOCUMENTATION INDEX: no class row for it either.** The only row anywhere is a METHOD:
+  `+sharedKeySetForKeys:` under `NSDictionary` — **and that row is OPEN in this tree, which is the real answer to
+  the question's second half.**
+
+**AND WHAT THE TWO DOORS TRAFFIC IN IS AN OPAQUE `id`, WHICH IS WHAT MAKES THE CLASS UNNECESSARY RATHER THAN
+MERELY UNDECLARED:**
+
+    + (id)sharedKeySetForKeys:(NSArray<KeyType <NSCopying>> *)keys;                    /* NSDictionary */
+    + (NSMutableDictionary<KeyType, ObjectType> *)dictionaryWithSharedKeySet:(id)keyset; /* NSMutableDictionary */
+
+**Apple's own comment on the second states the ONLY contract on the token** — it throws "If keyset is not an
+object returned by +sharedKeySetForKeys:" — so nothing about either door names the class, and a runtime-only,
+undocumented implementation detail is exactly what a Foundation surface has no business duplicating.
+
+**⚠⚠ AND THE UNIT'S FINDING IS THAT THIS TREE HAD PARKED THE ROW BEHIND THAT NON-EXISTENT CLASS.** The tool's
+own comment beside the declined `NSMutableDictionary` rows said the pair "stays OPEN … blocked behind an absent
+`NSSharedKeySet` and its own still-open producer `+sharedKeySetForKeys:`". **A BLOCKER THAT DOES NOT EXIST IS
+WORSE THAN A BLOCKER: it is an ANSWER, and it stops the question being asked.** The comment is CORRECTED IN
+PLACE, and what remains is a plain work item — two opaque doors, one of them a ledger row (§63.78).
+
+**AND IT IS THE THIRD TIME IN THREE UNITS THAT AN ABSENCE IN ONE PLACE WAS READ AS A FACT ABOUT ANOTHER:** a
+missing FILE as a missing NAME (§63.56), a missing method as a missing FILE (§63.76), and a missing CLASS as a
+missing BLOCKER (here). **THE PATTERN IS NOW THE CAMPAIGN'S MOST REPEATED DEFECT, and the countermeasure is
+always the same: ask the artefact that OWNS the fact — the headers for a declaration, the index for a
+publication, and the other end of the call for a contract.**
+
 ## §63.76 — `NSDictionary`'S METHODS ARE ALREADY PARAMETERIZED, VERIFIED THREE WAYS — AND BOTH INSTRUMENTS THAT SAID OTHERWISE WERE MINE (2026-10-01)
 
 **THE QUESTION WAS "make sure the methods are parameterized, matching Apple's declarations". THE ANSWER IS THAT
