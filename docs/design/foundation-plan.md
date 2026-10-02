@@ -15982,6 +15982,101 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.83 — THE WORK LIST'S TOP OWNER IS MOSTLY NOT OURS: 57 ROWS MEASURED AGAINST FOUNDATION'S OWN HEADERS (2026-10-01)
+
+**NO ROWS CLOSED, AND THE MEASUREMENT CHANGES THE PLAN RATHER THAN ANSWERING A QUESTION IN IT.** §63.81 found
+that the attachment rows are AppKit's declarations sitting under `NSAttributedString` in the derived surface.
+This unit asked the obvious next question — **how much of this owner is ours at all?** — and answered it for
+every row: **57 rows (41 + `NSMutableAttributedString`'s 16), classified by whether Foundation's OWN corpus
+declares them.** Each row was matched as a **DECLARATION** in the macOS 14.5 and iOS 16.5 Foundation headers.
+
+**THE SPLIT: 16 are ours, 41 are AppKit/UIKit's.**
+
+**OURS (16) — declared in Foundation's own headers:**
+* `+localizedAttributedStringWithFormat:`
+* `+localizedAttributedStringWithFormat:context:`
+* `+localizedAttributedStringWithFormat:options:`
+* `+localizedAttributedStringWithFormat:options:context:`
+* `-attributedStringByInflectingString`
+* `-initWithData:options:documentAttributes:error:`
+* `-initWithFormat:options:locale:`
+* `-initWithFormat:options:locale:arguments:`
+* `-initWithFormat:options:locale:context:`
+* `-initWithFormat:options:locale:context:arguments:`
+* `-initWithPath:documentAttributes:`
+* `-initWithURL:documentAttributes:`
+* `-initWithURL:options:documentAttributes:error:`
+* `-readFromURL:options:documentAttributes:`
+* `-readFromURL:options:documentAttributes:error:`
+* `mutableString`
+
+**APPKIT/UIKIT'S (41) — declared nowhere in either Foundation corpus:**
+* `+attributedStringWithAdaptiveImageGlyph:attributes:`
+* `+attributedStringWithAttachment:`
+* `+attributedStringWithAttachment:attributes:`
+* `-boundingRectWithSize:options:`
+* `-boundingRectWithSize:options:context:`
+* `-containsAttachmentsInRange:`
+* `-drawAtPoint:`
+* `-drawInRect:`
+* `-drawWithRect:options:`
+* `-drawWithRect:options:context:`
+* `-fontAttributesInRange:`
+* `-initWithDocFormat:documentAttributes:`
+* `-initWithFileURL:options:documentAttributes:error:`
+* `-initWithHTML:baseURL:documentAttributes:`
+* `-initWithHTML:documentAttributes:`
+* `-initWithHTML:options:documentAttributes:`
+* `-initWithRTF:documentAttributes:`
+* `-initWithRTFD:documentAttributes:`
+* `-initWithRTFDFileWrapper:documentAttributes:`
+* `-itemNumberInTextList:atIndex:`
+* `-lineBreakByHyphenatingBeforeIndex:withinRange:`
+* `-prefersRTFDInRange:`
+* `-rangeOfTextBlock:atIndex:`
+* `-rangeOfTextList:atIndex:`
+* `-rangeOfTextTable:atIndex:`
+* `-rulerAttributesInRange:`
+* `-size`
+* `containsAttachments`
+* `-applyFontTraits:range:`
+* `-fixAttachmentAttributeInRange:`
+* `-fixFontAttributeInRange:`
+* `-fixParagraphStyleAttributeInRange:`
+* `-readFromData:options:documentAttributes:`
+* `-readFromData:options:documentAttributes:error:`
+* `-readFromFileURL:options:documentAttributes:error:`
+* `-setAlignment:range:`
+* `-setBaseWritingDirection:range:`
+* `-subscriptRange:`
+* `-superscriptRange:`
+* `-unscriptRange:`
+* `-updateAttachmentsFromPath:`
+
+**⚠⚠ AND THE INSTRUMENT HAD TWO BUGS IN ONE MEASUREMENT, BOTH CAUGHT BY ITS OWN OUTPUT RATHER THAN BY ITS
+VERDICT — WHICH IS THE ONLY REASON THIS TABLE IS WORTH ANYTHING:**
+ 1. **THE FIRST PASS MATCHED SUBSTRINGS.** It grepped for the selector's leading keyword ANYWHERE and reported
+    `-size` as OURS — because the word "size" occurs in prose and in type names throughout 2.9 MB of headers.
+    **That is this session's third encounter with "a search that matches prose is asserting a layout"** (§63.76,
+    §63.79's import check), and the fix is the same one every time: match the DECLARATION, not the word.
+ 2. **THE SECOND PASS STILL COULD NOT SEE A PROPERTY.** Requiring a method-declaration line moved `-size` where
+    it belongs and then reported **`-mutableString` as absent** — a door this tree's own header defers as "a LIVE
+    proxy over the store, and a slice of its own" and which Foundation plainly declares. **A property is spelled
+    `@property … mutableString;`, not on a method line**, so the pattern could never have matched it.
+
+**⚠ AND THE ACTION IS NOT MINE TO TAKE IN THE LEDGER: the AppKit rows are NOT this library's work, and a work
+list that counts them as open rows OVERSTATES THE CAMPAIGN — but the ledger is generated, so correcting it means
+teaching `tools/foundation-sweep.py` a per-row "declared by Foundation's corpus" fact, and that is a tool change
+recorded here as OWED rather than hand-edited into a generated file.** Until it lands, this table says which rows
+are real and which are the drawing frameworks'.
+
+**AND WHAT IS ACTUALLY LEFT ON THIS OWNER:** the nine formatting rows (§63.82's unit — ONE engine, one
+substrate), the document readers (`-initWithData:`/`-initWithURL:`/`-initWithPath:`/`-readFromURL:`, where
+§62.58 already made RTF a real WRITER), and `-mutableString` ("a LIVE proxy over the store", a slice of its own).
+**THE APPKIT/HALF-DOZEN FAMILIES — the `draw…` family, `-size`, `boundingRect…`, the attachments, the text
+lists/rulers, the font traits and the script mutators — ARE NOT DEFERRALS OF OURS TO RE-OPEN; THEY ARE THE
+DRAWING FRAMEWORKS' DECLARATIONS ON A FOUNDATION CLASS.**
+
 ## §63.82 — `NSAttributedStringFormattingOptions`'S TWO VALUES WERE SWAPPED, AND A PROBE HAD PINNED THEM (2026-10-01)
 
 **WHAT LANDED: the two values corrected to Apple's — `InsertArgumentAttributesWithoutMerging = 1 << 0`,
