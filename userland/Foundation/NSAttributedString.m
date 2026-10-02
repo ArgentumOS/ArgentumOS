@@ -483,6 +483,18 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 	[super dealloc];
 }
 
+/* ⚠⚠ THE OTHER HALF OF THIS BUG, AND ONE MISSING METHOD: `%@` rendered an attributed string through
+ * NSObject's, WHICH PRINTS THE CLASS NAME — so every formatting substitution read "NSAttributedString" and four
+ * failing checks looked like a broken `va_list`. THE CHOICE IS OURS AND WRITTEN DOWN (§11.6.1 D2 — Apple's
+ * NSAttributedString.h does not redeclare the override, so there is no published signature to match): ***the
+ * description IS the string***, grounded in Apple's own contract for `-description`, "a string that describes the
+ * contents of the receiver" — AN ATTRIBUTED STRING'S CONTENTS ARE ITS CHARACTERS; the attributes are how they are
+ * presented. It is also what makes `%@` mean one thing for every string-like object. */
+- (NSString *)description
+{
+	return [self string];
+}
+
 - (NSString *)string
 {
 	return _string;
@@ -1491,7 +1503,31 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 		 * a bare object and died, and the mutable-string route reached a SECOND unimplemented mutator
 		 * (-[NSOwnedString appendString:], recorded in NSString.m's own comment). +stringWithFormat: is
 		 * used successfully throughout this tree, including every probe's diagnostics. */
-		NSString *joined = [NSString stringWithFormat:@"%@%@%@", head, replacement, tail];
+		/* ⚠⚠ THE STORE'S JOIN IS NOT A FORMATTER, AND IT WAS ONE UNTIL §63.93 — UNDER A COMMENT THAT SAID IT
+		 * WAS NOT. `[NSString stringWithFormat:@"%@%@%@", head, replacement, tail]` RENDERS A NIL ARGUMENT AS
+		 * `(null)`, and `head`/`tail` are SUBSTRING RESULTS THAT CAN COME BACK NIL — so ANY
+		 * `-replaceCharactersInRange:withString:` on an attributed string could WRITE `(null)` INTO THE STORE.
+		 *
+		 * MEASURED, and it is what found this line: seven short pieces appended to a growing store came back
+		 * TWELVE CHARACTERS LONGER THAN THE PIECES — two `(null)`s, at the first two mutations, which is exactly
+		 * where an empty `head`/`tail` sits. **The attributed-format doors were only the first caller to make it
+		 * visible.**
+		 *
+		 * THE FIX IS THE CONCATENATION THE OLD COMMENT ALREADY DESCRIBED, AND IT IS ALSO NIL-PROOF: a substring
+		 * that came back nil is treated as EMPTY rather than as the six characters `(null)`, so a defect in the
+		 * substring doors can no longer corrupt the store's text. `-stringByAppendingString:` is used rather than a
+		 * mutable string ON PURPOSE — the mutable route reaches a SECOND unimplemented mutator, which this
+		 * method's own history records. */
+		NSString *joined;
+
+		if (head != nil) {
+			joined = [head stringByAppendingString:(replacement != nil ? replacement : @"")];
+		} else {
+			joined = (replacement != nil ? replacement : @"");
+		}
+		if (tail != nil) {
+			joined = [joined stringByAppendingString:tail];
+		}
 
 		[_string release];
 		_string = [joined retain];

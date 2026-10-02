@@ -15982,6 +15982,57 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.94 — TWO REAL DEFECTS FIXED AND VERIFIED: A STORE MUTATION THAT WAS A FORMATTER, AND A MISSING `-description` (2026-10-01)
+
+**WHAT LANDED: TWO FIXES IN `NSAttributedString.m`, EACH PINNED BY A NEW CHECK. NO LEDGER ROW CLOSES — NEITHER IS A
+LEDGER ROW — AND THE FIXES ARE THE BUG THAT COST §63.87–§63.93 FIVE ROUNDS.**
+
+**MEASURED: `make host-foundation` EXIT 0 with exactly the standing SIX warnings; `make testimg` EXIT 0;
+`make test TESTS='foundation_attributedstring'` → `TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with
+`FOUNDATION-ATTRIBUTEDSTRING 41/41`; the NEIGHBOUR `foundation_string` stayed `158/158`, which is the check that
+matters for a change to a shared mutation path.**
+
+**⚠⚠ FIX 1 — A STORE MUTATION WAS A FORMATTER, UNDER A COMMENT THAT SAID IT WAS NOT.**
+`-replaceCharactersInRange:withString:` rebuilt the store's string with
+`[NSString stringWithFormat:@"%@%@%@", head, replacement, tail]`, and the comment directly above it read
+"CONCATENATED, NOT FORMATTED… Three appends need no formatter". **A COMMENT THAT STATES THE OPPOSITE OF THE LINE
+BENEATH IT, AND THE LINE IS THE ONE THAT RUNS — the sibling of §63.83's "a ledger row's owner is not its
+declarer".** `%@` RENDERS A NIL ARGUMENT AS `(null)`, and `head`/`tail` are substring results that can come back
+nil, **SO ANY `-replaceCharactersInRange:withString:` ON AN ATTRIBUTED STRING COULD WRITE `(null)` INTO THE STORE.**
+It is now the concatenation the comment described, and **nil-proof**: a nil substring is treated as empty rather
+than as six characters of text, so a defect in the substring doors can no longer corrupt the store. **The
+attributed-format doors were only the first caller to make it visible.**
+
+**⚠ FIX 2 — THE CLASS HAD NO `-description`, SO `%@` PRINTED THE CLASS NAME.** Every substitution read
+"NSAttributedString", and four failing checks looked like a corrupt `va_list`. **The choice is ours and written
+down (§11.6.1 D2 — Apple's NSAttributedString.h does not redeclare the override): the description IS the string**,
+grounded in Apple's own contract for `-description`, "a string that describes the contents of the receiver" — AN
+ATTRIBUTED STRING'S CONTENTS ARE ITS CHARACTERS.
+
+**⚠⚠ AND THE PATH TO THOSE TWO LINES IS THE UNIT'S REAL CONTENT, BECAUSE SIX LAYERS WERE EXONERATED BY MEASUREMENT
+BEFORE EITHER WAS READ:** the `va_list`, BOTH forwarding doors, the engine, §63.85's seam, the recorder's pieces and
+the attributed splice — each cleared by an instrument, never by an argument. **FIVE THEORIES DIED** (the two-layer
+`va_copy`, a stale list, a double-emitting recorder, an engine walking the wrong format, the splice as the
+culprit), **AND EVERY ONE WAS KILLED BY OUTPUT CONTRADICTING A VERDICT.** What closed it was arithmetic and a grep:
+**eleven characters in, twenty-three out; twelve missing; twelve is two `(null)`; `(null)` has exactly ONE producer
+in the library; therefore the line.**
+
+**⚠ AND THREE INSTRUMENT DEFECTS WERE FOUND ON THE WAY, ONE PER ROUND — all three by the instrument's own output
+disagreeing with its own verdict:** markers read from `make test`'s FILTERED TRANSCRIPT (the raw artifact is
+`.build/tests/<case>/guest.log`); a marker carrying `(object != nil)` WHERE THE TEXT WAS NEEDED, so a literal and a
+nil-`%@` were indistinguishable; and a HEAD/TAIL READ that cut a method in half twice. **An instrument read from the
+wrong place, or reporting the wrong field, is indistinguishable from one that did not fire.**
+
+**⚠ AND MY OWN CHECK HAD THE SAME CLASS OF ERROR — WORTH RECORDING BECAUSE IT IS THE SAME ONE:** the two option
+checks asserted the format's offsets (2 and 6) against the RESULT's attributes, where the substitutions sit at 2 and
+8. **One of them passed anyway, because index 6 in the result happens to be the literal `m`, which carries the same
+attribute the check was looking for — A CHECK THAT PASSES FOR A COINCIDENTAL REASON IS WORSE THAN ONE THAT FAILS.**
+
+**AND THE DOORS ARE ONE CORRECTED ASSERTION AWAY, WHICH IS WHERE THIS PAIR OF UNITS LEAVES THEM:** with both fixes
+in, the attributed-format probe reached `42 of 44` and **the only two failures were that check-position error** —
+not the code. So `NSAttributedString`'s two formatting rows need the doors re-landed and their assertions measured
+against the RESULT's offsets.
+
 ## §63.93 — ROOT CAUSE: THE ATTRIBUTED STORE REBUILDS ITS STRING WITH A `%@%@%@` FORMAT, UNDER A COMMENT THAT SAYS IT DOES NOT (2026-10-01)
 
 **NO ROWS CLOSED — BUT THE BUG IS FOUND, AND IT IS IN THIS TREE AND NOT IN THE NEW CODE.**

@@ -35,7 +35,10 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_attributedstring"
-CHECKS = ("morphology-vocabulary-is-distinct-and-carried",
+CHECKS = (
+    "attributedstring-description-is-the-string",
+    "attributedstring-mutation-concatenates-exactly",
+    "attributedstring-mutation-never-writes-null","morphology-vocabulary-is-distinct-and-carried",
           "coding-round-trips-through-the-archiver",
           "coding-refuses-what-a-property-list-cannot-carry",
           "coding-supports-secure-coding-answers-yes",

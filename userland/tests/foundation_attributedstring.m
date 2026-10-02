@@ -72,6 +72,28 @@ static int fn_bytes_contain(NSData *data, const char *needle)
 
 int main(void)
 {
+
+	{
+		/* §63.93: TWO CHECKS, ONE PER FIX. The first is the defect that cost this bug five rounds — a store
+		 * mutation rendering a nil substring as `(null)` — and it is asserted on the STRING, which is where the
+		 * `(null)` appeared. The second pins `-description`, which is what `%@` renders through. */
+		NSMutableAttributedString *m = [[NSMutableAttributedString alloc] initWithString:@"ab"];
+		NSAttributedString *arg = [[NSAttributedString alloc] initWithString:@"one"];
+
+		[m appendAttributedString:arg];
+		[m appendAttributedString:arg];
+
+		check("attributedstring-mutation-never-writes-null",
+		      [[m string] rangeOfString:@"(null)"].location == NSNotFound,
+		      [NSString stringWithFormat:@"string=%@", [m string]]);
+		check("attributedstring-mutation-concatenates-exactly",
+		      [[m string] isEqualToString:@"aboneone"],
+		      [NSString stringWithFormat:@"string=%@", [m string]]);
+		check("attributedstring-description-is-the-string",
+		      [[arg description] isEqualToString:@"one"],
+		      [NSString stringWithFormat:@"description=%@", [arg description]]);
+	}
+
 	NSDictionary *one = @{ @"A": @1 };
 	NSDictionary *both = @{ @"A": @1, @"B": @2 };
 
