@@ -89,6 +89,7 @@ CHECKS = (
           # §63.29: the two URL forms — a file URL round trip, and a scheme with nothing behind it refused.
           "url-doors-round-trip-a-file-url-and-refuse-an-unreachable-scheme",
           # §63.30: the C-string/characters copy doors, and encoding introspection over the UTF-8 storage.
+          "cstring-doors-convert",
           "cstring-doors-copy-byte-for-byte",
           "cstring-doors-refuse-what-cannot-fit",
           "cstring-without-encoding-round-trips",

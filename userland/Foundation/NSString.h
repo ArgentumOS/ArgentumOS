@@ -322,10 +322,18 @@ typedef enum {
  * the caller's own block instead of freeing, which is what separates the two spellings and why Apple added
  * the block form.
  *
- * AND THE TWO ENCODING-TAKING DOORS refuse what this library cannot STORE (UTF-8 and ASCII) rather than
- * approximating it: `-initWithBytesNoCopy:…` answers nil, and `-getBytes:…` answers NO while reporting the
- * whole range unconverted. That is the rule `-dataUsingEncoding:` and `-cStringUsingEncoding:` already
- * follow, at one more pair of doors. */
+ * AND THE TWO ENCODING-TAKING DOORS here refuse what this library cannot STORE rather than approximating it:
+ * `-initWithBytesNoCopy:…` answers nil, and `-getBytes:…` answers NO while reporting the whole range
+ * unconverted. ⚠ §63.71/§63.72 CHANGED WHAT THE SENTENCE THIS REPLACED COULD SAY about their neighbours:
+ * `-dataUsingEncoding:`, `-cStringUsingEncoding:` and `-getCString:maxLength:encoding:` now CONVERT through ICU,
+ * so they no longer refuse a non-storage encoding — **these two doors are now the ones that still refuse, and
+ * they refuse because they are the NOCOPY family, where a conversion would have to be a copy the caller did not
+ * ask for.** THAT DISTINCTION IS THE POINT, not an inconsistency.
+ *
+ * ⚠ AND THE LIFETIME OF `-cStringUsingEncoding:`'S ANSWER IS NOW TWO-LEGGED AND SAID OUT LOUD: for a STORAGE
+ * encoding it is the storage's own bytes, valid until the receiver is freed; for a CONVERTED one it is an
+ * autoreleased buffer's, valid until the POOL is emptied. Apple's own contract names both halves; a caller who
+ * needs the bytes to outlive either should use `-getCString:maxLength:encoding:`, which copies. */
 - (nullable id)initWithBytesNoCopy:(void *)bytes length:(NSUInteger)len
 			  encoding:(NSStringEncoding)encoding freeWhenDone:(BOOL)freeBuffer;
 - (nullable id)initWithBytesNoCopy:(void *)bytes length:(NSUInteger)len

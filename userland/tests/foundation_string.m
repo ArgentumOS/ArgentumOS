@@ -52,6 +52,31 @@ static NSString *fn_render_locale_arguments(NSString *format, ...)
 
 int main(void)
 {
+	{
+		/* §63.72: THE CONVERTED ENCODINGS THROUGH THE C-STRING DOORS. `-getCString:…` COPIES, so a converted
+		 * encoding is a plain conversion; `-cStringUsingEncoding:` BORROWS, and for a converted encoding the
+		 * buffer is the POOL's. ⚠ EVERY NUMBER IS ASSERTED AGAINST THE BYTE DOOR, so the two agree by
+		 * construction rather than by a constant this file would have to guess. */
+		NSString *cafe = [NSString stringWithUTF8String:"caf\xC3\xA9"];
+		char room[32];
+		BOOL got = [cafe getCString:room maxLength:sizeof(room) encoding:NSISOLatin1StringEncoding];
+		NSData *latin1 = [cafe dataUsingEncoding:NSISOLatin1StringEncoding];
+		const char *borrowed = [cafe cStringUsingEncoding:NSISOLatin1StringEncoding];
+
+		check("cstring-doors-convert",
+		      latin1 != nil && [latin1 length] == 4 && got == YES &&
+		      strlen(room) == [latin1 length] &&
+		      memcmp(room, [latin1 bytes], [latin1 length]) == 0 &&
+		      room[[latin1 length]] == '\0' &&
+		      borrowed != (const char *)NULL && strcmp(borrowed, room) == 0 &&
+		      /* and a STORAGE encoding still hands back the storage's own bytes, which is what keeps the
+		       * UTF-8 answer free and its pointer per-instance */
+		      [cafe cStringUsingEncoding:NSUTF8StringEncoding] == [cafe UTF8String],
+		      [[NSString stringWithFormat:@"latin1Bytes=%lu getCString=%d strlen=%lu borrowed=%s",
+			(unsigned long)[latin1 length], (int)got, (unsigned long)strlen(room),
+			(borrowed != (const char *)NULL) ? borrowed : "(NULL)"] UTF8String]);
+	}
+
 
 	/* A short literal is not an object: clang packs it (tag 4), and the class
 	 * the Foundation registers at that tag decodes it. */
@@ -2255,7 +2280,9 @@ NULL
 		char small[5];		/* one short of the 5 bytes + NUL */
 		char room[8];
 		BOOL fits = [s getCString:small maxLength:sizeof(small) encoding:NSUTF8StringEncoding];
-		BOOL unstored = [s getCString:room maxLength:sizeof(room) encoding:NSUTF16StringEncoding];
+		/*	§63.72: THIS USED UTF-16, WHICH NOW CONVERTS. `unstored` must stay a REAL refusal, so it asks
+		 * for NeXTSTEP — the encoding no converter here claims. */
+		BOOL unstored = [s getCString:room maxLength:sizeof(room) encoding:NSNEXTSTEPStringEncoding];
 		BOOL labelledAscii = [s getCString:room maxLength:sizeof(room) encoding:NSASCIIStringEncoding];
 
 		check("cstring-doors-refuse-what-cannot-fit",
@@ -2483,8 +2510,10 @@ NULL
 						(unsigned long)ran, (unsigned long)ranLength, blockOwned] UTF8String]);
 		}
 
-		/* `-getBytes:…`: A NULL BUFFER IS THE SIZE FORM, and an encoding this library cannot store is
-		 * REFUSED with the whole range reported unconverted rather than approximated. */
+		/* `-getBytes:…`: A NULL BUFFER IS THE SIZE FORM; a CONVERTED encoding is converted with ITS OWN
+		 * length; and an encoding with NO CONVERTER is REFUSED with the whole range reported unconverted.
+		 * ⚠ §63.72: THE SIZE FORM AND THE WRITE FORM ARE ASSERTED AGAINST THE BYTE DOOR for the converted
+		 * case, because the bug this check found was exactly a length taken from the WRONG ENCODING. */
 		{
 			NSString *text = @"abc";
 			NSUInteger needed = 0;
@@ -2499,9 +2528,31 @@ NULL
 			BOOL wrote = [text getBytes:buffer maxLength:sizeof(buffer) usedLength:&used
 					   encoding:NSUTF8StringEncoding options:0 range:range
 				     remainingRange:&leftover];
+			/* §63.72: THIS ASKED FOR UTF-16, WHICH NOW CONVERTS. `refused` must stay a REAL refusal, so
+			 * it asks for NeXTSTEP — the encoding no converter here claims. */
 			refused = ![text getBytes:buffer maxLength:sizeof(buffer) usedLength:&used
-					 encoding:NSUTF16StringEncoding options:0 range:range
+					 encoding:NSNEXTSTEPStringEncoding options:0 range:range
 				       remainingRange:&leftover];
+			/* AND THE POSITIVE CASE IN A CONVERTED ENCODING, with the buffer and the count the BYTE DOOR
+			 * produces — so this check fails if the door ever takes a length from another encoding again. */
+			{
+				char wide[32];
+				NSUInteger wideUsed = 0;
+				/* ⚠ ITS OWN leftover, AND THAT IS NOT TIDINESS: this block runs BETWEEN the refusal above
+				 * and the check below, so reusing `leftover` would clobber the range the check reads — which
+				 * is exactly how this check failed once, reporting "the whole range (0) left unconverted"
+				 * about a refusal that had correctly reported 3. A probe must not share state across the
+				 * values it asserts. */
+				NSRange wideLeftover = NSMakeRange(99, 99);
+				NSData *wideData = [text dataUsingEncoding:NSUTF16StringEncoding];
+				BOOL wideOk = [text getBytes:wide maxLength:sizeof(wide) usedLength:&wideUsed
+						   encoding:NSUTF16StringEncoding options:0 range:range
+					     remainingRange:&wideLeftover];
+
+				asked = asked && wideOk && wideData != nil &&
+					wideUsed == [wideData length] && wideLeftover.length == 0 &&
+					memcmp(wide, [wideData bytes], wideUsed) == 0;
+			}
 			check("getbytes-size-form-and-refusal",
 			      asked && needed == 3 && wrote && used == 3 &&
 			      memcmp(buffer, "abc", 3) == 0 && refused && leftover.length == 3,

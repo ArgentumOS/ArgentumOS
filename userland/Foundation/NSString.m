@@ -2906,6 +2906,19 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 {
 	size_t i;
 
+	if (!fn_is_storage_encoding(encoding)) {
+		/* ⚠ §63.72 — THE BORROWED POINTER FOR A CONVERTED ENCODING, AND WHY IT IS THE POOL'S: this
+		 * door promises a pointer valid "until the receiver is freed, OR UNTIL THE POOL IS EMPTIED" — and the
+		 * base class has no per-instance buffer to hold one, because the storage belongs to the concrete
+		 * classes. The storage encodings keep returning the STORAGE's own bytes (below), which is why the UTF-8
+		 * answer is free and per-instance; everything else answers the bytes of a buffer that lives as long as
+		 * the pool does. THAT IS THE SECOND HALF OF APPLE'S OWN CONTRACT, chosen over putting an ivar on a base
+		 * whose subclasses own their storage. */
+		NSData *converted = fn_data_in_encoding(self, encoding, NO);
+
+		return (converted != nil) ? (const char *)[converted bytes] : NULL;
+	}
+
 	if (encoding == NSUTF8StringEncoding) {
 		/*
 		 * The storage itself. For an owned or constant string the pointer is
@@ -2981,6 +2994,26 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 
 - (BOOL)getCString:(char *)buffer maxLength:(NSUInteger)maxLength encoding:(NSStringEncoding)encoding
 {
+	if (!fn_is_storage_encoding(encoding)) {
+		/* §63.72: THIS DOOR COPIES, so a converted encoding is a plain conversion and NO LIFETIME QUESTION
+		 * ARISES — which is exactly why it is the door Apple tells a caller to use when the buffer has to
+		 * outlive the call. The length test is the same one below: the STRING AND ITS TERMINATOR must fit. */
+		size_t n = 0;
+		unsigned char *b = fn_bytes_in_encoding(self, encoding, NO, &n);
+		BOOL fits;
+
+		if (buffer == NULL || b == NULL) {
+			free(b);
+			return NO;
+		}
+		fits = (n + 1 <= maxLength);
+		if (fits) {
+			memcpy(buffer, b, n);
+			buffer[n] = '\0';
+		}
+		free(b);
+		return fits;
+	}
 	/* -cStringUsingEncoding: answers NULL for an unstored encoding AND for ASCII content carrying a high
 	 * byte, so one guard refuses both — the same refusal as the outgoing door, spelled where it lives. */
 	const char *bytes = [self cStringUsingEncoding:encoding];
@@ -3083,7 +3116,46 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	const char *bytes = [piece cStringUsingEncoding:encoding];
 	NSUInteger n;
 
-	(void)options;		/* no lossy converter exists here; a caller wanting one gets the exact refusal below */
+	if (!fn_is_storage_encoding(encoding)) {
+		/* ⚠⚠ §63.72 — AND THIS DOOR HAD TO LEARN THE ENGINE FOR A REASON WORSE THAN A REFUSAL.
+		 * It used to refuse implicitly, because `-cStringUsingEncoding:` answered NULL for everything but the
+		 * storage encodings; once that door CONVERTED, this one went on to take `n` from
+		 * `-lengthOfBytesUsingEncoding:NSUTF8StringEncoding` — THE WRONG ENCODING'S COUNT — and memcpy that
+		 * many bytes OUT OF THE CONVERTED BUFFER. UTF-16 "abc" is 8 bytes and n said 3, so it would have
+		 * written the first three bytes of a UTF-16 string: a silent corruption instead of an honest refusal.
+		 * APPLE'S CONTRACT IS A CONVERSION — "converts the receiver's characters into a given C string
+		 * encoding and stores the result" — so the answer is to convert, with THIS door's own length, and to
+		 * honour the lossy option it is passed. */
+		BOOL lossy = (options & NSStringEncodingConversionAllowLossy) != 0;
+		size_t n = 0;
+		unsigned char *b = fn_bytes_in_encoding(piece, encoding, lossy, &n);
+
+		if (b == NULL) {
+			if (leftover != NULL) {
+				*leftover = range;	/* nothing was converted */
+			}
+			return NO;
+		}
+		if (buffer != NULL && n > maxBufferCount) {
+			free(b);
+			if (leftover != NULL) {
+				*leftover = range;
+			}
+			return NO;
+		}
+		if (buffer != NULL) {
+			memcpy(buffer, b, n);
+		}
+		free(b);
+		if (usedBufferCount != NULL) {
+			*usedBufferCount = n;
+		}
+		if (leftover != NULL) {
+			*leftover = NSMakeRange(NSMaxRange(range), 0);
+		}
+		return YES;
+	}
+	(void)options;		/* the storage encodings have no lossy form to choose: nothing can be lost */
 
 	if (buffer == NULL) {
 		/* THE SIZE FORM. Apple: "If buffer is NULL, the method returns the number of bytes required" — this

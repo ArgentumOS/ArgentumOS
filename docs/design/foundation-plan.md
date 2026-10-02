@@ -15982,6 +15982,54 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.72 — THE C-STRING FAMILY: THE LIFETIME ANSWER, AND A SILENT CORRUPTION THE ENGINE UNCOVERED (2026-10-01)
+
+**WHAT LANDED (the slice §63.71 named as its successor): the three C-string doors convert** —
+`-cStringUsingEncoding:`, `-getCString:maxLength:encoding:` and
+`-getBytes:maxLength:usedLength:encoding:options:range:remainingRange:` — plus the header's §63.47 rule, which
+had said these doors refuse what the library cannot store and now says why THEY are the ones that still refuse.
+
+**⚠⚠ AND THE MIDDLE ONE UNCOVERED A SILENT CORRUPTION RATHER THAN A REFUSAL, which is the best argument this
+campaign has yet produced for gating a change on the RUN rather than on the reasoning.** Once
+`-cStringUsingEncoding:` converted, `-getBytes:…` went on to take `n` from
+**`-lengthOfBytesUsingEncoding:NSUTF8StringEncoding` — THE WRONG ENCODING'S COUNT — and `memcpy` that many bytes
+out of the CONVERTED buffer.** UTF-16 `"abc"` is 8 bytes and `n` said 3, so the door would have written the
+first three bytes of a UTF-16 string: **a corruption where the old code gave an honest refusal.** Apple's
+contract for that door IS a conversion — "converts the receiver's characters into a given C string encoding and
+stores the result" — so the answer is to convert, with ITS OWN length, and to honour the lossy option the door
+is passed. **NOTHING BUT THE PROBE WOULD HAVE FOUND IT: the door still compiled, still returned YES, and still
+wrote bytes.**
+
+**AND THE LIFETIME QUESTION IS ANSWERED BY APPLE'S OWN CONTRACT RATHER THAN BY A NEW IVAR.** The house pattern
+for a borrowed buffer is a LAZY, OWNED, PER-INSTANCE one (`NSOwnedString`'s `char *_utf8`), and the BASE class
+has none to add because the storage belongs to the concrete classes. Apple's promise for
+`-cStringUsingEncoding:` is a pointer valid "until the receiver is freed, **or until the pool is emptied**" — so
+the storage encodings keep returning the STORAGE's own bytes (free, and per-instance) and a CONVERTED encoding
+answers the bytes of an autoreleased buffer: **the second half of Apple's own contract, chosen over putting an
+ivar on a base whose subclasses own their storage.** `-getCString:maxLength:encoding:` COPIES, so it has no
+lifetime question at all — which is exactly why Apple tells a caller to use it when the bytes must outlive the
+call.
+
+**MEASURED, ACCEPTANCE ALL GREEN: `rm -rf .build/host/obj && make host-foundation` exit 0 with EXACTLY the six
+known warnings; `make testimg` EXIT 0; `make test TESTS='foundation_string'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 13s`, the probe's tally **`FOUNDATION-STRING 156/156`** — one more check
+than §63.71, and the case's inventory was updated to match, because the `result-line` check PINS the count. That
+guard is worth its line: it caught the addition rather than letting a silently-missing check pass.
+
+**⚠ AND THE NEW CHECK IS WRITTEN SO IT COULD NOT HAVE PASSED ON A GUESS: `cstring-doors-convert` asserts the
+Latin-1 answer AGAINST THE BYTE DOOR** — `strlen(room) == [[cafe dataUsingEncoding:NSISOLatin1StringEncoding]
+length]`, a `memcmp` of the two, and the terminator — so this file holds no constant that could be wrong in the
+same direction as the code.
+
+**⚠ AND TWO PROBE BUGS OF MINE, THE SAME SHAPE, BOTH CAUGHT BY THE RUN.** (1) The positive case I inserted ran
+BETWEEN a refusal and the `check` that reads its `leftover`, and REUSED that range — so the check reported "the
+whole range (0) left unconverted" about a refusal that had correctly reported 3. **A PROBE MUST NOT SHARE STATE
+ACROSS THE VALUES IT ASSERTS** — and the failure's own detail string named the wrong number, which is how the
+clobbering was found. (2) The first version of `-getBytes:…`'s refusal case asked for UTF-16, which now converts,
+so the refusal moved to an encoding NO converter claims (NeXTSTEP) — the same edit §63.71 made in three other
+places, which is now the standing recipe: **a check that asserts a REFUSAL must ask for an encoding no
+converter claims, or it is asserting yesterday's limit.**
+
 ## §63.71 — THE CONVERTER ENGINE LANDS, AND THE ENGINE'S OWN INTROSPECTION DOOR POISONED ITS CACHE (2026-10-01)
 
 **WHAT LANDED (the rest of the cluster, `dec-733391f6e71e4415`): the table §63.2 said was missing is ICU'S, and
