@@ -15982,6 +15982,44 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.95 — THE ATTRIBUTED-FORMAT DOORS LAND, AND THE ASSERTIONS ARE PROVED BY TEXT (2026-10-01)
+
+**WHAT LANDED: `-initWithFormat:options:locale:` and `-initWithFormat:options:locale:arguments:` — the attributed
+formatter's two doors, on §63.85's sink, with both options honoured. THE TWO ROWS CLOSED THE PAIR OF UNITS
+§63.87–§63.94 FOUGHT OVER.**
+
+**MEASURED: `method shipped 2168 → 2170`, `open 434 → 432`; `--check` consistent; `make host-foundation` EXIT 0 with
+exactly the standing SIX warnings; `make testimg` EXIT 0; `make test TESTS='foundation_attributedstring'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with **`FOUNDATION-ATTRIBUTEDSTRING 45/45`**.**
+
+**⚠⚠ AND THE OPTION CHECKS ARE NOW PROVED BY TEXT, WHICH IS §63.94'S OWN LESSON APPLIED BEFORE THE FAILURE RATHER
+THAN AFTER IT:** the previous version asserted the FORMAT's offsets (2 and 6) against the RESULT — whose
+substitutions sit at 2 and 8 — **and the 6-check PASSED ANYWAY, because index 6 in the result is the literal `m`,
+which carries the same attribute the check was looking for.** The new check asserts **the substring at each offset
+first** (`one` at 2, `two` at 8) and only then the attribute there, so **a wrong offset now fails as a TEXT mismatch
+and cannot pass by coincidence.** *A check that passes for a coincidental reason is worse than one that fails, and
+the only defence is to assert the thing that identifies the position rather than the thing that merely exists there.*
+
+**AND THE FOURTH DOOR OF THE FIVE IS THE STRUCTURE §63.85 PREDICTED:** the recorder answers `FNStringFormat.h`'s
+protocol, so the attributed formatter walks the PLAIN engine's spec grammar and `va_arg` table rather than a second,
+divergent copy of them — which is why the substitutions, the formats and the two options all now behave and why
+nothing had to be written twice.
+
+**AND THE HONEST ACCOUNTING, BECAUSE THIS PAIR OF UNITS IS THE CAMPAIGN'S WORST RATIO:** the bug cost EIGHT records
+(§63.87–§63.94) and closed TWO rows. Its first cause was ONE MISSING METHOD (`-description`) and its second was
+ONE LINE (a store mutation that was a formatter) — **nothing about either was hard, and both were invisible because
+the failures were four layers away from the cause.** What made eight rounds necessary was not the bug: it was that
+**EACH ROUND'S INSTRUMENT WAS WRONG IN A DIFFERENT WAY** — markers read from a filtered transcript, a marker
+carrying a boolean where the text was needed, a head/tail read that cut a method in half, and a check asserting the
+wrong coordinate space — **and every one of those was discovered only when the instrument's OUTPUT DISAGREED WITH
+ITS OWN VERDICT.** Five theories died the same way, and the four that produced nothing were all about the WORDS in
+the code rather than the PATH THE DATA TAKES.
+
+**WHAT REMAINS ON THIS OWNER, NOW FIVE ROWS: the FOUR `+localizedAttributedStringWithFormat:` shapes — which are
+where the `locale:` parameter this unit accepts and does not use finally ACTS, since their subject is looking the
+format up in a table — and `-attributedStringByInflectingString`, which needs the inflection substrate.** The
+formatter's engine, its seam and its two doors are in place for both.
+
 ## §63.94 — TWO REAL DEFECTS FIXED AND VERIFIED: A STORE MUTATION THAT WAS A FORMATTER, AND A MISSING `-description` (2026-10-01)
 
 **WHAT LANDED: TWO FIXES IN `NSAttributedString.m`, EACH PINNED BY A NEW CHECK. NO LEDGER ROW CLOSES — NEITHER IS A

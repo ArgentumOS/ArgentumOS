@@ -74,6 +74,62 @@ int main(void)
 {
 
 	{
+		/* §63.95: the attributed-format doors. ⚠ THE PROBE IS ARC and NSForegroundColorAttributeName IS APPKIT'S. */
+		NSString *marker = @"FNProbeMarker";
+		NSString *own = @"FNProbeOwn";
+		NSMutableAttributedString *fmt = [[NSMutableAttributedString alloc] initWithString:@"n=%@ m=%@"];
+		NSAttributedString *plainArg = [[NSAttributedString alloc] initWithString:@"one"];
+		NSAttributedString *richArg = [[NSAttributedString alloc] initWithString:@"two"
+						   attributes:[NSDictionary dictionaryWithObject:@"blue" forKey:own]];
+		NSAttributedString *plainOut;
+		NSAttributedString *ownOut;
+		NSAttributedString *indexOut;
+		NSString *s;
+		BOOL offsetsProved;
+		NSRange eff;
+
+		[fmt addAttribute:marker value:@"red" range:NSMakeRange(0, [fmt length])];
+		plainOut = [[NSAttributedString alloc] initWithFormat:fmt options:0 locale:nil, plainArg, richArg];
+		ownOut = [[NSAttributedString alloc]
+			   initWithFormat:fmt
+				  options:NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging
+				   locale:nil, plainArg, richArg];
+		indexOut = [[NSAttributedString alloc]
+			     initWithFormat:fmt
+				    options:NSAttributedStringFormattingApplyReplacementIndexAttribute
+				     locale:nil, plainArg, richArg];
+		s = [plainOut string];
+		/* THE OFFSETS ARE PROVED, NOT ASSUMED: `one` at 2 and `two` at 8, asserted as TEXT. */
+		offsetsProved = ([s length] == 11 &&
+				 [[s substringWithRange:NSMakeRange(2, 3)] isEqualToString:@"one"] &&
+				 [[s substringWithRange:NSMakeRange(8, 3)] isEqualToString:@"two"]);
+		check("attributedstring-format-substitutes",
+		      [s isEqualToString:@"n=one m=two"] && offsetsProved,
+		      [NSString stringWithFormat:@"string=%@", s]);
+		check("attributedstring-format-attributes-reach-the-substitution",
+		      [[[plainOut attributesAtIndex:2 effectiveRange:&eff] objectForKey:marker] isEqualToString:@"red"] &&
+		      [[[plainOut attributesAtIndex:8 effectiveRange:NULL] objectForKey:marker] isEqualToString:@"red"],
+		      [NSString stringWithFormat:@"arg1=%@ arg2=%@",
+			[[plainOut attributesAtIndex:2 effectiveRange:NULL] objectForKey:marker],
+			[[plainOut attributesAtIndex:8 effectiveRange:NULL] objectForKey:marker]]);
+		check("attributedstring-option-replacement-index",
+		      [[[[indexOut attributesAtIndex:2 effectiveRange:NULL]
+			  objectForKey:NSReplacementIndexAttributeName] description] isEqualToString:@"0"] &&
+		      [[[[indexOut attributesAtIndex:8 effectiveRange:NULL]
+			  objectForKey:NSReplacementIndexAttributeName] description] isEqualToString:@"1"],
+		      [NSString stringWithFormat:@"first=%@ second=%@",
+			[[indexOut attributesAtIndex:2 effectiveRange:NULL] objectForKey:NSReplacementIndexAttributeName],
+			[[indexOut attributesAtIndex:8 effectiveRange:NULL] objectForKey:NSReplacementIndexAttributeName]]);
+		check("attributedstring-option-argument-attributes-unmerged",
+		      [[[ownOut attributesAtIndex:8 effectiveRange:NULL] objectForKey:own] isEqualToString:@"blue"] &&
+		      [[ownOut attributesAtIndex:8 effectiveRange:NULL] objectForKey:marker] == nil,
+		      [NSString stringWithFormat:@"own=%@ marker=%@",
+			[[ownOut attributesAtIndex:8 effectiveRange:NULL] objectForKey:own],
+			[[ownOut attributesAtIndex:8 effectiveRange:NULL] objectForKey:marker]]);
+	}
+
+
+	{
 		/* §63.93: TWO CHECKS, ONE PER FIX. The first is the defect that cost this bug five rounds — a store
 		 * mutation rendering a nil substring as `(null)` — and it is asserted on the STRING, which is where the
 		 * `(null)` appeared. The second pins `-description`, which is what `%@` renders through. */

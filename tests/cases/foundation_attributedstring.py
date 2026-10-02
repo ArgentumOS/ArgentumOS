@@ -36,6 +36,10 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_attributedstring"
 CHECKS = (
+    "attributedstring-option-argument-attributes-unmerged",
+    "attributedstring-option-replacement-index",
+    "attributedstring-format-attributes-reach-the-substitution",
+    "attributedstring-format-substitutes",
     "attributedstring-description-is-the-string",
     "attributedstring-mutation-concatenates-exactly",
     "attributedstring-mutation-never-writes-null","morphology-vocabulary-is-distinct-and-carried",

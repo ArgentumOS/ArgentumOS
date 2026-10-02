@@ -13,6 +13,7 @@
  */
 
 #import <Foundation/NSAttributedString.h>
+#import "FNStringFormat.h"
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSException.h>
@@ -382,6 +383,129 @@ static NSRange fn_url_token_range(NSString *text, NSUInteger index, BOOL *found)
 	}
 	return NSMakeRange(start, end - start);
 }
+
+
+/* ================== THE ATTRIBUTED FORMAT SINK (\u00a763.95) ================== */
+@interface FNAttributedFormatRecorder : NSObject <FNFormatSinkRecording>
+{
+	NSMutableAttributedString *_result;
+	NSAttributedString *_format;
+	NSAttributedStringFormattingOptions _options;
+	NSUInteger _substitution;
+}
+- (id)initWithFormat:(NSAttributedString *)format options:(NSAttributedStringFormattingOptions)options;
+- (NSAttributedString *)result;
+@end
+
+@implementation FNAttributedFormatRecorder
+
+- (id)initWithFormat:(NSAttributedString *)format options:(NSAttributedStringFormattingOptions)options
+{
+	self = [super init];
+	if (self != nil) {
+		_format = [format copy];
+		_options = options;
+		_result = [[NSMutableAttributedString alloc] init];
+		_substitution = 0;
+	}
+	return self;
+}
+
+- (void)dealloc
+{
+	[_result release];
+	[_format release];
+	[super dealloc];
+}
+
+- (NSAttributedString *)result { return _result; }
+
+- (void)fnFormatEmittedUTF8String:(const char *)utf8 at:(NSUInteger)pos
+{
+	[self fnFormatEmittedText:[NSString stringWithUTF8String:utf8] at:pos object:nil];
+}
+
+- (void)fnFormatEmittedText:(NSString *)text at:(NSUInteger)pos object:(id)object
+{
+	NSDictionary *attributes;
+	NSAttributedString *piece;
+	NSUInteger length = [_format length];
+	BOOL ownAttributes;
+
+	/* THE FORMAT'S ATTRIBUTES AT THE POSITION THE EMISSION CAME FROM, which is why the sink reports `pos`. */
+	if (length == 0) {
+		attributes = [NSDictionary dictionary];
+	} else {
+		NSUInteger at = (pos < length) ? pos : (length - 1);
+
+		attributes = [_format attributesAtIndex:at effectiveRange:NULL];
+	}
+	if (object != nil) {
+		_substitution++;
+	}
+	ownAttributes = (object != nil && [object isKindOfClass:[NSAttributedString class]] &&
+			 (_options & NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging) != 0);
+	if (ownAttributes) {
+		piece = object;
+	} else if (object != nil) {
+		piece = [[[NSAttributedString alloc] initWithString:[object description]
+							attributes:attributes] autorelease];
+	} else {
+		piece = [[[NSAttributedString alloc] initWithString:text attributes:attributes] autorelease];
+	}
+	if (object != nil && (_options & NSAttributedStringFormattingApplyReplacementIndexAttribute) != 0) {
+		NSMutableAttributedString *indexed = [[piece mutableCopy] autorelease];
+		NSUInteger count = [indexed length];
+
+		if (count > 0) {
+			[indexed addAttribute:NSReplacementIndexAttributeName
+					value:[NSNumber numberWithUnsignedInteger:(_substitution - 1)]
+					range:NSMakeRange(0, count)];
+		}
+		piece = indexed;
+	}
+	[_result appendAttributedString:piece];
+}
+
+@end
+
+@implementation NSAttributedString (NSAttributedStringFormatting)
+
+- (instancetype)initWithFormat:(NSAttributedString *)format
+		       options:(NSAttributedStringFormattingOptions)options
+			locale:(NSLocale *)locale, ...
+{
+	va_list arguments;
+	id result;
+
+	va_start(arguments, locale);
+	result = [self initWithFormat:format options:options locale:locale arguments:arguments];
+	va_end(arguments);
+	return result;
+}
+
+- (instancetype)initWithFormat:(NSAttributedString *)format
+		       options:(NSAttributedStringFormattingOptions)options
+			locale:(NSLocale *)locale
+		     arguments:(va_list)arguments
+{
+	FNAttributedFormatRecorder *recorder;
+	fn_format_sink sink;
+	NSAttributedString *built;
+	id result;
+
+	recorder = [[FNAttributedFormatRecorder alloc] initWithFormat:format options:options];
+	sink.out = nil;
+	sink.recorder = recorder;
+	fn_string_append_format_sink(&sink, [format string], arguments);
+	built = [[recorder result] retain];
+	[recorder release];
+	result = [self initWithAttributedString:built];
+	[built release];
+	return result;
+}
+
+@end
 
 @implementation NSAttributedString
 

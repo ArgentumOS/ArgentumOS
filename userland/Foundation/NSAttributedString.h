@@ -50,6 +50,8 @@
  */
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSLocale.h>
+#include <stdarg.h>
 #import <Foundation/NSCoding.h>
 #import <Foundation/NSURLRequest.h>
 #import <Foundation/NSFileWrapper.h>
@@ -345,8 +347,25 @@ typedef enum {
 @property (class, readonly, copy) NSArray *textTypes;
 @property (class, readonly, copy) NSArray *textUnfilteredTypes;
 
+
 @end
 
+/* \u26a0\u26a0 DECLARED IN A CATEGORY BECAUSE THAT IS APPLE'S OWN SHAPE (`NSAttributedString
+ * (NSAttributedStringFormatting)` in the corpus): implementing in a category what the CLASS declares draws
+ * "category is implementing a method which will also be implemented by its primary class" \u2014 A WARNING
+ * ABOUT SHAPE IS A WARNING ABOUT FIDELITY. \u26a0 The `arguments:` door takes a `va_list`, NOT a dictionary
+ * (\u00a763.82, from Apple's declaration: the ledger lists selectors and cannot tell). \u26a0 `locale:` is
+ * ACCEPTED AND NOT USED, stated rather than hidden \u2014 this engine's conversions are C's and C's are
+ * locale-free. */
+@interface NSAttributedString (NSAttributedStringFormatting)
+- (instancetype)initWithFormat:(NSAttributedString *)format
+		       options:(NSAttributedStringFormattingOptions)options
+			locale:(nullable NSLocale *)locale, ...;
+- (instancetype)initWithFormat:(NSAttributedString *)format
+		       options:(NSAttributedStringFormattingOptions)options
+			locale:(nullable NSLocale *)locale
+		     arguments:(va_list)arguments;
+@end
 /* ---- THE MARKDOWN FILE DOOR, IN APPLE'S FOUR-ARGUMENT SPELLING (2026-09-30) -------------------------
  *
  * APPLE DECLARES THIS INITIALISER WITH a `baseURL:` argument, and the tree shipped the SHORTER
