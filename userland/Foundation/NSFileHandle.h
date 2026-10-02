@@ -131,10 +131,18 @@ extern NSString *const NSFileHandleOperationException;
 
 /* The three standard descriptors and a null device, each a SHARED handle that does not own its descriptor
  * (nothing should close fd 0, 1 or 2, and there is one null device for the process). Apple declares these
- * as CLASS PROPERTIES; the house shape is a method, which is the same ABI and the same call. */
-+ (NSFileHandle *)standardInput;
-+ (NSFileHandle *)standardOutput;
-+ (NSFileHandle *)standardError;
+ * as CLASS PROPERTIES; the house shape is a method, which is the same ABI and the same call.
+ *
+ * ⚠ THE THREE WERE `+standardInput`/`+standardOutput`/`+standardError` AND ARE NOW APPLE'S SPELLINGS (§63.68).
+ * The house names were a near-neighbour of `fileHandleWithStandard…` — the same defect class as the
+ * `+nullDevice` paragraph below, found the same way. MEASURED FROM TWO SOURCES: the macOS 14.5 headers
+ * declare `fileHandleWithStandardInput/Output/Error` on NSFileHandle, and Apple's documentation index carries
+ * all three as OPEN rows for this class. So this is NOT a deletion but a RENAME ONTO APPLE'S NAME, and it
+ * CLOSES THREE OPEN LEDGER ROWS while removing three names of ours. (`standardInput` IS Apple's too — on
+ * NSTask and NSUserUnixTask, as an INSTANCE property, which is why a text search never flagged it.) */
++ (NSFileHandle *)fileHandleWithStandardInput;
++ (NSFileHandle *)fileHandleWithStandardOutput;
++ (NSFileHandle *)fileHandleWithStandardError;
 /* ⚠ THE SPELLING WAS `+nullDevice` AND APPLE'S IS `+fileHandleWithNullDevice` — corrected 2026-10-01
  * (§63.50). `nullDevice` is the SWIFT name (Apple's index carries `class var nullDevice: FileHandle`, because
  * Swift drops the `fileHandleWith` prefix), and this header had taken the Swift spelling. MEASURED against the

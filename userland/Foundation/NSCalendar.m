@@ -307,11 +307,6 @@ NSCalendarIdentifier const NSCalendarIdentifierVikram = @"vikram";
 	return self;
 }
 
-- (NSString *)identifier
-{
-	return _identifier;
-}
-
 - (NSTimeZone *)timeZone
 {
 	return _timeZone;
@@ -812,7 +807,7 @@ NSCalendarIdentifier const NSCalendarIdentifierVikram = @"vikram";
 	 * accessor below keeps its declared return type: on an `id` receiver, `[other firstWeekday] ==
 	 * _firstWeekday` would compare a pointer with an integer. */
 	calendar = (NSCalendar *)other;
-	return [[calendar identifier] isEqualToString:_identifier]
+	return [[calendar calendarIdentifier] isEqualToString:_identifier]
 	    && [[calendar timeZone] isEqualToTimeZone:_timeZone]
 	    && [calendar firstWeekday] == _firstWeekday
 	    && [calendar minimumDaysInFirstWeek] == _minimumDaysInFirstWeek;

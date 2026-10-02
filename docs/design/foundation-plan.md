@@ -15982,6 +15982,53 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.68 — THE FOUR SPELLINGS GO, AND THE CAMPAIGN'S FIRST CLOSED ROWS IN THIS THREAD (2026-10-01)
+
+**WHAT LANDED (user decision `dec-47e849d13091f009`, "apply the standing class-(2) policy to the four spellings;
+give the NSXMLNode six its own unit"):**
+ * **`NSFileHandle`'s three house names became APPLE'S SPELLING** — `+standardInput`/`+standardOutput`/
+   `+standardError` → **`+fileHandleWithStandardInput`/`+fileHandleWithStandardOutput`/
+   `+fileHandleWithStandardError`**. **THIS IS NOT THE OPERATION IT LOOKS LIKE, AND THAT IS THE UNIT'S WHOLE
+   CONTENT: it is a RENAME ONTO APPLE'S NAME, not a deletion.** Apple's documentation index carried all three
+   as **OPEN** rows for NSFileHandle, so deleting our names would have left three open rows and no door — the
+   failure §63.57 named ("a deletion that moves a row from shipped to open has not finished") seen from the
+   other side. Renaming closes them.
+ * **`NSCalendar -identifier` is GONE** — declaration and implementation — with its one remaining caller moved
+   onto Apple's `-calendarIdentifier`, which this class already declared and shipped.
+
+**MEASURED, AND IT IS THE CAMPAIGN'S FIRST CLOSED ROWS IN THIS THREAD: `property shipped 1258 → 1261`,
+`open 221 → 218`.** The three rows are `fileHandleWithStandardInput`, `…Output` and `…Error`, now `status =
+shipped` in `docs/reference/foundation-selector-surface.txt`, with **`--check` consistent in BOTH directions**
+(every shipped name declared, every open name absent). `-identifier` moved no row — it was never Apple's on
+NSCalendar — which is the quiet shape of a deletion that removes an EXTRA. **AND THE CLOSURE NEEDED
+`--refresh`:** the status column is re-derived only there, so a `make foundation-sweep` run after the rename
+still printed the OLD counts, and reading that as "the rename did nothing" would have been a wrong conclusion
+drawn from a stale file.
+
+**⚠⚠ AND THE UNIT CAUGHT ITSELF, WHICH IS RECORDED BECAUSE IT WAS MY MISTAKE AND NOT THE TOOL'S.**
+`NSCalendar -identifier` HAD THREE CALLERS, NOT ONE. I found one by grep, deleted the declaration, and **the
+rebuild produced TWO NEW WARNINGS** — `NSDateFormatter.m:206` and `NSDateIntervalFormatter.m:176`, both
+`fn_calendar_keyword([_calendar identifier])`, both calendars. **My grep was FILTERED (`grep -v
+"localeIdentifier\|timeZoneIdentifier\|_identifier\|…"`) AND TRUNCATED WITH `head`** — which is precisely
+§63.57's lesson ("grep the NAME across the tree with no filter at all, and treat a filtered grep as a hypothesis
+rather than a proof"), paid again four days after it was written down, on a deletion §63.57 was the warning
+for. **THE BUILD IS THE INSTRUMENT THAT CAUGHT IT, and that is the transferable half: a filter encodes an
+expectation about the answer, and the compiler does not.** Both call sites now read `calendarIdentifier`;
+**the rebuild is back to EXACTLY the six pre-existing warnings and nothing else.**
+
+**AND THE ACCEPTANCE, ALL OF IT GREEN.** `rm -rf .build/host/obj && make host-foundation` exit 0 with the six
+known warnings (`NSOrderedCollectionDifference.m:500`; `foundation_calendar.m:459-460`;
+`foundation_core_support.m:76/112`) and no seventh. `make foundation-sweep` consistent, `--refresh` exit 0.
+`make testimg` exit 0 and **`make test TESTS='foundation_filehandle,foundation_calendar,
+foundation_calendar_identifiers'` → `TESTS-OK 3/3 case(s), 18/18 check(s) in 15s`**, the probes' own tallies
+`FOUNDATION-FILEHANDLE 22/22`, `FOUNDATION-CALENDAR 22/22`, `FOUNDATION-CALENDAR-IDS 4/4`.
+
+**AND THE PROGRESS METRIC MOVED FOR THE FIRST TIME IN THIS THREAD.** §30's plan says the only progress signal
+that matters is an owner leaving the work list. The property ledger just went **open 221 → 218** — small, but
+closed rather than reclassified, and it is the first time in §63.59–§63.68 that a number moved in that
+direction. **The NSXMLNode six go to their OWN unit (the user's ruling), because narrowing a superclass is not
+the same operation: it changes what every existing caller INHERITS, and it needs a probe rather than a grep.**
+
 ## §63.67 — THE SETTLING BEGINS: THREE FAMILIES RESOLVED BY TWO SOURCES, AND ONE ROW THAT NEITHER CAN RESOLVE (2026-10-01)
 
 **WHAT LANDED: the report's rows are settled against a SECOND SOURCE — and the second source was already in

@@ -293,19 +293,19 @@ static void fn_make_standard_handles(void)
 	pthread_once(&fn_standard_once, fn_make_standard_handles);
 }
 
-+ (NSFileHandle *)standardInput
++ (NSFileHandle *)fileHandleWithStandardInput
 {
 	[self fnPrepareStandardHandles];
 	return fn_standard_handles[0];
 }
 
-+ (NSFileHandle *)standardOutput
++ (NSFileHandle *)fileHandleWithStandardOutput
 {
 	[self fnPrepareStandardHandles];
 	return fn_standard_handles[1];
 }
 
-+ (NSFileHandle *)standardError
++ (NSFileHandle *)fileHandleWithStandardError
 {
 	[self fnPrepareStandardHandles];
 	return fn_standard_handles[2];

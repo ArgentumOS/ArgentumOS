@@ -173,7 +173,7 @@ static int32_t fn_dif_zone(NSTimeZone *zone, UChar *dest, int32_t cap)
 		NSCalendar *calendar = [self fnCalendar];
 
 		if (calendar != nil) {
-			keyword = fn_calendar_keyword([calendar identifier]);
+			keyword = fn_calendar_keyword([calendar calendarIdentifier]);
 		}
 	}
 	snprintf(localeText, sizeof localeText, "%s%s%s", [[locale localeIdentifier] UTF8String],

@@ -203,7 +203,7 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 	 * (NSCalendar.h); with no calendar set, the locale's own is used (Gregorian here). */
 	{
 		const char *keyword = _calendar != nil
-			? fn_calendar_keyword([_calendar identifier]) : NULL;
+			? fn_calendar_keyword([_calendar calendarIdentifier]) : NULL;
 
 		snprintf(localeText, sizeof localeText, "%s%s%s",
 			 [[locale localeIdentifier] UTF8String],

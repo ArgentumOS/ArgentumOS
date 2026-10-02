@@ -371,19 +371,19 @@ int main(void)
 	}
 
 	{
-		NSFileHandle *out = [NSFileHandle standardOutput];
-		NSFileHandle *err = [NSFileHandle standardError];
-		NSFileHandle *in = [NSFileHandle standardInput];
+		NSFileHandle *out = [NSFileHandle fileHandleWithStandardOutput];
+		NSFileHandle *err = [NSFileHandle fileHandleWithStandardError];
+		NSFileHandle *in = [NSFileHandle fileHandleWithStandardInput];
 		NSFileHandle *null = [NSFileHandle fileHandleWithNullDevice];
 		NSData *byte = [@"x" dataUsingEncoding:NSUTF8StringEncoding];
 
 		check("standard-handles",
 		      [in fileDescriptor] == 0 && [out fileDescriptor] == 1 && [err fileDescriptor] == 2 &&
-		      out == [NSFileHandle standardOutput] && null != nil &&
+		      out == [NSFileHandle fileHandleWithStandardOutput] && null != nil &&
 		      [null writeData:byte error:NULL],
 		      [NSString stringWithFormat:@"in=%d out=%d err=%d null=%d shared=%d",
 			[in fileDescriptor], [out fileDescriptor], [err fileDescriptor],
-			(int)(null != nil), (int)(out == [NSFileHandle standardOutput])]);
+			(int)(null != nil), (int)(out == [NSFileHandle fileHandleWithStandardOutput])]);
 	}
 
 	/* ---- THE ASYNCHRONOUS HALF: the seam's first real consumer ------------ */

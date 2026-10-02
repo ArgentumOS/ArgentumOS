@@ -190,7 +190,11 @@ typedef enum {
  * named, after F7 had carried it silently). */
 - (nullable id)initWithCalendarIdentifier:(NSString *)identifier;	/* nil for the refused ones */
 
-- (NSString *)identifier;
+/* ⚠ `-identifier` STOOD HERE AND IS GONE (§63.68). Apple's name for that value is `-calendarIdentifier`, which
+ * this class already declares and ships, so the house spelling was a second door onto one property — the same
+ * shape as §63.59's `-characterCount` and `-isEqualToCalendar:`. MEASURED FROM TWO SOURCES: Apple's documentation
+ * index carries `identifier` on NSBackgroundActivityScheduler, NSURLSessionConfiguration, NSUserNotification and
+ * NSUserNotificationAction, and on NSCalendar it carries `calendarIdentifier`; the corpus agrees. */
 
 /* A fixed-offset time zone; never nil (the default is UTC). */
 - (NSTimeZone *)timeZone;
