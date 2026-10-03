@@ -1,18 +1,24 @@
 # Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
 # SPDX-License-Identifier: MIT
-"""NSURLConnection and its two data-side protocols — §62.25's acceptance.
+"""NSURLConnection and its two data-side protocols — §62.25's acceptance, re-pointed by §63.154.
 
 docs/design/foundation-plan.md §62.24 retired the deprecation ground (the user's policy, 2026-09-26:
 "all items removed for being deprecated are un-deprecated in Argentum Foundation, and added to the work
-list"), and §62.25 is the first row of that list to land: Apple's older way to perform an exchange,
-written as a FACADE over the session that already exists rather than as a second transport.
+list"), and §62.25 is the first row of that list to land: Apple's older way to perform an exchange.
+
+AND SINCE §63.153 IT DRIVES `NSURLProtocol` RATHER THAN `NSURLSession` — the 10.2 design, which is also
+the one the 10.2 surface cut leaves standing (§63.140 measured the old implementation as 566 lines of
+`NSURLSessionDataDelegate`). THAT IS WHY THE RETIRED CHECKS CAME BACK IN A DIFFERENT SHAPE (§63.154):
+the redirect, the authentication doors and the download path are the connection's OWN doors again, so
+each is asked through the `NSURLProtocolClient` door the seam itself uses rather than through a session
+selector — same fixtures, same contracts, the door underneath them now a real one.
 
 The probe is `/System/Shared/tests/foundation_urlconnection`, ONE unit, importing only
 `<Foundation/Foundation.h>`.
 
 SERVER-FREE, WHICH IS THE PROBE'S ARRANGEMENT RATHER THAN A GAP: the round trips use `file://`, so they
-are real transfers through NSURLConnection -> NSURLSession -> NSURLProtocol -> the bridge with nothing to
-start first, and the one door that needs a 3xx (the redirect) is tested directly through the runtime.
+are real transfers through NSURLConnection -> NSURLProtocol -> the bridge with nothing to start first,
+and the doors that need a 3xx or a challenge are asked directly through the runtime.
 
   * `connection-class-declared`             — the class exists, derives from NSObject, answers the scheme question;
   * `delegate-protocols-declared`           — both protocols exist and the data one refines the base;
@@ -56,25 +62,24 @@ CHECKS = ("connection-class-declared", "delegate-protocols-declared",
           "can-handle-request-asks-the-registry", "synchronous-round-trip",
           "synchronous-failure-is-reported-not-raised", "asynchronous-streaming-round-trip",
           "the-calls-arrive-in-order", "original-and-current-request",
-          
-          
+          # §63.154: THE REDIRECT DOOR, asked through this class's OWN door
+          # (-URLProtocol:wasRedirectedToRequest:redirectResponse:), which is the door the seam uses.
+          "redirect-door-follows-what-the-delegate-returns",
+          "redirect-door-nil-means-do-not-follow",
+          "redirect-door-passes-a-different-request",
+          "redirect-door-with-no-delegate-door-follows",
           "refused-doors-are-absent",
           "download-protocol-declared",
-          
+          # §63.154: THE DOWNLOAD PATH END TO END — the file this class now writes itself.
+          "download-round-trip",
+          "the-data-doors-are-not-used-for-a-download",
+          "the-download-progress-door-is-reported",
           "download-refusals-are-absent", "the-session-download-protocol-shape",
-          
-          
-          
-          
-          
-          
-          
-          
           "the-declared-surface-is-what-ships")
 
 
 class Case(BaseCase):
-    title = "NSURLConnection: the deprecated family as a facade over the session (§62.25)"
+    title = "NSURLConnection: the deprecated family, driving NSURLProtocol (§62.25, §63.153)"
     tier = "fast"
     # Measured to answer the SAME with a reused guest: it only runs a probe and reads its output.
     shared_session = True

@@ -15969,6 +15969,53 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.154 — STEP 6 BEGINS: SEVEN RETIRED CHECKS COME BACK AGAINST THIS CLASS'S OWN DOORS, AND RE-POINTING FOUND TWO ENGINE DEFECTS (2026-10-03)
+
+**LANDED: THE REDIRECT DOOR AND THE DOWNLOAD PATH ARE TESTED AGAIN, THROUGH THE `NSURLProtocolClient` DOORS THE
+SEAM ITSELF USES — AND THE RE-POINTING FOUND TWO REAL BUGS IN THE ENGINE §63.153 SHIPPED.** §63.149 retired
+seventeen checks because the doors they asked were session-shaped; §63.153 made those doors this class's own, so
+§63.145 step 6 is now possible rather than merely overdue. **The probe is `20/20` and the case `6/6`, both on the
+first run**, and the family this change can reach is unchanged: `foundation_url*` **14/14 cases, 72/72 checks**.
+
+**⚠⚠ DEFECT 1, AND IT WAS AN OVER-RELEASE WAITING FOR ANY CALLER: the ending gave up the `-start` retain
+unconditionally.** `-start` is the ONLY thing that retains on Apple's contract, but `fnFinishWithError:` released
+that retain whatever the connection's history — so a connection whose ending is entered WITHOUT `-start` lost a
+reference it never had. *That is not hypothetical: ASKING THE REDIRECT DOOR OF AN IDLE OBJECT IS EXACTLY THAT PATH,
+and it is the path the old checks used, because the translation is a pure function of (delegate, response, proposed
+request).* The release is now conditional on `_started`, which is set at the top of `-start` before anything can
+fail — so it is YES for every ending that HAS a `-start` retain and NO for every one that does not.
+
+**⚠⚠ DEFECT 2, AND IT WAS §54'S RULE APPLIED THE WRONG WAY ROUND: `currentRequest` moved BEFORE the delegate was
+asked.** The door assigned `_currentRequest` first and consulted the delegate second, so a delegate that answered
+`nil` ("do not follow") left the connection claiming to run a request it had refused to run. **The property is "the
+request this connection is running"**, so it moves when a redirect is FOLLOWED and stays put when the delegate says
+no: the connection is still running the original, and the 3xx is the answer to it. `nil` now also DELIVERS the 3xx
+as `-connection:didReceiveResponse:`, which is Apple's contract for a refused redirect and what the check asserts.
+
+**WHAT THE SEVEN CHECKS ARE, AND WHY EACH IS ABOUT CODE NOTHING ELSE REACHED:**
+ * **the four redirect checks** ask `-URLProtocol:wasRedirectedToRequest:redirectResponse:` — the door the BRIDGE
+   uses — and read the delegate's own record plus the connection's `currentRequest`: the delegate's value IS what
+   runs; `nil` means do-not-follow AND the 3xx is the response AND `currentRequest` does not move; a different
+   request is run as it stands; and a delegate that implements nothing is not asked and the transfer follows.
+ * **the three download checks** are the acceptance for the file-writing path §63.153 ADDED (§63.145 step 3 put the
+   file writing where 10.2 had it, and the seam hands over chunks): the round trip hands the delegate a FILE holding
+   the body; the data doors are NOT used for a download (the dispatch rule); and the progress door carries THIS
+   transfer's own totals. *Nothing else in the tree touched that code.*
+
+**AND TWO SMALLER THINGS THE UNIT COST, BOTH ALREADY IN THE TREE'S REGISTER:** the fixture's mode-2 URL had to be a
+SETTABLE field rather than built inside the fixture, because a URL built there would be a second copy of the probe's
+own fixture rules (`fn_write_fixture` is defined after the fixtures, so a call would have needed a forward
+declaration); and **an explicit `[conn release]` in a probe is a COMPILE ERROR**, because the library is MRC and
+every probe is ARC — the tree records that rule and this unit still wrote two of them, and the compiler caught both
+in one run.
+
+**STILL OWED, AND NARROWED:** the AUTHENTICATION cluster (four checks — the modern door superseding the pair, the
+gate asked first, a `NO` from the gate, and no-door-means-the-default) is the rest of the re-pointing, and its
+fixtures (`FNSenderRecorder`, `FNAuthDelegate`, `FNDeprecatedAuthDelegate`) are in the file untouched; the cache
+decision stays the header's recorded WORK ITEM because the seam has no question to ask it; and §63.145's steps 1, 3
+and 5 (the member cut, the download-to-`NSURLDownload` move, the disposition enum out of public `NSURLProtocol.h`)
+are untouched.
+
 ## §63.153 — THE ENGINE IS REBUILT ON NSURLProtocol AND IS GREEN, AND THE TWO "CAUSES" BEFORE IT WERE BOTH MEASURING FAULTS (2026-10-03)
 
 **LANDED: `NSURLConnection` IS AN `NSURLProtocolClient` AGAIN, AND THE WHOLE URL FAMILY IS GREEN.** `-start` finds

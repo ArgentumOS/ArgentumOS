@@ -164,17 +164,21 @@ static BOOL fn_protocol_requires(Protocol *proto, const char *sel)
 
 @end
 
-/* THE REDIRECT THREE-STEP FIXTURE. `mode` says what the delegate should answer, and the check reads what
- * the connection's completion handler was given. */
+/* THE REDIRECT THREE-STEP FIXTURE. `mode` says what the delegate should answer, and the checks read what
+ * the connection did with it (§63.154: it is asked through the class's OWN door now, so the observable
+ * facts are the delegate's `asked` flag and the connection's `currentRequest`). */
 @interface FNRedirectAnswerer : NSObject <NSURLConnectionDataDelegate>
 {
 	@public
 	int mode;		/* 0 = return the SAME request (follow), 1 = return nil (do not follow),
 				 * 2 = return a DIFFERENT request */
+	NSURL *different;	/* what mode 2 answers a request for; SET BY THE PROBE, because a URL built
+				 * here would have to be a second copy of the probe's fixture rules */
 	NSURLRequest *returned;
 	BOOL asked;
+	BOOL delivered;		/* `-connection:didReceiveResponse:` was called: what "do not follow"
+				 * DELIVERS, since the 3xx is then the answer */
 }
-
 @end
 
 @implementation FNRedirectAnswerer
@@ -190,12 +194,18 @@ static BOOL fn_protocol_requires(Protocol *proto, const char *sel)
 		return nil;
 	}
 	if (mode == 2) {
-		returned = [NSURLRequest requestWithURL:
-				fn_url(@"http://example.invalid/elsewhere")];
+		returned = [NSURLRequest requestWithURL:different];
 		return returned;
 	}
 	returned = request;
 	return request;
+}
+
+- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response
+{
+	(void)connection;
+	(void)response;
+	delivered = YES;
 }
 
 @end
@@ -655,6 +665,96 @@ int main(void)
 	}
 
 
+	/* --- 5. THE REDIRECT DOOR, ON THIS CLASS'S OWN DOOR ---------------------------------------------
+	 *
+	 * THE TRANSLATION IS A PURE FUNCTION OF (delegate, response, proposed request) PLUS THE ONE ACT IT
+	 * PERFORMS — FOLLOWING is this class's own step, because the seam REPORTS the 3xx and stops (that is
+	 * its header's decision 2). So the connection is asked through THE DOOR THE SEAM WOULD USE,
+	 * `-URLProtocol:wasRedirectedToRequest:redirectResponse:` (NSURLProtocolClient), and the checks read the
+	 * delegate's own record and the connection's `currentRequest` — the request it says it is running.
+	 *
+	 * IT CONNECTS TO NOTHING: every URL is a local fixture, so a mode that FOLLOWS starts a real transfer
+	 * that succeeds at once rather than one waiting for a server that is not there.
+	 */
+	{
+		SEL sel = @selector(URLProtocol:wasRedirectedToRequest:redirectResponse:);
+		typedef void (*Fn)(id, SEL, NSURLProtocol *, NSURLRequest *, NSURLResponse *);
+		const char *redirectBytes = "the request a redirect was followed to\n";
+		NSData *redirectFixture = [NSData dataWithBytes:redirectBytes length:strlen(redirectBytes)];
+		NSURL *nextURL = fn_write_fixture(@"fnconn-redirect-target.txt", redirectFixture);
+		NSURL *otherURL = fn_write_fixture(@"fnconn-redirect-other.txt", redirectFixture);
+		NSURLRequest *original = [NSURLRequest requestWithURL:fn_url(@"file:///dev/null")];
+		NSURLRequest *proposed = [NSURLRequest requestWithURL:nextURL];
+		NSURLResponse *threeOhTwo = [[NSURLResponse alloc]
+			initWithURL:fn_url(@"file:///dev/null")
+			   MIMEType:@"text/html"
+		     expectedContentLength:0
+			 textEncodingName:nil];
+		int mode;
+
+		/* THE THREE ANSWERS A DELEGATE CAN GIVE, ONE PER MODE. Mode 0 answers the PROPOSED request, which
+		 * MEANS follow: the observable fact is `currentRequest` moving onto it. */
+		for (mode = 0; mode <= 2; mode++) {
+			FNRedirectAnswerer *answerer = [[FNRedirectAnswerer alloc] init];
+			NSURLConnection *conn = [[NSURLConnection alloc] initWithRequest:original
+									 delegate:(id)answerer
+								 startImmediately:NO];
+			BOOL present = (conn != nil) && [conn respondsToSelector:sel];
+
+			answerer->mode = mode;
+			answerer->different = otherURL;
+			if (present) {
+				((Fn)objc_msgSend)(conn, sel, nil, proposed, threeOhTwo);
+			}
+
+			if (mode == 0) {
+				check("redirect-door-follows-what-the-delegate-returns",
+				      present && answerer->asked &&
+				      [[conn currentRequest] isEqual:proposed],
+				      [NSString stringWithFormat:@"present=%d asked=%d current=%@", (int)present,
+					       (int)answerer->asked, [[conn currentRequest] URL]]);
+			} else if (mode == 1) {
+				/* NIL MEANS DO NOT FOLLOW, and then the 3xx IS the answer: the delegate hears it as a
+				 * response, and the connection is STILL RUNNING THE ORIGINAL REQUEST — `currentRequest` is
+				 * "what this connection is running", so a refused redirect does not move it. */
+				check("redirect-door-nil-means-do-not-follow",
+				      present && answerer->asked && answerer->delivered &&
+				      [[conn currentRequest] isEqual:original],
+				      [NSString stringWithFormat:@"asked=%d delivered=%@ current=%@",
+					       (int)answerer->asked, answerer->delivered ? @"yes" : @"no",
+					       [[conn currentRequest] URL]]);
+			} else {
+				/* A DIFFERENT REQUEST IS RUN AS IT STANDS: nothing here rewrites what a caller's delegate
+				 * answered. */
+				check("redirect-door-passes-a-different-request",
+				      present && answerer->asked &&
+				      [[conn currentRequest] isEqual:[NSURLRequest requestWithURL:otherURL]],
+				      [NSString stringWithFormat:@"asked=%d current=%@", (int)answerer->asked,
+					       [[conn currentRequest] URL]]);
+			}
+			/* NO `release`: this probe is compiled under -fobjc-arc, so the strong locals above are ARC's —
+			 * and an explicit release is a COMPILE ERROR here, which is the trap the tree already records
+			 * (the library is MRC, every probe is ARC, and ownership must be written out). */
+		}
+
+		/* AND A DELEGATE THAT IMPLEMENTS NO SUCH DOOR IS NOT ASKED, and the transfer follows: the proposed
+		 * request is what the connection runs. */
+		{
+			FNEmptyConnDelegate *empty = [[FNEmptyConnDelegate alloc] init];
+			NSURLConnection *conn = [[NSURLConnection alloc] initWithRequest:original
+									 delegate:(id)empty
+								 startImmediately:NO];
+
+			if (conn != nil && [conn respondsToSelector:sel]) {
+				((Fn)objc_msgSend)(conn, sel, nil, proposed, threeOhTwo);
+			}
+			check("redirect-door-with-no-delegate-door-follows",
+			      [[conn currentRequest] isEqual:proposed],
+			      [NSString stringWithFormat:@"current=%@", [[conn currentRequest] URL]]);
+		}
+	}
+
+
 	/* --- 6. WHAT IS REFUSED, ASSERTED ABSENT ------------------------------------------------------- */
 	{
 		/* EACH OF THESE HAS A GROUND IN THE HEADER, and the grounds are the register's kind (ii): a
@@ -693,9 +793,50 @@ int main(void)
 		      @"NSURLConnectionDownloadDelegate is declared, with the door that MEANS a download");
 	}
 
-	/* --- 8. THE DOWNLOAD PROTOCOL AND ITS ONE REFUSAL ----------------------------------------------- */
+	/* --- 8. THE DOWNLOAD PATH, END TO END, AND THE PROTOCOL'S ONE REFUSAL --------------------------- */
 	{
 		Protocol *dl = objc_getProtocol("NSURLConnectionDownloadDelegate");
+		const char *downloadBytes = "the download door, and the file it leaves behind\n";
+		NSData *downloadFixture = [NSData dataWithBytes:downloadBytes length:strlen(downloadBytes)];
+		NSURL *downloadURL = fn_write_fixture(@"fnconn-download.txt", downloadFixture);
+		FNDownloadRecorder *rec = [[FNDownloadRecorder alloc] init];
+		NSURLConnection *conn = [NSURLConnection connectionWithRequest:
+						[NSURLRequest requestWithURL:downloadURL]
+					delegate:rec];
+		BOOL ended = fn_wait_flag(&rec->done, 20000);
+		NSData *landed = nil;
+
+		(void)conn;
+		if (rec->destination != nil) {
+			landed = [NSData dataWithContentsOfFile:[rec->destination path]];
+		}
+
+		/* THE ROUND TRIP IS THE CHECK THAT MATTERS: the delegate is handed a FILE holding the body, and a
+		 * caller could keep it — which is what the door MEANS. §63.154: this class writes that file itself
+		 * now (§63.145 step 3 put the file writing where 10.2 had it, and the seam hands over chunks), so
+		 * this check is the acceptance for code no other probe reaches. */
+		check("download-round-trip",
+		      ended && rec->finishCount == 1 && rec->failCount == 0 &&
+		      landed != nil && [landed isEqualToData:downloadFixture],
+		      [NSString stringWithFormat:@"ended=%d finishes=%d fails=%d landed=%d bytes=%d",
+			(int)ended, rec->finishCount, rec->failCount, (int)(landed != nil),
+			(int)[landed length]]);
+
+		/* AND THE DISPATCH RULE HOLDS: a delegate that implements the data doors TOO is not fed by them,
+		 * because a download's contract is the FILE. */
+		check("the-data-doors-are-not-used-for-a-download",
+		      rec->responseDoorCalls == 0 && rec->dataDoorCalls == 0,
+		      [NSString stringWithFormat:@"responses=%d data=%d", rec->responseDoorCalls,
+			rec->dataDoorCalls]);
+
+		/* AND THE PROGRESS DOOR IS HEARD, WITH THIS TRANSFER'S OWN TOTALS: the numbers are this class's own
+		 * count of what it has accumulated for the file, so the last report has to equal the fixture. */
+		check("the-download-progress-door-is-reported",
+		      rec->writeProgressCalls >= 1 &&
+		      rec->lastTotalWritten == (long long)[downloadFixture length],
+		      [NSString stringWithFormat:@"calls=%d lastTotal=%ld expected=%ld fixture=%d",
+			rec->writeProgressCalls, (long)rec->lastTotalWritten,
+			(long)rec->lastExpectedTotal, (int)[downloadFixture length]]);
 
 		/* THE GROUND §62.31 CORRECTED RATHER THAN THE REFUSAL: this check used to assert that the SESSION had
 		 * no resume API, and that was true when §62.29 wrote it and false one unit later. WHAT REMAINS IS

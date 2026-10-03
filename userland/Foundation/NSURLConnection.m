@@ -412,7 +412,14 @@ static unsigned long fn_download_serial = 0;
 	}
 
 	[self fnTearDown];
-	[self release];	/* the -start retain */
+	/* THE -start RETAIN IS GIVEN UP ONLY IF -start TOOK IT, which is the one thing this shape must not get
+	 * wrong: `-start` is the ONLY thing that retains on Apple's contract, so a connection that never started
+	 * has no such retain to return — and the ending can be entered without one, because a transport's client
+	 * door may be asked of this class directly (that is exactly how a probe exercises the redirect
+	 * translation on an idle object). Releasing unconditionally there would be one release too many. */
+	if (_started) {
+		[self release];	/* the -start retain */
+	}
 	[self release];	/* the guard */
 }
 
@@ -469,12 +476,6 @@ static unsigned long fn_download_serial = 0;
 
 	(void)protocol;
 
-	/* §54's rule, and it moves whatever happens next: the request the connection is running is now the one
-	 * the server sent it to. */
-	[request retain];
-	[_currentRequest release];
-	_currentRequest = request;
-
 	if ([_delegate respondsToSelector:@selector(connection:willSendRequest:redirectResponse:)]) {
 		next = [(id <NSURLConnectionDataDelegate>)_delegate connection:self
 							      willSendRequest:request
@@ -482,7 +483,12 @@ static unsigned long fn_download_serial = 0;
 	}
 	if (next == nil) {
 		/* DO NOT FOLLOW, WHICH MEANS THE 3xx IS THE ANSWER: the delegate hears the response it just refused
-		 * to leave, and the transfer ends there. Apple's contract says the same thing. */
+		 * to leave, and the transfer ends there. Apple's contract says the same thing.
+		 *
+		 * AND `currentRequest` DOES NOT MOVE, WHICH IS §54's RULE APPLIED THE RIGHT WAY ROUND: that property
+		 * is "the request this connection is running", so it moves when a redirect is FOLLOWED and stays put
+		 * when the delegate says no — the connection is still running the original request, and the 3xx is
+		 * the answer to it. */
 		if ([_delegate respondsToSelector:@selector(connection:didReceiveResponse:)]) {
 			id delegate = _delegate;
 
@@ -493,6 +499,10 @@ static unsigned long fn_download_serial = 0;
 		[self fnFinishWithError:nil];
 		return;
 	}
+	/* §54's rule: the request the connection is running is now the one the server sent it to. */
+	[next retain];
+	[_currentRequest release];
+	_currentRequest = next;
 	[self fnBeginTransferWithRequest:next];
 }
 
