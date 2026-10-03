@@ -15969,6 +15969,44 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.146 — THE ENGINE WAS WRITTEN, COMPILED, BUILT, AND ONE DOOR DID NOT ARRIVE (2026-10-01)
+
+**IT WAS BUILT AND IT RAN. The whole design of §63.145 was written into `NSURLConnection.m` (~19 KB, replacing 566
+lines), the two ivars in `NSURLConnection.h` became `NSURLProtocol *_protocol`, and THREE real corrections were made
+along the way — all of them found by the compiler:**
+ 1. **the header needed `@class NSURLProtocol;`** for the ivar's type (and I dropped `@class NSURLProtectionSpace;` doing
+    it, which the build caught as an unknown type two files away);
+ 2. **the engine must use the enum AS IT EXISTS TODAY** — `NSURLSessionAuthChallengeDisposition`, declared in
+    `NSURLProtocol.h` — because **the move is step 5 and I had already reverted it.** Using the moved name was my
+    staging error, and *reordering the work twice in one run is the lesson §63.144 had just written down*;
+ 3. **the import order is load-bearing**: `NSOperationQueue.h` uses `NSMutableArray` and does not import it, so the
+    umbrella order in the new file decided whether it compiled.
+
+**MEASURED: `make host-foundation` EXIT 0 WITH EXACTLY THE STANDING SIX WARNINGS, AND `make testimg` EXIT 0 — THE
+SESSION-FREE ENGINE COMPILES AND THE IMAGE BUILDS.** *Not one of the eight doors' translations needed rewriting: the
+design (§63.145) was right.*
+
+**⚠⚠ AND ONE BEHAVIOURAL CHECK FAILED, WHICH IS WHY IT IS REVERTED RATHER THAN LANDED:
+`foundation_urlconnection`'s ‘the-modern-door-supersedes-the-deprecated-pair’ reads ‘modern=0 gate=0 deprecated=0
+sender=0, and the continuation was NOT called by this class (disposition=-1)’ — MY CLIENT'S CHALLENGE DOOR WAS NEVER
+CALLED AT ALL.** *The check is not the problem and is NOT retired: it asserts Apple's own precedence, and the engine
+implements exactly what it asserts — the door is invoked and the completion handler is deliberately not answered, which
+the `disposition=-1` confirms.*
+
+**THE GAP IS A DELIVERY POINT, NOW NAMED EXACTLY: `FNCURLURLProtocol` asks its client through
+`-URLProtocol:didReceiveAuthenticationChallenge:completionHandler:`, GUARDED BY `-respondsToSelector:` (line 837), and
+what reaches it comes from the challenge site at line 322. The session engine satisfied that door — the session WAS the
+client and implemented it (`NSURLSession.m:150`); this engine implements it too. SO THE NEXT STEP IS A TRACE AT LINE 322,
+NOT A REWRITE: one grep's distance, and the wrong place to guess from.**
+
+**AND THE FIX THAT STAYS TRUE EITHER WAY, because it is the old file's own rule: THE COMPLETION HANDLER MUST NOT BE
+ANSWERED WHEN A DELEGATE DOOR EXISTS — the delegate answers through the challenge's sender, which IS that handler's
+continuation, and answering both answers the same challenge twice. I made that mistake first, and the probe's
+`disposition=-1` is what a CORRECT engine looks like.**
+
+**NOTHING IS LANDED: engine and header reverted, tree green (build EXIT 0 at the standing SIX warnings, `--check`
+consistent). §63.145's design is one door-trace away.**
+
 ## §63.144 — I TOOK STEP 5 BEFORE STEP 2 AND THE CODE REFUSED IT: THE ENUM LEAVES ONLY WHEN THE DOORS DO (2026-10-01)
 
 **⚠⚠ §63.141 ORDERED THE WORK AND I REORDERED IT: the disposition move is step 5, AFTER the engine rebuild that is step
