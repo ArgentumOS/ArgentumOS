@@ -681,6 +681,17 @@ static NSConnection *fn_default_connection = nil;
 		nil];
 }
 
+
+- (NSArray *)localObjects
+{
+	/* ⚠ ONE OBJECT OR NONE, AND THE ARRAY IS WHAT MAKES IT A FACT: see the header for why the root object is the
+	 * whole of what this connection vends. */
+	if (_rootObject == nil) {
+		return [NSArray array];
+	}
+	return [NSArray arrayWithObject:_rootObject];
+}
+
 - (void)dealloc
 {
 	fn_unregister_connection(self);

@@ -195,6 +195,25 @@ int main(void)
 {
 
 	{
+		/* §63.118: `localObjects` IS THE OBJECTS THIS CONNECTION VENDS, AND THE TWO CHECKS PIN IT TO THE ROOT OBJECT
+		 * RATHER THAN TO A SHAPE: the first asserts the identity it must answer with, and the second CLEARS the root and
+		 * asserts the answer follows — **so a door answering a constant cannot pass either.** */
+		id service = [[NSObject alloc] init];
+		NSConnection *c = [NSConnection serviceConnectionWithName:@"probe.localobjects" rootObject:service];
+		NSArray *vend = [c localObjects];
+
+		check("connection-local-objects-are-what-it-vends",
+		      [vend count] == 1 && [vend objectAtIndex:0] == service,
+		      [NSString stringWithFormat:@"count=%lu vend=%p service=%p", (unsigned long)[vend count],
+			(vend && [vend count]) ? [vend objectAtIndex:0] : nil, (void *)service]);
+		[c setRootObject:nil];
+		check("connection-local-objects-follow-the-root-object",
+		      [[c localObjects] count] == 0,
+		      [NSString stringWithFormat:@"after-clearing=%lu", (unsigned long)[[c localObjects] count]]);
+	}
+
+
+	{
 		/* §63.117: THE PORT-SUBCLASS EXTENSION POINT. ⚠ WHAT IS ASSERTED IS THE PROPERTY APPLE'S COMMENT NAMES —
 		 * “decode the data, AUTHENTICATE, and send the message” — BY HANDING IT SOMETHING THAT IS NOT A REQUEST: an
 		 * unauthenticated payload must be REFUSED WITHOUT DISTURBING THE CONNECTION. **That refusal is exactly what

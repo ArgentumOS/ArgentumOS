@@ -146,6 +146,23 @@ extern NSString *const NSFailedAuthenticationException;
  * its comment names lives in ONE place, which is the property a second decoder would have destroyed.** */
 - (void)dispatchWithComponents:(NSArray *)components;
 
+/* ⚠⚠ `localObjects` — THE OBJECTS THIS CONNECTION VENDS. Apple's corpus declares it without a comment, so the
+ * reading is ours and is written here (§11.6.1 D2): **WHAT CODE ON THE FAR SIDE CAN REACH THROUGH THIS CONNECTION,
+ * WHICH IN THIS LIBRARY IS THE ROOT OBJECT AND NOTHING ELSE** — conversations and published servers are not surfaces
+ * this tree puts on the wire. An empty array when no root object is set, because “this connection vends nothing” is
+ * a fact and nil is not an array.
+ *
+ * ⚠⚠ AND `remoteObjects` IS NOT HERE, FOR A MEASURED REASON THAT IS A DESIGN QUESTION RATHER THAN A WRAPPER: **THE
+ * PROXY RETAINS ITS CONNECTION.** `NSDistantObject`'s own ivar comment says so — “RETAINED, WHICH THIS COMMENT GOT
+ * WRONG UNTIL §63.19… A PROXY WITHOUT ITS TRANSPORT IS A PROXY THAT CANNOT CALL” — so **a connection that RETAINED the
+ * proxies it handed out would be a retain cycle that never dies.** The registry must therefore be NON-OWNING, exactly
+ * as `+allConnections` is (“a registry that retained its members would be a leak this class created”) — **and then
+ * `-rootProxy`'s AUTORELEASED return means every entry is gone unless the caller kept the proxy, which is the question
+ * this row actually poses: whether the connection should hold its handed-out proxies at all, and how a non-owning
+ * registry can answer for something the caller may already have released.** *A row that needs a lifecycle decided is
+ * not a row that needs typing.* */
+@property (readonly, copy) NSArray *localObjects;
+
 /* EVERY LIVE CONNECTION — Apple's `+allConnections`. THE REGISTRY IS NON-OWNING, and that is a decision rather
  * than an oversight: a registry that retained its members would be a leak this class created, because a live
  * connection could never reach `-dealloc` while the registry held it. Each connection withdraws its own entry

@@ -29,6 +29,8 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_dobjects"
 CHECKS = (
+    "connection-local-objects-follow-the-root-object",
+    "connection-local-objects-are-what-it-vends",
     "connection-dispatch-with-components-refuses-a-payload-that-is-not-a-request",
     "connection-statistics-values-are-numbers",
     "connection-statistics-reports-its-own-state",

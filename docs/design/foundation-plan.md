@@ -15982,6 +15982,35 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.118 — `localObjects` LANDS, AND `remoteObjects`' REASON IS A LIFECYCLE AND NOT A WRAPPER (2026-10-01)
+
+**WHAT LANDED: `localObjects` — THE OBJECTS THIS CONNECTION VENDS — AND WITH IT A MEASURED REASON FOR ITS PAIR, WRITTEN
+BESIDE IT IN THE HEADER.**
+
+**MEASURED: `property shipped 1283 → 1284`, `open 175 → 174`; `--check` consistent; `make host-foundation` EXIT 0 with
+exactly the standing SIX warnings; `make testimg` EXIT 0; `make test TESTS='foundation_dobjects'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with **`FOUNDATION-DOBJECTS 26/26`**.**
+
+**⚠⚠ AND `remoteObjects` IS NOT HERE, FOR A REASON THAT IS A DESIGN QUESTION RATHER THAN A WRAPPER: THE PROXY RETAINS
+ITS CONNECTION.** `NSDistantObject`'s own ivar comment says it and records that the comment was WRONG until §63.19 —
+“RETAINED… A PROXY WITHOUT ITS TRANSPORT IS A PROXY THAT CANNOT CALL” — **SO A CONNECTION THAT RETAINED THE PROXIES IT
+HANDED OUT WOULD BE A RETAIN CYCLE THAT NEVER DIES.** The registry must therefore be **NON-OWNING, EXACTLY AS
+`+allConnections` ALREADY IS** (“a registry that retained its members would be a leak this class created”) — **and then
+`-rootProxy`'s AUTORELEASED RETURN means every entry is gone unless the caller kept the proxy.** *That is the question
+the row actually poses: WHETHER THE CONNECTION SHOULD HOLD ITS HANDED-OUT PROXIES AT ALL, AND HOW A NON-OWNING REGISTRY
+CAN ANSWER FOR SOMETHING THE CALLER MAY ALREADY HAVE RELEASED.* ***A row that needs a lifecycle decided is not a row
+that needs typing.***
+
+**AND THE HALF THAT LANDED IS A FACT ABOUT STATE THE CLASS HAS:** `localObjects` is the root object and nothing else,
+because conversations and published servers are not surfaces this tree puts on the wire (D2, written in the header).
+**AND ITS TWO CHECKS PIN IT TO IDENTITY RATHER THAN SHAPE — the first asserts WHICH object it answers with, the second
+CLEARS the root and asserts the answer follows, so a door answering a constant cannot pass either.**
+
+**AND THREE MEASUREMENTS PUT IT IN FIRST TRY, EACH ONE AN INSTRUMENT THIS SESSION HAS PAID FOR BEFORE:** the corpus's
+declarations (**no comment**, so the reading is ours and is written down), the tree's proxy path (`-rootProxy` makes a
+**fresh, autoreleased** proxy per call and holds nothing), **and the retain cycle — read out of `NSDistantObject`'s own
+ivar comment rather than inferred from its code.**
+
 ## §63.117 — THE PORT-SUBCLASS EXTENSION POINT LANDS, AND THE WARNING COUNT CATCHES WHAT THE LEDGER CANNOT (2026-10-01)
 
 **WHAT LANDED: `-dispatchWithComponents:` — APPLE'S EXTENSION POINT FOR PORT SUBCLASSES, AS A DOOR OVER A PATH THAT
