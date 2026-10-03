@@ -15969,6 +15969,38 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.151 — THE CRASH, TRACED: A #GP RIGHT AFTER ONE CHECK, AND MY FIRST HYPOTHESIS DISPROVEN BY MEASUREMENT (2026-10-01)
+
+**THE CRASH IS A GENERAL PROTECTION FAULT, AND THE RAW LOG GIVES ITS CONTEXT RATHER THAN ITS ADDRESSES:**
+
+```
+FOUNDATION-URLCONNECTION original-and-current-request ok
+EXCEPTION: General Protection: error code 0x00000000 (0b0)
+Process '/System/Shared/tests/foundation_urlconnection' with pid 12.
+ cs: 0x004b  rip: 0x00004000005cfacc  rfl: 0x0000000000010246  ss: 0x0023  rsp: 0x0000400002f33608
+```
+
+**A #GP IN USERSPACE WITH CS 0x004b IS THE SIGNATURE OF MESSAGING A DEAD OBJECT** — the isa loaded from freed memory
+does not name a class, and the dispatch faults. **IT HAPPENS IMMEDIATELY AFTER `original-and-current-request ok`, WHICH
+IS THE CHECK THAT ASKS A CONNECTION FOR ITS REQUESTS** — so something messages a connection THIS ENGINE HAS ALREADY
+DEALLOCATED.
+
+**⚠⚠ AND THE HYPOTHESIS I WROTE LAST UNIT IS DISPROVEN BY MEASUREMENT, WHICH IS WHY IT IS RECORDED RATHER THAN QUIETLY
+DROPPED: I SAID THE ENDING FREES A CONNECTION THE TRANSPORT STILL HOLDS AS ITS CLIENT, AND ADDED A SECOND RETAIN IN
+`-start` TO COVER EXACTLY THAT. THE CRASH IS BYTE-FOR-BYTE THE SAME — SAME `rip`, SAME REGISTERS — SO THE RETAIN WAS
+NOT THE FIX AND THE STALE REFERENCE IS HELD SOMEWHERE ELSE.** *Two runs, identical output: that is a disproved theory,
+not a coincidence.*
+
+**AND THE SHAPE OF THE REAL ONE IS NOW VISIBLE FROM THE OLD FILE'S OWN COMMENT, READ THE OTHER WAY: THE OLD ENGINE'S
+SESSION RETAINED THE CONNECTION AS ITS DELEGATE, SO A CONNECTION SURVIVED ITS OWN ENDING — SOMETHING APPLE'S CONTRACT
+DOES NOT PROMISE, AND AN ACCIDENT OF THE SESSION'S OWNERSHIP. A CALLER (THE PROBE, OR THE TRANSPORT'S `_client`) THAT
+KEEPS A POINTER WITHOUT RETAINING IT THEREFORE WORKED, AND NOW DOES NOT.** The next step is to find WHICH of the two it
+is — the trace belongs on the connection's `-dealloc` and on the transport's `_client` use, and it is one instrumented
+run rather than another guess.
+
+**REVERTED: build EXIT 0 at the standing SIX warnings, `make testimg` EXIT 0, `--check` consistent.** §63.149's
+retirement is landed and green on both sides of the swap; the engine remains one lifetime fix away.
+
 ## §63.150 — THE RETIREMENT IS LANDED AND THE ENGINE CRASHES ON ONE CHECK: A FAULT IN ITS OWN TEARDOWN (2026-10-01)
 
 **LANDED AND GREEN: §63.149's STATEMENT-LEVEL RETIREMENT, COMMITTED ON ITS OWN.** *Seventeen checks removed, the probe
