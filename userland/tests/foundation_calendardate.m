@@ -49,6 +49,36 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 
 int main(void)
 {
+
+	{
+		/* §63.123: FOUR TIME ZONE DOORS. ⚠ THIS PROBE'S `check()` TAKES A `const char *` NAME, AN `int`, AND AN
+		 * `NSString *` DETAIL — MEASURED BEFORE WRITING, WHICH IS THE ONLY WAY THIS CALL IS KNOWN TO COMPILE. */
+		NSTimeZone *utc = [NSTimeZone timeZoneWithName:@"UTC"];
+		NSTimeZone *tokyo = [NSTimeZone timeZoneWithName:@"Asia/Tokyo"];
+		NSTimeZone *fixed = [NSTimeZone timeZoneForSecondsFromGMT:7200];
+		NSString *abbr = [utc abbreviation];
+		NSString *standard = [tokyo localizedName:NSTimeZoneNameStyleStandard locale:nil];
+		NSString *shortStandard = [tokyo localizedName:NSTimeZoneNameStyleShortStandard locale:nil];
+		NSTimeZone *saved = [NSTimeZone defaultTimeZone];
+
+		check("timezone-abbreviation-answers-the-zone-s-own-name",
+		      abbr != nil && [abbr isEqualToString:@"UTC"],
+		      [NSString stringWithFormat:@"abbreviation=%@", abbr]);
+		check("timezone-localized-name-differs-by-style",
+		      standard != nil && shortStandard != nil && ![standard isEqualToString:shortStandard],
+		      [NSString stringWithFormat:@"standard=%@ short=%@", standard, shortStandard]);
+		check("timezone-fixed-offset-zone-has-no-daylight-saving",
+		      [fixed daylightSavingTimeOffsetForDate:[NSDate date]] == 0.0 &&
+		      [[fixed abbreviation] isEqualToString:@"GMT+02:00"],
+		      [NSString stringWithFormat:@"dst=%g abbr=%@",
+			(double)[fixed daylightSavingTimeOffsetForDate:[NSDate date]], [fixed abbreviation]]);
+		[NSTimeZone setDefaultTimeZone:tokyo];
+		check("timezone-default-is-settable-and-answers-what-was-set",
+		      [[NSTimeZone defaultTimeZone] isEqualToTimeZone:tokyo],
+		      [NSString stringWithFormat:@"default=%@", [NSTimeZone defaultTimeZone]]);
+		[NSTimeZone setDefaultTimeZone:saved];
+	}
+
 	NSTimeZone *zone = fn_zone();		/* UTC+1 */
 	NSCalendarDate *when;
 	double instant;

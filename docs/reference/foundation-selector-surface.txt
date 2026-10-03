@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2198   open  332   struck  398
-#   property   shipped 1284   open  171   struck  181
+#   method     shipped 2201   open  329   struck  398
+#   property   shipped 1286   open  169   struck  181
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -3311,13 +3311,13 @@ property	open	qualityOfService	NSThread	Low-Level Utilities / Threads and Lockin
 property	open	stackSize	NSThread	Low-Level Utilities / Threads and Locking / Working with Thread Properties	-	objc
 property	shipped	threadDictionary	NSThread	Low-Level Utilities / Threads and Locking / Working with Thread Properties	-	objc
 property	open	threadPriority	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work	-	objc
-method	open	-abbreviationForDate:	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
-method	open	-daylightSavingTimeOffsetForDate:	NSTimeZone	Fundamentals / Calendrical Calculations / Working with Daylight Savings	-	objc
+method	shipped	-abbreviationForDate:	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
+method	shipped	-daylightSavingTimeOffsetForDate:	NSTimeZone	Fundamentals / Calendrical Calculations / Working with Daylight Savings	-	objc
 method	shipped	-initWithName:	NSTimeZone	Fundamentals / Calendrical Calculations / Creating Time Zones	-	objc
 method	open	-initWithName:data:	NSTimeZone	Fundamentals / Calendrical Calculations / Creating Time Zones	-	objc
 method	shipped	-isDaylightSavingTimeForDate:	NSTimeZone	Fundamentals / Calendrical Calculations / Working with Daylight Savings	-	objc
 method	shipped	-isEqualToTimeZone:	NSTimeZone	Fundamentals / Calendrical Calculations / Comparing Time Zones	-	objc
-method	open	-localizedName:locale:	NSTimeZone	Fundamentals / Calendrical Calculations / Describing Time Zones	-	objc
+method	shipped	-localizedName:locale:	NSTimeZone	Fundamentals / Calendrical Calculations / Describing Time Zones	-	objc
 method	shipped	-nextDaylightSavingTimeTransitionAfterDate:	NSTimeZone	Fundamentals / Calendrical Calculations / Working with Daylight Savings	-	objc
 method	open	+resetSystemTimeZone	NSTimeZone	Fundamentals / Calendrical Calculations / Working with System Time Zones	-	objc
 method	shipped	-secondsFromGMTForDate:	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
@@ -3325,12 +3325,12 @@ method	shipped	+timeZoneForSecondsFromGMT:	NSTimeZone	Fundamentals / Calendrical
 method	open	+timeZoneWithAbbreviation:	NSTimeZone	Fundamentals / Calendrical Calculations / Creating Time Zones	-	objc
 method	shipped	+timeZoneWithName:	NSTimeZone	Fundamentals / Calendrical Calculations / Creating Time Zones	-	objc
 method	open	+timeZoneWithName:data:	NSTimeZone	Fundamentals / Calendrical Calculations / Creating Time Zones	-	objc
-property	open	abbreviation	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
+property	shipped	abbreviation	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
 property	struck	abbreviationDictionary	NSTimeZone	Fundamentals / Calendrical Calculations / Creating Time Zones	other-framework	objc
 property	open	data	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
 property	shipped	daylightSavingTime	NSTimeZone	Fundamentals / Calendrical Calculations / Working with Daylight Savings	-	objc
 property	struck	daylightSavingTimeOffset	NSTimeZone	Fundamentals / Calendrical Calculations / Working with Daylight Savings	other-framework	objc
-property	open	defaultTimeZone	NSTimeZone	Fundamentals / Calendrical Calculations / Working with System Time Zones	-	objc
+property	shipped	defaultTimeZone	NSTimeZone	Fundamentals / Calendrical Calculations / Working with System Time Zones	-	objc
 property	shipped	description	NSTimeZone	Fundamentals / Calendrical Calculations / Describing Time Zones	-	objc
 property	shipped	knownTimeZoneNames	NSTimeZone	Fundamentals / Calendrical Calculations / Creating Time Zones	-	objc
 property	shipped	localTimeZone	NSTimeZone	Fundamentals / Calendrical Calculations / Working with System Time Zones	-	objc

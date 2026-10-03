@@ -340,4 +340,145 @@ static NSInteger fn_tz_offset(NSString *name, double secondsSince1970, BOOL *isD
 	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) */
 }
 
+
+/* ================== FOUR TIME ZONE DOORS (§63.123) ==================
+ * ⚠ ONE ICU ROUTE FOR ALL FOUR. **AND THE TWO FACTS THAT COST A ROUND EACH ARE WRITTEN INTO IT: `ucal_open` TAKES
+ * `const UChar *` — UTF-16 — SO THE IDENTIFIER IS CONVERTED (the compiler said so for a whole round before I read
+ * it: ‘incompatible pointer types’, which is what “a fixed zone answered UTC” looked like from outside), AND ITS
+ * LOCALE ARGUMENT IS THE THIRD ONE, WHICH I DROPPED ONCE AND THE COMPILER COUNTED.** */
+static NSString *fn_tz_name_for_kind(NSTimeZone *zone, UCalendarDisplayNameType kind, NSLocale *locale)
+{
+	NSString *ident = [zone name];
+	const char *tag;
+	char fixed[32];
+	UChar zoneID[64];
+	UChar buffer[256];
+	int32_t idLength = 0;
+	int32_t length;
+	UErrorCode status = U_ZERO_ERROR;
+	UCalendar *cal;
+
+	if (ident == nil) {
+		NSInteger minutes = [zone secondsFromGMT] / 60;
+		NSInteger abs = minutes < 0 ? -minutes : minutes;
+
+		snprintf(fixed, sizeof fixed, "GMT%c%02ld:%02ld", minutes < 0 ? '-' : '+',
+			 (long)(abs / 60), (long)(abs % 60));
+		tag = fixed;
+	} else {
+		tag = [ident UTF8String];
+	}
+	u_strFromUTF8(zoneID, 64, &idLength, tag, -1, &status);
+	if (U_FAILURE(status)) {
+		return nil;
+	}
+	status = U_ZERO_ERROR;
+	cal = ucal_open(zoneID, idLength, NULL, UCAL_DEFAULT, &status);	/* ⚠ NULL is the locale */
+	if (U_FAILURE(status) || cal == NULL) {
+		return nil;
+	}
+	length = ucal_getTimeZoneDisplayName(cal, kind,
+					     locale == nil ? NULL : [[locale localeIdentifier] UTF8String],
+					     buffer, 256, &status);
+	ucal_close(cal);
+	if (U_FAILURE(status) || length <= 0) {
+		return nil;
+	}
+	return [NSString stringWithCharacters:buffer length:(NSUInteger)length];
+}
+
+- (NSString *)abbreviation
+{
+	return [self abbreviationForDate:[NSDate date]];
+}
+
+- (NSString *)abbreviationForDate:(NSDate *)date
+{
+	(void)date;
+	if (_name == nil) {
+		/* ⚠ A FIXED-OFFSET ZONE'S ABBREVIATION IS ARITHMETIC, NOT A LOOKUP — and the reading is ours (D2). It is the
+		 * spelling ICU itself uses for such zones. */
+		NSInteger minutes = _secondsFromGMT / 60;
+		NSInteger abs = minutes < 0 ? -minutes : minutes;
+
+		return [NSString stringWithFormat:@"GMT%c%02ld:%02ld", minutes < 0 ? '-' : '+',
+						 (long)(abs / 60), (long)(abs % 60)];
+	}
+	return fn_tz_name_for_kind(self, [self isDaylightSavingTime] ? UCAL_SHORT_DST : UCAL_SHORT_STANDARD, nil);
+}
+
+- (NSTimeInterval)daylightSavingTimeOffsetForDate:(NSDate *)date
+{
+	/* ⚠ THE IVAR AND NOT `-name`: the DOOR SYNTHESIZES a name for a fixed-offset zone, so it never answers nil —
+	 * which is exactly how a fixed zone came to report an hour of daylight saving. */
+	NSString *ident = _name;
+	UChar zoneID[64];
+	int32_t idLength = 0;
+	UErrorCode status = U_ZERO_ERROR;
+	UCalendar *cal;
+	int32_t savings;
+
+	if (ident == nil) {
+		return 0.0;	/* a fixed-offset zone has no daylight saving: an ANSWER, not a gap */
+	}
+	u_strFromUTF8(zoneID, 64, &idLength, [ident UTF8String], -1, &status);
+	if (U_FAILURE(status)) {
+		return 0.0;
+	}
+	status = U_ZERO_ERROR;
+	cal = ucal_open(zoneID, idLength, NULL, UCAL_DEFAULT, &status);
+	if (U_FAILURE(status) || cal == NULL) {
+		return 0.0;
+	}
+	/* ⚠⚠ AND THE SECOND FACT THE COMPILER HAD BEEN GIVING ME WITH THE TYPES IN PARENTHESES: `ucal_getDSTSavings`
+	 * TAKES THE ZONE ID — `const UChar *` — AND NOT A CALENDAR, which is what ‘passing UCalendar * to const UChar *’
+	 * says. It also answers the ZONE'S saving rather than the DATE'S, so the calendar is what decides WHETHER the date is
+	 * in daylight saving at all: **A DOOR NAMED ‘…ForDate:’ MUST ASK ABOUT THE DATE, AND THE ZONE ONLY ANSWERS BY HOW
+	 * MUCH.** */
+	ucal_setMillis(cal, (UDate)([date timeIntervalSince1970] * 1000.0), &status);
+	if (U_SUCCESS(status) && ucal_inDaylightTime(cal, &status)) {
+		savings = ucal_getDSTSavings(zoneID, &status);
+	} else {
+		savings = 0;
+	}
+	ucal_close(cal);
+	return U_FAILURE(status) ? 0.0 : (NSTimeInterval)savings / 1000.0;
+}
+
+- (NSString *)localizedName:(NSTimeZoneNameStyle)style locale:(NSLocale *)locale
+{
+	UCalendarDisplayNameType kind;
+
+	if (_name == nil) {
+		return [self abbreviationForDate:[NSDate date]];
+	}
+	switch (style) {
+	case NSTimeZoneNameStyleShortStandard: kind = UCAL_SHORT_STANDARD; break;
+	case NSTimeZoneNameStyleDaylightSaving: kind = UCAL_DST; break;
+	case NSTimeZoneNameStyleShortDaylightSaving: kind = UCAL_SHORT_DST; break;
+	case NSTimeZoneNameStyleGeneric:
+	case NSTimeZoneNameStyleShortGeneric:
+	case NSTimeZoneNameStyleStandard:
+	default: kind = UCAL_STANDARD; break;
+	}
+	return fn_tz_name_for_kind(self, kind, locale);
+}
+
+/* ⚠⚠ `+defaultTimeZone` IS NOT ICU'S: A CLASS STORE WHOSE SETTER RELEASES ITS PREDECESSOR. A setter that forgets the
+ * old value is a leak — §63.79's lesson one class over — and a nil set falls back to the system zone. */
+static NSTimeZone *fn_default_time_zone = nil;
+
++ (NSTimeZone *)defaultTimeZone
+{
+	return fn_default_time_zone != nil ? fn_default_time_zone : [self systemTimeZone];
+}
+
++ (void)setDefaultTimeZone:(NSTimeZone *)aTimeZone
+{
+	NSTimeZone *old = fn_default_time_zone;
+
+	fn_default_time_zone = [aTimeZone copy];
+	[old release];
+}
+
 @end

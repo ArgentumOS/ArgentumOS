@@ -15982,6 +15982,42 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.123 — FIVE `NSTimeZone` ROWS LAND, AND THE COMPILER HAD ALREADY NAMED BOTH BUGS (2026-10-01)
+
+**WHAT LANDED: `-abbreviation`, `-abbreviationForDate:`, `-daylightSavingTimeOffsetForDate:`,
+`-localizedName:locale:` AND `+defaultTimeZone` — FIVE OF `NSTimeZone`'S TEN REMAINING ROWS, ON ONE ICU ROUTE.**
+
+**MEASURED: `method shipped 2198 → 2201`, `open 332 → 329`; `property 1284 → 1286`, `open 171 → 169`; `--check`
+consistent; `make host-foundation` EXIT 0 with exactly the standing SIX warnings; `make testimg` EXIT 0;
+`make test TESTS='foundation_calendardate'` → `TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with
+**`FOUNDATION-CALENDARDATE 16/16`**.**
+
+**⚠⚠ AND THE TWO FAILURES THAT MATTERED WERE BOTH THE COMPILER NAMING THE TYPES IN PARENTHESES, WHILE I READ THE
+PARAPHRASE:**
+ 1. **`ucal_open` TAKES `const UChar *` — UTF-16 — AND I PASSED A `char` TAG.** ICU reinterpreted the bytes and
+    **FELL BACK TO UTC**, which is exactly why a fixed-offset zone answered “UTC” and reported an hour of daylight
+    saving. The warning `-Wincompatible-pointer-types` had said so for a whole round **while I treated the symptom by
+    making the abbreviation arithmetic** (a defensible D2 choice, kept — but not the cause);
+ 2. **AND `ucal_getDSTSavings` TAKES THE ZONE ID, NOT A CALENDAR** — again with both types in the message — **and that
+    one carried a real reading with it: A DOOR NAMED `…ForDate:` MUST ASK WHETHER THE DATE IS IN DAYLIGHT SAVING
+    (`ucal_inDaylightTime`) AND LET THE ZONE ANSWER ONLY BY HOW MUCH.** *The signature forced the semantics to be
+    right.*
+
+**⚠⚠ AND THE STANDING WARNING COUNT CAUGHT A REAL BUG FOR THE SECOND TIME THIS SESSION (§63.117 was the first).
+SIX WARNINGS ARE THE FLOOR AND SEVEN IS A QUESTION — AND IT IS THE ONLY INSTRUMENT THAT LOOKS AT THE BODY RATHER THAN AT
+THE PROMISE.** The ledger, `--check`, `testimg` and the probe's own tally all read green while a zone was answering the
+wrong abbreviation and the wrong daylight-saving offset.
+
+**AND THE D2 CHOICES ARE WRITTEN BESIDE THE CODE: the two GENERIC styles answer the standard name, BECAUSE ICU HAS NO
+GENERIC TIME-ZONE NAME AT ALL** — a discovery about the substrate and not a limitation of this library; **a fixed-offset
+zone's abbreviation is ARITHMETIC**, because it has no name to look up; and `+defaultTimeZone` is a class store **whose
+setter releases its predecessor** (§63.79's lesson one class over).
+
+**AND THE SIXTEEN ROUNDS ARE THE UNIT'S OTHER CONTENT: every failure was a fact about where the text went or what type it
+had, and not one about what the doors say.** They were designed from measurements — the corpus's header read in full, the
+tree's two ivars, the owning probe's `check()` READ this time (a fifth signature) — **and the only two bugs in the CODE
+were both flagged by the compiler before I found them.**
+
 ## §63.122 — FIVE PROBES, FIVE `check()` SIGNATURES, AND THE ONE-LINE UNIFICATION THAT IS NOW OWED (2026-10-01)
 
 **NO ROWS CLOSED. THE FIVE `NSTimeZone` DOORS ARE WRITTEN AND THE **LIBRARY** COMPILED THEM — THE BLOCKER IS THE PROBE'S

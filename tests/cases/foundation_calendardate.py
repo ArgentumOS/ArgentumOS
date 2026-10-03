@@ -43,7 +43,11 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_calendardate"
-CHECKS = ("the-format-and-the-zone-are-kept-and-settable",
+CHECKS = (
+    "timezone-default-is-settable-and-answers-what-was-set",
+    "timezone-fixed-offset-zone-has-no-daylight-saving",
+    "timezone-localized-name-differs-by-style",
+    "timezone-abbreviation-answers-the-zone-s-own-name","the-format-and-the-zone-are-kept-and-settable",
           "the-fields-are-the-numbers-it-was-built-from",
           "the-day-numbers-are-one-based-and-the-weekday-is-sunday-zero",
           "the-zone-moves-every-field-and-not-the-instant",

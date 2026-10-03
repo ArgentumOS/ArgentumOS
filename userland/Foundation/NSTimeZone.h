@@ -32,6 +32,8 @@
 #define FOUNDATION_NSTIMEZONE_H
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSDate.h>	/* named by the ...ForDate: doors below */
+#import <Foundation/NSLocale.h>	/* named by -localizedName:locale: below */
 
 @class NSDate;
 @class NSArray;
@@ -96,6 +98,21 @@ typedef enum {
 	NSTimeZoneNameStyleGeneric = 4,
 	NSTimeZoneNameStyleShortGeneric = 5
 } NSTimeZoneNameStyle;
+
+@interface NSTimeZone (NSExtendedTimeZone)
+/* ⚠⚠ FOUR OF `NSTimeZone`'S TEN, THROUGH ICU — WHICH THIS CLASS ALREADY IS ("ICU's default zone", says its own
+ * `+systemTimeZone`). **AND ONE ICU DISCOVERY IS RECORDED HERE RATHER THAN HIDDEN: APPLE PUBLISHES SIX
+ * `NSTimeZoneNameStyle` CASES WITH THEIR MEANINGS, AND ICU HAS NO GENERIC DISPLAY NAME AT ALL** —
+ * `UCalendarDisplayNameType` carries `UCAL_STANDARD`, `UCAL_SHORT_STANDARD`, `UCAL_DST` and `UCAL_SHORT_DST` and
+ * NOTHING for “Central Time” or “CT”. **THE TWO GENERIC STYLES ANSWER THE STANDARD NAME — a choice of ours, written
+ * down (§11.6.1 D2), because the alternative is answering nil to a caller who asked for a name a human would
+ * recognise.** */
+- (nullable NSString *)abbreviation;
+- (nullable NSString *)abbreviationForDate:(NSDate *)date;
+- (NSTimeInterval)daylightSavingTimeOffsetForDate:(NSDate *)date;
+- (nullable NSString *)localizedName:(NSTimeZoneNameStyle)style locale:(nullable NSLocale *)locale;
+@property (class, copy) NSTimeZone *defaultTimeZone;
+@end
 
 NS_ASSUME_NONNULL_END
 
