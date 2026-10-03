@@ -44,7 +44,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-# method	shipped	1682	open	247	struck	390
+# method	shipped	1685	open	244	struck	390
 # property	shipped	744	open	99	struck	170
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -2766,9 +2766,9 @@ property	shipped	currentRequest	NSURLConnection	Networking / Legacy / URL Connec
 property	shipped	originalRequest	NSURLConnection	Networking / Legacy / URL Connection / Connection URL Information	deprecated	objc
 method	shipped	-connection:didReceiveData:	NSURLConnectionDataDelegate	Networking / Legacy / URL Connection / Handling Incoming Data	deprecated	objc
 method	shipped	-connection:didReceiveResponse:	NSURLConnectionDataDelegate	Networking / Legacy / URL Connection / Handling Incoming Data	deprecated	objc
-method	open	-connection:didSendBodyData:totalBytesWritten:totalBytesExpectedToWrite:	NSURLConnectionDataDelegate	Networking / Legacy / URL Connection / Receiving Connection Progress	deprecated	objc
-method	open	-connection:needNewBodyStream:	NSURLConnectionDataDelegate	Networking / Legacy / URL Connection / Handling Redirects	deprecated	objc
-method	open	-connection:willCacheResponse:	NSURLConnectionDataDelegate	Networking / Legacy / URL Connection / Overriding Caching Behavior	deprecated	objc
+method	shipped	-connection:didSendBodyData:totalBytesWritten:totalBytesExpectedToWrite:	NSURLConnectionDataDelegate	Networking / Legacy / URL Connection / Receiving Connection Progress	deprecated	objc
+method	shipped	-connection:needNewBodyStream:	NSURLConnectionDataDelegate	Networking / Legacy / URL Connection / Handling Redirects	deprecated	objc
+method	shipped	-connection:willCacheResponse:	NSURLConnectionDataDelegate	Networking / Legacy / URL Connection / Overriding Caching Behavior	deprecated	objc
 method	shipped	-connection:willSendRequest:redirectResponse:	NSURLConnectionDataDelegate	Networking / Legacy / URL Connection / Handling Redirects	deprecated	objc
 method	shipped	-connectionDidFinishLoading:	NSURLConnectionDataDelegate	Networking / Legacy / URL Connection / Receiving Connection Progress	deprecated	objc
 method	shipped	-connection:canAuthenticateAgainstProtectionSpace:	NSURLConnectionDelegate	Networking / Legacy / URL Connection / Connection Authentication	deprecated	objc

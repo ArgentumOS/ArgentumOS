@@ -82,14 +82,23 @@
  * newer API's story — so a connection can only ever start from the beginning, and a door that announces a
  * resume would be announcing something that cannot happen.
  *
- * THE REGISTER'S ONE WORK ITEM, NAMED WHERE A CALLER MEETS IT RATHER THAN QUIETLY KEPT: the download
- * protocol declares `-connection:willCacheResponse:` AND THE SEAM CANNOT CARRY IT. `NSURLProtocolClient`
- * offers `-URLProtocol:cachedResponseIsValid:`, which is a NOTIFICATION ("the cached answer I was handed is
- * still good") and not a QUESTION ("what should I store?"), so there is no door to ask a delegate through
- * and no transfer for an answer to change. It stays declared because porting source compiles against it and
+ * THE REGISTER'S ONE WORK ITEM, NAMED WHERE A CALLER MEETS IT RATHER THAN QUIETLY KEPT: the DATA protocol
+ * declares `-connection:willCacheResponse:` AND THE SEAM CANNOT CARRY IT. `NSURLProtocolClient` offers
+ * `-URLProtocol:cachedResponseIsValid:`, which is a NOTIFICATION ("the cached answer I was handed is still
+ * good") and not a QUESTION ("what should I store?"), so there is no door to ask a delegate through and no
+ * transfer for an answer to change. It stays declared because porting source compiles against it and
  * because Apple's connection answers it; it is recorded here as a work item (§11.3) for whoever gives this
- * seam a cache-decision door. `refused-doors-are-absent` does not speak about it — that check is about the
- * DATA protocol, where the door is absent, and it stays absent.
+ * seam a cache-decision door.
+ *
+ * ⚠⚠ AND THAT PARAGRAPH USED TO SAY THE DOOR "IS ABSENT FROM THE DATA PROTOCOL, AND IT STAYS ABSENT", WHICH
+ * WAS THIS TREE'S OWN MISTAKE RATHER THAN A REFUSAL (§63.156). Apple declares the body-stream, the
+ * upload-progress and the cache-decision doors on `NSURLConnectionDataDelegate` — not on the download
+ * protocol, where this header had put them — and the tree's ledger recorded the consequence honestly as
+ * three `open` rows while a check asserted their absence one protocol down. They are MOVED to where Apple
+ * declares them; the check now asserts that placement instead of denying it; and the one refusal whose
+ * ground is a fact about the SEAM rather than about the loading system is about what a refusal like this
+ * looks like when it is real: the door is declared, the behaviour is reachable, and only the seam's missing
+ * question is owed.
  */
 
 #ifndef FOUNDATION_NSURLCONNECTION_H
@@ -169,6 +178,46 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;
 /* THE ENDING THAT SUCCEEDED. Called once, after the last chunk. */
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection;
 
+/* --- AND THE THREE DOORS THAT WERE DECLARED ON THE *DOWNLOAD* PROTOCOL, WHICH IS NOT WHERE APPLE PUTS
+ * THEM (§63.156). MOVED HERE, because the tree's own ledger measured the misplacement: Apple reports all
+ * three as `NSURLConnectionDataDelegate` members, and all three were `open` rows in
+ * docs/reference/foundation-selector-surface.txt — declared by Apple at THIS owner and absent from our
+ * headers at this owner, because this header had put them one protocol down. NOTHING ABOUT THEIR BEHAVIOUR
+ * CHANGED: §63.154 and §63.155 landed checks for every one of them against this class's own doors, and
+ * those checks pass before and after the move, because the engine dispatches by
+ * `-respondsToSelector:` rather than by protocol membership.
+ *
+ * THEY ARE 10.2-VINTAGE AND `deprecated`, NOT SESSION-ERA: §63.141 recorded them as "session-era additions
+ * to NSURLConnection that leave with the member cut", and the ledger says otherwise — Apple has declared
+ * all three since 10.2 and marks them deprecated in 10.13. THE SURFACE RULE (§11.0) therefore puts them
+ * HERE rather than out, because a door Apple declares and this tree does not strike is a door to match. */
+
+/* THE RE-SEND'S BODY, ASKED OF THE CLIENT FOR THE ONE ATTEMPT NO OTHER DOOR CAN REACH (§62.36): the
+ * transport re-issues a 401 itself, so this class never sees the second attempt, and the bridge asks its
+ * client through the first-party door this method answers. Apple's contract for the replacement is "a new,
+ * UNOPENED stream", and a delegate that has none answers nothing. */
+- (nullable NSInputStream *)connection:(NSURLConnection *)connection
+	     needNewBodyStream:(NSURLRequest *)request;
+
+/* THE UPLOAD'S PROGRESS (§62.32), WHICH THE TRANSPORT COUNTS AS THE BYTES LEAVE: libcurl's own progress
+ * callback fires for every transfer and reports both directions, and the numbers travel through the seam's
+ * first-party door. Apple spells them NSInteger, so that is the spelling here, and `bytesWritten` is what
+ * left since the last report rather than the running total beside it. */
+- (void)connection:(NSURLConnection *)connection
+  didSendBodyData:(NSInteger)bytesWritten
+totalBytesWritten:(NSInteger)totalBytesWritten
+totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;
+
+/* THE CACHE DECISION — APPLE'S DOOR, DECLARED WHERE APPLE DECLARES IT, AND THE REGISTER'S ONE WORK ITEM
+ * (§11.3) BECAUSE THE SEAM CANNOT CARRY IT: `NSURLProtocolClient` offers
+ * `-URLProtocol:cachedResponseIsValid:`, which is a NOTIFICATION ("the cached answer I was handed is still
+ * good") and not a QUESTION ("what should I store?"), so there is no door to ask a delegate through and no
+ * transfer for an answer to change. It stays declared because porting source compiles against it and
+ * because Apple's connection answers it; the work item is the SEAM's, and it is recorded here rather than
+ * hidden. Nothing else in this header is refused for a reason that no longer holds. */
+- (nullable NSCachedURLResponse *)connection:(NSURLConnection *)connection
+			  willCacheResponse:(NSCachedURLResponse *)cachedResponse;
+
 @end
 
 /* THE DOWNLOAD PROTOCOL: a delegate that wants the body WRITTEN SOMEWHERE rather than handed to it as
@@ -176,31 +225,14 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;
  * expected to MOVE it, exactly as Apple's contract says, because the directory is temporary — and the
  * connection hands it over at the one door below.
  *
- * ITS BODY-STREAM AND PROGRESS DOORS ARE THE ONES THE SEAM CAN HONESTLY CARRY, and the cache-decision door
- * is the register's one work item (see the file's comment above): it is the only door here with no door on
- * the other side of the seam. */
+ * IT DECLARES APPLE'S THREE MEMBERS AND NOTHING ELSE (§63.156). It used to carry the body-stream, the
+ * upload-progress and the cache-decision doors as well, and that is where the tree's own ledger caught the
+ * misplacement: Apple declares all three on `NSURLConnectionDataDelegate`, one protocol up, so this header
+ * had three `open` rows that no amount of passing checks could close. They are MOVED, and this protocol is
+ * the shape Apple publishes again. */
 @protocol NSURLConnectionDownloadDelegate <NSURLConnectionDelegate>
 
 @optional
-
-/* THE RE-SEND'S BODY, ASKED OF THE CLIENT FOR THE ONE ATTEMPT NO OTHER DOOR CAN REACH (§62.36): the
- * transport re-issues a 401 itself, so this class never sees the second attempt, and the bridge asks its
- * client through the first-party door this method answers. Apple's contract for the replacement is "a new,
- * UNOPENED stream". */
-- (nullable NSInputStream *)connection:(NSURLConnection *)connection
-	     needNewBodyStream:(NSURLRequest *)request;
-
-- (nullable NSCachedURLResponse *)connection:(NSURLConnection *)connection
-			  willCacheResponse:(NSCachedURLResponse *)cachedResponse;
-
-/* THE UPLOAD'S PROGRESS (§62.32), WHICH THE TRANSPORT COUNTS AS THE BYTES LEAVE: libcurl's own progress
- * callback fires for every transfer and reports both directions, and the numbers travel through the seam's
- * first-party door. Apple's connection door spells them NSInteger, so that is the spelling here, and
- * `bytesWritten` is what left since the last report rather than the running total beside it. */
-- (void)connection:(NSURLConnection *)connection
-  didSendBodyData:(NSInteger)bytesWritten
-totalBytesWritten:(NSInteger)totalBytesWritten
-totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;
 
 /* THE DOWNLOAD'S PROGRESS, AND IT IS THIS CLASS'S OWN COUNT RATHER THAN A TRANSLATION: the seam reports
  * neither progress nor the response's expected length, so these are the bytes written to the file so far.

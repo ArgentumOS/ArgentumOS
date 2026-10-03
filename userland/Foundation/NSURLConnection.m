@@ -655,7 +655,10 @@ totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
 		return;
 	}
 	[self fnDeliver:^{
-		[(id <NSURLConnectionDownloadDelegate>)delegate connection:self
+		/* THE CAST IS THE PROTOCOL APPLE DECLARES THIS ON, which is the DATA protocol and was the DOWNLOAD
+		 * one until §63.156 moved it: a cast to the wrong protocol is not a compile error in ObjC — it is
+		 * `-Wobjc-method-access`, and it is how the move announced itself. */
+		[(id <NSURLConnectionDataDelegate>)delegate connection:self
 		    didSendBodyData:(NSInteger)bytesSent
 	       totalBytesWritten:(NSInteger)totalBytesSent
 	   totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToSend];
@@ -674,7 +677,7 @@ totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
 	if (![delegate respondsToSelector:@selector(connection:needNewBodyStream:)]) {
 		return nil;
 	}
-	return [(id <NSURLConnectionDownloadDelegate>)delegate connection:self needNewBodyStream:request];
+	return [(id <NSURLConnectionDataDelegate>)delegate connection:self needNewBodyStream:request];
 }
 
 /* --- THE DOWNLOAD'S FILE -------------------------------------------------------------------------- */

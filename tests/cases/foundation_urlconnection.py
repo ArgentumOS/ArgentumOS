@@ -69,6 +69,9 @@ CHECKS = ("connection-class-declared", "delegate-protocols-declared",
           "redirect-door-passes-a-different-request",
           "redirect-door-with-no-delegate-door-follows",
           "refused-doors-are-absent",
+          # §63.156: the three doors that were declared on the DOWNLOAD protocol but that Apple declares on
+          # the DATA protocol — asserted two-sidedly (ON the data protocol, OFF the download protocol).
+          "the-data-protocol-carries-the-three-doors-apple-declares",
           "download-protocol-declared",
           # §63.154: THE DOWNLOAD PATH END TO END — the file this class now writes itself.
           "download-round-trip",

@@ -15969,6 +15969,61 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.156 — STEP 1 MEASURED BEFORE IT WAS IMPLEMENTED, AND THE MEASUREMENT REVERSED ITS PREMISE: THE THREE DOORS MOVE TO WHERE APPLE DECLARES THEM (2026-10-03)
+
+**⚠⚠ §63.141 SAID THOSE DOORS WERE "SESSION-ERA ADDITIONS TO `NSURLConnection`" THAT "LEAVE WITH THE REST OF THE
+MEMBER CUT". THE TREE'S OWN LEDGER SAYS THE OPPOSITE, AND THE LEDGER IS APPLE'S OWN PAGE METADATA.** Measured in
+`docs/reference/foundation-selector-surface.txt` before a line was changed: `-connection:needNewBodyStream:`,
+`-connection:didSendBodyData:…` and `-connection:willCacheResponse:` are **`NSURLConnectionDataDelegate` members**,
+Apple has declared all three since **10.2** (the `why` column says `deprecated`, which is a 10.13 statement, not a
+later introduction), and **all three were `open` rows in OUR ledger** — because this header had put them one
+protocol down, on the download protocol, where Apple declares only three members of its own. **The user's decision
+(dec-0cd1f49613097239): move them to where Apple declares them.** *The lesson is the one this tree keeps
+relearning: §63.141's reading was of the IMPLEMENTATION's shape (the session translated those doors), and the
+question was about the SURFACE, which the ledger answers and prose does not.*
+
+**AND A CHECK WAS DENYING THE PLACEMENT.** `refused-doors-are-absent` asserted all three were ABSENT from the DATA
+protocol, under a comment calling them "the three whose dependency is the session's own shape" — a ground that had
+already become FALSE when §63.153 deleted the session, and that no passing run could expose, because a check
+asserting an absence is satisfied by a header nobody has fixed. **This is §11.2's source-1 bug class exactly**
+(a probe asserting an absence asserts a fact about the tree, and landing the code does not update it), found this
+time by the OTHER source: the ledger generated from Apple's index.
+
+**WHAT MOVED: three declarations in `NSURLConnection.h`, one protocol up, with Apple's own signatures.** The
+DOWNLOAD protocol is again the shape Apple publishes — `didWriteData:`, `connectionDidFinishDownloading:`, and
+the resume door it refuses.
+
+**AND THE ENGINE NEEDED EXACTLY TWO CASTS, WHICH IS ITSELF THE MEASUREMENT:** protocol membership is a
+compile-time fact for `-Wobjc-method-access`, so `[(id <NSURLConnectionDownloadDelegate>)delegate
+connection:self needNewBodyStream:…]` became two warnings the moment the declaration moved — *and nothing else
+changed*, because the class dispatches by `-respondsToSelector:` rather than by membership. The library file is
+back to **zero** warnings at the standing flags. **The behaviour was already right and already proven: §63.154's
+and §63.155's checks for every one of the three doors pass BEFORE and AFTER the move.**
+
+**AND THE CHECK IS TWO-SIDED ON PURPOSE, BECAUSE ONE HALF ALONE IS SATISFIED BY THE BUG:**
+`the-data-protocol-carries-the-three-doors-apple-declares` asserts each door is **ON** the data protocol **AND OFF**
+the download protocol. "Present somewhere" was already true of the misplacement, and "off the download protocol"
+becomes true the moment somebody DELETES a door instead of moving it — so a one-sided check would pass on two
+different wrong trees. `refused-doors-are-absent` now lists what is really refused (the run-loop pair and the two
+authentication doors), and the register's one remaining WORK ITEM is the cache decision's SEAM gap rather than a
+placement: the door IS declared where Apple declares it, and what is owed is a `NSURLProtocolClient` question to
+ask it through.
+
+**THREE LEDGER ROWS CLOSED, AND THE WAY THEY HAD TO BE CLOSED IS WORTH RECORDING: `--refresh` CANNOT RUN.** The
+selector surface's own header records why (2026-10-01, §63.135): Apple's index endpoint
+(`tutorials/data/index/foundation`) **RETURNS 404**, so a re-derivation is impossible and the file is a filtered,
+dated measurement. The tool's own remedy message for this exact drift is *"flip the row"*, so the three rows were
+flipped by hand — `method shipped 1682/open 247` → **`shipped 1685/open 244`**, with the header's counts block
+adjusted in the same edit — and `--check`, which is the offline authority, is **consistent** afterwards.
+
+**VERIFICATION.** `make testimg` EXIT 0; `foundation_urlconnection` **27/27 probe checks, 6/6 case checks, first
+run**; `foundation_url*` **14/14 cases, 72/72 checks**; `foundation_auth*` 2/2; `foundation_connectionauth` 1/1;
+library file zero warnings; `foundation-sweep.py --check` **consistent** (and three rows fewer open) and
+`--unimplemented` **0 NEW**.
+
+**STILL OWED FROM §63.145: steps 3 and 5** — the download-to-`NSURLDownload` move, and the disposition enum out of
+the public `NSURLProtocol.h`.
+
 ## §63.155 — STEP 6 IS COMPLETE: THE AUTHENTICATION CLUSTER AND THE RE-SEND'S BODY COME BACK, AND EVERY RETIRED CHECK IS NOW ACCOUNTED FOR (2026-10-03)
 
 **LANDED: SIX MORE CHECKS, AND THE PROBE IS `26/26` WITH THE CASE `6/6` — BOTH ON THE FIRST RUN.** §63.154 brought

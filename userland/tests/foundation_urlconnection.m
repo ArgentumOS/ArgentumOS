@@ -772,17 +772,44 @@ int main(void)
 		 * changed that: `-sender` landed (§62.27), so a connection delegate can answer a challenge. */
 		BOOL authDoors = !fn_protocol_has(base, "connectionShouldUseCredentialStorage:") &&
 				 !fn_protocol_has(base, "connection:didCancelAuthenticationChallenge:");
-		/* and the three whose dependency is the session's own shape */
-		BOOL dataDoors = !fn_protocol_has(data, "connection:needNewBodyStream:") &&
-				 !fn_protocol_has(data,
-					"connection:didSendBodyData:totalBytesWritten:totalBytesExpectedToWrite:") &&
-				 !fn_protocol_has(data, "connection:willCacheResponse:");
-
+		/* ⚠⚠ AND THE "THREE SESSION-SHAPE DOORS" THAT USED TO BE ASSERTED ABSENT HERE ARE NOT REFUSED AT ALL
+		 * (§63.156): this tree declared them on the DOWNLOAD protocol, APPLE declares them on the DATA
+		 * protocol, and the tree's own ledger said so — three `open` rows — while this check denied the
+		 * placement. They have MOVED to where Apple has them, so the refusal list here is what is really
+		 * refused, and the placement is asserted by its own check below. */
 		check("refused-doors-are-absent",
-		      cls != Nil && base != NULL && data != NULL && runloopPair && authDoors && dataDoors,
+		      cls != Nil && base != NULL && data != NULL && runloopPair && authDoors,
 		      [NSString stringWithFormat:@"the inventory: run-loop pair absent=%d, the two "
-			@"still-refused authentication doors absent=%d, the three session-shape doors absent=%d",
-			(int)runloopPair, (int)authDoors, (int)dataDoors]);
+			@"still-refused authentication doors absent=%d, and both of this class's protocols "
+			@"resolve=%d",
+			(int)runloopPair, (int)authDoors, (int)(cls != Nil && base != NULL && data != NULL)]);
+
+		/* THE PLACEMENT, ASSERTED RATHER THAN DENIED: Apple declares the body-stream, the upload-progress
+		 * and the cache-decision doors on `NSURLConnectionDataDelegate`, and this tree had them one protocol
+		 * down — which is why those three rows sat `open` in the ledger for two sessions.
+		 *
+		 * THE ASSERTION IS TWO-SIDED ON PURPOSE: each door must be ON the data protocol AND OFF the download
+		 * protocol, because either half alone is satisfied by the misplacement this corrects — "present
+		 * somewhere" was already true, and "absent from the download protocol" becomes true the moment
+		 * somebody deletes one instead of moving it. */
+		{
+			Protocol *dl = objc_getProtocol("NSURLConnectionDownloadDelegate");
+			BOOL onData = fn_protocol_has(data, "connection:needNewBodyStream:") &&
+				      fn_protocol_has(data, "connection:didSendBodyData:totalBytesWritten:"
+						      "totalBytesExpectedToWrite:") &&
+				      fn_protocol_has(data, "connection:willCacheResponse:");
+			BOOL offDownload = dl != NULL &&
+					   !fn_protocol_has(dl, "connection:needNewBodyStream:") &&
+					   !fn_protocol_has(dl, "connection:didSendBodyData:totalBytesWritten:"
+							   "totalBytesExpectedToWrite:") &&
+					   !fn_protocol_has(dl, "connection:willCacheResponse:");
+
+			check("the-data-protocol-carries-the-three-doors-apple-declares",
+			      onData && offDownload,
+			      [NSString stringWithFormat:@"on the DATA protocol=%d (needNewBodyStream, "
+				@"didSendBodyData, willCacheResponse), off the DOWNLOAD protocol=%d",
+				(int)onData, (int)offDownload]);
+		}
 
 		/* THE DOWNLOAD PROTOCOL, WHICH SLICE 2 DECLARED: asserted PRESENT now, and asserted where its
 		 * metadata exists - the fixture above adopts it, which is what registers it. */
