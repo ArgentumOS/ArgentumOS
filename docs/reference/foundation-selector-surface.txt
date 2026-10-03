@@ -34,7 +34,13 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: 32-bit-only 4, declined 439, other-framework 115, unsupported-by-apple 2
+# why the struck rows are struck: 32-bit-only 4, declined 439, other-framework 115, refused 9, unsupported-by-apple 2
+#
+# ⚠⚠ AND `refused` IS THE NINTH GROUND, ADDED 2026-10-03 (§63.160): a door THIS TREE REFUSES BY NAME — its
+# ground stated in the owner's header and an absence check asserting it — can never be closed as work, so it
+# is struck rather than left on the work list. IT IS NOT `declined`: a decline is a scope decision about
+# Apple's SURFACE, and a refusal is a decision about ONE DOOR on a class this library DOES ship. The nine rows
+# that carry it were found by REVIEW rather than by a tool, which is the debt this ground pays.
 #
 # AND 547 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
@@ -44,8 +50,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-# method	shipped	1655	open	236	struck	390
-# property	shipped	714	open	95	struck	170
+# method	shipped	1655	open	229	struck	397
+# property	shipped	714	open	93	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -1262,7 +1268,7 @@ method	shipped	-deleteCookie:	NSHTTPCookieStorage	Networking / Cookies / Adding 
 method	shipped	-removeCookiesSinceDate:	NSHTTPCookieStorage	Networking / Cookies / Adding and removing cookies	-	objc
 method	shipped	-setCookie:	NSHTTPCookieStorage	Networking / Cookies / Adding and removing cookies	-	objc
 method	shipped	-setCookies:forURL:mainDocumentURL:	NSHTTPCookieStorage	Networking / Cookies / Adding and removing cookies	-	objc
-method	open	+sharedCookieStorageForGroupContainerIdentifier:	NSHTTPCookieStorage	Networking / Cookies / Getting the shared cookie storage object	-	objc
+method	struck	+sharedCookieStorageForGroupContainerIdentifier:	NSHTTPCookieStorage	Networking / Cookies / Getting the shared cookie storage object	refused	objc
 method	shipped	-sortedCookiesUsingDescriptors:	NSHTTPCookieStorage	Networking / Cookies / Retrieving cookies	-	objc
 property	shipped	cookieAcceptPolicy	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy	-	objc
 property	shipped	cookies	NSHTTPCookieStorage	Networking / Cookies / Retrieving cookies	-	objc
@@ -2311,7 +2317,7 @@ method	open	-registerPort:name:nameServerPortNumber:	NSSocketPortNameServer	Low-
 method	shipped	-removePortForName:	NSSocketPortNameServer	Low-Level Utilities / Legacy / Legacy / Registering and Removing Ports	deprecated	objc
 method	shipped	+sharedInstance	NSSocketPortNameServer	Low-Level Utilities / Legacy / Legacy / Getting the Server Object	deprecated	objc
 property	open	defaultNameServerPortNumber	NSSocketPortNameServer	Low-Level Utilities / Legacy / Legacy / Configuring the Default Port Number	deprecated	objc
-method	open	-allowEvaluation	NSSortDescriptor	Fundamentals / Sorting / Using Sort Descriptors	-	objc
+method	struck	-allowEvaluation	NSSortDescriptor	Fundamentals / Sorting / Using Sort Descriptors	refused	objc
 method	shipped	-compareObject:toObject:	NSSortDescriptor	Fundamentals / Sorting / Using Sort Descriptors	-	objc
 method	shipped	-initWithCoder:	NSSortDescriptor	Fundamentals / Sorting / Creating a Sort Descriptor	-	objc
 method	shipped	-initWithKey:ascending:	NSSortDescriptor	Fundamentals / Sorting / Creating a Sort Descriptor	-	objc
@@ -2757,12 +2763,12 @@ method	shipped	-cancel	NSURLConnection	Networking / Legacy / URL Connection / St
 method	shipped	+connectionWithRequest:delegate:	NSURLConnection	Networking / Legacy / URL Connection / Loading Data Asynchronously	deprecated	objc
 method	shipped	-initWithRequest:delegate:	NSURLConnection	Networking / Legacy / URL Connection / Loading Data Asynchronously	deprecated	objc
 method	shipped	-initWithRequest:delegate:startImmediately:	NSURLConnection	Networking / Legacy / URL Connection / Loading Data Asynchronously	deprecated	objc
-method	open	-scheduleInRunLoop:forMode:	NSURLConnection	Networking / Legacy / URL Connection / Scheduling Delegate Method Calls	deprecated	objc
+method	struck	-scheduleInRunLoop:forMode:	NSURLConnection	Networking / Legacy / URL Connection / Scheduling Delegate Method Calls	refused	objc
 method	open	+sendAsynchronousRequest:queue:completionHandler:	NSURLConnection	Networking / Legacy / URL Connection / Loading Data Asynchronously	deprecated	objc
 method	shipped	+sendSynchronousRequest:returningResponse:error:	NSURLConnection	Networking / Legacy / URL Connection / Loading Data Synchronously	deprecated	objc
 method	shipped	-setDelegateQueue:	NSURLConnection	Networking / Legacy / URL Connection / Scheduling Delegate Method Calls	deprecated	objc
 method	shipped	-start	NSURLConnection	Networking / Legacy / URL Connection / Loading Data Asynchronously	deprecated	objc
-method	open	-unscheduleFromRunLoop:forMode:	NSURLConnection	Networking / Legacy / URL Connection / Scheduling Delegate Method Calls	deprecated	objc
+method	struck	-unscheduleFromRunLoop:forMode:	NSURLConnection	Networking / Legacy / URL Connection / Scheduling Delegate Method Calls	refused	objc
 property	shipped	currentRequest	NSURLConnection	Networking / Legacy / URL Connection / Connection URL Information	deprecated	objc
 property	shipped	originalRequest	NSURLConnection	Networking / Legacy / URL Connection / Connection URL Information	deprecated	objc
 method	shipped	-connection:didReceiveData:	NSURLConnectionDataDelegate	Networking / Legacy / URL Connection / Handling Incoming Data	deprecated	objc
@@ -2773,11 +2779,11 @@ method	shipped	-connection:willCacheResponse:	NSURLConnectionDataDelegate	Networ
 method	shipped	-connection:willSendRequest:redirectResponse:	NSURLConnectionDataDelegate	Networking / Legacy / URL Connection / Handling Redirects	deprecated	objc
 method	shipped	-connectionDidFinishLoading:	NSURLConnectionDataDelegate	Networking / Legacy / URL Connection / Receiving Connection Progress	deprecated	objc
 method	shipped	-connection:canAuthenticateAgainstProtectionSpace:	NSURLConnectionDelegate	Networking / Legacy / URL Connection / Connection Authentication	deprecated	objc
-method	open	-connection:didCancelAuthenticationChallenge:	NSURLConnectionDelegate	Networking / Legacy / URL Connection / Connection Authentication	deprecated	objc
+method	struck	-connection:didCancelAuthenticationChallenge:	NSURLConnectionDelegate	Networking / Legacy / URL Connection / Connection Authentication	refused	objc
 method	shipped	-connection:didFailWithError:	NSURLConnectionDelegate	Networking / Legacy / URL Connection / Connection Completion	deprecated	objc
 method	shipped	-connection:didReceiveAuthenticationChallenge:	NSURLConnectionDelegate	Networking / Legacy / URL Connection / Connection Authentication	deprecated	objc
 method	shipped	-connection:willSendRequestForAuthenticationChallenge:	NSURLConnectionDelegate	Networking / Legacy / URL Connection / Connection Authentication	deprecated	objc
-method	open	-connectionShouldUseCredentialStorage:	NSURLConnectionDelegate	Networking / Legacy / URL Connection / Connection Authentication	deprecated	objc
+method	struck	-connectionShouldUseCredentialStorage:	NSURLConnectionDelegate	Networking / Legacy / URL Connection / Connection Authentication	refused	objc
 method	shipped	-connection:didWriteData:totalBytesWritten:expectedTotalBytes:	NSURLConnectionDownloadDelegate	Networking / Legacy / URL Connection / Managing Downloads of URL Assets	deprecated	objc
 method	shipped	-connectionDidFinishDownloading:destinationURL:	NSURLConnectionDownloadDelegate	Networking / Legacy / URL Connection / Managing Downloads of URL Assets	deprecated	objc
 method	open	-connectionDidResumeDownloading:totalBytesWritten:expectedTotalBytes:	NSURLConnectionDownloadDelegate	Networking / Legacy / URL Connection / Managing Downloads of URL Assets	deprecated	objc
@@ -2856,7 +2862,7 @@ method	shipped	-URLHandleResourceDidFinishLoading:	NSURLHandleClient	Networking 
 method	shipped	-initWithHost:port:protocol:realm:authenticationMethod:	NSURLProtectionSpace	Networking / Authentication and credentials / Creating a protection space	-	objc
 method	shipped	-initWithProxyHost:port:type:realm:authenticationMethod:	NSURLProtectionSpace	Networking / Authentication and credentials / Creating a protection space	-	objc
 property	shipped	authenticationMethod	NSURLProtectionSpace	Networking / Authentication and credentials / Getting protection space properties	-	objc
-property	open	distinguishedNames	NSURLProtectionSpace	Networking / Authentication and credentials / Getting protection space properties	-	objc
+property	struck	distinguishedNames	NSURLProtectionSpace	Networking / Authentication and credentials / Getting protection space properties	refused	objc
 property	shipped	host	NSURLProtectionSpace	Networking / Authentication and credentials / Getting protection space properties	-	objc
 property	shipped	isProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Getting protection space properties	-	objc
 property	shipped	port	NSURLProtectionSpace	Networking / Authentication and credentials / Getting protection space properties	-	objc
@@ -2864,7 +2870,7 @@ property	shipped	protocol	NSURLProtectionSpace	Networking / Authentication and c
 property	shipped	proxyType	NSURLProtectionSpace	Networking / Authentication and credentials / Getting protection space properties	-	objc
 property	shipped	realm	NSURLProtectionSpace	Networking / Authentication and credentials / Getting protection space properties	-	objc
 property	shipped	receivesCredentialSecurely	NSURLProtectionSpace	Networking / Authentication and credentials / Getting protection space properties	-	objc
-property	open	serverTrust	NSURLProtectionSpace	Networking / Authentication and credentials / Getting protection space properties	-	objc
+property	struck	serverTrust	NSURLProtectionSpace	Networking / Authentication and credentials / Getting protection space properties	refused	objc
 method	shipped	+canInitWithRequest:	NSURLProtocol	Networking / Essentials / Creating a session / Supporting custom protocols / Determining If a subclass can handle a request	-	objc
 method	open	+canInitWithTask:	NSURLProtocol	Networking / Essentials / Creating a session / Supporting custom protocols / Determining If a subclass can handle a request	-	objc
 method	shipped	+canonicalRequestForRequest:	NSURLProtocol	Networking / Essentials / Creating a session / Supporting custom protocols / Providing a canonical version of a request	-	objc
@@ -2883,7 +2889,7 @@ property	shipped	client	NSURLProtocol	Networking / Essentials / Creating a sessi
 property	shipped	request	NSURLProtocol	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes	-	objc
 property	open	task	NSURLProtocol	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes	-	objc
 method	shipped	-URLProtocol:cachedResponseIsValid:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Working with cache data	-	objc
-method	open	-URLProtocol:didCancelAuthenticationChallenge:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Handling authentication challenges	-	objc
+method	struck	-URLProtocol:didCancelAuthenticationChallenge:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Handling authentication challenges	refused	objc
 method	shipped	-URLProtocol:didFailWithError:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Indicating loading progress or failure	-	objc
 method	shipped	-URLProtocol:didLoadData:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Indicating loading progress or failure	-	objc
 method	shipped	-URLProtocol:didReceiveAuthenticationChallenge:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Handling authentication challenges	-	objc

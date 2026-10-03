@@ -1029,6 +1029,49 @@ DECLINED_SELECTORS = frozenset((
 ))
 
 
+# ⚠⚠ THE NINTH GROUND, AND IT IS THE ONE THE LEDGER COULD NOT EXPRESS UNTIL NOW (2026-10-03, §63.160): A DOOR THIS
+# TREE HAS REFUSED **BY NAME**, WITH ITS GROUND STATED IN A HEADER AND AN ABSENCE CHECK ASSERTING IT.
+#
+# WHY IT IS NOT `declined`: a decline is a SCOPE decision about Apple's SURFACE ("this project is not shipping the
+# AppleScript family"), and this is a decision about ONE DOOR on a class this library DOES ship. WHY IT IS NOT
+# `open` EITHER - WHICH IS WHERE ALL NINE OF THESE SAT: an open row is WORK, and every one of these can never be
+# closed, because the thing it would need does not exist here. A work list carrying nine unclosable rows is a work
+# list that lies about its own size.
+#
+# THE TEST, AND BOTH HALVES ARE REQUIRED: the OWNER's header states the refusal WITH ITS GROUND (the refusal idiom
+# that has been in this tree since §48.1), AND a probe's check ASSERTS THE ABSENCE - so a row is struck because the
+# tree says so twice rather than because a reader decided it. EACH ENTRY NAMES THE GROUND AS THE HEADER GIVES IT:
+REFUSED_BY_STATED_GROUND = frozenset((
+    # NO DOOR TO HAND WORK TO A RUN LOOP, SO NOTHING TO DIRECT: NSURLConnection.h refuses the scheduling pair and
+    # `foundation_urlconnection`'s `refused-doors-are-absent` asserts the class answers neither. ⚠ THE SELECTOR IS
+    # `shipped` FOR NSMachPort, NSPort AND NSStream, which DO have a run-loop source kind - and that is why this
+    # refusal cannot be expressed by striking a NAME: the ledger is per (owner, selector), and only one owner
+    # refuses it.
+    ("NSURLConnection", "-scheduleInRunLoop:forMode:"),
+    ("NSURLConnection", "-unscheduleFromRunLoop:forMode:"),
+    # THE LOADING SYSTEM CONSULTS NO CREDENTIAL STORE, and one challenge at a time is answered synchronously:
+    # NSURLConnection.h's refusal list, asserted absent by the same check.
+    ("NSURLConnectionDelegate", "-connectionShouldUseCredentialStorage:"),
+    ("NSURLConnectionDelegate", "-connection:didCancelAuthenticationChallenge:"),
+    # NOTHING IN THIS TREE RAISES IT (NSURLProtocol.h), and a client that cancels answers through the challenge's
+    # sender instead - the ONE answer path since §63.158.
+    ("NSURLProtocolClient", "-URLProtocol:didCancelAuthenticationChallenge:"),
+    # A GROUP CONTAINER IS AN APP-GROUP CONCEPT THIS SYSTEM HAS NO NOTION OF (NSHTTPCookieStorage.h).
+    ("NSHTTPCookieStorage", "+sharedCookieStorageForGroupContainerIdentifier:"),
+    # A SANDBOX FOR UNTRUSTED ARCHIVES - A SECURITY POLICY RATHER THAN A SORTING FEATURE (NSSortDescriptor.h).
+    ("NSSortDescriptor", "-allowEvaluation"),
+    # EACH NAMES A `SecTrustRef` OR A CERTIFICATE FIELD, AND THIS SYSTEM HAS NO CERTIFICATE STACK TO GIVE ONE A
+    # MEANING (NSURLProtectionSpace.h).
+    ("NSURLProtectionSpace", "serverTrust"),
+    ("NSURLProtectionSpace", "distinguishedNames"),
+))
+
+
+def is_refused(row):
+    """Is this row a door this tree refused BY NAME, with its ground stated and an absence check asserting it?"""
+    return (row.get("owner") or "", row["name"]) in REFUSED_BY_STATED_GROUND
+
+
 def is_declined(row):
     """Is this row out by the project's SCOPE DECISION rather than by an Apple fact?
 
@@ -1058,7 +1101,8 @@ def why_of(row):
     if row["name"] in REQUIRED_BY_LIVE_API:      # empty today; see above
         return "required-by-live-api"
     return struck_reason(row) or ("declined" if is_declined(row)
-                                  else ("deprecated" if apple_says_deprecated(row) else "-"))
+                                  else ("refused" if is_refused(row)
+                                        else ("deprecated" if apple_says_deprecated(row) else "-")))
 
 
 # EVERY strike reason, in one place. The first version of the fourth exclusion
@@ -1071,9 +1115,13 @@ def why_of(row):
 # INFORMATIONAL `why`, so a row carrying it is judged SHIPPED or OPEN by its declaration like any other. That is
 # what the user's policy asks for - deprecated API is a PORTING TARGET, not something this library is spared.
 # ⚠ A REASON IS NOT A STRIKE HERE: `struck_reason()` ANSWERS and THIS TUPLE ACTS.
+#
+# AND THE NINTH CAME OUT OF THIS ONE TOO (2026-10-03, §63.160): `refused` - a door this tree refuses BY NAME with
+# its ground in a header and an absence check asserting it. It is OUR reason like `declined`, and like `declined`
+# it is NOT an Apple fact, which is why both are asked only after `struck_reason()` has had its say.
 STRIKE_REASONS = ("32-bit-only", "swift-only", "os-version-constant", "declined",
                   "needs-corefoundation", "frame-walk-unsupported", "other-framework",
-                  "unsupported-by-apple")
+                  "unsupported-by-apple", "refused")
 
 # THE INFORMATIONAL REASONS: a `why` that does NOT strike. `deprecated` is the only one today, and it is here so
 # that a reader can tell "this row is work because Apple deprecated it" from "this row is work".

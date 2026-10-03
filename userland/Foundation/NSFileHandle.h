@@ -8,10 +8,13 @@
  * THE FAMOUS HALF OF THIS CLASS IS THE DEPRECATED ONE, and that shapes this header more than anything else.
  * In the macOS 14 vintage Apple deprecated the nine methods everybody knows — `-readDataToEndOfFile`,
  * `-readDataOfLength:`, `-writeData:`, `-offsetInFile`, `-seekToEndOfFile`, `-seekToFileOffset:`,
- * `-closeFile`, `-synchronizeFile`, `-truncateFileAtOffset:` — so §11.5 strikes them. **What replaced them is
- * the same operations carrying an error out-parameter** (`-readDataUpToLength:error:` and friends), which is
- * the whole of the synchronous surface below; a caller who wants the old spellings is asking for something
- * Apple removed, and the probe's inventory names each one with that reason.
+ * `-closeFile`, `-synchronizeFile`, `-truncateFileAtOffset:`. **⚠⚠ AND THIS PARAGRAPH USED TO SAY "SO §11.5
+ * STRIKES THEM", WHICH BECAME FALSE ON 2026-09-26** (the user's policy retired the deprecation ground): a
+ * deprecated door is a PORTING TARGET here, so the ledger counts all nine as OWED — measured, they are `open`
+ * rows on this class. **What replaced them is the same operations carrying an error out-parameter**
+ * (`-readDataUpToLength:error:` and friends), which is the whole of the synchronous surface below; the old
+ * spellings are therefore work this class still owes, and the probe's inventory names each one with that
+ * status rather than with a strike.
  *
  * THE ASYNCHRONOUS HALF IS **NOT** DEPRECATED, and it is why this class needed W6a and W6b before it:
  * `-readInBackgroundAndNotify`, `-readToEndOfFileInBackgroundAndNotify`, `-waitForDataInBackgroundAndNotify`,
