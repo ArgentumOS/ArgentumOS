@@ -863,6 +863,32 @@ DECLINED_SYMBOLS = frozenset((
 # and is invisible to the tool, which is the worst way for it to be wrong.
 DECLINED_SELECTORS = frozenset((
     ("NSDistantObject", "initWithCoder:"),
+    # ⚠⚠ NSItemProvider'S THIRTEEN ROWS ARE ALL DECLINES, AND **THE GROUNDS WERE ALREADY WRITTEN IN THE CLASS'S OWN
+    # HEADER**, under "WHAT IS ABSENT, NAMED WITH ITS GROUND" — MEASURED THERE AND ONLY ENTERED HERE (§63.126). The class
+    # implements the SAME API ONE TYPE-SPELLING OLDER (`…ForTypeIdentifier:`, all shipped), so these are not gaps in the
+    # family; they are the doors whose names carry a type this system does not have:
+    #   * EIGHT DOORS THAT TAKE A `UTType`: **THIS SYSTEM HAS NO `UTType` AND NO UNIFORM TYPE IDENTIFIER DATABASE AT
+    #     ALL** — measured, and the class's note says so with the measurement in it;
+    #   * FOUR (the header note says five; the ledger has four, and the difference is recorded rather than tidied)
+    #     **CloudKit** share registrations, which need `CKShare`/`CKContainer` — a dependency this system lacks
+    #     (§11.6's ground (ii)), and a service besides;
+    #   * AND ONE PROPERTY WHOSE TYPE IS UIKit's: `preferredPresentationStyle`, whose `UIPreferredPresentationStyle`
+    #     has no home in this library's Foundation.
+    # **EVERY ONE OF THE THIRTEEN HAS ITS GROUND IN THE HEADER ALREADY, WHICH IS WHY THIS SET IS A RECORDING RATHER
+    # THAN A DECISION.**
+    ("NSItemProvider", "initWithContentsOfURL:contentType:openInPlace:coordinated:visibility:"),
+    ("NSItemProvider", "loadDataRepresentationForContentType:completionHandler:"),
+    ("NSItemProvider", "loadFileRepresentationForContentType:openInPlace:completionHandler:"),
+    ("NSItemProvider", "registerCKShare:container:allowedSharingOptions:"),
+    ("NSItemProvider", "registerCKShareWithContainer:allowedSharingOptions:preparationHandler:"),
+    ("NSItemProvider", "registerCloudKitShare:container:"),
+    ("NSItemProvider", "registerCloudKitShareWithPreparationHandler:"),
+    ("NSItemProvider", "registerDataRepresentationForContentType:visibility:loadHandler:"),
+    ("NSItemProvider", "registerFileRepresentationForContentType:visibility:openInPlace:loadHandler:"),
+    ("NSItemProvider", "registeredContentTypesConformingToContentType:"),
+    ("NSItemProvider", "preferredPresentationStyle"),
+    ("NSItemProvider", "registeredContentTypes"),
+    ("NSItemProvider", "registeredContentTypesForOpenInPlace"),
     # ⚠⚠ `+timeZoneWithAbbreviation:` IS A DECLINE WITH A POSITIVE REASON, AND THE REASON IS THE TREE'S OWN (the
     # class’s header has carried it since the class was written): APPLE'S DOOR IS A CURATED MAP FROM AN ADBREVIATION TO
     # ONE CHOSEN ZONE ("EST" -> "America/New_York"), AND ICU HAS ABBREVIATIONS BUT NOT THAT CURATION. §63.125 MEASURED

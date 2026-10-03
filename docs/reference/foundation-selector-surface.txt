@@ -25,7 +25,7 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: 32-bit-only 4, declined 444, other-framework 130, unsupported-by-apple 2
+# why the struck rows are struck: 32-bit-only 4, declined 457, other-framework 130, unsupported-by-apple 2
 #
 # AND 549 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2204   open  325   struck  399
-#   property   shipped 1287   open  168   struck  181
+#   method     shipped 2204   open  315   struck  409
+#   property   shipped 1287   open  165   struck  184
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -1606,36 +1606,36 @@ method	shipped	-hasItemConformingToTypeIdentifier:	NSItemProvider	App Support / 
 method	shipped	-hasRepresentationConformingToTypeIdentifier:fileOptions:	NSItemProvider	App Support / Attachments / Querying the provider’s contents	-	objc
 method	shipped	-init	NSItemProvider	App Support / Attachments / Creating an item provider	-	objc
 method	shipped	-initWithContentsOfURL:	NSItemProvider	App Support / Attachments / Creating an item provider	-	objc
-method	open	-initWithContentsOfURL:contentType:openInPlace:coordinated:visibility:	NSItemProvider	App Support / Attachments / Creating an item provider	-	objc
+method	struck	-initWithContentsOfURL:contentType:openInPlace:coordinated:visibility:	NSItemProvider	App Support / Attachments / Creating an item provider	declined	objc
 method	shipped	-initWithItem:typeIdentifier:	NSItemProvider	App Support / Attachments / Creating an item provider	deprecated	objc
 method	shipped	-initWithObject:	NSItemProvider	App Support / Attachments / Creating an item provider	-	objc
-method	open	-loadDataRepresentationForContentType:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	-	objc
+method	struck	-loadDataRepresentationForContentType:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	declined	objc
 method	shipped	-loadDataRepresentationForTypeIdentifier:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	-	objc
-method	open	-loadFileRepresentationForContentType:openInPlace:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	-	objc
+method	struck	-loadFileRepresentationForContentType:openInPlace:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	declined	objc
 method	shipped	-loadFileRepresentationForTypeIdentifier:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	-	objc
 method	shipped	-loadInPlaceFileRepresentationForTypeIdentifier:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	-	objc
 method	shipped	-loadItemForTypeIdentifier:options:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	deprecated	objc
 method	shipped	-loadObjectOfClass:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	-	objc
 method	shipped	-loadPreviewImageWithOptions:completionHandler:	NSItemProvider	App Support / Attachments / Loading a preview image	-	objc
-method	open	-registerCKShare:container:allowedSharingOptions:	NSItemProvider	App Support / Attachments / Registering CloudKit shares	-	objc
-method	open	-registerCKShareWithContainer:allowedSharingOptions:preparationHandler:	NSItemProvider	App Support / Attachments / Registering CloudKit shares	-	objc
-method	open	-registerCloudKitShare:container:	NSItemProvider	App Support / Attachments / Registering CloudKit shares	-	objc
-method	open	-registerCloudKitShareWithPreparationHandler:	NSItemProvider	App Support / Attachments / Registering CloudKit shares	-	objc
-method	open	-registerDataRepresentationForContentType:visibility:loadHandler:	NSItemProvider	App Support / Attachments / Registering data	-	objc
+method	struck	-registerCKShare:container:allowedSharingOptions:	NSItemProvider	App Support / Attachments / Registering CloudKit shares	declined	objc
+method	struck	-registerCKShareWithContainer:allowedSharingOptions:preparationHandler:	NSItemProvider	App Support / Attachments / Registering CloudKit shares	declined	objc
+method	struck	-registerCloudKitShare:container:	NSItemProvider	App Support / Attachments / Registering CloudKit shares	declined	objc
+method	struck	-registerCloudKitShareWithPreparationHandler:	NSItemProvider	App Support / Attachments / Registering CloudKit shares	declined	objc
+method	struck	-registerDataRepresentationForContentType:visibility:loadHandler:	NSItemProvider	App Support / Attachments / Registering data	declined	objc
 method	shipped	-registerDataRepresentationForTypeIdentifier:visibility:loadHandler:	NSItemProvider	App Support / Attachments / Registering data	-	objc
-method	open	-registerFileRepresentationForContentType:visibility:openInPlace:loadHandler:	NSItemProvider	App Support / Attachments / Registering files	-	objc
+method	struck	-registerFileRepresentationForContentType:visibility:openInPlace:loadHandler:	NSItemProvider	App Support / Attachments / Registering files	declined	objc
 method	shipped	-registerFileRepresentationForTypeIdentifier:fileOptions:visibility:loadHandler:	NSItemProvider	App Support / Attachments / Registering files	-	objc
 method	shipped	-registerItemForTypeIdentifier:loadHandler:	NSItemProvider	App Support / Attachments / Registering data	deprecated	objc
 method	shipped	-registerObject:visibility:	NSItemProvider	App Support / Attachments / Registering objects	-	objc
 method	shipped	-registerObjectOfClass:visibility:loadHandler:	NSItemProvider	App Support / Attachments / Registering objects	-	objc
-method	open	-registeredContentTypesConformingToContentType:	NSItemProvider	App Support / Attachments / Registering content types	-	objc
+method	struck	-registeredContentTypesConformingToContentType:	NSItemProvider	App Support / Attachments / Registering content types	declined	objc
 method	shipped	-registeredTypeIdentifiersWithFileOptions:	NSItemProvider	App Support / Attachments / Querying the provider’s contents	-	objc
 property	struck	containerFrame	NSItemProvider	App Support / Attachments / Getting the provider’s frame	declined	objc
 property	struck	preferredPresentationSize	NSItemProvider	App Support / Attachments / Configuring the provider	declined	objc
-property	open	preferredPresentationStyle	NSItemProvider	App Support / Attachments / Configuring the provider	-	swift-page
+property	struck	preferredPresentationStyle	NSItemProvider	App Support / Attachments / Configuring the provider	declined	swift-page
 property	shipped	previewImageHandler	NSItemProvider	App Support / Attachments / Loading a preview image	-	objc
-property	open	registeredContentTypes	NSItemProvider	App Support / Attachments / Registering content types	-	objc
-property	open	registeredContentTypesForOpenInPlace	NSItemProvider	App Support / Attachments / Registering content types	-	objc
+property	struck	registeredContentTypes	NSItemProvider	App Support / Attachments / Registering content types	declined	objc
+property	struck	registeredContentTypesForOpenInPlace	NSItemProvider	App Support / Attachments / Registering content types	declined	objc
 property	shipped	registeredTypeIdentifiers	NSItemProvider	App Support / Attachments / Querying the provider’s contents	-	objc
 property	struck	sourceFrame	NSItemProvider	App Support / Attachments / Getting the provider’s frame	declined	objc
 property	shipped	suggestedName	NSItemProvider	App Support / Attachments / Configuring the provider	-	objc

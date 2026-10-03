@@ -15982,6 +15982,40 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.126 — `NSItemProvider` COMPLETE: THIRTEEN ROWS CLOSED, AND THE GROUNDS WERE ALREADY IN ITS OWN HEADER (2026-10-01)
+
+**`NSItemProvider` HAS NO OPEN ROWS — THE SIXTH OWNER FINISHED OUTRIGHT — AND ALL THIRTEEN CLOSED IN ONE UNIT.**
+
+**MEASURED: `method shipped 2204`, `open 325 → 315`, `struck 398 → 409`; `property shipped 1287`, `open 168 → 165`,
+`struck 181 → 184`; `--refresh` and `--check` both consistent; `--work-list | grep -c NSItemProvider` → 0.** (The
+command reported `exit status 1` for that last line, which is `grep -c` answering ZERO — the count IS the answer.)
+
+**⚠⚠ AND THE FINDING THAT MADE THIS A RECORDING RATHER THAN A DECISION: THE GROUNDS WERE ALREADY WRITTEN IN THE CLASS'S
+OWN HEADER**, under the heading **“WHAT IS ABSENT, NAMED WITH ITS GROUND”**, row by row — and the rows were `open` only
+because that reasoning had never been ENTERED where the sweep reads it:
+ * **EIGHT DOORS THAT NAME A `UTType`** — *“THIS SYSTEM HAS NO `UTType` AND NO UNIFORM TYPE IDENTIFIER DATABASE AT ALL
+   (measured: no `UTType` name is in this library's ledger and no `public.*` identifier table exists anywhere in the
+   tree)”*;
+ * **FOUR CLOUDKIT SHARE REGISTRATIONS**, which need `CKShare`/`CKContainer` — a dependency this system lacks (§11.6's
+   ground (ii)), and a service besides. *The header says FIVE and the ledger has FOUR; the difference is recorded here
+   rather than tidied, because tidying it silently would be the same defect as the stale note §63.125 corrected;*
+ * **AND ONE PROPERTY WHOSE TYPE IS UIKit's** — `preferredPresentationStyle`, whose `UIPreferredPresentationStyle` has
+   no home in this library's Foundation.
+ *THAT IS 8 + 4 + 1 = 13, which is exactly the owner's open count — the strongest evidence available that the note and
+ the ledger were describing the same thirteen rows.*
+
+**AND THE DISTINCTION THAT KEEPS THIS FROM BEING A GAP IN THE FAMILY: THE CLASS IMPLEMENTS THE SAME API ONE
+TYPE-SPELLING OLDER.** `…ForTypeIdentifier:` is shipped in every form — register, load, in-place load, the registered
+lists — so a caller with the classic spelling is served; **the `…ForContentType:` spelling is the modernisation whose
+parameter NAMES A TYPE THIS SYSTEM DOES NOT HAVE.** A family that had neither spelling would be a gap; this one is a
+spelling.
+
+**⚠⚠ AND THE METHOD NOTE, NOW TWICE IN A ROW: READ THE FILE YOU ARE ABOUT TO CHANGE, BECAUSE ITS OWN NOTE HAS BEEN
+THE ANSWER TWO UNITS RUNNING** — §63.125 (`NSTimeZone`'s refusal ground, and its exact qualification) and §63.126
+(`NSItemProvider`'s whole absent-list, with the measurement inside it). **This tree records its reasoning where a reader
+meets the class; the sweep is where the ledger READS it, and ENTERING that reasoning is a unit of work rather than
+bookkeeping.** Both units took their first measurement round and no more.
+
 ## §63.125 — `NSTimeZone` COMPLETE: THE LAST ROW IS A DECLINE, AND A STALE NOTE IS CORRECTED (2026-10-01)
 
 **`NSTimeZone` HAS NO OPEN ROWS. `--work-list | grep -c NSTimeZone` → 0: the owner has left the work list, which is
