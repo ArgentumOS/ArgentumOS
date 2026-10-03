@@ -109,6 +109,24 @@ static NSString *fn_raised(NSString *expected, void (^block)(void))
 @implementation FNPlainThing
 @end
 
+/* TWO CLASSES WITH NOTHING BEHIND THEM: the class-name map is only OBSERVABLE when the mapped class and
+ * the mapped-to class are distinguishable. A class cluster defeats that - an array decoded as "NSArray"
+ * comes back as the cluster's mutable face either way, which is what the first version of the check below
+ * measured (plain=AGArrayMutable mapped=AGArrayMutable) and could not tell apart. */
+@interface KUAlpha : NSObject <NSCoding>
+@end
+@implementation KUAlpha
+- (nullable instancetype)initWithCoder:(NSCoder *)coder { (void)coder; return [super init]; }
+- (void)encodeWithCoder:(NSCoder *)coder { (void)coder; }
+@end
+
+@interface KUBeta : NSObject <NSCoding>
+@end
+@implementation KUBeta
+- (nullable instancetype)initWithCoder:(NSCoder *)coder { (void)coder; return [super init]; }
+- (void)encodeWithCoder:(NSCoder *)coder { (void)coder; }
+@end
+
 int main(void)
 {
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -561,6 +579,73 @@ int main(void)
 	/* THE STATUS REPORTS FAILURES AND NOT A COUNT. A second copy of "how many checks are there" is a number
 	 * that goes stale the first time a check is added — twice in this thread (§62.85 and this unit) — and the
 	 * case file already asserts the count, from the probe's OWN names. */
+
+	{
+		/* THE CLASS-NAME MAP (§63.183), INCLUDING WHERE IT IS CONSULTED. The map is asked BEFORE the runtime,
+		 * and that is asserted the only way it can be: an archive that NAMES KUAlpha is decoded with that
+		 * name remapped to KUBeta, so the class the runtime would have found BY NAME is not the one that must
+		 * come back. Both halves are exercised - the process-wide door and the instance one. */
+		NSData *archived = [NSKeyedArchiver archivedDataWithRootObject:[[KUAlpha alloc] init]];
+		id plain = [NSKeyedUnarchiver unarchiveObjectWithData:archived];
+		id mapped;
+
+		[NSKeyedUnarchiver setClass:[KUBeta class] forClassName:@"KUAlpha"];
+		mapped = [NSKeyedUnarchiver unarchiveObjectWithData:archived];
+		check("archiver-class-map",
+		      plain != nil && [plain isKindOfClass:[KUAlpha class]] &&
+		      mapped != nil && [mapped isKindOfClass:[KUBeta class]] &&
+		      ![mapped isKindOfClass:[KUAlpha class]],
+		      [NSString stringWithFormat:@"plain=%@ mapped=%@", [plain class], [mapped class]]);
+	}
+
+	{
+		/* THE INSTANCE HALF, and that CLEARING a mapping with nil removes it: the door must forget, not store
+		 * a nil that would then answer "mapped" for every later read. */
+		[NSKeyedUnarchiver setClass:Nil forClassName:@"KUAlpha"];
+		check("archiver-class-map-clears",
+		      [NSKeyedUnarchiver classForClassName:@"KUAlpha"] == Nil,
+		      @"a nil class removes the mapping rather than storing a nil");
+	}
+
+
+	{
+		/* THE SECURE TOP-LEVEL DOORS (§63.183): one object, an array EVERY element of which is checked, and a
+		 * dictionary whose KEYS and OBJECTS are checked separately. A refusal must answer nil AND an error -
+		 * the error is the point of the family - and a corrupt blob must be refused rather than raised. */
+		NSData *arrayData = [NSKeyedArchiver archivedDataWithRootObject:
+			[NSArray arrayWithObjects:[NSNumber numberWithInt:1], [NSNumber numberWithInt:2], nil]];
+		NSData *dictData = [NSKeyedArchiver archivedDataWithRootObject:
+			[NSDictionary dictionaryWithObject:[NSNumber numberWithInt:7] forKey:@"k"]];
+		NSError *error = nil;
+		id okArray = [NSKeyedUnarchiver unarchivedObjectOfClass:[NSArray class] fromData:arrayData error:&error];
+		id wrongClass = [NSKeyedUnarchiver unarchivedObjectOfClass:[NSString class] fromData:arrayData error:&error];
+		BOOL wrongClassErrored = (wrongClass == nil && error != nil);
+		NSArray *numbers;
+		NSArray *strings;
+		NSDictionary *dict;
+		NSData *corrupt = [NSData dataWithBytes:"not-archive" length:11];
+		id fromCorrupt;
+		BOOL corruptErrored;
+
+		error = nil;
+		numbers = [NSKeyedUnarchiver unarchivedArrayOfObjectsOfClass:[NSNumber class] fromData:arrayData error:&error];
+		error = nil;
+		strings = [NSKeyedUnarchiver unarchivedArrayOfObjectsOfClass:[NSString class] fromData:arrayData error:&error];
+		error = nil;
+		dict = [NSKeyedUnarchiver unarchivedDictionaryWithKeysOfClass:[NSString class]
+								     objectsOfClass:[NSNumber class]
+									   fromData:dictData error:&error];
+		error = nil;
+		fromCorrupt = [NSKeyedUnarchiver unarchivedObjectOfClass:[NSArray class] fromData:corrupt error:&error];
+		corruptErrored = (fromCorrupt == nil && error != nil);
+		check("archiver-secure-doors",
+		      okArray != nil && [okArray count] == 2 &&
+		      wrongClassErrored && numbers != nil && [numbers count] == 2 &&
+		      strings == nil && dict != nil && [dict count] == 1 && corruptErrored,
+		      [NSString stringWithFormat:@"ok=%d wrong=%d numbers=%d strings=%d dict=%d corrupt=%d",
+			okArray != nil, wrongClassErrored, numbers != nil, strings != nil, dict != nil, corruptErrored]);
+	}
+
 	printf("FOUNDATION-ARCHIVER RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-ARCHIVER-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-ARCHIVER DONE\n");

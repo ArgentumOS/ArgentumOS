@@ -130,6 +130,10 @@ static NSError *fn_decode_error(NSInteger code, NSString *description)
 /* IS THE VALUE ONE OF THESE CLASSES? `classes == nil` is "no list was given", which this library reads
  * as no restriction — a caller who wanted one named one. The list is walked rather than asked with
  * `-containsObject:`, because a Class object is not equal to its instances. */
+/* THE PROCESS-WIDE CLASS-NAME MAP, beside the helpers that use it. It is the STATIC half of the pair the
+ * class doors below read; the instance half is the _classMap ivar. */
+static NSMutableDictionary *fn_class_name_map = nil;
+
 static BOOL fn_value_is_allowed(id value, NSSet *classes)
 {
 	NSArray *list;
@@ -557,6 +561,63 @@ static BOOL fn_value_is_allowed(id value, NSSet *classes)
 
 @implementation NSKeyedUnarchiver
 
+/* ---- the class-name map (§63.183) ------------------------------------------------------------------ */
++ (nullable Class)classForClassName:(NSString *)codedName
+{
+	return [fn_class_name_map objectForKey:codedName];
+}
+
++ (void)setClass:(nullable Class)cls forClassName:(NSString *)codedName
+{
+	if (codedName == nil) {
+		return;
+	}
+	if (fn_class_name_map == nil) {
+		fn_class_name_map = [[NSMutableDictionary alloc] init];
+	}
+	if (cls == Nil) {
+		[fn_class_name_map removeObjectForKey:codedName];
+	} else {
+		[fn_class_name_map setObject:cls forKey:codedName];
+	}
+}
+
+- (nullable Class)classForClassName:(NSString *)codedName
+{
+	return [_classMap objectForKey:codedName];
+}
+
+- (void)setClass:(nullable Class)cls forClassName:(NSString *)codedName
+{
+	if (codedName == nil) {
+		return;
+	}
+	if (_classMap == nil) {
+		_classMap = [[NSMutableDictionary alloc] init];
+	}
+	if (cls == Nil) {
+		[_classMap removeObjectForKey:codedName];
+	} else {
+		[_classMap setObject:cls forKey:codedName];
+	}
+}
+
+/* THE ONE PLACE A NAME BECOMES A CLASS, so the three answers are tried in ONE order: this unarchiver's
+ * mapping, then the process-wide mapping, then the runtime by name. The delegate is asked AFTER all three,
+ * by the caller that needs to report the failure. */
+- (Class)fnClassForCodedName:(NSString *)className
+{
+	Class mapped = [self classForClassName:className];
+
+	if (mapped == Nil) {
+		mapped = [[self class] classForClassName:className];
+	}
+	if (mapped != Nil) {
+		return mapped;
+	}
+	return objc_getClass([className UTF8String]);
+}
+
 + (nullable id)unarchiveObjectWithData:(NSData *)data
 {
 	NSKeyedUnarchiver *unarchiver = [[self alloc] initForReadingWithData:data];
@@ -733,7 +794,7 @@ static BOOL fn_value_is_allowed(id value, NSSet *classes)
 			return collection;
 		}
 	}
-	cls = objc_getClass([className UTF8String]);
+	cls = [self fnClassForCodedName:className];	/* the maps first, then the runtime: §63.183 */
 	if (cls == Nil) {
 		/* THE DELEGATE'S CLASS DOOR, AND THIS IS THE POINT OF HAVING IT: an archive NAMES its classes as
 		 * strings, so a reader may be handed a name it does not have. The delegate's answer is the class
@@ -1274,6 +1335,146 @@ static BOOL fn_value_is_allowed(id value, NSSet *classes)
 	    [(id)_delegate respondsToSelector:@selector(unarchiverDidFinish:)]) {
 		[(id)_delegate unarchiverDidFinish:self];
 	}
+}
+
+- (nullable instancetype)initForReadingFromData:(NSData *)data error:(NSError * _Nullable * _Nullable)error
+{
+	/* VALIDATE FIRST, THEN DELEGATE — here rather than in a second parser, so the archive is read exactly
+	 * once and by exactly the code that raises: what this door changes is the ANSWER to bad data, not the
+	 * reading of good data. */
+	id plist = [NSPropertyListSerialization propertyListWithData:data options:0 format:NULL error:error];
+
+	if (![plist isKindOfClass:[NSDictionary class]] ||
+	    ![[(NSDictionary *)plist objectForKey:@"$objects"] isKindOfClass:[NSArray class]] ||
+	    ![[(NSDictionary *)plist objectForKey:@"$top"] isKindOfClass:[NSDictionary class]]) {
+		if (error != NULL && *error == nil) {
+			*error = fn_decode_error(NSCoderReadCorruptError,
+				@"NSKeyedUnarchiver: the data is not a keyed archive");
+		}
+		[self release];
+		return nil;
+	}
+	return [self initForReadingWithData:data];
+}
+
+/* THE TOP-LEVEL DOORS. Each reads the root and then applies its own rule — one class, a set, or EVERY
+ * element of an array, or the keys and objects of a dictionary — and each answers the same NSError shape
+ * the mid-stream doors answer, so a caller sees one vocabulary either way. */
++ (nullable id)unarchiveTopLevelObjectWithData:(NSData *)data error:(NSError * _Nullable * _Nullable)error
+{
+	NSKeyedUnarchiver *reader = [[self alloc] initForReadingFromData:data error:error];
+
+	if (reader == nil) {
+		return nil;
+	}
+	@try {
+		id root = [reader fnDecodeRoot];
+
+		[reader release];
+		return root;
+	} @catch (id exception) {
+		if (error != NULL) {
+			*error = fn_decode_error(NSCoderReadCorruptError, [(NSException *)exception reason]);
+		}
+		[reader release];
+		return nil;
+	}
+}
+
++ (nullable id)unarchivedObjectOfClasses:(NSSet *)classes fromData:(NSData *)data error:(NSError * _Nullable * _Nullable)error
+{
+	id root = [self unarchiveTopLevelObjectWithData:data error:error];
+
+	if (root == nil) {
+		return nil;
+	}
+	if (!fn_value_is_allowed(root, classes)) {
+		if (error != NULL) {
+			*error = fn_decode_error(NSCoderInvalidValueError,
+				[NSString stringWithFormat:@"NSKeyedUnarchiver: the top-level object is a %@, which is "
+				 "not an allowed class", [root class]]);
+		}
+		return nil;
+	}
+	return root;
+}
+
++ (nullable id)unarchivedObjectOfClass:(Class)cls fromData:(NSData *)data error:(NSError * _Nullable * _Nullable)error
+{
+	return [self unarchivedObjectOfClasses:(cls != Nil ? [NSSet setWithObject:cls] : (NSSet *)nil)
+				      fromData:data error:error];
+}
+
++ (nullable NSArray *)unarchivedArrayOfObjectsOfClasses:(NSSet *)classes
+					       fromData:(NSData *)data
+						  error:(NSError * _Nullable * _Nullable)error
+{
+	id root = [self unarchivedObjectOfClass:[NSArray class] fromData:data error:error];
+	NSUInteger i;
+
+	if (root == nil) {
+		return nil;
+	}
+	for (i = 0; i < [(NSArray *)root count]; i++) {
+		id element = [(NSArray *)root objectAtIndex:i];
+
+		if (!fn_value_is_allowed(element, classes)) {
+			if (error != NULL) {
+				*error = fn_decode_error(NSCoderInvalidValueError,
+					[NSString stringWithFormat:@"NSKeyedUnarchiver: element %lu is a %@, which "
+					 "is not an allowed class", (unsigned long)i, [element class]]);
+			}
+			return nil;
+		}
+	}
+	return root;
+}
+
++ (nullable NSArray *)unarchivedArrayOfObjectsOfClass:(Class)cls
+					     fromData:(NSData *)data
+						error:(NSError * _Nullable * _Nullable)error
+{
+	return [self unarchivedArrayOfObjectsOfClasses:(cls != Nil ? [NSSet setWithObject:cls] : (NSSet *)nil)
+					      fromData:data error:error];
+}
+
++ (nullable NSDictionary *)unarchivedDictionaryWithKeysOfClasses:(NSSet *)keyClasses
+						    objectsOfClasses:(NSSet *)objectClasses
+							   fromData:(NSData *)data
+							      error:(NSError * _Nullable * _Nullable)error
+{
+	id root = [self unarchivedObjectOfClass:[NSDictionary class] fromData:data error:error];
+	NSEnumerator *keys;
+	id key;
+
+	if (root == nil) {
+		return nil;
+	}
+	keys = [(NSDictionary *)root keyEnumerator];
+	while ((key = [keys nextObject]) != nil) {
+		id value = [(NSDictionary *)root objectForKey:key];
+
+		if (!fn_value_is_allowed(key, keyClasses) || !fn_value_is_allowed(value, objectClasses)) {
+			if (error != NULL) {
+				*error = fn_decode_error(NSCoderInvalidValueError,
+					[NSString stringWithFormat:@"NSKeyedUnarchiver: the entry \"%@\" is a %@ -> %@, "
+					 "which is not an allowed pair", key, [key class], [value class]]);
+			}
+			return nil;
+		}
+	}
+	return root;
+}
+
++ (nullable NSDictionary *)unarchivedDictionaryWithKeysOfClass:(Class)keyClass
+						  objectsOfClass:(Class)objectClass
+						      fromData:(NSData *)data
+							 error:(NSError * _Nullable * _Nullable)error
+{
+	return [self
+		unarchivedDictionaryWithKeysOfClasses:(keyClass != Nil ? [NSSet setWithObject:keyClass] : (NSSet *)nil)
+				      objectsOfClasses:(objectClass != Nil ? [NSSet setWithObject:objectClass] : (NSSet *)nil)
+					       fromData:data error:error];
 }
 
 - (nullable id <NSKeyedUnarchiverDelegate>)delegate

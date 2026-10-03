@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1634	open	181	struck	399
+# method	shipped	1646	open	169	struck	399
 # property	shipped	685	open	79	struck	172
 
 
@@ -1312,8 +1312,8 @@ method	shipped	-archiver:willEncodeObject:	NSKeyedArchiverDelegate	Files and Dat
 method	shipped	-archiver:willReplaceObject:withObject:	NSKeyedArchiverDelegate	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
 method	shipped	-archiverDidFinish:	NSKeyedArchiverDelegate	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
 method	shipped	-archiverWillFinish:	NSKeyedArchiverDelegate	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
-method	open	+classForClassName:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Managing Class Names	-	swift-page
-method	open	-classForClassName:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Managing Class Names	-	swift-page
+method	shipped	+classForClassName:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Managing Class Names	-	swift-page
+method	shipped	-classForClassName:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Managing Class Names	-	swift-page
 method	shipped	-containsValueForKey:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
 method	shipped	-decodeBoolForKey:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
 method	shipped	-decodeBytesForKey:returnedLength:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
@@ -1325,19 +1325,19 @@ method	shipped	-decodeIntForKey:	NSKeyedUnarchiver	Files and Data Persistence / 
 method	shipped	-decodeObjectForKey:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
 method	shipped	-finishDecoding	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
 method	shipped	-init	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Creating a Keyed Unarchiver	deprecated	objc
-method	open	-initForReadingFromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Creating a Keyed Unarchiver	-	objc
+method	shipped	-initForReadingFromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Creating a Keyed Unarchiver	-	objc
 method	shipped	-initForReadingWithData:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Creating a Keyed Unarchiver	deprecated	objc
-method	open	+setClass:forClassName:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Managing Class Names	-	swift-page
-method	open	-setClass:forClassName:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Managing Class Names	-	swift-page
+method	shipped	+setClass:forClassName:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Managing Class Names	-	swift-page
+method	shipped	-setClass:forClassName:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Managing Class Names	-	swift-page
 method	shipped	+unarchiveObjectWithData:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Unarchiving Data	deprecated	objc
 method	shipped	+unarchiveObjectWithFile:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Unarchiving Data	deprecated	objc
-method	open	+unarchiveTopLevelObjectWithData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Unarchiving Data	deprecated	objc
-method	open	+unarchivedArrayOfObjectsOfClass:fromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Type Methods	-	objc
-method	open	+unarchivedArrayOfObjectsOfClasses:fromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Type Methods	-	objc
-method	open	+unarchivedDictionaryWithKeysOfClass:objectsOfClass:fromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Type Methods	-	objc
-method	open	+unarchivedDictionaryWithKeysOfClasses:objectsOfClasses:fromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Type Methods	-	objc
-method	open	+unarchivedObjectOfClass:fromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Unarchiving Data	-	objc
-method	open	+unarchivedObjectOfClasses:fromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Unarchiving Data	-	objc
+method	shipped	+unarchiveTopLevelObjectWithData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Unarchiving Data	deprecated	objc
+method	shipped	+unarchivedArrayOfObjectsOfClass:fromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Type Methods	-	objc
+method	shipped	+unarchivedArrayOfObjectsOfClasses:fromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Type Methods	-	objc
+method	shipped	+unarchivedDictionaryWithKeysOfClass:objectsOfClass:fromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Type Methods	-	objc
+method	shipped	+unarchivedDictionaryWithKeysOfClasses:objectsOfClasses:fromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Type Methods	-	objc
+method	shipped	+unarchivedObjectOfClass:fromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Unarchiving Data	-	objc
+method	shipped	+unarchivedObjectOfClasses:fromData:error:	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Unarchiving Data	-	objc
 property	shipped	decodingFailurePolicy	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Decoding Data	-	objc
 property	shipped	delegate	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Managing the Delegate	-	objc
 property	shipped	requiresSecureCoding	NSKeyedUnarchiver	Files and Data Persistence / Keyed Archivers / Unarchiving Data	-	objc

@@ -127,6 +127,7 @@ extern NSString * const NSKeyedArchiveRootObjectKey;
 	NSMutableArray *_stack;		/* the entries being read, innermost last */
 	id _root;			/* the decoded top-level object, once asked for */
 	id <NSKeyedUnarchiverDelegate> _delegate;	/* NOT retained: see the note above */
+	NSMutableDictionary *_classMap;	/* name -> Class for THIS unarchiver; nil until asked */
 }
 
 + (nullable id)unarchiveObjectWithData:(NSData *)data;
@@ -149,6 +150,49 @@ extern NSString * const NSKeyedArchiveRootObjectKey;
 
 - (BOOL)containsValueForKey:(NSString *)key;
 - (void)finishDecoding;
+
+/* THE CLASS-NAME MAP (§63.183). An archive NAMES its classes as strings, so a reader may be handed a name
+ * it cannot resolve — for a renamed class, or one the archive's writer spelled differently. The map is how a
+ * caller answers that: `+setClass:forClassName:` states a mapping for EVERY unarchiver in the process and
+ * `-setClass:forClassName:` for this one, and -classForClassName: answers the instance's mapping first, then
+ * the process-wide one. THE MAP IS CONSULTED BEFORE objc_getClass AND BEFORE THE DELEGATE, because a caller
+ * who states a mapping has stated it deliberately — where the delegate is asked only when nothing else
+ * answers. Apple declares all four doors on both classes; these are the reader's half. */
++ (nullable Class)classForClassName:(NSString *)codedName;
++ (void)setClass:(nullable Class)cls forClassName:(NSString *)codedName;
+- (nullable Class)classForClassName:(NSString *)codedName;
+- (void)setClass:(nullable Class)cls forClassName:(NSString *)codedName;
+
+/* THE READING DOOR THAT ANSWERS AN ERROR INSTEAD OF RAISING (§63.183). -initForReadingWithData: raises on
+ * malformed data, which is the pre-10.6 contract; this one validates first and answers nil with an NSError,
+ * which is what a caller who has data from an untrusted source needs. */
+- (nullable instancetype)initForReadingFromData:(NSData *)data error:(NSError * _Nullable * _Nullable)error;
+
+/* THE TOP-LEVEL DOORS: one object, an array whose EVERY element is checked, or a dictionary whose KEYS and
+ * OBJECTS are checked separately. The class-set forms take a set of allowed classes; the singular forms are
+ * the one-class case. Anything refused answers nil with an NSCoderInvalidValueError, which is the same
+ * answer -decodeObjectOfClasses: gives mid-stream. */
++ (nullable id)unarchiveTopLevelObjectWithData:(NSData *)data error:(NSError * _Nullable * _Nullable)error;
++ (nullable id)unarchivedObjectOfClass:(Class)cls
+			      fromData:(NSData *)data
+				 error:(NSError * _Nullable * _Nullable)error;
++ (nullable id)unarchivedObjectOfClasses:(NSSet *)classes
+				fromData:(NSData *)data
+				   error:(NSError * _Nullable * _Nullable)error;
++ (nullable NSArray *)unarchivedArrayOfObjectsOfClass:(Class)cls
+					     fromData:(NSData *)data
+						error:(NSError * _Nullable * _Nullable)error;
++ (nullable NSArray *)unarchivedArrayOfObjectsOfClasses:(NSSet *)classes
+					       fromData:(NSData *)data
+						  error:(NSError * _Nullable * _Nullable)error;
++ (nullable NSDictionary *)unarchivedDictionaryWithKeysOfClass:(Class)keyClass
+						  objectsOfClass:(Class)objectClass
+						      fromData:(NSData *)data
+							 error:(NSError * _Nullable * _Nullable)error;
++ (nullable NSDictionary *)unarchivedDictionaryWithKeysOfClasses:(NSSet *)keyClasses
+						    objectsOfClasses:(NSSet *)objectClasses
+							   fromData:(NSData *)data
+							      error:(NSError * _Nullable * _Nullable)error;
 
 /* THE READER'S HALF OF THE TYPE-CHECKED AND ERROR-REPORTING DOORS (NSCoder.h declares them on the base
  * and says why). `-decodeInt32ForKey:`/`-decodeInt64ForKey:` keep the width; the `-decodeObjectOfClass:`

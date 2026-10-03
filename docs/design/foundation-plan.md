@@ -15962,6 +15962,46 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.183 — NSKeyedUnarchiver: the class-name maps, the error-returning init, and the six secure top-level doors
+
+Twelve rows leave the work list: `method shipped 1634 → 1646, open 181 → 169`. The class-name maps
+(`+classForClassName:`, `+setClass:forClassName:`, `-classForClassName:`, `-setClass:forClassName:`), the
+error-returning `-initForReadingFromData:error:`, the deprecated `+unarchiveTopLevelObjectWithData:error:`,
+and the six secure doors — one object, a set, an array whose EVERY element is checked, and a dictionary
+whose KEYS and OBJECTS are checked separately.
+
+**THE MAPS ARE WIRED WHERE A NAME BECOMES A CLASS, IN ONE ORDER.** There is exactly one such site in the
+reader (`.m:736`), and it now asks: this unarchiver's mapping, then the process-wide mapping, then
+`objc_getClass`, with the delegate LAST — because a caller who states a mapping has stated it deliberately,
+while the delegate is the answer of last resort for a name nothing else can resolve. That order is the
+whole meaning of the doors; without it they would be stubs, which this project treats as not-done.
+
+**THE ERROR-RETURNING INIT VALIDATES, THEN DELEGATES TO THE RAISING ONE.** It checks the plist shape and
+then calls `-initForReadingWithData:` — so the archive is read exactly once, by the code that already raises,
+and what the new door changes is the ANSWER to bad data rather than the reading of good data. The six secure
+doors all answer the same `NSError` shape the mid-stream `-decodeObjectOfClasses:` doors answer, so a caller
+meets one vocabulary either way.
+
+**THE PROBE'S FIRST VERSION OF THE MAP CHECK WAS VACUOUS, AND ITS OWN NUMBERS SAID SO.** It archived an
+array and remapped `"NSArray"`, expecting to see a different class come back; the detail read
+`plain=AGArrayMutable mapped=AGArrayMutable` — a CLASS CLUSTER defeats that observable, because an array
+decoded as `NSArray` comes back as the cluster's mutable face either way. The check could not distinguish
+the hypothesis from its denial, so it proved nothing. It now archives two cluster-free probe-local classes
+(`KUAlpha`/`KUBeta`): the unmapped read gives `KUAlpha`, the mapped read gives `KUBeta`, and "the map was
+consulted" is a claim the numbers can refute. That is the project's own "assert the specific property" rule
+arriving one level earlier — at the choice of OBSERVABLE, not of assertion.
+
+**TWO LITERAL DEFECTS, THE SAME MISTAKE TWICE:** an unescaped `"` inside a format literal in the reader (the
+literal closed early and a C string sat beside an `NSString`), and a bare `"…"` where the probe's `check()`
+wants an `NSString *`. Both are a string literal that is not an `@`-literal; recorded because two in one unit
+is a pattern rather than an accident.
+
+Acceptance: `make testimg` green; `make test TESTS=foundation_archiver` → 1/1 case, 6/6 case checks, and the
+probe's own tally 31 → 34; `tools/foundation-sweep.py --check` consistent (`method 1646/169/399`,
+`property 685/79/172`), `--families --write` rc=0, `--unimplemented` 0 NEW. AND THE PRE-FLIGHT PAID FOR
+ITSELF: all twelve declarations were confirmed visible to `_declared_types()` before the implementation was
+written, and this unit took ONE build cycle where §63.181 took three.
+
 ## §63.181 — NSProcessInfo: activities, the termination counters, the two hardware answers — and the type that was declared in the wrong place
 
 Eleven rows leave the work list: `method shipped 1624 → 1634, open 191 → 181`; `property shipped 684 → 685,
