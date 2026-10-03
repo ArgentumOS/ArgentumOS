@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2191   open  367   struck  370
+#   method     shipped 2192   open  366   struck  370
 #   property   shipped 1278   open  186   struck  172
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3395,7 +3395,7 @@ method	shipped	-initWithString:	NSURL	Fundamentals / URLs / Creating a URL objec
 method	shipped	-initWithString:encodingInvalidCharacters:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	-initWithString:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	-isFileReferenceURL	NSURL	Fundamentals / URLs / Querying an NSURL	-	objc
-method	open	-loadResourceDataNotifyingClient:usingCache:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
+method	shipped	-loadResourceDataNotifyingClient:usingCache:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
 method	shipped	-promisedItemResourceValuesForKeys:error:	NSURL	Fundamentals / URLs / Working with Promised Items	-	objc
 method	shipped	-propertyForKey:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
 method	shipped	-removeAllCachedResourceValues	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc

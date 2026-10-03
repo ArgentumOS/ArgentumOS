@@ -2016,6 +2016,35 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 	return [data writeToURL:self atomically:YES];
 }
 
+
+/* ================== THE RESOURCE-DATA TRIO'S LAST DOOR (§63.110) ==================
+ * ⚠ IT USES THE DOOR §63.109 LANDED rather than growing a second loader, and it guards EVERY notification with
+ * `-respondsToSelector:` — which is not defensive programming here but THE INFORMAL PROTOCOL'S OWN RULE: a client is
+ * not required to implement any of the three, and Apple's contract is an informal protocol precisely because it does
+ * not. */
+- (void)loadResourceDataNotifyingClient:(id)client usingCache:(BOOL)shouldUseCache
+{
+	NSData *data = [self resourceDataUsingCache:shouldUseCache];
+
+	/* ⚠⚠ AND THE SENDS GO THROUGH -performSelector: RATHER THAN DIRECT MESSAGES, WHICH IS THE INFORMAL-PROTOCOL
+	 * IDIOM AND THE ONLY SHAPE THAT FITS THIS TREE'S RULES. A direct send needs the selector DECLARED somewhere to
+	 * compile without `-Wobjc-method-access`, and declaring it is FORBIDDEN here: the standing user rule is that
+	 * NOTHING IS DECLARED IN A HEADER WITHOUT A DEFINITION, and these three messages are the CLIENT'S METHODS —
+	 * NOTHING IN THIS LIBRARY SHOULD DEFINE THEM. **`-respondsToSelector:` guards it either way, because a client is
+	 * not required to implement any of the three: that is what makes the protocol informal.** */
+	if (data != nil) {
+		if ([client respondsToSelector:@selector(URLResourceDidFinishLoading:)]) {
+			[client performSelector:@selector(URLResourceDidFinishLoading:) withObject:self];
+		}
+		return;
+	}
+	if ([client respondsToSelector:@selector(URL:resourceDidFailLoadingWithReason:)]) {
+		[client performSelector:@selector(URL:resourceDidFailLoadingWithReason:)
+			     withObject:self
+			     withObject:@"the resource could not be loaded"];
+	}
+}
+
 @end
 
 

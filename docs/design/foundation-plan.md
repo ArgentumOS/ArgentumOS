@@ -15982,6 +15982,41 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.110 — THE TRIO'S LAST DOOR LANDS, AND THE INFORMAL PROTOCOL RUNS INTO THE STANDING RULE (2026-10-01)
+
+**WHAT LANDED: `-loadResourceDataNotifyingClient:usingCache:` — THE LAST OF THE RESOURCE-DATA TRIO, and with it
+**`NSURL`'S OWN ROWS ARE DONE**. It is IMPLEMENTED rather than refused, on a measurement that changed the answer.**
+
+**MEASURED: `method shipped 2191 → 2192`, `open 367 → 366`; `--check` consistent; **`--unimplemented`: 0 NEW**;
+`make host-foundation` EXIT 0 with exactly the standing SIX warnings; `make testimg` EXIT 0; `make test
+TESTS='foundation_url'` → `TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with **`FOUNDATION-URL 43/43`**.**
+
+**⚠⚠ AND THE MEASUREMENT THAT CHANGED THE ANSWER, TAKEN BEFORE A LINE WAS WRITTEN: Apple's contract is an
+ASYNCHRONOUS load that REGISTERS A CLIENT, and the client is an INFORMAL protocol — the corpus declares it as
+`@interface NSObject (NSURLClient)` with three messages. THIS LIBRARY'S URL LOADING IS SYNCHRONOUS AND NONE OF THOSE
+THREE MESSAGES IS ANYWHERE.** So the door's promise is **NOT IMPOSSIBLE THE WAY A BOOKMARK IS: THE DATA IS OBTAINABLE
+AND ONLY THE TIMING DIFFERS** — and so it is implemented with a **STATED DEVIATION**: the load is synchronous and the
+client is notified before the door returns, which makes "only one such background load at a time" trivially true.
+**A REFUSAL WOULD HAVE BEEN THE WRONG SHAPE: refusing is what a MISSING CAPABILITY gets, and this is a missing
+THREAD.** (§11.6.1 D2: our reading, written down.)
+
+**⚠⚠ AND THE TWO WARNINGS IT RAISED LED TO A REAL FINDING ABOUT THIS TREE'S STANDING RULE. The direct sends needed the
+selectors declared to compile cleanly — AND DECLARING THEM IS FORBIDDEN: the user's rule is that NOTHING IS DECLARED IN
+A HEADER WITHOUT A DEFINITION, and these three are the CLIENT'S METHODS, which NOTHING IN THIS LIBRARY SHOULD DEFINE.**
+`--unimplemented` reported **3 NEW** and the gate refused the build, exactly as it should. **THE IDIOM THAT SATISFIES
+BOTH IS `-respondsToSelector:` + `-performSelector:`** — and it is not a workaround: **THAT GUARD IS WHAT "INFORMAL
+PROTOCOL" MEANS.** A client is not required to implement any of the three, which is precisely why they were never
+declared on the other side either.
+
+**⚠ AND THE GUARD MATCHED PROSE TWICE MORE IN THIS ONE UNIT** — the fourth and fifth instances of a search reporting on
+something other than the thing asked for (§63.79, §63.103, and here). The fix both times was **a guard that can only be
+a DECLARATION**: `- (void)URLResourceDidCancelLoading:` is declared NOWHERE in this tree, so asking for it cannot find
+a comment.
+
+**AND `NSURL` IS DOWN TO ONE ROW THAT IS NOT OURS TO TAKE: the UTType pair** — Foundation's, held back only by a corpus
+that does not carry their declarations. **Everything else the derived surface files under `NSURL` is landed, refused by
+decision, or the drawing frameworks'.**
+
 ## §63.109 — TWO OF THE DEPRECATED RESOURCE-DATA TRIO LAND, ALSO ON THE FIRST ATTEMPT (2026-10-01)
 
 **WHAT LANDED: `-resourceDataUsingCache:` and `-setResourceData:` — TWO OF THE DEPRECATED RESOURCE-DATA TRIO, WHICH ARE

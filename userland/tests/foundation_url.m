@@ -49,8 +49,48 @@ static const char *fn_why(NSURL *url)
 	return why;
 }
 
+
+/* §63.110: the probe's own client, because the door's contract is DEFINED BY WHAT THE CLIENT RECEIVES. It implements
+ * only the failure message, which is also the point: a client is NOT required to implement any of the three. */
+@interface FNURLProbeClient : NSObject
+{
+	@public
+	BOOL notified;
+	BOOL finishedInstead;
+}
+@end
+
+@implementation FNURLProbeClient
+
+- (void)URL:(NSURL *)sender resourceDidFailLoadingWithReason:(NSString *)reason
+{
+	notified = YES;
+}
+
+- (void)URLResourceDidFinishLoading:(NSURL *)sender
+{
+	finishedInstead = YES;
+}
+
+@end
+
 int main(void)
 {
+
+	{
+		/* §63.110: THE LAST OF THE RESOURCE-DATA TRIO, OBSERVED THROUGH ITS OWN CONTRACT — a client that receives the
+		 * FAILURE notification for an unreachable URL, and does NOT receive a finish. ⚠ NO FILESYSTEM CALL: the URL is
+		 * unreachable on purpose, so the answer comes from the door and not from a fixture. */
+		FNURLProbeClient *client = [[FNURLProbeClient alloc] init];
+		NSURL *h = [NSURL URLWithString:@"https://example.invalid/nothing"];
+
+		[h loadResourceDataNotifyingClient:client usingCache:NO];
+		check("url-load-resource-data-notifies-the-client-of-failure",
+		      client->notified == YES && client->finishedInstead == NO,
+		      [[NSString stringWithFormat:@"notified=%d finished=%d", (int)client->notified,
+			(int)client->finishedInstead] UTF8String]);
+	}
+
 
 	{
 		/* §63.109: TWO OF THE DEPRECATED RESOURCE-DATA TRIO. ⚠ NEITHER CHECK TOUCHES THE FILESYSTEM — both work on a
