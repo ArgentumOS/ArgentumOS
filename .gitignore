@@ -23,3 +23,8 @@ __pycache__/
 
 # agent host state (task logs, snapshots) - never project content
 .reasonix/
+
+# scratch: fetched SDK corpora and other throwaway trees. Apple's SDKs are NOT
+# redistributable, so the corpus a sweep reads lives here and never in the tree
+# (docs/reference/appkit-102-worklist.txt says the same from the other side).
+/.tmp/

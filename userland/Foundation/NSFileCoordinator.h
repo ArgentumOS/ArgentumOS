@@ -10,7 +10,6 @@
  * NSFilePresenter carries 24. SO THE FAMILY LANDS AS SLICES, and this one is the VOCABULARY:
  *
  *   7a  *THIS HEADER*: NSFileCoordinatorReadingOptions, NSFileCoordinatorWritingOptions, and
- *       NSFileAccessIntent - the value object that carries "the details of a coordinated-read or
  *       coordinated-write operation" (Apple's abstract) and is what the asynchronous door is driven by.
  *   7b  the SYNCHRONOUS accessor doors (reading, writing, and the two 2-item forms), which run the
  *       accessor and are where this system's semantics have to be STATED: there is no coordination
@@ -164,9 +163,6 @@ typedef enum {
 			       error:(NSError ** _Nullable)outError
 			  byAccessor:(nullable void (^)(void))batchAccessor;
 
-- (void)coordinateAccessWithIntents:(NSArray *)intents
-			      queue:(NSOperationQueue *)queue
-			 byAccessor:(void (^)(NSArray *intents, NSError * _Nullable error))accessor;
 
 /* "Cancels any active file coordination calls ... it returns immediately ... when this method returns, you
  * cannot assume that the read or write operation occurred or did not occur." A cancelled operation ends its
@@ -205,35 +201,6 @@ typedef enum {
 
 @end
 
-/* "The details of a coordinated-read or coordinated-write operation" - and the WHOLE of what Apple
- * publishes for it, measured from its page: the two factories and `-URL`. THERE IS NO PUBLISHED ACCESSOR
- * FOR THE OPTIONS OR FOR THE KIND, so none is invented here; the kind is what makes the two factories
- * different objects, and the probe asserts what a caller can actually observe (the URL, and the identity
- * of two intents). */
-@interface NSFileAccessIntent : NSObject
-{
-	NSURL *_url;			/* the item this operation is about (retained) */
-	BOOL _writing;			/* which of the two operations this is */
-	NSUInteger _options;		/* the caller's options, carried for the door that consumes them */
-}
-
-+ (nullable NSFileAccessIntent *)readingIntentWithURL:(NSURL *)url
-					     options:(NSFileCoordinatorReadingOptions)options;
-+ (nullable NSFileAccessIntent *)writingIntentWithURL:(NSURL *)url
-					     options:(NSFileCoordinatorWritingOptions)options;
-
-/* "The current URL for this file access intent." */
-- (NSURL *)URL;
-
-@end
-
-/* OURS: the coordinator updates an intent's URL when coordination changes it - Apple: "The system updates
- * this property to account for any changes to the underlying files". */
-@interface NSFileAccessIntent (FNPrivate)
-- (void)fnSetURL:(NSURL *)url;
-- (BOOL)fnIsWriting;
-- (BOOL)fnResolvesSymbolicLink;
-@end
 
 NS_ASSUME_NONNULL_END
 

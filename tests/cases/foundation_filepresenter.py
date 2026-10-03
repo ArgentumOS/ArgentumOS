@@ -47,13 +47,6 @@ The probe is `/System/Shared/tests/foundation_filepresenter`, ONE unit, importin
   * `cancel-with-nothing-active-does-not-stop-the-next-call` — `-cancel` cancels ACTIVE calls ("any
                                  active file coordination calls"), so a cancel with nothing in flight does
                                  not stop the next one;
-  * `async-the-door-runs-the-accessor-on-its-queue` — the asynchronous door: the accessor runs on the given
-                                 queue with the intents and a nil error, and the probe PRINTS whether the
-                                 door had already returned;
-  * `async-a-nil-queue-or-no-intents-does-nothing` — the door has no error of its own, so a nil queue or an
-                                 empty intent list answers by doing nothing rather than crashing;
-  * `async-a-reading-intent-gets-the-coordinated-url` — "The system updates this URL property to account
-                                 for any changes to the underlying files";
   * `prepare-batches-the-presenters-around-one-block` — the BATCH door: "This method executes
                                  synchronously, blocking the current thread until the [batch] block finishes
                                  executing", and the handshake runs ONCE around the whole batch — asserted
@@ -81,9 +74,6 @@ CHECKS = ("debt-the-handshake-is-synchronous-measured",
           "didMove-notifies-the-items-presenters",
           "willMove-has-no-purpose-on-a-system-without-a-sandbox",
           "cancel-with-nothing-active-does-not-stop-the-next-call",
-          "async-the-door-runs-the-accessor-on-its-queue",
-          "async-a-nil-queue-or-no-intents-does-nothing",
-          "async-a-reading-intent-gets-the-coordinated-url",
           "prepare-batches-the-presenters-around-one-block", "prepare-takes-both-lists",
           "prepare-refuses-a-bad-url-without-running-the-block", "probe-tree-removed")
 

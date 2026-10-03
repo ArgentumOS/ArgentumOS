@@ -15967,6 +15967,34 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.165 — NSFILEACCESSINTENT (10.10) IS CUT, AND THE COORDINATOR DOOR THAT CONSUMED ONE GOES WITH IT (2026-10-03)
+
+**LANDED, the third of §63.162's cuts, taken smallest-first because its cascade closes with its own file:**
+`NSFileAccessIntent` — which has **no header of its own** (it was declared inside `NSFileCoordinator.h`) — is gone,
+together with the one door that consumed it.
+
+**WHAT WENT.** `NSFileAccessIntent.m`; in `NSFileCoordinator.h` the class, its `(FNPrivate)` category (the
+`fnSetURL:`/`fnIsWriting`/`fnResolvesSymbolicLink` hooks the coordinator used to update an intent) and the header
+comment's own bullet naming it; in `NSFileCoordinator.m` **`-coordinateAccessWithIntents:queue:byAccessor:`** — the
+asynchronous door whose whole subject was the intent list. The probe `foundation_fileaccessintent` and its case went
+with them, and `foundation_filepresenter` lost the three sections that drove the async door
+(`async-the-door-runs-the-accessor-on-its-queue`, `async-a-nil-queue-or-no-intents-does-nothing`,
+`async-a-reading-intent-gets-the-coordinated-url`) — **the checks, their case expectations, AND the case's prose that
+described them**, which my first pass left behind as orphaned continuation lines.
+
+**LEDGER.** No selector rows existed (its owner was filtered long ago); **one symbol row removed** and the symbol
+surface's counts block recomputed in the same pass. The era ground already carried it at **10.10** (§63.162).
+
+**VERIFICATION.** `foundation-sweep.py --check` **consistent**, `--unimplemented` **0 NEW**; **`make testimg`
+green**; **`make test TESTS=foundation_filepresenter` PASS — 1/1 case, 6/6 checks, the probe's own tally
+`ok=18 fail=0`**.
+
+**A SMALL MECHANICAL NOTE WORTH KEEPING:** my cut script asserted `" foundation_fileaccessintent " in HOST_PROBES`
+and failed — **the token was never there**, because that list is a subset and this probe is not in it. An assert that
+demands a presence (or an absence) is only worth writing when the fact was MEASURED; a guessed one costs a run and
+reads as a failure. (The same turn's `grep -c` returning 0 for "no matches" also tripped the host's loop guard, which
+watches exit status: an absent match is not an error.)
+
 ## §63.164 — THE macOS-12 LOCALIZED ATTRIBUTED-STRING SURFACE IS CUT, AND TWO DECISIONS DECIDE WHAT THE KEPT CODE DOES WITHOUT IT (2026-10-03)
 
 **LANDED, from §63.162's audit and two decisions: the whole macOS-12 localised/formatted attributed-string surface is

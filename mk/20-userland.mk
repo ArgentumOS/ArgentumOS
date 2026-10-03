@@ -145,7 +145,6 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSProcessInfo.m \
 	$(FOUNDATION_SRC)/NSFileManager.m \
 	$(FOUNDATION_SRC)/NSBundle.m \
-	$(FOUNDATION_SRC)/NSFileAccessIntent.m \
 	$(FOUNDATION_SRC)/NSFileCoordinator.m \
 	$(FOUNDATION_SRC)/NSFileVersion.m \
 	$(FOUNDATION_SRC)/NSFileProviderService.m \
@@ -1085,14 +1084,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_filecoordinator.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filecoordinator"
-	# foundation_fileaccessintent: W8 slice 7a acceptance (foundation-plan.md §60). ONE unit, only
-	# <Foundation/Foundation.h> - the vocabulary needs no fixture and touches no file system.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_fileaccessintent.m -o .build/probe-foundation_fileaccessintent.o
-	$(MUSL64_OBJC) .build/probe-foundation_fileaccessintent.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_fileaccessintent"
 	# foundation_filesecurity: W8 slice 5 acceptance (foundation-plan.md §60). ONE unit, only
 	# <Foundation/Foundation.h> - and it asserts the ABSENCE of the bridged accessors, so the D13
 	# boundary is machine-checked rather than merely written down.

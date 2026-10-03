@@ -493,88 +493,8 @@ int main(void)
 			accessor]);
 	}
 
-	{
-		/* THE ASYNCHRONOUS DOOR: "waits asynchronously to get access to the files and then invokes the
-		 * accessor block ON THE SPECIFIED QUEUE", with "an error message ... passed to the block". The
-		 * probe polls because the accessor is not ours to schedule, and it PRINTS whether the door had
-		 * already returned - a fact about this system's queue rather than something to assert. */
-		NSFileAccessIntent *intent = [NSFileAccessIntent readingIntentWithURL:item options:0];
-		NSArray *intents = [NSArray arrayWithObject:intent];
-		NSOperationQueue *queue = [[NSOperationQueue alloc] init];
-		__block NSUInteger calls = 0;
-		__block BOOL gotIntents = NO;
-		__block BOOL gotError = YES;
-		BOOL returnedFirst = NO;
-		int waited = 0;
 
-		[coordinator coordinateAccessWithIntents:intents queue:queue byAccessor:
-			^(NSArray *handedIntents, NSError *error) {
-			calls++;
-			gotIntents = [handedIntents count] == 1;
-			gotError = error != nil;
-		}];
-		while (calls == 0 && waited < 2000) {
-			usleep(1000);
-			waited++;
-		}
-		returnedFirst = (calls == 0);
-		check("async-the-door-runs-the-accessor-on-its-queue",
-		      calls == 1 && gotIntents && !gotError,
-		      [NSString stringWithFormat:@"calls=%lu intents=%d error=%d (the door returned before the "
-			@"accessor ran: %d, after %d ms)", (unsigned long)calls, (int)gotIntents, (int)gotError,
-			(int)returnedFirst, waited]);
-	}
 
-	{
-		/* AND THE REFUSALS THIS DOOR CAN MAKE: it has no error of its own, so a nil queue or an empty
-		 * intent list answers by DOING NOTHING rather than by crashing. */
-		__block NSUInteger calls = 0;
-		NSFileAccessIntent *intent = [NSFileAccessIntent readingIntentWithURL:item options:0];
-
-		[coordinator coordinateAccessWithIntents:[NSArray arrayWithObject:intent]
-						    queue:nil
-					       byAccessor:^(NSArray *handed, NSError *error) {
-			(void)handed;
-			(void)error;
-			calls++;
-		}];
-		[coordinator coordinateAccessWithIntents:[NSArray array]
-						    queue:[[NSOperationQueue alloc] init]
-					       byAccessor:^(NSArray *handed, NSError *error) {
-			(void)handed;
-			(void)error;
-			calls++;
-		}];
-		usleep(50000);
-		check("async-a-nil-queue-or-no-intents-does-nothing", calls == 0,
-		      [NSString stringWithFormat:@"the accessor ran %lu time(s)", (unsigned long)calls]);
-	}
-
-	{
-		/* "The system UPDATES this URL property to account for any changes to the underlying files" -
-		 * here, the URL the coordination produced: a reading intent that asked for the symbolic link to
-		 * be resolved sees the TARGET's URL afterwards. */
-		NSFileAccessIntent *intent = [NSFileAccessIntent readingIntentWithURL:linkURL
-								     options:NSFileCoordinatorReadingResolvesSymbolicLink];
-		NSArray *intents = [NSArray arrayWithObject:intent];
-		__block BOOL ran = NO;
-		int waited = 0;
-
-		[coordinator coordinateAccessWithIntents:intents
-						    queue:[[NSOperationQueue alloc] init]
-					       byAccessor:^(NSArray *handed, NSError *error) {
-			(void)handed;
-			(void)error;
-			ran = YES;
-		}];
-		while (!ran && waited < 2000) {
-			usleep(1000);
-			waited++;
-		}
-		check("async-a-reading-intent-gets-the-coordinated-url",
-		      ran && [[intent URL] isEqual:fn_url(fn_path(@"presented.txt"))],
-		      [NSString stringWithFormat:@"the intent's URL is now %@", [intent URL]]);
-	}
 
 	{
 		/* THE BATCH DOOR: "This method executes synchronously, blocking the current thread until the

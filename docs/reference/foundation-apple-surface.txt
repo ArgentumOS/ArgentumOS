@@ -7,7 +7,7 @@
 #
 # kind	status	name	owner	family	why	src
 # case	shipped	1015	open	0	struck	78
-# class	shipped	164	open	0	struck	52
+# class	shipped	163	open	0	struck	52
 # enum	shipped	115	open	0	struck	9
 # protocol	shipped	33	open	0	struck	6
 # var	shipped	680	open	0	struck	211
@@ -1159,7 +1159,6 @@ class	shipped	NSException		App Support / Exceptions	-	objc
 class	struck	NSExistsCommand		App Support / Script Commands	declined	objc
 class	shipped	NSExtensionContext		App Support / Extension Support	-	objc
 class	shipped	NSExtensionItem		App Support / Attachments	-	objc
-class	shipped	NSFileAccessIntent		Files and Data Persistence / Coordinated file access	-	objc
 class	shipped	NSFileCoordinator		Files and Data Persistence / Coordinated file access	-	objc
 class	shipped	NSFileHandle		Files and Data Persistence / Managed file access	-	objc
 class	shipped	NSFileManager		Files and Data Persistence / File system operations	-	objc
