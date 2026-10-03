@@ -1455,17 +1455,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_constants.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_constants"
-	# foundation_downloadresume: §62.31's acceptance - RESUME end to end, WITH A REAL SERVER. The probe is
-	# the server: it sends half a body and then STALLS mid-transfer (which is what makes the cancel
-	# deterministic), resumes from the data its own cancel produced, and asserts the resumed request carries
-	# `Range: bytes=10-`, that the delegate was told the offset, and that the finished file is the WHOLE body.
-	# A third leg drops the connection on purpose, so the error's own resume-data key is exercised too.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_downloadresume.m -o .build/probe-foundation_downloadresume.o
-	$(MUSL64_OBJC) .build/probe-foundation_downloadresume.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_downloadresume"
 	# foundation_urlprotocol: W7 slice 2a's acceptance - THE SEAM AND THE CACHED VALUE. ONE unit, only
 	# <Foundation/Foundation.h>, and NO transport anywhere: what is asserted is the plug-in point (the
 	# base's documented defaults, the registration order, the request-property table's identity rule) and
@@ -1489,30 +1478,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_urlprotocol_curl.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlprotocol_curl"
-	# foundation_urlsession_config: W7 slice 2c's SESSION half, first row - the configuration a session is
-	# built from. ONE unit, only <Foundation/Foundation.h>, and NO SESSION IS CREATED: it is a value with
-	# documented defaults, so the probe is a value probe, the shape slice 1 used.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_urlsession_config.m -o .build/probe-foundation_urlsession_config.o
-	$(MUSL64_OBJC) .build/probe-foundation_urlsession_config.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlsession_config"
-	# foundation_urlsession: W7 slice 2c's session half, row 2 - THE SESSION AND THE TASK MODEL. ONE unit,
-	# only <Foundation/Foundation.h>, and NOTHING TRANSFERS: identity, the configuration snapshot, the task
-	# state machine and the enumeration, which is what the row after this one will make do something.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_urlsession.m -o .build/probe-foundation_urlsession.o
-	$(MUSL64_OBJC) .build/probe-foundation_urlsession.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlsession"
-	# foundation_taskmetrics: the metrics records (W7 slice 6)
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		userland/tests/foundation_taskmetrics.m -o .build/probe-foundation_taskmetrics.o
-	$(MUSL64_OBJC) .build/probe-foundation_taskmetrics.o \
-		-L$(FNXLIB) -lfoundation \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_taskmetrics"
 	# foundation_cachehooks: the bridge's cache hooks, proved by a contact count
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		userland/tests/foundation_cachehooks.m -o .build/probe-foundation_cachehooks.o
@@ -1727,27 +1692,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_redirect"
-	# foundation_metricsdelivery: what a transfer cost, delivered to the delegate before the ending (§52).
-	# The probe is its own HTTP server (the authloop unit's pattern) and reads the PUBLIC record the
-	# delegate was handed, so it links the bridge and curl exactly as the authloop probe does.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		userland/tests/foundation_metricsdelivery.m -o .build/probe-foundation_metricsdelivery.o
-	$(MUSL64_OBJC) .build/probe-foundation_metricsdelivery.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_metricsdelivery"
-	# foundation_streamtask: the duplex connection as a task (§58) - the minimum, the cap, the
-	# timeout-as-a-cancel, the half-close, the refused door, AND the TLS tunnel (§58.1). Its own server for the
-	# first eight legs, and its own LIBTLS PEER for the ninth: `openssl s_server` was tried FIRST and stalled
-	# the handshake in this guest (the same stall the libressl units' `s_client` shows), so the tunnel's far
-	# end is the substrate the tree has already proven there. That peer is why this probe needs -ltls.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests -I$(LIBRESSL_PREFIX)/include \
-		userland/tests/foundation_streamtask.m -o .build/probe-foundation_streamtask.o
-	$(MUSL64_OBJC) .build/probe-foundation_streamtask.o \
-		-L$(FNXLIB) -lfoundation \
-		-L$(LIBRESSL_PREFIX)/lib -ltls -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_streamtask"
 	# foundation_urlerror: the URL error names, their values, and the shape of the family (§56). No transport
 	# and no server: two of its checks read a REAL task's error and the rest are the codes themselves.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
@@ -1755,13 +1699,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_urlerror.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlerror"
-	# foundation_websocket: the WebSocket VALUES (§59 slice 1) - the message and the two enums. No transport,
-	# no server, no framing: this is the slice whose subject is what the values ARE.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		userland/tests/foundation_websocket.m -o .build/probe-foundation_websocket.o
-	$(MUSL64_OBJC) .build/probe-foundation_websocket.o \
-		-L$(FNXLIB) -lfoundation \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_websocket"
 	# foundation_wsframe: RFC 6455's BYTE LAYER (§59 slice 2) - the frame codec, as pure functions. It links the
 	# library's internal FNWebSocketFraming (not public API, and exported like every other symbol in this .so).
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
@@ -1783,16 +1720,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_wshandshake.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_wshandshake"
-	# foundation_websockettask: THE TASK ITSELF (§59 slice 3b) - the layers meeting the substrate over a real
-	# connection to a RAW peer, which speaks the upgrade in plain HTTP and RFC 6455 through the same codec. ITS
-	# wss: LEG ADDS A TLS PEER, so this probe needs libtls's header path AND its library, exactly as
-	# foundation_streamtask does - the same substrate for the same reason.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests -I$(LIBRESSL_PREFIX)/include \
-		userland/tests/foundation_websockettask.m -o .build/probe-foundation_websockettask.o
-	$(MUSL64_OBJC) .build/probe-foundation_websockettask.o \
-		-L$(FNXLIB) -lfoundation \
-		-L$(LIBRESSL_PREFIX)/lib -ltls -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_websockettask"
 	# foundation_challengedoor: the two delegate doors, driven (W7 slice 4)
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		userland/tests/foundation_challengedoor.m -o .build/probe-foundation_challengedoor.o
@@ -1839,12 +1766,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_httpcookie"
-	# foundation_urlsession_task: W7 slice 2c row 3 - THE EXECUTION (completion-handler path)
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		userland/tests/foundation_urlsession_task.m -o .build/probe-foundation_urlsession_task.o
-	$(MUSL64_OBJC) .build/probe-foundation_urlsession_task.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlsession_task"
 	# fn_block_mrc: the MRC TWIN of the crashing call - same door, same __block-object capture
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
 		userland/tests/fn_block_mrc.m -o .build/probe-fn_block_mrc.o

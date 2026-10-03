@@ -15969,6 +15969,36 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.139 — SLICE 2 REFRAMED: THE MEMBER CUT IS THE DOOR INTO THE URL SUBSYSTEM, AND ITS EASIEST PART IS DONE (2026-10-01)
+
+**LANDED: THE NINE DEDICATED SESSION PROBES AND THEIR NINE CASES, plus their 79-line clusters in `mk/20-userland.mk`
+(they are one recipe with a comment-headed cluster per probe, NOT `target:` rules — a token removal left truncated
+commands until that was seen). MEASURED: build EXIT 0 with the standing SIX warnings, `make testimg` EXIT 0, and
+`foundation_url` green as the canary for the kept URL path.**
+
+**⚠⚠ AND THE MEASUREMENT THAT REFRAMED THE SLICE: TWENTY-ONE FOUNDATION FILES NAME THE FAMILY, AND THE IMPORTANT
+ONES ARE **KEPT PUBLIC HEADERS** — `NSURLConnection.h` (NSURLSessionTask/DataTask/DownloadTask/DownloadDelegate),
+`NSURLProtocol.h` (the auth-challenge dispositions AND NSURLSessionTaskTransactionMetrics), `NSURLAuthenticationChallenge.h`,
+`NSURLRequest.h`, `NSURL.h`, `NSURLDownload.h`, `NSCalendar.h`, `NSOperation.h`, `NSHTTPCookieStorage.h`, `NSURLCache.h`,
+`NSURLCredentialStorage.h`, `NSData.m` — **SO THE REFERENCES ARE POST-10.2 *MEMBERS* OF CLASSES WE KEEP, WHICH IS THE
+MEMBER AXIS, NOT THE CLASS AXIS.**
+
+***THE ORDER THEREFORE FLIPS FOR THIS SUBSYSTEM: THE MEMBER CUT IS THE DOOR, AND THE CLASS DELETION FALLS OUT OF IT.***
+§63.136 said the two axes close the graph together; **this is the first place where that stops being a slogan and becomes
+the only workable order.** Deleting the family first leaves 21 files naming a class that no longer exists; cutting the
+session-typed *members* first removes the references, and then the family is a deletion of files nothing names.
+
+**AND THE FIRST INCIDENTAL FIX ALREADY PROVED THAT ONE PASS IS THE ONLY WAY: `FNAuthenticationChallengeSender` and
+`FNCURLURLProtocol.m` must move the disposition type TOGETHER, or the block types stop matching — a partial change is a
+compile error, and the compiler said so immediately, twice.**
+
+**WHAT SLICE 2 NEEDS, IN THE ORDER THE MEASUREMENT NOW DICTATES: (1) cut the session-typed members from the kept
+headers, one pass per type, `NSURLSessionAuthChallengeDisposition` first because it is the one the kept auth path actually
+uses; (2) re-express `FNCURLURLProtocol`'s session-shaped plumbing in the session-free terms the kept path has;
+(3) THEN delete the 7 family classes and their ledgers' rows; (4) trim the incidental probes with `tools/probe-scope.py`.**
+*Steps 1 and 2 are the member axis and belong with the member cut that §63.130 puts at step 4 — which is where this
+subsystem's work should be done, not ahead of it.*
+
 ## §63.138 — SLICE 2 IS NOT SLICE 1: THE SESSION FAMILY IS USED BY THE KEPT URL STACK (2026-10-01)
 
 **PART A OF SLICE 2 RAN CLEAN AND IS MEASURED: the 7 `NSURLSession*` classes and their 14 source files, 7 umbrella
