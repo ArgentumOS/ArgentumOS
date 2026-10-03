@@ -428,6 +428,27 @@ int main(void)
 			      ![oval containsPoint:NSMakePoint(0.5, 0.5)]);
 		}
 
+
+	{
+		/* §63.187: -transformBezierPath: RETURNS A TRANSFORMED COPY; the argument is untouched. */
+		NSBezierPath *path = [NSBezierPath bezierPath];
+		NSAffineTransform *m = [NSAffineTransform transform];
+		NSBezierPath *moved;
+		NSPoint before;
+		NSPoint after;
+
+		[path moveToPoint:NSMakePoint(1.0, 1.0)];
+		[path lineToPoint:NSMakePoint(3.0, 1.0)];
+		[m translateXBy:10.0 yBy:20.0];
+		moved = [m transformBezierPath:path];
+		before = [path currentPoint];
+		after = [moved currentPoint];
+		printf("APPKIT-PATH original.x=%g copy.x=%g\n", before.x, after.x);
+		check("affine-transform-bezier-path-copies", moved != nil && moved != path);
+		check_num("...the copy is moved by tX", after.x, 13.0, 1e-9);
+		check_num("...and the original is not", before.x, 3.0, 1e-9);
+	}
+
 	printf("APPKIT-PATH: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

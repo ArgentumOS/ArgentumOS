@@ -25,6 +25,8 @@
 
 #import <CoreGraphics/CGBitmapContext.h>
 #import <CoreGraphics/CGContext.h>
+#import <Foundation/NSAffineTransform.h>
+#include <math.h>
 #import <Foundation/NSObject.h>
 
 #include <stdio.h>
@@ -277,6 +279,44 @@ int main(void)
 
 	CGContextRelease(cgA);
 	CGContextRelease(cgB);
+
+	{
+		/* §63.187: -set REPLACES the current CTM and -concat COMPOSES onto it. */
+		CGContextRef cg = bitmap();
+		NSGraphicsContext *ctx = [NSGraphicsContext graphicsContextWithCGContext:cg flipped:NO];
+		NSAffineTransform *t = [NSAffineTransform transform];
+		CGAffineTransform got;
+
+		[NSGraphicsContext setCurrentContext:ctx];
+		[t setM11:2.0];
+		[t setM12:0.0];
+		[t setM21:0.0];
+		[t setM22:3.0];
+		[t setTX:11.0];
+		[t setTY:13.0];
+		[t set];
+		got = CGContextGetCTM(cg);
+		printf("APPKIT-GC   CTM after -set(scale 2,3 + translate 11,13) = (%g %g %g %g %g %g)\n",
+		       got.a, got.b, got.c, got.d, got.tx, got.ty);
+		check("affine-set-replaces-the-current-ctm",
+		      fabs(got.a - 2.0) < 1e-9 && fabs(got.b - 0.0) < 1e-9 && fabs(got.c - 0.0) < 1e-9 &&
+		      fabs(got.d - 3.0) < 1e-9 && fabs(got.tx - 11.0) < 1e-9 && fabs(got.ty - 13.0) < 1e-9);
+		{
+			NSAffineTransform *shift = [NSAffineTransform transform];
+
+			[shift translateXBy:5.0 yBy:7.0];
+			[shift concat];
+			got = CGContextGetCTM(cg);
+			printf("APPKIT-GC   CTM after -concat(translate 5,7) = (%g %g %g %g %g %g)\n",
+			       got.a, got.b, got.c, got.d, got.tx, got.ty);
+			check("affine-concat-composes-onto-the-current-ctm",
+			      fabs(got.tx - 21.0) < 1e-9 && fabs(got.ty - 34.0) < 1e-9);
+		}
+		[NSGraphicsContext setCurrentContext:nil];
+		[t concat];
+		check("affine-context-doors-refuse-a-missing-context", 1);
+	}
+
 	printf("APPKIT-GC: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;
 }

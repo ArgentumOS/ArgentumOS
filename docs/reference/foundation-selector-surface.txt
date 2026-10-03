@@ -33,12 +33,12 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1652	open	163	struck	399
+# method	shipped	1655	open	160	struck	399
 # property	shipped	693	open	71	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
-method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
+method	shipped	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
 method	shipped	-initWithTransform:	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
 method	shipped	-invert	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -47,9 +47,9 @@ method	shipped	-rotateByDegrees:	NSAffineTransform	Fundamentals / Geometry / Acc
 method	shipped	-rotateByRadians:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	shipped	-scaleBy:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	shipped	-scaleXBy:yBy:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
-method	open	-set	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
+method	shipped	-set	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	+transform	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
-method	open	-transformBezierPath:	NSAffineTransform	Fundamentals / Geometry / Transforming Data and Objects	-	objc
+method	shipped	-transformBezierPath:	NSAffineTransform	Fundamentals / Geometry / Transforming Data and Objects	-	objc
 method	shipped	-transformPoint:	NSAffineTransform	Fundamentals / Geometry / Transforming Data and Objects	-	objc
 method	shipped	-transformSize:	NSAffineTransform	Fundamentals / Geometry / Transforming Data and Objects	-	objc
 method	shipped	-translateXBy:yBy:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc

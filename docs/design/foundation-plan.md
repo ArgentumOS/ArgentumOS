@@ -15962,6 +15962,50 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.187 — NSAffineTransform: the three AppKit doors — COMPLETE, and the sweep that had never read AppKit
+
+Three rows: `method shipped 1652 → 1655, open 163 → 160` — `-set`, `-concat`, `-transformBezierPath:` — so
+this owner is complete, 21 of 21.
+
+**WHERE THE DECLARATION LIVES IS DECIDED BY THE SWEEP, AND IT SAID NO TO MY FIRST ARRANGEMENT.** The three
+were declared in an AppKit category (`NSAffineTransformAdditions.h`, the shape `NSBundleAdditions.h` uses),
+because that is where their *implementation* must live. `--check` refused: `STALE SHIPPED CLAIM … the ledger
+says the owner's block declares it and it does not`. A category IS attributed to the class it extends when the
+corpus is walked, but a row's status is judged against **the owner's own class block**. So the declarations
+moved onto the class in `Foundation/NSAffineTransform.h` (where Apple keeps them), the implementation stayed in
+AppKit, and the parameter type is a **forward declaration** — because `NSBezierPath.h` imports THIS header and
+importing it back is a cycle the compiler caught at once (`expected a type` at `NSBezierPath.h:241`).
+
+**AND THEN THE OTHER HALF OF THE GATE REFUSED IT, FOR A REASON THAT WAS THE TOOL'S AND NOT THE CODE'S.**
+`--unimplemented` reported two NEW rows — `NSAffineTransform concat` and `NSAffineTransform
+transformBezierPath:` — because that scanner globbed `userland/Foundation/*.m` only, while the definitions
+were in `userland/AppKit/NSAffineTransformAdditions.m`. **`APPKIT_OBJS` are compiled into the same `$(FNXLIB)`
+the Foundation objects go into** (`mk/00-base.mk:365`), so a definition there IS a definition in this library
+and the glob was simply out of date; it now reads both. ⚠ AND THE THIRD DOOR WAS **NOT** REPORTED, which is
+worth knowing about this scanner: it matches by SELECTOR **NAME** across the library, so `-set` — a name half
+the tree has — is satisfied by any class that has one. A three-door unit would have passed this gate on two
+doors' evidence had the third been the only one.
+
+**`-set` HAS NO `CGContextSetCTM` TO CALL**, so replacing is two concatenations: undo the CTM that is there
+(`CGContextConcatCTM(cg, CGAffineTransformInvert(CGContextGetCTM(cg)))`, leaving the identity), then
+concatenate this transform onto that. The probe observes through the context's own `CGContextGetCTM` and
+PRINTS the matrix, so the composition order is measured: `-concat` of a translation onto scale(2,3) answers
+`(2 0 0 3 21 34)` — the existing scale multiplies it, the user-space convention the check asserts. Both
+context doors are no-ops with no current context, stated rather than left to be discovered.
+
+**`-transformBezierPath:` IS THE COPY DOOR** — the probe asserts the copy moved (`3.0 → 13.0`) AND the
+argument untouched (`3.0` stays `3.0`), which is what separates it from NSBezierPath's in-place
+`-transformUsingAffineTransform:`; returning the argument would make the two doors indistinguishable.
+
+**WHERE THIS IS VERIFIED, NAMED PLAINLY:** AppKit is **host-verified only** (`make host-appkit`, the
+`HOST_APPKIT_PROBES` list) — there is no guest case for it, so the guest tier cannot see this slice. Six
+checks, all green on the host.
+
+Acceptance: `make host-appkit` green (6 affine checks, and each probe's EXIT STATUS is the guard — a grep for
+`affine-` undercounts the bezier probe, whose `check_num` names carry no prefix); `make testimg` green
+(status-checked); `tools/foundation-sweep.py --check` consistent (`method 1655/160/399`) and
+`--unimplemented` 0 NEW with the AppKit sources in scope.
+
 ## §63.186 — NSAffineTransform: the six matrix accessors, and the three AppKit doors located
 
 Six rows: `property shipped 687 → 693, open 77 → 71` — `m11 m12 m21 m22 tX tY`.

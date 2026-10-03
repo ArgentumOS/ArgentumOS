@@ -2428,7 +2428,16 @@ def _library_surface():
             declared.setdefault(name, set()).update(sels)
             if sup:
                 supers.setdefault(name, sup)
-    for path in sorted(glob.glob(os.path.join(ROOT, "userland/Foundation/*.m"))):
+    # THE LIBRARY'S SOURCES, WHICH IS MORE THAN FOUNDATION'S: `APPKIT_OBJS` are compiled into the SAME
+    # $(FNXLIB) the Foundation objects go into (mk/00-base.mk:365), so a definition in userland/AppKit IS a
+    # definition in this library - and a door DECLARED on a Foundation class but IMPLEMENTED in an AppKit
+    # category is exactly the case that exposed the omission. MEASURED (§63.187): with the Foundation-only
+    # glob, --unimplemented reported `NSAffineTransform concat` and `NSAffineTransform transformBezierPath:`
+    # as NEW while both were defined in userland/AppKit/NSAffineTransformAdditions.m. `-set` was NOT
+    # reported: this scanner matches by SELECTOR NAME across the library, so a short common name is
+    # satisfied by any class that has one.
+    for path in sorted(glob.glob(os.path.join(ROOT, "userland/Foundation/*.m")) +
+                       glob.glob(os.path.join(ROOT, "userland/AppKit/*.m"))):
         text = open(path, errors="ignore").read()
         stems, suffixes = _macro_stems(text)
         in_file = set()

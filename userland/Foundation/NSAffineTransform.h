@@ -27,6 +27,8 @@
 #import <Foundation/NSGeometry.h>
 #import <Foundation/NSObject.h>
 
+@class NSBezierPath;
+
 NS_ASSUME_NONNULL_BEGIN
 
 typedef struct {
@@ -68,6 +70,14 @@ typedef struct {
 @property CGFloat tX;
 @property CGFloat tY;
 
+/* THE THREE APPKIT DOORS, DECLARED HERE AND IMPLEMENTED IN APPKIT (§63.187). Apple documents them beside
+ * this class, so the DECLARATION is the class's; what they need is a graphics context or an NSBezierPath,
+ * which this library has not, so the implementation lives in userland/AppKit/NSAffineTransformAdditions.m.
+ *   -set REPLACES the current context's CTM with the receiver; -concat COMPOSES the receiver onto it;
+ *   -transformBezierPath: returns a transformed COPY, leaving its argument alone. */
+- (void)set;
+- (void)concat;
+- (NSBezierPath *)transformBezierPath:(NSBezierPath *)path;
 @end
 
 NS_ASSUME_NONNULL_END
