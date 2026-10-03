@@ -15969,6 +15969,34 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.147 — THE TRACE AT THE CHALLENGE SITE: THE GAP IS TWO `respondsToSelector:` GUARDS, AND THE HANG SAYS WHICH (2026-10-01)
+
+**THE CHALLENGE SITE WAS READ (FNCURLURLProtocol.m lines 285–340), AND IT IS MORE INFORMATIVE THAN THE FAILURE LINE WAS.**
+The path fires on a narrow condition — `status == 401 && retry == 0 && attempt == 0 && WWW-Authenticate exists && it
+contains ‘Basic’` — then builds the protection space, the sender (a thunk over a local `disposition`/`credential`
+pair), the challenge, and calls **`[transfer->protocol fnAskClientForCredential:challenge completionHandler:continuation]`.
+A `disposition` of `UseCredential` RE-ISSUES the transfer with the credential; `CancelAuthenticationChallenge` marks it
+cancelled; EVERY OTHER ANSWER LEAVES THE 401 AS THE RESPONSE.** *That last branch is the honest one and it is also the
+one the probe saw.*
+
+**⚠⚠ SO THE GAP IS TWO GUARDS, AND THE SECOND IS THE ONE I CAN NOW REASON ABOUT:**
+ 1. **`FNCURLURLProtocol -fnAskClientForCredential:` asks the client ONLY IF `[_client respondsToSelector:
+    @selector(URLProtocol:didReceiveAuthenticationChallenge:completionHandler:)]`** (line 837) — the engine declares
+    `<NSURLProtocolClient>` and implements that door, so this should answer YES;
+ 2. **AND THAT DOOR, IN THE ENGINE, ASKS THE DELEGATE ONLY IF the delegate responds to
+    `connection:willSendRequestForAuthenticationChallenge:`** — which is what the probe counts as `modern`.
+
+**⚠ AND THE HANG IS THE SECOND HALF OF THE EVIDENCE, NOT A SEPARATE SYMPTOM: the probe printed that FAIL and then
+NEVER PRINTED `DONE` — so it stopped after this check. With `disposition == -1` (no answer, consistent with the
+completion handler deliberately NOT being called when a delegate door exists) the 401 is left AS THE RESPONSE, and the
+probe's later legs then wait for a transfer that the engine has already finished differently. **THE 401-AS-RESPONSE
+BRANCH IS WHERE THE OLD AND NEW ENGINES DIVERGE OBSERVABLY**, and that is the next thing to read.**
+
+**THE NEXT DIAGNOSTIC IS THE CAMPAIGN'S OWN RECIPE AND IT IS CHEAP: PUT A RAW `write(2)` ON FD 1 INSIDE THE ENGINE'S
+CHALLENGE DOOR** — the same instrument \u00a7's guest-output note prescribes, because `printf` from the library produces
+nothing. **One run tells us whether guard 1 or guard 2 is the one that fails, and it is a two-line change to the engine
+rather than a hypothesis.**
+
 ## §63.146 — THE ENGINE WAS WRITTEN, COMPILED, BUILT, AND ONE DOOR DID NOT ARRIVE (2026-10-01)
 
 **IT WAS BUILT AND IT RAN. The whole design of §63.145 was written into `NSURLConnection.m` (~19 KB, replacing 566
