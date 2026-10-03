@@ -15964,6 +15964,44 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.171 — THE ITEM-PROVIDER PROBE CLEARS ITS OWN STALE COPIES, AND THE "PRE-EXISTING RED" TURNS OUT TO BE A SECOND-RUN-IN-ONE-IMAGE FAILURE (2026-10-03)
+
+**LANDED, and it is a LAB FIX rather than a cut — the one that makes the last coupled unit gateable.** A note of mine
+had recorded `foundation_itemprovider` as *pre-existing red at HEAD* and said a rebuilt image did not fix it. **BOTH
+HALVES WERE WRONG, AND THE DISCRIMINATOR IS WHAT SHOWED IT — run deliberately, twice, in one image:**
+
+| run | result |
+|---|---|
+| **first run in a freshly built image** | **PASS — the probe's tally `ok=16 fail=0`, case 6/6** |
+| **second run in the same image** | **FAIL — `ok=14 fail=2`**, the same two suggested-name checks, suffix grown by one |
+
+**THE MECHANISM:** the provider de-duplicates a SUGGESTED NAME **by appending a suffix**, and
+`/System/Temporary Files` **PERSISTS ACROSS RUNS WITHIN ONE IMAGE** — so the second run finds the first run's files,
+and two checks that assert an **absolute** name (`payload.txt`, `payload.txt-1`; `passwd-1`) go red for a reason that
+is not the code's. **IT IS A STATE-DEPENDENT FAILURE, NOT A DEFECT.** (The earlier note's *"a freshly rebuilt image
+does not fix it"* was itself measured while the image had **already** been used by a run in that same turn — the same
+trap, mis-read. The wrong note has been withdrawn from the tree's memory and this one saved in its place.)
+
+**THE FIX, AND IT IS ABOUT THE CHECK'S SUBJECT RATHER THAN ITS NUMBERS:** `fn_clear_stale_copies()` — opendir/readdir/
+unlink over `payload.txt*` and `passwd*` in `NSTemporaryDirectory()` — called at the top of `main`. **The checks are
+about de-duplication, so they have to begin from a known directory** rather than from whatever the last run left.
+
+**AND THE ONE WRINKLE THAT COST FOUR ROUNDS, WHICH IS WORTH THE PARAGRAPH: THE PROBE COMPILES UNDER
+`-Werror=nullable-to-nonnull-conversion`, AND CLANG DOES NOT NARROW NULLABILITY THROUGH `if (x != nil)`.**
+`NSTemporaryDirectory()` and `+stringWithUTF8String:` are **both annotated nullable**, so every route that assembles
+a path through NSString needs a nullability argument *that a path does not deserve* — and an `if` check does not
+supply it. **The answer is to stop using NSString for the path at all:** `snprintf` into a `char[1024]` and `unlink`
+on that has no nullability to argue with. The last two build errors were `path`'s own declaration (fixed by taking
+its `_Nullable` from `-fileSystemRepresentation`) and the inner `[NSString stringWithUTF8String:]` — *annotate from
+what the door says, and where a C string will do, prefer it.*
+
+**VERIFICATION, and it is the whole point: `make test TESTS=foundation_itemprovider` TWICE IN ONE IMAGE — both
+PASS, 1/1 case, 6/6 checks each time.** That is exactly the pair that used to be green-then-red.
+
+**WHAT THIS UNBLOCKS: the coupled `NSProgress` + `NSProgressReporting` + `NSItemProvider` unit** (one unit because
+`NSProgress`'s only kept user is `NSItemProvider`'s load doors). Its gate can now be run repeatedly, so the unit can
+be cut and re-gated like any other.
+
 ## §63.170 — NSCONDITION (10.5) IS CUT, AND ITS musl-pthread BODY MOVES BESIDE THE THREE FILES THAT WAIT ON IT (2026-10-03)
 
 **LANDED, the seventh family under `dec-cd47c0ae6583103b`, and the first one whose replacement was dictated by the

@@ -18,8 +18,10 @@
  */
 
 #import <Foundation/Foundation.h>
+#include <dirent.h>	/* the stale-copy clean-up §63.171 */
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #define PREFIX "FOUNDATION-ITEMPROVIDER"
 
@@ -160,8 +162,47 @@ static NSString *fn_url_name(NSURL *url)
 }
 @end
 
+/* ⚠⚠ THE STALE COPIES ARE REMOVED FIRST (§63.171), AND THE REASON IS MEASURED: the provider de-duplicates a
+ * suggested name by APPENDING A SUFFIX, and `/System/Temporary Files` PERSISTS ACROSS RUNS WITHIN ONE IMAGE — so a
+ * SECOND run in the same image found `payload.txt-2` where the checks below expect `payload.txt`, and the case went
+ * red for a reason that was not this code's. ONE RUN PER FRESH IMAGE PASSED; TWO RUNS IN ONE IMAGE DID NOT. THE
+ * CHECKS ARE ABOUT DE-DUPLICATION, SO THEY HAVE TO BEGIN FROM A KNOWN DIRECTORY.
+ *
+ * THE PATH IS A C STRING, NOT AN NSString ONE: this probe compiles under -Werror=nullable-to-nonnull-conversion,
+ * `NSTemporaryDirectory()` AND `+stringWithUTF8String:` are BOTH annotated nullable, and clang does NOT narrow
+ * nullability through an `if (x != nil)` check — so assembling a path through NSString needs a nullability argument
+ * a path does not deserve. snprintf + unlink on a char[] has none. */
+static void fn_clear_stale_copies(void)
+{
+	NSString * _Nullable dir = NSTemporaryDirectory();
+	const char * _Nullable path;
+	DIR *d;
+	struct dirent *entry;
+
+	if (dir == nil) {
+		return;
+	}
+	path = [dir fileSystemRepresentation];
+	d = (path != NULL) ? opendir(path) : NULL;
+	if (d == NULL) {
+		return;
+	}
+	while ((entry = readdir(d)) != NULL) {
+		char full[1024];
+
+		if (strncmp(entry->d_name, "payload.txt", 11) != 0 && strncmp(entry->d_name, "passwd", 6) != 0) {
+			continue;
+		}
+		if (path != NULL && snprintf(full, sizeof(full), "%s/%s", path, entry->d_name) > 0) {
+			unlink(full);
+		}
+	}
+	closedir(d);
+}
+
 int main(void)
 {
+	fn_clear_stale_copies();
 	NSString *fixturePath = fn_write_fixture(@"a file fixture, written by the probe\n");
 	NSData *fixtureBytes = fixturePath != nil ? [NSData dataWithContentsOfFile:fixturePath] : nil;
 	NSData *smallItem = [NSData dataWithBytes:"item" length:4];
