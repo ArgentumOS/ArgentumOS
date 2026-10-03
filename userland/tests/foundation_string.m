@@ -2800,6 +2800,89 @@ NULL
 		}
 	}
 
+
+	{
+		/* §63.189: THE SIX URL COMPONENT SETS, asserted at their BOUNDARIES — a set that is merely "some URL
+		 * characters" would pass a spot-check and still let a delimiter through. Each assertion names the
+		 * production it comes from: query keeps "?" and "/" but not "#"; path keeps "/" and "@" but neither
+		 * "?" nor "#"; host keeps ":" and the IP-literal brackets but no "/"; userinfo keeps ":" but not "@".
+		 * A CLASS PROPERTY IS READ BY SENDING THE CLASS THE MESSAGE — there is no bare-identifier form. */
+		char detail[256];
+		BOOL allow = [[NSCharacterSet URLQueryAllowedCharacterSet] characterIsMember:(unichar)'?'] &&
+			     [[NSCharacterSet URLQueryAllowedCharacterSet] characterIsMember:(unichar)'/'] &&
+			     [[NSCharacterSet URLQueryAllowedCharacterSet] characterIsMember:(unichar)':'] &&
+			     [[NSCharacterSet URLQueryAllowedCharacterSet] characterIsMember:(unichar)'@'] &&
+			     [[NSCharacterSet URLPathAllowedCharacterSet] characterIsMember:(unichar)'/'] &&
+			     [[NSCharacterSet URLPathAllowedCharacterSet] characterIsMember:(unichar)'@'] &&
+			     ![[NSCharacterSet URLPathAllowedCharacterSet] characterIsMember:(unichar)'?'] &&
+			     [[NSCharacterSet URLHostAllowedCharacterSet] characterIsMember:(unichar)':'] &&
+			     [[NSCharacterSet URLHostAllowedCharacterSet] characterIsMember:(unichar)'['] &&
+			     ![[NSCharacterSet URLHostAllowedCharacterSet] characterIsMember:(unichar)'/'] &&
+			     [[NSCharacterSet URLUserAllowedCharacterSet] characterIsMember:(unichar)':'] &&
+			     ![[NSCharacterSet URLUserAllowedCharacterSet] characterIsMember:(unichar)'@'] &&
+			     [[NSCharacterSet URLUserAllowedCharacterSet] characterIsMember:(unichar)'~'] &&
+			     [[NSCharacterSet URLUserAllowedCharacterSet] characterIsMember:(unichar)'!'];
+
+		snprintf(detail, sizeof detail, "query(? / : @)=%d%d%d%d path(/ @ !?)=%d%d%d host(: [ !/)=%d%d%d user(: !@ ~ !)=%d%d%d%d",
+			 [[NSCharacterSet URLQueryAllowedCharacterSet] characterIsMember:(unichar)'?'],
+			 [[NSCharacterSet URLQueryAllowedCharacterSet] characterIsMember:(unichar)'/'],
+			 [[NSCharacterSet URLQueryAllowedCharacterSet] characterIsMember:(unichar)':'],
+			 [[NSCharacterSet URLQueryAllowedCharacterSet] characterIsMember:(unichar)'@'],
+			 [[NSCharacterSet URLPathAllowedCharacterSet] characterIsMember:(unichar)'/'],
+			 [[NSCharacterSet URLPathAllowedCharacterSet] characterIsMember:(unichar)'@'],
+			 [[NSCharacterSet URLPathAllowedCharacterSet] characterIsMember:(unichar)'?'],
+			 [[NSCharacterSet URLHostAllowedCharacterSet] characterIsMember:(unichar)':'],
+			 [[NSCharacterSet URLHostAllowedCharacterSet] characterIsMember:(unichar)'['],
+			 [[NSCharacterSet URLHostAllowedCharacterSet] characterIsMember:(unichar)'/'],
+			 [[NSCharacterSet URLUserAllowedCharacterSet] characterIsMember:(unichar)':'],
+			 [[NSCharacterSet URLUserAllowedCharacterSet] characterIsMember:(unichar)'@'],
+			 [[NSCharacterSet URLUserAllowedCharacterSet] characterIsMember:(unichar)'~'],
+			 [[NSCharacterSet URLUserAllowedCharacterSet] characterIsMember:(unichar)'!']);
+		check("url-sets-allow-what-their-component-allows", allow, detail);
+	}
+	{
+		/* THE NEGATIVE HALF, WHICH IS THE HALF THAT MATTERS: "#" is the fragment delimiter and is in NO set,
+		 * "%" is produced by escaping rather than being "allowed", and a space is in none of them. */
+		NSCharacterSet *sets[6];
+		BOOL clean = YES;
+		int i;
+		char detail[128];
+
+		sets[0] = [NSCharacterSet URLUserAllowedCharacterSet];
+		sets[1] = [NSCharacterSet URLPasswordAllowedCharacterSet];
+		sets[2] = [NSCharacterSet URLHostAllowedCharacterSet];
+		sets[3] = [NSCharacterSet URLPathAllowedCharacterSet];
+		sets[4] = [NSCharacterSet URLQueryAllowedCharacterSet];
+		sets[5] = [NSCharacterSet URLFragmentAllowedCharacterSet];
+		for (i = 0; i < 6; i++) {
+			if ([sets[i] characterIsMember:(unichar)'#'] ||
+			    [sets[i] characterIsMember:(unichar)'%'] ||
+			    [sets[i] characterIsMember:(unichar)' ']) {
+				clean = NO;
+			}
+		}
+		snprintf(detail, sizeof detail, "no #,%%,space in any of the six = %d", clean);
+		check("url-sets-exclude-the-delimiters-they-must", clean, detail);
+	}
+	{
+		/* THE TWO DERIVED EQUALITIES ARE ASSERTED, because they are a READING written in the header rather
+		 * than an accident of two string literals that happen to match. */
+		check("url-sets-derived-pairs-are-equal",
+		      [NSCharacterSet URLUserAllowedCharacterSet] == [NSCharacterSet URLPasswordAllowedCharacterSet] &&
+		      [NSCharacterSet URLQueryAllowedCharacterSet] == [NSCharacterSet URLFragmentAllowedCharacterSet],
+		      "password aliases userinfo and fragment aliases query");
+	}
+	{
+		/* AND THE OBSERVABLE THAT MAKES THE SETS WORTH HAVING: the query set through the escaping door
+		 * encodes exactly the octets it must — the space and the "#", and nothing else. */
+		NSString *enc = [@"a b/c?d#e" stringByAddingPercentEncodingWithAllowedCharacters:
+					[NSCharacterSet URLQueryAllowedCharacterSet]];
+		char detail[256];
+
+		snprintf(detail, sizeof detail, "encoded=[%s]", enc != nil ? [enc UTF8String] : "(nil)");
+		check("url-query-set-encodes-only-what-must-be", [enc isEqualToString:@"a%20b/c?d%23e"], detail);
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

@@ -133,8 +133,7 @@ CHECKS = (
           "localized-standard-compare-folds-case-and-reports-its-numeric-gap",
           "completepathintostring-completes-and-filters",
           "linguistic-tags-pair-agree",
-          "linguistic-sentence-range-is-the-taggers-own",
-)
+          "linguistic-sentence-range-is-the-taggers-own", "url-sets-allow-what-their-component-allows", "url-sets-exclude-the-delimiters-they-must", "url-sets-derived-pairs-are-equal", "url-query-set-encodes-only-what-must-be")
 
 
 class Case(BaseCase):

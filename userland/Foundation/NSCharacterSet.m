@@ -344,6 +344,71 @@ static NSString *const kRangesKey = @"NS.ranges";
 	return set;
 }
 
+/* THE SHARED ALPHABET OF THE URL SETS: `unreserved` is ALPHA / DIGIT plus a fixed punctuation run, and each
+ * set then adds the characters ITS OWN production allows. The cache is the same `static` idiom the other
+ * predefined sets use — these objects must outlive the pool a class door is called in. */
+static NSCharacterSet *fn_url_set(NSString *extra, NSCharacterSet **cache)
+{
+	if (*cache == nil) {
+		NSMutableCharacterSet *built = [[NSMutableCharacterSet alloc] init];
+
+		[built addCharactersInRange:NSMakeRange('a', 26)];
+		[built addCharactersInRange:NSMakeRange('A', 26)];
+		[built addCharactersInRange:NSMakeRange('0', 10)];
+		[built addCharactersInString:@"-._~"];		/* the rest of unreserved */
+		[built addCharactersInString:@"!$&'()*+,;="];	/* sub-delims */
+		[built addCharactersInString:extra];		/* this component's own */
+		*cache = built;
+	}
+	return *cache;
+}
+
++ (NSCharacterSet *)URLUserAllowedCharacterSet
+{
+	static NSCharacterSet *set = nil;
+
+	/* userinfo = *( unreserved / pct-encoded / sub-delims / ":" ) */
+	return fn_url_set(@":", &set);
+}
+
++ (NSCharacterSet *)URLPasswordAllowedCharacterSet
+{
+	/* AN ALIAS, NOT A COPY: a password is part of userinfo and the production is the same one, so two lists
+	 * would be two chances to drift. */
+	return [self URLUserAllowedCharacterSet];
+}
+
++ (NSCharacterSet *)URLHostAllowedCharacterSet
+{
+	static NSCharacterSet *set = nil;
+
+	/* reg-name = *( unreserved / pct-encoded / sub-delims ), plus the ":" of a port and the brackets of an
+	 * IP-literal. NOT "/" and NOT "?" — those end the authority. */
+	return fn_url_set(@":[]", &set);
+}
+
++ (NSCharacterSet *)URLPathAllowedCharacterSet
+{
+	static NSCharacterSet *set = nil;
+
+	/* pchar = unreserved / pct-encoded / sub-delims / ":" / "@", plus the "/" between segments. */
+	return fn_url_set(@":@/", &set);
+}
+
++ (NSCharacterSet *)URLQueryAllowedCharacterSet
+{
+	static NSCharacterSet *set = nil;
+
+	/* query = *( pchar / "/" / "?" ) */
+	return fn_url_set(@":@/?", &set);
+}
+
++ (NSCharacterSet *)URLFragmentAllowedCharacterSet
+{
+	/* AN ALIAS, NOT A COPY: fragment = *( pchar / "/" / "?" ) is the SAME production as query. */
+	return [self URLQueryAllowedCharacterSet];
+}
+
 + (NSCharacterSet *)newlineCharacterSet
 {
 	static NSCharacterSet *set = nil;

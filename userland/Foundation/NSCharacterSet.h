@@ -129,6 +129,25 @@ NS_ASSUME_NONNULL_BEGIN
 + (nullable NSCharacterSet *)lowercaseLetterCharacterSet;
 + (nullable NSCharacterSet *)uppercaseLetterCharacterSet;
 
+/* THE SIX URL COMPONENT SETS (RFC 3986 §3), WHICH ARE THE ALLOWED SETS FOR
+ * -stringByAddingPercentEncodingWithAllowedCharacters: — so they are what makes that door usable without
+ * hand-rolling each component's characters. Apple documents them by their COMPONENT rather than as character
+ * lists, so each is derived from the production the name refers to:
+ *   unreserved = ALPHA / DIGIT / "-" / "." / "_" / "~"
+ *   sub-delims = "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+" / "," / ";" / "="
+ * TWO OF THE SIX ARE EQUAL BY DERIVATION, and they are ALIASES rather than copies so they cannot drift: a
+ * PASSWORD is part of userinfo (the same production), and a FRAGMENT is *( pchar / "/" / "?" ) — the same
+ * production as a QUERY. Both readings are written here because "why are these two the same?" is the reader's
+ * question.
+ * AND THE ONE THING NONE OF THEM CONTAINS: "%" itself. Percent-encoded octets are produced by the escaping
+ * door rather than by being "allowed", which is why it appears in no set. */
+@property (class, readonly, copy) NSCharacterSet *URLUserAllowedCharacterSet;
+@property (class, readonly, copy) NSCharacterSet *URLPasswordAllowedCharacterSet;
+@property (class, readonly, copy) NSCharacterSet *URLHostAllowedCharacterSet;
+@property (class, readonly, copy) NSCharacterSet *URLPathAllowedCharacterSet;
+@property (class, readonly, copy) NSCharacterSet *URLQueryAllowedCharacterSet;
+@property (class, readonly, copy) NSCharacterSet *URLFragmentAllowedCharacterSet;
+
 - (BOOL)characterIsMember:(unichar)character;
 - (NSCharacterSet *)invertedSet;
 - (BOOL)isSupersetOfSet:(NSCharacterSet *)other;

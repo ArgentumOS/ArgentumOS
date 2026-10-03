@@ -15962,6 +15962,48 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.189 — NSCharacterSet: the six URL component sets, and three harness facts that cost more than the code
+
+Six rows: `property shipped 698 → 704, open 66 → 60` — `URLUserAllowedCharacterSet`,
+`URLPasswordAllowedCharacterSet`, `URLHostAllowedCharacterSet`, `URLPathAllowedCharacterSet`,
+`URLQueryAllowedCharacterSet`, `URLFragmentAllowedCharacterSet`.
+
+**THEY ARE THE ALLOWED SETS FOR `-stringByAddingPercentEncodingWithAllowedCharacters:`** (§63.3), which is
+what makes them worth having, and each is derived from the production its NAME refers to rather than from a
+character list someone typed: `unreserved` and `sub-delims` sit in ONE builder, then each set adds its own
+(`userinfo` adds `":"`; `host` adds `":"` and the IP-literal brackets; `path` adds `":@/"`; `query` adds
+`":@/?"`). **TWO OF THE SIX ARE EQUAL BY DERIVATION AND ARE ALIASES, NOT COPIES** — a password is part of
+userinfo and a fragment is the query production — so they cannot drift, and the equality is asserted as a
+reading. The check also asserts the NEGATIVE half, which is the half that matters: `"#"` is the fragment
+delimiter and is in **none** of the six, `"%"` is produced by escaping rather than by being "allowed", and a
+space is in none. Apple documents these by COMPONENT rather than as character lists, and the derivation is
+written in the header where a reader meets it.
+
+**ONE TRAP, MEASURED, AND IT IS A LANGUAGE FACT RATHER THAN A LIBRARY ONE:** a **class property cannot be read
+by its bare name.** `NSURLQueryAllowedCharacterSet` in a `.m` is `use of undeclared identifier …` (twenty of
+them, one per use); the ObjC form is `[NSCharacterSet URLQueryAllowedCharacterSet]`. The property declarations
+are Apple's own spelling; only the *call* form differs from what the bare name suggests.
+
+**AND THREE HARNESS FACTS, WHICH COST THIS UNIT MORE ROUNDS THAN THE CODE DID:**
+1. `make -s .build/host/bin/<probe>` is a **SILENT NO-OP** — there is no rule for that path spelling (make
+   says `No rule to make target` when the binary is absent, and "nothing to be done", rc=0, when it exists).
+   A rebuild "succeeded" that way while the library kept an object stamped hours earlier.
+2. The target that DOES rebuild is **`make host-foundation`**, and the artifact is the test:
+   `strings .build/host/lib/libfoundation.so | grep -c <a new selector>` against a control selector on the
+   same class (8 versus 6 in this unit). **`nm` is the wrong instrument** — ObjC selectors are runtime
+   metadata, not dynamic symbols. Verify the ARTIFACT, not the command's exit code.
+3. `make host-foundation-run` **cannot run at all today**: `HOST_PROBES` names `foundation_expression`, whose
+   source does not exist, so `mk/60-host.mk:179` fails and the tier stops **before executing any probe**. That
+   is pre-existing, and it is why this unit's acceptance is the GUEST tier — which compiles the probe itself
+   and therefore cannot be fooled by a stale object.
+
+(Also: a probe's `printf` markers are block-buffered and are LOST when it aborts, which is why an early
+debugging run printed nothing at all.)
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_string` → `TESTS-OK 1/1
+case(s), 6/6 check(s)` with all four new checks named `ok`; `tools/foundation-sweep.py --check` consistent
+(`property 704/60/172`).
+
 ## §63.188 — NSError: the five userInfo readers and the two provider doors that feed them
 
 Seven rows: `property shipped 693 → 698, open 71 → 66` (`helpAnchor`, `localizedRecoveryOptions`,

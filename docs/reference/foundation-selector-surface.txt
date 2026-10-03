@@ -34,7 +34,7 @@
 #
 # kind	status	name	owner	family	why	src
 # method	shipped	1657	open	158	struck	399
-# property	shipped	698	open	66	struck	172
+# property	shipped	704	open	60	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -442,12 +442,12 @@ method	shipped	-hasMemberInPlane:	NSCharacterSet	Fundamentals / Characters / Tes
 method	shipped	-initWithCoder:	NSCharacterSet	Fundamentals / Characters / Creating a Custom Character Set	-	objc
 method	shipped	-isSupersetOfSet:	NSCharacterSet	Fundamentals / Characters / Testing Set Membership	-	objc
 method	shipped	-longCharacterIsMember:	NSCharacterSet	Fundamentals / Characters / Testing Set Membership	-	objc
-property	open	URLFragmentAllowedCharacterSet	NSCharacterSet	Fundamentals / Characters / Getting Character Sets for URL Encoding	-	objc
-property	open	URLHostAllowedCharacterSet	NSCharacterSet	Fundamentals / Characters / Getting Character Sets for URL Encoding	-	objc
-property	open	URLPasswordAllowedCharacterSet	NSCharacterSet	Fundamentals / Characters / Getting Character Sets for URL Encoding	-	objc
-property	open	URLPathAllowedCharacterSet	NSCharacterSet	Fundamentals / Characters / Getting Character Sets for URL Encoding	-	objc
-property	open	URLQueryAllowedCharacterSet	NSCharacterSet	Fundamentals / Characters / Getting Character Sets for URL Encoding	-	objc
-property	open	URLUserAllowedCharacterSet	NSCharacterSet	Fundamentals / Characters / Getting Character Sets for URL Encoding	-	objc
+property	shipped	URLFragmentAllowedCharacterSet	NSCharacterSet	Fundamentals / Characters / Getting Character Sets for URL Encoding	-	objc
+property	shipped	URLHostAllowedCharacterSet	NSCharacterSet	Fundamentals / Characters / Getting Character Sets for URL Encoding	-	objc
+property	shipped	URLPasswordAllowedCharacterSet	NSCharacterSet	Fundamentals / Characters / Getting Character Sets for URL Encoding	-	objc
+property	shipped	URLPathAllowedCharacterSet	NSCharacterSet	Fundamentals / Characters / Getting Character Sets for URL Encoding	-	objc
+property	shipped	URLQueryAllowedCharacterSet	NSCharacterSet	Fundamentals / Characters / Getting Character Sets for URL Encoding	-	objc
+property	shipped	URLUserAllowedCharacterSet	NSCharacterSet	Fundamentals / Characters / Getting Character Sets for URL Encoding	-	objc
 property	shipped	alphanumericCharacterSet	NSCharacterSet	Fundamentals / Characters / Getting Standard Character Sets	-	objc
 property	shipped	bitmapRepresentation	NSCharacterSet	Fundamentals / Characters / Creating and Managing Character Sets as Bitmap Representations	-	objc
 property	shipped	capitalizedLetterCharacterSet	NSCharacterSet	Fundamentals / Characters / Getting Standard Character Sets	-	objc
