@@ -7,10 +7,10 @@
 #
 # kind	status	name	owner	family	why	src
 # case	shipped	1015	open	0	struck	78
-# class	shipped	163	open	0	struck	52
+# class	shipped	161	open	0	struck	52
 # enum	shipped	115	open	0	struck	9
-# protocol	shipped	33	open	0	struck	6
-# var	shipped	680	open	0	struck	211
+# protocol	shipped	32	open	0	struck	6
+# var	shipped	666	open	0	struck	211
 
 
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1157,8 +1157,6 @@ class	shipped	NSEnumerator		Fundamentals / Iteration	-	objc
 class	shipped	NSError		App Support / User-Relevant Errors	-	objc
 class	shipped	NSException		App Support / Exceptions	-	objc
 class	struck	NSExistsCommand		App Support / Script Commands	declined	objc
-class	shipped	NSExtensionContext		App Support / Extension Support	-	objc
-class	shipped	NSExtensionItem		App Support / Attachments	-	objc
 class	shipped	NSFileCoordinator		Files and Data Persistence / Coordinated file access	-	objc
 class	shipped	NSFileHandle		Files and Data Persistence / Managed file access	-	objc
 class	shipped	NSFileManager		Files and Data Persistence / File system operations	-	objc
@@ -1893,7 +1891,6 @@ protocol	shipped	NSConnectionDelegate		Low-Level Utilities / Legacy / Legacy	dep
 protocol	shipped	NSCopying		Low-Level Utilities / Copying	-	objc
 protocol	shipped	NSDecimalNumberBehaviors		Fundamentals / Numbers / Using reference types / Managing Behavior	-	objc
 protocol	shipped	NSDiscardableContent		Fundamentals / Purgeable Collections / Managing Discardable Content	-	objc
-protocol	shipped	NSExtensionRequestHandling		App Support / Extension Support	-	objc
 protocol	shipped	NSFastEnumeration		Fundamentals / Iteration	-	objc
 protocol	shipped	NSFileManagerDelegate		Files and Data Persistence / File system operations	-	objc
 protocol	shipped	NSFilePresenter		Files and Data Persistence / Coordinated file access	-	objc
@@ -2097,20 +2094,6 @@ var	shipped	NSDistinctUnionOfSetsKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSEarlierTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSEdgeInsetsZero		Fundamentals / Geometry / Getting the zero constant	-	objc
 var	shipped	NSErrorFailingURLStringKey		Networking / Errors / Deprecated	deprecated	objc
-var	shipped	NSExtensionHostDidBecomeActiveNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
-var	shipped	NSExtensionHostDidBecomeActiveNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	shipped	NSExtensionHostDidEnterBackgroundNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
-var	shipped	NSExtensionHostDidEnterBackgroundNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	shipped	NSExtensionHostWillEnterForegroundNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
-var	shipped	NSExtensionHostWillEnterForegroundNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	shipped	NSExtensionHostWillResignActiveNotification	NSExtensionContext	App Support / Extension Support / Working with notifications	-	swift-page
-var	shipped	NSExtensionHostWillResignActiveNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
-var	shipped	NSExtensionItemAttachmentsKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
-var	shipped	NSExtensionItemAttributedContentTextKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
-var	shipped	NSExtensionItemAttributedTitleKey	NSExtensionItem	App Support / Attachments / Constants / Constants	-	objc
-var	shipped	NSExtensionItemsAndErrorsKey	NSExtensionContext	App Support / Extension Support / Handling requests	-	objc
-var	shipped	NSExtensionJavaScriptFinalizeArgumentKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
-var	shipped	NSExtensionJavaScriptPreprocessingResultsKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 var	shipped	NSFTPPropertyActiveTransferModeKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
 var	shipped	NSFTPPropertyFTPProxy	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc
 var	shipped	NSFTPPropertyFileOffsetKey	NSURLHandle	Networking / Legacy / URL Handle / Resource Property Keys	deprecated	objc

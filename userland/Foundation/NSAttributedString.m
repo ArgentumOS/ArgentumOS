@@ -1172,7 +1172,9 @@ static NSRange fn_url_token_range(NSString *text, NSUInteger index, BOOL *found)
 	 * reader is worse than one that refuses to open"). Asking for the binary format was a REAL DEFECT, not a
 	 * style point: it made this method raise for EVERY attributed string, so the class Apple documents as
 	 * NSSecureCoding could not be archived at all — and the raise blamed the VALUES, which were innocent. Found
-	 * by §62.69's probe, which archives an NSExtensionItem holding an attributed string. */
+	 * by §62.69's probe, which archived an item holding an attributed string (that probe and its
+	 * `NSExtensionItem` are gone — §63.166 cut the 10.10 extension family — but the defect it found is
+	 * this door's, and it is why this one encodes at all). */
 	payload = [NSPropertyListSerialization dataWithPropertyList:plist
 							    format:NSPropertyListXMLFormat_v1_0
 							   options:0

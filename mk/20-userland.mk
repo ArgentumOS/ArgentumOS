@@ -966,13 +966,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_usernotification.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_usernotification"
-	# foundation_extensionitem: §62.69. ONE unit, only <Foundation/Foundation.h> - the value object and its wire form.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_extensionitem.m -o .build/probe-foundation_extensionitem.o
-	$(MUSL64_OBJC) .build/probe-foundation_extensionitem.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_extensionitem"
 	# foundation_distributednotification: §62.80. ONE unit - the center and its suspension engine.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
@@ -1305,16 +1298,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_distantobjectrequest.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_distantobjectrequest"
-	# foundation_extensioncontext: §62.92's acceptance - `NSExtensionContext` + `NSExtensionRequestHandling`,
-	# closing `App Support / Extension Support`. ONE unit, Foundation only: the extension's half is real (the
-	# host's items arrive copied, the two endings are enforced) and the host's half is the internal seam, which
-	# plays a host - it makes a context, hands it to a principal object, and reads the ending back.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_extensioncontext.m -o .build/probe-foundation_extensioncontext.o
-	$(MUSL64_OBJC) .build/probe-foundation_extensioncontext.o \
-		-L$(FNXLIB) -lfoundation \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_extensioncontext"
 	# foundation_json: §62.93's acceptance - the JSON reading options Apple publishes and this library
 	# refused (`json5Allowed`, `topLevelDictionaryAssumed`) plus the deprecated `allowFragments`
 	# spelling, AND the two grammars they depend on finally differing: the strict path is RFC 8259's

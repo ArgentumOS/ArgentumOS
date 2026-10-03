@@ -3675,7 +3675,6 @@ vanishing.
 | **App Support / Bundle Resources** | all classes shipped | — |
 | **App Support / Cross-Process Notifications** | all classes shipped | — |
 | **App Support / Exceptions** | all classes shipped | — |
-| **App Support / Extension Support** | all classes shipped | — |
 | **App Support / NSObject Script Support** | ALL STRUCK: `NSScriptCoercionHandler`, `NSScriptExecutionContext` | — |
 | **App Support / Notifications** | all classes shipped | — |
 | **App Support / Object Matching Tests** | ALL STRUCK: `NSLogicalTest`, `NSScriptWhoseTest`, `NSSpecifierTest` | — |
@@ -15967,7 +15966,41 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
-## §63.165 — NSFILEACCESSINTENT (10.10) IS CUT, AND THE COORDINATOR DOOR THAT CONSUMED ONE GOES WITH IT (2026-10-03)
+## §63.166 — THE 10.10 EXTENSION FAMILY IS CUT WHOLE, AND A UNIT'S SHAPE IS DECIDED BY WHAT IT CONTAINS RATHER THAN BY ITS LEDGER ROWS (2026-10-03)
+
+**LANDED, the fourth of §63.162's cuts, and the first taken under the user's ruling (`dec-cd47c0ae6583103b`) that
+each remaining family is cut WHOLE — class and protocols together.** The audit named `NSExtensionRequestHandling`
+alone (one row); the measurement showed it is the *single door* of `NSExtensionContext`, a 10.10 class whose rows
+§63.135 had already removed **while its code stayed**, so cutting the protocol by itself would have left a
+half-class. **THE UNIT IS THE FAMILY.**
+
+**WHAT WENT.** `NSExtensionContext.h/.m`, `NSExtensionItem.h/.m` and `FNExtensionContext.h` — five files; the
+umbrella's imports (plus the family's own header imports); the probes `foundation_extensioncontext` and
+`foundation_extensionitem` with their cases; 17 lines of `mk/20-userland.mk` and two `HOST_PROBES` tokens; and **17
+symbol rows over 13 `NSExtension*` names**. No selector rows existed (all three owners were filtered long ago) and
+the era ground already carried them at **10.10**. The one stale reference outside the family — a comment in
+`NSAttributedString.m` crediting §62.69's probe with finding a real serialization defect — was re-pointed rather than
+deleted: **the defect is that door's and it outlives the probe that found it.**
+
+**AND THE PATTERN IS NOW NAMED, BECAUSE IT DECIDED THIS UNIT'S SHAPE.** §63.135 filtered the *rows* of classes whose
+*code* still shipped, so the audit's remaining list is not eight classes but roughly six FAMILIES — `NSItemProvider`
+(with its reading/writing protocols), `NSExtensionContext` (with `NSExtensionRequestHandling`), `NSURLComponents`
+(with `NSURLQueryItem`), the `NSUserNotification` family, `NSCondition` (the locking machinery), and
+`NSBundleResourceRequest` (iOS-only). **EACH IS ONE UNIT, and a name in the ledger is evidence about a unit rather
+than a description of one.**
+
+**VERIFICATION.** `foundation-sweep.py --check` **consistent** after `--families --write` (86 rows — the family table
+is GENERATED, so a cut that changes the ledger changes it); `--unimplemented` **0 NEW**; **`make testimg` green**;
+**`make test TESTS=foundation_attributedstring` PASS — 1/1 case, 6/6 checks** (run because that is the file the
+re-pointed comment lives in).
+
+**AND ONE THING ABOUT THE NEXT UNIT, MEASURED RATHER THAN ASSUMED (saved to the tree's memory as well):**
+`foundation_itemprovider` **IS RED AT HEAD**, before any change — `ok=12 fail=2`, both failures in the SUGGESTED-NAME
+file checks, whose expected suffix number GROWS WITH EVERY RUN (`payload.txt` expected, `payload.txt-4` found;
+`passwd-1` vs `passwd-2`) because the guest's `/System/Temporary Files` survives `make testimg`/`make test` cycles —
+and the case also expects two object-door names the probe's log does not show. **A FRESHLY REBUILT IMAGE DOES NOT FIX
+IT.** So `NSItemProvider`'s cut must land ON TOP OF a red case, and the discriminator that settled whose fault it is
+is the one to run first: **the case at HEAD, unmodified, before touching anything.**
 
 **LANDED, the third of §63.162's cuts, taken smallest-first because its cascade closes with its own file:**
 `NSFileAccessIntent` — which has **no header of its own** (it was declared inside `NSFileCoordinator.h`) — is gone,
