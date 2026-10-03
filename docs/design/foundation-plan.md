@@ -15964,6 +15964,50 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.169 — THE RFC 3986 §5.4 TABLE MOVES INTO foundation_url, SO THE RESOLVER IS VERIFIED BY SOMETHING THAT SURVIVES ITS CLASS (2026-10-03)
+
+**LANDED, and it is the PREREQUISITE for the `NSURLComponents` cut rather than the cut itself.** That attempt was
+measured, hit a real dependency, and was reverted (nothing of it is in the tree); the finding is what this unit acts
+on.
+
+**THE FINDING, AND IT IS A TRAP WORTH THE PARAGRAPH: A CLASS-NAME GREP IS NOT A DEPENDENCY MEASUREMENT.** I measured
+`NSURLComponents`' references by grepping for the *class name* in the kept files and found only prose — in `NSURL.h`,
+`NSHTTPURLResponse.h` and `NSURL.m` — and concluded the cascade was comments only. **The real dependency is by HELPER
+name, which no class-name grep can see:** `FNURLResolveRelative` is declared in **`NSURL.h:446`** (a first-party door
+of NSURL's own header), called twice in `NSURL.m`, and **its definition lived in `NSURLComponents.m`, implemented ON
+the class** (`[NSURLComponents componentsWithString:…]`), beside six plain-C §5.2 helpers. It surfaced only at link
+time: `undefined reference to 'FNURLResolveRelative'`.
+
+**WHY THE CUT WAS REVERTED RATHER THAN FINISHED.** It is not a cut but a **re-homing**: RFC 3986 §5.2 would move into
+`NSURL.m`, rewritten onto NSURL's own accessors (`scheme`/`host`/`user`/`port`/`path`/`query`/`fragment` are all
+public, so no splitter is needed; `fn_remove_dot_segments` and `fn_merge_paths` port as-is). **AND THE PROBE THAT
+VERIFIED THE ALGORITHM IS THE ONE THE CUT DELETES:** `foundation_urlcomponents` checks the resolver against **RFC 3986
+§5.4's own table**, while `foundation_url`'s surviving checks asserted only that the door answers one case
+(`http://h/a/b`). Landing a rewritten URL grammar with nothing checking it against §5.4 is not a thing this tree does.
+
+**WHAT LANDED INSTEAD, AND IT IS THE WHOLE POINT: the §5.4 table now runs in `foundation_url`.** Both tables —
+§5.4.1's ten normal rows and §5.4.2's eight abnormal ones, with the document's own base `http://a/b/c/d;p?q` — moved
+verbatim, with their `fn_resolve` helper, and **they drive `+URLWithString:relativeToURL:`, which is NSURL's OWN door**
+rather than the class being cut. The two check names are unchanged (`rfc3986-normal-examples`,
+`rfc3986-abnormal-examples`), so the RFC's table keeps its identity as it changes owner, and the components probe keeps
+its copy until it goes.
+
+**ONE ADAPTATION, AND IT IS THE KIND THAT READS AS A BUG: each probe has its OWN `check()`.** This one takes a
+`const char *detail`, the components probe takes an NSString, so the moved calls pass `[detail UTF8String]` and the
+literal form — the first attempt failed the build with *"implicit conversion of an Objective-C pointer to 'const char
+*' is disallowed with ARC"*, which is the compiler doing its job on a copy-paste across two probes' conventions.
+
+**VERIFICATION.** `make testimg` **green**; **`make test TESTS=foundation_url` PASS — 1/1 case, 6/6 checks, the
+probe's own tally `ok=44 fail=0`** (42 before: the two §5.4 tables now run inside it, and NSURL's resolver passes
+both).
+
+**WHAT THE CUT STILL NEEDS, now that its gate exists:** move `fn_remove_dot_segments` + `fn_merge_paths` into
+`NSURL.m`, rewrite `FNURLResolveRelative` on NSURL's accessors keeping the declaration at `NSURL.h:446` and the
+`(reference, base-string)` signature, gate `foundation_url` (§5.4 is now in it), and only then delete
+`NSURLComponents.h/.m`, its probe and case, the umbrella import, the mk probe block **plus the two
+`FOUNDATION_SRCS`/`HDRS` list entries** (a separate mk step — the probe block does not include them, which cost a
+build round here), and the two symbol rows.
+
 ## §63.168 — THE iOS-ONLY ON-DEMAND-RESOURCES FAMILY IS CUT, AND THE ONE TOOL LIST THAT NAMES IT STAYS BECAUSE THE LIST IS ABOUT APPLE'S CORPUS RATHER THAN THIS TREE (2026-10-03)
 
 **LANDED, the sixth family under `dec-cd47c0ae6583103b`, and the one a standing decision already covered:**

@@ -74,6 +74,17 @@ static const char *fn_why(NSURL *url)
 
 @end
 
+/* THE RESOLUTION, as one call, so the RFC's table can be read as a table. MOVED HERE BY §63.169 SO THE
+ * RESOLVER IS VERIFIED BY SOMETHING THAT SURVIVES THE CUT: these rows come from RFC 3986 §5.4 itself and they
+ * drive +URLWithString:relativeToURL:, which is NSURL's OWN door - the 10.9 NSURLComponents family is going and
+ * its probe with it, and a rewritten resolver must not be the only thing that changed. */
+static NSString *fn_resolve(NSString *reference, NSString *base)
+{
+	NSURL *resolved = [NSURL URLWithString:reference relativeToURL:[NSURL URLWithString:base]];
+
+	return resolved != nil ? [resolved absoluteString] : @"(nil)";
+}
+
 int main(void)
 {
 
@@ -300,6 +311,56 @@ int main(void)
 			  absoluteString] isEqualToString:@"http://h/a/b"],
 		      "NSURLComponents and relative resolution SHIP (F13.15), demanded rather than merely not-denied");
 	}
+
+	{
+		/* RFC 3986 §5.4.1, the NORMAL examples, with the base the document uses. */
+		NSString *base = @"http://a/b/c/d;p?q";
+		struct { const char *reference; const char *expected; } rows[] = {
+			{ "g:h", "g:h" }, { "g", "http://a/b/c/g" }, { "./g", "http://a/b/c/g" },
+			{ "g/", "http://a/b/c/g/" }, { "/g", "http://a/g" }, { "?y", "http://a/b/c/d;p?y" },
+			{ "g?y", "http://a/b/c/g?y" }, { "#s", "http://a/b/c/d;p?q#s" },
+			{ ";x", "http://a/b/c/;x" }, { "", "http://a/b/c/d;p?q" }
+		};
+		int good = 1;
+		NSMutableString *detail = [NSMutableString string];
+		NSUInteger i;
+
+		for (i = 0; i < sizeof(rows) / sizeof(rows[0]); i++) {
+			NSString *got = fn_resolve([NSString stringWithUTF8String:rows[i].reference], base);
+			NSString *want = [NSString stringWithUTF8String:rows[i].expected];
+
+			if (![got isEqualToString:want]) {
+				good = 0;
+				[detail appendFormat:@" [%s -> %@ want %@]", rows[i].reference, got, want];
+			}
+		}
+		check("rfc3986-normal-examples", good, good ? "all ten rows" : [detail UTF8String]);
+	}
+
+	{
+		/* RFC 3986 §5.4.2, which is where dot-segment removal is really exercised. */
+		NSString *base = @"http://a/b/c/d;p?q";
+		struct { const char *reference; const char *expected; } rows[] = {
+			{ "./../g", "http://a/b/g" }, { "../..", "http://a/" }, { "../../g", "http://a/g" },
+			{ "../../../g", "http://a/g" }, { "../g/", "http://a/b/g/" }, { "g.", "http://a/b/c/g." },
+			{ ".g", "http://a/b/c/.g" }, { "..g", "http://a/b/c/..g" }
+		};
+		int good = 1;
+		NSMutableString *detail = [NSMutableString string];
+		NSUInteger i;
+
+		for (i = 0; i < sizeof(rows) / sizeof(rows[0]); i++) {
+			NSString *got = fn_resolve([NSString stringWithUTF8String:rows[i].reference], base);
+			NSString *want = [NSString stringWithUTF8String:rows[i].expected];
+
+			if (![got isEqualToString:want]) {
+				good = 0;
+				[detail appendFormat:@" [%s -> %@ want %@]", rows[i].reference, got, want];
+			}
+		}
+		check("rfc3986-abnormal-examples", good, good ? "all eight rows" : [detail UTF8String]);
+	}
+
 
 	{
 		NSURL *file = [NSURL fileURLWithPath:@"/System/Temporary Files/probe.txt"];
