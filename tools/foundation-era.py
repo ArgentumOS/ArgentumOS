@@ -43,6 +43,22 @@ for h in glob.glob(CORPUS + "*.h"):
                 v = ann(lines[j])                        # !! annotation FIRST -- it ends with `)`, so a terminator test
                 break                                    #   before this one broke on the line being looked for
         cls.setdefault(name, v)
+# !! AND THE CORPUS PARSE ABOVE IS NOW A FALLBACK, NOT THE GROUND: docs/reference/foundation-era.txt carries Apple's
+# OWN introducedAt for 187 owners, collected by tools/foundation-era-fetch.py, and it WINS where it has a name. It has
+# to: the header ground is sound for cutting and unsound for keeping, MEASURED -- NSUserNotification is a 10.8 class
+# whose header annotates NEITHER the class nor any of its 10 members, which is why the header ground's cut came out 34
+# classes short of the verified 85.
+ART = os.path.join(os.path.dirname(os.path.dirname(TREE.rstrip("/"))), "docs/reference/foundation-era.txt")
+ART_GROUND = {}
+if os.path.exists(ART):
+    for _line in io.open(ART, encoding="utf-8"):
+        if _line.startswith("#") or not _line.strip():
+            continue
+        _f = _line.rstrip("\n").split("\t")
+        if len(_f) >= 2 and vt(_f[1]):
+            ART_GROUND[_f[0]] = vt(_f[1])
+for _n, _v in ART_GROUND.items():
+    cls[_n] = _v                                 # the artefact replaces the header reading wherever it speaks
 def members(c):
     p = CORPUS + c + ".h"
     if not os.path.exists(p):

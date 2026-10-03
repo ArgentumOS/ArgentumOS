@@ -15982,6 +15982,33 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.133 — BOTH OWED ITEMS CLOSED, AND THE MEMBER AXIS IS ANSWERED BY SCOPE RATHER THAN BY A CRAWL (2026-10-01)
+
+**LANDED: `tools/foundation-era.py` now takes `docs/reference/foundation-era.txt` as its GROUND, with the header parse
+demoted to a fallback for names the artefact has no page for. MEASURED: CUT 87 classes, KEEP 103, and the member axis
+556 of 2549 declarations post-baseline (22%). Both axes now run off one authority.**
+
+**⚠⚠ AND THE MEMBER QUESTION IS ANSWERED, WHICH IS WHY NO PER-MEMBER CRAWL IS OWED AFTER ALL: AN UNANNOTATED HEADER IS
+UNANNOTATED THROUGHOUT — MEASURED: `NSUserNotification.h` annotates 0 of its 10 members and `NSLinguisticTagger.h` 0 of
+21 — BUT EVERY SUCH CLASS IS CUT OUTRIGHT AT 10.2, so its members never reach the member axis; and for a class this
+tree KEEPS, Apple DOES annotate later additions to it (`NSString`'s `-containsString:` reads `10.10`). SO THE MEMBER
+FIGURE IS SOUND OVER THE KEPT SET, AND THE RESIDUAL RISK IS ONE NAMEABLE THING: a method added after 10.2 to a 10.0-era
+class that Apple left unannotated.** *The risk is not removed, it is bounded — and bounding it is what made the crawl
+unnecessary rather than merely expensive.*
+
+**AND THE 2-CLASS DISAGREEMENT BETWEEN THE TWO READERS OF THE SAME GROUND IS RECORDED RATHER THAN SMOOTHED: the artefact
+alone yields 85, the tool yields 87, because the tool keeps the corpus parse as a fallback for names with no page. A
+reader comparing the two numbers deserves to know why they differ.**
+
+**AND PER-MEMBER AVAILABILITY IS NOT OBTAINABLE FROM APPLE'S CLASS PAGES — MEASURED: 0 of 259 references on the
+`NSString` page carry metadata at all.** Each symbol's OWN page does, which for 103 kept classes would be on the order of
+ten thousand requests. **THAT MEASUREMENT IS WHY THE HEADERS REMAIN THE MEMBER GROUND, AND WHY THE BOUND ABOVE MATTERS.**
+
+**THE CUT LIST IS NOW COMPLETE AND WAITING FOR APPROVAL RATHER THAN BEING APPLIED: 87 classes and 556 member
+declarations at a 10.2 baseline. NOTHING HAS BEEN REMOVED.** The next step is the removal itself, in the order §63.130
+fixed — the ledger's `era` column first (writer AND reader), then declarations and definitions together, then the
+callers.
+
 ## §63.132 — THE VERIFIED CUT, FROM APPLE'S OWN METADATA — AND A CORRECTION I OWE MY OWN RECORD (2026-10-01)
 
 **LANDED: `tools/foundation-era-fetch.py` — the one-time crawl, generator kept, output a tracked artefact — and
