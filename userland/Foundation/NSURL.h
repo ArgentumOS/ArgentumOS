@@ -602,6 +602,46 @@ extern NSURLResourceKey NSURLVolumeSupportsZeroRunsKey;
 extern NSURLResourceKey NSURLVolumeURLForRemountingKey;
 extern NSURLResourceKey NSURLVolumeUUIDStringKey;
 
+/* ⚠⚠ THE SEVEN BOOKMARK DOORS REFUSE BY NAME, ON THE USER'S DECISION OF 2026-10-01 (dec-412cc6306e238994),
+ * CONSISTENTLY WITH `-attributedStringByInflectingString` (§63.99): Apple's bookmark data is AN OPAQUE PER-SYSTEM
+ * SERIALISATION, so a system without that format can neither create nor resolve one — and **a door returning a
+ * plausible-looking `NSData` would be WORSE THAN A REFUSAL, because the data would round-trip here and mean nothing
+ * anywhere else.**
+ *
+ * ⚠ AND THE REFUSAL IS WHAT KEEPS THE OTHER CHOICE OPEN: a caller who meets the exception knows exactly what is
+ * missing, and a bookmark format of ours can land behind these same seven signatures later **without anybody having
+ * been misled in the meantime.**
+ *
+ * ⚠⚠ AND THE CATEGORY IS HERE, AT THE END OF THE HEADER, FOR A MEASURED REASON: the two option TYPES the doors take
+ * are declared at line 569, AFTER the class block — so declarations placed in the class named types that did not yet
+ * exist, which is precisely the `expected a type` × 4 that §63.104 read as missing typedefs. **THEY WERE NOT
+ * MISSING; THEY WERE LATER.** */
+@interface NSURL (NSURLBookmarks)
++ (nullable instancetype)URLByResolvingAliasFileAtURL:(NSURL *)url
+					      options:(NSURLBookmarkResolutionOptions)options
+						error:(NSError **)error;
++ (nullable NSURL *)URLByResolvingBookmarkData:(NSData *)bookmarkData
+				       options:(NSURLBookmarkResolutionOptions)options
+				 relativeToURL:(nullable NSURL *)relativeURL
+			   bookmarkDataIsStale:(nullable BOOL *)isStale
+					 error:(NSError **)error;
++ (nullable NSData *)bookmarkDataWithContentsOfURL:(NSURL *)bookmarkFileURL error:(NSError **)error;
++ (nullable NSArray *)resourceValuesForKeys:(NSArray *)keys fromBookmarkData:(NSData *)data;
++ (BOOL)writeBookmarkData:(NSData *)bookmarkData
+		    toURL:(NSURL *)bookmarkFileURL
+		  options:(NSURLBookmarkCreationOptions)options
+		    error:(NSError **)error;
+- (nullable NSData *)bookmarkDataWithOptions:(NSURLBookmarkCreationOptions)options
+	       includingResourceValuesForKeys:(nullable NSArray *)keys
+				relativeToURL:(nullable NSURL *)relativeURL
+					error:(NSError **)error;
+- (nullable instancetype)initByResolvingBookmarkData:(NSData *)bookmarkData
+					    options:(NSURLBookmarkResolutionOptions)options
+				      relativeToURL:(nullable NSURL *)relativeURL
+				bookmarkDataIsStale:(nullable BOOL *)isStale
+					      error:(NSError **)error;
+@end
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSURL_H */

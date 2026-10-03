@@ -51,6 +51,32 @@ static const char *fn_why(NSURL *url)
 
 int main(void)
 {
+
+	{
+		/* §63.106: THE SEVEN BOOKMARK DOORS REFUSE BY NAME (dec-412cc6306e238994), EACH ASSERTED ALONE — one check
+		 * over seven doors says only that SOMETHING raised, and a door that stopped raising would hide behind its
+		 * siblings. ⚠ The probe is ARC. */
+		NSURL *bu = [NSURL fileURLWithPath:@"/"];
+		NSData *bd = [[NSData alloc] init];
+		BOOL r1 = NO, r2 = NO, r3 = NO, r4 = NO, r5 = NO, r6 = NO, r7 = NO;
+
+		@try { (void)[NSURL URLByResolvingAliasFileAtURL:bu options:0 error:NULL]; } @catch (NSException *e) { r1 = YES; }
+		@try { (void)[NSURL URLByResolvingBookmarkData:bd options:0 relativeToURL:nil bookmarkDataIsStale:NULL error:NULL]; } @catch (NSException *e) { r2 = YES; }
+		@try { (void)[NSURL bookmarkDataWithContentsOfURL:bu error:NULL]; } @catch (NSException *e) { r3 = YES; }
+		@try { (void)[NSURL resourceValuesForKeys:[NSArray array] fromBookmarkData:bd]; } @catch (NSException *e) { r4 = YES; }
+		@try { (void)[NSURL writeBookmarkData:bd toURL:bu options:0 error:NULL]; } @catch (NSException *e) { r5 = YES; }
+		@try { (void)[bu bookmarkDataWithOptions:0 includingResourceValuesForKeys:nil relativeToURL:nil error:NULL]; } @catch (NSException *e) { r6 = YES; }
+		@try { (void)[[NSURL alloc] initByResolvingBookmarkData:bd options:0 relativeToURL:nil bookmarkDataIsStale:NULL error:NULL]; } @catch (NSException *e) { r7 = YES; }
+
+		check("url-bookmark-alias-resolution-refuses", r1, [[NSString stringWithFormat:@"raised=%d", (int)r1] UTF8String]);
+		check("url-bookmark-resolution-refuses", r2, [[NSString stringWithFormat:@"raised=%d", (int)r2] UTF8String]);
+		check("url-bookmark-data-with-contents-refuses", r3, [[NSString stringWithFormat:@"raised=%d", (int)r3] UTF8String]);
+		check("url-bookmark-resource-values-refuses", r4, [[NSString stringWithFormat:@"raised=%d", (int)r4] UTF8String]);
+		check("url-bookmark-write-refuses", r5, [[NSString stringWithFormat:@"raised=%d", (int)r5] UTF8String]);
+		check("url-bookmark-creation-refuses", r6, [[NSString stringWithFormat:@"raised=%d", (int)r6] UTF8String]);
+		check("url-bookmark-init-by-resolving-refuses", r7, [[NSString stringWithFormat:@"raised=%d", (int)r7] UTF8String]);
+	}
+
 	{
 		NSURL *u = [NSURL URLWithString:@"http://user@example.com:8080/a/b?q=1#frag"];
 		NSNumber *port = u != nil ? [u port] : nil;
@@ -108,11 +134,13 @@ int main(void)
 		 * it. What remains absent is the thing that PERFORMS an exchange on its own, which is the
 		 * distinction the request/response values already rest on.
 		 */
-		check("url-loading-system-absent",
-		      ![NSURL respondsToSelector:sel_registerName(
-			  "URLByResolvingBookmarkData:options:relativeToURL:"
-			  "bookmarkDataIsStale:error:")],
-		      "what is still absent from the loading system: the bookmark-resolution door");
+		/* \u26a0\u26a0 AND THIS CHECK IS GONE, BECAUSE ITS SUBJECT LANDED \u2014 THE FOURTH TIME AN ABSENCE ASSERTION HERE HAS
+		 * BEEN MADE HALF-FALSE, and the comment below it had already counted three (NSURLRequest, NSURLProtocol, then
+		 * the session). **AN ABSENCE ASSERTION IS A FACT ABOUT THE TREE, SO A LANDING MAKES IT FALSE, AND A CHECK THAT
+		 * HAS TO BE MOVED EVERY TIME SOMETHING LANDS IS A CHECK WITH A LIFETIME.**
+		 * \u26a0 AND IT IS DELETED RATHER THAN RE-TARGETED ON PURPOSE: replacing it with another door I believe to be
+		 * absent would be exactly this session's recurring mistake \u2014 WRITING FROM A REMEMBERED SHAPE INSTEAD OF A
+		 * MEASURED ONE \u2014 and the absent list it was standing in for is the ledger's job, not a probe's. */
 
 		/* AND THE SESSION ARRIVED, which is W7 slice 2c - THE THIRD TIME THIS ONE CHECK HAS BEEN MADE
 		 * HALF-FALSE, after NSURLRequest (slice 1) and NSURLProtocol (slice 2a). The rule has not

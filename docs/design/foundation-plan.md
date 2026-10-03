@@ -15982,6 +15982,43 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.106 — THE SEVEN BOOKMARK DOORS LAND AS REFUSALS, AND A FOURTH ABSENCE ASSERTION IS RETIRED (2026-10-01)
+
+**WHAT LANDED: `NSURL (NSURLBookmarks)` — SEVEN DOORS REFUSING BY NAME, ON THE USER'S DECISION
+(`dec-412cc6306e238994`), WITH ONE SHARED GROUND AND SEVEN CHECKS, ONE PER DOOR.**
+
+**MEASURED: `method shipped 2177 → 2184`, `open 381 → 374`; `--check` consistent; `make host-foundation` EXIT 0 with
+exactly the standing SIX warnings; `make testimg` EXIT 0; `make test TESTS='foundation_url'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with **`FOUNDATION-URL 34/34`**.**
+
+**⚠⚠ AND THE CATEGORY'S PLACE IN THE HEADER IS THE MEASURED FIX FOR EVERY PREVIOUS ATTEMPT'S FAILURE: the two option
+types are declared at `NSURL.h:569`, AFTER the class block (72–274), so declarations inside the class named types that
+did not yet exist — `expected a type` × 4, which §63.104 misread as missing typedefs. **THEY WERE NOT MISSING; THEY
+WERE LATER.** Placing the category before `NS_ASSUME_NONNULL_END`, after line 569, is what made it compile.**
+
+**⚠⚠ AND THE ROUND LOST THREE MORE ROUNDS TO THE SAME MISTAKE IN THREE NEW LAYERS — WRITING FROM A REMEMBERED SHAPE
+INSTEAD OF A MEASURED ONE:**
+ 1. the typedefs, which EXISTED (§63.105's `head -4` retraction);
+ 2. the declarations, placed in the class although the types come LATER;
+ 3. **THE PROBE'S OWN `check()` — `foundation_url`'s takes a `const char *`, and I copied the OBJECTIVE-C shape from a
+    DIFFERENT probe (`foundation_attributedstring`'s). THE TWO PROBES DO NOT SHARE A SIGNATURE**, and seven details
+    cost seven compile errors.
+**AND THE FIX EACH TIME WAS THE SAME ONE COMMAND: READ THE THING.** *The tree is the only authority on what the tree
+says, and so is each probe.*
+
+**⚠⚠ AND THE PROBE RETIRED A FOURTH HALF-FALSE ABSENCE ASSERTION, WHICH IS ITSELF A FINDING ABOUT THIS WHOLE
+CAMPAIGN'S PROBES: `url-loading-system-absent` asserted that `-URLByResolvingBookmarkData:…` was ABSENT — and the
+comment standing under it had already counted three previous occasions (NSURLRequest, NSURLProtocol, then the
+session).** *AN ABSENCE ASSERTION IS A FACT ABOUT THE TREE, SO EVERY LANDING MAKES IT FALSE, AND A CHECK THAT MUST BE
+MOVED EACH TIME SOMETHING LANDS IS A CHECK WITH A LIFETIME.* **AND IT WAS DELETED RATHER THAN RE-TARGETED ON PURPOSE:
+putting another door in its place because I BELIEVE it to be absent would be this session's recurring mistake one more
+time, and the list of what is absent is the LEDGER'S job, not a probe's.**
+
+**AND THE SHAPE OF THE UNIT FOLLOWS FROM THE DECISION: ONE GROUND IN ONE PLACE** (a refusal repeated seven times is a
+refusal free to drift into seven different refusals, and then a caller cannot tell one capability's absence from
+another's) **AND ONE CHECK PER DOOR** (one check over seven doors says only that SOMETHING raised, and a door that
+stopped raising would hide behind its siblings).
+
 ## §63.105 — RETRACTION: THE TYPES WERE ALREADY THERE, AND A `head -4` MADE ME SAY THEY WERE NOT (2026-10-01)
 
 **NO ROWS CLOSED. §63.104'S MEASUREMENT IS RETRACTED, AND THE WAY IT WAS WRONG IS THE PUREST INSTANCE OF THIS SESSION'S

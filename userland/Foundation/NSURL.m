@@ -1980,3 +1980,67 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 }
 
 @end
+
+
+/* ================== THE SEVEN BOOKMARK DOORS (§63.106) ==================
+ * ⚠ ONE GROUND, IN ONE PLACE: a refusal repeated seven times is a refusal free to drift into seven different
+ * refusals, and then a caller cannot tell one capability's absence from another's. */
+static void fn_url_bookmark_unsupported(const char *selector)
+{
+	[NSException raise:NSInvalidArgumentException
+		    format:@"%s: bookmark data is Apple's opaque per-system serialisation and this system has no "
+			   @"bookmark format, so a bookmark can be neither created nor resolved here. This is a "
+			   @"capability this system does not carry, not a failure of the argument.", selector];
+}
+
+@implementation NSURL (NSURLBookmarks)
+
++ (instancetype)URLByResolvingAliasFileAtURL:(NSURL *)url options:(NSURLBookmarkResolutionOptions)options
+				       error:(NSError **)error
+{
+	fn_url_bookmark_unsupported("+[NSURL URLByResolvingAliasFileAtURL:options:error:]");
+	return nil;
+}
+
++ (NSURL *)URLByResolvingBookmarkData:(NSData *)bookmarkData options:(NSURLBookmarkResolutionOptions)options
+			relativeToURL:(NSURL *)relativeURL bookmarkDataIsStale:(BOOL *)isStale error:(NSError **)error
+{
+	fn_url_bookmark_unsupported("+[NSURL URLByResolvingBookmarkData:options:relativeToURL:bookmarkDataIsStale:error:]");
+	return nil;
+}
+
++ (NSData *)bookmarkDataWithContentsOfURL:(NSURL *)bookmarkFileURL error:(NSError **)error
+{
+	fn_url_bookmark_unsupported("+[NSURL bookmarkDataWithContentsOfURL:error:]");
+	return nil;
+}
+
++ (NSArray *)resourceValuesForKeys:(NSArray *)keys fromBookmarkData:(NSData *)data
+{
+	fn_url_bookmark_unsupported("+[NSURL resourceValuesForKeys:fromBookmarkData:]");
+	return nil;
+}
+
++ (BOOL)writeBookmarkData:(NSData *)bookmarkData toURL:(NSURL *)bookmarkFileURL
+		  options:(NSURLBookmarkCreationOptions)options error:(NSError **)error
+{
+	fn_url_bookmark_unsupported("+[NSURL writeBookmarkData:toURL:options:error:]");
+	return NO;
+}
+
+- (NSData *)bookmarkDataWithOptions:(NSURLBookmarkCreationOptions)options
+       includingResourceValuesForKeys:(NSArray *)keys relativeToURL:(NSURL *)relativeURL error:(NSError **)error
+{
+	fn_url_bookmark_unsupported("-[NSURL bookmarkDataWithOptions:includingResourceValuesForKeys:relativeToURL:error:]");
+	return nil;
+}
+
+- (instancetype)initByResolvingBookmarkData:(NSData *)bookmarkData options:(NSURLBookmarkResolutionOptions)options
+			      relativeToURL:(NSURL *)relativeURL bookmarkDataIsStale:(BOOL *)isStale
+				      error:(NSError **)error
+{
+	fn_url_bookmark_unsupported("-[NSURL initByResolvingBookmarkData:options:relativeToURL:bookmarkDataIsStale:error:]");
+	return nil;
+}
+
+@end

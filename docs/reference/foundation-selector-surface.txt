@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2177   open  381   struck  370
+#   method     shipped 2184   open  374   struck  370
 #   property   shipped 1278   open  186   struck  172
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3359,8 +3359,8 @@ method	open	-URLByAppendingPathComponent:conformingToType:	NSURL	Fundamentals / 
 method	shipped	-URLByAppendingPathComponent:isDirectory:	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
 method	shipped	-URLByAppendingPathExtension:	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
 method	open	-URLByAppendingPathExtensionForType:	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
-method	open	+URLByResolvingAliasFileAtURL:options:error:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	+URLByResolvingBookmarkData:options:relativeToURL:bookmarkDataIsStale:error:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	+URLByResolvingAliasFileAtURL:options:error:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	+URLByResolvingBookmarkData:options:relativeToURL:bookmarkDataIsStale:error:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	open	+URLFromPasteboard:	NSURL	Fundamentals / URLs / Working with Pasteboards	-	objc
 method	shipped	-URLHandleUsingCache:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
 method	shipped	+URLWithDataRepresentation:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
@@ -3368,8 +3368,8 @@ method	shipped	+URLWithString:	NSURL	Fundamentals / URLs / Creating a URL object
 method	shipped	+URLWithString:encodingInvalidCharacters:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	+URLWithString:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	+absoluteURLWithDataRepresentation:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	+bookmarkDataWithContentsOfURL:error:	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
-method	open	-bookmarkDataWithOptions:includingResourceValuesForKeys:relativeToURL:error:	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
+method	shipped	+bookmarkDataWithContentsOfURL:error:	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
+method	shipped	-bookmarkDataWithOptions:includingResourceValuesForKeys:relativeToURL:error:	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
 method	open	-checkPromisedItemIsReachableAndReturnError:	NSURL	Fundamentals / URLs / Working with Promised Items	-	objc
 method	shipped	-checkResourceIsReachableAndReturnError:	NSURL	Fundamentals / URLs / Querying an NSURL	-	objc
 method	open	-fileReferenceURL	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
@@ -3383,7 +3383,7 @@ method	shipped	-getFileSystemRepresentation:maxLength:	NSURL	Fundamentals / URLs
 method	open	-getPromisedItemResourceValue:forKey:error:	NSURL	Fundamentals / URLs / Working with Promised Items	-	objc
 method	shipped	-getResourceValue:forKey:error:	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
 method	shipped	-initAbsoluteURLWithDataRepresentation:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	-initByResolvingBookmarkData:options:relativeToURL:bookmarkDataIsStale:error:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
+method	shipped	-initByResolvingBookmarkData:options:relativeToURL:bookmarkDataIsStale:error:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	-initFileURLWithFileSystemRepresentation:isDirectory:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	-initFileURLWithPath:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	-initFileURLWithPath:isDirectory:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
@@ -3402,7 +3402,7 @@ method	shipped	-removeAllCachedResourceValues	NSURL	Fundamentals / URLs / Access
 method	shipped	-removeCachedResourceValueForKey:	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
 method	open	-resourceDataUsingCache:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
 method	shipped	-resourceValuesForKeys:error:	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
-method	open	+resourceValuesForKeys:fromBookmarkData:	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
+method	shipped	+resourceValuesForKeys:fromBookmarkData:	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
 method	shipped	-setProperty:forKey:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
 method	open	-setResourceData:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
 method	shipped	-setResourceValue:forKey:error:	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
@@ -3410,7 +3410,7 @@ method	shipped	-setResourceValues:error:	NSURL	Fundamentals / URLs / Accessing R
 method	shipped	-setTemporaryResourceValue:forKey:	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
 method	open	-startAccessingSecurityScopedResource	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
 method	open	-stopAccessingSecurityScopedResource	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
-method	open	+writeBookmarkData:toURL:options:error:	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
+method	shipped	+writeBookmarkData:toURL:options:error:	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
 method	open	-writeToPasteboard:	NSURL	Fundamentals / URLs / Working with Pasteboards	-	objc
 property	shipped	URLByDeletingLastPathComponent	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
 property	shipped	URLByDeletingPathExtension	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc

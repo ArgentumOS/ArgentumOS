@@ -28,7 +28,14 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_url"
-CHECKS = ("url-parse", "url-refusals", "url-loading-system-absent", "url-request-values-shipped",
+CHECKS = (
+    "url-bookmark-init-by-resolving-refuses",
+    "url-bookmark-creation-refuses",
+    "url-bookmark-write-refuses",
+    "url-bookmark-resource-values-refuses",
+    "url-bookmark-data-with-contents-refuses",
+    "url-bookmark-resolution-refuses",
+    "url-bookmark-alias-resolution-refuses","url-parse", "url-refusals", "url-request-values-shipped",
           "urlprotocol-seam-shipped", "url-session-shipped", "url-shipped", "url-file", "url-file-refusals",
           "url-append-path", "url-delete-path", "url-equality", "url-identity",
           "urlconnection-shipped",
