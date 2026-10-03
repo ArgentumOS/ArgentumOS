@@ -19,6 +19,9 @@
  *     §C.4 table is about (`NSKeyedArchiver.m:205`).
  */
 #import <Foundation/Foundation.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -79,6 +82,13 @@ static int contains(const void *haystack, size_t hayLength, const char *needle)
  * nothing is substituted at all. */
 @interface ProbePlain : NSObject
 @end
+
+
+/* §63.191: the no-copy deallocator's accounting, so the probe can assert it ran exactly once, with the
+ * caller's own pointer and length. */
+static int fn_probe_deallocator_calls = 0;
+static void *fn_probe_deallocator_bytes = NULL;
+static size_t fn_probe_deallocator_length = 0;
 
 @implementation ProbeCluster
 
@@ -1578,6 +1588,78 @@ int main(void)
 	}
 
 	printf("FOUNDATION-CLUSTERS DONE\n");
+
+	{
+		/* §63.191: THE DEPRECATED BASE64 PAIR and the legacy void -getBytes:. */
+		NSData *plain = [@"hello, world" dataUsingEncoding:NSUTF8StringEncoding];
+		NSString *enc = [plain base64Encoding];
+		NSData *back = [[NSData alloc] initWithBase64Encoding:enc];
+		NSData *refused = [[NSData alloc] initWithBase64Encoding:@"not base64!!"];
+		unsigned char buffer[32];
+		char detail[256];
+
+		memset(buffer, 0, sizeof buffer);
+		[plain getBytes:buffer];
+		snprintf(detail, sizeof detail, "encoded=[%s] round-trip=%d refused=%d copied=[%.12s]",
+			 enc != nil ? [enc UTF8String] : "(nil)",
+			 back != nil && [back isEqualToData:plain], refused == nil, (const char *)buffer);
+		check("data-deprecated-base64-pair-and-get-bytes",
+		      enc != nil && back != nil && [back isEqualToData:plain] && refused == nil &&
+		      memcmp(buffer, "hello, world", 12) == 0, detail);
+	}
+	{
+		/* THE NO-COPY DEALLOCATOR: ONCE, at deallocation, with the CALLER's pointer and length. The
+		 * autorelease pool is how an ARC probe ends an object's life deterministically. */
+		void *mine = malloc(4);
+		char detail[192];
+
+		memcpy(mine, "abcd", 4);
+		@autoreleasepool {
+			NSData *holder = [[NSData alloc] initWithBytesNoCopy:mine length:4
+								  deallocator:^(void *bytes, size_t length) {
+				fn_probe_deallocator_calls++;
+				fn_probe_deallocator_bytes = bytes;
+				fn_probe_deallocator_length = length;
+			}];
+			NSData *expected = [[NSData alloc] initWithBytes:"abcd" length:4];
+
+			if (![holder isEqualToData:expected]) {
+				fn_probe_deallocator_calls = -100;	/* the bytes must arrive intact */
+			}
+		}
+		snprintf(detail, sizeof detail, "calls=%d same-pointer=%d length=%lu",
+			 fn_probe_deallocator_calls, fn_probe_deallocator_bytes == mine,
+			 (unsigned long)fn_probe_deallocator_length);
+		check("data-no-copy-deallocator-runs-once",
+		      fn_probe_deallocator_calls == 1 && fn_probe_deallocator_bytes == mine &&
+		      fn_probe_deallocator_length == 4, detail);
+		free(mine);
+	}
+	{
+		/* THE MAPPED-FILE PAIR, ASSERTED AGAINST THE FILE'S CONTENT AND NOT AGAINST SHARING — because
+		 * sharing is what MEASUREMENT TOOK AWAY: a MAP_SHARED mapping of this file answered the right
+		 * length and ZERO bytes, so the doors read the file and the check asserts what they promise. The
+		 * sharing form is owed to the platform, and this comment is where that is recorded. */
+		NSString *dir = NSTemporaryDirectory();
+		NSError *ignored = nil;
+		NSString *path;
+		NSData *read;
+		char detail[256];
+
+		if (dir == nil || ![[NSFileManager defaultManager] fileExistsAtPath:dir]) {
+			dir = [[NSFileManager defaultManager] currentDirectoryPath];
+		}
+		path = [dir stringByAppendingPathComponent:@"fn_probe_mapped.dat"];
+		[[@"0123456789" dataUsingEncoding:NSUTF8StringEncoding] writeToFile:path atomically:NO];
+		read = [[NSData alloc] initWithContentsOfMappedFile:path];
+		snprintf(detail, sizeof detail, "bytes=[%.10s] length=%lu class-method=%d",
+			 read != nil ? (const char *)[read bytes] : "(nil)", (unsigned long)[read length],
+			 [[NSData dataWithContentsOfMappedFile:path] isEqualToData:read]);
+		check("data-mapped-file-door-reads-the-file",
+		      read != nil && [read length] == 10 && memcmp([read bytes], "0123456789", 10) == 0, detail);
+		[[NSFileManager defaultManager] removeItemAtPath:path error:&ignored];
+	}
+
 	printf("FOUNDATION-CLUSTERS RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output: after a probe the console can stop serving INPUT for
 	 * a while, so an `echo $?` the harness types may never run. */

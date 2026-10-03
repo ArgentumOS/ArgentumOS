@@ -966,6 +966,57 @@ def order():
     return 0
 
 
+def audit():
+    """THE PARSE-ACCOUNTING RULE THE PLAN'S §8h SAYS WAS MISSING, AS A MODE.
+
+    For every header: the raw `@interface`/`@protocol` lines and the raw member lines must equal what
+    `parse()` produced. IT IS THE CHECK THAT FOUND THIS INSTRUMENT'S OWN DEFECT — a no-argument method
+    whose parenthesised return type is followed by a space was dropped in silence, 61 declarations
+    across 14 headers, and this ledger had already shipped short. Run it after any change to the reader;
+    it needs the corpus, so it is NOT part of `--check`.
+
+    TWO ACCOUNTING RULES, EACH OF WHICH COST A FALSE ALARM ONCE, AND BOTH ARE IN THE CODE:
+      * a member line is `[-+]` followed by `(` OR an identifier — `- initWithDelegate:name:` declares a
+        method with NO return type, and a rule that required `(` reported NSInputServer.h as having one
+        method too many;
+      * a DUPLICATED container line is ONE container — a later corpus repeats `@interface X : Y {` inside
+        `#if`/`#else`, and comparing raw LINES against parsed ROWS reported every such file as short.
+    """
+    corpus = read_corpus(CORPUS)
+    if not corpus:
+        print("appkit-102-sweep: --audit needs the corpus at %s" % CORPUS)
+        return 1
+    print("appkit-102-sweep --audit: %d header(s)" % len(corpus))
+    diff = 0
+    for fname in sorted(corpus):
+        text = strip_comments(corpus[fname])
+        raw_c = set()
+        for line in text.splitlines():
+            m = re.match(r"\s*@interface\s+[A-Za-z_]\w*\s*\(\s*([A-Za-z_]\w*)\s*\)", line)
+            if m:
+                raw_c.add(m.group(1))
+                continue
+            m = re.match(r"\s*@(?:interface|protocol)\s+([A-Za-z_]\w*)", line)
+            if m:
+                raw_c.add(m.group(1))
+        raw_m = len(re.findall(r"^\s*[-+]\s*[\(A-Za-z_]", text, re.M))
+        raw_p = len(re.findall(r"^\s*@property\b", text, re.M))
+        rows = parse(corpus[fname])
+        got_c = {r["name"] for r in rows if r["kind"] in ("class", "protocol", "category")}
+        got_m = len([r for r in rows if r["kind"] == "method"])
+        got_p = len([r for r in rows if r["kind"] == "property"])
+        if raw_c != got_c or raw_m != got_m or raw_p != got_p:
+            diff += 1
+            print("  DIFF %-28s containers %d/%d %s  members %d/%d  properties %d/%d"
+                  % (fname, len(got_c), len(raw_c), sorted(got_c ^ raw_c), got_m, raw_m,
+                     got_p, raw_p))
+    bad = [(f, r["kind"], r["name"]) for f in sorted(corpus) for r in parse(corpus[f])
+           if re.search(r"AND_LATER|AVAILABLE_MAC_OS|DEPRECATED_IN_MAC", r["name"])]
+    print("files whose parsed counts differ from the raw lines: %d" % diff)
+    print("rows whose NAME is an availability-macro remnant: %d %s" % (len(bad), bad[:3]))
+    return 1 if (diff or bad) else 0
+
+
 def main(argv):
     mode = argv[1] if len(argv) > 1 else "--check"
     if mode == "--refresh":

@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1662	open	153	struck	399
+# method	shipped	1668	open	147	struck	399
 # property	shipped	705	open	59	struck	172
 
 
@@ -638,7 +638,7 @@ property	struck	createClassDescription	NSCreateCommand	App Support / Script Comm
 property	struck	resolvedKeyDictionary	NSCreateCommand	App Support / Script Commands / Getting information about a create command	declined	objc
 method	shipped	-base64EncodedDataWithOptions:	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations	-	objc
 method	shipped	-base64EncodedStringWithOptions:	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations	-	objc
-method	open	-base64Encoding	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations	deprecated	objc
+method	shipped	-base64Encoding	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations	deprecated	objc
 method	shipped	-compressedDataUsingAlgorithm:error:	NSData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
 method	shipped	+data	NSData	Fundamentals / Binary Data / Creating Data	-	objc
 method	shipped	+dataWithBytes:length:	NSData	Fundamentals / Binary Data / Creating Data	-	objc
@@ -646,25 +646,25 @@ method	shipped	+dataWithBytesNoCopy:length:	NSData	Fundamentals / Binary Data / 
 method	shipped	+dataWithBytesNoCopy:length:freeWhenDone:	NSData	Fundamentals / Binary Data / Creating Data	-	objc
 method	shipped	+dataWithContentsOfFile:	NSData	Fundamentals / Binary Data / Reading Data from a File	-	objc
 method	shipped	+dataWithContentsOfFile:options:error:	NSData	Fundamentals / Binary Data / Reading Data from a File	-	objc
-method	open	+dataWithContentsOfMappedFile:	NSData	Fundamentals / Binary Data / Reading Data from a File	deprecated	objc
+method	shipped	+dataWithContentsOfMappedFile:	NSData	Fundamentals / Binary Data / Reading Data from a File	deprecated	objc
 method	shipped	+dataWithContentsOfURL:	NSData	Fundamentals / Binary Data / Type Methods	-	objc
 method	shipped	+dataWithContentsOfURL:options:error:	NSData	Fundamentals / Binary Data / Type Methods	-	objc
 method	shipped	+dataWithData:	NSData	Fundamentals / Binary Data / Creating Data	-	objc
 method	shipped	-decompressedDataUsingAlgorithm:error:	NSData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
 method	shipped	-enumerateByteRangesUsingBlock:	NSData	Fundamentals / Binary Data / Accessing Underlying Bytes	-	objc
-method	open	-getBytes:	NSData	Fundamentals / Binary Data / Accessing Underlying Bytes	deprecated	objc
+method	shipped	-getBytes:	NSData	Fundamentals / Binary Data / Accessing Underlying Bytes	deprecated	objc
 method	shipped	-getBytes:length:	NSData	Fundamentals / Binary Data / Accessing Underlying Bytes	-	objc
 method	shipped	-getBytes:range:	NSData	Fundamentals / Binary Data / Accessing Underlying Bytes	-	objc
 method	shipped	-initWithBase64EncodedData:options:	NSData	Fundamentals / Binary Data / Instance Methods	-	objc
 method	shipped	-initWithBase64EncodedString:options:	NSData	Fundamentals / Binary Data / Instance Methods	-	objc
-method	open	-initWithBase64Encoding:	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations	deprecated	objc
+method	shipped	-initWithBase64Encoding:	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations	deprecated	objc
 method	shipped	-initWithBytes:length:	NSData	Fundamentals / Binary Data / Creating Data	-	objc
 method	shipped	-initWithBytesNoCopy:length:	NSData	Fundamentals / Binary Data / Creating Data	-	objc
-method	open	-initWithBytesNoCopy:length:deallocator:	NSData	Fundamentals / Binary Data / Creating Data	-	objc
+method	shipped	-initWithBytesNoCopy:length:deallocator:	NSData	Fundamentals / Binary Data / Creating Data	-	objc
 method	shipped	-initWithBytesNoCopy:length:freeWhenDone:	NSData	Fundamentals / Binary Data / Creating Data	-	objc
 method	shipped	-initWithContentsOfFile:	NSData	Fundamentals / Binary Data / Reading Data from a File	-	objc
 method	shipped	-initWithContentsOfFile:options:error:	NSData	Fundamentals / Binary Data / Reading Data from a File	-	objc
-method	open	-initWithContentsOfMappedFile:	NSData	Fundamentals / Binary Data / Reading Data from a File	deprecated	objc
+method	shipped	-initWithContentsOfMappedFile:	NSData	Fundamentals / Binary Data / Reading Data from a File	deprecated	objc
 method	shipped	-initWithContentsOfURL:	NSData	Fundamentals / Binary Data / Instance Methods	-	objc
 method	shipped	-initWithContentsOfURL:options:error:	NSData	Fundamentals / Binary Data / Instance Methods	-	objc
 method	shipped	-initWithData:	NSData	Fundamentals / Binary Data / Creating Data	-	objc

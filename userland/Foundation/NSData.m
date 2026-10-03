@@ -10,6 +10,7 @@
  */
 
 #import <Foundation/NSData.h>
+#include <Block.h>
 #import <Foundation/NSCoder.h>	/* the coder forms take NSCoder */
 #import <Foundation/NSString.h>
 #import <Foundation/NSError.h>
@@ -188,6 +189,49 @@
 		free(bytes);
 	}
 	return self;
+}
+
+- (id)initWithBytesNoCopy:(void *)bytes length:(size_t)length deallocator:(void (^)(void *, size_t))deallocator
+{
+	self = [self initWithBytes:bytes length:length];
+	if (self == nil) {
+		return nil;
+	}
+	_noCopyBytes = bytes;
+	_noCopyLength = length;
+	_deallocator = Block_copy(deallocator);
+	return self;
+}
+
+- (id)initWithContentsOfMappedFile:(NSString *)path
+{
+	/* A READ, NOT A MAPPING: see the header's note — `mapped=[] length=10` is what this platform's file
+	 * mappings answer, so mapping would ship a door that returns zero-filled data. */
+	return [self initWithContentsOfFile:path];
+}
+
++ (NSData *)dataWithContentsOfMappedFile:(NSString *)path
+{
+	return [[self alloc] initWithContentsOfMappedFile:path];
+}
+
+- (id)initWithBase64Encoding:(NSString *)base64String
+{
+	return [self initWithBase64EncodedString:base64String options:NSDataBase64DecodingDefault];
+}
+
+- (NSString *)base64Encoding
+{
+	return [self base64EncodedStringWithOptions:NSDataBase64EncodingDefault];
+}
+
+/* THE LEGACY VOID FORM: it copies `length` bytes and takes no length of its own. */
+- (void)getBytes:(void *)buffer
+{
+	if (buffer == NULL || _bytes == NULL) {
+		return;
+	}
+	memcpy(buffer, _bytes, _length);
 }
 
 - (id)initWithContentsOfFile:(NSString *)path
@@ -629,6 +673,11 @@ static int base64Value(unsigned char c)
 - (void)dealloc
 {
 	free(_bytes);
+	if (_deallocator != nil) {
+		/* THE CALLER'S CLEANUP IS CALLED WITH THE CALLER'S POINTER, exactly once, here. */
+		((void (^)(void *, size_t))_deallocator)(_noCopyBytes, _noCopyLength);
+		Block_release(_deallocator);
+	}
 	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 

@@ -238,8 +238,7 @@ CHECKS = (
           "nscharacterset-nscoding-round-trip",
           # M8: NSValue - a front over a documented payload seam.
           "nsvalue-archiver-answer",
-          "nsvalue-primitives-drive-the-doors",
-          )
+          "nsvalue-primitives-drive-the-doors", "data-deprecated-base64-pair-and-get-bytes", "data-no-copy-deallocator-runs-once", "data-mapped-file-door-reads-the-file")
 # NOTE: the three COMPILE-PROBE checks below are NOT in this tuple, and that is deliberate - this tuple
 # is matched against the GUEST probe's stdout, and the compile probe prints nothing there: it is a
 # host-side check reported through -check(), exactly like shell-ready and probe-ran.

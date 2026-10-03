@@ -15962,6 +15962,38 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.191 — NSData: the deprecated base64 pair, the legacy byte door, the no-copy transfer, and a MAPPED pair the platform would not honour
+
+Six rows: `method shipped 1662 → 1668, open 153 → 147` — `-base64Encoding`, `-initWithBase64Encoding:`,
+`-getBytes:`, `+dataWithContentsOfMappedFile:`, `-initWithContentsOfMappedFile:`,
+`-initWithBytesNoCopy:length:deallocator:`.
+
+**THE THREE SIMPLE ONES STAND ON DOORS ALREADY HERE:** the deprecated pair is the options pair with default
+options (round-tripping a known string, and refusing an undecodable one), and the legacy void form copies the
+whole length into a buffer the caller already sized.
+
+**`-initWithBytesNoCopy:length:deallocator:` COPIES, AND SAYS SO.** This class's storage is ONE OWNED BLOCK —
+the same reason `-initWithBytesNoCopy:length:freeWhenDone:` already copies — so the deviation is named in the
+header beside the door, and the ownership transfer is honoured where it is OBSERVABLE: the deallocator is
+called **once**, with the **caller's** pointer and length, at deallocation. The check counts the calls, not
+the copying: `calls=1 same-pointer=1 length=4`.
+
+**AND THE MAPPED PAIR IS WHERE MEASUREMENT OVERRULED THE DESIGN.** The first implementation was a real
+`mmap(2)` with `MAP_SHARED`, and its check asserted the property that MAKES a mapped file mapped — a write
+reaching the file afterwards is visible through the object — which a read-into-a-buffer implementation cannot
+pass. It failed with `mapped=[] length=10`: **the mapping carries the right length and ZERO bytes**, so on
+this system a file mapping is not a view of the file's pages at all. Shipping the mapping would have meant
+shipping a door that answers zero-filled data. So the pair reads the file, the deviation and its measurement
+are written where a reader meets them, and the sharing form is recorded as OWED TO THE PLATFORM rather than
+faked. The unused mapping machinery was removed with it — dead code that no door reaches is not a keepsake.
+
+**A TRAP WORTH THE LINE IT COSTS:** `_capacity` is `NSMutableData`'s ivar, not `NSData`'s, and the compiler
+said so when the mapped initializer tried to set it.
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_clusters` → `TESTS-OK` with the
+probe tally `94 of 95 ok` → 95 of 95, three new checks; `tools/foundation-sweep.py --check` consistent
+(`method 1668/147/399`, `property 705/59/172`).
+
 ## §63.190 — NSTimer: the four block/invocation pairs and tolerance, and the probe rule this unit's own timers taught
 
 Six rows: `method shipped 1657 → 1662, open 158 → 153` (`+timerWithTimeInterval:repeats:block:`,

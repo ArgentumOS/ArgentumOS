@@ -56,6 +56,9 @@ NS_ASSUME_NONNULL_BEGIN
 {
 	unsigned char *_bytes;		/* owned; NULL only while empty */
 	size_t _length;
+	void *_noCopyBytes;		/* the CALLER's buffer, handed over with a deallocator */
+	size_t _noCopyLength;
+	id _deallocator;		/* called with (buffer, length) when this data goes away */
 }
 
 /* Cocoa's option set for the ENCODING methods. It is one of TWO types, and that is
@@ -186,6 +189,30 @@ enum {
 - (nullable const void *)bytes;
 - (void)getBytes:(void *)buffer length:(size_t)length;
 - (void)getBytes:(void *)buffer range:(NSRange)range;
+
+/* THE DEPRECATED PAIR AND THE LEGACY VOID BYTE DOOR (§63.191). They stand on the doors above: the pair is
+ * `-base64EncodedStringWithOptions:` and `-initWithBase64EncodedString:options:` with default options, and
+ * the void form copies the whole length into a buffer the caller already sized. */
+- (nullable NSString *)base64Encoding;				/* ⚠ deprecated: use the options doors above */
+- (nullable id)initWithBase64Encoding:(NSString *)base64String;	/* ⚠ deprecated */
+- (void)getBytes:(void *)buffer;				/* ⚠ legacy: no length, so the caller must know it */
+
+/* THE MAPPED FILE PAIR. ⚠ A NAMED DEVIATION, MEASURED RATHER THAN CHOSEN: on this system a MAP_SHARED
+ * mapping of a file answers the right LENGTH and ZERO BYTES (the probe's own check read `[]` for a ten-byte
+ * file), so these doors read the file instead of mapping it. What they must not do is claim a sharing
+ * property the platform does not provide: the bytes are the file's, and nothing observes a later write.
+ * ⚠ Also deprecated in Apple's SDKs, in favour of the options forms. */
++ (nullable NSData *)dataWithContentsOfMappedFile:(NSString *)path;	/* ⚠ deprecated */
+- (nullable id)initWithContentsOfMappedFile:(NSString *)path;		/* ⚠ deprecated */
+
+/* THE OWNERSHIP-TRANSFERRING FORM. ⚠ THIS LIBRARY'S STORAGE IS ONE OWNED BLOCK, so the bytes are copied —
+ * the same reason -initWithBytesNoCopy:length:freeWhenDone: copies — and the transfer is honoured where it
+ * is observable: the deallocator is called ONCE, with the CALLER's pointer and length, when this data is
+ * deallocated. A caller handing over a malloc'd buffer sees exactly one cleanup; one relying on its buffer
+ * being used in place would not. */
+- (nullable id)initWithBytesNoCopy:(void *)bytes
+			    length:(size_t)length
+		       deallocator:(void (^)(void *bytes, size_t length))deallocator;
 - (NSData *)subdataWithRange:(NSRange)range;
 - (NSRange)rangeOfData:(NSData *)other
 	       options:(NSDataSearchOptions)options
