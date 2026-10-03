@@ -15969,6 +15969,53 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.141 — THE URL-ENGINE REWRITE, READ IN FULL: FOUR DOORS HAVE NO PROTOCOL EQUIVALENT, WHICH IS THE DESIGN (2026-10-01)
+
+**THE USER'S DECISION (dec-148b4598987d58c5): REWRITE `NSURLConnection` TO DRIVE `NSURLProtocol`/curl — the 10.2 design.
+`NSURLConnection.m` WAS THEN READ IN FULL (566 lines) AND THE PLAN BELOW IS WHAT IT SAYS.**
+
+**WHAT THE FILE IS TODAY: A SESSION FACADE WITH EIGHT TRANSLATED DELEGATE DOORS** — `didReceiveResponse:` (answers
+`Allow` at once, because Apple's connection door is a NOTIFICATION and not a question), `didReceiveData:`,
+`willPerformHTTPRedirection:` (the one door whose SHAPE matches, so nothing is translated), `needNewBodyStream:`,
+`willCacheResponse:`, `didSendBodyData:`, `didWriteData:`, `didReceiveChallenge:` (Apple's precedence written out:
+modern door, then the gate, then the deprecated pair, then default) and `didCompleteWithError:` — **plus a download path
+through `downloadTaskWithRequest:completionHandler:` and a synchronous path through `[NSURLSession sharedSession]` with a
+pthread mutex+cond state struct.**
+
+**⚠⚠ AND THE FINDING THAT SHAPES THE REWRITE: FOUR OF THOSE DOORS HAVE NO `NSURLProtocol` EQUIVALENT AT ALL.**
+`NSURLProtocolClient` offers `didReceiveResponse:`, `cachedResponseIsValid:`, `wasRedirectedToRequest:redirectResponse:`,
+`didLoadData:`, `didReceiveAuthenticationChallenge:`, `didFinishLoading`, `didFailWithError:` — **and NOTHING for:**
+ 1. **`needNewBodyStream:`** (the re-send's body, §62.35);
+ 2. **upload progress `didSendBodyData:`** (§62.32);
+ 3. **download progress `didWriteData:`** (§62.29);
+ 4. **the cache DECISION `willCacheResponse:`** — the protocol has `cachedResponseIsValid:`, which is a NOTIFICATION
+    rather than a question, so the door changes shape rather than moving.
+
+***SO THE REWRITE IS NOT A MECHANICAL MAPPING: IT CHANGES WHAT THE CLASS CAN DO — AND AT A 10.2 BASELINE THAT IS THE
+CORRECT OUTCOME RATHER THAN A LOSS.*** All four are SESSION-ERA ADDITIONS to `NSURLConnection`; 10.2's connection had no
+upload-progress, no body-stream and no cache-decision door, and **the download-to-FILE path was never this class's at
+all — it is `NSURLDownload`'s, A 10.2 CLASS THIS TREE ALREADY HAS (`NSURLDownload.m`, kept).** *Which means three of the
+four are not gaps the rewrite must fill: they are MEMBERS THE MEMBER CUT REMOVES.*
+
+**THE PLAN, IN THE ORDER THE TWO AXES NOW DICTATE:**
+ 1. **the member cut decides which of the eight doors survive at 10.2** — the progress pair, the body-stream door and the
+    cache decision are session-era additions, so they leave with the rest of the member cut;
+ 2. **`NSURLConnection` is rebuilt as an `NSURLProtocolClient` over `FNCURLURLProtocol`**: `+fnProtocolClassForRequest:`
+    is already how `+canHandleRequest:` answers (§46/§52, consulted and not duplicated), so the protocol registry is the
+    engine's door and the class becomes: obtain a protocol, `client = self`, `-startLoading`, and implement the client
+    doors as the delegate translations they already are;
+ 3. **`NSURLDownload` owns the download-to-file path**, where 10.2 put it;
+ 4. **`+sendSynchronousRequest:…` loses the session and its completion block** — the protocol's client doors arrive on
+    the loading thread, so the wait becomes the same mutex+cond shape with the client as the writer, which is a smaller
+    change than it looks: the state struct and the two primitives survive untouched;
+ 5. **the disposition enum moves out of the public `NSURLProtocol.h`**, one pass, with `FNCURLURLProtocol.m` in the same
+    pass — the rule §63.139 measured the hard way;
+ 6. **and the probes are re-pointed**, since `foundation_urlconnection` tests doors that step 1 removes.
+
+**NOTHING WAS CHANGED IN THIS STEP: it is the design pass, and it is the largest single unit the cut has produced.**
+Steps 1, 5 and 6 are mechanical; **step 2 is a rewrite of a working class, and it is the one that wants a verified tree
+either side of it.**
+
 ## §63.140 — THE KEPT `NSURLConnection` IS BUILT ON THE CUT `NSURLSession`: A RE-ARCHITECTURE, NOT A DELETION (2026-10-01)
 
 **⚠⚠ MEASURED, AND IT IS THE MOST CONSEQUENTIAL FACT IN THIS WHOLE CUT. `NSURLConnection` IS A 10.2 CLASS WE KEEP — AND
