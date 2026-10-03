@@ -34,7 +34,7 @@
 #
 # kind	status	name	owner	family	why	src
 # method	shipped	1616	open	199	struck	399
-# property	shipped	679	open	85	struck	172
+# property	shipped	682	open	82	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -1000,8 +1000,8 @@ property	shipped	fileHandleWithStandardError	NSFileHandle	Files and Data Persist
 property	shipped	fileHandleWithStandardInput	NSFileHandle	Files and Data Persistence / Managed file access / Getting a file handle	-	objc
 property	shipped	fileHandleWithStandardOutput	NSFileHandle	Files and Data Persistence / Managed file access / Getting a file handle	-	objc
 property	open	offsetInFile	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
-property	open	readabilityHandler	NSFileHandle	Files and Data Persistence / Managed file access / Monitoring for readability and writability	-	objc
-property	open	writeabilityHandler	NSFileHandle	Files and Data Persistence / Managed file access / Monitoring for readability and writability	-	objc
+property	shipped	readabilityHandler	NSFileHandle	Files and Data Persistence / Managed file access / Monitoring for readability and writability	-	objc
+property	shipped	writeabilityHandler	NSFileHandle	Files and Data Persistence / Managed file access / Monitoring for readability and writability	-	objc
 method	shipped	-URLForDirectory:inDomain:appropriateForURL:create:error:	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc
 method	shipped	-URLForPublishingUbiquitousItemAtURL:expirationDate:error:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
 method	shipped	-URLForUbiquityContainerIdentifier:	NSFileManager	Files and Data Persistence / File system operations / Managing iCloud-based items	-	objc
@@ -2460,7 +2460,7 @@ property	shipped	running	NSTask	Low-Level Utilities / Scripts and External Tasks
 property	shipped	standardError	NSTask	Low-Level Utilities / Scripts and External Tasks / Configuring a process	-	objc
 property	shipped	standardInput	NSTask	Low-Level Utilities / Scripts and External Tasks / Configuring a process	-	objc
 property	shipped	standardOutput	NSTask	Low-Level Utilities / Scripts and External Tasks / Configuring a process	-	objc
-property	open	terminationHandler	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with termination handlers	-	objc
+property	shipped	terminationHandler	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with termination handlers	-	objc
 property	shipped	terminationReason	NSTask	Low-Level Utilities / Scripts and External Tasks / Querying the process state	-	swift-page
 property	shipped	terminationStatus	NSTask	Low-Level Utilities / Scripts and External Tasks / Querying the process state	-	objc
 method	shipped	-cancel	NSThread	Low-Level Utilities / Threads and Locking / Stopping a Thread	-	objc

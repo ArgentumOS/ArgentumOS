@@ -1190,7 +1190,13 @@ def fetch_index():
 # methods where there are thousands. (This bug was in the first draft and the generated counts caught
 # it — 2,629 "open" methods, almost all of them declared here. The instrument's own numbers are the
 # falsification test; that is why the ledger is generated before it is believed.)
-_SEL_HEAD = re.compile(r"^\s*([-+])\s*\(([^)]*)\)", re.M)      # a method head, WITH its sign
+# ⚠ §63.179 — THE RETURN TYPE MAY CONTAIN A BLOCK TYPE, AND `[^)]*` CANNOT CROSS ITS PARENS. Measured:
+# `- (void (^)(NSFileHandle *))readabilityHandler` matched only as far as the `)` inside `(^)`, so the
+# selector after it was read from the wrong place and three rows (`readabilityHandler`, `writeabilityHandler`,
+# `terminationHandler`) sat `open` while the library IMPLEMENTED them - and --check called the ledger
+# consistent, because the same blind spot produced both sides. One level of nesting is all a return type
+# can need here, so the group now tolerates exactly that.
+_SEL_HEAD = re.compile(r"^\s*([-+])\s*\(((?:[^()]|\([^()]*\))*)\)", re.M)      # a method head, WITH its sign
 
 
 def _end_of_parens(body, i):
@@ -2314,7 +2320,7 @@ UNIMPLEMENTED = os.path.join(ROOT, "docs/reference/foundation-unimplemented.txt"
 # EXISTS looked missing. The scanner below walks the declaration the way the compiler does - an identifier,
 # then either nothing (no arguments) or `:` `(type)` `parameter`, repeated while commas separate the
 # keywords - and joins the keywords with their colons.
-_METHOD_HEAD = re.compile(r"^\s*[-+]\s*\(([^)]*)\)", re.M)
+_METHOD_HEAD = re.compile(r"^\s*[-+]\s*\(((?:[^()]|\([^()]*\))*)\)", re.M)
 
 
 def _method_selectors(body):

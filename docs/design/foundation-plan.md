@@ -15962,6 +15962,50 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.179 — the sweep could not cross a block RETURN type, and three rows sat open while the library implemented them
+
+`property shipped 679 → 682, open 85 → 82`. The three rows are `readabilityHandler` and `writeabilityHandler`
+on NSFileHandle and `terminationHandler` on NSTask — all `property` rows whose getter returns a BLOCK, and
+all three were listed open while the library has implemented them all along (NSFileHandle.m:681 defines the
+getter; the run-loop machinery calls both handlers at 623–629).
+
+**THE CAUSE, MEASURED.** Two method-head regexes — `_SEL_HEAD` (the `.m` side, which is what builds the set
+of implemented selectors) and `_METHOD_HEAD` — took the return type with `\(([^)]*)\)`, and `[^)]*` cannot
+cross the parentheses of a block type. So `- (void (^)(NSFileHandle *))readabilityHandler` matched only as
+far as the `)` inside `(^)`, and the selector after it was read from the wrong place. One level of nesting
+is all a Foundation return type needs here, so both groups now tolerate exactly that:
+`\(((?:[^()]|\([^()]*\))*)\)`.
+
+**WHY NOTHING CAUGHT IT, AND THIS IS THE PART WORTH KEEPING.** The SAME blind spot produced BOTH SIDES: the
+ledger's status comes from the implementation parse, and `--check` verifies the ledger with that same parse.
+So the tool reported the ledger "consistent" — and `--unimplemented`, which compares DECLARATIONS against
+implementations, was blind the same way. **AN INSTRUMENT THAT IS WRONG IN TWO PLACES AT ONCE AGREES WITH
+ITSELF**, and agreement is what it is supposed to be trusted for. What found the bug was not the tool but
+the question: a door the header DECLARES and the `.m` DEFINES was still listed `open`, which cannot be true
+of both. An independent scan then settled the scope rather than the shape of the problem: all definitions
+across `userland/Foundation/*.m` whose return type carries a block type number thirty-six, and exactly
+three ledger rows were affected.
+
+**TWO METHODS, ONE ANSWER.** After the fix, the sweep named exactly the same three rows that the independent
+scan had — which is the strongest confirmation available short of a second instrument, and the reason the
+scope statement above can be trusted rather than hoped for.
+
+**AND MY OWN FIRST SCAN MADE THE SAME MISTAKE.** The throwaway script that was supposed to find these rows
+used `[^)]*` for the return type too, matched nothing, and printed "0 methods". Three separate instances of
+one trap in a single unit is evidence that the pattern is natural to get wrong — which is exactly why the
+note now lives in the sweep's source beside the two regexes, with the measured example.
+
+Acceptance: `tools/foundation-sweep.py --check` consistent (`method 1616/199/399`, `property 682/82/172`),
+`--families --write` rc=0, `--unimplemented` 0 NEW, `python3 -m py_compile` clean. NO GUEST GATE: no runtime
+behaviour changed — and the build's own gate IS this check (`mk/00-base.mk` runs the sweep), so a green
+`--check` is the gate.
+
+**WHAT THIS DOES NOT FIX:** the ten NSFileHandle legacy doors that are genuinely unimplemented
+(`-readDataOfLength:`, `-seekToFileOffset:`, `-truncateFileAtOffset:`, `-closeFile`, `-synchronizeFile`,
+`-availableData` and the rest) stay on the work list — and that unit is now CLEAN, because two of its twelve
+rows turned out to be the instrument's rather than the library's. Each of the ten is a thin wrapper over the
+error-returning door the class already has, which is what Apple's deprecation means.
+
 ## §63.178 — NSSet: the options and block doors, the per-object doors, the two constructors and the locale description
 
 Eight rows leave the work list (`method shipped 1608 → 1616, open 207 → 199`): `-initWithObjects:`,
