@@ -34,6 +34,8 @@
 #define FOUNDATION_NSCONNECTION_H
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSDictionary.h>	/* the type of `statistics` below, and the SEVENTH time this
+					 * session has had to add an import a declaration needed — ONE LINE TO CHECK, A ROUND TO MISS. */
 #import <Foundation/NSPort.h>
 #import <Foundation/NSDate.h>	/* NSTimeInterval, for -replyTimeout */
 
@@ -116,6 +118,24 @@ extern NSString *const NSFailedAuthenticationException;
 @property (readonly, copy) NSArray *requestModes;
 - (void)enableMultipleThreads;
 @property (readonly) BOOL multipleThreadsEnabled;
+
+/* ⚠⚠ TWO OF THE SEVEN REMAINING, AND THE OTHER FIVE ARE NAMED WITH THEIR REASONS AT THE FOOT OF THIS BLOCK —
+ * because “not yet” and “not ours” are different answers and the difference is the work list.
+ *
+ * ⚠ `+defaultConnection`: Apple marks it `API_DEPRECATED("", macos(10.0, 10.6))` — **AN EMPTY DEPRECATION MESSAGE AND A
+ * VERSION RANGE THAT ENDED IN 2006** — and the 2026-09-26 policy un-deprecates what Apple deprecated, so it is owed.
+ * Its reading is OURS (D2, written down): **THE SHARED CONNECTION, MADE ON FIRST USE AND KEPT.** Apple's own class has
+ * no argument for it and no way to configure it, which is what "default" means here: *a connection exists for code
+ * that has no port to offer, and the same one is answered to everyone who asks.*
+ *
+ * ⚠ `statistics` is `@property (readonly, copy) NSDictionary<NSString *, NSNumber *> *` — **THE TYPE IS A DICTIONARY
+ * OF NUMBERS, WHICH IS THE WHOLE OF WHAT APPLE PUBLISHES ABOUT IT** (the corpus's declaration carries no comment and
+ * no key names). So the KEYS ARE OURS AND ARE WRITTEN DOWN HERE: they report WHAT THIS CONNECTION ACTUALLY KNOWS —
+ * whether it is valid, whether it is waiting for a reply, and how many request modes it serves — rather than counters
+ * invented to fill a dictionary. **A STATISTICS DOOR THAT REPORTS NUMBERS NOTHING MEASURES IS A DOOR THAT LIES
+ * POLITELY.** */
++ (NSConnection *)defaultConnection;
+@property (readonly, copy) NSDictionary *statistics;
 
 /* EVERY LIVE CONNECTION — Apple's `+allConnections`. THE REGISTRY IS NON-OWNING, and that is a decision rather
  * than an oversight: a registry that retained its members would be a leak this class created, because a live

@@ -29,6 +29,9 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_dobjects"
 CHECKS = (
+    "connection-statistics-values-are-numbers",
+    "connection-statistics-reports-its-own-state",
+    "connection-default-connection-is-the-same-one-twice",
     "connection-request-modes-answer-a-copy-not-the-store",
     "connection-remove-request-mode-inverts-add",
     "connection-request-modes-are-a-set-that-keeps-order",

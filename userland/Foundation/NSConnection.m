@@ -13,6 +13,8 @@
  */
 
 #import <Foundation/NSConnection.h>
+#import <Foundation/NSNumber.h>	/* the values of `statistics` — the EIGHTH import this session has had
+				      * to add for a declaration's own type, and the first that cost WARNINGS rather than errors. */
 #import <Foundation/NSDistantObjectRequest.h>
 #import <Foundation/FNDistantObjectRequest.h>
 #import <Foundation/NSException.h>
@@ -626,6 +628,38 @@ static void fn_unregister_connection(NSConnection *connection)
 - (BOOL)multipleThreadsEnabled
 {
 	return _multipleThreadsEnabled;
+}
+
+
+/* ================== TWO MORE STORED-ON-EXISTING-STATE DOORS (§63.116) ==================
+ * ⚠ AND THE OTHER FIVE OF THE SEVEN ARE NOT HERE, EACH FOR A MEASURED REASON RATHER THAN A GUESS: `localObjects` and
+ * `remoteObjects` need PROXY TRACKING this class does not do (the tree's only proxy door is `-rootProxy`, and nothing
+ * counts what it hands out); `-dispatchWithComponents:` needs the INCOMING WIRE PATH, which lives in the port and
+ * NSDistantObjectRequest half of §62.53–§62.57 and is not a call this class can make yet; `+currentConversation`
+ * needs PER-THREAD conversations and this class keeps ONE per connection; and `-runInNewThread` needs the run-loop
+ * threading path. **Four measurements, four different missing pieces, and none of them is a wrapper.**
+ */
+static NSConnection *fn_default_connection = nil;
+
++ (NSConnection *)defaultConnection
+{
+	/* ⚠ MADE ON FIRST USE AND KEPT — NOT AUTORELEASED, BECAUSE IT IS THE POINT OF THE DOOR: a caller that gets one is
+	 * going to ask again, and a fresh connection per call would be a connection whose state is never the same twice. */
+	if (fn_default_connection == nil) {
+		fn_default_connection = [[NSConnection connectionWithReceivePort:nil sendPort:nil] retain];
+	}
+	return fn_default_connection;
+}
+
+- (NSDictionary *)statistics
+{
+	/* ⚠ THE KEYS ARE OURS AND THEY REPORT WHAT THIS CONNECTION KNOWS. `NSNumber` values only, because that is the
+	 * property's own type, and three facts rather than a table of zeroes. */
+	return [NSDictionary dictionaryWithObjectsAndKeys:
+		[NSNumber numberWithBool:_valid], @"NSConnectionIsValid",
+		[NSNumber numberWithBool:_waitingForReply], @"NSConnectionIsWaitingForReply",
+		[NSNumber numberWithUnsignedInteger:[_requestModes count]], @"NSConnectionRequestModeCount",
+		nil];
 }
 
 - (void)dealloc

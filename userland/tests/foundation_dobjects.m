@@ -195,6 +195,38 @@ int main(void)
 {
 
 	{
+		/* §63.116: THE TWO DOORS THAT COULD BE BUILT ON WHAT THE CLASS ALREADY KNOWS. ⚠ BOTH ARE ASSERTED BY
+		 * PROPERTIES RATHER THAN BY SHAPE: the default connection is asserted to be THE SAME ONE TWICE (which is what
+		 * "default" means), and the statistics dictionary to report the connection's OWN facts — including one that
+		 * a caller has just changed, so a dictionary of constants cannot pass. */
+		NSConnection *d1 = [NSConnection defaultConnection];
+		NSConnection *d2 = [NSConnection defaultConnection];
+		NSConnection *s = [NSConnection connectionWithReceivePort:nil sendPort:nil];
+		NSDictionary *before;
+		NSDictionary *after;
+
+		[s addRequestMode:@"NSDefaultRunLoopMode"];
+		before = [s statistics];
+		[s addRequestMode:@"NSModalPanelRunLoopMode"];
+		after = [s statistics];
+
+		check("connection-default-connection-is-the-same-one-twice",
+		      d1 != nil && d1 == d2,
+		      [NSString stringWithFormat:@"first=%p second=%p", (void *)d1, (void *)d2]);
+		check("connection-statistics-reports-its-own-state",
+		      [[before objectForKey:@"NSConnectionRequestModeCount"] intValue] == 1 &&
+		      [[after objectForKey:@"NSConnectionRequestModeCount"] intValue] == 2 &&
+		      [[after objectForKey:@"NSConnectionIsValid"] boolValue] &&
+		      [[after objectForKey:@"NSConnectionIsWaitingForReply"] boolValue] == NO,
+		      [NSString stringWithFormat:@"before=%@ after=%@", before, after]);
+		check("connection-statistics-values-are-numbers",
+		      [[before objectForKey:@"NSConnectionRequestModeCount"] isKindOfClass:[NSNumber class]] &&
+		      [[before objectForKey:@"NSConnectionIsValid"] isKindOfClass:[NSNumber class]],
+		      @"the property's own type is a dictionary of numbers");
+	}
+
+
+	{
 		/* §63.115: THE SEVEN STORED DOORS. ⚠ A connection with NO PORTS is what the class's own factory produces for
 		 * nil/nil, and it is the right instrument here: these doors are state, and state does not need a wire. Each is
 		 * asserted ALONE, and the two that are a pair (add/remove) are asserted to be INVERSES. */

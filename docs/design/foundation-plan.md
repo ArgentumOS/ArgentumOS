@@ -15982,6 +15982,40 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.116 — TWO MORE CONNECTION DOORS LAND, THE OTHER FIVE ARE ITEMISED, AND THE IMPORT COSTS ITS EIGHTH ROUND (2026-10-01)
+
+**WHAT LANDED: `+defaultConnection` AND `statistics` — TWO MORE OF `NSConnection`'S SEVEN REMAINING ROWS, BOTH BUILT ON
+STATE THE CLASS ALREADY HAS.**
+
+**MEASURED: `method shipped 2196 → 2197`, `open 334 → 333`; `property 1282 → 1283`, `open 176 → 175`; `--check`
+consistent; `make host-foundation` EXIT 0 with exactly the standing SIX warnings; `make testimg` EXIT 0; `make test
+TESTS='foundation_dobjects'` → `TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with **`FOUNDATION-DOBJECTS 23/23`**.**
+
+**⚠⚠ AND THE OTHER FIVE ARE ITEMISED RATHER THAN DEFERRED, WHICH IS THE POINT OF MEASURING BEFORE CHOOSING — FOUR
+MEASUREMENTS, FOUR DIFFERENT MISSING PIECES, AND NOT ONE OF THEM A WRAPPER:**
+ * **`localObjects` and `remoteObjects` NEED PROXY TRACKING THIS CLASS DOES NOT DO** — its only proxy door is
+   `-rootProxy`, and nothing counts or keeps what it hands out;
+ * **`-dispatchWithComponents:` NEEDS THE INCOMING WIRE PATH**, which lives in the port and NSDistantObjectRequest half
+   of §62.53–§62.57 rather than in this class;
+ * **`+currentConversation` NEEDS PER-THREAD CONVERSATIONS**, and this class keeps ONE per connection (`-fnConversation`,
+   one ivar);
+ * **`-runInNewThread` NEEDS THE RUN-LOOP THREADING PATH.**
+**“Not yet” and “not ours” are different answers, and the difference is the work list.**
+
+**AND THE TWO THAT LANDED HAVE THEIR CHOICES WRITTEN DOWN:** `+defaultConnection` is Apple-deprecated with an **EMPTY
+message over a range that ended in 2006** (“”, macos(10.0, 10.6)), so the un-deprecation policy owes it — and since Apple
+publishes no argument and no configuration for it, **the reading is ours: THE SHARED CONNECTION, MADE ON FIRST USE AND
+KEPT, not autoreleased, because a fresh one per call would be a connection whose state is never the same twice.**
+And `statistics` — whose **type is the whole of what Apple publishes** (a dictionary of numbers, no keys) — reports
+**what this connection actually knows**, three facts rather than a table of zeroes: ***A STATISTICS DOOR THAT REPORTS
+NUMBERS NOTHING MEASURES IS A DOOR THAT LIES POLITELY.***
+
+**⚠⚠ AND THE IMPORT COST ITS EIGHTH ROUND, WHICH IS NOW A PATTERN WORTH STATING PLAINLY: EVERY UNIT THAT DECLARES
+SOMETHING WITH A TYPE HAS HAD TO ADD AN IMPORT, AND NOT ONCE HAS THE TREE ALREADY HAD ONE.** `NSDictionary` for the
+declaration (‘unknown type name’) and then `NSNumber` for the values in the `.m` — **and the second cost SIX WARNINGS
+rather than an error, which the standing count caught because it is watched.** *One `grep -c` before writing, a round
+after: the arithmetic has not changed in eight tries.*
+
 ## §63.115 — SEVEN OF `NSConnection`'S DOORS LAND FIRST TRY ON FOUR MEASUREMENTS (2026-10-01)
 
 **WHAT LANDED: SEVEN OF `NSConnection`'S FOURTEEN ROWS — THE STORED ONES: `requestTimeout`,
