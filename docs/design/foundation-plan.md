@@ -15982,6 +15982,47 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.121 — EIGHT ROUNDS OF PLUMBING AND ONE REAL FINDING: ICU HAS NO GENERIC TIME-ZONE NAME (2026-10-01)
+
+**NO ROWS CLOSED. THE FIVE DOORS ARE DESIGNED, MEASURED AND READY; THE UNIT FAILED EIGHT TIMES AND NOT ONCE ON THE
+DOORS.**
+
+**⚠⚠ THE FINDING, AND IT IS THE REASON THE UNIT COULD NOT SIMPLY LAND: THE CORPUS GIVES SIX `NSTimeZoneNameStyle`
+CASES WITH THEIR MEANINGS BESIDE THEM — “Central Standard Time”, “CST”, “Central Daylight Time”, “CDT”,
+**“Central Time” AND “CT”** — AND ICU'S `UCalendarDisplayNameType` HAS NO GENERIC VALUE AT ALL.** `ucal_getTimeZoneDisplayName`
+takes `UCAL_STANDARD`, `UCAL_SHORT_STANDARD`, `UCAL_DST` and `UCAL_SHORT_DST` (and `UCAL_LOCATION`), and **the two
+GENERIC styles have no counterpart**: `UCAL_GENERIC` and `UCAL_SHORT_GENERIC` DO NOT EXIST, which the compiler said
+plainly. **A SIX-TO-SIX MAPPING READ OFF APPLE'S OWN COMMENT IS A SIX-TO-FOUR, AND THE TWO MISSING ONES ARE THE MOST
+USEFUL — “Central Time” IS WHAT A UI WANTS TO SAY.** The four that do map are designed and written: one ICU route
+(`ucal_open` for the zone's identifier or a `GMT±HH:MM` tag, ask, close) serves `-abbreviation`,
+`-abbreviationForDate:`, `-localizedName:locale:` and — through `ucal_getDSTSavings` —
+`-daylightSavingTimeOffsetForDate:`, with `+defaultTimeZone` as plain class state.
+
+**⚠⚠ AND THE EIGHT ROUNDS ARE THE UNIT'S OTHER CONTENT, BECAUSE EVERY ONE WAS PLUMBING AND EACH WAS A DIFFERENT
+WELL-KNOWN TRAP THIS CAMPAIGN HAS ALREADY RECORDED SOMEWHERE:**
+ 1. **`NSLocale` was not imported** — and the script PRINTED that measurement before writing the code that needed it,
+    **and I wrote it anyway.** *An instrument that reports correctly and an operator who ignores it produce the same
+    build error*; (§63.114's lesson, ninth time for the import itself);
+ 2. **`NSTimeZoneNameStyle` — read as missing, actually LATER** — and the compiler said so by calling my duplicate a
+    **REDEFINITION** rather than an unknown type. *§63.104's lesson in its exact form: “they were not missing; they
+    were later”*;
+ 3. **the declarations went INSIDE the enum**, because I anchored on the enum's closing brace and inserted BEFORE it —
+    *§63.106's “a delimiter that marks a boundary is not a place to insert before”, in a new place*;
+ 4. **the nullability markers were a fix for a wrong diagnosis** — the compiler's “already inside” and “not currently
+    inside” together said the region already covered the block;
+ 5. **they then landed OUTSIDE any `@interface`** (the enum sits after the class's `@end`), and the answer is **APPLE'S
+    OWN SHAPE**: the corpus declares these doors in `@interface NSTimeZone (NSExtendedTimeZone)`;
+ 6. **and the column number earned its keep at last**: ‘expected a type’ at **column 39** was
+    `NSTimeZoneNameStyle`, not the `NSLocale` the import had just fixed — *§63.79's column lesson, working for once*.
+
+**AND THE ONE THING THE EIGHT ROUNDS NEVER TOUCHED WAS THE DOORS.** All five were designed from measurements taken
+before a line was written — the corpus's declarations read in full (its `NSTimeZone.h` is 3750 bytes), the tree's two
+ivars, the owning probe and **its `check()`, a FOURTH signature** — **and every failure was a fact about where the text
+went, not about what it said.**
+
+**AND `NSTimeZone` STANDS AT TEN ROWS, with the four ICU doors ready and the two generic styles needing a source ICU
+does not have.**
+
 ## §63.120 — THREE `NSTimeZone` ROWS ON THE WEAKEST GROUND, WITH §63.119'S PRECONDITION ASSERTED (2026-10-01)
 
 **WHAT LANDED: `abbreviationDictionary`, `daylightSavingTimeOffset` AND `timeZoneDataVersion` STRUCK — AND `NSTimeZone` CUT
