@@ -8,6 +8,10 @@
 #import <Foundation/NSURLSession.h>
 #import <Foundation/NSHTTPURLResponse.h>
 #import <Foundation/NSURLCache.h>
+/* THE SENDER PROTOCOL (§63.158): the session's client door answers the TRANSPORT through the challenge's
+ * sender, so it needs Apple's `NSURLAuthenticationChallengeSender` — this header declared the challenge
+ * forward only, which was enough until this door answered one. */
+#import <Foundation/NSURLAuthenticationChallenge.h>
 /* WHAT THE ENDING DELIVERS FIRST (§52): the session is what assembles the task's record, so it needs the
  * public getters AND the internal `fn` writer category. */
 #import <Foundation/NSURLSessionTaskMetrics.h>
@@ -144,15 +148,41 @@ static NSURLCacheStoragePolicy fn_policyForResponse(NSURLResponse *response)
 /* EVERY CALLBACK IS A TRANSLATION INTO THE TASK'S OWN STATE, and nothing more: the protocol streams, the
  * task accumulates, and the ending is what reports. */
 /* THE CLIENT'S ANSWER TO A CHALLENGE, and it is a HOP INTO THE SESSION'S OWN DOOR rather than a second
- * implementation: the delegate resolution (task door first, session door as the fallback, and
- * PerformDefaultHandling when there is no delegate at all) lives there and is asked once. */
+ * implementation: the delegate resolution (task door first, session door as the fallback, and the default
+ * handling when there is no delegate at all) lives there and is asked once.
+ *
+ * ⚠⚠ AND THE ANSWER COMES BACK OUT THROUGH THE CHALLENGE'S SENDER (§63.158). THE TWO ENDS OF THIS HOP ARE
+ * BOTH APPLE'S AND THEY ARE SHAPED DIFFERENTLY: the TRANSPORT's client door has no handler, because its
+ * answer path is the sender, while the SESSION's delegate door takes a completion handler. So this method
+ * bridges the session's handler onto the transport's sender — the inverse of what
+ * `FNAuthenticationChallengeSender` does — and the answer still travels one way only. */
 - (void)URLProtocol:(NSURLProtocol *)protocol
     didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
-		    completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition,
-						NSURLCredential * _Nullable))completionHandler
 {
+	id <NSURLAuthenticationChallengeSender> answer = [challenge sender];
+
 	(void)protocol;
-	[_session fnAskForCredentialForTask:_task challenge:challenge completionHandler:completionHandler];
+	[_session fnAskForCredentialForTask:_task challenge:challenge
+			  completionHandler:^(NSURLSessionAuthChallengeDisposition disposition,
+					      NSURLCredential *credential) {
+		if (answer == nil) {
+			return;	/* a challenge carrying no sender is a client's own object: nothing to answer */
+		}
+		switch (disposition) {
+		case NSURLSessionAuthChallengeUseCredential:
+			[answer useCredential:credential forAuthenticationChallenge:challenge];
+			break;
+		case NSURLSessionAuthChallengeCancelAuthenticationChallenge:
+			[answer cancelAuthenticationChallenge:challenge];
+			break;
+		case NSURLSessionAuthChallengeRejectProtectionSpace:
+			[answer rejectProtectionSpaceAndContinueWithChallenge:challenge];
+			break;
+		default:
+			[answer performDefaultHandlingForAuthenticationChallenge:challenge];
+			break;
+		}
+	}];
 }
 
 /* WHAT THE PROTOCOL MEASURED, KEPT UNTIL THE TASK ENDS (§52): the report is per TRANSACTION, so this is an

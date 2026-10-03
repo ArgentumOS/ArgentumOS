@@ -459,12 +459,10 @@ static unsigned long fn_download_serial = 0;
 
 /* THE AUTHENTICATION DOORS, WITH APPLE'S ORDER FOR *THIS* PROTOCOL: it declares no modern door, so the GATE is
  * asked first and the challenge door second — and the answer goes back through the challenge's SENDER, which IS
- * the continuation the transport is blocked on. Calling that continuation here as well would answer one challenge
- * twice. */
+ * the transport's own thunk over its wait. AND THAT IS THE ONLY ANSWER PATH (§63.158): this door takes no
+ * completion handler any more, so there is nothing here to call, and nothing to double-answer. */
 - (void)URLProtocol:(NSURLProtocol *)protocol
     didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
-		  completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition,
-					      NSURLCredential * _Nullable))completionHandler
 {
 	id delegate = _delegate;
 
@@ -474,7 +472,8 @@ static unsigned long fn_download_serial = 0;
 			@selector(download:canAuthenticateAgainstProtectionSpace:)]) {
 		if (![(id <NSURLDownloadDelegate>)delegate download:self
 				canAuthenticateAgainstProtectionSpace:[challenge protectionSpace]]) {
-			completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
+			/* A NO FROM THE GATE MEANS "DO NOT AUTHENTICATE", and it needs no call from here: a client
+			 * that answers nothing IS the default handling at the transport. */
 			return;
 		}
 	}
@@ -483,7 +482,8 @@ static unsigned long fn_download_serial = 0;
 				didReceiveAuthenticationChallenge:challenge];
 		return;	/* answered through the sender */
 	}
-	completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
+	/* AND NO DOOR AT ALL MEANS THE DEFAULT, expressed by returning: the transport leaves the 401 as the
+	 * response, which is the outcome the old handler's PerformDefaultHandling produced. */
 }
 
 - (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol

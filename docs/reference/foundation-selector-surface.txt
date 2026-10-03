@@ -44,7 +44,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-# method	shipped	1685	open	244	struck	390
+# method	shipped	1686	open	243	struck	390
 # property	shipped	744	open	99	struck	170
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -2885,7 +2885,7 @@ method	shipped	-URLProtocol:cachedResponseIsValid:	NSURLProtocolClient	Networkin
 method	open	-URLProtocol:didCancelAuthenticationChallenge:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Handling authentication challenges	-	objc
 method	shipped	-URLProtocol:didFailWithError:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Indicating loading progress or failure	-	objc
 method	shipped	-URLProtocol:didLoadData:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Indicating loading progress or failure	-	objc
-method	open	-URLProtocol:didReceiveAuthenticationChallenge:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Handling authentication challenges	-	objc
+method	shipped	-URLProtocol:didReceiveAuthenticationChallenge:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Handling authentication challenges	-	objc
 method	shipped	-URLProtocol:didReceiveResponse:cacheStoragePolicy:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Creating a response	-	objc
 method	shipped	-URLProtocol:wasRedirectedToRequest:redirectResponse:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Handling redirects	-	objc
 method	shipped	-URLProtocolDidFinishLoading:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Indicating loading progress or failure	-	objc

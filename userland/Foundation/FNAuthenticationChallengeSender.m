@@ -4,21 +4,25 @@
  * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
  * SPDX-License-Identifier: MIT
  *
- * The mapping from Apple's five sender actions onto the loading system's five dispositions. It is a
- * TABLE, and it is worth writing out because every line of it is Apple's rather than this library's:
+ * The mapping from Apple's five sender actions onto the TRANSPORT'S five answers. It is a TABLE, and it is
+ * worth writing out because every line of it is Apple's rather than this library's:
  *
  *   -useCredential:forAuthenticationChallenge:        -> UseCredential, with the credential given
- *   -continueWithoutCredentialForAuthenticationChallenge: -> UseCredential, and the credential is NIL
- *                                                        (Apple's disposition says "the specified
- *                                                        credential, which may be nil", so "continue
- *                                                        without one" IS that)
- *   -cancelAuthenticationChallenge:                   -> CancelAuthenticationChallenge
- *   -performDefaultHandlingForAuthenticationChallenge: -> PerformDefaultHandling   (optional in the protocol)
- *   -rejectProtectionSpaceAndContinueWithChallenge:   -> RejectProtectionSpace     (optional in the protocol)
+ *   -continueWithoutCredentialForAuthenticationChallenge: -> WithoutCredential
+ *   -cancelAuthenticationChallenge:                   -> Cancel
+ *   -performDefaultHandlingForAuthenticationChallenge: -> DefaultHandling     (optional in the protocol)
+ *   -rejectProtectionSpaceAndContinueWithChallenge:   -> RejectProtectionSpace (optional in the protocol)
  *
- * All five keep the completion block's own lifetime rule: this file owns a COPY (Block_copy) and releases it
- * in dealloc, which is the house rule for a stored block - the gate refuses the message form for a
- * block-typed name, and an MRC block is not an ordinary object to own.
+ * ⚠⚠ AND THE SECOND LINE IS WHY §63.158'S FIRST-PARTY VOCABULARY IS BETTER THAN THE ONE IT REPLACED. The old
+ * table had to answer `-continueWithoutCredentialForAuthenticationChallenge:` with **UseCredential and a nil
+ * credential**, because the session's enum it borrowed has no case for "continue without one" — Apple's own
+ * disposition says "the specified credential, which may be nil", so a client saying "no credential" and a
+ * client saying "here it is, and it is nil" were the SAME answer. Its own vocabulary has a case for it, so the
+ * translation stops overloading a word: the transport now hears WHICH of the two a client meant.
+ *
+ * All five keep the continuation's own lifetime rule: this file owns a COPY (Block_copy) and releases it in
+ * dealloc, which is the house rule for a stored block - the gate refuses the message form for a block-typed
+ * name, and an MRC block is not an ordinary object to own.
  */
 
 #import <Foundation/FNAuthenticationChallengeSender.h>
@@ -28,8 +32,8 @@
 
 @implementation FNAuthenticationChallengeSender
 
-- (instancetype)fnInitWithCompletionHandler:
-	(void (^)(NSURLSessionAuthChallengeDisposition disposition,
+- (instancetype)fnInitWithContinuation:
+	(void (^)(FNAuthenticationChallengeAnswer answer,
 		  NSURLCredential *credential))handler
 {
 	if (!(self = [super init])) {
@@ -39,8 +43,8 @@
 	return self;
 }
 
-- (void)fnAnswerWithDisposition:(NSURLSessionAuthChallengeDisposition)disposition
-		     credential:(NSURLCredential *)credential
+- (void)fnAnswerWith:(FNAuthenticationChallengeAnswer)answer
+	  credential:(NSURLCredential *)credential
 {
 	/* ONE ANSWER, AND THE SECOND IS IGNORED: the handler resumes a continuation that has already resumed
 	 * the moment it is called twice, and nothing here can tell the caller even if it wanted to. */
@@ -48,7 +52,7 @@
 		return;
 	}
 	_answered = YES;
-	_handler(disposition, credential);
+	_handler(answer, credential);
 }
 
 - (void)useCredential:(NSURLCredential *)credential
@@ -57,31 +61,31 @@ forAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 	(void)challenge;	/* the sender knows which continuation it thunks; the challenge is the caller's
 				 * context, and it is not needed to answer */
 
-	[self fnAnswerWithDisposition:NSURLSessionAuthChallengeUseCredential credential:credential];
+	[self fnAnswerWith:FNAuthenticationChallengeAnswerUseCredential credential:credential];
 }
 
 - (void)continueWithoutCredentialForAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 {
 	(void)challenge;
-	[self fnAnswerWithDisposition:NSURLSessionAuthChallengeUseCredential credential:nil];
+	[self fnAnswerWith:FNAuthenticationChallengeAnswerWithoutCredential credential:nil];
 }
 
 - (void)cancelAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 {
 	(void)challenge;
-	[self fnAnswerWithDisposition:NSURLSessionAuthChallengeCancelAuthenticationChallenge credential:nil];
+	[self fnAnswerWith:FNAuthenticationChallengeAnswerCancel credential:nil];
 }
 
 - (void)performDefaultHandlingForAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 {
 	(void)challenge;
-	[self fnAnswerWithDisposition:NSURLSessionAuthChallengePerformDefaultHandling credential:nil];
+	[self fnAnswerWith:FNAuthenticationChallengeAnswerDefaultHandling credential:nil];
 }
 
 - (void)rejectProtectionSpaceAndContinueWithChallenge:(NSURLAuthenticationChallenge *)challenge
 {
 	(void)challenge;
-	[self fnAnswerWithDisposition:NSURLSessionAuthChallengeRejectProtectionSpace credential:nil];
+	[self fnAnswerWith:FNAuthenticationChallengeAnswerRejectProtectionSpace credential:nil];
 }
 
 - (void)dealloc

@@ -15969,6 +15969,70 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.158 — §48.6's DEVIATION IS RETIRED: THE CLIENT DOOR IS APPLE'S, THE SEAM HAS ONE ANSWER PATH, AND A LEDGER ROW CLOSES (2026-10-03)
+
+**LANDED: THE `NSURLProtocolClient` AUTHENTICATION DOOR IS APPLE'S — `-URLProtocol:didReceiveAuthenticationChallenge:`,
+NO COMPLETION HANDLER — AND THE ANSWER GOES BACK THROUGH THE CHALLENGE'S SENDER.** The user's decision
+(dec-e8a0b37ca4b19f7c), and the register's own policy is what forced it: *deviations "are tolerated only as far as
+necessary for function on Argentum"*. **§48.6's ground had expired**: it existed because §48.1 refused `-sender` as
+Apple-deprecated — §62.24 retired that ground, §62.27 landed `-sender`, and
+`FNAuthenticationChallengeSender` already implemented Apple's five sender actions. **A deviation whose stated
+reason is false is not a deviation any more; it is a second shape for a question already answered.**
+
+**⚠⚠ AND THE ENUM WAS *NOT* DELETED, WHICH THE MEASUREMENT SETTLED BEFORE A LINE WAS CHANGED.**
+`NSURLSessionAuthChallengeDisposition` is **Apple's type for Apple's SESSION doors** — the ledger carries it twice
+as `shipped` under `NSURLSessionDelegate` and `NSURLSessionTaskDelegate` — so deleting it would have broken two
+honest rows. It has instead gone **back to `NSURLSession.h`, where its owner declares it**, undoing §50.3's
+cycle-forced placement in `NSURLProtocol.h`. The seam no longer needs it because the door takes no handler; the
+session still does, and keeps it. *"The enum leaves only when the doors do" (§63.144) was right: the door left, and
+the type followed it home.*
+
+**AND `FNAuthenticationChallengeSender` GAINED A VOCABULARY OF ITS OWN, WHICH FIXED A REAL OVERLOAD:**
+`FNAuthenticationChallengeAnswer` (UseCredential / WithoutCredential / Cancel / DefaultHandling /
+RejectProtectionSpace) replaces the borrowed session enum. **The old table had to answer
+`-continueWithoutCredentialForAuthenticationChallenge:` with "UseCredential and a nil credential"**, because the
+session's enum has no case for "continue without one" — Apple's own disposition says "the specified credential,
+which may be nil", so a client saying "no credential" and a client saying "here it is, and it is nil" were the SAME
+answer. Its own vocabulary has a case for it, so the translation stops overloading a word.
+
+**WHAT THE CONVERSION TOUCHED, AND THE TWO SMALL THINGS IT BOUGHT:**
+ * **THE BRIDGE BARELY MOVED**, because it was already building the challenge WITH an
+   `FNAuthenticationChallengeSender` thunk over its continuation: `fnAskClientForCredential:` lost its handler
+   argument, the door call became Apple's, and the comparisons use the new names. **NO FALLBACK CALL IS NEEDED for
+   a client that answers nothing**: the transport's own sentinel already means "leave the 401 as the response",
+   which is exactly the default handling the old `completionHandler(PerformDefaultHandling, nil)` produced.
+ * **THE SESSION BRIDGES BACKWARDS, AND THAT IS THE ONE PLACE THE TWO APPLE SHAPES MEET:** its client door must
+   answer the TRANSPORT through the sender, while its own delegate door is handler-shaped, so `NSURLSession.m`
+   takes the session's completion handler and forwards it onto `[challenge sender]` — the inverse of what
+   `FNAuthenticationChallengeSender` does. One hop, both ends Apple's.
+ * **THE TWO CONNECTION CLASSES GOT SIMPLER**: `NSURLConnection`'s and `NSURLDownload`'s doors lost the handler and
+   with it the "do not answer twice" rule that only existed BECAUSE there were two paths. Their "no door means the
+   default" branches are now a bare `return`.
+
+**AND THE PROBES SPLIT CLEANLY, WHICH IS ITSELF A READING OF WHAT THE DEVIATION WAS:** `foundation_challengedoor`
+and `foundation_authloop` drive the **SESSION's** delegate door — which is Apple's and still handler-shaped — so
+they needed **no change**. The three that implement the CLIENT door were converted
+(`foundation_urlprotocol`, `foundation_urlprotocol_curl`, and `foundation_urlconnection`'s auth cluster), and
+`FNSenderRecorder` gained an **`answers` counter**: with the handler gone, "this class answered NOTHING" is a fact
+only a recorder can hold, and the two checks that used to assert `disposition == -1` now assert **zero answers** —
+which is the stronger statement, because it is about the wire rather than about a variable nobody wrote.
+
+**⚠⚠ AND ONE OPEN LEDGER ROW CLOSED, WHICH IS THE MEASUREMENT THAT SAYS THE DEVIATION WAS REAL COST:**
+`NSURLProtocolClient -URLProtocol:didReceiveAuthenticationChallenge:` was **`open`** — Apple's door, not declared —
+*precisely because this tree declared the handler form instead*. It is declared now: `method shipped 1685/open 244`
+→ **`shipped 1686/open 243`**, hand-flipped (the tool's own remedy for this drift) because `--refresh` cannot run.
+**A deviation that hides an Apple row is worth this unit on its own.**
+
+**VERIFICATION.** `make testimg` **EXIT 0** (library and every probe compile at the standing flags);
+`foundation_url*` **14/14 cases, 72/72 checks**; `foundation_auth*` 2/2; `foundation_challengedoor` 1/1;
+`foundation_connectionauth` 1/1; `foundation-sweep.py --check` **consistent** (one row fewer open) and
+`--unimplemented` **0 NEW**.
+
+**OWED NEXT, AND NOW SMALLER: §63.130's session-family cut.** The enum has a home and no class owns a session
+(§63.157), so what still mentions `NSURLSession` outside the family is **one seam type** —
+`NSURLSessionTaskTransactionMetrics`, the metrics record the first-party client door carries (§52) — plus the
+family's own files and comments. The family's rows in the ledger can go with it, in one hand pass.
+
 ## §63.157 — STEP 3 LANDS: `NSURLDownload` RE-BASED ON THE SEAM, FIVE DEAD DOORS COME ALIVE, AND NOBODY OWNS A SESSION ANY MORE (2026-10-03)
 
 **LANDED: `NSURLDownload` DRIVES `NSURLProtocol`. The probe is `7/7` on the FIRST RUN, and the three destination

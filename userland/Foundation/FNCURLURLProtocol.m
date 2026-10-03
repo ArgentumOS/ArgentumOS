@@ -64,11 +64,11 @@ typedef struct FNCurlTransfer {
  * before curl_easy_cleanup - and then reported through the client's first-party door, which a client is not
  * required to implement. */
 - (void)fnReportMetrics:(NSURLSessionTaskTransactionMetrics *)metrics;
-/* THE CLIENT IS ASKED ABOUT A CHALLENGE THROUGH THIS, because the C header callback cannot message it. The
- * door is the client protocol's, and the client answers through the handler - synchronously, by contract. */
-- (void)fnAskClientForCredential:(NSURLAuthenticationChallenge *)challenge
-	       completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
-					   NSURLCredential * _Nullable credential))completionHandler;
+/* THE CLIENT IS ASKED ABOUT A CHALLENGE THROUGH THIS, because the C header callback cannot message it. THE
+ * DOOR IS APPLE'S NOW (§63.158): the challenge this method hands over CARRIES the sender that answers this
+ * transport's continuation, so there is no handler argument and no second answer path. A client that
+ * implements no such door is not asked, and the transport continues without credentials. */
+- (void)fnAskClientForCredential:(NSURLAuthenticationChallenge *)challenge;
 - (void)fnReportRedirectToURL:(NSString *)location status:(long)status headers:(NSDictionary *)headers;
 - (void)fnReportFailure:(NSError *)error;
 @end
@@ -280,10 +280,10 @@ static size_t fn_curl_header(char *ptr, size_t size, size_t nmemb, void *userdat
 			return 0;	/* abort: the caller decides what happens next */
 		}
 		/* A 401 IS A RESPONSE TOO, and it is where authentication is decided. The client is asked THROUGH
-		 * THE DOOR, synchronously - the same wait the response disposition takes - and if it hands back a
-		 * credential the transfer is ABORTED here and RE-ISSUED once by the caller, which is the redirect
-		 * pattern exactly. The attempt count IS the guard: a server that always answers 401 must not spin,
-		 * and the loop below runs twice at most. */
+		 * APPLE'S DOOR, synchronously - the same wait the response disposition takes - and if it answers
+		 * with a credential the transfer is ABORTED here and RE-ISSUED once by the caller, which is the
+		 * redirect pattern exactly. The attempt count IS the guard: a server that always answers 401 must
+		 * not spin, and the loop below runs twice at most. */
 		if (status == 401 && transfer->retry == 0 && transfer->attempt == 0 &&
 		    [fields objectForKey:@"WWW-Authenticate"] != nil &&
 		    [[fields objectForKey:@"WWW-Authenticate"] rangeOfString:@"Basic"
@@ -295,21 +295,20 @@ static size_t fn_curl_header(char *ptr, size_t size, size_t nmemb, void *userdat
 
 			transfer->attempt = 1;
 			if (space != nil) {
-				/* THE CONTINUATION, NAMED SO IT CAN BE REACHED TWICE - and that is the whole point of
-				 * §62.27 (§48.1 refused `-sender` as Apple-deprecated; §62.24 retired that ground and this
-				 * is the seam it was blocking). A delegate may answer the MODERN way, by calling this
-				 * handler, or the OLDER way, by sending `-useCredential:forAuthenticationChallenge:` to the
-				 * challenge's sender - and the sender is a thunk over THIS block, so both answers move the
-				 * same transfer rather than starting a second one. Apple's own API allows both at once for
-				 * exactly this reason. */
-				void (^continuation)(NSURLSessionAuthChallengeDisposition,
+				/* THE SENDER IS THE ONLY WAY IN NOW (§63.158): §48.6's deviation — a completion handler on
+				 * the client door — is RETIRED, because its whole ground was that this library refused
+				 * `-sender`, and §62.27 had already stopped that being true. A client answers by messaging
+				 * the challenge's sender, and the sender is a thunk over THIS block, so the transport still
+				 * reads its own two locals and there is exactly one answer path. APPLE'S OWN SHAPE, with no
+				 * second door beside it. */
+				void (^continuation)(FNAuthenticationChallengeAnswer,
 						     NSURLCredential *) =
-					^(NSURLSessionAuthChallengeDisposition chosen, NSURLCredential *given) {
-					disposition = (NSInteger)chosen;
+					^(FNAuthenticationChallengeAnswer answer, NSURLCredential *given) {
+					disposition = (NSInteger)answer;
 					credential = [given retain];
 				};
 				FNAuthenticationChallengeSender *sender = [[FNAuthenticationChallengeSender alloc]
-					fnInitWithCompletionHandler:continuation];
+					fnInitWithContinuation:continuation];
 				NSURLAuthenticationChallenge *challenge = [[NSURLAuthenticationChallenge alloc]
 					initWithProtectionSpace:space
 					     proposedCredential:nil
@@ -319,22 +318,24 @@ static size_t fn_curl_header(char *ptr, size_t size, size_t nmemb, void *userdat
 						     sender:sender];
 
 				[sender release];
-				[transfer->protocol fnAskClientForCredential:challenge
-					completionHandler:continuation];
+				[transfer->protocol fnAskClientForCredential:challenge];
 				[challenge release];
 			}
-			if (disposition == NSURLSessionAuthChallengeUseCredential && credential != nil) {
+			if (disposition == FNAuthenticationChallengeAnswerUseCredential && credential != nil) {
 				transfer->credential = credential;	/* kept for the re-issue */
 				transfer->retry = 1;
 				return 0;	/* abort: the caller re-issues with the credential */
 			}
 			[credential release];
-			if (disposition == NSURLSessionAuthChallengeCancelAuthenticationChallenge) {
+			if (disposition == FNAuthenticationChallengeAnswerCancel) {
 				transfer->cancelledChallenge = 1;
 				return 0;
 			}
 			/* Every other answer leaves the 401 AS THE RESPONSE, which is the honest outcome: the server
-			 * asked, the client declined to answer, and what it gets is what the server said. */
+			 * asked, the client declined to answer, and what it gets is what the server said. THE SENTINEL
+			 * IS PART OF THAT: a client that implements the door and says nothing leaves `disposition` at
+			 * -1, and "nobody answered" and "the default handling" are the same outcome here — which is why
+			 * this transport needs no fallback call to say so. */
 		}
 		[transfer->protocol fnReportResponseWithStatus:status headers:fields];
 	}
@@ -835,19 +836,16 @@ retry_transfer:
 /* --- THE PRIVATE REPORTING DOORS ----------------------------------------------------------------- */
 
 - (void)fnAskClientForCredential:(NSURLAuthenticationChallenge *)challenge
-	       completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition,
-					   NSURLCredential * _Nullable))completionHandler
 {
 	if (_client == nil ||
-	    ![_client respondsToSelector:
-		@selector(URLProtocol:didReceiveAuthenticationChallenge:completionHandler:)]) {
-		/* NO DOOR MEANS NO OPINION, WITHOUT WAITING - the rule every door in this library keeps. */
-		completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
+	    ![_client respondsToSelector:@selector(URLProtocol:didReceiveAuthenticationChallenge:)]) {
+		/* NO DOOR MEANS NO OPINION, WITHOUT WAITING - the rule every door in this library keeps. AND THE
+		 * CALLER NEEDS NO CALL BACK FROM HERE to express it: its own sentinel already means "leave the 401
+		 * as the response", which is exactly the default handling a client with no door produces — so this
+		 * method asks and returns, with nothing to report. */
 		return;
 	}
-	[_client URLProtocol:self
-	    didReceiveAuthenticationChallenge:challenge
-		    completionHandler:completionHandler];
+	[_client URLProtocol:self didReceiveAuthenticationChallenge:challenge];
 }
 
 - (void)fnReportResponseWithStatus:(long)status headers:(NSDictionary *)headers

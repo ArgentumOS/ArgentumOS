@@ -116,17 +116,16 @@ static const char *const fixture_bytes = "the bridge carried these bytes\n";
 /* THE AUTHENTICATION DOOR IS IMPLEMENTED BECAUSE THE PROTOCOL REQUIRES IT (§50.3 declared it): this client
  * is handed to the bridge, and a challenge arrives through it the moment a fixture answers 401. No fixture
  * here does, so the answer only has to be a legal one - and it is the DEFAULT handling rather than a
- * credential this probe has no opinion about. */
+ * credential this probe has no opinion about.
+ *
+ * ⚠⚠ AND IT ANSWERS THROUGH THE CHALLENGE'S SENDER (§63.158): the door is APPLE'S now and takes no handler,
+ * so `-performDefaultHandlingForAuthenticationChallenge:` is the way a client says "I have no opinion" —
+ * which is what the handler's PerformDefaultHandling used to say. */
 - (void)URLProtocol:(NSURLProtocol *)protocol
     didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
-		  completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
-					      NSURLCredential *credential))completionHandler
 {
 	[_events addObject:@"challenge"];
-	completionHandler(NSURLSessionAuthChallengePerformDefaultHandling,
-			  [[NSURLCredential alloc] initWithUser:nil
-						       password:nil
-						    persistence:NSURLCredentialPersistenceNone]);
+	[[challenge sender] performDefaultHandlingForAuthenticationChallenge:challenge];
 }
 
 - (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol

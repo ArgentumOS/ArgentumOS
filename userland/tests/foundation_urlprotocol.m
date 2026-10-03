@@ -99,11 +99,13 @@ static NSURL *fn_url(NSString *string)
 /* THE AUTHENTICATION DOOR IS ANSWERED IN THE PROBE, AND ANSWERING IT IS THE POINT (§50.3): this class is
  * the client half of the seam, and until the door was DECLARED the bridge's call to it compiled only
  * because `_client` is id-typed. An answer here is a legal answer, never a state the probe depends on —
- * nothing in this unit raises a challenge — and it is counted like the other callbacks. */
+ * nothing in this unit raises a challenge — and it is counted like the other callbacks.
+ *
+ * ⚠⚠ AND IT ANSWERS THROUGH THE CHALLENGE'S SENDER (§63.158): the door is APPLE'S now and takes no handler,
+ * so the sender this challenge carries IS the answer path — which is the half of §62.27 this seam was still
+ * carrying a second shape for. */
 - (void)URLProtocol:(NSURLProtocol *)protocol
     didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
-		  completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
-					      NSURLCredential *credential))completionHandler
 {
 	NSURLCredential *credential =
 		[[NSURLCredential alloc] initWithUser:@"probe"
@@ -111,7 +113,7 @@ static NSURL *fn_url(NSString *string)
 					  persistence:NSURLCredentialPersistenceNone];
 
 	_calls++;
-	completionHandler(NSURLSessionAuthChallengeUseCredential, credential);
+	[[challenge sender] useCredential:credential forAuthenticationChallenge:challenge];
 }
 - (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol { _calls++; }
 - (void)URLProtocol:(NSURLProtocol *)protocol didFailWithError:(NSError *)error { _calls++; }
@@ -301,7 +303,7 @@ int main(void)
 			    [client respondsToSelector:@selector(URLProtocol:cachedResponseIsValid:)] &&
 			    [client respondsToSelector:@selector(URLProtocol:didReceiveResponse:cacheStoragePolicy:)] &&
 			    [client respondsToSelector:@selector(URLProtocol:didLoadData:)] &&
-			    [client respondsToSelector:@selector(URLProtocol:didReceiveAuthenticationChallenge:completionHandler:)] &&
+			    [client respondsToSelector:@selector(URLProtocol:didReceiveAuthenticationChallenge:)] &&
 			    [client respondsToSelector:@selector(URLProtocolDidFinishLoading:)] &&
 			    [client respondsToSelector:@selector(URLProtocol:didFailWithError:)];
 
@@ -310,7 +312,7 @@ int main(void)
 		      @"all seven callbacks, and the class conforms to the protocol");
 
 		/* THE DECLARATION IS ASSERTED WHERE DECLARATIONS LIVE, which is the whole of §50.3: the bridge
-		 * messaged -URLProtocol:didReceiveAuthenticationChallenge:completionHandler: through an id-typed
+		 * messaged -URLProtocol:didReceiveAuthenticationChallenge: through an id-typed
 		 * receiver, and THAT COMPILES WHETHER OR NOT ANY HEADER DECLARES IT — so the authentication loop
 		 * passed ten checks while a caller could not read the contract and no compiler could check a call
 		 * to it. A `-respondsToSelector:` on the client cannot see the difference, because the class
@@ -318,7 +320,7 @@ int main(void)
 		 * here; the same call pins the one member that is still deliberately absent. */
 		struct objc_method_description declared =
 			protocol_getMethodDescription(@protocol(NSURLProtocolClient),
-				@selector(URLProtocol:didReceiveAuthenticationChallenge:completionHandler:),
+				@selector(URLProtocol:didReceiveAuthenticationChallenge:),
 				YES /* required */, YES /* instance */);
 		struct objc_method_description absent =
 			protocol_getMethodDescription(@protocol(NSURLProtocolClient),
@@ -327,13 +329,13 @@ int main(void)
 
 		check("urlprotocol-client-declares-the-authentication-door",
 		      declared.name != NULL &&
-		      [client respondsToSelector:@selector(URLProtocol:didReceiveAuthenticationChallenge:completionHandler:)],
+		      [client respondsToSelector:@selector(URLProtocol:didReceiveAuthenticationChallenge:)],
 		      @"the protocol declares the authentication door the bridge messages, and a client answers it");
 
 		/* AND THE ABSENCE IS PINNED, so a deliberate refusal cannot quietly become either a declaration
-		 * nobody noticed or a gap nobody recorded. Its ground is in the header: it completes the
-		 * NSURLAuthenticationChallengeSender round trip §48.6 refuses, and a client that cancels answers
-		 * through the authentication door's CancelAuthenticationChallenge disposition instead. */
+		 * nobody noticed or a gap nobody recorded. Its ground is in the header: a client that cancels
+		 * answers through the challenge's SENDER — the ONE answer path since §63.158 — so the notification
+		 * would announce a round trip nothing completes. */
 		check("the-cancel-notification-is-absent-and-recorded",
 		      absent.name == NULL,
 		      @"-URLProtocol:didCancelAuthenticationChallenge: stays undeclared, and the header says why");

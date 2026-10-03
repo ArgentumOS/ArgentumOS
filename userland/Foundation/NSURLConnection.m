@@ -585,8 +585,6 @@ static unsigned long fn_download_serial = 0;
 
 - (void)URLProtocol:(NSURLProtocol *)protocol
     didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
-		  completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition,
-					      NSURLCredential * _Nullable))completionHandler
 {
 	id delegate = _delegate;
 
@@ -594,8 +592,10 @@ static unsigned long fn_download_serial = 0;
 
 	/* APPLE'S PRECEDENCE, WRITTEN OUT RATHER THAN IMPLIED (the header states it for a caller; this is the
 	 * code that keeps it). THE MODERN DOOR SUPERSEDES THE DEPRECATED PAIR, so a delegate that implements it is
-	 * the only one asked — and it must answer THROUGH THE CHALLENGE'S SENDER, which is the continuation this
-	 * handler is (DECISION 4). */
+	 * the only one asked — and it must answer THROUGH THE CHALLENGE'S SENDER, which is the transport's own
+	 * thunk over its wait. THAT IS TRUE OF EVERY BRANCH HERE, and it is now the ONLY answer path (§63.158):
+	 * this door takes no completion handler any more, so there is nothing for this class to call and nothing
+	 * to double-answer. */
 	if ([delegate respondsToSelector:
 			@selector(connection:willSendRequestForAuthenticationChallenge:)]) {
 		[(id <NSURLConnectionDelegate>)delegate connection:self
@@ -603,12 +603,12 @@ static unsigned long fn_download_serial = 0;
 		return;
 	}
 	/* THE GATE IS ASKED NEXT, and a NO means "do not authenticate": the transfer continues WITHOUT
-	 * credentials, which is the default handling this completion handler names. */
+	 * credentials — which needs no call from here, because a client that answers nothing IS the default
+	 * handling at the transport, and the 401 stands as the response. */
 	if ([delegate respondsToSelector:
 			@selector(connection:canAuthenticateAgainstProtectionSpace:)]) {
 		if (![(id <NSURLConnectionDelegate>)delegate connection:self
 				canAuthenticateAgainstProtectionSpace:[challenge protectionSpace]]) {
-			completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
 			return;
 		}
 	}
@@ -619,8 +619,9 @@ static unsigned long fn_download_serial = 0;
 			didReceiveAuthenticationChallenge:challenge];
 		return;
 	}
-	/* AND NO DOOR AT ALL MEANS THE DEFAULT, WITHOUT WAITING — the rule every door in this library keeps. */
-	completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
+	/* AND NO DOOR AT ALL MEANS THE DEFAULT — the rule every door in this library keeps, and this time it is
+	 * expressed by RETURNING rather than by answering: a transport that hears nothing from its client leaves
+	 * the 401 as the response, which is the same outcome the old handler's PerformDefaultHandling produced. */
 }
 
 - (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol

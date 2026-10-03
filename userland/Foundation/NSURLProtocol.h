@@ -103,19 +103,13 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/* WHAT A CLIENT DECIDES WHEN A SERVER ASKS FOR CREDENTIALS — declared beside the first door that takes it
- * (§50.3: it lived in NSURLSession.h until that header's import of this one made the door's type and the
- * door's declaration a cycle).
- *
- * THE VALUES ARE OURS UNDER §11.6.1 D2, as every enum's in this library are — Apple publishes the case
- * names and the case names only. UseCredential is 0 because it is the case a handler reaches for first,
- * and a zeroed decision must not mean the opposite of what its author intended. */
-typedef NS_ENUM(NSInteger, NSURLSessionAuthChallengeDisposition) {
-	NSURLSessionAuthChallengeUseCredential = 0,
-	NSURLSessionAuthChallengePerformDefaultHandling = 1,
-	NSURLSessionAuthChallengeCancelAuthenticationChallenge = 2,
-	NSURLSessionAuthChallengeRejectProtectionSpace = 3
-};
+/* ⚠⚠ AND THE DISPOSITION ENUM IS NOT HERE ANY MORE (§63.158). `NSURLSessionAuthChallengeDisposition` used to
+ * be declared at this point — §50.3 moved it here FROM `NSURLSession.h` because that header imports this one,
+ * so declaring the door's type where the type already was would have been a cycle. **IT IS APPLE'S TYPE FOR
+ * APPLE'S SESSION DOORS**, so it has gone back where its owner declares it: `NSURLSession.h`, where
+ * `NSURLSessionDelegate` and `NSURLSessionTaskDelegate` use it, and where the ledger's two `shipped` rows place
+ * it. THE REASON THE SEAM NO LONGER NEEDS IT IS THE SAME CHANGE THAT MADE THIS FILE SMALLER: the
+ * authentication door below takes NO HANDLER, so there is no disposition for a client to answer with. */
 
 /* HOW A PROTOCOL REPORTS BACK — the seven calls APPLE DECLARES, and the caller's side of the seam. EVERY
  * ONE OF THOSE IS REQUIRED in Apple's declaration, so there is no -respondsToSelector: dance for them; the
@@ -144,19 +138,21 @@ typedef NS_ENUM(NSInteger, NSURLSessionAuthChallengeDisposition) {
 /* THE BODY, in as many calls as the protocol likes; the order is the protocol's to decide. */
 - (void)URLProtocol:(NSURLProtocol *)protocol didLoadData:(NSData *)data;
 
-/* THE SERVER ASKED FOR CREDENTIALS, AND THE CLIENT ANSWERS THROUGH THE HANDLER — SYNCHRONOUSLY by contract,
- * the way this seam answers at the head of a response: the transport is holding the transfer while it
- * waits, and the handler is what releases it. `disposition` is what to do with the challenge and
- * `credential` is what to send with the retry. THE HANDLER IS CALLED EXACTLY ONCE.
+/* THE SERVER ASKED FOR CREDENTIALS, AND THE CLIENT ANSWERS THROUGH THE CHALLENGE'S SENDER — SYNCHRONOUSLY by
+ * contract, the way this seam answers at the head of a response: the transport is holding the transfer while it
+ * waits, and the answer is what releases it. `[challenge sender]` is the TRANSPORT'S OWN THUNK over that wait,
+ * so messaging it answers this transfer and nothing else. THE ANSWER IS THE CLIENT'S OWN BUSINESS — one
+ * credential, no credential, a cancel, or the default — and the sender's doors are Apple's.
  *
- * THIS IS §48.6's REGISTERED DEVIATION FROM APPLE (see the header above): Apple's door is asynchronous and
- * its client answers by messaging the challenge's NSURLAuthenticationChallengeSender, which this library
- * refuses as Legacy. §50.3 is why the deviation is now VISIBLE HERE rather than only in the bridge — the
- * selector existed in no header at all, and an undeclared selector on an id-typed receiver compiles. */
+ * ⚠⚠ AND THIS IS APPLE'S DOOR WITH NO DEVIATION (§63.158). It used to take a completion handler — §48.6's
+ * REGISTERED DEVIATION — whose entire ground was that *this library refuses `-sender` as Legacy*. **§62.27
+ * landed `-sender` and §62.24 retired that ground, so the deviation outlived its reason**, which is exactly
+ * what the register's own policy forbids ("deviations are tolerated only as far as necessary for function").
+ * The handler is GONE, the sender is the ONE answer path, and the enum that handler took has gone back to its
+ * Apple owner. §50.3's lesson is kept rather than re-learned: the selector is DECLARED here, which it once was
+ * not, and `foundation_urlprotocol` asserts that. */
 - (void)URLProtocol:(NSURLProtocol *)protocol
-    didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
-		  completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition,
-					      NSURLCredential * _Nullable credential))completionHandler;
+    didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;
 
 /* AND THE END — one of these two, and this one carries no protocol, as Apple declares it. */
 - (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol;

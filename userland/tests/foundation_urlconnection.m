@@ -219,7 +219,9 @@ static BOOL fn_protocol_requires(Protocol *proto, const char *sel)
  * and each needs a delegate shaped for it):
  *   * A SENDER THAT RECORDS, so "the delegate answered through the sender" is observable rather than
  *     assumed - and it adopts Apple's protocol, which is also what registers that protocol's metadata in
- *     this binary (the measurement foundation_url.m records about unadopted protocols);
+ *     this binary (the measurement foundation_url.m records about unadopted protocols). **AND SINCE §63.158
+ *     IT COUNTS EVERY ANSWER, not just the credentialed one**: with the door's completion handler gone, the
+ *     SENDER is the only answer path, so "this class answered nothing" is a fact only a recorder can hold.
  *   * A DELEGATE IMPLEMENTING ALL THREE DOORS, which is how "the modern door SUPERSEDES the deprecated
  *     pair" becomes a check about an object that could have answered either way - parameterised by what the
  *     gate answers, so the "no means no authentication" leg uses the same shape.
@@ -227,6 +229,7 @@ static BOOL fn_protocol_requires(Protocol *proto, const char *sel)
 @interface FNSenderRecorder : NSObject <NSURLAuthenticationChallengeSender>
 {
 	@public
+	int answers;		/* EVERY answer, whichever door of the protocol delivered it */
 	int useCredentialCalls;
 	NSURLCredential *credential;
 	NSURLAuthenticationChallenge *challenge;
@@ -240,6 +243,7 @@ static BOOL fn_protocol_requires(Protocol *proto, const char *sel)
 - (void)useCredential:(NSURLCredential *)aCredential
 forAuthenticationChallenge:(NSURLAuthenticationChallenge *)aChallenge
 {
+	answers++;
 	useCredentialCalls++;
 	credential = aCredential;
 	challenge = aChallenge;
@@ -249,11 +253,13 @@ forAuthenticationChallenge:(NSURLAuthenticationChallenge *)aChallenge
 - (void)continueWithoutCredentialForAuthenticationChallenge:(NSURLAuthenticationChallenge *)aChallenge
 {
 	(void)aChallenge;
+	answers++;
 }
 
 - (void)cancelAuthenticationChallenge:(NSURLAuthenticationChallenge *)aChallenge
 {
 	(void)aChallenge;
+	answers++;
 }
 
 @end
@@ -897,16 +903,15 @@ int main(void)
 	 *
 	 * THE PRECEDENCE IS APPLE'S AND IT IS THE WHOLE SUBJECT: the MODERN door supersedes the deprecated
 	 * pair, the GATE is asked next, and no door at all means the default WITHOUT WAITING. The connection is
-	 * asked through the door the BRIDGE uses, `-URLProtocol:didReceiveAuthenticationChallenge:
-	 * completionHandler:`, and every check reads what the delegate recorded plus whether that handler was
-	 * answered — because THIS CLASS must NOT answer it when a delegate door exists: the delegate answers
-	 * through the challenge's SENDER, which IS that continuation, so answering both would answer one
-	 * challenge twice.
+	 * asked through the door the BRIDGE uses — APPLE'S `-URLProtocol:didReceiveAuthenticationChallenge:`,
+	 * which takes no handler since §63.158 — and every check reads what the delegate recorded plus what the
+	 * SENDER recorded, because THE SENDER IS THE ONLY ANSWER PATH NOW: a challenge's sender is the
+	 * transport's own thunk, so an answer from the delegate reaches the transport and there is exactly one
+	 * answer to count. "This class answered nothing" is a ZERO in that counter.
 	 */
 	{
-		SEL sel = @selector(URLProtocol:didReceiveAuthenticationChallenge:completionHandler:);
-		typedef void (*Fn)(id, SEL, NSURLProtocol *, NSURLAuthenticationChallenge *,
-				   void (^)(NSURLSessionAuthChallengeDisposition, NSURLCredential *));
+		SEL sel = @selector(URLProtocol:didReceiveAuthenticationChallenge:);
+		typedef void (*Fn)(id, SEL, NSURLProtocol *, NSURLAuthenticationChallenge *);
 		NSURLProtectionSpace *space = [[NSURLProtectionSpace alloc]
 			initWithHost:@"example.invalid" port:80 protocol:@"http" realm:@"Probe"
 	    authenticationMethod:NSURLAuthenticationMethodHTTPBasic];
@@ -924,24 +929,23 @@ int main(void)
 			NSURLAuthenticationChallenge *challenge = [[NSURLAuthenticationChallenge alloc]
 				initWithProtectionSpace:space proposedCredential:nil previousFailureCount:0
 					 failureResponse:nil error:nil sender:sender];
-			__block NSInteger disposition = -1;
 			BOOL present = (conn != nil) && [conn respondsToSelector:sel];
 
 			if (present) {
-				((Fn)objc_msgSend)(conn, sel, nil, challenge,
-					^(NSURLSessionAuthChallengeDisposition d, NSURLCredential *c) {
-					(void)c;
-					disposition = (NSInteger)d;
-				});
+				((Fn)objc_msgSend)(conn, sel, nil, challenge);
 			}
+			/* ⚠ THE ANSWER IS THE SENDER'S, AND IT IS COUNTED THERE (§63.158): the door takes no handler any
+			 * more, so "this class did not answer the challenge itself" is no longer a separate thing to
+			 * assert — an answer can only have come from the DELEGATE, through the sender the probe supplied.
+			 * ONE answer is therefore the whole of the contract this check is about. */
 			check("the-modern-door-supersedes-the-deprecated-pair",
 			      present && auth->modernCalls == 1 && auth->gateCalls == 0 &&
 			      auth->deprecatedCalls == 0 && sender->useCredentialCalls == 1 &&
-			      disposition == -1,
+			      sender->answers == 1,
 			      [NSString stringWithFormat:@"modern=%d gate=%d deprecated=%d senderCredential=%d "
-				@"disposition=%ld, and the continuation was NOT called by this class",
+				@"senderAnswers=%d, and the only answer is the delegate's",
 				auth->modernCalls, auth->gateCalls, auth->deprecatedCalls,
-				sender->useCredentialCalls, (long)disposition]);
+				sender->useCredentialCalls, sender->answers]);
 		}
 
 		/* THE DEPRECATED PAIR WHEN THE MODERN DOOR IS ABSENT: THE GATE FIRST, then the challenge — Apple's
@@ -955,28 +959,24 @@ int main(void)
 			NSURLAuthenticationChallenge *challenge = [[NSURLAuthenticationChallenge alloc]
 				initWithProtectionSpace:space proposedCredential:nil previousFailureCount:0
 					 failureResponse:nil error:nil sender:sender];
-			__block NSInteger disposition = -1;
 			BOOL present = (conn != nil) && [conn respondsToSelector:sel];
 
 			auth->gateAnswer = YES;
 			if (present) {
-				((Fn)objc_msgSend)(conn, sel, nil, challenge,
-					^(NSURLSessionAuthChallengeDisposition d, NSURLCredential *c) {
-					(void)c;
-					disposition = (NSInteger)d;
-				});
+				((Fn)objc_msgSend)(conn, sel, nil, challenge);
 			}
 			check("the-deprecated-pair-is-asked-gate-first",
 			      present && auth->gateCalls == 1 && auth->deprecatedCalls == 1 &&
-			      sender->useCredentialCalls == 1 && disposition == -1,
+			      sender->useCredentialCalls == 1 && sender->answers == 1,
 			      [NSString stringWithFormat:@"gate=%d deprecated=%d senderCredential=%d "
-				@"disposition=%ld", auth->gateCalls, auth->deprecatedCalls,
-				sender->useCredentialCalls, (long)disposition]);
+				@"senderAnswers=%d", auth->gateCalls, auth->deprecatedCalls,
+				sender->useCredentialCalls, sender->answers]);
 		}
 
 		/* AND A `NO` FROM THE GATE MEANS "DO NOT AUTHENTICATE": the transfer continues WITHOUT credentials,
-		 * which is the default handling this completion handler names — and the challenge door is not asked,
-		 * because the gate has already answered. */
+		 * which is the transport's default handling — and the challenge door is not asked, because the gate
+		 * has already answered. **THE ASSERTION IS A COUNT OF ZERO**, which is now the only way to say it:
+		 * with no handler to leave unanswered, "nothing answered this challenge" IS the default. */
 		{
 			FNSenderRecorder *sender = [[FNSenderRecorder alloc] init];
 			FNDeprecatedAuthDelegate *auth = [[FNDeprecatedAuthDelegate alloc] init];
@@ -986,50 +986,41 @@ int main(void)
 			NSURLAuthenticationChallenge *challenge = [[NSURLAuthenticationChallenge alloc]
 				initWithProtectionSpace:space proposedCredential:nil previousFailureCount:0
 					 failureResponse:nil error:nil sender:sender];
-			__block NSInteger disposition = -1;
-			__block NSURLCredential *given = nil;
 			BOOL present = (conn != nil) && [conn respondsToSelector:sel];
 
 			auth->gateAnswer = NO;
 			if (present) {
-				((Fn)objc_msgSend)(conn, sel, nil, challenge,
-					^(NSURLSessionAuthChallengeDisposition d, NSURLCredential *c) {
-					disposition = (NSInteger)d;
-					given = c;
-				});
+				((Fn)objc_msgSend)(conn, sel, nil, challenge);
 			}
 			check("a-no-from-the-gate-means-no-authentication",
 			      present && auth->gateCalls == 1 && auth->deprecatedCalls == 0 &&
-			      given == nil &&
-			      disposition == NSURLSessionAuthChallengePerformDefaultHandling,
-			      [NSString stringWithFormat:@"gate=%d deprecated=%d disposition=%ld credential=%s",
-				auth->gateCalls, auth->deprecatedCalls, (long)disposition,
-				given == nil ? "none" : "one"]);
+			      sender->answers == 0 && sender->useCredentialCalls == 0,
+			      [NSString stringWithFormat:@"gate=%d deprecated=%d senderAnswers=%d "
+				@"senderCredential=%d, and NOBODY answered the challenge",
+				auth->gateCalls, auth->deprecatedCalls, sender->answers,
+				sender->useCredentialCalls]);
 		}
 
 		/* AND NO AUTH DOOR AT ALL MEANS THE DEFAULT, WITHOUT WAITING — the rule every door in this library
-		 * keeps, and the reason a delegate that cares about none of this is never blocked on. */
+		 * keeps, and the reason a delegate that cares about none of this is never blocked on. The sender is
+		 * supplied so that "the class answered nothing" is OBSERVED rather than assumed. */
 		{
+			FNSenderRecorder *sender = [[FNSenderRecorder alloc] init];
 			FNEmptyConnDelegate *empty = [[FNEmptyConnDelegate alloc] init];
 			NSURLConnection *conn = [[NSURLConnection alloc] initWithRequest:request
 									 delegate:(id)empty
 								 startImmediately:NO];
 			NSURLAuthenticationChallenge *challenge = [[NSURLAuthenticationChallenge alloc]
 				initWithProtectionSpace:space proposedCredential:nil previousFailureCount:0
-					 failureResponse:nil error:nil sender:nil];
-			__block NSInteger disposition = -1;
+					 failureResponse:nil error:nil sender:sender];
 			BOOL present = (conn != nil) && [conn respondsToSelector:sel];
 
 			if (present) {
-				((Fn)objc_msgSend)(conn, sel, nil, challenge,
-					^(NSURLSessionAuthChallengeDisposition d, NSURLCredential *c) {
-					(void)c;
-					disposition = (NSInteger)d;
-				});
+				((Fn)objc_msgSend)(conn, sel, nil, challenge);
 			}
 			check("no-auth-door-means-the-default-without-waiting",
-			      present && disposition == NSURLSessionAuthChallengePerformDefaultHandling,
-			      [NSString stringWithFormat:@"disposition=%ld", (long)disposition]);
+			      present && sender->answers == 0,
+			      [NSString stringWithFormat:@"senderAnswers=%d", sender->answers]);
 		}
 	}
 
