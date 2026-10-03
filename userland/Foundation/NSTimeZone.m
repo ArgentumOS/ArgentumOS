@@ -18,6 +18,7 @@
  */
 
 #import <Foundation/NSTimeZone.h>
+#import <Foundation/NSData.h>	/* the type of -data and of the data-taking doors */
 #import <Foundation/NSString.h>
 #import <Foundation/NSDate.h>
 #import <Foundation/NSArray.h>
@@ -198,7 +199,7 @@ static NSInteger fn_tz_offset(NSString *name, double secondsSince1970, BOOL *isD
 	if (self == nil) {
 		return nil;
 	}
-	_name = name;
+	_name = [name copy];	/* §63.124: it was an ASSIGN, so the class held a name it did not own */
 	_secondsFromGMT = 0;
 	return self;
 }
@@ -479,6 +480,55 @@ static NSTimeZone *fn_default_time_zone = nil;
 
 	fn_default_time_zone = [aTimeZone copy];
 	[old release];
+}
+
+
+/* ================== FOUR MORE DOORS (§63.124) ================== */
+
+- (NSData *)data
+{
+	/* ⚠ THE FORMAT IS OURS AND IS WRITTEN DOWN (see the header): the name and the offset as ‘name|seconds’. **AND A
+	 * ZONE THAT WAS GIVEN NO DATA STILL ANSWERS ONE — the commonest case is not an empty answer.** */
+	if (_data != nil) {
+		return [[_data copy] autorelease];
+	}
+	return [[NSString stringWithFormat:@"%s|%ld", _name != nil ? [_name UTF8String] : "", (long)_secondsFromGMT]
+		 dataUsingEncoding:NSUTF8StringEncoding];
+}
+
+- (id)initWithName:(NSString *)tzName data:(NSData *)aData
+{
+	self = [self initWithName:tzName];
+	if (self != nil) {
+		/* ⚠ THE NAME IS WHAT MAKES THE ZONE (the initialiser above validates it through ICU); the data DESCRIBES it
+		 * and is kept so -data answers it back. A copy, because the caller's buffer is not this object's. */
+		_data = [aData copy];
+	}
+	return self;
+}
+
++ (NSTimeZone *)timeZoneWithName:(NSString *)tzName data:(NSData *)aData
+{
+	return [[[self alloc] initWithName:tzName data:aData] autorelease];
+}
+
++ (void)resetSystemTimeZone
+{
+	/* ⚠ A NO-OP, AND CORRECTLY SO RATHER THAN REGRETTABLY: Apple's door drops a CACHED system zone, and this library
+	 * READS THE SYSTEM ZONE FRESH EACH TIME (`+systemTimeZone` asks ICU), so there is no cache to drop. **A DOOR THAT
+	 * PRETENDED TO RESET SOMETHING WOULD BE THE LIE; SAYING IT HAS NOTHING TO RESET IS THE ANSWER** — the shape
+	 * §63.108's security pair established. */
+}
+
+/* ⚠⚠ AND THE `-dealloc` THIS CLASS NEVER HAD, WHICH `_data` REQUIRES — AND WHICH ALSO FIXES A DEFECT THAT WAS HERE
+ * BEFORE IT: `_name` WAS ASSIGNED by both initialisers, so the class held a pointer it did not own (the same
+ * dangling-contract defect §63.79 found in NSNumberFormatter, fixed WITH the new properties rather than beside them).
+ * Both are owned now and both are released here. */
+- (void)dealloc
+{
+	[_name release];
+	[_data release];
+	[super dealloc];
 }
 
 @end

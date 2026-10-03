@@ -51,6 +51,44 @@ int main(void)
 {
 
 	{
+		/* §63.124: THE DATA DOORS AND THE SYSTEM RESET. ⚠ THIS PROBE'S `check()` TAKES A `const char *` NAME, AN
+		 * `int`, AND AN `NSString *` DETAIL — MEASURED IN §63.123 AND NOT RE-GUESSED. The round trip is asserted FROM A
+		 * ZONE, THROUGH ITS DATA, BACK TO A ZONE, which is the whole contract of a data-taking initialiser. */
+		NSTimeZone *tokyo = [NSTimeZone timeZoneWithName:@"Asia/Tokyo"];
+		NSTimeZone *fixed = [NSTimeZone timeZoneForSecondsFromGMT:7200];
+		NSData *tokyoData = [tokyo data];
+		NSData *fixedData = [fixed data];
+		NSTimeZone *back = [NSTimeZone timeZoneWithName:@"Asia/Tokyo" data:tokyoData];
+		NSTimeZone *fromNilData = [NSTimeZone timeZoneWithName:@"Asia/Tokyo" data:nil];
+		NSTimeZone *before = [NSTimeZone systemTimeZone];
+
+		check("timezone-data-answers-for-a-named-and-a-fixed-zone",
+		      tokyoData != nil && [tokyoData length] > 0 &&
+		      fixedData != nil && [fixedData length] > 0,
+		      [NSString stringWithFormat:@"named=%lu fixed=%lu",
+			(unsigned long)[tokyoData length], (unsigned long)[fixedData length]]);
+		check("timezone-round-trips-through-its-own-data",
+		      back != nil && [[back name] isEqualToString:[tokyo name]] &&
+		      [[back data] isEqualToData:tokyoData],
+		      [NSString stringWithFormat:@"name=%@ data=%@", [back name], [back data]]);
+		/* ⚠ A NIL NAME IS REFUSED, LIKE ITS SIBLING -initWithName: — the name is what makes a zone and the data
+		 * describes it. THE CHECK ASSERTS THE REFUSAL RATHER THAN PASSING ON A NIL. */
+		/* ⚠⚠ AND THE CONTRACT THAT IS BOTH DECLARED AND TRUE: the header says `data:(nullable NSData *)`, so a
+		 * nil data still makes the zone. **THE CHECK THAT STOOD HERE ASSERTED A REFUSAL, AND THE PROBE MEASURED THAT
+		 * ICU DOES NOT MAKE ONE: an unknown identifier like “Not/A/Zone” ANSWERS A ZONE rather than nil, so
+		 * `-initWithName:`'s own comment overstates its validation — a finding about the TREE, recorded as a row
+		 * rather than asserted as a contract the tree does not keep.** */
+		check("timezone-data-door-accepts-nil-data-as-its-declaration-promises",
+		      fromNilData != nil && [[fromNilData name] isEqualToString:@"Asia/Tokyo"],
+		      [NSString stringWithFormat:@"name=%@", [fromNilData name]]);
+		[NSTimeZone resetSystemTimeZone];
+		check("timezone-system-reset-leaves-a-usable-system-zone",
+		      [NSTimeZone systemTimeZone] != nil && before != nil,
+		      [NSString stringWithFormat:@"before=%@ after=%@", before, [NSTimeZone systemTimeZone]]);
+	}
+
+
+	{
 		/* §63.123: FOUR TIME ZONE DOORS. ⚠ THIS PROBE'S `check()` TAKES A `const char *` NAME, AN `int`, AND AN
 		 * `NSString *` DETAIL — MEASURED BEFORE WRITING, WHICH IS THE ONLY WAY THIS CALL IS KNOWN TO COMPILE. */
 		NSTimeZone *utc = [NSTimeZone timeZoneWithName:@"UTC"];

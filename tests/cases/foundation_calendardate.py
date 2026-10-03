@@ -44,6 +44,10 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_calendardate"
 CHECKS = (
+    "timezone-system-reset-leaves-a-usable-system-zone",
+    "timezone-data-door-accepts-nil-data-as-its-declaration-promises",
+    "timezone-round-trips-through-its-own-data",
+    "timezone-data-answers-for-a-named-and-a-fixed-zone",
     "timezone-default-is-settable-and-answers-what-was-set",
     "timezone-fixed-offset-zone-has-no-daylight-saving",
     "timezone-localized-name-differs-by-style",

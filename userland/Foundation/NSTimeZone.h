@@ -32,6 +32,7 @@
 #define FOUNDATION_NSTIMEZONE_H
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSData.h>	/* the type of -data and of the data-taking doors */
 #import <Foundation/NSDate.h>	/* named by the ...ForDate: doors below */
 #import <Foundation/NSLocale.h>	/* named by -localizedName:locale: below */
 
@@ -45,6 +46,7 @@ NS_ASSUME_NONNULL_BEGIN
 {
 	NSString *_name;		/* the IANA identifier; nil for a fixed-offset zone */
 	NSInteger _secondsFromGMT;	/* the offset, and for a fixed zone the whole story */
+	NSData *_data;		/* OURS: the blob -data answers, set by the data-taking doors */
 }
 
 /* NULLABLE, all of them, for the reason the F6 notes give: each goes through an initialiser that
@@ -112,6 +114,19 @@ typedef enum {
 - (NSTimeInterval)daylightSavingTimeOffsetForDate:(NSDate *)date;
 - (nullable NSString *)localizedName:(NSTimeZoneNameStyle)style locale:(nullable NSLocale *)locale;
 @property (class, copy) NSTimeZone *defaultTimeZone;
+/* ⚠⚠ FOUR MORE ROWS, AND THE DATA-TAKING PAIR IS APPLE'S OWN COMMENT READ FIRST: "Primary creation method is
+ * `+timeZoneWithName:`; THE DATA-TAKING VARIANTS SHOULD RARELY BE USED DIRECTLY" — WHICH IS ALL APPLE PUBLISHES ABOUT
+ * THEM, so THE DATA'S CONTENT IS OURS (§11.6.1 D2) AND IS WRITTEN DOWN HERE: **a zone's data is its name and its offset
+ * as a small text form (‘name|seconds’), which round-trips through this library and is honestly NOT Apple's opaque
+ * blob.** A caller who stores our data and reads it back gets the zone it names; a caller who expects Apple's format
+ * has a format this system does not have — the same boundary as every other format here.
+ *
+ * ⚠ AND `-data` ANSWERS WHAT THE ZONE IS, NOT ONLY WHAT IT WAS GIVEN: a zone made with no data still answers one, and a
+ * door that answered nil for the commonest case would be a door that can only answer zero. */
+@property (readonly, copy) NSData *data;
++ (nullable instancetype)timeZoneWithName:(NSString *)tzName data:(nullable NSData *)aData;
+- (nullable instancetype)initWithName:(NSString *)tzName data:(nullable NSData *)aData;
++ (void)resetSystemTimeZone;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -15982,6 +15982,48 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.124 — THE DATA DOORS, THE CLASS'S MISSING `-dealloc`, AND A FINDING THAT IS A ROW RATHER THAN A FIX (2026-10-01)
+
+**WHAT LANDED: `-data`, `+timeZoneWithName:data:`, `-initWithName:data:` AND `+resetSystemTimeZone` — FOUR ROWS, so
+`NSTimeZone` is down to ONE (`+timeZoneWithAbbreviation:`).**
+
+**MEASURED: `method shipped 2201 → 2204`, `open 329 → 326`; `property 1286 → 1287`, `open 169 → 168`; `--check`
+consistent; build EXIT 0 with exactly the standing SIX warnings; `make testimg` EXIT 0;
+**`FOUNDATION-CALENDARDATE 20/20`**; `TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`.**
+
+**THE D2 CHOICE, BECAUSE APPLE PUBLISHES ALMOST NOTHING HERE: the data-taking pair's entire documentation is “Primary
+creation method is `+timeZoneWithName:`; THE DATA-TAKING VARIANTS SHOULD RARELY BE USED DIRECTLY” — WHICH SAYS NOTHING
+ABOUT THE DATA'S CONTENT. So a zone's data is ITS NAME AND ITS OFFSET AS A SMALL TEXT FORM (‘name|seconds’), which
+round-trips through this library and is honestly NOT Apple's opaque blob.** ⚠ AND `-data` ANSWERS FOR A ZONE THAT WAS
+GIVEN NONE: a door that answered nil for the commonest case would be a door that can only answer zero.
+
+**AND `+resetSystemTimeZone` IS A NO-OP, CORRECTLY SO RATHER THAN REGRETTABLY**: Apple's door drops a CACHED system zone
+and this library READS THE SYSTEM ZONE FRESH EACH TIME, so **there is no cache to drop** — the shape §63.108 established
+for the security-scoped pair. A door that pretended to reset something would be the lie.
+
+**⚠⚠ AND THE DEFECT FIXED ON THE WAY, BECAUSE THE NEW IVAR FORCED IT: `_name` WAS AN ASSIGN.** Adding `_data` needed a
+`-dealloc`, and this class had NONE — so `_name`, set by both initialisers from the caller's string, was a pointer the
+class did not own. **Both are retained and released now** (the §63.79 precedent: fixed WITH the new properties rather
+than beside them). The check that would have caught it — a name outliving its caller — is still owed.
+
+**⚠⚠ AND THE FINDING THAT IS A ROW AND NOT A FIX: ICU DOES NOT REFUSE AN UNKNOWN ZONE IDENTIFIER.** The probe measured
+`+timeZoneWithName:@"Not/A/Zone"` ANSWERING A ZONE rather than nil, so **`-initWithName:`'s own comment — ‘an unknown
+identifier answers nil, Apple's answer too’ — OVERSTATES WHAT IT DOES.** The follow-up row: either the initialiser
+should refuse an id ICU does not know (`ucal_getCanonicalTimeZoneID` is the door that asks) or its comment must say what
+it does. **THE PROBE FOUND IT BECAUSE IT ASSERTED A CONTRACT AND THE CONTRACT WAS NOT KEPT — which is the only reason to
+write a check that is not a restatement of the code.**
+
+**AND TWO METHOD FAILURES, THE SAME SHAPE AS THE WHOLE SESSION'S:**
+ 1. **A PATCH COMMAND THAT OPENED A FILE FOR WRITING AND THEN READ IT TO BUILD THE CONTENT.** `open(p, "w")` TRUNCATES
+    FIRST, so it wrote an empty script and the unit silently did nothing — and **an empty script exits 0 with no
+    output, which cost two rounds to see.** The standing rule is *validate every anchor, print every count, WRITE ONCE*;
+    I wrote twice;
+ 2. **AND A CHECK WHOSE EXPECTATION WAS A CONTRACT THE TREE DOES NOT KEEP** — `-Wnonnull` said the name is declared
+    non-null (so nil is a client error, not a contract), and then the probe said the rest.
+
+**⚠ AND WHAT BOTH HAVE IN COMMON IS WORTH THE LINE: THE INSTRUMENTS THAT CAUGHT THEM LOOK AT WHAT THE CODE DOES — THE
+WARNING COUNT AND THE PROBE — AND NEVER THE LEDGER, WHICH ONLY READS DECLARATIONS.**
+
 ## §63.123 — FIVE `NSTimeZone` ROWS LAND, AND THE COMPILER HAD ALREADY NAMED BOTH BUGS (2026-10-01)
 
 **WHAT LANDED: `-abbreviation`, `-abbreviationForDate:`, `-daylightSavingTimeOffsetForDate:`,
