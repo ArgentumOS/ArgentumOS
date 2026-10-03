@@ -149,7 +149,6 @@
 #import <Foundation/NSKeyedArchiver.h>
 #import <Foundation/NSProcessInfo.h>
 #import <Foundation/NSFileManager.h>
-#import <Foundation/NSURLComponents.h>
 #import <Foundation/NSTextCheckingResult.h>
 #import <Foundation/NSRegularExpression.h>
 #import <Foundation/NSDataDetector.h>

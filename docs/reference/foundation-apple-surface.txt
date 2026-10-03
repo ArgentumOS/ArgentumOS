@@ -7,7 +7,7 @@
 #
 # kind	status	name	owner	family	why	src
 # case	shipped	996	open	0	struck	78
-# class	shipped	154	open	0	struck	52
+# class	shipped	152	open	0	struck	52
 # enum	shipped	111	open	0	struck	9
 # protocol	shipped	28	open	0	struck	6
 # var	shipped	644	open	0	struck	211
@@ -1257,7 +1257,6 @@ class	shipped	NSTimer		App Support / Scheduling	-	objc
 class	shipped	NSURL		Fundamentals / URLs	-	objc
 class	shipped	NSURLAuthenticationChallenge		Networking / Authentication and credentials	-	objc
 class	shipped	NSURLCache		Networking / Cache behavior	-	objc
-class	shipped	NSURLComponents		Fundamentals / URLs	-	objc
 class	shipped	NSURLConnection		Networking / Legacy / URL Connection	deprecated	objc
 class	shipped	NSURLCredential		Networking / Authentication and credentials	-	objc
 class	shipped	NSURLCredentialStorage		Networking / Authentication and credentials	-	objc
@@ -1265,7 +1264,6 @@ class	shipped	NSURLDownload		Networking / Legacy / URL Download	deprecated	objc
 class	shipped	NSURLHandle		Networking / Legacy / URL Handle	deprecated	objc
 class	shipped	NSURLProtectionSpace		Networking / Authentication and credentials	-	objc
 class	shipped	NSURLProtocol		Networking / Essentials / Creating a session / Supporting custom protocols	-	objc
-class	shipped	NSURLQueryItem		Fundamentals / URLs	-	objc
 class	shipped	NSURLRequest		Networking / Requests and responses	-	objc
 class	shipped	NSURLResponse		Networking / Requests and responses	-	objc
 class	shipped	NSUUID		Fundamentals / Unique Identifiers	-	objc

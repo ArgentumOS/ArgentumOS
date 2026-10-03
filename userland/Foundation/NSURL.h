@@ -35,7 +35,8 @@
  *     LINE IN §62.25 — it is a PORTING TARGET — and `NSURLSession` NEVER STAYED REFUSED AT ALL: it
  *     shipped and then left the SURFACE entirely with the 10.2 cut (§63.159).** So the honest sentence is
  *     narrow: what a URL will not do here is FETCH ITSELF;
- *   - NSURLComponents / NSURLQueryItem — the STRUCTURED form is its own family
+ *   - the 10.9 components family (NSURLComponents / NSURLQueryItem) — CUT (§63.174), so the
+ *     STRUCTURED form
  *     and a later slice;
  *   - NSFileManager and every filesystem QUERY
  *     (-checkResourceIsReachableAndReturnError:, -resourceValuesForKeys:error:,

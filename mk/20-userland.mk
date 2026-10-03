@@ -155,7 +155,7 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSFileSecurity.m \
 	$(FOUNDATION_SRC)/NSFileWrapper.m \
 	$(FOUNDATION_SRC)/NSURL.h \
-	$(FOUNDATION_SRC)/NSURLComponents.m \
+	$(FOUNDATION_SRC)/FNURLComponents.m \
 	$(FOUNDATION_SRC)/NSTextCheckingResult.m \
 	$(FOUNDATION_SRC)/NSRegularExpression.m \
 	$(FOUNDATION_SRC)/NSDataDetector.m \
@@ -205,7 +205,6 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSXMLParser.h \
 	$(FOUNDATION_SRC)/NSFileSecurity.h \
 	$(FOUNDATION_SRC)/NSFileWrapper.h \
-	$(FOUNDATION_SRC)/NSURLComponents.h \
 	$(FOUNDATION_SRC)/NSScanner.h \
 	$(FOUNDATION_SRC)/NSOrthography.h \
 	$(FOUNDATION_SRC)/NSBlockOperation.h \
@@ -1065,13 +1064,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_filesecurity.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filesecurity"
-	# foundation_urlcomponents: F13.15 acceptance. ONE unit, only <Foundation/Foundation.h>.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_urlcomponents.m -o .build/probe-foundation_urlcomponents.o
-	$(MUSL64_OBJC) .build/probe-foundation_urlcomponents.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlcomponents"
 	# foundation_decimalnumber: W3b acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \

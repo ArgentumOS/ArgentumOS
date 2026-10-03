@@ -446,7 +446,7 @@ NSURLResourceKey NSURLVolumeUUIDStringKey = @"NSURLVolumeUUIDStringKey";
 }
 
 /* F8 REFUSED THIS DOOR BY NAME, and the reason was exact: without a resolution there is nothing for
- * it to do. RFC 3986 §5.2 lives in NSURLComponents (it is the component-wise algorithm) and is
+ * it to do. RFC 3986 §5.2 lives behind FNURLComponents (it is the component-wise algorithm) and is
  * reached through NSURL.h's function, so the two arrive together rather than one implying the
  * other. A NULL base is accepted: the algorithm still normalises a reference on its own. */
 + (nullable NSURL *)URLWithString:(NSString *)string relativeToURL:(nullable NSURL *)baseURL

@@ -53,7 +53,6 @@ HOST_CLEAN = {
     "foundation_set",
     "foundation_sort",
     "foundation_thread",
-    "foundation_urlcomponents",
 }
 
 

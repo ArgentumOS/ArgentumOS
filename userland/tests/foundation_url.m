@@ -76,7 +76,7 @@ static const char *fn_why(NSURL *url)
 
 /* THE RESOLUTION, as one call, so the RFC's table can be read as a table. MOVED HERE BY §63.169 SO THE
  * RESOLVER IS VERIFIED BY SOMETHING THAT SURVIVES THE CUT: these rows come from RFC 3986 §5.4 itself and they
- * drive +URLWithString:relativeToURL:, which is NSURL's OWN door - the 10.9 NSURLComponents family is going and
+ * drive +URLWithString:relativeToURL:, which is NSURL's OWN door - the 10.9 NSURLComponents family is gone and
  * its probe with it, and a rewritten resolver must not be the only thing that changed. */
 static NSString *fn_resolve(NSString *reference, NSString *base)
 {
@@ -234,7 +234,7 @@ int main(void)
 		 * WHAT IS ABSENT AND WHAT IS SHIPPED, SPLIT FROM THE REFUSALS (2026-09-18).
 		 *
 		 * THIS CHECK USED TO ASSERT BOTH IN ONE CONJUNCTION, AND TWO OF ITS ABSENCE
-		 * CLAIMS HAD GONE STALE: `NSURLComponents` and `+URLWithString:relativeToURL:`
+		 * CLAIMS HAD GONE STALE: `+URLWithString:relativeToURL:` and its resolver
 		 * both ship (F13.15), and nothing told the probe — it had been failing ever
 		 * since, and the failure could not say WHICH claim was false. That is §11.2's
 		 * lesson twice over: an absence assertion is a fact about the TREE, and a
@@ -304,12 +304,13 @@ int main(void)
 		      "the loading system above, and that is still absent");
 
 		check("url-shipped",
-		      objc_getClass("NSURLComponents") != NULL &&
+		      objc_getClass("NSURLComponents") == NULL &&
 		      [NSURL respondsToSelector:sel_registerName("URLWithString:relativeToURL:")] &&
 		      [[[NSURL URLWithString:@"b"
 			      relativeToURL:[NSURL URLWithString:@"http://h/a/"]]
 			  absoluteString] isEqualToString:@"http://h/a/b"],
-		      "NSURLComponents and relative resolution SHIP (F13.15), demanded rather than merely not-denied");
+		      "relative resolution SHIPS (F13.15), and the 10.9 NSURLComponents family is REFUSED: absent, "
+		      "asserted rather than merely undeclared");
 	}
 
 	{

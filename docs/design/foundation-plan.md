@@ -15962,6 +15962,57 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.174 — the NSURLComponents/NSURLQueryItem family is re-homed, not cut (private FNURLComponents)
+
+The 10.9 components family leaves the public surface and its machinery stays, under a private name.
+`NSURLComponents` + `NSURLQueryItem` were the last post-baseline owners with LIVE rows that something in
+this library actually used, so this is §63.164's rule rather than a deletion: **the vocabulary moved, and
+the wire semantics did not.** `NSURLComponents.h/.m` become `FNURLComponents.h/.m`, the class becomes
+`FNURLComponents`, and the public header leaves the staged set (a private header is not part of the
+guest's SDK).
+
+**Why the machinery cannot just be deleted with the name.** RFC 3986 §5.2 is the component-wise
+algorithm, and NSURL's `+URLWithString:relativeToURL:` is its only door. A relative spelling cannot be
+resolved by splitting a string at the last slash: the reference's own scheme wins if it has any, an
+authority wins next, an EMPTY PATH keeps the base's path AND query, and anything else merges with the
+base's path's last segment before dot segments are removed. Every one of those is a component
+question, so the resolution needs a parsed component form to operate on — and NSURL itself cannot be
+that form, because NSURL refuses a relative spelling by design (the fact that reverted the first two
+attempts at this unit).
+
+**What made it safe this time, measured rather than assumed.** The coupling surface is ONE symbol:
+`NSURL.m` calls `FNURLResolveRelative` (declared in `NSURL.h`, at lines 454 and 1672) and takes nothing
+else from that file, and no other translation unit imported the header. So a rename preserves every
+call site and every behaviour, which is exactly what the gate then showed: `foundation_url`'s RFC 3986
+§5.4 tables — moved into that probe in §63.169 — still pass, 44/44, through the renamed machinery.
+
+**What went with the public family.** `NSURLQueryItem` and `-queryItems`/`-setQueryItems:`: no user,
+and the resolver never wanted them (a query stays one string, as a URL carries it). The F13.15 probe
+`foundation_urlcomponents.m` and its case: its checks drove the *public editor's doors* by name, which a
+private class cannot have, so the behaviour it verified survives where behaviour is verified for this
+library — through NSURL's own door and §5.4's published table.
+
+**A refusal asserted, not merely undeclared.** `foundation_url.m`'s `url-shipped` check used to demand
+the class by name; it now demands its ABSENCE (`objc_getClass("NSURLComponents") == NULL`) beside the
+resolver's own positive checks. The check's name and the case's counts are unchanged (44 checks, 6
+case checks), so the flip cost no expectation anywhere else.
+
+Ledger: the two class rows are gone and the per-kind counts recomputed from the file's own rows
+(`class 152`). Era ground keeps both entries as provenance, and the sweep's
+`CORPUS_LACKS_OWNER_HEADER` entry for `NSURLComponents` stays — that set is a fact about Apple's
+CORPUS, not about this tree, and the rule from §63.119 is that such facts stand.
+
+**Method note, because this unit failed twice before and did not fail now.** Every edit was staged in
+memory and written only after every anchor had been asserted, so four separate script errors — three
+wrong whitespace guesses at prose anchors and one real bug (a substitution helper that read each file
+from disk, so successive edits to the SAME file clobbered one another) — cost zero tree damage; the
+first write happened only once the whole transformation was verified. For a multi-file mechanical
+rewrite that is the shape to reach for.
+
+Acceptance: `tools/foundation-sweep.py --check` consistent (symbol and selector ledgers), `--families`
+regenerated, `--unimplemented` 0 NEW; `make testimg` green with the renamed machinery and the deleted
+probe; `make test TESTS=foundation_url` → 1/1 case, 6/6 case checks, and the probe's own 44/44.
+
 ## §63.173 — the NSProgress family is cut (the class and NSProgressReporting, its last user gone)
 
 `NSProgress` (10.9) was the era audit's single post-baseline find, and it survived §63.162 for a reason

@@ -588,7 +588,7 @@ UNSUPPORTED_BY_APPLE = frozenset((
 # ⚠⚠ §63.119 — THE SIXTH CORRECTION TO A GROUND MECHANISM, AND THE ONE THAT BOUNDS ALL THE OTHERS:
 # **THE CORPUS IS NOT FOUNDATION'S HEADERS. IT IS A SUBSET OF 170, AND EIGHTY-NINE OF THIS TREE'S 221 HEADERS HAVE NO
 # COUNTERPART IN IT** — including `NSNumber.h`, `NSCoding.h`, `NSFastEnumeration.h`, `NSNotificationCenter.h`,
-# `NSURLComponents.h`, `NSURLSessionConfiguration.h` and the whole `NSUnit*` family.
+# `NSURLSessionConfiguration.h` and the whole `NSUnit*` family.
 #
 # SO AN ABSENCE FROM THE CORPUS IS **NOT** A GROUND FOR ANY ROW WHOSE OWNER'S OWN HEADER IT DOES NOT CARRY. §63.100
 # struck forty-one rows on absence and §63.102 refined WHEN absence may be trusted; THIS is the other half of that

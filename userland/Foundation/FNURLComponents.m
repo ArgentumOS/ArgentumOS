@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * NSURLComponents.m — a URL as eight fields (F13.15). MANUAL OWNERSHIP.
+ * FNURLComponents.m — a URL as eight fields, private (§63.174). MANUAL OWNERSHIP.
  *
  * THE PARSER WALKS BACKWARDS FROM THE END, which is the order RFC 3986's grammar allows: the
  * fragment is everything after the FIRST "#", the query everything after the first "?" in what is
@@ -19,7 +19,7 @@
  * was given, so nothing this object holds is ever re-encoded behind the caller's back.
  */
 
-#import <Foundation/NSURLComponents.h>
+#import "FNURLComponents.h"
 #import <Foundation/NSURL.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSString.h>
@@ -205,18 +205,18 @@ static NSString *fn_merge_paths(NSString *basePath, NSString *referencePath)
 }
 
 /* THE RESOLUTION'S ONE PUBLIC DOOR IS NSURL's, so the algorithm is reached through this function:
- * NSURLComponents' own -initWithURL:resolvingAgainstBaseURL: has no base to resolve against (this
+ * FNURLComponents' own -initWithURL:resolvingAgainstBaseURL: has no base to resolve against (this
  * library's NSURLs carry no base — F8 said so), which is exactly why F8 refused the two of them
  * together. Declared here rather than in the header because it is a detail of THIS file's class. */
-@interface NSURLComponents (FNPrivate)
-- (NSURLComponents *)fnResolveAgainst:(NSURLComponents *)base;
+@interface FNURLComponents (FNPrivate)
+- (FNURLComponents *)fnResolveAgainst:(FNURLComponents *)base;
 @end
 
 NSURL * _Nullable FNURLResolveRelative(NSString *reference, NSString * _Nullable base)
 {
-	NSURLComponents *ref = [NSURLComponents componentsWithString:reference];
-	NSURLComponents *bas = base != nil ? [NSURLComponents componentsWithString:base] : nil;
-	NSURLComponents *target;
+	FNURLComponents *ref = [FNURLComponents componentsWithString:reference];
+	FNURLComponents *bas = base != nil ? [FNURLComponents componentsWithString:base] : nil;
+	FNURLComponents *target;
 
 	if (ref == nil) {
 		return nil;
@@ -225,67 +225,8 @@ NSURL * _Nullable FNURLResolveRelative(NSString *reference, NSString * _Nullable
 	return [target URL];
 }
 
-@implementation NSURLQueryItem
 
-+ (instancetype)queryItemWithName:(NSString *)name value:(nullable NSString *)value
-{
-	return [[self alloc] initWithName:name value:value];
-}
-
-- (instancetype)initWithName:(NSString *)name value:(nullable NSString *)value
-{
-	self = [super init];
-	if (self == nil) {
-		return nil;
-	}
-	_name = name;
-	_value = value;
-	return self;
-}
-
-- (NSString *)name
-{
-	return _name;
-}
-
-- (nullable NSString *)value
-{
-	return _value;
-}
-
-- (BOOL)isEqual:(id)other
-{
-	NSURLQueryItem *them;
-
-	if (other == self) {
-		return YES;
-	}
-	if (other == nil || ![other isKindOfClass:[NSURLQueryItem class]]) {
-		return NO;
-	}
-	them = (NSURLQueryItem *)other;
-	return [_name isEqualToString:them->_name] &&
-	       (_value == them->_value || [_value isEqualToString:them->_value]);
-}
-
-- (NSUInteger)hash
-{
-	return [_name hash] ^ [_value hash];
-}
-
-- (NSString *)description
-{
-	return [NSString stringWithFormat:@"%@=%@", _name, _value];
-}
-
-- (id)copy
-{
-	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) */
-}
-
-@end
-
-@implementation NSURLComponents
+@implementation FNURLComponents
 
 + (nullable instancetype)componentsWithString:(NSString *)URLString
 {
@@ -494,69 +435,13 @@ NSURL * _Nullable FNURLResolveRelative(NSString *reference, NSString * _Nullable
 	_port = port != nil ? [port stringValue] : nil;
 }
 
-- (nullable NSArray *)queryItems
-{
-	NSMutableArray *items;
-	NSArray *pairs;
-	NSUInteger i;
-
-	if (_query == nil) {
-		return nil;
-	}
-	items = [NSMutableArray array];
-	pairs = [_query componentsSeparatedByString:@"&"];
-	for (i = 0; i < [pairs count]; i++) {
-		NSString *pair = [pairs objectAtIndex:i];
-		NSRange equals = [pair rangeOfString:@"="];
-
-		if ([pair lengthOfBytesUsingEncoding:NSUTF8StringEncoding] == 0) {
-			continue;
-		}
-		if (equals.location == NSNotFound) {
-			[items addObject:[NSURLQueryItem queryItemWithName:fn_percent_decode(pair)
-								    value:nil]];
-		} else {
-			[items addObject:[NSURLQueryItem
-				queryItemWithName:fn_percent_decode([pair substringToIndex:equals.location])
-					    value:fn_percent_decode([pair substringFromIndex:
-									NSMaxRange(equals)])]];
-		}
-	}
-	return items;
-}
-
-- (void)setQueryItems:(nullable NSArray *)queryItems
-{
-	NSMutableString *out;
-	NSUInteger i;
-
-	if (queryItems == nil) {
-		_query = nil;
-		return;
-	}
-	out = [NSMutableString string];
-	for (i = 0; i < [queryItems count]; i++) {
-		NSURLQueryItem *item = [queryItems objectAtIndex:i];
-
-		if (i > 0) {
-			[out appendString:@"&"];
-		}
-		[out appendString:[item name]];
-		if ([item value] != nil) {
-			[out appendString:@"="];
-			[out appendString:[item value]];
-		}
-	}
-	_query = out;
-}
-
 /* THE RESOLUTION, and it is the algorithm rather than a set of special cases: the reference's own
  * scheme wins; then its authority; then an EMPTY PATH keeps the base's path and query; then a path
  * starting with "/" replaces the base's; and anything else merges with the base's last segment. The
  * fragment always comes from the reference. */
-- (NSURLComponents *)fnResolveAgainst:(NSURLComponents *)base
+- (FNURLComponents *)fnResolveAgainst:(FNURLComponents *)base
 {
-	NSURLComponents *target = [[NSURLComponents alloc] init];
+	FNURLComponents *target = [[FNURLComponents alloc] init];
 
 	/* §62.107'S BUG, FOUND BY THE MARKDOWN IMPORTER AND FIXED HERE: every branch below but the first reads
 	 * the base's components, and an Objective-C message to nil is safe while an IVAR READ THROUGH A NIL
@@ -620,17 +505,17 @@ NSURL * _Nullable FNURLResolveRelative(NSString *reference, NSString * _Nullable
 
 - (BOOL)isEqual:(id)other
 {
-	NSURLComponents *them;
+	FNURLComponents *them;
 	NSString *mine;
 	NSString *theirs;
 
 	if (other == self) {
 		return YES;
 	}
-	if (other == nil || ![other isKindOfClass:[NSURLComponents class]]) {
+	if (other == nil || ![other isKindOfClass:[FNURLComponents class]]) {
 		return NO;
 	}
-	them = (NSURLComponents *)other;
+	them = (FNURLComponents *)other;
 	mine = [self string];
 	theirs = [them string];
 	return mine == theirs || [mine isEqualToString:theirs];
@@ -648,9 +533,9 @@ NSURL * _Nullable FNURLResolveRelative(NSString *reference, NSString * _Nullable
 
 - (id)copy
 {
-	NSURLComponents *copy;
+	FNURLComponents *copy;
 
-	copy = [[NSURLComponents alloc] init];
+	copy = [[FNURLComponents alloc] init];
 	copy->_scheme = _scheme;
 	copy->_user = _user;
 	copy->_password = _password;

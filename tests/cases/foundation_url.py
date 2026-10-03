@@ -10,7 +10,7 @@ support unit imports ONLY the umbrella header, so a complete
   * `url-parse`          — the RFC 3986 parts, and the spelling round trip;
   * `url-refusals`       — THE PARSE IS THE REFUSAL: a relative reference, an
                            invalid scheme or an empty string answers nil, and the
-                           loading system (NSURLSession, NSURLComponents) is
+                           loading system (the 10.9 components family) is
                            ABSENT rather than half-built;
   * `url-file`           — the FSH rule: `file:///` + an ENCODED path, with an
                            empty authority, and `-path` back to the original;

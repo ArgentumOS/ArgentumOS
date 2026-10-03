@@ -15,7 +15,7 @@
  *
  * +localizedStringForStatusCode: IS RFC 9110's PHRASE REGISTRY, and that is why it is a table this
  * project may keep: the reason phrases are published by the IETF (§15 of RFC 9110, with §15.5.17's
- * 418 from RFC 2324), it is the same class of source as RFC 3986 was for NSURLComponents, and the probe
+ * 418 from RFC 2324), it is the same class of source as RFC 3986 was for the components machinery, and the probe
  * pins the registry's own rows rather than anything this file could be written to match. A code outside
  * the registry answers NIL — stated plainly rather than papered over with a generic string, because a
  * caller that needs a phrase for a code the registry does not define has a code worth looking at.
