@@ -19,7 +19,6 @@
 #endif
 
 #import <Foundation/NSBundle.h>
-#import <Foundation/NSAttributedStringMarkdown.h>
 #import <Foundation/NSData.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSArray.h>
@@ -1039,13 +1038,12 @@ static NSArray *fn_urls_for_paths(NSArray *paths)
 {
 	NSString *localized = [self localizedStringForKey:key value:value table:tableName];
 
-	/* Through a local for the same reason: initWithMarkdownString: is declared nullable and this door's
-	 * contract is a string, so the two are kept honest without a cast. */
-	NSAttributedString *answer = [[NSAttributedString alloc] initWithMarkdownString:localized
-										options:nil
-										baseURL:nil
-										  error:NULL];
-	return answer;
+	/* ⚠⚠ THE VALUE COMES THROUGH VERBATIM (§63.164, dec-8bebac1f0e9305c4). This door used to hand the
+	 * localized value to the MARKDOWN IMPORTER, which parsed it into attributes; that importer is 12.0 and the
+	 * 10.2 baseline cut it, so the door KEEPS ITS CONTRACT - it still answers an NSAttributedString carrying the
+	 * localized string - and stops interpreting it. STATED RATHER THAN LEFT TO BE DISCOVERED: markup inside a
+	 * localized value is now text. */
+	return [[[NSAttributedString alloc] initWithString:localized] autorelease];
 }
 
 @end

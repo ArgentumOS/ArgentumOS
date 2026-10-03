@@ -3704,7 +3704,6 @@ vanishing.
 | **Files and Data Persistence / Queries** | ALL STRUCK: `NSMetadataQuery`, `NSMetadataQueryAttributeValueTuple`, `NSMetadataQueryDelegate`, `NSMetadataQueryResultGroup` | — |
 | **Files and Data Persistence / XML** | all classes shipped | — |
 | **Files and Data Persistence / iCloud key and value storage** | all classes shipped | — |
-| **Fundamentals / Automatic grammar agreement** | all classes shipped | — |
 | **Fundamentals / Basic Collections** | all classes shipped | — |
 | **Fundamentals / Binary Data** | all classes shipped | — |
 | **Fundamentals / Calendrical Calculations** | all classes shipped | — |
@@ -15967,6 +15966,64 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 `--families --write` (rewrote the family table and the ledger) → `--check` **consistent** → `--unimplemented`
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
+
+## §63.164 — THE macOS-12 LOCALIZED ATTRIBUTED-STRING SURFACE IS CUT, AND TWO DECISIONS DECIDE WHAT THE KEPT CODE DOES WITHOUT IT (2026-10-03)
+
+**LANDED, from §63.162's audit and two decisions: the whole macOS-12 localised/formatted attributed-string surface is
+gone — TWELVE class files, the members it reached into `NSAttributedString` (a KEPT 10.0 class), five probes and their
+cases, and 137 symbol rows plus 19 selector rows of ledger.** The audit named five *classes*; the surface was
+seventeen pieces, and **the tree's own `family` column decided its membership rather than my recollection of Apple's
+vintages** — every one of the fifteen attribute names in `NSAttributedString.h` sits in Apple's "Strings with
+Metadata" families (Markdown attribute keys, translation-related, formatting), `NSAlternateDescriptionAttributeName`
+and `NSImageURLAttributeName` included; `NSLinkAttributeName` is the one that stays (a 10.x AppKit name, §62.107).
+
+**WHAT WENT.** `NSMorphology`, `NSInflectionRule`, `NSAttributedStringMarkdown`, `NSTermOfAddress`,
+`NSPresentationIntent`, `NSLocalizedNumberFormatRule` — twelve files. From `NSAttributedString.h`: the
+formatting-context key type and its one key, the four 12.0 enums, fifteen attribute names, and three categories
+(`(NSAttributedStringFormatting)` with its eight doors, `(NSMorphology)`, `(FNMarkdownFileURL)`). From the `.m`: the
+same, plus **`FNAttributedFormatRecorder` — first-party machinery that existed only to serve that family**, so it
+went with it, while `FNFormatSinkRecording` stayed because the KEPT string-format engine uses it.
+`-appendLocalizedFormat:` followed (declaration, implementation, ledger row). Ledger: `method shipped 1643 → 1594`,
+`property 707 → 675`, `--check` consistent, `--families --write`.
+
+**AND ONE OWNER HAD TO BE ENTERED IN THE ERA GROUND: `NSAttributedStringMarkdownSourcePosition`.** Its rows survived
+the 10.2 filter for §63.162's reason exactly — the ground never knew it — so it is entered at **12.0** with that
+reason written beside it.
+
+**DECISION 1 (`dec-8bebac1f0e9305c4`) — THE KEPT `NSBundle` DOOR.** `-localizedAttributedStringForKey:value:table:`
+was implemented BY the markdown importer being deleted. It now returns **the localized value verbatim**: it keeps its
+contract (an `NSAttributedString` carrying the localized string) and stops interpreting it, WITH THE CHANGE STATED IN
+THE CODE rather than left to be discovered — markup inside a localized value is now text.
+
+**DECISION 2 (`dec-ea97653bdad04e7f`) — THE KEPT RTF WRITER, AND THIS IS THE UNIT'S REAL FINDING.**
+`-RTFFromRange:documentAttributes:` is a REAL RTF writer (§62.58, not a stub) whose whole point is that a run's
+inline intent becomes RTF control words, and it used the 12.0 `NSInlinePresentationIntent` bits and attribute name.
+**THE VOCABULARY MOVED RATHER THAN WENT:** private constants in `NSAttributedString.m`, with the key keeping **its
+exact wire string** — so a caller that set that attribute by its documented name still drives the writer, and a
+document written before the cut still reads back the same. **AND THE PROBE BECOMES THE PROOF:** the RTF intent check
+is not deleted but rewritten to drive the writer **by that wire string with the bit's value**, so if the string ever
+changes the check fails. *Two of my own scripting mistakes were caught here: my rename had replaced the wire STRING as
+well as the symbol (which the decision forbids — restored), and a later pass asserted the wire string's ABSENCE,
+which would have forbidden the decision itself.*
+
+**THE UNIT'S COSTLIEST MISTAKE, AND THE LESSON IS NEW: A CUT THAT REMOVES A COMMENT'S BODY CAN ORPHAN ITS OPENER.**
+A markdown-door cut left `/* ---- THE MARKDOWN FILE DOOR WITH A baseURL …` with no `*/`, and because
+`_objc_blocks` STRIPS COMMENTS BEFORE SPLITTING ON `@end`, that orphan swallowed everything to the next `*/` —
+**including `@implementation NSMutableAttributedString` and its methods** — so eleven shipped selectors plus one real
+one read as `declared but implemented nowhere`. The instrument was right and the edit was wrong. **It was found by
+counting delimiters (`/*` = 78 vs `*/` = 77) and then asking the tool's own `_objc_blocks` what it saw**, which
+showed the mutable block's 19 selectors missing from a file where they sat. `--unimplemented` IS THE CANARY FOR THIS
+CLASS OF DAMAGE, and the balance check is now part of the routine. **The same bug bit a SECOND time in this unit** —
+the `-appendLocalizedFormat:` cut stopped at the first line that STRIPS to `}` (the `if` block's closing brace) and
+left the method's tail; the compiler found that one.
+
+**VERIFICATION.** `foundation-sweep.py --check` **consistent**; `--unimplemented` **0 NEW**;
+**`make foundation-gate` OK** (490 files, no foreign import; 180 of 187 headers open a nullability region) — which
+caught one more real thing: a dangling `#import <Foundation/NSAttributedStringMarkdown.h>` that my `NSBundle` edit
+left behind; **`make testimg` green**; **`make test TESTS=foundation_attributedstring` PASS — 1/1 case, 6/6 checks,
+the probe's own tally `ok=40 fail=0`** (54 checks before, the 14 removed matching the 14 expectations removed from
+its case) and **`foundation_constants` PASS — 1/1, 6/6, `ok=12 fail=0`**. No probe exercises the `NSBundle` door
+(measured), so the library build is that change's gate.
 
 ## §63.163 — THE FIRST FAMILY AFTER THE AUDIT: THE 10.15 ORDERED-COLLECTION DIFFERENCE IS CUT, AND IT TAKES AN INVISIBLE INCLUDE WITH IT (2026-10-03)
 

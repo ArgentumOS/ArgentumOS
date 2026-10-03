@@ -6,42 +6,11 @@
 # source: https://developer.apple.com/tutorials/data/index/foundation
 #
 # kind	status	name	owner	family	why	src
-#
-# `src` is the page the name was read from. `swift-page` means Apple documents it
-# under a `swift.` path — and it is COUNTED ANYWAY when the name is ObjC-spelled,
-# which is the point of the third exclusion's proof (see --check).
-#
-# excluded dimensions this file deliberately does NOT hold (distinct names):
-#   symbol     61 — Apple's instance-variable documentation
-#   other     306 — other frameworks' symbols Apple indexes on a Foundation page
-#   selectors from other frameworks  289 — see the sibling ledger's own header
-#
-# AND THE SELECTOR SURFACE IS NOT ONE OF THEM ANY MORE (2026-09-28, §62.110). It is held by
-# docs/reference/foundation-selector-surface.txt — 4564 rows of Apple's documented methods and
-# properties, one per (owner, selector) — written by the same --refresh and verified by the same
-# --check.
-#
-# counted, NOT excluded: 239 distinct names Apple documents on a `swift.` page
-# but which carry the ObjC spelling. An NS_ENUM's page lives under `-swift.enum`
-# and its members keep their ObjC names; this file's first version excluded them
-# on the path marker, which hid real ObjC constants from the ledger.
-#
-# why the struck rows are struck: 32-bit-only 20, declined 360, frame-walk-unsupported 1, needs-corefoundation 2, os-version-constant 110, swift-only 22
-#
-# AND 326 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
-# 2026-09-26): to support porting older Mac applications, all items removed for being
-# deprecated are un-deprecated in Argentum Foundation and added to the work list. They carry
-# `deprecated` in this column, which says what KIND of work a row is - only the grounds §11.5
-# keeps can still strike one.
-#
-# THE NAMED EXCEPTION TO §11.5 (user, 2026-09-18): 
-# it keeps its `shipped` status and says so in the `why` column.
-#
-# counts by kind:
-# case	shipped	1112	open	0	struck	78
-# class	shipped	174	open	0	struck	52
-# enum	shipped	130	open	0	struck	9
+# case	shipped	1015	open	0	struck	78
+# class	shipped	164	open	0	struck	52
+# enum	shipped	115	open	0	struck	9
 # protocol	shipped	33	open	0	struck	6
+# var	shipped	680	open	0	struck	211
 
 
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -102,13 +71,6 @@ case	struck	NSArgumentsWrongScriptError	NSScriptCommand	App Support / Script Com
 case	shipped	NSAtomicWrite	NSData	Fundamentals / Binary Data / Writing Data to a File / Legacy Constants	deprecated	objc
 case	shipped	NSAttributedStringEnumerationLongestEffectiveRangeNotRequired	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text / Getting the enumeration options	-	objc
 case	shipped	NSAttributedStringEnumerationReverse	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text / Getting the enumeration options	-	objc
-case	shipped	NSAttributedStringFormattingApplyReplacementIndexAttribute	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string / Getting the formatting options	-	objc
-case	shipped	NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string / Getting the formatting options	-	objc
-case	shipped	NSAttributedStringMarkdownInterpretedSyntaxFull	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Syntax Values	-	objc
-case	shipped	NSAttributedStringMarkdownInterpretedSyntaxInlineOnly	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Syntax Values	-	objc
-case	shipped	NSAttributedStringMarkdownInterpretedSyntaxInlineOnlyPreservingWhitespace	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Syntax Values	-	objc
-case	shipped	NSAttributedStringMarkdownParsingFailureReturnError	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Failure Policies	-	objc
-case	shipped	NSAttributedStringMarkdownParsingFailureReturnPartiallyParsedIfPossible	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options / Failure Policies	-	objc
 case	shipped	NSAutosavedInformationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSBackgroundActivityResultDeferred	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
 case	shipped	NSBackgroundActivityResultFinished	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
@@ -410,61 +372,6 @@ case	shipped	NSFormattingErrorMinimum	NSError	App Support / User-Relevant Errors
 case	shipped	NSFormattingUnitStyleLong	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
 case	shipped	NSFormattingUnitStyleMedium	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
 case	shipped	NSFormattingUnitStyleShort	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
-case	shipped	NSGrammaticalCaseAblative		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalCaseAccusative		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalCaseAdessive		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalCaseAllative		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalCaseDative		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalCaseElative		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalCaseEssive		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalCaseGenitive		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalCaseIllative		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalCaseInessive		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalCaseLocative		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalCaseNominative		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalCaseNotSet		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalCasePrepositional		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalCaseTranslative		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalDefinitenessDefinite		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalDefinitenessIndefinite		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalDefinitenessNotSet		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalDeterminationDependent		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalDeterminationIndependent		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalDeterminationNotSet		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalGenderFeminine	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Gender	-	objc
-case	shipped	NSGrammaticalGenderMasculine	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Gender	-	objc
-case	shipped	NSGrammaticalGenderNeuter	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Gender	-	objc
-case	shipped	NSGrammaticalGenderNotSet	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Gender	-	objc
-case	shipped	NSGrammaticalNumberNotSet	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
-case	shipped	NSGrammaticalNumberPlural	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
-case	shipped	NSGrammaticalNumberPluralFew	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
-case	shipped	NSGrammaticalNumberPluralMany	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
-case	shipped	NSGrammaticalNumberPluralTwo	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
-case	shipped	NSGrammaticalNumberSingular	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
-case	shipped	NSGrammaticalNumberZero	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Grammatical Number	-	objc
-case	shipped	NSGrammaticalPartOfSpeechAbbreviation	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	shipped	NSGrammaticalPartOfSpeechAdjective	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	shipped	NSGrammaticalPartOfSpeechAdposition	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	shipped	NSGrammaticalPartOfSpeechAdverb	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	shipped	NSGrammaticalPartOfSpeechConjunction	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	shipped	NSGrammaticalPartOfSpeechDeterminer	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	shipped	NSGrammaticalPartOfSpeechInterjection	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	shipped	NSGrammaticalPartOfSpeechLetter	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	shipped	NSGrammaticalPartOfSpeechNotSet	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	shipped	NSGrammaticalPartOfSpeechNoun	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	shipped	NSGrammaticalPartOfSpeechNumeral	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	shipped	NSGrammaticalPartOfSpeechParticle	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	shipped	NSGrammaticalPartOfSpeechPreposition	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	shipped	NSGrammaticalPartOfSpeechPronoun	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	shipped	NSGrammaticalPartOfSpeechVerb	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties / Determining Part of Speech	-	objc
-case	shipped	NSGrammaticalPersonFirst		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalPersonNotSet		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalPersonSecond		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalPersonThird		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalPronounTypeNotSet		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalPronounTypePersonal		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalPronounTypePossessive		Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	NSGrammaticalPronounTypeReflexive		Reference / Enumerations / Enumeration Cases	-	objc
 case	struck	NSGreaterThanComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	struck	NSGreaterThanOrEqualToComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	shipped	NSHPUXOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
@@ -494,14 +401,6 @@ case	shipped	NSISO8601DateFormatWithYear	NSISO8601DateFormatter	Fundamentals / D
 case	shipped	NSISOLatin1StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSISOLatin2StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	struck	NSIndexSubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
-case	shipped	NSInlinePresentationIntentBlockHTML	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
-case	shipped	NSInlinePresentationIntentCode	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
-case	shipped	NSInlinePresentationIntentEmphasized	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
-case	shipped	NSInlinePresentationIntentInlineHTML	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
-case	shipped	NSInlinePresentationIntentLineBreak	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
-case	shipped	NSInlinePresentationIntentSoftBreak	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
-case	shipped	NSInlinePresentationIntentStrikethrough	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
-case	shipped	NSInlinePresentationIntentStronglyEmphasized	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
 case	shipped	NSInputMethodsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	struck	NSInternalScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSInternalSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
@@ -685,33 +584,6 @@ case	shipped	NSPostASAP	NSNotificationQueue	App Support / Notifications / Consta
 case	shipped	NSPostNow	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
 case	shipped	NSPostWhenIdle	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
 case	shipped	NSPreferencePanesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	shipped	NSPresentationIntentKindBlockQuote		Reference / Enumerations / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindBlockQuote	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindCodeBlock		Reference / Enumerations / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindCodeBlock	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindHeader		Reference / Enumerations / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindHeader	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindListItem		Reference / Enumerations / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindListItem	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindOrderedList		Reference / Enumerations / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindOrderedList	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindParagraph		Reference / Enumerations / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindParagraph	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindTable		Reference / Enumerations / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindTable	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindTableCell		Reference / Enumerations / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindTableCell	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindTableHeaderRow		Reference / Enumerations / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindTableHeaderRow	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindTableRow		Reference / Enumerations / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindTableRow	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindThematicBreak		Reference / Enumerations / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindThematicBreak	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindUnorderedList		Reference / Enumerations / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentKindUnorderedList	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the presentation types	-	objc
-case	shipped	NSPresentationIntentTableColumnAlignmentCenter	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the alignment options	-	objc
-case	shipped	NSPresentationIntentTableColumnAlignmentLeft	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the alignment options	-	objc
-case	shipped	NSPresentationIntentTableColumnAlignmentRight	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the alignment options	-	objc
 case	shipped	NSPrinterDescriptionDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSProcessInfoThermalStateCritical	NSProcessInfo	App Support / System Interaction / Getting the thermal state / Constants	-	swift-page
 case	shipped	NSProcessInfoThermalStateFair	NSProcessInfo	App Support / System Interaction / Getting the thermal state / Constants	-	swift-page
@@ -1242,8 +1114,6 @@ class	shipped	NSArchiver		Files and Data Persistence / Deprecated	deprecated	obj
 class	shipped	NSArray		Fundamentals / Basic Collections	-	objc
 class	shipped	NSAssertionHandler		App Support / Assertions	-	objc
 class	shipped	NSAttributedString		Fundamentals / Strings with Metadata	-	objc
-class	shipped	NSAttributedStringMarkdownParsingOptions		Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown	-	objc
-class	shipped	NSAttributedStringMarkdownSourcePosition		Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 class	shipped	NSAutoreleasePool		Low-Level Utilities / Memory Management	-	objc
 class	shipped	NSBackgroundActivityScheduler		App Support / System Interaction	-	objc
 class	shipped	NSBlockOperation		App Support / Operations	-	objc
@@ -1309,8 +1179,6 @@ class	shipped	NSISO8601DateFormatter		Fundamentals / Date Formatting	-	objc
 class	shipped	NSIndexPath		Fundamentals / Indexes	-	objc
 class	shipped	NSIndexSet		Fundamentals / Indexes	-	objc
 class	struck	NSIndexSpecifier		App Support / Object Specifiers	declined	objc
-class	shipped	NSInflectionRule		Fundamentals / Automatic grammar agreement	-	objc
-class	shipped	NSInflectionRuleExplicit		Fundamentals / Automatic grammar agreement	-	objc
 class	shipped	NSInputStream		Low-Level Utilities / Streams	-	objc
 class	shipped	NSInvocation		Low-Level Utilities / Invocations	-	objc
 class	shipped	NSInvocationOperation		App Support / Operations	-	objc
@@ -1323,7 +1191,6 @@ class	shipped	NSKeyedUnarchiver		Files and Data Persistence / Keyed Archivers	-	
 class	shipped	NSLengthFormatter		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSLinguisticTagger		Fundamentals / Deprecated	deprecated	objc
 class	shipped	NSLocale		Fundamentals / Localization	-	objc
-class	shipped	NSLocalizedNumberFormatRule		Reference / Classes	-	objc
 class	shipped	NSLock		Low-Level Utilities / Threads and Locking	-	objc
 class	struck	NSLogicalTest		App Support / Object Matching Tests	declined	objc
 class	shipped	NSMachBootstrapServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
@@ -1338,9 +1205,6 @@ class	struck	NSMetadataQueryAttributeValueTuple		Files and Data Persistence / Qu
 class	struck	NSMetadataQueryResultGroup		Files and Data Persistence / Queries / Getting query results	declined	objc
 class	shipped	NSMethodSignature		Low-Level Utilities / Invocations	-	objc
 class	struck	NSMiddleSpecifier		App Support / Object Specifiers	declined	objc
-class	shipped	NSMorphology		Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule	-	objc
-class	shipped	NSMorphologyCustomPronoun		Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features	deprecated	objc
-class	shipped	NSMorphologyPronoun		Fundamentals / Automatic grammar agreement	-	objc
 class	struck	NSMoveCommand		App Support / Script Commands	declined	objc
 class	shipped	NSMutableArray		Fundamentals / Basic Collections	-	objc
 class	shipped	NSMutableAttributedString		Fundamentals / Strings with Metadata	-	objc
@@ -1376,7 +1240,6 @@ class	shipped	NSPortCoder		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSPortMessage		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSPositionalSpecifier		App Support / Object Specifiers	declined	objc
-class	shipped	NSPresentationIntent		Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 class	shipped	NSProcessInfo		App Support / System Interaction	-	objc
 class	shipped	NSProgress		App Support / Progress	-	objc
 class	shipped	NSPropertyListSerialization		Files and Data Persistence / Property Lists	-	objc
@@ -1413,7 +1276,6 @@ class	shipped	NSSpellServer		Fundamentals / Spelling and Grammar	-	objc
 class	shipped	NSStream		Low-Level Utilities / Streams	-	objc
 class	shipped	NSString		Fundamentals / Strings	-	objc
 class	shipped	NSTask		Low-Level Utilities / Scripts and External Tasks	-	objc
-class	shipped	NSTermOfAddress		Fundamentals / Automatic grammar agreement	-	objc
 class	shipped	NSTextCheckingResult		Fundamentals / Pattern Matching	-	objc
 class	shipped	NSThread		Low-Level Utilities / Threads and Locking	-	objc
 class	shipped	NSTimeZone		Fundamentals / Calendrical Calculations	-	objc
@@ -1464,9 +1326,6 @@ enum	shipped	NSActivityOptions	NSProcessInfo	App Support / System Interaction / 
 enum	shipped	NSAlignmentOptions		Fundamentals / Geometry / Related Types	-	objc
 enum	struck	NSAppleEventSendOptions	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types	declined	objc
 enum	shipped	NSAttributedStringEnumerationOptions	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
-enum	shipped	NSAttributedStringFormattingOptions	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
-enum	shipped	NSAttributedStringMarkdownInterpretedSyntax	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
-enum	shipped	NSAttributedStringMarkdownParsingFailurePolicy	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
 enum	shipped	NSBackgroundActivityResult	NSBackgroundActivityScheduler	App Support / System Interaction / Constants	-	objc
 enum	shipped	NSBinarySearchingOptions	NSArray	Fundamentals / Basic Collections / Constants	-	objc
 enum	shipped	NSCalculationError		Fundamentals / Numbers / Performing arithmetic using references	-	objc
@@ -1505,18 +1364,9 @@ enum	shipped	NSFileWrapperReadingOptions	NSFileWrapper	Files and Data Persistenc
 enum	shipped	NSFileWrapperWritingOptions	NSFileWrapper	Files and Data Persistence / Managed file access / Constants	-	objc
 enum	shipped	NSFormattingContext	NSFormatter	Fundamentals / Custom formatters / Constants	-	objc
 enum	shipped	NSFormattingUnitStyle	NSFormatter	Fundamentals / Custom formatters / Constants	-	objc
-enum	shipped	NSGrammaticalCase		Reference / Enumerations	-	objc
-enum	shipped	NSGrammaticalDefiniteness		Reference / Enumerations	-	objc
-enum	shipped	NSGrammaticalDetermination		Reference / Enumerations	-	objc
-enum	shipped	NSGrammaticalGender	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
-enum	shipped	NSGrammaticalNumber	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
-enum	shipped	NSGrammaticalPartOfSpeech	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
-enum	shipped	NSGrammaticalPerson		Reference / Enumerations	-	objc
-enum	shipped	NSGrammaticalPronounType		Reference / Enumerations	-	objc
 enum	shipped	NSHTTPCookieAcceptPolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies	-	objc
 enum	shipped	NSHTTPCookieAcceptPolicy	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy	-	objc
 enum	shipped	NSISO8601DateFormatOptions	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants	-	objc
-enum	shipped	NSInlinePresentationIntent	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 enum	struck	NSInsertionPosition	NSPositionalSpecifier	App Support / Object Specifiers / Constants	declined	objc
 enum	shipped	NSItemProviderErrorCode	NSItemProvider	App Support / Attachments / Constants	-	objc
 enum	shipped	NSItemProviderFileOptions	NSItemProvider	App Support / Attachments / Constants	-	objc
@@ -1545,9 +1395,6 @@ enum	shipped	NSNumberFormatterStyle	NSNumberFormatter	Fundamentals / Numbers / C
 enum	shipped	NSOperationQueuePriority	NSOperation	App Support / Operations / Constants	-	swift-page
 enum	shipped	NSPointerFunctionsOptions	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants	-	objc
 enum	shipped	NSPostingStyle	NSNotificationQueue	App Support / Notifications / Constants	-	objc
-enum	shipped	NSPresentationIntentKind		Reference / Enumerations	-	objc
-enum	shipped	NSPresentationIntentKind	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
-enum	shipped	NSPresentationIntentTableColumnAlignment	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 enum	shipped	NSProcessInfoThermalState	NSProcessInfo	App Support / System Interaction / Getting the thermal state	-	swift-page
 enum	shipped	NSPropertyListFormat	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants	-	objc
 enum	shipped	NSPropertyListMutabilityOptions	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants	-	objc
@@ -2094,7 +1941,6 @@ struct	shipped	NSRange		Fundamentals / Ranges	-	objc
 struct	shipped	NSSwappedDouble		Low-Level Utilities / Byte Ordering / Constants	-	objc
 struct	shipped	NSSwappedFloat		Low-Level Utilities / Byte Ordering / Constants	-	objc
 typealias	struck	NSAppleEventManagerSuspensionID	NSAppleEventManager	App Support / Apple Event Handling / Suspending and resuming Apple events	declined	objc
-typealias	shipped	NSAttributedStringFormattingContextKey		Reference / Type Aliases	-	objc
 typealias	shipped	NSAttributedStringKey	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes	-	objc
 typealias	shipped	NSBackgroundActivityCompletionHandler	NSBackgroundActivityScheduler	App Support / System Interaction / Scheduling Activity	-	objc
 typealias	shipped	NSCalendarIdentifier	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars	-	objc
@@ -2170,7 +2016,6 @@ typealias	struck	NSZone		Low-Level Utilities / Legacy	32-bit-only	objc
 typealias	shipped	unichar		Fundamentals / Characters	-	objc
 typealias	shipped	unichar	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 var	shipped	NSAMPMDesignation	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	shipped	NSAlternateDescriptionAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	shipped	NSAppleEventManagerWillProcessFirstEventNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	struck	NSAppleEventTimeOutDefault	NSAppleEventManager	App Support / Apple Event Handling / Constants / Constants	declined	objc
 var	struck	NSAppleEventTimeOutNone	NSAppleEventManager	App Support / Apple Event Handling / Constants / Constants	declined	objc
@@ -2366,17 +2211,9 @@ var	shipped	NSHebrewCalendar	NSLocale	Fundamentals / Localization / Getting Disp
 var	shipped	NSHelpAnchorErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSHourNameDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSISO8601Calendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
-var	shipped	NSImageURLAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	shipped	NSInconsistentArchiveException	NSArchiver	Files and Data Persistence / Deprecated / Constants / Constants	deprecated	objc
 var	shipped	NSInconsistentArchiveException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSIndianCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
-var	shipped	NSInflectionAgreementArgumentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
-var	shipped	NSInflectionAgreementConceptAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
-var	shipped	NSInflectionAlternativeAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
-var	shipped	NSInflectionConceptsKey		Reference / Constants	-	objc
-var	shipped	NSInflectionReferentConceptAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
-var	shipped	NSInflectionRuleAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
-var	shipped	NSInlinePresentationIntentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	shipped	NSIntHashCallBacks	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSIntMapKeyCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
 var	shipped	NSIntMapValueCallBacks	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Constants	deprecated	objc
@@ -2411,7 +2248,6 @@ var	shipped	NSKeyValueChangeNotificationIsPriorKey		Reference / Type Aliases / T
 var	shipped	NSKeyValueChangeOldKey		Reference / Type Aliases / Type Properties	-	objc
 var	shipped	NSKeyedArchiveRootObjectKey	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Constants / Constants	-	objc
 var	shipped	NSKeyedUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	deprecated	objc
-var	shipped	NSLanguageIdentifierAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSLaterTimeDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSLinguisticTagAdjective	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
 var	shipped	NSLinguisticTagAdverb	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
@@ -2451,7 +2287,6 @@ var	shipped	NSLinguisticTagVerb	NSLinguisticTagger	Fundamentals / Deprecated / S
 var	shipped	NSLinguisticTagWhitespace	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
 var	shipped	NSLinguisticTagWord	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Token Types	deprecated	objc
 var	shipped	NSLinguisticTagWordJoiner	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types / Lexical Classes	deprecated	objc
-var	shipped	NSListItemDelimiterAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting formatting attribute keys	-	objc
 var	shipped	NSLoadedClasses	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
 var	shipped	NSLocalNotificationCenterType	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants / Type Properties	-	objc
 var	shipped	NSLocaleAlternateQuotationBeginDelimiterKey	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key / Keys	-	objc
@@ -2476,7 +2311,6 @@ var	shipped	NSLocaleVariantCode	NSLocale	Fundamentals / Localization / Accessing
 var	shipped	NSLocalizedDescriptionKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSLocalizedFailureErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSLocalizedFailureReasonErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
-var	shipped	NSLocalizedNumberFormatAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSLocalizedRecoveryOptionsErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSLocalizedRecoverySuggestionErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSMachErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
@@ -2486,7 +2320,6 @@ var	shipped	NSMapTableObjectPointerPersonality	NSPointerFunctions	Fundamentals /
 var	shipped	NSMapTableStrongMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
 var	shipped	NSMapTableWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	-	objc
 var	shipped	NSMapTableZeroingWeakMemory	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants / Memory Options	deprecated	objc
-var	shipped	NSMarkdownSourcePositionAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	shipped	NSMaximumKeyValueOperator		Reference / Constants	-	objc
 var	struck	NSMetadataItemAcquisitionMakeKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
 var	struck	NSMetadataItemAcquisitionModelKey	NSMetadataItem	Files and Data Persistence / Items / Item Attribute Keys	declined	objc
@@ -2691,7 +2524,6 @@ var	struck	NSMetadataUbiquitousSharedItemRoleOwner	NSMetadataItem	Files and Data
 var	struck	NSMetadataUbiquitousSharedItemRoleParticipant	NSMetadataItem	Files and Data Persistence / Items / iCloud Sharing Role Values	declined	objc
 var	shipped	NSMinimumKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSMonthNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
-var	shipped	NSMorphologyAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting translation-related attribute keys	-	objc
 var	shipped	NSMultipleUnderlyingErrorsKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSNegateBooleanTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
 var	shipped	NSNegativeCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
@@ -2732,7 +2564,6 @@ var	shipped	NSPortReceiveException	NSException	App Support / Exceptions / Relate
 var	shipped	NSPortSendException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSPortTimeoutException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSPositiveCurrencyFormatString	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Numeric Information	deprecated	objc
-var	shipped	NSPresentationIntentAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting Markdown attribute keys	-	objc
 var	shipped	NSPriorDayDesignations	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSProcessInfoPowerStateDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSProcessInfoPowerStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	swift-page
@@ -2756,7 +2587,6 @@ var	shipped	NSProgressThroughputKey	NSProgress	App Support / Progress / Inspecti
 var	shipped	NSRangeException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSRecoveryAttempterErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSRegistrationDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
-var	shipped	NSReplacementIndexAttributeName	NSAttributedString	Fundamentals / Strings with Metadata / Getting text content attributes / Getting text attribute keys	-	objc
 var	shipped	NSRepublicOfChinaCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSRunLoopCommonModes	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes / System Run Loop Modes	-	objc
 var	shipped	NSSecureUnarchiveFromDataTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc

@@ -33,43 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-#
-# ONE ROW PER (OWNER, SELECTOR): Apple's documented METHOD and PROPERTY nodes, which the symbol
-# surface (docs/reference/foundation-apple-surface.txt) deliberately does not hold. That file
-# said so for months — 'the SELECTOR surface ... §11.2 SOURCE 1's business, the dimension source
-# 1 must still grow into' — and source 1 (the probes' inventories) carries a selector's
-# BEHAVIOUR, never its EXISTENCE. This is the measurement that was missing.
-#
-# A METHOD's name carries its SIGN (`- initWithDecimal:`, `+ alloc`): a class method and an
-# instance method are different doors. A PROPERTY's is bare — Apple documents the property, and
-# the accessors it implies are the compiler's, so a property row is shipped when the owner's
-# block declares EITHER accessor.
-#
-# STATUS.  shipped  the owner's block declares it, or a type it inherits from or that inherits
-#                    from it does (a class cluster, a subclass, a class adopting a protocol).
-#          open     documented, and declared NOWHERE in that set: THE WORK LIST.
-#          struck   OUT by §11.5, or struck WITH ITS OWNER — striking a root strikes its members,
-#                   which is how the declined families' whole selector surface is removed rather
-#                   than left open. The `why` column says which ground.
-#
-# why the struck rows are struck: 32-bit-only 4, declined 439, other-framework 115, refused 9, unsupported-by-apple 2
-#
-# ⚠⚠ AND `refused` IS THE NINTH GROUND, ADDED 2026-10-03 (§63.160): a door THIS TREE REFUSES BY NAME — its
-# ground stated in the owner's header and an absence check asserting it — can never be closed as work, so it
-# is struck rather than left on the work list. IT IS NOT `declined`: a decline is a scope decision about
-# Apple's SURFACE, and a refusal is a decision about ONE DOOR on a class this library DOES ship. The nine rows
-# that carry it were found by REVIEW rather than by a tool, which is the debt this ground pays.
-#
-# AND 547 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
-# 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
-# row is, never that it is excluded.
-#
-# selectors from OTHER FRAMEWORKS that Apple indexes on a Foundation page, excluded and counted: 289
-#   (7 method/property nodes carried no enclosing class and are NOT rows)
-#
-# counts by kind:
-# method	shipped	1609	open	227	struck	397
-# property	shipped	679	open	92	struck	172
+# method	shipped	1594	open	227	struck	397
+# property	shipped	675	open	92	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -261,7 +226,6 @@ method	shipped	-RTFFromRange:documentAttributes:	NSAttributedString	Fundamentals
 method	shipped	-URLAtIndex:effectiveRange:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Instance Methods	deprecated	objc
 method	shipped	-attribute:atIndex:effectiveRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
 method	shipped	-attribute:atIndex:longestEffectiveRange:inRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting attributes for a range of text	-	objc
-method	shipped	-attributedStringByInflectingString	NSAttributedString	Fundamentals / Strings with Metadata / Performing automatic grammar agreement	-	objc
 method	struck	+attributedStringWithAdaptiveImageGlyph:attributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a string with an attachment	other-framework	objc
 method	struck	+attributedStringWithAttachment:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a string with an attachment	other-framework	objc
 method	struck	+attributedStringWithAttachment:attributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a string with an attachment	other-framework	objc
@@ -283,19 +247,12 @@ method	shipped	-enumerateAttributesInRange:options:usingBlock:	NSAttributedStrin
 method	shipped	-fileWrapperFromRange:documentAttributes:error:	NSAttributedString	Fundamentals / Strings with Metadata / Exporting the string as data	-	objc
 method	struck	-fontAttributesInRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting font attribute information	other-framework	objc
 method	shipped	-initWithAttributedString:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from another string	-	objc
-method	shipped	-initWithContentsOfMarkdownFileAtURL:options:baseURL:error:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown	-	objc
 method	struck	-initWithData:options:documentAttributes:error:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from a data file	other-framework	objc
 method	struck	-initWithDocFormat:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from a data file	other-framework	objc
 method	struck	-initWithFileURL:options:documentAttributes:error:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Initializers	other-framework	objc
-method	shipped	-initWithFormat:options:locale:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
-method	shipped	-initWithFormat:options:locale:arguments:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
-method	shipped	-initWithFormat:options:locale:context:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
-method	shipped	-initWithFormat:options:locale:context:arguments:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 method	struck	-initWithHTML:baseURL:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	other-framework	objc
 method	struck	-initWithHTML:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	other-framework	objc
 method	struck	-initWithHTML:options:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	other-framework	objc
-method	shipped	-initWithMarkdown:options:baseURL:error:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown	-	objc
-method	shipped	-initWithMarkdownString:options:baseURL:error:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown	-	objc
 method	struck	-initWithPath:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Deprecated / Deprecated Initializers	other-framework	objc
 method	struck	-initWithRTF:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from RTF	other-framework	objc
 method	struck	-initWithRTFD:documentAttributes:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from RTF	other-framework	objc
@@ -312,10 +269,6 @@ method	shipped	+loadFromHTMLWithData:options:completionHandler:	NSAttributedStri
 method	shipped	+loadFromHTMLWithFileURL:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
 method	shipped	+loadFromHTMLWithRequest:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
 method	shipped	+loadFromHTMLWithString:options:completionHandler:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from HTML	-	objc
-method	shipped	+localizedAttributedStringWithFormat:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
-method	shipped	+localizedAttributedStringWithFormat:context:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
-method	shipped	+localizedAttributedStringWithFormat:options:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
-method	shipped	+localizedAttributedStringWithFormat:options:context:	NSAttributedString	Fundamentals / Strings with Metadata / Creating attributed strings / Creating a formatted string	-	objc
 method	shipped	-nextWordFromIndex:forward:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating linguistic units	-	objc
 method	struck	-prefersRTFDInRange:	NSAttributedString	Fundamentals / Strings with Metadata / Getting the supported text-file formats	other-framework	objc
 method	struck	-rangeOfTextBlock:atIndex:	NSAttributedString	Fundamentals / Strings with Metadata / Calculating ranges for common elements	other-framework	objc
@@ -332,12 +285,6 @@ property	shipped	length	NSAttributedString	Fundamentals / Strings with Metadata 
 property	shipped	string	NSAttributedString	Fundamentals / Strings with Metadata / Getting the characters	-	objc
 property	shipped	textTypes	NSAttributedString	Fundamentals / Strings with Metadata / Getting the supported text-file formats	-	objc
 property	shipped	textUnfilteredTypes	NSAttributedString	Fundamentals / Strings with Metadata / Getting the supported text-file formats	-	objc
-method	shipped	-initWithStartLine:startColumn:endLine:endColumn:	NSAttributedStringMarkdownSourcePosition	Fundamentals / Strings with Metadata / Representing markdown attributes / Creating an Attributed String Markdown Source Position Instance	-	objc
-method	shipped	-rangeInString:	NSAttributedStringMarkdownSourcePosition	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting a Range from a Markdown Source Position Attribute	-	objc
-property	shipped	endColumn	NSAttributedStringMarkdownSourcePosition	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting Markdown Source Position Properties	-	objc
-property	shipped	endLine	NSAttributedStringMarkdownSourcePosition	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting Markdown Source Position Properties	-	objc
-property	shipped	startColumn	NSAttributedStringMarkdownSourcePosition	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting Markdown Source Position Properties	-	objc
-property	shipped	startLine	NSAttributedStringMarkdownSourcePosition	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting Markdown Source Position Properties	-	objc
 method	open	+addObject:	NSAutoreleasePool	Low-Level Utilities / Memory Management / Adding an Object to a Pool	-	objc
 method	open	-addObject:	NSAutoreleasePool	Low-Level Utilities / Memory Management / Adding an Object to a Pool	-	objc
 method	shipped	-drain	NSAutoreleasePool	Low-Level Utilities / Memory Management / Managing a Pool	-	objc
@@ -1564,7 +1511,6 @@ method	shipped	-sortWithOptions:usingComparator:	NSMutableArray	Fundamentals / B
 method	shipped	-addAttribute:value:range:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	-	objc
 method	shipped	-addAttributes:range:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	-	objc
 method	shipped	-appendAttributedString:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Characters and Attributes	-	objc
-method	shipped	-appendLocalizedFormat:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Characters and Attributes	-	objc
 method	struck	-applyFontTraits:range:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Attributes	other-framework	objc
 method	shipped	-beginEditing	NSMutableAttributedString	Fundamentals / Strings with Metadata / Grouping Changes	-	objc
 method	shipped	-deleteCharactersInRange:	NSMutableAttributedString	Fundamentals / Strings with Metadata / Changing Characters	-	objc

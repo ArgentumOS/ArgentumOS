@@ -22,7 +22,6 @@
  */
 
 #import <Foundation/Foundation.h>
-#import <Foundation/NSMorphology.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -108,132 +107,12 @@ int main(void)
 	}
 
 
-	{
-		/* §63.99: THE INFLECTION DOOR REFUSES BY NAME, AND THE CHECK ASSERTS **THE CONSISTENCY** RATHER THAN JUST
-		 * THAT SOMETHING RAISED: the refusal and `+[NSInflectionRule canInflectLanguage:]`'s answer are the same fact
-		 * seen from two levels, so an engine that began inflecting a language would fail THIS check until the refusal
-		 * was removed — which is what makes the pair checkable rather than decorative. */
-		BOOL raised = NO;
-		NSAttributedString *tagged = [[NSAttributedString alloc]
-					      initWithString:@"a table"
-						      attributes:[NSDictionary dictionaryWithObject:[NSInflectionRule automaticRule]
-												     forKey:NSInflectionRuleAttributeName]];
-		@try {
-			(void)[tagged attributedStringByInflectingString];
-		} @catch (NSException *e) {
-			raised = [e isKindOfClass:[NSException class]];
-		}
-		check("attributedstring-inflecting-refuses-by-name",
-		      raised && ![NSInflectionRule canInflectLanguage:@"en"] &&
-		      ![NSInflectionRule canInflectPreferredLocalization],
-		      [NSString stringWithFormat:@"raised=%d canInflect(en)=%d", (int)raised,
-			(int)[NSInflectionRule canInflectLanguage:@"en"]]);
-	}
 
 
-	{
-		/* §63.98: THE TWO `context:` DOORS. They format (Apple's own comment for them is the same sentence as
-		 * the context-free pair's) and the dictionary is accepted with no effect, because its only published key is
-		 * for inflection and this library has no engine — the door that would consume it is still open. Calling
-		 * THE VARIARGS DOOR exercises BOTH, since it delegates to the `arguments:` one. */
-		NSMutableAttributedString *cf = [[NSMutableAttributedString alloc] initWithString:@"C=%@ D=%@"];
-		NSAttributedString *c1 = [[NSAttributedString alloc] initWithString:@"one"];
-		NSAttributedString *c2 = [[NSAttributedString alloc] initWithString:@"two"];
-		NSDictionary *cctx = [NSDictionary dictionaryWithObject:@"concepts" forKey:NSInflectionConceptsKey];
-		NSAttributedString *b1 = [[NSAttributedString alloc] initWithFormat:cf options:0 locale:nil
-									  context:cctx, c1, c2];
-
-		check("attributedstring-format-context",
-		      [[b1 string] isEqualToString:@"C=one D=two"],
-		      [NSString stringWithFormat:@"string=%@", [b1 string]]);
-		check("attributedstring-format-context-keeps-the-format-attributes",
-		      [b1 length] == 11 && [b1 attribute:NSReplacementIndexAttributeName atIndex:0 effectiveRange:NULL] == nil,
-		      [NSString stringWithFormat:@"length=%lu", (unsigned long)[b1 length]]);
-	}
 
 
-	{
-		/* §63.97: THE LOCALIZED FAMILY, one check per shape. ⚠ APPLE'S OWN DOC COMMENT (in the corpus, not the
-		 * ledger) SAYS THESE FORMAT THE STRING WITH THE CURRENT LOCALE — NOT that they look anything up. */
-		NSMutableAttributedString *lf = [[NSMutableAttributedString alloc] initWithString:@"L=%@ M=%@"];
-		NSAttributedString *l1 = [[NSAttributedString alloc] initWithString:@"one"];
-		NSAttributedString *l2 = [[NSAttributedString alloc] initWithString:@"two"];
-		NSDictionary *ctx = [NSDictionary dictionary];
-		NSAttributedString *a1 = [NSAttributedString localizedAttributedStringWithFormat:lf, l1, l2];
-		NSAttributedString *a2 = [NSAttributedString localizedAttributedStringWithFormat:lf options:0, l1, l2];
-		NSAttributedString *a3 = [NSAttributedString localizedAttributedStringWithFormat:lf context:ctx, l1, l2];
-		NSAttributedString *a4 = [NSAttributedString localizedAttributedStringWithFormat:lf options:0
-									context:ctx, l1, l2];
-
-		check("attributedstring-localized-format",
-		      [[a1 string] isEqualToString:@"L=one M=two"],
-		      [NSString stringWithFormat:@"string=%@", [a1 string]]);
-		check("attributedstring-localized-format-options",
-		      [[a2 string] isEqualToString:@"L=one M=two"],
-		      [NSString stringWithFormat:@"string=%@", [a2 string]]);
-		check("attributedstring-localized-format-context",
-		      [[a3 string] isEqualToString:@"L=one M=two"],
-		      [NSString stringWithFormat:@"string=%@", [a3 string]]);
-		check("attributedstring-localized-format-options-context",
-		      [[a4 string] isEqualToString:@"L=one M=two"],
-		      [NSString stringWithFormat:@"string=%@", [a4 string]]);
-	}
 
 
-	{
-		/* §63.95: the attributed-format doors. ⚠ THE PROBE IS ARC and NSForegroundColorAttributeName IS APPKIT'S. */
-		NSString *marker = @"FNProbeMarker";
-		NSString *own = @"FNProbeOwn";
-		NSMutableAttributedString *fmt = [[NSMutableAttributedString alloc] initWithString:@"n=%@ m=%@"];
-		NSAttributedString *plainArg = [[NSAttributedString alloc] initWithString:@"one"];
-		NSAttributedString *richArg = [[NSAttributedString alloc] initWithString:@"two"
-						   attributes:[NSDictionary dictionaryWithObject:@"blue" forKey:own]];
-		NSAttributedString *plainOut;
-		NSAttributedString *ownOut;
-		NSAttributedString *indexOut;
-		NSString *s;
-		BOOL offsetsProved;
-		NSRange eff;
-
-		[fmt addAttribute:marker value:@"red" range:NSMakeRange(0, [fmt length])];
-		plainOut = [[NSAttributedString alloc] initWithFormat:fmt options:0 locale:nil, plainArg, richArg];
-		ownOut = [[NSAttributedString alloc]
-			   initWithFormat:fmt
-				  options:NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging
-				   locale:nil, plainArg, richArg];
-		indexOut = [[NSAttributedString alloc]
-			     initWithFormat:fmt
-				    options:NSAttributedStringFormattingApplyReplacementIndexAttribute
-				     locale:nil, plainArg, richArg];
-		s = [plainOut string];
-		/* THE OFFSETS ARE PROVED, NOT ASSUMED: `one` at 2 and `two` at 8, asserted as TEXT. */
-		offsetsProved = ([s length] == 11 &&
-				 [[s substringWithRange:NSMakeRange(2, 3)] isEqualToString:@"one"] &&
-				 [[s substringWithRange:NSMakeRange(8, 3)] isEqualToString:@"two"]);
-		check("attributedstring-format-substitutes",
-		      [s isEqualToString:@"n=one m=two"] && offsetsProved,
-		      [NSString stringWithFormat:@"string=%@", s]);
-		check("attributedstring-format-attributes-reach-the-substitution",
-		      [[[plainOut attributesAtIndex:2 effectiveRange:&eff] objectForKey:marker] isEqualToString:@"red"] &&
-		      [[[plainOut attributesAtIndex:8 effectiveRange:NULL] objectForKey:marker] isEqualToString:@"red"],
-		      [NSString stringWithFormat:@"arg1=%@ arg2=%@",
-			[[plainOut attributesAtIndex:2 effectiveRange:NULL] objectForKey:marker],
-			[[plainOut attributesAtIndex:8 effectiveRange:NULL] objectForKey:marker]]);
-		check("attributedstring-option-replacement-index",
-		      [[[[indexOut attributesAtIndex:2 effectiveRange:NULL]
-			  objectForKey:NSReplacementIndexAttributeName] description] isEqualToString:@"0"] &&
-		      [[[[indexOut attributesAtIndex:8 effectiveRange:NULL]
-			  objectForKey:NSReplacementIndexAttributeName] description] isEqualToString:@"1"],
-		      [NSString stringWithFormat:@"first=%@ second=%@",
-			[[indexOut attributesAtIndex:2 effectiveRange:NULL] objectForKey:NSReplacementIndexAttributeName],
-			[[indexOut attributesAtIndex:8 effectiveRange:NULL] objectForKey:NSReplacementIndexAttributeName]]);
-		check("attributedstring-option-argument-attributes-unmerged",
-		      [[[ownOut attributesAtIndex:8 effectiveRange:NULL] objectForKey:own] isEqualToString:@"blue"] &&
-		      [[ownOut attributesAtIndex:8 effectiveRange:NULL] objectForKey:marker] == nil,
-		      [NSString stringWithFormat:@"own=%@ marker=%@",
-			[[ownOut attributesAtIndex:8 effectiveRange:NULL] objectForKey:own],
-			[[ownOut attributesAtIndex:8 effectiveRange:NULL] objectForKey:marker]]);
-	}
 
 
 	{
@@ -368,7 +247,7 @@ int main(void)
 			/* the 2026-09-30 pass closed the "Calculating linguistic units" group (over FNTextBreaking), the
 			 * deprecated URL door, and the markdown baseURL: file door - so they are SHIPPED and checked here. */
 			@"doubleClickAtIndex:", @"nextWordFromIndex:forward:", @"lineBreakBeforeIndex:withinRange:",
-			@"URLAtIndex:effectiveRange:", @"initWithContentsOfMarkdownFileAtURL:options:baseURL:error:" ];
+			@"URLAtIndex:effectiveRange:" ];
 		NSArray *absent = @[ @"drawInRect:", @"drawAtPoint:", @"drawWithRect:options:context:", @"size",
 			@"boundingRectWithSize:options:context:",
 			/* the HYPHENATING break stays ABSENT: it needs a hyphenation resource this system lacks. */
@@ -427,51 +306,6 @@ int main(void)
 			[present componentsJoinedByString:@", "]]);
 	}
 
-	/* ---- THE MUTABLE-ONLY FORMAT DOOR (macOS 12+, ledger row NSMutableAttributedString/-appendLocalizedFormat:)
-	 *
-	 * APPLE'S OWN CURRENT-LOCALE FORMAT APPEND: "Formats the specified string and arguments with the current
-	 * locale, then appends the result to the receiver." It is declared ONLY on the mutable subclass, so the
-	 * two-class inventory rule above cannot carry it (that rule needs BOTH classes to answer) - it is checked
-	 * here against the mutable class, and the immutable base is required NOT to answer it. The expectations
-	 * are Apple's and are MEASURED: the formatted TEXT reaches the receiver unchanged, the length grows by
-	 * exactly the formatted length, and the appended run carries NO attribute (a plain format append installs
-	 * no formatting of its own). NOTE: this library's locale doors render the LOCALE-FREE answer (a locale is
-	 * honoured for case only, NSString.h records), so this run is NOT a check of locale-sensitive rendering. */
-	{
-		NSMutableAttributedString *m = [[NSMutableAttributedString alloc] initWithString:@"head:"];
-		NSAttributedString *imm = [[NSAttributedString alloc] initWithString:@"head:"];
-		NSUInteger before = [m length];
-		NSRange eff = NSMakeRange(0, 0);
-		BOOL isMutableOnly = [m respondsToSelector:@selector(appendLocalizedFormat:)] &&
-				     ![imm respondsToSelector:@selector(appendLocalizedFormat:)];
-
-		[m appendLocalizedFormat:@"%@-%d", @"x", 42];
-		{
-			NSDictionary *appended = [m attributesAtIndex:before effectiveRange:&eff];
-			NSUInteger after = [m length];
-			BOOL textOK = [[m string] isEqualToString:@"head:x-42"];
-			/* ⚠ AND "x-42" IS FOUR UNITS, NOT FIVE — CORRECTED AGAINST THE GUEST, NOT REASONED A SECOND TIME.
-			 * The first version of this check expected before + 5 (its own comment even said "five"), the guest
-			 * answered 9 for a 5-unit base, and the detail line carried the evidence: string="head:x-42"
-			 * after=9(expect 10). THE IMPLEMENTATION WAS RIGHT AND THE EXPECTATION WAS WRONG — the same shape as
-			 * the number formatter's nf-always-decimal — and this check had been MARKED as reasoned rather than
-			 * measured, which is exactly why the failure was one line to find rather than a hunt. */
-			BOOL lenOK = after == before + 4;
-			BOOL noAttr = [appended count] == 0;
-
-			printf("FOUNDATION-ATTRIBUTEDSTRING DIAG appendLocalizedFormat before=%lu after=%lu "
-			       "string=\"%s\" appended-attrs=%lu eff=(%lu,%lu)\n",
-			       (unsigned long)before, (unsigned long)after, [[m string] UTF8String],
-			       (unsigned long)[appended count],
-			       (unsigned long)eff.location, (unsigned long)eff.length);
-			check("append-localized-format-appends-the-formatted-string",
-			      isMutableOnly && textOK && lenOK && noAttr,
-			      [NSString stringWithFormat:@"mutableOnly=%d string=\"%@\" after=%lu(expect %lu) "
-				"appended-attrs=%lu",
-				(int)isMutableOnly, [m string], (unsigned long)after,
-				(unsigned long)(before + 4), (unsigned long)[appended count]]);
-		}
-	}
 
 	/* ---- THE SUPPORTED-TEXT-FORMAT DOORS (2026-10-01, plan §61) ---------------------------------------
 	 *
@@ -1008,18 +842,23 @@ int main(void)
 		}
 
 		{
-			/* AN INLINE-INTENT BIT BECOMES THE CONTROL WORD THAT MEANS IT: strong emphasis opens `\b` and, so
-			 * the emphasis does not leak, closes `\b0`. */
+			/* AN INLINE-INTENT BIT BECOMES THE CONTROL WORD THAT MEANS IT, AND THIS CHECK IS NOW THE PROOF OF
+			 * §63.164's DECISION RATHER THAN A CASUALTY OF IT: the 12.0 NSInlinePresentationIntent enum was cut
+			 * with its family, but -RTFFromRange:documentAttributes: is a REAL RTF writer (§62.58) whose whole
+			 * point is that a run's inline intent becomes control words — so the vocabulary MOVED into the writer
+			 * as private constants that keep Apple's exact wire string, and the writer is driven here THE WAY A
+			 * CALLER WOULD: by that string, with the bit's value. STATED SO IT CANNOT DRIFT: if the wire string
+			 * ever changes, this check fails. */
 			NSMutableAttributedString *strong = [[NSMutableAttributedString alloc] initWithString:@"bold"];
 			NSData *out;
 
-			[strong addAttribute:NSInlinePresentationIntentAttributeName
-				       value:[NSNumber numberWithInt:NSInlinePresentationIntentStronglyEmphasized]
+			[strong addAttribute:@"NSInlinePresentationIntentAttributeName"
+				       value:[NSNumber numberWithInt:(1 << 7)]
 				       range:NSMakeRange(0, 4)];
 			out = [strong RTFFromRange:NSMakeRange(0, 4) documentAttributes:nil];
 			check("rtf-maps-an-inline-intent-bit-to-its-control-word",
 			      fn_bytes_contain(out, "\\b ") && fn_bytes_contain(out, "\\b0 "),
-			      @"strong emphasis opens \\b and closes \\b0");
+			      @"strong emphasis opens \\b and closes \\b0, driven by the writer's own wire string");
 		}
 
 		{
@@ -1038,26 +877,6 @@ int main(void)
 		      @"RTFD and the doc format answer nil (their Apple shape has no error out)");
 	}
 
-	{
-		/* THE MORPHOLOGY VOCABULARY: three sets with NO ENGINE behind them, so what can be asserted is what a
-		 * caller relies on when it compiles - that the values are DISTINCT within each set (two cases sharing
-		 * a value would make two grammatical categories indistinguishable), that the attribute name is the one
-		 * the store carries, and that a store keeps a morphology value like any other attribute. */
-		NSMutableAttributedString *grammar = [[NSMutableAttributedString alloc]
-			initWithString:@"x" attributes:@{ NSMorphologyAttributeName:
-				[NSNumber numberWithInt:(int)NSGrammaticalNumberPlural] }];
-		id kept = [grammar attribute:NSMorphologyAttributeName atIndex:0 effectiveRange:NULL];
-		int distinct = 1;
-
-		if (NSGrammaticalGenderMasculine == NSGrammaticalGenderFeminine ||
-		    NSGrammaticalNumberSingular == NSGrammaticalNumberPlural ||
-		    NSGrammaticalPartOfSpeechNoun == NSGrammaticalPartOfSpeechVerb) {
-			distinct = 0;
-		}
-		check("morphology-vocabulary-is-distinct-and-carried",
-		      distinct && kept != nil && [kept intValue] == (int)NSGrammaticalNumberPlural,
-		      @"the three sets have distinct cases and the store keeps a morphology value untouched");
-	}
 
 	{
 		/* ---- THE WORD AND LINE-BREAK DOORS (2026-09-30) ---------------------------------------------
@@ -1146,29 +965,6 @@ int main(void)
 		      [NSString stringWithFormat:@"calls=%d reason=%@", calls, reason]);
 	}
 
-	{
-		/* ---- THE MARKDOWN FILE DOOR TAKES A baseURL (2026-09-30) ------------------------------------ */
-		/* The file does not exist, so the door reads no data and answers nil (or an empty string, should this
-		 * tree's reader report a missing file that way) - the half of its contract that needs no file system:
-		 * it carries Apple's FOUR-argument spelling and threads baseURL through. The check is written to hold
-		 * whichever nil-or-empty shape the reader gives, because the SPELLING is what this pass adds. */
-		NSError *err = nil;
-		/* url: IS NONNULL (Apple's declaration): the cast states that `file:///no/such/file.md` is a
-		 * well-formed file URL +URLWithString: answers non-nil for - it hides no nil (a nil url would still be
-		 * handled below as an unreadable file). baseURL: is nullable, so it needs no cast. */
-		id made = [[NSAttributedString alloc] initWithContentsOfMarkdownFileAtURL:
-				   (NSURL * _Nonnull)[NSURL URLWithString:@"file:///no/such/file.md"]
-			       options:nil baseURL:[NSURL URLWithString:@"https://base.example/"] error:&err];
-		BOOL spelled = [NSAttributedString instancesRespondToSelector:
-				NSSelectorFromString(@"initWithContentsOfMarkdownFileAtURL:options:baseURL:error:")];
-
-		printf("FOUNDATION-ATTRIBUTEDSTRING DIAG markdown-base spelled=%d made=%s len=%lu\n",
-		       (int)spelled, made != nil ? "yes" : "(nil)",
-		       made != nil ? (unsigned long)[made length] : 0UL);
-		check("the-markdown-file-door-takes-a-base-url",
-		      spelled && (made == nil || [made length] == 0),
-		      [NSString stringWithFormat:@"spelled=%d made=%@", (int)spelled, made]);
-	}
 
 	printf("FOUNDATION-ATTRIBUTEDSTRING RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-ATTRIBUTEDSTRING DONE\n");

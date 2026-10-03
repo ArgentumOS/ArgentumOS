@@ -13,7 +13,6 @@
  */
 
 #import <Foundation/NSAttributedString.h>
-#import <Foundation/NSInflectionRule.h>
 #import "FNStringFormat.h"
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
@@ -38,7 +37,6 @@
 #import <Foundation/FNTextBreaking.h>
 /* THE MARKDOWN IMPORTER, FOR THE baseURL: FILE DOOR this file adds (its category is declared in this class's
  * header, its body lives in NSAttributedStringMarkdown.m - so the import is what lets this file CALL it). */
-#import <Foundation/NSAttributedStringMarkdown.h>
 
 #include <stdint.h>
 
@@ -141,7 +139,7 @@ static NSError *fn_format_refusal(NSString *selector, NSString *what)
  * out as `\u233?`, U+2014 as `\u8212?`, and a character in the top half of the BMP - U+FFFD, say - goes out
  * NEGATIVE as `\u-3?` rather than as 65533.
  *
- * THE FORMATTING VOCABULARY IS THIS LIBRARY'S OWN. `NSInlinePresentationIntent` is the one character-
+ * THE FORMATTING VOCABULARY IS THIS LIBRARY'S OWN. The private presentation-intent bits are the one character-
  * formatting vocabulary Foundation declares here (emphasis, strong emphasis, strikethrough, code), and each
  * of its bits has a direct RTF control word, so the mapping is a rule and not a table. The AppKit attributes
  * a reader might expect - font, colour, paragraph style, underline - have NO TYPE IN THIS SYSTEM (there is
@@ -193,46 +191,63 @@ static void fn_rtf_append_escaped(NSMutableString *out, NSString *text)
 	}
 }
 
+/* ⚠⚠ THE PRESENTATION-INTENT VOCABULARY IS PRIVATE TO THIS FILE AS OF §63.164, AND THE RTF WRITER IS WHY IT
+ * SURVIVES AT ALL. The bits were the 12.0 NSInlinePresentationIntent enum and the key was the 12.0
+ * FNRTPresentationIntentAttributeName; the 10.2 baseline cut that public surface, but
+ * -RTFFromRange:documentAttributes: is a REAL RTF WRITER (§62.58) WHOSE WHOLE POINT IS that each run's inline
+ * intent becomes RTF control words, so the vocabulary MOVED rather than went. IT IS THE SAME VOCABULARY, NOT A
+ * NEW ONE: the values were already this library's under §11.6.1 D2 (Apple publishes the names, not the
+ * numbers), and THE KEY KEEPS ITS EXACT WIRE STRING - so a caller that set that attribute by its documented
+ * name still drives the writer, and a document written before the cut still reads back the same.
+ * THE PUBLIC NAMES ARE GONE; THE WIRE IS UNCHANGED. */
+static NSString * const FNRTPresentationIntentAttributeName = @"NSInlinePresentationIntentAttributeName";
+enum {
+	FNRTPresentationIntentCode = 1 << 1,
+	FNRTPresentationIntentEmphasized = 1 << 2,
+	FNRTPresentationIntentStrikethrough = 1 << 6,
+	FNRTPresentationIntentStronglyEmphasized = 1 << 7,
+};
+
 /* THE INLINE-INTENT BITS AS RTF CONTROL WORDS. The opens go out in a fixed order and the closes in the
  * reverse so the nesting is visibly balanced, and every control word carries its trailing delimiting space -
  * a word that ran straight into a letter would otherwise be read as a longer name (`\bhello` is one word). */
 static void fn_rtf_append_intent(NSMutableString *out, NSDictionary *attrs, BOOL opening)
 {
-	id value = attrs != nil ? [attrs objectForKey:NSInlinePresentationIntentAttributeName] : nil;
+	id value = attrs != nil ? [attrs objectForKey:FNRTPresentationIntentAttributeName] : nil;
 	int bits = [value isKindOfClass:[NSNumber class]] ? [value intValue] : 0;
 
 	if (!opening) {
-		if ((bits & NSInlinePresentationIntentCode) != 0) {
+		if ((bits & FNRTPresentationIntentCode) != 0) {
 			[out appendString:@"\\f0 "];
 		}
-		if ((bits & NSInlinePresentationIntentStrikethrough) != 0) {
+		if ((bits & FNRTPresentationIntentStrikethrough) != 0) {
 			[out appendString:@"\\strike0 "];
 		}
-		if ((bits & NSInlinePresentationIntentEmphasized) != 0) {
+		if ((bits & FNRTPresentationIntentEmphasized) != 0) {
 			[out appendString:@"\\i0 "];
 		}
-		if ((bits & NSInlinePresentationIntentStronglyEmphasized) != 0) {
+		if ((bits & FNRTPresentationIntentStronglyEmphasized) != 0) {
 			[out appendString:@"\\b0 "];
 		}
 		return;
 	}
-	if ((bits & NSInlinePresentationIntentStronglyEmphasized) != 0) {
+	if ((bits & FNRTPresentationIntentStronglyEmphasized) != 0) {
 		[out appendString:@"\\b "];
 	}
-	if ((bits & NSInlinePresentationIntentEmphasized) != 0) {
+	if ((bits & FNRTPresentationIntentEmphasized) != 0) {
 		[out appendString:@"\\i "];
 	}
-	if ((bits & NSInlinePresentationIntentStrikethrough) != 0) {
+	if ((bits & FNRTPresentationIntentStrikethrough) != 0) {
 		[out appendString:@"\\strike "];
 	}
-	if ((bits & NSInlinePresentationIntentCode) != 0) {
+	if ((bits & FNRTPresentationIntentCode) != 0) {
 		[out appendString:@"\\f1 "];
 	}
 }
 
 /* THE DOCUMENT SHELL. `\ansi\ansicpg1252` names the code page the fallback characters belong to, `\deff0`
  * names the default font, and the font table carries the two faces this writer can refer to - the default
- * `\f0` and the monospace `\f1` that `NSInlinePresentationIntentCode` selects. THE FONT NAMES ARE
+ * `\f0` and the monospace `\f1` that `FNRTPresentationIntentCode` selects. THE FONT NAMES ARE
  * PLACEHOLDERS AND SAY SO: RTF names a font so that a reader can SUBSTITUTE one, and this system's own font
  * resolution lives in the file system's font directories, not in a writer. The size (12 pt, `\fs24`) is our
  * default too - Apple publishes no size attribute and this library has none (§11.6.1 D2) - and the colour
@@ -247,7 +262,6 @@ static void fn_rtf_append_document_head(NSMutableString *out)
 
 /* §62.105: the one formatting-context key this library declares, valued as its own name — which is what a
  * caller's context dictionary and any log of it spell. */
-NSAttributedStringFormattingContextKey const NSInflectionConceptsKey = @"NSInflectionConceptsKey";
 
 NSAttributedStringKey const NSLinkAttributeName = @"NSLinkAttributeName";
 
@@ -386,231 +400,8 @@ static NSRange fn_url_token_range(NSString *text, NSUInteger index, BOOL *found)
 }
 
 
-/* ================== THE ATTRIBUTED FORMAT SINK (\u00a763.95) ================== */
-@interface FNAttributedFormatRecorder : NSObject <FNFormatSinkRecording>
-{
-	NSMutableAttributedString *_result;
-	NSAttributedString *_format;
-	NSAttributedStringFormattingOptions _options;
-	NSUInteger _substitution;
-}
-- (id)initWithFormat:(NSAttributedString *)format options:(NSAttributedStringFormattingOptions)options;
-- (NSAttributedString *)result;
-@end
-
-@implementation FNAttributedFormatRecorder
-
-- (id)initWithFormat:(NSAttributedString *)format options:(NSAttributedStringFormattingOptions)options
-{
-	self = [super init];
-	if (self != nil) {
-		_format = [format copy];
-		_options = options;
-		_result = [[NSMutableAttributedString alloc] init];
-		_substitution = 0;
-	}
-	return self;
-}
-
-- (void)dealloc
-{
-	[_result release];
-	[_format release];
-	[super dealloc];
-}
-
-- (NSAttributedString *)result { return _result; }
-
-- (void)fnFormatEmittedUTF8String:(const char *)utf8 at:(NSUInteger)pos
-{
-	[self fnFormatEmittedText:[NSString stringWithUTF8String:utf8] at:pos object:nil];
-}
-
-- (void)fnFormatEmittedText:(NSString *)text at:(NSUInteger)pos object:(id)object
-{
-	NSDictionary *attributes;
-	NSAttributedString *piece;
-	NSUInteger length = [_format length];
-	BOOL ownAttributes;
-
-	/* THE FORMAT'S ATTRIBUTES AT THE POSITION THE EMISSION CAME FROM, which is why the sink reports `pos`. */
-	if (length == 0) {
-		attributes = [NSDictionary dictionary];
-	} else {
-		NSUInteger at = (pos < length) ? pos : (length - 1);
-
-		attributes = [_format attributesAtIndex:at effectiveRange:NULL];
-	}
-	if (object != nil) {
-		_substitution++;
-	}
-	ownAttributes = (object != nil && [object isKindOfClass:[NSAttributedString class]] &&
-			 (_options & NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging) != 0);
-	if (ownAttributes) {
-		piece = object;
-	} else if (object != nil) {
-		piece = [[[NSAttributedString alloc] initWithString:[object description]
-							attributes:attributes] autorelease];
-	} else {
-		piece = [[[NSAttributedString alloc] initWithString:text attributes:attributes] autorelease];
-	}
-	if (object != nil && (_options & NSAttributedStringFormattingApplyReplacementIndexAttribute) != 0) {
-		NSMutableAttributedString *indexed = [[piece mutableCopy] autorelease];
-		NSUInteger count = [indexed length];
-
-		if (count > 0) {
-			[indexed addAttribute:NSReplacementIndexAttributeName
-					value:[NSNumber numberWithUnsignedInteger:(_substitution - 1)]
-					range:NSMakeRange(0, count)];
-		}
-		piece = indexed;
-	}
-	[_result appendAttributedString:piece];
-}
-
-@end
-
-@implementation NSAttributedString (NSAttributedStringFormatting)
-
-- (instancetype)initWithFormat:(NSAttributedString *)format
-		       options:(NSAttributedStringFormattingOptions)options
-			locale:(NSLocale *)locale, ...
-{
-	va_list arguments;
-	id result;
-
-	va_start(arguments, locale);
-	result = [self initWithFormat:format options:options locale:locale arguments:arguments];
-	va_end(arguments);
-	return result;
-}
-
-- (instancetype)initWithFormat:(NSAttributedString *)format
-		       options:(NSAttributedStringFormattingOptions)options
-			locale:(NSLocale *)locale
-		     arguments:(va_list)arguments
-{
-	FNAttributedFormatRecorder *recorder;
-	fn_format_sink sink;
-	NSAttributedString *built;
-	id result;
-
-	recorder = [[FNAttributedFormatRecorder alloc] initWithFormat:format options:options];
-	sink.out = nil;
-	sink.recorder = recorder;
-	fn_string_append_format_sink(&sink, [format string], arguments);
-	built = [[recorder result] retain];
-	[recorder release];
-	result = [self initWithAttributedString:built];
-	[built release];
-	return result;
-}
 
 
-+ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format, ...
-{
-	va_list arguments;
-	id result;
-
-	va_start(arguments, format);
-	result = [[[self alloc] initWithFormat:format options:0 locale:[NSLocale currentLocale]
-				     arguments:arguments] autorelease];
-	va_end(arguments);
-	return result;
-}
-
-+ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format
-					    options:(NSAttributedStringFormattingOptions)options, ...
-{
-	va_list arguments;
-	id result;
-
-	va_start(arguments, options);
-	result = [[[self alloc] initWithFormat:format options:options locale:[NSLocale currentLocale]
-				     arguments:arguments] autorelease];
-	va_end(arguments);
-	return result;
-}
-
-+ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format
-					    context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context, ...
-{
-	va_list arguments;
-	id result;
-
-	(void)context;		/* accepted with no effect: see the header's note and §11.6.1 D2 */
-	va_start(arguments, context);
-	result = [[[self alloc] initWithFormat:format options:0 locale:[NSLocale currentLocale]
-				     arguments:arguments] autorelease];
-	va_end(arguments);
-	return result;
-}
-
-+ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format
-					    options:(NSAttributedStringFormattingOptions)options
-					    context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context, ...
-{
-	va_list arguments;
-	id result;
-
-	(void)context;
-	va_start(arguments, context);
-	result = [[[self alloc] initWithFormat:format options:options locale:[NSLocale currentLocale]
-				     arguments:arguments] autorelease];
-	va_end(arguments);
-	return result;
-}
-
-
-- (instancetype)initWithFormat:(NSAttributedString *)format
-		       options:(NSAttributedStringFormattingOptions)options
-			locale:(NSLocale *)locale
-		       context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context, ...
-{
-	va_list arguments;
-	id result;
-
-	/* THE CONTEXT IS ACCEPTED AND THE FORMATTING IS THE SAME AS THE CONTEXT-FREE DOOR'S, which is the whole of what
-	 * Apple's own comment says this door does; the dictionary's only published key is for inflection and this
-	 * library has no engine for it yet (§63.98's measurement). */
-	(void)context;
-	va_start(arguments, context);
-	result = [self initWithFormat:format options:options locale:locale arguments:arguments];
-	va_end(arguments);
-	return result;
-}
-
-- (instancetype)initWithFormat:(NSAttributedString *)format
-		       options:(NSAttributedStringFormattingOptions)options
-			locale:(NSLocale *)locale
-		       context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context
-		     arguments:(va_list)arguments
-{
-	(void)context;		/* see above, and §11.6.1 D2 */
-	return [self initWithFormat:format options:options locale:locale arguments:arguments];
-}
-
-@end
-
-
-/* ================== THE INFLECTION DOOR (§63.99) ==================
- * ⚠ THE REFUSAL IS BY NAME AND IT AGREES WITH WHAT THIS LIBRARY ALREADY ANSWERS: `+[NSInflectionRule
- * canInflectLanguage:]` returns NO for EVERY language, with the ground "the absence of an agreement model". A door
- * that silently returned the string unchanged would be the one thing this tree's refusals exist to avoid — **a
- * caller could not tell "nothing needed inflecting" from "nothing here can inflect".** */
-@implementation NSAttributedString (NSMorphology)
-
-- (NSAttributedString *)attributedStringByInflectingString
-{
-	[NSException raise:NSInvalidArgumentException
-		    format:@"-[NSAttributedString attributedStringByInflectingString]: "
-			   @"inflection is a per-language capability and this system carries no agreement model "
-			   @"for any language (%@ answers NO for every one of them).",
-			   NSStringFromClass([NSInflectionRule class])];
-	return nil;
-}
-
-@end
 
 
 /* ================== THE LIVE PROXY (§63.101) ==================
@@ -694,21 +485,6 @@ static NSRange fn_url_token_range(NSString *text, NSUInteger index, BOOL *found)
 }
 
 /* ---- THE MODERN FAMILIES' CONSTANTS (W10 slice 4): names Apple publishes, values ours (§11.6.1 D2). */
-NSAttributedStringKey const NSAlternateDescriptionAttributeName = @"NSAlternateDescriptionAttributeName";
-NSAttributedStringKey const NSImageURLAttributeName = @"NSImageURLAttributeName";
-NSAttributedStringKey const NSInflectionAgreementArgumentAttributeName = @"NSInflectionAgreementArgumentAttributeName";
-NSAttributedStringKey const NSInflectionAgreementConceptAttributeName = @"NSInflectionAgreementConceptAttributeName";
-NSAttributedStringKey const NSInflectionAlternativeAttributeName = @"NSInflectionAlternativeAttributeName";
-NSAttributedStringKey const NSInflectionReferentConceptAttributeName = @"NSInflectionReferentConceptAttributeName";
-NSAttributedStringKey const NSInflectionRuleAttributeName = @"NSInflectionRuleAttributeName";
-NSAttributedStringKey const NSInlinePresentationIntentAttributeName = @"NSInlinePresentationIntentAttributeName";
-NSAttributedStringKey const NSLanguageIdentifierAttributeName = @"NSLanguageIdentifierAttributeName";
-NSAttributedStringKey const NSListItemDelimiterAttributeName = @"NSListItemDelimiterAttributeName";
-NSAttributedStringKey const NSLocalizedNumberFormatAttributeName = @"NSLocalizedNumberFormatAttributeName";
-NSAttributedStringKey const NSMarkdownSourcePositionAttributeName = @"NSMarkdownSourcePositionAttributeName";
-NSAttributedStringKey const NSMorphologyAttributeName = @"NSMorphologyAttributeName";
-NSAttributedStringKey const NSPresentationIntentAttributeName = @"NSPresentationIntentAttributeName";
-NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementIndexAttributeName";
 
 
 - (instancetype)initWithString:(NSString *)str
@@ -1548,7 +1324,7 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 /* THE RTF WRITER: a real document, not a stub. The range is CLAMPED to the string rather than raising
  * (Apple publishes no behaviour for an out-of-range write, §11.6.1 D2), the runs covering the range are
  * walked in order, and each run contributes its text escaped and bracketed by the control words its
- * NSInlinePresentationIntent bits select. `documentAttributes:` is an INPUT and is unused: Apple's modern
+ * private presentation-intent bits select. `documentAttributes:` is an INPUT and is unused: Apple's modern
  * declaration has no out-parameter (the `**` of the older API is gone), and the only attributes an
  * RTF-specific writer could consume - a default font, a paper size - name AppKit objects this system does
  * not have. */
@@ -1694,33 +1470,6 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 }
 
 @end
-
-/* ---- THE MARKDOWN FILE DOOR WITH A baseURL (2026-09-30) ---------------------------------------------
- *
- * THE FORM APPLE DECLARES, ADDED BESIDE THE SHORTER DOOR THE TREE ALREADY HAD. The shorter
- * -initWithContentsOfMarkdownFileAtURL:options:error: (declared and defined in NSAttributedStringMarkdown)
- * passes the FILE'S OWN URL as the base, which is what a relative link inside the file means; this one takes
- * the base from the caller and threads it through the same importer, so the two differ by ONE argument and
- * nothing else. Both are kept because the surface rule (§11.0) is method-signature-for-method-signature with
- * Apple, who declares THIS one, and a caller written against Apple must compile against it. */
-@implementation NSAttributedString (FNMarkdownFileURL)
-
-- (nullable instancetype)initWithContentsOfMarkdownFileAtURL:(NSURL *)url
-						     options:(nullable NSAttributedStringMarkdownParsingOptions *)options
-						     baseURL:(nullable NSURL *)baseURL
-						       error:(NSError * _Nullable * _Nullable)error
-{
-	NSData *data = [NSData dataWithContentsOfURL:url options:0 error:error];
-
-	if (data == nil) {
-		[self release];
-		return nil;
-	}
-	return [self initWithMarkdown:data options:options baseURL:baseURL error:error];
-}
-
-@end
-
 
 @implementation NSMutableAttributedString
 
@@ -1908,35 +1657,6 @@ NSAttributedStringKey const NSReplacementIndexAttributeName = @"NSReplacementInd
 - (void)appendAttributedString:(NSAttributedString *)attrString
 {
 	[self replaceCharactersInRange:NSMakeRange([self length], 0) withAttributedString:attrString];
-}
-
-/* APPLE'S CURRENT-LOCALE FORMAT DOOR (macOS 12+, ledger row NSMutableAttributedString/-appendLocalizedFormat:).
- *
- * "Formats the specified string and arguments with the current locale, then appends the result to the
- * receiver." The FORMAT is delegated to this library's own variadic machinery - -initWithFormat:locale:
- * arguments:, which the base class DOCUMENTS to accept a locale and render the locale-free answer (a locale
- * is honoured for case only in this library), so no second rendering rule is invented here and the two doors
- * cannot drift. The RESULT is appended as a PLAIN, attribute-free string through -appendAttributedString:,
- * which routes into the same run-splicing mutator every other append uses - so text and runs stay together.
- * MEASURED: the appended run carries no attribute (the probe asserts an empty attribute dictionary and a
- * length that grew by exactly the formatted length). MRC: `rendered` and `formatted` are each +1, released
- * once after the append; -appendAttributedString: does not retain its argument past the call. */
-- (void)appendLocalizedFormat:(NSString *)format, ...
-{
-	va_list args;
-	NSString *rendered;
-	NSAttributedString *formatted;
-
-	va_start(args, format);
-	rendered = [[NSString alloc] initWithFormat:format locale:[NSLocale currentLocale] arguments:args];
-	va_end(args);
-	if (rendered == nil) {
-		return;
-	}
-	formatted = [[NSAttributedString alloc] initWithString:rendered];
-	[self appendAttributedString:formatted];
-	[formatted release];
-	[rendered release];
 }
 
 - (void)setAttributedString:(NSAttributedString *)attrString

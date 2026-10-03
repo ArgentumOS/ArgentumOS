@@ -39,8 +39,6 @@ CHECKS = (
     # §62.104: the last two enums — the comparison-predicate options type and the sort options, the second
     # MEASURED through both doors rather than declared.
     "sort-options-and-the-stability-promise",
-    # §62.105: the formatting-context vocabulary (the key type and the inflection-concepts key).
-    "formatting-context-key-and-the-inflection-key",
     # §62.106: the KVC exception name (Apple declares it in the scripting header this tree does not have).
     "kvc-exception-name-is-what-implementors-raise",
 )

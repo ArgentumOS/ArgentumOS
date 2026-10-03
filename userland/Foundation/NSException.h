@@ -88,7 +88,8 @@ extern NSString *const NSMallocException;
 - (void)raise;
 
 /* THE CODER DOORS. The KEYS are this library's (Apple's are private) and follow the house convention — the
- * plain property names, as NSTermOfAddress and NSMorphology write theirs. */
+ * plain property names, as Apple's term-of-address and morphology classes write theirs (§63.164 removed
+ * our own copies: both are 12.0 and the 10.2 baseline cut the family). */
 - (void)encodeWithCoder:(NSCoder *)coder;
 - (nullable instancetype)initWithCoder:(NSCoder *)coder;
 

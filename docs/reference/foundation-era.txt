@@ -247,3 +247,6 @@ NSAttributedStringMarkdownParsingOptions	12.0	-
 NSFileAccessIntent	10.10	-
 NSExtensionRequestHandling	10.10	-
 NSOrderedCollectionChange	10.15	-
+#   NSAttributedStringMarkdownSourcePosition  12.0  §63.164: the owner whose rows survived the 10.2 filter
+#                                             ONLY because this ground never knew it (§63.162's mechanism).
+NSAttributedStringMarkdownSourcePosition	12.0	-

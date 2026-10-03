@@ -95,80 +95,13 @@ typedef NSString *NSAttributedStringKey;
  * of their own, and this slice ships the vocabulary they are spoken with - the constants and the option bits
  * - so that a conforming program compiles and the absence is visible where it is asked for. */
 
-/* THE TYPE OF A FORMATTING-CONTEXT KEY (§62.105), and the ONE key this library declares for it. Together
- * they are the vocabulary of the attributed-string FORMATTING CONTEXT — the dictionary a localized format
- * is built with — which is the same kind of surface as the option bits below: names a conforming program
- * compiles against, with the behaviour that consumes them named where it lives.
- *
- * AND THE NAME IS A TRAP WORTH RECORDING: `NSInflectionConceptsKey` sounds like an NSError userInfo key and
- * is NOT one — it is a key in this context dictionary (measured on Apple's page, which files it under
- * `NSAttributedStringFormattingContextKey`). A guess from the name would have put it in the wrong header. */
-typedef NSString *NSAttributedStringFormattingContextKey;
-extern NSAttributedStringFormattingContextKey const NSInflectionConceptsKey;
 
-/* ⚠⚠ THESE TWO VALUES WERE THE WRONG WAY ROUND UNTIL §63.82, AND THE CORPUS PUBLISHES THEM (§63.81's test
- * applied first: all nine of the formatting family's rows ARE in Foundation's own headers, unlike the attachments).
- * Apple's macOS 14.5 declaration reads InsertArgumentAttributesWithoutMerging = 1 << 0 and
- * ApplyReplacementIndexAttribute = 1 << 1; this header had them SWAPPED. **THE BUG THAT MAKES IS AN ABI ONE AND
- * NOT A COSMETIC ONE:** a caller compiled against Apple's header passes `1 << 0` meaning "insert the argument's
- * attributes without merging" and this library would read it as "apply the replacement index" — the OPPOSITE
- * request, silently. AND THE ORIGINAL ASSERTION OF THE VALUES HAD STOOD IN A PROBE, which is why it survived:
- * **a check can preserve a defect exactly as faithfully as it can preserve a contract.** */
-typedef enum {
-	NSAttributedStringFormattingInsertArgumentAttributesWithoutMerging = 1 << 0,
-	NSAttributedStringFormattingApplyReplacementIndexAttribute = 1 << 1,
-} NSAttributedStringFormattingOptions;
-typedef enum {
-	NSInlinePresentationIntentBlockHTML = 1 << 0,
-	NSInlinePresentationIntentCode = 1 << 1,
-	NSInlinePresentationIntentEmphasized = 1 << 2,
-	NSInlinePresentationIntentInlineHTML = 1 << 3,
-	NSInlinePresentationIntentLineBreak = 1 << 4,
-	NSInlinePresentationIntentSoftBreak = 1 << 5,
-	NSInlinePresentationIntentStrikethrough = 1 << 6,
-	NSInlinePresentationIntentStronglyEmphasized = 1 << 7,
-} NSInlinePresentationIntent;
-typedef enum {
-	NSPresentationIntentKindBlockQuote = 0,
-	NSPresentationIntentKindCodeBlock = 1,
-	NSPresentationIntentKindHeader = 2,
-	NSPresentationIntentKindListItem = 3,
-	NSPresentationIntentKindOrderedList = 4,
-	NSPresentationIntentKindParagraph = 5,
-	NSPresentationIntentKindTable = 6,
-	NSPresentationIntentKindTableCell = 7,
-	NSPresentationIntentKindTableHeaderRow = 8,
-	NSPresentationIntentKindTableRow = 9,
-	NSPresentationIntentKindThematicBreak = 10,
-	NSPresentationIntentKindUnorderedList = 11,
-} NSPresentationIntentKind;
-typedef enum {
-	NSPresentationIntentTableColumnAlignmentCenter = 0,
-	NSPresentationIntentTableColumnAlignmentLeft = 1,
-	NSPresentationIntentTableColumnAlignmentRight = 2,
-} NSPresentationIntentTableColumnAlignment;
-
-extern NSAttributedStringKey const NSAlternateDescriptionAttributeName;
-extern NSAttributedStringKey const NSImageURLAttributeName;
-extern NSAttributedStringKey const NSInflectionAgreementArgumentAttributeName;
-extern NSAttributedStringKey const NSInflectionAgreementConceptAttributeName;
-extern NSAttributedStringKey const NSInflectionAlternativeAttributeName;
-extern NSAttributedStringKey const NSInflectionReferentConceptAttributeName;
-extern NSAttributedStringKey const NSInflectionRuleAttributeName;
-extern NSAttributedStringKey const NSInlinePresentationIntentAttributeName;
-extern NSAttributedStringKey const NSLanguageIdentifierAttributeName;
 /* §62.107: THE ONE ATTRIBUTE NAME APPLE'S FOUNDATION INDEX DOES NOT FILE UNDER FOUNDATION — its ledger
  * has no row for this name because Apple documents it on an AppKit page — and the markdown importer needs it,
  * because Apple conveys a link with EXACTLY this attribute and there is no inline intent for one. So it is
  * declared here, in the Foundation header that owns every other attribute name in this library, and the
  * deviation is on the record rather than hidden behind a home the tree does not have. */
 extern NSAttributedStringKey const NSLinkAttributeName;
-extern NSAttributedStringKey const NSListItemDelimiterAttributeName;
-extern NSAttributedStringKey const NSLocalizedNumberFormatAttributeName;
-extern NSAttributedStringKey const NSMarkdownSourcePositionAttributeName;
-extern NSAttributedStringKey const NSMorphologyAttributeName;
-extern NSAttributedStringKey const NSPresentationIntentAttributeName;
-extern NSAttributedStringKey const NSReplacementIndexAttributeName;
 
 /* "The options for enumerating attributes" - the two members Apple publishes. Reverse walks the runs
  * BACKWARDS, and LongestEffectiveRangeNotRequired PERMITS a shorter range than the longest one: this
@@ -233,7 +166,8 @@ typedef enum {
  *
  * -RTFFromRange:documentAttributes: is a REAL RTF writer (§62.58): a valid `{\rtf1…}` document carrying the
  * range's text with RTF's reserved characters escaped, non-ASCII as the format's own `\uN?` escape, and the
- * NSInlinePresentationIntent bits as the control words that mean them. IT IS NOT A STUB, AND WHAT IT DOES
+ * writer's own private presentation-intent bits (§63.164: that vocabulary moved into the .m when the 12.0
+ * public surface was cut) as the control words that mean them. IT IS NOT A STUB, AND WHAT IT DOES
  * NOT CARRY IS A BOUNDARY WITH A GROUND: the AppKit character attributes (font, colour, paragraph style,
  * underline) have NO TYPE IN THIS SYSTEM - there is no NSFont, NSColor or NSParagraphStyle anywhere in the
  * tree - so no caller can construct one and there is nothing to map.
@@ -351,90 +285,7 @@ typedef enum {
 
 @end
 
-/* \u26a0\u26a0 DECLARED IN A CATEGORY BECAUSE THAT IS APPLE'S OWN SHAPE (`NSAttributedString
- * (NSAttributedStringFormatting)` in the corpus): implementing in a category what the CLASS declares draws
- * "category is implementing a method which will also be implemented by its primary class" \u2014 A WARNING
- * ABOUT SHAPE IS A WARNING ABOUT FIDELITY. \u26a0 The `arguments:` door takes a `va_list`, NOT a dictionary
- * (\u00a763.82, from Apple's declaration: the ledger lists selectors and cannot tell). \u26a0 `locale:` is
- * ACCEPTED AND NOT USED, stated rather than hidden \u2014 this engine's conversions are C's and C's are
- * locale-free. */
-/* ⚠⚠ THE FOUR `localizedAttributedStringWithFormat:` SHAPES ARE WRAPPERS OVER THE TWO DOORS ABOVE, WITH THE
- * CURRENT LOCALE — WHICH APPLE'S OWN DOC COMMENTS IN THE CORPUS SAY OUTRIGHT: "Formats the string using the current
- * locale and the specified options." **THE NAME SAYS "LOCALIZED" AND MEANS A LOCALIZATION-TABLE LOOKUP; THE
- * DOCUMENTED BEHAVIOUR IS FORMATTING THE GIVEN STRING — and this unit was one step from implementing the name, with
- * the tree's OWN `-localizedStringForKey:` making the wrong reading comfortable (§63.96).**
- *
- * ⚠ AND THE `context:` SHAPES ACCEPT THE DICTIONARY WITH NO EFFECT, A CHOICE WRITTEN DOWN RATHER THAN AN OVERSIGHT:
- * Apple's comments for those doors say only the same sentence about the locale, so what the dictionary DOES is
- * unpublished, and this library's substitutions are C's conversions with no inflection wired here (§11.6.1 D2). The
- * two `-initWithFormat:…context:…` doors, where it would ACT, remain open rows. */
-@interface NSAttributedString (NSAttributedStringFormatting)
-- (instancetype)initWithFormat:(NSAttributedString *)format
-		       options:(NSAttributedStringFormattingOptions)options
-			locale:(nullable NSLocale *)locale, ...;
-- (instancetype)initWithFormat:(NSAttributedString *)format
-		       options:(NSAttributedStringFormattingOptions)options
-			locale:(nullable NSLocale *)locale
-		     arguments:(va_list)arguments;
-+ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format, ...;
-+ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format
-					    options:(NSAttributedStringFormattingOptions)options, ...;
-+ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format
-					    context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context, ...;
-+ (instancetype)localizedAttributedStringWithFormat:(NSAttributedString *)format
-					    options:(NSAttributedStringFormattingOptions)options
-					    context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context, ...;
-/* ⚠⚠ THE TWO `context:` DOORS, AND THE `context:` DICTIONARY IS ACCEPTED WITH NO EFFECT — WHICH IS NOW A
- * MEASURED POSITION RATHER THAN A CONVENIENT ONE (§63.98). Apple's comment for these declarations is THE SAME
- * SENTENCE as the context-free pair's ("Formats the string using the specified locale (or the canonical one, if
- * nil)"); the context's ONLY PUBLISHED KEY is `NSInflectionConceptsKey`; and THIS LIBRARY'S `NSInflectionRule`
- * DESCRIBES a rule while NOTHING IN IT INFLECTS — the door that would consume inflection,
- * `-attributedStringByInflectingString`, is itself still an open row. **SO THE CONTEXT CANNOT YET CHANGE ANYTHING, and
- * §11.6.1 D2 makes saying that the right answer rather than inventing an inflection rule from a key's name.** */
-- (instancetype)initWithFormat:(NSAttributedString *)format
-		       options:(NSAttributedStringFormattingOptions)options
-			locale:(nullable NSLocale *)locale
-		       context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context, ...;
-- (instancetype)initWithFormat:(NSAttributedString *)format
-		       options:(NSAttributedStringFormattingOptions)options
-			locale:(nullable NSLocale *)locale
-		       context:(NSDictionary<NSAttributedStringFormattingContextKey, id> *)context
-		     arguments:(va_list)arguments;
-@end
 
-/* ⚠⚠ THE INFLECTION DOOR IS IN **APPLE'S OWN CATEGORY NAME** — `NSAttributedString (NSMorphology)`, read from
- * the corpus — AND IT **REFUSES BY NAME**, THIS LIBRARY'S ESTABLISHED PATTERN FOR A CAPABILITY IT DOES NOT CARRY
- * (the RTF and HTML readers refuse rather than silently doing nothing).
- *
- * §§ AND THE GROUND IS APPLE'S OWN API SHAPE AND NOT AN ASSUMPTION (§63.99): the corpus's comment for the method
- * reads "If the string has portions tagged with NSInflectionRuleAttributeName that have no format specifiers, create
- * a new string with those portions inflected by following the rule in the attribute" — **AND ITS SIBLING CLASS
- * PUBLISHES `+canInflectLanguage:`, "Whether inflection will work in the specified language code"** — so inflection
- * is a PER-LANGUAGE CAPABILITY THAT CAN BE ABSENT, and this system carries no agreement model for any language.
- * **THIS LIBRARY ALREADY SAYS SO: `+[NSInflectionRule canInflectLanguage:]` answers NO for every language, with the
- * ground "the absence of an agreement model". THE REFUSAL HERE IS THAT SAME ANSWER, ONE LEVEL DOWN.** */
-@interface NSAttributedString (NSMorphology)
-- (NSAttributedString *)attributedStringByInflectingString;
-@end
-
-/* ---- THE MARKDOWN FILE DOOR, IN APPLE'S FOUR-ARGUMENT SPELLING (2026-09-30) -------------------------
- *
- * APPLE DECLARES THIS INITIALISER WITH a `baseURL:` argument, and the tree shipped the SHORTER
- * `-initWithContentsOfMarkdownFileAtURL:options:error:` (declared in NSAttributedStringMarkdown.h) without
- * it. The surface rule (§11.0) is method-signature-for-method-signature, so the Apple form is ADDED here
- * and the shorter door KEEPS WORKING: this method differs from it only by threading `baseURL` through to the
- * importer, where the shorter one passes the file's own URL as the base. Both parse the same way; the
- * importer is in NSAttributedStringMarkdown.m.
- *
- * IT LIVES IN THIS HEADER RATHER THAN THE MARKDOWN ONE because the owning ledger row is NSAttributedString's
- * and this file is where that class's surface is declared; the options type it takes is forward-declared. */
-@class NSAttributedStringMarkdownParsingOptions;
-@interface NSAttributedString (FNMarkdownFileURL)
-- (nullable instancetype)initWithContentsOfMarkdownFileAtURL:(NSURL *)url
-                                                     options:(nullable NSAttributedStringMarkdownParsingOptions *)options
-                                                     baseURL:(nullable NSURL *)baseURL
-                                                       error:(NSError * _Nullable * _Nullable)error;
-@end
 
 @interface NSMutableAttributedString : NSAttributedString
 
@@ -445,13 +296,6 @@ typedef enum {
 - (void)replaceCharactersInRange:(NSRange)range withAttributedString:(NSAttributedString *)attrString;
 - (void)insertAttributedString:(NSAttributedString *)attrString atIndex:(NSUInteger)loc;
 - (void)appendAttributedString:(NSAttributedString *)attrString;
-/* APPLE'S CURRENT-LOCALE FORMAT DOOR (macOS 12+, ledger row NSMutableAttributedString/-appendLocalizedFormat:).
- * Apple's spelling is variadic, exactly like +stringWithFormat:: "Formats the specified string and arguments
- * with the current locale, then appends the result to the receiver." It is built over this library's own
- * -initWithFormat:locale:arguments:, whose locale door is DOCUMENTED to accept the locale and render the
- * locale-free answer (a locale is honoured for case only here, NSString.h says so) - so no second rendering
- * rule is invented. MUTABLE-ONLY: the immutable base does not answer it. */
-- (void)appendLocalizedFormat:(NSString *)format, ...;
 - (void)deleteCharactersInRange:(NSRange)range;
 - (void)setAttributedString:(NSAttributedString *)attrString;
 

@@ -38,20 +38,20 @@ PROBE = "/System/Shared/tests/foundation_attributedstring"
 CHECKS = (
     "attributedstring-mutablestring-length-agrees-with-the-store",
     "attributedstring-mutablestring-is-live",
-    "attributedstring-inflecting-refuses-by-name",
-    "attributedstring-format-context-keeps-the-format-attributes",
-    "attributedstring-format-context",
-    "attributedstring-localized-format-options-context",
-    "attributedstring-localized-format-context",
-    "attributedstring-localized-format-options",
-    "attributedstring-localized-format",
-    "attributedstring-option-argument-attributes-unmerged",
-    "attributedstring-option-replacement-index",
-    "attributedstring-format-attributes-reach-the-substitution",
-    "attributedstring-format-substitutes",
+
+
+
+
+
+
+
+
+
+
+
     "attributedstring-description-is-the-string",
     "attributedstring-mutation-concatenates-exactly",
-    "attributedstring-mutation-never-writes-null","morphology-vocabulary-is-distinct-and-carried",
+    "attributedstring-mutation-never-writes-null",
           "coding-round-trips-through-the-archiver",
           "coding-refuses-what-a-property-list-cannot-carry",
           "coding-supports-secure-coding-answers-yes",
@@ -67,7 +67,7 @@ CHECKS = (
           "primitives-constructors-do-not-alias-their-source",
           "inventory-the-shipped-selectors-exist", "inventory-the-boundaries-are-absent",
           # 2026-10-01: the mutable-only current-locale format door (NSMutableAttributedString/appendLocalizedFormat:).
-          "append-localized-format-appends-the-formatted-string",
+      
           "string-and-length-are-the-initialisers", "the-coalescing-contract-holds-whatever-built-it",
           "the-attribute-range-can-be-longer-than-the-dictionary-run",
           "the-longest-effective-range-form-clips-to-its-range",
@@ -86,7 +86,7 @@ CHECKS = (
           "line-break-before-index-answers-the-enclosing-lines-start",
           "url-at-index-answers-the-url-that-covers-it",
           "the-html-siblings-refuse-through-their-handler",
-          "the-markdown-file-door-takes-a-base-url",
+      
           # 2026-10-01: the "Getting the supported text-file formats" group's six implementable members
           # (the four deprecated class methods and the two modern class properties); -prefersRTFDInRange:
           # stays absent (it asks about attachments, which have no class here).
