@@ -15982,6 +15982,39 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.119 — THE CORPUS IS NOT FOUNDATION: 89 OF 221 HEADERS HAVE NO COUNTERPART, AND THE MEASUREMENT STOPPED 35 WRONG STRIKES (2026-10-01)
+
+**NO ROWS CLOSED, AND THAT IS THE POINT: THIS UNIT STOPPED THIRTY-FIVE ROWS FROM BEING STRUCK FOR A REASON THAT DOES
+NOT EXIST.**
+
+**MEASURED: 89 OF THIS TREE'S 221 `userland/Foundation` HEADERS HAVE NO COUNTERPART IN EITHER CORPUS, AND 68 OF THEM ARE
+PUBLIC OWNERS** — `NSNumber.h`, `NSCoding.h`, `NSFastEnumeration.h`, `NSNotificationCenter.h`, `NSOperationsQueue`'s
+neighbours, `NSURLComponents.h`, `NSURLSessionConfiguration.h`, the whole `NSUnit*` family, and `NSItemProvider`'s
+neighbourhood among them. `--check` consistent, and **no row moved, which is the correct outcome: THE GUARD DECLINES TO
+STRIKE RATHER THAN STRIKING DIFFERENTLY.**
+
+**⚠⚠ THE RULE, AND IT IS THE OTHER HALF OF §63.102'S REFINEMENT: AN ABSENCE FROM THE CORPUS IS NOT A GROUND FOR ANY ROW
+WHOSE OWNER'S OWN HEADER IT DOES NOT CARRY.** §63.100 struck forty-one rows on absence; §63.102 established that a POSITIVE
+ground is better and left absence usable as a fallback; **this unit found that the fallback's evidence base has to EXIST
+before its silence means anything.** *A SEARCH THAT FOUND NOTHING IN A FILE THAT IS NOT THERE HAS NOT FOUND NOTHING — IT
+HAS FOUND NOTHING TO SEARCH.*
+
+**⚠ AND THE DAMAGE IS BOUNDED, WHICH WAS CHECKED RATHER THAN HOPED:** every absence-based strike this session made was
+on an owner whose header the corpus HAS (`NSAttributedString.h`, measured in §63.81), and every other strike rested on a
+POSITIVE ground — a type belonging to another framework. **Nothing needs un-striking. What needed stopping was today.**
+
+**AND THE TRAP IT SET IS WORTH RECORDING BECAUSE IT WAS ARMED AND POINTED: the four owners at the top of the work list
+classified as `NSItemProvider` 0 ours / 13 absent, `NSURLSessionConfiguration` 1/12, `NSURLComponents` 3/10, `NSTimeZone`
+10/3 — and the three heavy-absence ones were about to be struck.** One of their rows is
+`TLSMinimumSupportedProtocol`, **Foundation's since macOS 10.8**, and another is `NSURLComponents`' whole `rangeOf…`
+family. **A missing header reads exactly like a foreign framework, and the difference is a file listing.**
+
+**⚠⚠ AND IT IS THE SIXTH CORRECTION TO A GROUND MECHANISM THIS SESSION — after a pass that matched SUBSTRINGS
+(§63.83), one that could not see a PROPERTY (§63.83), one that tested only the FIRST KEYWORD (§63.100), one that
+trusted an unmeasured COVERAGE ASSUMPTION (§63.102), and one whose stated INTENTION did not match its output (§63.111).
+Six different ways for a search to report on something other than the thing asked about — AND NOT ONE OF THEM WAS FOUND
+BY RE-READING CODE.**
+
 ## §63.118 — `localObjects` LANDS, AND `remoteObjects`' REASON IS A LIFECYCLE AND NOT A WRAPPER (2026-10-01)
 
 **WHAT LANDED: `localObjects` — THE OBJECTS THIS CONNECTION VENDS — AND WITH IT A MEASURED REASON FOR ITS PAIR, WRITTEN

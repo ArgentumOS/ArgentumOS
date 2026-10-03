@@ -575,6 +575,91 @@ UNSUPPORTED_BY_APPLE = frozenset((
 ))
 
 
+# ⚠⚠ §63.119 — THE SIXTH CORRECTION TO A GROUND MECHANISM, AND THE ONE THAT BOUNDS ALL THE OTHERS:
+# **THE CORPUS IS NOT FOUNDATION'S HEADERS. IT IS A SUBSET OF 170, AND EIGHTY-NINE OF THIS TREE'S 221 HEADERS HAVE NO
+# COUNTERPART IN IT** — including `NSNumber.h`, `NSCoding.h`, `NSFastEnumeration.h`, `NSNotificationCenter.h`,
+# `NSURLComponents.h`, `NSURLSessionConfiguration.h` and the whole `NSUnit*` family.
+#
+# SO AN ABSENCE FROM THE CORPUS IS **NOT** A GROUND FOR ANY ROW WHOSE OWNER'S OWN HEADER IT DOES NOT CARRY. §63.100
+# struck forty-one rows on absence and §63.102 refined WHEN absence may be trusted; THIS is the other half of that
+# refinement: **the evidence base has to EXIST before its silence means anything.** *A SEARCH THAT FOUND NOTHING IN A
+# FILE THAT IS NOT THERE HAS NOT FOUND NOTHING — IT HAS FOUND NOTHING TO SEARCH.*
+#
+# ⚠ AND THE DAMAGE IS BOUNDED, WHICH IS WORTH RECORDING BECAUSE IT WAS CHECKED RATHER THAN HOPED: every absence strike this
+# session made was on an owner whose header the corpus HAS (`NSAttributedString.h`, measured in §63.81), and every other
+# strike rested on a POSITIVE ground — a type belonging to another framework. **THE ROWS IN THIS SET WERE ABOUT TO BE
+# STRUCK TODAY, THIRTY-FIVE OF THEM, AND THE MEASUREMENT STOPPED IT.**
+CORPUS_LACKS_OWNER_HEADER = frozenset((
+    "NSAttributedStringMarkdown",
+    "NSBlockOperation",
+    "NSBundleResourceRequest",
+    "NSCacheDelegate",
+    "NSCachedURLResponse",
+    "NSCoding",
+    "NSCountedSet",
+    "NSDataDetector",
+    "NSDateComponents",
+    "NSDimension",
+    "NSDirectoryEnumerator",
+    "NSDiscardableContent",
+    "NSDistantObjectRequest",
+    "NSFastEnumeration",
+    "NSFileProviderService",
+    "NSFileSecurity",
+    "NSHTTPURLResponse",
+    "NSInputStream",
+    "NSInvocationOperation",
+    "NSKeyedArchiverDelegate",
+    "NSKeyedUnarchiverDelegate",
+    "NSLocalizedNumberFormatRule",
+    "NSMachBootstrapServer",
+    "NSMachPort",
+    "NSMessagePort",
+    "NSMessagePortNameServer",
+    "NSMutableOrderedSet",
+    "NSNotificationCenter",
+    "NSNumber",
+    "NSOperationQueue",
+    "NSOutputStream",
+    "NSPipe",
+    "NSPresentationIntent",
+    "NSPropertyListSerialization",
+    "NSPurgeableData",
+    "NSSecureUnarchiveFromDataTransformer",
+    "NSSocketPort",
+    "NSSocketPortNameServer",
+    "NSTinyString",
+    "NSURLComponents",
+    "NSURLSessionConfiguration",
+    "NSURLSessionStreamTask",
+    "NSURLSessionTask",
+    "NSURLSessionTaskMetrics",
+    "NSURLSessionWebSocketMessage",
+    "NSURLSessionWebSocketTask",
+    "NSUnitAcceleration",
+    "NSUnitAngle",
+    "NSUnitArea",
+    "NSUnitConcentrationMass",
+    "NSUnitConverter",
+    "NSUnitDispersion",
+    "NSUnitDuration",
+    "NSUnitElectric",
+    "NSUnitEnergy",
+    "NSUnitFrequency",
+    "NSUnitFuelEfficiency",
+    "NSUnitIlluminance",
+    "NSUnitInformationStorage",
+    "NSUnitLength",
+    "NSUnitMass",
+    "NSUnitPower",
+    "NSUnitPressure",
+    "NSUnitSpeed",
+    "NSUnitTemperature",
+    "NSUnitVolume",
+    "NSUserNotificationCenter",
+    "NSUserUnixTask",
+))
+
 def struck_reason(row):
     """Why this symbol is OUT, or None. Three exclusions, and the reason travels
     with the row so a struck line can be argued with."""
@@ -595,6 +680,10 @@ def struck_reason(row):
     if row["name"] in UNSUPPORTED_BY_APPLE:
         # §63.112: Apple's annotation says the door DOES NOTHING — and note this is NOT the un-deprecation policy.
         return "unsupported-by-apple"
+    if row["owner"] in CORPUS_LACKS_OWNER_HEADER:
+        # §63.119: NOTHING MAY BE CONCLUDED FROM AN ABSENCE IN A FILE THE CORPUS DOES NOT CARRY. This does not strike
+        # anything; it DECLINES TO, which is the only honest answer available here.
+        return None
     # THE DEPRECATION GROUND IS RETIRED (the user's policy, 2026-09-26): "to support porting older Mac
     # applications, all items removed for being deprecated are un-deprecated in Argentum Foundation, and added to
     # the work list." SO `apple_says_deprecated` NO LONGER STRIKES A ROW - IT MARKS ONE. The reason still travels
