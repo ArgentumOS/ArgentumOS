@@ -25,9 +25,9 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: declined 443, other-framework 99
+# why the struck rows are struck: 32-bit-only 4, declined 443, other-framework 112
 #
-# AND 560 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# AND 557 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
 # row is, never that it is excluded.
 #
@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2192   open  366   struck  370
+#   method     shipped 2192   open  349   struck  387
 #   property   shipped 1278   open  186   struck  172
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -591,20 +591,20 @@ method	struck	-decodeCGPointForKey:	NSCoder	Files and Data Persistence / Keyed A
 method	struck	-decodeCGRectForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	declined	objc
 method	struck	-decodeCGSizeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	declined	objc
 method	struck	-decodeCGVectorForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	declined	objc
-method	open	-decodeCMTimeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Core Media Time Structures	-	objc
-method	open	-decodeCMTimeMappingForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Core Media Time Structures	-	objc
-method	open	-decodeCMTimeRangeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Core Media Time Structures	-	objc
+method	struck	-decodeCMTimeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Core Media Time Structures	other-framework	objc
+method	struck	-decodeCMTimeMappingForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Core Media Time Structures	other-framework	objc
+method	struck	-decodeCMTimeRangeForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Core Media Time Structures	other-framework	objc
 method	shipped	-decodeDataObject	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeDictionaryWithKeysOfClass:objectsOfClass:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Instance Methods	-	objc
 method	shipped	-decodeDictionaryWithKeysOfClasses:objectsOfClasses:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Instance Methods	-	objc
-method	open	-decodeDirectionalEdgeInsetsForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
+method	struck	-decodeDirectionalEdgeInsetsForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	other-framework	objc
 method	shipped	-decodeDoubleForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeFloatForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeInt32ForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeInt64ForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeIntForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeIntegerForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
-method	open	-decodeNXColor	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Color Struct Data	deprecated	objc
+method	struck	-decodeNXColor	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Color Struct Data	other-framework	objc
 method	open	-decodeNXObject	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	deprecated	objc
 method	shipped	-decodeObject	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeObjectForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
@@ -622,8 +622,8 @@ method	shipped	-decodeTopLevelObjectAndReturnError:	NSCoder	Files and Data Persi
 method	shipped	-decodeTopLevelObjectForKey:error:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Top-Level Objects	-	objc
 method	shipped	-decodeTopLevelObjectOfClass:forKey:error:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Top-Level Objects	-	objc
 method	shipped	-decodeTopLevelObjectOfClasses:forKey:error:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Top-Level Objects	-	objc
-method	open	-decodeUIEdgeInsetsForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
-method	open	-decodeUIOffsetForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	-	objc
+method	struck	-decodeUIEdgeInsetsForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	other-framework	objc
+method	struck	-decodeUIOffsetForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Geometry-Based Data	other-framework	objc
 method	shipped	-decodeValueOfObjCType:at:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	deprecated	objc
 method	shipped	-decodeValueOfObjCType:at:size:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeValuesOfObjCTypes:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
@@ -638,13 +638,13 @@ method	struck	-encodeCGPoint:forKey:	NSCoder	Files and Data Persistence / Keyed 
 method	struck	-encodeCGRect:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	declined	objc
 method	struck	-encodeCGSize:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	declined	objc
 method	struck	-encodeCGVector:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	declined	objc
-method	open	-encodeCMTime:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Core Media Time Structures	-	objc
-method	open	-encodeCMTimeMapping:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Core Media Time Structures	-	objc
-method	open	-encodeCMTimeRange:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Core Media Time Structures	-	objc
+method	struck	-encodeCMTime:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Core Media Time Structures	other-framework	objc
+method	struck	-encodeCMTimeMapping:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Core Media Time Structures	other-framework	objc
+method	struck	-encodeCMTimeRange:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Core Media Time Structures	other-framework	objc
 method	shipped	-encodeConditionalObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeConditionalObject:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeDataObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	open	-encodeDirectionalEdgeInsets:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
+method	struck	-encodeDirectionalEdgeInsets:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	other-framework	objc
 method	shipped	-encodeDouble:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeFloat:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeInt32:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
@@ -662,13 +662,13 @@ method	shipped	-encodeRect:forKey:	NSCoder	Files and Data Persistence / Keyed Ar
 method	shipped	-encodeRootObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeSize:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeSize:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	open	-encodeUIEdgeInsets:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
-method	open	-encodeUIOffset:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	-	objc
+method	struck	-encodeUIEdgeInsets:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	other-framework	objc
+method	struck	-encodeUIOffset:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding Geometry-Based Data	other-framework	objc
 method	shipped	-encodeValueOfObjCType:at:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeValuesOfObjCTypes:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-failWithError:	NSCoder	Files and Data Persistence / Keyed Archivers / Managing Decode Errors	-	objc
-method	open	-objectZone	NSCoder	Files and Data Persistence / Keyed Archivers / Managing Zones	-	objc
-method	open	-setObjectZone:	NSCoder	Files and Data Persistence / Keyed Archivers / Managing Zones	-	objc
+method	struck	-objectZone	NSCoder	Files and Data Persistence / Keyed Archivers / Managing Zones	32-bit-only	objc
+method	struck	-setObjectZone:	NSCoder	Files and Data Persistence / Keyed Archivers / Managing Zones	32-bit-only	objc
 method	shipped	-versionForClassName:	NSCoder	Files and Data Persistence / Keyed Archivers / Getting Version Information	-	objc
 property	shipped	allowedClasses	NSCoder	Files and Data Persistence / Keyed Archivers / Secure Coding	-	objc
 property	shipped	allowsKeyedCoding	NSCoder	Files and Data Persistence / Keyed Archivers / Inspecting a Coder	-	objc
@@ -3910,9 +3910,9 @@ method	open	-classNameDecodedForArchiveClassName:	NSUnarchiver	Files and Data Pe
 method	open	+decodeClassName:asClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	swift-page
 method	open	-decodeClassName:asClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	swift-page
 method	shipped	-initForReadingWithData:	NSUnarchiver	Files and Data Persistence / Deprecated / Initializing an NSUnarchiver	deprecated	objc
-method	open	-objectZone	NSUnarchiver	Files and Data Persistence / Deprecated / Managing an NSUnarchiver	deprecated	objc
+method	struck	-objectZone	NSUnarchiver	Files and Data Persistence / Deprecated / Managing an NSUnarchiver	32-bit-only	objc
 method	shipped	-replaceObject:withObject:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	objc
-method	open	-setObjectZone:	NSUnarchiver	Files and Data Persistence / Deprecated / Managing an NSUnarchiver	deprecated	objc
+method	struck	-setObjectZone:	NSUnarchiver	Files and Data Persistence / Deprecated / Managing an NSUnarchiver	32-bit-only	objc
 method	shipped	+unarchiveObjectWithData:	NSUnarchiver	Files and Data Persistence / Deprecated / Decoding objects	deprecated	objc
 method	shipped	+unarchiveObjectWithFile:	NSUnarchiver	Files and Data Persistence / Deprecated / Decoding objects	deprecated	objc
 property	shipped	atEnd	NSUnarchiver	Files and Data Persistence / Deprecated / Managing an NSUnarchiver	deprecated	objc

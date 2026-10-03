@@ -15982,6 +15982,39 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.111 — SEVENTEEN ROWS LEAVE `NSCoder` ON TWO GROUNDS, AND AN INSTRUMENT'S INTENTION IS NOT ITS OUTPUT (2026-10-01)
+
+**WHAT LANDED: SEVENTEEN ROWS STRUCK AND `NSCoder` CUT FROM SEVENTEEN TO TWO** — thirteen on the type ground (§63.102's
+positive one) and the zone pair on the 32-bit ground, **plus two more that the same fix caught on other owners.**
+
+**MEASURED: `method open 366 → 349`, `struck 370 → 387`; `--check` consistent; and the owner's heading went from
+`NSCoder (17)` to `NSCoder (2)`.**
+
+**⚠⚠ AND THE FINDING IS THE REASON TWO OF THEM NEEDED A DIFFERENT GROUND: AN INSTRUMENT'S INTENTION IS NOT ITS OUTPUT.**
+The tool **already had** a zone ground — `is_32bit_only()` is `ZONE_API_RE.match(name)` — **and the comment above it says
+the regex was written so the NSZone removal "would [not] have left two zone-taking functions in the work list". THOSE
+TWO ARE `-objectZone` AND `-setObjectZone:`, AND THEY WERE STILL THERE, LISTED AS OURS.** The pattern does not match
+them. **THIS IS THE FIFTH CORRECTION TO A GROUND MECHANISM THIS SESSION**, after a substring pass (§63.83), a pass that
+could not see a property (§63.83), a first-keyword test (§63.100), and an unmeasured coverage assumption (§63.102) —
+**and it is the purest of the five, because the intention was WRITTEN DOWN and the output still disagreed with it.**
+
+**⚠ AND THE FIX IS A NAME SET, NOT A LOOSER PATTERN: `ZONE_API_RE` judges EVERY row, so relaxing it to catch two names
+would strike rows nobody has looked at.** *A ground is a claim about specific things; a pattern is a claim about a
+shape, and only one of them can be checked against the thing it names.*
+
+**AND THE THIRTEEN ARE ALL ON THE POSITIVE GROUND — THEY NAME ANOTHER FRAMEWORK'S TYPE:** `CMTime`, `CMTimeRange`,
+`CMTimeMapping` and `CMVideoDimensions` (CoreMedia), `UIEdgeInsets`/`UIOffset` and `NSDirectionalEdgeInsets` (UIKit),
+and **`-decodeNXColor`, WHOSE TYPE IS APPKIT'S `NSColor` — THE `NX` PREFIX LOOKS LIKE NeXT AND THE TYPE IS WHAT
+DECIDES. A PREFIX IS NOT A GROUND; A TYPE IS** (§63.102).
+
+**AND `NSCoder`'S REMAINING TWO ARE THE INTERESTING ONES, WITH A GROUND THAT NEEDS DECIDING RATHER THAN ASSUMING: Apple
+marks BOTH `-encodeNXObject:` AND `-decodeNXObject` `API_DEPRECATED("Not supported", macos(10.0,10.5), …)` — and
+**"NOT SUPPORTED" IS NOT A DEPRECATION.** The 2026-09-26 policy un-deprecates everything Apple deprecated **because a
+deprecated API is a porting target — but "not supported" says the door DOES NOTHING, which is a different sentence
+with a different answer**, and Apple's own comment for the pair is explicit: "Writes old-style object onto the coder.
+NO SHARING IS DONE ACROSS separate -encodeNXObject:. Callers must have implemented an -replacementObjectForCoder:
+compatibility method". **That is the next unit's question, and it is a question and not a measurement.**
+
 ## §63.110 — THE TRIO'S LAST DOOR LANDS, AND THE INFORMAL PROTOCOL RUNS INTO THE STANDING RULE (2026-10-01)
 
 **WHAT LANDED: `-loadResourceDataNotifyingClient:usingCache:` — THE LAST OF THE RESOURCE-DATA TRIO, and with it

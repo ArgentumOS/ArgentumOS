@@ -301,8 +301,18 @@ ZONE_API_RE = re.compile(
     r"|\w*WithZone|SetZoneName|CopyObject)$")
 
 
+# §63.111: AND TWO NAMES THE REGEX ABOVE DOES NOT CATCH, ADDED AS A SET RATHER THAN BY LOOSENING A PATTERN THAT
+# EVERY OTHER ROW IS JUDGED BY. ⚠⚠ THE REGEX WAS WRITTEN FOR EXACTLY THESE TWO — the comment above says the zone
+# removal "would [not] have left two zone-taking functions in the work list" — AND THEY WERE STILL THERE: **AN
+# INSTRUMENT'S INTENTION IS NOT ITS OUTPUT**, and this is the fifth correction to a ground mechanism this session.
+ZONE_TAKING_NAMES = frozenset((
+    "objectZone",
+    "setObjectZone:",
+))
+
+
 def is_32bit_only(row):
-    return bool(ZONE_API_RE.match(row["name"]))
+    return bool(ZONE_API_RE.match(row["name"])) or row["name"] in ZONE_TAKING_NAMES
 
 
 # TWO GROUNDS THAT ARE ABOUT THIS TREE'S OWN SUBSTRATE (§62.100), each verified rather than assumed:
@@ -499,6 +509,24 @@ OTHER_FRAMEWORK = frozenset((
     "sizeWithFont:forWidth:lineBreakMode:",
     "sizeWithFont:minFontSize:actualFontSize:forWidth:lineBreakMode:",
     "sr_sensorForDeletionRecordsFromSensor",
+
+    # §63.111 — AND THIRTEEN ROWS OF `NSCoder` THAT NAME ANOTHER FRAMEWORK'S TYPE: `CMTime` (CoreMedia),
+    # `UIEdgeInsets`/`UIOffset` (UIKit), `CMVideoDimensions`, and `-decodeNXColor`, WHOSE TYPE IS APPKIT'S `NSColor`
+    # — THE `NX` PREFIX LOOKS LIKE NE(X)T AND THE TYPE IS WHAT DECIDES. **THE TYPE IS THE POSITIVE GROUND §63.102
+    # ESTABLISHED; A PREFIX IS NOT.**
+    "decodeCMTimeForKey:",
+    "decodeCMTimeMappingForKey:",
+    "decodeCMTimeRangeForKey:",
+    "decodeDirectionalEdgeInsetsForKey:",
+    "decodeNXColor",
+    "decodeUIEdgeInsetsForKey:",
+    "decodeUIOffsetForKey:",
+    "encodeCMTime:forKey:",
+    "encodeCMTimeMapping:forKey:",
+    "encodeCMTimeRange:forKey:",
+    "encodeDirectionalEdgeInsets:forKey:",
+    "encodeUIEdgeInsets:forKey:",
+    "encodeUIOffset:forKey:",
 ))
 
 
