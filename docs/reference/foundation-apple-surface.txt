@@ -38,15 +38,10 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-# case	shipped	1120	open	0	struck	78
-# class	shipped	176	open	0	struck	52
-# enum	shipped	133	open	0	struck	9
-# func	shipped	167	open	0	struck	22
-# macro	shipped	121	open	0	struck	132
+# case	shipped	1112	open	0	struck	78
+# class	shipped	174	open	0	struck	52
+# enum	shipped	130	open	0	struck	9
 # protocol	shipped	33	open	0	struck	6
-# struct	shipped	13	open	0	struck	0
-# typealias	shipped	71	open	0	struck	5
-# var	shipped	696	open	0	struck	211
 
 
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -223,8 +218,6 @@ case	shipped	NSCoderReadCorruptError	NSCoder	Files and Data Persistence / Keyed 
 case	shipped	NSCoderReadCorruptError	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
 case	shipped	NSCoderValueNotFoundError	NSCoder	Files and Data Persistence / Keyed Archivers / Error Codes	-	objc
 case	shipped	NSCoderValueNotFoundError	NSError	App Support / User-Relevant Errors / Error Codes / Coder Errors	-	objc
-case	shipped	NSCollectionChangeInsert	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Types of Ordered Collection Changes	-	objc
-case	shipped	NSCollectionChangeRemove	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Types of Ordered Collection Changes	-	objc
 case	struck	NSCollectorDisabledOption		Low-Level Utilities / Legacy / Legacy / Constants	declined	objc
 case	shipped	NSCompressionErrorMaximum	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
 case	shipped	NSCompressionErrorMinimum	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
@@ -667,12 +660,6 @@ case	shipped	NSOperationQueuePriorityNormal	NSOperation	App Support / Operations
 case	shipped	NSOperationQueuePriorityVeryHigh	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
 case	shipped	NSOperationQueuePriorityVeryLow	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
 case	shipped	NSOrderedAscending		Fundamentals / Sorting / Constants	-	objc
-case	shipped	NSOrderedCollectionDifferenceCalculationInferMoves	NSArray	Fundamentals / Basic Collections / Comparing with Another Array / Difference Calculation Options	-	objc
-case	shipped	NSOrderedCollectionDifferenceCalculationInferMoves	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set / Difference Calculation Options	-	objc
-case	shipped	NSOrderedCollectionDifferenceCalculationOmitInsertedObjects	NSArray	Fundamentals / Basic Collections / Comparing with Another Array / Difference Calculation Options	-	objc
-case	shipped	NSOrderedCollectionDifferenceCalculationOmitInsertedObjects	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set / Difference Calculation Options	-	objc
-case	shipped	NSOrderedCollectionDifferenceCalculationOmitRemovedObjects	NSArray	Fundamentals / Basic Collections / Comparing with Another Array / Difference Calculation Options	-	objc
-case	shipped	NSOrderedCollectionDifferenceCalculationOmitRemovedObjects	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set / Difference Calculation Options	-	objc
 case	shipped	NSOrderedDescending		Fundamentals / Sorting / Constants	-	objc
 case	shipped	NSOrderedSame		Fundamentals / Sorting / Constants	-	objc
 case	shipped	NSPicturesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
@@ -1377,8 +1364,6 @@ class	shipped	NSNumberFormatter		Fundamentals / Numbers	-	objc
 class	shipped	NSObject		Low-Level Utilities / Object Basics	-	swift-page
 class	shipped	NSOperation		App Support / Operations	-	objc
 class	shipped	NSOperationQueue		App Support / Operations	-	objc
-class	shipped	NSOrderedCollectionChange		Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes	-	objc
-class	shipped	NSOrderedCollectionDifference		Fundamentals / Basic Collections / Comparing with Another Array	-	objc
 class	shipped	NSOrderedSet		Fundamentals / Specialized Sets	-	objc
 class	shipped	NSOrthography		Fundamentals / Localization	-	objc
 class	shipped	NSOutputStream		Low-Level Utilities / Streams	-	objc
@@ -1489,7 +1474,6 @@ enum	shipped	NSCalculationError	NSDecimalNumberBehaviors	Fundamentals / Numbers 
 enum	shipped	NSCalendarOptions	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
 enum	shipped	NSCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
 enum	shipped	NSCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units	-	objc
-enum	shipped	NSCollectionChangeType	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes	-	objc
 enum	shipped	NSComparisonResult		Fundamentals / Sorting	-	objc
 enum	shipped	NSDataBase64DecodingOptions	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations	-	objc
 enum	shipped	NSDataBase64EncodingOptions	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations	-	objc
@@ -1559,8 +1543,6 @@ enum	shipped	NSNumberFormatterPadPosition	NSNumberFormatter	Fundamentals / Numbe
 enum	shipped	NSNumberFormatterRoundingMode	NSNumberFormatter	Fundamentals / Numbers / Constants	-	swift-page
 enum	shipped	NSNumberFormatterStyle	NSNumberFormatter	Fundamentals / Numbers / Constants	-	objc
 enum	shipped	NSOperationQueuePriority	NSOperation	App Support / Operations / Constants	-	swift-page
-enum	shipped	NSOrderedCollectionDifferenceCalculationOptions	NSArray	Fundamentals / Basic Collections / Comparing with Another Array	-	objc
-enum	shipped	NSOrderedCollectionDifferenceCalculationOptions	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set	-	objc
 enum	shipped	NSPointerFunctionsOptions	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants	-	objc
 enum	shipped	NSPostingStyle	NSNotificationQueue	App Support / Notifications / Constants	-	objc
 enum	shipped	NSPresentationIntentKind		Reference / Enumerations	-	objc

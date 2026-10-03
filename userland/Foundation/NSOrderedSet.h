@@ -26,7 +26,6 @@
 
 #import <Foundation/NSObject.h>
 #import <Foundation/NSFastEnumeration.h>
-#import <Foundation/NSOrderedCollectionDifference.h>
 /* FOR `NSEnumerationOptions` AND THE INDEX SET `-objectsAtIndexes:` TAKES: the option type lives in
  * NSIndexSet.h (with Apple's published values), so the enumeration doors cannot be declared without it.
  * Apple's own header imports the same. */
@@ -149,31 +148,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSString *)description;
 
 @end
-
-/* ---- THE DIFFERENCE DOORS (2026-09-26), the NSOrderedSet spelling of NSArray's four ------------------
- *
- * A CATEGORY FOR THE SAME MECHANICAL REASON AS NSArray's: they are implemented beside the differ, in
- * NSOrderedCollectionDifference.m, and a method in a class's own @interface implemented in another translation
- * unit warns `-Wincomplete-implementation` in the class's own file. The call is unchanged for a caller.
- *
- * The direction is the same as the array's: the receiver is the DESTINATION, so
- * `[b orderedSetByApplyingDifference:[a differenceFromOrderedSet:b]]` answers `a`. The
- * `NSOrderedCollectionDifferenceCalculationOptions` the middle two take is declared in
- * NSOrderedCollectionDifference.h, which this header imports — Apple files it under BOTH classes' pages. */
-@interface NSOrderedSet<ObjectType> (NSOrderedCollectionDifferenceAdditions)
-
-- (NSOrderedCollectionDifference *)differenceFromOrderedSet:(NSOrderedSet<ObjectType> *)other;
-- (NSOrderedCollectionDifference *)differenceFromOrderedSet:(NSOrderedSet<ObjectType> *)other
-						withOptions:(NSOrderedCollectionDifferenceCalculationOptions)options;
-- (NSOrderedCollectionDifference *)differenceFromOrderedSet:(NSOrderedSet<ObjectType> *)other
-						withOptions:(NSOrderedCollectionDifferenceCalculationOptions)options
-					usingEquivalenceTest:(BOOL (^)(id obj1, id obj2))block;
-/* "Creates a new ordered set by applying a difference object to an existing ordered set." The receiver is the
- * SOURCE. */
-- (NSOrderedSet<ObjectType> *)orderedSetByApplyingDifference:(NSOrderedCollectionDifference *)difference;
-
-@end
-
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSORDEREDSET_H */

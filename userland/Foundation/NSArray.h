@@ -24,7 +24,13 @@
 #import <Foundation/NSObject.h>
 #import <Foundation/NSFastEnumeration.h>
 #import <Foundation/NSEnumerator.h>
-#import <Foundation/NSOrderedCollectionDifference.h>
+/* ⚠⚠ FOR `NSIndexSet` AND `NSEnumerationOptions`, AND IT USED TO ARRIVE BY ACCIDENT (§63.163): this header's
+ * enumeration doors take both, and it had been getting them TRANSITIVELY through
+ * <Foundation/NSOrderedCollectionDifference.h>, which imported NSIndexSet.h. That is why cutting the 10.15
+ * difference family broke THIS header — the include was load-bearing and invisible. NSIndexSet.h imports only
+ * NSObject.h, so naming it here is cycle-free, and an include that a header's own declarations need should be
+ * a HEADER'S OWN concern rather than a neighbour's. */
+#import <Foundation/NSIndexSet.h>
 /* FOR `NSCoding` AND THE `NSCoder` ITS TWO DOORS TAKE (§63.12): this collection conforms on Apple's platform,
  * so a class that declares the protocol here is one whose `-conformsToProtocol:` answers the same. */
 #import <Foundation/NSCoding.h>
@@ -235,37 +241,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable ObjectType)firstObjectCommonWithArray:(NSArray<ObjectType> *)other;
 
 @end
-
-/* ---- THE DIFFERENCE DOORS (2026-09-26) --------------------------------------------------------------
- *
- * THE PLACEMENT IS THE HOUSE PATTERN RATHER THAN THE CLASS'S OWN INTERFACE, and the reason is mechanical: the
- * doors are IMPLEMENTED beside the differ, in NSOrderedCollectionDifference.m (as categories), and a method
- * declared in a class's own @interface but implemented in another translation unit makes clang warn
- * `-Wincomplete-implementation` in the class's own file. The plist conveniences (`+arrayWithContentsOfFile:`)
- * are declared the same way, for the same reason. A CALLER cannot tell the difference: `[array
- * differenceFromArray:other]` is the same call either way, and the umbrella header includes both.
- *
- * THE DIRECTION IS THE THING TO GET RIGHT, and NSOrderedCollectionDifference.h is its subject: `[A
- * differenceFromArray:B]` answers a difference that, APPLIED TO B, produces A. The receiver is the DESTINATION
- * and the argument is the SOURCE, so an INSERTION's `index` is in the receiver and a REMOVAL's is in the
- * argument. */
-@interface NSArray<ObjectType> (NSOrderedCollectionDifferenceAdditions)
-
-- (NSOrderedCollectionDifference<ObjectType> *)differenceFromArray:(NSArray<ObjectType> *)other;
-- (NSOrderedCollectionDifference *)differenceFromArray:(NSArray<ObjectType> *)other
-					  withOptions:(NSOrderedCollectionDifferenceCalculationOptions)options;
-/* THE EQUIVALENCE-TEST FORM. Apple: "don't use the option inferMoves when providing a block for the equivalence
- * test. The changes returned in the difference object don't include valid values for associatedIndex" — so a
- * move option here is IGNORED and every associated index stays NSNotFound, which is what that page describes. */
-- (NSOrderedCollectionDifference *)differenceFromArray:(NSArray<ObjectType> *)other
-					  withOptions:(NSOrderedCollectionDifferenceCalculationOptions)options
-				  usingEquivalenceTest:(BOOL (^)(id obj1, id obj2))block;
-/* "Creates a new array by applying a difference object to an existing array." The RECEIVER IS THE SOURCE, so
- * `[b arrayByApplyingDifference:[a differenceFromArray:b]]` answers `a`. */
-- (NSArray<ObjectType> *)arrayByApplyingDifference:(NSOrderedCollectionDifference<ObjectType> *)difference;
-
-@end
-
 @interface NSMutableArray<ObjectType> : NSArray<ObjectType> <NSMutableCopying>
 
 + (instancetype)array;

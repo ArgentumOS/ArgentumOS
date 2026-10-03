@@ -68,7 +68,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-# method	shipped	1613	open	227	struck	397
+# method	shipped	1609	open	227	struck	397
 # property	shipped	679	open	92	struck	172
 
 
@@ -183,7 +183,6 @@ method	shipped	-addObserver:toObjectsAtIndexes:forKeyPath:options:context:	NSArr
 method	shipped	+array	NSArray	Fundamentals / Basic Collections / Creating an Array	-	objc
 method	shipped	-arrayByAddingObject:	NSArray	Fundamentals / Basic Collections / Deriving New Arrays	-	objc
 method	shipped	-arrayByAddingObjectsFromArray:	NSArray	Fundamentals / Basic Collections / Deriving New Arrays	-	objc
-method	shipped	-arrayByApplyingDifference:	NSArray	Fundamentals / Basic Collections / Instance Methods	-	objc
 method	shipped	+arrayWithArray:	NSArray	Fundamentals / Basic Collections / Creating an Array	-	objc
 method	shipped	+arrayWithContentsOfFile:	NSArray	Fundamentals / Basic Collections / Creating an Array	deprecated	objc
 method	shipped	+arrayWithContentsOfURL:	NSArray	Fundamentals / Basic Collections / Type Methods	deprecated	objc
@@ -195,9 +194,6 @@ method	shipped	-componentsJoinedByString:	NSArray	Fundamentals / Basic Collectio
 method	shipped	-containsObject:	NSArray	Fundamentals / Basic Collections / Querying an Array	-	objc
 method	shipped	-descriptionWithLocale:	NSArray	Fundamentals / Basic Collections / Creating a Description	-	objc
 method	shipped	-descriptionWithLocale:indent:	NSArray	Fundamentals / Basic Collections / Creating a Description	-	objc
-method	shipped	-differenceFromArray:	NSArray	Fundamentals / Basic Collections / Comparing with Another Array	-	objc
-method	shipped	-differenceFromArray:withOptions:	NSArray	Fundamentals / Basic Collections / Comparing with Another Array	-	objc
-method	shipped	-differenceFromArray:withOptions:usingEquivalenceTest:	NSArray	Fundamentals / Basic Collections / Comparing with Another Array	-	objc
 method	shipped	-enumerateObjectsAtIndexes:options:usingBlock:	NSArray	Fundamentals / Basic Collections / Sending Messages to Elements	-	objc
 method	shipped	-enumerateObjectsUsingBlock:	NSArray	Fundamentals / Basic Collections / Sending Messages to Elements	-	objc
 method	shipped	-enumerateObjectsWithOptions:usingBlock:	NSArray	Fundamentals / Basic Collections / Sending Messages to Elements	-	objc

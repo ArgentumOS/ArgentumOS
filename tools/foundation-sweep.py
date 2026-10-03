@@ -1549,7 +1549,10 @@ PARAM_CLASSES = ("NSArray", "NSMutableArray", "NSDictionary", "NSMutableDictiona
                  # reading its header then exposed the second, since it declares its changes as
                  # NSOrderedCollectionChange<ObjectType>. A set built by looking at classes is blind to
                  # classes that live inside other classes' signatures.
-                 "NSOrderedCollectionDifference", "NSOrderedCollectionChange")
+                 # ⚠⚠ BOTH NAMES ARE GONE AS OF §63.163 (2026-10-03): the family is 10.15 and the 10.2
+                 # baseline cut it, classes and rows together. THE LESSON IS KEPT AND THE NAMES ARE NOT:
+                 # a list of classes to parameterize must not outlive the classes.
+                 )
 PARAM_NAME_RE = re.compile(r"\b([A-Z][A-Za-z0-9]*Type)\b")
 PARAM_IFACE_RE = re.compile(r"@interface\s+([A-Za-z_]\w*)\s*(<[^>]*>)?")
 PARAM_DECL_RE = re.compile(r"^[ \t]*[-+]\s*\([^;]*?;", re.M)

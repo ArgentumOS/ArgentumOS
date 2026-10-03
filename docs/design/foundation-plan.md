@@ -15968,6 +15968,47 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.163 — THE FIRST FAMILY AFTER THE AUDIT: THE 10.15 ORDERED-COLLECTION DIFFERENCE IS CUT, AND IT TAKES AN INVISIBLE INCLUDE WITH IT (2026-10-03)
+
+**LANDED: `NSOrderedCollectionDifference` and `NSOrderedCollectionChange` (10.15) are gone from the tree — 958 lines
+in the two files, 72 lines of category declarations in `NSArray.h`/`NSOrderedSet.h`, the umbrella import, the probe
+`foundation_difference` and its case — together with their ledger rows: 4 selector rows on `NSArray` and 13 ROWS ON
+THE SYMBOL SURFACE.** This is the first of §63.162's cuts, taken smallest-first because it is COMPLETE: the two
+classes' implementations for the collections lived as CATEGORIES INSIDE THE FILE BEING DELETED, so the cascade
+closes with them.
+
+**THE SYMBOL SURFACE WAS NEVER FILTERED, AND THAT IS THE §63.159 LESSON SEEN AGAIN.** `NSOrderedCollectionDifference`
+HAS BEEN IN THE ERA GROUND ALL ALONG (line 103, `10.15`), so §63.135 removed its *selector* rows — but the symbol
+surface still carried its `class`, `enum` and `case` rows, because that surface was filtered only for the session
+family in §63.159. **A CUT MUST THEREFORE SWEEP BOTH SURFACES, AND THE SECOND ONE BY NAME RATHER THAN BY OWNER:**
+of the 13 rows removed, only THREE are owned by the two classes (`NSCollectionChangeInsert`, `…Remove`, `…Type`);
+the other ten — the two `class` rows, the `NSOrderedCollectionDifferenceCalculationOptions` `enum` row and its
+three `case` names (each duplicated) — are owned by *other* owners. **My first pass filtered by owner and the gate
+caught the difference**, which is exactly what `STALE SHIPPED CLAIM` is for.
+
+**AND THE CUT FOUND AN INCLUDE THAT WAS LOAD-BEARING AND INVISIBLE — THE ONE REAL BUG OF THIS UNIT.** Deleting
+`NSOrderedCollectionDifference.h` broke `NSArray.h`'s compile: that header's enumeration doors take `NSIndexSet` and
+`NSEnumerationOptions`, and it had been getting them **TRANSITIVELY** through the deleted header, which imported
+`NSIndexSet.h`. The failure surfaced in the Sterling compiler's guest build (`MyClass.h` → `Foundation.h` →
+`NSBundle.h` → `NSArray.h`) as six `expected a type` errors at `NSArray.h:171-184`, and it is the reason a
+`<Foundation/NSIndexSet.h>` import now sits in `NSArray.h` with a comment saying why. **`NSIndexSet.h` imports only
+`NSObject.h`, so naming it is cycle-free — and an include a header's own declarations need belongs to that header,
+not to a neighbour it happens to import.**
+
+**THE STAGING TRAP, CHECKED RATHER THAN ASSUMED:** the failing path was `.build/sterlingc/guest/include/Foundation/`
+and that directory is a **SYMLINK** to `userland/Foundation` (`mk/20-userland.mk:581`), so the errors were OURS and
+not a stale copy's — the opposite of the `.build/` staging trap that has cost this tree time before.
+
+**LEDGER.** selector surface: `method shipped 1613 → 1609`; symbol surface: 3 rows by owner + 10 by name, its counts
+block recomputed (`case 1120 → 1118`, `enum 133 → 132`). `--check` **consistent**. The tool's `PARAM_CLASSES` tuple
+lost the two names it had gained in plan step sw2 — **THE LESSON IS KEPT AND THE NAMES ARE NOT**, with a comment
+saying so: a list of classes to parameterize must not outlive the classes.
+
+**VERIFICATION.** `foundation-sweep.py --check` **consistent**; **`make testimg` green** (the library builds without
+the family, and the header change compiles in the Sterling guest unit that found the bug); **`make test
+TESTS=foundation_collection` PASS — 1/1 case, 6/6 checks, the probe's own tally `ok=63 fail=0`**, run because that
+is the case that exercises the two edited headers most.
+
 ## §63.162 — THE ERA GROUND'S GAP IS AUDITED: THIRTEEN OWNERS ENTERED WITH THEIR SOURCES, AND FIFTY-EIGHT ROWS COME OUT (2026-10-03)
 
 **LANDED, from the audit of the open rows (dec-ada6e93905c621d5): `docs/reference/foundation-era.txt` gains THIRTEEN
