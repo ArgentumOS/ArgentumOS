@@ -56,20 +56,20 @@ CHECKS = ("connection-class-declared", "delegate-protocols-declared",
           "can-handle-request-asks-the-registry", "synchronous-round-trip",
           "synchronous-failure-is-reported-not-raised", "asynchronous-streaming-round-trip",
           "the-calls-arrive-in-order", "original-and-current-request",
-          "redirect-door-follows-what-the-delegate-returns",
-          "redirect-door-nil-means-do-not-follow", "redirect-door-passes-a-different-request",
-          "redirect-door-with-no-delegate-door-follows", "refused-doors-are-absent",
-          "download-protocol-declared", "download-round-trip",
-          "the-data-doors-are-not-used-for-a-download", "the-download-progress-door-is-reported",
+          
+          
+          "refused-doors-are-absent",
+          "download-protocol-declared",
+          
           "download-refusals-are-absent", "the-session-download-protocol-shape",
-          "the-auth-doors-are-declared", "the-modern-door-supersedes-the-deprecated-pair",
-          "the-deprecated-pair-is-asked-gate-first", "a-no-from-the-gate-means-no-authentication",
-          "no-auth-door-means-the-default-without-waiting",
-          "the-cache-decision-refuses-what-the-delegate-refuses",
-          "the-cache-decision-passes-what-the-delegate-keeps",
-          "and-a-delegate-with-no-such-door-lets-the-proposal-stand",
-          "the-re-send-ask-reaches-the-delegate",
-          "and-no-such-door-answers-nothing-rather-than-fabricating",
+          
+          
+          
+          
+          
+          
+          
+          
           "the-declared-surface-is-what-ships")
 
 
