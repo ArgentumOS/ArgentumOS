@@ -34,7 +34,7 @@
 #
 # kind	status	name	owner	family	why	src
 # method	shipped	1668	open	147	struck	399
-# property	shipped	705	open	59	struck	172
+# property	shipped	719	open	45	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -1661,17 +1661,17 @@ property	shipped	HTTPShouldUsePipelining	NSMutableURLRequest	Networking / Reques
 property	shipped	URL	NSMutableURLRequest	Networking / Requests and responses / Accessing request components	-	objc
 property	shipped	allHTTPHeaderFields	NSMutableURLRequest	Networking / Requests and responses / Accessing header fields	-	objc
 property	shipped	allowsCellularAccess	NSMutableURLRequest	Networking / Requests and responses / Controlling request behavior	-	objc
-property	open	allowsConstrainedNetworkAccess	NSMutableURLRequest	Networking / Requests and responses / Supporting limited modes	-	objc
-property	open	allowsExpensiveNetworkAccess	NSMutableURLRequest	Networking / Requests and responses / Supporting limited modes	-	objc
-property	open	allowsPersistentDNS	NSMutableURLRequest	Networking / Requests and responses / Instance Properties	-	objc
-property	open	allowsUltraConstrainedNetworkAccess	NSMutableURLRequest	Networking / Requests and responses / Instance Properties	-	objc
-property	open	assumesHTTP3Capable	NSMutableURLRequest	Networking / Requests and responses / Instance Properties	-	objc
+property	shipped	allowsConstrainedNetworkAccess	NSMutableURLRequest	Networking / Requests and responses / Supporting limited modes	-	objc
+property	shipped	allowsExpensiveNetworkAccess	NSMutableURLRequest	Networking / Requests and responses / Supporting limited modes	-	objc
+property	shipped	allowsPersistentDNS	NSMutableURLRequest	Networking / Requests and responses / Instance Properties	-	objc
+property	shipped	allowsUltraConstrainedNetworkAccess	NSMutableURLRequest	Networking / Requests and responses / Instance Properties	-	objc
+property	shipped	assumesHTTP3Capable	NSMutableURLRequest	Networking / Requests and responses / Instance Properties	-	objc
 property	shipped	attribution	NSMutableURLRequest	Networking / Requests and responses / Indicating the source of the request	-	objc
 property	shipped	cachePolicy	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy	-	objc
-property	open	cookiePartitionIdentifier	NSMutableURLRequest	Networking / Requests and responses / Instance Properties	-	objc
+property	shipped	cookiePartitionIdentifier	NSMutableURLRequest	Networking / Requests and responses / Instance Properties	-	objc
 property	shipped	mainDocumentURL	NSMutableURLRequest	Networking / Requests and responses / Accessing request components	-	objc
 property	shipped	networkServiceType	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type	-	objc
-property	open	requiresDNSSECValidation	NSMutableURLRequest	Networking / Requests and responses / Instance Properties	-	objc
+property	shipped	requiresDNSSECValidation	NSMutableURLRequest	Networking / Requests and responses / Instance Properties	-	objc
 property	shipped	timeoutInterval	NSMutableURLRequest	Networking / Requests and responses / Controlling request behavior	-	objc
 method	struck	-initWithCoder:	NSNameSpecifier	App Support / Object Specifiers / Instance Methods	declined	objc
 method	struck	-initWithContainerClassDescription:containerSpecifier:key:name:	NSNameSpecifier	App Support / Object Specifiers / Initializing a name specifier	declined	objc
@@ -2795,17 +2795,17 @@ property	shipped	HTTPShouldUsePipelining	NSURLRequest	Networking / Requests and 
 property	shipped	URL	NSURLRequest	Networking / Requests and responses / Accessing request components	-	objc
 property	shipped	allHTTPHeaderFields	NSURLRequest	Networking / Requests and responses / Getting header fields	-	objc
 property	shipped	allowsCellularAccess	NSURLRequest	Networking / Requests and responses / Controlling request behavior	-	objc
-property	open	allowsConstrainedNetworkAccess	NSURLRequest	Networking / Requests and responses / Supporting limited modes	-	objc
-property	open	allowsExpensiveNetworkAccess	NSURLRequest	Networking / Requests and responses / Supporting limited modes	-	objc
-property	open	allowsPersistentDNS	NSURLRequest	Networking / Requests and responses / Instance Properties	-	objc
-property	open	allowsUltraConstrainedNetworkAccess	NSURLRequest	Networking / Requests and responses / Instance Properties	-	objc
-property	open	assumesHTTP3Capable	NSURLRequest	Networking / Requests and responses / Instance Properties	-	objc
+property	shipped	allowsConstrainedNetworkAccess	NSURLRequest	Networking / Requests and responses / Supporting limited modes	-	objc
+property	shipped	allowsExpensiveNetworkAccess	NSURLRequest	Networking / Requests and responses / Supporting limited modes	-	objc
+property	shipped	allowsPersistentDNS	NSURLRequest	Networking / Requests and responses / Instance Properties	-	objc
+property	shipped	allowsUltraConstrainedNetworkAccess	NSURLRequest	Networking / Requests and responses / Instance Properties	-	objc
+property	shipped	assumesHTTP3Capable	NSURLRequest	Networking / Requests and responses / Instance Properties	-	objc
 property	shipped	attribution	NSURLRequest	Networking / Requests and responses / Indicating the source of the request	-	swift-page
 property	shipped	cachePolicy	NSURLRequest	Networking / Requests and responses / Working with a cache policy	-	swift-page
-property	open	cookiePartitionIdentifier	NSURLRequest	Networking / Requests and responses / Instance Properties	-	objc
+property	shipped	cookiePartitionIdentifier	NSURLRequest	Networking / Requests and responses / Instance Properties	-	objc
 property	shipped	mainDocumentURL	NSURLRequest	Networking / Requests and responses / Accessing request components	-	objc
 property	shipped	networkServiceType	NSURLRequest	Networking / Requests and responses / Accessing the service type	-	swift-page
-property	open	requiresDNSSECValidation	NSURLRequest	Networking / Requests and responses / Instance Properties	-	objc
+property	shipped	requiresDNSSECValidation	NSURLRequest	Networking / Requests and responses / Instance Properties	-	objc
 property	open	supportsSecureCoding	NSURLRequest	Networking / Requests and responses / Supporting secure coding	-	objc
 property	shipped	timeoutInterval	NSURLRequest	Networking / Requests and responses / Controlling request behavior	-	objc
 method	shipped	-initWithURL:MIMEType:expectedContentLength:textEncodingName:	NSURLResponse	Networking / Requests and responses / Creating a response	-	objc

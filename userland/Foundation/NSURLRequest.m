@@ -110,6 +110,13 @@ static BOOL fn_object_equal(NSObject *a, NSObject *b)
 	_HTTPShouldHandleCookies = YES;
 	_HTTPShouldUsePipelining = NO;
 	_allowsCellularAccess = YES;
+	_allowsConstrainedNetworkAccess = YES;
+	_allowsExpensiveNetworkAccess = YES;
+	_allowsUltraConstrainedNetworkAccess = YES;
+	_requiresDNSSECValidation = NO;
+	_assumesHTTP3Capable = NO;
+	_allowsPersistentDNS = NO;
+	_cookiePartitionIdentifier = nil;
 	return self;
 }
 
@@ -131,6 +138,7 @@ static BOOL fn_object_equal(NSObject *a, NSObject *b)
 	[_allHTTPHeaderFields release];
 	[_HTTPBody release];
 	[_HTTPBodyStream release];
+	[_cookiePartitionIdentifier release];
 	_mainDocumentURL = [[other mainDocumentURL] copy];
 	_networkServiceType = [other networkServiceType];
 	_attribution = [other attribution];
@@ -141,6 +149,13 @@ static BOOL fn_object_equal(NSObject *a, NSObject *b)
 	_HTTPShouldHandleCookies = [other HTTPShouldHandleCookies];
 	_HTTPShouldUsePipelining = [other HTTPShouldUsePipelining];
 	_allowsCellularAccess = [other allowsCellularAccess];
+	_allowsConstrainedNetworkAccess = [other allowsConstrainedNetworkAccess];
+	_allowsExpensiveNetworkAccess = [other allowsExpensiveNetworkAccess];
+	_allowsUltraConstrainedNetworkAccess = [other allowsUltraConstrainedNetworkAccess];
+	_requiresDNSSECValidation = [other requiresDNSSECValidation];
+	_assumesHTTP3Capable = [other assumesHTTP3Capable];
+	_allowsPersistentDNS = [other allowsPersistentDNS];
+	_cookiePartitionIdentifier = [[other cookiePartitionIdentifier] copy];
 	return self;
 }
 
@@ -209,6 +224,41 @@ static BOOL fn_object_equal(NSObject *a, NSObject *b)
 - (BOOL)allowsCellularAccess
 {
 	return _allowsCellularAccess;
+}
+
+- (BOOL)allowsConstrainedNetworkAccess
+{
+	return _allowsConstrainedNetworkAccess;
+}
+
+- (BOOL)allowsExpensiveNetworkAccess
+{
+	return _allowsExpensiveNetworkAccess;
+}
+
+- (BOOL)allowsUltraConstrainedNetworkAccess
+{
+	return _allowsUltraConstrainedNetworkAccess;
+}
+
+- (BOOL)requiresDNSSECValidation
+{
+	return _requiresDNSSECValidation;
+}
+
+- (BOOL)assumesHTTP3Capable
+{
+	return _assumesHTTP3Capable;
+}
+
+- (BOOL)allowsPersistentDNS
+{
+	return _allowsPersistentDNS;
+}
+
+- (NSString *)cookiePartitionIdentifier
+{
+	return _cookiePartitionIdentifier;
 }
 
 - (NSString *)valueForHTTPHeaderField:(NSString *)field
@@ -366,6 +416,45 @@ static BOOL fn_object_equal(NSObject *a, NSObject *b)
 - (void)setAllowsCellularAccess:(BOOL)allowsCellularAccess
 {
 	_allowsCellularAccess = allowsCellularAccess;
+}
+
+- (void)setAllowsConstrainedNetworkAccess:(BOOL)allowsConstrainedNetworkAccess
+{
+	_allowsConstrainedNetworkAccess = allowsConstrainedNetworkAccess;
+}
+
+- (void)setAllowsExpensiveNetworkAccess:(BOOL)allowsExpensiveNetworkAccess
+{
+	_allowsExpensiveNetworkAccess = allowsExpensiveNetworkAccess;
+}
+
+- (void)setAllowsUltraConstrainedNetworkAccess:(BOOL)allowsUltraConstrainedNetworkAccess
+{
+	_allowsUltraConstrainedNetworkAccess = allowsUltraConstrainedNetworkAccess;
+}
+
+- (void)setRequiresDNSSECValidation:(BOOL)requiresDNSSECValidation
+{
+	_requiresDNSSECValidation = requiresDNSSECValidation;
+}
+
+- (void)setAssumesHTTP3Capable:(BOOL)assumesHTTP3Capable
+{
+	_assumesHTTP3Capable = assumesHTTP3Capable;
+}
+
+- (void)setAllowsPersistentDNS:(BOOL)allowsPersistentDNS
+{
+	_allowsPersistentDNS = allowsPersistentDNS;
+}
+
+- (void)setCookiePartitionIdentifier:(NSString *)cookiePartitionIdentifier
+{
+	/* COPIED, because the property is `copy`: a caller's mutable string must not change under us. */
+	NSString *held = [cookiePartitionIdentifier copy];
+
+	[_cookiePartitionIdentifier release];
+	_cookiePartitionIdentifier = held;
 }
 
 - (void)setValue:(NSString *)value forHTTPHeaderField:(NSString *)field

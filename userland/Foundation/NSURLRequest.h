@@ -104,6 +104,15 @@ typedef NS_ENUM(NSUInteger, NSURLRequestAttribution) {
 	BOOL _HTTPShouldHandleCookies;
 	BOOL _HTTPShouldUsePipelining;
 	BOOL _allowsCellularAccess;
+
+	/* §63.192: the network-policy and DNS surface. */
+	BOOL _allowsConstrainedNetworkAccess;
+	BOOL _allowsExpensiveNetworkAccess;
+	BOOL _allowsUltraConstrainedNetworkAccess;
+	BOOL _requiresDNSSECValidation;
+	BOOL _assumesHTTP3Capable;
+	BOOL _allowsPersistentDNS;
+	id _cookiePartitionIdentifier;
 }
 
 /* THE CONVENIENCE DOORS, both answering a request with the DEFAULT cache policy and a 60-second timeout
@@ -139,6 +148,17 @@ typedef NS_ENUM(NSUInteger, NSURLRequestAttribution) {
 @property (readonly) BOOL HTTPShouldUsePipelining;
 @property (readonly) BOOL allowsCellularAccess;
 
+/* THE NETWORK-POLICY AND DNS SURFACE (§63.192). THE DEFAULTS ARE PART OF THE CONTRACT and are pinned by the
+ * probe: the three `allows…Access` doors default YES — the same default `allowsCellularAccess` has — and the
+ * three policy doors default NO, because a door nobody asked for is a door nobody uses. */
+@property (readonly) BOOL allowsConstrainedNetworkAccess;
+@property (readonly) BOOL allowsExpensiveNetworkAccess;
+@property (readonly) BOOL allowsUltraConstrainedNetworkAccess;
+@property (readonly) BOOL requiresDNSSECValidation;
+@property (readonly) BOOL assumesHTTP3Capable;
+@property (readonly) BOOL allowsPersistentDNS;
+@property (nullable, readonly, copy) NSString *cookiePartitionIdentifier;
+
 - (nullable NSString *)valueForHTTPHeaderField:(NSString *)field;
 
 @end
@@ -167,6 +187,14 @@ typedef NS_ENUM(NSUInteger, NSURLRequestAttribution) {
 - (void)setHTTPShouldHandleCookies:(BOOL)HTTPShouldHandleCookies;
 - (void)setHTTPShouldUsePipelining:(BOOL)HTTPShouldUsePipelining;
 - (void)setAllowsCellularAccess:(BOOL)allowsCellularAccess;
+/* THE SAME SEVEN, SETTABLE — Apple's shape: the immutable class reads them, the mutable one writes. */
+@property (readwrite) BOOL allowsConstrainedNetworkAccess;
+@property (readwrite) BOOL allowsExpensiveNetworkAccess;
+@property (readwrite) BOOL allowsUltraConstrainedNetworkAccess;
+@property (readwrite) BOOL requiresDNSSECValidation;
+@property (readwrite) BOOL assumesHTTP3Capable;
+@property (readwrite) BOOL allowsPersistentDNS;
+@property (nullable, readwrite, copy) NSString *cookiePartitionIdentifier;
 
 /* THE TWO HEADER DOORS, AND THEY DIFFER: -setValue:forHTTPHeaderField: REPLACES the field, while
  * -addValue:forHTTPHeaderField: APPENDS to it with ", " (RFC 9110 §5.2's list rule). Both address the

@@ -49,7 +49,7 @@ CHECKS = ("request-defaults", "request-designated-initializer",
           "response-properties", "response-suggested-filename",
           "http-response-derives-from-headers", "response-unknown-length",
           "http-response-status-phrase", "url-request-enum-values",
-          "url-request-api-inventory")
+          "url-request-api-inventory", "urlrequest-network-policy-defaults", "urlrequest-network-policy-round-trip", "urlrequest-network-policy-survives-a-copy")
 
 
 class Case(BaseCase):

@@ -515,6 +515,75 @@ int main(void)
 		      @"the audited Cocoa inventory: every owed selector exists, and nothing listed as excluded does");
 	}
 
+
+	{
+		/* §63.192: THE DEFAULTS ARE THE CONTRACT. (The URL goes into a LOCAL first: `+URLWithString:` is
+		 * `_Nullable` and the request doors are not, and this probe compiles under
+		 * -Werror,-nullable-to-nonnull-conversion.) */
+		NSURL *url = [NSURL URLWithString:@"https://example.com/"];
+		NSURLRequest *fresh = [NSURLRequest requestWithURL:url];
+
+		check("urlrequest-network-policy-defaults",
+		      url != nil && [fresh allowsConstrainedNetworkAccess] && [fresh allowsExpensiveNetworkAccess] &&
+		      [fresh allowsUltraConstrainedNetworkAccess] && ![fresh requiresDNSSECValidation] &&
+		      ![fresh assumesHTTP3Capable] && ![fresh allowsPersistentDNS] &&
+		      [fresh cookiePartitionIdentifier] == nil,
+		      [NSString stringWithFormat:@"allows=%d%d%d policies=%d%d%d cookie=%@",
+			[fresh allowsConstrainedNetworkAccess], [fresh allowsExpensiveNetworkAccess],
+			[fresh allowsUltraConstrainedNetworkAccess], [fresh requiresDNSSECValidation],
+			[fresh assumesHTTP3Capable], [fresh allowsPersistentDNS], [fresh cookiePartitionIdentifier]]);
+	}
+	{
+		/* THE ROUND TRIP THROUGH THE MUTABLE CLASS, INCLUDING THE `copy` SEMANTICS of the identifier: a
+		 * MUTABLE string handed in must not change under the request afterwards. */
+		NSURL *url = [NSURL URLWithString:@"https://example.com/"];
+		NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+		NSMutableString *identifier = [NSMutableString stringWithString:@"before"];
+
+		[request setAllowsConstrainedNetworkAccess:NO];
+		[request setAllowsExpensiveNetworkAccess:NO];
+		[request setAllowsUltraConstrainedNetworkAccess:NO];
+		[request setRequiresDNSSECValidation:YES];
+		[request setAssumesHTTP3Capable:YES];
+		[request setAllowsPersistentDNS:YES];
+		[request setCookiePartitionIdentifier:identifier];
+		[identifier appendString:@"-changed"];
+		check("urlrequest-network-policy-round-trip",
+		      ![request allowsConstrainedNetworkAccess] && ![request allowsExpensiveNetworkAccess] &&
+		      ![request allowsUltraConstrainedNetworkAccess] && [request requiresDNSSECValidation] &&
+		      [request assumesHTTP3Capable] && [request allowsPersistentDNS] &&
+		      [[request cookiePartitionIdentifier] isEqualToString:@"before"],
+		      [NSString stringWithFormat:@"allows=%d%d%d policies=%d%d%d cookie=%@ source=%@",
+			[request allowsConstrainedNetworkAccess], [request allowsExpensiveNetworkAccess],
+			[request allowsUltraConstrainedNetworkAccess], [request requiresDNSSECValidation],
+			[request assumesHTTP3Capable], [request allowsPersistentDNS],
+			[request cookiePartitionIdentifier], identifier]);
+	}
+	{
+		/* AND A COPY CARRIES THEM, which is what catches a property added to the accessors but not to the
+		 * copy-from-another path. */
+		NSURL *url = [NSURL URLWithString:@"https://example.com/"];
+		NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+		NSURLRequest *copied;
+
+		[request setAllowsConstrainedNetworkAccess:NO];
+		[request setAllowsUltraConstrainedNetworkAccess:NO];
+		[request setRequiresDNSSECValidation:YES];
+		[request setAssumesHTTP3Capable:YES];
+		[request setAllowsPersistentDNS:YES];
+		[request setCookiePartitionIdentifier:@"kept"];
+		copied = [request copy];
+		check("urlrequest-network-policy-survives-a-copy",
+		      ![copied allowsConstrainedNetworkAccess] && [copied allowsExpensiveNetworkAccess] &&
+		      ![copied allowsUltraConstrainedNetworkAccess] && [copied requiresDNSSECValidation] &&
+		      [copied assumesHTTP3Capable] && [copied allowsPersistentDNS] &&
+		      [[copied cookiePartitionIdentifier] isEqualToString:@"kept"],
+		      [NSString stringWithFormat:@"copied=%@ allows=%d policies=%d%d%d cookie=%@",
+			[copied class], [copied allowsConstrainedNetworkAccess], [copied requiresDNSSECValidation],
+			[copied assumesHTTP3Capable], [copied allowsPersistentDNS],
+			[copied cookiePartitionIdentifier]]);
+	}
+
 	printf("FOUNDATION-URLREQUEST RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output: after a probe the console can stop serving INPUT for a
 	 * while, so an `echo $?` the harness types may never run. */

@@ -15962,6 +15962,36 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.192 — NSURLRequest / NSMutableURLRequest: the network-policy and DNS surface
+
+Fourteen rows: `property shipped 705 → 719, open 59 → 45` — for each class:
+`allowsConstrainedNetworkAccess`, `allowsExpensiveNetworkAccess`, `allowsUltraConstrainedNetworkAccess`,
+`requiresDNSSECValidation`, `assumesHTTP3Capable`, `allowsPersistentDNS`, `cookiePartitionIdentifier`. The
+immutable class reads them and the mutable one writes them, which is Apple's own shape.
+
+**THE DEFAULTS ARE THE CONTRACT, AND THEY FOLLOW THE FILE'S OWN PRECEDENT:** the three `allows…Access` doors
+default YES, exactly as `allowsCellularAccess` does one line above them in the initializer; the three policy
+doors default NO, because a door nobody asked for is a door nobody uses; the identifier is nil. The probe
+pins all seven rather than trusting them to be obvious.
+
+**THE COPY PATH IS THE TRAP, AND THIS CAMPAIGN HAD ALREADY RECORDED IT** — a new property needs *ivar + two
+accessors + the section in the copy path*. There is exactly ONE such site here: `fnInitWithRequest:`, because
+`-copy` on the immutable class returns `self` and `-mutableCopy` routes through that initializer. The third
+check exists for nothing else — and it immediately earned its place: it caught a conjunct of MY OWN that
+asserted `!allowsUltraConstrainedNetworkAccess` on a block that never set it (so it sat at its default YES).
+**A CHECK MUST SET EVERY VALUE IT ASSERTS**, or it is asserting a default by accident.
+
+**AND ONE MISTAKE OF MINE, WORTH THE LINE:** these ivars live in **`NSURLRequest.h`'s ivar block**, not in the
+`.m`, and a patch that looked for `BOOL _allowsCellularAccess;` in the implementation aborted on its own
+anchor — read where the ivars ARE before writing where you think they should go. Same family as every other
+anchor error in this campaign.
+
+Left open, deliberately and for separate units: `+supportsSecureCoding` (the `NSCoding` conformance, not a
+value) and `-bindToHotspotHelperCommand:` (its argument is an `NEHotspotHelperCommand` — a foreign framework).
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_urlrequest` → `TESTS-OK` with
+three new checks; `tools/foundation-sweep.py --check` consistent (`property 719/45/172`).
+
 ## §63.191 — NSData: the deprecated base64 pair, the legacy byte door, the no-copy transfer, and a MAPPED pair the platform would not honour
 
 Six rows: `method shipped 1662 → 1668, open 153 → 147` — `-base64Encoding`, `-initWithBase64Encoding:`,
