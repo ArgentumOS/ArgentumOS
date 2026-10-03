@@ -15968,6 +15968,51 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.162 — THE ERA GROUND'S GAP IS AUDITED: THIRTEEN OWNERS ENTERED WITH THEIR SOURCES, AND FIFTY-EIGHT ROWS COME OUT (2026-10-03)
+
+**LANDED, from the audit of the open rows (dec-ada6e93905c621d5): `docs/reference/foundation-era.txt` gains THIRTEEN
+owners BY HAND, each with the source that says so, and the 58 rows they and one iOS-only class carried are REMOVED
+from the selector ledger.** The user's order is §63.135's own — **the rows go NOW and the headers lose the names in
+the same campaign, ONE FAMILY PER UNIT**.
+
+**THE MECHANISM, AND IT IS §63.161'S FINDING SEEN FROM THE OTHER SIDE: §63.135's 10.2 filter JUDGES AN OWNER BY
+THIS FILE, so an owner ABSENT from it KEPT ITS ROWS.** That is how `NSComparisonPredicate` and `NSCompoundPredicate`
+survived a filter that had removed their siblings. OF THE 104 OWNERS THE GROUND LACKED: **49 carried only `struck`
+rows** (harmless — a missing entry cannot change a struck row's fate) and **55 carried live ones**.
+
+**THE THIRTEEN, AND THE AUDIT CORRECTED THREE OF MY OWN GUESSES, WHICH IS WHY IT WAS WORTH DOING AS MEASUREMENT
+RATHER THAN MEMORY:** `NSCondition` **10.5** (5 rows); `NSURLQueryItem` **10.10** (4) — *I guessed 10.7*;
+`NSUserNotification` **10.8** (its rows were already gone); `NSUserActivityDelegate` **10.10** (3) — *I guessed
+10.8*; `NSFileAccessIntent` **10.10** (3); `NSExtensionRequestHandling` **10.10** (1); `NSItemProviderReading` and
+`NSItemProviderWriting` **10.13** (2 + 4) — *I guessed 10.11*; `NSOrderedCollectionChange` **10.15** (8) — *I
+guessed 10.7*; `NSMorphologyCustomPronoun` **12.0** (7); `NSMorphologyPronoun` **14.0** (4) — *I guessed 12*;
+`NSInflectionRuleExplicit` **12.0** (2); `NSAttributedStringMarkdownParsingOptions` **12.0** (6). **AND ONE SOURCE
+DISAGREES WITH APPLE'S OWN PAGE:** `NSExtensionRequestHandling` reads “macOS 10.0” there, which is an artifact —
+app extensions did not exist before 10.10 — and it is recorded rather than silently preferred.
+
+**AND ONE OWNER IS NOT ENTERED BECAUSE IT HAS NO macOS VERSION TO ENTER: `NSBundleResourceRequest` is iOS 9 / Mac
+Catalyst only.** Apple lists no native macOS version, .NET marks it `[UnsupportedOSPlatform("macos")]`, and Apple's
+own text says it “ignores calls from Mac apps built with Mac Catalyst”. **Its nine rows come out with the thirteen's
+forty-nine — 58 in total — and it is recorded as the FIRST CANDIDATE FOR AN `ios-only` STRIKE GROUND**, because a
+table of macOS versions cannot express “this has no macOS version”. *That is the same gap `refused` filled in
+§63.160, one classification further out.*
+
+**AND THE 43 LIVE OWNERS THAT REMAIN MISSING ARE NOT DEBT:** they are 10.0–10.2 classes (`NSMutableArray`,
+`NSKeyedUnarchiver`, `NSXMLElement`, `NSTask`, `NSMutableString`, `NSXMLDTDNode`, the 10.2 loading system's own
+delegates …) and they pass the rule whether or not the ground knows them. **They are LEFT UNENTERED rather than
+guessed at, because this file is a dated measurement** — which is the whole reason the thirteen above carry a source
+per line.
+
+**AND THE CUTS THAT FOLLOW ARE §63.159/§63.161-SHAPED, WHICH THE MEASUREMENT SAYS RATHER THAN ASSUMES: every one of
+the twelve classes is DECLARED IN A SHIPPED HEADER and REFERENCED BY TWO TO NINE LIBRARY FILES.** The cascades are
+named here rather than discovered later: `NSCondition` is used by seven files (the locking machinery),
+`NSURLQueryItem` lives in `NSURLComponents.h` — itself a filtered owner whose code still ships — and
+`NSBundleResourceRequest` sits beside `FNExtensionContext.h`/`NSExtensionContext.h`.
+
+**VERIFICATION.** `foundation-sweep.py --check` **consistent**; `--unimplemented` **0 NEW**; the plan's family table
+regenerated (`--families --write`). **No code changed in this unit, so no build and no guest gate was owed** — the
+change is the ledger and its ground, and `--check` is what holds both.
+
 ## §63.161 — THE PREDICATE FAMILY IS CUT, AND THE API IT EXISTS TO SERVE GOES WITH IT (2026-10-03)
 
 **LANDED: `NSPredicate`, `NSExpression`, `NSCompoundPredicate`, `NSComparisonPredicate` and the format grammar
