@@ -15982,6 +15982,46 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.103 — `NSURL` CLASSIFIED: 16 OURS IN FOUR FAMILIES, AND A GUARD THAT MATCHED A COMMENT FOR THE FIFTH TIME (2026-10-01)
+
+**NO ROWS CLOSED. THE UNIT MEASURED THE OWNER, READ THE SMALLEST FAMILY'S CONTRACT, WROTE IT — AND WAS HELD BACK BY
+THE SAME TRAP THIS SESSION HAS NOW PAID FIVE TIMES.**
+
+**THE CLASSIFICATION: `NSURL`'S TWENTY ROWS ARE SIXTEEN OURS AND FOUR NOT** (`--check`-clean tooling, the
+whole-selector test, the coverage caveat applied). The four: **the pasteboard pair** (`+URLFromPasteboard:`,
+`-writeToPasteboard:` — they take AppKit's `NSPasteboard`) **and the UTType pair** (§63.102's held-back two, absent
+from the corpus's `NSPathUtilities.h`, which is a COVERAGE gap and not a foreign framework).
+
+**⚠⚠ AND THE SIXTEEN ARE FOUR FAMILIES WITH FOUR DIFFERENT GROUNDS — WHICH IS WHY THE FIRST THING THIS UNIT DID WAS
+READ APPLE'S COMMENTS RATHER THAN COUNT THE ROWS:**
+ 1. **THE SECURITY-SCOPED PAIR (2).** Apple's comment gives the contract outright: *"Given a NSURL created by
+    resolving a bookmark data created with security scope, make the resource… accessible… Calls to start and stop
+    accessing the resource are REFERENCE COUNTED and may be NESTED."* **SO THE DOOR ANSWERS WHETHER ACCESS WAS
+    GRANTED — and here nothing is: the answer is NO, WHICH IS A CAPABILITY ANSWER AND NOT A REFUSAL** (§63.99's
+    shape, like `+canInflectLanguage:`). `-stopAccessingSecurityScopedResource` removes one reference; none was ever
+    added.
+ 2. **THE PROMISED-ITEM TRIO AND `-fileReferenceURL` (4):** the iCloud/ubiquity family, whose reading on a local file
+    is the ordinary resource-value read — grounds to be measured per door.
+ 3. **THE BOOKMARKS (10):** an OPAQUE macOS serialisation. **This is the family that needs a DECISION rather than a
+    measurement — our own documented format, or a refusal — and it is the largest single block on the owner.**
+ 4. **THE DEPRECATED RESOURCE-DATA TRIO (3):** the NSURLHandle era, owed by the 2026-09-26 policy that un-deprecated
+    everything Apple had deprecated.
+
+**⚠⚠ AND THE APPLY WAS HELD BACK BY THIS SESSION'S OLDEST LESSON, IN ITS FIFTH INSTANCE: MY GUARD FOR "IS THIS ALREADY
+DECLARED?" MATCHED A **COMMENT**. `startAccessingSecurityScopedResource` appears exactly once in `NSURL.h` — in an
+earlier slice's PROSE — so the declaration was skipped while the implementation landed, and `testimg` failed on the
+inconsistency WHILE THE PROBE ITSELF PASSED 28/28.** The failure was never in the pair; it was in the search that
+decided whether to write it. **THE FIX IS ONE GUARD THAT MATCHES A DECLARATION (§63.88's distinction, which is where
+this same trap was recorded the first time): `- (BOOL)startAccessingSecurityScopedResource;`, semicolon and all.**
+
+**AND TWO DRAFT CHECKS WERE WRONG AND WERE CAUGHT BEFORE RUNNING, WHICH IS THE PART WORTH KEEPING: one asserted on a
+`(void)` CAST as its condition, and the other depended on a FILE EXISTING so that a missing fixture would have read as
+a broken door. They were rewritten to assert the CAPABILITY ANSWER (‘two unbalanced starts still answer NO’) with no
+I/O at all — *a check must not be able to fail for a reason that is not the thing it is checking.***
+
+**AND WHERE THIS LEAVES THE OWNER: sixteen rows, one two-row family written and understood, one ten-row family needing a
+decision, and the rest measured.** The next move is not a measurement.
+
 ## §63.102 — FIFTY-TWO ROWS LEAVE ON A *REFINED* GROUND, AND `NSValue` LEAVES THE WORK LIST (2026-10-01)
 
 **WHAT LANDED: fifty-two rows struck — `NSValue`'s ENTIRE twenty-eight-row block and twenty-four of `NSString`'s — AND
