@@ -55,6 +55,7 @@
 #include <stdint.h>
 
 #import <Foundation/NSCoder.h>
+#import <Foundation/NSPropertyListSerialization.h>	/* NSPropertyListFormat, for -outputFormat */
 #import <Foundation/NSKeyedArchiverDelegate.h>
 #import <Foundation/NSKeyedUnarchiverDelegate.h>
 
@@ -77,6 +78,9 @@ extern NSString * const NSKeyedArchiveRootObjectKey;
 	id <NSKeyedArchiverDelegate> _delegate;	/* NOT retained: see the note above */
 	NSMutableData *_data;		/* the caller's buffer, which -finishEncoding fills */
 	NSMutableDictionary *_top;	/* the $top keys: what was encoded OUTSIDE -encodeWithCoder: */
+	NSMutableDictionary *_classNameMap;	/* Class -> the name THIS archiver writes for it */
+	/* THE SECURE-CODING FLAG IS NOT DECLARED HERE: the NSCoder base declares it (NSCoder.h), for
+	 * every coder, and -initRequiringSecureCoding: sets THAT ivar rather than a second one. */
 }
 
 + (nullable NSData *)archivedDataWithRootObject:(id)rootObject;
@@ -105,6 +109,24 @@ extern NSString * const NSKeyedArchiveRootObjectKey;
 - (void)encodeInt32:(int32_t)value forKey:(NSString *)key;
 - (void)encodeInt64:(int64_t)value forKey:(NSString *)key;
 - (void)encodeConditionalObject:(nullable id)object forKey:(NSString *)key;
+
+/* THE WRITER'S CLASS-NAME MAP (§63.184), the mirror of the reader's §63.183 doors and named the OTHER WAY
+ * ROUND because the direction is the other way round: the reader maps a NAME to a class (it has a name and
+ * wants a class), the writer maps a CLASS to a name (it has a class and must write something). The map is
+ * consulted where the writer NAMES a class — so a caller can write an archive whose names a differently
+ * named class reads back, which is the whole point of having it. */
++ (nullable NSString *)classNameForClass:(Class)cls;
++ (void)setClassName:(nullable NSString *)codedName forClass:(Class)cls;
+- (nullable NSString *)classNameForClass:(Class)cls;
+- (void)setClassName:(nullable NSString *)codedName forClass:(Class)cls;
+
+/* THE SECURE-CLASS DOOR AND THE STREAMING ONE. `-archivedDataWithRootObject:requiringSecureCoding:error:`
+ * is the error-returning form of the door above (which answers nil and says nothing);
+ * `-initRequiringSecureCoding:` starts an archiver with a buffer OF ITS OWN, which -encodedData answers;
+ * -outputFormat reports the format the bytes are in. */
++ (nullable NSData *)archivedDataWithRootObject:(id)rootObject
+			  requiringSecureCoding:(BOOL)requiresSecureCoding
+					  error:(NSError * _Nullable * _Nullable)error;
 
 /* ⚠ THE `CG`-SPELLED KEYED GEOMETRY DOORS ARE NOT DECLARED HERE ANY MORE (§63.54) — they are the CoreGraphics
  * tier's, in `userland/CoreGraphics/NSCoderCGGeometry.h` as a category on `NSCoder`, which every coder class

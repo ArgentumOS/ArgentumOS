@@ -95,11 +95,6 @@ static BOOL fn_slot_is_reference(id slot, NSUInteger *outIndex)
 	return YES;
 }
 
-/* THE CLASS NAME, as text: this library has no NSStringFromClass, and the runtime has the name. */
-static NSString *fn_class_name(Class cls)
-{
-	return [NSString stringWithUTF8String:class_getName(cls)];
-}
 
 /* AN OBJECT THAT IS WRITTEN INLINE, or nil for one that goes in the table. */
 static BOOL fn_is_value_type(id object)
@@ -133,6 +128,9 @@ static NSError *fn_decode_error(NSInteger code, NSString *description)
 /* THE PROCESS-WIDE CLASS-NAME MAP, beside the helpers that use it. It is the STATIC half of the pair the
  * class doors below read; the instance half is the _classMap ivar. */
 static NSMutableDictionary *fn_class_name_map = nil;
+/* THE PROCESS-WIDE WRITER MAP, KEYED BY NAME — a Class cannot be the key: this library's dictionary COPIES
+ * its keys and a Class does not conform to NSCopying (measured by the probe). */
+static NSMutableDictionary *fn_class_name_out_map = nil;
 
 static BOOL fn_value_is_allowed(id value, NSSet *classes)
 {
@@ -152,6 +150,109 @@ static BOOL fn_value_is_allowed(id value, NSSet *classes)
 }
 
 @implementation NSKeyedArchiver
+
+/* ---- the writer's class-name map (§63.184) ---------------------------------------------------------- */
++ (nullable NSString *)classNameForClass:(Class)cls
+{
+	return cls != Nil ? [fn_class_name_out_map objectForKey:fn_key_for_class(cls)] : nil;
+}
+
++ (void)setClassName:(nullable NSString *)codedName forClass:(Class)cls
+{
+	if (cls == Nil) {
+		return;
+	}
+	if (fn_class_name_out_map == nil) {
+		fn_class_name_out_map = [[NSMutableDictionary alloc] init];
+	}
+	if (codedName == nil) {
+		[fn_class_name_out_map removeObjectForKey:fn_key_for_class(cls)];
+	} else {
+		[fn_class_name_out_map setObject:codedName forKey:fn_key_for_class(cls)];
+	}
+}
+
+- (nullable NSString *)classNameForClass:(Class)cls
+{
+	return cls != Nil ? [_classNameMap objectForKey:fn_key_for_class(cls)] : nil;
+}
+
+- (void)setClassName:(nullable NSString *)codedName forClass:(Class)cls
+{
+	if (cls == Nil) {
+		return;
+	}
+	if (_classNameMap == nil) {
+		_classNameMap = [[NSMutableDictionary alloc] init];
+	}
+	if (codedName == nil) {
+		[_classNameMap removeObjectForKey:fn_key_for_class(cls)];
+	} else {
+		[_classNameMap setObject:codedName forKey:fn_key_for_class(cls)];
+	}
+}
+
+static NSString *fn_key_for_class(Class cls)
+{
+	return [NSString stringWithUTF8String:class_getName(cls)];
+}
+
+/* THE ONE PLACE THE WRITER NAMES A CLASS, in the reader's mirrored order: this archiver's mapping, then the
+ * process-wide one, then the runtime's own name. */
+- (NSString *)fnNameForClass:(Class)cls
+{
+	NSString *mapped = [self classNameForClass:cls];
+
+	if (mapped == nil) {
+		mapped = [[self class] classNameForClass:cls];
+	}
+	if (mapped != nil) {
+		return mapped;
+	}
+	return [NSString stringWithUTF8String:class_getName(cls)];
+}
+
+/* ---- the secure-class door and the streaming one ---------------------------------------------------- */
++ (nullable NSData *)archivedDataWithRootObject:(id)rootObject
+			  requiringSecureCoding:(BOOL)requiresSecureCoding
+					  error:(NSError * _Nullable * _Nullable)error
+{
+	NSMutableData *buffer = [NSMutableData data];
+	NSKeyedArchiver *archiver = [[self alloc] initForWritingWithMutableData:buffer];
+
+	/* THE BASE OWNS THE FLAG (NSCoder.h:200 declares the property), so the door sets THAT - and a
+	 * class method cannot touch the ivar, which the compiler said in as many words. */
+	archiver.requiresSecureCoding = requiresSecureCoding;
+	@try {
+		[archiver encodeObject:rootObject forKey:@"root"];
+		[archiver finishEncoding];
+	} @catch (id exception) {
+		/* AN OBJECT THE ARCHIVE CANNOT CARRY is a CALLER error, and this door exists to REPORT it rather
+		 * than raise: the writer's refusal is its own, the reader's class gate is the reader's. */
+		if (error != NULL) {
+			*error = fn_decode_error(NSCoderInvalidValueError,
+				[(NSException *)exception reason] != nil
+					? [(NSException *)exception reason]
+					: @"NSKeyedArchiver: the object could not be archived");
+		}
+		[archiver release];
+		return nil;
+	}
+	{
+		NSData *out = [NSData dataWithData:buffer];
+
+		[archiver release];
+		if (out == nil || [out length] == 0) {
+			if (error != NULL) {
+				*error = fn_decode_error(NSCoderInvalidValueError, @"NSKeyedArchiver: nothing was written");
+			}
+			return nil;
+		}
+		return out;
+	}
+}
+
+/* THE STREAMING FLOW IS ABSENT: it depends on the reader's broken top-level resolution. */
 
 + (nullable NSData *)archivedDataWithRootObject:(id)rootObject
 {
@@ -218,9 +319,9 @@ static BOOL fn_value_is_allowed(id value, NSSet *classes)
 		Class walk;
 
 		for (walk = cls; walk != Nil; walk = class_getSuperclass(walk)) {
-			[chain addObject:fn_class_name(walk)];
+			[chain addObject:[self fnNameForClass:walk]];
 		}
-		[entry setObject:fn_class_name(cls) forKey:kClassname];
+		[entry setObject:[self fnNameForClass:cls] forKey:kClassname];
 		[entry setObject:chain forKey:kClasses];
 		memo->_object = (id)cls;
 		memo->_index = index;

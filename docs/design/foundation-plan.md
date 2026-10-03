@@ -15962,6 +15962,60 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.184 — NSKeyedArchiver: the writer's class-name map and the secure-class door
+
+Five rows: `method shipped 1646 → 1651, open 169 → 164` — the writer's class-name map
+(`+/-classNameForClass:`, `+/-setClassName:forClass:`) and
+`+archivedDataWithRootObject:requiringSecureCoding:error:`.
+
+**THE MAP IS THE READER'S MIRROR, NAMED THE OTHER WAY ROUND** (the reader maps a NAME to a class; the writer
+maps a CLASS to a name), consulted at the TWO places the writer names a class, so the doors are wired rather
+than declared. The probe proves it through the reader AND through the bytes: an archive naming `KUBeta` is
+written with that name remapped, the bytes are checked for the new name and for the ABSENCE of the old one, and
+the reader — told the new name means `KUAlpha` — hands back a `KUAlpha`.
+
+**THE FLAG WAS ALREADY IN THE HEADER, AND THE COMPILER SAID SO.** A first version assigned `_requiresSecureCoding`
+from a CLASS method — which the compile refuses in as many words ("instance variable '_requiresSecureCoding'
+accessed in class method") — and a second invented a private `-fnSetRequiresSecureCoding:` to get around it,
+which RAISED on the guest while the host passed (`plain=0 refused=0` on the guest, both fine on the host).
+`NSCoder.h:200` already declares `@property BOOL requiresSecureCoding;`: the door assigns that, and the invented
+method is gone. **Look for the public door before inventing a private one** — a private door beside a public one
+is a place for the two to disagree.
+
+**AND THE INSTRUMENT'S OWN FAULT, CAUGHT BY ITSELF:** the first probe caught the guest's exception and
+substituted a probe-made `NSError`, reporting `plain=0` — "something happened" where the REASON was the whole
+answer. `[exception reason]` on the wire named it in one run. Same rule the campaign learned twice already
+(`key-in-bytes`, then `readError`): a check must carry the reason, not just the outcome.
+
+**A PROCESS LESSON THAT COST TWO REVERTS:** `make testimg 2>&1 | grep -E "error:"` DISCARDS THE BUILD'S VERDICT.
+A build that dies at the sweep gate prints no `error:` line and looks exactly like a success, after which the
+STALE probe in the image is what the gate runs (its output even kept the old check's name). The build's EXIT
+STATUS is the verdict.
+
+**THE THREE STREAMING ROWS STAY OPEN, AND NOTHING DECLARES THEM.** `-initRequiringSecureCoding:`,
+`encodedData` and `outputFormat` depend on a READER defect this unit found and measured: a caller-keyed
+top-level object can be written but not read back, because `-decodeTopLevelObjectForKey:error:` finds the `$top`
+slot and answers nil from `[self fnDecodeSlot:slot]` without raising and without setting an error
+(`key-in-bytes=1 back=nil readError=none`). Declaring them first would put doors in the header whose rows must
+stay open — which the sweep refuses, and it refused mine until they were removed. Its own unit: "the top-level
+read resolves a slot it has already found".
+
+**THE DESIGN TRAPS, ALL MEASURED:** a dictionary COPIES its keys and a Class is not `NSCopying` (keying by the
+Class raised `NSInvalidArgumentException`, so the map is keyed by name); the map must be consulted at the CALL
+sites (a version substituted inside a static C helper where `self` is illegal would have left the doors inert);
+`NSPropertyListFormat` needs `NSPropertyListSerialization.h` in the header; and the bytes are taken as a COPY
+before the archiver is released, because its `-dealloc` releases `_data`, which IS the caller's buffer.
+
+**AND THE SESSION'S BEST PROCESS WIN: THE HOST LOOP.** `mk/60-host.mk` builds Foundation for the host and
+`foundation_archiver` is one of its probes, so logic questions are answered by
+`make .build/host/bin/foundation_archiver && .build/host/bin/foundation_archiver` — seconds, no image, no guest.
+It is NOT sufficient alone — the invented door above is the proof — so the rule is: **HOST FOR LOGIC, GUEST FOR
+TRUTH.**
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_archiver` → 1/1 case, 6/6 case
+checks, probe tally 34 → 37; `tools/foundation-sweep.py --check` consistent (`method 1651/164/399`),
+`--families --write` rc=0, `--unimplemented` 0 NEW.
+
 ## §63.183 — NSKeyedUnarchiver: the class-name maps, the error-returning init, and the six secure top-level doors
 
 Twelve rows leave the work list: `method shipped 1634 → 1646, open 181 → 169`. The class-name maps

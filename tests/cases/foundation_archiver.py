@@ -63,7 +63,9 @@ CHECKS = (
     "decodebyteswithminimumlength-reads-a-long-enough-run",
     "decodebyteswithminimumlength-refuses-a-short-run",
     "a-sequential-geometry-door-on-the-keyed-archiver-raises",
-    "archiver-class-map", "archiver-class-map-clears", "archiver-secure-doors")
+    "archiver-class-map", "archiver-class-map-clears", "archiver-secure-doors",
+    "archiver-writer-class-map", "archiver-writer-class-map-clears",
+    "archiver-secure-class-door")
 
 
 class Case(BaseCase):

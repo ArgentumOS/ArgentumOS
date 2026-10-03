@@ -646,6 +646,68 @@ int main(void)
 			okArray != nil, wrongClassErrored, numbers != nil, strings != nil, dict != nil, corruptErrored]);
 	}
 
+
+	{
+		/* THE WRITER'S CLASS-NAME MAP (§63.184): the writer renames a class as it writes and the reader maps
+		 * the name to a DIFFERENT class, so the round trip shows the bytes carry the stated name — and the bytes
+		 * are checked too, so a pass cannot come from a reader that ignores the map. */
+		NSString *trouble = nil;
+		NSData *renamed = nil;
+		id decoded = nil;
+		@try {
+			[NSKeyedArchiver setClassName:@"KURenamed" forClass:[KUBeta class]];
+			renamed = [NSKeyedArchiver archivedDataWithRootObject:[[KUBeta alloc] init]];
+			[NSKeyedUnarchiver setClass:[KUAlpha class] forClassName:@"KURenamed"];
+			decoded = [NSKeyedUnarchiver unarchiveObjectWithData:renamed];
+		} @catch (id exception) {
+			trouble = [exception reason];
+		}
+		NSString *text = renamed != nil
+			? [[NSString alloc] initWithData:renamed encoding:NSUTF8StringEncoding] : nil;
+		check("archiver-writer-class-map",
+		      trouble == nil && renamed != nil && text != nil &&
+		      [text rangeOfString:@"KURenamed"].location != NSNotFound &&
+		      [text rangeOfString:@"KUBeta"].location == NSNotFound &&
+		      decoded != nil && [decoded isKindOfClass:[KUAlpha class]],
+		      trouble != nil ? trouble
+				     : [NSString stringWithFormat:@"decoded=%@ new-name-in-bytes=%d old-name-in-bytes=%d len=%lu",
+					[decoded class],
+					[text rangeOfString:@"KURenamed"].location != NSNotFound,
+					[text rangeOfString:@"KUBeta"].location != NSNotFound,
+					(unsigned long)[renamed length]]);
+		[NSKeyedArchiver setClassName:Nil forClass:[KUBeta class]];
+		[NSKeyedUnarchiver setClass:Nil forClassName:@"KURenamed"];
+		check("archiver-writer-class-map-clears",
+		      [NSKeyedArchiver classNameForClass:[KUBeta class]] == nil &&
+		      [NSKeyedUnarchiver classForClassName:@"KURenamed"] == Nil,
+		      @"a nil name removes the writer's mapping, and the reader's clears too");
+	}
+
+	{
+		/* THE SECURE-CLASS DOOR (§63.184), with the EXCEPTION'S OWN REASON on the wire: a substituted
+		 * probe-made NSError reported "something happened" where the reason was the whole answer. */
+		NSError *plainError = nil;
+		NSError *refusedError = nil;
+		NSData *plain = nil;
+		NSData *refused = nil;
+		NSString *raise = nil;
+
+		@try {
+			plain = [NSKeyedArchiver archivedDataWithRootObject:[[KUAlpha alloc] init]
+							  requiringSecureCoding:YES error:&plainError];
+			refused = [NSKeyedArchiver archivedDataWithRootObject:[NSObject new]
+							    requiringSecureCoding:YES error:&refusedError];
+		} @catch (id exception) {
+			raise = [exception reason];
+		}
+		check("archiver-secure-class-door",
+		      raise == nil && plain != nil && plainError == nil && refused == nil && refusedError != nil,
+		      [NSString stringWithFormat:@"raise=%@ plainNil=%d plainErr=%@ refusedNil=%d refusedErr=%@",
+			raise != nil ? raise : @"none", plain == nil,
+			plainError != nil ? [plainError localizedDescription] : @"none", refused == nil,
+			refusedError != nil ? [refusedError localizedDescription] : @"none"]);
+	}
+
 	printf("FOUNDATION-ARCHIVER RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-ARCHIVER-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-ARCHIVER DONE\n");
