@@ -15969,6 +15969,36 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.144 — I TOOK STEP 5 BEFORE STEP 2 AND THE CODE REFUSED IT: THE ENUM LEAVES ONLY WHEN THE DOORS DO (2026-10-01)
+
+**⚠⚠ §63.141 ORDERED THE WORK AND I REORDERED IT: the disposition move is step 5, AFTER the engine rebuild that is step
+2 — and I took it first because it LOOKED mechanical. IT IS NOT, AND THE REASON IS EXACTLY WHAT THE ORDER WAS FOR.**
+
+**MEASURED: the one-pass move compiled everything except two errors, and BOTH were the same fact.** `NSURLProtocol.h`
+does not merely DECLARE the enum — **it USES it, in a PUBLIC door of `NSURLProtocolClient`**:
+`- URLProtocol:didReceiveAuthenticationChallenge:completionHandler:` taking
+`void (^)(NSURLSessionAuthChallengeDisposition, NSURLCredential *)`, which the header's own comment calls **§48.6's
+REGISTERED DEVIATION FROM APPLE** (*‘Apple's door is asynchronous and its client answers by messaging the challenge's
+sender, which this library refuses as Legacy’*). The failures were `NSURLProtocol.h:180 expected a type` — the
+`NSURLSessionTaskTransactionMetrics` forward declaration I removed was used by the door BELOW it — and
+`FNCURLURLProtocol.m:850` block-type mismatch on that door's parameter.
+
+**⚠ AND THE MEASUREMENT ALSO NAMES THE FOUR DOORS STEP 2 MUST REMOVE, WHICH IS A REFINEMENT OF ITS PLAN — ALL FOUR ARE
+FIRST-PARTY DOORS ON `NSURLProtocolClient` THAT EXIST TO SERVE THE SESSION ENGINE:**
+ 1. **`- URLProtocol:didReceiveAuthenticationChallenge:completionHandler:`** — the deviation above; Apple's own is
+    synchronous, and with the session gone there is nothing to complete;
+ 2. **`- URLProtocol:fnDidCollectMetrics:`** — the header says it itself: *‘Apple's URL loading system PRODUCES the
+    metrics itself and publishes no way for a protocol to hand them over; here the transport IS a protocol’*;
+ 3. **`- URLProtocol:fnDidSendBodyData:totalBytesSent:totalBytesExpectedToSend:`** — upload progress, which Apple's
+    protocol client has no door for either;
+ 4. **`- URLProtocol:fnNewBodyStreamForReSend:`** — for the re-send the transport issues ITSELF (*‘the session never
+    sees the second attempt’*).
+***SO THE ENUM'S PUBLIC HOME DISAPPEARS ONLY WHEN THOSE DOORS DO — WHICH IS STEP 2's WORK.*** *‘Mechanical’ was my
+reading; the dependency was the plan's.*
+
+**NOTHING LANDED: the change is reverted, the tree is green (build EXIT 0 at the standing SIX warnings, `make testimg`
+EXIT 0, `--check` consistent), and the step returns to its ordered place.**
+
 ## §63.143 — THE MEMBER CUT LANDS, WITH THE FLOOR THAT §63.142 SAID WAS MISSING (2026-10-01)
 
 **LANDED: EIGHTEEN SESSION-TYPED MEMBERS FROM THREE KEPT CLASSES** — `NSHTTPCookieStorage` (2), `NSURLCache` (3),
