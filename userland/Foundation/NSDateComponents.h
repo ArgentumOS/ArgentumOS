@@ -28,8 +28,13 @@
 #define FOUNDATION_NSDATECOMPONENTS_H
 
 #import <Foundation/NSObject.h>
+/* FOR THE NSCalendarUnit TYPEDEF, which the two unit-addressable doors below take. NSCalendar.h
+ * forward-declares THIS class and does not import it, so this is not a cycle. */
+#import <Foundation/NSCalendar.h>
 
+@class NSDate;
 @class NSCalendar;
+@class NSTimeZone;
 
 /* The "this field was not set" sentinel. It is NSNotFound's value on purpose:
  * both mean "no such thing", and a second sentinel would be a second thing to
@@ -61,6 +66,11 @@ NS_ASSUME_NONNULL_BEGIN
 	NSInteger _weekOfMonth;
 	NSInteger _weekOfYear;
 	NSInteger _yearForWeekOfYear;
+	NSInteger _dayOfYear;
+	BOOL _leapMonth;
+	BOOL _repeatedDay;
+	NSCalendar *_calendar;
+	NSTimeZone *_timeZone;
 }
 
 /* NSDateComponents is a mutable bag, so `+new` is the way to make one; there is
@@ -106,6 +116,49 @@ NS_ASSUME_NONNULL_BEGIN
  * (2026-02-30). The calendar is passed in, as in Cocoa, so a components object
  * does not have to own one. */
 - (BOOL)isValidDateInCalendar:(NSCalendar *)calendar;
+
+/* THE THREE FIELDS THAT ARE ONLY ANSWERS IN SOME CALENDARS, and the two REFERENCES that say HOW to read
+ * a bag of fields. Apple's words for the first two: "The day of the year value of the date components",
+ * "The calendar used to interpret the date components", "The time zone used to interpret the date
+ * components". All five are STORED: nothing here derives them, because the derivation is the calendar's
+ * (and this calendar does not offer a day-of-year conversion, which is why -components:fromDate: leaves
+ * its DayOfYear alone rather than filling it with a guess).
+ *
+ * THE REFERENCES ARE INTERPRETATION CONTEXT, NOT COMPONENT VALUES: -isEqual:, -hash and -description
+ * ignore them, while -copy carries them (a copy of a bag is the same bag, read the same way). */
+- (NSInteger)dayOfYear;
+- (void)setDayOfYear:(NSInteger)value;
+- (BOOL)leapMonth;
+- (void)setLeapMonth:(BOOL)value;
+- (BOOL)repeatedDay;
+- (void)setRepeatedDay:(BOOL)value;
+
+/* SET BY THE CALLER, USED BY THE TWO DOORS BELOW. When none is set, -date and -validDate answer in the
+ * CURRENT calendar (Apple's rule for -date is "the date calculated from the current components using
+ * the stored calendar"; with no stored calendar the only calendar left is the current one). */
+- (nullable NSCalendar *)calendar;
+- (void)setCalendar:(nullable NSCalendar *)calendar;
+- (nullable NSTimeZone *)timeZone;
+- (void)setTimeZone:(nullable NSTimeZone *)timeZone;
+
+/* THE TWO VALIDATION-CATEGORY ANSWERS. -date is -dateFromComponents: in the stored calendar (nil when
+ * the fields make no date); -validDate is -isValidDateInCalendar: asked of that same calendar, so the
+ * two cannot disagree about what "this bag is a date" means. */
+- (nullable NSDate *)date;
+- (BOOL)validDate;
+
+/* THE UNIT-ADDRESSABLE PAIR. Apple's words: "Sets/Returns a value for a given calendar unit" — a
+ * SWITCH over the units a bag of fields can hold, which is the calendar-field and week-field units plus
+ * DayOfYear. EVERY OTHER UNIT IS REFUSED BY NAME, and two of them by necessity: Calendar and TimeZone
+ * ask for OBJECTS where this door answers an NSInteger. */
+- (void)setValue:(NSInteger)value forComponent:(NSCalendarUnit)unit;
+- (NSInteger)valueForComponent:(NSCalendarUnit)unit;
+
+/* THE DEPRECATED WEEK PAIR (Apple deprecates it in favour of -weekOfYear), KEPT AS AN ALIAS of the same
+ * storage rather than as a second field: two fields would let the same bag answer two different weeks,
+ * and the deprecation note says which one to use, not that they mean different things. */
+- (NSInteger)week;
+- (void)setWeek:(NSInteger)value;
 
 - (BOOL)isEqual:(id)other;
 - (NSUInteger)hash;

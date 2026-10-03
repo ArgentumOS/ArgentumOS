@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1604	open	213	struck	397
-# property	shipped	672	open	92	struck	172
+# method	shipped	1608	open	209	struck	397
+# property	shipped	679	open	85	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -714,25 +714,25 @@ property	shipped	timeIntervalSince1970	NSDate	Fundamentals / Date Representation
 property	shipped	timeIntervalSinceNow	NSDate	Fundamentals / Date Representations / Getting Time Intervals	-	objc
 property	shipped	timeIntervalSinceReferenceDate	NSDate	Fundamentals / Date Representations / Getting Time Intervals	-	swift-page
 method	shipped	-isValidDateInCalendar:	NSDateComponents	Fundamentals / Calendrical Calculations / Validating a Date	-	objc
-method	open	-setValue:forComponent:	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units	-	objc
-method	open	-setWeek:	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Weeks and Days	deprecated	objc
-method	open	-valueForComponent:	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units	-	objc
-method	open	-week	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Weeks and Days	deprecated	objc
-property	open	calendar	NSDateComponents	Fundamentals / Calendrical Calculations / Setting a Calendar and Time Zone	-	objc
-property	open	date	NSDateComponents	Fundamentals / Calendrical Calculations / Validating a Date	-	objc
+method	shipped	-setValue:forComponent:	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units	-	objc
+method	shipped	-setWeek:	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Weeks and Days	deprecated	objc
+method	shipped	-valueForComponent:	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units	-	objc
+method	shipped	-week	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Weeks and Days	deprecated	objc
+property	shipped	calendar	NSDateComponents	Fundamentals / Calendrical Calculations / Setting a Calendar and Time Zone	-	objc
+property	shipped	date	NSDateComponents	Fundamentals / Calendrical Calculations / Validating a Date	-	objc
 property	shipped	day	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Weeks and Days	-	objc
-property	open	dayOfYear	NSDateComponents	Fundamentals / Calendrical Calculations / Instance Properties	-	objc
+property	shipped	dayOfYear	NSDateComponents	Fundamentals / Calendrical Calculations / Instance Properties	-	objc
 property	shipped	era	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Years and Months	-	objc
 property	shipped	hour	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Hours and Seconds	-	objc
-property	open	leapMonth	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Years and Months	-	objc
+property	shipped	leapMonth	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Years and Months	-	objc
 property	shipped	minute	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Hours and Seconds	-	objc
 property	shipped	month	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Years and Months	-	objc
 property	shipped	nanosecond	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Hours and Seconds	-	objc
 property	shipped	quarter	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Years and Months	-	objc
-property	open	repeatedDay	NSDateComponents	Fundamentals / Calendrical Calculations / Instance Properties	-	objc
+property	shipped	repeatedDay	NSDateComponents	Fundamentals / Calendrical Calculations / Instance Properties	-	objc
 property	shipped	second	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Hours and Seconds	-	objc
-property	open	timeZone	NSDateComponents	Fundamentals / Calendrical Calculations / Setting a Calendar and Time Zone	-	objc
-property	open	validDate	NSDateComponents	Fundamentals / Calendrical Calculations / Validating a Date	-	objc
+property	shipped	timeZone	NSDateComponents	Fundamentals / Calendrical Calculations / Setting a Calendar and Time Zone	-	objc
+property	shipped	validDate	NSDateComponents	Fundamentals / Calendrical Calculations / Validating a Date	-	objc
 property	shipped	weekOfMonth	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Weeks and Days	-	objc
 property	shipped	weekOfYear	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Weeks and Days	-	objc
 property	shipped	weekday	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Weeks and Days	-	objc

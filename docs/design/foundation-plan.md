@@ -15962,6 +15962,61 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.176 — NSDateComponents: the unit-addressable pair, the two references, and the two validation answers
+
+Eleven rows leave the work list — four methods and seven properties — and the selector ledger moves with
+them: `method shipped 1604 → 1608, open 213 → 209`; `property shipped 672 → 679, open 92 → 85`.
+
+**APPLE'S OWN WORDS, FETCHED RATHER THAN RECALLED.** Eight of the eleven came off the class page's JSON
+(this time the site was reachable): "The calendar used to interpret the date components", "The time zone
+used to interpret the date components", "The date calculated from the current components **using the
+stored calendar**", "The day of the year value of the date components", "Sets/Returns a value for a given
+calendar unit", and — for the two-week pair — "Returns/Sets the number of weeks", **marked deprecated**.
+The other three (`leapMonth`, `repeatedDay`, `validDate`) 404 on their own slug pattern, so their
+semantics come from this tree's own machinery instead: `-isValidDateInCalendar:` already documents itself
+as "a round trip: build the date from the fields, read the fields back, compare the ones that were set",
+and `-validDate` is exactly that question asked of the bag's own calendar.
+
+**ONE SWITCH UNDER BOTH UNIT DOORS.** `-valueForComponent:` reads the field a unit names and
+`-setValue:forComponent:` writes it, through the same switch, so the pair cannot disagree about which
+unit is which field. Every unit that is not a field of a bag is REFUSED BY NAME — and two are refused by
+necessity rather than choice: `NSCalendarUnitCalendar` and `NSCalendarUnitTimeZone` ask for OBJECTS where
+this door answers an `NSInteger`. `NSCalendarUnitDayOfYear` is one of the fifteen that work, and it is
+honest about its own emptiness: this calendar documents that it does not offer a day-of-year derivation,
+so `-components:fromDate:` leaves that unit alone rather than filling it with a guess — the property is
+settable and readable, which is all a STORED field promises.
+
+**THE DEPRECATED WEEK PAIR IS AN ALIAS, NOT A SECOND FIELD.** Apple deprecates `-week`/`-setWeek:` in
+favour of `-weekOfYear`, which this class already stores; two fields would let one bag answer two
+different weeks for the same moment. The probe asserts the alias in both directions.
+
+**THE REFERENCES ARE CONTEXT; THE VALUES ARE THE VALUE.** `-calendar`/`-timeZone` are stored and
+retained, and their arrival is where this class gets its first owned storage — and so its first
+`-dealloc`. They are INTERPRETATION CONTEXT rather than component values, so `-isEqual:`, `-hash` and
+`-description` ignore them while `-copy` carries them (a copy of a bag is the same bag, read the same
+way). The three new VALUE fields do the opposite: they join `-copy`, `-isEqual:` and `-hash` (whose field
+array goes 14 → 17), because a bag that differed only in `dayOfYear` would otherwise compare equal — and
+because a `-copy` that dropped them would be the bug this unit would have introduced.
+
+`-date` is `-dateFromComponents:` in the stored calendar and `-validDate` is `-isValidDateInCalendar:`
+asked of that SAME calendar (`+currentCalendar` when none is set, which is Apple's rule for the stored
+case), so the two answers cannot disagree about what "this bag is a date" means — the round trip remains
+the only notion of validity in the library, one fewer thing to disagree with the calendar about.
+
+**A CYCLE CHECKED BEFORE IT WAS A PROBLEM:** the two unit doors need `NSCalendarUnit`, which lives in
+`NSCalendar.h`. `NSCalendar.h` forward-declares `@class NSDateComponents;` and does not import it, so
+`NSDateComponents.h` may import it back with no cycle and no misplaced typedef.
+
+Acceptance: `make testimg` green; `make test TESTS=foundation_calendar` → 1/1 case, 6/6 case checks, and
+the probe's own tally 22 → 25 (the three new checks are the unit door pair with a refusal in each
+direction, the two references with `-date`/`-validDate`/`-copy`, and 2026-02-30 refused rather than
+normalised into March); `tools/foundation-sweep.py --check` consistent with `--families` regenerated.
+
+**The mechanical step was the instrument's again:** the build gate listed all eleven rows to flip
+("the owner's block declares it now; flip the row"), the flip script asserted the count was exactly
+eleven and recomputed both counts blocks FROM THE FILE'S OWN ROWS, and `--check` verified — the recorded
+way, never `--refresh`.
+
 ## §63.175 — NSIndexSet/NSMutableIndexSet: the test scan, the index enumerators, the set relations and the mutable group operations
 
 Fourteen rows leave the work list — eleven on `NSIndexSet` and three on `NSMutableIndexSet` — and the

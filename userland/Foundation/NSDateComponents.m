@@ -18,6 +18,7 @@
 #import <Foundation/NSDateComponents.h>
 #import <Foundation/NSCalendar.h>
 #import <Foundation/NSDate.h>
+#import <Foundation/NSTimeZone.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSException.h>
 
@@ -44,6 +45,7 @@
 	_weekOfMonth = NSDateComponentUndefined;
 	_weekOfYear = NSDateComponentUndefined;
 	_yearForWeekOfYear = NSDateComponentUndefined;
+	_dayOfYear = NSDateComponentUndefined;
 	return self;
 }
 
@@ -75,6 +77,117 @@
 - (void)setWeekOfYear:(NSInteger)value { _weekOfYear = value; }
 - (NSInteger)yearForWeekOfYear { return _yearForWeekOfYear; }
 - (void)setYearForWeekOfYear:(NSInteger)value { _yearForWeekOfYear = value; }
+- (NSInteger)dayOfYear { return _dayOfYear; }
+- (void)setDayOfYear:(NSInteger)value { _dayOfYear = value; }
+- (BOOL)leapMonth { return _leapMonth; }
+- (void)setLeapMonth:(BOOL)value { _leapMonth = value; }
+- (BOOL)repeatedDay { return _repeatedDay; }
+- (void)setRepeatedDay:(BOOL)value { _repeatedDay = value; }
+
+/* THE REFERENCES ARE RETAINED, not copied: a calendar is a value-less service object here, and the bag
+ * does not own what it means. This is the first owned storage the class has, so it is also where
+ * -dealloc appears. */
+- (nullable NSCalendar *)calendar { return _calendar; }
+- (void)setCalendar:(nullable NSCalendar *)calendar
+{
+	if (_calendar == calendar) {
+		return;
+	}
+	[calendar retain];
+	[_calendar release];
+	_calendar = calendar;
+}
+
+- (nullable NSTimeZone *)timeZone { return _timeZone; }
+- (void)setTimeZone:(nullable NSTimeZone *)timeZone
+{
+	if (_timeZone == timeZone) {
+		return;
+	}
+	[timeZone retain];
+	[_timeZone release];
+	_timeZone = timeZone;
+}
+
+- (void)dealloc
+{
+	[_calendar release];
+	[_timeZone release];
+	[super dealloc];
+}
+
+- (nullable NSCalendar *)fnCalendarOrCurrent
+{
+	return _calendar != nil ? _calendar : [NSCalendar currentCalendar];
+}
+
+- (nullable NSDate *)date
+{
+	return [[self fnCalendarOrCurrent] dateFromComponents:self];
+}
+
+- (BOOL)validDate
+{
+	return [self isValidDateInCalendar:[self fnCalendarOrCurrent]];
+}
+
+- (NSInteger)week { return [self weekOfYear]; }
+- (void)setWeek:(NSInteger)value { [self setWeekOfYear:value]; }
+
+/* ONE SWITCH, AND BOTH DOORS USE IT: -valueForComponent: reads the field the unit names and
+ * -setValue:forComponent: writes it, so the pair cannot disagree about which unit is which field. A unit
+ * that is not a field of a bag is REFUSED BY NAME - including the two that name OBJECTS, which an
+ * NSInteger answer cannot carry. */
+- (NSInteger)valueForComponent:(NSCalendarUnit)unit
+{
+	switch (unit) {
+	case NSCalendarUnitEra:			return _era;
+	case NSCalendarUnitYear:		return _year;
+	case NSCalendarUnitQuarter:		return _quarter;
+	case NSCalendarUnitMonth:		return _month;
+	case NSCalendarUnitDay:			return _day;
+	case NSCalendarUnitHour:		return _hour;
+	case NSCalendarUnitMinute:		return _minute;
+	case NSCalendarUnitSecond:		return _second;
+	case NSCalendarUnitNanosecond:		return _nanosecond;
+	case NSCalendarUnitWeekday:		return _weekday;
+	case NSCalendarUnitWeekdayOrdinal:	return _weekdayOrdinal;
+	case NSCalendarUnitWeekOfMonth:		return _weekOfMonth;
+	case NSCalendarUnitWeekOfYear:		return _weekOfYear;
+	case NSCalendarUnitYearForWeekOfYear:	return _yearForWeekOfYear;
+	case NSCalendarUnitDayOfYear:		return _dayOfYear;
+	default:				break;
+	}
+	[NSException raise:NSInvalidArgumentException
+		    format:@"-valueForComponent: %lu is not a field a component bag holds",
+			   (unsigned long)unit];
+	return NSDateComponentUndefined;
+}
+
+- (void)setValue:(NSInteger)value forComponent:(NSCalendarUnit)unit
+{
+	switch (unit) {
+	case NSCalendarUnitEra:			_era = value; return;
+	case NSCalendarUnitYear:		_year = value; return;
+	case NSCalendarUnitQuarter:		_quarter = value; return;
+	case NSCalendarUnitMonth:		_month = value; return;
+	case NSCalendarUnitDay:			_day = value; return;
+	case NSCalendarUnitHour:		_hour = value; return;
+	case NSCalendarUnitMinute:		_minute = value; return;
+	case NSCalendarUnitSecond:		_second = value; return;
+	case NSCalendarUnitNanosecond:		_nanosecond = value; return;
+	case NSCalendarUnitWeekday:		_weekday = value; return;
+	case NSCalendarUnitWeekdayOrdinal:	_weekdayOrdinal = value; return;
+	case NSCalendarUnitWeekOfMonth:		_weekOfMonth = value; return;
+	case NSCalendarUnitWeekOfYear:		_weekOfYear = value; return;
+	case NSCalendarUnitYearForWeekOfYear:	_yearForWeekOfYear = value; return;
+	case NSCalendarUnitDayOfYear:		_dayOfYear = value; return;
+	default:				break;
+	}
+	[NSException raise:NSInvalidArgumentException
+		    format:@"-setValue:forComponent: %lu is not a field a component bag holds",
+			   (unsigned long)unit];
+}
 
 - (BOOL)isValidDateInCalendar:(NSCalendar *)calendar
 {
@@ -135,7 +248,9 @@
 	    && _nanosecond == [them nanosecond] && _weekday == [them weekday]
 	    && _weekdayOrdinal == [them weekdayOrdinal]
 	    && _weekOfMonth == [them weekOfMonth] && _weekOfYear == [them weekOfYear]
-	    && _yearForWeekOfYear == [them yearForWeekOfYear];
+	    && _yearForWeekOfYear == [them yearForWeekOfYear]
+	    && _dayOfYear == [them dayOfYear] && _leapMonth == [them leapMonth]
+	    && _repeatedDay == [them repeatedDay];
 }
 
 - (NSUInteger)hash
@@ -143,14 +258,15 @@
 	/* The sentinel is a value, so the fields hash as they are — an unset field
 	 * contributes as itself, which keeps equal objects equal. */
 	NSUInteger h = 1469598103U;
-	const NSInteger fields[14] = {
+	const NSInteger fields[17] = {
 		_era, _year, _quarter, _month, _day, _hour, _minute,
 		_second, _nanosecond, _weekday, _weekdayOrdinal,
-		_weekOfMonth, _weekOfYear, _yearForWeekOfYear
+		_weekOfMonth, _weekOfYear, _yearForWeekOfYear,
+		_dayOfYear, (NSInteger)_leapMonth, (NSInteger)_repeatedDay
 	};
 	int i;
 
-	for (i = 0; i < 14; i++) {
+	for (i = 0; i < 17; i++) {
 		h ^= (NSUInteger)fields[i];
 		h *= 16777619U;
 	}
@@ -186,6 +302,12 @@
 	[copy setWeekOfMonth:_weekOfMonth];
 	[copy setWeekOfYear:_weekOfYear];
 	[copy setYearForWeekOfYear:_yearForWeekOfYear];
+	[copy setDayOfYear:_dayOfYear];
+	[copy setLeapMonth:_leapMonth];
+	[copy setRepeatedDay:_repeatedDay];
+	/* A COPY IS THE SAME BAG READ THE SAME WAY, so the references come along. */
+	[copy setCalendar:_calendar];
+	[copy setTimeZone:_timeZone];
 	return copy;
 }
 

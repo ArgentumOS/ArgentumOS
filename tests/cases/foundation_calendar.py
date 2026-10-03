@@ -40,7 +40,8 @@ CHECKS = ("tz-offset", "calendar-convert", "calendar-roundtrip",
           "calendar-formatter-present", "cross-tu", "calendar-alias-and-wire-values",
           "calendar-extraction", "calendar-date-with-week", "calendar-range-and-ordinality",
           "calendar-setting-and-granularity", "calendar-today-and-weekend",
-          "calendar-symbols", "calendar-matches-and-comp-diff")
+          "calendar-symbols", "calendar-matches-and-comp-diff", "datecomponents-unit-accessors",
+          "datecomponents-calendar-and-date", "datecomponents-invalid-day")
 
 
 class Case(BaseCase):

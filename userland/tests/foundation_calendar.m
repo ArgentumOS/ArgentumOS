@@ -678,7 +678,91 @@ int main(void)
 		delta = [c2 components:(NSCalendarUnitMonth | NSCalendarUnitDay)
 		       fromDateComponents:e1 toDateComponents:e2 options:NSCalendarOptionsNone];
 
-		check("calendar-matches-and-comp-diff",
+		{
+		/* THE UNIT-ADDRESSABLE PAIR AND THE DEPRECATED ALIAS (§63.176). One switch under both doors, so
+		 * what is asserted is that the SAME unit means the same field in both directions - and that a
+		 * unit which is not a field at all is REFUSED rather than silently answered. */
+		NSDateComponents *u = [[NSDateComponents alloc] init];
+		NSDateComponents *copied;
+		BOOL refusedRead = NO;
+		BOOL refusedWrite = NO;
+
+		[u setValue:2026 forComponent:NSCalendarUnitYear];
+		[u setValue:3 forComponent:NSCalendarUnitMonth];
+		[u setValue:2 forComponent:NSCalendarUnitDay];
+		[u setValue:14 forComponent:NSCalendarUnitHour];
+		[u setValue:206 forComponent:NSCalendarUnitDayOfYear];
+		[u setValue:7 forComponent:NSCalendarUnitWeekOfYear];
+		[u setWeek:9];			/* the deprecated alias: same storage */
+		copied = [u copy];
+		@try {
+			(void)[u valueForComponent:NSCalendarUnitTimeZone];
+		} @catch (id e) {
+			(void)e;
+			refusedRead = YES;
+		}
+		@try {
+			[u setValue:1 forComponent:NSCalendarUnitCalendar];
+		} @catch (id e) {
+			(void)e;
+			refusedWrite = YES;
+		}
+		check("datecomponents-unit-accessors",
+		      [u year] == 2026 && [u valueForComponent:NSCalendarUnitYear] == 2026 &&
+		      [u valueForComponent:NSCalendarUnitMonth] == 3 &&
+		      [u valueForComponent:NSCalendarUnitDay] == 2 &&
+		      [u valueForComponent:NSCalendarUnitHour] == 14 &&
+		      [u valueForComponent:NSCalendarUnitDayOfYear] == 206 &&
+		      [u dayOfYear] == 206 && [u week] == 9 && [u weekOfYear] == 9 &&
+		      refusedRead && refusedWrite &&
+		      [[u copy] isEqual:u] && [copied dayOfYear] == 206 && [copied valueForComponent:NSCalendarUnitWeekOfYear] == 9,
+		      "one switch for both doors, the week alias, and a refusal in each direction");
+	}
+
+	{
+		/* THE REFERENCES AND THE TWO ANSWERS THEY DECIDE (§63.176). The bag does not have to own a
+		 * calendar - -isValidDateInCalendar: takes one as an argument - but once it does, -date and
+		 * -validDate must both read the bag THE STORED CALENDAR'S way, and a copy must come along. */
+		NSCalendar *gregorian = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian];
+		NSTimeZone *zone = [NSTimeZone timeZoneWithName:@"UTC"];
+		NSDateComponents *bag = [[NSDateComponents alloc] init];
+		NSDateComponents *copyOfBag;
+		NSDate *made;
+		NSDate *expected;
+		BOOL tookZone = NO;
+
+		[bag setYear:2026];
+		[bag setMonth:3];
+		[bag setDay:2];
+		[bag setHour:12];
+		@try {
+			/* NO CALENDAR SET: the answers come from the CURRENT calendar, and nothing raises. */
+			(void)[bag date];
+			(void)[bag validDate];
+			tookZone = YES;
+		} @catch (id e) {
+			(void)e;
+			tookZone = NO;
+		}
+		[bag setCalendar:gregorian];
+		[bag setTimeZone:zone];
+		copyOfBag = [bag copy];
+		made = [bag date];
+		expected = [gregorian dateFromComponents:bag];
+		check("datecomponents-calendar-and-date",
+		      tookZone && [bag calendar] == gregorian && [bag timeZone] == zone &&
+		      made != nil && expected != nil && [made isEqualToDate:expected] &&
+		      [bag validDate] && [copyOfBag calendar] == gregorian && [copyOfBag validDate],
+		      "the two references, -date in the stored calendar, -validDate, and a copy that keeps both");
+		/* THE INVALID DAY, in the SAME bag with the same calendar: 2026-02-30 is not a date. */
+		[bag setMonth:2];
+		[bag setDay:30];
+		check("datecomponents-invalid-day",
+		      ![bag validDate],
+		      "2026-02-30 is refused by -validDate rather than normalised into March");
+	}
+
+	check("calendar-matches-and-comp-diff",
 		      [c2 date:d matchesComponents:match] &&
 		      ![c2 date:d matchesComponents:nomatch] &&
 		      [delta month] == 1 && [delta day] == 1,
