@@ -34,7 +34,10 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_urlsession_config"
-CHECKS = ("session-configuration-defaults",
+CHECKS = (
+          "session-configuration-new-doors-do-not-leak-between-instances",
+          "session-configuration-new-values-are-copied-not-held",
+          "session-configuration-new-flags-round-trip","session-configuration-defaults",
           "ephemeral-configuration-differs-only-by-identity",
           "background-configuration-carries-its-identifier",
           "configuration-setters-round-trip",

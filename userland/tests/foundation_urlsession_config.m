@@ -43,6 +43,53 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 
 int main(void)
 {
+
+	{
+		/* §63.128: THE EIGHT DOORS §63.127 ADDED. ⚠ THIS PROBE'S `check()` TAKES A `const char *` NAME, AN `int`,
+		 * AND AN `NSString *` DETAIL — READ BEFORE WRITING (§63.122's rule, and this is the sixth probe carrying this
+		 * same shape). **THE CONTRACTS ASSERTED ARE THE ONES THE UNIT CREATED: A FLAG SETS AND READS BACK, A VALUE IS
+		 * COPIED RATHER THAN HELD, AND NEITHER LEAKS INTO ANOTHER CONFIGURATION.** */
+		NSURLSessionConfiguration *one = [NSURLSessionConfiguration defaultSessionConfiguration];
+		NSURLSessionConfiguration *two = [NSURLSessionConfiguration defaultSessionConfiguration];
+		NSMutableString *shared = [NSMutableString stringWithString:@"group.one"];
+		NSMutableDictionary *proxy = [NSMutableDictionary dictionaryWithObject:@"127.0.0.1" forKey:@"HTTPProxy"];
+		BOOL flagsHeld = YES;
+		unichar before;
+
+		[one setAllowsUltraConstrainedNetworkAccess:YES];
+		[one setEnablesEarlyData:YES];
+		[one setRequiresDNSSECValidation:YES];
+		[one setSessionSendsLaunchEvents:YES];
+		[one setShouldUseExtendedBackgroundIdleMode:YES];
+		[one setUsesClassicLoadingMode:YES];
+		flagsHeld = [one allowsUltraConstrainedNetworkAccess] && [one enablesEarlyData] &&
+			    [one requiresDNSSECValidation] && [one sessionSendsLaunchEvents] &&
+			    [one shouldUseExtendedBackgroundIdleMode] && [one usesClassicLoadingMode];
+		check("session-configuration-new-flags-round-trip", flagsHeld,
+		      [NSString stringWithFormat:@"ultra=%d early=%d dnssec=%d launch=%d idle=%d classic=%d",
+			(int)[one allowsUltraConstrainedNetworkAccess], (int)[one enablesEarlyData],
+			(int)[one requiresDNSSECValidation], (int)[one sessionSendsLaunchEvents],
+			(int)[one shouldUseExtendedBackgroundIdleMode], (int)[one usesClassicLoadingMode]]);
+
+		[one setSharedContainerIdentifier:shared];
+		[one setConnectionProxyDictionary:proxy];
+		[shared appendString:@".MUTATED"];
+		[proxy setObject:@"10.0.0.1" forKey:@"HTTPSProxy"];
+		check("session-configuration-new-values-are-copied-not-held",
+		      [[one sharedContainerIdentifier] isEqualToString:@"group.one"] &&
+		      [[one connectionProxyDictionary] objectForKey:@"HTTPSProxy"] == nil,
+		      [NSString stringWithFormat:@"shared=%@ proxies=%@",
+			[one sharedContainerIdentifier], [one connectionProxyDictionary]]);
+
+		before = [[two sharedContainerIdentifier] length];
+		check("session-configuration-new-doors-do-not-leak-between-instances",
+		      [two allowsUltraConstrainedNetworkAccess] == NO &&
+		      [two sharedContainerIdentifier] == nil &&
+		      [two connectionProxyDictionary] == nil && before == 0,
+		      [NSString stringWithFormat:@"other-ultra=%d other-shared=%@",
+			(int)[two allowsUltraConstrainedNetworkAccess], [two sharedContainerIdentifier]]);
+	}
+
 	/* --- THE DOCUMENTED DEFAULTS ----------------------------------------------------------------- */
 	{
 		NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];

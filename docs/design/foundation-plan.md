@@ -15982,6 +15982,31 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.128 — THE OWED PROBE IS PAID, IN THE NEXT UNIT, AND IT TOOK ONE ROUND (2026-10-01)
+
+**§63.127 SAID ‘NO GUEST PROBE WAS RUN FOR THIS UNIT, AND A PROBE IS OWED’. THIS IS THAT PROBE.
+`FOUNDATION-URLSESSION-CONFIG 10/10` — UP FROM 7.**
+
+**MEASURED: `TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`; build EXIT 0 with exactly the standing SIX warnings;
+`make testimg` EXIT 0. The probe already existed (`foundation_urlsession_config.m`, and its case), so the owed checks
+had a home and the eight doors gained three.**
+
+**AND THE THREE CHECKS ASSERT THE CONTRACTS THE UNIT CREATED RATHER THAN THE CODE'S SHAPE:**
+ 1. **the six flags round-trip** — set all six, read all six back;
+ 2. **the two values are COPIED rather than held** — set an `NSMutableString` and an `NSMutableDictionary`, **THEN MUTATE
+    BOTH**, then read back the originals. *This is the classic retained-vs-copied defect, and it is the one an assertion
+    has to make because the wrong implementation passes every read-back test until the caller mutates;*
+ 3. **nothing leaks between instances** — two configurations from the same factory, one set, the other untouched.
+
+**⚠ AND `check()` WAS READ, NOT INFERRED — THE SIXTH PROBE CARRYING `(const char *name, int ok, NSString *detail)`.**
+§63.122 recorded that this session has written checks against five different shapes and that copying one from a
+neighbour is a coin toss; **this is the first unit since, and it took ONE round.** The inference cost three.
+
+**⚠⚠ AND THE METHOD POINT WORTH KEEPING: A UNIT WHOSE PROBE IS OWED IS A UNIT THAT IS NOT FINISHED — AND SAYING SO IN THE
+RECORD IS WHAT MADE THE NEXT UNIT SMALL.** §63.127 named the gap in its own text rather than letting ‘`--check` is
+consistent’ stand in for verification; **the next unit therefore had no reconnaissance to do: the file, its case, the
+signature and the shape were all named in advance, and one round finished it.**
+
 ## §63.127 — `NSURLSessionConfiguration` COMPLETE, AGAINST ITS OWN NOTE: EIGHT CARRIED, FIVE BY Type-ABSENCE (2026-10-01)
 
 **ALL THIRTEEN ROWS ARE OFF THE WORK LIST AND `--work-list | grep -c NSURLSessionConfiguration` → 0 — THE SEVENTH OWNER
