@@ -22,6 +22,7 @@
 #ifndef FOUNDATION_NSERROR_H
 #define FOUNDATION_NSERROR_H
 
+#import <Foundation/NSArray.h>
 #import <Foundation/NSObject.h>
 
 @class NSString;
@@ -57,6 +58,13 @@ extern NSString *const NSLocalizedFailureReasonKey;
 extern NSString *const NSLocalizedRecoverySuggestionErrorKey;
 extern NSString *const NSUnderlyingErrorKey;
 
+@class NSError;
+
+/* THE PROVIDER BLOCK'S CONTRACT, in Apple's shape: it is asked for a userInfo value the dictionary does NOT
+ * carry, and it may answer nil. It is the reason NSError can describe errors whose texts live in a
+ * framework rather than in the error object. */
+typedef id _Nullable (^NSErrorUserInfoValueProvider)(NSError *error, NSErrorUserInfoKey key);
+
 @interface NSError : NSObject <NSCopying>
 {
 	NSString *_domain;
@@ -78,6 +86,24 @@ extern NSString *const NSUnderlyingErrorKey;
 
 - (NSString *)localizedDescription;
 - (nullable NSString *)localizedFailureReason;
+
+/* THE FIVE READERS THAT COME OUT OF userInfo, WITH APPLE'S KEYS — and every one of them asks a DOMAIN'S
+ * PROVIDER when the dictionary does not carry the value (see the two class doors below), because that is
+ * what the provider is FOR rather than inert state. */
+@property (nullable, readonly, copy) NSString *helpAnchor;
+@property (nullable, readonly, copy) NSArray *localizedRecoveryOptions;
+@property (nullable, readonly, copy) NSString *localizedRecoverySuggestion;
+@property (nullable, readonly) id recoveryAttempter;
+/* NOT OPTIONAL: Apple's contract is an EMPTY array when there is nothing, which is why this one is not
+ * nullable - it is built from NSMultipleUnderlyingErrorsKey, else the one-element NSUnderlyingErrorKey. */
+@property (readonly, copy) NSArray *underlyingErrors;
+
+/* A PROVIDER IS KEYED BY DOMAIN, and a nil provider removes the one that was there. A nil DOMAIN is this
+ * library's WILDCARD — "the provider for every domain" — and it is a stated reading: Apple's documentation
+ * says a provider is asked when the dictionary has no value, and does not spell the nil-domain case out. */
++ (void)setUserInfoValueProviderForDomain:(nullable NSErrorDomain)domain
+				 provider:(nullable NSErrorUserInfoValueProvider)provider;
++ (nullable NSErrorUserInfoValueProvider)userInfoValueProviderForDomain:(nullable NSErrorDomain)domain;
 
 
 

@@ -504,6 +504,89 @@ int main(void)
 		}
 	}
 
+
+	{
+		/* §63.188: THE FIVE userInfo READERS, and the two provider doors that feed them. The provider is the
+		 * interesting half: it is asked only when the dictionary does NOT carry the value, so the check
+		 * asserts BOTH orders — the provider's answer where userInfo is silent, userInfo where it speaks. */
+		NSDictionary *info = [NSDictionary dictionaryWithObjectsAndKeys:
+			@"the anchor", NSHelpAnchorErrorKey,
+			@"try again", NSLocalizedRecoverySuggestionErrorKey,
+			@"body", NSLocalizedDescriptionKey,
+			nil];
+		NSError *rich = [NSError errorWithDomain:@"ProbeDomain" code:1 userInfo:info];
+		NSError *bare = [NSError errorWithDomain:@"ProbeDomain" code:2 userInfo:nil];
+		char detail[256];
+
+		snprintf(detail, sizeof detail, "anchor=%s suggestion=%s description=%s bare=%d",
+			 [[rich helpAnchor] UTF8String], [[rich localizedRecoverySuggestion] UTF8String],
+			 [[rich localizedDescription] UTF8String],
+			 [bare helpAnchor] == nil && [bare localizedRecoverySuggestion] == nil);
+		check("error-value-properties",
+		      [[rich helpAnchor] isEqualToString:@"the anchor"] &&
+		      [[rich localizedRecoverySuggestion] isEqualToString:@"try again"] &&
+		      [rich localizedRecoveryOptions] == nil && [rich recoveryAttempter] == nil &&
+		      [bare helpAnchor] == nil && [bare recoveryAttempter] == nil &&
+		      [[bare localizedDescription] rangeOfString:@"ProbeDomain error 2"].location != NSNotFound,
+		      detail);
+	}
+	{
+		/* THE EMPTY ARRAY IS THE CONTRACT, not nil, and the plural key wins over the singular one. */
+		NSError *inner = [NSError errorWithDomain:@"Inner" code:9 userInfo:nil];
+		NSError *none = [NSError errorWithDomain:@"ProbeDomain" code:3 userInfo:nil];
+		NSError *one = [NSError errorWithDomain:@"ProbeDomain" code:4 userInfo:
+				[NSDictionary dictionaryWithObject:inner forKey:NSUnderlyingErrorKey]];
+		NSError *two = [NSError errorWithDomain:@"ProbeDomain" code:5 userInfo:
+				[NSDictionary dictionaryWithObject:
+					[NSArray arrayWithObjects:inner, none, nil]
+					forKey:NSMultipleUnderlyingErrorsKey]];
+		char detail[256];
+
+		snprintf(detail, sizeof detail, "none=%lu one=%lu two=%lu one-is-inner=%d",
+			 (unsigned long)[[none underlyingErrors] count],
+			 (unsigned long)[[one underlyingErrors] count],
+			 (unsigned long)[[two underlyingErrors] count],
+			 [[one underlyingErrors] count] == 1 &&
+			 [[[one underlyingErrors] objectAtIndex:0] isEqual:inner]);
+		check("error-underlying-errors",
+		      [[none underlyingErrors] count] == 0 &&
+		      [[one underlyingErrors] count] == 1 &&
+		      [[[one underlyingErrors] objectAtIndex:0] isEqual:inner] &&
+		      [[two underlyingErrors] count] == 2,
+		      detail);
+	}
+	{
+		/* THE PROVIDER DOORS (§63.188): registered per domain, asked only when userInfo is silent, and removed
+		 * by a nil provider. The description the provider supplies is the OBSERVABLE, because that is what
+		 * Apple's contract makes the provider FOR. */
+		NSErrorUserInfoValueProvider provider = ^id(NSError *error, NSErrorUserInfoKey key) {
+			(void)error;
+			return [key isEqualToString:NSLocalizedDescriptionKey] ? @"from the provider" : nil;
+		};
+		NSError *asked;
+		NSError *spoken;
+		char detail[256];
+
+		[NSError setUserInfoValueProviderForDomain:@"ProvidedDomain" provider:provider];
+		asked = [NSError errorWithDomain:@"ProvidedDomain" code:6 userInfo:nil];
+		spoken = [NSError errorWithDomain:@"ProvidedDomain" code:7 userInfo:
+				[NSDictionary dictionaryWithObject:@"from userInfo" forKey:NSLocalizedDescriptionKey]];
+		snprintf(detail, sizeof detail, "registered=%d provided=[%s] userInfo-wins=[%s]",
+			 [NSError userInfoValueProviderForDomain:@"ProvidedDomain"] == provider,
+			 [[asked localizedDescription] UTF8String], [[spoken localizedDescription] UTF8String]);
+		check("error-user-info-provider",
+		      [NSError userInfoValueProviderForDomain:@"ProvidedDomain"] == provider &&
+		      [[asked localizedDescription] isEqualToString:@"from the provider"] &&
+		      [[spoken localizedDescription] isEqualToString:@"from userInfo"],
+		      detail);
+		[NSError setUserInfoValueProviderForDomain:@"ProvidedDomain" provider:nil];
+		check("error-user-info-provider-removed",
+		      [NSError userInfoValueProviderForDomain:@"ProvidedDomain"] == nil &&
+		      [[[NSError errorWithDomain:@"ProvidedDomain" code:8 userInfo:nil] localizedDescription]
+			rangeOfString:@"ProvidedDomain error 8"].location != NSNotFound,
+		      "a nil provider removes the registration, and the synthesized description comes back");
+	}
+
 	printf("FOUNDATION-ERROR RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

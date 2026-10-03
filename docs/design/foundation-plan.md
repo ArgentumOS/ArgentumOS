@@ -15962,6 +15962,38 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.188 — NSError: the five userInfo readers and the two provider doors that feed them
+
+Seven rows: `property shipped 693 → 698, open 71 → 66` (`helpAnchor`, `localizedRecoveryOptions`,
+`localizedRecoverySuggestion`, `recoveryAttempter`, `underlyingErrors`); `method shipped 1655 → 1657,
+open 160 → 158` (`+setUserInfoValueProviderForDomain:provider:`, `+userInfoValueProviderForDomain:`).
+
+**THE PROVIDER IS THE REASON THIS UNIT IS NOT FIVE GETTERS.** `+setUserInfoValueProviderForDomain:provider:`
+registers a block that is asked for a userInfo value the dictionary does NOT carry, so the check asserts
+**both orders**: the provider's answer where userInfo is silent, and userInfo where it speaks. A pair of
+doors that only stored and returned a block would be inert state — the project's stub rule — and the
+observable is `-localizedDescription`, which now consults the provider BEFORE its synthesized fallback
+("The operation could not be completed. (domain error code.)"). `-localizedFailureReason`,
+`-helpAnchor`, `-localizedRecoveryOptions`, `-localizedRecoverySuggestion` and `-recoveryAttempter` all read
+through the same one private lookup, so the order cannot drift between them.
+
+**`-underlyingErrors` IS NOT OPTIONAL AND THAT IS THE CONTRACT:** an EMPTY array when there is nothing,
+one element from `NSUnderlyingErrorKey` when Cocoa's singular key is what the caller wrote, and
+`NSMultipleUnderlyingErrorsKey` when it is there — the plural key wins, being the more specific door.
+
+**A STATED READING, NOT AN ASSUMPTION:** a provider is keyed by domain and a nil provider removes the
+registration (both asserted). A nil DOMAIN is treated as the wildcard — "the provider for every domain" —
+which is this library's reading of a case Apple's documentation does not spell out; it is written in the
+header where a caller will meet it.
+
+**THE TRAP WAS AN IMPORT, NOT LOGIC:** `NSError.h` did not import `NSArray.h`, and the compiler said it
+twice — `unknown type name 'NSArray'` and then `property with 'copy' attribute must be of object type`,
+which is the second error following from the first. Read the FIRST diagnostic.
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_error` → 1/1 case, 6/6 case
+checks, probe `FOUNDATION-ERROR RESULT ok=21 fail=0` (four new checks, and the probe's EXIT STATUS is the
+guard); `tools/foundation-sweep.py --check` consistent (`method 1657/158/399`, `property 698/66/172`).
+
 ## §63.187 — NSAffineTransform: the three AppKit doors — COMPLETE, and the sweep that had never read AppKit
 
 Three rows: `method shipped 1652 → 1655, open 163 → 160` — `-set`, `-concat`, `-transformBezierPath:` — so

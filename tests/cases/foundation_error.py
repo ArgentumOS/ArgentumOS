@@ -32,7 +32,7 @@ PROBE = "/System/Shared/tests/foundation_error"
 CHECKS = ("error-api-complete", "exception-api-complete", "error-value",
           "exception-raise", "exception-throw", "error-cross-tu", "assert-fires", "assert-passing", "assert-numbered", "param-assert", "assert-handler", "thread-dictionary",
           "error-code-families-bracket-their-own-codes", "error-domains-and-keys-are-their-own-names", "exception-names-are-their-own-names",
-          "uncaught-handler-round-trips", "uncaught-handler-is-called-by-the-runtime" )
+          "uncaught-handler-round-trips", "uncaught-handler-is-called-by-the-runtime", "error-value-properties", "error-underlying-errors", "error-user-info-provider", "error-user-info-provider-removed")
 
 
 class Case(BaseCase):

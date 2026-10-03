@@ -9,6 +9,8 @@
  */
 
 #import <Foundation/NSError.h>
+#import <Foundation/NSArray.h>
+#import <Foundation/NSString.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSDictionary.h>
 #include <stdio.h>
@@ -22,6 +24,11 @@ NSString *const NSLocalizedDescriptionKey = @"NSLocalizedDescriptionKey";
 NSString *const NSLocalizedFailureReasonKey = @"NSLocalizedFailureReason";
 NSString *const NSLocalizedRecoverySuggestionErrorKey = @"NSLocalizedRecoverySuggestion";
 NSString *const NSUnderlyingErrorKey = @"NSUnderlyingError";
+
+/* THE PROVIDERS, process-wide and keyed by domain; the nil domain is the wildcard and cannot be a dictionary
+ * key, so it is held on its own. Both are set and read only through the two class doors below. */
+static NSMutableDictionary *fn_user_info_value_providers = nil;
+static NSErrorUserInfoValueProvider fn_wildcard_provider = nil;
 
 @implementation NSError
 
@@ -159,10 +166,30 @@ NSInteger const NSValidationErrorMinimum = 10064;
 	return _userInfo;
 }
 
+/* THE ONE LOOKUP: userInfo first, the provider second — never the other way round, because a dictionary that
+ * HAS the value is the error's own answer. */
+- (nullable id)fnUserInfoValueForKey:(NSErrorUserInfoKey)key
+{
+	id held = [_userInfo objectForKey:key];
+	NSErrorUserInfoValueProvider provider;
+
+	if (held != nil) {
+		return held;
+	}
+	provider = [_domain length] > 0 ? [fn_user_info_value_providers objectForKey:_domain] : nil;
+	if (provider == nil) {
+		provider = fn_wildcard_provider;
+	}
+	return provider != nil ? provider(self, key) : nil;
+}
+
 - (NSString *)localizedDescription
 {
-	NSString *described = [_userInfo objectForKey:NSLocalizedDescriptionKey];
+	NSString *described = [self fnUserInfoValueForKey:NSLocalizedDescriptionKey];
 
+	if (![described isKindOfClass:[NSString class]]) {
+		described = nil;
+	}
 	if (described != nil) {
 		return described;
 	}
@@ -172,7 +199,77 @@ NSInteger const NSValidationErrorMinimum = 10064;
 
 - (NSString *)localizedFailureReason
 {
-	return [_userInfo objectForKey:NSLocalizedFailureReasonKey];
+	id reason = [self fnUserInfoValueForKey:NSLocalizedFailureReasonKey];
+
+	return [reason isKindOfClass:[NSString class]] ? reason : nil;
+}
+
+- (NSString *)helpAnchor
+{
+	id anchor = [self fnUserInfoValueForKey:NSHelpAnchorErrorKey];
+
+	return [anchor isKindOfClass:[NSString class]] ? anchor : nil;
+}
+
+- (NSArray *)localizedRecoveryOptions
+{
+	id options = [self fnUserInfoValueForKey:NSLocalizedRecoveryOptionsErrorKey];
+
+	return [options isKindOfClass:[NSArray class]] ? options : nil;
+}
+
+- (NSString *)localizedRecoverySuggestion
+{
+	id suggestion = [self fnUserInfoValueForKey:NSLocalizedRecoverySuggestionErrorKey];
+
+	return [suggestion isKindOfClass:[NSString class]] ? suggestion : nil;
+}
+
+- (id)recoveryAttempter
+{
+	return [self fnUserInfoValueForKey:NSRecoveryAttempterErrorKey];
+}
+
+/* AN EMPTY ARRAY IS THE CONTRACT FOR "NOTHING", and the single-error key is still honoured because Cocoa
+ * callers write it: NSMultipleUnderlyingErrorsKey wins when both are present, which is the reading that
+ * makes the plural door the more specific one. */
+- (NSArray *)underlyingErrors
+{
+	id many = [_userInfo objectForKey:NSMultipleUnderlyingErrorsKey];
+
+	if ([many isKindOfClass:[NSArray class]]) {
+		return many;
+	}
+	{
+		id one = [_userInfo objectForKey:NSUnderlyingErrorKey];
+
+		return [one isKindOfClass:[NSError class]] ? [NSArray arrayWithObject:one] : [NSArray array];
+	}
+}
+
++ (void)setUserInfoValueProviderForDomain:(NSErrorDomain)domain
+				 provider:(NSErrorUserInfoValueProvider)provider
+{
+	if (domain == nil || [domain length] == 0) {
+		fn_wildcard_provider = provider;
+		return;
+	}
+	if (fn_user_info_value_providers == nil) {
+		fn_user_info_value_providers = [[NSMutableDictionary alloc] init];
+	}
+	if (provider == nil) {
+		[fn_user_info_value_providers removeObjectForKey:domain];
+		return;
+	}
+	[fn_user_info_value_providers setObject:provider forKey:domain];
+}
+
++ (NSErrorUserInfoValueProvider)userInfoValueProviderForDomain:(NSErrorDomain)domain
+{
+	if (domain == nil || [domain length] == 0) {
+		return fn_wildcard_provider;
+	}
+	return [fn_user_info_value_providers objectForKey:domain];
 }
 
 - (BOOL)isEqualToError:(NSError *)other

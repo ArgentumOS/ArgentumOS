@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1655	open	160	struck	399
-# property	shipped	693	open	71	struck	172
+# method	shipped	1657	open	158	struck	399
+# property	shipped	698	open	66	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -932,17 +932,17 @@ method	open	+fileProviderErrorForRejectedDeletionOfItem:	NSError	App Support / U
 method	shipped	-init	NSError	App Support / User-Relevant Errors / Instance Methods	deprecated	objc
 method	shipped	-initWithDomain:code:userInfo:	NSError	App Support / User-Relevant Errors / Creating Error Objects	-	objc
 method	shipped	+new	NSError	App Support / User-Relevant Errors / Type Methods	deprecated	objc
-method	open	+setUserInfoValueProviderForDomain:provider:	NSError	App Support / User-Relevant Errors / Providing Error User Info	-	objc
-method	open	+userInfoValueProviderForDomain:	NSError	App Support / User-Relevant Errors / Providing Error User Info	-	objc
+method	shipped	+setUserInfoValueProviderForDomain:provider:	NSError	App Support / User-Relevant Errors / Providing Error User Info	-	objc
+method	shipped	+userInfoValueProviderForDomain:	NSError	App Support / User-Relevant Errors / Providing Error User Info	-	objc
 property	shipped	code	NSError	App Support / User-Relevant Errors / Getting Error Properties	-	objc
 property	shipped	domain	NSError	App Support / User-Relevant Errors / Getting Error Properties	-	objc
-property	open	helpAnchor	NSError	App Support / User-Relevant Errors / Displaying a Help Anchor	-	objc
+property	shipped	helpAnchor	NSError	App Support / User-Relevant Errors / Displaying a Help Anchor	-	objc
 property	shipped	localizedDescription	NSError	App Support / User-Relevant Errors / Getting a Localized Error Description	-	objc
 property	shipped	localizedFailureReason	NSError	App Support / User-Relevant Errors / Getting a Localized Error Description	-	objc
-property	open	localizedRecoveryOptions	NSError	App Support / User-Relevant Errors / Getting a Localized Error Description	-	objc
-property	open	localizedRecoverySuggestion	NSError	App Support / User-Relevant Errors / Getting a Localized Error Description	-	objc
-property	open	recoveryAttempter	NSError	App Support / User-Relevant Errors / Getting the Error Recovery Attempter	-	objc
-property	open	underlyingErrors	NSError	App Support / User-Relevant Errors / Instance Properties	-	objc
+property	shipped	localizedRecoveryOptions	NSError	App Support / User-Relevant Errors / Getting a Localized Error Description	-	objc
+property	shipped	localizedRecoverySuggestion	NSError	App Support / User-Relevant Errors / Getting a Localized Error Description	-	objc
+property	shipped	recoveryAttempter	NSError	App Support / User-Relevant Errors / Getting the Error Recovery Attempter	-	objc
+property	shipped	underlyingErrors	NSError	App Support / User-Relevant Errors / Instance Properties	-	objc
 property	shipped	userInfo	NSError	App Support / User-Relevant Errors / Getting Error Properties	-	objc
 method	shipped	+exceptionWithName:reason:userInfo:	NSException	App Support / Exceptions / Creating and Raising an NSException Object	-	objc
 method	shipped	-initWithName:reason:userInfo:	NSException	App Support / Exceptions / Creating and Raising an NSException Object	-	objc
