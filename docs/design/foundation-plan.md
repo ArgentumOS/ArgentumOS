@@ -15982,6 +15982,45 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.131 — THE ERA CLASSIFIER LANDS, AND ITS GROUND IS SOUND ONE WAY ONLY (2026-10-01)
+
+**`tools/foundation-era.py` — “was this declaration in Foundation at macOS X.Y?” — reported, never deleting, with the
+baseline as an argument (`python3 tools/foundation-era.py 10.2`).**
+
+**MEASURED AT THE TREE'S CHOSEN BASELINE: at 10.2, CUT 51 classes and 570 of 2996 member declarations (19%); at 10.4,
+CUT 48 classes and 598 of 3056 (20%).** Correctly kept, verified by name: `NSString`, `NSArray`, `NSDictionary`,
+`NSData`, `NSDate`, `NSFileManager`, `NSRunLoop`, `NSCoder`, `NSError`, `NSTask`, `NSFormatter`, `NSKeyedArchiver`,
+`NSURLConnection`, `NSHTTPCookie`. Correctly cut: the `NSURLSession` stack, `NSItemProvider`, `NSURLComponents`,
+`NSProgress`, `NSPredicate`, `NSDataDetector`, `NSTextCheckingResult`, `NSJSONSerialization`, `NSRegularExpression`,
+`NSOrthography`, `NSFileCoordinator`, `NSUserActivity`, the formatter family, `NSOperationFamily`, `NSMapTable`,
+`NSHashTable`, `NSMorphology`/`NSTermOfAddress`/`NSInflectionRule` (12.0/14.0).
+
+**⚠⚠ AND THE FINDING THAT CHANGES THE PLAN: THE SDK ANNOTATION GROUND IS SOUND IN THE CUT DIRECTION AND UNSOUND IN THE
+KEEP DIRECTION.** Annotated-later ⇒ cut is reliable. **But ‘unannotated’ does NOT mean ‘at the baseline’ — MEASURED:
+`NSUserNotification`, a macOS 10.8 class, carries NO annotation in Apple's header**, as do `NSXMLDocument` (10.4),
+`NSSortDescriptor` (10.3), and `NSLocale`/`NSCalendar`/`NSDateComponents` (10.4). **119 of our 221 headers are
+unannotated, so ‘no annotation ⇒ keep’ UNDER-CUTS BY AN UNKNOWN AMOUNT.** The 51 classes above are therefore a LOWER
+BOUND and not the cut list.
+
+***SO THE CRAWL IS REQUIRED RATHER THAN OPTIONAL***: Apple's per-page availability JSON is the only authoritative
+enumerator. It is a one-time walk of the owners, cached as a tracked artefact with the generator kept (§62.110's
+pattern), and `fetch_index()` already holds the plumbing — the index lists the page paths. **That is the next step, and
+NO CLASS IS REMOVED UNTIL IT IS DONE.**
+
+**AND THE RULER COST THREE GENERATIONS, WITH BOTH BUGS RECORDED BECAUSE THE FINAL RULE IS THE FINDING:
+A CLASS'S OWN ANNOTATION IS A STANDALONE LINE OR IT RIDES THE `@interface` LINE, AND A MEMBER'S RIDES THE END OF ITS
+DECLARATION.**
+ * generation 1 read `NSString`, `NSData`, `NSCoder`, `NSFileManager`, `NSError` and `NSAttributedString` as post-10.0 —
+   it took the annotation Apple puts on a CATEGORY;
+ * generation 2 fixed that and still read `NSCoder` as 10.11, `NSRunLoop` as 10.5 and `NSFileManager` as 10.8 — **a
+   backward scan takes the version of whatever the annotation TERMINATES** (`} API_AVAILABLE(macos(10.11))`, a
+   `FOUNDATION_EXPORT … API_AVAILABLE(macos(10.5))`);
+ * generation 3 tested the terminator **before** the annotation — **and an annotation line ENDS WITH `)`, so it broke on
+   the very line it was looking for** and every class read as unannotated (187 of 187). **The order is the bug: test for
+   the annotation FIRST, then decide whether the line terminates a construct.**
+ * and the member axis read ZERO for the same class of reason: members carry theirs INLINE, where `ann()` demands a
+   standalone line.
+
 ## §63.130 — §11.0 RETARGETED: THE SURFACE IS CUT TO A macOS BASELINE (2026-10-01, user decision dec-26854a2d2b84fa80)
 
 **THE USER'S INSTRUCTION: “We need to minimize our API surface, to maximize the time spent on perfecting the
