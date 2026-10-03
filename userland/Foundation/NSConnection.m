@@ -556,6 +556,78 @@ static void fn_unregister_connection(NSConnection *connection)
 	[[NSNotificationCenter defaultCenter] postNotificationName:NSConnectionDidDieNotification object:self];
 }
 
+
+/* ================== SEVEN STORED DOORS (§63.115) ================== */
+
+- (NSTimeInterval)requestTimeout
+{
+	return _requestTimeout;
+}
+
+- (void)setRequestTimeout:(NSTimeInterval)seconds
+{
+	_requestTimeout = seconds;
+}
+
+- (BOOL)independentConversationQueueing
+{
+	return _independentConversationQueueing;
+}
+
+- (void)setIndependentConversationQueueing:(BOOL)flag
+{
+	_independentConversationQueueing = flag;
+}
+
+- (void)addRequestMode:(NSString *)rmode
+{
+	if (rmode == nil) {
+		return;
+	}
+	if (_requestModes == nil) {
+		_requestModes = [[NSMutableArray alloc] init];
+	}
+	/* ⚠ NO DUPLICATES, AND THAT IS A CHOICE WRITTEN DOWN: a mode is a SET MEMBERSHIP in Apple's usage (a request is
+	 * served in a mode if the mode is in the list), so adding twice would be a way to make -removeRequestMode: leave
+	 * the connection serving where the caller believes it stopped. */
+	if (![_requestModes containsObject:rmode]) {
+		[_requestModes addObject:rmode];
+	}
+}
+
+- (void)removeRequestMode:(NSString *)rmode
+{
+	if (rmode == nil) {
+		return;
+	}
+	/* ⚠ EVERY OCCURRENCE, so the two doors are inverses even against a caller that added one twice through some
+	 * other path. */
+	while ([_requestModes containsObject:rmode]) {
+		[_requestModes removeObject:rmode];
+	}
+}
+
+- (NSArray *)requestModes
+{
+	/* ⚠ A COPY, WHICH IS THE PROPERTY'S OWN ATTRIBUTE: the caller gets a snapshot it cannot use to reach back into
+	 * the connection. An empty list answers an EMPTY ARRAY rather than nil, because "no modes" is a fact and nil is
+	 * not an array. */
+	if (_requestModes == nil) {
+		return [NSArray array];
+	}
+	return [[_requestModes copy] autorelease];
+}
+
+- (void)enableMultipleThreads
+{
+	_multipleThreadsEnabled = YES;
+}
+
+- (BOOL)multipleThreadsEnabled
+{
+	return _multipleThreadsEnabled;
+}
+
 - (void)dealloc
 {
 	fn_unregister_connection(self);
@@ -565,6 +637,7 @@ static void fn_unregister_connection(NSConnection *connection)
 	[_rootObject release];
 	[_name release];
 	[_replyValue release];
+	[_requestModes release];	/* §63.115: owned because -addRequestMode: makes it */
 	[super dealloc];
 }
 

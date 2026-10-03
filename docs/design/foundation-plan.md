@@ -15982,6 +15982,40 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.115 — SEVEN OF `NSConnection`'S DOORS LAND FIRST TRY ON FOUR MEASUREMENTS (2026-10-01)
+
+**WHAT LANDED: SEVEN OF `NSConnection`'S FOURTEEN ROWS — THE STORED ONES: `requestTimeout`,
+`independentConversationQueueing`, `-addRequestMode:`, `-removeRequestMode:`, `requestModes`,
+`-enableMultipleThreads` and `multipleThreadsEnabled`.**
+
+**MEASURED: `method shipped 2193 → 2196`, `open 337 → 334`; `property 1278 → 1282`, `open 180 → 176` — SEVEN ROWS;
+`--check` consistent; `make host-foundation` EXIT 0 with exactly the standing SIX warnings; `make testimg` EXIT 0;
+`make test TESTS='foundation_dobjects'` → `TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with **`FOUNDATION-DOBJECTS 20/20`**.**
+
+**⚠⚠ AND IT LANDED FIRST TRY FOR FOUR MEASUREMENTS TAKEN BEFORE A LINE WAS WRITTEN — EACH ONE AN INSTRUMENT THAT HAD
+ALREADY COST A ROUND SOMEWHERE ELSE:**
+ 1. **APPLE'S DECLARATIONS, SEARCHED BY PART AND NOT BY THE HUMAN SPELLING OF A SELECTOR** (§63.114's lesson): the
+    corpus declares all seven **without a comment**, so their reading is ours under D2 — **but the DECLARATIONS are
+    unambiguous, and `requestModes` is `@property (readonly, copy)`;**
+ 2. **THE CLASS'S EXISTING IVARS AND ITS `-dealloc`** — which releases each ivar explicitly, **SO THE NEW ONE NEEDED A
+    RELEASE, AND §63.79 TAUGHT WHAT HAPPENS WHEN IT DOES NOT GET ONE**;
+ 3. **THE PROBE'S `check()` SHAPE** — `(const char *name, BOOL held, NSString *why)` in THIS file, **the THIRD distinct
+    probe signature this session**;
+ 4. **AND THE CLASS'S FACTORY** — because the probe builds connections with `+connectionWithReceivePort:sendPort:` and
+    **nil/nil is a bare instance**, which is the right instrument for doors that are STATE and need no wire.
+    **§63.114's lesson applied rather than re-learned: READ HOW THE FILE YOU ARE EDITING DOES IT.**
+
+**AND THE D2 CHOICES ARE WRITTEN DOWN RATHER THAN IMPLIED: `requestModes` STARTS EMPTY** — *a connection that serves
+nothing is a state a caller should reach deliberately rather than inherit from a default we chose*; **add does not
+duplicate and remove removes EVERY occurrence, so the two doors are inverses**; `-enableMultipleThreads` is a **ONE-WAY
+LATCH**, which is what its name says and all it says; and the getter **answers a COPY** (the property's own attribute)
+**and an empty array rather than nil, because "no modes" is a fact and nil is not an array.**
+
+**AND THE CHECKS ARE SIX, ONE PER DOOR WITH THE PAIR ASSERTED AS INVERSES — PLUS THE ONE THAT ONLY A CLASS CAN CATCH:
+`connection-request-modes-answer-a-copy-not-the-store` asserts `isKindOfClass:[NSArray class]` AND NOT
+`[NSMutableArray class]`, WHICH IS THE COPY ATTRIBUTE AS AN OBSERVABLE FACT.** *A property declared `copy` whose getter
+returns the store is a property that lies, and the lie is invisible to any check that only reads the values back.*
+
 ## §63.114 — THE HOST DOOR LANDS, `NSExtensionContext` IS DONE, AND A SELECTOR IS NOT A WORD (2026-10-01)
 
 **WHAT LANDED: `-openURL:completionHandler:`, THE LAST `NSExtensionContext` ROW — SO THE OWNER IS COMPLETE, having begun

@@ -29,6 +29,12 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_dobjects"
 CHECKS = (
+    "connection-request-modes-answer-a-copy-not-the-store",
+    "connection-remove-request-mode-inverts-add",
+    "connection-request-modes-are-a-set-that-keeps-order",
+    "connection-multiple-threads-is-a-one-way-latch",
+    "connection-conversation-queueing-round-trips",
+    "connection-request-timeout-round-trips",
     "a-service-publishes-a-name-and-answers-for-its-root-object",
     "a-client-gets-a-proxy-for-the-published-name",
     "a-call-crosses-and-the-service-s-computed-answer-comes-back",

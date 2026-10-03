@@ -88,10 +88,34 @@ extern NSString *const NSFailedAuthenticationException;
 	id _delegate;			/* NOT retained: the delegate owns the connection, as Apple's does */
 	id _conversation;		/* made once, lazily, when a request first arrives */
 	NSTimeInterval _replyTimeout;	/* seconds a call waits for an answer; read by the sender, see -replyTimeout */
+	NSMutableArray *_requestModes;		/* OURS: the run-loop modes this connection's requests are served in */
+	NSTimeInterval _requestTimeout;		/* OURS: seconds a caller waits for an answer */
+	BOOL _independentConversationQueueing;	/* OURS: whether the conversation runs independently */
+	BOOL _multipleThreadsEnabled;		/* OURS: a ONE-WAY latch — -enableMultipleThreads sets it and nothing clears it */
 }
 
 + (nullable NSConnection *)connectionWithReceivePort:(nullable NSPort *)receivePort
 					    sendPort:(nullable NSPort *)sendPort;
+
+/* ⚠⚠ SEVEN OF `NSConnection`'S FOURTEEN ROWS, MEASURED BEFORE THEY WERE WRITTEN (§63.96's instrument, and by PART
+ * rather than by the human spelling of a selector — §63.114's lesson). Apple's corpus declares all seven WITHOUT a
+ * comment, so **THEIR READING IS OURS AND IS WRITTEN HERE (§11.6.1 D2):**
+ *
+ *   `requestModes` is `@property (readonly, copy)` — AN ORDERED LIST OF RUN-LOOP MODES, AND THE COPY ATTRIBUTE IS THE
+ *   CONTRACT: a caller must not be able to change the connection's modes through the array it was handed, so the
+ *   getter answers a COPY. **The list starts EMPTY**, because a connection with no modes serves no requests and that
+ *   is a state the caller should reach deliberately rather than by inheriting one we chose.
+ *   `requestTimeout` is an NSTimeInterval; `-enableMultipleThreads` is a ONE-WAY LATCH (it sets
+ *   `-multipleThreadsEnabled` and nothing clears it), which is what its name says and all it says.
+ *   `-addRequestMode:` adds at the END and does not duplicate; `-removeRequestMode:` removes EVERY occurrence of a
+ *   mode, so the two are inverses even if a caller adds one twice. */
+@property NSTimeInterval requestTimeout;
+@property BOOL independentConversationQueueing;
+- (void)addRequestMode:(NSString *)rmode;
+- (void)removeRequestMode:(NSString *)rmode;
+@property (readonly, copy) NSArray *requestModes;
+- (void)enableMultipleThreads;
+@property (readonly) BOOL multipleThreadsEnabled;
 
 /* EVERY LIVE CONNECTION — Apple's `+allConnections`. THE REGISTRY IS NON-OWNING, and that is a decision rather
  * than an oversight: a registry that retained its members would be a leak this class created, because a live

@@ -193,6 +193,45 @@ static void check(const char *name, BOOL held, NSString *why)
 
 int main(void)
 {
+
+	{
+		/* §63.115: THE SEVEN STORED DOORS. ⚠ A connection with NO PORTS is what the class's own factory produces for
+		 * nil/nil, and it is the right instrument here: these doors are state, and state does not need a wire. Each is
+		 * asserted ALONE, and the two that are a pair (add/remove) are asserted to be INVERSES. */
+		NSConnection *c = [NSConnection connectionWithReceivePort:nil sendPort:nil];
+
+		[c setRequestTimeout:12.5];
+		[c setIndependentConversationQueueing:YES];
+		[c enableMultipleThreads];
+		[c addRequestMode:@"NSDefaultRunLoopMode"];
+		[c addRequestMode:@"NSModalPanelRunLoopMode"];
+		[c addRequestMode:@"NSDefaultRunLoopMode"];	/* a duplicate, which must not appear twice */
+
+		check("connection-request-timeout-round-trips",
+		      [c requestTimeout] == 12.5,
+		      [NSString stringWithFormat:@"timeout=%g", (double)[c requestTimeout]]);
+		check("connection-conversation-queueing-round-trips",
+		      [c independentConversationQueueing],
+		      [NSString stringWithFormat:@"queueing=%d", (int)[c independentConversationQueueing]]);
+		check("connection-multiple-threads-is-a-one-way-latch",
+		      [c multipleThreadsEnabled],
+		      [NSString stringWithFormat:@"enabled=%d", (int)[c multipleThreadsEnabled]]);
+		check("connection-request-modes-are-a-set-that-keeps-order",
+		      [[c requestModes] count] == 2 &&
+		      [[[c requestModes] objectAtIndex:0] isEqualToString:@"NSDefaultRunLoopMode"] &&
+		      [[[c requestModes] objectAtIndex:1] isEqualToString:@"NSModalPanelRunLoopMode"],
+		      [NSString stringWithFormat:@"modes=%@", [c requestModes]]);
+		[c removeRequestMode:@"NSDefaultRunLoopMode"];
+		check("connection-remove-request-mode-inverts-add",
+		      [[c requestModes] count] == 1 &&
+		      [[[c requestModes] objectAtIndex:0] isEqualToString:@"NSModalPanelRunLoopMode"],
+		      [NSString stringWithFormat:@"after-remove=%@", [c requestModes]]);
+		check("connection-request-modes-answer-a-copy-not-the-store",
+		      [[c requestModes] isKindOfClass:[NSArray class]] &&
+		      ![[c requestModes] isKindOfClass:[NSMutableArray class]],
+		      @"the property is declared copy and the getter answers a copy");
+	}
+
 	setvbuf(stdout, NULL, _IONBF, 0);
 	signal(SIGPIPE, SIG_IGN);
 
