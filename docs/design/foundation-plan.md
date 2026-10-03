@@ -15982,6 +15982,45 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.109 — TWO OF THE DEPRECATED RESOURCE-DATA TRIO LAND, ALSO ON THE FIRST ATTEMPT (2026-10-01)
+
+**WHAT LANDED: `-resourceDataUsingCache:` and `-setResourceData:` — TWO OF THE DEPRECATED RESOURCE-DATA TRIO, WHICH ARE
+**OWED** RATHER THAN SKIPPED, because the user's policy of 2026-09-26 un-deprecated everything Apple had deprecated: an
+`API_DEPRECATED` on the other side changes what a row MEANS here, not whether it is ours.**
+
+**MEASURED: `method shipped 2189 → 2191`, `open 369 → 367`; `--check` consistent; `make host-foundation` EXIT 0 with
+exactly the standing SIX warnings; `make testimg` EXIT 0; `make test TESTS='foundation_url'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with **`FOUNDATION-URL 42/42`**.**
+
+**⚠⚠ AND IT LANDED FIRST TRY FOR THE SECOND UNIT IN A ROW, WHICH IS NOW A MEASURABLE HABIT RATHER THAN A GOOD
+INTENTION. THE MEASUREMENTS TAKEN BEFORE A LINE WAS WRITTEN:**
+ 1. **APPLE'S COMMENTS, WHICH CARRY BOTH CONTRACTS OUTRIGHT** — `-resourceDataUsingCache:` "BLOCKS to load the data if
+    necessary… if an equivalent URL has already been loaded and cached, its resource data will be returned
+    immediately"; `-setResourceData:` "attempt to WRITE the given arguments for the resource specified by the URL;
+    they RETURN SUCCESS OR FAILURE";
+ 2. **THE TREE'S DECLARATION STATE, AS COUNTS AND NOT AS A LIST** — each name appears ONCE in the header and **ZERO
+    times in the `.m`**, so **the header's hits are PROSE** and none of the three is declared. **That is §63.103's trap,
+    which cost a round there and costs one `grep -c` here**;
+ 3. **THE DOORS THIS WOULD CALL WERE COUNTED TOO** — `-writeToURL:` and `+dataWithContentsOfURL:` are both present in
+    `NSData.h` and `NSData.m`. **A delegation written against a door the tree does not have is a build error, and one
+    count prevents it** — which is §63.104's lesson (‘expected a type’ × 4) generalised from TYPES to CALLS.
+
+**⚠ AND THE THIRD IS DELIBERATELY NOT HERE: `-loadResourceDataNotifyingClient:usingCache:` is an ASYNCHRONOUS load that
+REGISTERS A CLIENT for an informal protocol's notifications, and "only one such background load can proceed at a
+time".** That needs the client-notification path MEASURED BEFORE IT IS WRITTEN rather than assumed — **which is the
+mistake this campaign has paid for six times, and the cheapest way to avoid the seventh is to stop while the ground is
+still unmeasured.**
+
+**AND THE CHECKS OBEY §63.108'S RULE THAT A CHECK MUST NOT FAIL FOR A REASON THAT IS NOT ITS OWN: NEITHER TOUCHES THE
+FILESYSTEM.** Both work on a NON-file URL, where each answer is determined by that door's contract — a load of
+something that is not a resource answers nil, and a WRITE to a URL that cannot hold data answers NO. **And
+`-setResourceData:` DOES NOT THROW AND DOES NOT PRETEND: a URL that cannot hold data answers NO rather than silently
+succeeding.**
+
+**AND WHAT REMAINS ON `NSURL` IS TWO ROWS: `-loadResourceDataNotifyingClient:usingCache:` and the UTType pair** — the
+first with a ground that is now measured enough to be written next time, and the second Foundation's, held back only by
+a corpus that does not carry their declarations.
+
 ## §63.108 — THE SECURITY-SCOPED PAIR LANDS ON THE FIRST ATTEMPT, AND THE THREE MEASUREMENTS THAT DID IT (2026-10-01)
 
 **WHAT LANDED: `-startAccessingSecurityScopedResource` and `-stopAccessingSecurityScopedResource`, ON THE CLASS — which

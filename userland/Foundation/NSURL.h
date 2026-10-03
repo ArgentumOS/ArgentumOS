@@ -286,6 +286,23 @@ typedef NSString *NSURLFileResourceType;
  * revokes the access" — with none ever granted there is nothing to remove and nothing to revoke. */
 - (BOOL)startAccessingSecurityScopedResource;
 - (void)stopAccessingSecurityScopedResource;
+/* ⚠⚠ TWO OF THE DEPRECATED RESOURCE-DATA TRIO, AND THEY ARE **OWED** RATHER THAN SKIPPED: the user's policy of
+ * 2026-09-26 un-deprecated everything Apple had deprecated, so an `API_DEPRECATED` on the other side changes what a row
+ * means here and not whether it is ours.
+ *
+ * ⚠ AND BOTH CONTRACTS ARE APPLE'S OWN COMMENTS, READ FROM THE CORPUS (§63.96's instrument):
+ *   `-resourceDataUsingCache:` — "BLOCKS to load the data if necessary. If shouldUseCache is YES, then if an
+ *    equivalent URL has already been loaded and cached, its resource data will be returned immediately. If
+ *    shouldUseCache is NO, a new load will be started";
+ *   `-setResourceData:` — "These attempt to WRITE the given arguments for the resource specified by the URL; they
+ *    RETURN SUCCESS OR FAILURE".
+ *
+ * ⚠ AND THE THIRD — `-loadResourceDataNotifyingClient:usingCache:` — IS DELIBERATELY NOT HERE: its contract is an
+ * ASYNCHRONOUS load that registers a CLIENT for an informal protocol's notifications, and "only one such background
+ * load can proceed at a time". **That needs the client-notification path measured before it is written, rather than
+ * assumed — which is the mistake this campaign has paid for six times.** */
+- (nullable NSData *)resourceDataUsingCache:(BOOL)shouldUseCache;
+- (BOOL)setResourceData:(NSData *)data;
 @end
 
 extern NSURLResourceKey const NSURLNameKey;

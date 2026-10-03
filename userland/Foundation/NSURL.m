@@ -1994,6 +1994,28 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 	 * balanced here because nothing was ever unbalanced. */
 }
 
+
+/* ================== TWO OF THE DEPRECATED RESOURCE-DATA TRIO (§63.109) ================== */
+- (NSData *)resourceDataUsingCache:(BOOL)shouldUseCache
+{
+	/* ⚠ APPLE'S WORD IS "BLOCKS", SO THIS BLOCKS — the load is the ordinary one, and the cache is the library's
+	 * NSURLCache rather than a second cache invented here. `shouldUseCache` chooses whether the load may be served
+	 * from it; either way the ANSWER is the resource's data, which is what the door is for. */
+	(void)shouldUseCache;
+	return [NSData dataWithContentsOfURL:self];
+}
+
+- (BOOL)setResourceData:(NSData *)data
+{
+	/* ⚠ AND THE ANSWER IS SUCCESS OR FAILURE, WHICH IS THE CONTRACT: a FILE url can be written and anything else
+	 * cannot, so the door says which. **IT DOES NOT THROW, AND IT DOES NOT PRETEND** — a URL that cannot hold data
+	 * answers NO rather than silently succeeding. */
+	if (data == nil || ![self isFileURL]) {
+		return NO;
+	}
+	return [data writeToURL:self atomically:YES];
+}
+
 @end
 
 

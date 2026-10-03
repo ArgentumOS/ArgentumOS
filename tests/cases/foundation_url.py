@@ -29,6 +29,8 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_url"
 CHECKS = (
+    "url-resource-data-using-cache-answers-nil-for-an-unreachable-url",
+    "url-set-resource-data-answers-no-for-a-url-that-cannot-hold-data",
     "url-security-scoped-stop-balances-nothing",
     "url-security-scoped-pair-answers-no",
     "url-promised-item-bulk-read-answers-a-dictionary",

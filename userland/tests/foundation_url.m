@@ -53,6 +53,23 @@ int main(void)
 {
 
 	{
+		/* §63.109: TWO OF THE DEPRECATED RESOURCE-DATA TRIO. ⚠ NEITHER CHECK TOUCHES THE FILESYSTEM — both work on a
+		 * NON-file URL, where each door's answer is determined by its own contract rather than by a fixture: a load of
+		 * something that is not a resource answers nil, and a WRITE to a URL that cannot hold data answers NO. */
+		NSURL *h = [NSURL URLWithString:@"https://example.invalid/nothing"];
+		BOOL wrote = [h setResourceData:[[NSData alloc] init]];
+		NSData *loaded = [h resourceDataUsingCache:NO];
+
+		check("url-set-resource-data-answers-no-for-a-url-that-cannot-hold-data",
+		      wrote == NO,
+		      [[NSString stringWithFormat:@"wrote=%d", (int)wrote] UTF8String]);
+		check("url-resource-data-using-cache-answers-nil-for-an-unreachable-url",
+		      loaded == nil,
+		      [[NSString stringWithFormat:@"loaded=%@", loaded] UTF8String]);
+	}
+
+
+	{
 		/* §63.108: THE SECURITY-SCOPED PAIR, ASSERTED BY ITS CONSEQUENCE RATHER THAN BY ITS RETURN ALONE. The NO is
 		 * the claim "no access was granted"; the second check asserts THAT THE ANSWER DOES NOT ACCUMULATE, because a
 		 * door counting references it cannot honour would make the paired stop a lie. No filesystem call is made, so
