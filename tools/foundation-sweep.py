@@ -527,6 +527,28 @@ OTHER_FRAMEWORK = frozenset((
     "encodeDirectionalEdgeInsets:forKey:",
     "encodeUIEdgeInsets:forKey:",
     "encodeUIOffset:forKey:",
+
+    # §63.113 — FIFTEEN MORE ON THE SAME POSITIVE GROUND, AND THIS SET IS THE CLEANEST EXAMPLE OF WHAT THAT GROUND IS
+    # FOR: EVERY ONE IS A FRAMEWORK'S EXTENSION OF A FOUNDATION CLASS — `NSExtensionContext` — WHICH IS EXACTLY WHY IT
+    # ARRIVES IN THE DERIVED SURFACE AS A ROW OWNED BY THE CLASS (§63.81). ReplayKit's broadcast doors, UserNotifications'
+    # `dismissNotificationContentExtension`/`performNotificationDefaultAction`/`notificationActions`, WidgetKit's
+    # `widget…`/`hostedView…` size and display-mode doors, Intents' `intent`, and MediaPlayer's `mediaPlaying…` pair —
+    # **NAMED TYPES AND NAMED FAMILIES, NOT AN ABSENCE.**
+    "completeRequestWithBroadcastURL:broadcastConfiguration:setupInfo:",
+    "completeRequestWithBroadcastURL:setupInfo:",
+    "dismissNotificationContentExtension",
+    "interfaceParametersDescription",
+    "loadBroadcastingApplicationInfoWithCompletion:",
+    "mediaPlayingPaused",
+    "mediaPlayingStarted",
+    "performNotificationDefaultAction",
+    "widgetMaximumSizeForDisplayMode:",
+    "hostedViewMaximumAllowedSize",
+    "hostedViewMinimumAllowedSize",
+    "intent",
+    "notificationActions",
+    "widgetActiveDisplayMode",
+    "widgetLargestAvailableDisplayMode",
 ))
 
 

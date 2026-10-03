@@ -25,9 +25,9 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: 32-bit-only 4, declined 443, other-framework 112, unsupported-by-apple 2
+# why the struck rows are struck: 32-bit-only 4, declined 443, other-framework 127, unsupported-by-apple 2
 #
-# AND 555 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# AND 549 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
 # row is, never that it is excluded.
 #
@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2192   open  347   struck  389
-#   property   shipped 1278   open  186   struck  172
+#   method     shipped 2192   open  338   struck  398
+#   property   shipped 1278   open  180   struck  178
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -1167,23 +1167,23 @@ property	shipped	trueExpression	NSExpression	Fundamentals / Filltering / Evaluat
 property	shipped	variable	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
 method	shipped	-cancelRequestWithError:	NSExtensionContext	App Support / Extension Support / Handling requests	-	objc
 method	shipped	-completeRequestReturningItems:completionHandler:	NSExtensionContext	App Support / Extension Support / Handling requests	-	objc
-method	open	-completeRequestWithBroadcastURL:broadcastConfiguration:setupInfo:	NSExtensionContext	App Support / Extension Support / Deprecated	deprecated	objc
-method	open	-completeRequestWithBroadcastURL:setupInfo:	NSExtensionContext	App Support / Extension Support / Supporting broadcasting	deprecated	objc
-method	open	-dismissNotificationContentExtension	NSExtensionContext	App Support / Extension Support / Handling notification actions	-	objc
-method	open	-interfaceParametersDescription	NSExtensionContext	App Support / Extension Support / Getting Siri-related information	-	objc
-method	open	-loadBroadcastingApplicationInfoWithCompletion:	NSExtensionContext	App Support / Extension Support / Supporting broadcasting	deprecated	objc
-method	open	-mediaPlayingPaused	NSExtensionContext	App Support / Extension Support / Controlling media playback in notification content extensions	-	objc
-method	open	-mediaPlayingStarted	NSExtensionContext	App Support / Extension Support / Controlling media playback in notification content extensions	-	objc
+method	struck	-completeRequestWithBroadcastURL:broadcastConfiguration:setupInfo:	NSExtensionContext	App Support / Extension Support / Deprecated	other-framework	objc
+method	struck	-completeRequestWithBroadcastURL:setupInfo:	NSExtensionContext	App Support / Extension Support / Supporting broadcasting	other-framework	objc
+method	struck	-dismissNotificationContentExtension	NSExtensionContext	App Support / Extension Support / Handling notification actions	other-framework	objc
+method	struck	-interfaceParametersDescription	NSExtensionContext	App Support / Extension Support / Getting Siri-related information	other-framework	objc
+method	struck	-loadBroadcastingApplicationInfoWithCompletion:	NSExtensionContext	App Support / Extension Support / Supporting broadcasting	other-framework	objc
+method	struck	-mediaPlayingPaused	NSExtensionContext	App Support / Extension Support / Controlling media playback in notification content extensions	other-framework	objc
+method	struck	-mediaPlayingStarted	NSExtensionContext	App Support / Extension Support / Controlling media playback in notification content extensions	other-framework	objc
 method	open	-openURL:completionHandler:	NSExtensionContext	App Support / Extension Support / Opening URLs	-	objc
-method	open	-performNotificationDefaultAction	NSExtensionContext	App Support / Extension Support / Handling notification actions	-	objc
-method	open	-widgetMaximumSizeForDisplayMode:	NSExtensionContext	App Support / Extension Support / Deprecated	deprecated	objc
-property	open	hostedViewMaximumAllowedSize	NSExtensionContext	App Support / Extension Support / Getting Siri-related information	-	objc
-property	open	hostedViewMinimumAllowedSize	NSExtensionContext	App Support / Extension Support / Getting Siri-related information	-	objc
+method	struck	-performNotificationDefaultAction	NSExtensionContext	App Support / Extension Support / Handling notification actions	other-framework	objc
+method	struck	-widgetMaximumSizeForDisplayMode:	NSExtensionContext	App Support / Extension Support / Deprecated	other-framework	objc
+property	struck	hostedViewMaximumAllowedSize	NSExtensionContext	App Support / Extension Support / Getting Siri-related information	other-framework	objc
+property	struck	hostedViewMinimumAllowedSize	NSExtensionContext	App Support / Extension Support / Getting Siri-related information	other-framework	objc
 property	shipped	inputItems	NSExtensionContext	App Support / Extension Support / Storing extension items	-	objc
-property	open	intent	NSExtensionContext	App Support / Extension Support / Populating your share extension with metadata	-	objc
-property	open	notificationActions	NSExtensionContext	App Support / Extension Support / Handling notification actions	-	objc
-property	open	widgetActiveDisplayMode	NSExtensionContext	App Support / Extension Support / Deprecated	deprecated	objc
-property	open	widgetLargestAvailableDisplayMode	NSExtensionContext	App Support / Extension Support / Deprecated	deprecated	objc
+property	struck	intent	NSExtensionContext	App Support / Extension Support / Populating your share extension with metadata	other-framework	objc
+property	struck	notificationActions	NSExtensionContext	App Support / Extension Support / Handling notification actions	other-framework	objc
+property	struck	widgetActiveDisplayMode	NSExtensionContext	App Support / Extension Support / Deprecated	other-framework	objc
+property	struck	widgetLargestAvailableDisplayMode	NSExtensionContext	App Support / Extension Support / Deprecated	other-framework	objc
 property	shipped	attachments	NSExtensionItem	App Support / Attachments / Item Contents	-	objc
 property	shipped	attributedContentText	NSExtensionItem	App Support / Attachments / Item Contents	-	objc
 property	shipped	attributedTitle	NSExtensionItem	App Support / Attachments / Identifying the Item	-	objc

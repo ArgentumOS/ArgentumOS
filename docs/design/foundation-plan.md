@@ -15982,6 +15982,34 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.113 — FIFTEEN ROWS LEAVE `NSExtensionContext`, AND THE SET IS THE CLEANEST EXAMPLE OF THE POSITIVE GROUND (2026-10-01)
+
+**WHAT LANDED: FIFTEEN ROWS STRUCK — `NSExtensionContext` CUT FROM SIXTEEN TO ONE — and every one of them is a
+FRAMEWORK'S EXTENSION OF A FOUNDATION CLASS.**
+
+**MEASURED: `method open 349 → 338`, `struck 389 → 398`; `property open 186 → 180`, `struck 172 → 178` — FIFTEEN
+ROWS; `--check` consistent; and the owner's heading went from `(16)` to a single row.**
+
+**⚠⚠ AND THIS SET IS THE CLEANEST EXAMPLE OF WHAT §63.102'S GROUND IS FOR, WHICH IS WORTH SAYING PLAINLY BECAUSE THE
+SAME SHAPE KEEPS ARRIVING: every one of the fifteen is a FRAMEWORK'S EXTENSION OF A FOUNDATION CLASS — ReplayKit's
+broadcast doors, UserNotifications' `dismissNotificationContentExtension`/`performNotificationDefaultAction`/
+`notificationActions`, WidgetKit's `widget…` and `hostedView…` size and display-mode doors, Intents' `intent`,
+MediaPlayer's `mediaPlaying…` pair, and the extension-kit pair.** ***THAT IS EXACTLY WHY THEY ARRIVE AS ROWS OWNED BY
+`NSExtensionContext`: THE DERIVED SURFACE GROUPS A CLASS'S EXTENSIONS UNDER THE CLASS (§63.81), SO THE OWNER OF A ROW IS
+NOT ITS DECLARER — AND §63.113 IS THAT FACT FIFTEEN TIMES OVER.*** **Named types and named families, not an absence.**
+
+**⚠ AND THE ONE THAT REMAINS IS THE ONE THAT IS OURS: `-openURL:completionHandler:`.** ⚠ AND ITS COMMENT WAS **NOT
+FOUND** in the corpus's `NSExtensionContext.h`, **so the next unit begins with a MEASUREMENT rather than a plan** —
+this tree has 221 headers and the corpus has 170, and a door absent from the corpus is exactly the case the coverage
+caveat (§63.102) says cannot be concluded from.
+
+**⚠ AND THE METHOD §63.112 PAID THREE ROUNDS FOR WAS USED HERE AND COST NOTHING: EVERY NAME VALIDATED BEFORE ANYTHING WAS
+WRITTEN, WITH THE VALIDATION'S OWN LINE PRINTED ("all 15 names are new to the file").** *One check, before the write
+rather than after the failure.*
+
+**AND THE CAMPAIGN'S OPEN COUNT IS NOW 338 METHODS AND 180 PROPERTIES** — down from 419 and 200 when this session's
+`NSAttributedString` work began.
+
 ## §63.112 — A SEVENTH GROUND ("UNSUPPORTED BY APPLE"), `NSCoder` LEAVES THE WORK LIST, AND THE COLON (2026-10-01)
 
 **THE USER'S DECISION (`dec-d87c6598da7ee665`): `-encodeNXObject:` AND `-decodeNXObject` ARE STRUCK AS UNSUPPORTED BY
