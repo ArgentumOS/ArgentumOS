@@ -137,6 +137,15 @@ extern NSString *const NSFailedAuthenticationException;
 + (NSConnection *)defaultConnection;
 @property (readonly, copy) NSDictionary *statistics;
 
+/* ⚠⚠ APPLE'S EXTENSION POINT FOR PORT SUBCLASSES, WHOSE CONTRACT THE CORPUS PUBLISHES VERBATIM: “NSPort subclasses
+ * should use this method to ask a connection object to dispatch Distributed Objects component data received over the
+ * wire. This will decode the data, AUTHENTICATE, and send the message.”
+ *
+ * ⚠ AND IT IS A DOOR OVER A PATH THAT ALREADY EXISTED: this class's `-handlePortMessage:` has served exactly this way
+ * since §62.53, so the body MOVED to `-fnDispatchComponents:` and both doors call it — **the authentication refusal
+ * its comment names lives in ONE place, which is the property a second decoder would have destroyed.** */
+- (void)dispatchWithComponents:(NSArray *)components;
+
 /* EVERY LIVE CONNECTION — Apple's `+allConnections`. THE REGISTRY IS NON-OWNING, and that is a decision rather
  * than an oversight: a registry that retained its members would be a leak this class created, because a live
  * connection could never reach `-dealloc` while the registry held it. Each connection withdraws its own entry

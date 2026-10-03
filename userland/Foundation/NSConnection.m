@@ -415,11 +415,15 @@ static void fn_unregister_connection(NSConnection *connection)
 	[reply release];
 }
 
-- (void)handlePortMessage:(NSPortMessage *)message
+- (void)fnDispatchComponents:(NSArray *)components
 {
+	/* ⚠⚠ THE SERVE BODY, MOVED HERE SO THERE IS ONE OF IT (§63.117). This file's own header comment already said
+	 * where the answer lives — "the answer, in one place each: `-handlePortMessage:` SERVES, `-fnSendInvocation:error:`
+	 * asks" — and Apple's port-subclass extension point is THE SAME PATH WITH THE COMPONENTS INSTEAD OF A MESSAGE.
+	 * **A SECOND DECODER WOULD BE A SECOND PLACE FOR THE AUTHENTICATION REFUSAL BELOW TO BE FORGOTTEN.** */
 	NSPortCoder *coder = [[NSPortCoder alloc] initWithReceivePort:_receivePort
 							     sendPort:_sendPort
-							   components:[message components]];
+							   components:components];
 	id decoded = [coder decodeObject];
 
 	[coder release];
@@ -436,6 +440,21 @@ static void fn_unregister_connection(NSConnection *connection)
 		return;
 	}
 	[self fnAnswerRequest:decoded];
+}
+
+- (void)handlePortMessage:(NSPortMessage *)message
+{
+	/* ⚠ ONE LINE NOW, and the ROUND-TRIP THIS CLASS ALREADY HAS — the probe's live echo checks — is the regression test
+	 * for the extraction. */
+	[self fnDispatchComponents:[message components]];
+}
+
+- (void)dispatchWithComponents:(NSArray *)components
+{
+	/* ⚠ APPLE'S EXTENSION POINT: "NSPort subclasses should use this method to ask a connection object to dispatch
+	 * Distributed Objects component data received over the wire." THE COMPONENTS GO TO THE SAME SERVE PATH THE PORT
+	 * DELEGATE USES, so the decoding and the "authenticate" step its comment names are the SAME ONES. */
+	[self fnDispatchComponents:components];
 }
 
 /* ---- ASKING ------------------------------------------------------------------------------------- */

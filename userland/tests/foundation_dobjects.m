@@ -195,6 +195,25 @@ int main(void)
 {
 
 	{
+		/* §63.117: THE PORT-SUBCLASS EXTENSION POINT. ⚠ WHAT IS ASSERTED IS THE PROPERTY APPLE'S COMMENT NAMES —
+		 * “decode the data, AUTHENTICATE, and send the message” — BY HANDING IT SOMETHING THAT IS NOT A REQUEST: an
+		 * unauthenticated payload must be REFUSED WITHOUT DISTURBING THE CONNECTION. **That refusal is exactly what
+		 * moved into one place with the serve body, so this check is the extraction's own test.** The connection is a
+		 * live serving one, so the refusal is observed on a connection that could have been damaged by it. */
+		id service = [[NSObject alloc] init];
+		NSConnection *c = [NSConnection serviceConnectionWithName:@"probe.dispatch" rootObject:service];
+		NSArray *empty = [NSArray array];
+
+		BOOL validBefore = [c isValid];
+		[c dispatchWithComponents:empty];
+
+		check("connection-dispatch-with-components-refuses-a-payload-that-is-not-a-request",
+		      validBefore && [c isValid] && ![c multipleThreadsEnabled],
+		      [NSString stringWithFormat:@"before=%d after=%d", (int)validBefore, (int)[c isValid]]);
+	}
+
+
+	{
 		/* §63.116: THE TWO DOORS THAT COULD BE BUILT ON WHAT THE CLASS ALREADY KNOWS. ⚠ BOTH ARE ASSERTED BY
 		 * PROPERTIES RATHER THAN BY SHAPE: the default connection is asserted to be THE SAME ONE TWICE (which is what
 		 * "default" means), and the statistics dictionary to report the connection's OWN facts — including one that

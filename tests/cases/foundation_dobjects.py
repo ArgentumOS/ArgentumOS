@@ -29,6 +29,7 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_dobjects"
 CHECKS = (
+    "connection-dispatch-with-components-refuses-a-payload-that-is-not-a-request",
     "connection-statistics-values-are-numbers",
     "connection-statistics-reports-its-own-state",
     "connection-default-connection-is-the-same-one-twice",

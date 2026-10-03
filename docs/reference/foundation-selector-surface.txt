@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2197   open  333   struck  398
+#   method     shipped 2198   open  332   struck  398
 #   property   shipped 1283   open  175   struck  178
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -718,7 +718,7 @@ method	shipped	+connectionWithRegisteredName:host:	NSConnection	Low-Level Utilit
 method	shipped	+connectionWithRegisteredName:host:usingNameServer:	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Remote Object	deprecated	objc
 method	open	+currentConversation	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Conversation	deprecated	objc
 method	shipped	+defaultConnection	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting the Default Instance	deprecated	objc
-method	open	-dispatchWithComponents:	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting Ports	deprecated	objc
+method	shipped	-dispatchWithComponents:	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting Ports	deprecated	objc
 method	shipped	-enableMultipleThreads	NSConnection	Low-Level Utilities / Legacy / Legacy / Running the Connection in a New Thread	deprecated	objc
 method	shipped	-initWithReceivePort:sendPort:	NSConnection	Low-Level Utilities / Legacy / Legacy / Creating Instances	deprecated	objc
 method	shipped	-invalidate	NSConnection	Low-Level Utilities / Legacy / Legacy / Configuring Instances	deprecated	objc

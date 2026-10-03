@@ -15982,6 +15982,39 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.117 — THE PORT-SUBCLASS EXTENSION POINT LANDS, AND THE WARNING COUNT CATCHES WHAT THE LEDGER CANNOT (2026-10-01)
+
+**WHAT LANDED: `-dispatchWithComponents:` — APPLE'S EXTENSION POINT FOR PORT SUBCLASSES, AS A DOOR OVER A PATH THAT
+ALREADY EXISTED, WITH THE SERVE BODY MOVED RATHER THAN COPIED.**
+
+**MEASURED: `method shipped 2197 → 2198`, `open 333 → 332`; `--check` consistent; `make host-foundation` EXIT 0 with
+exactly the standing SIX warnings; `make testimg` EXIT 0; `make test TESTS='foundation_dobjects'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with **`FOUNDATION-DOBJECTS 24/24`** — *and the twenty-three that were already
+there INCLUDE THE LIVE ECHO ROUND-TRIP, WHICH IS THE REGRESSION TEST FOR THE EXTRACTION.***
+
+**AND THE CONTRACT IS APPLE'S, VERBATIM: “NSPort subclasses should use this method to ask a connection object to
+dispatch Distributed Objects component data received over the wire. This will decode the data, AUTHENTICATE, and send
+the message.”** — **AND THIS FILE'S OWN HEADER COMMENT HAD ALREADY SAID WHERE THAT ANSWER LIVES**: *“the answer, in one
+place each: `-handlePortMessage:` SERVES, `-fnSendInvocation:error:` asks.”* The two doors differ ONLY in where the
+components come from — one has a message, the other HAS them — **so the body moved to `-fnDispatchComponents:` and both
+call it: A SECOND DECODER WOULD BE A SECOND PLACE FOR THE AUTHENTICATION REFUSAL TO BE FORGOTTEN.**
+
+**⚠⚠ AND THE FIRST ATTEMPT FAILED IN THE SESSION'S LESSON'S MOST DANGEROUS FORM, WHICH IS WHY THE REST OF THIS RECORD
+MATTERS MORE THAN THE DOOR: I TRANSCRIBED THE BODY BY HAND, ITS WHITESPACE DID NOT MATCH, AND THE `.m` EDIT SILENTLY DID
+NOTHING — WHILE THE LATER EDITS IN THE SAME SCRIPT RAN.** The result was **a door DECLARED in the header, listed
+SHIPPED in the ledger, and implemented NOWHERE** — and **`--check` called the ledger CONSISTENT, because it checks
+declarations against the ledger and the declaration was there.**
+
+**AND THE STANDING WARNING COUNT CAUGHT IT — THE FIRST TIME IT HAS CAUGHT A STATE EVERY OTHER INSTRUMENT CALLED
+CONSISTENT.** Seven warnings where six are standing, one of them `method definition … not found`, and `testimg` refused
+the image. ***THE COUNT IS WATCHED BECAUSE IT IS STANDING, AND THIS IS WHY THAT HABIT EARNS ITS PLACE: IT IS THE ONLY
+INSTRUMENT THAT LOOKS AT THE BODY RATHER THAN AT THE PROMISE.***
+
+**AND THE REPAIR APPLIED §63.112'S PATTERN PROPERLY FOR THE FIRST TIME UNDER PRESSURE: EVERY ANCHOR'S COUNT PRINTED BEFORE
+ANYTHING WAS WRITTEN, EVERY REGEX VALIDATED AS EXACTLY ONE MATCH, AND THE SCRIPT REFUSED WHEN ONE WAS ZERO.** The
+hand-transcription was replaced by regexes that do not depend on my reading of tabs, **and the same discipline that made
+§63.108 and §63.109 land first try is what fixed this one on the second.**
+
 ## §63.116 — TWO MORE CONNECTION DOORS LAND, THE OTHER FIVE ARE ITEMISED, AND THE IMPORT COSTS ITS EIGHTH ROUND (2026-10-01)
 
 **WHAT LANDED: `+defaultConnection` AND `statistics` — TWO MORE OF `NSConnection`'S SEVEN REMAINING ROWS, BOTH BUILT ON
