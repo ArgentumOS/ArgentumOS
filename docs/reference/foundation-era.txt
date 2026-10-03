@@ -201,3 +201,49 @@ NSXMLParser	10.0	-
 # agrees: "MacOS-X 10.4.0"). THE FILTER COULD NOT SEE THEM WITHOUT THIS.
 NSComparisonPredicate	10.4	-
 NSCompoundPredicate	10.4	-
+
+# ⚠⚠ THIRTEEN OWNERS ADDED BY HAND (2026-10-03, §63.162), FROM AN AUDIT OF THE 104 OWNERS THIS GROUND WAS
+# MISSING. THE AUDIT'S MECHANISM: the 10.2 filter of §63.135 JUDGES AN OWNER BY THIS FILE, so an owner absent
+# here KEPT ITS LEDGER ROWS — which is how NSComparisonPredicate and NSCompoundPredicate survived (§63.161).
+# OF THE 104: FORTY-NINE carry only STRUCK rows (already out; a missing entry cannot change their fate) and
+# FIFTY-FIVE carry shipped or open rows — of which THIRTEEN are provably later than 10.2 and are entered here.
+# THE REST ARE 10.0–10.2 CLASSES (NSMutableArray, NSKeyedUnarchiver, NSXMLElement, NSTask, NSMutableString,
+# NSXMLDTDNode, NSIndexSet's mutable twin, the delegate protocols of the 10.2 loading system, …) and are NOT
+# entered rather than guessed at: this file is a dated measurement, and an entry is only written when a source
+# says so. EACH LINE BELOW NAMES ITS SOURCE, because THE GENERATOR CANNOT RUN — Apple's per-name page endpoint
+# 404s (measured in §63.161) — so this is the only way the ground can grow.
+#
+#   NSCondition                         10.5   https://developer.apple.com/documentation/foundation/nscondition
+#   NSURLQueryItem                      10.10  Apple's page + .NET's [Introduced(MacOSX, 10, 10)]
+#   NSUserNotification                  10.8   Apple's page (macOS 10.8–11.0 Deprecated)
+#   NSUserActivityDelegate              10.10  https://developer.apple.com/documentation/foundation/nsuseractivitydelegate
+#   NSItemProviderReading               10.13  https://developer.apple.com/documentation/foundation/nsitemproviderreading
+#   NSItemProviderWriting               10.13  https://developer.apple.com/documentation/foundation/nsitemproviderwriting
+#   NSMorphologyCustomPronoun           12.0   Apple's page (deprecated 14.0 in favour of NSTermOfAddress)
+#   NSMorphologyPronoun                 14.0   https://developer.apple.com/documentation/foundation/nsmorphologypronoun
+#   NSInflectionRuleExplicit            12.0   https://developer.apple.com/documentation/foundation/nsinflectionruleexplicit
+#   NSAttributedStringMarkdownParsingOptions 12.0  Apple's page + the macOS 11.3→12.0 Foundation SDK diff
+#   NSFileAccessIntent                  10.10  Apple's page + the OS X 10.10 release notes
+#   NSExtensionRequestHandling          10.10  the .NET binding's [Introduced(MacOSX, 10, 10)] — and Apple's OWN
+#                                              page reads "macOS 10.0", which is an artifact: extensions did not
+#                                              exist before 10.10. RECORDED RATHER THAN SILENTLY PREFERRED.
+#   NSOrderedCollectionChange           10.15  https://developer.apple.com/documentation/foundation/nsorderedcollectionchange
+#
+# AND ONE OWNER IS NOT ENTERED BECAUSE IT IS NOT A macOS API AT ALL, WHICH IS A DIFFERENT FACT AND NEEDS A
+# DIFFERENT GROUND: **NSBundleResourceRequest** (nine shipped rows here) is iOS 9 / Mac Catalyst only — Apple
+# lists NO native macOS version, .NET marks it [UnsupportedOSPlatform("macos")], and Apple's own text says it
+# "ignores calls from Mac apps built with Mac Catalyst". IT IS A CANDIDATE FOR AN `ios-only` STRIKE GROUND, not
+# for this table: writing a version it does not have would be the mistake this file exists to prevent.
+NSCondition	10.5	-
+NSURLQueryItem	10.10	-
+NSUserNotification	10.8	11.0
+NSUserActivityDelegate	10.10	-
+NSItemProviderReading	10.13	-
+NSItemProviderWriting	10.13	-
+NSMorphologyCustomPronoun	12.0	14.0
+NSMorphologyPronoun	14.0	-
+NSInflectionRuleExplicit	12.0	-
+NSAttributedStringMarkdownParsingOptions	12.0	-
+NSFileAccessIntent	10.10	-
+NSExtensionRequestHandling	10.10	-
+NSOrderedCollectionChange	10.15	-

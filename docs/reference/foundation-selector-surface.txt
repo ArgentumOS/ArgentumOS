@@ -12,6 +12,24 @@
 # page metadata. REMOVED rather than struck: struck is a claim about our headers, and the headers
 # lose these names in the same campaign.
 #
+# ⚠⚠ AND FIFTY-EIGHT MORE ROWS WERE REMOVED THE SAME WAY (2026-10-03, §63.162), FROM AN AUDIT OF THE OWNERS THIS
+# FILE'S GROUND WAS MISSING. THE MECHANISM IS THE ONE ABOVE, SEEN FROM THE OTHER SIDE: the filter judges an owner
+# BY docs/reference/foundation-era.txt, so an owner ABSENT from that file KEPT ITS ROWS — which is how
+# NSComparisonPredicate and NSCompoundPredicate survived until §63.161. THE AUDIT: of the 104 owners the ground
+# lacked, 49 carried only struck rows (harmless) and 55 carried live ones; THIRTEEN of those are provably later
+# than 10.2 and are now entered in the ground WITH A SOURCE PER LINE, and their rows are removed here:
+#   NSCondition (10.5), NSURLQueryItem (10.10), NSUserActivityDelegate (10.10), NSFileAccessIntent (10.10),
+#   NSExtensionRequestHandling (10.10), NSItemProviderReading/Writing (10.13), NSOrderedCollectionChange (10.15),
+#   NSUserNotification (10.8, its rows already gone), and the macOS-12 localisation set
+#   (NSMorphologyCustomPronoun, NSMorphologyPronoun 14.0, NSInflectionRuleExplicit,
+#   NSAttributedStringMarkdownParsingOptions).
+# AND ONE IS REMOVED WITHOUT AN ERA ENTRY BECAUSE IT IS NOT A macOS API AT ALL: **NSBundleResourceRequest** is
+# iOS 9 / Mac Catalyst only (Apple lists no native macOS version; .NET marks it [UnsupportedOSPlatform("macos")]).
+# ITS NINE ROWS GO WITH THE THIRTEEN'S FORTY-NINE — and it is the first candidate for an `ios-only` STRIKE GROUND,
+# because a table of macOS versions cannot express "this has no macOS version".
+# THE ROWS GO NOW AND THE CLASSES FOLLOW, ONE FAMILY PER UNIT (the user's decision, dec-ada6e93905c621d5): that is
+# §63.135's own ordering — "REMOVED rather than struck ... the headers lose these names in the same campaign".
+#
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
@@ -50,8 +68,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-# method	shipped	1643	open	227	struck	397
-# property	shipped	707	open	92	struck	172
+# method	shipped	1613	open	227	struck	397
+# property	shipped	679	open	92	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -318,12 +336,6 @@ property	shipped	length	NSAttributedString	Fundamentals / Strings with Metadata 
 property	shipped	string	NSAttributedString	Fundamentals / Strings with Metadata / Getting the characters	-	objc
 property	shipped	textTypes	NSAttributedString	Fundamentals / Strings with Metadata / Getting the supported text-file formats	-	objc
 property	shipped	textUnfilteredTypes	NSAttributedString	Fundamentals / Strings with Metadata / Getting the supported text-file formats	-	objc
-method	shipped	-init	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Creating a Markdown Parsing Options Instance	-	objc
-property	shipped	allowsExtendedAttributes	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
-property	shipped	appliesSourcePositionAttributes	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
-property	shipped	failurePolicy	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
-property	shipped	interpretedSyntax	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
-property	shipped	languageCode	NSAttributedStringMarkdownParsingOptions	Fundamentals / Strings with Metadata / Creating attributed strings / Creating from markdown / Determining Markdown Parsing Options	-	objc
 method	shipped	-initWithStartLine:startColumn:endLine:endColumn:	NSAttributedStringMarkdownSourcePosition	Fundamentals / Strings with Metadata / Representing markdown attributes / Creating an Attributed String Markdown Source Position Instance	-	objc
 method	shipped	-rangeInString:	NSAttributedStringMarkdownSourcePosition	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting a Range from a Markdown Source Position Attribute	-	objc
 property	shipped	endColumn	NSAttributedStringMarkdownSourcePosition	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting Markdown Source Position Properties	-	objc
@@ -407,15 +419,6 @@ property	shipped	sharedFrameworksPath	NSBundle	App Support / Bundle Resources / 
 property	shipped	sharedFrameworksURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 property	shipped	sharedSupportPath	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 property	shipped	sharedSupportURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
-method	shipped	-beginAccessingResourcesWithCompletionHandler:	NSBundleResourceRequest	App Support / On-Demand Resources / Requesting resources	deprecated	objc
-method	shipped	-conditionallyBeginAccessingResourcesWithCompletionHandler:	NSBundleResourceRequest	App Support / On-Demand Resources / Requesting resources	deprecated	objc
-method	shipped	-endAccessingResources	NSBundleResourceRequest	App Support / On-Demand Resources / Requesting resources	deprecated	objc
-method	shipped	-initWithTags:	NSBundleResourceRequest	App Support / On-Demand Resources / Initializing a resource request	deprecated	objc
-method	shipped	-initWithTags:bundle:	NSBundleResourceRequest	App Support / On-Demand Resources / Initializing a resource request	deprecated	objc
-property	shipped	bundle	NSBundleResourceRequest	App Support / On-Demand Resources / Accessing the configuration	deprecated	objc
-property	shipped	loadingPriority	NSBundleResourceRequest	App Support / On-Demand Resources / Setting the download priority	deprecated	objc
-property	shipped	progress	NSBundleResourceRequest	App Support / On-Demand Resources / Tracking progress	deprecated	objc
-property	shipped	tags	NSBundleResourceRequest	App Support / On-Demand Resources / Accessing the configuration	deprecated	objc
 method	shipped	-cache:willEvictObject:	NSCacheDelegate	Fundamentals / Purgeable Collections / Managing the Delegate / Responding to Object Eviction	-	objc
 method	shipped	-initWithResponse:data:	NSCachedURLResponse	Networking / Cache behavior / Creating a cached URL response	-	objc
 method	shipped	-initWithResponse:data:userInfo:storagePolicy:	NSCachedURLResponse	Networking / Cache behavior / Creating a cached URL response	-	objc
@@ -630,11 +633,6 @@ property	shipped	requiresSecureCoding	NSCoder	Files and Data Persistence / Keyed
 property	shipped	systemVersion	NSCoder	Files and Data Persistence / Keyed Archivers / Getting Version Information	-	objc
 method	shipped	-encodeWithCoder:	NSCoding	Files and Data Persistence / Adopting Codability / Encoding with a coder	-	objc
 method	shipped	-initWithCoder:	NSCoding	Files and Data Persistence / Adopting Codability / Initializing with a coder	-	objc
-method	shipped	-broadcast	NSCondition	Low-Level Utilities / Threads and Locking / Signaling Waiting Threads	-	objc
-method	shipped	-signal	NSCondition	Low-Level Utilities / Threads and Locking / Signaling Waiting Threads	-	objc
-method	shipped	-wait	NSCondition	Low-Level Utilities / Threads and Locking / Waiting for the Lock	-	objc
-method	shipped	-waitUntilDate:	NSCondition	Low-Level Utilities / Threads and Locking / Waiting for the Lock	-	objc
-property	shipped	name	NSCondition	Low-Level Utilities / Threads and Locking / Identifying the Condition	-	objc
 method	shipped	-initWithCondition:	NSConditionLock	Low-Level Utilities / Threads and Locking / Initializing an NSConditionLock Object	-	objc
 method	shipped	-lockBeforeDate:	NSConditionLock	Low-Level Utilities / Threads and Locking / Acquiring and Releasing a Lock	-	objc
 method	shipped	-lockWhenCondition:	NSConditionLock	Low-Level Utilities / Threads and Locking / Acquiring and Releasing a Lock	-	objc
@@ -1013,15 +1011,11 @@ property	open	callStackSymbols	NSException	App Support / Exceptions / Getting Ex
 property	shipped	name	NSException	App Support / Exceptions / Querying an NSException Object	-	swift-page
 property	shipped	reason	NSException	App Support / Exceptions / Querying an NSException Object	-	swift-page
 property	shipped	userInfo	NSException	App Support / Exceptions / Querying an NSException Object	-	swift-page
-method	shipped	-beginRequestWithExtensionContext:	NSExtensionRequestHandling	App Support / Extension Support / Preparing for a request	-	objc
 method	shipped	-countByEnumeratingWithState:objects:count:	NSFastEnumeration	Fundamentals / Iteration / Enumeration	-	objc
 property	open	extra	NSFastEnumeration	Fundamentals / Iteration / Constants / Instance Properties	-	objc
 property	open	itemsPtr	NSFastEnumeration	Fundamentals / Iteration / Constants / Instance Properties	-	objc
 property	open	mutationsPtr	NSFastEnumeration	Fundamentals / Iteration / Constants / Instance Properties	-	objc
 property	open	state	NSFastEnumeration	Fundamentals / Iteration / Constants / Instance Properties	-	objc
-method	shipped	+readingIntentWithURL:options:	NSFileAccessIntent	Files and Data Persistence / Coordinated file access / Creating a File Access Intent	-	objc
-method	shipped	+writingIntentWithURL:options:	NSFileAccessIntent	Files and Data Persistence / Coordinated file access / Creating a File Access Intent	-	objc
-property	shipped	URL	NSFileAccessIntent	Files and Data Persistence / Coordinated file access / Accessing the Current URL	-	objc
 method	shipped	-acceptConnectionInBackgroundAndNotify	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
 method	shipped	-acceptConnectionInBackgroundAndNotifyForModes:	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
 method	shipped	-closeAndReturnError:	NSFileHandle	Files and Data Persistence / Managed file access / Operating on a file	-	objc
@@ -1321,8 +1315,6 @@ property	shipped	firstIndex	NSIndexSet	Fundamentals / Indexes / Getting Indexes	
 property	shipped	lastIndex	NSIndexSet	Fundamentals / Indexes / Getting Indexes	-	objc
 method	struck	-initWithContainerClassDescription:containerSpecifier:key:index:	NSIndexSpecifier	App Support / Object Specifiers / Creating Index Specifiers	declined	objc
 property	struck	index	NSIndexSpecifier	App Support / Object Specifiers / Accessing the Index	declined	objc
-method	shipped	-initWithMorphology:	NSInflectionRuleExplicit	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule	-	objc
-property	shipped	morphology	NSInflectionRuleExplicit	Fundamentals / Automatic grammar agreement / Accessing Rule Properties	-	objc
 method	shipped	-getBuffer:length:	NSInputStream	Low-Level Utilities / Streams / Using Streams	-	objc
 method	shipped	-initWithData:	NSInputStream	Low-Level Utilities / Streams / Creating Streams	-	objc
 method	shipped	-initWithFileAtPath:	NSInputStream	Low-Level Utilities / Streams / Creating Streams	-	objc
@@ -1345,12 +1337,6 @@ property	shipped	argumentsRetained	NSInvocation	Low-Level Utilities / Invocation
 property	shipped	methodSignature	NSInvocation	Low-Level Utilities / Invocations / Getting the Method Signature	-	objc
 property	shipped	selector	NSInvocation	Low-Level Utilities / Invocations / Configuring an Invocation Object	-	objc
 property	shipped	target	NSInvocation	Low-Level Utilities / Invocations / Configuring an Invocation Object	-	objc
-method	shipped	+objectWithItemProviderData:typeIdentifier:error:	NSItemProviderReading	App Support / Attachments / Constants / Creating an object from a pasted or dropped item	-	objc
-property	shipped	readableTypeIdentifiersForItemProvider	NSItemProviderReading	App Support / Attachments / Constants / Getting the readable type identifiers	-	objc
-method	shipped	+itemProviderVisibilityForRepresentationWithTypeIdentifier:	NSItemProviderWriting	App Support / Attachments / Constants / Getting the representation visibility specification	-	swift-page
-method	shipped	-itemProviderVisibilityForRepresentationWithTypeIdentifier:	NSItemProviderWriting	App Support / Attachments / Constants / Getting the representation visibility specification	-	swift-page
-method	shipped	-loadDataWithTypeIdentifier:forItemProviderCompletionHandler:	NSItemProviderWriting	App Support / Attachments / Constants / Loading data	-	objc
-property	shipped	writableTypeIdentifiersForItemProvider	NSItemProviderWriting	App Support / Attachments / Constants / Getting the writable type identifiers	-	swift-page
 method	struck	-addSharedObserver:forKey:options:context:	NSKeyValueSharedObservers	Reference / Classes / Instance Methods	declined	objc
 method	struck	-initWithObservableClass:	NSKeyValueSharedObservers	Reference / Classes / Instance Methods	declined	objc
 method	struck	-snapshot	NSKeyValueSharedObservers	Reference / Classes / Instance Methods	declined	objc
@@ -1541,17 +1527,6 @@ property	shipped	frameLength	NSMethodSignature	Low-Level Utilities / Invocations
 property	shipped	methodReturnLength	NSMethodSignature	Low-Level Utilities / Invocations / Getting Information on Return Types	-	objc
 property	shipped	methodReturnType	NSMethodSignature	Low-Level Utilities / Invocations / Getting Information on Return Types	-	objc
 property	shipped	numberOfArguments	NSMethodSignature	Low-Level Utilities / Invocations / Getting Information on Argument Types	-	objc
-method	shipped	+isSupportedForLanguage:	NSMorphologyCustomPronoun	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features / Assessing Custom Pronoun Support	deprecated	objc
-method	shipped	+requiredKeysForLanguage:	NSMorphologyCustomPronoun	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features / Assessing Custom Pronoun Support	deprecated	objc
-property	shipped	objectForm	NSMorphologyCustomPronoun	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features / Determining Pronoun Forms	deprecated	objc
-property	shipped	possessiveAdjectiveForm	NSMorphologyCustomPronoun	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features / Determining Pronoun Forms	deprecated	objc
-property	shipped	possessiveForm	NSMorphologyCustomPronoun	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features / Determining Pronoun Forms	deprecated	objc
-property	shipped	reflexiveForm	NSMorphologyCustomPronoun	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features / Determining Pronoun Forms	deprecated	objc
-property	shipped	subjectForm	NSMorphologyCustomPronoun	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features / Determining Pronoun Forms	deprecated	objc
-method	shipped	-initWithPronoun:morphology:dependentMorphology:	NSMorphologyPronoun	Fundamentals / Automatic grammar agreement / Instance Methods	-	objc
-property	shipped	dependentMorphology	NSMorphologyPronoun	Fundamentals / Automatic grammar agreement / Using pronouns	-	objc
-property	shipped	morphology	NSMorphologyPronoun	Fundamentals / Automatic grammar agreement / Using pronouns	-	objc
-property	shipped	pronoun	NSMorphologyPronoun	Fundamentals / Automatic grammar agreement / Using pronouns	-	objc
 method	struck	-setReceiversSpecifier:	NSMoveCommand	App Support / Script Commands / Working with specifiers	declined	objc
 property	struck	keySpecifier	NSMoveCommand	App Support / Script Commands / Working with specifiers	declined	objc
 method	shipped	-addObject:	NSMutableArray	Fundamentals / Basic Collections / Adding Objects	-	objc
@@ -1953,14 +1928,6 @@ property	shipped	thousandSeparator	NSNumberFormatter	Fundamentals / Numbers / Co
 property	shipped	usesGroupingSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
 property	shipped	usesSignificantDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Significant Digits	-	objc
 property	shipped	zeroSymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
-method	shipped	+changeWithObject:type:index:	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Creating a Change	-	objc
-method	shipped	+changeWithObject:type:index:associatedIndex:	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Creating a Change	-	objc
-method	shipped	-initWithObject:type:index:	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Creating a Change	-	objc
-method	shipped	-initWithObject:type:index:associatedIndex:	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Creating a Change	-	objc
-property	shipped	associatedIndex	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Accessing the Change	-	objc
-property	shipped	changeType	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Accessing the Change	-	objc
-property	shipped	index	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Accessing the Change	-	objc
-property	shipped	object	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Accessing the Change	-	objc
 method	shipped	-initToBuffer:capacity:	NSOutputStream	Low-Level Utilities / Streams / Creating Streams	-	objc
 method	shipped	-initToFileAtPath:append:	NSOutputStream	Low-Level Utilities / Streams / Creating Streams	-	objc
 method	shipped	-initToMemory	NSOutputStream	Low-Level Utilities / Streams / Creating Streams	-	objc
@@ -2874,10 +2841,6 @@ method	shipped	-URLProtocol:didReceiveAuthenticationChallenge:	NSURLProtocolClie
 method	shipped	-URLProtocol:didReceiveResponse:cacheStoragePolicy:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Creating a response	-	objc
 method	shipped	-URLProtocol:wasRedirectedToRequest:redirectResponse:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Handling redirects	-	objc
 method	shipped	-URLProtocolDidFinishLoading:	NSURLProtocolClient	Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes / Indicating loading progress or failure	-	objc
-method	shipped	-initWithName:value:	NSURLQueryItem	Fundamentals / URLs / Creating a Query Item	-	objc
-method	shipped	+queryItemWithName:value:	NSURLQueryItem	Fundamentals / URLs / Creating a Query Item	-	objc
-property	shipped	name	NSURLQueryItem	Fundamentals / URLs / Reading a Query Item’s Name and Value	-	objc
-property	shipped	value	NSURLQueryItem	Fundamentals / URLs / Reading a Query Item’s Name and Value	-	objc
 method	shipped	-initWithURL:	NSURLRequest	Networking / Requests and responses / Creating requests	-	objc
 method	shipped	-initWithURL:cachePolicy:timeoutInterval:	NSURLRequest	Networking / Requests and responses / Creating requests	-	objc
 method	shipped	+requestWithURL:	NSURLRequest	Networking / Requests and responses / Creating requests	-	objc
@@ -2961,9 +2924,6 @@ property	shipped	undoing	NSUndoManager	App Support / Undo / Checking whether und
 method	struck	-initWithCoder:	NSUniqueIDSpecifier	App Support / Object Specifiers / Instance Methods	declined	objc
 method	struck	-initWithContainerClassDescription:containerSpecifier:key:uniqueID:	NSUniqueIDSpecifier	App Support / Object Specifiers / Initializing a unique ID specifier	declined	objc
 property	struck	uniqueID	NSUniqueIDSpecifier	App Support / Object Specifiers / Accessing unique ID information	declined	objc
-method	shipped	-userActivity:didReceiveInputStream:outputStream:	NSUserActivityDelegate	App Support / Activity Sharing / Monitoring activity-related behaviors / Handling streams	-	objc
-method	shipped	-userActivityWasContinued:	NSUserActivityDelegate	App Support / Activity Sharing / Monitoring activity-related behaviors / Managing activity continuation	-	objc
-method	shipped	-userActivityWillSave:	NSUserActivityDelegate	App Support / Activity Sharing / Monitoring activity-related behaviors / Managing activity continuation	-	objc
 method	struck	-executeWithAppleEvent:completionHandler:	NSUserAppleScriptTask	Low-Level Utilities / Scripts and External Tasks / Executing an AppleScript Script	declined	objc
 method	struck	-executeWithInput:completionHandler:	NSUserAutomatorTask	Low-Level Utilities / Scripts and External Tasks / Executing Automator Tasks	declined	objc
 property	struck	variables	NSUserAutomatorTask	Low-Level Utilities / Scripts and External Tasks / Executing Automator Tasks	declined	objc
