@@ -15969,6 +15969,77 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.157 — STEP 3 LANDS: `NSURLDownload` RE-BASED ON THE SEAM, FIVE DEAD DOORS COME ALIVE, AND NOBODY OWNS A SESSION ANY MORE (2026-10-03)
+
+**LANDED: `NSURLDownload` DRIVES `NSURLProtocol`. The probe is `7/7` on the FIRST RUN, and the three destination
+arrangements all pass unchanged** — which is the point of how the re-base was done. This class was in §63.140's
+shape exactly: 275 lines driving an `NSURLSessionDownloadTask` through a session it owned, so a 10.2 keeper was
+built on a class the 10.2 surface cut removes. **It was also the LAST class that owned a session**, so this is the
+unit that unblocks §63.130's session-family mass — see the measurement at the end.
+
+**THE RE-BASE'S ONE DESIGN CHOICE IS WHAT KEPT THE DESTINATION RULES FREE:** the session handed over a FILE and
+every destination rule in this class is written in terms of a file that already exists, so the seam's chunks are
+ACCUMULATED and written to one temporary file AT THE ENDING, and then `fnFallbackDestinationFor:`, `fnMoveFrom:to:
+overwrite:` and `fnFinishAtLocation:response:withError:` run **completely unchanged**. A destination set before the
+bytes, a delegate that answers inside the decision door, and the nobody-destines fallback are all still the same
+code paths — which is why all three checks passed on the first run rather than after a repair.
+
+**⚠⚠ AND FIVE DOORS THAT COULD NOT BE DRAWN AT ALL UNDER THE SESSION ENGINE ARE LIVE NOW.** The session's
+completion-handler door reported ONE ENDING and no per-chunk progress, and the header said so, listing the doors a
+delegate could implement and never hear:
+ * **`-download:didReceiveResponse:`** — the seam HAS a response door;
+ * **`-download:didReceiveDataOfLength:`** — the seam reports every chunk, so the length reported is the length
+   that just arrived;
+ * **`-download:willSendRequest:redirectResponse:`** — the seam reports the 3xx and this class runs the next
+   transfer;
+ * **`-download:canAuthenticateAgainstProtectionSpace:`** and **`-download:didReceiveAuthenticationChallenge:`** —
+   the seam asks its client and waits, and the answer goes back through the challenge's SENDER, which IS that
+   continuation. **This protocol declares no modern door**, so the order here is the GATE first and the challenge
+   second, which is the connection's deprecated-pair branch rather than its modern one.
+**FOUR REMAIN REFUSED, EACH WITH ITS GROUND STATED IN THE HEADER:** `-download:didCancelAuthenticationChallenge:`
+(one challenge at a time, answered synchronously), `-download:downloadShouldUseCredentialStorage:` (the loading
+system consults no credential store), `-download:shouldDecodeSourceDataOfMIMEType:` (nothing here decodes) and
+`-download:willResumeWithResponse:fromByte:` (resume, below).
+
+**⚠⚠ RESUME IS REFUSED AT RUNTIME AND ITS TWO DECLARATIONS STAY, WHICH IS NOT A COMPROMISE BUT A LEDGER FACT.**
+Resume data is produced and consumed by a SESSION, and this class no longer owns one. `-initWithResumeData:
+delegate:path:` therefore answers **nil**, `-cancel` cancels without producing any, and `-resumeData` stays nil —
+so a caller that passes resume data **is told the truth rather than handed a download that would silently start
+from the beginning**. THE DECLARATIONS CANNOT BE DELETED: `-initWithResumeData:delegate:path:` and `resumeData` are
+`shipped` rows in `docs/reference/foundation-selector-surface.txt`, and `--check` **fails if a header stops
+declaring a shipped row** — so removing them would trade a false promise for a ledger inconsistency. That is the
+first time this thread has met the rule from that side, and it is the right side: the surface is Apple's, the
+behaviour is ours to state.
+
+**AND ONE CONTRACT DIFFERENCE THAT THE RE-BASE FORCED, STATED RATHER THAN GLOSSED: a download whose delegate
+REFUSES a redirect FAILS.** A connection hands the 3xx back as `-connection:didReceiveResponse:` because a caller
+asked for a RESPONSE; a download's whole contract is the BODY, and there is none behind a 3xx this class was told
+not to follow — so finishing would put an empty file where a caller expects bytes. The failure carries this class's
+own domain, code and sentence.
+
+**MEASURED, AND THIS IS THE UNIT'S REAL DELIVERABLE: NO CLASS OWNS AN `NSURLSession` ANY MORE.** §63.138 and
+§63.140 concluded the session family could not be cut *because `NSURLConnection` was built on it*; §63.153 removed
+the connection and this unit removes the download. What still mentions `NSURLSession` outside the family's own
+seven classes is: **two TYPES the seam itself needs** — `NSURLSessionAuthChallengeDisposition` (the auth answer the
+first-party client door carries, §63.145 step 5) and `NSURLSessionTaskTransactionMetrics` (the metrics record that
+is the seam's own first-party payload, §52) — one class-adjacent file (`FNAuthenticationChallengeSender.m`, the
+enum alone), and COMMENTS. *The machinery has no user.*
+
+**AND A DEBT THE SAME MEASUREMENT FOUND, RECORDED RATHER THAN QUIETLY FIXED:** `NSData.m`'s registered deviation
+**D9** gives as its ground that *"this Foundation has no fetching machinery at all — there is no `NSURLSession`
+anywhere in the library"*. **That sentence has been false for a long time** (`NSURLSession.m` is a shipped file) and
+it is false in the other direction now too — the fetching machinery exists AND no longer needs a session. D9's
+REFUSAL is right (a non-file URL is refused with an error rather than answering nil) and its GROUND needs
+rewriting to what is actually true. Named here as owed.
+
+**VERIFICATION.** `make testimg` EXIT 0; `foundation_urldownload` **7/7 probe checks, 6/6 case checks, first run**;
+library file **zero** warnings at the standing flags; `foundation-sweep.py --check` **consistent** (no row moved:
+every declaration stayed) and `--unimplemented` **0 NEW**.
+
+**OWED NEXT: §63.145 step 5 — re-home `NSURLSessionAuthChallengeDisposition`** (it is the `NSURLProtocolClient`
+door's type, declared in a KEPT public header) **and settle `NSURLSessionTaskTransactionMetrics`**, after which the
+family's seven classes have no referrer and §63.130's cut can be taken; plus D9's ground.
+
 ## §63.156 — STEP 1 MEASURED BEFORE IT WAS IMPLEMENTED, AND THE MEASUREMENT REVERSED ITS PREMISE: THE THREE DOORS MOVE TO WHERE APPLE DECLARES THEM (2026-10-03)
 
 **⚠⚠ §63.141 SAID THOSE DOORS WERE "SESSION-ERA ADDITIONS TO `NSURLConnection`" THAT "LEAVE WITH THE REST OF THE

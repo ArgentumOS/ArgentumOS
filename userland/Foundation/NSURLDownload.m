@@ -3,30 +3,61 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * NSURLDownload.m — a download as an object (§62.82). MANUAL OWNERSHIP.
+ * NSURLDownload.m — a download as an object (§62.82), re-based on `NSURLProtocol` (§63.157). MANUAL OWNERSHIP.
  *
- * THE SESSION'S COMPLETION-HANDLER DOOR IS THE ENGINE (see the header): the body goes to a file and the block
- * hands over its LOCATION, and this class turns that one ending into the legacy protocol's sequence. The location
- * is the SESSION'S OWN file and its lifetime is the call, so the file is moved inside that call rather than kept
- * and moved later.
+ * THE TRANSPORT IS AN `NSURLProtocol` AND THIS CLASS IS ITS CLIENT — the same re-base `NSURLConnection` took in
+ * §63.153, and for the same measured reason: this class used to drive an `NSURLSessionDownloadTask` through a
+ * session it owned, so a 10.2 keeper was built on a class the 10.2 surface cut removes (§63.140's shape).
  *
- * THE FILE IS MOVED BY ONE METHOD, and the same one serves both answers Apple's protocol allows: a destination set
- * before the finish, and a delegate that answers INSIDE the decision door or later. What makes the later case work
- * is that the class keeps nothing pending: `-setDestination:allowOverwrite:` moves what is already there, and the
- * finish path is the only producer of "there".
+ * DECISION 1: THE SEAM HANDS OVER CHUNKS, SO THE BODY IS ACCUMULATED AND WRITTEN AT THE ENDING. The session's
+ * door handed over a FILE, and every destination rule below is written in terms of a file that already exists —
+ * so the re-base writes the accumulated body to one temporary file at the ending and then runs those rules
+ * UNCHANGED. Nothing about the destination protocol moved.
+ *
+ * DECISION 2: THE ENDING OWNS THE LIFETIME, AND THE CYCLE IS BROKEN THERE. The protocol retains this object as its
+ * client (`-client` is a strong property), so releasing the protocol is what gives up that retain — which means
+ * the teardown can be the release that frees `self` while `self` is the receiver. Every ending therefore takes a
+ * GUARD retain first and gives up exactly one reference at the end. There is no `-start` retain to balance: unlike
+ * a connection, a download does not promise to keep itself alive, and the protocol's own client retain is what
+ * keeps it alive for as long as the transfer runs.
+ *
+ * DECISION 3: `-cancel` STOPS THE TRANSPORT AND REPORTS NOTHING, WHICH IS APPLE'S CONTRACT FOR THIS CLASS. It also
+ * produces NO RESUME DATA, and that is a fact about the seam rather than an omission: resume data is a session's
+ * to produce (§63.157), so `-resumeData` stays nil and `-initWithResumeData:delegate:path:` answers nil.
  */
-
 #import <Foundation/NSURLDownload.h>
-#import <Foundation/NSURLSession.h>
-#import <Foundation/NSURLSessionTask.h>
+#import <Foundation/NSURLProtocol.h>
+#import <Foundation/NSCachedURLResponse.h>
 #import <Foundation/NSURLRequest.h>
-#import <Foundation/NSURL.h>
 #import <Foundation/NSURLResponse.h>
+#import <Foundation/NSURLError.h>	/* NSURLErrorDomain and NSURLErrorUnsupportedURL */
+#import <Foundation/NSData.h>		/* NSMutableData is declared here too */
 #import <Foundation/NSError.h>
 #import <Foundation/NSFileManager.h>
 #import <Foundation/NSArray.h>
-#import <Foundation/NSData.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSURL.h>
+#import <Foundation/NSURLAuthenticationChallenge.h>
+#import <Foundation/NSURLCredential.h>
+#import <Foundation/NSURLProtectionSpace.h>
+
+#include <unistd.h>
+
+/* THE TEMPORARY FILES GET A NAME NOTHING ELSE WILL PICK: two downloads in one process can be running at the
+ * same time, and a fixed name would have them writing into each other's file. */
+static unsigned long fn_download_serial = 0;
+
+/* THE CLIENT CONFORMANCE IS DECLARED HERE RATHER THAN IN THE HEADER: it is HOW THIS CLASS DRIVES A TRANSPORT
+ * rather than part of the class's own API — a caller never sees these doors. */
+@interface NSURLDownload () <NSURLProtocolClient>
+- (instancetype)fnStart;
+- (void)fnBeginTransferWithRequest:(NSURLRequest *)request;
+- (void)fnTearDown;
+- (void)fnFinishWithError:(nullable NSError *)error;
+- (NSString *)fnMakeTempPath;
+- (NSError *)fnUnsupportedURLError;
+- (NSError *)fnBodyWriteError;
+@end
 
 @implementation NSURLDownload
 
@@ -38,23 +69,45 @@
 	return NO;
 }
 
-/* BEGIN, AND THE SESSION'S COMPLETION-HANDLER DOOR IS THE ENGINE (see the header). The block RETAINS this object
- * under MRC - a block retains the objects it captures when it is copied - and the cycle it forms with the task and
- * the session is the same one NSURLConnection forms: a download in flight is expected to be alive. */
+/* BEGIN, AND THE TRANSPORT IS THE ENGINE (see the header): the protocol class is consulted through
+ * `+fnProtocolClassForRequest:` — the door §52 shipped for exactly this step — and the transfer runs with this
+ * object as its client. */
 - (instancetype)fnStart
 {
 	_started = YES;
 	if ([(id)_delegate respondsToSelector:@selector(downloadDidBegin:)]) {
 		[(id)_delegate downloadDidBegin:self];
 	}
-	[_task release];
-	_task = [[(NSURLSession *)_session downloadTaskWithRequest:_request
-						completionHandler:^(NSURL *location, NSURLResponse *response,
-								    NSError *error) {
-		[self fnFinishAtLocation:location response:response withError:error];
-	}] retain];
-	[(NSURLSessionDownloadTask *)_task resume];
+	[self fnBeginTransferWithRequest:_request];
 	return self;
+}
+
+/* THE ONE PLACE A TRANSFER BEGINS, and both callers are here rather than duplicated: `fnStart` and the redirect
+ * door, which re-issues with the request the delegate answered. */
+- (void)fnBeginTransferWithRequest:(NSURLRequest *)request
+{
+	Class protocolClass = [NSURLProtocol fnProtocolClassForRequest:request];
+	NSURLProtocol *previous = _protocol;
+	NSURLProtocol *protocol;
+	NSURLRequest *canonical;
+
+	if (protocolClass == Nil) {
+		[self fnFinishWithError:[self fnUnsupportedURLError]];
+		return;
+	}
+	canonical = [protocolClass canonicalRequestForRequest:request];
+	protocol = [[protocolClass alloc] initWithRequest:canonical cachedResponse:nil client:self];
+	if (protocol == nil) {
+		[self fnFinishWithError:[self fnUnsupportedURLError]];
+		return;
+	}
+	/* THE NEW ONE IS IN PLACE BEFORE THE OLD ONE IS GIVEN UP, and the old one is AUTORELEASED rather than
+	 * released: on a REDIRECT it is the protocol whose own frame is on the stack — the bridge reports the 3xx
+	 * from inside `curl_easy_perform` and goes on to report its ending — and the bridge's transfer runs inside
+	 * an autorelease pool of its own that drains at the very end. That is exactly the lifetime it needs. */
+	_protocol = protocol;
+	[previous autorelease];
+	[protocol startLoading];
 }
 
 /* THE FALLBACK DESTINATION, WHICH IS OURS AND IS STATED: a download whose delegate never chose keeps the file in
@@ -128,7 +181,7 @@
 		 withError:(nullable NSError *)error
 {
 	if (_cancelled) {
-		return;		/* a cancelled download is not finished, and its resume data is the answer instead */
+		return;		/* a cancelled download is not finished, and it reports nothing at all */
 	}
 	if (error != nil) {
 		if (_destination != nil && _deletesFileUponFailure) {
@@ -185,73 +238,48 @@
 - (instancetype)initWithRequest:(NSURLRequest *)request
 		       delegate:(nullable id <NSURLDownloadDelegate>)delegate
 {
-	NSURLSessionConfiguration *configuration;
-
 	self = [super init];
 	if (self != nil) {
 		_request = [request copy];
-		_delegate = delegate;		/* NOT retained, as Apple's is */
+		_delegate = delegate;	/* NOT retained, as Apple's is */
 		/* THE DEFAULT IS YES: a failed download removes the file it was writing, which is Apple's documented
 		 * default for this flag. */
 		_deletesFileUponFailure = YES;
-		configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
-		_session = [[NSURLSession sessionWithConfiguration:configuration
-							 delegate:nil
-						    delegateQueue:nil] retain];
-		if (_session == nil) {
-			[self release];
-			return nil;
-		}
 		[self fnStart];
 	}
 	return self;
 }
 
+/* ⚠⚠ RESUME IS REFUSED AS A FACT RATHER THAN AS AN ABSENCE (§63.157). Resume data is PRODUCED and CONSUMED by a
+ * session, and this class no longer owns one — the transport seam has no resume to ask for and none to hand
+ * back. THE DECLARATION STAYS because it is Apple's surface (`-initWithResumeData:delegate:path:` is a `shipped`
+ * row in the ledger, and `--check` fails if the header stops declaring it), so this answers NIL: a caller that
+ * passes resume data is TOLD THE TRUTH rather than handed a download that would silently start from the
+ * beginning. */
 - (nullable instancetype)initWithResumeData:(NSData *)resumeData
 				   delegate:(nullable id <NSURLDownloadDelegate>)delegate
 				       path:(NSString *)path
 {
-	NSURLSessionConfiguration *configuration;
-
-	if (resumeData == nil || path == nil) {
-		[self release];
-		return nil;
-	}
-	self = [super init];
-	if (self != nil) {
-		_delegate = delegate;
-		_deletesFileUponFailure = YES;
-		_destination = [path copy];
-		_resumeData = [resumeData copy];
-		configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
-		_session = [[NSURLSession sessionWithConfiguration:configuration
-							 delegate:nil
-						    delegateQueue:nil] retain];
-		if (_session == nil) {
-			[self release];
-			return nil;
-		}
-		_started = YES;
-		if ([(id)_delegate respondsToSelector:@selector(downloadDidBegin:)]) {
-			[(id)_delegate downloadDidBegin:self];
-		}
-		[_task release];
-		_task = [[(NSURLSession *)_session downloadTaskWithResumeData:_resumeData] retain];
-		[(NSURLSessionDownloadTask *)_task resume];
-	}
-	return self;
+	(void)resumeData;
+	(void)delegate;
+	(void)path;
+	[self release];
+	return nil;
 }
 
 - (void)dealloc
 {
-	/* THE SESSION IS INVALIDATED, or a download object that went away would leave a session running with nobody
-	 * to tell. */
-	[(NSURLSession *)_session finishTasksAndInvalidate];
-	[(id)_session release];
+	/* NO TEARDOWN OF A RUNNING TRANSFER HERE: a running download is retained BY ITS PROTOCOL (which holds this
+	 * object as its client), so this can only run after the ending, when the protocol is already released and
+	 * nil. The temporary file needs no attention either: the ending MOVED it to the destination, so what is left
+	 * at `_tempPath` is a path that no longer names anything. */
 	[_request release];
 	[_destination release];
 	[_resumeData release];
-	[_task release];
+	[_protocol release];
+	[_body release];
+	[_response release];
+	[_tempPath release];
 	[super dealloc];
 }
 
@@ -262,14 +290,212 @@
 
 - (void)cancel
 {
+	if (_finished) {
+		return;
+	}
 	_cancelled = YES;
-	/* CANCEL ASKS THE TASK FOR RESUME DATA, which is what makes -resumeData answer something a caller can hand
-	 * back to -initWithResumeData:delegate:path:. */
-	[(NSURLSessionDownloadTask *)_task cancelByProducingResumeData:^(NSData * _Nullable data) {
-		if (data != nil) {
-			self->_resumeData = [data copy];
+	_finished = YES;
+	/* NOTHING IS REPORTED — Apple's contract for this class — AND NO RESUME DATA IS PRODUCED, because the
+	 * transport cannot produce any (§63.157). `-resumeData` therefore stays nil, which is the truth. */
+	[self fnTearDown];
+}
+
+/* --- THE ENDING ----------------------------------------------------------------------------------- */
+
+- (void)fnFinishWithError:(nullable NSError *)error
+{
+	NSURL *location = nil;
+
+	if (_finished) {
+		return;	/* exactly one ending, whatever the transport reports and in what order */
+	}
+	_finished = YES;
+
+	if (_cancelled) {
+		/* A CANCELLED DOWNLOAD REPORTS NOTHING. It can get here when the transport reports after `-cancel`;
+		 * `-cancel` itself has already torn the transfer down. */
+		return;
+	}
+
+	/* THE GUARD: the teardown below gives up the protocol's retain of this object, so it can be the release
+	 * that frees `self` while `self` is the receiver. */
+	[self retain];
+
+	if (error == nil) {
+		/* THE BODY BECOMES A FILE, WHICH IS THIS CLASS'S CONTRACT. A body that cannot be written is a
+		 * FAILURE rather than a finish with no file anywhere. */
+		if (_body == nil) {
+			_body = [[NSMutableData alloc] init];
 		}
-	}];
+		_tempPath = [[self fnMakeTempPath] retain];
+		if (![_body writeToFile:_tempPath atomically:YES]) {
+			error = [self fnBodyWriteError];
+		} else {
+			location = [NSURL fileURLWithPath:_tempPath];
+		}
+		/* THE BYTES ARE ON DISK NOW, so the copy in memory goes: a download is the one thing here that can
+		 * hold a very large object. */
+		[_body release];
+		_body = nil;
+	}
+
+	[self fnFinishAtLocation:location response:_response withError:error];
+	[self fnTearDown];
+	[self release];	/* the guard */
+}
+
+- (void)fnTearDown
+{
+	NSURLProtocol *protocol = _protocol;
+
+	/* CLEARED FIRST, so a callback that arrives while the transport is being stopped finds a download that is
+	 * finished and a protocol of nil — and messaging nil is the no-op this class wants there. */
+	_protocol = nil;
+	[protocol stopLoading];
+	[protocol release];	/* gives up the protocol's own retain of this object as its client */
+}
+
+- (NSString *)fnMakeTempPath
+{
+	return [NSTemporaryDirectory() stringByAppendingPathComponent:
+		[NSString stringWithFormat:@"NSURLDownload-%d-%lu.tmp", (int)getpid(),
+		   ++fn_download_serial]];
+}
+
+- (NSError *)fnUnsupportedURLError
+{
+	return [NSError errorWithDomain:NSURLErrorDomain
+				   code:NSURLErrorUnsupportedURL
+			       userInfo:@{NSLocalizedDescriptionKey:
+					@"no registered protocol claims this download's URL"}];
+}
+
+- (NSError *)fnBodyWriteError
+{
+	return [NSError errorWithDomain:@"NSURLDownload"
+				   code:2
+			       userInfo:@{NSLocalizedDescriptionKey:
+					@"the downloaded body could not be written to the temporary directory"}];
+}
+
+/* --- THE CLIENT DOORS ------------------------------------------------------------------------------
+ *
+ * EVERY ONE OF THESE IS A TRANSLATION INTO THIS CLASS'S DELEGATE PROTOCOL. FIVE OF THEM COULD NOT BE DRAWN AT
+ * ALL UNDER THE SESSION ENGINE (§63.157) — the response, the per-chunk progress, the redirect and the two
+ * authentication doors — and that is the other half of why this re-base was worth doing. */
+
+- (void)URLProtocol:(NSURLProtocol *)protocol
+    didReceiveResponse:(NSURLResponse *)response
+     cacheStoragePolicy:(NSURLCacheStoragePolicy)policy
+{
+	(void)protocol;
+	(void)policy;	/* an ADVICE for a store, and this class has none to advise */
+
+	[response retain];
+	[_response release];
+	_response = response;
+	if ([(id)_delegate respondsToSelector:@selector(download:didReceiveResponse:)]) {
+		[(id)_delegate download:self didReceiveResponse:_response];
+	}
+}
+
+- (void)URLProtocol:(NSURLProtocol *)protocol didLoadData:(NSData *)data
+{
+	(void)protocol;
+
+	if (_body == nil) {
+		_body = [[NSMutableData alloc] init];
+	}
+	[_body appendData:data];
+	_received += [data length];
+	/* THE PER-CHUNK PROGRESS DOOR, WHICH THE SESSION'S COMPLETION-HANDLER COULD NOT FEED: the seam reports every
+	 * chunk, so the length reported is the length that just arrived. */
+	if ([(id)_delegate respondsToSelector:@selector(download:didReceiveDataOfLength:)]) {
+		[(id)_delegate download:self didReceiveDataOfLength:[data length]];
+	}
+}
+
+/* SOMEWHERE ELSE. The seam REPORTS the 3xx and stops, so following is this class's act: the delegate is asked
+ * (Apple's door and Apple's return value) and its answer is what the next transfer runs. */
+- (void)URLProtocol:(NSURLProtocol *)protocol
+    wasRedirectedToRequest:(NSURLRequest *)request
+	 redirectResponse:(NSURLResponse *)redirectResponse
+{
+	NSURLRequest *next = request;
+
+	(void)protocol;
+
+	if ([(id)_delegate respondsToSelector:
+			@selector(download:willSendRequest:redirectResponse:)]) {
+		next = [(id <NSURLDownloadDelegate>)_delegate download:self
+						       willSendRequest:request
+						    redirectResponse:redirectResponse];
+	}
+	if (next == nil) {
+		/* ⚠ DO NOT FOLLOW, AND FOR A DOWNLOAD THAT IS A FAILURE RATHER THAN A RESPONSE: a connection hands
+		 * the 3xx back as the answer because a caller asked for a RESPONSE, while a download's whole contract
+		 * is the BODY — there is none behind a 3xx this class was told not to follow, so finishing would put an
+		 * empty file where a caller expects bytes. The error is this class's own, and it says which choice was
+		 * made. */
+		[self fnFinishWithError:
+			[NSError errorWithDomain:@"NSURLDownload"
+					    code:1
+					userInfo:@{NSLocalizedDescriptionKey:
+						@"the download's delegate refused the redirect, so no body "
+						@"was fetched"}]];
+		return;
+	}
+	[self fnBeginTransferWithRequest:next];
+}
+
+- (void)URLProtocol:(NSURLProtocol *)protocol cachedResponseIsValid:(NSCachedURLResponse *)cachedResponse
+{
+	/* NOTHING TO DO, AND IT IS NOT A REFUSAL: this class never hands a cached answer to a protocol — it passes
+	 * `nil` for `cachedResponse:` in every transfer it starts — so this notification cannot arise from anything
+	 * here. It stays implemented because the CLIENT protocol requires it of every client. */
+	(void)protocol;
+	(void)cachedResponse;
+}
+
+/* THE AUTHENTICATION DOORS, WITH APPLE'S ORDER FOR *THIS* PROTOCOL: it declares no modern door, so the GATE is
+ * asked first and the challenge door second — and the answer goes back through the challenge's SENDER, which IS
+ * the continuation the transport is blocked on. Calling that continuation here as well would answer one challenge
+ * twice. */
+- (void)URLProtocol:(NSURLProtocol *)protocol
+    didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
+		  completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition,
+					      NSURLCredential * _Nullable))completionHandler
+{
+	id delegate = _delegate;
+
+	(void)protocol;
+
+	if ([delegate respondsToSelector:
+			@selector(download:canAuthenticateAgainstProtectionSpace:)]) {
+		if (![(id <NSURLDownloadDelegate>)delegate download:self
+				canAuthenticateAgainstProtectionSpace:[challenge protectionSpace]]) {
+			completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
+			return;
+		}
+	}
+	if ([delegate respondsToSelector:@selector(download:didReceiveAuthenticationChallenge:)]) {
+		[(id <NSURLDownloadDelegate>)delegate download:self
+				didReceiveAuthenticationChallenge:challenge];
+		return;	/* answered through the sender */
+	}
+	completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
+}
+
+- (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol
+{
+	(void)protocol;
+	[self fnFinishWithError:nil];
+}
+
+- (void)URLProtocol:(NSURLProtocol *)protocol didFailWithError:(NSError *)error
+{
+	(void)protocol;
+	[self fnFinishWithError:error];
 }
 
 @end
