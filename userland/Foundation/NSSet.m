@@ -20,7 +20,8 @@
 #import <Foundation/NSArray.h>
 #import <Foundation/NSEnumerator.h>
 #import <Foundation/NSString.h>
-#include <stdlib.h>		/* calloc/free: the variadic factory's exactly-sized list */
+#include <stdlib.h>
+#include <stdarg.h>		/* the variadic initializer's list */		/* calloc/free: the variadic factory's exactly-sized list */
 /* THE KEYED ARCHIVE'S KEY NAMES, shared with NSKeyedArchiver's structural branch so the NSCoding doors below
  * and that branch cannot spell the same key differently (§63.11). */
 #import <Foundation/FNKeyedWire.h>
@@ -209,6 +210,62 @@
 	return [self initWithArray:[set allObjects]];
 }
 
+/* THE VARIADIC INITIALIZER, built the way the variadic FACTORY above is built (two passes over the list,
+ * because a va_list cannot be rewound and the storage has to be exactly sized) and handed to the same
+ * -initWithObjects:count: funnel, so the dedup rule and the class-choosing rule stay the initializer's. */
+- (instancetype)initWithObjects:(id)firstObject, ...
+{
+	va_list args;
+	va_list counter;
+	id *objects;
+	size_t extra = 0;
+	size_t i;
+	id result;
+
+	if (firstObject == nil) {
+		return [self initWithObjects:NULL count:0];
+	}
+	va_start(args, firstObject);
+	va_copy(counter, args);
+	while (va_arg(counter, id) != nil) {
+		extra++;
+	}
+	va_end(counter);
+	objects = (id *)calloc(extra + 2, sizeof(id));
+	if (objects == NULL) {
+		va_end(args);
+		return nil;
+	}
+	objects[0] = firstObject;
+	for (i = 0; i < extra; i++) {
+		objects[i + 1] = va_arg(args, id);
+	}
+	objects[extra + 1] = nil;
+	va_end(args);
+	result = [self initWithObjects:objects count:extra + 1];
+	free(objects);
+	return result;
+}
+
+/* -copy SENT ONCE PER MEMBER, and the copies are autoreleased here because the set retains them: what the
+ * caller gains is a set whose members cannot be changed underneath it by whoever owns the originals. */
+- (instancetype)initWithSet:(NSSet *)set copyItems:(BOOL)copyItems
+{
+	NSMutableArray *copies;
+	NSArray *members;
+	NSUInteger i;
+
+	if (!copyItems) {
+		return [self initWithSet:set];
+	}
+	members = [set allObjects];
+	copies = [NSMutableArray array];
+	for (i = 0; i < [members count]; i++) {
+		[copies addObject:[[[members objectAtIndex:i] copy] autorelease]];
+	}
+	return [self initWithArray:copies];
+}
+
 /* ===================================================================================================
  * THE NSCoding DOORS (§63.11). What they are FOR, since the archiver does not need them, is in the header.
  * One key, and `-initWithArray:` is the funnel both ends meet at — so the dedup rule and the class-choosing
@@ -279,6 +336,85 @@
 - (NSEnumerator *)objectEnumerator
 {
 	return [_members objectEnumerator];
+}
+
+/* ONE WALK, two doors: the plain form is the options form with no options, so the reverse case and the
+ * stopping case are the same arithmetic rather than two loops that could drift apart. The member array is
+ * taken ONCE - the old loop asked -allObjects for every element. */
+- (void)enumerateObjectsWithOptions:(NSEnumerationOptions)options usingBlock:(void (^)(id object, BOOL *stop))block
+{
+	NSArray *members = [self allObjects];
+	NSUInteger n = [members count];
+	NSUInteger k;
+	BOOL stop = NO;
+
+	if (block == NULL) {
+		return;
+	}
+	for (k = 0; k < n; k++) {
+		NSUInteger i = (options & NSEnumerationReverse) != 0 ? (n - 1 - k) : k;
+
+		block([members objectAtIndex:i], &stop);
+		if (stop) {
+			break;
+		}
+	}
+}
+
+- (void)makeObjectsPerformSelector:(SEL)aSelector
+{
+	NSArray *members = [self allObjects];
+	NSUInteger i;
+
+	for (i = 0; i < [members count]; i++) {
+		[[members objectAtIndex:i] performSelector:aSelector];
+	}
+}
+
+- (void)makeObjectsPerformSelector:(SEL)aSelector withObject:(nullable id)argument
+{
+	NSArray *members = [self allObjects];
+	NSUInteger i;
+
+	for (i = 0; i < [members count]; i++) {
+		[[members objectAtIndex:i] performSelector:aSelector withObject:argument];
+	}
+}
+
+/* THE TEST DOORS COLLECT, AND AN UNORDERED COLLECTION NEEDS NO ORDER TO DO IT. The answer is built through
+ * -initWithSet: rather than returned as the mutable accumulator - -copy on this family is a retain, so a
+ * frozen result has to be BUILT. */
+- (NSSet *)objectsWithOptions:(NSEnumerationOptions)options passingTest:(BOOL (^)(id object, BOOL *stop))predicate
+{
+	NSMutableSet *picked = [[NSMutableSet alloc] init];
+	NSSet *answer;
+	NSArray *members = [self allObjects];
+	NSUInteger n = [members count];
+	NSUInteger k;
+	BOOL stop = NO;
+
+	if (predicate != NULL) {
+		for (k = 0; k < n; k++) {
+			NSUInteger i = (options & NSEnumerationReverse) != 0 ? (n - 1 - k) : k;
+			id member = [members objectAtIndex:i];
+			BOOL stopHere = NO;
+
+			if (predicate(member, &stopHere)) {
+				[picked addObject:member];
+			}
+			if (stopHere || stop) {
+				break;
+			}
+		}
+	}
+	answer = [[NSSet alloc] initWithSet:picked];
+	[picked release];
+	return [answer autorelease];
+}
+
+- (NSSet *)objectsPassingTest:(BOOL (^)(id object, BOOL *stop))predicate
+{
+	return [self objectsWithOptions:0 passingTest:predicate];
 }
 
 - (void)enumerateObjectsUsingBlock:(void (^)(id object, BOOL *stop))block
@@ -387,6 +523,42 @@
 - (NSUInteger)hash
 {
 	return [self count];
+}
+
+/* THE MEMBER LADDER IS THE ARRAY FAMILY'S, applied to the members of an unordered collection: a member
+ * that can describe itself with a locale AND an indent does (a nested array), one that takes only a
+ * locale does, and anything else answers -description. */
+static void fnAppendSetMember(NSMutableString *out, id member, id locale, NSUInteger level)
+{
+	NSUInteger i;
+
+	for (i = 0; i < level; i++) {
+		[out appendString:@"    "];
+	}
+	if (locale != nil && [member respondsToSelector:@selector(descriptionWithLocale:indent:)]) {
+		[out appendString:[member descriptionWithLocale:locale indent:level]];
+	} else if (locale != nil && [member respondsToSelector:@selector(descriptionWithLocale:)]) {
+		[out appendString:[member descriptionWithLocale:locale]];
+	} else {
+		[out appendString:[member description]];
+	}
+}
+
+- (NSString *)descriptionWithLocale:(nullable id)locale
+{
+	NSMutableString *out = [[NSMutableString alloc] initWithUTF8String:"{(\n"];
+	NSArray *members = [self allObjects];
+	NSUInteger i;
+
+	for (i = 0; i < [members count]; i++) {
+		fnAppendSetMember(out, [members objectAtIndex:i], locale, 1);
+		if (i + 1 < [members count]) {
+			[out appendString:@","];
+		}
+		[out appendString:@"\n"];
+	}
+	[out appendString:@")}"];
+	return [out autorelease];
 }
 
 - (NSString *)description

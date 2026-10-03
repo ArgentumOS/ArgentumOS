@@ -39,6 +39,7 @@
 /* FOR `NSCoding` AND THE `NSCoder` ITS TWO DOORS TAKE (§63.11): these collections conform on Apple's platform,
  * so a class that declares the protocol here is one whose `-conformsToProtocol:` answers the same. */
 #import <Foundation/NSCoding.h>
+#import <Foundation/NSIndexSet.h>	/* NSEnumerationOptions, which is ITS to declare */
 
 @class NSArray<ObjectType>, NSEnumerator<ObjectType>;
 
@@ -78,6 +79,13 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithObjects:(const ObjectType _Nonnull * _Nullable)objects count:(NSUInteger)count;
 - (instancetype)initWithArray:(NSArray<ObjectType> *)array;
 - (instancetype)initWithSet:(NSSet<ObjectType> *)set;
+/* THE VARIADIC INITIALIZER (Apple's, nil-terminated) and the COPYING one. The copying form sends -copy to
+ * each member once, which for an immutable member answers itself and for a mutable one gives the set a
+ * private snapshot — the difference is the caller's to ask for. */
+/* THE FIRST PARAMETER IS EXPLICITLY NULLABLE because the implementation ACCEPTS nil - it answers the empty
+ * set - which is what this library's annotations are supposed to say. */
+- (instancetype)initWithObjects:(ObjectType _Nullable)firstObject, ... NS_REQUIRES_NIL_TERMINATION;
+- (instancetype)initWithSet:(NSSet<ObjectType> *)set copyItems:(BOOL)copyItems;
 
 - (NSUInteger)count;
 /* BY VALUE: the member that is -isEqual: to `object`, or nil. This is the door that separates a set
@@ -88,6 +96,25 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSArray<ObjectType> *)allObjects;
 - (NSEnumerator<ObjectType> *)objectEnumerator;
 - (void)enumerateObjectsUsingBlock:(void (^)(ObjectType object, BOOL *stop))block;
+
+/* THE OPTIONS FORM (§63.178): NSEnumerationReverse is honoured, and NSEnumerationConcurrent is the hint
+ * this library ignores everywhere (so a loop is always serial and synchronous) — the same reading the
+ * array family and NSIndexSet's enumerators take. THE ORDER OF AN UNORDERED COLLECTION IS UNSPECIFIED,
+ * which is why nothing here promises one: reverse means the reverse of whatever order -allObjects
+ * happened to answer, and a caller who needs an order sorts first. */
+- (void)enumerateObjectsWithOptions:(NSEnumerationOptions)options
+			 usingBlock:(void (^)(ObjectType object, BOOL *stop))block;
+
+/* THE PER-OBJECT DOORS: every member gets the message, in no promised order, and the selector must take
+ * no argument (or exactly one object, in the `withObject:` form). */
+- (void)makeObjectsPerformSelector:(SEL)aSelector;
+- (void)makeObjectsPerformSelector:(SEL)aSelector withObject:(nullable id)argument;
+
+/* THE TEST DOORS: a NEW immutable set of the members the block accepted. `stop` ends the walk, and the
+ * predicate's two arguments are both answers, as in NSIndexSet's scan. */
+- (NSSet<ObjectType> *)objectsPassingTest:(BOOL (^)(ObjectType object, BOOL *stop))predicate;
+- (NSSet<ObjectType> *)objectsWithOptions:(NSEnumerationOptions)options
+			      passingTest:(BOOL (^)(ObjectType object, BOOL *stop))predicate;
 
 - (BOOL)isEqualToSet:(NSSet<ObjectType> *)other;
 - (BOOL)isSubsetOfSet:(NSSet<ObjectType> *)other;
@@ -104,6 +131,12 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)isEqual:(id)other;
 - (NSUInteger)hash;
 - (NSString *)description;
+
+/* THE LOCALE FORM, in the SHAPE THE ARRAY FAMILY ALREADY USES (§63.178): members on their own lines,
+ * indented four spaces per level, and each member asked its own locale-aware description when it has one
+ * — so a nested collection prints as a collection. The single-line -description above is this library's
+ * compact spelling and is left exactly as it was. */
+- (NSString *)descriptionWithLocale:(nullable id)locale;
 
 @end
 

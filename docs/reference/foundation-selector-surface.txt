@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1608	open	207	struck	399
+# method	shipped	1616	open	199	struck	399
 # property	shipped	679	open	85	struck	172
 
 
@@ -2143,26 +2143,26 @@ property	shipped	supportsSecureCoding	NSSecureCoding	Files and Data Persistence 
 method	shipped	-addObserver:forKeyPath:options:context:	NSSet	Fundamentals / Basic Collections / Key-Value Observing	-	objc
 method	shipped	-anyObject	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
 method	shipped	-containsObject:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
-method	open	-descriptionWithLocale:	NSSet	Fundamentals / Basic Collections / Describing a Set	-	objc
+method	shipped	-descriptionWithLocale:	NSSet	Fundamentals / Basic Collections / Describing a Set	-	objc
 method	open	-enumerateIndexPathsWithOptions:usingBlock:	NSSet	Fundamentals / Basic Collections / Instance Methods	-	objc
 method	shipped	-enumerateObjectsUsingBlock:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
-method	open	-enumerateObjectsWithOptions:usingBlock:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
+method	shipped	-enumerateObjectsWithOptions:usingBlock:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
 method	shipped	-init	NSSet	Fundamentals / Basic Collections / Initializing a Set	-	objc
 method	shipped	-initWithArray:	NSSet	Fundamentals / Basic Collections / Initializing a Set	-	objc
 method	shipped	-initWithCoder:	NSSet	Fundamentals / Basic Collections / Instance Methods	-	objc
-method	open	-initWithObjects:	NSSet	Fundamentals / Basic Collections / Initializing a Set	-	objc
+method	shipped	-initWithObjects:	NSSet	Fundamentals / Basic Collections / Initializing a Set	-	objc
 method	shipped	-initWithObjects:count:	NSSet	Fundamentals / Basic Collections / Initializing a Set	-	objc
 method	shipped	-initWithSet:	NSSet	Fundamentals / Basic Collections / Initializing a Set	-	objc
-method	open	-initWithSet:copyItems:	NSSet	Fundamentals / Basic Collections / Initializing a Set	-	objc
+method	shipped	-initWithSet:copyItems:	NSSet	Fundamentals / Basic Collections / Initializing a Set	-	objc
 method	shipped	-intersectsSet:	NSSet	Fundamentals / Basic Collections / Comparing Sets	-	objc
 method	shipped	-isEqualToSet:	NSSet	Fundamentals / Basic Collections / Comparing Sets	-	objc
 method	shipped	-isSubsetOfSet:	NSSet	Fundamentals / Basic Collections / Comparing Sets	-	objc
-method	open	-makeObjectsPerformSelector:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
-method	open	-makeObjectsPerformSelector:withObject:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
+method	shipped	-makeObjectsPerformSelector:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
+method	shipped	-makeObjectsPerformSelector:withObject:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
 method	shipped	-member:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
 method	shipped	-objectEnumerator	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
-method	open	-objectsPassingTest:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
-method	open	-objectsWithOptions:passingTest:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
+method	shipped	-objectsPassingTest:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
+method	shipped	-objectsWithOptions:passingTest:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
 method	shipped	-removeObserver:forKeyPath:	NSSet	Fundamentals / Basic Collections / Key-Value Observing	-	objc
 method	shipped	-removeObserver:forKeyPath:context:	NSSet	Fundamentals / Basic Collections / Key-Value Observing	-	objc
 method	shipped	+set	NSSet	Fundamentals / Basic Collections / Creating a Set	-	objc

@@ -15962,6 +15962,55 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.178 — NSSet: the options and block doors, the per-object doors, the two constructors and the locale description
+
+Eight rows leave the work list (`method shipped 1608 → 1616, open 207 → 199`): `-initWithObjects:`,
+`-initWithSet:copyItems:`, `-makeObjectsPerformSelector:(withObject:)`, `-objectsPassingTest:`,
+`-objectsWithOptions:passingTest:`, `-enumerateObjectsWithOptions:usingBlock:`, `-descriptionWithLocale:`.
+
+**ONE WALK, TWO DOORS.** The plain enumerator is the options form with no options, so the stopping case and
+the reverse case are one arithmetic rather than two loops that can drift. NSEnumerationReverse is honoured;
+NSEnumerationConcurrent is the hint this library ignores everywhere. The member array is now taken ONCE —
+the old loop asked `-allObjects` for every element, which is a small measured waste fixed in passing.
+
+**AN UNORDERED COLLECTION PROMISES NO ORDER, AND THE PROBE HONOURS THAT.** Reverse here means the reverse
+of whatever `-allObjects` happened to answer, so nothing in the header promises a sequence and the checks
+assert only what a walk of a set can be held to: every member receives each message exactly once, every
+member is visited, `stop` ends it early — all COUNTED. The two test doors' results are compared as SETS,
+because `[everything isEqualToSet:bag]` is the strongest true statement available.
+
+**THE COLLECTED ANSWER IS BUILT, NOT BORROWED.** `-copy` on this family is a retain (an immutable set needs
+no copy), so `-objectsPassingTest:` cannot return the mutable accumulator it collected into: the frozen
+result comes from `-initWithSet:` — the same shape §63.175 gave NSIndexSet's collectors.
+
+**THE TWO CONSTRUCTORS.** The variadic initializer is built the way the variadic FACTORY in the same file is
+built — two passes over the list, because a `va_list` cannot be rewound and the storage must be exactly
+sized — and hands off to the same `-initWithObjects:count:` funnel, so the dedup rule and the
+class-choosing rule stay the initializer's; the probe asserts the dedup by passing a repeated object. The
+copying form sends `-copy` once per member, and identity is asserted BOTH ways, because `copyItems:` is a
+promise about identity: NO keeps the caller's object, YES gives a distinct but equal one.
+
+**THE LOCALE DESCRIPTION IS THE ARRAY FAMILY'S SHAPE**, applied to an unordered collection: members on
+their own lines, four spaces of indent per level, each member asked its own locale-aware description when
+it has one (so a nested collection prints as a collection). The single-line `-description` is left exactly
+as it was — it is this library's compact spelling, and changing it is another unit's business.
+
+**THREE TRAPS, ALL MEASURED, AND THE SECOND IS THE INTERESTING ONE.** (1) `NSEnumerationOptions` could not
+be copied into this header: clang refused the second typedef as two DIFFERENT types even though the text
+read alike, so `NSSet.h` now imports `NSIndexSet.h` explicitly — the same fix `NSArray.h` already records
+for itself. (2) THE IMPORT WAS FIRST PLACED INSIDE THE `NS_ASSUME_NONNULL` REGION, and clang's answer to
+that is `cannot #include files inside '#pragma clang assume_nonnull'` — WHICH SILENTLY KILLS THE REGION, so
+the compiler went on to report twenty nullability errors, **including on pre-existing declarations (lines
+69–85) that this unit never touched**. That flood is what made the first two fix attempts guess wrong: the
+cause was named in the FIRST diagnostic, not the last, and reading the first one turned a twenty-error
+puzzle into a one-line move. (3) A comment written from a misread caret position claimed a "measured" clang
+behaviour that was false; it now says the true thing — the parameter is `_Nullable` because the
+implementation ACCEPTS nil — because a header comment asserting a false fact is worse than no comment.
+
+Acceptance: `tools/foundation-sweep.py --check` consistent (`method 1616/199/399`, `property 679/85/172`);
+`make testimg` green; `make test TESTS=foundation_collection` → 1/1 case, 6/6 case checks, and the probe's
+own tally 65 → 68.
+
 ## §63.177 — two NSSet rows are struck: AppKit's category on a Foundation class, with the ground cited
 
 `+setWithCollectionViewIndexPath:` and `+setWithCollectionViewIndexPaths:` leave the open list:

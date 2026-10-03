@@ -93,6 +93,33 @@ static id fn_no_object(void)
 	return nil;
 }
 
+/* A TARGET FOR THE PER-OBJECT DOORS: -makeObjectsPerformSelector: needs a message with a side effect, and
+ * a set's members are whatever the caller put there, so the probe brings its own. */
+@interface AGSetPerformTarget : NSObject
+{
+@public
+	NSUInteger bumps;
+	id last;
+}
+- (void)bump;
+- (void)bumpWith:(id)object;
+@end
+
+@implementation AGSetPerformTarget
+
+- (void)bump
+{
+	bumps++;
+}
+
+- (void)bumpWith:(id)object
+{
+	bumps++;
+	last = object;
+}
+
+@end
+
 int main(void)
 {
 
@@ -2169,6 +2196,98 @@ NULL
 						missingError != nil ? [missingError localizedDescription] : @"no error"] UTF8String]);
 			(void)wroteDict;
 		}
+	}
+
+	{
+		/* NSSET'S TWO CONSTRUCTORS THAT WERE MISSING (§63.178). The variadic form is nil-terminated and
+		 * goes through the SAME funnel as the counting one, so a repeated object is still ONE member; the
+		 * copying form sends -copy per member, which for a MUTABLE member gives the set a snapshot of its
+		 * own - asserted both ways, because "copyItems" is a promise about identity. */
+		NSMutableString *alpha = [NSMutableString stringWithString:@"alpha"];
+		NSMutableString *beta = [NSMutableString stringWithString:@"beta"];
+		NSSet *bag = [[NSSet alloc] initWithObjects:alpha, beta, alpha, nil];
+		NSSet *shared = [[NSSet alloc] initWithSet:bag copyItems:NO];
+		NSSet *copied = [[NSSet alloc] initWithSet:bag copyItems:YES];
+		id kept = [shared member:alpha];
+		id made = [copied member:alpha];
+
+		check("set-construction",
+		      [bag count] == 2 && [bag member:alpha] != nil && [bag member:beta] != nil &&
+		      kept == alpha && made != nil && made != alpha && [made isEqual:alpha] &&
+		      [copied isEqualToSet:bag] && [[NSSet alloc] initWithObjects:nil] != nil &&
+		      [[[NSSet alloc] initWithObjects:nil] count] == 0,
+		      "the variadic initializer dedups, and copyItems: decides identity both ways");
+	}
+
+	{
+		/* THE PER-OBJECT DOORS AND THE OPTIONS ENUMERATION (§63.178). A set has NO ORDER TO PROMISE, so
+		 * what is asserted is what an unordered walk can be held to: every member receives the message
+		 * exactly once, the argument form passes the same object to all of them, every member is visited,
+		 * and `stop` ends the walk early - counted rather than ordered. */
+		AGSetPerformTarget *one = [[AGSetPerformTarget alloc] init];
+		AGSetPerformTarget *two = [[AGSetPerformTarget alloc] init];
+		NSSet *targets = [[NSSet alloc] initWithObjects:one, two, nil];
+		__block int visits = 0;
+		__block int reversedVisits = 0;
+		__block int stoppedVisits = 0;
+
+		[targets makeObjectsPerformSelector:@selector(bump)];
+		[targets makeObjectsPerformSelector:@selector(bumpWith:) withObject:@"argument"];
+		[targets enumerateObjectsUsingBlock:^(id object, BOOL *stop) {
+			(void)object; (void)stop;
+			visits++;
+		}];
+		[targets enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(id object, BOOL *stop) {
+			(void)object; (void)stop;
+			reversedVisits++;
+		}];
+		[targets enumerateObjectsWithOptions:0 usingBlock:^(id object, BOOL *stop) {
+			(void)object;
+			stoppedVisits++;
+			*stop = YES;
+		}];
+		check("set-perform-and-enumerate",
+		      one->bumps == 2 && two->bumps == 2 &&
+		      one->last == @"argument" && two->last == @"argument" &&
+		      visits == 2 && reversedVisits == 2 && stoppedVisits == 1,
+		      "every member gets each message once, both walks visit all of them, and stop stops");
+	}
+
+	{
+		/* THE TEST DOORS AND THE LOCALE DESCRIPTION (§63.178). The predicates are the same walk, so what
+		 * is asserted is the RESULT: the collected set holds exactly the accepted members, the reverse
+		 * option answers the same set (order is not part of a set's identity), `stop` cuts a walk short,
+		 * and the locale description is the array family's multi-line shape. */
+		NSMutableString *alpha = [NSMutableString stringWithString:@"alpha"];
+		NSMutableString *beta = [NSMutableString stringWithString:@"beta"];
+		NSSet *bag = [[NSSet alloc] initWithObjects:alpha, beta, nil];
+		NSSet *onlyAlpha = [bag objectsPassingTest:^BOOL(id object, BOOL *stop) {
+			(void)stop;
+			return [object isEqual:@"alpha"];
+		}];
+		NSSet *everything = [bag objectsWithOptions:NSEnumerationReverse passingTest:^BOOL(id object, BOOL *stop) {
+			(void)stop;
+			(void)object;
+			return YES;
+		}];
+		NSMutableString *cutShort = [NSMutableString string];
+		NSSet *none = [bag objectsPassingTest:^BOOL(id object, BOOL *stop) {
+			(void)object;
+			[cutShort appendString:@"x"];
+			*stop = YES;
+			return NO;
+		}];
+		NSString *described = [bag descriptionWithLocale:@"en_US"];
+
+		check("set-test-doors-and-locale-description",
+		      [onlyAlpha count] == 1 && [onlyAlpha containsObject:alpha] &&
+		      ![onlyAlpha containsObject:beta] && [everything isEqualToSet:bag] &&
+		      [none count] == 0 && [cutShort length] == 1 &&
+		      [described hasPrefix:@"{(\n"] && [described hasSuffix:@")}"] &&
+		      [described rangeOfString:@"alpha"].location != NSNotFound &&
+		      [described rangeOfString:@"beta"].location != NSNotFound &&
+		      [described rangeOfString:@"    alpha"].location != NSNotFound,
+		      "the collected sets, the stop, and the array family's multi-line locale shape");
 	}
 
 	printf("FOUNDATION-COLLECTION RESULT ok=%d fail=%d\n", okc, failc);
