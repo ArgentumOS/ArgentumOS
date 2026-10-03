@@ -1445,6 +1445,48 @@ int main(void)
 		}
 	}
 
+
+	{
+		/* THE SIX VALUE ACCESSORS (§63.186): they must round-trip, AND they must be the SAME STORAGE the
+		 * struct door moves and the accumulators read — otherwise they are a second matrix that only looks
+		 * right. So the check sets them, reads them back, asks -transformStruct what it sees, and puts the
+		 * values through -transformPoint:, where a getter wired to the wrong FIELD shows up as a wrong point
+		 * rather than as a wrong number. */
+		NSAffineTransform *t = [NSAffineTransform transform];
+		NSAffineTransformStruct seen;
+		NSPoint got;
+		BOOL roundTrip;
+		BOOL structAgrees;
+		BOOL pointAgrees;
+
+		[t setM11:2.0];
+		[t setM12:3.0];
+		[t setM21:5.0];
+		[t setM22:7.0];
+		[t setTX:11.0];
+		[t setTY:13.0];
+		roundTrip = [t m11] == 2.0 && [t m12] == 3.0 && [t m21] == 5.0 &&
+			    [t m22] == 7.0 && [t tX] == 11.0 && [t tY] == 13.0;
+		seen = [t transformStruct];
+		structAgrees = seen.m11 == 2.0 && seen.m12 == 3.0 && seen.m21 == 5.0 &&
+			       seen.m22 == 7.0 && seen.tX == 11.0 && seen.tY == 13.0;
+		got = [t transformPoint:NSMakePoint(4.0, 6.0)];
+		/* x\' = m11*x + m21*y + tX = 2*4 + 5*6 + 11 = 49; y\' = m12*x + m22*y + tY = 3*4 + 7*6 + 13 = 67 */
+		pointAgrees = got.x == 49.0 && got.y == 67.0;
+		{
+			char values[160];
+			char points[160];
+
+			snprintf(values, sizeof values, "m11=%g m12=%g m21=%g m22=%g tX=%g tY=%g",
+				 [t m11], [t m12], [t m21], [t m22], [t tX], [t tY]);
+			snprintf(points, sizeof points,
+				 "struct=(%g %g %g %g %g %g) point=(%g,%g) expected=(49,67)",
+				 seen.m11, seen.m12, seen.m21, seen.m22, seen.tX, seen.tY, got.x, got.y);
+			check("affine-value-accessors", roundTrip, values);
+			check("affine-accessors-share-one-storage", structAgrees && pointAgrees, points);
+		}
+	}
+
 	printf("FOUNDATION-CORE RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

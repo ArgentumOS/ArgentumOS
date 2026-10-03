@@ -162,6 +162,72 @@ static NSAffineTransformStruct fn_concat(NSAffineTransformStruct left, NSAffineT
 	return out;
 }
 
+/*
+ * THE SIX VALUES, AS PROPERTIES. THEY ARE THE SAME STORAGE AS -transformStruct, deliberately: Apple's own
+ * are, so a caller can read `tX` and then hand the whole struct to something else without either door
+ * having a private copy. Every getter is its field and every setter is its field — no arithmetic here,
+ * because the arithmetic belongs to the accumulators.
+ */
+- (CGFloat)m11
+{
+	return _matrix.m11;
+}
+
+- (void)setM11:(CGFloat)value
+{
+	_matrix.m11 = value;
+}
+
+- (CGFloat)m12
+{
+	return _matrix.m12;
+}
+
+- (void)setM12:(CGFloat)value
+{
+	_matrix.m12 = value;
+}
+
+- (CGFloat)m21
+{
+	return _matrix.m21;
+}
+
+- (void)setM21:(CGFloat)value
+{
+	_matrix.m21 = value;
+}
+
+- (CGFloat)m22
+{
+	return _matrix.m22;
+}
+
+- (void)setM22:(CGFloat)value
+{
+	_matrix.m22 = value;
+}
+
+- (CGFloat)tX
+{
+	return _matrix.tX;
+}
+
+- (void)setTX:(CGFloat)value
+{
+	_matrix.tX = value;
+}
+
+- (CGFloat)tY
+{
+	return _matrix.tY;
+}
+
+- (void)setTY:(CGFloat)value
+{
+	_matrix.tY = value;
+}
+
 - (NSAffineTransformStruct)transformStruct
 {
 	return _matrix;

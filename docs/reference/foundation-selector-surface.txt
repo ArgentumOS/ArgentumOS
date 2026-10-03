@@ -34,7 +34,7 @@
 #
 # kind	status	name	owner	family	why	src
 # method	shipped	1652	open	163	struck	399
-# property	shipped	687	open	77	struck	172
+# property	shipped	693	open	71	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -53,12 +53,12 @@ method	open	-transformBezierPath:	NSAffineTransform	Fundamentals / Geometry / Tr
 method	shipped	-transformPoint:	NSAffineTransform	Fundamentals / Geometry / Transforming Data and Objects	-	objc
 method	shipped	-transformSize:	NSAffineTransform	Fundamentals / Geometry / Transforming Data and Objects	-	objc
 method	shipped	-translateXBy:yBy:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
-property	open	m11	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix / Instance Properties	-	objc
-property	open	m12	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix / Instance Properties	-	objc
-property	open	m21	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix / Instance Properties	-	objc
-property	open	m22	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix / Instance Properties	-	objc
-property	open	tX	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix / Instance Properties	-	objc
-property	open	tY	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix / Instance Properties	-	objc
+property	shipped	m11	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix / Instance Properties	-	objc
+property	shipped	m12	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix / Instance Properties	-	objc
+property	shipped	m21	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix / Instance Properties	-	objc
+property	shipped	m22	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix / Instance Properties	-	objc
+property	shipped	tX	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix / Instance Properties	-	objc
+property	shipped	tY	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix / Instance Properties	-	objc
 property	shipped	transformStruct	NSAffineTransform	Fundamentals / Geometry / Accessing the Transformation Matrix	-	objc
 method	struck	+appleEventWithEventClass:eventID:targetDescriptor:returnID:transactionID:	NSAppleEventDescriptor	App Support / Apple Event Handling / Creating and Initializing Descriptors	declined	objc
 method	struck	-attributeDescriptorForKeyword:	NSAppleEventDescriptor	App Support / Apple Event Handling / Working With Apple Event Descriptors	declined	objc

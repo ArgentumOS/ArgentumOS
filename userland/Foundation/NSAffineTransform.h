@@ -15,9 +15,11 @@
  * makes it the LAST. The check distinguishes them with a translation and a scale, which commute
  * only when nobody is looking.
  *
- * WHAT IS NOT, named: `-set` and `-concat`, which are AppKit's additions to this class (they act on
- * a graphics context this library does not have), and any raise from `-invert` on a singular matrix
- * — the matrix is left unchanged there, which is stated rather than left to be discovered.
+ * WHAT IS NOT, named: `-set`, `-concat` and `-transformBezierPath:` — THE APPKIT ADDITIONS. They act on a
+ * graphics context or on an NSBezierPath, so they are declared and implemented in AppKit, as
+ * `NSAffineTransformAdditions.{h,m}` (the tree's NSBundleAdditions is the same shape), NOT here: this
+ * library does not import the drawing API, and a Foundation that reached into AppKit would be a cycle.
+ * Also named: any raise from `-invert` on a singular matrix — the matrix is left unchanged there.
  */
 #ifndef FOUNDATION_NSAFFINETRANSFORM_H
 #define FOUNDATION_NSAFFINETRANSFORM_H
@@ -54,6 +56,17 @@ typedef struct {
 - (NSSize)transformSize:(NSSize)size;
 
 @property NSAffineTransformStruct transformStruct;
+
+/* THE MATRIX, FIELD BY FIELD, WHICH IS THE POINT OF THEM: Apple exposes the six values directly, and the
+ * names are the matrix positions (m_row_column) — `m21` multiplies y into x, which is the one people
+ * expect to be `m12`. They read and write the SAME storage `transformStruct` moves, so a caller may mix
+ * the two doors freely. */
+@property CGFloat m11;
+@property CGFloat m12;
+@property CGFloat m21;
+@property CGFloat m22;
+@property CGFloat tX;
+@property CGFloat tY;
 
 @end
 

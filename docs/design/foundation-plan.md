@@ -15962,6 +15962,35 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.186 — NSAffineTransform: the six matrix accessors, and the three AppKit doors located
+
+Six rows: `property shipped 687 → 693, open 77 → 71` — `m11 m12 m21 m22 tX tY`.
+
+**THEY ARE THE SAME STORAGE AS `-transformStruct`, DELIBERATELY**, because Apple's are: a caller may read
+`tX`, then hand the whole struct to something else, and neither door has a private copy. The check asserts
+that rather than the plumbing — it sets all six through the setters, reads all six back, asks
+`-transformStruct` what it sees, and then puts the values through `-transformPoint:` where `x' = m11·x +
+m21·y + tX` and `y' = m12·x + m22·y + tY`. A getter wired to the wrong FIELD is a wrong point, not a wrong
+number, and the matrix names invite exactly that mistake (`m21` multiplies y into x, which is where people
+expect `m12`).
+
+**THE THREE REMAINING ROWS OF THIS OWNER ARE APPKIT'S, AND THE RECONNAISSANCE FOR THEM IS DONE.** `-set`,
+`-concat` and `-transformBezierPath:` act on a graphics context or on an NSBezierPath, so they are declared
+and implemented in AppKit as `NSAffineTransformAdditions.{h,m}` — the shape `NSBundleAdditions.h` already
+uses, and unnamed in this library's header until now, which was true when this class was written and is not
+true any more. What makes them landable, measured: **this tree HAS AppKit** (`NSGraphicsContext` with
+`+currentContext`/`+setCurrentContext:`), **`NSBezierPath` exists and already has
+`-transformUsingAffineTransform:`**, and the sweep attributes a category's methods to the class the category
+EXTENDS (`foundation-sweep.py:1648`), so a category on `NSAffineTransform` satisfies "declared by its owner".
+The header's own deviation note was rewritten to say this instead of "not implemented".
+
+**A NOTE ON THE INSTRUMENT:** this probe's `check()` takes a `const char *` detail (not every probe's does),
+so a detail built with `+stringWithFormat:` is an ARC error at the call site — the compiler said so twice
+before the check ever ran. Details here are `snprintf` buffers.
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_core` → 1/1 case,
+`tools/foundation-sweep.py --check` consistent (`property 693/71/172`), `--families --write` rc=0.
+
 ## §63.185 — NSKeyedArchiver: the streaming flow lands, and the reader-defect claim of §63.184 is withdrawn
 
 Three rows: `method shipped 1651 → 1652, open 164 → 163`; `property 685 → 687, open 79 → 77` —

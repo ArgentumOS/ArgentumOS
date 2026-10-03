@@ -36,7 +36,7 @@ CHECKS = (
               "a-missing-method-raises-and-can-be-caught",
               # §62.99: the protocol pair Apple declares in NSObjCRuntime.h.
               "runtime-protocol-name-round-trip", "runtime-protocol-doors-refuse-what-is-absent",
-)
+    "affine-value-accessors", "affine-accessors-share-one-storage")
 
 
 class Case(BaseCase):
