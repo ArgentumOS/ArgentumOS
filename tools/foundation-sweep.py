@@ -549,6 +549,16 @@ OTHER_FRAMEWORK = frozenset((
     "notificationActions",
     "widgetActiveDisplayMode",
     "widgetLargestAvailableDisplayMode",
+
+    # §63.120 — THREE `NSTimeZone` ROWS ON THE ABSENCE GROUND, WITH §63.119'S PRECONDITION ASSERTED RATHER THAN
+    # ASSUMED: **THE OWNER'S OWN HEADER IS IN THE CORPUS** (`/tmp/mac145/NSTimeZone.h`, checked before this list was
+    # written), so an absence from IT means something. ⚠ AND THIS IS THE WEAKEST GROUND THIS SESSION USES — THERE IS NO
+    # POSITIVE SIGNAL HERE, no foreign type and no foreign prefix, which is why §63.102 says the positive ground is
+    # preferred. **THE STRIKE IS REVERSIBLE BY CONSTRUCTION: if any of these is Foundation's, adding it to our headers
+    # FAILS `--check`, and the row comes back with the reason attached.**
+    "abbreviationDictionary",
+    "daylightSavingTimeOffset",
+    "timeZoneDataVersion",
 ))
 
 

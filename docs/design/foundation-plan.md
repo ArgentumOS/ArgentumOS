@@ -15982,6 +15982,31 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.120 — THREE `NSTimeZone` ROWS ON THE WEAKEST GROUND, WITH §63.119'S PRECONDITION ASSERTED (2026-10-01)
+
+**WHAT LANDED: `abbreviationDictionary`, `daylightSavingTimeOffset` AND `timeZoneDataVersion` STRUCK — AND `NSTimeZone` CUT
+FROM THIRTEEN ROWS TO TEN.**
+
+**MEASURED: `property open 174 → 171`, `struck 178 → 181`; `--check` consistent; and THE PRECONDITION WAS PRINTED BEFORE
+THE STRIKE RATHER THAN ASSUMED — `/tmp/mac145/NSTimeZone.h` is 3750 bytes, so an absence from IT means something
+(§63.119).**
+
+**⚠⚠ AND THIS IS THE WEAKEST GROUND THIS SESSION USES, WHICH IS WORTH SAYING PLAINLY BECAUSE THE STRONGER ONE IS
+AVAILABLE FOR MOST ROWS: THERE IS NO POSITIVE SIGNAL HERE — no type belonging to another framework and no foreign
+prefix.** §63.102 established the preference for a positive ground precisely because an absence is only as good as the
+corpus, **and §63.119 then found that the corpus is missing 89 of this tree's 221 headers.** Where the owner's own
+header IS in the corpus, absence is usable — and where it is not, §63.119's guard DECLINES TO STRIKE AT ALL.
+
+**AND THE STRIKE IS REVERSIBLE BY CONSTRUCTION: if any of these three is Foundation's, ADDING IT TO OUR HEADERS FAILS
+`--check`, AND THE ROW COMES BACK WITH THIS REASON ATTACHED.** *A ground whose mistakes announce themselves is a ground
+that can be used while it is still being tested* — and the alternative, leaving three rows in the work list on a guess,
+is the same guess with no signal at all.
+
+**AND THE TEN THAT REMAIN ON THIS OWNER ARE REAL WORK RATHER THAN A GROUND**: `+resetSystemTimeZone`,
+`+timeZoneWithAbbreviation:`, `+timeZoneWithName:data:`, `-initWithName:data:`, `-abbreviationForDate:`,
+`-daylightSavingTimeOffsetForDate:`, `-localizedName:locale:`, `abbreviation`, `data` and `defaultTimeZone` — all ten
+verified as Foundation's by the whole-selector test against a corpus that carries this owner's header.
+
 ## §63.119 — THE CORPUS IS NOT FOUNDATION: 89 OF 221 HEADERS HAVE NO COUNTERPART, AND THE MEASUREMENT STOPPED 35 WRONG STRIKES (2026-10-01)
 
 **NO ROWS CLOSED, AND THAT IS THE POINT: THIS UNIT STOPPED THIRTY-FIVE ROWS FROM BEING STRUCK FOR A REASON THAT DOES
