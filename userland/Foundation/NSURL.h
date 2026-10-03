@@ -271,6 +271,21 @@ typedef NSString *NSURLFileResourceType;
 - (void)removeAllCachedResourceValues;
 - (void)setTemporaryResourceValue:(nullable id)value forKey:(NSURLResourceKey)key;
 
+/* ⚠⚠ THE SECURITY-SCOPED PAIR, DECLARED ON THE CLASS BECAUSE THAT IS WHERE THE CORPUS HAS THEM, AND WITH THEIR
+ * CONTRACT READ RATHER THAN GUESSED (§63.96's instrument, first applied in §63.103):
+ *
+ *   "Given a NSURL CREATED BY RESOLVING A BOOKMARK DATA CREATED WITH SECURITY SCOPE, make the resource referenced by
+ *    the url accessible to the process. Each call to startAccessingSecurityScopedResource that returns YES must be
+ *    balanced with a call to stopAccessingSecurityScopedResource… Calls to start and stop accessing the resource are
+ *    REFERENCE COUNTED and may be NESTED."
+ *
+ * ⚠ SO THE DOOR ANSWERS A QUESTION — WHETHER ACCESS WAS GRANTED — AND THE HONEST ANSWER HERE IS NO: this system has no
+ * sandbox and no security-scoped bookmark to resolve, so there is nothing to grant. **THAT IS A CAPABILITY ANSWER AND
+ * NOT A REFUSAL** (§63.99's shape: `+canInflectLanguage:` answers NO rather than raising). And
+ * `-stopAccessingSecurityScopedResource` "removes one 'accessing' reference… When all references are removed, it
+ * revokes the access" — with none ever granted there is nothing to remove and nothing to revoke. */
+- (BOOL)startAccessingSecurityScopedResource;
+- (void)stopAccessingSecurityScopedResource;
 @end
 
 extern NSURLResourceKey const NSURLNameKey;

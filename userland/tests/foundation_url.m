@@ -53,6 +53,26 @@ int main(void)
 {
 
 	{
+		/* §63.108: THE SECURITY-SCOPED PAIR, ASSERTED BY ITS CONSEQUENCE RATHER THAN BY ITS RETURN ALONE. The NO is
+		 * the claim "no access was granted"; the second check asserts THAT THE ANSWER DOES NOT ACCUMULATE, because a
+		 * door counting references it cannot honour would make the paired stop a lie. No filesystem call is made, so
+		 * the check cannot fail for a reason that is not this pair's. */
+		NSURL *s = [NSURL fileURLWithPath:@"/System"];
+		BOOL granted = [s startAccessingSecurityScopedResource];
+		BOOL again;
+
+		[s stopAccessingSecurityScopedResource];
+		again = [s startAccessingSecurityScopedResource];
+		check("url-security-scoped-pair-answers-no",
+		      granted == NO && again == NO && [[s path] isEqualToString:@"/System"],
+		      [[NSString stringWithFormat:@"granted=%d again=%d path=%@", (int)granted, (int)again, [s path]] UTF8String]);
+		check("url-security-scoped-stop-balances-nothing",
+		      [s isFileURL],
+		      [[NSString stringWithFormat:@"isFileURL=%d after an unbalanced stop", (int)[s isFileURL]] UTF8String]);
+	}
+
+
+	{
 		/* §63.107: THE PROMISED-ITEM TRIO. On a system with no ubiquity a promised item is an ordinary file, so
 		 * what is asserted is THAT THEY AGREE WITH THE ORDINARY DOORS — and, for the one rule Apple publishes, that
 		 * a content-tied key ANSWERS YES WITH A NIL VALUE rather than failing. ⚠ The detail arguments are `const char *`

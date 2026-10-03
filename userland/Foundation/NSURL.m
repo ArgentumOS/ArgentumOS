@@ -1979,6 +1979,21 @@ static BOOL fn_url_answers_key(NSURLResourceKey key)
 	[super dealloc];
 }
 
+
+/* ================== THE SECURITY-SCOPED PAIR (§63.108) ==================
+ * ⚠ ONE OF THE PAIR ANSWERS AND THE OTHER DOES NOTHING, AND BOTH ARE CORRECT FOR THE SAME REASON: nothing here
+ * grants access, so there is no reference to count and none to balance. See the header for the contract. */
+- (BOOL)startAccessingSecurityScopedResource
+{
+	return NO;
+}
+
+- (void)stopAccessingSecurityScopedResource
+{
+	/* ⚠ NOT A NO-OP BY ACCIDENT: the contract is to remove ONE reference, and none was ever added. Nothing is
+	 * balanced here because nothing was ever unbalanced. */
+}
+
 @end
 
 

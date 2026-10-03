@@ -15982,6 +15982,40 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.108 — THE SECURITY-SCOPED PAIR LANDS ON THE FIRST ATTEMPT, AND THE THREE MEASUREMENTS THAT DID IT (2026-10-01)
+
+**WHAT LANDED: `-startAccessingSecurityScopedResource` and `-stopAccessingSecurityScopedResource`, ON THE CLASS — which
+is where the corpus declares them — AS A CAPABILITY ANSWER AND ITS BALANCE.**
+
+**MEASURED: `method shipped 2187 → 2189`, `open 371 → 369`; `--check` consistent; `make host-foundation` EXIT 0 with
+exactly the standing SIX warnings; `make testimg` EXIT 0; `make test TESTS='foundation_url'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with **`FOUNDATION-URL 40/40`**.**
+
+**⚠⚠ AND IT LANDED ON THE FIRST ATTEMPT, WHICH IS THE WHOLE OF WHAT THIS RECORD IS FOR: THREE MEASUREMENTS WERE TAKEN
+BEFORE A LINE WAS WRITTEN, AND THEY ARE THE THREE THINGS THAT COST §63.103–§63.107 FIVE ROUNDS BETWEEN THEM:**
+ 1. **THE CORPUS'S ENCLOSING INTERFACE** — asked with `awk`, answered `@interface NSURL: NSObject <NSSecureCoding,
+    NSCopying>`: **Apple declares these on the CLASS, not in a category**, so the declarations went into the class
+    block — faithful, and free of the category warning §63.95 paid for;
+ 2. **WHETHER THE TREE ALREADY DECLARED THEM, ASKED AS A COUNT AND NOT A LIST** — `grep -c` answered 1 and 0, **and the
+    1 is §63.103's PROSE**, which is exactly the trap that made that unit write an implementation with no
+    declaration. **§63.105's lesson applied: COUNT, DO NOT LOOK;**
+ 3. **THE PROBE'S `check()` SIGNATURE** — read before writing this time, so the two details are `const char *` from
+    the start (§63.106's third lesson).
+
+**AND THE CONTRACT IS APPLE'S OWN COMMENT, READ IN §63.103 AND APPLIED HERE:** the pair is REFERENCE COUNTED and may be
+NESTED, and `start` "makes the resource… accessible to the process" for a URL **created by resolving a SECURITY-SCOPED
+BOOKMARK**. **So the door ANSWERS WHETHER ACCESS WAS GRANTED, and here nothing is: NO. **THAT IS A CAPABILITY ANSWER AND
+NOT A REFUSAL — `§63.99`'s shape, where `+canInflectLanguage:` answers NO rather than raising.** And `stop` removes
+one "accessing" reference; none was ever added, so it balances nothing.
+
+**AND THE CHECKS ARE WRITTEN SO THEY CANNOT FAIL FOR A REASON THAT IS NOT THIS PAIR'S:** the first asserts that the
+answer DOES NOT ACCUMULATE (two unbalanced starts still answer NO, because a door counting references it cannot honour
+would make the paired stop a lie) and the second touches **no filesystem at all** — *a check must not be able to fail
+for a reason that is not the thing it is checking.*
+
+**AND WHAT REMAINS ON `NSURL` IS FOUR ROWS: the deprecated resource-data trio, and the UTType pair** (Foundation's,
+held back only by a corpus that does not carry their declarations).
+
 ## §63.107 — THE PROMISED-ITEM TRIO LANDS BY DELEGATING, AND APPLE'S COMMENT CORRECTED MY INSTINCT (2026-10-01)
 
 **WHAT LANDED: `NSURL (NSURLPromisedItems)` — `-getPromisedItemResourceValue:forKey:error:`,

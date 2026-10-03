@@ -29,6 +29,8 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_url"
 CHECKS = (
+    "url-security-scoped-stop-balances-nothing",
+    "url-security-scoped-pair-answers-no",
     "url-promised-item-bulk-read-answers-a-dictionary",
     "url-promised-item-reachability-delegates",
     "url-promised-item-content-tied-key-answers-yes-with-nil",

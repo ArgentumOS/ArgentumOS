@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2187   open  371   struck  370
+#   method     shipped 2189   open  369   struck  370
 #   property   shipped 1278   open  186   struck  172
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3408,8 +3408,8 @@ method	open	-setResourceData:	NSURL	Fundamentals / URLs / Deprecated	deprecated	
 method	shipped	-setResourceValue:forKey:error:	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
 method	shipped	-setResourceValues:error:	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
 method	shipped	-setTemporaryResourceValue:forKey:	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
-method	open	-startAccessingSecurityScopedResource	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
-method	open	-stopAccessingSecurityScopedResource	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
+method	shipped	-startAccessingSecurityScopedResource	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
+method	shipped	-stopAccessingSecurityScopedResource	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
 method	shipped	+writeBookmarkData:toURL:options:error:	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
 method	open	-writeToPasteboard:	NSURL	Fundamentals / URLs / Working with Pasteboards	-	objc
 property	shipped	URLByDeletingLastPathComponent	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
