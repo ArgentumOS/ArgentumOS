@@ -15969,6 +15969,34 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.138 — SLICE 2 IS NOT SLICE 1: THE SESSION FAMILY IS USED BY THE KEPT URL STACK (2026-10-01)
+
+**PART A OF SLICE 2 RAN CLEAN AND IS MEASURED: the 7 `NSURLSession*` classes and their 14 source files, 7 umbrella
+imports, 2 mk tokens, THE 17 OWNERS DECLARED INSIDE THOSE HEADERS, and both ledgers — selector 3341 → 3269 rows (72
+dropped), symbol surface 3174 → 3091 (83 dropped). The rules learned in slice 1 applied without a single failure.**
+
+**⚠⚠ AND PART B IS A DIFFERENT KIND OF JOB, WHICH IS WHY IT WAS STOPPED RATHER THAN RUSHED: TWENTY FILES IN
+`userland/Foundation/` STILL NAME THE FAMILY, AND THEY ARE THE LIVE URL/curl STACK — `FNCURLURLProtocol`,
+`NSHTTPCookieStorage`, `NSURLCredentialStorage`, `NSURLCache`, the redirect path — TOGETHER WITH ~20 PROBES AND CASES
+(11 of them dedicated to the session family, the rest referencing it incidentally).** Slice 1 was a family closed among
+itself; **this one is a family the KEPT code depends on.**
+
+**⚠ AND THE FIRST INCIDENTAL FILE ALREADY SHOWS THE SHAPE OF THE PROBLEM: `FNAuthenticationChallengeSender` — OUR OWN
+INTERNAL HELPER ON THE KEPT `NSURLConnection` AUTH PATH — SPELLS ITS DISPOSITION AS
+`NSURLSessionAuthChallengeDisposition`, A SESSION-ERA TYPE.** The classic (10.2) spelling of that concept is the
+`NSURLAuthenticationChallengeSender` PROTOCOL, which the class already adopts, so the type can simply become this
+library's own — **BUT A PARTIAL CHANGE DOES NOT COMPILE: `FNCURLURLProtocol.m` ALSO SPELLS THE SESSION ENUM, so the block
+types stop matching. THE TYPE MUST MOVE IN ONE PASS ACROSS EVERY FILE THAT NAMES IT, OR NOT AT ALL.**
+
+**AND THAT CHANGE WAS REVERTED RATHER THAN HALF-MADE: the tree is left exactly at §63.137's commit, green, with the
+family restored and both ledgers consistent.** *The disposition move is the right fix and it is ONE PASS away — but a fix
+that only makes sense once the family is cut has no business landing before it.*
+
+**WHAT SLICE 2 NEEDS, SO IT IS A PLAN AND NOT A DISCOVERY NEXT TIME: (1) the disposition type moves across every file in
+one pass; (2) `FNCURLURLProtocol`'s session-shaped plumbing is re-expressed in the session-free terms the kept path
+already has; (3) the 11 dedicated session probes and their 11 cases are deleted wholesale; (4) the incidental probes are
+trimmed with `tools/probe-scope.py`, which is validated and is the right instrument for the job.**
+
 ## §63.137 — THE FIRST SOURCE SLICE LANDS: THE MEASUREMENT SUBSYSTEM IS GONE, AND FOUR BUGS WERE CAUGHT BY INSTRUMENTS (2026-10-01)
 
 **LANDED: 26 CLASSES AND 52 SOURCE FILES — `NSUnit*` (21), `NSMeasurement`, `NSMeasurementFormatter`, `NSDimension`,
