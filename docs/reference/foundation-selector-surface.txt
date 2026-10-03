@@ -25,9 +25,9 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: 32-bit-only 4, declined 457, other-framework 130, unsupported-by-apple 2
+# why the struck rows are struck: 32-bit-only 4, declined 462, other-framework 130, unsupported-by-apple 2
 #
-# AND 549 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# AND 547 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
 # row is, never that it is excluded.
 #
@@ -36,7 +36,7 @@
 #
 # counts by kind:
 #   method     shipped 2204   open  315   struck  409
-#   property   shipped 1287   open  165   struck  184
+#   property   shipped 1295   open  152   struck  189
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -3728,34 +3728,34 @@ property	shipped	HTTPCookieStorage	NSURLSessionConfiguration	Networking / Essent
 property	shipped	HTTPMaximumConnectionsPerHost	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting HTTP policy and proxy properties	-	objc
 property	shipped	HTTPShouldSetCookies	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting cookie policies	-	objc
 property	shipped	HTTPShouldUsePipelining	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting HTTP policy and proxy properties	deprecated	objc
-property	open	TLSMaximumSupportedProtocol	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	deprecated	objc
-property	open	TLSMaximumSupportedProtocolVersion	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	-	objc
-property	open	TLSMinimumSupportedProtocol	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	deprecated	objc
-property	open	TLSMinimumSupportedProtocolVersion	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	-	objc
+property	struck	TLSMaximumSupportedProtocol	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	declined	objc
+property	struck	TLSMaximumSupportedProtocolVersion	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	declined	objc
+property	struck	TLSMinimumSupportedProtocol	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	declined	objc
+property	struck	TLSMinimumSupportedProtocolVersion	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	declined	objc
 property	shipped	URLCache	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting caching policies	-	objc
 property	shipped	URLCredentialStorage	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	-	objc
 property	shipped	allowsCellularAccess	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
 property	shipped	allowsConstrainedNetworkAccess	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting limited modes	-	objc
 property	shipped	allowsExpensiveNetworkAccess	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting limited modes	-	objc
-property	open	allowsUltraConstrainedNetworkAccess	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Instance Properties	-	objc
-property	open	connectionProxyDictionary	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting HTTP policy and proxy properties	-	objc
+property	shipped	allowsUltraConstrainedNetworkAccess	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Instance Properties	-	objc
+property	shipped	connectionProxyDictionary	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting HTTP policy and proxy properties	-	objc
 property	shipped	defaultSessionConfiguration	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Creating a session configuration object	-	objc
 property	shipped	discretionary	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting background transfers	-	objc
-property	open	enablesEarlyData	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Instance Properties	-	objc
+property	shipped	enablesEarlyData	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Instance Properties	-	objc
 property	shipped	ephemeralSessionConfiguration	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Creating a session configuration object	-	objc
 property	shipped	identifier	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
 property	shipped	multipathServiceType	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP	-	swift-page
 property	shipped	networkServiceType	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
 property	shipped	protocolClasses	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting custom protocols	-	objc
-property	open	proxyConfigurations	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting HTTP policy and proxy properties	-	objc
+property	struck	proxyConfigurations	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting HTTP policy and proxy properties	declined	objc
 property	shipped	requestCachePolicy	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting caching policies	-	objc
-property	open	requiresDNSSECValidation	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	-	objc
-property	open	sessionSendsLaunchEvents	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting background transfers	-	objc
-property	open	sharedContainerIdentifier	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
-property	open	shouldUseExtendedBackgroundIdleMode	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting background transfers	deprecated	objc
+property	shipped	requiresDNSSECValidation	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	-	objc
+property	shipped	sessionSendsLaunchEvents	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting background transfers	-	objc
+property	shipped	sharedContainerIdentifier	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
+property	shipped	shouldUseExtendedBackgroundIdleMode	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting background transfers	deprecated	objc
 property	shipped	timeoutIntervalForRequest	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
 property	shipped	timeoutIntervalForResource	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
-property	open	usesClassicLoadingMode	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
+property	shipped	usesClassicLoadingMode	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
 property	shipped	waitsForConnectivity	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
 method	open	-URLSession:dataTask:didBecomeDownloadTask:	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes	-	objc
 method	open	-URLSession:dataTask:didBecomeStreamTask:	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes	-	objc

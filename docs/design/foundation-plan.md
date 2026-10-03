@@ -15982,6 +15982,38 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.127 — `NSURLSessionConfiguration` COMPLETE, AGAINST ITS OWN NOTE: EIGHT CARRIED, FIVE BY Type-ABSENCE (2026-10-01)
+
+**ALL THIRTEEN ROWS ARE OFF THE WORK LIST AND `--work-list | grep -c NSURLSessionConfiguration` → 0 — THE SEVENTH OWNER
+FINISHED OUTRIGHT.**
+
+**MEASURED: `property shipped 1287 → 1295`, `open 165 → 152`, `struck 181 → 189`; `method 2204 / 315 / 409`
+unchanged; `--refresh` and `--check` both consistent; build EXIT 0 with exactly the standing SIX warnings.**
+
+**⚠⚠ THE DECISION IS THE USER'S AND IT GOES AGAINST THE TREE'S OWN RECORDED ONE, WHICH IS WHY THE NOTE IS CORRECTED IN
+THE SAME UNIT.** This class's header said of `allowsUltraConstrainedNetworkAccess` and `usesClassicLoadingMode`: *“carried
+flags whose near-identical twin is already carried; THEY ARE LEFT OPEN RATHER THAN ADDING MORE STORED FLAGS NOTHING
+READS”* — and the reading that overrides it is a caller's: **a property a porting program SETS AND READS BACK is a
+value, and ‘nothing consults it yet’ is what §11.6's own boundary already says about several shipped things.** The
+header note now says they are carried, and why.
+
+**⚠ AND THE FIVE THAT DID NOT CLOSE AS SHIPPED ARE NOT THE SAME CASE — THEY ARE NOT FLAGS AT ALL, THEY ARE A TYPE:**
+ * the **four TLS protocol-version properties** name `SSLProtocol` (Security) and `tls_protocol_version_t` (Network).
+   MEASURED: **those names occur ONCE in this whole tree, in prose**;
+ * **`proxyConfigurations`** names `NSProxyConfiguration`, from Network. MEASURED: **that name occurs NOWHERE in this
+   tree — not once.**
+ ***A DOOR WHOSE TYPE IS ABSENT IS NOT A DOOR THAT NEEDS A FLAG; IT NEEDS A FRAMEWORK*** — the same ground as
+ `NSItemProvider`'s eight `UTType` doors (§63.126), entered in `DECLINED_SELECTORS` with the measurements in the comment.
+
+**AND THE THREE `[deprecated]` MARKS WERE NOT GROUNDS**: §62.24 makes Apple-deprecated API a PORTING TARGET rather than an
+exclusion, so `TLSMaximumSupportedProtocol`, `TLSMinimumSupportedProtocol` and `shouldUseExtendedBackgroundIdleMode`
+closed or struck on their own merits — **the last of them by shipping it, because a deprecated flag is still a flag.**
+
+**⚠⚠ AND ONE THING IS STATED RATHER THAN IMPLIED: NO GUEST PROBE WAS RUN FOR THIS UNIT, AND A PROBE IS OWED.** The eight
+doors are stored accessors whose whole behaviour is set-then-read; `--check` proves every shipped selector is declared
+AND defined, and the host build compiles every body. **That is not the same as a probe asserting the round trip, and the
+difference is exactly the kind §63.124's probe caught — so it is named here as owed rather than counted as covered.**
+
 ## §63.126 — `NSItemProvider` COMPLETE: THIRTEEN ROWS CLOSED, AND THE GROUNDS WERE ALREADY IN ITS OWN HEADER (2026-10-01)
 
 **`NSItemProvider` HAS NO OPEN ROWS — THE SIXTH OWNER FINISHED OUTRIGHT — AND ALL THIRTEEN CLOSED IN ONE UNIT.**

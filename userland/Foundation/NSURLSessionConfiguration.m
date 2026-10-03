@@ -87,6 +87,36 @@
 - (void)setAllowsExpensiveNetworkAccess:(BOOL)flag { _allowsExpensiveNetworkAccess = flag; }
 - (BOOL)allowsConstrainedNetworkAccess { return _allowsConstrainedNetworkAccess; }
 - (void)setAllowsConstrainedNetworkAccess:(BOOL)flag { _allowsConstrainedNetworkAccess = flag; }
+
+/* §63.127: eight stored pairs, in this file's own one-line form. */
+- (BOOL)allowsUltraConstrainedNetworkAccess { return _allowsUltraConstrainedNetworkAccess; }
+- (void)setAllowsUltraConstrainedNetworkAccess:(BOOL)flag { _allowsUltraConstrainedNetworkAccess = flag; }
+- (BOOL)enablesEarlyData { return _enablesEarlyData; }
+- (void)setEnablesEarlyData:(BOOL)flag { _enablesEarlyData = flag; }
+- (BOOL)requiresDNSSECValidation { return _requiresDNSSECValidation; }
+- (void)setRequiresDNSSECValidation:(BOOL)flag { _requiresDNSSECValidation = flag; }
+- (BOOL)sessionSendsLaunchEvents { return _sessionSendsLaunchEvents; }
+- (void)setSessionSendsLaunchEvents:(BOOL)flag { _sessionSendsLaunchEvents = flag; }
+- (BOOL)shouldUseExtendedBackgroundIdleMode { return _shouldUseExtendedBackgroundIdleMode; }
+- (void)setShouldUseExtendedBackgroundIdleMode:(BOOL)flag { _shouldUseExtendedBackgroundIdleMode = flag; }
+- (BOOL)usesClassicLoadingMode { return _usesClassicLoadingMode; }
+- (void)setUsesClassicLoadingMode:(BOOL)flag { _usesClassicLoadingMode = flag; }
+- (NSString *)sharedContainerIdentifier { return _sharedContainerIdentifier; }
+- (void)setSharedContainerIdentifier:(NSString *)value
+{
+	NSString *old = _sharedContainerIdentifier;
+
+	_sharedContainerIdentifier = [value copy];
+	[old release];
+}
+- (NSDictionary *)connectionProxyDictionary { return _connectionProxyDictionary; }
+- (void)setConnectionProxyDictionary:(NSDictionary *)value
+{
+	NSDictionary *old = _connectionProxyDictionary;
+
+	_connectionProxyDictionary = [value copy];
+	[old release];
+}
 - (BOOL)waitsForConnectivity { return _waitsForConnectivity; }
 - (void)setWaitsForConnectivity:(BOOL)flag { _waitsForConnectivity = flag; }
 - (BOOL)HTTPShouldUsePipelining { return _HTTPShouldUsePipelining; }

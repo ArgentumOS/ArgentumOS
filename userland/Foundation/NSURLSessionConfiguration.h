@@ -105,6 +105,16 @@ typedef NS_ENUM(NSInteger, NSURLSessionMultipathServiceType) {
 	NSURLCache *_URLCache;
 	NSURLCredentialStorage *_URLCredentialStorage;
 	NSArray *_protocolClasses;
+	/* §63.127: carried flags and values, none of which the transport consults YET — and all of which a porting
+	 * caller reaches for. A property that can be set and read back is a value; it is not a promise about the wire. */
+	BOOL _allowsUltraConstrainedNetworkAccess;
+	BOOL _enablesEarlyData;
+	BOOL _requiresDNSSECValidation;
+	BOOL _sessionSendsLaunchEvents;
+	BOOL _shouldUseExtendedBackgroundIdleMode;
+	BOOL _usesClassicLoadingMode;
+	NSString *_sharedContainerIdentifier;
+	NSDictionary *_connectionProxyDictionary;
 }
 
 + (NSURLSessionConfiguration *)defaultSessionConfiguration;
@@ -150,6 +160,20 @@ typedef NS_ENUM(NSInteger, NSURLSessionMultipathServiceType) {
 /* THE SUBCLASSES A SESSION MAY CONSULT — carried here, consulted by the session's execution half, and
  * the one property that ties this class to slice 2a's registry. */
 @property (nullable, copy) NSArray *protocolClasses;
+
+/* §63.127: EIGHT MORE STORED DOORS. Types named: BOOL, NSString (copied) and NSDictionary (copied) — every one of
+ * them present in this library. THE FIVE ROWS THAT DO NOT APPEAR HERE ARE RECORDED WITH THEIR GROUND IN THE SWEEP:
+ * the four TLS protocol-version properties name `SSLProtocol`/`tls_protocol_version_t`, which belong to Security and
+ * Network, and `proxyConfigurations` names `NSProxyConfiguration`, from Network — measured, no such name anywhere in
+ * this tree. */
+@property BOOL allowsUltraConstrainedNetworkAccess;
+@property BOOL enablesEarlyData;
+@property BOOL requiresDNSSECValidation;
+@property BOOL sessionSendsLaunchEvents;
+@property BOOL shouldUseExtendedBackgroundIdleMode;
+@property BOOL usesClassicLoadingMode;
+@property (copy) NSString *sharedContainerIdentifier;
+@property (copy) NSDictionary *connectionProxyDictionary;
 
 @end
 

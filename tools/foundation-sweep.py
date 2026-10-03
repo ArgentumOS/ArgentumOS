@@ -889,6 +889,21 @@ DECLINED_SELECTORS = frozenset((
     ("NSItemProvider", "preferredPresentationStyle"),
     ("NSItemProvider", "registeredContentTypes"),
     ("NSItemProvider", "registeredContentTypesForOpenInPlace"),
+    # ⚠⚠ NSURLSessionConfiguration'S FIVE REMAINING ROWS NAME TYPES THIS SYSTEM DOES NOT HAVE, AND THAT IS THE WHOLE
+    # GROUND (§63.127). The class's header note listed these as "left OPEN rather than adding more stored flags nothing
+    # reads" — and THE EIGHT THAT ARE CARRIED ARE NOW CARRIED, BY THE USER'S DECISION; these five are NOT the same case,
+    # because they are not flags and not dictionaries, they are a TYPE:
+    #   * the FOUR TLS protocol-version properties name `SSLProtocol` (Security) and `tls_protocol_version_t` (Network).
+    #     MEASURED: those names occur ONCE in this whole tree, in prose;
+    #   * `proxyConfigurations` names `NSProxyConfiguration`, from Network. MEASURED: that name occurs NOWHERE in this
+    #     tree — not once.
+    # **A DOOR WHOSE TYPE IS ABSENT IS NOT A DOOR THAT NEEDS A FLAG; IT NEEDS A FRAMEWORK** — the same ground as
+    # NSItemProvider's eight UTType doors (§63.126).
+    ("NSURLSessionConfiguration", "TLSMaximumSupportedProtocol"),
+    ("NSURLSessionConfiguration", "TLSMaximumSupportedProtocolVersion"),
+    ("NSURLSessionConfiguration", "TLSMinimumSupportedProtocol"),
+    ("NSURLSessionConfiguration", "TLSMinimumSupportedProtocolVersion"),
+    ("NSURLSessionConfiguration", "proxyConfigurations"),
     # ⚠⚠ `+timeZoneWithAbbreviation:` IS A DECLINE WITH A POSITIVE REASON, AND THE REASON IS THE TREE'S OWN (the
     # class’s header has carried it since the class was written): APPLE'S DOOR IS A CURATED MAP FROM AN ADBREVIATION TO
     # ONE CHOSEN ZONE ("EST" -> "America/New_York"), AND ICU HAS ABBREVIATIONS BUT NOT THAT CURATION. §63.125 MEASURED
