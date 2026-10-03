@@ -15982,6 +15982,40 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.104 — THE USER DECIDED THE BOOKMARKS REFUSE, AND THE FIRST THING THE UNIT MEASURED WAS A TYPE THAT DOES NOT EXIST (2026-10-01)
+
+**THE DECISION (user, 2026-10-01, `dec-412cc6306e238994`): THE BOOKMARK FAMILY REFUSES BY NAME, CONSISTENTLY WITH
+§63.99'S INFLECTION DOOR.** The reason it is the right shape: Apple's bookmark data is an OPAQUE per-system
+serialisation, and **a door that returned a plausible-looking `NSData` would be WORSE THAN A REFUSAL**, because the
+data would round-trip here and mean nothing anywhere else. **AND THE REFUSAL IS WHAT MAKES THE OTHER CHOICE POSSIBLE
+LATER:** a caller who meets the exception knows exactly what is missing, and a future bookmark format of ours can
+land behind these same seven signatures **without any caller having been misled in the meantime.**
+
+**⚠ AND THE FIRST CORRECTION IS MINE: THE FAMILY IS SEVEN ROWS, NOT TEN.** §63.103's record said ten, and the
+sixteen break down as **seven bookmarks + three promised-item + three deprecated-resource-data + two
+security-scoped + `-fileReferenceURL`** — which is sixteen. The unit was sized against a number I had not counted.
+
+**⚠⚠ AND THE UNIT WAS THEN STOPPED BY A MEASUREMENT, WHICH IS THE RIGHT REASON TO STOP: THE SEVEN DOORS TAKE TWO OPTION
+TYPES THAT THIS TREE DOES NOT DECLARE.** The header has `NSURLResourceKey` (line 67) and
+`NSURLBookmarkFileCreationOptions` (line 549 — Apple's OLD spelling), **and NEITHER `NSURLBookmarkResolutionOptions` NOR
+`NSURLBookmarkCreationOptions`.** So the seven doors cannot be declared before those two types are, **and APPLE'S
+CORPUS PUBLISHES THEIR VALUES** — `1 << 8`/`1 << 9`/`1 << 10`/`1 << 15` for the resolution options (§63.103 read them),
+which is §63.82's check that costs nothing: **LOOK BEFORE WRITING A VALUE.**
+
+**⚠ AND THE FAILURE ITSELF IS THE SIXTH INSTANCE OF THIS SESSION'S ONE MISTAKE, IN A NEW LAYER: I WROTE SEVEN SIGNATURES
+FROM APPLE'S DECLARATIONS WITHOUT READING THIS TREE'S HEADER FIRST, AND FOUR OF THEM NAMED TYPES THAT ARE NOT THERE**
+(‘expected a type’ × 4). The earlier instances matched a keyword for a declaration, a comment for an import, a
+selector for its arguments, a sign the rows do not carry, and a comment for a declaration — **and this one assumed a
+TYPE existed because APPLE has it. THE TREE IS THE ONLY AUTHORITY ON WHAT THE TREE DECLARES.**
+
+**⚠ AND ONE THING FROM §63.103 WORKED EXACTLY AS FIXED: THE GUARD MATCHED A DECLARATION AND NOT PROSE, so the seven
+declarations and the seven refusals were written on the first attempt** — the round that found the trap paid for the
+round that avoided it. **AND THE SEVEN CHECKS ARE ONE PER DOOR ON PURPOSE**: one check over seven doors says only that
+SOMETHING raised, and **a door that stopped raising would hide behind its siblings.**
+
+**SO THIS OWNER'S NEXT STEP IS NOT A DECISION AND NOT A DESIGN: IT IS TWO TYPEDEFS, WITH APPLE'S NAMES AND APPLE'S
+PUBLISHED VALUES, AND THEN THE SEVEN REFUSALS THAT ARE ALREADY WRITTEN AND UNDERSTOOD.**
+
 ## §63.103 — `NSURL` CLASSIFIED: 16 OURS IN FOUR FAMILIES, AND A GUARD THAT MATCHED A COMMENT FOR THE FIFTH TIME (2026-10-01)
 
 **NO ROWS CLOSED. THE UNIT MEASURED THE OWNER, READ THE SMALLEST FAMILY'S CONTRACT, WROTE IT — AND WAS HELD BACK BY
