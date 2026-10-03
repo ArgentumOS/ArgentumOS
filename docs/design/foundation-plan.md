@@ -3709,31 +3709,19 @@ vanishing.
 | **Fundamentals / Binary Data** | all classes shipped | — |
 | **Fundamentals / Calendrical Calculations** | all classes shipped | — |
 | **Fundamentals / Characters** | all classes shipped | — |
-| **Fundamentals / Concentration and Dispersion** | all classes shipped | — |
-| **Fundamentals / Conversion** | all classes shipped | — |
 | **Fundamentals / Custom formatters** | all classes shipped | — |
-| **Fundamentals / Data Storage** | all classes shipped | — |
-| **Fundamentals / Data sizes** | all classes shipped | — |
 | **Fundamentals / Date Formatting** | all classes shipped | — |
 | **Fundamentals / Date Representations** | all classes shipped | — |
 | **Fundamentals / Dates and times** | all classes shipped | — |
 | **Fundamentals / Deprecated** | all classes shipped | — |
-| **Fundamentals / Electricity** | all classes shipped | — |
-| **Fundamentals / Energy, Heat, and Light** | all classes shipped | — |
-| **Fundamentals / Essentials** | all classes shipped | — |
 | **Fundamentals / Filltering** | all classes shipped | — |
-| **Fundamentals / Fuel Efficiency** | all classes shipped | — |
 | **Fundamentals / Geometry** | all classes shipped | — |
 | **Fundamentals / Indexes** | all classes shipped | — |
 | **Fundamentals / Iteration** | all classes shipped | — |
-| **Fundamentals / Lists** | all classes shipped | — |
 | **Fundamentals / Localization** | all classes shipped | — |
-| **Fundamentals / Mass, Weight, and Force** | all classes shipped | — |
-| **Fundamentals / Measurements** | all classes shipped | — |
 | **Fundamentals / Names** | all classes shipped | — |
 | **Fundamentals / Numbers** | all classes shipped | — |
 | **Fundamentals / Pattern Matching** | all classes shipped | — |
-| **Fundamentals / Physical Dimension** | all classes shipped | — |
 | **Fundamentals / Pointer Collections** | all classes shipped | — |
 | **Fundamentals / Purgeable Collections** | all classes shipped | — |
 | **Fundamentals / Sorting** | all classes shipped | — |
@@ -3742,7 +3730,6 @@ vanishing.
 | **Fundamentals / Spelling and Grammar** | all classes shipped | — |
 | **Fundamentals / Strings** | all classes shipped | — |
 | **Fundamentals / Strings with Metadata** | all classes shipped | — |
-| **Fundamentals / Time and Motion** | all classes shipped | — |
 | **Fundamentals / URLs** | all classes shipped | — |
 | **Fundamentals / Unique Identifiers** | all classes shipped | — |
 | **Low-Level Utilities / Copying** | all classes shipped | — |
@@ -15981,6 +15968,48 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 `--families --write` (rewrote the family table and the ledger) → `--check` **consistent** → `--unimplemented`
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
+
+## §63.137 — THE FIRST SOURCE SLICE LANDS: THE MEASUREMENT SUBSYSTEM IS GONE, AND FOUR BUGS WERE CAUGHT BY INSTRUMENTS (2026-10-01)
+
+**LANDED: 26 CLASSES AND 52 SOURCE FILES — `NSUnit*` (21), `NSMeasurement`, `NSMeasurementFormatter`, `NSDimension`,
+`NSByteCountFormatter`, `NSListFormatter` — the one family the reference graph showed to be CLOSED AMONG ITSELF. With
+them: 26 umbrella imports, 3 explicit source tokens in `mk/20-userland.mk`, 41 of the formatter probe's 86 checks and the
+matching case inventory (86 → 45 names), BOTH ledger artefacts, and the plan's generated family table (89 rows).**
+
+**MEASURED: `make host-foundation` EXIT 0 with exactly the standing SIX warnings; `make testimg` EXIT 0;
+`FOUNDATION-FORMATTERS RESULT ok=45 fail=0`; `TESTS-OK 1/1 case(s), 6/6 check(s) in 13s`; `--check` consistent.**
+Selector ledger 3370 → 3341 rows (29 dropped, 30 owners); symbol surface 3225 → 3174 (51 dropped).
+
+**AND THE TOOL THAT MADE IT POSSIBLE IS `tools/probe-scope.py`, VALIDATED BEFORE IT WAS TRUSTED**: scope-aware
+attribution, checked against two hand counts — `unit-length` (which does test `NSUnit`) and `pnc-securecoding` (which
+does not). **It found 41 of 86 checks depending on the slice; the line-range version had said 27 and was wrong in both
+directions.**
+
+**⚠⚠ AND SIX FAILURES, EVERY ONE CAUGHT BY AN INSTRUMENT RATHER THAN BY READING — WHICH IS THE ONLY REASON THE TREE IS
+GREEN RATHER THAN HALF-DELETED:**
+ 1. **`\bNSUnit\b` does not match `NSUnitLength`**, so a family name never matched its own subclasses and every unit
+    check was under-attributed. *A family in this tree is a name PREFIX.*
+ 2. The pasted `scopes()` lacked the char-literal skip `probe-scope.py` has. **Not the cause — but I fixed it as though
+    it were, and the build said so immediately.**
+ 3. **THE OFF-BY-ONE: `scopes()` RETURNS THE INDEX OF THE CLOSING BRACE, so `pt[:a] + pt[b:]` KEEPS IT and every removed
+    block left an orphan `}`.** ⚠⚠ **AND THE SAME FUNCTION IS CORRECT IN `probe-scope.py`, WHERE IT IS ONLY A
+    CONTAINMENT TEST — the bug existed only in the DELETION use, so copying a validated helper into a new role is not
+    the same as validating it in that role.**
+ 4. **THE LEDGER RULE, WRONG IN THE OTHER DIRECTION: ‘owner has no header in the tree’ OVER-REACHED FROM 30 OWNERS TO
+    118**, because ~90 classes legitimately have no header of their own — `NSMutableArray` is declared in `NSArray.h` and
+    `NSCopying` in `NSObject.h`. **The right rule is the owners declared INSIDE THE DELETED FILES, read out of git,
+    because the files are gone.** That rule dropped 29 rows where the wrong one would have dropped 976.
+ 5. **A CLASS ROW'S OWNER COLUMN IS EMPTY in the symbol surface — a class owns itself** — so an owner-keyed filter missed
+    every class row and they survived as STALE SHIPPED CLAIMs, which `testimg` reported.
+ 6. **A blunt string-token removal damaged a CODE expression in the case file** (`if tally else )` is what replacing a
+    string literal everywhere does) — so the edit is now scoped to the `CHECKS` tuple. *And a count-block rewrite
+    indexed by the Counter's KEY instead of the kind string and wrote ZEROS into every line.*
+
+**AND THE LEDGERS ARE NOW ‘FILTERED, NOT REGENERATED’ IN TWO ARTEFACTS, with the reason in both headers: the generator's
+input 404s.**
+
+**WHAT REMAINS: 61 classes of the 87, the member cuts, and the callers those members belong to. The graph is closed by
+the two axes together — §63.136 — and this slice is the proof that the pipeline runs.**
 
 ## §63.136 — THE CUT IS A REWIRING, NOT A DELETION SET — AND THE PROBE SPLITTER DOES NOT EARN ITS KEEP YET (2026-10-01)
 

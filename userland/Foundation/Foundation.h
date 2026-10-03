@@ -109,41 +109,15 @@
 #import <Foundation/NSEnergyFormatter.h>
 #import <Foundation/NSDateFormatter.h>
 #import <Foundation/NSNumberFormatter.h>
-#import <Foundation/NSListFormatter.h>
 #import <Foundation/NSPersonNameComponents.h>
 #import <Foundation/NSISO8601DateFormatter.h>
 #import <Foundation/NSDateIntervalFormatter.h>
-#import <Foundation/NSByteCountFormatter.h>
 #import <Foundation/NSRelativeDateTimeFormatter.h>
 #import <Foundation/NSDateComponentsFormatter.h>
 /* W12's first slice: the unit machinery and the value that carries one. None of these four needs ICU —
  * the arithmetic is the converters' — which is why they are not in FN_FOUNDATION_ICU. */
-#import <Foundation/NSUnit.h>
-#import <Foundation/NSUnitConverter.h>
-#import <Foundation/NSDimension.h>
-#import <Foundation/NSUnitInformationStorage.h>
-#import <Foundation/NSMeasurement.h>
 /* W12's dimensional families. Each is a table and a set of class methods — and none needs ICU, for the same
  * reason the machinery above needs none: the arithmetic is the converters'. */
-#import <Foundation/NSUnitTemperature.h>
-#import <Foundation/NSUnitDuration.h>
-#import <Foundation/NSUnitLength.h>
-#import <Foundation/NSUnitMass.h>
-#import <Foundation/NSUnitArea.h>
-#import <Foundation/NSUnitAngle.h>
-#import <Foundation/NSUnitSpeed.h>
-#import <Foundation/NSUnitAcceleration.h>
-#import <Foundation/NSUnitFrequency.h>
-#import <Foundation/NSUnitEnergy.h>
-#import <Foundation/NSUnitPower.h>
-#import <Foundation/NSUnitElectric.h>
-#import <Foundation/NSUnitIlluminance.h>
-#import <Foundation/NSUnitDispersion.h>
-#import <Foundation/NSUnitFuelEfficiency.h>
-#import <Foundation/NSUnitVolume.h>
-#import <Foundation/NSUnitPressure.h>
-#import <Foundation/NSUnitConcentrationMass.h>
-#import <Foundation/NSMeasurementFormatter.h>
 #import <Foundation/NSKeyedArchiverDelegate.h>
 #import <Foundation/NSKeyedUnarchiverDelegate.h>
 #import <Foundation/NSSecureUnarchiveFromDataTransformer.h>

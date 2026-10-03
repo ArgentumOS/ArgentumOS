@@ -36,8 +36,8 @@ CHECKS = (
     # NSPersonNameComponents
     "pnc-absent", "pnc-bag", "pnc-setter-copies", "pnc-copy-deep", "pnc-securecoding",
     # NSListFormatter
-    "list-join-en", "list-join-two", "list-join-de", "list-item-formatter",
-    "list-empty", "list-object-value", "list-locale-resettable",
+    
+    
     # NSISO8601DateFormatter
     "iso-round-trip", "iso-shape", "iso-date-only", "iso-fractional",
     "iso-space-separator", "iso-basic-format", "iso-offset-zone",
@@ -46,8 +46,8 @@ CHECKS = (
     "dif-range", "dif-collapse", "dif-template-locale", "dif-no-style",
     "dif-interval-object", "dif-resettable", "dif-template-copies",
     # NSByteCountFormatter (the arithmetic that is ours) + the measurement doors W12 landed
-    "bcf-count-styles", "bcf-magnitude", "bcf-units-mask", "bcf-zeropad",
-    "bcf-nonnumeric", "bcf-adaptive", "bcf-object-value", "bcf-measurement-landed",
+    
+    
     # NSRelativeDateTimeFormatter
     "rdf-numeric", "rdf-named", "rdf-spellout", "rdf-interval-and-components",
     "rdf-capitalization", "rdf-locale", "rdf-object-value",
@@ -56,17 +56,17 @@ CHECKS = (
     "dcf-positional-clock", "dcf-unit-rules", "dcf-phrases", "dcf-date-doors",
     "dcf-object-and-parse", "dcf-class-method",
     # W12's first slice: the unit machinery and the value that carries a unit
-    "unit-identity", "unit-linear-converter", "unit-converter-raises",
-    "unit-information-storage", "unit-conversion", "unit-measurement-arithmetic",
-    "unit-measurement-value",
+    
+    
+    
     # W12's dimensional families (the offset one first, then the ratio families)
-    "unit-temperature-offset", "unit-duration", "unit-length",
-    "unit-mass", "unit-area", "unit-angle",
-    "unit-speed", "unit-acceleration", "unit-frequency", "unit-energy", "unit-power",
-    "unit-electric", "unit-single-unit-families", "unit-fuel-efficiency",
-    "unit-volume", "unit-pressure", "unit-concentration",
+    
+    
+    
+    
+    
     # NSMeasurementFormatter (W12's last class)
-    "unit-measurement-formatter", "unit-measurement-formatter-options",
+    
 )
 
 

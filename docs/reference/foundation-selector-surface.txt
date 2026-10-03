@@ -44,8 +44,9 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-# method	shipped	1697	open	247	struck	390
-# property	shipped	767	open	99	struck	170
+# method	shipped	1691	open	247	struck	390
+# property	shipped	744	open	99	struck	170
+
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -3056,35 +3057,6 @@ property	shipped	undoing	NSUndoManager	App Support / Undo / Checking whether und
 method	struck	-initWithCoder:	NSUniqueIDSpecifier	App Support / Object Specifiers / Instance Methods	declined	objc
 method	struck	-initWithContainerClassDescription:containerSpecifier:key:uniqueID:	NSUniqueIDSpecifier	App Support / Object Specifiers / Initializing a unique ID specifier	declined	objc
 property	struck	uniqueID	NSUniqueIDSpecifier	App Support / Object Specifiers / Accessing unique ID information	declined	objc
-method	shipped	-initWithCoefficient:	NSUnitConverterLinear	Fundamentals / Conversion / Creating Unit Converters	-	objc
-method	shipped	-initWithCoefficient:constant:	NSUnitConverterLinear	Fundamentals / Conversion / Creating Unit Converters	-	objc
-property	shipped	coefficient	NSUnitConverterLinear	Fundamentals / Conversion / Accessing Linear Parameters	-	objc
-property	shipped	constant	NSUnitConverterLinear	Fundamentals / Conversion / Accessing Linear Parameters	-	objc
-method	shipped	+baseUnit	NSUnitElectricCharge	Fundamentals / Electricity / Accessing the Base Unit	-	objc
-property	shipped	ampereHours	NSUnitElectricCharge	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	coulombs	NSUnitElectricCharge	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	kiloampereHours	NSUnitElectricCharge	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	megaampereHours	NSUnitElectricCharge	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	microampereHours	NSUnitElectricCharge	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	milliampereHours	NSUnitElectricCharge	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitElectricCurrent	Fundamentals / Electricity / Accessing the Base Unit	-	objc
-property	shipped	amperes	NSUnitElectricCurrent	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	kiloamperes	NSUnitElectricCurrent	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	megaamperes	NSUnitElectricCurrent	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	microamperes	NSUnitElectricCurrent	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	milliamperes	NSUnitElectricCurrent	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitElectricPotentialDifference	Fundamentals / Electricity / Accessing the Base Unit	-	objc
-property	shipped	kilovolts	NSUnitElectricPotentialDifference	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	megavolts	NSUnitElectricPotentialDifference	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	microvolts	NSUnitElectricPotentialDifference	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	millivolts	NSUnitElectricPotentialDifference	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	volts	NSUnitElectricPotentialDifference	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitElectricResistance	Fundamentals / Electricity / Accessing the Base Unit	-	objc
-property	shipped	kiloohms	NSUnitElectricResistance	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	megaohms	NSUnitElectricResistance	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	microohms	NSUnitElectricResistance	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	milliohms	NSUnitElectricResistance	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-property	shipped	ohms	NSUnitElectricResistance	Fundamentals / Electricity / Accessing Predefined Units	-	objc
 method	shipped	-userActivity:didReceiveInputStream:outputStream:	NSUserActivityDelegate	App Support / Activity Sharing / Monitoring activity-related behaviors / Handling streams	-	objc
 method	shipped	-userActivityWasContinued:	NSUserActivityDelegate	App Support / Activity Sharing / Monitoring activity-related behaviors / Managing activity continuation	-	objc
 method	shipped	-userActivityWillSave:	NSUserActivityDelegate	App Support / Activity Sharing / Monitoring activity-related behaviors / Managing activity continuation	-	objc

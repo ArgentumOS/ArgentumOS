@@ -343,9 +343,9 @@ FN_FOUNDATION_SSL    = NSURLSessionStreamTask.m FNWebSocketHandshake.m NSURLSess
 # (the host has ICU's headers on its default include path). NSDecimalNumber.m asks ICU for the locale's
 # decimal separator, so it belongs in this list - which the guest build is what proved.
 FN_FOUNDATION_ICU   = NSScanner.m NSOrthography.m NSCalendar.m NSDateFormatter.m NSNumberFormatter.m NSPredicate.m NSTimeZone.m NSLinguisticTagger.m FNTextBreaking.m \
-                      NSCharacterSet.m NSLocale.m NSDecimalNumber.m NSListFormatter.m \
-                      NSISO8601DateFormatter.m NSDateIntervalFormatter.m NSByteCountFormatter.m \
-                      NSRelativeDateTimeFormatter.m NSDateComponentsFormatter.m NSMeasurementFormatter.m \
+                      NSCharacterSet.m NSLocale.m NSDecimalNumber.m \
+                      NSISO8601DateFormatter.m NSDateIntervalFormatter.m \
+                      NSRelativeDateTimeFormatter.m NSDateComponentsFormatter.m \
                       NSSecureUnarchiveFromDataTransformer.m NSPointerFunctions.m \
                       NSPointerArray.m FNPointerTable.m NSHashTable.m NSMapTable.m \
                       NSPurgeableData.m NSCache.m NSString.m

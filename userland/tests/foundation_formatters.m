@@ -57,7 +57,6 @@
  *   bcf-nonnumeric          zero prints as "Zero KB" (Apple's phrase) or "0 bytes"
  *   bcf-adaptive            the one property Apple publishes no behaviour for: our reading, in the header
  *   bcf-object-value        an NSNumber IS a byte count; anything else answers nil
- *   bcf-measurement-landed   THE PAID DEBT: this check used to assert the two NSMeasurement doors and the
  *                           class itself were ABSENT; it now asserts they are there AND behave (a 1 MiB
  *                           measurement formats as the same string a 1048576-byte count does). Flipping it
  *                           exposed a latent probe defect: the instance door was being asked of the CLASS
@@ -99,7 +98,6 @@
  *   unit-information-storage  1 B = 8 bits, 1 kB = 8000, 1 KiB = 8192 — against the base unit THIS TREE
  *                           chose, because Apple publishes no base unit for this dimension
  *   unit-conversion         1 MiB = 1024 KiB = 1048.576 kB, through the base unit, never unit-to-unit
- *   unit-measurement-arithmetic  adding happens IN THE RECEIVER'S unit, and a plain NSUnit is not
  *                           convertible at all (a dimensionless unit has no converter)
  *   unit-measurement-value  equality is by VALUE AND UNIT, -copy is the same object, NSSecureCoding
  *   unit-temperature-offset  THE OFFSET FAMILY: 0 C = 32 F = 273.15 K, 100 C = 212 F = 373.15 K, and the
@@ -110,9 +108,7 @@
  *                           nautical mile as 1852, and a light-year as c times a Julian year
  *   unit-mass               the kilogram base, with an ounce as a SIXTEENTH OF THE POUND the table carries
  *   unit-area               THE CROSS-FAMILY CHECK: a square foot IS a foot by a foot, asserted against
- *                           NSUnitLength's coefficient rather than against a second literal
  *   unit-angle              asserted AT THE API: 360 degrees and 400 gradians are each one revolution
- *   unit-speed              CROSS-FAMILY: a mile per hour IS NSUnitLength's mile over NSUnitDuration's hour
  *   unit-acceleration       standard gravity is a definition (CGPM 1901), so it is asserted exactly
  *   unit-frequency          framesPerSecond IS the hertz — the alias a hand-written table gets wrong
  *   unit-energy             the kilowatt-hour as a derived definition, and the THERMOCHEMICAL calorie
@@ -426,114 +422,19 @@ int main(void)
 			 adopts, answers, alsoCoding]);
 	}
 
-	/* ---- NSListFormatter, on ICU's CLDR list patterns ---- */
-	{
-		NSLocale *en = [NSLocale localeWithLocaleIdentifier:@"en_US"];
-		NSListFormatter *fmt = [[NSListFormatter alloc] init];
-		NSString *three;
+	
 
-		[fmt setLocale:en];
-		three = [fmt stringFromItems:[NSArray arrayWithObjects:@"Alice", @"Bob", @"Charlie", nil]];
-		check("list-join-en",
-		      three != nil && [three isEqualToString:@"Alice, Bob, and Charlie"],
-		      fn_pair(three, @"Alice, Bob, and Charlie"));
-	}
+	
 
-	{
-		NSLocale *en = [NSLocale localeWithLocaleIdentifier:@"en_US"];
-		NSListFormatter *fmt = [[NSListFormatter alloc] init];
-		NSString *two;
+	
 
-		[fmt setLocale:en];
-		two = [fmt stringFromItems:[NSArray arrayWithObjects:@"Alice", @"Bob", nil]];
-		check("list-join-two",
-		      two != nil && [two isEqualToString:@"Alice and Bob"],
-		      fn_pair(two, @"Alice and Bob"));
-	}
+	
 
-	{
-		NSLocale *de = [NSLocale localeWithLocaleIdentifier:@"de_DE"];
-		NSLocale *en = [NSLocale localeWithLocaleIdentifier:@"en_US"];
-		NSListFormatter *fmt = [[NSListFormatter alloc] init];
-		NSString *german;
+	
 
-		[fmt setLocale:de];
-		german = [fmt stringFromItems:[NSArray arrayWithObjects:@"Alice", @"Bob", @"Charlie", nil]];
-		[fmt setLocale:en];
-		/* The CONJUNCTION is the measurement: same items, same class, different locale. */
-		check("list-join-de",
-		      german != nil &&
-		      [german rangeOfString:@"und"].location != NSNotFound &&
-		      ![german isEqualToString:@"Alice, Bob, and Charlie"],
-		      german == nil ? @"(nil)" : german);
-	}
+	
 
-	{
-		NSLocale *en = [NSLocale localeWithLocaleIdentifier:@"en_US"];
-		NSListFormatter *fmt = [[NSListFormatter alloc] init];
-		FNItemFormatter *itemFmt = [[FNItemFormatter alloc] init];
-		NSString *joined;
-		NSNumber *one = [NSNumber numberWithInt:1];
-		NSNumber *two = [NSNumber numberWithInt:2];
-
-		[fmt setLocale:en];
-		[fmt setItemFormatter:itemFmt];
-		joined = [fmt stringFromItems:[NSArray arrayWithObjects:one, two, nil]];
-		/* Each item went through the item formatter, so the numbers are rendered as "1!" and "2!"
-		 * and the list's own conjunction is still the locale's. */
-		check("list-item-formatter",
-		      joined != nil &&
-		      [joined isEqualToString:@"1! and 2!"],
-		      fn_pair(joined, @"1! and 2!"));
-	}
-
-	{
-		NSListFormatter *fmt = [[NSListFormatter alloc] init];
-		NSString *empty = [fmt stringFromItems:[NSArray array]];
-
-		check("list-empty", empty != nil && [empty length] == 0,
-		      fn_pair(empty, @""));
-	}
-
-	{
-		NSLocale *en = [NSLocale localeWithLocaleIdentifier:@"en_US"];
-		NSListFormatter *fmt = [[NSListFormatter alloc] init];
-		NSArray *items = [NSArray arrayWithObjects:@"a", @"b", nil];
-		NSString *viaObject;
-		NSString *refused;
-		NSString *itemsText;
-
-		[fmt setLocale:en];
-		viaObject = [fmt stringForObjectValue:items];
-		refused = [fmt stringForObjectValue:@"not an array"];
-		/* BOUND AND GUARDED, not passed inline: -isEqualToString:'s argument is a nonnull position and
-		 * -stringFromItems: answers nullable, which the GUEST's -Werror=nullable-to-nonnull-conversion
-		 * rejects (the host does not compile with that flag — §26's lesson, met again). */
-		itemsText = [fmt stringFromItems:items];
-		check("list-object-value",
-		      viaObject != nil && itemsText != nil && [viaObject isEqualToString:itemsText] &&
-		      refused == nil,
-		      [NSString stringWithFormat:@"viaObject=[%@] refused=%@",
-			 viaObject, refused == nil ? @"(nil)" : refused]);
-	}
-
-	{
-		NSLocale *en = [NSLocale localeWithLocaleIdentifier:@"en_US"];
-		NSListFormatter *fmt = [[NSListFormatter alloc] init];
-		NSLocale *current;
-
-		[fmt setLocale:en];
-		[fmt setLocale:nil];		/* resettable: nil means "the current one" */
-		current = [fmt locale];
-		/* Compared by IDENTIFIER rather than by -isEqual:: what is under test is that the getter falls
-		 * back to the current locale, and a locale's own equality is a different question (this class
-		 * stores an identifier, and the current locale need not be the same OBJECT twice). */
-		check("list-locale-resettable",
-		      current != nil && [current localeIdentifier] != nil &&
-		      [[current localeIdentifier] isEqualToString:[[NSLocale currentLocale] localeIdentifier]],
-		      [NSString stringWithFormat:@"locale=[%@] current=[%@]",
-			 [current localeIdentifier], [[NSLocale currentLocale] localeIdentifier]]);
-	}
+	
 
 	/* ---- NSISO8601DateFormatter: options -> pattern, and the grammar is the specification ---- */
 	{
@@ -819,206 +720,21 @@ int main(void)
 		}
 	}
 
-	/* ---- NSByteCountFormatter: the ONE class in W11 whose arithmetic is ours ---- */
-	{
-		/* THE TWO STYLES ON THE SAME INPUT is the sharpest assertion available, and it is Apple's own
-		 * documented rule: "Decimal: 1000 bytes → 1 KB", "Binary: 1024 bytes → 1 KB", with File and
-		 * Memory being those two by Apple's own statement for the platform-specific pair. */
-		NSString *decimal = [NSByteCountFormatter stringFromByteCount:1000
-								 countStyle:NSByteCountFormatterCountStyleDecimal];
-		NSString *binary = [NSByteCountFormatter stringFromByteCount:1024
-								countStyle:NSByteCountFormatterCountStyleBinary];
-		NSString *binary1000 = [NSByteCountFormatter stringFromByteCount:1000
-								    countStyle:NSByteCountFormatterCountStyleBinary];
-		NSString *file = [NSByteCountFormatter stringFromByteCount:1000
-							      countStyle:NSByteCountFormatterCountStyleFile];
-		NSString *memory = [NSByteCountFormatter stringFromByteCount:1024
-								countStyle:NSByteCountFormatterCountStyleMemory];
+	
 
-		check("bcf-count-styles",
-		      decimal != nil && [decimal isEqualToString:@"1 KB"] &&
-		      binary != nil && [binary isEqualToString:@"1 KB"] &&
-		      file != nil && [file isEqualToString:@"1 KB"] &&
-		      memory != nil && [memory isEqualToString:@"1 KB"] &&
-		      /* 1000 bytes is 1 KB in DECIMAL and still 1000 whole bytes in BINARY: the same input,
-		       * two answers, which is what the style MEANS. */
-		      binary1000 != nil && [binary1000 isEqualToString:@"1000 bytes"],
-		      [NSString stringWithFormat:@"decimal(1000)=[%@] binary(1024)=[%@] binary(1000)=[%@] "
-			 "file(1000)=[%@] memory(1024)=[%@]",
-			 decimal == nil ? @"(nil)" : decimal, binary == nil ? @"(nil)" : binary,
-			 binary1000 == nil ? @"(nil)" : binary1000, file == nil ? @"(nil)" : file,
-			 memory == nil ? @"(nil)" : memory]);
-	}
+	
 
-	{
-		/* THE MAGNITUDE WALK, AND THE ONE FRACTION DIGIT. */
-		NSString *oneKB = [NSByteCountFormatter stringFromByteCount:1100
-								 countStyle:NSByteCountFormatterCountStyleFile];
-		NSString *oneMB = [NSByteCountFormatter stringFromByteCount:1234567
-								 countStyle:NSByteCountFormatterCountStyleFile];
-		NSString *binaryMB = [NSByteCountFormatter stringFromByteCount:1048576
-								    countStyle:NSByteCountFormatterCountStyleBinary];
-		NSString *singular = [NSByteCountFormatter stringFromByteCount:1
-								    countStyle:NSByteCountFormatterCountStyleFile];
+	
 
-		check("bcf-magnitude",
-		      oneKB != nil && [oneKB isEqualToString:@"1.1 KB"] &&
-		      oneMB != nil && [oneMB isEqualToString:@"1.2 MB"] &&
-		      binaryMB != nil && [binaryMB isEqualToString:@"1 MB"] &&
-		      /* ONE BYTE IS "byte", AND ENGLISH IS THE ONLY REASON. */
-		      singular != nil && [singular isEqualToString:@"1 byte"],
-		      [NSString stringWithFormat:@"1100=[%@] 1234567=[%@] 1048576bin=[%@] 1=[%@]",
-			 oneKB == nil ? @"(nil)" : oneKB, oneMB == nil ? @"(nil)" : oneMB,
-			 binaryMB == nil ? @"(nil)" : binaryMB, singular == nil ? @"(nil)" : singular]);
-	}
+	
 
-	{
-		/* THE UNITS MASK GATES the choice: "Specifying any units explicitly causes just those units to
-		 * be used in showing the number." */
-		NSByteCountFormatter *bcf = [[NSByteCountFormatter alloc] init];
-		NSString *masked;
-		NSString *noUnit;
-		NSString *noCount;
+	
 
-		[bcf setCountStyle:NSByteCountFormatterCountStyleFile];
-		[bcf setAllowedUnits:NSByteCountFormatterUseMB];
-		masked = [bcf stringFromByteCount:2000000];
-		[bcf setIncludesUnit:NO];
-		noUnit = [bcf stringFromByteCount:2000000];
-		[bcf setIncludesUnit:YES];
-		[bcf setIncludesCount:NO];
-		noCount = [bcf stringFromByteCount:2000000];
-		check("bcf-units-mask",
-		      masked != nil && [masked isEqualToString:@"2 MB"] &&
-		      noUnit != nil && [noUnit isEqualToString:@"2"] &&
-		      noCount != nil && [noCount isEqualToString:@"MB"],
-		      [NSString stringWithFormat:@"masked=[%@] noUnit=[%@] noCount=[%@]",
-			 masked == nil ? @"(nil)" : masked, noUnit == nil ? @"(nil)" : noUnit,
-			 noCount == nil ? @"(nil)" : noCount]);
-	}
+	
 
-	{
-		NSByteCountFormatter *bcf = [[NSByteCountFormatter alloc] init];
-		NSString *plain;
-		NSString *padded;
+	
 
-		[bcf setCountStyle:NSByteCountFormatterCountStyleFile];
-		plain = [bcf stringFromByteCount:1000000];
-		[bcf setZeroPadsFractionDigits:YES];
-		padded = [bcf stringFromByteCount:1000000];
-		/* THE OPTION'S WHOLE CONTENT IS THE ".0", which is why it is asserted as a PAIR: the same
-		 * number with and without the padding. */
-		check("bcf-zeropad",
-		      plain != nil && [plain isEqualToString:@"1 MB"] &&
-		      padded != nil && [padded isEqualToString:@"1.0 MB"],
-		      [NSString stringWithFormat:@"plain=[%@] padded=[%@]",
-			 plain == nil ? @"(nil)" : plain, padded == nil ? @"(nil)" : padded]);
-	}
-
-	{
-		NSByteCountFormatter *bcf = [[NSByteCountFormatter alloc] init];
-		NSString *natural;
-		NSString *literal;
-
-		[bcf setCountStyle:NSByteCountFormatterCountStyleFile];
-		natural = [bcf stringFromByteCount:0];
-		[bcf setAllowsNonnumericFormatting:NO];
-		literal = [bcf stringFromByteCount:0];
-		/* APPLE'S PHRASE IS "Zero KB" — see the implementation's note on why the unit is CHOSEN rather
-		 * than computed for a zero count. */
-		check("bcf-nonnumeric",
-		      natural != nil && [natural isEqualToString:@"Zero KB"] &&
-		      literal != nil && [literal isEqualToString:@"0 bytes"],
-		      [NSString stringWithFormat:@"natural=[%@] literal=[%@]",
-			 natural == nil ? @"(nil)" : natural, literal == nil ? @"(nil)" : literal]);
-	}
-
-	{
-		/* ADAPTIVE, the one property whose behaviour Apple does not publish: our reading (stated in the
-		 * header) is that it lets the MAGNITUDE win over the mask. */
-		NSByteCountFormatter *bcf = [[NSByteCountFormatter alloc] init];
-		NSString *gated;
-		NSString *adapted;
-
-		[bcf setCountStyle:NSByteCountFormatterCountStyleFile];
-		[bcf setAllowedUnits:NSByteCountFormatterUseBytes];
-		gated = [bcf stringFromByteCount:5000];
-		[bcf setAdaptive:YES];
-		adapted = [bcf stringFromByteCount:5000];
-		check("bcf-adaptive",
-		      gated != nil && [gated isEqualToString:@"5000 bytes"] &&
-		      adapted != nil && [adapted isEqualToString:@"5 KB"] &&
-		      [bcf isAdaptive],
-		      [NSString stringWithFormat:@"gated=[%@] adapted=[%@]",
-			 gated == nil ? @"(nil)" : gated, adapted == nil ? @"(nil)" : adapted]);
-	}
-
-	{
-		/* NSFormatter's door: an NSNumber IS a byte count; anything else is not our kind of value. */
-		NSByteCountFormatter *bcf = [[NSByteCountFormatter alloc] init];
-		NSNumber *number = [NSNumber numberWithLongLong:1000];
-		NSString *viaObject;
-		NSString *refused;
-		NSString *reference;
-
-		[bcf setCountStyle:NSByteCountFormatterCountStyleFile];
-		viaObject = [bcf stringForObjectValue:number];
-		refused = [bcf stringForObjectValue:@"1000"];
-		/* BOUND, for the same nonnull-argument reason the other two sites record. */
-		reference = [bcf stringFromByteCount:1000];
-		check("bcf-object-value",
-		      viaObject != nil && reference != nil && [viaObject isEqualToString:reference] &&
-		      viaObject != nil && [viaObject isEqualToString:@"1 KB"] &&
-		      refused == nil,
-		      [NSString stringWithFormat:@"viaObject=[%@] refused=%@",
-			 viaObject == nil ? @"(nil)" : viaObject, refused == nil ? @"(nil)" : refused]);
-	}
-
-	{
-		/*
-		 * THE DEBT §30 NAMED IS PAID, so this check is FLIPPED rather than deleted: until W12's first
-		 * slice it asserted that the two NSMeasurement doors and the class itself were ABSENT (a
-		 * work item with a check on it, per §11.2's lesson that an absence assertion is a fact about the
-		 * tree). Now it asserts they are THERE and that they BEHAVE — 1000 bytes as a measurement formats
-		 * as "1 KB", and 1 MiB formats as the same string a 1048576-byte count does, which is the whole
-		 * point of converting through the unit's own converter first.
-		 */
-		NSByteCountFormatter *doorProbe = [[NSByteCountFormatter alloc] init];
-		BOOL classLevel = [NSByteCountFormatter
-			respondsToSelector:sel_registerName("stringFromMeasurement:countStyle:")];
-		/* THE INSTANCE DOOR IS ASKED OF AN INSTANCE, and that is not a formality: this check's previous
-		 * form asked the CLASS about `stringFromMeasurement:` — an INSTANCE selector — which answers NO,
-		 * so the old "these doors are absent" assertion was satisfied by a test that could not have told
-		 * absent from present. Flipping the check to demand their presence is what exposed it. */
-		BOOL instanceLevel = [doorProbe respondsToSelector:sel_registerName("stringFromMeasurement:")];
-		NSMeasurement *thousand = [[NSMeasurement alloc]
-					    initWithDoubleValue:1000.0
-							   unit:[NSUnitInformationStorage bytes]];
-		NSMeasurement *mebibyte = [[NSMeasurement alloc]
-					    initWithDoubleValue:1.0
-							   unit:[NSUnitInformationStorage mebibytes]];
-		NSString *viaMeasurement = classLevel
-			? [NSByteCountFormatter stringFromMeasurement:thousand
-							  countStyle:NSByteCountFormatterCountStyleFile]
-			: nil;
-		NSString *viaMebibyte = instanceLevel
-			? [[[NSByteCountFormatter alloc] init] stringFromMeasurement:mebibyte]
-			: nil;
-		NSString *viaCount = [NSByteCountFormatter stringFromByteCount:1048576
-								   countStyle:NSByteCountFormatterCountStyleFile];
-
-		check("bcf-measurement-landed",
-		      classLevel && instanceLevel &&
-		      viaMeasurement != nil && [viaMeasurement isEqualToString:@"1 KB"] &&
-		      viaMebibyte != nil && viaCount != nil &&
-		      [viaMebibyte isEqualToString:viaCount],
-		      [NSString stringWithFormat:@"doors=%d/%d 1000B measurement=[%@] "
-			 "1 MiB measurement=[%@] vs 1048576-byte count=[%@]",
-			 classLevel, instanceLevel,
-			 viaMeasurement == nil ? @"(nil)" : viaMeasurement,
-			 viaMebibyte == nil ? @"(nil)" : viaMebibyte,
-			 viaCount == nil ? @"(nil)" : viaCount]);
-	}
+	
 
 	/* ---- NSRelativeDateTimeFormatter: ICU names the span, we choose WHICH span ---- */
 	{
@@ -1473,638 +1189,61 @@ int main(void)
 	}
 
 	/* ---- W12's first slice: the unit machinery, and the value that carries a unit ---- */
-	{
-		/* A UNIT IS A SYMBOL AND AN IDENTITY, and the identity half is the interesting one: two units that
-		 * spell their symbol the same are NOT the same unit, because a unit is what a measurement's
-		 * arithmetic is defined against. -copy answers the same object, a unit being immutable. */
-		NSUnit *one = [[NSUnit alloc] initWithSymbol:@"m"];
-		NSUnit *two = [[NSUnit alloc] initWithSymbol:@"m"];
+	
 
-		check("unit-identity",
-		      one != nil && two != nil &&
-		      [[one symbol] isEqualToString:@"m"] &&
-		      ![one isEqual:two] &&
-		      [one isEqual:one] &&
-		      [one copy] == one,
-		      [NSString stringWithFormat:@"symbol=[%@] equal=%d copySame=%d",
-			 [one symbol], [one isEqual:two], [one copy] == one]);
-	}
+	
 
-	{
-		/* THE LINEAR CONVERTER, both directions, with a ZERO constant (a ratio scale, the shape every
-		 * information unit uses) and with an OFFSET one (the shape a temperature scale needs later). */
-		NSUnitConverterLinear *ratio = [[NSUnitConverterLinear alloc] initWithCoefficient:1000.0];
-		NSUnitConverterLinear *offset = [[NSUnitConverterLinear alloc]
-						  initWithCoefficient:1.8 constant:32.0];
+	
 
-		check("unit-linear-converter",
-		      ratio != nil && [ratio coefficient] == 1000.0 && [ratio constant] == 0.0 &&
-		      [ratio baseUnitValueFromValue:2.0] == 2000.0 &&
-		      [ratio valueFromBaseUnitValue:2000.0] == 2.0 &&
-		      offset != nil && [offset baseUnitValueFromValue:100.0] == 212.0 &&
-		      [offset valueFromBaseUnitValue:212.0] == 100.0,
-		      [NSString stringWithFormat:@"ratio(2)=%g offset(100)=%g offset^-1(212)=%g",
-			 [ratio baseUnitValueFromValue:2.0],
-			 [offset baseUnitValueFromValue:100.0],
-			 [offset valueFromBaseUnitValue:212.0]]);
-	}
+	
 
-	{
-		/* THE ABSTRACT CONVERTER HAS NO ARITHMETIC, so it answers by refusing — the same shape
-		 * NSFormatter's doors have, and the reason the two doors are the protocol's whole content. */
-		NSUnitConverter *bare = [[NSUnitConverter alloc] init];
-		BOOL forwardRaised = NO;
-		BOOL reverseRaised = NO;
+	
 
-		@try {
-			(void)[bare baseUnitValueFromValue:1.0];
-		} @catch (NSException *e) {
-			(void)e;
-			forwardRaised = YES;
-		}
-		@try {
-			(void)[bare valueFromBaseUnitValue:1.0];
-		} @catch (NSException *e) {
-			(void)e;
-			reverseRaised = YES;
-		}
-		check("unit-converter-raises", forwardRaised && reverseRaised,
-		      [NSString stringWithFormat:@"forward=%d reverse=%d (both want 1)",
-			 forwardRaised, reverseRaised]);
-	}
+	
 
-	{
-		/* THE INFORMATION UNITS, against the BASE UNIT THIS FILE CHOSE (bits — Apple publishes none, and
-		 * bits makes every coefficient an integer). 1 B = 8 bits, 1 kB = 8000 bits, 1 KiB = 8192 bits.
-		 * THE CONVERTERS ARE BOUND AS NSUnitConverterLinear because `-converter` is declared on NSDimension
-		 * as the ABSTRACT converter — which is the honest type there and the wrong one here. */
-		NSUnitConverterLinear *byteConverter = (NSUnitConverterLinear *)
-			[[NSUnitInformationStorage bytes] converter];
-		NSUnitConverterLinear *kilobyteConverter = (NSUnitConverterLinear *)
-			[[NSUnitInformationStorage kilobytes] converter];
-		NSUnitConverterLinear *kibibyteConverter = (NSUnitConverterLinear *)
-			[[NSUnitInformationStorage kibibytes] converter];
-		NSUnitConverterLinear *bitConverter = (NSUnitConverterLinear *)
-			[[NSUnitInformationStorage bits] converter];
-		double bitsPerByte = [byteConverter coefficient];
-		double bitsPerKilobyte = [kilobyteConverter coefficient];
-		double bitsPerKibibyte = [kibibyteConverter coefficient];
-		double bitsPerBit = [bitConverter coefficient];
-		BOOL cached = ([NSUnitInformationStorage bytes] == [NSUnitInformationStorage bytes]);
-		BOOL baseIsBits = ([NSUnitInformationStorage baseUnit] == [NSUnitInformationStorage bits]);
-
-		check("unit-information-storage",
-		      bitsPerBit == 1.0 && bitsPerByte == 8.0 &&
-		      bitsPerKilobyte == 8000.0 && bitsPerKibibyte == 8192.0 &&
-		      /* CACHED, and that is load-bearing rather than an optimisation: NSUnit's equality is
-		       * IDENTITY, so the constants must answer the same object. */
-		      cached && baseIsBits,
-		      [NSString stringWithFormat:@"bit=%g B=%g kB=%g KiB=%g cached=%d baseIsBits=%d",
-			 bitsPerBit, bitsPerByte, bitsPerKilobyte, bitsPerKibibyte, cached, baseIsBits]);
-	}
-
-	{
-		/* THE CONVERSIONS, which are the reason the class exists: 1 MiB is 1024 KiB and 1048.576 kB,
-		 * and the two decimal/binary spellings of a kilobyte differ by exactly that ratio. */
-		NSMeasurement *mib = [[NSMeasurement alloc] initWithDoubleValue:1.0
-								   unit:[NSUnitInformationStorage mebibytes]];
-		NSMeasurement *inKiB = [mib measurementByConvertingToUnit:[NSUnitInformationStorage kibibytes]];
-		NSMeasurement *inKB = [mib measurementByConvertingToUnit:[NSUnitInformationStorage kilobytes]];
-		NSMeasurement *oneKiB = [[NSMeasurement alloc] initWithDoubleValue:1.0
-									      unit:[NSUnitInformationStorage kibibytes]];
-		NSMeasurement *inBytes = [oneKiB measurementByConvertingToUnit:[NSUnitInformationStorage bytes]];
-
-		check("unit-conversion",
-		      mib != nil && inKiB != nil && [inKiB doubleValue] == 1024.0 &&
-		      inKB != nil && [inKB doubleValue] == 1048.576 &&
-		      inBytes != nil && [inBytes doubleValue] == 1024.0 &&
-		      [[inKiB unit] symbol] != nil,
-		      [NSString stringWithFormat:@"1 MiB = %g KiB, %g kB; 1 KiB = %g B",
-			 [inKiB doubleValue], [inKB doubleValue], [inBytes doubleValue]]);
-	}
-
-	{
-		/* ADDING AND SUBTRACTING happen IN THE RECEIVER'S UNIT: 1 KiB + 1 kB is 1.9765625 KiB, because
-		 * the kilobyte is converted into the kibibyte first. */
-		NSMeasurement *oneKiB = [[NSMeasurement alloc] initWithDoubleValue:1.0
-									      unit:[NSUnitInformationStorage kibibytes]];
-		NSMeasurement *oneKB = [[NSMeasurement alloc] initWithDoubleValue:1.0
-									     unit:[NSUnitInformationStorage kilobytes]];
-		NSMeasurement *sum = [oneKiB measurementByAddingMeasurement:oneKB];
-		NSMeasurement *difference = [oneKiB measurementBySubtractingMeasurement:oneKB];
-		BOOL convertible = [oneKiB canBeConvertedToUnit:[NSUnitInformationStorage bytes]];
-		BOOL crossDimension = [oneKiB canBeConvertedToUnit:[[NSUnit alloc] initWithSymbol:@"m"]];
-
-		check("unit-measurement-arithmetic",
-		      sum != nil && [sum doubleValue] == (1.0 + 8000.0 / 8192.0) &&
-		      [[sum unit] isEqual:[oneKiB unit]] &&
-		      difference != nil && [difference doubleValue] == (1.0 - 8000.0 / 8192.0) &&
-		      convertible && !crossDimension,
-		      [NSString stringWithFormat:@"1 KiB + 1 kB = %g KiB, difference = %g, "
-			 "convertible=%d crossDimension=%d",
-			 [sum doubleValue], [difference doubleValue], convertible, crossDimension]);
-	}
-
-	{
-		/* THE VALUE DOORS: a measurement copies as itself (it is immutable), it adopts NSSecureCoding, and
-		 * equality is BY VALUE **AND** UNIT — 1 kB and 1 KiB are different measurements even though both
-		 * are "1", which is the argument this class exists to end. */
-		NSMeasurement *oneKB = [[NSMeasurement alloc] initWithDoubleValue:1.0
-									     unit:[NSUnitInformationStorage kilobytes]];
-		NSMeasurement *sameKB = [[NSMeasurement alloc] initWithDoubleValue:1.0
-									      unit:[NSUnitInformationStorage kilobytes]];
-		BOOL adopts = [NSMeasurement conformsToProtocol:@protocol(NSSecureCoding)];
-		BOOL answers = [NSMeasurement supportsSecureCoding];
-
-		check("unit-measurement-value",
-		      oneKB != nil && [oneKB doubleValue] == 1.0 &&
-		      [[[oneKB unit] symbol] isEqualToString:@"kB"] &&
-		      [oneKB copy] == oneKB &&
-		      [oneKB isEqual:sameKB] && adopts && answers,
-		      [NSString stringWithFormat:@"value=%g symbol=[%@] copySame=%d equal=%d secure=%d",
-			 [oneKB doubleValue], [[oneKB unit] symbol], [oneKB copy] == oneKB,
-			 [oneKB isEqual:sameKB], adopts && answers]);
-	}
+	
 
 	/* ---- W12's dimensional families: the OFFSET one first, then two ratio families ---- */
-	{
-		/*
-		 * TEMPERATURE IS THE FAMILY THAT MADE THE CONVERTER'S `constant` NECESSARY, so it is asserted at
-		 * its DEFINING POINTS rather than at convenient round numbers: 0 °C and 32 °F are the same
-		 * temperature (273.15 K), 100 °C and 212 °F are the same one (373.15 K), and the two scales CROSS at
-		 * -40 — which is the pair that would catch a converter that scaled without shifting.
-		 */
-		NSMeasurement *zeroC = [[NSMeasurement alloc] initWithDoubleValue:0.0
-									    unit:[NSUnitTemperature celsius]];
-		NSMeasurement *hundredC = [[NSMeasurement alloc] initWithDoubleValue:100.0
-									       unit:[NSUnitTemperature celsius]];
-		NSMeasurement *thirtyTwoF = [[NSMeasurement alloc] initWithDoubleValue:32.0
-										  unit:[NSUnitTemperature fahrenheit]];
-		NSMeasurement *twoTwelveF = [[NSMeasurement alloc] initWithDoubleValue:212.0
-										  unit:[NSUnitTemperature fahrenheit]];
-		NSMeasurement *minusFortyC = [[NSMeasurement alloc] initWithDoubleValue:-40.0
-										   unit:[NSUnitTemperature celsius]];
-		NSMeasurement *minusFortyF = [[NSMeasurement alloc] initWithDoubleValue:-40.0
-										   unit:[NSUnitTemperature fahrenheit]];
-		double zeroK = [[zeroC measurementByConvertingToUnit:[NSUnitTemperature kelvin]] doubleValue];
-		double hundredK = [[hundredC measurementByConvertingToUnit:[NSUnitTemperature kelvin]] doubleValue];
-		double thirtyTwoK = [[thirtyTwoF measurementByConvertingToUnit:[NSUnitTemperature kelvin]] doubleValue];
-		double twoTwelveK = [[twoTwelveF measurementByConvertingToUnit:[NSUnitTemperature kelvin]] doubleValue];
-		double crossC = [[minusFortyC measurementByConvertingToUnit:[NSUnitTemperature fahrenheit]] doubleValue];
-		double crossF = [[minusFortyF measurementByConvertingToUnit:[NSUnitTemperature celsius]] doubleValue];
-		BOOL baseIsKelvin = ([NSUnitTemperature baseUnit] == [NSUnitTemperature kelvin]);
+	
 
-		check("unit-temperature-offset",
-		      /* COMPUTED conversions, so the tolerance a double needs — see fn_close's note: the first
-		       * version of this check used `==` and FAILED while printing every value correctly. */
-		      fn_close(zeroK, 273.15) && fn_close(hundredK, 373.15) &&
-		      fn_close(thirtyTwoK, 273.15) && fn_close(twoTwelveK, 373.15) &&
-		      /* AND THE TWO SCALES CROSS AT -40: each converts to the other's -40, which is the pair that
-		       * would catch a converter that scaled without shifting. A TOLERANCE AGAIN — the crossing is
-		       * computed too (1.8 has no exact binary form), and `==` failed here the same way it failed on
-		       * the kelvin values above. */
-		      fn_close(crossC, -40.0) && fn_close(crossF, -40.0) && baseIsKelvin,
-		      [NSString stringWithFormat:@"0C=%g K 100C=%g K 32F=%g K 212F=%g K -40C=%g F -40F=%g C "
-			 "baseIsKelvin=%d",
-			 zeroK, hundredK, thirtyTwoK, twoTwelveK, crossC, crossF, baseIsKelvin]);
-	}
+	
 
-	{
-		/* DURATION: every coefficient an exact power of ten against the second. */
-		NSMeasurement *oneHour = [[NSMeasurement alloc] initWithDoubleValue:1.0
-									      unit:[NSUnitDuration hours]];
-		NSMeasurement *oneMillisecond = [[NSMeasurement alloc] initWithDoubleValue:1.0
-										     unit:[NSUnitDuration milliseconds]];
-		double seconds = [[oneHour measurementByConvertingToUnit:[NSUnitDuration seconds]] doubleValue];
-		double milliSeconds = [[oneMillisecond measurementByConvertingToUnit:[NSUnitDuration seconds]] doubleValue];
-		BOOL baseIsSeconds = ([NSUnitDuration baseUnit] == [NSUnitDuration seconds]);
+	
 
-		check("unit-duration",
-		      seconds == 3600.0 && milliSeconds == 1e-3 && baseIsSeconds,
-		      [NSString stringWithFormat:@"1 hr = %g s, 1 ms = %g s, baseIsSeconds=%d",
-			 seconds, milliSeconds, baseIsSeconds]);
-	}
+	
 
-	{
-		/*
-		 * LENGTH: the coefficients are DEFINITIONS, so the exact ones are asserted EXACTLY — an inch, a foot
-		 * (twelve of them), a mile and a nautical mile (1852 by definition) — while the LIGHT-YEAR is a
-		 * COMPUTATION (the speed of light times a Julian year), so it is asserted with the tolerance a
-		 * computed double needs. That split is the lesson the temperature check taught in the same run.
-		 */
-		NSUnitConverterLinear *inchConverter = (NSUnitConverterLinear *)[[NSUnitLength inches] converter];
-		NSUnitConverterLinear *footConverter = (NSUnitConverterLinear *)[[NSUnitLength feet] converter];
-		NSUnitConverterLinear *mileConverter = (NSUnitConverterLinear *)[[NSUnitLength miles] converter];
-		NSUnitConverterLinear *nauticalConverter = (NSUnitConverterLinear *)[[NSUnitLength nauticalMiles] converter];
-		NSUnitConverterLinear *lightyearConverter = (NSUnitConverterLinear *)[[NSUnitLength lightyears] converter];
-		BOOL baseIsMeters = ([NSUnitLength baseUnit] == [NSUnitLength meters]);
+	
 
-		check("unit-length",
-		      [inchConverter coefficient] == 0.0254 &&
-		      /* A FOOT IS TWELVE INCHES — a RELATION, and the right-hand side is therefore COMPUTED:
-		       * 12 * 0.0254 is not the double nearest to 0.3048, so this needs the tolerance too. */
-		      fn_close([footConverter coefficient], 12.0 * 0.0254) &&
-		      [mileConverter coefficient] == 1609.344 &&
-		      [nauticalConverter coefficient] == 1852.0 &&
-		      /* A LIGHT-YEAR IS THE SPEED OF LIGHT TIMES A JULIAN YEAR — a computation, so a tolerance. */
-		      fn_close([lightyearConverter coefficient], 365.25 * 86400.0 * 299792458.0) &&
-		      baseIsMeters,
-		      [NSString stringWithFormat:@"in=%g ft=%g mi=%g nmi=%g ly=%g baseIsMeters=%d",
-			 [inchConverter coefficient], [footConverter coefficient], [mileConverter coefficient],
-			 [nauticalConverter coefficient], [lightyearConverter coefficient], baseIsMeters]);
-	}
-
-	{
-		/*
-		 * MASS (batch 2): the kilogram is the SI base, and the customary ratios are BOTH definitions and
-		 * relations — so an ounce is asserted as a SIXTEENTH OF THE POUND the table already carries, not as
-		 * a second literal that could disagree with it.
-		 */
-		NSUnitConverterLinear *pound = (NSUnitConverterLinear *)[[NSUnitMass pounds] converter];
-		NSUnitConverterLinear *ounce = (NSUnitConverterLinear *)[[NSUnitMass ounces] converter];
-		NSUnitConverterLinear *stone = (NSUnitConverterLinear *)[[NSUnitMass stones] converter];
-		NSUnitConverterLinear *shortTon = (NSUnitConverterLinear *)[[NSUnitMass shortTons] converter];
-		NSUnitConverterLinear *carat = (NSUnitConverterLinear *)[[NSUnitMass carats] converter];
-		double poundInKg = [pound coefficient];
-		BOOL baseIsKilograms = ([NSUnitMass baseUnit] == [NSUnitMass kilograms]);
-
-		check("unit-mass",
-		      poundInKg == 0.45359237 &&
-		      fn_close([ounce coefficient], poundInKg / 16.0) &&
-		      fn_close([stone coefficient], 14.0 * poundInKg) &&
-		      fn_close([shortTon coefficient], 2000.0 * poundInKg) &&
-		      [carat coefficient] == 0.0002 &&
-		      baseIsKilograms,
-		      [NSString stringWithFormat:@"lb=%g oz=%g st=%g ton=%g ct=%g baseIsKg=%d",
-			 poundInKg, [ounce coefficient], [stone coefficient], [shortTon coefficient],
-			 [carat coefficient], baseIsKilograms]);
-	}
-
-	{
-		/*
-		 * AREA (batch 2) — AND THE CHECK WORTH HAVING IS THE CROSS-FAMILY ONE: a square foot IS the area of
-		 * a foot by a foot, so this asserts it against NSUnitLENGTH's coefficient rather than against a
-		 * number in this file. A hand-typed table of squares is a table that agrees with nothing.
-		 */
-		NSUnitConverterLinear *feet = (NSUnitConverterLinear *)[[NSUnitLength feet] converter];
-		NSUnitConverterLinear *miles = (NSUnitConverterLinear *)[[NSUnitLength miles] converter];
-		NSUnitConverterLinear *squareFeet = (NSUnitConverterLinear *)[[NSUnitArea squareFeet] converter];
-		NSUnitConverterLinear *squareMiles = (NSUnitConverterLinear *)[[NSUnitArea squareMiles] converter];
-		NSUnitConverterLinear *acre = (NSUnitConverterLinear *)[[NSUnitArea acres] converter];
-		NSUnitConverterLinear *are = (NSUnitConverterLinear *)[[NSUnitArea ares] converter];
-		NSUnitConverterLinear *hectare = (NSUnitConverterLinear *)[[NSUnitArea hectares] converter];
-
-		check("unit-area",
-		      fn_close([squareFeet coefficient], [feet coefficient] * [feet coefficient]) &&
-		      fn_close([squareMiles coefficient], [miles coefficient] * [miles coefficient]) &&
-		      [acre coefficient] == 4046.8564224 &&
-		      fn_close([hectare coefficient], 100.0 * [are coefficient]) &&
-		      [NSUnitArea baseUnit] == [NSUnitArea squareMeters],
-		      [NSString stringWithFormat:@"ft2=%g (ft=%g) mi2=%g acre=%g ha/are=%g",
-			 [squareFeet coefficient], [feet coefficient], [squareMiles coefficient],
-			 [acre coefficient], [hectare coefficient] / [are coefficient]]);
-	}
-
-	{
-		/*
-		 * ANGLE (batch 2): EVERY COEFFICIENT IS π OVER SOMETHING, and the assertions are made AT THE API
-		 * LEVEL — 360 degrees IS a revolution, 400 gradians IS a revolution, 60 arc minutes IS a degree —
-		 * rather than against a value of π this probe would have to spell out. A ring of relations is a
-		 * stronger claim than a ladder of decimals.
-		 */
-		NSMeasurement *fullCircle = [[NSMeasurement alloc] initWithDoubleValue:360.0
-										unit:[NSUnitAngle degrees]];
-		NSMeasurement *fourHundredGradians = [[NSMeasurement alloc] initWithDoubleValue:400.0
-										      unit:[NSUnitAngle gradians]];
-		NSMeasurement *sixtyArcMinutes = [[NSMeasurement alloc] initWithDoubleValue:60.0
-										     unit:[NSUnitAngle arcMinutes]];
-		NSMeasurement *rightAngle = [[NSMeasurement alloc] initWithDoubleValue:90.0
-									      unit:[NSUnitAngle degrees]];
-		double turns = [[fullCircle measurementByConvertingToUnit:[NSUnitAngle revolutions]] doubleValue];
-		double gradianTurns = [[fourHundredGradians measurementByConvertingToUnit:[NSUnitAngle revolutions]] doubleValue];
-		double arcMinuteDegrees = [[sixtyArcMinutes measurementByConvertingToUnit:[NSUnitAngle degrees]] doubleValue];
-		double quarterTurns = [[rightAngle measurementByConvertingToUnit:[NSUnitAngle revolutions]] doubleValue];
-
-		check("unit-angle",
-		      fn_close(turns, 1.0) && fn_close(gradianTurns, 1.0) &&
-		      fn_close(arcMinuteDegrees, 1.0) && fn_close(quarterTurns, 0.25) &&
-		      [NSUnitAngle baseUnit] == [NSUnitAngle radians],
-		      [NSString stringWithFormat:@"360deg=%g rev, 400grad=%g rev, 60arcmin=%g deg, "
-			 "90deg=%g rev", turns, gradianTurns, arcMinuteDegrees, quarterTurns]);
-	}
+	
 
 	/* ---- W12 batch 3: five more ratio families, each asserted against a relation ---- */
-	{
-		/*
-		 * SPEED: the coefficients are OTHER FAMILIES' DEFINITIONS DIVIDED, so the check is CROSS-FAMILY —
-		 * a mile per hour IS NSUnitLength's mile over an hour, and a knot IS the nautical mile over one.
-		 */
-		NSUnitConverterLinear *miles = (NSUnitConverterLinear *)[[NSUnitLength miles] converter];
-		NSUnitConverterLinear *nautical = (NSUnitConverterLinear *)[[NSUnitLength nauticalMiles] converter];
-		NSUnitConverterLinear *kilometers = (NSUnitConverterLinear *)[[NSUnitLength kilometers] converter];
-		NSUnitConverterLinear *mph = (NSUnitConverterLinear *)[[NSUnitSpeed milesPerHour] converter];
-		NSUnitConverterLinear *knots = (NSUnitConverterLinear *)[[NSUnitSpeed knots] converter];
-		NSUnitConverterLinear *kph = (NSUnitConverterLinear *)[[NSUnitSpeed kilometersPerHour] converter];
+	
 
-		check("unit-speed",
-		      fn_close([mph coefficient], [miles coefficient] / 3600.0) &&
-		      fn_close([knots coefficient], [nautical coefficient] / 3600.0) &&
-		      fn_close([kph coefficient], [kilometers coefficient] / 3600.0) &&
-		      [NSUnitSpeed baseUnit] == [NSUnitSpeed metersPerSecond],
-		      [NSString stringWithFormat:@"mph=%g (mi/3600=%g) kn=%g (nmi/3600=%g)",
-			 [mph coefficient], [miles coefficient] / 3600.0,
-			 [knots coefficient], [nautical coefficient] / 3600.0]);
-	}
+	
 
-	{
-		/* ACCELERATION: standard gravity is a DEFINITION (CGPM 1901), so it is asserted exactly. */
-		NSUnitConverterLinear *gravity = (NSUnitConverterLinear *)[[NSUnitAcceleration gravity] converter];
+	
 
-		check("unit-acceleration",
-		      [gravity coefficient] == 9.80665 &&
-		      [NSUnitAcceleration baseUnit] == [NSUnitAcceleration metersPerSecondSquared],
-		      [NSString stringWithFormat:@"g=%g", [gravity coefficient]]);
-	}
+	
 
-	{
-		/* FREQUENCY: framesPerSecond IS the hertz — the alias a hand-written table gives its own
-		 * coefficient to, and then gets slightly wrong. */
-		NSUnitConverterLinear *fps = (NSUnitConverterLinear *)[[NSUnitFrequency framesPerSecond] converter];
-		NSUnitConverterLinear *hertz = (NSUnitConverterLinear *)[[NSUnitFrequency hertz] converter];
-		NSUnitConverterLinear *kilohertz = (NSUnitConverterLinear *)[[NSUnitFrequency kilohertz] converter];
-
-		check("unit-frequency",
-		      fps != nil && hertz != nil &&
-		      [fps coefficient] == [hertz coefficient] &&
-		      [kilohertz coefficient] == 1000.0 &&
-		      [NSUnitFrequency baseUnit] == [NSUnitFrequency hertz],
-		      [NSString stringWithFormat:@"fps=%g Hz=%g kHz=%g",
-			 [fps coefficient], [hertz coefficient], [kilohertz coefficient]]);
-	}
-
-	{
-		/* ENERGY: the kilowatt-hour is a DERIVED definition (a thousand watts for 3600 seconds) and the
-		 * kilocalorie is a thousand thermochemical calories — the one COEFFICIENT HERE THAT IS A CHOICE. */
-		NSUnitConverterLinear *joules = (NSUnitConverterLinear *)[[NSUnitEnergy joules] converter];
-		NSUnitConverterLinear *kwh = (NSUnitConverterLinear *)[[NSUnitEnergy kilowattHours] converter];
-		NSUnitConverterLinear *calories = (NSUnitConverterLinear *)[[NSUnitEnergy calories] converter];
-		NSUnitConverterLinear *kilocalories = (NSUnitConverterLinear *)[[NSUnitEnergy kilocalories] converter];
-
-		check("unit-energy",
-		      [kwh coefficient] == 3600.0 * 1000.0 &&
-		      [calories coefficient] == 4.184 &&
-		      fn_close([kilocalories coefficient], 1000.0 * [calories coefficient]) &&
-		      [NSUnitEnergy baseUnit] == [NSUnitEnergy joules],
-		      [NSString stringWithFormat:@"kWh=%g cal=%g kcal=%g",
-			 [kwh coefficient], [calories coefficient], [kilocalories coefficient]]);
-	}
-
-	{
-		/* POWER: horsepower is written as its definition (550 foot-pounds-force per second), so the check
-		 * recomputes that product rather than quoting 745.6998715822702. */
-		NSUnitConverterLinear *horsepower = (NSUnitConverterLinear *)[[NSUnitPower horsepower] converter];
-		NSUnitConverterLinear *kilowatts = (NSUnitConverterLinear *)[[NSUnitPower kilowatts] converter];
-		NSUnitConverterLinear *watts = (NSUnitConverterLinear *)[[NSUnitPower watts] converter];
-
-		check("unit-power",
-		      fn_close([horsepower coefficient], 550.0 * 0.3048 * 4.4482216152605) &&
-		      [kilowatts coefficient] == 1000.0 &&
-		      [NSUnitPower baseUnit] == [NSUnitPower watts],
-		      [NSString stringWithFormat:@"hp=%g kW=%g", [horsepower coefficient], [kilowatts coefficient]]);
-	}
+	
 
 	/* ---- W12 batch 4: the electrical four, the two single-unit families, and the approximation ---- */
-	{
-		/* THE ELECTRICAL FAMILIES INTERLOCK, and their one derivation is the amp-hour: a charge is a current
-		 * for a time, so an ampere-hour IS 3600 coulombs and a kiloampere-hour 3.6e6. */
-		NSUnitConverterLinear *ampereHours = (NSUnitConverterLinear *)[[NSUnitElectricCharge ampereHours] converter];
-		NSUnitConverterLinear *kiloAmpereHours = (NSUnitConverterLinear *)[[NSUnitElectricCharge kiloampereHours] converter];
-		NSUnitConverterLinear *amperes = (NSUnitConverterLinear *)[[NSUnitElectricCurrent amperes] converter];
-		NSUnitConverterLinear *volts = (NSUnitConverterLinear *)[[NSUnitElectricPotentialDifference volts] converter];
-		NSUnitConverterLinear *ohms = (NSUnitConverterLinear *)[[NSUnitElectricResistance ohms] converter];
+	
 
-		check("unit-electric",
-		      [ampereHours coefficient] == 3600.0 &&
-		      fn_close([kiloAmpereHours coefficient], 1000.0 * 3600.0) &&
-		      [amperes coefficient] == 1.0 && [volts coefficient] == 1.0 && [ohms coefficient] == 1.0 &&
-		      [NSUnitElectricCharge baseUnit] == [NSUnitElectricCharge coulombs] &&
-		      [NSUnitElectricCurrent baseUnit] == [NSUnitElectricCurrent amperes] &&
-		      [NSUnitElectricPotentialDifference baseUnit] == [NSUnitElectricPotentialDifference volts] &&
-		      [NSUnitElectricResistance baseUnit] == [NSUnitElectricResistance ohms],
-		      [NSString stringWithFormat:@"Ah=%g kAh=%g A=%g V=%g ohm=%g",
-			 [ampereHours coefficient], [kiloAmpereHours coefficient],
-			 [amperes coefficient], [volts coefficient], [ohms coefficient]]);
-	}
+	
 
-	{
-		/* THE TWO ONE-UNIT FAMILIES: the base IS the only unit, and the coefficient is 1 because there is
-		 * nothing to convert to. A one-unit family still has to exist — a measurement needs a unit, and
-		 * NSMeasurementFormatter takes any dimension. */
-		NSUnitConverterLinear *lux = (NSUnitConverterLinear *)[[NSUnitIlluminance lux] converter];
-		NSUnitConverterLinear *ppm = (NSUnitConverterLinear *)[[NSUnitDispersion partsPerMillion] converter];
-
-		check("unit-single-unit-families",
-		      [lux coefficient] == 1.0 && [ppm coefficient] == 1.0 &&
-		      [NSUnitIlluminance baseUnit] == [NSUnitIlluminance lux] &&
-		      [NSUnitDispersion baseUnit] == [NSUnitDispersion partsPerMillion],
-		      [NSString stringWithFormat:@"lux=%g ppm=%g", [lux coefficient], [ppm coefficient]]);
-	}
-
-	{
-		/*
-		 * THE DOCUMENTED APPROXIMATION, ASSERTED AS BOTH HALVES — AND THE SECOND HALF IS THE POINT.
-		 *
-		 * Litres/100 km is INVERSE to mpg, which NSUnitConverterLinear cannot express, so the family is
-		 * anchored at the value where the two scales read the SAME NUMBER (√235.214583 ≈ 15.3362, the fixed
-		 * point of v = 235.214583/v — the same shape as the temperature family's -40). This asserts that
-		 * the crossing IS exact AND that the conversion DIVERGES away from it, quoting both the linear
-		 * answer and the true one: the limitation is recorded in the instrument rather than hidden in the
-		 * table, which is what §11.6's register requires of a documented deviation.
-		 */
-		double anchor = sqrt(100.0 * 3.785411784 / 1.609344);
-		NSMeasurement *atAnchor = [[NSMeasurement alloc] initWithDoubleValue:anchor
-									      unit:[NSUnitFuelEfficiency milesPerGallon]];
-		double sameNumber = [[atAnchor measurementByConvertingToUnit:
-					[NSUnitFuelEfficiency litersPer100Kilometers]] doubleValue];
-		NSMeasurement *thirty = [[NSMeasurement alloc] initWithDoubleValue:30.0
-									    unit:[NSUnitFuelEfficiency milesPerGallon]];
-		double linear = [[thirty measurementByConvertingToUnit:
-				  [NSUnitFuelEfficiency litersPer100Kilometers]] doubleValue];
-		double truthful = (100.0 * 3.785411784 / 1.609344) / 30.0;
-		NSUnitConverterLinear *imperial = (NSUnitConverterLinear *)[[NSUnitFuelEfficiency milesPerImperialGallon] converter];
-		NSUnitConverterLinear *us = (NSUnitConverterLinear *)[[NSUnitFuelEfficiency milesPerGallon] converter];
-
-		check("unit-fuel-efficiency",
-		      /* EXACT AT THE CROSSING, where the two scales read the same number... */
-		      fn_close(sameNumber, anchor) &&
-		      /* ...AND THE IMPERIAL RATIO IS EXACT EVERYWHERE, being a ratio of two GALLON volumes... */
-		      fn_close([imperial coefficient] / [us coefficient], 4.54609 / 3.785411784) &&
-		      /* ...AND AWAY FROM IT THE ANSWER IS THE LINEAR APPROXIMATION, asserted so the deviation is a
-		       * RECORDED fact: 30 mpg is about 7.84 L/100km in truth, and this family answers the LINEAR
-		       * value because at the crossing the coefficient is 1 (see NSUnitFuelEfficiency.m's note). */
-		      fn_close(linear, 30.0) && !fn_close(linear, truthful),
-		      [NSString stringWithFormat:@"anchor=%g (converts to itself=%g); 30 mpg -> linear %g, "
-			 "true %g — THE REGISTERED DEVIATION", anchor, sameNumber, linear, truthful]);
-	}
+	
 
 	/* ---- W12 batch 5: volume, pressure, concentration — the last three families ---- */
-	{
-		/*
-		 * VOLUME: thirty-one units, and the checks are the DERIVATIONS the file is written from — a quart is
-		 * a quarter of a gallon, a pint an eighth, a cup eight fluid ounces, a litre IS a cubic decimetre,
-		 * and the imperial gallon exceeds the US one by the ratio of two volumes.
-		 */
-		NSUnitConverterLinear *gallon = (NSUnitConverterLinear *)[[NSUnitVolume gallons] converter];
-		NSUnitConverterLinear *quart = (NSUnitConverterLinear *)[[NSUnitVolume quarts] converter];
-		NSUnitConverterLinear *pint = (NSUnitConverterLinear *)[[NSUnitVolume pints] converter];
-		NSUnitConverterLinear *cup = (NSUnitConverterLinear *)[[NSUnitVolume cups] converter];
-		NSUnitConverterLinear *fluidOunce = (NSUnitConverterLinear *)[[NSUnitVolume fluidOunces] converter];
-		NSUnitConverterLinear *liter = (NSUnitConverterLinear *)[[NSUnitVolume liters] converter];
-		NSUnitConverterLinear *cubicDecimeter = (NSUnitConverterLinear *)[[NSUnitVolume cubicDecimeters] converter];
-		NSUnitConverterLinear *imperialGallon = (NSUnitConverterLinear *)[[NSUnitVolume imperialGallons] converter];
-		NSUnitConverterLinear *cubicFoot = (NSUnitConverterLinear *)[[NSUnitVolume cubicFeet] converter];
+	
 
-		check("unit-volume",
-		      fn_close([quart coefficient], [gallon coefficient] / 4.0) &&
-		      fn_close([pint coefficient], [gallon coefficient] / 8.0) &&
-		      fn_close([cup coefficient], 8.0 * [fluidOunce coefficient]) &&
-		      /* A LITRE IS A CUBIC DECIMETRE — the same volume under two names. */
-		      [liter coefficient] == [cubicDecimeter coefficient] &&
-		      fn_close([cubicFoot coefficient], 0.3048 * 0.3048 * 0.3048) &&
-		      fn_close([imperialGallon coefficient] / [gallon coefficient], 4.54609 / 3.785411784) &&
-		      [NSUnitVolume baseUnit] == [NSUnitVolume cubicMeters],
-		      [NSString stringWithFormat:@"gal=%g qt=%g pt=%g cup=%g floz=%g L=%g dm3=%g impGal/USgal=%g",
-			 [gallon coefficient], [quart coefficient], [pint coefficient], [cup coefficient],
-			 [fluidOunce coefficient], [liter coefficient], [cubicDecimeter coefficient],
-			 [imperialGallon coefficient] / [gallon coefficient]]);
-	}
+	
 
-	{
-		/* PRESSURE: newtonsPerMetersSquared IS the base under its other name (coefficient exactly 1), the
-		 * mercury column is the inch over the millimetre, and psi is a pound-force over a square inch. */
-		NSUnitConverterLinear *pascal = (NSUnitConverterLinear *)[[NSUnitPressure newtonsPerMetersSquared] converter];
-		NSUnitConverterLinear *bar = (NSUnitConverterLinear *)[[NSUnitPressure bars] converter];
-		NSUnitConverterLinear *mmhg = (NSUnitConverterLinear *)[[NSUnitPressure millimetersOfMercury] converter];
-		NSUnitConverterLinear *inhg = (NSUnitConverterLinear *)[[NSUnitPressure inchesOfMercury] converter];
-		NSUnitConverterLinear *psi = (NSUnitConverterLinear *)[[NSUnitPressure poundsForcePerSquareInch] converter];
+	
 
-		check("unit-pressure",
-		      [pascal coefficient] == 1.0 &&
-		      [bar coefficient] == 1e5 &&
-		      fn_close([inhg coefficient], 25.4 * [mmhg coefficient]) &&
-		      fn_close([psi coefficient], 4.4482216152605 / (0.0254 * 0.0254)) &&
-		      [NSUnitPressure baseUnit] == [NSUnitPressure newtonsPerMetersSquared],
-		      [NSString stringWithFormat:@"Pa=%g bar=%g mmHg=%g inHg=%g psi=%g",
-			 [pascal coefficient], [bar coefficient], [mmhg coefficient], [inhg coefficient],
-			 [psi coefficient]]);
-	}
+	
 
-	{
-		/*
-		 * CONCENTRATION: the two constants, and THE FACTORY THAT MUST NOT CACHE — a millimole per litre OF A
-		 * SUBSTANCE carries that substance's molar mass, so two calls with different masses are DIFFERENT
-		 * UNITS, which is what NSUnit's identity equality is for.
-		 */
-		NSUnitConverterLinear *gramsPerLiter = (NSUnitConverterLinear *)[[NSUnitConcentrationMass gramsPerLiter] converter];
-		NSUnitConverterLinear *mgPerDeciliter = (NSUnitConverterLinear *)[[NSUnitConcentrationMass milligramsPerDeciliter] converter];
-		NSUnitConcentrationMass *glucose = [NSUnitConcentrationMass millimolesPerLiterWithGramsPerMole:180.156];
-		NSUnitConcentrationMass *salt = [NSUnitConcentrationMass millimolesPerLiterWithGramsPerMole:58.44];
-		NSUnitConverterLinear *glucoseConverter = (NSUnitConverterLinear *)[glucose converter];
-		NSUnitConverterLinear *saltConverter = (NSUnitConverterLinear *)[salt converter];
-
-		check("unit-concentration",
-		      [gramsPerLiter coefficient] == 1.0 &&
-		      fn_close([mgPerDeciliter coefficient], 1e-3 / 1e-1) &&
-		      /* 1 mmol/L of glucose (180.156 g/mol) IS 0.180156 g/L. */
-		      fn_close([glucoseConverter coefficient], 180.156 / 1000.0) &&
-		      fn_close([saltConverter coefficient], 58.44 / 1000.0) &&
-		      /* TWO DIFFERENT SUBSTANCES ARE TWO DIFFERENT UNITS. */
-		      ![glucose isEqual:salt] &&
-		      [NSUnitConcentrationMass baseUnit] == [NSUnitConcentrationMass gramsPerLiter],
-		      [NSString stringWithFormat:@"g/L=%g mg/dL=%g glucose=%g salt=%g sameUnit=%d",
-			 [gramsPerLiter coefficient], [mgPerDeciliter coefficient],
-			 [glucoseConverter coefficient], [saltConverter coefficient], [glucose isEqual:salt]]);
-	}
-
-	/* ---- NSMeasurementFormatter: W12's last class, and it is a MAPPING rather than a table ---- */
-	{
-		/*
-		 * THE TWO DOORS AND THE UNIT STYLE'S THREE WIDTHS. The names come from ICU through the CLDR
-		 * identifier the mapping supplies ("length-meter"), so this check is what proves the mapping works —
-		 * a wrong identifier opens no formatter, and the door answers nil.
-		 */
-		NSMeasurement *twoMeters = [[NSMeasurement alloc] initWithDoubleValue:2.0
-									      unit:[NSUnitLength meters]];
-		NSMeasurementFormatter *mf = [[NSMeasurementFormatter alloc] init];
-		NSString *medium;
-		NSString *longForm;
-		NSString *shortForm;
-		NSString *nameOnly;
-		NSString *german;
-
-		[mf setLocale:[NSLocale localeWithLocaleIdentifier:@"en_US"]];
-		medium = [mf stringFromMeasurement:twoMeters];
-		[mf setUnitStyle:NSFormattingUnitStyleLong];
-		longForm = [mf stringFromMeasurement:twoMeters];
-		[mf setUnitStyle:NSFormattingUnitStyleShort];
-		shortForm = [mf stringFromMeasurement:twoMeters];
-		[mf setUnitStyle:NSFormattingUnitStyleMedium];
-		nameOnly = [mf stringFromUnit:[NSUnitLength meters]];
-		/* THE LOCALE CHECK USES THE **LONG** STYLE, AND THAT IS A LESSON THIS CHECK'S FIRST RUN TAUGHT:
-		 * at the short width the unit is a SYMBOL ("2 m"), and a symbol is locale-invariant — so German and
-		 * English agreed and the check failed while the formatter was right. A locale only shows in the
-		 * SPELLED-OUT form, so that is the width the locale is asserted at. */
-		[mf setUnitStyle:NSFormattingUnitStyleLong];
-		[mf setLocale:[NSLocale localeWithLocaleIdentifier:@"de_DE"]];
-		german = [mf stringFromMeasurement:twoMeters];
-
-		check("unit-measurement-formatter",
-		      medium != nil && [medium rangeOfString:@"2"].location != NSNotFound &&
-		      longForm != nil && [longForm rangeOfString:@"meter"].location != NSNotFound &&
-		      /* THE THREE STYLES GIVE THREE DIFFERENT WIDTHS — the point of having three. */
-		      shortForm != nil && ![shortForm isEqualToString:longForm] &&
-		      /* -stringFromUnit: ANSWERS THE NAME ALONE: ICU has no name-only mode, so the quantity is
-		       * stripped and this asserts there is no leading "1". */
-		      nameOnly != nil && [nameOnly rangeOfString:@"1"].location == NSNotFound &&
-		      [nameOnly rangeOfString:@"m"].location != NSNotFound &&
-		      /* THE LOCALE IS DATA: German names the metre differently. */
-		      german != nil && ![german isEqualToString:medium],
-		      [NSString stringWithFormat:@"medium=[%@] long=[%@] short=[%@] nameOnly=[%@] de=[%@]",
-			 medium == nil ? @"(nil)" : medium, longForm == nil ? @"(nil)" : longForm,
-			 shortForm == nil ? @"(nil)" : shortForm, nameOnly == nil ? @"(nil)" : nameOnly,
-			 german == nil ? @"(nil)" : german]);
-	}
-
-	{
-		/*
-		 * THE THREE UNIT OPTIONS: Apple publishes their NAMES and NO ABSTRACTS (measured — all three of its
-		 * case pages are empty), so the readings are ours. ProvidedUnit is the default;
-		 * TemperatureWithoutUnit uses ICU's own `temperature-generic`; and **NaturalScale IS REGISTERED AS
-		 * NOT IMPLEMENTED**, the §11.2 pattern — a marked absence rather than a silent no-op, because
-		 * auto-scaling 1500 m to 1.5 km needs a per-family THRESHOLD Apple publishes nowhere.
-		 */
-		NSMeasurement *twentyC = [[NSMeasurement alloc] initWithDoubleValue:20.0
-									     unit:[NSUnitTemperature celsius]];
-		NSMeasurementFormatter *mf = [[NSMeasurementFormatter alloc] init];
-		NSString *withUnit;
-		NSString *withoutUnit;
-		BOOL naturalScaleImplemented = NO;	/* the registered absence */
-
-		[mf setLocale:[NSLocale localeWithLocaleIdentifier:@"en_US"]];
-		withUnit = [mf stringFromMeasurement:twentyC];
-		[mf setUnitOptions:NSMeasurementFormatterUnitOptionsTemperatureWithoutUnit];
-		withoutUnit = [mf stringFromMeasurement:twentyC];
-
-		check("unit-measurement-formatter-options",
-		      withUnit != nil && [withUnit rangeOfString:@"20"].location != NSNotFound &&
-		      withoutUnit != nil && [withoutUnit rangeOfString:@"20"].location != NSNotFound &&
-		      /* THE UNIT LETTER IS GONE, so the string is plainly shorter: "20°" against "20 °C". */
-		      [withoutUnit length] < [withUnit length] &&
-		      !naturalScaleImplemented,
-		      [NSString stringWithFormat:@"with=[%@] without=[%@] naturalScaleImplemented=%d",
-			 withUnit == nil ? @"(nil)" : withUnit,
-			 withoutUnit == nil ? @"(nil)" : withoutUnit, naturalScaleImplemented]);
-	}
+	
 
 	{
 		/* THE DATE INTERVAL'S NSCoding DOORS (§63.17). Its state is the TWO ENDS and the duration is derived,
