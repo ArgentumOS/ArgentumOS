@@ -69,27 +69,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-/* A LOCK AND A WAIT, together, which is what makes it possible to wait for a condition WITHOUT
- * missing the signal: the waiter holds the lock while it checks and while it waits, and the signaller
- * holds it while it changes the condition. */
-@interface NSCondition : NSObject <NSLocking>
-{
-	void *_mutex;
-	void *_condition;
-	NSString *_name;
-}
-
-- (void)wait;
-- (BOOL)waitUntilDate:(NSDate *)limit;
-- (void)signal;
-- (void)broadcast;
-- (nullable NSString *)name;
-- (void)setName:(nullable NSString *)name;
-
-- (NSString *)description;
-
-@end
-
 /* A LOCK WITH A VALUE IN IT (2026-09-26), and the family's most useful member for a handshake:
  * `-lockWhenCondition:` acquires the lock AND waits for the value to be the wanted one, as ONE indivisible
  * step. That indivisibility is the whole point — a caller that had to lock, test and wait by itself would have

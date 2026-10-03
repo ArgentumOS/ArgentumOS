@@ -33,7 +33,6 @@
 @interface ThreadWork : NSObject
 {
 	NSLock *_counterLock;
-	NSCondition *_condition;
 	NSConditionLock *_conditionLock;
 	NSLock *_flagLock;
 	NSInteger _counter;
@@ -45,8 +44,6 @@
 }
 - (instancetype)init;
 - (void)addMany:(id)ignored;
-- (void)waiter:(id)ignored;
-- (void)signaller:(id)ignored;
 - (void)conditionLockWaiter:(id)ignored;
 - (void)conditionLockSignaller:(id)ignored;
 - (void)record:(id)argument;
@@ -64,7 +61,6 @@
 	if ((self = [super init]) != nil) {
 		_counterLock = [[NSLock alloc] init];
 		_flagLock = [[NSLock alloc] init];
-		_condition = [[NSCondition alloc] init];
 		_conditionLock = [[NSConditionLock alloc] initWithCondition:0];
 	}
 	return self;
@@ -82,29 +78,7 @@
 	}
 }
 
-- (void)waiter:(id)ignored
-{
-	(void)ignored;
-	[_condition lock];
-	while (!_woken) {
-		/* A BOUNDED WAIT: if the signal never comes this returns and the while loop re-checks, and
-		 * the main thread's own deadline ends the test. */
-		[_condition waitUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.5]];
-	}
-	[_flagLock lock];
-	_woken = YES;
-	[_flagLock unlock];
-	[_condition unlock];
-}
 
-- (void)signaller:(id)ignored
-{
-	(void)ignored;
-	[_condition lock];
-	_woken = YES;
-	[_condition signal];
-	[_condition unlock];
-}
 
 /* LOCK AND WAIT AS ONE STEP: this thread blocks inside the lock until the VALUE is 1, and there is no window
  * between the test and the wait for the signaller to slip into — which is the whole reason the class exists. */
@@ -288,18 +262,6 @@ int main(void)
 
 	{
 		ThreadWork *work = [[ThreadWork alloc] init];
-		BOOL woken;
-
-		[NSThread detachNewThreadSelector:@selector(waiter:) toTarget:work withObject:nil];
-		[NSThread sleepForTimeInterval:0.05];
-		[NSThread detachNewThreadSelector:@selector(signaller:) toTarget:work withObject:nil];
-		woken = fn_wait_for(work, @selector(woken), 3.0);
-		check("condition-signals", woken,
-		      [NSString stringWithFormat:@"woken=%d", (int)woken]);
-	}
-
-	{
-		ThreadWork *work = [[ThreadWork alloc] init];
 		NSString *argument = @"the argument";
 		BOOL ran;
 
@@ -473,21 +435,18 @@ int main(void)
 		NSMutableString *source = [[NSMutableString alloc] initWithString:@"before"];
 		NSLock *plain = [[NSLock alloc] init];
 		NSRecursiveLock *recursive = [[NSRecursiveLock alloc] init];
-		NSCondition *condition = [[NSCondition alloc] init];
 		NSConditionLock *conditionLock = [[NSConditionLock alloc] initWithCondition:0];
 
 		[plain setName:source];
 		[recursive setName:source];
-		[condition setName:source];
 		[conditionLock setName:source];
 		[source appendString:@"-mutated"];
 		check("the-name-setter-copies-for-the-whole-family",
 		      [[plain name] isEqualToString:@"before"] &&
 		      [[recursive name] isEqualToString:@"before"] &&
-		      [[condition name] isEqualToString:@"before"] &&
 		      [[conditionLock name] isEqualToString:@"before"],
-		      [NSString stringWithFormat:@"lock=%@ recursive=%@ condition=%@ conditionLock=%@",
-			[plain name], [recursive name], [condition name], [conditionLock name]]);
+		      [NSString stringWithFormat:@"lock=%@ recursive=%@ conditionLock=%@",
+			[plain name], [recursive name], [conditionLock name]]);
 	}
 
 	printf("FOUNDATION-THREAD RESULT ok=%d fail=%d\n", okc, failc);

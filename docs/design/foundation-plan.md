@@ -15964,6 +15964,43 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.170 — NSCONDITION (10.5) IS CUT, AND ITS musl-pthread BODY MOVES BESIDE THE THREE FILES THAT WAIT ON IT (2026-10-03)
+
+**LANDED, the seventh family under `dec-cd47c0ae6583103b`, and the first one whose replacement was dictated by the
+MEASUREMENT rather than chosen.** `NSCondition` is a 10.5 class; the 10.2 baseline cut it; **and its implementation
+was already musl pthreads** (`pthread_mutex_t` + `pthread_cond_t`), with **three library files waiting on it through
+an ivar** — `NSOperation.m` twice, `NSTask.m` once. So the vocabulary MOVED rather than went (§63.164's precedent):
+the body stays, the public name goes.
+
+**WHAT WENT.** `@interface NSCondition` from `NSLock.h`; the class is **`FNCondition`** in a new private header
+(`userland/Foundation/FNCondition.h`, which is *not* a `<Foundation/…>` header, so no caller can reach it), with the
+implementation re-homed in `NSLock.m`; `NSCondition *` → `FNCondition *` and the allocs re-pointed in the two
+consumers, which needed **nothing else — every send goes through the ivar**; the probe's `condition-signals` check,
+its `ThreadWork` condition ivar and the `-waiter:`/`-signaller:` methods that existed only for it; the
+`the-name-setter-copies-for-the-whole-family` check lost its `NSCondition` arm (the family keeps three members);
+one symbol row. **`NSConditionLock` STAYS** — only `NSCondition` carries the 10.5 vintage.
+
+**THE MEASUREMENT IS WHAT MADE IT SMALL, AND IT CORRECTED MY OWN NOTE: three files, not the seven I had recorded**,
+and the uses are all internal rather than public surface. **`ONLY THE FOUR DOORS THE CONSUMERS ACTUALLY SEND WERE
+CARRIED`** (`lock`, `unlock`, `wait`, `broadcast`) — Apple's `-signal`, `-waitUntilDate:`, `-name:`/`-setName:` are
+not declared on the private class, because carrying them would be recreating the class under a new name. **The
+`-name`/`-setName:`/`-description` BODIES REMAIN IN `NSLock.m` AND SAY SO IN A NOTE**: they are implemented and
+undeclared, no consumer sends them, and — after the mis-edit below — deleting a working body was not worth the risk.
+
+**AND THE UNIT COST FOUR WRONG SCRIPTS, WHICH IS ITS OWN LESSON.** Three attempts to delete the probe's uses by
+LINE-WALKING each over-reached (one walked from a *declaration* to a different method's closing brace, another
+matched a tab that was not there), and a fourth delete of the `-name` door used `s.index("- (nullable NSString
+*)name")` — **WHICH FOUND `NSLock`'s OWN `-name`, not `NSCondition`'s, AND GUTTED A KEPT CLASS.** The repair was
+`git checkout HEAD -- NSLock.m` and re-applying only the two changes the cut needs. **THE RULE, LEARNED THE THIRD
+TIME THIS CAMPAIGN: for line-level surgery in one file, `edit_file` with exact text is the instrument — and when
+replacing by text, ANCHOR THE SEARCH (after `@implementation`, or by a unique signature), because the first
+occurrence of a common selector is usually another class's.**
+
+**VERIFICATION.** `foundation-sweep.py --check` **consistent**; `make testimg` **green**; and THREE gates, one per
+place the change lands: **`foundation_thread` PASS (1/1, 6/6)** — the class's own probe, now without its condition
+check; **`foundation_operation` PASS (1/1, 6/6)** — whose `-waitUntilAllOperationsAreFinished` waits on the
+re-homed condition twice over; **`foundation_task` PASS (1/1, 9/9)** — the single-ivar consumer.
+
 ## §63.169 — THE RFC 3986 §5.4 TABLE MOVES INTO foundation_url, SO THE RESOLVER IS VERIFIED BY SOMETHING THAT SURVIVES ITS CLASS (2026-10-03)
 
 **LANDED, and it is the PREREQUISITE for the `NSURLComponents` cut rather than the cut itself.** That attempt was

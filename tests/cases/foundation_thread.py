@@ -20,7 +20,6 @@ The probe is `/System/Shared/tests/foundation_thread`, ONE unit, importing only
                                      which is why this is asked with `-tryLock`;
   * `lock-recursive-reenters`      — the RECURSIVE lock may be taken twice by one thread;
   * `lock-before-date`             — a deadline that passes: NO, after about the time it was given;
-  * `condition-signals`            — a waiter woken by a signaller;
   * `thread-detached-runs`         — a detached thread runs its target, and the ARGUMENT arrives;
   * `thread-start-runs-its-target` — the same, through `-initWithTarget:selector:object:` then `-start`
                                      (the door §14.5 left open with a measured `ran=0`, fixed by giving
@@ -45,7 +44,7 @@ AND §62.60'S SEVEN, for `NSConditionLock`, where the family's FIRST cross-threa
   * `condition-lock-before-date-times-out` — a deadline that passes: NO, after about the time given;
   * `condition-lock-when-condition-before-date-times-out` — the condition is never met, so only the deadline
                                      ends it, and the lock must NOT be left held when it gives up;
-  * `the-name-setter-copies-for-the-whole-family` — a MUTABLE string is handed to all four classes and then
+  * `the-name-setter-copies-for-the-whole-family` — a MUTABLE string is handed to all three classes left and then
                                      mutated, so a setter that merely assigned would answer the mutated
                                      string. This is the regression guard for §62.60's second defect fix.
 
@@ -59,7 +58,7 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_thread"
 CHECKS = ("thread-current-and-main", "lock-serialises-two-threads", "lock-try-lock",
-          "lock-recursive-reenters", "lock-before-date", "condition-signals",
+          "lock-recursive-reenters", "lock-before-date",
           "thread-detached-runs", "thread-sleep-returns", "thread-cancel-is-a-flag",
           "thread-start-runs-its-target",
           "condition-lock-hands-over-across-threads", "condition-lock-exposes-its-condition",

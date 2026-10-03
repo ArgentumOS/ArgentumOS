@@ -27,6 +27,7 @@
  * promises the object outlives its child.
  */
 
+#import "FNCondition.h"
 #import <Foundation/NSTask.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
@@ -209,7 +210,7 @@ static void *fn_task_reaper(void *context)
 	self = [super init];
 	if (self != nil) {
 		_qualityOfService = NSQualityOfServiceDefault;
-		_condition = [[NSCondition alloc] init];
+		_condition = [[FNCondition alloc] init];
 	}
 	return self;
 }

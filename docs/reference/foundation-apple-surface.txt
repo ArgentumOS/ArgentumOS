@@ -7,7 +7,7 @@
 #
 # kind	status	name	owner	family	why	src
 # case	shipped	1005	open	0	struck	78
-# class	shipped	157	open	0	struck	52
+# class	shipped	156	open	0	struck	52
 # enum	shipped	114	open	0	struck	9
 # protocol	shipped	31	open	0	struck	6
 # var	shipped	662	open	0	struck	211
@@ -1117,7 +1117,6 @@ class	struck	NSClassDescription		App Support / Script Dictionary Description	dec
 class	struck	NSCloneCommand		App Support / Script Commands	declined	objc
 class	struck	NSCloseCommand		App Support / Script Commands	declined	objc
 class	shipped	NSCoder		Files and Data Persistence / Keyed Archivers	-	objc
-class	shipped	NSCondition		Low-Level Utilities / Threads and Locking	-	objc
 class	shipped	NSConditionLock		Low-Level Utilities / Threads and Locking	-	objc
 class	shipped	NSConnection		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSConstantString		Reference / Classes	-	objc

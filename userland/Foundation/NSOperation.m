@@ -15,10 +15,11 @@
  * A CANCELLED OPERATION IS REMOVED RATHER THAN RUN: it is never asked to start, so it cannot be left in
  * the list for `-waitUntilAllOperationsAreFinished` to wait on forever.
  *
- * THE LOCK IS ONE NSCondition PER QUEUE, and `-waitUntilAllOperationsAreFinished` waits on it, so the
+ * THE LOCK IS ONE FNCondition PER QUEUE, and `-waitUntilAllOperationsAreFinished` waits on it, so the
  * completion of the last operation IS the signal — there is no polling anywhere in this file.
  */
 
+#import "FNCondition.h"
 #import <Foundation/NSOperation.h>
 #import <Foundation/NSOperationQueue.h>
 #import <Foundation/NSArray.h>
@@ -62,7 +63,7 @@ static void fn_set_current_queue(NSOperationQueue *queue)
 		return nil;
 	}
 	_dependencies = [[NSMutableArray alloc] init];
-	_condition = [[NSCondition alloc] init];
+	_condition = [[FNCondition alloc] init];
 	return self;
 }
 
@@ -249,7 +250,7 @@ const NSInteger NSOperationQueueDefaultMaxConcurrentOperationCount = -1;
 	}
 	_operations = [[NSMutableArray alloc] init];
 	_pending = [[NSMutableArray alloc] init];
-	_condition = [[NSCondition alloc] init];
+	_condition = [[FNCondition alloc] init];
 	/* NEGATIVE MEANS UNLIMITED, which is Cocoa's spelling of "no limit" and therefore the default. */
 	_maxConcurrent = -1;
 	return self;

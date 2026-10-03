@@ -30,6 +30,7 @@
  *      the dealloc releases it.
  */
 
+#import "FNCondition.h"	/* the private condition §63.170 re-homed here */
 #import <Foundation/NSLock.h>
 #import <Foundation/NSDate.h>
 #import <Foundation/NSString.h>
@@ -254,7 +255,11 @@ static void fn_nap(void)
 
 @end
 
-@implementation NSCondition
+/* ⚠⚠ THIS WAS `NSCondition` (10.5) UNTIL §63.170 CUT IT: the 10.2 baseline removed the public class and
+ * its body - musl pthreads - stays here for its three consumers (NSOperation.m twíce, NSTask.m once), which
+ * reach it through an ivar. ITS `name`/`setName:`/`description` DOORS REMAIN IMPLEMENTED AND UNDECLARED: no
+ * consumer sends them, and deleting a working body was not worth a mis-edit. */
+@implementation FNCondition
 
 - (instancetype)init
 {
