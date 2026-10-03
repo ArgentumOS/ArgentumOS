@@ -5,6 +5,15 @@
 #
 # source: https://developer.apple.com/tutorials/data/index/foundation
 #
+# ⚠⚠ FILTERED, NOT REGENERATED (2026-10-01, §63.135): the rows of 85 owners whose macOS introduction
+# version is LATER than 10.2 have been REMOVED, because §11.0 now targets that baseline. The generator's input
+# (tutorials/data/index/foundation) RETURNS 404, so --refresh CANNOT run and a re-derivation is impossible; the
+# filter is `tools/foundation-era.py`'s ground, docs/reference/foundation-era.txt, which is Apple's own
+# page metadata. REMOVED rather than struck: struck is a claim about our headers, and the headers
+# lose these names in the same campaign.
+#
+# filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
+#
 # kind	status	name	owner	family	why	src
 #
 # ONE ROW PER (OWNER, SELECTOR): Apple's documented METHOD and PROPERTY nodes, which the symbol
@@ -25,7 +34,7 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: 32-bit-only 4, declined 462, other-framework 130, unsupported-by-apple 2
+# why the struck rows are struck: 32-bit-only 4, declined 439, other-framework 115, unsupported-by-apple 2
 #
 # AND 547 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
@@ -35,8 +44,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2204   open  315   struck  409
-#   property   shipped 1295   open  152   struck  189
+# method	shipped	1697	open	247	struck	390
+# property	shipped	767	open	99	struck	170
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -318,18 +327,6 @@ method	open	+addObject:	NSAutoreleasePool	Low-Level Utilities / Memory Managemen
 method	open	-addObject:	NSAutoreleasePool	Low-Level Utilities / Memory Management / Adding an Object to a Pool	-	objc
 method	shipped	-drain	NSAutoreleasePool	Low-Level Utilities / Memory Management / Managing a Pool	-	objc
 method	open	+showPools	NSAutoreleasePool	Low-Level Utilities / Memory Management / Debugging	-	objc
-method	shipped	-initWithIdentifier:	NSBackgroundActivityScheduler	App Support / System Interaction / Initializing Schedulers	-	objc
-method	shipped	-invalidate	NSBackgroundActivityScheduler	App Support / System Interaction / Stopping Scheduled Activity	-	objc
-method	shipped	-scheduleWithBlock:	NSBackgroundActivityScheduler	App Support / System Interaction / Scheduling Activity	-	objc
-property	shipped	identifier	NSBackgroundActivityScheduler	App Support / System Interaction / Background Scheduler Attributes	-	objc
-property	shipped	interval	NSBackgroundActivityScheduler	App Support / System Interaction / Background Scheduler Attributes	-	objc
-property	shipped	qualityOfService	NSBackgroundActivityScheduler	App Support / System Interaction / Background Scheduler Attributes	-	objc
-property	shipped	repeats	NSBackgroundActivityScheduler	App Support / System Interaction / Background Scheduler Attributes	-	objc
-property	shipped	shouldDefer	NSBackgroundActivityScheduler	App Support / System Interaction / Background Scheduler Attributes	-	objc
-property	shipped	tolerance	NSBackgroundActivityScheduler	App Support / System Interaction / Background Scheduler Attributes	-	objc
-method	shipped	-addExecutionBlock:	NSBlockOperation	App Support / Operations / Managing the Blocks in the Operation	-	objc
-method	shipped	+blockOperationWithBlock:	NSBlockOperation	App Support / Operations / Managing the Blocks in the Operation	-	objc
-property	shipped	executionBlocks	NSBlockOperation	App Support / Operations / Managing the Blocks in the Operation	-	objc
 method	shipped	-URLForAuxiliaryExecutable:	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 method	struck	-URLForImageResource:	NSBundle	App Support / Bundle Resources / Finding image resources	declined	objc
 method	shipped	-URLForResource:withExtension:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc
@@ -412,30 +409,6 @@ property	shipped	bundle	NSBundleResourceRequest	App Support / On-Demand Resource
 property	shipped	loadingPriority	NSBundleResourceRequest	App Support / On-Demand Resources / Setting the download priority	deprecated	objc
 property	shipped	progress	NSBundleResourceRequest	App Support / On-Demand Resources / Tracking progress	deprecated	objc
 property	shipped	tags	NSBundleResourceRequest	App Support / On-Demand Resources / Accessing the configuration	deprecated	objc
-method	shipped	-stringForObjectValue:	NSByteCountFormatter	Fundamentals / Data sizes / Instance Methods	-	objc
-method	shipped	-stringFromByteCount:	NSByteCountFormatter	Fundamentals / Data sizes / Creating Strings from Byte Count	-	objc
-method	shipped	+stringFromByteCount:countStyle:	NSByteCountFormatter	Fundamentals / Data sizes / Creating Strings from Byte Count	-	objc
-method	shipped	-stringFromMeasurement:	NSByteCountFormatter	Fundamentals / Data sizes / Instance Methods	-	objc
-method	shipped	+stringFromMeasurement:countStyle:	NSByteCountFormatter	Fundamentals / Data sizes / Type Methods	-	objc
-property	shipped	adaptive	NSByteCountFormatter	Fundamentals / Data sizes / Setting Formatting Styles	-	objc
-property	shipped	allowedUnits	NSByteCountFormatter	Fundamentals / Data sizes / Setting Formatting Styles	-	objc
-property	shipped	allowsNonnumericFormatting	NSByteCountFormatter	Fundamentals / Data sizes / Setting Formatting Styles	-	objc
-property	shipped	countStyle	NSByteCountFormatter	Fundamentals / Data sizes / Setting Formatting Styles	-	swift-page
-property	shipped	formattingContext	NSByteCountFormatter	Fundamentals / Data sizes / Setting Formatting Styles	-	objc
-property	shipped	includesActualByteCount	NSByteCountFormatter	Fundamentals / Data sizes / Setting Formatting Styles	-	objc
-property	shipped	includesCount	NSByteCountFormatter	Fundamentals / Data sizes / Setting Formatting Styles	-	objc
-property	shipped	includesUnit	NSByteCountFormatter	Fundamentals / Data sizes / Setting Formatting Styles	-	objc
-property	shipped	zeroPadsFractionDigits	NSByteCountFormatter	Fundamentals / Data sizes / Setting Formatting Styles	-	objc
-method	shipped	-objectForKey:	NSCache	Fundamentals / Purgeable Collections / Getting a Cached Value	-	objc
-method	shipped	-removeAllObjects	NSCache	Fundamentals / Purgeable Collections / Adding and Removing Cached Values	-	objc
-method	shipped	-removeObjectForKey:	NSCache	Fundamentals / Purgeable Collections / Adding and Removing Cached Values	-	objc
-method	shipped	-setObject:forKey:	NSCache	Fundamentals / Purgeable Collections / Adding and Removing Cached Values	-	objc
-method	shipped	-setObject:forKey:cost:	NSCache	Fundamentals / Purgeable Collections / Adding and Removing Cached Values	-	objc
-property	shipped	countLimit	NSCache	Fundamentals / Purgeable Collections / Managing Cache Size	-	objc
-property	shipped	delegate	NSCache	Fundamentals / Purgeable Collections / Managing the Delegate	-	objc
-property	shipped	evictsObjectsWithDiscardedContent	NSCache	Fundamentals / Purgeable Collections / Managing Discardable Content	-	objc
-property	shipped	name	NSCache	Fundamentals / Purgeable Collections / Managing the Name	-	objc
-property	shipped	totalCostLimit	NSCache	Fundamentals / Purgeable Collections / Managing Cache Size	-	objc
 method	shipped	-cache:willEvictObject:	NSCacheDelegate	Fundamentals / Purgeable Collections / Managing the Delegate / Responding to Object Eviction	-	objc
 method	shipped	-initWithResponse:data:	NSCachedURLResponse	Networking / Cache behavior / Creating a cached URL response	-	objc
 method	shipped	-initWithResponse:data:userInfo:storagePolicy:	NSCachedURLResponse	Networking / Cache behavior / Creating a cached URL response	-	objc
@@ -507,34 +480,6 @@ property	shipped	veryShortStandaloneMonthSymbols	NSCalendar	Fundamentals / Calen
 property	shipped	veryShortStandaloneWeekdaySymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Weekday Symbols	-	objc
 property	shipped	veryShortWeekdaySymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Weekday Symbols	-	objc
 property	shipped	weekdaySymbols	NSCalendar	Fundamentals / Calendrical Calculations / Getting Weekday Symbols	-	objc
-method	shipped	+calendarDate	NSCalendarDate	Fundamentals / Deprecated / Type Methods	deprecated	objc
-method	shipped	-calendarFormat	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-dateByAddingYears:months:days:hours:minutes:seconds:	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	+dateWithString:calendarFormat:	NSCalendarDate	Fundamentals / Deprecated / Type Methods	deprecated	objc
-method	shipped	+dateWithString:calendarFormat:locale:	NSCalendarDate	Fundamentals / Deprecated / Type Methods	deprecated	objc
-method	shipped	+dateWithYear:month:day:hour:minute:second:timeZone:	NSCalendarDate	Fundamentals / Deprecated / Type Methods	deprecated	objc
-method	shipped	-dayOfCommonEra	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-dayOfMonth	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-dayOfWeek	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-dayOfYear	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-descriptionWithCalendarFormat:	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-descriptionWithCalendarFormat:locale:	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-descriptionWithLocale:	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	+distantFuture	NSCalendarDate	Fundamentals / Deprecated / Type Methods	deprecated	objc
-method	shipped	+distantPast	NSCalendarDate	Fundamentals / Deprecated / Type Methods	deprecated	objc
-method	shipped	-hourOfDay	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-initWithString:	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-initWithString:calendarFormat:	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-initWithString:calendarFormat:locale:	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-initWithYear:month:day:hour:minute:second:timeZone:	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-minuteOfHour	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-monthOfYear	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-secondOfMinute	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-setCalendarFormat:	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-setTimeZone:	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-timeZone	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-yearOfCommonEra	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
-method	shipped	-years:months:days:hours:minutes:seconds:sinceDate:	NSCalendarDate	Fundamentals / Deprecated / Instance Methods	deprecated	objc
 method	shipped	-characterIsMember:	NSCharacterSet	Fundamentals / Characters / Testing Set Membership	-	objc
 method	shipped	+characterSetWithBitmapRepresentation:	NSCharacterSet	Fundamentals / Characters / Creating and Managing Character Sets as Bitmap Representations	-	objc
 method	shipped	+characterSetWithCharactersInString:	NSCharacterSet	Fundamentals / Characters / Creating a Custom Character Set	-	objc
@@ -803,9 +748,6 @@ method	shipped	-writeToURL:options:error:	NSData	Fundamentals / Binary Data / Wr
 property	shipped	bytes	NSData	Fundamentals / Binary Data / Accessing Underlying Bytes	-	objc
 property	shipped	description	NSData	Fundamentals / Binary Data / Describing Data	-	objc
 property	shipped	length	NSData	Fundamentals / Binary Data / Testing Data	-	objc
-method	shipped	+dataDetectorWithTypes:error:	NSDataDetector	Fundamentals / Pattern Matching / Creating data detector instances	-	objc
-method	shipped	-initWithTypes:error:	NSDataDetector	Fundamentals / Pattern Matching / Creating data detector instances	-	objc
-property	shipped	checkingTypes	NSDataDetector	Fundamentals / Pattern Matching / Getting the checking types	-	objc
 method	open	-addTimeInterval:	NSDate	Fundamentals / Date Representations / Legacy Operations	deprecated	objc
 method	shipped	-compare:	NSDate	Fundamentals / Date Representations / Comparing Dates	-	objc
 method	shipped	+date	NSDate	Fundamentals / Date Representations / Creating a Date	-	objc
@@ -867,23 +809,6 @@ property	shipped	weekday	NSDateComponents	Fundamentals / Calendrical Calculation
 property	shipped	weekdayOrdinal	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Weeks and Days	-	objc
 property	shipped	year	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Years and Months	-	objc
 property	shipped	yearForWeekOfYear	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Years and Months	-	objc
-method	shipped	-getObjectValue:forString:errorDescription:	NSDateComponentsFormatter	Fundamentals / Date Formatting / Instance Methods	-	objc
-method	shipped	+localizedStringFromDateComponents:unitsStyle:	NSDateComponentsFormatter	Fundamentals / Date Formatting / Formatting Values	-	objc
-method	shipped	-stringForObjectValue:	NSDateComponentsFormatter	Fundamentals / Date Formatting / Formatting Values	-	objc
-method	shipped	-stringFromDate:toDate:	NSDateComponentsFormatter	Fundamentals / Date Formatting / Formatting Values	-	objc
-method	shipped	-stringFromDateComponents:	NSDateComponentsFormatter	Fundamentals / Date Formatting / Formatting Values	-	objc
-method	shipped	-stringFromTimeInterval:	NSDateComponentsFormatter	Fundamentals / Date Formatting / Formatting Values	-	objc
-property	shipped	allowedUnits	NSDateComponentsFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	objc
-property	shipped	allowsFractionalUnits	NSDateComponentsFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	objc
-property	shipped	calendar	NSDateComponentsFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	objc
-property	shipped	collapsesLargestUnit	NSDateComponentsFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	objc
-property	shipped	formattingContext	NSDateComponentsFormatter	Fundamentals / Date Formatting / Instance Properties	-	objc
-property	shipped	includesApproximationPhrase	NSDateComponentsFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	objc
-property	shipped	includesTimeRemainingPhrase	NSDateComponentsFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	objc
-property	shipped	maximumUnitCount	NSDateComponentsFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	objc
-property	shipped	referenceDate	NSDateComponentsFormatter	Fundamentals / Date Formatting / Instance Properties	-	objc
-property	shipped	unitsStyle	NSDateComponentsFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	swift-page
-property	shipped	zeroFormattingBehavior	NSDateComponentsFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	swift-page
 method	shipped	-allowsNaturalLanguage	NSDateFormatter	Fundamentals / Date Formatting / Managing Natural Language Support	deprecated	objc
 method	shipped	+dateFormatFromTemplate:options:locale:	NSDateFormatter	Fundamentals / Date Formatting / Managing Formats and Styles	-	objc
 method	shipped	-dateFromString:	NSDateFormatter	Fundamentals / Date Formatting / Converting Objects	-	objc
@@ -927,26 +852,6 @@ property	shipped	veryShortStandaloneMonthSymbols	NSDateFormatter	Fundamentals / 
 property	shipped	veryShortStandaloneWeekdaySymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Weekday Symbols	-	objc
 property	shipped	veryShortWeekdaySymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Weekday Symbols	-	objc
 property	shipped	weekdaySymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Weekday Symbols	-	objc
-method	shipped	-compare:	NSDateInterval	Fundamentals / Date Representations / Comparing Date Intervals	-	objc
-method	shipped	-containsDate:	NSDateInterval	Fundamentals / Date Representations / Determining Whether a Date Occurs Within a Date Interval	-	objc
-method	shipped	-init	NSDateInterval	Fundamentals / Date Representations / Creating Date Intervals	-	objc
-method	shipped	-initWithCoder:	NSDateInterval	Fundamentals / Date Representations / Creating Date Intervals	-	objc
-method	shipped	-initWithStartDate:duration:	NSDateInterval	Fundamentals / Date Representations / Creating Date Intervals	-	objc
-method	shipped	-initWithStartDate:endDate:	NSDateInterval	Fundamentals / Date Representations / Creating Date Intervals	-	objc
-method	shipped	-intersectionWithDateInterval:	NSDateInterval	Fundamentals / Date Representations / Determining Intersections	-	objc
-method	shipped	-intersectsDateInterval:	NSDateInterval	Fundamentals / Date Representations / Determining Intersections	-	objc
-method	shipped	-isEqualToDateInterval:	NSDateInterval	Fundamentals / Date Representations / Comparing Date Intervals	-	objc
-property	shipped	duration	NSDateInterval	Fundamentals / Date Representations / Accessing Start Date, End Date, and Duration	-	objc
-property	shipped	endDate	NSDateInterval	Fundamentals / Date Representations / Accessing Start Date, End Date, and Duration	-	objc
-property	shipped	startDate	NSDateInterval	Fundamentals / Date Representations / Accessing Start Date, End Date, and Duration	-	objc
-method	shipped	-stringFromDate:toDate:	NSDateIntervalFormatter	Fundamentals / Date Formatting / Formatting a String	-	objc
-method	shipped	-stringFromDateInterval:	NSDateIntervalFormatter	Fundamentals / Date Formatting / Instance Methods	-	objc
-property	shipped	calendar	NSDateIntervalFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	objc
-property	shipped	dateStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	objc
-property	shipped	dateTemplate	NSDateIntervalFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	objc
-property	shipped	locale	NSDateIntervalFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	objc
-property	shipped	timeStyle	NSDateIntervalFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	objc
-property	shipped	timeZone	NSDateIntervalFormatter	Fundamentals / Date Formatting / Configuring the Formatter Options	-	objc
 method	shipped	-compare:	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Comparing Decimal Numbers	-	objc
 method	shipped	-decimalNumberByAdding:	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Performing Arithmetic	-	objc
 method	shipped	-decimalNumberByAdding:withBehavior:	NSDecimalNumber	Fundamentals / Numbers / Using reference types / Performing Arithmetic	-	objc
@@ -1051,9 +956,6 @@ property	shipped	allValues	NSDictionary	Fundamentals / Basic Collections / Acces
 property	shipped	count	NSDictionary	Fundamentals / Basic Collections / Counting Entries	-	objc
 property	shipped	description	NSDictionary	Fundamentals / Basic Collections / Describing a Dictionary	-	objc
 property	open	descriptionInStringsFileFormat	NSDictionary	Fundamentals / Basic Collections / Describing a Dictionary	-	objc
-method	shipped	+baseUnit	NSDimension	Fundamentals / Essentials / Accessing the Base Unit	-	objc
-method	shipped	-initWithSymbol:converter:	NSDimension	Fundamentals / Essentials / Creating Dimensions	-	objc
-property	shipped	converter	NSDimension	Fundamentals / Essentials / Accessing the Unit Converter	-	objc
 method	shipped	-skipDescendants	NSDirectoryEnumerator	Files and Data Persistence / File system operations / Discovering directory contents / Skipping Subdirectories	-	objc
 method	shipped	-skipDescendents	NSDirectoryEnumerator	Files and Data Persistence / File system operations / Discovering directory contents / Skipping Subdirectories	-	objc
 property	shipped	directoryAttributes	NSDirectoryEnumerator	Files and Data Persistence / File system operations / Discovering directory contents / Getting File and Directory Attributes	-	objc
@@ -1091,14 +993,6 @@ method	shipped	-postNotificationName:object:userInfo:deliverImmediately:	NSDistr
 method	shipped	-postNotificationName:object:userInfo:options:	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Posting Notifications	-	objc
 method	shipped	-removeObserver:name:object:	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Managing Observers	-	objc
 property	open	suspended	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Suspending and Resuming Notification Delivery	-	objc
-method	shipped	-getObjectValue:forString:errorDescription:	NSEnergyFormatter	Fundamentals / Deprecated / Formatting Energy Strings	deprecated	objc
-method	shipped	-stringFromJoules:	NSEnergyFormatter	Fundamentals / Deprecated / Formatting Energy Strings	deprecated	objc
-method	shipped	-stringFromValue:unit:	NSEnergyFormatter	Fundamentals / Deprecated / Formatting Energy Strings	deprecated	objc
-method	shipped	-unitStringFromJoules:usedUnit:	NSEnergyFormatter	Fundamentals / Deprecated / Formatting Energy Strings	deprecated	objc
-method	shipped	-unitStringFromValue:unit:	NSEnergyFormatter	Fundamentals / Deprecated / Formatting Energy Strings	deprecated	objc
-property	shipped	forFoodEnergyUse	NSEnergyFormatter	Fundamentals / Deprecated / Formatting Energy Strings	deprecated	objc
-property	shipped	numberFormatter	NSEnergyFormatter	Fundamentals / Deprecated / Formatting Energy Strings	deprecated	objc
-property	open	unitStyle	NSEnergyFormatter	Fundamentals / Deprecated / Formatting Energy Strings	deprecated	objc
 method	shipped	-nextObject	NSEnumerator	Fundamentals / Iteration / Getting the Enumerated Objects	-	objc
 property	shipped	allObjects	NSEnumerator	Fundamentals / Iteration / Getting the Enumerated Objects	-	objc
 method	shipped	+errorWithDomain:code:userInfo:	NSError	App Support / User-Relevant Errors / Creating Error Objects	-	objc
@@ -1130,64 +1024,6 @@ property	open	callStackSymbols	NSException	App Support / Exceptions / Getting Ex
 property	shipped	name	NSException	App Support / Exceptions / Querying an NSException Object	-	swift-page
 property	shipped	reason	NSException	App Support / Exceptions / Querying an NSException Object	-	swift-page
 property	shipped	userInfo	NSException	App Support / Exceptions / Querying an NSException Object	-	swift-page
-method	open	-allowEvaluation	NSExpression	Fundamentals / Filltering / Evaluating an Expression	-	objc
-method	shipped	+expressionForAggregate:	NSExpression	Fundamentals / Filltering / Creating a Collection Expression	-	objc
-method	shipped	+expressionForAnyKey	NSExpression	Fundamentals / Filltering / Creating an Expression for a Value	-	objc
-method	open	+expressionForBlock:arguments:	NSExpression	Fundamentals / Filltering / Creating an Expression Using Blocks	-	objc
-method	shipped	+expressionForConditional:trueExpression:falseExpression:	NSExpression	Fundamentals / Filltering / Creating a Conditional Expression	-	objc
-method	shipped	+expressionForConstantValue:	NSExpression	Fundamentals / Filltering / Creating an Expression for a Value	-	objc
-method	shipped	+expressionForEvaluatedObject	NSExpression	Fundamentals / Filltering / Creating an Expression for a Value	-	objc
-method	shipped	+expressionForFunction:arguments:	NSExpression	Fundamentals / Filltering / Creating an Expression for a Function	-	objc
-method	shipped	+expressionForFunction:selectorName:arguments:	NSExpression	Fundamentals / Filltering / Creating an Expression for a Function	-	objc
-method	shipped	+expressionForIntersectSet:with:	NSExpression	Fundamentals / Filltering / Creating a Collection Expression	-	objc
-method	shipped	+expressionForKeyPath:	NSExpression	Fundamentals / Filltering / Creating an Expression for a Value	-	objc
-method	shipped	+expressionForMinusSet:with:	NSExpression	Fundamentals / Filltering / Creating a Collection Expression	-	objc
-method	shipped	+expressionForSubquery:usingIteratorVariable:predicate:	NSExpression	Fundamentals / Filltering / Creating a Subquery	-	objc
-method	shipped	+expressionForUnionSet:with:	NSExpression	Fundamentals / Filltering / Creating a Collection Expression	-	objc
-method	shipped	+expressionForVariable:	NSExpression	Fundamentals / Filltering / Creating an Expression for a Value	-	objc
-method	shipped	-expressionValueWithObject:context:	NSExpression	Fundamentals / Filltering / Evaluating an Expression	-	objc
-method	open	+expressionWithFormat:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
-method	open	+expressionWithFormat:argumentArray:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
-method	open	+expressionWithFormat:arguments:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
-method	shipped	-initWithCoder:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
-method	shipped	-initWithExpressionType:	NSExpression	Fundamentals / Filltering / Creating an Expression	-	objc
-property	shipped	arguments	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
-property	shipped	collection	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
-property	shipped	constantValue	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
-property	open	expressionBlock	NSExpression	Fundamentals / Filltering / Accessing the Expression Block	-	objc
-property	shipped	expressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	swift-page
-property	shipped	falseExpression	NSExpression	Fundamentals / Filltering / Evaluating an Expression	-	objc
-property	shipped	function	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
-property	shipped	keyPath	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
-property	shipped	leftExpression	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
-property	shipped	operand	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
-property	shipped	predicate	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
-property	shipped	rightExpression	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
-property	shipped	trueExpression	NSExpression	Fundamentals / Filltering / Evaluating an Expression	-	objc
-property	shipped	variable	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	objc
-method	shipped	-cancelRequestWithError:	NSExtensionContext	App Support / Extension Support / Handling requests	-	objc
-method	shipped	-completeRequestReturningItems:completionHandler:	NSExtensionContext	App Support / Extension Support / Handling requests	-	objc
-method	struck	-completeRequestWithBroadcastURL:broadcastConfiguration:setupInfo:	NSExtensionContext	App Support / Extension Support / Deprecated	other-framework	objc
-method	struck	-completeRequestWithBroadcastURL:setupInfo:	NSExtensionContext	App Support / Extension Support / Supporting broadcasting	other-framework	objc
-method	struck	-dismissNotificationContentExtension	NSExtensionContext	App Support / Extension Support / Handling notification actions	other-framework	objc
-method	struck	-interfaceParametersDescription	NSExtensionContext	App Support / Extension Support / Getting Siri-related information	other-framework	objc
-method	struck	-loadBroadcastingApplicationInfoWithCompletion:	NSExtensionContext	App Support / Extension Support / Supporting broadcasting	other-framework	objc
-method	struck	-mediaPlayingPaused	NSExtensionContext	App Support / Extension Support / Controlling media playback in notification content extensions	other-framework	objc
-method	struck	-mediaPlayingStarted	NSExtensionContext	App Support / Extension Support / Controlling media playback in notification content extensions	other-framework	objc
-method	shipped	-openURL:completionHandler:	NSExtensionContext	App Support / Extension Support / Opening URLs	-	objc
-method	struck	-performNotificationDefaultAction	NSExtensionContext	App Support / Extension Support / Handling notification actions	other-framework	objc
-method	struck	-widgetMaximumSizeForDisplayMode:	NSExtensionContext	App Support / Extension Support / Deprecated	other-framework	objc
-property	struck	hostedViewMaximumAllowedSize	NSExtensionContext	App Support / Extension Support / Getting Siri-related information	other-framework	objc
-property	struck	hostedViewMinimumAllowedSize	NSExtensionContext	App Support / Extension Support / Getting Siri-related information	other-framework	objc
-property	shipped	inputItems	NSExtensionContext	App Support / Extension Support / Storing extension items	-	objc
-property	struck	intent	NSExtensionContext	App Support / Extension Support / Populating your share extension with metadata	other-framework	objc
-property	struck	notificationActions	NSExtensionContext	App Support / Extension Support / Handling notification actions	other-framework	objc
-property	struck	widgetActiveDisplayMode	NSExtensionContext	App Support / Extension Support / Deprecated	other-framework	objc
-property	struck	widgetLargestAvailableDisplayMode	NSExtensionContext	App Support / Extension Support / Deprecated	other-framework	objc
-property	shipped	attachments	NSExtensionItem	App Support / Attachments / Item Contents	-	objc
-property	shipped	attributedContentText	NSExtensionItem	App Support / Attachments / Item Contents	-	objc
-property	shipped	attributedTitle	NSExtensionItem	App Support / Attachments / Identifying the Item	-	objc
-property	shipped	userInfo	NSExtensionItem	App Support / Attachments / Identifying the Item	-	objc
 method	shipped	-beginRequestWithExtensionContext:	NSExtensionRequestHandling	App Support / Extension Support / Preparing for a request	-	objc
 method	shipped	-countByEnumeratingWithState:objects:count:	NSFastEnumeration	Fundamentals / Iteration / Enumeration	-	objc
 property	open	extra	NSFastEnumeration	Fundamentals / Iteration / Constants / Instance Properties	-	objc
@@ -1197,21 +1033,6 @@ property	open	state	NSFastEnumeration	Fundamentals / Iteration / Constants / Ins
 method	shipped	+readingIntentWithURL:options:	NSFileAccessIntent	Files and Data Persistence / Coordinated file access / Creating a File Access Intent	-	objc
 method	shipped	+writingIntentWithURL:options:	NSFileAccessIntent	Files and Data Persistence / Coordinated file access / Creating a File Access Intent	-	objc
 property	shipped	URL	NSFileAccessIntent	Files and Data Persistence / Coordinated file access / Accessing the Current URL	-	objc
-method	shipped	+addFilePresenter:	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Managing File Presenters	-	objc
-method	shipped	-cancel	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Coordinating File Operations Synchronously	-	objc
-method	shipped	-coordinateAccessWithIntents:queue:byAccessor:	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Coordinating File Operations Asynchronously	-	objc
-method	shipped	-coordinateReadingItemAtURL:options:error:byAccessor:	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Coordinating File Operations Synchronously	-	objc
-method	shipped	-coordinateReadingItemAtURL:options:writingItemAtURL:options:error:byAccessor:	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Coordinating File Operations Synchronously	-	objc
-method	shipped	-coordinateWritingItemAtURL:options:error:byAccessor:	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Coordinating File Operations Synchronously	-	objc
-method	shipped	-coordinateWritingItemAtURL:options:writingItemAtURL:options:error:byAccessor:	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Coordinating File Operations Synchronously	-	objc
-method	shipped	-initWithFilePresenter:	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Initializing a File Coordinator	-	objc
-method	open	-itemAtURL:didChangeUbiquityAttributes:	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Ubiquity Change Notifications	-	objc
-method	shipped	-itemAtURL:didMoveToURL:	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Coordinating File Operations Synchronously	-	objc
-method	shipped	-itemAtURL:willMoveToURL:	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Coordinating File Operations Synchronously	-	objc
-method	shipped	-prepareForReadingItemsAtURLs:options:writingItemsAtURLs:options:error:byAccessor:	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Coordinating File Operations Synchronously	-	objc
-method	shipped	+removeFilePresenter:	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Managing File Presenters	-	objc
-property	shipped	filePresenters	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Managing File Presenters	-	objc
-property	shipped	purposeIdentifier	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Managing File Presenters	-	objc
 method	shipped	-acceptConnectionInBackgroundAndNotify	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
 method	shipped	-acceptConnectionInBackgroundAndNotifyForModes:	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
 method	shipped	-closeAndReturnError:	NSFileHandle	Files and Data Persistence / Managed file access / Operating on a file	-	objc
@@ -1368,30 +1189,6 @@ property	shipped	observedPresentedItemUbiquityAttributes	NSFilePresenter	Files a
 property	shipped	presentedItemOperationQueue	NSFilePresenter	Files and Data Persistence / Coordinated file access / Accessing File Presenter Attributes	-	objc
 property	shipped	presentedItemURL	NSFilePresenter	Files and Data Persistence / Coordinated file access / Accessing File Presenter Attributes	-	objc
 property	open	primaryPresentedItemURL	NSFilePresenter	Files and Data Persistence / Coordinated file access / Accessing File Presenter Attributes	-	objc
-method	shipped	-getFileProviderConnectionWithCompletionHandler:	NSFileProviderService	Files and Data Persistence / File system operations / Accessing file provider services / Accessing the Service	-	objc
-property	shipped	name	NSFileProviderService	Files and Data Persistence / File system operations / Accessing file provider services / Accessing the Service	-	objc
-method	shipped	-initWithCoder:	NSFileSecurity	Files and Data Persistence / Managed file access / Instance Methods	-	objc
-method	shipped	+addVersionOfItemAtURL:withContentsOfURL:options:error:	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Creating a New Version	-	objc
-method	shipped	+currentVersionOfItemAtURL:	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Getting the Version of a File	-	objc
-method	shipped	+getNonlocalVersionsOfItemAtURL:completionHandler:	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Type Methods	-	objc
-method	shipped	+otherVersionsOfItemAtURL:	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Getting the Version of a File	-	objc
-method	shipped	-removeAndReturnError:	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Replacing and Deleting Versions	-	objc
-method	shipped	+removeOtherVersionsOfItemAtURL:error:	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Replacing and Deleting Versions	-	objc
-method	open	-replaceItemAtURL:options:error:	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Replacing and Deleting Versions	-	objc
-method	shipped	+temporaryDirectoryURLForNewVersionOfItemAtURL:	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Getting the Version of a File	-	objc
-method	shipped	+unresolvedConflictVersionsOfItemAtURL:	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Handling Version Conflicts	-	objc
-method	shipped	+versionOfItemAtURL:forPersistentIdentifier:	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Getting the Version of a File	-	objc
-property	shipped	URL	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Accessing the Version Information	-	objc
-property	shipped	conflict	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Handling Version Conflicts	-	objc
-property	open	discardable	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Accessing the Version Information	-	objc
-property	shipped	hasLocalContents	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Instance Properties	-	objc
-property	shipped	hasThumbnail	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Instance Properties	-	objc
-property	shipped	localizedName	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Accessing the Version Information	-	objc
-property	open	localizedNameOfSavingComputer	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Accessing the Version Information	-	objc
-property	shipped	modificationDate	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Accessing the Version Information	-	objc
-property	open	originatorNameComponents	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Instance Properties	-	objc
-property	shipped	persistentIdentifier	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Accessing the Version Information	-	objc
-property	open	resolved	NSFileVersion	Files and Data Persistence / File system operations / Controlling file provider synchronization / Handling Version Conflicts	-	objc
 method	shipped	-addFileWithPath:	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing File-Wrapper Information	deprecated	objc
 method	shipped	-addFileWrapper:	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing File-Wrapper Information	-	objc
 method	shipped	-addRegularFileWithContents:preferredFilename:	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing File-Wrapper Information	-	objc
@@ -1475,33 +1272,6 @@ method	shipped	+localizedStringForStatusCode:	NSHTTPURLResponse	Networking / Req
 method	shipped	-valueForHTTPHeaderField:	NSHTTPURLResponse	Networking / Requests and responses / Getting HTTP response headers	-	objc
 property	shipped	allHeaderFields	NSHTTPURLResponse	Networking / Requests and responses / Getting HTTP response headers	-	objc
 property	shipped	statusCode	NSHTTPURLResponse	Networking / Requests and responses / Getting response status codes	-	objc
-method	shipped	-addObject:	NSHashTable	Fundamentals / Pointer Collections / Manipulating Membership	-	objc
-method	shipped	-containsObject:	NSHashTable	Fundamentals / Pointer Collections / Accessing Content	-	objc
-method	shipped	+hashTableWithOptions:	NSHashTable	Fundamentals / Pointer Collections / Convenience Constructors	-	objc
-method	open	+hashTableWithWeakObjects	NSHashTable	Fundamentals / Pointer Collections / Deprecated	deprecated	objc
-method	shipped	-initWithOptions:capacity:	NSHashTable	Fundamentals / Pointer Collections / Initialization	-	objc
-method	shipped	-initWithPointerFunctions:capacity:	NSHashTable	Fundamentals / Pointer Collections / Initialization	-	objc
-method	shipped	-intersectHashTable:	NSHashTable	Fundamentals / Pointer Collections / Comparing Hash Tables	-	objc
-method	shipped	-intersectsHashTable:	NSHashTable	Fundamentals / Pointer Collections / Comparing Hash Tables	-	objc
-method	shipped	-isEqualToHashTable:	NSHashTable	Fundamentals / Pointer Collections / Comparing Hash Tables	-	objc
-method	shipped	-isSubsetOfHashTable:	NSHashTable	Fundamentals / Pointer Collections / Comparing Hash Tables	-	objc
-method	shipped	-member:	NSHashTable	Fundamentals / Pointer Collections / Accessing Content	-	objc
-method	shipped	-minusHashTable:	NSHashTable	Fundamentals / Pointer Collections / Set Functions	-	objc
-method	shipped	-objectEnumerator	NSHashTable	Fundamentals / Pointer Collections / Accessing Content	-	objc
-method	shipped	-removeAllObjects	NSHashTable	Fundamentals / Pointer Collections / Manipulating Membership	-	objc
-method	shipped	-removeObject:	NSHashTable	Fundamentals / Pointer Collections / Manipulating Membership	-	objc
-method	shipped	-unionHashTable:	NSHashTable	Fundamentals / Pointer Collections / Set Functions	-	objc
-method	shipped	+weakObjectsHashTable	NSHashTable	Fundamentals / Pointer Collections / Convenience Constructors	-	objc
-property	shipped	allObjects	NSHashTable	Fundamentals / Pointer Collections / Accessing Content	-	objc
-property	shipped	anyObject	NSHashTable	Fundamentals / Pointer Collections / Accessing Content	-	objc
-property	shipped	count	NSHashTable	Fundamentals / Pointer Collections / Accessing Content	-	objc
-property	open	describe	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Data Types / Instance Properties	deprecated	objc
-property	shipped	hash	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Data Types / Instance Properties	deprecated	objc
-property	open	isEqual	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Data Types / Instance Properties	deprecated	objc
-property	shipped	pointerFunctions	NSHashTable	Fundamentals / Pointer Collections / Accessing Pointer Functions	-	objc
-property	shipped	release	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Data Types / Instance Properties	deprecated	objc
-property	shipped	retain	NSHashTable	Fundamentals / Pointer Collections / Deprecated / Data Types / Instance Properties	deprecated	objc
-property	shipped	setRepresentation	NSHashTable	Fundamentals / Pointer Collections / Accessing Content	-	objc
 method	shipped	+currentHost	NSHost	Low-Level Utilities / Sockets / Creating Hosts	deprecated	objc
 method	shipped	+flushHostCache	NSHost	Low-Level Utilities / Sockets / Managing the Host Cache	deprecated	objc
 method	shipped	+hostWithAddress:	NSHost	Low-Level Utilities / Sockets / Creating Hosts	deprecated	objc
@@ -1514,12 +1284,6 @@ property	shipped	addresses	NSHost	Low-Level Utilities / Sockets / Getting Host I
 property	shipped	localizedName	NSHost	Low-Level Utilities / Sockets / Getting Host Information	deprecated	objc
 property	shipped	name	NSHost	Low-Level Utilities / Sockets / Getting Host Information	deprecated	objc
 property	shipped	names	NSHost	Low-Level Utilities / Sockets / Getting Host Information	deprecated	objc
-method	shipped	-dateFromString:	NSISO8601DateFormatter	Fundamentals / Date Formatting / Converting ISO 8601 Dates	-	objc
-method	shipped	-init	NSISO8601DateFormatter	Fundamentals / Date Formatting / Creating ISO 8601 Date Formatters	-	objc
-method	shipped	-stringFromDate:	NSISO8601DateFormatter	Fundamentals / Date Formatting / Converting ISO 8601 Dates	-	objc
-method	shipped	+stringFromDate:timeZone:formatOptions:	NSISO8601DateFormatter	Fundamentals / Date Formatting / Converting ISO 8601 Dates	-	objc
-property	shipped	formatOptions	NSISO8601DateFormatter	Fundamentals / Date Formatting / Configuring the Formatter	-	objc
-property	shipped	timeZone	NSISO8601DateFormatter	Fundamentals / Date Formatting / Configuring the Formatter	-	objc
 method	shipped	-compare:	NSIndexPath	Fundamentals / Indexes / Comparing Index Paths	-	objc
 method	shipped	-getIndexes:	NSIndexPath	Fundamentals / Indexes / Working with Indexes	deprecated	objc
 method	shipped	-getIndexes:range:	NSIndexPath	Fundamentals / Indexes / Working with Indexes	-	objc
@@ -1570,9 +1334,6 @@ property	shipped	firstIndex	NSIndexSet	Fundamentals / Indexes / Getting Indexes	
 property	shipped	lastIndex	NSIndexSet	Fundamentals / Indexes / Getting Indexes	-	objc
 method	struck	-initWithContainerClassDescription:containerSpecifier:key:index:	NSIndexSpecifier	App Support / Object Specifiers / Creating Index Specifiers	declined	objc
 property	struck	index	NSIndexSpecifier	App Support / Object Specifiers / Accessing the Index	declined	objc
-method	shipped	+canInflectLanguage:	NSInflectionRule	Fundamentals / Automatic grammar agreement / Determining Availability	-	objc
-property	shipped	automaticRule	NSInflectionRule	Fundamentals / Automatic grammar agreement / Performing Automatic Inflection	-	objc
-property	shipped	canInflectPreferredLocalization	NSInflectionRule	Fundamentals / Automatic grammar agreement / Determining Availability	-	objc
 method	shipped	-initWithMorphology:	NSInflectionRuleExplicit	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule	-	objc
 property	shipped	morphology	NSInflectionRuleExplicit	Fundamentals / Automatic grammar agreement / Accessing Rule Properties	-	objc
 method	shipped	-getBuffer:length:	NSInputStream	Low-Level Utilities / Streams / Using Streams	-	objc
@@ -1597,60 +1358,12 @@ property	shipped	argumentsRetained	NSInvocation	Low-Level Utilities / Invocation
 property	shipped	methodSignature	NSInvocation	Low-Level Utilities / Invocations / Getting the Method Signature	-	objc
 property	shipped	selector	NSInvocation	Low-Level Utilities / Invocations / Configuring an Invocation Object	-	objc
 property	shipped	target	NSInvocation	Low-Level Utilities / Invocations / Configuring an Invocation Object	-	objc
-method	shipped	-initWithInvocation:	NSInvocationOperation	App Support / Operations / Initialization	-	objc
-method	shipped	-initWithTarget:selector:object:	NSInvocationOperation	App Support / Operations / Initialization	-	objc
-property	shipped	invocation	NSInvocationOperation	App Support / Operations / Getting Attributes	-	objc
-property	shipped	result	NSInvocationOperation	App Support / Operations / Getting Attributes	-	objc
-method	shipped	-canLoadObjectOfClass:	NSItemProvider	App Support / Attachments / Querying the provider’s contents	-	objc
-method	shipped	-hasItemConformingToTypeIdentifier:	NSItemProvider	App Support / Attachments / Querying the provider’s contents	-	objc
-method	shipped	-hasRepresentationConformingToTypeIdentifier:fileOptions:	NSItemProvider	App Support / Attachments / Querying the provider’s contents	-	objc
-method	shipped	-init	NSItemProvider	App Support / Attachments / Creating an item provider	-	objc
-method	shipped	-initWithContentsOfURL:	NSItemProvider	App Support / Attachments / Creating an item provider	-	objc
-method	struck	-initWithContentsOfURL:contentType:openInPlace:coordinated:visibility:	NSItemProvider	App Support / Attachments / Creating an item provider	declined	objc
-method	shipped	-initWithItem:typeIdentifier:	NSItemProvider	App Support / Attachments / Creating an item provider	deprecated	objc
-method	shipped	-initWithObject:	NSItemProvider	App Support / Attachments / Creating an item provider	-	objc
-method	struck	-loadDataRepresentationForContentType:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	declined	objc
-method	shipped	-loadDataRepresentationForTypeIdentifier:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	-	objc
-method	struck	-loadFileRepresentationForContentType:openInPlace:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	declined	objc
-method	shipped	-loadFileRepresentationForTypeIdentifier:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	-	objc
-method	shipped	-loadInPlaceFileRepresentationForTypeIdentifier:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	-	objc
-method	shipped	-loadItemForTypeIdentifier:options:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	deprecated	objc
-method	shipped	-loadObjectOfClass:completionHandler:	NSItemProvider	App Support / Attachments / Loading the provider’s contents	-	objc
-method	shipped	-loadPreviewImageWithOptions:completionHandler:	NSItemProvider	App Support / Attachments / Loading a preview image	-	objc
-method	struck	-registerCKShare:container:allowedSharingOptions:	NSItemProvider	App Support / Attachments / Registering CloudKit shares	declined	objc
-method	struck	-registerCKShareWithContainer:allowedSharingOptions:preparationHandler:	NSItemProvider	App Support / Attachments / Registering CloudKit shares	declined	objc
-method	struck	-registerCloudKitShare:container:	NSItemProvider	App Support / Attachments / Registering CloudKit shares	declined	objc
-method	struck	-registerCloudKitShareWithPreparationHandler:	NSItemProvider	App Support / Attachments / Registering CloudKit shares	declined	objc
-method	struck	-registerDataRepresentationForContentType:visibility:loadHandler:	NSItemProvider	App Support / Attachments / Registering data	declined	objc
-method	shipped	-registerDataRepresentationForTypeIdentifier:visibility:loadHandler:	NSItemProvider	App Support / Attachments / Registering data	-	objc
-method	struck	-registerFileRepresentationForContentType:visibility:openInPlace:loadHandler:	NSItemProvider	App Support / Attachments / Registering files	declined	objc
-method	shipped	-registerFileRepresentationForTypeIdentifier:fileOptions:visibility:loadHandler:	NSItemProvider	App Support / Attachments / Registering files	-	objc
-method	shipped	-registerItemForTypeIdentifier:loadHandler:	NSItemProvider	App Support / Attachments / Registering data	deprecated	objc
-method	shipped	-registerObject:visibility:	NSItemProvider	App Support / Attachments / Registering objects	-	objc
-method	shipped	-registerObjectOfClass:visibility:loadHandler:	NSItemProvider	App Support / Attachments / Registering objects	-	objc
-method	struck	-registeredContentTypesConformingToContentType:	NSItemProvider	App Support / Attachments / Registering content types	declined	objc
-method	shipped	-registeredTypeIdentifiersWithFileOptions:	NSItemProvider	App Support / Attachments / Querying the provider’s contents	-	objc
-property	struck	containerFrame	NSItemProvider	App Support / Attachments / Getting the provider’s frame	declined	objc
-property	struck	preferredPresentationSize	NSItemProvider	App Support / Attachments / Configuring the provider	declined	objc
-property	struck	preferredPresentationStyle	NSItemProvider	App Support / Attachments / Configuring the provider	declined	swift-page
-property	shipped	previewImageHandler	NSItemProvider	App Support / Attachments / Loading a preview image	-	objc
-property	struck	registeredContentTypes	NSItemProvider	App Support / Attachments / Registering content types	declined	objc
-property	struck	registeredContentTypesForOpenInPlace	NSItemProvider	App Support / Attachments / Registering content types	declined	objc
-property	shipped	registeredTypeIdentifiers	NSItemProvider	App Support / Attachments / Querying the provider’s contents	-	objc
-property	struck	sourceFrame	NSItemProvider	App Support / Attachments / Getting the provider’s frame	declined	objc
-property	shipped	suggestedName	NSItemProvider	App Support / Attachments / Configuring the provider	-	objc
-property	shipped	teamData	NSItemProvider	App Support / Attachments / Configuring the provider	-	objc
 method	shipped	+objectWithItemProviderData:typeIdentifier:error:	NSItemProviderReading	App Support / Attachments / Constants / Creating an object from a pasted or dropped item	-	objc
 property	shipped	readableTypeIdentifiersForItemProvider	NSItemProviderReading	App Support / Attachments / Constants / Getting the readable type identifiers	-	objc
 method	shipped	+itemProviderVisibilityForRepresentationWithTypeIdentifier:	NSItemProviderWriting	App Support / Attachments / Constants / Getting the representation visibility specification	-	swift-page
 method	shipped	-itemProviderVisibilityForRepresentationWithTypeIdentifier:	NSItemProviderWriting	App Support / Attachments / Constants / Getting the representation visibility specification	-	swift-page
 method	shipped	-loadDataWithTypeIdentifier:forItemProviderCompletionHandler:	NSItemProviderWriting	App Support / Attachments / Constants / Loading data	-	objc
 property	shipped	writableTypeIdentifiersForItemProvider	NSItemProviderWriting	App Support / Attachments / Constants / Getting the writable type identifiers	-	swift-page
-method	shipped	+JSONObjectWithData:options:error:	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object	-	objc
-method	open	+JSONObjectWithStream:options:error:	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object	-	objc
-method	shipped	+dataWithJSONObject:options:error:	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data	-	objc
-method	shipped	+isValidJSONObject:	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data	-	objc
-method	open	+writeJSONObject:toStream:options:error:	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data	-	objc
 method	struck	-addSharedObserver:forKey:options:context:	NSKeyValueSharedObservers	Reference / Classes / Instance Methods	declined	objc
 method	struck	-initWithObservableClass:	NSKeyValueSharedObservers	Reference / Classes / Instance Methods	declined	objc
 method	struck	-snapshot	NSKeyValueSharedObservers	Reference / Classes / Instance Methods	declined	objc
@@ -1717,41 +1430,6 @@ method	shipped	-unarchiver:didDecodeObject:	NSKeyedUnarchiverDelegate	Files and 
 method	shipped	-unarchiver:willReplaceObject:withObject:	NSKeyedUnarchiverDelegate	Files and Data Persistence / Keyed Archivers / Decoding Objects	-	objc
 method	shipped	-unarchiverDidFinish:	NSKeyedUnarchiverDelegate	Files and Data Persistence / Keyed Archivers / Finishing Decoding	-	objc
 method	shipped	-unarchiverWillFinish:	NSKeyedUnarchiverDelegate	Files and Data Persistence / Keyed Archivers / Finishing Decoding	-	objc
-method	shipped	-getObjectValue:forString:errorDescription:	NSLengthFormatter	Fundamentals / Deprecated / Formatting Length Strings	deprecated	objc
-method	shipped	-stringFromMeters:	NSLengthFormatter	Fundamentals / Deprecated / Formatting Length Strings	deprecated	objc
-method	shipped	-stringFromValue:unit:	NSLengthFormatter	Fundamentals / Deprecated / Formatting Length Strings	deprecated	objc
-method	shipped	-unitStringFromMeters:usedUnit:	NSLengthFormatter	Fundamentals / Deprecated / Formatting Length Strings	deprecated	objc
-method	shipped	-unitStringFromValue:unit:	NSLengthFormatter	Fundamentals / Deprecated / Formatting Length Strings	deprecated	objc
-property	shipped	forPersonHeightUse	NSLengthFormatter	Fundamentals / Deprecated / Formatting Length Strings	deprecated	objc
-property	shipped	numberFormatter	NSLengthFormatter	Fundamentals / Deprecated / Formatting Length Strings	deprecated	objc
-property	open	unitStyle	NSLengthFormatter	Fundamentals / Deprecated / Formatting Length Strings	deprecated	objc
-method	open	+availableTagSchemesForLanguage:	NSLinguisticTagger	Fundamentals / Deprecated / Getting the Tag Schemes	deprecated	objc
-method	shipped	+availableTagSchemesForUnit:language:	NSLinguisticTagger	Fundamentals / Deprecated / Getting the Tag Schemes	deprecated	objc
-method	open	+dominantLanguageForString:	NSLinguisticTagger	Fundamentals / Deprecated / Determining the Dominant Language and Orthography	deprecated	objc
-method	open	+enumerateTagsForString:range:unit:scheme:options:orthography:usingBlock:	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags	deprecated	objc
-method	shipped	-enumerateTagsInRange:scheme:options:usingBlock:	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags	deprecated	objc
-method	shipped	-enumerateTagsInRange:unit:scheme:options:usingBlock:	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags	deprecated	objc
-method	shipped	-initWithTagSchemes:options:	NSLinguisticTagger	Fundamentals / Deprecated / First Steps	deprecated	objc
-method	shipped	-orthographyAtIndex:effectiveRange:	NSLinguisticTagger	Fundamentals / Deprecated / Determining the Dominant Language and Orthography	deprecated	objc
-method	open	-possibleTagsAtIndex:scheme:tokenRange:sentenceRange:scores:	NSLinguisticTagger	Fundamentals / Deprecated / Determining the Possible Tags	deprecated	objc
-method	shipped	-sentenceRangeForRange:	NSLinguisticTagger	Fundamentals / Deprecated / Determining the Range of a Unit Token	deprecated	objc
-method	shipped	-setOrthography:range:	NSLinguisticTagger	Fundamentals / Deprecated / Determining the Dominant Language and Orthography	deprecated	objc
-method	open	-stringEditedInRange:changeInLength:	NSLinguisticTagger	Fundamentals / Deprecated / Notifying for Changes to the Analyzed String	deprecated	objc
-method	shipped	-tagAtIndex:scheme:tokenRange:sentenceRange:	NSLinguisticTagger	Fundamentals / Deprecated / Getting Linguistic Tags	deprecated	objc
-method	open	-tagAtIndex:unit:scheme:tokenRange:	NSLinguisticTagger	Fundamentals / Deprecated / Getting Linguistic Tags	deprecated	objc
-method	open	+tagForString:atIndex:unit:scheme:orthography:tokenRange:	NSLinguisticTagger	Fundamentals / Deprecated / Getting Linguistic Tags	deprecated	objc
-method	open	+tagsForString:range:unit:scheme:options:orthography:tokenRanges:	NSLinguisticTagger	Fundamentals / Deprecated / Getting Linguistic Tags	deprecated	objc
-method	open	-tagsInRange:scheme:options:tokenRanges:	NSLinguisticTagger	Fundamentals / Deprecated / Getting Linguistic Tags	deprecated	objc
-method	open	-tagsInRange:unit:scheme:options:tokenRanges:	NSLinguisticTagger	Fundamentals / Deprecated / Getting Linguistic Tags	deprecated	objc
-method	open	-tokenRangeAtIndex:unit:	NSLinguisticTagger	Fundamentals / Deprecated / Determining the Range of a Unit Token	deprecated	objc
-property	open	dominantLanguage	NSLinguisticTagger	Fundamentals / Deprecated / Determining the Dominant Language and Orthography	deprecated	objc
-property	shipped	string	NSLinguisticTagger	Fundamentals / Deprecated / First Steps	deprecated	objc
-property	shipped	tagSchemes	NSLinguisticTagger	Fundamentals / Deprecated / Getting the Tag Schemes	deprecated	objc
-method	shipped	+localizedStringByJoiningStrings:	NSListFormatter	Fundamentals / Lists / Converting Arrays to Formatted Lists	-	objc
-method	shipped	-stringForObjectValue:	NSListFormatter	Fundamentals / Lists / Converting Arrays to Formatted Lists	-	objc
-method	shipped	-stringFromItems:	NSListFormatter	Fundamentals / Lists / Converting Arrays to Formatted Lists	-	objc
-property	shipped	itemFormatter	NSListFormatter	Fundamentals / Lists / Configuring Formatter Options	-	objc
-property	shipped	locale	NSListFormatter	Fundamentals / Lists / Configuring Formatter Options	-	objc
 method	shipped	+canonicalLanguageIdentifierFromString:	NSLocale	Fundamentals / Localization / Converting Between Identifiers	-	objc
 method	shipped	+canonicalLocaleIdentifierFromString:	NSLocale	Fundamentals / Localization / Converting Between Identifiers	-	objc
 method	shipped	+characterDirectionForLanguage:	NSLocale	Fundamentals / Localization / Getting Line and Character Direction for a Language	-	objc
@@ -1803,7 +1481,6 @@ property	shipped	scriptCode	NSLocale	Fundamentals / Localization / Getting Infor
 property	shipped	systemLocale	NSLocale	Fundamentals / Localization / Getting the User’s Locale	-	objc
 property	shipped	usesMetricSystem	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
 property	shipped	variantCode	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-method	shipped	+automatic	NSLocalizedNumberFormatRule	Reference / Classes / Type Methods	-	objc
 method	shipped	-lockBeforeDate:	NSLock	Low-Level Utilities / Threads and Locking / Acquiring a Lock	-	objc
 method	shipped	-tryLock	NSLock	Low-Level Utilities / Threads and Locking / Acquiring a Lock	-	objc
 property	shipped	name	NSLock	Low-Level Utilities / Threads and Locking / Naming the Lock	-	objc
@@ -1827,54 +1504,6 @@ method	shipped	-scheduleInRunLoop:forMode:	NSMachPort	Low-Level Utilities / Lega
 method	shipped	-setDelegate:	NSMachPort	Low-Level Utilities / Legacy / Legacy / Getting and Setting the Delegate	deprecated	objc
 property	shipped	machPort	NSMachPort	Low-Level Utilities / Legacy / Legacy / Getting the Mach Port	deprecated	objc
 method	shipped	-handleMachMessage:	NSMachPortDelegate	Low-Level Utilities / Legacy / Legacy / Handling Mach messages	deprecated	objc
-method	shipped	-dictionaryRepresentation	NSMapTable	Fundamentals / Pointer Collections / Creating a Dictionary Representation	-	objc
-method	shipped	-initWithKeyOptions:valueOptions:capacity:	NSMapTable	Fundamentals / Pointer Collections / Creating and Initializing a Map Table	-	objc
-method	shipped	-initWithKeyPointerFunctions:valuePointerFunctions:capacity:	NSMapTable	Fundamentals / Pointer Collections / Creating and Initializing a Map Table	-	objc
-method	shipped	-keyEnumerator	NSMapTable	Fundamentals / Pointer Collections / Accessing Content	-	objc
-method	shipped	+mapTableWithKeyOptions:valueOptions:	NSMapTable	Fundamentals / Pointer Collections / Creating and Initializing a Map Table	-	objc
-method	open	+mapTableWithStrongToStrongObjects	NSMapTable	Fundamentals / Pointer Collections / Deprecated	deprecated	objc
-method	open	+mapTableWithStrongToWeakObjects	NSMapTable	Fundamentals / Pointer Collections / Deprecated	deprecated	objc
-method	open	+mapTableWithWeakToStrongObjects	NSMapTable	Fundamentals / Pointer Collections / Deprecated	deprecated	objc
-method	open	+mapTableWithWeakToWeakObjects	NSMapTable	Fundamentals / Pointer Collections / Deprecated	deprecated	objc
-method	shipped	-objectEnumerator	NSMapTable	Fundamentals / Pointer Collections / Accessing Content	-	objc
-method	shipped	-objectForKey:	NSMapTable	Fundamentals / Pointer Collections / Accessing Content	-	objc
-method	shipped	-removeAllObjects	NSMapTable	Fundamentals / Pointer Collections / Manipulating Content	-	objc
-method	shipped	-removeObjectForKey:	NSMapTable	Fundamentals / Pointer Collections / Manipulating Content	-	objc
-method	shipped	-setObject:forKey:	NSMapTable	Fundamentals / Pointer Collections / Manipulating Content	-	objc
-method	shipped	+strongToStrongObjectsMapTable	NSMapTable	Fundamentals / Pointer Collections / Creating and Initializing a Map Table	-	objc
-method	shipped	+strongToWeakObjectsMapTable	NSMapTable	Fundamentals / Pointer Collections / Creating and Initializing a Map Table	-	objc
-method	shipped	+weakToStrongObjectsMapTable	NSMapTable	Fundamentals / Pointer Collections / Creating and Initializing a Map Table	-	objc
-method	shipped	+weakToWeakObjectsMapTable	NSMapTable	Fundamentals / Pointer Collections / Creating and Initializing a Map Table	-	objc
-property	shipped	count	NSMapTable	Fundamentals / Pointer Collections / Accessing Content	-	objc
-property	open	describe	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types / Instance Properties	deprecated	objc
-property	shipped	hash	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types / Instance Properties	deprecated	objc
-property	open	isEqual	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types / Instance Properties	deprecated	objc
-property	shipped	keyPointerFunctions	NSMapTable	Fundamentals / Pointer Collections / Accessing Pointer Functions	-	objc
-property	open	notAKeyMarker	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types / Instance Properties	deprecated	objc
-property	shipped	release	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types / Instance Properties	deprecated	objc
-property	shipped	retain	NSMapTable	Fundamentals / Pointer Collections / Deprecated / Data Types / Instance Properties	deprecated	objc
-property	shipped	valuePointerFunctions	NSMapTable	Fundamentals / Pointer Collections / Accessing Pointer Functions	-	objc
-method	shipped	-getObjectValue:forString:errorDescription:	NSMassFormatter	Fundamentals / Deprecated / Formatting Mass Strings	deprecated	objc
-method	shipped	-stringFromKilograms:	NSMassFormatter	Fundamentals / Deprecated / Formatting Mass Strings	deprecated	objc
-method	shipped	-stringFromValue:unit:	NSMassFormatter	Fundamentals / Deprecated / Formatting Mass Strings	deprecated	objc
-method	shipped	-unitStringFromKilograms:usedUnit:	NSMassFormatter	Fundamentals / Deprecated / Formatting Mass Strings	deprecated	objc
-method	shipped	-unitStringFromValue:unit:	NSMassFormatter	Fundamentals / Deprecated / Formatting Mass Strings	deprecated	objc
-property	shipped	forPersonMassUse	NSMassFormatter	Fundamentals / Deprecated / Formatting Mass Strings	deprecated	objc
-property	shipped	numberFormatter	NSMassFormatter	Fundamentals / Deprecated / Formatting Mass Strings	deprecated	objc
-property	open	unitStyle	NSMassFormatter	Fundamentals / Deprecated / Formatting Mass Strings	deprecated	objc
-method	shipped	-canBeConvertedToUnit:	NSMeasurement	Fundamentals / Essentials / Converting to Other Units	-	objc
-method	shipped	-initWithDoubleValue:unit:	NSMeasurement	Fundamentals / Essentials / Creating Measurements	-	objc
-method	shipped	-measurementByAddingMeasurement:	NSMeasurement	Fundamentals / Essentials / Operating on Measurements	-	objc
-method	shipped	-measurementByConvertingToUnit:	NSMeasurement	Fundamentals / Essentials / Converting to Other Units	-	objc
-method	shipped	-measurementBySubtractingMeasurement:	NSMeasurement	Fundamentals / Essentials / Operating on Measurements	-	objc
-property	shipped	doubleValue	NSMeasurement	Fundamentals / Essentials / Accessing Unit and Value	-	objc
-property	shipped	unit	NSMeasurement	Fundamentals / Essentials / Accessing Unit and Value	-	objc
-method	shipped	-stringFromMeasurement:	NSMeasurementFormatter	Fundamentals / Measurements / Converting Measurements	-	objc
-method	shipped	-stringFromUnit:	NSMeasurementFormatter	Fundamentals / Measurements / Converting Measurements	-	objc
-property	shipped	locale	NSMeasurementFormatter	Fundamentals / Measurements / Specifying the Format	-	objc
-property	shipped	numberFormatter	NSMeasurementFormatter	Fundamentals / Measurements / Specifying the Format	-	objc
-property	shipped	unitOptions	NSMeasurementFormatter	Fundamentals / Measurements / Specifying the Format	-	swift-page
-property	shipped	unitStyle	NSMeasurementFormatter	Fundamentals / Measurements / Specifying the Format	-	objc
 method	shipped	-portForName:	NSMessagePortNameServer	Low-Level Utilities / Legacy / Legacy / Getting Ports By Name	deprecated	objc
 method	shipped	-portForName:host:	NSMessagePortNameServer	Low-Level Utilities / Legacy / Legacy / Getting Ports By Name	deprecated	objc
 method	shipped	+sharedInstance	NSMessagePortNameServer	Low-Level Utilities / Legacy / Legacy / Getting the Server Object	deprecated	objc
@@ -1925,18 +1554,6 @@ property	shipped	frameLength	NSMethodSignature	Low-Level Utilities / Invocations
 property	shipped	methodReturnLength	NSMethodSignature	Low-Level Utilities / Invocations / Getting Information on Return Types	-	objc
 property	shipped	methodReturnType	NSMethodSignature	Low-Level Utilities / Invocations / Getting Information on Return Types	-	objc
 property	shipped	numberOfArguments	NSMethodSignature	Low-Level Utilities / Invocations / Getting Information on Argument Types	-	objc
-method	shipped	-customPronounForLanguage:	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features	deprecated	objc
-method	shipped	-setCustomPronoun:forLanguage:error:	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features	deprecated	objc
-property	shipped	definiteness	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Instance Properties	-	objc
-property	shipped	determination	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Instance Properties	-	objc
-property	shipped	grammaticalCase	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Instance Properties	-	objc
-property	shipped	grammaticalGender	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
-property	shipped	grammaticalPerson	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Instance Properties	-	objc
-property	shipped	number	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
-property	shipped	partOfSpeech	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
-property	shipped	pronounType	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Instance Properties	-	objc
-property	shipped	unspecified	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Grammatical Properties	-	objc
-property	shipped	userMorphology	NSMorphology	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing the User’s Morphology	-	objc
 method	shipped	+isSupportedForLanguage:	NSMorphologyCustomPronoun	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features / Assessing Custom Pronoun Support	deprecated	objc
 method	shipped	+requiredKeysForLanguage:	NSMorphologyCustomPronoun	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features / Assessing Custom Pronoun Support	deprecated	objc
 property	shipped	objectForm	NSMorphologyCustomPronoun	Fundamentals / Automatic grammar agreement / Creating an Explicit Inflection Rule / Accessing Per-Language Features / Determining Pronoun Forms	deprecated	objc
@@ -2108,40 +1725,6 @@ method	shipped	-removeIndex:	NSMutableIndexSet	Fundamentals / Indexes / Removing
 method	open	-removeIndexes:	NSMutableIndexSet	Fundamentals / Indexes / Removing Indexes	-	objc
 method	shipped	-removeIndexesInRange:	NSMutableIndexSet	Fundamentals / Indexes / Removing Indexes	-	objc
 method	open	-shiftIndexesStartingAtIndex:by:	NSMutableIndexSet	Fundamentals / Indexes / Shifting Index Groups	-	objc
-method	shipped	-addObject:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-addObjects:count:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-addObjectsFromArray:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	open	-applyDifference:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Instance Methods	-	objc
-method	shipped	-exchangeObjectAtIndex:withObjectAtIndex:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-filterUsingPredicate:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-init	NSMutableOrderedSet	Fundamentals / Specialized Sets / Creating a Mutable Ordered Set	-	objc
-method	shipped	-initWithCapacity:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Creating a Mutable Ordered Set	-	objc
-method	shipped	-initWithCoder:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Instance Methods	-	objc
-method	shipped	-insertObject:atIndex:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-insertObjects:atIndexes:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-intersectOrderedSet:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Combining and Recombining Entries	-	objc
-method	shipped	-intersectSet:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Combining and Recombining Entries	-	objc
-method	shipped	-minusOrderedSet:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Combining and Recombining Entries	-	objc
-method	shipped	-minusSet:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Combining and Recombining Entries	-	objc
-method	shipped	-moveObjectsAtIndexes:toIndex:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	+orderedSetWithCapacity:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Creating a Mutable Ordered Set	-	objc
-method	shipped	-removeAllObjects	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-removeObject:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-removeObjectAtIndex:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-removeObjectsAtIndexes:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-removeObjectsInArray:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-removeObjectsInRange:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-replaceObjectAtIndex:withObject:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-replaceObjectsAtIndexes:withObjects:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-replaceObjectsInRange:withObjects:count:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-setObject:atIndex:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-setObject:atIndexedSubscript:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Adding, Removing, and Reordering Entries	-	objc
-method	shipped	-sortRange:options:usingComparator:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Sorting Entries	-	objc
-method	shipped	-sortUsingComparator:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Sorting Entries	-	objc
-method	shipped	-sortUsingDescriptors:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Sorting Entries	-	objc
-method	shipped	-sortWithOptions:usingComparator:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Sorting Entries	-	objc
-method	shipped	-unionOrderedSet:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Combining and Recombining Entries	-	objc
-method	shipped	-unionSet:	NSMutableOrderedSet	Fundamentals / Specialized Sets / Combining and Recombining Entries	-	objc
 method	shipped	-addObject:	NSMutableSet	Fundamentals / Basic Collections / Adding and removing entries	-	objc
 method	shipped	-addObjectsFromArray:	NSMutableSet	Fundamentals / Basic Collections / Adding and removing entries	-	objc
 method	shipped	-filterUsingPredicate:	NSMutableSet	Fundamentals / Basic Collections / Adding and removing entries	-	objc
@@ -2385,40 +1968,6 @@ property	shipped	thousandSeparator	NSNumberFormatter	Fundamentals / Numbers / Co
 property	shipped	usesGroupingSeparator	NSNumberFormatter	Fundamentals / Numbers / Configuring Separators and Grouping Size	-	objc
 property	shipped	usesSignificantDigits	NSNumberFormatter	Fundamentals / Numbers / Configuring Significant Digits	-	objc
 property	shipped	zeroSymbol	NSNumberFormatter	Fundamentals / Numbers / Configuring Numeric Symbols	-	objc
-method	shipped	-addDependency:	NSOperation	App Support / Operations / Managing Dependencies	-	objc
-method	shipped	-cancel	NSOperation	App Support / Operations / Canceling Operations	-	objc
-method	shipped	-main	NSOperation	App Support / Operations / Executing the Operation	-	objc
-method	shipped	-removeDependency:	NSOperation	App Support / Operations / Managing Dependencies	-	objc
-method	shipped	-start	NSOperation	App Support / Operations / Executing the Operation	-	objc
-method	shipped	-waitUntilFinished	NSOperation	App Support / Operations / Waiting on an Operation Object	-	objc
-property	open	asynchronous	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
-property	shipped	cancelled	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
-property	open	completionBlock	NSOperation	App Support / Operations / Executing the Operation	-	objc
-property	open	concurrent	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
-property	shipped	dependencies	NSOperation	App Support / Operations / Managing Dependencies	-	objc
-property	shipped	executing	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
-property	shipped	finished	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
-property	open	name	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
-property	open	qualityOfService	NSOperation	App Support / Operations / Configuring the Execution Priority	-	objc
-property	open	queuePriority	NSOperation	App Support / Operations / Configuring the Execution Priority	-	swift-page
-property	shipped	ready	NSOperation	App Support / Operations / Getting the Operation Status	-	objc
-property	open	threadPriority	NSOperation	App Support / Operations / Configuring the Execution Priority	deprecated	objc
-method	open	-addBarrierBlock:	NSOperationQueue	App Support / Operations / Managing Operations in the Queue	-	objc
-method	shipped	-addOperation:	NSOperationQueue	App Support / Operations / Managing Operations in the Queue	-	objc
-method	shipped	-addOperationWithBlock:	NSOperationQueue	App Support / Operations / Managing Operations in the Queue	-	objc
-method	open	-addOperations:waitUntilFinished:	NSOperationQueue	App Support / Operations / Managing Operations in the Queue	-	objc
-method	shipped	-cancelAllOperations	NSOperationQueue	App Support / Operations / Managing Operations in the Queue	-	objc
-method	shipped	-waitUntilAllOperationsAreFinished	NSOperationQueue	App Support / Operations / Managing Operations in the Queue	-	objc
-property	shipped	currentQueue	NSOperationQueue	App Support / Operations / Accessing Specific Operation Queues	-	objc
-property	shipped	mainQueue	NSOperationQueue	App Support / Operations / Accessing Specific Operation Queues	-	objc
-property	shipped	maxConcurrentOperationCount	NSOperationQueue	App Support / Operations / Managing the Execution of Operations	-	objc
-property	shipped	name	NSOperationQueue	App Support / Operations / Configuring the Queue	-	objc
-property	shipped	operationCount	NSOperationQueue	App Support / Operations / Managing Operations in the Queue	deprecated	objc
-property	shipped	operations	NSOperationQueue	App Support / Operations / Managing Operations in the Queue	deprecated	objc
-property	open	progress	NSOperationQueue	App Support / Operations / Monitoring Progress of Operations	-	objc
-property	open	qualityOfService	NSOperationQueue	App Support / Operations / Managing the Execution of Operations	-	objc
-property	shipped	suspended	NSOperationQueue	App Support / Operations / Suspending Execution	-	objc
-property	open	underlyingQueue	NSOperationQueue	App Support / Operations / Configuring the Queue	-	objc
 method	shipped	+changeWithObject:type:index:	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Creating a Change	-	objc
 method	shipped	+changeWithObject:type:index:associatedIndex:	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Creating a Change	-	objc
 method	shipped	-initWithObject:type:index:	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Creating a Change	-	objc
@@ -2427,93 +1976,6 @@ property	shipped	associatedIndex	NSOrderedCollectionChange	Fundamentals / Basic 
 property	shipped	changeType	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Accessing the Change	-	objc
 property	shipped	index	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Accessing the Change	-	objc
 property	shipped	object	NSOrderedCollectionChange	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes / Accessing the Change	-	objc
-method	shipped	-differenceByTransformingChangesWithBlock:	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Updating Changes from a Difference Object	-	objc
-method	shipped	-initWithChanges:	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Creating a Collection Difference Object	-	objc
-method	shipped	-initWithInsertIndexes:insertedObjects:removeIndexes:removedObjects:	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Creating a Collection Difference Object	-	objc
-method	shipped	-initWithInsertIndexes:insertedObjects:removeIndexes:removedObjects:additionalChanges:	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Creating a Collection Difference Object	-	objc
-method	shipped	-inverseDifference	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Inverting a Difference Object	-	objc
-property	shipped	hasChanges	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes	-	objc
-property	shipped	insertions	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes	-	objc
-property	shipped	removals	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes	-	objc
-method	shipped	-addObserver:forKeyPath:options:context:	NSOrderedSet	Fundamentals / Specialized Sets / Key-Value Observing Support	-	objc
-method	shipped	-containsObject:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	open	-descriptionWithLocale:	NSOrderedSet	Fundamentals / Specialized Sets / Describing a Set	-	objc
-method	open	-descriptionWithLocale:indent:	NSOrderedSet	Fundamentals / Specialized Sets / Describing a Set	-	objc
-method	shipped	-differenceFromOrderedSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set	-	objc
-method	shipped	-differenceFromOrderedSet:withOptions:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set	-	objc
-method	shipped	-differenceFromOrderedSet:withOptions:usingEquivalenceTest:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set	-	objc
-method	shipped	-enumerateObjectsAtIndexes:options:usingBlock:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	shipped	-enumerateObjectsUsingBlock:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	shipped	-enumerateObjectsWithOptions:usingBlock:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	shipped	-filteredOrderedSetUsingPredicate:	NSOrderedSet	Fundamentals / Specialized Sets / Filtering Ordered Sets	-	objc
-method	shipped	-getObjects:range:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	shipped	-indexOfObject:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	shipped	-indexOfObject:inSortedRange:options:usingComparator:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	open	-indexOfObjectAtIndexes:options:passingTest:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	shipped	-indexOfObjectPassingTest:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	open	-indexOfObjectWithOptions:passingTest:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	open	-indexesOfObjectsAtIndexes:options:passingTest:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	shipped	-indexesOfObjectsPassingTest:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	open	-indexesOfObjectsWithOptions:passingTest:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	shipped	-init	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	shipped	-initWithArray:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	shipped	-initWithArray:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	shipped	-initWithArray:range:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	shipped	-initWithCoder:	NSOrderedSet	Fundamentals / Specialized Sets / Instance Methods	-	objc
-method	shipped	-initWithObject:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	shipped	-initWithObjects:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	shipped	-initWithObjects:count:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	shipped	-initWithOrderedSet:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	shipped	-initWithOrderedSet:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	shipped	-initWithOrderedSet:range:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	shipped	-initWithSet:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	shipped	-initWithSet:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Initializing an Ordered Set	-	objc
-method	shipped	-intersectsOrderedSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing Sets	-	objc
-method	shipped	-intersectsSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing Sets	-	objc
-method	shipped	-isEqualToOrderedSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing Sets	-	objc
-method	shipped	-isSubsetOfOrderedSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing Sets	-	objc
-method	shipped	-isSubsetOfSet:	NSOrderedSet	Fundamentals / Specialized Sets / Comparing Sets	-	objc
-method	shipped	-objectAtIndex:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	shipped	-objectAtIndexedSubscript:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	shipped	-objectEnumerator	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	shipped	-objectsAtIndexes:	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	shipped	+orderedSet	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
-method	shipped	-orderedSetByApplyingDifference:	NSOrderedSet	Fundamentals / Specialized Sets / Instance Methods	-	objc
-method	shipped	+orderedSetWithArray:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
-method	shipped	+orderedSetWithArray:range:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
-method	shipped	+orderedSetWithObject:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
-method	shipped	+orderedSetWithObjects:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
-method	shipped	+orderedSetWithObjects:count:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
-method	shipped	+orderedSetWithOrderedSet:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
-method	shipped	+orderedSetWithOrderedSet:range:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
-method	shipped	+orderedSetWithSet:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
-method	shipped	+orderedSetWithSet:copyItems:	NSOrderedSet	Fundamentals / Specialized Sets / Creating an Ordered Set	-	objc
-method	shipped	-removeObserver:forKeyPath:	NSOrderedSet	Fundamentals / Specialized Sets / Key-Value Observing Support	-	objc
-method	shipped	-removeObserver:forKeyPath:context:	NSOrderedSet	Fundamentals / Specialized Sets / Key-Value Observing Support	-	objc
-method	shipped	-reverseObjectEnumerator	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-method	shipped	-setValue:forKey:	NSOrderedSet	Fundamentals / Specialized Sets / Key-Value Coding Support	-	objc
-method	shipped	-sortedArrayUsingComparator:	NSOrderedSet	Fundamentals / Specialized Sets / Creating a Sorted Array	-	objc
-method	shipped	-sortedArrayUsingDescriptors:	NSOrderedSet	Fundamentals / Specialized Sets / Creating a Sorted Array	-	objc
-method	shipped	-sortedArrayWithOptions:usingComparator:	NSOrderedSet	Fundamentals / Specialized Sets / Creating a Sorted Array	-	objc
-method	shipped	-valueForKey:	NSOrderedSet	Fundamentals / Specialized Sets / Key-Value Coding Support	-	objc
-property	shipped	array	NSOrderedSet	Fundamentals / Specialized Sets / Converting Other Collections	-	objc
-property	shipped	count	NSOrderedSet	Fundamentals / Specialized Sets / Counting Entries	-	objc
-property	shipped	description	NSOrderedSet	Fundamentals / Specialized Sets / Describing a Set	-	objc
-property	shipped	firstObject	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-property	shipped	lastObject	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-property	shipped	reversedOrderedSet	NSOrderedSet	Fundamentals / Specialized Sets / Accessing Set Members	-	objc
-property	shipped	set	NSOrderedSet	Fundamentals / Specialized Sets / Converting Other Collections	-	objc
-method	shipped	+defaultOrthographyForLanguage:	NSOrthography	Fundamentals / Localization / Creating Orthography Objects	-	objc
-method	shipped	-dominantLanguageForScript:	NSOrthography	Fundamentals / Localization / Determining Correspondences Between Languages and Scripts	-	objc
-method	shipped	-initWithCoder:	NSOrthography	Fundamentals / Localization / Instance Methods	-	objc
-method	shipped	-initWithDominantScript:languageMap:	NSOrthography	Fundamentals / Localization / Creating Orthography Objects	-	objc
-method	shipped	-languagesForScript:	NSOrthography	Fundamentals / Localization / Determining Correspondences Between Languages and Scripts	-	objc
-method	shipped	+orthographyWithDominantScript:languageMap:	NSOrthography	Fundamentals / Localization / Creating Orthography Objects	-	objc
-property	shipped	allLanguages	NSOrthography	Fundamentals / Localization / Determining Correspondences Between Languages and Scripts	-	objc
-property	shipped	allScripts	NSOrthography	Fundamentals / Localization / Determining Correspondences Between Languages and Scripts	-	objc
-property	shipped	dominantLanguage	NSOrthography	Fundamentals / Localization / Determining Correspondences Between Languages and Scripts	-	objc
-property	shipped	dominantScript	NSOrthography	Fundamentals / Localization / Determining Correspondences Between Languages and Scripts	-	objc
-property	shipped	languageMap	NSOrthography	Fundamentals / Localization / Determining Correspondences Between Languages and Scripts	-	objc
 method	shipped	-initToBuffer:capacity:	NSOutputStream	Low-Level Utilities / Streams / Creating Streams	-	objc
 method	shipped	-initToFileAtPath:append:	NSOutputStream	Low-Level Utilities / Streams / Creating Streams	-	objc
 method	shipped	-initToMemory	NSOutputStream	Low-Level Utilities / Streams / Creating Streams	-	objc
@@ -2524,43 +1986,9 @@ method	shipped	+outputStreamToMemory	NSOutputStream	Low-Level Utilities / Stream
 method	shipped	+outputStreamWithURL:append:	NSOutputStream	Low-Level Utilities / Streams / Type Methods	-	objc
 method	shipped	-write:maxLength:	NSOutputStream	Low-Level Utilities / Streams / Using Streams	-	objc
 property	shipped	hasSpaceAvailable	NSOutputStream	Low-Level Utilities / Streams / Using Streams	-	objc
-property	shipped	familyName	NSPersonNameComponents	Fundamentals / Names / Accessing Person Name Components	-	objc
-property	shipped	givenName	NSPersonNameComponents	Fundamentals / Names / Accessing Person Name Components	-	objc
-property	shipped	middleName	NSPersonNameComponents	Fundamentals / Names / Accessing Person Name Components	-	objc
-property	shipped	namePrefix	NSPersonNameComponents	Fundamentals / Names / Accessing Person Name Components	-	objc
-property	shipped	nameSuffix	NSPersonNameComponents	Fundamentals / Names / Accessing Person Name Components	-	objc
-property	shipped	nickname	NSPersonNameComponents	Fundamentals / Names / Accessing Person Name Components	-	objc
-property	shipped	phoneticRepresentation	NSPersonNameComponents	Fundamentals / Names / Accessing Person Name Components	-	objc
 method	shipped	+pipe	NSPipe	Low-Level Utilities / Tasks and Pipes / Creating an NSPipe Object	-	objc
 property	shipped	fileHandleForReading	NSPipe	Low-Level Utilities / Tasks and Pipes / Getting the File Handles for a Pipe	-	objc
 property	shipped	fileHandleForWriting	NSPipe	Low-Level Utilities / Tasks and Pipes / Getting the File Handles for a Pipe	-	objc
-method	shipped	-addPointer:	NSPointerArray	Fundamentals / Pointer Collections / Managing the Collection	-	objc
-method	shipped	-compact	NSPointerArray	Fundamentals / Pointer Collections / Managing the Collection	-	objc
-method	shipped	-initWithOptions:	NSPointerArray	Fundamentals / Pointer Collections / Creating and Initializing a New Pointer Array	-	objc
-method	shipped	-initWithPointerFunctions:	NSPointerArray	Fundamentals / Pointer Collections / Creating and Initializing a New Pointer Array	-	objc
-method	shipped	-insertPointer:atIndex:	NSPointerArray	Fundamentals / Pointer Collections / Managing the Collection	-	objc
-method	open	+pointerArrayWithOptions:	NSPointerArray	Fundamentals / Pointer Collections / Creating and Initializing a New Pointer Array	-	objc
-method	open	+pointerArrayWithPointerFunctions:	NSPointerArray	Fundamentals / Pointer Collections / Creating and Initializing a New Pointer Array	-	objc
-method	open	+pointerArrayWithStrongObjects	NSPointerArray	Fundamentals / Pointer Collections / Creating and Initializing a New Pointer Array	deprecated	objc
-method	open	+pointerArrayWithWeakObjects	NSPointerArray	Fundamentals / Pointer Collections / Creating and Initializing a New Pointer Array	deprecated	objc
-method	shipped	-pointerAtIndex:	NSPointerArray	Fundamentals / Pointer Collections / Managing the Collection	-	objc
-method	shipped	-removePointerAtIndex:	NSPointerArray	Fundamentals / Pointer Collections / Managing the Collection	-	objc
-method	shipped	-replacePointerAtIndex:withPointer:	NSPointerArray	Fundamentals / Pointer Collections / Managing the Collection	-	objc
-method	shipped	+strongObjectsPointerArray	NSPointerArray	Fundamentals / Pointer Collections / Creating and Initializing a New Pointer Array	-	objc
-method	shipped	+weakObjectsPointerArray	NSPointerArray	Fundamentals / Pointer Collections / Creating and Initializing a New Pointer Array	-	objc
-property	shipped	allObjects	NSPointerArray	Fundamentals / Pointer Collections / Managing the Collection	-	objc
-property	shipped	count	NSPointerArray	Fundamentals / Pointer Collections / Managing the Collection	-	objc
-property	shipped	pointerFunctions	NSPointerArray	Fundamentals / Pointer Collections / Getting the Pointer Functions	-	objc
-method	shipped	-initWithOptions:	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Creating and Initializing an NSPointerFunctions Object	-	objc
-method	open	+pointerFunctionsWithOptions:	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Creating and Initializing an NSPointerFunctions Object	-	objc
-property	shipped	acquireFunction	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Memory Configuration	-	objc
-property	shipped	descriptionFunction	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Personality Functions	-	objc
-property	shipped	hashFunction	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Personality Functions	-	objc
-property	shipped	isEqualFunction	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Personality Functions	-	objc
-property	shipped	relinquishFunction	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Memory Configuration	-	objc
-property	shipped	sizeFunction	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Personality Functions	-	objc
-property	shipped	usesStrongWriteBarrier	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Memory Configuration	deprecated	objc
-property	shipped	usesWeakReadAndWriteBarriers	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Memory Configuration	deprecated	objc
 method	open	-addConnection:toRunLoop:forMode:	NSPort	Low-Level Utilities / Sockets / Creating connections	deprecated	objc
 method	shipped	-delegate	NSPort	Low-Level Utilities / Sockets / Working with the delegate	-	objc
 method	shipped	-invalidate	NSPort	Low-Level Utilities / Sockets / Validation	-	objc
@@ -2602,46 +2030,10 @@ property	struck	insertionKey	NSPositionalSpecifier	App Support / Object Specifie
 property	struck	insertionReplaces	NSPositionalSpecifier	App Support / Object Specifiers / Accessing information about a positional specifier	declined	objc
 property	struck	objectSpecifier	NSPositionalSpecifier	App Support / Object Specifiers / Accessing information about a positional specifier	declined	objc
 property	struck	position	NSPositionalSpecifier	App Support / Object Specifiers / Accessing information about a positional specifier	declined	objc
-method	open	-allowEvaluation	NSPredicate	Fundamentals / Filltering / Evaluating a Predicate	-	objc
-method	open	-allowEvaluationWithValidator:error:	NSPredicate	Fundamentals / Filltering / Instance Methods	-	objc
-method	shipped	-evaluateWithObject:	NSPredicate	Fundamentals / Filltering / Evaluating a Predicate	-	objc
-method	open	-evaluateWithObject:substitutionVariables:	NSPredicate	Fundamentals / Filltering / Evaluating a Predicate	-	objc
-method	open	+predicateFromMetadataQueryString:	NSPredicate	Fundamentals / Filltering / Creating a Predicate	-	objc
-method	shipped	+predicateWithBlock:	NSPredicate	Fundamentals / Filltering / Creating a Predicate	-	objc
-method	shipped	+predicateWithFormat:	NSPredicate	Fundamentals / Filltering / Creating a Predicate	-	objc
-method	open	+predicateWithFormat:argumentArray:	NSPredicate	Fundamentals / Filltering / Creating a Predicate	-	objc
-method	open	+predicateWithFormat:arguments:	NSPredicate	Fundamentals / Filltering / Creating a Predicate	-	objc
-method	open	-predicateWithSubstitutionVariables:	NSPredicate	Fundamentals / Filltering / Creating a Predicate	-	objc
-method	shipped	+predicateWithValue:	NSPredicate	Fundamentals / Filltering / Creating a Predicate	-	objc
-property	shipped	predicateFormat	NSPredicate	Fundamentals / Filltering / Getting a String Representation	-	objc
 method	struck	-visitExpression:error:	NSPredicateValidating	Protocols / Instance Methods	declined	objc
 method	struck	-visitExpressionKeyPath:scope:key:error:	NSPredicateValidating	Protocols / Instance Methods	declined	objc
 method	struck	-visitOperatorType:error:	NSPredicateValidating	Protocols / Instance Methods	declined	objc
 method	struck	-visitPredicate:error:	NSPredicateValidating	Protocols / Instance Methods	declined	objc
-method	shipped	+blockQuoteIntentWithIdentity:nestedInsideIntent:	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Creating a presentation intent	-	objc
-method	shipped	+codeBlockIntentWithIdentity:languageHint:nestedInsideIntent:	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Creating a presentation intent	-	objc
-method	shipped	+headerIntentWithIdentity:level:nestedInsideIntent:	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Creating a presentation intent	-	objc
-method	shipped	-isEquivalentToPresentationIntent:	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the intent identity	-	objc
-method	shipped	+listItemIntentWithIdentity:ordinal:nestedInsideIntent:	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Creating a presentation intent	-	objc
-method	shipped	+orderedListIntentWithIdentity:nestedInsideIntent:	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Creating a presentation intent	-	objc
-method	shipped	+paragraphIntentWithIdentity:nestedInsideIntent:	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Creating a presentation intent	-	objc
-method	shipped	+tableCellIntentWithIdentity:column:nestedInsideIntent:	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Creating a presentation intent	-	objc
-method	shipped	+tableHeaderRowIntentWithIdentity:nestedInsideIntent:	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Creating a presentation intent	-	objc
-method	shipped	+tableIntentWithIdentity:columnCount:alignments:nestedInsideIntent:	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Creating a presentation intent	-	objc
-method	shipped	+tableRowIntentWithIdentity:row:nestedInsideIntent:	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Creating a presentation intent	-	objc
-method	shipped	+thematicBreakIntentWithIdentity:nestedInsideIntent:	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Creating a presentation intent	-	objc
-method	shipped	+unorderedListIntentWithIdentity:nestedInsideIntent:	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Creating a presentation intent	-	objc
-property	shipped	column	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting table information	-	objc
-property	shipped	columnAlignments	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting table information	-	objc
-property	shipped	columnCount	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting table information	-	objc
-property	shipped	headerLevel	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting header information	-	objc
-property	shipped	identity	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the intent identity	-	objc
-property	shipped	indentationLevel	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting list information	-	objc
-property	shipped	intentKind	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the intent identity	-	objc
-property	shipped	languageHint	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting code information	-	objc
-property	shipped	ordinal	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting list information	-	objc
-property	shipped	parentIntent	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting the intent identity	-	objc
-property	shipped	row	NSPresentationIntent	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting table information	-	objc
 method	open	-beginActivityWithOptions:reason:	NSProcessInfo	App Support / System Interaction / Managing activities	-	objc
 method	open	-disableAutomaticTermination:	NSProcessInfo	App Support / System Interaction / Controlling automatic termination	-	objc
 method	open	-disableSuddenTermination	NSProcessInfo	App Support / System Interaction / Working with sudden application termination	-	objc
@@ -2679,46 +2071,6 @@ property	shipped	processorCount	NSProcessInfo	App Support / System Interaction /
 property	shipped	systemUptime	NSProcessInfo	App Support / System Interaction / Getting computer information	-	objc
 property	shipped	thermalState	NSProcessInfo	App Support / System Interaction / Getting the thermal state	-	swift-page
 property	shipped	userName	NSProcessInfo	App Support / System Interaction / Accessing user information	-	objc
-method	shipped	-addChild:withPendingUnitCount:	NSProgress	App Support / Progress / Instance Methods	-	objc
-method	open	+addSubscriberForFileURL:withPublishingHandler:	NSProgress	App Support / Progress / Observing and Controlling File Progress by Other Processes	-	objc
-method	shipped	-becomeCurrentWithPendingUnitCount:	NSProgress	App Support / Progress / Accessing the Current Progress Object	-	objc
-method	shipped	-cancel	NSProgress	App Support / Progress / Controlling Progress	-	objc
-method	shipped	+currentProgress	NSProgress	App Support / Progress / Accessing the Current Progress Object	-	objc
-method	shipped	+discreteProgressWithTotalUnitCount:	NSProgress	App Support / Progress / Creating Progress Objects	-	objc
-method	open	-initWithParent:userInfo:	NSProgress	App Support / Progress / Creating Progress Objects	-	objc
-method	shipped	-pause	NSProgress	App Support / Progress / Controlling Progress	-	objc
-method	shipped	-performAsCurrentWithPendingUnitCount:usingBlock:	NSProgress	App Support / Progress / Accessing the Current Progress Object	-	objc
-method	shipped	+progressWithTotalUnitCount:	NSProgress	App Support / Progress / Creating Progress Objects	-	objc
-method	shipped	+progressWithTotalUnitCount:parent:pendingUnitCount:	NSProgress	App Support / Progress / Creating Progress Objects	-	objc
-method	open	-publish	NSProgress	App Support / Progress / Reporting Progress to Other Processes	-	objc
-method	open	+removeSubscriber:	NSProgress	App Support / Progress / Observing and Controlling File Progress by Other Processes	-	objc
-method	shipped	-resignCurrent	NSProgress	App Support / Progress / Accessing the Current Progress Object	-	objc
-method	shipped	-resume	NSProgress	App Support / Progress / Controlling Progress	-	objc
-method	shipped	-setUserInfoObject:forKey:	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
-method	open	-unpublish	NSProgress	App Support / Progress / Reporting Progress to Other Processes	-	objc
-property	shipped	cancellable	NSProgress	App Support / Progress / Reporting Progress	-	objc
-property	open	cancellationHandler	NSProgress	App Support / Progress / Reporting Progress	-	objc
-property	shipped	cancelled	NSProgress	App Support / Progress / Reporting Progress	-	objc
-property	shipped	completedUnitCount	NSProgress	App Support / Progress / Reporting Progress	-	objc
-property	shipped	estimatedTimeRemaining	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
-property	shipped	fileCompletedCount	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	objc
-property	shipped	fileOperationKind	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	swift-page
-property	shipped	fileTotalCount	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	objc
-property	shipped	fileURL	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	objc
-property	shipped	finished	NSProgress	App Support / Progress / Observing Progress	-	objc
-property	shipped	fractionCompleted	NSProgress	App Support / Progress / Observing Progress	-	objc
-property	shipped	indeterminate	NSProgress	App Support / Progress / Observing Progress	-	objc
-property	shipped	kind	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
-property	shipped	localizedAdditionalDescription	NSProgress	App Support / Progress / Reporting Progress	-	objc
-property	shipped	localizedDescription	NSProgress	App Support / Progress / Reporting Progress	-	objc
-property	shipped	old	NSProgress	App Support / Progress / Observing and Controlling File Progress by Other Processes	-	objc
-property	shipped	pausable	NSProgress	App Support / Progress / Reporting Progress	-	objc
-property	shipped	paused	NSProgress	App Support / Progress / Reporting Progress	-	objc
-property	open	pausingHandler	NSProgress	App Support / Progress / Reporting Progress	-	objc
-property	open	resumingHandler	NSProgress	App Support / Progress / Controlling Progress	-	objc
-property	shipped	throughput	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
-property	shipped	totalUnitCount	NSProgress	App Support / Progress / Reporting Progress	-	objc
-property	shipped	userInfo	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
 property	shipped	progress	NSProgressReporting	App Support / Progress / Custom Class Progress	-	objc
 method	open	+dataFromPropertyList:format:errorDescription:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Obsolete Methods	deprecated	objc
 method	shipped	+dataWithPropertyList:format:options:error:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Serializing a Property List	-	objc
@@ -2751,30 +2103,6 @@ property	struck	startSpecifier	NSRangeSpecifier	App Support / Object Specifiers 
 method	shipped	-lockBeforeDate:	NSRecursiveLock	Low-Level Utilities / Threads and Locking / Acquiring a Lock	-	objc
 method	shipped	-tryLock	NSRecursiveLock	Low-Level Utilities / Threads and Locking / Acquiring a Lock	-	objc
 property	shipped	name	NSRecursiveLock	Low-Level Utilities / Threads and Locking / Naming the Lock	-	objc
-method	shipped	-enumerateMatchesInString:options:range:usingBlock:	NSRegularExpression	Fundamentals / Pattern Matching / Searching Strings Using Regular Expressions	-	objc
-method	open	+escapedPatternForString:	NSRegularExpression	Fundamentals / Pattern Matching / Escaping Characters in a String	-	objc
-method	open	+escapedTemplateForString:	NSRegularExpression	Fundamentals / Pattern Matching / Escaping Characters in a String	-	objc
-method	shipped	-firstMatchInString:options:range:	NSRegularExpression	Fundamentals / Pattern Matching / Searching Strings Using Regular Expressions	-	objc
-method	shipped	-initWithPattern:options:error:	NSRegularExpression	Fundamentals / Pattern Matching / Creating Regular Expressions	-	objc
-method	shipped	-matchesInString:options:range:	NSRegularExpression	Fundamentals / Pattern Matching / Searching Strings Using Regular Expressions	-	objc
-method	shipped	-numberOfMatchesInString:options:range:	NSRegularExpression	Fundamentals / Pattern Matching / Searching Strings Using Regular Expressions	-	objc
-method	shipped	-rangeOfFirstMatchInString:options:range:	NSRegularExpression	Fundamentals / Pattern Matching / Searching Strings Using Regular Expressions	-	objc
-method	shipped	+regularExpressionWithPattern:options:error:	NSRegularExpression	Fundamentals / Pattern Matching / Creating Regular Expressions	-	objc
-method	shipped	-replaceMatchesInString:options:range:withTemplate:	NSRegularExpression	Fundamentals / Pattern Matching / Replacing Strings Using Regular Expressions	-	objc
-method	open	-replacementStringForResult:inString:offset:template:	NSRegularExpression	Fundamentals / Pattern Matching / Custom Replace Functionality	-	objc
-method	shipped	-stringByReplacingMatchesInString:options:range:withTemplate:	NSRegularExpression	Fundamentals / Pattern Matching / Replacing Strings Using Regular Expressions	-	objc
-property	shipped	numberOfCaptureGroups	NSRegularExpression	Fundamentals / Pattern Matching / Getting the Regular Expression and Options	-	objc
-property	shipped	options	NSRegularExpression	Fundamentals / Pattern Matching / Getting the Regular Expression and Options	-	swift-page
-property	shipped	pattern	NSRegularExpression	Fundamentals / Pattern Matching / Getting the Regular Expression and Options	-	objc
-method	shipped	-localizedStringForDate:relativeToDate:	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Converting Dates to Formatted Strings	-	objc
-method	shipped	-localizedStringFromDateComponents:	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Converting Dates to Formatted Strings	-	objc
-method	shipped	-localizedStringFromTimeInterval:	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Converting Dates to Formatted Strings	-	objc
-method	shipped	-stringForObjectValue:	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Converting Dates to Formatted Strings	-	objc
-property	shipped	calendar	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options	-	objc
-property	shipped	dateTimeStyle	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options	-	swift-page
-property	shipped	formattingContext	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options	-	objc
-property	shipped	locale	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options	-	objc
-property	shipped	unitsStyle	NSRelativeDateTimeFormatter	Fundamentals / Dates and times / Configuring Formatter Options	-	swift-page
 method	struck	-initWithCoder:	NSRelativeSpecifier	App Support / Object Specifiers / Instance Methods	declined	objc
 method	struck	-initWithContainerClassDescription:containerSpecifier:key:relativePosition:baseSpecifier:	NSRelativeSpecifier	App Support / Object Specifiers / Initializing a relative specifier	declined	objc
 property	struck	baseSpecifier	NSRelativeSpecifier	App Support / Object Specifiers / Accessing a relative specifier	declined	objc
@@ -2919,7 +2247,6 @@ method	struck	-init	NSScriptWhoseTest	App Support / Object Matching Tests / Inst
 method	struck	-initWithCoder:	NSScriptWhoseTest	App Support / Object Matching Tests / Instance Methods	declined	objc
 method	struck	-isTrue	NSScriptWhoseTest	App Support / Object Matching Tests / Evaluating a test	declined	objc
 property	shipped	supportsSecureCoding	NSSecureCoding	Files and Data Persistence / Adopting Codability / Checking for Secure Coding	-	objc
-property	shipped	allowedTopLevelClasses	NSSecureUnarchiveFromDataTransformer	Files and Data Persistence / Keyed Archivers / Getting Information About a Transformer	-	objc
 method	shipped	-addObserver:forKeyPath:options:context:	NSSet	Fundamentals / Basic Collections / Key-Value Observing	-	objc
 method	shipped	-anyObject	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
 method	shipped	-containsObject:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
@@ -3244,46 +2571,6 @@ property	shipped	standardOutput	NSTask	Low-Level Utilities / Scripts and Externa
 property	open	terminationHandler	NSTask	Low-Level Utilities / Scripts and External Tasks / Working with termination handlers	-	objc
 property	shipped	terminationReason	NSTask	Low-Level Utilities / Scripts and External Tasks / Querying the process state	-	swift-page
 property	shipped	terminationStatus	NSTask	Low-Level Utilities / Scripts and External Tasks / Querying the process state	-	objc
-method	shipped	+currentUser	NSTermOfAddress	Fundamentals / Automatic grammar agreement / Type Methods	-	objc
-method	shipped	+feminine	NSTermOfAddress	Fundamentals / Automatic grammar agreement / Using predefined terms of address	-	objc
-method	shipped	+localizedForLanguageIdentifier:withPronouns:	NSTermOfAddress	Fundamentals / Automatic grammar agreement / Type Methods	-	objc
-method	shipped	+masculine	NSTermOfAddress	Fundamentals / Automatic grammar agreement / Using predefined terms of address	-	objc
-method	shipped	+neutral	NSTermOfAddress	Fundamentals / Automatic grammar agreement / Using predefined terms of address	-	objc
-property	shipped	languageIdentifier	NSTermOfAddress	Fundamentals / Automatic grammar agreement / Instance Properties	-	objc
-property	shipped	pronouns	NSTermOfAddress	Fundamentals / Automatic grammar agreement / Defining your own terms of address	-	objc
-method	shipped	+addressCheckingResultWithRange:components:	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Addresses	-	objc
-method	shipped	+correctionCheckingResultWithRange:replacementString:	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Spelling	-	objc
-method	shipped	+correctionCheckingResultWithRange:replacementString:alternativeStrings:	NSTextCheckingResult	Fundamentals / Pattern Matching / Type Methods	-	objc
-method	shipped	+dashCheckingResultWithRange:replacementString:	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Typography	-	objc
-method	shipped	+dateCheckingResultWithRange:date:	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Dates and Times	-	objc
-method	shipped	+dateCheckingResultWithRange:date:timeZone:duration:	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Dates and Times	-	objc
-method	shipped	+grammarCheckingResultWithRange:details:	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Grammar	-	objc
-method	shipped	+linkCheckingResultWithRange:URL:	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for URLs	-	objc
-method	shipped	+orthographyCheckingResultWithRange:orthography:	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Orthography	-	objc
-method	shipped	+phoneNumberCheckingResultWithRange:phoneNumber:	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Phone Numbers	-	objc
-method	shipped	+quoteCheckingResultWithRange:replacementString:	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Typography	-	objc
-method	shipped	-rangeAtIndex:	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Type Range and Type	-	objc
-method	shipped	-rangeWithName:	NSTextCheckingResult	Fundamentals / Pattern Matching / Instance Methods	-	objc
-method	shipped	+regularExpressionCheckingResultWithRanges:count:regularExpression:	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Regular Expressions	-	objc
-method	shipped	+replacementCheckingResultWithRange:replacementString:	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Text Replacement	-	objc
-method	shipped	-resultByAdjustingRangesWithOffset:	NSTextCheckingResult	Fundamentals / Pattern Matching / Adjusting the Ranges of a Text Checking Result	-	objc
-method	shipped	+spellCheckingResultWithRange:	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Spelling	-	objc
-method	shipped	+transitInformationCheckingResultWithRange:components:	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Transit Information	-	objc
-property	shipped	URL	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for URLs	-	objc
-property	shipped	addressComponents	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Addresses	-	objc
-property	shipped	alternativeStrings	NSTextCheckingResult	Fundamentals / Pattern Matching / Instance Properties	-	objc
-property	shipped	components	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Result Components	-	objc
-property	shipped	date	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Dates and Times	-	objc
-property	shipped	duration	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Dates and Times	-	objc
-property	shipped	grammarDetails	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Grammar	-	objc
-property	shipped	numberOfRanges	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Type Range and Type	-	objc
-property	shipped	orthography	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Orthography	-	objc
-property	shipped	phoneNumber	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Phone Numbers	-	objc
-property	shipped	range	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Type Range and Type	-	objc
-property	shipped	regularExpression	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Regular Expressions	-	objc
-property	shipped	replacementString	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Text Replacement	-	objc
-property	shipped	resultType	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Type Range and Type	-	objc
-property	shipped	timeZone	NSTextCheckingResult	Fundamentals / Pattern Matching / Text Checking Results for Dates and Times	-	objc
 method	shipped	-cancel	NSThread	Low-Level Utilities / Threads and Locking / Stopping a Thread	-	objc
 method	shipped	+detachNewThreadSelector:toTarget:withObject:	NSThread	Low-Level Utilities / Threads and Locking / Starting a Thread	-	objc
 method	open	+detachNewThreadWithBlock:	NSThread	Low-Level Utilities / Threads and Locking / Type Methods	-	objc
@@ -3468,41 +2755,6 @@ property	shipped	currentMemoryUsage	NSURLCache	Networking / Cache behavior / Get
 property	shipped	diskCapacity	NSURLCache	Networking / Cache behavior / Getting and setting on-disk cache properties	-	objc
 property	shipped	memoryCapacity	NSURLCache	Networking / Cache behavior / Getting and setting in-memory cache properties	-	objc
 property	shipped	sharedURLCache	NSURLCache	Networking / Cache behavior / Getting and setting shared cache	-	objc
-method	open	-URLRelativeToURL:	NSURLComponents	Fundamentals / URLs / Getting the URL	-	objc
-method	shipped	+componentsWithString:	NSURLComponents	Fundamentals / URLs / Creating URL components	-	objc
-method	open	+componentsWithString:encodingInvalidCharacters:	NSURLComponents	Fundamentals / URLs / Creating URL components	-	objc
-method	shipped	+componentsWithURL:resolvingAgainstBaseURL:	NSURLComponents	Fundamentals / URLs / Creating URL components	-	objc
-method	shipped	-init	NSURLComponents	Fundamentals / URLs / Creating URL components	-	objc
-method	shipped	-initWithString:	NSURLComponents	Fundamentals / URLs / Creating URL components	-	objc
-method	open	-initWithString:encodingInvalidCharacters:	NSURLComponents	Fundamentals / URLs / Creating URL components	-	objc
-method	shipped	-initWithURL:resolvingAgainstBaseURL:	NSURLComponents	Fundamentals / URLs / Creating URL components	-	objc
-property	shipped	URL	NSURLComponents	Fundamentals / URLs / Getting the URL	-	objc
-property	open	encodedHost	NSURLComponents	Fundamentals / URLs / Accessing components in native format	-	objc
-property	shipped	fragment	NSURLComponents	Fundamentals / URLs / Accessing components in native format	-	objc
-property	shipped	host	NSURLComponents	Fundamentals / URLs / Accessing components in native format	-	objc
-property	shipped	password	NSURLComponents	Fundamentals / URLs / Accessing components in native format	-	objc
-property	shipped	path	NSURLComponents	Fundamentals / URLs / Accessing components in native format	-	objc
-property	shipped	percentEncodedFragment	NSURLComponents	Fundamentals / URLs / Accessing components in URL-encoded format	-	objc
-property	shipped	percentEncodedHost	NSURLComponents	Fundamentals / URLs / Accessing components in URL-encoded format	deprecated	objc
-property	shipped	percentEncodedPassword	NSURLComponents	Fundamentals / URLs / Accessing components in URL-encoded format	-	objc
-property	shipped	percentEncodedPath	NSURLComponents	Fundamentals / URLs / Accessing components in URL-encoded format	-	objc
-property	shipped	percentEncodedQuery	NSURLComponents	Fundamentals / URLs / Accessing components in URL-encoded format	-	objc
-property	open	percentEncodedQueryItems	NSURLComponents	Fundamentals / URLs / Locating components in the URL string representation	-	objc
-property	shipped	percentEncodedUser	NSURLComponents	Fundamentals / URLs / Accessing components in URL-encoded format	-	objc
-property	shipped	port	NSURLComponents	Fundamentals / URLs / Accessing components in native format	-	objc
-property	shipped	query	NSURLComponents	Fundamentals / URLs / Accessing components in native format	-	objc
-property	shipped	queryItems	NSURLComponents	Fundamentals / URLs / Accessing components in native format	-	objc
-property	open	rangeOfFragment	NSURLComponents	Fundamentals / URLs / Locating components in the URL string representation	-	objc
-property	open	rangeOfHost	NSURLComponents	Fundamentals / URLs / Locating components in the URL string representation	-	objc
-property	open	rangeOfPassword	NSURLComponents	Fundamentals / URLs / Locating components in the URL string representation	-	objc
-property	open	rangeOfPath	NSURLComponents	Fundamentals / URLs / Locating components in the URL string representation	-	objc
-property	open	rangeOfPort	NSURLComponents	Fundamentals / URLs / Locating components in the URL string representation	-	objc
-property	open	rangeOfQuery	NSURLComponents	Fundamentals / URLs / Locating components in the URL string representation	-	objc
-property	open	rangeOfScheme	NSURLComponents	Fundamentals / URLs / Locating components in the URL string representation	-	objc
-property	open	rangeOfUser	NSURLComponents	Fundamentals / URLs / Locating components in the URL string representation	-	objc
-property	shipped	scheme	NSURLComponents	Fundamentals / URLs / Accessing components in native format	-	objc
-property	shipped	string	NSURLComponents	Fundamentals / URLs / Getting the URL	-	objc
-property	shipped	user	NSURLComponents	Fundamentals / URLs / Accessing components in native format	-	objc
 method	shipped	+canHandleRequest:	NSURLConnection	Networking / Legacy / URL Connection / Preflighting a Connection Request	deprecated	objc
 method	shipped	-cancel	NSURLConnection	Networking / Legacy / URL Connection / Stopping a Connection	deprecated	objc
 method	shipped	+connectionWithRequest:delegate:	NSURLConnection	Networking / Legacy / URL Connection / Loading Data Asynchronously	deprecated	objc
@@ -3681,82 +2933,6 @@ property	shipped	URL	NSURLResponse	Networking / Requests and responses / Getting
 property	shipped	expectedContentLength	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
 property	shipped	suggestedFilename	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
 property	shipped	textEncodingName	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
-method	shipped	-dataTaskWithRequest:	NSURLSession	Networking / Essentials / Adding data tasks to a session	-	objc
-method	shipped	-dataTaskWithRequest:completionHandler:	NSURLSession	Networking / Essentials / Adding data tasks to a session	-	objc
-method	shipped	-dataTaskWithURL:	NSURLSession	Networking / Essentials / Adding data tasks to a session	-	objc
-method	shipped	-dataTaskWithURL:completionHandler:	NSURLSession	Networking / Essentials / Adding data tasks to a session	-	objc
-method	shipped	-downloadTaskWithRequest:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
-method	shipped	-downloadTaskWithRequest:completionHandler:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
-method	shipped	-downloadTaskWithResumeData:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
-method	shipped	-downloadTaskWithResumeData:completionHandler:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
-method	shipped	-downloadTaskWithURL:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
-method	shipped	-downloadTaskWithURL:completionHandler:	NSURLSession	Networking / Essentials / Adding download tasks to a session	-	objc
-method	shipped	-finishTasksAndInvalidate	NSURLSession	Networking / Essentials / Managing the session	-	objc
-method	open	-flushWithCompletionHandler:	NSURLSession	Networking / Essentials / Managing the session	-	objc
-method	shipped	-getAllTasksWithCompletionHandler:	NSURLSession	Networking / Essentials / Managing the session	-	objc
-method	shipped	-getTasksWithCompletionHandler:	NSURLSession	Networking / Essentials / Managing the session	-	objc
-method	shipped	-init	NSURLSession	Networking / Essentials / Deprecated	deprecated	objc
-method	shipped	-invalidateAndCancel	NSURLSession	Networking / Essentials / Managing the session	-	objc
-method	shipped	+new	NSURLSession	Networking / Essentials / Deprecated	deprecated	objc
-method	open	-resetWithCompletionHandler:	NSURLSession	Networking / Essentials / Managing the session	-	objc
-method	shipped	+sessionWithConfiguration:	NSURLSession	Networking / Essentials / Creating a session	-	objc
-method	shipped	+sessionWithConfiguration:delegate:delegateQueue:	NSURLSession	Networking / Essentials / Creating a session	-	objc
-method	shipped	-streamTaskWithHostName:port:	NSURLSession	Networking / Essentials / Adding stream tasks to a session	-	objc
-method	open	-streamTaskWithNetService:	NSURLSession	Networking / Essentials / Adding stream tasks to a session	deprecated	objc
-method	shipped	-uploadTaskWithRequest:fromData:	NSURLSession	Networking / Essentials / Adding upload tasks to a session	-	objc
-method	shipped	-uploadTaskWithRequest:fromData:completionHandler:	NSURLSession	Networking / Essentials / Adding upload tasks to a session	-	objc
-method	open	-uploadTaskWithRequest:fromFile:	NSURLSession	Networking / Essentials / Adding upload tasks to a session	-	objc
-method	open	-uploadTaskWithRequest:fromFile:completionHandler:	NSURLSession	Networking / Essentials / Adding upload tasks to a session	-	objc
-method	open	-uploadTaskWithResumeData:	NSURLSession	Networking / Essentials / Adding upload tasks to a session	-	objc
-method	open	-uploadTaskWithResumeData:completionHandler:	NSURLSession	Networking / Essentials / Adding upload tasks to a session	-	objc
-method	open	-uploadTaskWithStreamedRequest:	NSURLSession	Networking / Essentials / Adding upload tasks to a session	-	objc
-method	shipped	-webSocketTaskWithRequest:	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
-method	shipped	-webSocketTaskWithURL:	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
-method	shipped	-webSocketTaskWithURL:protocols:	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
-property	shipped	configuration	NSURLSession	Networking / Essentials / Creating a session	-	objc
-property	shipped	delegate	NSURLSession	Networking / Essentials / Working with a delegate	-	objc
-property	shipped	delegateQueue	NSURLSession	Networking / Essentials / Working with a delegate	-	objc
-property	shipped	sessionDescription	NSURLSession	Networking / Essentials / Managing the session	-	objc
-property	shipped	sharedSession	NSURLSession	Networking / Essentials / Using the shared session	-	objc
-method	shipped	+backgroundSessionConfiguration:	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Deprecated methods	deprecated	objc
-method	shipped	+backgroundSessionConfigurationWithIdentifier:	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Creating a session configuration object	-	objc
-method	shipped	-init	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Creating a session configuration object	deprecated	objc
-method	shipped	+new	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Creating a session configuration object	deprecated	objc
-property	shipped	HTTPAdditionalHeaders	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
-property	shipped	HTTPCookieAcceptPolicy	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting cookie policies	-	objc
-property	shipped	HTTPCookieStorage	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting cookie policies	-	objc
-property	shipped	HTTPMaximumConnectionsPerHost	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting HTTP policy and proxy properties	-	objc
-property	shipped	HTTPShouldSetCookies	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting cookie policies	-	objc
-property	shipped	HTTPShouldUsePipelining	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting HTTP policy and proxy properties	deprecated	objc
-property	struck	TLSMaximumSupportedProtocol	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	declined	objc
-property	struck	TLSMaximumSupportedProtocolVersion	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	declined	objc
-property	struck	TLSMinimumSupportedProtocol	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	declined	objc
-property	struck	TLSMinimumSupportedProtocolVersion	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	declined	objc
-property	shipped	URLCache	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting caching policies	-	objc
-property	shipped	URLCredentialStorage	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	-	objc
-property	shipped	allowsCellularAccess	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
-property	shipped	allowsConstrainedNetworkAccess	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting limited modes	-	objc
-property	shipped	allowsExpensiveNetworkAccess	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting limited modes	-	objc
-property	shipped	allowsUltraConstrainedNetworkAccess	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Instance Properties	-	objc
-property	shipped	connectionProxyDictionary	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting HTTP policy and proxy properties	-	objc
-property	shipped	defaultSessionConfiguration	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Creating a session configuration object	-	objc
-property	shipped	discretionary	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting background transfers	-	objc
-property	shipped	enablesEarlyData	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Instance Properties	-	objc
-property	shipped	ephemeralSessionConfiguration	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Creating a session configuration object	-	objc
-property	shipped	identifier	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
-property	shipped	multipathServiceType	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP	-	swift-page
-property	shipped	networkServiceType	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
-property	shipped	protocolClasses	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting custom protocols	-	objc
-property	struck	proxyConfigurations	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting HTTP policy and proxy properties	declined	objc
-property	shipped	requestCachePolicy	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting caching policies	-	objc
-property	shipped	requiresDNSSECValidation	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting security policies	-	objc
-property	shipped	sessionSendsLaunchEvents	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting background transfers	-	objc
-property	shipped	sharedContainerIdentifier	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
-property	shipped	shouldUseExtendedBackgroundIdleMode	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting background transfers	deprecated	objc
-property	shipped	timeoutIntervalForRequest	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
-property	shipped	timeoutIntervalForResource	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
-property	shipped	usesClassicLoadingMode	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
-property	shipped	waitsForConnectivity	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Setting general properties	-	objc
 method	open	-URLSession:dataTask:didBecomeDownloadTask:	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes	-	objc
 method	open	-URLSession:dataTask:didBecomeStreamTask:	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes	-	objc
 method	shipped	-URLSession:dataTask:didReceiveData:	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Receiving data	-	objc
@@ -3777,38 +2953,6 @@ method	shipped	-URLSession:betterRouteDiscoveredForStreamTask:	NSURLSessionStrea
 method	shipped	-URLSession:readClosedForStreamTask:	NSURLSessionStreamDelegate	Networking / Essentials / Adding stream tasks to a session / Handling closing events	-	objc
 method	shipped	-URLSession:streamTask:didBecomeInputStream:outputStream:	NSURLSessionStreamDelegate	Networking / Essentials / Adding stream tasks to a session / Completing stream capture	-	objc
 method	shipped	-URLSession:writeClosedForStreamTask:	NSURLSessionStreamDelegate	Networking / Essentials / Adding stream tasks to a session / Handling closing events	-	objc
-method	shipped	-captureStreams	NSURLSessionStreamTask	Networking / Essentials / Adding stream tasks to a session / Capturing streams	-	objc
-method	shipped	-closeRead	NSURLSessionStreamTask	Networking / Essentials / Adding stream tasks to a session / Closing read and write sockets	-	objc
-method	shipped	-closeWrite	NSURLSessionStreamTask	Networking / Essentials / Adding stream tasks to a session / Closing read and write sockets	-	objc
-method	shipped	-init	NSURLSessionStreamTask	Networking / Essentials / Adding stream tasks to a session / Instance Methods	deprecated	objc
-method	shipped	+new	NSURLSessionStreamTask	Networking / Essentials / Adding stream tasks to a session / Type Methods	deprecated	objc
-method	shipped	-readDataOfMinLength:maxLength:timeout:completionHandler:	NSURLSessionStreamTask	Networking / Essentials / Adding stream tasks to a session / Reading and writing data	-	objc
-method	shipped	-startSecureConnection	NSURLSessionStreamTask	Networking / Essentials / Adding stream tasks to a session / Starting and stopping secure connections	-	objc
-method	shipped	-stopSecureConnection	NSURLSessionStreamTask	Networking / Essentials / Adding stream tasks to a session / Starting and stopping secure connections	deprecated	objc
-method	shipped	-writeData:timeout:completionHandler:	NSURLSessionStreamTask	Networking / Essentials / Adding stream tasks to a session / Reading and writing data	-	objc
-method	shipped	-cancel	NSURLSessionTask	Networking / Essentials / Controlling the task state	-	objc
-method	shipped	-init	NSURLSessionTask	Networking / Essentials / Deprecated	deprecated	objc
-method	shipped	+new	NSURLSessionTask	Networking / Essentials / Deprecated	deprecated	objc
-method	shipped	-resume	NSURLSessionTask	Networking / Essentials / Controlling the task state	-	objc
-method	shipped	-suspend	NSURLSessionTask	Networking / Essentials / Controlling the task state	-	objc
-property	open	countOfBytesClientExpectsToReceive	NSURLSessionTask	Networking / Essentials / Scheduling tasks	-	objc
-property	open	countOfBytesClientExpectsToSend	NSURLSessionTask	Networking / Essentials / Scheduling tasks	-	objc
-property	shipped	countOfBytesExpectedToReceive	NSURLSessionTask	Networking / Essentials / Obtaining task progress	-	objc
-property	open	countOfBytesExpectedToSend	NSURLSessionTask	Networking / Essentials / Obtaining task progress	-	objc
-property	shipped	countOfBytesReceived	NSURLSessionTask	Networking / Essentials / Obtaining task progress	-	objc
-property	open	countOfBytesSent	NSURLSessionTask	Networking / Essentials / Obtaining task progress	-	objc
-property	shipped	currentRequest	NSURLSessionTask	Networking / Essentials / Obtaining general task information	-	objc
-property	open	delegate	NSURLSessionTask	Networking / Essentials / Using a task-specific delegate	-	objc
-property	shipped	earliestBeginDate	NSURLSessionTask	Networking / Essentials / Scheduling tasks	-	objc
-property	shipped	error	NSURLSessionTask	Networking / Essentials / Obtaining general task information	-	objc
-property	shipped	originalRequest	NSURLSessionTask	Networking / Essentials / Obtaining general task information	-	objc
-property	open	prefersIncrementalDelivery	NSURLSessionTask	Networking / Essentials / Determining task behavior	-	objc
-property	shipped	priority	NSURLSessionTask	Networking / Essentials / Controlling the task state	-	objc
-property	open	progress	NSURLSessionTask	Networking / Essentials / Obtaining task progress	-	objc
-property	shipped	response	NSURLSessionTask	Networking / Essentials / Obtaining general task information	-	objc
-property	shipped	state	NSURLSessionTask	Networking / Essentials / Controlling the task state	-	swift-page
-property	shipped	taskDescription	NSURLSessionTask	Networking / Essentials / Obtaining general task information	-	objc
-property	shipped	taskIdentifier	NSURLSessionTask	Networking / Essentials / Obtaining general task information	-	objc
 method	open	-URLSession:didCreateTask:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Instance Methods	-	objc
 method	shipped	-URLSession:task:didCompleteWithError:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling task life cycle changes	-	objc
 method	shipped	-URLSession:task:didFinishCollectingMetrics:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Collecting task metrics	-	objc
@@ -3820,11 +2964,6 @@ method	open	-URLSession:task:needNewBodyStreamFromOffset:completionHandler:	NSUR
 method	shipped	-URLSession:task:willBeginDelayedRequest:completionHandler:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks	-	objc
 method	shipped	-URLSession:task:willPerformHTTPRedirection:newRequest:completionHandler:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling redirects	-	objc
 method	open	-URLSession:taskIsWaitingForConnectivity:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks	-	objc
-method	shipped	-init	NSURLSessionTaskMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Creating task metrics	deprecated	objc
-method	shipped	+new	NSURLSessionTaskMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Type Methods	deprecated	objc
-property	shipped	redirectCount	NSURLSessionTaskMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics	-	objc
-property	shipped	taskInterval	NSURLSessionTaskMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics	-	objc
-property	shipped	transactionMetrics	NSURLSessionTaskMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics	-	objc
 method	shipped	-init	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Creating transaction metrics	deprecated	objc
 method	shipped	+new	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Creating transaction metrics	deprecated	objc
 property	shipped	cellular	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
@@ -3866,45 +3005,6 @@ method	shipped	-init	NSURLSessionUploadTask	Networking / Essentials / Adding upl
 method	shipped	+new	NSURLSessionUploadTask	Networking / Essentials / Adding upload tasks to a session / Type Methods	deprecated	objc
 method	shipped	-URLSession:webSocketTask:didCloseWithCode:reason:	NSURLSessionWebSocketDelegate	Networking / Essentials / Adding WebSocket tasks to a session / Handling WebSocket lifecycle events	-	objc
 method	shipped	-URLSession:webSocketTask:didOpenWithProtocol:	NSURLSessionWebSocketDelegate	Networking / Essentials / Adding WebSocket tasks to a session / Handling WebSocket lifecycle events	-	objc
-method	shipped	-initWithData:	NSURLSessionWebSocketMessage	Networking / Essentials / Adding WebSocket tasks to a session / Instance Methods	-	objc
-method	shipped	-initWithString:	NSURLSessionWebSocketMessage	Networking / Essentials / Adding WebSocket tasks to a session / Instance Methods	-	objc
-property	shipped	data	NSURLSessionWebSocketMessage	Networking / Essentials / Adding WebSocket tasks to a session / Instance Properties	-	objc
-property	shipped	string	NSURLSessionWebSocketMessage	Networking / Essentials / Adding WebSocket tasks to a session / Instance Properties	-	objc
-property	shipped	type	NSURLSessionWebSocketMessage	Networking / Essentials / Adding WebSocket tasks to a session / Instance Properties	-	objc
-method	shipped	-cancelWithCloseCode:reason:	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection	-	objc
-method	shipped	-receiveMessageWithCompletionHandler:	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Sending and receiving data	-	objc
-method	shipped	-sendMessage:completionHandler:	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Sending and receiving data	-	objc
-method	shipped	-sendPingWithPongReceiveHandler:	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Sending ping frames	-	objc
-property	shipped	closeCode	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection	-	swift-page
-property	shipped	closeReason	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection	-	objc
-property	shipped	maximumMessageSize	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Sending and receiving data	-	objc
-method	shipped	+UUID	NSUUID	Fundamentals / Unique Identifiers / Creating UUIDs	-	objc
-method	open	-compare:	NSUUID	Fundamentals / Unique Identifiers / Instance Methods	-	objc
-method	shipped	-getUUIDBytes:	NSUUID	Fundamentals / Unique Identifiers / Get UUID Values	-	objc
-method	shipped	-init	NSUUID	Fundamentals / Unique Identifiers / Creating UUIDs	-	objc
-method	shipped	-initWithUUIDBytes:	NSUUID	Fundamentals / Unique Identifiers / Creating UUIDs	-	objc
-method	shipped	-initWithUUIDString:	NSUUID	Fundamentals / Unique Identifiers / Creating UUIDs	-	objc
-property	shipped	UUIDString	NSUUID	Fundamentals / Unique Identifiers / Get UUID Values	-	objc
-method	shipped	-arrayForKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Getting values	-	objc
-method	shipped	-boolForKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Getting values	-	objc
-method	shipped	-dataForKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Getting values	-	objc
-method	shipped	-dictionaryForKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Getting values	-	objc
-method	shipped	-doubleForKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Getting values	-	objc
-method	shipped	-longLongForKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Getting values	-	objc
-method	shipped	-objectForKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Getting values	-	objc
-method	shipped	-removeObjectForKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Removing keys	-	objc
-method	shipped	-setArray:forKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Setting values	-	objc
-method	shipped	-setBool:forKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Setting values	-	objc
-method	shipped	-setData:forKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Setting values	-	objc
-method	shipped	-setDictionary:forKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Setting values	-	objc
-method	shipped	-setDouble:forKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Setting values	-	objc
-method	shipped	-setLongLong:forKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Setting values	-	objc
-method	shipped	-setObject:forKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Setting values	-	objc
-method	shipped	-setString:forKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Setting values	-	objc
-method	shipped	-stringForKey:	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Getting values	-	objc
-method	shipped	-synchronize	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Synchronizing the in-memory cache with iCloud	-	objc
-property	shipped	defaultStore	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Getting the shared instance	-	objc
-property	shipped	dictionaryRepresentation	NSUbiquitousKeyValueStore	Files and Data Persistence / iCloud key and value storage / Getting values	-	objc
 method	open	+classNameDecodedForArchiveClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	swift-page
 method	open	-classNameDecodedForArchiveClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	swift-page
 method	open	+decodeClassName:asClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	swift-page
@@ -3956,54 +3056,10 @@ property	shipped	undoing	NSUndoManager	App Support / Undo / Checking whether und
 method	struck	-initWithCoder:	NSUniqueIDSpecifier	App Support / Object Specifiers / Instance Methods	declined	objc
 method	struck	-initWithContainerClassDescription:containerSpecifier:key:uniqueID:	NSUniqueIDSpecifier	App Support / Object Specifiers / Initializing a unique ID specifier	declined	objc
 property	struck	uniqueID	NSUniqueIDSpecifier	App Support / Object Specifiers / Accessing unique ID information	declined	objc
-method	shipped	-initWithSymbol:	NSUnit	Fundamentals / Essentials / Creating Units	-	objc
-method	shipped	+new	NSUnit	Fundamentals / Essentials / Type Methods	-	objc
-property	shipped	symbol	NSUnit	Fundamentals / Essentials / Accessing Properties	-	objc
-method	shipped	+baseUnit	NSUnitAcceleration	Fundamentals / Time and Motion / Accessing the Base Unit	-	objc
-property	shipped	gravity	NSUnitAcceleration	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	metersPerSecondSquared	NSUnitAcceleration	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitAngle	Fundamentals / Physical Dimension / Accessing the Base Unit	-	objc
-property	shipped	arcMinutes	NSUnitAngle	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	arcSeconds	NSUnitAngle	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	degrees	NSUnitAngle	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	gradians	NSUnitAngle	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	radians	NSUnitAngle	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	revolutions	NSUnitAngle	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitArea	Fundamentals / Physical Dimension / Accessing the Base Unit	-	objc
-property	shipped	acres	NSUnitArea	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	ares	NSUnitArea	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	hectares	NSUnitArea	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	squareCentimeters	NSUnitArea	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	squareFeet	NSUnitArea	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	squareInches	NSUnitArea	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	squareKilometers	NSUnitArea	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	squareMegameters	NSUnitArea	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	squareMeters	NSUnitArea	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	squareMicrometers	NSUnitArea	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	squareMiles	NSUnitArea	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	squareMillimeters	NSUnitArea	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	squareNanometers	NSUnitArea	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	squareYards	NSUnitArea	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitConcentrationMass	Fundamentals / Concentration and Dispersion / Accessing the Base Unit	-	objc
-method	shipped	+millimolesPerLiterWithGramsPerMole:	NSUnitConcentrationMass	Fundamentals / Concentration and Dispersion / Accessing Predefined Units	-	objc
-property	shipped	gramsPerLiter	NSUnitConcentrationMass	Fundamentals / Concentration and Dispersion / Accessing Predefined Units	-	objc
-property	shipped	milligramsPerDeciliter	NSUnitConcentrationMass	Fundamentals / Concentration and Dispersion / Accessing Predefined Units	-	objc
-method	shipped	-baseUnitValueFromValue:	NSUnitConverter	Fundamentals / Conversion / Converting Between Units	-	objc
-method	shipped	-valueFromBaseUnitValue:	NSUnitConverter	Fundamentals / Conversion / Converting Between Units	-	objc
 method	shipped	-initWithCoefficient:	NSUnitConverterLinear	Fundamentals / Conversion / Creating Unit Converters	-	objc
 method	shipped	-initWithCoefficient:constant:	NSUnitConverterLinear	Fundamentals / Conversion / Creating Unit Converters	-	objc
 property	shipped	coefficient	NSUnitConverterLinear	Fundamentals / Conversion / Accessing Linear Parameters	-	objc
 property	shipped	constant	NSUnitConverterLinear	Fundamentals / Conversion / Accessing Linear Parameters	-	objc
-method	shipped	+baseUnit	NSUnitDispersion	Fundamentals / Concentration and Dispersion / Accessing the Base Unit	-	objc
-property	shipped	partsPerMillion	NSUnitDispersion	Fundamentals / Concentration and Dispersion / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitDuration	Fundamentals / Time and Motion / Accessing the Base Unit	-	objc
-property	shipped	hours	NSUnitDuration	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	microseconds	NSUnitDuration	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	milliseconds	NSUnitDuration	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	minutes	NSUnitDuration	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	nanoseconds	NSUnitDuration	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	picoseconds	NSUnitDuration	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	seconds	NSUnitDuration	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
 method	shipped	+baseUnit	NSUnitElectricCharge	Fundamentals / Electricity / Accessing the Base Unit	-	objc
 property	shipped	ampereHours	NSUnitElectricCharge	Fundamentals / Electricity / Accessing Predefined Units	-	objc
 property	shipped	coulombs	NSUnitElectricCharge	Fundamentals / Electricity / Accessing Predefined Units	-	objc
@@ -4029,204 +3085,6 @@ property	shipped	megaohms	NSUnitElectricResistance	Fundamentals / Electricity / 
 property	shipped	microohms	NSUnitElectricResistance	Fundamentals / Electricity / Accessing Predefined Units	-	objc
 property	shipped	milliohms	NSUnitElectricResistance	Fundamentals / Electricity / Accessing Predefined Units	-	objc
 property	shipped	ohms	NSUnitElectricResistance	Fundamentals / Electricity / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitEnergy	Fundamentals / Energy, Heat, and Light / Accessing the Base Unit	-	objc
-property	shipped	calories	NSUnitEnergy	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	joules	NSUnitEnergy	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	kilocalories	NSUnitEnergy	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	kilojoules	NSUnitEnergy	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	kilowattHours	NSUnitEnergy	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitFrequency	Fundamentals / Time and Motion / Accessing the Base Unit	-	objc
-property	shipped	framesPerSecond	NSUnitFrequency	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	gigahertz	NSUnitFrequency	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	hertz	NSUnitFrequency	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	kilohertz	NSUnitFrequency	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	megahertz	NSUnitFrequency	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	microhertz	NSUnitFrequency	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	millihertz	NSUnitFrequency	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	nanohertz	NSUnitFrequency	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	terahertz	NSUnitFrequency	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitFuelEfficiency	Fundamentals / Fuel Efficiency / Accessing the Base Unit	-	objc
-property	shipped	litersPer100Kilometers	NSUnitFuelEfficiency	Fundamentals / Fuel Efficiency / Accessing Predefined Units	-	objc
-property	shipped	milesPerGallon	NSUnitFuelEfficiency	Fundamentals / Fuel Efficiency / Accessing Predefined Units	-	objc
-property	shipped	milesPerImperialGallon	NSUnitFuelEfficiency	Fundamentals / Fuel Efficiency / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitIlluminance	Fundamentals / Energy, Heat, and Light / Accessing the Base Unit	-	objc
-property	shipped	lux	NSUnitIlluminance	Fundamentals / Energy, Heat, and Light / Accesing Predefined Units	-	objc
-property	shipped	bits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Common Units	-	objc
-property	shipped	bytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Common Units	-	objc
-property	shipped	exabits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-property	shipped	exabytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-property	shipped	exbibits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	exbibytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	gibibits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	gibibytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	gigabits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-property	shipped	gigabytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-property	shipped	kibibits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	kibibytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	kilobits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-property	shipped	kilobytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-property	shipped	mebibits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	mebibytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	megabits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-property	shipped	megabytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-property	shipped	nibbles	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Common Units	-	objc
-property	shipped	pebibits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	pebibytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	petabits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-property	shipped	petabytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-property	shipped	tebibits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	tebibytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	terabits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-property	shipped	terabytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-property	shipped	yobibits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	yobibytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	yottabits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-property	shipped	yottabytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-property	shipped	zebibits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	zebibytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Binary Units	-	objc
-property	shipped	zettabits	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-property	shipped	zettabytes	NSUnitInformationStorage	Fundamentals / Data Storage / Accessing Predefined Decimal Units	-	objc
-method	shipped	+baseUnit	NSUnitLength	Fundamentals / Physical Dimension / Accessing the Base Unit	-	objc
-property	shipped	astronomicalUnits	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	centimeters	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	decameters	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	decimeters	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	fathoms	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	feet	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	furlongs	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	hectometers	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	inches	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	kilometers	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	lightyears	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	megameters	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	meters	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	micrometers	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	miles	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	millimeters	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	nanometers	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	nauticalMiles	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	parsecs	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	picometers	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	scandinavianMiles	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	yards	NSUnitLength	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing the Base Unit	-	objc
-property	shipped	carats	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	centigrams	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	decigrams	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	grams	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	kilograms	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	metricTons	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	micrograms	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	milligrams	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	nanograms	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	ounces	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	ouncesTroy	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	picograms	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	poundsMass	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	shortTons	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	slugs	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	stones	NSUnitMass	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitPower	Fundamentals / Energy, Heat, and Light / Accessing the Base Unit	-	objc
-property	shipped	femtowatts	NSUnitPower	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	gigawatts	NSUnitPower	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	horsepower	NSUnitPower	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	kilowatts	NSUnitPower	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	megawatts	NSUnitPower	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	microwatts	NSUnitPower	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	milliwatts	NSUnitPower	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	nanowatts	NSUnitPower	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	picowatts	NSUnitPower	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	terawatts	NSUnitPower	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	watts	NSUnitPower	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitPressure	Fundamentals / Mass, Weight, and Force / Accessing the Base Unit	-	objc
-property	shipped	bars	NSUnitPressure	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	gigapascals	NSUnitPressure	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	hectopascals	NSUnitPressure	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	inchesOfMercury	NSUnitPressure	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	kilopascals	NSUnitPressure	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	megapascals	NSUnitPressure	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	millibars	NSUnitPressure	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	millimetersOfMercury	NSUnitPressure	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	newtonsPerMetersSquared	NSUnitPressure	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-property	shipped	poundsForcePerSquareInch	NSUnitPressure	Fundamentals / Mass, Weight, and Force / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitSpeed	Fundamentals / Time and Motion / Accessing the Base Unit	-	objc
-property	shipped	kilometersPerHour	NSUnitSpeed	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	knots	NSUnitSpeed	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	metersPerSecond	NSUnitSpeed	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-property	shipped	milesPerHour	NSUnitSpeed	Fundamentals / Time and Motion / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitTemperature	Fundamentals / Energy, Heat, and Light / Accessing the Base Unit	-	objc
-property	shipped	celsius	NSUnitTemperature	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	fahrenheit	NSUnitTemperature	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-property	shipped	kelvin	NSUnitTemperature	Fundamentals / Energy, Heat, and Light / Accessing Predefined Units	-	objc
-method	shipped	+baseUnit	NSUnitVolume	Fundamentals / Physical Dimension / Accessing the Base Unit	-	objc
-property	shipped	acreFeet	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	bushels	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	centiliters	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	cubicCentimeters	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	cubicDecimeters	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	cubicFeet	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	cubicInches	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	cubicKilometers	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	cubicMeters	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	cubicMiles	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	cubicMillimeters	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	cubicYards	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	cups	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	deciliters	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	fluidOunces	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	gallons	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	imperialFluidOunces	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	imperialGallons	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	imperialPints	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	imperialQuarts	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	imperialTablespoons	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	imperialTeaspoons	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	kiloliters	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	liters	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	megaliters	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	metricCups	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	milliliters	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	pints	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	quarts	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	tablespoons	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-property	shipped	teaspoons	NSUnitVolume	Fundamentals / Physical Dimension / Accessing Predefined Units	-	objc
-method	shipped	-addUserInfoEntriesFromDictionary:	NSUserActivity	App Support / Activity Sharing / Specifying activity-related data	-	objc
-method	shipped	-becomeCurrent	NSUserActivity	App Support / Activity Sharing / Registering and invalidating activities	-	objc
-method	open	+deleteAllSavedUserActivitiesWithCompletionHandler:	NSUserActivity	App Support / Activity Sharing / Registering and invalidating activities	-	objc
-method	open	+deleteSavedUserActivitiesWithPersistentIdentifiers:completionHandler:	NSUserActivity	App Support / Activity Sharing / Registering and invalidating activities	-	objc
-method	shipped	-getContinuationStreamsWithCompletionHandler:	NSUserActivity	App Support / Activity Sharing / Working with continuation streams	-	objc
-method	shipped	-init	NSUserActivity	App Support / Activity Sharing / Deprecated	deprecated	objc
-method	shipped	-initWithActivityType:	NSUserActivity	App Support / Activity Sharing / Creating a user activity object	-	objc
-method	shipped	-invalidate	NSUserActivity	App Support / Activity Sharing / Registering and invalidating activities	-	objc
-method	shipped	-resignCurrent	NSUserActivity	App Support / Activity Sharing / Registering and invalidating activities	-	objc
-property	shipped	activityType	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
-property	open	appClipActivationPayload	NSUserActivity	App Support / Activity Sharing / Accessing feature-specific data	-	objc
-property	open	contentAttributeSet	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
-property	open	contextIdentifierPath	NSUserActivity	App Support / Activity Sharing / Accessing feature-specific data	-	objc
-property	shipped	delegate	NSUserActivity	App Support / Activity Sharing / Monitoring activity-related behaviors	-	objc
-property	open	detectedBarcodeDescriptor	NSUserActivity	App Support / Activity Sharing / Accessing feature-specific data	-	objc
-property	shipped	eligibleForHandoff	NSUserActivity	App Support / Activity Sharing / Enabling system behaviors	-	objc
-property	shipped	eligibleForPrediction	NSUserActivity	App Support / Activity Sharing / Enabling system behaviors	-	objc
-property	shipped	eligibleForPublicIndexing	NSUserActivity	App Support / Activity Sharing / Enabling system behaviors	-	objc
-property	shipped	eligibleForSearch	NSUserActivity	App Support / Activity Sharing / Enabling system behaviors	-	objc
-property	shipped	expirationDate	NSUserActivity	App Support / Activity Sharing / Enabling system behaviors	-	objc
-property	struck	externalMediaContentIdentifier	NSUserActivity	App Support / Activity Sharing / Specifying app identifiers	declined	objc
-property	open	interaction	NSUserActivity	App Support / Activity Sharing / Providing SiriKit with activity details	-	objc
-property	open	isClassKitDeepLink	NSUserActivity	App Support / Activity Sharing / Accessing feature-specific data	-	objc
-property	shipped	keywords	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
-property	open	mapItem	NSUserActivity	App Support / Activity Sharing / Accessing feature-specific data	-	objc
-property	open	ndefMessagePayload	NSUserActivity	App Support / Activity Sharing / Accessing feature-specific data	-	objc
-property	shipped	needsSave	NSUserActivity	App Support / Activity Sharing / Registering and invalidating activities	-	objc
-property	shipped	persistentIdentifier	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
-property	shipped	referrerURL	NSUserActivity	App Support / Activity Sharing / Browsing the web	-	objc
-property	shipped	requiredUserInfoKeys	NSUserActivity	App Support / Activity Sharing / Specifying activity-related data	-	objc
-property	open	shortcutAvailability	NSUserActivity	App Support / Activity Sharing / Providing SiriKit with activity details	-	objc
-property	struck	suggestedInvocationPhrase	NSUserActivity	App Support / Activity Sharing / Providing SiriKit with activity details	declined	objc
-property	shipped	supportsContinuationStreams	NSUserActivity	App Support / Activity Sharing / Working with continuation streams	-	objc
-property	shipped	targetContentIdentifier	NSUserActivity	App Support / Activity Sharing / Specifying app identifiers	-	objc
-property	shipped	title	NSUserActivity	App Support / Activity Sharing / Describing the activity	-	objc
-property	shipped	userInfo	NSUserActivity	App Support / Activity Sharing / Specifying activity-related data	-	objc
-property	shipped	webpageURL	NSUserActivity	App Support / Activity Sharing / Browsing the web	-	objc
 method	shipped	-userActivity:didReceiveInputStream:outputStream:	NSUserActivityDelegate	App Support / Activity Sharing / Monitoring activity-related behaviors / Handling streams	-	objc
 method	shipped	-userActivityWasContinued:	NSUserActivityDelegate	App Support / Activity Sharing / Monitoring activity-related behaviors / Managing activity continuation	-	objc
 method	shipped	-userActivityWillSave:	NSUserActivityDelegate	App Support / Activity Sharing / Monitoring activity-related behaviors / Managing activity continuation	-	objc
@@ -4271,51 +3129,15 @@ method	open	-synchronize	NSUserDefaults	Files and Data Persistence / App-specifi
 method	shipped	-volatileDomainForName:	NSUserDefaults	Files and Data Persistence / App-specific settings / Managing domain-specific values	-	objc
 property	shipped	standardUserDefaults	NSUserDefaults	Files and Data Persistence / App-specific settings / Creating a user defaults object	-	objc
 property	shipped	volatileDomainNames	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
-method	shipped	-init	NSUserNotification	App Support / User Notifications / Instance Methods	deprecated	objc
-property	shipped	actionButtonTitle	NSUserNotification	App Support / User Notifications / Displayed Notification Buttons	deprecated	objc
-property	shipped	activationType	NSUserNotification	App Support / User Notifications / User Notification Activation Method	deprecated	swift-page
-property	shipped	actualDeliveryDate	NSUserNotification	App Support / User Notifications / Delivery Timing	deprecated	objc
-property	shipped	additionalActions	NSUserNotification	App Support / User Notifications / User Notification Activation Method	deprecated	objc
-property	shipped	additionalActivationAction	NSUserNotification	App Support / User Notifications / User Notification Activation Method	deprecated	objc
-property	shipped	contentImage	NSUserNotification	App Support / User Notifications / Display Information	deprecated	objc
-property	shipped	deliveryDate	NSUserNotification	App Support / User Notifications / Delivery Timing	deprecated	objc
-property	shipped	deliveryRepeatInterval	NSUserNotification	App Support / User Notifications / Delivery Timing	deprecated	objc
-property	shipped	deliveryTimeZone	NSUserNotification	App Support / User Notifications / Delivery Timing	deprecated	objc
-property	shipped	hasActionButton	NSUserNotification	App Support / User Notifications / Displayed Notification Buttons	deprecated	objc
-property	shipped	hasReplyButton	NSUserNotification	App Support / User Notifications / Displayed Notification Buttons	deprecated	objc
-property	shipped	identifier	NSUserNotification	App Support / User Notifications / Display Information	deprecated	objc
-property	shipped	informativeText	NSUserNotification	App Support / User Notifications / Display Information	deprecated	objc
-property	shipped	otherButtonTitle	NSUserNotification	App Support / User Notifications / Displayed Notification Buttons	deprecated	objc
-property	shipped	presented	NSUserNotification	App Support / User Notifications / Delivery Information	deprecated	objc
-property	shipped	remote	NSUserNotification	App Support / User Notifications / Delivery Information	deprecated	objc
-property	shipped	response	NSUserNotification	App Support / User Notifications / Display Information	deprecated	objc
-property	shipped	responsePlaceholder	NSUserNotification	App Support / User Notifications / Display Information	deprecated	objc
-property	shipped	soundName	NSUserNotification	App Support / User Notifications / Delivery Information	deprecated	objc
-property	shipped	subtitle	NSUserNotification	App Support / User Notifications / Display Information	deprecated	objc
-property	shipped	title	NSUserNotification	App Support / User Notifications / Display Information	deprecated	objc
-property	shipped	userInfo	NSUserNotification	App Support / User Notifications / User Notification User Information	deprecated	objc
 method	shipped	+actionWithIdentifier:title:	NSUserNotificationAction	App Support / User Notifications / Creating User Notification Actions	deprecated	objc
 property	shipped	identifier	NSUserNotificationAction	App Support / User Notifications / Getting the Identifier and Title	deprecated	objc
 property	shipped	title	NSUserNotificationAction	App Support / User Notifications / Getting the Identifier and Title	deprecated	objc
-method	shipped	-deliverNotification:	NSUserNotificationCenter	App Support / User Notifications / Managing the Delivered Notifications	deprecated	objc
-method	shipped	-removeAllDeliveredNotifications	NSUserNotificationCenter	App Support / User Notifications / Managing the Delivered Notifications	deprecated	objc
-method	shipped	-removeDeliveredNotification:	NSUserNotificationCenter	App Support / User Notifications / Managing the Delivered Notifications	deprecated	objc
-method	shipped	-removeScheduledNotification:	NSUserNotificationCenter	App Support / User Notifications / Managing the Scheduled Notification Queue	deprecated	objc
-method	shipped	-scheduleNotification:	NSUserNotificationCenter	App Support / User Notifications / Managing the Scheduled Notification Queue	deprecated	objc
-property	shipped	defaultUserNotificationCenter	NSUserNotificationCenter	App Support / User Notifications / Creating the Default User Notification Center	deprecated	objc
-property	shipped	delegate	NSUserNotificationCenter	App Support / User Notifications / Getting and Setting the Delegate	deprecated	objc
-property	shipped	deliveredNotifications	NSUserNotificationCenter	App Support / User Notifications / Managing the Delivered Notifications	deprecated	objc
-property	shipped	scheduledNotifications	NSUserNotificationCenter	App Support / User Notifications / Managing the Scheduled Notification Queue	deprecated	objc
 method	shipped	-userNotificationCenter:didActivateNotification:	NSUserNotificationCenterDelegate	App Support / User Notifications / User Notification Delivery Information	deprecated	objc
 method	shipped	-userNotificationCenter:didDeliverNotification:	NSUserNotificationCenterDelegate	App Support / User Notifications / User Notification Delivery Information	deprecated	objc
 method	shipped	-userNotificationCenter:shouldPresentNotification:	NSUserNotificationCenterDelegate	App Support / User Notifications / User Notification Display Override	deprecated	objc
 method	struck	-executeWithCompletionHandler:	NSUserScriptTask	Low-Level Utilities / Scripts and External Tasks / Executing the User Script	declined	objc
 method	struck	-initWithURL:error:	NSUserScriptTask	Low-Level Utilities / Scripts and External Tasks / Specifying the Script	declined	objc
 property	struck	scriptURL	NSUserScriptTask	Low-Level Utilities / Scripts and External Tasks / Specifying the Script	declined	objc
-method	shipped	-executeWithArguments:completionHandler:	NSUserUnixTask	Low-Level Utilities / Scripts and External Tasks / Executing the Unix Script	-	objc
-property	shipped	standardError	NSUserUnixTask	Low-Level Utilities / Scripts and External Tasks / Standard Unix Streams	-	objc
-property	shipped	standardInput	NSUserUnixTask	Low-Level Utilities / Scripts and External Tasks / Standard Unix Streams	-	objc
-property	shipped	standardOutput	NSUserUnixTask	Low-Level Utilities / Scripts and External Tasks / Standard Unix Streams	-	objc
 method	shipped	-getValue:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Raw Values	deprecated	objc
 method	shipped	-getValue:size:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Instance Methods	-	objc
 method	shipped	-initWithBytes:objCType:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Raw Values	-	objc
@@ -4376,13 +3198,6 @@ property	shipped	pointerValue	NSValue	Low-Level Utilities / Value Wrappers and T
 property	shipped	rangeValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Range Values	-	objc
 property	shipped	rectValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Foundation Geometry Values	-	objc
 property	shipped	sizeValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Foundation Geometry Values	-	objc
-method	shipped	+allowsReverseTransformation	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Getting Information About a Transformer	-	objc
-method	shipped	-reverseTransformedValue:	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Transforming Values	-	objc
-method	shipped	+setValueTransformer:forName:	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry	-	objc
-method	shipped	-transformedValue:	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Transforming Values	-	objc
-method	shipped	+transformedValueClass	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Getting Information About a Transformer	-	objc
-method	shipped	+valueTransformerForName:	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry	-	objc
-method	shipped	+valueTransformerNames	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry	-	objc
 method	struck	-initWithCoder:	NSWhoseSpecifier	App Support / Object Specifiers / Instance Methods	declined	objc
 method	struck	-initWithContainerClassDescription:containerSpecifier:key:test:	NSWhoseSpecifier	App Support / Object Specifiers / Initializing a whose specifier	declined	objc
 property	struck	endSubelementIdentifier	NSWhoseSpecifier	App Support / Object Specifiers / Accessing information about a whose specifier	declined	objc

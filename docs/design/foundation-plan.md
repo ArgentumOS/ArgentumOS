@@ -15982,6 +15982,30 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.135 — THE CUT ROWS LEAVE THE LEDGER, AND THE SAME MISTAKE A SECOND TIME IN ONE TURN (2026-10-01)
+
+**LANDED — STEP 2 OF §63.130's ORDER: the ledger's cut rows are REMOVED BY SCRIPT. MEASURED: 4564 rows → 3370, 1194
+removed across the 85 owners whose macOS introduction is later than 10.2.** The provenance block now says
+FILTERED, NOT REGENERATED and gives the reason (the generator's input 404s, so a re-derivation is impossible); **the
+count block and the struck-reason histogram were rewritten FROM THE ROWS**, and `--check` is consistent at
+**method 1697 shipped / 247 open / 390 struck** and **property 767 / 99 / 170**.
+
+**AND THE PREDICTION RECONCILES EXACTLY, WHICH IS THE USEFUL PART: §63.134 SAID THE OWNER-CUT WOULD TAKE OPEN METHODS
+FROM 315 TO 247, AND IT DID — 247. It also said properties fall to 71; they fall to 99.** The 28-row difference is
+**EXACTLY the member-era rows**, which an owner filter does not touch because their owners are KEPT. **SO THE DEBT NOW
+STANDS AT 346 ROWS (247 methods, 99 properties), AND THE LAST 28 ARE WAITING FOR THE MEMBER CUT — two independent
+counts agreeing to the row, which is the strongest check either of them could have had.**
+
+**⚠⚠ AND A CORRECTION I OWE, FOR THE SECOND TIME IN THIS ONE TURN: §63.134 STATED THAT `selector_header_counts()` FINDS
+NO COUNT BLOCK IN THE LEDGER. THAT IS FALSE — THE BLOCK EXISTS, `--check` ENFORCES IT, AND IT CAUGHT THE FILTER
+IMMEDIATELY.** My grep missed it because **the block is TAB-separated and my pattern required spaces**. *That is the same
+class of error as the annotation-order bug three generations back: a pattern written for the shape I was looking at,
+failing on the shape that was there — AND IN BOTH CASES THE INSTRUMENT SAID SO AT ONCE.* **STATED ONCE SO IT IS USABLE:
+WHEN A CHECK DISAGREES WITH MY READING OF THE TREE, THE CHECK IS RIGHT AND MY READING IS THE THING TO RE-EXAMINE.**
+
+**AND NOTHING IN THE SOURCE TREE HAS BEEN DELETED — step 3 has not begun, so the build is untouched by this unit. Only
+the ledger moved, and it moved reversibly (one `git checkout`).**
+
 ## §63.134 — WHAT THE CUT DOES TO THE DEBT, AND A SLICE THAT IS NOT SELF-CONTAINED (2026-10-01)
 
 **MEASURED — THE DEBT FALLS FROM 467 OWED ROWS TO 318, WHICH IS THE LARGEST SINGLE EFFECT OF THE WHOLE CHANGE:**
