@@ -3671,7 +3671,6 @@ vanishing.
 | **App Support / Activity Sharing** | all classes shipped | — |
 | **App Support / Apple Event Handling** | ALL STRUCK: `NSAppleEventDescriptor`, `NSAppleEventManager` | — |
 | **App Support / Assertions** | all classes shipped | — |
-| **App Support / Attachments** | all classes shipped | — |
 | **App Support / Bundle Resources** | all classes shipped | — |
 | **App Support / Cross-Process Notifications** | all classes shipped | — |
 | **App Support / Exceptions** | all classes shipped | — |
@@ -15963,6 +15962,48 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 `--families --write` (rewrote the family table and the ledger) → `--check` **consistent** → `--unimplemented`
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
+
+## §63.172 — the NSItemProvider family is cut (class, both protocols, the whole vocabulary)
+
+The item-provider family leaves the tree: `NSItemProvider.h/.m` (1,155 lines), its two protocols —
+`NSItemProviderReading` and `NSItemProviderWriting`, both 10.13 — and the vocabulary the class owned
+(the error domain, the four error codes, the preferred-image-size key, the four visibility bits, the
+file-option constant, and the two completion/load block typedefs). The class itself is 10.10, so the
+whole family is post-baseline and takes the same `ios-only`/post-baseline ground as §63.166 and §63.167.
+
+**Nineteen rows, and the column they live in.** The family's ledger rows number 19 — but they are not
+all rows *named* `NSItemProvider*`: three are (the class and the two protocols, name in the ledger's
+third column) and sixteen are rows *owned* by the class (the vocabulary, its own name in the owner
+column). A first pass filtered on the owner column and removed sixteen rows while leaving the class
+and both protocols behind; the `--check` gate's per-kind counts exposed it (the counts block must be
+recomputed from the file's own rows, `case 996`, `class 155`, `enum 111`, `protocol 29`, `var 660`,
+and 16 + 3 is exactly the 19 the prefix search measured). The sweep carries the matching sixteen
+`decline` entries as its own data; cutting a family means removing the strike grounds too, or the next
+`--refresh` puts the rows straight back.
+
+**The mk block the line filter cannot see.** The probe's rules in `mk/20-userland.mk` never spell the
+class name on a line of their own — they say `foundation_itemprovider` (lower case, a different
+token), so a filter keyed on `NSItemProvider` leaves the recipes pointing at a deleted translation
+unit. Removed by anchoring on the comment above the block rather than on the name.
+
+**What the cut cost the neighbours, all mechanical and all measured:** the umbrella import; prose in
+`NSData.h`, `NSDistributedNotificationCenter.h`, `foundation_distributednotification.{m,py}` (no comment
+may name a removed family as though it still exists); and in `foundation_error.m` the
+`item-provider-vocabulary-is-consistent` block, anchored by its own comment and brace-matched. That
+probe's case then expects the check, so its `CHECKS` table loses the name — the probe itself was
+already green at `ok=17 fail=0`, and the gate says so: the case's expectation was the only thing left
+behind. The test's `__pycache__` was cleared, as ever.
+
+**Unit B is now unblocked and clean.** `NSProgress` (10.9) is the era audit's single post-baseline find
+and was coupled to this family through the class's load doors — its only remaining user. With the
+family gone, `NSProgress` + `NSProgressReporting` becomes a plain cut of an unused class, the same
+shape as `NSCondition` → `FNCondition` in §63.170.
+
+Acceptance: `make testimg` green (the library compiles and every probe links after the deletion);
+`make test TESTS=foundation_error,foundation_distributednotification,foundation_constants` →
+3/3 cases, 18/18 checks. `tools/foundation-sweep.py --check` consistent (family table regenerated),
+`--unimplemented` 0 NEW, selector ledger consistent, and no code reference to the family anywhere
+under `userland/` — only prose ever named it.
 
 ## §63.171 — THE ITEM-PROVIDER PROBE CLEARS ITS OWN STALE COPIES, AND THE "PRE-EXISTING RED" TURNS OUT TO BE A SECOND-RUN-IN-ONE-IMAGE FAILURE (2026-10-03)
 

@@ -7,7 +7,7 @@
  * the boundary this system draws under that.
  *
  * THE CLASS SHIPS, AND THE DECISION THAT KEPT IT OUT IS REVERSED — the same reversal §62.23 made for
- * NSItemProvider, and for the same reason: "the door is absent rather than stubbed" is the right rule for a door,
+ * the removed post-baseline families, and for the same reason: "the door is absent rather than stubbed" is the right rule for a door,
  * and the wrong one for a CLASS whose LOCAL half is real. What is real here is everything a process can do with a
  * notification center on its own: observers with per-observation SUSPENSION BEHAVIOURS (drop, hold, coalesce, or
  * deliver anyway), a suspended center that holds or coalesces what arrives, and the resume that flushes it.

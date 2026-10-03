@@ -5,7 +5,7 @@
 docs/design/foundation-plan.md §62.80. One row: the class.
 
 THE CLASS SHIPPED AND THE DECISION THAT KEPT IT OUT WAS REVERSED — the same reversal §62.23 made for
-NSItemProvider, and for the same reason: "the door is absent rather than stubbed" is the right rule for a DOOR and
+the removed post-baseline families, and for the same reason: "the door is absent rather than stubbed" is the right rule for a DOOR and
 the wrong one for a CLASS whose LOCAL half is real. What is real is everything a process can do on its own:
 observers each carrying a SUSPENSION BEHAVIOUR, a suspended center that drops, holds or coalesces what arrives,
 and the resume that flushes it.

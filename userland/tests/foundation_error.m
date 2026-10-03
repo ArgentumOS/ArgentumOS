@@ -22,7 +22,6 @@
 #include <string.h>
 #include <unistd.h>		/* usleep, for the bounded wait on the helper thread */
 #import <Foundation/NSThread.h>
-#import <Foundation/NSItemProvider.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSDictionary.h>
 
@@ -503,38 +502,6 @@ int main(void)
 			      got > 0 ? seen : "the child's uncaught exception produced no marker from the handler");
 			usleep(200000);	/* the child finishes on its own; no sys/wait.h for one use */
 		}
-	}
-
-	{
-		/* VOCABULARY WITH NO DOOR, SO THE ASSERTION IS ABOUT THE VOCABULARY: an error domain that answers its
-		 * own name (this library's convention for these constants), error codes that are DISTINCT (two
-		 * sharing a value would make two failures indistinguishable to a caller that switches on them), the
-		 * visibility levels as distinct BITS (WITHIN their own set: two different enums may share a number,
-		 * and asserting across sets was the first version of this check and it failed correctly), and the two
-		 * block typedefs - whose existence is what makes this
-		 * file compile, which for a type is the strongest assertion available. */
-		NSItemProviderCompletionHandler handler = NULL;
-		NSItemProviderLoadHandler loader = NULL;
-
-		check("item-provider-vocabulary-is-consistent",
-		      [NSItemProviderErrorDomain isEqualToString:@"NSItemProviderErrorDomain"] &&
-		      [NSItemProviderPreferredImageSizeKey
-			isEqualToString:@"NSItemProviderPreferredImageSizeKey"] &&
-		      NSItemProviderUnknownError != NSItemProviderItemUnavailableError &&
-		      NSItemProviderItemUnavailableError != NSItemProviderUnexpectedValueClassError &&
-		      NSItemProviderUnexpectedValueClassError != NSItemProviderUnavailableCoercionError &&
-		      (NSItemProviderRepresentationVisibilityAll & NSItemProviderRepresentationVisibilityTeam) == 0 &&
-		      (NSItemProviderRepresentationVisibilityTeam & NSItemProviderRepresentationVisibilityGroup) == 0 &&
-		      (NSItemProviderRepresentationVisibilityGroup & NSItemProviderRepresentationVisibilityOwnProcess) == 0 &&
-		      handler == NULL && loader == NULL,
-		      [[NSString stringWithFormat:@"domain=%@ size-key=%@ codes=%d,%d,%d,%d vis=%d,%d,%d,%d option=%d",
-			NSItemProviderErrorDomain, NSItemProviderPreferredImageSizeKey,
-			(int)NSItemProviderUnknownError, (int)NSItemProviderItemUnavailableError,
-			(int)NSItemProviderUnexpectedValueClassError, (int)NSItemProviderUnavailableCoercionError,
-			(int)NSItemProviderRepresentationVisibilityAll, (int)NSItemProviderRepresentationVisibilityTeam,
-			(int)NSItemProviderRepresentationVisibilityGroup,
-			(int)NSItemProviderRepresentationVisibilityOwnProcess,
-			(int)NSItemProviderFileOptionOpenInPlace] UTF8String]);
 	}
 
 	printf("FOUNDATION-ERROR RESULT ok=%d fail=%d\n", okc, failc);

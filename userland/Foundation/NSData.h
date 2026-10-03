@@ -47,7 +47,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/* NSSecureCoding IS HERE BECAUSE APPLE'S NSData CONFORMS TO IT (§62.23): NSItemProvider's completion handler is
+/* NSSecureCoding IS HERE BECAUSE APPLE'S NSData CONFORMS TO IT: a secure-coding completion handler is
  * typed `__kindof id<NSSecureCoding>` in Apple's own declaration, and a class that conforms on Apple's platform and
  * not here is a difference — a caller passing NSData got a type warning about this library's gap. The ENFORCEMENT
  * is the coder's and is still absent; NSCoding.h names that debt, and the other collections' conformances are the

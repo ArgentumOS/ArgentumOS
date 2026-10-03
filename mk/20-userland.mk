@@ -165,7 +165,6 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSOperation.m \
 	$(FOUNDATION_SRC)/NSGeometry.m \
 	$(FOUNDATION_SRC)/NSProgress.m \
-	$(FOUNDATION_SRC)/NSItemProvider.m \
 	$(FOUNDATION_SRC)/NSDistributedNotificationCenter.m \
 	$(FOUNDATION_SRC)/NSBundle.m \
 	$(FOUNDATION_SRC)/NSURLRequest.m \
@@ -222,7 +221,6 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSOperation.h \
 	$(FOUNDATION_SRC)/NSOperationQueue.h \
 	$(FOUNDATION_SRC)/NSProgress.h \
-	$(FOUNDATION_SRC)/NSItemProvider.h \
 	$(FOUNDATION_SRC)/NSDistributedNotificationCenter.h \
 	$(FOUNDATION_SRC)/NSBundle.h \
 	$(FOUNDATION_SRC)/NSFastEnumeration.h $(FOUNDATION_SRC)/NSArray.h \
@@ -879,15 +877,7 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_operation_leaves.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_operation_leaves"
-	# foundation_itemprovider: §62.23's acceptance - NSItemProvider and the two protocols an object travels by.
 	# ONE unit, only <Foundation/Foundation.h>. IT WRITES ITS OWN FILE FIXTURE into the temporary directory, so its
-	# file-backed checks depend on the same directory the LIBRARY writes its temporary copies into.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_itemprovider.m -o .build/probe-foundation_itemprovider.o
-	$(MUSL64_OBJC) .build/probe-foundation_itemprovider.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_itemprovider"
 	# foundation_directoryenumerator: W8 slice 1 acceptance (foundation-plan.md §60). ONE unit, only
 	# <Foundation/Foundation.h> plus <unistd.h> for the symlink(2) its fixture makes.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \

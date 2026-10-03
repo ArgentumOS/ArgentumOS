@@ -9,7 +9,7 @@
  * ONE unit, importing only <Foundation/Foundation.h>.
  *
  * THE CLASS SHIPPED AND THE DECISION THAT KEPT IT OUT WAS REVERSED, the same reversal §62.23 made for
- * NSItemProvider: "the door is absent rather than stubbed" is the right rule for a DOOR and the wrong one for a
+ * the removed post-baseline families: "the door is absent rather than stubbed" is the right rule for a DOOR and the wrong one for a
  * CLASS whose LOCAL half is real. What is real here is everything a process can do on its own - observers with a
  * SUSPENSION BEHAVIOUR each, a suspended center that drops, holds or coalesces what arrives, and the resume that
  * flushes it - and the probe drives all four behaviours rather than asserting that they exist.

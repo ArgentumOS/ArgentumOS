@@ -882,19 +882,6 @@ DECLINED_SELECTORS = frozenset((
     #     has no home in this library's Foundation.
     # **EVERY ONE OF THE THIRTEEN HAS ITS GROUND IN THE HEADER ALREADY, WHICH IS WHY THIS SET IS A RECORDING RATHER
     # THAN A DECISION.**
-    ("NSItemProvider", "initWithContentsOfURL:contentType:openInPlace:coordinated:visibility:"),
-    ("NSItemProvider", "loadDataRepresentationForContentType:completionHandler:"),
-    ("NSItemProvider", "loadFileRepresentationForContentType:openInPlace:completionHandler:"),
-    ("NSItemProvider", "registerCKShare:container:allowedSharingOptions:"),
-    ("NSItemProvider", "registerCKShareWithContainer:allowedSharingOptions:preparationHandler:"),
-    ("NSItemProvider", "registerCloudKitShare:container:"),
-    ("NSItemProvider", "registerCloudKitShareWithPreparationHandler:"),
-    ("NSItemProvider", "registerDataRepresentationForContentType:visibility:loadHandler:"),
-    ("NSItemProvider", "registerFileRepresentationForContentType:visibility:openInPlace:loadHandler:"),
-    ("NSItemProvider", "registeredContentTypesConformingToContentType:"),
-    ("NSItemProvider", "preferredPresentationStyle"),
-    ("NSItemProvider", "registeredContentTypes"),
-    ("NSItemProvider", "registeredContentTypesForOpenInPlace"),
     # ⚠⚠ NSURLSessionConfiguration'S FIVE REMAINING ROWS NAME TYPES THIS SYSTEM DOES NOT HAVE, AND THAT IS THE WHOLE
     # GROUND (§63.127). The class's header note listed these as "left OPEN rather than adding more stored flags nothing
     # reads" — and THE EIGHT THAT ARE CARRIED ARE NOW CARRIED, BY THE USER'S DECISION; these five are NOT the same case,
@@ -904,7 +891,7 @@ DECLINED_SELECTORS = frozenset((
     #   * `proxyConfigurations` names `NSProxyConfiguration`, from Network. MEASURED: that name occurs NOWHERE in this
     #     tree — not once.
     # **A DOOR WHOSE TYPE IS ABSENT IS NOT A DOOR THAT NEEDS A FLAG; IT NEEDS A FRAMEWORK** — the same ground as
-    # NSItemProvider's eight UTType doors (§63.126).
+    # The eight UTType doors the removed item-provider family had (§63.126).
     ("NSURLSessionConfiguration", "TLSMaximumSupportedProtocol"),
     ("NSURLSessionConfiguration", "TLSMaximumSupportedProtocolVersion"),
     ("NSURLSessionConfiguration", "TLSMinimumSupportedProtocol"),
@@ -980,13 +967,10 @@ DECLINED_SELECTORS = frozenset((
     # ⚠ THE NSITEMPROVIDER DRAG-GEOMETRY TRIO IS UIKit's, AND THIS TREE HAS NO UIKit (USER DECISION,
     # 2026-10-01, §63.51). Same shape as the OBEX group above: the ledger attributes a FOREIGN FRAMEWORK'S
     # CATEGORY to the class it extends. MEASURED: `containerFrame`, `preferredPresentationSize` and
-    # `sourceFrame` are UIKit's `NSItemProvider` category — a drag's source window and container — and they
+    # `sourceFrame` are the UIKit drag category's — a drag's source window and container — and they
     # appear in NEITHER the macOS 14.5 Foundation headers NOR the iOS 16.5 ones. Our headers shipped them
     # answering ZERO with the boundary stated, which is a stub by §62.57's rule. Removed from the class and
     # struck here, rather than left as three rows of work no Foundation door could ever satisfy.
-    ("NSItemProvider", "containerFrame"),
-    ("NSItemProvider", "preferredPresentationSize"),
-    ("NSItemProvider", "sourceFrame"),
     # ⚠ AND THESE THREE ARE APPKIT's, MOVED TO THE APPKIT TIER RATHER THAN DELETED (§63.52, the user's
     # directive of 2026-10-01). Same ATTRIBUTION shape as the two groups above — the ledger attributes
     # AppKit's category on NSBundle to the class it extends — but a DIFFERENT ANSWER, because this tree HAS an

@@ -6,11 +6,11 @@
 # source: https://developer.apple.com/tutorials/data/index/foundation
 #
 # kind	status	name	owner	family	why	src
-# case	shipped	1005	open	0	struck	78
-# class	shipped	156	open	0	struck	52
-# enum	shipped	114	open	0	struck	9
-# protocol	shipped	31	open	0	struck	6
-# var	shipped	662	open	0	struck	211
+# case	shipped	996	open	0	struck	78
+# class	shipped	155	open	0	struck	52
+# enum	shipped	111	open	0	struck	9
+# protocol	shipped	29	open	0	struck	6
+# var	shipped	660	open	0	struck	211
 
 
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -400,15 +400,6 @@ case	shipped	NSInputMethodsDirectory	NSFileManager	Files and Data Persistence / 
 case	struck	NSInternalScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSInternalSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	struck	NSInvalidIndexSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
-case	shipped	NSItemProviderFileOptionOpenInPlace	NSItemProvider	App Support / Attachments / Constants / File Options	-	objc
-case	shipped	NSItemProviderItemUnavailableError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
-case	shipped	NSItemProviderRepresentationVisibilityAll	NSItemProvider	App Support / Attachments / Constants / Enumeration Cases	-	objc
-case	shipped	NSItemProviderRepresentationVisibilityGroup	NSItemProvider	App Support / Attachments / Constants / Enumeration Cases	-	objc
-case	shipped	NSItemProviderRepresentationVisibilityOwnProcess	NSItemProvider	App Support / Attachments / Constants / Enumeration Cases	-	objc
-case	shipped	NSItemProviderRepresentationVisibilityTeam	NSItemProvider	App Support / Attachments / Constants / Enumeration Cases	-	objc
-case	shipped	NSItemProviderUnavailableCoercionError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
-case	shipped	NSItemProviderUnexpectedValueClassError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
-case	shipped	NSItemProviderUnknownError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 case	shipped	NSItemReplacementDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSJSONReadingAllowFragments	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	deprecated	objc
 case	shipped	NSJSONReadingFragmentsAllowed	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object / Reading Options	-	objc
@@ -1167,7 +1158,6 @@ class	struck	NSIndexSpecifier		App Support / Object Specifiers	declined	objc
 class	shipped	NSInputStream		Low-Level Utilities / Streams	-	objc
 class	shipped	NSInvocation		Low-Level Utilities / Invocations	-	objc
 class	shipped	NSInvocationOperation		App Support / Operations	-	objc
-class	shipped	NSItemProvider		App Support / Attachments	-	objc
 class	shipped	NSJSONSerialization		Files and Data Persistence / JSON	-	objc
 class	struck	NSKeyValueSharedObservers		Reference / Classes	declined	objc
 class	struck	NSKeyValueSharedObserversSnapshot		Reference / Classes	declined	objc
@@ -1350,9 +1340,6 @@ enum	shipped	NSHTTPCookieAcceptPolicy	NSHTTPCookie	Networking / Essentials / Cre
 enum	shipped	NSHTTPCookieAcceptPolicy	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy	-	objc
 enum	shipped	NSISO8601DateFormatOptions	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants	-	objc
 enum	struck	NSInsertionPosition	NSPositionalSpecifier	App Support / Object Specifiers / Constants	declined	objc
-enum	shipped	NSItemProviderErrorCode	NSItemProvider	App Support / Attachments / Constants	-	objc
-enum	shipped	NSItemProviderFileOptions	NSItemProvider	App Support / Attachments / Constants	-	objc
-enum	shipped	NSItemProviderRepresentationVisibility	NSItemProvider	App Support / Attachments / Constants	-	objc
 enum	shipped	NSJSONReadingOptions	NSJSONSerialization	Files and Data Persistence / JSON / Creating a JSON Object	-	objc
 enum	shipped	NSJSONWritingOptions	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data	-	objc
 enum	shipped	NSKeyValueChange		Reference / Enumerations	-	objc
@@ -1878,8 +1865,6 @@ protocol	shipped	NSDiscardableContent		Fundamentals / Purgeable Collections / Ma
 protocol	shipped	NSFastEnumeration		Fundamentals / Iteration	-	objc
 protocol	shipped	NSFileManagerDelegate		Files and Data Persistence / File system operations	-	objc
 protocol	shipped	NSFilePresenter		Files and Data Persistence / Coordinated file access	-	objc
-protocol	shipped	NSItemProviderReading		App Support / Attachments / Constants	-	objc
-protocol	shipped	NSItemProviderWriting		App Support / Attachments / Constants	-	objc
 protocol	shipped	NSKeyedArchiverDelegate		Files and Data Persistence / Keyed Archivers	-	objc
 protocol	shipped	NSKeyedUnarchiverDelegate		Files and Data Persistence / Keyed Archivers	-	objc
 protocol	shipped	NSLocking		Low-Level Utilities / Threads and Locking	-	objc
@@ -1935,8 +1920,6 @@ typealias	shipped	NSFileProviderServiceName	NSFileManager	Files and Data Persist
 typealias	shipped	NSHTTPCookiePropertyKey	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accessing cookie properties as key-value pairs	-	objc
 typealias	shipped	NSHTTPCookieStringPolicy	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Securing cookies	-	objc
 typealias	shipped	NSHashTableOptions	NSHashTable	Fundamentals / Pointer Collections / Constants	-	objc
-typealias	shipped	NSItemProviderCompletionHandler	NSItemProvider	App Support / Attachments / Constants	-	objc
-typealias	shipped	NSItemProviderLoadHandler	NSItemProvider	App Support / Attachments / Constants	-	objc
 typealias	shipped	NSKeyValueChangeKey		Reference / Type Aliases	-	objc
 typealias	shipped	NSKeyValueOperator		Reference / Type Aliases	-	objc
 typealias	shipped	NSLinguisticTag	NSLinguisticTagger	Fundamentals / Deprecated / Supporting Types	deprecated	objc
@@ -2199,8 +2182,6 @@ var	shipped	NSIsNilTransformerName	NSValueTransformer	Low-Level Utilities / Valu
 var	shipped	NSIsNotNilTransformerName	NSValueTransformer	Low-Level Utilities / Value Wrappers and Transformations / Using the Name-Based Registry / Type Properties	-	objc
 var	shipped	NSIslamicCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSIslamicCivilCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
-var	shipped	NSItemProviderErrorDomain	NSItemProvider	App Support / Attachments / Constants	-	objc
-var	shipped	NSItemProviderPreferredImageSizeKey	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
 var	shipped	NSJapaneseCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSKeepAllocationStatistics		App Support / Diagnostics and Debugging	-	objc
 var	shipped	NSKeyValueChangeIndexesKey		Reference / Type Aliases / Type Properties	-	objc
