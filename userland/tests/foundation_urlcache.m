@@ -124,19 +124,7 @@ int main(void)
 	      @"v1 writes nothing; the capacity is reported and the usage says so");
 
 	/* --- THE TASK-SCOPED DOORS ---------------------------------------------------------------------- */
-	{
-		NSURLSessionTask *task = [[NSURLSessionTask alloc]
-			fnInitWithRequest:fn_request(@"http://example.com/t", @"GET") identifier:1];
-		__block NSCachedURLResponse *answered = nil;
-
-		[cache storeCachedResponse:fn_cached(body, NSURLCacheStorageAllowed) forDataTask:task];
-		[cache getCachedResponseForDataTask:task completionHandler:^(NSCachedURLResponse *c) {
-			answered = c;
-		}];
-		check("a-task-scoped-store-and-get-round-trip",
-		      answered != nil && [[answered data] isEqualToData:body],
-		      @"the task-scoped doors answer through the task's request, one index");
-	}
+	
 
 	/* --- AND THE SHARED CACHE CAN BE REPLACED, WHICH IS WHAT MAKES A PROBE ABLE TO ISOLATE ITSELF ---- */
 	{

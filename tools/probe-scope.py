@@ -19,6 +19,19 @@ test and nothing else.
 import io, re, sys
 
 
+# !! THE FLOOR, ADDED AFTER TWO OVER-REMOVALS (2026-10-01, §63.142/§63.143). A scope-remover with no floor is a hole
+# exactly the size of `main`: when the subject of a check sits in the FUNCTION BODY, "the innermost enclosing scope" IS
+# the function, and removing it deletes the probe. Measured twice -- 15 checks taken from each of two probes the first
+# time, 16 plus a syntax error the second. SO ANY REMOVAL MUST REFUSE A SPAN LARGER THAN THIS FRACTION OF THE FILE, and
+# a caller that is not removing anything (this file's own reporting mode) must say out loud when it would have refused.
+MAX_REMOVE_FRACTION = 0.25
+
+
+def removable(text, start, end):
+    """Would removing this span be safe? False means THE SPAN IS TOO LARGE TO BE A CHECK'S BLOCK."""
+    return (end - start) <= MAX_REMOVE_FRACTION * len(text)
+
+
 def scopes(text):
     """[(start, end, depth)] for every brace-delimited block, innermost resolvable by containment."""
     out, stack = [], []

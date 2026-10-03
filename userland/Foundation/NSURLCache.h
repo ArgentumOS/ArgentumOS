@@ -28,7 +28,6 @@
 #import <Foundation/NSLock.h>
 
 @class NSURLRequest;
-@class NSURLSessionTask;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -68,13 +67,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 /* The task-scoped pair answers through the task's own request, as every task-scoped door in this library
  * does: one index, and the task is how a caller happens to have the request. */
-- (void)getCachedResponseForDataTask:(NSURLSessionTask *)dataTask
-		   completionHandler:(void (^)(NSCachedURLResponse *cachedResponse))completionHandler;
-- (void)storeCachedResponse:(NSCachedURLResponse *)cachedResponse
-		forDataTask:(NSURLSessionTask *)dataTask;
+
+
 
 - (void)removeCachedResponseForRequest:(NSURLRequest *)request;
-- (void)removeCachedResponseForDataTask:(NSURLSessionTask *)dataTask;
+
 /* WHICH IS WHY EACH ENTRY REMEMBERS WHEN IT WAS CACHED: Apple's door cannot be answered any other way. */
 - (void)removeCachedResponsesSinceDate:(NSDate *)date;
 - (void)removeAllCachedResponses;

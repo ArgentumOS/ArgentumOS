@@ -44,7 +44,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-# method	shipped	1691	open	247	struck	390
+# method	shipped	1682	open	247	struck	390
 # property	shipped	744	open	99	struck	170
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -1258,13 +1258,11 @@ property	shipped	value	NSHTTPCookie	Networking / Essentials / Creating a session
 property	shipped	version	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Getting cookie metadata	-	objc
 method	shipped	-cookiesForURL:	NSHTTPCookieStorage	Networking / Cookies / Retrieving cookies	-	objc
 method	shipped	-deleteCookie:	NSHTTPCookieStorage	Networking / Cookies / Adding and removing cookies	-	objc
-method	shipped	-getCookiesForTask:completionHandler:	NSHTTPCookieStorage	Networking / Cookies / Retrieving cookies	-	objc
 method	shipped	-removeCookiesSinceDate:	NSHTTPCookieStorage	Networking / Cookies / Adding and removing cookies	-	objc
 method	shipped	-setCookie:	NSHTTPCookieStorage	Networking / Cookies / Adding and removing cookies	-	objc
 method	shipped	-setCookies:forURL:mainDocumentURL:	NSHTTPCookieStorage	Networking / Cookies / Adding and removing cookies	-	objc
 method	open	+sharedCookieStorageForGroupContainerIdentifier:	NSHTTPCookieStorage	Networking / Cookies / Getting the shared cookie storage object	-	objc
 method	shipped	-sortedCookiesUsingDescriptors:	NSHTTPCookieStorage	Networking / Cookies / Retrieving cookies	-	objc
-method	shipped	-storeCookies:forTask:	NSHTTPCookieStorage	Networking / Cookies / Adding and removing cookies	-	objc
 property	shipped	cookieAcceptPolicy	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy	-	objc
 property	shipped	cookies	NSHTTPCookieStorage	Networking / Cookies / Retrieving cookies	-	objc
 property	shipped	sharedHTTPCookieStorage	NSHTTPCookieStorage	Networking / Cookies / Getting the shared cookie storage object	-	objc
@@ -2742,14 +2740,11 @@ method	shipped	-performDefaultHandlingForAuthenticationChallenge:	NSURLAuthentic
 method	shipped	-rejectProtectionSpaceAndContinueWithChallenge:	NSURLAuthenticationChallengeSender	Networking / Legacy / URL Authentication Challenge Sender / Protocol Methods	deprecated	objc
 method	shipped	-useCredential:forAuthenticationChallenge:	NSURLAuthenticationChallengeSender	Networking / Legacy / URL Authentication Challenge Sender / Protocol Methods	deprecated	objc
 method	shipped	-cachedResponseForRequest:	NSURLCache	Networking / Cache behavior / Getting and storing cached objects	-	objc
-method	shipped	-getCachedResponseForDataTask:completionHandler:	NSURLCache	Networking / Cache behavior / Getting and storing cached objects	-	objc
 method	shipped	-initWithMemoryCapacity:diskCapacity:directoryURL:	NSURLCache	Networking / Cache behavior / Creating a new cache object	-	objc
 method	shipped	-initWithMemoryCapacity:diskCapacity:diskPath:	NSURLCache	Networking / Cache behavior / Creating a new cache object	deprecated	objc
 method	shipped	-removeAllCachedResponses	NSURLCache	Networking / Cache behavior / Removing cached objects	-	objc
-method	shipped	-removeCachedResponseForDataTask:	NSURLCache	Networking / Cache behavior / Removing cached objects	-	objc
 method	shipped	-removeCachedResponseForRequest:	NSURLCache	Networking / Cache behavior / Removing cached objects	-	objc
 method	shipped	-removeCachedResponsesSinceDate:	NSURLCache	Networking / Cache behavior / Removing cached objects	-	objc
-method	shipped	-storeCachedResponse:forDataTask:	NSURLCache	Networking / Cache behavior / Getting and storing cached objects	-	objc
 method	shipped	-storeCachedResponse:forRequest:	NSURLCache	Networking / Cache behavior / Getting and storing cached objects	-	objc
 property	shipped	currentDiskUsage	NSURLCache	Networking / Cache behavior / Getting and setting on-disk cache properties	-	objc
 property	shipped	currentMemoryUsage	NSURLCache	Networking / Cache behavior / Getting and setting in-memory cache properties	-	objc
@@ -2799,15 +2794,11 @@ property	shipped	persistence	NSURLCredential	Networking / Authentication and cre
 property	shipped	user	NSURLCredential	Networking / Authentication and credentials / Getting credential properties	-	objc
 method	shipped	-credentialsForProtectionSpace:	NSURLCredentialStorage	Networking / Authentication and credentials / Retrieving credentials	-	objc
 method	shipped	-defaultCredentialForProtectionSpace:	NSURLCredentialStorage	Networking / Authentication and credentials / Getting and setting default credentials	-	objc
-method	shipped	-getCredentialsForProtectionSpace:task:completionHandler:	NSURLCredentialStorage	Networking / Authentication and credentials / Retrieving credentials	-	objc
-method	shipped	-getDefaultCredentialForProtectionSpace:task:completionHandler:	NSURLCredentialStorage	Networking / Authentication and credentials / Getting and setting default credentials	-	objc
 method	shipped	-removeCredential:forProtectionSpace:	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials	-	objc
 method	open	-removeCredential:forProtectionSpace:options:	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials	-	objc
 method	open	-removeCredential:forProtectionSpace:options:task:	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials	-	objc
 method	shipped	-setCredential:forProtectionSpace:	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials	-	objc
-method	shipped	-setCredential:forProtectionSpace:task:	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials	-	objc
 method	shipped	-setDefaultCredential:forProtectionSpace:	NSURLCredentialStorage	Networking / Authentication and credentials / Getting and setting default credentials	-	objc
-method	shipped	-setDefaultCredential:forProtectionSpace:task:	NSURLCredentialStorage	Networking / Authentication and credentials / Getting and setting default credentials	-	objc
 property	shipped	allCredentials	NSURLCredentialStorage	Networking / Authentication and credentials / Retrieving credentials	-	objc
 property	shipped	sharedCredentialStorage	NSURLCredentialStorage	Networking / Authentication and credentials / Getting the credential storage	-	objc
 method	shipped	+canResumeDownloadDecodedWithEncodingMIMEType:	NSURLDownload	Networking / Legacy / URL Download / Resuming partial downloads	deprecated	objc

@@ -18,7 +18,7 @@ CHECKS = (
     "removal-takes-the-credential-out",
     "all-credentials-answers-by-space",
     "the-store-announced-its-changes",
-    "a-task-scoped-read-answers",
+    
     "the-removal-options-door-is-absent",
     "and-so-is-its-task-form",
 )

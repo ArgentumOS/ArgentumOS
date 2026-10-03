@@ -21,8 +21,8 @@ CHECKS = (
     "a-path-prefix-is-sent",
     "a-secure-cookie-stays-on-https",
     "the-sort-is-nssortdescriptors",
-    "a-task-scoped-store-uses-the-task-url",
-    "a-task-scoped-read-answers",
+    
+    
     "the-group-container-store-door-is-absent",
     "the-deprecated-accept-policy-notification-is-absent",
 )

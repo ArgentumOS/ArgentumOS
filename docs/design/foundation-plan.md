@@ -15969,6 +15969,32 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.143 — THE MEMBER CUT LANDS, WITH THE FLOOR THAT §63.142 SAID WAS MISSING (2026-10-01)
+
+**LANDED: EIGHTEEN SESSION-TYPED MEMBERS FROM THREE KEPT CLASSES** — `NSHTTPCookieStorage` (2), `NSURLCache` (3),
+`NSURLCredentialStorage` (6 plus the task-scoped forms already counted), **five dead `@class`/`#import` lines, one stale
+comment corrected, NINE ledger rows removed, and FOUR PROBE CHECKS** (§63.142 named them: `a-task-scoped-store-and-get-round-trip`;
+`a-task-scoped-store-uses-the-task-url` + `a-task-scoped-read-answers`; `a-task-scoped-read-answers`) **together with the
+`NSURLSessionTask` scaffolding their blocks declared.**
+
+**MEASURED: build EXIT 0 with exactly the standing SIX warnings; `make testimg` EXIT 0; `--check` consistent at method
+1682 / 247 / 390 and property 744 / 99 / 170; and the three affected cases GREEN —
+`FOUNDATION-CREDENTIALSTORAGE ok=14 fail=0`, `FOUNDATION-HTTPCOOKIESTORAGE ok=17 fail=0`,
+`FOUNDATION-URLCACHE ok=15 fail=0`, `TESTS-OK 3/3 case(s), 9/9 check(s) in 14s`.**
+
+**⚠⚠ AND THE FLOOR IS NOW IN THE TOOL RATHER THAN IN THE SCRIPT THAT NEEDED IT: `tools/probe-scope.py` carries
+`MAX_REMOVE_FRACTION = 0.25` and a `removable(text, start, end)` predicate, WITH THE TWO OVER-REMOVALS WRITTEN INTO THE
+COMMENT AS THE REASON.** *A guard that lives in a scratch script dies with the script; the second attempt at this cut
+would have over-removed again.*
+
+**AND TWO CHECKS SURVIVED ON PURPOSE, WHICH IS THE KIND OF THING A TOOL CANNOT DECIDE: `the-removal-options-door-is-absent`
+and `and-so-is-its-task-form` ASSERT A SELECTOR'S ABSENCE — so removing the doors makes them MORE true, not less. A
+scope-shaped remover would have taken them with the block.** *The remaining judgement in this work is still human: a tool
+finds what a check TOUCHES, and only a reader knows whether the check is FOR or AGAINST the thing being removed.*
+
+**AND ONE PROCESS FACT WORTH KEEPING: `make test TESTS='a b c'` selects NOTHING — the filter takes a COMMA-SEPARATED list
+(`TESTS='a,b,c'`), and its own message says so only as ‘no cases selected’.**
+
 ## §63.142 — THE MEMBER CUT WORKS AND IS MECHANICAL; ITS PROBE TRIMMING IS NOT SCOPE-SHAPED, AND TWO OVER-REMOVALS SAY WHY (2026-10-01)
 
 **THE MEMBER CUT ITSELF IS DONE AND MEASURED, AND IT IS MECHANICAL: SIXTEEN SESSION-TYPED MEMBERS REMOVED FROM THREE KEPT

@@ -169,42 +169,12 @@ NSString * const NSURLCredentialStorageChangedNotification =
 
 /* --- THE TASK-SCOPED DOORS: the same answer, with the task accepted so Apple source compiles. --- */
 
-- (void)setCredential:(NSURLCredential *)credential
-    forProtectionSpace:(NSURLProtectionSpace *)space
-		 task:(NSURLSessionTask *)task
-{
-	(void)task;
-	[self setCredential:credential forProtectionSpace:space];
-}
 
-- (void)setDefaultCredential:(NSURLCredential *)credential
-	  forProtectionSpace:(NSURLProtectionSpace *)space
-			task:(NSURLSessionTask *)task
-{
-	(void)task;
-	[self setDefaultCredential:credential forProtectionSpace:space];
-}
 
-- (void)getCredentialsForProtectionSpace:(NSURLProtectionSpace *)space
-				    task:(NSURLSessionTask *)task
-		       completionHandler:(void (^)(NSDictionary *))completionHandler
-{
-	(void)task;
-	if(completionHandler == nil) {
-		return;
-	}
-	completionHandler([self allCredentials]);
-}
 
-- (void)getDefaultCredentialForProtectionSpace:(NSURLProtectionSpace *)space
-					  task:(NSURLSessionTask *)task
-			     completionHandler:(void (^)(NSURLCredential *))completionHandler
-{
-	(void)task;
-	if(completionHandler == nil) {
-		return;
-	}
-	completionHandler([self defaultCredentialForProtectionSpace:space]);
-}
+
+
+
+
 
 @end

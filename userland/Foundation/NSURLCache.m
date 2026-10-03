@@ -8,7 +8,6 @@
 #import <Foundation/NSURLCache.h>
 #import <Foundation/NSURLRequest.h>
 #import <Foundation/NSURL.h>
-#import <Foundation/NSURLSessionTask.h>
 #import <Foundation/NSData.h>
 #import <Foundation/NSDate.h>
 #import <Foundation/NSString.h>
@@ -132,19 +131,9 @@ static NSURLCache *fn_sharedCache = nil;
 	[_lock unlock];
 }
 
-- (void)getCachedResponseForDataTask:(NSURLSessionTask *)dataTask
-		   completionHandler:(void (^)(NSCachedURLResponse *))completionHandler
-{
-	if(completionHandler == nil) {
-		return;
-	}
-	completionHandler([self cachedResponseForRequest:[dataTask originalRequest]]);
-}
 
-- (void)storeCachedResponse:(NSCachedURLResponse *)cachedResponse forDataTask:(NSURLSessionTask *)dataTask
-{
-	[self storeCachedResponse:cachedResponse forRequest:[dataTask originalRequest]];
-}
+
+
 
 - (void)removeCachedResponseForRequest:(NSURLRequest *)request
 {
@@ -160,10 +149,7 @@ static NSURLCache *fn_sharedCache = nil;
 	[_lock unlock];
 }
 
-- (void)removeCachedResponseForDataTask:(NSURLSessionTask *)dataTask
-{
-	[self removeCachedResponseForRequest:[dataTask originalRequest]];
-}
+
 
 - (void)removeCachedResponsesSinceDate:(NSDate *)date
 {

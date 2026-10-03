@@ -130,20 +130,7 @@ int main(void)
 	      @"every real change posts NSURLCredentialStorageChangedNotification");
 
 	/* --- THE TASK-SCOPED DOORS ARE THE SAME ANSWER, AS THE HEADER SAYS ------------------------------ */
-	{
-		NSURLSessionTask *task = [[NSURLSessionTask alloc]
-			fnInitWithRequest:[NSMutableURLRequest requestWithURL:
-						[NSURL URLWithString:@"https://example.com/"]]
-			       identifier:1];
-		__block NSUInteger answered = 0;
-
-		[store getCredentialsForProtectionSpace:space task:task
-			      completionHandler:^(NSDictionary *credentials) {
-			answered = [credentials count];
-		}];
-		check("a-task-scoped-read-answers", answered == [[store allCredentials] count],
-		      @"the task-scoped door gives the same answer rather than inventing a scope it has no lifetime for");
-	}
+	
 
 	/* --- WHAT IS REFUSED, ASSERTED ABSENT ----------------------------------------------------------- */
 	check("the-removal-options-door-is-absent",

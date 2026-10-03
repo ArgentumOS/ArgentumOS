@@ -174,42 +174,7 @@ int main(void)
 			      [sorted count] == 2 && [[[sorted objectAtIndex:0] name] isEqualToString:@"a"],
 			      @"the doors take the class the library already has");
 		}
-		{
-			NSURLSessionTask *task = [[NSURLSessionTask alloc] fnInitWithRequest:request
-										  identifier:1];
-			__block NSArray *answered = nil;
-			BOOL taskCookieVisible = NO, taskCookieLeaked = NO;
-			NSUInteger i;
-
-			[own storeCookies:[NSArray arrayWithObject:fn_cookie(@"t", @"1", @"example.com", @"/")]
-				  forTask:task];
-			/* THE PROPERTY, NOT A COUNT: a cookie stored against a task must be visible for THAT TASK'S
-			 * URL and for no other host - and a check on the number of cookies in the store would pass
-			 * while both halves of that were wrong. */
-			{
-				NSArray *forURL = [own cookiesForURL:[NSURL URLWithString:@"http://example.com/"]];
-
-				for(i = 0; i < [forURL count]; i++) {
-					if([[[forURL objectAtIndex:i] name] isEqualToString:@"t"]) {
-						taskCookieVisible = YES;
-					}
-				}
-			}
-			{
-				NSArray *elsewhere = [own cookiesForURL:[NSURL URLWithString:@"http://notexample.com/"]];
-
-				taskCookieLeaked = [elsewhere count] != 0;
-			}
-			check("a-task-scoped-store-uses-the-task-url", taskCookieVisible && !taskCookieLeaked,
-			      @"the cookie the task stored is visible for the task's URL and nowhere else");
-
-			[own getCookiesForTask:task completionHandler:^(NSArray *cookies) {
-				answered = [cookies copy];
-			}];
-			check("a-task-scoped-read-answers",
-			      answered != nil && [answered count] == [[own cookiesForURL:[request URL]] count],
-			      @"the completion handler is called with exactly what that URL may see");
-		}
+		
 	}
 
 	/* --- WHAT IS REFUSED, ASSERTED ABSENT ----------------------------------------------------------- */

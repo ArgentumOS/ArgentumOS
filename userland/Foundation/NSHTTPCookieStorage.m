@@ -8,7 +8,6 @@
 #import <Foundation/NSHTTPCookieStorage.h>
 #import <Foundation/NSURL.h>
 #import <Foundation/NSURLRequest.h>
-#import <Foundation/NSURLSessionTask.h>
 #import <Foundation/NSNotificationCenter.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDate.h>
@@ -314,21 +313,8 @@ static BOOL fn_same_cookie(NSHTTPCookie *a, NSHTTPCookie *b)
 
 /* THE TASK-SCOPED PAIR ANSWERS THROUGH THE TASK'S OWN REQUEST, so there is no second index to keep in
  * step with the first: a task names one URL, and the store's one answer is `-cookiesForURL:`. */
-- (void)storeCookies:(NSArray *)cookies forTask:(NSURLSessionTask *)task
-{
-	NSURLRequest *request = [task originalRequest];
 
-	[self setCookies:cookies forURL:[request URL] mainDocumentURL:nil];
-}
 
-- (void)getCookiesForTask:(NSURLSessionTask *)task completionHandler:(void (^)(NSArray *))completionHandler
-{
-	NSURLRequest *request = [task originalRequest];
 
-	if(completionHandler == nil) {
-		return;
-	}
-	completionHandler([self cookiesForURL:[request URL]]);
-}
 
 @end

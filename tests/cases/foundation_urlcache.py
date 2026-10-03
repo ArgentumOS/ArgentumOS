@@ -20,7 +20,7 @@ CHECKS = (
     "remove-all-empties-it",
     "a-response-cached-before-the-date-goes",
     "the-disk-is-not-written-to",
-    "a-task-scoped-store-and-get-round-trip",
+    
     "the-shared-cache-can-be-replaced",
 )
 

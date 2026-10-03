@@ -45,7 +45,6 @@ extern NSString * const NSHTTPCookieManagerCookiesChangedNotification;
  * Shipping it would have put a name in the headers that Apple itself has withdrawn. */
 
 /* Forward, not imported: this header names the task type but has no reason to drag the class in. */
-@class NSURLSessionTask;
 
 @interface NSHTTPCookieStorage : NSObject
 {
@@ -75,9 +74,8 @@ extern NSString * const NSHTTPCookieManagerCookiesChangedNotification;
 
 /* The task-scoped pair. A task names a request, so both answer through its URL rather than keeping a
  * second table: this store has ONE index and it is the cookie list. */
-- (void)storeCookies:(NSArray *)cookies forTask:(NSURLSessionTask *)task;
-- (void)getCookiesForTask:(NSURLSessionTask *)task
-	completionHandler:(void (^)(NSArray *cookies))completionHandler;
+
+
 
 @end
 

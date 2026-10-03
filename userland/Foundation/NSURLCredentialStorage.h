@@ -27,7 +27,6 @@
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSLock.h>
-#import <Foundation/NSURLSessionTask.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -70,18 +69,10 @@ extern NSString * const NSURLCredentialStorageChangedNotification;
  * inventing one would put Apple's name on behaviour it does not have. The task is accepted so that Apple
  * source compiles, exactly as the challenge's sender argument is (§48.1).
  */
-- (void)setCredential:(NSURLCredential *)credential
-    forProtectionSpace:(NSURLProtectionSpace *)space
-		 task:(NSURLSessionTask *)task;
-- (void)setDefaultCredential:(NSURLCredential *)credential
-	  forProtectionSpace:(NSURLProtectionSpace *)space
-			task:(NSURLSessionTask *)task;
-- (void)getCredentialsForProtectionSpace:(NSURLProtectionSpace *)space
-				    task:(NSURLSessionTask *)task
-		       completionHandler:(void (^)(NSDictionary *credentials))completionHandler;
-- (void)getDefaultCredentialForProtectionSpace:(NSURLProtectionSpace *)space
-					  task:(NSURLSessionTask *)task
-			     completionHandler:(void (^)(NSURLCredential *credential))completionHandler;
+
+
+
+
 
 @end
 
