@@ -181,7 +181,7 @@ def declared(kind, name, text, names=None):
     # instrument learns"). Apple DOCUMENTS a boolean property as `finished` while the class DECLARES
     # `@property (getter=isFinished)`, so the selector that exists is `isFinished` and a test looking for the NAME
     # `finished` can never find it. THAT IS WHY A WHOLE CLASS OF ROWS READ "open" WHILE THEIR DOORS SHIP — measured
-    # across ~20 classes once this rule landed: NSOperation (finished, ready, executing, cancelled), NSProgress
+    # across ~20 classes once this rule landed: NSOperation (finished, ready, executing, cancelled), and the families since cut
     # (indeterminate, old, cancellable, pausable, paused, finished, cancelled), NSThread, NSHTTPCookie
     # (sessionOnly, secure, HTTPOnly), NSUserNotification (presented, remote), NSUndoManager (undoing, redoing),
     # NSTimer/NSPort/NSConnection (valid), NSScanner/NSUnarchiver (atEnd), NSString (absolutePath), NSFileWrapper
@@ -1410,7 +1410,7 @@ def selectors_status(selectors):
                     # `@property (getter=isFinished)`, so the selector that exists is `isFinished` — and a writer
                     # that looks only for a selector NAMED `finished` records that row "open" FOREVER while its
                     # door ships. MEASURED: 46 property rows across ~20 classes read open for exactly this reason
-                    # (NSOperation, NSProgress, NSThread, NSHTTPCookie, NSUserNotification, NSUndoManager, NSTimer,
+                    # (NSOperation, NSThread, NSHTTPCookie, NSUserNotification, NSUndoManager, NSTimer,
                     # NSPort, NSScanner, NSString, NSFileWrapper, NSTask, NSTimeZone, NSBundle, the formatters,
                     # ...). The fallback is Apple's own getter convention — `is` + the property's name with its
                     # first letter upper-cased — and IT CANNOT FLATTER A ROW: the tree must DECLARE that accessor.
@@ -1825,7 +1825,7 @@ def check_selectors(strict=False):
         # instrument learns"). Apple DOCUMENTS a boolean property as `finished` while the class DECLARES
         # `@property (getter=isFinished)`, so the selector that exists is `isFinished` and a test looking for a
         # selector NAMED `sel` can never find it. THAT IS WHY A WHOLE CLASS OF ROWS READ OPEN WHILE THEIR DOORS
-        # SHIP - measured on NSProgress (`indeterminate`, `old`), NSUserNotification (`presented`, `remote`) and
+        # SHIP - measured early, on the families since cut (`indeterminate`, `old`), NSUserNotification (`presented`, `remote`) and
         # NSHTTPCookie (`sessionOnly`, `secure`, `HTTPOnly`) - and it was proved by an agent that replayed this
         # very test over a header it had just edited.
         #

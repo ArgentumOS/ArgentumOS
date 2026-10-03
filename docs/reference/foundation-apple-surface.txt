@@ -7,10 +7,10 @@
 #
 # kind	status	name	owner	family	why	src
 # case	shipped	996	open	0	struck	78
-# class	shipped	155	open	0	struck	52
+# class	shipped	154	open	0	struck	52
 # enum	shipped	111	open	0	struck	9
-# protocol	shipped	29	open	0	struck	6
-# var	shipped	660	open	0	struck	211
+# protocol	shipped	28	open	0	struck	6
+# var	shipped	644	open	0	struck	211
 
 
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1216,7 +1216,6 @@ class	shipped	NSPortMessage		Low-Level Utilities / Legacy / Legacy	deprecated	ob
 class	shipped	NSPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSPositionalSpecifier		App Support / Object Specifiers	declined	objc
 class	shipped	NSProcessInfo		App Support / System Interaction	-	objc
-class	shipped	NSProgress		App Support / Progress	-	objc
 class	shipped	NSPropertyListSerialization		Files and Data Persistence / Property Lists	-	objc
 class	struck	NSPropertySpecifier		App Support / Object Specifiers	declined	objc
 class	shipped	NSProtocolChecker		Low-Level Utilities / Legacy / Legacy	deprecated	objc
@@ -1876,7 +1875,6 @@ protocol	struck	NSNetServiceDelegate		Networking / Local Network Services	declin
 protocol	shipped	NSObject		Low-Level Utilities / Object Basics	-	objc
 protocol	shipped	NSPortDelegate		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 protocol	struck	NSPredicateValidating		Protocols	declined	objc
-protocol	shipped	NSProgressReporting		App Support / Progress	-	objc
 protocol	shipped	NSSecureCoding		Files and Data Persistence / Adopting Codability	-	objc
 protocol	shipped	NSSpellServerDelegate		Fundamentals / Spelling and Grammar	-	objc
 protocol	shipped	NSStreamDelegate		Low-Level Utilities / Streams	-	objc
@@ -1930,11 +1928,6 @@ typealias	shipped	NSNotificationName	NSNotification	App Support / Notifications 
 typealias	shipped	NSPoint		Fundamentals / Geometry	-	objc
 typealias	shipped	NSPointArray		Fundamentals / Geometry / Related Types	-	objc
 typealias	shipped	NSPointPointer		Fundamentals / Geometry / Related Types	-	objc
-typealias	shipped	NSProgressFileOperationKind	NSProgress	App Support / Progress / Inspecting File Operation Progress Information	-	swift-page
-typealias	shipped	NSProgressKind	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
-typealias	shipped	NSProgressPublishingHandler	NSProgress	App Support / Progress / Observing and Controlling File Progress by Other Processes	-	objc
-typealias	shipped	NSProgressUnpublishingHandler	NSProgress	App Support / Progress / Observing and Controlling File Progress by Other Processes	-	objc
-typealias	shipped	NSProgressUserInfoKey	NSProgress	App Support / Progress / Inspecting Progress Information	-	objc
 typealias	shipped	NSPropertyListReadOptions	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Constants	-	objc
 typealias	shipped	NSPropertyListWriteOptions	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Serializing a Property List	-	objc
 typealias	shipped	NSRangePointer		Fundamentals / Ranges / Related types	-	objc
@@ -2511,22 +2504,6 @@ var	shipped	NSPriorDayDesignations	NSUserDefaults	Files and Data Persistence / A
 var	shipped	NSProcessInfoPowerStateDidChangeNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSProcessInfoPowerStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	swift-page
 var	shipped	NSProcessInfoThermalStateDidChangeNotification	NSProcessInfo	App Support / System Interaction / Working with notifications	-	objc
-var	shipped	NSProgressEstimatedTimeRemainingKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using General Keys	-	objc
-var	shipped	NSProgressFileAnimationImageKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
-var	shipped	NSProgressFileAnimationImageOriginalRectKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
-var	shipped	NSProgressFileCompletedCountKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
-var	shipped	NSProgressFileIconKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
-var	shipped	NSProgressFileOperationKindCopying	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
-var	shipped	NSProgressFileOperationKindDecompressingAfterDownloading	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
-var	shipped	NSProgressFileOperationKindDownloading	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
-var	shipped	NSProgressFileOperationKindDuplicating		Reference / Constants	-	swift-page
-var	shipped	NSProgressFileOperationKindKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
-var	shipped	NSProgressFileOperationKindReceiving	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
-var	shipped	NSProgressFileOperationKindUploading	NSProgress	App Support / Progress / Inspecting File Operation Progress Information / Recognizing Kinds of File Operations	-	swift-page
-var	shipped	NSProgressFileTotalCountKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
-var	shipped	NSProgressFileURLKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using File Operation Keys	-	objc
-var	shipped	NSProgressKindFile	NSProgress	App Support / Progress / Inspecting Progress Information / Recognizing Kinds of Progress	-	objc
-var	shipped	NSProgressThroughputKey	NSProgress	App Support / Progress / Inspecting Progress Information / Using General Keys	-	objc
 var	shipped	NSRangeException	NSException	App Support / Exceptions / Related Types / Type Properties	-	objc
 var	shipped	NSRecoveryAttempterErrorKey	NSError	App Support / User-Relevant Errors / Providing Error User Info / Constants	-	objc
 var	shipped	NSRegistrationDomain	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc

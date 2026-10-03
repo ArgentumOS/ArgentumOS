@@ -63,7 +63,6 @@ class Case(BaseCase):
     timeout = 300
 
     def run(self, ctx):
-        ctx.require_guest_file("foundation_progress")
         session = ctx.boot()
         ready = session.shell_ready(150)
         self.check("shell-ready", ready,

@@ -670,7 +670,7 @@ int main(void)
 
 	{
 		/* THE NSObject PROTOCOL (W2h): the group of methods that make an object first-class, and the
-		 * dependency NSProgressReporting needs. The class conforms and everything inheriting from it
+		 * dependency `id<NSObject>` needs. The class conforms and everything inheriting from it
 		 * conforms, which is what makes `id<NSObject>` a usable type. AND ONE MEMBER IS DELIBERATELY
 		 * ABSENT: -zone, removed with the rest of the zone API as 32-bit-only (§11.5) - asserted
 		 * here rather than merely commented, because a promised member this system cannot have would

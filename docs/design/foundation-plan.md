@@ -3679,7 +3679,6 @@ vanishing.
 | **App Support / Object Matching Tests** | ALL STRUCK: `NSLogicalTest`, `NSScriptWhoseTest`, `NSSpecifierTest` | — |
 | **App Support / Object Specifiers** | ALL STRUCK: `NSIndexSpecifier`, `NSMiddleSpecifier`, `NSNameSpecifier`, `NSPositionalSpecifier`, `NSPropertySpecifier`, `NSRandomSpecifier`, `NSRangeSpecifier`, `NSRelativeSpecifier`, `NSScriptObjectSpecifier`, `NSUniqueIDSpecifier`, `NSWhoseSpecifier` | — |
 | **App Support / Operations** | all classes shipped | — |
-| **App Support / Progress** | all classes shipped | — |
 | **App Support / Scheduling** | all classes shipped | — |
 | **App Support / Script Commands** | ALL STRUCK: `NSCloneCommand`, `NSCloseCommand`, `NSCountCommand`, `NSCreateCommand`, `NSDeleteCommand`, `NSExistsCommand`, `NSGetCommand`, `NSMoveCommand`, `NSQuitCommand`, `NSScriptCommand`, `NSSetCommand` | — |
 | **App Support / Script Dictionary Description** | ALL STRUCK: `NSClassDescription`, `NSScriptClassDescription`, `NSScriptCommandDescription`, `NSScriptSuiteRegistry` | — |
@@ -15962,6 +15961,43 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 `--families --write` (rewrote the family table and the ledger) → `--check` **consistent** → `--unimplemented`
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
+
+## §63.173 — the NSProgress family is cut (the class and NSProgressReporting, its last user gone)
+
+`NSProgress` (10.9) was the era audit's single post-baseline find, and it survived §63.162 for a reason
+that had nothing to do with its date: the class's only user was the item-provider family's load doors.
+§63.172 removed them, so the class became unused code — and an unused class takes the same ground as
+the family that used it. Cut whole: `NSProgress.h/.m` (598 lines), the `NSProgressReporting` protocol
+(its `progress` property was the entire selector footprint), the five `typealias`es and sixteen `var`s
+the class owned. Twenty-three symbol rows plus one selector row, all named `NSProgress*`; the
+`class 154`, `protocol 28`, `var 644` in the ledger's block and the selector ledger's `property 672`
+are that removal, recomputed from the files' own rows.
+
+**The cascade, all mechanical:** the umbrella import; the source and header lists in
+`mk/20-userland.mk`; the guest probe block, anchored on the comment above it; the host-probe lists in
+`mk/60-host.mk` and `tests/harness/host.py`; `foundation_bundle.py`'s `require_guest_file("foundation_progress")`,
+which required a probe that case never runs (a copy-paste left over, and now provably so); and one
+operand inside `foundation_constants.m`'s `keys-and-kinds-value-their-names` check — the check itself
+stands, so that case's expectation did not move.
+
+**Where the protocol was the reason, not the subject.** Two prose sites named `NSProgressReporting` as
+*why* a declaration exists — `NSObject.h`'s comment on the NSObject protocol and the same comment in
+`foundation_core.m` — and `foundation_thread.py`'s docstring listed the class among what the tier
+covers. Each keeps its rule and loses the class: the NSObject protocol is what makes `id<NSObject>` a
+usable type, and that is the reason it came first (§12's added-not-refused rule). The sweep's three
+provenance comments do the same: a rule measured on a class that has since been cut says so, rather
+than naming it.
+
+**Two units in a row, the same trap.** The mk recipes for a probe spell only `foundation_progress` —
+lower case, a different token from the class — so a filter keyed on `NSProgress` sees the source and
+header lists and walks straight past the block that builds the probe. Anchoring on the comment above
+the block is the reliable rule, and this unit used it deliberately.
+
+Acceptance: `make testimg` green; `make test TESTS=foundation_constants,foundation_core,foundation_thread,foundation_bundle`
+→ 4/4 cases, 24/24 checks; `tools/foundation-sweep.py --check` consistent with the family table
+regenerated and the selector ledger consistent; and no reference to either name remains anywhere in
+the tree except AppKit's unrelated `NSProgressIndicator`, which the ledger prefix-matches and which
+this cut does not touch.
 
 ## §63.172 — the NSItemProvider family is cut (class, both protocols, the whole vocabulary)
 

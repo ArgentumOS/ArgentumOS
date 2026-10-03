@@ -3,7 +3,7 @@
 """NSLock / NSRecursiveLock / NSCondition / NSThread — F13.17's acceptance.
 
 docs/design/foundation-plan.md §10, and the LAST row of §10's mechanism table: *"NSThread, NSLock,
-NSRecursiveLock, NSCondition, NSRunLoop, NSTimer, NSOperationQueue, NSProgress — pthreads
+NSRecursiveLock, NSCondition, NSRunLoop, NSTimer, NSOperationQueue — pthreads
 (`third_party/musl/src/thread`) + the kernel's `clone`"*. What ships here is the LOCKS and `NSThread`;
 `NSRunLoop`/`NSTimer` and `NSOperationQueue` are their own designs and are named absent.
 

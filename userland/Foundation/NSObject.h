@@ -71,7 +71,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 /*
  * THE NSObject PROTOCOL (W2h) - the group of methods that make an object a first-class object. It
- * is the dependency NSProgressReporting needs and the reason it is here first (§12: a missing
+ * is what makes `id<NSObject>` a usable type, and the reason it is here first (§12: a missing
  * dependency is ADDED, not refused).
  *
  * THE MEMBER LIST IS APPLE'S PUBLISHED ONE, checked against the documentation rather than recalled

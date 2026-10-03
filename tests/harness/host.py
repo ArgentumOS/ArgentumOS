@@ -48,7 +48,6 @@ HOST_CLEAN = {
     "foundation_orderedset",
     "foundation_predicate",
     "foundation_processinfo",
-    "foundation_progress",
     "foundation_regex",
     "foundation_runloop",
     "foundation_set",

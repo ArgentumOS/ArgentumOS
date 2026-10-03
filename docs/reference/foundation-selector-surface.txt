@@ -34,7 +34,7 @@
 #
 # kind	status	name	owner	family	why	src
 # method	shipped	1590	open	227	struck	397
-# property	shipped	673	open	92	struck	172
+# property	shipped	672	open	92	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -1965,7 +1965,6 @@ property	shipped	processorCount	NSProcessInfo	App Support / System Interaction /
 property	shipped	systemUptime	NSProcessInfo	App Support / System Interaction / Getting computer information	-	objc
 property	shipped	thermalState	NSProcessInfo	App Support / System Interaction / Getting the thermal state	-	swift-page
 property	shipped	userName	NSProcessInfo	App Support / System Interaction / Accessing user information	-	objc
-property	shipped	progress	NSProgressReporting	App Support / Progress / Custom Class Progress	-	objc
 method	open	+dataFromPropertyList:format:errorDescription:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Obsolete Methods	deprecated	objc
 method	shipped	+dataWithPropertyList:format:options:error:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Serializing a Property List	-	objc
 method	shipped	+propertyList:isValidForFormat:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Validating a Property List	-	objc

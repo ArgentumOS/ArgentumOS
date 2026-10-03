@@ -152,7 +152,6 @@ int main(void)
 	/* 7. THE NAMES WHOSE VALUE IS THEIR NAME, AND THE TWO NUMBERS LEFT. */
 	check("keys-and-kinds-value-their-names",
 	      [NSKeyedArchiveRootObjectKey isEqualToString:@"NSKeyedArchiveRootObjectKey"] &&
-	      [NSProgressFileOperationKindDuplicating isEqualToString:@"NSProgressFileOperationKindDuplicating"] &&
 	      [NSFileProtectionCompleteWhenUserInactive isEqualToString:@"NSFileProtectionCompleteWhenUserInactive"] &&
 	      [NSStreamNetworkServiceTypeVoIP isEqualToString:@"NSStreamNetworkServiceTypeVoIP"] &&
 	      [NSUndoManagerGroupIsDiscardableKey isEqualToString:@"NSUndoManagerGroupIsDiscardableKey"] &&
