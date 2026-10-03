@@ -1098,7 +1098,7 @@ mv MacOSX10.2.8.sdk /home/kyle/Development/Fiwix/.tmp/mac102/
 | | |
 |---|---|
 | instrument | `tools/appkit-102-sweep.py` |
-| artefact | `docs/reference/appkit-102-worklist.txt` — **5,272 rows, 5,196 open** |
+| artefact | `docs/reference/appkit-102-worklist.txt` — **5,338 rows, 5,262 open** (see §8h: this ledger was regenerated the same day its sibling was written, after an audit found a reader defect) |
 | modes | `--refresh` (the only mode that reads the corpus) · `--check` (offline gate) · `--work-list [kind\|cluster]` · `--families [--write]` · `--order` |
 
 **It is a fourth sweep rather than a mode of `tools/appkit-sweep.py`, and the
@@ -1124,7 +1124,7 @@ admits in its own words that it over-credits (landing `NSGraphicsContext`'s
 
 ### 7c. The numbers, and the families
 
-5,272 rows: **3,759 methods**, 632 enum cases, 424 vars (notification names, the
+5,338 rows: **3,825 methods**, 632 enum cases, 424 vars (notification names, the
 AFM dictionary keys, the colour-space names), 122 **categories**, 115 classes,
 78 enums, 76 C functions, 24 structs, 24 macros, 12 protocols, 6 typedefs. Zero
 `property` rows and zero `struck` rows — both by construction, not by omission
@@ -1140,23 +1140,23 @@ of 83 rows once already (`ab5eacd3`), which is why this one is not hand-written:
 |---|---|---:|---:|---:|---:|---:|---:|
 | 1 | `responder` | 3 | 0 | 3 | 143 | 272 | 0 |
 | 2 | `view-core` | 7 | 0 | 16 | 466 | 733 | 1 |
-| 3 | `graphics` | 9 | 2 | 3 | 263 | 348 | 64 |
-| 4 | `text` | 20 | 4 | 14 | 560 | 765 | 0 |
+| 3 | `graphics` | 9 | 2 | 3 | 264 | 349 | 64 |
+| 4 | `text` | 20 | 4 | 14 | 584 | 789 | 0 |
 | 5 | `window` | 5 | 0 | 14 | 362 | 460 | 0 |
-| 6 | `controls` | 13 | 0 | 18 | 377 | 460 | 0 |
-| 7 | `containers` | 11 | 0 | 10 | 281 | 363 | 0 |
+| 6 | `controls` | 13 | 0 | 18 | 382 | 465 | 0 |
+| 7 | `containers` | 11 | 0 | 10 | 296 | 378 | 0 |
 | 8 | `menus` | 4 | 1 | 2 | 159 | 171 | 0 |
 | 9 | `panels` | 7 | 0 | 2 | 171 | 275 | 0 |
-| 10 | `images` | 10 | 0 | 2 | 165 | 231 | 11 |
+| 10 | `images` | 10 | 0 | 2 | 169 | 235 | 11 |
 | 11 | `tables` | 7 | 0 | 6 | 281 | 313 | 0 |
 | 12 | `pasteboard-drag` | 1 | 3 | 6 | 66 | 113 | 0 |
 | 13 | `nib` | 4 | 0 | 0 | 39 | 45 | 0 |
-| 14 | `app` | 7 | 2 | 10 | 264 | 387 | 0 |
-| 15 | `media` | 3 | 0 | 1 | 57 | 67 | 0 |
+| 14 | `app` | 7 | 2 | 10 | 276 | 399 | 0 |
+| 15 | `media` | 3 | 0 | 1 | 62 | 72 | 0 |
 | 16 | `opengl` | 3 | 0 | 0 | 32 | 82 | 0 |
 | 17 | `spelling` | 1 | 0 | 0 | 18 | 19 | 0 |
 | 18 | `foundation-additions` | 0 | 0 | 15 | 55 | 92 | 0 |
-| | **total** | **115** | **12** | **122** | **3759** | **5196** | **76** |
+| | **total** | **115** | **12** | **122** | **3825** | **5262** | **76** |
 <!-- END appkit-102-families -->
 
 ### 7d. What the era changes about the build
@@ -1272,3 +1272,263 @@ A row flips to `shipped` by being DECLARED in `userland/AppKit/*.h` — the same
 without `--check` saying so. Nothing in this section needs an SDK to be re-read
 except `--refresh` and `--order`, which is why the artefact and the plan can both
 be committed while the corpus stays out of the tree.
+
+## 8. The 10.5 era ground — the second pin, and the delta between them (2026-10-03)
+
+**§7 pinned the AppKit to 10.2. This pins it again to 10.5, from that era's own
+SDK, and then measures the DIFFERENCE — because "the AppKit as it was" is a moving
+target inside this range and the delta is what a clone actually has to decide
+about.** The two ledgers share a row shape, so they read side by side; what
+follows is generated from them and from the corpora, not remembered.
+
+### 8a. The ground, and how to get it
+
+```
+MacOSX10.5.sdk/System/Library/Frameworks/AppKit.framework/Headers/   177 headers (10.2: 130)
+```
+
+Same mirror and the same rule — Apple's SDK, not redistributable, never in this
+tree; the name list ships and the generator ships:
+
+```sh
+git clone --filter=blob:none --no-checkout --depth 1 \
+    https://github.com/phracker/MacOSX-SDKs .tmp/mac105-gh
+cd .tmp/mac105-gh && git sparse-checkout init --cone \
+  && git sparse-checkout set MacOSX10.5.sdk && git checkout
+mv MacOSX10.5.sdk /home/kyle/Development/Fiwix/.tmp/mac105/
+```
+
+`APPKIT105_SDK=<Headers dir>` points the instrument elsewhere, exactly as
+`APPKIT102_SDK` does for §7's.
+
+### 8b. The instrument and the artefact
+
+| | |
+|---|---|
+| instrument | `tools/appkit-105-sweep.py` — a CLONE of §7b's, and separate for the same reason `appkit-sweep.py` is separate from `foundation-sweep.py`: the ground differs |
+| artefact | `docs/reference/appkit-105-worklist.txt` — **7,816 rows, 7,738 open** |
+| modes | `--refresh` · `--check` (offline) · `--work-list [kind\|cluster]` · `--families [--write]` · `--order` · **`--delta`** (10.5 against 10.2, offline, from the two ledgers) |
+
+`--delta` is this era's new mode and it needs no SDK: its second ground is §7's
+**committed** artefact. It compares row identity — `(kind, name, owner)` for the
+kinds whose owner is a class, `(kind, name)` for the kinds that have no class
+owner — and it carries a **representation-drift** section, which exists because
+the first version of the delta lied: see §8d.
+
+### 8c. The numbers, and the families
+
+7,816 rows: **5,452 methods**, 855 enum cases, 878 vars, 172 **categories**, 163
+classes, 127 typedefs, 86 C functions, 41 macros, 19 structs, 18 protocols, 5
+enums. Against §7c's 5,338 rows that is **+2,478 rows**, of which the delta below
+explains 2,666 added and 188 removed.
+
+The family table is generated the same way (`--families --write`), and `--check`
+fails when it drifts:
+
+<!-- BEGIN appkit-105-families (generated by tools/appkit-105-sweep.py --families; do not hand-edit) -->
+| # | cluster | classes | protocols | categories | methods | open | shipped |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 1 | `responder` | 3 | 0 | 4 | 196 | 338 | 0 |
+| 2 | `view-core` | 9 | 0 | 22 | 572 | 995 | 1 |
+| 3 | `graphics` | 11 | 2 | 8 | 317 | 432 | 66 |
+| 4 | `text` | 27 | 6 | 23 | 915 | 1258 | 0 |
+| 5 | `window` | 5 | 0 | 10 | 407 | 515 | 0 |
+| 6 | `controls` | 26 | 2 | 22 | 667 | 818 | 0 |
+| 7 | `containers` | 14 | 0 | 11 | 359 | 446 | 0 |
+| 8 | `bindings` | 7 | 0 | 5 | 183 | 306 | 0 |
+| 9 | `menus` | 4 | 1 | 3 | 185 | 200 | 0 |
+| 10 | `panels` | 8 | 1 | 10 | 209 | 310 | 0 |
+| 11 | `images` | 11 | 0 | 2 | 195 | 311 | 11 |
+| 12 | `tables` | 10 | 0 | 8 | 501 | 564 | 0 |
+| 13 | `pasteboard-drag` | 1 | 3 | 6 | 67 | 116 | 0 |
+| 14 | `nib` | 5 | 0 | 2 | 47 | 58 | 0 |
+| 15 | `app` | 9 | 2 | 12 | 319 | 492 | 0 |
+| 16 | `media` | 3 | 0 | 2 | 73 | 84 | 0 |
+| 17 | `animation` | 3 | 1 | 1 | 44 | 69 | 0 |
+| 18 | `opengl` | 4 | 0 | 0 | 46 | 99 | 0 |
+| 19 | `speech` | 2 | 0 | 2 | 45 | 109 | 0 |
+| 20 | `spelling` | 1 | 0 | 1 | 25 | 27 | 0 |
+| 21 | `foundation-additions` | 0 | 0 | 18 | 80 | 191 | 0 |
+| | **total** | **163** | **18** | **172** | **5452** | **7738** | **78** |
+<!-- END appkit-105-families -->
+
+### 8d. The delta: what Leopard adds, and what it takes away
+
+```
+tools/appkit-105-sweep.py --delta
+
+ONLY IN 10.5 — new work: 2,666 rows     ONLY IN 10.2 — gone by 10.5: 188 rows
+  method      1679                        enum      73   <- representation drift, see below
+  var          459                        method    52
+  case         269                        case      46
+  typealias    121                        struct     6
+  category      55                        category   5
+  class         49                        var        5
+  macro         17                        class      1   <- NSAffineTransform, moved to Foundation
+  func          10
+  protocol       6
+  struct         1
+```
+
+**49 new classes**, and they are whole subsystems rather than leaves:
+`NSViewController`, `NSCollectionView` (+`Item`), `NSSegmentedControl`,
+`NSDatePicker`(+`Cell`), `NSLevelIndicator`(+`Cell`), `NSTokenField`(+`Cell`),
+`NSSearchField`(+`Cell`), `NSPathControl`(+`Cell`+`ComponentCell`), `NSAlert`,
+`NSAnimation`(+`Context`+`ViewAnimation`), `NSGradient`, `NSShadow`,
+`NSColorSpace`, `NSFontDescriptor`, `NSGlyphGenerator`, `NSATSTypesetter`,
+`NSTextInputClient`, `NSTextList`, `NSTextTable`(+`Block`+`TableBlock`), `NSNib`,
+`NSPersistentDocument`, `NSDockTile`, `NSRuleEditor`, `NSPredicateEditor`
+(+`RowTemplate`), `NSToolbarItemGroup`, `NSTrackingArea`, `NSSpeechSynthesizer`,
+`NSSpeechRecognizer`, `NSCIImageRep`, `NSOpenGLPixelBuffer`, and the whole
+controller layer (`NSController`, `NSObject`/`NSArray`/`NSDictionary`/`NSTree`
+`Controller`, `NSUserDefaultsController`, `NSTreeNode`).
+
+**The one class 10.5 takes away is `NSAffineTransform`, and it MOVED rather than
+vanished**: 10.5's `NSAffineTransform.h` is `#import <Foundation/NSAffineTransform.h>`
+plus `@interface NSAffineTransform (NSAppKitAdditons)` — three methods, in a
+category whose name Apple misspelled (there is no second `i`). The ledgers record
+what the header says; a clone deciding to spell it correctly is making a
+documented deviation, not a correction of this file.
+
+**REPRESENTATION DRIFT, and why `--delta` has a section for it.** 72 names are
+`enum`s at 10.2 and `typealias`s at 10.5 (`NSBezelStyle`, `NSBorderType`,
+`NSBackingStoreType`, …; one more, `NSInterfaceStyle`, moves `category/enum` →
+`category/typealias`). This is not 72 removals and 121 additions: **10.5 rewrote
+every enumeration in the framework** from
+
+```objc
+typedef enum _NSBorderType { NSNoBorder = 0, … } NSBorderType;   /* 10.2 */
+typedef NSUInteger NSBorderType;                                  /* 10.5 … */
+enum { NSNoBorder = 0, … };                                       /* … plus this */
+```
+
+which is also why §8c's `enum` count falls from 78 to 5 and its `case` rows lose
+their owner: the same enumerator, declared in the other shape. The delta compares
+those rows by NAME for exactly this reason, and the drift section reconciles the
+two counts so the plain numbers cannot be read as API churn.
+
+**And "added" does not mean "a name that never existed".** 224 of the 1,679 added
+method rows carry a selector 10.2 already had on *some* class (`-delegate`,
+`-backgroundColor`, `-minValue`, `-maxValue` …) — those are new classes' own
+accessors, not moved API. A clone reading the delta as a list of new names would
+under-count the accessor pairs it owes. (This count is a scratch measurement, not a
+`--delta` section: the selector-existed heuristic cannot tell a re-homed method from
+a common name, so publishing it as a reconciliation would replace one false story
+with another.)
+
+### 8e. What the era changes about the build
+
+Everything below is measured over the corpus or read out of the two ledgers.
+
+1. **`@property` IS STILL ABSENT — AND THIS FALSIFIED THE ASSUMPTION THIS WORK
+   WAS COMMISSIONED ON.** 10.5 is the release that introduced Objective-C 2.0 and
+   properties, and Apple's own headers do not use them: **0 `@property` in 177
+   headers**. `NSViewController`, new in this era, declares
+   `-setRepresentedObject:`/`-representedObject` like everything else. So the
+   surface stays accessor-shaped, `property` stays out of the kind vocabulary, and
+   the instrument **counts any `@property` it finds and reports it** in the header
+   and on stdout — because the failure mode being guarded is a later corpus read
+   by this instrument and silently under-reported, not a lost row today.
+2. **`NSInteger`/`CGFloat` REPLACED `int`/`float` — 1,184 uses against 10.2's
+   zero** (739 + 445; 10.2's single apparent hit is `kCGFloatingWindowLevel`, a
+   different identifier). This is the largest *mechanical* task the delta exposes
+   and the one a row-count cannot see: a method that appears in BOTH ledgers is
+   often not the same method. `userland/Foundation/NSObjCRuntime.h` already has
+   `typedef signed long NSInteger`, so the substrate is there; FNX is 64-bit-only,
+   so the widths are honest rather than emulated.
+3. **Availability moved into the headers.** 131
+   `AVAILABLE_MAC_OS_X_VERSION_…_AND_LATER` and 18 `DEPRECATED_IN_…` annotations,
+   which 10.2 had none of. They are read into the `why` column — `introduced 10.5`
+   (129 rows), `introduced 10.4` (250), `introduced 10.3` (71), `deprecated 10.x`
+   (37 rows) — and **a deprecated row is OWED, not struck** (the §11.5 policy), so
+   this ledger's `struck` count is 0 for a different reason than §7's: not by
+   construction, but by decision.
+4. **`@optional` arrived and is used sparingly**: 4 occurrences, in four NEW
+   protocols (`NSPathCellDelegate`, `NSPathControlDelegate`,
+   `NSPrintPanelAccessorizing`, `NSTextInputClient`); 12 members carry `optional`
+   in `why`. **Delegates are still `@interface NSObject (NSXxxDelegate)`
+   categories** — 58 of them, 170 categories against 18 protocols. The clone's
+   delegate/data-source surface is categories at BOTH pins.
+5. **The build order got one layer deeper and one layer wider**: 70 classes at
+   depth 1 (10.2: 52), 29 at 2, 27 at 3, 27 at 4, 10 at 5. The three clusters
+   `--families` needed to open for 10.5 (`bindings` 306 rows, `animation` 69,
+   `speech` 109) are exactly the subsystems the 10.5 SDK introduced.
+
+### 8f. Decisions this ground adds (yours)
+
+- **E-7 — properties as surface or as addition.** The language has them at 10.5;
+  these headers do not use them. Recommendation: **keep the method surface as the
+  COMPILE TARGET** (it is what a 10.5 application compiles against) and let §5's
+  KVC/KVO property tables be an addition on top, so a ported caller sees the
+  accessors it expects.
+- **E-8 — the signature modernization (E-1's mechanical half).** 1,184 typed uses.
+  Recommendation: **adopt `NSInteger`/`CGFloat`/`NSUInteger` throughout the clone's
+  AppKit headers as the 10.5 signatures**, and treat §7's `int`/`float` rows as the
+  10.2 spelling of the same members rather than as separate work.
+- **E-9 — which of the 49 new classes are in scope now.** The controller/bindings
+  layer (`NSController` and friends, 306 rows) is the largest and the most
+  Foundation-coupled; `NSCollectionView`, `NSDatePicker`, `NSLevelIndicator`,
+  `NSSegmentedControl`, `NSSearchField`, `NSTokenField`, `NSPathControl` are
+  leaf/container controls that fit §4's U-series; `NSSpeechSynthesizer` (109 rows)
+  and `NSAnimation` (69) are self-contained. Recommendation: **controls and
+  containers first, bindings when §5's property tables land, speech last** (and
+  `NSSpeechRecognizer` — microphone input — only when there is an audio capture
+  path).
+- **E-10 — §7's declinations carry forward unchanged.** `NSMovieView`,
+  `NSQuickDrawView`, `NSMenuView`, `NSSimpleHorizontalTypesetter` and
+  `NSInputManager`/`NSInputServer` are ALL still present in the 10.5 headers (open
+  rows in this ledger), so E-2's, E-3's, E-5's and E-6's answers decide the 10.5
+  work too, and `NSAffineTransform`'s move to Foundation means the AppKit's copy of
+  it is now a three-method category.
+
+### 8g. Working the two pins together
+
+```sh
+tools/appkit-105-sweep.py --delta                     # what Leopard adds and drops
+tools/appkit-105-sweep.py --work-list bindings         # the new subsystems, one cluster at a time
+tools/appkit-102-sweep.py --check && tools/appkit-105-sweep.py --check   # both banks, offline
+```
+
+Both `--check`s are offline and independent, and each one fails on a stale shipped
+claim, a row our headers now declare, a row with no cluster, or its own plan
+table drifting. **A clone that satisfies the 10.5 ledger satisfies 10.2's method
+rows as a subset** — with the caveat §8e.2 names, that the SIGNATURES differ — so
+the 10.5 ledger is the one to work against once E-7/E-8 are settled.
+
+### 8h. Correction, same day: the audit that the second pin paid for
+
+**The 10.5 corpus exposed two reader defects in the 10.2 instrument that the 10.2
+corpus could not show, and one of them had already put a short ledger in this
+tree.** Both are fixed in both instruments and both ledgers are regenerated; this
+is the record, because the numbers in §7c changed.
+
+The instrument was verified the first time by parsing the corpus and checking that
+NSView.h's 141 method lines produced 141 rows — which was true and proved nothing
+about the other 129 headers. §8's audit is the rule that would have caught both
+defects on the first day: **for every file, the raw `@interface`/`@protocol` lines
+and raw method lines must equal what the parser produced** (with two accounting
+rules that each cost a false alarm: a declaration with no return type —
+`- initWithDelegate:name:` — is a method line, and a duplicated container line is
+one container). Run against the 10.2 instrument it reported **14 of 130 files
+short, 61 declarations missing**.
+
+1. **A no-argument method whose return type is parenthesised was dropped in
+   silence.** The selector reader strips the return type and then matched the name
+   at offset 0; most 10.2 headers write `- (NSArray *)subviews;` with no space, but
+   some write `- (NSFontDescriptor *)fontDescriptor;` WITH one, and the anchored
+   match found nothing. NSFont.h lost 17 methods, NSStatusItem.h 12 and
+   NSInputManager.h 14; NSQuickDrawView.h lost the only method it has. 10.5 writes
+   the space form far more often, so the second pin is what made it large enough to
+   see. **Ledger effect: 10.2 5,272 → 5,338 rows (methods 3,759 → 3,825).**
+2. **A repeated `@interface … {` line inside `#if`/`#else` ate the rest of the
+   file.** 10.5 prototypes an ivar block once per preprocessor branch, so the
+   parser counted two `{` and never closed the block: NSLayoutManager.h lost all
+   137 of its methods, and 18 of 177 headers were short. 10.2's corpus has no such
+   line, so this one is a 10.5-only fix.
+
+The lesson is the one this tree keeps re-learning in a different costume: **the
+check that was run was true and too narrow, and the artefact it blessed was wrong
+in a way only a per-file rule could see.** Both instruments now pass the audit
+over their whole corpus (0 files different), and `--delta`'s numbers moved with it
+— 10.2's short methods had been reported as "gone by 10.5", which is exactly the
+kind of false story the drift section exists to prevent.
