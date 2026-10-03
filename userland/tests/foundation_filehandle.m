@@ -404,6 +404,81 @@ int main(void)
 		[writer writeData:first error:NULL];
 		[loop runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
 		seen = [[observer lastInfo] objectForKey:NSFileHandleNotificationDataItem];
+	{
+		/* THE DEPRECATED SPELLINGS ARE THE MODERN DOORS WITHOUT THE ERROR OUT-PARAMETER (§63.180), and that is
+		 * what is asserted: the SAME file read both ways gives the same bytes, the same offsets and the same
+		 * end-of-file answer. Comparing them against each other rather than against a string is what makes a
+		 * disagreement between the two spellings a failure of this check. */
+		write_text(@"abcdefghij", @PROBE_FILE);
+		NSFileHandle *legacy = [NSFileHandle fileHandleForReadingAtPath:@PROBE_FILE];
+		NSFileHandle *modern = [NSFileHandle fileHandleForReadingAtPath:@PROBE_FILE];
+		NSData *legacyChunk = [legacy readDataOfLength:4];
+		NSData *modernChunk = [modern readDataUpToLength:4 error:NULL];
+		NSData *legacyRest = [legacy readDataToEndOfFile];
+		NSData *modernRest = [modern readDataToEndOfFileAndReturnError:NULL];
+		NSData *available;
+		NSData *atEnd;
+		unsigned long long whereAfterSeek = 0;
+		unsigned long long endOffset = 0;
+
+		[legacy seekToFileOffset:2];
+		[modern seekToOffset:2 error:NULL];
+		/* THE OFFSET IS ASKED BEFORE THE READING DOOR, because READING TO THE END IS SUPPOSED TO MOVE IT: the
+		 * probe's own numbers caught this (offsetAfterSeek=10 where the code was right and the expectation was
+		 * wrong - -availableData had already carried the pointer to EOF, exactly as -readDataToEndOfFile:
+		 * documents). AND EVERY VALUE IS TAKEN INTO A LOCAL FIRST: the check before this one called
+		 * -seekToEndOfFile INSIDE the detail string, and C leaves argument evaluation order unspecified, so the
+		 * detail ran early and the assertion read the offset it had just changed. A detail may report; it may not do. */
+		whereAfterSeek = [legacy offsetInFile];
+		available = [legacy availableData];
+		endOffset = [legacy seekToEndOfFile];
+		atEnd = [legacy readDataToEndOfFile];
+		check("legacy-read-and-seek",
+		      legacyChunk != nil && [legacyChunk length] == 4 && [legacyChunk isEqualToData:modernChunk] &&
+		      [legacyRest isEqualToData:modernRest] && [legacyRest length] == 6 &&
+		      whereAfterSeek == 2 && [modern getOffset:NULL error:NULL] &&
+		      [available length] == 8 && endOffset == 10 && [atEnd length] == 0,
+		      [NSString stringWithFormat:@"chunk=%lu rest=%lu offsetAfterSeek=%llu available=%lu end=%llu atEnd=%lu",
+				(unsigned long)[legacyChunk length], (unsigned long)[legacyRest length],
+				whereAfterSeek, (unsigned long)[available length], endOffset,
+				(unsigned long)[atEnd length]]);
+	}
+
+	{
+		/* THE WRITING HALF, AND THE PROPERTY THAT MATTERS IS THAT IT REACHED THE DISK: the file is written
+		 * through the deprecated door, synchronised through the deprecated door, and then read back by a
+		 * FRESH handle, so a write that only lived in this process's buffer would fail. Truncation is
+		 * checked the same way, and -closeFile is checked by asking the closed handle for data. */
+		NSFileHandle *writer;
+		NSData *afterWrite;
+		NSData *afterTruncate;
+		NSData *afterClose;
+		unsigned long long whereAfterTruncate = 0;
+
+		write_text(@"abcdefghij", @PROBE_FILE);
+		writer = [NSFileHandle fileHandleForUpdatingAtPath:@PROBE_FILE];
+		[writer writeData:[NSData dataWithBytes:"XY" length:2]];	/* -dataUsingEncoding: is nullable; this door is not */
+		[writer synchronizeFile];
+		afterWrite = [[NSFileHandle fileHandleForReadingAtPath:@PROBE_FILE] readDataToEndOfFile];
+		[writer truncateFileAtOffset:4];
+		afterTruncate = [[NSFileHandle fileHandleForReadingAtPath:@PROBE_FILE] readDataToEndOfFile];
+		/* THE OFFSET IS ASKED BEFORE THE CLOSE (a closed handle cannot be asked), and the CLOSE ITSELF is
+		 * asserted by the only thing it can be asserted by: the handle stops answering with data. */
+		whereAfterTruncate = [writer offsetInFile];
+		[writer closeFile];
+		afterClose = [writer readDataOfLength:1];
+		check("legacy-write-truncate-and-close",
+		      afterWrite != nil && [afterWrite length] == 10 &&
+		      [[[NSString alloc] initWithData:afterWrite encoding:NSUTF8StringEncoding] isEqualToString:@"XYcdefghij"] &&
+		      [afterTruncate length] == 4 &&
+		      [[[NSString alloc] initWithData:afterTruncate encoding:NSUTF8StringEncoding] isEqualToString:@"XYcd"] &&
+		      whereAfterTruncate == 4 && afterClose == nil,
+		      [NSString stringWithFormat:@"write=%@ truncate=%@ offsetAfterTruncate=%llu afterClose=%@",
+			[[NSString alloc] initWithData:afterWrite encoding:NSUTF8StringEncoding],
+			[[NSString alloc] initWithData:afterTruncate encoding:NSUTF8StringEncoding],
+			whereAfterTruncate, afterClose]);
+	}
+
 		check("background-read-posts-data",
 		      [observer countOf:NSFileHandleReadCompletionNotification] == 1 && [seen isEqualToData:first],
 		      [NSString stringWithFormat:@"notifications=%lu data=%@",

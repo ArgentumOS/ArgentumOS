@@ -15962,6 +15962,41 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.180 — the ten deprecated NSFileHandle doors, implemented as the modern doors with the error dropped
+
+`method shipped 1616 → 1624, open 199 → 191`; `property shipped 682 → 684, open 82 → 80`. The ten are
+`-readDataOfLength:`, `-readDataToEndOfFile`, `-availableData`, `-writeData:`, `-seekToEndOfFile`,
+`-seekToFileOffset:`, `-offsetInFile`, `-truncateFileAtOffset:`, `-synchronizeFile`, `-closeFile`.
+
+**THE UNIT IS ABOUT THE TWO SPELLINGS NOT DISAGREEING.** Apple deprecated these at 10.9 in favour of the
+error-returning doors, and this project's policy makes a deprecated door OWED rather than struck — so each
+one is implemented as a CALL to its modern counterpart, never as a second implementation of the same
+operation. The probe then asserts them AGAINST EACH OTHER: the same file read with `-readDataOfLength:` and
+with `-readDataUpToLength:error:` must give the same bytes, and the seek/offset pair must land the same
+place. Comparing two spellings of one operation is a stronger statement than comparing either against a
+string the probe could have written to match.
+
+**THE ONE THING THE DEPRECATED FORMS CANNOT SAY** is recorded in the header rather than left as a mystery:
+they drop the error, so a caller cannot tell "no bytes" from "a failed read" — which is exactly why they
+were deprecated, and why a caller who needs the difference must use the modern door.
+
+**THREE MEASURED TRAPS, TWO OF THEM MINE.** (1) `-dataUsingEncoding:` is annotated NULLABLE and
+`-writeData:` takes nonnull, so the probe would not compile until it built the bytes with a non-null
+construction — the standing practice about annotating what a door accepts, arriving from the other side.
+(2) A DETAIL STRING WITH A SIDE EFFECT: the first version of the read check called `-seekToEndOfFile` inside
+the `check(...)` detail argument, and C leaves argument evaluation order unspecified — the detail ran EARLY
+and MOVED THE HANDLE, so the assertion read an offset the detail had just changed (`offset=10` where 2 was
+expected). A detail may report; it may not DO. Every value now goes into a local first, and both new checks
+are written that way. (3) AND MY EXPECTATION WAS WRONG, WHICH THE PROBE'S OWN NUMBERS SAID PLAINLY: with
+the detail made pure the failure read `offsetAfterSeek=10` — because `-availableData` READS TO EOF and
+therefore legitimately moves the file pointer, which is what `-readDataToEndOfFile:` documents. The fix was
+to ask the offset BEFORE the reading door, not to change the library; the same pattern as §63.175's
+downshift, where the check's own count proved the merge had not double-counted.
+
+Acceptance: `make testimg` green; `make test TESTS=foundation_filehandle` → 1/1 case, 6/6 case checks, and
+the probe's own tally 22 → 24; `tools/foundation-sweep.py --check` consistent (`method 1624/191/399`,
+`property 684/80/172`), `--families --write` rc=0, `--unimplemented` 0 NEW.
+
 ## §63.179 — the sweep could not cross a block RETURN type, and three rows sat open while the library implemented them
 
 `property shipped 679 → 682, open 85 → 82`. The three rows are `readabilityHandler` and `writeabilityHandler`

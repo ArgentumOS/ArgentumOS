@@ -188,6 +188,28 @@ extern NSString *const NSFileHandleOperationException;
  * operations rather than one. */
 - (BOOL)truncateAtOffset:(unsigned long long)offset error:(NSError **)errorPtr;
 
+/* --- THE DEPRECATED SPELLINGS (§63.180) ---------------------------------- */
+
+/* APPLE DEPRECATED THESE AT 10.9 IN FAVOUR OF THE ERROR-RETURNING DOORS ABOVE, and this project's policy
+ * says a deprecated door is OWED rather than struck: a program written before 2013 must compile and mean
+ * the same thing. Each one is the modern door WITHOUT the out-parameter - the same operation, the same
+ * byte count, the same file offset - which is why they are implemented as calls to those doors and why the
+ * probe asserts them against them rather than against strings of its own.
+ *
+ * WHERE THE ERROR WOULD HAVE GONE: it is dropped, as the pre-10.6 API dropped it. A caller who needs to
+ * distinguish "no bytes" from "a failed read" must use the modern door - that difference is the reason the
+ * deprecation happened, and it is the one thing these forms cannot say. */
+- (nullable NSData *)readDataOfLength:(NSUInteger)length;
+- (nullable NSData *)readDataToEndOfFile;
+- (nullable NSData *)availableData;			/* read-only: Apple declares no setter */
+- (void)writeData:(NSData *)data;
+- (unsigned long long)seekToEndOfFile;			/* the new offset, or 0 when it failed */
+- (void)seekToFileOffset:(unsigned long long)offset;
+- (unsigned long long)offsetInFile;			/* 0 when it could not be asked */
+- (void)truncateFileAtOffset:(unsigned long long)offset;
+- (void)synchronizeFile;
+- (void)closeFile;
+
 /* --- reading in the background, one-shot --------------------------------- */
 
 - (void)readInBackgroundAndNotify;

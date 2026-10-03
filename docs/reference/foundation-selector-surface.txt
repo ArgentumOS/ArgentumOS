@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1616	open	199	struck	399
-# property	shipped	682	open	82	struck	172
+# method	shipped	1624	open	191	struck	399
+# property	shipped	684	open	80	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -962,7 +962,7 @@ property	open	state	NSFastEnumeration	Fundamentals / Iteration / Constants / Ins
 method	shipped	-acceptConnectionInBackgroundAndNotify	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
 method	shipped	-acceptConnectionInBackgroundAndNotifyForModes:	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
 method	shipped	-closeAndReturnError:	NSFileHandle	Files and Data Persistence / Managed file access / Operating on a file	-	objc
-method	open	-closeFile	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
+method	shipped	-closeFile	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
 method	shipped	+fileHandleForReadingAtPath:	NSFileHandle	Files and Data Persistence / Managed file access / Creating a file handle	-	objc
 method	shipped	+fileHandleForReadingFromURL:error:	NSFileHandle	Files and Data Persistence / Managed file access / Type Methods	-	objc
 method	shipped	+fileHandleForUpdatingAtPath:	NSFileHandle	Files and Data Persistence / Managed file access / Creating a file handle	-	objc
@@ -973,33 +973,33 @@ method	shipped	-getOffset:error:	NSFileHandle	Files and Data Persistence / Manag
 method	shipped	-initWithCoder:	NSFileHandle	Files and Data Persistence / Managed file access / Creating a file handle	-	objc
 method	shipped	-initWithFileDescriptor:	NSFileHandle	Files and Data Persistence / Managed file access / Creating a file handle	-	objc
 method	shipped	-initWithFileDescriptor:closeOnDealloc:	NSFileHandle	Files and Data Persistence / Managed file access / Creating a file handle	-	objc
-method	open	-readDataOfLength:	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
-method	open	-readDataToEndOfFile	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
+method	shipped	-readDataOfLength:	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
+method	shipped	-readDataToEndOfFile	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
 method	shipped	-readDataToEndOfFileAndReturnError:	NSFileHandle	Files and Data Persistence / Managed file access / Reading from a file handle synchronously	-	objc
 method	shipped	-readDataUpToLength:error:	NSFileHandle	Files and Data Persistence / Managed file access / Reading from a file handle synchronously	-	objc
 method	shipped	-readInBackgroundAndNotify	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
 method	shipped	-readInBackgroundAndNotifyForModes:	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
 method	shipped	-readToEndOfFileInBackgroundAndNotify	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
 method	shipped	-readToEndOfFileInBackgroundAndNotifyForModes:	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
-method	open	-seekToEndOfFile	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
+method	shipped	-seekToEndOfFile	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
 method	shipped	-seekToEndReturningOffset:error:	NSFileHandle	Files and Data Persistence / Managed file access / Seeking within a file	-	objc
-method	open	-seekToFileOffset:	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
+method	shipped	-seekToFileOffset:	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
 method	shipped	-seekToOffset:error:	NSFileHandle	Files and Data Persistence / Managed file access / Seeking within a file	-	objc
 method	shipped	-synchronizeAndReturnError:	NSFileHandle	Files and Data Persistence / Managed file access / Operating on a file	-	objc
-method	open	-synchronizeFile	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
+method	shipped	-synchronizeFile	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
 method	shipped	-truncateAtOffset:error:	NSFileHandle	Files and Data Persistence / Managed file access / Operating on a file	-	objc
-method	open	-truncateFileAtOffset:	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
+method	shipped	-truncateFileAtOffset:	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
 method	shipped	-waitForDataInBackgroundAndNotify	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
 method	shipped	-waitForDataInBackgroundAndNotifyForModes:	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
-method	open	-writeData:	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
+method	shipped	-writeData:	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
 method	shipped	-writeData:error:	NSFileHandle	Files and Data Persistence / Managed file access / Writing to a file handle	-	objc
-property	open	availableData	NSFileHandle	Files and Data Persistence / Managed file access / Reading from a file handle synchronously	-	objc
+property	shipped	availableData	NSFileHandle	Files and Data Persistence / Managed file access / Reading from a file handle synchronously	-	objc
 property	shipped	fileDescriptor	NSFileHandle	Files and Data Persistence / Managed file access / Getting a file descriptor	-	objc
 property	shipped	fileHandleWithNullDevice	NSFileHandle	Files and Data Persistence / Managed file access / Getting a file handle	-	objc
 property	shipped	fileHandleWithStandardError	NSFileHandle	Files and Data Persistence / Managed file access / Getting a file handle	-	objc
 property	shipped	fileHandleWithStandardInput	NSFileHandle	Files and Data Persistence / Managed file access / Getting a file handle	-	objc
 property	shipped	fileHandleWithStandardOutput	NSFileHandle	Files and Data Persistence / Managed file access / Getting a file handle	-	objc
-property	open	offsetInFile	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
+property	shipped	offsetInFile	NSFileHandle	Files and Data Persistence / Managed file access / Deprecated	deprecated	objc
 property	shipped	readabilityHandler	NSFileHandle	Files and Data Persistence / Managed file access / Monitoring for readability and writability	-	objc
 property	shipped	writeabilityHandler	NSFileHandle	Files and Data Persistence / Managed file access / Monitoring for readability and writability	-	objc
 method	shipped	-URLForDirectory:inDomain:appropriateForURL:create:error:	NSFileManager	Files and Data Persistence / File system operations / Locating system directories	-	objc

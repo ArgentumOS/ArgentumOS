@@ -636,6 +636,67 @@ static void fn_make_standard_handles(void)
 
 /* ---- reading in the background ------------------------------------------ */
 
+/* ===================================================================================================
+ * THE DEPRECATED SPELLINGS (§63.180): each is the error-returning door with the error DROPPED, which is
+ * what the pre-10.6 API was. Writing them any other way would be a second implementation of the same
+ * operation, free to disagree with the first about a byte count or an offset.
+ * =================================================================================================== */
+- (NSData *)readDataOfLength:(NSUInteger)length
+{
+	return [self readDataUpToLength:length error:NULL];
+}
+
+- (NSData *)readDataToEndOfFile
+{
+	return [self readDataToEndOfFileAndReturnError:NULL];
+}
+
+- (NSData *)availableData
+{
+	return [self readDataToEndOfFileAndReturnError:NULL];
+}
+
+- (void)writeData:(NSData *)data
+{
+	(void)[self writeData:data error:NULL];
+}
+
+- (unsigned long long)seekToEndOfFile
+{
+	unsigned long long where = 0;
+
+	(void)[self seekToEndReturningOffset:&where error:NULL];
+	return where;
+}
+
+- (void)seekToFileOffset:(unsigned long long)offset
+{
+	(void)[self seekToOffset:offset error:NULL];
+}
+
+- (unsigned long long)offsetInFile
+{
+	unsigned long long where = 0;
+
+	(void)[self getOffset:&where error:NULL];
+	return where;
+}
+
+- (void)truncateFileAtOffset:(unsigned long long)offset
+{
+	(void)[self truncateAtOffset:offset error:NULL];
+}
+
+- (void)synchronizeFile
+{
+	(void)[self synchronizeAndReturnError:NULL];
+}
+
+- (void)closeFile
+{
+	(void)[self closeAndReturnError:NULL];
+}
+
 - (void)readInBackgroundAndNotify
 {
 	[self fnScheduleKind:FN_OPERATION_READ modes:nil];
